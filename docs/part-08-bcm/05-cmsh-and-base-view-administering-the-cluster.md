@@ -18,7 +18,7 @@ lab_venue: "Nebius GPU"
 | Priority tier | 1 |
 | Lab venue | Laptop |
 | Part | Part 8: NVIDIA Base Command Manager |
-| Status | Drafted from the BCM 11 Administrator Manual, sections 2.4 (Base View; I read the access, login and navigation parts, not every screen), 2.5 (the cluster management shell, read in full) and 2.6 (CMDaemon; 2.6.1 and 2.6.2). **No BCM system was available.** `code/part08/cmsh_sim.py` is **my simulator of the behaviour the manual's sessions show**, and `cmsh_lab.py` checks 55 of them. It tests my reading of the manual, not cmsh itself. It is not a cmsh clone: it covers only the features listed in this chapter. Every command shown is from the manual and untested here |
+| Status | Drafted (`cmsh_lab.py`: 55 checks pass; cluster commands **untested** on live BCM) |
 
 ## Why this matters for AI infrastructure
 
@@ -46,7 +46,7 @@ flowchart LR
   D --> N[CMDaemon on each regular node]
 ```
 
-Both talk to **CMDaemon on the head node**, never straight to the daemons on other nodes. CMDaemon accepts **only SSL connections on TCP port 8081**, and authenticates with client X509 certificates (chapter 8.1 and 8.6). It keeps its data in a MySQL database on the head node. If CMDaemon stops, you lose management, but jobs run on: the workload manager is independent.
+Both talk to **CMDaemon on the head node**, never straight to the daemons on other nodes. For all management traffic, CMDaemon uses **SSL connections on TCP port 8081** (`SSLPort = 8081` in `cmd.conf`), and authenticates with client X509 certificates (chapters 8.1 and 8.6; non-SSL `Port = 8080` is used only during `init` / HTTP boot, see chapter 8.1). It keeps its data in a MySQL database on the head node. If CMDaemon stops, you lose management, but jobs run on: the workload manager is independent.
 
 | | Base View | cmsh |
 |---|---|---|
@@ -238,7 +238,7 @@ There is exactly one partition, called `base`, which stands for the whole physic
 ## 16. Sources and review notes
 
 - **BCM 11 Administrator Manual:** 2.4 (Base View: access, login, navigation; the full Cluster resource tree was read only in part), 2.5 (cmsh: invocation, rc files, aliases, options, modes, objects, `format`, `list`, `foreach`, `range`, node lists, `rename`, `bookmark`, JSON output; read in full), 2.6 (CMDaemon, 2.6.1 and 2.6.2), and the start of Appendix M (tree view of cmsh modes).
-- **Port note:** the Administrator Manual says management goes through TCP 8081 only (SSL). The notes' extra port 8080 (HTTP) is not stated in the manual text I read, but `cm-cmd-ports --http ... --https ...` exists (seen in the Containerization Manual); details in chapter 8.1.
+- **Port note:** Administrator Manual section 2.6 says management goes through TCP 8081 only (SSL), and Appendix C (pp. 905–906) states the two `cmd.conf` directives: `Port = 8080` (non-SSL HTTP, used only during `init` / HTTP boot) and `SSLPort = 8081` (SSL HTTPS, used for all communication with Base View and `cmsh`), both changeable with `cm-cmd-ports --http ... --https ...` (details in chapter 8.1).
 - **Run here:** `cmsh_lab.py` (55 checks): node lists, `groupingsyntax` output, `rename`, `format` widths, prompts and asterisks for add/commit/remove, `modified`, `refresh`, `clear`, Booleans, inherited `get`, `clone` IP rules, `foreach --clone` with and without `--next-ip`.
 - **My own choices, not the manual's:** that a mode-prefixed one-liner leaves the mode unchanged except `add` and `clone` (this matches the manual's two examples); the "next free" address being the lowest unused one; fixed-width columns also being cut with `+`.
 - **Not read or not covered:** the many mode-specific commands (monitoring, user, process, cert, and so on, which later chapters use); events and the `events` command; the command-line `cm-*` tools; Base View screens beyond Cluster; the developer API manual.

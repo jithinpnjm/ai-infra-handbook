@@ -179,3 +179,35 @@ class Cluster:
     def failures(self):
         """DOWN means 'should be up but is not' (a failure). CLOSED(DOWN) is a deliberate shutdown, not a failure."""
         return sorted(h for h, n in self.nodes.items() if n.state == "DOWN")
+
+
+# ---- Appendix C (pp. 905-907): CMDaemon port directives and cm-cmd-ports -------------------------------------------------
+def cmdaemon_port_config(http_port=8080, https_port=8081, ssl_port_only=False, bootloaderprotocol="HTTP", firewall_updated=True):
+    """Appendix C (pp. 905-907): Port defaults to 8080 (non-SSL HTTP, used only during init / HTTP boot). SSLPort defaults to
+    8081 (SSL HTTPS, used for all Base View and cmsh communication). SSLPortOnly defaults to no; if bootloaderprotocol is HTTP
+    (the default, 5.1.6), SSLPortOnly must be no because most bootloaders do not support HTTPS. cm-cmd-ports does NOT update
+    firewall rules automatically."""
+    problems = []
+    if not (0 <= http_port <= 65535 and 0 <= https_port <= 65535):
+        problems.append("port numbers in cmd.conf must be between 0 and 65535")
+    if http_port == https_port:
+        problems.append("Port (HTTP) and SSLPort (HTTPS) must be distinct")
+    if ssl_port_only and bootloaderprotocol.upper() == "HTTP":
+        problems.append("if bootloaderprotocol is HTTP, SSLPortOnly must be set to no (Appendix C p. 906)")
+    if (http_port != 8080 or https_port != 8081) and not firewall_updated:
+        problems.append("cm-cmd-ports does not update the firewall automatically: update /etc/shorewall/rules (or nftables in BCM 12+)")
+    return {"http_port": http_port, "https_port": https_port, "ssl_port_only": ssl_port_only, "problems": problems}
+
+
+def cm_scale_repurpose(cluster, hostname, from_overlay, to_overlay):
+    """Chapter 8 section 8.1.1 (p. 467): when sharing nodes between Kubernetes and Slurm, cm-scale switches a free node from
+    one configuration overlay to another without changing its category or software image."""
+    if hostname not in cluster.nodes:
+        raise BcmError(f"unknown node {hostname}")
+    if from_overlay not in cluster.overlays or to_overlay not in cluster.overlays:
+        raise BcmError("both overlays must exist")
+    cat_before = cluster.nodes[hostname].category
+    cluster.overlays[from_overlay].nodes.discard(hostname)
+    cluster.overlays[to_overlay].nodes.add(hostname)
+    return {"hostname": hostname, "category": cluster.nodes[hostname].category, "category_unchanged": cluster.nodes[hostname].category == cat_before}
+

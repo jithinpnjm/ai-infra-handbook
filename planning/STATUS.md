@@ -204,37 +204,37 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | # | Chapter | Status | Words | Notes |
 |---|---|---|---|---|
 | 6.22 | Provisioning with PXE, iPXE, DHCP, TFTP and image management | drafted | 3340 |  |
-| 7.1 | BMCs, IPMI and out-of-band management | drafted | 3490 |  |
-| 7.2 | Redfish concepts: service root, resources, collections, OData | drafted | 2848 |  |
-| 7.3 | The Redfish protocol: HTTP methods, headers, status codes, query parameters | drafted | 3182 |  |
-| 7.4 | Redfish authentication, sessions and security | drafted | 2972 |  |
-| 7.5 | Redfish actions, tasks, events and subscriptions | drafted | 3146 |  |
-| 7.6 | The Redfish schema: reading CSDL, JSON schema and the resource guide | drafted | 3291 |  |
-| 7.7 | Systems, Chassis and Managers: the core resource model | drafted | 3025 |  |
-| 7.8 | Power, thermal, sensors and environment | drafted | 2920 |  |
-| 7.9 | Storage, network adapters and PCIe devices | drafted | 2568 |  |
-| 7.10 | Firmware inventory and the UpdateService | drafted | 3889 |  |
-| 7.11 | Log services, event logs and diagnostics | drafted | 2886 |  |
-| 7.12 | Automating Redfish with Python, Ansible and Go | drafted | 2751 |  |
-| 7.13 | Redfish on NVIDIA DGX and HGX: BMC, GPU baseboard and management | drafted | 3074 |  |
-| 7.14 | Fleet-scale hardware management and node lifecycle automation | drafted | 3211 |  |
-| 7.15 | BMC security hardening and attestation | drafted | 3739 |  |
-| 8.1 | BCM architecture and concepts | drafted | 3587 |  |
-| 8.2 | Planning and installing BCM | drafted | 3117 |  |
-| 8.3 | Cluster configuration: networks, nodes and categories | drafted | 3687 |  |
-| 8.4 | Node provisioning: images, kernels, categories and the PXE flow | drafted | 4393 |  |
-| 8.5 | cmsh and Base View: administering the cluster | drafted | 3078 |  |
-| 8.6 | Users, authentication and security in BCM | drafted | 2864 |  |
-| 8.7 | Power, BMC and hardware management in BCM | drafted | 3373 |  |
-| 8.8 | Workload managers under BCM: Slurm setup | drafted | 3165 |  |
-| 8.9 | Kubernetes under BCM: deployment and GPU enablement | drafted | 3419 |  |
-| 8.10 | Containerization in BCM: Docker, Apptainer and enroot | drafted | 2623 |  |
-| 8.11 | Monitoring, health checks and alerts in BCM | drafted | 2884 |  |
-| 8.12 | High availability and head-node failover | drafted | 3247 |  |
-| 8.13 | Day-2 operations: updates, scaling, hardware replacement, disaster recovery | drafted | 2840 |  |
-| 8.14 | Air-gapped installation and upgrades | drafted | 2896 |  |
-| 8.15 | BCM in an AI factory: DGX SuperPOD integration | drafted | 2680 |  |
-| 8.16 | Mission Control, DGX Cloud and autonomous recovery concepts | drafted | 8415 |  |
+| 7.1 | BMCs, IPMI and out-of-band management | drafted | 3445 |  |
+| 7.2 | Redfish concepts: service root, resources, collections, OData | drafted | 2801 |  |
+| 7.3 | The Redfish protocol: HTTP methods, headers, status codes, query parameters | drafted | 3134 |  |
+| 7.4 | Redfish authentication, sessions and security | drafted | 2897 |  |
+| 7.5 | Redfish actions, tasks, events and subscriptions | drafted | 3106 |  |
+| 7.6 | The Redfish schema: reading CSDL, JSON schema and the resource guide | drafted | 3246 |  |
+| 7.7 | Systems, Chassis and Managers: the core resource model | drafted | 2984 |  |
+| 7.8 | Power, thermal, sensors and environment | drafted | 2874 |  |
+| 7.9 | Storage, network adapters and PCIe devices | drafted | 2528 |  |
+| 7.10 | Firmware inventory and the UpdateService | drafted | 3806 |  |
+| 7.11 | Log services, event logs and diagnostics | drafted | 2843 |  |
+| 7.12 | Automating Redfish with Python, Ansible and Go | drafted | 2694 |  |
+| 7.13 | Redfish on NVIDIA DGX and HGX: BMC, GPU baseboard and management | drafted | 3011 |  |
+| 7.14 | Fleet-scale hardware management and node lifecycle automation | drafted | 3156 |  |
+| 7.15 | BMC security hardening and attestation | drafted | 3662 |  |
+| 8.1 | BCM architecture and concepts | drafted | 4137 |  |
+| 8.2 | Planning and installing BCM | drafted | 3059 |  |
+| 8.3 | Cluster configuration: networks, nodes and categories | drafted | 5418 |  |
+| 8.4 | Node provisioning: images, kernels, categories and the PXE flow | drafted | 5586 |  |
+| 8.5 | cmsh and Base View: administering the cluster | drafted | 3038 |  |
+| 8.6 | Users, authentication and security in BCM | drafted | 2780 |  |
+| 8.7 | Power, BMC and hardware management in BCM | drafted | 3287 |  |
+| 8.8 | Workload managers under BCM: Slurm setup | drafted | 4206 |  |
+| 8.9 | Kubernetes under BCM: deployment and GPU enablement | drafted | 5519 |  |
+| 8.10 | Containerization in BCM: Docker, Apptainer and enroot | drafted | 2535 |  |
+| 8.11 | Monitoring, health checks and alerts in BCM | drafted | 3939 |  |
+| 8.12 | High availability and head-node failover | drafted | 3853 |  |
+| 8.13 | Day-2 operations: updates, scaling, hardware replacement, disaster recovery | drafted | 3014 |  |
+| 8.14 | Air-gapped installation and upgrades | drafted | 3145 |  |
+| 8.15 | BCM in an AI factory: DGX SuperPOD integration | drafted | 2604 |  |
+| 8.16 | Mission Control, DGX Cloud and autonomous recovery concepts | drafted | 7324 |  |
 | 9.1 | DGX system families and what they are for | scaffold |  |  |
 | 9.2 | Inside a DGX H100 and H200 system | scaffold |  |  |
 | 9.3 | HGX platforms and OEM integration | scaffold |  |  |

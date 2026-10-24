@@ -18,7 +18,7 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | Laptop |
 | Part | Part 7: Redfish and BMC |
-| Status | Drafted. **Nothing in this chapter was checked on a real DGX, HGX or GB200 system.** The NVIDIA-specific facts (resource names, paths, tool behaviour) come from the user's notes, the BCM 11 manuals and the SuperPOD reference architectures, and are marked as such. What I did run: DMTF's official `Redfish-Service-Validator` and `Redfish-Interop-Validator` and the `Redfish-Tacklebox` command-line tools against my mock, with a written acceptance profile, and a recorder that saves a service into a mockup folder |
+| Status | Drafted (DMTF validators and Tacklebox run against mock; **untested** on live DGX/HGX) |
 
 ## Why this matters for AI infrastructure
 

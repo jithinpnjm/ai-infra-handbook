@@ -198,3 +198,135 @@ def upgrade_steps(control_plane_nodes, workers):
     steps.append("update the Kubernetes version in BCM (cmsh kubernetes mode) so it matches")
     steps.append("separately upgrade etcd, CNI, CSI, runtimes and DaemonSet-managed components as needed")
     return steps
+
+
+# ---- Gap pass: 4.3, 4.4, 4.7, 4.8, 4.16, 4.18-4.21, ch. 5, ch. 6 other operators, ch. 7 Edge, ch. 8 CAPI, App. A ------------
+K8S_HEALTH_CHECKS = ("KubernetesChildNode", "KubernetesComponentsStatus", "KubernetesNodesStatus", "KubernetesPodsStatus")
+EDGE_SKIP_FLAGS = ("--skip-package-install", "--skip-reboot", "--skip-image-update", "--skip-disksetup-changes")
+ALLOY_DEFAULT_LOG_SOURCES = {"pod_logs": True, "kube_events": True, "varlog": False}
+
+
+def etcd_member_cert_source(etcd_cluster_cert, etcd_host_role_cert=None):
+    """4.8 Table 4.2 (p. 63): the EtcdHost role can specify a member certificate/key as well, and in that case it overwrites
+    any value set on the global EtcdCluster object."""
+    return (etcd_host_role_cert, "EtcdHost") if etcd_host_role_cert else (etcd_cluster_cert, "EtcdCluster")
+
+
+def amd_gpu_daemonset_nodes(all_nodes, gpu_nodes, tainted_head_nodes, has_control_plane_toleration=False, has_labelset_affinity=False):
+    """4.4.3 & 4.4.4 (pp. 55-57): by default the AMD GPU device plugin DaemonSet runs on every untainted node (even nodes without
+    GPUs) and skips tainted head/control-plane nodes. Adding the node-role.kubernetes.io/control-plane NoSchedule toleration
+    includes tainted head nodes; adding a LabelSet (nvidia.com/amd-gpu-accelerator=) and nodeAffinity restricts it to GPU nodes."""
+    candidates = [n for n in all_nodes if (n not in set(tainted_head_nodes) or has_control_plane_toleration)]
+    if has_labelset_affinity:
+        candidates = [n for n in candidates if n in set(gpu_nodes)]
+    return candidates
+
+
+def external_fqdn_from_trusted_domains(trusted_domains):
+    """4.16.1 (p. 80): the external FQDN of the Kubernetes cluster is the first item in the trusteddomains list on the
+    kubernetes cluster entity."""
+    if not trusted_domains:
+        raise K8sError("trusteddomains is empty")
+    return trusted_domains[0]
+
+
+def alloy_loki_selection_ok(alloy_selected, loki_selected):
+    """6.4 & 6.4.1 (pp. 111-112): Grafana Alloy is a collector and depends on Grafana Loki; selecting Alloy without Loki is
+    rejected by the wizard, whereas Loki can be installed without Alloy."""
+    if alloy_selected and not loki_selected:
+        return False, "Grafana Alloy requires Grafana Loki to be selected as well"
+    return True, "ok"
+
+
+def loki_wizard_flow(num_workers, has_default_storage_class, chosen_mode="SingleBinary", expose_httproute=False, route_user="", route_password=""):
+    """6.5.1 (pp. 113-114):
+    - The Loki deployment mode screen (SingleBinary / SimpleScalable / Distributed) is shown only if the cluster has >= 3 worker
+      nodes AND a default StorageClass; otherwise SingleBinary is selected automatically without prompting.
+    - The Basic Loki configuration screen (MinIO, S3/FileSystem, Replica factor) is shown only if SingleBinary is used; for
+      SimpleScalable or Distributed it is skipped and MinIO + S3 are enabled automatically.
+    - If Gateway HTTPRoute is enabled, username and password are mandatory (empty fields are rejected)."""
+    mode_prompted = (num_workers >= 3 and bool(has_default_storage_class))
+    effective_mode = chosen_mode if mode_prompted else "SingleBinary"
+    basic_screen_shown = (effective_mode == "SingleBinary")
+    minio_s3_forced = (effective_mode in ("SimpleScalable", "Distributed"))
+    route_creds_ok = (not expose_httproute) or (bool(route_user) and bool(route_password))
+    return {
+        "mode_prompted": mode_prompted,
+        "effective_mode": effective_mode,
+        "basic_screen_shown": basic_screen_shown,
+        "minio_s3_forced": minio_s3_forced,
+        "route_creds_ok": route_creds_ok,
+    }
+
+
+def jupyter_kernel_helm_upgrade_ok(installed_namespace, upgrade_namespace):
+    """6.6.1 (p. 114): when upgrading cm-jupyter-kernel-operator with helm upgrade, the -n namespace must match the release's
+    existing namespace (e.g. 'cm'), not a hardcoded 'cm-jupyter-kernel-operator-system' (mismatched -n prunes the old Namespace
+    and deletes the entire release)."""
+    return installed_namespace == upgrade_namespace
+
+
+def grafana_autoloads_configmap(labels):
+    """6.10.2 (p. 143): by default Grafana automatically loads dashboards from ConfigMaps containing the label grafana_dashboard='1'
+    in any namespace."""
+    return labels.get("grafana_dashboard") == "1"
+
+
+def modify_operators_remove(installed_operators, to_remove, dependencies):
+    """6.15.2 (pp. 155-156): from BCM 11.34+, Modify operators uninstalls selected Helm releases in reverse dependency order,
+    refuses to remove an operator that another installed operator still depends on, and leaves CRDs, namespaces, node labels,
+    and taints in place."""
+    remaining = set(installed_operators) - set(to_remove)
+    blocked = []
+    for rem in remaining:
+        for dep in dependencies.get(rem, ()):
+            if dep in set(to_remove):
+                blocked.append(f"cannot remove {dep}: {rem} still depends on it")
+    if blocked:
+        return {"ok": False, "errors": blocked, "uninstall_order": [], "retained_artifacts": []}
+    # reverse dependency order: if A depends on B and both are removed, uninstall A before B
+    order = sorted(to_remove, key=lambda op: sum(1 for other in to_remove if op in dependencies.get(other, ())))
+    return {
+        "ok": True,
+        "errors": [],
+        "uninstall_order": order,
+        "retained_artifacts": ["CRDs", "namespaces", "DaemonSets", "node labels", "taints"],
+    }
+
+
+def capi_template_resolution(requested_label, mgmt_cluster_name, existing_templates):
+    """8.8 (pp. 181-182): fallback sequence for the KubeCluster CAPI template:
+    (1) the label infrav1.nvidia.x-k8s.io/capi-kube-template if it exists,
+    (2) capi-<mgmt_cluster_name>-template if it exists,
+    (3) capi-template."""
+    cands = []
+    if requested_label:
+        cands.append(requested_label)
+    cands.append(f"capi-{mgmt_cluster_name}-template")
+    cands.append("capi-template")
+    for c in cands:
+        if c in set(existing_templates):
+            return c
+    return "capi-template"
+
+
+def capi_rolling_upgrade_ok(spare_byohosts, strategy="RollingUpdate", workers_scaled_down=False):
+    """8.3.4 (p. 170): CAPI rolling upgrades replace machines one by one and require at least one spare ByoHost so the new
+    machine can be provisioned before the old one is deleted, unless OnDelete strategy is used or workers are scaled down first."""
+    if strategy == "OnDelete" or workers_scaled_down:
+        return True
+    return spare_byohosts >= 1
+
+
+def gateway_self_signed_cert_paths(cluster_name="default"):
+    """Appendix A (pp. 185-186): self-signed Gateway TLS files generated by cm-kubernetes-setup on the active head node."""
+    base = f"/etc/kubernetes/pki/{cluster_name}"
+    return {
+        "ca_crt": f"{base}/gateway-ca.crt",
+        "ca_key": f"{base}/gateway-ca.key",
+        "tls_crt": f"{base}/gateway-bcm-gateway.crt",
+        "tls_key": f"{base}/gateway-bcm-gateway.key",
+        "secret_name": "gateway-bcm-gateway-cert",
+        "secret_namespace": "bcm-gateway",
+    }
+

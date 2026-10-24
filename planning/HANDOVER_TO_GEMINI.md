@@ -70,7 +70,7 @@ lab_venue: "Nebius GPU"
 (`install.py` copies `level`, `tier`, `lab_venue` from the scaffold, so you can leave those as in the scaffold.)
 
 Body sections, in this order:
-1. `# P.C Title`, then the metadata table: Level, Priority tier, Lab venue, Part, and a **Status** row that says honestly: what sources were read, that no real system was available (if true), what the lab/model is and how many checks it runs, that it tests the author's reading of the sources and not the product.
+1. `# P.C Title`, then the metadata table: Level, Priority tier, Lab venue, Part, and a **short, one-line Status row** matching the earlier Sonnet chapters (for example: `Drafted (mission_control_lab.py: 31 checks pass; cluster commands **untested** on live BCM)`). Put all detailed source lists, section numbers, and verification notes at the bottom of the chapter in `## Sources and review notes`, never in the top Status row.
 2. `## Why this matters for AI infrastructure` (one short paragraph, concrete).
 3. `## Prerequisites and outcomes` (what to know first; 5 to 8 "you can ..." bullets).
 4. Numbered concept sections `## 1. ...`: simple wording, short paragraphs, tables for rules and defaults, a mermaid diagram for each main flow or architecture, code in fenced blocks. Mark untested commands: "(from the manual, untested here)".
@@ -148,14 +148,20 @@ The author will bring your chapters back to Claude. Claude will:
 
 - The planned "books used effectively" pass: re-read mapped book chapters against each Part and fix gaps.
 - Part 7: `redfish-schema` book only skimmed; OpenAPI and Interop profile format covered lightly.
-- Part 8: Administrator Manual 3.6 to 3.12 (InfiniBand, switches, Cumulus, NetQ, UFM) not read; 5.3.3 and 5.3.4 (InfiniBand and VLAN provisioning) not read; 9.1 and 9.2 beyond headers, 9.6 body, 9.7 not read; 15.3 (express HA setup) and 15.6 (job continuation) not read; MIG commands (3.17.3); Chapter 7 sections 7.6 to 7.9, 7.11; Chapter 10 Base View monitoring screens; Containerization Manual 4.3, 4.4, 4.7, 4.8, 4.16, 4.18 to 4.21, chapters 5, 7, 8, other operators in 6; the NVIDIA Mission Control Manual is not in the corpus; `nvidia-devops` volume-10 chapter 2 is mapped to 8.1, 8.3 and 8.4 and should be re-checked against those chapters; install-mode precedence (8.4) is unresolved from the manual text; BCM failover timer defaults (8.12) come from a garbled table.
-- Chapter 8.1 and 8.5 state the CMDaemon port facts; keep consistent with the later note in 8.1 (manual: management through 8081 only; `cm-cmd-ports` exists with `--http` and `--https`; notes mention 8080).
+- Part 8 (closed in the 2026-10-24 gap pass; ledgers in `planning/ledgers/8-*.md`):
+  - **Resolved in the gap pass:** Administrator Manual 3.6 to 3.12 and 3.18 to 3.19 (8.3); 3.17.3 MIG and `gpuprofiling` commands (8.3); 5.3.3 InfiniBand and 5.3.4 VLAN provisioning (8.4); 7.4.3, 7.6 to 7.9 and 7.11 WLM monitoring, Base View/cmsh jobs & queues, power usage, prejob checks, and `nodecustomizations` (8.8); 9.1, 9.2, 9.6 body (`cm-create-image`) and 9.7 (`cm-image` multi-distro/multi-arch) (8.4 and 8.13); Chapter 10 Base View screens (10.2.11, 10.3, 10.4), PromQL (10.4.9), User Portal (10.8), Cloud Job Tagging (10.9), Events, Event Bucket, and InfoMessages (10.10) (8.11); 15.3 (`cmha-setup -x` express mode), 15.4.8 clone exclude lists, 15.5.3–15.5.4 regular-node HA sequence, and 15.6 WLM job continuation (8.12); Containerization Manual 4.3, 4.4, 4.7, 4.8, 4.16, 4.18 to 4.21, chapters 5, 6 (other operators and `Modify operators`), 7 (Edge), 8 (CAPI), Appendix A (8.9) and Appendix C.4 step-by-step `kubeadm` upgrade sessions (8.14); `nvidia-devops` volume-10 chapter 2 re-checked against 8.1, 8.3, 8.4 and marked `yes` in `MIGRATION_MAP.md`; CMDaemon `Port = 8080` (HTTP during `init` / HTTP boot) and `SSLPort = 8081` (HTTPS management) from Administrator Manual Appendix C (pp. 905–907) reconciled across 8.1, 8.5, and 8.16; failover timer values in 15.4.6 (p. 826) cross-checked against the unsplit `failovergroups` `show` table in 15.5.3 (p. 832).
+  - **Remaining Part 8 gaps that cannot be closed from the corpus:**
+    1. **The *NVIDIA Mission Control Manual* and *NVIDIA Mission Control System Administration Guide* are not in the corpus** (nor is the *DGX OS User Guide* beyond brief version notes in `bcm11-install` 2.1.1 and 3.2.6).
+    2. **Install-mode precedence (8.4, Administrator Manual 5.4.4 pp. 278–279):** the manual lists the six places `node-installer` checks (`newnodeinstallmode`, PXE menu, `nextinstallmode`, node `installmode`, category `installmode`, and the console dialog in Figure 5.17 which gives a last opportunity to overrule), but does not state whether a non-default PXE menu selection beats an explicitly set `nextinstallmode` or node `installmode` when both are set simultaneously.
+    3. **Quorum denominator wording (8.12, Administrator Manual 15.1.6 & 15.4.6):** the manual states that nodes not answering within `Quorum time` are no longer considered and that more than half of the nodes must confirm, leaving slightly ambiguous whether "half" means half of the responding nodes or half of all cluster nodes.
+    4. **Other separate BCM manuals not in the corpus** (*Cloudbursting Manual*, *Edge Manual*, *Developer Manual*, *User Manual*) and Administrator Manual chapters 11 to 13 (job monitoring, accounting, chargeback) and 16 (Jupyter integration), which were outside Part 8's chapter list.
 
 ## 12. Running log (append one line per chapter)
 
 - 8.1 to 8.15: drafted, built, labs pass (see `code/part08/README.md` once written; checks: 8.1 30, 8.2 32, 8.3 54, 8.4 72, 8.5 55, 8.6 51, 8.7 45, 8.8 50, 8.9 48, 8.10 35, 8.11 36, 8.12 42, 8.13 40, 8.14 28, 8.15 29).
 - (Gemini: add lines here: `P.C drafted YYYY-MM-DD, lab file, N checks, build OK, mermaid OK, notes`.)
 - 8.16 drafted 2026-10-24, code/part08/mission_control_lab.py, 31 checks, build OK, mermaid OK, notes in /tmp/w/notes-8-16.md, ledger in planning/ledgers/8-16.md
+- Part 8 gap pass completed 2026-10-24: updated 8.1 (4252w, 35 checks), 8.3 (5519w, 67 checks), 8.4 (5716w, 82 checks), 8.5 (3123w, 55 checks), 8.8 (4305w, 60 checks), 8.9 (5738w, 64 checks), 8.11 (4069w, 46 checks), 8.12 (4034w, 50 checks), 8.13 (3129w, 45 checks), 8.14 (3244w, 34 checks); ledgers in planning/ledgers/8-{01,03,04,08,09,11,12,13,14,16}.md; build OK, mermaid OK (241 diagrams, 0 failed)
 
 ## 13. The working model (proven on 8.16)
 
@@ -173,8 +179,9 @@ Every chapter from now on must pass these six checklists before it is called don
 - [ ] Include a table with columns `Chapter claim | Source (book, chapter, page or section) | Status` where status is one of `stated`, `my inference`, or `removed`.
 - [ ] Every `my inference` row in the ledger matches an explicit `"my inference"` label in the chapter text and in the chapter's "Sources and review notes" section.
 
-### 13.3 Honest status box and sources section
-- [ ] The top metadata table's `Status` cell states: exact sources and section/page numbers read, what was not read or is missing from the corpus, that no live hardware/software was run (when true), the model and lab filenames, the check count, and that the lab tests our reading of the sources rather than the product.
+### 13.3 Clean Status row and detailed Sources section
+- [ ] The top metadata table's `Status` cell is **one short line** matching the Sonnet chapters (for example `Drafted (mission_control_lab.py: 31 checks pass; cluster commands **untested** on live BCM)`). Never dump long source lists into the top Status row.
+- [ ] Keep Mermaid diagram box labels concise (under ~50 characters per line, using `<br/>` for a short subtitle) so diagrams render cleanly on the page without giant vertical boxes.
 - [ ] The `Sources and review notes` section at the end lists:
   - **Sources read in full** (with chapter, section, and page numbers)
   - **Skimmed** (with target chapters where any routed material belongs)
@@ -200,12 +207,11 @@ Every chapter from now on must pass these six checklists before it is called don
 
 ## 14. Source completeness protocol
 
-To ensure zero loss of material from the books or from the `nvidia-devops` notes:
+To ensure **zero loss of material** from the reference books ("gem books" in `~/Desktop/books-toon-rag/`) or from the `nvidia-devops` notes (`~/Documents/GitHub/nvidia-devops/docs/`):
 
-1. **Inventory every source before writing:**
-   - Run `python3 tools/study_rag/brief.py P.C`.
-   - Read `planning/MIGRATION_MAP.md` and `planning/coverage/chapters/P-C.md` (if present).
-   - Search across all books with `python3 tools/study_rag/query.py "<term>"` for the chapter's main terms.
+1. **Exhaustive extraction is mandatory (never leave gem-book or notes data behind):**
+   - The reference books in `~/Desktop/books-toon-rag/` and the `nvidia-devops` repository are the author's curated gems. Every single concept, mental model, analogy, architecture detail, formula, table, number, command, flag, default, edge case, warning, and troubleshooting scenario that belongs to the chapter's scaffold **must be fetched and taught in the chapter**.
+   - Before writing a chapter, run `python3 tools/study_rag/brief.py P.C`, inspect `planning/structure.txt`, `planning/MIGRATION_MAP.md`, and `planning/coverage/chapters/P-C.md` (if present), print the full text of every mapped book chapter with `python3 tools/study_rag/bookch.py <book> "<chapter title>"`, and search across the rest of `~/Desktop/books-toon-rag/` with `python3 tools/study_rag/query.py "<term>"` so no relevant passage in any book is missed.
    - Write the complete source list at the top of `planning/ledgers/P-C.md`.
 2. **Audit every mapped `nvidia-devops` file in full:**
    - Read each mapped `nvidia-devops` file completely.
@@ -216,31 +222,35 @@ To ensure zero loss of material from the books or from the `nvidia-devops` notes
      - `dropped because <explicit reason>` (for example, contradicted by a primary manual)
    - Nothing may be dropped silently. Any item routed to a later chapter must also be appended to `planning/ROUTED_TODO.md` with its source file and target chapter.
 3. **Audit every mapped book chapter in full:**
-   - Print the mapped book chapters with `bookch.py` and read them in full.
-   - Record their key rules, numbers, defaults, tables, worked examples, and troubleshooting advice in `planning/ledgers/P-C.md` with the same dispositions (`used in section X`, `moved to chapter Y`, or `dropped because <reason>`).
-   - When both a book and the notes explain the same concept, prefer the book's explanation when it is simpler and clearer, while keeping any extra concrete numbers or tables from the notes.
+   - Print the mapped book chapters with `bookch.py` and read them from start to finish (never just headings or snippets).
+   - Record their key concepts, analogies, rules, numbers, defaults, tables, worked examples, and troubleshooting advice in `planning/ledgers/P-C.md` with the same dispositions (`used in section X`, `moved to chapter Y`, or `dropped because <reason>`).
+   - Combine the best of both worlds: use the gem book's clear, human explanations and analogies alongside every concrete number, table, and production runbook from the `nvidia-devops` notes.
 4. **Handle disagreements explicitly:**
-   - When the `nvidia-devops` notes and a book or vendor manual disagree, keep both facts in the text, state clearly which source says which, and record the conflict under **Corrections to the author's notes** in `Sources and review notes`.
+   - When the `nvidia-devops` notes and a book or vendor manual disagree, keep both facts, state clearly which is which, and record the conflict under **Corrections to the author's notes** in `Sources and review notes`.
 5. **Run the end-of-chapter coverage check:**
    - Count items in `planning/ledgers/P-C.md` marked `unused`: the count **must be zero**.
    - For any `nvidia-devops` file whose contents have now been 100% migrated (or explicitly routed in `planning/ROUTED_TODO.md`), update its status column in `planning/MIGRATION_MAP.md` to `yes`.
 6. **Never compress scope to save effort:**
-   - Do not summarize a rich source into a few lines. Let the chapter be as long as the verified material requires (typically 2,500 to 4,500+ words). If the sources for a topic are genuinely thin, keep the chapter honest and explain why in the status box.
+   - Do not summarize a rich source into a few lines. Let the chapter be as long as the verified material requires (like the earlier Sonnet chapters in Parts 1 to 6, often 3,500 to 8,000+ words when the books and notes are rich). If the sources for a topic are genuinely thin, keep the chapter honest and explain why in the status box.
 
 ## 15. Human writing standard
 
-Every chapter must read like a clear, patient human teacher:
+Every chapter must read like a clear, warm, patient human teacher (matching the style of Parts 1 to 6):
 
-1. **Four-step concept rhythm:** Start each concept with (a) a plain-language one-sentence meaning, then (b) a real-life analogy or concrete example, then (c) the technical mechanism, and finally (d) the exact numbers, defaults, and commands.
-2. **First-use definitions and plain style:** Define every term and abbreviation the first time it appears. Address the reader as `"you"`. Use short sentences. Never stack jargon without unpacking it.
-3. **Why before how, plus failure mode:** Always explain *why* a rule or setting exists before showing *how* to configure it, and state explicitly what goes wrong in production when the rule is ignored.
-4. **Three angles on each major idea (where helpful):**
+1. **Teach the subject directly—no meta-commentary or inline page/PDF chatter in the body prose:**
+   - In the body of the chapter, **teach the technology directly to the reader**, not "what a PDF says". Do **not** write flow-breaking phrases like *"On page 32 of the PDF, the prose says..."*, *"In Administrator Manual section 6.5 (page 340)..."*, *"The manual states..."*, or put `(page 340)`, `(pp. 32–33)`, `(section 6.11.2)`, `(Table 9.1)`, or `(Figure 17)` in headings, tables, or body paragraphs.
+   - Instead of *"Section 3.6.3 of the Administrator Manual recommends running 2 subnet managers"*, write directly: *"Every InfiniBand subnet needs at least one active subnet manager; run two subnet managers per subnet so one stays passive and takes over if the active one fails."*
+   - Keep exact source, section, and page citations strictly where they belong: in the `Status` row at the top, the `Sources and review notes` section at the very end of the chapter, and the `planning/ledgers/P-C.md` audit ledger (or in the rare spot where two sources genuinely disagree and you must name both). In the body text, only use natural cross-references to other chapters of this handbook (such as `see chapter 8.12`).
+2. **Four-step concept rhythm:** Start each concept with (a) a plain-language one-sentence meaning, then (b) a real-life analogy or concrete example, then (c) the technical mechanism, and finally (d) the exact numbers, defaults, and commands.
+3. **First-use definitions and plain style:** Define every term and abbreviation the first time it appears. Address the reader as `"you"`. Use short sentences. Never stack jargon without unpacking it.
+4. **Why before how, plus failure mode:** Always explain *why* a rule or setting exists before showing *how* to configure it, and state explicitly what goes wrong in production when the rule is ignored.
+5. **Three angles on each major idea (where helpful):**
    - *Beginner view:* what is this thing and why do we care?
    - *Operator view:* what do I run, check, and watch out for on Monday morning?
    - *Interview / architect view:* why is it designed this way, and what are the trade-offs?
-5. **Visuals and concrete numbers:** Use markdown tables for rules, comparisons, and defaults; Mermaid diagrams for architectures and decision flows; and short worked examples with real numbers (checked by the lab).
-6. **Read-aloud test:** Read each section aloud in your head. If a sentence makes you stumble or run out of breath, split and rewrite it.
-7. **"In one minute" summary box:** End each major numbered section (`## 1.`, `## 2.`, ...) with a short **In one minute** callout or summary box (3 to 5 bullet lines) capturing the takeaway rules and numbers.
+6. **Visuals and concrete numbers:** Use markdown tables for rules, comparisons, and defaults; Mermaid diagrams for architectures and decision flows; and short worked examples with real numbers (checked by the lab).
+7. **Read-aloud test:** Read each section aloud in your head. If a sentence makes you stumble or run out of breath, split and rewrite it.
+8. **"In one minute" summary box:** End each major numbered section (`## 1.`, `## 2.`, ...) with a short **In one minute** callout or summary box (3 to 5 bullet lines) capturing the takeaway rules and numbers.
 
 ## 16. Per-chapter reporting format to the author
 

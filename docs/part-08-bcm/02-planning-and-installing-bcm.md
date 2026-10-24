@@ -18,7 +18,7 @@ lab_venue: "Nebius GPU"
 | Priority tier | 1 |
 | Lab venue | Laptop |
 | Part | Part 8: NVIDIA Base Command Manager |
-| Status | Drafted from the BCM 11 Installation Manual (chapters 1, 3, 4, 6, 11, 12 and appendices B and C) and the Administrator Manual. **No BCM system was available, so no install was run.** `code/part08/install_lab.py` (32 checks) tests a small planner and checkers that reproduce **numbers and rules the manual states**. They test my reading of the manual, not BCM. Every command shown is from the manual and untested here |
+| Status | Drafted (`install_lab.py`: 32 checks pass; cluster commands **untested** on live BCM) |
 
 ## Why this matters for AI infrastructure
 

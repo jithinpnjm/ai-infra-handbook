@@ -18,7 +18,7 @@ lab_venue: "Nebius GPU"
 | Priority tier | 1 |
 | Lab venue | Laptop |
 | Part | Part 8: NVIDIA Base Command Manager |
-| Status | Drafted from the BCM 11 Containerization Manual (chapters 1 to 3 and section 4.21), the Administrator Manual section 7.3.3 (Enroot and Pyxis, also used in chapter 8.8), the HPC sysadmin book (chapter 16, containers) and the user's notes (volume 10 chapter 8, for Enroot credentials and Pyxis quoting). **No BCM system was available.** `code/part08/bcm_containers.py` is **my model of the rules those sources state**, and `containers_lab.py` checks 35 of them. It tests my reading, not BCM or any container tool. **BCM's manuals do not mention Apptainer**: that section comes from the book and the notes and is marked as such |
+| Status | Drafted (`containers_lab.py`: 35 checks pass; cluster commands **untested** on live BCM) |
 
 ## Why this matters for AI infrastructure
 

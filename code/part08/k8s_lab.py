@@ -93,6 +93,50 @@ def main():
     check("upgrade order: first control plane node, other control plane nodes, workers, then BCM's recorded version", st[0].startswith("upgrade the first") and "node002" in st[1] and "worker node003" in st[2] and "update the Kubernetes version in BCM" in st[4])
     check("upgrade: etcd, CNI, CSI and runtimes are not covered by kubeadm and need separate action", "separately" in st[-1])
 
+    # Gap pass: 4.3, 4.4, 4.7, 4.8, 4.16, 4.18-4.21, ch. 5, ch. 6 other operators, ch. 7 Edge, ch. 8 CAPI, App. A
+    check("EtcdHost role member certificate overwrites the global EtcdCluster member certificate (4.8 Table 4.2 p. 63)",
+          k.etcd_member_cert_source("/etc/etcd/cluster.crt", "/etc/etcd/host.crt") == ("/etc/etcd/host.crt", "EtcdHost") and
+          k.etcd_member_cert_source("/etc/etcd/cluster.crt") == ("/etc/etcd/cluster.crt", "EtcdCluster"))
+    check("AMD GPU DaemonSet runs on non-GPU nodes by default unless restricted by a LabelSet + nodeAffinity, and needs control-plane toleration for head nodes (4.4.3, 4.4.4)",
+          k.amd_gpu_daemonset_nodes(["head", "cpu1", "gpu1"], ["gpu1"], ["head"], False, False) == ["cpu1", "gpu1"] and
+          k.amd_gpu_daemonset_nodes(["head", "cpu1", "gpu1"], ["gpu1"], ["head"], True, True) == ["gpu1"])
+    check("external FQDN is the first item in trusteddomains on the kubernetes cluster entity (4.16.1 p. 80)",
+          k.external_fqdn_from_trusted_domains(["basecm11.example.com", "kubernetes", "master", "localhost"]) == "basecm11.example.com")
+    check("cm-kubernetes-setup configures the 4 Kubernetes health checks (ChildNode, ComponentsStatus, NodesStatus, PodsStatus) (4.19 p. 93)",
+          len(k.K8S_HEALTH_CHECKS) == 4 and "KubernetesPodsStatus" in k.K8S_HEALTH_CHECKS)
+    check("Grafana Alloy requires Grafana Loki; Loki can be installed without Alloy (6.4.1 p. 112)",
+          not k.alloy_loki_selection_ok(True, False)[0] and k.alloy_loki_selection_ok(True, True)[0] and k.alloy_loki_selection_ok(False, True)[0])
+    check("Grafana Alloy collects pod_logs and kube_events by default, while varlog (/var/log) is off by default (6.4.1 p. 112)",
+          k.ALLOY_DEFAULT_LOG_SOURCES == {"pod_logs": True, "kube_events": True, "varlog": False})
+    l_small = k.loki_wizard_flow(num_workers=2, has_default_storage_class=True, chosen_mode="Distributed")
+    check("Loki wizard forces SingleBinary without prompting when cluster has <3 workers or no default StorageClass (6.5.1 p. 113)",
+          not l_small["mode_prompted"] and l_small["effective_mode"] == "SingleBinary" and l_small["basic_screen_shown"])
+    l_dist = k.loki_wizard_flow(num_workers=3, has_default_storage_class=True, chosen_mode="SimpleScalable", expose_httproute=True, route_user="", route_password="")
+    check("Loki SimpleScalable/Distributed skips the basic storage screen (enabling MinIO+S3) and requires non-empty HTTPRoute credentials (6.5.1 pp. 113-114)",
+          l_dist["mode_prompted"] and not l_dist["basic_screen_shown"] and l_dist["minio_s3_forced"] and not l_dist["route_creds_ok"])
+    check("Jupyter Kernel Operator helm upgrade requires matching the existing release namespace (-n cm), or the release is deleted (6.6.1 p. 114)",
+          k.jupyter_kernel_helm_upgrade_ok("cm", "cm") and not k.jupyter_kernel_helm_upgrade_ok("cm", "cm-jupyter-kernel-operator-system"))
+    check("Grafana auto-loads dashboard ConfigMaps labeled grafana_dashboard='1' in any namespace (6.10.2 p. 143)",
+          k.grafana_autoloads_configmap({"grafana_dashboard": "1"}) and not k.grafana_autoloads_configmap({"grafana_dashboard": "true"}))
+    deps = {"Grafana Alloy": ["Grafana Loki"]}
+    rem_bad = k.modify_operators_remove(["Grafana Alloy", "Grafana Loki"], ["Grafana Loki"], deps)
+    rem_ok = k.modify_operators_remove(["Grafana Alloy", "Grafana Loki"], ["Grafana Alloy", "Grafana Loki"], deps)
+    check("BCM 11.34 Modify operators blocks removing Loki while Alloy depends on it, and uninstalls Alloy before Loki when both are removed (6.15.2)",
+          not rem_bad["ok"] and rem_ok["ok"] and rem_ok["uninstall_order"] == ["Grafana Alloy", "Grafana Loki"])
+    check("uninstalling an operator with Modify operators leaves CRDs, namespaces, node labels and taints behind (6.15.2 p. 156)",
+          "CRDs" in rem_ok["retained_artifacts"] and "taints" in rem_ok["retained_artifacts"])
+    check("Kubernetes on Edge provides the 4 --skip-* flags to speed up deployment on pre-provisioned edge directors (7.1 pp. 157-158)",
+          len(k.EDGE_SKIP_FLAGS) == 4 and "--skip-disksetup-changes" in k.EDGE_SKIP_FLAGS)
+    check("CAPI template fallback order: label template -> capi-<mgmt>-template -> capi-template (8.8 pp. 181-182)",
+          k.capi_template_resolution("custom-tmpl", "default", {"custom-tmpl", "capi-default-template", "capi-template"}) == "custom-tmpl" and
+          k.capi_template_resolution("missing-tmpl", "default", {"capi-default-template", "capi-template"}) == "capi-default-template" and
+          k.capi_template_resolution("missing-tmpl", "default", {"capi-template"}) == "capi-template")
+    check("CAPI rolling upgrade requires at least 1 spare ByoHost unless OnDelete or worker scale-down is used (8.3.4 p. 170)",
+          not k.capi_rolling_upgrade_ok(0) and k.capi_rolling_upgrade_ok(1) and k.capi_rolling_upgrade_ok(0, strategy="OnDelete"))
+    cert_p = k.gateway_self_signed_cert_paths("default")
+    check("Appendix A self-signed Gateway TLS files live in /etc/kubernetes/pki/<cluster>/ and update secret gateway-bcm-gateway-cert in bcm-gateway (pp. 185-186)",
+          cert_p["tls_crt"] == "/etc/kubernetes/pki/default/gateway-bcm-gateway.crt" and cert_p["secret_namespace"] == "bcm-gateway")
+
     print(f"\n{ok_count} passed, {fail_count} failed")
     return 1 if fail_count else 0
 

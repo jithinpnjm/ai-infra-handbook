@@ -156,3 +156,60 @@ def things_to_sync_by_hand():
 def regular_node_ha_differences():
     return {"setup tool": "installed by the administrator (not cmha-setup)", "config submode": "failovergroups", "passive nodes": "several, defined by failover groups",
             "heartbeat": "regular node network, no failover network", "power control": "needed for automatic failover"}
+
+
+# ---- 15.3 express cmha-setup, 15.4.8 clone exclude lists, 15.5.4 regular node failover sequence, 15.6 job continuation (added in gap pass) ----
+EXPRESS_DEFAULT_CONFIG = "/cm/local/apps/cluster-tools/ha/conf/failoverconf.xml"
+CLONE_EXCLUDE_FILES = {"normal": "/cm/excludelistnormal", "failover": "/cm/excludelistfailover"}
+
+
+def cmha_express_commands(config_file=EXPRESS_DEFAULT_CONFIG, mysql_password=None, replicate_all_dbs=False, finalize_reboot=True, storage_type="nas"):
+    """15.3.2 & 15.3.3 (pp. 816-817): express non-ncurses cmha-setup (-x) workflow."""
+    pw = f" -p {mysql_password}" if mysql_password else ""
+    all_db = " -a" if replicate_all_dbs else ""
+    reb = " -r" if finalize_reboot else ""
+    return [
+        f"cmha-setup -x -c {config_file} -i{pw}{all_db}",
+        "/cm/cm-clone-install --failover  # on the PXE-booted passive head",
+        f"cmha-setup -x -c {config_file} -f{reb}{pw}",
+        f"cmha-setup -x -c {config_file} -s {storage_type}",
+    ]
+
+
+def clone_install_exclude_file(failover=True):
+    """15.4.8 (p. 828): cm-clone-install reads /cm/excludelistfailover when --failover is passed, and /cm/excludelistnormal otherwise.
+    Neither file is maintained by CMDaemon or modified by excludelistmanipulatescript."""
+    return CLONE_EXCLUDE_FILES["failover" if failover else "normal"]
+
+
+def regular_node_failover_sequence(unmount_exit_code=0, stonith_triggered=False):
+    """15.5.4 (p. 834): sequence of events when making another HA regular node active.
+    - If active umount script returns non-zero (exit_code > 0), all remaining actions are skipped.
+    - If STONITH powers off the initial active node, the old-active sequence is aborted and passive takeover proceeds."""
+    steps = ["all: run pre-failover script"]
+    if stonith_triggered:
+        steps.append("active: aborted by STONITH power-off")
+    else:
+        steps.append("active: stop service")
+        steps.append("active: run umount script")
+        if unmount_exit_code != 0:
+            return {"steps": steps, "aborted_on_umount_error": True, "completed": False}
+        steps.extend(["active: stop active IP", "active: start passive IP", "active: start passive services (now passive)"])
+    steps.extend([
+        "passive: stop service",
+        "passive: run mount script",
+        "passive: stop passive IP",
+        "passive: start active IP",
+        "passive: start service (now active)",
+        "all: run post-failover script",
+    ])
+    return {"steps": steps, "aborted_on_umount_error": False, "completed": True}
+
+
+def wlm_jobs_continue_across_failover(installed_via_bcm_or_cm_wlm_setup, storage_type, wlm, job_tolerates_brief_fs_unavailability):
+    """15.6 (pp. 834-835): three conditions for running WLM jobs to continue through a failover handover:
+    (1) WLM set up at initial install or via cm-wlm-setup, (2) HA storage supports job continuity (NAS for Slurm and LSF),
+    (3) job code does not fail during the brief window when shared storage is unavailable."""
+    storage_ok = (storage_type.upper() == "NAS" and wlm.lower() in ("slurm", "lsf"))
+    return bool(installed_via_bcm_or_cm_wlm_setup and storage_ok and job_tolerates_brief_fs_unavailability)
+

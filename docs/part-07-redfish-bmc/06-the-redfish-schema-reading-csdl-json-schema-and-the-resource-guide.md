@@ -18,7 +18,7 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | Laptop |
 | Part | Part 7: Redfish and BMC |
-| Status | Drafted. `code/part07/schema_tools.py` and `schema_lab.py` were **run**: 11 checks pass. The lab uses a shallow clone of `github.com/DMTF/Redfish-Publications` (commit `fa6d23d9`, dated 2026-10-13) for the official schemas, message registries and example trees. Nothing was run on a real BMC. The schemas tell you what a payload **may** look like, not whether the hardware data is true |
+| Status | Drafted (`schema_lab.py`: 11 checks pass; **untested** on live BMC) |
 
 ## Why this matters for AI infrastructure
 

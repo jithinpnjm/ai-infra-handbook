@@ -630,7 +630,7 @@ Files: 452; words: 1,222,448; migrated so far: 21,575 words (1.8%). Unmapped fil
 |---|---|---|---|---|
 | volume-10/00c-slurm-bcm-interview-lab.md | 2640 | Interview Lab — NVIDIA Senior Solutions Architect: AI Factory from Bar | 6.31 |  |
 | volume-10/01-bare-metal-and-bmc-lifecycle.md | 6300 | Chapter 1 - Bare-metal and BMC/Redfish lifecycle | 6.22, 7.1, 7.14 |  |
-| volume-10/02-nvidia-base-command-manager.md | 4359 | Chapter 2 - NVIDIA Base Command Manager (BCM) | 8.1, 8.3, 8.4 |  |
+| volume-10/02-nvidia-base-command-manager.md | 4359 | Chapter 2 - NVIDIA Base Command Manager (BCM) | 8.1, 8.3, 8.4 | yes |
 | volume-10/03-os-provisioning-and-linux-security-hardening.md | 4653 | Chapter 3 - OS Provisioning, Kernel Optimization, and Security Hardeni | 1.21, 1.22, 6.22 |  |
 | volume-10/04-ansible-for-infrastructure-automation.md | 5894 | Chapter 4 - Ansible for Infrastructure Automation in AI Factories | 4.16, 4.17 |  |
 | volume-10/05-terraform-for-infrastructure-as-code.md | 7305 | Chapter 5 - Terraform for Infrastructure as Code in AI Factories | 4.18, 4.19, 4.20, 4.21, 4.22, 4.23 |  |

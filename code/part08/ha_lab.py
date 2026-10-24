@@ -72,6 +72,31 @@ def main():
     d = h.regular_node_ha_differences()
     check("regular node HA: failover groups, several passive nodes, no failover network", d["config submode"] == "failovergroups" and "several" in d["passive nodes"] and "no failover network" in d["heartbeat"])
 
+    # Gap pass: 15.3 express cmha-setup, 15.4.8 clone exclude lists, 15.5.4 regular node failover sequence, 15.6 job continuation
+    cmds = h.cmha_express_commands(mysql_password="secret", replicate_all_dbs=True, finalize_reboot=True, storage_type="nas")
+    check("cmha-setup -x express sequence runs -i (initialize), cm-clone-install --failover, -f -r (finalize+reboot), and -s nas (15.3.2, 15.3.3)",
+          len(cmds) == 4 and "-x" in cmds[0] and "-i" in cmds[0] and "-a" in cmds[0] and "-f -r" in cmds[2] and cmds[3].endswith("-s nas"))
+    check("cmha-setup -x recommended XML path is /cm/local/apps/cluster-tools/ha/conf/failoverconf.xml (15.3.2 p. 816)",
+          h.EXPRESS_DEFAULT_CONFIG == "/cm/local/apps/cluster-tools/ha/conf/failoverconf.xml")
+    check("cm-clone-install uses /cm/excludelistfailover with --failover and /cm/excludelistnormal without it (15.4.8 p. 828)",
+          h.clone_install_exclude_file(True) == "/cm/excludelistfailover" and h.clone_install_exclude_file(False) == "/cm/excludelistnormal")
+    seq_ok = h.regular_node_failover_sequence(unmount_exit_code=0, stonith_triggered=False)
+    check("regular node HA makeactive runs pre-failover, active stop/umount/IP/passive, passive stop/mount/IP/start, post-failover (15.5.4 p. 834)",
+          seq_ok["completed"] and seq_ok["steps"][0] == "all: run pre-failover script" and seq_ok["steps"][-1] == "all: run post-failover script")
+    seq_err = h.regular_node_failover_sequence(unmount_exit_code=1, stonith_triggered=False)
+    check("regular node HA skips all remaining actions if the active umount script returns non-zero (15.5.4 p. 834)",
+          seq_err["aborted_on_umount_error"] and not seq_err["completed"])
+    seq_st = h.regular_node_failover_sequence(unmount_exit_code=0, stonith_triggered=True)
+    check("regular node HA aborts the old-active sequence on STONITH and completes passive takeover (15.5.4 p. 834)",
+          seq_st["completed"] and "active: aborted by STONITH power-off" in seq_st["steps"])
+    check("WLM jobs continue across failover when WLM was set up via cm-wlm-setup, storage is NAS (Slurm/LSF), and job tolerates brief NFS pause (15.6)",
+          h.wlm_jobs_continue_across_failover(True, "NAS", "slurm", True) and
+          h.wlm_jobs_continue_across_failover(True, "NAS", "lsf", True))
+    check("WLM job continuation fails if any of the 3 conditions is not met (e.g. non-NAS storage or job crashes on brief NFS pause) (15.6)",
+          not h.wlm_jobs_continue_across_failover(False, "NAS", "slurm", True) and
+          not h.wlm_jobs_continue_across_failover(True, "DAS", "slurm", True) and
+          not h.wlm_jobs_continue_across_failover(True, "NAS", "slurm", False))
+
     print(f"\n{ok_count} passed, {fail_count} failed")
     return 1 if fail_count else 0
 

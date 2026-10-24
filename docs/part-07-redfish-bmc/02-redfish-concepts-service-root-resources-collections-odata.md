@@ -18,7 +18,7 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | Laptop |
 | Part | Part 7: Redfish and BMC |
-| Status | Drafted. `code/part07/redfish_mock.py` (a small teaching Redfish service) and `redfish_crawl.py` were **run**. The mock follows the rules in the DMTF Redfish Specification DSP0266 v1.21.0 for the parts used here, but it is **not** a real BMC and not a complete Redfish service. No real BMC was queried. Real services differ in IDs, optional parts and OEM extensions |
+| Status | Drafted (`redfish_mock.py` and `redfish_crawl.py` run; **untested** on live BMC) |
 
 ## Why this matters for AI infrastructure
 

@@ -68,6 +68,33 @@ def main():
     check("tier 3 (transient) does not drain at once", "drain only if it persists" in m.remediation_chain("transient")[-1])
     check("an unknown fault class is refused", raises(lambda: m.remediation_chain("cosmic")))
 
+    # Gap pass: 10.3, 10.4, 10.8, 10.9, 10.10 checks
+    check("fuzzy_offset: 120 s interval with 0.25 fuzzy offset gives a 30 s max spread window (10.4.1 p. 588)",
+          m.fuzzy_offset_max_seconds(120, 0.25) == 30.0 and raises(lambda: m.fuzzy_offset_max_seconds(120, 1.5)))
+    ct = m.consolidator_times(100, 60, offset_s=300, max_samples_consolidation=10, interval_consolidation_s=3600)
+    check("consolidator time equations: t_raw_gone=6000s, t_consolidation=6300s, t_consolidation_gone=36000s (10.4.3 p. 595)",
+          ct == {"t_raw_gone": 6000, "t_consolidation": 6300, "t_consolidation_gone": 36000})
+    check("changing a consolidator's Kind (e.g. average to maximum) discards previous consolidated data (10.4.3 p. 594)",
+          m.consolidator_kind_change_discards_history("average", "maximum") and not m.consolidator_kind_change_discards_history("average", "average"))
+    check("User Portal is package cm-webportal at :8081/userportal served by CMDaemon with readonly profile and never runs PHP/CGI (10.8)",
+          m.USER_PORTAL_INFO["package"] == "cm-webportal" and m.USER_PORTAL_INFO["served_by"] == "CMDaemon" and not m.USER_PORTAL_INFO["executes_php_or_cgi"])
+    check("AWS Cloud Job Tagging applies the 4 BCM_JOB_* cost-allocation tags while a job runs (10.9 p. 660)",
+          m.AWS_CLOUD_JOB_TAGS == ("BCM_JOB_ID", "BCM_JOB_ACCOUNT", "BCM_JOB_USER", "BCM_JOB_NAME"))
+    check("cmsh events default settings: Private off, Broadcast on, Acknowledged off, Details off, Level notice (10.10.2 p. 661)",
+          m.DEFAULT_CMSH_EVENTS_SETTINGS["Private events"] == "off" and m.DEFAULT_CMSH_EVENTS_SETTINGS["Broadcast events"] == "on" and m.DEFAULT_CMSH_EVENTS_SETTINGS["Level"] == "notice")
+    check("eventbucket plain text creates an info event; EVENT_SEVERITY_ERROR: creates an error event (10.10.3, 10.10.4)",
+          m.parse_eventbucket_line("Some text")["severity"] == "info" and
+          m.parse_eventbucket_line("EVENT_SEVERITY_ERROR:An error line") == {"kind": "event", "severity": "error", "message": "An error line"})
+    check("eventbucket STATE.USERMESSAGE tags a named device or local host, and empty message clears it (10.10.4 pp. 664-665)",
+          m.parse_eventbucket_line("STATE.USERMESSAGE.node001:just right") == {"kind": "usermessage", "device": "node001", "message": "just right", "cleared": False} and
+          m.parse_eventbucket_line("STATE.USERMESSAGE.node001:")["cleared"] and
+          m.parse_eventbucket_line("STATE.USERMESSAGE:too hot", local_host="basecm11")["device"] == "basecm11")
+    check("eventbucket LOGGING.RELOAD.CONFIG reloads CMDaemon logging without restarting cmd, and /tmp/eventbucket handles installer stage (10.10.4 p. 665)",
+          m.parse_eventbucket_line("LOGGING.RELOAD.CONFIG")["kind"] == "reload_logging" and
+          m.parse_eventbucket_line("info-message: checking disks", installer_stage=True)["kind"] == "installer_status")
+    check("measurable scripts write InfoMessages to file descriptor 3 (>&3) (10.10.4 p. 663)",
+          m.infomessage_fd() == 3)
+
     print(f"\n{ok_count} passed, {fail_count} failed")
     return 1 if fail_count else 0
 

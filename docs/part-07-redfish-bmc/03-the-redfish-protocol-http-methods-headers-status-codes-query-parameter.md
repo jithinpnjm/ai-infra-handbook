@@ -18,7 +18,7 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | Laptop |
 | Part | Part 7: Redfish and BMC |
-| Status | Drafted. `code/part07/protocol_lab.py` ran 36 checks against the teaching mock (`redfish_mock.py`) and **all 36 passed** after I fixed three bugs in the mock that the lab itself found. Every rule is taken from DSP0266 v1.21.0, with the clause number shown. The mock is not a real BMC. A real BMC may support fewer query options, different headers or other quirks |
+| Status | Drafted (`protocol_lab.py`: 36 checks pass against mock; **untested** on live BMC) |
 
 ## Why this matters for AI infrastructure
 

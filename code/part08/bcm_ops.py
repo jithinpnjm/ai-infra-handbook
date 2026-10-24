@@ -35,6 +35,33 @@ def os_change_supported(frm, to):
 def head_update_commands(distro):
     return {"rhel": ["yum update"], "rocky": ["yum update"], "ubuntu": ["apt update", "apt upgrade"], "sles": ["zypper refresh", "zypper up"]}[distro]
 
+
+# ---- 9.1 & 9.2 package filename anatomy, device packages scale, GPG key, /cm/shared layout (added in gap pass) -----------
+BCM_GPG_KEY_ID = "0x5D849C16"
+CM_SHARED_SUBDIRS = ("apps", "docs", "etc", "examples", "licenses", "modulefiles")
+
+
+def parse_bcm_package_filename(filename):
+    """9.1 (pp. 521-522):
+      RPM: <package>-<version>-<revision>_cm<x.y>_<hash>.<arch>.rpm
+      DEB: <package>_<version>-<revision>-cm<x.y>-<hash>_<arch>.deb
+    Hash is only present for BCM packages ('cm' marker)."""
+    m_rpm = re.fullmatch(r"([A-Za-z0-9_+-]+)-([0-9.]+)-(\d+)_cm([0-9.]+)_([0-9a-f]+)\.([A-Za-z0-9_]+)\.rpm", filename)
+    if m_rpm:
+        pkg, ver, rev, cm_ver, h, arch = m_rpm.groups()
+        return {"format": "rpm", "package": pkg, "version": ver, "revision": int(rev), "cm_version": cm_ver, "hash": h, "arch": arch, "is_bcm": True}
+    m_deb = re.fullmatch(r"([A-Za-z0-9_+-]+)_([0-9.]+)-(\d+)-cm([0-9.]+)-([0-9a-f]+)_([A-Za-z0-9_]+)\.deb", filename)
+    if m_deb:
+        pkg, ver, rev, cm_ver, h, arch = m_deb.groups()
+        return {"format": "deb", "package": pkg, "version": ver, "revision": int(rev), "cm_version": cm_ver, "hash": h, "arch": arch, "is_bcm": True}
+    return {"is_bcm": False}
+
+
+def device_packages_all_output_mb(num_nodes, kb_per_node=100):
+    """9.1.1 (p. 523): 'packages -a' returns ~100 KB per node (~1000 lines); for 1000 nodes that is ~100 MB (nearly a million lines)."""
+    return (num_nodes * kb_per_node) / 1000.0
+
+
 # ---- 14.1 parallel shells --------------------------------------------------------------------------------------------------------------------
 GENDERS = {"all": "every node, head and regular", "category=default": "nodes in the default category", "computenode": "regular nodes", "headnode": "head node(s)"}
 

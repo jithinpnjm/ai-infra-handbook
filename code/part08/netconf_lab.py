@@ -111,6 +111,56 @@ def main():
 
     check("file-max rule of thumb: 128 GB of memory -> 1,280,000", n.file_max_rule_of_thumb(128) == 1280000)
 
+    # Gap pass: 3.6 InfiniBand & mlxconfig, 3.8-3.12 switches/Cumulus/DPU, 3.17.3 MIG
+    mlx = n.resolve_mlx_extra_values(
+        category_extra={"MLX_link_type_p1": "IB", "MLX_num_vfs": 8},
+        node_extra={"MLX_num_vfs": 16},
+        iface_extra={"MLX_link_type_p1": "ETH", "MLX_KEEP_ETH_LINK_UP_P1": True},
+    )
+    check("mlxconfig extra_values precedence is category < node < interface, and Booleans map to 1/0 (3.6.2)",
+          mlx["link_type_p1"]["source"] == "interface" and mlx["link_type_p1"]["value"] == "ETH" and
+          mlx["num_vfs"]["source"] == "node" and mlx["num_vfs"]["value"] == 16 and
+          mlx["KEEP_ETH_LINK_UP_P1"]["mlxconfig_value"] == 1)
+    check("IPoIB default datagram mode has max MTU 4k (4096); connected mode has max MTU 64k (65536) (3.6.4)",
+          n.ipoib_max_mtu(False) == 4096 and n.ipoib_max_mtu(True) == 65536)
+    check("Cumulus nvconfigurationmode: auto and manual use apply; file mode uses YAML over ZTP without apply (3.9.2)",
+          n.cumulus_nv_commands("auto", ["nv set system hostname sw1"])["uses_apply"] and
+          not n.cumulus_nv_commands("file", [], yaml_file="startup.yaml")["uses_apply"] and
+          raises(lambda: n.cumulus_nv_commands("file", [])))
+    pm = {"switch01:1": "node001", "switch01:2": "node002", "switch01:15": "spine01"}
+    check("finddevicebyswitchport ignores uplink ports, prints bare hostname for 1 port and switch:port prefix for multiple (3.9.3, 3.9.7)",
+          n.find_device_by_switch_port(pm, ["switch01:1"], uplinks=["switch01:15"]) == ["node001"] and
+          n.find_device_by_switch_port(pm, ["switch01:1", "switch01:2", "switch01:15"], uplinks=["switch01:15"]) == ["switch01:1 node001", "switch01:2 node002"])
+    mac_res = n.set_mac_via_switch_port(
+        {"switch01": {"mac": "aa:bb:cc:dd:ee:01", "port": "p1"}, "switch03": {"mac": None, "port": "p3"}},
+        {"p1": ["00:00:00:00:00:99"], "p3": ["00:00:00:00:00:01"]},
+        force=False,
+    )
+    check("setmacviaswitchport skips devices that already have a MAC unless --force is set (3.9.8)",
+          mac_res["switch01"] == (False, "no force and MAC already set") and mac_res["switch03"] == (True, "00:00:00:00:00:01"))
+    check("remotedaemon install for a DPU requires compute-node definition, Ubuntu, SSH and HTTPS to active head (3.10.7)",
+          n.remotedaemon_check(True, "ubuntu24.04", True, True) == [] and
+          len(n.remotedaemon_check(False, "rhel9", False, False)) == 4)
+    check("MIG enable/disable requires a node reboot on A100 but not on H100 (3.17.3)",
+          n.mig_reboot_required("A100-SXM4-80GB") and not n.mig_reboot_required("H100-SXM5-80GB"))
+    check("MIG colon syntax: 2g.10gb:0:0 expands to 2g.10gb:1c.2g.10gb:1c.2g.10gb (0-indexed slice count) (3.17.3)",
+          n.expand_mig_colon_syntax("2g.10gb:0:0") == "2g.10gb:1c.2g.10gb:1c.2g.10gb" and
+          n.expand_mig_colon_syntax("2g.10gb:1") == "2g.10gb:2c.2g.10gb")
+    check("on A100-PCIE-40GB, 7g.40gb:3 is allowed (4c.7g.40gb) while 7g.40gb:4 is refused by hardware restriction (3.17.3 p. 212)",
+          n.expand_mig_colon_syntax("7g.40gb:3") == "7g.40gb:4c.7g.40gb" and raises(lambda: n.expand_mig_colon_syntax("7g.40gb:4")))
+    check("MIG allocation: 2*1g.5gb,2g.10gb uses only 4/7 slices (leaving 3 unallocated)",
+          n.allocate_mig_profiles("2*1g.5gb,2g.10gb")["used_slices"] == 4 and
+          n.allocate_mig_profiles("2*1g.5gb,2g.10gb")["unallocated_slices"] == 3)
+    check("MIG allocation: 5*1g.5gb,2g.10gb uses all 7 GPU slices (5x1g + 1x2g) (3.17.3 p. 213)",
+          n.allocate_mig_profiles("5*1g.5gb,2g.10gb")["allocated"] == [("1g.5gb", 5, 5), ("2g.10gb", 1, 2)] and
+          n.allocate_mig_profiles("5*1g.5gb,2g.10gb")["unallocated_slices"] == 0)
+    check("MIG overallocation: 6*1g.5gb,2g.10gb allocates 6 of 1g.5gb and drops the 2g.10gb instance (3.17.3 p. 213)",
+          n.allocate_mig_profiles("6*1g.5gb,2g.10gb")["allocated"] == [("1g.5gb", 6, 6)] and
+          n.allocate_mig_profiles("6*1g.5gb,2g.10gb")["used_slices"] == 6)
+    check("MIG overallocation: 7*1g.5gb,2g.10gb and 70*1g.5gb,2g.10gb both allocate 7 of 1g.5gb and 0 of 2g.10gb (3.17.3 p. 213)",
+          n.allocate_mig_profiles("7*1g.5gb,2g.10gb")["allocated"] == [("1g.5gb", 7, 7)] and
+          n.allocate_mig_profiles("70*1g.5gb,2g.10gb")["allocated"] == [("1g.5gb", 7, 7)])
+
     print(f"\n{ok_count} passed, {fail_count} failed")
     return 1 if fail_count else 0
 

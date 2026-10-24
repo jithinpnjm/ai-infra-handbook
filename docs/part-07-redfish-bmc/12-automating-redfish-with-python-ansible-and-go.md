@@ -18,7 +18,7 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | Laptop |
 | Part | Part 7: Redfish and BMC |
-| Status | Drafted. Every tool in this chapter was **run** against my teaching mock over HTTPS with a lab CA: my Python client and fleet runner (`fleet_lab.py`, 14 checks pass), the `redfish` Python library 3.4.2, Ansible core 2.21.5 with `community.general` 13.5.0 (the `uri` module and the `redfish_info` and `redfish_command` modules), and Go with gofish v0.27.0. Nothing was run on a real BMC. Real BMCs differ in speed, errors and supported features |
+| Status | Drafted (`fleet_lab.py`: 14 checks pass over HTTPS mock; **untested** on live BMC) |
 
 ## Why this matters for AI infrastructure
 

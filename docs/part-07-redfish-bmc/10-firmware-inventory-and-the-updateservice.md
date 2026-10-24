@@ -18,7 +18,7 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | Laptop |
 | Part | Part 7: Redfish and BMC |
-| Status | Drafted. `code/part07/firmware_lab.py` ran **46 checks**, all passed, against my teaching mock with **invented** firmware images (a tiny package format I made up so every failure can be produced on purpose). It tests the Redfish update **flow** (inventory, `SimpleUpdate`, multipart push, tasks, staging, activation, errors). It does not test any real firmware or any vendor rule. The component names in the GPU-tray example are copied from the BCM manual's DGX H100 listing. The activation rules per component come from the BCM manual and the user's notes, and are **not verified** against NVIDIA's firmware update guides |
+| Status | Drafted (`firmware_lab.py`: 46 checks pass against mock; **untested** on live BMC) |
 
 ## Why this matters for AI infrastructure
 

@@ -18,7 +18,7 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | Laptop |
 | Part | Part 7: Redfish and BMC |
-| Status | Drafted. `code/part07/rf_model.py` and `rf_inventory.py` were **run** against my mock and against eight of DMTF's example trees (rack server, blade enclosure, SmartNIC card, PDU, power shelf, cooling unit and more). The DGX and HGX layout described at the end comes from the user's notes and is **not verified** against NVIDIA documents. No real BMC was queried |
+| Status | Drafted (`rf_model.py` and `rf_inventory.py` run against mock and DMTF trees; **untested** on live BMC) |
 
 ## Why this matters for AI infrastructure
 

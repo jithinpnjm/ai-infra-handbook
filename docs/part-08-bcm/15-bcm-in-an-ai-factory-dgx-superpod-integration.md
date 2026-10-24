@@ -18,7 +18,7 @@ lab_venue: "Nebius GPU"
 | Priority tier | 2 |
 | Lab venue | Laptop |
 | Part | Part 8: NVIDIA Base Command Manager |
-| Status | Drafted from NVIDIA's **DGX SuperPOD Reference Architecture for DGX GB300** and the deck **Data Center Best Practices with DGX B200**, plus the BCM Administrator Manual passages that name SuperPOD-related features (racks, power shelves, CDUs, leak detection, IMEX, NMX Manager, firmware modes). **No SuperPOD hardware was available.** `code/part08/superpod_calc.py` reproduces the documents' numbers, and `superpod_lab.py` checks 29 of them, including all ten rows of the B200 power table. Both documents say configurations must be finalized with an NVIDIA representative: treat every number as a reference value, not a design |
+| Status | Drafted (`superpod_lab.py`: 29 checks pass; cluster commands **untested** on live SuperPOD) |
 
 ## Why this matters for AI infrastructure
 

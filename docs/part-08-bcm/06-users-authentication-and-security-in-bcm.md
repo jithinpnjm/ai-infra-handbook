@@ -18,7 +18,7 @@ lab_venue: "Nebius GPU"
 | Priority tier | 1 |
 | Lab venue | Laptop |
 | Part | Part 8: NVIDIA Base Command Manager |
-| Status | Drafted from the BCM 11 Administrator Manual: section 2.3 (authentication) and chapter 6 (user management, external LDAP, Keycloak, tokens and profiles; the replication details and some group-editing screens skimmed). **No BCM system was available.** `code/part08/bcm_security.py` is **my model of the rules the manual states**, and `security_lab.py` checks 51 of them. It tests my reading of the manual, not BCM itself. Every command shown is from the manual and untested here. This chapter covers BCM's own access control; the BMC accounts, TLS and Secure Boot are in Part 7 and cluster-wide hardening is in Part 18 |
+| Status | Drafted (`security_lab.py`: 51 checks pass; cluster commands **untested** on live BCM) |
 
 ## Why this matters for AI infrastructure
 

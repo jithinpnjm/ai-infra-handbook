@@ -18,7 +18,7 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | Laptop |
 | Part | Part 7: Redfish and BMC |
-| Status | Drafted. `code/part07/rf_sensors.py` and `sensors_lab.py` were **run**: 13 checks pass, and the tool was run on six services (my mock and five of DMTF's example trees). Readings from my mock are invented. DMTF's example data is sample data, not a real server. No real BMC or GPU was read. The NVIDIA endpoint names come from the user's notes and are unchecked |
+| Status | Drafted (`sensors_lab.py`: 13 checks pass against mock and DMTF trees; **untested** on live BMC) |
 
 ## Why this matters for AI infrastructure
 

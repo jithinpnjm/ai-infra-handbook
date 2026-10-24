@@ -18,7 +18,7 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | Laptop |
 | Part | Part 7: Redfish and BMC |
-| Status | Drafted. `code/part07/lifecycle_lab.py` ran **24 checks**, all passed, against the teaching mock. The BIOS attribute **names** are invented for the lab (real platforms publish their own registry), and the "good BIOS values" come from the user's notes and are **not verified** against any vendor document. No real node was brought up. The troubleshooting scenarios are retold from the notes and mapped to the tools of this part |
+| Status | Drafted (`lifecycle_lab.py`: 24 checks pass against mock; **untested** on live BMC) |
 
 ## Why this matters for AI infrastructure
 

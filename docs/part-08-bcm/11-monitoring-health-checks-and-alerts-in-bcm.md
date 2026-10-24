@@ -18,7 +18,7 @@ lab_venue: "Nebius GPU"
 | Priority tier | 1 |
 | Lab venue | Laptop |
 | Part | Part 8: NVIDIA Base Command Manager |
-| Status | Drafted from the BCM 11 Administrator Manual: chapter 10 (10.1 to 10.6 and 10.7 read in the key parts; 10.8 user portal, 10.9, 10.11 to 10.12 not read in depth), appendix G (G.1.6 GPU metrics, G.2.2 GPU health checks, G.4 actions), section 14.8 (monitoring storage) and the user's notes (volume 10 chapter 13). **No BCM system was available.** `code/part08/bcm_monitor.py` is **my model of the rules the manual states**, and `monitoring_lab.py` checks 36 of them. It tests my reading of the manual, not BCM itself. Two items are **my derivations** and are labelled: the flapping arithmetic in section 4, and the remediation tiers in section 8 (the notes' design recommendation, not a BCM feature) |
+| Status | Drafted (`monitoring_lab.py`: 46 checks pass; cluster commands **untested** on live BCM) |
 
 ## Why this matters for AI infrastructure
 
@@ -158,6 +158,44 @@ BCM gives the pieces (health check, trigger, action). It does **not** ship a pol
 
 Also: treat `UNKNOWN` as its own signal; remember an action that drains must be paired with an undrain plan; and test every trigger on one node with `samplenow` and `validate` before applying it to a category.
 
+## 8.1 Base View monitoring screens, data producer tuning, consolidator math, and PromQL
+
+- **Top-right Base View icons:** eight icons sit in the top-right bar, from left to right: (1) **Cluster Overview**, (2) **Job Accounting**, (3) **Monitoring** (visual graphs), (4) **Chargeback**, (5) **Events**, (6) **Background Tasks**, (7) **Package Updates** (the GUI equivalent of `packages --outdated` in `cmsh`), and (8) the **Menu (`≡`)** icon (dark mode toggle and logout).
+- **Monitoring visualization window:** opens the **Critical Services** dashboard by default, with two plot panels plotting the `ManagedServicesOK` health check—panel 1 for the head node, panel 2 for all regular nodes in the `default` category. The left navigation filter is case-insensitive, supports regexes (`node001.*cpuuser`, `(node001|node002).*cpuuser`), and uses `/` for tree depth (`node001/cpu/cpuuser`). Dragging a measurable into a panel draws two graphs: a smaller bottom bar chart of polled values and a larger upper interpolated line graph.
+- **Data producer settings and RLE:** samples are compressed with **run length encoding (RLE)**.
+  - **`Maximal samples` and `Maximal Age`:** whichever limit is reached first drops older RLE samples (`0` means ignore that limit; setting both to `0` keeps samples forever and is discouraged because of disk exhaustion). Reducing `Maximal samples` discards previously consolidated values after about **30 minutes**.
+  - **`Offset` and `Fuzzy offset`:** `Offset` delays sampling for producers that depend on others (for example `AggregateNode`, which computes `TotalCPUIdle` and `TotalMemoryFree`, depends on `ProcStat` for `CPUIdle` and `ProcMemInfo` for `MemoryFree`). `Fuzzy offset` is a multiplier in `[0, 1]` that spreads node sampling evenly across `[0, fuzzy_offset * interval]` to avoid a sampling storm—in the manual's example, a `120 s` interval with a `0.25` fuzzy offset spreads node samples across a **`30 s`** window (`0.25 * 120 = 30`).
+  - **`When` and `Only when idle`:** `When` is `Timed` (default), `On demand`, `Out of band`, or `On start`. Enabling `Only when idle` runs the producer only when the node is idle, defined by the metric condition `LoadOne > 1`.
+- **Cumulative metrics:** a metric marked `Cumulative` is monotonic from boot (such as interface bytes received, resetting at boot); administrators usually plot its differential per sample interval (bytes/second).
+- **Consolidators and the consolidation time equations:**
+  - Pre-existing groups are `default` (in BCM 11 it contains only `hour`, interval `3600 s`; clusters upgraded from BCM 10 also keep legacy `day` and `week`) and `none` (no consolidation). Each consolidator item has `Kind` (`average` by default, `maximum`, or `minimum`; **changing `Kind` discards all previous consolidated data for that consolidator**).
+  - When a measurable with interval `Interval_measurable` and maximal raw samples `Maximal_samples_measurable` drops its oldest raw point, that point enters consolidation at age:
+    ```text
+    t_raw_gone = Maximal_samples_measurable * Interval_measurable
+    ```
+    With `Offset` on the consolidator item, consolidated data is presented starting at `t_consolidation = t_raw_gone + Offset` into the past, and extends back to `t_consolidation_gone = Maximal_samples_consolidation * Interval_consolidation`.
+- **Action `Allowed time` syntax and `Run on`:** an action runs on `Active head node`, `Node` (the triggering node), or `Monitoring node`. `Allowed time` restricts when an action may start (months and days in **lowercase**), such as `november-march{monday-saturday{13:00-17:00}}`, `may-september{monday-friday{09:00-18:00};saturday-sunday{13:00-17:00}}`, or `may,september{1-15{monday-friday}}`. In `Send e-mail to administrators`, the `Info` field replaces `{infomessage}` in `/cm/local/apps/cmd/scripts/actions/sendemail.py`.
+- **Standalone monitored entities and PromQL queries:** `Monitoring > Standalone Monitored Entities` monitors unmanaged devices (no CMDaemon on the target, such as an admin workstation pinged by a custom script on the head node). `Monitoring > Queries` manages PromQL job-related queries and drilldown queries (`Monitoring > Queries > <query> > Manage the drilldown queries`).
+
+## 8.2 The User Portal, Cloud Job Tagging, Events, the Event Bucket, and InfoMessages
+
+- **The User Portal:** a restricted, read-only version of Base View for non-root users, installed via the **`cm-webportal`** package (`yum install cm-webportal`; when missing, the head-node landing page shows a grey block with `⊕`; when installed, a colored block with a chain-link icon).
+  - **URL and server:** `https://<head>:8081/userportal`, served directly by **CMDaemon** (unlike the landing page, which Apache serves), using BCM's self-signed X509v3 certificate (`NVIDIA Bright CA`) unless replaced with a public CA certificate.
+  - **Authentication and profile:** users log in with their own credentials and get the `readonly` profile by default. To enable a shared login for all users, create a user in `cmsh` and set `"username"` and `"password"` in `/cm/local/apps/cmd/etc/htdocs/userportal/assets/config/common-credentials.json` (blank by default, which disables common access).
+  - **Home page:** shows the Message Of The Day (`/cm/local/apps/cmd/etc/htdocs/userportal/assets/config/message-of-the-day.html`), cluster documentation links, a cluster state overview **refreshed every 10 s by default**, and a Job Accounting chart icon. **Security rule:** the user portal serves static files only and **will not execute PHP or CGI scripts**.
+- **Cloud Job Tagging (AWS only):** enabled with `cmsh -c 'cloud; use amazon; set cloudjobtagging yes; commit'`. When a job starts on an AWS cloud node, CMDaemon applies four cost-allocation tags (out of AWS's 50-tag limit)—**`BCM_JOB_ID`**, **`BCM_JOB_ACCOUNT`**, **`BCM_JOB_USER`**, and **`BCM_JOB_NAME`**—and removes them when the job stops, so AWS Cost Explorer can attribute cloud spend per job.
+- **Viewing events in Base View and `cmsh`:** enabled by the `EventLogger` directive in `cmd.conf`. In `cmsh`, the global `events` command supports `on [broadcast|private]`, `off [broadcast|private]`, `show-acknowledged <yes/no>`, `show-detailed <yes/no>`, `level <info|notice|warning|error|alert>`, `clear`, `details <id>`, `acknowledge <id>`, `unacknowledge <id>`, `events <number> [level]`, and `events follow` (like `tail -f`). By default (`events` with no arguments): `Private events: off`, `Broadcast events: on`, `Acknowledged events: off`, `Details: off`, `Level: notice`. For example, `updateprovisioners` emits **private** events, which appear live in your `cmsh` session only if `events on private` (or `events on`) is set.
+- **The Event Bucket and InfoMessages:**
+  - **InfoMessages from health/metric scripts:** inside a measurable script, writing to **file descriptor 3** sets the status reason (InfoMessage):
+    ```bash
+    echo "Drive speed unknown: Reverse polarity" >&3
+    ```
+  - **Head/node Event Bucket (`/var/spool/cmd/eventbucket`):** piping a line into `/var/spool/cmd/eventbucket` creates a BCM event (default severity `info`). Prefix with `EVENT_SEVERITY_DEBUG:`, `EVENT_SEVERITY_INFO:`, `EVENT_SEVERITY_NOTICE:`, `EVENT_SEVERITY_WARNING:`, `EVENT_SEVERITY_ERROR:`, or `EVENT_SEVERITY_ALERT:` to choose the severity; regex filters live in `/cm/local/apps/cmd/etc/eventbucket.filter` (`EventBucket` and `EventBucketFilter` directives in `cmd.conf`).
+  - **Tagging device status lines and reloading logging via the Event Bucket:**
+    - `echo "STATE.USERMESSAGE.node001:just right" > /var/spool/cmd/eventbucket` makes `device status node001` display `node001 ... (just right) [ UP ]` (omitting `.node001` targets the local host; echoing an empty message `STATE.USERMESSAGE.node001:` clears it).
+    - `echo LOGGING.RELOAD.CONFIG > /var/spool/cmd/eventbucket` reloads CMDaemon's logging configuration **without restarting `cmd`**.
+  - **Node-installer Event Bucket (`/tmp/eventbucket`):** during node provisioning (before `systemd` and node `CMDaemon` are up), initialize and finalize scripts can write to `/tmp/eventbucket` in two modes: `echo "info-message: text" > /tmp/eventbucket` (updates the device status line) or `echo "Some text" > /tmp/eventbucket` (raises a warning event).
+
 ## 9. Common first mistakes
 
 1. Folding `UNKNOWN` into `FAIL`, or ignoring it.
@@ -213,9 +251,9 @@ Also: treat `UNKNOWN` as its own signal; remember an action that drains must be 
 
 ## 13. Sources and review notes
 
-- **BCM 11 Administrator Manual:** chapter 10 (10.1 basic example; 10.2 concepts: measurables, enummetrics, metrics, health checks, triggers, actions, severity, AlertLevel, flapping, data producers; 10.4.5 triggers; 10.5.2 consolidators; 10.6 on-demand sampling, health overview, action history, pickup intervals; 10.7 offloaded monitoring; 10.10 events), appendix G (GPU metrics, health checks, Redfish checks, actions), 14.8 (monitoring data storage).
+- **BCM 11 Administrator Manual:** chapter 10 (10.1 basic example; 10.2 concepts and 10.2.11 Base View top-right icons; 10.3 Base View monitoring window and regex/path filters; 10.4 Base View configuration of data producers, RLE, `Fuzzy offset`, `Only when idle`, cumulative metrics, consolidator equations, action `Allowed time` syntax, triggers, `post-drain-actions`, standalone entities, and 10.4.9 PromQL queries; 10.5.2 consolidators; 10.6 on-demand sampling, health overview, action history, pickup intervals; 10.7 offloaded monitoring; 10.8 User Portal `cm-webportal` and `common-credentials.json`; 10.9 AWS Cloud Job Tagging; 10.10 Events, `/var/spool/cmd/eventbucket`, `/tmp/eventbucket`, and fd 3 InfoMessages), appendix G (GPU metrics, health checks, Redfish checks, actions), 14.8 (monitoring data storage).
 - **NVIDIA-DevOps notes**, volume 10 chapter 13: the health check, trigger and action pipeline and the remediation tiers; the notes say the tiers are a design recommendation, not a BCM feature. The Xid mapping there is a catalog matter I did not re-check.
-- **Not read in depth:** the Base View monitoring screens (10.3, 10.4), PromQL queries and Prometheus integration (10.4.9, 3.18), the user portal (10.8), job monitoring and accounting (chapters 11 to 13 of the Administrator Manual), InfoMessages, the full metrics tables (InfiniBand, NFS, IPMI, Redfish, Kubernetes, NetQ), Mission Control's extra GB200 metrics.
-- **Run here:** `monitoring_lab.py` (36 checks): severities and AlertLevel, trigger firing rules and flapping, the flapping arithmetic, validate, consolidation retention, scale advice, GPU check names, DCGM WARN handling, the remediation chain and its loop cap.
+- **Not read in depth:** GNSS location monitoring (10.11, skimmed), monitoring report queries and NVSM/Syslog sections (10.12 to 10.14), job monitoring, accounting and chargeback chapters (chapters 11 to 13 of the Administrator Manual), the full metrics tables (InfiniBand, NFS, IPMI, Redfish, Kubernetes, NetQ), Mission Control's extra GB200 metrics.
+- **Run here:** `monitoring_lab.py` (46 checks): severities and AlertLevel, trigger firing rules and flapping, the flapping arithmetic, validate, consolidation retention, scale advice, GPU check names, DCGM WARN handling, the remediation chain and its loop cap, plus (`added in the gap pass`) `Fuzzy offset` spread window, consolidator `t_raw_gone` / `t_consolidation` / `t_consolidation_gone` equations and `Kind`-change discard, User Portal URL/package/CGI rules, AWS cloud job tags, `events` default flags, and `/var/spool/cmd/eventbucket` / `/tmp/eventbucket` / fd 3 InfoMessage parsing.
 - **My own choices, not the manual's:** the numeric value of "notice" (10); the flapping arithmetic; the remediation chain (the notes' recommendation, implemented as written).
 - **Not verified:** everything about a real BCM system.

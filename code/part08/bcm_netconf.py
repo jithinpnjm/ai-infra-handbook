@@ -262,3 +262,153 @@ def power_limit_ok(value, minimum, maximum):
 def file_max_rule_of_thumb(memory_gb):
     """3.1.4: kernel source suggests memory in MB x 10 per MB: 128 GB -> 1,280,000 (the manual rounds 128 GB as 128000 MB)."""
     return int(memory_gb * 1000 * 10)
+
+
+# ---- 3.6 InfiniBand, mlxconfig, IPoIB (added in gap pass) -------------------------------------------------------------------
+def resolve_mlx_extra_values(category_extra=None, node_extra=None, iface_extra=None):
+    """3.6.2 (pp. 133-134): persistent Mellanox adapter settings use extra_values keys starting with MLX_.
+    Precedence: category.extra_values < node.extra_values < interface.extra_values.
+    Boolean values are converted to 1 or 0 when applied to mlxconfig; --desired shows resolved source and value."""
+    resolved = {}
+    for src, d in (("category", category_extra or {}), ("node", node_extra or {}), ("interface", iface_extra or {})):
+        for k, v in d.items():
+            if not k.startswith("MLX_"):
+                continue
+            field = k[4:]
+            mlx_val = (1 if v else 0) if isinstance(v, bool) else v
+            resolved[field] = {"source": src, "value": v, "mlxconfig_value": mlx_val}
+    return resolved
+
+
+def ipoib_max_mtu(connected_mode=False):
+    """3.6.4 (p. 135): by default an InfiniBand interface uses datagram mode (scales better, MTU up to 4k = 4096).
+    With connectedmode=yes, MTU is up to 64k = 65536."""
+    return 65536 if connected_mode else 4096
+
+
+# ---- 3.8-3.12 Switches, Cumulus, showport/finddevicebyswitchport/setmacviaswitchport, remotedaemon (added in gap pass) --------
+def cumulus_nv_commands(mode, auto_cmds, manual_cmds=(), yaml_file=None):
+    """3.9.2 (pp. 153-155): nvconfigurationmode is auto, manual, or file.
+    - auto: runs auto_cmds + manual_cmds, applied with 'apply'; only manual_cmds can be deleted with 'nv del'.
+    - manual: 'manual' command copies auto_cmds into manual stack; auto stack is ignored; applied with 'apply'.
+    - file: uses YAML file (e.g. startup.yaml) over ZTP; 'apply' is not used."""
+    mode = mode.lower()
+    if mode == "auto":
+        return {"effective": [("auto", c) for c in auto_cmds] + [("manual", c) for c in manual_cmds], "uses_apply": True}
+    if mode == "manual":
+        stack = list(manual_cmds) if manual_cmds else list(auto_cmds)
+        return {"effective": [("manual", c) for c in stack], "uses_apply": True}
+    if mode == "file":
+        if not yaml_file:
+            raise ConfError("nvconfigurationmode=file requires nvconfigurationfile (e.g. startup.yaml)")
+        return {"effective": [("file", yaml_file)], "uses_apply": False}
+    raise ConfError(f"unknown nvconfigurationmode: {mode}")
+
+
+def find_device_by_switch_port(port_map, queries, uplinks=()):
+    """3.9.3 & 3.9.7 (pp. 157, 160-161): uplink ports must be ignored in port-to-device mapping.
+    When one port is queried, returns just the hostname; when multiple ports are queried, prefixes each with switch:port."""
+    uplink_set = set(uplinks)
+    results = []
+    for q in queries:
+        if q in uplink_set:
+            continue
+        dev = port_map.get(q)
+        if dev:
+            results.append(dev if len(queries) == 1 else f"{q} {dev}")
+    return results
+
+
+def set_mac_via_switch_port(devices, discovered_port_macs, force=False, index=0):
+    """3.9.8 (p. 161): sets device MAC from switch port table. Without --force, refuses to overwrite an existing MAC.
+    --index selects which MAC to pick when a port has multiple MACs."""
+    out = {}
+    for dev, info in sorted(devices.items()):
+        cur_mac = info.get("mac")
+        port = info.get("port")
+        macs = discovered_port_macs.get(port, [])
+        if cur_mac and not force:
+            out[dev] = (False, "no force and MAC already set")
+        elif not macs or index >= len(macs):
+            out[dev] = (False, "no MAC discovered on port")
+        else:
+            out[dev] = (True, macs[index])
+    return out
+
+
+def remotedaemon_check(defined_as_compute_node, os_distro, ssh_reachable, https_to_active_head):
+    """3.10.7 (pp. 164-165): remotedaemon install deploys CMDaemon onto an already-running device (such as a DPU installed by DPF)
+    without reprovisioning. Prerequisites: defined in BCM as a compute node, running Ubuntu, SSH reachable from active head,
+    and able to reach active head over HTTPS."""
+    problems = []
+    if not defined_as_compute_node:
+        problems.append("target device must already be defined in BCM as a compute node")
+    if not os_distro.lower().startswith("ubuntu"):
+        problems.append("target must be running Ubuntu")
+    if not ssh_reachable:
+        problems.append("target must be reachable over SSH from the active head node using device access settings")
+    if not https_to_active_head:
+        problems.append("target must be able to reach the active head node over HTTPS")
+    return problems
+
+
+# ---- 3.17.3 MIG configuration commands and slice allocation rules (added in gap pass) ----------------------------------------
+def mig_reboot_required(gpu_model):
+    """3.17.3 (p. 207): on A100 GPUs, pending MIG enable/disable states only become active after a node reboot.
+    For H100 and newer GPUs, changes do not require a reboot."""
+    return gpu_model.upper().startswith("A100")
+
+
+def expand_mig_colon_syntax(spec):
+    """3.17.3 (pp. 210-212): for a profile '<N>g.<M>gb' (with N <= 7), ':k' (0-indexed) specifies a compute instance of (k+1)
+    GPU slices, written '(k+1)c.<profile>'. ':N-1' equals the full '<profile>'. Example: '2g.10gb:0:0' -> '2g.10gb:1c.2g.10gb:1c.2g.10gb'.
+    On A100-PCIE-40GB, '7g.40gb:3' is allowed but '7g.40gb:4' is not."""
+    parts = spec.split(":")
+    base = parts[0]
+    m = re.fullmatch(r"(\d+)g\.(\d+)gb(\+me)?", base)
+    if not m:
+        raise ConfError(f"invalid MIG base profile: {base}")
+    n_slices = int(m.group(1))
+    if len(parts) == 1:
+        return base
+    ci_parts = []
+    for p in parts[1:]:
+        if re.fullmatch(r"\d+", p):
+            k = int(p)
+            if k < 0 or k >= n_slices:
+                raise ConfError(f"compute slice index :{k} out of range for {base}")
+            if base == "7g.40gb" and k == 4:
+                raise ConfError("on A100-PCIE-40GB, 7g.40gb:4 is not permitted by hardware restrictions (p. 212)")
+            ci_slices = k + 1
+            ci_parts.append(f"{ci_slices}c.{base}")
+        else:
+            ci_parts.append(p)
+    return ":".join([base] + ci_parts)
+
+
+def allocate_mig_profiles(profile_spec, max_gpu_slices=7):
+    """3.17.3 (pp. 209-213): parses comma- or space-separated MIG profile items like '5*1g.5gb,2g.10gb'.
+    Overallocating slices is not possible: any instance whose slice requirement exceeds the remaining slices (out of 7)
+    is silently not allocated (e.g. '6*1g.5gb,2g.10gb' allocates 6 of 1g.5gb and 0 of 2g.10gb; '70*1g.5gb,2g.10gb' allocates 7 of 1g.5gb)."""
+    tokens = [t.strip() for t in re.split(r"[,\s]+", profile_spec.strip()) if t.strip()]
+    allocated = []
+    used_slices = 0
+    for tok in tokens:
+        mult = 1
+        if "*" in tok:
+            m_str, tok = tok.split("*", 1)
+            mult = int(m_str)
+        base = tok.split(":", 1)[0]
+        m = re.match(r"(\d+)g\.(\d+)gb", base)
+        if not m:
+            raise ConfError(f"cannot parse MIG profile '{base}'")
+        slices = int(m.group(1))
+        count = 0
+        for _ in range(mult):
+            if used_slices + slices <= max_gpu_slices:
+                used_slices += slices
+                count += 1
+        if count:
+            allocated.append((base, count, count * slices))
+    return {"allocated": allocated, "used_slices": used_slices, "unallocated_slices": max_gpu_slices - used_slices}
+

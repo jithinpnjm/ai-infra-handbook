@@ -25,6 +25,20 @@ def main():
     check("RHEL8 to RHEL9 under BCM is not supported (reinstall BCM); updates within RHEL9 are", not o.os_change_supported("RHEL8", "RHEL9") and o.os_change_supported("RHEL9", "RHEL9"))
     check("head update commands per distro", o.head_update_commands("ubuntu") == ["apt update", "apt upgrade"] and o.head_update_commands("sles") == ["zypper refresh", "zypper up"])
 
+    # Gap pass: 9.1 & 9.2 package filename structure, device packages -a scale, GPG key, /cm/shared layout
+    rpm_info = o.parse_bcm_package_filename("cmdaemon-11.0-152061_cm11.0_ec0ea0f4d1.x86_64.rpm")
+    deb_info = o.parse_bcm_package_filename("cmdaemon_11.0-152061-cm11.0-ec0ea0f4d1_amd64.deb")
+    check("9.1 RPM and DEB package filenames carry package, version, revision, cm11.0, developer hash and arch",
+          rpm_info["is_bcm"] and rpm_info["hash"] == "ec0ea0f4d1" and rpm_info["arch"] == "x86_64" and
+          deb_info["is_bcm"] and deb_info["hash"] == "ec0ea0f4d1" and deb_info["arch"] == "amd64")
+    check("a distribution package without _cm / -cm is identified as non-BCM (9.1 p. 522)",
+          not o.parse_bcm_package_filename("gzip-1.9-9.el8.x86_64.rpm")["is_bcm"])
+    check("device 'packages -a' returns ~100 KB per node, so 1000 nodes produce ~100 MB (use -f <pkg> instead) (9.1.1 p. 523)",
+          o.device_packages_all_output_mb(1000) == 100.0)
+    check("Bright Computing GPG key ID is 0x5D849C16 (9.2.1 p. 528)", o.BCM_GPG_KEY_ID == "0x5D849C16")
+    check("non-RPM/DEB software under /cm/shared uses the 6 standard subdirectories (apps, docs, etc, examples, licenses, modulefiles) (9.2.2 p. 529)",
+          len(o.CM_SHARED_SUBDIRS) == 6 and "modulefiles" in o.CM_SHARED_SUBDIRS)
+
     check("default genders: all, category=default, computenode, headnode", set(o.GENDERS) == {"all", "category=default", "computenode", "headnode"})
     check("restarting CMDaemon on many regular nodes needs pdsh, not pexec", o.choose_parallel_tool("restart cmd on regular nodes") == "pdsh")
     check("power operations go through cmsh device power, with its delay", "cmsh device power" in o.choose_parallel_tool("power reset"))

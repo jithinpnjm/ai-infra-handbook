@@ -54,6 +54,22 @@ def main():
     check("trusted=yes on a file: repository is acceptable, on an http repository it is not", a.apt_local_repo_line_problems("deb [trusted=yes] file:/mnt1/ubuntu noble main") == [] and a.apt_local_repo_line_problems("deb [trusted=yes] http://mirror/ubuntu noble main"))
     check("four offline options are listed (DOCA, mysql, create-image, RHEL installer)", len(a.offline_options()) == 4 and "--cmdvd" in a.offline_options()["DOCA OFED"])
 
+    # Gap pass: Appendix C.4 step-by-step kubeadm upgrade checks
+    check("C.4.1: the first control-plane node runs 'kubeadm upgrade apply v1.33.6 --kubeconfig=...' (p. 216)",
+          a.c4_control_plane_upgrade_cmd(True, "v1.33.6") == "kubeadm upgrade apply v1.33.6 --kubeconfig=/root/.kube/config-default")
+    check("C.4: subsequent control-plane nodes run 'kubeadm upgrade node --kubeconfig ...' without a version argument (p. 217)",
+          a.c4_control_plane_upgrade_cmd(False, "v1.33.6") == "kubeadm upgrade node --kubeconfig /root/.kube/config-default")
+    check("C.4.1: imageupdate without -w is a dry-run and is rejected for node binary upgrade (p. 215)",
+          raises(lambda: a.c4_worker_upgrade_steps("worker001", write_flag=False)))
+    w_steps = a.c4_worker_upgrade_steps("worker001", "default", write_flag=True)
+    check("C.4 worker upgrade: drain -> imageupdate -w --wait -> kubeadm upgrade node -> daemon-reload -> restart kubelet -> uncordon (pp. 217-218)",
+          len(w_steps) == 6 and w_steps[0].startswith("head: kubectl drain") and "kubeadm upgrade node" in w_steps[2] and w_steps[-1].startswith("head: kubectl uncordon"))
+    check("C.4.1 validation: kube-apiserver pod Image: points to master.cm.cluster:5000/kube-apiserver:v1.33.6 (p. 217)",
+          a.c4_apiserver_image_matches("Image: master.cm.cluster:5000/kube-apiserver:v1.33.6") and
+          not a.c4_apiserver_image_matches("Image: registry.k8s.io/kube-apiserver:v1.32.10"))
+    check("C.4.1 skew rule allows jumping from 1.32.10 directly to 1.33.6 without applying 1.32.11 first (p. 216)",
+          a.upgrade_target_problems(["1.32.10", "1.32.10"], "1.33.6") == [])
+
     print(f"\n{ok_count} passed, {fail_count} failed")
     return 1 if fail_count else 0
 

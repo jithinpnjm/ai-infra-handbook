@@ -137,3 +137,87 @@ def remediation_chain(fault_class, reimages_so_far=0):
     if fault_class == "transient":
         return ["Event", "Send e-mail to administrators (drain only if it persists)"]
     raise MonError("fault class is hardware, software or transient")
+
+
+# ---- 10.3, 10.4, 10.8, 10.9, 10.10 Base View monitoring, consolidator math, user portal, events & eventbucket (added in gap pass) ----
+def fuzzy_offset_max_seconds(interval_s, fuzzy_offset):
+    """10.4.1 (p. 588): Fuzzy offset is a multiplier in [0, 1] multiplied against the sampling interval to fix the maximum spread window.
+    Example: interval 120s and fuzzy_offset 0.25 -> max offset 30s."""
+    if not (0.0 <= fuzzy_offset <= 1.0):
+        raise MonError("fuzzy_offset must be in [0, 1]")
+    return interval_s * fuzzy_offset
+
+
+def consolidator_times(max_samples_measurable, interval_measurable_s, offset_s=0, max_samples_consolidation=65536, interval_consolidation_s=3600):
+    """10.4.3 (p. 595):
+      t_raw_gone = Maximal_samples_measurable * Interval_measurable
+      t_consolidation = t_raw_gone + Offset
+      t_consolidation_gone = Maximal_samples_consolidation * Interval_consolidation"""
+    t_raw_gone = max_samples_measurable * interval_measurable_s
+    return {
+        "t_raw_gone": t_raw_gone,
+        "t_consolidation": t_raw_gone + offset_s,
+        "t_consolidation_gone": max_samples_consolidation * interval_consolidation_s,
+    }
+
+
+def consolidator_kind_change_discards_history(old_kind, new_kind):
+    """10.4.3 (p. 594): Kind is average (default), maximum, or minimum. Changing Kind discards previous consolidated data."""
+    valid = {"average", "maximum", "minimum"}
+    if old_kind not in valid or new_kind not in valid:
+        raise MonError(f"consolidator Kind must be one of {sorted(valid)}")
+    return old_kind != new_kind
+
+
+USER_PORTAL_INFO = {
+    "package": "cm-webportal",
+    "url_path": ":8081/userportal",
+    "served_by": "CMDaemon",
+    "default_profile": "readonly",
+    "overview_refresh_s": 10,
+    "executes_php_or_cgi": False,
+}
+
+AWS_CLOUD_JOB_TAGS = ("BCM_JOB_ID", "BCM_JOB_ACCOUNT", "BCM_JOB_USER", "BCM_JOB_NAME")
+
+DEFAULT_CMSH_EVENTS_SETTINGS = {
+    "Private events": "off",
+    "Broadcast events": "on",
+    "Acknowledged events": "off",
+    "Details": "off",
+    "Level": "notice",
+}
+
+EVENT_BUCKET_SEVERITIES = {
+    "EVENT_SEVERITY_DEBUG:": "debug",
+    "EVENT_SEVERITY_INFO:": "info",
+    "EVENT_SEVERITY_NOTICE:": "notice",
+    "EVENT_SEVERITY_WARNING:": "warning",
+    "EVENT_SEVERITY_ERROR:": "error",
+    "EVENT_SEVERITY_ALERT:": "alert",
+}
+
+
+def parse_eventbucket_line(line, local_host="basecm11", installer_stage=False):
+    """10.10.3 & 10.10.4 (pp. 663-665): parses lines written to /var/spool/cmd/eventbucket (or /tmp/eventbucket during node-installer)."""
+    if installer_stage:
+        if line.startswith("info-message:"):
+            return {"kind": "installer_status", "device": local_host, "message": line[len("info-message:"):].strip()}
+        return {"kind": "installer_event", "severity": "warning", "message": line}
+    if line == "LOGGING.RELOAD.CONFIG":
+        return {"kind": "reload_logging"}
+    m = re.fullmatch(r"STATE\.USERMESSAGE(?:\.([A-Za-z0-9_-]+))?:(.*)", line)
+    if m:
+        dev = m.group(1) or local_host
+        msg = m.group(2)
+        return {"kind": "usermessage", "device": dev, "message": msg, "cleared": (msg == "")}
+    for prefix, sev in EVENT_BUCKET_SEVERITIES.items():
+        if line.startswith(prefix):
+            return {"kind": "event", "severity": sev, "message": line[len(prefix):]}
+    return {"kind": "event", "severity": "info", "message": line}
+
+
+def infomessage_fd():
+    """10.10.4 (p. 663): measurable scripts write InfoMessages to file descriptor 3 (e.g. echo 'reason' >&3)."""
+    return 3
+

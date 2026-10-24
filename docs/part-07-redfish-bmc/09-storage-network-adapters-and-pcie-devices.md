@@ -18,7 +18,7 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | Laptop |
 | Part | Part 7: Redfish and BMC |
-| Status | Drafted. `code/part07/rf_hardware.py` and `hardware_lab.py` were **run**: 15 checks pass. They use my mock (8 GPUs and 8 NICs with invented values) and DMTF's example trees (tower server, SmartNIC, accelerator card, local storage, NVMe-oF box). No real GPU server was queried, and I did not compare Redfish values with `lspci` or `nvidia-smi` on real hardware |
+| Status | Drafted (`hardware_lab.py`: 15 checks pass against mock and DMTF trees; **untested** on live BMC) |
 
 ## Why this matters for AI infrastructure
 

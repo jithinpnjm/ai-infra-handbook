@@ -18,7 +18,7 @@ lab_venue: "Nebius GPU"
 | Priority tier | 1 |
 | Lab venue | Laptop |
 | Part | Part 8: NVIDIA Base Command Manager |
-| Status | Drafted from the BCM 11 Administrator Manual (chapters 1 and 2 read in full) and the user's notes (volume 10, chapter 2). **No BCM system was available.** `code/part08/bcm_model.py` is **my model of the rules the manual states**, and `bcm_model_lab.py` checks 30 of them. It tests my reading of the manual, not BCM itself. Every command shown is from the manual and untested here |
+| Status | Drafted (`bcm_model_lab.py`: 35 checks pass; cluster commands **untested** on live BCM) |
 
 ## Why this matters for AI infrastructure
 
@@ -72,7 +72,12 @@ flowchart TD
 
 ## 2. The parts of the daemon, front ends and files
 
-- **CMDaemon** is the cluster management daemon. It runs on the head node and on every regular node. All management goes through it. The Administrator Manual (section 2.6) says the only route to CMDaemon is **TCP port 8081**, and that it accepts only SSL connections, with authentication by client-side X509 certificates. The utility **`cm-cmd-ports`** changes the CMDaemon ports: the Containerization Manual's NetQ prerequisites show `cm-cmd-ports --http 8083 --https 8084 && systemctl restart cmd`, so there are both an HTTP and an HTTPS port setting. The NVIDIA-DevOps notes give 8080 for HTTP and 8081 for HTTPS as defaults; the HTTPS default 8081 matches the manual, and I did not find 8080 stated in the manual text. The head node's configuration file is `/cm/local/apps/cmd/etc/cmd.conf`; for regular nodes it lives inside the software image. Appendix C of the manual lists the allowed directives. After editing it, restart the daemon.
+- **CMDaemon** is the cluster management daemon. It runs on the head node and on every regular node. All management goes through it. During normal operation, the only management route to CMDaemon is **TCP port 8081** over SSL, authenticated with client-side X509v3 certificates. Two port directives in `/cm/local/apps/cmd/etc/cmd.conf` control how CMDaemon listens:
+  - **`Port = 8080`** (default `8080`): the non-SSL HTTP port. By default it is used **only during `init` / pre-init boot** (and is required when `bootloaderprotocol` is set to `HTTP`, the default, because most bootloaders do not support HTTPS).
+  - **`SSLPort = 8081`** (default `8081`): the SSL HTTPS port used for all communication with Base View and `cmsh` once CMDaemon is up.
+  - **`SSLPortOnly = no`** (default `no`): when `no`, both 8080 and 8081 listen, though only 8081 is used after startup; setting `SSLPortOnly = yes` disables the non-SSL port, which is only allowed if `bootloaderprotocol` is **not** `HTTP`.
+  - **`cm-cmd-ports`**: lists (`cm-cmd-ports -l`, showing `http 8080` and `https 8081` across `/cm/images/<image>/cm/local/apps/cmd/etc/cmd.conf`, `/cm/local/apps/cmd/etc/cmd.conf`, and `/cm/node-installer/scripts/node-installer.conf`) and changes (`--http`, `--https`) the ports. It does **not** update the head node firewall automatically: you must update `/etc/shorewall/rules` and run `shorewall reload` (from BCM 12 onwards Shorewall is superseded by `nftables`), run `softwareimage updateprovisioners` and `fspart; trigger -a`, restart `cmd` on the **active** head node first and then the passive head node, and push `cmd.conf` to running regular nodes before restarting `cmd` on them.
+  - The head node's configuration file is `/cm/local/apps/cmd/etc/cmd.conf` (`Master = master` by default, which makes the head node start in head mode and regular nodes start in node mode); for regular nodes it lives inside the software image. After editing `cmd.conf`, restart the `cmd` service.
 - **Two front ends** talk to CMDaemon and offer the same functions: **Base View** (a web GUI) and **`cmsh`** (a shell). The manual says an administrator need not learn both. Base View is served on port 8081 at `/base-view` (`https://<head>:8081/base-view`); the `base-view` package can be removed to disable it. `cmsh` suits scripting; for real programs the manual recommends the Python bindings of the Developer Manual instead of batch `cmsh`.
 - **CMDaemon Lite** (`cm-lite-daemon`, a Python service) is a minimal alternative for devices where a full daemon is overkill. It uses one node license.
 - **Checks and tools:** `cmdaemonctl full-status` shows version, uptime, sessions, worker threads and request rate; `cmdaemonctl debugon` and `debugoff` switch debug logging (turn it off in production, the logs grow fast); logs go to `/var/log/cmdaemon`; `cmdaemonversions` in `cmsh` device mode lists the daemon version of every node, and the manual expects the same version everywhere. `cm-change-passwd` changes the four administrative passwords (head node root, software image root, node-installer root, MySQL root) in one dialog; on an HA pair run it on both head nodes.
@@ -166,6 +171,26 @@ A **configuration overlay** is a group of roles that you assign to chosen nodes 
 
 An overlay may not use 250 or 750 (those belong to category and node). So by default: **node beats overlay, overlay beats category**. By the numbers, an overlay with a priority above 750 (up to 1000) would outrank a node-level role. The manual gives the numbers and the rule "the highest priority determines the role", but no example of this case, so that last point is **my reading**, not a quoted rule. My model follows the numbers, and the lab marks that check as "my reading".
 
+### 3.7 How Auto Scaler (`cm-scale`) uses overlays and categories
+
+A practical reason BCM separates **categories** (the software image and boot settings) from **configuration overlays** (workload manager roles) appears in **NVIDIA Base Command Manager Auto Scaler**. Auto Scaler runs as the `cm-scale` daemon on nodes that hold the `ScaleServer` role and watches pending work across workload engines (`wlmresources` in `cmsh` `device` mode shows what it sees):
+
+- **Sharing nodes between Kubernetes and Slurm:** when both Kubernetes and Slurm settings are added to the `ScaleServer` role, `cm-scale` repurposes a free node from one scheduler to the other **by switching its configuration overlays** (for example turning an idle Kubernetes worker into a Slurm node "pretty much immediately" when Slurm jobs are queued, without changing the node's category or re-provisioning its disk).
+- **Sharing nodes between LSF and Slurm, or cloudbursting / power saving:** `cm-scale` can also repurpose nodes between categories when a job finishes, power down idle physical nodes and start them when jobs arrive (several minutes), or extend queues to cloud nodes via Cluster Extension.
+- **Resource matching:** `cm-scale` matches CPUs (fractional in Kubernetes), memory, and GPU count and type (for Kubernetes it natively matches `nvidia.com/gpu`, uses `maxPods` from the `kubelet` role, tracks job `parallelism` via `kube_job_spec_parallelism`, and checks extra resources only if listed in `KUBE_EXTENDED_RESOURCES` in `config.py`).
+
+### 3.8 BCM and Ansible: where the boundary sits
+
+BCM is not a replacement for Ansible and Ansible is not a bare-metal boot/provisioning engine:
+
+| Responsibility | Natural owner | Why |
+|---|---|---|
+| Bare-metal PXE boot, disk partitioning, image sync, install modes | **BCM** | Handled before `/sbin/init` by `node-installer` and CMDaemon |
+| Kernel version, extended ramdisk (`createramdisk`), kernel parameters | **BCM** | Stored on the `softwareimage`, `category`, or `device` object |
+| Power control, head-node HA failover, BMC/Redfish sensors | **BCM** | Driven by `CMDaemon` and `cmha` |
+| Slurm and Kubernetes cluster roles and overlays | **BCM** | Managed by `cm-wlm-setup`, `cm-kubernetes-setup`, and `cm-scale` |
+| Site-specific policy files, extra agents, or managing BCM objects as code in Git | **Ansible** (or BCM chroot—pick **one** owner per file) | BCM ships the `brightcomputing.bcm110` Ansible collection (chapter 8.13, section 6) so playbooks can manage categories, users, and devices from Git; mixing live Ansible edits on nodes with BCM image sync causes drift |
+
 ## 4. Where does a value come from? Three rules
 
 For a **setting of a node**:
@@ -255,9 +280,10 @@ The DGX GB300 SuperPOD reference architecture says NVIDIA Mission Control softwa
 
 ## 11. Sources and review notes
 
-- **BCM 11 Administrator Manual:** chapter 1 (introduction), chapter 2 in full: concepts (2.1: devices, images, categories, groups, roles, overlays), modules (2.2), authentication (2.3: passwords, SSH, certificates, profiles), Base View (2.4, I read the introduction and the navigation overview), cmsh startup and aliases (2.5.1, retold lightly here and fully in 8.5), CMDaemon (2.6: configuration, versions, logging, `FrozenFile`, Lite). I did not read the Base View GUI tree in detail.
+- **BCM 11 Administrator Manual:** chapter 1 (introduction), chapter 2 in full: concepts (2.1: devices, images, categories, groups, roles, overlays), modules (2.2), authentication (2.3: passwords, SSH, certificates, profiles), Base View (2.4, I read the introduction and the navigation overview), cmsh startup and aliases (2.5.1, retold lightly here and fully in 8.5), CMDaemon (2.6: configuration, versions, logging, `FrozenFile`, Lite), chapter 8 section 8.1 (Auto Scaler `cm-scale` use cases and resource constraints, pages 467 to 469), and Appendix C pages 905 to 907 (`Master`, `Port = 8080`, `SSLPort = 8081`, `SSLPortOnly = no`, `cm-cmd-ports`).
 - **BCM 11 Installation Manual**, chapter 2 (platforms, cluster structure).
 - **DGX GB300 SuperPOD reference architecture:** Mission Control and the in-cluster services.
-- **NVIDIA-DevOps notes**, volume 10 chapter 2: architecture, the object model, priorities, ports (the notes say 8080 and 8081; the Administrator Manual says management goes through 8081 only, and the Containerization Manual confirms `cm-cmd-ports`), the `cm-change-passwd` note, and the author's own warnings that an earlier draft invented details (Pacemaker-based HA, BitTorrent image distribution and boot modes `SYNCLOCAL` and `BITTORRENT` do not appear in the BCM 11 manual). I follow the corrected text.
-- **Run here:** `bcm_model_lab.py` (30 checks).
+- **NVIDIA-DevOps notes**, volume 10 chapter 2 (`docs/volume-10/02-nvidia-base-command-manager.md`, read in full): architecture, the object model, priorities, ports (`Port = 8080` HTTP during `init`/HTTP boot and `SSLPort = 8081` HTTPS for management, confirmed in Administrator Manual Appendix C pp. 905–906), the `cm-change-passwd` note, the Auto Scaler (`cm-scale`) overlay-switching note, the BCM versus Ansible boundary (section 10), and the author's own warnings that an earlier draft invented details (Pacemaker-based HA, BitTorrent image distribution and boot modes `SYNCLOCAL` and `BITTORRENT` do not appear in the BCM 11 manual).
+- **Corrections to the author's notes:** none for the rewritten `volume-10` chapter 2 (its `Port = 8080` / `SSLPort = 8081` claim on p. 906 is confirmed by Administrator Manual Appendix C, which explains that 8080 is used only during `init` / HTTP boot while 8081 is used for all SSL management).
+- **Run here:** `bcm_model_lab.py` (35 checks).
 - **Not verified:** everything about a real BCM system: ports, command output, the exact meaning of settings beyond what the manual says, and whether newer BCM point releases changed any rule.

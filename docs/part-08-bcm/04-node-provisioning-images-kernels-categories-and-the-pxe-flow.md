@@ -18,7 +18,7 @@ lab_venue: "Nebius GPU"
 | Priority tier | 1 |
 | Lab venue | Laptop |
 | Part | Part 8: NVIDIA Base Command Manager |
-| Status | Drafted from the BCM 11 Administrator Manual, chapter 5 (read in full except the InfiniBand and VLAN provisioning sections 5.3.3 and 5.3.4) and chapter 9 sections 9.3 to 9.5 (kernels, packages in images, node-to-image sync). **No BCM system was available.** `code/part08/bcm_provision.py` is **my model of the rules the manual states**, and `provision_lab.py` checks 72 of them. It tests my reading of the manual, not BCM itself. Every command shown is from the manual and untested here |
+| Status | Drafted (`provision_lab.py`: 82 checks pass; cluster commands **untested** on live BCM) |
 
 ## Why this matters for AI infrastructure
 
@@ -138,7 +138,15 @@ The install mode decides what the installer does to the node's disk. Five values
 
 **The trap, in the manual's words:** NOSYNC "should therefore not be regarded as a way to protect data". The manual's own example: a burn run (chapter 8.2) destroys the partition layout; on the next reboot the layout no longer matches, so even NOSYNC does a FULL sync. A failing drive that renumbers (`/dev/sdb` becomes `/dev/sda`) or a node with a new MAC address can do the same to AUTO and NOSYNC.
 
-**Where the mode comes from.** The manual lists six places, in this order: the category's `newnodeinstallmode` (default FULL, for new nodes), the PXE menu choice (this boot only, default AUTO), the node's `nextinstallmode` (cleared after one boot), the node's `installmode`, the category's `installmode` (default AUTO), and a console dialog (a last chance to overrule). I could not work out from the text which one wins when several are set, so check on a test node before relying on it.
+**Where the mode comes from.** The manual states: *"The node-installer looks for install-mode execution settings in this order:"*
+1. The category's **`newnodeinstallmode`** property (default **`FULL`**, used when a node is detected to be new).
+2. The **PXE menu** option chosen on the node console before loading the kernel and ramdisk (affects the current boot only; default **`AUTO`**).
+3. The node's **`nextinstallmode`** property (cleared automatically after the node-installer finishes its installation tasks; empty unless set during the current uptime).
+4. The node's **`installmode`** property (by default auto-linked to the category's `installmode`, showing **`AUTO (Category)`**).
+5. The category's **`installmode`** property (default **`AUTO`**).
+6. A **console dialog** during the node-installer run, which *"gives the user a last opportunity to overrule the install-mode value as determined by the node-installer"* (default **`AUTO`**).
+
+**Note on precedence:** while item 1 applies to new nodes, item 4 is auto-linked to item 5 by default, and item 6 explicitly overrules the value determined by the earlier steps, the manual text does **not** state whether a non-default PXE menu selection (2) beats an explicitly set `nextinstallmode` (3) or a non-linked node `installmode` (4) when both are set simultaneously. Treat that interaction as unresolved by the manual text and verify on a test node before relying on simultaneous overrides.
 
 **Protecting nodes that hold data.** Set `datanode yes` on a node or category (Boolean: category OR node). Then any FULL install, even one that AUTO or NOSYNC falls back to, **waits for a human to confirm**: at the console, or `installerinteractions -w -n node001 --confirm` (also `--deny`, to go to maintenance mode). The manual also describes XML assertions (halt if the expected drive is missing) and `blockdevicesclearedonnextboot` (the opposite: erase named devices on the next boot, ignoring `datanode`; be careful).
 
@@ -186,8 +194,50 @@ A **software image** is a directory such as `/cm/images/default-image` on the he
 8. Keep the **node-installer image** (`/cm/node-installer`) updated too.
 9. `yum --exclude kernel update` (or `apt-mark hold`, `zypper addlock`) keeps a kernel from changing.
 10. On an HA head node, change the passive head first when installing a kernel, because the active head's network might stop and trigger a failover.
+11. **Kernel parameters for GPU nodes:** kernel command-line parameters for an image are stored in the `kernelparameters` property of `softwareimage` mode (for example `append kernelparameters " VLANID=89"`). Do not treat `numa_balancing=0` and `iommu=pt` as universal BCM defaults: NVIDIA's DOCA host-configuration documentation lists `iommu=pt` for specific cases (such as resolving `IO_PAGE_FAULT` DMA errors in `dmesg` or enabling certain DOCA services). Add kernel parameters for a documented reason and test on a canary category first.
 
 **Changing a node and saving it back (`grabimage`).** The cleanest way to change an image is directly (chroot). `grabimage` copies from a running node **into** the image, using `excludelistgrab`; `grabimage -i <newimage>` makes a new image using `excludelistgrabnew`. The manual warns that unwanted changes can be captured, so compare the images (its tip: `vimdiff <(cd image1; find . | sort) <(cd image2; find . | sort)`).
+
+### 7.1 InfiniBand and VLAN provisioning
+
+By default BCM provisions nodes over Ethernet, because the `rdma` (or `openibd` on SLES) init script only loads InfiniBand kernel modules *after* the node-provisioning stage finishes.
+
+**InfiniBand provisioning:** to provision nodes at InfiniBand speeds during the pre-init stage, two changes are required (assuming `ibnet` is already configured as in chapter 8.3):
+1. **Add the HCA's InfiniBand drivers to the software image's ramdisk:** find the exact modules loaded by `rdma` on a booted node (`lsmod | cut -f1 -d" " > /tmp/a; systemctl start rdma-load-modules@rdma; lsmod | cut -f1 -d" " > /tmp/b; diff /tmp/a /tmp/b`; note that on RHEL 7+ `rdma` can only be started once per boot and cannot be stopped). Then add those modules (for example `mlx4_ib`, `ib_ipoib`, `ib_umad`) under `softwareimage use default-image; kernelmodules; add ...; commit`, which regenerates the ramdisk.
+2. **Set the provisioning interface to `ib0`:** `device; foreach -n node001..node150 (set provisioninginterface ib0); commit`.
+   - **Critical `BOOTIF` rule:** the interface from which a node boots (`BOOTIF`) **must not** also be configured as a separate named interface for that node in CMDaemon. If `BOOTIF` is `ib0`, do not also keep a separate `ib0` interface entry on the node—change either `BOOTIF` or the `ib0` configuration so node installation can succeed.
+
+**VLAN provisioning (supported since BCM 8.2):** requires four things together:
+1. A **VLAN network and node VLAN interface** (chapter 8.3).
+2. The **`8021q` (`rtnl-link-vlan`) kernel module** added to the software image (`softwareimage use default-image; kernelmodules; add 8021q; commit`), because recent distributions ship it as a module rather than built into the base kernel (when loaded on the node, `lsmod | grep 8021q` shows `8021q`, `garp`, and `mrp`).
+3. **BIOS VLAN support:** the node's BIOS network options must have `VLANID` set. **If the BIOS does not support setting a VLAN ID, PXE over VLAN cannot work** (check for a NIC firmware/BIOS update).
+4. **`VLANID` in the image's `kernelparameters`:** `softwareimage use default-image; append kernelparameters " VLANID=89"; commit`.
+
+### 7.2 Creating custom, DGX, multi-distro, and multi-arch images (`cm-create-image` and `cm-image`)
+
+When you need a new software image from scratch, for a DGX platform, or for a different Linux distribution (`multidistro` / `multiOS`) or CPU architecture (`multiarch`: `x86_64` and `aarch64` / ARMv8), BCM provides two tools:
+
+**1. `cm-create-image` (from the `cluster-tools` package):** builds a software image from a **base distribution archive** (`basetar`, such as `/data/UBUNTU2404.tar.gz` on the BCM ISO, or a tar/rsync taken from a clean "base host" regular node—never a head node—excluding `/proc`, `/sys`, `/tmp/*`, `/var/log/*`, `/etc/HOSTNAME`, `/etc/udev/rules.d/*persistent*.rules`, `/root/.ssh`, etc.).
+- **SELinux note:** to use SELinux on compute nodes, extended attributes must **not** be used (`fspart; foreach * (set rsyncxattr no)`).
+- **Key `cm-create-image` options:**
+  - `--fromarchive <tar.gz>` (`-a`), `--fromdir <dir>` (`-d`), `--fromhost <hostname>` (like `grabimage`, works on unmanaged generic nodes too if passwordless SSH works), or `--frombfb <file>`, with `--imagename <name>` (`-n`) and optional `--imagedir <dir>` (`-i`, must exist beforehand; default `/cm/images/<name>`). If the image name already exists, `cm-create-image` exits unless `-f` or `--updateimage` is used.
+  - `--skipdist`: skips installing additional base distribution packages (required when the source directory already contains them, such as a **DGX OS** image which already includes Ubuntu). Combining `--updateimage --skipdist` updates an existing DGX image in place.
+  - `--dgx` and `--dgx-type {dgx_h100, dgx_b200, dgx_a100, dgx_gb200, dgx_h200, dgx_b300, dgx_gb300}`: builds a DGX platform image (for example from `UBUNTU2404.tar.gz`) and sets the standardized kernel parameters for that GPU platform.
+  - `--extra-pkg-group <group>`: installs extra packages defined in `/cm/local/apps/cluster-tools/config/<DIST>-dist-extrapackages.xml` (such as `doca_ofed_2.9.1-2`, `doca_ofed_2.9.3`, `doca_ofed_2.10.0-093520`, `doca_ofed_3.0.0`).
+  - `-e` (do not overwrite custom repo files in the image) and `-s` (skip additional base distribution packages) for offline image creation from local repos.
+  - **Package selection and default kernel modules:** package lists live in `/cm/local/apps/cluster-tools/config/<DIST>-config-dist.xml` (`image="master"` for head node packages, `image="slave"` for regular node images), and default boot kernel modules are read from `/cm/local/apps/cluster-tools/config/<DIST>-slavekernelmodules`. Logs go to `/var/log/cm-create-image-<imagename>.log`.
+  - **Pre-11.30.0 `doca.list` bug on B200/GB200:** for DGX images created by `cm-create-image` in BCM versions **earlier than 11.30.0** on B200, GB200 and similar hardware, you must remove `/etc/apt/sources.list.d/doca.list` inside the image (`cm-chroot-sw-img`, `rm /etc/apt/sources.list.d/doca.list`, reboot nodes); if left in place, **`cm-kubernetes-setup` fails at around 22% progress**.
+
+**2. Multi-distro, multi-arch, `nodearchosinfo`, and `cm-image`:**
+- **Compatibility matrix:** head nodes running **RHEL 8, RHEL 9, or Ubuntu (22.04, 24.04, 26.04)** on `x86_64` or `aarch64` can serve compute node images of **RHEL 8, RHEL 9, Ubuntu 22.04, Ubuntu 24.04, and Ubuntu 26.04 on both `x86_64` and `aarch64`**, plus **SLES 15 on `x86_64` only** (SLES 15 is `x86_64`-only both as a head node and as an image).
+- **`device nodearchosinfo`:** displays `Reported arch`, `Reported OS`, `Reported timestamp`, `Configured arch`, and `Configured OS` per node, and warns if reported and configured OS differ. Because the reported fields update only when the node's `CMDaemon` connects, **an unchanged timestamp after a reboot means the node failed to come up into `CMDaemon`**.
+- **`cm-image` (`module load cm-image`):** wraps `cm-create-image` (`cm-image create {all|node-installer|swimage|fromfile|cmshared}`, `cm-image remove`, `cm-image package`, `cm-image shell`). Running `cm-image create all -a <arch> -d <distro> --source <basetar>` creates four things together and updates `/cm/shared` and `/cm/node-installer` `fspart` entries:
+  1. Software image: `/cm/images/default-image-<distro>-<arch>`
+  2. Node-installer image: `/cm/node-installer-<distro>-<arch>`
+  3. Shared directory: `/cm/shared-<distro>-<arch>`
+  4. Category: `default-<distro>-<arch>` (and sets `primaryimage` in `partition[base]->archos[<arch>/<os>]`; if `primaryimage` is set manually, a category using that image should exist).
+- **Mandatory `FULL` install when switching a node's OS:** enabling a new distribution with `cm-image` modifies critical paths, so all regular nodes should be rebooted, and any node moved to a new OS category **should have `set nextinstallmode FULL` before rebooting** so leftover files from the old OS do not corrupt the new image. If you copy a `cm-image` directory from another cluster, register it in CMDaemon with `cm-image create swimage -a <arch> -d <distro> --add-only`.
+- **ARMv8 (`aarch64`) node settings:** on the ARMv8 category set `set bootloaderprotocol tftp`, and on the ARMv8 software image set `set kerneloutputconsole ttyAMA0`. (For Fujitsu A64FX ARMv8 nodes, set `bmcsettings -> set extraarguments "-L USER -t 0x30"` and switch the `ipmi` monitoring producer multiplexer to the `a64fx` resource.)
 
 ## 8. Updating a running node: `imageupdate` and exclude lists (5.6)
 
@@ -310,9 +360,9 @@ Four things must all be true: `installbootrecord yes`, **the BIOS tries the disk
 
 ## 16. Sources and review notes
 
-- **BCM 11 Administrator Manual, chapter 5:** 5.1 (PXE, labels, protocol, boot role), 5.2 (provisioning nodes, housekeeping), 5.3 (kernel modules; InfiniBand and VLAN provisioning 5.3.3 and 5.3.4 not read), 5.4 (all 13 steps), 5.5 (states), 5.6 (live updates and exclude lists), 5.7 (adding nodes), 5.8 (troubleshooting, to the BMC section).
-- **Chapter 9:** 9.3 (kernels), 9.4 (packages in images, `cm-chroot-sw-img`), 9.5 (non-RPM software, `grabimage`). **Not read:** 9.1, 9.2 (packages on the head node), 9.6 (`cm-create-image`, only the introduction) and 9.7 (multi-distro and multi-arch, `cm-image`).
-- **NVIDIA-DevOps notes**, volume 10 chapter 13: provisioning tiers, image drift and the remediation tiers. Its own preface says an earlier draft invented a "proxy tier", BitTorrent seeding and Pacemaker; it was rewritten against the manual, and the facts used here agree with the manual text I read. Its remediation-tier model is the author's design recommendation, not a BCM feature; chapter 8.11 covers it.
-- **Run here:** `provision_lab.py` (72 checks): boot path, install modes and the datanode guard, the seven identification cases, `newnodes`, node states, the scheduler (slots, groups, fewest tasks, deferral, locks, retries, 180 s), the update timeout trap, kernel module override, standalone boot, exclude-list sync.
+- **BCM 11 Administrator Manual, chapter 5:** 5.1 (PXE, labels, protocol, boot role), 5.2 (provisioning nodes, housekeeping), 5.3 (kernel modules, 5.3.3 InfiniBand provisioning, 5.3.4 VLAN provisioning), 5.4 (all 13 steps, install-mode execution list in 5.4.4), 5.5 (states), 5.6 (live updates and exclude lists), 5.7 (adding nodes), 5.8 (troubleshooting, to the BMC section).
+- **Chapter 9:** 9.3 (kernels), 9.4 (packages in images, `cm-chroot-sw-img`), 9.5 (non-RPM software, `grabimage`), 9.6 (`cm-create-image`, base archives, `rsyncxattr no` for SELinux, `--skipdist`, `--updateimage`, `--dgx`, `--dgx-type`, `--extra-pkg-group`, `image="slave"`, pre-11.30.0 `doca.list` removal on B200/GB200), and 9.7 (multi-distro and multi-arch Table 9.1, `nodearchosinfo`, `cm-image create all`, `archos` `primaryimage`, ARMv8 `tftp` and `ttyAMA0`, Fujitsu `a64fx`). (Sections 9.1 and 9.2 are covered in chapter 8.13.)
+- **NVIDIA-DevOps notes**, volume 10 chapter 2 and chapter 13: provisioning tiers, image drift, kernel parameters (`iommu=pt`), and the remediation tiers. Its own preface says an earlier draft invented a "proxy tier", BitTorrent seeding and Pacemaker; it was rewritten against the manual, and the facts used here agree with the manual text I read. Its remediation-tier model is the author's design recommendation, not a BCM feature; chapter 8.11 covers it.
+- **Run here:** `provision_lab.py` (82 checks): boot path, install modes and the datanode guard, the seven identification cases, `newnodes`, node states, the scheduler (slots, groups, fewest tasks, deferral, locks, retries, 180 s), the update timeout trap, kernel module override, standalone boot, exclude-list sync, plus (`added in the gap pass`) InfiniBand and VLAN provisioning prerequisites, `cm-create-image` options and the pre-11.30.0 `doca.list` check, Table 9.1 multi-arch/multi-distro compatibility, `cm-image create all` artifacts, `nodearchosinfo` stale-timestamp detection, and ARMv8 settings.
 - **My own choices, not the manual's:** tie-breaking between equally loaded provisioners; the "automatic" reading for a known node with no ports involved; treating the six install-mode places as a list without a verified precedence.
 - **Not verified:** everything about a real BCM system: screens, command output, defaults on a newer point release.

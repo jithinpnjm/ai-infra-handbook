@@ -29,10 +29,37 @@
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
 }
 
-/* Larger, zoomable Mermaid diagrams */
-.docusaurus-mermaid-container { overflow-x: auto; margin: 1.5rem 0; cursor: zoom-in; }
-.docusaurus-mermaid-container svg { width: 100% !important; max-width: none !important; height: auto; min-height: 380px; }
-.docusaurus-mermaid-container svg text, .docusaurus-mermaid-container svg .nodeLabel { font-size: 17px !important; }
-.mermaid-zoomed { position: fixed !important; inset: 0; z-index: 9999; margin: 0 !important; padding: 2rem;
-  background: var(--ifm-background-color); overflow: auto; cursor: zoom-out; }
-.mermaid-zoomed svg { min-height: 90vh; }
+/* Clean, well-proportioned, zoomable Mermaid diagrams */
+.docusaurus-mermaid-container {
+  overflow-x: auto;
+  margin: 1.5rem 0;
+  text-align: center;
+  cursor: zoom-in;
+}
+.docusaurus-mermaid-container svg {
+  max-width: 100% !important;
+  height: auto !important;
+  max-height: 460px;
+}
+.docusaurus-mermaid-container svg text,
+.docusaurus-mermaid-container svg .nodeLabel {
+  font-size: 14px !important;
+}
+.mermaid-zoomed {
+  position: fixed !important;
+  inset: 0;
+  z-index: 9999;
+  margin: 0 !important;
+  padding: 2rem;
+  background: var(--ifm-background-color);
+  overflow: auto;
+  cursor: zoom-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mermaid-zoomed svg {
+  width: auto !important;
+  max-width: 95vw !important;
+  max-height: 92vh !important;
+}

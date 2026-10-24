@@ -18,7 +18,7 @@ lab_venue: "Nebius GPU"
 | Priority tier | 2 |
 | Lab venue | Laptop |
 | Part | Part 8: NVIDIA Base Command Manager |
-| Status | Drafted from the BCM 11 Containerization Manual appendices B (Kubernetes installation on an air-gapped cluster) and C (upgrade), with supporting facts from the Administrator Manual (9.6.3 local repositories, 14.12 MySQL offline install) and the Installation Manual (the Ansible installer and DOCA OFED). **No BCM system and no air-gapped network were available.** `code/part08/bcm_airgap.py` is **my checker for the rules the manuals state**, and `airgap_lab.py` checks 28 of them. It tests my reading, not BCM. The manual's examples are for BCM 11.33 and Kubernetes 1.34.7; details change by release (the manual itself lists differences for 11.34) |
+| Status | Drafted (`airgap_lab.py`: 34 checks pass; cluster commands **untested** on live BCM) |
 
 ## Why this matters for AI infrastructure
 
@@ -107,7 +107,43 @@ Same principles as chapter 8.9, with these differences:
 - **Version skew:** at most **two adjacent minor releases** in the cluster at any time (1.34 and 1.35 fine; 1.33, 1.34 and 1.35 not). If nodes are on two minors, **the only valid upgrade is to the newer one**. Skipping minors is not allowed. Decide: **minor** upgrade (latest of the next minor) or **patch** upgrade (latest patch of the current minor). Read the BCM release notes and compatibility matrix for the target version.
 - The cluster must be healthy and a local registry deployed; nodes to upgrade must be **drained**.
 - Rebuild the bundle for the **target** version on the connected host (same steps, `--kube-version` set to the target), carry it over, extract, install packages, push images and charts, extract CRDs.
-- Upgrade control plane nodes **first**, one at a time: update the node's binaries with `imageupdate -w <node> --wait` (without `-w` it is only a dry run, chapter 8.4), then `kubeadm upgrade plan --kubeconfig=/root/.kube/config-default` on the node (give the kubeconfig explicitly if there are several Kubernetes clusters), and continue as chapter 8.9 section 8 describes; then workers.
+- Upgrade control plane nodes **first**, one at a time, then worker nodes:
+  1. **First control-plane node:**
+     - Push the updated binaries from the software image on the head node (`-w` is required, otherwise `imageupdate` only runs a dry run):
+       ```bash
+       root@headnode:~# cmsh -c 'device; imageupdate -w controlplane01 --wait'
+       ```
+     - SSH to `controlplane01` and run `kubeadm upgrade plan` with an explicit `--kubeconfig` (important when a BCM cluster hosts multiple Kubernetes clusters):
+       ```bash
+       root@controlplane01:~# kubeadm upgrade plan --kubeconfig=/root/.kube/config-default
+       ```
+       In the manual's `v1.32.10` session, `kubeadm upgrade plan` suggests upgrading to the latest patch in the current minor (`v1.32.11`), but because the skew policy allows jumping to the next minor (`v1.33.6`, after checking the Kubernetes changelogs), apply the target version directly on the **first** control-plane node:
+       ```bash
+       root@controlplane01:~# kubeadm upgrade apply v1.33.6 --kubeconfig=/root/.kube/config-default
+       ```
+     - **Validate before touching the next node:** check `kubectl get nodes` (`Ready`, `v1.33.6`), `kubectl get pod -A` (especially `kube-system` and `calico-system`), and verify that the static pod pulls from the local air-gapped registry:
+       ```bash
+       root@controlplane01:~# kubectl describe pod -n kube-system kube-apiserver-controlplane01 | grep Image:
+       Image: master.cm.cluster:5000/kube-apiserver:v1.33.6
+       ```
+  2. **Subsequent control-plane nodes:** on the head node run `cmsh -c 'device; imageupdate -w <node> --wait'`, then on the control-plane node run **`kubeadm upgrade node`** (not `upgrade apply`, and no version argument is passed):
+     ```bash
+     root@node001:~# kubeadm upgrade node --kubeconfig /root/.kube/config-default
+     ```
+     Repeat the `kubectl get nodes` and `kubectl get pod -A` validation after each control-plane node.
+  3. **Worker nodes:** upgrade one worker (or batch) at a time so running workloads are evacuated cleanly:
+     - **On the head node:** drain the worker and update its image binaries:
+       ```bash
+       root@basecm11:~# kubectl drain $host --ignore-daemonsets
+       root@basecm11:~# cmsh -c "device use $host; imageupdate -w --wait"
+       ```
+     - **On the worker node:** upgrade the node configuration, reload systemd, and restart `kubelet`:
+       ```bash
+       root@<node>:~# kubeadm upgrade node --kubeconfig=/root/.kube/config-<Kubernetes instance>
+       root@<node>:~# systemctl daemon-reload
+       root@<node>:~# systemctl restart kubelet
+       ```
+     - **Uncordon and validate:** run `kubectl uncordon $host`, then confirm `kubectl get nodes` and `kubectl get pod -A`.
 
 ## 7. The rest of BCM, offline
 
@@ -184,9 +220,9 @@ Same principles as chapter 8.9, with these differences:
 
 ## 13. Sources and review notes
 
-- **BCM 11 Containerization Manual:** appendix B (installation: host preparation, head node preparation, registry, Docker for Run:ai, pushing content, CRDs, deployment, decoupled Run:ai) and appendix C (upgrade prerequisites, preparation, head node steps; the start of the upgrade procedure). Not read: the remainder of C.4 (the step-by-step `kubeadm` sessions), appendix A (self-signed certificate pair), Run:ai chapter 6.11.
+- **BCM 11 Containerization Manual:** appendix A (self-signed server certificate pair for testing, covered in 8.10 and checked here), appendix B (installation: host preparation, head node preparation, registry, Docker for Run:ai, pushing content, CRDs, deployment, decoupled Run:ai) and appendix C in full (upgrade prerequisites, preparation, head node steps, and C.4 step-by-step `kubeadm upgrade plan` / `upgrade apply` / `upgrade node` sessions for the first control-plane node, subsequent control-plane nodes, and drained workers). (Run:ai chapter 6.11 is covered in chapter 8.16.)
 - **BCM 11 Administrator Manual:** 9.6.3 and 9.6.4 (local repositories and offline images), 14.12 (offline MySQL).
 - **BCM 11 Installation Manual:** chapter 3 (the RHEL air-gapped installer settings) and chapter 10 (`--cmdvd`).
-- **Run here:** `airgap_lab.py` (28 checks): version prerequisites, skew rules, bundle completeness, sizes, Docker Hub windows, architecture, the 13-step order, extraction and passive head rules, GPU operator availability, Run:ai checks, offline repository and option summaries.
+- **Run here:** `airgap_lab.py` (34 checks): version prerequisites, skew rules, bundle completeness, sizes, Docker Hub windows, architecture, the 13-step order, extraction and passive head rules, GPU operator availability, Run:ai checks, offline repository and option summaries, plus (`added in the gap pass`) C.4 step-by-step upgrade commands (`upgrade apply <version>` on the first control plane vs `upgrade node` on subsequent control planes and workers, worker drain/imageupdate/daemon-reload/restart/uncordon sequence, and air-gapped `kube-apiserver` image check).
 - **My own choices, not the manual's:** the dependency map in `order_problems` (derived from the manual's order and statements, not a documented dependency graph); the 22 GB planning number for Run:ai (the manual says upwards of 20); the summary table in section 7, which gathers separate statements; and all of section 8 (operating an air-gapped cluster), which is general advice and not from the manuals.
 - **Not verified:** everything about a real BCM system. Package names, script options and the exact set of artifacts change between releases; read the release notes for your version.

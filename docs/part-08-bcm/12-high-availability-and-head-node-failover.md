@@ -18,7 +18,7 @@ lab_venue: "Nebius GPU"
 | Priority tier | 1 |
 | Lab venue | Laptop |
 | Part | Part 8: NVIDIA Base Command Manager |
-| Status | Drafted from the BCM 11 Administrator Manual chapter 15 (15.0 to 15.5 read; the express XML setup in 15.3, the details of re-cloning in 15.4.8 and HA for regular nodes in 15.5.3 to 15.5.4 skimmed; 15.6 on workload manager job continuation **not read**) and the user's notes (volume 10 chapter 13, section 4). **No BCM system was available.** `code/part08/bcm_ha.py` is **my model of the rules the manual states**, and `ha_lab.py` checks 42 of them. It tests my reading of the manual, not BCM itself. Every command shown is from the manual and untested here. The failover parameter table in the text I had is garbled, so the default timer values in the lab are my reading of the manual's example output |
+| Status | Drafted (`ha_lab.py`: 50 checks pass; cluster commands **untested** on live BCM) |
 
 ## Why this matters for AI infrastructure
 
@@ -123,11 +123,27 @@ The supported way is **`cmha-setup`** (manual construction is explicitly unsuppo
 License note: **installing a new license invalidates existing user certificates**, so install the HA-enabled license before creating certificates (chapter 8.6).
 
 **Changing an HA configuration:** run the procedure again after removing the old one with the "Undo Failover" menu option. **Re-cloning** (`cm-clone-install --clone`, or `--failover` to replace a failed passive) rebuilds a head; a prepared "spare" snapshot is discouraged because it goes stale.
+- **Cloning exclude files and Btrfs snapshots:** `cm-clone-install` reads two files from `/cm/` on the clone node that are **not** maintained by CMDaemon and **not** modified by `excludelistmanipulatescript` (do not confuse them with the five image exclude lists of chapter 8.4): **`/cm/excludelistnormal`** (used by `cm-clone-install` without `--failover`) and **`/cm/excludelistfailover`** (used by `cm-clone-install --failover`). Cloning logs to `/var/log/clone-install-log`. If cloning a **Btrfs** partition, only mounted snapshots are cloned by default; passing `--btrfs-full-clone` clones all snapshots but duplicates data (bypassing copy-on-write), which can greatly increase filesystem size.
+
+### 6.1 Express CLI setup without ncurses (`cmha-setup -x`)
+
+For scripted deployments, `cmha-setup` provides an express non-ncurses mode driven by a human-editable XML file (recommended path `/cm/local/apps/cluster-tools/ha/conf/failoverconf.xml`):
+
+```text
+cmha-setup [ -x -c <configfile> [-s <type>] <-i|-f[-r]> [-p <mysqlrootpassword>] [-a] ]
+```
+
+- **Four-step express workflow:**
+  1. **Initialize on the active head (`-i|--initialize`):** shut down all regular nodes, prepare `failoverconf.xml`, and run `cmha-setup -x -c failoverconf.xml -i` (add `-p <mysqlrootpassword>` to avoid the interactive password prompt, and `-a|--replicate-all-databases` on BCM 11.34.0+ to replicate all non-system MySQL databases and users/grants). This updates the shared internal/external and failover interfaces and clones the master object in the CMDaemon database.
+  2. **PXE-boot and clone the passive head:** boot the passive into the rescue environment and run `/cm/cm-clone-install --failover`.
+  3. **Finalize on the active head and reboot the passive (`-f -r`):** run `cmha-setup -x -c failoverconf.xml -f -r` (`-f|--finalize` updates the secondary MAC, initializes failover on `head2`, clones the database and permissions, and checks the dedicated failover network; `-r|--finalizereboot` reboots `head2` upon completion).
+  4. **Configure shared storage (`-s nas`):** run `cmha-setup -x -c failoverconf.xml -s nas`.
+- **Warning:** express mode performs **very little validation**, so invalid entries in `failoverconf.xml` can cause `cmha-setup` to hang.
 
 ## 7. Operating the pair
 
 - **States** (`cmha status`, login banner, `/var/spool/cmd/state`): `INIT`, `FENCING`, `ACTIVE`, `PASSIVE`, `BECOMEACTIVE`, `BECOMEPASSIVE`, `UNABLETOBECOMEACTIVE`, `ERROR`. Debug mount script problems in `/var/log/cmdaemon`; `cmha makeactive` tells a head to try again.
-- **Parameters** (`partition failover base`; Base View: **Cluster > Partition[base] > Settings > Failover**): *Dead time* (no answer for this long: the active is considered dead and a quorum starts), *Warn time* (log a warning), *Init dead* (used instead of Dead time while a head is just starting), *Keep alive* (check interval), *Quorum time*, *Failover network*, *Mount script*, *Unmount script*, *Prefailover script* (runs on both heads once the decision is made, before the change; it must unmount and return non-zero on problems), *Postfailover script* (runs on both heads after the former passive becomes active), *Disable automatic failover*, *Secondary headnode*. The manual's example output reads (my reading of its garbled table) Dead time 10 s, Warn time 5 s, Init dead 30 s, Keep alive 1 s, Quorum time 60 s.
+- **Parameters** (`partition failover base`; Base View: **Cluster > Partition[base] > Settings > Failover**): *Dead time* (no answer for this long: the active is considered dead and a quorum starts), *Warn time* (log a warning), *Init dead* (used instead of Dead time while a head is just starting), *Keep alive* (check interval), *Quorum time*, *Failover network*, *Mount script*, *Unmount script*, *Prefailover script* (runs on both heads once the decision is made, before the change; it must unmount and return non-zero on problems), *Postfailover script* (runs on both heads after the former passive becomes active), *Disable automatic failover*, *Secondary headnode*. In the manual's `show` output, the default values are: **`Dead time = 10` s**, **`Disable automatic failover = no`**, **`Failover network = failovernet`**, **`Init dead = 30` s**, **`Keep alive = 1` s**, **`Quorum time = 60` s**, and **`Warn time = 5` s**.
 - **Manual failover:** `cmha makeactive` on the head that should become active. Cancel in-progress provisioning first (`softwareimage cancelprovisioningrequest -a`). With a mostly-dead active, think before answering the prompt. Use it also for planned maintenance: switch, update the former active, optionally switch back.
 - `cmha dbreclone <host>` re-copies the MySQL database to the other head (needs CMDaemon stopped, so cmsh and Base View cannot do it). A hard crash can leave `cmha status` showing a failed replication on the returned head; `dbreclone` is the fix.
 
@@ -147,9 +163,17 @@ Build a bare-metal cluster as a single head first, get it right, then set up HA,
 
 ## 8. HA for regular nodes and edge directors (15.5)
 
-BCM also supports HA for **regular nodes** (since BCM 7.0) and edge directors (9.2). It is for **extra services** you run on regular nodes, **not** for moving the default head node services, which are optimized as they are. It uses power control, warn and dead times, mount and unmount scripts, pre and post failover scripts and a shared virtual IP like head node HA, but differs: configured in the `failovergroups` submode, **several passive nodes** per group, **no failover network** (heartbeat over the node network), and no `cmha-setup`.
+BCM also supports HA for **regular nodes** (since BCM 7.0) and edge directors (9.2). It is for **extra services** you run on regular nodes, **not** for moving the default head node services, which are optimized as they are. It uses power control, warn and dead times, mount and unmount scripts, pre and post failover scripts and a shared virtual IP like head node HA, but differs: configured in the `failovergroups` submode (`partition[base]->failovergroups`, or `cmha nodestatus [groups]` and `cmha makeactive <node>`), **two or more nodes** per group (one active, the rest passive), **no failover network** (heartbeat over the regular node network), **the active head node performs the health checks and STONITH** (instead of a node-wide quorum), and no `cmha-setup` (for edge directors, use `cm-edge-setup`, never manual `failovergroups` edits).
+- **Regular node HA setup and failover sequence:**
+  - Add the group (`failovergroups; add cupsgroup; set nodes node001..node002; commit`), add the service on each member with **`set runif active; set autostart yes; set monitored yes`**, and add a shared alias interface on each member (`interfaces; add alias bootif:0; set ip 10.141.240.1; set startif active; set network internalnet; set additionalhostnames cups; commit`, then reboot the group nodes; use the same `additionalhostnames` across all members, never different names for the shared VIP). Note that in `failovergroups`, `Automatic failover after graceful shutdown` defaults to **`no`**.
+  - When switching the active regular node (`makeactive`), the active head node orchestrates this exact sequence: (1) **All group nodes:** run `Prefailover script`; (2) **Old active:** stop service -> run `Unmount script` (**if exit code > 0, all remaining actions are skipped**; if STONITH powers off the old active, the old-active sequence aborts) -> stop active IP -> start passive IP -> start passive services (now passive); (3) **New active:** stop service -> run `Mount script` -> stop passive IP -> start active IP -> start service (now active); (4) **All group nodes:** run `Postfailover script`.
 
-Workload manager **job continuation** across failover (15.6) I did not read.
+### 8.1 Workload manager job continuation across failover
+
+Running workload manager jobs continue through a head-node failover handover—and queued jobs wait and start once resources are available after the handover (unless rejected by a BCM prejob health check)—**if all three of these conditions are met:**
+1. **Supported WLM setup:** the workload manager was configured either during initial BCM installation or via `cm-wlm-setup`.
+2. **NAS shared storage:** the HA storage setup supports job continuity for that WLM (supported with **NAS** for **Slurm and LSF**).
+3. **Application tolerance for the brief NFS pause:** the running jobs themselves do not crash during the short window when the shared filesystem is unmounted and remounted across the head nodes (WLM client daemons have default timeouts longer than the HA `Dead time`, so the scheduler survives, but user code doing unbuffered I/O to `/home` or `/cm/shared` at that exact second can fail if it does not retry).
 
 ## 9. Failure scenarios
 
@@ -219,8 +243,8 @@ Workload manager **job continuation** across failover (15.6) I did not read.
 
 ## 14. Sources and review notes
 
-- **BCM 11 Administrator Manual, chapter 15:** 15.0 to 15.2 (concepts, shared IP and storage, fencing, quorum, automatic and manual failover, `cmha-setup` and cloning, testing), 15.4 (states, failover decisions, keeping heads in sync, parameters, re-cloning), 15.5 (regular node HA, skimmed). Not read: 15.3 (express setup), 15.6 (job continuation).
+- **BCM 11 Administrator Manual, chapter 15:** 15.0 to 15.6 read in full (concepts, shared IP and storage, fencing, quorum, automatic and manual failover, `cmha-setup` TUI and 15.3 `-x` express XML mode, cloning and 15.4.8 `excludelistnormal`/`excludelistfailover` and `--btrfs-full-clone`, states, failover decisions, keeping heads in sync, parameters in 15.4.6 and 15.5.3, regular node HA and failover sequence in 15.5.3–15.5.4, and WLM job continuation in 15.6).
 - **NVIDIA-DevOps notes**, volume 10 chapter 13, section 4: the same material in the author's words, including the trap about databases and the interview framing.
-- **Run here:** `ha_lab.py` (42 checks): naming versus mode, `cmha status` classification, quorum, the failover decision table, test outcomes, timers, database replication scope, service lists, storage script safety, setup prerequisites, update order, regular node HA differences.
+- **Run here:** `ha_lab.py` (50 checks): naming versus mode, `cmha status` classification, quorum, the failover decision table, test outcomes, timers, database replication scope, service lists, storage script safety, setup prerequisites, update order, regular node HA differences, plus (`added in the gap pass`) `cmha-setup -x` express options and sequence, `cm-clone-install` exclude files and Btrfs flag, regular-node failover step sequence and unmount abort rule, and the 3 conditions for WLM job continuation across failover.
 - **My own choices, not the manual's:** the mapping of values in the garbled parameter table; the quorum denominator default (responders); the simplified setup-prerequisite checker; the "do it in a test window" advice.
 - **Not verified:** everything about a real BCM system. A real failover involves timings and hardware behaviour that no model captures.

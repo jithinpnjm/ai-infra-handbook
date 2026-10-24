@@ -18,7 +18,7 @@ lab_venue: "Nebius GPU"
 | Priority tier | 1 |
 | Lab venue | Laptop |
 | Part | Part 8: NVIDIA Base Command Manager |
-| Status | Drafted from the BCM 11 Administrator Manual: chapter 4 (power management), section 3.7 (BMC configuration), 14.5 (BIOS and firmware; the DOS-image BIOS flash and the iLO upload steps skimmed), 14.7 (serial over LAN), 14.11 (hardware information) and appendix N (Redfish management). **No BCM system and no BMC were available.** `code/part08/bcm_hardware.py` is **my model of the rules the manual states**, and `hardware_lab.py` checks 45 of them (the custom power script check runs a real shell script). It tests my reading of the manual, not BCM or any hardware. Every command shown is from the manual and untested here |
+| Status | Drafted (`hardware_lab.py`: 45 checks pass; cluster commands **untested** on live BCM) |
 
 ## Why this matters for AI infrastructure
 

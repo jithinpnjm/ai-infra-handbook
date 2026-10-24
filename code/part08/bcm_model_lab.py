@@ -2,7 +2,7 @@
 """Self-checking lab for chapter 8.1: does my understanding of the BCM object model match the manual?
 Every check names the manual section. This tests the MODEL (my reading of the manual), not a real BCM."""
 import sys
-from bcm_model import Cluster, BcmError, CATEGORY_PRIORITY, NODE_PRIORITY
+from bcm_model import Cluster, BcmError, CATEGORY_PRIORITY, NODE_PRIORITY, cmdaemon_port_config, cm_scale_repurpose
 
 ok_count = fail_count = 0
 
@@ -91,6 +91,21 @@ def main():
     check("DOWN is a failure but CLOSED(DOWN) is a deliberate shutdown, not a failure (2.1.1)", c.failures() == ["dgx-01"], c.failures())
     check("CLOSED devices are mostly ignored by monitoring but state is still tracked (2.1.1)", Cluster.state_meaning("CLOSED(DOWN)") == ("down", "mostly ignored", "tracked"))
     check("UP and DOWN devices are monitored (2.1.1)", Cluster.state_meaning("UP")[1] == "monitored" and Cluster.state_meaning("DOWN")[1] == "monitored")
+
+    # Appendix C (pp. 905-907) & Chapter 8.1 (pp. 467-468) checks added in gap pass
+    check("CMDaemon default ports are Port=8080 (HTTP, init only) and SSLPort=8081 (HTTPS, management) with SSLPortOnly=no (App. C)",
+          cmdaemon_port_config()["problems"] == [] and cmdaemon_port_config()["http_port"] == 8080 and cmdaemon_port_config()["https_port"] == 8081)
+    check("SSLPortOnly=yes is forbidden when bootloaderprotocol is HTTP (App. C p. 906)",
+          any("SSLPortOnly" in p for p in cmdaemon_port_config(ssl_port_only=True, bootloaderprotocol="HTTP")["problems"]))
+    check("SSLPortOnly=yes is allowed when bootloaderprotocol is TFTP (App. C p. 906)",
+          cmdaemon_port_config(ssl_port_only=True, bootloaderprotocol="TFTP")["problems"] == [])
+    check("changing CMDaemon ports with cm-cmd-ports requires a manual firewall update (App. C p. 906)",
+          any("firewall" in p for p in cmdaemon_port_config(https_port=8082, firewall_updated=False)["problems"]))
+    c.add_overlay("k8s-worker", roles={"kubernetesnode": {}}, nodes={"dgx-01"})
+    c.add_overlay("slurm-worker", roles={"slurmclient": {"gpus": 8}}, nodes=set())
+    rep = cm_scale_repurpose(c, "dgx-01", "k8s-worker", "slurm-worker")
+    check("Auto Scaler (cm-scale) repurposes a node between K8s and Slurm by switching overlays without changing its category (8.1.1)",
+          rep["category_unchanged"] and "dgx-01" in c.overlays["slurm-worker"].nodes and "dgx-01" not in c.overlays["k8s-worker"].nodes)
 
     print(f"\n{ok_count} passed, {fail_count} failed")
     return 1 if fail_count else 0

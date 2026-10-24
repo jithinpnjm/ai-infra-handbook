@@ -152,6 +152,38 @@ def main():
     check("a static NFS mount is skipped automatically", out3["/mnt/nfs/f"] == "precious")
     check("an autofs mount is NOT detected: without an exclude entry it is wiped (the manual's warning)", "/mnt/auto/f" not in out3)
 
+    # Gap pass: 5.3.3 IB provisioning, 5.3.4 VLAN provisioning, 9.6 cm-create-image, 9.7 cm-image & Table 9.1
+    check("InfiniBand provisioning passes when IB modules are in ramdisk, provisioninginterface=ib0, and BOOTIF is not duplicated (5.3.3)",
+          p.ib_provisioning_problems(["mlx4_ib", "ib_ipoib", "ib_umad"], "ib0", ["eth0"], bootif_underlying="ib0") == [])
+    check("InfiniBand provisioning fails if BOOTIF=ib0 is also configured as a separate ib0 interface on the node (5.3.3 p. 258)",
+          any("BOOTIF" in x for x in p.ib_provisioning_problems(["ib_ipoib"], "ib0", ["ib0"], bootif_underlying="ib0")))
+    check("VLAN provisioning requires VLAN iface, 8021q module in image, BIOS VLANID, and VLANID= in kernelparameters (5.3.4)",
+          p.vlan_provisioning_problems(True, ["8021q"], True, "quiet VLANID=89") == [] and
+          len(p.vlan_provisioning_problems(False, [], False, "")) == 4)
+    check("cm-create-image refuses an existing image name unless --updateimage or -f is set, and requires --imagedir to exist (9.6.2)",
+          len(p.cm_create_image_check("rocky9-image", existing_images=["rocky9-image"], imagedir_exists=False)) == 2 and
+          p.cm_create_image_check("rocky9-image", existing_images=["rocky9-image"], updateimage=True) == [])
+    check("cm-create-image validates the 7 --dgx-type values (dgx_a100, dgx_h100, dgx_h200, dgx_b200, dgx_gb200, dgx_b300, dgx_gb300) (9.6.2 p. 548)",
+          len(p.VALID_DGX_TYPES) == 7 and p.cm_create_image_check("dgx", dgx_type="dgx_gb300") == [] and
+          p.cm_create_image_check("dgx", dgx_type="dgx_v100") != [])
+    check("prior to BCM 11.30.0 on B200/GB200, keeping doca.list in a DGX image makes cm-kubernetes-setup fail at ~22% (9.6.2 p. 550)",
+          any("22%" in x for x in p.cm_create_image_check("dgx", dgx_type="dgx_gb200", bcm_version=(11, 25, 8), doca_list_present=True)) and
+          p.cm_create_image_check("dgx", dgx_type="dgx_gb200", bcm_version=(11, 30, 0), doca_list_present=True) == [])
+    check("Table 9.1 multi-distro/multi-arch: Ubuntu/RHEL support x86_64 and aarch64; SLES15 supports x86_64 only (9.7 p. 554)",
+          p.cm_image_supported("ubuntu2204", "x86_64", "rhel9", "aarch64") and
+          p.cm_image_supported("ubuntu2204", "aarch64", "sles15", "x86_64") and
+          not p.cm_image_supported("ubuntu2204", "x86_64", "sles15", "aarch64"))
+    art_u = p.cm_image_create_all_artifacts("ubuntu2404", "x86_64")
+    check("cm-image create all builds default-image-<distro>-<arch>, node-installer, /cm/shared-<distro>-<arch> and default-<distro>-<arch> category (9.7.2)",
+          art_u["software_image"] == "default-image-ubuntu2404-x86_64" and art_u["category"] == "default-ubuntu2404-x86_64" and
+          art_u["recommended_nextinstallmode"] == "FULL")
+    art_arm = p.cm_image_create_all_artifacts("rhel8", "aarch64")
+    check("ARMv8 (aarch64) images created with cm-image require bootloaderprotocol=tftp and kerneloutputconsole=ttyAMA0 (9.7.3 p. 562)",
+          art_arm["arm_settings"] == {"bootloaderprotocol": "tftp", "kerneloutputconsole": "ttyAMA0"})
+    nai = p.nodearchosinfo_status("x86_64", "rocky8", "10:00", "x86_64", "ubuntu2404", previous_ts="10:00")
+    check("nodearchosinfo flags reported/configured OS mismatch and an unchanged timestamp after a failed reboot (9.7 p. 555)",
+          nai["os_mismatch_warning"] and nai["stale_after_reboot"])
+
     print(f"\n{ok_count} passed, {fail_count} failed")
     return 1 if fail_count else 0
 

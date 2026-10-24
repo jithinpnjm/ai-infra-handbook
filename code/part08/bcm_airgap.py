@@ -147,3 +147,34 @@ def apt_local_repo_line_problems(line):
 def offline_options():
     return {"DOCA OFED": "cm-doca-ofed-install.sh ... --cmdvd installs from a BCM install medium", "cm-mysql-setup": "--skip-packages, with mysql-server packages preinstalled in the server nodes' image and mysql-router in client images",
             "cm-create-image": "-e -s with a local repository (9.6.4)", "RHEL installer": "pre_install_repo_files points to an internal mirror and --basedistrepo points at it; keep the ISO's Rocky repos disabled on a RHEL host"}
+
+
+# ---- Appendix C.4 (pp. 215-218): step-by-step kubeadm upgrade sessions (added in gap pass) --------------------------------
+def c4_control_plane_upgrade_cmd(is_first_control_plane, target_version="v1.33.6", kubeconfig="/root/.kube/config-default"):
+    """Appendix C.4.1 & Updating Subsequent Control Plane Nodes (pp. 215-217):
+    - The first control plane node runs `kubeadm upgrade plan` and then `kubeadm upgrade apply <version> --kubeconfig=...`.
+    - Subsequent control plane nodes run `kubeadm upgrade node --kubeconfig ...` (no `upgrade apply` and no version argument)."""
+    if is_first_control_plane:
+        return f"kubeadm upgrade apply {target_version} --kubeconfig={kubeconfig}"
+    return f"kubeadm upgrade node --kubeconfig {kubeconfig}"
+
+
+def c4_worker_upgrade_steps(host, kube_instance="default", write_flag=True):
+    """Appendix C.4 (pp. 217-218): worker upgrade order across head node and worker node.
+    Without -w on imageupdate it only runs a dry run."""
+    if not write_flag:
+        raise AirgapError("imageupdate without -w|--write is only a dry-run and does not update binaries on the node (C.4.1 p. 215)")
+    return [
+        f"head: kubectl drain {host} --ignore-daemonsets",
+        f"head: cmsh -c 'device use {host}; imageupdate -w --wait'",
+        f"worker: kubeadm upgrade node --kubeconfig=/root/.kube/config-{kube_instance}",
+        "worker: systemctl daemon-reload",
+        "worker: systemctl restart kubelet",
+        f"head: kubectl uncordon {host}",
+    ]
+
+
+def c4_apiserver_image_matches(describe_image_line, registry="master.cm.cluster:5000", target_version="v1.33.6"):
+    """Appendix C.4.1 (p. 217): verify that kube-apiserver-<node> uses <registry>/kube-apiserver:<target_version>."""
+    return f"{registry}/kube-apiserver:{target_version}" in describe_image_line
+

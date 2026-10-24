@@ -213,3 +213,71 @@ class SlurmNode:
         if self.drained and not self.running and "reboot" in self.actions:
             return "reboot"
         return None
+
+
+# ---- 7.4.3, 7.5, 7.6-7.9, 7.11 WLM monitoring, job cache, power usage, prejob checks, nodecustomizations (added in gap pass) ----
+WLM_JOB_POWER_DEFAULTS = {"job_age": "5m", "timeout": "30s", "disabled": False}
+JOB_INFO_DIRECTIVE_DEFAULTS = {"JobInformationKeepCount": 8192, "JobInformationKeepCount_max": 65536, "JobInformationKeepDuration_days": 28, "JobInformationMinimalJobDuration": "0s"}
+
+
+def freeze_wlm_config_directive(wlm, enabled=True):
+    """7.5 (p. 387): FreezeChangesTo<workload manager>Config = <true|false> in cmd.conf (Slurm or LSF, default false)."""
+    if wlm.lower() not in ("slurm", "lsf"):
+        raise WlmError("WLM for FreezeChangesTo<WLM>Config must be Slurm or LSF")
+    name = "Slurm" if wlm.lower() == "slurm" else "LSF"
+    return f"FreezeChangesTo{name}Config = {'true' if enabled else 'false'}"
+
+
+class JobCache:
+    """7.7.2 (p. 452): models CMDaemon job information cache with JobInformationKeepCount (default 8192, max 65536),
+    persistent <job_id> (survives normal eviction), and forget <job_id> (removes immediately even if persistent)."""
+    def __init__(self, keep_count=8192):
+        if not (1 <= keep_count <= 65536):
+            raise WlmError("JobInformationKeepCount must be <= 65536 (p. 452)")
+        self.keep_count = keep_count
+        self.jobs = {}
+
+    def add(self, job_id, status="COMPLETED"):
+        self.jobs[job_id] = {"status": status, "persistent": False}
+
+    def mark_persistent(self, job_id):
+        self.jobs[job_id]["persistent"] = True
+
+    def forget(self, job_id):
+        """7.7.2: forget removes a job from the cache immediately, regardless of whether it is marked persistent."""
+        self.jobs.pop(job_id, None)
+
+    def expire_old(self):
+        for jid in [k for k, v in self.jobs.items() if not v["persistent"]]:
+            del self.jobs[jid]
+
+
+def prejob_check_status(hc_prejob_enabled, wlm_enableprejob, check_result="PASS", drain_on_fail=True):
+    """7.8.2 (pp. 459-460): if a health check has prejob=yes but no WLM has enableprejob=yes, cmsh warns:
+    'warning: Prejob is selected, but no WLM has prejob'. When both are enabled and the check returns FAIL, the job is
+    prevented from running on that node (preventing Black Hole Node Syndrome), and if drained by the health check, the node
+    is NOT automatically undrained (requires manual undrain)."""
+    if hc_prejob_enabled and not wlm_enableprejob:
+        return {"runs": False, "warning": "warning: Prejob is selected, but no WLM has prejob", "job_allowed": True, "drained": False, "auto_undrain": False}
+    if not (hc_prejob_enabled and wlm_enableprejob):
+        return {"runs": False, "warning": "", "job_allowed": True, "drained": False, "auto_undrain": False}
+    failed = (check_result == "FAIL")
+    return {
+        "runs": True,
+        "warning": "",
+        "job_allowed": not failed,
+        "drained": bool(failed and drain_on_fail),
+        "auto_undrain": False,  # 7.8.2 p. 459: never automatically undrained
+    }
+
+
+def apply_node_customization(wlm, key, value, enabled=True):
+    """7.11 (pp. 465-466): in Slurm, an enabled nodecustomization appends '<KEY>=<VALUE>' to the NodeName line in slurm.conf
+    and removes it when disabled/removed. In LSF, it sets the column in lsb.hosts to '<VALUE>' and replaces it with '()' when disabled/removed."""
+    wlm = wlm.lower()
+    if wlm == "slurm":
+        return f"{key}={value}" if enabled else ""
+    if wlm == "lsf":
+        return str(value) if enabled else "()"
+    raise WlmError("wlm must be slurm or lsf")
+

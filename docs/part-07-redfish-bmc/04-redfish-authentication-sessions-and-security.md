@@ -18,7 +18,7 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | Laptop |
 | Part | Part 7: Redfish and BMC |
-| Status | Drafted. `code/part07/auth_lab.py` ran 44 checks against the teaching mock and **all passed** (the one first-run failure was a mistake in my test, not in the mock). The mock uses plain HTTP and invented accounts, and its privilege map is a small version of the spec's idea. Real BMCs add vendor rules (session limits, password policies, extra roles). The certificate commands in this chapter are untested here; chapter 7.15 tests the full `GenerateCSR` and `ReplaceCertificate` flow against the mock over real TLS. No real BMC was available |
+| Status | Drafted (`auth_lab.py`: 44 checks pass against mock; **untested** on live BMC) |
 
 ## Why this matters for AI infrastructure
 

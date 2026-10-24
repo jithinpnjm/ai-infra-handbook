@@ -311,3 +311,99 @@ def sync_update(image, node, keep, no_new_files=(), mounts=None):
         if path in image:
             out[path] = image[path]      # replaced or added; node-only files are not carried over (deleted)
     return out
+
+
+# ---- 5.3.3 & 5.3.4 InfiniBand and VLAN provisioning (added in gap pass) ----------------------------------------------------
+def ib_provisioning_problems(ramdisk_ib_modules, provisioning_interface, configured_node_interfaces, bootif_underlying=None):
+    """5.3.3 (pp. 258-260): InfiniBand provisioning requires (1) IB HCA drivers in the software image's ramdisk kernelmodules,
+    (2) provisioninginterface set to the IB interface (e.g. ib0), and (3) BOOTIF must not duplicate an interface already
+    configured for the node in CMDaemon (e.g. if BOOTIF is ib0, ib0 must not also be configured as a separate device interface)."""
+    problems = []
+    if not ramdisk_ib_modules:
+        problems.append("InfiniBand HCA modules (e.g. ib_ipoib, ib_umad, mlx4_ib/mlx5_ib) must be added to the image's ramdisk kernelmodules")
+    if not provisioning_interface.startswith("ib"):
+        problems.append("provisioninginterface must be set to the InfiniBand interface (e.g. ib0)")
+    if bootif_underlying and bootif_underlying in set(configured_node_interfaces):
+        problems.append(f"BOOTIF is {bootif_underlying}, which is already configured in CMDaemon: change BOOTIF or the {bootif_underlying} interface")
+    return problems
+
+
+def vlan_provisioning_problems(has_vlan_iface, image_modules, bios_vlan_set, kernel_params):
+    """5.3.4 (pp. 260-261): VLAN provisioning (supported since BCM 8.2) requires a VLAN network/interface, the 8021q module in
+    the image's kernelmodules, VLANID set in the node BIOS (without BIOS support PXE over VLAN cannot work), and VLANID=<id>
+    in the image's kernelparameters."""
+    problems = []
+    if not has_vlan_iface:
+        problems.append("a VLAN network and node VLAN interface are required")
+    if "8021q" not in set(image_modules):
+        problems.append("the 8021q (rtnl-link-vlan) module must be added to the software image's kernelmodules")
+    if not bios_vlan_set:
+        problems.append("the node BIOS must have VLANID set in BIOS network options (without BIOS support PXE over VLAN cannot work)")
+    if "VLANID=" not in (kernel_params or ""):
+        problems.append("VLANID=<id> must be appended to the software image's kernelparameters")
+    return problems
+
+
+# ---- 9.6 & 9.7 cm-create-image, multi-distro/multi-arch Table 9.1, cm-image (added in gap pass) ----------------------------
+VALID_DGX_TYPES = {"dgx_h100", "dgx_b200", "dgx_a100", "dgx_gb200", "dgx_h200", "dgx_b300", "dgx_gb300"}
+
+
+def cm_create_image_check(
+    image_name,
+    existing_images=(),
+    imagedir_exists=True,
+    updateimage=False,
+    force=False,
+    dgx_type=None,
+    bcm_version=(11, 30, 0),
+    doca_list_present=False,
+):
+    """9.6.2 (pp. 546-550): checks cm-create-image rules, including the pre-11.30.0 doca.list bug on B200/GB200 where
+    cm-kubernetes-setup fails at ~22% unless /etc/apt/sources.list.d/doca.list is removed from the DGX image."""
+    problems = []
+    if image_name in set(existing_images) and not (updateimage or force):
+        problems.append(f"image '{image_name}' already exists: provide another name or use --updateimage / -f")
+    if not imagedir_exists:
+        problems.append("an explicit --imagedir directory must exist before cm-create-image is run (p. 550)")
+    if dgx_type is not None and dgx_type not in VALID_DGX_TYPES:
+        problems.append(f"invalid --dgx-type '{dgx_type}'; must be one of {sorted(VALID_DGX_TYPES)}")
+    if bcm_version < (11, 30, 0) and dgx_type in ("dgx_b200", "dgx_gb200") and doca_list_present:
+        problems.append("prior to BCM 11.30.0 on B200/GB200, /etc/apt/sources.list.d/doca.list must be removed from the DGX image or cm-kubernetes-setup fails at ~22% (p. 550)")
+    return problems
+
+
+def cm_image_supported(head_distro, head_arch, image_distro, image_arch):
+    """9.7 Table 9.1 (p. 554): RHEL8, RHEL9, Ubuntu 22.04/24.04/26.04 support both x86_64 and aarch64 as head node and as image;
+    SLES15 is supported on x86_64 only (both as head node and as image)."""
+    valid_distros = {"rhel8", "rhel9", "ubuntu2204", "ubuntu2404", "ubuntu2604", "sles15"}
+    valid_archs = {"x86_64", "aarch64"}
+    hd, ha, id_, ia = head_distro.lower(), head_arch.lower(), image_distro.lower(), image_arch.lower()
+    if hd not in valid_distros or id_ not in valid_distros or ha not in valid_archs or ia not in valid_archs:
+        return False
+    if (hd == "sles15" and ha != "x86_64") or (id_ == "sles15" and ia != "x86_64"):
+        return False
+    return True
+
+
+def cm_image_create_all_artifacts(distro, arch):
+    """9.7.2 & 9.7.3 (pp. 559-562): cm-image create all -a <arch> -d <distro> creates the software image, node-installer image,
+    /cm/shared-<distro>-<arch> directory, and default-<distro>-<arch> category."""
+    return {
+        "software_image": f"default-image-{distro}-{arch}",
+        "software_image_path": f"/cm/images/default-image-{distro}-{arch}",
+        "node_installer_path": f"/cm/node-installer-{distro}-{arch}",
+        "cm_shared_path": f"/cm/shared-{distro}-{arch}",
+        "category": f"default-{distro}-{arch}",
+        "recommended_nextinstallmode": "FULL",
+        "arm_settings": {"bootloaderprotocol": "tftp", "kerneloutputconsole": "ttyAMA0"} if arch == "aarch64" else {},
+    }
+
+
+def nodearchosinfo_status(reported_arch, reported_os, reported_ts, configured_arch, configured_os, previous_ts=None):
+    """9.7 (pp. 554-555): nodearchosinfo warns if reported OS and configured OS differ, and an unchanged timestamp after a
+    reboot attempt indicates CMDaemon on the node has not connected to report the new state."""
+    return {
+        "os_mismatch_warning": reported_os != configured_os or reported_arch != configured_arch,
+        "stale_after_reboot": (previous_ts is not None and reported_ts == previous_ts),
+    }
+

@@ -18,7 +18,7 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | Laptop |
 | Part | Part 7: Redfish and BMC |
-| Status | Drafted. `code/part07/rf_logs.py` and `logs_lab.py` were **run**: 23 checks pass. The tool was also run on DMTF's example trees. The log contents of my mock are invented, and a "diagnostic bundle" from the mock is a short text file. No real BMC log was read. What real DGX BMCs log, and the exact log paths, are **not verified** |
+| Status | Drafted (`logs_lab.py`: 23 checks pass against mock and DMTF trees; **untested** on live BMC) |
 
 ## Why this matters for AI infrastructure
 

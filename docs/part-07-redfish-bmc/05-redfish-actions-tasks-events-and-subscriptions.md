@@ -18,7 +18,7 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | Laptop |
 | Part | Part 7: Redfish and BMC |
-| Status | Drafted. `code/part07/actions_lab.py` ran 34 checks against the teaching mock and **all passed** (three repeated runs gave the same result). The mock is not a real BMC. Real BMCs differ in which `ResetType` values they offer, how long a reset takes, whether they answer `200` or `202`, and what events they send |
+| Status | Drafted (`actions_lab.py`: 34 checks pass against mock; **untested** on live BMC) |
 
 ## Why this matters for AI infrastructure
 

@@ -18,7 +18,7 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | Laptop for the simulators |
 | Part | Part 7: Redfish and BMC |
-| Status | Drafted. `code/part07/oob_sim.py` and `cred_audit.py` were **run**. They are small teaching models, not real BMC tools. **No `ipmitool` command in this chapter was run**, because the tool and a BMC were not available. The commands come from the Supercomputers for Linux SysAdmins book (SCL) and the NVIDIA notes. Exact output and options differ between BMC makers |
+| Status | Drafted (`oob_sim.py`, `cred_audit.py` run; `ipmitool` commands **untested** on live BMC) |
 
 ## Why this matters for AI infrastructure
 

@@ -106,6 +106,37 @@ def main():
     nd.undrain()
     check("undrain lets jobs start again", nd.can_start_job())
 
+    # Gap pass: 7.4.3, 7.5, 7.6-7.9, 7.11 checks
+    check("FreezeChangesToSlurmConfig and FreezeChangesToLSFConfig directives format (7.5 p. 387)",
+          s.freeze_wlm_config_directive("slurm", True) == "FreezeChangesToSlurmConfig = true" and
+          s.freeze_wlm_config_directive("lsf", False) == "FreezeChangesToLSFConfig = false")
+    check("wlmjobpowerusagesettings defaults: Job age 5m, Timeout 30s, Disabled no (7.7.2 p. 448)",
+          s.WLM_JOB_POWER_DEFAULTS == {"job_age": "5m", "timeout": "30s", "disabled": False})
+    check("JobInformationKeepCount defaults to 8192 (max 65536) and JobInformationKeepDuration defaults to 28 days (7.7.2 p. 452)",
+          s.JOB_INFO_DIRECTIVE_DEFAULTS["JobInformationKeepCount"] == 8192 and
+          s.JOB_INFO_DIRECTIVE_DEFAULTS["JobInformationKeepCount_max"] == 65536 and
+          s.JOB_INFO_DIRECTIVE_DEFAULTS["JobInformationKeepDuration_days"] == 28 and
+          raises(lambda: s.JobCache(70000)))
+    jc = s.JobCache(); jc.add(1); jc.add(10); jc.mark_persistent(10); jc.expire_old()
+    check("persistent keeps job 10 in the cache past normal expiry while non-persistent job 1 expires (7.7.2 p. 452)",
+          10 in jc.jobs and 1 not in jc.jobs)
+    jc.forget(10)
+    check("forget removes a job from the cache immediately even if it is marked persistent (7.7.2 p. 452)",
+          10 not in jc.jobs)
+    check("setting prejob=yes on a health check when no WLM has enableprejob=yes triggers the manual's warning (7.8.2 p. 460)",
+          "Prejob is selected, but no WLM has prejob" in s.prejob_check_status(True, False)["warning"])
+    pj_fail = s.prejob_check_status(True, True, check_result="FAIL", drain_on_fail=True)
+    check("a failing prejob check blocks the job (preventing Black Hole Node Syndrome), drains the node, and never auto-undrains (7.8.2 p. 459)",
+          pj_fail["runs"] and not pj_fail["job_allowed"] and pj_fail["drained"] and not pj_fail["auto_undrain"])
+    check("nodecustomizations in Slurm append KEY=VALUE (e.g. BcastExclude=/dev/shm) when enabled and remove it when disabled (7.11 pp. 465-466)",
+          s.apply_node_customization("slurm", "BcastExclude", "/dev/shm", True) == "BcastExclude=/dev/shm" and
+          s.apply_node_customization("slurm", "BcastExclude", "/dev/shm", False) == "")
+    check("nodecustomizations in LSF write VALUE when enabled and replace with () when disabled or removed (7.11 p. 466)",
+          s.apply_node_customization("lsf", "MAX_JOBS", "8", True) == "8" and
+          s.apply_node_customization("lsf", "MAX_JOBS", "8", False) == "()")
+    check("drain action chaining: draining with powerreset and undrain leaves both actions queued on the node (7.7.4 p. 456)",
+          nd.drain(["powerreset", "undrain"]) is None and nd.actions == ["powerreset", "undrain"])
+
     print(f"\n{ok_count} passed, {fail_count} failed")
     return 1 if fail_count else 0
 

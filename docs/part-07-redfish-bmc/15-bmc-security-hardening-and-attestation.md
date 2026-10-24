@@ -18,7 +18,7 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | Laptop |
 | Part | Part 7: Redfish and BMC |
-| Status | Drafted. `code/part07/hardening_lab.py` ran **29 checks**, all passed, with **real TLS** (the mock serves HTTPS with TLS 1.2 or newer) and a real throw-away certificate authority made with `openssl`. The DMTF interoperability validator checked my hardening profile: 11 of 17 checks passed on the default mock and **17 of 17** after `rf_harden.py apply`. Attestation was only **read** (a DMTF example tree). Nothing was tested on a real BMC, so vendor behaviour (what a DGX BMC lets you switch off, how it stores certificates, which anti-rollback rules apply) is **not verified** |
+| Status | Drafted (`hardening_lab.py`: 29 checks pass over TLS mock; **untested** on live BMC) |
 
 ## Why this matters for AI infrastructure
 
