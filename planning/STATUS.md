@@ -234,7 +234,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 8.13 | Day-2 operations: updates, scaling, hardware replacement, disaster recovery | drafted | 2840 |  |
 | 8.14 | Air-gapped installation and upgrades | drafted | 2896 |  |
 | 8.15 | BCM in an AI factory: DGX SuperPOD integration | drafted | 2680 |  |
-| 8.16 | Mission Control, DGX Cloud and autonomous recovery concepts | scaffold |  |  |
+| 8.16 | Mission Control, DGX Cloud and autonomous recovery concepts | drafted | 8415 |  |
 | 9.1 | DGX system families and what they are for | scaffold |  |  |
 | 9.2 | Inside a DGX H100 and H200 system | scaffold |  |  |
 | 9.3 | HGX platforms and OEM integration | scaffold |  |  |

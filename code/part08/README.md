@@ -19,5 +19,6 @@ Stdlib Python only. Each lab prints PASS/FAIL lines and a final count. They test
 | 8.13 | bcm_ops.py | ops_lab.py | 40 |
 | 8.14 | bcm_airgap.py | airgap_lab.py | 28 |
 | 8.15 | superpod_calc.py | superpod_lab.py | 29 |
+| 8.16 | bcm_mission_control.py | mission_control_lab.py | 31 |
 
 Run all: `for f in *_lab.py; do python3 $f | tail -1; done`

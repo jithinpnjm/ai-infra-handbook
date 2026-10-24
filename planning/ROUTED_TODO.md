@@ -9,3 +9,5 @@
 - 2.25 must cover NK3 (Container Networking Basics) incl. veth, bridges, CNI basics, docker networking
 - Part 5 (5.4 K8s networking) must cover PK6 Service Routing: Services, endpoints, kube-proxy iptables/IPVS, discovery/DNS, Ingress, ingress controllers, TLS, service mesh
 - 2.24 must cover SP10 10.8 tuning (system-wide sysctls, socket options, configuration), NIC tuning, IRQ/RSS/RPS
+- 0.1, 9.6, 9.10, 9.12, 9.13, 16.14, 17.12 must cover the non-BCM AI factory design, sizing, networking, storage, power, inference, multi-region, and FinOps chapters of `nvidia-zero-to-hero/volume-21` (chapters 01–14 and labs 01–04, per `planning/MIGRATION_MAP.md`).
+

@@ -155,3 +155,98 @@ The author will bring your chapters back to Claude. Claude will:
 
 - 8.1 to 8.15: drafted, built, labs pass (see `code/part08/README.md` once written; checks: 8.1 30, 8.2 32, 8.3 54, 8.4 72, 8.5 55, 8.6 51, 8.7 45, 8.8 50, 8.9 48, 8.10 35, 8.11 36, 8.12 42, 8.13 40, 8.14 28, 8.15 29).
 - (Gemini: add lines here: `P.C drafted YYYY-MM-DD, lab file, N checks, build OK, mermaid OK, notes`.)
+- 8.16 drafted 2026-10-24, code/part08/mission_control_lab.py, 31 checks, build OK, mermaid OK, notes in /tmp/w/notes-8-16.md, ledger in planning/ledgers/8-16.md
+
+## 13. The working model (proven on 8.16)
+
+Every chapter from now on must pass these six checklists before it is called done:
+
+### 13.1 Source-claim discipline
+- [ ] Every sentence in the chapter is traceable to a specific book, vendor manual, or `nvidia-devops` section you read in full.
+- [ ] Any statement that goes beyond the exact wording of the source (including expanding an acronym whose expansion is not in the source, or guessing what tokens a profile holds) is either **labelled `"my inference"` in the sentence itself** or **deleted**.
+- [ ] Gaps in the corpus (unreadable figures, missing vendor manuals, thin coverage of a title term) are stated openly in the status box and text, never patched over with plausible-sounding filler.
+- [ ] Mermaid diagrams do not invent ordering or flow arrows when the source text does not state an order (use unordered boxes and an explicit caption if a figure was not read).
+
+### 13.2 Per-chapter claim ledger (`planning/ledgers/P-C.md`)
+- [ ] Create `planning/ledgers/P-C.md` before finishing the chapter.
+- [ ] Top of ledger lists all mapped sources (books, vendor PDFs, `nvidia-devops` files) and what was read in full, skimmed, or missing.
+- [ ] Include a table with columns `Chapter claim | Source (book, chapter, page or section) | Status` where status is one of `stated`, `my inference`, or `removed`.
+- [ ] Every `my inference` row in the ledger matches an explicit `"my inference"` label in the chapter text and in the chapter's "Sources and review notes" section.
+
+### 13.3 Honest status box and sources section
+- [ ] The top metadata table's `Status` cell states: exact sources and section/page numbers read, what was not read or is missing from the corpus, that no live hardware/software was run (when true), the model and lab filenames, the check count, and that the lab tests our reading of the sources rather than the product.
+- [ ] The `Sources and review notes` section at the end lists:
+  - **Sources read in full** (with chapter, section, and page numbers)
+  - **Skimmed** (with target chapters where any routed material belongs)
+  - **Not read or not in the corpus**
+  - **Corrections to the author's notes** (when a book/manual disagrees with `nvidia-devops`)
+  - **Run here** (lab file and check count)
+  - **My own choices and inferences, labelled in the text** (numbered list)
+  - **Not verified** (commands and GUI paths not run on live systems)
+
+### 13.4 Rule-based lab artifact (`code/partNN/`)
+- [ ] Never write a lab that checks constants against themselves.
+- [ ] Encode real decision rules, prerequisite validators, version/compatibility checks, state transitions, and worked numerical examples from the sources read, with each function's docstring naming the exact source section and page.
+- [ ] Aim for 25 to 55 self-checks in `*_lab.py` that exercise both valid and invalid inputs and reproduce every worked example from the sources.
+
+### 13.5 Cross-reference verification
+- [ ] Check every handbook chapter reference (`chapter P.C`) against `planning/structure.txt` before installing.
+
+### 13.6 Housekeeping
+- [ ] Front-matter `description` is a real one-sentence summary of what the reader learns and what the lab checks.
+- [ ] Update the chapter's row in `planning/STATUS.md` cleanly (status `drafted`, exact word count from `install.py`; never append stray lines at the bottom of `STATUS.md`).
+- [ ] Update `code/partNN/README.md` table with the model filename, lab filename, and check count.
+- [ ] Keep `__pycache__/` and `*.pyc` in `.gitignore` and never leave `__pycache__` directories in `code/`.
+
+## 14. Source completeness protocol
+
+To ensure zero loss of material from the books or from the `nvidia-devops` notes:
+
+1. **Inventory every source before writing:**
+   - Run `python3 tools/study_rag/brief.py P.C`.
+   - Read `planning/MIGRATION_MAP.md` and `planning/coverage/chapters/P-C.md` (if present).
+   - Search across all books with `python3 tools/study_rag/query.py "<term>"` for the chapter's main terms.
+   - Write the complete source list at the top of `planning/ledgers/P-C.md`.
+2. **Audit every mapped `nvidia-devops` file in full:**
+   - Read each mapped `nvidia-devops` file completely.
+   - In `planning/ledgers/P-C.md`, list its headings, facts with numbers, tables, warnings, and worked examples.
+   - Mark every item with one of three dispositions:
+     - `used in section X`
+     - `moved to chapter Y` (naming the exact target chapter `P.C` from `planning/structure.txt`)
+     - `dropped because <explicit reason>` (for example, contradicted by a primary manual)
+   - Nothing may be dropped silently. Any item routed to a later chapter must also be appended to `planning/ROUTED_TODO.md` with its source file and target chapter.
+3. **Audit every mapped book chapter in full:**
+   - Print the mapped book chapters with `bookch.py` and read them in full.
+   - Record their key rules, numbers, defaults, tables, worked examples, and troubleshooting advice in `planning/ledgers/P-C.md` with the same dispositions (`used in section X`, `moved to chapter Y`, or `dropped because <reason>`).
+   - When both a book and the notes explain the same concept, prefer the book's explanation when it is simpler and clearer, while keeping any extra concrete numbers or tables from the notes.
+4. **Handle disagreements explicitly:**
+   - When the `nvidia-devops` notes and a book or vendor manual disagree, keep both facts in the text, state clearly which source says which, and record the conflict under **Corrections to the author's notes** in `Sources and review notes`.
+5. **Run the end-of-chapter coverage check:**
+   - Count items in `planning/ledgers/P-C.md` marked `unused`: the count **must be zero**.
+   - For any `nvidia-devops` file whose contents have now been 100% migrated (or explicitly routed in `planning/ROUTED_TODO.md`), update its status column in `planning/MIGRATION_MAP.md` to `yes`.
+6. **Never compress scope to save effort:**
+   - Do not summarize a rich source into a few lines. Let the chapter be as long as the verified material requires (typically 2,500 to 4,500+ words). If the sources for a topic are genuinely thin, keep the chapter honest and explain why in the status box.
+
+## 15. Human writing standard
+
+Every chapter must read like a clear, patient human teacher:
+
+1. **Four-step concept rhythm:** Start each concept with (a) a plain-language one-sentence meaning, then (b) a real-life analogy or concrete example, then (c) the technical mechanism, and finally (d) the exact numbers, defaults, and commands.
+2. **First-use definitions and plain style:** Define every term and abbreviation the first time it appears. Address the reader as `"you"`. Use short sentences. Never stack jargon without unpacking it.
+3. **Why before how, plus failure mode:** Always explain *why* a rule or setting exists before showing *how* to configure it, and state explicitly what goes wrong in production when the rule is ignored.
+4. **Three angles on each major idea (where helpful):**
+   - *Beginner view:* what is this thing and why do we care?
+   - *Operator view:* what do I run, check, and watch out for on Monday morning?
+   - *Interview / architect view:* why is it designed this way, and what are the trade-offs?
+5. **Visuals and concrete numbers:** Use markdown tables for rules, comparisons, and defaults; Mermaid diagrams for architectures and decision flows; and short worked examples with real numbers (checked by the lab).
+6. **Read-aloud test:** Read each section aloud in your head. If a sentence makes you stumble or run out of breath, split and rewrite it.
+7. **"In one minute" summary box:** End each major numbered section (`## 1.`, `## 2.`, ...) with a short **In one minute** callout or summary box (3 to 5 bullet lines) capturing the takeaway rules and numbers.
+
+## 16. Per-chapter reporting format to the author
+
+When a chapter is complete and all checks pass, update `planning/STATUS.md`, `code/partNN/README.md`, `planning/ledgers/P-C.md`, and section 12 of this file, and report to the author **only**:
+- Chapter number and word count
+- Lab filename and check count (`N passed, 0 failed`)
+- Build and Mermaid check status (`SUCCESS`, `0 failed`)
+- The numbered list of `"my inference"` items in the chapter
+
