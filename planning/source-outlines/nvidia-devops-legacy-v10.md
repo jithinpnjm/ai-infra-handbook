@@ -1,0 +1,665 @@
+# nvidia-devops-legacy-v10
+
+
+## Interview Lab — NVIDIA Senior Solutions Architect: AI Factory from Bare-Metal to Workloads  (00c-slurm-bcm-interview-lab.md)
+- 1. The stack, from the rack to the job
+- 2. Facts to know cold, with their sources
+  - 2.1 What the DGX SuperPOD H100 reference architecture says
+  - 2.2 What the DGX H100 user guide says
+  - 2.3 What the BCM manual says (and does not say)
+- 3. Whiteboard scenarios
+  - Scenario 1: Architect an AI factory for a customer
+  - Scenario 2: A 64-node training run is frozen at a step
+  - Scenario 3: Slurm or Kubernetes?
+- 4. Answers that lose points, and what to say instead
+- 5. Practice
+- Key takeaways
+- Sources
+
+## Chapter 1 - Bare-metal and BMC/Redfish lifecycle  (01-bare-metal-and-bmc-lifecycle.md)
+- 1. Architectural Blueprint: The AI Factory Physical Hierarchy {#foundations-start-here-if-the-bare-metal-hpc-stack-is-new-to-you}
+  - 1.1 The Hardware Architecture Diagram
+  - 1.2 Key Hardware Boundaries
+- 2. The Out-of-Band Control Plane: IPMI vs. Redfish
+  - 2.1 Why Redfish is the primary management interface
+  - 2.2 IPMI in practice
+- 3. Deep Dive: The DMTF Redfish REST API
+  - 3.1 Authenticating and Establishing a Session
+  - 3.2 Querying System Inventory and Power State
+  - 3.3 Telemetry extraction
+  - 3.4 Out-of-Band Power Control via Actions
+  - 3.5 Python Implementation for At-Scale Inventory
+  - 3.6 Automating Redfish with Ansible
+- 4. Firmware Baselines and At-Scale Redfish Updates
+  - 4.1 The Danger of Firmware Drift
+  - 4.2 Querying Firmware Inventory via Redfish
+  - 4.3 Orchestrating Updates via Redfish `SimpleUpdate` (Pull Architecture)
+  - 4.4 Push Architecture: Multipart HTTP Updates
+  - 4.5 NVIDIA's firmware tooling for DGX H100/H200: `nvfwupd`
+- 5. Host BIOS/UEFI Hardening and Optimization for AI Workloads
+  - 5.1 Production BIOS Settings Matrix
+  - 5.2 Automating BIOS Configuration via Redfish
+    - Step 1: Patch the Pending Attributes
+    - Step 2: Reboot the System
+- 6. BMC Security, Accounts, and OOB Networking
+  - 6.1 Securing the Redfish Endpoint
+  - 6.2 Role-Based Access Control (RBAC)
+- 7. Deterministic Network Booting: PXE vs. UEFI HTTPBoot
+  - 7.1 The Legacy Approach: PXE and TFTP
+  - 7.2 The Modern Architecture: UEFI HTTPBoot
+  - 7.3 Kea DHCP Configuration for HTTPBoot
+  - 7.4 The "D-T-B-I" Triage Methodology for Boot Failures
+- 8. NVIDIA System Management (nvsm) In-Band Telemetry
+- 9. Senior Solutions Architect Troubleshooting Scenarios
+  - Scenario 1: The "Ghost" Throttling Incident
+  - Scenario 2: Racking and Bringing Up a Green-Field AI Cluster
+  - Scenario 3: Recovering a "Bricked" BMC
+  - Scenario 4: Investigating Spurious Memory ECC Errors
+  - Scenario 5: Migrating from Legacy PXE to Secure Boot
+- 10. Key Takeaways
+
+## Chapter 2 - NVIDIA Base Command Manager (BCM)  (02-nvidia-base-command-manager.md)
+- 1. Why a cluster manager exists
+- 2. Architecture
+- 3. The object model: how BCM organizes a cluster
+  - 3.1 Inheritance rules
+  - 3.2 Roles, priorities, and overlays
+- 4. `cmsh` essentials
+- 5. Software images
+  - 5.1 Change an image safely
+  - 5.2 HA caveat
+- 6. From power-on to a running node
+  - 6.1 Before the kernel loads
+  - 6.2 The node-installer: 13 steps
+  - 6.3 Install modes: what actually runs at boot
+  - 6.4 Scaling the boot path
+  - 6.5 About kernel parameters for AI nodes
+- 7. Networks, interfaces, and power control
+- 8. Workload managers: Slurm and Kubernetes
+  - 8.1 Slurm
+  - 8.2 Kubernetes
+  - 8.3 Sharing nodes between Slurm and Kubernetes
+- 9. Health, monitoring, and rolling change
+- 10. BCM and Ansible: where the boundary really is
+- 11. Troubleshooting scenarios
+  - Scenario 1: Mass boot failures during bring-up
+  - Scenario 2: A node installs the wrong thing, or repeatedly re-images
+  - Scenario 3: A GPU that keeps failing health checks and returning
+- Key takeaways
+- Sources
+
+## Chapter 3 - OS Provisioning, Kernel Optimization, and Security Hardening  (03-os-provisioning-and-linux-security-hardening.md)
+- 1. Introduction and Learning Objectives
+  - 1.1 The Problem Statement
+  - 1.2 Realistic Production Story
+  - 1.3 Measurable Learning Objectives
+  - 1.4 Chapter Metadata
+- 2. The Fundamentals: Linux Boot Process and Provisioning (Beginner)
+  - 2.1 The Linux Boot Sequence
+  - 2.2 Network Booting: PXE and HTTPBoot
+  - 2.3 Automated Provisioning: Kickstart Architecture
+    - Best Practices for AI Node Partitioning
+- 3. Deep Dive: A Production RHEL/Rocky Kickstart Profile
+    - First-Principles Explanation of the Kickstart:
+- 4. Advanced: Building the AI Factory Golden Image (Packer + Ansible)
+  - The NVIDIA Driver Dependency Chain (DKMS vs. kABI)
+    - Why Production Fleets Ban DKMS
+    - The Golden Image / kABI Solution
+- 5. Kernel Optimization for Ultra-Scale AI (Advanced)
+  - 5.1 Boot-Time Kernel Parameters (`/etc/default/grub`)
+    - First-Principles Explanation of Critical Parameters:
+  - 5.2 Runtime Kernel Tunables (`sysctl`)
+    - Detailed Breakdown: Virtual Memory and PyTorch
+- 6. Linux Security Hardening: The HPC Multi-Tenancy Boundary
+  - 6.1 Standard CIS vs. AI Factory Adjustments
+  - 6.2 Mandatory Access Control (SELinux / AppArmor)
+  - 6.3 Secure Boot and Kernel Module Signing
+- 7. Ansible Infrastructure as Code for OS Hardening
+- 8. Troubleshooting & Production Scenarios
+  - 8.1 Scenario: Kernel Panics on GPU Initialization (NVRM)
+  - 8.2 Scenario: Secure Boot Rejection
+- 9. Senior Solutions Architect Interview Scenarios
+  - 9.1 Memory Allocation Stalls During Multi-Node Training
+  - 9.2 Selecting the Driver Packaging Strategy for a 2,000-GPU Cluster
+- 10. Summary and Next Steps
+  - Cross-References and Further Reading
+
+## Chapter 4 - Ansible for Infrastructure Automation in AI Factories  (04-ansible-for-infrastructure-automation.md)
+- 1. Foundations: Configuration Management and the Principle of Idempotency {#foundations-start-here-if-infrastructure-as-code-is-new-to-you}
+  - 1.1 The Collapse of Imperative Shell Scripting
+  - 1.2 The Ansible Solution: Idempotent Desired State
+- 2. Ansible Architecture, Execution Model, and the Agentless Advantage
+  - 2.1 The Control Node
+  - 2.2 The Managed Nodes
+  - 2.3 The Execution Flow Deep Dive
+- 3. Inventory Management: From Static Files to Dynamic Cloud Graphs
+  - 3.1 Static Inventories: INI and YAML Formats
+  - 3.2 Structuring Variables: `group_vars` and `host_vars`
+  - 3.3 Dynamic Inventories: Integrating with Cloud APIs
+- 4. Playbook Mastery: Tasks, Modules, and Advanced Flow Control
+  - 4.1 The Playbook Anatomy
+  - 4.2 Error Handling and Resiliency: `block`, `rescue`, `always`
+  - 4.3 Advanced Iteration: `loop` and `with_items`
+  - 4.4 Idempotent File Editing: `lineinfile` and `blockinfile`
+  - 4.5 Handlers: Triggering Service Restarts intelligently
+- 5. Roles and Ansible Galaxy: Structuring for Scale and Reusability
+  - 5.1 Standard Role Directory Architecture
+  - 5.2 Executing Roles in a Site Playbook
+- 6. Advanced Jinja2 Templating: The Brains of Configuration Management
+  - 6.1 Building a Dynamic Slurm Configuration File
+  - 6.2 Explanation of Jinja2 Mechanics
+- 7. NVIDIA AI Factory Operations: Real-World Implementation Roles
+  - 7.1 Compiling and Deploying Mellanox OFED for RDMA/RoCE Fabrics
+  - 7.2 Deploying NVIDIA DCGM and Fabric Manager
+- 8. Managing Secrets: Ansible Vault
+  - 8.1 Encrypting Secrets
+  - 8.2 Executing Playbooks with Vault
+- 9. Tuning Execution Strategies for Scale: Pipelining and Mitogen
+  - 9.1 `ansible.cfg` Performance Tuning
+  - 9.2 Rolling Updates and Blast Radius Control: `serial`
+- 10. Essential CLI & Lifecycle Command Reference
+- 11. Senior SRE & Solutions Architect Troubleshooting Scenarios
+  - Scenario 1: The Infinite SSH Hang during Package Installation
+  - Scenario 2: Playbook Succeeded, but the Service is Dead
+  - Scenario 3: The Secret Logging Leak Incident
+  - Scenario 4: Resolving Variable Precedence Nightmares
+- 12. Deep Dive: The Ansible Task Debugger
+  - 12.1 Enabling the Debugger
+  - 12.2 Using the Interactive Debugger
+- 13. Extending Ansible: Writing Custom Python Modules
+  - 13.1 Example: A Custom Module to Check NVLink Status
+  - 13.2 Using the Custom Module
+- 14. Architecture Debate: Push vs. Pull Model (Ansible-Pull)
+  - The Push Model (Standard)
+  - The Pull Model (`ansible-pull`)
+- 15. Advanced AI Operations: Diagnostic Playbooks
+  - 15.1 Fleet-Wide GPU Burn Stress Testing
+  - 15.2 Automated NCCL All-Reduce Benchmarking
+- 16. Conclusion: The Immutable Goal
+
+## Chapter 5 - Terraform for Infrastructure as Code in AI Factories  (05-terraform-for-infrastructure-as-code.md)
+- 1. Foundations: The Imperative vs. Declarative Paradigm
+  - Why Imperative Scripts Fail in AI Infrastructure
+  - The Declarative Solution: Infrastructure as Code (IaC)
+- 2. Terraform & OpenTofu Architecture: Core, Providers, and the DAG
+  - 1. Terraform Core
+  - 2. Provider Plugins
+  - 3. Terraform OSS vs. OpenTofu
+- 3. HCL Language Masterclass: Beginner Primitives to Advanced Constructs
+  - 3.1 Variables and Complex Type Constraints
+  - 3.2 `locals` Blocks: Derived Logic and Single Sources of Truth
+  - 3.3 `data` Sources: Querying Live Environmental State
+  - 3.4 Loops and Iteration: `count` vs. `for_each`
+    - The Danger of `count` in State Management
+    - The Robust Pattern: `for_each` with Keys
+  - 3.5 `for` Expressions and List/Map Comprehensions
+  - 3.6 `dynamic` Blocks: Programmatic Nested Block Generation
+  - 3.7 Essential Built-in HCL Functions
+- 4. The Complete CLI & Lifecycle Command Reference
+  - 4.1 Initialization and Backend Lifecycle: `terraform init`
+  - 4.2 Formatting and Static Syntax Validation
+  - 4.3 The Reconciliation Diff: `terraform plan`
+    - The Plan Action Symbols
+  - 4.4 Mutating Infrastructure: `terraform apply` and `terraform destroy`
+  - 4.5 Drift Detection and Modern Refresh: `refresh` vs. `-refresh-only`
+  - 4.6 Bringing Unmanaged Infrastructure into IaC: `import`
+    - Method A: The Classic CLI Import Command
+    - Method B: Modern Declarative `import` Blocks (Terraform 1.5+)
+  - 4.7 Direct State Manipulation: `terraform state` Subcommands
+  - 4.8 Refactoring Without Destruction: `moved` Blocks (Terraform 1.1+)
+  - 4.9 Resolving Stale Locks: `terraform force-unlock`
+    - Safe Unlocking Procedure:
+  - 4.10 Diagnostics, Inspection, and Debugging
+- 5. Terraform Workspaces: Mechanics, Multi-Environment Architecture, and Blast Radius
+  - 5.1 Dynamic Logic via `${terraform.workspace}`
+  - 5.2 The Architectural Debate: Workspaces vs. Separate Environment Directories
+    - Recommended Directory-Based AI Factory Architecture:
+- 6. Terraform OSS vs. HCP Terraform (Terraform Cloud) vs. OpenTofu
+  - Architectural Comparison Matrix
+  - 6.1 Policy as Code: Enforcing Guardrails on Costly GPU Fleets
+  - 6.2 Self-Hosted Agents for On-Prem AI SuperPOD Management
+- 7. End-to-End NVIDIA AI Factory Implementation
+  - 7.1 `versions.tf`
+  - 7.2 `variables.tf`
+  - 7.3 `locals.tf`
+  - 7.4 `data.tf`
+  - 7.5 `network.tf`
+  - 7.6 `storage.tf`
+  - 7.7 `gpu_fleet.tf`
+  - 7.8 `outputs.tf`
+- 8. The IaC Boundary: What Terraform Owns vs. What BCM and Ansible Own
+  - The Architectural Division of Responsibilities
+- 9. Senior SRE & Solutions Architect Troubleshooting Scenarios
+  - Scenario 1: The Catastrophic `-/+` (Forces Replacement) Incident
+    - The Production Incident
+    - Root Cause Analysis
+    - Remediation and Prevention
+  - Scenario 2: Resolving an Orphaned Remote Backend State Lock
+    - Remediation Runbook
+  - Scenario 3: Refactoring Monolithic HCL into Modules with Zero Downtime
+    - The Operational Challenge
+    - Remediation Procedure
+  - Scenario 4: Reconciling Manual Out-of-Band Cloud Console Changes
+- 10. Senior Solutions Architect Interview Questions & Defense Strategies
+  - Question 1: How do you design an IaC deployment to give GPU instances the best chance of full EFA bandwidth?
+  - Question 2: Why should teams avoid `count` when provisioning stateful or identifiable GPU worker nodes?
+  - Question 3: How do you handle sensitive credentials (such as Slurm database passwords or cloud API keys) in Terraform?
+- Key Takeaways
+
+## Chapter 6 - Slurm Administration: HA, Topology-Aware Scheduling, Accounting, and Upgrades  (06-slurm-administration-ha-accounting-and-upgrades.md)
+- 1. Foundational Architecture: The Anatomy of Slurm
+  - 1.1 Core Daemons and Responsibilities
+  - 1.2 Jobs, Steps, and Tasks
+    - 1.2.1 Real-World Launch Example
+- 2. Advanced Slurm Configuration (`slurm.conf`) Deep Dive
+  - 2.1 The Architecture of `slurm.conf`
+    - Detailed Breakdown of Critical Directives:
+  - 2.2 Generic Resources (GRES) and Topology-Aware GPU Binding
+    - Example `gres.conf` for a Topology-Aware System
+    - Network Topology (`topology.conf`)
+- 3. Cgroups Configuration and Resource Containment
+  - 3.1 The Mechanics of Device Containment
+- 4. Designing Slurm High Availability (Active/Passive)
+  - 4.1 Architecture of HA controllers
+  - 4.2 The failover mechanism
+  - 4.3 Split-brain: what the documentation says and what to design
+- 5. Multi-Tenant Accounting, `slurmdbd`, and Fairshare
+  - 5.1 The Accounting Architecture
+  - 5.2 Configuring `slurmdbd.conf`
+  - 5.3 The Hierarchy: Clusters, Accounts, and Users
+  - 5.4 The Multifactor Priority Algorithm & Fairshare
+  - 5.5 Billing via TRES (Trackable Resources)
+- 6. Live Cluster Upgrades and Maintenance Operations
+  - 6.1 The upgrade rules (from the SchedMD Upgrade Guide)
+  - 6.2 Step-by-Step Live Upgrade Procedure
+    - Phase 1: Database Upgrade
+    - Phase 2: Controller Upgrade
+    - Phase 3: Rolling Compute Upgrades
+- 7. Senior Solutions Architect Troubleshooting Scenarios
+  - Scenario 1: Commands hang and the accounting database is under strain
+  - Scenario 2: Recovering after a controller split or state-directory damage
+  - Scenario 3: GPU Binding Failures (Cgroup Issues)
+  - Scenario 4: PMIX and MPI Launch Failures
+- 8. Operational Best Practices and Summary
+- 9. Comprehensive NVIDIA Solutions Architect Interview Guide
+  - Q1: Describe the precise interaction between `slurmctld`, `slurmdbd`, and MariaDB when a user submits a job that exceeds their QOS limit. Include network ports, RPC calls, and DB locks.
+- 10. Infrastructure as Code: Deploying Slurm via Ansible
+  - 10.1 Inventory Structure
+  - 10.2 The Core Playbook: Munge Authentication First
+  - 10.3 Deploying the Database Daemon (slurmdbd)
+  - 10.4 Deploying the HA Controllers
+  - 10.5 Deploying the Compute Nodes (slurmd)
+- 11. Appendix: Slurm Log Analysis Mastery
+  - 11.1 The "Node Flapping" Log
+  - 11.2 The "OOM Kill" Log
+  - 11.3 The "Bad RPC" Log
+
+## Chapter 7 - MPI, PMIx, and Distributed Collective Communication  (07-mpi-fundamentals-for-hpc-ai-workloads.md)
+- 1. Foundations: The Evolution of Distributed Message Passing
+  - 1.1 What is MPI?
+  - 1.2 Core MPI Concepts: Ranks, Size, and Communicators
+  - 1.3 Point-to-Point vs. Collective Communication
+  - 1.4 The CPU-Centric Legacy of MPI
+- 2. The Fabric Layer: InfiniBand, RoCEv2, and GPUDirect RDMA
+  - 2.1 Remote Direct Memory Access (RDMA)
+  - 2.2 InfiniBand vs. RoCEv2
+  - 2.3 GPUDirect RDMA (GDR)
+- 3. The Modern AI Execution Stack: Slurm, PMIx, and NCCL
+  - 3.1 Slurm Workload Manager
+  - 3.2 PMIx (Process Management Interface Exascale)
+  - 3.3 NVIDIA NCCL
+- 4. Deep Dive into Process Launch Mechanisms
+  - 4.1 The Native HPC Standard: `srun --mpi=pmix`
+  - 4.2 The Legacy Standard: `mpirun` (OpenMPI / HPC-X)
+  - 4.3 The Cloud-Native Standard: `torchrun`
+- 5. CPU Core and GPU NUMA Affinity
+  - 5.1 Enforcing Strict Hardware Binding with Slurm
+  - 5.2 Validating Binding via `numactl`
+- 6. NVIDIA NCCL Mastery: Data Plane Execution
+  - 6.1 Understanding Topology Discovery
+  - 6.2 Ring vs. Tree Collective Algorithms
+  - 6.3 Essential NCCL Environment Variables
+- 7. Advanced Tuning: OpenMPI and HPC-X (`OMPI_MCA`)
+  - 7.1 Key OpenMPI MCA Parameters
+  - 7.2 The Ultimate HPC-X Launch Command
+- 8. Profiling and Diagnostics: Data Plane Telemetry
+  - 8.1 Using `strace` to Detect Topology Probing
+  - 8.2 NVIDIA Nsight Systems (`nsys`)
+- 9. Senior Solutions Architect Troubleshooting Scenarios
+  - Scenario 1: The Multi-Node Initialization Hang
+  - Scenario 2: Catastrophic Performance Regression (Bandwidth Collapse)
+  - Scenario 3: RoCE Congestion and PFC Storms
+- 10. Conclusion and Architectural Summary
+- Appendix A: Exhaustive NCCL Environment Variable Reference Matrix
+  - A.1 Network and Fabric Targeting
+  - A.2 Topology and Algorithm Control
+  - A.3 Debugging and Profiling
+- Appendix B: Comprehensive OpenMPI MCA Parameter Glossary
+  - B.1 Frameworks
+  - B.2 Critical Tunables
+- Appendix C: Deep Dive into PCIe Architecture and Switch Topologies
+  - C.1 The PCIe Switch
+  - C.2 IOMMU and Access Control Services (ACS)
+- Appendix D: Simulating Network Failures (Chaos Engineering)
+- Appendix E: The Role of PyTorch `torch.distributed`
+- Appendix F: Extended Glossary and Metric Tracking
+- Appendix G: Common MPI Launch Error Codes
+- Appendix H: Infiniband Subnet Manager Debugging
+- Appendix I: Verifying PCIe Topology with `nvidia-smi topo -m`
+- Appendix J: Advanced Strace Tracing for GPU Code
+- Appendix K: Multi-Rail Networking Deep Dive
+- Appendix L: Diagnosing Memory Registration (MR) Limits
+- Appendix M: UCX Tuning for CPU-based MPI
+- Appendix N: Bisectional Bandwidth Calculations
+- Appendix O: The Impact of PCIe Gen 5
+- Appendix P: Slurm CPU Cgroups and `taskset`
+- Appendix Q: Validating OpenMPI Installations
+- Appendix R: Understanding `MPI_Barrier`
+- Appendix S: RoCEv2 DCQCN Tuning
+- Appendix T: NCCL Tree vs Ring Tradeoffs in Large Models
+
+## Chapter 8 - Enroot and Pyxis: Unprivileged Containers for AI Supercomputing  (08-enroot-and-pyxis-containers-for-hpc.md)
+- 1. Why a different container runtime for HPC
+- 2. The image format and the command set
+  - 2.1 Root remapping, namespaces, and what `--root` does not give you
+- 3. Configuration: paths, directories, and hooks
+  - 3.1 Paths and the config file
+  - 3.2 Container configuration directories
+  - 3.3 Standard hooks: how GPUs and InfiniBand get in
+  - 3.4 Registry credentials
+- 4. Pyxis: Enroot inside Slurm
+  - 4.1 Installation notes that bite
+  - 4.2 The flags
+- 5. Image distribution at scale
+- 6. Troubleshooting scenarios
+  - Scenario 1: "Read-only file system" when writing in the container
+  - Scenario 2: GPUs not visible in the container
+  - Scenario 3: Registry 429 or authentication errors on import
+  - Scenario 4: A user cannot import or convert images
+  - Scenario 5: NCCL reports no InfiniBand device inside the container
+- 7. Interview questions
+- Key takeaways
+- Sources
+
+## Chapter 9 - Job Provisioning, Health Gating, and Workflow Orchestration  (09-job-provisioning-health-gating-and-workflow-orchestration.md)
+- 1. Foundations: The AI Factory Job Lifecycle and the Threat of Stragglers
+  - The Basic Job Lifecycle
+  - Why Health Gating is Critical
+- 2. Advanced Slurm Configuration for AI Workloads
+  - Core `slurm.conf` Parameters for Health and Scheduling
+  - Implementing `gres.conf` for Accurate GPU Mapping
+- 3. Cgroups v2: Enforcing Hardware Boundaries
+  - Slurm `cgroup.conf`
+- 4. Writing the Perfect AI Job Submission Script
+  - The Physics of the PyTorch PyData Stack
+  - Deconstructing PyTorch DistributedDataParallel (DDP) Variables
+  - Masterclass `sbatch` Template for PyTorch DDP / Megatron
+  - Masterclass `sbatch` Template for MPI-based NCCL Tests
+- 5. The Multi-Tiered Health Architecture
+  - The Three Tiers Explained
+- 6. Tier 1: Continuous Background Health Monitoring (NHC)
+  - NHC Configuration Examples
+  - Custom NHC Checks (Python)
+- 7. NVIDIA DCGM Diagnostic Tiers (The Source of Truth)
+  - DCGM Run Levels (Diagnostics)
+  - Executing and Parsing DCGM Diagnostics in Automation
+  - Real-time Telemetry and Straggler Detection with DCGM-Exporter
+- 8. Production Slurm Prolog Implementation: The Pre-Job Gate
+  - Masterclass Prolog Script (Bash)
+  - Key Considerations for Prolog Scripts
+- 9. Production Slurm Epilog Implementation: Post-Job Sanitization
+  - Understanding NVIDIA Xid errors
+  - Masterclass Epilog Script (Python)
+- 10. Deploying Health Gates via Ansible / Terraform
+- 11. Workflow Orchestration in AI Factories
+  - Integrating Apache Airflow with Slurm
+  - Kubernetes Volcano Schedulers
+- 12. Real-World Troubleshooting: A Day in the Life of an AI SRE
+  - Scenario 1: The "Silent Straggler" in a 1,024-GPU Cluster
+  - Scenario 2: Distinguishing Transient Workload Errors from True Hardware Defects
+  - Scenario 3: The Infinite Loop Epilog Hang
+  - Scenario 4: Investigating Job Failures using `sacct` and Cgroups
+  - Scenario 5: NVSwitch Routing Failures and XID 74
+- 13. Recommended Reading and External References
+- Key Takeaways
+
+## Chapter 10 - Coordinated Cluster-Wide Software Change Management  (10-coordinated-cluster-wide-software-change-management.md)
+- 1. The coupled stack, and what each coupling really is
+  - 1.1 Driver and toolkit: a range, not a pin
+  - 1.2 Module build order: the one that bites
+  - 1.3 NCCL: confirm the transport, do not assume it
+  - 1.4 Slurm: a documented compatibility window and a one-way door
+  - 1.5 Firmware: sequenced, activated, and sometimes reversible
+- 2. The compatibility matrix: a template, not a list of numbers
+- 3. Progressive rings (design pattern)
+- 4. Executing a wave: Slurm and BCM
+  - 4.1 Take the capacity out cleanly
+  - 4.2 Reboot nodes through Slurm
+  - 4.3 Reprovision through BCM
+  - 4.4 Gate before rejoining
+- 5. What can go wrong
+- 6. Interview scenarios
+  - Scenario 1: "Can we roll back the firmware?"
+  - Scenario 2: "Why is the cluster slower after a routine image update?"
+- Key takeaways
+- Sources
+
+## Chapter 11 - CI/CD for infrastructure and cluster configuration  (11-cicd-for-infrastructure-and-cluster-configuration.md)
+- 1. The Paradigm Shift: Application CI/CD vs. Infrastructure CI/CD
+  - 1.1 The Core Differences
+  - 1.2 Push vs. Pull Deployments (The GitOps Divide)
+    - The Push Model (Traditional CI/CD)
+    - The Pull Model (GitOps)
+- 2. Foundational Principles: CI Produces Evidence; CD Controls Mutation
+  - The Six Golden Stages of Infrastructure CI/CD
+- 3. Pull Requests as the Control Plane: Terraform with Atlantis
+  - 3.1 Atlantis Architecture
+  - 3.2 Atlantis Configuration
+  - 3.3 The Atlantis Experience
+- 4. Kubernetes GitOps: ArgoCD and Flux
+  - 4.1 The GitOps Reconciliation Loop
+  - 4.2 ArgoCD Application Manifests
+  - 4.3 Automated Dependency DAGs with Sync Waves
+- 5. Ansible Automation Platform (AWX/Tower) CI Integration
+  - 5.1 The Risk of Ad-Hoc Ansible
+  - 5.2 Enterprise Ansible Architecture
+  - 5.3 Automated GitLab CI to AWX Pipeline
+- 6. The Ultimate GitHub Actions Pipeline for Infrastructure
+  - 6.1 The "Plan-and-Apply" Anti-Pattern
+  - 6.2 Production-Grade GitHub Actions Workflow
+- 7. Policy as Code: Open Policy Agent (OPA) / Rego
+  - 7.1 Complex Rego Policy Example: Preventing Cloud-Scale Bankruptcy
+- 8. Golden Images as Pipeline Artifacts
+  - The Immutable Rule of Infrastructure Artifacts
+- 9. Testing Infrastructure Code: Pre-commit and Terratest
+  - 9.1 Local Feedback: Pre-commit Hooks
+  - 9.2 Functional Testing: Terratest
+- 10. Senior SRE & Solutions Architect Troubleshooting Scenarios
+  - Scenario 1: Runner Starvation and State Lock Poisoning
+  - Scenario 2: Drift Reconciliation Failures (The "Dirty" Cluster)
+  - Scenario 3: Secret Injection and OIDC Authentication Failures
+- 11. Interview-Ready Concepts & Practice
+  - The Core Philosophy
+  - Practice Questions
+- 12. Golden Images CI/CD Deep Dive: Packer and Ansible
+  - 12.1 The Packer HCL Configuration
+  - 12.2 Golden Image CI/CD Trigger
+- 13. Advanced Policy as Code: Guarding Network and IAM
+  - 13.1 Rule: Forbid Public Ingress on HPC Security Groups
+  - 13.2 Rule: Prevent IAM Privilege Escalation
+- 14. Secrets Management in Infrastructure Pipelines
+  - 14.1 The Anti-Pattern: CI/CD Environment Variables
+  - 14.2 The Enterprise Solution: HashiCorp Vault Integration
+  - 14.3 SOPS and Sealed Secrets for GitOps
+- 15. Canary Deployments for Physical Infrastructure
+  - 15.1 The "Rings of Protection" Deployment Model
+  - 15.2 Implementing an Ansible Canary Pipeline
+- 16. Further Advanced Troubleshooting Scenarios
+  - Scenario 4: Bypassing the Pipeline with a Mismatched Terraform Binary
+  - Scenario 5: Flux Reconciliation Hangs on Webhook Failures
+- 17. Final Review and Mnemonic
+- 18. Practice Scenarios
+- 19. Advanced Drift Detection and Self-Healing Automation
+  - 19.1 Automated Drift Detection Pipelines
+  - 19.2 The "Reconciliation vs. Backport" Decision Matrix
+- 20. Conclusion: The Pipeline as a Product
+  - The Architect's Checklist
+
+## Chapter 12 - Customer runbooks, onboarding and best-practice documentation  (12-customer-runbooks-onboarding-and-best-practice-documentation.md)
+- Start here — choose the document by the reader's task
+- Two documents, two audiences, two timeframes
+- Runbook template: symptom → verification → decision tree → mitigation → escalation → follow-up
+  - Annotated example: "Slurm node stuck in DRAIN state"
+- Onboarding / best-practices guide template: overview → access → workflows → troubleshooting → contacts
+- Three runbooks built from vendor documentation
+  - Runbook A: Multi-node job hangs or fails during NCCL initialization
+  - Runbook B: A node logs Xid 79 ("GPU has fallen off the bus")
+  - Runbook C: A BCM node will not finish provisioning
+- Closing the loop with the rest of Volume 10
+- Worked scenario: the runbook that was actually a prose essay
+- Mnemonic
+- Interview-ready line
+- Practice
+
+## Senior Deep Dive 1 — BCM at Fleet Scale: Provisioning Tiers, Image Drift, Health Actions, and Head Node HA  (13-senior-deep-dive-1-bcm-at-fleet-scale.md)
+- 1. What breaks first when the node count grows
+  - 1.1 Two separate roles for two separate loads
+  - 1.2 The provisioning-role parameters that decide scale
+  - 1.3 How the head node allocates and limits work
+  - 1.4 Keeping the tier current: `updateprovisioners`
+- 2. Image drift: seeing it, fixing it, and the two directions of sync
+  - 2.1 Detecting drift with a dry run
+  - 2.2 What `imageupdate` will and will not touch
+  - 2.3 Folding a legitimate fix back into the image
+  - 2.4 Taking a suspect node out of rotation
+- 3. Health checks, triggers, and actions
+  - 3.1 Documented building blocks
+  - 3.2 A remediation tier model (design recommendation)
+- 4. Head node high availability
+  - 4.1 Vocabulary: naming versus mode
+  - 4.2 What runs where
+  - 4.3 Shared storage
+  - 4.4 Guaranteeing a single active head
+  - 4.5 Automatic versus manual failover
+  - 4.6 Building and checking the pair
+  - 4.7 Trap: what actually replicates
+- 5. Failure scenarios
+- 6. Senior Solutions Architect interview scenarios
+  - Scenario 1: Making a large BCM cluster boot and provision reliably
+  - Scenario 2: Designing safe auto-remediation
+  - Scenario 3: Explaining failover to a security-minded customer
+- Key takeaways
+- Sources
+
+## Senior Deep Dive 2 — Slurm HA, Accounting Database, and Fairshare  (14-senior-deep-dive-2-slurm-ha-and-accounting-internals.md)
+- 1. The three planes and what each one stores
+- 2. Controller high availability: what Slurm documents
+  - 2.1 The native mechanism
+  - 2.2 The risk Slurm itself calls out
+  - 2.3 `StateSaveLocation`: what to ask of the storage
+  - 2.4 Recovery options that exist (and the one that kills jobs)
+  - 2.5 Which signals do what
+- 3. Accounting: `slurmdbd` and the database
+  - 3.1 What happens when `slurmdbd` is slow or down
+  - 3.2 Backup `slurmdbd`
+  - 3.3 Database settings SchedMD recommends
+  - 3.4 `slurmdbd.conf` knobs that are real
+  - 3.5 Querying the database directly
+- 4. Priority and fairshare
+  - 4.1 The priority formula
+  - 4.2 Fair Tree is the default
+  - 4.3 Decay settings
+  - 4.4 Charging for GPUs
+- 5. Failure scenarios
+  - Scenario 1: Commands hang and the accounting log shows database contention
+  - Scenario 2: Primary controller died, backup did not take over
+  - Scenario 3: A user's usage looks absurdly high and blocks their fairshare
+- Key takeaways
+- Sources
+
+## Senior Deep Dive 3 — MPI, NCCL, and Fabric Joint Debugging  (15-senior-deep-dive-3-mpi-and-nccl-joint-debugging.md)
+- 1. The ladder
+- 2. Layer 1: launch and limits
+- 3. Layer 2: rendezvous
+- 4. Layer 3: NCCL initialization and the tools that tell you who is stuck
+  - 4.1 Read the log for the transport and topology
+  - 4.2 Built-in active diagnostics (NCCL 2.31 and later)
+  - 4.3 RAS: finding the rank that is not in step (NCCL 2.24 and later)
+  - 4.4 The watchdog is not NCCL's
+  - 4.5 GPU faults appear here as hangs
+- 5. Layer 4: fabric health
+  - 5.1 InfiniBand
+  - 5.2 Bandwidth and latency between two nodes
+  - 5.3 RoCE
+- 6. "Two nodes work, eight nodes hang": hypotheses, each with a test
+- 7. SHARP and in-network reduction: what is documented
+- 8. Interview scenarios
+  - Scenario 1: A large job dies every eight to twelve hours with a watchdog timeout
+  - Scenario 2: RoCE benchmark is slow and hangs intermittently
+- Key takeaways
+- Sources
+
+## Senior Deep Dive 4 — Coordinated Rollout Across Compute, Network, and Storage  (16-senior-deep-dive-4-coordinated-firmware-driver-os-rollout-across-compute-network-storage.md)
+- 1. The documented dependency chain on a GPU node
+  - 1.1 Compatibility mode: why a bad upgrade does not fail loudly
+- 2. Choosing an upgrade order (judgment, with the reasoning shown)
+  - 2.1 The maintenance envelope in Slurm
+- 3. Compute: build the canary around the dependency chain
+  - 3.1 Is the direct path actually in use?
+  - 3.2 Measure, and compare transfer paths on the same node
+  - 3.3 Network drivers and firmware on the host
+- 4. Fabric: do not lose the Subnet Manager
+  - 4.1 What is documented about SM priority and handover
+  - 4.2 Checking which SM is master
+  - 4.3 If UFM manages the fabric, UFM's own HA matters too
+  - 4.4 Gates before moving on from the fabric
+- 5. Storage: client compatibility and checkpoint behavior
+- 6. Interview scenario
+  - Checkpoints got slower after a maintenance window
+- Key takeaways
+- Sources
+
+## Chapter 17 - Git for infrastructure and operations  (17-git-for-infrastructure-and-operations.md)
+- 1. Foundations: The Evidence Trail of Infrastructure
+  - 1.1 The Imperative vs Declarative Source of Truth
+  - 1.2 The Git Directed Acyclic Graph (DAG)
+    - The Four Core Objects
+    - A Deep Dive into the Objects Directory
+  - 1.4 The Three Boundaries of Change
+- 2. The Safe Infrastructure Workflow
+  - Why Each Step Exists in an SRE Context
+- 3. The Ultimate `.gitignore` for AI Infrastructure
+- 4. Pre-commit Hooks: Shifting Left
+- 5. Advanced Repository Architectures for AI Factories
+  - 5.1 The Polyrepo Strategy
+  - 5.2 The Monorepo Strategy
+- 6. Branching Strategies: Trunk-Based Development vs GitFlow
+  - 6.1 GitFlow (Not Recommended for Infrastructure as Code)
+  - 6.2 Trunk-Based Development (Highly Recommended)
+- 7. A Complete CI/CD Pipeline for Terraform via GitHub Actions
+- 8. Merging, Rebasing, and History Integration
+  - 8.1 Merge vs. Rebase: The Conceptual Difference
+  - 8.2 The Golden Rule of Rebase
+  - 8.3 A Safe Rebase Workflow for IaC
+  - 8.4 Detailed Walkthrough: Resolving Merge Conflicts in Lockfiles
+  - 8.5 Advanced Rebasing: `git rebase --onto`
+- 9. Reviewing Infrastructure Changes by Blast Radius
+- 10. GitOps: The Bridge Between Git and the Live Cluster
+  - 10.1 Push-Based vs. Pull-Based GitOps
+- 11. Secrets Management and Sensitive History
+  - 11.1 The Remediation Workflow for Leaked Secrets
+  - 11.2 Prevention is Better Than Cure
+- 12. Branch Protection and CODEOWNERS Governance
+  - 12.1 Branch Protection Rules for the `main` Branch
+  - 12.2 The `CODEOWNERS` File
+- 13. Advanced Recovery: Reversing Operational Mistakes
+  - 13.1 Undo an Unstaged Edit
+  - 13.2 Safely Revert a Published Infrastructure Commit
+  - 13.3 Cherry-Picking Commits
+  - 13.4 The Ultimate Safety Net: `git reflog`
+- 14. Advanced SRE Scenarios
+  - Scenario 1: Using `git bisect` for Infrastructure Regressions
+  - Scenario 2: Managing Large Golden Images with Git LFS
+- 15. Interview Questions for Infrastructure Engineers
+- 16. References
+- 17. Conclusion

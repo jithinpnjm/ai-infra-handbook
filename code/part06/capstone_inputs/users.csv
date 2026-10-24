@@ -1,0 +1,4 @@
+user,uid,fullname,group,project,shell,quota_gb,sshkey
+alice,10001,Alice Nguyen,research,llm-pretrain,/bin/bash,500,ssh-ed25519 AAAAC3Nz...alice
+bob,10002,Bob Chen,research,llm-pretrain,/bin/zsh,200,
+carol,10003,Carol Diaz,platform,infra,/bin/bash,100,ssh-ed25519 AAAAC3Nz...carol

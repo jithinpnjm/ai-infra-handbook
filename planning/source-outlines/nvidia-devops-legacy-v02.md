@@ -1,0 +1,227 @@
+# nvidia-devops-legacy-v02
+
+
+## Python Fundamentals for Infrastructure Masterclass  (00-python-fundamentals-for-infrastructure-masterclass.md)
+- The Problem Statement
+- Mandatory Prerequisites
+- Phase 1: Core Fundamentals & The Mutability Trap
+  - 1.1 Variables, Data Types, and Memory
+    - The Default Mutable Argument Trap (Solutions Architect Scenario)
+  - 1.2 Infrastructure Control Flow
+    - Conditional Assignments (Ternary Operator)
+    - Iterating Over Infrastructure State (Generators)
+- Phase 2: Interacting with the Host System
+  - 2.1 Modern Path Manipulation with `pathlib`
+  - 2.2 System Execution with `subprocess`
+  - 2.3 Advanced File Operations with `shutil`
+- Phase 3: Functions, Scopes, and Higher-Order Patterns
+  - 3.1 Scopes and Closures
+  - 3.2 Decorators in Infrastructure (`@retry`, `@timer`)
+    - The `@timer` Decorator
+    - The `@retry` Decorator (Crucial for API stability)
+- Phase 4: Object-Oriented Infrastructure & Polymorphism
+  - 4.1 The Abstract Base Class (ABC)
+  - 4.2 Implementation: Polymorphic Cloud Abstraction
+- Phase 5: Concurrency - Threading vs AsyncIO
+  - 5.1 The Global Interpreter Lock (GIL)
+  - 5.2 AsyncIO and the Event Loop
+  - 5.3 Building an Async API Health Checker
+  - 5.4 The "Blocked Event Loop" Scenario (Troubleshooting)
+- Phase 6: Solutions Architect Technical Scenarios
+  - Scenario 1: The Out-of-Memory (OOM) JSON Parser
+  - Scenario 2: Orphaned Subprocesses
+  - Scenario 3: Secrets in Memory
+- Phase 7: Deep Dive into Context Managers
+  - 7.1 The `with` Statement
+  - 7.2 Creating Custom Context Managers
+    - Using Classes (`__enter__` and `__exit__`)
+    - Using `@contextmanager` Generator
+- Phase 8: Data Classes and Configuration Management
+  - 8.1 Implementing a Cluster Configuration
+  - 8.2 Validating State with `__post_init__`
+- Phase 9: Error Handling & Fault Tolerance
+  - 9.1 Exception Hierarchies
+  - 9.2 The `else` and `finally` Blocks
+- Summary and Further Reading
+
+## Python Core & OOP Masterclass  (01-python-core-oop-masterclass.md)
+- 1. Introduction: The Infrastructure Engineer's Python
+  - 1.1 The Shift from Scripting to Software Engineering
+- 2. How Python Actually Executes Your Infrastructure Script
+  - 2.1 The Python Execution Model
+  - 2.2 Bytecode Inspection in Action
+  - 2.3 Memory Management and the GIL
+- 3. The Python Object Model, Mutability, and References
+  - 3.1 Mutability and Immutability
+    - The "Default Mutable Argument" Bug
+  - 3.2 Deep vs. Shallow Copies in Configuration Dictionaries
+- 4. Choosing Data Structures by the Problem, Not by Habit
+  - 4.1 Lists vs. Sets for Membership Testing
+  - 4.2 Dictionaries and Memory Profiling
+    - Memory Profiling Example
+- 5. Functions: Turning Scripts into Testable Decisions
+  - 5.1 First-Class Functions and High-Order Functions
+  - 5.2 Type Hinting for Safety
+- 6. Object-Oriented Programming (OOP) for Infrastructure Code
+  - 6.1 Abstract Base Classes (ABCs) for Provider Interfaces
+  - 6.2 Method Resolution Order (MRO) and Multiple Inheritance
+- 7. Configuration is an API: Validation, Secrets, and Precedence
+  - 7.1 The Configuration Hierarchy (Precedence)
+  - 7.2 Strict Validation with Pydantic
+  - 7.3 Secrets Management
+- 8. Files, Pathlib, Regex, JSON, and YAML
+  - 8.1 Pathlib over os.path
+  - 8.2 JSON and YAML Parsing
+- 9. Exceptions and Error Handling in Infrastructure Operations
+  - 9.1 The Hierarchy of Exceptions
+  - 9.2 Creating Custom Exceptions
+- 10. Senior Solutions Architect Troubleshooting & Interview Scenarios
+  - Scenario 1: The Memory Leak in the Data Pipeline
+  - Scenario 2: The Mutability Bug in Deployment Configs
+  - Scenario 3: Zombie Processes in Multiprocessing
+- 11. Advanced Design Pattern: The Infrastructure Command Bus
+- 12. Conclusion and Next Steps
+- Appendix A: Deep Dive into Metaclasses and `__new__`
+  - A.1 Understanding `type`
+  - A.2 A Singleton Configuration Metaclass
+- Appendix B: The Context Manager Protocol (`__enter__` and `__exit__`)
+  - B.1 Creating a Temporary Cloud Resource
+- Appendix C: Advanced Decorators for Infrastructure
+  - C.1 A Parameterized Retry Decorator
+- Appendix D: Profiling and Optimization Techniques
+  - D.1 Using cProfile
+  - D.2 Multiprocessing vs. Threading for APIs
+- Appendix E: Deep Dive into Iterators and Generators
+  - E.1 The Iterator Protocol
+  - E.2 The `yield` Keyword
+- Appendix F: Subprocess and System Integration
+  - F.1 Safe Subprocess Execution
+- Appendix G: Asynchronous Python (`asyncio`)
+- Appendix H: Design Patterns in Python Infrastructure
+  - H.1 The Factory Pattern
+  - H.2 The Strategy Pattern
+- Appendix I: Type Hinting Deep Dive (Python 3.10+)
+
+## Python Systems & Concurrency Masterclass  (02-python-systems-concurrency-masterclass.md)
+- 1. Introduction: The Infrastructure Concurrency Crisis
+  - 1.1 The Senior DevOps Context
+- 2. The Python Concurrency Model: Threads, Asyncio, and Multiprocessing
+  - 2.1 The Global Interpreter Lock (GIL)
+  - 2.2 Concurrency Architecture Diagram
+  - 2.3 When to use what?
+- 3. Subprocess: It's a Process API, Not a Shell Shortcut
+  - 3.1 The Danger of `os.system` and `shell=True`
+  - 3.2 The Modern Approach: `subprocess.run`
+  - 3.3 Deep Dive: `subprocess.Popen` and Zombie Deadlocks
+    - The Pipe Deadlock Scenario
+    - How to fix Deadlock
+  - 3.4 Subprocess Architecture Flow
+- 4. Threads & ThreadPoolExecutor: The I/O Workhorse
+  - 4.1 The Power of ThreadPoolExecutor
+  - 4.2 Backpressure in Thread Pools
+- 5. Asyncio: Massive Concurrency for Infrastructure
+  - 5.1 Asyncio Core Concepts
+  - 5.2 Asyncio Infrastructure Example: Managing BMC APIs
+  - 5.3 Troubleshooting Asyncio: Blocking the Loop
+- 6. HTTP APIs, Retries, and Exponential Backoff
+  - 6.1 The Standard: `requests` with Adapters
+  - 6.2 The Importance of Jitter
+- 7. Structured Logging for Operations
+  - 7.1 Python `logging` to JSON
+- 8. Advanced Patterns: Generators & Decorators Without Magic
+  - 8.1 Generators for Memory Efficiency
+  - 8.2 Decorators for Operational Concerns
+- 9. Senior Solutions Architect Scenarios
+  - Scenario 1: The Zombie Outbreak
+  - Scenario 2: The Silent Async Hang
+  - Scenario 3: The Thread Pool OOM
+- 10. Summary & Production Checklist
+- Appendix A: Exhaustive Code Reference Library
+  - A.1 The Ultimate Asyncio Worker Pool Template
+  - A.2 The Thread-Safe Singleton Pattern
+  - A.3 Robust Multiprocessing for Heavy Data Pipelines
+  - A.4 Custom Exception Hierarchies
+  - A.5 The Tenacity Library: Advanced Retries
+- Appendix B: Network Tooling Automation Masterclass
+  - B.1 Wrapping `kubectl` with Subprocess
+  - B.2 Advanced Asyncio Subprocess for Parallel Execution
+- Appendix C: Design Patterns for API Clients
+  - C.1 Context Managers for Session Cleanup
+- Final Thoughts
+
+## Python Tooling and Operations Masterclass  (03-python-tooling-operations-masterclass.md)
+- 1. Introduction: The Reality of Infrastructure Python
+  - The Shift in Mindset
+- 2. Designing Robust CLI Applications
+  - 2.1 The Evolution: From `sys.argv` to `argparse`
+  - 2.2 Advanced CLI Design with `Click`
+    - Click Core Concepts
+    - Architecture of a CLI Invocation
+    - Extensive Click Implementation: The Fleet CLI
+- 3. Testing Infrastructure Code with Pytest
+  - 3.1 Pytest Fundamentals
+  - 3.2 Advanced Fixtures & Yielding (Teardown)
+  - 3.3 Mocking External APIs Safely
+  - 3.4 Senior Scenario: Leaking Test State
+- 4. Building Resilient Build/API Clients
+  - 4.1 Retries and Backoff with Tenacity
+- 5. CI/CD: Distributing Python CLIs to Ops Teams
+  - 5.1 Packaging Approaches
+  - 5.2 CI/CD Pipeline Architecture
+  - 5.3 GitHub Actions YAML Example
+- 6. Performance Profiling in Production
+  - 6.1 Identifying CPU Bottlenecks with `cProfile`
+  - 6.2 Tracking Memory Leaks with `tracemalloc`
+  - 6.3 Senior Scenario: High Latency in Production
+- 7. Capstone Project: GPU Fleet Diagnostics CLI
+  - 7.1 Architecture
+  - 7.2 Directory Structure
+  - 7.3 Core Implementations
+    - The Parser (`src/parsers.py`)
+    - Testing the Parser (`tests/test_parsers.py`)
+    - The Executor (`src/executor.py`)
+    - The CLI Entrypoint (`src/cli.py`)
+- 8. Conclusion
+- 9. Advanced Senior Interview Scenarios
+  - Scenario 1: The "Zombie" Subprocess Leak
+  - Scenario 2: The Silent API Pagination Trap
+  - Scenario 3: Race Conditions in File Operations
+- 10. Extended API Design Patterns
+  - 10.1 Circuit Breakers
+  - 10.2 Correlation IDs for Distributed Tracing
+- 11. Advanced Profiling: CPU Pinning and Context Switches
+  - 11.1 Understanding the GIL (Global Interpreter Lock)
+  - 11.2 Profiling Context Switches
+- 12. Final Thoughts on Infrastructure Software Engineering
+  - Bonus Deep Dive 1: Managing State securely in CLI tools
+
+## FastAPI & Microservices Masterclass  (04-fastapi-microservices-masterclass.md)
+- The Problem: Blocking AI Infrastructure APIs
+- 1. Measurable Learning Objectives
+- 2. FastAPI Basics: Routing, Paths, and Queries
+  - The Minimal Application
+  - Path Parameters and Query Parameters
+- 2.5. Building Your First Complete FastAPI Application
+  - The Complete Code (`main.py`)
+  - How to Run and Test This
+- 3. Architecture: WSGI vs. ASGI
+- 4. Core Components: FastAPI and Pydantic
+  - Data Validation at the Edge (Pydantic)
+  - The FastAPI Router (Async Handlers)
+- 5. Senior Implementation: Resilience and Background Tasks
+  - Async Retries with Exponential Backoff
+  - Background Tasks
+- 6. Production Hardening and Deployment
+- 7. Interview Gauntlet: FastAPI & Async
+- 8. Summary
+
+## Advanced OOP & Python Design Patterns  (05-advanced-oop-design-masterclass.md)
+- The Problem: Script Spaghetti in Infrastructure
+- 1. Class Templates: Abstract Base Classes (ABC)
+  - Polymorphism in Action
+- 2. Class Variables, Instance Variables, and Methods
+  - Class Variables (Constants) vs. Instance Variables
+- 3. Data Blocks: Dataclasses
+- 4. Function Decorators
+- 5. Generators (`yield`)
+- 6. Interview Gauntlet: Advanced OOP

@@ -1,0 +1,312 @@
+# nvidia-devops-zth-v24
+
+
+## Project 1: CUDA Kernel Optimization  (chapter-01-cuda-kernel-optimization.md)
+- Learning Objectives
+- Beginner's Primer: The Capstone Reality Check
+- Problem Statement
+- Starter Code
+- Success Criteria
+- Starter Tasks (If Needed)
+- Illustrative Output: Profiling Evidence
+- Decision Tree: Optimization Strategy
+- Production Troubleshooting
+- Solution Walkthrough
+  - Step 1: Baseline Profile
+  - Step 2: Tiling with Shared Memory
+  - Step 3: Measure and Compare
+  - Step 4: Further Optimization (Coalescing + Register Blocking)
+  - Step 5: Roofline Validation
+- Interview Preparation
+- Evaluation Rubric
+- Key Takeaways
+- Architecture Summary
+- Discussion Questions
+- Cross-References
+
+## Project 2: AllReduce Algorithm Design  (chapter-02-allreduce-algorithm-design.md)
+- Learning Objectives
+- Beginner's Primer: The Capstone Reality Check
+- Problem Statement
+- Starter Code
+- Success Criteria
+- Illustrative Output: Algorithm Comparison
+- Decision Tree: Algorithm Selection
+- Production Troubleshooting
+- Solution Walkthrough
+  - Step 1: Understand Algorithm Complexity
+  - Step 2: Implement and Profile
+  - Step 3: Trace Communication
+  - Step 4: Compare to NCCL
+- Interview Preparation
+- Evaluation Rubric
+- Key Takeaways
+- Architecture Summary
+- Discussion Questions
+- Cross-References
+
+## Project 3: Distributed Training with Fault Tolerance  (chapter-03-distributed-training-fault-tolerance.md)
+- Learning Objectives
+- Beginner's Primer: The Capstone Reality Check
+- Problem Statement
+- Starter Code
+- Success Criteria
+- Illustrative Output: Training Log with Failure and Recovery
+- Failure Mode Detection
+- Production Troubleshooting
+- Solution Walkthrough
+  - Step 1: Design Checkpoint Structure
+  - Step 2: Implement Checkpointing
+  - Step 3: Detect and Handle Failures
+  - Step 4: Verify Reproducibility
+- Interview Preparation
+- Evaluation Rubric
+- Key Takeaways
+- Architecture Summary
+- Discussion Questions
+- Cross-References
+
+## Project 4: Observability System Design  (chapter-04-observability-system-design.md)
+- Learning Objectives
+- Beginner's Primer: The Capstone Reality Check
+- Problem Statement
+- Metric Schema
+- Starter Code
+- Success Criteria
+- Illustrative Output: Monitoring Dashboard
+- Troubleshooting Decision Tree
+- Production Troubleshooting
+- Solution Walkthrough
+  - Step 1: Define Metrics and Schema
+  - Step 2: Implement Exporters
+  - Step 3: Configure Prometheus
+  - Step 4: Write Alerting Rules
+  - Step 5: Test Alert Detection
+- Interview Preparation
+- Evaluation Rubric
+- Key Takeaways
+- Architecture Summary
+- Discussion Questions
+- Cross-References
+
+## Project 5: Troubleshooting Incident Response  (chapter-05-troubleshooting-incident-response.md)
+- Learning Objectives
+- Beginner's Primer: The Capstone Reality Check
+- Problem Statement
+- Incident Scenario
+  - The Clues (Provided Incrementally)
+- Success Criteria
+- Incident Timeline
+- Diagnostic Commands
+  - 1. Check GPU Metrics
+  - 2. Check NCCL Logs
+  - 3. Check Network Status
+  - 4. Check NVLink Status
+- Solution Walkthrough
+  - Step 1: Diagnosis (0–15 minutes)
+  - Step 2: Mitigation (5 minutes)
+  - Step 3: Verification (10 minutes)
+  - Step 4: Root Cause Analysis (30+ minutes, post-incident)
+- Production Troubleshooting
+- Interview Preparation
+- Evaluation Rubric
+- Key Takeaways
+- Architecture Summary
+- Discussion Questions
+- Cross-References
+
+## Project 6: MIG Configuration for Multi-Tenant Workloads  (chapter-06-mig-configuration-multi-tenant.md)
+- Learning Objectives
+- Beginner's Primer: The Capstone Reality Check
+- Problem Statement
+- MIG Partition Options
+- Starter Code
+- Success Criteria
+- Illustrative Output: MIG Configuration and Benchmark
+- MIG Configuration Decision Tree
+- Production Troubleshooting
+- Solution Walkthrough
+  - Step 1: Calculate Resource Requirements
+  - Step 2: Select MIG Configuration
+  - Step 3: Implement MIG Configuration
+  - Step 4: Benchmark Each Workload
+  - Step 5: Verify Isolation
+- Interview Preparation
+- Evaluation Rubric
+- Key Takeaways
+- Architecture Summary
+- Discussion Questions
+- Cross-References
+
+## Project 7: Kubernetes GPU Scheduling  (chapter-07-kubernetes-gpu-scheduling.md)
+- Learning Objectives
+- Beginner's Primer: The Capstone Reality Check
+- Problem Statement
+- Starter YAML
+- Success Criteria
+- Illustrative Output: Scheduling Simulation
+- Scheduling Decision Tree
+- Production Troubleshooting
+- Solution Walkthrough
+  - Step 1: Design Priority and Resource Allocation
+  - Step 2: Create Priority Classes
+  - Step 3: Deploy Jobs with Resource Requests
+  - Step 4: Monitor Fairness and SLO
+  - Step 5: Add Admission Control (Optional)
+- Interview Preparation
+- Evaluation Rubric
+- Key Takeaways
+- Architecture Summary
+- Discussion Questions
+- Cross-References
+
+## Project 8: Security Architecture Audit  (chapter-08-security-architecture-audit.md)
+- Learning Objectives
+- Beginner's Primer: The Capstone Reality Check
+- Problem Statement
+- Threat Model
+- Real Vulnerabilities
+  - Vulnerability 1: Untrusted Kernel Launch (Same-GPU Time-Slicing)
+  - Vulnerability 2: Shared L2 Cache Side-Channel
+  - Vulnerability 3: VRAM Side-Channel (Memory Bus Sniffing)
+  - Vulnerability 4: Privileged Container Escape
+  - Vulnerability 5: Insufficient Namespace Isolation
+  - Vulnerability 6: Side-Channel via Infiniband Network
+- Success Criteria
+- Illustrative Output: Security Audit Report
+- Production Troubleshooting
+- Solution Walkthrough
+  - Step 1: Audit Container Configuration
+  - Step 2: Test Vulnerability 1 (Privileged Escape)
+  - Step 3: Implement Fix 1 (Remove Privileged)
+  - Step 4: Test Vulnerability 2 (L2 Cache Side-Channel)
+  - Step 5: Implement Fix 2 (Namespace Isolation)
+  - Step 6: Verify Fixes
+- Interview Preparation
+- Evaluation Rubric
+- Key Takeaways
+- Architecture Summary
+- Discussion Questions
+- Cross-References
+
+## Project 9: Capacity Planning Forecast  (chapter-09-capacity-planning-forecast.md)
+- Learning Objectives
+- Beginner's Primer: The Capstone Reality Check
+- Problem Statement
+- Historical Demand Data
+- Starter Spreadsheet Model
+- Success Criteria
+- Illustrative Output: Capacity Plan
+- Cost Breakdown Formula
+- Production Troubleshooting
+- Solution Walkthrough
+  - Step 1: Gather Historical Data
+  - Step 2: Forecast Demand
+  - Step 3: Map to GPU Count
+  - Step 4: Design Upgrade Path
+  - Step 5: Calculate Cost
+  - Step 6: Sensitivity Analysis
+- Interview Preparation
+- Evaluation Rubric
+- Key Takeaways
+- Architecture Summary
+- Discussion Questions
+- Cross-References
+
+## Project 10: Training Cluster Design  (chapter-10-training-cluster-design.md)
+- Learning Objectives
+- Beginner's Primer: The Capstone Reality Check
+- Problem Statement
+- Design Process
+  - Step 1: Calculate GPU Requirements
+  - Step 2: Design Interconnect Topology
+  - Step 3: Calculate Hardware Bill of Materials
+  - Step 4: Estimate Performance
+  - Step 5: Architecture Diagram
+- Success Criteria
+- Illustrative Output: Design Specification
+- Production Troubleshooting
+- Solution Walkthrough
+  - Phase 1: Requirements to Hardware Mapping
+  - Phase 2: Network Design
+  - Phase 3: Storage Design
+  - Phase 4: Monitoring and Failure Recovery
+- Interview Preparation
+- Evaluation Rubric
+- Key Takeaways
+- Architecture Summary
+- Discussion Questions
+- Cross-References
+
+## Project 11: Inference Serving Design  (chapter-11-inference-serving-design.md)
+- Learning Objectives
+- Beginner's Primer: The Capstone Reality Check
+- Problem Statement
+- Calculation Framework
+  - Step 1: Calculate Throughput Per GPU
+  - Step 2: Model Latency Components
+  - Step 3: Calculate GPU Requirements
+  - Step 4: Cost Calculation
+- Serving Architecture
+- Success Criteria
+- Illustrative Output: Deployment Specification
+- Production Troubleshooting
+- Solution Walkthrough
+  - Phase 1: Model Profiling
+  - Phase 2: Design Queue and Batching
+  - Phase 3: Implement Load Balancer
+  - Phase 4: Measure and Optimize
+- Interview Preparation
+- Evaluation Rubric
+- Key Takeaways
+- Architecture Summary
+- Discussion Questions
+- Cross-References
+
+## Project 12: Research Infrastructure Design  (chapter-12-research-infrastructure-design.md)
+- Learning Objectives
+- Beginner's Primer: The Capstone Reality Check
+- Problem Statement
+- Scheduling Challenges
+  - Challenge 1: Starvation
+  - Challenge 2: Utilization
+  - Challenge 3: Priority vs Fairness
+- Design Specification
+  - Scheduling Algorithm
+  - Priority Queue
+  - Cost Model
+- Implementation: SLURM Configuration
+- Fairness Verification
+- Illustrative Output: Job Scheduling Log
+- Production Troubleshooting
+- Solution Walkthrough
+  - Phase 1: Define Fairness Targets
+  - Phase 2: Implement Fair Queuing
+  - Phase 3: Test Fairness
+  - Phase 4: Add Cost Accounting
+  - Phase 5: Monitor and Adjust
+- Interview Preparation
+- Evaluation Rubric
+- Key Takeaways
+- Architecture Summary
+- Discussion Questions
+- Cross-References
+
+## Volume 24 — Capstone Projects: Building Real GPU Systems  (index.md)
+- Overview
+- Projects
+  - Project 1: CUDA Kernel Optimization
+  - Project 2: AllReduce Algorithm Design
+  - Project 3: Distributed Training with Fault Tolerance
+  - Project 4: Observability System Design
+  - Project 5: Troubleshooting Incident Response
+  - Project 6: MIG Configuration for Multi-Tenant Workloads
+  - Project 7: Kubernetes GPU Scheduling
+  - Project 8: Security Architecture Audit
+  - Project 9: Capacity Planning Forecast
+  - Project 10: Training Cluster Design
+  - Project 11: Inference Serving Design
+  - Project 12: Research Infrastructure Design
+- How to Use
+- Evaluation Rubric
+- Cross-References

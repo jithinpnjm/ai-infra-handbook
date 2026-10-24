@@ -1,0 +1,152 @@
+# nvidia-devops-legacy-v05
+
+
+## AI Workloads & Training Architecture Masterclass  (01-ai-workloads-training-masterclass.md)
+- Table of Contents
+- Introduction to AI Workloads
+  - The Problem with "Just Buy GPUs"
+- Workload Classification
+  - 1. Compute Characteristics (FLOPS vs. Memory Bandwidth)
+  - 2. Network Characteristics (The Synchronization Tax)
+  - 3. I/O Characteristics (Data Loading and Checkpointing)
+- Training Architecture Fundamentals
+  - The Forward and Backward Pass
+- Deep Dive into Parallelism Strategies
+  - Memory Anatomy of a Model
+  - Data Parallelism (DP)
+    - ZeRO (Zero Redundancy Optimizer) / FSDP
+  - Tensor Parallelism (TP)
+  - Pipeline Parallelism (PP)
+  - Expert Parallelism (EP) - MoE
+  - 3D and 4D Parallelism
+- The Science of Collectives (NCCL)
+  - Key Collective Operations
+  - Ring vs. Tree Algorithms
+  - Tuning NCCL for Production
+- Checkpoint Economics and Storage Architecture
+  - The Mathematics of Checkpointing
+  - Storage Tiers for Checkpoints
+  - PyTorch Distributed Checkpointing (DCP)
+- Production Benchmarks and Profiling
+  - 1. The Network Benchmark (nccl-tests)
+  - 2. The Compute Benchmark (NeMo / Megatron)
+  - 3. Profiling with Nsight Systems (nsys)
+- Senior Solutions Architect Troubleshooting
+  - Scenario 1: The Infamous NCCL Hang
+  - Scenario 2: Checkpoint I/O Saturation
+  - Scenario 3: Low MFU Despite Good Hardware
+- Interview Scenarios
+  - Scenario A: The Top-of-Rack Switch Failure
+  - Scenario B: The Bandwidth Mystery
+  - Scenario C: Pipeline Bubble Optimization
+- Conclusion
+- Extended Deep Dive Topics
+  - Advanced Networking Concept 1: Micro-bursts and PFC
+  - Hardware Diagnostic Deep Dive 1: PCIe Advanced Error Reporting (AER)
+  - Collective Operations Deep Dive 1: All-to-All and MoE
+
+## LLM Inference and Serving Masterclass  (02-llm-inference-serving-masterclass.md)
+- 1. Introduction: The Inference Imperative
+  - 1.1 The Production Conundrum
+- 2. The Mechanics of LLM Inference: Prefill and Decode
+  - 2.1 The Prefill Phase (Prompt Processing)
+  - 2.2 The Decode Phase (Token Generation)
+  - 2.3 The Architectural Trade-off
+- 3. The KV Cache Bottleneck and PagedAttention
+  - 3.1 What is the KV Cache?
+  - 3.2 The Memory Math of the KV Cache
+  - 3.3 The Problem with Traditional Memory Management
+  - 3.4 PagedAttention: The Solution
+- 4. Continuous Batching (In-Flight Batching)
+  - 4.1 Static vs. Dynamic vs. Continuous Batching
+  - 4.2 The Challenge: Chunked Prefill
+- 5. The Serving Frameworks Landscape
+  - 5.1 vLLM: The PagedAttention Pioneer
+  - 5.2 NVIDIA TensorRT-LLM (TRT-LLM): Bare Metal Performance
+  - 5.3 Triton Inference Server: The Orchestrator
+  - 5.4 NVIDIA NIM (NVIDIA Inference Microservices)
+- 6. Deep Dive: TensorRT-LLM Engine Building
+  - 6.1 Step 1: Checkpoint Conversion
+  - 6.2 Step 2: Engine Compilation (trtllm-build)
+- 7. Triton Inference Server Configuration for LLMs
+  - 7.1 Deep Dive: The Triton config.pbtxt
+- 8. System-Level Optimization: CUDA Graphs and torch.compile
+  - 8.1 The CPU Overhead Problem
+  - 8.2 CUDA Graphs
+  - 8.3 torch.compile (TorchDynamo)
+- 9. Production Operations: Telemetry and Scaling
+  - 9.1 The Golden Signals of LLM Serving
+  - 9.2 The HPA (Horizontal Pod Autoscaler) Dilemma
+- 10. Senior Solutions Architect Troubleshooting Scenarios
+  - Scenario 1: The OOM during Decode Spike
+  - Scenario 2: The TPOT Degradation Trade-off
+  - Scenario 3: Preemption and Swapping Thrash
+- 11. Core Interview Questions for AI Infrastructure Roles
+- 12. Advanced API Integration and Client-Side Handling
+  - 12.1 The OpenAI Compatible Server
+  - 12.2 Handling Streaming Responses in Python
+  - 12.3 Offline Inference (Batch Processing)
+- 13. Deep Dive: Multi-LoRA Serving at Scale
+  - 13.1 How Multi-LoRA Works
+  - 13.2 LoRA Paging (vLLM)
+- 14. Hardware Implications: Grace Hopper and the Future
+- 15. Summary
+
+## AI Autoscaling, RAG, and Agentic Masterclass  (03-ai-autoscaling-rag-masterclass.md)
+- Part 1: Autoscaling Inference with KEDA and Custom Metrics
+  - Why KEDA over Standard HPA?
+  - KEDA ScaledObject Architecture
+  - Example: KEDA ScaledObject for vLLM
+    - Explanation of the ScaledObject:
+  - Handling Scale to Zero and Cold Starts
+- Part 2: Distributed & Disaggregated Inference
+  - Tensor Parallelism vs Pipeline Parallelism
+  - The Disaggregation Revolution: Prefill vs Decode
+  - Implementing Disaggregation
+    - Challenge: KV Cache Transfer over Network
+    - TRT-LLM Configuration Concept
+- Part 3: State, Caches, & RAG Dependencies
+  - The RAG Architecture
+  - Vector Databases in Production
+    - Code Block: Advanced LangChain RAG Search with Metadata Filtering
+  - KV Cache as State
+- Part 4: Security & Tenancy for AI Platforms
+  - 1. GPU Level Isolation (MIG vs vGPU)
+  - 2. Network and Data Isolation
+- Part 5: Performance & Cost Engineering
+  - The Key Metric: Cost per 1k Tokens
+  - Optimization Strategies
+  - Prometheus Dashboard Queries
+- Part 6: Agentic & Multimodal Infrastructure
+  - Agentic Loop Architecture (ReAct)
+  - Infrastructure Demands for Agents
+  - Python Code: A Basic Agentic Loop
+- Part 7: Senior SA Troubleshooting & Interview Scenarios
+  - Scenario 1: The HPA Thrashing on Queue Depth
+  - Scenario 2: Stale Vector Indexes in RAG
+  - Scenario 3: KV Cache Sharing Across Nodes
+- Part 8: Advanced Operational Readiness
+- Summary
+  - Extended Appendix: Deep Dive into NVIDIA DCGM Metrics for Autoscaling
+    - Key DCGM Metrics for Production
+    - XID Error Troubleshooting Guide
+  - Extended Appendix: Multi-Modal AI Infrastructure
+    - Vision-Language Models (VLMs)
+  - Extended Appendix: FinOps and Cost Attribution in Kubernetes
+  - Final Thoughts on AI Operations
+  - Deep Dive Configuration Reference - Module 1
+  - Extended Appendix: Troubleshooting Inference Performance and Latency
+    - Issue: High Time To First Token (TTFT) but Normal Inter-Token Latency
+    - Issue: OOM (Out of Memory) Errors During Peak Load
+    - Issue: Inter-Node Network Bottlenecks in Pipeline Parallelism
+  - Production Checklists for AI Factories
+    - 1. Network & Storage
+    - 2. Compute & Scheduling
+    - 3. Observability & Autoscaling
+    - 4. Security
+  - Extended Appendix: Vector Database Benchmarking and Tuning
+    - The Memory Cost of HNSW
+    - Optimization Strategy: IVF_PQ (Inverted File with Product Quantization)
+  - Extended Appendix: NVIDIA Triton Inference Server Autoscaling
+    - Triton Queue Metrics for Autoscaling
+    - Triton Configuration: Dynamic Batching

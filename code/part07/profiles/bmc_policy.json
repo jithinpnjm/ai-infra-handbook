@@ -1,0 +1,13 @@
+{
+  "_comment": "Lab BMC hardening policy. The values are choices for the lab, not vendor requirements.",
+  "protocols_off": ["HTTP", "Telnet", "IPMI", "SSDP"],
+  "protocols_on": ["HTTPS"],
+  "ntp_servers": ["time1.example.net", "time2.example.net"],
+  "basic_auth": "Disabled",
+  "min_password_length": 12,
+  "lockout_threshold": 5,
+  "max_session_timeout": 900,
+  "min_cert_days_left": 30,
+  "default_usernames": ["root", "admin", "administrator", "factory", "ADMIN", "USERID"],
+  "max_administrators": 2
+}

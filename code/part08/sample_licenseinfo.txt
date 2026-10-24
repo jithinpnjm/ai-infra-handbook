@@ -1,0 +1,14 @@
+License Information
+------------------------------------ -----------------------------------------------------
+Licensee                             /C=US/ST=California/L=San Jose/O=NVIDIA Corporation...
+Serial number                        2913820
+Start time                           Sat Feb  8 16:00:00 2025
+End time                             Sun May 25 16:59:00 2025
+Version                              10 and above
+Edition                              NVIDIA Mission Control
+Type                                 Free
+Licensed nodes                       56 / 8192
+Licensed accelerators                144 / 8192
+Accelerators details                 36 * 4 gpu
+Allow edge sites                     Yes
+MAC address / Cloud ID               C2:5F:B9:48:A2:3C|7C:C2:A8:6B:9B:EA

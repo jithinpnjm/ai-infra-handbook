@@ -1,0 +1,138 @@
+# nvidia-devops-legacy-v07
+
+
+## Masterclass: Metrics, Logs, Traces, and SLOs in AI Infrastructure  (01-metrics-logs-traces-masterclass.md)
+- 1. Introduction: The Observability Imperative in AI Factories
+- 2. The Three Pillars of Observability
+  - 2.1 Metrics: The "Is there a problem?" Signal
+  - 2.2 Logs: The "What exactly happened?" Signal
+  - 2.3 Traces: The "Where did the problem happen?" Signal
+- 3. Service Level Indicators, Objectives, and Agreements (SLI/SLO/SLA)
+  - 3.1 Service Level Indicator (SLI)
+  - 3.2 Service Level Objective (SLO)
+  - 3.3 Service Level Agreement (SLA)
+  - 3.4 Error Budgets
+- 4. Prometheus and PromQL Deep Dive
+  - 4.1 The Prometheus Data Model
+  - 4.2 PromQL Reasoning and Vector Math
+    - Calculating Rates
+    - Vector Matching
+  - 4.3 Implementing SLO Alerts in PromQL
+- 5. The Cardinality Explosion Problem
+  - 5.1 Identifying High Cardinality
+  - 5.2 Mitigating Cardinality
+- 6. Logs That Survive Incidents
+  - 6.1 Centralized Logging Architecture
+  - 6.2 Structured Logging
+  - 6.3 Log Retention and Routing
+- 7. OpenTelemetry and Trace Context Across AI Services
+  - 7.1 What is OpenTelemetry (OTel)?
+  - 7.2 Trace Context Propagation
+  - 7.3 The OTel Collector
+  - 7.4 Triton Inference Server and Tracing
+- 8. Advanced NVIDIA AI Factory Operations
+  - 8.1 NVIDIA DCGM (Data Center GPU Manager)
+  - 8.2 InfiniBand and RoCE Telemetry
+- 9. Senior Solutions Architect Troubleshooting Scenarios
+  - Scenario 1: The TSDB Cardinality Explosion
+  - Scenario 2: The "Ghost" Latency in Triton Ensembles
+  - Scenario 3: Broken Trace Context Propagation
+- 10. Conclusion and Operational Best Practices
+  - 10.1 Further Reading
+- 11. Appendix A: Advanced PromQL Playbook for AI Infrastructure
+  - 11.1 GPU Utilization and Stragglers
+  - 11.2 Memory Bandwidth Bottlenecks
+  - 11.3 NVLink Error Tracking
+  - 11.4 InfiniBand Congestion Detection
+- 12. Appendix B: Alertmanager Configuration for On-Call Routing
+- 13. Appendix C: Advanced Recording Rules for Aggregation
+- 14. Appendix D: Deep Dive into Distributed Tracing Data Structures
+  - Sample OpenTelemetry Span (JSON Representation)
+  - Trace-based Metrics (Exemplars)
+- 15. Appendix E: More Senior Interview Scenarios
+  - Scenario 4: The Storage Bottleneck Masquerading as GPU Underutilization
+  - Scenario 5: FluentBit Backpressure and Dropped Logs
+- 16. Appendix F: Comprehensive Glossary of Observability Terms
+- 17. Final Review Checklist for AI Infrastructure Observability
+- 18. Appendix G: Comprehensive PromQL Reference Guide for SREs
+  - Basic Aggregation Operators
+  - Important Functions
+  - Advanced Filtering and Regex
+  - Time Shifting (Offset)
+  - Dealing with Missing Data (`absent()`)
+- 19. Appendix H: Full Prometheus Configuration Blueprint
+- 20. Appendix I: The Evolution of Observability in AI
+  - The Past: Nagios and Ping
+  - The Present: Prometheus and Microservices
+  - The Future: OTel, eBPF, and AI-Driven Insights
+
+## Masterclass: Kubernetes GPU & Inference Observability  (02-k8s-gpu-observability-masterclass.md)
+- Introduction: The Observability Gap in AI Infrastructure
+- 1. The Kubernetes Observability Baseline
+  - 1.1 Kube-State-Metrics (KSM)
+  - 1.2 The Node Exporter and cAdvisor
+- 2. GPU Observability with DCGM (Data Center GPU Manager)
+  - 2.1 The DCGM Architecture
+  - 2.2 Production `dcgm-exporter` Deployment
+  - 2.3 The `custom-metrics.csv`
+  - 2.4 Understanding Key GPU Metrics
+- 3. GPU Profiling in Kubernetes
+  - 3.1 Nsight Systems (nsys)
+  - 3.2 PyTorch Profiler Integration
+- 4. Advanced Inference Metrics (LLM Observability)
+  - 4.1 The Golden Metrics of LLM Inference
+  - 4.2 PromQL Queries for Inference
+- 5. The NVIDIA AI Factory Observability Stack
+  - 5.1 Massive Grafana Dashboard for LLM & GPU Observability
+- 6. Senior Solutions Architect Troubleshooting Scenarios
+  - 6.1 Scenario 1: TTFT Spikes Under Load
+  - 6.2 Scenario 2: Double-Bit ECC Error (XID 48) and Node Cordons
+  - 6.3 Scenario 3: NVLink Bandwidth Imbalance
+- 7. Senior Interview Questions & Answers
+- 8. Summary and Revisions
+  - Cross-References
+  - Further Reading
+- Extended Module 1: Multi-Node Training Traces and Observability Correlation
+  - 1. Correlating K8s Events with Prometheus Metrics
+  - 2. OpenTelemetry for Inference Pipelines
+
+## Incident Response, Alerts & Reliability Masterclass  (03-incident-response-alerts-masterclass.md)
+- 1. Introduction: The Cost of Silence
+  - 1.1 The Production Story: The Cascade of Doom
+  - 1.2 Learning Objectives
+- 2. Alert Design for Expensive GPU Systems
+  - 2.1 The Philosophy of Alerting
+  - 2.2 PromQL Alert Rules: From Beginner to Advanced
+    - Beginner: GPU Temperature High
+    - Advanced: Sustained Thermal Throttling
+    - Senior Architect Level: Job Efficiency Drop
+  - 2.3 Alertmanager Configuration & Routing
+- 3. Incident Workflows & The Evidence Tree
+  - 3.1 The Decision Tree (Mermaid)
+  - 3.2 Safe Mitigation Principles
+- 4. Incident Playbooks: GPU Workloads Failing
+  - 4.1 Playbook: Pending Pods (Insufficient GPUs)
+  - 4.2 Playbook: CrashLoopBackOff & OOM (Out of Memory)
+  - 4.3 Playbook: GPU Workload Slow (Straggler Node)
+- 5. Reliability Testing and Game Days
+  - 5.1 Game Day Principles
+  - 5.2 Chaos Mesh Manifests for AI Factories
+    - Scenario 1: Network Latency Injection (TCP/IP path)
+    - Scenario 2: Host Memory Stress (Simulating noisy neighbor or rogue process)
+- 6. Incident Communication and Postmortems
+  - 6.1 The Blameless Postmortem
+- 7. Senior Solutions Architect Troubleshooting & Interview Scenarios
+  - Scenario 1: The Phantom PCIe Bottleneck
+  - Scenario 2: The Cascading NVLink Failure
+  - Scenario 3: Alert Fatigue Mitigation
+- 8. Conclusion: The AI Factory Operational Maturity Model
+- Appendix A: Complete Incident Runbooks
+  - Runbook A1: Infiniband Subnet Manager Split Brain
+  - Runbook A2: Storage Backend Stalls (NFS/Lustre)
+  - Runbook A3: Kubernetes Control Plane Overload
+- Appendix B: Advanced Chaos Mesh Scenarios
+  - Scenario 3: Storage IOPS Throttling
+  - Scenario 4: Pod Kill Storm
+- Appendix C: Extended PromQL Library
+  - C1: GPU Memory Leak Detection
+  - C2: NVLink Error Rate Spike

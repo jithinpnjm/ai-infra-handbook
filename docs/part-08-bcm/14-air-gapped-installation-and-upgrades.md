@@ -1,0 +1,192 @@
+---
+id: "c08-14"
+title: "8.14 Air-gapped installation and upgrades"
+sidebar_label: "8.14 Air-gapped installation and upgrades"
+sidebar_position: 14
+description: "How to build and upgrade BCM and Kubernetes on a cluster with no internet: what you prepare on a connected host, the bundle of packages, images, charts and CRDs, the ordered steps on the active head node, the local registry, Run:ai, version skew rules for upgrades, and offline options for the rest of BCM, with the manuals' rules reproduced in a tested checker"
+status: "drafted"
+tier: "1b"
+level: "A"
+lab_venue: "Nebius GPU"
+---
+
+# 8.14 Air-gapped installation and upgrades
+
+| | |
+|---|---|
+| Level | Intermediate to advanced |
+| Priority tier | 2 |
+| Lab venue | Laptop |
+| Part | Part 8: NVIDIA Base Command Manager |
+| Status | Drafted from the BCM 11 Containerization Manual appendices B (Kubernetes installation on an air-gapped cluster) and C (upgrade), with supporting facts from the Administrator Manual (9.6.3 local repositories, 14.12 MySQL offline install) and the Installation Manual (the Ansible installer and DOCA OFED). **No BCM system and no air-gapped network were available.** `code/part08/bcm_airgap.py` is **my checker for the rules the manuals state**, and `airgap_lab.py` checks 28 of them. It tests my reading, not BCM. The manual's examples are for BCM 11.33 and Kubernetes 1.34.7; details change by release (the manual itself lists differences for 11.34) |
+
+## Why this matters for AI infrastructure
+
+Many AI clusters sit in places with no direct internet: regulated industries, government, defence, and large operators who isolate the training fabric. In those places `yum update` and `docker pull` do not exist. Everything has to be brought in on media, verified, and installed from local copies. The work is mostly **preparation**: if one package, image or chart is missing from the bundle, you find out halfway through an installation that you cannot continue.
+
+## Prerequisites and outcomes
+
+You need chapters 8.2, 8.4, 8.9, 8.10 and 8.12. After this chapter you can:
+
+- explain what must be done before the cluster is cut off
+- prepare a complete bundle on a connected host and check it is complete
+- install Kubernetes and the container registry from the bundle, in the right order
+- avoid the traps with architectures, passive head nodes, Ubuntu's `_apt` user and Docker Hub limits
+- plan a Kubernetes upgrade that respects the version skew rules
+- set up the rest of BCM (images, OFED, MySQL) from offline sources
+
+## 1. What "air-gapped" means for BCM
+
+The manual's definition: the cluster is not directly connected to the internet, usually to protect it. For BCM that raises four questions:
+
+1. **Where do OS and BCM packages come from?** Local repositories built from install media (9.6.3 of the Administrator Manual) or internal mirrors.
+2. **Where do container images come from?** A **local registry** on the head node (chapter 8.10).
+3. **Where do Helm charts and CRDs come from?** The same bundle, pushed into that registry.
+4. **How do you move things in?** Through a connected "initial host" and removable media.
+
+## 2. The reference scenario (Appendix B)
+
+Cluster air-gapped, Kubernetes 1.34.7, BCM 11.33.0 or 11.33.1, on Ubuntu 22.04 or 24.04, Rocky Linux 9 or RHEL 9. The initial host needs internet, an OS and **architecture that match the cluster's** (Ubuntu 22.04, 24.04, 26.04, Rocky 9 or RHEL 9). **The bundle supports one architecture at a time**: a cluster with x86-64 head nodes and ARM64 control plane nodes needs a more customized approach.
+
+```mermaid
+flowchart LR
+  subgraph I[initial host: internet]
+    D[download scripts] --> T[airgapped.tgz]
+  end
+  T -->|USB / transfer| H[active head node]
+  subgraph C[air-gapped cluster]
+    H --> R[local registry master.cm.cluster:5000]
+    R --> K[Kubernetes nodes pull images and charts]
+  end
+```
+
+## 3. Before the cluster is cut off
+
+Things that **cannot be arranged once the cluster is air-gapped**, so do them first:
+
+- **Node assignment** for the Kubernetes control plane, workers and etcd (chapter 8.9; the wizard screens are the same, but you must have done the selection).
+- If **Run:ai** will be used: three reserved IP addresses from the internal network, DNS records for the Run:ai control plane FQDN, two wildcard subdomains, a TLS certificate and key, and an NGC API key.
+- The list of **operators** you will want (the bundle only contains what you download).
+- The BCM **repository credentials** (`<user>:<password>` in `cm.list`), taken from a working cluster, to download packages on the initial host.
+- The **GPU operator version**: only chart versions that you downloaded can be installed. A certified version (asterisk in the wizard) is not necessarily downloaded, and a downloaded version is not necessarily certified. List `helm-charts/` before you choose.
+
+## 4. Preparing the bundle (on the connected host)
+
+1. **OS match.** Copy the BCM repository files from a working cluster of the same OS: on Ubuntu `cm-*.list` and `ubuntu.sources` under `/etc/apt/sources.list.d/` (the manual shows 11.33 fixes for architecture lines: `Architectures: amd64`/`arm64` in `ubuntu.sources`, `arch=` in the CUDA and `cm.list` files; they are fixed from 11.34); on RHEL `cm.repo` and `epel.repo` under `/etc/yum.repos.d/`.
+2. **Tools.** **Helm 3.x** (not 4.x as of the manual's date; `download_helm_binary.sh` installs it) and **Skopeo** on the connected host only. The air-gapped head gets its own Skopeo from the bundle; **do not install it there from a distribution repository**, there is none.
+3. **Docker Hub limits.** Unauthenticated pulls are limited to **100 per 6 hours**, authenticated to **200 per 6 hours**. Sign up for any account and `skopeo login docker.io`; the credentials are not put in the bundle.
+4. **Scripts** (from `$K8S_AG_SCRIPTS`, the `airgap-scripts` directory of the `cm-setup` package; add it to `PATH`): `download_ubuntu_packages.sh` (or `download_r9_packages.sh`), `download_container_images.sh`, `download_helm_charts.sh`, `download_crds.sh`. **Pass `--kube-version=1.34` to the first three explicitly**, otherwise each uses its own default version. They can also read the version from a `cm-kubernetes-setup.conf` with `-c`. Run them in sequence, in `screen` or `tmux`; the container images take about 15 times longer than everything else. Apt warnings about `_apt` and `/root` are expected and harmless.
+5. **Size.** About **8.6 GB** (8.1 GB of it images) without Run:ai; Run:ai adds **13 to 14 GB**, so plan **upwards of 20 GB** of working space.
+6. **Run:ai** (optional): the air-gapped package from NGC (needs an NGC API key; version 2.23.60 or later for multi-arch) and the `cm-setup-runai-bcm11` package, published **only as a `.deb`**, so **air-gapped Run:ai on RHEL is not supported in this release**. Verify with `sha256sum -c`; the `.sha256` file holds only the checksum, so append the file name on the same line first. Do not install if the check is not OK.
+7. **Completeness check.** `find packages packages-head packages-non-dgx packages-cuda k8s-images helm-charts crds -type f`: **every category must print files.** A directory or subdirectory that exists but is empty means that download did not finish; re-run it before tarballing.
+8. `tar -cvzf airgapped.tgz airgapped`, include **all architectures** the Kubernetes nodes use, and carry it to the **active** head node.
+
+If your network restricts outbound destinations from the connected host, the chart repositories change between releases: BCM 11.34 adds the AgentGateway OCI repositories, the Argo CD repository and the Flannel repository.
+
+## 5. Installing on the air-gapped head node
+
+The manual's order (13 steps in the lab's `STEPS`):
+
+1. **Generate the configuration** while still able to run the wizard: `cm-kubernetes-setup --airgap-registry master.cm.cluster:5000 --airgap-registry-as-helm`, go through the wizard, and at the summary **save, do not deploy**. If Run:ai is planned, select **its dependency operators** now (GPU Operator, Grafana Operator, Kgateway, Knative, Kubeflow Training, Metrics Server, MPI Operator, State Metrics, LeaderWorkerSet, MetalLB, Prometheus Adapter and Operator Stack; Network and NIM Operators are optional).
+2. **Extract** the bundle. On **Ubuntu extract somewhere APT can write, such as `/tmp`**: APT runs as `_apt`, which cannot read under `/root`. On Rocky and RHEL you can extract in place.
+3. From inside the extracted directory: `cm-kubernetes-setup --airgap-install-system-packages -c /root/cm-kubernetes-setup.conf`. It installs the packages on the head and in the images (multi-arch automatically) and brings Skopeo. **On an HA pair run it on the active head only**; it also updates the secondary. **Never run the wizard on the passive head** and **never use `--force`** to override the "not the active head node" refusal: software images are local to each head and synchronized from the active one, so a passive write is reverted and the passive serves a different image meanwhile.
+4. **Registry:** `cm-container-registry-setup --skip-packages`, choose the active head, set the certificate SAN (for example `master.cm.cluster`), save and deploy. Then trust its CA system-wide: copy `/cm/local/apps/docker-registry/var/etc/<host>:5000-ca.crt` to `/usr/local/share/ca-certificates/` and `update-ca-certificates`, so Helm works without TLS errors.
+5. **Docker** (only for Run:ai): `cm-docker-setup --skip-packages`; check with `module load docker; docker ps`. No `docker login` needed.
+6. **Push** the content: `cm-kubernetes-setup --airgap-push-container-images -c ...` then `--airgap-push-helm-charts -c ...`.
+7. **Extract CRDs:** `$K8S_AG_SCRIPTS/extract_crds.sh`.
+8. **Deploy:** `cm-kubernetes-setup -c /root/cm-kubernetes-setup.conf`. The `airgap` section of the config (Helm repo `oci://master.cm.cluster:5000/helm-charts`, registry, CA path) is filled in automatically by the flags in step 1.
+9. **Run:ai** is deployed afterwards by its own wizard, `cm-runai-setup`, which needs the `cm-setup-runai-bcm11` package (the command exists without it but fails). BCM 11.33 pairs with Run:ai 2.25 and 11.34 with 2.26, but any supported Run:ai version can be used.
+
+The lab's `order_problems` flags the dependency mistakes: pushing before the registry exists, deploying before images, charts and CRDs are in place, and so on. The wizard checks the bundle against the Kubernetes version you chose (from BCM 11.34) and names each package or chart whose version does not match, which is much better than failing late (chapter 8.9).
+
+## 6. Upgrading Kubernetes air-gapped (Appendix C)
+
+Same principles as chapter 8.9, with these differences:
+
+- **Minimum BCM point release:** 11.32.0 (BCM 11) or 10.31.0 (BCM 10). Check with chapter 8.13's version rules.
+- **Version skew:** at most **two adjacent minor releases** in the cluster at any time (1.34 and 1.35 fine; 1.33, 1.34 and 1.35 not). If nodes are on two minors, **the only valid upgrade is to the newer one**. Skipping minors is not allowed. Decide: **minor** upgrade (latest of the next minor) or **patch** upgrade (latest patch of the current minor). Read the BCM release notes and compatibility matrix for the target version.
+- The cluster must be healthy and a local registry deployed; nodes to upgrade must be **drained**.
+- Rebuild the bundle for the **target** version on the connected host (same steps, `--kube-version` set to the target), carry it over, extract, install packages, push images and charts, extract CRDs.
+- Upgrade control plane nodes **first**, one at a time: update the node's binaries with `imageupdate -w <node> --wait` (without `-w` it is only a dry run, chapter 8.4), then `kubeadm upgrade plan --kubeconfig=/root/.kube/config-default` on the node (give the kubeconfig explicitly if there are several Kubernetes clusters), and continue as chapter 8.9 section 8 describes; then workers.
+
+## 7. The rest of BCM, offline
+
+| Need | Offline option |
+|---|---|
+| Distribution and BCM packages for the head or an image | A local repository from the install media: mount the ISO (`mount -o loop`), `bind` mount it into the image, a repo file such as `/etc/yum.repos.d/cm11.0-dvd.repo` with `baseurl=file:///mnt1/data/packages/11.0-<subminor>`. For Ubuntu an APT list for the ISO; the BCM line needs no `trusted=yes` (the `cm-config-apt` package imports the BCM keyring), and the second line for the base Ubuntu packages on the ISO uses `trusted=yes`, which the manual calls a **deliberate risk acceptance for local, physically controlled media, not a default to copy to a network-hosted repository** |
+| RHEL or SLES base repositories | copy the vendor ISOs into the image (`/root/repo1`) and add `file://` repos (9.6.3) |
+| A custom image offline | `cm-create-image ... -e -s` with the local repository (9.6.4); `--air-gapped` exists in the image-creation options |
+| Mellanox/DOCA OFED | `cm-doca-ofed-install.sh -v <version> -h --cmdvd` installs from a BCM install medium (BCM 11 media carry DOCA OFED) |
+| MySQL for Slurm (`cm-mysql-setup`) | `--skip-packages`, with `mysql-server` packages preinstalled in the server nodes' images and `mysql-router` in client images; Ubuntu 24 and later use the distribution packages, other systems need MySQL Community Edition packages |
+| RHEL head node installer (Ansible add-on) | an internal mirror `.repo` file via `pre_install_repo_files`, `--basedistrepo` pointing at it, and keep the ISO's Rocky repositories disabled on a RHEL host (they conflict with RHEL packages) |
+| Updates later | repeat the connected-host preparation and carry in a new bundle; there is no `yum update` |
+
+## 8. Operating an air-gapped cluster
+
+- **Updates are projects.** Plan windows to refresh the bundle: OS security updates, BCM point releases, Kubernetes patches, GPU operator charts, Run:ai.
+- **Keep the bundle.** Store `airgapped.tgz` with its checksum, the exact `cm-kubernetes-setup.conf`, the repo files and the release notes. A rebuild needs them (chapter 8.13).
+- **Time and certificates.** An isolated site still needs a correct clock (an internal NTP source) and certificate lifetimes you manage (chapter 8.6).
+- **Support.** `cm-diagnose` output can be moved out on media (chapter 8.13).
+- **Image provenance.** Verify checksums on everything you carry in; keep the connected host clean and single-purpose.
+
+## 9. Common first mistakes
+
+1. Downloading a bundle for the wrong Kubernetes version (forgetting `--kube-version`).
+2. A bundle with an empty category.
+3. Not choosing operators or the Run:ai dependencies before the cut-off.
+4. Extracting under `/root` on Ubuntu.
+5. Installing Skopeo from a repository on the air-gapped head.
+6. Running the wizard on the passive head, or using `--force`.
+7. Picking a GPU operator version that was not downloaded.
+8. Forgetting the registry CA trust, so Helm fails with TLS errors.
+9. Upgrading across minors or with nodes on three minors.
+10. Planning air-gapped Run:ai on RHEL.
+
+## 10. Exercises
+
+1. Run `python3 airgap_lab.py`. Pick four checks and explain each rule in your own words.
+2. Write a pre-flight checklist for the connected host with ten items, each with the command that verifies it.
+3. A cluster has nodes on 1.34.7 and 1.35.1. Which upgrade targets are valid? What if one node is on 1.33?
+4. Estimate the number of Docker Hub pulls needed for a bundle of 230 images, with and without an account.
+5. Draw the order of steps for adding a new operator to an already air-gapped cluster. What must be on the connected host first?
+6. Explain to a security officer how you will verify each file that enters the cluster.
+
+## 11. Interview angles
+
+- "How do you install Kubernetes where nothing reaches the internet?" A bundle prepared on a connected host (packages, images, charts, CRDs), moved on media, a local registry, and `cm-kubernetes-setup` in air-gap mode.
+- "What would you check before cutting the cluster off?" Node roles, operators and versions, GPU operator chart, Run:ai prerequisites, bundle completeness.
+- "How do you upgrade Kubernetes there?" Same kubeadm principles, rebuilt bundle for the target, skew policy (two adjacent minors), control plane first, drain.
+- "Why not run the wizard on the passive head?" Images are local to each head and synchronized from the active head, so passive writes are lost.
+- "What can the bundle not do?" Contain what you forgot; there is no way to fetch it later.
+
+## 12. Checkpoint questions (20)
+
+1. What does air-gapped mean for BCM?
+2. What must the initial host match?
+3. How many architectures does one bundle support?
+4. Why pass `--kube-version` explicitly to the download scripts?
+5. What are Docker Hub's pull limits, and how do you work around them?
+6. Which seven categories must hold files?
+7. How do you check completeness?
+8. How large is the bundle without and with Run:ai?
+9. Why extract to `/tmp` on Ubuntu?
+10. On which head do you run the package installation?
+11. Why not use `--force` on a passive head?
+12. Where does the head node get Skopeo?
+13. What does `--airgap-registry-as-helm` do?
+14. Which steps push content into the registry?
+15. Why must a downloaded GPU operator chart match the wizard choice?
+16. Why is air-gapped Run:ai unsupported on RHEL?
+17. Which BCM point releases allow the air-gapped Kubernetes upgrade?
+18. State the version skew rule.
+19. What is `trusted=yes` acceptable for, according to the manual?
+20. What does `--cmdvd` do for DOCA OFED?
+
+## 13. Sources and review notes
+
+- **BCM 11 Containerization Manual:** appendix B (installation: host preparation, head node preparation, registry, Docker for Run:ai, pushing content, CRDs, deployment, decoupled Run:ai) and appendix C (upgrade prerequisites, preparation, head node steps; the start of the upgrade procedure). Not read: the remainder of C.4 (the step-by-step `kubeadm` sessions), appendix A (self-signed certificate pair), Run:ai chapter 6.11.
+- **BCM 11 Administrator Manual:** 9.6.3 and 9.6.4 (local repositories and offline images), 14.12 (offline MySQL).
+- **BCM 11 Installation Manual:** chapter 3 (the RHEL air-gapped installer settings) and chapter 10 (`--cmdvd`).
+- **Run here:** `airgap_lab.py` (28 checks): version prerequisites, skew rules, bundle completeness, sizes, Docker Hub windows, architecture, the 13-step order, extraction and passive head rules, GPU operator availability, Run:ai checks, offline repository and option summaries.
+- **My own choices, not the manual's:** the dependency map in `order_problems` (derived from the manual's order and statements, not a documented dependency graph); the 22 GB planning number for Run:ai (the manual says upwards of 20); the summary table in section 7, which gathers separate statements; and all of section 8 (operating an air-gapped cluster), which is general advice and not from the manuals.
+- **Not verified:** everything about a real BCM system. Package names, script options and the exact set of artifacts change between releases; read the release notes for your version.

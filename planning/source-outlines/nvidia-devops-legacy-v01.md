@@ -1,0 +1,248 @@
+# nvidia-devops-legacy-v01
+
+
+## Masterclass: Linux Compute & Memory (CPU, NUMA, OOM)  (01-linux-compute-memory-masterclass.md)
+- 1. Introduction and Learning Objectives
+  - 1.1 Measurable Learning Objectives
+  - 1.2 Prerequisites and Reading Time
+- 2. The Big Picture: Compute and Memory Topology
+  - 2.1 The Problem of Non-Uniformity
+- 3. Processes, Threads, and Execution Contexts
+  - 3.1 What is a Process?
+  - 3.2 Threads vs. Processes
+  - 3.3 The Lifecycle of an Execution Context
+- 4. CPU Scheduling Deep Dive
+  - 4.1 The Run Queue (rq)
+  - 4.2 Completely Fair Scheduler (CFS)
+  - 4.3 The Shift to EEVDF (Earliest Eligible Virtual Deadline First)
+  - 4.4 CPU Pinning in AI Workloads
+- 5. Virtual Memory and Page Tables
+  - 5.1 The Translation Process
+  - 5.2 The TLB (Translation Lookaside Buffer)
+  - 5.3 Page Faults
+- 6. Page Cache, Swap, and Direct Reclaim
+  - 6.1 Memory Zones and Watermarks
+  - 6.2 Swappiness (`vm.swappiness`)
+- 7. NUMA Architecture and Optimization
+  - 7.1 Understanding NUMA Nodes
+  - 7.2 NUMA Policies
+  - 7.3 The NUMA GPU Trap
+- 8. The OOM Killer Mechanics
+  - 8.1 The `oom_score` Algorithm
+  - 8.2 Protecting Critical Daemons
+- 9. Code Examples: Memory under the Hood
+  - 9.1 C: Anonymous Memory Mapping (`mmap`)
+  - 9.2 Python: The Garbage Collector and Memory Fragmentation
+- 10. Advanced Tracing Tools (Senior SA Level)
+  - 10.1 `perf` for CPU Profiling
+  - 10.2 Tracing System Calls with `strace`
+  - 10.3 Identifying NUMA Imbalance with `numastat`
+- 11. Senior Solutions Architect Troubleshooting Scenarios
+  - Scenario 1: The "Sleeping" GPU
+  - Scenario 2: Unexplained Jitter
+- 12. Interview Questions (Senior Level)
+- 13. Summary
+  - Further Reading
+- Appendix A: Deep Dive Sysctl Tuning Guide for AI
+  - 1. Memory Management
+  - 2. Network and Compute Latency
+- Appendix B: Expanded C Code - NUMA Aware Allocation
+
+## Masterclass: Linux Storage I/O — From VFS to NVMe and GPUDirect Storage  (02-linux-storage-io-masterclass.md)
+- Part 1: Foundations of Storage and Filesystems
+  - The Problem Storage Exists to Solve
+  - What a Block Device Actually Is
+  - What a Filesystem Actually Is
+  - What a Mount Actually Is
+  - Local disk versus shared/network storage: the distinction that matters most
+  - "The disk is full" can mean several different things
+- Part 2: File descriptors and VFS
+  - The read path, precisely (VFS as a dispatch layer)
+  - Sample `lsof`/fd output and what actually leaks in production
+  - `lsof -p`, `/proc/<PID>/limits`, and `ss -s`, annotated
+- Part 3: O_DIRECT, Alignment, and GPUDirect Storage
+  - `O_DIRECT`: bypassing the page cache
+  - The alignment requirement — and the exact failure mode
+  - GPUDirect Storage (GDS): the same bypass, extended past the CPU entirely
+- Part 4: Capacity versus latency
+  - The rest of the evidence table, annotated
+  - Sample `iostat -xz 1` output, read the way an interviewer wants
+  - Where a request actually spends its time
+  - IOPS/throughput/latency — three different failure signatures
+  - Inode exhaustion — the specific AI-infra trap
+- Part 5: Deep Dive into Device Latency and Writeback
+  - Device and filesystem pressure
+  - `/proc/pressure/io`, annotated
+  - `lsblk` and `findmnt -T`, annotated
+  - `pidstat -d 1` and `lsof +D`, annotated
+  - `fio`, annotated
+  - The write path, and where "fast" stops meaning "durable"
+- Part 6: Checkpoint storm, the GPU/AI-specific version
+- Appendix 1: Deep Dive Scenario — Storage I/O Optimization
+- Appendix 2: Extended Troubleshooting Metrics
+
+## Linux Networking Masterclass: TCP/IP, RoCEv2, and Fabric Tuning  (03-linux-networking-masterclass.md)
+- Introduction
+  - Prerequisites, Difficulty, and Reading Time
+  - Measurable Learning Objectives
+- 1. The Network Stack Foundation: From Wire to Application
+  - 1.1 The Packet Journey: Ingress (Rx) Deep Dive
+  - 1.2 Receive-Side Scaling (RSS) and Interrupt Affinity
+  - 1.3 Tuning the Rx Path: Ring Buffers and Coalescing
+  - 1.4 Egress (Tx) Path and Offloads
+- 2. IP Routing and Forwarding Deep Dive
+  - 2.1 The Forwarding Information Base (FIB)
+  - 2.2 Policy-Based Routing (PBR)
+  - 2.3 Virtual Routing and Forwarding (VRF)
+  - 2.4 VXLAN and Overlays
+- 3. Sockets, TCP Internals, and Tuning at Scale
+  - 3.1 Advanced TCP State Machine Analytics
+  - 3.2 Congestion Control: BBR vs CUBIC
+  - 3.3 Deep Buffer Tuning and BDP Calculations
+  - 3.4 TCP Timestamps and SACK
+- 4. AI Factory Fabric: Ethernet, MTU 9000, and RoCEv2
+  - 4.1 The TCP/IP CPU Bottleneck
+  - 4.2 Remote Direct Memory Access (RDMA)
+  - 4.3 RoCEv2 (RDMA over Converged Ethernet)
+  - 4.4 MTU 9000 (Jumbo Frames)
+  - 4.5 Lossless Ethernet: PFC and ECN
+  - 4.6 Validating RDMA and RoCEv2
+- 5. Netfilter, Conntrack, and NAT at Scale
+  - 5.1 Connection Tracking (nf_conntrack) Mechanics
+  - 5.2 Conntrack Exhaustion (The Silent Killer)
+  - 5.3 Bypassing Netfilter: eBPF/Cilium and NOTRACK
+- 6. DNS and Application Layer Protocols
+  - 6.1 The Resolution Path
+  - 6.2 The Kubernetes ndots:5 Problem
+  - 6.3 DNS UDP Drops and 5-Second Timeouts
+- 7. Security: TLS Offload, kTLS, and Encryption
+  - 7.1 Kernel TLS (kTLS)
+  - 7.2 Hardware TLS Offload (DPUs/SmartNICs)
+- 8. Observability and Deep Troubleshooting Tools
+  - 8.1 Advanced tcpdump and tshark
+  - 8.2 Socket Statistics (ss)
+  - 8.3 bpftrace for Latency Profiling
+  - 8.4 ethtool Hardware Counters
+- 9. Senior Solutions Architect Scenarios
+  - Scenario 1: The SNAT Port Exhaustion
+  - Scenario 2: Path MTU Blackholes
+  - Scenario 3: The Iptables TRACE
+  - Scenario 4: Interview Question - Zero Copy
+  - Scenario 5: The ECN/PFC Misconfiguration
+- 10. Summary
+  - Cross-References
+  - Authoritative Further Reading
+- 11. Advanced Network Architectures: Bonding and Teaming
+  - 11.1 Linux Bonding (802.3ad / LACP)
+  - 11.2 Multi-Chassis Link Aggregation (MLAG)
+  - 11.3 Multi-Homing in RoCEv2 (Alternative to Bonding)
+- 12. Software-Defined Networking (SDN) and Open vSwitch (OVS)
+  - 12.1 The OVS Datapath
+  - 12.2 OVS Hardware Offload (TC Flower)
+- 13. Advanced Netfilter: iptables vs. nftables
+- 14. Network Namespaces (netns) Deep Dive
+- 15. More Solutions Architect Scenarios
+  - Scenario 6: The veth CPU Bottleneck
+  - Scenario 7: Time Synchronization and PTP
+  - Scenario 8: Multicast Blackholes in Overlays
+  - Scenario 9: The TCP Zero Window
+  - Scenario 10: Asymmetric BGP Routing on the Host
+- 16. Advanced Traffic Control (TC) and Queuing Disciplines (Qdiscs)
+  - 16.1 Classless vs. Classful Qdiscs
+  - 16.2 Configuring HTB Shaping
+- 17. InfiniBand vs. RoCEv2: The Architectural Divide
+  - 17.1 The Subnet Manager (SM)
+  - 17.2 Credit-Based Flow Control
+  - 17.3 Adaptive Routing (AR)
+- 18. The Evolution: Spectrum-X and NVLink over Ethernet
+  - 18.1 RoCE Adaptive Routing
+  - 18.2 Direct Data Placement (DDP) and NVLink
+- 19. Advanced Packet Drop Debugging
+  - 19.1 dropwatch
+  - 19.2 Perf Scripting for Drop Analysis
+- 20. Deep Dive: ECN and PFC Packet Structures
+  - 20.1 The ECN Bits in the IP Header
+  - 20.2 The PFC Pause Frame
+- 21. Hardware Offloads: SR-IOV and DPDK
+  - 21.1 Single Root I/O Virtualization (SR-IOV)
+  - 21.2 Data Plane Development Kit (DPDK)
+- 22. eBPF and XDP (eXpress Data Path)
+  - 22.1 XDP Hooks
+  - 22.2 Cilium and eBPF Networking
+- 23. Long Fat Networks (LFN) and TCP Tuning Deep Dive
+  - 23.1 TCP Window Scaling (RFC 7323)
+  - 23.2 Selective Acknowledgements (SACK) Penalty
+- 24. Security at Scale: MACsec
+- 25. The Final Solutions Architect Scenarios
+  - Scenario 11: The Phantom ARP Drops
+  - Scenario 12: UDP Buffer Overflows in Syslog/StatsD
+  - Scenario 13: BGP Route Flapping and Dampening
+  - Scenario 14: TCP Checksum Offload Failures
+- 26. Ultimate Conclusion
+- 27. Appendix A: Comprehensive `sysctl` Tuning Cheat Sheet
+- 28. Appendix B: Glossary of AI Networking Acronyms
+
+## Linux, Systemd, and Containers Masterclass  (04-linux-systemd-containers-masterclass.md)
+- 1. Introduction and The Problem Space
+  - 1.1 Prerequisites
+  - 1.2 The Production Story: The Silent Hang
+- 2. Systemd and the Boot Chain
+  - 2.1 The Boot Sequence
+  - 2.2 Systemd Unit Files and Dependencies
+  - 2.3 Investigating Boot Times
+  - 2.4 Deep Dive: Systemd and Target States (Part 1)
+  - 2.5 Deep Dive: Systemd and Target States (Part 2)
+  - 2.6 Deep Dive: Systemd and Target States (Part 3)
+- 3. Systemd Slices and Resource Management
+  - 3.1 The Default Hierarchy
+  - 3.2 Protecting the Host from AI Workloads
+  - 3.3 NUMA Pinning via Systemd
+- 4. Process Mechanics and Signals
+  - 4.1 Process Trees and PID 1
+  - 4.2 Signal Handling in GPU Workloads
+  - 4.3 Deep Dive: Process Mechanics and Signals (Part 1)
+  - 4.4 Deep Dive: Process Mechanics and Signals (Part 2)
+  - 4.5 Deep Dive: Process Mechanics and Signals (Part 3)
+  - 4.6 Deep Dive: Process Mechanics and Signals (Part 4)
+- 5. Logging with Journald
+  - 5.1 Journalctl Mastery
+  - 5.2 Tuning Journald Storage
+- 6. Container Isolation Mechanics (Namespaces)
+  - 6.1 The Core Namespaces
+  - 6.2 Building a Container by Hand with `unshare`
+  - 6.3 Checking Namespaces
+  - 6.4 Deep Dive: `unshare` and Namespace Introspection (Part 1)
+  - 6.5 Deep Dive: `unshare` and Namespace Introspection (Part 2)
+  - 6.6 Deep Dive: `unshare` and Namespace Introspection (Part 3)
+  - 6.7 Deep Dive: `unshare` and Namespace Introspection (Part 4)
+- 7. Resource Control (Cgroups v2)
+  - 7.1 Navigating the Cgroup Hierarchy
+  - 7.2 Manual Cgroup Manipulation
+  - 7.3 Pressure Stall Information (PSI)
+- 8. OverlayFS and Storage Mechanics
+  - 8.1 The Overlay Architecture
+  - 8.2 Deep Dive: Mounting OverlayFS and Copy-Up Mechanics (Part 1)
+  - 8.3 Deep Dive: Mounting OverlayFS and Copy-Up Mechanics (Part 2)
+  - 8.4 Deep Dive: Mounting OverlayFS and Copy-Up Mechanics (Part 3)
+- 9. The NVIDIA Container Toolkit
+  - 9.1 How it Works
+  - 9.2 CDI (Container Device Interface)
+- 10. Host Readiness for NVIDIA GPU Nodes
+  - 10.1 Kernel Parameters (GRUB)
+  - 10.2 Kernel Modules
+  - 10.3 Udev Rules and Device Nodes
+  - 10.4 Deep Dive: GPUDirect Storage (GDS) and Host Configuration
+  - 10.5 Deep Dive: NVMe-oF and Multipathing for AI
+- 11. Senior Troubleshooting & Interview Scenarios
+  - 11.1 Scenario 1: The Slow GPU Job with Healthy Kubernetes
+  - 11.2 Scenario 2: Zombie Process Holding GPU Memory
+  - 11.3 Scenario 3: Container Runtime Failures (File Descriptors)
+  - 11.4 Scenario 4: OOM Killer Analysis via Journalctl
+  - 7.4 Deep Dive: Cgroups v2 I/O Controller
+  - 9.3 Deep Dive: Tracing libnvidia-container
+  - 11.5 Scenario 5: The "No space left on device" Error with Empty Disk
+  - 11.6 Scenario 6: GPU Topology and NUMA Misalignment
+  - 11.7 Scenario 7: Container Network Namespace Stalls
+  - 14. Conclusion and Advanced Architectural Trade-offs
+- 12. Summary
+- 13. Further Reading

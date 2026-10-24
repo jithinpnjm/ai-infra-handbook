@@ -1,0 +1,480 @@
+# nvidia-devops-zth-v11
+
+
+## Chapter 01 — Why GPU Sharing Exists  (chapter-01-why-gpu-sharing-exists.md)
+- Learning objectives
+- Beginner's Primer: The AI Capacity Problem
+- The problem is stranded capacity, not merely low utilization
+- Four things people call “sharing”
+- Production story: the “eight GPUs per GPU” incident
+- Build a workload contract
+- Trade-offs that survive the design review
+- A practical intake workshop
+- Capacity signals that should not be collapsed
+- Troubleshooting scenario 1: utilization says “idle,” users say “slow”
+- Troubleshooting scenario 2: a tenant asks for “isolation”
+- Customer architecture discussion
+- Production deployment pattern
+- First principles: why a GPU is not a CPU socket
+- A decision tree that can be operated
+- Service tiers and failure semantics
+- Security and governance implications
+- Observability design before rollout
+- Design review anti-patterns
+- Final production checklist
+- Failure-domain analysis
+- Customer decision narrative: research versus production
+- Interview preparation — model answers
+- Decision review and senior interview close
+- Additional incident playbook: wrong workload admitted
+- Additional incident playbook: capacity report conflicts with reality
+- Terms and revision prompts
+- Decision-review record
+- Architecture Summary
+- Further reading
+
+## Chapter 02 — MIG Architecture and Isolation  (chapter-02-mig-architecture-and-isolation.md)
+- Learning objectives
+- Beginner's Primer: Physical Silicon Partitioning
+- The hierarchy
+- What MIG isolates—and what it cannot
+- Internal working and lifecycle
+- Kubernetes consequences
+- Validation is a chain, not a command
+- Maintenance and rollback
+- Resource anatomy in more detail
+- Supported-configuration discipline
+- Node lifecycle sequence
+- Troubleshooting scenario 3: post-reboot drift
+- Troubleshooting scenario 4: a container sees an unexpected device
+- Production story: the mode-change outage that looked like a scheduler bug
+- Troubleshooting scenario 1: MIG appears enabled, but no allocatable slices exist
+- Troubleshooting scenario 2: one tenant reports a failure and every slice becomes suspect
+- Customer architecture discussion
+- Change workflow runbook
+- Device-discovery consequences
+- Customer decision narrative: why static layouts win
+- Revision aid: capability boundaries
+- Operational evidence package
+- Capacity and availability trade-offs
+- Escalation questions
+- Design review walkthrough
+- Security boundary discussion
+- Monitoring objectives
+- Short revision exercise
+- Architecture Summary
+- Revision checklist and senior interview questions
+- Further reading
+
+## Chapter 03 — MIG Profiles and Placement  (chapter-03-mig-profiles-and-placement.md)
+- Learning objectives
+- Beginner's Primer: Decoding the MIG Profile Names
+- From model to profile
+- Read the driver, not a diagram
+- Fragmentation is geometric
+- Design patterns
+- Profile-sizing worksheet
+- Inventory reporting pattern
+- Placement strategy and scheduler strategy are different
+- Capacity planning example without invented numbers
+- Day-two operations
+- Troubleshooting scenario 3: inventory varies among identical nodes
+- Troubleshooting scenario 4: reconfiguration consumes the recovery reserve
+- Production story: the impossible “free” capacity
+- Troubleshooting scenario 1: profile policy exists, pod remains Pending
+- Troubleshooting scenario 2: model loads in test but fails under production traffic
+- Customer architecture discussion
+- Planning example: profile demand as a queueing problem
+- Release and upgrade effects
+- Customer decision narrative: reserve is a feature
+- Revision aid
+- Profile governance record
+- Decision questions
+- Placement review workflow
+- Operational anti-patterns
+- Interview exercise
+- Architecture Summary
+- Revision checklist and senior interview questions
+- Further reading
+
+## Chapter 04 — Time-Slicing and Oversubscription  (chapter-04-time-slicing-and-oversubscription.md)
+- Learning objectives
+- Beginner's Primer: Lying to Kubernetes
+- What the Kubernetes configuration changes
+- Where time-slicing belongs
+- Design the service, not the replica count
+- Safe rollout sequence
+- Fairness and admission
+- Internal working and consequence
+- Measuring a replica ratio
+- Production incident flow
+- Troubleshooting scenario 3: shared resource scheduled on the wrong workload class
+- Troubleshooting scenario 4: metrics cannot identify the noisy neighbor
+- Production story: “all pods are healthy”
+- Observability: allocation is not utilization
+- Troubleshooting scenario 1: all replicas slow at once
+- Troubleshooting scenario 2: one job causes memory failures for neighbors
+- Customer architecture discussion
+- Operational complexity and cost
+- Kubernetes resource semantics in practice
+- Customer decision narrative: the shared development platform
+- Upgrade and rollback implications
+- Revision aid
+- Evidence package for a contention incident
+- Economic decision
+- Questions for service owners
+- Operating policy template
+- Failure-domain review
+- Pre-production acceptance test
+- Interview exercise
+- Architecture Summary
+- Revision checklist and senior interview questions
+- Further reading
+
+## Chapter 05 — vGPU Architecture and Enterprise Virtualization  (chapter-05-vgpu-architecture-and-enterprise-virtualization.md)
+- Learning objectives
+- Beginner's Primer: VMs vs. Containers
+- The architecture has two paths
+- Profiles are service contracts, not fractions on a spreadsheet
+- Time-sliced and MIG-backed vGPU
+- Lifecycle: treat the stack as a qualified unit
+- Design review checklist
+- Production patterns
+- Troubleshooting scenario 1: VM boots but no usable GPU appears
+- Troubleshooting scenario 2: GPU exists but the application is degraded after startup
+- Host, guest, and control-plane responsibilities
+- Device lifecycle and state transitions
+- Capacity and placement mechanics
+- Security boundaries in a VM-oriented GPU service
+- Incident playbook: incompatible lifecycle combination
+- Incident playbook: profile capacity appears available but VM placement fails
+- Revision checklist
+- Observability model for vGPU operations
+- Maintenance runbook outline
+- Further design trade-offs
+- Support-case preparation
+- Architecture review scenario
+- Chapter review exercises
+- Practical design decisions
+- Common misconceptions
+- Final operational questions
+- Customer architecture discussion
+- Interview preparation
+- Architecture Summary
+- Key takeaways
+- Cross references and further reading
+
+## Chapter 06 — Comparing MIG, Time-Slicing, and vGPU  (chapter-06-comparing-mig-time-slicing-and-vgpu.md)
+- Learning objectives
+- Beginner's Primer: The Decision Tree
+- The decision begins with the contract
+- What is actually isolated?
+- Compare the operational cost, not just the hardware behavior
+- Quick diagnostic: which mechanism is active?
+- A benchmark is the admission test
+- Decision record for a sharing class
+- Production patterns
+- Troubleshooting scenario 1: a supposedly isolated service has erratic latency
+- Troubleshooting scenario 2: MIG capacity exists, but requests wait indefinitely
+- Model selection by workload behavior
+- The hidden costs of each model
+- Operational decision workshop
+- Incident playbook: sharing method is correct but the service objective fails
+- Incident playbook: fragmentation blocks a high-value request
+- Senior review questions
+- Capacity evaluation worksheet
+- Migration between sharing classes
+- Selection anti-patterns
+- Service-catalog example
+- Review cadence
+- Chapter review exercises
+- Decision-review prompts
+- Common misconceptions
+- Final selection questions
+- Exit criteria for a new class
+- Customer architecture discussion
+- Interview preparation
+- Architecture Summary
+- Key takeaways
+- Cross references and further reading
+
+## Chapter 07 — Kubernetes Scheduling for Shared GPUs  (chapter-07-kubernetes-scheduling-for-shared-gpus.md)
+- Learning objectives
+- Beginner's Primer: Fractional GPUs in Kubernetes
+- What Kubernetes decides, and what it delegates
+- Design the resource catalog before workloads arrive
+- MIG strategy changes what the scheduler can see
+- Layer scheduling controls deliberately
+- Quota and fairness begin with namespace boundaries
+- Change management for scheduling policy
+- A production Pod contract
+- Troubleshooting scenario 1: a valid Pod remains Pending
+- Troubleshooting scenario 2: a latency-sensitive Pod is Running on shared capacity
+- Resource publication and allocation mechanics
+- Admission policy is the translation layer
+- Namespace onboarding and quota design
+- Scheduling patterns and anti-patterns
+- Incident playbook: discovery says capacity changed unexpectedly
+- Incident playbook: quota is bypassed in practice or capacity is unfairly consumed
+- Incident playbook: Pod binds but the container cannot access the assigned GPU
+- Revision checklist
+- Operational telemetry and service objectives
+- Policy testing strategy
+- Customer operating agreement
+- Scheduler evidence walkthrough
+- Migration checklist for a class change
+- Chapter review exercises
+- Design decisions that deserve review
+- Common misconceptions
+- Final scheduling questions
+- Customer architecture discussion
+- Interview preparation
+  - NVIDIA Operational Reference — Run:ai
+- Architecture Summary
+- Key takeaways
+- Cross references and further reading
+
+## Chapter 08 — Tenant Isolation, Security, and Fairness  (chapter-08-tenant-isolation-security-and-fairness.md)
+- Learning objectives
+- Beginner's Primer: The Blast Radius
+- A tenant boundary is an end-to-end path
+- Start with a written threat model
+- What sharing mechanisms contribute
+- Fairness is a policy, not an equal split
+- Production pattern: isolate the control plane from the data plane
+- Preemption and maintenance require workload consent
+- Evidence and audit design
+- Troubleshooting scenario 1: one tenant causes another tenant’s OOM or latency collapse
+- Troubleshooting scenario 2: a namespace can consume GPU capacity but cannot reach its model data
+- Scope controls by administrative plane
+- Image and runtime trust
+- Data, model, and telemetry boundaries
+- Fairness controls at three time scales
+- Security and performance are connected
+- Incident playbook: unauthorized GPU class or privilege escalation attempt
+- Incident playbook: cross-tenant information exposure through telemetry
+- Incident playbook: priority conflict disrupts a recoverable workload
+- Revision checklist
+- Tenant onboarding control points
+- Incident communications by audience
+- Measuring fairness outcomes
+- Security review prompts
+- Architecture review scenario
+- Exception management
+- Chapter review exercises
+- Design decisions that deserve review
+- Common misconceptions
+- Final tenant-boundary questions
+- Exit criteria for a tenant class
+- Customer architecture discussion
+- Interview preparation
+- Architecture Summary
+- Key takeaways
+- Cross references and further reading
+
+## Chapter 09 — Capacity Planning and Chargeback  (chapter-09-capacity-planning-and-chargeback.md)
+- Learning objectives
+- Beginner's Primer: How do you bill for half a GPU?
+- A planning incident: the cluster that looked half empty
+- Capacity is a chain of constraints
+- Start with workload classes, not devices
+- A simple, auditable capacity model
+  - Define reserve by failure domain
+- MIG planning: shape matters as much as count
+  - Standardize layouts before pricing them
+  - Fragmentation indicators worth reviewing
+- Time-slicing: plan for contention, not partitions
+- vGPU and VM-centric capacity
+- From measurement to forecast
+- Showback before chargeback
+  - Choose a billable unit that matches the promise
+  - Attribute consumption carefully
+- A rate-card review checklist
+- Operational controls that protect capacity
+- Planning a maintenance window as a capacity test
+  - Capacity decision record
+- Cost allocation and financial controls
+  - Treat idle allocations as a service conversation
+- What not to forecast from
+- Capacity review cadence
+- Troubleshooting scenario 1: capacity is free but a MIG request is Pending
+- Troubleshooting scenario 2: time-sliced capacity met the count but missed latency
+- Customer architecture conversation
+- Senior-level interview questions
+- Architecture Summary
+- Revision checklist
+- Further reading
+- Cross references
+
+## Chapter 10 — Observability and SLOs for Shared GPUs  (chapter-10-observability-and-slos-for-shared-gpus.md)
+- Learning objectives
+- Beginner's Primer: Who is eating my GPU?
+- The service that was green and still failing
+- The shared-GPU evidence path
+- Build three views, not one dashboard
+- The telemetry contract
+- Choose SLIs from the service promise
+  - Error budgets without invented precision
+- Alerts must lead to a safe action
+- Correlation: reconstruct the tenant experience
+- Sharing-model-specific signals
+  - MIG
+  - Time-slicing
+  - vGPU
+- Observability design for multi-tenancy
+- Capacity reports that drive action
+- A dashboard design that supports an incident
+  - Avoid misleading aggregation
+- Establishing a new SLO safely
+  - SLO review questions
+- Evidence retention and incident reconstruction
+- Monitoring the monitors
+- Change management for metrics and alerts
+- A practical alert catalogue
+  - Alert testing
+- SLO incident response
+- Troubleshooting scenario 1: metrics are present but workloads cannot be joined to them
+- Troubleshooting scenario 2: healthy GPU, failing latency SLO
+- Customer architecture conversation
+- Senior-level interview questions
+- Architecture Summary
+- Revision checklist
+- Further reading
+- Cross references
+
+## Chapter 11 — Production Troubleshooting  (chapter-11-production-troubleshooting.md)
+- Learning objectives
+- Beginner's Primer: Troubleshooting Shared GPUs
+- The incident model
+- Before touching the system: establish scope
+- Collect a safe evidence bundle
+- The layer-by-layer triage order
+  - 1. Physical device, host, and driver
+  - 2. Sharing mode and configured shape
+  - 3. Runtime, discovery, and advertisement
+  - 4. Scheduling and policy
+  - 5. Workload initialization and service behavior
+  - 6. Telemetry pipeline
+- Incident playbook: MIG resource is absent
+- Incident playbook: Pod Pending despite apparent free capacity
+- Incident playbook: time-sliced workloads are slow or fail with memory pressure
+- Incident playbook: a MIG pool is fragmented
+- Incident playbook: vGPU-backed VM cannot use its assigned GPU
+- Incident playbook: telemetry is missing or contradicts the user report
+- Containment and recovery patterns
+- Change-aware troubleshooting
+- Read-only first checks
+- Safe validation workloads
+- Incident roles and communication
+- Tabletop exercise: profile shortage during a rollout
+- When to stop and escalate
+- Escalation package
+- Post-incident improvement
+- Customer architecture conversation
+- Senior-level interview questions
+- Architecture Summary
+- Revision checklist
+- Further reading
+- Cross references
+
+## Chapter 12 — Volume 11 Summary  (chapter-12-volume-11-summary.md)
+- Learning objectives
+- The end-to-end model
+- Mechanisms and their boundaries
+- Decision sequence
+- Production checklist
+- Common traps
+- Production recovery scenario
+- Review questions
+- Senior interview questions
+- Customer discussion prompts
+- Further reading
+- Cross references
+- Next volume
+
+## Volume 11 — GPU Sharing  (index.md)
+- The operating model
+- What this volume will and will not promise
+- Reading path
+- Labs
+- Success criteria
+
+## Lab 01 — Configure and Validate MIG  (labs/lab-01-configure-and-validate-mig.md)
+- 1. Objective
+- 2. Production Story
+- 3. Learning Outcomes
+- 4. Architecture
+- 5. Prerequisites
+- 6. Safety and Change Boundaries
+- 7. Environment and Variables
+- 8. Components and Data Flow
+- 9. Baseline Evidence
+- 10. Drain and Isolate the Node
+- 11. Apply the Approved MIG Layout
+- 12. Validate Host Inventory and Kubernetes Advertisement
+- 13. Validation Workload
+- 14. Verification and Acceptance Criteria
+- 15. Observability and Measurements
+- 16. Safe Failure Exercise and Troubleshooting
+- 17. Cleanup and Rollback
+- 18. Summary, Challenges, and Further Reading
+
+## Lab 02 — Configure Kubernetes GPU Time-Slicing  (labs/lab-02-configure-kubernetes-gpu-time-slicing.md)
+- 1. Objective
+- 2. Production Story
+- 3. Learning Outcomes
+- 4. Architecture
+- 5. Prerequisites
+- 6. Safety and Change Boundaries
+- 7. Environment and Variables
+- 8. Components and Resource Semantics
+- 9. Baseline and Node Isolation
+- 10. Create an Explicit Policy
+- 11. Select the Policy Through the Supported Control Plane
+- 12. Deploy Bounded Validation Workloads
+- 13. Verification and Acceptance Criteria
+- 14. Observability and Evidence Collection
+- 15. Performance Measurements
+- 16. Safe Failure Exercise and Troubleshooting
+- 17. Cleanup and Rollback
+- 18. Summary, Challenges, and Further Reading
+
+## Lab 03 — Compare Sharing Performance and Isolation  (labs/lab-03-compare-sharing-performance-and-isolation.md)
+- 1. Objective
+- 2. Production Story
+- 3. Learning Outcomes
+- 4. Architecture
+- 5. Prerequisites
+- 6. Safety and Change Boundaries
+- 7. Environment and Variables
+- 8. Components and Data Flow
+- 9. Test Plan and Acceptance Hypotheses
+- 10. Baseline Inspection
+- 11. Deploy the Benchmark
+- 12. Validate Workload Identity
+- 13. Verification and Acceptance Criteria
+- 14. Observability and Evidence Collection
+- 15. Measurements and Analysis
+- 16. Safe Failure Exercise and Troubleshooting
+- 17. Cleanup and Rollback
+- 18. Summary, Challenges, and Further Reading
+
+## Lab 04 — Troubleshoot a Multi-Tenant GPU Node  (labs/lab-04-troubleshoot-a-multi-tenant-gpu-node.md)
+- 1. Objective
+- 2. Production Story
+- 3. Learning Outcomes
+- 4. Architecture
+- 5. Prerequisites
+- 6. Safety and Incident Boundaries
+- 7. Environment and Variables
+- 8. Components and Triage Order
+- 9. Preserve the Scene
+- 10. Inspect Hardware and Sharing State
+- 11. Inspect Scheduling and Policy
+- 12. Deploy a Bounded Diagnostic Pod
+- 13. Verification and Acceptance Criteria
+- 14. Observability and Tenant-Safe Evidence
+- 15. Measurements
+- 16. Safe Failure Injection and Troubleshooting
+- 17. Cleanup and Recovery Verification
+- 18. Summary, Challenges, and Further Reading

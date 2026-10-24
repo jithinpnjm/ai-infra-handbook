@@ -1,0 +1,383 @@
+# nvidia-devops-core-interview
+
+
+## Chapter 01 — Consolidated Core Interview Questions  (chapter-01-consolidated-interview-questions.md)
+- From: 01 Linux Compute Memory Masterclass
+- From: 02 Linux Storage Io Masterclass
+  - Where a request actually spends its time
+  - IOPS/throughput/latency — three different failure signatures
+  - Inode exhaustion — the specific AI-infra trap
+- Part 5: Deep Dive into Device Latency and Writeback
+  - Device and filesystem pressure
+  - `/proc/pressure/io`, annotated
+  - `lsblk` and `findmnt -T`, annotated
+  - `pidstat -d 1` and `lsof +D`, annotated
+  - `fio`, annotated
+  - The write path, and where "fast" stops meaning "durable"
+- Part 6: Checkpoint storm, the GPU/AI-specific version
+- Appendix 1: Deep Dive Scenario — Storage I/O Optimization
+- Appendix 30: Extended Troubleshooting Metrics
+- From: 03 Linux Networking Masterclass
+  - Scenario 5: The ECN/PFC Misconfiguration
+- From: 04 Linux Systemd Containers Masterclass
+  - 11.1 Scenario 1: The Slow GPU Job with Healthy Kubernetes
+  - 11.2 Scenario 2: Zombie Process Holding GPU Memory
+  - 11.3 Scenario 3: Container Runtime Failures (File Descriptors)
+  - 11.4 Scenario 4: OOM Killer Analysis via Journalctl
+  - 7.4 Deep Dive: Cgroups v2 I/O Controller
+  - 9.3 Deep Dive: Tracing libnvidia-container
+  - 11.5 Scenario 5: The "No space left on device" Error with Empty Disk
+  - 11.6 Scenario 6: GPU Topology and NUMA Misalignment
+  - 11.7 Scenario 7: Container Network Namespace Stalls
+  - 14. Conclusion and Advanced Architectural Trade-offs
+- From: 01 Python Core Oop Masterclass
+  - Scenario 1: The Memory Leak in the Data Pipeline
+  - Scenario 2: The Mutability Bug in Deployment Configs
+  - Scenario 3: Zombie Processes in Multiprocessing
+- 11. Advanced Design Pattern: The Infrastructure Command Bus
+- 12. Conclusion and Next Steps
+- Appendix A: Deep Dive into Metaclasses and `__new__`
+  - A.1 Understanding `type`
+  - A.2 A Singleton Configuration Metaclass
+- Appendix B: The Context Manager Protocol (`__enter__` and `__exit__`)
+  - B.1 Creating a Temporary Cloud Resource
+- Appendix C: Advanced Decorators for Infrastructure
+  - C.1 A Parameterized Retry Decorator
+- Appendix D: Profiling and Optimization Techniques
+  - D.1 Using cProfile
+  - D.2 Multiprocessing vs. Threading for APIs
+- Appendix E: Deep Dive into Iterators and Generators
+  - E.1 The Iterator Protocol
+  - E.2 The `yield` Keyword
+- Appendix F: Subprocess and System Integration
+  - F.1 Safe Subprocess Execution
+- Appendix G: Asynchronous Python (`asyncio`)
+- Appendix H: Design Patterns in Python Infrastructure
+  - H.1 The Factory Pattern
+  - H.2 The Strategy Pattern
+- Appendix I: Type Hinting Deep Dive (Python 3.10+)
+- Extended Scenario Module 1
+  - Deep Dive: Memory Profiling Part 1
+- From: 03 Python Tooling Operations Masterclass
+  - Scenario 1: The "Zombie" Subprocess Leak
+  - Scenario 2: The Silent API Pagination Trap
+  - Scenario 3: Race Conditions in File Operations
+- 10. Extended API Design Patterns
+  - 10.1 Circuit Breakers
+  - 10.2 Correlation IDs for Distributed Tracing
+- 11. Advanced Profiling: CPU Pinning and Context Switches
+  - 11.1 Understanding the GIL (Global Interpreter Lock)
+  - 11.2 Profiling Context Switches
+- 12. Final Thoughts on Infrastructure Software Engineering
+  - Bonus Deep Dive 1: Managing State securely in CLI tools
+- From: 04 Fastapi Microservices Masterclass
+- From: 05 Advanced Oop Design Masterclass
+- From: 02 K8S Node Storage Masterclass
+- From: 01 Gpu Architecture Topology Masterclass
+- 10. Conclusion and Next Steps
+- Appendix A: Deep Dive Lab - Profiling Topology
+  - Objective
+  - Step 1: Base PCIe Mapping
+  - Step 2: Extracting NUMA Node Assignments from Sysfs
+  - Step 3: Measuring Bandwidth (PCIe vs NVLink)
+  - Step 4: NVLink Error Injection and Monitoring
+- Appendix B: Advanced Memory Management Patterns
+  - Unified Memory (CUDA Managed Memory)
+  - The KV Cache in LLMs
+- Appendix C: Complete nvidia-smi topo Reference
+- End of Masterclass
+- Appendix D: Comprehensive AI Infrastructure Glossary
+- Appendix E: Generational Architecture Deep Dive (Pascal to Blackwell)
+  - 1. Pascal (P100 - 2016)
+  - 2. Volta (V100 - 2017)
+  - 3. Ampere (A100 - 2020)
+  - 4. Hopper (H100 - 2022)
+  - 5. Blackwell (B200 - 2024+)
+- Appendix F: Demystifying RoCEv2 and RDMA
+  - The Problem with TCP/IP
+  - RDMA (Remote Direct Memory Access)
+  - RoCEv2 (RDMA over Converged Ethernet)
+- Appendix G: Advanced Bash Scripting for NUMA Topologies
+- Appendix H: Deep Dive into NVIDIA System Management Interface (nvidia-smi)
+  - Beyond the Default View
+  - Power States (P-States)
+  - Clock Locking for Determinism
+- Final Review Checkpoints for System Administrators
+- From: 02 Gpu Software Operator Masterclass
+- 8. Deep Dive: CUDA Forward Compatibility & Enterprise Upgrades
+  - 8.1 How Forward Compatibility Works
+  - 8.2 The Fallback Mechanism
+- 9. Comprehensive Configuration: The 300-Line Values File
+- 10. Expanding on GPU Sharing: MPS, Time-Slicing, and MIG
+  - 10.1 Time-Slicing (Temporal Sharing)
+  - 10.2 Multi-Process Service (MPS)
+  - 10.3 Multi-Instance GPU (MIG)
+- 11. Deep Telemetry: DCGM and Prometheus
+  - 11.1 What is DCGM?
+  - 11.2 Key Metrics to Monitor
+  - 11.3 Example Prometheus Output
+- 13. Deep Architecture: Topology, NUMA, and NVLink
+  - 13.1 `nvidia-smi topo -m`
+  - 13.2 NUMA Affinity and the Kubernetes Topology Manager
+    - Enabling the Topology Manager
+- 14. Advanced Operator Features: Node Feature Discovery (NFD)
+  - 14.1 Dynamic Workload Routing
+- 15. The GPU Operator Upgrades & Lifecycle Management
+  - 15.1 The Upgrade Policy
+  - 15.2 Handling Stale Driver Modules (The Dreaded rmmod Failure)
+- 16. The Ultimate Troubleshooting Matrix
+- 17. Conclusion: The Senior Perspective
+- 18. Deep Dive: DCGM Architecture and XID Semantics
+  - 18.1 The Architecture of DCGM
+  - 18.2 Active Diagnostics (NVVS)
+  - 18.3 Understanding XID Errors
+- 19. PID Namespaces and Container Observability
+  - 19.1 The Host View
+  - 19.2 The Container View
+- 20. Advanced Device Plugin Flags (The Hidden Configurations)
+  - 20.1 Integrating with Virtualization (vGPU)
+- From: 03 Gpu Sharing Telemetry Masterclass
+  - Scenario 1: The Ghost OOM on MPS
+  - Scenario 2: XID 31 Storm on Node 42
+  - Conclusion
+- Appendix A: Deep Dive into NVIDIA Architecture Generations
+- Appendix B: Comprehensive NVIDIA-SMI Output Analysis
+- Appendix C: Kubernetes Device Plugin Advanced Configuration
+- Appendix D: Profiling with Nsight Systems (nsys)
+- From: 01 Ai Workloads Training Masterclass
+  - Scenario A: The Top-of-Rack Switch Failure
+  - Scenario B: The Bandwidth Mystery
+  - Scenario C: Pipeline Bubble Optimization
+- Conclusion
+- Extended Deep Dive Topics
+  - Advanced Networking Concept 1: Micro-bursts and PFC
+  - Hardware Diagnostic Deep Dive 1: PCIe Advanced Error Reporting (AER)
+  - Collective Operations Deep Dive 1: All-to-All and MoE
+  - Collective Operations Deep Dive 29: All-to-All and MoE
+- From: 02 Llm Inference Serving Masterclass
+- 12. Advanced API Integration and Client-Side Handling
+  - 12.1 The OpenAI Compatible Server
+  - 12.2 Handling Streaming Responses in Python
+  - 12.3 Offline Inference (Batch Processing)
+- 13. Deep Dive: Multi-LoRA Serving at Scale
+  - 13.1 How Multi-LoRA Works
+  - 13.2 LoRA Paging (vLLM)
+- 14. Hardware Implications: Grace Hopper and the Future
+- From: 03 Ai Autoscaling Rag Masterclass
+  - Scenario 1: The HPA Thrashing on Queue Depth
+  - Scenario 2: Stale Vector Indexes in RAG
+  - Scenario 3: KV Cache Sharing Across Nodes
+- Part 8: Advanced Operational Readiness
+- From: 01 Ai Networking Rdma Masterclass
+- Conclusion
+- Deep Dive: Additional Diagnostic Workflows
+  - Diagnosing Link Layer Retransmissions
+  - Hardware Offload Verification
+- From: 02 Gpudirect Fabric Operator Masterclass
+  - Scenario A: NCCL is falling back to TCP (Performance is terrible)
+  - Scenario B: SR-IOV VFs are failing to create
+  - Scenario C: PCIe ACS isolation blocking P2P
+- 8. Conclusion
+- From: 03 Ai Storage Data Pipelines Masterclass
+  - Q1: The "Small File Problem"
+  - Q2: GPUDirect Storage Verification
+  - Q3: Designing for the Thundering Herd
+- From: 01 Metrics Logs Traces Masterclass
+  - Scenario 4: The Storage Bottleneck Masquerading as GPU Underutilization
+  - Scenario 5: FluentBit Backpressure and Dropped Logs
+- 16. Appendix F: Comprehensive Glossary of Observability Terms
+- 17. Final Review Checklist for AI Infrastructure Observability
+- 18. Appendix G: Comprehensive PromQL Reference Guide for SREs
+  - Basic Aggregation Operators
+  - Important Functions
+  - Advanced Filtering and Regex
+  - Time Shifting (Offset)
+  - Dealing with Missing Data (`absent()`)
+- 19. Appendix H: Full Prometheus Configuration Blueprint
+- 20. Appendix I: The Evolution of Observability in AI
+  - The Past: Nagios and Ping
+  - The Present: Prometheus and Microservices
+  - The Future: OTel, eBPF, and AI-Driven Insights
+- From: 02 K8S Gpu Observability Masterclass
+- From: 03 Incident Response Alerts Masterclass
+  - Scenario 1: The Phantom PCIe Bottleneck
+  - Scenario 2: The Cascading NVLink Failure
+  - Scenario 3: Alert Fatigue Mitigation
+- 8. Conclusion: The AI Factory Operational Maturity Model
+- Appendix A: Complete Incident Runbooks
+  - Runbook A1: Infiniband Subnet Manager Split Brain
+  - Runbook A2: Storage Backend Stalls (NFS/Lustre)
+  - Runbook A3: Kubernetes Control Plane Overload
+- Appendix B: Advanced Chaos Mesh Scenarios
+  - Scenario 3: Storage IOPS Throttling
+  - Scenario 4: Pod Kill Storm
+- Appendix C: Extended PromQL Library
+  - C1: GPU Memory Leak Detection
+  - C2: NVLink Error Rate Spike
+- Appendix D: Exhaustive PromQL Alerting Library for AI Factories
+  - D1: Component Degradation Alert 1
+- Appendix E: Extended Chaos Engineering Library
+  - E1: Chaos Scenario - Subsystem Failure 1
+- Appendix F: Daily Operations Checklist
+- From: 01 Architecture Design Masterclass
+- From: 02 Capacity Tco Masterclass
+- From: 03 Security Governance Masterclass
+- From: 04 Strategy Communication Masterclass
+- From: 01 Hardware Ecosystem Gauntlet
+- Module 1: The NVIDIA Hardware & Software Stack (Q1)
+  - 1.1 The Hardware Foundation: Beyond the GPU
+    - The "Why" of Multi-Instance GPU (MIG)
+  - 1.2 Systems Architecture: DGX, HGX, MGX
+    - HGX (Hyperscale Graphics Extension)
+    - DGX (Data Center GPU Extension)
+  - 1.3 The Software Stack: Moving Data Efficiently
+    - CUDA and Magnum IO
+  - Deep Dive Scenario 1: Optimizing the NCCL Topology
+- Module 2: The Data Center Networking Trinity (Q12)
+  - 2.1 InfiniBand (Quantum)
+  - 2.2 Ethernet (Spectrum-X)
+  - 2.3 ConnectX vs BlueField
+  - Engineering Deep Dive 1: Tuning RoCEv2 DCQCN
+- Module 3: Generative AI OS - NIMs and NeMo (Q13)
+  - 3.1 NVIDIA Inference Microservices (NIM)
+    - Under the Hood of NIM
+  - 3.2 NVIDIA NeMo Framework
+  - NeMo Guardrails Production Scenario 1
+- Module 4: Customer Education & Onboarding (Q14)
+  - 4.1 DGX System Onboarding (The Single Node)
+  - 4.2 BasePOD Onboarding (The Rack Scale)
+  - 4.3 SuperPOD Onboarding (The Data Center Scale)
+  - High-Scale Troubleshooting Scenario 1: The Straggler Problem
+- Conclusion
+- From: 02 K8S Virtualization Gauntlet
+- Question 2: SR-IOV and Virtualization Mechanics
+  - The Anatomy of Virtual I/O
+  - Whiteboard Strategy: Drawing the Datapath
+  - Deep Dive: IOMMU and Memory Translation
+- Question 4: Kubernetes HA Minimum Nodes (etcd Quorum)
+  - Split-Brain and Network Partitions
+  - Exploring Raft Mechanics in Depth
+- Question 6: Bare-Metal Kubernetes Provisioning and Scaling
+  - The Nuances of the GPU Operator
+- Question 7: The Trick Question - Sharing GPUs Across Nodes
+  - Distributed Execution Architectures
+  - Distributed Frameworks in Depth
+- From: 03 Training Nccl Gauntlet
+- Question 8: Distributed Training End-to-End
+  - 1. Storage and Data Loading pipeline
+  - 2. The Forward Pass
+  - 3. The Backward Pass
+  - 4. Gradient Synchronization (All-Reduce)
+  - 5. The Optimizer Step
+  - End-to-End Diagram
+  - Latency Points and Bottlenecks
+- Question 10: CUDA, Runtime, GPU Workers, Parallelism
+  - 1. Framework to CUDA Interaction
+  - 2. CUDA Streams and Concurrency
+  - 3. GPU Architecture: SMs and Warps
+  - 4. Tokenization
+- Question 11: NCCL Modes and Troubleshooting
+  - 1. Topology Detection
+  - 2. Ring All-Reduce
+  - 3. Tree All-Reduce (Double Binary Tree)
+  - 4. Troubleshooting NCCL
+- Question 15: RoCE vs InfiniBand
+  - 1. The Core Similarity: RDMA
+  - 2. InfiniBand (The Gold Standard)
+  - 3. RoCE v2 (RDMA over Converged Ethernet)
+  - 4. The Decision
+- Deep Dive: GPUDirect Storage (GDS) vs GPUDirect RDMA
+- From: 04 Inference Mlops Gauntlet
+- Part 1: The Inference Load Balancing Conundrum
+  - Question 3: Avi LB vs NGINX LB (Why Enterprise L7/L4 Matters for AI)
+    - The Architecture of the Problem: gRPC and Connection Pinning
+    - NGINX Deep Dive (The Baseline)
+    - VMware Avi (NSX Advanced Load Balancer) Architecture
+    - Production Trade-offs
+- Part 2: The Core of the Beast - Serving Engines
+  - Question 9: Inferencing using Triton, vLLM, TensorRT
+    - 1. TensorRT & TensorRT-LLM: The Compiler Layer
+    - 2. vLLM: The Memory Management Revolution
+    - 3. Triton Inference Server: The Enterprise Gateway
+    - Production Configuration: Triton + vLLM
+- Part 3: Data Preparation Pipelines and MLOps
+  - The Problem: The Data Bottleneck
+  - Question: Designing the High-Throughput Data Pipeline
+    - 1. Distributed Data Processing (Ray Data)
+    - 2. Vector Database Architecture (Milvus/Qdrant)
+    - 3. MLOps: Monitoring the Unpredictable (Drift and Metrics)
+- From: 05 Linux Networking Iac Gauntlet
+- 1. Q5: Complex Linux/Networking Troubleshooting
+  - 1.1 Linux Network Namespaces (netns)
+    - Deep Dive Demonstration
+    - Advanced Namespace Routing
+  - 1.2 Traffic Control (`tc`) - Emulating and Mitigating Network Chaos
+    - Deep Dive Demonstration: `netem`
+    - Hierarchical Token Bucket (HTB) for Bandwidth Shaping
+  - 1.3 Packet Analysis: `tcpdump` and Wireshark
+    - Essential `tcpdump` Commands
+    - Analyzing TCP State in Wireshark
+- 2. Q16: How to use Base Command Manager (BCM)
+  - 2.1 BCM Architecture Overview
+  - 2.2 Core Provisioning Workflow
+  - 2.3 Using `cmsh` (Cluster Management Shell)
+  - 2.4 Common BCM Troubleshooting
+- 3. Q17: Ansible vs Terraform Use Cases
+  - 3.1 The Paradigm Shift
+  - 3.2 When to use Terraform in AI Infra
+  - 3.3 When to use Ansible in AI Infra
+  - 3.4 The Interlocking Strategy
+- 4. Small Scripting Exercises
+  - 4.1 Log Parsing Exercise (Python)
+  - 4.2 Bash System Health Checking Exercise
+  - 4.3 GPU Health Exporter Exercise (Python)
+- From: 00C Slurm Bcm Interview Lab
+  - Scenario 1: Architect an AI factory for a customer
+  - Scenario 2: A 64-node training run is frozen at a step
+  - Scenario 3: Slurm or Kubernetes?
+- From: 02 Nvidia Base Command Manager
+  - Scenario 1: Mass boot failures during bring-up
+  - Scenario 2: A node installs the wrong thing, or repeatedly re-images
+  - Scenario 3: A GPU that keeps failing health checks and returning
+- From: 03 Os Provisioning And Linux Security Hardening
+  - 9.1 Memory Allocation Stalls During Multi-Node Training
+  - 9.2 Selecting the Driver Packaging Strategy for a 2,000-GPU Cluster
+- From: 05 Terraform For Infrastructure As Code
+  - Question 1: How do you design an IaC deployment to guarantee 3.2 Tbps non-blocking bandwidth between GPU instances?
+  - Question 2: Why should teams avoid `count` when provisioning stateful or identifiable GPU worker nodes?
+  - Question 3: How do you handle sensitive credentials (such as Slurm database passwords or cloud API keys) in Terraform?
+- From: 06 Slurm Administration Ha Accounting And Upgrades
+  - Q1: Describe the precise interaction between `slurmctld`, `slurmdbd`, and MariaDB when a user submits a job that exceeds their QOS limit. Include network ports, RPC calls, and DB locks.
+- 10. Infrastructure as Code: Deploying Slurm via Ansible
+  - 10.1 Inventory Structure
+  - 10.2 The Core Playbook: Munge Authentication First
+  - 10.3 Deploying the Database Daemon (slurmdbd)
+  - 10.4 Deploying the HA Controllers
+  - 10.5 Deploying the Compute Nodes (slurmd)
+- 11. Appendix: Slurm Log Analysis Mastery
+  - 11.1 The "Node Flapping" Log
+  - 11.2 The "OOM Kill" Log
+  - 11.3 The "Bad RPC" Log
+- From: 08 Enroot And Pyxis Containers For Hpc
+- From: 10 Coordinated Cluster Wide Software Change Management
+  - Scenario 1: "Can we roll back the firmware?"
+  - Scenario 2: "Why is the cluster slower after a routine image update?"
+- From: 11 Cicd For Infrastructure And Cluster Configuration
+  - The Core Philosophy
+- From: 12 Customer Runbooks Onboarding And Best Practice Documentation
+- From: 13 Senior Deep Dive 1 Bcm At Fleet Scale
+  - Scenario 1: Making a large BCM cluster boot and provision reliably
+  - Scenario 2: Designing safe auto-remediation
+  - Scenario 3: Explaining failover to a security-minded customer
+- From: 14 Senior Deep Dive 2 Slurm Ha And Accounting Internals
+  - Scenario 1: Commands hang and the accounting log shows database contention
+  - Scenario 2: Primary controller died, backup did not take over
+  - Scenario 3: A user's usage looks absurdly high and blocks their fairshare
+- From: 15 Senior Deep Dive 3 Mpi And Nccl Joint Debugging
+  - Scenario 1: A large job dies every eight to twelve hours with a watchdog timeout
+  - Scenario 2: RoCE benchmark is slow and hangs intermittently
+- From: 16 Senior Deep Dive 4 Coordinated Firmware Driver Os Rollout Across Compute Network Storage
+  - Checkpoints got slower after a maintenance window
+- From: 17 Git For Infrastructure And Operations
+- 16. References
+- 17. Conclusion

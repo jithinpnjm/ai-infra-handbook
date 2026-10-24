@@ -1,0 +1,176 @@
+# nvidia-devops-legacy-v09
+
+
+## 01 - Hardware & Ecosystem Gauntlet  (01-hardware-ecosystem-gauntlet.md)
+- Foundations: start here before using the interview question bank {#foundations-start-here-before-using-the-interview-question-bank}
+- Module 1: The NVIDIA Hardware & Software Stack (Q1)
+  - 1.1 The Hardware Foundation: Beyond the GPU
+    - The "Why" of Multi-Instance GPU (MIG)
+  - 1.2 Systems Architecture: DGX, HGX, MGX
+    - HGX
+    - DGX
+  - 1.3 The Software Stack: Moving Data Efficiently
+    - CUDA and Magnum IO
+  - Deep Dive Scenario 1: Optimizing the NCCL Topology
+- Module 2: The Data Center Networking Trinity (Q12)
+  - 2.1 InfiniBand (Quantum)
+  - 2.2 Ethernet (Spectrum-X)
+  - 2.3 ConnectX vs BlueField
+  - Engineering Deep Dive 1: Tuning RoCEv2 DCQCN
+- Module 3: Generative AI OS - NIMs and NeMo (Q13)
+  - 3.1 NVIDIA Inference Microservices (NIM)
+    - Under the Hood of NIM
+  - 3.2 NVIDIA NeMo Framework
+  - NeMo Guardrails Production Scenario 1
+- Module 4: Customer Education & Onboarding (Q14)
+  - 4.1 DGX System Onboarding (The Single Node)
+  - 4.2 BasePOD Onboarding (The Rack Scale)
+  - 4.3 SuperPOD Onboarding (The Data Center Scale)
+  - High-Scale Troubleshooting Scenario 1: The Straggler Problem
+- Conclusion
+
+## Interview Gauntlet: K8s & Virtualization  (02-k8s-virtualization-gauntlet.md)
+- Foundations: start here before using the interview question bank {#foundations-start-here-before-using-the-interview-question-bank}
+- Question 2: SR-IOV and Virtualization Mechanics
+  - The Anatomy of Virtual I/O
+  - Whiteboard Strategy: Drawing the Datapath
+  - Deep Dive: IOMMU and Memory Translation
+- Question 4: Kubernetes HA Minimum Nodes (etcd Quorum)
+  - Split-Brain and Network Partitions
+  - Exploring Raft Mechanics in Depth
+- Question 6: Bare-Metal Kubernetes Provisioning and Scaling
+  - The Nuances of the GPU Operator
+- Question 7: The Trick Question - Sharing GPUs Across Nodes
+  - Distributed Execution Architectures
+  - Distributed Frameworks in Depth
+
+## Interview Gauntlet: Training & NCCL  (03-training-nccl-gauntlet.md)
+- Foundations: start here before using the interview question bank {#foundations-start-here-before-using-the-interview-question-bank}
+- Question 8: Distributed Training End-to-End
+  - 1. Storage and Data Loading pipeline
+  - 2. The Forward Pass
+  - 3. The Backward Pass
+  - 4. Gradient Synchronization (All-Reduce)
+  - 5. The Optimizer Step
+  - End-to-End Diagram
+  - Latency Points and Bottlenecks
+- Question 10: CUDA, Runtime, GPU Workers, Parallelism
+  - 1. Framework to CUDA Interaction
+  - 2. CUDA Streams and Concurrency
+  - 3. GPU Architecture: SMs and Warps
+  - 4. Tokenization
+- Question 11: NCCL Modes and Troubleshooting
+  - 1. Topology Detection
+  - 2. Ring All-Reduce
+  - 3. Tree All-Reduce (Double Binary Tree)
+  - 4. Troubleshooting NCCL
+- Question 15: RoCE vs InfiniBand
+  - 1. The Core Similarity: RDMA
+  - 2. InfiniBand (The Gold Standard)
+  - 3. RoCE v2 (RDMA over Converged Ethernet)
+  - 4. The Decision
+- Deep Dive: GPUDirect Storage (GDS) vs GPUDirect RDMA
+- Summary & Key Takeaways
+
+## Masterclass: Inference, MLOps, and L7 Networking  (04-inference-mlops-gauntlet.md)
+- Foundations: start here before using the interview question bank {#foundations-start-here-before-using-the-interview-question-bank}
+- Part 1: The Inference Load Balancing Conundrum
+  - Question 3: Avi LB vs NGINX LB (Why Enterprise L7/L4 Matters for AI)
+    - The Architecture of the Problem: gRPC and Connection Pinning
+    - NGINX Deep Dive (The Baseline)
+    - VMware Avi (NSX Advanced Load Balancer) Architecture
+    - Production Trade-offs
+- Part 2: The Core of the Beast - Serving Engines
+  - Question 9: Inferencing using Triton, vLLM, TensorRT
+    - 1. TensorRT & TensorRT-LLM: The Compiler Layer
+    - 2. vLLM: The Memory Management Revolution
+    - 3. Triton Inference Server: The Enterprise Gateway
+    - Production Configuration: Triton + vLLM
+- Part 3: Data Preparation Pipelines and MLOps
+  - The Problem: The Data Bottleneck
+  - Question: Designing the High-Throughput Data Pipeline
+    - 1. Distributed Data Processing (Ray Data)
+    - 2. Vector Database Architecture (Milvus/Qdrant)
+    - 3. MLOps: Monitoring the Unpredictable (Drift and Metrics)
+- Summary of the Inference Gauntlet
+- Part 4: Production Troubleshooting Scenarios (The War Room)
+  - Scenario A: The P99 Latency Spike during High Load
+  - Scenario B: The Silent Out-of-Memory (OOM) Killer
+  - Scenario C: The L4 Load Balancer Connection Pinning Deadlock
+- Part 5: Deep Dive - TensorRT-LLM Paged KV Cache vs. vLLM PagedAttention
+  - vLLM's PagedAttention
+  - TensorRT-LLM In-Flight Batching and Paged KV Cache
+  - The Synergy in Triton
+- Part 6: Advanced MLOps - Feature Stores and Online Inference
+  - The Challenge: Training-Serving Skew
+  - The Solution: The Feature Store
+  - Inference Data Flow with Feature Store
+- Conclusion
+- Part 7: Multi-Node Inference and Distributed Parallelism
+  - Question: Tensor Parallelism vs. Pipeline Parallelism in Inference
+    - Deep Architecture: Tensor Parallelism (Intra-Node)
+    - Deep Architecture: Pipeline Parallelism (Inter-Node)
+    - The MPI and NCCL Layer for Inference
+- Part 8: Infrastructure as Code (IaC) for AI
+  - 1. The Triton Kubernetes Deployment (Production Grade)
+  - 2. The Avi NSX Advanced Load Balancer Ingress
+- Part 9: Building the Custom Python Backend for Triton
+  - The Decoupled Streaming Python Backend
+  - Why this matters for the AI Engineer
+- Part 10: The Grafana Observability Dashboard (JSON)
+- Part 11: End-to-End Performance Tuning (The Hardware / Software Interface)
+  - Question: NUMA and PCIe Topologies in Inference Scale-Out
+    - Deep Architecture: The HGX Topology
+    - The Solution: Topology Manager and GPUDirect RDMA
+  - Troubleshooting NCCL Algorithms
+- Part 12: The Production Release Checklist
+  - 1. Networking & Ingress Validation
+  - 2. Serving Engine Optimization (Triton / vLLM / TensorRT-LLM)
+  - 3. Distributed Execution & Hardware Topologies
+  - 4. Data Pipelines & MLOps
+- Glossary of Advanced Inference Terms
+
+## 05 - Linux, Networking, and IaC Gauntlet  (05-linux-networking-iac-gauntlet.md)
+- Foundations: start here before using the interview question bank {#foundations-start-here-before-using-the-interview-question-bank}
+- 1. Q5: Complex Linux/Networking Troubleshooting
+  - 1.1 Linux Network Namespaces (netns)
+    - The Interview Scenario
+    - Deep Dive Demonstration
+    - Advanced Namespace Routing
+  - 1.2 Traffic Control (`tc`) - Emulating and Mitigating Network Chaos
+    - Deep Dive Demonstration: `netem`
+    - Hierarchical Token Bucket (HTB) for Bandwidth Shaping
+  - 1.3 Packet Analysis: `tcpdump` and Wireshark
+    - Essential `tcpdump` Commands
+    - Analyzing TCP State in Wireshark
+- 2. Q16: How to use Base Command Manager (BCM)
+  - 2.1 BCM Architecture Overview
+  - 2.2 Core Provisioning Workflow
+  - 2.3 Using `cmsh` (Cluster Management Shell)
+  - 2.4 Common BCM Troubleshooting
+- 3. Q17: Ansible vs Terraform Use Cases
+  - 3.1 The Paradigm Shift
+  - 3.2 When to use Terraform in AI Infra
+  - 3.3 When to use Ansible in AI Infra
+  - 3.4 The Interlocking Strategy
+- 4. Small Scripting Exercises
+  - 4.1 Log Parsing Exercise (Python)
+  - 4.2 Bash System Health Checking Exercise
+  - 4.3 GPU Health Exporter Exercise (Python)
+- 5. Summary and Conclusion
+- Appendix A: Extended Scenarios - The Gauntlet Deepens
+  - A.1 The Silent InfiniBand Flap (Advanced Troubleshooting)
+    - Step-by-Step Investigation Strategy
+  - A.2 Terraform State Corruption and Recovery
+    - Recovery Protocol
+  - A.3 Ansible at Scale: Overcoming the SSH Bottleneck
+    - Optimization Techniques
+- Appendix B: Comprehensive Scripting Exercises
+  - B.1 The Slurm Job Analyzer
+  - B.2 The Network Interface Watchdog
+- Appendix C: Automating BCM
+- Conclusion of the Masterclass
+- Appendix D.0: Kubernetes Networking Troubleshooting
+  - D.1 Calico BGP Peering Failure
+- Appendix E: Storage Performance Scripting (IOPS & Bandwidth)
+  - E.1 Storage Benchmark Script

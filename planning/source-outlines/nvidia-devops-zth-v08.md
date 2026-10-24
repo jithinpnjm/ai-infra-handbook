@@ -1,0 +1,641 @@
+# nvidia-devops-zth-v08
+
+
+## Chapter 01 — Why InfiniBand Exists  (chapter-01-why-infiniband-exists.md)
+- Introduction
+- Story: The Cluster That Was Reachable but Not Fast
+- Learning Objectives
+- Big Picture
+- The Fundamental Workload Difference
+- Why Conventional Host Networking Became Expensive
+- Why RDMA Matters
+- Why InfiniBand Is More Than RDMA
+- The Host Channel Adapter
+- The Switch Fabric
+- The Subnet Manager
+- Predictability versus Peak Speed
+  - Turning "predictability" into a number: annotated `ib_write_bw` and `ib_write_lat`
+- InfiniBand versus Ethernet: The Architectural Question
+- When InfiniBand Is Appropriate
+- When InfiniBand May Be the Wrong Choice
+- Production Architecture Considerations
+  - Scalability
+  - Availability
+  - Security and isolation
+  - Observability
+  - Lifecycle management
+  - Cost
+- Production Troubleshooting
+  - Scenario 1 — Port is up but traffic does not flow
+  - Scenario 2 — Bandwidth is lower on one node group
+  - Scenario 3 — Latency rises only under load
+  - Prevention
+- Customer Discovery Framework
+- Interview Preparation
+  - Knowledge Questions
+  - Architecture Questions
+  - Scenario Questions
+  - Customer Questions
+  - Whiteboard Question
+- Summary
+- Key Takeaways
+- Quick Revision Sheet
+- Lab Checklist
+- Cross References
+- Further Reading
+
+## Chapter 02 — InfiniBand Architecture and Link Layers  (chapter-02-infiniband-architecture-and-link-layers.md)
+- Introduction
+- Story: The Green Link That Was Not Part of the Fabric
+- Learning Objectives
+- Big Picture
+- Core Components
+  - Host Channel Adapter
+  - InfiniBand switch
+  - Subnet manager
+  - Cable and transceiver path
+- The Layered Model
+- Physical Layer
+  - Width and speed are separate
+  - Annotated `ibstat`: the six fields above, field by field
+- Link Layer
+  - Credit-based flow control
+  - Lossless does not mean congestion-free
+- Virtual Lanes and Service Levels
+- Management Traffic
+- Packet Journey
+- Port State Model
+- Production Architecture Considerations
+  - Performance
+  - Scalability
+  - Availability
+  - Security
+  - Observability
+- Production Deployment Pattern
+- Production Troubleshooting
+  - Scenario 1 — Port is physically up but not active
+  - Scenario 2 — Link is active at reduced width
+  - Scenario 3 — No packet loss, but severe slowdown
+  - Scenario 4 — One traffic class affects another
+- Customer Scenario
+- Interview Preparation
+  - Knowledge Questions
+  - Architecture Questions
+  - Scenario Questions
+  - Customer Questions
+  - Whiteboard Question
+- Summary
+- Key Takeaways
+- Quick Revision Sheet
+- Lab Checklist
+- Cross References
+- Further Reading
+
+## Chapter 03 — Verbs, Queue Pairs, and Completion Queues  (chapter-03-verbs-queue-pairs-and-completion-queues.md)
+- Introduction
+- Story: The Network Was Healthy, but Every Queue Pair Failed
+- Learning Objectives
+- Big Picture
+- Why the Queue Model Exists
+- The Verbs Interface
+- Core Resource Objects
+  - Device context
+  - Annotated `ibv_devinfo -v`: the capability answers that matter before you write a line of verbs code
+  - Protection domain
+  - Memory region
+  - Completion queue
+  - Queue pair
+- Work Requests and Work Queue Elements
+  - Scatter-gather entries
+- Operation Types
+  - Send and receive
+  - RDMA write
+  - RDMA read
+  - Atomic operations
+- Transport Types
+- Queue-Pair State Machine
+- Completion Semantics
+  - Signaled and unsignaled work
+- Polling Versus Events
+  - Busy polling
+  - Event-driven completion
+- Queue Depth and Backpressure
+- Resource Lifecycle
+- Production Architecture Considerations
+  - Performance
+  - Scalability
+  - Availability
+  - Security
+- Production Troubleshooting
+  - Scenario 1 — Queue pair never reaches ready-to-send
+  - Scenario 2 — Receiver-not-ready or missing receives
+  - Scenario 3 — Protection error
+  - Scenario 4 — Queue enters error and later work is flushed
+  - Scenario 5 — High CPU despite RDMA
+- Customer Scenario
+- Interview Preparation
+  - Knowledge Questions
+  - Architecture Questions
+  - Scenario Questions
+  - Customer Questions
+  - Whiteboard Question
+- Summary
+- Key Takeaways
+- Quick Revision Sheet
+- Lab Checklist
+- Cross References
+- Further Reading
+
+## Chapter 04 — LIDs, GIDs, P_Keys, and Addressing  (chapter-04-lids-gids-pkeys-and-addressing.md)
+- Introduction
+- Story: The Node That Changed Identity After Maintenance
+- Learning Objectives
+- Big Picture
+- Why Multiple Identity Types Exist
+- GUIDs: Stable Object Identity
+  - Why GUIDs matter operationally
+- LIDs: Local Subnet Forwarding
+  - Why LIDs can change
+  - LID Mask Control
+- GIDs: Globally Structured Port Identity
+  - Why GID index matters
+  - Annotated `show_gids`: why "index 3" is not a portable statement
+- P_Keys: Partition Membership
+  - Full and limited membership
+  - What P_Keys do not replace
+- Address and Path Resolution
+- Service IDs and Communication Managers
+- Identity Relationships
+- Mixed Environments and Multiple GIDs
+- Production Architecture Considerations
+  - Scalability
+  - Availability
+  - Security
+  - Operations
+- Production Deployment Pattern
+- Production Troubleshooting
+  - Scenario 1 — Port is active, but peers cannot communicate
+  - Scenario 2 — Inventory maps the wrong host after a restart
+  - Scenario 3 — One application works, another fails on the same nodes
+  - Scenario 4 — Tenant isolation is inconsistent
+  - Scenario 5 — GID tables differ across nominally identical nodes
+- Customer Scenario
+- Interview Preparation
+  - Knowledge Questions
+  - Architecture Questions
+  - Scenario Questions
+  - Customer Questions
+  - Whiteboard Question
+- Summary
+- Key Takeaways
+- Quick Revision Sheet
+- Lab Checklist
+- Cross References
+- Further Reading
+
+## Chapter 05 — Subnet Management and OpenSM  (chapter-05-subnet-management-and-opensm.md)
+- Introduction
+- Story: Every Port Was Active, but the Cluster Was Down
+- Learning Objectives
+- Big Picture
+- Why Centralized Subnet Management Exists
+- The Subnet-Management Lifecycle
+- Discovery
+- LID Assignment
+- Path Computation and Forwarding Tables
+- Sweeps
+  - Sweep storms
+- OpenSM Architecture
+- Master and Standby Subnet Managers
+  - Design considerations
+  - Split-authority risk
+  - Annotated `sminfo`: proving there is exactly one master
+- Partition Management
+- Quality of Service and Service Levels
+- High-Availability Architecture
+- Production Deployment Pattern
+- Observability
+- Production Troubleshooting
+  - Scenario 1 — Ports remain in `Initializing`
+  - Scenario 2 — Fabric behavior changes after SM failover
+  - Scenario 3 — Repeated sweeps and unstable applications
+  - Scenario 4 — New node is visible but cannot join the intended tenant
+- Customer Scenario
+- Interview Preparation
+  - Knowledge Questions
+  - Architecture Questions
+  - Scenario Questions
+  - Customer Questions
+  - Whiteboard Question
+- Summary
+- Key Takeaways
+- Quick Revision Sheet
+- Lab Checklist
+- Cross References
+- Further Reading
+
+## Chapter 06 — Routing, Topologies, and Oversubscription  (chapter-06-routing-topologies-and-oversubscription.md)
+- Introduction
+- Story: The Fabric Had Enough Bandwidth—But Not on the Used Paths
+- Learning Objectives
+- Big Picture
+- Topology Is a Graph
+- Destination-Based Forwarding
+- Common Topologies
+  - Leaf-spine or folded Clos
+  - Fat-tree
+  - Rail-optimized design
+  - Torus and mesh designs
+- Oversubscription
+  - When oversubscription is acceptable
+  - Worked example: what 2:1 oversubscription actually costs an AllReduce
+- Bisection Bandwidth
+- Path Diversity Versus Load Distribution
+- Routing Engines
+- Collectives and Routing
+- Failure Behavior
+- Production Design Framework
+- Observability
+- Production Troubleshooting
+  - Scenario 1 — Hot uplinks with idle alternatives
+  - Scenario 2 — Performance collapses after one link failure
+  - Scenario 3 — Same-rack jobs are fast; cross-rack jobs are slow
+  - Scenario 4 — One rail carries most traffic
+- Customer Scenario
+- Interview Preparation
+  - Knowledge Questions
+  - Architecture Questions
+  - Scenario Questions
+  - Customer Questions
+  - Whiteboard Question
+- Summary
+- Key Takeaways
+- Quick Revision Sheet
+- Cross References
+- Further Reading
+
+## Chapter 07 — Adaptive Routing and Congestion Control  (chapter-07-adaptive-routing-and-congestion-control.md)
+- Introduction
+- Story: No Packet Loss, Yet Every Job Slowed Down
+- Learning Objectives
+- Big Picture
+- Credit-Based Flow Control
+- Congestion Versus Physical Failure
+  - Annotated evidence: telling the two apart from counters alone
+- Head-of-Line Blocking
+- Adaptive Routing
+- Congestion Control
+- Adaptive Routing Versus Congestion Control
+- AI Workload Behavior
+- Multi-Tenancy
+- Production Design Checklist
+- Observability
+- Production Troubleshooting
+  - Scenario 1 — High wait counters on many upstream ports
+  - Scenario 2 — Adaptive routing enabled, but imbalance remains
+  - Scenario 3 — Latency becomes unstable after tuning
+  - Scenario 4 — One tenant slows another
+- Customer Scenario
+- Interview Preparation
+  - Knowledge Questions
+  - Architecture Questions
+  - Scenario Questions
+  - Whiteboard Question
+- Summary
+- Key Takeaways
+- Quick Revision Sheet
+- Cross References
+- Further Reading
+
+## Chapter 08 — HDR, NDR, XDR, and Link Evolution  (chapter-08-hdr-ndr-xdr-and-link-evolution.md)
+- Introduction
+- Story: The 400-Gigabit Upgrade That Delivered Half the Expected Gain
+- Learning Objectives
+- Big Picture
+- Link Rate, Width, and Effective Throughput
+- Generational View
+- Lane Width
+  - Annotated `iblinkinfo`: reading rate and width together, with a worked number
+- Encoding and Protocol Overhead
+- Host Injection Limits
+- Switch Radix and Fabric Density
+- Mixed-Generation Fabrics
+- Upgrade Planning
+- Cabling and Signal Integrity
+- Production Troubleshooting
+  - Scenario 1 — Link active at lower speed
+  - Scenario 2 — Correct speed, reduced width
+  - Scenario 3 — Microbenchmark improves, application does not
+  - Scenario 4 — Mixed-generation rack behaves inconsistently
+- Customer Scenario
+- Interview Preparation
+- Summary
+- Key Takeaways
+- Cross References
+- Further Reading
+
+## Chapter 09 — Fabric Monitoring and Telemetry  (chapter-09-fabric-monitoring-and-telemetry.md)
+- Introduction
+- Story: The Fabric Failed Slowly
+- Learning Objectives
+- Observability Layers
+- State Versus Counters
+  - State
+  - Counters
+  - Rates and deltas
+  - Annotated counter deltas: what "the fabric failed slowly" looks like in numbers
+- Inventory Is Telemetry Context
+- Baseline Design
+- Key Metric Families
+  - Port health
+  - Capacity and utilization
+  - Congestion
+  - Subnet management
+  - Application correlation
+- Topology-Aware Dashboards
+- Alert Philosophy
+- Telemetry Collection Architecture
+- UFM: The Product Layer Above These Tools
+- Counter Semantics
+- Production Troubleshooting
+  - Scenario 1 — Counter is high but no longer increasing
+  - Scenario 2 — Application slows with clean physical counters
+  - Scenario 3 — One rail appears idle
+  - Scenario 4 — Frequent SM sweep alerts
+- Incident Evidence Bundle
+- Customer Scenario
+- Interview Preparation
+- Summary
+- Key Takeaways
+- Cross References
+- Further Reading
+
+## Chapter 10 — Production Troubleshooting  (chapter-10-production-troubleshooting.md)
+- Introduction
+- Story: The NCCL Timeout That Was Not an NCCL Problem
+- Learning Objectives
+- The Layered Method
+- Step 1: Define the Symptom Precisely
+- Step 2: Verify Inventory and Topology
+- Step 3: Verify Physical and Logical Port State
+- Step 4: Verify Subnet Management
+- Step 5: Verify Routing and Path Records
+- Step 6: Test Host-Memory RDMA
+  - Annotated `ib_write_lat`: reading a latency test against a baseline, not in isolation
+- Step 7: Test GPU-Memory and Collective Paths
+- Decision Tree
+- Common Incident 1: Port Down
+- Common Incident 2: Port `Initializing`
+- Common Incident 3: Reduced Width or Speed
+- Common Incident 4: Rising Physical Errors
+- Common Incident 5: Host RDMA Fails, Port Looks Healthy
+- Common Incident 6: Host RDMA Healthy, GPU RDMA Slow
+- Common Incident 7: Pairwise Tests Pass, Collectives Are Slow
+- Common Incident 8: Intermittent Hangs
+- Common Incident 9: Congestion Without Errors
+- Common Incident 10: Post-Maintenance Topology Drift
+- Safe Command Practice
+- Evidence Bundle
+- Verification After Resolution
+- Prevention
+- Customer Scenario
+- Interview Preparation
+- Summary
+- Key Takeaways
+- Cross References
+- Further Reading
+
+## Chapter 11 — Production Design Scenarios  (chapter-11-production-design-scenarios.md)
+- Introduction
+- Architecture Decision Framework
+- Scenario 1: Eight DGX Systems for a Private LLM
+  - Customer goal
+  - Discovery questions
+  - Recommended approach
+  - Trade-offs
+- Scenario 2: 256-GPU Training Cluster
+  - Workload
+  - Architecture priorities
+  - Design pattern
+  - Validation
+  - Worked sizing: leaf uplinks for a nonblocking 256-GPU design
+- Scenario 3: Shared Training and Inference
+  - Problem
+  - Risks
+  - Design options
+- Scenario 4: InfiniBand for Compute and Storage
+  - Advantages
+  - Risks
+  - Architecture guidance
+- Scenario 5: Multi-Tenant Research Cluster
+  - Requirements
+  - Fabric controls
+  - Operational warning
+- Scenario 6: Expansion from 128 to 512 GPUs
+  - Common failure
+  - Better planning
+  - Expansion decision
+- Scenario 7: Strict Availability Requirement
+  - Requirement
+  - Design implications
+- Scenario 8: Cloud or Hosted Environment
+  - Constraint
+  - Architecture response
+- Scenario 9: Security-Sensitive Enterprise
+  - Controls
+- Scenario 10: Budget-Constrained AI Factory
+- Customer Workshop Template
+  - Business
+  - Workload
+  - Infrastructure
+  - Operations
+  - Decision record
+- Interview Preparation
+  - Architecture Questions
+  - Customer Questions
+  - Whiteboard Exercise
+- Summary
+- Key Takeaways
+- Cross References
+- Further Reading
+
+## Chapter 12 — Volume 08 Summary  (chapter-12-volume-08-summary.md)
+- The Big Picture
+- Learning Journey Recap
+  - Why InfiniBand exists
+  - Architecture and layers
+  - Verbs and execution
+  - Addressing and isolation
+  - Subnet management
+  - Routing and topology
+  - Congestion
+  - Link generations
+  - Observability
+- Architecture Summary Table
+- Production Design Principles
+- Troubleshooting Sequence
+- Customer Conversation Guide
+- Quick Revision Sheet
+- Interview Master Questions
+  - Conceptual
+  - Architecture
+  - Troubleshooting
+- Lab Completion Checklist
+- Final Takeaways
+- Cross References
+- Further Reading
+
+## Volume 08 — InfiniBand  (index.md)
+- Production Story
+- Learning Objectives
+- The Big Picture
+- How This Volume Fits the Bootcamp
+- Learning Path
+- Hands-on Labs
+- Architecture Questions Used Throughout the Volume
+- Production Mindset
+- Completion Criteria
+- Cross References
+- Further Reading
+
+## Lab 01 — Inventory an InfiniBand Fabric  (labs/lab-01-inventory-an-infiniband-fabric.md)
+- 1. Objective
+- 2. Background
+- 3. Learning Outcomes
+- 4. Architecture
+- 5. Prerequisites
+- 6. Environment
+- 7. Components
+- 8. Deployment Steps
+  - Step 1 — Discover local RDMA devices
+  - Step 2 — Inspect port state
+  - Step 3 — Inspect GIDs and P_Keys
+  - Step 4 — Record PCIe and NUMA locality
+  - Step 5 — Map fabric links
+  - Step 6 — Identify subnet-manager state
+- 9. Validation
+- 10. Verification
+- 11. Observability
+- 12. Performance Measurements
+- 13. Failure Injection
+- 14. Troubleshooting
+  - Device missing
+  - Port `LinkUp` but not `Active`
+  - Rate lower than expected
+  - GUID-to-host mismatch
+- 15. Cleanup
+- 16. Summary
+- 17. Challenge Exercises
+- 18. Further Reading
+- Production Relevance
+
+## Lab 02 — Benchmark InfiniBand Bandwidth and Latency  (labs/lab-02-benchmark-infiniband-bandwidth-and-latency.md)
+- 1. Objective
+- 2. Background
+- 3. Learning Outcomes
+- 4. Architecture
+- 5. Prerequisites
+- 6. Environment
+- 7. Components
+- 8. Deployment Steps
+  - Step 1 — Verify the path before load
+  - Step 2 — Pin the benchmark to the intended NUMA domain
+  - Step 3 — Run latency tests
+  - Step 4 — Run unidirectional bandwidth tests
+  - Step 5 — Run bidirectional bandwidth tests
+  - Step 6 — Repeat across topology locations
+  - Step 7 — Capture post-test counters
+- 9. Validation
+- 10. Verification
+- 11. Observability
+- 12. Performance Measurements
+- 13. Failure Injection
+- 14. Troubleshooting
+  - Connection fails
+  - Latency high but bandwidth healthy
+  - Bandwidth low across all message sizes
+  - Variance high only under concurrency
+  - One rail underperforms
+- 15. Cleanup
+- 16. Summary
+- 17. Challenge Exercises
+- 18. Further Reading
+- Production Relevance
+
+## Lab 03 — Inspect Subnet Routing and Counters  (labs/lab-03-inspect-subnet-routing-and-counters.md)
+- 1. Objective
+- 2. Background
+- 3. Learning Outcomes
+- 4. Architecture
+- 5. Prerequisites
+- 6. Environment
+- 7. Components
+- 8. Deployment Steps
+  - Step 1 — Record SM identity and state
+  - Step 2 — Capture topology
+  - Step 3 — Record endpoint identities
+  - Step 4 — Inspect forwarding state
+  - Step 5 — Trace or infer the path
+  - Step 6 — Capture counter baseline
+  - Step 7 — Run a controlled workload
+  - Step 8 — Capture counter deltas
+  - Step 9 — Compare route balance
+- 9. Validation
+- 10. Verification
+- 11. Observability
+- 12. Performance Measurements
+- 13. Failure Injection
+- 14. Troubleshooting
+  - Destination route missing
+  - Route exists but no traffic appears
+  - Physical errors increase
+  - Transmit wait increases with clean physical counters
+  - Route imbalance
+- 15. Cleanup
+- 16. Summary
+- 17. Challenge Exercises
+- 18. Further Reading
+- Production Relevance
+
+## Lab 04 — Troubleshoot an InfiniBand Path  (labs/lab-04-troubleshoot-an-infiniband-path.md)
+- 1. Objective
+- 2. Background
+- 3. Learning Outcomes
+- 4. Architecture
+- 5. Prerequisites
+- 6. Environment
+- 7. Components
+- 8. Deployment Steps
+  - Step 1 — Establish the healthy baseline
+  - Step 2 — Write the diagnosis decision tree
+  - Step 3 — Inject one reversible fault
+    - Option A — Remote NUMA binding
+    - Option B — Nonpreferred rail
+    - Option C — Partition simulation
+  - Step 4 — Confirm the fault is active
+  - Step 5 — Reproduce the symptom
+  - Step 6 — Diagnose from the bottom up
+    - Physical layer
+    - Control plane
+    - Addressing and route
+    - Transport
+    - Host locality
+  - Step 7 — State the root cause
+  - Step 8 — Repair the path
+  - Step 9 — Rerun the baseline
+- 9. Validation
+- 10. Verification
+- 11. Observability
+- 12. Performance Measurements
+- 13. Failure Injection
+- 14. Troubleshooting
+  - No performance difference after remote binding
+  - Benchmark fails completely
+  - Repaired result does not return to baseline
+  - Physical errors appear during the experiment
+  - SM sweep occurs unexpectedly
+- 15. Cleanup
+- 16. Summary
+- 17. Challenge Exercises
+- 18. Further Reading
+- Production Relevance

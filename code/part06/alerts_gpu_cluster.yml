@@ -1,0 +1,55 @@
+# Prometheus alerting rules for a Slurm GPU cluster (illustrative; tune thresholds to your fleet).
+# Metric sources: dcgm-exporter (DCGM_FI_*), node_exporter (node_*), slurm_exporter.py (slurm_*).
+groups:
+- name: gpu-health
+  rules:
+  - alert: GpuXidError
+    expr: DCGM_FI_DEV_XID_ERRORS > 0
+    for: 1m
+    labels: {severity: page}
+    annotations:
+      summary: "Xid {{ $value }} on {{ $labels.Hostname }} GPU {{ $labels.gpu }}"
+      runbook: "Drain node, collect nvidia-bug-report, see 6.14 health checks"
+  - alert: GpuRowRemapFailure
+    expr: DCGM_FI_DEV_ROW_REMAP_FAILURE == 1
+    labels: {severity: page}
+    annotations: {summary: "Row remap failure on {{ $labels.Hostname }} GPU {{ $labels.gpu }}", runbook: "RMA candidate; drain"}
+  - alert: GpuHot
+    expr: DCGM_FI_DEV_GPU_TEMP > 85
+    for: 10m
+    labels: {severity: warn}
+    annotations: {summary: "GPU temp {{ $value }}C on {{ $labels.Hostname }}", runbook: "Check cooling, fans, throttling"}
+  - alert: AllocatedGpuIdle
+    expr: avg_over_time(DCGM_FI_DEV_GPU_UTIL[30m]) < 5 and on (Hostname) slurm_gpus{status="allocated"} > 0
+    for: 30m
+    labels: {severity: ticket}
+    annotations: {summary: "Allocated GPUs idle on {{ $labels.Hostname }}", runbook: "Contact job owner; consider reclaiming"}
+- name: slurm
+  rules:
+  - alert: SlurmNodesDrainedHigh
+    expr: sum(slurm_nodes{state=~"drain.*|down"}) / sum(slurm_nodes) > 0.05
+    for: 15m
+    labels: {severity: page}
+    annotations: {summary: "More than 5% of nodes drained or down", runbook: "6.14 playbook; check for common cause"}
+  - alert: SlurmExporterDown
+    expr: slurm_exporter_scrape_ok == 0 or absent(slurm_exporter_scrape_ok)
+    for: 5m
+    labels: {severity: page}
+    annotations: {summary: "Slurm metrics missing: controller or exporter down", runbook: "Check slurmctld, exporter, network"}
+  - alert: GpuQueueBacklogWhileIdle
+    expr: slurm_jobs{state="pending",partition="gpu"} > 20 and slurm_gpus{status="total"} - slurm_gpus{status="allocated"} > 16
+    for: 30m
+    labels: {severity: warn}
+    annotations: {summary: "Pending GPU jobs while GPUs are idle", runbook: "6.9 pending reasons; limits, fragmentation, reservations"}
+- name: node
+  rules:
+  - alert: TmpFull
+    expr: node_filesystem_avail_bytes{mountpoint="/tmp"} / node_filesystem_size_bytes{mountpoint="/tmp"} < 0.1
+    for: 10m
+    labels: {severity: warn}
+    annotations: {summary: "/tmp below 10% free on {{ $labels.instance }}", runbook: "Epilog cleanup, find large dirs"}
+  - alert: IbPortDown
+    expr: node_infiniband_port_state_id != 5
+    for: 5m
+    labels: {severity: page}
+    annotations: {summary: "IB port not Active on {{ $labels.instance }}", runbook: "Check cable/switch, ibstat"}

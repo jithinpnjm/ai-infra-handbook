@@ -1,0 +1,11 @@
+{
+  "_comment": "Lab BIOS target for an AI node. Attribute NAMES are from my lab registry; real platforms use their own names (read the attribute registry). The reasons come from the user's notes (volume 10 chapter 1, section 5) and are NOT verified against vendor documents.",
+  "PowerProfile": "MaxPerf",
+  "ProcCStates": "Disabled",
+  "SubNumaClustering": "Enabled",
+  "PcieRelaxedOrdering": "Enabled",
+  "PcieMaxPayloadSize": "512B",
+  "PcieLinkSpeed": "Gen5",
+  "IommuMode": "Enabled",
+  "BootMode": "Uefi"
+}

@@ -1,0 +1,14 @@
+# Deliberate skips: CODE chapter | reason (reviewed by the author; used by tools/coverage/map_sources.py)
+HLW 14 | Linux desktop and printing: not relevant to server and cluster work
+CN 29 | Internet of Things: out of scope for AI infrastructure
+CN 30 | Looking forward: dated speculation; trends are covered where relevant in Part 12
+ADC 14 | Conclusion: summary only
+AF 1 | Industrial AI introduction: AI Factory (Karim, Galar, Kumar) is an industrial-AI book, limited fit; only Distributed Computing, Software Engineering and Roadmap chapters are used (AF 8, 9, 11)
+AF 2 | Digital twins: industrial scope
+AF 3 | Industry hype and trends: dated
+AF 4 | Data analytics: industrial scope
+AF 5 | Data-driven decision making: industrial scope
+AF 6 | AI fundamentals: covered better by DMLS, AIE and EAS
+AF 7 | Systems thinking and systems engineering: background only
+AF 10 | Industrial case studies: out of scope
+AF 12 | Closing chapter: summary only

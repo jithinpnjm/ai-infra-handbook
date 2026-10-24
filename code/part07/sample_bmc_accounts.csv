@@ -1,0 +1,8 @@
+node,bmc_user,bmc_password
+node001,bmcadmin,S3cretOne
+node002,bmcadmin,S3cretOne
+node003,bmcadmin,Different99
+node004,bmcadmin,S3cretOne
+node005,admin,admin
+node006,bmcadmin,
+node007,bmcadmin,S3cretOne

@@ -1,0 +1,7 @@
+name,sockets,cores_per_socket,threads_per_core,mem_mb,gpus,gpu_type,partition
+gpu001,2,56,2,2063000,8,h100,gpu
+gpu002,2,56,2,2063000,8,h100,gpu
+gpu003,2,56,2,2063000,8,h100,gpu
+gpu005,2,56,2,2063000,8,h100,gpu
+cpu001,2,32,2,512000,0,none,cpu
+cpu002,2,32,2,512000,0,none,cpu

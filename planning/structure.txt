@@ -1,0 +1,429 @@
+# AI Infrastructure Handbook: complete structure (single source of truth; edit here, then run tools/scaffold/generate.py)
+# Format:  @PART nn | folder-slug | Part title | default tier | default lab venue
+#          nn | Chapter title | level | sources | [venue] | [tier]
+# Levels: B basics, I intermediate, A advanced. Venue: M Mac, G GCP/GKE, N Nebius GPU, - none. Tier: 1, 1b, 2, 3.
+# Source codes: books HLW SP SCL CN NPA NK KUR PK GAK AUR TUR LP FP FA ASP ADC ANC DAI HLS AIE DMLS EAS LEH LLO PM AF; added later: KPG (Kubernetes Programming with Go), MLPE (Machine Learning Platform Engineering), PHPC (Parallel and High Performance Computing), K8GS (Kubernetes for Generative AI Solutions), LLP (LLMs in Production), SKI (Scalable Kubernetes Infrastructure for AI Platforms, report);
+# vendor PDFs BCM-A (admin) BCM-I (install) BCM-C (containerization) RF-S (Redfish spec) RF-SC (schema) RF-G (resource guide) SPB200 SPGB300;
+# author volumes V1..V26 (nvidia-devops zero-to-hero), VL1..VL9 (legacy), VCORE (core interview); PUB = public documentation (gap fill, flag for version check).
+
+@PART 00 | orientation | Part 0: Orientation | 2 | M
+01 | The AI factory landscape and the roles in it | B | AF 11; V1; V21; EAS 1,15; NPA 1; V1; VINTRO
+02 | How to use this book and set up your labs (Mac, GCP/GKE, Nebius) | B | PUB; VINTRO | M
+03 | Learning paths by role: Platform, MLOps, LLM inference, HPC GPU cloud | B | JD_MAPPING; VINTRO
+
+@PART 01 | linux | Part 1: Linux, from the command line to the kernel and performance | 0 | G
+01 | The Linux big picture: kernel, userspace, distributions | B | HLW 1; SCL 7; NPA 3
+02 | The command line: shells, commands, pipes and redirection | B | HLW 2; SCL 7,8
+03 | Files and the directory hierarchy: paths, links, inodes | B | HLW 2; SCL 7,8
+04 | Text-processing essentials: grep, sed, awk, find, xargs, sort | B | HLW 2; PUB; SCL 7,8
+05 | Working remotely: SSH keys, file transfer, tmux and editors | B | HLW 12; SCL 10,18; PUB
+06 | Users, groups, permissions, ACLs, sudo and user environments | B | HLW 7,13; SCL 11,12
+07 | Packages, repositories and software installation | B | HLW 15,16; SCL 24; SCL 7
+08 | Processes, signals and job control | B | HLW 8; SP 3; SCL 7
+09 | Shell scripting that survives production | B | HLW 11; SCL 28,29; SCL 7,8
+10 | Devices, udev, sysfs and procfs | I | HLW 3; SCL 7,8
+11 | How a program runs: system calls, libraries, ELF, strace and ldd | I | HLW 8,15,16; SP 5; PUB; VL1 ch1
+12 | Disks, partitions and filesystems | I | HLW 4; SP 8,9; VL1 ch2
+13 | LVM, RAID and NVMe | I | HLW 4; SP 9; V15; VL1 ch2
+14 | Boot: firmware, GRUB, kernel, initramfs | I | HLW 5; SCL 23
+15 | systemd: units, targets, timers, journald | I | HLW 6,7; SCL 30; VL1; VL1 ch4; SCL 7
+16 | Logging, time synchronisation, cron and batch jobs | I | HLW 7; SCL 7; SCL 28
+17 | Memory management: virtual memory, NUMA, huge pages, OOM | A | SP 7; VL1
+18 | CPU scheduling and cgroups v1 and v2 | A | SP 6; HLW 8; VL1
+19 | Namespaces: the kernel feature behind containers | I | HLW 17; SP 11; VL1 ch4
+20 | Lab: build a container by hand with unshare, chroot, cgroups and overlayfs | I | HLW 17; PUB; VL1 ch4
+21 | Linux security: capabilities, SELinux, AppArmor, seccomp, PAM, SSH hardening | A | HLW; PK 8; PUB; VL10 ch3 | | 2
+22 | Kernel modules, DKMS and sysctl tuning for GPU nodes | A | HLW 5; ASP 3; VL10 ch3 | | 1
+23 | Performance methodology: USE, workload characterisation, drill-down | I | SP 1,2,4 | | 2
+24 | Observability tools: perf, ftrace, BPF and bpftrace | A | SP 4,13,14,15 | | 2
+25 | Benchmarking correctly | A | SP 12 | | 2
+26 | KVM, QEMU and libvirt basics | I | HLW 17; SP 11 | | 2
+27 | Cloud computing and virtualization internals for Linux engineers | I | SP 11 | | 2
+28 | Putting it together: tuning a Linux node for GPU and HPC work | A | SP 16; ASP 3; SCL | | 1
+29 | Remote administration reference: SSH server and client options, host-based authentication, parallel shells, screen and tmux, IPMI and console managers | I | SCL 10; PUB | G | 0
+30 | Network file sharing and remote graphical access: rsync in depth, Samba, SSHFS, NFS clients, cloud storage, X11, VNC and alternatives | I | HLW 12; SCL 18; PUB; SCL 28 | G | 0
+@PART 02 | networking | Part 2: Networking, from packets to data centers | 0 | G
+01 | What happens when you curl a URL: a packet's journey end to end | B | CN 1; NK 1; HLW 9,10
+02 | How networks work: layers, encapsulation, the TCP/IP model | B | CN 1
+03 | Ethernet and L2: frames, MAC addresses, switching, ARP and NDP | B | CN 4,6,7
+04 | IP addressing, subnetting and CIDR (IPv4 and IPv6), with practice | B | CN 4,5; HLW 9
+05 | Routing on a host: routing tables, default gateways and forwarding | B | HLW 9; NK 2
+06 | TCP in depth: handshake, windows, congestion control, retransmission | I | CN 2,3,5
+07 | UDP, ICMP and the diagnostic tools: ping, traceroute, mtr | B | CN 5; HLW 9
+08 | DNS in depth: resolution, records, resolvers and caching | B | HLW 10; CN 5; PUB
+09 | DHCP, NAT and PAT | B | CN 5; HLW 9,10
+10 | HTTP, TLS and PKI basics | B | CN 10; HLW 10; PUB
+11 | VLANs, trunking and spanning tree | I | CN 7,11
+12 | Link aggregation: LACP and MLAG | I | CN 7; SCL 4
+13 | IP routing: static routes, dynamic routing and convergence | I | CN 12,13,14
+14 | OSPF and IS-IS | I | CN 15,16 | | 3
+15 | BGP fundamentals | I | CN 16,17 | | 2
+16 | BGP in the data center: eBGP Clos, unnumbered, ECMP, anycast | A | CN 17,19; ADC 8 | | 2
+17 | Overlays: VXLAN and EVPN | A | CN 9; NK 3; PUB | | 2
+18 | Data center topologies: Clos, leaf-spine, oversubscription, failure domains | A | CN 19,20,22,23,25; ADC 3 | | 2
+19 | Queuing, QoS, ECN, PFC and DCB basics | A | CN 8; ADC 7 | | 2
+20 | Load balancing: L4, L7, ECMP hashing and proxies | I | CN; PK 6 | | 2
+21 | Network security: firewalls, TLS and zero trust | I | CN 10,21 | | 2
+22 | Linux networking: inspecting state with ip, ss and counters | B | HLW 9; SP 10; NK 2
+23 | Linux networking: netfilter, nftables, conntrack and NAT | I | NK 2; VL1
+24 | Linux networking: policy routing, bonding, MTU, NIC and stack tuning | A | SP 10; ASP 4 | | 1
+25 | Linux networking: namespaces, veth, bridges and container networking | I | NK 2,3
+26 | Packet capture from scratch: tcpdump, tshark and Wireshark | I | SP 10,15; NK 1
+27 | Lab: build network topologies with namespaces, FRR and Containerlab | I | NK 2; CN; PUB
+28 | Network automation fundamentals: APIs, YANG, NETCONF, gNMI, SDN, templates | I | NPA 2,8,9,10; CN 18 | | 2
+29 | Network automation in practice: Ansible, Nornir and CI/CD for networks | A | NPA 12,13,14; CN 26,27 | | 2
+30 | Network troubleshooting method and case studies | A | CN 24; SP 10 | | 1
+31 | Network monitoring and telemetry | I | ADC 11; NPA | | 2
+32 | Cloud networking: VPC, peering, load balancers and GCP specifics | I | NK 6; CN 28; PUB; NPA 4 | | 1
+@PART 03 | python | Part 3: Python for infrastructure engineers | 2 | M
+01 | Python core: types, control flow, functions | B | LP 4-19; LP 1,2,3; NPA 6; VL2 ch0
+02 | Modules, packages, virtual environments and packaging | B | LP 22-25; PUB
+03 | Idiomatic Python: the data model, comprehensions, generators | I | FP 1-3,17; LP 14,20; FP 6,7,9,10; VL2 ch1
+04 | Classes, dataclasses, typing and protocols | I | FP 5,8,13,15; LP 26-32; FP 11,12,14,16; VL2 ch1,5
+05 | Errors, files, text and bytes, subprocess and system scripting | I | LP 33-37; FP 4,18
+06 | Concurrency: threads, processes and asyncio | A | FP 19-21; VL2 ch2
+07 | Building APIs and microservices with FastAPI | I | FA 1-9; VL2 ch4
+08 | Building CLIs, agents and exporters (Prometheus exporters, Redfish clients) | I | PM 11; PUB; VL2 ch3
+09 | Testing, quality and CI for Python tooling | I | FA 8; AUR 14; LP 21; EAS 2; VL2 ch3
+10 | Python for data and ML infrastructure: NumPy, pandas, PyTorch essentials | I | AIE; DMLS
+11 | Python under the hood: decorators, descriptors and metaprogramming (how frameworks work) | A | FP 22,23,24; LP 38,39,40,41; VL2 ch5 | | 2
+
+@PART 04 | automation | Part 4: Automation and infrastructure as code (Ansible from zero, Terraform) | 0 | G
+01 | Git from scratch for infrastructure engineers | B | NPA 11; NPA 5; VL10 ch17
+02 | CI/CD pipelines: concepts and design | I | NPA 13; AUR 22; VL10 ch11 | | 2
+03 | Ansible from zero: what it is, how it works, installation and ad hoc commands | B | AUR 1,2
+04 | YAML and Jinja2 for infrastructure code | B | AUR 3; PUB
+05 | Ansible inventory: hosts, groups, dynamic inventory and variables | B | AUR 4
+06 | Ansible playbooks: tasks, modules, idempotency and check mode | B | AUR 3
+07 | Ansible variables, facts, templates and filters | B | AUR 5
+08 | Ansible handlers, conditionals, loops, blocks and error handling | I | AUR 10,11
+09 | A real playbook end to end: deploying an application | I | AUR 6,7
+10 | Debugging Ansible playbooks | I | AUR 8
+11 | Ansible roles and collections | I | AUR 9,15
+12 | Ansible Vault and secrets management | I | AUR; PUB
+13 | Testing Ansible: ansible-lint, Molecule and CI | I | AUR 14,22 | | 2
+14 | Ansible at scale: performance, strategies and callbacks | A | AUR 18,20 | | 2
+15 | Custom modules, plug-ins and Ansible Automation Platform | A | AUR 19,23,24 | | 2
+16 | Ansible for containers, cloud and network devices | I | AUR 12,13,16,17,21; NPA 12; VL10 ch4 | | 2
+17 | Ansible for GPU nodes and clusters | A | AUR; ASP 3; PUB; VL10 ch4 | | 1
+18 | Terraform refresher: why, providers, resources and the workflow | B | TUR 1,2; VL10 ch5 | | 2
+19 | Terraform state in depth: backends, locking and drift | I | TUR 3; VL10 ch5 | | 2
+20 | Terraform modules and reusable infrastructure | I | TUR 4; VL10 ch5 | | 2
+21 | Terraform loops, conditionals, lifecycle and gotchas | I | TUR 5; VL10 ch5 | | 2
+22 | Terraform secrets and multiple providers | I | TUR 6,7; VL10 ch5 | | 2
+23 | Production-grade Terraform: structure, testing and team workflows | A | TUR 8,9,10; VL10 ch5 | | 2
+24 | Terraform on GCP and Nebius: networks, GPU VMs and GKE | I | PUB | G | 1
+25 | Terraform with Kubernetes and Helm providers; OpenTofu | I | PUB | | 2
+26 | GitOps with Argo CD and Flux | I | PK 11; PUB; VL10 ch11 | | 2
+27 | Lab: provision a GPU cluster with Terraform and Ansible | A | TUR; AUR; PUB | G | 1
+@PART 05 | kubernetes | Part 5: Containers and Kubernetes, from internals to operators | 0 | G
+01 | Containers from first principles: images, layers, registries | B | KUR 2; PK 3
+02 | Container runtimes: containerd, runc, CRI and OCI | I | PK 3
+03 | Kubernetes architecture overview: components and what talks to what | B | KUR 1,3; VL3
+04 | Bare-metal Kubernetes from scratch with kubeadm (lab) | I | KUR 3,4,A; PK 1,2; PUB | G
+05 | The API server and etcd: how a request becomes cluster state | I | PK 1,2; KUR 17; PUB; VL3 ch1
+06 | Controllers and the reconcile loop: how Kubernetes thinks | I | KUR 9-12,17; KPG
+07 | Pods and workloads: Deployments, StatefulSets, DaemonSets and Jobs | B | KUR 4-6,9-12,22; PK 14
+08 | The life of a pod, end to end, including what the kernel does | I | KUR 5; PK 3,5; HLW 17; NK 3,4
+09 | The kubelet and the node: CRI, cgroups, QoS classes, probes and eviction | I | PK 3; KUR 5; VL3 ch2
+10 | Services, endpoints and kube-proxy: the life of a Service | I | KUR 7; NK 5; PK 6
+11 | DNS and service discovery with CoreDNS | I | KUR 7; NK 5
+12 | Ingress, load balancers and the Gateway API | I | KUR 8; PK 6; NK 6
+13 | Pod networking under the hood: veth, bridges, routes and CNI plugins | I | NK 3,4,6; PK 5
+14 | Overlay versus routed pod networking: VXLAN, BGP with Calico, eBPF with Cilium | A | PK 5; NK 4-6 | | 1
+15 | NetworkPolicy and the kernel: netfilter, conntrack and eBPF | I | NK 4,5; PK 5; VL3 ch3
+16 | Configuration, secrets and RBAC | I | KUR 13,14; PK 7
+17 | Storage internals: volumes, PV and PVC, CSI and mounts | I | KUR 16; PK 4; VL3 ch2
+18 | Scheduling in depth: kube-scheduler, affinity, taints, priority and preemption | A | KUR; VL3; VL3 ch1 | | 1
+19 | Cluster deployment models and day-2 operations | A | PK 1,2; KUR 3 | | 2
+20 | Upgrades, etcd backup and restore, and disaster recovery | A | PK; PUB | | 2
+21 | Certificates, identity, admission control and policy | A | PK 8,10; KUR 19,20; VL3 ch3 | | 2
+22 | Multitenancy and platform services | A | PK 11,12,16 | | 1
+23 | Autoscaling: HPA, VPA, KEDA and the cluster autoscaler | A | PK 13 | | 1
+24 | Observability for Kubernetes | A | PK 9 | | 2
+25 | Troubleshooting Kubernetes from the node: crictl, nsenter, tcpdump and iptables | I | PK; NK; PUB
+26 | How Kubernetes uses the Linux kernel: a complete map | I | HLW 17; NK 2-5; PK 3-5
+27 | Software supply chain security | A | PK 15 | | 2
+28 | Service mesh | I | KUR 15 | | 3
+29 | Extending Kubernetes: CRDs and operators | A | KUR 17,18; BCM-C 6; KPG | | 2
+30 | Go for Kubernetes engineers | I | KPG; PUB; NPA 7 | | 2
+31 | Operators in Go: controller-runtime and kubebuilder | A | KPG; PUB | | 2
+32 | Project: a GPU-node-health operator | A | KPG; PUB; V10 | G | 2
+33 | Reading the GPU Operator and Network Operator source | A | KPG; PUB | | 2
+34 | GKE for GPU workloads: setup, node pools and quotas | I | PUB; GAK; K8GS; SKI | G | 1
+35 | Multicluster and fleet management | A | KUR 21 | | 3
+@PART 06 | hpc-slurm | Part 6: HPC, supercomputers and Slurm | 1 | G
+01 | What a supercomputer is: TOP500, Linpack, HPC versus AI factory | B | SCL 1,2; AF 9 | | 2
+02 | Cluster anatomy: head, login, compute, storage and management nodes | B | SCL 3,4,6; SCL 17 | | 2
+03 | Parallel computing concepts: Amdahl, scaling, shared memory versus message passing | I | SCL 21,22; PUB; PHPC | | 2
+04 | MPI in practice: Open MPI, ranks, collectives and tuning | I | SCL 21,22; PHPC; VL10 ch7 | | 2
+05 | OpenMP, compilers and optimisation flags | I | SCL 21; PHPC | | 3
+06 | Environment modules, Spack and EasyBuild | I | SCL 21,24 | | 2
+07 | Slurm architecture and installation | I | SCL 13-15; DAI 8; VL6 ch4; VL10 ch6,14
+08 | Slurm configuration: nodes, partitions and cgroups | I | SCL 15
+09 | Slurm accounting and scheduling policy: QoS, fairshare, backfill, preemption | A | SCL 15; VL10 ch6,14
+10 | Slurm GPU scheduling: gres, NVML autodetect, MIG and device constraints | A | DAI 8; SCL 15; PUB
+11 | Submitting and launching jobs: sbatch, srun, salloc, arrays, dependencies | I | SCL 15; DAI 8
+12 | Multi-node training on Slurm: PMIx, torchrun, NCCL environment, binding, topology | A | DAI 8; ASP 4
+13 | Containers on Slurm: enroot and pyxis | A | SCL 16; DAI 8; PUB; VL10 ch8
+14 | Slurm operations: prolog, epilog, health checks, drain, reason codes, troubleshooting | A | SCL 15; V20; VL10 ch9
+15 | Slurm high availability, upgrades and scaling | A | SCL; PUB; VL10 ch6,14
+16 | Slurm on Kubernetes: Slinky and Soperator | A | PUB
+17 | Other schedulers: PBS, Torque, LSF and Flux | I | SCL 14 | | 3
+18 | Parallel storage concepts and the limits of NFS | I | SCL 9 | | 2
+19 | Lustre architecture and operation | A | V15 ch5; PUB; SCL 28 | | 2
+20 | BeeGFS, GPFS, WekaFS and VAST | I | V15; PUB | | 2
+21 | Parallel I/O and checkpoint patterns | A | ASP 5; V15 | | 2
+22 | Provisioning with PXE, iPXE, DHCP, TFTP and image management | A | SCL 23-26; VL10 ch1,3 | | 1b
+23 | xCAT, Warewulf and cluster managers compared with BCM | I | SCL 26; PUB; SCL 28 | | 2
+24 | Users, LDAP, SSSD, quotas and accounting at scale | I | SCL 11,12; SCL 28 | | 2
+25 | Remote access, bastions, Open OnDemand and user environments | I | SCL 18; SCL 27 | | 3
+26 | Cluster monitoring and health at scale | A | SCL 19 | | 2
+27 | Backup and data protection | I | SCL 20 | | 3
+28 | HPC benchmarking: HPL, HPCG, IOR, OSU and NCCL tests | A | SP 12; ASP; PHPC | | 2
+29 | Containers and reproducibility in HPC: Apptainer and enroot | I | SCL 16 | | 2
+30 | Facility basics: power, cooling, racks and liquid cooling | I | V1; AF; SPB200; SCL 28 | | 2
+31 | Capstone: build and operate a small Slurm GPU cluster | A | all of Part 6; VL10 ch0 | N
+
+@PART 07 | redfish-bmc | Part 7: Out-of-band management and Redfish | 1b | G
+01 | BMCs, IPMI and out-of-band management | B | RF-S; V5 ch3; VL10 ch1
+02 | Redfish concepts: service root, resources, collections, OData | B | RF-S 5,6; RF-G
+03 | The Redfish protocol: HTTP methods, headers, status codes, query parameters | I | RF-S 7-9
+04 | Redfish authentication, sessions and security | I | RF-S 13
+05 | Redfish actions, tasks, events and subscriptions | A | RF-S
+06 | The Redfish schema: reading CSDL, JSON schema and the resource guide | I | RF-SC; RF-G
+07 | Systems, Chassis and Managers: the core resource model | I | RF-G
+08 | Power, thermal, sensors and environment | I | RF-G
+09 | Storage, network adapters and PCIe devices | I | RF-G
+10 | Firmware inventory and the UpdateService | A | RF-G; VL10 ch16
+11 | Log services, event logs and diagnostics | I | RF-G
+12 | Automating Redfish with Python, Ansible and Go | A | RF-S; PUB
+13 | Redfish on NVIDIA DGX and HGX: BMC, GPU baseboard and management | A | V5 ch3; VL; V6; PUB
+14 | Fleet-scale hardware management and node lifecycle automation | A | PUB; BCM-A; VL10 ch1
+15 | BMC security hardening and attestation | A | V18 ch2; RF-S 13
+
+@PART 08 | bcm | Part 8: NVIDIA Base Command Manager (BCM) | 1b | N
+01 | BCM architecture and concepts | B | BCM-A 1,2; BCM-I 1; VL10 ch2
+02 | Planning and installing BCM | I | BCM-I
+03 | Cluster configuration: networks, nodes and categories | I | BCM-A 3; VL10 ch2
+04 | Node provisioning: images, kernels, categories and the PXE flow | A | BCM-A 5; VL10 ch2
+05 | cmsh and Base View: administering the cluster | I | BCM-A 2
+06 | Users, authentication and security in BCM | I | BCM-A
+07 | Power, BMC and hardware management in BCM | I | BCM-A; RF-S
+08 | Workload managers under BCM: Slurm setup | A | BCM-A
+09 | Kubernetes under BCM: deployment and GPU enablement | A | BCM-C
+10 | Containerization in BCM: Docker, Apptainer and enroot | I | BCM-C
+11 | Monitoring, health checks and alerts in BCM | A | BCM-A
+12 | High availability and head-node failover | A | BCM-A; VL10 ch13
+13 | Day-2 operations: updates, scaling, hardware replacement, disaster recovery | A | BCM-A; VL10 ch13
+14 | Air-gapped installation and upgrades | A | BCM-C B,C
+15 | BCM in an AI factory: DGX SuperPOD integration | A | BCM-A; SPB200; SPGB300
+16 | Mission Control, DGX Cloud and autonomous recovery concepts | I | PUB; V21
+
+@PART 09 | nvidia-systems | Part 9: NVIDIA systems and reference architectures | 1b | -
+01 | DGX system families and what they are for | B | V4; V5; ASP 2
+02 | Inside a DGX H100 and H200 system | I | V5 ch2; ASP 2
+03 | HGX platforms and OEM integration | I | V6
+04 | Grace CPU, GH200 and GB200 superchips | I | V4 ch7; ASP 2
+05 | GB200 and GB300 NVL72 rack-scale systems | A | V5 ch7; V6 ch7; SPGB300; ASP 2
+06 | DGX SuperPOD concepts: scalable units, fabrics and tiers | A | SPB200; SPGB300; V21
+07 | DGX B200 SuperPOD data center design: power, cooling, cabling and layout | A | SPB200
+08 | GB300 SuperPOD reference architecture | A | SPGB300
+09 | Compute, storage, in-band and out-of-band networks in a SuperPOD | A | SPGB300; SPB200
+10 | BasePOD and smaller deployments | I | PUB; V21
+11 | Power delivery, thermal design and liquid cooling | A | V5 ch4; V1 ch6; SPB200
+12 | Software stack and management in an AI factory | I | V21 ch6; BCM-A
+13 | Sizing and capacity-planning exercises | A | V21; V19; VL8 ch1,2
+14 | Cloud GPU platforms: DGX Cloud, CoreWeave, Nebius and GCP A3 and A4 | I | PUB
+
+@PART 10 | gpu-cuda | Part 10: The GPU and CUDA | 2 | N
+01 | Why GPUs: CPU versus GPU and throughput design | B | V1; V2 ch1; ASP 1
+02 | The execution model: threads, warps, blocks and SMs | I | V2; ASP 6; VL4 ch1
+03 | The GPU memory hierarchy | I | V2; ASP 6,7; VL4 ch1
+04 | Tensor cores and numerical precision | I | ASP 2,9; V2
+05 | The roofline model and performance modelling | A | ASP 9; V17 ch3
+06 | GPU interconnects: PCIe, NVLink, NVSwitch and NVLink-C2C | I | ASP 2; V7 ch2,3
+07 | GPU generations and product line: Ampere, Hopper, Blackwell; PCIe versus SXM | I | V4
+08 | Operating GPU nodes: nvidia-smi, topology, clocks and throttling | I | V2; V16 | | 1
+09 | The NVIDIA software stack: driver, CUDA toolkit, container toolkit, compatibility | I | V3 ch2; ASP 3; VL4 ch2 | | 1
+10 | Fabric Manager, NVSM and NVLink domains | A | PUB; V7 | | 1
+11 | CUDA programming basics: kernels, indexing and memory | I | V3; ASP 6
+12 | Streams, events, asynchronous copies and pinned memory | I | V3; ASP 11
+13 | Memory access patterns and profiling | A | ASP 7
+14 | Occupancy, warp efficiency and instruction-level parallelism | A | ASP 8
+15 | Kernel efficiency and arithmetic intensity | A | ASP 9
+16 | Intra-kernel pipelining, warp specialization and thread block clusters | A | ASP 10
+17 | Inter-kernel pipelining, synchronization and stream-ordered allocation | A | ASP 11
+18 | Dynamic scheduling, CUDA graphs and device-initiated orchestration | A | ASP 12; V3
+19 | Triton language and compilers: OpenAI Triton, torch.compile, XLA | A | ASP 14
+20 | Profiling tools: Nsight Systems, Nsight Compute, PyTorch profiler | A | ASP 13; V17 ch2
+21 | GPU health: DCGM, ECC, row remapping and Xid | A | V16; V20; VL4 ch3 | | 1
+22 | GPU troubleshooting scenarios | A | V20 | | 1
+
+@PART 11 | gpu-kubernetes | Part 11: GPUs on Kubernetes, scheduling and virtualization | 1 | G
+01 | Why Kubernetes needs a GPU platform layer | B | V10 ch1
+02 | Device plugin, container toolkit, CDI and runtime classes | I | V10; GAK 3; K8GS
+03 | Node Feature Discovery and GPU Feature Discovery | I | V10 ch5
+04 | GPU Operator architecture and operands | I | V10 ch6,7; K8GS; VL4 ch2
+05 | GPU Operator installation, configuration and upgrades | A | V10 ch10,11
+06 | Scheduling GPUs: requests, Topology Manager, CPU and NUMA alignment | A | V10 ch8; ASP 3; K8GS; SKI
+07 | Multi-node jobs: why a pod cannot span nodes, and gang scheduling concepts | A | GAK 7; PUB; K8GS; VL6 ch4
+08 | Kueue, Volcano and scheduler plugins | A | GAK 7; PUB; K8GS
+09 | JobSet, LeaderWorkerSet, PyTorchJob and the MPI Operator | A | GAK 6,7; PUB; K8GS
+10 | Secondary networks: Multus, SR-IOV device plugin and RDMA device plugin | A | PK 5; PUB
+11 | NVIDIA Network Operator | A | VL6; PUB
+12 | Dynamic Resource Allocation (DRA) | A | GAK 3; VL3; PUB
+13 | KAI Scheduler: why default scheduling is not enough | I | PUB; GAK 7
+14 | KAI Scheduler architecture and resources | A | PUB
+15 | KAI queues, quotas and fair sharing | A | PUB
+16 | KAI gang scheduling and topology-aware placement | A | PUB
+17 | KAI GPU sharing and fractions | A | PUB
+18 | KAI operations and troubleshooting | A | PUB
+19 | The Run:ai platform view | I | PUB
+20 | Scheduler comparison guide: KAI, Kueue, Volcano, YuniKorn and Slurm | I | PUB
+21 | PCIe, IOMMU, VFIO and device passthrough | A | SP 11; PUB
+22 | SR-IOV for NICs and GPUs | A | SP 11; V18 ch7; PUB
+23 | NVIDIA vGPU: architecture, profiles and licensing | A | V11 ch5; GAK 3; PUB
+24 | MIG in depth | A | V11 ch2,3; GAK 3; VL4 ch3
+25 | Time-slicing, MPS and oversubscription | A | V11 ch4; GAK 3; VL4 ch3
+26 | Choosing a GPU sharing model | I | V11 ch6; VL4 ch3
+27 | Virtual machines on Kubernetes: KubeVirt, Kata and GPU passthrough | A | PUB
+28 | DPUs, BlueField and DOCA | A | V9 ch9; V18 ch8 | | 2
+29 | Multi-tenancy, quotas, fault tolerance and health on GPU clusters | A | V11 ch8-10; V19; SKI
+30 | Lab: multi-node GPU Kubernetes on GKE and Nebius | A | PUB; K8GS | N
+
+@PART 12 | ai-networking | Part 12: Complete AI networking | 1 | N
+01 | AI traffic: collectives, incast and elephant flows | I | ADC 1,2; ASP 4; V7
+02 | RDMA fundamentals: verbs, queue pairs and memory registration | I | V8 ch3; ADC 7; SCL 5; VL6 ch1
+03 | RoCEv2 transport and congestion management | A | ADC 7; V9 ch3; VL6 ch1
+04 | PFC, ECN and DCQCN in depth | A | V9 ch4,5; ADC 7
+05 | Data center bridging and QoS for AI | A | V9 ch6
+06 | InfiniBand fundamentals and addressing | I | SCL 5; V8 ch1-4
+07 | InfiniBand subnet manager, routing, topologies and rails | A | V8 ch5,6; ADC 8
+08 | InfiniBand adaptive routing and congestion control | A | V8 ch7
+09 | InfiniBand diagnostics, UFM and operations | A | V8 ch9,10; SCL 5
+10 | HDR, NDR, XDR, optics and cabling | I | V8 ch8; ADC 4 | | 2
+11 | NVIDIA Spectrum-X and Spectrum switches | A | V9 ch7; PUB | | 2
+12 | Ethernet versus InfiniBand: a design decision guide | I | ADC; V9 | | 2
+13 | Fabric design: topology, oversubscription and scale | A | ADC 3,5; V7 ch11
+14 | Load balancing and routing for AI fabrics | A | ADC 6,8
+15 | NCCL: collectives and algorithms | A | ASP 4; V7 ch9; DAI 2; VL6 ch2
+16 | NCCL: topology, channels, transports and environment variables | A | ASP 4
+17 | nccl-tests and fabric benchmarking | A | ASP 4; DAI 10
+18 | NCCL debugging: hangs, timeouts and errors | A | V20; ASP 4; VL10 ch15
+19 | GPUDirect RDMA and GPUDirect Storage | A | V7 ch5,6; VL6 ch2
+20 | SHARP and in-network computing | A | ASP 4; PUB | | 2
+21 | Storage networks, Ultra Ethernet and scale-up fabrics | A | ADC 9,12,13 | | 2
+22 | AI network telemetry and KPIs | A | ADC 10,11; V8 ch9 | | 2
+23 | Fabric validation and capacity planning | A | V9 ch10; V8 ch11 | | 2
+24 | AI networking troubleshooting playbook | A | V8 ch10; V9 ch11; V20
+
+@PART 13 | ai-storage | Part 13: AI storage | 2 | G
+01 | The AI data path: from storage to GPU | B | V15 ch1,2; VL6 ch3
+02 | Local NVMe and data staging | I | V15 ch3
+03 | GPUDirect Storage architecture | A | V15 ch4; ASP 5
+04 | Lustre for AI | A | V15 ch5
+05 | BeeGFS, Weka, VAST and object storage | I | V15 ch6,7
+06 | Data loading, small files and metadata | A | V15 ch9; ASP 5; VL6 ch3
+07 | Checkpoint architecture and recovery | A | V15 ch8; V13 ch9
+08 | Capacity, performance and cost planning | A | V15 ch10
+09 | Storage troubleshooting | A | V15 ch11
+
+@PART 14 | training-finetuning | Part 14: Distributed training and fine-tuning | 2 | N
+01 | ML and deep learning fundamentals for infrastructure engineers | B | DMLS 1,2,6; EAS 3
+02 | Transformers and LLM architecture | I | AIE 2; EAS 4
+03 | Training memory and compute anatomy | I | V13 ch2; DAI 1; VL5 ch1
+04 | Data parallelism and DDP | I | DAI 3; V13 ch3; VL5 ch1
+05 | FSDP and parameter sharding | A | DAI 4; V13 ch4
+06 | DeepSpeed and ZeRO | A | DAI 5; V13 ch5
+07 | Tensor, pipeline and expert parallelism; Megatron | A | DAI 5; V13 ch6,7
+08 | PyTorch performance: profiling, tuning and scaling | A | ASP 13
+09 | PyTorch compilers and kernels: torch.compile | A | ASP 14
+10 | Multi-node training architecture | A | V13 ch10; DAI 8
+11 | Checkpointing, fault tolerance and elastic training | A | V13 ch9
+12 | Training performance engineering and troubleshooting | A | V13 ch11; ASP 13
+13 | Fine-tuning: SFT, LoRA and QLoRA, preference alignment | A | AIE 7; LEH 5,6; LLO 5 | | 1
+14 | Dataset engineering for fine-tuning | I | AIE 8; LEH 3; LLO 4 | | 1
+15 | Fine-tuning infrastructure and cost | A | GAK 6; PUB; K8GS | | 1
+16 | NeMo framework and customisation | I | V14 ch5; PUB
+
+@PART 15 | inference | Part 15: LLM inference and serving | 1 | G
+01 | The anatomy of an inference request | B | V12 ch1,2; V1 ch4; VL5 ch2
+02 | Batching, the KV cache and quantization fundamentals | I | HLS 1-7; AIE 9; LLP; VL5 ch2
+03 | vLLM in depth | A | DAI 6; HLS 8; V12 ch6; LLP
+04 | SGLang and cross-request optimisation | A | DAI 7
+05 | TensorRT and TensorRT-LLM | A | V12 ch4,5
+06 | Triton Inference Server | A | V12 ch3
+07 | NVIDIA NIM and the NIM Operator | A | V14 ch3,4
+08 | NVIDIA Dynamo, llm-d and disaggregated serving | A | ASP 17; PUB
+09 | Multinode inference: parallelism, decoding and routing | A | ASP 15
+10 | Prefill and decode disaggregation | A | ASP 17
+11 | Advanced prefill-decode and KV cache tuning | A | ASP 18
+12 | Dynamic and adaptive inference engine optimisations | A | ASP 19; HLS 10
+13 | Profiling, debugging and tuning inference at scale | A | ASP 16
+14 | Benchmarking: genai-perf, latency percentiles and goodput | A | HLS 9; DAI 10; V12 ch10; LLP
+15 | Autoscaling inference: HPA, KEDA and scale-to-zero | A | GAK 4; PUB; K8GS; LLP; VL5 ch3
+16 | Production serving stack and reliability | A | DAI 9; V12 ch11; LLP; DMLS 7
+17 | Lab: serve and benchmark on GKE and Nebius | A | GAK; PUB; K8GS
+18 | Inference cost, capacity and cost per token | A | V12; V19 | | 2
+
+@PART 16 | mlops-llmops | Part 16: MLOps and LLMOps tools and platforms | 1 | G
+01 | MLOps foundations and lifecycle | B | PM 1,2; DMLS 1; MLPE; AIE 1; LLO 1,2; EAS 5
+02 | Data versioning and experiment tracking: DVC, MLflow, Weights and Biases | I | PM; V25; MLPE
+03 | Data pipelines and feature stores | I | DMLS 3-5; PUB; MLPE; GAK 2
+04 | Pipeline orchestration: Kubeflow Pipelines, Argo, Flyte, Airflow | A | DMLS 10; PUB; MLPE; PM 5
+05 | Distributed compute for ML: Ray, KubeRay, Training Operator and Katib | A | PUB
+06 | Model registry, CI/CD and GitOps for models | A | PM 4; DMLS 9; MLPE; PM 3
+07 | Model serving platforms: KServe, Seldon and BentoML | A | PUB; GAK 1; MLPE; K8GS; DMLS 7; PM 10
+08 | LLMOps: RAG, vector databases and agents | A | LLO 3,6; AIE 6; GAK 8,9; LLP; AIE 5; VL5 ch3
+09 | LLM evaluation and guardrails | I | AIE 3,4; LEH 7; LLO 7
+10 | Monitoring, drift and continual learning | I | DMLS 8,9; PM 6
+11 | Cloud MLOps platforms: Vertex AI, SageMaker and Azure ML | I | PM 7-9 | | 2
+12 | NVIDIA enterprise stack: AI Enterprise, NGC and licensing | I | V14 | | 1b
+13 | Governance, privacy and compliance for ML platforms | A | LLO 8; EAS 9,10; DMLS 11 | | 2
+14 | Platform design: multi-tenant AI factory, quotas and chargeback | A | V21; PK 12; MLPE; SKI; AIE 10; LLO 9
+15 | Lab: end-to-end MLOps on GKE | A | V25; PUB; MLPE; PM 12
+
+@PART 17 | operations | Part 17: Observability, performance and operations | 2 | G
+01 | Observability foundations: metrics, logs and traces | B | V16 ch1,2; PK 9; EAS 11; VL7 ch1
+02 | Prometheus and Grafana | I | V16 ch5; VL7 ch1
+03 | Logging with Loki and tracing with OpenTelemetry | I | PUB
+04 | DCGM exporter and interpreting GPU metrics | A | V16 ch3,4; GAK 5; VL7 ch2
+05 | Distributed observability and profiling | A | V16 ch6,7; VL7 ch2
+06 | Alerting, SLOs and health checks for GPU clusters | A | V16 ch9; VL10 ch9
+07 | Failure modes and detection | A | V16 ch8; V20
+08 | Performance engineering methodology and decision trees | A | V17; ASP 1; EAS 8
+09 | The AI systems performance checklist (master) | A | ASP app | | 1
+10 | Cluster lifecycle, upgrades and change management | A | V19 ch1; EAS 6; AF 8; VL10 ch10,16
+11 | Incident response and game days | A | V19 ch2; V16 ch12; VL7 ch3
+12 | Capacity planning and cost optimisation | A | V19 ch3,6; V21; SKI; VL8 ch2
+13 | Reliability engineering for AI infrastructure | A | EAS 7; V19
+14 | Disaster recovery and data resilience | A | V19 ch10
+15 | On-call runbooks | A | V19 ch12; VL10 ch12
+16 | AI-assisted operations and scaling toward very large clusters | A | ASP 20; DAI 11; LLO 10
+
+@PART 18 | security | Part 18: Security | 2 | G
+01 | Threat modeling for AI infrastructure | I | V18 ch1; VL8 ch3
+02 | Hardware and firmware trust | A | V18 ch2
+03 | Containers and the software supply chain | A | V18 ch3; PK 15
+04 | Kubernetes access control and pod security | A | V18 ch4,5; PK 8,10
+05 | GPU sharing security, DMA, IOMMU and SR-IOV | A | V18 ch6,7
+06 | BlueField, DOCA and confidential computing | A | V18 ch8,9
+07 | Data and model protection, audit and compliance | A | V18 ch10,11; EAS 9,10; VL8 ch3
+
+@PART 19 | capstones-interview | Part 19: Capstones, design and interview readiness | 2 | N
+01 | Capstone: a Slurm GPU cluster | A | V24; Part 6 | N | 1
+02 | Capstone: a Kubernetes GPU platform with KAI and Kueue | A | V24 P7 | G | 1
+03 | Capstone: inference on GKE with vLLM, Triton, TensorRT-LLM, NIM and KServe | A | V24 P11 | G | 1
+04 | Capstone: multi-node training with fault tolerance | A | V24 P3 | N | 1
+05 | Capstone: an nccl-tests fabric lab | A | V24 P2 | N | 1
+06 | Capstone: node-health automation with DCGM and an operator | A | V24 P5 | G | 1
+07 | Capstone: an observability platform | A | V24 P4 | G
+08 | Capstone: MIG multi-tenancy | A | V24 P6 | N
+09 | Capstone: capacity planning | A | V24 P9 | -
+10 | Customer workshops and the consulting method | I | V22; EAS 12,13,14; VL8 ch4; VL10 ch12 | - | 3
+11 | System design: a training cluster | A | V23 ch10; VL8 ch1 | -
+12 | System design: inference serving | A | V23 ch11 | -
+13 | System design: research infrastructure | A | V23 ch12 | -
+14 | Interview question bank by topic | all | V23; V26; VCORE; VL9 | - | 1
+15 | Interview cheat sheet | all | V23 ch13; V26; VL9 | - | 1

@@ -1,0 +1,701 @@
+# nvidia-devops-zth-v03
+
+
+## Why CUDA Exists  (chapter-01-why-cuda-exists.md)
+- Introduction
+- Story
+- Learning Objectives
+- Big Picture
+- The Problem Before CUDA
+- The Heterogeneous Model
+- What CUDA Provides
+- Why Threads and Kernels Matter
+- CUDA Is More Than Kernel Code
+- What CUDA Does Not Solve Automatically
+- Alternatives and Boundaries
+- Production Perspective
+- Production Troubleshooting
+  - Problem: The GPU is visible, but the application cannot use it
+  - Diagnosis Sequence
+  - Root Cause Pattern
+- Customer Scenario
+- Interview Preparation
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- Summary
+- Key Takeaways
+- Cross References
+
+## The CUDA Software Stack  (chapter-02-cuda-software-stack.md)
+- Introduction
+- Story
+- Learning Objectives
+- Big Picture
+- Application and Framework Layer
+- CUDA Libraries
+- CUDA Runtime API
+- CUDA Driver API
+- User-Space Driver Components
+- Kernel Driver
+- Containers and the Host Boundary
+- Compatibility as a Chain
+- Context Creation
+- Production Troubleshooting
+  - Problem: `nvidia-smi` works, but CUDA initialization fails
+  - Problem: Works on host, fails in container
+  - Problem: Import succeeds, first GPU operation fails
+- Customer Scenario
+- Interview Preparation
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- Summary
+- Key Takeaways
+- Cross References
+
+## CUDA Programming and Execution Model  (chapter-03-cuda-programming-and-execution-model.md)
+- Introduction
+- Story
+- Learning Objectives
+- Big Picture
+- Kernels
+- Grids, Blocks, and Threads
+- Mapping Indices to Data
+- Block Placement
+- Warps and Instruction Issue
+- Contexts
+- Asynchronous Launch
+- Submission Is Not Completion
+- Synchronization
+- Launch Geometry
+- Production Perspective
+- Production Troubleshooting
+  - Problem: Timing reports impossible kernel durations
+  - Problem: Error appears on an unrelated API call
+  - Problem: Larger GPU gives little speedup
+- Customer Scenario
+- Interview Preparation
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- Summary
+- Key Takeaways
+- Cross References
+
+## Kernel Launch Configuration and Indexing  (chapter-04-kernel-launch-configuration-and-indexing.md)
+- Introduction
+- Story
+- Learning Objectives
+- Big Picture
+- The Execution Configuration
+- One-Dimensional Indexing
+- Bounds Checks
+- Two-Dimensional Indexing
+- Three-Dimensional Indexing
+- Selecting Threads Per Block
+- Too Few Blocks
+- Oversized Blocks
+- Grid-Stride Loops
+- Launches Are Asynchronous
+- Production Architecture
+- Production Troubleshooting
+  - Problem: Some output elements are unchanged
+  - Problem: Illegal memory access after changing block size
+  - Problem: Larger GPU gives little improvement
+- Customer Scenario
+- Interview Preparation
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- Summary
+- Key Takeaways
+- Cross References
+
+## CUDA Memory Management and Data Movement  (chapter-05-cuda-memory-management-and-data-movement.md)
+- Introduction
+- Story
+- Learning Objectives
+- Big Picture
+- Separate Memory Domains
+- Device Allocation
+- Explicit Memory Copies
+- Pageable Host Memory
+- Pinned Host Memory
+- Asynchronous Copies
+- Unified Memory
+- Memory Initialization
+- Allocation Reuse
+- Capacity Is Not the Same as Working Set
+- Architecture Trade-offs
+  - Explicit copies versus unified memory
+  - Pinned memory versus host flexibility
+  - Fine-grained transfers versus batching
+  - Reuse versus isolation
+- Production Troubleshooting
+  - Problem: Fast kernel, slow application
+  - Problem: `cudaErrorMemoryAllocation`
+  - Problem: Unified memory latency spikes
+  - Problem: Host becomes unstable
+- Customer Scenario
+- Interview Preparation
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- Summary
+- Key Takeaways
+- Cross References
+
+## Synchronization, Errors, and Correctness  (chapter-06-synchronization-errors-and-correctness.md)
+- Introduction
+- Story
+- Learning Objectives
+- Big Picture
+- Ordering Is Scoped
+- Stream Ordering
+- Device Synchronization
+- Stream Synchronization
+- Block Barriers
+- Synchronization Is Not Communication by Itself
+- Race Conditions
+- Atomic Operations
+- Error Categories
+  - Immediate API errors
+  - Kernel launch errors
+  - Asynchronous execution errors
+- A Practical Error-Checking Pattern
+- Avoiding Accidental Serialization
+- Correctness Validation
+- Floating-Point Correctness
+- Production Architecture
+- Production Troubleshooting
+  - Problem: Error appears on an unrelated API call
+  - Problem: Results change between runs
+  - Problem: Performance collapses after adding error checks
+  - Problem: Service continues failing after one illegal access
+- Customer Scenario
+- Interview Preparation
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- Summary
+- Key Takeaways
+- Cross References
+
+## Streams, Events, and Asynchronous Execution  (chapter-07-streams-events-and-asynchronous-execution.md)
+- Introduction
+- Story
+- Learning Objectives
+- Big Picture
+- What a Stream Represents
+- Host Asynchrony Versus Device Concurrency
+- Default Stream Behavior
+- Creating and Destroying Streams
+- Events as Timeline Markers
+- Device Timing with Events
+- Synchronization Options
+- Designing a Pipeline
+- Conditions Required for Overlap
+- Common Serialization Sources
+- Architecture Trade-offs
+  - More streams
+  - Latency versus throughput
+  - Determinism versus utilization
+- Production Observability
+- Production Troubleshooting
+  - Problem: Multiple streams do not improve throughput
+  - Problem: Intermittent corruption after adding streams
+  - Problem: Timing results appear impossible
+- Customer Scenario
+- Interview Preparation
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- Summary
+- Key Takeaways
+- Cross References
+
+## Pinned Memory and Transfer Overlap  (chapter-08-pinned-memory-and-transfer-overlap.md)
+- Introduction
+- Story
+- Learning Objectives
+- Big Picture
+- Pageable Host Memory
+- Pinned Host Memory
+- Allocation Versus Registration
+- Mapped Host Memory and Zero Copy
+- NUMA Locality
+- Transfer Granularity
+- Copy Directions
+- Overlapping Transfer and Compute
+- Bounded Buffer Pools
+- Architecture Trade-offs
+  - Pinned memory versus OS flexibility
+  - Larger pools versus memory pressure
+  - Explicit copy versus mapped access
+- Production Observability
+- Production Troubleshooting
+  - Problem: `cudaMemcpyAsync` blocks the host
+  - Problem: Transfer throughput varies by process placement
+
+## Unified Memory and Demand Paging  (chapter-09-unified-memory-and-demand-paging.md)
+- Introduction
+- Story
+- Learning Objectives
+- Big Picture
+- Unified Virtual Addressing Versus Unified Memory
+- Managed Allocation
+- Page Migration
+- Access Locality
+- Prefetching
+- Memory Advice
+- Oversubscription
+- Multi-GPU Considerations
+- Correctness and Synchronization
+- Architecture Trade-offs
+  - Productivity versus placement control
+  - Capacity versus predictability
+  - Portability versus platform tuning
+- Production Observability
+- Production Troubleshooting
+  - Problem: First iteration is much slower
+  - Problem: Performance collapses when data grows
+  - Problem: Multi-GPU scaling is erratic
+  - Problem: CPU inspection causes large stalls
+- Customer Scenario
+- Interview Preparation
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- Summary
+- Key Takeaways
+- Cross References
+
+## CUDA Graphs and Repeated Execution  (chapter-10-cuda-graphs-and-repeated-execution.md)
+- Introduction
+- Story
+- Learning Objectives
+- Big Picture
+- Why Launch Overhead Matters
+- Graph Components
+- Graph Lifecycle
+- Explicit Construction Versus Stream Capture
+- Graph Parameters and Updates
+- Buffer Ownership
+- Concurrency and Multiple Graph Launches
+- Error Behavior
+- Architecture Trade-offs
+  - Lower overhead versus reduced flexibility
+  - Faster path versus operational complexity
+  - Capture convenience versus hidden assumptions
+- Production Design Pattern
+- Production Observability
+- Production Troubleshooting
+  - Problem: Graph capture fails
+  - Problem: Graph path returns stale data
+  - Problem: Graphs provide no improvement
+  - Problem: Memory grows with request diversity
+- Customer Scenario
+- Interview Preparation
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- Summary
+- Key Takeaways
+- Cross References
+
+## Compilation, Binaries, and Compatibility  (chapter-11-compilation-binaries-and-compatibility.md)
+- Introduction
+- Story
+- Learning Objectives
+- Big Picture
+- Host and Device Compilation
+- PTX
+- Architecture-Specific Code
+- Compute Capability as a Contract
+- Just-in-Time Compilation
+- Toolkit, Libraries, and Driver
+- Dynamic Libraries
+- Container Compatibility
+- Build Matrix Design
+- Reproducibility
+- Architecture Trade-offs
+  - Broad binary versus small binary
+  - PTX fallback versus startup predictability
+  - Bundled libraries versus platform-provided libraries
+- Production Troubleshooting
+  - Problem: No suitable kernel image
+  - Problem: First request is slow
+  - Problem: Works on host, fails in container
+  - Problem: Behavior changed after base-image update
+- Customer Scenario
+- Interview Preparation
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- Summary
+- Key Takeaways
+- Cross References
+
+## Profiling and Production Troubleshooting  (chapter-12-profiling-and-production-troubleshooting.md)
+- Introduction
+- Story
+- Learning Objectives
+- Big Picture
+- Why Utilization Is Not a Diagnosis
+- Three Profiling Levels
+  - Level 1 — End-to-End Measurement
+  - Level 2 — System Timeline
+  - Level 3 — Kernel Analysis
+- Establishing a Baseline
+- Measurement Hygiene
+- Asynchronous Error Propagation
+- Minimum Incident Evidence Bundle
+- Troubleshooting Decision Flow
+- Common Failure: No CUDA Device
+  - Symptoms
+  - Diagnosis
+  - Root Causes
+- Common Failure: Out of Memory
+- Common Failure: Illegal Memory Access
+- Common Failure: Slow Transfers
+- Common Failure: Low GPU Utilization
+- Common Failure: High Utilization, Low Throughput
+- Production Regression Gates
+- Observability Architecture
+- Customer Scenario
+- Interview Preparation
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- Summary
+- Key Takeaways
+- Cross References
+
+## Volume 03 Summary  (chapter-13-volume-03-summary.md)
+- Introduction
+- The Complete CUDA Path
+- Mental Model 1 — CUDA Is a Layered Platform
+- Mental Model 2 — Kernel Launch Is Deferred Work
+- Mental Model 3 — Memory Movement Is Part of Execution
+- Mental Model 4 — Streams Express Dependencies
+- Mental Model 5 — Compatibility Is a Chain
+- Mental Model 6 — Performance Is a Pipeline Property
+- Architecture Summary by Chapter
+- Production Readiness Checklist
+  - Build and Compatibility
+  - Memory
+  - Execution
+  - Operations
+- Troubleshooting Quick Reference
+- Customer Conversation Framework
+- Interview Preparation
+  - Knowledge Questions
+  - Architecture Questions
+  - Scenario Questions
+- Quick Revision Sheet
+- Lab Checklist
+- Summary
+- Key Takeaways
+- Cross References
+
+## Chapter 1 — Why CUDA Exists  (chapter-chapter-01-why-cuda-exists.md)
+- Introduction
+- 1. The GPGPU Problem
+- 2. The CUDA Revolution
+- 3. The Software Moat
+- Customer Scenario (Senior Level)
+- Interview Preparation
+- Summary
+
+## Chapter 2 — The CUDA Software Stack  (chapter-chapter-02-cuda-software-stack.md)
+- Introduction
+- 1. The Stack Hierarchy
+  - 1.1 The CUDA Runtime API (`libcudart.so`)
+  - 1.2 The CUDA Driver API (`libcuda.so`)
+  - 1.3 The NVIDIA Kernel Module (`nvidia.ko`)
+- 2. Containers and the NVIDIA Container Toolkit
+- Customer Scenario (Senior Level)
+- Interview Preparation
+
+## Chapter 3 — The CUDA Programming and Execution Model  (chapter-chapter-03-cuda-programming-and-execution-model.md)
+- Introduction
+- 1. Host vs. Device
+- 2. The Anatomy of a Kernel Launch
+- 3. The Infrastructure Impact of Execution Configurations
+- Customer Scenario (Senior Level)
+- Interview Preparation
+
+## Chapter 4 — Kernel Launch Configuration and Indexing  (chapter-chapter-04-kernel-launch-configuration-and-indexing.md)
+- Introduction
+- 1. The Built-in Variables
+- 2. Calculating the Global Index (The Magic Formula)
+- 3. Dealing with Edge Cases (Boundary Checks)
+- Customer Scenario (Senior Level)
+- Interview Preparation
+
+## Chapter 5 — Memory Management and Data Movement  (chapter-chapter-05-cuda-memory-management-and-data-movement.md)
+- Introduction
+- 1. Explicit Memory Allocation (`cudaMalloc`)
+- 2. Moving the Data (`cudaMemcpy`)
+  - The PCIe Bottleneck
+- Architectural Diagram: The Memory Transfer Bottleneck
+- 3. Best Practices for Infrastructure Architects
+- Customer Scenario (Senior Level)
+- Interview Preparation
+
+## Chapter 6 — Synchronization, Errors, and Correctness  (chapter-chapter-06-synchronization-errors-and-correctness.md)
+- Introduction
+- 1. Race Conditions in AI
+- 2. The Solution: Atomic Operations
+  - The Performance Cost
+- 3. Block-Level Synchronization (`__syncthreads`)
+- Customer Scenario (Senior Level)
+- Interview Preparation
+
+## Chapter 7 — Streams, Events, and Asynchronous Execution  (chapter-chapter-07-streams-events-and-asynchronous-execution.md)
+- Introduction
+- 1. What is a CUDA Stream?
+  - The Default Stream (Stream 0)
+- 2. Custom Streams and Asynchronous Copies
+- 3. The Holy Grail: Copy-Compute Overlap
+- 4. CUDA Events (Synchronization)
+- Customer Scenario (Senior Level)
+- Interview Preparation
+
+## Chapter 8 — Pinned Memory and Demand Paging  (chapter-chapter-08-pinned-memory-and-transfer-overlap.md)
+- Introduction
+- 1. Pageable vs. Pinned Memory
+  - Pageable Memory (Standard RAM)
+  - Pinned Memory (Page-Locked)
+- 2. Unified Memory (UVM)
+  - The Illusion of UVM (Demand Paging)
+- 3. Fixing UVM: Prefetching
+- Customer Scenario (Senior Level)
+- Interview Preparation
+
+## Chapter 10 — CUDA Graphs and Repeated Execution  (chapter-chapter-10-cuda-graphs-and-repeated-execution.md)
+- Introduction
+- 1. The Overhead Crisis
+- 2. CUDA Graphs (Capture and Replay)
+  - The Performance Reality
+- Customer Scenario (Senior Level)
+- Interview Preparation
+
+## Chapter 11 — Compilation, Binaries, and Compatibility  (chapter-chapter-11-compilation-binaries-and-compatibility.md)
+- Introduction
+- 1. The nvcc Compiler
+- 2. SASS vs. PTX
+  - SASS (Streaming Assembler) — The Hard Binary
+  - PTX (Parallel Thread Execution) — The Virtual Assembly
+- 3. Fatbin (The Best of Both Worlds)
+- Customer Scenario (Senior Level)
+- Interview Preparation
+
+## Chapter 12 — Profiling and Production Troubleshooting  (chapter-chapter-12-profiling-and-production-troubleshooting.md)
+- Introduction
+- 1. Nsight Systems (`nsys`) — The Macro View
+  - What Senior Engineers Look For in `nsys`:
+- 2. Nsight Compute (`ncu`) — The Micro View
+  - What Senior Engineers Look For in `ncu`:
+- Customer Scenario (Senior Level)
+- Interview Preparation
+
+## Chapter 13 — Volume 03 Summary: The CUDA Execution Stack  (chapter-chapter-13-volume-03-summary.md)
+- Introduction
+- 1. The Core Architectural Tenets
+  - 1.1 The Software Moat
+  - 1.2 The Software Stack Boundaries
+  - 1.3 Execution Configuration
+  - 1.4 The Memory Movement War
+  - 1.5 Synchronization and CPU Overhead
+  - 1.6 Compilation and Binaries
+  - 1.7 Profiling (The SRE Superpower)
+- 2. What Comes Next: Volume 04
+
+## Volume 03 — CUDA Fundamentals  (index.md)
+- The Big Picture
+- Reading Map
+  - Part I — Why CUDA Exists and How the Stack Is Organized
+  - Part II — Launch, Memory, and Correctness
+  - Part III — Concurrency and Advanced Memory Behavior
+  - Part IV — Deployment, Profiling, and Operations
+- Labs
+- Learning Progression
+- Production Perspective
+- Volume Completion Criteria
+
+## Lab 01 — Inspect and Validate a CUDA Environment  (labs/lab-01-inspect-and-validate-a-cuda-environment.md)
+- Lab Metadata
+- 1. Objective
+- 2. Background
+- 3. Learning Outcomes
+- 4. Architecture
+- 5. Prerequisites
+  - Hardware
+  - Software
+  - Permissions
+- 6. Environment
+  - Purpose
+  - Commands
+  - Expected Output (illustrative, not captured)
+  - Common Errors
+- 7. Components
+- 8. Deployment Steps
+  - Step 1 — Confirm PCI Enumeration
+    - Purpose
+    - Command
+    - Expected Output (illustrative, not captured)
+    - Explanation
+  - Step 2 — Confirm Driver Communication
+    - Expected Healthy State
+    - Common Problems
+  - Step 3 — Record Driver and Device Identity
+  - Step 4 — Inspect Kernel Modules and Logs
+    - Commands
+    - Interpretation
+  - Step 5 — Inspect Device Interfaces
+    - Common Problem
+  - Step 6 — Check for the CUDA Toolkit
+  - Step 7 — Inspect Runtime Libraries
+  - Step 8 — Create a Minimal CUDA Program
+    - Why This Program Is Useful
+  - Step 9 — Compile the Program
+    - Common Errors
+  - Step 10 — Run the Program
+    - Expected Healthy Output
+- 9. Validation
+- 10. Verification
+- 11. Observability
+- 12. Performance Measurements
+- 13. Failure Injection
+  - Failure Scenario — Hide the GPU from the Process
+  - Expected Broken Behavior
+  - Lesson
+- 14. Troubleshooting
+  - Problem — `nvidia-smi` works, but device count is zero
+  - Problem — Kernel launch succeeds, synchronization fails
+  - Problem — Program builds but reports unsupported device code
+  - Problem — Host works, container fails
+- 15. Cleanup
+- 16. Summary
+- 17. Challenge Exercises
+- 18. Further Reading
+
+## Lab 02 — Build and Validate a CUDA Vector Pipeline  (labs/lab-02-build-and-validate-a-cuda-vector-pipeline.md)
+- Lab Metadata
+- 1. Objective
+- 2. Background
+- 3. Learning Outcomes
+- 4. Architecture
+- 5. Prerequisites
+  - Hardware
+  - Software
+  - Knowledge
+- 6. Environment
+  - Expected Healthy State
+  - Common Errors
+- 7. Components
+- 8. Deployment Steps
+  - Step 1 — Create a Workspace
+    - Purpose
+    - Command
+    - Verification
+  - Step 2 — Create the CUDA Program
+    - Explanation
+  - Step 3 — Compile
+    - Expected Output (illustrative, not captured)
+  - Step 4 — Run the Baseline
+  - Step 5 — Test Multiple Shapes
+    - Commands
+    - Expected Result
+- 9. Validation
+- 10. Verification
+  - Verify the Launch Calculation
+  - Observe the Process
+- 11. Observability
+- 12. Performance Measurements
+- 13. Failure Injection
+  - Failure A — Remove the Bounds Check
+    - Expected Failure Pattern
+    - Lesson
+  - Failure B — Launch an Invalid Block Size
+  - Failure C — Copy in the Wrong Direction
+  - Failure D — Underlaunch the Grid
+- 14. Troubleshooting
+  - Problem — `no CUDA-capable device is detected`
+  - Problem — Invalid device function
+  - Problem — Illegal memory access
+  - Problem — Validation fails without CUDA error
+  - Problem — First run is much slower
+- 15. Cleanup
+- 16. Summary
+- 17. Challenge Exercises
+- 18. Further Reading
+
+## Lab 03 — Build an Overlapped CUDA Pipeline  (labs/lab-03-build-an-overlapped-cuda-pipeline.md)
+- Lab Metadata
+- 1. Objective
+- 2. Background
+- 3. Learning Outcomes
+- 4. Architecture
+- 5. Prerequisites
+- 6. Environment
+- 7. Components
+- 8. Deployment Steps
+  - Step 1 — Create the Program
+  - Step 2 — Compile
+  - Step 3 — Run
+- 9. Validation
+- 10. Verification
+- 11. Observability
+- 12. Performance Measurements
+- 13. Failure Injection
+  - Failure A — Global Synchronization
+  - Failure B — Premature Reuse
+  - Failure C — Pageable Buffers
+- 14. Troubleshooting
+  - Compilation fails
+  - Validation fails
+  - No overlap appears
+  - Pinned allocation fails
+- 15. Cleanup
+- 16. Summary
+- 17. Challenge Exercises
+- 18. Further Reading
+
+## Lab 04 — Profile and Diagnose a CUDA Application  (labs/lab-04-profile-and-diagnose-a-cuda-application.md)
+- Lab Metadata
+- 1. Objective
+- 2. Background
+- 3. Learning Outcomes
+- 4. Architecture
+- 5. Prerequisites
+- 6. Environment
+- 7. Components
+- 8. Deployment Steps
+  - Step 1 — Prepare a Validated Workload
+  - Step 2 — Create a Workload Manifest
+  - Step 3 — Measure Cold Start
+  - Step 4 — Measure Steady State
+  - Step 5 — Capture GPU State
+  - Step 6 — Capture a System Timeline
+  - Step 7 — Inspect the Timeline
+- 9. Validation
+- 10. Verification
+- 11. Observability
+- 12. Performance Measurements
+- 13. Failure Injection
+  - Failure A — Device-Wide Synchronization
+  - Failure B — Tiny Chunks
+  - Failure C — Pageable Host Buffers
+- 14. Troubleshooting
+  - Profiler Cannot Access Required Counters
+  - Timeline Is Empty
+  - Application Fails Only Under Profiling
+  - Report Is Too Large
+  - Numbers Differ Between Runs
+- 15. Cleanup
+- 16. Summary
+- 17. Challenge Exercises
+- 18. Further Reading

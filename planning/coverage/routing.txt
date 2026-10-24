@@ -1,0 +1,42 @@
+# Routing table: where each source heading belongs. Format:  CODEn | regex on the heading | target chapter label (or skip) | note
+# chapter_cov.py uses it: a heading routed to ANOTHER chapter is marked 'moved'; routed to THIS chapter it must be covered (else CHECK).
+HLW2 | ^(NOTE|WARNING)$ | skip | note box
+HLW2 | 2\.1 The Bourne|2\.2[ .]|2\.3|2\.4|2\.5\.3 pwd|2\.5\.2 less|2\.7|2\.8|2\.9|2\.10|2\.11|2\.13|2\.14|2\.15|Permission denied|Operation not permitted|No such file|File exists|Not a directory|No space left|Segmentation | 1.2 | command line
+HLW2 | 2\.5\.5 file|2\.5\.6 find|2\.17\.2|2\.18|Unpacking|Table-of-Contents|2\.19 | 1.3 | files and hierarchy
+HLW2 | 2\.5 Intermediate|2\.5\.1 grep|2\.5\.4 diff|2\.5\.7|2\.5\.8 sort | 1.4 | text processing
+HLW2 | 2\.12 | 1.5 | editors and remote work
+HLW2 | 2\.6 |2\.17 File Modes|2\.17\.1|2\.20 | 1.6 | users, permissions, sudo
+HLW2 | 2\.16 | 1.8 | processes
+HLW2 | 2\.21 | skip | transition text
+SCL7 | Processes | 1.8 | processes
+SCL7 | Access Rights | 1.6 | permissions
+SCL7 | Concept of Service | 1.15 | systemd
+SCL7 | Manuals | 1.2 | command line
+SCL7 | File Naming|Extension|Templates|Commands for Working | 1.3 | files
+SCL7 | Packages | 1.7 | packages
+SCL7 | Network Commands | 2.22 | Linux networking
+SCL7 | Cluster | 6.2 | cluster anatomy
+SCL7 | Brief Summary|Search Keywords | skip | boilerplate
+SCL8 | sysctl | 1.22 | kernel tuning
+SCL8 | udev | 1.10 | devices
+SCL8 | PAM | 1.21 | security
+SCL8 | Shell Tricks | 1.9 | shell scripting
+SCL8 | Tips for | 1.4 | text processing
+SCL8 | Brief Summary|Search Keywords | skip | boilerplate
+HLW7 | 7\.1 System Logging|Checking Your Log|Searching and Monitoring|Filtering|Finding Fields|Simple Log|Logfile Rotation|Journal Maintenance|A Closer Look at System|Facility, Severity|Differences in Log|7\.5 Setting the Time|7\.6|7\.7|7\.8|Time Units|Timer Units|Cron|cron | 1.16 | logging, time, cron
+HLW7 | 7\.2 The Structure of /etc|7\.3 User Management|7\.9 User Access|Passwords|Special Users|Group|Pseudo | 1.6 | users and /etc
+HLW7 | 7\.4 getty | 1.14 | boot and login
+HLW7 | 7\.10 Pluggable | 1.21 | PAM
+HLW7 | 7\.11 | skip | transition text
+HLW13 | ^13\.[1-7] | 1.6 | user environments and startup files
+SCL11 | Account Synchronization|Classic Approach | 1.6 | identity basics
+SCL11 | NIS|LDAP | 6.24 | cluster identity services
+SCL11 | Brief Summary|Search Keywords | skip | boilerplate
+SCL12 | File System Quotas | 1.12 | filesystems and quotas
+SCL12 | ulimits | 1.8 | process limits
+SCL12 | UNIX Groups|Restrict User Access | 1.6 | groups and access
+SCL12 | Brief Summary|Search Keywords | skip | boilerplate
+HLW12 | . | 1.30 | network file sharing (reference chapter)
+SCL10 | ssh and Parallel|Forwarding Environment|Port Forwarding|X Connection|File Transfer|SSH Agent|Configuring the ssh|Host-Based|pdsh|Cluster Shell|Screen and tmux|IPMI|Conman|iKVM | 1.29 | remote administration reference
+SCL10 | Brief Summary|Search Keywords | skip | boilerplate
+SCL18 | . | 1.30 | remote graphical access and user access methods

@@ -1,0 +1,116 @@
+{
+  "SchemaDefinition": "RedfishInteroperabilityProfile.v1_10_0",
+  "ProfileName": "BmcHardeningLab",
+  "ProfileVersion": "1.0.0",
+  "ProfileType": "Product",
+  "Purpose": "Settings every BMC must have before it joins the cluster: only HTTPS, no Telnet, no IPMI over LAN, no SSDP, NTP on, Basic auth off, lockout and password length set.",
+  "OwningEntity": "Handbook lab",
+  "Protocol": {
+    "MinVersion": "1.6"
+  },
+  "Resources": {
+    "ManagerNetworkProtocol": {
+      "ReadRequirement": "Mandatory",
+      "PropertyRequirements": {
+        "HTTPS": {
+          "ReadRequirement": "Mandatory",
+          "PropertyRequirements": {
+            "ProtocolEnabled": {
+              "ReadRequirement": "Mandatory",
+              "Comparison": "Equal",
+              "Values": [
+                true
+              ]
+            }
+          }
+        },
+        "HTTP": {
+          "ReadRequirement": "Mandatory",
+          "PropertyRequirements": {
+            "ProtocolEnabled": {
+              "ReadRequirement": "Mandatory",
+              "Comparison": "Equal",
+              "Values": [
+                false
+              ]
+            }
+          }
+        },
+        "Telnet": {
+          "ReadRequirement": "Mandatory",
+          "PropertyRequirements": {
+            "ProtocolEnabled": {
+              "ReadRequirement": "Mandatory",
+              "Comparison": "Equal",
+              "Values": [
+                false
+              ]
+            }
+          }
+        },
+        "IPMI": {
+          "ReadRequirement": "Mandatory",
+          "PropertyRequirements": {
+            "ProtocolEnabled": {
+              "ReadRequirement": "Mandatory",
+              "Comparison": "Equal",
+              "Values": [
+                false
+              ]
+            }
+          }
+        },
+        "SSDP": {
+          "ReadRequirement": "Mandatory",
+          "PropertyRequirements": {
+            "ProtocolEnabled": {
+              "ReadRequirement": "Mandatory",
+              "Comparison": "Equal",
+              "Values": [
+                false
+              ]
+            }
+          }
+        },
+        "NTP": {
+          "ReadRequirement": "Mandatory",
+          "PropertyRequirements": {
+            "ProtocolEnabled": {
+              "ReadRequirement": "Mandatory",
+              "Comparison": "Equal",
+              "Values": [
+                true
+              ]
+            }
+          }
+        }
+      }
+    },
+    "AccountService": {
+      "ReadRequirement": "Mandatory",
+      "PropertyRequirements": {
+        "HTTPBasicAuth": {
+          "ReadRequirement": "Mandatory",
+          "Comparison": "Equal",
+          "Values": [
+            "Disabled"
+          ]
+        },
+        "AccountLockoutThreshold": {
+          "ReadRequirement": "Mandatory",
+          "Comparison": "GreaterThan",
+          "Values": [
+            "0"
+          ]
+        },
+        "MinPasswordLength": {
+          "ReadRequirement": "Mandatory",
+          "Comparison": "GreaterThanOrEqual",
+          "Values": [
+            "12"
+          ]
+        }
+      }
+    }
+  }
+}

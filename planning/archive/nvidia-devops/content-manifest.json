@@ -1,0 +1,480 @@
+{
+  "generatedAt": "2026-07-31T04:46:52.053Z",
+  "canonicalSource": "source_files",
+  "sources": [
+    {
+      "file": "00_Master_Index.docx",
+      "volume": 0,
+      "directory": "intro",
+      "sourceWords": 532,
+      "sourceTables": 5,
+      "sourceCodeBlocks": 0,
+      "sourceImages": 1,
+      "sourceHeadings": [
+        "Guided tutor flow",
+        "Source architecture"
+      ],
+      "conversionMessages": [
+        "Unrecognised paragraph style: 'Deep Dive' (Style ID: DeepDive)"
+      ],
+      "generatedFiles": [
+        {
+          "file": "docs/intro/01-master-index.md",
+          "title": "Master Index",
+          "words": 532,
+          "tables": 5,
+          "codeBlocks": 0,
+          "images": 1
+        }
+      ]
+    },
+    {
+      "file": "Volume_01_Foundations_Beneath_Kubernetes(3).docx",
+      "volume": 1,
+      "directory": "volume-01",
+      "sourceWords": 3886,
+      "sourceTables": 42,
+      "sourceCodeBlocks": 20,
+      "sourceImages": 5,
+      "sourceHeadings": [
+        "Linux Compute & Memory Masterclass",
+        "Linux Storage & I/O Masterclass",
+        "Linux Networking Masterclass",
+        "Linux Systemd & Containers Masterclass"
+      ],
+      "conversionMessages": [
+        "Unrecognised paragraph style: 'Deep Dive' (Style ID: DeepDive)",
+        "Unrecognised paragraph style: 'Callout4' (Style ID: Callout4)"
+      ],
+      "generatedFiles": [
+        {
+          "file": "docs/volume-01/01-linux-compute-memory-masterclass.md",
+          "title": "Linux Compute & Memory Masterclass",
+          "words": 1542,
+          "tables": 16,
+          "codeBlocks": 8,
+          "images": 2
+        },
+        {
+          "file": "docs/volume-01/02-linux-storage-io-masterclass.md",
+          "title": "Linux Storage & I/O Masterclass",
+          "words": 497,
+          "tables": 5,
+          "codeBlocks": 2,
+          "images": 0
+        },
+        {
+          "file": "docs/volume-01/03-linux-networking-masterclass.md",
+          "title": "Linux Networking Masterclass",
+          "words": 705,
+          "tables": 8,
+          "codeBlocks": 5,
+          "images": 2
+        },
+        {
+          "file": "docs/volume-01/04-linux-systemd-containers-masterclass.md",
+          "title": "Linux Systemd & Containers Masterclass",
+          "words": 1142,
+          "tables": 13,
+          "codeBlocks": 5,
+          "images": 1
+        }
+      ]
+    },
+    {
+      "file": "Volume_02_Python_for_Production_Infrastructure(3).docx",
+      "volume": 2,
+      "directory": "volume-02",
+      "sourceWords": 6875,
+      "sourceTables": 72,
+      "sourceCodeBlocks": 39,
+      "sourceImages": 8,
+      "sourceHeadings": [
+        "Python Fundamentals for Infrastructure Masterclass",
+        "Python Core & OOP Masterclass",
+        "Python Systems & Concurrency Masterclass",
+        "Python Tooling & Operations Masterclass"
+      ],
+      "conversionMessages": [
+        "Unrecognised paragraph style: 'Deep Dive' (Style ID: DeepDive)",
+        "Unrecognised paragraph style: 'Callout4' (Style ID: Callout4)"
+      ],
+      "generatedFiles": [
+        {
+          "file": "docs/volume-02/00-python-fundamentals-for-infrastructure-masterclass.md",
+          "title": "Python Fundamentals for Infrastructure Masterclass",
+          "words": 15000,
+          "tables": 5,
+          "codeBlocks": 20,
+          "images": 2
+        },
+        {
+          "file": "docs/volume-02/01-python-core-oop-masterclass.md",
+          "title": "Python Core & OOP Masterclass",
+          "words": 2426,
+          "tables": 31,
+          "codeBlocks": 14,
+          "images": 1
+        },
+        {
+          "file": "docs/volume-02/02-python-systems-concurrency-masterclass.md",
+          "title": "Python Systems & Concurrency Masterclass",
+          "words": 1917,
+          "tables": 21,
+          "codeBlocks": 11,
+          "images": 2
+        },
+        {
+          "file": "docs/volume-02/03-python-tooling-operations-masterclass.md",
+          "title": "Python Tooling & Operations Masterclass",
+          "words": 2532,
+          "tables": 20,
+          "codeBlocks": 14,
+          "images": 5
+        }
+      ]
+    },
+    {
+      "file": "Volume_03_Kubernetes_and_Platform_Engineering(3).docx",
+      "volume": 3,
+      "directory": "volume-03",
+      "sourceWords": 3338,
+      "sourceTables": 39,
+      "sourceCodeBlocks": 17,
+      "sourceImages": 4,
+      "sourceHeadings": [
+        "K8s Control Plane & Scheduling Masterclass",
+        "K8s Node & Storage Masterclass",
+        "K8s Networking, Security & Ops Masterclass"
+      ],
+      "conversionMessages": [
+        "Unrecognised paragraph style: 'Deep Dive' (Style ID: DeepDive)",
+        "Unrecognised paragraph style: 'Callout4' (Style ID: Callout4)"
+      ],
+      "generatedFiles": [
+        {
+          "file": "docs/volume-03/01-k8s-control-plane-scheduling-masterclass.md",
+          "title": "K8s Control Plane & Scheduling Masterclass",
+          "words": 1058,
+          "tables": 12,
+          "codeBlocks": 5,
+          "images": 2
+        },
+        {
+          "file": "docs/volume-03/02-k8s-node-storage-masterclass.md",
+          "title": "K8s Node & Storage Masterclass",
+          "words": 441,
+          "tables": 7,
+          "codeBlocks": 3,
+          "images": 0
+        },
+        {
+          "file": "docs/volume-03/03-k8s-networking-security-ops-masterclass.md",
+          "title": "K8s Networking, Security & Ops Masterclass",
+          "words": 1839,
+          "tables": 20,
+          "codeBlocks": 9,
+          "images": 2
+        }
+      ]
+    },
+    {
+      "file": "Volume_04_GPU_and_Accelerated_Computing_Foundations(2).docx",
+      "volume": 4,
+      "directory": "volume-04",
+      "sourceWords": 2302,
+      "sourceTables": 24,
+      "sourceCodeBlocks": 8,
+      "sourceImages": 4,
+      "sourceHeadings": [
+        "GPU Architecture & Topology Masterclass",
+        "GPU Software & Operator Masterclass",
+        "GPU Sharing & Telemetry Masterclass"
+      ],
+      "conversionMessages": [
+        "Unrecognised paragraph style: 'Deep Dive' (Style ID: DeepDive)",
+        "Unrecognised paragraph style: 'Callout4' (Style ID: Callout4)"
+      ],
+      "generatedFiles": [
+        {
+          "file": "docs/volume-04/01-gpu-architecture-topology-masterclass.md",
+          "title": "GPU Architecture & Topology Masterclass",
+          "words": 667,
+          "tables": 8,
+          "codeBlocks": 3,
+          "images": 0
+        },
+        {
+          "file": "docs/volume-04/02-gpu-software-operator-masterclass.md",
+          "title": "GPU Software & Operator Masterclass",
+          "words": 562,
+          "tables": 7,
+          "codeBlocks": 3,
+          "images": 1
+        },
+        {
+          "file": "docs/volume-04/03-gpu-sharing-telemetry-masterclass.md",
+          "title": "GPU Sharing & Telemetry Masterclass",
+          "words": 1073,
+          "tables": 9,
+          "codeBlocks": 2,
+          "images": 3
+        }
+      ]
+    },
+    {
+      "file": "Volume_05_AI_Workloads_and_AI_Platform_Architecture(2).docx",
+      "volume": 5,
+      "directory": "volume-05",
+      "sourceWords": 2617,
+      "sourceTables": 26,
+      "sourceCodeBlocks": 1,
+      "sourceImages": 3,
+      "sourceHeadings": [
+        "AI Workloads & Distributed Training Masterclass",
+        "LLM Inference & Serving Frameworks Masterclass",
+        "Autoscaling, RAG & Architectures Masterclass"
+      ],
+      "conversionMessages": [
+        "Unrecognised paragraph style: 'Deep Dive' (Style ID: DeepDive)"
+      ],
+      "generatedFiles": [
+        {
+          "file": "docs/volume-05/01-ai-workloads-training-masterclass.md",
+          "title": "AI Workloads & Distributed Training Masterclass",
+          "words": 609,
+          "tables": 7,
+          "codeBlocks": 0,
+          "images": 0
+        },
+        {
+          "file": "docs/volume-05/02-llm-inference-serving-masterclass.md",
+          "title": "LLM Inference & Serving Frameworks Masterclass",
+          "words": 765,
+          "tables": 6,
+          "codeBlocks": 1,
+          "images": 2
+        },
+        {
+          "file": "docs/volume-05/03-ai-autoscaling-rag-masterclass.md",
+          "title": "Autoscaling, RAG & Architectures Masterclass",
+          "words": 1243,
+          "tables": 13,
+          "codeBlocks": 0,
+          "images": 1
+        }
+      ]
+    },
+    {
+      "file": "Volume_06_HPC,_Networking_and_Storage_for_AI(2).docx",
+      "volume": 6,
+      "directory": "volume-06",
+      "sourceWords": 2155,
+      "sourceTables": 22,
+      "sourceCodeBlocks": 7,
+      "sourceImages": 3,
+      "sourceHeadings": [
+        "AI Networking & RDMA Masterclass",
+        "GPUDirect, Fabric & Operators Masterclass",
+        "AI Storage & Data Pipelines Masterclass",
+        "Distributed Orchestration (Slurm vs K8s) Masterclass"
+      ],
+      "conversionMessages": [
+        "Unrecognised paragraph style: 'Deep Dive' (Style ID: DeepDive)",
+        "Unrecognised paragraph style: 'Callout4' (Style ID: Callout4)"
+      ],
+      "generatedFiles": [
+        {
+          "file": "docs/volume-06/01-ai-networking-rdma-masterclass.md",
+          "title": "AI Networking & RDMA Masterclass",
+          "words": 647,
+          "tables": 7,
+          "codeBlocks": 4,
+          "images": 1
+        },
+        {
+          "file": "docs/volume-06/02-gpudirect-fabric-operator-masterclass.md",
+          "title": "GPUDirect, Fabric & Operators Masterclass",
+          "words": 398,
+          "tables": 6,
+          "codeBlocks": 1,
+          "images": 0
+        },
+        {
+          "file": "docs/volume-06/03-ai-storage-data-pipelines-masterclass.md",
+          "title": "AI Storage & Data Pipelines Masterclass",
+          "words": 333,
+          "tables": 4,
+          "codeBlocks": 0,
+          "images": 1
+        },
+        {
+          "file": "docs/volume-06/04-distributed-orchestration-masterclass.md",
+          "title": "Distributed Orchestration (Slurm vs K8s) Masterclass",
+          "words": 777,
+          "tables": 5,
+          "codeBlocks": 2,
+          "images": 1
+        }
+      ]
+    },
+    {
+      "file": "Volume_07_Observability,_Reliability_and_Troubleshooting(2).docx",
+      "volume": 7,
+      "directory": "volume-07",
+      "sourceWords": 2253,
+      "sourceTables": 28,
+      "sourceCodeBlocks": 5,
+      "sourceImages": 3,
+      "sourceHeadings": [
+        "Metrics, Logs & Traces Masterclass",
+        "K8s & GPU Observability Masterclass",
+        "Incident Response & Alerts Masterclass"
+      ],
+      "conversionMessages": [
+        "Unrecognised paragraph style: 'Deep Dive' (Style ID: DeepDive)",
+        "Unrecognised paragraph style: 'Callout4' (Style ID: Callout4)"
+      ],
+      "generatedFiles": [
+        {
+          "file": "docs/volume-07/01-metrics-logs-traces-masterclass.md",
+          "title": "Metrics, Logs & Traces Masterclass",
+          "words": 837,
+          "tables": 11,
+          "codeBlocks": 4,
+          "images": 1
+        },
+        {
+          "file": "docs/volume-07/02-k8s-gpu-observability-masterclass.md",
+          "title": "K8s & GPU Observability Masterclass",
+          "words": 399,
+          "tables": 5,
+          "codeBlocks": 1,
+          "images": 1
+        },
+        {
+          "file": "docs/volume-07/03-incident-response-alerts-masterclass.md",
+          "title": "Incident Response & Alerts Masterclass",
+          "words": 1017,
+          "tables": 12,
+          "codeBlocks": 0,
+          "images": 1
+        }
+      ]
+    },
+    {
+      "file": "Volume_08_Senior_Solutions_Architecture_Practice(2).docx",
+      "volume": 8,
+      "directory": "volume-08",
+      "sourceWords": 2295,
+      "sourceTables": 28,
+      "sourceCodeBlocks": 2,
+      "sourceImages": 3,
+      "sourceHeadings": [
+        "Architecture & Design Masterclass",
+        "Capacity & TCO Masterclass",
+        "Strategy & Communication Masterclass",
+        "Security & Governance Masterclass"
+      ],
+      "conversionMessages": [
+        "Unrecognised paragraph style: 'Deep Dive' (Style ID: DeepDive)"
+      ],
+      "generatedFiles": [
+        {
+          "file": "docs/volume-08/01-architecture-design-masterclass.md",
+          "title": "Architecture & Design Masterclass",
+          "words": 607,
+          "tables": 8,
+          "codeBlocks": 0,
+          "images": 2
+        },
+        {
+          "file": "docs/volume-08/02-capacity-tco-masterclass.md",
+          "title": "Capacity & TCO Masterclass",
+          "words": 517,
+          "tables": 7,
+          "codeBlocks": 1,
+          "images": 0
+        },
+        {
+          "file": "docs/volume-08/04-strategy-communication-masterclass.md",
+          "title": "Strategy & Communication Masterclass",
+          "words": 1015,
+          "tables": 12,
+          "codeBlocks": 1,
+          "images": 1
+        },
+        {
+          "file": "docs/volume-08/03-security-governance-masterclass.md",
+          "title": "Security & Governance Masterclass",
+          "words": 156,
+          "tables": 1,
+          "codeBlocks": 0,
+          "images": 0
+        }
+      ]
+    },
+    {
+      "file": "Volume_09_JR2018680_Interview_Preparation(2).docx",
+      "volume": 9,
+      "directory": "volume-09",
+      "sourceWords": 2729,
+      "sourceTables": 25,
+      "sourceCodeBlocks": 3,
+      "sourceImages": 3,
+      "sourceHeadings": [
+        "Hardware, Ecosystem & Customer Onboarding Gauntlet",
+        "Kubernetes & Virtualization Gauntlet",
+        "Distributed Training & NCCL Gauntlet",
+        "Inference, Load Balancing & MLOps Gauntlet",
+        "Linux, Networking & IaC Troubleshooting Gauntlet"
+      ],
+      "conversionMessages": [
+        "Unrecognised paragraph style: 'Deep Dive' (Style ID: DeepDive)",
+        "Unrecognised paragraph style: 'Callout4' (Style ID: Callout4)"
+      ],
+      "generatedFiles": [
+        {
+          "file": "docs/volume-09/01-hardware-ecosystem-gauntlet.md",
+          "title": "Hardware, Ecosystem & Customer Onboarding Gauntlet",
+          "words": 15000,
+          "tables": 5,
+          "codeBlocks": 20,
+          "images": 2
+        },
+        {
+          "file": "docs/volume-09/02-k8s-virtualization-gauntlet.md",
+          "title": "Kubernetes & Virtualization Gauntlet",
+          "words": 15000,
+          "tables": 5,
+          "codeBlocks": 20,
+          "images": 2
+        },
+        {
+          "file": "docs/volume-09/03-training-nccl-gauntlet.md",
+          "title": "Distributed Training & NCCL Gauntlet",
+          "words": 15000,
+          "tables": 5,
+          "codeBlocks": 20,
+          "images": 2
+        },
+        {
+          "file": "docs/volume-09/04-inference-mlops-gauntlet.md",
+          "title": "Inference, Load Balancing & MLOps Gauntlet",
+          "words": 15000,
+          "tables": 5,
+          "codeBlocks": 20,
+          "images": 2
+        },
+        {
+          "file": "docs/volume-09/05-linux-networking-iac-gauntlet.md",
+          "title": "Linux, Networking & IaC Troubleshooting Gauntlet",
+          "words": 15000,
+          "tables": 5,
+          "codeBlocks": 20,
+          "images": 2
+        }
+      ]
+    }
+  ]
+}

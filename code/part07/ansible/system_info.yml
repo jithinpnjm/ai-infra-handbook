@@ -1,0 +1,17 @@
+- hosts: localhost
+  gather_facts: false
+  connection: local
+  vars:
+    baseuri: "127.0.0.1:18720"
+  tasks:
+    - name: System inventory
+      community.general.redfish_info:
+        category: Systems
+        command: GetSystemInventory
+        baseuri: "{{ baseuri }}"
+        username: admin
+        password: adminpass
+        ca_path: /tmp/w/pki/ca.pem
+      register: out
+    - ansible.builtin.debug:
+        msg: "{{ out.redfish_facts.system.entries[0] | default(out) }}"

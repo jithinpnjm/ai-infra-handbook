@@ -1,0 +1,44 @@
+- hosts: localhost
+  gather_facts: false
+  connection: local
+  vars:
+    baseuri: "127.0.0.1:18720"
+    cred: &cred
+      baseuri: "{{ baseuri }}"
+      username: admin
+      password: adminpass
+      ca_path: /tmp/w/pki/ca.pem
+  tasks:
+    - name: Firmware inventory
+      community.general.redfish_info:
+        category: Update
+        command: GetFirmwareInventory
+        <<: *cred
+      register: fw
+    - ansible.builtin.debug:
+        msg: "{{ fw.redfish_facts.firmware.entries | length }} entries, first: {{ fw.redfish_facts.firmware.entries[0] }}"
+    - name: Health report
+      community.general.redfish_info:
+        category: Systems,Chassis
+        command: GetHealthReport
+        <<: *cred
+      register: hr
+    - ansible.builtin.debug:
+        var: hr.redfish_facts
+    - name: Fan inventory
+      community.general.redfish_info:
+        category: Chassis
+        command: GetFanInventory
+        <<: *cred
+      register: fans
+    - ansible.builtin.debug:
+        var: fans
+    - name: Restart gracefully
+      community.general.redfish_command:
+        category: Systems
+        command: PowerGracefulRestart
+        resource_id: System_0
+        <<: *cred
+      register: rs
+    - ansible.builtin.debug:
+        var: rs

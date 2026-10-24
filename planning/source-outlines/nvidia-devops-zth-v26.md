@@ -1,0 +1,551 @@
+# nvidia-devops-zth-v26
+
+
+## Chapter 01 — Ultimate AI Factory Architect Interview Cheat Sheet  (chapter-01-ai-factory-architect-interview-cheatsheet.md)
+- Learning Outcome
+- Beginner's Primer: The NVIDIA SA Interview
+- 1. Bare Metal Management: BMC & Redfish
+- 2. Cluster Provisioning: NVIDIA Base Command Manager (BCM)
+- 3. Orchestration: Slurm vs. Kubernetes vs. Run:ai
+- 4. Hardware Virtualization: SR-IOV & MIG
+- 5. The Ultimate System Design Question
+- Architecture Summary
+- Related Chapters
+
+## Chapter 02 — Consolidated Interview Questions  (chapter-02-consolidated-interview-questions.md)
+- From: 04 Nvidia Ecosystem Overview
+- From: 05 Enterprise Ai Platforms
+- From: Chapter 01 What Is Ai Infrastructure
+- From: Chapter 02 Why Cpus Became Insufficient
+- From: Chapter 03 Cpu Vs Gpu
+- From: Chapter 04 What Happens When Chatgpt Answers
+- From: Chapter 05 Ai Infrastructure Landscape
+- From: Chapter 06 Modern Ai Factory
+- From: Chapter 01 Why Gpu Architecture Evolved
+- From: Chapter 02 Inside A Modern Nvidia Gpu
+- From: Chapter 03 Threads Warps Blocks And Sms
+- From: Chapter 04 Cuda Cores Tensor Cores And Rt Cores
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- From: Chapter 05 Gpu Memory Hierarchy
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- From: Chapter 06 Scheduling Occupancy And Instruction Dispatch
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- From: Chapter 07 Registers Shared Memory And Local Memory
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- From: Chapter 08 Global Memory L1 L2 And Hbm
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- From: Chapter 09 Divergence Coalescing And Bottleneck Reasoning
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- From: Chapter 10 Gpu Topology Peer Access And Data Paths
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- From: Chapter 11 Building A Gpu Performance Model
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- From: Chapter 01 Why Cuda Exists
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- From: Chapter 02 Cuda Software Stack
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- From: Chapter 03 Cuda Programming And Execution Model
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- From: Chapter 04 Kernel Launch Configuration And Indexing
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- From: Chapter 05 Cuda Memory Management And Data Movement
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- From: Chapter 06 Synchronization Errors And Correctness
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- From: Chapter 07 Streams Events And Asynchronous Execution
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- From: Chapter 08 Pinned Memory And Transfer Overlap
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- From: Chapter 09 Unified Memory And Demand Paging
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- From: Chapter 10 Cuda Graphs And Repeated Execution
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- From: Chapter 11 Compilation Binaries And Compatibility
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- From: Chapter 12 Profiling And Production Troubleshooting
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- From: Chapter 13 Volume 03 Summary
+  - Knowledge Questions
+  - Architecture Questions
+  - Scenario Questions
+- Quick Revision Sheet
+- Lab Checklist
+- From: Chapter Chapter 01 Why Cuda Exists
+- From: Chapter Chapter 02 Cuda Software Stack
+- From: Chapter Chapter 03 Cuda Programming And Execution Model
+- From: Chapter Chapter 04 Kernel Launch Configuration And Indexing
+- From: Chapter Chapter 05 Cuda Memory Management And Data Movement
+- From: Chapter Chapter 06 Synchronization Errors And Correctness
+- From: Chapter Chapter 07 Streams Events And Asynchronous Execution
+- From: Chapter Chapter 08 Pinned Memory And Transfer Overlap
+- From: Chapter Chapter 10 Cuda Graphs And Repeated Execution
+- From: Chapter Chapter 11 Compilation Binaries And Compatibility
+- From: Chapter Chapter 12 Profiling And Production Troubleshooting
+- From: Chapter 01 Why Nvidia Has Multiple Gpu Families
+- From: Chapter 02 Workload First Gpu Selection
+- From: Chapter 03 Accelerator Generations And Design Shifts
+- From: Chapter 04 Pcie Sxm And Platform Integration
+- From: Chapter 05 Inference Accelerators T4 L4 And L40S
+- From: Chapter 06 Training Accelerators V100 To B200
+- From: Chapter 07 Grace Cpu And Superchips
+- From: Chapter 01 Why Dgx Exists
+- From: Chapter 02 Inside A Dgx System
+- From: Chapter 03 Dgx Management Plane
+- From: Chapter 04 Power Cooling And Rack Readiness
+- From: Chapter 05 Dgx Storage And Data Paths
+- From: Chapter 06 Dgx Networking And Fabric Integration
+- From: Chapter 07 Dgx Gh200 And Gb200 Systems
+- From: Chapter 01 Why Hgx Exists
+- From: Chapter 02 Inside An Hgx Platform
+- From: Chapter 03 Oem Integration And Support Boundaries
+- From: Chapter 04 Hgx Topology And Data Paths
+- From: Chapter 05 Hgx Power Cooling And Rack Integration
+- From: Chapter 06 Hgx Networking Storage And Cluster Integration
+- From: Chapter 07 Gb200 Nvl72 Rack Scale Architecture
+- From: Chapter 01 Why Gpu Networking Exists
+- From: Chapter 02 Pcie Numa And Host Data Paths
+- From: Chapter 03 Nvlink And Nvswitch
+- From: Chapter 04 Dma Rdma And Peer To Peer
+- From: Chapter 05 Gpudirect Rdma
+- From: Chapter 06 Gpudirect Storage
+- From: Chapter 07 Connectx And Gpu Network Adapters
+- From: Chapter 08 Topology Aware Placement
+- From: Chapter 09 Multi Node Collectives And Nccl Paths
+- From: Chapter 10 Performance Bottlenecks And Benchmarking
+- From: Chapter 11 Production Design Scenarios
+- From: Chapter 01 Why Infiniband Exists
+  - Knowledge Questions
+  - Architecture Questions
+  - Scenario Questions
+  - Customer Questions
+  - Whiteboard Question
+- From: Chapter 02 Infiniband Architecture And Link Layers
+  - Knowledge Questions
+  - Architecture Questions
+  - Scenario Questions
+  - Customer Questions
+  - Whiteboard Question
+- From: Chapter 03 Verbs Queue Pairs And Completion Queues
+  - Knowledge Questions
+  - Architecture Questions
+  - Scenario Questions
+  - Customer Questions
+  - Whiteboard Question
+- From: Chapter 04 Lids Gids Pkeys And Addressing
+  - Knowledge Questions
+  - Architecture Questions
+  - Scenario Questions
+  - Customer Questions
+  - Whiteboard Question
+- From: Chapter 05 Subnet Management And Opensm
+  - Knowledge Questions
+  - Architecture Questions
+  - Scenario Questions
+  - Customer Questions
+  - Whiteboard Question
+- From: Chapter 06 Routing Topologies And Oversubscription
+  - Knowledge Questions
+  - Architecture Questions
+  - Scenario Questions
+  - Customer Questions
+  - Whiteboard Question
+- From: Chapter 07 Adaptive Routing And Congestion Control
+  - Knowledge Questions
+  - Architecture Questions
+  - Scenario Questions
+  - Whiteboard Question
+- From: Chapter 08 Hdr Ndr Xdr And Link Evolution
+- From: Chapter 09 Fabric Monitoring And Telemetry
+- From: Chapter 10 Production Troubleshooting
+- From: Chapter 11 Production Design Scenarios
+  - Architecture Questions
+  - Customer Questions
+  - Whiteboard Exercise
+- From: Chapter 12 Volume 08 Summary
+  - Conceptual
+  - Architecture
+  - Troubleshooting
+- Lab Completion Checklist
+- Final Takeaways
+- Cross References
+- From: Chapter 01 Why Ethernet For Ai Is Different
+  - Knowledge questions
+  - Architecture questions
+  - Scenario question
+- From: Chapter 02 Ethernet Architecture For Ai
+  - Knowledge questions
+  - Architecture questions
+  - Scenario question
+  - NVIDIA Operational Reference — BGP-EVPN coexistence
+- From: Chapter 03 Rocev2 And Rdma Over Ethernet
+  - Knowledge questions
+  - Architecture questions
+  - Scenario question
+- From: Chapter 04 Priority Flow Control
+  - Knowledge
+  - Architecture
+  - Scenario
+- From: Chapter 05 Ecn And Dcqcn
+- From: Chapter 06 Data Center Bridging And Qos
+- From: Chapter 07 Spectrum Switches For Ai
+  - NVIDIA Operational Reference — NVUE
+- From: Chapter 08 Connectx Ethernet Adapters
+- From: Chapter 09 Bluefield Dpus And Doca
+- From: Chapter 10 Fabric Validation And Capacity Planning
+  - NVIDIA Operational Reference — NetQ and NVIDIA Air
+- From: Chapter 11 Production Troubleshooting
+- From: Chapter 12 Volume 09 Summary
+- Decision Matrix
+- What This Volume Does Not Claim
+- From: Chapter 01 Why Kubernetes Needs A Gpu Platform Layer
+- From: Chapter 02 Gpu Software Lifecycle In Kubernetes
+- From: Chapter 03 Container Toolkit Runtimeclass And Cdi
+- From: Chapter 04 Device Plugin And Kubernetes Resource Model
+- From: Chapter 05 Node And Gpu Feature Discovery
+- From: Chapter 06 Gpu Operator Architecture
+- From: Chapter 07 Driver Containers And Node Operands
+- From: Chapter 08 Gpu Scheduling And Topology
+- From: Chapter 01 Why Gpu Sharing Exists
+- Additional incident playbook: wrong workload admitted
+- Additional incident playbook: capacity report conflicts with reality
+- Terms and revision prompts
+- Decision-review record
+- From: Chapter 02 Mig Architecture And Isolation
+- From: Chapter 03 Mig Profiles And Placement
+- From: Chapter 04 Time Slicing And Oversubscription
+- From: Chapter 05 Vgpu Architecture And Enterprise Virtualization
+- From: Chapter 06 Comparing Mig Time Slicing And Vgpu
+- From: Chapter 07 Kubernetes Scheduling For Shared Gpus
+  - NVIDIA Operational Reference — Run:ai
+- From: Chapter 08 Tenant Isolation Security And Fairness
+- From: Chapter 09 Capacity Planning And Chargeback
+- From: Chapter 10 Observability And Slos For Shared Gpus
+- From: Chapter 11 Production Troubleshooting
+- From: Chapter 12 Volume 11 Summary
+- Customer discussion prompts
+- From: Chapter 01 Why Inference Infrastructure Is Different
+  - Question 1: "Why does a 100% GPU utilization metric in `nvidia-smi` often misrepresent the real health and throughput of an LLM inference cluster?"
+  - Question 2: "Mathematical breakdown: How do you size the GPU memory requirement for serving a 70B FP16 LLM with a 4K context window for 100 concurrent requests?"
+  - Question 3: "Explain the difference between Time To First Token (TTFT) and Inter-Token Latency (ITL) from both a CUDA kernel execution perspective and a customer SLA perspective."
+- Production Troubleshooting: Real-World Evidence
+  - Problem: High Time-To-First-Token (TTFT) Despite GPU Availability
+  - Problem: Elevated Inter-Token Latency (ITL) with Memory Pressure
+  - Problem: Cascading GPU Out-Of-Memory (OOM) Crashes
+- From: Chapter 02 The End To End Inference Request Path
+  - Question 1: "Trace an inference request from HTTP client to GPU kernel execution and back. Where are the top 3 hidden latency sinks outside the GPU matrix multiplication?"
+  - Question 2: "How does backpressure propagate from a slow mobile client consuming a streaming SSE response all the way back to the GPU continuous batching loop?"
+  - Question 3: "Why is pageable host RAM transfer (`cudaMemcpy`) significantly slower than pinned memory (`cudaHostRegister`), and how does this impact dynamic batching pipelines?"
+- Production Troubleshooting: Real-World Evidence
+  - Problem: Request Latency Remains High Despite Adding GPU Capacity
+  - Problem: Dynamic Batching Not Assembling Full Batches
+- From: Chapter 03 Triton Inference Server Architecture
+  - Question 1: "How does Triton's Business Logic Scripting (BLS) differ from Ensemble Models, and what are the memory zero-copy implications when passing tensors between backends?"
+  - Question 2: "Explain the interaction between Triton's `max_batch_size` in `config.pbtxt` and the underlying TensorRT engine's profile dimensions. What happens if a request arrives exceeding the max batch size?"
+  - Question 3: "In Triton, how do you decouple Kubernetes liveness/readiness probes from model load states to prevent Kubernetes from killing a pod while a 70B model is loading into HBM?"
+- Production Troubleshooting: Real-World Evidence
+  - Problem: Triton Server Fails to Start or Models Never Reach `READY` State
+  - Problem: Model Unload or In-Flight Model Swap Causes Request Failures
+- From: Chapter 04 Tensorrt Optimization And Engine Lifecycle
+  - Question 1
+  - Question 2
+  - Question 3
+- Production Troubleshooting: Real-World Evidence
+  - Problem: Engine Builder Crashes During Tactic Profiling
+  - Problem: Accuracy Loss After INT8 Quantization
+  - Problem: Data Corruption or CUDA Illegal Memory Access from Multi-Threaded Execution
+- From: Chapter 05 Tensorrt Llm And Llm Execution
+  - Question 1
+  - Question 2
+  - Question 3
+- Production Troubleshooting: Real-World Evidence
+  - Problem: Low Throughput Despite High GPU Utilization During Tensor Parallelism
+  - Problem: OOM During Prefill Phase Despite Adequate HBM Capacity
+- From: Chapter 06 Vllm Tgi Sglang And Lmdeploy
+  - Question 1
+  - Question 2
+  - Question 3
+- Production Troubleshooting: Real-World Evidence
+  - Problem: Cache Hit Ratio Lower Than Expected Despite Prefix Caching Enabled
+  - Problem: TGI Rust Router Disconnections During Request Batching
+- From: Chapter 07 Continuous And Dynamic Batching
+  - Question 1
+  - Question 2
+  - Question 3
+- Production Troubleshooting: Real-World Evidence
+  - Problem: Chunked Prefill Introduces Latency Overhead Instead of Solving Tail Latency
+  - Problem: Decode Batch Underutilization Despite High Concurrency
+- From: Chapter 08 Kv Cache Memory And Concurrency
+  - Question 1: How does Grouped-Query Attention (GQA) reduce KV cache memory consumption, and what is the exact math for a 70B model with context length S?
+  - Question 2: Explain the internal architecture of PagedAttention. How does it resolve fragmentation issues compared to naive tensor allocation?
+  - Question 3: What is Chunked Prefill, and why is it necessary for stabilizing Inter-Token Latency (ITL) in multi-tenant LLM serving?
+- Production Troubleshooting: Real-World Evidence
+  - Problem: PagedAttention Block Fragmentation Preventing Concurrency Growth
+  - Problem: Prefix Caching Hit Ratio Degraded After Enabling Chunked Prefill
+- From: Chapter 09 Scaling Multi Gpu And Multi Node Inference
+  - Question 1: Why is Tensor Parallelism (TP) strictly restricted to intra-node NVLink interconnects in low-latency LLM serving, whereas Pipeline Parallelism (PP) is suitable for inter-node scaling?
+  - Question 2: What is GPUDirect RDMA (GDR), and how does it impact inter-node distributed inference performance?
+  - Question 3: How does prefix-aware load balancing improve the operational efficiency of a scale-out multi-node inference cluster?
+- Production Troubleshooting: Real-World Evidence
+  - Problem: Tensor Parallelism Collective Communication Hangs or Timeouts
+  - Problem: Load Imbalance in Data Parallel Scale-Out Reducing Throughput
+- From: Chapter 10 Performance Metrics And Benchmarking
+  - Question 1: Explain the difference between Time to First Token (TTFT) and Inter-Token Latency (ITL). How do hardware bottlenecks differ between the prefill phase and the decode phase?
+  - Question 2: Why is open-loop load testing essential for benchmarking LLM serving infrastructure, and why does closed-loop testing provide misleading conclusions?
+  - Question 3: If a cluster demonstrates high Output Token Throughput (Tokens/sec) but end-user satisfaction is poor, what metrics are likely missing from the evaluation?
+- Production Troubleshooting: Real-World Evidence
+  - Problem: Benchmark Results Don't Match Production Performance
+  - Problem: High Throughput but p99 Latency Unacceptable
+- From: Chapter 11 Production Reliability And Troubleshooting
+  - Question 1: How do you design Kubernetes Startup, Readiness, and Liveness probes for a 70B LLM container to avoid probe-induced cascading outages?
+  - Question 2: What is an NVIDIA XID error, and how should an inference platform automatically handle GPU hardware faults like XID 62 without impacting user availability?
+  - Question 3: How do admission control and circuit breaking work together to preserve SLOs during unexpected LLM traffic spikes?
+- From: Chapter 12 Volume 12 Summary
+  - 1. Training vs. Inference Trade-offs
+  - 2. KV Cache Memory Math
+  - 3. PagedAttention Mechanics
+  - 4. Prefill vs. Decode Disaggregation
+  - 5. Tensor Parallelism (TP) vs. Pipeline Parallelism (PP)
+  - 6. Continuous Batching
+  - 7. Open-Loop vs. Closed-Loop Load Testing
+  - 8. Kubernetes Health Probes for LLMs
+  - 9. GPU Hardware Fault Handling (XID Errors)
+  - 10. Prefix-Aware Routing
+- Conclusion & Path Forward
+- From: Chapter 01 Why Distributed Training Exists
+- From: Chapter 02 Training Memory And Compute Anatomy
+- From: Chapter 03 Data Parallelism And Ddp
+- From: Chapter 04 Fsdp And Parameter Sharding
+- From: Chapter 05 Deepspeed And Zero
+- From: Chapter 06 Tensor Pipeline And Expert Parallelism
+- From: Chapter 07 Megatron Lm Architecture
+- From: Chapter 08 Nccl Collectives And Communication Paths
+- From: Chapter 09 Checkpointing And Recovery
+- From: Chapter 10 Multi Node Training Architecture
+- TROUBLESHOOTING
+  - Scenario 1: Suboptimal Routing (The Noisy Neighbor)
+  - Scenario 2: GPU to NIC Affinity Mismatch
+  - Scenario 3: Node Drains Mid-Job, Distributed Job Hangs Then Dies
+- From: Chapter 11 Performance Engineering And Troubleshooting
+- From: Chapter 01 Why Nvidia Ai Enterprise Exists
+- From: Chapter 12 Volume 14 Summary
+- Related Volumes
+- From: Chapter 01 Why Ai Storage Is Different
+- From: Chapter 03 Local Nvme And Data Staging
+- From: Chapter 04 Gpudirect Storage Architecture
+- From: Chapter 05 Lustre For Ai And Hpc
+- From: Chapter 06 Beegfs For Gpu Clusters
+- From: Chapter 07 Object Storage And Dataset Pipelines
+- From: Chapter 08 Checkpoint Architecture And Recovery
+- From: Chapter 09 Metadata Small Files And Data Loading
+- From: Chapter 10 Capacity Performance And Cost Planning
+- From: Chapter 11 Production Troubleshooting
+- From: Chapter 12 Volume 15 Summary
+- Related Volumes
+- From: Chapter 01 Why Gpu Observability Is Fundamentally Different
+- From: Chapter 01 Performance Engineering Fundamentals
+- From: Chapter 02 Profiling Tools Landscape
+- From: Chapter 03 Roofline Model And Analytical Performance
+- From: Chapter 04 Bottleneck Identification And Diagnosis
+- From: Chapter 05 Gpu Compute Optimization
+- From: Chapter 06 Memory Optimization
+- From: Chapter 07 Communication And Collective Optimization
+- From: Chapter 08 Inference Optimization
+- From: Chapter 09 Training Optimization
+- From: Chapter 10 System Level Performance Tuning
+- From: Chapter 11 Production Performance Monitoring And Slos
+- From: Chapter 01 Threat Modeling For Ai Infrastructure
+- From: Chapter 02 Hardware And Firmware Trust
+- From: Chapter 03 Containers And Supply Chain Security
+- From: Chapter 04 Kubernetes Rbac And Access Control
+- From: Chapter 05 Pod Security And Network Policies
+- From: Chapter 06 Gpu Sharing Security
+- From: Chapter 07 Dma Iommu And Sriov Security
+- From: Chapter 08 Bluefield And Doca Security
+- From: Chapter 09 Confidential Computing And Attestation
+- From: Chapter 10 Data And Model Protection
+- From: Chapter 11 Audit Logging And Compliance
+- From: Chapter 12 Incident Response And Troubleshooting
+- From: Chapter 01 Cluster Lifecycle And Upgrade Operations
+- From: Chapter 02 Incident Response And Game Day Execution
+- From: Chapter 03 Capacity Planning And Forecasting
+- From: Chapter 04 Gpu Memory And Utilization Troubleshooting
+- From: Chapter 05 Network Reliability And Fabric Validation
+- From: Chapter 06 Cost Optimization And Resource Efficiency
+- From: Chapter 07 Multi Tenancy And Workload Isolation
+- From: Chapter 08 Security Operations And Compliance
+- From: Chapter 09 Monitoring And Observability At Scale
+- From: Chapter 10 Disaster Recovery And Data Resilience
+- From: Chapter 11 Performance Debugging And Bottleneck Identification
+- From: Chapter 01 Gpu Memory Not Detected
+- From: Chapter 02 Gpu Driver Crash And Xid Errors
+- From: Chapter 03 Nccl Timeout And Collective Communication Failures
+- From: Chapter 04 Nvlink Errors And Topology Issues
+- From: Chapter 05 Ecc Errors And Memory Bit Flips
+- From: Chapter 06 Thermal Throttling And Cooling Degradation
+- From: Chapter 07 Dma Engine Failures And Pcie Issues
+- From: Chapter 08 Fan Failure And Cooling System Degradation
+- From: Chapter 09 Power Supply Issues And Brownout Scenarios
+- From: Chapter 10 Clock Instability And Frequency Scaling Problems
+- From: Chapter 11 Multi Gpu Imbalance And Straggler Detection
+- From: Chapter 12 Cross Layer Diagnosis When Metrics Lie
+- From: Chapter 01 Ai Factory Fundamentals And Design Principles
+- From: Chapter 02 Gpu Compute Cluster Design
+- From: Chapter 01 Consulting Methodology For Customer Engagement
+- From: Chapter 02 Banking And Financial Services
+- From: Chapter 03 Generative Ai And Large Language Models
+- From: Chapter 01 Gpu Architecture Deep Dive
+  - Question 1: Explain Occupancy and How It Affects Performance
+  - Question 2: Memory Coalescing and Global Memory Access
+  - Question 3: Warp Divergence and Control Flow
+  - Question 4: Memory Bandwidth and Compute-to-Memory Ratio
+  - Question 5: Latency vs. Throughput Trade-off in Warp Scheduling
+- Real Profiler Data Example
+- From: Chapter 02 Cuda Programming And Optimization
+  - Question 1: Register Pressure and Occupancy Trade-off
+  - Question 2: Shared Memory Bank Conflicts
+  - Question 3: Matrix Multiplication Tiling and Arithmetic Intensity
+  - Question 4: Kernel Fusion and Asynchronous Patterns
+  - Question 5: Identifying and Optimizing Memory Bottlenecks
+- Optimization Checklist
+- From: Chapter 03 Multi Gpu And Distributed Systems
+  - Question 1: Designing an AllReduce Algorithm
+  - Question 2: Gradient Compression and Communication Overhead
+  - Question 3: Scaling Efficiency Diagnosis
+- Optimization Checklist
+- From: Chapter 04 Observability And Monitoring
+  - Question 1: Designing an SLO for a GPU Cluster
+  - Question 2: Diagnosing Slow Training
+  - Question 3: Calculating Cost Per Training
+- From: Chapter 05 Performance Analysis And Troubleshooting
+  - Question 1: Roofline Model Application
+  - Question 2: Profiling and Bottleneck Identification
+  - Question 3: Scaling Analysis and Bottleneck Evolution
+- Troubleshooting Decision Tree
+- From: Chapter 06 Gpu Sharing And Virtualization
+  - Question 1: Choosing MIG vs. Time-Slicing
+  - Question 2: Isolation Failures in Shared GPU Systems
+  - Question 3: Fair Resource Allocation Under Sharing
+- Isolation Verification Checklist
+- From: Chapter 07 Kubernetes And Container Orchestration
+  - Question 1: Multi-Tenant GPU Cluster Design
+  - Question 2: Pod Disruption and Graceful Shutdown
+  - Question 3: Scaling GPU Clusters Dynamically
+- From: Chapter 08 Security And Compliance
+  - Question 1: Threat Modeling Multi-Tenant GPU Systems
+  - Question 2: Compliance Requirements (HIPAA, SOC2)
+- From: Chapter 09 Cluster Operations And Capacity Planning
+- GPU Hardware Selection Framework
+  - Workload-Driven GPU Choices
+  - Question 1: Capacity Planning for Scale
+  - Question 2: Incident Response and Failure Modes
+  - Question 3: Cost Optimization and Utilization
+- From: Chapter 10 System Design Training Cluster
+  - Phase 1: Understand Requirements (3 minutes)
+  - Phase 2: Architecture Overview (4 minutes)
+  - Phase 3: Hardware Design (5 minutes)
+  - Phase 4: Communication and Synchronization (3 minutes)
+  - Phase 5: Fault Tolerance and Checkpoint Strategy (3 minutes)
+  - Phase 6: Scheduling and Fairness (2 minutes)
+  - Phase 7: Cost and ROI (1 minute)
+- Common Follow-ups
+- From: Chapter 11 System Design Inference Serving
+- Beginner's Primer: Inference vs. Training Design
+  - Phase 1: Understand Requirements (3 minutes)
+  - Phase 2: Architecture Overview (4 minutes)
+  - Phase 3: GPU and Model Sharding (4 minutes)
+  - Phase 4: Batching and Latency Optimization (3 minutes)
+  - Phase 5: Fault Tolerance and Cost Optimization (2 minutes)
+  - Phase 6: Multi-Tenancy and Isolation (2 minutes)
+  - Phase 7: SLA Verification and Monitoring (1 minute)
+- Common Follow-ups
+- From: Chapter 12 System Design Research Infrastructure
+- Beginner's Primer: The Wild West of AI
+  - Phase 1: Understand Workload Characteristics (3 minutes)
+  - Phase 2: Architecture Overview (4 minutes)
+  - Phase 3: Fairness and Resource Allocation (4 minutes)
+  - Phase 4: Preemption and Checkpointing (3 minutes)
+  - Phase 5: Failure Handling and Resilience (2 minutes)
+  - Phase 6: Cost and Scalability (1 minute)
+  - Phase 7: Monitoring and Fairness Verification (1 minute)
+- Common Follow-ups
+- Key Concepts
+- From: Chapter 13 Ai Factory Architect Interview Cheatsheet
+- 1. Bare Metal Management: BMC & Redfish
+- 2. Cluster Provisioning: NVIDIA Base Command Manager (BCM)
+- 3. Orchestration: Slurm vs. Kubernetes vs. Run:ai
+- 4. Hardware Virtualization: SR-IOV & MIG
+- 5. The Ultimate System Design Question
+- From: Chapter 01 Cuda Kernel Optimization
+- Evaluation Rubric
+- From: Chapter 02 Allreduce Algorithm Design
+- Evaluation Rubric
+- From: Chapter 03 Distributed Training Fault Tolerance
+- Evaluation Rubric
+- From: Chapter 04 Observability System Design
+- Evaluation Rubric
+- From: Chapter 05 Troubleshooting Incident Response
+- Evaluation Rubric
+- From: Chapter 06 Mig Configuration Multi Tenant
+- Evaluation Rubric
+- From: Chapter 07 Kubernetes Gpu Scheduling
+- Evaluation Rubric
+- From: Chapter 08 Security Architecture Audit
+- Evaluation Rubric
+- From: Chapter 09 Capacity Planning Forecast
+- Evaluation Rubric
+- From: Chapter 10 Training Cluster Design
+- Evaluation Rubric
+- From: Chapter 11 Inference Serving Design
+- Evaluation Rubric
+- From: Chapter 12 Research Infrastructure Design
+- Evaluation Rubric
+- From: Chapter 01 Why Mlops The Cost Of Ungoverned Ml
+- From: Chapter 02 Gpu Cloud Provisioning For Training Workloads
+- From: Chapter 03 Data Versioning With Dvc
+- From: Chapter 04 Experiment Tracking With Mlflow
+- From: Chapter 05 Data Ingestion And Cleaning Pipeline Design
+- From: Chapter 06 Building Leakage Safe Training Datasets For Time Series Ml
+- From: Chapter 07 Model Architecture And Training Pipeline Design
+- From: Chapter 08 Scaling To Multi Node Distributed Training
+- From: Chapter 09 The Model Promotion Gate Governance Before The Registry
+- From: Chapter 10 End To End Case Study Banknifty Big Move Prediction Pipeline

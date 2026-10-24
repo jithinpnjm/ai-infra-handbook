@@ -1,0 +1,439 @@
+# nvidia-devops-zth-v09
+
+
+## Chapter 01 — Why Ethernet for AI Is Different  (chapter-01-why-ethernet-for-ai-is-different.md)
+- Introduction
+- Beginner's Primer: The Highway Analogy
+- A Production Story: The Fabric That Passed Every Link Test
+- Learning Objectives
+- Why: Collective Communication Changes the Traffic Shape
+  - Incast, elephant flows, and imbalance
+- What: The End-to-End Control System
+  - Loss-sensitive does not mean “make everything lossless”
+- How: Design from the Workload Backward
+  - A layered validation model
+  - Baselines must include contention
+- When: Choosing Ethernet for AI
+- Trade-Offs and Production Boundaries
+  - What the fabric cannot solve alone
+- Production Troubleshooting
+  - Scenario 1 — Throughput collapses only with concurrent jobs
+  - Scenario 2 — No drops, but unrelated traffic stalls
+- Customer Architecture Conversation
+- Interview Preparation
+  - Knowledge questions
+  - Architecture questions
+  - Scenario question
+- Architecture Summary
+- Key Takeaways
+- Quick Revision Sheet
+- Lab Checklist
+- Cross References
+- Further Reading
+
+## Chapter 02 — Ethernet Architecture for AI  (chapter-02-ethernet-architecture-for-ai.md)
+- Introduction
+- Beginner's Primer: Deconstructing the "AI Fabric"
+- Production Story: One Fabric, Four Very Different Traffic Classes
+- Learning Objectives
+- Big Picture Architecture
+  - Data path versus control path
+- Network Roles and Isolation
+  - A practical isolation decision
+- Topology, Rails, and Capacity
+  - Oversubscription is a workload decision
+  - Endpoint locality belongs in the fabric model
+- Production Deployment Pattern
+  - 1. Establish a source of truth
+  - 2. Qualify a configuration set
+  - 3. Apply policy consistently
+  - 4. Validate in increasing scope
+- Observability and Operational Readiness
+  - Availability and change management
+- Production Troubleshooting
+  - Scenario 1 — IP works but NCCL selects an unexpected transport
+  - Scenario 2 — A maintenance event creates job-wide slowdown
+- Customer Architecture Discussion
+- Interview Preparation
+  - Knowledge questions
+  - Architecture questions
+  - Scenario question
+  - NVIDIA Operational Reference — BGP-EVPN coexistence
+- Architecture Summary
+- Key Takeaways
+- Quick Revision Sheet
+- Lab Checklist
+- Cross References
+- Further Reading
+
+## Chapter 03 — RoCEv2 and RDMA over Ethernet  (chapter-03-rocev2-and-rdma-over-ethernet.md)
+- Introduction
+- Beginner's Primer: Translating InfiniBand to Ethernet
+- Production Story: The Route Was Correct, the RDMA Path Was Not
+- Learning Objectives
+- What RDMA Changes—and What It Does Not
+- How RoCEv2 Fits the Stack
+  - Reliability, loss, and ordering
+- Addressing: GIDs, Network Devices, and Routes
+  - The right diagnostic questions
+  - RoCEv2 design consequences
+- MTU and QoS Are Path Properties
+- Production Deployment Pattern
+- Production Troubleshooting
+  - Scenario 1 — Ping works, but RDMA connection setup fails
+  - Scenario 2 — One rail is slow, but links are healthy
+  - Scenario 3 — Low throughput without obvious packet drops
+- Customer Architecture Discussion
+- Interview Preparation
+  - Knowledge questions
+  - Architecture questions
+  - Scenario question
+- Architecture Summary
+- Key Takeaways
+- Quick Revision Sheet
+- Lab Checklist
+- Cross References
+- Further Reading
+
+## Chapter 04 — Priority Flow Control  (chapter-04-priority-flow-control.md)
+- Introduction
+- Beginner's Primer: What is PFC?
+- Learning Objectives
+- Why Selective Pause Exists
+- The Mechanism: A Receiver Protects Its Buffer
+  - Pause propagation
+- Classification Is the Contract
+- Headroom and Threshold Design
+- PFC Is Not Congestion Control
+- Production Deployment Pattern
+- Observability and Incident Evidence
+  - Scenario 1 — One job stalls while errors remain clean
+  - Scenario 2 — Management traffic becomes unresponsive during training
+  - Scenario 3 — Repeated pause after a topology change
+- Customer Architecture Discussion
+- Interview Preparation
+  - Knowledge
+  - Architecture
+  - Scenario
+- Key Takeaways
+- Architecture Summary
+- Quick Revision Sheet
+- Lab Checklist
+- Further Reading
+- Cross References
+
+## Chapter 05 — ECN and DCQCN  (chapter-05-ecn-and-dcqcn.md)
+- Beginner's Primer: ECN and DCQCN Simply Explained
+- Learning Objectives
+- A Production Story: The Fabric Is Fast Until It Is Shared
+- From a Mark to a Slower Sender
+- Thresholds Are a Control-System Design
+- ECN, PFC, and Capacity Have Different Jobs
+- Qualification Method
+- Production Failure Modes
+  - Scenario 1 — ECN marks rise, but PFC remains high
+  - Scenario 2 — Throughput pulses in waves
+  - Scenario 3 — ECN marks are visible, but sender response is absent or asymmetric
+  - Scenario 4 — A change appears to remove congestion
+- Customer Architecture Discussion
+- Interview Preparation
+- Key Takeaways
+- Architecture Summary
+- Quick Revision Sheet
+- Lab Checklist
+- Further Reading
+- Cross References
+
+## Chapter 06 — Data Center Bridging and QoS  (chapter-06-data-center-bridging-and-qos.md)
+- Beginner's Primer: The Highway Lanes Analogy
+- Learning Objectives
+- Architecture Before Configuration
+- What Each Control Does
+- Build a Small Class Model
+  - Why trust boundaries matter
+- Consistency and Drift Control
+- Production Validation Plan
+- Operational Troubleshooting
+  - Scenario 1 — RoCE drops despite PFC being enabled
+  - Scenario 2 — Management becomes slow during a training burst
+  - Scenario 3 — Storage misses its expected share
+- Customer Architecture Discussion
+- Interview Preparation
+- Key Takeaways
+- Architecture Summary
+- Quick Revision Sheet
+- Lab Checklist
+- Further Reading
+- Cross References
+
+## Chapter 07 — Spectrum Switches for AI  (chapter-07-spectrum-switches-for-ai.md)
+- Introduction
+- Story: The Fast Fabric with a Slow Rack
+- Beginner's Primer: Why Spectrum for AI?
+- Learning Objectives
+- Big Picture
+- Why Switch Design Changes for AI
+- The Forwarding and Queueing Path
+  - Buffers are transient protection, not capacity
+- Topology, Radix, and Failure Domains
+- Routing and Load Distribution
+- Spectrum Operations and Telemetry
+- Production Deployment Pattern
+  - Acceptance ladder
+  - Upgrade discipline
+- Troubleshooting
+  - Scenario 1 — One rack is slow, but links are healthy
+  - Scenario 2 — PFC counters rise across multiple leaves
+  - Scenario 3 — A port runs below the expected rate
+- Customer Architecture Discussion
+- Interview Preparation
+  - NVIDIA Operational Reference — NVUE
+- Architecture Summary
+- Key Takeaways
+- Quick Revision Sheet
+- Lab Checklist
+- Cross References
+- Further Reading
+
+## Chapter 08 — ConnectX Ethernet Adapters  (chapter-08-connectx-ethernet-adapters.md)
+- Introduction
+- Story: Two Ports, One Effective Rail
+- Beginner's Primer: The NIC is a Computer
+- Learning Objectives
+- Big Picture
+- What the Adapter Does
+- RoCE Endpoint Responsibilities
+- PCIe, NUMA, and GPUDirect Paths
+- Multi-Port and Multi-Rail Design
+- Offloads, Virtualization, and Boundaries
+- Production Lifecycle
+  - Node acceptance ladder
+- Troubleshooting
+  - Scenario 1 — One rail is nearly idle
+  - Scenario 2 — RoCE test fails while IP works
+  - Scenario 3 — Pairwise bandwidth is good; collective bandwidth is poor
+- Customer Architecture Discussion
+- Interview Preparation
+- Architecture Summary
+- Key Takeaways
+- Quick Revision Sheet
+- Lab Checklist
+- Cross References
+- Further Reading
+
+## Chapter 09 — BlueField DPUs and DOCA  (chapter-09-bluefield-dpus-and-doca.md)
+- Introduction
+- Story: The Security Boundary That Became an Outage Boundary
+- Beginner's Primer: What is a DPU?
+- Learning Objectives
+- Big Picture
+- Why a DPU Exists
+- Operating Modes and Traffic Paths
+  - Trust and administration
+- DOCA: Framework, Not a Feature Toggle
+  - Select the smallest sustainable option
+- Production Design Pattern
+  - Separate desired state from device state
+  - Change and recovery sequence
+  - Security and reliability questions
+- Observability
+- Troubleshooting
+  - Scenario 1 — Physical uplink is healthy, host traffic is absent
+  - Scenario 2 — Policy differs between otherwise identical servers
+  - Scenario 3 — A DPU service consumes resources or increases latency
+- Customer Architecture Discussion
+- Interview Preparation
+- Architecture Summary
+- Key Takeaways
+- Quick Revision Sheet
+- Lab Checklist
+- Cross References
+- Further Reading
+
+## Chapter 10 — Fabric Validation and Capacity Planning  (chapter-10-fabric-validation-and-capacity-planning.md)
+- Beginner's Primer: Why "Ping" is a Liar
+- Learning Objectives
+- Story: The Rack That Passed Commissioning
+- Validation Is a Ladder
+- Model Capacity at the Bottleneck Cut
+- Acceptance and Change Control
+- Capacity, Reliability, and Cost
+- Data Flow and Measurement Design
+- Production Trade-offs
+- Troubleshooting Scenarios
+  - Pairwise RoCE is healthy; collectives are not
+  - A new rack passes idle tests but degrades shared production
+  - One failure consumes all performance margin
+  - A release passes microbenchmarks but regresses application tail
+- Customer Architecture Discussion
+- Interview Preparation
+  - NVIDIA Operational Reference — NetQ and NVIDIA Air
+- Architecture Summary
+- Key Takeaways
+- Quick Revision Sheet
+- Interview and Lab Materials
+- Acceptance Record Template
+  - Capacity-review mistakes to avoid
+- Further Reading
+- Cross References
+
+## Chapter 11 — Production Ethernet AI Troubleshooting  (chapter-11-production-troubleshooting.md)
+- Beginner's Primer: The Troubleshooting Mindset
+- Learning Objectives
+- Incident Method
+  - First ten minutes
+- Evidence Package
+- Escalation Data Flow
+- Failure Patterns
+  - Link up, but errors grow
+  - Ping works, RoCE fails
+  - PFC is persistent
+  - ECN marks rise but senders do not slow
+  - RDMA is good; NCCL/collective performance is poor
+  - Only one rail is slow after maintenance
+  - The problem begins immediately after a policy change
+- Recovery and Prevention
+- Customer Architecture Discussion
+- Interview Preparation
+- Architecture Summary
+- Key Takeaways
+- Quick Revision Sheet
+- Interview and Lab Materials
+- Incident Communication Template
+  - Common anti-patterns
+- Further Reading
+- Cross References
+
+## Chapter 12 — Volume 09 Summary  (chapter-12-volume-09-summary.md)
+- The System Model
+- What You Should Now Be Able to Explain
+- Design Principles
+- Production Architecture Patterns
+  - Dedicated training fabric
+  - Shared platform fabric
+  - DPU-managed host edge
+- Trade-off Guide
+- End-to-End Acceptance Checklist
+  - Before production
+  - During operations
+- Troubleshooting Order
+- Architecture Review Questions
+- Final Troubleshooting Scenarios
+  - The network is reachable but training is erratic
+  - A change reduces ECN/PFC counters
+- Revision and Interview Materials
+- Decision Matrix
+- What This Volume Does Not Claim
+- Further Reading
+- Interview Notes
+- Key Takeaways
+- Further Reading and Cross References
+- Next Volume
+
+## Volume 09 — Ethernet for AI  (index.md)
+- The Engineering Problem
+- The Big Picture
+- What You Will Learn
+- How to Use This Volume
+- Chapter Map
+- Lab Map
+- Production Principles
+- Readiness Checklist
+- Further Reading
+
+## Lab 01 — Inventory an AI Ethernet Path  (labs/lab-01-inventory-an-ai-ethernet-path.md)
+- 1. Objective
+- 2. Background
+- 3. Learning Outcomes
+- 4. Architecture
+- 5. Prerequisites
+- 6. Environment
+- 7. Components
+- 8. Deployment Steps
+  - Step 1 — Capture host interface state
+  - Step 2 — Map Ethernet to RDMA resources
+  - Step 3 — Record route, MTU, and physical settings
+  - Step 4 — Capture locality and counter baseline
+  - Step 5 — Join switch evidence
+- 9. Validation
+- 10. Verification
+- 11. Observability
+- 12. Performance Measurements
+- 13. Failure Injection
+- 14. Troubleshooting
+- 15. Cleanup
+- 16. Summary
+- 17. Challenge Exercises
+- 18. Further Reading
+
+## Lab 02 — Validate RoCE Addressing and MTU  (labs/lab-02-validate-roce-addressing-and-mtu.md)
+- 1. Objective
+- 2. Background
+- 3. Learning Outcomes
+- 4. Architecture
+- 5. Prerequisites
+- 6. Environment
+- 7. Components
+- 8. Deployment Steps
+  - Step 1 — Confirm local identity and route
+  - Step 2 — Inspect MTU and GID information
+  - Step 3 — Capture pre-test evidence
+  - Step 4 — Run an approved host-memory RoCE smoke test
+- 9. Validation
+- 10. Verification
+- 11. Observability
+- 12. Performance Measurements
+- 13. Failure Injection
+- 14. Troubleshooting
+- 15. Cleanup
+- 16. Summary
+- 17. Challenge Exercises
+- 18. Further Reading
+
+## Lab 03 — Observe PFC and ECN Under Load  (labs/lab-03-observe-pfc-and-ecn-under-load.md)
+- 1. Objective
+- 2. Background
+- 3. Learning Outcomes
+- 4. Architecture
+- 5. Prerequisites
+- 6. Environment
+- 7. Components
+- 8. Deployment Steps
+  - Step 1 — Confirm isolation and abort path
+  - Step 2 — Capture idle baseline
+  - Step 3 — Run an uncongested control
+  - Step 4 — Introduce bounded contention
+- 9. Validation
+- 10. Verification
+- 11. Observability
+- 12. Performance Measurements
+- 13. Failure Injection
+- 14. Troubleshooting
+- 15. Cleanup
+- 16. Summary
+- 17. Challenge Exercises
+- 18. Further Reading
+
+## Lab 04 — Troubleshoot a RoCE Path  (labs/lab-04-troubleshoot-a-roce-path.md)
+- 1. Objective
+- 2. Background
+- 3. Learning Outcomes
+- 4. Architecture
+- 5. Prerequisites
+- 6. Environment
+- 7. Components
+- 8. Deployment Steps
+  - Step 1 — Reproduce the healthy baseline
+  - Step 2 — Inject one process-scoped selection fault
+  - Step 3 — Capture the evidence ladder
+  - Step 4 — Repair and verify
+- 9. Validation
+- 10. Verification
+- 11. Observability
+- 12. Performance Measurements
+- 13. Failure Injection
+- 14. Troubleshooting
+- 15. Cleanup
+- 16. Summary
+- 17. Challenge Exercises
+- 18. Further Reading

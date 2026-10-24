@@ -1,0 +1,118 @@
+# nvidia-devops-legacy-v03
+
+
+## Masterclass: K8s Control Plane, Scheduling, and DRA  (01-k8s-control-plane-scheduling-masterclass.md)
+- 1. Introduction: Kubernetes at AI Factory Scale
+- 2. Big-Picture Architecture: The Control Plane
+- 3. Deep Dive: API Machinery and ResourceVersion
+  - 3.1 Understanding ResourceVersion
+  - 3.2 Optimistic Concurrency Control
+  - 3.3 The Watch Mechanism
+- 4. Deep Dive: etcd and Quorum Mechanics
+  - 4.1 Raft Consensus and Quorum
+  - 4.2 Handling Split-Brain and Network Partitions
+  - 4.3 etcdctl Command Cheatsheet
+- 5. Advanced Scheduling Framework
+  - 5.1 The Scheduling Cycle
+  - 5.2 Preemption and PriorityClasses
+- 6. Topology and NUMA Alignment
+  - 6.1 Topology Manager
+- 7. Gang Scheduling and Advanced Batch (Kueue/Volcano)
+  - 7.1 Using Kueue for Job Management
+- 8. Dynamic Resource Allocation (DRA)
+  - 8.1 Why DRA for NVIDIA GPUs?
+  - 8.2 DRA Workflows
+  - 8.3 Troubleshooting DRA Allocations
+- 9. Conclusion
+- 10. Control Plane Metrics and API Priority and Fairness
+
+## K8s Node & Storage Masterclass  (02-k8s-node-storage-masterclass.md)
+- 1. Introduction
+- 2. The Kubelet: The Node's Autonomous Agent
+  - 2.1 The Sync Loop
+  - 2.2 Kubelet Architecture Diagram
+  - 2.3 Deep Dive: Kubelet Configuration
+    - Why these settings matter for AI:
+- 3. Node Pressure and Eviction
+  - 3.1 Eviction Thresholds
+  - 3.2 Quality of Service (QoS) Classes
+- 4. Container Runtime Interface (CRI) & Pod Sandbox
+  - 4.1 What is a Pod Sandbox?
+  - 4.2 Containerd Architecture in NVIDIA AI Environments
+  - 4.3 Containerd Configuration (`config.toml`)
+  - 4.4 Debugging with `crictl`
+- 5. Storage & Container Storage Interface (CSI)
+  - 5.1 Storage Abstractions
+  - 5.2 The CSI Architecture
+  - 5.3 CSI Volume Attach Pipeline Diagram
+  - 5.4 High-Performance AI Storage: GPUDirect Storage (GDS)
+    - Example StorageClass shape for High-Performance AI (illustrative)
+- 6. StatefulSets: Orchestrating the Stateful
+  - 6.1 StatefulSet Core Guarantees
+  - 6.2 The Role of Headless Services
+  - 6.3 Deep Dive: StatefulSet Manifest with PVC Templates
+    - How `volumeClaimTemplates` works:
+- 7. Production Considerations for AI Infrastructure
+  - 7.1 Local Storage vs Network Storage Trade-offs
+  - 7.2 Access Modes
+- 8. Senior Solutions Architect Troubleshooting Scenarios
+  - Scenario 1: The "NodeNotReady" Loop under Heavy Load
+  - Scenario 2: Volume Stuck in "Multi-Attach Error"
+  - Scenario 3: Orphaned Pod Sandboxes
+  - Scenario 4: GPUDirect Storage Performance Degradation
+- 9. Interview Corner: Senior Platform Engineer
+- 10. Summary
+- Appendix A: Extensive Configuration Reference
+  - A.1 containerd config.toml
+  - A.2 Example Kubelet Configuration
+- Appendix B: Detailed Pod Lifecycle States
+  - Phase: Pending
+  - Phase: Running
+  - Phase: Succeeded
+  - Phase: Failed
+  - Phase: Unknown
+- Appendix C: Mastering `crictl` for Advanced Debugging
+  - C.1 Pulling and Inspecting Images Locally
+  - C.2 Debugging Stuck Pod Deletions (Zombie Pods)
+- Appendix D: Further Reading and Official Specifications
+- Appendix E: Deep Dive - Building a Minimal CSI Driver for NVMe
+  - E.1 IdentityService
+  - E.2 ControllerService
+  - E.3 NodeService
+- Appendix F: Production Logs Analysis
+  - F.1 Kubelet PLEG Timeout Log
+  - F.2 Containerd GPU Injection Error
+  - F.3 CSI Mount Timeout
+  - F.4 OOMKilled in Pod Status
+
+## Masterclass: Kubernetes Networking, Security, and AI Factory Operations  (03-k8s-networking-security-ops-masterclass.md)
+- 1. Introduction: The AI Factory Network
+  - 1.1 Prerequisites
+- 2. Advanced Kubernetes Networking: CNI and Dataplane
+  - 2.1 The Limits of kube-proxy
+  - 2.2 eBPF and Cilium: The Modern Dataplane
+    - eBPF Routing Flow
+    - Example: CiliumNetworkPolicy
+  - 2.3 Multus CNI: Multi-Homed Pods for InfiniBand
+    - NetworkAttachmentDefinition for Macvlan / SR-IOV
+    - Pod Spec Utilizing Multus
+- 3. Security, Admission Control, and Multi-Tenancy
+  - 3.1 Advanced RBAC: Multi-Tenant Namespaces
+  - 3.2 Admission Policy Guardrails with Kyverno
+    - Kyverno Policy: Restrict HostPath and Enforce Non-Root
+    - Kyverno Policy: Mutating Webhook for GPU Tolerations
+- 4. Autoscaling, Node Pools, and Capacity
+  - 4.1 Karpenter: Just-in-Time Node Provisioning
+    - Karpenter NodePool for H100 GPUs (illustrative; Karpenter v1 API)
+- 5. Platform Engineering, GitOps, and the GPU Operator
+  - 5.1 The GitOps Principle
+    - ArgoCD Application: App-of-Apps
+  - 5.2 Deep Dive: NVIDIA GPU Operator
+    - How It Works (CRD Reconciliation)
+    - The ClusterPolicy CRD
+- 6. Senior Level Troubleshooting & Architecture
+  - Scenario 1: CNI IPAM Exhaustion
+  - Scenario 2: Mutating Admission Webhook Deadlocks
+  - Scenario 3: GPU Operator Driver Compilation Loops
+- 7. Operational Upgrades & Reliability
+  - The Upgrade Order of Operations

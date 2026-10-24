@@ -1,0 +1,224 @@
+---
+id: "c08-02"
+title: "8.2 Planning and installing BCM"
+sidebar_label: "8.2 Planning and installing BCM"
+sidebar_position: 2
+description: "How to plan a BCM install before touching a server: hardware and head-node sizing, the three network topologies, node naming and IP offsets, disk layout, licensing, the install path (ISO or Ansible), first boot and adding nodes, then burn-in testing and the SELinux warning, with the manual's numbers reproduced in a small tested planner"
+status: "drafted"
+tier: "1b"
+level: "I"
+lab_venue: "Nebius GPU"
+---
+
+# 8.2 Planning and installing BCM
+
+| | |
+|---|---|
+| Level | Beginner |
+| Priority tier | 1 |
+| Lab venue | Laptop |
+| Part | Part 8: NVIDIA Base Command Manager |
+| Status | Drafted from the BCM 11 Installation Manual (chapters 1, 3, 4, 6, 11, 12 and appendices B and C) and the Administrator Manual. **No BCM system was available, so no install was run.** `code/part08/install_lab.py` (32 checks) tests a small planner and checkers that reproduce **numbers and rules the manual states**. They test my reading of the manual, not BCM. Every command shown is from the manual and untested here |
+
+## Why this matters for AI infrastructure
+
+The install is the one step you cannot casually redo. The manual says plainly that the head node disk layout is hard to change later, that the license is tied to a MAC address, and that network choices decide how every node boots. A person who plans first installs once. A person who clicks through the installer rebuilds the cluster.
+
+## Prerequisites and outcomes
+
+You need chapter 8.1 (objects) and basic networking (Part 3 of this handbook). After this chapter you can:
+
+- size a head node and check it against the manual's numbers
+- choose between the three network topologies and explain the DHCP consequence
+- plan node names and IP addresses so BOOTIF and BMC addresses do not collide
+- choose a disk layout and know which choice is hard to undo
+- read license information and catch an expiry or a node-count problem early
+- describe the install steps, the first-boot checks and how new nodes are found
+- write and read a burn-in configuration
+- explain why SELinux is off by default and what it costs to turn on
+
+## 1. What you are installing
+
+BCM is installed on **one machine first: the head node**. That machine then provisions every other node over the network (chapter 8.4). So the whole plan is really about the head node and the network it sits on.
+
+```mermaid
+flowchart LR
+  P[Plan: hardware, network, names, disk, license] --> H[Install head node]
+  H --> C[First boot checks]
+  C --> N[Boot regular nodes from the network]
+  N --> I[Identify nodes: assign names to MAC addresses]
+  I --> B[Burn-in test]
+  B --> W[Workload manager and users]
+```
+
+The manual gives two ways to install the head node. The usual one is booting the **ISO** (bare metal) and answering the installer screens. The other is an **Ansible-based add-on installer** (collection `brightcomputing.installer.head_node`) that turns an existing supported Linux into a head node. I read the first in full and the second only in part, so treat the Ansible path as "exists, see the manual".
+
+## 2. Hardware, in the manual's words
+
+The manual's minimums are small. The head node needs 2 network interfaces for the common topology, at least 80 GB of disk, and 8 GB of RAM is recommended. A regular node needs 1 GB of RAM and one network interface. Real AI nodes are far bigger, so these are floors, not plans.
+
+The more useful part is Appendix B, which gives **formulas for how head node load grows with cluster size**:
+
+| What | Formula in the manual |
+|---|---|
+| Head node RAM | RAM of the operating system and other processes, plus 100 MB, plus 1.8 MB per node (good for up to 100 metrics and health checks per device); about 1 MB more per device for each further 100 |
+| Head node disk | the OS without BCM, plus 5 GB per regular node image, plus 100 kB per metric or health check per device |
+| Regular node RAM | its own processes, plus 50 MB, plus 10 kB per node in the cluster |
+
+The manual also shows what it observed: at 1000 nodes CMDaemon plus the database used about 16 GB of RAM, CMDaemon alone about 2 GB, and about 10 GB of disk; at 2000 nodes double that; at 5000 nodes about 64 GB, 10 GB and 50 GB. For clusters above 1000 nodes the manual suggests a head node with 24 cores, 128 GB of RAM and a 512 GB SSD, because the extra RAM caches the filesystem.
+
+**Check it yourself.** `bcm_plan.py` implements the formulas and `install_lab.py` compares them with the observed table. The formula for CMDaemon alone matches the table within about 12 percent (1.9 GB against 2 at 1000 nodes). The disk formula runs a little above the observed numbers, because the manual's observed figure leaves out the 5 GB image. The point is the shape: **head node load grows linearly with node count, and RAM for caching, not for CMDaemon, is why big heads are big.**
+
+## 3. The three network topologies
+
+The installer asks you to pick one. This is the most important planning choice, because it decides how nodes reach the outside world and how DHCP works.
+
+```mermaid
+flowchart TB
+  subgraph T1[Type 1: private internal network, the default]
+    direction LR
+    N1[nodes] --- I1[internalnet] --- H1[head node] --- E1[externalnet / corporate]
+  end
+  subgraph T2[Type 2: nodes behind a router on a public network]
+    direction LR
+    N2[nodes] --- R2[router] --- P2[public network]
+    N2 --- H2[head node, same network as nodes]
+  end
+  subgraph T3[Type 3: head node and nodes on different routed networks]
+    direction LR
+    N3[nodes: internalnet] --- R3[routers] --- H3[head node: managementnet]
+  end
+```
+
+| Type | In plain words | Networks the installer defines | Watch out for |
+|---|---|---|---|
+| 1 | Nodes sit on a private network; traffic to the outside goes **through the head node**. The default and most common | externalnet and internalnet | Anyone outside needs routing or a proxy to reach a node |
+| 2 | Nodes reach the outside **through a router**, not the head node; nodes and head node are still on the same network | internalnet only | A DHCP clash with an existing DHCP server; a relay agent may be needed if nodes span several subnets; nodes are not isolated |
+| 3 | Head node and nodes are on **different networks**, joined by routers | internalnet and managementnet | Layer 3 between head and nodes, so **DHCP and PXE need a relay agent**, set up by the network team, outside BCM |
+
+The beginner rule: Type 1 gives you the simplest, most isolated cluster. Type 2 and 3 exist for clusters that live inside a bigger network. Both put real work on the network team.
+
+## 4. Names and addresses
+
+**Node names.** The installer asks for a base name and a number of digits. The default gives `node001`, `node002` and so on. With three digits the largest is `node999`, so 1000 nodes do not fit. Pick the digits for the size you expect to grow to.
+
+**Addresses.** Nodes get sequential addresses on each network, starting just after the network's base address. A node has more than one interface (its boot interface and its BMC), and by default each would get the same sequence on the same network. The manual's fix is an **IP offset**: for example an offset of `0.0.0.20` on the BMC network puts the BMC of the first node at `10.141.0.21` while its boot interface stays at `10.141.0.1`. The manual calls the overlap confusing, and the planner shows why: ten nodes with no offset collide on all ten addresses.
+
+```python
+import bcm_plan as p
+boot = p.interface_addresses("10.141.0.0/16", 10)               # 10.141.0.1 ... .10
+ipmi = p.interface_addresses("10.141.0.0/16", 10, "0.0.0.20")   # 10.141.0.21 ... .30
+assert p.overlap(boot, ipmi) == []
+```
+
+## 5. Disk layout: the choice you cannot easily undo
+
+The installer proposes a layout for the head node. The manual's default depends on drive size: below about 500 GB it uses one big partition; otherwise a standard layout with separate `/tmp` and `/var`. Both have a `/boot`, an EFI partition and swap. The manual warns that **the head node layout is hard to change after install**, and offers disk encryption (LUKS) as an install option. Decide both before you click Next. The practical reason to prefer separate `/var`: logs and the database live there and can fill it.
+
+## 6. Licensing
+
+You need a license for a real cluster; an evaluation license is also possible. The manual's points:
+
+- `cmsh -c "main licenseinfo"` shows the licensee, serial number, start and end time, edition, type, licensed nodes and accelerators, and the **MAC address** the license is tied to.
+- `verify-license verify`, `verify-license info` and `verify-license monthsleft` are the checks; `request-license` and `install-license` get and install a license.
+- Head nodes count as nodes. An expired license stops CMDaemon from starting (the manual shows the log message `License has expired`).
+- Because the license is tied to the head node's MAC address, **replacing a head node's network card means a new license**. Plan for this in a hardware swap (chapter 8.13).
+
+`license_check.py` reads the `licenseinfo` table and warns when a license is expired, near expiry, over its node or accelerator count, or above 90 percent of it. Run `python3 license_check.py sample_licenseinfo.txt --now 2025-03-01` to see it. The 90 percent and 3-month thresholds are **my** choices, not the manual's.
+
+## 7. The install, step by step
+
+I summarise the manual's bare-metal flow. The exact screens differ slightly by version.
+
+1. Boot the ISO. The boot menu lets you pass the kernel parameter `netconf` to set up the installer's own network.
+2. Accept the license text and set the basics the installer asks for (language, keyboard, time zone; the exact order is in the manual).
+3. Choose the **network topology** (section 3), then enter the head node name, passwords and the networks (external, internal, BMC) with their addresses and offsets (section 4).
+4. Configure the **BMC** settings if the nodes have BMCs, so BCM can power-cycle them later (chapter 8.7).
+5. Choose the **disk layout** (section 5) and the software image source.
+6. Review the summary and confirm. The installer then installs the head node (my summary; the manual's exact final screens are not reproduced here).
+
+**First boot checks.** Log in as root, then confirm: the license (`cmsh -c "main licenseinfo"`), that CMDaemon is running (`systemctl status cmd.service`, shown in the manual's section 2.6.1), and that Base View answers on port 8081 of the head node. Then boot a regular node with network boot enabled. It gets an address from the head node's DHCP, loads the node installer over PXE and appears as a **new, unnamed node**.
+
+**Identifying nodes.** New nodes show up by MAC address. Assign them names in order with `device newnodes -s -n node001..node032` in cmsh (the manual's example), or in Base View. Power on nodes in the order you want the names, or match MACs to a list.
+
+**GPUs.** The manual's quickstart for GPU nodes: check the card is visible (`lspci`), then use `cm-wlm-setup` to set up the workload manager with GPU support (chapter 8.8).
+
+## 8. Burn-in testing
+
+A new node can fail under load in the first days. BCM has a **burn framework** to find that before users do.
+
+- A burn run reboots the node into the node installer, runs a **burn configuration** (an XML file stored in CMDaemon, with a simpler editor in cmsh `partition` mode, `burnconfigs`), and reports results.
+- **The default configuration is destructive: it wipes all attached drives.** The node then reverts to its software image on the next provisioning. Never burn a node that holds data.
+- The framework needs working **power management** (a BMC such as IPMI, iLO or Redfish, Part 7 and chapter 8.7), because the scripts power-cycle the node.
+- A configuration has an optional `<mail>` list, a `<pre-install>` part (runs in the small node-installer environment) and a `<post-install>` part (runs in the full OS). Each holds **phases**, and each phase holds **tests**.
+- Rules: phases must exist, have unique names and be written in alphanumeric order (so number them `01-`, `02-`). Tests in a phase run at the same time. A test marked `endless="1"` runs until every non-endless test in its phase finishes, which suits monitors like `mce_check` (machine check exceptions) and `kmon` (kernel log).
+- `memtest86` never ends by itself. On big clusters the manual suggests relying on `hpl` and `memtester` instead.
+
+Commands, from cmsh device mode: `burn --config default-destructive -n node001 start`, then `burn status`, `burn log`, `burn stop`. The log lives at `/var/spool/burn/<mac>/`. Test status letters: **S** started, **W** warning, **F** failed, **P** passed. A line such as `disktest (SF,61)` means started and failed, with a custom value of 61 (the disk speed).
+
+Two practical tips from the manual: test a **short** configuration on one node first (a long burn can fail hours in on a path you could have checked in ten minutes), and consider moving `/var/spool/burn` off the head node, since logs grow large (`BurnSpoolDir` in `cmd.conf` and `burnSpoolHost`/`burnSpoolPath` in `node-installer.conf`).
+
+`burn_config.py` checks a configuration against these rules, and reads a burn status line. It is a teaching tool: the real schema is `burnconfig.xsd` on the head node.
+
+## 9. SELinux: off by default, for a reason
+
+SELinux is **disabled by default** in BCM. The manual says to enable it only if your organisation's rules demand it, because the policies need custom work and make problems harder to trace. If you do: set the mode to **permissive** first, make sure `cmd` runs unconfined, set the mode in the `selinuxsettings` submode (node, category or partition level), and manage it through BCM, not on the node directly, or CMDaemon and the node disagree. A trap: in FULL or AUTO provisioning modes, re-syncing from an image **without SELinux file contexts erases the contexts** on the node. The manual's fix is a cloned image where you run `setfiles` against the image, again after any image update.
+
+## 10. Common first mistakes
+
+1. Choosing the topology without asking the network team (types 2 and 3 involve DHCP relay or clashes).
+2. Choosing too few digits for node names.
+3. Leaving BOOTIF and BMC on the same sequence of addresses.
+4. Accepting the default disk layout without thinking about `/var`, or about encryption.
+5. Forgetting that the license follows the head node's MAC address.
+6. Running the default burn on a node with data.
+7. Putting 20 hours of burn tests behind a spool path that was never tested.
+8. Turning on SELinux enforcing on day one.
+
+## 11. Exercises
+
+1. Run `python3 install_lab.py`. Pick three checks and explain each in your own words.
+2. Use `bcm_plan.py` to size a head node for 256 nodes with 150 metrics per device, then for 2000 nodes. Compare with the manual's table.
+3. Plan names and addresses for 64 GPU nodes: pick the digits, the internal network, the BMC offset, and prove no overlap.
+4. Write a burn configuration with a hardware check, a disk test and a stress phase. Run `burn_config.py` on it. Fix what it flags.
+5. Edit `sample_licenseinfo.txt` so the cluster is at 95 percent of its node license. What does `license_check.py` say?
+6. Explain to a colleague, in five sentences, why a Type 3 network needs a DHCP relay.
+
+## 12. Interview angles
+
+- "What do you decide before installing BCM?" Topology, node naming and digits, IP offsets, disk layout and encryption, license and its MAC binding, BMC access.
+- "Type 1 versus Type 2?" Type 1 isolates nodes behind the head node, which routes to the outside; Type 2 puts nodes on a network that reaches outside through a router.
+- "How do you prove new hardware is healthy?" Burn-in with a tested configuration, on one node first.
+- "Why is SELinux off by default?" Policies are site-specific and add support cost; enable only when required, start permissive.
+- "How does the head node grow with the cluster?" Roughly linearly in RAM and disk; large heads add RAM for caching.
+
+## 13. Checkpoint questions (20)
+
+1. Which machine do you install first, and why?
+2. Name the two ways to install a head node.
+3. What are the manual's minimum RAM, disk and NICs for the head node?
+4. Write the head node RAM formula from Appendix B.
+5. What does extra head node RAM do on a large cluster?
+6. Describe a Type 1 network in one sentence.
+7. What is different in a Type 2 network?
+8. Why does Type 3 need a DHCP relay?
+9. Which networks does the installer define for Types 1, 2 and 3?
+10. How many nodes fit in three-digit names?
+11. What is an IP offset and what problem does it solve?
+12. Why is the head node disk layout a careful choice?
+13. What is the license tied to?
+14. Which command shows licensed and used nodes?
+15. What happens when a license expires?
+16. How do you name newly booted nodes in order?
+17. Why is the default burn configuration dangerous?
+18. What must be in place before a burn can run?
+19. What is an endless test and when does it end?
+20. Why is SELinux disabled by default, and what does the permissive mode help with?
+
+## 14. Sources and review notes
+
+- **BCM 11 Installation Manual:** chapter 1 (quickstart: GUI install, first boot, adding nodes, GPUs), chapter 3 (hardware, ISO flow, topologies 3.3.9, network screens 3.3.13, naming 3.3.11, IP offset 3.3.15, disk layout 3.3.17, LUKS; the Ansible installer only partly read), chapter 4 (licensing), chapter 6 (changing head node network parameters), chapter 11 (burning nodes), chapter 12 (SELinux; I read the RHEL 8 and Rocky 9 part), appendix B (hardware formulas and observed table) and appendix C (scope of support).
+- **Run here:** `install_lab.py` (32 checks): the Appendix B formulas against the observed table, naming limits, IP offsets, disk layout choice, topology table, license warnings, burn configuration rules and burn status parsing.
+- **My own choices, not the manual's:** the 3-month and 90 percent license warnings; the choice of first-boot checks.
+- **Not read:** the Ansible installer in full, chapters 5, 7, 8, 9 and 10 of the Installation Manual (registration, third-party software, HPC SDK, CUDA, OFED), the SELinux sections for other distributions, and the BCM installation on cloud or virtual machines.
+- **Not verified:** everything about a real BCM system: screen order, command output, behaviour on a newer point release.

@@ -1,0 +1,7 @@
+name,mac,ip,bmc_mac,bmc_ip,role,image
+gpu001,aa:bb:cc:00:00:01,10.10.1.1,aa:bb:cc:10:00:01,10.20.1.1,gpu,dgx-os-24.04
+gpu002,aa:bb:cc:00:00:02,10.10.1.2,aa:bb:cc:10:00:02,10.20.1.2,gpu,dgx-os-24.04
+gpu003,aa:bb:cc:00:00:03,10.10.1.3,aa:bb:cc:10:00:03,10.20.1.3,gpu,dgx-os-24.04
+gpu005,aa:bb:cc:00:00:05,10.10.1.5,aa:bb:cc:10:00:05,10.20.1.5,gpu,dgx-os-24.04
+cpu001,aa:bb:cc:00:02:01,10.10.2.1,aa:bb:cc:10:02:01,10.20.2.1,cpu,cpu-os-24.04
+cpu002,aa:bb:cc:00:02:02,10.10.2.2,aa:bb:cc:10:02:02,10.20.2.2,cpu,cpu-os-24.04

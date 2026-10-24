@@ -1,0 +1,561 @@
+# nvidia-devops-zth-v12
+
+
+## Chapter 01 — Why Inference Infrastructure Is Different  (chapter-01-why-inference-infrastructure-is-different.md)
+- WHY: The Fundamental Shift from Training to Serving
+- Beginner's Primer: Training vs. Inference
+- WHAT: First-Principles Mechanics of AI Inference
+  - 1. Prefill vs. Decode: Two Radically Different Hardware Execution Phases
+  - 2. Deconstructing the Inference Latency Budget
+  - 3. Mathematics of KV Cache Memory Consumption
+    - Concrete Sizing Example:
+- HOW: Inference System Architecture
+- Component Responsibilities Matrix
+- TRADEOFFS: Architectural Trade-off Analysis
+  - 1. Training Infrastructure vs. Inference Infrastructure
+  - 2. Core Serving Trade-offs
+- PRODUCTION: Scalability and Operating Windows
+- TROUBLESHOOTING: Worked Failure Scenarios
+  - Scenario 1: Cascading CUDA Out-of-Memory (OOM) Evictions Under Concurrency Spike
+    - 1. Production Incident Context
+    - 2. Root Cause Analysis
+    - 3. Log & Telemetry Evidence
+    - 4. Exact Diagnostic Commands
+    - 5. Remediation & Configuration Fix
+    - 6. Verification Steps
+  - Scenario 2: Severe P99 Tail Latency Degradation Caused by Prefill Execution Starving Decode Batches
+- SENIOR INTERVIEW QUESTIONS: Staff/Senior SRE & MLOps
+  - Question 1: "Why does a 100% GPU utilization metric in `nvidia-smi` often misrepresent the real health and throughput of an LLM inference cluster?"
+  - Question 2: "Mathematical breakdown: How do you size the GPU memory requirement for serving a 70B FP16 LLM with a 4K context window for 100 concurrent requests?"
+  - Question 3: "Explain the difference between Time To First Token (TTFT) and Inter-Token Latency (ITL) from both a CUDA kernel execution perspective and a customer SLA perspective."
+- Production Troubleshooting: Real-World Evidence
+  - Problem: High Time-To-First-Token (TTFT) Despite GPU Availability
+  - Problem: Elevated Inter-Token Latency (ITL) with Memory Pressure
+  - Problem: Cascading GPU Out-Of-Memory (OOM) Crashes
+- Summary & Authoritative References
+  - Key Takeaways
+  - Authoritative References
+
+## Chapter 02 — The End-to-End Inference Request Path  (chapter-02-the-end-to-end-inference-request-path.md)
+- WHY: Latency Beyond the GPU
+- Beginner's Primer: The AI Drive-Thru
+- WHAT: The Nine-Stage Inference Request Path
+  - Deep Dive into the 9 Request Stages
+    - Stage 1: Ingress & TLS Termination
+    - Stage 2: Admission Control & Queueing
+    - Stage 3: CPU Tokenization & Prompt Engineering
+    - Stage 4: Iteration Scheduling & KV Memory Block Allocation
+    - Stage 5: Host-to-Device Memory Transfer (H2D)
+    - Stage 6: GPU Engine Execution (Prefill & Decode Iterations)
+    - Stage 7: GPU Logit Processing & Sampling
+    - Stage 8: Device-to-Host Transfer (D2H) & Detokenization
+    - Stage 9: Response Stream Serialization & Socket Flushing
+- HOW: Data Path vs. Control Path Separation
+- Component Responsibilities & Boundary Protocols Matrix
+- TRADEOFFS: Architectural Trade-off Analysis
+  - 1. Tokenization Placement: Gateway Microservice vs. In-Engine C++ Backend
+  - 2. Host RAM Allocation: Standard Pageable Memory vs. Pinned Memory (`cudaHostAlloc`)
+- TROUBLESHOOTING: Worked Failure Scenarios
+  - Scenario 1: Host CPU Tokenization Thread Starvation Masking GPU Capacity
+    - 1. Production Incident Context
+    - 2. Root Cause Analysis
+    - 3. Log & Telemetry Evidence
+    - 4. Exact Diagnostic Commands
+    - 5. Remediation & Configuration Fix
+    - 6. Verification Steps
+  - Scenario 2: Socket Buffer Bloat and Nginx Buffering Disrupting SSE Real-Time Streaming
+- SENIOR INTERVIEW QUESTIONS: Staff/Senior SRE & MLOps
+  - Question 1: "Trace an inference request from HTTP client to GPU kernel execution and back. Where are the top 3 hidden latency sinks outside the GPU matrix multiplication?"
+  - Question 2: "How does backpressure propagate from a slow mobile client consuming a streaming SSE response all the way back to the GPU continuous batching loop?"
+  - Question 3: "Why is pageable host RAM transfer (`cudaMemcpy`) significantly slower than pinned memory (`cudaHostRegister`), and how does this impact dynamic batching pipelines?"
+- Production Troubleshooting: Real-World Evidence
+  - Problem: Request Latency Remains High Despite Adding GPU Capacity
+  - Problem: Dynamic Batching Not Assembling Full Batches
+- Summary & Authoritative References
+  - Key Takeaways
+  - Authoritative References
+
+## Chapter 03 — Triton Inference Server Architecture  (chapter-03-triton-inference-server-architecture.md)
+- WHY: The Need for an Enterprise Inference Server
+- Beginner's Primer: Why not just use Python Flask?
+- WHAT: Deep Dive into Triton Architecture
+  - Key Architectural Concepts
+    - 1. Model Repository Layout & Versioning
+    - 2. Model Configuration Specification (`config.pbtxt`)
+    - 3. Triton Batch Schedulers
+    - 4. Instance Groups & Execution Concurrency
+- HOW: Health Endpoints and Prometheus Metrics
+  - Health Endpoint Semantics
+  - Core Production Prometheus Metrics
+- Component Responsibilities & Interface Specifications
+- TRADEOFFS: Serving Engine Comparison Matrix
+- TROUBLESHOOTING: Worked Failure Scenarios
+  - Scenario 1: Triton Model Repository Version Conflict & Hot-Reload Deadlock
+    - 1. Production Incident Context
+    - 2. Root Cause Analysis
+    - 3. Log & Telemetry Evidence
+    - 4. Exact Diagnostic Commands
+    - 5. Remediation & Configuration Fix
+    - 6. Verification Steps
+  - Scenario 2: CUDA Stream Contention & VRAM Saturation from Oversubscribed Instance Groups
+- SENIOR INTERVIEW QUESTIONS: Staff/Senior SRE & MLOps
+  - Question 1: "How does Triton's Business Logic Scripting (BLS) differ from Ensemble Models, and what are the memory zero-copy implications when passing tensors between backends?"
+  - Question 2: "Explain the interaction between Triton's `max_batch_size` in `config.pbtxt` and the underlying TensorRT engine's profile dimensions. What happens if a request arrives exceeding the max batch size?"
+  - Question 3: "In Triton, how do you decouple Kubernetes liveness/readiness probes from model load states to prevent Kubernetes from killing a pod while a 70B model is loading into HBM?"
+- Production Troubleshooting: Real-World Evidence
+  - Problem: Triton Server Fails to Start or Models Never Reach `READY` State
+  - Problem: Model Unload or In-Flight Model Swap Causes Request Failures
+- Summary & Authoritative References
+  - Key Takeaways
+  - Authoritative References
+
+## Chapter 04 — TensorRT Optimization and Engine Lifecycle  (chapter-04-tensorrt-optimization-and-engine-lifecycle.md)
+- Beginner's Primer: What is TensorRT?
+- Production Scenario: The Latency and Memory Bottleneck
+- Learning Objectives
+- TensorRT Architecture & Compilation Lifecycle
+- HOW: Core TensorRT Optimization Engine
+  - 1. Graph Rewriting and Layer Fusion Mechanics
+    - Vertical Fusion
+    - Horizontal Fusion
+  - 2. Tactic Profiling and Auto-Tuning Engine
+  - 3. Precision Calibration & Quantization Mechanics
+    - INT8 Quantization & Entropy Calibration
+    - Explicit Precision Mode (Q/DQ Nodes)
+    - FP8 Execution Modes (Hopper / Blackwell)
+  - 4. Dynamic Shapes and Optimization Profiles
+  - 5. Engine Lifecycle and Multi-Threaded Runtime Execution
+- Technical Comparison Table: TensorRT Precision Modes
+- Worked Failure Scenarios
+  - Scenario 1: Dynamic Shape Binding OOM and Engine Builder Crash
+    - Context
+    - Root Cause Analysis
+    - Step-by-Step Resolution & Code Fix
+    - Verification
+  - Scenario 2: Accuracy Collapse in INT8 Engine due to Non-Representative Calibration Dataset
+- Senior Interview Questions & Model Answers
+  - Question 1
+  - Question 2
+  - Question 3
+- Production Troubleshooting: Real-World Evidence
+  - Problem: Engine Builder Crashes During Tactic Profiling
+  - Problem: Accuracy Loss After INT8 Quantization
+  - Problem: Data Corruption or CUDA Illegal Memory Access from Multi-Threaded Execution
+- Summary & Authoritative References
+  - References & Documentation
+
+## Chapter 05 — TensorRT-LLM and LLM Execution  (chapter-05-tensorrt-llm-and-llm-execution.md)
+- Beginner's Primer: What is TensorRT-LLM?
+- Production Scenario: Distributed 70B LLM Scaling Bottleneck
+- Learning Objectives
+- TensorRT-LLM Architectural Pipeline
+- Deep Architectural & Mathematical Analysis
+  - 1. Model Parallelism Execution Graphs
+    - ColumnParallelLinear
+    - RowParallelLinear
+    - Multi-Head Attention (MHA / GQA) Partitioning
+    - Communication Overhead Math
+  - 2. Custom CUDA Kernels for LLM Execution
+    - FlashAttention-2 & FlashDecoding
+    - Quantization Kernels
+  - 3. Dynamic KV Cache Allocation & Memory Management
+  - 4. C++ Runtime Architecture: `GptManager` and `Executor` API
+- Parallelism Strategy Comparison Table
+- Worked Failure Scenarios
+  - Scenario 1: NVLink NCCL AllReduce Deadlock during Multi-Node Tensor Parallelism
+    - Context
+    - Root Cause Analysis
+    - Step-by-Step Resolution & Builder Configuration Fix
+    - Verification
+  - Scenario 2: KV Cache Allocation OOM under High Concurrency due to Block Size and Scale Mismatch
+    - Step-by-Step Resolution & C++ Configuration Fix
+- Senior Interview Questions & Model Answers
+  - Question 1
+  - Question 2
+  - Question 3
+- Production Troubleshooting: Real-World Evidence
+  - Problem: Low Throughput Despite High GPU Utilization During Tensor Parallelism
+  - Problem: OOM During Prefill Phase Despite Adequate HBM Capacity
+- Summary & Authoritative References
+  - References & Documentation
+
+## Chapter 06 — vLLM, TGI, SGLang, and LMDeploy  (chapter-06-vllm-tgi-sglang-and-lmdeploy.md)
+- Beginner's Primer: The "Inference Engine" Wars
+- Production Scenario: Multi-Tenant Enterprise LLM Gateway
+- Learning Objectives
+- Comparative Serving Engine Topology
+- HOW: Deep Architectural Comparison of Modern Serving Engines
+  - 1. vLLM and PagedAttention Virtual Memory Architecture
+    - Virtual Memory Analogy (OS Paging)
+    - PagedAttention CUDA Kernel Mechanics
+    - Copy-on-Write (Forking) & Parallel Sampling
+  - 2. Text Generation Inference (TGI) Architecture
+    - Rust Router & High-Concurrency Scheduler
+    - `safetensors` Direct Memory Mapping
+  - 3. SGLang and RadixAttention Prompt Caching
+    - The Radix Tree Data Structure
+    - LRU Eviction & Lock-Free Graph Operations
+    - Fast Structured Generation (JSON / Regex Constraints)
+  - 4. LMDeploy and TurboMind Engine Core
+    - C++ Execution Pipeline
+    - Advanced Kernel Fusions & AWQ Precision
+- Comprehensive Multi-Dimensional Engine Comparison Matrix
+- Worked Failure Scenarios
+  - Scenario 1: vLLM Physical Block Exhaustion Under Heavy RAG Workloads
+    - Context
+    - Root Cause Analysis
+    - Step-by-Step Resolution & Python Configuration Fix
+    - Verification
+  - Scenario 2: RadixAttention Cache Thrashing in SGLang under Non-Overlapping Prompts
+    - Step-by-Step Resolution & Command-Line Tuning
+- Senior Interview Questions & Model Answers
+  - Question 1
+  - Question 2
+  - Question 3
+- Production Troubleshooting: Real-World Evidence
+  - Problem: Cache Hit Ratio Lower Than Expected Despite Prefix Caching Enabled
+  - Problem: TGI Rust Router Disconnections During Request Batching
+- Summary & Authoritative References
+  - References & Documentation
+
+## Chapter 07 — Continuous and Dynamic Batching  (chapter-07-continuous-and-dynamic-batching.md)
+- Beginner's Primer: The Elevator Analogy
+- Production Scenario: The Tail Latency Spike
+- Learning Objectives
+- Continuous Batching Scheduler Lifecycle
+- HOW: Continuous Batching & Chunked Prefill Architecture
+  - 1. Request-Level Dynamic Batching Limitations
+    - The Padding Waste Penalty
+    - Tail Latency Locking
+  - 2. Iteration-Level Continuous Batching Mechanics (Orca Paradigm)
+    - Iteration Step Protocol
+  - 3. Mathematical Execution Modeling: Prefill vs Decode Phases
+    - Prefill Phase (Compute-Bound)
+    - Decode Phase (Memory-Bandwidth Bound)
+  - 4. Chunked Prefill Scheduling (Sarathi-Lean Model)
+    - The Prefill Bubble Problem
+    - Chunked Prefill Mechanics
+  - 5. Preemption and Eviction Policies: Swap vs Recompute
+    - Preemption Policy 1: Host-Device Swapping (`Swap`)
+    - Preemption Policy 2: Recomputation (`Recompute`)
+- Batching Paradigm Comparison Matrix
+- Worked Failure Scenarios
+  - Scenario 1: ITL SLA Breach Caused by Large Prefill Bursts Blocking Decode Iterations
+    - Context
+    - Root Cause Analysis
+    - Step-by-Step Resolution & Engine Configuration Fix
+    - Verification
+  - Scenario 2: PCIe Bus Saturation and System Stalls During KV Cache Swapping
+- Senior Interview Questions & Model Answers
+  - Question 1
+  - Question 2
+  - Question 3
+- Production Troubleshooting: Real-World Evidence
+  - Problem: Chunked Prefill Introduces Latency Overhead Instead of Solving Tail Latency
+  - Problem: Decode Batch Underutilization Despite High Concurrency
+- Summary & Authoritative References
+  - References & Documentation
+
+## Chapter 08 — KV Cache Memory and Concurrency  (chapter-08-kv-cache-memory-and-concurrency.md)
+- Learning Objectives
+- Beginner's Primer: The Notebook Metaphor
+- Mathematical Foundations of KV Cache Memory
+  - Generic KV Cache Equation
+  - Architectural Variants: MHA vs GQA vs MQA
+    - Worked Mathematical Example: Llama-3-70B
+- Memory Allocation Paradigms: Contiguous vs PagedAttention
+  - Contiguous Allocation and Memory Waste
+  - PagedAttention Mechanics
+- Prefix Caching and Chunked Prefill
+  - Radix Tree Prefix Caching
+  - Chunked Prefill
+- Concurrency Capacity Planning Formula
+  - Step-by-Step VRAM Allocation Budget
+  - Capacity Matrix across GPU Architectures
+- Worked Failure Scenarios
+  - Worked Failure Scenario 1: Unbounded Context KV Cache OOM & GPU Worker Thrashing
+    - Production Incident Context
+    - Symptoms & Initial Metrics
+    - Evidence Gathering
+    - Root Cause Analysis
+    - Resolution & Mitigation
+    - Verification & Clean Output
+    - Prevention
+  - Worked Failure Scenario 2: Severe Prefix Cache Eviction Storm and CPU Swapping Thrashing
+    - Verification
+- Prometheus Metrics and Alerting Rules
+  - Essential Telemetry Reference Table
+  - Prometheus Alerting Rules Configuration
+- Senior Interview Questions & Model Answers
+  - Question 1: How does Grouped-Query Attention (GQA) reduce KV cache memory consumption, and what is the exact math for a 70B model with context length S?
+  - Question 2: Explain the internal architecture of PagedAttention. How does it resolve fragmentation issues compared to naive tensor allocation?
+  - Question 3: What is Chunked Prefill, and why is it necessary for stabilizing Inter-Token Latency (ITL) in multi-tenant LLM serving?
+- Production Troubleshooting: Real-World Evidence
+  - Problem: PagedAttention Block Fragmentation Preventing Concurrency Growth
+  - Problem: Prefix Caching Hit Ratio Degraded After Enabling Chunked Prefill
+- Summary & Authoritative References
+  - Chapter Summary
+  - Authoritative References
+
+## Chapter 09 — Scaling Multi-GPU and Multi-Node Inference  (chapter-09-scaling-multi-gpu-and-multi-node-inference.md)
+- Learning Objectives
+- Beginner's Primer: Slicing the Brain
+- Parallelism Strategies for Inference: TP vs PP vs DP
+  - Tensor Parallelism (TP) Mechanics
+  - Pipeline Parallelism (PP) Mechanics
+  - Data Parallelism (DP) / Scale-Out Replicas
+  - Architectural Parallelism Matrix
+- Hardware Interconnect Topologies
+  - Interconnect Hierarchy & Bandwidth Comparison
+- Distributed Engine Architecture & Cluster Orchestration
+  - vLLM Distributed Ray Architecture
+  - Prefix-Aware Load Balancing
+- Worked Failure Scenarios
+  - Worked Failure Scenario 1: Inter-Node NCCL AllReduce Timeout and PCIe Bottleneck
+    - Production Incident Context
+    - Symptoms & Initial Metrics
+    - Evidence Gathering
+    - Root Cause Analysis
+    - Resolution & Mitigation
+    - Verification & Clean Output
+    - Prevention
+  - Worked Failure Scenario 2: Pipeline Parallelism Dynamic Load Imbalance & Cache Starvation
+    - Verification
+- Prometheus Metrics and Alerting Rules
+  - Distributed Telemetry Reference Table
+  - Prometheus Alerting Rules
+- Senior Interview Questions & Model Answers
+  - Question 1: Why is Tensor Parallelism (TP) strictly restricted to intra-node NVLink interconnects in low-latency LLM serving, whereas Pipeline Parallelism (PP) is suitable for inter-node scaling?
+  - Question 2: What is GPUDirect RDMA (GDR), and how does it impact inter-node distributed inference performance?
+  - Question 3: How does prefix-aware load balancing improve the operational efficiency of a scale-out multi-node inference cluster?
+- Production Troubleshooting: Real-World Evidence
+  - Problem: Tensor Parallelism Collective Communication Hangs or Timeouts
+  - Problem: Load Imbalance in Data Parallel Scale-Out Reducing Throughput
+- Summary & Authoritative References
+  - Chapter Summary
+  - Authoritative References
+
+## Chapter 10 — Performance Metrics and Benchmarking  (chapter-10-performance-metrics-and-benchmarking.md)
+- Learning Objectives
+- Beginner's Primer: TTFT and ITL
+- Deconstructing GenAI Performance Metrics
+  - Core Latency Breakdown
+    - 1. Time to First Token (TTFT)
+    - 2. Inter-Token Latency (ITL) / Time Per Output Token (TPOT)
+    - 3. End-to-End (E2E) Latency
+  - Token Throughput Metrics
+- Benchmarking Methodology: Open-Loop vs Closed-Loop
+  - Closed-Loop Benchmarks (Anti-Pattern for Capacity Sizing)
+  - Open-Loop Benchmarks (Production Standard)
+- GenAI Benchmarking Tooling Guide
+  - 1. vLLM Benchmark Suite (`benchmark_serving.py`)
+  - 2. NVIDIA GenAI-Perf (`genai-perf`)
+- Worked Failure Scenarios
+  - Worked Failure Scenario 1: Synthetic Benchmarking Artifact Hiding Prefill Bottlenecks
+    - Production Incident Context
+    - Symptoms & Initial Metrics
+    - Evidence Gathering
+    - Root Cause Analysis
+    - Resolution & Mitigation
+    - Verification
+    - Prevention
+  - Worked Failure Scenario 2: Systemic Concurrency Collapse under Open-Loop Request Spikes
+- Prometheus Metrics and Alerting Rules
+  - Performance Telemetry Reference Table
+  - Prometheus Alerting Rules Configuration
+- Senior Interview Questions & Model Answers
+  - Question 1: Explain the difference between Time to First Token (TTFT) and Inter-Token Latency (ITL). How do hardware bottlenecks differ between the prefill phase and the decode phase?
+  - Question 2: Why is open-loop load testing essential for benchmarking LLM serving infrastructure, and why does closed-loop testing provide misleading conclusions?
+  - Question 3: If a cluster demonstrates high Output Token Throughput (Tokens/sec) but end-user satisfaction is poor, what metrics are likely missing from the evaluation?
+- Production Troubleshooting: Real-World Evidence
+  - Problem: Benchmark Results Don't Match Production Performance
+  - Problem: High Throughput but p99 Latency Unacceptable
+- Summary & Authoritative References
+  - Chapter Summary
+  - Authoritative References
+
+## Chapter 11 — Production Reliability and Troubleshooting  (chapter-11-production-reliability-and-troubleshooting.md)
+- Learning Objectives
+- Beginner's Primer: The "Silent Death" of AI Pods
+- Production Reliability Architecture
+  - 1. Admission Control and Circuit Breaking
+  - 2. Fallback Execution Strategies
+  - 3. Zero-Downtime Rolling Upgrades
+- Kubernetes Health Probes Strategy for LLM Containers
+  - Production Kubernetes Manifest Template
+- Troubleshooting Hierarchy & Diagnostic Flowchart
+- Comprehensive Incident Playbooks
+  - Playbook 1: GPU Memory Leak / KV Cache Fragmentation
+    - Triage Steps:
+    - Remediation:
+  - Playbook 2: Silent Accuracy Degradation / FP8 NaN Output Spikes
+- Worked Failure Scenarios
+  - Worked Failure Scenario 1: Readiness Probe Cascading Outage during Scaling Event
+    - Production Incident Context
+    - Symptoms & Initial Metrics
+    - Evidence Gathering
+    - Root Cause Analysis
+    - Resolution & Mitigation
+    - Verification
+    - Prevention
+  - Worked Failure Scenario 2: GPU Silent Corruption (XID 62 Error) and Traffic Blackhole
+- Prometheus Metrics and Alerting Rules
+  - Reliability Telemetry Reference Table
+  - Prometheus Alerting Rules Configuration
+- Senior Interview Questions & Model Answers
+  - Question 1: How do you design Kubernetes Startup, Readiness, and Liveness probes for a 70B LLM container to avoid probe-induced cascading outages?
+  - Question 2: What is an NVIDIA XID error, and how should an inference platform automatically handle GPU hardware faults like XID 62 without impacting user availability?
+  - Question 3: How do admission control and circuit breaking work together to preserve SLOs during unexpected LLM traffic spikes?
+- Summary & Authoritative References
+  - Chapter Summary
+  - Authoritative References
+
+## Chapter 12 — Volume 12 Summary  (chapter-12-volume-12-summary.md)
+- Executive Synthesis across Volume 12
+- Unified Production System Blueprint
+- Master Metrics & Engine Parameter Reference
+- Multi-GPU Parallelism Strategy Selection Matrix
+- Production Readiness Audit Checklist
+  - 1. Hardware & Interconnect Topology
+  - 2. Engine & Memory Optimization
+  - 3. Observability & Reliability
+- Senior Solutions Architect Interview Cheat Sheet
+  - 1. Training vs. Inference Trade-offs
+  - 2. KV Cache Memory Math
+  - 3. PagedAttention Mechanics
+  - 4. Prefill vs. Decode Disaggregation
+  - 5. Tensor Parallelism (TP) vs. Pipeline Parallelism (PP)
+  - 6. Continuous Batching
+  - 7. Open-Loop vs. Closed-Loop Load Testing
+  - 8. Kubernetes Health Probes for LLMs
+  - 9. GPU Hardware Fault Handling (XID Errors)
+  - 10. Prefix-Aware Routing
+- Conclusion & Path Forward
+
+## Volume 12 — AI Inference  (index.md)
+- Big Picture Architecture
+- Key Performance Indicators (KPIs) Matrix
+- Volume 12 Chapter Roadmap
+  - Module 1: Foundations & Core Request Lifecycle
+  - Module 2: Optimization Engines & Runtimes
+  - Module 3: Advanced Batching, Memory & Scalability
+  - Module 4: Operations, Telemetry & Reliability
+- Production Hands-On Labs
+- Authoritative References
+
+## Lab 01 — Deploy and Validate Triton Inference Server  (labs/lab-01-deploy-and-validate-triton.md)
+- 1. Title and Metadata
+- 2. Objective
+- 3. Prerequisites
+- 4. Architecture and Lab Topology
+- 5. Required Tools and Software
+- 6. Environment Setup
+- 7. Estimated Duration
+- 8. Safety and Safeguards
+- 9. Baseline Verification
+- 10. Step-by-Step Task Instructions
+  - Task 1: Deploy Triton Inference Server Container
+  - Task 2: Validate Server Health Endpoints (REST API)
+  - Task 3: Perform Inference Validation via gRPC
+  - Task 4: Scrape Prometheus Observability Metrics
+  - Task 5: Execute Dynamic Model Lifecycle Management
+- 11. Command Execution Standards
+  - Command 1: Launch Triton Container
+  - Command 2: Query Model Readiness
+  - Command 3: Execute gRPC Inference Test
+  - Command 4: Inspect Prometheus Metrics
+  - Command 5: Dynamically Unload Model
+- 12. Illustrative Output
+  - Triton Container Startup Log Snippet (`docker logs triton_server`)
+  - Prometheus Metrics Endpoint Output Snippet (`curl http://localhost:8002/metrics`)
+- 13. Failure Injection
+  - Failure Scenario: Corrupting `config.pbtxt` Input Data Type
+- 14. Troubleshooting and Recovery
+  - Decision Tree for Triton Deployment Diagnostics
+  - Quick Diagnostic Cheat Sheet
+- 15. Validation and Verification Checklist
+- 16. Cleanup and Teardown
+- 17. Production Considerations
+- 18. Summary and Next Steps
+
+## Lab 02 — Benchmark Dynamic Batching  (labs/lab-02-benchmark-dynamic-batching.md)
+- 1. Title and Metadata
+- 2. Objective
+- 3. Prerequisites
+- 4. Architecture and Lab Topology
+- 5. Required Tools and Software
+- 6. Environment Setup
+  - Profile A: No Dynamic Batching (`dense_net_nobatch/config.pbtxt`)
+  - Profile B: Conservative Dynamic Batching (`dense_net_conservative/config.pbtxt`)
+  - Profile C: Aggressive Dynamic Batching (`dense_net_aggressive/config.pbtxt`)
+  - Comparative Benchmark Summary Table
+- 13. Failure Injection
+  - Failure Scenario: Over-Allocated Queue Delay Under Low Load
+- 14. Troubleshooting and Recovery
+  - Diagnostic Flowchart: Dynamic Batching Bottlenecks
+- 15. Validation and Verification Checklist
+- 16. Cleanup and Teardown
+- 17. Production Considerations
+- 18. Summary and Next Steps
+
+## Lab 03 — Deploy an LLM with vLLM  (labs/lab-03-deploy-an-llm-with-vllm.md)
+- 1. Title and Metadata
+- 2. Objective
+- 3. Prerequisites
+- 4. Architecture and Lab Topology
+- 5. Required Tools and Software
+- 6. Environment Setup
+- 7. Estimated Duration
+- 8. Safety and Safeguards
+- 9. Baseline Verification
+- 10. Step-by-Step Task Instructions
+  - Task 1: Deploy vLLM Engine Container
+  - Task 2: Validate OpenAI-Compatible REST Endpoints
+  - Task 3: Measure TTFT and ITL Streaming Metrics
+  - Task 4: Monitor Prometheus Telemetry & KV Cache Usage
+- 11. Command Execution Standards
+  - Command 1: Launch vLLM Server Engine
+  - Command 2: Query OpenAI Chat Completions Endpoint
+  - Command 3: Monitor KV Cache Prometheus Telemetry
+- 12. Illustrative Output
+  - vLLM Server Startup Log Snippet (`docker logs vllm_server`)
+  - Async Streaming Benchmark Output (`python3 benchmark_streaming.py`)
+- 13. Failure Injection
+  - Failure Scenario: Context Length & KV Cache Oversubscription
+- 14. Troubleshooting and Recovery
+  - Diagnostic Flowchart for vLLM Issues
+- 15. Validation and Verification Checklist
+- 16. Cleanup and Teardown
+- 17. Production Considerations
+- 18. Summary and Next Steps
+
+## Lab 04 — Troubleshoot a Slow Inference Pipeline  (labs/lab-04-troubleshoot-a-slow-inference-pipeline.md)
+- 1. Title and Metadata
+- 2. Objective
+- 3. Prerequisites
+- 4. Architecture and Lab Topology
+- 5. Required Tools and Software
+- 6. Environment Setup
+- 7. Estimated Duration
+- 8. Safety and Safeguards
+- 9. Baseline Verification
+- 10. Step-by-Step Task Instructions
+  - Task 1: Create a Multi-Stage Preprocessing Pipeline Script
+  - Task 2: Reproduce the Production Incident (p99 Latency Violation)
+  - Task 3: Profile System Hardware (CPU Cores vs GPU Engine)
+  - Task 4: Remediate the Pipeline Bottleneck
+- 11. Command Execution Standards
+  - Command 1: Monitor CPU Core Allocation (`mpstat`)
+  - Command 2: Profile Live GPU Metrics (`nvidia-smi dmon`)
+  - Command 3: Query Triton Server Queue Metrics
+- 12. Illustrative Output
+  - Latency Decomposition Report (UNFIXED Pipeline)
+  - Latency Decomposition Report (REMEDIATED Pipeline)
+- 13. Failure Injection
+  - Failure Scenario: CPU Quota Throttling in Containerized Ingress
+- 14. Troubleshooting and Recovery
+  - End-to-End Latency Diagnostic Decision Tree
+- 15. Validation and Verification Checklist
+- 16. Cleanup and Teardown
+- 17. Production Considerations
+- 18. Summary and Next Steps

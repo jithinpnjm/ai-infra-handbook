@@ -1,0 +1,39 @@
+- hosts: localhost
+  gather_facts: false
+  connection: local
+  vars:
+    bmc: "https://127.0.0.1:18720"
+    ca: /tmp/w/pki/ca.pem
+  tasks:
+    - name: Redfish session with the uri module, always logged out
+      block:
+        - name: Log in
+          ansible.builtin.uri:
+            url: "{{ bmc }}/redfish/v1/SessionService/Sessions"
+            method: POST
+            body_format: json
+            body: { UserName: admin, Password: adminpass }
+            ca_path: "{{ ca }}"
+            status_code: 201
+          register: login
+          no_log: true
+        - name: Read the system
+          ansible.builtin.uri:
+            url: "{{ bmc }}/redfish/v1/Systems/System_0"
+            headers: { X-Auth-Token: "{{ login.x_auth_token }}" }
+            ca_path: "{{ ca }}"
+          register: sysinfo
+        - name: Show power state
+          ansible.builtin.debug:
+            msg: "{{ sysinfo.json.PowerState }} / {{ sysinfo.json.Status.Health }}"
+        - name: Keys the module gives us for the login headers
+          ansible.builtin.debug:
+            msg: "{{ login.keys() | select('match','x_auth|location') | list }}"
+      always:
+        - name: Log out
+          ansible.builtin.uri:
+            url: "{{ login.location }}"
+            method: DELETE
+            headers: { X-Auth-Token: "{{ login.x_auth_token }}" }
+            ca_path: "{{ ca }}"
+            status_code: 204

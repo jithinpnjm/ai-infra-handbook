@@ -1,0 +1,145 @@
+# nvidia-devops-legacy-v06
+
+
+## AI Networking & RDMA Masterclass: Ethernet, InfiniBand, and RoCEv2  (01-ai-networking-rdma-masterclass.md)
+- Introduction
+- 1. The Distributed Systems Performance Imperative
+  - 1.1 The Anatomy of an AI Training Job
+  - 1.2 The Straggler Problem
+- 2. RDMA: Remote Direct Memory Access
+  - 2.1 Why TCP/IP Fails for AI
+  - 2.2 The RDMA Architecture
+  - 2.3 GPUDirect RDMA
+- 3. The Fabric Wars: InfiniBand vs. Ethernet (RoCEv2)
+  - 3.1 InfiniBand: The Purpose-Built AI Fabric
+  - 3.2 RoCEv2: Ethernet Fights Back
+  - 3.3 Trade-offs Summary
+- 4. AI Network Topology Design
+  - 4.1 Rails Architecture
+  - 4.2 Compute vs. Storage/Management Fabrics
+- 5. Operations: Configuring and Validating the Network
+  - 5.1 Verifying RDMA NICs (ibstat)
+  - 5.2 Performance Testing (perftest)
+  - 5.3 Configuring RoCEv2 Switch Ports (Mellanox Cumulus/Onyx)
+- 6. Advanced Troubleshooting & Production Scenarios
+  - 6.1 The PFC Deadlock Scenario
+  - 6.2 Microbursts and ECN Tuning
+  - 6.3 Analyzing RoCE Traffic with tcpdump
+  - 6.4 InfiniBand Subnet Manager Flapping
+- 7. The Architect's Interview: Knowledge Check
+- Conclusion
+- Deep Dive: Additional Diagnostic Workflows
+  - Diagnosing Link Layer Retransmissions
+  - Hardware Offload Verification
+
+## Masterclass: GPUDirect, NCCL, Fabric, and Network Operator  (02-gpudirect-fabric-operator-masterclass.md)
+- 1. Introduction: The AI Factory Network Paradigm
+- 2. GPUDirect RDMA: Bypassing the Bottleneck
+  - 2.1 The Problem with Traditional Networking
+  - 2.2 The GPUDirect RDMA Solution
+  - 2.3 Requirements for GPUDirect RDMA
+    - Loading nvidia-peermem
+- 3. NIC-GPU Topology and "Rails"
+  - 3.1 Understanding PCIe ACS and P2P
+  - 3.2 NUMA Alignment
+  - 3.3 The "Rail" Architecture (DGX SuperPOD Design)
+- 4. NCCL: The Nervous System of AI
+  - 4.1 How NCCL Discovers Topology
+  - 4.2 NCCL Algorithms: Ring vs. Tree
+    - Ring AllReduce
+    - Tree AllReduce (Double Binary Tree)
+  - 4.3 Essential NCCL Environment Variables
+  - 4.4 Advanced Topology Injection (topology.xml)
+- 5. Kubernetes and the NVIDIA Network Operator
+  - 5.1 Network Operator Architecture
+  - 5.2 Deploying via Helm (Production Values)
+  - 5.3 Pod Configuration for RDMA (Multus)
+- 6. Multi-Tenancy and SR-IOV
+  - 6.1 The Need for SR-IOV
+  - 6.2 SR-IOV Configuration via Kubernetes
+- 7. Troubleshooting and Senior Interview Scenarios
+  - Scenario A: NCCL is falling back to TCP (Performance is terrible)
+  - Scenario B: SR-IOV VFs are failing to create
+  - Scenario C: PCIe ACS isolation blocking P2P
+- 8. Conclusion
+  - Key Takeaways
+
+## AI Storage and Data Pipelines Masterclass  (03-ai-storage-data-pipelines-masterclass.md)
+- 1. Introduction
+  - Learning Objectives
+  - Target Audience
+- 2. The AI Storage Problem: Why Standard Storage Fails
+  - The Dataset Loading Phase
+  - The Checkpoint Burst Phase
+- 3. The AI Storage Hierarchy (Detailed Deep Dive)
+  - Tier 0: HBM (High Bandwidth Memory)
+  - Tier 1: Host NVMe (Local Cache)
+  - Tier 2: The Parallel File System (PFS)
+  - Tier 3: Object Store (Capacity / Data Lake / Cold Storage)
+- 4. GPUDirect Storage (GDS) and I/O Bypass
+  - The CPU Bounce-Buffer Bottleneck
+  - The GDS Architecture
+  - Verifying and Benchmarking GDS Capabilities
+    - 1. Checking the kernel module
+    - 2. Running gdscheck
+  - Detailed GDS Configuration (`/etc/cufile.json`)
+- 5. Benchmarking AI Data Pipelines with FIO and IOR
+  - Simulating Dataset Reads (High Throughput, Sequential)
+  - Simulating Checkpoint Writes (The Thundering Herd)
+  - Using mdtest for Metadata Server (MDS) Stress Testing
+- 6. Kubernetes Storage Operators and CSI for AI
+  - The Parallel Filesystem CSI Challenge
+    - Example: Deploying the WEKA CSI Plugin
+    - Example: Pod Consuming WEKA PVC with GDS Injection
+  - The `hostPath` Pattern for Tier 1 NVMe
+- 7. Senior Solutions Architect Scenarios: Storage Troubleshooting
+  - Scenario A: The Cascading D-State Hang (Uninterruptible Sleep)
+  - Scenario B: Metadata Server (MDS) Saturation and "The Small File Problem"
+- 8. Holistic Data Flow Architecture
+  - Summary of the Data Pipeline Lifecycle
+- Conclusion
+- Appendix: Interview Questions for AI Storage Architects
+  - Q1: The "Small File Problem"
+  - Q2: GPUDirect Storage Verification
+  - Q3: Designing for the Thundering Herd
+
+## Masterclass: Distributed Orchestration & Hybrid Scheduling  (04-distributed-orchestration-masterclass.md)
+- Introduction: The AI Factory Orchestration Challenge
+- Part 1: Deep Dive into Slurm Architecture and Concepts
+  - 1.1 The Slurm Control Plane and Data Plane
+  - 1.2 Configuration Deep Dive: `slurm.conf` for NVIDIA AI Factories
+  - 1.3 GRES and Topology: `gres.conf` and `topology.conf`
+  - 1.4 Job Steps, PMIx, and MPI Integration
+- Part 2: Kubernetes in the AI Factory (The Rise of Cloud-Native Batch)
+  - 2.1 The Paradigm Shift: Microservices vs. Batch
+  - 2.2 Gang Scheduling and Volcano
+  - 2.3 Kueue: Cloud-Native Job Queueing
+  - 2.4 MPI Operator and Kubeflow
+- Part 3: Hybrid Scheduling (Kubernetes + Slurm)
+  - 3.1 Pattern 1: Slurm as a Backend for K8s
+  - 3.2 Pattern 2: Co-resident Daemons (The "Frankenstein" Approach)
+  - 3.3 Data Locality in Hybrid Environments
+- Part 4: Staff Engineer System Patterns
+  - 4.1 Head-of-Line Blocking in Queues
+  - 4.2 Thundering Herd and API Rate Limiting
+  - 4.3 Split-Brain and State Reconciliation
+- Part 5: Senior Solutions Architect Troubleshooting Scenarios
+  - Scenario 1: The "Slurmctld Hang" during 10k Job Submission
+  - Scenario 2: K8s API Server OOM during Gang Scheduling Failure
+  - Scenario 3: NCCL Timeout (Topology Mismatch)
+- Conclusion
+- Part 6: Advanced Storage and I/O Orchestration
+  - 6.1 The Checkpoint Storm
+  - 6.2 Data Locality and Caching
+- Part 7: Deep Dive: Slurm Plugin Development (C API)
+  - 7.1 The `job_submit` Plugin
+  - 7.2 The SPANK Plugin Interface
+- Part 8: Advanced Kubernetes Operators for AI
+  - 8.1 The Design of a Custom Controller
+  - 8.2 Dissecting the PyTorch Operator
+  - 8.3 The Future: LLM Serving and Dynamic Orchestration
+- Part 9: Operational Excellence and Observability
+  - 9.1 Slurm Observability via `slurm-exporter`
+  - 9.2 Kubernetes Observability via `kube-state-metrics`
+  - 9.3 Distributed Tracing in AI Workloads
+- Final Summary for Senior Architects

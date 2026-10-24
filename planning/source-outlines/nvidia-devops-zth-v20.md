@@ -1,0 +1,387 @@
+# nvidia-devops-zth-v20
+
+
+## GPU Memory Not Detected  (chapter-01-gpu-memory-not-detected.md)
+- Beginner's Primer: The Missing RAM
+- Symptoms
+- Evidence
+  - Key Metrics to Collect
+- Diagnosis
+  - Diagnosis flowchart
+  - First diagnostic step: confirm what the driver actually sees
+  - Check for MIG misconfiguration first — the most common cause of this exact symptom
+  - If MIG is not the cause: check for a driver/kernel module mismatch
+  - If neither: check for ECC page retirement eating into usable capacity
+- Resolution
+  - Fix 1: MIG mode enabled with no instances configured
+  - Fix 2: driver/kernel module mismatch
+  - Fix 3: orphaned process holding memory with no visible owner
+- Verification
+  - Verification Checklist
+  - Production Troubleshooting Table
+- Prevention
+- Escalation
+  - When to Escalate
+  - Interview Preparation
+- Architecture Summary
+
+## GPU Driver Crash and Xid Errors  (chapter-02-gpu-driver-crash-and-xid-errors.md)
+- Beginner's Primer: The Xid Encyclopedia
+- Symptoms
+- Evidence
+  - Key Metrics to Collect
+- Diagnosis
+  - The Xid reference table
+  - Diagnosis flowchart
+  - First diagnostic step: capture the full context, not just the code
+  - Second diagnostic step: check ECC/retirement history for context
+- Resolution
+  - Step 1: Confirm tier and stop new scheduling immediately for Tier 3
+  - Step 2: Attempt recovery appropriate to the tier
+  - Step 3: Run full diagnostics before returning any Tier 3 GPU to service
+- Verification
+  - Verification Checklist
+  - Production Troubleshooting Table
+- Prevention
+  - Health Checks
+  - Weekly Xid trend review
+- Escalation
+  - When to Escalate
+  - Interview Preparation
+- Architecture Summary
+
+## NCCL Timeout and Collective Communication Failures  (chapter-03-nccl-timeout-and-collective-communication-failures.md)
+- Beginner's Primer: The Silent Wait
+- Symptoms
+- Evidence
+  - Key Metrics to Collect
+- Diagnosis
+  - Diagnosis flowchart
+  - First diagnostic step: enable NCCL debug tracing to find the stalled rank
+  - Second step: is rank 3's process alive, and is its GPU healthy?
+  - Third step: confirm the data-pipeline hypothesis
+- Resolution
+  - Step 1: if the hang traces to a starved rank (data pipeline), fix the pipeline, not NCCL
+  - Step 2: if the hang traces to a crashed process or unhealthy GPU
+  - Step 3: if the hang traces to a genuinely degraded fabric link
+  - Step 4: if the hang traces to a timeout value mismatched to message size
+  - Step 5: if the hang traces to a code-level deadlock (divergent collective calls)
+- Verification
+  - Verification Checklist
+  - Production Troubleshooting Table
+- Prevention
+- Escalation
+  - When to Escalate
+  - Interview Preparation
+- Architecture Summary
+
+## NVLink Errors and Topology Issues  (chapter-04-nvlink-errors-and-topology-issues.md)
+- Beginner's Primer: The Broken Bridge
+- Symptoms
+- Evidence
+  - Key Metrics to Collect
+- Diagnosis
+  - Diagnosis flowchart
+  - First diagnostic step: confirm actual vs. expected topology
+  - Second step: check DCGM's NVLink error counters, not just link presence
+  - Third step: confirm with dmesg for the corresponding Xid
+  - Fourth step: rule out MIG or configuration causes before assuming hardware fault
+- Resolution
+  - Step 1: attempt a GPU reset to see if the link recovers
+  - Step 2: isolate whether the fault is GPU2's or GPU3's side
+  - Step 3: drain the affected GPU and escalate to hardware
+  - Step 4: if no reset/hardware action is possible immediately, mitigate at the scheduling layer
+- Verification
+  - Verification Checklist
+  - Production Troubleshooting Table
+- Prevention
+- Escalation
+  - When to Escalate
+  - Interview Preparation
+- Architecture Summary
+
+## ECC Errors and Memory Bit Flips  (chapter-05-ecc-errors-and-memory-bit-flips.md)
+- Beginner's Primer: Cosmic Rays and Checksums
+- Symptoms
+- Evidence
+  - Key Metrics to Collect
+- Diagnosis
+  - Cross-reference to Chapter 02's Xid tiers first
+  - Diagnosis flowchart
+  - First diagnostic step: classify correctable vs. uncorrectable, and get the full counter picture
+  - Second step: pull the rate trend, not just the current count
+  - Third step: correlate against thermal and power history
+  - Fourth step: identify which specific memory partition is affected, if the tooling supports it
+- Resolution
+  - Path A: uncorrectable error (Xid 48/95) — Tier 3, immediate action
+  - Path B: correctable errors, rate trending up, correlated with thermal
+  - Path C: correctable errors, rate trending up, no environmental correlation
+  - Path D: `Remapping Failure Occurred: Yes` (Xid 64)
+- Verification
+  - Verification Checklist
+  - Production Troubleshooting Table
+- Prevention
+- Escalation
+  - When to Escalate
+  - Interview Preparation
+- Architecture Summary
+
+## Thermal Throttling and Cooling Degradation  (chapter-06-thermal-throttling-and-cooling-degradation.md)
+- Beginner's Primer: The Boiling Engine
+- Symptoms
+- Evidence
+  - Key Metrics to Collect
+- Diagnosis
+  - Diagnosis Flowchart
+  - First Diagnostic Step: Temperature and Clock Correlation
+  - Check Clock Speed Changes
+  - Check Thermal Events in DCGM
+  - Measure Cooling System Health
+- Resolution
+  - Step 1: Verify Thermal Paste Condition
+  - Step 2: Improve Airflow
+  - Step 3: Reduce Power Consumption (Temporary)
+  - Step 4: Smooth Out Throttle Oscillation (if safe)
+- Verification
+  - Verification Checklist
+  - Production Troubleshooting Table
+- Prevention
+  - Health Checks
+- Escalation
+  - When to Escalate
+  - Interview Preparation
+- Architecture Summary
+
+## DMA Engine Failures and PCIe Issues  (chapter-07-dma-engine-failures-and-pcie-issues.md)
+- Beginner's Primer: Falling Off the Bus
+- Symptoms
+- Evidence
+  - Key Metrics to Collect
+- Diagnosis
+  - Diagnosis Flowchart
+  - First Diagnostic Step: Check dmesg for PCIe Errors
+  - Check DCGM DMA Error Counters
+  - Measure PCIe Bandwidth
+  - Check PCIe Link Status
+  - Check GPU Power Delivery
+- Resolution
+  - Step 1: Isolate the GPU Immediately
+  - Step 2: Attempt PCIe Link Retrain
+  - Step 3: Check GPU Power Cables
+  - Step 4: Reset GPU if DMA persists
+  - Step 5: If Reset Fails, Escalate to Hardware Replacement
+- Verification
+  - Verification Checklist
+  - Production Troubleshooting Table
+- Prevention
+  - Health Checks
+- Escalation
+  - When to Escalate
+  - Interview Preparation
+- Architecture Summary
+
+## Fan Failure and Cooling System Degradation  (chapter-08-fan-failure-and-cooling-system-degradation.md)
+- Beginner's Primer: The Silent Killer
+- Symptoms
+- Evidence
+  - Key Metrics to Collect
+- Diagnosis
+  - Diagnosis Flowchart
+  - First Diagnostic Step: Check Fan Status
+  - Check DCGM Fan Anomalies
+  - Measure Temperature Rise Rate
+  - Acoustic Signature Check
+- Resolution
+  - Step 1: Immediate Action — Stop GPU Workload
+  - Step 2: Reseat Fan Connector (if safe)
+  - Step 3: If Fan Still Not Responding
+  - Step 4: Temporary Mitigation
+- Verification
+  - Verification Checklist
+  - Production Troubleshooting Table
+- Prevention
+  - Health Checks
+- Escalation
+  - When to Escalate
+  - Interview Preparation
+- Architecture Summary
+
+## Power Supply Issues and Brownout Scenarios  (chapter-09-power-supply-issues-and-brownout-scenarios.md)
+- Beginner's Primer: The Power Spike
+- Symptoms
+- Evidence
+  - Key Metrics to Collect
+- Diagnosis
+  - Diagnosis Flowchart
+  - First Diagnostic Step: Check Power State
+  - Monitor Power Stability
+  - Check DCGM Power Throttling Events
+  - Measure Voltage Ripple
+  - Check dmesg for Power Events
+- Resolution
+  - Step 1: Determine Root Cause
+  - Step 2: If Voltage Sag Detected
+  - Step 3: Check Power Cable Integrity
+  - Step 4: PSU Capacity Planning
+- Verification
+  - Verification Checklist
+  - Production Troubleshooting Table
+- Prevention
+  - Health Checks
+- Escalation
+  - When to Escalate
+  - Interview Preparation
+- Architecture Summary
+
+## Clock Instability and Frequency Scaling Problems  (chapter-10-clock-instability-and-frequency-scaling-problems.md)
+- Beginner's Primer: The Confused Engine
+- Symptoms
+- Evidence
+  - Key Metrics to Collect
+- Diagnosis
+  - Diagnosis Flowchart
+  - First Diagnostic Step: Monitor Clock Frequency Over Time
+  - Check Power State (P-States)
+  - Collect Frequency History with DCGM
+  - Check DVFS Governor
+  - Verify Workload Stability
+- Resolution
+  - Step 1: Determine If Oscillation Is Necessary
+  - Step 2: Remove host-side power saving and lock clocks (if safe)
+  - Step 3: If Oscillation Persists After Host Tuning and Clock Lock
+  - Step 4: Enforce Fixed Clock Speed (temporary workaround)
+- Verification
+  - Verification Checklist
+  - Production Troubleshooting Table
+- Prevention
+  - Health Checks
+- Escalation
+  - When to Escalate
+  - Interview Preparation
+- Architecture Summary
+
+## Multi-GPU Imbalance and Straggler Detection  (chapter-11-multi-gpu-imbalance-and-straggler-detection.md)
+- Beginner's Primer: Finding the Flat Tire
+- Symptoms
+- Evidence
+  - Key Metrics to Collect
+- Diagnosis
+  - Diagnosis Flowchart
+  - First Diagnostic Step: Per-GPU Iteration Timing
+  - Check GPU Utilization and Power
+  - Measure AllReduce Latency
+  - Check NVLink Status
+  - Profile with Nsight Systems
+- Resolution
+  - Step 1: Identify Root Cause Category
+  - Step 2: If Hardware Issue
+  - Step 3: If Software Issue
+- Verification
+  - Verification Checklist
+  - Production Troubleshooting Table
+- Prevention
+  - Health Checks
+- Escalation
+  - When to Escalate
+  - Interview Preparation
+- Architecture Summary
+
+## Cross-Layer Diagnosis: When Metrics Lie  (chapter-12-cross-layer-diagnosis-when-metrics-lie.md)
+- Beginner's Primer: Trusting the Wrong Liar
+- Symptoms
+- Evidence
+  - Key Metrics to Collect
+- Diagnosis
+  - Diagnosis Flowchart
+  - First Diagnostic Step: Layer-by-Layer Timeline
+  - Check for Heisenbug: Baseline with/without Profiling
+  - Correlate Across Independent Metrics
+  - Identify the Latent Layer Issue
+- Resolution
+  - Step 1: Isolate the Real Bottleneck
+  - Step 2: Handle Heisenbug (Measurement Overhead)
+  - Step 3: Cross-Check Metrics at Decision Points
+- Verification
+  - Verification Checklist
+  - Production Troubleshooting Table
+- Prevention
+  - Health Checks
+- Escalation
+  - When to Escalate
+  - Interview Preparation
+- Architecture Summary
+
+## Volume 20 — Troubleshooting Encyclopedia  (index.md)
+- Overview
+- Chapters
+  - Chapter 1: GPU Memory Not Detected
+  - Chapter 2: GPU Driver Crash and Xid Errors
+  - Chapter 3: NCCL Timeout and Collective Communication Failures
+  - Chapter 4: NVLink Errors and Topology Issues
+  - Chapter 5: ECC Errors and Memory Bit Flips
+  - Chapter 6: Thermal Throttling and Cooling Degradation
+  - Chapter 7: DMA Engine Failures and PCIe Issues
+  - Chapter 8: Fan Failure and Cooling System Degradation
+  - Chapter 9: Power Supply Issues and Brownout Scenarios
+  - Chapter 10: Clock Instability and Frequency Scaling Problems
+  - Chapter 11: Multi-GPU Imbalance and Straggler Detection
+  - Chapter 12: Cross-Layer Diagnosis: When Metrics Lie
+- Labs
+- How to Use This Volume
+- Cross-References
+
+## Lab 01 — Symptom to Evidence Mapping  (labs/lab-01-symptom-to-evidence-mapping.md)
+- Objective
+- Duration
+- Prerequisites
+- Exercises
+  - Exercise 1: GPU Slow — Map the Evidence
+  - Exercise 2: Distributed Training Stalls
+  - Exercise 3: Multiple Failure Modes
+  - Exercise 1 Solution: GPU Slow
+  - Exercise 2 Solution: Distributed Training Stalls
+  - Exercise 3 Solution: Multiple Failure Modes
+- Expected Outcomes
+- Verification Rubric
+
+## Lab 02 — Root Cause Analysis  (labs/lab-02-root-cause-analysis.md)
+- Objective
+- Duration
+- Prerequisites
+- Exercises
+  - Exercise 1: Thermal or Power?
+  - Exercise 2: Which GPU is the Straggler?
+  - Exercise 3: The Intermittent Failure
+  - Exercise 1 Solution: Thermal or Power?
+  - Exercise 2 Solution: Which GPU is the Straggler?
+  - Exercise 3 Solution: The Intermittent Failure
+- Expected Outcomes
+- Verification Rubric
+
+## Lab 03 — Production Incident Simulation  (labs/lab-03-production-incident-simulation.md)
+- Objective
+- Duration
+- Prerequisites
+- Exercises
+  - Exercise 1: NCCL Hang During Training (30 min)
+  - Exercise 2: Thermal Throttling Incident (30 min)
+  - Exercise 3: ECC Error Storm (30 min)
+  - Exercise 1 Solution: NCCL Hang
+  - Exercise 2 Solution: Thermal Throttling Incident
+  - Exercise 3 Solution: ECC Error Storm
+- Expected Outcomes
+- Verification Rubric
+
+## Lab 04 — Postmortem Analysis  (labs/lab-04-postmortem-analysis.md)
+- Objective
+- Duration
+- Prerequisites
+- Exercises
+  - Exercise 1: Fan Failure Incident Analysis
+  - Exercise 2: ECC Error Escalation
+  - Exercise 3: NCCL Timeout Investigation
+  - Exercise 1 Solution: Fan Failure Postmortem
+  - Exercise 2 Solution: ECC Error Escalation Postmortem
+  - Exercise 3 Solution: NCCL Timeout Postmortem
+- Expected Outcomes
+- Verification Rubric

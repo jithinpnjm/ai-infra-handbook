@@ -1,0 +1,266 @@
+{
+  "SchemaDefinition": "RedfishInteroperabilityProfile.v1_10_0",
+  "ProfileName": "GpuNodeAcceptanceLab",
+  "ProfileVersion": "1.0.0",
+  "ProfileType": "Product",
+  "Purpose": "Minimum Redfish features our cluster tools rely on for an 8-GPU server: power control, GPU and NIC inventory, sensors, firmware update, logs, and BMC hardening settings. (Counts of devices are checked by other tools: interoperability profiles check presence and values, not how many.)",
+  "OwningEntity": "Handbook lab",
+  "RequiredProfiles": {},
+  "Protocol": {
+    "MinVersion": "1.6"
+  },
+  "Resources": {
+    "ComputerSystem": {
+      "ReadRequirement": "Mandatory",
+      "PropertyRequirements": {
+        "PowerState": {
+          "ReadRequirement": "Mandatory"
+        },
+        "Status": {
+          "ReadRequirement": "Mandatory"
+        },
+        "Processors": {
+          "ReadRequirement": "Mandatory"
+        },
+        "Storage": {
+          "ReadRequirement": "Recommended"
+        },
+        "LogServices": {
+          "ReadRequirement": "Recommended"
+        }
+      },
+      "ActionRequirements": {
+        "Reset": {
+          "ReadRequirement": "Recommended",
+          "Parameters": {
+            "ResetType": {
+              "ReadRequirement": "Mandatory",
+              "ParameterValues": [
+                "ForceOff",
+                "GracefulRestart",
+                "GracefulShutdown",
+                "On"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "Processor": {
+      "ReadRequirement": "Mandatory",
+      "PropertyRequirements": {
+        "ProcessorType": {
+          "ReadRequirement": "Mandatory"
+        },
+        "Status": {
+          "ReadRequirement": "Mandatory"
+        }
+      }
+    },
+    "PCIeDevice": {
+      "ReadRequirement": "Mandatory",
+      "PropertyRequirements": {
+        "PCIeInterface": {
+          "ReadRequirement": "Mandatory",
+          "PropertyRequirements": {
+            "PCIeType": {
+              "ReadRequirement": "Mandatory"
+            },
+            "MaxPCIeType": {
+              "ReadRequirement": "Mandatory"
+            },
+            "LanesInUse": {
+              "ReadRequirement": "Mandatory"
+            },
+            "MaxLanes": {
+              "ReadRequirement": "Mandatory"
+            }
+          }
+        }
+      }
+    },
+    "Port": {
+      "ReadRequirement": "Mandatory",
+      "PropertyRequirements": {
+        "LinkStatus": {
+          "ReadRequirement": "Mandatory"
+        },
+        "CurrentSpeedGbps": {
+          "ReadRequirement": "Mandatory"
+        },
+        "MaxSpeedGbps": {
+          "ReadRequirement": "Mandatory"
+        }
+      }
+    },
+    "Chassis": {
+      "ReadRequirement": "Mandatory",
+      "PropertyRequirements": {
+        "Sensors": {
+          "ReadRequirement": "Mandatory"
+        },
+        "ThermalSubsystem": {
+          "ReadRequirement": "Mandatory"
+        },
+        "PowerSubsystem": {
+          "ReadRequirement": "Mandatory"
+        }
+      }
+    },
+    "Sensor": {
+      "ReadRequirement": "Mandatory",
+      "PropertyRequirements": {
+        "Reading": {
+          "ReadRequirement": "Mandatory"
+        },
+        "ReadingType": {
+          "ReadRequirement": "Mandatory"
+        },
+        "ReadingUnits": {
+          "ReadRequirement": "Mandatory"
+        },
+        "PhysicalContext": {
+          "ReadRequirement": "Mandatory"
+        }
+      }
+    },
+    "PowerSupply": {
+      "ReadRequirement": "Mandatory",
+      "PropertyRequirements": {
+        "PowerCapacityWatts": {
+          "ReadRequirement": "Mandatory"
+        },
+        "Status": {
+          "ReadRequirement": "Mandatory"
+        }
+      }
+    },
+    "Manager": {
+      "ReadRequirement": "Mandatory",
+      "PropertyRequirements": {
+        "FirmwareVersion": {
+          "ReadRequirement": "Mandatory"
+        },
+        "NetworkProtocol": {
+          "ReadRequirement": "Mandatory"
+        },
+        "LogServices": {
+          "ReadRequirement": "Mandatory"
+        }
+      },
+      "ActionRequirements": {
+        "Reset": {
+          "ReadRequirement": "Mandatory"
+        }
+      }
+    },
+    "ManagerNetworkProtocol": {
+      "ReadRequirement": "Mandatory",
+      "PropertyRequirements": {
+        "HTTPS": {
+          "ReadRequirement": "Mandatory"
+        },
+        "IPMI": {
+          "ReadRequirement": "Mandatory"
+        },
+        "SSH": {
+          "ReadRequirement": "Mandatory"
+        },
+        "Telnet": {
+          "ReadRequirement": "Mandatory"
+        },
+        "SSDP": {
+          "ReadRequirement": "Mandatory"
+        },
+        "NTP": {
+          "ReadRequirement": "Mandatory"
+        }
+      }
+    },
+    "UpdateService": {
+      "ReadRequirement": "Mandatory",
+      "PropertyRequirements": {
+        "FirmwareInventory": {
+          "ReadRequirement": "Mandatory"
+        },
+        "MaxImageSizeBytes": {
+          "ReadRequirement": "Recommended"
+        }
+      },
+      "ActionRequirements": {
+        "SimpleUpdate": {
+          "ReadRequirement": "Mandatory",
+          "Parameters": {
+            "TransferProtocol": {
+              "ReadRequirement": "Mandatory",
+              "ParameterValues": [
+                "HTTPS"
+              ]
+            }
+          }
+        },
+        "StartUpdate": {
+          "ReadRequirement": "Recommended"
+        }
+      }
+    },
+    "SoftwareInventory": {
+      "ReadRequirement": "Mandatory",
+      "PropertyRequirements": {
+        "Version": {
+          "ReadRequirement": "Mandatory"
+        },
+        "Updateable": {
+          "ReadRequirement": "Mandatory"
+        }
+      }
+    },
+    "LogService": {
+      "ReadRequirement": "Mandatory",
+      "PropertyRequirements": {
+        "Entries": {
+          "ReadRequirement": "Mandatory"
+        },
+        "OverWritePolicy": {
+          "ReadRequirement": "Mandatory"
+        },
+        "MaxNumberOfRecords": {
+          "ReadRequirement": "Recommended"
+        }
+      },
+      "ActionRequirements": {
+        "ClearLog": {
+          "ReadRequirement": "Mandatory"
+        }
+      }
+    },
+    "AccountService": {
+      "ReadRequirement": "Mandatory",
+      "PropertyRequirements": {
+        "AccountLockoutThreshold": {
+          "ReadRequirement": "Mandatory"
+        },
+        "MinPasswordLength": {
+          "ReadRequirement": "Mandatory"
+        },
+        "HTTPBasicAuth": {
+          "ReadRequirement": "Mandatory"
+        }
+      }
+    },
+    "EventService": {
+      "ReadRequirement": "Mandatory",
+      "PropertyRequirements": {
+        "Subscriptions": {
+          "ReadRequirement": "Mandatory"
+        }
+      }
+    },
+    "TaskService": {
+      "ReadRequirement": "Mandatory"
+    },
+    "SessionService": {
+      "ReadRequirement": "Mandatory"
+    }
+  }
+}

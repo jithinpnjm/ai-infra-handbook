@@ -1,0 +1,159 @@
+# nvidia-devops-legacy-v04
+
+
+## Masterclass: GPU Architecture, Execution, and Topology  (01-gpu-architecture-topology-masterclass.md)
+- 1. Introduction
+  - Learning Objectives
+- 2. The GPU Execution Mental Model
+  - 2.1 Streaming Multiprocessors (SMs)
+  - 2.2 Threads, Warps, and Execution
+  - 2.3 Contexts and Time-Slicing
+- 3. The GPU Memory Mental Model
+  - 3.1 The Memory Hierarchy
+  - 3.2 HBM vs. GDDR
+  - 3.3 Page-Locked (Pinned) Memory vs. Pageable Memory
+  - 3.4 BAR1 and Resizable BAR
+- 4. System Buses: PCIe Fundamentals
+  - 4.1 Lanes and Generations
+  - 4.2 ACS (Access Control Services) and P2P
+- 5. NVIDIA Interconnects: NVLink and NVSwitch
+  - 5.1 NVLink Generations
+  - 5.2 Topologies: Bridge vs. NVSwitch Fabric
+  - 5.3 Decoding `nvidia-smi topo -m`
+  - 5.4 SHARP (Scalable Hierarchical Aggregation and Reduction Protocol)
+- 6. NUMA and Host Topology
+  - 6.1 The Cross-Socket Penalty (UPI/QPI)
+  - 6.2 Visualizing NUMA
+  - 6.3 Enforcing NUMA Affinity
+- 7. Senior Solutions Architect Scenarios & Troubleshooting
+  - Scenario 1: The Straggler GPU (PCIe Degradation)
+  - Scenario 2: NCCL Timeout and NVLink Errors
+  - Scenario 3: CPU Bottlenecking on Data Loaders
+- 8. Advanced Fabric Topologies: The AI Factory
+  - 8.1 Scale-Up vs. Scale-Out Network
+  - 8.2 GPUDirect RDMA
+- 9. Masterclass Revision and Interview Q&A
+- 10. Conclusion and Next Steps
+- Appendix A: Deep Dive Lab - Profiling Topology
+  - Objective
+  - Step 1: Base PCIe Mapping
+  - Step 2: Extracting NUMA Node Assignments from Sysfs
+  - Step 3: Measuring Bandwidth (PCIe vs NVLink)
+  - Step 4: NVLink Error Injection and Monitoring
+- Appendix B: Advanced Memory Management Patterns
+  - Unified Memory (CUDA Managed Memory)
+  - The KV Cache in LLMs
+- Appendix C: Complete nvidia-smi topo Reference
+- End of Masterclass
+- Appendix E: Generational Architecture Deep Dive (Pascal to Blackwell)
+  - 1. Pascal (P100 - 2016)
+  - 2. Volta (V100 - 2017)
+  - 3. Ampere (A100 - 2020)
+  - 4. Hopper (H100 - 2022)
+  - 5. Blackwell (B200 - 2024+)
+- Appendix F: Demystifying RoCEv2 and RDMA
+  - The Problem with TCP/IP
+  - RDMA (Remote Direct Memory Access)
+  - RoCEv2 (RDMA over Converged Ethernet)
+- Appendix G: Advanced Bash Scripting for NUMA Topologies
+- Appendix H: Deep Dive into NVIDIA System Management Interface (nvidia-smi)
+  - Beyond the Default View
+  - Power States (P-States)
+  - Clock Locking for Determinism
+- Final Review Checkpoints for System Administrators
+
+## Masterclass: GPU Software Stack & Operator  (02-gpu-software-operator-masterclass.md)
+- 1. Introduction & The Production Story
+- 2. The Foundation: NVIDIA UNIX Driver and CUDA Stack
+  - 2.1 The Kernel-Mode Driver (KMD)
+  - 2.2 The User-Mode Driver (UMD) and CUDA Runtime
+    - Driver and Runtime Compatibility
+  - 2.3 Verification at the Base Layer
+- 3. Containerizing the GPU: NVIDIA Container Toolkit & CDI
+  - 3.1 The Evolution: From `nvidia-docker` to CDI
+  - 3.2 How the Injection Works (Pre-CDI Hook mechanism)
+  - 3.3 The Modern Approach: Container Device Interface (CDI)
+    - Generating a CDI Spec
+  - 3.4 Containerd Configuration for NVIDIA
+- 4. Kubernetes Integration: The Device Plugin
+  - 4.1 The Device Plugin API
+  - 4.2 Example: Node Capacity
+  - 4.3 Advanced Device Plugin Configurations
+    - Time-Slicing Configuration
+    - Multi-Instance GPU (MIG) Configuration
+- 5. The NVIDIA GPU Operator: The Grand Reconciler
+  - 5.1 Architecture and State Machine
+  - 5.2 Deep Dive: GPU Operator Helm Values
+  - 5.3 Operator Design Patterns: DaemonSets vs. Pods
+- 6. Troubleshooting: The Senior Architect's Playbook
+  - Scenario A: The CrashLoopBackOff Driver Pod
+  - Scenario B: Device Plugin Missing Capacity
+  - Scenario C: PyTorch "CUDA_ERROR_NO_DEVICE"
+- 7. Interview Scenarios for Solutions Architects
+- 8. Deep Dive: CUDA Forward Compatibility & Enterprise Upgrades
+  - 8.1 How Forward Compatibility Works
+  - 8.2 The Fallback Mechanism
+- 9. Comprehensive Configuration: An Annotated Values File
+- 10. Expanding on GPU Sharing: MPS, Time-Slicing, and MIG
+  - 10.1 Time-Slicing (Temporal Sharing)
+  - 10.2 Multi-Process Service (MPS)
+  - 10.3 Multi-Instance GPU (MIG)
+- 11. Deep Telemetry: DCGM and Prometheus
+  - 11.1 What is DCGM?
+  - 11.2 Key Metrics to Monitor
+  - 11.3 Example Prometheus Output
+- 12. Final Interview Challenge: The Hang
+- 13. Deep Architecture: Topology, NUMA, and NVLink
+  - 13.1 `nvidia-smi topo -m`
+  - 13.2 NUMA Affinity and the Kubernetes Topology Manager
+    - Enabling the Topology Manager
+- 14. Advanced Operator Features: Node Feature Discovery (NFD)
+  - 14.1 Dynamic Workload Routing
+- 15. The GPU Operator Upgrades & Lifecycle Management
+  - 15.1 The Upgrade Policy
+  - 15.2 Handling Stale Driver Modules (The Dreaded rmmod Failure)
+- 16. The Ultimate Troubleshooting Matrix
+- 17. Conclusion: The Senior Perspective
+- 18. Deep Dive: DCGM Architecture and XID Semantics
+  - 18.1 The Architecture of DCGM
+  - 18.2 Active Diagnostics (NVVS)
+  - 18.3 Understanding XID Errors
+- 19. PID Namespaces and Container Observability
+  - 19.1 The Host View
+  - 19.2 The Container View
+- 20. Advanced Device Plugin Flags (The Hidden Configurations)
+  - 20.1 Integrating with Virtualization (vGPU)
+- 21. Summary and Revision Material
+  - 21.1 Core Tenets of the AI Infrastructure Architect
+  - 21.2 Glossary of Key Terms
+  - 21.3 Authoritative Further Reading
+
+## Masterclass: GPU Sharing, Telemetry, and Lifecycle Operations  (03-gpu-sharing-telemetry-masterclass.md)
+- Introduction
+- Part 1: GPU Sharing Strategies
+  - 1.1 Time-Slicing
+    - The Architecture of Time-Slicing
+  - 1.2 MPS (Multi-Process Service)
+    - MPS Architecture and Execution
+  - 1.3 MIG (Multi-Instance GPU)
+    - MIG Hardware Partitioning
+    - Configuring MIG via nvidia-smi
+  - 1.4 vGPU (Virtual GPU)
+- Part 2: Fleet Telemetry & DCGM
+  - 2.1 DCGM Architecture
+  - 2.2 DCGM Exporter Configuration
+    - Custom metrics.csv
+  - 2.3 Hardware Health, ECC, and XID Semantics
+    - ECC Errors (SBE vs DBE)
+- Part 3: Capacity and Failure Domain Design
+  - 3.1 Node, Rack, and Pod Topologies
+  - 3.2 Blast Radius Analysis
+- Part 4: Fleet Lifecycle, Upgrades, & Draining
+  - 4.1 Node Draining Protocol
+- Part 5: Known-Good Validation
+  - 5.1 DCGM Diagnostics
+  - 5.2 NCCL All-Reduce Bandwidth Test
+- Part 6: Senior Solutions Architect Troubleshooting & Interview Scenarios
+  - Scenario 1: The Ghost OOM on MPS
+  - Scenario 2: XID 31 Storm on Node 42
+  - Conclusion

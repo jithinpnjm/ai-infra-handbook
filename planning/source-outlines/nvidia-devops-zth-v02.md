@@ -1,0 +1,542 @@
+# nvidia-devops-zth-v02
+
+
+## Why GPU Architecture Evolved  (chapter-01-why-gpu-architecture-evolved.md)
+- Introduction
+- Story
+- Learning Objectives
+- Big Picture: The Timeline of Acceleration
+- Deep Explanation: How We Got Here
+  - 1. The Fixed-Function Era (Pre-2006)
+  - 2. Unified Programmable Shaders & CUDA (2006)
+  - 3. The AI Pivot: The Invention of the Tensor Core (Volta - 2017)
+  - 4. Hardware Isolation: MIG (Ampere - 2020)
+  - 5. Optimizing for LLMs: The Transformer Engine (Hopper - 2022)
+  - 6. Rack-Scale Architecture (Blackwell - 2024)
+- Internal Working: Precision vs Throughput
+- Production Deployment
+- Hands-on Troubleshooting
+  - Problem: Low Utilization on New Hardware
+- Customer Scenario (Senior Level)
+- Interview Preparation
+- Summary
+- Key Takeaways
+- Related Chapters
+
+## Inside a Modern NVIDIA GPU  (chapter-02-inside-a-modern-nvidia-gpu.md)
+- Introduction
+- The Hardware Map: The H100 Architecture
+  - 1. The GigaThread Engine (The Boss)
+  - 2. The L2 Cache (The Central Hub)
+  - 3. The Streaming Multiprocessor (SM) (The Assembly Line)
+- Internal Working: The Memory Hierarchy
+  - The PCIe & Copy Engine Bottleneck
+- Advanced Silicon: Beyond Math
+- Production Deployment & Operations
+  - 1. MIG (Multi-Instance GPU) Architecture
+  - 2. Monitoring the Hardware
+- Customer Scenario (Senior Level)
+- Interview Preparation
+- Summary
+- Key Takeaways
+- Related Chapters
+
+## Threads, Warps, Blocks, and Streaming Multiprocessors  (chapter-03-threads-warps-blocks-and-sms.md)
+- Introduction
+- The Software Hierarchy (The "What")
+  - 1. The Thread (The Worker)
+  - 2. The Thread Block (The Team)
+  - 3. The Grid (The Entire Job)
+- Mapping Software to Hardware (The "How")
+  - The Abstraction Advantage
+- The Secret Hardware Layer: Warps
+  - SIMT Execution (Single Instruction, Multiple Threads)
+  - The Danger: Warp Divergence
+- Occupancy and Hiding Latency
+  - What limits Occupancy?
+- Customer Scenario (Senior Level)
+- Interview Preparation
+- Summary
+- Key Takeaways
+- Related Chapters
+
+## CUDA Cores, Tensor Cores, and RT Cores  (chapter-04-cuda-cores-tensor-cores-and-rt-cores.md)
+- Introduction
+- Story
+- Learning Objectives
+- Big Picture
+- Why Specialization Exists
+- CUDA Cores
+  - When CUDA Cores dominate
+- Tensor Cores
+  - Data types matter
+  - Why Tensor Cores may remain idle
+- RT Cores
+- Internal Working
+- Architecture Considerations
+  - Throughput is pipeline-specific
+  - Memory can dominate compute
+  - Workload diversity matters
+- Production Deployment
+- Production Troubleshooting
+  - Problem: Tensor Cores appear underused
+  - Problem: Upgrading hardware does not improve latency
+  - Problem: RT Core count is used to justify an AI purchase
+- Customer Scenario
+- Interview Preparation
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- Summary
+- Key Takeaways
+- Cross References
+
+## GPU Memory Hierarchy  (chapter-05-gpu-memory-hierarchy.md)
+- Introduction
+- Story
+- Learning Objectives
+- Big Picture
+- Memory Hierarchy at a Glance
+- Registers
+- Shared Memory
+- L1 Cache
+- L2 Cache
+- High Bandwidth Memory
+  - Capacity versus bandwidth
+- Global Memory Access and Coalescing
+- Arithmetic Intensity
+- Host and Device Transfers
+- Internal Working
+- Architecture Considerations
+  - Locality is a design property
+  - Capacity planning must include runtime state
+  - More memory is not automatically faster
+- Production Deployment
+- Production Troubleshooting
+  - Problem: GPU utilization is high but throughput is low
+  - Problem: Out-of-memory errors appear only under load
+  - Problem: Adding batch size stops improving throughput
+- Customer Scenario
+- Interview Preparation
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- Summary
+- Key Takeaways
+- Cross References
+
+## Scheduling, Occupancy, and Instruction Dispatch  (chapter-06-scheduling-occupancy-and-instruction-dispatch.md)
+- Introduction
+- Story
+- Learning Objectives
+- Big Picture
+- Residency
+- Occupancy
+- Warp States
+- Latency Hiding
+- Instruction Dependencies
+- Instruction Dispatch
+- Divergence and Scheduling
+- Occupancy Limits in Practice
+  - Register pressure
+  - Shared-memory pressure
+  - Block size
+  - Kernel duration and grid size
+- Architecture Considerations
+  - Occupancy is a means, not an objective
+  - Scheduling cannot repair every bottleneck
+  - End-to-end systems need multiple schedulers
+- Production Deployment
+- Production Troubleshooting
+  - Problem: High occupancy but low throughput
+  - Problem: Low occupancy after a code change
+  - Problem: GPU utilization oscillates
+  - Problem: One kernel dominates request latency
+- Customer Scenario
+- Interview Preparation
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- Summary
+- Key Takeaways
+- Cross References
+
+## Registers, Shared Memory, and Local Memory  (chapter-07-registers-shared-memory-and-local-memory.md)
+- Introduction
+- Story
+- Learning Objectives
+- Big Picture
+- Registers
+- Shared Memory
+- Static and Dynamic Shared Memory
+- Banked Access
+- Local Memory
+- Register Spilling
+- Resource Interaction and Occupancy
+- Architecture Trade-offs
+  - Registers versus occupancy
+  - Shared memory versus cache
+  - Shared memory versus synchronization
+- Production Perspective
+- Production Troubleshooting
+  - Problem: Throughput drops after a kernel optimization
+  - Problem: Shared-memory kernel is not faster
+  - Prevention
+- Customer Scenario
+- Interview Preparation
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- Summary
+- Key Takeaways
+- Cross References
+
+## Global Memory, L1, L2, and HBM  (chapter-08-global-memory-l1-l2-and-hbm.md)
+- Introduction
+- Story
+- Learning Objectives
+- Big Picture
+- Global Memory
+- L1 Cache
+- L2 Cache
+- High-Bandwidth Memory
+- Memory Controllers and Partitions
+- Locality and Reuse
+  - Temporal locality
+  - Spatial locality
+  - Working-set size
+- Arithmetic Intensity
+- Architecture Trade-offs
+  - Cache versus explicit shared-memory staging
+  - Larger batches
+  - Compression and reduced precision
+  - Recomputing versus storing
+- Production Deployment Perspective
+- Production Troubleshooting
+  - Problem: GPU has high memory throughput but low compute activity
+  - Problem: Delivered bandwidth is far below expectation
+  - Problem: Out-of-memory failures are intermittent
+- Customer Scenario
+- Interview Preparation
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- Summary
+- Key Takeaways
+- Cross References
+
+## Divergence, Coalescing, and Bottleneck Reasoning  (chapter-09-divergence-coalescing-and-bottleneck-reasoning.md)
+- Introduction
+- Story
+- Learning Objectives
+- Big Picture
+- Warp Divergence
+- Predication
+- Memory Coalescing
+- Array of Structures versus Structure of Arrays
+- Useful Bytes versus Transferred Bytes
+- Occupancy, Utilization, and Efficiency
+- Bottleneck Reasoning
+  - Compute-bound pattern
+  - Memory-bound pattern
+  - Control-flow-bound pattern
+  - Launch- or feed-bound pattern
+- Optimization Order
+- Production Deployment Perspective
+- Production Troubleshooting
+  - Problem: GPU utilization is high but throughput is low
+  - Problem: A data-layout change improves bandwidth but increases latency
+  - Problem: Performance changes with input data
+- Customer Scenario
+- Interview Preparation
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- Summary
+- Key Takeaways
+- Cross References
+
+## GPU Topology, Peer Access, and Data Paths  (chapter-10-gpu-topology-peer-access-and-data-paths.md)
+- Introduction
+- Story
+- Learning Objectives
+- Big Picture
+- Logical Identity versus Physical Placement
+- PCIe Hierarchy
+- NUMA Locality
+- Direct GPU Interconnects
+- Peer Memory Access
+- Topology-Aware Placement
+- Internal Working
+- Architecture Trade-offs
+  - Dense connectivity versus cost
+  - Locality versus scheduling flexibility
+  - Shared fabric versus isolation
+- Production Deployment
+- Production Troubleshooting
+  - Problem: Four-GPU scaling is worse than two-GPU scaling
+  - Problem: GPU-to-NIC throughput is inconsistent
+  - Prevention
+- Customer Scenario
+- Interview Preparation
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- Summary
+- Key Takeaways
+- Cross References
+
+## Building a GPU Performance Model  (chapter-11-building-a-gpu-performance-model.md)
+- Introduction
+- Story
+- Learning Objectives
+- Big Picture
+- Start with the Workload
+- Arithmetic Intensity
+- Compute-Bound Workloads
+- Memory-Bound Workloads
+- Latency-Bound Workloads
+- Launch and Synchronization Limits
+- Communication-Bound Workloads
+- Host and Pipeline Bottlenecks
+- Interpreting Utilization
+- Baseline before Optimization
+- Hypothesis-Driven Investigation
+- Architecture Trade-offs
+  - Throughput versus latency
+  - Fusion versus flexibility
+  - Occupancy versus per-thread efficiency
+  - Scale-out versus efficiency
+- Production Deployment
+- Production Troubleshooting
+  - Problem: High utilization but low throughput
+  - Problem: Scaling efficiency falls after adding GPUs
+  - Problem: Latency regresses after a software release
+- Customer Scenario
+- Interview Preparation
+  - Conceptual Questions
+  - Architecture Questions
+  - Scenario Questions
+- Summary
+- Key Takeaways
+- Cross References
+
+## Volume 02 Architecture Summary  (chapter-12-volume-02-architecture-summary.md)
+- Introduction
+- Story Revisited
+- The Complete Mental Model
+- Architectural Layers
+  - Work decomposition
+  - Execution resources
+  - Scheduling and occupancy
+  - On-chip storage
+  - Device-memory hierarchy
+  - Topology
+- Symptom-to-Layer Map
+- Architecture Decision Framework
+- Production Anti-Patterns
+  - Choosing hardware from peak numbers
+  - Treating every GPU as interchangeable
+  - Maximizing occupancy blindly
+  - Using utilization as the only health signal
+  - Optimizing the GPU before the pipeline
+- Customer Architecture Conversation
+- Knowledge Questions
+- Architecture Questions
+- Scenario Questions
+- Quick Revision Sheet
+- Lab Checklist
+- Summary
+- Key Takeaways
+- Cross References
+
+## Volume 02 — GPU Architecture  (index.md)
+- The Mental Model
+- Chapters in This Batch
+- What You Will Learn Across the Volume
+- Production Perspective
+
+## Lab 01 — Inspect GPU Architecture and Topology  (labs/lab-01-inspect-gpu-architecture-and-topology.md)
+- Lab Metadata
+- 1. Objective
+- 2. Background
+- 3. Learning Outcomes
+- 4. Architecture
+- 5. Prerequisites
+  - Hardware
+  - Software
+  - Permissions
+- 6. Environment
+  - Expected Output (illustrative, not captured)
+  - Common Problems
+- 7. Components
+- 8. Deployment Steps
+  - Step 1 — List GPUs
+    - Purpose
+    - Command
+    - Expected Output (illustrative, not captured)
+    - Explanation
+    - Common Errors
+  - Step 2 — Inspect Runtime State
+    - Expected Healthy Output
+    - Interpretation
+  - Step 3 — Inspect PCI Devices
+  - Step 4 — Inspect Detailed PCIe Link State
+  - Step 5 — Map GPU to NUMA Node
+  - Step 6 — Inspect Host NUMA Topology
+  - Step 7 — Inspect GPU Peer Topology
+  - Step 8 — Inspect Link or Peer Status Where Supported
+    - Commands
+- 9. Validation
+- 10. Verification
+- 11. Observability
+  - Host-Level Signals
+  - Commands
+- 12. Performance Measurements
+- 13. Failure Injection
+  - Failure Scenario — Incorrect CPU Placement
+- 14. Troubleshooting
+  - Problem — `nvidia-smi` sees fewer GPUs than `lspci`
+    - Symptoms
+    - Diagnosis
+    - Possible Root Causes
+    - Resolution
+  - Problem — PCIe link is narrower than expected
+    - Prevention
+  - Problem — Workload uses CPUs far from the GPU
+- 15. Cleanup
+- 16. Summary
+- 17. Challenge Exercises
+- 18. Further Reading
+
+## Inspect GPU Engine and Memory Behavior  (labs/lab-02-inspect-gpu-engine-and-memory-behavior.md)
+- Lab Metadata
+- 1. Objective
+- 2. Background
+- 3. Learning Outcomes
+- 4. Architecture
+- 5. Prerequisites
+  - Hardware
+  - Software
+  - Permissions
+- 6. Environment
+- 7. Components
+- 8. Deployment Steps
+  - Step 1 — Confirm host-level GPU visibility
+  - Step 2 — Capture a machine-readable baseline
+  - Step 3 — Inspect topology
+  - Step 4 — Inspect detailed device properties
+  - Step 5 — Verify container GPU access
+  - Step 6 — Start continuous monitoring
+  - Step 7 — Run a controlled CUDA workload
+  - Step 8 — Inspect active GPU processes
+- 9. Validation
+- 10. Verification
+- 11. Observability
+  - Host level
+  - DCGM level
+  - Kubernetes level
+- 12. Performance Measurements
+- 13. Failure Injection
+  - Failure: Run the container without GPU access
+- 14. Troubleshooting
+  - Symptom: Host sees the GPU, container does not
+  - Symptom: Utilization remains zero during the test
+  - Symptom: Memory remains allocated after the workload
+  - Symptom: Power or temperature reaches an unexpected limit
+- 15. Cleanup
+- 16. Summary
+- 17. Challenge Exercises
+- 18. Further Reading
+
+## Lab 03 — Profile Memory and Warp Efficiency  (labs/lab-03-profile-memory-and-warp-efficiency.md)
+- Lab Metadata
+- 1. Objective
+- 2. Background
+- 3. Learning Outcomes
+- 4. Architecture
+- 5. Prerequisites
+  - Hardware
+  - Software
+  - Permissions
+- 6. Environment
+  - Expected Output (illustrative, not captured)
+  - Common Errors
+- 7. Components
+- 8. Deployment Steps
+  - Step 1 — Create a Working Directory
+    - Purpose
+    - Command
+  - Step 2 — Create the Benchmark
+    - Explanation
+  - Step 3 — Compile the Program
+    - Expected Output (illustrative, not captured)
+    - Record
+  - Step 4 — Check for Background Work
+  - Step 5 — Run the Contiguous Baseline
+  - Step 6 — Run the Strided Version
+  - Step 7 — Profile the Baseline
+  - Step 8 — Profile the Strided Version
+  - Step 9 — Print Report Summaries
+- 9. Validation
+- 10. Verification
+- 11. Observability
+- 12. Performance Measurements
+- 13. Failure Injection
+  - Failure Scenario — Increase Per-Thread State
+  - Failure Scenario — Reduce Workload Size
+- 14. Troubleshooting
+  - Problem — Nsight Compute Cannot Access Counters
+  - Problem — Benchmark Reports CUDA Error
+  - Problem — Results Vary Widely
+  - Problem — Strided Kernel Is Not Slower
+- 15. Cleanup
+- 16. Summary
+- 17. Challenge Exercises
+- 18. Further Reading
+
+## Lab 04 — Build a Topology-Aware GPU Placement Plan  (labs/lab-04-build-a-topology-aware-gpu-placement-plan.md)
+- Lab Metadata
+- 1. Objective
+- 2. Background
+- 3. Learning Outcomes
+- 4. Architecture
+- 5. Prerequisites
+  - Hardware
+  - Software
+  - Permissions
+- 6. Environment
+- 7. Components
+- 8. Deployment Steps
+  - Step 1 — Build the Stable GPU Inventory
+    - Purpose
+    - Command
+    - Expected Output (illustrative, not captured)
+    - Explanation
+  - Step 2 — Record the GPU Topology Matrix
+    - Interpretation
+  - Step 3 — Map Every GPU to a NUMA Node
+    - Common Errors
+  - Step 4 — Map Network Adapters to NUMA Nodes
+    - Commands
+  - Step 5 — Inspect CPU and Memory Layout
+  - Step 6 — Inspect PCIe Link State
+  - Step 7 — Classify Workload Profiles
+    - Profile A — Single-GPU inference
+    - Profile B — Multi-GPU training inside one node
+    - Profile C — Distributed multi-node training
+  - Step 8 — Write the Placement Policy
+- 9. Validation
+- 10. Verification
+- 11. Observability
+- 12. Performance Measurements
+- 13. Failure Injection
+  - Failure Scenario — Deliberately Poor Placement Plan
+- 14. Troubleshooting
+  - Problem — Topology matrix changes after maintenance
+  - Problem — Preferred GPU group performs poorly
+  - Problem — Scheduler cannot satisfy strict placement
+- 15. Cleanup
+- 16. Summary
+- 17. Challenge Exercises
+- 18. Further Reading
