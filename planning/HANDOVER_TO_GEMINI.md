@@ -260,3 +260,12 @@ When a chapter is complete and all checks pass, update `planning/STATUS.md`, `co
 - Build and Mermaid check status (`SUCCESS`, `0 failed`)
 - The numbered list of `"my inference"` items in the chapter
 
+
+## 17. Speed rules (added 2026-10-24)
+
+1. **One command for the mechanical steps:** `tools/check_all.sh P.C /tmp/w/pPC.md` runs install, pipes, lint, generate, all labs in `code/partNN/`, build and mermaid. Run it **once**, after the draft is finished. While drafting, use `--no-build` (skips the slow build and mermaid steps).
+2. **Order of work per chapter:** (a) `brief.py`; (b) read only the mapped sources, appending each fact to `planning/ledgers/P-C.md` after every source (do not hold it in memory); (c) write the model + lab and run it; (d) draft the chapter in two halves, saving each half to `/tmp/w/` as soon as it is written; (e) `check_all.sh`; (f) update STATUS, part README, ledger.
+3. **Read narrowly.** Use `bookch.py` on the mapped chapters, and `brief.py --q` or grep for terms. Do not open whole books. A very long off-topic source: record one line in `ROUTED_TODO.md` and move on.
+4. **Timebox.** If reading a source has taken more than ~10 minutes of work with no new ledger rows, stop, write what you have, and mark the rest "not read" honestly.
+5. **No narration.** Do not post progress updates between steps. Report once at the end in the section 16 format.
+6. **Do not re-run the full build after small text edits.** Fix, then run `check_all.sh` again once.
