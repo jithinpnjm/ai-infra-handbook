@@ -1,0 +1,27 @@
+{
+"9": {
+ "04": [
+  {"after": "## 2. Inside the NVIDIA Grace CPU", "book": "ai-systems-performance-engineering", "file": "aisp_0201.png", "caption": "A Grace Blackwell Superchip module: one Grace CPU in the centre with two Blackwell GPUs beside it.", "credit": "Fregly, AI Systems Performance Engineering, Fig. 2-1"},
+  {"after": "## 4. The Superchip lineup", "book": "ai-systems-performance-engineering", "file": "aisp_0202.png", "caption": "Inside one Blackwell GPU: two reticle-sized dies joined by a 10 TB/s link so they act as one GPU, with 192 GB of HBM3e.", "credit": "Fregly, AI Systems Performance Engineering, Fig. 2-2"}
+ ],
+ "05": [
+  {"after": "### 2.1 Inside a 1U DGX", "book": "ai-systems-performance-engineering", "file": "aisp_0206.png", "caption": "A 1U compute tray from a GB200/GB300 NVL72 rack, with two Grace Blackwell Superchips.", "credit": "Fregly, AI Systems Performance Engineering, Fig. 2-6"},
+  {"after": "### 2.1 Inside a 1U DGX", "book": "ai-systems-performance-engineering", "file": "aisp_0207.png", "caption": "Board layout of a compute tray: Grace CPU, two Blackwell GPUs per Superchip, NVLink 5 connector, ConnectX-7 NICs, BMC and power connectors. (The book captions this figure as a switch tray, but the drawing shows the compute-tray board.)", "credit": "Fregly, AI Systems Performance Engineering, Fig. 2-7"},
+  {"after": "### 3.1 Proving the 1,296-port", "book": "ai-systems-performance-engineering", "file": "aisp_0209.png", "caption": "Every GPU has one NVLink to every NVSwitch. Four-GPU compute trays on the left, 18 NVSwitches at the bottom, and the rack summary on the right.", "credit": "Fregly, AI Systems Performance Engineering, Fig. 2-9"}
+ ],
+ "09": [
+  {"after": "### 2.1 Rail-Optimized", "book": "ai-data-center-network-design-and-technologies", "file": "03fig04.jpg", "caption": "Rail-optimized wiring: NIC k of every server goes to leaf k, so each leaf carries one rail.", "credit": "AI Data Center Network Design and Technologies, Fig. 3-4"},
+  {"after": "### 2.2 Physical placement", "book": "ai-data-center-network-design-and-technologies", "file": "03fig19.jpg", "caption": "Top-of-rack leaf placement for one rail-optimized row: 8 racks, each with a switch on top of four servers.", "credit": "AI Data Center Network Design and Technologies, Fig. 3-19"},
+  {"after": "### 2.3 Scaling from 3-Stage", "book": "ai-data-center-network-design-and-technologies", "file": "03fig09.jpg", "caption": "How far a three-stage Clos fabric with 64-port 400G switches can grow: up to 2,048 GPUs.", "credit": "AI Data Center Network Design and Technologies, Fig. 3-9"},
+  {"after": "### 2.3 Scaling from 3-Stage", "book": "ai-data-center-network-design-and-technologies", "file": "03fig12.jpg", "caption": "Five-stage Clos: adding blocks of 1,024 GPUs raises the oversubscription at the super-spine from 1:1 up to 8:1.", "credit": "AI Data Center Network Design and Technologies, Fig. 3-12"},
+  {"after": "### 3.2 Proactive Load Balancing", "book": "ai-data-center-network-design-and-technologies", "file": "02fig02.jpg", "caption": "Proactive congestion avoidance (load balancing) versus reactive congestion control (DCQCN, telemetry).", "credit": "AI Data Center Network Design and Technologies, Fig. 2-2"},
+  {"after": "### 3.2 Proactive Load Balancing", "book": "ai-data-center-network-design-and-technologies", "file": "02fig05.jpg", "caption": "ECN marks packets as congested and the sender slows down. PFC pauses the upstream queue before a buffer overflows.", "credit": "AI Data Center Network Design and Technologies, Fig. 2-5"}
+ ],
+ "11": [
+  {"after": "### 4.1 Comparing all five", "book": "ai-data-center-network-design-and-technologies", "file": "05fig07.jpg", "caption": "Rear-door heat exchanger: warm air from the servers passes through a water-cooled coil on the rack door.", "credit": "AI Data Center Network Design and Technologies, Fig. 5-7"},
+  {"after": "### 4.1 Comparing all five", "book": "ai-data-center-network-design-and-technologies", "file": "05fig03.jpg", "caption": "Single-phase immersion: servers sit in a tank of liquid, which is pumped to a heat exchanger.", "credit": "AI Data Center Network Design and Technologies, Fig. 5-3"},
+  {"after": "### 4.1 Comparing all five", "book": "ai-data-center-network-design-and-technologies", "file": "05fig04.jpg", "caption": "Two-phase immersion: the fluid boils on the hot chips, rises as vapour and is condensed back to liquid.", "credit": "AI Data Center Network Design and Technologies, Fig. 5-4"},
+  {"after": "### 4.1 Comparing all five", "book": "ai-data-center-network-design-and-technologies", "file": "05fig08.jpg", "caption": "Sprayed liquid cooling: liquid is sprayed onto the hot chip and carried to a heat exchanger.", "credit": "AI Data Center Network Design and Technologies, Fig. 5-8"}
+ ]
+}
+}

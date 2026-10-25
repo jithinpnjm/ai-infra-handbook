@@ -21,3 +21,7 @@ yarn-error.log*
 __pycache__/
 *.pyc
 
+
+# EPUB build output
+/build-epub
+/tools/epub/node_modules

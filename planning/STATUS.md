@@ -106,40 +106,40 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 6.15 | Slurm high availability, upgrades and scaling | drafted | 3019 |  |
 | 6.16 | Slurm on Kubernetes: Slinky and Soperator | drafted | 2725 |  |
 | 6.31 | Capstone: build and operate a small Slurm GPU cluster | drafted | 3186 |  |
-| 10.8 | Operating GPU nodes: nvidia-smi, topology, clocks and throttling | scaffold |  |  |
-| 10.9 | The NVIDIA software stack: driver, CUDA toolkit, container toolkit, compatibility | scaffold |  |  |
-| 10.10 | Fabric Manager, NVSM and NVLink domains | scaffold |  |  |
-| 10.21 | GPU health: DCGM, ECC, row remapping and Xid | scaffold |  |  |
-| 10.22 | GPU troubleshooting scenarios | scaffold |  |  |
-| 11.1 | Why Kubernetes needs a GPU platform layer | scaffold |  |  |
-| 11.2 | Device plugin, container toolkit, CDI and runtime classes | scaffold |  |  |
-| 11.3 | Node Feature Discovery and GPU Feature Discovery | scaffold |  |  |
-| 11.4 | GPU Operator architecture and operands | scaffold |  |  |
-| 11.5 | GPU Operator installation, configuration and upgrades | scaffold |  |  |
-| 11.6 | Scheduling GPUs: requests, Topology Manager, CPU and NUMA alignment | scaffold |  |  |
-| 11.7 | Multi-node jobs: why a pod cannot span nodes, and gang scheduling concepts | scaffold |  |  |
-| 11.8 | Kueue, Volcano and scheduler plugins | scaffold |  |  |
-| 11.9 | JobSet, LeaderWorkerSet, PyTorchJob and the MPI Operator | scaffold |  |  |
-| 11.10 | Secondary networks: Multus, SR-IOV device plugin and RDMA device plugin | scaffold |  |  |
-| 11.11 | NVIDIA Network Operator | scaffold |  |  |
-| 11.12 | Dynamic Resource Allocation (DRA) | scaffold |  |  |
-| 11.13 | KAI Scheduler: why default scheduling is not enough | scaffold |  |  |
-| 11.14 | KAI Scheduler architecture and resources | scaffold |  |  |
-| 11.15 | KAI queues, quotas and fair sharing | scaffold |  |  |
-| 11.16 | KAI gang scheduling and topology-aware placement | scaffold |  |  |
-| 11.17 | KAI GPU sharing and fractions | scaffold |  |  |
-| 11.18 | KAI operations and troubleshooting | scaffold |  |  |
-| 11.19 | The Run:ai platform view | scaffold |  |  |
-| 11.20 | Scheduler comparison guide: KAI, Kueue, Volcano, YuniKorn and Slurm | scaffold |  |  |
-| 11.21 | PCIe, IOMMU, VFIO and device passthrough | scaffold |  |  |
-| 11.22 | SR-IOV for NICs and GPUs | scaffold |  |  |
-| 11.23 | NVIDIA vGPU: architecture, profiles and licensing | scaffold |  |  |
-| 11.24 | MIG in depth | scaffold |  |  |
-| 11.25 | Time-slicing, MPS and oversubscription | scaffold |  |  |
-| 11.26 | Choosing a GPU sharing model | scaffold |  |  |
-| 11.27 | Virtual machines on Kubernetes: KubeVirt, Kata and GPU passthrough | scaffold |  |  |
-| 11.29 | Multi-tenancy, quotas, fault tolerance and health on GPU clusters | scaffold |  |  |
-| 11.30 | Lab: multi-node GPU Kubernetes on GKE and Nebius | scaffold |  |  |
+| 10.8 | Operating GPU nodes: nvidia-smi, topology, clocks and throttling | drafted | 10110 |  |
+| 10.9 | The NVIDIA software stack: driver, CUDA toolkit, container toolkit, compatibility | drafted | 9332 |  |
+| 10.10 | Fabric Manager, NVSM and NVLink domains | drafted | 9528 |  |
+| 10.21 | GPU health: DCGM, ECC, row remapping and Xid | drafted | 8984 |  |
+| 10.22 | GPU troubleshooting scenarios | drafted | 8451 |  |
+| 11.1 | Why Kubernetes needs a GPU platform layer | drafted | 8161 |  |
+| 11.2 | Device plugin, container toolkit, CDI and runtime classes | draft | 8542 |  |
+| 11.3 | Node Feature Discovery and GPU Feature Discovery | draft | 6956 |  |
+| 11.4 | GPU Operator architecture and operands | draft | 7038 |  |
+| 11.5 | GPU Operator installation, configuration and upgrades | draft | 7056 |  |
+| 11.6 | Scheduling GPUs: requests, Topology Manager, CPU and NUMA alignment | draft | 7722 |  |
+| 11.7 | Multi-node jobs: why a pod cannot span nodes, and gang scheduling concepts | draft | 7393 |  |
+| 11.8 | Kueue, Volcano and scheduler plugins | draft | 6913 |  |
+| 11.9 | JobSet, LeaderWorkerSet, PyTorchJob and the MPI Operator | draft | 6844 |  |
+| 11.10 | Secondary networks: Multus, SR-IOV device plugin and RDMA device plugin | draft | 6859 |  |
+| 11.11 | NVIDIA Network Operator | draft | 6849 |  |
+| 11.12 | Dynamic Resource Allocation (DRA) | draft | 6685 |  |
+| 11.13 | KAI Scheduler: why default scheduling is not enough | draft | 6709 |  |
+| 11.14 | KAI Scheduler architecture and resources | draft | 6818 |  |
+| 11.15 | KAI queues, quotas and fair sharing | draft | 6813 |  |
+| 11.16 | KAI gang scheduling and topology-aware placement | draft | 6785 |  |
+| 11.17 | KAI GPU sharing and fractions | draft | 7309 |  |
+| 11.18 | KAI operations and troubleshooting | draft | 7123 |  |
+| 11.19 | The Run:ai platform view | draft | 7323 |  |
+| 11.20 | Scheduler comparison guide: KAI, Kueue, Volcano, YuniKorn and Slurm | draft | 7101 |  |
+| 11.21 | PCIe, IOMMU, VFIO and device passthrough | draft | 7382 |  |
+| 11.22 | SR-IOV for NICs and GPUs | draft | 6998 |  |
+| 11.23 | NVIDIA vGPU: architecture, profiles and licensing | draft | 6954 |  |
+| 11.24 | MIG in depth | draft | 7197 |  |
+| 11.25 | Time-slicing, MPS and oversubscription | draft | 6692 |  |
+| 11.26 | Choosing a GPU sharing model | draft | 6723 |  |
+| 11.27 | Virtual machines on Kubernetes: KubeVirt, Kata and GPU passthrough | draft | 6909 |  |
+| 11.29 | Multi-tenancy, quotas, fault tolerance and health on GPU clusters | draft | 7712 |  |
+| 11.30 | Lab: multi-node GPU Kubernetes on GKE and Nebius | draft | 7270 |  |
 | 12.1 | AI traffic: collectives, incast and elephant flows | scaffold |  |  |
 | 12.2 | RDMA fundamentals: verbs, queue pairs and memory registration | scaffold |  |  |
 | 12.3 | RoCEv2 transport and congestion management | scaffold |  |  |
@@ -235,20 +235,20 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 8.14 | Air-gapped installation and upgrades | drafted | 3145 |  |
 | 8.15 | BCM in an AI factory: DGX SuperPOD integration | drafted | 2604 |  |
 | 8.16 | Mission Control, DGX Cloud and autonomous recovery concepts | drafted | 7324 |  |
-| 9.1 | DGX system families and what they are for | scaffold |  |  |
-| 9.2 | Inside a DGX H100 and H200 system | scaffold |  |  |
-| 9.3 | HGX platforms and OEM integration | scaffold |  |  |
-| 9.4 | Grace CPU, GH200 and GB200 superchips | scaffold |  |  |
-| 9.5 | GB200 and GB300 NVL72 rack-scale systems | scaffold |  |  |
-| 9.6 | DGX SuperPOD concepts: scalable units, fabrics and tiers | scaffold |  |  |
-| 9.7 | DGX B200 SuperPOD data center design: power, cooling, cabling and layout | scaffold |  |  |
-| 9.8 | GB300 SuperPOD reference architecture | scaffold |  |  |
-| 9.9 | Compute, storage, in-band and out-of-band networks in a SuperPOD | scaffold |  |  |
-| 9.10 | BasePOD and smaller deployments | scaffold |  |  |
-| 9.11 | Power delivery, thermal design and liquid cooling | scaffold |  |  |
-| 9.12 | Software stack and management in an AI factory | scaffold |  |  |
-| 9.13 | Sizing and capacity-planning exercises | scaffold |  |  |
-| 9.14 | Cloud GPU platforms: DGX Cloud, CoreWeave, Nebius and GCP A3 and A4 | scaffold |  |  |
+| 9.1 | DGX system families and what they are for | drafted | 10032 |  |
+| 9.2 | Inside a DGX H100 and H200 system | drafted | 8283 |  |
+| 9.3 | HGX platforms and OEM integration | drafted | 9620 |  |
+| 9.4 | Grace CPU, GH200 and GB200 superchips | drafted | 7455 |  |
+| 9.5 | GB200 and GB300 NVL72 rack-scale systems | drafted | 7745 |  |
+| 9.6 | DGX SuperPOD concepts: scalable units, fabrics and tiers | drafted | 8201 |  |
+| 9.7 | DGX B200 SuperPOD data center design: power, cooling, cabling and layout | drafted | 7516 |  |
+| 9.8 | GB300 SuperPOD reference architecture | drafted | 6695 |  |
+| 9.9 | Compute, storage, in-band and out-of-band networks in a SuperPOD | drafted | 7512 |  |
+| 9.10 | BasePOD and smaller deployments | drafted | 7489 |  |
+| 9.11 | Power delivery, thermal design and liquid cooling | drafted | 7272 |  |
+| 9.12 | Software stack and management in an AI factory | drafted | 6626 |  |
+| 9.13 | Sizing and capacity-planning exercises | drafted | 6854 |  |
+| 9.14 | Cloud GPU platforms: DGX Cloud, CoreWeave, Nebius and GCP A3 and A4 | drafted | 6372 |  |
 | 16.12 | NVIDIA enterprise stack: AI Enterprise, NGC and licensing | scaffold |  |  |
 
 ## Tier 2: senior-loop depth: 146 chapters
@@ -323,24 +323,24 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 6.28 | HPC benchmarking: HPL, HPCG, IOR, OSU and NCCL tests | drafted | 3476 |  |
 | 6.29 | Containers and reproducibility in HPC: Apptainer and enroot | drafted | 3132 |  |
 | 6.30 | Facility basics: power, cooling, racks and liquid cooling | drafted | 4401 |  |
-| 10.1 | Why GPUs: CPU versus GPU and throughput design | scaffold |  |  |
-| 10.2 | The execution model: threads, warps, blocks and SMs | scaffold |  |  |
-| 10.3 | The GPU memory hierarchy | scaffold |  |  |
-| 10.4 | Tensor cores and numerical precision | scaffold |  |  |
-| 10.5 | The roofline model and performance modelling | scaffold |  |  |
-| 10.6 | GPU interconnects: PCIe, NVLink, NVSwitch and NVLink-C2C | scaffold |  |  |
-| 10.7 | GPU generations and product line: Ampere, Hopper, Blackwell; PCIe versus SXM | scaffold |  |  |
-| 10.11 | CUDA programming basics: kernels, indexing and memory | scaffold |  |  |
-| 10.12 | Streams, events, asynchronous copies and pinned memory | scaffold |  |  |
-| 10.13 | Memory access patterns and profiling | scaffold |  |  |
-| 10.14 | Occupancy, warp efficiency and instruction-level parallelism | scaffold |  |  |
-| 10.15 | Kernel efficiency and arithmetic intensity | scaffold |  |  |
-| 10.16 | Intra-kernel pipelining, warp specialization and thread block clusters | scaffold |  |  |
-| 10.17 | Inter-kernel pipelining, synchronization and stream-ordered allocation | scaffold |  |  |
-| 10.18 | Dynamic scheduling, CUDA graphs and device-initiated orchestration | scaffold |  |  |
-| 10.19 | Triton language and compilers: OpenAI Triton, torch.compile, XLA | scaffold |  |  |
-| 10.20 | Profiling tools: Nsight Systems, Nsight Compute, PyTorch profiler | scaffold |  |  |
-| 11.28 | DPUs, BlueField and DOCA | scaffold |  |  |
+| 10.1 | Why GPUs: CPU versus GPU and throughput design | drafted | 13317 |  |
+| 10.2 | The execution model: threads, warps, blocks and SMs | drafted | 11312 |  |
+| 10.3 | The GPU memory hierarchy | drafted | 10882 |  |
+| 10.4 | Tensor cores and numerical precision | drafted | 8008 |  |
+| 10.5 | The roofline model and performance modelling | drafted | 8534 |  |
+| 10.6 | GPU interconnects: PCIe, NVLink, NVSwitch and NVLink-C2C | draft | 8795 |  |
+| 10.7 | GPU generations and product line: Ampere, Hopper, Blackwell; PCIe versus SXM | draft | 10197 |  |
+| 10.11 | CUDA programming basics: kernels, indexing and memory | drafted | 9900 |  |
+| 10.12 | Streams, events, asynchronous copies and pinned memory | drafted | 7627 |  |
+| 10.13 | Memory access patterns and profiling | drafted | 9244 |  |
+| 10.14 | Occupancy, warp efficiency and instruction-level parallelism | drafted | 8262 |  |
+| 10.15 | Kernel efficiency and arithmetic intensity | drafted | 8876 |  |
+| 10.16 | Intra-kernel pipelining, warp specialization and thread block clusters | drafted | 11020 |  |
+| 10.17 | Inter-kernel pipelining, synchronization and stream-ordered allocation | drafted | 9145 |  |
+| 10.18 | Dynamic scheduling, CUDA graphs and device-initiated orchestration | drafted | 8890 |  |
+| 10.19 | Triton language and compilers: OpenAI Triton, torch.compile, XLA | drafted | 8060 |  |
+| 10.20 | Profiling tools: Nsight Systems, Nsight Compute, PyTorch profiler | drafted | 8694 |  |
+| 11.28 | DPUs, BlueField and DOCA | draft | 6638 |  |
 | 12.10 | HDR, NDR, XDR, optics and cabling | scaffold |  |  |
 | 12.11 | NVIDIA Spectrum-X and Spectrum switches | scaffold |  |  |
 | 12.12 | Ethernet versus InfiniBand: a design decision guide | scaffold |  |  |

@@ -5,9 +5,14 @@ Written 2026-10-24 by Claude at the end of its session. Read this whole file fir
 ## 0. Where things stand
 
 - Repo: `~/Documents/GitHub/ai-infra-handbook` (Docusaurus). Docs under `docs/part-NN-*/`. Chapter files are scaffolds until written; a written chapter has front matter `status: "drafted"`.
-- **Done (drafted):** Parts 1 to 7 complete; Part 8 chapters **8.1 to 8.15** complete. **Next chapter to write: 8.16** (Mission Control, DGX Cloud and autonomous recovery concepts). Then Parts 9 to 19 (see `planning/structure.txt` for the exact chapter list and `planning/STATUS.md`). Part 0 has three orientation scaffolds, do those last.
-- Committed to git on 2026-10-24 (branch master). The author has allowed commits (2026-10-24): commit after each finished chapter with a clear message.
-- Progress notes are also in Claude's memory file (not available to you); this document is the source of truth. After each chapter update `planning/STATUS.md` (and add one line per chapter to a running log at the bottom of this file, section 12).
+- **Done (drafted & verified):**
+  - **Parts 1 to 7:** 100% complete.
+  - **Part 8 (`8.1` to `8.16` + full Part 8 gap pass):** 100% complete (`code/part08/`, 756 checks passing across 16 labs; audit ledgers in `planning/ledgers/8-*.md`).
+  - **Part 9 (`9.1` to `9.14` — NVIDIA systems and reference architectures):** 100% complete (`107,566` words across 14 chapters after de-duplication; `code/part09/`, 401 checks passing across 14 labs; audit ledgers in `planning/ledgers/9-01.md` to `9-14.md`; `Volume 05` and `Volume 06` of `nvidia-devops` 100% migrated and marked `yes` in `planning/MIGRATION_MAP.md`).
+  - **Part 10 (`10.1` to `10.22` — The GPU and CUDA):** 100% complete (all 22 chapters drafted and passing `validate_chapter.py` with `VERDICT: OK`; `code/part10/`, 581 self-checking lab assertions passing across 22 labs with 0 failures; audit ledgers in `planning/ledgers/10-01.md` to `10-22.md`; coverage trackers in `planning/coverage/chapters/10-01.md` to `10-22.md`).
+- **Next chapter to write when starting a new session:** **Chapter 11.1 (`Why Kubernetes needs a GPU platform layer`, `docs/part-11-kubernetes-gpu-kai/01-why-kubernetes-needs-a-gpu-platform-layer.md`)**, then proceed sequentially through **Parts 11 to 19** (see `planning/structure.txt` for the exact chapter list and `planning/STATUS.md`). Part 0 has three orientation scaffolds; do those last.
+- **Git commits:** Do not commit unless explicitly requested by the author.
+- Progress notes and audit trails are maintained in `planning/STATUS.md`, `planning/MIGRATION_MAP.md`, `planning/ROUTED_TODO.md`, `planning/ledgers/P-C.md`, and the running log in section 12 of this file.
 
 ## 1. The author's standing rules (never break these)
 
@@ -20,6 +25,16 @@ Written 2026-10-24 by Claude at the end of its session. Read this whole file fir
 7. **Use mermaid diagrams** (at least one per chapter where a flow or architecture exists).
 8. Keep chat replies to the author short and minimal ("concise by default"). Put depth in the chapter files.
 9. A "books used effectively" **revisit pass** is planned later; keep a list of anything you skimmed (section 11).
+
+## 1a. Added rules after the 10.8 / 10.9 reviews (2026-10-25). Read before every chapter
+
+Run `python3 tools/validate_chapter.py P.C` before you move on; it checks numbers against sources, structure, the lab
+and source coverage. Then follow the "SOURCE BREADTH AND HONESTY RULES" in `planning/FLASH_PART10_PROMPT.md` (copy of the
+same rules in `planning/FLASH_ARGON_CLAUDE_WORKFLOW.md`): per-heading corpus search with every UNRECORDED book opened and
+recorded; BCM manuals for how BCM installs the component; Volume 19/20/16 incident notes for operations topics; no
+reference tables from memory; exact source numbers only; honest read / not-read lists. Diagrams must be readable: at most 2 short lines per Mermaid box, under 130 characters, all detail in a table under the
+diagram (the validator fails longer boxes). The current workflow is Argon drafts and self-checks, Claude validates
+(Flash was dropped on 2026-10-25).
 
 ## 2. Tools and paths
 
@@ -155,6 +170,14 @@ The author will bring your chapters back to Claude. Claude will:
     2. **Install-mode precedence (8.4, Administrator Manual 5.4.4 pp. 278–279):** the manual lists the six places `node-installer` checks (`newnodeinstallmode`, PXE menu, `nextinstallmode`, node `installmode`, category `installmode`, and the console dialog in Figure 5.17 which gives a last opportunity to overrule), but does not state whether a non-default PXE menu selection beats an explicitly set `nextinstallmode` or node `installmode` when both are set simultaneously.
     3. **Quorum denominator wording (8.12, Administrator Manual 15.1.6 & 15.4.6):** the manual states that nodes not answering within `Quorum time` are no longer considered and that more than half of the nodes must confirm, leaving slightly ambiguous whether "half" means half of the responding nodes or half of all cluster nodes.
     4. **Other separate BCM manuals not in the corpus** (*Cloudbursting Manual*, *Edge Manual*, *Developer Manual*, *User Manual*) and Administrator Manual chapters 11 to 13 (job monitoring, accounting, chargeback) and 16 (Jupyter integration), which were outside Part 8's chapter list.
+- Part 9 (completed 2026-10-25; ledgers in `planning/ledgers/9-01.md` to `9-14.md`):
+  - **Sources read 100% in full:** `superpod-b200-dc` (pp. 1–24), `superpod-gb300-ra` (pp. 1–36), `ai-systems-performance-engineering` Ch. 1, Ch. 2, Ch. 3, and Ch. 13 (SuperOffload / GraceAdam), `distributed-ai-systems` Ch. 2, `ai-data-center-network-design-and-technologies` Ch. 2, Ch. 3, and Ch. 5, `bcm11-admin` §3.16, §6.5, §7.5 (Topograph pp. 408–420), and §14.5 (DGX H100 & GB200/GB300 firmware pp. 758–765), `nvidia-devops` Volumes 04, 05 (100% migrated), 06 (100% migrated), 19 (Ch. 3, 6), 21 (Ch. 1–6, 10–13, Labs 1 & 4), and `volume-08` (Ch. 1, 2).
+  - **Remaining Part 9 items not in the local book corpus (flagged in chapter scope notes):**
+    1. Standalone *NVIDIA DGX H100 / H200 / B200 System User Guides*, *NVIDIA DGX OS 6 User Guide*, and *NVIDIA GB200 NVL72 Hardware User Guide* PDFs.
+    2. Confidential *NVIDIA HGX System Design Guides for OEMs* and vendor-specific OEM service manuals (Dell PowerEdge XE9680, Supermicro SYS-821GE, HPE, Lenovo) and BasePOD partner storage whitepapers.
+    3. Companion documents referenced on p. 35 of `superpod-gb300-ra` (*DGX GB300 Data Center Design Guide*, *Detailed Software Architecture for NVIDIA Mission Control*, and *Relevant Security Information*).
+    4. Live cloud provider API schemas and pricing/SKU tables for `DGX Cloud`, `CoreWeave`, `Nebius AI Cloud`, and `GCP A3/A3 Ultra/A4/A4X` (flagged for verification against live provider docs).
+  - **Routed `nvidia-devops` files for Parts 10 to 17:** `volume-04` (also mapped to `10.7`), `volume-19` operational runbooks (mapped to `11.29, 15.18, 17.10–17.15`), and `volume-21` distributed training / inference / multi-region files (mapped to `14.1, 15.1, 15.18, 16.14, 17.12`).
 
 ## 12. Running log (append one line per chapter)
 
@@ -162,6 +185,26 @@ The author will bring your chapters back to Claude. Claude will:
 - (Gemini: add lines here: `P.C drafted YYYY-MM-DD, lab file, N checks, build OK, mermaid OK, notes`.)
 - 8.16 drafted 2026-10-24, code/part08/mission_control_lab.py, 31 checks, build OK, mermaid OK, notes in /tmp/w/notes-8-16.md, ledger in planning/ledgers/8-16.md
 - Part 8 gap pass completed 2026-10-24: updated 8.1 (4252w, 35 checks), 8.3 (5519w, 67 checks), 8.4 (5716w, 82 checks), 8.5 (3123w, 55 checks), 8.8 (4305w, 60 checks), 8.9 (5738w, 64 checks), 8.11 (4069w, 46 checks), 8.12 (4034w, 50 checks), 8.13 (3129w, 45 checks), 8.14 (3244w, 34 checks); ledgers in planning/ledgers/8-{01,03,04,08,09,11,12,13,14,16}.md; build OK, mermaid OK (241 diagrams, 0 failed)
+- 9.1 drafted 2026-10-24, code/part09/dgx_families_lab.py, 38 checks, build OK, mermaid OK (243 diagrams, 0 failed), notes in /tmp/w/notes-9-01.md, ledger in planning/ledgers/9-01.md
+- 9.2 drafted 2026-10-24, code/part09/dgx_h100_h200_lab.py, 30 checks, build OK, mermaid OK (245 diagrams, 0 failed), notes in /tmp/w/notes-9-02.md, ledger in planning/ledgers/9-02.md
+- 9.3 drafted 2026-10-24, code/part09/hgx_oem_platform_lab.py, 28 checks, build OK, mermaid OK (248 diagrams, 0 failed), notes in /tmp/w/notes-9-03.md, ledger in planning/ledgers/9-03.md
+- 9.4 drafted 2026-10-24, code/part09/grace_superchips_lab.py, 30 checks, build OK, mermaid OK (251 diagrams, 0 failed), notes in /tmp/w/notes-9-04.md, ledger in planning/ledgers/9-04.md
+- 9.5 drafted 2026-10-24, code/part09/nvl72_rack_lab.py, 30 checks, build OK, mermaid OK (255 diagrams, 0 failed), notes in /tmp/w/notes-9-05.md, ledger in planning/ledgers/9-05.md
+- 9.6 drafted 2026-10-24, code/part09/superpod_concepts_lab.py, 30 checks, build OK, mermaid OK (257 diagrams, 0 failed), notes in /tmp/w/notes-9-06.md, ledger in planning/ledgers/9-06.md
+- 9.7 drafted 2026-10-24, code/part09/b200_datacenter_lab.py, 30 checks, build OK, mermaid OK (259 diagrams, 0 failed), notes in /tmp/w/notes-9-07.md, ledger in planning/ledgers/9-07.md
+- 9.8 drafted 2026-10-24, code/part09/gb300_superpod_ra_lab.py, 28 checks, build OK, mermaid OK (262 diagrams, 0 failed), notes in /tmp/w/notes-9-08.md, ledger in planning/ledgers/9-08.md
+- 9.9 drafted 2026-10-24, code/part09/superpod_networks_lab.py, 27 checks, build OK, mermaid OK (264 diagrams, 0 failed), notes in /tmp/w/notes-9-09.md, ledger in planning/ledgers/9-09.md
+- 9.10 drafted 2026-10-24, code/part09/basepod_deployments_lab.py, 28 checks, build OK, mermaid OK (267 diagrams, 0 failed), notes in /tmp/w/notes-9-10.md, ledger in planning/ledgers/9-10.md
+- 9.11 drafted 2026-10-24, code/part09/power_thermal_cooling_lab.py, 26 checks, build OK, mermaid OK (269 diagrams, 0 failed), notes in /tmp/w/notes-9-11.md, ledger in planning/ledgers/9-11.md
+- 9.12 drafted 2026-10-24, code/part09/ai_factory_software_lab.py, 26 checks, build OK, mermaid OK (270 diagrams, 0 failed), notes in /tmp/w/notes-9-12.md, ledger in planning/ledgers/9-12.md
+- 9.13 drafted 2026-10-24, code/part09/capacity_planning_lab.py, 25 checks, build OK, mermaid OK (272 diagrams, 0 failed), notes in /tmp/w/notes-9-13.md, ledger in planning/ledgers/9-13.md
+- 9.14 drafted 2026-10-25, code/part09/cloud_gpu_platforms_lab.py, 25 checks, build OK, mermaid OK (275 diagrams, 0 failed), notes in /tmp/w/notes-9-14.md, ledger in planning/ledgers/9-14.md
+- Part 9 (9.1 to 9.14) completed 2026-10-25: 14 chapters drafted (100,995 words total), 14 labs in code/part09/ (401 checks passing, 0 failed), build OK, mermaid OK (275 diagrams, 0 failed). Next chapter: 10.1.
+- 10.1 drafted 2026-10-25, code/part10/why_gpus_lab.py, 30 checks, build OK, mermaid OK (282 diagrams, 0 failed), ledger in planning/ledgers/10-01.md
+- 10.2 drafted 2026-10-25, code/part10/execution_model_lab.py, 25 checks, build OK, mermaid OK (287 diagrams, 0 failed), ledger in planning/ledgers/10-02.md
+- 10.3 drafted 2026-10-25, code/part10/gpu_memory_hierarchy_lab.py, 25 checks, build OK, mermaid OK (289 diagrams, 0 failed), ledger in planning/ledgers/10-03.md
+- 10.4 drafted 2026-10-25, code/part10/tensor_cores_precision_lab.py, 25 checks, build OK, mermaid OK (293 diagrams, 0 failed), ledger in planning/ledgers/10-04.md
+- 10.5 drafted 2026-10-25, code/part10/roofline_model_lab.py, 25 checks, build OK, mermaid OK (296 diagrams, 0 failed), ledger in planning/ledgers/10-05.md
 
 ## 13. The working model (proven on 8.16)
 

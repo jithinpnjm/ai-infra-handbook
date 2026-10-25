@@ -31,7 +31,7 @@ const config = {
 
   themeConfig: {
     colorMode: {respectPrefersColorScheme: true},
-    mermaid: {options: {flowchart: {useMaxWidth: true, nodeSpacing: 45, rankSpacing: 50, padding: 14}, themeVariables: {fontSize: '15px'}}},
+    mermaid: {options: {flowchart: {useMaxWidth: true, nodeSpacing: 45, rankSpacing: 50, padding: 14, wrappingWidth: 420}, themeVariables: {fontSize: '15px'}}},
     navbar: {
       title: 'AI Infrastructure Handbook',
       items: [{type: 'docSidebar', sidebarId: 'tutorialSidebar', position: 'left', label: 'Book'}],

@@ -20,145 +20,145 @@ Files: 452; words: 1,222,448; migrated so far: 21,575 words (1.8%). Unmapped fil
 | intro/02-foundation-learning-path.md | 1119 | Foundation learning path — start here if the domain is new | 0.1, 0.2, 0.3 |  |
 | nvidia-zero-to-hero/index.md | 595 | NVIDIA Zero to Hero Bootcamp | 0.1, 0.2, 0.3 | yes |
 
-## V1: 11 files, 16,826 words (0 migrated)
+## V1: 11 files, 16,826 words (16,826 migrated)
 
 | File | Words | Title | Handbook chapters | Migrated |
 |---|---|---|---|---|
-| nvidia-zero-to-hero/volume-01/04-nvidia-ecosystem-overview.md | 1487 | Chapter 7 — The NVIDIA Ecosystem: From Silicon to NIMs | 0.1, 6.30, 10.1, 15.1 |  |
-| nvidia-zero-to-hero/volume-01/05-enterprise-ai-platforms.md | 1537 | Chapter 8 — Enterprise AI Platforms & Orchestration | 0.1, 6.30, 10.1 |  |
-| nvidia-zero-to-hero/volume-01/06-volume-01-summary.md | 946 | Chapter 9 — Volume 01 Summary: The Architecture of Accelerated Computi | 0.1, 6.30, 9.11, 10.1 |  |
-| nvidia-zero-to-hero/volume-01/chapter-01-what-is-ai-infrastructure.md | 1836 | What Is AI Infrastructure? | 0.1, 6.30, 10.1 |  |
-| nvidia-zero-to-hero/volume-01/chapter-02-why-cpus-became-insufficient.md | 1581 | Chapter 2 — Why CPUs Became Insufficient | 0.1, 6.30, 10.1 |  |
-| nvidia-zero-to-hero/volume-01/chapter-03-cpu-vs-gpu.md | 1501 | Chapter 3 — CPU vs. GPU: Silicon, Threads, and Tensor Cores | 0.1, 6.30, 10.1 |  |
-| nvidia-zero-to-hero/volume-01/chapter-04-what-happens-when-chatgpt-answers.md | 1463 | Chapter 4 — The Anatomy of an LLM Inference Request | 0.1, 6.30, 10.1, 15.1 |  |
-| nvidia-zero-to-hero/volume-01/chapter-05-ai-infrastructure-landscape.md | 1375 | Chapter 5 — The AI Infrastructure Landscape: Kubernetes vs. Slurm | 0.1, 6.30, 10.1 |  |
-| nvidia-zero-to-hero/volume-01/chapter-06-modern-ai-factory.md | 1297 | Chapter 6 — The Modern AI Factory: Power, Cooling, and Facility Scale | 0.1, 6.30, 9.11, 10.1 |  |
-| nvidia-zero-to-hero/volume-01/labs/lab-01-inspect-an-ai-infrastructure-host.md | 1949 | Lab 01 — Inspect an AI Infrastructure Host | 0.1, 6.30, 10.1 |  |
-| nvidia-zero-to-hero/volume-01/labs/lab-02-trace-an-ai-request-path.md | 1854 | Lab 02 - Trace an AI Request Through the Infrastructure Stack | 0.1, 6.30, 10.1 |  |
+| nvidia-zero-to-hero/volume-01/04-nvidia-ecosystem-overview.md | 1487 | Chapter 7 — The NVIDIA Ecosystem: From Silicon to NIMs | 0.1, 6.30, 10.1, 15.1 | yes |
+| nvidia-zero-to-hero/volume-01/05-enterprise-ai-platforms.md | 1537 | Chapter 8 — Enterprise AI Platforms & Orchestration | 0.1, 6.30, 10.1 | yes |
+| nvidia-zero-to-hero/volume-01/06-volume-01-summary.md | 946 | Chapter 9 — Volume 01 Summary: The Architecture of Accelerated Computi | 0.1, 6.30, 9.11, 10.1 | yes |
+| nvidia-zero-to-hero/volume-01/chapter-01-what-is-ai-infrastructure.md | 1836 | What Is AI Infrastructure? | 0.1, 6.30, 10.1 | yes |
+| nvidia-zero-to-hero/volume-01/chapter-02-why-cpus-became-insufficient.md | 1581 | Chapter 2 — Why CPUs Became Insufficient | 0.1, 6.30, 10.1 | yes |
+| nvidia-zero-to-hero/volume-01/chapter-03-cpu-vs-gpu.md | 1501 | Chapter 3 — CPU vs. GPU: Silicon, Threads, and Tensor Cores | 0.1, 6.30, 10.1 | yes |
+| nvidia-zero-to-hero/volume-01/chapter-04-what-happens-when-chatgpt-answers.md | 1463 | Chapter 4 — The Anatomy of an LLM Inference Request | 0.1, 6.30, 10.1, 15.1 | yes |
+| nvidia-zero-to-hero/volume-01/chapter-05-ai-infrastructure-landscape.md | 1375 | Chapter 5 — The AI Infrastructure Landscape: Kubernetes vs. Slurm | 0.1, 6.30, 10.1 | yes |
+| nvidia-zero-to-hero/volume-01/chapter-06-modern-ai-factory.md | 1297 | Chapter 6 — The Modern AI Factory: Power, Cooling, and Facility Scale | 0.1, 6.30, 9.11, 10.1 | yes |
+| nvidia-zero-to-hero/volume-01/labs/lab-01-inspect-an-ai-infrastructure-host.md | 1949 | Lab 01 — Inspect an AI Infrastructure Host | 0.1, 6.30, 10.1 | yes |
+| nvidia-zero-to-hero/volume-01/labs/lab-02-trace-an-ai-request-path.md | 1854 | Lab 02 - Trace an AI Request Through the Infrastructure Stack | 0.1, 6.30, 10.1 | yes |
 
-## V2: 17 files, 49,756 words (478 migrated)
+## V2: 17 files, 49,756 words (36,984 migrated)
 
 | File | Words | Title | Handbook chapters | Migrated |
 |---|---|---|---|---|
-| nvidia-zero-to-hero/volume-02/chapter-01-why-gpu-architecture-evolved.md | 2315 | Why GPU Architecture Evolved | 10.1, 10.2, 10.3, 10.4, 10.8 |  |
-| nvidia-zero-to-hero/volume-02/chapter-02-inside-a-modern-nvidia-gpu.md | 1953 | Inside a Modern NVIDIA GPU | 10.2, 10.3, 10.4, 10.8 |  |
-| nvidia-zero-to-hero/volume-02/chapter-03-threads-warps-blocks-and-sms.md | 1847 | Threads, Warps, Blocks, and Streaming Multiprocessors | 10.2, 10.3, 10.4, 10.8 |  |
-| nvidia-zero-to-hero/volume-02/chapter-04-cuda-cores-tensor-cores-and-rt-cores.md | 3717 | CUDA Cores, Tensor Cores, and RT Cores | 10.2, 10.3, 10.4, 10.8 |  |
-| nvidia-zero-to-hero/volume-02/chapter-05-gpu-memory-hierarchy.md | 4055 | GPU Memory Hierarchy | 10.2, 10.3, 10.4, 10.8 |  |
-| nvidia-zero-to-hero/volume-02/chapter-06-scheduling-occupancy-and-instruction-dispatch.md | 3778 | Scheduling, Occupancy, and Instruction Dispatch | 10.2, 10.3, 10.4, 10.8 |  |
-| nvidia-zero-to-hero/volume-02/chapter-07-registers-shared-memory-and-local-memory.md | 3278 | Registers, Shared Memory, and Local Memory | 10.2, 10.3, 10.4, 10.8 |  |
-| nvidia-zero-to-hero/volume-02/chapter-08-global-memory-l1-l2-and-hbm.md | 3249 | Global Memory, L1, L2, and HBM | 10.2, 10.3, 10.4, 10.8 |  |
-| nvidia-zero-to-hero/volume-02/chapter-09-divergence-coalescing-and-bottleneck-reasoning.md | 3339 | Divergence, Coalescing, and Bottleneck Reasoning | 10.2, 10.3, 10.4, 10.8 |  |
-| nvidia-zero-to-hero/volume-02/chapter-10-gpu-topology-peer-access-and-data-paths.md | 3396 | GPU Topology, Peer Access, and Data Paths | 10.2, 10.3, 10.4, 10.8 |  |
-| nvidia-zero-to-hero/volume-02/chapter-11-building-a-gpu-performance-model.md | 3456 | Building a GPU Performance Model | 10.2, 10.3, 10.4, 10.8 |  |
-| nvidia-zero-to-hero/volume-02/chapter-12-volume-02-architecture-summary.md | 2832 | Volume 02 Architecture Summary | 10.2, 10.3, 10.4, 10.8 |  |
+| nvidia-zero-to-hero/volume-02/chapter-01-why-gpu-architecture-evolved.md | 2315 | Why GPU Architecture Evolved | 10.1, 10.2, 10.3, 10.4, 10.8 | yes |
+| nvidia-zero-to-hero/volume-02/chapter-02-inside-a-modern-nvidia-gpu.md | 1953 | Inside a Modern NVIDIA GPU | 10.2, 10.3, 10.4, 10.8 | yes |
+| nvidia-zero-to-hero/volume-02/chapter-03-threads-warps-blocks-and-sms.md | 1847 | Threads, Warps, Blocks, and Streaming Multiprocessors | 10.2, 10.3, 10.4, 10.8 | yes |
+| nvidia-zero-to-hero/volume-02/chapter-04-cuda-cores-tensor-cores-and-rt-cores.md | 3717 | CUDA Cores, Tensor Cores, and RT Cores | 10.2, 10.3, 10.4, 10.8 | yes |
+| nvidia-zero-to-hero/volume-02/chapter-05-gpu-memory-hierarchy.md | 4055 | GPU Memory Hierarchy | 10.2, 10.3, 10.4, 10.8 | yes |
+| nvidia-zero-to-hero/volume-02/chapter-06-scheduling-occupancy-and-instruction-dispatch.md | 3778 | Scheduling, Occupancy, and Instruction Dispatch | 10.2, 10.3, 10.4, 10.8 | yes |
+| nvidia-zero-to-hero/volume-02/chapter-07-registers-shared-memory-and-local-memory.md | 3278 | Registers, Shared Memory, and Local Memory | 10.2, 10.3, 10.4, 10.8 | yes |
+| nvidia-zero-to-hero/volume-02/chapter-08-global-memory-l1-l2-and-hbm.md | 3249 | Global Memory, L1, L2, and HBM | 10.2, 10.3, 10.4, 10.8 | yes |
+| nvidia-zero-to-hero/volume-02/chapter-09-divergence-coalescing-and-bottleneck-reasoning.md | 3339 | Divergence, Coalescing, and Bottleneck Reasoning | 10.2, 10.3, 10.4, 10.8 | yes |
+| nvidia-zero-to-hero/volume-02/chapter-10-gpu-topology-peer-access-and-data-paths.md | 3396 | GPU Topology, Peer Access, and Data Paths | 10.2, 10.3, 10.4, 10.8 | yes |
+| nvidia-zero-to-hero/volume-02/chapter-11-building-a-gpu-performance-model.md | 3456 | Building a GPU Performance Model | 10.2, 10.3, 10.4, 10.8 | yes |
+| nvidia-zero-to-hero/volume-02/chapter-12-volume-02-architecture-summary.md | 2832 | Volume 02 Architecture Summary | 10.2, 10.3, 10.4, 10.8 | yes |
 | nvidia-zero-to-hero/volume-02/index.md | 478 | Volume 02 — GPU Architecture | 10.2, 10.3, 10.4, 10.8 | yes |
 | nvidia-zero-to-hero/volume-02/labs/lab-01-inspect-gpu-architecture-and-topology.md | 3123 | Lab 01 — Inspect GPU Architecture and Topology | 10.2, 10.3, 10.4, 10.8 |  |
 | nvidia-zero-to-hero/volume-02/labs/lab-02-inspect-gpu-engine-and-memory-behavior.md | 3541 | Inspect GPU Engine and Memory Behavior | 10.2, 10.3, 10.4, 10.8 |  |
-| nvidia-zero-to-hero/volume-02/labs/lab-03-profile-memory-and-warp-efficiency.md | 2687 | Lab 03 — Profile Memory and Warp Efficiency | 10.2, 10.3, 10.4, 10.8 |  |
-| nvidia-zero-to-hero/volume-02/labs/lab-04-build-a-topology-aware-gpu-placement-plan.md | 2712 | Lab 04 — Build a Topology-Aware GPU Placement Plan | 10.2, 10.3, 10.4, 10.8 |  |
+| nvidia-zero-to-hero/volume-02/labs/lab-03-profile-memory-and-warp-efficiency.md | 2687 | Lab 03 — Profile Memory and Warp Efficiency | 10.2, 10.3, 10.4, 10.8 | yes |
+| nvidia-zero-to-hero/volume-02/labs/lab-04-build-a-topology-aware-gpu-placement-plan.md | 2712 | Lab 04 — Build a Topology-Aware GPU Placement Plan | 10.2, 10.3, 10.4, 10.8 | yes |
 
 ## V3: 30 files, 62,158 words (825 migrated)
 
 | File | Words | Title | Handbook chapters | Migrated |
 |---|---|---|---|---|
-| nvidia-zero-to-hero/volume-03/chapter-01-why-cuda-exists.md | 3111 | Why CUDA Exists | 10.11, 10.12, 10.18 |  |
-| nvidia-zero-to-hero/volume-03/chapter-02-cuda-software-stack.md | 2903 | The CUDA Software Stack | 10.9, 10.11, 10.12, 10.18 |  |
-| nvidia-zero-to-hero/volume-03/chapter-03-cuda-programming-and-execution-model.md | 2948 | CUDA Programming and Execution Model | 10.11, 10.12, 10.18 |  |
-| nvidia-zero-to-hero/volume-03/chapter-04-kernel-launch-configuration-and-indexing.md | 3421 | Kernel Launch Configuration and Indexing | 10.11, 10.12, 10.18 |  |
-| nvidia-zero-to-hero/volume-03/chapter-05-cuda-memory-management-and-data-movement.md | 3041 | CUDA Memory Management and Data Movement | 10.11, 10.12, 10.18 |  |
-| nvidia-zero-to-hero/volume-03/chapter-06-synchronization-errors-and-correctness.md | 3288 | Synchronization, Errors, and Correctness | 10.11, 10.12, 10.18 |  |
-| nvidia-zero-to-hero/volume-03/chapter-07-streams-events-and-asynchronous-execution.md | 3230 | Streams, Events, and Asynchronous Execution | 10.11, 10.12, 10.18 |  |
-| nvidia-zero-to-hero/volume-03/chapter-08-pinned-memory-and-transfer-overlap.md | 3107 | Pinned Memory and Transfer Overlap | 10.11, 10.12, 10.18 |  |
-| nvidia-zero-to-hero/volume-03/chapter-09-unified-memory-and-demand-paging.md | 2998 | Unified Memory and Demand Paging | 10.11, 10.12, 10.18 |  |
+| nvidia-zero-to-hero/volume-03/chapter-01-why-cuda-exists.md | 3111 | Why CUDA Exists | 10.11, 10.12, 10.18 | yes |
+| nvidia-zero-to-hero/volume-03/chapter-02-cuda-software-stack.md | 2903 | The CUDA Software Stack | 10.9, 10.11, 10.12, 10.18 | yes |
+| nvidia-zero-to-hero/volume-03/chapter-03-cuda-programming-and-execution-model.md | 2948 | CUDA Programming and Execution Model | 10.11, 10.12, 10.18 | yes |
+| nvidia-zero-to-hero/volume-03/chapter-04-kernel-launch-configuration-and-indexing.md | 3421 | Kernel Launch Configuration and Indexing | 10.11, 10.12, 10.18 | yes |
+| nvidia-zero-to-hero/volume-03/chapter-05-cuda-memory-management-and-data-movement.md | 3041 | CUDA Memory Management and Data Movement | 10.11, 10.12, 10.18 | yes |
+| nvidia-zero-to-hero/volume-03/chapter-06-synchronization-errors-and-correctness.md | 3288 | Synchronization, Errors, and Correctness | 10.11, 10.12, 10.18 | yes |
+| nvidia-zero-to-hero/volume-03/chapter-07-streams-events-and-asynchronous-execution.md | 3230 | Streams, Events, and Asynchronous Execution | 10.11, 10.12, 10.18 | yes |
+| nvidia-zero-to-hero/volume-03/chapter-08-pinned-memory-and-transfer-overlap.md | 3107 | Pinned Memory and Transfer Overlap | 10.11, 10.12, 10.18 | yes |
+| nvidia-zero-to-hero/volume-03/chapter-09-unified-memory-and-demand-paging.md | 2998 | Unified Memory and Demand Paging | 10.11, 10.12, 10.18 | yes |
 | nvidia-zero-to-hero/volume-03/chapter-10-cuda-graphs-and-repeated-execution.md | 2889 | CUDA Graphs and Repeated Execution | 10.11, 10.12, 10.18 |  |
-| nvidia-zero-to-hero/volume-03/chapter-11-compilation-binaries-and-compatibility.md | 3043 | Compilation, Binaries, and Compatibility | 10.11, 10.12, 10.18 |  |
+| nvidia-zero-to-hero/volume-03/chapter-11-compilation-binaries-and-compatibility.md | 3043 | Compilation, Binaries, and Compatibility | 10.11, 10.12, 10.18 | yes |
 | nvidia-zero-to-hero/volume-03/chapter-12-profiling-and-production-troubleshooting.md | 3397 | Profiling and Production Troubleshooting | 10.11, 10.12, 10.18 |  |
 | nvidia-zero-to-hero/volume-03/chapter-13-volume-03-summary.md | 2894 | Volume 03 Summary | 10.11, 10.12, 10.18 |  |
-| nvidia-zero-to-hero/volume-03/chapter-chapter-01-why-cuda-exists.md | 1033 | Chapter 1 — Why CUDA Exists | 10.11, 10.12, 10.18 |  |
-| nvidia-zero-to-hero/volume-03/chapter-chapter-02-cuda-software-stack.md | 881 | Chapter 2 — The CUDA Software Stack | 10.11, 10.12, 10.18 |  |
-| nvidia-zero-to-hero/volume-03/chapter-chapter-03-cuda-programming-and-execution-model.md | 900 | Chapter 3 — The CUDA Programming and Execution Model | 10.11, 10.12, 10.18 |  |
-| nvidia-zero-to-hero/volume-03/chapter-chapter-04-kernel-launch-configuration-and-indexing.md | 938 | Chapter 4 — Kernel Launch Configuration and Indexing | 10.11, 10.12, 10.18 |  |
-| nvidia-zero-to-hero/volume-03/chapter-chapter-05-cuda-memory-management-and-data-movement.md | 1054 | Chapter 5 — Memory Management and Data Movement | 10.11, 10.12, 10.18 |  |
-| nvidia-zero-to-hero/volume-03/chapter-chapter-06-synchronization-errors-and-correctness.md | 1027 | Chapter 6 — Synchronization, Errors, and Correctness | 10.11, 10.12, 10.18 |  |
-| nvidia-zero-to-hero/volume-03/chapter-chapter-07-streams-events-and-asynchronous-execution.md | 966 | Chapter 7 — Streams, Events, and Asynchronous Execution | 10.11, 10.12, 10.18 |  |
-| nvidia-zero-to-hero/volume-03/chapter-chapter-08-pinned-memory-and-transfer-overlap.md | 1056 | Chapter 8 — Pinned Memory and Demand Paging | 10.11, 10.12, 10.18 |  |
+| nvidia-zero-to-hero/volume-03/chapter-chapter-01-why-cuda-exists.md | 1033 | Chapter 1 — Why CUDA Exists | 10.11, 10.12, 10.18 | yes |
+| nvidia-zero-to-hero/volume-03/chapter-chapter-02-cuda-software-stack.md | 881 | Chapter 2 — The CUDA Software Stack | 10.11, 10.12, 10.18 | yes |
+| nvidia-zero-to-hero/volume-03/chapter-chapter-03-cuda-programming-and-execution-model.md | 900 | Chapter 3 — The CUDA Programming and Execution Model | 10.11, 10.12, 10.18 | yes |
+| nvidia-zero-to-hero/volume-03/chapter-chapter-04-kernel-launch-configuration-and-indexing.md | 938 | Chapter 4 — Kernel Launch Configuration and Indexing | 10.11, 10.12, 10.18 | yes |
+| nvidia-zero-to-hero/volume-03/chapter-chapter-05-cuda-memory-management-and-data-movement.md | 1054 | Chapter 5 — Memory Management and Data Movement | 10.11, 10.12, 10.18 | yes |
+| nvidia-zero-to-hero/volume-03/chapter-chapter-06-synchronization-errors-and-correctness.md | 1027 | Chapter 6 — Synchronization, Errors, and Correctness | 10.11, 10.12, 10.18 | yes |
+| nvidia-zero-to-hero/volume-03/chapter-chapter-07-streams-events-and-asynchronous-execution.md | 966 | Chapter 7 — Streams, Events, and Asynchronous Execution | 10.11, 10.12, 10.18 | yes |
+| nvidia-zero-to-hero/volume-03/chapter-chapter-08-pinned-memory-and-transfer-overlap.md | 1056 | Chapter 8 — Pinned Memory and Demand Paging | 10.11, 10.12, 10.18 | yes |
 | nvidia-zero-to-hero/volume-03/chapter-chapter-10-cuda-graphs-and-repeated-execution.md | 813 | Chapter 10 — CUDA Graphs and Repeated Execution | 10.11, 10.12, 10.18 |  |
-| nvidia-zero-to-hero/volume-03/chapter-chapter-11-compilation-binaries-and-compatibility.md | 882 | Chapter 11 — Compilation, Binaries, and Compatibility | 10.11, 10.12, 10.18 |  |
+| nvidia-zero-to-hero/volume-03/chapter-chapter-11-compilation-binaries-and-compatibility.md | 882 | Chapter 11 — Compilation, Binaries, and Compatibility | 10.11, 10.12, 10.18 | yes |
 | nvidia-zero-to-hero/volume-03/chapter-chapter-12-profiling-and-production-troubleshooting.md | 802 | Chapter 12 — Profiling and Production Troubleshooting | 10.11, 10.12, 10.18 |  |
 | nvidia-zero-to-hero/volume-03/chapter-chapter-13-volume-03-summary.md | 718 | Chapter 13 — Volume 03 Summary: The CUDA Execution Stack | 10.11, 10.12, 10.18 |  |
 | nvidia-zero-to-hero/volume-03/index.md | 825 | Volume 03 — CUDA Fundamentals | 10.11, 10.12, 10.18 | yes |
-| nvidia-zero-to-hero/volume-03/labs/lab-01-inspect-and-validate-a-cuda-environment.md | 3069 | Lab 01 — Inspect and Validate a CUDA Environment | 10.11, 10.12, 10.18 |  |
-| nvidia-zero-to-hero/volume-03/labs/lab-02-build-and-validate-a-cuda-vector-pipeline.md | 2826 | Lab 02 — Build and Validate a CUDA Vector Pipeline | 10.11, 10.12, 10.18 |  |
-| nvidia-zero-to-hero/volume-03/labs/lab-03-build-an-overlapped-cuda-pipeline.md | 2023 | Lab 03 — Build an Overlapped CUDA Pipeline | 10.11, 10.12, 10.18 |  |
+| nvidia-zero-to-hero/volume-03/labs/lab-01-inspect-and-validate-a-cuda-environment.md | 3069 | Lab 01 — Inspect and Validate a CUDA Environment | 10.11, 10.12, 10.18 | yes |
+| nvidia-zero-to-hero/volume-03/labs/lab-02-build-and-validate-a-cuda-vector-pipeline.md | 2826 | Lab 02 — Build and Validate a CUDA Vector Pipeline | 10.11, 10.12, 10.18 | yes |
+| nvidia-zero-to-hero/volume-03/labs/lab-03-build-an-overlapped-cuda-pipeline.md | 2023 | Lab 03 — Build an Overlapped CUDA Pipeline | 10.11, 10.12, 10.18 | yes |
 | nvidia-zero-to-hero/volume-03/labs/lab-04-profile-and-diagnose-a-cuda-application.md | 2075 | Lab 04 — Profile and Diagnose a CUDA Application | 10.11, 10.12, 10.18 |  |
 
 ## V4: 10 files, 12,542 words (449 migrated)
 
 | File | Words | Title | Handbook chapters | Migrated |
 |---|---|---|---|---|
-| nvidia-zero-to-hero/volume-04/chapter-01-why-nvidia-has-multiple-gpu-families.md | 1406 | Chapter 1 — Why NVIDIA Has Multiple GPU Families | 9.1, 10.7 |  |
-| nvidia-zero-to-hero/volume-04/chapter-02-workload-first-gpu-selection.md | 1188 | Chapter 2 — Workload-First GPU Selection | 9.1, 10.7 |  |
-| nvidia-zero-to-hero/volume-04/chapter-03-accelerator-generations-and-design-shifts.md | 1233 | Chapter 3 — Accelerator Generations and Design Shifts | 9.1, 10.7 |  |
-| nvidia-zero-to-hero/volume-04/chapter-04-pcie-sxm-and-platform-integration.md | 1085 | Chapter 4 — Form Factors: PCIe vs. SXM | 9.1, 10.7 |  |
-| nvidia-zero-to-hero/volume-04/chapter-05-inference-accelerators-t4-l4-and-l40s.md | 1096 | Chapter 5 — Inference Accelerators: T4, L4, and L40S | 9.1, 10.7 |  |
-| nvidia-zero-to-hero/volume-04/chapter-06-training-accelerators-v100-to-b200.md | 958 | Chapter 6 — Training Accelerators: The Heavy Iron | 9.1, 10.7 |  |
-| nvidia-zero-to-hero/volume-04/chapter-07-grace-cpu-and-superchips.md | 1007 | Chapter 7 — The Grace CPU and Superchips | 9.1, 9.4, 10.7 |  |
+| nvidia-zero-to-hero/volume-04/chapter-01-why-nvidia-has-multiple-gpu-families.md | 1406 | Chapter 1 — Why NVIDIA Has Multiple GPU Families | 9.1, 10.7 | yes |
+| nvidia-zero-to-hero/volume-04/chapter-02-workload-first-gpu-selection.md | 1188 | Chapter 2 — Workload-First GPU Selection | 9.1, 10.7 | yes |
+| nvidia-zero-to-hero/volume-04/chapter-03-accelerator-generations-and-design-shifts.md | 1233 | Chapter 3 — Accelerator Generations and Design Shifts | 9.1, 10.7 | yes |
+| nvidia-zero-to-hero/volume-04/chapter-04-pcie-sxm-and-platform-integration.md | 1085 | Chapter 4 — Form Factors: PCIe vs. SXM | 9.1, 10.7 | yes |
+| nvidia-zero-to-hero/volume-04/chapter-05-inference-accelerators-t4-l4-and-l40s.md | 1096 | Chapter 5 — Inference Accelerators: T4, L4, and L40S | 9.1, 10.7 | yes |
+| nvidia-zero-to-hero/volume-04/chapter-06-training-accelerators-v100-to-b200.md | 958 | Chapter 6 — Training Accelerators: The Heavy Iron | 9.1, 10.7 | yes |
+| nvidia-zero-to-hero/volume-04/chapter-07-grace-cpu-and-superchips.md | 1007 | Chapter 7 — The Grace CPU and Superchips | 9.1, 9.4, 10.7 | yes |
 | nvidia-zero-to-hero/volume-04/index.md | 449 | Volume 04 — NVIDIA Hardware Portfolio | 9.1, 10.7 | yes |
-| nvidia-zero-to-hero/volume-04/labs/lab-01-build-a-gpu-selection-scorecard.md | 2135 | Lab 01 — Build a GPU Selection Scorecard | 9.1, 10.7 |  |
-| nvidia-zero-to-hero/volume-04/labs/lab-02-benchmark-an-inference-accelerator-shortlist.md | 1985 | Lab 02 — Benchmark an Inference Accelerator Shortlist | 9.1, 10.7 |  |
+| nvidia-zero-to-hero/volume-04/labs/lab-01-build-a-gpu-selection-scorecard.md | 2135 | Lab 01 — Build a GPU Selection Scorecard | 9.1, 10.7 | yes |
+| nvidia-zero-to-hero/volume-04/labs/lab-02-benchmark-an-inference-accelerator-shortlist.md | 1985 | Lab 02 — Benchmark an Inference Accelerator Shortlist | 9.1, 10.7 | yes |
 
 ## V5: 10 files, 12,469 words (452 migrated)
 
 | File | Words | Title | Handbook chapters | Migrated |
 |---|---|---|---|---|
-| nvidia-zero-to-hero/volume-05/chapter-01-why-dgx-exists.md | 1209 | Chapter 1 — Why DGX Exists: The Whitebox Fallacy | 9.1 |  |
-| nvidia-zero-to-hero/volume-05/chapter-02-inside-a-dgx-system.md | 1176 | Chapter 2 — Inside the DGX H100 System | 9.1, 9.2 |  |
-| nvidia-zero-to-hero/volume-05/chapter-03-dgx-management-plane.md | 1008 | Chapter 3 — The DGX Management Plane and Redfish APIs | 7.1, 7.13, 9.1 |  |
-| nvidia-zero-to-hero/volume-05/chapter-04-power-cooling-and-rack-readiness.md | 1143 | Chapter 4 — Power, Cooling, and Facility Readiness | 9.1, 9.11 |  |
-| nvidia-zero-to-hero/volume-05/chapter-05-dgx-storage-and-data-paths.md | 1041 | Chapter 5 — Storage and Data Paths: Bypassing the CPU | 9.1 |  |
-| nvidia-zero-to-hero/volume-05/chapter-06-dgx-networking-and-fabric-integration.md | 1024 | Chapter 6 — Networking and Fabric Integration | 9.1 |  |
-| nvidia-zero-to-hero/volume-05/chapter-07-dgx-gh200-and-gb200-systems.md | 982 | Chapter 7 — Rack-Scale Computing: GH200 and GB200 NVL72 | 9.1, 9.5 |  |
+| nvidia-zero-to-hero/volume-05/chapter-01-why-dgx-exists.md | 1209 | Chapter 1 — Why DGX Exists: The Whitebox Fallacy | 9.1 | yes |
+| nvidia-zero-to-hero/volume-05/chapter-02-inside-a-dgx-system.md | 1176 | Chapter 2 — Inside the DGX H100 System | 9.1, 9.2 | yes |
+| nvidia-zero-to-hero/volume-05/chapter-03-dgx-management-plane.md | 1008 | Chapter 3 — The DGX Management Plane and Redfish APIs | 7.1, 7.13, 9.1 | yes |
+| nvidia-zero-to-hero/volume-05/chapter-04-power-cooling-and-rack-readiness.md | 1143 | Chapter 4 — Power, Cooling, and Facility Readiness | 9.1, 9.11 | yes |
+| nvidia-zero-to-hero/volume-05/chapter-05-dgx-storage-and-data-paths.md | 1041 | Chapter 5 — Storage and Data Paths: Bypassing the CPU | 9.1 | yes |
+| nvidia-zero-to-hero/volume-05/chapter-06-dgx-networking-and-fabric-integration.md | 1024 | Chapter 6 — Networking and Fabric Integration | 9.1 | yes |
+| nvidia-zero-to-hero/volume-05/chapter-07-dgx-gh200-and-gb200-systems.md | 982 | Chapter 7 — Rack-Scale Computing: GH200 and GB200 NVL72 | 9.1, 9.5 | yes |
 | nvidia-zero-to-hero/volume-05/index.md | 452 | Volume 05 — DGX Systems | 9.1 | yes |
-| nvidia-zero-to-hero/volume-05/labs/lab-01-build-a-dgx-health-baseline.md | 2422 | Lab 01 — Build a DGX Health Baseline | 9.1 |  |
-| nvidia-zero-to-hero/volume-05/labs/lab-02-validate-dgx-data-and-network-paths.md | 2012 | Lab 02 — Validate DGX Data and Network Paths | 9.1 |  |
+| nvidia-zero-to-hero/volume-05/labs/lab-01-build-a-dgx-health-baseline.md | 2422 | Lab 01 — Build a DGX Health Baseline | 9.1 | yes |
+| nvidia-zero-to-hero/volume-05/labs/lab-02-validate-dgx-data-and-network-paths.md | 2012 | Lab 02 — Validate DGX Data and Network Paths | 9.1 | yes |
 
 ## V6: 10 files, 13,571 words (555 migrated)
 
 | File | Words | Title | Handbook chapters | Migrated |
 |---|---|---|---|---|
-| nvidia-zero-to-hero/volume-06/chapter-01-why-hgx-exists.md | 1240 | Chapter 1 — Why HGX Exists: The Merchant Silicon Strategy | 7.13, 9.3 |  |
-| nvidia-zero-to-hero/volume-06/chapter-02-inside-an-hgx-platform.md | 1303 | Chapter 2 — Inside an HGX Platform | 7.13, 9.3 |  |
-| nvidia-zero-to-hero/volume-06/chapter-03-oem-integration-and-support-boundaries.md | 1158 | Chapter 3 — OEM Integration and Support Boundaries | 7.13, 9.3 |  |
-| nvidia-zero-to-hero/volume-06/chapter-04-hgx-topology-and-data-paths.md | 1167 | Chapter 4 — HGX Topology and Data Paths | 7.13, 9.3 |  |
-| nvidia-zero-to-hero/volume-06/chapter-05-hgx-power-cooling-and-rack-integration.md | 1197 | Chapter 5 — Power, Cooling, and Rack Integration | 7.13, 9.3 |  |
-| nvidia-zero-to-hero/volume-06/chapter-06-hgx-networking-storage-and-cluster-integration.md | 1242 | Chapter 6 — HGX Networking, Storage, and Cluster Integration | 7.13, 9.3 |  |
-| nvidia-zero-to-hero/volume-06/chapter-07-gb200-nvl72-rack-scale-architecture.md | 1098 | Chapter 7 — GB200 NVL72: The Rack-Scale Era | 7.13, 9.3, 9.5 |  |
+| nvidia-zero-to-hero/volume-06/chapter-01-why-hgx-exists.md | 1240 | Chapter 1 — Why HGX Exists: The Merchant Silicon Strategy | 7.13, 9.3 | yes |
+| nvidia-zero-to-hero/volume-06/chapter-02-inside-an-hgx-platform.md | 1303 | Chapter 2 — Inside an HGX Platform | 7.13, 9.3 | yes |
+| nvidia-zero-to-hero/volume-06/chapter-03-oem-integration-and-support-boundaries.md | 1158 | Chapter 3 — OEM Integration and Support Boundaries | 7.13, 9.3 | yes |
+| nvidia-zero-to-hero/volume-06/chapter-04-hgx-topology-and-data-paths.md | 1167 | Chapter 4 — HGX Topology and Data Paths | 7.13, 9.3 | yes |
+| nvidia-zero-to-hero/volume-06/chapter-05-hgx-power-cooling-and-rack-integration.md | 1197 | Chapter 5 — Power, Cooling, and Rack Integration | 7.13, 9.3 | yes |
+| nvidia-zero-to-hero/volume-06/chapter-06-hgx-networking-storage-and-cluster-integration.md | 1242 | Chapter 6 — HGX Networking, Storage, and Cluster Integration | 7.13, 9.3 | yes |
+| nvidia-zero-to-hero/volume-06/chapter-07-gb200-nvl72-rack-scale-architecture.md | 1098 | Chapter 7 — GB200 NVL72: The Rack-Scale Era | 7.13, 9.3, 9.5 | yes |
 | nvidia-zero-to-hero/volume-06/index.md | 555 | Volume 06 — HGX Platforms & OEM Integration | 7.13, 9.3 | yes |
-| nvidia-zero-to-hero/volume-06/labs/lab-01-compare-hgx-server-designs.md | 2460 | Lab 01 — Compare HGX-Based Server Designs | 7.13, 9.3 |  |
-| nvidia-zero-to-hero/volume-06/labs/lab-02-review-an-hgx-rack-design.md | 2151 | Lab 02 — Review an HGX Rack Design | 7.13, 9.3 |  |
+| nvidia-zero-to-hero/volume-06/labs/lab-01-compare-hgx-server-designs.md | 2460 | Lab 01 — Compare HGX-Based Server Designs | 7.13, 9.3 | yes |
+| nvidia-zero-to-hero/volume-06/labs/lab-02-review-an-hgx-rack-design.md | 2151 | Lab 02 — Review an HGX Rack Design | 7.13, 9.3 | yes |
 
 ## V7: 17 files, 23,365 words (552 migrated)
 
 | File | Words | Title | Handbook chapters | Migrated |
 |---|---|---|---|---|
-| nvidia-zero-to-hero/volume-07/chapter-01-why-gpu-networking-exists.md | 1047 | Chapter 1 — Why GPU Networking Exists | 10.10, 12.1 |  |
-| nvidia-zero-to-hero/volume-07/chapter-02-pcie-numa-and-host-data-paths.md | 1295 | Chapter 2 — PCIe, NUMA, and Host Data Paths | 10.6, 10.10, 12.1 |  |
-| nvidia-zero-to-hero/volume-07/chapter-03-nvlink-and-nvswitch.md | 1083 | Chapter 3 — NVLink and NVSwitch | 10.6, 10.10, 12.1 |  |
-| nvidia-zero-to-hero/volume-07/chapter-04-dma-rdma-and-peer-to-peer.md | 1099 | Chapter 4 — DMA, RDMA, and Peer-to-Peer | 10.10, 12.1 |  |
-| nvidia-zero-to-hero/volume-07/chapter-05-gpudirect-rdma.md | 994 | Chapter 5 — GPUDirect RDMA | 10.10, 12.1, 12.19 |  |
-| nvidia-zero-to-hero/volume-07/chapter-06-gpudirect-storage.md | 978 | Chapter 6 — GPUDirect Storage (GDS) | 10.10, 12.1, 12.19 |  |
-| nvidia-zero-to-hero/volume-07/chapter-07-connectx-and-gpu-network-adapters.md | 1017 | Chapter 7 — ConnectX and GPU Network Adapters | 10.10, 12.1 |  |
-| nvidia-zero-to-hero/volume-07/chapter-08-topology-aware-placement.md | 1291 | Chapter 8 — Topology Aware Placement | 10.10, 12.1 |  |
-| nvidia-zero-to-hero/volume-07/chapter-09-multi-node-collectives-and-nccl-paths.md | 1206 | Chapter 9 — Multi-Node Collectives and NCCL | 10.10, 12.1, 12.15 |  |
-| nvidia-zero-to-hero/volume-07/chapter-10-performance-bottlenecks-and-benchmarking.md | 1140 | Chapter 10 — Performance Bottlenecks and Benchmarking | 10.10, 12.1 |  |
-| nvidia-zero-to-hero/volume-07/chapter-11-production-design-scenarios.md | 1028 | Chapter 11 — Production Design Scenarios | 10.10, 12.1, 12.13 |  |
-| nvidia-zero-to-hero/volume-07/chapter-12-volume-07-summary.md | 738 | Chapter 12 — Volume 07 Summary: The GPU Network | 10.10, 12.1 |  |
+| nvidia-zero-to-hero/volume-07/chapter-01-why-gpu-networking-exists.md | 1047 | Chapter 1 — Why GPU Networking Exists | 10.10, 12.1 | yes |
+| nvidia-zero-to-hero/volume-07/chapter-02-pcie-numa-and-host-data-paths.md | 1295 | Chapter 2 — PCIe, NUMA, and Host Data Paths | 10.6, 10.10, 12.1 | yes |
+| nvidia-zero-to-hero/volume-07/chapter-03-nvlink-and-nvswitch.md | 1083 | Chapter 3 — NVLink and NVSwitch | 10.6, 10.10, 12.1 | yes |
+| nvidia-zero-to-hero/volume-07/chapter-04-dma-rdma-and-peer-to-peer.md | 1099 | Chapter 4 — DMA, RDMA, and Peer-to-Peer | 10.10, 12.1 | yes |
+| nvidia-zero-to-hero/volume-07/chapter-05-gpudirect-rdma.md | 994 | Chapter 5 — GPUDirect RDMA | 10.10, 12.1, 12.19 | yes |
+| nvidia-zero-to-hero/volume-07/chapter-06-gpudirect-storage.md | 978 | Chapter 6 — GPUDirect Storage (GDS) | 10.10, 12.1, 12.19 | yes |
+| nvidia-zero-to-hero/volume-07/chapter-07-connectx-and-gpu-network-adapters.md | 1017 | Chapter 7 — ConnectX and GPU Network Adapters | 10.10, 12.1 | yes |
+| nvidia-zero-to-hero/volume-07/chapter-08-topology-aware-placement.md | 1291 | Chapter 8 — Topology Aware Placement | 10.10, 12.1 | yes |
+| nvidia-zero-to-hero/volume-07/chapter-09-multi-node-collectives-and-nccl-paths.md | 1206 | Chapter 9 — Multi-Node Collectives and NCCL | 10.10, 12.1, 12.15 | yes |
+| nvidia-zero-to-hero/volume-07/chapter-10-performance-bottlenecks-and-benchmarking.md | 1140 | Chapter 10 — Performance Bottlenecks and Benchmarking | 10.10, 12.1 | yes |
+| nvidia-zero-to-hero/volume-07/chapter-11-production-design-scenarios.md | 1028 | Chapter 11 — Production Design Scenarios | 10.10, 12.1, 12.13 | yes |
+| nvidia-zero-to-hero/volume-07/chapter-12-volume-07-summary.md | 738 | Chapter 12 — Volume 07 Summary: The GPU Network | 10.10, 12.1 | yes |
 | nvidia-zero-to-hero/volume-07/index.md | 552 | Volume 07 — GPU Networking and Data Paths | 10.10, 12.1 | yes |
-| nvidia-zero-to-hero/volume-07/labs/lab-01-inspect-pcie-numa-and-gpu-topology.md | 4396 | Lab 01 — Inspect PCIe, NUMA, and GPU Topology | 10.10, 12.1 |  |
-| nvidia-zero-to-hero/volume-07/labs/lab-02-validate-peer-access-and-nvlink.md | 1811 | Lab 02 — Validate Peer Access and NVLink | 10.10, 12.1 |  |
-| nvidia-zero-to-hero/volume-07/labs/lab-03-benchmark-rdma-and-gpudirect-paths.md | 2250 | Lab 03 — Benchmark RDMA and GPUDirect Paths | 10.10, 12.1 |  |
-| nvidia-zero-to-hero/volume-07/labs/lab-04-troubleshoot-a-multi-gpu-data-path.md | 1440 | Lab 04 — Troubleshoot a Multi-GPU Data Path | 10.10, 12.1 |  |
+| nvidia-zero-to-hero/volume-07/labs/lab-01-inspect-pcie-numa-and-gpu-topology.md | 4396 | Lab 01 — Inspect PCIe, NUMA, and GPU Topology | 10.10, 12.1 | yes |
+| nvidia-zero-to-hero/volume-07/labs/lab-02-validate-peer-access-and-nvlink.md | 1811 | Lab 02 — Validate Peer Access and NVLink | 10.10, 12.1 | yes |
+| nvidia-zero-to-hero/volume-07/labs/lab-03-benchmark-rdma-and-gpudirect-paths.md | 2250 | Lab 03 — Benchmark RDMA and GPUDirect Paths | 10.10, 12.1 | yes |
+| nvidia-zero-to-hero/volume-07/labs/lab-04-troubleshoot-a-multi-gpu-data-path.md | 1440 | Lab 04 — Troubleshoot a Multi-GPU Data Path | 10.10, 12.1 | yes |
 
 ## V8: 17 files, 49,357 words (1,406 migrated)
 
@@ -358,13 +358,13 @@ Files: 452; words: 1,222,448; migrated so far: 21,575 words (1.8%). Unmapped fil
 | nvidia-zero-to-hero/volume-16/labs/lab-03-profiling-gpu-performance-and-optimization.md | 1330 | Lab 03 — Profiling GPU Performance and Optimization | 10.8, 10.21 |  |
 | nvidia-zero-to-hero/volume-16/labs/lab-04-incident-response-simulation.md | 1492 | Lab 04 — Incident Response Simulation | 10.8, 10.21 |  |
 
-## V17: 13 files, 16,334 words (505 migrated)
+## V17: 13 files, 16,334 words (1,901 migrated)
 
 | File | Words | Title | Handbook chapters | Migrated |
 |---|---|---|---|---|
 | nvidia-zero-to-hero/volume-17/chapter-01-performance-engineering-fundamentals.md | 1319 | Chapter 1 — Performance Engineering Fundamentals | 17.8 |  |
 | nvidia-zero-to-hero/volume-17/chapter-02-profiling-tools-landscape.md | 1358 | Chapter 2 — Profiling Tools Landscape | 10.20, 17.8 |  |
-| nvidia-zero-to-hero/volume-17/chapter-03-roofline-model-and-analytical-performance.md | 1396 | Chapter 3 — Roofline Model and Analytical Performance | 10.5, 17.8 |  |
+| nvidia-zero-to-hero/volume-17/chapter-03-roofline-model-and-analytical-performance.md | 1396 | Chapter 3 — Roofline Model and Analytical Performance | 10.5, 17.8 | yes |
 | nvidia-zero-to-hero/volume-17/chapter-04-bottleneck-identification-and-diagnosis.md | 1382 | Chapter 4 — Bottleneck Identification and Diagnosis | 17.8 |  |
 | nvidia-zero-to-hero/volume-17/chapter-05-gpu-compute-optimization.md | 1434 | Chapter 5 — GPU Compute Optimization | 17.8 |  |
 | nvidia-zero-to-hero/volume-17/chapter-06-memory-optimization.md | 1416 | Chapter 6 — Memory Optimization | 17.8 |  |
@@ -577,7 +577,7 @@ Files: 452; words: 1,222,448; migrated so far: 21,575 words (1.8%). Unmapped fil
 | File | Words | Title | Handbook chapters | Migrated |
 |---|---|---|---|---|
 | volume-04/01-gpu-architecture-topology-masterclass.md | 6001 | Masterclass: GPU Architecture, Execution, and Topology | 10.2, 10.3 |  |
-| volume-04/02-gpu-software-operator-masterclass.md | 7341 | Masterclass: GPU Software Stack & Operator | 10.9, 11.4 |  |
+| volume-04/02-gpu-software-operator-masterclass.md | 7341 | Masterclass: GPU Software Stack & Operator | 10.9, 11.4 | yes |
 | volume-04/03-gpu-sharing-telemetry-masterclass.md | 2310 | Masterclass: GPU Sharing, Telemetry, and Lifecycle Operations | 10.21, 11.24, 11.25, 11.26 |  |
 
 ## VL5: 3 files, 14,105 words (0 migrated)

@@ -15,6 +15,9 @@
   --ifm-color-primary-lightest: #3cad6e;
   --ifm-code-font-size: 95%;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  --diagram-surface-bg: #ffffff;
+  --diagram-surface-border: #e2e8f0;
+  --diagram-overlay-backdrop: rgba(15, 23, 42, 0.9);
 }
 
 /* For readability concerns, you should choose a lighter palette in dark mode. */
@@ -27,39 +30,127 @@
   --ifm-color-primary-lighter: #32d8b4;
   --ifm-color-primary-lightest: #4fddbf;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+  --diagram-surface-bg: #18191a;
+  --diagram-surface-border: #334155;
+  --diagram-overlay-backdrop: rgba(0, 0, 0, 0.92);
 }
 
-/* Clean, well-proportioned, zoomable Mermaid diagrams */
+/* Clean, well-proportioned, zoomable Mermaid diagrams and images */
 .docusaurus-mermaid-container {
   overflow-x: auto;
   margin: 1.5rem 0;
+  padding: 1rem;
   text-align: center;
   cursor: zoom-in;
+  background-color: var(--diagram-surface-bg);
+  border: 1px solid var(--diagram-surface-border);
+  border-radius: 8px;
 }
+
 .docusaurus-mermaid-container svg {
   max-width: 100% !important;
   height: auto !important;
   max-height: 460px;
+  background-color: var(--diagram-surface-bg);
 }
+
 .docusaurus-mermaid-container svg text,
 .docusaurus-mermaid-container svg .nodeLabel {
   font-size: 14px !important;
 }
+
+.theme-doc-markdown img,
+article img {
+  cursor: zoom-in;
+  background-color: var(--diagram-surface-bg);
+  border-radius: 6px;
+}
+
+body.diagram-zoom-open {
+  overflow: hidden;
+}
+
+/* Full-screen opaque lightbox overlay for zoomed Mermaid diagrams and images */
+.diagram-zoom-overlay,
 .mermaid-zoomed {
   position: fixed !important;
-  inset: 0;
-  z-index: 9999;
+  inset: 0 !important;
+  z-index: 99999 !important;
   margin: 0 !important;
-  padding: 2rem;
-  background: var(--ifm-background-color);
-  overflow: auto;
+  padding: 1.5rem !important;
+  background-color: var(--diagram-overlay-backdrop) !important;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  overflow: auto !important;
   cursor: zoom-out;
-  display: flex;
+  display: flex !important;
   align-items: center;
   justify-content: center;
 }
+
+.diagram-zoom-card {
+  position: relative;
+  width: 94vw !important;
+  height: 92vh !important;
+  background-color: var(--diagram-surface-bg) !important;
+  border: 1px solid var(--diagram-surface-border);
+  border-radius: 12px;
+  padding: 3.25rem 2rem 2rem;
+  box-sizing: border-box;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.diagram-zoom-close {
+  position: absolute;
+  top: 0.85rem;
+  right: 1rem;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ifm-font-color-base);
+  background-color: var(--diagram-surface-bg);
+  border: 1px solid var(--diagram-surface-border);
+  border-radius: 6px;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.diagram-zoom-close:hover {
+  border-color: var(--ifm-color-primary);
+  color: var(--ifm-color-primary);
+}
+
+.diagram-zoom-content {
+  width: 100% !important;
+  height: 100% !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  background-color: var(--diagram-surface-bg) !important;
+}
+
+.diagram-zoom-content svg,
 .mermaid-zoomed svg {
-  width: auto !important;
-  max-width: 95vw !important;
-  max-height: 92vh !important;
+  display: block;
+  width: 88vw !important;
+  height: 82vh !important;
+  max-width: 88vw !important;
+  max-height: 82vh !important;
+  background-color: var(--diagram-surface-bg) !important;
+}
+
+.diagram-zoom-content img {
+  display: block;
+  width: 88vw !important;
+  height: 82vh !important;
+  max-width: 88vw !important;
+  max-height: 82vh !important;
+  object-fit: contain;
+  background-color: var(--diagram-surface-bg) !important;
 }
