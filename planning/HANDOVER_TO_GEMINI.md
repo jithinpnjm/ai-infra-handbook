@@ -29,7 +29,7 @@ Written 2026-10-24 by Claude at the end of its session. Read this whole file fir
 ## 1a. Added rules after the 10.8 / 10.9 reviews (2026-10-25). Read before every chapter
 
 Run `python3 tools/validate_chapter.py P.C` before you move on; it checks numbers against sources, structure, the lab
-and source coverage. Then follow the "SOURCE BREADTH AND HONESTY RULES" in `planning/FLASH_PART10_PROMPT.md` (copy of the
+and source coverage. Then follow the "SOURCE BREADTH AND HONESTY RULES" in `planning/FLASH_ARGON_CLAUDE_WORKFLOW.md` (copy of the
 same rules in `planning/FLASH_ARGON_CLAUDE_WORKFLOW.md`): per-heading corpus search with every UNRECORDED book opened and
 recorded; BCM manuals for how BCM installs the component; Volume 19/20/16 incident notes for operations topics; no
 reference tables from memory; exact source numbers only; honest read / not-read lists. Diagrams must be readable: at most 2 short lines per Mermaid box, under 130 characters, all detail in a table under the
