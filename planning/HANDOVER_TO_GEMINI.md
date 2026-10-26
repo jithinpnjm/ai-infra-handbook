@@ -18,7 +18,7 @@ Written 2026-10-24 by Claude at the end of its session. Read this whole file fir
 
 1. **Continue chapter by chapter without waiting for confirmation**, through the last chapter, with stability and coverage checks.
 2. **Never lower quality or depth** to save effort. Do not shorten or summarise scope.
-3. **Simple, human, beginner-first language**, like the "gem books". Read the mapped book chapters **in depth** and use their explanations; do not leave gem-book information unattended. Short sentences. Explain a term the first time it appears. If a sentence is hard to read aloud, rewrite it.
+3. **Simple, human, beginner-first language**, like the "gem books" (follow `planning/LANGUAGE_RULE.md`; the validator prints readability warnings). Read the mapped book chapters **in depth** and use their explanations; do not leave gem-book information unattended. Short sentences. Explain a term the first time it appears. If a sentence is hard to read aloud, rewrite it.
 4. **Write in your own words and credit sources.** No copying of passages. At most one short quote per source, under 15 words, in quotation marks, if ever.
 5. **Be honest about what was run, read and unverified.** Every chapter has a status box and a sources section that say: what was read (and what was skimmed or not read), what was run (labs and their check counts), what is my own inference, what is not verified. Never claim a command works on real hardware you did not have. Mark labs "untested" unless you ran them.
 6. **Flag corrections to the author's notes** (`nvidia-devops` repo) in the chapter's sources section when a book contradicts them. Do not silently follow either.

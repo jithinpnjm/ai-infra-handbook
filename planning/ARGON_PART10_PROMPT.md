@@ -23,7 +23,8 @@ SOURCE RULES (apply to every chapter)
 
 CHAPTER SHAPE (same as 10.6 and Part 9)
 - Status row in the table at the top, front matter status "drafted".
-- Plain, beginner-first language: short sentences, terms explained at first use, no exclamation marks, no hype ("massive", "catastrophic", "demolishes").
+- Plain, beginner-first language, written like the gem books. LANGUAGE: follow planning/LANGUAGE_RULE.md in full (book-style prose, plain words, at most two numbers per sentence, code formatting only for things you type or see on screen). The validator prints readability warnings; reduce them.
+  (Also:) short sentences, terms explained at first use, no exclamation marks, no hype ("massive", "catastrophic", "demolishes").
 - Length: 6,000 to 9,000 words. If a topic needs more, say so in your report and propose splitting the chapter. Do not pad.
 - One mermaid diagram per main flow or architecture (at least one per chapter).
 - Exactly 20 checkpoint questions (details/summary blocks) and an Exercises section (5 to 6 tasks) placed before the questions.

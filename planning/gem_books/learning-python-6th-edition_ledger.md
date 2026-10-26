@@ -1,0 +1,20 @@
+# Phase 2 Ledger: Learning Python, 6th Edition
+
+- **Corpus folder name:** `learning-python-6th-edition`
+- **Source code:** `LP`
+- **Date:** 2026-10-26
+
+| Book chapter | Handbook chapter and section | What was added (one line) | Date |
+|---|---|---|---|
+| 3. How You Run Programs | 3.1 `## 1. How Python runs programs` (`### Ways to run code`) | Added `python3 -i script.py` for post-run interactive inspection in the script's namespace, and contrasted `import` / `importlib.reload(mod)` against `exec(open('script1.py').read())`. | 2026-10-26 |
+| 5. Numbers and Expressions | 3.1 `## 3. Numbers and expressions` (`### Operator precedence hierarchy` & `### Floor division (//, math.floor) versus truncation (math.trunc, int)`) | Added the 19-level operator precedence table (Table 5-2) and the negative-number comparison between floor division (`5 // -2 == -3`) and truncation toward zero (`math.trunc(5 / -2) == -2`, `int(5 / -2) == -2`). | 2026-10-26 |
+| 7. String Fundamentals | 3.1 `## 4. Strings and bytes` | Added `string.Template` (`substitute` and `safe_substitute`) and `str.maketrans` / `str.translate` for single-pass multi-character mapping and deletion. | 2026-10-26 |
+| 11. Assignments, Expressions, and Prints | 3.1 `## 7. Statements and syntax` (`### print() call format and stream redirection`) | Added `print(*objects, sep=' ', end='\n', file=sys.stdout, flush=False)` call format and contrasted per-call `file=` stream redirection against process-wide `sys.stdout` reassignment and restoration. | 2026-10-26 |
+| 18. Arguments | 3.1 `## 8. Functions` (`#### Formal parameter-ordering rules in def and lambda headers` & `#### Call-site argument-ordering rules`) | Added the formal 4-part `def` parameter ordering grammar (`pos_only, /, normal, *args, kw_only, **kwargs`), default-value rules before vs after `*`, and call-site argument and multiple `*iterable`/`**mapping` unpacking rules. | 2026-10-26 |
+| 20. Comprehensions and Generations | 3.3 `## 7. Comprehensions` | Added the comprehension scope rule showing that `for` loop variables stay local to the comprehension while `:=` assignment expressions inside a comprehension bind their target variable in the enclosing scope. | 2026-10-26 |
+| 23. Module Coding Basics | 3.2 `## 1. Modules` (`### import versus from: shared references, cross-file mutation, and reload()`) | Added the contrast between `from mod import x` reference copying, `import mod; mod.x = ...` cross-file attribute mutation, in-place mutation of shared mutables, and why `importlib.reload(mod)` does not update names already copied via `from`. | 2026-10-26 |
+| 25. Module Odds and Ends | 3.2 `## 1. Modules` (`### Data hiding (_X and __all__) and top-level execution order`) | Added `_X` leading-underscore hiding and `__all__` export lists for `from module import *` (`__all__` taking precedence over `_X`), plus the top-to-bottom import-time execution order rule for top-level statements vs `def` bodies. | 2026-10-26 |
+| 26. OOP: The Big Picture | 3.4 `## 1. Classes and objects` | Added the explicit `object.attr` bottom-up inheritance tree search formulation (`instance` -> `class` -> `superclasses` along the MRO). | 2026-10-26 |
+| 29. Class Coding Details | 3.4 `## 1. Classes and objects` | Added the scope rule that `class` statements create a local namespace for attributes but never act as an enclosing (`E`) scope under `LEGB` for methods or nested classes (`LEGB`, not `LCEGB`), requiring `self.attr` or `ClassName.attr`. | 2026-10-26 |
+| 32. Class Odds and Ends | 3.4 `## 1. Classes and objects` & `## 2. Inheritance, composition and protocols` | Added `__slots__` inheritance rules (every class in the hierarchy must define `__slots__` to suppress `__dict__`, no duplicate slot names, `dir`/`getattr` inspection) and the 3 cooperative `super()` call-chain rules. | 2026-10-26 |
+| 34. Exception Coding Details | 3.5 `## 1. Exceptions` | Added the `except Exc as var:` scope and reference-cleanup rule explaining that Python automatically runs `del var` on exiting the `except` block to prevent `exc.__traceback__` frame reference cycles. | 2026-10-26 |

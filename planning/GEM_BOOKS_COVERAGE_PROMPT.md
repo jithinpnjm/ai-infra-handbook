@@ -72,7 +72,7 @@ RULES (same as the chapter workflow, they are checked by tools/validate_chapter.
 2. Do not add anything from memory. If a useful fact is not in the book chapter, leave it out. If you think it is important, list it in your report under "Suggested, not in the book".
 3. If the book and the handbook (or another source) disagree, show both numbers, name each source, and do not pick one silently.
 4. If the book marks its numbers as illustrative or an example, say so in the handbook text.
-5. Plain beginner-first language. Short sentences. Terms explained at first use. No exclamation marks, no hype.
+5. LANGUAGE: follow planning/LANGUAGE_RULE.md in full (book-style prose, plain words, at most two numbers per sentence, code formatting only for things you type or see on screen). The validator prints readability warnings; reduce them. Terms explained at first use. No exclamation marks, no hype. When you add book content to a chapter, write it in book style, not as a list of terms and numbers.
 6. Mermaid boxes: at most 2 short lines each, under 130 characters. Put detail in a table under the diagram.
 7. Commands you did not run are marked "(untested here)". Keep the chapter's "Run here" and "Not verified on live hardware" lists true.
 8. Keep exactly 20 checkpoint questions per chapter. If you add content, replace the weakest question or change a question to test the new material. Update the answer.

@@ -28,7 +28,7 @@ section 3 exactly. In addition, these STRICT SOURCE RULES apply (a validator wil
 6. Mark every command you did not run "(untested here)" and add a "Not verified on live hardware"
    list in the sources section, plus a "Run here" line with the lab and its check count.
 7. Quote derived numbers (sums, ratios) only if the lab computes them; the lab file is then the source.
-8. Keep the 20 checkpoint questions and Exercises section; plain beginner-first language; no
+8. Keep the 20 checkpoint questions and Exercises section; plain beginner-first language written like the gem books (planning/LANGUAGE_RULE.md); no
    exclamation marks.
 9. SOURCE BREADTH (checked by tools/check_coverage.py)
    - Before writing, run: python3 tools/study_rag/brief.py P.C --q "<main term 1>" --q "<main term 2>" --q "<main term 3>"

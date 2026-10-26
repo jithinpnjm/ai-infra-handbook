@@ -8,7 +8,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 
 | # | Chapter | Status | Words | Notes |
 |---|---|---|---|---|
-| 1.1 | The Linux big picture: kernel, userspace, distributions | drafted | 7452 |  |
+| 1.1 | The Linux big picture: kernel, userspace, distributions | drafted | 7563 |  |
 | 1.2 | The command line: shells, commands, pipes and redirection | drafted | 9969 |  |
 | 1.3 | Files and the directory hierarchy: paths, links, inodes | drafted | 7080 |  |
 | 1.4 | Text-processing essentials: grep, sed, awk, find, xargs, sort | drafted | 5561 |  |
@@ -19,7 +19,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 1.9 | Shell scripting that survives production | drafted | 9862 |  |
 | 1.10 | Devices, udev, sysfs and procfs | drafted | 8940 |  |
 | 1.11 | How a program runs: system calls, libraries, ELF, strace and ldd | drafted | 9642 |  |
-| 1.12 | Disks, partitions and filesystems | drafted | 13156 |  |
+| 1.12 | Disks, partitions and filesystems | drafted | 13650 |  |
 | 1.13 | LVM, RAID and NVMe | drafted | 10340 |  |
 | 1.14 | Boot: firmware, GRUB, kernel, initramfs | drafted | 10036 |  |
 | 1.15 | systemd: units, targets, timers, journald | drafted | 9764 |  |
@@ -59,32 +59,32 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 4.10 | Debugging Ansible playbooks | drafted | 3380 |  |
 | 4.11 | Ansible roles and collections | drafted | 3072 |  |
 | 4.12 | Ansible Vault and secrets management | drafted | 3425 |  |
-| 5.1 | Containers from first principles: images, layers, registries | drafted | 4902 |  |
+| 5.1 | Containers from first principles: images, layers, registries | drafted | 5034 |  |
 | 5.2 | Container runtimes: containerd, runc, CRI and OCI | drafted | 3992 |  |
 | 5.3 | Kubernetes architecture overview: components and what talks to what | drafted | 4098 |  |
-| 5.4 | Bare-metal Kubernetes from scratch with kubeadm (lab) | drafted | 4171 |  |
+| 5.4 | Bare-metal Kubernetes from scratch with kubeadm (lab) | drafted | 4448 |  |
 | 5.5 | The API server and etcd: how a request becomes cluster state | drafted | 4733 |  |
 | 5.6 | Controllers and the reconcile loop: how Kubernetes thinks | drafted | 3712 |  |
-| 5.7 | Pods and workloads: Deployments, StatefulSets, DaemonSets and Jobs | drafted | 4315 |  |
+| 5.7 | Pods and workloads: Deployments, StatefulSets, DaemonSets and Jobs | drafted | 5026 |  |
 | 5.8 | The life of a pod, end to end, including what the kernel does | drafted | 4012 |  |
 | 5.9 | The kubelet and the node: CRI, cgroups, QoS classes, probes and eviction | drafted | 4735 |  |
-| 5.10 | Services, endpoints and kube-proxy: the life of a Service | drafted | 4395 |  |
+| 5.10 | Services, endpoints and kube-proxy: the life of a Service | drafted | 4533 |  |
 | 5.11 | DNS and service discovery with CoreDNS | drafted | 3684 |  |
-| 5.12 | Ingress, load balancers and the Gateway API | drafted | 3837 |  |
+| 5.12 | Ingress, load balancers and the Gateway API | drafted | 4370 |  |
 | 5.13 | Pod networking under the hood: veth, bridges, routes and CNI plugins | drafted | 3951 |  |
 | 5.15 | NetworkPolicy and the kernel: netfilter, conntrack and eBPF | drafted | 4332 |  |
-| 5.16 | Configuration, secrets and RBAC | drafted | 4039 |  |
+| 5.16 | Configuration, secrets and RBAC | drafted | 4849 |  |
 | 5.17 | Storage internals: volumes, PV and PVC, CSI and mounts | drafted | 4125 |  |
-| 5.25 | Troubleshooting Kubernetes from the node: crictl, nsenter, tcpdump and iptables | drafted | 4153 |  |
+| 5.25 | Troubleshooting Kubernetes from the node: crictl, nsenter, tcpdump and iptables | drafted | 4265 |  |
 | 5.26 | How Kubernetes uses the Linux kernel: a complete map | drafted | 5146 |  |
 
 ## Tier 1: interview- and job-critical: 116 chapters
 
 | # | Chapter | Status | Words | Notes |
 |---|---|---|---|---|
-| 1.22 | Kernel modules, DKMS and sysctl tuning for GPU nodes | drafted | 6059 |  |
-| 1.28 | Putting it together: tuning a Linux node for GPU and HPC work | drafted | 7908 |  |
-| 2.24 | Linux networking: policy routing, bonding, MTU, NIC and stack tuning | drafted | 5353 |  |
+| 1.22 | Kernel modules, DKMS and sysctl tuning for GPU nodes | drafted | 6391 |  |
+| 1.28 | Putting it together: tuning a Linux node for GPU and HPC work | drafted | 8277 |  |
+| 2.24 | Linux networking: policy routing, bonding, MTU, NIC and stack tuning | drafted | 5554 |  |
 | 2.30 | Network troubleshooting method and case studies | drafted | 5501 |  |
 | 2.32 | Cloud networking: VPC, peering, load balancers and GCP specifics | drafted | 5457 |  |
 | 4.17 | Ansible for GPU nodes and clusters | drafted | 4715 |  |
@@ -92,71 +92,71 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 4.27 | Lab: provision a GPU cluster with Terraform and Ansible | drafted | 3405 |  |
 | 5.14 | Overlay versus routed pod networking: VXLAN, BGP with Calico, eBPF with Cilium | drafted | 4086 |  |
 | 5.18 | Scheduling in depth: kube-scheduler, affinity, taints, priority and preemption | drafted | 5030 |  |
-| 5.22 | Multitenancy and platform services | drafted | 3597 |  |
+| 5.22 | Multitenancy and platform services | drafted | 4167 |  |
 | 5.23 | Autoscaling: HPA, VPA, KEDA and the cluster autoscaler | drafted | 4193 |  |
 | 5.34 | GKE for GPU workloads: setup, node pools and quotas | drafted | 3576 |  |
-| 6.7 | Slurm architecture and installation | drafted | 8322 | First full chapter; coverage file done; verify HA, sackd/auth-slurm, upgrade window, NVIDIA/SchedMD reports. Labs untested. |
-| 6.8 | Slurm configuration: nodes, partitions and cgroups | drafted | 3790 |  |
-| 6.9 | Slurm accounting and scheduling policy: QoS, fairshare, backfill, preemption | drafted | 3916 |  |
+| 6.7 | Slurm architecture and installation | drafted | 8600 | First full chapter; coverage file done; verify HA, sackd/auth-slurm, upgrade window, NVIDIA/SchedMD reports. Labs untested. |
+| 6.8 | Slurm configuration: nodes, partitions and cgroups | drafted | 4058 |  |
+| 6.9 | Slurm accounting and scheduling policy: QoS, fairshare, backfill, preemption | drafted | 4369 |  |
 | 6.10 | Slurm GPU scheduling: gres, NVML autodetect, MIG and device constraints | drafted | 3519 |  |
 | 6.11 | Submitting and launching jobs: sbatch, srun, salloc, arrays, dependencies | drafted | 3758 |  |
-| 6.12 | Multi-node training on Slurm: PMIx, torchrun, NCCL environment, binding, topology | drafted | 2641 |  |
+| 6.12 | Multi-node training on Slurm: PMIx, torchrun, NCCL environment, binding, topology | drafted | 3934 |  |
 | 6.13 | Containers on Slurm: enroot and pyxis | drafted | 3379 |  |
-| 6.14 | Slurm operations: prolog, epilog, health checks, drain, reason codes, troubleshooting | drafted | 3452 |  |
+| 6.14 | Slurm operations: prolog, epilog, health checks, drain, reason codes, troubleshooting | drafted | 3999 |  |
 | 6.15 | Slurm high availability, upgrades and scaling | drafted | 3019 |  |
 | 6.16 | Slurm on Kubernetes: Slinky and Soperator | drafted | 2725 |  |
 | 6.31 | Capstone: build and operate a small Slurm GPU cluster | drafted | 3186 |  |
 | 10.8 | Operating GPU nodes: nvidia-smi, topology, clocks and throttling | drafted | 10110 |  |
 | 10.9 | The NVIDIA software stack: driver, CUDA toolkit, container toolkit, compatibility | drafted | 9332 |  |
 | 10.10 | Fabric Manager, NVSM and NVLink domains | drafted | 9528 |  |
-| 10.21 | GPU health: DCGM, ECC, row remapping and Xid | drafted | 8984 |  |
-| 10.22 | GPU troubleshooting scenarios | drafted | 8451 |  |
-| 11.1 | Why Kubernetes needs a GPU platform layer | drafted | 8161 |  |
-| 11.2 | Device plugin, container toolkit, CDI and runtime classes | draft | 8542 |  |
-| 11.3 | Node Feature Discovery and GPU Feature Discovery | draft | 6956 |  |
-| 11.4 | GPU Operator architecture and operands | draft | 7038 |  |
-| 11.5 | GPU Operator installation, configuration and upgrades | draft | 7056 |  |
-| 11.6 | Scheduling GPUs: requests, Topology Manager, CPU and NUMA alignment | draft | 7722 |  |
-| 11.7 | Multi-node jobs: why a pod cannot span nodes, and gang scheduling concepts | draft | 7393 |  |
-| 11.8 | Kueue, Volcano and scheduler plugins | draft | 6913 |  |
-| 11.9 | JobSet, LeaderWorkerSet, PyTorchJob and the MPI Operator | draft | 6844 |  |
-| 11.10 | Secondary networks: Multus, SR-IOV device plugin and RDMA device plugin | draft | 6859 |  |
-| 11.11 | NVIDIA Network Operator | draft | 6849 |  |
-| 11.12 | Dynamic Resource Allocation (DRA) | draft | 6685 |  |
-| 11.13 | KAI Scheduler: why default scheduling is not enough | draft | 6709 |  |
-| 11.14 | KAI Scheduler architecture and resources | draft | 6818 |  |
-| 11.15 | KAI queues, quotas and fair sharing | draft | 6813 |  |
-| 11.16 | KAI gang scheduling and topology-aware placement | draft | 6785 |  |
-| 11.17 | KAI GPU sharing and fractions | draft | 7309 |  |
-| 11.18 | KAI operations and troubleshooting | draft | 7123 |  |
-| 11.19 | The Run:ai platform view | draft | 7323 |  |
-| 11.20 | Scheduler comparison guide: KAI, Kueue, Volcano, YuniKorn and Slurm | draft | 7101 |  |
-| 11.21 | PCIe, IOMMU, VFIO and device passthrough | draft | 7382 |  |
-| 11.22 | SR-IOV for NICs and GPUs | draft | 6998 |  |
-| 11.23 | NVIDIA vGPU: architecture, profiles and licensing | draft | 6954 |  |
-| 11.24 | MIG in depth | draft | 7197 |  |
-| 11.25 | Time-slicing, MPS and oversubscription | draft | 6692 |  |
-| 11.26 | Choosing a GPU sharing model | draft | 6723 |  |
-| 11.27 | Virtual machines on Kubernetes: KubeVirt, Kata and GPU passthrough | draft | 6909 |  |
-| 11.29 | Multi-tenancy, quotas, fault tolerance and health on GPU clusters | draft | 7712 |  |
-| 11.30 | Lab: multi-node GPU Kubernetes on GKE and Nebius | draft | 7270 |  |
-| 12.1 | AI traffic: collectives, incast and elephant flows | scaffold |  |  |
-| 12.2 | RDMA fundamentals: verbs, queue pairs and memory registration | scaffold |  |  |
-| 12.3 | RoCEv2 transport and congestion management | scaffold |  |  |
-| 12.4 | PFC, ECN and DCQCN in depth | scaffold |  |  |
-| 12.5 | Data center bridging and QoS for AI | scaffold |  |  |
-| 12.6 | InfiniBand fundamentals and addressing | scaffold |  |  |
-| 12.7 | InfiniBand subnet manager, routing, topologies and rails | scaffold |  |  |
-| 12.8 | InfiniBand adaptive routing and congestion control | scaffold |  |  |
-| 12.9 | InfiniBand diagnostics, UFM and operations | scaffold |  |  |
-| 12.13 | Fabric design: topology, oversubscription and scale | scaffold |  |  |
-| 12.14 | Load balancing and routing for AI fabrics | scaffold |  |  |
-| 12.15 | NCCL: collectives and algorithms | scaffold |  |  |
-| 12.16 | NCCL: topology, channels, transports and environment variables | scaffold |  |  |
-| 12.17 | nccl-tests and fabric benchmarking | scaffold |  |  |
-| 12.18 | NCCL debugging: hangs, timeouts and errors | scaffold |  |  |
-| 12.19 | GPUDirect RDMA and GPUDirect Storage | scaffold |  |  |
-| 12.24 | AI networking troubleshooting playbook | scaffold |  |  |
+| 10.21 | GPU health: DCGM, ECC, row remapping and Xid | drafted | 9187 |  |
+| 10.22 | GPU troubleshooting scenarios | drafted | 8618 |  |
+| 11.1 | Why Kubernetes needs a GPU platform layer | drafted | 8217 |  |
+| 11.2 | Device plugin, container toolkit, CDI and runtime classes | draft | 8598 |  |
+| 11.3 | Node Feature Discovery and GPU Feature Discovery | draft | 7065 |  |
+| 11.4 | GPU Operator architecture and operands | draft | 7096 |  |
+| 11.5 | GPU Operator installation, configuration and upgrades | draft | 7162 |  |
+| 11.6 | Scheduling GPUs: requests, Topology Manager, CPU and NUMA alignment | draft | 7830 |  |
+| 11.7 | Multi-node jobs: why a pod cannot span nodes, and gang scheduling concepts | draft | 7451 |  |
+| 11.8 | Kueue, Volcano and scheduler plugins | draft | 6998 |  |
+| 11.9 | JobSet, LeaderWorkerSet, PyTorchJob and the MPI Operator | draft | 6948 |  |
+| 11.10 | Secondary networks: Multus, SR-IOV device plugin and RDMA device plugin | draft | 6915 |  |
+| 11.11 | NVIDIA Network Operator | draft | 6907 |  |
+| 11.12 | Dynamic Resource Allocation (DRA) | draft | 6769 |  |
+| 11.13 | KAI Scheduler: why default scheduling is not enough | draft | 7022 |  |
+| 11.14 | KAI Scheduler architecture and resources | draft | 7131 |  |
+| 11.15 | KAI queues, quotas and fair sharing | draft | 6936 |  |
+| 11.16 | KAI gang scheduling and topology-aware placement | draft | 6911 |  |
+| 11.17 | KAI GPU sharing and fractions | draft | 7458 |  |
+| 11.18 | KAI operations and troubleshooting | draft | 7248 |  |
+| 11.19 | The Run:ai platform view | draft | 7492 |  |
+| 11.20 | Scheduler comparison guide: KAI, Kueue, Volcano, YuniKorn and Slurm | draft | 7252 |  |
+| 11.21 | PCIe, IOMMU, VFIO and device passthrough | draft | 7483 |  |
+| 11.22 | SR-IOV for NICs and GPUs | draft | 7056 |  |
+| 11.23 | NVIDIA vGPU: architecture, profiles and licensing | draft | 7051 |  |
+| 11.24 | MIG in depth | draft | 7321 |  |
+| 11.25 | Time-slicing, MPS and oversubscription | draft | 6791 |  |
+| 11.26 | Choosing a GPU sharing model | draft | 6781 |  |
+| 11.27 | Virtual machines on Kubernetes: KubeVirt, Kata and GPU passthrough | draft | 7006 |  |
+| 11.29 | Multi-tenancy, quotas, fault tolerance and health on GPU clusters | draft | 7768 |  |
+| 11.30 | Lab: multi-node GPU Kubernetes on GKE and Nebius | draft | 7328 |  |
+| 12.1 | AI traffic: collectives, incast and elephant flows | drafted | 13113 |  |
+| 12.2 | RDMA fundamentals: verbs, queue pairs and memory registration | drafted | 13829 |  |
+| 12.3 | RoCEv2 transport and congestion management | drafted | 11891 |  |
+| 12.4 | PFC, ECN and DCQCN in depth | drafted | 11118 |  |
+| 12.5 | Data center bridging and QoS for AI | drafted | 12620 |  |
+| 12.6 | InfiniBand fundamentals and addressing | drafted | 12556 |  |
+| 12.7 | InfiniBand subnet manager, routing, topologies and rails | drafted | 12583 |  |
+| 12.8 | InfiniBand adaptive routing and congestion control | drafted | 11731 |  |
+| 12.9 | InfiniBand diagnostics, UFM and operations | drafted | 13535 |  |
+| 12.13 | Fabric design: topology, oversubscription and scale | drafted | 13647 |  |
+| 12.14 | Load balancing and routing for AI fabrics | drafted | 14534 |  |
+| 12.15 | NCCL: collectives and algorithms | drafted | 11717 |  |
+| 12.16 | NCCL: topology, channels, transports and environment variables | drafted | 10427 |  |
+| 12.17 | nccl-tests and fabric benchmarking | drafted | 11591 |  |
+| 12.18 | NCCL debugging: hangs, timeouts and errors | drafted | 14468 |  |
+| 12.19 | GPUDirect RDMA and GPUDirect Storage | drafted | 10651 |  |
+| 12.24 | AI networking troubleshooting playbook | drafted | 12285 |  |
 | 14.13 | Fine-tuning: SFT, LoRA and QLoRA, preference alignment | scaffold |  |  |
 | 14.14 | Dataset engineering for fine-tuning | scaffold |  |  |
 | 14.15 | Fine-tuning infrastructure and cost | scaffold |  |  |
@@ -203,7 +203,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 
 | # | Chapter | Status | Words | Notes |
 |---|---|---|---|---|
-| 6.22 | Provisioning with PXE, iPXE, DHCP, TFTP and image management | drafted | 3340 |  |
+| 6.22 | Provisioning with PXE, iPXE, DHCP, TFTP and image management | drafted | 3754 |  |
 | 7.1 | BMCs, IPMI and out-of-band management | drafted | 3445 |  |
 | 7.2 | Redfish concepts: service root, resources, collections, OData | drafted | 2801 |  |
 | 7.3 | The Redfish protocol: HTTP methods, headers, status codes, query parameters | drafted | 3134 |  |
@@ -263,7 +263,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 1.24 | Observability tools: perf, ftrace, BPF and bpftrace | drafted | 10356 |  |
 | 1.25 | Benchmarking correctly | drafted | 8258 |  |
 | 1.26 | KVM, QEMU and libvirt basics | drafted | 6731 |  |
-| 1.27 | Cloud computing and virtualization internals for Linux engineers | drafted | 6803 |  |
+| 1.27 | Cloud computing and virtualization internals for Linux engineers | drafted | 7195 |  |
 | 2.15 | BGP fundamentals | drafted | 4419 |  |
 | 2.16 | BGP in the data center: eBGP Clos, unnumbered, ECMP, anycast | drafted | 6258 |  |
 | 2.17 | Overlays: VXLAN and EVPN | drafted | 5081 |  |
@@ -274,11 +274,11 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 2.28 | Network automation fundamentals: APIs, YANG, NETCONF, gNMI, SDN, templates | drafted | 5893 |  |
 | 2.29 | Network automation in practice: Ansible, Nornir and CI/CD for networks | drafted | 5628 |  |
 | 2.31 | Network monitoring and telemetry | drafted | 5333 |  |
-| 3.1 | Python core: types, control flow, functions | drafted | 5821 |  |
-| 3.2 | Modules, packages, virtual environments and packaging | drafted | 4845 |  |
-| 3.3 | Idiomatic Python: the data model, comprehensions, generators | drafted | 5094 |  |
-| 3.4 | Classes, dataclasses, typing and protocols | drafted | 4193 |  |
-| 3.5 | Errors, files, text and bytes, subprocess and system scripting | drafted | 5142 |  |
+| 3.1 | Python core: types, control flow, functions | drafted | 7429 |  |
+| 3.2 | Modules, packages, virtual environments and packaging | drafted | 5536 |  |
+| 3.3 | Idiomatic Python: the data model, comprehensions, generators | drafted | 5259 |  |
+| 3.4 | Classes, dataclasses, typing and protocols | drafted | 4965 |  |
+| 3.5 | Errors, files, text and bytes, subprocess and system scripting | drafted | 5381 |  |
 | 3.6 | Concurrency: threads, processes and asyncio | drafted | 4909 |  |
 | 3.7 | Building APIs and microservices with FastAPI | drafted | 5053 |  |
 | 3.8 | Building CLIs, agents and exporters (Prometheus exporters, Redfish clients) | drafted | 5618 |  |
@@ -298,31 +298,31 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 4.23 | Production-grade Terraform: structure, testing and team workflows | drafted | 3615 |  |
 | 4.25 | Terraform with Kubernetes and Helm providers; OpenTofu | drafted | 3600 |  |
 | 4.26 | GitOps with Argo CD and Flux | drafted | 3798 |  |
-| 5.19 | Cluster deployment models and day-2 operations | drafted | 3460 |  |
+| 5.19 | Cluster deployment models and day-2 operations | drafted | 3864 |  |
 | 5.20 | Upgrades, etcd backup and restore, and disaster recovery | drafted | 4703 |  |
-| 5.21 | Certificates, identity, admission control and policy | drafted | 3911 |  |
+| 5.21 | Certificates, identity, admission control and policy | drafted | 5081 |  |
 | 5.24 | Observability for Kubernetes | drafted | 3717 |  |
-| 5.27 | Software supply chain security | drafted | 4323 |  |
-| 5.29 | Extending Kubernetes: CRDs and operators | drafted | 3858 |  |
+| 5.27 | Software supply chain security | drafted | 5014 |  |
+| 5.29 | Extending Kubernetes: CRDs and operators | drafted | 4239 |  |
 | 5.30 | Go for Kubernetes engineers | drafted | 4307 |  |
-| 5.31 | Operators in Go: controller-runtime and kubebuilder | drafted | 3463 |  |
+| 5.31 | Operators in Go: controller-runtime and kubebuilder | drafted | 3743 |  |
 | 5.32 | Project: a GPU-node-health operator | drafted | 2662 |  |
 | 5.33 | Reading the GPU Operator and Network Operator source | drafted | 4360 |  |
-| 6.1 | What a supercomputer is: TOP500, Linpack, HPC versus AI factory | drafted | 3312 |  |
-| 6.2 | Cluster anatomy: head, login, compute, storage and management nodes | drafted | 3138 |  |
-| 6.3 | Parallel computing concepts: Amdahl, scaling, shared memory versus message passing | drafted | 3093 |  |
-| 6.4 | MPI in practice: Open MPI, ranks, collectives and tuning | drafted | 3952 |  |
+| 6.1 | What a supercomputer is: TOP500, Linpack, HPC versus AI factory | drafted | 4253 |  |
+| 6.2 | Cluster anatomy: head, login, compute, storage and management nodes | drafted | 4719 |  |
+| 6.3 | Parallel computing concepts: Amdahl, scaling, shared memory versus message passing | drafted | 4392 |  |
+| 6.4 | MPI in practice: Open MPI, ranks, collectives and tuning | drafted | 4489 |  |
 | 6.6 | Environment modules, Spack and EasyBuild | drafted | 3727 |  |
-| 6.18 | Parallel storage concepts and the limits of NFS | drafted | 3356 |  |
-| 6.19 | Lustre architecture and operation | drafted | 3427 |  |
+| 6.18 | Parallel storage concepts and the limits of NFS | drafted | 4188 |  |
+| 6.19 | Lustre architecture and operation | drafted | 4181 |  |
 | 6.20 | BeeGFS, GPFS, WekaFS and VAST | drafted | 2647 |  |
-| 6.21 | Parallel I/O and checkpoint patterns | drafted | 2969 |  |
-| 6.23 | xCAT, Warewulf and cluster managers compared with BCM | drafted | 2975 |  |
-| 6.24 | Users, LDAP, SSSD, quotas and accounting at scale | drafted | 3257 |  |
-| 6.26 | Cluster monitoring and health at scale | drafted | 2903 |  |
-| 6.28 | HPC benchmarking: HPL, HPCG, IOR, OSU and NCCL tests | drafted | 3476 |  |
+| 6.21 | Parallel I/O and checkpoint patterns | drafted | 3917 |  |
+| 6.23 | xCAT, Warewulf and cluster managers compared with BCM | drafted | 3992 |  |
+| 6.24 | Users, LDAP, SSSD, quotas and accounting at scale | drafted | 4648 |  |
+| 6.26 | Cluster monitoring and health at scale | drafted | 4367 |  |
+| 6.28 | HPC benchmarking: HPL, HPCG, IOR, OSU and NCCL tests | drafted | 4168 |  |
 | 6.29 | Containers and reproducibility in HPC: Apptainer and enroot | drafted | 3132 |  |
-| 6.30 | Facility basics: power, cooling, racks and liquid cooling | drafted | 4401 |  |
+| 6.30 | Facility basics: power, cooling, racks and liquid cooling | drafted | 5273 |  |
 | 10.1 | Why GPUs: CPU versus GPU and throughput design | drafted | 13317 |  |
 | 10.2 | The execution model: threads, warps, blocks and SMs | drafted | 11312 |  |
 | 10.3 | The GPU memory hierarchy | drafted | 10882 |  |
@@ -335,28 +335,28 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 10.13 | Memory access patterns and profiling | drafted | 9244 |  |
 | 10.14 | Occupancy, warp efficiency and instruction-level parallelism | drafted | 8262 |  |
 | 10.15 | Kernel efficiency and arithmetic intensity | drafted | 8876 |  |
-| 10.16 | Intra-kernel pipelining, warp specialization and thread block clusters | drafted | 11020 |  |
-| 10.17 | Inter-kernel pipelining, synchronization and stream-ordered allocation | drafted | 9145 |  |
-| 10.18 | Dynamic scheduling, CUDA graphs and device-initiated orchestration | drafted | 8890 |  |
-| 10.19 | Triton language and compilers: OpenAI Triton, torch.compile, XLA | drafted | 8060 |  |
-| 10.20 | Profiling tools: Nsight Systems, Nsight Compute, PyTorch profiler | drafted | 8694 |  |
-| 11.28 | DPUs, BlueField and DOCA | draft | 6638 |  |
-| 12.10 | HDR, NDR, XDR, optics and cabling | scaffold |  |  |
-| 12.11 | NVIDIA Spectrum-X and Spectrum switches | scaffold |  |  |
-| 12.12 | Ethernet versus InfiniBand: a design decision guide | scaffold |  |  |
-| 12.20 | SHARP and in-network computing | scaffold |  |  |
-| 12.21 | Storage networks, Ultra Ethernet and scale-up fabrics | scaffold |  |  |
-| 12.22 | AI network telemetry and KPIs | scaffold |  |  |
-| 12.23 | Fabric validation and capacity planning | scaffold |  |  |
-| 13.1 | The AI data path: from storage to GPU | scaffold |  |  |
-| 13.2 | Local NVMe and data staging | scaffold |  |  |
-| 13.3 | GPUDirect Storage architecture | scaffold |  |  |
-| 13.4 | Lustre for AI | scaffold |  |  |
-| 13.5 | BeeGFS, Weka, VAST and object storage | scaffold |  |  |
-| 13.6 | Data loading, small files and metadata | scaffold |  |  |
-| 13.7 | Checkpoint architecture and recovery | scaffold |  |  |
-| 13.8 | Capacity, performance and cost planning | scaffold |  |  |
-| 13.9 | Storage troubleshooting | scaffold |  |  |
+| 10.16 | Intra-kernel pipelining, warp specialization and thread block clusters | drafted | 11321 |  |
+| 10.17 | Inter-kernel pipelining, synchronization and stream-ordered allocation | drafted | 9328 |  |
+| 10.18 | Dynamic scheduling, CUDA graphs and device-initiated orchestration | drafted | 9062 |  |
+| 10.19 | Triton language and compilers: OpenAI Triton, torch.compile, XLA | drafted | 8258 |  |
+| 10.20 | Profiling tools: Nsight Systems, Nsight Compute, PyTorch profiler | drafted | 8851 |  |
+| 11.28 | DPUs, BlueField and DOCA | draft | 6694 |  |
+| 12.10 | HDR, NDR, XDR, optics and cabling | drafted | 14200 |  |
+| 12.11 | NVIDIA Spectrum-X and Spectrum switches | drafted | 13410 |  |
+| 12.12 | Ethernet versus InfiniBand: a design decision guide | drafted | 13650 |  |
+| 12.20 | SHARP and in-network computing | drafted | 11636 |  |
+| 12.21 | Storage networks, Ultra Ethernet and scale-up fabrics | drafted | 13263 |  |
+| 12.22 | AI network telemetry and KPIs | drafted | 13944 |  |
+| 12.23 | Fabric validation and capacity planning | drafted | 9348 |  |
+| 13.1 | The AI data path: from storage to GPU | drafted | 10537 |  |
+| 13.2 | Local NVMe and data staging | drafted | 11572 |  |
+| 13.3 | GPUDirect Storage architecture | drafted | 10860 |  |
+| 13.4 | Lustre for AI | drafted | 11477 |  |
+| 13.5 | BeeGFS, Weka, VAST and object storage | drafted | 10847 |  |
+| 13.6 | Data loading, small files and metadata | drafted | 11070 |  |
+| 13.7 | Checkpoint architecture and recovery | drafted | 12037 |  |
+| 13.8 | Capacity, performance and cost planning | drafted | 12552 |  |
+| 13.9 | Storage troubleshooting | drafted | 12017 |  |
 | 14.1 | ML and deep learning fundamentals for infrastructure engineers | scaffold |  |  |
 | 14.2 | Transformers and LLM architecture | scaffold |  |  |
 | 14.3 | Training memory and compute anatomy | scaffold |  |  |
@@ -409,8 +409,8 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 2.14 | OSPF and IS-IS | drafted | 4691 |  |
 | 5.28 | Service mesh | drafted | 3248 |  |
 | 5.35 | Multicluster and fleet management | drafted | 3699 |  |
-| 6.5 | OpenMP, compilers and optimisation flags | drafted | 3612 |  |
-| 6.17 | Other schedulers: PBS, Torque, LSF and Flux | drafted | 2903 |  |
-| 6.25 | Remote access, bastions, Open OnDemand and user environments | drafted | 2922 |  |
-| 6.27 | Backup and data protection | drafted | 3132 |  |
+| 6.5 | OpenMP, compilers and optimisation flags | drafted | 4172 |  |
+| 6.17 | Other schedulers: PBS, Torque, LSF and Flux | drafted | 3596 |  |
+| 6.25 | Remote access, bastions, Open OnDemand and user environments | drafted | 3380 |  |
+| 6.27 | Backup and data protection | drafted | 4375 |  |
 | 19.10 | Customer workshops and the consulting method | scaffold |  |  |

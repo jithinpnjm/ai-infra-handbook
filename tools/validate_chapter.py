@@ -32,6 +32,28 @@ for l in mine:
 chk("chapter lab(s) pass", bool(mine) and ok, "; ".join(det) or "no lab found")
 ledger = ROOT / f"planning/ledgers/{P}-{CC}.md"; chk("claim ledger exists", ledger.exists())
 for n, ok, d in checks: print(("PASS " if ok else "FAIL ") + n + (f"  ({d})" if d else ""))
+
+# --- readability report (warnings only; see planning/LANGUAGE_RULE.md) ---
+def readability(text):
+    body = re.sub(r"```.*?```", " ", text, flags=re.S)
+    body = re.sub(r"<details>.*?</details>", " ", body, flags=re.S) if False else body
+    lines = [l for l in body.splitlines() if l.strip() and not l.lstrip().startswith(("|", "#", ">", ":::", "<", "---", "!["))]
+    para = " ".join(lines)
+    words = len(re.sub(r"`[^`]*`", "X", para).split()) or 1
+    spans = len(re.findall(r"`[^`]+`", para))
+    nums = len(re.findall(r"\b\d[\d,]*\.?\d*\b", re.sub(r"`[^`]*`", "", para)))
+    sents = [x for x in re.split(r"(?<=[.!?])\s+", re.sub(r"`[^`]*`", "X", para)) if len(x.split()) > 3]
+    n = len(sents) or 1
+    avg = sum(len(x.split()) for x in sents) / n
+    longp = sum(1 for x in sents if len(x.split()) > 35) / n
+    paren = sum(x.count("(") for x in sents) / n
+    return dict(spans=100 * spans / words, nums=100 * nums / words, avg=avg, long=100 * longp, paren=paren)
+r = readability(t)
+lim = dict(spans=4.0, nums=6.0, avg=22.0, long=3.0, paren=0.5)
+print("\n--- readability (warnings only; target: reads like a book, see planning/LANGUAGE_RULE.md) ---")
+lab = dict(spans="code-formatted terms per 100 words", nums="numbers per 100 words", avg="average sentence length (words)", long="% of sentences over 35 words", paren="parentheses per sentence")
+for k in lim:
+    print(("WARN " if r[k] > lim[k] else "ok   ") + f"{lab[k]}: {r[k]:.1f} (target <= {lim[k]})")
 print("\n--- number provenance ---")
 subprocess.run(["python3", str(ROOT / "tools/check_provenance.py"), sys.argv[1]])
 print("\n--- source coverage ---")

@@ -11,3 +11,4 @@ Before writing chapter P.C, open planning/gem_books/DEFERRED.md and list every r
 3. Cite each book by folder name and chapter title in "Sources and review notes", and say what you read in full.
 4. In planning/gem_books/DEFERRED.md change the row's status from DEFERRED to DONE with the handbook chapter and section, or to PROPOSED_NEW_CHAPTER if it needs its own chapter.
 5. Do not write any DEFERRED row into a different part's chapter.
+6. LANGUAGE: follow planning/LANGUAGE_RULE.md in full (book-style prose, plain words, at most two numbers per sentence, code formatting only for things you type or see on screen). The validator prints readability warnings; reduce them.
