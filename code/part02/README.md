@@ -12,3 +12,4 @@
 | 2.8 DNS in depth: resolution, records, resolvers, caching | `dns_in_depth.py` | `dns_in_depth_lab.py` | 14 | `python3 code/part02/dns_in_depth_lab.py` |
 | 2.9 DHCP, NAT and PAT | `dhcp_nat_pat.py` | `dhcp_nat_pat_lab.py` | 13 | `python3 code/part02/dhcp_nat_pat_lab.py` |
 | 2.10 HTTP, TLS and PKI basics | `http_tls_pki.py` | `http_tls_pki_lab.py` | 13 | `python3 code/part02/http_tls_pki_lab.py` |
+| 2.11 VLANs, trunking and spanning tree | `vlans_stp_switching.py` | `vlans_stp_switching_lab.py` | 12 | `python3 code/part02/vlans_stp_switching_lab.py` |

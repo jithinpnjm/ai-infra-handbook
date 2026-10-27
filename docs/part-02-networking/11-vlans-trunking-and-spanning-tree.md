@@ -201,7 +201,7 @@ Interfaces do not equal neighbours: one multi-access segment interface may have 
 
 **Fast failure detection: BFD.** Hello/dead timers in routing protocols are seconds; **Bidirectional Forwarding Detection** (RFC 5880) sends lightweight UDP/hardware-assisted probes every 50 to 300 ms so failures are detected in under a second independent of the routing protocol, then notifies BGP/OSPF/static routes (`bfd` in FRR). Pair BFD with ECMP so traffic shifts within milliseconds of a link or switch failure; on host side, `ethtool` link-state, `ip monitor`, and bond `miimon`/ARP monitoring (chapter 2.12) play the same role.
 
-The remaining parts of control-plane learning (learning reachability reactively or proactively, advertising and redistributing it, avoiding loops when redistributing between protocols) belong with routing protocols in chapter 2.13.
+The remaining parts of control-plane learning (learning reachability **reactively**—waiting until a data packet arrives to resolve state on demand, like ARP or MAC learning, which reduces standing control-plane state at the cost of first-packet latency—versus **proactively** pre-distributing all reachability via a routing database; advertising and redistributing routes; and tagging routes with administrative numbers at redistribution boundaries to prevent routing loops, `CN` Chapter 11) belong with routing protocols in chapter 2.13.
 
 ## 5. Designing L2 domains for AI infrastructure
 
@@ -211,9 +211,15 @@ The remaining parts of control-plane learning (learning reachability reactively 
 - **Back-end fabrics**: IB or routed Ethernet with PFC/ECN (chapter 2.19); do not rely on STP anywhere in them; ensure the lossless classes are consistent end to end.
 - **Naming and documentation**: a VLAN/subnet plan, switch-port-to-NIC mapping from LLDP, and automated drift checks (chapters 2.28, 2.29).
 
-## 6. Lab: VLANs, bridges and a deliberate loop (untested)
+## 6. Hands-on lab: VLANs, bridges, and a deliberate loop
 
-Use Linux network namespaces and bridges (or containerlab, chapter 2.27) on one VM.
+First, run the self-checking Python lab (`code/part02/vlans_stp_switching_lab.py`) locally. It verifies IEEE `802.1Q` 16-bit `TCI` (`PCP | DEI | VID`) encoding/decoding (`0x6064` for `PCP=3, VID=100`), Spanning Tree Root Bridge election (`priority + MAC`), and 2-Way bidirectional hello + MTU adjacency checks (`CN` Chapter 11).
+
+```bash
+python3 code/part02/vlans_stp_switching_lab.py
+```
+
+Next, on a disposable Linux VM using network namespaces and bridges (all interactive VM commands below are `untested here`), work through these steps:
 
 1. **Software switch**: create bridge `sw1` and three namespaces `h1,h2,h3` connected with veth pairs; assign 10.0.0.1/2/3 /24; ping across; inspect `bridge fdb show`; watch MAC learning by flushing (`bridge fdb flush`) and re-pinging with `tcpdump` on a third port to see the first flooded ARP.
 2. **VLANs**: enable `vlan_filtering`; put h1,h2 in VLAN 10 (access) and h3 in VLAN 20; show h3 cannot reach h1; add a router namespace `r` on a trunk port with sub-interfaces for VLAN 10/20 (router-on-a-stick) and `ip_forward=1`; verify inter-VLAN ping, inspect tags with `tcpdump -e -ni <trunk>`; compare with an SVI on the bridge.
@@ -223,8 +229,6 @@ Use Linux network namespaces and bridges (or containerlab, chapter 2.27) on one 
 6. **LLDP**: run `lldpd` in two namespaces connected by a veth, view `lldpcli show neighbors`; change the system name and see the update; remove one direction (`tc` filter dropping packets in one direction) to emulate a unidirectional link and observe the one-way adjacency symptoms; add BFD in FRR (chapter 2.27) and measure detection time.
 7. **Latency/serialisation**: use `ping -s` sizes through two bridges with `tc netem rate 1gbit` to show serialisation delay growth.
 8. **Clean up** namespaces and bridges.
-
-Mark tested only after execution.
 
 ## 7. Common mistakes
 
@@ -248,49 +252,121 @@ Mark tested only after execution.
 - "How would you verify that 512 servers are cabled to the right leaf ports?" (LLDP + inventory compare.)
 - "What is head-of-line blocking in a switch and how do VOQs fix it?"
 
-## 9. Checkpoint questions (35)
+## Exercises
 
-1. What are the four steps of moving a packet through a device? **A:** Media to memory, processing, switching across the fabric, memory to media.
-2. What is a receive ring? **A:** A circular set of preallocated buffers the PHY writes into.
-3. Why use pointers rather than copying? **A:** Copying packets is the most expensive operation.
-4. What changes when a packet is routed but not when it is switched? **A:** The L2 header is rewritten (and TTL decremented).
-5. Three reasons to route? **A:** Join different media, scale reachability state by aggregation, contain broadcasts.
-6. What are the three forwarding paths? **A:** Process switching, interrupt-context (fast), ASIC.
-7. What does "punted to the CPU" mean? **A:** The hardware can't handle it and software forwards it, slowly.
-8. What is a crossbar and its main issue? **A:** A grid connecting inputs to outputs; contention and HOL blocking.
-9. What do VOQs fix? **A:** Head-of-line blocking in input-queued fabrics.
-10. Cut-through vs store-and-forward? **A:** Forward after the header versus after the whole frame and FCS check.
-11. Serialisation delay of 9000 bytes on 10G? **A:** 72,000 bits / 10e9 = 7.2 µs.
-12. What is a microburst? **A:** A very short burst exceeding link rate that overflows queues but not averages.
-13. How large is a VLAN ID and what range is usable? **A:** 12 bits; 1 to 4094.
-14. How many bytes does an 802.1Q tag add? **A:** 4.
-15. What is PCP? **A:** 802.1p priority bits in the tag.
-16. Access vs trunk port? **A:** Single untagged VLAN versus multiple tagged VLANs.
-17. What is the native VLAN? **A:** The VLAN sent untagged on a trunk.
-18. What is QinQ? **A:** Double VLAN tagging (802.1ad).
-19. What is router-on-a-stick? **A:** One trunk to a router with subinterfaces per VLAN.
-20. What is an SVI? **A:** A routed VLAN interface on an L3 switch.
-21. How do you create an 802.1Q interface in Linux? **A:** `ip link add link eth0 name eth0.100 type vlan id 100`.
-22. How do you make a Linux bridge VLAN-aware? **A:** `vlan_filtering 1` and `bridge vlan add`.
-23. Why do L2 loops cause storms? **A:** Ethernet frames have no TTL and broadcasts replicate.
-24. What does STP elect first? **A:** The root bridge (lowest bridge ID).
-25. What is a BPDU? **A:** Bridge protocol data unit exchanged by STP.
-26. What are STP port roles in RSTP? **A:** Root, designated, alternate, backup.
-27. How fast does RSTP converge versus STP? **A:** About a second versus 30 to 50 seconds.
-28. What does PortFast do? **A:** Edge ports forward immediately.
-29. What does BPDU guard do? **A:** Err-disables an edge port that receives a BPDU.
-30. What does root guard do? **A:** Prevents a port from becoming a root port.
-31. Why do modern DCs avoid STP? **A:** Blocked links waste capacity; slow, disruptive convergence; L3 ECMP is better.
-32. How do hello-based protocols detect a dead neighbour? **A:** Dead timer expiry without hellos (typically 3× hello interval).
-33. How does two-way connectivity get detected? **A:** Hellos list neighbours heard; a router seeing itself listed knows the link is bidirectional.
-34. What is BFD for? **A:** Sub-second failure detection independent of the protocol.
-35. How to verify server-to-switch cabling at scale? **A:** LLDP neighbour data compared with the wiring plan.
+1. **The Four Packet-Movement Steps, Three Forwarding Paths, and Crossbar `VOQ`s (`CN` Chapter 7):** (a) Explain the four internal steps by which any switch or router moves a packet (`Media -> RX ring -> Processing -> Fabric -> TX ring -> Media`) and why passing buffer pointers instead of copying packet bytes is critical; (b) compare **process switching** ("punted to CPU"), **interrupt-context fast switching**, and **ASIC/NPU forwarding** (`TCAM`/`SRAM`), and calculate the serialization delay of a `9000`-byte jumbo frame on a `10 Gb/s` link (`7.2 µs`).
+2. **IEEE `802.1Q` Tag Anatomy, Access vs. Trunk vs. Native VLAN, and Linux `bridge vlan`:** (a) Using `encode_decode_8021q_tci()` in `code/part02/vlans_stp_switching.py`, encode `PCP = 3` (RoCE priority), `DEI = 0`, and `VID = 100` into its 16-bit `TCI` integer (`0x6064`), and explain why `VID 0` and `VID 4095` are reserved; (b) write the Linux `ip link` and `bridge vlan` commands to create a VLAN-filtering bridge `br0` where `eth1` is an untagged access port in VLAN `100` and `eth2` is a tagged trunk carrying VLANs `100` and `200`.
+3. **Spanning Tree (`STP` vs. `RSTP` vs. `MSTP`) and Port Protection (`PortFast`, `BPDU Guard`, `Root Guard`):** (a) Using `elect_stp_root_bridge()`, explain why leaving all switches at the default STP priority (`32768`) risks electing the oldest closet switch in the building as the Root Bridge, and trace how STP selects **Root Ports**, **Designated Ports**, and **Blocked Ports**; (b) contrast classic `802.1D` STP (`30–50 s` convergence) with `802.1w` **RSTP** (`~1 s` proposal/agreement convergence), and state what **PortFast**, **BPDU Guard**, and **Root Guard** protect against.
+4. **Why Modern Data Centers and AI Fabrics Avoid Spanning Tree:** Give three reasons large L2 Spanning Tree domains are avoided in modern data-center fabrics, and name the three architectures (**MLAG/vPC**, **L3 routed leaf-spine with ECMP**, and **EVPN-VXLAN**) that replace them.
+5. **Control-Plane Topology Discovery, Two-Way Connectivity, and Reactive vs. Proactive Learning (`CN` Chapter 11):** Using `check_two_way_hello_adjacency()`, explain how routing protocols (`OSPF`, `IS-IS`) use neighbor lists inside multicast **hello** packets to prove **two-way (bidirectional) connectivity** and verify matching link **MTU** before forming an adjacency. Contrast **reactive** and **proactive** control planes.
+6. **Automated Cabling Verification with `LLDP` (`802.1AB`) and Sub-Second Failure Detection with `BFD` (`RFC 5880`):** Design a commissioning check for a 512-node GPU cluster using `lldpcli show neighbors` to catch swapped leaf-switch cables before running workloads, and explain why routing protocols pair with **BFD** (`50–300 ms` intervals) instead of relying on multi-second hello/dead timers.
 
-## 10. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. What are the four steps by which a switch or router moves a packet internally (`CN` Chapter 7), and why does it move pointers instead of copying bytes?</summary>
+(1) **Media to memory**: the PHY clocks incoming bits into a preallocated buffer in the circular **receive (`RX`) ring**; (2) **Processing**: header lookup (`FDB` or `FIB`), ACL/firewall filtering, NAT, and header rewrite; (3) **Switching across the internal fabric**: moving the packet from ingress to egress via shared memory, a bus, or a crossbar; and (4) **Memory to media**: queuing in an output QoS queue, placing on the **transmit (`TX`) ring**, and clocking bits onto the wire. Copying packet payload bytes in memory is the most expensive operation on a forwarding path, so high-speed devices keep the packet in one buffer and pass only a **pointer/descriptor** from ring to queue.
+</details>
 
-- Russ White and Jeff Tantsura (with co-authors), *Computer Networking Problems and Solutions*, chapter 7 (packet switching: media to memory, processing, switching versus routing, why route, packet processing engines, bus and crossbar fabrics, memory to media; the ECMP and link aggregation parts are developed in chapter 2.12) and chapter 11 (topology discovery: nodes, edges and reachable destinations, detecting neighbours, two-way connectivity, MTU detection).
-- VLAN, trunk, STP, LLDP, BFD, Linux bridge and ASIC notes are the author's synthesis from IEEE 802.1Q/802.1D/802.1w/802.1s/802.1AB, RFC 5880, and the iproute2 `bridge`/`ip-link` documentation.
+<details>
+<summary>2. What changes in a packet when it is L2-switched versus L3-routed, and what are the three fundamental reasons we route instead of switching the entire world?</summary>
+An **L2 switch** forwards the Ethernet frame **unmodified** based on its destination MAC address. An **L3 router** (or L3 switch SVI) strips the incoming Ethernet header, looks up the destination IP in its FIB, decrements the IP **`TTL` / `Hop Limit`** (updating the IPv4 header checksum), and encapsulates the packet in a **brand-new Ethernet header** (`src MAC` = router egress port, `dst MAC` = next-hop MAC). We route for three reasons (`CN` Ch. 7): (1) to interconnect dissimilar physical/link media, (2) to **scale reachability state via hierarchical prefix aggregation** (switches must store every individual host MAC, whereas routers summarize thousands of hosts into one `/20` prefix), and (3) to **contain broadcast domains** (`ARP`, `DHCP`, unknown unicast).
+</details>
 
-**Flagged for verification before publishing:** STP default costs and timers per vendor, switch latency figures, `bridge vlan` syntax in your iproute2 version, mstpd availability, and vendor feature names; all labs are **untested**.
+<details>
+<summary>3. Compare the three packet forwarding paths inside network devices: Process Switching, Interrupt-Context Fast Switching, and ASIC/NPU Forwarding.</summary>
+- **Process switching ("slow path")**: the packet is **punted to the general-purpose CPU** and scheduled into a user/kernel process (used for control-plane protocols like BGP/OSPF, ARP generation, TTL-expired ICMP replies, or unsupported hardware options; protected by **Control-Plane Policing `CoPP`**).\n- **Interrupt-context ("fast") switching**: forwarded directly inside the kernel interrupt/softirq handler (`Linux NAPI`, or bypassed via `XDP`/`DPDK`).\n- **ASIC / NPU hardware forwarding**: fixed or programmable silicon pipelines (`Broadcom Tomahawk/Trident`, `NVIDIA Spectrum`) with `SRAM` exact-match and `TCAM` ternary tables forwarding at `12.8` to `51.2 Tb/s` line rate.
+</details>
+
+<details>
+<summary>4. What is Head-of-Line (`HOL`) blocking in an input-queued crossbar switch, and how do Virtual Output Queues (`VOQ`s) solve it?</summary>
+In a crossbar switch with a single FIFO queue per input port, if the packet at the head of Input 1 is destined for a congested Output 3, it blocks all packets sitting behind it in Input 1's queue—even if those packets are destined for completely idle Output 2 (**HOL blocking**). **Virtual Output Queues (`VOQ`s)** maintain `N` separate queues at every input port (one queue per destination output port), allowing the crossbar arbiter (`iSLIP`) to schedule packets to idle outputs without being stalled by a congested output.
+</details>
+
+<details>
+<summary>5. Compare Cut-Through and Store-and-Forward switching, calculate the serialization delay of a `9000`-byte frame at `10 Gb/s`, and define a Microburst.</summary>
+**Store-and-forward** buffers the entire frame and verifies the trailing `FCS` CRC before forwarding (dropping corrupt frames, but adding full serialization delay). **Cut-through** starts forwarding as soon as the first `14–24` bytes (destination address) are read (`~300 ns–1 µs` latency independent of frame size, used in AI/HPC fabrics). A `9000`-byte frame (`72,000` bits) takes **`72,000 / 10e9 = 7.2 µs`** to serialize at `10 Gb/s` (`180 ns` at `400 Gb/s`). A **microburst** is a sub-millisecond synchronized burst (such as an `AllReduce` barrier) that overflows switch output buffers and drops packets while 1-minute average utilization counters look low (`< 20%`).
+</details>
+
+<details>
+<summary>6. Describe the 4-byte IEEE `802.1Q` VLAN tag (`TPID`, `PCP`, `DEI`, `VID`) and the usable VLAN ID range.</summary>
+Inserted immediately after the 6-byte Source MAC address, the `4`-byte `802.1Q` tag consists of:\n- **`16`-bit `TPID` (*Tag Protocol Identifier*)**: `0x8100` (or `0x88A8` for outer `802.1ad` QinQ tags)\n- **`3`-bit `PCP` (*Priority Code Point*, `802.1p`)**: `0..7` Class-of-Service priority (used by lossless RoCEv2 `PFC`, typically priority `3`)\n- **`1`-bit `DEI` (*Drop Eligible Indicator*)**\n- **`12`-bit `VID` (*VLAN Identifier*)**: **`1` to `4094` usable** (`0` is reserved for priority-only tagging and `4095` is reserved). It increases standard max frame size from `1518` to **`1522` bytes**.
+</details>
+
+<details>
+<summary>7. Contrast an Access port, a Trunk port, and the Native VLAN, and explain the security/operational hazard of a Native VLAN mismatch.</summary>
+An **Access port** belongs to a single VLAN and sends/receives frames **untagged** (used for end hosts). A **Trunk port** carries frames for multiple allowed VLANs using **`802.1Q` tags** (used between switches and hypervisors/Kubernetes nodes). The **Native VLAN** (default `VLAN 1`) is the single VLAN whose frames are transmitted **untagged** across a trunk. If Switch A sets `native vlan 10` and Switch B sets `native vlan 20` on the same trunk, untagged frames sent from VLAN 10 silently hop into VLAN 20 on Switch B—leaking traffic across broadcast domains and breaking Spanning Tree.
+</details>
+
+<details>
+<summary>8. Compare \"Router-on-a-Stick\" with an L3 Switch `SVI` (*Switch Virtual Interface* / `IRB`) for inter-VLAN routing.</summary>
+In **Router-on-a-Stick**, a switch sends inter-VLAN traffic over a trunk link to an external router configured with `802.1Q` sub-interfaces (`eth0.10`, `eth0.20`), which routes the packet and sends it back down the same trunk (hairpinning the link). With an **L3 Switch `SVI`** (`interface Vlan10`, `interface Vlan20`), the switch ASIC itself holds the default gateway IP for each VLAN and routes between VLANs at hardware line rate internally.
+</details>
+
+<details>
+<summary>9. How do you configure an `802.1Q` VLAN sub-interface and a VLAN-filtering software bridge on Linux?</summary>
+- **VLAN sub-interface**: `sudo ip link add link eth0 name eth0.100 type vlan id 100 && sudo ip link set eth0.100 up`.\n- **VLAN-filtering bridge**: `sudo ip link add br0 type bridge vlan_filtering 1`, attach ports (`ip link set eth1 master br0`), configure an untagged access port (`sudo bridge vlan add dev eth1 vid 100 pvid untagged`), configure a tagged trunk port (`sudo bridge vlan add dev eth2 vid 100` and `vid 200`), and inspect with `bridge vlan show`.
+</details>
+
+<details>
+<summary>10. Why do Layer 2 loops cause catastrophic broadcast storms and MAC table flapping within seconds?</summary>
+Because Ethernet headers contain **no `TTL` (Time To Live) field**, any broadcast (`ARP`, `DHCP`), multicast, or unknown-unicast frame entering a loop is flooded out all ports, returns to the switches on alternate links, and is flooded again—multiplying exponentially until 100% of link bandwidth and switch CPU cycles are consumed, while the switches' MAC tables (`FDB`) constantly overwrite each host's source MAC port back and forth (**MAC flapping**).
+</details>
+
+<details>
+<summary>11. Trace the 3-step Spanning Tree Protocol (`STP`) calculation: Root Bridge election, Root Port selection, and Designated vs. Blocked Ports.</summary>
+(1) **Elect the Root Bridge**: switches exchange **BPDUs** (`01:80:C2:00:00:00`) containing their 8-byte **Bridge ID (`2-byte Priority + 6-byte MAC`)**; the switch with the **lowest numerical Bridge ID** wins (default priority is `32768`, so you must set the spine/core switch to e.g. `4096` so an old closet switch with a low MAC doesn't win!). (2) **Select Root Ports**: every non-root switch selects its single port with the **lowest cumulative path cost to the Root Bridge** as its `Root Port`. (3) **Select Designated and Blocked Ports**: on every link segment, the switch port with the lower cost to the Root becomes the forwarding `Designated Port`, and the other end is placed in **`Blocking` (`Alternate`)** state to break the loop.
+</details>
+
+<details>
+<summary>12. Compare classic `802.1D` STP, `802.1w` RSTP, and `802.1s` MSTP.</summary>
+- **Classic `802.1D` STP**: timer-driven (`Blocking -> Listening 15s -> Learning 15s -> Forwarding`, plus `20s Max Age` = **`30 to 50 seconds`** convergence) with a single tree for all VLANs.\n- **`802.1w` RSTP (*Rapid STP*)**: uses an active **proposal/agreement handshake** on point-to-point full-duplex links and designates host ports as `Edge` ports, converging in **`~1 second`** (`Discarding -> Learning -> Forwarding`; roles: `Root`, `Designated`, `Alternate`, `Backup`).\n- **`802.1s` MSTP (*Multiple STP*)**: maps hundreds of VLANs into a few spanning-tree instances (`MSTI`s) so different VLAN groups can use different uplinks without running a separate CPU-heavy STP instance per VLAN.
+</details>
+
+<details>
+<summary>13. State the purpose of the five essential STP protection mechanisms: `PortFast` (`Edge`), `BPDU Guard`, `Root Guard`, `Loop Guard` / `UDLD`, and `Storm Control`.</summary>
+- **`PortFast` (`Edge port`)**: transitions server/host access ports immediately to `Forwarding` on link-up without waiting `30 s` and suppresses Topology Change Notifications (`TCN`s) when servers reboot.\n- **`BPDU Guard`**: immediately shuts down (`err-disable`s) a `PortFast` edge port if a **BPDU** ever arrives on it (stopping accidental loops from someone plugging in a switch or unconfigured bridge).\n- **`Root Guard`**: blocks an interface if a superior BPDU arrives on it, preventing an access/tenant switch from hijacking the Root Bridge role.\n- **`Loop Guard` / `UDLD`**: prevents an alternate port from moving to `Forwarding` if unidirectional fiber failure stops BPDUs in one direction.\n- **`Storm Control`**: rate-limits broadcast, multicast, and unknown-unicast traffic on a port.
+</details>
+
+<details>
+<summary>14. Why do modern data-center and AI fabrics avoid Spanning Tree on the data path, and what do they use instead?</summary>
+Spanning Tree **blocks half of your expensive parallel uplinks** (leaving 50% of bandwidth idle), cannot do active-active multipathing within one tree, and suffers blast-radius reconvergence on topology changes. Modern data centers keep L2 confined to a single rack (using **MLAG/vPC** with **LACP** for dual-homed L2 servers) and use **L3 routed leaf-spine fabrics with ECMP** (plus **EVPN-VXLAN** if L2 must be stretched over L3) so **100% of links forward actively** with no L2 loops.
+</details>
+
+<details>
+<summary>15. In control-plane graph theory (`CN` Chapter 11), define a Transit Node, a Leaf Node, an Edge, and a Reachable Destination.</summary>
+A **transit node** (router/switch) forwards packets between interfaces; a **leaf node** (host) originates and terminates traffic; an **edge** is a link connecting nodes over which packets can be forwarded; and a **reachable destination** is a named endpoint attached to the graph—a single host (`/32`), a service (possibly anycast across multiple nodes), a subnet prefix (`/24`), or a summarized aggregate (`/16`).
+</details>
+
+<details>
+<summary>16. What are the four ways a network device detects its neighbors (`CN` Chapter 11)?</summary>
+(1) **Manual configuration** (explicitly configuring neighbor IP addresses, as in classic eBGP/iBGP); (2) **Inferring neighbors from routing advertisements** (RIP, holding state until a `3x` dead/hold timer expires); (3) **Explicit periodic Hello messages** (`OSPF`, `IS-IS`, `EIGRP`, `LLDP`, `LACP`); and (4) **Centralized registration** with a controller or directory (`SDN` controllers, InfiniBand Subnet Manager, Kubernetes API server).
+</details>
+
+<details>
+<summary>17. How do hello-based protocols (`OSPF`, `IS-IS`) verify Two-Way (bidirectional) connectivity and matching link `MTU` before forming an adjacency?</summary>
+A broken fiber strand or filter can create a **unidirectional link** where Router B hears Router A's hellos, but Router A cannot hear Router B. To prove **two-way connectivity**, every hello packet includes the **list of neighbor Router IDs recently heard on that interface**: Router B hears A and adds `A` to its outgoing hello; when Router A receives B's hello and **sees its own ID (`A`) listed inside it**, both sides know the link is bidirectional (`2-Way` state). Similarly, OSPF carries the interface `MTU` in Database Description packets and IS-IS pads hellos to the full interface `MTU` so mismatched MTUs (`9000` vs `1500`) fail adjacency immediately rather than blackholing data later.
+</details>
+
+<details>
+<summary>18. Contrast Reactive and Proactive control-plane learning (`CN` Chapter 11).</summary>
+**Proactive control planes** (`OSPF`, `IS-IS`, `BGP`) discover the entire topology and populate forwarding tables **before** data traffic arrives—giving instant first-packet forwarding at the cost of standing control-plane state and background traffic. **Reactive systems** (`ARP`, `NDP`, Ethernet MAC learning, on-demand tunnels) wait until a data packet arrives for an unknown destination and then query/learn on demand—reducing standing state for idle endpoints at the cost of first-packet latency and broadcast/flooding overhead.
+</details>
+
+<details>
+<summary>19. How does `LLDP` (`IEEE 802.1AB`) work on Linux servers, and how is it used when commissioning a 512-node GPU cluster?</summary>
+`lldpd` (`sudo lldpcli show neighbors`) exchanges link-local multicast frames (`01:80:C2:00:00:0E`) with the directly attached switch port (never forwarded by switches), advertising system hostname, port name/description, management IP, VLANs, and MTU. During cluster bring-up, an automated script queries `lldpcli -f json show neighbors` across all 512 GPU nodes and diffs the actual `(node, NIC) <-> (leaf switch, port)` cabling against the rack design spreadsheet—catching miswired rails before a single job runs.
+</details>
+
+<details>
+<summary>20. Why do routing protocols pair with `BFD` (*Bidirectional Forwarding Detection*, RFC 5880)?</summary>
+Routing protocol hello/dead timers default to seconds (`10 s / 40 s` in OSPF, `3 s / 9 s` or `60 s / 180 s` in BGP), which is far too slow for 400 Gb/s AI fabrics. **BFD** runs a lightweight, protocol-independent heartbeat session (for example, UDP probes every **`50 ms` with a `3x` multiplier = `150 ms` detection**) and immediately notifies `BGP`, `OSPF`, or static routes to withdraw the failed next hop from the ECMP group in milliseconds.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `computer-networking-problems-and-solutions` — Russ White and Ethan Banks, *Computer Networking Problems and Solutions*, **Chapter 7: Packet Switching** (media to memory RX ring pointers, processing, switching vs routing, why route, the 3 forwarding paths process / interrupt / ASIC TCAM/SRAM, shared memory vs bus vs crossbar fabrics, VOQs and iSLIP, store-and-forward vs cut-through, memory to media TX ring and output queues; ECMP and link aggregation are covered in Chapter 2.12) and **Chapter 11: Topology Discovery** (nodes, edges, and reachable destinations, detecting neighbors, two-way connectivity, MTU detection, reactive vs proactive control planes, and route tagging).
+- **Run here:** `python3 code/part02/vlans_stp_switching_lab.py` (12 passed, 0 failed).
+- **Explicitly labelled inferences:** The IEEE `802.1Q` (`TPID 0x8100`, `PCP`, `DEI`, `VID`) and Linux `bridge vlan` configuration commands, STP/RSTP/MSTP protection table (`PortFast`, `BPDU Guard`, `Root Guard`), `lldpcli` cluster cabling verification, and `BFD` (`RFC 5880`) notes synthesize IEEE 802.1Q, 802.1D, 802.1w, 802.1s, and 802.1AB, RFC 5880, and the `iproute2` `bridge(8)` / `ip-link(8)` documentation (cross-referenced with Chapters 2.3, 2.4, 2.5, 2.7, 2.12, 2.13, 2.16–2.19, 2.27–2.29, and 2.31, plus original study items 21, 22, 23, 25, 26, 27, 28, 29, 31, 33, 34, and 35).
+- **Not verified on live hardware:** All interactive VM and switch commands (`ip link add type vlan`, `bridge vlan`, `brctl`, `tcpdump -e vlan`, `lldpd`, `lldpcli`) are marked (untested here) and must be executed on a disposable Linux VM or containerlab topology.

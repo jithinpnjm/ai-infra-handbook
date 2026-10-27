@@ -40,7 +40,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 2.8 | DNS in depth: resolution, records, resolvers and caching | drafted | 6368 |  |
 | 2.9 | DHCP, NAT and PAT | drafted | 6118 |  |
 | 2.10 | HTTP, TLS and PKI basics | drafted | 6575 |  |
-| 2.11 | VLANs, trunking and spanning tree | drafted | 4864 |  |
+| 2.11 | VLANs, trunking and spanning tree | drafted | 7035 |  |
 | 2.12 | Link aggregation: LACP and MLAG | drafted | 4373 |  |
 | 2.13 | IP routing: static routes, dynamic routing and convergence | drafted | 5375 |  |
 | 2.22 | Linux networking: inspecting state with ip, ss and counters | drafted | 5475 |  |
