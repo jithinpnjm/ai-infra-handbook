@@ -9,7 +9,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | # | Chapter | Status | Words | Notes |
 |---|---|---|---|---|
 | 1.1 | The Linux big picture: kernel, userspace, distributions | drafted | 9933 |  |
-| 1.2 | The command line: shells, commands, pipes and redirection | drafted | 9969 |  |
+| 1.2 | The command line: shells, commands, pipes and redirection | drafted | 12134 |  |
 | 1.3 | Files and the directory hierarchy: paths, links, inodes | drafted | 7080 |  |
 | 1.4 | Text-processing essentials: grep, sed, awk, find, xargs, sort | drafted | 5561 |  |
 | 1.5 | Working remotely: SSH keys, file transfer, tmux and editors | drafted | 6300 |  |

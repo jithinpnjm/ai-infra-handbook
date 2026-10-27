@@ -3,3 +3,4 @@
 | Chapter | Model File | Lab File | Self-Checks | How to Run |
 |---|---|---|---|---|
 | 1.1 The Linux big picture | `linux_layers.py` | `linux_layers_lab.py` | 26 | `python3 code/part01/linux_layers_lab.py` |
+| 1.2 The command line | `shell_pipeline.py` | `shell_pipeline_lab.py` | 26 | `python3 code/part01/shell_pipeline_lab.py` |
