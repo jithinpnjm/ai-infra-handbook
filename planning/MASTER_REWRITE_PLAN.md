@@ -84,7 +84,7 @@ When Gemini rewrote chapters in commit `7cd1471` to satisfy `validate_chapter.py
 |---|---|---|---|---|---|---|---|
 | **Part 1 (Linux) [DONE 30/30]** | 30 | 6,012 / 10,850 / 16,120 | 0 | 0 | 0 | 0 / 30 (**ALL 30 DONE**) | 0 (**ALL DONE**) |
 | **Part 2 (Networking) [DONE 32/32]** | 32 | 6,000 / 7,450 / 9,336 | 0 | 0 | 0 | 0 / 32 (**ALL 32 DONE**) | 0 (**ALL DONE**) |
-| **Part 3 (Python)** | 11 | 4,147 / 5,190 / 7,429 | 0 | 0 | 2 (`3.7`: 70, `3.9`: 18) | 11 / 11 | 8 chapters (`VL2`) |
+| **Part 3 (Python) [DONE 11/11]** | 11 | 6,787 / 8,850 / 11,314 | 0 (**ALL 11 DONE**) | 0 | 0 | 0 / 11 (**ALL 11 DONE**) | 0 (**ALL DONE**) |
 | **Part 4 (Automation)** | 27 | 3,072 / 3,758 / 5,237 | 0 | **22** (`4.4`–`4.25`) | 0 | 27 / 27 | 11 chapters (`VL10`) |
 | **Part 5 (Kubernetes)** | 35 | 2,662 / 4,249 / 5,146 | 0 | **28** (`5.2, 5.4`–`5.28, 5.30`–`5.32, 5.34, 5.35`) | 0 | 35 / 35 | 8 chapters (`V10`, `VL3`) |
 | **Part 6 (HPC & Slurm)** | 31 | 2,647 / 4,061 / 8,600 | **2** (`6.2`, `6.17`) | 0 | 0 | 31 / 31 | 12 chapters (`V1, V15, V20, VL6, VL10`) |
@@ -178,44 +178,44 @@ Work in this exact book order:
 
 | Done | Book Chapter | Rel | Target Handbook Chapter(s) | Not Found % | Exact `book_passages.py` Command |
 |---|---|---|---|---|---|
-| [ ] | 2. How Python Runs Programs | PARTLY | 3.1, 3.2 | **83%** | `python3 tools/book_passages.py learning-python-6th-edition "2. " 3.1 3.2` |
-| [ ] | 3. How You Run Programs | PARTLY | 3.1 | **93%** | `python3 tools/book_passages.py learning-python-6th-edition "3. " 3.1` |
-| [ ] | 4. Introducing Python Objects | YES | 3.1 | **95%** | `python3 tools/book_passages.py learning-python-6th-edition "4. " 3.1` |
-| [ ] | 5. Numbers and Expressions | YES | 3.1 | **62%** | `python3 tools/book_passages.py learning-python-6th-edition "5. " 3.1` |
-| [ ] | 6. The Dynamic Typing Interlude | YES | 3.1, 3.3 | **84%** | `python3 tools/book_passages.py learning-python-6th-edition "6. " 3.1 3.3` |
-| [ ] | 7. String Fundamentals | YES | 3.1 | **84%** | `python3 tools/book_passages.py learning-python-6th-edition "7. " 3.1` |
-| [ ] | 8. Lists and Dictionaries | YES | 3.1, 3.3 | **76%** | `python3 tools/book_passages.py learning-python-6th-edition "8. " 3.1 3.3` |
-| [ ] | 9. Tuples, Files, and Everything Else | YES | 3.1, 3.4, 3.5 | **88%** | `python3 tools/book_passages.py learning-python-6th-edition "9. " 3.1 3.4 3.5` |
-| [ ] | 10. Introducing Python Statements | PARTLY | 3.1 | **100%** | `python3 tools/book_passages.py learning-python-6th-edition "10. " 3.1` |
-| [ ] | 11. Assignments, Expressions, and Prints | YES | 3.1 | **85%** | `python3 tools/book_passages.py learning-python-6th-edition "11. " 3.1` |
-| [ ] | 12. if and match Selections | YES | 3.1 | **89%** | `python3 tools/book_passages.py learning-python-6th-edition "12. " 3.1` |
-| [ ] | 13. while and for Loops | YES | 3.1 | **85%** | `python3 tools/book_passages.py learning-python-6th-edition "13. " 3.1` |
-| [ ] | 14. Iterations and Comprehensions | YES | 3.1, 3.3 | **37%** | `python3 tools/book_passages.py learning-python-6th-edition "14. " 3.1 3.3` |
-| [ ] | 16. Function Basics | YES | 3.1 | **100%** | `python3 tools/book_passages.py learning-python-6th-edition "16. " 3.1` |
-| [ ] | 17. Scopes | YES | 3.1, 3.11 | **59%** | `python3 tools/book_passages.py learning-python-6th-edition "17. " 3.1 3.11` |
-| [ ] | 18. Arguments | YES | 3.1 | **71%** | `python3 tools/book_passages.py learning-python-6th-edition "18. " 3.1` |
-| [ ] | 19. Function Odds and Ends | YES | 3.1, 3.3 | **91%** | `python3 tools/book_passages.py learning-python-6th-edition "19. " 3.1 3.3` |
-| [ ] | 20. Comprehensions and Generations | YES | 3.3, 3.6 | **72%** | `python3 tools/book_passages.py learning-python-6th-edition "20. " 3.3 3.6` |
-| [ ] | 21. The Benchmarking Interlude | PARTLY | 3.1, 3.9 | **88%** | `python3 tools/book_passages.py learning-python-6th-edition "21. " 3.1 3.9` |
-| [ ] | 22. Modules: The Big Picture | YES | 3.2 | **83%** | `python3 tools/book_passages.py learning-python-6th-edition "22. " 3.2` |
-| [ ] | 23. Module Coding Basics | YES | 3.2 | **89%** | `python3 tools/book_passages.py learning-python-6th-edition "23. " 3.2` |
-| [ ] | 24. Module Packages | YES | 3.2 | **97%** | `python3 tools/book_passages.py learning-python-6th-edition "24. " 3.2` |
-| [ ] | 25. Module Odds and Ends | YES | 3.1, 3.2, 3.11 | **74%** | `python3 tools/book_passages.py learning-python-6th-edition "25. " 3.1 3.2 3.11` |
-| [ ] | 26. OOP: The Big Picture | YES | 3.4 | **94%** | `python3 tools/book_passages.py learning-python-6th-edition "26. " 3.4` |
-| [ ] | 27. Class Coding Basics | YES | 3.4 | **90%** | `python3 tools/book_passages.py learning-python-6th-edition "27. " 3.4` |
-| [ ] | 28. A More Realistic Example | PARTLY | 3.4, 3.5 | **89%** | `python3 tools/book_passages.py learning-python-6th-edition "28. " 3.4 3.5` |
-| [ ] | 29. Class Coding Details | YES | 3.4 | **91%** | `python3 tools/book_passages.py learning-python-6th-edition "29. " 3.4` |
-| [ ] | 30. Operator Overloading | YES | 3.3, 3.4, 3.11 | **51%** | `python3 tools/book_passages.py learning-python-6th-edition "30. " 3.3 3.4 3.11` |
-| [ ] | 31. Designing with Classes | YES | 3.4, 3.11 | **85%** | `python3 tools/book_passages.py learning-python-6th-edition "31. " 3.4 3.11` |
-| [ ] | 32. Class Odds and Ends | YES | 3.4, 3.11 | **74%** | `python3 tools/book_passages.py learning-python-6th-edition "32. " 3.4 3.11` |
-| [ ] | 33. Exception Basics | YES | 3.5 | **100%** | `python3 tools/book_passages.py learning-python-6th-edition "33. " 3.5` |
-| [ ] | 34. Exception Coding Details | YES | 3.3, 3.5 | **76%** | `python3 tools/book_passages.py learning-python-6th-edition "34. " 3.3 3.5` |
-| [ ] | 35. Exception Objects | YES | 3.5, 3.6 | **85%** | `python3 tools/book_passages.py learning-python-6th-edition "35. " 3.5 3.6` |
-| [ ] | 36. Exception Odds and Ends | YES | 3.5 | **89%** | `python3 tools/book_passages.py learning-python-6th-edition "36. " 3.5` |
-| [ ] | 37. Unicode and Byte Strings | YES | 3.1, 3.3, 3.5 | **72%** | `python3 tools/book_passages.py learning-python-6th-edition "37. " 3.1 3.3 3.5` |
-| [ ] | 38. Managed Attributes | YES | 3.4, 3.11 | **59%** | `python3 tools/book_passages.py learning-python-6th-edition "38. " 3.4 3.11` |
-| [ ] | 39. Decorators | YES | 3.11 | **91%** | `python3 tools/book_passages.py learning-python-6th-edition "39. " 3.11` |
-| [ ] | 40. Metaclasses and Inheritance | PARTLY | 3.11 | **89%** | `python3 tools/book_passages.py learning-python-6th-edition "40. " 3.11` |
+| [x] | 2. How Python Runs Programs | PARTLY | 3.1, 3.2 | **83%** | `python3 tools/book_passages.py learning-python-6th-edition "2. " 3.1 3.2` |
+| [x] | 3. How You Run Programs | PARTLY | 3.1 | **93%** | `python3 tools/book_passages.py learning-python-6th-edition "3. " 3.1` |
+| [x] | 4. Introducing Python Objects | YES | 3.1 | **95%** | `python3 tools/book_passages.py learning-python-6th-edition "4. " 3.1` |
+| [x] | 5. Numbers and Expressions | YES | 3.1 | **62%** | `python3 tools/book_passages.py learning-python-6th-edition "5. " 3.1` |
+| [x] | 6. The Dynamic Typing Interlude | YES | 3.1, 3.3 | **84%** | `python3 tools/book_passages.py learning-python-6th-edition "6. " 3.1 3.3` |
+| [x] | 7. String Fundamentals | YES | 3.1 | **84%** | `python3 tools/book_passages.py learning-python-6th-edition "7. " 3.1` |
+| [x] | 8. Lists and Dictionaries | YES | 3.1, 3.3 | **76%** | `python3 tools/book_passages.py learning-python-6th-edition "8. " 3.1 3.3` |
+| [x] | 9. Tuples, Files, and Everything Else | YES | 3.1, 3.4, 3.5 | **88%** | `python3 tools/book_passages.py learning-python-6th-edition "9. " 3.1 3.4 3.5` |
+| [x] | 10. Introducing Python Statements | PARTLY | 3.1 | **100%** | `python3 tools/book_passages.py learning-python-6th-edition "10. " 3.1` |
+| [x] | 11. Assignments, Expressions, and Prints | YES | 3.1 | **85%** | `python3 tools/book_passages.py learning-python-6th-edition "11. " 3.1` |
+| [x] | 12. if and match Selections | YES | 3.1 | **89%** | `python3 tools/book_passages.py learning-python-6th-edition "12. " 3.1` |
+| [x] | 13. while and for Loops | YES | 3.1 | **85%** | `python3 tools/book_passages.py learning-python-6th-edition "13. " 3.1` |
+| [x] | 14. Iterations and Comprehensions | YES | 3.1, 3.3 | **37%** | `python3 tools/book_passages.py learning-python-6th-edition "14. " 3.1 3.3` |
+| [x] | 16. Function Basics | YES | 3.1 | **100%** | `python3 tools/book_passages.py learning-python-6th-edition "16. " 3.1` |
+| [x] | 17. Scopes | YES | 3.1, 3.11 | **59%** | `python3 tools/book_passages.py learning-python-6th-edition "17. " 3.1 3.11` |
+| [x] | 18. Arguments | YES | 3.1 | **71%** | `python3 tools/book_passages.py learning-python-6th-edition "18. " 3.1` |
+| [x] | 19. Function Odds and Ends | YES | 3.1, 3.3 | **91%** | `python3 tools/book_passages.py learning-python-6th-edition "19. " 3.1 3.3` |
+| [x] | 20. Comprehensions and Generations | YES | 3.3, 3.6 | **72%** | `python3 tools/book_passages.py learning-python-6th-edition "20. " 3.3 3.6` |
+| [x] | 21. The Benchmarking Interlude | PARTLY | 3.1, 3.9 | **88%** | `python3 tools/book_passages.py learning-python-6th-edition "21. " 3.1 3.9` |
+| [x] | 22. Modules: The Big Picture | YES | 3.2 | **83%** | `python3 tools/book_passages.py learning-python-6th-edition "22. " 3.2` |
+| [x] | 23. Module Coding Basics | YES | 3.2 | **89%** | `python3 tools/book_passages.py learning-python-6th-edition "23. " 3.2` |
+| [x] | 24. Module Packages | YES | 3.2 | **97%** | `python3 tools/book_passages.py learning-python-6th-edition "24. " 3.2` |
+| [x] | 25. Module Odds and Ends | YES | 3.1, 3.2, 3.11 | **74%** | `python3 tools/book_passages.py learning-python-6th-edition "25. " 3.1 3.2 3.11` |
+| [x] | 26. OOP: The Big Picture | YES | 3.4 | **94%** | `python3 tools/book_passages.py learning-python-6th-edition "26. " 3.4` |
+| [x] | 27. Class Coding Basics | YES | 3.4 | **90%** | `python3 tools/book_passages.py learning-python-6th-edition "27. " 3.4` |
+| [x] | 28. A More Realistic Example | PARTLY | 3.4, 3.5 | **89%** | `python3 tools/book_passages.py learning-python-6th-edition "28. " 3.4 3.5` |
+| [x] | 29. Class Coding Details | YES | 3.4 | **91%** | `python3 tools/book_passages.py learning-python-6th-edition "29. " 3.4` |
+| [x] | 30. Operator Overloading | YES | 3.3, 3.4, 3.11 | **51%** | `python3 tools/book_passages.py learning-python-6th-edition "30. " 3.3 3.4 3.11` |
+| [x] | 31. Designing with Classes | YES | 3.4, 3.11 | **85%** | `python3 tools/book_passages.py learning-python-6th-edition "31. " 3.4 3.11` |
+| [x] | 32. Class Odds and Ends | YES | 3.4, 3.11 | **74%** | `python3 tools/book_passages.py learning-python-6th-edition "32. " 3.4 3.11` |
+| [x] | 33. Exception Basics | YES | 3.5 | **100%** | `python3 tools/book_passages.py learning-python-6th-edition "33. " 3.5` |
+| [x] | 34. Exception Coding Details | YES | 3.3, 3.5 | **76%** | `python3 tools/book_passages.py learning-python-6th-edition "34. " 3.3 3.5` |
+| [x] | 35. Exception Objects | YES | 3.5, 3.6 | **85%** | `python3 tools/book_passages.py learning-python-6th-edition "35. " 3.5 3.6` |
+| [x] | 36. Exception Odds and Ends | YES | 3.5 | **89%** | `python3 tools/book_passages.py learning-python-6th-edition "36. " 3.5` |
+| [x] | 37. Unicode and Byte Strings | YES | 3.1, 3.3, 3.5 | **72%** | `python3 tools/book_passages.py learning-python-6th-edition "37. " 3.1 3.3 3.5` |
+| [x] | 38. Managed Attributes | YES | 3.4, 3.11 | **59%** | `python3 tools/book_passages.py learning-python-6th-edition "38. " 3.4 3.11` |
+| [x] | 39. Decorators | YES | 3.11 | **91%** | `python3 tools/book_passages.py learning-python-6th-edition "39. " 3.11` |
+| [x] | 40. Metaclasses and Inheritance | PARTLY | 3.11 | **89%** | `python3 tools/book_passages.py learning-python-6th-edition "40. " 3.11` |
 
 ### 4.2 `kubernetes-up-and-running-3rd-edition` (`KUR`)
 - **Triage file:** `planning/gem_books/kubernetes-up-and-running-3rd-edition_triage.md`
@@ -479,7 +479,7 @@ Use this table when working **Volume by Volume (Part 1 to Part 15), Chapter by C
 | [x] | **3.8** | Building CLIs, agents and exporters (Prometheus exporters, Redfish clients)<br/>`docs/part-03-python/08-building-clis-agents-and-exporters-prometheus-exporters-redfish-client.md` | 7,994 | `PM 11; PUB; VL2 ch3` | `volume-02/03-python-tooling-operations-masterclass.md` | **DONE (2026-10-27):** `PM 11`, `redfish-spec`, & `volume-02` (`csv-linter` & `cloud-translate` CLIs, `gpuctl` `argparse`/`Click`/`Typer`, `tenacity` jittered retries, `CircuitBreaker`, `paginate_cursor`, `FleetCollector` Prometheus exporter, `Redfish` session/discovery client, `parse_smi_csv` + `evaluate` capstone) integrated; `python_clis_agents_exporters_lab.py` (6/6 pass); 20 `<details>` questions, 6 exercises, `planning/ledgers/3-08.md`; `validate_chapter.py` 12/12 PASS |
 | [x] | **3.9** | Testing, quality and CI for Python tooling<br/>`docs/part-03-python/09-testing-quality-and-ci-for-python-tooling.md` | 7,051 | `FA 8; AUR 14; LP 21; EAS 2; VL2 ch3` | `volume-02/03-python-tooling-operations-masterclass.md` | **DONE (2026-10-27):** `LP 21`, `FA 8`, `AUR 14`, `EAS 2`, & `volume-02` (`timer.py`/`timer2.py` `once`/`total`/`bestof`/`bestoftotal` & 5 iteration benchmarks, `Drainer` + `FakeKube` clock injection, `Hypothesis`, `respx`, `ruff`/`mypy`/`coverage`, GitHub Actions OIDC, `Molecule` + `Testinfra` `verify_sshd_host`, DevOps/MLOps loops) integrated; `python_testing_quality_ci_lab.py` (3/3 pass); 0 `CHECK` rows in `03-09.md`; 20 `<details>` questions, 6 exercises, `planning/ledgers/3-09.md`; `validate_chapter.py` 12/12 PASS |
 | [x] | **3.10** | Python for data and ML infrastructure: NumPy, pandas, PyTorch essentials<br/>`docs/part-03-python/10-python-for-data-and-ml-infrastructure-numpy-pandas-pytorch-essentials.md` | 6,787 | `AIE; DMLS` | — | **DONE (2026-10-27):** `DMLS 3,7` & `AIE 2,7,9` (NumPy `dtype`/`shape`/`strides` & broadcasting, pandas memory diet & row-major CSV vs columnar Parquet/Arrow, look-ahead leakage, PyTorch async CUDA & `pin_memory`, `16 B/param` AdamW `112 GB` math, `DataLoader` `/dev/shm` & CoW refcount traps, `weights_only=True`/`safetensors`, `torch.profiler`, determinism) integrated; `python_data_ml_infra_lab.py` (4/4 pass); 20 `<details>` questions, 6 exercises, `planning/ledgers/3-10.md`; `validate_chapter.py` 12/12 PASS |
-| [ ] | **3.11** | Python under the hood: decorators, descriptors and metaprogramming (how frameworks work)<br/>`docs/part-03-python/11-python-under-the-hood-decorators-descriptors-and-metaprogramming-how-f.md` | 4,372 | `FP 22,23,24; LP 38,39,40,41; VL2 ch5` | `volume-02/05-advanced-oop-design-masterclass.md` **(UNMIGRATED/PARTIAL)** | add 20 `<details>` checkpoint questions (has 0); add `## Exercises`; add `## Sources and review notes`; create `planning/ledgers/3-11.md`; expand depth from mapped gembooks (4372w -> 6k–9k target) in human storytelling voice |
+| [x] | **3.11** | Python under the hood: decorators, descriptors and metaprogramming (how frameworks work)<br/>`docs/part-03-python/11-python-under-the-hood-decorators-descriptors-and-metaprogramming-how-f.md` | 7,884 | `FP 22,23,24; LP 38,39,40,41; VL2 ch5` | `volume-02/05-advanced-oop-design-masterclass.md` | **DONE (2026-10-27):** `FP 22–24`, `LP 38–40`, & `volume-02` (`FrozenJSON`, `Validated`/`Quantity`/`NonBlank` descriptors & `__set_name__`, `CardHolder` 4 ways, `@tracer`/`@timer`/`@Private`/`@rangetest`, `record_factory` `type()`, 6-step class creation hook order, two-tree metaclass inheritance, `ToyModule.__setattr__`) integrated; `python_metaprogramming_internals_lab.py` (6/6 pass); 20 `<details>` questions, 6 exercises, `planning/ledgers/3-11.md`; `validate_chapter.py` 12/12 PASS |
 
 ### Part 4: Automation and infrastructure as code (Ansible from zero, Terraform)
 

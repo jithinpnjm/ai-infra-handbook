@@ -275,16 +275,16 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 2.29 | Network automation in practice: Ansible, Nornir and CI/CD for networks | drafted | 7805 |  |
 | 2.31 | Network monitoring and telemetry | drafted | 7440 |  |
 | 3.1 | Python core: types, control flow, functions | drafted | 9295 |  |
-| 3.2 | Modules, packages, virtual environments and packaging | drafted | 5536 |  |
-| 3.3 | Idiomatic Python: the data model, comprehensions, generators | drafted | 5259 |  |
-| 3.4 | Classes, dataclasses, typing and protocols | drafted | 4965 |  |
-| 3.5 | Errors, files, text and bytes, subprocess and system scripting | drafted | 5381 |  |
-| 3.6 | Concurrency: threads, processes and asyncio | drafted | 4909 |  |
-| 3.7 | Building APIs and microservices with FastAPI | drafted | 5053 |  |
-| 3.8 | Building CLIs, agents and exporters (Prometheus exporters, Redfish clients) | drafted | 5618 |  |
-| 3.9 | Testing, quality and CI for Python tooling | drafted | 4147 |  |
-| 3.10 | Python for data and ML infrastructure: NumPy, pandas, PyTorch essentials | drafted | 4429 |  |
-| 3.11 | Python under the hood: decorators, descriptors and metaprogramming (how frameworks work) | drafted | 4372 |  |
+| 3.2 | Modules, packages, virtual environments and packaging | drafted | 11314 |  |
+| 3.3 | Idiomatic Python: the data model, comprehensions, generators | drafted | 10864 |  |
+| 3.4 | Classes, dataclasses, typing and protocols | drafted | 9999 |  |
+| 3.5 | Errors, files, text and bytes, subprocess and system scripting | drafted | 9087 |  |
+| 3.6 | Concurrency: threads, processes and asyncio | drafted | 8154 |  |
+| 3.7 | Building APIs and microservices with FastAPI | drafted | 7936 |  |
+| 3.8 | Building CLIs, agents and exporters (Prometheus exporters, Redfish clients) | drafted | 7994 |  |
+| 3.9 | Testing, quality and CI for Python tooling | drafted | 7051 |  |
+| 3.10 | Python for data and ML infrastructure: NumPy, pandas, PyTorch essentials | drafted | 6787 |  |
+| 3.11 | Python under the hood: decorators, descriptors and metaprogramming (how frameworks work) | drafted | 7884 |  |
 | 4.2 | CI/CD pipelines: concepts and design | drafted | 4536 |  |
 | 4.13 | Testing Ansible: ansible-lint, Molecule and CI | drafted | 3460 |  |
 | 4.14 | Ansible at scale: performance, strategies and callbacks | drafted | 3543 |  |
