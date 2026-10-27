@@ -146,6 +146,31 @@ Experiments:
 
 Goal: build the standard data-centre fabric from chapter 2.16 as code: 2 spines, 4 leaves, 2 hosts per leaf (8 hosts), all links point-to-point and unnumbered.
 
+```mermaid
+flowchart TB
+  subgraph Spines["Spines (AS 65000)"]
+    S1["spine1\n10.255.0.1/32"]
+    S2["spine2\n10.255.0.2/32"]
+  end
+  subgraph Leaves["Leaves (AS 65101..65104, eBGP unnumbered)"]
+    L1["leaf1 (AS 65101)\n10.10.1.1/24"]
+    L2["leaf2 (AS 65102)\n10.10.2.1/24"]
+    L3["leaf3 (AS 65103)\n10.10.3.1/24"]
+    L4["leaf4 (AS 65104)\n10.10.4.1/24"]
+  end
+  subgraph Hosts["Host containers (2 per leaf)"]
+    H1["h11, h12"]
+    H2["h21, h22"]
+    H3["h31, h32"]
+    H4["h41, h42"]
+  end
+  S1 & S2 --- L1 & L2 & L3 & L4
+  L1 --- H1
+  L2 --- H2
+  L3 --- H3
+  L4 --- H4
+```
+
 ### Topology file `fabric.clab.yml`
 
 ```yaml
@@ -355,6 +380,14 @@ Goal: combine chapters 2.12, 2.16, 2.20.
 
 Goal: make the lab self-checking, so topology changes are verified automatically.
 
+First, run the standalone Python lab (`code/part02/containerlab_frr_topologies_lab.py`) locally (no Docker or root required). It verifies the Lab 3 2-spine × 4-leaf × 2-host containerlab link generator (`16` links), the FRR eBGP-unnumbered leaf config renderer, and the Lab 7 JSON BGP + ECMP validation assertions:
+
+```bash
+python3 code/part02/containerlab_frr_topologies_lab.py
+```
+
+Next, on your lab VM with the containerlab topology deployed (all interactive VM/containerlab commands in this chapter are `untested here`), run `validate.py`:
+
 ```python
 #!/usr/bin/env python3
 # validate.py: assertions about the running containerlab fabric (chapter 2.28/2.29 style)
@@ -416,10 +449,126 @@ For each lab record: the exact command and time, the output or screenshot, what 
 | EVPN routes missing | `advertise-all-vni`, VNI mapped, `l2vpn evpn` activated for peer group, `no bgp ebgp-requires-policy`, kernel features |
 | Weird performance | VM CPU steal, Docker bridge overhead, containerlab veth CPU; use fewer parallel flows; don't benchmark absolute numbers on a VM |
 
-Mark tested only after execution.
+## Exercises
+
+1. **Lab 1 (Three Namespaces, Routing, PMTU Black Hole, NAT, and `rp_filter`):** Trace the commands in Lab 1 to build `hA (10.1.0.2/24) — r — hB (10.2.0.2/24)`. Explain why the initial ping fails before `sysctl -w net.ipv4.ip_forward=1`, what changes in the Ethernet and IP headers (`tcpdump -e`) as a packet crosses `r`, and how lowering `rB` MTU to `1400` while dropping ICMP Type 3 creates a TCP hang fixed by `TCPMSS --clamp-mss-to-pmtu`.
+2. **Lab 2 (Running Per-Namespace FRR `zebra` and `ospfd` / `isisd`):** Explain how `start_frr()` isolates multiple FRR router instances on a single VM without containers by passing per-namespace `-i` PID files, `-z /tmp/frr/$n/zserv.api` Zebra sockets, and `--vty_socket /tmp/frr/$n`. How do you trigger and observe an OSPF `ExStart` MTU mismatch in Lab 2?
+3. **Lab 3 (Containerlab Leaf-Spine Topology-as-Code and Jinja2 FRR Config Generation):** Using `build_clos_clab_links(2, 4, 2)` and `render_frr_ebgp_unnumbered_leaf()` in `code/part02/containerlab_frr_topologies.py`, generate the 16 link endpoint pairs for the 2-spine × 4-leaf × 2-host Clos and explain why `route-map CONN` redistributes only `lo` and `br0`. Why must `br0` be created before FRR reads `frr.conf`?
+4. **Lab 4 (EVPN-VXLAN Symmetric IRB and Single-VXLAN-Device `vnifilter`):** Walk through the Lab 4 commands that create a VLAN-filtering bridge `br0`, a Single VXLAN Device `vxlan0` (`external vnifilter`), VLAN-to-VNI mappings (`vid 100 -> vni 10100`), a distributed anycast gateway (`10.100.1.1/24` with MAC `00:00:5e:00:01:01`), and a tenant VRF (`tenantA` with `L3VNI 5001`). How do you test MAC mobility across leaves?
+5. **Lab 5 & Lab 6 (Tunnel MTU/Entropy, SRv6/MPLS Encapsulation, and Anycast Load-Balancer Failure Matrix):** (a) Explain why GRE and IPIP tunnels pin to a single underlay ECMP path unless `sysctl net.ipv4.fib_multipath_hash_policy=2` is set, whereas VXLAN and WireGuard spread across ECMP paths automatically; (b) design the Lab 6 failure matrix testing link, spine, leaf, load-balancer node, and backend failures.
+6. **Lab 7 (Automated Network Validation as Code in CI):** Using `validate_frr_bgp_and_ecmp_state()`, explain how `validate.py` queries `vtysh -c 'show bgp summary json'` and `vtysh -c 'show ip route <prefix> json'` to verify BGP peer state and 2-way ECMP across all leaves, and how this script runs as a CI gate in GitHub Actions.
+
+## Checkpoint questions (20)
+
+<details>
+<summary>1. Why must you run `sudo systemctl disable --now frr` on the host VM before running namespace or containerlab labs?</summary>
+Installing the `frr` package on Ubuntu starts a host-level `zebra`/`bgpd` service in the root network namespace. Disabling the host service prevents it from binding ports, modifying the host VM's own routing table, or conflicting with per-namespace FRR sockets.
+</details>
+
+<details>
+<summary>2. In Lab 1, what three things must be configured before `hA` (`10.1.0.2/24`) can ping `hB` (`10.2.0.2/24`) through router namespace `r`?</summary>
+(1) `hA` must have a route to `10.2.0.0/24` (or `default`) `via 10.1.0.1`;\n(2) Router namespace `r` must have IP forwarding enabled (`sudo ip netns exec r sysctl -w net.ipv4.ip_forward=1`); and\n(3) `hB` must have a return route to `10.1.0.0/24` (or `default`) `via 10.2.0.1`.
+</details>
+
+<details>
+<summary>3. In Lab 1, what does `tcpdump -ni rA -e` vs `tcpdump -ni rB -e` show as a ping packet is routed through `r`?</summary>
+The **source and destination IPv4 addresses (`10.1.0.2 -> 10.2.0.2`) remain unchanged**, the **IPv4 `TTL` is decremented by `1` (`64 -> 63`)** (and the IPv4 header checksum is updated), and the **Ethernet source and destination MAC addresses (`-e`) are completely rewritten** at hop `r` (`rA`'s dst MAC -> `rB`'s src MAC and `hB`'s dst MAC).
+</details>
+
+<details>
+<summary>4. How do `blackhole`, `unreachable`, and `prohibit` routes behave differently when tested in Lab 1?</summary>
+- `ip route add blackhole 10.2.0.2/32`: silently drops packets (`ping` hangs with 100% loss and zero ICMP messages).\n- `ip route add unreachable 10.2.0.2/32`: drops packets and generates **ICMP Type 3 Code 1 (Host Unreachable)** (`connect: Network/Host is unreachable`).\n- `ip route add prohibit 10.2.0.2/32`: drops packets and generates **ICMP Type 3 Code 13 (Communication Administratively Prohibited)** (`ping: Packet filtered`).
+</details>
+
+<details>
+<summary>5. In Lab 2, what command-line flags allow multiple `zebra` and `ospfd` processes to run simultaneously in different network namespaces on the same host?</summary>
+Each namespace's `zebra` and `ospfd` processes are given their own isolated runtime directory (`/tmp/frr/$n`) using **`-i /tmp/frr/$n/<daemon>.pid`** (PID file), **`-z /tmp/frr/$n/zserv.api`** (Unix socket for `ospfd` <-> `zebra` IPC), and **`--vty_socket /tmp/frr/$n`** (so `vtysh --vty_socket /tmp/frr/R1` connects to router `R1`).
+</details>
+
+<details>
+<summary>6. What is `containerlab`, and how does it wire virtual links between containers?</summary>
+**`containerlab`** is an open-source topology-as-code tool that reads a declarative YAML file (`.clab.yml`), starts containers (such as `frrouting/frr`, `network-multitool`, or vendor NOS images `cEOS`, `srl`, `sonic-vs`), and connects each entry in `links:` by creating a **Linux `veth` pair on the host** and moving each end into the respective container's network namespace.
+</details>
+
+<details>
+<summary>7. How does `containerlab` name interfaces inside a container?</summary>
+`containerlab` reserves **`eth0`** inside every container for the **out-of-band management network** (connected to the Docker management bridge so you can SSH/exec into nodes), and names data-plane links **`eth1`, `eth2`, `eth3`, ...** matching the exact endpoint names declared in the `links:` section of `.clab.yml`.
+</details>
+
+<details>
+<summary>8. In Lab 3 (`gen.py`), what does `frr defaults datacenter` change in FRR compared to `frr defaults traditional`?</summary>
+**`frr defaults datacenter`** applies aggressive data-center defaults out of the box: shorter BGP keepalive/hold timers (`3 s / 9 s`), `ebgp-requires-policy` disabled (or relaxed), shorter link-local IPv6 Router Advertisement intervals (`ra-interval 10`) for fast unnumbered neighbor discovery, and DFLT logging/multipath defaults suited to Clos fabrics.
+</details>
+
+<details>
+<summary>9. In Lab 3, why does `route-map CONN` match only `interface lo` and `interface br0` before `redistribute connected`?</summary>
+Without a `route-map` filter, `redistribute connected` would advertise the container's **`eth0` Docker management subnet** (and any numbered transit link subnets) into the BGP fabric—polluting the fabric RIB and causing management traffic to route over data-plane links. Matching only `lo` (router `/32` loopback) and `br0` (rack server `/24` subnet) keeps the fabric RIB clean.
+</details>
+
+<details>
+<summary>10. What happens in Lab 3 if the leaf bridge `br0` is created AFTER the FRR `zebra`/`bgpd` daemons start, and how do you avoid it?</summary>
+If `br0` does not exist when FRR parses `/etc/frr/frr.conf` at container startup, `interface br0` and its IP address (`10.10.N.1/24`) may fail to apply or fail to redistribute until FRR re-reads interface state. Either create `br0` in a startup script **before** launching `frrinit.sh`, or restart/reload FRR at the end of containerlab `exec:` (`docker exec clab-fabric-leaf1 /usr/lib/frr/frrinit.sh restart`).
+</details>
+
+<details>
+<summary>11. When you run `ip route show 10.10.4.0/24` on `leaf1` in Lab 3, what do the next hops look like, and why?</summary>
+You see two ECMP `nexthop` lines pointing to **IPv6 link-local addresses (`via inet6 fe80::... dev eth1 proto bgp metric 20 onlink` and `via inet6 fe80::... dev eth2 onlink`)**. Because the session uses **BGP Unnumbered (`RFC 5549` / `RFC 8950` Capability 5)**, the IPv4 prefix `10.10.4.0/24` is installed with the spines' IPv6 link-local addresses as next hops, resolved to MACs via IPv6 Neighbor Discovery.
+</details>
+
+<details>
+<summary>12. How do you verify in Lab 3 which spine (`eth1` vs. `eth2`) the Linux kernel on `leaf1` will pick for a specific TCP 5-tuple?</summary>
+Run **`docker exec clab-fabric-leaf1 ip route get 10.10.4.11 from 10.10.1.11 iif br0 ipproto tcp sport 40000 dport 80`** (with `sysctl net.ipv4.fib_multipath_hash_policy=1` set on the leaf). By incrementing `sport` (`40001, 40002, ...`), you can find two source ports that hash to different spines or two source ports that collide on the same spine.
+</details>
+
+<details>
+<summary>13. In Lab 3 Experiment 3, how do you demonstrate the RFC 7938 \"valley path\" (leaf hairpin) bug?</summary>
+Change `spine2`'s ASN from `65000` to **`65001`** (so Spine 1 is `65000` and Spine 2 is `65001`). Then bring down `leaf1:eth2` (Leaf 1 -> Spine 2) and `leaf4:eth1` (Leaf 4 -> Spine 1). Now `leaf1` can reach `leaf4` only by going **`leaf1 -> spine1 (65000) -> leaf2 (65102) -> spine2 (65001) -> leaf4`**, hair-pinning through `leaf2`. When both spines share **`AS 65000`**, `spine2` rejects that update because `65000` is already in `AS_PATH`.
+</details>
+
+<details>
+<summary>14. In Lab 4, what is the role of `external` and `vnifilter` on `vxlan0` (`Single VXLAN Device`, `SVD`)?</summary>
+Creating `vxlan0` with **`external` (collect metadata)** and **`vnifilter`** allows a **single `vxlan0` netdev** enslaved to a VLAN-aware bridge `br0` to carry **hundreds of different VNIs**, mapping each bridge VLAN (`vid 100`, `vid 200`) to its corresponding VXLAN VNI (`vni 10100`, `vni 10200` via `bridge vlan add ... tunnel_info id <vni>` and `bridge vni add`) instead of creating a separate `vxlanN` interface per VNI.
+</details>
+
+<details>
+<summary>15. In Lab 4, why must the anycast gateway interface `vlan100` (`10.100.1.1/24`) be assigned the exact same MAC address (`00:00:5e:00:01:01`) and bound to VRF `tenantA` on every leaf?</summary>
+Binding `vlan100` to VRF `tenantA` (`ip link set vlan100 master tenantA`) isolates Tenant A's L3 routing table and links it to `L3VNI 5001` for Symmetric IRB. Assigning the **identical virtual MAC (`00:00:5e:00:01:01`) and IP (`10.100.1.1/24`)** on every leaf ensures that any host in VLAN 100 can use its local leaf as its first-hop default gateway and can live-migrate to another leaf without its ARP cache entry becoming invalid.
+</details>
+
+<details>
+<summary>16. In Lab 5, what does `sysctl net.ipv4.fib_multipath_hash_policy = 2` do for `GRE` and `IPIP` tunnels?</summary>
+Policy `0` hashes only outer L3 IPs, and policy `1` hashes outer L4 5-tuples. Because `GRE` (`proto 47`) and `IPIP` (`proto 4`) have fixed outer tunnel endpoint IPs and **no outer UDP/TCP ports**, policies `0` and `1` hash all flows inside the tunnel to a single underlay ECMP link. Setting **`fib_multipath_hash_policy = 2`** instructs the Linux kernel to **hash the INNER packet's headers** inside IPIP/GRE/SIT tunnels, restoring full ECMP distribution.
+</details>
+
+<details>
+<summary>17. In Lab 5, how do you add an `SRv6` or `MPLS` source-routed path on Linux using `ip route`?</summary>
+- **SRv6 (`encap seg6`)**: enable `net.ipv6.conf.<dev>.seg6_enabled=1` and run:\n`sudo ip route add 10.9.9.0/24 encap seg6 mode encap segs fc00:2::1,fc00:3::1 dev eth0`\n- **MPLS (`encap mpls`)**: load `mpls_router` and `mpls_iptunnel`, set `net.mpls.platform_labels=10000`, and run:\n`sudo ip route add 10.9.9.0/24 encap mpls 100/200 via inet 10.0.0.2`.
+</details>
+
+<details>
+<summary>18. In Lab 7 (`validate.py`), why should automation scripts always pass `json` at the end of FRR `vtysh` commands (`vtysh -c 'show bgp summary json'`)?</summary>
+Human-oriented CLI text output changes spacing, column widths, and line wraps across FRR versions and prefix lengths, making regex/awk scraping brittle. Appending **`json`** to `show bgp summary json`, `show ip route json`, `show bfd peers json`, or `show evpn vni json` returns structured, schema-consistent JSON that `json.loads()` or `jq` can assert on reliably in CI.
+</details>
+
+<details>
+<summary>19. If FRR containers in Lab 3 start up, but `show bgp summary` shows unnumbered neighbors stuck in `Active`, what are the three things to check?</summary>
+BGP Unnumbered relies on **IPv6 Neighbor Discovery (`RA`)** to learn the peer's `fe80::` link-local address:\n(1) Verify IPv6 is enabled in the container kernel (`sysctl net.ipv6.conf.all.disable_ipv6=0` and `eth1` has a `fe80::` address in `ip -6 addr`);\n(2) Verify `zebra` is sending IPv6 Router Advertisements on the link (`no ipv6 nd suppress-ra` / `frr defaults datacenter`, and `show ipv6 nd` / `ip -6 neigh` shows the peer's link-local neighbor); and\n(3) Verify both `zebra=yes` and `bgpd=yes` are enabled in `/etc/frr/daemons`.
+</details>
+
+<details>
+<summary>20. Why shouldn't you use a single-VM `containerlab` topology to benchmark absolute `100G` throughput numbers, and what IS it authoritative for?</summary>
+In a single-VM `containerlab` topology, all containers share the VM's vCPUs and forward packets through software `veth` pairs and the Linux kernel bridge/softirq path, so throughput is bounded by VM vCPU softirq rate (`~5–20 Gb/s`). However, `containerlab` runs the **exact same control-plane daemons (`FRR`, `SONiC`, `cEOS`) and protocol state machines** as physical switches—making it 100% authoritative for validating **routing design, ASN plans, route-maps, ECMP next-hop counts, EVPN Route Types 1–5, failure-domain blast radius, and CI automation pipelines**.
+</details>
 
 ## Sources and review notes
 
-**Written in original words.** The labs apply concepts from chapters 2.2 to 2.26 and draw on: Brian Ward, *How Linux Works*, 3rd ed., chapter 9 (routers, NAT, firewalls); Russ White and Jeff Tantsura, *Computer Networking Problems and Solutions* (virtualization, control planes, resilience); *AI Data Center Network Design and Technologies* (fabric design, eBGP unnumbered, ECMP); *Networking and Kubernetes* (container networking); the author's `nvidia-devops` networking masterclass (namespaces, bonding, scenarios); and the public FRR and containerlab documentation. The configurations are the author's constructions, not copied from any source.
-
-**Flagged for verification before publishing:** FRR image tags and daemon invocation flags; `vnifilter`/single-VXLAN-device and `bridge vni` command support by kernel and iproute2 version; containerlab YAML keys and interface naming; Docker image names; GRE/WireGuard/SRv6 command forms; every lab is **untested**.
+- **Sources read in full:**
+  - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 9: Understanding Your Network and Its Configuration** (routers, NAT, and firewalls).
+  - `computer-networking-problems-and-solutions` — Russ White and Ethan Banks, *Computer Networking Problems and Solutions*, **Chapters 9, 16, and 23** (network virtualization, OSPF/IS-IS/BGP control planes, and resilience).
+  - `ai-data-center-network-design-and-technologies` — Dinakaran Setty et al., *AI Data Center Network Design and Technologies*, **Chapter 8: IP Routing for AI/ML Fabrics** (fabric design, eBGP unnumbered, and ECMP).
+  - `networking-and-kubernetes` — James Strong and Vallery Lancey, *Networking and Kubernetes*, **Chapters 2 and 3**, and `production-kubernetes` — Josh Rosso et al., *Production Kubernetes*, **Chapter 5** (Linux network namespaces, `veth`, bridges, and containers).
+  - `network-programmability-and-automation-2nd-edition` — Jason Edelman, Scott S. Lowe, and Matt Oswalt, *Network Programmability and Automation*, 2nd ed., **Chapter 1** (template generation and validation as code).
+  - `nvidia-devops/volume-01/03-linux-networking-masterclass.md` — consulted for namespace, bonding, and troubleshooting scenarios.
+- **Run here:** `python3 code/part02/containerlab_frr_topologies_lab.py` (8 passed, 0 failed).
+- **Explicitly labelled inferences:** Labs 1–7 (`up.sh`/`down.sh`, `start_frr()`, `fabric.clab.yml`, `gen.py` Jinja2 generator, EVPN `vnifilter` bridge setup, SRv6/MPLS encapsulation, and `validate.py` JSON CI harness) are the author's original constructions synthesizing the FRR and `containerlab` documentation (cross-referenced with Chapters 2.5–2.26, 2.28, and 2.29).
+- **Not verified on live hardware:** Every interactive VM, `ip netns`, `frr`, and `containerlab` lab in this chapter is marked (untested here); run them on a disposable Linux VM, record the outputs, and verify syntax against your kernel and FRR versions.
