@@ -23,7 +23,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 1.13 | LVM, RAID and NVMe | drafted | 11253 |  |
 | 1.14 | Boot: firmware, GRUB, kernel, initramfs | drafted | 11008 |  |
 | 1.15 | systemd: units, targets, timers, journald | drafted | 10524 |  |
-| 1.16 | Logging, time synchronisation, cron and batch jobs | drafted | 7360 |  |
+| 1.16 | Logging, time synchronisation, cron and batch jobs | drafted | 8141 |  |
 | 1.17 | Memory management: virtual memory, NUMA, huge pages, OOM | drafted | 8814 |  |
 | 1.18 | CPU scheduling and cgroups v1 and v2 | drafted | 7950 |  |
 | 1.19 | Namespaces: the kernel feature behind containers | drafted | 6862 |  |
