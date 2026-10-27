@@ -12,53 +12,58 @@ lab_venue: "GCP VM"
 
 # 1.3 Files and the directory hierarchy: paths, links, inodes
 
-**Level:** basics → intermediate · **Tier 0 (foundations)** · **Lab venue:** a small Ubuntu VM on GCP (root access needed for two labs) · **Status:** drafted, labs untested
+| Field | Value |
+|---|---|
+| Level | Basics to Intermediate |
+| Priority tier | Tier 0 (foundations) |
+| Lab venue | Small Ubuntu VM on GCP (`fs_inodes_links_lab.py`: 20 checks pass; VM commands **untested** here) |
+| Part | Part 1: Linux, from the command line to the kernel and performance |
 
 ## Why this matters for AI infrastructure
 
-Everything in an AI cluster ends up as files on a filesystem: datasets with millions of small files, multi-gigabyte checkpoints, container image layers, Slurm and Kubernetes configuration, logs, driver modules, and the pseudo-files under `/proc` and `/sys` that expose the kernel and the hardware. Many of the failures that stop training runs are filesystem facts that look mysterious until you know the model: a disk that is "full" while `df` shows free space, a checkpoint directory whose `latest` link points at nothing, a dataset directory that takes ten minutes to list, a tarball that overwrote system files. This chapter gives you the mental model of how Linux names, stores and links files, so that these become easy to diagnose and, better, never happen.
+Everything in an AI cluster ends up as files on a filesystem: datasets with millions of small files, multi-gigabyte checkpoints, container image layers, Slurm and Kubernetes configuration, logs, driver modules, and the pseudo-files under `/proc` and `/sys` that expose the kernel and the hardware. Many of the failures that stop training runs are filesystem facts that look mysterious until you know the model. A disk reports that it is "full" while `df` shows plenty of free gigabytes. A checkpoint directory has a `latest` link that points at nothing. A dataset directory takes ten minutes just to list, or a tarball overwrites system files. This chapter gives you the mental model of how Linux names, stores, and links files, so that these problems become easy to diagnose and never surprise you in production.
 
 ## Prerequisites and outcomes
 
-You need chapters 1.1 and 1.2 (processes, system calls, the shell). After this chapter you will be able to:
+You need chapters 1.1 and 1.2 for the model of processes, system calls, and the shell. After this chapter you will be able to:
 
-- read and write absolute and relative paths correctly, and explain `.`, `..`, `~` and `/`;
-- describe what lives in each top-level directory of a Linux system and where to look for configuration, logs, binaries, devices and kernel information;
-- identify the type of any file from `ls -l` and `stat`, and explain what an inode is and what a directory really contains;
-- create and reason about hard links and symbolic links, and know when each breaks;
-- read the three timestamps of a file and understand what changes each;
-- find files by name, type, size and age with `find`, and identify mystery files with `file`;
-- package, compress, inspect and unpack archives with `tar` and common compressors, safely;
-- diagnose six common filesystem failures: full disk with free space, dangling links, cross-device link errors, deleted-but-open files, unsafe extraction, and slow huge directories.
+- Read and write absolute and relative paths correctly, and explain `.`, `..`, `~`, and `/`.
+- Describe what lives in each top-level directory of a Linux system and where to look for configuration, logs, binaries, devices, and kernel information.
+- Identify the type of any file from `ls -l` and `stat`, and explain what an inode is and what a directory really contains.
+- Create and reason about hard links and symbolic links, and know when each breaks.
+- Read the three timestamps of a file and understand what changes each.
+- Find files by name, type, size, and age with `find`, and identify mystery files with `file`.
+- Package, compress, inspect, and unpack archives with `tar` and common compressors safely.
+- Diagnose six common filesystem failures: full disk with free space, dangling links, cross-device link errors, deleted-but-open files, unsafe extraction, and slow huge directories.
 
 ## 1. Paths: how you name a file
 
-Every file or directory on Linux is reached through a **path**: a string of names separated by `/`. There is **one tree** with a single top, the **root directory**, written `/`. Unlike some other systems, there are no drive letters; additional disks and network filesystems are *attached into the same tree* at chosen directories (called mount points, chapter 1.12).
+Every file or directory on Linux is reached through a **path**: a string of names separated by `/`. There is **one tree** with a single top, the **root directory**, written `/`. Unlike some other operating systems, there are no drive letters. Additional disks and network filesystems are *attached into the same tree* at chosen directories called mount points, which chapter 1.12 covers in detail.
 
 ```mermaid
 flowchart TB
-  R["/ (root)"] --> etc["/etc<br/>configuration"]
+  R["/ root"] --> etc["/etc<br/>configuration"]
   R --> home["/home"]
   R --> usr["/usr"]
   R --> var["/var"]
   home --> alice["/home/alice"]
   alice --> proj["/home/alice/project"]
-  proj --> f["/home/alice/project/train.py"]
+  proj --> f["train.py"]
   usr --> bin["/usr/bin<br/>commands"]
   var --> log["/var/log<br/>logs"]
 ```
 
 - An **absolute path** starts with `/` and means the same thing everywhere: `/home/alice/project/train.py`.
-- A **relative path** does not start with `/` and is interpreted starting from the **current working directory** (`pwd`) of the process: `project/train.py`. Relative paths are convenient interactively and a classic source of bugs in scripts, because the working directory is whatever the caller happened to be in. Cron jobs, systemd services, Slurm jobs and containers each start in a different directory, so automation should use absolute paths or `cd` explicitly first.
+- A **relative path** does not start with `/` and is interpreted starting from the **current working directory** (`pwd`) of the process: `project/train.py`. Relative paths are convenient interactively and a classic source of bugs in scripts, because the working directory is whatever the caller happened to be in. Cron jobs, systemd services, Slurm jobs, and containers each start in a different directory, so automation should use absolute paths or `cd` explicitly first.
 - `.` means "this directory" and `..` means "the parent directory". The root's parent is itself.
-- `~` is shell shorthand for your home directory (the shell expands it; the kernel never sees a tilde, chapter 1.2).
-- Names are **case-sensitive** (`Data` and `data` are different), may contain almost any character except `/` and the NUL byte, and are **just bytes**: Linux imposes no encoding or file-extension meaning. A file called `train.py` is not special because of `.py`; the extension is a human and tool convention (section 7).
+- `~` is shell shorthand for your home directory; the shell expands it and the kernel never sees a tilde (chapter 1.2).
+- Names are **case-sensitive** (`Data` and `data` are different), may contain almost any character except `/` and the NUL byte, and are **just bytes**. Linux imposes no encoding or file-extension meaning. A file called `train.py` is not special because of `.py`; the extension is a human and tool convention.
 
-Two helpful commands for paths: `realpath path` prints the absolute, symlink-resolved path, and `basename`/`dirname` split a path into its last component and the rest.
+Two helpful commands manipulate paths: `realpath path` prints the absolute, symlink-resolved path, and `basename` and `dirname` split a path into its last component and the directory prefix.
 
 ## 2. The standard layout: where things live
 
-Almost every Linux distribution follows the **Filesystem Hierarchy Standard (FHS)**: a convention for what belongs under each top-level directory. Knowing it tells you where to look before you search.
+Now that you know how to examine files, change directories, and read manual pages, you are ready to explore your system files and directories. The details of the Linux directory structure are outlined in the **Filesystem Hierarchy Standard (FHS)**, maintained by the Linux Foundation (`https://refspecs.linuxfoundation.org/fhs.shtml`). Knowing the FHS tells you where to look before you search.
 
 | Directory | Purpose | What you will find on an AI node |
 |---|---|---|
@@ -83,25 +88,25 @@ Almost every Linux distribution follows the **Filesystem Hierarchy Standard (FHS
 Three practical notes:
 
 1. **"Merged usr".** On current Debian, Ubuntu, Rocky and RHEL, `/bin` is a symlink to `/usr/bin` (and likewise for `/sbin` and `/lib`). So `/bin/ls` and `/usr/bin/ls` are the same file. Older documentation that distinguishes them is out of date.
-2. **`/proc` and `/sys` are not on disk.** They are generated by the kernel on demand, which is the "everything is a file" idea in its purest form: reading `/proc/meminfo` runs kernel code and returns text, and writing to many files under `/sys` or `/proc/sys` changes live kernel settings (`sysctl`, chapter 1.22). They take no disk space. Be careful in them: a stray write can change system behaviour.
+2. **`/proc` and `/sys` are not on disk.** They are generated by the kernel on demand, which is the "everything is a file" idea in its purest form. Reading `/proc/meminfo` runs kernel code and returns text, and writing to many files under `/sys` or `/proc/sys` changes live kernel settings (`sysctl`, chapter 1.22). They take no disk space. Be careful in them: a stray write can change system behaviour.
 3. **`/usr/local` and `/opt` are for local software**, so package updates do not overwrite your work. A good example: NVIDIA's CUDA toolkit installs into a versioned directory such as `/usr/local/cuda-12.4` and creates a symlink `/usr/local/cuda` pointing at the default version. Switching CUDA versions is just repointing that link (section 5).
 
-More detail on the directories that cause the most confusion:
+More detail on the directories that cause the most confusion.
 
-- **`/bin` and `/sbin`.** `/bin` holds ready-to-run programs, including most basic commands such as `ls` and `cp`; most are compiled binaries but some are shell scripts. `/sbin` holds **system-administration** programs (`fdisk`, `iptables`, `reboot`); regular users often do not have the sbin directories in their command path, and many of these tools only work as root.
+- **`/bin` and `/sbin`.** `/bin` holds ready-to-run programs, including most basic commands such as `ls` and `cp`. Most are compiled binaries, though some are shell scripts. `/sbin` holds **system-administration** programs (`fdisk`, `iptables`, `reboot`). Regular users often do not have the `sbin` directories in their command path, and many of these tools only work as root.
 - **`/lib` and libraries.** Libraries are code that executables share. They come in two kinds, **static** (linked into a program at build time) and **shared** (loaded at run time, `.so` files). `/lib` should contain only shared libraries, while other `lib` directories such as `/usr/lib` hold both kinds plus auxiliary files. Chapter 1.11 explains shared libraries.
-- **`/tmp` and `/var/tmp`.** `/tmp` is for small temporary files you do not care about: any user may create files there but cannot touch each other's. Most distributions clear it at boot and some delete old files periodically, so **never keep anything important in `/tmp`**; and do not let it fill up, because its space is often shared with something critical such as the root filesystem. `/var/tmp` is similar but is not wiped at boot.
-- **`/run`.** Runtime data since boot: PID files, sockets, status records and, often, logging state. It is a relatively recent addition; on older systems this lived in `/var/run`, which is now normally a symlink to `/run`.
-- **`/usr`.** Pronounced "user", but it contains **no user files**: it holds the bulk of the installed system and has subdirectories that mirror the root (`/usr/bin`, `/usr/sbin`, `/usr/lib`). The split exists for historical reasons (the root filesystem used to be kept small). Beyond those: `/usr/include` has the C compiler's header files; **`/usr/local`** is where administrators install their own software and should mirror the structure of `/` and `/usr` (so local binaries go in `/usr/local/bin`); **`/usr/share`** holds architecture-independent data that programs read as needed, which in practice means documentation (`man`, `info`, `doc`) and many auxiliary files (long ago it could be shared from a file server, but that is now rare).
-- **`/var`.** The "variable" directory where programs record information that changes over time: logs, caches, queues, user-tracking data, spool files.
-- **`/boot`, `/media`, `/opt`.** `/boot` contains only the files for the very first stage of startup (the kernel and boot loader files), not information about how services start; `/media` is the usual attachment point for removable media; `/opt` may hold additional third-party software, though many systems do not use it.
-- **Where the kernel and its modules are.** On Linux the kernel is a binary file, normally `/boot/vmlinuz-<version>` (historically `/vmlinuz`), which the boot loader loads into memory and starts. After that the file is no longer used by the running system. **Loadable kernel modules**, which the kernel loads and unloads on demand (chapter 1.1; the GPU driver is one), live under `/lib/modules/<kernel version>/`, which is why a module built for one kernel version is not found under another.
+- **`/tmp` and `/var/tmp`.** `/tmp` is for small temporary files you do not care about: any user may create files there but cannot touch each other's. Most distributions clear it at boot and some delete old files periodically, so **never keep anything important in `/tmp`**. Do not let it fill up either, because its space is often shared with something critical such as the root filesystem. `/var/tmp` is similar but is not wiped at boot.
+- **`/run`.** Runtime data since boot: PID files, sockets, status records, and logging state. On older systems this lived in `/var/run`, which is now normally a symlink to `/run`.
+- **`/usr`.** Pronounced "user", `/usr` is not for individual users' personal files; instead, it holds the bulk of the installed user-space software and has subdirectories that mirror the root (`/usr/bin`, `/usr/sbin`, `/usr/lib`). Beyond those mirrored directories, `/usr` contains three important subdirectories in `HLW` Section 2.19. First, **`/usr/include`** holds header files (`.h`) used by the C compiler. Second, **`/usr/local`** is where administrators install their own local software, and its internal structure should look like that of `/` and `/usr` (`/usr/local/bin`, `/usr/local/lib`). Third, **`/usr/share`** contains files that should work on other kinds of Unix machines with no loss of functionality, meaning architecture-independent data such as `man`, `info`, `dict`, and `doc` directories.
+- **`/var`.** The "variable" directory where programs record information that changes over time: logs, caches, queues, user-tracking data, and spool files.
+- **`/boot`, `/media`, `/opt`.** `/boot` contains only the files for the very first stage of startup (the kernel and boot loader files), not information about how services start. `/media` is the usual attachment point for removable media, and `/opt` may hold additional third-party software.
+- **Where the kernel and its modules are.** On Linux the kernel is a binary file, normally `/boot/vmlinuz-<version>` (historically `/vmlinuz`), which the boot loader loads into memory and starts. After that the file is no longer used by the running system. **Loadable kernel modules**, which the kernel loads and unloads on demand in chapter 1.1 (the GPU driver is one), live under `/lib/modules/<kernel version>/`. Because of that path, a module built for one kernel version is not found under another.
 
-When you hit a path you do not recognise, `man hier` (or `man 7 hier`) describes the layout on your system.
+When you hit a path you do not recognise, `man hier` or `man 7 hier` describes the layout on your system.
 
 ## 3. File types and what `ls -l` really shows
 
-The kernel knows several kinds of file. The first character of the `ls -l` line tells you which:
+The kernel knows several kinds of file. The first character of the `ls -l` line tells you which.
 
 ```
 $ ls -l /etc/hostname /usr/bin/ls /dev/null /dev/nvme0n1 /run/munge/munge.socket.2 /bin
@@ -123,21 +128,21 @@ lrwxrwxrwx 1 root root    7 Mar 14  2025 /bin -> usr/bin
 | `s` | socket | an endpoint for local inter-process communication |
 | `p` | named pipe (FIFO) | a pipe that has a name in the filesystem |
 
-The remaining columns of a long listing are: the nine **permission** characters (`rwxr-xr-x`, explained in chapter 1.6), the **link count**, the **owner** and **group**, the **size** in bytes (for devices, the major and minor numbers that identify the driver and unit), the **modification time**, and the **name** (with `-> target` for symlinks).
+The remaining columns of a long listing show the nine **permission** characters (`rwxr-xr-x`, explained in chapter 1.6), the **link count**, and the **owner** and **group**. Next come the **size** in bytes (or major and minor driver numbers for devices), the **modification time**, and the **name** (with `-> target` for symlinks).
 
-The command `file` identifies a file from its *contents*, not its name, by looking for characteristic starting bytes ("magic numbers"). It is the right first step with an unknown file: `file model.bin`, `file /usr/bin/python3`, `file run.sh` (which also reports CRLF line endings, the trap from chapter 1.2).
+The command `file` identifies a file from its *contents*, not its name, by looking for characteristic starting bytes called magic numbers. It is the right first step with an unknown file: `file model.bin`, `file /usr/bin/python3`, and `file run.sh`, which also reports CRLF line endings.
 
 ## 4. Inodes: what a file really is
 
-A file in Linux is not its name. Underneath, a filesystem keeps for every file an object called an **inode** (index node), which holds everything about the file *except its name and its data*:
+A file in Linux is not its name. Underneath, a filesystem keeps for every file an object called an **inode** (index node), which holds everything about the file *except its name and its data*.
 
-- the file type and permission bits;
-- the owner and group IDs;
-- the size, and the timestamps (section 6);
-- the **link count**: how many names point at this inode;
-- where the data blocks live on the device.
+- The file type and permission bits.
+- The owner and group IDs.
+- The size, and the timestamps (section 6).
+- The **link count**: how many names point at this inode.
+- Where the data blocks live on the device.
 
-A **directory** is a special file that holds a simple table of **(name → inode number)** entries. That is all a directory is. When you open `/home/alice/train.py`, the kernel walks the path component by component: it looks up `home` in the root directory's table to get an inode, then `alice` in that directory's table, then `train.py`, arriving at the file's own inode and then its data.
+A **directory** is a special file that holds a simple table of **(name → inode number)** entries. That is all a directory is. When you open `/home/alice/train.py`, the kernel walks the path component by component. It looks up `home` in the root directory's table to get an inode, then `alice` in that directory's table, and then `train.py`, arriving at the file's own inode and data blocks.
 
 ```mermaid
 flowchart LR
@@ -164,22 +169,27 @@ This model explains several behaviours that otherwise seem arbitrary:
 - **Renaming a file within a filesystem is instant**, regardless of size: only the directory table entry changes. Moving across filesystems must copy the data and then delete the original.
 - **Deleting a file removes a name, not data.** The command `rm` calls `unlink`, which removes the entry and decrements the inode's link count. The data is freed only when the link count reaches zero **and no process still has the file open**. A running program can keep using a deleted file (section 8, failure mode 4).
 - **A filesystem has two independent capacities:** bytes of data blocks, and the number of inodes. Creating millions of tiny files can exhaust inodes while plenty of bytes are free, producing "No space left on device" with a seemingly half-empty disk. Datasets of small images or text shards make this a real AI-infrastructure concern (failure mode 1).
-- **A file can have several names.** That is what hard links are.
+- **A file can have several names.** That is what hard links are. Notice what `ls -ld` shows for a **directory's link count**. A freshly created empty directory always starts with a link count of `2`: one for its name in its parent directory, and one for the `.` entry inside itself. Every subdirectory you create inside it increments the parent directory's link count by `1` because the child subdirectory contains a `..` entry pointing back to the parent's inode.
 
 ## 5. Links: hard and symbolic
 
 ### Hard links
 
-A **hard link** is simply another directory entry pointing at the same inode. After `ln a.txt b.txt`, both names are completely equal citizens of the same file; the link count is 2; editing through either changes the one set of data; deleting one name leaves the file intact under the other. There is no "original".
+A **hard link** is simply another directory entry pointing at the same inode. After `ln a.txt b.txt`, both names are completely equal citizens of the same file. The link count is 2, editing through either name changes the single underlying set of data blocks, and deleting one name leaves the file intact under the other. There is no "original".
 
 ```bash
-echo hello > a.txt
-ln a.txt b.txt              # hard link: same inode
-ls -li a.txt b.txt          # identical inode numbers, link count 2
-rm a.txt; cat b.txt         # still prints hello
+echo hello > a.txt          # (untested here)
+ln a.txt b.txt              # (untested here) hard link: same inode
+ls -li a.txt b.txt          # (untested here) identical inode numbers, link count 2
+rm a.txt; cat b.txt         # (untested here) still prints hello
 ```
 
-Hard links have two limits that follow from the model: they **cannot cross filesystems** (inode numbers are only meaningful within one filesystem; the error is "Invalid cross-device link", EXDEV), and by default they **cannot point to directories**. They are used for deduplication (backup tools such as `rsnapshot` and `rsync --link-dest` use them heavily) and appear inside package and image storage.
+Hard links have three limits that follow directly from the inode model:
+1. They **cannot cross filesystems**. Inode numbers are only unique within a single filesystem, so linking across mount points fails with `Invalid cross-device link` (`EXDEV`).
+2. By default they **cannot point to directories** (apart from the `.` and `..` entries managed by the filesystem itself, to prevent directory-tree loops).
+3. They **require a Unix-style filesystem that separates directory entries from inodes**. You cannot use `ln` to create a hard link on a mounted VFAT (`vfat` / `msdos`) filesystem. VFAT's directory entry structure was designed for Windows rather than Unix, and stores file metadata directly inside the directory entry instead of a separate inode table.
+
+Hard links are widely used for space-efficient deduplication (`rsnapshot`, `rsync --link-dest`) and inside container/package stores.
 
 ### Symbolic (soft) links
 
@@ -193,7 +203,7 @@ readlink -f /usr/local/cuda                    # the final target, fully resolve
 
 Properties: a symlink to a missing target is a **dangling link**; `ls -l` shows it but opening it fails with "No such file or directory". Relative targets are interpreted relative to the *link's* directory, not your current one, which is why moving a relative symlink often breaks it. Symlinks are cheap and used everywhere: `/usr/bin/python3 -> python3.12`, the `/lib` merge, `latest` pointers for checkpoints and releases, CUDA version switching.
 
-Symlinks have pitfalls worth learning once. **Argument order:** `ln -s TARGET LINKNAME` (the target first, as in `ln -s /usr/local/cuda-12.4 /usr/local/cuda`). If you reverse the arguments and `LINKNAME` is an existing directory, `ln` quietly creates a link *inside* that directory, named after the target, and (unless you used a full path) the new link points at itself; if a symlink to a directory misbehaves, look inside the directory for stray links. **Forgetting `-s`** creates a *hard link* instead of a symbolic one; hard links are subtler and best avoided until you are comfortable with inodes. **Chained links** (a link pointing at a link) are legal and a nuisance to trace: `readlink -f` follows the whole chain. **You cannot tell whether a link points to a file or a directory from its name**, only by following it, and you can easily edit what you believe is a private copy but is really a link to the original. Finally, a dangling link is confusing because `ls` shows it but any other program reports that the name does not exist. The reasons to use symlinks anyway are practical: a program expects a file or directory at a fixed path, you cannot or do not want to change the program, and you do not want a second copy; and they let you reorganise or switch versions with one command.
+Symlinks have pitfalls worth learning once. **Argument order:** `ln -s TARGET LINKNAME` puts the target first, as in `ln -s /usr/local/cuda-12.4 /usr/local/cuda`. If you reverse the arguments and `LINKNAME` is an existing directory, `ln` quietly creates a link *inside* that directory, named after the target. Unless you used a full path, that new link points at itself; if a symlink to a directory misbehaves, look inside the directory for stray links. **Forgetting `-s`** creates a *hard link* instead of a symbolic one; hard links are subtler and best avoided until you are comfortable with inodes. **Chained links** (a link pointing at a link) are legal and a nuisance to trace: `readlink -f` follows the whole chain. **You cannot tell whether a link points to a file or a directory from its name**, only by following it. As a result, you can easily edit what you believe is a private copy when it is really a link to the original. Finally, a dangling link is confusing because `ls` shows it, yet any other program reports that the name does not exist. The reasons to use symlinks anyway are practical. A program often expects a file or directory at a fixed path, you cannot change the program, and you do not want a second copy; symlinks also let you reorganise or switch versions with one command.
 
 | | Hard link | Symbolic link |
 |---|---|---|
@@ -206,7 +216,7 @@ Symlinks have pitfalls worth learning once. **Argument order:** `ln -s TARGET LI
 
 ### The atomic "latest" pattern
 
-A very common AI-infrastructure idiom is a `latest` symlink to the newest checkpoint that readers can switch to without ever seeing a half-written state. Renaming a symlink *over* another is atomic on a filesystem:
+A very common AI-infrastructure idiom is a `latest` symlink to the newest checkpoint that readers can switch to without ever seeing a half-written state. Renaming a symlink *over* another is atomic on a filesystem.
 
 ```bash
 ln -sfn checkpoints/step_001000 latest.tmp   # create the new link under a temporary name
@@ -250,7 +260,7 @@ find . -type f -print0 | xargs -0 ls -l             # safe with spaces; xargs in
 
 Remember to quote patterns (`'*.log'`) so the shell does not expand them first (chapter 1.2). Combine tests with implicit AND, `-o` for OR, and `\( ... \)` for grouping. Always run a `find` without `-delete` first and read the list.
 
-**The basic form first.** Learn this until it is automatic: `find DIR -name 'PATTERN' -print`, where `DIR` is where to start, `-name` matches the file name against a pattern, and `-print` prints each match (GNU `find` prints by default if no action is given, but older and other versions require it). The pattern is single-quoted because `find`, not the shell, must interpret the `*` and `?`; unquoted, the shell would expand it against the current directory first. Only once that form is second nature should you reach for `-exec`, `-delete` and the other actions, because an action applied to the wrong set of files is how data is lost.
+**The basic form first.** Learn this until it is automatic: `find DIR -name 'PATTERN' -print`, where `DIR` is where to start, `-name` matches the file name against a pattern, and `-print` prints each match. GNU `find` prints by default if no action is given, though older versions require `-print`. The pattern is single-quoted because `find`, not the shell, must interpret the `*` and `?`; unquoted, the shell would expand it against the current directory first. Only once that form is second nature should you reach for `-exec`, `-delete` and the other actions, because an action applied to the wrong set of files is how data is lost.
 
 ### `locate`: search by name in an index
 
@@ -264,7 +274,7 @@ Remember to quote patterns (`'*.log'`) so the shell does not expand them first (
 
 Moving a whole directory tree as one object, or saving a snapshot of it, needs an **archive**: a single file that contains many files plus their metadata (names, permissions, owners, times). The classic tool is **`tar`** (tape archive). Archiving and compressing are separate steps: `tar` collects; a compressor shrinks. Combining them gives names like `.tar.gz`.
 
-Four modes, each with an option letter, and a few modifiers:
+Four modes, each with an option letter, and a few modifiers are listed below.
 
 | Option | Meaning |
 |---|---|
@@ -288,16 +298,16 @@ tar -cf - project | ssh gpu01 'tar -xf - -C /data'   # stream a tree over SSH wi
 zcat file.gz | head                           # read a gzip file without unpacking (also zless, zgrep)
 ```
 
-Details of the classic usage, which you will see in every README:
+Details of the classic usage appear in every README:
 
 - **`gzip` compresses one file** (`gzip file` replaces `file` with `file.gz`) and does not make archives; `gunzip file.gz` (or `gzip -d`) restores it and removes the `.gz` suffix. `gzip -k` keeps the original. A `.gz` file is a GNU zip file, and `.tar.gz` is a tar archive that was then gzipped.
 - The traditional `tar` command is written without a dash: `tar cvf archive.tar file1 dir2` creates (`c`), verbosely (`v`; a second `v` adds sizes and permissions), into the file named by `f`. The **`f` flag must be followed by the archive's name** (use `-` for standard input or output), which is why `f` is conventionally the last letter in a bundle like `cvf` or `xzf`. `tar xvf archive.tar` extracts; you can name individual members at the end to extract just those (you must give their exact names, which `t` shows you). `tar` never deletes the archive after extracting.
 - **`t` is also an integrity check.** Listing reads the whole archive, so it verifies the archive is readable as well as showing its contents. Check that **all paths start with one common top-level directory**; if not, extract into a new empty directory (you can always move things up afterwards).
-- **Permissions on extraction.** The `p` option restores the exact permissions stored in the archive, overriding your `umask`; it is the default when you extract as root. `tar` has to read the *whole* archive even to extract one member, and it applies permissions and ownership **at the end**, so do not interrupt it, and wait for the shell prompt before judging the result.
+- **Permissions on extraction.** The `p` option restores the exact permissions stored in the archive, overriding your `umask`; it is the default when you extract as root. `tar` has to read the *whole* archive even to extract one member. It applies permissions and ownership **at the end**, so do not interrupt it, and wait for the shell prompt before judging the result.
 - **Decompress from the right.** A `.tar.gz` is two layers; peel the outer one first: `gunzip file.tar.gz` then `tar xvf file.tar`. To create, reverse the order (`tar` first, `gzip` second). That works but writes an intermediate file, wasting disk space and I/O, so combine them in a pipe, `zcat file.tar.gz | tar xvf -` (`zcat` is `gunzip -dc`: decompress to standard output), or use the GNU `tar` shortcut `z`: `tar xzvf file.tar.gz`, `tar tzvf file.tar.gz`. Remember that the shortcut still performs two steps. A **`.tgz`** file is just a `.tar.gz` (the short suffix was chosen to fit old DOS-style filesystems).
-- **Other compressors.** `xz` (`.xz`, undone with `unxz`) and `bzip2` (`.bz2`, undone with `bunzip2`) are slightly slower than `gzip` and often compress text a little better; their options are close enough to `gzip`'s that you do not need to relearn anything. `zip` and `unzip` handle the Windows ZIP format, including self-extracting `.exe` archives. A file ending in `.Z` is a relic of the old `compress` program: `gunzip` can read it, `gzip` will not create it.
+- **Other compressors.** `xz` (`.xz`, undone with `unxz`) and `bzip2` (`.bz2`, undone with `bunzip2`) are slightly slower than `gzip` and often compress text a little better. Their options are close enough to `gzip`'s that you do not need to relearn anything. `zip` and `unzip` handle the Windows ZIP format, including self-extracting `.exe` archives. A file ending in `.Z` is a relic of the old `compress` program: `gunzip` can read it, `gzip` will not create it.
 
-**Compressors compared:** `gzip` is fast and universal; `bzip2` compresses better and slower; `xz` compresses best and is slow; **`zstd`** gives gzip-like speed with much better ratios and is a good modern default; `pigz` and `pbzip2` are parallel versions of gzip and bzip2 that use many cores for big files. **Do not compress what is already compressed**: model checkpoints in `.safetensors`, images, video and most archives gain nothing and waste CPU. `zip`/`unzip` produce portable archives for sharing with other operating systems.
+**Compressors compared:** `gzip` is fast and universal, `bzip2` compresses better and slower, and `xz` compresses best and is slow. **`zstd`** gives gzip-like speed with much better ratios and is a good modern default, while `pigz` and `pbzip2` are parallel versions of gzip and bzip2 that use many cores for big files. **Do not compress what is already compressed**: model checkpoints in `.safetensors`, images, video and most archives gain nothing and waste CPU. `zip`/`unzip` produce portable archives for sharing with other operating systems.
 
 Safe-use rules that prevent real accidents:
 
@@ -335,76 +345,155 @@ Safe-use rules that prevent real accidents:
 ### 6. `ls` or a job takes forever in a directory with millions of entries
 **Symptom:** listing or globbing a dataset directory hangs, `rm *` says "Argument list too long". **Cause:** large directories are slow to read and sort, especially on network filesystems where every entry may cost a metadata round trip, and globs expand into one huge command. **Diagnose:** `ls -f dir | wc -l` (unsorted, much faster), `strace -c ls dir`. **Fix:** avoid listing; use `find -print0 | xargs -0`; split data across subdirectories (`aa/bb/file` sharding by hash prefix); use shards instead of loose files.
 
-## Hands-on lab (a GCP Ubuntu VM; untested)
+## Hands-on lab: inodes, links, and VM drills
 
-Work in a scratch directory (`mkdir -p ~/lab/files && cd ~/lab/files`).
+First, run the self-checking Python lab (`code/part01/fs_inodes_links_lab.py`) locally. It verifies the FHS directory map, `ls -l` file type characters, the `2 + N` directory link-count rule, hard-link `EXDEV` and VFAT limits, `unlink` and `lsof +L1` deleted-but-open space retention, timestamps, and `ENOSPC` inode exhaustion.
+
+```bash
+python3 code/part01/fs_inodes_links_lab.py
+```
+
+Next, on a GCP Ubuntu VM (all interactive VM commands below are `untested here`), work in a scratch directory (`mkdir -p ~/lab/files && cd ~/lab/files`):
 
 **Part A: paths and the tree.**
-1. Run `tree -L 2 /` if `tree` is installed (`sudo apt install tree`), or `ls /`. For each top-level directory, state its FHS purpose without looking at section 2, then check.
-2. Confirm "merged usr": `ls -ld /bin /sbin /lib` and `readlink -f /bin/ls`. Where does `/usr/bin/python3` really point? (`readlink -f $(command -v python3)`)
-3. Explore `/proc` and `/sys` read-only: `cat /proc/meminfo | head -3`, `cat /proc/sys/kernel/hostname`, `ls /sys/class/net`, `cat /sys/class/net/*/mtu`. Explain why `ls -l /proc/cpuinfo` shows size 0 yet `cat` prints text.
+1. Run `tree -L 2 /` if `tree` is installed (`sudo apt install tree`), or `ls /` (untested here). For each top-level directory, state its FHS purpose without looking at section 2, then check.
+2. Confirm "merged usr": `ls -ld /bin /sbin /lib` and `readlink -f /bin/ls` (untested here). Where does `/usr/bin/python3` really point? (`readlink -f $(command -v python3)`)
+3. Explore `/proc` and `/sys` read-only: `cat /proc/meminfo | head -3`, `cat /proc/sys/kernel/hostname`, `ls /sys/class/net`, `cat /sys/class/net/*/mtu` (untested here). Explain why `ls -l /proc/cpuinfo` shows size 0 yet `cat` prints text.
 
 **Part B: types and inodes.**
-4. Create one of each type you can (a file, a directory, a symlink, a FIFO with `mkfifo p`) and list them with `ls -l`; read the type characters. Find a `c`, a `b` and an `s` file on the system (`ls -l /dev | head -30`, `find /run -type s 2>/dev/null`).
-5. `echo data > f1; ls -li f1; stat f1`. Identify inode, size, link count and the three times. Run `cat f1` and check that atime does or does not change (relatime), then `echo more >> f1` and see mtime and ctime change; then `chmod 600 f1` and see only ctime change. Explain each.
+4. Create one of each type you can (a file, a directory, a symlink, a FIFO with `mkfifo p`) and list them with `ls -l` (untested here); read the type characters. Find a `c`, a `b` and an `s` file on the system (`ls -l /dev | head -30`, `find /run -type s 2>/dev/null`).
+5. Run `echo data > f1; ls -li f1; stat f1` (untested here). Identify inode, size, link count and the three times. Run `cat f1` and check that atime does or does not change (`relatime`), then `echo more >> f1` and see mtime and ctime change; then `chmod 600 f1` and see only ctime change. Explain each.
 
 **Part C: links.**
-6. Make a hard link and a symlink to `f1`. Compare inode numbers and link counts. Delete `f1`; which still works and why? Make the symlink target relative and move the link to another directory; observe it break.
-7. Try a hard link across filesystems: `ln /etc/hostname /dev/shm/x` (or between `/tmp` and your home if they are separate mounts). Record the error and explain it in terms of inodes.
-8. Implement the atomic `latest` pattern from section 5 with three fake checkpoint directories. In a second terminal run `while true; do readlink latest; done` while repointing `latest` in a loop; confirm the reader never sees an empty result.
+6. Make a hard link and a symlink to `f1` (untested here). Compare inode numbers and link counts. Delete `f1`; which still works and why? Make the symlink target relative and move the link to another directory; observe it break.
+7. Try a hard link across filesystems: `ln /etc/hostname /dev/shm/x` (untested here). Record the error and explain it in terms of inodes.
+8. Implement the atomic `latest` pattern from section 5 with three fake checkpoint directories (untested here). In a second terminal run `while true; do readlink latest; done` while repointing `latest` in a loop; confirm the reader never sees an empty result.
 
 **Part D: inode exhaustion and deleted-but-open files (needs sudo).**
-9. Inode exhaustion safely: `sudo mkdir /mnt/t && sudo mount -t tmpfs -o size=10m,nr_inodes=200 tmpfs /mnt/t`, then `for i in $(seq 1 300); do sudo touch /mnt/t/f$i || break; done`. Observe the error, run `df -h /mnt/t` and `df -i /mnt/t`, and explain why one shows free space and the other full. Clean up with `sudo umount /mnt/t`.
-10. Deleted-but-open: `sudo dd if=/dev/zero of=/tmp/big bs=1M count=200`, then `sleep 600 < /tmp/big &`, then `rm /tmp/big`. Compare `df -h /tmp` before and after the delete, find the culprit with `sudo lsof +L1 | grep big`, release it with `kill %1`, and watch the space return.
+9. Inode exhaustion safely: `sudo mkdir /mnt/t && sudo mount -t tmpfs -o size=10m,nr_inodes=200 tmpfs /mnt/t`, then `for i in $(seq 1 300); do sudo touch /mnt/t/f$i || break; done` (untested here). Observe the error, run `df -h /mnt/t` and `df -i /mnt/t`, and explain why one shows free space and the other full. Clean up with `sudo umount /mnt/t`.
+10. Deleted-but-open: `sudo dd if=/dev/zero of=/tmp/big bs=1M count=200`, then `sleep 600 < /tmp/big &`, then `rm /tmp/big` (untested here). Compare `df -h /tmp` before and after the delete, find the culprit with `sudo lsof +L1 | grep big`, release it with `kill %1`, and watch the space return.
 
 **Part E: find, file and archives.**
-11. Use `find` to list files in `/var/log` larger than 1 MiB, regular files modified in the last day, and broken symlinks under `/etc` (`find /etc -xtype l`). Use `file` on a script, a binary, an image and a gzip file.
-12. Create a directory with a few files, then `tar -czf a.tar.gz dir`, `tar -tzf a.tar.gz`, extract into `/tmp/out` with `-C`, and verify with `diff -r dir /tmp/out/dir`. Create an archive with absolute paths (`tar -cf abs.tar /etc/hostname 2>&1 | head`) and read GNU tar's warning. Compare sizes and times of gzip, xz and zstd on a copy of `/usr/share` (`time tar -cf - /usr/share/doc | gzip | wc -c`, with `xz -T0` and `zstd -T0`).
-13. Safety drill: build a tarbomb on purpose (a tar whose members have no common top directory), extract it in the wrong place, and clean up. Then extract it correctly with `-C`.
+11. Use `find` to list files in `/var/log` larger than 1 MiB, regular files modified in the last day, and broken symlinks under `/etc` (`find /etc -xtype l`) (untested here). Use `file` on a script, a binary, an image and a gzip file.
+12. Create a directory with a few files, then `tar -czf a.tar.gz dir`, `tar -tzf a.tar.gz`, extract into `/tmp/out` with `-C`, and verify with `diff -r dir /tmp/out/dir` (untested here). Create an archive with absolute paths (`tar -cf abs.tar /etc/hostname 2>&1 | head`) and read GNU tar's warning. Compare sizes and times of gzip, xz and zstd on a copy of `/usr/share` (`time tar -cf - /usr/share/doc | gzip | wc -c`, with `xz -T0` and `zstd -T0`).
+13. Safety drill: build a tarbomb on purpose (a tar whose members have no common top directory), extract it in the wrong place, and clean up (untested here). Then extract it correctly with `-C`.
 
-## Checkpoint questions
+## Exercises
 
-1. What is the difference between an absolute and a relative path? Why do automation scripts prefer absolute paths?
-2. Where would you look for: a service's configuration, its logs, its runtime socket, a device file, the kernel image, a user's files?
-3. What are `/proc` and `/sys`? Do they take disk space? Why can reading `/proc/meminfo` give different answers a second apart?
-4. What does the first character of an `ls -l` line tell you? Name five values.
-5. What is an inode, and what information does it not contain?
-6. What does a directory contain? What happens, step by step, when the kernel opens `/home/alice/a.txt`?
-7. Explain why renaming a 100 GB file in the same directory is instant but moving it to another disk takes minutes.
-8. What happens to a file's data when you `rm` its only name? What if a process still has it open?
-9. Compare hard links and symbolic links on four properties.
-10. Why does `ln` fail with "Invalid cross-device link"?
-11. What do mtime, ctime and atime each record? Which one changes when you run `chmod`?
-12. A disk reports "No space left on device" but `df -h` shows 40% free. Give two causes and the commands to confirm them.
-13. `df` says the disk is almost full but `du` finds little. What is the most likely cause and how do you find it?
-14. Why should you run `tar -tf` before `tar -xf` on a file from the internet? What is a tarbomb?
-15. Why is `Model.pt` versus `model.pt` a problem when moving between a Mac and a Linux server?
-16. How do you update a `latest` symlink atomically?
+1. **FHS Directory Placement:** State the exact FHS directory path where each of the following lives on a GPU node. Identify: (a) `/etc/slurm/slurm.conf` system configuration, (b) C compiler header files (`.h`), and (c) administrator-installed local binaries (`bin`) and CUDA toolkits. Then identify: (d) architecture-independent documentation (`man`, `info`, `dict`, `doc`), (e) loadable kernel modules (`.ko`) for the running kernel, and (f) volatile runtime sockets (`/run/munge/munge.socket.2`).
+2. **Directory Link Count Math (`2 + N` Rule):** An administrator runs `mkdir -p /data/Checkpoints` and then creates 5 subdirectories (`step_100` through `step_500`) and 20 regular `.pt` files inside `/data/Checkpoints`. What link count does `ls -ld /data/Checkpoints` display, and why do the 20 regular files not increase the directory's link count? Verify with `compute_directory_link_count(5)` in `code/part01/fs_inodes_links.py`.
+3. **Hard Links, Cross-Device `EXDEV`, and VFAT:** Suppose file `a.txt` has inode `7401` on device `2049` (`ext4`, size `200 MiB`, `link_count = 1`). (a) What happens to `inode 7401`'s `link_count`, `mtime`, and `ctime` when you run `ln a.txt b.txt` on the same filesystem, and what happens to the `200 MiB` of data when you subsequently run `rm a.txt`? (b) Why does `ln a.txt /dev/shm/c.txt` (device `2050`) fail with `EXDEV`, and why does `ln` fail on a mounted `vfat` USB drive?
+4. **Deleted-but-Open Files (`lsof +L1`):** A training job holds open a `200 MiB` log file (inode `8800`, `link_count = 1`, `open_fd_count = 1`) on `/tmp`. An operator runs `rm /tmp/big` while the job is still running. What are `link_count` and `open_fd_count` immediately after `rm`, are the `200 MiB` data blocks freed, and which `lsof` command locates the unlinked open file?
+5. **Timestamp Updates (`mtime`, `ctime`, `atime`):** A file starts with `mtime = 100`, `ctime = 100`, and `atime = 100`. Which timestamps change when (a) a process appends bytes to the file, and (b) an administrator runs `chmod 600` on the file without modifying its contents?
+6. **Atomic Symlink Swap and `ENOSPC` Diagnosis:** First, write the two-command sequence (`ln -sfn` and `mv -T`) that atomically switches a `latest` symlink from `checkpoints/step_000900` to `checkpoints/step_001000` without ever leaving `latest` missing. Second, on a `10 MiB` `tmpfs` mounted with `nr_inodes=200`, explain why `touch /mnt/t/f201` fails with `No space left on device` (`ENOSPC`) while `df -h /mnt/t` shows `10 MiB` free.
 
-### Answers
+## Checkpoint questions (20)
 
-1. An absolute path starts at `/` and names the same file regardless of context; a relative path is resolved from the process's current working directory. Scripts started by cron, systemd, Slurm or containers do not share your working directory, so absolute paths (or an explicit `cd`) avoid errors.
-2. Configuration in `/etc`; logs in `/var/log` (or the journal); runtime sockets and PID files in `/run`; device files in `/dev`; the kernel image in `/boot`; user files in `/home`.
-3. They are virtual filesystems generated by the kernel on demand: `/proc` exposes processes and system state, `/sys` exposes devices, drivers and kernel objects. They use no disk space. The values are computed from live kernel state, so they change from moment to moment.
-4. The file type: `-` regular file, `d` directory, `l` symlink, `c` character device, `b` block device, `s` socket, `p` named pipe.
-5. An inode is the filesystem's record of a file: type, permissions, owner, size, timestamps, link count and the location of the data. It does not contain the file's name or (directly) its content.
-6. A directory contains a table mapping names to inode numbers. To open the path, the kernel looks up `home` in `/`, then `alice` in `/home`, then `a.txt` in `/home/alice`, ending at that file's inode, checking permissions at each step.
-7. A same-filesystem rename only changes a directory entry; a move to another filesystem must copy all data blocks and then delete the original.
-8. `rm` removes the name and decrements the link count. If the count reaches zero and no process has the file open, the space is freed; if a process still has it open, the data stays until the process closes it.
-9. Hard link: same inode, cannot cross filesystems, cannot point to directories, survives deletion of the other name. Symlink: separate file containing a path, can cross filesystems, can point to directories and missing targets, breaks if the target disappears.
-10. Hard links reference an inode number, which only has meaning within one filesystem, so a link cannot be created from a different filesystem.
-11. mtime: contents modified; ctime: inode metadata changed (permissions, owner, link count, content); atime: last read (subject to `relatime`). `chmod` changes ctime.
-12. Inode exhaustion (`df -i` shows 100%) and quota limits (`quota -s`, or project/user quotas); also a full container writable layer. Confirm with `df -i`, `quota`, and `df` inside the container.
-13. A deleted file still held open by a process. Find it with `lsof +L1` or `ls -l /proc/*/fd | grep deleted`, then restart the process or truncate through its descriptor.
-14. Archives may contain absolute paths, parent-directory components or many top-level files; listing shows what extraction would do. A tarbomb is an archive without a single top-level directory, scattering files into the current directory.
-15. APFS on macOS is case-insensitive by default, so the two names collide into one file, while Linux treats them as separate files, so code working on a Mac may fail or use the wrong file on Linux.
-16. Create the new link under a temporary name and rename it over the old one: `ln -sfn target latest.tmp && mv -T latest.tmp latest`; the rename is atomic.
+<details>
+<summary>1. What is the difference between an absolute path and a relative path, and why do automation scripts prefer absolute paths?</summary>
+An absolute path starts at `/` and resolves to the exact same file regardless of the caller's working directory. A relative path does not start with `/` and resolves relative to the process's current working directory (`pwd`). Because cron, systemd, Slurm, and containers start in different working directories, scripts use absolute paths or an explicit `cd`.
+</details>
 
-## Sources and further reading
+<details>
+<summary>2. Where in the Filesystem Hierarchy Standard (FHS) do you look for service configs, logs, runtime sockets, device nodes, the kernel image, and loadable kernel modules?</summary>
+System configuration lives in `/etc`, logs in `/var/log`, runtime sockets and PID files in `/run`, device nodes in `/dev`, the kernel image (`/boot/vmlinuz-*`) in `/boot`, and loadable kernel modules (`.ko`) in `/lib/modules/<kernel-version>/`.
+</details>
 
-- Brian Ward, *How Linux Works*, 3rd ed., ch. 2 (file naming and `file`, `find` and `locate`, symbolic links, archiving and compressing with gzip, tar and zcat, the Linux directory hierarchy essentials including `/usr` and kernel location) and ch. 4 for the inode model, which is expanded in chapter 1.12.
-- Sergey Zhumatiy, *Supercomputers for Linux SysAdmins*, ch. 7 (file naming conventions, extension agreements, commands for directory trees and files), used for the cluster-administration viewpoint.
-- Man pages: `man 7 hier`, `man 1 find`, `man 1 tar`, `man 1 ln`, `man 2 stat`, `man 7 inode`, `man 5 proc`.
-- Related chapters: 1.12 disks and filesystems, 1.6 permissions, 13.6 data loading and small files, 13.7 checkpoints.
+<details>
+<summary>3. What is the difference between `/usr/include`, `/usr/local`, and `/usr/share`?</summary>
+`/usr/include` holds C compiler header files (`.h`). `/usr/local` holds software installed locally by the system administrator, mirroring `/` and `/usr` with `/usr/local/bin` and `/usr/local/lib`, plus versioned toolkits like `/usr/local/cuda`. `/usr/share` holds architecture-independent shared files such as `man`, `info`, `dict`, and `doc`.
+</details>
 
-*Notes for review:* the container default of 64 MB for `/dev/shm`, the `relatime` default and the "merged usr" status are standard for current mainstream distributions and container runtimes but should be confirmed on the exact versions you deploy. All lab commands are **untested** and must be run on a Linux VM before this chapter moves to `reviewed`.
+<details>
+<summary>4. What does "merged usr" mean on modern Debian, Ubuntu, Rocky, and RHEL systems?</summary>
+On modern distributions, `/bin`, `/sbin`, `/lib`, and `/lib64` are symbolic links pointing to `/usr/bin`, `/usr/sbin`, `/usr/lib`, and `/usr/lib64`, so `/bin/ls` and `/usr/bin/ls` resolve to the exact same binary.
+</details>
+
+<details>
+<summary>5. What are `/proc` and `/sys`, do they consume disk space, and why does `/proc/cpuinfo` show size 0 in `ls -l`?</summary>
+`/proc` and `/sys` are virtual filesystems generated in RAM on demand by the kernel (`/proc` exposes processes and kernel state; `/sys` exposes devices, drivers, and kernel objects). They consume zero disk blocks, and virtual files like `/proc/cpuinfo` report size 0 in `stat` because the kernel generates their text dynamically only when read.
+</details>
+
+<details>
+<summary>6. What do the seven file-type characters (`-`, `d`, `l`, `c`, `b`, `s`, `p`) at the start of an `ls -l` line mean?</summary>
+`-` is a regular file, `d` is a directory, `l` is a symbolic link, and `c` is a character device (`/dev/null`, `/dev/nvidia0`). In addition, `b` is a block device (`/dev/nvme0n1`), `s` is a local domain socket, and `p` is a named pipe (FIFO).
+</details>
+
+<details>
+<summary>7. How does the `file` command identify a file's type if Linux ignores file extensions?</summary>
+`file` inspects the file's actual content—specifically magic numbers (characteristic header bytes at the beginning of the file, such as ELF headers or `#!` shebangs) and text encoding/line endings—rather than trusting the filename suffix.
+</details>
+
+<details>
+<summary>8. What is an inode, and what two crucial pieces of information are NOT stored inside the inode itself?</summary>
+An inode (index node) is the filesystem metadata record storing the file type, permissions, owner UID, group GID, byte size, timestamps (`atime`, `mtime`, `ctime`), link count, and pointers to data blocks. It does not store the file's **name** (which lives in a directory table) or the file's **payload bytes** (which live in data blocks).
+</details>
+
+<details>
+<summary>9. What does a directory actually contain on disk, and how does the kernel resolve `/home/alice/a.txt` or `/home/alice/train.py`?</summary>
+A directory is a special file containing a table of `(filename -> inode_number)` mappings. To open `/home/alice/a.txt` or `/home/alice/train.py`, the kernel reads the root directory `/` inode to look up `home`. It then reads `/home`'s table to look up `alice`, and reads `/home/alice`'s table to find the inode number for `a.txt` or `train.py`.
+</details>
+
+<details>
+<summary>10. Why does an empty directory have a link count of `2`, and why does adding 5 subdirectories raise its link count to `7`?</summary>
+An empty directory has two hard links to its inode: its entry in its parent directory and its own `.` self-entry (`1 + 1 = 2`). Each subdirectory created inside it contains a `..` entry pointing back to the parent directory's inode, adding `1` per subdirectory (`2 + 5 = 7`).
+</details>
+
+<details>
+<summary>11. Why is renaming a 100 GB checkpoint file within the same filesystem instant, whereas moving it across mount points takes minutes?</summary>
+Within a single filesystem, `mv` simply updates the directory table entry to point the new name at the existing inode without touching the 100 GB of data blocks. Across different filesystems, inode numbers cannot be shared, so `mv` must copy all 100 GB of data blocks to the destination device and then unlink the source.
+</details>
+
+<details>
+<summary>12. What happens when you `rm` a file that a running process still has open, and how do you find and reclaim that space?</summary>
+`rm` calls `unlink()`, removing the directory entry and decrementing `link_count` to `0`, but the kernel does not free the data blocks until `open_fd_count` also reaches `0`. You locate such deleted-but-open files with `sudo lsof +L1` (or `ls -l /proc/<pid>/fd | grep deleted`) and free the space by restarting/signaling the process or truncating `/proc/<pid>/fd/<n>`.
+</details>
+
+<details>
+<summary>13. Compare hard links and symbolic links across four operational properties.</summary>
+A hard link is a second directory entry pointing to the same inode, cannot cross filesystems (`EXDEV`), cannot point to directories, and keeps the data alive if the original name is deleted. A symbolic link is a separate small file of type `l` storing a path string, can cross filesystems and point to directories, and becomes a dangling link if its target is deleted.
+</details>
+
+<details>
+<summary>14. Why can't you create a hard link (`ln`) on a mounted VFAT (`vfat` / `msdos`) USB drive?</summary>
+Traditional Unix filesystems (`ext4`, `XFS`) separate directory entries from an inode table so multiple directory entries can reference one inode. VFAT's directory structure was designed for MS-DOS/Windows and embeds file metadata directly inside the directory entry without an independent inode table.
+</details>
+
+<details>
+<summary>15. How do you update a `latest` checkpoint symlink atomically so reader processes never see a missing or half-updated link?</summary>
+Create a temporary symlink pointing to the new target and atomically rename it over the existing symlink on the same filesystem: `ln -sfn checkpoints/step_001000 latest.tmp && mv -T latest.tmp latest`.
+</details>
+
+<details>
+<summary>16. What do `mtime`, `ctime`, and `atime` record, and which one changes when you run `chmod 600 f1`?</summary>
+`mtime` records when the file's content bytes were last modified. `ctime` records when the inode metadata (permissions, ownership, link count, or content size) last changed, and `atime` records when the file was last read (throttled by `relatime`). Running `chmod 600 f1` changes only `ctime`.
+</details>
+
+<details>
+<summary>17. Why can a disk fail with `No space left on device` (`ENOSPC`) when `df -h` shows 40% free space, and how do you verify it?</summary>
+Every `ext4` filesystem has a fixed number of inodes alongside its data blocks; millions of small dataset files can exhaust 100% of the inodes while data blocks remain half empty. Verify with `df -i` (and check `quota -s` for user/project quotas).
+</details>
+
+<details>
+<summary>18. Why must you quote the pattern in `find /var/log -type f -name '*.log'`, and what is the difference between `-exec gzip {} \;` and `-exec gzip {} +`?</summary>
+Quoting `'*.log'` prevents the shell from expanding the wildcard against the current working directory before `find` starts. `-exec ... \;` forks a separate `gzip` process for every single file found, whereas `-exec ... +` batches many filenames into each `gzip` invocation like `xargs`.
+</details>
+
+<details>
+<summary>19. Why should you always run `tar -tf` before `tar -xf`, and what is a "tarbomb"?</summary>
+`tar -tf` lists the archive's table of contents and verifies readability without writing to disk. That check reveals whether the archive contains dangerous leading `/` or `..` paths or lacks a single top-level directory (a "tarbomb" that scatters hundreds of files directly into your current working directory). Always extract untrusted archives into a fresh directory with `-C`.
+</details>
+
+<details>
+<summary>20. Why does Docker's default `/dev/shm` size (`64 MB`) break multi-worker PyTorch `DataLoader` jobs, and how is it fixed?</summary>
+`/dev/shm` is an in-memory `tmpfs` used for POSIX shared-memory IPC between PyTorch `DataLoader` worker processes and NCCL. When batch tensors exceed Docker's `64 MB` default, workers crash with `Bus error` (`SIGBUS`) or `ENOSPC`; fix it by passing `--shm-size=16g` (or mounting a memory-backed `emptyDir` at `/dev/shm` in Kubernetes).
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 2: Basic Commands and Directory Hierarchy** and **Chapter 4: Disks and Filesystems**. Read Chapter 2 sections 2.4, 2.5.5, 2.5.6, 2.17.2, 2.18, and 2.19 in full. Covers relative paths, `file`, `find` and `locate`, symbolic links (`ln -s`), archiving and compressing (`gzip`, `gunzip`, `tar`, `zcat`), and the Filesystem Hierarchy Standard (`https://refspecs.linuxfoundation.org/fhs.shtml`, `/bin`, `/sbin`, `/lib`, `/usr/include`, `/usr/local`, `/usr/share`, `/etc`, `/var`, `/run`, `/tmp`, `/dev`, `/proc`, `/sys`, `/boot/vmlinuz`, `/lib/modules`). Read Chapter 4 section 4.5 in full. Covers inode tables, directory entry tables, directory link counts (`2 + N`), and why VFAT does not support `ln` hard links.
+  - `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to` — Sergey Zhumatiy, *Supercomputers for Linux SysAdmins*, **Chapter 7: UNIX and Linux – the Basics** and **Chapter 8: UNIX and Linux – Working Techniques**. Read file naming conventions, extension agreements, templates, commands for working with the directory tree and catalogs, and `tar`/`gzip` streaming.
+- **Run here:** `python3 code/part01/fs_inodes_links_lab.py` (20 passed, 0 failed).
+- **Explicitly labelled inferences:** The Docker `64 MB` `/dev/shm` default and the WebDataset/Parquet/TFRecord sharding recommendations connect the Linux inode model to Part 11 and Part 13 AI storage practices (chapters 13.6 and 13.7).
+- **Not verified on live hardware:** All interactive VM shell commands (`tree`, `mount -t tmpfs`, `dd`, `lsof +L1`, `find`, `tar`) are marked (untested here) and should be executed on a Linux VM.
