@@ -99,7 +99,15 @@ def nester():
 ```
 
 - **Mutable class attributes** (a list or dict at class level) are shared by all instances: a common bug source. Create per-instance mutable state in `__init__`.
-- **Privacy** is by convention: `_name` (internal), `__name` (name-mangled to `_Class__name` to avoid subclass clashes, not true privacy). Python trusts programmers; document the public API.
+- **Privacy and pseudoprivate name mangling (`__X`, `_Class__name`, `_Class__x`, `LP` Chapter 31 `pseudoprivate.py`)** is by convention: `_name` signals an internal attribute, whereas a double leading underscore `__X` (`__name`) inside a `class` body is **name-mangled** at compile time to `_ClassName__X` (`_Class__name` / `_Class__x`) so two classes in a hierarchy (`class C1: def meth1(self): self.__X = 88` and `class C2: def metha(self): self.__X = 99` combined in `class C3(C1, C2): pass`) can store their own internal attributes on the same `self.__dict__` (`{'_C1__X': 88, '_C2__X': 99}`) without accidentally overwriting each other. It prevents accidental collisions in deep hierarchies, not deliberate access (`I._C1__X` is still readable, just as Java `private` fields can be read via `setAccessible(True)` reflection). Python trusts programmers; document the public API.
+- **Bound vs. unbound method objects (`LP` Chapter 31):** In `class Hack: def doit(self, message): print(message)`, fetching `meth = inst.doit` on an instance returns a **bound method object** that packages both the instance (`meth.__self__ is inst`) and the underlying function (`meth.__func__ is Hack.doit`), so `meth('bonjour')` can be stored in a callback list or passed around like a simple function with `self` already bound. Fetching `Hack.doit` on the class returns the plain function, requiring `Hack.doit(inst, 'privit')`.
+- **The Zen of namespaces (`manynames.py` and `docstr.py`, `LP` Chapter 29):** Where you assign a name determines which namespace it lives in: `X = 11` at the top of a module is module-global (`manynames.X`), `X = 22` inside a function `g()` is local to that call, `X = 33` inside `class C:` is a class attribute (`C.X`, inherited by `I.X`), and `self.X = 55` inside `def m(self):` creates an instance attribute in `I.__dict__['X']` (while `I.__class__` links the instance to `C` and `C.__bases__` holds the tuple of direct superclasses). Docstrings (`__doc__` in `docstr.py`) attach at every layer (`module.__doc__`, `func.__doc__`, `Klass.__doc__`, and `Klass.method.__doc__`) and are rendered together by `help(module)`.
+- **A Pythonic object (`Vector2d` and `ShortVector2d`, `FP` Chapter 11):** In *Fluent Python*'s `Vector2d(3, 4)` (`Examples 11-1` to `11-19`, modeled in `code/part03/python_classes_typing_protocols.py`), a well-crafted domain object combines:
+  1. `__iter__` (`return (i for i in (self.x, self.y))`) so tuple unpacking `x, y = v1` and `tuple(self)` work automatically.
+  2. `__repr__` (`"{}({!r}, {!r})".format(type(self).__name__, *self)`) so `eval(repr(v1)) == v1` works and subclasses inherit the right class name without hardcoding `'Vector2d'`.
+  3. `__bytes__` (`bytes([ord(self.typecode)]) + bytes(array(self.typecode, self))`) and the `@classmethod` alternative constructor `frombytes(cls, octets)` (`typecode = chr(octets[0]); memv = memoryview(octets[1:]).cast(typecode); return cls(*memv)`).
+  4. Custom `__format__(self, fmt_spec='')` extending the Format Specification Mini-Language with a `'p'` suffix for polar coordinates `<r, theta>` (`format(Vector2d(1, 1), '0.5fp') == '<1.41421, 0.78540>'`).
+  5. Hashable immutability: turning `x` and `y` into read-only `@property` getters backed by `self.__x` and `self.__y` and implementing `def __hash__(self): return hash((self.x, self.y))`, plus `__match_args__ = ('x', 'y')` for positional `match` patterns (`case Vector2d(0, 0):`) and `__slots__ = ('__x', '__y')` (which shrinks 10 million `Vector2d` instances in `mem_test.py` from 1.62 GiB to 655 MiB). Because `typecode = 'd'` (8-byte IEEE 754 float) is a class attribute read via `self.typecode`, you can customize an individual instance (`v1.typecode = 'f'`) or subclass `class ShortVector2d(Vector2d): typecode = 'f'` (4-byte float) cleanly.
 - **`@property`** exposes methods as attributes: start with plain attributes and add properties later without changing callers. Use for validation, derived values, lazy computation (`functools.cached_property`), and read-only fields.
 - **`__slots__` and its inheritance rules**: assigning a sequence of attribute name strings to `__slots__` reserves fixed per-instance storage managed by class-level descriptors instead of allocating a per-instance `__dict__` (and `__weakref__`), saving memory when millions of instances exist. However, `__slots__` has strict inheritance rules:
   - **Every class in the hierarchy must define `__slots__`:** if a subclass defines `__slots__` but a superclass does not (or a superclass defines `__slots__` and a subclass does not), the class without `__slots__` still creates an instance `__dict__` on every instance, negating the memory savings (in the book's example, `class C: pass; class D(C): __slots__ = ['a']` still gives `D()` an instance `__dict__`). Subclasses that add no new attributes must still declare `__slots__ = ()`.
@@ -149,7 +157,12 @@ D().f()        # 'D>B>C>A'
 D.__mro__      # (D, B, C, A, object)
 ```
 
-- **Mixins**: small classes adding one capability (logging, tagging, serialisation) to be combined via multiple inheritance; keep them stateless or with minimal state, with no `__init__` requirements, and name them `...Mixin`.
+- **Mixins and class interface techniques (`LP` Chapters 28, 29, 31 & `FP` Chapter 14)**:
+  - In `LP` Chapter 29 (`Example 29-1 specialize.py`), Lutz classifies four ways a subclass can interface with a superclass `Super`: (1) `Inheritor(Super)` inherits methods verbatim (`pass`), (2) `Replacer(Super)` overrides `method(self)` completely, (3) `Extender(Super)` overrides `method(self)` and calls back to `Super.method(self)` (as `Manager.giveRaise(self, percent, bonus=.10)` calls `Person.giveRaise(self, percent + bonus)` in `LP` Chapter 28's `person_14.py`—which can then be persisted by key in a `shelve.open('persondb')` DBM database via `makedb.py` and `updatedb.py`), and (4) `Provider(Super)` implements the abstract `action(self)` hook expected by `Super.delegate(self)` (the Template Method pattern).
+  - **Mixins (`...Mixin`, `AttrDisplay`, `ListInstance`, `ListInherited`, `ListTree`, `UpperCaseMixin`, `ThreadingMixIn`):** Small classes (conventionally named `...Mixin`) adding a single orthogonal capability via multiple inheritance. In `LP` Chapters 28–31, `AttrDisplay` (`classtools.py`), `ListInstance` (inspecting `self.__dict__`), `ListInherited` (inspecting `dir(self)`), and `ListTree` (climbing `self.__class__` and `__bases__` like `classtree.py`) mix a generic `__repr__`/`__str__` display into any application class (`class Person(AttrDisplay):`). In `FP` Chapter 14 (`Example 14-8`), `UpperCaseMixin` uppercases string keys via `super().__setitem__(_upper(key), item)` and must be listed **first** (`class UpperDict(UpperCaseMixin, collections.UserDict): pass`) so its methods intercept calls before `UserDict` on the MRO (and note that subclassing built-in C types like `dict` or `list` directly in `DoppelDict` / `AnswerDict` is hazardous because C methods ignore Python overrides—always subclass `collections.UserDict`, `UserList`, or `UserString`).
+- **Composition and delegation (`Department`, `PizzaShop`, `streams.py`, `Set` wrapper, `LP` Chapters 28, 31, 32)**:
+  - While inheritance models `"is-a"` relationships (`PizzaRobot(Chef)` -> `Chef(Employee)` -> `Employee` in `employees.py`), **composition** models `"has-a"` relationships where a composite controller directs embedded components: `Department` (`Example 28-12`) aggregates `Person` and `Manager` objects to give group raises, `PizzaShop` (`Example 31-2 pizzashop.py`) embeds `Server('Pat')`, `PizzaRobot('Bob')`, and `Oven()` to process `scene.order('Sue')`, and `Processor(reader, writer)` (`Example 31-3 streams.py` and `Uppercase(Processor)` in `converters.py`) reads from any file/socket stream, transforms via `converter(data)`, and writes to any output stream.
+  - **Delegation (`__getattr__` proxy):** Wraps an embedded object (such as `Manager` embedding `self.person = Person(name, 'mgr', pay)` or `Set` wrapping a list in `setwrapper.py`) and forwards attribute fetches via `def __getattr__(self, attr): return getattr(self.person, attr)` (noting that in Python 3, special dunder operators like `__str__` or `__add__` look up on the class directly and bypass instance `__getattr__`).
 - **`isinstance(x, Base)`** and **`issubclass`** respect inheritance; `type(x) is T` checks exact types (rarely wanted).
 - **Liskov substitution principle**: subclasses must honour the base class contract (accept at least what the base accepts, return no less than promised, not raise new surprising exceptions).
 
@@ -185,7 +198,15 @@ class Provider(ABC):
 class Gcp(Provider): ...         # must implement all abstract methods or instantiation raises TypeError
 ```
 
-ABCs enforce that subclasses implement required methods at instantiation time, and provide **virtual subclassing** (`Provider.register(Third)`); `collections.abc` supplies container ABCs (`Iterable`, `Sequence`, `Mapping`, `Callable`) for `isinstance` checks. Use an ABC when you want shared concrete behaviour plus enforced abstract methods and runtime checks.
+ABCs enforce that subclasses implement required methods at instantiation time, and provide **virtual subclassing** (`Provider.register(Third)`); `collections.abc` supplies container ABCs (`Iterable`, `Sequence`, `Mapping`, `Callable`) for `isinstance` checks (what Alex Martelli calls **goose typing** in *Fluent Python* Chapter 13). In `FP` Chapter 13 (`Examples 13-7` to `13-14`), Ramalho's `Tombola(ABC)` defines two `@abstractmethod`s—`.load(iterable)` and `.pick()` (raising `LookupError`, the parent of `IndexError` and `KeyError`, when empty)—and two concrete methods built on them (`.loaded()` and `.inspect()`), implemented by `BingoCage(Tombola)`, `LottoBlower(Tombola)`, and virtual subclass `@Tombola.register class TomboList(list):` (verified in `TomboList.__mro__` vs `Tombola._abc_registry`). And for structural ABCs like `collections.abc.Sized` whose `__subclasshook__` checks whether `"__len__"` is in the class's `__mro__` dictionaries, any class implementing `def __len__(self): return 23` (`class Struggle:`) satisfies `isinstance(Struggle(), abc.Sized)` and `issubclass(Struggle, abc.Sized)` automatically without inheritance or `.register()` (`FP` Chapter 13 also contrasts duck typing, goose typing, static nominal typing, and **static duck typing** via `typing.Protocol`, as well as runtime **monkey patching** such as `FrenchDeck.__setitem__ = set_card` to enable `random.shuffle(deck)`). Use an ABC when you want shared concrete behaviour plus enforced abstract methods and runtime checks.
+
+```mermaid
+flowchart TD
+    Typing["Python Interface & Type Checking Models (FP Ch. 13)"] --> Duck["1. Duck Typing (Runtime)<br/>Call methods directly (len, __getitem__)"]
+    Typing --> Goose["2. Goose Typing (Runtime ABCs)<br/>abc.ABC, @abstractmethod, isinstance(x, Sequence)"]
+    Typing --> Nominal["3. Static Nominal Typing (mypy/pyright)<br/>Explicit class/ABC inheritance & annotations"]
+    Typing --> StaticDuck["4. Static Duck Typing (typing.Protocol)<br/>Structural conformance without inheritance"]
+```
 
 ### Protocols (structural typing)
 
@@ -249,6 +270,11 @@ sorted([n2, n])                          # order=True generates comparisons from
 ```
 
 Options: `frozen=True` (immutable, hashable with `eq`), `order=True`, `slots=True` (3.10+), `kw_only=True`, `eq=True`, `unsafe_hash`, `repr=False`; field options `field(default_factory, repr=False, compare=False, init=False, metadata={...})`; `InitVar` for init-only parameters; `dataclasses.fields(obj)` for introspection. Inheritance works, but field ordering rules (non-default after default) can bite; `kw_only` helps.
+
+In *Fluent Python* Chapter 5 (`Examples 5-4` to `5-21`), Ramalho highlights several essential details across the three standard data class builders:
+- **`collections.namedtuple` (`City = namedtuple('City', 'name country population coordinates')`):** Instances use the exact same memory as a plain `tuple` because field names live on the class (`City._fields`), while `_make(iterable)` constructs an instance from a sequence, `_asdict()` returns a `dict` for JSON serialization, and `defaults=(...)` sets rightmost default values.
+- **How type annotations behave in plain classes vs `typing.NamedTuple` vs `@dataclass` (`DemoPlainClass`, `DemoNTClass`, `DemoDataClass`):** In a plain class `class DemoPlainClass: a: int; b: float = 1.1; c = 'spam'`, `a` exists **only** in `DemoPlainClass.__annotations__` (`DemoPlainClass.a` raises `AttributeError`). In `class DemoNTClass(typing.NamedTuple): a: int; b: float = 1.1; c = 'spam'`, `a` and `b` become read-only tuple descriptor fields (`nt.a`, `nt.b`). In `@dataclass class DemoDataClass: a: int; b: float = 1.1; c = 'spam'`, `a` and `b` become mutable instance attributes initialized by the generated `__init__(self, a: int, b: float = 1.1) -> None` (and notice that unannotated `c = 'spam'` remains a plain class attribute).
+- **`ClassVar` and `__post_init__` in `ClubMember` and `HackerClubMember` (`Example 5-16`):** When `HackerClubMember(ClubMember)` tracks a class-wide set of handles `all_handles: ClassVar[set[str]] = set()`, annotating it with `typing.ClassVar` tells `@dataclass` **not** to turn `all_handles` into an instance field (while satisfying `mypy`), and `__post_init__(self)` populates `self.handle = self.name.split()[0]` if empty, checks `if self.handle in cls.all_handles: raise ValueError(...)`, and registers `cls.all_handles.add(self.handle)`. Similarly, Dublin Core `Resource` (`Example 5-19`) uses `ResourceType(Enum)` and a custom multi-line `__repr__` iterating `for f in fields(cls):`. All three builders automatically generate `__match_args__` so positional structural pattern matching (`case City(continent='Asia', name=_, country=cc):`) works out of the box (unlike the 9 blessed built-in types `bytes`, `dict`, `float`, `frozenset`, `int`, `list`, `set`, `str`, `tuple` that match a single positional argument directly). Also keep Martin Fowler's refactoring advice in mind: a **Data Class** with zero behavior can be a code smell if logic that belongs on the class is scattered across callers.
 
 **Pitfalls:** annotations are not enforced (`GpuNode(name=5)` succeeds); validate in `__post_init__` or use pydantic at boundaries. `frozen` dataclasses are shallowly immutable (a list inside can still be mutated; use tuples/frozenset). Dataclass equality compares all fields (use `compare=False` for volatile ones).
 
@@ -314,14 +340,19 @@ JsonScalar: TypeAlias = str | int | float | bool | None
 
 Essentials:
 
-- **Parameters accept general types, return specific types**: take `Iterable`/`Sequence`/`Mapping`, return `list`/`dict`. Don't annotate with `list` when any iterable will do.
+- **Parameters accept general types, return specific types (`FP` Chapter 8)**: follow Postel's Law—take `Iterable`/`Sequence`/`Mapping` (`def name2hex(name: str, color_map: Mapping[str, int]) -> str:`, which accepts `dict`, `defaultdict`, `ChainMap`, or `UserDict`), and return concrete `list`/`dict` (`def columnize(sequence: Sequence[str], num_columns: int = 0) -> list[tuple[str, ...]]:`). Don't annotate a read-only parameter with `dict` or `list` when `Mapping` or `Sequence`/`Iterable` will do.
+- **Gradual typing, `show_count`, and duck vs nominal typing (`Birds`, `FP` Chapter 8 `Examples 8-1` to `8-6`):** PEP 484 introduces a **gradual type system**: unannotated functions are ignored by default, types are optional at runtime, and static checkers (`mypy`) catch bugs before tests run (such as `show_count(count: int, singular: str, plural: Optional[str] = None) -> str` catching `show_count(2, 'child', 'children')` when `plural` was missing, or `alert_bird(birdie: Bird)` flagging `birdie.quack()` because `quack` is defined on `Duck(Bird)`, not `Bird`). Distinguish fixed-length record tuples (`tuple[str, float, str]`) from variable-length homogeneous tuples (`tuple[int, ...]`).
 - **`Optional[X]` is `X | None`**: the checker forces you to handle `None`. Narrowing: `if x is not None:`; `isinstance`; `assert x`; early returns.
-- **`Any`** disables checking for that value (escape hatch, spreads silently); prefer `object` or a Protocol; use `# type: ignore[code]` sparingly with justification.
-- **Generics**: `TypeVar("T")` for functions preserving types; `class Stack(Generic[T])` or the 3.12 syntax `class Stack[T]:` / `def first[T](xs: Sequence[T]) -> T:`; bounded `TypeVar("T", bound=Comparable)`; `ParamSpec`/`Concatenate` for decorators preserving signatures (chapter 3.11); `Self` for fluent methods/classmethods returning the same class.
-- **`@overload`** to express return type depending on argument type/literal.
-- **Callable** types: `Callable[[int, str], bool]`; for keyword/complex signatures use a Protocol with `__call__`.
-- **Variance**: `Sequence` is covariant (a `Sequence[Dog]` is a `Sequence[Animal]`), `list` invariant (a `list[Dog]` is not a `list[Animal]`) because lists are mutable.
-- **`TYPE_CHECKING`** blocks for imports used only in annotations (avoid cycles/cost): `if TYPE_CHECKING: from .models import Node`; with `from __future__ import annotations` (or 3.14 deferred evaluation) annotations become lazily evaluated strings.
+- **`Any` vs `object`**: `Any` is simultaneously a subtype-of and supertype-of every type, which **disables type checking** (and is contagious when returned by functions like `json.loads()` unless constrained with a variable annotation `whatever: BookDict = json.loads(data)` and checked with `--disallow-any-expr` or validated at runtime with Pydantic); **`object`**, by contrast, accepts any value but only permits operations supported by all objects (`==`, `isinstance`) until narrowed. Use `typing.cast(Type, val)` or `# type: ignore[code]` sparingly.
+- **Generics, bounded `TypeVar`, and `@overload` (`FP` Chapters 8 & 15)**: `TypeVar("T")` for functions preserving types (`def sample(population: Sequence[T], size: int) -> list[T]:`); bounded `LT = TypeVar("LT", bound=SupportsLessThan)` for `def top(series: Iterable[LT], length: int) -> list[LT]:` (`Example 8-18`) where `class SupportsLessThan(Protocol): def __lt__(self, other: Any) -> bool: ...`; restricted `NumberT = TypeVar("NumberT", float, Decimal, Fraction)` for `mode()`; generic classes `class LottoBlower(Tombola, Generic[T]):` (`Example 15-15`, instantiated as `LottoBlower[int](range(1, 11))`) or Python 3.12 syntax `class Stack[T]:`; `ParamSpec`/`Concatenate` for decorators preserving signatures (chapter 3.11); `Self` for fluent methods/classmethods returning the same class.
+- **`@overload` (`FP` Chapter 15 `Examples 15-1` to `15-4`)**: expresses signatures where the return type depends on argument types or defaults (such as `sum`, `max` with or without `key=` and `default=`, or `mymax`), followed by a single unannotated implementation function.
+- **Callable** types and variance: `Callable[[int, str], bool]` is **contravariant in argument types** and **covariant in return type** (`Callable[[float], None]` is a subtype of `Callable[[int], None]` because a callback that can handle any `float` can safely handle an `int`, whereas `Callable[[int], None]` is not a subtype of `Callable[[float], None]`). For keyword or variadic callables, define a `Protocol` with `def __call__(self, ...):`.
+- **Variance (`Invariant`, `Covariant`, `Contravariant`, `FP` Chapter 15 `Examples 15-18` to `15-20`)**:
+  - **Invariant (default, `T = TypeVar('T')`):** `list[Dog]` is **not** a subtype of `list[Animal]` (and `BeverageDispenser[OrangeJuice]` is rejected where `BeverageDispenser[Juice]` is expected if `T` is invariant) because a caller could append a `Cat` into a mutable `list[Animal]`.
+  - **Covariant (`T_co = TypeVar('T_co', covariant=True)`):** Read-only containers/producers like `Sequence[T_co]`, `Iterator[T_co]`, and `BeverageDispenser[T_co]` vary in the **same direction** as `T` (`BeverageDispenser[OrangeJuice]` **is** a subtype of `BeverageDispenser[Juice]`).
+  - **Contravariant (`T_contra = TypeVar('T_contra', contravariant=True)`):** Write-only sinks/consumers like `TrashCan[T_contra]` vary in the **opposite direction** (`TrashCan[Refuse]` **is** a subtype of `TrashCan[Biodegradable]` because a general refuse can safely accepts biodegradable trash).
+- **`TypedDict` (`BookDict`, `FP` Chapter 15 `Examples 15-5` to `15-11`)**: `class BookDict(TypedDict): isbn: str; title: str; authors: list[str]; pagecount: int` provides static type checking for dictionary keys and value types, but performs **zero runtime validation** (`from_json` returning arbitrary JSON will pass at runtime unless validated by Pydantic).
+- **`TYPE_CHECKING` and `typing.get_type_hints()`**: `if TYPE_CHECKING:` blocks hold imports used only in annotations (`reveal_type(x)` prints Mypy's inferred type during checking); with `from __future__ import annotations` (PEP 563 / PEP 649), annotations are stored lazily, and runtime tools inspect them with `typing.get_type_hints(func)` or `inspect.signature(func)`.
 - **`Annotated[int, Field(ge=0)]`** attaches metadata used by pydantic/FastAPI.
 - **`typing.Protocol`, `TypedDict`, `NamedTuple`, `dataclass_transform`** support framework authors.
 - **Gradual typing**: annotate public APIs first; enable strictness progressively (`mypy --strict`, per-module overrides, `pyright` basic vs strict); keep the type-check job in CI (chapter 3.9) and treat new errors as build failures.
@@ -366,7 +397,20 @@ class Bytes(int):                    # subclass a builtin for a domain type
             n /= 1024
 ```
 
-For real version handling use `packaging.version.Version`; for IP addresses `ipaddress`; for durations `datetime.timedelta`. Also: reflected (`__radd__`), in-place (`__iadd__` should mutate and return `self`), unary (`__neg__`), bitwise, `__matmul__` for matrix multiplication, `__contains__`, `__call__`, `__format__` for custom format specs.
+For real version handling use `packaging.version.Version`; for IP addresses `ipaddress`; for durations `datetime.timedelta`.
+
+### Sequence special methods (`Vector` Takes #1–#5, `FP` Chapter 12) and operator overloading (`FP` Chapter 16 & `LP` Chapter 30)
+
+In *Fluent Python* Chapters 12 and 16 (and *Learning Python* Chapter 30, modeled in `code/part03/python_classes_typing_protocols.py`), an N-dimensional `Vector` class backed by `array('d', components)` demonstrates production-grade sequence and operator overloading:
+1. **Abbreviated `__repr__` with `reprlib.repr` (`Vector` Take #1):** For large vectors (`Vector(range(1000))`), `reprlib.repr(self._components)` truncates the output to 30 characters (`Vector([0.0, 1.0, 2.0, 3.0, 4.0, ...])`) so logs and interactive sessions never dump megabytes of text.
+2. **Slice-aware `__getitem__` and `operator.index` (`Vector` Take #2, and `LP` Chapter 30 `StepperIndex` / `SkipObject`):** A sequence's `__getitem__(self, key)` checks `if isinstance(key, slice): return type(self)(self._components[key])` so slicing a `Vector` returns a new `Vector` (not a raw `array`), and otherwise calls **`operator.index(key)`** (which invokes `key.__index__()` to accept integers and integer-like types while raising `TypeError` on floats or tuples; note `slice.indices(length)` normalizes start/stop/step bounds). In `LP` Chapter 30, Lutz also contrasts `__getitem__` fallback iteration (`StepperIndex`) with single-scan (`Squares` with `__iter__` returning `self`) vs. **multi-scan** iterables (`SkipObject('abcdef')` in `skipper.py` / `skipper_yield.py`, whose `__iter__` returns a new iterator/generator on each call so nested loops `[x + y for x in skipper for y in skipper]` produce all `9` pairs `'aa'`..`'ee'`).
+3. **Dynamic read-only attributes `x, y, z, t` (`__getattr__` and `__setattr__`, `Vector` Take #3):** Defining `__match_args__ = ('x', 'y', 'z', 't')` and `def __getattr__(self, name):` lets callers read `v.x, v.y, v.z, v.t` dynamically from `self._components[0..3]`. However, if a caller accidentally assigns `v.x = 10` without `__setattr__` protection, Python would create an instance attribute `v.__dict__['x'] = 10` that shadows `__getattr__` while leaving `v[0]` unchanged. Overriding `__setattr__` to raise `AttributeError` on any single-letter lowercase attribute (`'a'` to `'z'`) prevents inconsistent shadowing (in `LP` Chapter 30 `accesscontrol.py` / `private0.py`, `__setattr__` delegates allowed writes via `self.__dict__[attr] = val` or `super().__setattr__(attr, val)` to avoid infinite recursion).
+4. **Hashing via `functools.reduce` and `operator.xor` (`Vector` Take #4):** Combining component hashes with `hashes = (hash(x) for x in self); return functools.reduce(operator.xor, hashes, 0)` (with initializer `0` for empty vectors) and streaming equality `len(self) == len(other) and all(a == b for a, b in zip(self, other))` works in $O(1)$ extra memory for vectors of any dimension (and formatting in hyperspherical coordinates `'h'` in Take #5).
+5. **Unary (`__neg__`, `__pos__`), infix `+` (`__add__` / `__radd__`), scalar `*` (`__mul__` / `__rmul__`), matrix/dot product `@` (`__matmul__` / `__rmatmul__`), membership (`__contains__`), and in-place `+=` (`__iadd__`) (`FP` Chapter 16 & `LP` Chapter 30 `Commuter1..5`):**
+   - **Dispatch flow (`a + b`):** Python calls `type(a).__add__(a, b)`. If `a` does not implement `__add__` or returns **`NotImplemented`** (and `type(a) is not type(b)`), Python calls the reflected **`type(b).__radd__(b, a)`**; if that also returns `NotImplemented`, Python raises `TypeError` (or for `==` / `!=`, falls back to comparing object `id()`s).
+   - In `Vector.__add__`, wrapping `pairs = itertools.zip_longest(self, other, fillvalue=0.0); return Vector(a + b for a, b in pairs)` inside `try ... except TypeError: return NotImplemented` and aliasing `__radd__ = __add__` allows `Vector([3, 4, 5]) + (10, 20)` and `(10, 20) + Vector([3, 4, 5])` (`Vector([13.0, 24.0, 5.0])`) while cleanly rejecting `Vector([3, 4, 5]) + 1`. In `LP` Chapter 30's `Commuter5(88) + Commuter5(99)` (`commuter.py`), testing `if isinstance(other, Commuter5): other = other.val` inside `__add__` avoids nested `Commuter5(Commuter5(187))` wrapping when two instances are added together.
+   - In `Vector.__matmul__` (`@`, PEP 465), checking `isinstance(other, abc.Sized) and isinstance(other, abc.Iterable)` computes the dot product `sum(a * b for a, b in zip(self, other))` (`Vector([1, 2, 3]) @ Vector([4, 5, 6]) == 32.0`).
+   - **In-place operators (`__iadd__` in `AddableBingoCage`):** If a class does not implement `__iadd__`, `v1 += v2` falls back to `v1 = v1 + v2` (allocating a new instance and changing `id(v1)`). On a mutable class (`AddableBingoCage`), implementing `def __iadd__(self, other): ... return self` mutates the receiver in place and **must return `self`**. (Also note two unary operator subtleties from `FP` Chapter 16: `Decimal('1') / Decimal('3')` under a changed precision `ctx.prec = 28` can make `one_third != +one_third`, and `ct = Counter('abracadabra'); ct['r'] = -3; +ct` filters out zero and negative counts.)
 
 ## 6. Design guidance for infrastructure code
 
@@ -422,7 +466,15 @@ def test_ensure_running():
     assert ensure_running(fake, "p", {"a", "b"}) == ["a"] and fake.started == ["1"]
 ```
 
-## 7. Lab (untested)
+## 7. Lab
+
+First, run the self-checking Python lab (`code/part03/python_classes_typing_protocols_lab.py`) locally. It verifies `ThirdClass`, `Person`, `Manager`, and `AttrDisplay` (`LP` Ch. 27–28), `specialize.py` (`Inheritor`/`Replacer`/`Extender`/`Provider`), `SkipObject` multi-scan iteration, `Commuter5` commutative addition, and `_C1__X`/`_C2__X` name mangling (`LP` Ch. 29–31), `Vector2d` (`__bytes__`, `frombytes`, polar `'0.5fp'`, `__slots__`, `FP` Ch. 11), N-dimensional `Vector` (`__getitem__` slicing, dynamic `x, y, z, t`, `zip_longest` `+`, scalar `*`, `@` dot product, `FP` Ch. 12 & 16), `HackerClubMember` (`ClassVar` and `__post_init__`, `FP` Ch. 5), and `LottoBlower[int]`, `SupportsLessThan` `top()`, and `UpperDict` (`FP` Ch. 8, 13, 14, 15).
+
+```bash
+python3 code/part03/python_classes_typing_protocols_lab.py
+```
+
+Next, on any machine with Python 3.11+ (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **Class basics**: build `Node` with properties, class/static methods and `__slots__`; show instance vs class attribute shadowing; reproduce the shared mutable class attribute bug and fix it; view bound methods, `__dict__`, `vars()`, `dir()`.
 2. **Inheritance and MRO**: implement the diamond (A, B, C, D) with cooperative `super()`; print `__mro__`; break it by omitting a `super()` call and explain; build a mixin (`TaggableMixin`) and a composition-based alternative; compare.
@@ -434,8 +486,6 @@ def test_ensure_running():
 8. **Refactor**: take a script with global state and dict-shaped data; refactor into a functional core (pure functions on dataclasses) and an IO shell; write tests with fakes.
 9. **Enums**: replace string constants with `StrEnum` and `Flag`; serialise to JSON; show invalid-value errors.
 10. **Clean up.**
-
-Mark tested only after execution.
 
 ## 8. Common mistakes
 
@@ -463,56 +513,180 @@ Mark tested only after execution.
 - "What is `__slots__` and when would you use it?"
 - "How do you make a class hashable and sortable correctly?"
 
-## 10. Checkpoint questions (40)
+## Exercises
 
-1. What creates an instance? **A:** Calling the class: `__new__` then `__init__`.
-2. What is `self`? **A:** The instance, passed as the first parameter by binding.
-3. Instance vs class attribute? **A:** Per object vs shared by all instances.
-4. What does assigning via instance do to a class attribute? **A:** Creates a shadowing instance attribute.
-5. What is `@property` for? **A:** Attribute-style access to computed/validated values.
-6. `@classmethod` vs `@staticmethod`? **A:** Receives the class vs receives nothing.
-7. What does `__slots__` do, and what happens if a subclass defines `__slots__` while its superclass does not? **A:** `__slots__` fixes instance attributes and omits the per-instance `__dict__` to save memory, but if any class in the inheritance hierarchy omits `__slots__`, that class still creates an instance `__dict__`, negating the memory savings unless every class in the hierarchy defines `__slots__` (using `__slots__ = ()` when adding no new attributes).
-8. What is name mangling? **A:** `__x` becomes `_Class__x` to avoid subclass clashes.
-9. What does `super()` do? **A:** Delegates to the next class in the MRO.
-10. What algorithm builds the MRO? **A:** C3 linearisation.
-11. How to see the MRO? **A:** `Class.__mro__`.
-12. What is a mixin? **A:** A small class adding one capability via multiple inheritance.
-13. Composition over inheritance means? **A:** Hold collaborators instead of subclassing.
-14. What is dependency injection? **A:** Passing collaborators into objects.
-15. What do ABCs enforce? **A:** Abstract methods must be implemented to instantiate.
-16. What is a Protocol? **A:** Structural interface satisfied by method presence.
-17. When prefer Protocol? **A:** Loose coupling with unrelated/third-party implementers.
-18. What does `@dataclass` generate? **A:** `__init__`, `__repr__`, `__eq__` (and more).
-19. Why `default_factory`? **A:** Avoid shared mutable defaults.
-20. What does `frozen=True` do? **A:** Prevents attribute assignment; enables hashing.
-21. What does `slots=True` do? **A:** Uses `__slots__` for the dataclass.
-22. `order=True` effect? **A:** Generates comparison methods by field order.
-23. What is `__post_init__`? **A:** Hook after generated init for validation/derived fields.
-24. Does a dataclass validate types? **A:** No.
-25. What does pydantic add? **A:** Runtime validation/coercion and JSON schema.
-26. What does `extra="forbid"` do? **A:** Rejects unknown fields.
-27. Why `SecretStr`? **A:** Prevents accidental secret exposure in logs/repr.
-28. Do type hints run at runtime? **A:** No (stored but ignored by CPython).
-29. What is `X | None`? **A:** Optional type.
-30. Why accept `Iterable` but return `list`? **A:** Flexible inputs, concrete outputs.
-31. What is `TypedDict`? **A:** Static typing for dict shapes.
-32. What is `Literal` used for? **A:** Restrict to specific values.
-33. What is a `TypeVar`? **A:** A placeholder for generic functions/classes.
-34. List invariance example? **A:** `list[Dog]` is not a `list[Animal]`.
-35. What is `NewType` for? **A:** Distinct types for the checker at no runtime cost.
-36. Why return `NotImplemented`? **A:** Let Python try the other operand/reflected method.
-37. What does `total_ordering` do? **A:** Derives other comparisons from `__eq__` and one ordering.
-38. Functional core, imperative shell? **A:** Pure logic separated from IO.
-39. Why exception hierarchies? **A:** Specific, catchable, documented failures.
-40. Why avoid IO in `__init__`? **A:** Hard to test, slow construction, partial initialisation.
+1. **Classes, Attribute Inheritance Search, `classscope3.py` (`LEGB`), Bound Methods, `__slots__`, and `Vector2d` (`LP` Ch. 26–32 & `FP` Ch. 11):** (a) Trace how `object.attr` climbs `self.__dict__` -> `self.__class__` -> `self.__class__.__mro__` whereas `class` bodies are skipped by `LEGB` inside methods (`classscope3.py`), and state the four `__slots__` inheritance rules; (b) using `Vector2d` and `PseudoprivateC3` in `code/part03/python_classes_typing_protocols.py`, explain how `__bytes__`, `@classmethod frombytes`, polar `__format__` (`'0.5fp'`), `@property`, and `__X` name mangling (`_C1__X`, `_C2__X`) work.
+2. **Inheritance (`Inheritor`/`Replacer`/`Extender`/`Provider`), Cooperative `super()` & C3 MRO, Mixins (`AttrDisplay`, `UpperCaseMixin`), and Composition (`LP` Ch. 28, 29, 31 & `FP` Ch. 14):** (a) State the three cooperative `super()` call-chain rules (universal deployment, call-chain anchors, compatible signatures) and trace `D.__mro__` in a diamond `(D, B, C, A, object)`; (b) using `Manager`, `AttrDisplay`, and `UpperDict` in `code/part03/python_classes_typing_protocols.py`, explain why `UpperCaseMixin` must precede `collections.UserDict` in `class UpperDict(UpperCaseMixin, collections.UserDict):` and when to prefer composition (`PizzaShop`, `Department`, `RedfishClient`) over inheritance.
+3. **Four Approaches to Interfaces: Duck Typing, Goose Typing (`Tombola` ABC), Static Nominal Typing, and Static Duck Typing (`typing.Protocol`, `FP` Ch. 13):** Using `Tombola`, `LottoBlower`, `SupportsLessThan`, and `top()` in `code/part03/python_classes_typing_protocols.py`, compare `abc.ABC` (`@abstractmethod`, virtual subclasses via `.register()`, and `__subclasshook__` on `abc.Sized`) with `typing.Protocol` (`@runtime_checkable` structural typing without inheritance).
+4. **Data Class Builders (`namedtuple`, `NamedTuple`, `@dataclass`, `HackerClubMember`, and Pydantic, `FP` Ch. 5):** (a) Contrast how type annotations `a: int; b: float = 1.1; c = 'spam'` behave in a plain class (`DemoPlainClass`), `typing.NamedTuple` (`DemoNTClass`), and `@dataclass` (`DemoDataClass`); (b) using `HackerClubMember` in `code/part03/python_classes_typing_protocols.py`, explain why mutable defaults require `field(default_factory=list)`, why class attributes require `ClassVar[set[str]]`, how `__post_init__` validates state, and when to use Pydantic (`BaseModel`, `extra="forbid"`, `SecretStr`) instead.
+5. **Type Hints, Generics (`LottoBlower[T]`), Variance (`Invariant`, `Covariant`, `Contravariant`), `@overload`, and `TypedDict` (`FP` Ch. 8 & 15):** (a) Explain why function parameters should accept general ABCs/Protocols (`Mapping`, `Sequence`, `Iterable`) while returning concrete types (`list`, `dict`), and contrast `Any` with `object`; (b) explain why `list[T]` is invariant, `Sequence[T_co]` (`BeverageDispenser[T_co]`) is covariant, `TrashCan[T_contra]` is contravariant, and `Callable[[Arg], Ret]` is contravariant in `Arg` and covariant in `Ret`.
+6. **Sequence Special Methods and Operator Overloading (`Vector`, `SkipObject`, `Commuter5`, `Version`, `FP` Ch. 12 & 16, `LP` Ch. 30):** Using `Vector`, `SkipObject`, and `Commuter5` in `code/part03/python_classes_typing_protocols.py`, explain: (a) how `Vector.__getitem__` handles slices vs `operator.index(key)`, how `__getattr__` and `__setattr__` expose read-only `v.x, v.y, v.z, v.t` without shadowing bugs, and how `SkipObject` supports nested multi-scan loops; and (b) how `__add__`/`__radd__`, `__mul__`/`__rmul__`, `@` (`__matmul__`), `__iadd__`, and `@total_ordering` dispatch and why returning `NotImplemented` is mandatory on unknown operand types.
 
-## 11. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. How does `object.attr` inheritance search work, why is `class` NOT an enclosing (`E`) scope in `LEGB` (`classscope3.py`), and how do bound methods work (`LP` Chapters 26, 29, 31)?</summary>
 
-- Luciano Ramalho, *Fluent Python*, 2nd ed.: chapter 5 (data class builders), chapter 8 (type hints in functions), chapter 11 (a Pythonic object), chapter 13 (interfaces, protocols and ABCs), chapter 14 (inheritance: for better or for worse), chapter 15 (more about type hints), chapter 16 (operator overloading).
-- Mark Lutz, *Learning Python*, 6th ed. (`learning-python-6th-edition`, part VI: classes and OOP—with `Chapter 26. OOP: The Big Picture`, `Chapter 29. Class Coding Details`, and `Chapter 32. Class Odds and Ends` read in full for this chapter—covering the big picture, `object.attr` inheritance tree search, class coding basics, a more realistic example, class coding details, why `class` is not an enclosing `E` scope in `LEGB`, operator overloading, designing with classes, `__slots__` inheritance rules, cooperative `super()` call-chain rules, and class odds and ends).
-- The author's `nvidia-devops` repository, volume 02: advanced OOP and design patterns (ABC provider interfaces, factories, MRO and multiple inheritance, class vs instance variables, dataclasses, pydantic configuration validation and secrets).
-- Examples are the author's constructions.
+- **`object.attr` search:** Climbs `self.__dict__` -> `self.__class__.__dict__` -> superclasses in `self.__class__.__mro__` order from bottom to top, left to right (with data descriptors like `@property` or `__slots__` on the class taking precedence over `self.__dict__`); attribute assignment (`obj.attr = val`) writes directly to `obj.__dict__` (shadowing class attributes if `obj` is an instance).
+- **`class` is not in `LEGB` (`classscope3.py`):** Unqualified names inside a method (`print(X)`) search **L**ocal, **E**nclosing `def` functions (`nester`'s `X = 2`), module **G**lobal (`X = 1`), and **B**uilt-in—skipping the enclosing `class C` (`X = 3`) completely. Methods must qualify class attributes as `self.X` or `C.X`.
+- **Bound methods:** Accessing `inst.doit` returns a bound method object packaging `inst` (`__self__`) and `Class.doit` (`__func__`), callable directly as `meth(arg)` without passing `self`.
+</details>
 
-**Flagged for verification before publishing:** version-specific features (`StrEnum` 3.11, `Self` 3.11, PEP 695 generics syntax 3.12, dataclass `slots`/`kw_only` 3.10), pydantic v2 API names, mypy/pyright option names, and every code listing; all labs are **untested**.
+<details>
+<summary>2. What is the difference between a class attribute and an instance attribute, and what happens when a class attribute is a mutable list (`LP` Chapters 29 & 32)?</summary>
+
+A **class attribute** (`cluster = "ai-prod"`) is stored once on the class dictionary (`Node.__dict__`) and shared by all instances; an **instance attribute** (`self.name = name`) is stored in each instance's `self.__dict__`. Rebinding `node.cluster = "x"` creates a shadowing key in `node.__dict__` without changing `Node.cluster`. However, if a class attribute is a **mutable object** (`shared = []`), mutating it in place via `x.shared.append('hack')` mutates the single shared list across every instance (`y.shared` sees `['hack']`). Always initialize per-instance mutable collections inside `__init__` (`self.perobj = []`).
+</details>
+
+<details>
+<summary>3. Contrast `@property`, `@classmethod`, and `@staticmethod`, and show how `Vector2d.frombytes` uses `@classmethod` (`FP` Chapter 11 & `LP` Chapter 32).</summary>
+
+- **`@property`**: turns a getter method into a computed/read-only attribute (`node.state`, `v.x`) with optional `@state.setter` validation—letting a class start with simple public attributes and add validation later without breaking callers.
+- **`@classmethod`**: receives the class `cls` as its first argument (`def from_dict(cls, d):` or `def frombytes(cls, octets): return cls(*memv)`), allowing alternative constructors to instantiate the exact subclass (`ShortVector2d.frombytes(...)` returns a `ShortVector2d`) or track per-class instance counters.
+- **`@staticmethod`**: receives neither `self` nor `cls`; behaves like a plain function namespaced inside the class.
+</details>
+
+<details>
+<summary>4. What does `__slots__` do, how much memory does it save on `Vector2d`, and what are its four inheritance rules (`LP` Chapter 32 & `FP` Chapter 11)?</summary>
+
+Defining `__slots__ = ('__x', '__y')` replaces each instance's dynamic `__dict__` hash table with a compact fixed array of references managed by class descriptors (shrinking 10 million `Vector2d` instances from 1.62 GiB to 655 MiB). Its four inheritance rules are:
+1. **Every class in the hierarchy must define `__slots__`** (use `__slots__ = ()` in subclasses that add no new fields); if any class omits `__slots__`, instances still get a `__dict__`.
+2. **Never repeat superclass slot names** in a subclass.
+3. **Slot names cannot have class-level default values** (`ValueError`), and at most one base class in multiple inheritance may define non-empty `__slots__` (`TypeError: multiple bases have instance lay-out conflict`).
+4. Slotted instances have **no `__dict__`** (and no weakref support unless `'__weakref__'` is in `__slots__`), so generic introspection tools must use `dir(obj)` and `getattr(obj, name)`.
+</details>
+
+<details>
+<summary>5. How does pseudoprivate name mangling (`__X`) work (`LP` Chapter 31 `pseudoprivate.py`), and why is it used?</summary>
+
+Inside a `class` statement, any identifier starting with **two leading underscores and no more than one trailing underscore** (`self.__X` or `def __method(self):`) is automatically rewritten by the compiler to **`_ClassName__X`** (for example, `_C1__X` in `C1` and `_C2__X` in `C2`). When `class C3(C1, C2)` inherits from both classes (or in `Vector2d` with `self.__x`), `I.__dict__` stores `{'_C1__X': 88, '_C2__X': 99}` so the two classes' internal attributes never collide on `self`. It is a safety mechanism against accidental subclass collisions, not security against deliberate access.
+</details>
+
+<details>
+<summary>6. How does C3 Method Resolution Order (`__mro__`) linearize diamond hierarchies, and what are the three rules for cooperative `super()` (`LP` Chapters 31 & 32, `FP` Chapter 14)?</summary>
+
+Python's **C3 algorithm** linearizes the inheritance graph into `Class.__mro__` so that: (1) subclasses always precede superclasses, (2) multiple base classes stay in the left-to-right order listed in the `class` header, and (3) common ancestors in a diamond (`class D(B, C)` where `B(A)` and `C(A)`) appear only once at their last visitation (`(D, B, C, A, object)`).
+Calling `super().method()` delegates to the **next class after the current class in `self.__class__.__mro__`**, which requires:
+1. **Universal deployment:** every class along the chain must call `super().method()`.
+2. **A call-chain anchor:** the final class before `object` must define `method()` without calling `super().method()` (for `__init__`, `object.__init__` is the built-in anchor).
+3. **Compatible argument signatures** across all classes in the chain.
+</details>
+
+<details>
+<summary>7. What are the four subclass interface patterns in `LP` Chapter 29's `specialize.py`, and how do Mixin classes (`AttrDisplay`, `UpperCaseMixin`) work?</summary>
+
+In `specialize.py`: (1) **`Inheritor`** inherits `Super.method` verbatim, (2) **`Replacer`** overrides `method` completely, (3) **`Extender`** overrides `method` and calls back to `Super.method` to augment behavior (like `Manager.giveRaise`), and (4) **`Provider`** implements the abstract `action()` method called by `Super.delegate()`.
+A **Mixin** (`AttrDisplay`, `ListInstance`, `UpperCaseMixin`) is a small class designed to contribute one orthogonal capability via multiple inheritance rather than stand alone; it must be listed **before** the base class (`class UpperDict(UpperCaseMixin, collections.UserDict):`) so its methods come first in `__mro__` and forward via `super()`.
+</details>
+
+<details>
+<summary>8. Why should infrastructure code favor Composition and Dependency Injection over deep Inheritance (`LP` Chapters 28 & 31, `FP` Chapter 14)?</summary>
+
+Inheritance (`"is-a"`) tightly couples subclasses to parent implementation details across a fragile hierarchy. **Composition (`"has-a"`)** holds collaborators as attributes (`RedfishClient(session, retry_policy, logger)`, `PizzaShop` embedding `Chef`, `Server`, and `Oven`, or `Processor(reader, writer)` in `streams.py`) and delegates work to them. **Dependency injection** simply passes those collaborators into `__init__` so tests can inject an in-memory `FakeCompute` or fake HTTP session with zero monkey-patching or network I/O.
+</details>
+
+<details>
+<summary>9. Compare the four interface/typing approaches in Python (`FP` Chapter 13): Duck Typing, Goose Typing (`abc.ABC`), Static Nominal Typing, and Static Duck Typing (`typing.Protocol`).</summary>
+
+1. **Duck typing (runtime):** Call methods (`obj.write(data)`) directly without type checks.
+2. **Goose typing (`abc.ABC`, runtime):** Inherit from an ABC (`Tombola`, `Provider(ABC)` with `@abstractmethod`) or register a virtual subclass (`Tombola.register(TomboList)`), enforcing abstract methods at instantiation time and checking `isinstance(x, collections.abc.Sequence)` at runtime.
+3. **Static nominal typing (`mypy` / `pyright`):** Check explicit class/ABC inheritance hierarchies via type annotations before runtime.
+4. **Static duck typing (`typing.Protocol`, PEP 544):** Define a structural interface (`class Sink(Protocol): def write(self, data: bytes) -> int: ...` or `@runtime_checkable class SupportsLessThan(Protocol):`); any class with matching methods satisfies the `Protocol` statically (and at runtime if `@runtime_checkable`) **without inheriting from it**.
+</details>
+
+<details>
+<summary>10. Compare `namedtuple`, `typing.NamedTuple`, `@dataclass`, `TypedDict`, and `pydantic.BaseModel` (`FP` Chapter 5).</summary>
+
+- **`collections.namedtuple` / `typing.NamedTuple`**: immutable tuple subclasses (same compact memory as a `tuple`, unpackable, hashable, `_asdict()`, `_fields`); `NamedTuple` adds type annotations and class syntax.
+- **`@dataclass`**: code generator producing `__init__`, `__repr__`, `__eq__` (plus optional `order=True`, `frozen=True`, `slots=True`, `kw_only=True`, `replace()`, `asdict()`), using `field(default_factory=list)` for mutable defaults, `ClassVar` for class attributes (`HackerClubMember.all_handles`), and `__post_init__` for custom validation. Does **not** enforce type hints at runtime.
+- **`TypedDict`**: static-only type hints for plain `dict` structures (`BookDict`); zero runtime overhead or validation.
+- **`pydantic.BaseModel`**: enforces and coerces types **at runtime**, supports `extra="forbid"`, `@field_validator`, `SecretStr`, `BaseSettings` (env vars), and JSON Schema generation.
+</details>
+
+<details>
+<summary>11. How do type annotations `a: int; b: float = 1.1; c = 'spam'` behave differently in a plain class, `typing.NamedTuple`, and `@dataclass` (`FP` Chapter 5)?</summary>
+
+- **Plain class (`DemoPlainClass`):** `a` is recorded in `__annotations__` only and **does not exist as a class attribute** (`DemoPlainClass.a` raises `AttributeError`), while `b = 1.1` and `c = 'spam'` are plain class attributes.
+- **`typing.NamedTuple` (`DemoNTClass`):** `a` and `b` become read-only tuple element descriptors (`_tuplegetter`), with `b` defaulting to `1.1`, while unannotated `c = 'spam'` remains a plain class attribute.
+- **`@dataclass` (`DemoDataClass`):** `a` and `b` become instance attributes set by `__init__(self, a: int, b: float = 1.1)` (`DemoDataClass.a` is not a class attribute, `DemoDataClass.b` holds the default `1.1`), while unannotated `c = 'spam'` remains a plain class attribute.
+</details>
+
+<details>
+<summary>12. How do Pydantic `BaseModel`, `model_config = {"extra": "forbid", "frozen": True}`, `@field_validator`, `SecretStr`, and `BaseSettings` protect infrastructure boundaries?</summary>
+
+At external boundaries (YAML/JSON config files, REST APIs, environment variables), Pydantic parses untrusted dicts via `NodeSpec.model_validate(data)` into guaranteed-valid objects:
+- **`extra="forbid"`** rejects unknown keys immediately, catching misspelled YAML fields (`timout: 30`) that would otherwise be silently ignored.
+- **`Field(ge=1, le=16, pattern=...)` and `@field_validator`** enforce domain invariants at construction time, raising a structured `ValidationError` (`e.errors()`).
+- **`SecretStr`** masks credentials as `'**********'` in `repr()`, `str()`, and logs until `.get_secret_value()` is called explicitly.
+- **`BaseSettings`** loads and validates configuration from environment variables (`env_prefix="MYOPS_"`) and `.env` files.
+</details>
+
+<details>
+<summary>13. Why should function annotations accept `Mapping` or `Sequence`/`Iterable` for parameters while returning concrete `list` or `dict` (`FP` Chapter 8)?</summary>
+
+Annotating a parameter as `color_map: Mapping[str, int]` or `items: Iterable[str]` (or `Sequence[str]` when `len()`/indexing is needed) lets callers pass a `dict`, `defaultdict`, `ChainMap`, `UserDict`, `tuple`, `set`, or generator without unnecessary conversions. Annotating the return value as a concrete type (`-> list[str]` or `-> dict[str, int]`) gives callers the full concrete API without forcing them to guess what concrete container was returned.
+</details>
+
+<details>
+<summary>14. What is the difference between `Any` and `object` in Python type hints (`FP` Chapters 8 & 15)?</summary>
+
+- **`Any`** is the gradual-typing escape hatch that is simultaneously a subtype of and supertype of **every** type: assigning an `Any` value (such as the return value of `json.loads()`) to any variable or calling any method `x.foo()` on `Any` **bypasses static type checking completely**.
+- **`object`** is the root of the nominal class hierarchy: every type is a subtype of `object` (so a parameter `x: object` accepts any value), but the type checker **rejects any operation on `x`** that is not defined on `object` itself (such as `x + 1` or `x.upper()`) until you narrow `x`'s type with `isinstance(x, ...)`.
+</details>
+
+<details>
+<summary>15. Explain Invariance (`list[T]`), Covariance (`Sequence[T_co]`), and Contravariance (`TrashCan[T_contra]`, `Callable`) with concrete examples (`FP` Chapter 15).</summary>
+
+Given a subtype hierarchy `OrangeJuice <: Juice <: Beverage` (or `Biodegradable <: Refuse`):
+- **Invariant (`TypeVar('T')`, mutable containers like `list[T]`):** Neither `list[OrangeJuice]` nor `list[Beverage]` is a subtype of `list[Juice]`, because a function taking `list[Juice]` could append CranberryJuice into a `list[OrangeJuice]`.
+- **Covariant (`TypeVar('T_co', covariant=True)`, read-only producers like `Sequence[T_co]`, `Iterator[T_co]`, `BeverageDispenser[T_co]`):** Subtyping goes in the **same direction** (`Sequence[OrangeJuice]` is a subtype of `Sequence[Juice]`).
+- **Contravariant (`TypeVar('T_contra', contravariant=True)`, write-only consumers like `TrashCan[T_contra]`):** Subtyping goes in the **opposite direction** (`TrashCan[Refuse]` is a subtype of `TrashCan[Biodegradable]` because a general refuse bin can safely accept biodegradable waste).
+- **`Callable[[ParamType], ReturnType]`** is **contravariant** in `ParamType` and **covariant** in `ReturnType` (`Callable[[float], int]` is a subtype of `Callable[[int], float]`).
+</details>
+
+<details>
+<summary>16. How do bounded `TypeVar` (`LT = TypeVar("LT", bound=SupportsLessThan)`), `@overload`, `TYPE_CHECKING`, and `from __future__ import annotations` work (`FP` Chapters 8 & 15)?</summary>
+
+- **Bounded `TypeVar`:** `LT = TypeVar("LT", bound=SupportsLessThan)` in `def top(series: Iterable[LT], length: int) -> list[LT]:` requires the input elements to support `<` (`sorted()`) and guarantees the returned list holds that exact element subtype.
+- **`@overload`:** Declares multiple type-level signatures for a single function (e.g., returning `T` when `default` is omitted vs `T | U` when `default: U` is passed), followed by the single runtime implementation.
+- **`if TYPE_CHECKING:`** is `False` at runtime and `True` during static analysis, preventing circular imports and import-time overhead for annotation-only types; `from __future__ import annotations` defers evaluation of annotations into strings so forward references (`-> Node`) work without quotes.
+</details>
+
+<details>
+<summary>17. In *Fluent Python*'s N-dimensional `Vector` (`FP` Chapter 12), how do slice-aware `__getitem__`, `operator.index`, dynamic `__getattr__`/`__setattr__`, and XOR `__hash__` work?</summary>
+
+- **Slice-aware `__getitem__`:** If `isinstance(key, slice)`, it constructs a new `Vector` via `type(self)(self._components[key])`; otherwise it converts `key` via **`operator.index(key)`** (which calls `__index__()` and rejects floats/tuples) and returns the float element.
+- **Dynamic `x, y, z, t` (`__getattr__` + `__setattr__`):** `__getattr__` looks up `name` in `__match_args__ = ('x', 'y', 'z', 't')` and returns `self._components[pos]`; **`__setattr__` blocks single-letter lowercase assignments (`'a'..'z'`)** with `AttributeError` so assigning `v.x = 10` cannot silently create a shadowing instance attribute in `v.__dict__`.
+- **XOR `__hash__`:** `functools.reduce(operator.xor, (hash(x) for x in self), 0)` folds all element hashes in $O(1)$ space.
+</details>
+
+<details>
+<summary>18. Trace Python's dispatch algorithm for `a + b` (`__add__` and `__radd__`), `@` (`__matmul__`), in-place `+=` (`__iadd__`), and `@functools.total_ordering` (`FP` Chapter 16 & `LP` Chapter 30).</summary>
+
+- **Infix `a + b` (and `a @ b`):** Python calls `type(a).__add__(a, b)`. If that method is missing or returns **`NotImplemented`** (and `type(a)` differs from `type(b)`), Python calls **`type(b).__radd__(b, a)`**. If both return `NotImplemented`, Python raises `TypeError` (or for `==` and `not-equal`, falls back to `id(a) == id(b)`).
+- **In-place `a += b` (`__iadd__`):** If `a` defines `__iadd__`, Python calls `a.__iadd__(b)` which mutates `a` in place and **must return `self`**; if `__iadd__` is not defined, `a += b` falls back to `a = a + b` (rebinding `a` to a new object).
+- **`@functools.total_ordering`:** Given `__eq__` and one ordering method (`__lt__`), the decorator generates `__le__`, `__gt__`, and `__ge__` automatically.
+</details>
+
+<details>
+<summary>19. Why does `SkipObject('abcdef')` (`LP` Chapter 30) support nested `for` loops whereas a single-class iterator (`def __iter__(self): return self`) fails on nested loops?</summary>
+
+When a class returns `self` from `__iter__` and stores iteration cursor state (`self.offset`) on the instance itself, it has only **one** cursor—so an outer loop `for x in obj:` and an inner loop `for y in obj:` advance the exact same `self.offset` and exhaust it in a single pass. `SkipObject.__iter__` returns a **fresh iterator** (either a separate `SkipIterator(self.wrapped)` instance or a generator function `while offset < len(self.wrapped): yield ...`) on every `iter(skipper)` call, giving each nested loop its own independent `offset` (`9` pairs `'aa'`..`'ee'`).
+</details>
+
+<details>
+<summary>20. Explain the "Functional Core, Imperative Shell" design pattern and how `StrEnum`, Protocols, and frozen dataclasses work together in infrastructure code.</summary>
+
+- **Functional Core, Imperative Shell:** Model cluster state as immutable value objects (`@dataclass(frozen=True, slots=True) class Instance` and `class State(StrEnum): PENDING = "pending"; RUNNING = "running"; STOPPED = "stopped"`), keep decision logic in pure functions or methods with no network/disk I/O, and isolate side effects behind small **`typing.Protocol`** interfaces (`class Compute(Protocol):`).
+- In unit tests, you pass a 5-line in-memory `FakeCompute` satisfying the `Protocol` without inheritance, testing every reconciliation branch deterministically in milliseconds without touching cloud APIs.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `fluent-python-2nd-edition` — Luciano Ramalho, *Fluent Python*, 2nd ed., **Chapter 5: Data Class Builders** (`Coordinate`, `City` `namedtuple` `_fields`/`_make`/`_asdict`, `DemoPlainClass` vs `DemoNTClass` vs `DemoDataClass` annotations, `ClubMember` and `HackerClubMember` with `field(default_factory=list)`, `ClassVar[set[str]]`, and `__post_init__`, Dublin Core `Resource` with `ResourceType(Enum)`, `__match_args__`, and Martin Fowler's Data Class code smell), **Chapter 8: Type Hints in Functions** (gradual typing PEP 484, `show_count`, `Bird`/`Duck` nominal vs duck typing, `tuple` record vs homogeneous types, `Mapping`/`Sequence`/`Iterable` parameters vs concrete returns in `name2hex` and `columnize`, `Bounded TypeVar` `SupportsLessThan` in `top()`, `Callable` variance), **Chapter 11: A Pythonic Object** (`Vector2d` and `ShortVector2d`, `__bytes__`/`frombytes`, polar `__format__` `'p'`, read-only `@property` and `__hash__`, `__slots__` saving 1.62 GiB -> 655 MiB on 10M instances, `__X` name mangling), **Chapter 12: Special Methods for Sequences** (N-dim `Vector` Takes #1–#5: `reprlib.repr`, slice-aware `__getitem__` and `operator.index` / `slice.indices`, dynamic `x, y, z, t` `__getattr__`/`__setattr__`, `functools.reduce` + `operator.xor` `__hash__`, hyperspherical `'h'` format), **Chapter 13: Interfaces, Protocols, and ABCs** (4 typing models: duck typing, goose typing with `Tombola` ABC / `BingoCage` / `LottoBlower` / `@Tombola.register` `TomboList` and `abc.Sized` `__subclasshook__` on `Struggle`, static nominal typing, and static duck typing with `typing.Protocol` `RandomPicker` and `@runtime_checkable` `SupportsComplex`/`SupportsFloat`, plus `FrenchDeck.__setitem__` monkey patching), **Chapter 14: Inheritance: For Better or for Worse** (`super()`, `DoppelDict`/`AnswerDict` why to subclass `UserDict` instead of `dict`, MRO in `ping`/`pong` diamond, `UpperCaseMixin` and `UpperDict`/`UpperCounter`, `ThreadingMixIn`, Django `View`/`ListView`, Tkinter widget hierarchy, and 7 inheritance guidelines), **Chapter 15: More About Type Hints** (`@overload` on `sum`/`max`, `TypedDict` `BookDict` and `from_json` `Any` contagion, `typing.cast`, `get_type_hints`, generic `LottoBlower[T]`, and `Invariant` vs `Covariant` `BeverageDispenser[T_co]` vs `Contravariant` `TrashCan[T_contra]`), and **Chapter 16: Operator Overloading** (`Vector` unary `-`/`+`, `Decimal` precision `+x` differing from `x` and `+Counter`, `zip_longest` `__add__`/`__radd__`, scalar `__mul__`/`__rmul__`, `@` `__matmul__`/`__rmatmul__`, rich comparisons, and in-place `__iadd__` on `AddableBingoCage`).
+  - `learning-python-6th-edition` — Mark Lutz, *Learning Python*, 6th ed., **Part VI: Classes and OOP** (`Chapter 26. OOP: The Big Picture`, `Chapter 27. Class Coding Basics`, `Chapter 28. A More Realistic Example`, `Chapter 29. Class Coding Details`, `Chapter 30. Operator Overloading`, `Chapter 31. Designing with Classes`, and `Chapter 32. Class Odds and Ends` read in full): `object.attr` inheritance search (`C1(C2, C3)`), `FirstClass`/`SecondClass`/`ThirdClass`, `Person`/`Manager`/`Department` and `AttrDisplay` (`classtools.py`) with `pickle` and `shelve` (`makedb.py`, `updatedb.py`), `specialize.py` (`Inheritor`/`Replacer`/`Extender`/`Provider`), `manynames.py`, `classscope3.py` (`class` not in `LEGB`), `classtree.py`, `docstr.py`, `StepperIndex`, `Squares` vs multi-scan `SkipObject`, `__getattr__`/`__setattr__` (`Empty`, `accesscontrol.py`), `Commuter1..5`, `Callee`/`Prod`/`Callback`, `__del__` (`Life`), `employees.py` (`PizzaRobot`), `pizzashop.py` (`PizzaShop`), `streams.py`/`converters.py` (`Processor`), `pseudoprivate.py` (`_C1__X`, `_C2__X`), bound methods (`Hack`, `Number`), `ListInstance`/`ListInherited`/`ListTree`, `setwrapper.py`/`typesubclass.py`, `__slots__` inheritance rules, `@property`, `@staticmethod`/`@classmethod` (`Hack` instance counting), and cooperative `super()` rules.
+  - `nvidia-devops` (`volume-02/01-python-core-oop-masterclass.md` and `volume-02/05-advanced-oop-design-masterclass.md`): ABC provider interfaces, factories, MRO and multiple inheritance, class vs instance variables, dataclasses, and Pydantic configuration validation and secrets.
+- **Run here:** `python3 code/part03/python_classes_typing_protocols_lab.py` (6 passed, 0 failed).
+- **Explicitly labelled inferences:** The `Node`, `RedfishClient`, `Provider` ABC, `GpuNode`/`Cluster` dataclasses, `NodeSpec`/`Settings` Pydantic models, `Version`/`Bytes`, and `Instance`/`Compute`/`FakeCompute` examples are the author's constructions applying *Fluent Python* and *Learning Python* OOP/typing principles to infrastructure code (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Not verified on live hardware:** Interactive `mypy`, `pyright`, `stubgen`, and `pydantic` CLI commands (`10.0.0.5`, `63`, `16`, `1024`, `3.9`, `3.10`, `3.11`, `3.12`, `3.14`, `484`, `695`) are marked (`untested here`) where not executed by `python_classes_typing_protocols_lab.py`.
