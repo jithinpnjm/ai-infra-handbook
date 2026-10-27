@@ -31,3 +31,4 @@
 | 2.27 Lab: network topologies with namespaces, FRR, clab | `containerlab_frr_topologies.py` | `containerlab_frr_topologies_lab.py` | 8 | `python3 code/part02/containerlab_frr_topologies_lab.py` |
 | 2.28 Network automation fundamentals: YANG, NETCONF, gNMI | `net_automation_apis_yang.py` | `net_automation_apis_yang_lab.py` | 7 | `python3 code/part02/net_automation_apis_yang_lab.py` |
 | 2.29 Network automation in practice: Ansible, Nornir, CI/CD | `net_automation_cicd_tools.py` | `net_automation_cicd_tools_lab.py` | 9 | `python3 code/part02/net_automation_cicd_tools_lab.py` |
+| 2.30 Network troubleshooting method and case studies | `network_troubleshooting_method.py` | `network_troubleshooting_method_lab.py` | 8 | `python3 code/part02/network_troubleshooting_method_lab.py` |
