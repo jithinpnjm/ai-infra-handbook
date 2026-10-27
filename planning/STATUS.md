@@ -274,7 +274,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 2.28 | Network automation fundamentals: APIs, YANG, NETCONF, gNMI, SDN, templates | drafted | 7963 |  |
 | 2.29 | Network automation in practice: Ansible, Nornir and CI/CD for networks | drafted | 7805 |  |
 | 2.31 | Network monitoring and telemetry | drafted | 7440 |  |
-| 3.1 | Python core: types, control flow, functions | drafted | 7429 |  |
+| 3.1 | Python core: types, control flow, functions | drafted | 9295 |  |
 | 3.2 | Modules, packages, virtual environments and packaging | drafted | 5536 |  |
 | 3.3 | Idiomatic Python: the data model, comprehensions, generators | drafted | 5259 |  |
 | 3.4 | Classes, dataclasses, typing and protocols | drafted | 4965 |  |
