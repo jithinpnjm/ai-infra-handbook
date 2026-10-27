@@ -24,3 +24,4 @@
 | 1.20 Lab: build a container by hand | `build_container_hand.py` | `build_container_hand_lab.py` | 15 | `python3 code/part01/build_container_hand_lab.py` |
 | 1.21 Linux security: capabilities, SELinux, PAM, SSH | `linux_security_hardening.py` | `linux_security_hardening_lab.py` | 19 | `python3 code/part01/linux_security_hardening_lab.py` |
 | 1.22 Kernel modules, DKMS and sysctl tuning for GPU nodes | `kernel_modules_sysctl.py` | `kernel_modules_sysctl_lab.py` | 19 | `python3 code/part01/kernel_modules_sysctl_lab.py` |
+| 1.23 Performance methodology: USE, workload, drill-down | `perf_methodology_use.py` | `perf_methodology_use_lab.py` | 15 | `python3 code/part01/perf_methodology_use_lab.py` |
