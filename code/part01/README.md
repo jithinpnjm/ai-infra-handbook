@@ -22,3 +22,4 @@
 | 1.18 CPU scheduling and cgroups v1 and v2 | `cpu_sched_cgroups.py` | `cpu_sched_cgroups_lab.py` | 20 | `python3 code/part01/cpu_sched_cgroups_lab.py` |
 | 1.19 Namespaces: the kernel feature behind containers | `namespaces_containers.py` | `namespaces_containers_lab.py` | 19 | `python3 code/part01/namespaces_containers_lab.py` |
 | 1.20 Lab: build a container by hand | `build_container_hand.py` | `build_container_hand_lab.py` | 15 | `python3 code/part01/build_container_hand_lab.py` |
+| 1.21 Linux security: capabilities, SELinux, PAM, SSH | `linux_security_hardening.py` | `linux_security_hardening_lab.py` | 19 | `python3 code/part01/linux_security_hardening_lab.py` |
