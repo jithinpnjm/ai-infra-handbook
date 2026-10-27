@@ -11,3 +11,4 @@
 | 1.7 Packages, repositories and software installation | `packages_toolchain.py` | `packages_toolchain_lab.py` | 23 | `python3 code/part01/packages_toolchain_lab.py` |
 | 1.8 Processes, signals and job control | `processes_signals.py` | `processes_signals_lab.py` | 24 | `python3 code/part01/processes_signals_lab.py` |
 | 1.9 Shell scripting that survives production | `shell_scripting.py` | `shell_scripting_lab.py` | 24 | `python3 code/part01/shell_scripting_lab.py` |
+| 1.10 Devices, udev, sysfs and procfs | `devices_udev_sysfs.py` | `devices_udev_sysfs_lab.py` | 23 | `python3 code/part01/devices_udev_sysfs_lab.py` |

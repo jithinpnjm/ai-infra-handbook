@@ -17,7 +17,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 1.7 | Packages, repositories and software installation | drafted | 15590 |  |
 | 1.8 | Processes, signals and job control | drafted | 13885 |  |
 | 1.9 | Shell scripting that survives production | drafted | 11237 |  |
-| 1.10 | Devices, udev, sysfs and procfs | drafted | 8940 |  |
+| 1.10 | Devices, udev, sysfs and procfs | drafted | 9935 |  |
 | 1.11 | How a program runs: system calls, libraries, ELF, strace and ldd | drafted | 9642 |  |
 | 1.12 | Disks, partitions and filesystems | drafted | 13650 |  |
 | 1.13 | LVM, RAID and NVMe | drafted | 10340 |  |
