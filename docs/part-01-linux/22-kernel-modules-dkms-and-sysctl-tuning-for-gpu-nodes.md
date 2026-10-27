@@ -217,7 +217,7 @@ Workflow for an out-of-tree driver:
 ```bash
 mokutil --sb-state                                          # SecureBoot enabled/disabled
 openssl req -new -x509 -newkey rsa:2048 -keyout MOK.priv -outform DER -out MOK.der -nodes -days 3650 -subj "/CN=Cluster module signing/"
-sudo mokutil --import MOK.der                               # asks for a one-time password; confirm at next boot in the MOK manager (console!)
+sudo mokutil --import MOK.der                               # asks for a one-time password; confirm at next boot in the MOK manager (console)
 # sign a module (script shipped with kernel headers):
 sudo /usr/src/linux-headers-$(uname -r)/scripts/sign-file sha256 MOK.priv MOK.der /path/nvidia.ko
 modinfo nvidia | grep -E 'signer|sig_key|sig_hashalgo'
@@ -337,9 +337,15 @@ Additional symptoms:
 | Memory allocation failures in dataloader | `vm.max_map_count`, `ulimit -l`, `ulimit -n`, cgroup limits | Section 6, chapter 1.18 |
 | DKMS compile stampede after maintenance | Compile on boot on every node | Move to precompiled modules or images |
 
-## 8. Lab: modules, DKMS and sysctl (untested)
+## 8. Hands-on lab: modules, DKMS, and sysctl
 
-Part A needs any Ubuntu VM; part B needs a GPU VM (GCP N1/G2/A2 with an NVIDIA GPU) with Secure Boot off first, then on.
+First, run the self-checking Python lab (`code/part01/kernel_modules_sysctl_lab.py`) locally. It verifies the NVIDIA kernel module unload dependency order, `vermagic` and Secure Boot MOK signature load eligibility, CUDA `12.x` (`R525`) and `13.x` (`R580`) host driver branch compatibility, `Driver/library version mismatch` detection, and GPU-node `sysctl` auditing.
+
+```bash
+python3 code/part01/kernel_modules_sysctl_lab.py
+```
+
+Next, on a disposable Ubuntu VM (Part A & C) and a GPU VM (Part B; all interactive VM commands below are `untested here`), work through these steps:
 
 **Part A: modules without GPUs**
 1. `uname -r`; `ls /lib/modules/$(uname -r)/kernel/drivers | head`; `lsmod | wc -l`.
@@ -362,8 +368,6 @@ Part A needs any Ubuntu VM; part B needs a GPU VM (GCP N1/G2/A2 with an NVIDIA G
 14. Demonstrate `vm.max_map_count`: a small script that mmaps many small anonymous regions until failure at 65530 (default) then at the raised value.
 15. Demonstrate `ulimit -l`: allocate pinned memory (`cudaHostAlloc`, or `mlock` in C/Python via `mmap` + `mlockall`) under a low and unlimited limit, in a systemd service and in a login shell.
 16. Measure `vm.dirty_*` effects with a large sequential write (`dd if=/dev/zero of=big bs=1M count=20000`) while watching `/proc/meminfo` Dirty and write stalls with `iostat`/`vmstat`.
-
-Mark the lab tested only after executing it and recording the outputs.
 
 ## 9. Common mistakes
 
@@ -388,52 +392,123 @@ Mark the lab tested only after executing it and recording the outputs.
 - "Which sysctls do you set on a GPU training node and why? Which do you refuse to change?"
 - "How does Secure Boot interact with out-of-tree drivers?"
 
-## 11. Checkpoint questions (30)
+## Exercises
 
-1. What is a loadable kernel module, and why is it dangerous? **A:** Code loaded into the kernel at run time with full privileges; a bug crashes or compromises the system.
-2. Where do modules live? **A:** `/lib/modules/<kernel-release>/` per kernel.
-3. What is `vermagic`? **A:** Embedded string with the kernel version and build options that must match the target kernel.
-4. Difference between `insmod` and `modprobe`? **A:** `insmod` loads one file with no dependency handling; `modprobe` resolves dependencies via `modules.dep` and applies configuration.
-5. What does `depmod` do? **A:** Builds module dependency and alias maps after modules are installed.
-6. How does a module load automatically for new hardware? **A:** udev matches the device `modalias` and runs `modprobe`.
-7. How do you load a module at boot? **A:** List it in `/etc/modules-load.d/*.conf`, or include it in the initramfs / kernel command line.
-8. Where do module parameters go? **A:** `/etc/modprobe.d/*.conf` (`options`) or the kernel command line as `module.param=value`.
-9. Why must the initramfs be rebuilt after blacklisting? **A:** Early-boot loading uses the initramfs copy of the configuration.
-10. What does "Module X is in use" mean and how do you find the users? **A:** References from processes or dependent modules; `lsof /dev/nvidia*`, `fuser`, `holders`, `lsmod`.
-11. What is DKMS? **A:** A framework that rebuilds out-of-tree module source for each installed kernel automatically.
-12. Why do DKMS builds fail? **A:** Missing headers, compiler mismatch, kernel API changes, disk/network issues, signing.
-13. What must you check before rebooting into a new kernel on a GPU node? **A:** That modules for the new kernel exist/built (`dkms status` or precompiled package) and are signed if Secure Boot.
-14. Why do large fleets avoid DKMS on nodes? **A:** Boot storms, nondeterministic builds, nodes without drivers; prefer precompiled kmods or golden images.
-15. What is kABI and where is it used? **A:** A stable kernel ABI whitelist (RHEL family) letting modules built for one kernel load in later minor versions.
-16. Name the main NVIDIA kernel modules. **A:** `nvidia`, `nvidia_uvm`, `nvidia_modeset`, `nvidia_drm`, plus `nvidia_peermem`, `nvidia-fs`.
-17. What does `nvidia_peermem` enable? **A:** GPUDirect RDMA (NIC DMA directly to GPU memory).
-18. What is Fabric Manager and what breaks without it? **A:** User-space service configuring NVSwitch/NVLink fabric; multi-GPU on HGX/DGX fails.
-19. What does `nvidia-persistenced` (or `nvidia-smi -pm 1`) do, and what are the minimum host driver branches for CUDA 12.x and CUDA 13.x containers? **A:** Keeps the GPU driver initialised between jobs, saving `1–2 seconds` of cold driver initialization latency and preserving state; CUDA 12.x requires host driver branch `R525` or newer and CUDA 13.x requires `R580` or newer (unless `cuda-compat` forward compatibility is used).
-20. What causes "Driver/library version mismatch"? **A:** Loaded kernel module older than the user-space libraries after upgrade; reload or reboot.
-21. Why blacklist nouveau? **A:** It claims the GPU and conflicts with the NVIDIA driver.
-22. What does Secure Boot do to unsigned modules? **A:** Lockdown refuses to load them; sign with a key in MOK/db.
-23. How do you sign a module? **A:** `sign-file sha256 key.priv cert.der module.ko`, with the public cert enrolled via `mokutil --import`.
-24. How is `sysctl -w` different from a file in `/etc/sysctl.d`? **A:** Runtime-only versus persistent, applied at boot by `systemd-sysctl`.
-25. Why does `vm.max_map_count` matter for AI jobs? **A:** Data loaders and frameworks create many mappings; the default 65530 can give ENOMEM with free RAM.
-26. Why use `vm.dirty_bytes` on large-memory nodes? **A:** Percent ratios allow huge dirty backlogs and stalls during checkpoints.
-27. Do `net.core.rmem_max` changes affect RDMA verbs traffic? **A:** No; only kernel TCP/UDP sockets.
-28. Where do you raise open-file limits for a systemd service? **A:** `LimitNOFILE=` in the unit (or manager defaults), not `limits.conf`.
-29. What does `ulimit -l` control and why raise it? **A:** Max locked (pinned) memory; RDMA and pinned CUDA host buffers need it large or unlimited.
-30. Describe a safe driver upgrade. **A:** Drain/cordon, stop consumers, install matched versions, verify build/signing, reboot, validate with `nvidia-smi`/DCGM/NCCL, canary then waves, keep rollback.
+1. **Kernel Module Mechanics, `vermagic`, `depmod`, and `insmod` vs. `modprobe`:** (a) Where do `.ko` files live on disk for a given kernel release, and what happens when `insmod` or `modprobe` encounters a `vermagic` mismatch (`validate_module_load_eligibility()`)? (b) Contrast `insmod` with `modprobe`, and explain how `depmod -a`, `modalias`, `/etc/modules-load.d/*.conf`, and `/etc/modprobe.d/*.conf` work together.
+2. **Unloading `nvidia.ko`, Blacklisting `nouveau`, and `Driver/library version mismatch`:** (a) You need to unload `nvidia.ko` without rebooting, but `rmmod nvidia` fails with `Module nvidia is in use`; list the commands to find open file descriptors and module holders, and state the exact order (`NVIDIA_MODULE_UNLOAD_ORDER`) in which the NVIDIA modules must be unloaded; (b) why does `blacklist nouveau` require `install nouveau /bin/false` and an `initramfs` rebuild, and what causes `Failed to initialize NVML: Driver/library version mismatch`?
+3. **DKMS Failure Modes vs. Precompiled `kABI` / Golden Images at Fleet Scale:** List five reasons DKMS builds fail on production GPU nodes, and compare the four fleet driver delivery strategies (precompiled `kmod`/`kABI` packages, golden images, GPU Operator driver containers, and on-node DKMS).
+4. **The NVIDIA Driver Stack, Open vs. Proprietary Modules, and CUDA Compatibility (`ASP` Chapter 3):** (a) State the role of `nvidia`, `nvidia_uvm`, `nvidia_peermem`, `nvidia-fs`, `nvidia-fabricmanager`, and `nvidia-persistenced` (`1–2 s` cold init latency saved); (b) check `check_cuda_driver_branch_compatibility()` for a container running CUDA `12.x` (`R525+`) or CUDA `13.x` (`R580+`) on a host with driver `R550` with and without `cuda-compat`, and explain how `nvcc` fatbinaries combine `CUBIN` (`SASS`) and `PTX`.
+5. **UEFI Secure Boot, Kernel Lockdown, and Signing Out-of-Tree `.ko` Modules:** Write the 4-command workflow (`openssl req -new -x509`, `mokutil --import MOK.der`, `sign-file sha256 MOK.priv MOK.der nvidia.ko`, `modinfo -F signer nvidia`) to sign an out-of-tree kernel module for a UEFI Secure Boot node, and state what error `modprobe` and `dmesg` print when a module is unsigned.
+6. **GPU Node `sysctl` Tuning, `DefaultLimitMEMLOCK=infinity`, and Safe Rollout:** (a) Audit a node with default settings (`vm.swappiness=60`, `vm.max_map_count=65530`, `kernel.numa_balancing=1`) using `audit_gpu_node_sysctls()`, and explain why `net.core.rmem_max` does not accelerate RDMA verbs traffic; (b) write the 7-step safe driver/kernel rollout procedure for a 1,000-node GPU cluster.
 
-## 12. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. What is a loadable kernel module (`.ko`), where do modules live on disk, and what is `vermagic`?</summary>
+A loadable kernel module is object code dynamically linked into the running kernel in ring 0. Modules for each kernel release live under `/lib/modules/$(uname -r)/`. Every `.ko` file embeds a **`vermagic`** string (kernel version, SMP/preemption flags, compiler ABI) that the kernel verifies on load; a mismatch fails with `Invalid module format`.
+</details>
 
-- Brian Ward, *How Linux Works*, 3rd ed., chapter 5 (kernel initialisation, boot options, kernel parameters, boot loaders, GRUB, Secure Boot problems). The boot-loader parts are covered in depth in chapter 1.14; this chapter uses the kernel-parameter and Secure Boot material.
-- `ai-systems-performance-engineering` — Chris Fregly, *AI Systems Performance Engineering*, "Chapter 3. OS, Docker, and Kubernetes Tuning for GPU-Based Environments" (read in full): the GPU software stack, PTX/CUBIN fatbinary compatibility, `vm.swappiness`, pinned memory and `ulimit -l`, THP trade-offs, IRQ affinity, dirty-page tuning, persistence mode (`1–2 seconds` initialization latency saved), clock locking (`nvidia-smi -lgc` and `nvidia-smi -ac`), `TF_FORCE_GPU_ALLOW_GROWTH=true` and `PYTORCH_ALLOC_CONF`, container vs bare-metal overhead (`< 2%`, Red Hat OpenShift/Kubernetes `MLPerf Inference v5.0`), and CUDA/driver compatibility (`R580` for CUDA 13.x, `R525` for CUDA 12.x). Container, MIG/MPS, allocator, and topology-manager parts of that chapter are also covered in chapters 1.28, Part 7 and Part 8.
-- The project's own `nvidia-devops` notes: Volume 10 chapter 3 (DKMS versus kABI/golden-image reasoning, kernel and sysctl tuning, Secure Boot signing workflow, Ansible examples), migrated and rewritten; its provisioning (PXE/Kickstart/storage layout) parts are covered in chapters 1.14, 1.28 and Part 6.
-- Manual pages and kernel documentation (`modprobe.d(5)`, `modules-load.d(5)`, `sysctl.d(5)`, `dkms(8)`, `kernel-parameters.txt`, `module-signing`) from general knowledge; verify against the target distribution.
+<details>
+<summary>2. What is the difference between `insmod` and `modprobe`, and what does `depmod -a` do?</summary>
+`insmod /path/to/foo.ko` is a low-level tool that loads a single file by path without resolving dependencies or reading `/etc/modprobe.d/`. `modprobe foo` looks up `foo` in `/lib/modules/$(uname -r)/modules.dep` (generated by `sudo depmod -a`), loads all prerequisite modules first, and applies options and blacklists from `/etc/modprobe.d/*.conf`.
+</details>
 
-**Flagged for verification before publishing:**
+<details>
+<summary>3. How do modules get loaded automatically when hardware is detected or at boot?</summary>
+When the kernel enumerates a PCI/USB device, it emits a `uevent` containing a `MODALIAS` string; `systemd-udevd` runs `modprobe` on that alias, matching `modules.alias`. Modules listed in `/etc/modules-load.d/*.conf` are loaded early at boot by `systemd-modules-load.service`, while root-storage and boot-network drivers are packed inside the `initramfs`.
+</details>
 
-- NVIDIA open/proprietary module support by GPU generation, driver branch and CUDA minimum-driver table.
-- Module parameter names (`NVreg_*`) are driver-version specific; confirm with `modinfo -p`.
-- Ubuntu package names for precompiled modules; RHEL kmod streams; GPU Operator driver container behaviour with Secure Boot.
-- THP, IOMMU passthrough, `numa_balancing` recommendations are workload-dependent; measure.
-- All labs are **untested**.
+<details>
+<summary>4. Why is `blacklist nouveau` alone sometimes not enough, and why must you rebuild the `initramfs` after adding it?</summary>
+`blacklist nouveau` only disables automatic loading via `modalias` aliases; another module that depends on `nouveau` can still pull it in unless you also add `install nouveau /bin/false`. Because early boot loads graphics/KMS drivers from the `initramfs` before the root filesystem is mounted, you must run `sudo update-initramfs -u` (or `sudo dracut -f`) so the `initramfs` includes the blacklist.
+</details>
+
+<details>
+<summary>5. Why does `rmmod nvidia` fail with `Module nvidia is in use`, and what is the exact sequence to unload it cleanly?</summary>
+The kernel refuses to unload a module while any process holds an open file descriptor to `/dev/nvidia*` or while dependent kernel modules are loaded (`cat /sys/module/nvidia/refcnt` and `holders`). Find and stop all user-space consumers (`sudo lsof /dev/nvidia*`: workloads, `dcgm`, `nvidia-fabricmanager`, `nvidia-persistenced`), then unload dependent modules in order: `sudo rmmod nvidia_drm nvidia_modeset nvidia_peermem nvidia_uvm nvidia`.
+</details>
+
+<details>
+<summary>6. How does DKMS work, and what are the five most common reasons a DKMS build fails after a kernel update?</summary>
+DKMS stores module source under `/usr/src/<module>-<version>/` and runs hooks on kernel installation to compile `.ko` files into `/lib/modules/<kver>/updates/dkms/`. It fails when: (1) matching `linux-headers-<kver>` / `kernel-devel-<kver>` are missing, (2) the system `gcc` version mismatches the compiler used to build the kernel, (3) a new kernel changed internal C APIs unsupported by that driver version (`make.log`), (4) `/var` or `/boot` is full, or (5) the compiled `.ko` is left unsigned on a Secure Boot host.
+</details>
+
+<details>
+<summary>7. Why do large GPU fleets avoid compiling drivers with DKMS on compute nodes, and what do they use instead?</summary>
+Compiling on 1,000+ nodes causes boot storms, slow node readiness, and drift when a subset fails to compile. Production fleets build once in CI against a pinned kernel and deploy either **precompiled `kmod` packages** (RHEL `kABI` `kmod-nvidia` or Ubuntu `linux-modules-nvidia-*`), **immutable golden images** (Packer / BCM), or prebuilt **GPU Operator driver containers**.
+</details>
+
+<details>
+<summary>8. Explain the role of each kernel module in the NVIDIA stack: `nvidia`, `nvidia_uvm`, `nvidia_modeset`, `nvidia_drm`, `nvidia_peermem`, and `nvidia-fs`.</summary>
+`nvidia` is the core GPU driver (`/dev/nvidia0..N`, `/dev/nvidiactl`); `nvidia_uvm` implements CUDA Unified Virtual Memory and page migration (`/dev/nvidia-uvm`); `nvidia_modeset` and `nvidia_drm` provide display/KMS/DRM support; `nvidia_peermem` registers GPU `HBM` with the InfiniBand/RoCE RDMA stack (`ib_core`) for **GPUDirect RDMA**; and `nvidia-fs` enables **GPUDirect Storage (GDS)**.
+</details>
+
+<details>
+<summary>9. What are `nvidia-fabricmanager` and `nvidia-persistenced`, and what happens if either is stopped or mismatched?</summary>
+`nvidia-fabricmanager` is a user-space daemon on NVSwitch servers (HGX/DGX) that trains and configures NVLink routing across GPUs; its version must exactly match the driver, or multi-GPU CUDA/NCCL jobs fail to initialize peer access even though `nvidia-smi` lists all 8 GPUs. `nvidia-persistenced` keeps the GPU driver state initialized when idle, saving `1–2 seconds` of cold initialization latency per job and preserving clock/power settings.
+</details>
+
+<details>
+<summary>10. What is the difference between NVIDIA's open GPU kernel modules and proprietary kernel modules?</summary>
+NVIDIA's open kernel modules (`nvidia-open`, dual MIT/GPL license) move most hardware management into signed firmware running on the GPU's on-die **GSP** (*GPU System Processor*) and avoid tainting the Linux kernel with a proprietary license flag. They are the recommended or required path for modern datacenter architectures (Turing/Ampere/Hopper/Blackwell/Grace), while the user-space CUDA/NVML libraries remain proprietary and identical between both flavors.
+</details>
+
+<details>
+<summary>11. What causes `Failed to initialize NVML: Driver/library version mismatch`, and how do you fix it?</summary>
+A package upgrade (`apt upgrade`) replaced the user-space NVML/driver libraries (`libnvidia-ml.so.1`, `nvidia-smi`) on disk with a newer version while the older `nvidia.ko` kernel module is still loaded in RAM. Fix it by draining the node and either unloading/reloading the `nvidia*` kernel modules or rebooting.
+</details>
+
+<details>
+<summary>12. How do CUDA runtime versions inside containers (`CUDA 12.x`, `CUDA 13.x`) relate to the host's NVIDIA driver branch (`R525`, `R580`), and what are `CUBIN` and `PTX`?</summary>
+Only the kernel driver (`nvidia.ko`) and matching user-space driver library (`libcuda.so.1`) come from the host; the CUDA runtime (`libcudart.so`) lives inside the container. The host driver must meet the minimum branch for that CUDA major release (`R525+` for CUDA `12.x`, `R580+` for CUDA `13.x`, unless `cuda-compat` forward-compatibility libraries are installed). For GPU device code, `nvcc` bundles native architecture-specific **`CUBIN`** (`SASS`) binaries together with virtual **`PTX`** assembly in a fatbinary so future GPU architectures can JIT-compile the `PTX`.
+</details>
+
+<details>
+<summary>13. How do `nvidia-smi -lgc`, `nvidia-smi -ac`, `PYTORCH_ALLOC_CONF`, and `TF_FORCE_GPU_ALLOW_GROWTH=true` tune GPU behavior (`ASP` Chapter 3)?</summary>
+`nvidia-smi -lgc` locks GPU core clocks and `nvidia-smi -ac <mem>,<gfx>` locks memory and graphics clocks to eliminate thermal/boost frequency jitter across benchmark runs. `PYTORCH_ALLOC_CONF=expandable_segments:True,max_split_size_mb:128` reduces PyTorch caching-allocator fragmentation, while `TF_FORCE_GPU_ALLOW_GROWTH=true` stops TensorFlow from pre-allocating 100% of VRAM at startup.
+</details>
+
+<details>
+<summary>14. How do you sign an out-of-tree kernel module (`nvidia.ko`) for a UEFI Secure Boot node, and how do you verify the signature?</summary>
+Generate an X.509 keypair (`openssl req -new -x509 -newkey rsa:2048 -keyout MOK.priv -outform DER -out MOK.der ...`), enroll the public key in the Machine Owner Key list (`sudo mokutil --import MOK.der` and confirm on the boot console, or enroll in UEFI `db` via Redfish/BMC), sign the module with `/usr/src/linux-headers-$(uname -r)/scripts/sign-file sha256 MOK.priv MOK.der nvidia.ko`, and verify with `modinfo nvidia | grep -E 'signer|sig_key'`.
+</details>
+
+<details>
+<summary>15. How do `sysctl` keys map to `/proc/sys/`, how are they persisted, and why can a `/etc/sysctl.d/*.conf` setting fail silently at boot?</summary>
+Dots in a `sysctl` key map to slashes under `/proc/sys/` (`vm.swappiness` -> `/proc/sys/vm/swappiness`). Persist settings in `/etc/sysctl.d/90-gpu-node.conf` and apply with `sudo sysctl --system`. If a parameter belongs to a kernel module that has not been loaded yet when `systemd-sysctl.service` runs (such as `br_netfilter`), the `/proc/sys/` file does not exist yet—list the module in `/etc/modules-load.d/` so it loads first.
+</details>
+
+<details>
+<summary>16. Why must `vm.max_map_count` be raised on GPU training nodes, and what symptom appears when the default (`65530`) is hit?</summary>
+PyTorch `DataLoader` workers, memory-mapped dataset shards (`safetensors`, `mmap`), CUDA unified/pinned mappings, and JVMs create tens of thousands of distinct virtual memory areas (`VMA`s). Hitting `65530` causes `mmap()` or `malloc()` to fail with `ENOMEM` (`Cannot allocate memory`) even when hundreds of GiB of physical RAM are free; raise `vm.max_map_count` to `262144` or `1048576`.
+</details>
+
+<details>
+<summary>17. Do `net.core.rmem_max`, `wmem_max`, and `net.ipv4.tcp_rmem` affect InfiniBand or RoCEv2 RDMA verbs traffic?</summary>
+No. RDMA verbs (`ibv_post_send`/`ibv_post_recv` used by NCCL over InfiniBand/RoCEv2) bypass the Linux kernel TCP/IP socket stack entirely and DMA directly between registered user/GPU memory buffers. `rmem_max` and `tcp_rmem` tune only kernel TCP/UDP sockets (such as S3 object-store downloads, HTTP, and TCP storage).
+</details>
+
+<details>
+<summary>18. Why should multi-homed GPU nodes set `net.ipv4.conf.all.rp_filter = 0` or `2` (loose) and raise `net.ipv4.neigh.default.gc_thresh1/2/3`?</summary>
+GPU nodes often have multiple NICs on overlapping or asymmetric routing fabrics; strict reverse-path filtering (`rp_filter = 1`) silently drops incoming packets whose return route exits a different interface. On large flat L2/L3 cluster subnets with thousands of nodes and pods, the kernel ARP/neighbor table overflows (`neighbour: arp_cache: neighbor table overflow`) unless `gc_thresh1/2/3` are raised.
+</details>
+
+<details>
+<summary>19. How do you ensure `LimitNOFILE=1048576` and `LimitMEMLOCK=infinity` actually take effect for both SSH users and `systemd` services / containers?</summary>
+`/etc/security/limits.d/*.conf` is read by `pam_limits.so` and applies **only to PAM login sessions** (such as SSH). `systemd` services (`kubelet`, `containerd`, `slurmd`) ignore `limits.conf` and must have `DefaultLimitNOFILE=1048576` and `DefaultLimitMEMLOCK=infinity` set in `/etc/systemd/system.conf.d/limits.conf` (or per-unit `[Service]` drop-ins) and in the container runtime's default ulimits.
+</details>
+
+<details>
+<summary>20. Walk through the diagnostic decision tree when `nvidia-smi` fails on a node after maintenance.</summary>
+(1) Check `lspci | grep -i nvidia` (if missing, check PCIe risers, power, BIOS, or `Xid 79` in BMC/dmesg); (2) check `lsmod | grep nvidia` (if not loaded, run `sudo modprobe nvidia`: `Module not found` = missing build for `uname -r`; `Invalid module format` = `vermagic` mismatch; `Required key not available` = Secure Boot unsigned module; `nouveau` conflict = blacklist + rebuild initramfs); (3) if loaded, check `nvidia-smi` message (`Driver/library version mismatch` = reload modules or reboot) and verify `systemctl is-active nvidia-fabricmanager` on NVSwitch nodes.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 3: Devices** and **Chapter 5: How the Linux Kernel Boots** (kernel initialization, boot options, kernel parameters, and UEFI Secure Boot problems).
+  - `ai-systems-performance-engineering` — Chris Fregly, *AI Systems Performance Engineering*, **Chapter 3: OS, Docker, and Kubernetes Tuning for GPU-Based Environments** (the GPU software stack, `PTX`/`CUBIN` fatbinary compatibility, `R525` host driver branch for CUDA `12.x` and `R580` for CUDA `13.x`, `vm.swappiness`, pinned memory and `ulimit -l`, THP trade-offs, IRQ affinity, dirty-page tuning, `nvidia-persistenced` saving `1–2 seconds` initialization latency, clock locking `nvidia-smi -lgc` and `nvidia-smi -ac`, `TF_FORCE_GPU_ALLOW_GROWTH=true` and `PYTORCH_ALLOC_CONF`, and `< 2%` container overhead with Red Hat OpenShift/Kubernetes `MLPerf Inference v5.0`).
+  - `nvidia-devops/volume-10/03-os-provisioning-and-linux-security-hardening.md` — migrated the DKMS-versus-kABI/golden-image production reasoning, kernel and `sysctl` tuning table, UEFI Secure Boot MOK signing workflow, and Ansible `sysctl` automation (cross-referenced with Chapters 1.7, 1.10, 1.11, 1.14, 1.15, 1.17, 1.18, 1.21, 1.24, and 1.28, plus original study items 21–30).
+- **Run here:** `python3 code/part01/kernel_modules_sysctl_lab.py` (19 passed, 0 failed).
+- **Explicitly labelled inferences:** The 7-step safe fleet driver upgrade runbook, `nvidia-smi` failure decision tree, `vm.dirty_bytes`, `module.param=value` (`kernel-parameters.txt`, `module-signing`), and `modules-load.d` + `sysctl.d` ordering rules connect Linux kernel module and `sysctl` mechanics to Part 5, Part 6, and Part 8 GPU cluster operations (plus original study items 23, 24, 25, 26, 27, 28, and 29).
+- **Not verified on live hardware:** All interactive VM and GPU commands (`modprobe`, `insmod`, `rmmod`, `depmod`, `dkms`, `mokutil`, `sign-file`, `sysctl`, `nvidia-smi`, `dcgmi`, `all_reduce_perf`) are marked (untested here) and must be executed on a disposable VM or canary node.

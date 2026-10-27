@@ -82,7 +82,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 
 | # | Chapter | Status | Words | Notes |
 |---|---|---|---|---|
-| 1.22 | Kernel modules, DKMS and sysctl tuning for GPU nodes | drafted | 6391 |  |
+| 1.22 | Kernel modules, DKMS and sysctl tuning for GPU nodes | drafted | 7596 |  |
 | 1.28 | Putting it together: tuning a Linux node for GPU and HPC work | drafted | 8277 |  |
 | 2.24 | Linux networking: policy routing, bonding, MTU, NIC and stack tuning | drafted | 5554 |  |
 | 2.30 | Network troubleshooting method and case studies | drafted | 5501 |  |
@@ -258,7 +258,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 0.1 | The AI factory landscape and the roles in it | scaffold |  |  |
 | 0.2 | How to use this book and set up your labs (Mac, GCP/GKE, Nebius) | scaffold |  |  |
 | 0.3 | Learning paths by role: Platform, MLOps, LLM inference, HPC GPU cloud | scaffold |  |  |
-| 1.21 | Linux security: capabilities, SELinux, AppArmor, seccomp, PAM, SSH hardening | drafted | 7318 |  |
+| 1.21 | Linux security: capabilities, SELinux, AppArmor, seccomp, PAM, SSH hardening | drafted | 8978 |  |
 | 1.23 | Performance methodology: USE, workload characterisation, drill-down | drafted | 9264 |  |
 | 1.24 | Observability tools: perf, ftrace, BPF and bpftrace | drafted | 10356 |  |
 | 1.25 | Benchmarking correctly | drafted | 8258 |  |
