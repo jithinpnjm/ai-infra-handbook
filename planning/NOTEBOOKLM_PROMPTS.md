@@ -20,6 +20,17 @@ Format: markdown. Headings only for real sections. Put commands, flags, file pat
 Citations: after every paragraph give the source name and chapter or section in brackets. If two sources disagree, show both and name them.
 ```
 
+## 1b. Ready-made chapter briefs (use these, do not write the brief by hand)
+
+`python3 tools/notebooklm_brief.py P.C` prints a complete brief for one chapter, and `--part N` writes one file per chapter to `planning/notebooklm/N-CC.md`. Each brief contains:
+1. Where the chapter sits: the chapters the reader already knows and the next chapters not to teach here, plus the prerequisites from the current draft.
+2. The outline to follow, with the topics of each section (taken from the current draft when it exists, otherwise from the source headings).
+3. The sources to use: the book and manual chapters with their headings, the gem-book chapters mapped to this chapter by the triage tables (marked YES or PARTLY), and the author notes (nvidia-devops files) to merge.
+4. One ready-to-paste prompt per section, already filled in with chapter, section, sources, reader background and topics.
+5. A final prompt that compares the written sections with the source chapters and lists everything missing.
+
+The workflow is: paste the notebook instruction (section 1) once, then paste the brief's prompts one by one, then the final comparison prompt, then assemble.
+
 ## 2. The per-section prompt (one section per run)
 
 Replace the angle brackets. Take the chapter title and section list from `planning/structure.txt` and the book chapters from `planning/coverage/GEM_BOOKS_MASTER.md` and `planning/coverage/maps/`.
