@@ -54,7 +54,7 @@ After this chapter you can:
 
 systemd is the **init system and service manager** on essentially every mainstream distribution (RHEL and clones, Fedora, Debian, Ubuntu, SUSE, Arch). It is PID 1 (chapter 1.14) and does much more than start daemons: it tracks every process of every service in a **cgroup**, mounts filesystems, activates services on demand, runs timers, manages user sessions (`logind`), logs (`journald`), device events (`udevd` is part of it), name resolution (`resolved`), time synchronisation (`timesyncd`), network configuration (`networkd`), and more. Its design goals are **parallel start-up driven by dependencies** (instead of a fixed sequence of scripts), **reliable process supervision** (no PID files to guess), **on-demand activation**, and **uniform declarative configuration**.
 
-The older **SysV init** started a fixed sequence of shell scripts one at a time; it was slow, relied on PID files and `ps` to find daemons, repeated boilerplate, and had no notion of on-demand services. Tools like **Upstart** (older Ubuntu) improved some of it. You identify what you run with `ps -p 1 -o comm=`, `readlink -f /sbin/init`, or the presence of `/usr/lib/systemd` and `/etc/systemd`. If neither, but `/etc/inittab` exists, it is SysV (section 12).
+The older **System V (`SysV`) `init`** started a fixed sequence of shell scripts one at a time; it was slow, relied on PID files and `ps` to find daemons, repeated boilerplate, and had no notion of on-demand services. Tools like **Upstart** (used in older Ubuntu releases) improved event-driven startup, while lightweight or embedded platforms sometimes use **runit**, **Android's custom `init`**, or **BSD-style `init`** (`HLW` Section 6.1). On all current releases of major Linux distributions, the standard implementation is **`systemd`**. You identify what you run with `ps -p 1 -o comm=`, `readlink -f /sbin/init`, or by checking for `/usr/lib/systemd` and `/etc/systemd` (if neither exists, check `/etc/init` for Upstart or `/etc/inittab` for System V `init`, covered in section 15).
 
 systemd is **goal-oriented**: you define goals (units) that have dependencies on other units. To reach a goal, systemd starts its dependencies and then the unit itself, activating whatever is ready in parallel. After boot it keeps reacting to events (device appearance via udev, socket connections, timers, file changes) by activating more units.
 
@@ -160,8 +160,8 @@ Because systemd tracks processes with **cgroups**, it knows every process of the
 | `User=`, `Group=`, `SupplementaryGroups=`, `DynamicUser=yes` | Identity; `DynamicUser` allocates a transient UID |
 | `WorkingDirectory=`, `RootDirectory=`, `Umask=`, `Nice=`, `CPUSchedulingPolicy=`, `IOSchedulingClass=` | Execution context |
 | `Environment=`, `EnvironmentFile=`, `PassEnvironment=`, `UnsetEnvironment=` | Environment |
-| `StandardInput=` (`null` default, `tty`, `socket`, `file:`), `StandardOutput=`/`StandardError=` (`journal` default on most systems, `inherit`, `null`, `file:/path`, `append:/path`, `kmsg`, `journal+console`) | I/O redirection; output goes to the journal by default |
-| `LimitNOFILE=`, `LimitNPROC=`, `LimitMEMLOCK=`, `LimitCORE=`, `LimitSTACK=`... | The rlimits (**systemd services ignore `/etc/security/limits.conf`**; chapter 1.8) |
+| `StandardInput=` (`null` default to `/dev/null`, `tty` to the console specified in `TTYPath=`, `tty-force` to disconnect any occupying process first, `tty-fail` to fail if the terminal is occupied, `socket` for socket-activated units, `file:`), `StandardOutput=`/`StandardError=` (`journal` default on most systems, `inherit` to the same place as standard input, `null`, `tty`, `syslog`, `kmsg`, `journal+console`, `file:/path`, `append:/path`, `socket`) | I/O stream redirection (`SCL` Chapter 30); output goes to the journal by default |
+| `LimitCPU=`, `LimitFSIZE=`, `LimitDATA=`, `LimitSTACK=`, `LimitCORE=`, `LimitRSS=`, `LimitNOFILE=`, `LimitAS=`, `LimitNPROC=`, `LimitMEMLOCK=`, `LimitLOCKS=`, `LimitSIGPENDING=`, `LimitMSGQUEUE=`, `LimitNICE=`, `LimitRTPRIO=`, `LimitRTTIME=` | Per-unit `rlimit` resource ceilings (**systemd services ignore `/etc/security/limits.conf`**; chapter 1.8) |
 | `RuntimeDirectory=`, `StateDirectory=`, `CacheDirectory=`, `LogsDirectory=`, `ConfigurationDirectory=` | Directories created and owned by the service user under `/run`, `/var/lib`, `/var/cache`, `/var/log`, `/etc` |
 | `RemainAfterExit=yes` | Keep the unit "active" after the process exits (for `oneshot`) |
 | `WatchdogSec=` | Service must ping the watchdog (`sd_notify WATCHDOG=1`) or it is restarted (with `Restart=on-watchdog/always`) |
@@ -249,7 +249,7 @@ Why the soft/hard distinction matters: if the login prompt hard-required a datab
 
 **Default and implicit dependencies.** systemd adds some dependencies itself, to avoid boilerplate and mistakes: a service gets `Requires=` and `After=` `sysinit.target` and `basic.target` and `Conflicts=`/`Before=` `shutdown.target`; any unit listed in a target's `Wants=` is ordered `After=` that target's ... (the target is started after its members, so that reaching the target means they are up); mounts depend on their devices and parents; units using sockets depend on the socket units. Turn them off for early-boot units with `DefaultDependencies=no`. The defaults per unit type are listed in the DEFAULT DEPENDENCIES section of each manual page. See what systemd computed with `systemctl list-dependencies --all NAME`, `systemctl show -p After,Requires NAME`.
 
-**The `[Install]` section** is the reverse direction of dependency: `WantedBy=multi-user.target` means "when enabled, add me to that target's wants". `enable` creates `/etc/systemd/system/multi-user.target.wants/NAME.service -> /usr/lib/systemd/system/NAME.service`. `RequiredBy=`, `Alias=` (alternate names, for example `display-manager.service`), `Also=` (enable these units too), `DefaultInstance=` (for templates) are the other keys. This is why you can change *when* a unit starts without editing a vendor file: add it to a target's wants by an `[Install]` in your own unit or by hand-made links (links made by hand are untracked by `enable`, so discouraged).
+**The `[Install]` section** is the reverse direction of dependency: `WantedBy=multi-user.target` means "when enabled, add me to that target's wants". For example, in `HLW` Section 6.3.7, if `test1.target` has `[Install] WantedBy=test2.target`, running `systemctl enable test1.target` creates the symlink `/etc/systemd/system/test2.target.wants/test1.target -> /etc/systemd/system/test1.target` so starting `test2.target` pulls in `test1.target`. Conversely, some units such as `dbus-daemon.service` specify `Requires=dbus.socket` and `RefuseManualStart=yes` so they can only be started via socket/dependency activation rather than `systemctl start`. Other `[Install]` keys include `RequiredBy=`, `Alias=` (alternate names, for example `display-manager.service`), `Also=` (enable these units too), and `DefaultInstance=` (for templates). This is why you can change *when* a unit starts without editing a vendor file: add it to a target's wants by an `[Install]` in your own unit or via a drop-in.
 
 **A worked example on GPU nodes**: ordering containerd and kubelet after the Fabric Manager without editing vendor units:
 
@@ -540,7 +540,7 @@ then `sudo systemctl restart systemd-journald` (create `/var/log/journal` and `s
 systemd includes optional replacements for several traditional daemons. You will meet them on Ubuntu, Fedora and many cloud images:
 
 - **`systemd-networkd`**: network configuration from `.network`, `.netdev` and `.link` files in `/etc/systemd/network/` (and `/usr/lib/systemd/network/`); the first matching file (alphabetical) for a link wins, so file names matter. `[Match]` selects interfaces (name, MAC, driver), `[Network]` sets DHCP or static `Address=`, `Gateway=`, `DNS=`. `networkctl status`, `networkctl list`. (NetworkManager and Netplan are alternatives; Part 2 covers Linux networking.)
-- **`systemd-resolved`**: stub DNS resolver and cache at `127.0.0.53`, per-link DNS, DNSSEC and LLMNR options; `/etc/resolv.conf` is usually a link to its stub. `resolvectl status`, `resolvectl query host`, `resolvectl flush-caches`, `resolvectl statistics`. Configure in `/etc/systemd/resolved.conf` (`DNS=`, `Domains=`, `Cache=`). `nsswitch.conf` needs `resolve` in the `hosts:` line (packages do this).
+- **`systemd-resolved`**: stub DNS resolver and cache at `127.0.0.53`, per-link DNS, DNSSEC and LLMNR options; `/etc/resolv.conf` is usually a link to its stub. `resolvectl status`, `resolvectl query host`, `resolvectl flush-caches`, `resolvectl statistics`. Configure in `/etc/systemd/resolved.conf` (`SCL` Chapter 30): `DNS=LIST` (space-separated IPv4/IPv6 DNS servers), `Domains=LIST` (search domain prefixes), and `Cache=yes|no|no-negative` (controls whether DNS responses are cached; `no-negative` disables caching of negative `NXDOMAIN` responses). `nsswitch.conf` needs `resolve` in the `hosts:` line (packages do this).
 - **`systemd-timesyncd`**: a simple SNTP client (`NTP=`, `FallbackNTP=` in `timesyncd.conf`; `timedatectl status`, `timedatectl timesync-status`). Servers needing accurate or hierarchical time use `chrony` (chapter 1.16).
 - **`logind`** (sessions, seats, power buttons), **`machined`/`nspawn`** (containers), **`homed`**, **`oomd`** (user-space out-of-memory killer using PSI), **`coredump`** (`coredumpctl list/info/debug`), **`tmpfiles`** and **`sysusers`** (declarative creation of directories and system users: `/etc/tmpfiles.d/*.conf` lines like `d /scratch 1777 root root 10d`), **`udevd`** (chapter 1.10).
 
@@ -567,7 +567,7 @@ Common failure strings: `Failed to start X: Unit X not found` (name/path/alias; 
 
 **Shutdown** goes through `shutdown.target`: systemd stops units in reverse order of start, sends `SIGTERM` to the remaining processes, waits `DefaultTimeoutStopSec` (typically 90 s), sends `SIGKILL`, unmounts filesystems, remounts root read-only and calls `reboot(2)`. `shutdown -h now` / `systemctl poweroff` is the proper way; `shutdown -r +10` schedules a reboot and creates `/etc/nologin` shortly before; `shutdown -c` cancels; `systemctl reboot --force` skips the unit stop (as does `-ff`, an unclean last resort). A unit that hangs shutdown for 90 seconds each time is a `TimeoutStopSec`, mount or signal-handling problem; look at `journalctl -b -1 -e`. Rescue: `systemd.unit=rescue.target`, `emergency.target`; live images for repairing `fstab` and passwords (chapter 1.14).
 
-**SysV compatibility.** systemd runs old init scripts in `/etc/init.d/` through the `systemd-sysv-generator`: for each `/etc/rc<N>.d` link it creates a service unit, runs the script with `start`/`stop`, and tracks its processes; `chkconfig`/`update-rc.d` still work through the compatibility layer; `service NAME start` is a thin wrapper for `systemctl`. The scripts still run mostly serially and the generated units are poor (no readiness, no restart): replace them with native units. Legacy SysV concepts (runlevels, `inittab`, `S`/`K` links, `telinit`, `rc.local`) are in chapter 1.14 section 6; `run-parts` still appears in cron and package scripts and just executes the files in a directory in sorted order.
+**SysV compatibility and `initramfs` review (`HLW` Sections 6.4–6.7).** `systemd` runs old init scripts in `/etc/init.d/` through the `systemd-sysv-generator`: for each `/etc/rc<N>.d` link (such as `/etc/rc5.d/S10sysklogd -> ../init.d/sysklogd`, `S12kerneld`, `S15netstd_init`, `S18netbase`, ..., `S99sshd` or `S99httpd`, where `S` + two-digit number `00`–`99` passes `start` and `K` passes `stop`, and `/etc/inittab` lines like `1:2345:respawn:/sbin/mingetty tty1` respawn console login prompts) it creates a service unit, runs the script with `start`/`stop`, and tracks its processes. While `chkconfig`/`update-rc.d`, `rc.local`, and `service NAME start` still work through this compatibility layer, do not expect miracles from System V compatibility mode—it still runs legacy init scripts serially and provides poor readiness tracking, so replace them with native units (`run-parts` still appears in cron and package scripts to run all scripts in a directory in lexical order). Also recall from Chapter 1.14 (`HLW` Section 6.7) that if a custom kernel has all drivers compiled in to mount the root filesystem directly, it can bypass the `initramfs` (`mkinitramfs` / `unmkinitramfs` on Ubuntu, `dracut` / `lsinitrd` on RHEL/Fedora) entirely.
 
 ## 16. AI-infrastructure patterns
 
@@ -604,20 +604,26 @@ Common failure strings: `Failed to start X: Unit X not found` (name/path/alias; 
 19. **A masked or disabled unit still starts** (it was started by a socket or timer instead): `systemctl list-sockets`, `list-timers`; disable the trigger as well.
 20. **`systemctl isolate` disconnects your SSH session.** It stops units outside the target, including `sshd` if it is not part of it.
 
-## Hands-on lab (an Ubuntu VM; untested)
+## Hands-on lab: systemd units, timers, slices, and VM drills
 
-Use a throwaway VM with `sudo`. These commands have **not** been run; run them before relying on them.
+First, run the self-checking Python lab (`code/part01/systemd_units_journald_lab.py`) locally. It verifies unit directory precedence (`/etc/systemd/system` over `/usr/lib/systemd/system`), `Wants`/`Requires`/`Requisite` vs `After` ordering, drop-in `ExecStart=` reset rules, template specifiers (`%p`, `%i`, `%I`, `%n`), and `system.slice` host protection (`MemoryLow` vs `MemoryMax`).
+
+```bash
+python3 code/part01/systemd_units_journald_lab.py
+```
+
+Next, on a disposable GCP Ubuntu VM with `sudo` (all interactive VM commands below are `untested here`), work through these steps:
 
 **A. Look around.**
 
 ```bash
-ps -p 1 -o comm=; systemctl --version | head -1; systemctl get-default
-systemctl -p UnitPath show; systemctl list-units --type=service --state=running | head -20
-systemctl status ssh 2>/dev/null || systemctl status sshd
-systemctl cat ssh 2>/dev/null | head -30
-systemctl list-dependencies multi-user.target | head -30
-systemctl list-timers --all | head; systemctl list-sockets | head
-systemd-analyze; systemd-analyze blame | head; systemd-analyze critical-chain | head
+ps -p 1 -o comm=; systemctl --version | head -1; systemctl get-default # (untested here)
+systemctl -p UnitPath show; systemctl list-units --type=service --state=running | head -20 # (untested here)
+systemctl status ssh 2>/dev/null || systemctl status sshd # (untested here)
+systemctl cat ssh 2>/dev/null | head -30 # (untested here)
+systemctl list-dependencies multi-user.target | head -30 # (untested here)
+systemctl list-timers --all | head; systemctl list-sockets | head # (untested here)
+systemd-analyze; systemd-analyze blame | head; systemd-analyze critical-chain | head # (untested here)
 ```
 
 **B. Write, enable and break a service.**
@@ -629,7 +635,7 @@ echo "started pid $$ as $(id -un)"
 trap 'echo "got SIGTERM, exiting"; exit 0' TERM
 while true; do sleep 5; done
 EOF
-sudo chmod +x /usr/local/bin/hello.sh
+sudo chmod +x /usr/local/bin/hello.sh   # (untested here)
 sudo tee /etc/systemd/system/hello.service >/dev/null <<'EOF'
 [Unit]
 Description=Hello demo
@@ -640,19 +646,19 @@ RestartSec=2
 [Install]
 WantedBy=multi-user.target
 EOF
-sudo systemctl daemon-reload && sudo systemctl enable --now hello && systemctl status hello --no-pager
-journalctl -u hello -n 5 --no-pager
-sudo kill -9 $(systemctl show -p MainPID --value hello); sleep 3; systemctl status hello --no-pager | head -8    # restarted
-sudo systemctl stop hello; journalctl -u hello -n 3 --no-pager          # clean SIGTERM handling
+sudo systemctl daemon-reload && sudo systemctl enable --now hello && systemctl status hello --no-pager # (untested here)
+journalctl -u hello -n 5 --no-pager     # (untested here)
+sudo kill -9 $(systemctl show -p MainPID --value hello); sleep 3; systemctl status hello --no-pager | head -8 # (untested here)
+sudo systemctl stop hello; journalctl -u hello -n 3 --no-pager # (untested here)
 ```
 
 **C. Drop-in override and verification.**
 
 ```bash
-sudo systemctl edit hello      # add:  [Service]\nEnvironment=GREETING=hi\nMemoryMax=50M\nCPUQuota=20%
-systemctl cat hello; systemctl show hello -p MemoryMax,CPUQuota,Environment
-sudo systemctl restart hello; systemd-cgls --no-pager | grep -A2 hello
-systemd-analyze verify /etc/systemd/system/hello.service
+sudo systemctl edit hello               # (untested here) add: [Service]\nEnvironment=GREETING=hi\nMemoryMax=50M\nCPUQuota=20%
+systemctl cat hello; systemctl show hello -p MemoryMax,CPUQuota,Environment # (untested here)
+sudo systemctl restart hello; systemd-cgls --no-pager | grep -A2 hello # (untested here)
+systemd-analyze verify /etc/systemd/system/hello.service # (untested here)
 ```
 
 **D. Dependencies and ordering.**
@@ -675,9 +681,9 @@ Type=oneshot
 RemainAfterExit=yes
 ExecStart=/bin/sh -c 'sleep 2; date +%T.%N > /tmp/b.start'
 EOF
-sudo systemctl daemon-reload; sudo systemctl start a; cat /tmp/a.start /tmp/b.start      # parallel: a before b finishes
-sudo systemctl stop a b; sudo sed -i 's/^Wants=b.service/Wants=b.service\nAfter=b.service/' /etc/systemd/system/a.service
-sudo systemctl daemon-reload; sudo systemctl start a; cat /tmp/a.start /tmp/b.start      # now a after b
+sudo systemctl daemon-reload; sudo systemctl start a; cat /tmp/a.start /tmp/b.start # (untested here) parallel: a before b finishes
+sudo systemctl stop a b; sudo sed -i 's/^Wants=b.service/Wants=b.service\nAfter=b.service/' /etc/systemd/system/a.service # (untested here)
+sudo systemctl daemon-reload; sudo systemctl start a; cat /tmp/a.start /tmp/b.start # (untested here) now a after b
 ```
 
 Try `Requires=` with a failing `b` (`ExecStart=/bin/false`) and compare with `Wants=`.
@@ -695,9 +701,9 @@ sudo tee /etc/systemd/system/echo@.service >/dev/null <<'EOF'
 ExecStart=/bin/cat
 StandardInput=socket
 EOF
-sudo systemctl daemon-reload && sudo systemctl start echo.socket
-ss -ltn | grep 22222; echo hello | nc -q1 localhost 22222; systemctl list-sockets | grep echo
-sudo systemctl stop echo.socket
+sudo systemctl daemon-reload && sudo systemctl start echo.socket # (untested here)
+ss -ltn | grep 22222; echo hello | nc -q1 localhost 22222; systemctl list-sockets | grep echo # (untested here)
+sudo systemctl stop echo.socket         # (untested here)
 ```
 
 **F. Timer.**
@@ -716,117 +722,165 @@ AccuracySec=1s
 [Install]
 WantedBy=timers.target
 EOF
-systemd-analyze calendar 'Mon..Fri *-*-* 02:30:00'
-sudo systemctl daemon-reload && sudo systemctl enable --now tick.timer && systemctl list-timers | grep tick
-sleep 100; cat /tmp/tick.log
+systemd-analyze calendar 'Mon..Fri *-*-* 02:30:00' # (untested here)
+sudo systemctl daemon-reload && sudo systemctl enable --now tick.timer && systemctl list-timers | grep tick # (untested here)
+sleep 100; cat /tmp/tick.log            # (untested here)
 ```
 
 **G. Resource control.**
 
 ```bash
-sudo systemd-run --scope -p MemoryMax=200M -p TasksMax=20 --unit=memtest python3 -c 'x=bytearray(400*1024*1024)'; echo "exit $?"
-sudo systemd-run --unit=burn -p CPUQuota=25% sh -c 'while :; do :; done'; sleep 5; systemd-cgtop -n 1 -b | head -8; sudo systemctl stop burn
-sudo systemctl set-property hello CPUQuota=10%; systemctl show hello -p CPUQuotaPerSecUSec
+sudo systemd-run --scope -p MemoryMax=200M -p TasksMax=20 --unit=memtest python3 -c 'x=bytearray(400*1024*1024)'; echo "exit $?" # (untested here)
+sudo systemd-run --unit=burn -p CPUQuota=25% sh -c 'while :; do :; done'; sleep 5; systemd-cgtop -n 1 -b | head -8; sudo systemctl stop burn # (untested here)
+sudo systemctl set-property hello CPUQuota=10%; systemctl show hello -p CPUQuotaPerSecUSec # (untested here)
 ```
 
 **H. Journal.**
 
 ```bash
-journalctl --disk-usage; journalctl --list-boots | tail -3
-journalctl -b -p warning --no-pager | tail -20
-journalctl -u hello -o json-pretty -n 1 --no-pager | head -30
-logger -t labtest "hello from logger"; journalctl -t labtest -n 2 --no-pager
-sudo mkdir -p /var/log/journal && sudo systemctl restart systemd-journald && journalctl --disk-usage
+journalctl --disk-usage; journalctl --list-boots | tail -3 # (untested here)
+journalctl -b -p warning --no-pager | tail -20 # (untested here)
+journalctl -u hello -o json-pretty -n 1 --no-pager | head -30 # (untested here)
+logger -t labtest "hello from logger"; journalctl -t labtest -n 2 --no-pager # (untested here)
+sudo mkdir -p /var/log/journal && sudo systemctl restart systemd-journald && journalctl --disk-usage # (untested here)
 ```
 
 **I. Sandbox score.**
 
 ```bash
-systemd-analyze security hello --no-pager | tail -20
-sudo systemctl edit hello      # add:  [Service]\nProtectSystem=strict\nPrivateTmp=yes\nNoNewPrivileges=yes\nProtectHome=yes
-sudo systemctl restart hello; systemd-analyze security hello --no-pager | tail -3
+systemd-analyze security hello --no-pager | tail -20 # (untested here)
+sudo systemctl edit hello               # (untested here) add: [Service]\nProtectSystem=strict\nPrivateTmp=yes\nNoNewPrivileges=yes\nProtectHome=yes
+sudo systemctl restart hello; systemd-analyze security hello --no-pager | tail -3 # (untested here)
 ```
 
 **J. Clean up.**
 
 ```bash
-sudo systemctl disable --now hello tick.timer 2>/dev/null
-sudo rm -rf /etc/systemd/system/{hello,a,b,tick}.service /etc/systemd/system/tick.timer /etc/systemd/system/echo.socket /etc/systemd/system/echo@.service /etc/systemd/system/hello.service.d /usr/local/bin/hello.sh /tmp/{a,b}.start /tmp/tick.log
-sudo systemctl daemon-reload
+sudo systemctl disable --now hello tick.timer 2>/dev/null # (untested here)
+sudo rm -rf /etc/systemd/system/{hello,a,b,tick}.service /etc/systemd/system/tick.timer /etc/systemd/system/echo.socket /etc/systemd/system/echo@.service /etc/systemd/system/hello.service.d /usr/local/bin/hello.sh /tmp/{a,b}.start /tmp/tick.log # (untested here)
+sudo systemctl daemon-reload            # (untested here)
 ```
 
-## Checkpoint questions
+## Exercises
 
-1. What problems of SysV init did systemd address? What does PID 1 do besides starting services?
-2. List six unit types and give a use of each.
-3. In which directories do unit files live and which wins? Where should your own units and overrides go?
-4. What does `Type=simple` assume? When do you use `forking`, `oneshot`, `notify`?
-5. Explain `Wants`, `Requires`, `Requisite`, `BindsTo`, `PartOf`, `Conflicts`. Which should be your default and why?
-6. Why is `Requires=B` alone not enough to start after B? What is the minimal correct pair?
-7. What does `systemctl enable` do physically? What does `[Install] WantedBy=` mean? Enable versus start versus mask?
-8. What is the difference between `reload`, `restart` and `daemon-reload`?
-9. How do you override one setting of a vendor service safely, including replacing `ExecStart=`?
-10. What are templates and specifiers? What do `%i`, `%I`, `%n`, `%H` mean?
-11. Why does a command with a pipe in `ExecStart=` misbehave, and how do you fix it?
-12. Compare a target with a SysV runlevel. How do you set the default, isolate, and enter rescue mode?
-13. What is socket activation, and what are its three advantages? What does `Accept=true` change?
-14. Write the calendar expression for "weekdays at 02:30" and say how to validate it. What do `Persistent=` and `RandomizedDelaySec=` do?
-15. How do monotonic timers (`OnBootSec`, `OnUnitActiveSec`) differ from `OnCalendar`?
-16. What do `CPUWeight`, `CPUQuota`, `MemoryLow`, `MemoryHigh`, `MemoryMax` and `TasksMax` do?
-17. Why should you not put `MemoryMax` on `system.slice`? What would you do instead to protect `sshd` and `kubelet`?
-18. How do you apply default CPU/memory/task limits to every login user? To one specific user?
-19. Why does `limits.conf` not affect services and what do you use?
-20. What does `KillUserProcesses` do and what setting do you want?
-21. Explain the journal's default storage behaviour and how to make it persistent. What is rate limiting and its risk?
-22. Give three `journalctl` queries: a service since an hour ago, previous boot's errors, kernel messages of this boot.
-23. A unit shows `status=203/EXEC`. What does it mean and what do you check?
-24. How do you find what is delaying boot? Which three commands?
-25. What does `systemd-analyze security` do? Name four sandboxing options.
-26. How do you stop a stuck unit from restarting forever, and clear `start-limit-hit`?
-27. Why might `kubelet` start before the NVLink fabric is ready and how do you prevent it robustly?
-28. What does `Delegate=yes` mean and who needs it?
-29. How can a "cron job I cannot find" exist on a systemd machine?
-30. Describe how systemd shuts a machine down and why a unit may delay shutdown by 90 seconds.
+1. **Unit Search Precedence and Drop-In `ExecStart=` Reset:** (a) Order the directories `/usr/lib/systemd/system`, `/run/systemd/system`, `/etc/systemd/system`, and `/etc/systemd/system.control` from highest to lowest priority, and explain why you must never edit files inside `/usr/lib/systemd/system`; (b) write the exact `[Service]` lines in `/etc/systemd/system/containerd.service.d/override.conf` to replace `/usr/bin/containerd` with `/usr/bin/containerd --config /etc/containerd/gpu-config.toml`. Verify with `apply_dropin_list_assignments()` in `code/part01/systemd_units_journald.py`.
+2. **Requirement vs. Ordering Directives (`Wants`, `Requires`, `Requisite` vs `After`):** Suppose `a.service` has `Wants=b.service` (without `After=b.service`). (a) In what order do `a` and `b` start, and does `a` still run if `b` fails? (b) What changes when you set `Requires=b.service` plus `After=b.service` versus `Requisite=b.service`?
+3. **Template Specifiers (`%p`, `%i`, `%I`, `%n`) and Socket Activation (`Accept=true` vs `false`):** (a) Compute `%p`, `%i`, `%I`, and `%n` when `getty@.service` is instantiated for `/dev/ttyUSB0` (`getty@-dev-ttyUSB0.service`); (b) in `echo.socket` (`ListenStream=22222`), explain how `Accept=true` with `echo@.service` differs from `Accept=false` with `echo.service`.
+4. **Protecting `system.slice` and Per-User Login Slices (`user-.slice.d`):** (a) Evaluate `audit_host_slice_protection()` when an administrator puts `MemoryMax=4G` on `system.slice` versus `MemoryLow=2G` and `CPUWeight=200` on `system.slice` with `OOMScoreAdjust=-900` on `sshd` and `kubelet`; (b) how do you cap every login user on a shared login node to `TasksMax=1250`, `CPUQuota=800%`, and `MemoryMax=64G` while ensuring `tmux` sessions survive logout (`KillUserProcesses=no`)?
+5. **Ordering the GPU Daemon Stack and Health-Gate `oneshot` Units:** Write the drop-in ordering directives for `containerd.service` and `kubelet.service` on an NVSwitch HGX node running `nvidia-fabricmanager.service` and `nvidia-persistenced.service`, and explain why a `Type=oneshot` (`RemainAfterExit=yes`) health-gate unit is needed when a daemon's process start precedes hardware readiness.
+6. **`journald` Persistence, Rate Limiting, and Diagnosing `203/EXEC` / `217/USER`:** (a) Why does `journalctl -b -1` fail on a system with `Storage=auto` when `/var/log/journal` does not exist, and what config keys in `/etc/systemd/journald.conf.d/50-persistent.conf` cap disk usage at `10G` and burst rate at `10000` per `30s`? (b) What causes `status=203/EXEC`, `status=217/USER`, and `status=226/NAMESPACE`?
 
-### Answers
+## Checkpoint questions (20)
 
-1. Serial start-up, no dependency model, PID files and `ps` to find daemons, boilerplate scripts, no on-demand activation, weak supervision. PID 1 also supervises via cgroups, activates on events, reaps orphans, manages mounts, timers, logins, logs.
-2. Service (daemon), target (grouping/milestone), socket (activation), mount/automount (filesystems), timer (scheduled), path (file watch), slice (cgroup node), device, scope, swap.
-3. `/etc/systemd/system` (admin, wins), `/run/systemd/system`, `/usr/lib/systemd/system` (packages). Your units and drop-ins go in `/etc/systemd/system`; never edit the vendor directory.
-4. The `ExecStart` process is the service and stays in the foreground and is "started" at fork. `forking` for daemons that background themselves; `oneshot` for tasks that finish (usually with `RemainAfterExit`); `notify` for services that signal readiness via `sd_notify`.
-5. `Wants`: start it, ignore failure (default); `Requires`: start it and stop me if it fails; `Requisite`: must already be active; `BindsTo`: like Requires plus stop when it goes inactive; `PartOf`: propagate stop/restart; `Conflicts`: mutually exclusive. Default `Wants` so failures do not cascade.
-6. `Requires` is a requirement, not an ordering; both start in parallel. Use `Requires=B` (or `Wants=B`) plus `After=B`.
-7. Creates symlinks in the `.wants`/`.requires` directory of the target named by `WantedBy=`/`RequiredBy=` so it is started at boot; it does not start it now. `start` starts it now; `mask` links to `/dev/null` so it cannot start even as a dependency.
-8. `reload` asks the service to re-read its config; `restart` stops and starts it; `daemon-reload` makes systemd re-read unit files (no service restart).
-9. A drop-in: `systemctl edit NAME` creates `/etc/systemd/system/NAME.service.d/override.conf`; to replace `ExecStart=` first set `ExecStart=` empty, then the new one.
-10. A template `name@.service` is instantiated as `name@arg.service`; specifiers are `%` substitutions: `%i` escaped instance, `%I` unescaped instance, `%n` unit name, `%H` host name.
-11. `Exec*=` is not run by a shell; pipes, `&&`, redirects and globs are not interpreted. Use `/bin/sh -c '...'` or a script.
-12. A target is a grouping unit and several can be active; a runlevel is one global state. `systemctl set-default multi-user.target`, `systemctl isolate NAME.target`, `systemd.unit=rescue.target` at boot or `systemctl rescue`.
-13. systemd holds the socket and starts the service on demand or in parallel, hands over the descriptor. Advantages: on-demand start, parallel boot ordering, restart without dropping connections. `Accept=true` makes systemd accept each connection and start an instance of a template service per connection.
-14. `OnCalendar=Mon..Fri *-*-* 02:30:00`; validate with `systemd-analyze calendar`. `Persistent=true` runs a missed trigger after downtime; `RandomizedDelaySec` spreads start times.
-15. Monotonic: a delay after an event (boot, last activation); calendar: a wall-clock time pattern.
-16. Relative CPU share; hard CPU cap (100% = one core); protected memory; throttle point before kill; hard memory limit with OOM kill; maximum processes/threads.
-17. Daemons live there; a cap makes the kernel throttle or OOM-kill them. Use `MemoryLow`, higher `CPUWeight`, `OOMScoreAdjust` for the daemons, cap workload slices, kubelet reserved settings.
-18. `/etc/systemd/system/user-.slice.d/10-defaults.conf` with `[Slice]` limits; for a user, `user-UID.slice.d/` by numeric UID.
-19. `limits.conf` is applied by PAM at login; services do not use PAM sessions. Set `LimitNOFILE=`, `LimitMEMLOCK=` etc. in the unit or `DefaultLimit*` in `system.conf`.
-20. Kills all user processes when the last session ends, breaking tmux/screen/nohup. Set `KillUserProcesses=no`.
-21. `Storage=auto` persists only if `/var/log/journal` exists, else logs are in memory; set `Storage=persistent`. Rate limiting drops messages above a burst per interval and can hide the key error; raise or disable limits for chatty units.
-22. `journalctl -u NAME --since "1 hour ago"`; `journalctl -b -1 -p err`; `journalctl -k -b`.
-23. The `ExecStart` could not be executed: wrong path, not executable, noexec mount, bad interpreter, wrong architecture. Check path, permissions, `file`, `namei -l`, `journalctl -xeu`.
-24. `systemd-analyze blame`, `systemd-analyze critical-chain`, `systemctl list-jobs` (at boot).
-25. It scores a unit's exposure and lists missing protections. Options: `ProtectSystem`, `ProtectHome`, `PrivateTmp`, `NoNewPrivileges`, `CapabilityBoundingSet`, `SystemCallFilter`, `RestrictAddressFamilies`, `PrivateDevices`.
-26. Fix the cause; use `RestartSec`, `StartLimitBurst`; `systemctl reset-failed NAME`; for permanent stop, `disable`/`mask`.
-27. Requires/Wants and `After=` are about process start, and Fabric Manager may need time to finish initialisation. Add `After=` ordering plus a health-gate oneshot that polls readiness and order kubelet after it.
-28. The service owns its cgroup subtree and may create sub-cgroups; needed by container runtimes, kubelet and Slurm's cgroup plugin.
-29. A systemd timer (or anacron/at) is running it; `systemctl list-timers --all`.
-30. Stops units in reverse order, `SIGTERM` to remaining processes, waits for `DefaultTimeoutStopSec`, `SIGKILL`, unmounts, remounts root read-only, `reboot(2)`. A unit ignoring `SIGTERM` or a hung mount waits the full 90 s default.
+<details>
+<summary>1. What limitations of System V `init` did `systemd` solve, and how do you identify which `init` system is running as `PID 1`?</summary>
+SysV `init` ran shell scripts sequentially, relied on fragile PID files and `ps` grepping to track daemons, lacked dependency-based parallelism, and had no built-in process supervision or resource control. `systemd` starts units in parallel across a dependency graph, tracks every process of a service in a dedicated `cgroup`, activates services on demand (sockets, timers, paths, devices), and captures stdout/stderr in `journald`. Check `ps -p 1 -o comm=` or `readlink -f /sbin/init`.
+</details>
 
-## Sources and further reading
+<details>
+<summary>2. Name ten `systemd` unit types and the role of each.</summary>
+`.service` (daemons and one-shot commands), `.target` (synchronization milestones grouping units), `.socket` (network/IPC socket activation), `.mount` and `.automount` (filesystem mounts), `.timer` (calendar and monotonic schedules), `.path` (`inotify` file/directory watches), `.slice` (`cgroup` hierarchy nodes for resource control), `.scope` (externally spawned process groups such as user sessions and containers), `.device` (`udev`-exposed hardware nodes), and `.swap` (swap space).
+</details>
 
-- Brian Ward, *How Linux Works*, 3rd ed.: ch. 6 (introduction to init; identifying your init; systemd: units and unit types, boot and dependency graphs, configuration and unit files, variables and specifiers, operation with `systemctl`, jobs, adding and removing units, process tracking and `Type=`, dependencies and ordering, default and conditional dependencies, `[Install]` and enabling, on-demand and parallelised start with socket units and instances, auxiliary components; System V runlevels and init, the link farm, `run-parts`, `telinit`, systemd's System V compatibility; shutdown; the initial RAM filesystem, emergency booting and single-user mode). Sections 1 to 8 and 15 follow this chapter; the explanations, tables, the sandboxing, timer and journald depth, the AI-infrastructure content and labs are original. The initramfs and emergency parts are in chapter 1.14.
-- Sergey Zhumatiy, *Supercomputers for Linux SysAdmins*: ch. 30 (units, drop-ins and unit files, dependency options, service options and `Exec*` prefixes, environment, templates and instances, user slices and `logind` settings, resource-limit options, `systemctl` commands, `journald` and `journalctl` options, `networkd`, `timesyncd`, `resolved`, `systemd-analyze` including `calendar`, `cat-config` and `verify`) and ch. 7 (services). Sections 5, 7 to 10 and 12 to 14 draw on it.
-- nvidia-devops (the user's earlier notes): `volume-01/04-linux-systemd-containers-masterclass.md` (boot chain and GPU service ordering, Fabric Manager ordering drop-in, boot-time analysis, slices and host protection, NUMA pinning from systemd, journald tuning and queries, signals/PID 1 and graceful shutdown). Reused with edits in sections 4, 10, 12, 16; the namespace, cgroup v2 and container parts migrate to chapters 1.18, 1.19 and 1.20 (partial).
-- Manual pages: `systemd(1)`, `systemctl(1)`, `systemd.unit(5)`, `systemd.service(5)`, `systemd.exec(5)`, `systemd.kill(5)`, `systemd.socket(5)`, `systemd.timer(5)`, `systemd.time(7)`, `systemd.path(5)`, `systemd.mount(5)`, `systemd.slice(5)`, `systemd.resource-control(5)`, `systemd.special(7)`, `systemd.directives(7)`, `systemd-run(1)`, `systemd-analyze(1)`, `systemd-cgls(1)`, `systemd-cgtop(1)`, `journalctl(1)`, `journald.conf(5)`, `logind.conf(5)`, `loginctl(1)`, `systemd-networkd(8)`, `systemd-resolved(8)`, `systemd-timesyncd(8)`, `systemd-tmpfiles(8)`, `sd_notify(3)`.
-- Related chapters: 1.8 (processes, signals, limits, cgroup basics), 1.9 (scripts for `ExecStart`), 1.10 (udev, devices), 1.12 (mount units, fstab), 1.14 (boot), 1.16 (logging policy, time sync, cron), 1.18 (cgroups in depth), 1.19 and 1.21 (namespaces, hardening), 1.22 (kernel modules at boot), 4.x (Ansible `systemd` module), 6.x (Slurm units), Kubernetes chapters (kubelet cgroup driver, reserved resources).
+<details>
+<summary>3. In what order does `systemd` search unit directories, and why must you never edit files in `/usr/lib/systemd/system`?</summary>
+From highest to lowest priority: `/etc/systemd/system.control` (`systemctl set-property`), `/run/systemd/transient` (`systemd-run`), **`/etc/systemd/system`** (administrator units and drop-ins), `/run/systemd/system` / `/run/systemd/generator`, and **`/usr/lib/systemd/system`** (vendor package defaults). Package upgrades overwrite `/usr/lib/systemd/system` without warning; always put custom units and `.d/*.conf` drop-ins in `/etc/systemd/system`.
+</details>
 
-*Notes for review:* default values and option availability depend on the systemd version (check `systemctl --version`): `Type=exec`, `notify-reload`, `Upholds=`, `systemd-oomd`, `ProtectClock`, `DynamicUser`, `RestrictNetworkInterfaces`, `StartLimitIntervalSec` placement, `ConditionACPower` and cgroup-v2-only properties (`CPUWeight`, `MemoryLow`, `AllowedCPUs`). Names of NVIDIA units (`nvidia-fabricmanager.service`, `nvidia-persistenced.service`, DCGM) and their shipped options must be confirmed against the packages you install. The default stop timeout (90 s), journal defaults and `network-online` wait services differ by distribution. All lab commands are **untested**; run them on a disposable VM before this chapter moves to `reviewed`.
+<details>
+<summary>4. Contrast `Type=simple`, `Type=exec`, `Type=forking`, `Type=oneshot`, and `Type=notify`.</summary>
+`simple` considers the service started immediately after `systemd` forks; `exec` waits until the `execve()` call succeeds; `forking` waits for the initial parent process to exit after daemonizing into the background; `oneshot` waits for the command to finish exiting before dependent units proceed (often paired with `RemainAfterExit=yes`); and `notify` waits for the daemon to send `READY=1` over `$NOTIFY_SOCKET` (`sd_notify`).
+</details>
+
+<details>
+<summary>5. Distinguish `Wants=`, `Requires=`, `Requisite=`, `BindsTo=`, `PartOf=`, and `Conflicts=`.</summary>
+`Wants=` pulls in the target unit when starting but ignores its failure (the recommended default so failures do not cascade); `Requires=` aborts/stops this unit if the dependency fails; `Requisite=` fails immediately unless the dependency is *already* active; `BindsTo=` is like `Requires=` and also stops this unit if the dependency disappears at runtime; `PartOf=` propagates stops and restarts from the parent unit; and `Conflicts=` stops the other unit when this unit starts.
+</details>
+
+<details>
+<summary>6. Why is `Requires=B.service` alone insufficient to make `A.service` start after `B.service`?</summary>
+Requirement directives (`Wants=`, `Requires=`) and ordering directives (`After=`, `Before=`) are orthogonal in `systemd`. With `Requires=B.service` alone, `systemd` starts `A.service` and `B.service` simultaneously in parallel; you must specify **both** `Wants=B.service` (or `Requires=B.service`) **and** `After=B.service`.
+</details>
+
+<details>
+<summary>7. What does `systemctl enable` actually do on disk, and how do `enable`, `start`, and `mask` differ?</summary>
+`systemctl enable` reads the unit's `[Install]` section (`WantedBy=multi-user.target`) and creates a symlink in `/etc/systemd/system/multi-user.target.wants/` pointing to the unit file so it starts at boot; it does not start the service now unless `--now` is passed. `start` launches the service immediately without enabling it at boot, and `mask` symlinks the unit name in `/etc/systemd/system/` to `/dev/null` so nothing can start it manually or via dependencies.
+</details>
+
+<details>
+<summary>8. What is the difference between `systemctl reload`, `systemctl restart`, and `systemctl daemon-reload`?</summary>
+`reload` runs `ExecReload=` (such as `kill -HUP $MAINPID`) so the running daemon re-reads its own config without dropping connections; `restart` stops and starts the service process; and `daemon-reload` tells `PID 1` (`systemd`) to re-parse unit files and `/etc/fstab` on disk without restarting running services.
+</details>
+
+<details>
+<summary>9. How do you safely override a vendor unit's `ExecStart=` using a drop-in file?</summary>
+Run `sudo systemctl edit NAME` (which creates `/etc/systemd/system/NAME.service.d/override.conf`) and write an empty `ExecStart=` line before the new `ExecStart=` line so the list is cleared first:
+`[Service]`
+`ExecStart=`
+`ExecStart=/usr/bin/my-daemon --new-flag`
+</details>
+
+<details>
+<summary>10. Why do pipes (`|`), redirects (`>`), and `&&` fail inside `ExecStart=`, and how do specifiers `%i`, `%I`, `%n`, and `%H` work?</summary>
+`systemd` executes `ExecStart=` directly via `execve()` rather than through a shell, so shell operators are passed as literal arguments unless wrapped in `/bin/sh -c '...'`. In template units (`name@.service`), `%i` is the escaped instance string, `%I` is the unescaped instance string, `%n` is the full unit name, and `%H` is the system hostname (`$$` passes a literal `$`).
+</details>
+
+<details>
+<summary>11. How do `systemd` targets differ from SysV runlevels, and what is the difference between `network.target` and `network-online.target`?</summary>
+Multiple `systemd` targets can be active simultaneously and form a dependency graph (`multi-user.target`, `graphical.target`, `timers.target`). `network.target` only indicates that the low-level network management stack has started (interfaces may not have IP addresses yet), whereas `network-online.target` blocks until `systemd-networkd-wait-online` or `NetworkManager-wait-online` confirms interfaces are configured and routable.
+</details>
+
+<details>
+<summary>12. What are the three advantages of socket activation (`.socket`), and how does `Accept=true` differ from `Accept=false`?</summary>
+Socket activation provides: (1) on-demand startup of rarely used daemons, (2) parallel boot without explicit `After=` ordering because `PID 1` opens the listening socket immediately and queues client connections while the daemon starts, and (3) zero-downtime service restarts without dropping the listening socket. `Accept=true` spawns a separate `name@<conn>.service` instance per connection (like `inetd`), whereas `Accept=false` passes the listening socket (`$LISTEN_FDS`) to one persistent daemon.
+</details>
+
+<details>
+<summary>13. How do `OnCalendar=` and monotonic timers (`OnBootSec=`, `OnUnitActiveSec=`) work, and what do `Persistent=true` and `RandomizedDelaySec=` do?</summary>
+`OnCalendar=` triggers on wall-clock schedules (`Mon..Fri *-*-* 02:30:00`, validated with `systemd-analyze calendar`), while monotonic timers trigger relative to boot (`OnBootSec=`) or the last run (`OnUnitActiveSec=`). `Persistent=true` records the last trigger timestamp on disk so missed runs execute immediately when a powered-off machine boots, and `RandomizedDelaySec=` adds random jitter to prevent fleet-wide thundering herds.
+</details>
+
+<details>
+<summary>14. Contrast `CPUWeight=`, `CPUQuota=`, `MemoryLow=`, `MemoryHigh=`, `MemoryMax=`, and `TasksMax=`.</summary>
+`CPUWeight=` (`1`–`10000`, default `100`) sets proportional CPU share under contention; `CPUQuota=` (`200%` = 2 cores) sets a hard CPU ceiling; `MemoryLow=` protects memory from page reclamation on a best-effort basis; `MemoryHigh=` throttles the cgroup and forces aggressive reclamation when exceeded; `MemoryMax=` triggers the cgroup OOM killer when exceeded; and `TasksMax=` caps total processes/threads.
+</details>
+
+<details>
+<summary>15. Why must you never set `MemoryMax=` on `system.slice`, and how do you protect `sshd` and `kubelet` from GPU job OOM storms?</summary>
+`system.slice` contains critical host services (`sshd`, `kubelet`, `containerd`, `slurmd`, `journald`); putting `MemoryMax=` on `system.slice` causes the kernel to throttle or OOM-kill those daemons. Instead, give `system.slice` `CPUWeight=200` and `MemoryLow=2G`, set `OOMScoreAdjust=-900` on `sshd` and `kubelet`, and enforce `MemoryMax=` on workload slices (`kubepods.slice`, `user-.slice`, or Slurm job cgroups).
+</details>
+
+<details>
+<summary>16. How do you enforce aggregate CPU, memory, and process limits per login user on a shared cluster login node, and why set `KillUserProcesses=no`?</summary>
+Create `/etc/systemd/system/user-.slice.d/10-defaults.conf` with `[Slice]` settings (`TasksMax=1250`, `CPUQuota=800%`, `MemoryMax=64G`), which applies to every user's `user-UID.slice` across all their SSH sessions (or override a single user in `user-1007.slice.d/`). Set `KillUserProcesses=no` in `/etc/systemd/logind.conf` so logging out of SSH does not kill the user's detached `tmux`, `screen`, or `nohup` processes.
+</details>
+
+<details>
+<summary>17. What does `Delegate=yes` do in a service unit, and which AI infrastructure daemons require it?</summary>
+`Delegate=yes` grants the service ownership of its own `cgroup v2` subtree so the daemon can create and manage child cgroups without conflicting with `PID 1`'s single-writer rule. It is required by `containerd`, `dockerd`, `kubelet`, and `slurmd`.
+</details>
+
+<details>
+<summary>18. How do you make `systemd-journald` persistent across reboots, and what is the danger of default rate limiting on GPU nodes?</summary>
+Either create `/var/log/journal` (with `Storage=auto`) or set `Storage=persistent` (along with `SystemMaxUse=10G`, `SystemKeepFree=2G`) in `/etc/systemd/journald.conf.d/50-persistent.conf` and restart `systemd-journald`. Default rate limiting (`RateLimitIntervalSec=30s`, `RateLimitBurst=10000`) drops log lines during a burst ("Suppressed N messages"), which can discard critical Xid/NCCL crash tracebacks unless raised.
+</details>
+
+<details>
+<summary>19. What do `systemd-analyze blame`, `systemd-analyze critical-chain`, `systemd-analyze verify`, and `systemd-analyze security` do?</summary>
+`blame` lists units sorted by the time they took to initialize; `critical-chain` prints the tree of time-critical blocking dependencies that delayed the target; `verify` checks unit files for syntax errors, missing executables, and dependency cycles; and `security` audits a service's sandboxing (`ProtectSystem=strict`, `PrivateTmp=yes`, `NoNewPrivileges=yes`, `DeviceAllow=`) and scores exposure from `0` to `10`.
+</details>
+
+<details>
+<summary>20. What do the `systemd` exit status codes `203/EXEC`, `200/CHDIR`, `217/USER`, and `226/NAMESPACE` mean?</summary>
+`203/EXEC` means the `ExecStart=` binary could not be executed (missing file, missing `+x` permission, `noexec` mount, missing `#!` interpreter, or wrong CPU architecture); `200/CHDIR` means `WorkingDirectory=` does not exist; `217/USER` means the `User=` or `Group=` account does not exist; and `226/NAMESPACE` means a sandboxing mount-namespace directive (`ReadWritePaths=`, `PrivateTmp=`) failed.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 6: How User Space Starts** (sections 6.1–6.7: introduction to `init`, identifying your `init` `systemd`/SysV/Upstart/`runit`/Android/BSD, `systemd` units and unit types, boot and dependency graphs, unit files and search path, variables and specifiers, `systemctl`, process tracking and `Type=`, `Wants`/`Requires`/`Before`/`After`, `test1.target`/`test2.target` `[Install]` `WantedBy=`, `dbus-daemon.service` and `echo.socket`/`echo@.service` socket activation, System V runlevels and `/etc/inittab` `1:2345:respawn:/sbin/mingetty tty1` and `/etc/rc5.d/` `S10sysklogd`..`S99sshd` link farm, `run-parts`, `telinit`, System V compatibility, shutdown, and `initramfs` `mkinitramfs`/`unmkinitramfs` and `dracut`) and **Chapter 7: System Configuration: Logging, System Time, Batch Jobs, and Users** (section 7.1 `journald` and `journalctl`).
+  - `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to` — Sergey Zhumatiy, *Supercomputers for Linux SysAdmins*, **Chapter 7: UNIX and Linux – the Basics** (concept of service and key services), **Chapter 23: Booting and Init** (SysV vs `systemd` overview), and **Chapter 30: Systemd – A Short Course** (units, drop-ins and unit files, dependency options, `[Service]` options including `StandardInput=` `tty-force`/`tty-fail`/`socket` and `StandardOutput=`, `LimitCPU=`/`LimitNOFILE=`/`LimitMEMLOCK=`, environment, templates `@` and instances, `user-.slice.d` `TasksMax=1250` and `user-1007.slice.d`, `logind.conf` `KillUserProcesses=no`, `systemctl` commands, `journald.conf` and `journalctl`, `systemd-networkd`, `systemd-timesyncd`, `systemd-resolved` `DNS=`/`Domains=`/`Cache=no-negative`, and `systemd-analyze` `calendar`/`cat-config`/`verify`).
+  - `nvidia-devops/volume-01/04-linux-systemd-containers-masterclass.md` — migrated the GPU service ordering (`nvidia-fabricmanager` -> `containerd` -> `kubelet`), `system.slice` host protection (`CPUWeight=200`, `MemoryLow=2G`, `OOMScoreAdjust=-900`), NUMA pinning from `systemd`, and `journald` tuning (cross-referenced with `volume-01/01-linux-compute-memory-masterclass.md`, `volume-01/02-linux-storage-io-masterclass.md`, and `volume-01/03-linux-networking-masterclass.md`, plus original study items 21–30 and Chapters 1.18, 1.19, 1.20, 1.21, 1.22, and 1.28).
+- **Run here:** `python3 code/part01/systemd_units_journald_lab.py` (21 passed, 0 failed).
+- **Explicitly labelled inferences:** The `nvidia-fabricmanager.service` / `nvidia-persistenced.service` -> `containerd.service` -> `kubelet.service` drop-in ordering, `user-UID.slice.d/` per-user slice overrides, `systemd-oomd`, `Type=oneshot` GPU health-gate pattern, and `SystemdCgroup = true` / `cgroupDriver: systemd` alignment connect `systemd` to Chapters 1.12, 1.18, 1.19, 1.20, 1.21, 1.22, 1.28, and Parts 5, 6, and 10 GPU cluster operations (plus original study items 22, 24, 26, 27, 28, and 29).
+- **Not verified on live hardware:** All interactive VM `systemctl`, `systemd-run`, `systemd-analyze`, `journalctl`, and `nc` socket-activation commands are marked (untested here) and should be executed on a disposable Linux VM.
