@@ -519,5 +519,5 @@ The BMC port provides hardware telemetry. The two COMe ports run NVOS, which NMX
 | **Unifying the 2-tier (3-stage Clos) non-blocking GPU ceiling formula across `64-port` (`2,048 GPUs`) and `144-port` (`9,216 GPUs`) switches (`calculate_clos_fabric_scale` in `code/part09/superpod_networks.py` and Section 2.3)** | Connecting the `64 leaves * 32 downlinks = 2,048 GPUs` limit in *AI Data Center Network Design and Technologies* Chapter 3 (`Figure 3-9`) with the `128 leaves * 72 downlinks = 9,216 GPUs` limit in `superpod-gb300-ra` (`Table 3`) via `half_radix = switch_radix_ports // 2` is my inference. |
 
 ### Not verified on live hardware
-- `ethtool -S` RoCEv2 counter queries and Cumulus Linux `nv show` commands were not executed on live BlueField-3 DPUs or Spectrum-4 switches in this authoring environment.
+- `ethtool -S` RoCEv2 counter queries and Cumulus Linux `nv show` commands across the 5 network segments (`intra_rack_gpu_p2p`, `inter_rack_nccl_collectives`, `parallel_filesystem_rocev2`, `slurm_k8s_nfs_home_and_ebgp_uplink`, `bmc_ipmi_redfish_and_nvos_come`, `24:72` blocking ratio, `CMDaemon`, `gb200sw`/`gb300sw`, `40` / `980` / `1,000` GB/s storage tiers, cross-referenced with Chapter 9.5) were not executed on live BlueField-3 DPUs or Spectrum-4 switches in this authoring environment.
 

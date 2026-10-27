@@ -636,56 +636,38 @@ Rack capacity is limited by power delivery and heat rejection rather than vertic
 
 ## Sources and review notes
 
-The primary books, reference architectures, and portfolio notes read for this chapter are summarized below.
+The primary books, reference architectures, and portfolio notes read in full for this chapter are:
 
-```text
-Sources read in full for Chapter 9.1:
-1. Chris Fregly, AI Systems Performance Engineering (ai-systems-performance-engineering):
-   - Chapter 1 (Introduction and AI System Overview, pp. 1-19): hardware-software co-design,
-     mechanical sympathy, Goodput, and benchmark tools (nccl-tests, gdsio, nvbandwidth).
-   - Chapter 2 (AI System Hardware Overview, pp. 20-55): Grace CPU & Grace Blackwell Superchip
-     (pp. 21-24), dual-reticle Blackwell B200 GPU (208B transistors, 10 TB/s chip-to-chip link,
-     180-192 GB HBM3e @ 8 TB/s, 1.8 TB/s NVLink 5, 2nd-gen Transformer Engine FP4/FP6,
-     Decompression Engine, RAS Engine, pp. 21-26), DGX B200 8-GPU air-cooled node (1,440 GB HBM3e,
-     64 TB/s HBM bw, 14.4 TB/s NVLink all-to-all, ~14.3 kW, p. 28), and GB200 NVL72 liquid-cooled
-     rack (36 Grace CPUs, 72 B200 GPUs, 13.4 TB HBM3e + 17 TB LPDDR5X = ~30 TB fast memory,
-     130 TB/s NVLink, 1.44 EFLOPS FP4, ~120 kW, pp. 26-34).
-2. Steven Hambruch & Dennis O'Brien, Data Center Best Practices with DGX B200 (superpod-b200-dc, pp. 1-24):
-   - DGX B200 physical specifications (14.3 kW max, >287.6 lbs / 130 kg, 10 RU, 17.5 x 19.0 x 35.3 in,
-     altitude temperature derating, 96 dB at 25°C / 101 dB at 30°C, p. 4), 32-node / 458 kW Scalable
-     Unit and 127-node SuperPOD maximum with UFM displacement (p. 5), and 2-node (28.6 kW, 4,290 CFM,
-     2x 380V 3-phase 32A) vs 4-node (57.2 kW, 8,580 CFM, 52U rack, 2x 415V 3-phase 60A) rack profiles
-     at 150 CFM/kW (p. 10).
-3. NVIDIA DGX SuperPOD Reference Architecture Featuring NVIDIA DGX GB300 Systems (superpod-gb300-ra, pp. 1-11):
-   - DGX GB300 NVL72 rack architecture (1.2 MW TDP per 8-rack SU, hybrid liquid+air cooling,
-     18 compute trays x 2 GB300 Superchips = 36 Grace CPUs + 72 B300 GPUs, 9 NVLink switch trays
-     with COMe + BMC ports, 8x 33 kW power shelves with 6x 5.5 kW PSUs + larger energy storage +
-     rear RJ45 power-brake ports, 4x ConnectX-8 800 Gbps Quantum-X800 InfiniBand NICs +
-     1x BlueField-3 2x400G DPU at the front of each compute tray, and 4x 3.84 TB E1.S RAID 0 +
-     1x 1.92 TB M.2 OS NVMe per tray).
-4. nvidia-devops Volume 04 (NVIDIA Hardware Portfolio, all 11 files read in full):
-   - nvidia-zero-to-hero/volume-04/index.md
-   - nvidia-zero-to-hero/volume-04/chapter-01-why-nvidia-has-multiple-gpu-families.md
-   - nvidia-zero-to-hero/volume-04/chapter-02-workload-first-gpu-selection.md
-   - nvidia-zero-to-hero/volume-04/chapter-03-accelerator-generations-and-design-shifts.md
-   - nvidia-zero-to-hero/volume-04/chapter-04-pcie-sxm-and-platform-integration.md
-   - nvidia-zero-to-hero/volume-04/chapter-05-inference-accelerators-t4-l4-and-l40s.md
-   - nvidia-zero-to-hero/volume-04/chapter-06-training-accelerators-v100-to-b200.md
-   - nvidia-zero-to-hero/volume-04/chapter-07-grace-cpu-and-superchips.md
-   - nvidia-zero-to-hero/volume-04/labs/lab-01-build-a-gpu-selection-scorecard.md
-   - nvidia-zero-to-hero/volume-04/labs/lab-02-benchmark-an-inference-accelerator-shortlist.md
-5. nvidia-devops Volume 05 (DGX Systems, all 11 files read in full):
-   - nvidia-zero-to-hero/volume-05/index.md
-   - nvidia-zero-to-hero/volume-05/chapter-01-why-dgx-exists.md
-   - nvidia-zero-to-hero/volume-05/chapter-02-inside-a-dgx-system.md
-   - nvidia-zero-to-hero/volume-05/chapter-03-dgx-management-plane.md
-   - nvidia-zero-to-hero/volume-05/chapter-04-power-cooling-and-rack-readiness.md
-   - nvidia-zero-to-hero/volume-05/chapter-05-dgx-storage-and-data-paths.md
-   - nvidia-zero-to-hero/volume-05/chapter-06-dgx-networking-and-fabric-integration.md
-   - nvidia-zero-to-hero/volume-05/chapter-07-dgx-gh200-and-gb200-systems.md
-   - nvidia-zero-to-hero/volume-05/labs/lab-01-build-a-dgx-health-baseline.md
-   - nvidia-zero-to-hero/volume-05/labs/lab-02-validate-dgx-data-and-network-paths.md
-```
+1. **Chris Fregly, *AI Systems Performance Engineering* (`ai-systems-performance-engineering`):**
+   - Chapter 1 (*Introduction and AI System Overview*, pp. 1–19): hardware-software co-design, mechanical sympathy, Goodput, DALI data-loading pipelines, and benchmark tools (`nccl-tests`, `gdsio`, `nvbandwidth`).
+   - Chapter 2 (*AI System Hardware Overview*, pp. 20–55): Grace CPU & Grace Blackwell Superchip (pp. 21–24), dual-reticle Blackwell B200 GPU (208B transistors, 10 TB/s chip-to-chip link, 180–192 GB HBM3e @ 8 TB/s, 1.8 TB/s NVLink 5, 2nd-gen Transformer Engine FP4/FP6, Decompression Engine, RAS Engine, pp. 21–26), DGX B200 8-GPU air-cooled node (1,440 GB HBM3e, 64 TB/s HBM bw, 14.4 TB/s NVLink all-to-all, ~14.3 kW, `5-of-6` PSU rule, p. 28), and GB200 NVL72 liquid-cooled rack (36 Grace CPUs, 72 B200 GPUs, 13.4 TB HBM3e + 17 TB LPDDR5X = ~30 TB fast memory, 130 TB/s / 1,296 Gbps per sub-link NVLink for MoE models, 1.44 EFLOPS FP4, ~120 kW, pp. 26–34).
+2. **Steven Hambruch & Dennis O'Brien, *Data Center Best Practices with DGX B200* (`superpod-b200-dc`, pp. 1–24):**
+   - DGX B200 physical specifications (14.3 kW max, >287.6 lbs / 130 kg, 10 RU, 17.5 × 19.0 × 35.3 in, altitude temperature derating, 96 dB at 25°C / 101 dB at 30°C, p. 4), 32-node / 458 kW Scalable Unit and 127-node SuperPOD maximum with UFM displacement (p. 5), and 2-node (`N=2`, 28.6 kW, 4,290 CFM, 2× 380V 3-phase 32A) vs 4-node (57.2 kW, 8,580 CFM, 52U rack, 2× 415V 3-phase 60A) rack profiles at 150 CFM/kW (p. 10).
+3. ***NVIDIA DGX SuperPOD Reference Architecture Featuring NVIDIA DGX GB300 Systems* (`superpod-gb300-ra`, pp. 1–11):**
+   - DGX GB300 NVL72 rack architecture (1.2 MW TDP per 8-rack SU, hybrid liquid+air cooling, 18 compute trays × 2 GB300 Superchips = 36 Grace CPUs + 72 B300 GPUs, 9 NVLink switch trays with COMe + BMC ports, 8× 33 kW power shelves with 6× 5.5 kW PSUs + larger energy storage + rear RJ45 power-brake ports, 4× ConnectX-8 800 Gbps Quantum-X800 InfiniBand NICs + 1× BlueField-3 2×400G DPU at the front of each compute tray, and 4× 3.84 TB E1.S RAID 0 + 1× 1.92 TB M.2 OS NVMe per tray).
+4. **`nvidia-devops` Volume 04 (*NVIDIA Hardware Portfolio*, all 11 files read in full):**
+   - `nvidia-zero-to-hero/volume-04/index.md`
+   - `nvidia-zero-to-hero/volume-04/chapter-01-why-nvidia-has-multiple-gpu-families.md` (`chapter-01-why-nvidia-has-multiple-gpu-families.md`)
+   - `nvidia-zero-to-hero/volume-04/chapter-02-workload-first-gpu-selection.md` (`chapter-02-workload-first-gpu-selection.md`)
+   - `nvidia-zero-to-hero/volume-04/chapter-03-accelerator-generations-and-design-shifts.md` (`chapter-03-accelerator-generations-and-design-shifts.md`, including the 2018 NVSwitch debut and 135.5 GB vs 225.9 GB inference KV-cache sizing examples)
+   - `nvidia-zero-to-hero/volume-04/chapter-04-pcie-sxm-and-platform-integration.md` (`chapter-04-pcie-sxm-and-platform-integration.md`)
+   - `nvidia-zero-to-hero/volume-04/chapter-05-inference-accelerators-t4-l4-and-l40s.md` (`chapter-05-inference-accelerators-t4-l4-and-l40s.md`)
+   - `nvidia-zero-to-hero/volume-04/chapter-06-training-accelerators-v100-to-b200.md` (`chapter-06-training-accelerators-v100-to-b200.md`)
+   - `nvidia-zero-to-hero/volume-04/chapter-07-grace-cpu-and-superchips.md` (`chapter-07-grace-cpu-and-superchips.md`)
+   - `nvidia-zero-to-hero/volume-04/labs/lab-01-build-a-gpu-selection-scorecard.md`
+   - `nvidia-zero-to-hero/volume-04/labs/lab-02-benchmark-an-inference-accelerator-shortlist.md`
+5. **`nvidia-devops` Volume 05 (*DGX Systems*, all 11 files read in full):**
+   - `nvidia-zero-to-hero/volume-05/index.md`
+   - `nvidia-zero-to-hero/volume-05/chapter-01-why-dgx-exists.md` (`chapter-01-why-dgx-exists.md`)
+   - `nvidia-zero-to-hero/volume-05/chapter-02-inside-a-dgx-system.md` (`chapter-02-inside-a-dgx-system.md`, `PIX` PCIe switch pairing, 5.6 kW GPU tray heat)
+   - `nvidia-zero-to-hero/volume-05/chapter-03-dgx-management-plane.md` (`chapter-03-dgx-management-plane.md`, `/Systems/HGX_Baseboard_0` satellite BMC)
+   - `nvidia-zero-to-hero/volume-05/chapter-04-power-cooling-and-rack-readiness.md` (`chapter-04-power-cooling-and-rack-readiness.md`)
+   - `nvidia-zero-to-hero/volume-05/chapter-05-dgx-storage-and-data-paths.md` (`chapter-05-dgx-storage-and-data-paths.md`)
+   - `nvidia-zero-to-hero/volume-05/chapter-06-dgx-networking-and-fabric-integration.md` (`chapter-06-dgx-networking-and-fabric-integration.md`, MTU 9000, 90% line rate)
+   - `nvidia-zero-to-hero/volume-05/chapter-07-dgx-gh200-and-gb200-systems.md` (`chapter-07-dgx-gh200-and-gb200-systems.md`)
+   - `nvidia-zero-to-hero/volume-05/labs/lab-01-build-a-dgx-health-baseline.md`
+   - `nvidia-zero-to-hero/volume-05/labs/lab-02-validate-dgx-data-and-network-paths.md`
+   - Cross-referenced with Chapters 6.1, 6.3, and 9.3.
 
 - **Not in the corpus.** Standalone *NVIDIA DGX H100 / H200 System User Guide* and *NVIDIA DGX OS 6 User Guide* PDFs are not in the local book corpus.
 - **Reconciliations and notes on the sources.** In *AI Systems Performance Engineering* Chapter 2 and Volume 04 Chapter 6, the B200 GPU die is described with eight 24 GB HBM3e stacks totaling 192 GB per GPU. That equals 384 GB for the two-GPU GB200 Superchip. The DGX B200 system table in the same chapter lists 180 GB per GPU, totaling 1,440 GB across 8 GPUs on a DGX B200 node and 13,440 GB usable HBM3e across 72 GPUs on GB200 NVL72. Both figures are preserved in Section 2 and Section 3.

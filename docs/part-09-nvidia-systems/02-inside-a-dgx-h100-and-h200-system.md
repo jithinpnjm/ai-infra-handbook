@@ -624,19 +624,16 @@ It holds memory-mapped dataset shards, shared-memory queues for CPU `DataLoader`
 
 ### Sources read in full for this chapter
 
-```text
-Primary Sources Audited for Chapter 9.2:
-  1. nvidia-devops Volume 05 Chapter 2 (nvidia-zero-to-hero/volume-05/chapter-02-inside-a-dgx-system.md, 1,176 words):
-     - Modular 8U chassis trays, HGX H100 8-GPU baseboard, 18 NVLink 4.0 sub-links at 50 GB/s = 900 GB/s per GPU across 4 third-generation NVSwitches (3.6 TB/s bisection), dual Intel Xeon Platinum 8480C (112 cores) + 2 TB DDR5 across 16 channels, 4 PCIe Gen5 switches pairing GPUs/NICs/NVMe drives, 8x ConnectX-7 400G + 2x dual-port BlueField-3/CX-7, 8x 3.84 TB U.2 RAID 0 + 2x 1.92 TB M.2 RAID 1, nvidia-smi topo -m (NV18, PIX, NODE, SYS), and the GPU 0 <-> mlx5_6 (SYS) troubleshooting scenario.
-  2. Chris Fregly, AI Systems Performance Engineering (ai-systems-performance-engineering), Chapter 2 (pp. 20-55):
-     - Hopper vs Blackwell SXM node architecture, NVLink/NVSwitch topology, and PCIe Gen5 vs NVLink bandwidth hierarchy.
-  3. Distributed AI Systems (distributed-ai-systems), Chapter 2 (GPU Hardware, Networking, and Parallelism Strategies, chunks 0-10):
-     - nvidia-smi output on an 8-GPU H200 system (NVIDIA H200, 143771 MiB, 5, 16), nvidia-smi topo -m NV18 all-to-all matrix, NUMA CPU affinity (numactl --hardware), 1.5x-2x host RAM staging rule, and the 70B H100 Model FLOPs Utilization (MFU) worked calculation (860 TFLOP / 2.0 s = 430 TFLOPS / 989 TFLOPS BF16 peak = 43.48% MFU).
-  4. NVIDIA Base Command Manager 11 Administrator Manual (bcm11-admin), Section 14.5 (BIOS And Firmware Management, pp. 758-762):
-     - Complete 46-component firmware table for DGX H100 (16 motherboard-tray components in nvfw_dgx-h100_*.fwpkg and 30 GPU-tray HGX_FW_* components in nvfw_dgx-hgx-h100x8_*.fwpkg), version transition states, and the mandatory Redfish AC power cycle requirement (pending: success: AC power cycle to activate -> completed: success: activated).
-  5. nvidia-devops Volume 07 Chapter 2 (chapter-02-pcie-numa-and-host-data-paths.md) and Volume 10 Chapter 1 (01-bare-metal-and-bmc-redfish-lifecycle.md):
-     - PCIe Gen5 x16 (64 GB/s per direction), CPU Root Complex vs PCIe Switch P2P (PIX vs NODE vs SYS), Intel UPI cross-socket penalty, Kubernetes Topology Manager (single-numa-node), and DGX H100/H200 dual-BMC Redfish URI tree (/redfish/v1/Systems/DGX and /redfish/v1/Systems/HGX_Baseboard_0).
-```
+1. **`nvidia-devops` Volume 05 Chapter 2 (`nvidia-zero-to-hero/volume-05/chapter-02-inside-a-dgx-system.md`, 1,176 words):**
+   - Modular 8U chassis trays, HGX H100 8-GPU baseboard, 18 NVLink 4.0 sub-links at 50 GB/s = 900 GB/s per GPU across 4 third-generation NVSwitches (3.6 TB/s bisection), dual Intel Xeon Platinum 8480C (112 cores) + 2 TB DDR5 across 16 channels, 4 PCIe Gen5 switches (`PCIeSwitch_0..1` and `PCIeRetimer_0..1`) pairing GPUs (`GPU0/GPU1`..), NICs (`mlx5_0..7`: `mlx5_0..1` / `mlx5_0/mlx5_1`, `mlx5_2..3` / `mlx5_2/mlx5_3`, `mlx5_4..5`, `mlx5_6..7` / `mlx5_4..7`, `mlx5_i`), and NVMe drives (`nvme0..7`: `nvme0..1`, `nvme2..3`, `nvme4..5`, `nvme6..7`, `nvme_i`), 8× ConnectX-7 400G + 2× dual-port BlueField-3/CX-7, 8× 3.84 TB U.2 RAID 0 + 2× 1.92 TB M.2 RAID 1, `nvidia-smi topo -m` (`NV18`, `PIX`, `NODE`, `SYS`, modeled in `classify_dgx_topology_hop` and `compute_host_ram_staging_ratio`), and the GPU 0 <-> `mlx5_6` (`SYS`) troubleshooting scenario.
+2. **Chris Fregly, *AI Systems Performance Engineering* (`ai-systems-performance-engineering`), Chapter 2 (pp. 20–55):**
+   - Hopper vs Blackwell SXM node architecture, NVLink/NVSwitch topology, and PCIe Gen5 vs NVLink bandwidth hierarchy.
+3. ***Distributed AI Systems* (`distributed-ai-systems`), Chapter 2 (GPU Hardware, Networking, and Parallelism Strategies, chunks 0–10):**
+   - `nvidia-smi` output on an 8-GPU H200 system (`NVIDIA H200`, `143771 MiB`), `nvidia-smi topo -m` `NV18` all-to-all matrix, NUMA CPU affinity (`numactl --hardware`), 1.5×–2× host RAM staging rule, and the 70B H100 Model FLOPs Utilization (MFU) worked calculation (860 TFLOP / 2.0 s = 430 TFLOPS / 989 TFLOPS BF16 peak = 43.48% MFU).
+4. ***NVIDIA Base Command Manager 11 Administrator Manual* (`bcm11-admin`), Section 14.5 (BIOS And Firmware Management, pp. 758–762):**
+   - Complete 46-component firmware table for DGX H100 (16 motherboard-tray components in `nvfw_dgx-h100_*.fwpkg` and 30 GPU-tray `HGX_FW_*` components in `nvfw_dgx-hgx-h100x8_*.fwpkg`), version transition states, and the mandatory Redfish `ac_power_cycle` vs `dc_reset` requirement (`pending: success: AC power cycle to activate` -> `completed: success: activated`).
+5. **`nvidia-devops` Volume 07 Chapter 2 (`chapter-02-pcie-numa-and-host-data-paths.md`) and Volume 10 Chapter 1 (`01-bare-metal-and-bmc-redfish-lifecycle.md`):**
+   - PCIe Gen5 x16 (64 GB/s per direction), CPU Root Complex vs PCIe Switch P2P (`PIX` vs `NODE` vs `SYS`), Intel UPI cross-socket penalty, Kubernetes Topology Manager (`single-numa-node`), and DGX H100/H200 dual-BMC Redfish URI tree (`/redfish/v1/Systems/DGX` and `/redfish/v1/Systems/HGX_Baseboard_0`).
 
 ### Not in the corpus
 - Standalone NVIDIA DGX H100 and H200 system user guides and service manuals are not in `~/Desktop/books-toon-rag/`.

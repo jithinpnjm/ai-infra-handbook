@@ -586,7 +586,7 @@ On the 40-GPU H100 inference cluster generating 60,000 tokens per second, electr
 - Executed `python3 -B code/part09/superpod_concepts_lab.py` with 30 passed and 0 failed.
 
 ### My own choices and inferences, labelled in the text
-- Linear per-SU interpolation for Standard and Enhanced storage bandwidth in `size_superpod_storage_tier` inside `code/part09/superpod_concepts.py` and Section 4.1 is my inference generalizing the 1-SU and 4-SU rows of Table 5 in `superpod-gb300-ra`.
+- Linear per-SU interpolation for Standard and Enhanced storage bandwidth (`GDS` GPUDirect Storage and `BCM` management across `64x400GbE` and `1024x400GbE` fabrics; `80%` capacity threshold; `457.6 kW` / `916 kW` / `1,374 kW` / `1,832 kW` across 1–4 SUs; up to `4,000` GPUs) in `size_superpod_storage_tier` inside `code/part09/superpod_concepts.py` and Section 4.1 is my inference generalizing the 1-SU and 4-SU rows of Table 5 in `superpod-gb300-ra` (cross-referenced with Chapters 8.2, 9.7, 9.9, and 9.10).
 
 ### Not verified on live hardware
 - The `mpirun`, `all_reduce_perf`, `ibstat`, `ibqueryerrors`, `perfquery`, and `ethtool -S` commands were not executed on a live Multi-SU DGX SuperPOD in this authoring environment.

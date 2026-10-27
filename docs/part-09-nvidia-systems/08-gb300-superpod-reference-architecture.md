@@ -557,5 +557,5 @@ The *DGX GB300 Data Center Design Guide*, the *Detailed Software Architecture fo
 | **Per-leaf downlink count (`72 downlinks : 24 uplinks = 1:3`) on `SN5600D` Ethernet compute leaves (`verify_gb300_su_ethernet_leaf_blocking` in `code/part09/gb300_superpod_ra.py` and Section 4.1)** | Dividing `144 trays * 2 BlueField-3 ports = 288 ports per SU` across `4 compute leaf switches per SU` (`72 downlinks/leaf`) and comparing against the stated `24 links at 400 Gbps` uplinks (`24 : 72 = 1:3`) is my inference proving the `1:3 blocking ratio` stated on p. 22 of `superpod-gb300-ra`. |
 
 ### Not verified on live hardware
-- Switch configurations on live Q3400-RD, SN5600D, and SN2201 switches were not executed in this authoring environment.
+- Switch configurations on live Q3400-RD, SN5600D, and SN2201 switches (`dedicated_oob_edge_tor` vs `inband_spine_route_leaking`, `DLC` cooling, and `GDS` storage, cross-referenced with Chapters 9.4, 9.5, and 9.6 and the 35-page `superpod-gb300-ra` specification) were not executed in this authoring environment.
 

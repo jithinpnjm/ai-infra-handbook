@@ -519,40 +519,15 @@ The `nvidia-smi -pl` command sets a software power cap in watts on each GPU. Adm
 
 ### Sources read in full for this chapter
 
-The primary `nvidia-devops` notes, SuperPOD design guides, and networking books read in full for this chapter are cataloged in the reference block below.
-
-```text
-1. Author's nvidia-devops Notes:
-   - nvidia-zero-to-hero/volume-05/chapter-04-power-cooling-and-rack-readiness.md (1,143 words)
-   - nvidia-zero-to-hero/volume-01/chapter-06-modern-ai-factory.md (1,297 words) & 06-volume-01-summary.md (946 words):
-     Legacy 5-15 kW (16-18 kW average) vs AI 40-120+ kW rack density, DGX H100 10.2 kW / 34,804 BTU/hr (~34,800 BTU/hr) / > 1,000 CFM
-     (1,194 CFM at 15°C = 27°F rise) / ~370 lbs (168 kg) / 1,200 mm rack depth, 6x 3.3 kW PSUs (19.8 kW installed) in 3+3 redundancy
-     (3 x 3.3 kW = 9.9 kW active on single-feed loss), RDHx vs Direct Liquid Cooling (DLC with cold plates + CDU, water ~3,500x volumetric
-     heat capacity of air), and CIO 8-nodes-per-rack (81.6 kW / ~85 kW, 2,960 lbs / > 3,200 lbs) scenario.
-   - nvidia-zero-to-hero/volume-21/chapter-05-power-delivery-and-thermal-management.md (1,924 words):
-     Component power budget (8 x 700W = 5.6 kW GPUs + 4.6 kW host/NIC/fan/VRM = 10.2 kW), 64-GPU (81.6 kW IT x 1.35 PUE = 110.16 kW ~ 110 kW)
-     monthly energy schedule (16h train 52,800 kWh + 4h idle 2,400 kWh + 4h maint 4,800 kWh = 60,000 kWh/mo = $7,200/mo / $86,400/yr at $0.12/kWh;
-     Month-2 220 kW > 144 kW cap; $6,340/mo vs $12,670/mo training power), sensible-heat airflow formula (CFM ≈ 3.16 x Watts / ΔT(°F) ->
-     7,162.7 CFM / ~7,160 CFM at 20°C = 36°F; 1 kW = 3,412.14 BTU/hr), 208V 3-phase 60A (21.6 kW nameplate / 17.3 kW 80%-derated; 2 whips = 34.6 kW,
-     4 whips = 69.2 kW), 12-month facility forecasting, and thermal/COP (3.5 -> 2.8, PUE 1.28 -> 1.42) troubleshooting.
-   - nvidia-zero-to-hero/volume-06/labs/lab-02 (CDU 7-point commissioning checklist: supply/return temp vs dew point, LPM/GPM flow rate,
-     differential pressure kPa/PSI, kW/MW heat rejection, N+1 pumps, leak detection sensors, and 25-50 micron filtration / water chemistry).
-
-2. Book Sources from the Local TOON-RAG Corpus (read in full):
-   - AI Data Center Network Design and Technologies (ai-data-center-network-design-and-technologies), Chapter 5 (lines 1-112):
-     Data center power split (40%-45% IT, 35%-40% cooling, 15%-25% distribution/UPS/lighting), PUE formula, switch (~3 kW for 64x400G) and
-     optical transceiver power (QSFP28 3.2 W / 204.8 W ~ 0.2 kW; QSFP56-DD 12.0 W / 768.0 W ~ 0.8 kW; OSFP 15.0 W = 4.69x QSFP28 / 960.0 W ~ 1.0 kW),
-     Front-to-Back vs Back-to-Front vs Bidirectional fan airflow, and the 5 liquid-cooling methods (RDHx / AALC, CLLC, Cold Plate DLC + CDU,
-     Single-Phase Immersion, Two-Phase Immersion, and Sprayed Liquid Cooling -25.8% energy; liquid cooling cutting cooling power up to ~70%).
-   - Steven Hambruch & Dennis O'Brien, Data Center Best Practices with DGX B200 (superpod-b200-dc, pp. 4-18) &
-     NVIDIA DGX SuperPOD Reference Architecture Featuring NVIDIA DGX GB300 Systems (superpod-gb300-ra, pp. 5-11):
-     DGX B200 14.3 kW / 2,145 CFM (150 CFM/kW, ΔT ≈ 11.7°C = 21.1°F; 4,290 CFM for 28.6 kW 2-node rack; 8,580 CFM for 57.2 kW 4-node rack),
-     415V 32A (23.0 kW / 18.4 kW; 34.96 kW ~ 35 kW for N=2 at 0.95 PF), 415V 60A (32.8 kW / 65.55 kW ~ 66 kW for N=2 at 0.95 PF),
-     5-of-6 PSU rules, ASHRAE A1 dew point (<= 15°C recommended, <= 17°C max), and DGX GB300 NVL72 (~150 kW/rack, 1.2 MW/SU) hybrid liquid+air
-     cooling and 8x 33 kW energy-storage power shelves (6x 5.5 kW PSUs = 264 kW/rack) with rear RJ45 power-brake ports.
-   - AI Systems Performance Engineering (ai-systems-performance-engineering), Chapter 2:
-     Software GPU power capping via nvidia-smi -pl 550 (from 700W TDP, saving up to 1.2 kW/node).
-```
+1. **Author's `nvidia-devops` Notes:**
+   - `chapter-04-power-cooling-and-rack-readiness.md` (`nvidia-zero-to-hero/volume-05/chapter-04-power-cooling-and-rack-readiness.md`, 1,143 words)
+   - `chapter-06-modern-ai-factory.md` (`nvidia-zero-to-hero/volume-01/chapter-06-modern-ai-factory.md`, 1,297 words) & `06-volume-01-summary.md` (946 words): Legacy 5–15 kW (16–18 kW average) vs AI 40–120+ kW rack density, DGX H100 10.2 kW / 34,804 BTU/hr (~34,800 BTU/hr) / > 1,000 CFM (1,194 CFM at 15°C = 27°F rise) / ~370 lbs (168 kg) / 1,200 mm rack depth, 6× 3.3 kW PSUs (19.8 kW installed) in 3+3 redundancy (`A1/A2` and `B1/B2` feeds to smart `rPDUs`, 3 × 3.3 kW = 9.9 kW active on single-feed loss), RDHx vs Direct Liquid Cooling (DLC with cold plates + CDU, water ~3,500× volumetric heat capacity of air, coolant `T_return`), `GDS` storage thermal budgets, and CIO 8-nodes-per-rack (81.6 kW / ~85 kW, 2,960 lbs / > 3,200 lbs) scenario.
+   - `chapter-05-power-delivery-and-thermal-management.md` (`nvidia-zero-to-hero/volume-21/chapter-05-power-delivery-and-thermal-management.md`, 1,924 words): Component power budget (8 × 700W = 5.6 kW GPUs + 4.6 kW host/NIC/fan/VRM = 10.2 kW), 64-GPU (81.6 kW IT × 1.35 PUE = 110.16 kW ~ 110 kW) monthly energy schedule (16h train 52,800 kWh + 4h idle 2,400 kWh + 4h maint 4,800 kWh = 60,000 kWh/mo = $7,200/mo / $86,400/yr at $0.12/kWh; Month-2 220 kW > 144 kW cap; $6,340/mo vs $12,670/mo training power), sensible-heat airflow formula (`CFM ≈ 3.16 × Watts / ΔT(°F)` -> 7,162.7 CFM / ~7,160 CFM at 20°C = 36°F; 1 kW = 3,412.14 BTU/hr), 208V 3-phase 60A (21.6 kW nameplate / 17.3 kW 80%-derated; 2 whips = 34.6 kW, 4 whips = 69.2 kW), 12-month facility forecasting, and thermal/COP (3.5 -> 2.8, PUE 1.28 -> 1.42) troubleshooting.
+   - `nvidia-zero-to-hero/volume-06/labs/lab-02` (CDU 7-point commissioning checklist: supply/return temp vs dew point, LPM/GPM flow rate, differential pressure kPa/PSI, kW/MW heat rejection, N+1 pumps, leak detection sensors, and 25–50 micron filtration / water chemistry).
+2. **Book Sources from the Local TOON-RAG Corpus (read in full):**
+   - *AI Data Center Network Design and Technologies* (`ai-data-center-network-design-and-technologies`), Chapter 5 (lines 1–112): Data center power split (40%–45% IT, 35%–40% cooling, 15%–25% distribution/UPS/lighting), PUE formula, switch (~3 kW for 64×400G) and optical transceiver power (QSFP28 3.2 W / 204.8 W ~ 0.2 kW; QSFP56-DD 12.0 W / 768.0 W ~ 0.8 kW; OSFP 15.0 W = 4.69× QSFP28 / 960.0 W ~ 1.0 kW), Front-to-Back vs Back-to-Front vs Bidirectional fan airflow, and the 5 liquid-cooling methods (RDHx / AALC, CLLC, Cold Plate DLC + CDU, Single-Phase Immersion, Two-Phase Immersion, and Sprayed Liquid Cooling -25.8% energy; liquid cooling cutting cooling power up to ~70%).
+   - Steven Hambruch & Dennis O'Brien, *Data Center Best Practices with DGX B200* (`superpod-b200-dc`, pp. 4–18) & *NVIDIA DGX SuperPOD Reference Architecture Featuring NVIDIA DGX GB300 Systems* (`superpod-gb300-ra`, pp. 5–11): DGX B200 14.3 kW / 2,145 CFM (150 CFM/kW, ΔT ≈ 11.7°C = 21.1°F; 4,290 CFM for 28.6 kW 2-node rack; 8,580 CFM for 57.2 kW 4-node rack), 415V 32A (23.0 kW / 18.4 kW; 34.96 kW ~ 35 kW for N=2 at 0.95 PF), 415V 60A (32.8 kW / 65.55 kW ~ 66 kW for N=2 at 0.95 PF), 5-of-6 PSU rules, ASHRAE A1 dew point (<= 15°C recommended, <= 17°C max), and DGX GB300 NVL72 (`c01`..`c18` compute trays, ~150 kW/rack, 1.2 MW/SU) hybrid liquid+air cooling and 8× 33 kW energy-storage power shelves (6× 5.5 kW PSUs = 264 kW/rack) with rear RJ45 power-brake ports.
+   - *AI Systems Performance Engineering* (`ai-systems-performance-engineering`), Chapter 2: Software GPU power capping via `nvidia-smi -pl 550` (from 700W TDP, saving up to 1.2 kW/node).
 
 ### Not in the corpus
 - Vendor-specific Coolant Distribution Unit installation and water chemistry manuals are not in the local book corpus.

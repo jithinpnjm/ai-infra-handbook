@@ -510,5 +510,5 @@ Run `ping` with the don't-fragment flag and a jumbo payload size across the GPU 
 - Grouping the four named platforms in the chapter title into three architectural models in Section 1.2 is my inference synthesizing our enterprise platform notes, Chapter 4, and the BCM 11 manual.
 
 ### Not verified on live hardware
-- The `cmsh` Topograph commands, end-to-end jumbo frame ping tests, and live cloud Terraform plans on AWS, OCI, GCP, Nebius, and CoreWeave were not executed against live cloud accounts in this authoring environment.
+- The `cmsh` Topograph commands (`switch01..08`, pp. `416`–`419`), SR-IOV `VFs` and `vSwitches`, `NVAIE` licensing, `19.2` MW / `28` / `50` node examples, end-to-end jumbo frame ping tests, and live cloud Terraform plans on AWS, OCI, GCP, Nebius, and CoreWeave (cross-referenced with Chapters `8.8`, `8.16`, `9.1`, and `9.9` and Volume `08`) were not executed against live cloud accounts in this authoring environment.
 

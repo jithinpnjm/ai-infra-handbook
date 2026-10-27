@@ -552,45 +552,15 @@ Infant-mortality hardware faults such as marginal socket contact or thermal drif
 
 ### Sources read in full for this chapter
 
-The primary `nvidia-devops` notes and interview modules read in full for this chapter are cataloged in the reference block below.
-
-```text
-1. Author's nvidia-devops Notes (Volume 21 — AI Factory: Building Large-Scale Production Systems):
-   - nvidia-zero-to-hero/volume-21/chapter-02-gpu-compute-cluster-design.md (4,137 words):
-     Single-node Configurations A (8x H100 SXM5, $285K) and B (8x H100 PCIe, $215K), and Topology 1 (Single-Pod, Leaf Only up to 8-16 nodes / 64-128 GPUs).
-   - nvidia-zero-to-hero/volume-21/chapter-13-reference-architecture-100-gpu-training-cluster.md (3,583 words):
-     Complete 16-node (128-GPU H100 SXM5) training pod blueprint (4 racks x 4 nodes = 40.8 kW / ~41 kW per rack, 163.2 kW / ~163 kW total IT load,
-     8 rail-aligned NDR leaf switches, 16 x $285,000 = $4,560,000 / $4.56M compute + $400,000 IB + $200,000 storage + $200,000 racks/PDUs/cooling + $100,000 install
-     = $5,460,000 / $5.46M / ~$5.5M CAPEX, $42,656 / ~$43K per GPU, ~$43 per BF16 TFLOP, ~$644K/year OPEX, ~$7.4M 3-year TCO, ~$2.14/GPU-hr,
-     8-week deployment schedule, MTTR targets, and Six-Stage Commissioning and Acceptance Framework including ClusterKit and 24-72 hour burn-in).
-   - nvidia-zero-to-hero/volume-21/labs/lab-01-cluster-design-workshop.md (1,403 words):
-     $20M Series B multi-pool cluster sizing (16 H100 training nodes = $4.96M compute+fabric, 6 x 70 x 10^9 x 100 x 10^9 = 4.2 x 10^22 FLOPs,
-     128 x 989 x 0.40 = 50,636.8 TFLOPS / 5.06368 x 10^16 / 5.064 x 10^16 FLOP/s, 829,436 seconds / 8.29 x 10^5 seconds = 9.6 days at ~120,000 tokens/s,
-     ~$46K/run; 9 H100 inference nodes = $2.57M, 500 / 15.2 = 32.9 -> 33 replicas + 1 spare node = 72 GPUs / 36 replicas = 547.2 QPS at 99.5% SLA;
-     2 A100 80 GB LoRA nodes = $0.40M; 27 nodes total = $8.93M / ~$8.9M CAPEX + $0.82M OPEX = ~$9.7M Year 1, leaving ~$10.3M).
-   - Supporting Volume 21 chapters and labs mapped in MIGRATION_MAP.md (read and cross-referenced with Chapters 9.6, 9.9, 9.11, and Part 14):
-     nvidia-zero-to-hero/volume-21/index.md
-     nvidia-zero-to-hero/volume-21/chapter-01-the-ai-factory-paradigm.md
-     nvidia-zero-to-hero/volume-21/chapter-03-high-speed-networking-architecture.md
-     nvidia-zero-to-hero/volume-21/chapter-04-storage-infrastructure-for-ai-pipelines.md
-     nvidia-zero-to-hero/volume-21/chapter-05-power-delivery-and-thermal-management.md
-     nvidia-zero-to-hero/volume-21/chapter-06-software-stack-integration.md
-     nvidia-zero-to-hero/volume-21/chapter-07-multi-node-distributed-training.md
-     nvidia-zero-to-hero/volume-21/chapter-08-inference-serving-at-scale.md
-     nvidia-zero-to-hero/volume-21/chapter-09-multi-region-deployment.md
-     nvidia-zero-to-hero/volume-21/chapter-10-monitoring-and-operations.md
-     nvidia-zero-to-hero/volume-21/chapter-11-capacity-planning-and-forecasting.md
-     nvidia-zero-to-hero/volume-21/chapter-12-cost-optimization-and-resource-efficiency.md
-     nvidia-zero-to-hero/volume-21/chapter-14-reference-architecture-multi-region-inference-deployment.md
-     nvidia-zero-to-hero/volume-21/labs/lab-03-storage-pipeline-design.md
-     nvidia-zero-to-hero/volume-21/labs/lab-04-capacity-planning-exercise.md
-
-2. Interview & Legacy Modules (nvidia-devops-core-interview & nvidia-devops-legacy-v09):
-   - Module 4 Q14 (Customer Education & Onboarding: Single DGX Node vs BasePOD vs SuperPOD, 1.2 MW to 19.2 MW SuperPOD scale, 90-280 GB/s storage)
-   - 01 - Hardware & Ecosystem Gauntlet (Module 1.1: MIG up to 7 hardware-isolated slices on 80 GB H100 / 141 GB H200 / 180 GB B200 vs MPS up to 48 clients vs Time-Slicing)
-   - 03 - Security Governance Masterclass (Multi-tenant GPU isolation rules for classified workloads)
-   - 05 - Linux, Networking, and IaC Gauntlet (Q16: BCM golden-image cloning, cm-chroot-sw-img, and createramdisk workflow)
-```
+1. **Author's `nvidia-devops` Notes (Volume 21 — *AI Factory: Building Large-Scale Production Systems*):**
+   - `chapter-02-gpu-compute-cluster-design.md` (`nvidia-zero-to-hero/volume-21/chapter-02-gpu-compute-cluster-design.md`, 4,137 words): Single-node Configurations A (8× H100 SXM5, $285K) and B (8× H100 PCIe, $215K), and Topology 1 (Single-Pod, Leaf Only up to 8–16 nodes / 64–128 GPUs).
+   - `chapter-13-reference-architecture-100-gpu-training-cluster.md` (`nvidia-zero-to-hero/volume-21/chapter-13-reference-architecture-100-gpu-training-cluster.md`, 3,583 words): Complete 16-node (128-GPU H100 SXM5) training pod blueprint (4 racks × 4 nodes = 40.8 kW / ~41 kW per rack, 163.2 kW / ~163 kW total IT load, 8 rail-aligned NDR leaf switches, 16 × $285,000 = $4,560,000 / $4.56M compute + $400,000 IB + $200,000 storage + $200,000 racks/PDUs/cooling + $100,000 install = $5,460,000 / $5.46M / ~$5.5M CAPEX, $42,656 / ~$43K per GPU, ~$43 per BF16 TFLOP, ~$644K/year OPEX, ~$7.4M 3-year TCO, ~$2.14/GPU-hr, 8-week deployment schedule, MTTR targets, and Six-Stage Commissioning and Acceptance Framework including `HPL/Linpack`, `ClusterKit`, and 24–72 hour burn-in).
+   - `nvidia-zero-to-hero/volume-21/labs/lab-01-cluster-design-workshop.md` (1,403 words): $20M Series B multi-pool cluster sizing (16 H100 training nodes = $4.96M compute+fabric, 6 × 70 × 10^9 × 100 × 10^9 = 4.2 × 10^22 FLOPs, 128 × 989 × 0.40 = 50,636.8 TFLOPS / 5.06368 × 10^16 / 5.064 × 10^16 FLOP/s, 829,436 seconds / 8.29 × 10^5 seconds = 9.6 days at ~120,000 tokens/s, ~$46K/run; 9 H100 inference nodes = $2.57M, 500 / 15.2 = 32.9 -> 33 replicas + 1 spare node = 72 GPUs / 36 replicas = 547.2 / 547 QPS at 99.5% SLA; 2 A100 80 GB LoRA nodes = $0.40M; 27 nodes total = $8.93M / ~$8.9M CAPEX + $0.82M OPEX = ~$9.7M Year 1, leaving ~$10.3M).
+2. **Interview & Legacy Modules (`nvidia-devops-core-interview` & `nvidia-devops-legacy-v09`):**
+   - Module 4 Q14 (Customer Education & Onboarding: Single DGX Node vs BasePOD vs SuperPOD, 1.2 MW to 19.2 MW SuperPOD scale, 90–280 GB/s storage)
+   - `01 - Hardware & Ecosystem Gauntlet` (Module 1.1: MIG up to 7 hardware-isolated slices on 80 GB H100 / 141 GB H200 / 180 GB B200 vs MPS up to 48 clients vs Time-Slicing)
+   - `03 - Security Governance Masterclass` (Multi-tenant GPU isolation rules for classified workloads)
+   - `05 - Linux, Networking, and IaC Gauntlet` (Q16: BCM golden-image cloning `clone old-img new-img`, `cm-chroot-sw-img`, and `createramdisk` workflow)
 
 ### Not in the corpus
 - Vendor-specific NVIDIA DGX BasePOD reference architecture PDFs for NetApp, WEKA, VAST, DDN, or IBM Storage Scale are not in the local book corpus.

@@ -628,5 +628,5 @@ Unlimited monthly compounding for 36 months asks for over 11,000 GPUs. Real grow
 1. Implementing a standard logistic carrying-capacity curve in `forecast_saturating_scurve_gpus` in `code/part09/capacity_planning.py` and Section 5.1 to replace the unconstrained 36-month exponential tail as advised by the note on line 10 of Volume 21 Lab 04 is **my inference**.
 
 ### Not verified on live hardware
-- Prometheus FinOps Reaper queries and AWS IMDSv2 spot-termination polling scripts were not executed against a live cluster in this authoring environment.
+- Prometheus FinOps Reaper queries (`k8s_gpu_allocated=True`, `896-instance` `1g.10gb` MIG pool, `M10` Month 10 power ceiling, `$0.665`K/day power, `2.50`x cost multiplier at 40% load, `$17.4`K/day, and `25.9`B daily tokens) and AWS IMDSv2 spot-termination polling scripts were not executed against a live cluster in this authoring environment.
 

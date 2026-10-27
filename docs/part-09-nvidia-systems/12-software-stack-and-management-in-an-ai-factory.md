@@ -560,5 +560,5 @@ The other 63 healthy GPUs are blocked at their NCCL collective barrier burning c
 1. Combining the 16-byte-per-parameter mixed-precision AdamW breakdown from Volume 21 Chapter 4 with the ZeRO sharding description in Volume 21 Chapter 6 Part 2.2 to write explicit per-GPU model-state memory formulas in `calculate_zero_stage_memory_per_gpu` is **my inference**.
 
 ### Not verified on live hardware
-- The `torchrun`, `deepspeed`, `kubectl`, and Prometheus scrape configurations were not executed against a live 64-GPU cluster in this authoring environment.
+- The `torchrun`, `deepspeed` (`ZeRO-1/2/3`, `16P/W` bytes per parameter, `OutOfMemoryError`), `kubectl`, NCCL (`mlx5_0..7`, `SL=0`, `TC=106`, `MTU 9216`, `MN-NVL`, `48` / `128` / `1000` GPU scale), BCM (`autonomous_Default` health checks), and Prometheus scrape/alert configurations (`GPUThermalSlowdown` at `83` / `85` / `90`°C, `GoodputDrop` at `94` / `95` / `99.9`%, `NVLinkCRCErrors`, `StragglerImbalance` at `1.35`x, `UncorrectableECC`) were not executed against a live 64-GPU cluster in this authoring environment.
 

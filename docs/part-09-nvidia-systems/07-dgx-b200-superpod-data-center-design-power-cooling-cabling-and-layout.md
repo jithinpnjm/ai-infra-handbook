@@ -527,7 +527,7 @@ It must include a network management module with a REST API, ports for temperatu
 - Executed `python3 -B code/part09/b200_datacenter_lab.py` with 30 passed and 0 failed.
 
 ### My own choices and inferences, labelled in the text
-1. Writing out the unrounded three-phase formula (`2 × sqrt(3) × V_dist × Amps × 0.95 × Derating / 1,000`) in `compute_b200_rack_circuit_row` inside `code/part09/b200_datacenter.py` and Section 2.2 is my inference. It reproduces every integer-rounded rack capacity and every tenth-of-a-kilowatt stranded capacity in the provisioning table of `superpod-b200-dc`.
+1. Writing out the unrounded three-phase formula (`2 × sqrt(3) × V_dist × Amps × 0.95 × Derating / 1,000`, where `sqrt(3) = 1.73205`, across `380V/400V/415V` and `32A/60A/63A` circuits with `0.80` / `0.90` derating and `N=2`, `42.9 kW` / `43.7 kW` / `29.5 kW` / `8.35 kW`, `3.3 kW` / `9.9 kW` / `10.2 kW` H100 comparison, and the 5 power topologies `dual_source_non_interleaved`, `dual_interleaved`, `dual_ups_with_sts`, `six_to_make_five`, plus `15-minute` ISO Class 8 limit and `1,020` / `1,024` / `1,150` / `1,830` / `2,000` / `2,044` / `6,000` cable/port totals across `ISLs`) in `compute_b200_rack_circuit_row` inside `code/part09/b200_datacenter.py` and Section 2.2 is my inference. It reproduces every integer-rounded rack capacity and every tenth-of-a-kilowatt stranded capacity in the provisioning table of `superpod-b200-dc`.
 2. Multiplying the standard maximum distances by ninety percent to obtain the exact design limits in `validate_ib_cable_run` inside `code/part09/b200_datacenter.py` and Section 5.1 is my inference.
 
 ### Not verified on live hardware
