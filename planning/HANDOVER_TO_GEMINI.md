@@ -1,5 +1,8 @@
 # Handover procedure: finishing the AI Infrastructure Handbook (for Gemini, then reviewed by Claude)
 
+> **ACTIVE RE-PROCESSING & REWRITE PLAN (2026-10-27): READ `planning/MASTER_REWRITE_PLAN.md` FIRST.**
+> For the complete re-processing of Volumes / Parts 1 to 15 (`330` chapters) and all Gem Books, read `planning/MASTER_REWRITE_PLAN.md` and `planning/archive/LOSS_REPORT_PARTS_6_TO_14.md` first. Do **not** re-scan the repository when resuming a cleared session; pick up the next `[ ]` item directly from `planning/MASTER_REWRITE_PLAN.md`.
+
 Written 2026-10-24 by Claude at the end of its session. Read this whole file first. It replaces nothing in `planning/HANDOFF_PROMPT.md`; it adds the **exact working procedure** that produced Parts 1 to 8 and the rules the author insisted on.
 
 ## 0. Where things stand

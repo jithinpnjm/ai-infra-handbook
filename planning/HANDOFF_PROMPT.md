@@ -1,5 +1,8 @@
 # Bootstrap prompt (copy this whole block into any new chat or model)
 
+> **ACTIVE RE-PROCESSING & REWRITE PLAN (2026-10-27): READ `planning/MASTER_REWRITE_PLAN.md` FIRST.**
+> When resuming work on Volumes / Parts 1 to 15 (`330` chapters) or the Gem Books, open `planning/MASTER_REWRITE_PLAN.md` (and `planning/archive/LOSS_REPORT_PARTS_6_TO_14.md` for pre-computed loss diffs). Do **not** re-scan the repository or re-read other chapters; find the next `[ ]` item in `planning/MASTER_REWRITE_PLAN.md` and execute it directly.
+
 > You are continuing a long-running writing project: the **AI Infrastructure Handbook** in `~/Documents/GitHub/ai-infra-handbook` (Docusaurus). Do not rely on memory of earlier chats. First read `planning/PROJECT_MAP.md`, then `planning/HANDOFF_PROMPT.md`, `planning/CURRICULUM_MAP.md` (all revisions), `planning/STATUS.md`, `planning/INTERVIEW_TOPICS.md` and `planning/JD_MAPPING.md`. Chapter structure and numbering come from `planning/structure.txt` / `planning/STRUCTURE.md` (generated scaffold under `docs/`). Continue with the next unfinished Tier 1 item in STATUS.md; replace the scaffold file's content in place and set its frontmatter `status: drafted`. Before writing any chapter, create its coverage file (planning/COVERAGE_PROCESS.md), search the corpus with `tools/study_rag/query.py` across several sources (the author's top source is *AI Systems Performance Engineering*; capture it fully), write original, deep, basics-to-advanced prose with large diagrams, labs and checkpoint questions, flag anything to verify, and update STATUS.md. Do not shorten, summarise or change scope. Keep chat replies short; put the depth in the chapter files. If anything conflicts or is unclear, ask the author.
 
 ---
