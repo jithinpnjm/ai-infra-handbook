@@ -30,3 +30,4 @@
 | 2.26 Packet capture: tcpdump, tshark, Wireshark and BPF | `packet_capture_bpf.py` | `packet_capture_bpf_lab.py` | 9 | `python3 code/part02/packet_capture_bpf_lab.py` |
 | 2.27 Lab: network topologies with namespaces, FRR, clab | `containerlab_frr_topologies.py` | `containerlab_frr_topologies_lab.py` | 8 | `python3 code/part02/containerlab_frr_topologies_lab.py` |
 | 2.28 Network automation fundamentals: YANG, NETCONF, gNMI | `net_automation_apis_yang.py` | `net_automation_apis_yang_lab.py` | 7 | `python3 code/part02/net_automation_apis_yang_lab.py` |
+| 2.29 Network automation in practice: Ansible, Nornir, CI/CD | `net_automation_cicd_tools.py` | `net_automation_cicd_tools_lab.py` | 9 | `python3 code/part02/net_automation_cicd_tools_lab.py` |
