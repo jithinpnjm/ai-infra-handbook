@@ -139,6 +139,12 @@ flowchart LR
 
 Click essentials: `@click.option` with `envvar=`, `multiple=True`, `required`, `type=click.IntRange(1, 64)`; `click.Path(exists=True)`; `click.File`; `click.prompt`/`confirm`; `click.progressbar`; `click.echo(..., err=True)` for stderr; raising `click.ClickException` or `click.UsageError` for clean error messages and exit codes; `ctx.exit(code)`; `click.testing.CliRunner().invoke(cli, ["status", "h1"])` to test.
 
+### Case study from *Practical MLOps* Chapter 11: `csv-linter` and `cloud-translate` CLIs
+
+In *Practical MLOps* Chapter 11 (*Building MLOps Command Line Tools and Microservices*, modeled in `code/part03/python_clis_agents_exporters.py`), Alfredo Deza walks through two end-to-end Click command-line tools that illustrate why packaging a single-purpose CLI beats ad-hoc notebooks and shell snippets:
+1. **Packaging `csv-linter` with `console_scripts` and `pip install -e .`:** When inspecting a 32,770-row `wine.csv` dataset in pandas (`df.describe()`), three silent data-quality bugs surfaced: (a) the `'grape'` column had a count of `0.0` (100% `NaN` values), (b) saving a DataFrame via `df.to_csv("wine.csv")` without `index=False` injected spurious `'Unnamed: 0'` index columns on every round-trip, and (c) Windows carriage returns (`\r\n`, displayed as `^M` in `vim`) inside `'notes'` fields broke downstream parsers (`carriage.csv`). Deza packages three helper functions in `csv_linter/checks.py`—`zero_count_columns(df)` (returning columns where `df[key].count() == 0`), `unnamed_columns(df)` (counting keys containing `"Unnamed"`), and `carriage_returns(df)` (returning the first `(index, column, field)` containing `"\r\n"`, truncated to `field[:50]` on display)—behind a Click command `@click.command() @click.argument('filename', type=click.Path(exists=True)) def main(filename):`, exposed as `csv-linter=csv_linter.main:main` under `entry_points` (`[project.scripts]` in `pyproject.toml`) and installed in editable mode with `pip install -e .` (noting that renaming or moving `csv_linter.py` to `csv_linter/main.py` requires re-running `pip install -e .` to regenerate the entry-point wrapper script).
+2. **Wrapping a Cloud ML microservice (`cloud-translate`):** Rather than bundling heavy ML weights inside every CLI binary, `cloud-translate` (`cloud-translate=trigger:main`) deploys a serverless HTTP Cloud Function (`google-cloud-translate==3.0.2`, `translate.TranslationServiceClient()` in `us-central1` translating text to French `target_language_code="fr"`), fetches a short-lived OIDC bearer token via `subprocess.Popen(["gcloud", "auth", "print-identity-token"], stdout=subprocess.PIPE)` (`out.decode("utf-8").strip()`), and posts `requests.post(url, json={"message": text}, headers={"Authorization": f"bearer {token()}"})`—turning a 20-line Click CLI (`@click.command() @click.argument('text')`) into a secure client for a cloud microservice.
+
 ### 2.3 Typer and Rich
 
 **Typer** (from the FastAPI author) builds on Click and uses type hints: function parameters become arguments and options, giving less boilerplate and good shell completion.
@@ -576,7 +582,15 @@ def evaluate(gpus, expected=8, max_temp=85):
 
 The test strategy (chapter 3.9) feeds canned CSV (including `[N/A]`, wrong column counts, empty output, and a missing GPU) into `parse_smi_csv` and `evaluate`, runs the Click command with `CliRunner` and a stubbed executor, and asserts exit codes and JSON shape. This separation (parser, rules, executor, CLI) is the pattern to reuse.
 
-## 11. Lab (untested)
+## 11. Lab
+
+First, run the self-checking Python lab (`code/part03/python_clis_agents_exporters_lab.py`) locally. It verifies *Practical MLOps* Chapter 11's `csv-linter` checks (`zero_count_columns`, `unnamed_columns`, `carriage_returns`), `gpuctl` `argparse` subcommand parsing, `CircuitBreaker` state transitions (`CLOSED -> OPEN -> HALF_OPEN -> CLOSED`) and cursor pagination (`paginate_cursor`), Prometheus custom collector exposition (`gpu_temperature_celsius` and `fleet_host_up`), `RedfishSessionClient` session login/discovery/logout, and `parse_smi_csv` + `evaluate_gpus` health rules.
+
+```bash
+python3 code/part03/python_clis_agents_exporters_lab.py
+```
+
+Next, on any machine with Python 3.11+ (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **argparse to Click**: implement `gpuctl status|drain` with argparse, then port to Click and Typer; compare help output, tests, completion; add `--output json` and verify piping to `jq` works with logs on stderr.
 2. **Exit codes and dry-run**: add partial-failure and unhealthy exit codes; write a shell wrapper that reacts to each; verify `--dry-run` never mutates.
@@ -590,8 +604,6 @@ The test strategy (chapter 3.9) feeds canned CSV (including `[N/A]`, wrong colum
 10. **Packaging**: build a wheel, install with `pipx`, build a zipapp with `shiv`, build a container; compare size and startup time; add `--version` with git SHA.
 11. **Profiling**: introduce a deliberate O(n^2) loop and a memory leak into the tool; find them with py-spy and tracemalloc.
 12. **Clean up.**
-
-Mark tested only after execution.
 
 ## 12. Common mistakes
 
@@ -617,50 +629,171 @@ Mark tested only after execution.
 - "How would you distribute a Python tool to 1,000 hosts?" (wheel + pipx, zipapp, packages via config management, containers; version pinning.)
 - "A Python service's memory grows steadily. How do you find the leak?" (tracemalloc/memray, retained references, caches, label growth.)
 
-## 14. Checkpoint questions (35)
+## Exercises
 
-1. Why send logs to stderr and data to stdout? **A:** Keeps pipelines parseable.
-2. What are the three conventional exit code classes? **A:** Success, failure, usage error (plus custom partial-failure codes).
-3. Why take `argv` as a parameter in `main`? **A:** Tests can call it directly.
-4. What does Click's `CliRunner` do? **A:** Invokes the CLI in-process for tests.
-5. Why not pass secrets as CLI flags? **A:** Visible in `ps` and shell history.
-6. Config precedence order? **A:** Flags, env, config file, defaults.
-7. Which `yaml` loader is safe? **A:** `safe_load`.
-8. What defaults does `requests.get` have for timeouts? **A:** None; it can hang forever.
-9. Which HTTP errors are worth retrying? **A:** Connection errors, timeouts, 429, 502, 503, 504.
-10. Why jitter? **A:** Avoid synchronised retry storms.
-11. What does a circuit breaker's half-open state do? **A:** Allows a probe call to test recovery.
-12. What is a bulkhead? **A:** A concurrency limit isolating a dependency.
-13. Why is offset pagination fragile? **A:** Results shift when data changes.
-14. How do you write a file atomically? **A:** Temp file in same dir then `os.replace`.
-15. What is a TOCTOU race? **A:** State changes between check and use.
-16. Name the Prometheus metric types. **A:** Counter, gauge, histogram, summary.
-17. Why should counters end in `_total`? **A:** Convention enabling tooling and clear semantics.
-18. What causes cardinality explosions? **A:** Unbounded label values.
-19. Advantage of custom collectors over background polling? **A:** Fresh data at scrape time, no stale series.
-20. What should an exporter do when the target is down? **A:** Report `up 0`, not raise.
-21. What is a multi-target exporter? **A:** Target passed as scrape parameter (`/probe?target=`).
-22. Which tool lints metrics? **A:** `promtool check metrics`.
-23. What exports GPU metrics in Kubernetes? **A:** DCGM exporter.
-24. What does Redfish replace? **A:** IPMI as the out-of-band management API.
-25. What is `@odata.id`? **A:** A link to another resource.
-26. Why use Redfish sessions? **A:** Avoid per-request credentials; token auth.
-27. Why log out of a BMC session? **A:** BMCs allow very few sessions.
-28. How are long Redfish actions tracked? **A:** 202 plus a Task monitor to poll.
-29. Why discover Redfish members instead of hard-coding paths? **A:** IDs vary by vendor.
-30. Which `nvidia-smi` flag gives parseable output? **A:** `--query-gpu=... --format=csv,noheader,nounits`.
-31. Why `start_new_session=True` with subprocess timeouts? **A:** Kill the whole process group, avoiding orphans.
-32. Why jitter an agent's loop? **A:** Prevent fleet-wide synchronised load.
-33. What signal should agents handle for graceful stop? **A:** SIGTERM.
-34. Which systemd settings bound an agent's resources? **A:** `MemoryMax`, `CPUQuota`.
-35. What does `[project.scripts]` do? **A:** Creates console entry points on install.
+1. **CLI Design (`argparse`, Click, Typer), Stream Separation, Exit Codes, and `csv-linter` (`PM` Chapter 11):** (a) Using `build_gpuctl_parser()`, `zero_count_columns()`, `unnamed_columns()`, and `carriage_returns()` in `code/part03/python_clis_agents_exporters.py`, explain why `main(argv=None) -> int` accepts an injectable `argv` list, why logs go to `stderr` while `--output json|table` goes to `stdout`, and how `csv-linter` detects empty columns, `Unnamed: 0` index columns, and `\r\n` carriage returns; (b) state the configuration precedence order (CLI flags > env vars > config file > defaults) and why secrets must never be passed as CLI flags.
+2. **Resilient HTTP Clients: 4-Part Timeouts, Jittered Retries (`tenacity`), Circuit Breakers, and Cursor Pagination:** Using `CircuitBreaker` and `paginate_cursor()` in `code/part03/python_clis_agents_exporters.py`, explain: (a) which HTTP methods and status codes (`429, 502, 503, 504` vs `400, 401, 403, 404, 409`) are safe to retry with exponential backoff and full jitter; (b) how a circuit breaker transitions across `CLOSED -> OPEN -> HALF_OPEN -> CLOSED`; and (c) why cursor/token pagination beats offset pagination over changing datasets.
+3. **Prometheus Exporters: Metric Types, Cardinality Rules, Custom Collectors (`collect()`), and Multi-Target Relabelling:** Using `collect_fleet_prometheus_metrics()`, contrast background polling (`Gauge.set`) with scrape-time custom collectors (`FleetCollector.collect()`), explain why `collect()` must emit `fleet_host_up 0` rather than raising an exception when a target fails, and explain how `/probe?target=bmc01` multi-target relabelling works.
+4. **DMTF Redfish BMC Client: Session Lifecycle (`X-Auth-Token`), `@odata.id` Link Discovery, and `AllowableValues`:** Using `RedfishSessionClient` and `MockRedfishTransport` in `code/part03/python_clis_agents_exporters.py`, explain why a Redfish client must authenticate via `/redfish/v1/SessionService/Sessions` and `DELETE` its session on `__exit__`, why it must discover system URIs via `Members[@odata.id]` rather than hardcoding `/Systems/1`, and how it validates `ResetType@Redfish.AllowableValues` and tracks `202 Accepted` Task monitors.
+5. **GPU Telemetry Parsing (`nvidia-smi` CSV & NVML/DCGM) and Pure Health Rules (`parse_smi_csv`, `evaluate_gpus`):** Using `parse_smi_csv()` and `evaluate_gpus()` in `code/part03/python_clis_agents_exporters.py`, show how separating pure CSV parsing (handling `[N/A]` and `[Not Supported]`) and health rule evaluation (`expected=8`, `max_temp=85`, `ecc_uncorrected > 0`) from SSH/subprocess execution makes fleet diagnostics trivially unit-testable.
+6. **Node Agents (`SIGTERM`, Jittered Loops, `systemd` Hardening), Tool Packaging (`pipx`, Zipapps), and Live Profiling (`py-spy`, `tracemalloc`):** (a) Explain how a systemd node agent bounds its impact on GPU training jobs (`MemoryMax=300M`, `CPUQuota=20%`, `NoNewPrivileges=yes`, `ProtectSystem=strict`, `stop.wait(interval + jitter)`); (b) compare `pipx` / `uv tool`, `zipapp`/`shiv`/`pex`, and containers for distributing CLI tools, and explain how `python -X importtime`, `py-spy`, and `tracemalloc` diagnose slow startups and memory leaks.
 
-## 15. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. Why must operational CLIs send data to `stdout` and logs/progress bars to `stderr`, and why should `main(argv=None) -> int` accept `argv`?</summary>
 
-- The author's `nvidia-devops` repository, volume 02 (Python tooling and operations masterclass): CLI design with argparse and Click, testing infrastructure code, resilient clients with retries and backoff, packaging and CI distribution, profiling with cProfile and tracemalloc, the GPU fleet diagnostics CLI capstone, pagination, subprocess and file-race scenarios, circuit breakers.
-- Prometheus client library, Prometheus naming and exporter-writing guidance, DMTF Redfish specification and schemas, NVIDIA `nvidia-smi`, NVML and DCGM documentation, Click, Typer, tenacity and httpx documentation.
-- Examples are the author's constructions.
+Sending structured output (`--output json`) exclusively to `stdout` and human diagnostics/progress bars to `stderr` (`sys.stderr`, `click.echo(..., err=True)`) ensures pipelines like `gpuctl status gpu01 --output json | jq .` never break on interleaved log lines. Defining `def main(argv=None) -> int:` and calling `parse_args(argv)` lets `pytest` invoke `main(["status", "gpu01"])` directly in-process and assert on the returned integer exit code without spawning a subprocess.
+</details>
 
-**Flagged for verification before publishing:** library APIs and versions (Click, Typer, tenacity, httpx, prometheus-client), the Redfish schema details per vendor (Thermal versus ThermalSubsystem, action targets, allowable values), `nvidia-smi` query field names, `dcgmi` options, systemd directive names, `promtool` usage, and all code listings; all labs are **untested**.
+<details>
+<summary>2. Compare `argparse`, `Click`, and `Typer`, and explain how `Click`'s `@click.pass_context` and `CliRunner` work.</summary>
+
+- **`argparse`**: standard-library baseline requiring zero third-party dependencies (`add_subparsers(dest="cmd", required=True)`).
+- **`Click`**: decorator-based framework (`@click.group()`, `@click.command()`, `@click.option(..., envvar="...")`) that passes shared state (config, output mode) down subcommand trees via `@click.pass_context` (`ctx.obj = ...`) and `@click.pass_obj`, tested in-process via `click.testing.CliRunner().invoke(cli, [...])`.
+- **`Typer`**: builds on Click using Python type annotations (`Annotated[int, typer.Option(min=1)]`) to reduce boilerplate and generate shell completions.
+</details>
+
+<details>
+<summary>3. In *Practical MLOps* Chapter 11, what three CSV dataset bugs does `csv-linter` catch, and why did moving `csv_linter.py` break the entry point?</summary>
+
+1. **`zero_count_columns(df)`:** Columns where `df[key].count() == 0` (such as `'grape'` in `wine.csv` containing 100% `NaN` values).
+2. **`unnamed_columns(df)`:** Spurious `'Unnamed: 0'` columns created when pandas exports `df.to_csv("wine.csv")` without `index=False`.
+3. **`carriage_returns(df)`:** Embedded Windows `\r\n` (`^M`) line endings inside text fields (`carriage.csv`), reported with the field preview truncated to 50 characters (`field[:50]`).
+Moving `csv_linter.py` into `csv_linter/main.py` broke the installed `csv-linter` command because the `console_scripts` wrapper generated in `venv/bin/csv-linter` still pointed to the old `module:function` path until `entry_points` was updated to `csv-linter=csv_linter.main:main` and `pip install -e .` was re-run.
+</details>
+
+<details>
+<summary>4. What is the configuration precedence order for operational tools, and why must secrets never be passed on the command line?</summary>
+
+Precedence from highest to lowest: **(1) Explicit command-line flags** (`--timeout 30`) -> **(2) Environment variables** (`FLEET_TIMEOUT`) -> **(3) Configuration file** (`~/.config/fleet/config.toml` or `--config`) -> **(4) Code defaults**. Secrets (API tokens, BMC passwords) must **never** be passed as command-line arguments because every user on the host can read `/proc/<pid>/cmdline` (`ps aux`) and shell history files; load secrets from environment variables (`FLEET_TOKEN`), `0600` credential files, or OS/cloud secret stores (or short-lived `gcloud auth print-identity-token` OIDC tokens as in `PM` Chapter 11).
+</details>
+
+<details>
+<summary>5. Why is a bare `requests.get(url)` dangerous in automation, and what four timeouts does `httpx.Timeout` configure?</summary>
+
+A bare `requests.get(url)` has `timeout=None` by default, meaning a dropped packet or wedged server causes the script or cron job to **hang forever**. `httpx.Timeout(connect=3, read=15, write=15, pool=5)` bounds: (1) **`connect`** (TCP/TLS handshake time), (2) **`read`** (max wait between response chunks), (3) **`write`** (sending request payload), and (4) **`pool`** (waiting for a free connection from the connection pool).
+</details>
+
+<details>
+<summary>6. Which HTTP methods and status codes should an API client retry, and how does `tenacity`'s `wait_exponential_jitter` work?</summary>
+
+- **Safe methods to retry:** Idempotent methods (`GET`, `HEAD`, `PUT`, `DELETE`, `OPTIONS`) and `POST` requests carrying an `Idempotency-Key` header.
+- **Transient status codes/errors to retry:** Network/connection timeouts (`ConnectError`, `ReadTimeout`) and HTTP **`429 Too Many Requests`** (honoring `Retry-After`), **`502 Bad Gateway`**, **`503 Service Unavailable`**, and **`504 Gateway Timeout`**. Never retry deterministic client errors (`400`, `401`, `403`, `404`, `409`, `422`).
+- **`wait_exponential_jitter(initial=0.5, max=20)`** combined with `stop_after_attempt(6) | stop_after_delay(60)` backs off exponentially with random jitter so concurrent clients do not synchronize into a retry storm.
+</details>
+
+<details>
+<summary>7. How do a Circuit Breaker (`CLOSED`, `OPEN`, `HALF_OPEN`) and a Bulkhead protect infrastructure services?</summary>
+
+- **Circuit Breaker:** Tracks consecutive failures to a downstream dependency. In **`CLOSED`** state, requests pass through normally; once consecutive failures reach `failure_threshold`, the breaker trips to **`OPEN`** and fails fast immediately without making network calls for a cool-down window; after the cool-down, it enters **`HALF_OPEN`** and lets a single probe request through—if the probe succeeds, it resets to `CLOSED`, and if it fails, it re-opens.
+- **Bulkhead:** Isolates concurrency per target/dependency (via a separate `Semaphore` or thread pool per rack/service) so one slow BMC or API cannot exhaust all worker threads across the tool.
+</details>
+
+<details>
+<summary>8. Why is silent pagination truncation a common fleet bug, and why is cursor/token pagination preferred over offset pagination?</summary>
+
+Many APIs return at most 100 or 200 items per call; a script that reads `body["items"]` without looping over `next_page_token` silently ignores the rest of the fleet. Wrapping pagination in a generator (`def paginate(path): while True: ... yield item; token = body.get("next_page_token"); if not token: break`) guarantees completeness. **Cursor/token pagination** is preferred over `offset`/`limit` because if items are inserted or deleted while paginating, `offset` shifts and either duplicates or skips records.
+</details>
+
+<details>
+<summary>9. Name the four core Prometheus metric types, state the metric naming rules, and explain what causes a cardinality explosion.</summary>
+
+- **Types:** (1) **`Counter`** (monotonically increasing cumulative total, suffix `_total`, queried with `rate()`), (2) **`Gauge`** (value that can go up or down, such as temperature or queue depth), (3) **`Histogram`** (bucketed observations `_bucket{le="..."}` plus `_sum` and `_count`, aggregatable across instances for p99 latency), and (4) **`Summary`** (client-side quantiles, not aggregatable).
+- **Naming:** `snake_case`, application prefix, and base unit suffix (`gpu_temperature_celsius`, `fleet_scrape_duration_seconds`, `http_requests_total`).
+- **Cardinality explosion:** Every unique combination of key-value labels creates a distinct time series in Prometheus TSDB; putting unbounded values (UUIDs, request IDs, user emails, timestamps, or raw error strings) into labels exhausts Prometheus RAM.
+</details>
+
+<details>
+<summary>10. Why is a scrape-time Custom Collector (`FleetCollector.collect()`) preferred over a background polling loop (`Gauge.set`), and how should `collect()` handle a dead host?</summary>
+
+In a background polling loop, if the polling thread stalls or a host is decommissioned, the `Gauge` continues serving **stale numbers** to Prometheus forever. A **custom collector (`collect()`)** executes fresh on every Prometheus scrape, yielding `GaugeMetricFamily` / `CounterMetricFamily` snapshots with zero lingering series. When a target host times out or fails during `collect()`, the collector **must catch the exception and emit `fleet_host_up{host="..."} 0`** (plus `fleet_scrape_duration_seconds`) rather than raising out of `collect()` and failing the entire scrape.
+</details>
+
+<details>
+<summary>11. How does the Multi-Target Exporter pattern (`/probe?target=bmc01`) with Prometheus `relabel_configs` work?</summary>
+
+Instead of hardcoding a static list of 500 BMCs inside the exporter's config file, the exporter exposes `/probe?target=<host>`. In Prometheus's `scrape_configs`, `relabel_configs` copies the discovered target's `__address__` (`bmc01.mgmt`) into the URL query parameter `__param_target`, copies `__param_target` into the `instance` label, and rewrites `__address__` to the exporter's address (`bmc-exporter:9102`)—letting Prometheus service discovery and scrape intervals drive per-target probing.
+</details>
+
+<details>
+<summary>12. What is DMTF Redfish, what are its main `/redfish/v1/` top-level collections, and why must clients follow `@odata.id` links instead of hardcoding paths?</summary>
+
+**Redfish** is the DMTF standard RESTful JSON-over-HTTPS API for out-of-band server management (replacing IPMI). Its service root `/redfish/v1/` links to:
+- **`Systems`**: host computer state (power, boot order, BIOS, CPUs, RAM).
+- **`Chassis`**: physical enclosure, power supplies, thermal sensors, PCIe/GPU devices.
+- **`Managers`**: the BMC itself (network config, event logs, virtual media).
+- **`SessionService`, `AccountService`, `UpdateService`, `TaskService`, `TelemetryService`**.
+Different vendors use different member IDs (`/redfish/v1/Systems/1` on Dell/Supermicro vs `/redfish/v1/Systems/System.Embedded.1` or `/Systems/Self` on others), so clients must iterate `Members` and follow **`@odata.id`** URIs dynamically.
+</details>
+
+<details>
+<summary>13. Why should a Redfish client use Session Authentication (`X-Auth-Token`) inside a context manager instead of HTTP Basic Auth, and how are long-running Redfish actions tracked?</summary>
+
+- **Session lifecycle:** Posting credentials to `/redfish/v1/SessionService/Sessions` returns an **`X-Auth-Token`** header and a session `Location` URI (avoiding slow per-request password hashing). Because hardware BMCs enforce a **strict limit on concurrent active sessions** (often 8 to 64), failing to `DELETE` the session URI on exit leaks session slots and locks operators out of the BMC. Wrapping the client in `__enter__`/`__exit__` guarantees session logout.
+- **Long-running actions:** Operations like firmware updates (`UpdateService`) return **`HTTP 202 Accepted`** with a `Location` header pointing to a **Task monitor URI**, which the client polls until `TaskState` reaches `Completed` or `Exception`.
+</details>
+
+<details>
+<summary>14. How should Python tools query `nvidia-smi` or GPU telemetry, and how does the worked capstone separate parsing, rules, and execution?</summary>
+
+Invoke `nvidia-smi --query-gpu=index,name,temperature.gpu,utilization.gpu,memory.used,memory.total,ecc.errors.uncorrected.volatile.total --format=csv,noheader,nounits` (or use `pynvml` / DCGM bindings for frequent polling so NVML is not re-initialized on every subprocess call). In the capstone:
+1. **`parsers.py` (`parse_smi_csv`)** is a pure function converting CSV lines into frozen `Gpu` dataclasses (mapping `""`, `"[N/A]"`, and `"[Not Supported]"` to `None`).
+2. **`rules.py` (`evaluate_gpus`)** is a pure function checking count (`len(gpus)` differing from `expected`), thermal (`temp_c > max_temp`), and ECC (`ecc_uncorrected > 0`) invariants.
+3. **`collect.py` and `cli.py`** handle bounded fan-out, formatting, and distinct exit codes (`0` healthy, `1` runtime error, `3` unhealthy GPU, `4` partial collection failure).
+</details>
+
+<details>
+<summary>15. How should a long-running node agent structure its main loop, signal handlers, and `systemd` unit to never disturb GPU training jobs?</summary>
+
+- **Jittered interruptible loop:** Handle `SIGTERM` by setting a `threading.Event` (`stop.set()`) and sleep via `stop.wait(interval + random.uniform(0, jitter))` so 1,000 node agents do not hammer the control plane at the exact same second.
+- **Per-check isolation:** Wrap each hardware check in its own `try / except` with a timeout and export per-check success metrics plus a `last_success_timestamp_seconds` gauge.
+- **`systemd` resource & security hardening:** Set **`MemoryMax=300M`**, **`CPUQuota=20%`**, `User=nodeagent`, `NoNewPrivileges=yes`, `ProtectSystem=strict`, and `ReadWritePaths=/var/lib/nodeagent` so a runaway agent can never starve training jobs of RAM or CPU cores.
+</details>
+
+<details>
+<summary>16. Compare the six ways to package and distribute operational Python tools across laptops, jump hosts, and air-gapped clusters.</summary>
+
+1. **Wheel on private index + `pipx install fleetctl` / `uv tool install`:** Creates an isolated virtualenv per CLI tool on operator laptops and jump hosts.
+2. **Zipapp (`python -m zipapp`, `shiv`, `pex`):** Bundles the application and dependencies into a single executable `.pyz`/`.pex` file for hosts that already have a compatible Python interpreter.
+3. **Container image:** Standard for Kubernetes CronJobs/DaemonSets and CI runners.
+4. **PyInstaller / Nuitka standalone binary:** Bundles interpreter + extensions for hosts without Python.
+5. **OS packages (`.deb` / `.rpm` via `fpm`):** Integrates directly with Ansible, apt/dnf mirrors, and BCM image layers.
+</details>
+
+<details>
+<summary>17. How do you profile CPU bottlenecks, memory leaks, and slow CLI startup times in Python?</summary>
+
+- **CPU profiling:** Use `python -m cProfile -o out.prof` + `pstats`/`snakeviz` in dev, or attach **`py-spy top -p <PID>` / `py-spy record -o flame.svg -p <PID>`** to a live production process with zero code changes.
+- **Memory leaks:** Use **`tracemalloc`** (comparing snapshots to find the exact file:line growing allocations) or `memray`; check for unbounded caches, retained exception tracebacks, and unbounded Prometheus label sets.
+- **CLI startup time:** Run **`python3 -X importtime -c "import fleetctl.cli"`** and move heavy imports (`pandas`, `torch`, ` clicks` plugins) inside the specific subcommand function that needs them.
+</details>
+
+<details>
+<summary>18. Why must mutating CLI subcommands (`drain`, `power`) support `--dry-run`, require `--yes` (or interactive confirmation), and refuse unguarded wildcards?</summary>
+
+At 3 a.m., a typo in a host list or glob pattern can power off an entire rack of 64-GPU training nodes. Making `--dry-run` print the exact target URIs and payloads without executing them, requiring interactive `click.confirm("Drain host?", abort=True)` unless `--yes` is explicitly passed, and rejecting wildcard targets unless `--all-matching` is set prevents catastrophic operator errors.
+</details>
+
+<details>
+<summary>19. How do you prevent orphaned child processes when a CLI or agent wraps external commands like `dcgmi diag` or `ipmitool` with a timeout?</summary>
+
+When `subprocess.run(cmd, timeout=30)` times out, Python kills only the direct child process—any grandchildren spawned by a wrapper script keep running as orphans holding GPU device files open. Launch external tools in their own process group via **`subprocess.Popen(cmd, start_new_session=True)`** and, on timeout, send `SIGTERM`/`SIGKILL` to the entire process group with **`os.killpg(os.getpgid(p.pid), signal.SIGKILL)`** followed by `p.wait()`.
+</details>
+
+<details>
+<summary>20. How do you test a Prometheus exporter and a Redfish CLI before deploying them to a 500-node GPU cluster?</summary>
+
+1. **Unit-test pure parsers and collectors:** Feed canned `nvidia-smi` CSV strings (including `[N/A]`, missing GPUs, high temps, and ECC errors) and mock Redfish responses (`MockRedfishTransport` or the **DMTF Redfish Mockup Server**) into your collector/client and assert on metric families, session logout (`active_sessions == 0`), and CLI exit codes via `CliRunner`.
+2. **Validate metric syntax and cardinality:** Scrape `/metrics` locally and pipe the output into **`promtool check metrics`** to catch naming, type, and syntax errors before Prometheus scrapes it in production.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `practical-mlops` — Noah Gift & Alfredo Deza, *Practical MLOps*, **Chapter 11: Building MLOps Command Line Tools and Microservices** (read in full: packaging Click CLIs with `setup.py` / `requirements.txt` / `console_scripts` entry points and `pip install -e .`, building `csv-linter` with `zero_count_columns`, `unnamed_columns`, and `carriage_returns` on `wine.csv` and `carriage.csv`, and building `cloud-translate` wrapping a serverless Google Cloud Function authenticated via `gcloud auth print-identity-token` and `Authorization: bearer <token>`).
+  - `nvidia-devops` (`volume-02/03-python-tooling-operations-masterclass.md`): CLI design with `argparse` and `Click`, testing infrastructure code, resilient clients with retries and backoff, packaging and CI distribution, profiling with `cProfile` and `tracemalloc`, the GPU fleet diagnostics CLI capstone (`parse_smi_csv`, `evaluate`), pagination, subprocess and file-race scenarios, and circuit breakers.
+  - `redfish-spec` — DMTF Redfish Specification (`SessionService`, `@odata.id` resource traversal, `Systems`/`Chassis`/`Managers`, `#ComputerSystem.Reset` and `ResetType@Redfish.AllowableValues`, and `202 Accepted` Task monitors), plus Prometheus client library custom collector and multi-target exporter documentation.
+- **Run here:** `python3 code/part03/python_clis_agents_exporters_lab.py` (6 passed, 0 failed).
+- **Explicitly labelled inferences:** The `gpuctl` `argparse`/`Click`/`Typer` examples, `FleetCollector`, `Redfish` client class, `nodeagent.service` systemd unit, and Section 10 GPU diagnostics capstone are the author's constructions applying *Practical MLOps* Chapter 11, `volume-02`, and the DMTF Redfish specification to GPU cluster operations (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
+- **Not verified on live hardware:** Live BMC Redfish calls, `nvidia-smi`, `dcgmi diag`, `prometheus_client.start_http_server(9101)`, `promtool check metrics`, and `systemd` service execution (`500` machines, `9101`, `9102`, `600`s, `412 ok, 3 failed`, `300M`, `20%`, `1.4.0`, `85`C) are marked (`untested here`) where not executed by `python_clis_agents_exporters_lab.py`.
