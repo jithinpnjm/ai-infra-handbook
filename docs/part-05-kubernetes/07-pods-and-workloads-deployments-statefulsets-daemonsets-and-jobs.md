@@ -39,6 +39,16 @@ Needs 5.3, 5.6. After this chapter you can:
 
 A **pod** is the smallest schedulable unit: one or more containers sharing a network namespace (one IP, shared ports), optionally IPC and PID namespaces, a set of volumes, and a cgroup parent. Containers in a pod are co-scheduled on one node and communicate over `localhost` and shared volumes. Pods are **ephemeral**: they are not rescheduled to other nodes if the node dies (controllers create replacements); their IPs change; they should be treated as cattle.
 
+In *Kubernetes: Up and Running* Chapter 5 (*Pods*), Brendan Burns, Joe Beda, Kelsey Hightower, and Lachlan Evenson answer the fundamental design question **"What should I put in a Pod?"**: ask yourself, *"Will these containers work correctly if they land on different machines?"* If the answer is **no**—for example, a web/inference server paired with a local Git/model-weight synchronizer or telemetry sidecar sharing an `emptyDir` volume—group them into a single Pod; if the answer is **yes**—such as a WordPress web frontend and a MySQL database, which scale independently and have different resource/state lifecycles—put them in **separate Pods** connected by a Kubernetes `Service`. Chapter 5 also warns against a classic resource-unit typo: lowercase **`m` (`400m` = `0.4` CPU cores, milliunits)** versus uppercase **`M` / `Mi` (`400Mi` = `400` mebibytes of RAM)**.
+
+```mermaid
+flowchart TD
+    Pod["Pod Sandbox (pause container)<br/>Shared NetNS (eth0, Pod IP), IPC (/dev/shm),<br/>Volumes (emptyDir, PVC, projected), Pod cgroup slice"] --> Init["1. initContainers (sequential)<br/>fetch-config, wait-for-rdma<br/>Effective req = max(max_init, sum_app)"]
+    Init --> Side["2. Native Sidecars<br/>(initContainers with restartPolicy: Always)<br/>Start before app, stop after app exits"]
+    Side --> App["3. App Containers (parallel)<br/>trainer / vllm-openai<br/>startupProbe -> readinessProbe / livenessProbe"]
+    App --> Term["4. Termination sequence<br/>deletionTimestamp + EndpointSlice removal ||<br/>preStop hook -> SIGTERM -> gracePeriod -> SIGKILL"]
+```
+
 ```yaml
 apiVersion: v1
 kind: Pod
@@ -400,8 +410,21 @@ Pod `phase`: Pending (accepted, not all containers running: scheduling, image pu
 8. Pin images by digest; prefer images prepared with matching CUDA/driver (5.1) and pre-pulled on nodes.
 9. Set `automountServiceAccountToken: false` where the pod doesn't call the API.
 10. Label for cost allocation and ownership (team, project, run id) consistently.
+11. **Application Instrumentation, Downward API Resource Propagation, and Graceful Shutdown (`PK` Chapter 14):** In *Production Kubernetes* Chapter 14 (*Application Considerations*), Josh Rosso et al. emphasize four application-level contracts with Kubernetes:
+    - *Propagating cgroup limits via the Downward API:* Runtime environments (such as older JVMs or multi-worker Python/C++ allocators) that inspect host `/proc/meminfo` instead of cgroup limits can allocate beyond the container's limit and get `OOMKilled`; expose `resources.limits.memory` (`resourceFieldRef: { containerName: my-app, resource: limits.memory }`) as `MEM_LIMIT` via the **Downward API**.
+    - *Coordinating `SIGTERM` and `preStop` hooks:* Because `EndpointSlice` removal and `kubelet` pod termination run asynchronously in parallel, a server that closes its listening socket the instant `SIGTERM` arrives will drop in-flight requests from nodes whose `kube-proxy` / Envoy rules haven't updated yet. Register an OS `SIGTERM` handler (`signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)` calling `httpServer.Shutdown()` or saving a training checkpoint) paired with a `lifecycle.preStop` hook (`sleep 10` or `/bin/contour envoy shutdown`) so load balancers drain before the process exits.
+    - *Structured Logs, Prometheus `/metrics`, and Distributed Tracing:* Write application logs to `stdout`/`stderr` (collected from `/var/log/pods` by a DaemonSet agent), expose a Prometheus `/metrics` endpoint (or an out-of-process sidecar exporter like `dcgm-exporter`), and propagate distributed tracing span context (`OpenTelemetry` / `Jaeger`) across HTTP/gRPC headers.
+12. **Organizing Application Manifests in Git and Staged Regional Rollouts (`KUR` Chapter 22):** In *Kubernetes: Up and Running* Chapter 22 (*Organizing Your Application*), Burns et al. codify three production principles: (a) **Treat filesystems in Git as the source of truth** (never treat live `etcd` state modified by ad-hoc `kubectl edit` as truth), (b) **Require pull-request code review** on all YAML/Helm changes, and (c) **Promote releases through ordered lifecycle and regional stages** (`Development -> Staging -> Canary -> Production (Low-Traffic Region) -> Production (High-Traffic Region)`), using **feature flags** inside application images and **Helm/Kustomize templates** (`values.yaml` per environment/region) without ever skipping stages during "quick fixes".
 
-## 6. Lab (untested)
+## 6. Lab
+
+First, run the self-checking Python lab (`code/part05/pod_qos_workload_validator_lab.py`) locally. It verifies the Pod QoS class (`Guaranteed` / `Burstable` / `BestEffort`), `oom_score_adj`, and init-container effective scheduling request calculator (`compute_pod_qos_and_effective_requests`: computing `max(max_init, sum_app)`) and the Kubernetes label key/value syntax validator (`validate_k8s_label`, `KUR` Ch. 6).
+
+```bash
+python3 code/part05/pod_qos_workload_validator_lab.py
+```
+
+Next, on a `kind` or GPU cluster (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **Pod anatomy**: write a pod with init container, sidecar (native), shared `emptyDir`, env from ConfigMap/Secret/Downward API; view with `kubectl get -o yaml`; read `status` fields and conditions.
 2. **QoS and OOM**: create pods with Guaranteed, Burstable and BestEffort QoS; inspect `/proc/<pid>/oom_score_adj` via `crictl`/node; run a memory hog beyond limits and observe `OOMKilled`; fill node memory to see eviction ordering (lab only).
@@ -416,8 +439,6 @@ Pod `phase`: Pending (accepted, not all containers running: scheduling, image pu
 11. **Debugging**: use `kubectl debug` ephemeral container on a distroless pod; node debug pod to inspect kubelet logs; reproduce `CrashLoopBackOff`, `ImagePullBackOff`, `CreateContainerConfigError`.
 12. **PDB and drain**: create a PDB with `minAvailable` equal to replicas and drain a node (blocked); fix capacity or PDB; discuss upgrade implications.
 13. **Clean up**.
-
-Mark tested only after execution.
 
 ## 7. Common mistakes
 
@@ -434,65 +455,187 @@ Mark tested only after execution.
 
 ## 8. Interview angles
 
-- "What is a pod and why not just containers? What do containers in a pod share?" 
-- "Explain QoS classes and how they affect eviction and OOM." 
-- "When do you use a StatefulSet vs Deployment vs Job vs DaemonSet?" 
-- "What happens when you delete a pod? Walk through termination and the endpoint race." 
-- "Why does my GPU pod stay Pending? How do you debug?" 
-- "How do init containers and native sidecars differ? What problems do sidecars cause for Jobs?" 
+- "What is a pod and why not just containers? What do containers in a pod share?"
+- "Explain QoS classes and how they affect eviction and OOM."
+- "When do you use a StatefulSet vs Deployment vs Job vs DaemonSet?"
+- "What happens when you delete a pod? Walk through termination and the endpoint race."
+- "Why does my GPU pod stay Pending? How do you debug?"
+- "How do init containers and native sidecars differ? What problems do sidecars cause for Jobs?"
 - "How would you configure an inference deployment that loads a 140 GB model?" (startup probe, PVC/image volume, rolling update strategy, PDB, topology spread.)
-- "What's special about `/dev/shm` in ML containers on Kubernetes?" 
+- "What's special about `/dev/shm` in ML containers on Kubernetes?"
 
-## 9. Checkpoint questions (40)
+## Exercises
 
-1. What do containers in a pod share? **A:** Network namespace, volumes, optionally IPC/PID.
-2. Are pods rescheduled to another node on failure? **A:** No; controllers create replacements.
-3. What do init containers do? **A:** Run to completion sequentially before app containers.
-4. What is a native sidecar? **A:** Init container with `restartPolicy: Always`.
-5. What do requests control? **A:** Scheduling and guaranteed share.
-6. What do limits control? **A:** Runtime caps (CPU throttle, memory OOM).
-7. QoS Guaranteed condition? **A:** Requests = limits for CPU and memory in all containers.
-8. Eviction order by QoS? **A:** BestEffort, then Burstable, then Guaranteed.
-9. Must GPU requests equal limits? **A:** Yes for extended resources.
-10. How to give a pod large shared memory? **A:** Memory-backed `emptyDir` with sizeLimit.
-11. Does `/dev/shm` count toward memory limit? **A:** Yes (tmpfs charged to cgroup).
-12. What is `fsGroup`? **A:** Group ownership applied to volumes.
-13. What is `readOnlyRootFilesystem`? **A:** Immutable container rootfs; use volumes for writes.
-14. Default termination signal? **A:** SIGTERM then SIGKILL after grace.
-15. Default grace period? **A:** 30 seconds.
-16. Purpose of preStop sleep? **A:** Let endpoint removal propagate before shutdown.
-17. restartPolicy for Deployments? **A:** Always.
-18. What is CrashLoopBackOff? **A:** Exponential restart backoff after repeated crashes.
-19. What is exit code 137? **A:** SIGKILL (often OOM).
-20. Pod phases? **A:** Pending, Running, Succeeded, Failed, Unknown.
-21. Probe types? **A:** startup, readiness, liveness.
-22. Why startup probes? **A:** Protect slow initialisation from liveness kills.
-23. Deployment strategy options? **A:** RollingUpdate, Recreate.
-24. What does `maxSurge` need for GPU pods? **A:** A spare GPU.
-25. StatefulSet identity? **A:** Stable name, DNS and PVC per ordinal.
-26. StatefulSet PVC deletion on scale-down? **A:** Retained by default.
-27. DaemonSet scheduling? **A:** One pod per matching node.
-28. DaemonSet on tainted nodes needs? **A:** Tolerations.
-29. Job completionMode Indexed? **A:** Each pod gets an index.
-30. What is `podFailurePolicy`? **A:** Rules to count/ignore/fail on exit codes or conditions.
-31. What does Job `suspend` enable? **A:** External admission control (Kueue).
-32. What is a PDB? **A:** Limits voluntary disruptions.
-33. PDB with minAvailable = replicas? **A:** Blocks drains.
-34. What is `topologySpreadConstraints`? **A:** Even spread across topology domains.
-35. What is an ephemeral container? **A:** Debug container added to a running pod.
-36. When avoid hostPath? **A:** Almost always (security, portability).
-37. Why `automountServiceAccountToken: false`? **A:** Reduce credential exposure.
-38. Why not Deployments for training? **A:** Wrong semantics (restart forever, no completion).
-39. Why gang scheduling for distributed training? **A:** All-or-nothing starts avoid deadlock/idle GPUs.
-40. What are the character-length limits for Kubernetes label keys and values, and what `kubectl rollout` commands pause, resume, or roll back a Deployment to revision `3`? **A:** Label keys have an optional DNS subdomain prefix up to `253` characters plus `/` and a required name up to `63` characters (`[a-zA-Z0-9]`, `-`, `_`, `.`, starting/ending alphanumeric); values are up to `63` characters with the same rules; use `kubectl rollout pause deployments <name>`, `kubectl rollout resume deployments <name>`, and `kubectl rollout undo deployments <name> --to-revision=3`.
+1. **Pod Design (`KUR` Ch. 5), Init Containers vs. Native Sidecars, and Effective Scheduling Requests:** Using `compute_pod_qos_and_effective_requests()` in `code/part05/pod_qos_workload_validator.py`, explain `KUR` Chapter 5's rule for deciding what belongs in a single Pod vs separate Pods, how ` kube-scheduler` calculates a Pod's effective resource request across `initContainers` and `containers` ($\max(\max(\text{init}), \sum(\text{app}))$), and how native sidecars (`initContainers` with `restartPolicy: Always`) solve the Job-completion hang caused by traditional sidecar containers.
+2. **Labels, Annotations, and Selector Queries (`KUR` Chapter 6):** Using `validate_k8s_label()` in `code/part05/pod_qos_workload_validator.py`, state the exact character and length rules for Kubernetes label keys (optional `253`-char DNS subdomain prefix + `/` + `63`-char name) and values (`63` chars), contrast labels with annotations (`deployment.kubernetes.io/revision`, `kubernetes.io/change-cause`), and write `kubectl get pods` selector queries using both equality (`=`, `!=`) and set-based (`in`, `notin`, `!canary`) operators.
+3. **Resource Requests, Limits, Extended Resources (`nvidia.com/gpu`), QoS Classes, and `/dev/shm` Accounting:** Using `compute_pod_qos_and_effective_requests()`, compare `Guaranteed` (`oom_score_adj: -997`), `Burstable`, and `BestEffort` (`oom_score_adj: 1000`) QoS classes, explain why many AI platform teams set `requests.memory == limits.memory` while omitting `limits.cpu` (or using static CPU Manager with `Guaranteed` QoS), and explain how `emptyDir: { medium: Memory, sizeLimit: 64Gi }` at `/dev/shm` is charged against the container's memory cgroup limit.
+4. **Pod Termination Sequence, the `EndpointSlice` vs. `SIGTERM` Race, and Probes for Slow-Starting 140 GB LLM Servers (`PK` Chapter 14):** Trace the parallel timeline when `kubectl delete pod` is called (`deletionTimestamp` -> `EndpointSlice` removal racing with `preStop` -> `SIGTERM` -> `terminationGracePeriodSeconds` -> `SIGKILL`), and design the `startupProbe`, `readinessProbe`, `livenessProbe`, and `preStop` configuration for a `vllm-llama` server that takes 12 minutes to load model weights and capture CUDA graphs.
+5. **Production Workload Manifests (`Deployment` + `PDB`, `StatefulSet`, `DaemonSet`, and `Indexed` `Job`):** Compare the four production manifests in Section 3 (`vllm-llama` `Deployment` + `PodDisruptionBudget`, `qdrant` `StatefulSet` with `volumeClaimTemplates`, `dcgm-exporter` `DaemonSet` with `operator: Exists` toleration, and `embed-corpus-142` `Indexed` `Job` with `podFailurePolicy` and `suspend: true`), and explain why `maxSurge: 1, maxUnavailable: 0` stalls on a GPU node pool with 0 free GPUs.
+6. **Controlling Rollouts (`KUR` Chapter 10), Ephemeral Debug Containers (`kubectl debug`), and Organizing Multi-Region Releases (`KUR` Chapter 22):** Write the `kubectl rollout` commands to `pause`, `resume`, inspect `history --revision=2`, and `undo --to-revision=3`, show how `kubectl debug` troubleshoots a distroless container or node, and summarize `KUR` Chapter 22's three rules for organizing application YAML across `Development -> Staging -> Canary -> Production` regions.
 
-## 10. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. In *Kubernetes: Up and Running* Chapter 5, what question decides whether two containers belong in the same Pod or in separate Pods, and what do containers inside a Pod share?</summary>
 
-- Brendan Burns, Joe Beda, Kelsey Hightower and Lachlan Evenson, *Kubernetes: Up and Running* (`kubernetes-up-and-running-3rd-edition`, 3rd edition; Chapter 4: `4. Common kubectl Commands`, Chapter 5 on pods, Chapter 6: `6. Labels and Annotations`, Chapters 9 to 12 including Chapter 10: `10. Deployments`, and Chapter 22 on running batch and stateful workloads — Chapters 4, 6, and 10 read in full for `kubectl` context/last-applied/attach/completion commands, label syntax rules and selectors, and Deployment rollout pause/resume/undo/change-cause mechanics).
-- Josh Rosso, Rich Lander, Alex Brand and John Harris, *Production Kubernetes* (chapter 14 on application considerations: resource requests, probes, graceful shutdown, config).
-- Kubernetes documentation for pods, workloads, QoS, probes, PDBs and Job features.
-- Examples are the author's constructions.
+- **The design question:** *"Will these containers work correctly if they land on different machines?"* If they must share local files or fate on the same host (e.g., an inference server and a local weight-cache warmer/telemetry sidecar sharing an `emptyDir`), put them in the **same Pod**. If they scale independently or have distinct lifecycles (e.g., a web frontend and a database), put them in **separate Pods**.
+- **What containers in a Pod share:** The Pod Sandbox's **Network namespace** (same IP address, port space, and `localhost` loopback), **IPC namespace** (`/dev/shm`), **UTS namespace** (hostname), declared **Volumes**, and a parent **Pod cgroup slice** (optionally the PID namespace if `shareProcessNamespace: true` is set).
+</details>
 
-**Flagged for verification before publishing:** feature status for native sidecars, in-place resize, image volumes, `backoffLimitPerIndex`, `podFailurePolicy` and `persistentVolumeClaimRetentionPolicy` in your Kubernetes version; default timings and values; image tags in examples; and every manifest; all labs are **untested**.
+<details>
+<summary>2. In `KUR` Chapter 5, what is the difference between `400m` and `400Mi` (or `400M`) in a Pod's `resources` block?</summary>
+
+Case matters in Kubernetes resource quantities:
+- **Lowercase `m` (`400m`)** stands for **milli-units** ($400 \times 10^{-3} = 0.4$). On `cpu: 400m`, it means **0.4 CPU cores**; if accidentally written on `memory: 400m`, it means **0.4 bytes** of RAM.
+- **Uppercase `Mi` (`400Mi`) / `M` (`400M`)** stands for **mebibytes** ($400 \times 2^{20}$ bytes) / **megabytes** ($400 \times 10^6$ bytes). Always use `m` for fractional CPUs (`500m`) and `Mi`/`Gi` for memory (`64Gi`, `800Gi`).
+</details>
+
+<details>
+<summary>3. In `KUR` Chapter 6, what are the exact character-length and syntax rules for Kubernetes Label keys and values?</summary>
+
+- **Label key (`[prefix/]name`):**
+  1. **Optional prefix:** Valid DNS subdomain up to **`253` characters** (`[a-z0-9-.]`), followed by `/`.
+  2. **Required name:** **`1` to `63` characters**, starting and ending with an alphanumeric character (`[a-zA-Z0-9]`), with dashes (`-`), underscores (`_`), dots (`.`), and alphanumerics allowed in between.
+- **Label value:** Up to **`63` characters**, either empty or following the exact same character rules as the label key name.
+</details>
+
+<details>
+<summary>4. How does `kube-scheduler` calculate a Pod's effective resource request when the Pod has both `initContainers` and regular `containers`?</summary>
+
+Because `initContainers` run **sequentially one at a time** before `containers` start (unless they are native sidecars), `kube-scheduler` takes the **highest request among all `initContainers`** for each resource type (`cpu`, `memory`, `nvidia.com/gpu`) and compares it against the **sum of requests across all regular `containers`** (plus any active native sidecars):
+$$\text{EffectivePodRequest}(R) = \max\left(\max_{i \in \text{init}} \text{req}_i(R),\; \sum_{c \in \text{app}} \text{req}_c(R)\right)$$
+</details>
+
+<details>
+<summary>5. What is a Native Sidecar Container (`initContainers` with `restartPolicy: Always`), and what classic `Job` bug does it fix?</summary>
+
+Previously, if you put a helper container (such as an Istio/Envoy proxy, Cloud SQL proxy, or log shipper) alongside a batch worker inside `spec.containers` of a `Job`, the main worker container would finish and exit `0`, **but the sidecar container kept running forever—leaving the Pod stuck in `Running` (`1/2 Ready`) so the `Job` never completed**.
+Defining the sidecar inside **`initContainers` with `restartPolicy: Always`** makes it a **native sidecar**: `kubelet` starts it in order during Pod init (waiting for its `startupProbe`/`readinessProbe` before starting subsequent init/app containers), keeps it alive throughout the Pod's run, and **automatically terminates the native sidecar once all regular `spec.containers` in the `Job` Pod have exited**.
+</details>
+
+<details>
+<summary>6. How are the three Pod QoS Classes (`Guaranteed`, `Burstable`, `BestEffort`) derived, and how do they set `/proc/<pid>/oom_score_adj`?</summary>
+
+QoS class is computed automatically by `kube-apiserver` from container `resources` (never set via a field):
+1. **`Guaranteed` (`oom_score_adj: -997`):** **Every** container in the Pod sets both `memory` and `cpu` `requests` and `limits`, and `requests.cpu == limits.cpu` and `requests.memory == limits.memory`. Protected from eviction unless system daemons exceed reserved memory; required for static CPU Manager exclusive core pinning.
+2. **`Burstable` (`oom_score_adj: 2..999`, scaled by % of node RAM requested):** At least one container sets a CPU or memory request or limit, but the Pod does not meet the `Guaranteed` criteria.
+3. **`BestEffort` (`oom_score_adj: 1000`):** **Zero** containers in the Pod set any CPU or memory requests or limits. First to be killed by the kernel OOM killer or kubelet eviction under memory pressure.
+</details>
+
+<details>
+<summary>7. Why does mounting `/dev/shm` via `emptyDir: { medium: Memory, sizeLimit: 64Gi }` affect container `OOMKilled` behavior?</summary>
+
+In Kubernetes, files written to a `tmpfs` volume (`emptyDir` with `medium: Memory`) reside in host RAM and **every page in that `tmpfs` is charged directly against the writing container's memory cgroup (`memory.current`)**. If your container has `limits.memory: 80Gi`, your Python training process uses 50 GiB of heap/pinned RAM, and PyTorch DataLoader workers + NCCL buffers write 35 GiB into `/dev/shm`, total cgroup memory hits $50 + 35 = 85\text{ GiB} > 80\text{ GiB}$—triggering an immediate kernel **`OOMKilled` (exit code 137)**. Always set `limits.memory` to cover **process RSS + pinned host memory + `/dev/shm` `sizeLimit` + page cache**.
+</details>
+
+<details>
+<summary>8. What are the rules for requesting Extended Resources like `nvidia.com/gpu` or `rdma/hca_shared_devices_a` in a Pod spec?</summary>
+
+1. Extended resource quantities must be **whole integers** (you cannot request `nvidia.com/gpu: 0.5`; for sub-GPU sharing, use MIG resource names like `nvidia.com/mig-1g.10gb` or time-slicing replicas).
+2. Extended resources **cannot be overcommitted**, so `requests` and `limits` must be equal (if you specify `limits: { nvidia.com/gpu: 4 }` and omit `requests`, Kubernetes automatically defaults `requests` to `4`).
+</details>
+
+<details>
+<summary>9. Walk through the exact sequence of events when a Pod is deleted (`kubectl delete pod`), and explain why `preStop: { exec: { command: ["sleep", "10"] } }` prevents dropped HTTP/gRPC requests (`PK` Chapter 14).</summary>
+
+When `DELETE` is called on a Pod, **two paths run concurrently in parallel**:
+- **Path A (Control Plane -> Nodes):** `kube-apiserver` sets `metadata.deletionTimestamp` (`Terminating`). The `EndpointSlice` controller notices the Pod is terminating and removes its IP from `EndpointSlice`s; `kube-proxy` and Ingress/Envoy proxies watch `EndpointSlice`s and update their local iptables/IPVS/upstream tables. **This propagation takes 1–5 seconds across a large cluster.**
+- **Path B (Target Node `kubelet`):** `kubelet` sees `deletionTimestamp`, immediately executes any **`lifecycle.preStop` hook**, and once `preStop` finishes, sends **`SIGTERM` to PID 1** in each container (waiting up to `terminationGracePeriodSeconds` before sending `SIGKILL`).
+If the container has no `preStop` delay and closes its listening socket the millisecond `SIGTERM` arrives, Path B finishes **before** Path A finishes updating `kube-proxy`/Ingress—so new requests continue arriving at a closed socket (`502 Bad Gateway` / `Connection reset`). A `preStop` `sleep 10` keeps the server accepting connections during those 10 seconds while `EndpointSlice` removal propagates cluster-wide, after which `SIGTERM` triggers a clean drain of in-flight requests.
+</details>
+
+<details>
+<summary>10. How do `startupProbe`, `readinessProbe`, and `livenessProbe` work together for an LLM inference server (`vllm-llama`) that takes 15 minutes to load 140 GB of weights?</summary>
+
+1. **`startupProbe` (`periodSeconds: 10, failureThreshold: 180` = up to 30 minutes):** Runs first and **disables both `livenessProbe` and `readinessProbe` until it succeeds once**. This gives `vllm` up to 30 minutes to download/mmap weights and capture CUDA graphs without `livenessProbe` killing and restarting the container mid-load.
+2. **`readinessProbe` (`periodSeconds: 5`):** Runs continuously after `startupProbe` succeeds; if it fails (e.g., temporary overload), the Pod's IP is removed from Service `EndpointSlice`s **without restarting the container**.
+3. **`livenessProbe` (`periodSeconds: 20, failureThreshold: 6`):** Restarts the container **only** if the server process is genuinely deadlocked/unresponsive for 2 full minutes after startup.
+</details>
+
+<details>
+<summary>11. Why does a GPU `Deployment` with `rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }` hang indefinitely when all GPUs in the node pool are already in use?</summary>
+
+`maxUnavailable: 0` forbids terminating any existing Pod until a new replacement Pod is `Ready`, while `maxSurge: 1` tries to schedule 1 extra Pod first. If your node pool has 12 GPUs and 3 replicas $\times 4\text{ GPUs} = 12\text{ GPUs}$ are already allocated, the 4th surge Pod stays permanently **`Pending` (`0/N nodes are available: Insufficient nvidia.com/gpu`)**. On fixed-capacity GPU pools without spare surge GPUs, set **`maxSurge: 0, maxUnavailable: 1`** (so 1 old replica terminates first to free 4 GPUs for the new replica).
+</details>
+
+<details>
+<summary>12. In `KUR` Chapter 10, where must the `kubernetes.io/change-cause` annotation be placed, and what `kubectl rollout` commands inspect, pause, resume, or undo a Deployment?</summary>
+
+Record `kubernetes.io/change-cause` in `metadata.annotations` (or `spec.template.metadata.annotations` when updating the template), and manage the rollout with:
+- **`kubectl rollout status deployments kuard`**: watch rollout completion.
+- **`kubectl rollout pause deployments kuard`** & **`kubectl rollout resume deployments kuard`**: freeze a rollout mid-flight (e.g., for canary inspection) and resume it.
+- **`kubectl rollout history deployment kuard`** & **`kubectl rollout history deployment kuard --revision=2`**: list revisions and inspect a specific revision's Pod template.
+- **`kubectl rollout undo deployments kuard`** & **`kubectl rollout undo deployments kuard --to-revision=3`**: roll back to the previous revision or revision `3`.
+</details>
+
+<details>
+<summary>13. How does a `PodDisruptionBudget` (`PDB`) work, and why does setting `minAvailable: 3` on a 3-replica Deployment break cluster maintenance?</summary>
+
+A `PodDisruptionBudget` governs **voluntary disruptions** initiated through the Kubernetes **Eviction API** (`kubectl drain`, cluster autoscaler scale-down, node upgrades; it does *not* prevent hardware crashes or OOM kills). If a Deployment has `replicas: 3` and its PDB specifies `minAvailable: 3` (or `maxUnavailable: 0`), the disruption budget is **`0` (`DisruptionsAllowed: 0`)**—so `kubectl drain` on any node hosting one of those Pods will be **blocked forever** (`Cannot evict pod as it would violate the pod's disruption budget`). Always ensure `minAvailable < replicas` (or `maxUnavailable >= 1`).
+</details>
+
+<details>
+<summary>14. Why does mounting a `ConfigMap` or `Secret` using `subPath` prevent automatic live updates when the `ConfigMap` changes?</summary>
+
+Normally, when a `ConfigMap` or `Secret` volume is mounted as a directory (`mountPath: /etc/config`), `kubelet` uses an atomic symlink swap (`..data`) to update the files inside the container within ~60 seconds of a `ConfigMap` update. However, when you mount a single file using **`subPath: config.yaml`**, the Linux kernel bind-mounts that specific inode directly; when `kubelet` later swaps the symlink on the directory, **the container's bind-mounted `subPath` inode still points to the old file and NEVER updates** until the Pod is restarted.
+</details>
+
+<details>
+<summary>15. Why does `fsGroup: 10001` in `securityContext` sometimes cause a Pod mounting a 10 TB dataset volume with 5 million files to hang for 20 minutes in `ContainerCreating`, and what fixes it?</summary>
+
+By default (`fsGroupChangePolicy: Always`), before starting the container, `kubelet` recursively walks **every file and directory** in the mounted volume (`chown`/`chmod`) to ensure group ownership matches `fsGroup: 10001`. On a volume with millions of training images or checkpoints, recursive `chown` takes 10–30 minutes. Setting **`fsGroupChangePolicy: OnRootMismatch`** in `spec.securityContext` tells `kubelet` to check only the volume's top-level root directory—and skip the recursive walk if the root directory already has the right group ownership.
+</details>
+
+<details>
+<summary>16. Why do RDMA / InfiniBand GPU training Pods often require `capabilities: { add: ["IPC_LOCK"] }` and `ulimit memlock: unlimited`?</summary>
+
+GPUDirect RDMA (`nvidia-peermem`) and InfiniBand verbs (`libibverbs` / `mlx5`) register and **pin memory pages (`mlock`)** in physical RAM so the NIC DMA engine can read/write GPU and host buffers directly without the OS paging them out. Without the **`IPC_LOCK`** Linux capability (and a sufficient `RLIMIT_MEMLOCK` ulimit, configured on the container runtime), unprivileged containers are capped at a small default `memlock` limit (e.g., 64 KiB) and NCCL RDMA initialization fails with `ibv_reg_mr failed: Cannot allocate memory`.
+</details>
+
+<details>
+<summary>17. Why shouldn't you use a plain `Job` with `parallelism: 16` (without `Kueue` or `JobSet`/`PyTorchJob` gang scheduling) for a 16-node synchronous PyTorch `torchrun` training job?</summary>
+
+In synchronous distributed training (`torchrun` / MPI), **all 16 ranks must start and join the `c10d`/NCCL rendezvous barrier before step 1 can begin**. If the cluster currently has only 12 free GPU nodes and you submit a plain `Job` with `parallelism: 16`, `kube-scheduler` immediately starts 12 Pods (which sit idle burning 96 H100 GPUs waiting at the barrier) while the remaining 4 Pods sit `Pending`. Worse, if a second 16-node job claims the remaining 4 nodes, **both jobs deadlock forever**. Using **Kueue** (or Volcano / coscheduling) with **JobSet / PyTorchJob** enforces **all-or-nothing gang admission** so pods are scheduled only when all 16 nodes are available.
+</details>
+
+<details>
+<summary>18. How do you debug a running `distroless` or minimal container that does not contain `/bin/sh`, `bash`, `ps`, or `ss`, and how do you debug a node when SSH is disabled?</summary>
+
+- **Debug a distroless Pod with an Ephemeral Container (`kubectl debug`):**
+  `kubectl debug -it trainer-0 --image=nicolaka/netshoot --target=trainer`
+  This injects an ephemeral debugging container (`spec.ephemeralContainers`) into the running Pod that shares the `trainer` container's network, IPC, and **process (`PID`) namespace** (so `ps aux`, `ss -tulpn`, and `/proc/1/root/...` inside `netshoot` inspect the live `trainer` process).
+- **Debug a node without SSH:**
+  `kubectl debug node/gpu-node-01 -it --image=ubuntu`
+  This launches a privileged debug Pod on `gpu-node-01` with the host's root filesystem mounted at **`/host`** (`chroot /host`).
+</details>
+
+<details>
+<summary>19. In *Production Kubernetes* Chapter 14, how does a container discover its own cgroup memory limit or Pod IP via the Downward API?</summary>
+
+The **Downward API** exposes Pod metadata (`metadata.name`, `metadata.namespace`, `metadata.labels`, `metadata.annotations`, `status.podIP`, `spec.nodeName`, `spec.serviceAccountName`) via `fieldRef` and container resource requests/limits (`requests.cpu`, `limits.cpu`, `requests.memory`, `limits.memory`) via **`resourceFieldRef`** as either environment variables or files in a `downwardAPI` volume:
+```yaml
+env:
+  - name: MEM_LIMIT
+    valueFrom:
+      resourceFieldRef:
+        containerName: my-app
+        resource: limits.memory
+```
+</details>
+
+<details>
+<summary>20. In *Kubernetes: Up and Running* Chapter 22, what are the three core rules for organizing and rolling out Kubernetes applications in production?</summary>
+
+1. **Treat the filesystem in Git as the single source of truth** (never treat `etcd` mutated by manual `kubectl` commands as truth; organize manifests cleanly by service and lifecycle stage/region).
+2. **Enforce code review on all manifest and parameter changes** before they reach any cluster.
+3. **Follow a strict, unskipped progression across lifecycle and regional stages** (`Development -> Staging -> Canary -> Low-Traffic Production Region -> High-Traffic Production Region`), decoupling code deployment from feature activation via **feature flags** and parameterizing environment differences via **Helm / Kustomize templates**.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 4: Common kubectl Commands**, **Chapter 5: Pods** (read in full: thinking with Pods, Pod manifests, `emptyDir`/`nfs` volumes, resource requests vs limits `400m` vs `400Mi`, liveness/readiness probes), **Chapter 6: Labels and Annotations** (read in full: label key/value syntax `253`/`63` chars, selector operators, annotations), **Chapters 9–12** (ReplicaSets, Deployments `change-cause`/`pause`/`resume`/`history`/`undo`, DaemonSets, Jobs), and **Chapter 22: Organizing Your Application** (read in full: filesystems in Git as source of truth, code review, feature flags, `Development -> Staging -> Canary -> Production` & regional rollout progression, and Helm parameterization).
+  - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 14: Application Considerations** (read in full: ConfigMaps/Secrets vs HashiCorp Vault, Downward API `resourceFieldRef` `MEM_LIMIT`, resource requests/limits and OOM behavior, `SIGTERM` signal handling + `preStop` hooks, liveness/readiness probes, structured logging, Prometheus `/metrics`, and OpenTracing/Jaeger distributed tracing).
+- **Run here:** `python3 code/part05/pod_qos_workload_validator_lab.py` (2 passed, 0 failed).
+- **Explicitly labelled inferences:** The `compute_pod_qos_and_effective_requests` and `validate_k8s_label` models in `code/part05/pod_qos_workload_validator.py` and the `trainer-0` Pod, `vllm-llama` Deployment + PDB, `qdrant` StatefulSet, `dcgm-exporter` DaemonSet, and `embed-corpus-142` Indexed Job manifests are the author's constructions synthesizing `KUR` Chapters 4–6, 9–12, 22 and `PK` Chapter 14 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Not verified on live hardware:** Live `kubectl` workload deployments and debugging commands (`terminationGracePeriodSeconds: 600` / `120` / `30`, UID `10001`, `cpu: "64", memory: 800Gi, nvidia.com/gpu: 8`, `failureThreshold: 120` / `180`, `sizeLimit: 64Gi` / `16Gi`, `253`/`63` chars, `oom_score_adj` `-997`/`1000`, `progressDeadlineSeconds: 1800`, `--tensor-parallel-size 4`, `--max-model-len 8192`, `minAvailable: 2`, `qdrant:v1.9.0`, `6333`, `200Gi`, `dcgm-exporter:3.3.5-3.4.1`, `9400`, `completions: 16`, `ttlSecondsAfterFinished: 86400`, exit code `42` / `137`, `140 GB` model) are marked (`untested here`) where not executed by `pod_qos_workload_validator_lab.py`.
