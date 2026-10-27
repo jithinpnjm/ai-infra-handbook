@@ -12,7 +12,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 1.2 | The command line: shells, commands, pipes and redirection | drafted | 12134 |  |
 | 1.3 | Files and the directory hierarchy: paths, links, inodes | drafted | 8328 |  |
 | 1.4 | Text-processing essentials: grep, sed, awk, find, xargs, sort | drafted | 6636 |  |
-| 1.5 | Working remotely: SSH keys, file transfer, tmux and editors | drafted | 6300 |  |
+| 1.5 | Working remotely: SSH keys, file transfer, tmux and editors | drafted | 7823 |  |
 | 1.6 | Users, groups, permissions, ACLs, sudo and user environments | drafted | 10132 |  |
 | 1.7 | Packages, repositories and software installation | drafted | 14483 |  |
 | 1.8 | Processes, signals and job control | drafted | 12717 |  |
