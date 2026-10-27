@@ -80,7 +80,23 @@ except Exception as X:
 # Here X is unbound (raises NameError: name 'X' is not defined), whereas saveit is ZeroDivisionError('division by zero')
 ```
 
-- **Custom exceptions**: derive from `Exception` (or an application base), name them for the condition (`NodeUnreachable`), carry data as attributes, keep a shallow hierarchy.
+- **Custom exceptions (`NodeUnreachable`), category hierarchies (`NumErr`), and structured state (`FormatError`, `LP` Chapter 35)**: derive from `Exception` (never a standalone class that doesn't inherit from `BaseException`), name them for the condition (`NodeUnreachable`), and organize library exceptions under a common superclass category (such as `class NumErr(Exception): pass` with subclasses `Divzero(NumErr)`, `Oflow(NumErr)`, and `Uflow(NumErr)`, or `General` -> `Specific1`, `Specific2` in `categoric.py`) so callers catching `except mathlib.NumErr:` automatically catch future subclasses like `Uflow` without editing their `except` list. Any positional arguments passed to `Exception(...)` are stored in the `exc.args` tuple and displayed by `str(exc)` (to customize display, override `__str__` rather than `__repr__` because built-in `BaseException` already defines `__str__`). Better yet, attach explicit attributes and behavior methods (`class FormatError(Exception): def __init__(self, line, file): self.line = line; self.file = file; def logerror(self): ...` in `parsely.py`).
+- **Control-flow and syntactic `try` nesting (`action1..3`), `sys.exc_info()` vs `sys.exception()`, and bare `except:` traps (`LP` Chapters 33, 34, 36)**:
+  - Unlike true backtracking, Python exceptions do **not** undo mutations performed before the exception was raised (`L.append('added')` inside a `try` block stays in `L` after `except IndexError:`), and once an `except` block finishes, execution continues **after** the `try` statement rather than resuming at the line that raised.
+  - Python stacks active `try` handlers at runtime (whether nested across function calls `action1 -> action2 -> action3` in `nested_exc_normal.py` or nested syntactically): when an exception is raised, Python unwinds to the nearest matching `except`, executing **every** enclosing `finally` block along the way (`Inner try` -> `Outer try`).
+  - Inside an `except` handler without an `as var` target, **`sys.exception()`** (added in Python 3.11) returns the active exception instance directly, while **`sys.exc_info()`** returns the 3-tuple `(exc_type, exc_value, exc_traceback)` used by `traceback.print_exc(file=open('badly.txt', 'w'))` (`badly.py`) and `traceback.format_exc()`.
+  - Two classic bugs show why bare `except:` is dangerous (`LP` Chapter 36 `exiter.py`): (1) `sys.exit(62)` raises `SystemExit` (a subclass of `BaseException`, not `Exception`), so a bare `except:` catches and ignores the exit request (`Got it -> Continuing...`) instead of terminating; and (2) `try: x = myditctionary[key] except: x = None` silently catches the `NameError` from the misspelled variable name `myditctionary` and turns a typo into silent data corruption.
+
+```mermaid
+flowchart TD
+    Try["Execute try: block"] --> Check{"Exception raised?"}
+    Check -->|No| Else["Run else: block<br/>(only if try succeeded)"]
+    Check -->|Yes| Match{"Matches except Exc as var?"}
+    Match -->|Yes| Handler["Run except block<br/>(sys.exception() / var.__cause__)<br/>then auto-run: del var"]
+    Match -->|No| FinallyUnwind["Run finally: block<br/>and propagate exception upward"]
+    Else --> FinallyOk["Run finally: block<br/>and continue after try"]
+    Handler --> FinallyOk
+```
 
 ```python
 class OpsError(Exception):
@@ -99,10 +115,10 @@ def load_config(path):
     ...
 ```
 
-- **Assertions** (`assert cond, "message"`) check programmer assumptions in tests and internal invariants; they are removed with `python -O`, so never use them for input validation or security checks.
+- **Assertions** (`assert cond, "message"`, `LP` Chapter 34 `asserter.py`, equivalent to `if __debug__: if not cond: raise AssertionError("message")`) check programmer assumptions in tests and internal invariants; they are compiled out completely when running with `python -O` (setting `__debug__ == False`), so never use them for input validation or security checks.
 - **Warnings** (`warnings.warn("x is deprecated", DeprecationWarning, stacklevel=2)`), controlled by `-W` flags and filters; tests can turn them into errors.
-- **Exception groups (3.11)**: `ExceptionGroup("batch failed", [e1, e2])` and `except* ValueError:` handle multiple simultaneous errors (used by `asyncio.TaskGroup`, chapter 3.6).
-- **Context managers** interplay: `__exit__` receives the exception; returning True suppresses it; `contextlib.suppress(FileNotFoundError)` for expected cases.
+- **Exception groups (3.11, `LP` Chapter 35)**: `ExceptionGroup("batch failed", [IndexError(), TypeError(1), TypeError(2)])` and **`except*`** (`except* IndexError as E:` followed by `except* TypeError as E:`) can execute **multiple** handler clauses for a single `try` statement, binding `E` to a sub-`ExceptionGroup` containing all matching exceptions (`E.exceptions`), while any unmatched exceptions propagate upward in a remaining `ExceptionGroup` (used by `asyncio.TaskGroup`, chapter 3.6; note that `except*` cannot be mixed with plain `except` in the same `try`, and cannot contain `return`, `break`, or `continue`).
+- **Context managers (`LookingGlass` and `@contextmanager looking_glass`, `FP` Chapter 18 & `LP` Chapter 34)**: `with expr1 as v1, expr2 as v2:` (or parenthesized multi-line `with (open('lines1.txt') as input, open('uppers.txt', 'w') as output):` in Python 3.10+) guarantees deterministic teardown (`decimal.localcontext()`, `threading.Lock()`, files). In *Fluent Python* Chapter 18 (`Examples 18-1` to `18-8`, modeled in `code/part03/python_errors_files_subprocess.py`), `LookingGlass.__enter__(self)` monkey-patches `sys.stdout.write` to reverse printed strings and returns `'JABBERWOCKY'` (bound to the `as what` variable), while `__exit__(self, exc_type, exc_value, traceback)` restores `sys.stdout.write` and, if `exc_type is ZeroDivisionError`, logs a divide-by-zero message and returns `True` to suppress the exception. When writing the equivalent `@contextlib.contextmanager def looking_glass():` generator, **you must wrap the `yield` in a `try ... finally:` block** (`try: yield 'JABBERWOCKY' except ZeroDivisionError: ... finally: sys.stdout.write = original_write`), because an unhandled exception inside the `with` body is thrown into the generator at the `yield` point via `gen.throw(exc)`. And when a function needs to enter a dynamic or variable number of context managers (such as opening an arbitrary list of files without nested `with` blocks), use **`contextlib.ExitStack`** (`with ExitStack() as stack: files = [stack.enter_context(open(f)) for f in filenames]`), which unwinds all registered callbacks and context managers in LIFO order on exit.
 
 ### Error-handling strategy for tools and services
 
@@ -254,14 +270,23 @@ except BlockingIOError:
 
 ### `shutil`, archives and compression
 
-`shutil.copy2` (preserves metadata), `copytree(dirs_exist_ok=True)`, `move`, `rmtree` (dangerous: validate the path!), `disk_usage`, `which`, `make_archive`, `unpack_archive`; `tarfile` (beware path traversal when extracting untrusted archives: use `filter="data"` in 3.12+ or validate members), `zipfile`, `gzip`, `bz2`, `lzma`, `zlib`; `hashlib.sha256` streaming digests for integrity of artifacts (`for chunk in iter(lambda: f.read(1<<20), b""): h.update(chunk)`).
+`shutil.copy2` (preserves metadata), `copytree(dirs_exist_ok=True)`, `move`, `rmtree` (dangerous: validate the path first), `disk_usage`, `which`, `make_archive`, `unpack_archive`; `Path.walk` (3.12+); `tarfile` (beware path traversal when extracting untrusted archives: use `filter="data"` in 3.12+ or validate members), `zipfile`, `gzip`, `bz2`, `lzma`, `zlib`; `hashlib.sha256` streaming digests for integrity of artifacts (`for chunk in iter(lambda: f.read(1<<20), b""): h.update(chunk)`).
 
 ## 4. Text, bytes and encodings in practice
 
-- **Rule**: decode at the input boundary, work with `str` internally, encode at the output boundary. `bytes` ↔ `str` only via `.decode()`/`.encode()`.
-- **UTF-8** everywhere; set `PYTHONUTF8=1` (or `-X utf8`) to make UTF-8 the default regardless of locale (helps containers with `LANG=C`). Check `sys.getdefaultencoding()`, `locale.getpreferredencoding(False)`, `sys.stdout.encoding`, `sys.getfilesystemencoding()`.
-- **Unicode errors**: `UnicodeDecodeError` means bytes aren't valid in the assumed encoding. Diagnose with `file -i`, `chardet`/`charset-normalizer`, `bytes.decode("utf-8", errors="replace")`; for opaque bytes in file names use `os.fsdecode`/`os.fsencode` and `surrogateescape`.
-- **Binary protocols**: `struct.pack("<IHB", 1, 2, 3)`, `struct.unpack_from`, `int.from_bytes(b, "big")`, `.to_bytes(4, "little")`, `memoryview`, `bytearray`; endianness (network order is big-endian: `!`); `ctypes`/`cffi` for C structures; `construct`/`kaitai` for complex formats.
+- **Rule (`LP` Chapter 37 & `FP` Chapter 4)**: decode at the input boundary, work with `str` internally, encode at the output boundary. Python 3 strictly separates three string/byte types:
+  1. **`str`**: an immutable sequence of Unicode code points (`ord('a') == 97 == 0x61`, `ord('Ä') == 196 == 0xc4`, `ord('🙂') == 128578 == 0x1f642`; literals support `\xNN`, `\uNNNN`, `\UNNNNNNNN`, and `\N{NAME}` escapes).
+  2. **`bytes`**: an immutable sequence of 8-bit integers (`0..255`, where `b'code'[0] == 99`, slicing `b'code'[1:3] == b'od'` returns `bytes`, and mixing `b'ab' + 'cd'` or `open('temp.txt', 'w').write(b'abc\n')` raises `TypeError`).
+  3. **`bytearray`**: a mutable sequence of 8-bit integers (`C = bytearray(b'code'); C[0] = ord('x'); C.extend(b'LMNO')`).
+  In `LP` Chapter 37's `'AÄBèC'` example (`len('AÄBèC') == 5` characters), encoding to UTF-8 (`'AÄBèC'.encode('utf-8')`) produces **7 bytes** (`b'A\xc3\x84B\xc3\xa8C'`, taking 2 bytes for each accented character), whereas encoding to Latin-1 (`'AÄBèC'.encode('latin-1')`) produces **5 bytes** (`b'A\xc4B\xe8C'`, 1 byte per character for code points `0..255`), and `'AÄBèC'.encode('ascii')` raises `UnicodeEncodeError`.
+- **UTF-8 and the 4 default encodings (`LP` Chapter 37 & `FP` Chapter 4)**: Python queries four distinct encoding settings—`sys.getdefaultencoding()` (`'utf-8'`), `locale.getpreferredencoding(False)` (default for `open()` when `encoding=` is omitted; can be `'ANSI_X3.4-1968'`/`ASCII` in containers with `LANG=C` or `'cp1252'` on Windows), `sys.stdout.encoding` (overridden by `PYTHONIOENCODING`), and `sys.getfilesystemencoding()` (used by `os.listdir`/`os.walk`, which return `str` paths when passed a `str` directory or `bytes` paths when passed a `bytes` directory like `os.walk(b'.')`). Set **`PYTHONUTF8=1`** (or `-X utf8`, PEP 540/597/686) and always pass `encoding="utf-8"` explicitly.
+- **Unicode errors and BOMs**: `UnicodeDecodeError` means bytes aren't valid in the assumed encoding (and `UnicodeEncodeError` when characters cannot be represented in the target codec, handled via `errors="ignore"|"replace"|"xmlcharrefreplace"|"backslashreplace"`). Diagnose with `file -i`, `chardet`/`charset-normalizer`, or `bytes.decode("utf-8", errors="replace")`; for opaque undecodable bytes in OS filenames use `os.fsdecode`/`os.fsencode` and **`errors="surrogateescape"`** (PEP 383, which maps lone bytes `0x80..0xFF` to low surrogate code points `U+DC80..U+DCFF` on decode and restores the exact original bytes on encode). UTF-16 (`b'\xff\xfe'` little-endian `utf-16-le` or `b'\xfe\xff'` big-endian `utf-16-be`) and Windows UTF-8 files often prepend a Byte Order Mark (**BOM**); use **`encoding="utf-8-sig"`** to strip an optional UTF-8 BOM (`b'\xef\xbb\xbf'`) transparently on read.
+- **Unicode normalization (`NFC`, `NFD`, `NFKC`, `NFKD`), `casefold()`, `shave_marks_latin()`, and `str` vs `bytes` regexes (`FP` Chapter 4 & `LP` Chapter 37)**:
+  - Precomposed `'caf\u00e9'` (`len == 4`) and decomposed `'cafe\u0301'` (`len == 5`, `'e'` + `COMBINING ACUTE ACCENT`) render identically as `'café'` but compare unequal (`s1 == s2` is `False`) until normalized with **`unicodedata.normalize('NFC', s)`** (`nfc_equal(s1, s2)` is `True`; W3C recommends `'NFC'`, whereas `'NFKC'`/`'NFKD'` also transform compatibility characters like `'½'` -> `'1⁄2'` and `'µ'` -> `'μ'`, and singletons like Ohm `'\u2126'` normalize to Greek Omega `'\u03a9'` under `'NFC'`).
+  - For case-insensitive comparisons (`fold_equal`), normalize with `'NFC'` and call **`.casefold()`** (`'Straße'.casefold() == 'strasse'`).
+  - To strip diacritics from Latin characters without corrupting Greek or Cyrillic text (`shave_marks_latin` in `FP` Chapter 4 `Example 4-16`), decompose with `'NFD'`, drop `unicodedata.combining(c)` marks only when the preceding base character is in `string.ascii_letters`, and recompose with `'NFC'` (`'São Paulo: Zéphyr & Ελληνικά'` -> `'Sao Paulo: Zephyr & Ελληνικά'`). For human-alphabetical sorting of accented words (`['caju', 'atemoia', 'cajá', 'açaí', 'acerola']`), use `locale.strxfrm` or `pyuca.Collator()`.
+  - In `re` regular expressions (`FP` Chapter 4 `Example 4-23 ramanujan.py`), a **`str` pattern `r'\d+'`** matches both ASCII and Unicode digits (such as Tamil digits `'\u0be7\u0bed\u0be8\u0bef'`), whereas a **`bytes` pattern `rb'\d+'`** matches only ASCII `0..9` (or pass `re.ASCII` to a `str` regex).
+- **Binary protocols (`struct`)**: `struct.pack(">i4sh", 7, b"code", 8)` (`b'\x00\x00\x00\x07code\x00\x08'` in `LP` Chapter 37) and `struct.unpack(">i4sh", B)` (`(7, b'code', 8)`), `struct.pack("<IHB", 1, 2, 3)`, `struct.unpack_from`, `int.from_bytes(b, "big")`, `.to_bytes(4, "little")`, `memoryview`, `bytearray`; endianness (network order is big-endian: `!` or `>`); `ctypes`/`cffi` for C structures; `construct`/`kaitai` for complex formats.
 - **Encodings of text protocols**: HTTP headers are Latin-1/ASCII; JSON must be UTF-8; YAML UTF-8/16; CSV from spreadsheets may be `utf-8-sig` (BOM) or `cp1252`.
 - **Newlines**: `\n` vs `\r\n`; open with `newline=""` for CSV; strip with `rstrip("\n")` or `splitlines()`.
 - **Base64/hex**: `base64.b64encode(b).decode("ascii")`, `urlsafe_b64encode`, `bytes.hex()`.
@@ -523,7 +548,15 @@ if __name__ == "__main__":
 
 Qualities to copy: single `main()` returning an exit code; `--dry-run`; idempotent steps; per-item error isolation with a failure budget; timeouts on every subprocess; logs to stderr and machine-readable results to stdout; graceful interrupt; no shell; clear error messages with command and stderr; small testable functions.
 
-## 9. Lab (untested)
+## 9. Lab
+
+First, run the self-checking Python lab (`code/part03/python_errors_files_subprocess_lab.py`) locally. It verifies `try`/`except`/`else`/`finally` execution order, the `except Exc as var` unbinding rule (`del var`), `raise ... from` (`__cause__`), and `sys.exception()` (`LP` Ch. 34 & 36), `NumErr -> Divzero` exception hierarchies and `ExceptionGroup` / `except*` selective group handling (`LP` Ch. 35), `'AÄBèC'` UTF-8 (7 B) vs Latin-1 (5 B) encoding, `struct.pack('>i4sh')`, `NFC` normalization, `casefold()`, `shave_marks_latin()`, and `r'\d+'` vs `rb'\d+'` regex matching (`LP` Ch. 37 & `FP` Ch. 4), `LookingGlass` and `@contextmanager safe_looking_glass` (`FP` Ch. 18), and `TemporaryDirectory` + `open(..., 'x')` exclusive file creation.
+
+```bash
+python3 code/part03/python_errors_files_subprocess_lab.py
+```
+
+Next, on any machine with Python 3.11+ (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **Exceptions**: write functions that raise and catch `ValueError`, `FileNotFoundError`, a custom `ConfigError` chained with `from`; demonstrate `else`/`finally`, `raise` re-raise, `suppress`, exception groups with `except*`; show what bare `except:` swallows (Ctrl-C) and why that's wrong.
 2. **Exit codes and top-level handler**: build the `main()` pattern; verify exit codes in a shell (`echo $?`), under `systemd-run --wait`, and in a Kubernetes Job (or `docker run`).
@@ -537,8 +570,6 @@ Qualities to copy: single `main()` returning an exit code; `--dry-run`; idempote
 10. **System inspection**: write a node-info script using `psutil`, `/proc`, `/sys` (CPU, memory, disks, NICs speed/MTU, load, GPU via `pynvml` if available) producing JSON; compare container vs host views.
 11. **Operational script**: implement the `drain_nodes` template against a kind cluster; add unit tests with a fake `kubectl` (a stub executable on `PATH` or monkeypatched `subprocess.run`); run in dry-run and real mode; kill it mid-run and re-run to check idempotency.
 12. **Clean up.**
-
-Mark tested only after execution.
 
 ## 10. Common mistakes
 
@@ -566,57 +597,189 @@ Mark tested only after execution.
 - "Explain text vs bytes and the failure modes of encodings."
 - "How would you process a 50 GB file safely?"
 
-## 12. Checkpoint questions (40)
+## Exercises
 
-1. When does `else` run in try? **A:** When no exception occurred in try.
-2. When does `finally` run? **A:** Always.
-3. Why not bare `except:`? **A:** Catches `KeyboardInterrupt`/`SystemExit` and hides bugs.
-4. What does `raise` alone do, and what happens to `var` after an `except Exc as var:` block exits? **A:** Bare `raise` re-raises the active exception; Python automatically unbinds (`del var`) the `as var` target when the `except` block exits (even if `var` existed in the surrounding scope) so the exception's `__traceback__` frame references do not keep local variables alive in a reference cycle.
-5. What does `raise X from Y` set? **A:** `__cause__` explicit chaining.
-6. How to suppress context? **A:** `raise X from None`.
-7. Which exception base excludes Ctrl-C from `except Exception`? **A:** `KeyboardInterrupt` derives from `BaseException`.
-8. Are assertions reliable validation? **A:** No; removed with `-O`.
-9. What is `except*` for? **A:** Handling `ExceptionGroup`s.
-10. Exit code for success? **A:** 0.
-11. Exit code convention for Ctrl-C? **A:** 130.
-12. Why log to stderr? **A:** Keep stdout for data; platforms capture stderr.
-13. Why `%s` args in log calls? **A:** Lazy formatting.
-14. Where to configure logging? **A:** In the application entry point, not libraries.
-15. Which file mode fails if the file exists? **A:** `"x"`.
-16. Why specify `encoding`? **A:** Avoid locale-dependent defaults.
-17. Flush vs fsync? **A:** Python buffer to OS vs OS to disk.
-18. What is atomic replace? **A:** Write temp in same dir, fsync, `os.replace`.
-19. Why same directory for temp? **A:** Same file system so rename is atomic.
-20. What is TOCTOU? **A:** Check-then-act race condition.
-21. How to avoid it? **A:** Attempt the operation and handle failure.
-22. How to lock with fcntl? **A:** `flock(fd, LOCK_EX | LOCK_NB)`.
-23. Why `mkstemp`? **A:** Secure unique temp files.
-24. `pathlib` over `os.path`? **A:** Object-oriented, fewer string bugs.
-25. How to stream a big file? **A:** Iterate lines or read chunks; `mmap`.
-26. `surrogateescape` use? **A:** Round-trip undecodable bytes.
-27. Safe YAML loader? **A:** `yaml.safe_load`.
-28. Why `newline=""` for CSV? **A:** Correct newline handling in quoted fields.
-29. Which clock for durations? **A:** `time.monotonic()`.
-30. Why `subprocess.run` with a list? **A:** Avoid shell injection.
-31. What does `check=True` do? **A:** Raises on non-zero exit.
-32. What does `timeout` do? **A:** Kills the child and raises `TimeoutExpired`.
-33. Pipe deadlock cause? **A:** Child blocks writing a full pipe nobody reads.
-34. Avoid secrets in args because? **A:** Visible in `ps`/`/proc`.
-35. How to kill a process tree? **A:** `start_new_session` and `os.killpg`.
-36. What signal does Kubernetes send first? **A:** SIGTERM.
-37. What should a signal handler do? **A:** Set a flag; keep it minimal.
-38. Why use `tini`/`--init`? **A:** Reap zombies and forward signals for PID 1.
-39. How to count usable CPUs? **A:** `len(os.sched_getaffinity(0))`.
-40. What makes a script idempotent? **A:** Re-running yields the same end state without errors.
+1. **`try`/`except`/`else`/`finally` Mechanics, `except Exc as var` Unbinding, `raise ... from`, and `sys.exception()` (`LP` Chapters 33, 34, 36):** Using `trace_try_except_else_finally()` in `code/part03/python_errors_files_subprocess.py`, explain: (a) when `else:` vs `finally:` runs and why `try` bodies should be kept minimal; (b) why Python automatically executes `del var` when exiting `except Exc as var:`; and (c) why bare `except:` is dangerous around `sys.exit()` (`exiter.py`) and dictionary lookups (`myditctionary`).
+2. **Exception Hierarchies (`NumErr`), Custom State (`FormatError`), `ExceptionGroup` / `except*`, and Context Managers (`LookingGlass`, `LP` Ch. 35 & `FP` Ch. 18):** Using `NumErr`/`Divzero`, `FormatError`, `split_exception_group_demo()`, `LookingGlass`, and `safe_looking_glass()` in `code/part03/python_errors_files_subprocess.py`, explain: (a) why library exceptions should inherit from a common category base class and store structured attributes; (b) how `except*` splits an `ExceptionGroup`; and (c) why a `@contextlib.contextmanager` generator must wrap `yield` in `try ... finally:`.
+3. **Files, `pathlib`, Atomic Writes (`mkstemp` + `fsync` + `os.replace`), and File Locking (`flock`):** (a) Trace every step of `atomic_write(path, data)`—why must `tempfile.mkstemp` create the temp file in `path.parent`, why call both `f.flush()` and `os.fsync(f.fileno())` before `os.replace(tmp, path)`, and why `fsync` the parent directory descriptor afterward? (b) Contrast `open(path, "x")` (avoiding TOCTOU races) with `fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)` for preventing overlapping cron runs.
+4. **Unicode Text vs. Bytes, Encodings (`'AÄBèC'`), Normalization (`NFC`/`casefold`/`shave_marks_latin`), and Binary `struct` (`LP` Ch. 37 & `FP` Ch. 4):** Using `inspect_unicode_and_struct()` and `shave_marks_latin()` in `code/part03/python_errors_files_subprocess.py`, explain: (a) why `'AÄBèC'` is 5 characters, 7 UTF-8 bytes, and 5 Latin-1 bytes, and how `struct.pack('>i4sh', 7, b'code', 8)` works; (b) why `'caf\u00e9' != 'cafe\u0301'` until normalized with `unicodedata.normalize('NFC', s)`, how `shave_marks_latin` strips Latin accents while preserving Greek, how `errors="surrogateescape"` round-trips undecodable filenames, and why `r'\d+'` vs `rb'\d+'` differ on non-ASCII digits.
+5. **Serialization Formats (`json`, `yaml.safe_load`, `tomllib`, `csv`) and Structured Logging:** (a) Explain why `yaml.safe_load` and `tarfile` `filter="data"` are mandatory on untrusted inputs, why CSV files require `newline=""` and sometimes `encoding="utf-8-sig"`, and why timestamps should use `datetime.now(timezone.utc)` while durations use `time.monotonic()`; (b) explain why `logging` handlers belong in the application entry point (`sys.stderr`, `%s` lazy formatting) while libraries attach `NullHandler()`.
+6. **Safe Subprocess Execution (`subprocess.run`, `Popen`), Pipe Deadlocks, Process Groups (`killpg`), and Signals (`SIGTERM`):** (a) Explain why `subprocess.run(["kubectl", ...], capture_output=True, text=True, check=True, timeout=30)` with an argument list prevents shell injection compared to `shell=True`, how a child filling `stderr` while the parent reads `stdout` deadlocks, and how `start_new_session=True` + `os.killpg` terminates an entire subprocess tree on timeout; (b) explain how `drain_nodes` uses `threading.Event` inside a `SIGTERM`/`SIGINT` handler to finish in-flight work cleanly and return conventional exit codes (`0`, `1`, `2`, `130`).
 
-## 13. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. In a `try / except / else / finally` statement, when does `else:` run versus `finally:`, and why should the `try:` block be kept as small as possible (`LP` Chapters 33 & 34)?</summary>
 
-- Mark Lutz, *Learning Python*, 6th ed. (`learning-python-6th-edition`; part VII: exceptions—with `Chapter 34. Exception Coding Details` read in full for this chapter, covering `try`/`except`/`else`/`finally`, `raise`/`raise from`, `except Exc as var` scope and reference-cleanup rules, `assert`, and `with` context managers—plus chapter 37 on Unicode and byte strings).
-- Luciano Ramalho, *Fluent Python*, 2nd ed.: chapter 4 (Unicode text versus bytes) and chapter 18 (`with`, `match`, and `else` blocks).
-- The author's `nvidia-devops` repository, volume 02: interacting with the host system (`pathlib`, `subprocess`, `shutil`), error handling, tooling and operations masterclasses.
-- Brian Ward, *How Linux Works*, 3rd ed. (signals, processes, `/proc`) for the system-interaction sections.
-- Examples are the author's constructions.
+- **`else:`** runs **only if no exception was raised** in the `try:` block (and is not covered by the preceding `except:` clauses). Keeping only the statement that can raise the expected exception inside `try:` and placing follow-up work in `else:` prevents `except:` from accidentally catching unrelated bugs raised by the follow-up code.
+- **`finally:`** runs **unconditionally on every exit path** (whether `try:` succeeded, an exception was caught, an uncaught exception is unwinding the stack, or a `return`/`break`/`continue` executed), making it the right place for deterministic cleanup alongside `with`.
+</details>
 
-**Flagged for verification before publishing:** version-specific behaviour (`tarfile` extraction filters in 3.12, `Path.walk` 3.12, `ExceptionGroup` 3.11, `tomllib` 3.11), library APIs (psutil, pynvml, PyYAML), NFS/Lustre atomicity statements, and every code listing; all labs are **untested**.
+<details>
+<summary>2. Why should you never use a bare `except:` (`exiter.py`), and what happens to `X` after `except Exception as X:` exits (`LP` Chapters 34 & 36)?</summary>
+
+- **Bare `except:` traps:** `SystemExit` (raised by `sys.exit(62)`), `KeyboardInterrupt` (Ctrl-C), and `GeneratorExit` inherit directly from **`BaseException`**, not `Exception`, specifically so `except Exception:` will let the program exit cleanly. A bare `except:` swallows `sys.exit()` and Ctrl-C, and also masks programmer typos like `NameError` (`myditctionary`).
+- **`except Exception as X:` unbinding rule:** When the `except` block exits, Python automatically executes **`del X`** (even if `X = 99` existed before the `try`), because `X.__traceback__` references the stack frames and local variables; keeping `X` bound would create a reference cycle that delays garbage collection. Save `saveit = X` inside the handler if needed later.
+</details>
+
+<details>
+<summary>3. How do `raise NewError(...) from exc`, `raise ... from None`, and bare `raise` work (`LP` Chapter 34)?</summary>
+
+- **Bare `raise`** (inside an `except` handler): re-raises the currently active exception while preserving its original traceback (`sys.exception()` / `sys.exc_info()`).
+- **`raise ConfigError("...") from exc`**: sets **`__cause__`** on the new exception (`The above exception was the direct cause of the following exception`), translating a low-level `FileNotFoundError` into a domain error without losing root-cause provenance.
+- **`raise ConfigError("...") from None`**: sets `__suppress_context__ = True`, hiding the chained traceback when the low-level exception is internal noise.
+</details>
+
+<details>
+<summary>4. Why should library exceptions form a class hierarchy (`NumErr -> Divzero, Oflow, Uflow`) and store structured attributes (`FormatError`), and why are `assert` statements unsuitable for input validation (`LP` Chapters 34 & 35)?</summary>
+
+- **Exception hierarchies:** When all library exceptions inherit from a common base class (`class NumErr(Exception)` or `class OpsError(Exception)`), callers catching `except OpsError:` automatically catch new specific subclasses added in future releases without modifying their `try` statements. Defining `__init__(self, line, file)` on `FormatError` attaches structured fields (`exc.line`, `exc.file`) instead of forcing callers to parse error strings.
+- **`assert` statements (`asserter.py`):** Compiled into `if __debug__: if not test: raise AssertionError(msg)`; running Python with **`python -O`** sets `__debug__ = False` and **strips all `assert` statements from the bytecode**, so production input and security checks must always use explicit `if` tests raising `ValueError` or `OpsError`.
+</details>
+
+<details>
+<summary>5. How do Python 3.11+ `ExceptionGroup` and `except*` differ from a standard `try / except` (`LP` Chapter 35)?</summary>
+
+In a standard `try`, at most **one** `except` clause runs per raised exception. When an `ExceptionGroup("msg", [IndexError(), TypeError(1), TypeError(2)])` is raised (for example, by concurrent tasks in `asyncio.TaskGroup`), Python evaluates **every matching `except*` clause in sequence**: `except* IndexError as E:` receives an `ExceptionGroup` containing `(IndexError(),)`, and then `except* TypeError as E:` receives an `ExceptionGroup` containing `(TypeError(1), TypeError(2))`. Any unhandled sub-exceptions propagate upward in a new `ExceptionGroup`.
+</details>
+
+<details>
+<summary>6. How do `LookingGlass` (`__enter__`/`__exit__`), `@contextlib.contextmanager`, and `contextlib.ExitStack` work (`FP` Chapter 18)?</summary>
+
+- **Class context manager (`LookingGlass`):** `__enter__(self)` sets up state and returns the object bound to `as what` (`'JABBERWOCKY'`); `__exit__(self, exc_type, exc_val, exc_tb)` restores state and returns `True` only if it intentionally suppresses the exception.
+- **`@contextmanager` generator (`looking_glass`):** Everything before `yield val` runs in `__enter__` (yielding `val` to `as what`); if the `with` block raises an exception, Python throws that exception into the generator at the `yield` via `gen.throw(exc)`—so **cleanup code after `yield` must be inside a `finally:` block** to guarantee execution.
+- **`contextlib.ExitStack`:** Manages a dynamic number of context managers (`[stack.enter_context(open(p)) for p in paths]`) and unwinds them in reverse (LIFO) order on exit.
+</details>
+
+<details>
+<summary>7. What are the conventional POSIX exit codes for operational scripts, and how should a top-level `main()` structure its error handling?</summary>
+
+- **`0`**: success.
+- **`1`**: general operational or unhandled runtime failure.
+- **`2`**: CLI usage or configuration error (`argparse` default).
+- **`126` / `127`**: command found but not executable / command not found.
+- **`128 + N`**: terminated by signal `N` (**`130`** for `SIGINT` = `128 + 2`, **`143`** for `SIGTERM` = `128 + 15`).
+A clean `main(argv=None) -> int` catches expected `OpsError`s (logs a concise error message to `stderr` and returns `2`), `KeyboardInterrupt` (logs warning and returns `130`), and unexpected `Exception`s (`log.exception(...)` with full traceback and returns `1`), invoked via `if __name__ == "__main__": raise SystemExit(main())`.
+</details>
+
+<details>
+<summary>8. Why should operational scripts log to `sys.stderr` using `%s` lazy formatting, and why should libraries use `NullHandler`?</summary>
+
+- **`sys.stderr` vs `sys.stdout`:** Sending diagnostic logs to `stderr` keeps `stdout` clean for machine-parsable data (JSON, CSV) when piped (`myops --json | jq .`), while systemd and container runtimes capture `stderr` into the journal/log collector.
+- **`%s` lazy formatting:** `log.debug("polling %s", host)` only formats the string if `DEBUG` logging is enabled, whereas an f-string `log.debug(f"polling {host}")` pays the formatting cost on every call even when discarded.
+- **Libraries vs applications:** Libraries call `logging.getLogger(__name__).addHandler(logging.NullHandler())` and never configure global handlers or levels; only the application entry point configures root handlers and formatters.
+</details>
+
+<details>
+<summary>9. Explain the difference between `f.flush()` and `os.fsync(f.fileno())`, and walk through the `atomic_write` pattern.</summary>
+
+- **`f.flush()`** copies data from Python's user-space `BufferedWriter` into the OS kernel page cache, but a power loss or kernel crash can still lose the data.
+- **`os.fsync(f.fileno())`** forces the OS kernel to flush those dirty pages to physical disk/NVMe media.
+To update a config or state file atomically (`atomic_write`) so readers never see a half-written file:
+1. Create a temp file **in the same directory (`dir=path.parent`)** via `tempfile.mkstemp` (guaranteeing it sits on the same filesystem mount).
+2. Write the content, call `f.flush()`, and call `os.fsync(f.fileno())`.
+3. Set permissions (`os.chmod(tmp, mode)`) and call **`os.replace(tmp, path)`** (an atomic POSIX `rename(2)` syscall).
+4. `os.fsync()` the parent directory file descriptor to persist the directory entry update.
+</details>
+
+<details>
+<summary>10. How do you prevent TOCTOU file races and overlapping script executions (`open(..., "x")` and `fcntl.flock`)?</summary>
+
+- **Avoid TOCTOU (`Time-of-Check to Time-of-Use`):** Instead of checking `if not os.path.exists(p): open(p, "w")`, open the file with **`open(p, "x", encoding="utf-8")`** (or `os.open(p, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)` for secret files), which atomically fails with `FileExistsError` if another process created it first.
+- **Prevent overlapping cron/systemd runs:** Open a lock file (`/run/myops.lock`) and acquire a non-blocking exclusive advisory lock via **`fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)`**; if another instance holds the lock, `flock` immediately raises `BlockingIOError`, and if the holder crashes, the kernel automatically releases the lock when its file descriptors close.
+</details>
+
+<details>
+<summary>11. Compare `str`, `bytes`, and `bytearray`, and explain why `'AÄBèC'` has `len == 5`, 7 UTF-8 bytes, and 5 Latin-1 bytes (`LP` Chapter 37 & `FP` Chapter 4).</summary>
+
+- **`str`** is an immutable sequence of Unicode code points (`'AÄBèC'` has 5 code points: `'A'`, `'Ä'`, `'B'`, `'è'`, `'C'`).
+- **`bytes`** (immutable) and **`bytearray`** (mutable) are sequences of 8-bit integers (`0..255`).
+In **UTF-8** (a variable-length encoding using 1 to 4 bytes per code point), ASCII `'A'`, `'B'`, `'C'` take 1 byte each while `'Ä'` (`U+00C4`) and `'è'` (`U+00E8`) take 2 bytes each, totaling **7 bytes** (`b'A\xc3\x84B\xc3\xa8C'`). In **Latin-1** (`iso-8859-1`), every code point in `0..255` maps to a single byte, totaling **5 bytes** (`b'A\xc4B\xe8C'`).
+</details>
+
+<details>
+<summary>12. What four default encodings exist in Python, and why should you set `PYTHONUTF8=1` and pass `encoding="utf-8"` explicitly (`LP` Chapter 37 & `FP` Chapter 4)?</summary>
+
+1. `sys.getdefaultencoding()`: used by `str.encode()` / `bytes.decode()` (`'utf-8'`).
+2. `locale.getpreferredencoding(False)`: used by **`open()`** when `encoding=` is omitted. In minimal Linux containers where `LANG=C` or `POSIX`, or on Windows (`cp1252`), omitting `encoding="utf-8"` causes `open()` to fail or corrupt non-ASCII text.
+3. `sys.stdout.encoding` / `sys.stderr.encoding`: used by `print()` (overridable via `PYTHONIOENCODING`).
+4. `sys.getfilesystemencoding()`: used to encode/decode OS filenames (`os.fsencode`/`os.fsdecode`).
+Setting **`PYTHONUTF8=1`** (or `-X utf8`) forces UTF-8 across all locale-dependent defaults.
+</details>
+
+<details>
+<summary>13. How do Unicode normalization (`NFC` vs `NFD` vs `NFKC`), `.casefold()`, `shave_marks_latin()`, and `errors="surrogateescape"` work (`FP` Chapter 4)?</summary>
+
+- **`unicodedata.normalize('NFC', s)`**: composes base characters and combining marks into canonical precomposed form so `'caf\u00e9'` and `'cafe\u0301'` compare equal (`'NFD'` decomposes; `'NFKC'`/`'NFKD'` also convert compatibility characters like `'½'` -> `'1⁄2'`, which is useful for search indexing).
+- **`s.casefold()`**: aggressive lowercase conversion for caseless matching (`'Straße'.casefold() == 'strasse'`).
+- **`shave_marks_latin(txt)`**: decomposes to `'NFD'`, strips `unicodedata.combining(c)` marks only after ASCII letters, and recomposes to `'NFC'`.
+- **`errors="surrogateescape"` (PEP 383)**: maps undecodable bytes `0x80..0xFF` into lone surrogate code points `U+DC80..U+DCFF` on decode and back to the exact original bytes on encode, allowing Python to read, manipulate, and pass back broken POSIX filenames without crashing.
+</details>
+
+<details>
+<summary>14. How do `struct.pack('>i4sh', 7, b'code', 8)` and `r'\d+'` vs. `rb'\d+'` work (`LP` Chapter 37 & `FP` Chapter 4)?</summary>
+
+- **`struct.pack('>i4sh', 7, b'code', 8)`**: packs values into binary `bytes` according to a format string where `>` specifies **big-endian** (network) byte order, `i` is a 4-byte signed int (`\x00\x00\x00\x07`), `4s` is a 4-byte raw bytes string (`b'code'`), and `h` is a 2-byte signed short (`\x00\x08`), producing the 10-byte sequence `b'\x00\x00\x00\x07code\x00\x08'` (unpacked to `(7, b'code', 8)` by `struct.unpack('>i4sh', B)`).
+- **`str` vs `bytes` regexes (`ramanujan.py`):** `re.compile(r'\d+')` (`str`) matches all Unicode decimal digits (including Tamil digits), whereas `re.compile(rb'\d+')` (`bytes`) matches only ASCII digits `0..9`.
+</details>
+
+<details>
+<summary>15. What are the critical safety and portability rules when parsing JSON, YAML, TOML, CSV, and tar archives in Python?</summary>
+
+- **YAML:** Always use **`yaml.safe_load()`** (and `yaml.safe_load_all()` for multi-doc Kubernetes manifests); never call `yaml.load()` on untrusted input because it can instantiate arbitrary Python objects and execute code.
+- **CSV:** Always pass **`newline=""`** to `open()` so embedded newlines inside quoted CSV fields are handled properly by the `csv` module; use `encoding="utf-8-sig"` when reading CSVs exported from Excel that may start with a UTF-8 BOM.
+- **JSON / JSON Lines (`.jsonl`):** Stream large event logs line-by-line (`for line in f: json.loads(line)`).
+- **TOML:** Use stdlib `tomllib.loads()` (Python 3.11+, read-only).
+- **`tarfile`:** Pass **`filter="data"`** (Python 3.12+) or validate member paths before `extractall()` to prevent `../` directory-traversal attacks.
+</details>
+
+<details>
+<summary>16. Why must `subprocess.run` use an argument list instead of `shell=True`, and what do `check=True`, `timeout=30`, and `stdin=subprocess.DEVNULL` do?</summary>
+
+Passing a list `["kubectl", "get", "node", host]` invokes `execve(2)` directly without a shell, so shell metacharacters (`; rm -rf /`, `$(...)`, backticks) in `host` are treated as literal argument strings rather than executed as commands.
+- **`check=True`**: automatically raises `subprocess.CalledProcessError` (carrying `.returncode`, `.stdout`, `.stderr`, `.cmd`) if the command exits non-zero.
+- **`timeout=30`**: kills the child process and raises `subprocess.TimeoutExpired` if it does not finish within 30 seconds.
+- **`stdin=subprocess.DEVNULL`**: closes standard input immediately so a child tool that unexpectedly prompts for confirmation fails fast instead of hanging an unattended cron/CI job forever.
+</details>
+
+<details>
+<summary>17. What causes a `subprocess.Popen` pipe deadlock, how do you build a shell-free pipeline, and how do you kill an entire subprocess tree on timeout?</summary>
+
+- **Pipe deadlock:** If you start a child with `stdout=PIPE, stderr=PIPE` and read `p.stdout.read()` to completion while the child writes enough data to `stderr` to fill the OS pipe buffer (~64 KB), the child blocks waiting for `stderr` to drain while the parent blocks waiting for `stdout` EOF. Fix it by calling **`p.communicate(timeout=...)`** (or `subprocess.run(..., capture_output=True)` or merging `stderr=subprocess.STDOUT`).
+- **Shell-free pipeline (`p1 | p2`):** Wire `p2 = Popen(cmd2, stdin=p1.stdout, stdout=PIPE)` and immediately call **`p1.stdout.close()`** in the parent so `p1` receives `SIGPIPE` if `p2` exits early.
+- **Killing a process tree:** Launch with **`start_new_session=True`** (creating a new process group whose PGID equals `p.pid`) and call **`os.killpg(os.getpgid(p.pid), signal.SIGTERM)`** on timeout so grandchild processes do not survive as orphans.
+</details>
+
+<details>
+<summary>18. How should a long-running Python daemon handle `SIGTERM`, `SIGINT`, `SIGHUP`, and `SIGPIPE`, and why does PID 1 in a container need `--init` / `tini`?</summary>
+
+- **Signal handlers must stay minimal:** Inside `def handle(signum, frame):`, set a `threading.Event` flag (`stop.set()`) and let the main loop finish its current unit of work, checkpoint state, and exit cleanly within Kubernetes's `terminationGracePeriodSeconds` (before `SIGKILL` arrives). Use `SIGHUP` to trigger config reload and `signal.signal(signal.SIGPIPE, signal.SIG_DFL)` so piping output into `head` exits quietly without a `BrokenPipeError` traceback.
+- **PID 1 in containers:** On Linux, PID 1 has two special kernel responsibilities: reaping orphaned zombie processes and explicitly registering signal handlers (the kernel ignores default `SIGTERM` delivery to PID 1 if no handler is installed). Running under **`tini` / `docker run --init`** (or installing explicit `SIGTERM`/`SIGINT` handlers and reaping children) prevents zombie accumulation and hung `docker stop` / pod termination.
+</details>
+
+<details>
+<summary>19. Why should you use `len(os.sched_getaffinity(0))` instead of `os.cpu_count()` and `time.monotonic()` instead of `time.time()` in infrastructure scripts?</summary>
+
+- **`len(os.sched_getaffinity(0))` vs `os.cpu_count()`:** `os.cpu_count()` returns the total physical/logical CPUs on the bare-metal host (e.g., `128`), whereas `os.sched_getaffinity(0)` returns the set of CPUs the current process is actually allowed to run on under Linux `taskset` / Slurm / Kubernetes CPU pinning.
+- **`time.monotonic()` vs `time.time()`:** `time.time()` reads the wall-clock system time, which can jump backward or forward when NTP (`chronyd`) steps the clock; **`time.monotonic()`** is guaranteed to move forward monotonically, making it mandatory for timeouts, retry backoffs, and latency measurements.
+</details>
+
+<details>
+<summary>20. What design properties make an operational script (such as `drain_nodes`) safe for production use at 3 a.m.?</summary>
+
+1. **Idempotency:** Re-running the script on an already-cordoned/drained node succeeds without side effects.
+2. **`--dry-run` mode:** Logs every destructive command (`shlex.join(cmd)`) without mutating cluster state.
+3. **Per-item error isolation and failure budget (`--max-failures`):** Records `Result(node, ok, detail)` per node and stops if failures exceed the budget rather than crashing mid-loop with unlogged state.
+4. **Bounded timeouts on every external call** (`timeout=120`) and **graceful `SIGTERM`/`SIGINT` interruption** (`stop.is_set()`).
+5. **Clean stream separation and exit codes:** Structured JSON summary to `stdout`, human/structured logs to `stderr`, and exit code `0` (all ok), `1` (node failure), `2` (config/CLI error), or `130` (interrupted).
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `learning-python-6th-edition` — Mark Lutz, *Learning Python*, 6th ed., **Part VII: Exceptions and Tools** (`Chapter 33. Exception Basics`, `Chapter 34. Exception Coding Details`, `Chapter 35. Exception Objects`, `Chapter 36. Exception Odds and Ends`) and **Part VIII (`Chapter 37. Unicode and Byte Strings`)** read in full: `fetcher(obj, index)`, no backtracking on mutations before raise, combined `try`/`except`/`else`/`finally` order, `raise NewExc from OldExc` (`__cause__`), `except Exc as X` unbinding (`del X`) to avoid traceback frame reference cycles, `assert` (`asserter.py`) stripped under `python -O`, multiple-context `with`, exception hierarchies (`General`/`Specific1`/`Specific2` in `categoric.py`, `NumErr -> Divzero/Oflow/Uflow`), custom state and methods in `FormatError` (`parsely.py`), `ExceptionGroup` and `except*`, control-flow and syntactic `try` nesting (`action1..3`, `except-finally.py`), `sys.exc_info()` vs `sys.exception()`, `traceback.print_exc` (`badly.py`), bare `except:` bugs (`exiter.py` `sys.exit(62)` and `myditctionary`), `str` vs `bytes` vs `bytearray`, `'AÄBèC'` UTF-8 (7 B) vs Latin-1 (5 B), 4 default encodings and `PYTHONUTF8=1`, `NFC` vs `NFD`, `struct.pack('>i4sh', 7, b'code', 8)`, and text vs binary file I/O.
+  - `fluent-python-2nd-edition` — Luciano Ramalho, *Fluent Python*, 2nd ed., **Chapter 4: Unicode Text Versus Bytes** (codecs, `UnicodeEncodeError`/`UnicodeDecodeError` error handlers, UTF-8 BOM `utf-8-sig`, `surrogateescape` PEP 383, `nfc_equal` and `fold_equal` with `NFC`/`NFKC` and `casefold()`, `shave_marks` and `shave_marks_latin`, `locale.strxfrm` / `pyuca`, Unicode character metadata, and `ramanujan.py` `str` vs `bytes` regexes) and **Chapter 18: `with`, `match`, and `else` Blocks** (`LookingGlass` context manager class, `@contextlib.contextmanager` `looking_glass` with `try/except/finally` around `yield`, `contextlib.ExitStack`, and `EAFP` vs `LBYL`).
+  - `nvidia-devops` (`volume-02/00-python-fundamentals-for-infrastructure-masterclass.md` and `volume-02/03-python-tooling-operations-masterclass.md`) and Brian Ward, *How Linux Works*, 3rd ed. (`how-linux-works-3rd-edition`) for signals, process groups, and `/proc`/`/sys`.
+- **Run here:** `python3 code/part03/python_errors_files_subprocess_lab.py` (6 passed, 0 failed).
+- **Explicitly labelled inferences:** The `OpsError`/`RemoteError` classes, `setup_logging`, `atomic_write`, `run()` wrapper, and Section 8 `drain_nodes` operational script template are the author's constructions applying *Learning Python* Chapters 33–37 and *Fluent Python* Chapters 4 & 18 to Linux and Kubernetes operations (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Not verified on live hardware:** Interactive `kubectl`, `ping`, `dmesg`, `psutil`, `/proc`, `/sys`, `fcntl.flock`, and `killpg` commands (`10.0.0.1`, `5432`, `65536`, `0o644`, `0o640`, `0o600`, `75`, `126`, `127`, `130`, `143`, `300s`, `500`, `5 GB`, `50 GB`) are marked (`untested here`) where not executed by `python_errors_files_subprocess_lab.py`.
