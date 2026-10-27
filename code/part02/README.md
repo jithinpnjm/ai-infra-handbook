@@ -9,3 +9,4 @@
 | 2.5 Routing on a host: tables, gateways and forwarding | `host_routing_tables.py` | `host_routing_tables_lab.py` | 11 | `python3 code/part02/host_routing_tables_lab.py` |
 | 2.6 TCP in depth: handshake, windows, congestion control | `tcp_in_depth.py` | `tcp_in_depth_lab.py` | 14 | `python3 code/part02/tcp_in_depth_lab.py` |
 | 2.7 UDP, ICMP and the diagnostic toolkit: ping, mtr, PMTU | `udp_icmp_pmtu.py` | `udp_icmp_pmtu_lab.py` | 15 | `python3 code/part02/udp_icmp_pmtu_lab.py` |
+| 2.8 DNS in depth: resolution, records, resolvers, caching | `dns_in_depth.py` | `dns_in_depth_lab.py` | 14 | `python3 code/part02/dns_in_depth_lab.py` |
