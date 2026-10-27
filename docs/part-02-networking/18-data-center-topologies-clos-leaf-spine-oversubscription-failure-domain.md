@@ -142,6 +142,25 @@ A server such as DGX/HGX H100 has 8 GPUs, an internal NVSwitch fabric for GPU-to
 
 ### Rail-optimised design (ROD)
 
+```mermaid
+flowchart TB
+  subgraph SpineTier["Spine tier (connects across rails)"]
+    SP1["Spine 1"]
+    SP2["Spine 2"]
+  end
+  subgraph RailLeaves["Rail-optimised leaf stripe (1 leaf per GPU index)"]
+    LR0["Leaf Rail 0\n(all GPU 0s: 1 hop)"]
+    LR1["Leaf Rail 1\n(all GPU 1s: 1 hop)"]
+  end
+  subgraph Servers["8-GPU servers (internal NVSwitch)"]
+    S1["Server 1\nGPU0 | GPU1 ..."]
+    S2["Server 2\nGPU0 | GPU1 ..."]
+  end
+  S1 & S2 -- "NIC0" --- LR0
+  S1 & S2 -- "NIC1" --- LR1
+  LR0 & LR1 --- SP1 & SP2
+```
+
 GPU i of every server connects to leaf i of a group of 8 leaves (a **stripe** or **row**). All GPUs with the same index in different servers are *one hop apart* via the shared leaf: this is a **rail**. Collective algorithms (NCCL) are written to exploit it: reduce inside the server over NVLink first, then communicate across servers along rails, minimising inter-rail traffic.
 
 - **Intra-rail** traffic (same GPU index on different servers) goes through one leaf: minimal latency.
@@ -268,7 +287,15 @@ for R in (32, 64, 128):
 def survive_spine_loss(spines): return (spines - 1) / spines
 ```
 
-## 12. Lab: validate topologies (untested)
+## 12. Hands-on lab: validate topologies and Clos sizing
+
+First, run the self-checking Python lab (`code/part02/dc_topologies_clos_lab.py`) locally. It verifies 3-stage (`R^2 / 2 = 2,048` endpoints for `R = 64`) and 5-stage (`R^3 / 4 = 65,536`) non-blocking Clos math, oversubscription (`1.78:1`) and single-spine loss capacity (`96.9%` with `32` spines), `k`-D torus diameter (`sum(n_i // 2)`), MTBF/MTTR availability nines (`99.99%` = `52.6 min/year`), and the 4,096-GPU 288-switch BOM.
+
+```bash
+python3 code/part02/dc_topologies_clos_lab.py
+```
+
+Next, on a disposable Linux VM using containerlab and network namespaces (all interactive VM commands below are `untested here`), work through these steps:
 
 1. **Paper**: complete the design exercise above; produce a bill of materials (switches, optics, cables) and a failure table (spine, leaf, link, rail group, power domain) with the percentage of bandwidth surviving.
 2. **Build a 2-spine × 4-leaf Clos in containerlab** with FRR (reuse the lab in chapter 2.16); run `iperf3` all-to-all with 16 flows and measure per-link utilisation; fail a spine and measure the throughput and recovery time.
@@ -278,8 +305,6 @@ def survive_spine_loss(spines): return (spines - 1) / spines
 6. **Availability math**: compute availability for a component list (series/parallel) using MTBF/MTTR values in a spreadsheet or script; relate to downtime per year.
 7. **Torus/dragonfly toy**: create a 4×4 torus of namespaces with static/OSPF routes, measure hops and latency distribution; compare with a 2-spine Clos of the same node count.
 8. **Clean up.**
-
-Mark tested only after execution.
 
 ## 13. Common mistakes
 
@@ -305,55 +330,122 @@ Mark tested only after execution.
 - "What distinguishes a fabric from a hierarchical network?"
 - "Where would you place leaves: ToR, MoR or EoR, and why?"
 
-## 15. Checkpoint questions (40)
+## Exercises
 
-1. Translate "low job completion time" to network requirements. **A:** Bandwidth per GPU, low tail latency, non-oversubscribed paths, congestion control.
-2. Name the layers of a hierarchical design. **A:** Access, distribution, core.
-3. What is a ring's weakness? **A:** Latency grows; two failures partition.
-4. Hub-and-spoke weakness? **A:** Hub bottleneck/single point of failure; spoke-to-spoke hairpin.
-5. Three marks of a fabric? **A:** Regular topology, scale-out, specific performance goals.
-6. Scale up vs scale out? **A:** Bigger boxes/links vs more of the same units.
-7. What is east-west traffic? **A:** Server-to-server traffic inside the data centre.
-8. Define oversubscription. **A:** Edge bandwidth versus fabric bandwidth ratio.
-9. Rules for spines in standard leaf-spine? **A:** No spine-to-spine links; no devices attached.
-10. In a 3-stage Clos with R-port switches at 1:1, spines? **A:** R/2.
-11. Max leaves? **A:** R (one port per leaf on each spine).
-12. Max endpoints? **A:** R²/2.
-13. 64-port: endpoints? **A:** 2,048.
-14. 5-stage max at 1:1? **A:** R³/4.
-15. Capacity loss when one of 32 spines fails? **A:** 1/32 ≈ 3.1%.
-16. Non-blocking vs non-contending? **A:** No pattern blocked vs no two flows competing for a link.
-17. Why can't packet networks be non-blocking? **A:** Many senders may target one destination link.
-18. What is a rail? **A:** The set of same-index GPUs across servers sharing a leaf.
-19. Intra-rail vs inter-rail hops? **A:** One leaf hop vs leaf-spine-leaf.
-20. What is rail-only? **A:** No fabric links between rails; inter-rail routing via NVLink inside servers.
-21. Rail-unified downside? **A:** Leaf failure isolates servers; harder rail isolation.
-22. Why ToR for rail-unified? **A:** Short cables, low rack space, copper.
-23. Why MoR/EoR for rail-optimised? **A:** Each server must reach 8 leaves; leaves grouped centrally.
-24. Describe a scheduled fabric. **A:** Cells sprayed across fabric with fabric-wide VOQ, leaves as line cards.
-25. What is VOQ? **A:** Per-egress queues at each input to avoid head-of-line blocking.
-26. Dragonfly in one sentence. **A:** Meshed groups connected by global links, giving low diameter.
-27. Dragonfly routing challenge? **A:** Non-minimal/adaptive routing for balance.
-28. Torus diameter formula? **A:** Sum of ⌊n_i/2⌋ per dimension.
-29. When is a torus good? **A:** Nearest-neighbour communication.
-30. What is multi-planar? **A:** Several independent 2-tier planes with NIC-level spraying across them.
-31. Who reorders packets in multi-plane? **A:** The receiving NIC/host software.
-32. Inference DC topology? **A:** Conventional collapsed 3-/5-stage Clos.
-33. Name three fabrics a GPU server connects to. **A:** Front-end, storage, back-end (training).
-34. Explain exponential backoff. **A:** Increasing delays between repeated recomputations/advertisements.
-35. What does flooding reduction do? **A:** Limits redundant LSA flooding in dense topologies.
-36. MTBF vs MTTR? **A:** Time between failures vs time to repair.
-37. Availability formula? **A:** MTBF/(MTBF+MTTR).
-38. What is an SRLG? **A:** Links sharing a failure cause.
-39. What is MTTI? **A:** Mean time to innocence: proving the network isn't at fault.
-40. Why drain-upgrade-undrain instead of ISSU? **A:** Lower risk with ECMP/redundancy, avoids stale-state bugs.
+1. **What Makes a Network a Fabric, Scale-Out vs. Scale-Up, and Non-Blocking vs. Non-Contending (`CN` Chapters 22 & 25):** (a) State the three defining properties of a packet-switched **fabric** and contrast it with a classic 3-tier hierarchical campus network (`access -> distribution -> core`); (b) distinguish a **non-blocking** Clos from a **non-contending** scheduled fabric, and explain why hyperscale data centers see `~10` bits of east-west traffic for every `1` bit of north-south traffic.
+2. **3-Stage and 5-Stage Clos Sizing Math, Oversubscription, and Spine-Failure Capacity:** Using `size_clos3_fabric()`, `compute_5stage_max_endpoints_1to1()`, and `compute_oversubscription_and_spine_loss()` in `code/part02/dc_topologies_clos.py`: (a) calculate the number of leaves, spines, total switches, maximum `1:1` endpoints, and cables for a 3-stage Clos built from `64`-port switches (`2,048` endpoints) and `32`-port switches (`512` endpoints), plus the `1:1` 5-stage ceiling for `R = 64` (`65,536`); (b) calculate the oversubscription ratio of a leaf with `320 Gb/s` downlinks and `180 Gb/s` uplinks (`1.78:1`), and the surviving capacity when `1` of `32` spines fails (`96.9%`).
+3. **AI Back-End Rail Topologies (`ROD`, Rail-Only, `RUD`) and `ToR`/`MoR`/`EoR` Rack Layouts (`ADC` Chapter 3):** Compare **Rail-Optimized (`ROD`)**, **Rail-Only**, and **Rail-Unified (`RUD`)** GPU cluster topologies across intra-rail vs inter-rail hop counts, `NCCL PXN` NVLink forwarding, failure blast radius when one leaf switch dies, and physical cabling layout (**Top-of-Rack `ToR`**, **Middle-of-Row `MoR`**, and **End-of-Row `EoR`**).
+4. **Scheduled Cell-Based Fabrics (`VOQ`), Dragonfly, Torus, and Multi-Planar Scale-Out (`ADC` Chapter 3):** (a) Explain how a **scheduled cell-based fabric** (`64–256` B cells + credit-scheduled fabric-wide `VOQ`s) eliminates ECMP elephant collisions; (b) compare **Dragonfly / Sparse Dragonfly** (`~3`-hop diameter, non-minimal routing), `k`-D **Torus** (`compute_torus_diameter([4, 4, 4]) = 6` hops), and **Multi-Planar** scale-out (NIC port breakouts spraying packets across independent 2-tier planes with receiver NIC reordering).
+5. **Information-Hiding Examples and Failure Domains (`CN` Chapters 19 & 20):** Give concrete protocol examples of the five information-hiding and rate-limiting mechanisms in Section 9: (a) summarizing topology (`OSPF` ABRs / `IS-IS` levels), (b) aggregating reachability (`10.10.0.0/16` for `256` racks), (c) layering control planes (`BGP`/`EVPN` or `SR` controller over an IGP loopback underlay), (d) **exponential backoff** (`50, 100, 200 ms`), and (e) **link-state flooding reduction** (`RFC 8099`).
+6. **`MTBF`, `MTTR`, Availability \"Nines\", `SRLG`s, and the 4,096-GPU Design Calculator:** (a) Using `compute_availability_and_downtime()`, calculate the availability percentage and allowed annual downtime in minutes for `MTBF = 9,999 h, MTTR = 1 h` (`99.99%`, `52.6 min/yr`) and `MTBF = 99,999 h, MTTR = 1 h` (`99.999%`, `5.3 min/yr`), and define `MTBM` ("2 a.m. rule") and `MTTI`; (b) reproduce the full 4,096-GPU (`512` servers x `8` GPUs) 5-stage Clos bill of materials from Section 11 (`128` leaves, `128` spines, `32` super-spines = `288` switches; `4,096` + `4,096` + `2,048` cables).
 
-## 16. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. What three characteristics define a network \"fabric\", and how does scale-out differ from scale-up (`CN` Chapter 25)?</summary>
+A **fabric** is defined by: (1) **topological regularity** (built from many identical, interchangeable sub-topologies), (2) **scale-out growth** (adding capacity by adding more switches/pods of the same kind rather than replacing core switches with bigger chassis—**scale-up**), and (3) **specific east-west performance goals** (bounded oversubscription, fast convergence, and low queueing delay / jitter).
+</details>
 
-- *AI Data Center Network Design and Technologies*, chapter 3 ("Network Design Considerations"): AI workload stages and fabrics, training data-centre architecture, rail-optimised, rail-only and rail-unified designs and the scale tables, rack layouts (ToR/MoR/EoR), scheduled fabric and VOQ, dragonfly and torus topologies, inference data-centre architecture, multi-planar scale-out.
-- Russ White and Jeff Tantsura (with co-authors), *Computer Networking Problems and Solutions*: chapter 19 (failure domains and information hiding), chapter 20 (examples of information hiding: summarising topology in IS-IS and OSPF, aggregation, layering with BGP as a reachability overlay, segment routing with a controller overlay, exponential backoff, link-state flooding reduction), chapter 22 (network design patterns: business problems to technical requirements, hierarchical design, ring/mesh/hub-and-spoke/planar topologies), chapter 23 (resilience: failures as seen by applications, MTBF/MTTR/availability, other measures, redundancy, SRLGs, ISSU and graceful restart, dual and multi-planar cores, modularity), chapter 25 (disaggregation and hyperconvergence, east-west traffic, jitter, packet-switched fabrics, spine and leaf, traffic engineering on spine-and-leaf, non-blocking versus non-contending, disaggregation in networks).
-- Sizing formulas, failure-case calculations, the design exercise and the calculator are the author's own derivations from standard Clos arithmetic.
+<details>
+<summary>2. State the two fundamental rules of a standard 3-stage folded Clos (leaf-spine) topology.</summary>
+(1) **Every leaf switch connects to every spine switch** (making every leaf-to-leaf path exactly **2 switch hops**—`leaf -> spine -> leaf`—across `S` equal-cost paths);\n(2) **Spines connect ONLY to leaves**—there are no spine-to-spine cross-links and no servers/endpoints attached directly to spines.
+</details>
 
-**Flagged for verification before publishing:** all sizing numbers in tables are illustrative (derive your own from the actual switch radix); vendor claims about scheduled fabrics and multi-plane NICs; PXN behaviour per NCCL version; availability-to-downtime conversions (recompute); super-spine oversubscription figures; all labs are **untested**.
+<details>
+<summary>3. For a 3-stage folded Clos built from `R`-port switches at `1:1` (non-oversubscribed), derive the maximum number of spines, leaves, and endpoints (`R^2 / 2`), and evaluate for `R = 64`.</summary>
+At `1:1` non-oversubscribed, each `R`-port leaf uses **`R / 2` ports downward** to endpoints and **`R / 2` ports upward** to spines (1 uplink per spine -> **`S = R / 2` spines**). Each `R`-port spine has `R` ports, connecting to at most **`L = R` leaves**. Total endpoints = `L * (R / 2) =` **`R^2 / 2`**. For `R = 64`: **`32` spines, `64` leaves (`96` switches total), and `64^2 / 2 = 2,048` endpoint ports** (`256` 8-GPU servers), with `2,048` server cables and `2,048` leaf-spine cables.
+</details>
+
+<details>
+<summary>4. What is the maximum number of `1:1` endpoints in a 5-stage Clos of `R`-port switches (`R^3 / 4`), and what is the hop count across a 5-stage Clos?</summary>
+In a 5-stage Clos (`leaf -> spine -> super-spine -> spine -> leaf`, **4 switch hops** end-to-end), each pod spine uses `R / 2` ports down to pod leaves and `R / 2` ports up to super-spines, supporting up to **`R^3 / 4` endpoints at `1:1`** (for `R = 64`: **`65,536` endpoints**).
+</details>
+
+<details>
+<summary>5. Define Oversubscription Ratio, why AI training back-end fabrics use `1:1` at the leaf tier, and what fraction of capacity survives losing 1 of `S` spines.</summary>
+**Oversubscription ratio** is `(aggregate downlink bandwidth to servers) / (aggregate uplink bandwidth to spines)` (e.g., `48` down : `16` up = `3:1`). While general cloud compute uses `2:1` or `3:1` because VMs rarely burst simultaneously, distributed AI training collectives (`AllReduce`, `AllToAll`) drive all GPU NICs at 100% line rate simultaneously—requiring **`1:1` (non-oversubscribed)** leaf-to-spine bandwidth. When `1` of `S` spines fails, surviving capacity is **`(S - 1) / S`** (`31/32 = 96.9%` for `32` spines, a `3.1%` loss).
+</details>
+
+<details>
+<summary>6. What is the difference between a Non-Blocking fabric and a Non-Contending fabric (`CN` Chapter 25)?</summary>
+A **non-blocking** fabric (`1:1` Clos) has enough internal bisection bandwidth that any permutation of 1-to-1 sender-to-receiver pairs can transmit at full line rate if routed along disjoint links. However, a packet-switched Clos is still **contending**: two flows can hash onto the same spine uplink (`ECMP collision`), or multiple senders can transmit to the **same single receiver** at once (**incast**). A **non-contending** fabric (such as a credit-scheduled cell fabric with fabric-wide VOQs) arbitrates grants before transmission so two flows never contend for the same link simultaneously.
+</details>
+
+<details>
+<summary>7. Explain a Rail-Optimized Design (`ROD`) for 8-GPU servers, including Intra-Rail vs. Inter-Rail traffic and `NCCL PXN` (`ADC` Chapter 3).</summary>
+In a **Rail-Optimized** fabric, NIC `i` (`0..7`, paired with GPU `i`) on every server connects to **Leaf `i`** of an 8-leaf rail group ("stripe"). All `GPU i`s across all 32 servers in the stripe sit on the **same leaf switch** (**1 hop apart: intra-rail traffic**). Traffic between different GPU indices (`GPU 0` -> `GPU 3`, **inter-rail**) would normally take 2 hops (`leaf -> spine -> leaf`); **`NCCL PXN`** avoids inter-rail spine hops by forwarding the data inside the source server over **NVLink/NVSwitch** to the local GPU sitting on the destination's rail, then exiting onto that rail's leaf switch in 1 hop.
+</details>
+
+<details>
+<summary>8. Compare Rail-Optimized (`ROD`), Rail-Only, and Rail-Unified (`RUD`) topologies.</summary>
+- **Rail-Optimized (`ROD`)**: 1 NIC per GPU goes to its corresponding rail leaf (`Leaf 0..7`), with spines connecting rails/pods; 1-hop intra-rail latency, and a single leaf failure loses only `1/8` of bandwidth.\n- **Rail-Only**: 8 independent rail networks with **no spine switches connecting different rails**; all inter-rail traffic is routed inside the servers over high-speed **NVLink/NVSwitch** domains—eliminating inter-rail spine cost and isolating faults per rail.\n- **Rail-Unified (`RUD`)**: all 8 NICs of a server connect to the **same local ToR leaf switch**; enables short in-rack copper DAC cabling, but a single ToR leaf failure takes down the entire server (`8/8` GPUs).
+</details>
+
+<details>
+<summary>9. Compare `ToR` (*Top-of-Rack*), `MoR` (*Middle-of-Row*), and `EoR` (*End-of-Row*) switch placements for GPU clusters (`ADC` Chapter 3).</summary>
+- **`ToR` (*Top-of-Rack*)**: leaf switches sit inside each server rack—shortest server cables (passive/active copper `DAC`/`AEC`), ideal for rail-unified designs, but consumes rack U-space and power inside high-density (`20–40+ kW`) GPU racks.\n- **`MoR` (*Middle-of-Row*)**: leaf switches for all 8 rails are grouped in dedicated network racks in the middle of the row (spanning `~6` racks each way), keeping switch heat/power out of GPU racks and letting each server cable its 8 NICs to the 8 rail leaves.\n- **`EoR` (*End-of-Row*)**: leaf switches sit in dedicated racks at the end of the row (longest cables spanning `~10` racks, requiring `AOC` or optical transceivers).
+</details>
+
+<details>
+<summary>10. How does a Scheduled (Cell-Based) Fabric with Fabric-Wide `VOQ`s work (`ADC` Chapter 3)?</summary>
+In a scheduled cell fabric (`Broadcom Jericho3-AI / Ramon3`, `Cisco Silicon One`), the ingress leaf slices arriving packets into fixed-size **`64` to `256`-byte cells**, holds them in **Virtual Output Queues (`VOQ`s)** per destination egress port across the entire fabric, waits for the egress leaf's credit scheduler to grant bandwidth, and **sprays the cells evenly across every spine link in parallel**, reassembling the packet in order at the egress leaf. This achieves ~100% link utilization without ECMP elephant-flow collisions or incast buffer drops.
+</details>
+
+<details>
+<summary>11. Compare a **Dragonfly** (and **Sparse Dragonfly**) topology with a 5-stage Clos (`ADC` Chapter 3).</summary>
+A 5-stage Clos requires 4 switch hops and a full layer of super-spine switches and optics. A **Dragonfly** connects local switch groups (internally full-meshed in canonical dragonfly, or a 2-tier leaf-spine Clos in **sparse dragonfly**) directly to every other group via global links, keeping network diameter at **`~3` hops** with fewer switches and optical transceivers—at the cost of requiring **adaptive / non-minimal (Valiant) routing** when direct inter-group links saturate.
+</details>
+
+<details>
+<summary>12. What is the diameter formula for a `k`-dimensional Torus, and why is a Torus well-suited to nearest-neighbor workloads but poor for random all-to-all?</summary>
+In a `k`-dimensional torus with side lengths `n_1, n_2, ..., n_k` and wraparound links, the maximum shortest-path hop count (diameter) is **`sum(floor(n_i / 2))`** (for example, a `4 x 4 x 4` 3D torus has diameter `2 + 2 + 2 = 6` hops). Each node needs only `2k` ports (no separate spine switches!) and neighbor-to-neighbor hops (stencil, pipeline/tensor rings) are 1 hop away, but random all-to-all traffic crosses many intermediate nodes and has lower bisection bandwidth than a Clos.
+</details>
+
+<details>
+<summary>13. How does a **Multi-Planar** GPU fabric work (`ADC` Chapter 3)?</summary>
+Instead of building one giant 5-stage Clos with a single shared failure domain, a **multi-planar** design splits each GPU's high-speed NIC (`400G`/`800G`) via breakout cables across **`2` or `4` completely independent 2-tier fabrics (planes)**, each with its own separate leaf switches, spine switches, and control plane. The GPU NIC hardware **sprays packets of a single flow across all planes in parallel** and reorders them at the receiving NIC—keeping hop count at 2 tiers while surviving the complete loss of an entire plane.
+</details>
+
+<details>
+<summary>14. How do an AI **Inference** data center and the three server fabrics (*Front-End*, *Storage*, *Back-End*) differ in topology (`ADC` Chapter 3)?</summary>
+Every training server connects to three distinct networks: (1) the **Back-End Compute Fabric** (`1:1` rail-optimized/multi-plane RoCEv2 or InfiniBand for GPU-to-GPU collectives), (2) the **Storage Fabric** (sized for parallel dataset reads and synchronous checkpoint bursts), and (3) the **Front-End / Management Fabric** (north-south client ingress, SSH, Kubernetes control). Dedicated **Inference data centers** (where models fit inside one server or NVLink domain) are dominated by north-south client/API traffic and use a conventional 3- or 5-stage Clos with L4/L7 load balancers rather than rail-aligned fabrics.
+</details>
+
+<details>
+<summary>15. Explain how Exponential Backoff and Link-State Flooding Reduction (`RFC 8099`) protect a dense fabric control plane (`CN` Chapter 20).</summary>
+- **Exponential Backoff** (`timers throttle spf 50 100 5000`): runs the first SPF/update immediately (`50 ms`) for fast single-failure convergence, but doubles the wait time (`100 ms, 200 ms, 400 ms...` up to `5,000 ms`) if a link keeps flapping—slowing down state velocity before CPU overload occurs.\n- **Link-State Flooding Reduction (`RFC 8099` / `distoptflood`)**: in a dense Clos where `64` leaves each connect to `32` spines, naive flooding sends `64 * 32 = 2,048` copies of every LSA; electing a minimal flooding tree over the mesh eliminates `> 95%` of duplicate LSA transmissions.
+</details>
+
+<details>
+<summary>16. List the five ways a single physical link failure manifests to an application (`CN` Chapter 23).</summary>
+Beyond a hard outage, a link failure causes: (1) **complete flow failure** (if an ACL/NAT blocks the backup path), (2) a **step increase in baseline delay** (longer backup path or higher serialization delay), (3) a **burst of jitter** (queueing transient during reroute), (4) **packet loss** (packets in flight on the failed link before BFD/carrier detection), and (5) **out-of-order and duplicate packets** (transient micro-loops during FIB convergence).
+</details>
+
+<details>
+<summary>17. State the formulas for `MTBF`, `MTTR`, and `Availability`, and state the allowed annual downtime for Three, Four, and Five Nines.</summary>
+- **`MTBF`** (*Mean Time Between Failures*) = `total_operating_time / number_of_failures`\n- **`MTTR`** (*Mean Time To Repair*) = `total_downtime / number_of_failures`\n- **`Availability`** = **`MTBF / (MTBF + MTTR)`**\nAnnual downtime (`365` days = `525,600` minutes):\n- **`99.9%` ("Three Nines")**: **`8.76 hours / year`** (`525.6` minutes)\n- **`99.99%` ("Four Nines")**: **`52.6 minutes / year`** (`~1` hour)\n- **`99.999%` ("Five Nines")**: **`5.26 minutes / year`**.
+</details>
+
+<details>
+<summary>18. What are `MTBM` (and the \"2 a.m. rule\") and `MTTI` (`CN` Chapter 23)?</summary>
+- **`MTBM` (*Mean Time Between Mistakes*)**: how often human/automation operational errors cause an outage—directly proportional to design complexity. The **"2 a.m. rule"** states: *never deploy a clever network design that the on-call engineer cannot understand and troubleshoot at 2 a.m.*\n- **`MTTI` (*Mean Time To Innocence*)**: how quickly the network team can prove with objective telemetry (`BFD`, queue counters, synthetic probes) whether a slow training job is caused by the network or by the application/storage.
+</details>
+
+<details>
+<summary>19. Why do data-center operators prefer \"Drain -> Upgrade -> Undrain\" over `ISSU` (*In-Service Software Upgrade*)?</summary>
+`ISSU` attempts to upgrade a switch's NOS while keeping its data plane forwarding via stateful control-plane handoffs (`Graceful Restart`); in practice, complex ISSU state handoffs frequently hit software bugs that drop the switch anyway. Because a Clos fabric has `N`-way ECMP redundancy, **draining** the switch first (`bgp graceful-shutdown` / IS-IS `overload` / OSPF `max-metric`), verifying zero traffic on its ports, performing a clean reboot upgrade, and undraining is far simpler and safer.
+</details>
+
+<details>
+<summary>20. Reproduce the switch and cable counts for the Section 11 4,096-GPU (`512` servers x `8` GPUs) 5-stage Clos fabric using `64 x 400G` switches.</summary>
+- **Leaves**: `32` downlinks + `32` uplinks per leaf -> `4,096 GPUs / 32 = 128` leaf switches (grouped into `4` 1,024-GPU pods of `32` leaves each).\n- **Spines**: `32` spines per pod x `4` pods = **`128` spine switches** (`32` ports down to pod leaves, `32` ports up toward super-spines = `4,096` spine uplinks capacity).\n- **Super-spines**: at `2:1` inter-pod oversubscription (`2,048` links upward), `2,048 / 64 =` **`32` super-spine switches** (`64` at `1:1`).\n- **Total**: `128 + 128 + 32 =` **`288` switches**, with `4,096` server cables, `4,096` leaf-spine cables, and `2,048` spine-superspine cables; losing 1 spine in a pod costs `1/32 = 3.1%` capacity (`<= 5%` target).
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `ai-data-center-network-design-and-technologies` — Dinakaran Setty et al., *AI Data Center Network Design and Technologies*, **Chapter 3: Network Design Considerations** (AI workload stages and fabrics, training data-center architecture, rail-optimized / rail-only / rail-unified designs and scale tables `256` to `8,192` GPUs, rack layouts `ToR`/`MoR`/`EoR`, scheduled cell-based fabrics `64–256` B cells and fabric-wide VOQ, dragonfly and torus topologies, inference data-center architecture, and multi-planar scale-out).
+  - `computer-networking-problems-and-solutions` — Russ White and Ethan Banks, *Computer Networking Problems and Solutions*, **Chapter 19: Failure Domains** (information hiding), **Chapter 20: Examples of Information Hiding** (summarizing topology in IS-IS and OSPF, aggregation `10.10.0.0/16` for `256` racks, layering with BGP and SR controllers, exponential backoff `50, 100, 200 ms`, and link-state flooding reduction RFC `8099`), **Chapter 22: Network Design Patterns** (translating business problems to technical requirements, hierarchical access/distribution/core design, ring, mesh `n(n-1)/2`, hub-and-spoke, planar vs nonplanar, and regular topologies), **Chapter 23: Resilience** (failures as seen by applications, `MTBF`/`MTTR`/`Availability` nines `99.9%` `8.8 h/yr` / `99.99%` `52.6 min/yr` / `99.999%` `5.3 min/yr`, `MTBM` 2 a.m. rule, `MTTI`, redundancy, `SRLG`s, `ISSU` and graceful restart, dual/multi-planar cores, and modularity), and **Chapter 25: Disaggregation, Hyperconvergence, and Spine-and-Leaf** (`10:1` east-west vs north-south traffic, jitter, Charles Clos `1953` folded Clos, `320 Gb/s` vs `180 Gb/s` = `1.78:1` oversubscription, non-blocking vs non-contending, and network disaggregation SONiC/Cumulus).
+- **Run here:** `python3 code/part02/dc_topologies_clos_lab.py` (14 passed, 0 failed).
+- **Explicitly labelled inferences:** The rail-optimized Mermaid topology diagram, 3-stage (`R^2/2`) and 5-stage (`R^3/4`) Clos sizing derivations, and the 4,096-GPU (`288`-switch) worked design calculator connect Clos and low-diameter topology theory to Part 8 and Part 9 GPU cluster design (cross-referenced with Chapters 2.11–2.17, 2.19, 2.20, 2.27–2.29, and 2.31, plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Not verified on live hardware:** All interactive containerlab and namespace commands (`iperf3`, `traceroute`, `tc tbf`, `fq_codel`, `netem`) are marked (untested here) and must be executed on a disposable Linux VM.
