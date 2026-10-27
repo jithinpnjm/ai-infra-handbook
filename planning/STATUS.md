@@ -83,7 +83,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | # | Chapter | Status | Words | Notes |
 |---|---|---|---|---|
 | 1.22 | Kernel modules, DKMS and sysctl tuning for GPU nodes | drafted | 7596 |  |
-| 1.28 | Putting it together: tuning a Linux node for GPU and HPC work | drafted | 8277 |  |
+| 1.28 | Putting it together: tuning a Linux node for GPU and HPC work | drafted | 9701 |  |
 | 2.24 | Linux networking: policy routing, bonding, MTU, NIC and stack tuning | drafted | 5554 |  |
 | 2.30 | Network troubleshooting method and case studies | drafted | 5501 |  |
 | 2.32 | Cloud networking: VPC, peering, load balancers and GCP specifics | drafted | 5457 |  |

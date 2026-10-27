@@ -440,9 +440,15 @@ Then **compare** new nodes and later snapshots to the baseline (`diff`, or struc
 | Fabric Manager/NVLink issues | Version mismatch, service not started before jobs | `nvidia-smi nvlink -s`, `systemctl status nvidia-fabricmanager`, logs |
 | Secure Boot module failure | Unsigned module after kernel update | `dmesg`, signing pipeline (1.22) |
 
-## 14. Lab: tune, audit and prove (untested)
+## 14. Hands-on lab: tune, audit, and prove
 
-Use a GPU VM (or bare metal). If virtualised, topology may be flattened; note it.
+First, run the self-checking Python lab (`code/part01/tune_gpu_node_lab.py`) locally. It verifies `sysfs` `cpulist` range parsing (`0-3,8,12-14`), the 3-tier `get_gpu_numa_node` fallback chain (`NVML` -> `sysfs` -> `nvidia-smi topo -m`), the 14-check `node_audit.sh` verification suite, synchronous distributed training straggler math, and the quantitative findings of Gregg's Chapter 16 Case Study (*The Unexplained Win*).
+
+```bash
+python3 code/part01/tune_gpu_node_lab.py
+```
+
+Next, on a disposable GPU VM or bare-metal GPU node (all interactive node commands below are `untested here`), work through these steps:
 
 1. **Topology report**: run the commands of section 2; draw the topology (hand diagram or `lstopo` output); fill a table: GPU → PCI BDF → NUMA node → NIC; PCIe links (current/max); DIMM population.
 2. **Baseline**: capture the baseline bundle (section 11) before any tuning; run `dcgmi diag -r 2`, `nvbandwidth` or `bandwidthTest` (pinned and pageable), a single-node `all_reduce_perf`, and a reference training step (a fixed small model, fixed seed, 200 steps, discard 20); record step time distribution, GPU clocks and temperature over time.
@@ -454,8 +460,6 @@ Use a GPU VM (or bare metal). If virtualised, topology may be flattened; note it
 8. **Schedulers**: (optional) on Slurm, run the same job with and without `--gpu-bind=closest --cpu-bind=cores`; on Kubernetes, compare a `Guaranteed` pod with CPU Manager static and Topology Manager `single-numa-node` against a Burstable pod; check `cpuset.cpus` and `numa_maps` of the processes.
 9. **Drift detection**: change one sysctl and one GRUB argument on a copy; run the audit/diff to catch it; add the check to a cron/systemd timer that exports a metric.
 10. **Case-study exercise**: using the method of section 12, investigate a deliberately created difference between two nodes (for example one with a CPU hog or a different THP setting): write a problem statement, collect the 60-second checklist from both at the same time, USE, static config diff, `perf stat` IPC and `cs` rates, `runqlat`/`cpudist`, and write the conclusion with quantified contributions.
-
-Mark the lab tested only after executing it and recording the outputs.
 
 ## 15. Common mistakes
 
@@ -481,53 +485,124 @@ Mark the lab tested only after executing it and recording the outputs.
 - "How would you validate a fabric and a node before putting them in service?" (acceptance sequence from chapter 1.25.)
 - "Explain the unexplained 3 to 4x win and what methodology it demonstrates."
 
-## 17. Checkpoint questions (30)
+## Exercises
 
-1. Why does one slow node slow a whole training job? **A:** Synchronous collectives wait for the slowest rank.
-2. Why record topology first? **A:** All affinity and tuning decisions depend on it; faults in links/NUMA invalidate later tuning.
-3. What do PIX, PXB, PHB, NODE, SYS mean in `nvidia-smi topo -m`? **A:** One PCIe bridge, multiple bridges, via host bridge, across host bridges within a NUMA node, across NUMA nodes.
-4. Why check PCIe link current versus max? **A:** Downtrained links (Gen/width) silently cut bandwidth.
-5. Name key BIOS settings for GPU nodes. **A:** Performance power profile, limited C-states, NUMA exposure, IOMMU, ACS/ATS/ReBAR/Above-4G, all DIMM channels, pinned firmware.
-6. What does `iommu=pt` do? **A:** Keeps the IOMMU available but uses identity mapping for host devices, reducing DMA translation overhead.
-7. When might you keep NUMA balancing on? **A:** For unpinned workloads where automatic migration helps; disable with explicit pinning.
-8. THP: which values and how to decide? **A:** always/madvise/never; A/B test on throughput and latency; watch compaction stalls.
-9. Why do systemd services ignore `limits.conf`? **A:** PAM limits apply to login sessions; services use unit/manager limits.
-10. Why is `memlock` important? **A:** Pinned buffers and RDMA registrations need locked memory.
-11. Why is `numactl` inheritance unreliable for Python workers? **A:** Spawned/exec'd processes and runtime-managed workers may not inherit; re-assert in each worker.
-12. How does the `get_gpu_numa_node` fallback chain find a GPU's NUMA node, and how do you benchmark pinned vs pageable H2D throughput? **A:** It queries `NVML` first (`nvmlDeviceGetNUMANodeId` or `nvmlDeviceGetCpuAffinity` mapped against `/sys/devices/system/node/node*/cpulist`), falls back to `sysfs` (`/sys/bus/pci/devices/<bdf>/numa_node`), and then to `nvidia-smi topo -m` / `numactl --show`; `bandwidthTest --memory=pinned` vs `bandwidthTest --memory=pageable` measures the `2x–3x` pinned H2D throughput advantage.
-13. What are persistence mode's benefits? **A:** Keeps the driver initialised; removes startup latency; stable state.
-14. When lock GPU clocks? **A:** For benchmarking determinism or if variance is harmful; otherwise leave boost.
-15. Why keep ECC on? **A:** Protects against silent corruption; disabling gains little.
-16. What does Fabric Manager do and when must it start? **A:** Configures NVLink/NVSwitch fabric; must be running before GPU jobs on NVSwitch systems.
-17. MIG vs MPS vs time-slicing? **A:** Hardware partition with isolation vs concurrent kernels without memory isolation vs coarse time sharing.
-18. Why host networking for NCCL in containers? **A:** Avoid overlay/NAT overhead and access IB/RDMA directly.
-19. What does the Kubernetes CPU Manager static policy require? **A:** Guaranteed QoS pods with integer CPU requests.
-20. What does Topology Manager do? **A:** Aligns CPU, memory, and device allocations to NUMA nodes using hints.
-21. How does Slurm bind GPUs and CPUs? **A:** `gres.conf` with Cores/AutoDetect, `--gpu-bind=closest`, `--cpu-bind=cores`, task/cgroup/affinity plugins.
-22. Why avoid DKMS in fleets? **A:** Non-determinism, boot storms, nodes without drivers; use prebuilt images.
-23. What belongs in a golden image versus runtime config? **A:** Kernel/driver/MOFED/toolkit in the image; per-node identity and site parameters at boot.
-24. What should a node audit check? **A:** Versions, cmdline, sysctls, limits, services, GPU count/links/ECC/clocks, NIC state, modules, recent errors.
-25. How do you detect drift? **A:** Periodic audit/diff against baseline; alerts on cmdline/sysctl/module/firmware changes.
-26. What is the canary approach? **A:** Validate on a few nodes with diagnostics and benchmarks before waves.
-27. How are stragglers detected statistically? **A:** Compare each node's reference metrics with fleet median using robust measures (MAD).
-28. What did the "unexplained win" teach about neighbours? **A:** The gain depended on having no neighbours; it would vanish with tenants.
-29. Which tools in the case study found IPC and LLC hit ratio? **A:** PMC tools (`perf stat`/pmcarch).
-30. What is the top-down diagnosing order versus bottom-up building order? **A:** Diagnose from symptom downward; build/verify from hardware upward.
+1. **The Bottom-Up Tuning Stack, Straggler Math, and Topology Discovery:** (a) Explain why you build and verify a GPU node **bottom-up** (Hardware -> Firmware/BIOS -> Kernel/GRUB -> OS -> Driver -> Runtime -> Containers/Schedulers) but diagnose symptoms **top-down**; (b) using `compute_synchronous_job_step_time()` in `code/part01/tune_gpu_node.py`, compute the effective step time and cluster slowdown percentage when 63 ranks complete a step in `100.0 ms` and 1 straggler rank on a degraded node takes `125.0 ms`.
+2. **BIOS/UEFI Settings and Contested Kernel Boot Parameters:** State the purpose and trade-off of each of the following on an HGX GPU node: (a) BIOS Maximum Performance profile, C-state limits (`processor.max_cstate=1 intel_idle.max_cstate=1`), Above-4G Decoding / Resizable BAR, and disabling PCIe ACS on GPU-NIC switches; (b) kernel boot parameters `iommu=pt`, `numa_balancing=disable`, and `transparent_hugepage=madvise`.
+3. **The 3-Tier `get_gpu_numa_node` Fallback Chain and `DataLoader` Worker Binding (`ASP` Chapter 3):** (a) Trace `resolve_gpu_numa_node()` across its three tiers (`1_nvml` -> `2_sysfs` -> `3_cli_topo`), including how `sysfs` `numa_node = -1` is handled; (b) trace `parse_sysfs_cpulist("0-3,8,12-14")` and explain why PyTorch `DataLoader` requires `worker_init_fn` to re-apply CPU/NUMA affinity inside each worker process alongside `pin_memory=True` (`bandwidthTest --memory=pinned` vs `pageable`) and `persistent_workers=True`.
+4. **GPU Driver Daemons, Clock Locking, Allocators, and Scheduler Integration:** (a) State the required boot startup order from kernel module load to `slurmd`/`kubelet` readiness, and explain how `jemalloc` (`MALLOC_CONF="narenas:8,background_thread:true,dirty_decay_ms:10000"`) and `PYTORCH_ALLOC_CONF=expandable_segments:True,max_split_size_mb:128` help host and GPU memory allocation; (b) state the Kubernetes (`Guaranteed` QoS, `cpuManagerPolicy: static`, `topologyManagerPolicy: single-numa-node`) and Slurm (`--gpu-bind=closest`, `--cpu-bind=cores`, `--mem-bind=local`) settings that enforce NUMA-aligned GPU/CPU/memory placement.
+5. **The `node_audit.sh` Verification Suite, Golden Images, and Canary Rollouts:** Evaluate `evaluate_node_audit()` on a healthy 8-GPU node versus a drifted node, list the 14 checks performed by `node_audit.sh`, and explain how golden images + Ansible check-mode drift detection + `3 * MAD` statistical outlier gates keep a 1,000-node fleet uniform.
+6. **Gregg's Chapter 16 Case Study (*The Unexplained 3 to 4x Win*):** Walk through how Gregg investigated why a recommendation service took `3 to 4 seconds` on a `48`-CPU VM versus `1 second` on a `64`-CPU container host. Cite the exact numbers from `uptime` (`85` vs `18`), `/proc/cpuinfo` (`33 MB` vs `45 MB` LLC), `pmcarch` (`IPC 0.57` vs `1.52`, `LLC% 30%` vs `90%`), `perf stat -e cs` (`2,000,000` vs `1,000` cs/s), and `cpudist` (`< 10 µs` vs `2 to 4 ms` on-CPU slices), and explain which part of the win was an artifact that would disappear once neighbor tenants arrived.
 
-## 18. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. Why does a single slow node degrade an entire 1,024-GPU synchronous training job, and why must tuning focus on fleet uniformity rather than hero-node peak numbers?</summary>
+Synchronous distributed training steps block at collective communication barriers (`AllReduce`, `AllGather`, `ReduceScatter`) until the **slowest rank** arrives. A single node that is 20% slower slows all 1,024 GPUs by 20%. Fleet engineering is therefore about making every node identical within a tight, audited tolerance and automatically draining outliers.
+</details>
 
-- `ai-systems-performance-engineering` — Chris Fregly, *AI Systems Performance Engineering*, "Chapter 3. OS, Docker, and Kubernetes Tuning for GPU-Based Environments" (read in full): NUMA awareness and CPU pinning (`get_gpu_numa_node` fallback chain: `NVML` → `sysfs` `/sys/bus/pci/devices/<bdf>/numa_node` → `nvidia-smi topo -m` / `numactl --show`), NUMA-friendly memory and pinning (`bandwidthTest --memory=pinned` vs `bandwidthTest --memory=pageable` showing `2x–3x` higher H2D throughput), huge pages, scheduler and interrupt affinity, swapping, filesystem caching, CPU frequency and C-states, host allocator tuning (`jemalloc` and `tcmalloc`), GPU driver and runtime settings (`nvidia-persistenced` / `nvidia-smi -pm 1` saving `1–2 seconds` initialization latency, MPS, MIG, `nvidia-smi -lgc` and `nvidia-smi -ac <mem_clock>,<graphics_clock>`, ECC, `TF_FORCE_GPU_ALLOW_GROWTH=true` and `PYTORCH_ALLOC_CONF`), container runtime overhead (`< 2%` vs bare metal, Red Hat OpenShift/Kubernetes `MLPerf Inference v5.0`) and CUDA compatibility (`R580` for CUDA 13.x, `R525` for CUDA 12.x, `cuda-compat`), Kubernetes topology awareness, scheduling, networking, jitter, resource guarantees, memory isolation, and I/O isolation. The NUMA-binding Python example is rewritten in a smaller form here.
-- Brendan Gregg, *Systems Performance*, 2nd ed., chapter 16 (Case Study: an unexplained win), retold and adapted in section 12.
-- The project's own `nvidia-devops` notes, Volume 10 chapter 3 (kernel and GRUB parameters, sysctl, provisioning with PXE/Kickstart, golden images, DKMS vs prebuilt modules, hardening exceptions for AI nodes, Ansible examples), migrated and rewritten across chapters 1.14, 1.21, 1.22 and this one; its production-hardening contents are in chapter 1.21.
-- *Supercomputers for Linux SysAdmins* (Slurm/HPC node practices) informed the Slurm and housekeeping-core guidance; the Slurm series later in the book covers it fully.
-- All script and configuration examples are **illustrative and untested**.
+<details>
+<summary>2. Why do you build and verify a GPU server bottom-up (Hardware -> Firmware -> Kernel -> OS -> Driver -> Workload), but diagnose symptoms top-down?</summary>
+Lower layers cannot be repaired by higher-layer software (no `sysctl` or PyTorch flag can fix a GPU PCIe link negotiated at `x8` Gen3 or a missing DIMM channel), so provisioning and verification must validate from hardware upward. When investigating a live slowdown, starting at the workload metric (`tokens/s`, step time breakdown) ensures you only drill into resources that are actually on the critical path.
+</details>
 
-**Flagged for verification before publishing:**
+<details>
+<summary>3. How do you read `nvidia-smi topo -m`, and which GPU-to-NIC topology code is required for full-speed GPUDirect RDMA?</summary>
+The topology legend from fastest to slowest is: `NV#` (`#` NVLink lanes), `PIX` (traversing at most one PCIe switch), `PXB` (multiple PCIe switches), `PHB` (crossing a PCIe Host Bridge within one NUMA node), `NODE` (crossing NUMA nodes within a socket), and `SYS` (crossing the inter-socket UPI/xGMI link). For full-speed GPUDirect RDMA, each GPU and its paired RDMA NIC should sit at **`PIX`** (sharing the same PCIe switch) on the same NUMA node.
+</details>
 
-- Vendor BIOS names/values; ACS/ATS guidance for GPUDirect RDMA; tuned profile names; kernel parameter availability on your kernel.
-- Kubernetes manager policies and feature gates per version; Slurm option names per version.
-- NVIDIA driver, CUDA compatibility tables, Fabric Manager modes; NVML calls.
-- Quoted performance gains (for example "5% to 10%", "2 to 3x" for pinned memory, latency numbers for NUMA) are indicative; measure on your hardware.
-- All labs are **untested**.
+<details>
+<summary>4. List seven critical BIOS/UEFI settings for bare-metal GPU training servers.</summary>
+(1) **Maximum Performance / HPC power profile**, (2) **C-states restricted to `C0`/`C1`** to eliminate core wake-up jitter, (3) **NUMA enabled** with node interleaving disabled, (4) **Above-4G Decoding and Resizable BAR (`ReBAR`) enabled** for large GPU memory apertures, (5) **IOMMU (`VT-d`/`AMD-Vi`) enabled** (paired with `iommu=pt` on bare metal), (6) **PCIe ACS disabled on GPU-NIC switch ports** per vendor GPUDirect RDMA P2P guidance, and (7) **identical pinned BIOS, BMC, GPU VBIOS, NVSwitch, and ConnectX NIC firmware** across all nodes.
+</details>
+
+<details>
+<summary>5. Explain the rationale and trade-offs of the kernel boot parameters `iommu=pt`, `numa_balancing=disable`, and `transparent_hugepage=madvise`.</summary>
+`iommu=pt` keeps the IOMMU active for SR-IOV/VFIO while setting up a 1:1 identity mapping for host-owned DMA devices, avoiding IOTLB translation overhead on high-rate RDMA/NVMe/GPU DMA. `numa_balancing=disable` stops the kernel from periodically unmapping pages and migrating them across sockets when ranks and workers are already explicitly pinned. `transparent_hugepage=madvise` prevents synchronous compaction latency spikes while allowing opt-in `2 MiB` huge pages.
+</details>
+
+<details>
+<summary>6. How do you verify that `memlock unlimited` (`ulimit -l`) and `nofile 1048576` (`ulimit -n`) are actually active inside your training job?</summary>
+Checking `ulimit -a` in an interactive root SSH shell only tests PAM's `/etc/security/limits.d/*.conf`. Because `systemd` services (`slurmd`, `containerd`, `kubelet`) ignore PAM `limits.d`, you must also configure `DefaultLimitMEMLOCK=infinity` and `DefaultLimitNOFILE=1048576` in `/etc/systemd/system.conf.d/` (and container runtime ulimits), and verify by running `srun ... bash -c 'ulimit -l -n'` or `kubectl exec ... -- sh -c 'ulimit -l -n'` inside the actual job container.
+</details>
+
+<details>
+<summary>7. Trace the 3-tier fallback chain used by `get_gpu_numa_node(device)` in `ASP` Chapter 3 to find a GPU's home NUMA node.</summary>
+(1) **NVML (`pynvml`, primary)**: normalize the GPU's PCI bus ID to an 8-digit domain (`nvmlDeviceGetHandleByPciBusId_v2`), query `nvmlDeviceGetNUMANodeId(handle)` directly, or read `nvmlDeviceGetCpuAffinity(handle)` and match the CPU bitmask against `/sys/devices/system/node/node*/cpulist`; (2) **sysfs fallback**: read `/sys/bus/pci/devices/<bdf>/numa_node` (normalizing `-1` to `0`); and (3) **CLI/process fallback**: parse `nvidia-smi topo -m -i $GPU` or `numactl --show`.
+</details>
+
+<details>
+<summary>8. Why is launching a training script under `numactl` sometimes not enough for PyTorch `DataLoader` workers, and how do you fix it?</summary>
+When `DataLoader` spawns worker processes (especially with the `spawn` or `forkserver` start method) or when native thread pools initialize, CPU affinity or memory policy can be reset. Pass a **`worker_init_fn`** to `DataLoader` that explicitly binds each worker's CPU affinity (`psutil.Process().cpu_affinity(...)` / `os.sched_setaffinity`) and `libnuma` policy to the GPU's NUMA node, use `persistent_workers=True` so workers survive across epochs, and set `pin_memory=True` (`non_blocking=True`).
+</details>
+
+<details>
+<summary>9. How much faster are host-to-device PCIe transfers from pinned memory compared to pageable memory, and what tool measures both directly?</summary>
+Pinned (`cudaMallocHost` / `pin_memory=True`) host-to-device and device-to-host DMA transfers are **`2x` to `3x` faster** than pageable transfers (which must first be copied by the CPU into an internal driver staging buffer) and allow true asynchronous overlap with GPU compute. Measure both directly on the host with `bandwidthTest --memory=pinned` versus `bandwidthTest --memory=pageable` (or `nvbandwidth`).
+</details>
+
+<details>
+<summary>10. How should NIC, NVMe, and GPU hardware interrupts (`IRQs`) and housekeeping daemons be placed on a GPU server?</summary>
+Stop `irqbalance` from moving interrupts onto training cores (either disable `irqbalance` and run `set_irq_affinity_bynode.sh` / write `/proc/irq/<N>/smp_affinity_list` so each NIC/NVMe's IRQs land on cores within its own NUMA node, or set `IRQBALANCE_BANNED_CPUS`). Confine host housekeeping daemons (`kubelet`, `containerd`, `slurmd`, exporters) to reserved housekeeping cores via `systemd` `CPUAffinity=`, `kubelet --reserved-cpus`, or Slurm `CoreSpecCount`.
+</details>
+
+<details>
+<summary>11. How should local NVMe drives be configured on a GPU compute node?</summary>
+Use a small mirrored pair (`RAID 1`) for the OS root filesystem, and stripe the remaining fast NVMe drives (`mdadm` `RAID 0` or LVM stripe, never parity RAID 5/6) with `XFS` or `ext4` (`noatime`, `fstrim.timer`, I/O scheduler `none`) as high-bandwidth ephemeral scratch for dataset caching, container `/var/lib/containerd` storage, and local checkpoint staging before asynchronous upload to shared/object storage.
+</details>
+
+<details>
+<summary>12. State the required boot-time startup order for GPU services before a node accepts Slurm or Kubernetes jobs.</summary>
+(1) Load kernel modules (`nvidia`, `nvidia_uvm`, `nvidia_peermem`, `nvidia-fs`, `mlx5_core`/`mlx5_ib`); (2) start `nvidia-persistenced.service`; (3) start `nvidia-fabricmanager.service` (on NVSwitch systems); (4) apply clock/power/MIG policies; (5) start `dcgm` / `nv-hostengine`; (6) run the boot-time `node_audit.sh` health gate; and (7) only if `node_audit.sh` passes (`exit 0`), start `slurmd.service` / `kubelet.service` (otherwise keep the node drained).
+</details>
+
+<details>
+<summary>13. How do `nvidia-smi -lgc`, `nvidia-smi -ac`, `PYTORCH_ALLOC_CONF`, `TF_FORCE_GPU_ALLOW_GROWTH=true`, and `jemalloc` tune runtime behavior?</summary>
+`nvidia-smi -lgc` and `-ac <mem>,<gfx>` lock GPU clocks for deterministic benchmarking. `PYTORCH_ALLOC_CONF=expandable_segments:True,max_split_size_mb:128` reduces PyTorch VRAM fragmentation, and `TF_FORCE_GPU_ALLOW_GROWTH=true` stops TensorFlow from grabbing 100% of VRAM at startup. On the host CPU side, preloading `jemalloc` (`MALLOC_CONF="narenas:8,background_thread:true,dirty_decay_ms:10000,muzzy_decay_ms:10000"`) prevents arena bloat and page-fault churn in multi-threaded data loaders.
+</details>
+
+<details>
+<summary>14. What is the CPU/GPU performance overhead of running AI workloads in containers with the NVIDIA Container Toolkit versus bare metal?</summary>
+Because containers share the host kernel and talk directly to `/dev/nvidia*` and `/dev/infiniband/*` via host-injected `libcuda.so.1`, container runtime overhead is **`< 2%`** compared to bare metal (and Red Hat's `MLPerf Inference v5.0` submission on OpenShift/Kubernetes matched bare-metal throughput and latency when paired with host networking/SR-IOV, `--ipc=host` / large `--shm-size`, and `--ulimit memlock=-1`).
+</details>
+
+<details>
+<summary>15. Which Kubernetes kubelet policies and Pod QoS settings are required to get exclusive, NUMA-aligned CPUs, memory, and GPUs?</summary>
+Run the Pod in the **`Guaranteed` QoS class** (`requests == limits` for both CPU and memory, with an integer CPU request) on a kubelet configured with **`cpuManagerPolicy: static`**, **`topologyManagerPolicy: single-numa-node`** (or `restricted`), **`memoryManagerPolicy: Static`**, and `--reserved-cpus` for system daemons.
+</details>
+
+<details>
+<summary>16. Which Slurm configuration settings and `srun` flags enforce NUMA-local CPU, memory, and GPU binding?</summary>
+In `slurm.conf` and `cgroup.conf`: `ProctrackType=proctrack/cgroup`, `TaskPlugin=task/cgroup,task/affinity`, `SelectType=select/cons_tres`, `ConstrainCores=yes`, `ConstrainRAMSpace=yes`, `ConstrainDevices=yes`, and `gres.conf` with `AutoDetect=nvml`. At job launch (`srun`): `--gpus-per-node=8 --ntasks-per-node=8 --gpu-bind=closest --cpu-bind=cores --mem-bind=local`.
+</details>
+
+<details>
+<summary>17. What belongs inside a baked Golden Image versus boot-time configuration management, and why?</summary>
+Bake heavy, kernel-coupled artifacts—the **pinned Linux kernel, precompiled NVIDIA driver `.ko` modules, MOFED/DOCA RDMA stack, NVIDIA Container Toolkit, and crisis/observability tools**—once in CI into the golden image (avoiding on-node DKMS compile storms and drift). Apply per-node identity (hostname, IP, regenerated SSH host keys and `/etc/machine-id`) and site configs at boot via cloud-init, Ansible, or BCM.
+</details>
+
+<details>
+<summary>18. What 14 items does `node_audit.sh` check before allowing a GPU node into the scheduling pool?</summary>
+(1) `iommu=pt` in `/proc/cmdline`, (2) `numa_balancing=disable` in `/proc/cmdline`, (3) `vm.swappiness == 1`, (4) `vm.max_map_count == 1048576`, (5) `kernel.numa_balancing == 0`, (6) THP mode `madvise`, (7) zero active swap devices, (8) `ulimit -l == unlimited`, (9) CPU `scaling_governor == performance`, (10) expected GPU count present (`8`), (11) GPU persistence mode `Enabled`, (12) every GPU's PCIe link gen and width equal to its maximum with `0` uncorrected ECC errors, (13) `nvidia-fabricmanager` active, and (14) zero `NVRM: Xid` errors in `journalctl -k` over the last 24 hours.
+</details>
+
+<details>
+<summary>19. In Gregg's Chapter 16 Case Study (*The Unexplained 3 to 4x Win*), what three quantified factors explained why the container ran `3 to 4x` faster than the VM?</summary>
+(1) **No neighbors on the container host**: the container host was `78%` idle (load `18` on `64` CPUs), whereas the VM was saturated (`2%` idle, load `85` on `48` CPUs -> `85/48 - 1 = 77%` time spent waiting for a CPU, explaining `~4x` delay); (2) **Larger LLC and smaller working set**: the container host had a `45 MB` LLC vs `33 MB` on the VM and ran only one subcomponent, achieving a **`90%` vs `30%` LLC hit ratio** and **`1.52` vs `0.57` IPC (`2.6x`)**; and (3) **Context-switch thrashing on the VM**: the overloaded VM suffered **`2,000,000` context switches/s** with `< 10 µs` on-CPU bursts (`cpudist`), versus `1,000` cs/s and `2–4 ms` bursts on the container.
+</details>
+
+<details>
+<summary>20. Why was it critical in the Chapter 16 Case Study to warn management that part of the `3 to 4x` container speedup would not last?</summary>
+A large fraction of the container's advantage came from running **alone on an empty 64-CPU host** with full access to the `45 MB` L3 cache and zero run-queue wait. Once production multitenant neighbors moved onto the container host, LLC contention and CPU scheduling wait would return.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `ai-systems-performance-engineering` — Chris Fregly, *AI Systems Performance Engineering*, **Chapter 3: OS, Docker, and Kubernetes Tuning for GPU-Based Environments** (NUMA awareness and CPU pinning, `get_gpu_numa_node` fallback chain `NVML` → `sysfs` `/sys/bus/pci/devices/<bdf>/numa_node` → `nvidia-smi topo -m` / `numactl --show`, NUMA-friendly memory and pinning `bandwidthTest --memory=pinned` vs `bandwidthTest --memory=pageable` showing `2x–3x` higher H2D throughput, huge pages, scheduler and interrupt affinity, swapping, filesystem caching, CPU frequency and C-states, host allocator tuning `jemalloc` and `tcmalloc`, GPU driver and runtime settings `nvidia-persistenced` / `nvidia-smi -pm 1` saving `1–2 seconds` initialization latency, MPS, MIG, `nvidia-smi -lgc` and `nvidia-smi -ac <mem_clock>,<graphics_clock>`, ECC, `TF_FORCE_GPU_ALLOW_GROWTH=true` and `PYTORCH_ALLOC_CONF`, container runtime overhead `< 2%` vs bare metal and Red Hat OpenShift/Kubernetes `MLPerf Inference v5.0`, CUDA compatibility `R580` for CUDA 13.x and `R525` for CUDA 12.x, `cuda-compat`, and Kubernetes CPU/Topology/Memory Managers).
+  - `systems-performance-2nd-edition` — Brendan Gregg, *Systems Performance: Enterprise and the Cloud*, 2nd ed., **Chapter 16: Case Study** (*An Unexplained Win*: comparative analysis of `48`-CPU VM at load `85`, IPC `0.57`, `30%` LLC hit ratio, `2M` cs/s, `< 10 µs` slices vs `64`-CPU container host at load `18`, IPC `1.52`, `90%` LLC hit ratio, `1,000` cs/s, `2–4 ms` slices).
+  - `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to` — Sergey Zhumatiy, *Supercomputers for Linux SysAdmins* (Slurm/HPC node practices and housekeeping-core guidance).
+  - `nvidia-devops/volume-10/03-os-provisioning-and-linux-security-hardening.md` — migrated the kernel and GRUB parameters, `sysctl`, PXE/Kickstart and golden-image provisioning, DKMS vs prebuilt modules, and Ansible role patterns (cross-referenced with Chapters 1.12, 1.13, 1.14, 1.17, 1.18, 1.19, 1.21, 1.22, 1.23, 1.24, 1.25, 1.26, and 1.27, plus original study items 21–30).
+- **Run here:** `python3 code/part01/tune_gpu_node_lab.py` (15 passed, 0 failed).
+- **Explicitly labelled inferences:** The `node_audit.sh` 14-check script, `launch_bound.sh` wrapper, and provisioning-to-canary pipeline diagram synthesize Part 1's Linux foundations into a production GPU cluster runbook (plus original study items 22, 23, 25, 26, 27, and 29).
+- **Not verified on live hardware:** All interactive VM and bare-metal GPU commands (`lscpu`, `numactl`, `lstopo`, `lspci`, `nvidia-smi`, `ibstat`, `dmidecode`, `cpupower`, `ethtool`, `dcgmi`, `all_reduce_perf`, `node_audit.sh`) are marked (untested here) and must be validated on a canary node before fleet rollout.
