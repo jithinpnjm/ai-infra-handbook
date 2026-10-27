@@ -268,6 +268,9 @@ Practical notes:
 - **Helm CRDs**: Argo CD applies chart CRDs via sync (with `Replace`/`ServerSideApply` for large CRDs); Flux uses `crds: CreateReplace`. Know your tool's upgrade semantics.
 - **Node-level change coordination**: operator upgrades roll DaemonSets across GPU nodes; control with operator upgrade policies, `maxUnavailable`, node drains, and maintenance windows (Part 11). Do not let `automated` sync apply risky upgrades fleet-wide at once: use progressive rollout across clusters (ApplicationSet with staged `RollingSync`, Flux per-cluster paths promoted in ring order).
 - **Cluster bootstrap**: Terraform creates the cluster and installs the controller plus root app (4.25); everything else flows from Git, including the controller's own upgrades (self-managed).
+- **Platform Operators, CRDs, and `ownerReferences` (`PK` Chapter 11):** In *Production Kubernetes* Chapter 11 (*Building Platform Services*), Josh Rosso, Rich Lander, Alexander Brand, and John Harris explain how GitOps controllers interact with the two categories of **Kubernetes Operators** (a term coined in November 2016 by Brandon Phillips at CoreOS for a controller managing a `CustomResourceDefinition`):
+  1. *App-Specific Operators (Waves 1–3):* Operators such as `cert-manager`, Prometheus Operator, NVIDIA GPU Operator, Network Operator, and KubeRay watch domain-specific CRDs (`ClusterPolicy`, `ServiceMonitor`, `RayCluster`) and reconcile complex DaemonSets, StatefulSets, and device plugins.
+  2. *Platform / Tenancy Operators (`AcmeNamespace` in `PK` Chapter 11, Wave 4):* Rather than requiring developers to open PRs containing four separate YAML files (`Namespace`, `ResourceQuota`, `Role`, `RoleBinding`), a platform team can either generate them via Kustomize/Helm in GitOps or deploy a custom tenancy operator (such as `PK` Chapter 11's **`AcmeNamespace` (`tenancy.acme.com/v1alpha1`)** built with **Kubebuilder** in Go, **Operator SDK** in Go/Ansible/Helm, or **Metacontroller** webhooks). When Argo CD or Flux syncs a single `AcmeNamespace` resource (`spec: { namespaceName: app-y, adminUsername: sam, deploymentTier: dev }`), the controller's `Reconcile` loop creates the child `Namespace`, `Role`, and `RoleBinding`, sets **`ownerReferences`** on each child (`ctrl.SetControllerReference`, so deleting the parent `AcmeNamespace` automatically garbage-collects all child resources), and updates **`status.phase`** (`CreationInProgress` -> `Created`) so Argo CD / Flux health checks know when the namespace is ready.
 
 ## 6. Progressive delivery and verification
 
@@ -302,7 +305,15 @@ Practical notes:
 - **Emergency changes**: allow `kubectl` fixes only via break-glass; Argo `selfHeal` will revert them, so pause automation (`--sync-policy none`/`flux suspend`), fix, then reconcile Git to match (4.2).
 - **Scale**: thousands of applications need controller sharding (Argo application-controller `--sharding`), repo-server caching, appset progressive syncs, and avoiding monolithic repos with huge renders.
 
-## 8. Lab (untested)
+## 8. Lab
+
+First, run the self-checking Python lab (`code/part04/gitops_sync_waves_lab.py`) locally. It verifies the Argo CD `sync-wave` and resource hook (`PreSync` / `Sync` / `PostSync`) scheduler (`plan_argocd_sync_waves`, ordering Waves `0..5` for GPU platform bootstrap), the `ApplicationSet` `clusters x git directories` matrix generator (`expand_applicationset_matrix`), and the GitOps drift/prune reconciler (`evaluate_gitops_reconciliation`, honoring `ignoreDifferences` on HPA-managed `/spec/replicas` and `Prune=false` protection on stateful PVCs).
+
+```bash
+python3 code/part04/gitops_sync_waves_lab.py
+```
+
+Next, on a machine with `kind`, `kubectl`, `helm`, and the `argocd` / `flux` CLIs (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **Argo CD basics**: install Argo CD in kind; create an Application for a Helm chart from Git; observe Sync/Health; change values in Git; use `argocd app diff`; make an out-of-band change and watch `selfHeal` revert it; toggle `prune`.
 2. **Flux basics**: bootstrap Flux against a Git repo; add a `HelmRepository` + `HelmRelease` and a Kustomization; use `flux get all`, `flux reconcile`, `flux diff`; break a chart value and watch remediation.
@@ -317,8 +328,6 @@ Practical notes:
 11. **Failure drills**: delete the controller namespace and recover from Git; lose the SOPS key (document consequence); simulate a bad commit that prunes a PVC (protect with `Prune=false`); pause automation during an "incident".
 12. **Terraform bootstrap handoff**: use the Terraform from 4.25 to install the controller and root app, then verify Terraform no longer touches managed objects.
 13. **Clean up**.
-
-Mark tested only after execution.
 
 ## 9. Common mistakes
 
@@ -335,56 +344,199 @@ Mark tested only after execution.
 
 ## 10. Interview angles
 
-- "What is GitOps? How is it different from CI/CD pushing to the cluster?" 
-- "Argo CD or Flux? Trade-offs?" 
-- "How do you structure repos for multiple clusters and environments? How do you promote?" 
+- "What is GitOps? How is it different from CI/CD pushing to the cluster?"
+- "Argo CD or Flux? Trade-offs?"
+- "How do you structure repos for multiple clusters and environments? How do you promote?"
 - "How do you handle secrets in GitOps?" (SOPS, Sealed Secrets, ESO.)
 - "How do you order the installation of GPU Operator, Network Operator, Kueue and apps?" (waves/dependsOn, health gates.)
-- "A sync keeps showing OutOfSync. Debug." 
+- "A sync keeps showing OutOfSync. Debug."
 - "How do you roll out a risky operator upgrade across 20 clusters?" (rings, progressive sync, windows.)
-- "Who has write access to the config repo and why does that matter?" 
-- "How do Terraform and GitOps divide responsibility?" 
+- "Who has write access to the config repo and why does that matter?"
+- "How do Terraform and GitOps divide responsibility?"
 
-## 11. Checkpoint questions (30)
+## Exercises
 
-1. Four GitOps principles? **A:** Declarative, versioned/immutable, pulled automatically, continuously reconciled.
-2. Why pull vs push? **A:** Credentials in-cluster, drift correction, Git audit trail.
-3. What are Argo CD's main components? **A:** API server, repo-server, application-controller (+Redis, Dex, ApplicationSet).
-4. What is `selfHeal`? **A:** Reverts out-of-band changes.
-5. What is `prune`? **A:** Deletes resources removed from Git.
-6. What is a sync wave? **A:** Ordering annotation within a sync.
-7. What are hooks? **A:** PreSync/PostSync/SyncFail Jobs.
-8. What is an ApplicationSet? **A:** Generator creating Applications from lists/clusters/Git dirs.
-9. App-of-apps? **A:** Application whose manifests are Applications.
-10. AppProject purpose? **A:** Guardrails: repos, destinations, kinds, roles.
-11. Argo sync vs health? **A:** Match to Git vs runtime state.
-12. Flux components? **A:** source, kustomize, helm, notification (+image).
-13. What is Flux `dependsOn`? **A:** Orders reconciliations.
-14. Flux bootstrap command? **A:** `flux bootstrap ...`.
-15. Flux native secrets decryption? **A:** SOPS.
-16. HelmRelease remediation? **A:** Auto rollback/retry on failure.
-17. Argo Helm approach? **A:** Renders and applies manifests (no Helm release).
-18. Flux Helm approach? **A:** Real Helm releases.
-19. Environments in GitOps repos? **A:** Directories/overlays, not branches.
-20. Two-repo pattern? **A:** App repo (build) and config repo (desired state).
-21. How update image tags? **A:** CI PR or image automation to Git.
-22. Why CRDs separately? **A:** Ordering and upgrade semantics.
-23. Dangerous prune target? **A:** PVCs/stateful objects.
-24. Protect from prune? **A:** `Prune=false` / `prune: disabled` annotations.
-25. How handle HPA vs replicas drift? **A:** `ignoreDifferences`.
-26. Why is config repo write access critical? **A:** Equivalent to cluster admin.
-27. How pause automation in incident? **A:** `sync-policy none` / `flux suspend`.
-28. Progressive delivery tools? **A:** Argo Rollouts, Flagger.
-29. Multi-cluster Argo models? **A:** Hub-and-spoke or per-cluster instances.
-30. What bootstraps GitOps? **A:** Terraform/CLI installs controller + root app.
+1. **The Four OpenGitOps Principles, Pull vs. Push Architecture, and the Two-Repository Pattern:** Explain the four OpenGitOps principles (Declarative, Versioned & Immutable, Pulled Automatically, Continuously Reconciled), why pull-based reconciliation keeps cluster-admin credentials inside the cluster rather than in CI, and how the App Repo + Config Repo pattern works.
+2. **Argo CD Architecture, `Application` Spec (`automated`, `prune`, `selfHeal`, `ServerSideApply`, `ignoreDifferences`), and `ApplicationSet` Matrix Generators:** Using `expand_applicationset_matrix()` and `evaluate_gitops_reconciliation()` in `code/part04/gitops_sync_waves.py`, trace the `gpu-operator` `Application` manifest and the `platform-addons` `ApplicationSet` matrix generator (`clusters x git directories`), explaining `ignoreDifferences` on `/spec/replicas` and `Prune=false` on stateful PVCs.
+3. **Flux Architecture (`GitRepository`, `Kustomization`, `HelmRelease`), Native SOPS Decryption, and Argo CD vs. Flux Trade-Offs:** Trace the Section 3 Flux manifests (`GitRepository`, `Kustomization` with `dependsOn: [{name: crds}]` and native SOPS `sops-age` decryption, and `HelmRelease` with `crds: CreateReplace` and auto-remediation), and compare Argo CD and Flux across Helm handling, UI, multi-cluster models, and secrets.
+4. **Bootstrapping a GPU Kubernetes Platform in 6 Waves (`Wave 0` to `Wave 5`) and Platform Operators (`PK` Chapter 11):** Using `plan_argocd_sync_waves()` in `code/part04/gitops_sync_waves.py`, trace the 6-wave GPU platform bootstrap order (`Wave 0` namespaces/CRDs -> `Wave 1` `cert-manager`/CSI/Prometheus CRDs -> `Wave 2` GPU Operator & Network Operator -> `Wave 3` Kueue/Volcano/KubeRay -> `Wave 4` Kyverno/tenancy -> `Wave 5` apps), and explain how `PK` Chapter 11's `AcmeNamespace` operator uses `ownerReferences` and `status.phase`.
+5. **Config Repository Layout (`clusters/`, `infrastructure/{base,overlays}`, `apps/{base,overlays}`) and Progressive Delivery (`Argo Rollouts` / `Flagger`):** Explain why environments are represented as Kustomize/Helm overlays in directories on `main` rather than Git branches, how CI validates rendered manifests offline (`kustomize build | kubeconform`), and how Argo Rollouts / Flagger gate inference rollouts on Prometheus GPU/TTFT/error metrics.
+6. **Troubleshooting Stuck `OutOfSync` / `Progressing` Apps, Multi-Tenant Security (`AppProject` vs. Flux Impersonation), and Break-Glass Incident Handling:** Diagnose the top 5 GitOps failure modes in Section 7, explain why write access to the config repository is equivalent to `cluster-admin`, and state how to pause GitOps (`argocd app set --sync-policy none` / `flux suspend`) during an emergency incident.
 
-## 12. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. What are the four OpenGitOps principles, and how does pull-based GitOps differ from push-based CI deployment?</summary>
 
-- The author's `nvidia-devops` repository, volume 10 chapter 11 (Kubernetes GitOps with Argo CD and Flux, ordering of Node Feature Discovery and GPU Operator, pull-based versus push-based delivery) and chapter 17 (Git, GitOps bridge).
-- *Production Kubernetes* (Rosso, Lander, Brand, Harris; deployment and application delivery chapter) for context on delivering workloads to clusters.
-- OpenGitOps principles; Argo CD, Argo Rollouts, Flux and Flagger documentation; Kustomize and Helm documentation.
-- Examples are the author's constructions.
+The four **OpenGitOps principles** are:
+1. **Declarative:** Desired system state is expressed declaratively (YAML/Helm/Kustomize).
+2. **Versioned and Immutable:** Desired state is stored in Git with an immutable commit history.
+3. **Pulled Automatically:** Software agents inside the cluster automatically pull approved state from Git.
+4. **Continuously Reconciled:** Agents continuously compare live cluster state against Git and reconcile drift.
+Unlike push-based CI (where external GitHub/GitLab runners hold `cluster-admin` kubeconfigs and only act when a pipeline runs), pull-based GitOps keeps cluster credentials inside the cluster and continuously heals out-of-band drift.
+</details>
 
-**Flagged for verification before publishing:** Argo CD and Flux API versions and fields for the versions in use, ApplicationSet generator syntax, health-check and sync-option names, Helm chart values for GPU Operator, and every code listing; all labs are **untested**.
+<details>
+<summary>2. Why do mature teams separate the Application Repository from the Config (GitOps) Repository?</summary>
+
+- **Application repository:** Holds application source code, `Dockerfile`s, and unit tests.
+- **Config (GitOps) repository:** Holds environment overlays, Helm values, and cluster manifests watched by Argo CD / Flux.
+Separating them prevents every application code commit or failed test branch from triggering cluster syncs, isolates Git read/write permissions (application developers don't get write access to cluster `infrastructure/` manifests), and makes every production deployment a clean, auditable commit updating an image digest in the config repo.
+</details>
+
+<details>
+<summary>3. What are the five main microservice components of Argo CD and what does each do?</summary>
+
+1. **`argocd-server` (API/Web Server):** Exposes the Web UI, CLI gRPC/REST API, RBAC enforcement, and SSO/Dex login.
+2. **`argocd-repo-server`:** Clones Git repositories, caches Helm charts, and runs `helm template` / `kustomize build` to render raw Kubernetes YAML manifests.
+3. **`argocd-application-controller`:** Stateful controller (shardable across clusters) that compares the rendered manifests from `repo-server` against live Kubernetes API objects and executes syncs/self-healing.
+4. **`argocd-applicationset-controller`:** Expands `ApplicationSet` generators into `Application` resources.
+5. **`redis`:** Shared cache between `repo-server`, `application-controller`, and `argocd-server`.
+</details>
+
+<details>
+<summary>4. In Argo CD, what is the difference between `Sync Status` (`Synced` vs. `OutOfSync`) and `Health Status` (`Healthy` vs. `Progressing` vs. `Degraded`)?</summary>
+
+- **Sync Status (`Synced` / `OutOfSync`):** Measures whether the resource specs currently stored in the Kubernetes API server match the desired manifests rendered from Git.
+- **Health Status (`Healthy` / `Progressing` / `Degraded` / `Suspended` / `Missing`):** Evaluates whether the live Kubernetes objects are actually **working at runtime** (for example, a `Deployment` or `DaemonSet` can be `Synced` because its YAML was applied, while its Health is `Progressing` or `Degraded` because its Pods are stuck in `ImagePullBackOff` or `Pending` waiting for GPUs).
+</details>
+
+<details>
+<summary>5. What do `prune: true`, `selfHeal: true`, and `finalizers: [resources-finalizer.argocd.argoproj.io]` do on an Argo CD `Application`?</summary>
+
+- **`automated.prune: true`**: Automatically deletes Kubernetes resources from the cluster when their manifests are deleted from Git.
+- **`automated.selfHeal: true`**: Automatically reverts manual out-of-band `kubectl edit` / `kubectl delete` changes back to the state in Git (default reconciliation timeout 3 minutes, or instant on webhook/watch event).
+- **`finalizers: [resources-finalizer.argocd.argoproj.io]`**: Ensures that if the `Application` CR itself is deleted from Argo CD, Argo CD performs a **cascading delete** of all child Kubernetes resources managed by that Application (without the finalizer, deleting the `Application` leaves the deployed resources running in the cluster).
+</details>
+
+<details>
+<summary>6. Why does an HPA-scaled `Deployment` stay permanently `OutOfSync` in Argo CD unless `ignoreDifferences` is configured?</summary>
+
+If a `Deployment` in Git specifies `replicas: 2` and a `HorizontalPodAutoscaler` (`HPA`) or KEDA scales the live Deployment up to `replicas: 8` under load, Argo CD sees `2 != 8` (`OutOfSync`)—and if `selfHeal: true` is enabled, Argo CD will **fight the autoscaler by resetting `replicas` back to `2`**, dropping live traffic. Fix this by omitting `replicas` from the Deployment YAML in Git or adding:
+```yaml
+ignoreDifferences:
+  - group: apps
+    kind: Deployment
+    jsonPointers: [/spec/replicas]
+```
+</details>
+
+<details>
+<summary>7. How do Argo CD `sync-wave` annotations and Resource Hooks (`PreSync`, `Sync`, `PostSync`, `SyncFail`) order operations?</summary>
+
+Within any sync operation, Argo CD processes phases in order—**`PreSync` -> `Sync` -> `PostSync`** (and `SyncFail` if an error occurs). Within each phase, resources are applied in ascending numerical order of their **`argocd.argoproj.io/sync-wave`** annotation (e.g., `"-1"` -> `"0"` -> `"1"` -> `"2"`), and **Argo CD waits for all resources in Wave $N$ to report `Healthy` before applying Wave $N+1$**.
+</details>
+
+<details>
+<summary>8. Walk through the 6-Wave Bootstrap Order for a GPU Kubernetes cluster (Section 5).</summary>
+
+- **Wave 0:** Namespaces, Pod Security Admission (`PSA`) labels, `PriorityClass`es, and operator CRDs.
+- **Wave 1:** `cert-manager`, storage CSI drivers & `StorageClass`es, and Prometheus Operator CRDs (`ServiceMonitor`, `PodMonitor`).
+- **Wave 2:** **NVIDIA GPU Operator** (NFD, driver/toolkit, device plugin, DCGM Exporter) and **NVIDIA Network Operator** (Multus, SR-IOV / RDMA device plugin).
+- **Wave 3:** Batch & AI schedulers (**Kueue**, **JobSet**, **Volcano**, **KubeRay**, **Kubeflow Training Operator**).
+- **Wave 4:** Admission policies (**Kyverno** / **Gatekeeper**) and tenant namespaces, `ResourceQuota`s, RBAC, and Kueue `ClusterQueue`s/`LocalQueue`s.
+- **Wave 5:** Tenant training pipelines, inference gateways, and dashboards.
+</details>
+
+<details>
+<summary>9. Why do large CRDs (like ` kube-prometheus-stack` or `gpu-operator` CRDs) fail to sync in Argo CD with `metadata.annotations: Too long: must have at most 262144 bytes`, and how does `ServerSideApply=true` fix it?</summary>
+
+Standard client-side `kubectl apply` stores the entire previous JSON manifest inside the **`kubectl.kubernetes.io/last-applied-configuration`** annotation, which is capped at **262,144 bytes (256 KiB)** by etcd/API server. Huge OpenAPI v3 CRDs exceed 256 KiB and fail client-side apply. Adding **`syncOptions: [ServerSideApply=true]`** (or Flux's native Server-Side Apply) tracks field ownership in `metadata.managedFields` on the API server without writing the `last-applied-configuration` annotation.
+</details>
+
+<details>
+<summary>10. How does an Argo CD `ApplicationSet` Matrix Generator stamp add-ons across a fleet of production clusters?</summary>
+
+A `matrix` generator combines the outputs of two child generators (producing their Cartesian product):
+1. A **`clusters` generator** (`selector: { matchLabels: { env: prod } }`) matching all registered production clusters (`prod-us`, `prod-eu`).
+2. A **`git` directory generator** (`directories: [{ path: addons/* }]`) discovering every add-on folder (`addons/gpu-operator`, `addons/kueue`).
+The `template` renders one `Application` (`{{.name}}-{{.path.basename}}`) for every `(cluster, addon)` pair automatically.
+</details>
+
+<details>
+<summary>11. Compare how Argo CD and Flux handle Helm charts (`Application` vs. `HelmRelease`).</summary>
+
+- **Argo CD:** By default, Argo CD's `repo-server` runs **`helm template`** internally to render the Helm chart into plain Kubernetes YAML manifests and applies those manifests directly—so `helm list` on the cluster shows **no Helm release Secret**, and Helm lifecycle hooks are mapped to Argo hooks.
+- **Flux (`helm-controller` + `HelmRelease`):** Flux executes the native **Helm Go SDK** inside the cluster to perform real `helm install` and `helm upgrade` operations—storing standard Helm release Secrets, supporting **`crds: CreateReplace`** on upgrades, and running native Helm test/rollback remediation (`remediateLastFailure: true`).
+</details>
+
+<details>
+<summary>12. What are the four core controllers in the Flux GitOps Toolkit, and how does `dependsOn` work across `Kustomization`s?</summary>
+
+1. **`source-controller`**: fetches artifacts from `GitRepository`, `HelmRepository`, `OCIRepository`, and `Bucket` sources and caches them inside the cluster.
+2. **`kustomize-controller`**: reconciles `Kustomization` CRs (applying plain YAML or Kustomize overlays from a source, with built-in SOPS decryption).
+3. **`helm-controller`**: reconciles `HelmRelease` CRs.
+4. **`notification-controller`**: handles inbound webhooks and outbound Slack/PagerDuty/Teams alerts (plus optional `image-reflector-controller` and `image-automation-controller`).
+Setting **`dependsOn: [{ name: crds }]`** and **`wait: true`** on a Flux `Kustomization` or `HelmRelease` guarantees that Flux waits until the `crds` Kustomization is applied and all its resources pass readiness checks before applying the dependent Kustomization.
+</details>
+
+<details>
+<summary>13. How do you manage Kubernetes `Secret`s safely in a GitOps repository without committing plaintext?</summary>
+
+Use one of three patterns:
+1. **External Secrets Operator (`ESO`, preferred for cloud/Vault environments):** Commit only an `ExternalSecret` YAML in Git referencing the key path in AWS/GCP Secret Manager or HashiCorp Vault; the in-cluster ESO controller fetches the secret over Workload Identity/IRSA and creates the native Kubernetes `Secret`.
+2. **SOPS (`age` / Cloud KMS):** Encrypt only the `data` / `stringData` values in the YAML file; **Flux's `kustomize-controller` decrypts SOPS natively** (`decryption: { provider: sops, secretRef: { name: sops-age } }`), while Argo CD uses the KSOPS plugin.
+3. **Bitnami Sealed Secrets (`kubeseal`):** Asymmetric encryption where developers encrypt a Secret against the cluster controller's public certificate into a `SealedSecret` CR that only the in-cluster private key can decrypt.
+</details>
+
+<details>
+<summary>14. How do you protect stateful `PersistentVolumeClaim`s (`PVCs`) or namespaces from accidental deletion when `prune: true` is enabled?</summary>
+
+If someone refactors a directory path or makes a mistake in a Kustomize overlay while `prune: true` is active, the GitOps controller will delete any resource that disappeared from the rendered output. Protect stateful PVCs and critical namespaces by annotating them with:
+- **Argo CD:** `argocd.argoproj.io/sync-options: Prune=false`
+- **Flux:** `kustomize.toolkit.fluxcd.io/prune: disabled`
+</details>
+
+<details>
+<summary>15. Compare Multi-Cluster GitOps topologies: \"Hub-and-Spoke\" (central Argo CD) vs. \"Instance-per-Cluster\".</summary>
+
+- **Hub-and-Spoke (one central Argo CD managing $N$ remote clusters):** Single UI dashboard for all clusters and easy `ApplicationSet` cluster generators. *Drawbacks:* the central hub holds high-privilege bearer tokens for every production cluster (a single blast-radius target if compromised), requires network reachability from the hub to every cluster's API server, and if the hub goes down, GitOps across all clusters stops.
+- **Instance-per-Cluster (one Flux or Argo CD inside each cluster pulling from Git):** Zero cross-cluster admin credentials leave any cluster, works over outbound-only HTTPS to Git without inbound API access, and isolates blast radius per cluster.
+</details>
+
+<details>
+<summary>16. How do `AppProject` (in Argo CD) and `serviceAccountName` impersonation (in Flux) enforce multi-tenant security?</summary>
+
+Because the GitOps controller itself often runs with `cluster-admin` privileges, an unguarded `Application` or `Kustomization` created by an application team could deploy a `ClusterRoleBinding` granting themselves root on the cluster.
+- **Argo CD `AppProject`:** Restricts a team's Applications to specific **source Git repositories** (`sourceRepos`), specific **target clusters and namespaces** (`destinations`), and an explicit allow/deny list of **`clusterResourceWhitelist` / `namespaceResourceBlacklist`** kinds.
+- **Flux `spec.serviceAccountName`:** Forces `kustomize-controller` and `helm-controller` to **impersonate a tenant-scoped Kubernetes `ServiceAccount`** when applying that tenant's manifests, so standard Kubernetes RBAC blocks the tenant from touching other namespaces or cluster-scoped objects.
+</details>
+
+<details>
+<summary>17. In *Production Kubernetes* Chapter 11, what is the difference between an App-Specific Operator and a Platform Operator (`AcmeNamespace`), and what do `ownerReferences` do?</summary>
+
+- **App-Specific Operator:** Manages the operational domain knowledge of a complex stateful system or hardware stack (such as the NVIDIA GPU Operator, Prometheus Operator, or etcd Operator).
+- **Platform Operator (`AcmeNamespace` in `PK` Chapter 11, built with `Kubebuilder`):** Encapsulates organization-specific multi-tenancy policy behind a high-level CRD (`kind: AcmeNamespace`). When its `Reconcile` loop creates the child `Namespace`, `Role`, and `RoleBinding`, it attaches an **`ownerReference`** (`ctrl.SetControllerReference`) pointing to the parent `AcmeNamespace`—so Kubernetes garbage collection automatically deletes all child resources whenever the `AcmeNamespace` CR is deleted.
+</details>
+
+<details>
+<summary>18. How do Argo Rollouts and Flagger add SLO-driven Progressive Delivery to GitOps?</summary>
+
+Standard Kubernetes `Deployment` rolling updates only check whether new pods pass `readinessProbe`—they do not check whether the new model version is returning HTTP 500s, hallucinating, or spiking GPU tail latency (`TTFT` / `ITL`). **Argo Rollouts** (`Rollout` + `AnalysisTemplate`) and **Flagger** (`Canary`) shift traffic to the new version in increments (`5% -> 20% -> 50% -> 100%`) while querying **Prometheus / DCGM metrics** at each step, and **automatically abort and roll back to the stable revision** if latency, error rate, or GPU XID metrics breach thresholds.
+</details>
+
+<details>
+<summary>19. During a production incident where you need to apply an immediate `kubectl` hotfix, what happens if `selfHeal: true` is active, and what is the proper procedure?</summary>
+
+If `selfHeal: true` is active and you run `kubectl edit` or `kubectl scale` on a managed resource, **Argo CD or Flux will immediately overwrite your manual fix within seconds**. During an emergency break-glass intervention:
+1. **Pause GitOps reconciliation first:** Run **`argocd app set <app> --sync-policy none`** (or **`flux suspend kustomization <name>`** / **`flux suspend helmrelease <name>`**).
+2. Mitigate the incident.
+3. Commit the permanent fix to the Git config repository, verify `argocd app diff` / `flux diff` is clean, and **re-enable automated sync / `flux resume`**.
+</details>
+
+<details>
+<summary>20. How do you roll out a high-risk operator upgrade (like the NVIDIA GPU Operator or Network Operator) across 20 clusters via GitOps without risking a simultaneous fleet-wide outage?</summary>
+
+Never point all 20 clusters at a single unringed `HEAD` path with `automated` sync for kernel/driver-level operators:
+1. Organize clusters into **deployment rings** (`clusters/lab/`, `clusters/staging/`, `clusters/prod-canary/`, `clusters/prod-fleet/`) or use **Argo CD `ApplicationSet` Progressive Syncs (`strategy: { type: RollingSync, rollingSync: { steps: [...] } }`)** matching cluster labels (`ring=1`, `ring=2`, `ring=3`).
+2. Promote the chart version bump (`v24.6.0`) to Ring 1 first, wait for node-level upgrade controllers and DCGM health checks to pass, and only then advance to subsequent rings.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 11: Building Platform Services** (read in full: eliminating human toil with platform services, Kubernetes extension points, CustomResourceDefinitions `CRDs` and Operators introduced by Brandon Phillips in 2016, App-Specific Operators vs Platform/Tenancy Operators, building the `AcmeNamespace` operator in Go with **Kubebuilder** `controller-runtime`, `Reconcile` loop idempotency, `status.phase` `CreationInProgress` -> `Created`, `ownerReferences` garbage collection via `ctrl.SetControllerReference`, **Operator Framework / Operator SDK** for Go/Ansible/Helm, and **Metacontroller**).
+  - `nvidia-devops` (`volume-10/11-cicd-for-infrastructure-and-cluster-configuration.md` and `volume-10/17-git-for-infrastructure-and-operations.md`): Kubernetes GitOps with Argo CD and Flux, ordering of Node Feature Discovery and GPU Operator, and pull-based vs push-based delivery.
+- **Run here:** `python3 code/part04/gitops_sync_waves_lab.py` (3 passed, 0 failed).
+- **Explicitly labelled inferences:** The `plan_argocd_sync_waves`, `expand_applicationset_matrix`, and `evaluate_gitops_reconciliation` models in `code/part04/gitops_sync_waves.py`, the 6-wave GPU platform bootstrap diagram, and the Argo CD `Application`/`ApplicationSet` and Flux `GitRepository`/`Kustomization`/`HelmRelease` manifests are the author's constructions synthesizing `PK` Chapter 11 and `volume-10` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, and 30).
+- **Not verified on live hardware:** Live `argocd`, `flux`, `kustomize`, and `kubeconform` executions (`v24.6.0`, `retry.limit: 5`, `duration: 10s, maxDuration: 3m`, `interval: 1m / 10m / 30m`, `timeout: 15m`, `retries: 3`, `20` clusters) are marked (`untested here`) where not executed by `gitops_sync_waves_lab.py`.
