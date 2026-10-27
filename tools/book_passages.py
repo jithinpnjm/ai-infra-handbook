@@ -19,7 +19,7 @@ df = collections.Counter(); n = 0
 for (c,) in db.execute('select content from chunks'):
     n += 1
     for w in toks(c): df[w] += 1
-rows = db.execute('select content from chunks where book like ? and chapter like ? order by chunk_id', (book[:60] + '%', prefix + '%')).fetchall()
+rows = db.execute('select content from chunks where book like ? and (chapter like ? or chapter like ?) order by chunk_id', (book[:60] + '%', prefix + '%', prefix.replace('. ', '.\xa0') + '%')).fetchall()
 if not rows:
     print('no such book chapter'); sys.exit(2)
 text = '\n'.join(r[0] for r in rows)

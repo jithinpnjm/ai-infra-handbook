@@ -33,8 +33,8 @@ def paragraphs(text):
     if len(' '.join(buf).split()) >= 40: paras.append(' '.join(buf))
     return paras
 def measure(book, chnum, labels):
-    rows = db.execute('select content from chunks where book like ? and (chapter like ? or chapter like ? or chapter like ?) order by chunk_id',
-                      (book[:60] + '%', f'{chnum}. %', f'Chapter {chnum}:%', f'Chapter {chnum} %')).fetchall()
+    rows = db.execute('select content from chunks where book like ? and (chapter like ? or chapter like ? or chapter like ? or chapter like ?) order by chunk_id',
+                      (book[:60] + '%', f'{chnum}. %', f'{chnum}.\xa0%', f'Chapter {chnum}:%', f'Chapter {chnum} %')).fetchall()
     if not rows or not labels: return None
     hbt = hb_tokens(labels); tot = miss = 0
     for p in paragraphs('\n'.join(r[0] for r in rows)):
