@@ -406,7 +406,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 
 | # | Chapter | Status | Words | Notes |
 |---|---|---|---|---|
-| 2.14 | OSPF and IS-IS | drafted | 4691 |  |
+| 2.14 | OSPF and IS-IS | drafted | 6812 |  |
 | 5.28 | Service mesh | drafted | 3248 |  |
 | 5.35 | Multicluster and fleet management | drafted | 3699 |  |
 | 6.5 | OpenMP, compilers and optimisation flags | drafted | 4172 |  |
