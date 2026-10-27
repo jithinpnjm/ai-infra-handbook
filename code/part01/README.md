@@ -27,3 +27,4 @@
 | 1.23 Performance methodology: USE, workload, drill-down | `perf_methodology_use.py` | `perf_methodology_use_lab.py` | 15 | `python3 code/part01/perf_methodology_use_lab.py` |
 | 1.24 Observability tools: perf, ftrace, BPF and bpftrace | `observability_perf_bpf.py` | `observability_perf_bpf_lab.py` | 15 | `python3 code/part01/observability_perf_bpf_lab.py` |
 | 1.25 Benchmarking correctly | `benchmarking_correctly.py` | `benchmarking_correctly_lab.py` | 15 | `python3 code/part01/benchmarking_correctly_lab.py` |
+| 1.26 KVM, QEMU and libvirt basics | `kvm_qemu_libvirt.py` | `kvm_qemu_libvirt_lab.py` | 16 | `python3 code/part01/kvm_qemu_libvirt_lab.py` |
