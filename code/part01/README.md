@@ -31,3 +31,4 @@
 | 1.27 Cloud computing and virtualization internals | `cloud_virt_internals.py` | `cloud_virt_internals_lab.py` | 14 | `python3 code/part01/cloud_virt_internals_lab.py` |
 | 1.28 Putting it together: tuning a Linux GPU/HPC node | `tune_gpu_node.py` | `tune_gpu_node_lab.py` | 15 | `python3 code/part01/tune_gpu_node_lab.py` |
 | 1.29 Remote administration reference: SSH, pdsh, IPMI | `remote_admin_ref.py` | `remote_admin_ref_lab.py` | 15 | `python3 code/part01/remote_admin_ref_lab.py` |
+| 1.30 Network file sharing and remote graphical access | `network_fs_x11.py` | `network_fs_x11_lab.py` | 15 | `python3 code/part01/network_fs_x11_lab.py` |
