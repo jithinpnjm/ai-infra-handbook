@@ -233,9 +233,15 @@ BPF also underpins **XDP** programs (packet filtering/forwarding in the driver),
 
 Common patterns: SYN seen at the server but no SYN-ACK back = server firewall/listen queue; SYN-ACK seen at server but not client = return path/asymmetric/NAT; data sent but repeated retransmissions without ICMP = MTU black hole or stateful device dropping; duplicate ACKs and SACK = loss on the path; RST from a different TTL = middlebox; long idle then reset = timeout; large gaps of exactly 200 ms/1 s = RTO or delayed ACK; DNS answers arriving after 5 s = resolver timeout; ClientHello followed by nothing = TLS interception/MTU issue with large hello (post-quantum key shares make ClientHellos large); pause frames at multi-kHz on one priority = PFC storm; CNP absence while ECN-marked packets arrive = NIC DCQCN misconfiguration.
 
-## 8. Lab: capture, read, decode (untested)
+## 8. Hands-on lab: capture, read, and decode
 
-Use two namespaces/VMs with a veth pair (chapter 2.5/2.25 setup) and a lab web server.
+First, run the self-checking Python lab (`code/part02/packet_capture_bpf_lab.py`) locally. It verifies byte-offset `pcap-filter` expressions (`tcp[tcpflags]`, `ip[6:2] & 0x2000`, `ip[8]`, `ip[1]` DSCP `EF`/`ECN` `CE`), `100 Gb/s` packet-rate (`~8.13 Mpps`) and `-s 96` ring-buffer storage math, and two-endpoint TCP capture comparison.
+
+```bash
+python3 code/part02/packet_capture_bpf_lab.py
+```
+
+Next, on a disposable Linux VM using two namespaces/VMs with a `veth` pair and a lab web server (all interactive VM commands below are `untested here`), work through these steps:
 
 1. **Handshake and teardown**: capture `curl` to a local nginx; label SYN/SYN-ACK/ACK/FIN; note options; export a stream with `tshark -z follow`.
 2. **Filters**: write and test five capture filters (SYN only, RST, port range, DSCP EF, VLAN); verify with `tcpdump -d` and hit counts; write the same as Wireshark display filters.
@@ -249,8 +255,6 @@ Use two namespaces/VMs with a veth pair (chapter 2.5/2.25 setup) and a lab web s
 10. **BPF tools**: run `tcplife`, `tcpconnect`, `tcpretrans`, `tcpdrop`; write three bpftrace one-liners (retransmits per destination, send size histogram, connect latency); correlate with your pcap.
 11. **Container capture**: run a container, find its PID, capture with `nsenter`, and with `docker run --network container:NAME nicolaka/netshoot tcpdump`.
 12. **Clean up and delete captures.**
-
-Mark tested only after execution.
 
 ## 9. Common mistakes
 
@@ -276,56 +280,124 @@ Mark tested only after execution.
 - "When would you use BCC/bpftrace instead of tcpdump? Give three examples."
 - "How do you decrypt TLS in a lab capture?"
 
-## 11. Checkpoint questions (40)
+## Exercises
 
-1. What library underlies tcpdump? **A:** libpcap.
-2. What Linux socket type does capture use? **A:** `AF_PACKET` (also AF_XDP in specialised tools).
-3. Where does the capture filter run? **A:** In the kernel, as BPF attached to the socket.
-4. What does promiscuous mode do? **A:** NIC accepts frames not addressed to it.
-5. What is snaplen? **A:** Bytes captured per packet.
-6. Why do outgoing packets show bad checksums? **A:** Checksum offload: computed after the tap.
-7. Why do captured packets exceed the MTU? **A:** TSO/GSO/GRO super-packets.
-8. What does "dropped by kernel" mean? **A:** Capture buffer overflow.
-9. Why avoid `-i any` for timing? **A:** Cooked headers and mixed interfaces lose detail.
-10. Option for no name resolution? **A:** `-n` / `-nn`.
-11. Option to write a file? **A:** `-w`; read with `-r`.
-12. Ring buffer options? **A:** `-C size -W count`.
-13. Filter for SYN-only packets? **A:** `tcp[tcpflags] & (tcp-syn|tcp-ack) == tcp-syn`.
-14. Filter excluding SSH? **A:** `not port 22`.
-15. RoCEv2 UDP port? **A:** 4791.
-16. PFC EtherType? **A:** 0x8808.
-17. LLDP EtherType? **A:** 0x88cc.
-18. LACP EtherType? **A:** 0x8809 (slow protocols).
-19. Display vs capture filter? **A:** Wireshark's richer post-capture filter vs kernel BPF filter.
-20. How to see the compiled BPF? **A:** `tcpdump -d`.
-21. How to follow a stream in tshark? **A:** `-z follow,tcp,ascii,N`.
-22. How to decrypt TLS in a lab? **A:** `SSLKEYLOGFILE` + key-log setting in Wireshark.
-23. What is Decode As? **A:** Map a port/protocol to a different dissector.
-24. What does Expert Information show? **A:** Anomalies like retransmissions, dup ACKs, zero window.
-25. Sign of a stripped window-scale option? **A:** Missing wscale in SYN/SYN-ACK and low throughput.
-26. Sign of an MTU black hole? **A:** Large segments retransmit repeatedly with no ICMP.
-27. What causes 200 ms gaps? **A:** RTO minimum or delayed ACK interactions.
-28. RST with different TTL implies? **A:** Likely a middlebox.
-29. Why capture both ends? **A:** To find what the path between changed or dropped.
-30. How to capture a pod's traffic? **A:** `nsenter -t PID -n tcpdump` or an ephemeral debug container.
-31. How to capture RDMA traffic? **A:** NIC-level capture, `ibdump`, or switch mirror.
-32. SPAN vs TAP? **A:** Switch mirror (can drop) vs passive lossless splitter.
-33. How to mirror with Linux tc? **A:** `matchall` filter with `mirred egress mirror`.
-34. What is ERSPAN? **A:** GRE-encapsulated mirror to a remote IP.
-35. What hardware helps timing accuracy? **A:** NIC hardware timestamps with PTP.
-36. What are BCC tools? **A:** Prebuilt BPF-based tracing utilities (tcplife, tcpretrans...).
-37. bpftrace program structure? **A:** probe, filter, action; maps for aggregation.
-38. Why prefer tracepoints to kprobes? **A:** Stability across kernel versions.
-39. Which tool shows drop call stacks? **A:** `tcpdrop` / `kfree_skb` tracing.
-40. What must you consider legally? **A:** Authorisation, privacy, retention of captured data.
+1. **How Linux Packet Capture Works (`libpcap`, `AF_PACKET`, Kernel BPF, Snaplen, and Offload Artefacts):** (a) Trace the capture pipeline from the wire through the NIC, driver/`sk_buff`, `AF_PACKET` tap, kernel BPF filter (`tcpdump -d`), `PACKET_MMAP` ring buffer, and `libpcap`; (b) explain why capturing on a sending host shows `[bad tcp cksum]` and `64 KiB` frames, and distinguish `"N packets dropped by kernel"` from `"N packets dropped by interface"`.
+2. **Writing `pcap-filter` Capture Filters and Byte-Offset Expressions:** Using `evaluate_pcap_byte_offset_filters()` in `code/part02/packet_capture_bpf.py`, write and explain the `tcpdump` capture filters for: (a) pure `SYN` packets without `SYN-ACK`, (b) `RST` or `FIN` packets, (c) IPv4 More-Fragments (`ip[6:2] & 0x2000 != 0`), (d) DSCP `EF` (`ip[1] & 0xfc == 0xb8`) and ECN `CE` (`ip[1] & 0x3 == 3`), and (e) RoCEv2 (`udp dst port 4791`), PFC (`ether proto 0x8808`), LACP (`0x8809`), and LLDP (`0x88cc`).
+3. **`tcpdump` vs. `tshark` vs. Wireshark, Capture Filters (`-f`) vs. Display Filters (`-Y`), and Lab TLS Decryption:** Contrast kernel capture filters (`-f`) with Wireshark/tshark display filters (`-Y`), write the `tshark` commands to print per-second I/O statistics (`-z io,stat,1`), TCP conversations (`-z conv,tcp`), and retransmitted segments (`-Y 'tcp.analysis.retransmission'`), and show how to decrypt TLS 1.3 HTTP/2 traffic in a lab using `SSLKEYLOGFILE`.
+4. **Capturing at `100G`–`400G` Scale, Ring Buffers, Containers, and `RDMA` Fabrics:** Using `compute_capture_rate_and_ring_storage()`, compute the packet rate (`~8.13 Mpps`) on a `100 Gb/s` link with `1500`-byte frames and the disk write rate when truncated to `-s 96` with a `-C 100 -W 10` ring buffer. How do you capture traffic inside a Kubernetes Pod (`nsenter` / `kubectl debug`) and on a kernel-bypassed RoCEv2 / InfiniBand fabric (`ibdump` / `tcpdump -i mlx5_0` / switch `SPAN`/`ERSPAN`/`TAP`)?
+5. **Two-Endpoint Capture Correlation and Reading TCP Failure Signatures:** Using `diagnose_two_side_tcp_capture()`, diagnose what failed when comparing simultaneous client and server captures: (a) `SYN` seen at client and server, no `SYN-ACK`; (b) `SYN-ACK` sent by server, not seen at client; (c) `RST` arriving at client with a `TTL` different from the server's normal packets; (d) missing `wscale` option on `SYN-ACK`; and (e) repeated full-size segment retransmissions with zero ICMP `3/4` replies.
+6. **Complementing `pcap` with `BCC` and `bpftrace` Kernel Tracing (`SP` Chapter 15):** Explain when to use `BCC` (`tcplife`, `tcpretrans`, `tcpconnlat`, `tcpdrop`, `funccount`, `argdist`) and `bpftrace` (`tracepoint:tcp:tcp_retransmit_skb`, `tracepoint:skb:kfree_skb`, `kprobe:tcp_sendmsg`, `uprobe:libssl.so.3:SSL_write`) instead of `tcpdump`, and explain why `tracepoints` are preferred over `kprobes`.
 
-## 12. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. Trace how `tcpdump` captures packets on Linux (`libpcap`, `AF_PACKET`, kernel `BPF`, and `PACKET_MMAP`).</summary>
+`tcpdump` calls **`libpcap`**, which opens a Linux **`AF_PACKET` socket**, compiles your capture filter string (e.g., `'tcp port 443'`) into **BPF bytecode** (`tcpdump -d`), and attaches that filter in the kernel (`SO_ATTACH_BPF`). As the driver/NAPI builds `sk_buff`s, the kernel taps a reference to the `AF_PACKET` hook and executes the BPF filter **in-kernel**—discarding non-matching packets immediately at near-zero cost and copying only matching packets (up to `snaplen` `-s` bytes) into a shared memory-mapped **`PACKET_MMAP` (`TPACKET_V3`) ring buffer** read by `tcpdump`.
+</details>
 
-- Brian Ward, *How Linux Works*, 3rd ed., chapter 10: diagnostic tools (tcpdump output, filters with primitives and operators, port scanning context), plus the caution about snooping.
-- Brendan Gregg, *Systems Performance*, 2nd ed., chapter 10 (packet sniffing methodology, tcpdump and Wireshark, TCP analysis) and chapter 15 (BPF: BCC installation, tool coverage, single- and multi-purpose tools, one-liners, BCC versus bpftrace, bpftrace tools, one-liners, programming, reference).
-- The author's own `nvidia-devops` networking masterclass (advanced tcpdump/tshark usage, bpftrace latency one-liners, dropwatch and perf for drop analysis, ethtool counters).
-- Filter tables, workflows and RDMA/Kubernetes capture guidance are the author's synthesis from `pcap-filter(7)`, `tcpdump(1)`, `tshark(1)`, the Wireshark user guide and the bpftrace/BCC documentation.
+<details>
+<summary>2. Why do captures taken on the sending host show `[bad tcp cksum]` and `64 KiB` segments even on a healthy `1500`-MTU network?</summary>
+Because `AF_PACKET` taps outgoing packets in the kernel **before** they reach the NIC hardware. With **TX checksum offload**, the kernel writes only a pseudo-header seed and the NIC ASIC fills in the real TCP checksum on the wire. With **TSO (`TCP Segmentation Offload`)** and **GSO** (and **GRO** on receive), the kernel passes a `64 KiB` super-packet through the tap and the NIC segments it into `1460`-byte `MSS` frames in hardware. Neither is a network error unless seen on the receiving side after the wire.
+</details>
 
-**Flagged for verification before publishing:** bpftrace tracepoint argument names per kernel, BCC tool names per distribution (`-bpfcc` suffix), NVIDIA RDMA capture tool names and syntax per MLNX_OFED/DOCA version, `kubectl debug`/ksniff availability, and Wireshark RoCE dissector field names; all labs are **untested**.
+<details>
+<summary>3. At the end of a `tcpdump` run, what is the difference between `"N packets dropped by kernel"` and `"N packets dropped by interface"`?</summary>
+- **`N packets dropped by kernel`**: the `AF_PACKET` capture ring buffer overflowed because `tcpdump` (or disk I/O / terminal printing / DNS lookups) could not drain captured packets fast enough (fix: pass `-nn`, write to a file `-w`, truncate headers `-s 96`, narrow the BPF filter, and increase buffer size `-B 65536`).\n- **`N packets dropped by interface`**: the NIC or driver dropped packets before they ever reached the capture tap.
+</details>
+
+<details>
+<summary>4. Why should you always pass `-nn` and `not port 22` when running `tcpdump` over an interactive SSH session, and why avoid `-i any` for latency analysis?</summary>
+Without **`-nn`**, `tcpdump` performs reverse DNS (`PTR`) lookups for every IP address (`-n`) and resolves service names (`-nn`), stalling output and generating a storm of DNS packets that get captured too. Without **`not port 22`**, every line `tcpdump` prints over your SSH session generates a new SSH packet, which `tcpdump` captures and prints in an infinite feedback loop. Capturing on **`-i any`** uses Linux "cooked" (`SLL`) pseudo-headers that strip L2 Ethernet/VLAN tags and mix packets from physical NICs, bridges, and `veth`s (causing the same packet to appear multiple times as it crosses internal hops).
+</details>
+
+<details>
+<summary>5. How do you configure `tcpdump` to capture header-only packets into a rolling 1 GB ring buffer (`10 x 100 MB` files) or rotate files every 5 minutes?</summary>
+- **Size-based ring buffer (`10` files of `100 MB` each, overwriting the oldest)**:\n`sudo tcpdump -nni eth0 -s 96 -B 65536 -C 100 -W 10 -w /var/tmp/ring.pcap 'not port 22'`\n- **Time-based rotation (every `300` seconds)**:\n`sudo tcpdump -nni eth0 -s 96 -G 300 -w '/var/tmp/cap-%Y%m%d-%H%M%S.pcap' 'not port 22'`\nAdd `-Z tcpdump` to drop root privileges after opening the socket.
+</details>
+
+<details>
+<summary>6. Write the `pcap-filter` byte-offset expressions to match: (a) pure TCP `SYN`s (no `ACK`), (b) `RST` or `FIN`, (c) DSCP `EF` (`46`), and (d) ECN `CE` (`11b`).</summary>
+- **Pure TCP `SYN`**: `'tcp[tcpflags] & (tcp-syn|tcp-ack) == tcp-syn'`\n- **TCP `RST` or `FIN`**: `'tcp[tcpflags] & (tcp-rst|tcp-fin) != 0'`\n- **DSCP `EF` (`46`, shifted left 2 bits = `184 = 0xb8`)**: `'ip[1] & 0xfc == 0xb8'`\n- **ECN `CE` (`3`, bottom 2 bits of ToS byte)**: `'ip[1] & 0x03 == 3'`.
+</details>
+
+<details>
+<summary>7. What happens to byte offsets when you filter on `vlan` in `tcpdump` (`pcap-filter`), and what are the EtherTypes/ports for `PFC`, `LACP`, `LLDP`, `VXLAN`, and `RoCEv2`?</summary>
+In `pcap-filter`, placing the **`vlan`** keyword in a filter expression (`vlan and host 10.0.0.5` or `vlan 100 and tcp port 443`) matches `802.1Q`-tagged frames **and shifts all subsequent header offsets in the expression by `+4` bytes** to account for the VLAN tag. Key AI-fabric identifiers:\n- **PFC Pause**: `ether proto 0x8808`\n- **LACP**: `ether proto 0x8809`\n- **LLDP**: `ether proto 0x88cc`\n- **VXLAN**: `udp port 4789` (or `8472`)\n- **RoCEv2**: `udp dst port 4791`.
+</details>
+
+<details>
+<summary>8. What is the difference between a Capture Filter (`-f`) and a Display Filter (`-Y`) in `tshark` / Wireshark?</summary>
+- **Capture Filter (`tshark -f 'host 10.0.0.5 and tcp port 443'`)**: uses `libpcap` syntax, compiles to kernel BPF, and discards non-matching packets **during live capture** before they are written to disk (fast and saves disk, but cannot filter on stateful L7 fields).\n- **Display Filter (`tshark -Y 'tcp.analysis.retransmission || http2.headers.status == "500"'`)**: uses Wireshark's protocol dissectors **after capture** (or when reading `-r file.pcap`), supporting stateful TCP analysis, reassembled streams, inner tunnel headers (`vxlan.vni == 10100`), and RoCEv2 (`ib.bth.opcode == 129`).
+</details>
+
+<details>
+<summary>9. How do you decrypt TLS 1.2 and TLS 1.3 traffic in Wireshark or `tshark` during a lab investigation?</summary>
+Because TLS 1.3 uses ephemeral Diffie-Hellman (**forward secrecy**), having the server's private key file is useless for decrypting a capture. Instead, set the **`SSLKEYLOGFILE`** environment variable in the client process (supported by `curl`, Chrome, Firefox, Python/OpenSSL, Go via `KeyLogWriter`):\n`SSLKEYLOGFILE=/tmp/keys.log curl https://api.lab.internal/`\nand pass the ephemeral session key log to `tshark` (`tshark -r c.pcap -o tls.keylog_file:/tmp/keys.log -Y http2`) or Wireshark (*Edit -> Preferences -> Protocols -> TLS -> (Pre)-Master-Secret log filename*).
+</details>
+
+<details>
+<summary>10. What do `editcap`, `mergecap`, and `capinfos` do when working with large `.pcap` files?</summary>
+- **`capinfos c.pcap`**: prints summary metadata (packet count, file size, capture start/end timestamps, average packet rate and bit rate, snaplen).\n- **`editcap`**: slices a huge capture into smaller files by packet count (`editcap -c 100000 big.pcap chunk.pcap`) or time window (`editcap -A "2026-10-27 10:00:00" -B "2026-10-27 10:02:00" in.pcap slice.pcap`), or deduplicates packets (`editcap -d`).\n- **`mergecap -w merged.pcap a.pcap b.pcap`**: merges captures from multiple interfaces or hosts in chronological timestamp order.
+</details>
+
+<details>
+<summary>11. In a Wireshark / `tshark` TCP trace, how do you recognize: (a) a middlebox stripping Window Scale, (b) a Receiver bottleneck (`Zero Window`), and (c) Nagle + Delayed ACK stalls?</summary>
+(a) **Stripped Window Scale**: the client's `SYN` includes `wscale 7`, the server's `SYN-ACK` (captured on the server) includes `wscale 7`, but the `SYN-ACK` arriving at the client lacks `wscale`—capping the receive window at `65,535` bytes (`tcp.analysis.window_full`).\n(b) **Receiver bottleneck**: `tcp.analysis.zero_window` (`win 0` advertised by the receiver), followed by periodic 1-byte `ZeroWindowProbe`s from the sender until the receiving app reads its socket and sends a `WindowUpdate`.\n(c) **Nagle + Delayed ACK**: recurring **`~40 ms` (`0.040 s`) `frame.time_delta` gaps** between a small sub-MSS write and the receiver's bare ACK before the second part of the request is sent.
+</details>
+
+<details>
+<summary>12. How do you prove from a packet capture that a `RST` packet was injected by an intermediate firewall/NAT rather than sent by the remote server?</summary>
+Compare the **`IP TTL`** (and IP Identification sequence / timestamp options) of the **`RST` packet** against the `TTL` of normal `SYN-ACK` / data packets previously received from that remote server. If the server's normal packets arrive with `TTL = 58` (6 hops away) and the `RST` arrives with `TTL = 63` or `254` (1 hop away), or if a capture taken directly on the remote server does not show the server ever sending that `RST`, a middlebox (firewall, NAT idle timeout, or DPI appliance) forged and injected the `RST`.
+</details>
+
+<details>
+<summary>13. Why can't standard `tcpdump -ni eth0` capture `RoCEv2` or `InfiniBand` RDMA traffic on a GPU server, and how do you capture it?</summary>
+Because `RDMA` (`ibverbs` / `GPUDirect RDMA`) bypasses the Linux kernel network stack and `AF_PACKET` hooks completely—work requests go straight from user space/GPU to the ConnectX NIC hardware via PCIe MMIO/DMA. To capture RDMA packets, you must use: (1) **NIC hardware sniffer offload** (`ibdump` or `tcpdump -i mlx5_0` via `rdma-core` / DOCA devlink packet-trap/mirror), or (2) **switch port mirroring (`SPAN` / `ERSPAN`) or a passive optical `TAP`** sending a copy of the wire to a separate capture host.
+</details>
+
+<details>
+<summary>14. What do you look for when inspecting a `RoCEv2` (`UDP 4791`) or `PFC` (`0x8808`) capture in Wireshark?</summary>
+- **In `PFC` (`eth.type == 0x8808`)**: inspect the `Class Enable Vector` (which priority `0..7` is being paused, e.g., Priority `3`) and the `Time` quanta (`0` = `XON` resume, `65535` = max `XOFF` pause), and check if pause frames are firing continuously at multi-kHz rates (PFC storm).\n- **In `RoCEv2` (`udp.dstport == 4791`, Decode As `RoCE`)**: check the outer IP `DSCP` (`26` vs `48`) and `ECN` bits (`ECT(0)` `10` vs `CE` `11`), the InfiniBand **Base Transport Header (`BTH`) `opcode`** (`RDMA WRITE`, `ACK`, or **`0x81 = 129` Congestion Notification Packet `CNP`**), the **Destination Queue Pair (`dqpn`)**, and the 24-bit **Packet Sequence Number (`PSN`)** for gaps/retransmissions.
+</details>
+
+<details>
+<summary>15. Compare Switch `SPAN`, `ERSPAN`, and a Passive Optical `TAP` for capturing fabric links.</summary>
+- **`SPAN` (Local Port Mirror)**: the switch ASIC copies RX/TX frames from source port(s) to a local destination port on the same switch.\n- **`ERSPAN` (Encapsulated Remote SPAN)**: the switch wraps mirrored frames in **`GRE`** and routes them over the IP fabric to a remote capture server.\n*Caveat for both SPAN and ERSPAN*: if the mirror destination port is oversubscribed (e.g., mirroring both RX and TX of a `400G` link onto a `100G` or `400G` port), the switch drops mirrored packets first.\n- **Passive Optical `TAP`**: an unpowered optical prism splitter inserted inline on the fiber that sends an exact physical copy of light in both directions to a capture card with **zero packet loss, zero added latency, and complete preservation of bad-CRC/physical errors**.
+</details>
+
+<details>
+<summary>16. How do you capture traffic inside a Kubernetes Pod when the container image does not have `tcpdump` installed?</summary>
+Either: (1) SSH to the worker node, find the Pod's host PID (`PID=$(crictl inspectp <pod-id> | jq .info.pid)`), and run **`sudo nsenter -t $PID -n tcpdump -nni eth0 -s 96 -w /tmp/pod.pcap`** (which runs the node's `tcpdump` binary inside the Pod's network namespace); or (2) attach an ephemeral debug container sharing the Pod's network namespace with **`kubectl debug -it <pod> --image=nicolaka/netshoot --target=<container>`** (or the `kubectl sniff` / `ksniff` plugin).
+</details>
+
+<details>
+<summary>17. How do `BCC` and `bpftrace` differ in architecture and use cases (`SP` Chapter 15)?</summary>
+Both compile instrumentation into verified **eBPF** kernel bytecode attached to `kprobes`, `kretprobes`, `tracepoints`, `uprobes`, and `USDT` probes:\n- **`BCC` (*BPF Compiler Collection*)** (and modern CO-RE **`libbpf-tools`**): provides production-ready, parameterized CLI tools (`tcplife`, `tcpretrans`, `tcpconnlat`, `tcpdrop`, `tcptop`, plus multi-purpose `funccount`, `trace`, `argdist`, `stackcount`) written in C + Python/libbpf.\n- **`bpftrace`**: a concise AWK/DTrace-like high-level scripting language (`probe /filter/ { @map[key] = count(); }`) designed for writing custom **one-liners** and short scripts on the fly in seconds.
+</details>
+
+<details>
+<summary>18. Why should you prefer kernel `tracepoint`s (such as `tracepoint:tcp:tcp_retransmit_skb` and `tracepoint:skb:kfree_skb`) over `kprobe`s when writing `bpftrace` scripts (`SP` Chapter 15)?</summary>
+**`kprobe`s** hook internal kernel C function names and register arguments (`arg0`, `arg1`), which can be renamed, inlined by the compiler, or have their parameter order changed between Linux kernel versions. **Kernel `tracepoint`s** (`tracepoint:tcp:*`, `tracepoint:skb:*`, `tracepoint:sock:*`, `tracepoint:net:*`) are **stable, deliberately maintained ABI hook points** placed by kernel developers with named, typed `args->field` structures (inspected via `sudo bpftrace -lv 'tracepoint:tcp:tcp_retransmit_skb'`).
+</details>
+
+<details>
+<summary>19. How can you inspect the unencrypted plaintext of an application's TLS traffic on a host WITHOUT having `SSLKEYLOGFILE` enabled?</summary>
+Attach a user-space **`uprobe` / `uretprobe`** (`bpftrace` or BCC `sslsniff`) directly to the TLS library functions in user space—such as **`uprobe:/usr/lib/x86_64-linux-gnu/libssl.so.3:SSL_write`** and **`SSL_read`** (or Go's `crypto/tls.(*Conn).Write` / GnuTLS / NSS)—which intercepts the buffer in the process's memory *right before* OpenSSL encrypts it or *right after* OpenSSL decrypts it.
+</details>
+
+<details>
+<summary>20. Walk through the 7-step Capture-Driven Troubleshooting Workflow when investigating an intermittent network stall.</summary>
+(1) **State a falsifiable question** (*"When the RPC times out after 2s, did the request packet leave Client A, and did it arrive at Server B?"*);\n(2) **Select simultaneous capture points** (both Client A's interface and Server B's interface, with clocks synchronized via `PTP`/`chrony`);\n(3) **Write the narrowest BPF capture filter** excluding SSH (`host <A> and host <B> and tcp port <P>`) with header truncation (`-s 128`) and a rolling ring buffer (`-C 100 -W 10`);\n(4) **Reproduce or wait for the trigger** and record the exact timestamp and client ephemeral port;\n(5) **Diff the two `.pcap` files** on that exact 5-tuple to see what changed or vanished between A and B;\n(6) **Correlate with kernel counters and eBPF** (`nstat`, `ss -ti`, `tcpretrans`, `tcpdrop`); and\n(7) **Apply the fix, re-capture to prove resolution, and securely delete the `.pcap` files**.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `systems-performance-2nd-edition` — Brendan Gregg, *Systems Performance: Enterprise and the Cloud*, 2nd ed., **Chapter 10: Network** (packet sniffing methodology, `tcpdump` and Wireshark, and TCP analysis) and **Chapter 15: BPF** (BCC installation, tool coverage, single- and multi-purpose tools `funccount`/`trace`/`argdist`/`stackcount`/`funclatency`, BCC vs `bpftrace`, `bpftrace` tools, one-liners, programming, and reference).
+  - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 10: Network Applications and Services** (diagnostic tools, `tcpdump` output, filters with primitives and operators, and the caution about snooping).
+  - `networking-and-kubernetes` — James Strong and Vallery Lancey, *Networking and Kubernetes*, **Chapter 1: Networking Introduction** (packet inspection and `tcpdump`).
+  - `nvidia-devops/volume-01/03-linux-networking-masterclass.md` — migrated advanced `tcpdump`/`tshark` usage, `bpftrace` latency one-liners, `dropwatch` and `perf` for drop analysis, and `ethtool` counters.
+- **Run here:** `python3 code/part02/packet_capture_bpf_lab.py` (9 passed, 0 failed).
+- **Explicitly labelled inferences:** The Section 1 capture-pipeline Mermaid diagram, Section 2 `pcap-filter` byte-offset table, Section 4 AI-protocol decoding table (`RoCEv2` `UDP 4791` / `CNP 0x81`, `PFC` `0x8808`), and Section 6 `bpftrace` one-liners synthesize `pcap-filter(7)`, `tcpdump(1)`, `tshark(1)`, the Wireshark User's Guide, and the BCC/`bpftrace` reference guides (`-bpfcc` suffix on Debian/Ubuntu, `MLNX_OFED`/DOCA RDMA capture, `ksniff`) (cross-referenced with Chapters 2.5–2.12, 2.15–2.17, 2.19, 2.22–2.25, and 2.30, plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Not verified on live hardware:** All interactive VM and capture commands (`tcpdump`, `tshark`, `editcap`, `mergecap`, `capinfos`, `bpftrace`, `ibdump`) are marked (untested here) and must be executed only on systems and networks you own or have explicit written authorization to monitor.

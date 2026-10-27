@@ -46,7 +46,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 2.22 | Linux networking: inspecting state with ip, ss and counters | drafted | 7850 |  |
 | 2.23 | Linux networking: netfilter, nftables, conntrack and NAT | drafted | 7235 |  |
 | 2.25 | Linux networking: namespaces, veth, bridges and container networking | drafted | 6880 |  |
-| 2.26 | Packet capture from scratch: tcpdump, tshark and Wireshark | drafted | 5053 |  |
+| 2.26 | Packet capture from scratch: tcpdump, tshark and Wireshark | drafted | 7161 |  |
 | 2.27 | Lab: build network topologies with namespaces, FRR and Containerlab | drafted | 4058 |  |
 | 4.1 | Git from scratch for infrastructure engineers | drafted | 5237 |  |
 | 4.3 | Ansible from zero: what it is, how it works, installation and ad hoc commands | drafted | 3944 |  |
