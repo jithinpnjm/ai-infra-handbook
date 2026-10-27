@@ -85,9 +85,18 @@ Semantics to know:
 - **Handlers run in the order defined in the handlers section**, not the order notified.
 - **Changed, not "ran"**: a task notifies only if it reports `changed`; skipped or ok tasks do not. If the first run changed the file but a later task failed before the handler ran, **the handler will not run on the next execution** (the file is already correct, so nothing is changed): the service stays on an old config. Mitigations: `force_handlers: true` on the play (run notified handlers even after failures), or design the restart as an idempotent state task (compare running config with desired) in addition to the handler, or `meta: flush_handlers` right after the config task.
 - **Per host**: handler execution is tracked per host.
-- **Handlers can notify other handlers** (since 2.x) and may use `when`.
+- **Handlers can notify other handlers** (since 2.x) and may use `when`. In *Ansible: Up and Running* Chapter 11 (`Examples 11-27` to `11-30`), the authors demonstrate both **handler chaining** (where `Copy SSL certs` in an `ssl` role notifies `check nginx configuration`, which in turn notifies `restart nginx`, which notifies `after config check`) and **`listen:` topic fan-out** (`listen: Ssl_certs_changed`, allowing one notification topic to trigger `check nginx configuration`, `restart nginx`, and `after config check` in handler definition order without tight name coupling across roles).
 - **Avoid restart storms**: reload rather than restart when possible; use `serial` so restarts do not happen everywhere at once; `throttle` for services with expensive restarts; ensure the notifying task is idempotent (a template with a changing timestamp notifies every run).
 - Handlers in roles live in `roles/x/handlers/main.yml`; they are visible to the play and to other roles.
+
+```mermaid
+flowchart TD
+    Drain["1. Drain node from Slurm / ELB<br/>(delegate_to controller/localhost)"] --> Block["2. block: Apply driver/config changes<br/>& run nvidia-smi / smoke validation"]
+    Block -->|All tasks succeed| AlwaysOk["3a. always: Collect journalctl diagnostics"]
+    Block -->|Any task fails| Rescue["3b. rescue: Log ansible_failed_task,<br/>rollback driver/snapshot, & fail loudly"]
+    Rescue --> AlwaysFail["4b. always: Collect journalctl diagnostics<br/>(Node stays DRAINED for investigation)"]
+    AlwaysOk --> Resume["4a. Return healthy node to service<br/>(scontrol State=RESUME)"]
+```
 
 ## 2. Conditionals: when
 
@@ -118,7 +127,7 @@ Semantics to know:
 Rules and gotchas:
 
 - Multiple list items are ANDed. Use parentheses with `or`.
-- **Booleans vs strings**: `when: some_flag` is truthy for a boolean true or a non-empty string such as `"false"`! Use `when: some_flag | bool` for values that might be strings (`"yes"`, `"False"`, `-e flag=false` from the command line comes as a string). Compare numbers with `| int`: `when: (count | int) > 4`.
+- **Booleans vs strings**: `when: some_flag` is truthy for a boolean true or a non-empty string such as `"false"`. Use `when: some_flag | bool` for values that might be strings (`"yes"`, `"False"`, `-e flag=false` from the command line comes as a string). Compare numbers with `| int`: `when: (count | int) > 4`.
 - **Tests on registered results**: `is succeeded`, `is failed`, `is changed`, `is skipped`, `is defined`, `result.rc == 0`, `'text' in result.stdout`, `result.stdout is search('regex')`, `result.stdout_lines | length > 0`.
 - **A skipped task's registered variable** exists with `skipped: true` and no `stdout`; guard with `when: res is defined and res.stdout is defined`.
 - **Conditions evaluate before the task, but per item in loops**: `when` with `loop` is evaluated for each item; `item` is available.
@@ -159,11 +168,11 @@ Rules and gotchas:
   delay: 10
 ```
 
-- `loop:` replaces most `with_*` forms; transform data with filters (`dict2items`, `subelements`, `product`, `zip`, `flatten`); `with_fileglob` and `with_nested` still appear in older code.
+- `loop:` replaces most `with_*` forms; transform data with filters (`dict2items`, `subelements`, `product`, `zip`, `flatten`); `with_fileglob` (`keys/*.pub`), `with_lines` (`cat files/turing.txt`), `with_first_found` (`~/.ssh/id_ed25519.pub`, `id_rsa.pub`), `with_dict` (`ansible_enp0s8.ipv4`), `with_nested`, and `with_subelements` still appear in older code (`AUR` Chapter 10 Table 10-4). You can also write custom Jinja2 filter plugins in `filter_plugins/` next to your playbook—such as `AUR` Chapter 10's `filter_plugins/surround_by_quotes.py` (`class FilterModule:` defining `surround_by_quotes(a_list)` so `ALLOWED_HOSTS = [{{ domains | surround_by_quotes | join(", ") }}]` renders `["www.example.com", "example.com"]`, tested in `code/part04/ansible_control_flow_lab.py`)—and custom lookup plugins in `lookup_plugins/`.
 - A task with `loop` and `register` stores `register.results`, a list of per-item results (each including `item`). Aggregate with `results | map(attribute='rc')`, `results | selectattr('failed')`.
 - `until` re-runs the task until the condition holds or retries are exhausted; `delay` seconds between attempts; combined with `loop` each item has its own retry sequence. Retry a **read/probe** or an idempotent operation, never a non-idempotent write.
 - Loops over thousands of items are slow (one module invocation per item per host); push iteration into the module (lists), into a template, or into a single script/module where possible.
-- `loop_control: loop_var: outer_item` avoids name clashes in nested includes (when an included task file also loops, rename `item`).
+- `loop_control: loop_var: outer_item` (or `loop_var: vhost` when `vhost-tasks.yml` is included inside a loop over virtual hosts and itself loops over `logs`, `public_http`, `public_https`, `includes`, `AUR` Chapter 10 `Example 10-23`) avoids name clashes in nested includes (when an included task file also loops, rename `item`).
 - **Loop across hosts with serial dependencies** (e.g., upgrade one node of a quorum at a time) uses `serial: 1` at the play level rather than a loop.
 
 ## 4. Error handling
@@ -362,7 +371,15 @@ When handler semantics are insufficient (partial failure leaves services stale),
 
 Use `ansible-playbook -vv`, `--step`, `--start-at-task`, and the `debug` strategy (`strategy: debug`, or `ANSIBLE_STRATEGY=debug`) which drops into an interactive debugger on failure (`p task_vars`, `p result._result`, `task.args`, `redo`, `continue`, `quit`); see 4.10.
 
-## 8. Lab (untested)
+## 8. Lab
+
+First, run the self-checking Python lab (`code/part04/ansible_control_flow_lab.py`) locally. It verifies *Ansible: Up and Running* Chapter 10's custom `FilterModule` (`surround_by_quotes`), Chapter 11's handler `listen:` topic fan-out and the "lost handler after failure" scenario versus `force_handlers: true` (`simulate_handler_listen_and_failure_loss`), and the `block`/`rescue`/`always` GPU node maintenance flow (`simulate_block_rescue_always_maintenance`).
+
+```bash
+python3 code/part04/ansible_control_flow_lab.py
+```
+
+Next, on a control node with 2–3 Linux targets (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **Handlers**: notify a restart from two tasks and verify one restart; use `listen` topics; reproduce the "handler lost after failure" scenario (fail a later task), then fix with `force_handlers` and with `meta: flush_handlers`.
 2. **Restart storm**: make a template non-idempotent (timestamp) and observe constant restarts; fix.
@@ -375,8 +392,6 @@ Use `ansible-playbook -vv`, `--step`, `--start-at-task`, and the `debug` strateg
 9. **Drain flow**: simulate Slurm with scripts or use a real Slurm lab; run the drain → change → validate → resume play with an injected validation failure and confirm the node stays drained.
 10. **Debugger**: trigger a failure under `strategy: debug`, inspect `task_vars`, fix a variable and `redo`.
 11. **Clean up.**
-
-Mark tested only after execution.
 
 ## 9. Common mistakes
 
@@ -394,59 +409,206 @@ Mark tested only after execution.
 
 ## 10. Interview angles
 
-- "How do handlers work? When do they not run? How would you guarantee a restart after a partial failure?" 
+- "How do handlers work? When do they not run? How would you guarantee a restart after a partial failure?"
 - "Explain `block`, `rescue`, `always` and how a rescued failure is reported."
-- "`failed_when`/`changed_when` vs `ignore_errors`." 
+- "`failed_when`/`changed_when` vs `ignore_errors`."
 - "Static vs dynamic includes: differences and consequences for tags and `--list-tasks`."
-- "How do you perform a rolling update with a canary and automatic stop on failure?" 
-- "How do you wait for a node to rejoin the cluster after reboot?" 
-- "What causes a handler to run on every run?" 
-- "How do you debug a playbook that skips a task?" 
+- "How do you perform a rolling update with a canary and automatic stop on failure?"
+- "How do you wait for a node to rejoin the cluster after reboot?"
+- "What causes a handler to run on every run?"
+- "How do you debug a playbook that skips a task?"
 
-## 11. Checkpoint questions (35)
+## Exercises
 
-1. When does a handler run? **A:** At the end of a section if notified by a changed task.
-2. How many times per play? **A:** Once per host.
-3. What does `listen` do? **A:** Subscribes handlers to a topic name.
-4. How force handlers earlier? **A:** `meta: flush_handlers`.
-5. Handler lost after failure: why? **A:** Next run's task is unchanged so no notify.
-6. Play keyword to run handlers despite failure? **A:** `force_handlers: true`.
-7. What is `when` syntax? **A:** Raw Jinja expression without braces.
-8. Multiple `when` list items combine how? **A:** AND.
-9. Why `| bool` in `when`? **A:** Strings like "false" are truthy.
-10. How test a registered result? **A:** `is succeeded/failed/changed/skipped`, fields like `rc`.
-11. What is `register.results`? **A:** Per-item results of a looped task.
-12. `loop_control.label` purpose? **A:** Shorter output.
-13. `until/retries/delay` use? **A:** Poll a condition.
-14. When retry safely? **A:** Reads and idempotent operations.
-15. What does `failed_when` do? **A:** Redefines failure.
-16. What does `changed_when: false` do? **A:** Marks probes as never changing.
-17. `ignore_errors` visible how? **A:** Recap `ignored` count.
-18. What does `rescue` run on? **A:** Failure in the block.
-19. Does `always` run after rescue? **A:** Yes.
-20. Variable holding failed task info? **A:** `ansible_failed_task` / `ansible_failed_result`.
-21. How keep failure visible after rescue? **A:** `fail` inside rescue.
-22. `any_errors_fatal` effect? **A:** First failure aborts everyone.
-23. `max_fail_percentage` effect? **A:** Aborts when failure rate exceeds threshold.
-24. `meta: end_host` vs `end_play`? **A:** Stop this host cleanly vs end the play.
-25. `assert` vs `fail`? **A:** Condition check vs unconditional stop.
-26. Static include keyword? **A:** `import_*`.
-27. Dynamic include keyword? **A:** `include_*`.
-28. Which supports loops? **A:** `include_*`.
-29. Which supports `--list-tasks` fully? **A:** `import_*`.
-30. How pass tags into includes? **A:** `apply: tags`.
-31. Safe maintenance flow? **A:** Drain, change, validate, resume.
-32. Where to leave a failed node? **A:** Drained/out of service.
-33. How wait for reboot? **A:** `reboot` module / `wait_for_connection`.
-34. Instead of `pause`? **A:** Poll the actual condition.
-35. Debug strategy? **A:** `strategy: debug` interactive debugger.
+1. **Handlers, `listen:` Topics, and the Lost-Handler-After-Failure Trap (`AUR` Chapter 11):** Using `simulate_handler_listen_and_failure_loss()` in `code/part04/ansible_control_flow.py`, explain: (a) how `listen: "Reload systemd and restart dcgm-exporter"` or `listen: Ssl_certs_changed` lets multiple handlers subscribe to a single topic and in what order they run; and (b) why a failure in Task 3 after Task 1 modified a config file prevents the handler from running on **both** Run 1 and Run 2, and how `force_handlers: true`, `meta: flush_handlers`, or idempotent state checks solve it.
+2. **Conditionals (`when:`), Boolean-vs-String Traps (`-e flag=false`), and Skipped `register` Variables:** (a) Explain why `when:` list items are ANDed, why `-e flag=false` on the command line evaluates to `True` under `when: flag` unless piped through `| bool`, and how `version('5.15', '<')` compares kernel versions; (b) show how to guard a `when:` check on a registered variable whose task might have been skipped (`res is not skipped`).
+3. **Loops (`loop`, `until`/`retries`/`delay`, `loop_control`), Nested `loop_var`, and Custom Filter Plugins (`FilterModule`, `AUR` Chapter 10):** Using `FilterModule.surround_by_quotes()` in `code/part04/ansible_control_flow.py`, explain: (a) how a custom filter plugin in `filter_plugins/surround_by_quotes.py` works; (b) how `register` behaves inside a loop (`results` list); and (c) why nested `include_tasks` loops must set `loop_control: { loop_var: vhost }` so the outer `item` is not overwritten by the inner `item`.
+4. **Error Handling (`failed_when`, `changed_when`, `ignore_errors`) and `block` / `rescue` / `always` Rollbacks (`AUR` Chapter 10):** Using `simulate_block_rescue_always_maintenance()` in `code/part04/ansible_control_flow.py`, trace the execution of `block`, `rescue` (logging `ansible_failed_task.name` and `ansible_failed_result`, rolling back the driver or VM snapshot, and re-raising with `fail`), and `always` (collecting `journalctl -k` diagnostics), and explain why `scontrol State=RESUME` must **not** be placed inside `always:` for GPU node maintenance.
+5. **Static `import_*` vs. Dynamic `include_*` (`import_tasks` vs. `include_tasks`, `import_role` vs. `include_role`, `AUR` Chapters 10 & 11):** Compare parse-time preprocessing (`import_*`) with runtime execution (`include_*`) across `--list-tasks`, `--tags` (`apply: { tags: [...] }`), `--start-at-task`, `loop:` support, and dynamic filenames (`"{{ ansible_facts['os_family'] }}.yml"`).
+6. **Delegation Patterns (`delegate_to` + `run_once`) and End-to-End Rolling GPU Node Maintenance (`AUR` Chapter 11):** Trace the Section 6 maintenance playbook (`serial: [1, "10%", "25%"]`, `max_fail_percentage: 5`, `scontrol State=DRAIN` and `squeue` polling via `delegate_to: "{{ groups['slurm_controller'][0] }}"`, `block`/`rescue`, `reboot` with `test_command: nvidia-smi -L`, and `scontrol State=RESUME`), and show how `AUR` Chapter 11 uses `delegate_to: localhost` with `run_once: true` to download a binary via proxy once before distributing it to air-gapped servers.
 
-## 12. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. Why does a handler get "lost" if a subsequent task fails during Run 1, and why doesn't simply re-running the playbook in Run 2 trigger the handler?</summary>
 
-- Rene Moser and Lorin Hochstein, *Ansible: Up and Running*, 3rd edition (chapters on complex playbooks: handlers, conditionals, loops, blocks, error handling; and on debugging).
-- Ansible documentation: handlers, conditionals, loops, blocks, error handling, `meta` module, playbook keywords.
-- Examples are the author's constructions.
+Suppose Task 1 (`template: dest=/etc/default/dcgm-exporter`) changes the file on `gpu01` and notifies `Restart dcgm-exporter`, and then Task 2 fails on `gpu01`:
+- **On Run 1:** Because `gpu01` failed in Task 2 before the end-of-section handler flush, Ansible drops `gpu01` and **skips its pending handlers** (`dcgm-exporter` keeps running with the old configuration in memory).
+- **On Run 2 (after fixing Task 2):** Task 1 compares the template against `/etc/default/dcgm-exporter`, sees that the file on disk **already matches** (from Run 1), reports `ok` (`changed=false`), and therefore **does not notify the handler on Run 2 either**.
+Fix this by setting **`force_handlers: true`** on the play, calling **`meta: flush_handlers`** immediately after critical config tasks, or adding an idempotent task that checks service uptime against config file `mtime`.
+</details>
 
-**Flagged for verification before publishing:** handler-name error behaviour and `listen` semantics in the ansible-core version used, `meta` options available, `systemd_service` module availability (older versions use `systemd`), Slurm command options (`scontrol update`, `squeue -w`), and every code listing; all labs are **untested**.
+<details>
+<summary>2. How does the `listen:` keyword on handlers decouple notifications across roles and tasks (`AUR` Chapter 11)?</summary>
+
+Instead of a task hardcoding the exact names of three separate handlers in `notify:`, multiple handlers (even across different roles) can subscribe to a shared topic string via **`listen: "Reload systemd and restart dcgm-exporter"`** (or `listen: Ssl_certs_changed` in `AUR` Chapter 11). When a task notifies that topic string, **every handler listening to that topic** is scheduled and executed in the order the handlers are defined in the play.
+</details>
+
+<details>
+<summary>3. Why does passing `-e some_flag=false` on the command line cause `when: some_flag` to evaluate to `True`?</summary>
+
+Extra variables passed as `key=value` on the CLI (`-e some_flag=false`) are parsed as **strings** (`"false"`), not YAML booleans (unlike `-e '{"some_flag": false}'` JSON syntax). In Python and Jinja2, **any non-empty string—including `"false"`, `"no"`, and `"0"`—is truthy**. Always write **`when: some_flag | bool`** whenever a variable might arrive as a string from `-e`, environment lookups, or INI inventories.
+</details>
+
+<details>
+<summary>4. How are multiple items in a `when:` list combined, and how do you safely check a registered variable from a task that might have been skipped?</summary>
+
+- **List items in `when:`** are combined with logical **`AND`**:
+  ```yaml
+  when:
+    - "'gpu' in group_names"
+    - ansible_facts['os_family'] == 'Debian'
+  ```
+- **Skipped registered variable:** When a task is skipped because its `when:` was false, its `register:` variable still exists as `{"changed": false, "skipped": true}` **without `stdout`, `stderr`, or `rc` keys**. Referencing `res.stdout` directly raises an `UndefinedError`; always guard with **`when: res is not skipped and 'text' in res.stdout`** (or `res.stdout is defined`).
+</details>
+
+<details>
+<summary>5. How does `register` work when combined with `loop:`, and how do you inspect per-item failures?</summary>
+
+When a task uses both `loop:` and `register: loop_reg`, Ansible stores a dictionary containing a **`results` list** (`loop_reg.results`), where each element is the return dictionary for one loop iteration and includes `"item": <loop_item>`. You can extract exit codes with `{{ loop_reg.results | map(attribute='rc') | list }}` or filter failed items with `{{ loop_reg.results | selectattr('failed', 'defined') | selectattr('failed') | list }}`.
+</details>
+
+<details>
+<summary>6. Why do nested `include_tasks` loops overwrite `{{ item }}`, and how does `loop_control: { loop_var: ... }` fix it (`AUR` Chapter 10)?</summary>
+
+By default, every `loop:` binds its current element to the variable name **`item`**. If Playbook A loops over `[vhost1, vhost2]` and calls `include_tasks: vhost-tasks.yml`, and `vhost-tasks.yml` itself has a task that loops over `[logs, public_http, public_https]`, the inner loop **overwrites `item`**, hiding the outer virtual host dictionary. Setting **`loop_control: { loop_var: vhost }`** on the outer `include_tasks` loop renames the outer variable to `{{ vhost }}` so `{{ vhost.domain }}` and inner `{{ item }}` never collide.
+</details>
+
+<details>
+<summary>7. How do you write a custom Jinja2 Filter Plugin (`filter_plugins/surround_by_quotes.py`) in Ansible (`AUR` Chapter 10)?</summary>
+
+Create a Python file inside a **`filter_plugins/`** directory adjacent to your playbook (or inside a role/collection) that defines a class named **`FilterModule`** with a **`filters(self)`** method returning a `{filter_name: callable}` dictionary (`AUR` Chapter 10 `Example 10-11`):
+```python
+class FilterModule:
+    @staticmethod
+    def surround_by_quotes(a_list):
+        return ['"%s"' % x for x in a_list]
+
+    def filters(self):
+        return {'surround_by_quotes': self.surround_by_quotes}
+```
+Playbooks and templates can then pipe any list into `{{ domains | surround_by_quotes | join(', ') }}`.
+</details>
+
+<details>
+<summary>8. In `AUR` Chapter 10, how does `changed_when` make modules like `django_manage` or `command` report accurate change status?</summary>
+
+Some commands or framework wrappers (such as `django_manage: command="createdb --noinput"` or `scontrol`) exit with `rc=0` whether they created new state or did nothing. By inspecting the registered output (`register: result`) on a first run versus a second run and setting **`changed_when: "'Creating tables' in result.out"`**, the task reports `changed` only when tables were actually created and `ok` on subsequent idempotent runs.
+</details>
+
+<details>
+<summary>9. How do `block`, `rescue`, and `always` work, and what special variables are available inside `rescue:`?</summary>
+
+- **`block:`**: groups tasks that share keywords (`when`, `become`, `tags`) and acts like a `try` clause.
+- **`rescue:`**: executes **only if a task inside `block:` fails**. Inside `rescue:`, Ansible exposes two special magic variables:
+  1. **`ansible_failed_task`**: the task object that failed (`{{ ansible_failed_task.name }}`).
+  2. **`ansible_failed_result`**: the full return dictionary of that failed task (`rc`, `stdout`, `stderr`, `msg`).
+- **`always:`**: executes unconditionally after `block:` (and after `rescue:` if `rescue:` ran), just like `finally:`.
+</details>
+
+<details>
+<summary>10. Why does a play report `failed=0` (`rescued=1`) when a `rescue:` block finishes normally, and how do you keep the host marked as failed after rolling back?</summary>
+
+If all tasks inside the `rescue:` section succeed, Ansible considers the error **successfully recovered** (`rescued=1, failed=0` in the `PLAY RECAP`, exit code `0`) and **continues executing the rest of the play on that host**. In a fleet upgrade where `rescue:` rolled back a broken driver, continuing the play or returning a green CI exit code is dangerous—end the `rescue:` block with an explicit **`ansible.builtin.fail`** task (`msg: "Driver upgrade failed on {{ inventory_hostname }}; rolled back; node left drained"`) so the rollback runs, `always:` collects logs, and the host is still marked failed.
+</details>
+
+<details>
+<summary>11. Why did `AUR` Chapter 10's web-app example put "Re-add server to load balancer" in `always:`, whereas our GPU node maintenance playbook puts `scontrol State=RESUME` AFTER the `block`/`rescue`?</summary>
+
+- In `AUR` Chapter 10 (`Example 10-29`), the `rescue:` block reverted the VM to a **known-good pre-upgrade VM snapshot (`cs_vmsnapshot: state=revert`)**, guaranteeing the web server was healthy again before `always:` re-added it to the load balancer.
+- On a **bare-metal GPU node**, a failed driver/firmware update or failed `nvidia-smi` validation cannot be reverted by a hypervisor snapshot, and putting a broken GPU node back into Slurm (`State=RESUME` in `always:`) would turn it into a **"black hole" node** that immediately crashes every multi-node training job scheduled onto it. Therefore, on GPU nodes, `rescue:` leaves the node **`DRAIN`ed** and fails, and `State=RESUME` runs **only after the `block` succeeds**.
+</details>
+
+<details>
+<summary>12. Compare `meta: end_host`, `meta: end_play`, `meta: end_batch`, and `meta: clear_host_errors`.</summary>
+
+- **`meta: end_host`**: cleanly stops processing the current play for **this specific host** (when triggered by `when:`) without marking the host as failed or skipped in the recap.
+- **`meta: end_batch`**: ends the current `serial` batch early and moves to the next batch.
+- **`meta: end_play`**: cleanly terminates the current play for **all hosts** immediately with exit code `0`.
+- **`meta: clear_host_errors`**: clears the failed state of hosts so subsequent plays can target them.
+</details>
+
+<details>
+<summary>13. Contrast Static `import_tasks` / `import_role` with Dynamic `include_tasks` / `include_role`.</summary>
+
+| Feature | `import_tasks` / `import_role` (Static) | `include_tasks` / `include_role` (Dynamic) |
+|---|---|---|
+| **When processed** | Pre-processed once at **playbook parse time** | Processed dynamically at **runtime** as execution reaches it |
+| **`--list-tasks` & `--start-at-task`** | Imported tasks are visible in `--list-tasks` and targetable | Hidden until runtime |
+| **`when:` behaviour** | Copied onto **every** individual task inside the imported file | Evaluated once on the `include_*` statement itself to decide whether to load the file |
+| **`tags:` behaviour** | Copied onto **every** task inside the imported file | Tags on `include_*` only select the include step itself (use `apply: { tags: [...] }` to push tags to inner tasks) |
+| **Loops (`loop:`) & fact-based filenames** | **Cannot** use `loop:` or fact variables in the filename | **Supports `loop:`** and runtime filenames (`"{{ ansible_facts['os_family'] }}.yml"`) |
+</details>
+
+<details>
+<summary>14. How do you pass tags down to every task inside a dynamic `include_tasks` or `include_role` call?</summary>
+
+Use the **`apply:`** keyword inside the `include_tasks` / `include_role` arguments while also tagging the include statement itself (or tagging `always` on the include):
+```yaml
+- name: Dynamically include GPU validation tasks
+  ansible.builtin.include_tasks:
+    file: validate_gpu.yml
+    apply:
+      tags: [validate]
+  tags: [validate]
+```
+</details>
+
+<details>
+<summary>15. How do you wait for a Slurm node to finish running jobs before starting disruptive maintenance in Ansible?</summary>
+
+First set the node state to `DRAIN` (`scontrol update NodeName={{ inventory_hostname }} State=DRAIN Reason="..."` delegated to `groups['slurm_controller'][0]`), which prevents new jobs from starting on the node while letting active jobs finish. Then poll `squeue` using **`until:`**:
+```yaml
+- name: Wait until all Slurm jobs drain from node
+  ansible.builtin.command: "squeue -h -w {{ inventory_hostname }} -o %i"
+  delegate_to: "{{ groups['slurm_controller'][0] }}"
+  register: active_jobs
+  until: active_jobs.stdout == ""
+  retries: 120
+  delay: 30
+  changed_when: false
+```
+</details>
+
+<details>
+<summary>16. How does `ansible.builtin.reboot` verify that a GPU node is truly ready after a kernel or driver reboot?</summary>
+
+By default, `reboot` reconnects over SSH and runs `whoami`—which succeeds as soon as `sshd` starts, sometimes before the NVIDIA kernel modules or PCIe bus have finished initializing. Setting **`test_command: nvidia-smi -L`** (alongside `reboot_timeout: 1800` and `post_reboot_delay: 30` for long server BIOS POST times) forces `reboot` to keep polling until `nvidia-smi -L` exits `0` on the rebooted host.
+</details>
+
+<details>
+<summary>17. In `AUR` Chapter 11, how do `delegate_to: localhost` and `run_once: true` solve downloading artifacts onto servers that have no internet access?</summary>
+
+When target servers sit in an isolated data-center VLAN without internet access while the control node (or bastion) can reach external mirrors via an HTTP proxy, a task with **`delegate_to: localhost`** and **`run_once: true`** (plus `become: false` and `environment: { https_proxy: ... }`) downloads the binary (`get_url: url=... dest=/tmp/goss`) **once onto the control node**, and the very next task uses `copy: src=/tmp/goss dest=/usr/local/bin/goss mode='0755'` to distribute it over SSH to all target hosts.
+</details>
+
+<details>
+<summary>18. Why should you never replace `wait_for` or `until` polling with a fixed `pause: { seconds: 60 }`?</summary>
+
+A fixed `pause: { seconds: 60 }` is **both too slow and too fragile**: when a service restarts in 2 seconds, the playbook wastes 58 seconds doing nothing; when a heavy node or cold cache takes 65 seconds to start, the playbook proceeds at 60 seconds and fails. Always poll the actual readiness condition with **`wait_for`** (TCP port open, file present, or regex in log) or **`uri` / `command` with `until:` + `retries:` + `delay:`**.
+</details>
+
+<details>
+<summary>19. How does the interactive `debug` strategy (`strategy: debug` or `ANSIBLE_STRATEGY=debug`) work when a task fails?</summary>
+
+When a play sets `strategy: debug` (or `debugger: on_failed` on a play/block/task), Ansible pauses immediately whenever a task fails and opens an interactive `(debug)` prompt on the control node. From that prompt, you can inspect the exact failure and variables (`p result._result`, `p task.args`, `p task_vars['nvidia_driver_branch']`), modify arguments or variables live in memory (`task.args['name'] = 'chrony'`), and type **`redo`** to re-run the task on the spot or **`continue`** / **`quit`**.
+</details>
+
+<details>
+<summary>20. Summarize the six layers of defense in a production-grade fleet rollout playbook.</summary>
+
+1. **Pre-flight `assert` gates (`pre_tasks`):** Verify required variables, supported OS/hardware, and change-ticket presence before touching any host.
+2. **Progressive batching (`serial: [1, "10%", "25%"]`):** Test a 1-node canary first before expanding batch size.
+3. **Scheduler / Load-Balancer drain (`scontrol State=DRAIN` + `squeue` poll):** Evacuate workloads gracefully before mutating the node.
+4. **Structured `block` / `rescue` / `always`:** Roll back on failure, collect `journalctl` diagnostics in `always`, and leave failed nodes `DRAIN`ed.
+5. **Active post-change validation (`nvidia-smi`, DCGM, NCCL):** Prove hardware and service health before running `State=RESUME`.
+6. **Fleet circuit breaker (`max_fail_percentage: 5`):** Automatically stop the line if batch failures exceed the threshold.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `ansible-up-and-running-3rd-edition` — Bas Meijer, Lorin Hochstein & René Moser, *Ansible: Up and Running*, 3rd ed., **Chapter 10: Making Playbooks Appear More Complex** (read in full: `changed_when` and `failed_when` on `django_manage`, custom filter plugins `FilterModule.surround_by_quotes` in `filter_plugins/surround_by_quotes.py`, filepath filters `basename`/`dirname`/`expanduser`/`realpath`, lookups `file`/`pipe`/`env`/`password`/`csvfile`/`dig`/`redis`, looping constructs `loop`/`with_items`/`with_lines`/`with_fileglob`/`with_dict`/`with_subelements`, `include_tasks` with `loop_control: { loop_var: vhost }`, `block`/`rescue`/`always` in `app-upgrade.yml` with `cs_loadbalancer_rule_member` and `cs_vmsnapshot`, and `ansible-vault` `encrypt`/`decrypt`/`view`/`edit`/`rekey` and `vault_identity_list`) and **Chapter 11: Execution Strategies and Flow Control** (read in full: `linear` vs `free` vs `debug` strategies, host patterns, `delegate_to` with Nagios/ELB and `run_once: true` proxy downloads, `import_tasks`/`include_tasks` and `import_playbook`, and handler chaining and `listen: Ssl_certs_changed` topic fan-out).
+- **Run here:** `python3 code/part04/ansible_control_flow_lab.py` (3 passed, 0 failed).
+- **Explicitly labelled inferences:** The `simulate_handler_listen_and_failure_loss` and `simulate_block_rescue_always_maintenance` models in `code/part04/ansible_control_flow.py` and the Section 4 & 6 GPU driver rollback (`systemd_service`) and Slurm drain/validate/resume (`scontrol update`, `squeue -w`) playbooks are the author's constructions applying *Ansible: Up and Running* Chapters 10 & 11 to GPU cluster operations (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
+- **Not verified on live hardware:** Live `ansible-playbook`, `scontrol`, `squeue`, `systemctl`, and `reboot` commands (`5.15`, `9400`, `1800`s, `120` retries, `10.0.2.2`, `10.0.2.15`, `192.168.33.10`, `6379`) are marked (`untested here`) where not executed by `ansible_control_flow_lab.py`.
