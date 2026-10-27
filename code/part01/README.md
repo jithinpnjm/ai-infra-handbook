@@ -20,3 +20,4 @@
 | 1.16 Logging, time synchronisation, cron and batch jobs | `logging_time_cron.py` | `logging_time_cron_lab.py` | 21 | `python3 code/part01/logging_time_cron_lab.py` |
 | 1.17 Memory management: virtual memory, NUMA, huge pages, OOM | `memory_numa_oom.py` | `memory_numa_oom_lab.py` | 21 | `python3 code/part01/memory_numa_oom_lab.py` |
 | 1.18 CPU scheduling and cgroups v1 and v2 | `cpu_sched_cgroups.py` | `cpu_sched_cgroups_lab.py` | 20 | `python3 code/part01/cpu_sched_cgroups_lab.py` |
+| 1.19 Namespaces: the kernel feature behind containers | `namespaces_containers.py` | `namespaces_containers_lab.py` | 19 | `python3 code/part01/namespaces_containers_lab.py` |
