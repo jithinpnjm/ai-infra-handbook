@@ -4,7 +4,7 @@ title: "11.21 PCIe, IOMMU, VFIO and device passthrough"
 sidebar_label: "11.21 PCIe, IOMMU, VFIO and device passthrough"
 sidebar_position: 21
 description: "How PCIe root complexes, switches, NUMA boundaries, IOMMU DMA remapping, and Linux VFIO enable secure bare-metal-speed GPU and NIC passthrough across hardware VMs, containers, and lightweight microVMs."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -498,7 +498,7 @@ Primary Sources and Review Provenance Ledger:
 - The VFIO group 42 simulation in `code/part11/pcie_iommu_vfio_passthrough.py` for endpoints `0000:4b:00.0` and `0000:4b:00.1` models the Linux `drivers/vfio/vfio.c` group viability check.
 
 ### Not verified on live hardware
-- All `nvidia-smi topo -m`, `lspci`, `/sys/bus/pci/drivers/vfio-pci`, `perf kvm stat live`, `kvmexits.bt`, and `nsenter` commands are marked untested here.
+- All `nvidia-smi topo -m` (`PCIE_TOPOLOGY_CODES`, `CC-On` Confidential Computing), `lspci`, `/sys/bus/pci/drivers/vfio-pci` (`IntelVT-d`, `IOVAs` vs `HPAs`), `perf kvm stat live` (`PMCs`, `cloud-hypervisor`, cross-referenced with Chapters `4.1` and `11.5`), `kvmexits.bt`, and `nsenter` commands are marked untested here.
 
 ### Not in the corpus
 - PCIe Gen6 PAM4 electrical eye-diagram tuning and confidential-computing GPU TEE bounce-buffer internals are covered in the security part of the handbook.

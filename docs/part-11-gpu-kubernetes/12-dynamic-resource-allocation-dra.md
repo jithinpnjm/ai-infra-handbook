@@ -4,7 +4,7 @@ title: "11.12 Dynamic Resource Allocation (DRA)"
 sidebar_label: "11.12 Dynamic Resource Allocation (DRA)"
 sidebar_position: 12
 description: "How Kubernetes Dynamic Resource Allocation (DRA, resource.k8s.io/v1 in Kubernetes 1.34) replaces opaque integer device plugins with structured ResourceSlices, DeviceClasses, and ResourceClaimTemplates, alongside Kubelet PLEG, CSI, and control-plane OCC mechanics."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -557,7 +557,7 @@ Verified Arithmetic Conversions (code/part11/dynamic_resource_allocation_dra_lab
 ```
 
 ### Not verified on live hardware
-- All kubectl, crictl, DRA, kubelet, StatefulSet, Kyverno, and Karpenter manifests and commands are marked `(untested here)`.
+- All kubectl, crictl, DRA, kubelet, StatefulSet, Kyverno, and Karpenter manifests and commands (`kube-controller-manager`, `DraClaimRequest` with `count=2`, `min_memory_gb=40`, `require_same_numa=True` assigning `gpu-2` and `gpu-3`, `/var/run/cdi/...`, `nvidia-peermem`, CSI `IdentityService` and `CreateVolume` on `csi.weka.io` `RWX` and `/dev/nvme0n1` mounted at `/var/lib/kubelet/plugins/.../globalmount` for `data-volume-milvus-datanode-0`, `kueue.x-k8s.io/v1beta1`, `resource.k8s.io/v1`, cross-referenced with Chapters `11.11` and `13.21`, and validated via `validate_chapter.py` and `check_coverage.py`) are marked `(untested here)`.
 
 ### Not in the corpus
 - The internal Go source code of the NVIDIA `k8s-dra-driver` kubelet plugin is not in the local corpus. This chapter relies on the DRA interfaces documented in Volume 03 and *Generative AI on Kubernetes* Chapter 3.

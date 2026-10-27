@@ -4,7 +4,7 @@ title: "11.7 Multi-node jobs: why a pod cannot span nodes, and gang scheduling c
 sidebar_label: "11.7 Multi-node jobs: why a pod cannot span nodes, and gang scheduling concepts"
 sidebar_position: 7
 description: "Why a Kubernetes Pod is bounded to a single node, how partial Pod placement deadlocks PyTorch rendezvous barriers, and how gang scheduling, bin packing, descheduling, and backfill queues solve multi-node GPU orchestration."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -522,7 +522,7 @@ Primary Sources and Technical Details Integrated:
 - The hourly dollar waste of $140.0 per hour for 7 idle 8-GPU nodes at the $20 per hour midpoint, the two-job 96-GPU mutual deadlock example, and the MostAllocated node scores of 67.86 versus 39.29 are deterministic arithmetic evaluations computed in `code/part11/multi_node_and_gang_scheduling.py`.
 
 ### Not verified on live hardware
-- All `kubectl`, `sbatch`, `srun`, `mpirun`, and `KubeSchedulerConfiguration` snippets targeting multi-node clusters are marked `(untested here)`.
+- All `kubectl`, `sbatch`, `srun`, `mpirun`, and `KubeSchedulerConfiguration` snippets targeting multi-node clusters (`Pod.spec.nodeName`, `MASTER_ADDR:MASTER_PORT` on `rank-0`, `eth0` vs `ib-network` `NET/IB/GDRDMA` across `PHB` PCIe paths, `scheduler_strategy` with `gpu_weight=5`, `cpu_weight=1`, `mem_weight=1`, `enabled_descheduler_plugins`, `MayStopSearch`, across Sections `1.2`, `1.4`, `2.1`, `2.2`, `2.4`, `3.2`, `4.1`, `4.2`, `5.1`, `5.2`, and `6.1`) are marked `(untested here)`.
 
 ### Not in the corpus
 - Finalized GA YAML schema for KEP-4671, which remains in the proposal stage as of early 2026.

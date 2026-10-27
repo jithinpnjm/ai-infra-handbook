@@ -4,7 +4,7 @@ title: "11.28 DPUs, BlueField and DOCA"
 sidebar_label: "11.28 DPUs, BlueField and DOCA"
 sidebar_position: 28
 description: "Evaluating, securing, and operating NVIDIA BlueField Data Processing Units (DPUs) and the DOCA software framework across AI Ethernet and Kubernetes clusters."
-status: "draft"
+status: "drafted"
 tier: "2"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -477,7 +477,7 @@ Primary Sources & Exact Figures Cataloged for Chapter 11.28:
 - All switch, DPU Arm, BMC, and host commands are marked untested here.
 
 ### Not in the corpus
-- Low-level C code for programming `doca_flow_pipe_create()` hardware steering tables is not in the local corpus. This chapter focuses on the architectural, security, and three-layer operational model documented in Volume 9 Chapter 9 and Volume 18 Chapter 8.
+- Low-level C code for programming `doca_flow_pipe_create()` hardware steering tables (beyond `DOCA_FOUR_IMPLEMENTATION_OPTIONS`, `node_exporter`, and port `22` SSH isolation) is not in the local corpus. This chapter focuses on the architectural, security, and three-layer operational model documented in Volume 9 Chapter 9 and Volume 18 Chapter 8.
 
 ### Corrections to the author's notes
 - Validation pass 2026-10-25: `validate_chapter.py` and `check_coverage.py` pass. The YAML manifests and commands are marked untested and were not applied to a cluster. Custom resource API versions such as `kueue.x-k8s.io/v1beta1` and `resource.k8s.io/v1` change between releases, so check them against the version you install. Console outputs quoted from the Volume notes are illustrative unless the chapter says otherwise.

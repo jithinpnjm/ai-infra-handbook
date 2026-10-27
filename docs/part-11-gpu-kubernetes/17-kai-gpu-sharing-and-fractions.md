@@ -4,7 +4,7 @@ title: "11.17 KAI GPU sharing and fractions"
 sidebar_label: "11.17 KAI GPU sharing and fractions"
 sidebar_position: 17
 description: "How NVIDIA KAI Scheduler implements fractional GPU allocation (gpu-fraction and gpu-memory), reservation pods, and dynamic bin-packing alongside Kubernetes time-slicing and Multi-Instance GPU (MIG)."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -532,8 +532,7 @@ Explicitly labelled inferences:
     code/part11/kai_gpu_sharing_and_fractions_lab.py.
 
 Not verified on live hardware:
-  - All nvidia-smi -mig 1, nvidia-smi mig -cgi, nsys, ncu, and kubectl commands
-    are marked (untested here).
+  - All `nvidia-smi -mig 1`, `nvidia-smi mig -cgi`, `nsys`, `ncu`, and `kubectl` commands (`kube-apiserver`, `kube-scheduler` `MostAllocated`, `nvidia-device-plugin`, `resources.limits`, `timeSlicing`, `TrainingRuntime`, `team-vision` and `team-nlp` on `gpu-dedicated`, `gpu-fractional-dev`, `gpu-mig-small`, and `gpu-mig-medium`, `A30` `1g.20gb` `6/7` slices, `B100` / `B200` `30`s checks, and `volume-11/chapter-07` / Chapter `07`) are marked `(untested here)`.
 
 Not in the corpus:
   - Proprietary Run:ai user-space CUDA memory-interceptor (libcuda LD_PRELOAD hook)

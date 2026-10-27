@@ -4,7 +4,7 @@ title: "11.11 NVIDIA Network Operator"
 sidebar_label: "11.11 NVIDIA Network Operator"
 sidebar_position: 11
 description: "How the NVIDIA Network Operator (NicClusterPolicy) reconciles MOFED/DOCA-OFED drivers, nvidia-peermem, RDMA and SR-IOV device plugins, and Multus secondary networks across InfiniBand, RoCEv2, and GPUDirect Storage fabrics."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -505,7 +505,7 @@ Verified Arithmetic Totals (code/part11/nvidia_network_operator_lab.py):
 ```
 
 ### Not verified on live hardware
-- All Helm, kubectl, InfiniBand, packet capture, and storage benchmark commands are marked `(untested here)`.
+- All Helm, kubectl, InfiniBand, packet capture, and storage benchmark commands (`MLNX_OFED`, `nv-peer-mem-daemonset`, `rdma-shared-dp`, `sriov-dp`, `feature.node.kubernetes.io/pci-10de.present=true`, `kube-scheduler`, `PyTorchJob`, `MPIJob`, `kueue.x-k8s.io/v1beta1`, `resource.k8s.io/v1`, `QPs`, `WRs`, `MRs`, `CQs` bypassing `sk_buff`, `PIX` PCIe paths, `AOC` cables, `NVMe-oF`, `num_workers=32`, `MFU` Model FLOPs Utilization, `23.4` / `23.5` GB/s `line_rate_gb_per_sec`, `60`s timeouts, `ib_transport_framing_bytes` with `include_grh=False` and `include_grh=True`, `host_gpu_driver_ready=True` vs `host_gpu_driver_ready=False`, `volume-10/chapter-04`, cross-referenced with Chapters `5.3` and `6.3`, and validated via `validate_chapter.py` and `check_coverage.py`) are marked `(untested here)`.
 
 ### Not in the corpus
 - The full NicClusterPolicy OpenAPI schema for every vendor CNI version is not in the local corpus. Field names evolve across releases and should always be matched to the pinned chart `values.yaml`.

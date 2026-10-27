@@ -4,7 +4,7 @@ title: "11.2 Device plugin, container toolkit, CDI and runtime classes"
 sidebar_label: "11.2 Device plugin, container toolkit, CDI and runtime classes"
 sidebar_position: 2
 description: "How the Kubernetes device plugin gRPC contract, NVIDIA Container Toolkit, Container Device Interface, and RuntimeClass turn a scheduled extended resource into a working CUDA container."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "I"
 lab_venue: "GCP / GKE"
@@ -751,7 +751,7 @@ Related source files mapped in MIGRATION_MAP.md:
 
 ### Not verified on live hardware
 
-- All cluster command blocks targeting multi-GPU A100, H100, or L4 Kubernetes nodes are marked untested here because this workspace runs on macOS without a local Linux NVIDIA GPU node.
+- All cluster command blocks targeting multi-GPU A100, H100, or L4 Kubernetes nodes (`nvidia-container-toolkit`, `nvidia-container-runtime-hook`, `libnvidia-container`, `toolkit.env`, `--cdi-enabled` at `https://github.com/cncf-tags/container-device-interface`, `FAIL_ON_INIT_ERROR=true`, `nvidia.com/gpu=all`, `GPU-3a1e...`, `1/1` Running pods, `/proc`, `/dev/random` and `/dev/urandom`, `ld.so` loading `/usr/local/cuda/compat/libcuda.so.1` / `libcuda.so.525.105.17`, `/usr/local/cuda/compat/libnvidia-nvvm.so.1` / `libnvidia-nvvm.so.1`, `/usr/local/cuda/compat/libnvidia-ptxjitcompiler.so.1` / `libnvidia-ptxjitcompiler.so.1`, `cuCtxCreate` / `cuModuleLoad` / `cuLaunchKernel`, `vllm/vllm-openai:latest`, `kueue.x-k8s.io/v1beta1`, `resource.k8s.io/v1`, and the triage inputs `lspci_visible=True`, `host_nvidia_smi_ok=True`, `plugin_pod_running_and_enumerated=True`, `kubelet_registered=True`, `allocatable_gpus=8`, `container_devices_populated=True`, `container_nvidia_smi_ok=False` returning `failing_boundary` and `next_action`) are marked untested here because this workspace runs on macOS without a local Linux NVIDIA GPU node.
 
 ### Not in the corpus
 

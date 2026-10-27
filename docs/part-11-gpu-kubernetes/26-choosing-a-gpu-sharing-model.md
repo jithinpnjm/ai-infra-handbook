@@ -4,7 +4,7 @@ title: "11.26 Choosing a GPU sharing model"
 sidebar_label: "11.26 Choosing a GPU sharing model"
 sidebar_position: 26
 description: "How to choose among Dedicated Whole GPUs, Multi-Instance GPU, NVIDIA vGPU, Time-Slicing, and CUDA MPS, and how to build the capacity, reserve, and chargeback model around your choice."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "I"
 lab_venue: "GCP / GKE"
@@ -541,7 +541,7 @@ Primary Sources Mapped and Migrated in Full for Chapter 11.26
 - The numerical example for the node pool sizing formula in the text block above is a deterministic calculation verified by `code/part11/choosing_gpu_sharing_model_lab.py`.
 
 ### Not verified on live hardware
-- All host `nvidia-smi`, cluster `kubectl`, and Prometheus recording rules are marked untested here.
+- All host `nvidia-smi`, cluster `kubectl` (`sharing-trial-whole`, `sharing-trial-timeslice`, `high-demand`, `Leaf/Rack` and `Spine/Pod` failure domains, `kueue.x-k8s.io/v1beta1`, `resource.k8s.io/v1`), and Prometheus recording rules (from `nvidia-devops` `chapter-07-kubernetes-scheduling-for-shared-gpus.md`, `chapter-11-production-troubleshooting.md`, `chapter-12-volume-11-summary.md`, and `volume-11/labs/lab-01..04` / `labs/lab-01..04` in `2026`) are marked untested here.
 
 ### Not in the corpus
 - Third-party SaaS FinOps billing connectors and custom CSV pricing schemas are outside the corpus. This chapter uses the `kube-state-metrics` and Prometheus recording rule pipeline from Volume 11 Chapter 9.

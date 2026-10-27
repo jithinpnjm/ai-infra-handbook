@@ -4,7 +4,7 @@ title: "11.9 JobSet, LeaderWorkerSet, PyTorchJob and the MPI Operator"
 sidebar_label: "11.9 JobSet, LeaderWorkerSet, PyTorchJob and the MPI Operator"
 sidebar_position: 9
 description: "How Kubernetes workload APIs and operators—JobSet, LeaderWorkerSet, Kubeflow PyTorchJob, Kubeflow Trainer v2, and the MPI Operator—orchestrate multi-node training and sharded inference."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -595,7 +595,7 @@ FlashAttention provides hardware-aware IO-optimized attention. Liger Kernel prov
 | Multi-adapter serving memory footprint (`compare_full_finetuning_vs_lora`) | `5.0%` adapter size (`1%–10%` range) across `10` adapters + `1` base model = `1.5x` base memory vs `10.0x` for `10` full models (`6.67x` savings ratio) | Direct arithmetic instantiation of the `1%–10%` adapter size range in *Generative AI on Kubernetes* Chapter 6 |
 
 ### Not verified on live hardware
-- All `kubectl`, `TrainerClient`, ClusterTrainingRuntime, LeaderWorkerSet, and MPIJob manifests are marked untested here.
+- All `kubectl`, `TrainerClient` (`serialized_func_embedded=True`, `cpu_per_node=4`, `gpus_per_node=1`, `TrainingRuntime` / `dataset-initializer`, `0.05` `memory_savings_ratio`), ClusterTrainingRuntime, LeaderWorkerSet (`size-1`, `GIE` Gateway Inference Extension, `ServingRuntime`, `TGI`, `TP=8` and `PP=4` on `72`-GPU MoE `MoE`), PyTorchJob (`0..N-1`, `RANK=1` / `RANK=1..N-1` on `worker-2`, `nproc_per_node`, `JOB_COMPLETION_INDEX`, `ContainerCreating`, `OnFailure`, `ExitCode`, `schedulerName`, `RWX`, `torch.utils.tensorboard.SummaryWriter`), `DAG` / `parameter-server` / `HPO` / `PBT` (`1/4` trials) from `scalable-kubernetes-infrastructure-for-ai-platforms`, and MPIJob manifests are marked untested here.
 
 ### Not in the corpus
 - Low-level OpenMPI MCA command-line flags such as `--mca btl_tcp_if_include` beyond the `mpirun -np 16` invocation in `volume-06/04-distributed-orchestration-masterclass.md`.

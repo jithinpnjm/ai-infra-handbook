@@ -4,7 +4,7 @@ title: "11.10 Secondary networks: Multus, SR-IOV device plugin and RDMA device p
 sidebar_label: "11.10 Secondary networks: Multus, SR-IOV device plugin and RDMA device plugin"
 sidebar_position: 10
 description: "How Kubernetes primary CNIs (Calico, Cilium eBPF), Multus CNI, Whereabouts IPAM, the RDMA Shared Device Plugin, and the SR-IOV Network Device Plugin expose GPUDirect RDMA over InfiniBand and RoCEv2 into multi-homed GPU Pods."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -542,7 +542,7 @@ Standard Ethernet defaults to MTU 1500, and overlay networks reduce that payload
 | Usable Whereabouts IPs in `192.168.10.0/24` excluding `.1/32` and `.254/32` | `254 - 2 = 252` usable secondary IPs | Direct IPv4 host calculation from the `roce-sriov-network` NAD in `volume-03/03-k8s-networking-security-ops-masterclass.md` |
 
 ### Not verified on live hardware
-- All `kubectl`, `cilium`, `ip addr`, `lsmod`, `modprobe`, `show_gids`, and `lspci` commands targeting live RDMA and SR-IOV clusters are marked untested here.
+- All `kubectl`, `cilium`, `ip addr`, `lsmod`, `modprobe`, `show_gids`, and `lspci` commands targeting live RDMA and SR-IOV clusters (`kube-scheduler`, `kube-controller-manager`, `calico-ipam` `/29`, `sriovNetworkOperator`, `ib-sriov`, `P_Keys`, `mlx5_core` and `ib_core`, `CAP_IPC_LOCK` / `RLIMIT_MEMLOCK` `64` KB default, `net1..netN` / `net2..net8`, `failing_layer` with `net1_present=True`, `dev_infiniband_present=False`, and `nccl_log_line`, across Sections `3.1`, `3.3`, `4.2`, `4.3`, and `5.2` and Chapter `11.11`) are marked untested here.
 
 ### Not in the corpus
 - Switch-side SONiC or Cumulus CLI commands for configuring PFC and ECN thresholds beyond the host-side `NCCL_IB_TC=106` mapping; data-center switch fabric configuration is covered in the networking parts of this handbook.

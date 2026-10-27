@@ -4,7 +4,7 @@ title: "11.15 KAI queues, quotas and fair sharing"
 sidebar_label: "11.15 KAI queues, quotas and fair sharing"
 sidebar_position: 15
 description: "How NVIDIA KAI Scheduler structures hierarchical Department-to-Project queues, computes proportional over-quota borrowing, reclaims lent GPUs, and ties fair sharing to capacity planning and showback/chargeback."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -519,7 +519,7 @@ Explicitly labelled inferences:
     code/part11/kai_queues_quotas_fair_sharing_lab.py.
 
 Not verified on live hardware:
-  - All kubectl, Queue, and sacctmgr commands are marked (untested here).
+  - All `kubectl`, `kai-scheduler`, `pod-grouper`, `nvidia-smi`, Queue (`nominal_quota=16.0`, `nominal_quota=8.0`, `limit=-1.0`, `over_quota_weight=1.0`, `p95` `95`th percentile latency, `raw_nodes` and `required_nodes_n`), and `sacctmgr` commands are marked `(untested here)`.
 
 Not in the corpus:
   - Integration with external ERP/SAP financial invoicing systems; this chapter covers Kubernetes/Slurm showback

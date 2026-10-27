@@ -4,7 +4,7 @@ title: "11.20 Scheduler comparison guide: KAI, Kueue, Volcano, YuniKorn and Slur
 sidebar_label: "11.20 Scheduler comparison guide: KAI, Kueue, Volcano, YuniKorn and Slurm"
 sidebar_position: 20
 description: "Architectural comparison and decision guide across NVIDIA KAI Scheduler, Kueue, Volcano, Apache YuniKorn, Scheduler-Plugins Coscheduling, and bare-metal Slurm."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "I"
 lab_venue: "GCP / GKE"
@@ -538,7 +538,7 @@ Primary sources read in full for this chapter:
 
 ### Not verified on live hardware
 
-- All `srun`, `sbatch`, `enroot`, `dcgmi`, `ncclras`, Redfish `curl`, and `kubectl` manifests are marked untested here and were not executed on live SuperPOD hardware.
+- All `srun` (`--container-name`, `--container-writable`, `/etc/slurm/plugstack.conf.d/pyxis.conf` from `github.com/NVIDIA/pyxis`), `sbatch`, `enroot` (`github.com/NVIDIA/enroot`, `ENROOT_UNSHARE_NET=no`, `--ipc`, `--pid`, `--uts`), `dcgmi` (`DCGM-Exporter`), `ncclras` (`mlx5_0..7`, `ibv_create_qp`, `RoCEv2`, `SR-IOV`, `NET/Socket`), Redfish `curl` (`CMDaemon`), and `kubectl` manifests (`ClusterQueues`, `LocalQueues`, `ResourceFlavors`, `PodGroups`, `BindRequest`, `PreFilter`, `ServiceAccounts`, `queue-controller`, `pod-group-controller`, `kai.scheduler/v1alpha1`, `kueue.x-k8s.io/v1beta1`, `resource.k8s.io/v1`, `SCHEDULER_COMPARISON_MATRIX`, `XID_CATALOG_ACTIONS`, `PoC` `50` / `90`% gates, cross-referenced with Chapter `2.1`) are marked untested here and were not executed on live SuperPOD hardware.
 
 ### Not in the corpus
 

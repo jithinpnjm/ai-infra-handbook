@@ -4,7 +4,7 @@ title: "11.16 KAI gang scheduling and topology-aware placement"
 sidebar_label: "11.16 KAI gang scheduling and topology-aware placement"
 sidebar_position: 16
 description: "How NVIDIA KAI Scheduler unifies atomic PodGroup gang scheduling with multi-level hardware topology placement across NUMA islands, NVSwitch nodes, NVL72 racks, and InfiniBand leaf switches."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -517,7 +517,7 @@ Explicitly labelled inferences:
     26.562 GB/s figures in volume-02/labs/lab-04 Section 14 verified by code/part11/kai_gang_and_topology_lab.py.
 
 Not verified on live hardware:
-  - All nvidia-smi, lspci, numactl, ibnetdiscover, ipmitool, and kubectl commands are marked (untested here).
+  - All `nvidia-smi`, `lspci`, `numactl`, `ibnetdiscover`, `ipmitool`, and `kubectl` commands (`LWS` LeaderWorkerSet, `TP=8`, `64`-GPU jobs, `NCCL_DEBUG=INFO`, `topologyConstraint`, `nodeLabels` for `single-numa`, `single-node-nvswitch`, and `same-rack-ib`, `gpu-nvlink-infiniband` vs `gpu-standard-ethernet`, and `tokens_per_step`, `tokens_millions_per_hr_per_gpu`, `achievable_trillion_per_yr`, cross-referenced with Chapter `11.8`) are marked `(untested here)`.
 
 Not in the corpus:
   - Proprietary NVSwitch fabric manager (nv-fabricmanager) internal routing-table binary formats; fabric manager

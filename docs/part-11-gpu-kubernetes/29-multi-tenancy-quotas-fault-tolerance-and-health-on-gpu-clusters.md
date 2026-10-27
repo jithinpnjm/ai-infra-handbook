@@ -4,7 +4,7 @@ title: "11.29 Multi-tenancy, quotas, fault tolerance and health on GPU clusters"
 sidebar_label: "11.29 Multi-tenancy, quotas, fault tolerance and health on GPU clusters"
 sidebar_position: 29
 description: "Production Day-2 operations for multi-tenant GPU clusters: compute/network/storage isolation, IRSA workload identity, FinOps zombie reapers, rolling driver upgrades, Thanos observability, WORM disaster recovery, and the Universal AI SRE Diagnostic Matrix."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -531,7 +531,7 @@ Primary Corpus & Volume Notes Mapped to Chapter 11.29:
 
 ### Not verified on live hardware
 
-- All cluster commands for `kubectl`, `perfquery`, `sysfs` hardware counters, and Prometheus rules are marked `(untested here)`.
+- All cluster commands for `kubectl` (`NVAIE` licensing, `num_workers`), `perfquery`, `sysfs` hardware counters (`rx_pause_ctrl_phy`, `FP16_ACTIVE`, `FP32_ACTIVE`), and Prometheus rules (from `chapter-01-cluster-lifecycle-and-upgrade-operations.md`, `chapter-02-incident-response-and-game-day-execution.md`, `chapter-03-capacity-planning-and-forecasting.md`, `chapter-04-gpu-memory-and-utilization-troubleshooting.md`, `chapter-05-network-reliability-and-fabric-validation.md`, `chapter-06-cost-optimization-and-resource-efficiency.md`, `chapter-07-multi-tenancy-and-workload-isolation.md`, `chapter-08-security-operations-and-compliance.md`, `chapter-09-monitoring-and-observability-at-scale.md`, `chapter-10-disaster-recovery-and-data-resilience.md`, `chapter-11-performance-debugging-and-bottleneck-identification.md`, and `chapter-12-on-call-handoff-and-operational-runbooks.md`) are marked `(untested here)`.
 
 ### Not in the corpus
 

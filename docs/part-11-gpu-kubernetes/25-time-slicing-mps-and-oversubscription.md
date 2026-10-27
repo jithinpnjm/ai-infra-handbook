@@ -4,7 +4,7 @@ title: "11.25 Time-slicing, MPS and oversubscription"
 sidebar_label: "11.25 Time-slicing, MPS and oversubscription"
 sidebar_position: 25
 description: "Deep dive into software GPU sharing on Kubernetes: device-plugin time-slicing, CUDA Multi-Process Service (MPS), replica-ratio benchmarking, and oversubscription governance."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -587,7 +587,7 @@ Primary Source Inventory and Coverage Map (11.25):
 
 ### Not verified on live hardware
 
-- All `nvidia-cuda-mps-control`, `nvidia-smi dmon`, `nvidia-smi pmon`, and `kubectl` commands are marked `(untested here)`.
+- All `nvidia-cuda-mps-control` (`MpsServerConfig`, `8000` MiB limits), `nvidia-smi dmon`, `nvidia-smi pmon`, and `kubectl` commands (`nvidia.com/gpu.product`, `1g.10gb`, `LimitRange`, `request/limit` / `requests/limits`, `taint/toleration` / `taints/tolerations`, `kueue.x-k8s.io/v1beta1`, `resource.k8s.io/v1`, from `chapter-07-kubernetes-scheduling-for-shared-gpus.md`, `chapter-11-production-troubleshooting.md`, and `chapter-12-volume-11-summary.md`) are marked `(untested here)`.
 
 ### Not in the corpus
 

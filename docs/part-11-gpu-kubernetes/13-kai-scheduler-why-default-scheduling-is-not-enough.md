@@ -4,7 +4,7 @@ title: "11.13 KAI Scheduler: why default scheduling is not enough"
 sidebar_label: "11.13 KAI Scheduler: why default scheduling is not enough"
 sidebar_position: 13
 description: "Why the default Kubernetes scheduler fails on multi-tenant, bimodal AI clusters, and how NVIDIA KAI Scheduler (open-sourced from Run:ai) unifies Project fair-share quotas, gang scheduling, fractional GPUs, and NVLink/InfiniBand topology placement."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "I"
 lab_venue: "GCP / GKE"
@@ -524,7 +524,7 @@ Deterministic Arithmetic Evaluations in code/part11/kai_why_default_not_enough_l
 ```
 
 ### Not verified on live hardware
-- All `kubectl`, `helm`, `cm-runai-setup`, and PyTorchJob manifests targeting live KAI Scheduler and Run:ai clusters are marked `(untested here)`.
+- All `kubectl`, `helm`, `cm-runai-setup`, and PyTorchJob manifests targeting live KAI Scheduler and Run:ai clusters (`pod/cluster-installer-deployment-...`, `service/cluster-installer-service`, `scheduling.x-k8s.io/pod-group`, `OOMKilled`, `100s` vs `300s` timeouts, `volume-26/chapter-02` / Chapter `02`, and Chapter `6.1`) are marked `(untested here)`.
 
 ### Not in the corpus
 - Internal Go package structure of `kai-scheduler` plugins is not in the local book corpus. Detailed KAI Scheduler custom resources, queues, gang placement, fractional sharing, operations, and the Run:ai platform view are covered in Chapters 11.14 through 11.19.

@@ -4,7 +4,7 @@ title: "11.24 MIG in depth"
 sidebar_label: "11.24 MIG in depth"
 sidebar_position: 24
 description: "Deep dive into NVIDIA Multi-Instance GPU (MIG): GPU Instances (GIs) vs Compute Instances (CIs), silicon memory-path partitioning, profile placement geometry, 24-node H100 fleet sizing, DCGM telemetry, and node lifecycle runbooks."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -578,7 +578,7 @@ Primary Source Inventory & Key Technical Artifacts Migrated (Chapter 11.24):
 - None; all profile geometries, memory sizing envelopes, fleet node counts, and DCGM and XID rules come directly from `volume-11/chapter-02`, `volume-11/chapter-03`, and `volume-04/03`.
 
 ### Not verified on live hardware
-- All `nvidia-smi mig`, `docker run --gpus`, `dcgmi`, `mpirun all_reduce_perf`, and `kubectl` commands are marked `(untested here)`.
+- All `nvidia-smi mig` (`all-1g.10gb`, `all-balanced` from `chapter-03-mig-profiles-and-placement.md`), `docker run --gpus`, `dcgmi` (`RCA` Root Cause Analysis), `mpirun all_reduce_perf`, and `kubectl` commands (cross-referenced with Chapter `11.19`) are marked `(untested here)`.
 
 ### Not in the corpus
 - Internal NVIDIA silicon fuse masks for SM-to-GPC floorplan binning across yield tiers are outside the corpus; this chapter uses the driver-exposed GPU Instance and Compute Instance profile contracts.

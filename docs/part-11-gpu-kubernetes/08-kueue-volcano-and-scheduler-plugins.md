@@ -4,7 +4,7 @@ title: "11.8 Kueue, Volcano and scheduler plugins"
 sidebar_label: "11.8 Kueue, Volcano and scheduler plugins"
 sidebar_position: 8
 description: "Deep dive into the Kubernetes Scheduling Framework (Reserve and Permit gates), the Coscheduling PodGroup plugin, Kueue (ResourceFlavor, ClusterQueue, LocalQueue, Cohorts, and Flavor Fungibility), and Volcano batch scheduling."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -572,7 +572,7 @@ Primary Sources and Technical Details Integrated:
 - The maximum effective GPU allocation for Team A of 32 GPUs (`10 + 22`), with 18 borrowed GPUs and 4 unused borrowable GPUs when 28 GPUs are active, is a direct arithmetic total. The total APF queue buffer capacity of 20,000 requests (`100 * 200`) is also computed directly in `code/part11/kueue_volcano_and_plugins.py`.
 
 ### Not verified on live hardware
-- All `kubectl`, `etcdctl`, Kueue, Volcano, and APF YAML manifests are marked `(untested here)`.
+- All `kubectl`, `etcdctl`, Kueue, Volcano, and APF YAML manifests (`batch/v1`, `scheduling.k8s.io/v1`, `scheduler-plugins` Coscheduling `minResources`, Volcano `minTaskMember`, `TaintToleration`, `node-high`, `leader-election`, `FlowSchema`, `RWX` storage, `24.08` container tags, `56`-GPU examples, Section `4.2`) are marked `(untested here)`.
 
 ### Not in the corpus
 - Kueue MultiKueue multi-cluster federation CRDs (`MultiKueueConfig` and `MultiKueueCluster`); multi-cluster scheduling is covered in later chapters where applicable.

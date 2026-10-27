@@ -4,7 +4,7 @@ title: "11.5 GPU Operator installation, configuration and upgrades"
 sidebar_label: "11.5 GPU Operator installation, configuration and upgrades"
 sidebar_position: 5
 description: "Production installation boundaries, GitOps Helm values governance, seven-gate pool acceptance, staged canary upgrades across hardware batches, and coherent host-plus-chart rollback."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -570,7 +570,7 @@ Wave GPU Math Verification:
 ```
 
 ### Not verified on live hardware
-- All `helm`, `kubectl`, `curl`, `journalctl`, and `nvidia-smi` commands targeting live clusters are marked untested here.
+- All `helm`, `kubectl`, `curl`, `journalctl`, and `nvidia-smi` commands targeting live clusters (`kube-apiserver`, `ServiceAccount`, `nodeSelector`, `nvidia-driver-ds-7z4kd`, `nvidia-operator-validator`, `gpu-validation=passed`, `total_canary_nodes=6`, `driver_ready_nodes=6`, `capacity_gpus=8`, `allocatable_gpus=8`, `dcgm_metric_series_count=8`, `rollback_recheck_gate` with `post_rollback_allocatable=0` vs `post_rollback_allocatable=8` and `post_rollback_workload_ok=True`, plus `kueue.x-k8s.io/v1beta1` and `resource.k8s.io/v1` CRDs) are marked untested here.
 
 ### Not in the corpus
 - Automated ArgoCD PreSync and PostSync hook YAML manifests for the upgrade lab are not in the corpus, so this chapter presents the exact CLI commands documented in the source notes.

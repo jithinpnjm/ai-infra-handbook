@@ -4,7 +4,7 @@ title: "11.18 KAI operations and troubleshooting"
 sidebar_label: "11.18 KAI operations and troubleshooting"
 sidebar_position: 18
 description: "Operating, monitoring, and troubleshooting NVIDIA KAI Scheduler and shared GPU clusters across hardware, MIG/time-slicing state, registration, scheduling policy, runtime binding, and service SLOs."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -605,8 +605,7 @@ Explicitly labelled inferences:
     synthesis verified by code/part11/kai_operations_and_troubleshooting_lab.py.
 
 Not verified on live hardware:
-  - All kubectl, ssh, nvidia-smi, dcgmi test --inject, ibportstate, and
-    Prometheus rules are marked (untested here).
+  - All `kubectl`, `ssh`, `nvidia-smi`, `mig-manager` (`nvidia.com/mig-2g.20gb`, `3g.40gb`, `4g.40gb`, `3/7` slices, `0.25` fractions, `40` GB / `300`s windows, `quota-denied-gpu-pod`), `nccl-tests`, `dcgmi test --inject`, `ibportstate`, and Prometheus rules are marked `(untested here)`.
 
 Not in the corpus:
   - Internal KAI Scheduler Prometheus metric names beyond the standard Kubernetes /

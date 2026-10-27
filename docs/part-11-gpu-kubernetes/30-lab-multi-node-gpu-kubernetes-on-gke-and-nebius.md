@@ -4,7 +4,7 @@ title: "11.30 Lab: multi-node GPU Kubernetes on GKE and Nebius"
 sidebar_label: "11.30 Lab: multi-node GPU Kubernetes on GKE and Nebius"
 sidebar_position: 30
 description: "Capstone hands-on lab for Part 11: provisioning, validating, networking, and autoscaling multi-node GPU Kubernetes clusters on Nebius GPU, Google Kubernetes Engine (GKE), and Amazon EKS."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "A"
 lab_venue: "Nebius GPU"
@@ -545,7 +545,7 @@ Primary Corpus & Lab Sources Mapped to Chapter 11.30:
 
 ### Not verified on live hardware
 
-- All `gcloud`, `aws`, `terraform`, `helm`, `kubectl`, `docker`, `nvidia-ctk`, `mkfs.ext4`, and `ufw` commands are marked `(untested here)`.
+- All `gcloud`, `aws` (`ASG` Auto Scaling Groups, `aws-sqs-queue`), `terraform`, `helm`, `kubectl` (`--cpu-manager-policy=static`, `--topology-manager-policy=single-numa-node`, `/etc/cdi`, `nvidia-cuda-validator`, `CreateContainerError`, `OOMKills`, `periodSeconds` `15-second` probes, `my-llama-job-plgb5`, `JobSet`, `LeaderWorkerSet`, `PyTorchJob`, `MPIJob`, `nvidia.com/gpu.product=NVIDIA-A100-80GB`, `nvidia.com/gpu.memory=81920`, `GPU-3a1e9f2b-...`, `H100`, `1g.10gb`, `3g.40gb`, `nvidia.com/gpu.shared`, `gpu-fraction`, `gpu-memory`, `PXB`, `AMD-Vi`, `/sys/class/infiniband/.../hw_counters/packet_seq_err`, `VPA_FOUR_OPERATING_MODES`, `THREE_PLACEMENT_GROUP_STRATEGIES`, `NEBIUS_FOUR_VERIFICATION_LAYERS`, across `volume-11`, `volume-18`, and `volume-19`, and `2021` CNI references), `docker`, `nvidia-ctk`, `mkfs.ext4`, and `ufw` commands are marked `(untested here)`.
 
 ### Not in the corpus
 

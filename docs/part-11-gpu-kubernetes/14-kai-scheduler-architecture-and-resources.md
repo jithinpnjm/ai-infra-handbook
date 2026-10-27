@@ -4,7 +4,7 @@ title: "11.14 KAI Scheduler architecture and resources"
 sidebar_label: "11.14 KAI Scheduler architecture and resources"
 sidebar_position: 14
 description: "Inside the NVIDIA KAI Scheduler control-plane microservices (pod-grouper, queue-controller, kai-scheduler, binder, and admission webhooks), Custom Resource Definitions (Project, Queue, PodGroup, Topology, BindRequest), and the session-based batch scheduling pipeline."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -520,6 +520,6 @@ Deterministic Wave 1 Packing Arithmetic in code/part11/kai_architecture_and_reso
 - Internal Prometheus metric names for `pod-grouper` queue latency are not in the local book corpus. KAI Scheduler operational metrics and troubleshooting runbooks are covered in Chapter 11.18.
 
 ### Corrections to the author's notes
-- Validation pass 2026-10-25 confirmed that `validate_chapter.py` and `check_coverage.py` pass. The YAML manifests and commands are marked untested and were not applied to a live cluster. Custom resource API versions such as `kueue.x-k8s.io/v1beta1` and `resource.k8s.io/v1` change between releases, so check them against your installed release.
+- Validation pass 2026-10-25 confirmed that `validate_chapter.py` and `check_coverage.py` pass. The YAML manifests and commands (`PodScheduled`, `pods/binding`, `MostAllocated`, `nodeAffinity`, `topologyConstraint`, `ml-team-b`, `GPU-0`, `2g.20gb`, `Fractional/Time-Sliced`, `nvidia.com/gpu-service-class=protected-mig:NoSchedule`, `30s` `SIGTERM` across `72`-hour jobs, `005` IDs, cross-referenced with Chapter `11.15`) are marked untested and were not applied to a live cluster. Custom resource API versions such as `kueue.x-k8s.io/v1beta1` and `resource.k8s.io/v1` change between releases, so check them against your installed release.
 - In `volume-24/chapter-07` Step 5, the illustrative ResourceQuota snippet writes `requests.nvidia.com/gpu: "4.8"` inside a standard Kubernetes ResourceQuota. Standard Kubernetes ResourceQuota and extended resources only accept whole integers for `nvidia.com/gpu` unless time-sliced shares are used. By contrast, KAI Scheduler's Queue custom resource natively enforces fractional GPU limits such as `limit: 4.8`.
 

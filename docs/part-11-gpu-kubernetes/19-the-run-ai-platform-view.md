@@ -4,7 +4,7 @@ title: "11.19 The Run:ai platform view"
 sidebar_label: "11.19 The Run:ai platform view"
 sidebar_position: 19
 description: "How the enterprise NVIDIA Run:ai platform layers multi-cluster governance, department/project hierarchies, workload portals, and multi-tenant security above the KAI Scheduler engine."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "I"
 lab_venue: "GCP / GKE"
@@ -629,7 +629,7 @@ Primary sources read in full for this chapter:
 
 ### Not verified on live hardware
 
-- All `kubectl`, `nvidia-smi`, `curl`, and PyTorch `SIGTERM` checkpoint snippets are marked untested here and were not executed on a live GPU cluster.
+- All `kubectl` (`queue.yaml`, `kai.scheduler/queue`, `kai.scheduler/v1alpha1`, `kueue.x-k8s.io/v1beta1`, `resource.k8s.io/v1`, `SEVEN_TENANT_BOUNDARY_LAYERS`, `FOUR_ADMINISTRATIVE_PLANES`, `1.85` / `44` metrics, `volume-10/00c-slurm-bcm-interview-lab.md`, cross-referenced with Chapters `11.20`, `11.21`, `11.22`, `11.23`, and `11.25`), `nvidia-smi`, `curl`, and PyTorch `SIGTERM` checkpoint snippets are marked untested here and were not executed on a live GPU cluster.
 
 ### Not in the corpus
 

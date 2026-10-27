@@ -533,7 +533,7 @@ Related source files mapped in MIGRATION_MAP.md:
 
 ### Not verified on live hardware
 
-- All `kubectl`, `nvidia-smi`, `lsmod`, and `helm` commands in Section 5 are marked untested here because this verification environment does not have an attached Kubernetes GPU cluster.
+- All `kubectl`, `nvidia-smi`, `lsmod`, and `helm` commands in Section 5 (`A100-SXM4-40GB` `40000` MiB `HBM`, `500m` / `500` millicores CPU and `16Gi` memory requests, `4/8` allocated GPUs, `2/7` MIG profiles, `libnvidia-ml.so`, and `sm_80` / `sm_90` / `sm_100` targets) are marked untested here because this verification environment does not have an attached Kubernetes GPU cluster.
 
 ### Not in the corpus
 

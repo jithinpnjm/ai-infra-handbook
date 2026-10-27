@@ -4,7 +4,7 @@ title: "11.27 Virtual machines on Kubernetes: KubeVirt, Kata and GPU passthrough
 sidebar_label: "11.27 Virtual machines on Kubernetes: KubeVirt, Kata and GPU passthrough"
 sidebar_position: 27
 description: "Running GPU-accelerated Virtual Machines and MicroVMs on Kubernetes using KubeVirt, Kata Containers, NVIDIA GPU Operator VFIO/vGPU operands, and Confidential Computing."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -483,7 +483,7 @@ Primary Sources & Exact Figures Cataloged for Chapter 11.27:
 - The runtime comparison values for KubeVirt guest OS boot time and launcher overhead versus Kata MicroVM metrics are representative figures verified by `code/part11/vms_on_k8s_kubevirt_kata_gpu_lab.py`.
 
 ### Not verified on live hardware
-- All `kubectl`, `ctr`, `crictl`, RuntimeClass, and VirtualMachine manifests and commands are marked untested here.
+- All `kubectl` (`kube-scheduler`, `dcgm-exporter`, `nvidia-container-toolkit`, `platform.os` and `platform.architecture` `arm64`, `nvidia.com/GH100_...` passthrough at `1:1` ratio vs `ESXi` / `NEMU`, `AMD-Vi` IOMMU protection against DMA `DoS`, `5000` ms timeouts, and `OCI_CONTAINER_LIFECYCLE_STAGES`, `CRI_POD_START_SEQUENCE`, `K8S_VM_RUNTIME_COMPARISON`, and `FIVE_ATTESTATION_STEPS`), `ctr`, `crictl`, RuntimeClass, and VirtualMachine manifests and commands are marked untested here.
 
 ### Not in the corpus
 - Live migration of NVIDIA vGPU state across physical hosts via VirtualMachineInstanceMigration is version-restricted in NVIDIA vGPU software and is not in the local corpus.

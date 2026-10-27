@@ -4,7 +4,7 @@ title: "11.6 Scheduling GPUs: requests, Topology Manager, CPU and NUMA alignment
 sidebar_label: "11.6 Scheduling GPUs: requests, Topology Manager, CPU and NUMA alignment"
 sidebar_position: 6
 description: "How Kubernetes schedules GPU workloads across capacity, eligibility, locality, and coordination boundaries using CPU Manager, Topology Manager, NUMA pinning, and PCIe/NVLink data-path alignment."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -571,7 +571,7 @@ Arithmetic Derivations Verified by Lab Script:
 ```
 
 ### Not verified on live hardware
-- All `kubectl`, `nvidia-smi`, `numactl`, and `cpupower` commands targeting multi-socket GPU servers are marked untested here.
+- All `kubectl`, `nvidia-smi`, `numactl`, and `cpupower` commands targeting multi-socket GPU servers (`kube-scheduler`, `ClusterPolicy`, `nvidia-device-plugin`, `sriov-network-device-plugin`, `mlx5_0`, `hostPath`, `2/7` MIG slices, `delta_ns` and `increase_pct_exact`, `kueue.x-k8s.io/v1beta1`, `resource.k8s.io/v1`, cross-referenced with Chapters `11.8`, `11.13`, `13.1`, and `13.2`) are marked untested here.
 
 ### Not in the corpus
 - Custom Kubernetes Scheduler Framework Go plugin code for Filter and Score extension points is not in the corpus. Queue and gang-scheduling controllers such as Kueue, Volcano, and KAI Scheduler are covered in detail in Chapters 11.7 through 11.20.

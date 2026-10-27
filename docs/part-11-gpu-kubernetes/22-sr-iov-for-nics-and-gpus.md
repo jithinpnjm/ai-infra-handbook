@@ -4,7 +4,7 @@ title: "11.22 SR-IOV for NICs and GPUs"
 sidebar_label: "11.22 SR-IOV for NICs and GPUs"
 sidebar_position: 22
 description: "How Single-Root I/O Virtualization slices ConnectX RDMA NICs and NVIDIA GPUs into hardware-isolated Virtual Functions, and how to secure and forensically operate SR-IOV AI clusters."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -504,7 +504,7 @@ Primary Corpus & Field-Note Sources:
 - The device allocation model in `code/part11/sriov_for_nics_and_gpus.py` is a deterministic software simulation of sysfs `sriov_numvfs` and `/usr/lib/nvidia/sriov-manage`.
 
 ### Not verified on live hardware
-- All `sriov_numvfs`, `/usr/lib/nvidia/sriov-manage`, `nvidia-smi vgpu`, and `kubectl` commands are marked untested here.
+- All `sriov_numvfs` (`/sys/class/net/.../sriov_numvfs`, `PFs`, `Bus:Device.Function`, `SriovDeviceSpec` in `allocate_sriov_virtual_functions`, `sriov-network-device-plugin`), `/usr/lib/nvidia/sriov-manage` (`64` VFs), `nvidia-smi vgpu` (`host_iostat_visible`), and `kubectl` commands (`FIVE_ZERO_TRUST_AI_LAYERS` with `iommu_enabled=False` and `firmware_signed_and_verified=False`, `FORENSIC_IR_PLAYBOOK_STEPS` from `nvidia-devops` `chapter-12-volume-18-summary.md`, `kueue.x-k8s.io/v1beta1`, `resource.k8s.io/v1` in `2026`) are marked untested here.
 
 ### Not in the corpus
 - Vendor-specific Mellanox BlueField-3 DPU OVS-DOCA hardware steering rule syntax is covered in Chapter 11.28 on DPUs, BlueField, and DOCA.

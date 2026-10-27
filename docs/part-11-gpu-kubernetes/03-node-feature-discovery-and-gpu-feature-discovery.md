@@ -4,7 +4,7 @@ title: "11.3 Node Feature Discovery and GPU Feature Discovery"
 sidebar_label: "11.3 Node Feature Discovery and GPU Feature Discovery"
 sidebar_position: 3
 description: "How Node Feature Discovery (NFD) and GPU Feature Discovery (GFD) transform raw PCIe, CPU, and NVML hardware signals into governed Kubernetes scheduling metadata and portable service classes."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "I"
 lab_venue: "GCP / GKE"
@@ -615,5 +615,5 @@ They represent the CUDA Compute Capability of the GPU architecture. Selecting `c
 | TOON-RAG Book Source 1 | Roland Huß et al., *Generative AI on Kubernetes* (O'Reilly, 2026), Chapter 3 (*Kubernetes and GPUs*, "GPU Discovery", "Node Feature Discovery" Examples 3-1 and 3-2 with `pci-0300_1d0f`, `pci-0302_10de`, `1002`, `8086`, `5.14.0-427.62.1.el9_4.x86_64`, "GPU Feature Discovery" Table 3-1 with `40537` MiB, `525.105.17`, `12.2`, `replicas: 8`, `80` virtual GPUs, `14` MIG slices on `2` A100s, and "Label-Based Scheduling" Examples 3-3 through 3-6) |
 | TOON-RAG Book Source 2 | *Kubernetes for Generative AI Solutions* (Packt, 2025), Chapter 10 (*Optimizing GPU Resources for GenAI Applications in Kubernetes*, `eks_data_addons` NFD/GFD DaemonSets, `g6.2xlarge` taint `nvidia.com/gpu=true:NO_SCHEDULE`, and `hardware-type=gpu` labeling) |
 | Migration Map & Local Lab | `nvidia-zero-to-hero/volume-10/chapter-05-node-and-gpu-feature-discovery.md` (`100%` of headings, examples, logs, tables, and interview questions integrated); `python3 code/part11/nfd_and_gfd_lab.py` (`26 passed, 0 failed out of 26 checks`) |
-| Explicit Inferences & Live Hardware Status | `45` application manifests is an illustrative input parameter to demonstrate the `N` vs `0` (`1` platform config change) ratio in `volume-10/chapter-05`; `16384` MiB (`16 * 1024` MiB for a `16 GB` T4) and `5120` MiB (`5 * 1024` MiB for a `5 GB` MIG slice) are binary-MiB equivalents for `Gt 40000` MiB filtering; live cluster commands are marked `(untested here)` |
+| Explicit Inferences & Live Hardware Status | `45` application manifests is an illustrative input parameter to demonstrate the `N` vs `0` (`1` platform config change) ratio in `volume-10/chapter-05`; `16384` MiB (`16 * 1024` MiB for a `16 GB` T4) and `5120` MiB (`5 * 1024` MiB for a `5 GB` MIG slice) are binary-MiB equivalents for `Gt 40000` MiB filtering; live cluster commands (`H200`, `B200`, `200` GB/s fabrics, `nvidia.ko`, `nvidia-driver-daemonset`, `libcuda.so.1`, `libnvidia-ml.so.1`, `ListAndWatch`, validated via `validate_chapter.py` and `check_coverage.py`) are marked `(untested here)` |
 | Corpus Scope & Notes | Custom NFD `NodeFeatureRule` regex authoring syntax is out of corpus scope; `kueue.x-k8s.io/v1beta1` and `resource.k8s.io/v1` API versions vary by release; `volume-04` Section 14.1 uses `nvidia.com/gpu.memory: "40960"` whereas *Generative AI on Kubernetes* Table 3-1 reports `"40537"` MiB and Example 3-4 uses `Gt "40000"` |

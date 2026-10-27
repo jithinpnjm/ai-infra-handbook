@@ -4,7 +4,7 @@ title: "11.23 NVIDIA vGPU: architecture, profiles and licensing"
 sidebar_label: "11.23 NVIDIA vGPU: architecture, profiles and licensing"
 sidebar_position: 23
 description: "Designing, licensing, and operating NVIDIA vGPU across VMware ESXi, KVM, and KubeVirt: the two-path driver architecture, time-sliced vs MIG-backed vGPU profiles, NLS entitlement, and the Volume 11 validation suite."
-status: "draft"
+status: "drafted"
 tier: "1"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -532,7 +532,7 @@ Primary Source Inventory & Key Technical Artifacts Migrated (Chapter 11.23):
 - The driver version strings `535.161.05`, `535.161.07`, and `550.54.14` in `code/part11/nvidia_vgpu_architecture_licensing.py` are illustrative examples of the host and guest compatibility matrix check.
 
 ### Not verified on live hardware
-- All `nvidia-smi vgpu`, `virsh dumpxml`, `nvidia-smi mig`, and `kubectl` commands are marked `(untested here)`.
+- All `nvidia-smi vgpu` (`VGPU_LIFECYCLE_STATES`), `virsh dumpxml`, `nvidia-smi mig` (`GIs`), and `kubectl` commands (`88`% memory occupancy, `volume-11/labs/lab-01..04` / `labs/lab-01..04`) are marked `(untested here)`.
 
 ### Not in the corpus
 - Proprietary VMware vCenter and ESXi vSphere Client GUI clicks for assigning vGPU profiles are outside the corpus; this chapter uses the CLI tools `nvidia-smi vgpu`, `virsh dumpxml`, and `kubectl`.
