@@ -103,6 +103,12 @@ flowchart TB
 2. **Routed (L3, no encapsulation)**: nodes learn pod CIDR routes by BGP (Calico, Cilium BGP, kube-router), static routes, or cloud route tables (`host-gw` in Flannel works only when nodes share L2). Best performance and clean traceability; requires control of the underlay (or BGP peering with ToR switches). Fits leaf-spine fabrics with BGP to hosts (2.15, 2.16).
 3. **VPC-native / underlay IPs**: pods get routable IPs from the fabric (AWS VPC CNI ENI secondary IPs, GKE alias IPs, Azure CNI, SR-IOV/macvlan on a physical NIC); no overlay, no NAT; limited by NIC/IP quotas and IPAM scale.
 
+As James Strong and Vallery Lancey show in *Networking and Kubernetes* Chapter 6 (*Kubernetes and Cloud Networking*) and Josh Rosso et al. explain in *Production Kubernetes* Chapter 5 (*Pod Networking*), subnet sizing and workload routability must be planned before cluster creation:
+- **Subnet Netmask Sizing Formula (`NK` Chapter 6 Table 6-2):** When sizing a node subnet (reserving 4 addresses for network, gateway, broadcast, and cloud reserved use), the maximum number of nodes $N$ for an IPv4 prefix length $S$ is:
+  $$N = 2^{(32 - S)} - 4 \quad \Longleftrightarrow \quad S = 32 - \lceil \log_2(N + 4) \rceil$$
+  For example, supporting $N = 250$ nodes requires $S = 32 - \lceil \log_2(254) \rceil = 24$ (`/24`, 252 usable IPs); in VPC-native mode where Pods also draw IPs or `/24` alias blocks from the VPC, size the secondary Pod CIDR (`10.244.0.0/14` or `/16`) for peak `nodes * maxPods`.
+- **Workload Routability and Pod-to-Pod Encryption Trade-offs (`PK` Chapter 5):** Making Pod IPs directly routable on the corporate WAN sounds convenient, but exhausts enterprise RFC 1918 address space and exposes ephemeral Pod IPs beyond cluster boundaries—keep Pod CIDRs internal to the cluster and expose services through LoadBalancers/Gateways (5.12). Similarly, before enabling CNI-level WireGuard or IPsec encryption across all Pod traffic, check whether your underlay or service mesh already encrypts traffic and account for the 50–60 byte MTU reduction and CPU overhead on high-bandwidth GPU flows.
+
 Details of each family: 5.14.
 
 ## 3. The CNI specification
@@ -278,7 +284,15 @@ Cilium: `cilium status`, `cilium endpoint list`, `cilium bpf endpoint list`, `hu
 | NCCL falls back to TCP | RDMA device not in container, GID/MTU/topology, `NCCL_IB_DISABLE`, peermem | `NCCL_DEBUG=INFO`, `ibv_devinfo`, `ib_write_bw` in pod (Part 12) |
 | Slow pod network on VXLAN | Offloads disabled, small MTU, CPU-bound encap | `ethtool -k`, `mpstat`, switch to native routing/eBPF |
 
-## 9. Lab (untested)
+## 9. Lab
+
+First, run the self-checking Python lab (`code/part05/cni_pod_networking_sim_lab.py`) locally. It verifies the CNI encapsulation MTU and `ping -M do -s` DF payload calculator (`compute_pod_mtu_and_df_ping` and `compute_subnet_prefix_for_nodes`, `NK` Ch. 6 & `PK` Ch. 5), the `host-local` / `Whereabouts` IPAM allocator (`CNIHostLocalIPAM`: testing excluded ranges, exhaustion, and `DEL` cleanup), and the Multus secondary RDMA rail interface planner (`plan_multus_pod_interfaces`).
+
+```bash
+python3 code/part05/cni_pod_networking_sim_lab.py
+```
+
+Next, on a Linux VM or Kubernetes cluster (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **Hand-built pod network**: reproduce the bridge example with two namespaces, add a third on a second "node" (second VM) using static routes (no overlay), then using VXLAN (`ip link add vxlan0 type vxlan id 42 remote <peer> dev eth0 dstport 4789`); verify with `tcpdump` on the underlay and show encapsulation; measure MTU effects with `iperf3`.
 2. **Read a real CNI**: on a kubeadm cluster, list `/etc/cni/net.d`, binaries, and `/var/lib/cni`; call the `bridge` plugin by hand with `CNI_COMMAND=ADD` for a test namespace; inspect veth, routes and IPAM files; run `DEL`.
@@ -290,8 +304,6 @@ Cilium: `cilium status`, `cilium endpoint list`, `cilium bpf endpoint list`, `hu
 8. **Performance tuning**: measure pod-to-pod throughput and latency (`iperf3`, `netperf`, `sockperf`) over each CNI mode; toggle offloads, RPS, MTU; record CPU usage per Gb/s.
 9. **Debug drills**: break each of: CNI config file, overlay UDP port, node route, IPAM file, MTU; use the matrix above to diagnose.
 10. **Clean up**: remove namespaces, bridges, VXLAN devices; restore CNI config.
-
-Mark tested only after execution.
 
 ## 10. Common mistakes
 
@@ -307,60 +319,187 @@ Mark tested only after execution.
 
 ## 11. Interview angles
 
-- "What is the Kubernetes network model? What does a CNI plugin actually do?" 
-- "Walk through pod-to-pod traffic across nodes with VXLAN vs BGP routing." 
-- "What are veth pairs, bridges, and network namespaces? How would you build pod networking by hand?" 
-- "What is Multus and why do GPU clusters use it?" 
-- "How do SR-IOV and RDMA devices get into a pod?" 
+- "What is the Kubernetes network model? What does a CNI plugin actually do?"
+- "Walk through pod-to-pod traffic across nodes with VXLAN vs BGP routing."
+- "What are veth pairs, bridges, and network namespaces? How would you build pod networking by hand?"
+- "What is Multus and why do GPU clusters use it?"
+- "How do SR-IOV and RDMA devices get into a pod?"
 - "Pods can ping but large downloads stall. Why?" (MTU/PMTUD.)
-- "How do you debug a pod stuck in ContainerCreating with a CNI error?" 
-- "Why is the default CNI path not used for NCCL?" 
+- "How do you debug a pod stuck in ContainerCreating with a CNI error?"
+- "Why is the default CNI path not used for NCCL?"
 
-## 12. Checkpoint questions (35)
+## Exercises
 
-1. Pod IP rule? **A:** Every pod gets a unique routable IP without NAT between pods.
-2. Who creates pod networking? **A:** The CNI plugin invoked by the runtime.
-3. What is a veth pair? **A:** Virtual Ethernet cable between two interfaces.
-4. What holds the pod netns? **A:** The pause container/sandbox.
-5. Role of bridge? **A:** L2 switch for local pod veths.
-6. Routed design means? **A:** Per-pod routes, no bridge/overlay.
-7. Overlay options? **A:** VXLAN, Geneve, IPIP.
-8. VXLAN overhead? **A:** 50 bytes.
-9. Where is CNI config? **A:** `/etc/cni/net.d`.
-10. Where are CNI binaries? **A:** `/opt/cni/bin`.
-11. CNI commands? **A:** ADD, DEL, CHECK, VERSION.
-12. Input to CNI plugin? **A:** Env vars + JSON config on stdin.
-13. What is chaining? **A:** Sequential plugins passing prevResult.
-14. IPAM plugin example? **A:** host-local, Calico IPAM, Whereabouts.
-15. Where does host-local store IPs? **A:** `/var/lib/cni/networks/<name>`.
-16. What is `portmap`? **A:** hostPort DNAT plugin.
-17. What does `bandwidth` do? **A:** tc traffic shaping.
-18. Calico data plane choices? **A:** iptables or eBPF; BGP/IPIP/VXLAN.
-19. Cilium data plane? **A:** eBPF.
-20. Flannel features? **A:** Simple overlay, no policy.
-21. MTU symptom? **A:** Small packets work, large stall.
-22. Test PMTU? **A:** `ping -M do -s`.
-23. What is Multus? **A:** Meta-CNI attaching multiple networks.
-24. What CRD defines extra networks? **A:** NetworkAttachmentDefinition.
-25. Pod annotation for Multus? **A:** `k8s.v1.cni.cncf.io/networks`.
-26. SR-IOV VF means? **A:** Virtual function of a NIC passed to a pod.
-27. RDMA device plugin exposes? **A:** `/dev/infiniband/*` devices.
-28. Why IPC_LOCK? **A:** Pin memory for RDMA.
-29. hostNetwork effect? **A:** Pod uses node network namespace.
-30. NVIDIA Network Operator installs? **A:** MOFED, device plugins, Multus, CNIs.
-31. What is a rail? **A:** Dedicated NIC path per GPU.
-32. Why not NCCL over overlay? **A:** Performance, no RDMA.
-33. conntrack role? **A:** Tracks NAT/connection state.
-34. Command to find veth peer? **A:** `ip -d link`, `iflink/ifindex`.
-35. What BGP tool shows Calico peers? **A:** `calicoctl node status`.
+1. **The Kubernetes IP-per-Pod Network Model and Building a Pod Network by Hand (`NK` Ch. 3 & `PK` Ch. 5):** State the 4 requirements of the Kubernetes network model (Section 1), and trace every `ip netns`, `ip link` (`veth` pair + `cni0` bridge), `ip addr`, `ip route`, `sysctl`, and `iptables -t nat MASQUERADE` command in Section 2 to wire two Pods on one node with internet egress.
+2. **The CNI Specification (`.conflist` Chaining, `ADD`/`DEL`/`CHECK`/`VERSION`, and IPAM Plugins, `NK` Ch. 4):** Using `CNIHostLocalIPAM` in `code/part05/cni_pod_networking_sim.py`, explain how `/etc/cni/net.d/10-calico.conflist` chains `calico` + `portmap` + `bandwidth` using `prevResult`, what environment variables the runtime passes to `/opt/cni/bin/*`, and how `host-local`, `calico-ipam`, and `whereabouts` track IP allocations and exclusions.
+3. **Comparing CNI Implementation Families (`Flannel`, `Calico`, `Cilium`, Cloud VPC-Native `AWS ENI` / `GKE Alias IP`) and Subnet Sizing (`NK` Ch. 6):** Using `compute_subnet_prefix_for_nodes()` in `code/part05/cni_pod_networking_sim.py`, derive the subnet prefix required for $N$ nodes ($S = 32 - \lceil \log_2(N + 4) \rceil$), and compare Overlay (`VXLAN`/`Geneve`), Routed (`Calico`/`Cilium` BGP), and Underlay-Native (`AWS VPC CNI` / `GKE Alias IPs`).
+4. **MTU Math (`IPIP`, `VXLAN`, `Geneve`, `WireGuard`) and Diagnosing Blackholed Jumbo/TLS Packets (`PK` Ch. 5):** Using `compute_pod_mtu_and_df_ping()` in `code/part05/cni_pod_networking_sim.py`, calculate the exact inner Pod MTU on a 1,500-byte and 9,000-byte underlay for `IPIP` (-20B), `VXLAN` (-50B), and `WireGuard` (-60B), and explain why `ping -M do -s 1422` succeeds on a 1,450-MTU VXLAN path while `-s 1423` fails.
+5. **Multi-Network Pods for GPU Collectives (`Multus`, `NetworkAttachmentDefinition`, `macvlan`, `SR-IOV`, `RDMA Shared Device Plugin`, and Rail Alignment):** Using `plan_multus_pod_interfaces()` in `code/part05/cni_pod_networking_sim.py`, trace `NetworkAttachmentDefinition/rdma-net-a` and `Pod/nccl-worker` in Section 6, contrasting `macvlan` + RDMA shared device plugin, `SR-IOV` VFs, and `hostNetwork: true` for 8-rail 400 Gb/s RoCEv2/InfiniBand NCCL collectives.
+6. **Node-Level Pod Network Inspection (`lsns`, `nsenter`, `ifindex`/`iflink`, `bridge fdb`, `tcpdump`, `calicoctl`, `cilium`/`hubble`):** Write the exact commands (Section 7) to map a running Pod to its network namespace, find the host-side `veth` interface matching the Pod's `eth0` via `iflink`/`ifindex`, inspect routing/FDB tables, and diagnose the top failure modes in Section 8.
 
-## 13. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. What are the three fundamental rules of the Kubernetes \"IP-per-Pod\" networking model?</summary>
 
-- James Strong and Vallery Lancey, *Networking and Kubernetes* (chapters 3 and 4 on container networking basics and Kubernetes networking abstractions, chapter 6 on network design).
-- Josh Rosso et al., *Production Kubernetes* (chapter 5 on pod networking).
-- The CNI specification, Calico, Cilium, Multus, SR-IOV and NVIDIA Network Operator documentation; Linux networking man pages.
-- Examples are the author's constructions.
+1. **Every Pod gets its own unique IP address** within the cluster (shared by all containers inside that Pod Sandbox).
+2. **All Pods can communicate with all other Pods on any node without NAT** (the destination Pod sees the sender Pod's actual Pod IP as the source address, never a SNAT'd host IP).
+3. **Node agents (`kubelet`, `kube-proxy`, host-networked Daemons) on a node can communicate with all Pods on that node without NAT.**
+</details>
 
-**Flagged for verification before publishing:** CNI spec version fields and newer verbs (`GC`, `STATUS`), device plugin resource names for RDMA/SR-IOV, MTU overheads for your encapsulation, plugin binary names, and every command/manifest; all labs are **untested**.
+<details>
+<summary>2. How does a Linux `veth` pair work, and how do you match a Pod's `eth0` inside its network namespace to its peer `cali*`/`veth*`/`lxc*` interface on the host?</summary>
+
+A **`veth` (virtual Ethernet) pair** acts like a virtual patch cable with two ends: any frame transmitted into one end immediately emerges from the other end, even when the two ends reside in different Linux network namespaces.
+To match a Pod's `eth0` to its host-side peer:
+1. Inside the Pod's netns, read `cat /sys/class/net/eth0/iflink` (or `ip link show eth0`, looking at `eth0@if<N>`): this integer `<N>` is the **`ifindex` of the peer interface in the host network namespace**.
+2. On the host, run `ip -o link | grep "^<N>:"` (or compare `/sys/class/net/*/ifindex`) to find the exact host interface (`cali1234abcd`, `lxc5678`, or `veth90ab`).
+</details>
+
+<details>
+<summary>3. In a bridge-based CNI (`cni0`), what happens to source and destination MAC and IP addresses when `pod1` (`10.244.1.11`) pings `pod2` (`10.244.2.7`) on a different node via native L3 routing?</summary>
+
+1. `pod1` checks its routing table: `10.244.2.7` is not in `10.244.1.0/24`, so it ARPs for its default gateway (`cni0` bridge IP `10.244.1.1` on Node A) and sends the packet with **src IP `10.244.1.11`, dst IP `10.244.2.7`**, and **dst MAC = `cni0` MAC**.
+2. Node A's kernel receives the packet on `cni0`, keeps **src IP `10.244.1.11` and dst IP `10.244.2.7` unchanged (no NAT)**, looks up `10.244.2.0/24 via <Node_B_IP>` in the host routing table, rewrites the L2 Ethernet header (src MAC = Node A NIC, dst MAC = Node B NIC or ToR router), and transmits it to Node B.
+3. Node B receives the packet, routes `10.244.2.7` to `cni0` / `veth-pod2`, and delivers it to `pod2` with `src IP = 10.244.1.11` preserved.
+</details>
+
+<details>
+<summary>4. How does `/etc/cni/net.d/*.conflist` selection work when multiple files exist in `/etc/cni/net.d/`?</summary>
+
+`containerd` / `CRI-O` scans `/etc/cni/net.d/` and loads the **first valid `.conf` or `.conflist` file in lexicographical (ASCII alphabetical) sort order** (for example, `00-multus.conf` sorts before `05-cilium.conf`, which sorts before `10-calico.conflist`). If you switch CNIs from Calico (`10-calico.conflist`) to Flannel (`10-flannel.conflist`) without deleting `10-calico.conflist`, `10-calico.conflist` sorts first (`c` before `f`) and `containerd` will keep invoking Calico.
+</details>
+
+<details>
+<summary>5. What is CNI Plugin Chaining in a `.conflist` file, and how do `portmap` and `bandwidth` work?</summary>
+
+In a `.conflist` JSON file, the `"plugins": [...]` array defines an ordered pipeline of CNI binaries executed sequentially on `ADD` (and in reverse order on `DEL`):
+1. **Primary plugin (`calico` / `bridge` / `cilium-cni`):** Creates the `veth` pair, calls the `ipam` plugin, assigns the Pod IP/routes, and outputs a JSON result.
+2. **`portmap` plugin:** Receives the primary plugin's JSON output as `prevResult` on `stdin` and installs host `iptables` / `nftables` `DNAT` rules if the Pod spec declares any `containers[].ports[].hostPort`.
+3. **`bandwidth` plugin:** Reads `kubernetes.io/ingress-bandwidth` and `kubernetes.io/egress-bandwidth` Pod annotations and configures Linux `tc` (`Token Bucket Filter` / `ifb`) rate-limiting queues on the Pod's `veth` interface.
+</details>
+
+<details>
+<summary>6. Compare the three main CNI IPAM models: `host-local`, `calico-ipam` / `cilium` cluster-pool, and `whereabouts`.</summary>
+
+- **`host-local`:** Allocates IPs from the node's fixed `node.spec.podCIDR` (`/24`), storing 1 file per allocated IP on local disk under **`/var/lib/cni/networks/<net-name>/<ip>`** (containing the sandbox container ID). Fast and requires zero API server calls, but if a node crashes hard, stale files can leak IPs until cleaned.
+- **`calico-ipam` / `cilium` cluster-pool:** Dynamically allocates CIDR blocks (e.g., `/26` = 64 IPs in Calico `IPAMBlock` CRDs) to nodes on demand and can borrow/reclaim blocks across nodes when a node runs low on IPs.
+- **`whereabouts`:** Cluster-wide IPAM plugin stored in Kubernetes CRDs (`IPPool`, `OverlappingRangeIPReservation`), used with **Multus secondary networks** (`macvlan`, `ipvlan`, `sriov`) where nodes share a common flat L2/RDMA subnet (`192.168.10.0/24`) rather than per-node `/24` slices.
+</details>
+
+<details>
+<summary>7. Calculate the inner Pod MTU on a 1,500-byte underlay for (a) Native Routing / BGP, (b) IP-in-IP (`IPIP`), (c) `VXLAN` / `Geneve`, and (d) `WireGuard`.</summary>
+
+- **Native Routing / BGP (`0` bytes encapsulation):** **`1500` bytes**.
+- **IP-in-IP (`tunl0`, outer IPv4 header = `20` bytes):** $1500 - 20 = \mathbf{1480}$ bytes.
+- **VXLAN / base Geneve (Outer Ethernet `14`B + Outer IPv4 `20`B + UDP `8`B + VXLAN `8`B = `50` bytes):** $1500 - 50 = \mathbf{1450}$ bytes (note: Geneve with extra TLV options or IPv6 outer headers requires `60`–`80` bytes).
+- **WireGuard IPv4 (`60` bytes; `80` bytes for IPv6):** $1500 - 60 = \mathbf{1440}$ bytes.
+</details>
+
+<details>
+<summary>8. Why do Pods with a misconfigured MTU succeed on `ping` and short `curl` health checks, but hang indefinitely on `git clone`, `pip install`, or TLS handshakes?</summary>
+
+Short packets (`ping` = 84 bytes, HTTP `GET /healthz` = ~200 bytes) are well below any MTU (1450 or 1500) and pass across the overlay without issue. However, as soon as a TLS handshake sends a large certificate chain or an HTTP/gRPC stream sends full **1,500-byte TCP MSS segments** from a Pod whose `eth0` was mistakenly left at `mtu 1500` over a `1450`-byte VXLAN tunnel, the encapsulated packet reaches **1,550 bytes** and is dropped by the underlay NIC/switch (or if Path MTU Discovery `ICMP Fragmentation Needed` packets are blocked by a firewall, enters a **PMTUD black hole** where the TCP connection stalls at 0 B/s).
+</details>
+
+<details>
+<summary>9. Why does `ping -M do -s 1422 <peer-pod-ip>` test a `1450`-byte Pod MTU?</summary>
+
+The `-s 1422` flag sets the **ICMP payload size** to `1422` bytes, and `-M do` sets the IPv4 **`DF` (Don't Fragment)** bit. Adding the **`8`-byte ICMP header** and the **`20`-byte IPv4 header** produces a total IP packet of:
+$$1422 + 8 + 20 = \mathbf{1450\text{ bytes}}$$
+If `-s 1422` succeeds and `-s 1423` fails with `Frag needed and DF set (mtu = 1450)`, you have verified an exact end-to-end unfragmented path MTU of 1,450 bytes.
+</details>
+
+<details>
+<summary>10. Why do AI clusters use a dual-network architecture (Primary CNI on `eth0` + Secondary RDMA networks on `net1..net8`) instead of running NCCL collectives over the primary CNI?</summary>
+
+1. **Encapsulation & kernel stack overhead:** VXLAN/Geneve overlays, `veth` traversals, `iptables`/`conntrack`, and kernel TCP/IP cannot deliver 400 Gb/s line-rate RDMA (`GPUDirect RDMA` bypasses the host CPU and OS kernel network stack entirely via hardware queue pairs on the ConnectX NIC).
+2. **Traffic isolation & QoS:** Separating the Kubernetes control plane, kubelet heartbeats, DNS, and API traffic (`eth0` on the management network) from 3.2 Tb/s of east-west NCCL collective bursts (`net1..net8` on the non-blocking InfiniBand/RoCEv2 rail fabric) ensures a training burst never starves `kubelet` heartbeats or triggers false `NotReady` node evictions.
+</details>
+
+<details>
+<summary>11. How does `Multus` work with `NetworkAttachmentDefinition` (`NAD`) CRDs and the `k8s.v1.cni.cncf.io/networks` Pod annotation?</summary>
+
+1. **Multus (`00-multus.conf`)** installs itself as the first `.conf` file in `/etc/cni/net.d/`.
+2. When `RunPodSandbox` invokes Multus, Multus **always calls the cluster's primary CNI plugin first** (Calico/Cilium) to attach **`eth0`**.
+3. Multus then inspects the Pod's **`k8s.v1.cni.cncf.io/networks: rdma-net-a, rdma-net-b`** annotation, fetches the corresponding **`NetworkAttachmentDefinition` CRDs** from `kube-apiserver`, invokes the secondary CNI plugins (`macvlan`, `sriov`, `host-device`, `ipoib`) in the exact order listed to attach **`net1`, `net2`, ...**, and writes the resulting IPs/MACs/device info into the Pod's **`k8s.v1.cni.cncf.io/network-status`** annotation.
+</details>
+
+<details>
+<summary>12. Compare the three ways to expose high-speed RDMA NICs to GPU Pods in Kubernetes: (a) `hostNetwork: true`, (b) `macvlan`/`ipvlan` + `rdma-shared-device-plugin`, and (c) `SR-IOV` (`sriov-cni` + `sriov-network-device-plugin`).</summary>
+
+| Approach | Isolation | RDMA / RoCE Support | Best When |
+|---|---|---|---|
+| **`hostNetwork: true`** | **None** (Pod shares host network namespace and sees all host interfaces/ports) | Full native access to all host RDMA devices | Single-tenant bare-metal clusters where 1 training Pod owns the whole 8-GPU node |
+| **`macvlan` + `rdma-shared-device-plugin`** | Pod has isolated netns with its own MAC/IP (`net1..N`); shares underlying physical RDMA device (`/dev/infiniband/uverbs*`) | Full RoCEv2 GPUDirect RDMA without needing SR-IOV VFs | Multi-Pod / multi-NIC RoCEv2 GPU nodes without SR-IOV VF complexity |
+| **`SR-IOV` (`sriov-cni` + VF device plugin)** | **Hardware VF isolation**: each Pod gets its own dedicated PCIe Virtual Function (`VF`), netdev, and RDMA Verbs context | Full InfiniBand (`ib-sriov-cni`) & RoCEv2 line-rate RDMA with hardware QoS/PKey/VLAN | Multi-tenant GPU clouds and fractional-node (1–4 GPU) pods requiring strict hardware isolation |
+</details>
+
+<details>
+<summary>13. Why must the ordering of secondary networks in `k8s.v1.cni.cncf.io/networks: rail-0, rail-1, ..., rail-7` be deterministic on an 8-GPU rail-optimized server?</summary>
+
+On an 8-GPU HGX server, each GPU (`GPU 0..7`) is physically connected to a dedicated 400G ConnectX-7 NIC (`NIC 0..7`) under the same PCIe switch (`PIX`). If a Pod attaches 8 secondary interfaces in random order so `net1` happens to sit on Socket 1 while `GPU 0` sits on Socket 0, traffic between `GPU 0` and `net1` must traverse the slow inter-socket CPU interconnect instead of direct PCIe P2P (`GPUDirect RDMA`)—cutting collective bandwidth by 50–70%. Deterministic `rail-0..7` ordering ensures `net1..net8` map 1:1 to `GPU 0..7`.
+</details>
+
+<details>
+<summary>14. What are the five requirements inside a Kubernetes Pod for `GPUDirect RDMA` (`NCCL` over RoCEv2 or InfiniBand) to work without falling back to TCP sockets?</summary>
+
+1. **Host kernel module loaded:** `nvidia_peermem` (or DMA-BUF support) loaded on the host OS (`lsmod | grep nvidia_peermem`).
+2. **RDMA character devices injected:** `/dev/infiniband/uverbs*` and `/dev/infiniband/rdma_cm` mounted into the container (via the RDMA shared device plugin, SR-IOV device plugin, or GPU/Network Operator).
+3. **Pinned memory capability & ulimit:** `securityContext.capabilities.add: ["IPC_LOCK"]` and `ulimit memlock: unlimited` on the container runtime.
+4. **Matching user-space Verbs libraries:** `libibverbs` / `mlx5` providers inside the container compatible with the host OFED/DOCA kernel driver.
+5. **PCIe/NUMA alignment & NCCL env vars:** GPU and NIC on the same PCIe root complex, with `NCCL_IB_HCA` and `NCCL_CROSS_NIC` / `NCCL_IB_GID_INDEX` set appropriately.
+</details>
+
+<details>
+<summary>15. How does AWS VPC CNI (`aws-node`) differ from overlay CNIs like Flannel, and what scaling limit can it hit on smaller EC2 instance types (`NK` Chapter 6)?</summary>
+
+Instead of creating an overlay network, **AWS VPC CNI** attaches Elastic Network Interfaces (**`ENI`s**) to the EC2 worker node and assigns **real VPC secondary IPv4 addresses** from the AWS subnet directly to Pods (`veth` + host `/32` policy routes).
+- **Advantage:** Zero encapsulation overhead, native VPC routing, and native integration with AWS Security Groups for Pods and ALB `target-type: ip`.
+- **Limitation:** Each EC2 instance type has a hard limit on `max_ENIs * (IPv4_addresses_per_ENI - 1)` (and can exhaust VPC subnet IPs rapidly on large clusters unless prefix delegation `/28` or IPv6 is enabled).
+</details>
+
+<details>
+<summary>16. In `NK` Chapter 6, given a requirement to run $N = 500$ Kubernetes nodes in a subnet (where the cloud reserves 4 IPs), what is the largest subnet prefix length $S$ you can use?</summary>
+
+Using $S = 32 - \lceil \log_2(N + 4) \rceil$:
+$$S = 32 - \lceil \log_2(504) \rceil = 32 - 9 = \mathbf{/23}$$
+A `/23` subnet provides $2^9 - 4 = 512 - 4 = 508$ usable node IP addresses.
+</details>
+
+<details>
+<summary>17. What causes a Pod to get stuck in `ContainerCreating` with `failed to allocate for range 0: no IP addresses available in range set`, even when only 20 Pods are currently running on the node?</summary>
+
+**IPAM leak in `host-local` (or Calico/Whereabouts):** If `containerd` or the node crashed previously without completing `CNI_COMMAND=DEL` for terminated sandboxes, stale IP reservation files remain on disk in **`/var/lib/cni/networks/<net-name>/`** (or stale `IPAMBlock` / `ippools.whereabouts.cni.cncf.io` records remain in the API). Compare the container IDs recorded inside `/var/lib/cni/networks/<net-name>/*` against live sandboxes (`crictl pods -q`), remove orphaned IP files (or run `calicoctl ipam check --show-problem-ips`), and upgrade to CNI versions supporting `CNI_COMMAND=GC`.
+</details>
+
+<details>
+<summary>18. What are `netkit` (BPF-programmable network devices) in modern Cilium / Linux kernels (6.7+), and how do they improve on traditional `veth` pairs?</summary>
+
+A traditional Linux `veth` pair requires traversing the networking stack and raising a software interrupt (`NET_RX_SOFTIRQ` backlog) when crossing the namespace boundary between the Pod and the host. **`netkit`** is a purpose-built kernel virtual device pair for containers where Cilium's eBPF programs execute directly inside the Pod's transmit path without scheduling a second softirq context switch on the host—cutting pod-to-host latency and softirq CPU overhead.
+</details>
+
+<details>
+<summary>19. How do NVIDIA BlueField DPUs offload Pod networking (`OVN-Kubernetes` / `SR-IOV switchdev`) from the host CPUs?</summary>
+
+In a DPU-accelerated node, the physical NIC ports and an embedded ARM complex + ConnectX eSwitch live on the **BlueField DPU**. Each Pod receives an **SR-IOV Virtual Function (`VF`)** directly into its network namespace, while the corresponding **VF Representor** port is wired into Open vSwitch (`OVS`) / OVN running on the DPU's ARM cores—and active OVS flows (routing, Geneve/VXLAN encap/decap, security policy, and encryption) are **hardware-offloaded (`tc flower` / `hw-tc-offload`) into the ConnectX ASIC eSwitch**. The host x86/Grace CPUs spend zero cycles on CNI packet switching or firewalling.
+</details>
+
+<details>
+<summary>20. Walk through the diagnostic steps when Pods on the SAME node can talk to each other, but Pods on DIFFERENT nodes cannot.</summary>
+
+Because intra-node pod-to-pod traffic stays inside the local bridge/veth table without touching the cross-node underlay, a failure that affects **only cross-node pod traffic** points directly to the **inter-node routing or overlay path**:
+1. **Check node-to-node underlay firewall / security groups:** Is VXLAN (`UDP 4789` or Flannel `UDP 8472`), Geneve (`UDP 6081`), IPIP (`IP protocol 4`), BGP (`TCP 179`), or WireGuard (`UDP 51820`) blocked between worker nodes?
+2. **Check host routing table on Node A for Node B's Pod CIDR (`ip route show`):** Is there a route for `10.244.2.0/24` pointing to Node B (or `vxlan.calico`/`cilium_vxlan`/`tunl0`)?
+3. **Check BGP peering status (if routed):** `calicoctl node status` or `cilium bgp peers`.
+4. **Capture packets on both the overlay interface (`tcpdump -ni vxlan.calico`) and the physical underlay NIC (`tcpdump -ni eth0 udp port 4789`)** while pinging across nodes to see whether encapsulated packets leave Node A and arrive at Node B.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `networking-and-kubernetes` — James Strong & Vallery Lancey, *Networking and Kubernetes*, **Chapter 3: Container Networking Basics** (`ip netns`, `veth` pairs, bridge vs host networking), **Chapter 4: Kubernetes Networking Introduction** (Kubernetes network model, CNI specification `ADD`/`DEL`/`CHECK`/`VERSION`, IPAM JSON), and **Chapter 6: Kubernetes and Cloud Networking** (subnet sizing formula $N = 2^{(32-S)} - 4$, AWS VPC CNI ENIs, GCP VPC-native alias IPs, Azure CNI).
+  - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 5: Pod Networking** (`--pod-network-cidr`, `spec.podCIDRs`, `/etc/cni/net.d`, `/opt/cni/bin`, VXLAN encapsulation and MTU overhead, Calico BGP, Cilium eBPF, workload routability, and encryption trade-offs).
+- **Run here:** `python3 code/part05/cni_pod_networking_sim_lab.py` (3 passed, 0 failed).
+- **Explicitly labelled inferences:** The `compute_pod_mtu_and_df_ping`, `compute_subnet_prefix_for_nodes`, `CNIHostLocalIPAM`, and `plan_multus_pod_interfaces` models in `code/part05/cni_pod_networking_sim.py` and the `10-calico.conflist`, `rdma-net-a` `NetworkAttachmentDefinition`, and `nccl-worker` Pod manifests are the author's constructions synthesizing `NK` Chapters 3, 4, 6 and `PK` Chapter 5 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
+- **Not verified on live hardware:** Live `ip netns`, `nsenter`, `bridge`, `calicoctl`, `cilium`, `Multus`, and `SR-IOV`/`ib_write_bw` commands (`400 Gb/s`, `10.244.1.0/24`, `10.244.2.0/24`, `50`B VXLAN / `20`B IPIP / `60`B WireGuard, `mtu: 1450` / `9000` / `8950`, `192.168.10.0/24`, `192.168.10.0/30`, `24.05-py3`, `ping -M do -s 1422`, `UDP 4789/8472`, `vxlan id 42`) are marked (`untested here`) where not executed by `cni_pod_networking_sim_lab.py`.
