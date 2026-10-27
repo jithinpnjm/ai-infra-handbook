@@ -90,6 +90,12 @@ spec:
 
 Features: virtual hosting by `Host`, path routing (`Exact`, `Prefix`), TLS termination via Secrets (`tls.crt`/`tls.key`), default backend. Everything else (rewrites, redirects, auth, rate limits, timeouts, canary, CORS, WAF) is **controller-specific annotations** — non-portable and untyped, the main motivation for the Gateway API. The Ingress API is frozen (stable, no new features).
 
+In *Kubernetes: Up and Running* Chapter 8 (*HTTP Load Balancing with Ingress*) and *Networking and Kubernetes* Chapters 5 & 6, the authors highlight four operational details of `Ingress` routing:
+1. **Paths are passed unmodified to the backend by default (`KUR` Chapter 8):** When a client requests `bandicoot.example.com/a/` and matches an Ingress path rule `path: /a`, **the proxy forwards the request to the backend pod with the `/a/` path intact** (`GET /a/ HTTP/1.1`). If the backend server expects requests at `/` instead of `/a/`, it will return `404 Not Found` unless you configure path rewriting (via an Ingress controller annotation like `nginx.ingress.kubernetes.io/rewrite-target` or a Gateway API `URLRewrite` filter).
+2. **`Exact` vs. `Prefix` precedence (`NK` Chapter 5):** If an Ingress or `HTTPRoute` defines both a `Prefix` rule (`/v1`) and an `Exact` rule (`/v1/health`) that match a request, **the `Exact` path match always wins** (and among `Prefix` rules, the longest matching prefix wins, modeled in `evaluate_httproute_and_reference_grant()` in `code/part05/gateway_llm_router.py`).
+3. **Default `IngressClass` and `defaultBackend` (`KUR` Chapter 8):** Marking an `IngressClass` with `ingressclass.kubernetes.io/is-default-class: "true"` makes it handle any Ingress that omits `spec.ingressClassName`; setting `spec.defaultBackend` handles requests that do not match any `rules` host/path.
+4. **Cloud Container-Native Load Balancing (`NK` Chapter 6):** On GKE (**Network Endpoint Groups `NEGs`**) and AWS EKS (**AWS Load Balancer Controller** with `alb.ingress.kubernetes.io/target-type: ip`), the cloud L7 load balancer watches Pod IPs directly and routes from the cloud edge straight to Pod IPs—bypassing `NodePort` and `kube-proxy` hops entirely and integrating natively with **Google Cloud Armor / Cloud CDN / IAP** or **AWS WAF**.
+
 ### Controllers
 
 | Controller | Proxy | Notes |
@@ -321,7 +327,15 @@ openssl s_client -connect <LB-IP>:443 -servername llm.example.com </dev/null | o
 kubectl get certificate,certificaterequest,order,challenge -A
 ```
 
-## 8. Lab (untested)
+## 8. Lab
+
+First, run the self-checking Python lab (`code/part05/gateway_llm_router_lab.py`) locally. It verifies the Gateway API `HTTPRoute` matcher (`evaluate_httproute_and_reference_grant`: checking `Exact` vs `PathPrefix` precedence, `x-model` header matching, and cross-namespace `ReferenceGrant` enforcement), the LLM streaming gateway validator (`validate_llm_streaming_gateway_config`), and the KV-cache and queue-aware `InferencePool` endpoint picker (`pick_llm_inference_endpoint`).
+
+```bash
+python3 code/part05/gateway_llm_router_lab.py
+```
+
+Next, on a cluster with a LoadBalancer implementation and Helm (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **Ingress basics**: install ingress-nginx and MetalLB (or a cloud LB); deploy two echo services; create an Ingress with host/path rules; test with `curl --resolve`; observe the generated nginx config; add TLS with a self-signed cert, then with cert-manager and an internal CA.
 2. **Streaming**: deploy a mock SSE server emitting a token every 200 ms for 5 minutes; observe buffering effects with defaults; set timeouts and `proxy-buffering: off`; verify with `curl -N`; then test through a cloud/LB idle timeout (e.g., 60 s) and add keepalive comments.
@@ -335,8 +349,6 @@ kubectl get certificate,certificaterequest,order,challenge -A
 10. **LLM-aware routing (optional)**: deploy two mock/real vLLM replicas and a router/endpoint picker (vLLM router, Gateway API Inference Extension if available); compare tail latency vs round-robin under a skewed workload.
 11. **Observability**: access logs in JSON, Prometheus metrics, and a dashboard of request rate/errors/duration by route; add tracing headers and view a trace through gateway and backend.
 12. **Clean up**.
-
-Mark tested only after execution.
 
 ## 9. Common mistakes
 
@@ -353,61 +365,185 @@ Mark tested only after execution.
 
 ## 10. Interview angles
 
-- "Difference between Service type LoadBalancer, Ingress and Gateway API." 
-- "Why was the Gateway API created? What are GatewayClass, Gateway, HTTPRoute, ReferenceGrant?" 
-- "How would you expose an LLM inference endpoint securely and reliably? What timeouts and buffering settings matter?" 
-- "How do you do canary releases for a model version at the gateway?" 
-- "How does cert-manager work? HTTP-01 vs DNS-01?" 
+- "Difference between Service type LoadBalancer, Ingress and Gateway API."
+- "Why was the Gateway API created? What are GatewayClass, Gateway, HTTPRoute, ReferenceGrant?"
+- "How would you expose an LLM inference endpoint securely and reliably? What timeouts and buffering settings matter?"
+- "How do you do canary releases for a model version at the gateway?"
+- "How does cert-manager work? HTTP-01 vs DNS-01?"
 - "How do you provide LoadBalancer Services on bare metal?" (MetalLB L2/BGP.)
-- "A client gets 504 after 60 seconds on a long generation. Where do you look?" 
-- "Why might round-robin load balancing be poor for LLM serving?" 
+- "A client gets 504 after 60 seconds on a long generation. Where do you look?"
+- "Why might round-robin load balancing be poor for LLM serving?"
 
-## 11. Checkpoint questions (35)
+## Exercises
 
-1. L4 vs L7 balancing? **A:** Connection-level vs request-level (protocol-aware).
-2. What is an Ingress controller? **A:** A deployment that configures a proxy from Ingress objects.
-3. Is a controller built into Kubernetes? **A:** No.
-4. What selects the controller? **A:** `ingressClassName`/IngressClass.
-5. Ingress path types? **A:** Exact, Prefix, ImplementationSpecific.
-6. Where do advanced settings live in Ingress? **A:** Controller-specific annotations.
-7. Ingress API status? **A:** Stable but frozen.
-8. Gateway API groups? **A:** `gateway.networking.k8s.io`.
-9. Who owns GatewayClass? **A:** Infrastructure provider.
-10. Who owns Gateway? **A:** Cluster operator.
-11. Who owns HTTPRoute? **A:** App developers.
-12. What is ReferenceGrant for? **A:** Allow cross-namespace references.
-13. How to split traffic in Gateway API? **A:** `backendRefs` weights.
-14. Where do you see why a route fails? **A:** Status conditions (Accepted/ResolvedRefs).
-15. What is `ingress2gateway`? **A:** Migration tool.
-16. What is cert-manager? **A:** Certificate automation controller.
-17. HTTP-01 vs DNS-01? **A:** Port-80 challenge vs DNS TXT (wildcards).
-18. What stores the certificate? **A:** A TLS Secret.
-19. Default ACME cert lifetime? **A:** 90 days.
-20. MetalLB modes? **A:** L2 and BGP.
-21. L2 mode limitation? **A:** One node handles traffic per IP.
-22. BGP mode benefit? **A:** ECMP across nodes.
-23. `strictARP` purpose? **A:** Required for MetalLB L2 with IPVS.
-24. Why disable buffering for SSE? **A:** To stream tokens immediately.
-25. Typical default proxy read timeout? **A:** 60 s.
-26. Why raise body size? **A:** Large prompts/multimodal inputs.
-27. HTTP/2 balancing issue? **A:** Connection pinning to one backend.
-28. Fix for uneven L7 load? **A:** Per-request balancing, max connection age, least-request.
-29. Why consistent hashing for LLMs? **A:** Prefix cache locality.
-30. Don't auto-retry what? **A:** Non-idempotent generation requests.
-31. 502 vs 503 vs 504? **A:** Bad upstream response / no healthy backend / upstream timeout.
-32. 413 means? **A:** Request body too large.
-33. Preserve client IP how? **A:** `externalTrafficPolicy: Local`, PROXY protocol/XFF.
-34. What is the Inference Extension? **A:** Gateway API add-on for model-aware (InferencePool) routing.
-35. When running an Ingress controller Pod with `hostNetwork: true`, what `dnsPolicy` must be set so it can still resolve cluster Services, and how does Contour's `HTTPProxy` prevent multi-team hostname collisions? **A:** Set `dnsPolicy: ClusterFirstWithHostNet`; Contour uses root `HTTPProxy` resources with inclusion (`includes`) to delegate domains/paths to team namespaces.
+1. **L4 vs. L7 Load Balancing, `Ingress` Mechanics (`KUR` Ch. 8 & `NK` Ch. 5–6), and Dedicated Edge Node Pools (`PK` Ch. 6):** Contrast L4 (`Service type: LoadBalancer`) with L7 (`Ingress` / `Gateway API`), explain why `bandicoot.example.com/a/` reaches the backend as `/a/` unless rewritten (`KUR` Ch. 8), how multi-team hostname collisions are prevented via OPA or Contour `HTTPProxy` root `includes` (`PK` Ch. 6), and how to isolate an Ingress `DaemonSet` on dedicated edge nodes (`hostNetwork: true`, `dnsPolicy: ClusterFirstWithHostNet`, `externalTrafficPolicy: Local`).
+2. **The Kubernetes Gateway API (`GatewayClass`, `Gateway`, `HTTPRoute`, `GRPCRoute`, `ReferenceGrant`):** Using `evaluate_httproute_and_reference_grant()` in `code/part05/gateway_llm_router.py`, map the three Gateway API personas (Infrastructure Provider, Cluster Operator, Application Developer), trace how `HTTPRoute` matches on `PathPrefix` + `headers: [{name: x-model, value: llama-70b}]` with a `95/5` canary split, and explain why cross-namespace backend references fail with `RefNotPermitted` without a `ReferenceGrant`.
+3. **Automated TLS Lifecycle with `cert-manager` (`Issuer`/`ClusterIssuer`, `HTTP-01` vs. `DNS-01`, and Renewal):** Trace `ClusterIssuer/letsencrypt-prod` in Section 4, compare ACME `HTTP-01` and `DNS-01` challenges across wildcard certificates and private air-gapped/VPC clusters, and explain how `cert-manager` renews certificates at 2/3 of their lifetime.
+4. **Bare-Metal Load Balancing (`MetalLB` L2 vs. BGP, `kube-vip`, `Cilium LB IPAM`) vs. Cloud Container-Native LBs (`NEG` / `ALB` IP Mode, `NK` Ch. 6):** Compare MetalLB Layer 2 (`L2Advertisement` ARP/NDP single-node leader) with BGP (`BGPAdvertisement` ECMP across ToR switches), and explain how GKE Container-Native Load Balancing (`NEG`s) and AWS ALB IP target mode route directly to Pod IPs.
+5. **Tuning the L7 Edge for Streaming LLM Inference (`SSE`, Timeouts, Buffering, Body Size, Retries, and Consistent Hashing):** Using `validate_llm_streaming_gateway_config()` in `code/part05/gateway_llm_router.py`, explain why default NGINX/Envoy/cloud LB settings break LLM serving (`60s` read/idle timeout -> `504`, `proxy-buffering: on` stalling SSE tokens, `1m` body size -> `413`, automatic POST retries multiplying GPU load), and show both the `ingress-nginx` annotation block and Envoy Gateway `BackendTrafficPolicy`.
+6. **KV-Cache and Queue-Aware Routing (`Gateway API Inference Extension` / `InferencePool`) and Debugging Edge HTTP Status Codes (`404`, `413`, `429`, `502`, `503`, `504`):** Using `pick_llm_inference_endpoint()` in `code/part05/gateway_llm_router.py`, explain why round-robin and plain least-connections perform poorly for long-context LLM prompts and LoRA adapters compared to KV-prefix-cache + queue-depth routing, and state the root cause and diagnostic command for HTTP `404`, `413`, `429`, `502`, `503`, and `504` at the gateway.
 
-## 12. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. Compare `Service type: LoadBalancer`, `Ingress`, and the `Gateway API`: what layer does each operate at, and how many external IP addresses do 20 HTTP microservices need under each?</summary>
 
-- Brendan Burns et al., *Kubernetes: Up and Running* (3rd edition; chapter 8 on HTTP load balancing with Ingress).
-- Josh Rosso et al., *Production Kubernetes* (`production-kubernetes`, Chapter 6: `6. Service Routing` — read in full for Contour `HTTPProxy` root inclusion and TCP SNI proxying, dedicated Ingress node pools, `hostNetwork: true` with `dnsPolicy: ClusterFirstWithHostNet`, and `externalTrafficPolicy: Local`).
-- James Strong and Vallery Lancey, *Networking and Kubernetes* (chapter 6 on ingress, API gateways and meshes).
-- Gateway API, cert-manager, ingress-nginx, Envoy Gateway, MetalLB and Cilium documentation.
-- Examples are the author's constructions.
+- **`Service type: LoadBalancer` (Layer 4 TCP/UDP):** Provisions a dedicated external L4 load balancer **per Service**—so exposing 20 microservices creates **20 separate cloud load balancers and 20 billable public IPs**, with no URL path or header routing.
+- **`Ingress` (Layer 7 HTTP/HTTPS):** A single shared L7 reverse proxy (`ingress-nginx`, Envoy, ALB) exposed behind **1 external IP** routes traffic to all 20 internal `ClusterIP` Services based on `Host` header and URL path, but relies on non-portable annotations for advanced features.
+- **`Gateway API` (Layer 4 & Layer 7: HTTP, gRPC, TLS, TCP, UDP):** Role-oriented, strongly typed successor to `Ingress` (`GatewayClass`, `Gateway`, `HTTPRoute`, `GRPCRoute`, `ReferenceGrant`) sharing **1 (or more) managed Gateway listeners** across teams without untyped annotations.
+</details>
 
-**Flagged for verification before publishing:** ingress-nginx maintenance status and annotation names, Gateway API feature levels (timeouts, TLSRoute, BackendTLSPolicy) and implementation CRD fields, cloud LB idle timeout defaults, Inference Extension/llm-d project maturity, and every manifest; all labs are **untested**.
+<details>
+<summary>2. In *Kubernetes: Up and Running* Chapter 8, what happens if you create an `Ingress` object in a cluster that has no Ingress controller installed?</summary>
+
+**Nothing happens.** Unlike `Deployment` or `ReplicaSet` (whose controllers are built into `kube-controller-manager`), Kubernetes does **not** include a built-in Ingress controller. `kube-apiserver` stores the `Ingress` YAML in `etcd`, `kubectl get ingress` shows an empty `ADDRESS` column forever, and no traffic is routed until you install an Ingress controller (such as `ingress-nginx`, Contour, Cilium, Traefik, or a cloud controller) matching `spec.ingressClassName`.
+</details>
+
+<details>
+<summary>3. In `KUR` Chapter 8, if an Ingress rule matches `host: bandicoot.example.com` and `path: /a` (`pathType: Prefix`) and forwards to Service `bandicoot:8080`, what URL path does the `bandicoot` container receive?</summary>
+
+By default, **Ingress does NOT strip or rewrite the matched path prefix**: a client request for `http://bandicoot.example.com/a/status` arrives at the `bandicoot` container as **`GET /a/status HTTP/1.1`**. If the backend application listens at `/status` instead of `/a/status`, it will return `404 Not Found` unless you configure path rewriting (e.g., `nginx.ingress.kubernetes.io/rewrite-target` or a Gateway API `URLRewrite` `ReplacePrefixMatch` filter).
+</details>
+
+<details>
+<summary>4. In `NK` Chapter 5, if an `Ingress` or `HTTPRoute` contains both a `Prefix` rule for `/v1` and an `Exact` rule for `/v1/models`, which rule wins for a request to `/v1/models`?</summary>
+
+**The `Exact` rule always takes precedence over `Prefix` rules**, regardless of the order in which the rules are listed in the YAML file. Among multiple matching `Prefix` rules (e.g., `/v1` and `/v1/chat`), the **longest matching prefix** (`/v1/chat`) wins.
+</details>
+
+<details>
+<summary>5. In *Production Kubernetes* Chapter 6, what is the \"Multi-Team Hostname Collision\" problem with standard `Ingress`, and how do Contour's `HTTPProxy` and the Gateway API solve it?</summary>
+
+With standard `Ingress`, any developer with permission to create an `Ingress` in their own namespace (`team-b`) can accidentally or maliciously declare `host: chat.ai.example.com`—hijacking or corrupting production routes owned by `team-a`.
+- **Contour's `HTTPProxy` (`PK` Chapter 6):** Introduces **root `HTTPProxy` inclusion (`includes`)** where only a locked-down admin namespace can define top-level virtual hosts (`fqdn: chat.ai.example.com`) and explicitly delegates path prefixes (`/v1/embeddings`) to child `HTTPProxy` objects in `team-b`'s namespace.
+- **Gateway API:** Separates the **`Gateway`** (owned by cluster operators in the `edge` namespace, defining the allowed `hostname: "*.ai.example.com"` and `allowedRoutes` namespace selector) from **`HTTPRoute`s** (owned by application teams).
+</details>
+
+<details>
+<summary>6. Why does `PK` Chapter 6 recommend running high-throughput Ingress/Gateway proxies on dedicated edge nodes with `hostNetwork: true` and `dnsPolicy: ClusterFirstWithHostNet`?</summary>
+
+1. **Dedicated edge nodes (labeled and tainted, running the proxy as a `DaemonSet`):** Isolates proxy CPU, NIC bandwidth, file descriptors, and `conntrack` tables from noisy application/training pods, and gives external hardware load balancers or BGP routers a small, fixed set of edge node IPs.
+2. **`hostNetwork: true`:** Binds the proxy directly to host ports `80`/`443` in the root network namespace, bypassing `NodePort` `iptables`/`IPVS` DNAT overhead and preserving client source IPs.
+3. **`dnsPolicy: ClusterFirstWithHostNet`:** Because `hostNetwork: true` otherwise causes Kubernetes to default to the host's external `/etc/resolv.conf` (breaking resolution of in-cluster `*.svc.cluster.local` backend names), `ClusterFirstWithHostNet` restores CoreDNS resolution for the host-networked proxy.
+</details>
+
+<details>
+<summary>7. What are the four core resource kinds in the Gateway API (`gateway.networking.k8s.io/v1`) and which persona manages each?</summary>
+
+1. **`GatewayClass` (Infrastructure Provider):** Defines the controller implementation class (`gateway.envoyproxy.io/gatewayclass-controller`, `io.cilium/gateway-controller`, `gke-l7-global-external-managed`).
+2. **`Gateway` (Cluster / Platform Operator):** Declares the physical/virtual load-balancing entry point—listeners, ports (`443`), protocols (`HTTPS`), TLS certificates, and which namespaces are permitted to attach routes (`allowedRoutes`).
+3. **`HTTPRoute` / `GRPCRoute` / `TLSRoute` (Application / ML Developer):** Attaches to a parent `Gateway` (`parentRefs`) and defines hostnames, path/header matches, filters, timeouts, and weighted `backendRefs`.
+4. **`ReferenceGrant` (Target Namespace Owner):** Explicitly authorizes cross-namespace references (for example, allowing an `HTTPRoute` in `edge` to route to a `Service` in `serving`, or a `Gateway` in `edge` to read a TLS `Secret` in `security`).
+</details>
+
+<details>
+<summary>8. If an `HTTPRoute` in namespace `serving` tries to attach to a `Gateway` in namespace `edge` (or reference a `Service` in namespace `ops`) and traffic is not flowing, what `status` conditions on the `HTTPRoute` tell you why?</summary>
+
+Run `kubectl describe httproute <name> -n serving` and inspect `status.parents[].conditions`:
+- **`Accepted: False` (`Reason: NotAllowedByListeners` or `NoMatchingListenerHostname`):** The `Gateway` in `edge` does not allow routes from namespace `serving` (`allowedRoutes.namespaces`), or the `HTTPRoute`'s `hostnames` do not match the Gateway listener's hostname wildcard.
+- **`ResolvedRefs: False` (`Reason: RefNotPermitted` or `BackendNotFound`):** The `HTTPRoute` references a `Service` in another namespace (`ops`) and there is **no `ReferenceGrant` in `ops`** permitting `HTTPRoute`s from `serving` to target that Service.
+</details>
+
+<details>
+<summary>9. Why should `allow-snippet-annotations` be disabled on `ingress-nginx` in multi-tenant clusters?</summary>
+
+`nginx.ingress.kubernetes.io/configuration-snippet` and `server-snippet` allow any user who can create an `Ingress` object to inject **arbitrary raw `nginx.conf` directives** (including Lua code or file reads) directly into the shared `ingress-nginx-controller` Pod. Because the Ingress controller Pod has cluster-wide permission to read **every TLS `Secret` and ServiceAccount token**, snippet injection has been the source of critical CVEs (such as `CVE-2021-25742` and `CVE-2023-5044`) allowing tenants to steal all cluster Secrets. Always set `allow-snippet-annotations: "false"` (or migrate to the typed Gateway API).
+</details>
+
+<details>
+<summary>10. Compare `cert-manager` ACME `HTTP-01` vs. `DNS-01` challenges: when must you use `DNS-01`?</summary>
+
+- **`HTTP-01` challenge:** Let's Encrypt makes an inbound HTTP request from the public internet to `http://<your-domain>/.well-known/acme-challenge/<token>` on **port 80** (`cert-manager` temporarily spawns a solver Pod and Ingress rule to answer it). Simple, requires no DNS API credentials, **but fails if port 80 is blocked from the public internet (private/VPC-internal endpoints) and CANNOT issue wildcard certificates (`*.ai.example.com`)**.
+- **`DNS-01` challenge:** `cert-manager` uses a cloud DNS API (Cloud DNS, Route53, Cloudflare) to create a temporary **`_acme-challenge.<domain>` `TXT` record**. **Works for private/internal clusters without public inbound port 80 and supports wildcard certificates (`*.ai.example.com`).**
+</details>
+
+<details>
+<summary>11. What four gateway settings break Server-Sent Events (`SSE`) token streaming on LLM inference endpoints (`/v1/chat/completions` with `"stream": true`) if left at their defaults?</summary>
+
+1. **Response buffering (`proxy-buffering: "on"` in NGINX):** Buffers generated tokens in proxy memory until the response buffer fills or generation completes—so the user sees nothing for 40 seconds and then receives the entire answer in one burst instead of smooth real-time token streaming. Set **`nginx.ingress.kubernetes.io/proxy-buffering: "off"`** (and disable gzip compression on `text/event-stream`).
+2. **Short proxy read/send timeouts (`60s` default):** A reasoning model (`DeepSeek-R1`, `o1`-style) or long 8,192-token generation can take 2–10 minutes; a 60s timeout kills the connection mid-stream (`504 Gateway Timeout` or premature EOF). Raise **`proxy-read-timeout` / `requestTimeout` to `600s`–`900s`**.
+3. **Cloud Load Balancer idle timeouts (`60s` on AWS ALB, `30s` on GCP BackendService):** Even if the L7 Ingress timeout is 900s, the outer cloud LB will drop the connection if a reasoning model thinks for 65 seconds before emitting the first token. Raise the outer LB idle timeout AND emit periodic SSE comment heartbeats (`: ping\n\n`) every 15s during prefill/thinking.
+4. **Small request body size limit (`1m` default in NGINX):** Multimodal prompts with base64 images or 128k-token context windows easily exceed 1 MB (`413 Request Entity Too Large`); raise **`proxy-body-size` to `64m`–`100m`**.
+</details>
+
+<details>
+<summary>12. Why must automatic HTTP retries on `POST /v1/chat/completions` be disabled (`numRetries: 0`) at the L7 gateway?</summary>
+
+Generating 4,000 tokens for an LLM prompt consumes tens of seconds of expensive GPU compute across 4–8 H100 GPUs. If a gateway automatically retries a `POST` request on a timeout or transient reset (`retries: 3`), **a single slow prompt triggers 4 concurrent 4,000-token generations**, quadrupling GPU queue depth and triggering a cascading latency collapse (retry storm) across the entire inference pool. Only retry fast connect failures before any bytes are sent (`retryOn: connect-failure`), never full `POST` generation timeouts.
+</details>
+
+<details>
+<summary>13. Why is naive Round-Robin load balancing suboptimal for LLM inference servers (`vLLM`, `TRT-LLM`, `SGLang`), and what does the Gateway API Inference Extension (`InferencePool`) do instead?</summary>
+
+In LLM serving, requests differ in cost by $1,000\times$ (a 10-token prompt vs a 64,000-token prompt), and pods maintain stateful **GPU KV-caches** (including prefix caches of shared system prompts/RAG documents and loaded LoRA adapters). Round-robin blindly sends a 64k-token prompt to a pod whose GPU KV-cache is already 95% full (causing KV-cache preemption/recomputation) or sends a multi-turn chat turn to a pod that doesn't hold the conversation's prefix in its KV-cache.
+The **Gateway API Inference Extension (`InferencePool` + Endpoint Picker `EPP`)** scrapes real-time **KV-cache utilization, waiting queue depth, active LoRA adapters, and prefix-cache hashes** from the `vLLM` pods and routes each request to the replica with the highest prefix-cache hit and lowest queue/KV pressure.
+</details>
+
+<details>
+<summary>14. Why does rate limiting for LLM APIs require both `Requests Per Minute (RPM)` and `Tokens Per Minute (TPM)` controls?</summary>
+
+A classic L7 API gateway (`limit-rps: 20`) treats every HTTP request as cost `1`. However, a tenant sending 10 requests per second with **100,000 input tokens each** consumes **1,000,000 prefill tokens/sec**—saturating an entire H100 cluster while staying well under a `20 RPS` request limit. An AI-aware gateway layer (such as Envoy `ext_proc` / LiteLLM / Kong AI Gateway / APISIX) inspects the prompt token count before forwarding and records completion token usage from the response stream to enforce per-tenant **Tokens Per Minute (`TPM`)** and concurrent-request budgets.
+</details>
+
+<details>
+<summary>15. In *Networking and Kubernetes* Chapter 6, what is GKE \"Container-Native Load Balancing\" (`NEG`s) / AWS ALB `target-type: ip`, and why is it faster than `NodePort`-based load balancing?</summary>
+
+In traditional cloud load balancing (`target-type: instance`), the external cloud LB sends traffic to a random node's **`NodePort` (`30000-32767`)**, which then uses `kube-proxy` `iptables`/`IPVS` to DNAT and forward the packet over a second network hop to the node actually running the Pod.
+With **GKE Network Endpoint Groups (`NEG`s, `cloud.google.com/neg: '{"ingress": true}'`)** or **AWS Load Balancer Controller (`alb.ingress.kubernetes.io/target-type: ip`)**, the cloud controller programs the cloud L7 load balancer with the **actual Pod IPs** from `EndpointSlice`s—so traffic flows **directly from the cloud load balancer to the target Pod IP in 1 hop**, preserving client source IPs and eliminating `NodePort` SNAT and `kube-proxy` hops.
+</details>
+
+<details>
+<summary>16. Distinguish the exact meanings of HTTP `502 Bad Gateway`, `503 Service Unavailable`, and `504 Gateway Timeout` when returned by an Ingress or Gateway proxy.</summary>
+
+- **`502 Bad Gateway`:** The gateway selected a backend Pod IP and connected, **but received an invalid response or TCP `RST`** (e.g., the backend process crashed mid-request, is speaking plain HTTP when the gateway expects HTTPS/HTTP2, or closed the keep-alive socket just as the gateway sent a request).
+- **`503 Service Unavailable`:** The gateway has **zero healthy backend endpoints** in the `EndpointSlice` (all Pods failed `readinessProbe` or selector labels don't match), OR the gateway's **circuit breaker / pending-request queue limit (`maxPendingRequests`)** tripped.
+- **`504 Gateway Timeout`:** The gateway connected and sent the request to the backend Pod, **but the backend did not respond within `proxy-read-timeout` / `requestTimeout`**.
+</details>
+
+<details>
+<summary>17. How do you perform a zero-downtime canary rollout (`95% -> 5%`) of a new model version (`vllm-llama70b-v2`) using the Gateway API?</summary>
+
+Deploy `vllm-llama70b-v1` and `vllm-llama70b-v2` as separate `Deployment`s and `Service`s, and list both in the `HTTPRoute`'s `backendRefs` with explicit **`weight`** values:
+```yaml
+backendRefs:
+  - { name: vllm-llama70b-v1, port: 80, weight: 95 }
+  - { name: vllm-llama70b-v2, port: 80, weight: 5 }
+```
+An automated progressive delivery controller (**Argo Rollouts** or **Flagger**, Chapter 4.26) can automatically adjust these `HTTPRoute` weights (`5 -> 25 -> 50 -> 100`) while checking Prometheus TTFT, ITL, and HTTP 5xx error rates at each step.
+</details>
+
+<details>
+<summary>18. Why can rolling updates of the Ingress/Gateway controller Pods themselves drop active streaming connections, and how do you prevent it?</summary>
+
+When a Gateway/Ingress proxy Pod is terminated during a controller upgrade, external load balancers take 5–15 seconds to notice the proxy Pod's health check failing, and existing LLM token streams through that proxy Pod can take 2–5 minutes to finish. Prevent dropped streams by configuring on the Gateway/Ingress controller Pod:
+1. **`lifecycle.preStop` hook (`sleep 15` or `/wait-shutdown`)** so the proxy fails its LB health check and stops receiving *new* connections from the external LB for 15 seconds before NGINX/Envoy begins draining.
+2. **`terminationGracePeriodSeconds: 600`** (matching your max LLM streaming timeout) so NGINX worker processes / Envoy drain existing streams cleanly before exit.
+</details>
+
+<details>
+<summary>19. How do you test an `Ingress` or `Gateway` route for `https://llm.example.com/v1/models` before updating public DNS records (`KUR` Chapter 8)?</summary>
+
+Use `curl --resolve <host>:<port>:<LB-IP>` (which overrides DNS resolution for `llm.example.com` inside `curl` so both the TCP connection, the TLS **SNI** `ClientHello` extension, and the HTTP **`Host: llm.example.com`** header use the real hostname):
+```bash
+curl -vk --resolve llm.example.com:443:203.0.113.50 https://llm.example.com/v1/models
+```
+(Note: simply running `curl -k -H "Host: llm.example.com" https://203.0.113.50/...` sets the HTTP `Host` header, **but fails TLS SNI routing** because the TLS `ClientHello` lacks `servername=llm.example.com`; `--resolve` sets both SNI and `Host` properly.)
+</details>
+
+<details>
+<summary>20. How do you debug a `Certificate` stuck in `Ready: False` in `cert-manager`?</summary>
+
+Follow the `cert-manager` resource chain from top to bottom with `kubectl describe`:
+`Certificate` -> **`CertificateRequest`** -> **`Order`** (ACME) -> **`Challenge`** (`kubectl get certificate,certificaterequest,order,challenge -A`).
+`kubectl describe challenge <name>` shows the exact ACME failure reason—such as a firewall blocking Let's Encrypt's HTTP-01 probe to port 80, an Ingress class mismatch on the solver Pod, or missing Cloud DNS IAM permissions for DNS-01 TXT record creation.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 8: HTTP Load Balancing with Ingress** (read in full: Ingress spec vs Ingress controller, installing Contour, `/etc/hosts` local testing, `defaultBackend`, host and path rules, unmodified upstream path forwarding vs path rewriting, serving TLS with `kubernetes.io/tls` Secrets, `ingressClassName` and `is-default-class`, and multiple-Ingress merge pitfalls).
+  - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 6: Service Routing** (read in full: Ingress controller deployment considerations, multi-team hostname collisions, Contour `HTTPProxy` root `includes` and TCP SNI proxying, dedicated Ingress node pools with `DaemonSet` + `hostNetwork: true` + `dnsPolicy: ClusterFirstWithHostNet` + `externalTrafficPolicy: Local`).
+  - `networking-and-kubernetes` — James Strong & Vallery Lancey, *Networking and Kubernetes*, **Chapter 5: Kubernetes Networking Abstractions** (`Exact` vs `Prefix` path precedence, NGINX Ingress controller, TLS Secrets) and **Chapter 6: Kubernetes and Cloud Networking** (read in full: AWS VPC/EKS with AWS Load Balancer Controller `v2.2.0` & OIDC IAM service account, GCP VPC-native GKE with Container-Native Load Balancing / NEGs / Cloud Armor / IAP, and Azure VNet/AKS).
+- **Run here:** `python3 code/part05/gateway_llm_router_lab.py` (3 passed, 0 failed).
+- **Explicitly labelled inferences:** The `evaluate_httproute_and_reference_grant`, `validate_llm_streaming_gateway_config`, and `pick_llm_inference_endpoint` models in `code/part05/gateway_llm_router.py` and the `llm-api` `Ingress`, `chat` `HTTPRoute`, `letsencrypt-prod` `ClusterIssuer`, and `llm-policy` `BackendTrafficPolicy` manifests are the author's constructions synthesizing `KUR` Chapter 8, `PK` Chapter 6, and `NK` Chapters 5 & 6 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
+- **Not verified on live hardware:** Live `ingress-nginx`, `Envoy Gateway`, `Contour`, `cert-manager`, and `MetalLB` executions (`60s` / `600s` / `900s` timeouts, `64m` / `100m` body size, `limit-rps: 20`, `limit-connections: 50`, `8080`, `443`, `95/5` and `90/10` canary weights, `301`, `90`-day certs / `30`-day renewal, `350 s` AWS NLB / `60 s` ALB / `30 s` GCP timeouts, `maxPendingRequests: 200, maxParallelRequests: 400`, `404`/`413`/`429`/`502`/`503`/`504`, `200 ms` token interval) are marked (`untested here`) where not executed by `gateway_llm_router_lab.py`.
