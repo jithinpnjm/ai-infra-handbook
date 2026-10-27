@@ -268,7 +268,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 2.16 | BGP in the data center: eBGP Clos, unnumbered, ECMP, anycast | drafted | 8410 |  |
 | 2.17 | Overlays: VXLAN and EVPN | drafted | 7215 |  |
 | 2.18 | Data center topologies: Clos, leaf-spine, oversubscription, failure domains | drafted | 8315 |  |
-| 2.19 | Queuing, QoS, ECN, PFC and DCB basics | drafted | 5635 |  |
+| 2.19 | Queuing, QoS, ECN, PFC and DCB basics | drafted | 7945 |  |
 | 2.20 | Load balancing: L4, L7, ECMP hashing and proxies | drafted | 5396 |  |
 | 2.21 | Network security: firewalls, TLS and zero trust | drafted | 5329 |  |
 | 2.28 | Network automation fundamentals: APIs, YANG, NETCONF, gNMI, SDN, templates | drafted | 5893 |  |
