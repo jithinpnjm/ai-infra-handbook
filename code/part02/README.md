@@ -25,3 +25,4 @@
 | 2.21 Network security: firewalls, TLS and zero trust | `network_security_zerotrust.py` | `network_security_zerotrust_lab.py` | 11 | `python3 code/part02/network_security_zerotrust_lab.py` |
 | 2.22 Linux networking: inspecting state with ip, ss, counters | `linux_ip_ss_counters.py` | `linux_ip_ss_counters_lab.py` | 10 | `python3 code/part02/linux_ip_ss_counters_lab.py` |
 | 2.23 Linux networking: netfilter, nftables, conntrack, NAT | `linux_netfilter_conntrack.py` | `linux_netfilter_conntrack_lab.py` | 13 | `python3 code/part02/linux_netfilter_conntrack_lab.py` |
+| 2.24 Linux networking: policy routing, bonding, MTU, tuning | `linux_stack_nic_tuning.py` | `linux_stack_nic_tuning_lab.py` | 10 | `python3 code/part02/linux_stack_nic_tuning_lab.py` |

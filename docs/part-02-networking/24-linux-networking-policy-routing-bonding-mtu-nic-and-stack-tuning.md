@@ -343,7 +343,15 @@ Persisting ethtool/IRQ settings: a `systemd` unit or udev rule or NetworkManager
 9. **Asymmetric ECMP reorder.** Hosts with BGP to two ToRs reorder if paths differ; use consistent hashing and avoid per-packet balancing.
 10. **Bond up, throughput low.** Single flow pinned to one member; hash policy `layer2`; use `layer3+4` or multi-flow tests.
 
-## 10. Lab: policy routing and tuning (untested)
+## 10. Hands-on lab: policy routing and tuning
+
+First, run the self-checking Python lab (`code/part02/linux_stack_nic_tuning_lab.py`) locally. It verifies NUMA-local RSS queue and IRQ CPU affinity planning (`plan_numa_local_rss_and_irq`), `NCCL` socket-transport limits (`NCCL_NSOCKS_PERTHREAD * NCCL_SOCKET_NTHREADS <= 64`) and bootstrap ephemeral port validation, and BDP-based `rmem_max`/`wmem_max` socket buffer sizing (`16 MiB` vs `128 MiB`).
+
+```bash
+python3 code/part02/linux_stack_nic_tuning_lab.py
+```
+
+Next, on a disposable Linux VM with `root` (and optional bare-metal NIC hardware for Step 6; all interactive VM commands below are `untested here`), work through these steps:
 
 1. **Multi-homed asymmetric fix**: build two NIC namespaces (a server with `eth0`/`eth1` on different subnets via veths to two routers), reproduce reply-on-wrong-NIC drops with `rp_filter=1` or an upstream uRPF rule, fix with rules/tables; verify with `ip route get ... from ...` and tcpdump.
 2. **fwmark/uid routing**: mark a user's traffic and route it through another gateway namespace; confirm with `traceroute`.
@@ -355,8 +363,6 @@ Persisting ethtool/IRQ settings: a `systemd` unit or udev rule or NetworkManager
 8. **sysctl baseline**: apply the baseline file on a VM, benchmark before/after on a high-BDP emulated path (`tc netem delay 40ms`), and revert one setting at a time to attribute gains.
 9. **Zero copy**: compare `sendfile` vs `read/write` file serving (`nginx sendfile on/off`, `wrk`) CPU usage.
 10. **Clean up.**
-
-Mark tested only after execution.
 
 ## 11. Common mistakes
 
@@ -383,57 +389,124 @@ Mark tested only after execution.
 - "What are XDP, AF_XDP, DPDK and SR-IOV and when would you use each?"
 - "How do you make tuning changes safe and repeatable?"
 
-## 13. Checkpoint questions (40)
+## Exercises
 
-1. What does `ip rule` select? **A:** Which routing table to consult based on packet attributes.
-2. Default rule order? **A:** local (0), main (32766), default (32767).
-3. Where to name tables? **A:** `/etc/iproute2/rt_tables`.
-4. Fix for reply on wrong NIC? **A:** Per-NIC table + `from <ip> lookup`.
-5. Which sysctl relaxes reverse-path filtering? **A:** `rp_filter=2` (loose) or 0.
-6. What do `arp_ignore`/`arp_announce` do? **A:** Limit ARP replies/announcements to the right interface.
-7. How do you route by user? **A:** `ip rule add uidrange`.
-8. Why `type route` chain for marking? **A:** It re-evaluates routing after setting the mark.
-9. What is a VRF? **A:** Isolated routing table bound to a device.
-10. How to run a command in a VRF? **A:** `ip vrf exec <vrf> <cmd>`.
-11. VRF vs namespace? **A:** VRF isolates only routing; namespaces isolate whole stack.
-12. What shows LACP partner info? **A:** `/proc/net/bonding/bond0`.
-13. Why not bond compute rails? **A:** One QP can't be striped; NCCL stripes across NICs.
-14. MTU verification command? **A:** `ping -M do -s <mtu-28>`.
-15. Overlay MTU for VXLAN on 9000? **A:** 8950.
-16. What does MSS clamping do? **A:** Rewrites SYN MSS to fit path MTU.
-17. NIC DMA target for RX? **A:** RX ring buffers in host RAM.
-18. What is NAPI? **A:** Interrupt-then-poll mechanism limiting interrupt load.
-19. Where do `time_squeeze` counts come from? **A:** Softirq budget exhausted before ring empty.
-20. What are `rx_missed` drops? **A:** NIC ring overflow before the host polled.
-21. What does RSS do? **A:** Hashes flows to multiple RX queues/IRQs.
-22. What does RPS do? **A:** Software steering of packet processing across CPUs.
-23. What does RFS add? **A:** Steers to the CPU of the consuming thread.
-24. What does XPS do? **A:** Maps CPUs to TX queues.
-25. Why align IRQs to the NIC's NUMA node? **A:** Avoid cross-socket memory traffic.
-26. Which command sets ring sizes? **A:** `ethtool -G`.
-27. Coalescing trade-off? **A:** Less CPU/more throughput vs more latency.
-28. TSO vs GSO? **A:** Hardware vs software segmentation of large sends.
-29. When to turn off LRO? **A:** On routers/bridges/hypervisors.
-30. Which qdisc pairs with BBR classically? **A:** `fq`.
-31. Which settings set TCP buffers, and how do you avoid TCP port exhaustion or socket-limit violations during `NCCL` bootstrap and socket transport? **A:** `tcp_rmem`, `tcp_wmem`, `rmem_max`, `wmem_max` set TCP buffers; widen `net.ipv4.ip_local_port_range` (e.g. `"50000 51000"` or `"10240 65535"` in `/etc/sysctl.conf`) with explicit `NCCL_SOCKET_IFNAME` and `MASTER_PORT`, and keep `NCCL_NSOCKS_PERTHREAD` × `NCCL_SOCKET_NTHREADS` ≤ `64` total sockets per communicator.
-32. Why not set `SO_RCVBUF`? **A:** Disables receive autotuning.
-33. What does `tcp_slow_start_after_idle=0` do? **A:** Keeps cwnd after idle.
-34. What is `somaxconn`? **A:** Max accept-queue length per listener.
-35. What does `sendfile` avoid? **A:** User-space copies.
-36. XDP verdicts? **A:** PASS, DROP, TX, REDIRECT (ABORTED).
-37. SR-IOV downside? **A:** Host policy/visibility lost; migration hard.
-38. DPDK trade-off? **A:** Highest packet rates but burns dedicated cores and bypasses the kernel stack.
-39. veth bottleneck cause? **A:** Softirq processing on one CPU per flow.
-40. Tuning method in one line? **A:** Baseline, one change, measure, keep or revert, persist.
+1. **Policy-Based Routing (`ip rule`), `fwmark`/`uidrange`, and Linux `VRF`s:** (a) Write the `ip route` and `ip rule` commands (plus Netplan persistence) to fix asymmetric routing on a server with `eth0` (`10.0.0.5/24`, gw `10.0.0.1`) and storage NIC `eth1` (`192.168.1.5/24`, gw `192.168.1.1`, table `200 storage`), and explain why `nft` `type route hook output` is required when marking packets with `meta mark set 0x64` for `fwmark` routing; (b) contrast a Linux **VRF** (`ip link add vrf-blue type vrf table 10`, `ip vrf exec`) with a network namespace.
+2. **Bonding Operations and End-to-End `MTU` Design:** (a) List the 7-item operational verification checklist for a Linux `802.3ad` LACP bond (`/proc/net/bonding/bond0`) and explain why GPU compute rails are never bonded; (b) compare the standard MTU values for management (`1500`), storage (`9000`), RoCEv2 (`9000` Ethernet / `4096` IB MTU), and VXLAN overlays (`underlay - 50`), and write the `ping -M do` verification command.
+3. **The Linux RX/TX Packet Path: Rings, Coalescing, `NAPI`, `RSS`/`RPS`/`RFS`/`XPS`, and `NUMA` IRQ Affinity:** (a) Trace the receive path from the wire to `copy_to_user` (`Wire -> DMA RX ring -> MSI-X Hard IRQ -> NAPI NET_RX softirq -> XDP -> sk_buff/GRO/RPS -> tc/netfilter/routing -> socket buffer`); (b) using `plan_numa_local_rss_and_irq()` in `code/part02/linux_stack_nic_tuning.py`, explain how to size RSS queues (`ethtool -L`) and pin IRQs (`smp_affinity_list`) to the NIC's local NUMA node (`/sys/class/net/<dev>/device/numa_node`).
+4. **Hardware Offloads (`TSO`, `GSO`, `GRO`, `LRO`) and Zero-Copy Syscalls (`sendfile`, `MSG_ZEROCOPY`):** Contrast `TSO`, `GSO`, `GRO`, and `LRO`, explain why `LRO` must be disabled on routers, bridges, and hypervisors, and explain how `sendfile()` and `MSG_ZEROCOPY` save CPU cycles and memory bandwidth when serving large files or checkpoints.
+5. **TCP/IP Stack `sysctl` Tuning and `NCCL` Socket/Bootstrap Configuration (`ASP` Chapter 4 & `SP` Chapter 10):** (a) Using `recommend_tcp_max_buffer_bytes()`, compare the recommended `rmem_max`/`wmem_max` socket buffer ceiling for a `100 Gb/s x 0.2 ms` intra-DC path (`16 MiB`) versus a `10 Gb/s x 40 ms` WAN path (`128 MiB`), and explain why applications should not set `SO_RCVBUF` manually; (b) using `validate_nccl_socket_and_port_config()`, validate `NCCL_NSOCKS_PERTHREAD * NCCL_SOCKET_NTHREADS <= 64`, `NCCL_SOCKET_IFNAME`, and `net.ipv4.ip_local_port_range` (`"50000 51000"` or `"10240 65535"`).
+6. **Kernel Bypass (`XDP`, `AF_XDP`, `SR-IOV`, `DPDK`, `RDMA`) and the 7-Step Safe Tuning Methodology:** Compare `XDP`, `AF_XDP`, `SR-IOV`, `DPDK`, and `RDMA` (`RoCEv2`/`InfiniBand`), explain why container `veth` pairs can bottleneck a single CPU core in `softirq`, and walk through the 7-step tuning method to diagnose why a single TCP stream reaches only `25 Gb/s` on a `100G` NIC.
 
-## 14. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. How does Policy-Based Routing (`ip rule`) extend standard destination-based routing, and what are the three default rules?</summary>
+Before looking up a destination IP in a routing table, the kernel walks the prioritized **`ip rule` list** (lowest priority number first), which can match on **source IP (`from`), destination IP (`to`), incoming interface (`iif`), outgoing interface (`oif`), `tos`/`DSCP`, `fwmark`, `uidrange`, IP protocol, and L4 ports (`sport`/`dport`)** to select *which* routing table to query. The three built-in rules are:\n- Priority **`0`**: `from all lookup local` (table `255`, local IPs and broadcast)\n- Priority **`32766`**: `from all lookup main` (table `254`)\n- Priority **`32767`**: `from all lookup default` (table `253`).
+</details>
 
-- The author's own `nvidia-devops` repository, volume 01 networking masterclass: the packet journey (Rx path, NAPI, RSS and interrupt affinity, ring buffers and coalescing, Tx path and offloads), policy-based routing and the multi-homed asymmetric routing fix, VRF, bonding and LACP limitations, multi-homing for RoCEv2, SR-IOV and DPDK, eBPF/XDP and Cilium, LFN/TCP window scaling and SACK, the veth bottleneck scenario, MTU, and the sysctl tuning cheat sheet (with its caveats).
-- Brendan Gregg, *Systems Performance*, 2nd ed., chapter 10 (network tuning: system-wide tunables with the production example, socket and TCP buffers, backlog, congestion control, TCP options, device queues, socket options, configuration; methodology for static performance tuning and resource controls).
-- Brian Ward, *How Linux Works*, 3rd ed., chapter 9 (manual interface and route configuration, network managers, routers).
-- `ai-systems-performance-engineering` — Chris Fregly, *AI Systems Performance Engineering*, "Chapter 4. Tuning Distributed Networking Communication" (read in full): host TCP stack and MTU 9000 tuning (`net.core.rmem_max`/`wmem_max`, `net.ipv4.tcp_rmem`/`tcp_wmem`, `net.ipv4.tcp_congestion_control` CUBIC vs BBR), NUMA-local NIC interrupt affinity, `NCCL` bootstrap ephemeral TCP port exhaustion (`net.ipv4.ip_local_port_range="50000 51000"` in `/etc/sysctl.conf`, `NCCL_SOCKET_IFNAME`, `MASTER_PORT`), and socket-transport connection limits (`NCCL_NSOCKS_PERTHREAD` × `NCCL_SOCKET_NTHREADS` ≤ `64`).
-- Kernel documentation (`ip-sysctl`, `scaling.rst`, `vrf.rst`), `ethtool(8)`, `ip-rule(8)` and driver documentation informed the commands; values in tables are starting points, not recommendations.
+<details>
+<summary>2. Walk through the exact commands to fix reply-on-wrong-NIC asymmetric routing for a secondary storage interface `eth1` (`192.168.1.5/24`, gateway `192.168.1.1`).</summary>
+(1) Name a dedicated routing table: `echo "200 storage" | sudo tee -a /etc/iproute2/rt_tables`;\n(2) Populate both the connected subnet route and the default gateway inside that table:\n`sudo ip route add 192.168.1.0/24 dev eth1 src 192.168.1.5 table storage`\n`sudo ip route add default via 192.168.1.1 dev eth1 table storage`\n(3) Add a source-based policy rule: `sudo ip rule add from 192.168.1.5/32 lookup storage priority 1000`;\n(4) Set `rp_filter = 2` (loose) and `arp_ignore = 1` / `arp_announce = 2`, and verify with `ip route get 10.50.0.9 from 192.168.1.5 iif lo`.
+</details>
 
-**Flagged for verification before publishing:** every sysctl value and ethtool/driver option against the target kernel, NIC and firmware; `tcp_l3mdev_accept`, `type route` mark/reroute behaviour, `hw-tc-offload`/GRO hardware flags per NIC; BBR availability and fairness on your kernel; PCIe throughput figures; veth throughput claims (vary widely); all labs are **untested**.
+<details>
+<summary>3. Why must an `nftables` chain that sets a packet mark (`meta mark set 0x64`) for policy routing on locally generated packets use `type route hook output` instead of `type filter hook output`?</summary>
+For locally generated packets, the kernel performs the initial routing lookup **before** the `output` hook runs. A standard `type filter hook output` chain can drop or accept the packet, but will **not** re-run the routing lookup if `meta mark` is modified. Declaring the chain as **`type route hook output priority mangle`** instructs the kernel to automatically **re-run the FIB / `ip rule` lookup** whenever the packet's `fwmark` (or IP header) is changed in `output`.
+</details>
+
+<details>
+<summary>4. How does a Linux `VRF` device (`ip link add vrf-blue type vrf table 10`) differ from a Linux Network Namespace (`ip netns`)?</summary>
+A **Network Namespace (`ip netns`)** virtualizes the **entire network stack** (interfaces, loopback, routing tables, `ip rule`s, `nftables`/conntrack, and **all TCP/UDP socket port bindings**), isolating processes cleanly for containers. A **Linux VRF** is a lightweight netdev bound to a specific kernel routing table (`table 10`): interfaces enslaved to `vrf-blue` (`ip link set eth2 master vrf-blue`) use table `10` for L3 routing while **sharing the same host process space, filesystem, and global socket table** (processes run in a VRF via `sudo ip vrf exec vrf-blue <cmd>`, or a single daemon can accept connections across all VRFs when `net.ipv4.tcp_l3mdev_accept = 1`).
+</details>
+
+<details>
+<summary>5. What are the typical `MTU` settings across the networks of an AI cluster, and why is RoCEv2's RDMA MTU `4096` when the Ethernet interface MTU is `9000`?</summary>
+- **Management / Internet**: `1500` bytes;\n- **Storage (`NFS`, `Lustre`, `NVMe/TCP`)**: `9000` bytes;\n- **VXLAN / Geneve overlays**: `underlay_mtu - 50` (`8950` on `9000`, `1450` on `1500`);\n- **RoCEv2 Compute Fabric**: Ethernet interface `MTU = 9000`, InfiniBand/RDMA **`active_mtu = 4096`** (`ibv_devinfo`). The InfiniBand specification defines power-of-two payload MTUs (`256, 512, 1024, 2048, 4096`); a `4096`-byte RDMA payload plus RoCEv2 (`BTH`/`ICRC`), UDP, IP, and Ethernet headers fits comfortably inside a `9000`-byte Ethernet jumbo frame (and allows two 4 KB RDMA packets to coalesce or traverse tunnels without fragmentation).
+</details>
+
+<details>
+<summary>6. Trace the 8 stages of the Linux kernel Receive (`RX`) path from the physical wire to the user-space application.</summary>
+(1) **Wire -> NIC PHY/MAC**: checks FCS CRC, computes Toeplitz **RSS hash**, and selects one of `N` hardware RX queues;\n(2) **DMA to Host RAM**: NIC DMAs the frame into a pre-allocated buffer descriptor in that queue's **RX ring**;\n(3) **Hard IRQ (`MSI-X`)**: NIC raises the queue's CPU interrupt, which disables further hard IRQs on that queue and schedules **NAPI** (`napi_schedule`);\n(4) **`NET_RX_SOFTIRQ` (`net_rx_action`)**: kernel polls the driver (`poll()`) up to `net.core.netdev_budget` packets;\n(5) **`XDP` hook (optional)**: runs eBPF in the driver before allocating an `sk_buff`;\n(6) **`sk_buff` allocation + `GRO` + `RPS`/`RFS`**: builds the `sk_buff`, coalesces same-flow segments via **GRO**, and optionally steers to another CPU;\n(7) **`tc ingress` -> `netfilter prerouting` -> Routing -> `netfilter input` -> TCP/UDP protocol handler**: validates headers/state, sends ACKs, and queues data in the **socket receive buffer**; and\n(8) **Application wakeup (`epoll`) -> `copy_to_user()`**.
+</details>
+
+<details>
+<summary>7. What is the trade-off when increasing NIC Ring Buffer sizes (`ethtool -G`) and Interrupt Coalescing (`ethtool -C`)?</summary>
+- **Larger RX/TX Rings (`ethtool -G eth0 rx 4096 tx 4096`)**: absorb sub-millisecond microbursts without `rx_missed_errors` / `rx_no_buffer` drops while the CPU is briefly busy, at the cost of a larger memory footprint and slightly higher worst-case queueing latency under sustained overload.\n- **Interrupt Coalescing (`ethtool -C eth0 adaptive-rx on` or `rx-usecs 50 rx-frames 20`)**: batches multiple arriving packets into a single hardware interrupt—**reducing CPU interrupt overhead and increasing bulk throughput**, at the cost of **adding microseconds of per-packet latency**. Enable adaptive coalescing on bulk storage/front-end NICs; minimize coalescing on latency-critical sockets.
+</details>
+
+<details>
+<summary>8. Compare `RSS`, `RPS`, `RFS` (`aRFS`), and `XPS`.</summary>
+- **`RSS` (*Receive-Side Scaling*, hardware)**: the NIC hashes the packet's 4-tuple (Toeplitz hash) into one of `N` hardware RX queues, each with its own DMA ring and MSI-X interrupt (`ethtool -l` / `-L`).\n- **`RPS` (*Receive Packet Steering*, software)**: hashes packets in software after the driver interrupt to distribute `sk_buff` protocol processing across multiple CPUs when a NIC has only 1 hardware RX queue (e.g., older virtual NICs).\n- **`RFS` (*Receive Flow Steering*) / `aRFS` (hardware-accelerated)**: steers packets of a flow directly to the **exact CPU core where the application thread calling `recv()` is currently running**, maximizing L1/L2/L3 CPU cache hit rates.\n- **`XPS` (*Transmit Packet Steering*)**: maps each CPU core to a dedicated hardware TX queue (`/sys/class/net/<dev>/queues/tx-*/xps_cpus`) to eliminate cross-core TX lock contention and cross-NUMA DMA reads.
+</details>
+
+<details>
+<summary>9. Why must a high-speed NIC's `RSS` queues and `IRQ` affinities be pinned strictly to its local `NUMA` node, and how do you check it?</summary>
+Every PCIe root complex is physically wired to a specific CPU socket (**NUMA node**, checked via **`cat /sys/class/net/eth0/device/numa_node`** and **`nvidia-smi topo -m`**). If a NIC attached to NUMA Node 1 fires interrupts or DMAs `sk_buff`s to CPU cores on NUMA Node 0, every packet descriptor, `sk_buff`, and payload copy must traverse the inter-socket interconnect (`UPI` / `Infinity Fabric`)—adding latency, wasting interconnect bandwidth, and polluting remote caches. Stop `irqbalance` (or set `IRQBALANCE_BANNED_CPUS`), set RSS queue count (`ethtool -L`) to the core count of the local NUMA node, and pin `/proc/irq/<n>/smp_affinity_list` to local NUMA CPUs.
+</details>
+
+<details>
+<summary>10. Compare `TSO`, `GSO`, `GRO`, and `LRO`, and explain why `LRO` must be disabled on routers, bridges, and hypervisors.</summary>
+- **`TSO` (*TCP Segmentation Offload*)**: the kernel hands a `64 KiB` TCP buffer to the NIC, and the **NIC hardware** slices it into `1460`/`8960`-byte MSS frames on the wire.\n- **`GSO` (*Generic Segmentation Offload*)**: software fallback that delays segmentation in the kernel until right before the driver.\n- **`GRO` (*Generic Receive Offload*)**: lossless software/hardware receive coalescing that merges consecutive segments of the same flow into one `64 KiB` `sk_buff` while preserving enough header metadata to re-segment cleanly if forwarded.\n- **`LRO` (*Large Receive Offload*)**: older hardware receive coalescing that **lossily merges headers** into one giant packet; if enabled on a Linux router, bridge, or hypervisor, forwarded packets lose their original headers/state and break TCP/forwarding (`sudo ethtool -K eth0 lro off`).
+</details>
+
+<details>
+<summary>11. What do `net.core.netdev_budget`, `netdev_budget_usecs`, and `netdev_max_backlog` tune?</summary>
+- **`net.core.netdev_budget` (default `300`, often raised to `600`)** and **`netdev_budget_usecs` (default `2000` µs)**: control the maximum number of packets and microseconds a single `NET_RX_SOFTIRQ` NAPI poll cycle may process before yielding the CPU. Raising them fixes rising **`time_squeeze`** (column 3 of `/proc/net/softnet_stat`).\n- **`net.core.netdev_max_backlog` (default `1000`, often raised to `5000`–`10000`)**: sizes the per-CPU software input queue used by `RPS` and loopback; raising it fixes rising **`dropped`** (column 2 of `/proc/net/softnet_stat`).
+</details>
+
+<details>
+<summary>12. How do you size `net.core.rmem_max`/`wmem_max` and `net.ipv4.tcp_rmem`/`tcp_wmem`, and why did the `SP` Chapter 10 streaming operator use `16 MB` instead of `128 MB`?</summary>
+`tcp_rmem` and `tcp_wmem` take three byte values: `"min default max"`, where `max` (and `net.core.rmem_max`/`wmem_max`) must be at least **`1–2x` the Bandwidth-Delay Product (`BDP = BW * RTT`)** of your longest path (`128 MiB = 134,217,728` bytes for `10–25 Gb/s` cross-continent WAN paths; `16–64 MiB` for intra-DC `100G` paths). The streaming operator in `SP` Chapter 10 capped `rmem_max`/`wmem_max` at **`16 MiB` (`16,777,216`)** because each server handled tens of thousands of concurrent client connections—oversizing per-socket buffers across thousands of sockets risks exhausting host RAM under an attack or slow-reader stall.
+</details>
+
+<details>
+<summary>13. What TCP port exhaustion and socket-limit issues occur during `NCCL` bootstrap and socket-transport runs, and how do you fix them (`ASP` Chapter 4)?</summary>
+(1) During multi-node **`NCCL` out-of-band TCP bootstrap**, ranks open a burst of TCP connections to exchange RDMA queue-pair/ring metadata. If `net.ipv4.ip_local_port_range` is too narrow or ports are consumed in `TIME_WAIT`, bootstrap hangs or fails with `Cannot assign requested address`; configure a dedicated/wide **`net.ipv4.ip_local_port_range`** (e.g., `"50000 51000"` in the book's isolated-port example or `"10240 65535"` with `tcp_tw_reuse = 1`), set **`MASTER_PORT`**, and set **`NCCL_SOCKET_IFNAME=ib0`** (never `lo` or `docker0`).\n(2) When using `NCCL` over IP sockets (`NCCL_SOCKET_NTHREADS` threads × `NCCL_NSOCKS_PERTHREAD` sockets per thread), `NCCL` enforces a hard ceiling of **`64` total sockets per communicator**: **`NCCL_NSOCKS_PERTHREAD * NCCL_SOCKET_NTHREADS <= 64`** (e.g., `4 * 8 = 32`).
+</details>
+
+<details>
+<summary>14. How do `sendfile()` and `MSG_ZEROCOPY` reduce CPU usage during high-bandwidth data transfers?</summary>
+Traditional `read(file_fd, buf)` + `write(sock_fd, buf)` copies data **twice** with the CPU (kernel page cache -> user-space buffer -> kernel socket buffer) and incurs **four user/kernel context switches**. **`sendfile()`** (and `splice()`) transfers data directly from the kernel page cache to the socket descriptor list in a single syscall, and the NIC DMAs the payload straight out of the page cache (**zero CPU copies**). **`MSG_ZEROCOPY`** on `sendmsg()` pins user-space memory pages and DMAs directly from user memory for payloads `>= 10 KB`.
+</details>
+
+<details>
+<summary>15. Compare `XDP`, `AF_XDP`, `SR-IOV`, `DPDK`, and `RDMA` (`RoCEv2` / `InfiniBand`).</summary>
+- **`XDP` (*eXpress Data Path*)**: runs an eBPF program inside the NIC driver **before `sk_buff` allocation** (`XDP_DROP`, `XDP_TX`, `XDP_REDIRECT`, `XDP_PASS`), ideal for `> 10 Mpps/core` DDoS dropping and L4 load balancing (`Katran`) while keeping the Linux stack for normal traffic.\n- **`AF_XDP`**: redirects selected frames from an XDP program into a zero-copy user-space ring (`UMEM`) without taking over the whole NIC.\n- **`SR-IOV`**: partitions one physical PCIe NIC (`PF`) into multiple hardware **Virtual Functions (`VF`s)** passed directly into Pods/VMs (`sriov_numvfs`), bypassing the host software bridge/`veth` tax.\n- **`DPDK`**: unbinds the NIC from the kernel and runs a user-space **poll-mode driver (`PMD`)** spinning at 100% CPU on dedicated cores.\n- **`RDMA` (`RoCEv2` / `InfiniBand`)**: offloads the entire transport protocol (`Queue Pairs`) into the NIC ASIC and DMAs directly to/from GPU HBM (`GPUDirect RDMA`) with `1–3 µs` latency and ~0% CPU.
+</details>
+
+<details>
+<summary>16. Why can a container `veth` pair become a throughput bottleneck on a `100G` node, and what are the four alternatives?</summary>
+When a Pod sends or receives packets through a Linux `veth` pair and software bridge, each packet triggers a softirq transition (`NET_RX_SOFTIRQ`) and traverses `tc`/netfilter hooks twice (inside the pod namespace and on the host), pinning a single high-rate flow to one CPU core (`~15–25 Gb/s` limit per flow). Alternatives for high-bandwidth pods: (1) **`hostNetwork: true`** (shares the host namespace directly), (2) **Cilium eBPF host-routing** (`bpf_redirect_peer` bypassing the host stack between `veth` ends), (3) **`ipvlan` / `macvlan`**, or (4) **`SR-IOV` / `RDMA` VF attachment via Multus**.
+</details>
+
+<details>
+<summary>17. Why does a single TCP stream (`iperf3 -c host`) often plateau at `15` to `30 Gb/s` on a `100 Gb/s` or `400 Gb/s` NIC even when the network path is idle?</summary>
+Because all packets of a single TCP 4-tuple hash to **one RSS queue** and are processed by **a single CPU core** (both in the kernel softirq handler and in the single-threaded user-space `read`/`write` loop). Check `mpstat -P ALL 1`: you will see **one CPU core pinned at 100% (`%soft` + `%usr`/`%sys`)** while 63 other cores sit idle. Fix single-stream speed with **Jumbo MTU (`9000`)**, `TSO`/`GRO` offloads, **NUMA-local CPU pinning** (`numactl`), and larger socket buffers, and use **parallel streams (`iperf3 -P 8` or `-P 16`)** to exercise multiple RSS queues and cores.
+</details>
+
+<details>
+<summary>18. How do you tune a Linux host specifically for ultra-low-latency RPCs versus bulk throughput?</summary>
+- **Ultra-low latency**: set `tuned-adm profile network-latency`, disable deep CPU C-states (`intel_idle.max_cstate=1`, CPU governor `performance`), disable or lower NIC interrupt coalescing (`ethtool -C rx-usecs 0`), enable socket **busy polling** (`net.core.busy_poll = 50`, `net.core.busy_read = 50`), set **`TCP_NODELAY`** on sockets, and cap sender bufferbloat with `net.ipv4.tcp_notsent_lowat = 131072`.\n- **Bulk throughput**: set `MTU = 9000`, enable `TSO`/`GSO`/`GRO` and adaptive interrupt coalescing, size `rmem_max`/`wmem_max` to `>= 2 * BDP`, and use `fq` + `bbr` (WAN) or `cubic`/`dctcp` (DC).
+</details>
+
+<details>
+<summary>19. How do you persist `ethtool` ring, queue, and offload settings across reboots on modern Linux servers?</summary>
+`ethtool -G/-L/-K` commands are volatile and reset on reboot or driver reload. Persist them declaratively using **`systemd-networkd` `.link` files** in `/etc/systemd/network/10-<ifname>.link` (`[Link] RxBufferSize=4096 TxBufferSize=4096 CombinedChannels=32 GenericReceiveOffload=yes LargeReceiveOffload=no`), a NetworkManager dispatcher script in `/etc/NetworkManager/dispatcher.d/`, or a `systemd` oneshot service ordered `After=network-online.target`, managed by Ansible and verified by a boot audit check.
+</details>
+
+<details>
+<summary>20. Summarize the 7-step Safe Network Tuning Methodology.</summary>
+(1) **Define a quantitative target metric** (`nccl-tests` algbw/busbw, `iperf3` goodput, or p99 RPC latency);\n(2) **Record the complete baseline** (hardware/NUMA topology, driver/firmware versions, `ethtool`, `sysctl`, counters, and benchmark score);\n(3) **Locate the active bottleneck using the USE method** (link speed, PCIe gen/width, NIC ring `rx_missed`, `softnet_stat`, `ss -ti` limiter, or CPU core);\n(4) **Change ONE parameter at a time** and re-measure with the identical test;\n(5) **Keep only changes that produce a measurable improvement** (revert no-ops);\n(6) **Prefer structural fixes** (NUMA alignment, MTU 9000, RSS queues, removing `conntrack`) over cargo-cult `sysctl` lists; and\n(7) **Persist in version-controlled configuration management** with automated drift checks.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `systems-performance-2nd-edition` — Brendan Gregg, *Systems Performance: Enterprise and the Cloud*, 2nd ed., **Chapter 10: Network** (system-wide tunables and the 14-setting streaming production example `12582912`/`16777216`, socket and TCP buffers, backlog, congestion control, TCP options, device queues, socket options `SO_REUSEPORT` / `MSG_ZEROCOPY` / `sendfile`, static performance tuning, and resource controls).
+  - `ai-systems-performance-engineering` — Chris Fregly, *AI Systems Performance Engineering*, **Chapter 4: Tuning Distributed Networking Communication** (host TCP stack and MTU `9000` tuning `rmem_max`/`wmem_max`, `tcp_rmem`/`tcp_wmem`, CUBIC vs BBR, NUMA-local NIC interrupt affinity, `NCCL` bootstrap ephemeral TCP port exhaustion `net.ipv4.ip_local_port_range="50000 51000"` in `/etc/sysctl.conf`, `NCCL_SOCKET_IFNAME`, `MASTER_PORT`, and socket-transport connection limits `NCCL_NSOCKS_PERTHREAD * NCCL_SOCKET_NTHREADS <= 64`).
+  - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 9: Understanding Your Network and Its Configuration** (manual interface and route configuration, network managers, and routers).
+  - `nvidia-devops/volume-01/03-linux-networking-masterclass.md` — migrated the packet journey (RX path, NAPI, RSS and interrupt affinity, ring buffers and coalescing, TX path and offloads), policy-based routing and the multi-homed asymmetric routing fix, VRF, bonding and LACP limitations, multi-homing for RoCEv2, SR-IOV and DPDK, eBPF/XDP and Cilium, LFN/TCP window scaling and SACK, the `veth` bottleneck scenario, MTU, and the `sysctl` tuning cheat sheet.
+- **Run here:** `python3 code/part02/linux_stack_nic_tuning_lab.py` (10 passed, 0 failed).
+- **Explicitly labelled inferences:** The Section 5 RX/TX packet-path Mermaid diagram, `/etc/sysctl.d/99-ai-node-network.conf` baseline, and Section 9 10-scenario troubleshooting guide synthesize the Linux kernel documentation (`ip-sysctl.rst`, `scaling.rst`, `vrf.rst`), `ethtool(8)`, and `ip-rule(8)` (cross-referenced with Chapters 1.28, 2.5, 2.6, 2.7, 2.12, 2.17, 2.19, 2.22, 2.23, and Part 11, plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Not verified on live hardware:** All interactive VM and NIC tuning commands (`ip rule`, `ip vrf`, `ethtool -G/-L/-K/-C/-X/-N`, `sysctl`, `mpstat`, `iperf3`) are marked (untested here) and must be executed on a disposable Linux VM or test server.
