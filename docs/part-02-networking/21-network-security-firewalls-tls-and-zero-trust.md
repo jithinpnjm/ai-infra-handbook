@@ -112,7 +112,7 @@ A **denial-of-service (DoS)** attack tries to make a service or network unusable
 | **Application layer** | HTTP floods, slow-loris, expensive queries, API abuse | Rate limiting, WAF, caching, CAPTCHA/auth, request cost limits, autoscaling with caps |
 | **Control-plane** | Flood routers' CPUs with ICMP/ARP/routing packets | CoPP, ICMP rate limiting, routing protocol authentication |
 
-Defensive techniques: **rate limiting and policing**, **SYN cookies** and sensible backlogs (chapter 2.6), **anycast** to spread load across sites, **blackhole routing (RTBH)** of attacked destinations via BGP community, **BCP 38 / uRPF** (drop packets with spoofed sources, preventing reflection), **traffic scrubbing services**, **overprovisioning** and autoscaling with budget caps, **separating critical services** (management plane on its own network), and **runbooks** rehearsed in advance. Inference APIs are attractive targets because each request can consume GPU seconds (resource-exhaustion DoS): use authentication, per-key quotas, token-based rate limits, and admission control (chapter 2.20).
+Defensive techniques: **rate limiting and policing**, **SYN cookies** and sensible backlogs (chapter 2.6), **anycast** to spread load across sites, **blackhole routing (RTBH)** of attacked destinations via BGP community or selective BGP traffic diversion using `NO_PEER` and `NO_ADVERTISE` communities to steer traffic away from saturated peering links (`CN` Chapter 21), **BCP 38 / uRPF** (drop packets with spoofed sources, preventing reflection), **traffic scrubbing services**, **overprovisioning** and autoscaling with budget caps, **separating critical services** (management plane on its own network), and **runbooks** rehearsed in advance. Inference APIs are attractive targets because each request can consume GPU seconds (resource-exhaustion DoS): use authentication, per-key quotas, token-based rate limits, and admission control (chapter 2.20).
 
 ## 7. SSH in depth (and hardening)
 
@@ -297,9 +297,15 @@ Security is a continuous cycle, not a state: **Observe, Orient, Decide, Act** (B
 
 Design for fast loops: automated isolation hooks (move a port to a quarantine VLAN, apply a K8s deny policy, disable an account), runbooks, rehearsals (game days), and clear ownership. Keep forensic readiness: preserve logs and memory, avoid destroying evidence, record timelines.
 
-## 15. Lab: harden and probe (untested)
+## 15. Hands-on lab: harden and probe
 
-Use two or three VMs or network namespaces in a lab you own.
+First, run the self-checking Python lab (`code/part02/network_security_zerotrust_lab.py`) locally. It verifies `sshd_config` hardening compliance (`PermitRootLogin no`, `PasswordAuthentication no`, `AllowAgentForwarding no`), InfiniBand 16-bit Partition Key (`P_Key`) full vs limited membership isolation (`0x8042` vs `0x0042` vs `0x8043`), Kubernetes `NetworkPolicy` default-deny + label-based ingress evaluation, and `fail2ban` sliding-window bans.
+
+```bash
+python3 code/part02/network_security_zerotrust_lab.py
+```
+
+Next, on two or three disposable VMs or network namespaces in a lab you own (all interactive VM commands below are `untested here`), work through these steps:
 
 1. **Exposure audit**: on a fresh VM run `ss -tulpn`, `nmap -p- -sV localhost` and from a second host; list unnecessary services; disable them; re-scan.
 2. **Firewall default-deny**: with nftables allow only SSH from the management subnet and established flows (chapter 2.23); verify with nmap from inside/outside; log drops.
@@ -312,8 +318,6 @@ Use two or three VMs or network namespaces in a lab you own.
 9. **K8s NetworkPolicy**: in kind with Calico/Cilium, apply default-deny and the allow policy above; verify with `kubectl exec ... curl`; test DNS egress.
 10. **Threat model**: draw a data-flow diagram of your training+inference platform, enumerate trust boundaries and STRIDE threats, assign controls, and decide detection signals (OODA).
 11. **Clean up** keys and test CAs.
-
-Mark tested only after execution.
 
 ## 16. Common mistakes
 
@@ -339,55 +343,126 @@ Mark tested only after execution.
 - "What would you check on an exposed BMC?"
 - "How do you secure the BGP control plane?"
 
-## 18. Checkpoint questions (40)
+## Exercises
 
-1. Define attack surface. **A:** Everything an attacker can reach or interact with.
-2. Risk formula? **A:** Likelihood × impact.
-3. Three areas of the network security problem space? **A:** Access, confidentiality/integrity, availability.
-4. What is STRIDE? **A:** Spoofing, tampering, repudiation, information disclosure, DoS, elevation of privilege.
-5. Why not rely on biometrics alone? **A:** Not secret, cannot be rotated after breach.
-6. What is defense in depth? **A:** Multiple overlapping layers of controls.
-7. What does AAA stand for? **A:** Authentication, authorisation, accounting.
-8. RADIUS vs TACACS+? **A:** UDP network access AAA vs TCP device administration with full encryption/per-command authorisation.
-9. What does 802.1X do? **A:** Port-based network access control with EAP authentication.
-10. Stateless vs stateful firewall? **A:** Per-packet matching vs connection tracking.
-11. Default firewall stance? **A:** Default deny inbound (and egress where possible).
-12. Why egress filtering? **A:** Limits exfiltration and C2.
-13. Last line of defence for data? **A:** Encryption.
-14. DoS classes? **A:** Volumetric, state exhaustion, application layer, control plane.
-15. What is BCP 38? **A:** Ingress filtering to prevent spoofed source addresses.
-16. What is RTBH? **A:** Remote-triggered blackhole routing of attacked destinations.
-17. What do SYN cookies do? **A:** Withstand SYN floods without storing half-open state.
-18. Why can inference endpoints be DoS targets? **A:** Each request consumes expensive GPU time.
-19. SSH host key purpose? **A:** Authenticates the server to the client.
-20. What is TOFU? **A:** Trust on first use of a host key.
-21. First action on a host-key-changed warning? **A:** Verify out of band before accepting.
-22. Preferred SSH key type? **A:** ed25519.
-23. `sshd_config` vs `ssh_config`? **A:** Server vs client configuration.
-24. Why disable agent forwarding by default? **A:** A compromised host can use your forwarded keys.
-25. What is ProxyJump? **A:** Connect via a bastion without exposing keys.
-26. What are SSH certificates? **A:** CA-signed short-lived keys for users/hosts, removing per-key distribution and TOFU.
-27. What does fail2ban do? **A:** Bans addresses after repeated failed logins by adding firewall rules.
-28. Is fail2ban a substitute for key-only auth? **A:** No.
-29. Why avoid telnet/rlogin/FTP? **A:** Cleartext credentials and chronic vulnerabilities.
-30. What is nmap used for? **A:** Host/port discovery, service/OS fingerprinting, scripts.
-31. When may you scan? **A:** Only with ownership or written permission.
-32. Name three L2 protections. **A:** DHCP snooping, DAI, port security, BPDU guard, 802.1X, MACsec.
-33. What is CoPP? **A:** Control-plane policing to protect the CPU.
-34. Name routing-protocol protections. **A:** Authentication, GTSM, prefix filters, max-prefix, RPKI.
-35. What is zero trust? **A:** No implicit trust; authenticate and authorise every request.
-36. Kubernetes tool for pod-level segmentation? **A:** NetworkPolicy (via a supporting CNI).
-37. IB mechanism for tenant partitioning? **A:** Partition keys (P_Key).
-38. Why isolate BMCs? **A:** Powerful, historically weak, firmware-level access.
-39. OODA stands for? **A:** Observe, Orient, Decide, Act.
-40. Which step depends most on experience and context? **A:** Orient.
+1. **Threat Modeling, `STRIDE`, Biometrics vs. Rotatable Secrets, and Defense in Depth (`CN` Chapter 21):** (a) Define *threat actor*, *vulnerability*, *exploit*, *attack surface*, *asset*, and *risk* (`likelihood * impact`), and apply `STRIDE` across an AI training and inference cluster; (b) explain why fingerprints and biometrics are a poor sole remote authentication credential (`CN` Ch. 21), and trace the six Defense-in-Depth layers in Section 2.
+2. **`AAA` Protocols (`RADIUS` vs. `TACACS+`), `802.1X`, and Layer-2 Switch Security:** (a) Contrast **RADIUS** (`UDP 1812/1813`) and **TACACS+** (`TCP 49`) across transport, packet encryption, and per-command router authorization; (b) match the six Layer-2 attacks (MAC flooding, rogue DHCP, ARP/ND spoofing, rogue STP switch, VLAN hopping, link eavesdropping) to their switch controls (**Port Security**, **DHCP Snooping**, **DAI / RA Guard**, **BPDU/Root Guard**, **native VLAN pruning**, **802.1X**, and **MACsec `802.1AE`**).
+3. **DoS / DDoS Mitigation, BGP Traffic Diversion (`NO_PEER`, `NO_ADVERTISE`, `RTBH`), and Control-Plane Protection:** Compare the four DoS classes (*volumetric*, *protocol/state exhaustion*, *application/GPU exhaustion*, and *control-plane CPU flood*) and their mitigations (**BCP 38 / uRPF**, `tcp_syncookies`, **RTBH `65535:666`**, `NO_PEER` / `NO_ADVERTISE` BGP steering, **CoPP**, **GTSM `TTL 255`**, and `TCP-AO` / `HMAC-SHA`).
+4. **`SSH` Cryptography, Host-Key Verification, `ProxyJump` vs. Agent Forwarding, `sshd_config` Hardening, and `SSH` Certificates:** (a) Using `audit_sshd_config()` in `code/part02/network_security_zerotrust.py`, audit a server's `sshd_config` and explain why **`ProxyJump` (`-J`)** must replace `AllowAgentForwarding yes` when jumping through a bastion; (b) explain what `REMOTE HOST IDENTIFICATION HAS CHANGED` means, how **SSH CA certificates** (`ssh-keygen -s ca`, `TrustedUserCAKeys`, `@cert-authority`) eliminate TOFU at scale, and how `simulate_fail2ban_window()` models `fail2ban`.
+5. **Auditing Exposure with `nmap` / `ss -tulpn` and Zero-Trust Microsegmentation with Kubernetes `NetworkPolicy`:** (a) Why must you run `nmap` from outside a host and compare it against local `ss -tulpn`, and what are the common high-risk AI/infra ports (`111`, `623`, `2375`, `2379`, `6379`, `8000–8002`, `8265`, `8888`, `10250`)? (b) Using `evaluate_k8s_ingress_network_policy()`, explain how the Section 12 `default-deny` + `allow-gateway-to-triton` `NetworkPolicy` enforces Zero Trust (`NIST SP 800-207`) and why you must permit DNS (`UDP/TCP 53`) egress when default-denying egress.
+6. **Securing AI-Specific Surfaces (`BMC`s, InfiniBand `P_Key`s, Supply Chain) and Boyd's `OODA` Loop:** (a) Using `evaluate_ib_pkey_communication()`, evaluate whether InfiniBand ports with 16-bit Partition Keys `(0x8042, 0x8042)`, `(0x8042, 0x8043)`, `(0x0042, 0x0042)`, and `(0x0042, 0x8042)` can communicate, and state the hardening rules for out-of-band **BMCs** (`IPMI 623` / Redfish `443`); (b) apply Colonel John Boyd's **OODA loop** (*Observe, Orient, Decide, Act*) to an alert showing unexpected outbound traffic from a GPU training node.
 
-## 19. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. Define Attack Surface, Vulnerability, Exploit, and Risk, and state the six categories of `STRIDE`.</summary>
+- **Attack surface**: every reachable entry point an attacker can interact with (open ports, APIs, BMCs, supply chain, users).\n- **Vulnerability**: a weakness in design, implementation, configuration, or operations.\n- **Exploit**: the specific tool or technique that leverages a vulnerability.\n- **Risk**: **`Likelihood * Impact`** of an adverse event.\n- **`STRIDE`**: **S**poofing identity, **T**ampering with data, **R**epudiation, **I**nformation disclosure, **D**enial of service, and **E**levation of privilege.
+</details>
 
-- Russ White and Jeff Tantsura (with co-authors), *Computer Networking Problems and Solutions*: chapter 10 (transport security: problem space, solution space, encryption, key exchange, hashes, TLS; developed in chapter 2.10) and chapter 21 (security: a broader sweep: the biometric identity conundrum, definitions, problem space, defense in depth, access control, data protection, service availability, the OODA loop as a security model).
-- Brian Ward, *How Linux Works*, 3rd ed., chapter 10: network servers and Secure Shell (public-key cryptography, sshd configuration and host keys, starting the server, fail2ban, the SSH client and known-hosts warnings, scp/sftp), inetd/xinetd and TCP wrappers, diagnostic tools (port scanning with nmap), remote procedure calls, network security rules of thumb, typical vulnerabilities, security resources, and chapter 9 firewall strategy (mechanics in 2.23).
-- AI-cluster security notes are the author's synthesis from vendor security documentation (NVIDIA, BMC vendors), OpenSSH manuals, CIS benchmarks, NIST SP 800-207 (zero trust), and Kubernetes documentation.
+<details>
+<summary>2. Why does `CN` Chapter 21 warn against using biometrics as a standalone remote authentication credential?</summary>
+Biometrics (fingerprints, face scans, iris patterns) violate two core properties of cryptographic secrets: (1) they are **not secret** (you leave your fingerprints on surfaces and your face on cameras everywhere), and (2) once digitized into a backend database and stolen in a breach, **you cannot rotate or revoke your fingers**. Biometrics should only unlock a local hardware enclave (`TPM` / Secure Enclave / FIDO2 key) that signs challenges with a rotatable private key.
+</details>
 
-**Flagged for verification before publishing:** `sshd_config` option names and defaults per OpenSSH version, fail2ban jail syntax, exposed-port list, BMC/IPMI guidance for specific vendors, InfiniBand security feature details, and NetworkPolicy behaviour per CNI; all labs are **untested**.
+<details>
+<summary>3. What are the three network security problem areas, and how does Defense in Depth work across them (`CN` Chapter 21)?</summary>
+The three problem areas are **(1) Access Control** (only authorized principals reach data), **(2) Data Confidentiality and Integrity** (in transit and at rest), and **(3) Service Availability** (resisting DoS). Because any single layer can be bypassed or misconfigured—and deep inspection at line rate is expensive—**Defense in Depth** places overlapping controls at every boundary (edge ACLs + RPKI/BCP38 -> stateful firewall/WAF -> VRF/VLAN/NetworkPolicy segmentation -> mTLS/RBAC service auth -> encryption at rest + continuous telemetry/exfiltration monitoring), forcing an attacker to cross multiple independent grids while giving defenders time to detect and contain.
+</details>
+
+<details>
+<summary>4. Compare `RADIUS` and `TACACS+` in `AAA` (*Authentication, Authorization, Accounting*).</summary>
+- **`RADIUS` (`UDP ports 1812 / 1813`, RFC 2866)**: designed for **network access authentication** (`802.1X` switch ports, WPA-Enterprise Wi-Fi, VPNs); combines authentication and authorization into one reply and **encrypts only the password attribute** in the packet (protect with RadSec/TLS or IPsec).\n- **`TACACS+` (`TCP port 49`)**: designed for **network device administration** (SSH into switches/routers); separates authentication, authorization, and accounting, **encrypts the entire packet body**, and supports **per-command authorization and audit logging** (controlling which exact CLI commands an engineer may run).
+</details>
+
+<details>
+<summary>5. Compare a Stateless Packet Filter (`ACL`), a Stateful Firewall (`conntrack`), an `NGFW` / `WAF`, and Microsegmentation (`NetworkPolicy`).</summary>
+- **Stateless ACL**: checks individual packet headers (`src/dst IP`, protocol, L4 ports, TCP `SYN`/`ACK` flags) in switch TCAM at line rate with zero connection memory.\n- **Stateful Firewall (`nftables` / `iptables` `ct state`)**: tracks active connection 5-tuples in `conntrack`, automatically permitting `ESTABLISHED,RELATED` return packets while dropping unsolicited inbound traffic.\n- **NGFW / WAF**: terminates/inspects L7 payloads for SQLi, SSRF, prompt/API abuse, and IPS signatures.\n- **Microsegmentation (`Kubernetes NetworkPolicy`, Cilium eBPF, VXLAN `GBP`)**: enforces workload-to-workload rules between individual pods/containers based on cryptographic/orchestrator **identity labels** rather than static IP subnets.
+</details>
+
+<details>
+<summary>6. Why is Egress Filtering just as important as Ingress Filtering on GPU cluster nodes?</summary>
+If an attacker compromises a container or dependency via a supply-chain CVE or RCE, their immediate next steps are **command-and-control (`C2`) callbacks**, downloading stage-2 payloads, and **exfiltrating model weights or training data**. Default-deny **egress filtering** (permitting GPU nodes to reach only internal storage, internal DNS, and an approved private artifact mirror) breaks reverse shells and blocks data exfiltration.
+</details>
+
+<details>
+<summary>7. Match the four DoS/DDoS classes to their primary mitigations, including `BCP 38`, `RTBH`, and `NO_PEER` / `NO_ADVERTISE` (`CN` Chapter 21).</summary>
+- **Volumetric floods** (UDP reflection/amplification via DNS/NTP): **BCP 38 / uRPF** ingress anti-spoofing at the network edge, Anycast + upstream scrubbing centers, **Remote-Triggered Black Hole (`RTBH`, community `65535:666`)**, and BGP **`NO_PEER` / `NO_ADVERTISE`** communities to divert traffic off congested peering links.\n- **Protocol / state exhaustion** (TCP `SYN` floods, conntrack exhaustion): **`tcp_syncookies = 1`**, SYN rate limits, and stateless edge ACLs.\n- **Application / GPU exhaustion** (expensive LLM prompts): API authentication, per-tenant token-bucket rate limits, `max_tokens` caps, and admission control.\n- **Control-plane CPU floods** (ARP/ICMP/BGP punts): **Control-Plane Policing (`CoPP`)**, **GTSM (`TTL = 255`)**, and `TCP-AO` / `HMAC-SHA`.
+</details>
+
+<details>
+<summary>8. How does SSH authenticate both the server and the user, and what does the `REMOTE HOST IDENTIFICATION HAS CHANGED` warning mean (`HLW` Chapter 10)?</summary>
+First, the server proves its identity using its **host key pair** (`/etc/ssh/ssh_host_ed25519_key`); on first connection (**Trust On First Use, `TOFU`**), the client records the server's public key in `~/.ssh/known_hosts`. Next, over an ephemeral Diffie-Hellman encrypted channel, the user proves possession of their private key (`~/.ssh/id_ed25519`) by signing a challenge verified against `~/.ssh/authorized_keys` on the server. If the server's presented host key ever differs from `~/.ssh/known_hosts`, SSH aborts with **`REMOTE HOST IDENTIFICATION HAS CHANGED`**—which means either the server was legitimately reinstalled/re-keyed OR an attacker is performing an active **Man-in-the-Middle (`MitM`)** attack. Always verify the new fingerprint out of band (`ssh-keygen -lf` via console) before running `ssh-keygen -R <host>`.
+</details>
+
+<details>
+<summary>9. Why is `AllowAgentForwarding yes` dangerous when connecting through a bastion/jump host, and why should you use `ProxyJump` (`ssh -J`) instead?</summary>
+With **SSH Agent Forwarding (`ssh -A`)**, sshd creates a Unix domain socket on the intermediate host pointing back to the `ssh-agent` on your laptop; **anyone with root access on that intermediate host can hijack that socket and use your keys to authenticate to every other server you have access to**. With **`ProxyJump` (`ssh -J bastion user@gpu01`)**, SSH opens a TCP port-forward through the bastion and performs the **end-to-end SSH handshake directly between your laptop and `gpu01`**—so your private key and agent socket are never exposed to the bastion.
+</details>
+
+<details>
+<summary>10. How do `SSH Certificates` (`ssh-keygen -s`) solve `known_hosts` TOFU and `authorized_keys` sprawl across a 1,000-node GPU cluster?</summary>
+Instead of copying static public keys into `~/.ssh/authorized_keys` on 1,000 nodes and maintaining 1,000 host keys in every engineer's `known_hosts`:\n- **Host CA**: signs each node's host public key (`HostCertificate`); engineers add a single **`@cert-authority *.cluster.example.com <CA-pub-key>`** line to `known_hosts` to trust any node signed by the Host CA without TOFU prompts.\n- **User CA** (Vault, `step-ca`, Teleport): after an engineer logs in with SSO + MFA, issues a **short-lived user certificate** (e.g., valid for `8` hours, `-V +8h`) signed by the User CA; every node's `sshd_config` sets **`TrustedUserCAKeys /etc/ssh/user_ca.pub`**, requiring zero per-user `authorized_keys` files on nodes and expiring access automatically.
+</details>
+
+<details>
+<summary>11. List the eight essential `sshd_config` hardening directives for production Linux servers.</summary>
+(1) `PermitRootLogin no` (or `prohibit-password`), (2) **`PasswordAuthentication no`** and `KbdInteractiveAuthentication no` (keys/certificates only), (3) `PubkeyAuthentication yes` / `AuthenticationMethods publickey`, (4) `AllowGroups ssh-users`, (5) **`AllowAgentForwarding no`**, (6) `X11Forwarding no` and `AllowTcpForwarding no` (unless explicitly matched), (7) `MaxAuthTries 3` and `LoginGraceTime 20`, and (8) `LogLevel VERBOSE` (to log which key fingerprint authenticated). Always test with **`sudo sshd -t`** before reloading while keeping an existing root session open.
+</details>
+
+<details>
+<summary>12. What does `fail2ban` do, and why is it NOT a substitute for `PasswordAuthentication no` (`HLW` Chapter 10)?</summary>
+`fail2ban` tails `/var/log/auth.log` or `journald` and temporarily adds an `nftables`/`iptables` drop rule when an IP exceeds `maxretry` failed logins within `findtime`. While `fail2ban` cuts log spam and brute-force CPU load, a distributed botnet of 50,000 IPs can still guess weak passwords at 2 attempts per IP without triggering a single ban (and a shared corporate NAT IP can lock out an entire office); therefore `PasswordAuthentication no` + network allow-listing remain mandatory.
+</details>
+
+<details>
+<summary>13. Why should you compare local `ss -tulpn` output against an external `nmap` scan (`nmap -p- -sV`), and what AI/cluster ports are most frequently exposed by mistake?</summary>
+`ss -tulpn` shows every socket bound on the host (`0.0.0.0:*` vs `127.0.0.1:*`), whereas an external `nmap` scan from another subnet/zone verifies what actually passes through host and perimeter firewalls. Common high-risk exposures on AI clusters include: **unauthenticated Docker daemon (`2375`)**, **Kubernetes `kubelet` (`10250`) and `etcd` (`2379`)**, **Ray Dashboard (`8265`, arbitrary job submission)**, **Jupyter Notebook (`8888`)**, **Triton (`8000–8002`)**, **MLflow (`5000`)**, **Redis (`6379`)**, **`rpcbind`/NFS (`111`/`2049`)**, and **BMC IPMI (`UDP 623`) / Redfish (`443`)**.
+</details>
+
+<details>
+<summary>14. What are the seven classic Layer-2 LAN attacks and their corresponding switch defenses?</summary>
+(1) **MAC table flooding** -> **Port Security** (limit MAC count per port) + storm control;\n(2) **Rogue DHCP server** -> **DHCP Snooping** (drop `DHCPOFFER`/`DHCPACK` on untrusted ports) + **IP Source Guard**;\n(3) **ARP spoofing / poisoning** -> **Dynamic ARP Inspection (`DAI`)** validating ARP packets against the DHCP snooping binding table;\n(4) **IPv6 Rogue Router Advertisement** -> **IPv6 RA Guard** + ND Inspection;\n(5) **Rogue switch / STP root hijack** -> **BPDU Guard** and **Root Guard**;\n(6) **VLAN hopping (double tagging / DTP)** -> disable auto-trunking (`DTP`), set the native VLAN to an unused ID, and explicitly prune allowed trunk VLANs; and\n(7) **Physical link wiretapping** -> **IEEE `802.1AE` MACsec** line-rate hop-by-hop encryption.
+</details>
+
+<details>
+<summary>15. Define Zero Trust (`NIST SP 800-207`) and explain how Kubernetes `NetworkPolicy` enforces east-west microsegmentation.</summary>
+**Zero Trust** eliminates implicit trust based on network location ("inside the cluster VLAN = trusted"): every request between users, devices, and workloads must be strongly authenticated (`mTLS` / `SPIFFE`), authorized by least-privilege policy, and encrypted. In Kubernetes, Pods can talk to every other Pod in the cluster by default; applying a namespace-wide **default-deny `NetworkPolicy`** (`podSelector: {}, policyTypes: [Ingress, Egress]`) blocks all unsolicited east-west traffic until explicit label-based allow rules (such as allowing only `app: gateway` to reach `app: triton` on `TCP 8001`, plus DNS `53` egress) are added and enforced by the CNI (`Cilium`, `Calico`).
+</details>
+
+<details>
+<summary>16. Why are Out-of-Band `BMC`s (`IPMI` / `Redfish`) and the PXE Provisioning Network the highest-value targets in a bare-metal GPU cluster, and how do you secure them?</summary>
+The **BMC** has total hardware control over the server regardless of the host OS: it can mount virtual media, read console memory, reflash BIOS/BMC firmware, and reboot the machine, yet BMCs have a long history of critical vulnerabilities (`IPMI 2.0 RAKP` hash disclosure and `Cipher 0` authentication bypass). Similarly, compromising the **PXE/DHCP/HTTP provisioning server** compromises the boot image of every node in the fleet. Secure them by: placing BMCs on a **strictly air-gapped OOB management VLAN/VRF** reachable **only via hardened jump hosts**, disabling legacy `IPMI-over-LAN` (`UDP 623`) in favor of authenticated **Redfish over HTTPS (`TLS`)**, setting unique per-BMC passwords, patching BMC firmware, and enforcing **UEFI Secure Boot + signed OS images**.
+</details>
+
+<details>
+<summary>17. How does InfiniBand Partitioning (`P_Key`) isolate tenants in hardware, and how do Full (`0x8000`) and Limited (`0x0000`) memberships work?</summary>
+In an InfiniBand fabric, the **Subnet Manager (`OpenSM` / `UFM`)** programs a table of 16-bit **Partition Keys (`P_Key`s)** into every Host Channel Adapter (`HCA`) port (and `M_Key` protects management SMPs):
+- **Bits `0..14` (`15` bits)**: the **Partition ID** (`0x0001..0x7FFF`; default partition `0x7FFF`).
+- **Bit `15` (`MSB`, `0x8000`)**: the **Membership bit** (`1` = **Full member**, `0` = **Limited member**).
+Every IB packet carries its `P_Key` in the Base Transport Header (`BTH`), and the HCA silicon enforces that two ports can communicate **if and only if they share the exact same 15-bit Partition ID AND at least one of the two ports is a Full member** (allowing multiple untrusted tenants assigned *Limited* membership in a shared storage partition to talk to a *Full*-member storage server while being hardware-blocked from talking to each other).
+</details>
+
+<details>
+<summary>18. How do NVIDIA BlueField `DPU`s strengthen multi-tenant security on bare-metal GPU servers?</summary>
+When a tenant has root access on a bare-metal GPU host, any software agent, `iptables` rule, or CNI running inside the host kernel can be disabled by the tenant. A **BlueField DPU** runs an independent Linux OS and hardware-offloaded Open vSwitch / eBPF / IPsec / RDMA firewall pipeline on a separate Arm complex in front of the physical network ports (**host-isolated / zero-trust mode**), enforcing tenant VRF/EVPN isolation, firewall ACLs, storage authentication, and line-rate encryption outside the tenant's reach.
+</details>
+
+<details>
+<summary>19. What are the unique security threats to LLM Inference APIs and AI Supply Chains?</summary>
+- **Inference APIs**: GPU resource-exhaustion DoS (long-context prompts), unauthorized model/weight extraction, prompt injection, and **SSRF / data exfiltration via tool-calling agents** (requiring strict egress allow-lists on agent sandboxes, per-key token quotas, and prompt-redacted logging).\n- **AI Supply Chain**: malicious pickle weights (`torch.load` arbitrary code execution—prefer **`safetensors`** plus SHA-256 signature verification), unverified container images (sign with **`cosign`** and enforce in Kubernetes admission), and container-escape CVEs in GPU drivers / **`nvidia-container-toolkit`** (patch promptly and avoid `--privileged`).
+</details>
+
+<details>
+<summary>20. Explain Colonel John Boyd's `OODA` Loop (`Observe, Orient, Decide, Act`) as a network security operations model (`CN` Chapter 21).</summary>
+Originally developed by USAF Colonel John Boyd for air combat, the **OODA loop** models security operations as a race of decision cycles against the attacker:\n1. **Observe**: collect high-signal telemetry (NetFlow/IPFIX, DNS logs, `auditd`/`Falco` GPU process alerts, SSH/API auth logs, BGP/RPKI monitors) without drowning in unindexed noise;\n2. **Orient**: correlate observations against asset inventory, baseline behavior, and threat models (`MITRE ATT&CK`) to overcome cognitive bias and answer *"is this real, and what is the blast radius?"*;\n3. **Decide**: select a pre-rehearsed response playbook (quarantine VLAN/NetworkPolicy, revoke SSH/SPIFFE cert, trigger BGP `RTBH`) without freezing in self-doubt; and\n4. **Act**: execute the containment (ideally automated), observe the effect, and feed lessons back into hardening.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `computer-networking-problems-and-solutions` — Russ White and Ethan Banks, *Computer Networking Problems and Solutions*, **Chapter 10: Transport Security** (developed in Chapter 2.10) and **Chapter 21: Security: A Broader Sweep** (the biometric identity conundrum, vocabulary threat actor / exploit / vulnerability / attack surface, the 3 problem areas access / confidentiality / availability, defense in depth and filtering cost, AAA RADIUS / TACACS+ / 802.1X, data protection, DoS/DDoS and BGP `NO_PEER` / `NO_ADVERTISE` / `RTBH` traffic diversion, and Colonel John Boyd's OODA loop).
+  - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 9** (firewall strategy) and **Chapter 10: Network Applications and Services** (Secure Shell public-key cryptography, `sshd_config` and host keys, `fail2ban`, `known_hosts` warnings, `scp`/`sftp`, `inetd`/`xinetd` and TCP wrappers, port scanning with `nmap`, RPC `rpcbind`, network security rules of thumb, typical vulnerabilities, and security resources).
+  - `production-kubernetes` — Josh Rosso et al., *Production Kubernetes*, **Chapters 7 and 8**, and `networking-and-kubernetes` — James Strong and Vallery Lancey, *Networking and Kubernetes*, **Chapters 4 and 6** (Kubernetes `NetworkPolicy` microsegmentation and secret management).
+- **Run here:** `python3 code/part02/network_security_zerotrust_lab.py` (12 passed, 0 failed).
+- **Explicitly labelled inferences:** The `sshd_config` hardening snippet, SSH CA certificate workflow, Kubernetes `NetworkPolicy` YAML (`default-deny` + `allow-gateway-to-triton`), and AI-cluster security checklist (BMC/Redfish OOB isolation, InfiniBand 16-bit `P_Key` full/limited membership, `safetensors`/`cosign` supply-chain controls, and BlueField DPU host isolation) synthesize NIST SP 800-207 (Zero Trust), RFC 2866, OpenSSH manuals, and NVIDIA security documentation (cross-referenced with Chapters 1.21, 2.6, 2.9, 2.10, 2.15–2.17, 2.20, 2.23, and 2.28–2.29, plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Not verified on live hardware:** All interactive VM and Kubernetes commands (`ssh`, `ssh-keygen`, `sshd -t`, `fail2ban-client`, `nmap`, `hping3`, `kubectl`) are marked (untested here) and must be executed ONLY on disposable lab VMs or networks you own or have written authorization to test.
