@@ -866,101 +866,121 @@ timeout 2 sleep 10; echo "timeout status $?" # (untested here) 124
 
 <details>
 <summary>1. What must be true of a file for the kernel to execute it directly as a script, and what happens if there is a UTF-8 BOM, blank line, or CRLF before `#!`?</summary>
+
 The file must have both read and execute permission bits (`chmod u+rx`) and begin with the exact two bytes `#!` followed by the interpreter path. A leading blank line or UTF-8 BOM prevents the kernel from recognizing `#!`, while Windows CRLF (`\r\n`) appends `\r` (`^M`) to the interpreter path (`bad interpreter: No such file or directory`).
 </details>
 
 <details>
 <summary>2. What is the difference between `./script.sh`, `source script.sh` (`. script.sh`), and `exec ./script.sh`?</summary>
+
 `./script.sh` forks a child process and executes the interpreter, so variable and directory changes vanish when the child exits. `source script.sh` (or `. script.sh`) reads and runs the commands inside the *current* shell process so variable assignments persist. `exec ./script.sh` replaces the current shell process image with the script (`execve`) and never returns.
 </details>
 
 <details>
 <summary>3. Why is writing `#!/bin/sh` at the top of a script that uses `[[ ]]` or arrays a cross-distribution bug?</summary>
+
 On RHEL and Rocky Linux, `/bin/sh` is a symlink to `bash`, which accepts bash extensions even when invoked as `sh`. On Debian and Ubuntu, `/bin/sh` is `dash`, a strict POSIX shell that fails with syntax errors on `[[ ]]`, arrays, `${var//a/b}`, and `<(cmd)`.
 </details>
 
 <details>
 <summary>4. List the six shell expansion stages in order and explain why `grep r.*t /etc/passwd` can silently search the wrong files.</summary>
+
 (1) Brace expansion, (2) tilde expansion, (3) parameter, arithmetic, and command substitution, (4) word splitting on `IFS`, (5) pathname expansion (globbing), and (6) quote removal. If the current directory contains `r.input` and `r.output`, the unquoted `r.*t` is expanded at stage 5 into `grep r.input r.output /etc/passwd`.
 </details>
 
 <details>
 <summary>5. Why does `echo $100` print `00`, and how do single quotes (`'...'`) and double quotes (`"..."`) differ?</summary>
+
 The shell parses `$100` as positional parameter `$1` (empty) followed by literal `00`. Single quotes (`'$100'`) preserve every character literally (use `'isn'\''t'` to embed a single quote), whereas double quotes (`"${1}00"`) expand `$`, backticks, and `\` while suppressing word splitting and globbing.
 </details>
 
 <details>
 <summary>6. What is the difference between `"$@"`, unquoted `$@`, and `"$*"`?</summary>
+
 `"$@"` expands each positional parameter as a separate, intact word (preserving internal spaces); unquoted `$@` undergoes word splitting and globbing on every parameter; and `"$*"` joins all positional parameters into a single string separated by the first character of `IFS`.
 </details>
 
 <details>
 <summary>7. What does `if` actually test in shell, and why do `[$x = y]` and `[ $x = y ]` both fail?</summary>
+
 `if` executes a command and branches on whether its exit status is `0` (true) or non-zero (false). `[` is an actual command (synonym for `test`) requiring a space after `[` and before `]`: `[$x` looks for a command named `[$x`, and unquoted `[ $x = y ]` becomes `[ = y ]` (syntax error) whenever `x` is empty or unset.
 </details>
 
 <details>
 <summary>8. Why does `[ 01 = 1 ]` evaluate to false whereas `[ 01 -eq 1 ]` evaluates to true, and what happens if you write `[ "$a" > 5 ]`?</summary>
+
 Inside `[ ]`, `=` and `!=` compare *strings* character by character (`"01"` differs from `"1"`), whereas `-eq`, `-ne`, `-lt`, `-le`, `-gt`, and `-ge` compare *integers*. Writing `>` inside `[ ]` is interpreted by the shell as standard-output file redirection, creating a file named `5`.
 </details>
 
 <details>
 <summary>9. Why does `cat input.txt | while IFS= read -r line; do count=$((count+1)); done` leave `count=0` after the loop?</summary>
+
 In `bash`, each stage of a pipeline runs in its own child subshell, so incrementing `count` inside the piped `while` loop modifies only the subshell's copy. Redirect input into the loop instead (`while IFS= read -r line; do ...; done < input.txt` or `< <(cmd)`).
 </details>
 
 <details>
 <summary>10. Why must you pass `-n` to `ssh` inside a `while read -r host` loop?</summary>
+
 By default, `ssh` reads from standard input and forwards it to the remote process, which drains all remaining lines from the `while read` loop's input on the very first iteration. Passing `ssh -n` (or `< /dev/null`) prevents `ssh` from consuming stdin.
 </details>
 
 <details>
 <summary>11. How do you iterate safely over `find` results when filenames may contain spaces, newlines, or leading dashes?</summary>
+
 Use NUL-delimited output (`find . -name '*.ckpt' -print0`) paired with either `while IFS= read -r -d '' f; do rm -- "$f"; done` or `xargs -0 -r rm --` (or `find . -name '*.ckpt' -exec rm -- {} +`).
 </details>
 
 <details>
 <summary>12. What do `${var:-def}`, `${var:=def}`, `${var:?msg}`, `${var#pat}`, `${var##pat}`, `${var%pat}`, and `${var%%pat}` do?</summary>
+
 `:-` returns `def` if `var` is unset/empty; `:=` also assigns `def` to `var`; `:?` prints `msg` to stderr and exits if unset/empty; `#` and `##` strip the shortest and longest matching prefix (`${path##*/}` = `basename`); and `%` and `%%` strip the shortest and longest matching suffix (`${path%/*}` = `dirname`).
 </details>
 
 <details>
 <summary>13. How do bash functions handle variable scope and return values?</summary>
+
 Variables in bash functions are **global** by default unless declared with `local`. Functions return an integer exit code (`0`–`255`) via `return N` and emit string output to stdout (captured by callers with `result=$(my_func)`).
 </details>
 
 <details>
 <summary>14. How does `while getopts ":hn:t:" opt` parse command-line options?</summary>
+
 The leading `:` enables silent error reporting; letters followed by `:` (`n:`, `t:`) require an option argument (placed in `$OPTARG`); unknown options set `opt` to `?` and missing arguments set `opt` to `:`; and after the loop `shift $((OPTIND - 1))` removes the parsed flags so positional arguments start at `$1`.
 </details>
 
 <details>
 <summary>15. What is the difference between `( cd "$d" && make )` and `{ echo a; echo b; } > out.txt`?</summary>
+
 Parentheses `( ... )` fork a child subshell, so `cd "$d"` changes the working directory only inside the subshell and leaves the parent shell's `pwd` untouched. Braces `{ ...; }` group commands in the current shell without forking.
 </details>
 
 <details>
 <summary>16. What does `set -euo pipefail` enable, and what are four contexts where `set -e` is silently ignored?</summary>
+
 `-e` exits on non-zero command status, `-u` errors on unset variables, and `-o pipefail` fails a pipeline if any stage fails. `set -e` is ignored: (1) inside `if`, `elif`, `while`, or `until` conditions, (2) on the left side of `&&` or `||`, (3) on commands inverted with `!`, and (4) inside any function called from one of those contexts.
 </details>
 
 <details>
 <summary>17. Why does a non-matching `grep` abort a script under `set -euo pipefail`, and how do you handle it cleanly?</summary>
+
 `grep` exits with status `1` when zero lines match (and `2` on real file/syntax errors). Under `set -e`, a standalone `grep` with no matches aborts the script; guard it inside `if grep -q pat file; then ...` or append `|| true`.
 </details>
 
 <details>
 <summary>18. How do `mktemp` and `trap` work together, and why must a `trap ... INT` handler include `exit`?</summary>
+
 `mktemp` / `mktemp -d` atomically creates a uniquely named file or directory in `/tmp` with mode `0600`/`0700`, and `trap 'rm -rf -- "$tmpdir"' EXIT` deletes it when the script exits. In a signal handler like `trap "rm -f $TMP; exit 1" INT`, omitting `exit 1` causes the shell to run the cleanup and then resume executing the rest of the script.
 </details>
 
 <details>
 <summary>19. How does `flock -n` prevent overlapping cron jobs better than checking `[ -e /tmp/job.lock ]`?</summary>
+
 Checking `[ -e /tmp/job.lock ] || touch /tmp/job.lock` has a race window between test and creation and leaves a stale lock file behind if the script crashes or gets `SIGKILL`ed. `exec 9>/var/lock/job.lock && flock -n 9` acquires an atomic kernel file-descriptor lock that the kernel releases automatically the instant the process terminates for any reason.
 </details>
 
 <details>
 <summary>20. Name five criteria that tell you a shell script should be rewritten in Python.</summary>
+
 Switch from shell to Python when you need: (1) structured JSON/YAML/TOML manipulation beyond a simple `jq` filter, (2) floating-point math or multi-dimensional data structures, (3) complex nested control flow or >100–200 lines of code, (4) unit testing (`pytest`) and rich exception handling, or (5) processing hundreds of thousands of lines where per-line subprocess forks are too slow.
 </details>
 

@@ -355,101 +355,121 @@ Next, on a disposable Linux VM with `ipvsadm`, `haproxy`, `nginx`, `envoy`, and 
 
 <details>
 <summary>1. What five questions must every load-balancer architecture answer, and what is the core difference between an L4 and an L7 load balancer?</summary>
+
 The five questions are: (1) **Where** is the routing decision made? (2) **What** is the unit of work? (3) **How** is the backend chosen (algorithm/state)? (4) **How** does the return traffic flow (via LB vs DSR)? and (5) **How** are backend failures detected and drained?\nAn **L4 load balancer** (`IPVS`, `Maglev`, `Katran`, AWS `NLB`) operates on **TCP/UDP connections (5-tuples)**—forwarding packets at very high speed without inspecting application payloads. An **L7 load balancer** (`Envoy`, `HAProxy mode http`, `nginx`, AWS `ALB`) terminates the client TCP/TLS connection and parses **individual HTTP/1.1, HTTP/2, or gRPC requests**, enabling per-request balancing, header/path routing, and retries.
 </details>
 
 <details>
 <summary>2. How does Direct Server Return (`DSR` / IPVS `-g`) work, why must backends set `arp_ignore=1` and `arp_announce=2`, and what is DSR's main advantage?</summary>
+
 In **DSR**, the L4 load balancer receives the client packet addressed to the `VIP` and forwards it to the chosen backend **without changing the destination IP (`VIP`)**—either by rewriting only the outer **Destination MAC** (on the same L2 VLAN) or by encapsulating it in an **IPIP/GRE/GUE tunnel**. Each backend configures the `VIP/32` on its own **`lo` (loopback)** interface (with `arp_ignore=1` and `arp_announce=2` so backends never answer ARP for the `VIP` on the LAN), accepts the packet locally, and sends the response **directly back to the client (`src = VIP`)**, bypassing the load balancer on the return path. Because responses (model weights, video, token streams) are much larger than requests, DSR multiplies outbound throughput and preserves the true client IP.
 </details>
 
 <details>
 <summary>3. How do you preserve the original client IP address when using an L4 Proxy/SNAT load balancer versus an L7 HTTP reverse proxy?</summary>
+
 - **At Layer 7 (HTTP/HTTPS)**: the proxy inserts the **`X-Forwarded-For`** (or RFC 7239 **`Forwarded`**) HTTP header; backends must be configured to trust `X-Forwarded-For` **only** when the TCP connection arrives from known proxy IPs.\n- **At Layer 4 (TCP proxy/SNAT)**: prepend HAProxy's **`PROXY protocol` (v1 text or v2 binary)** header at the start of the backend TCP connection (or use `DSR` / Kubernetes `externalTrafficPolicy: Local` to avoid SNAT altogether).
 </details>
 
 <details>
 <summary>4. Why does Round-Robin fail for heterogeneous AI requests, why can Least-Connections \"herd\" across multiple LBs, and how does Power of Two Choices (`P2C`) fix it?</summary>
+
 **Round-Robin** assumes every request costs the same time, which fails when one prompt generates 20 tokens (`200 ms`) and the next generates 4,000 tokens (`60 s`). **Least-Connections** (or Least-Requests) works well on a single LB, but when dozens of independent LB instances observe that Backend 5 just became idle (`0` active requests), all of them simultaneously dump their next burst of requests onto Backend 5 (**herding**). **Power of Two Choices (`P2C`, used by Envoy `LEAST_REQUEST`)** picks **two backends at random** and sends the request to the less loaded of the two—exponentially suppressing max-load tail spikes while avoiding synchronized herding.
 </details>
 
 <details>
 <summary>5. How do Ring Consistent Hashing, Rendezvous (`HRW`) Hashing, and `Maglev` Hashing work, and why do they move only `~1 / N` of keys when a backend changes?</summary>
+
 With naive `hash(key) % N`, changing `N` from `10` to `9` remaps **`90%` of all keys**, invalidating caches and breaking stateful sessions. **Ring Consistent Hashing** places backends (with virtual nodes) and keys on a `2^32` ring; **Rendezvous (*Highest Random Weight*, `HRW`) Hashing** computes `score = hash(key, backend)` for each backend and picks the highest score; and **Google's `Maglev` Hashing** generates a permutation preference list per backend to fill a fixed-size lookup table (`M = 65537` prime slots) with near-perfect uniformity. In all three, adding or removing 1 of `N` backends disturbs only **`~1 / N`** of keys.
 </details>
 
 <details>
 <summary>6. How do you scale out an L4 load-balancer tier horizontally using `eBGP`, `ECMP`, and `Maglev` consistent hashing?</summary>
+
 Deploy `K` stateless L4 load-balancer nodes (`IPVS` / `Katran` / `Maglev`), each advertising the **exact same `/32` VIP** to the leaf/border routers over **eBGP + BFD**. The routers spread incoming client TCP flows across the `K` L4 nodes via **resilient 5-tuple ECMP**. Because every L4 node runs **Maglev consistent hashing** on the packet's 5-tuple over the same backend list, even if a router ECMP-rehashes an established TCP flow from L4 Node 1 to L4 Node 2, L4 Node 2 deterministically maps the packet to the **exact same backend server** without needing a shared cross-node connection table.
 </details>
 
 <details>
 <summary>7. Explain the `gRPC` / `HTTP/2` L4 Connection-Pinning problem and state three ways to solve it (`PK` Chapter 6 / `NK` Chapter 2).</summary>
+
 `gRPC` runs over **`HTTP/2`**, which multiplexes hundreds of concurrent RPC calls as streams inside a **single long-lived TCP connection**. If a client (or microservice pod) opens one gRPC channel through an **L4 load balancer** (`kube-proxy` default `iptables` or `IPVS` mode, `nginx stream`, or AWS NLB), the L4 balancer makes a single decision at `SYN` time and pins **100% of all future RPCs on that channel to a single backend pod** while sibling pods sit idle. Fix it by:\n(1) Placing an **L7 HTTP/2-aware proxy** (`Envoy`, `HAProxy proto h2`, `nginx grpc_pass`, or a service mesh) in the path to balance per RPC request;\n(2) Using **client-side gRPC load balancing** (`round_robin` policy resolving a **Headless Service** `clusterIP: None` or via **`xDS`**); or\n(3) Configuring **`MAX_CONNECTION_AGE`** on the server so clients periodically reconnect and rebalance.
 </details>
 
 <details>
 <summary>8. Compare Active Health Checks (`liveness` vs. `readiness`), Passive Outlier Detection, and Slow Start.</summary>
+
 - **Active Health Checks**: periodic synthetic probes (`GET /v2/health/ready`, `grpc.health.v1`, or TCP connect) controlled by `interval`, `timeout`, `fall` (consecutive failures to mark down), and `rise` (successes to mark up). **Liveness** checks if the process is stuck and needs a restart; **Readiness** checks if the replica has finished loading model weights into VRAM and has healthy GPUs to accept traffic.\n- **Passive Outlier Detection**: monitors **real client traffic** (`consecutive_5xx: 5` in Envoy) and temporarily ejects a backend that returns fast 500s or timeouts even if its `/healthz` endpoint still returns 200.\n- **Slow Start (`slowstart 30s`)**: linearly ramps traffic weight from 0% to 100% when a new or recovered backend joins the pool so cold caches/JIT/CUDA contexts are not overwhelmed.
 </details>
 
 <details>
 <summary>9. Why are unbudgeted retries dangerous during a partial outage, and how do Retry Budgets and Circuit Breakers prevent cascading failure?</summary>
+
 If 50% of requests time out when a backend pool is overloaded and every client retries `3` times immediately, applied load **quadruples (`4x`)** (**retry storm / traffic amplification**), knocking over the remaining healthy replicas. Prevent this by: (1) retrying **only idempotent requests or connection failures before bytes are sent**, (2) enforcing a cluster-wide **Retry Budget** (e.g., at most `10%–20%` of active requests may be retries), and (3) configuring **Circuit Breakers** (`max_connections`, `max_pending_requests`, `max_requests`) that fail fast (`503 Service Unavailable`) instead of queueing forever.
 </details>
 
 <details>
 <summary>10. Why does `nginx -s reload` cause problems for long-lived LLM token streams (`SSE` / `gRPC`), and how do Envoy (`xDS`) and HAProxy solve it?</summary>
+
 When open-source `nginx` reloads its configuration (`nginx -s reload`) to pick up new backend pod IPs, the master process spawns a brand-new set of worker processes and tells the old workers to shut down once their active connections close. With long-lived HTTP/2, gRPC, or WebSocket/SSE streams, old workers linger in memory for hours (exhausting RAM) or abruptly sever active token streams when `worker_shutdown_timeout` expires. **Envoy** updates endpoints dynamically in memory via its **`xDS` (`EDS`) API** (and **HAProxy** via its runtime Unix socket / DNS SRV) without spawning new processes or dropping connections.
 </details>
 
 <details>
 <summary>11. Compare the three `kube-proxy` modes in Kubernetes (`iptables`, `IPVS`, and Cilium `eBPF`, `PK` Chapter 6).</summary>
+
 - **`iptables` mode (legacy default)**: programs sequential chain rules (`KUBE-SERVICES` -> `KUBE-SVC-*` -> `KUBE-SEP-*`) using `--mode random --probability` to pick a pod on `SYN`. Rule evaluation scales as **`O(N)`** with the number of Services (slowing packet processing above a few thousand Services) and supports only random L4 connection selection.\n- **`IPVS` mode**: uses in-kernel Linux Virtual Server hash tables (**`O(1)`** lookup at 10,000+ Services) and supports real L4 schedulers (`rr`, `lc`, `wlc`, `sh`, `mh` Maglev).\n- **Cilium `eBPF` kube-proxy replacement**: intercepts `connect()` / `sendmsg()` directly at the **socket layer** (`sockmap`/cgroup eBPF), rewriting the destination `ClusterIP` to the pod IP once at connection setup with zero per-packet `iptables`/DNAT traversal.
 </details>
 
 <details>
 <summary>12. What does `externalTrafficPolicy: Local` vs. `Cluster` do on a Kubernetes `NodePort` or `LoadBalancer` Service (`PK` Chapter 6)?</summary>
+
 - **`Cluster` (default)**: any node receiving external traffic `DNAT`s it across all ready pods cluster-wide (potentially adding an extra node-to-node network hop) and **`SNAT`s the source IP to the node's own IP** so return traffic comes back to that node (**losing the original client IP**).\n- **`Local`**: each node routes traffic **only to pods running locally on that same node** (eliminating the extra hop and **preserving the original client source IP** without SNAT), and fails the cloud load balancer's health-check probe on nodes that have zero local ready pods.
 </details>
 
 <details>
 <summary>13. Why is active TCP connection count (`leastconn`) a poor load metric for LLM inference backends, and what metrics should an inference router use instead?</summary>
+
 In LLM serving, one request with a `32,000`-token prompt or `4,000`-token reasoning chain consumes **`100x` more GPU compute and HBM KV-cache memory** than a short `50`-token prompt, yet both count as "`1` active connection/request". An LLM-aware router (`Gateway API Inference Extension`, `vLLM`/`SGLang`/`Triton` router) routes based on real-time engine telemetry: **(1) number of running + waiting sequences in the batch scheduler queue**, **(2) GPU KV-cache block occupancy percentage**, and **(3) estimated prompt/decode token load**.
 </details>
 
 <details>
 <summary>14. What is Prefix-Cache-Aware Routing in LLM serving, and why must it be paired with Bounded Load?</summary>
+
 Modern inference engines (`vLLM` Automatic Prefix Caching, `SGLang` RadixAttention, `TensorRT-LLM`) cache the **KV-cache blocks** of shared prompt prefixes (system prompts, few-shot examples, long RAG documents, multi-turn chat history) in GPU HBM or host DRAM. Routing requests that share a conversation or system-prompt prefix to the **same replica** avoids recomputing the expensive prefill phase (cutting `TTFT` dramatically). However, if a popular prefix hashes to one replica, pure affinity overloads that single GPU; **Bounded-Load Consistent Hashing** routes to the affinity replica only while its queue/KV load is below a threshold (`<= 1.25x` average load), spilling excess requests to the next candidate.
 </details>
 
 <details>
 <summary>15. How does Disaggregated Prefill/Decode Serving change the inference load-balancing architecture?</summary>
+
 Because **Prefill** is compute-bound (high parallel FLOPs, determines `TTFT`) and **Decode** is memory-bandwidth-bound (low batch FLOPs, determines inter-token latency `TPOT`), mixing long prefills and decodes on the same GPU stalls ongoing decode token streams. A **disaggregated router** sends incoming prompts first to a **Prefill pool** (optimized for compute throughput), coordinates transferring the resulting KV-cache blocks over **RDMA (`NVLink` / `RoCEv2` / `InfiniBand` via `Mooncake` / `NIXL`)** to a selected **Decode pool** replica (chosen by available KV-cache memory), and streams the decoded tokens from the Decode replica.
 </details>
 
 <details>
 <summary>16. What specific proxy configuration settings are required in `nginx`, `HAProxy`, and `Envoy` for Server-Sent Events (`SSE`) token streaming?</summary>
+
 (1) **Disable response buffering** (`proxy_buffering off; proxy_cache off;` in nginx, small `grpc_buffer_size 4k`) so each generated token is flushed to the client the millisecond it leaves the model;\n(2) **Raise read/stream-idle timeouts** (`proxy_read_timeout 600s;`, HAProxy `timeout server 300s` / `timeout tunnel 1h`, Envoy `stream_idle_timeout: 600s`) above the longest reasoning/thinking pause;\n(3) **Keep upstream connections alive** (`proxy_http_version 1.1; proxy_set_header Connection "";` or `HTTP/2`).
 </details>
 
 <details>
 <summary>17. Walk through the exact sequence of a zero-downtime rolling deployment for an LLM inference pod with 5-minute streaming responses.</summary>
+
 (1) Kubernetes sends `SIGTERM` to the terminating pod and removes it from `EndpointSlices` (or a `preStop` hook flips `/health/ready` to `503` and sleeps `5–10 s` so the L7 Ingress/Envoy finishes propagating the endpoint removal before the app stops accepting connections);\n(2) The L7 proxy stops sending **new** requests to the pod while keeping existing **in-flight streaming connections** open;\n(3) `terminationGracePeriodSeconds` on the Pod spec (and the LB's deregistration/drain timeout) is set to **`>= 360` seconds** (longer than the 5-minute max generation time);\n(4) Once in-flight streams reach `[DONE]`, the server exits cleanly before `SIGKILL`.
 </details>
 
 <details>
 <summary>18. What is Envoy's \"Panic Threshold\" (default `50%`), and why does it exist?</summary>
+
 Normally, Envoy routes traffic only to endpoints marked **healthy** by active health checks. However, if a network blip, bad health-check dependency, or partial overload causes the percentage of healthy endpoints in a cluster to drop **below the Panic Threshold (default `50%`)**, routing 100% of cluster traffic onto the remaining `< 50%` of backends would instantly crush them in a cascading failure. Below the panic threshold, Envoy enters **panic mode** and distributes traffic across **all** endpoints (healthy and unhealthy alike) to survive the brownout.
 </details>
 
 <details>
 <summary>19. Why does `HTTP/3` (`QUIC` over UDP) require special support at the L4 load-balancer tier?</summary>
+
 A core feature of `QUIC` (`RFC 9000`) is **connection migration**: when a mobile or roaming client switches from Wi-Fi to 5G or rebinds its NAT port, its **source IP and UDP source port change** while its **QUIC Connection ID (`CID`)** in the packet header stays the same. A naive L4 load balancer hashing only on the UDP 5-tuple will route the migrated packet to a **different** backend server, breaking the connection; QUIC-aware L4 load balancers (`Envoy`, `Cloudflare`, `Katran` CID routing) coordinate and route using the server-generated **Connection ID**.
 </details>
 
 <details>
 <summary>20. Give the end-to-end reference architecture for a production multi-tenant LLM inference ingress and load-balancing stack.</summary>
+
 `Client` -> **Anycast / DNS GSLB** -> **L3 ECMP (`eBGP + BFD`, resilient hashing)** -> **Stateless L4 tier (`Maglev` / `Katran` / Cloud NLB)** -> **L7 Gateway tier (`Envoy` / `Gateway API` terminating TLS 1.3, authenticating JWT/API keys, enforcing per-tenant token-bucket rate limits, and disabling SSE buffering)** -> **LLM-Aware Endpoint Picker (`P2C` over queue depth + KV-cache occupancy + bounded-load prefix-hash affinity)** -> **Inference Pods (`vLLM` / `SGLang` / `Triton` / `NIM` with `/v2/health/ready`, DCGM GPU health gate, and 600s graceful drain)**.
 </details>
 

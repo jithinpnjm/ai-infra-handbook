@@ -476,101 +476,121 @@ Next, on a disposable Linux VM with 4 or more vCPUs (`stress-ng`, `sysstat`, `fi
 
 <details>
 <summary>1. What is the difference between latency, response time, throughput, bandwidth, and IOPS?</summary>
+
 **Response time** is the total time for an operation to complete (`wait time + service time`); **latency** is the time spent waiting before service (or qualified as request/network latency); **throughput** is the actual rate of work completed (`bytes/s`, `tokens/s`, `requests/s`); **bandwidth** is the theoretical maximum possible throughput of a link/bus; and **IOPS** is the rate of I/O operations per second regardless of transfer size.
 </details>
 
 <details>
 <summary>2. Why should you convert performance metrics into time (`latency`) whenever possible?</summary>
+
 Counts like `"100 network packets"` versus `"50 disk reads"` or utilization percentages cannot be added or compared directly. Converting both to time (`100 ms` spent in network I/O vs `50 ms` spent in disk I/O along the synchronous path) lets you compare components directly and calculate the exact Amdahl speedup of fixing each one.
 </details>
 
 <details>
 <summary>3. Define Utilization, Saturation, and Errors in the USE method, and explain why `100%` time-based utilization does not always mean `100%` capacity.</summary>
+
 **Utilization** is the fraction of time a resource was busy (or fraction of capacity used); **Saturation** is the degree to which extra work cannot be serviced immediately and must queue; and **Errors** are counts of failed or retried operations. A parallel resource (such as an NVMe SSD with 64k queues or a multi-lane NIC) is "100% busy" whenever a single request is active, even when it has `> 90%` of its parallel capacity still unused.
 </details>
 
 <details>
 <summary>4. Name the three anti-methods described by Brendan Gregg and how the Problem Statement + Scientific Method replace them.</summary>
+
 The three anti-methods are the **Streetlight anti-method** (running familiar tools where the light is good), **Random change** (guessing and tweaking tunables until something seems faster), and **Blame-someone-else** (passing the ticket to the network/storage team without evidence). Replace them by first answering the 6-question **Problem Statement**, then applying the **Scientific Method** (`Question -> Hypothesis -> Prediction -> Test -> Analysis`, changing one variable at a time and reverting failed tests).
 </details>
 
 <details>
 <summary>5. List the ten commands of the Linux 60-second checklist and what each reveals.</summary>
+
 (1) `uptime` (1/5/15-min load averages), (2) `dmesg -T | tail` (OOM kills, Xid/NVRM/hardware errors), (3) `vmstat -SM 1` (run queue `r`, blocked `b`, swap `si/so`, CPU `us/sy/id/wa/st`), (4) `mpstat -P ALL 1` (per-core balance, hot CPU, `%soft`, `%steal`), (5) `pidstat 1` (per-process CPU), (6) `iostat -sxz 1` (disk `await`, `aqu-sz`, `%util`), (7) `free -m` (`MemAvailable` and cache), (8) `sar -n DEV 1` (NIC throughput/packets), (9) `sar -n TCP,ETCP 1` (TCP connects and retransmits), and (10) `top` (combined overview).
 </details>
 
 <details>
 <summary>6. What additional commands belong on a 60-second checklist for an 8-GPU training or inference node?</summary>
+
 `nvidia-smi` and `nvidia-smi -q -d PERFORMANCE` (presence, power draw vs cap, thermal/power throttle reasons), `nvidia-smi dmon -s pucvmet -d 1` (1-second SM/mem clocks, PCIe/NVLink throughput, ECC), `nvidia-smi topo -m` and `nvidia-smi nvlink -s` (topology and active NVLink lanes), `dcgmi dmon` / `dcgmi diag -r 1` (SM occupancy, tensor-pipe activity), `journalctl -k | grep -iE 'NVRM|Xid'`, `ibstat` / `perfquery` / `ethtool -S` (RDMA link state and symbol/CRC errors), and `cat /proc/pressure/{cpu,memory,io}`.
 </details>
 
 <details>
 <summary>7. Why is `GPU-Util` in `nvidia-smi` a misleading efficiency metric, and what should you measure instead?</summary>
+
 `GPU-Util` only reports the percentage of sampling intervals during which *at least one* kernel was executing on *at least one* Streaming Multiprocessor (SM)—a tiny kernel using 1 of 132 SMs continuously reports `100% GPU-Util`. Measure DCGM **SM occupancy**, **Tensor Core activity**, **DRAM bandwidth utilization**, **Model FLOPs Utilization (`MFU`)**, and actual **tokens/s or samples/s**.
 </details>
 
 <details>
 <summary>8. In what order does the USE method check U, S, and E, and why must software resources and cgroup limits be included?</summary>
+
 Check **Errors** first (because they are fast to read, objective, and rarely benign), **Saturation** second (because any queueing directly adds latency), and **Utilization** third. You must also check software resources (mutexes, thread pools, file descriptors, `RLIMIT_MEMLOCK`) and container **cgroup limits** (`cpu.stat` `nr_throttled`, `memory.current` vs `memory.max`), because a container frequently hits its software cgroup cap while the physical host is mostly idle.
 </details>
 
 <details>
 <summary>9. Why do 5-minute monitoring averages hide saturation, and what is the 60% utilization rule?</summary>
+
 A resource that is 100% saturated for 10 seconds every minute and idle for 50 seconds reports a calm `17%` average over a 5-minute window while requests suffer severe queueing spikes during each burst; always inspect 1-second intervals (`vmstat 1`, `iostat 1`, `dmon -d 1`) or PSI counters. For non-preemptible resources (disks, NICs, GPU inference streams), queueing delay rises nonlinearly above **`~60%–70%` average utilization** (`M/D/1` waiting time doubles by `60%`).
 </details>
 
 <details>
 <summary>10. What is the RED method, and how does it distinguish a load problem from an architecture/resource problem?</summary>
+
 RED monitors every service by **Request rate**, **Errors**, and **Duration** (latency percentiles `p50`, `p95`, `p99`, plus `TTFT` and `TPOT` for LLM serving). If **Duration** rises at the same time **Request rate** spikes, the slowdown is driven by applied load; if **Duration** rises while **Request rate** is constant, the cause is an internal resource bottleneck, configuration drift, or architectural contention.
 </details>
 
 <details>
 <summary>11. What four questions does Workload Characterization ask, and why can it achieve larger speedups than hardware tuning?</summary>
+
 Workload characterization asks: (1) **Who** is generating the load (PID, user, tenant, IP)? (2) **Why** is it being called (code path, stack trace, API)? (3) **What** is the workload profile (IOPS, bytes, R/W ratio, batch/sequence sizes, variance)? and (4) **How** does it vary over time? Eliminating unnecessary work at the top of the stack ("the fastest request is the one you never make") routinely yields `10x–20x` gains compared to `10%–20%` from low-level kernel tuning.
 </details>
 
 <details>
 <summary>12. Explain the three stages of Drill-Down Analysis, Latency Analysis (binary search), and the Five Whys.</summary>
+
 **Three-stage drill-down** moves from fleet-wide **Monitoring** (dashboards/alerts) -> node-level **Identification** (60-second checklist + USE) -> deep **Analysis** (profiling/tracing with `perf`, `bpftrace`, `Nsight Systems`). **Latency analysis** splits total operation time into two (or more) synchronous phases (`data + H2D + compute + collective + checkpoint`) and recursively drills into the largest fraction. **Five Whys** chains evidence-backed causes until reaching the actionable root cause.
 </details>
 
 <details>
 <summary>13. What is Static Performance Tuning, and what are six common static misconfigurations found on GPU nodes?</summary>
+
 Static performance tuning audits the configured state of hardware and software at rest rather than live load. Six common GPU-node findings are: (1) PCIe link downtrained (`x8` or Gen3 instead of `x16` Gen5 in `lspci -vv`), (2) NIC negotiated at `100 GbE` instead of `400 GbE` or wrong MTU, (3) CPU frequency governor left on `powersave` instead of `performance`, (4) `nvidia-persistenced` or `nvidia-fabricmanager` inactive, (5) `ulimit -l` (`memlock`) or `vm.max_map_count` left at defaults, and (6) debug flags (`NCCL_DEBUG=INFO`, `CUDA_LAUNCH_BLOCKING=1`) left enabled in production.
 </details>
 
 <details>
 <summary>14. List Brendan Gregg's seven Performance Mantras in order from most effective to least effective.</summary>
+
 (1) **Don't do it** (eliminate unnecessary work), (2) **Do it, but don't do it again** (cache results), (3) **Do it less** (coalesce, sample, or reduce frequency), (4) **Do it later** (defer/asynchronous write-back), (5) **Do it when they're not looking** (run during off-peak windows), (6) **Do it concurrently** (parallelize and overlap compute with communication), and (7) **Do it more cheaply** (use faster hardware or lower precision).
 </details>
 
 <details>
 <summary>15. State Amdahl's Law and Gunther's Universal Scalability Law (`USL`), and explain why throughput can decline at high GPU counts under USL.</summary>
+
 **Amdahl's Law** is `C(N) = N / (1 + α(N - 1))`, where `α` is the serial/contended fraction; capacity approaches an asymptotic ceiling of `1 / α`. **Gunther's USL** adds a pairwise coherence/crosstalk penalty `β`: `C(N) = N / (1 + α(N - 1) + βN(N - 1))`. When `β > 0` (such as all-to-all/all-reduce synchronization overhead across nodes), the quadratic `βN(N - 1)` denominator grows faster than `N`, causing aggregate throughput to peak and then **fall** as more workers are added.
 </details>
 
 <details>
 <summary>16. State Little's Law (`L = λW`) and the M/D/1 response-time formula, and apply both to an inference server.</summary>
+
 **Little's Law** states that average concurrency in a system equals arrival rate times mean residence time (`L = λW`): at `λ = 200 req/s` and `W = 0.050 s`, `L = 10` requests are in flight. For an **M/D/1** queue (Poisson arrivals, deterministic service time `s`, utilization `ρ`), mean response time is `r = s(2 - ρ) / (2(1 - ρ))`: at `ρ = 60%`, `r = 1.75s`; at `ρ = 80%`, `r = 3.0s`; and at `ρ = 90%`, `r = 5.5s`.
 </details>
 
 <details>
 <summary>17. Why are arithmetic averages dangerous for latency and transfer rates, and when must you use percentiles and the harmonic mean?</summary>
+
 Latency distributions are frequently **bimodal** (fast cache hits + slow misses) with long tails; the arithmetic mean describes neither mode, so SLOs and distributed-training straggler analysis must use **percentiles** (`p50`, `p95`, `p99`) and histograms/heat maps. When averaging **rates** (such as `MB/s` or `tokens/s` across equal or weighted work segments), you must use the **harmonic mean** (`total_work / sum(work_i / rate_i)`), not the arithmetic mean.
 </details>
 
 <details>
 <summary>18. Contrast the चार primary observability tool types: Counters, Profiling, Tracing, and Monitoring.</summary>
+
 **Counters** (`vmstat`, `iostat`, `sar`, `ethtool -S`, `nvidia-smi`) read cheap cumulative kernel/hardware registers to compute rates and averages; **Profiling** (`perf record -F 99`, `py-spy`, flame graphs) samples running stack traces to show where time is spent; **Tracing** (`strace`, `tcpdump`, `bpftrace`, `Nsight Systems`) captures individual events with timestamps to expose outliers and ordering; and **Monitoring** (`Prometheus`, `Grafana`, `DCGM exporter`) records time series and triggers alerts across the fleet.
 </details>
 
 <details>
 <summary>19. Define Model FLOPs Utilization (`MFU`), Scaling Efficiency, and Goodput on an AI training cluster.</summary>
+
 **MFU** is the ratio of achieved model arithmetic FLOPs/s (from the model architecture and tokens/s) to the GPU's peak theoretical dense FLOPs/s at that precision. **Scaling efficiency** is `throughput(N) / (N * throughput(1))`. **Goodput** is the fraction of paid cluster GPU-hours that produce committed forward training progress—excluding time lost to node crashes, restarts, checkpoint stalls, data starvation, and straggler waits.
 </details>
 
 <details>
 <summary>20. In Case Study 2 ("benchmarking a data-pipeline change"), why did both library versions plateau at `700 samples/s`, and what two lessons follow?</summary>
+
 The single-threaded **load generator** on the client was saturating 100% of one CPU core at `700 samples/s`, capping the test before the server was stressed. Switching to a **fixed-rate test** at `700/s` revealed the new library used `30%` CPU vs `20%` (`1.5x` more CPU per sample), and parallelizing the load generator proved the true server ceilings (`3,500/s` vs `2,300/s`). Always **benchmark the benchmarker** (`active benchmarking`) and normalize to **resource cost per request**.
 </details>
 

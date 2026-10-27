@@ -522,101 +522,121 @@ Next, on two or three disposable GCP VMs (all interactive VM commands below are 
 
 <details>
 <summary>1. Why must out-of-band management (BMC/IPMI/iKVM/Redfish) be configured and tested before a cluster goes into production?</summary>
+
 Out-of-band network access on server BMCs is frequently disabled or left on unconfigured defaults from the factory. When a node's kernel panics, hangs in BIOS/GRUB, or loses its OS network, you cannot run `ipmitool lan set` locally to turn BMC networking on—so DHCP, MAC-to-node tables, SOL, and non-default passwords must be pre-configured during initial rack bring-up.
 </details>
 
 <details>
 <summary>2. Why does SSH use both asymmetric (public-key) and symmetric cryptography?</summary>
+
 Asymmetric (public-key) cryptography authenticates the server's host key and the user's identity and negotiates a shared session key (Diffie-Hellman key exchange) over an untrusted network without ever transmitting a secret. Symmetric encryption is orders of magnitude faster and encrypts the actual session traffic, periodically re-keying during long connections.
 </details>
 
 <details>
 <summary>3. What is an SSH host key, where does the client store it, and what happens if you reimage a node without restoring `/etc/ssh/ssh_host_*`?</summary>
+
 Each SSH server has a host key pair in `/etc/ssh/ssh_host_*`; on first login, the client saves the server's public key in `~/.ssh/known_hosts`. If a node is reimaged and generates a brand-new host key at the same IP/hostname, every client and automation script refuses to connect with a `REMOTE HOST IDENTIFICATION HAS CHANGED` man-in-the-middle warning.
 </details>
 
 <details>
 <summary>4. Walk through the seven steps of an SSH public-key login, and state whether the user's private key ever leaves the client machine.</summary>
+
 (1) Client and server negotiate an encrypted symmetric channel; (2) client verifies the server's host key against `known_hosts`; (3) client sends the username; (4) client sends the **public** half of a candidate key pair; (5) server checks whether that public key is listed in `~/.ssh/authorized_keys`; (6) if found, server sends a cryptographic challenge that the client signs locally using its **private** key (which **never** leaves the client); and (7) on valid signature, server starts the shell or command.
 </details>
 
 <details>
 <summary>5. Why must you append (`>>`) rather than overwrite (`>`) `~/.ssh/authorized_keys`, what permissions does `StrictModes` require, and how do you convert an RFC 4716 key?</summary>
+
 `authorized_keys` holds one public key per line for every key/person allowed into that account; overwriting it locks out existing keys. `StrictModes yes` (the default) requires the user's home directory not to be writable by others, `~/.ssh` to be mode `0700`, and `~/.ssh/authorized_keys` to be mode `0600` owned by the user. Convert a multi-line RFC 4716 public key with `ssh-keygen -i -f rfc-key.pub >> ~/.ssh/authorized_keys`.
 </details>
 
 <details>
 <summary>6. What are the risks of `StrictHostKeyChecking=no` and empty-passphrase keys, and how do you mitigate both on a cluster?</summary>
+
 `StrictHostKeyChecking=no` blindly trusts any host key on first contact (vulnerable to MITM on untrusted networks); use it only once on an isolated management VLAN (`for h in $(cat nodes.txt); do ssh -o StrictHostKeyChecking=no "$h" true; done`) or pre-distribute verified keys in `/etc/ssh/ssh_known_hosts`. An empty-passphrase private key file gives instant access if stolen; prefer `ssh-agent` with a passphrase, or restrict automation keys in `authorized_keys` with `from="..."` and `command="..."`.
 </details>
 
 <details>
 <summary>7. What do the SSH escape sequences `<Enter>~.`, `<Enter>~Z`, `<Enter>~~`, and `<Enter>~~.` do?</summary>
+
 Typed immediately after a newline (`<Enter>`), `~.` terminates a hung SSH connection locally; `~Z` suspends the `ssh` client into the background (`fg` resumes); `~~` sends a single literal `~`; and `~~.` sends `~.` through the outer SSH session to terminate an **inner** SSH or IPMI Serial-over-LAN (`sol`) session without dropping your outer SSH connection.
 </details>
 
 <details>
 <summary>8. Explain local port forwarding (`ssh -L 8080:192.168.0.10:80 bastion`), remote port forwarding (`-R`), and connection multiplexing (`ControlMaster`).  </summary>
+
 `-L 8080:192.168.0.10:80 bastion` binds port `8080` on your laptop and tunnels connections through `bastion` to `192.168.0.10:80` on the internal network (`-R` binds a port on the remote server and tunnels back to your client side). `ControlMaster auto` + `ControlPath` + `ControlPersist 10m` multiplexes subsequent `ssh`/`scp`/`rsync` sessions over a single already-authenticated TCP/SSH connection.
 </details>
 
 <details>
 <summary>9. In `/etc/ssh/sshd_config`, in what exact order are `AllowUsers`, `DenyUsers`, `AllowGroups`, and `DenyGroups` evaluated, and what does `PermitRootLogin prohibit-password` mean?</summary>
+
 OpenSSH evaluates them in the strict order: **`DenyUsers` -> `AllowUsers` -> `DenyGroups` -> `AllowGroups`**. If `AllowUsers` is non-empty, any user not matching `AllowUsers` is denied even if their group is listed in `AllowGroups`. `PermitRootLogin prohibit-password` (formerly `without-password`) forbids password-based root login while allowing public-key root login.
 </details>
 
 <details>
 <summary>10. How do `Match` blocks in `sshd_config` and key options in `authorized_keys` let you lock down service and SFTP accounts?</summary>
+
 In `sshd_config`, a `Match Group sftponly` block with `ForceCommand internal-sftp`, `AllowTcpForwarding no`, and `X11Forwarding no` confines those users to SFTP. In `~/.ssh/authorized_keys`, prefixing a key with `from="10.0.0.0/8",command="/usr/local/bin/status-only",no-port-forwarding,no-pty` ensures that key can only execute that single script and only from the `10.0.0.0/8` subnet.
 </details>
 
 <details>
 <summary>11. How does SSH Host-Based Authentication work across a cluster, and what is its main security trade-off?</summary>
+
 The server enables `HostbasedAuthentication yes` (inside a `Match Address` block for the cluster subnet), lists trusted client hostnames/IPs in `/etc/shosts.equiv` (`0600` root), and stores every client's public host key in `/etc/ssh/ssh_known_hosts` (`ssh-keyscan`); clients set `HostbasedAuthentication yes` and `EnableSSHKeysign yes` in `/etc/ssh/ssh_config`. It avoids managing per-user keys across nodes, at the cost that root compromise on one trusted host grants access to all other hosts.
 </details>
 
 <details>
 <summary>12. Why is a shell `for` loop (`for h in ...; do ssh "$h" cmd; done`) unsuitable for managing 500 cluster nodes?</summary>
+
 A sequential `for` loop runs one node at a time (taking minutes), stalls the entire loop if a single node is hung without `ConnectTimeout`, and—if backgrounded with `&`—spawns 500 simultaneous `ssh` processes that interleave unlabelled output lines and overwhelm the head node.
 </details>
 
 <details>
 <summary>13. Compare `pdsh` and ClusterShell (`clush` / `cluset`) for parallel command execution and output folding.</summary>
+
 Both run commands in parallel across node ranges (`-w node-[01-64] -x node-13`) or groups (`-g gpu`), cap concurrency (`-f 32`), and enforce timeouts (`-u 10`). To fold identical output across nodes so outliers stand out immediately, pipe `pdsh` into **`dshbak -c`**, or pass **`-b`** (and **`--diff`**) directly to **`clush`**. `cluset` expands (`-e`), folds (`-f`), and counts (`-c`) node expressions.
 </details>
 
 <details>
 <summary>14. How does ClusterShell integrate with Slurm to target nodes by partition or state?</summary>
+
 After enabling `/etc/clustershell/groups.conf.d/slurm.conf`, `clush` can query Slurm dynamically using `@sp:<partition>` (e.g., `clush -w @sp:main uptime`) and `@st:<state>` (e.g., `clush -w @st:idle 'lsmod | grep nvidia'` or `@st:drain`).
 </details>
 
 <details>
 <summary>15. Compare GNU `screen` and `tmux` across hotkeys, idempotent reattach commands, splitting panes, and scrollback copy mode.</summary>
+
 `screen` uses prefix **`Ctrl-a`**, attaches/creates with `screen -xRR` (or `-DRR`), splits with `|` / `S`, and enters scrollback copy mode with `Ctrl-a Esc`. `tmux` uses prefix **`Ctrl-b`**, attaches/creates with `tmux new -A -s 0`, splits left/right with `%` and top/bottom with `"`, zooms a pane with `z`, and enters scrollback copy mode with `Ctrl-b [`. In both, never put slow external commands in the status bar, or a hung status script will freeze your terminal windows.
 </details>
 
 <details>
 <summary>16. What kernel modules are required to talk to a server's local BMC via `ipmitool`, and how do you configure the BMC's IP address from Linux?</summary>
+
 Load `ipmi_devintf`, `ipmi_si`, and `ipmi_msghandler`, inspect with `sudo ipmitool lan print`, and configure channel `1` with `sudo ipmitool lan set 1 ipsrc static`, `ipaddr 10.0.1.2`, `netmask 255.255.255.0`, and `defgw ipaddr 10.0.1.1` (or `ipsrc dhcp`).
 </details>
 
 <details>
 <summary>17. When running `ipmitool` remotely over the network, what is the difference between `-I lan` and `-I lanplus`, and why must you never use `-P <password>`?</summary>
+
 `-I lan` selects legacy IPMI 1.5, whereas **`-I lanplus`** selects IPMI 2.0 (required for modern BMCs and Serial-over-LAN `sol`). Passing `-P <password>` on the command line exposes the BMC password in plain text to every user on the system via `ps aux` and saves it in `~/.bash_history`; always use **`-f /path/to/passfile`** (`0600`) or **`-E`** (`IPMI_PASSWORD` environment variable).
 </details>
 
 <details>
 <summary>18. Why is `ipmitool power off` followed by a pause and `ipmitool power on` preferred over `ipmitool power cycle`?</summary>
+
 On some BMC firmware implementations, `power cycle` fails to fully discharge board rails or hangs if the server is in a wedged state; issuing an explicit `power off`, waiting a few seconds (`power status`), and issuing `power on` is deterministic across vendors.
 </details>
 
 <details>
 <summary>19. What are the security weaknesses of IPMI 2.0, and what four controls protect the BMC network?</summary>
+
 IPMI 2.0's `RMCP+` authentication (`RAKP`) allows a remote attacker to request the salted password hash for any valid username and crack it offline, and BMC firmware has a history of critical vulnerabilities. Protect BMCs by: (1) placing all BMCs on a **physically separate management network or isolated VLAN** unreachable from compute/user networks, (2) changing all default passwords to strong unique secrets, (3) disabling IPMI-over-LAN where authenticated HTTPS **Redfish** is supported, and (4) keeping BMC firmware updated.
 </details>
 
 <details>
 <summary>20. How do `conman`, `powerman`, and `iKVM` complement `ipmitool` on a large cluster?</summary>
+
 **`conman`** maintains persistent, timestamp-logged Serial-over-LAN (`SOL`) connections to every node in the cluster so you can inspect kernel panic output that happened *before* you attached. **`powerman`** provides unified power control across both IPMI BMCs and rack PDUs. **`iKVM`** (HTML5 KVM-over-IP) captures the actual video framebuffer and emulates a USB keyboard/mouse, allowing you to see and interact with graphical BIOS/UEFI setup menus and pre-OS boot errors that never reach a serial port.
 </details>
 

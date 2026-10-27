@@ -550,101 +550,121 @@ ldconfig -p | grep -E 'libcuda\.so|libnvidia-ml' # (untested here)
 
 <details>
 <summary>1. List in order what happens between `execve("./train")` and the first line of `main()`.</summary>
+
 The shell calls `fork()` and the child calls `execve()`; the kernel verifies permissions and the `\x7fELF` header; the ELF loader maps the `LOAD` segments (`.text`, `.data`, `.bss`), sets up the stack (`argc`, `argv`, `envp`, `auxv`) and heap, and maps the dynamic linker named in `PT_INTERP` (`/lib64/ld-linux-x86-64.so.2`); execution begins in `ld.so`, which loads `DT_NEEDED` libraries, performs relocations (with PLT/GOT lazy binding), and runs library constructors; control jumps to `_start`, which calls `__libc_start_main` to initialize `stdio`/`atexit` and finally invokes `main()`.
 </details>
 
 <details>
 <summary>2. What is `PT_INTERP`, and why does running a glibc binary on Alpine Linux (`musl`) print "not found" even when the binary file is right there?</summary>
+
 `PT_INTERP` is the ELF program header specifying the path to the dynamic linker (`/lib64/ld-linux-x86-64.so.2`). When the kernel's ELF loader cannot find the `PT_INTERP` file on disk (because Alpine only has `/lib/ld-musl-x86_64.so.1`), `execve()` returns `ENOENT` ("No such file or directory") for the missing interpreter.
 </details>
 
 <details>
 <summary>3. What is `binfmt_misc`, and what causes `Exec format error`?</summary>
+
 `binfmt_misc` is a kernel facility that registers user-space interpreters/emulators (such as `qemu-user-static` for ARM64 binaries on x86-64, Java `.jar` runners, or Wine) by magic bytes or file extension. `Exec format error` (`ENOEXEC`) occurs when `execve()` is given a binary for the wrong CPU architecture (`x86-64` on `aarch64` Grace) or an executable text script missing a valid `#!` shebang.
 </details>
 
 <details>
 <summary>4. What is the difference between ELF sections and ELF segments, and which tools inspect each?</summary>
+
 **Sections** (`.text`, `.rodata`, `.data`, `.bss`, `.symtab`, `.dynsym`, `.dynamic`, inspected with `readelf -S` and `objdump`) are the linker's and debugger's view of the file. **Segments** (program headers: `LOAD`, `INTERP`, `DYNAMIC`, `GNU_RELRO`, inspected with `readelf -l`) are the kernel loader's view describing what byte ranges to `mmap()` into memory with `r-x` or `rw-` permissions.
 </details>
 
 <details>
 <summary>5. How does lazy binding work via the PLT and GOT, and what does `LD_BIND_NOW=1` (or `-z now`) change?</summary>
+
 Under lazy binding, shared-library function calls jump through a stub in the Procedure Linkage Table (`PLT`) that reads the target address from the Global Offset Table (`GOT`); on the first call, the `GOT` entry points back into `ld.so` to resolve the symbol on demand and patch the `GOT`. Setting `LD_BIND_NOW=1` (or linking with `-Wl,-z,now` for full `RELRO`) forces `ld.so` to resolve all symbols at startup before `main()` runs and marks the `GOT` read-only.
 </details>
 
 <details>
 <summary>6. What are the regions of a Linux process's virtual address space, and how does `malloc()` use `brk()` versus `mmap()`?</summary>
+
 From low to high addresses: Text (`r-x`), Data and BSS (`rw-`), the Heap (grows upward via `brk()`), the `mmap` region (shared libraries, mapped files, thread stacks, and large anonymous allocations), `vDSO`/`vvar`, the main Stack (grows downward, `ulimit -s` `8 MiB`), and Kernel space. `malloc()` satisfies small allocations from heap arenas (`brk()`) and uses anonymous `mmap()` for large allocations (default threshold ~`128 KiB`) so `munmap()` can return large blocks directly to the kernel.
 </details>
 
 <details>
 <summary>7. Why does `mapdemo.c` show `VIRT = 1 GiB` and `RSS ≈ 0` after `mmap()`, and why does touching every `4 KiB` page cause `262,144` minor page faults?</summary>
+
 `mmap()` reserves virtual address space in the process's page tables without allocating physical RAM frames (**demand paging**). As the loop writes `1` byte every `4,096` bytes across `1 GiB` (`1,073,741,824 / 4,096 = 262,144` pages), each first touch triggers a **minor page fault** in which the kernel allocates and maps a zeroed physical RAM page.
 </details>
 
 <details>
 <summary>8. Why does a Python data-loader worker's `RSS` often remain high even after `del` and `gc.collect()`, and how do you mitigate it?</summary>
+
 Both Python's object allocator and glibc `malloc` manage memory in large arenas; if even one small object remains live inside an arena, the allocator cannot return that arena's pages to the OS. Mitigate by recycling worker processes periodically (`maxtasksperchild` / `persistent_workers` tuning), preloading `libjemalloc.so.2` or `libtcmalloc.so.4`, or tuning `MALLOC_ARENA_MAX` / `MALLOC_TRIM_THRESHOLD_`.
 </details>
 
 <details>
 <summary>9. How does a system call transition from a C library wrapper to the kernel and back, and why are `clock_gettime` and `gettimeofday` invisible in `strace`?</summary>
+
 The C wrapper places the syscall number and arguments in CPU registers and executes `syscall` (`x86-64`) or `svc` (`ARM64`), trapping into ring 0; on failure, the kernel returns `-errno` and the wrapper sets thread-local `errno` and returns `-1`. Hot timekeeping calls (`clock_gettime`, `gettimeofday`, `getcpu`) execute directly in user space via the kernel-mapped **`vDSO`** page without a mode switch, so `ptrace`/`strace` never sees them.
 </details>
 
 <details>
 <summary>10. Distinguish a shared library's linker name, soname, and real name (`libfoo.so`, `libfoo.so.1`, `libfoo.so.1.2.3`).</summary>
+
 `libfoo.so` is the **linker name** (a symlink shipped in the `-dev`/`-devel` package used by `ld` when you compile with `-lfoo`). `libfoo.so.1` is the **soname** (encoding the major ABI version, recorded inside executables' `DT_NEEDED` headers and managed by `ldconfig`). `libfoo.so.1.2.3` is the **real name** of the actual shared object file on disk.
 </details>
 
 <details>
 <summary>11. What causes `version 'GLIBC_2.34' not found` and `version 'GLIBCXX_3.4.30' not found`, and how do you prevent each?</summary>
+
 `GLIBC_2.34 not found` means the binary was compiled on a distribution with glibc `>= 2.34` and is being run on an older OS; prevent it by building on the oldest supported OS (such as `manylinux` containers). `GLIBCXX_3.4.30 not found` usually happens when a conda environment or vendor directory in `LD_LIBRARY_PATH` supplies an older `libstdc++.so.6` that shadows the host's newer `libstdc++.so.6`.
 </details>
 
 <details>
 <summary>12. How do `RPATH` and `RUNPATH` differ with respect to `LD_LIBRARY_PATH`, and how do `$ORIGIN` and `patchelf` work?</summary>
+
 `DT_RPATH` is searched **before** `LD_LIBRARY_PATH`, whereas `DT_RUNPATH` is searched **after** `LD_LIBRARY_PATH` (both before `/etc/ld.so.cache` and `/lib`, `/usr/lib`). `$ORIGIN` expands to the directory containing the executable or `.so` itself (`-Wl,-rpath,'$ORIGIN/../lib'`), allowing relocatable bundles such as Python wheels; `patchelf --set-rpath` edits the path in an already-compiled ELF file.
 </details>
 
 <details>
 <summary>13. What do `LD_PRELOAD` and `LD_DEBUG=libs` do, and why should you never run `ldd` on an untrusted binary?</summary>
+
 `LD_PRELOAD=/path/lib.so` loads the specified library before all others so its symbols interpose on standard functions (used for `jemalloc`/`tcmalloc` or profiling, and ignored on setuid binaries). `LD_DEBUG=libs ./prog` prints every directory and file `ld.so` searches. Because some `ldd` implementations invoke the binary under the dynamic loader, running `ldd` on an untrusted ELF file can execute arbitrary code; use `readelf -d prog | grep NEEDED` or `objdump -p prog` instead.
 </details>
 
 <details>
 <summary>14. Why can `strace` slow a syscall-heavy process down by `10x` to `70x`, and what are the low-overhead alternatives?</summary>
+
 `strace` uses `ptrace`, which stops the target process and context-switches to `strace` twice per system call (entry and exit), even when calls are filtered with `-e`. For low-overhead production tracing, use in-kernel buffering and eBPF aggregation: `perf trace`, `perf stat -e 'syscalls:*'`, `syscount`, `opensnoop`, `execsnoop`, or `bpftrace`.
 </details>
 
 <details>
 <summary>15. What do `strace` flags `-f`, `-ff`, `-c`, `-T`, `-tt`, `-s 200`, and `-yy` do?</summary>
+
 `-f` traces child processes and threads; `-ff -o prefix` writes one file per PID/TID; `-c` prints a summary table of total time, calls, and errors per syscall; `-T` prints the duration spent inside each syscall; `-tt` prints microsecond wall-clock timestamps; `-s 200` increases the printed string length from 32 to 200 bytes; and `-yy` decodes file descriptors into paths and socket IP:port endpoints.
 </details>
 
 <details>
 <summary>16. Contrast mutexes, spin locks, and hybrid `futex` locks, and explain false sharing (`SP` Chapter 5).</summary>
+
 A spin lock burns CPU cycles polling in user space until acquired, whereas a sleeping mutex blocks the waiting thread off-CPU. Linux `pthread_mutex` uses a hybrid **futex** (*fast userspace mutex*): it attempts an atomic compare-and-swap in user space, spins briefly if the owner is running, and calls the `futex()` syscall to sleep only under contention. **False sharing** occurs when threads on different cores modify independent variables that reside in the same `64`-byte CPU cache line, causing cache-coherency invalidation traffic.
 </details>
 
 <details>
 <summary>17. How do you read a CPU flame graph (`perf record -F 99 -g`), and how does off-CPU analysis (`offcputime`) complement it?</summary>
+
 In a CPU flame graph, each box is a stack frame, the y-axis shows call depth (ancestors below, children above), and the x-axis width is proportional to the fraction of on-CPU samples (sorted alphabetically, not by time); wide plateaus at the top edge show where CPU cycles are spent directly. Off-CPU analysis traces scheduler context switches to measure where threads spend time blocked on I/O, locks (`futex`), or sleeps.
 </details>
 
 <details>
 <summary>18. List the nine thread states in Gregg's thread-state analysis model and how you apply the USE method to a thread pool and file descriptors.</summary>
+
 The nine thread states are: User on-CPU, Kernel on-CPU, Runnable (waiting on run queue), Anonymous Paging/Swapping, Disk I/O, Network I/O, Sleeping, Lock wait, and Idle. For a **thread pool**: Utilization = busy threads / pool size, Saturation = request queue length, Errors = rejected tasks. For **file descriptors**: Utilization = open FDs / `nofile` limit, Saturation = threads waiting for an FD, Errors = `EMFILE` ("Too many open files").
 </details>
 
 <details>
 <summary>19. What causes `[unknown]` frames and truncated call stacks in `perf` profiles, and how do you fix both?</summary>
+
 `[unknown]` frames occur when symbol tables are stripped (fix by installing `-dbgsym`/`-debuginfo` packages or compiling with `-g`) or when code is JIT-compiled at runtime (fix with `/tmp/perf-<PID>.map`, `perf-map-agent`, or Python 3.12 `-X perf`). Truncated stacks occur when compilers omit the frame-pointer register (`-fomit-frame-pointer`); fix by compiling with `-fno-omit-frame-pointer` (or `-XX:+PreserveFramePointer` in Java, or `perf record --call-graph dwarf`).
 </details>
 
 <details>
 <summary>20. Distinguish `libcuda.so.1` from `libcudart.so.12`, and explain what `CUDA error: no kernel image is available for execution on the device` means.</summary>
+
 `libcuda.so.1` is the user-space half of the **NVIDIA driver** (installed on the host and injected into containers alongside `/dev/nvidia*`). `libcudart.so.12` (along with `libcublas`, `libcudnn`, `libnccl`) is the **CUDA runtime/toolkit** library bundled inside the container image or Python wheel. `no kernel image is available for execution on the device` means the binary's fatbin lacks compiled `cubin` or `PTX` code for your GPU's compute capability (`sm_80`, `sm_90`); rebuild with the appropriate `TORCH_CUDA_ARCH_LIST` or `-gencode` flags.
 </details>
 

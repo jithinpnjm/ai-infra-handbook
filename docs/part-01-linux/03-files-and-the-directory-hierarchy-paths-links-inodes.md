@@ -391,101 +391,121 @@ Next, on a GCP Ubuntu VM (all interactive VM commands below are `untested here`)
 
 <details>
 <summary>1. What is the difference between an absolute path and a relative path, and why do automation scripts prefer absolute paths?</summary>
+
 An absolute path starts at `/` and resolves to the exact same file regardless of the caller's working directory. A relative path does not start with `/` and resolves relative to the process's current working directory (`pwd`). Because cron, systemd, Slurm, and containers start in different working directories, scripts use absolute paths or an explicit `cd`.
 </details>
 
 <details>
 <summary>2. Where in the Filesystem Hierarchy Standard (FHS) do you look for service configs, logs, runtime sockets, device nodes, the kernel image, and loadable kernel modules?</summary>
+
 System configuration lives in `/etc`, logs in `/var/log`, runtime sockets and PID files in `/run`, device nodes in `/dev`, the kernel image (`/boot/vmlinuz-*`) in `/boot`, and loadable kernel modules (`.ko`) in `/lib/modules/<kernel-version>/`.
 </details>
 
 <details>
 <summary>3. What is the difference between `/usr/include`, `/usr/local`, and `/usr/share`?</summary>
+
 `/usr/include` holds C compiler header files (`.h`). `/usr/local` holds software installed locally by the system administrator, mirroring `/` and `/usr` with `/usr/local/bin` and `/usr/local/lib`, plus versioned toolkits like `/usr/local/cuda`. `/usr/share` holds architecture-independent shared files such as `man`, `info`, `dict`, and `doc`.
 </details>
 
 <details>
 <summary>4. What does "merged usr" mean on modern Debian, Ubuntu, Rocky, and RHEL systems?</summary>
+
 On modern distributions, `/bin`, `/sbin`, `/lib`, and `/lib64` are symbolic links pointing to `/usr/bin`, `/usr/sbin`, `/usr/lib`, and `/usr/lib64`, so `/bin/ls` and `/usr/bin/ls` resolve to the exact same binary.
 </details>
 
 <details>
 <summary>5. What are `/proc` and `/sys`, do they consume disk space, and why does `/proc/cpuinfo` show size 0 in `ls -l`?</summary>
+
 `/proc` and `/sys` are virtual filesystems generated in RAM on demand by the kernel (`/proc` exposes processes and kernel state; `/sys` exposes devices, drivers, and kernel objects). They consume zero disk blocks, and virtual files like `/proc/cpuinfo` report size 0 in `stat` because the kernel generates their text dynamically only when read.
 </details>
 
 <details>
 <summary>6. What do the seven file-type characters (`-`, `d`, `l`, `c`, `b`, `s`, `p`) at the start of an `ls -l` line mean?</summary>
+
 `-` is a regular file, `d` is a directory, `l` is a symbolic link, and `c` is a character device (`/dev/null`, `/dev/nvidia0`). In addition, `b` is a block device (`/dev/nvme0n1`), `s` is a local domain socket, and `p` is a named pipe (FIFO).
 </details>
 
 <details>
 <summary>7. How does the `file` command identify a file's type if Linux ignores file extensions?</summary>
+
 `file` inspects the file's actual content—specifically magic numbers (characteristic header bytes at the beginning of the file, such as ELF headers or `#!` shebangs) and text encoding/line endings—rather than trusting the filename suffix.
 </details>
 
 <details>
 <summary>8. What is an inode, and what two crucial pieces of information are NOT stored inside the inode itself?</summary>
+
 An inode (index node) is the filesystem metadata record storing the file type, permissions, owner UID, group GID, byte size, timestamps (`atime`, `mtime`, `ctime`), link count, and pointers to data blocks. It does not store the file's **name** (which lives in a directory table) or the file's **payload bytes** (which live in data blocks).
 </details>
 
 <details>
 <summary>9. What does a directory actually contain on disk, and how does the kernel resolve `/home/alice/a.txt` or `/home/alice/train.py`?</summary>
+
 A directory is a special file containing a table of `(filename -> inode_number)` mappings. To open `/home/alice/a.txt` or `/home/alice/train.py`, the kernel reads the root directory `/` inode to look up `home`. It then reads `/home`'s table to look up `alice`, and reads `/home/alice`'s table to find the inode number for `a.txt` or `train.py`.
 </details>
 
 <details>
 <summary>10. Why does an empty directory have a link count of `2`, and why does adding 5 subdirectories raise its link count to `7`?</summary>
+
 An empty directory has two hard links to its inode: its entry in its parent directory and its own `.` self-entry (`1 + 1 = 2`). Each subdirectory created inside it contains a `..` entry pointing back to the parent directory's inode, adding `1` per subdirectory (`2 + 5 = 7`).
 </details>
 
 <details>
 <summary>11. Why is renaming a 100 GB checkpoint file within the same filesystem instant, whereas moving it across mount points takes minutes?</summary>
+
 Within a single filesystem, `mv` simply updates the directory table entry to point the new name at the existing inode without touching the 100 GB of data blocks. Across different filesystems, inode numbers cannot be shared, so `mv` must copy all 100 GB of data blocks to the destination device and then unlink the source.
 </details>
 
 <details>
 <summary>12. What happens when you `rm` a file that a running process still has open, and how do you find and reclaim that space?</summary>
+
 `rm` calls `unlink()`, removing the directory entry and decrementing `link_count` to `0`, but the kernel does not free the data blocks until `open_fd_count` also reaches `0`. You locate such deleted-but-open files with `sudo lsof +L1` (or `ls -l /proc/<pid>/fd | grep deleted`) and free the space by restarting/signaling the process or truncating `/proc/<pid>/fd/<n>`.
 </details>
 
 <details>
 <summary>13. Compare hard links and symbolic links across four operational properties.</summary>
+
 A hard link is a second directory entry pointing to the same inode, cannot cross filesystems (`EXDEV`), cannot point to directories, and keeps the data alive if the original name is deleted. A symbolic link is a separate small file of type `l` storing a path string, can cross filesystems and point to directories, and becomes a dangling link if its target is deleted.
 </details>
 
 <details>
 <summary>14. Why can't you create a hard link (`ln`) on a mounted VFAT (`vfat` / `msdos`) USB drive?</summary>
+
 Traditional Unix filesystems (`ext4`, `XFS`) separate directory entries from an inode table so multiple directory entries can reference one inode. VFAT's directory structure was designed for MS-DOS/Windows and embeds file metadata directly inside the directory entry without an independent inode table.
 </details>
 
 <details>
 <summary>15. How do you update a `latest` checkpoint symlink atomically so reader processes never see a missing or half-updated link?</summary>
+
 Create a temporary symlink pointing to the new target and atomically rename it over the existing symlink on the same filesystem: `ln -sfn checkpoints/step_001000 latest.tmp && mv -T latest.tmp latest`.
 </details>
 
 <details>
 <summary>16. What do `mtime`, `ctime`, and `atime` record, and which one changes when you run `chmod 600 f1`?</summary>
+
 `mtime` records when the file's content bytes were last modified. `ctime` records when the inode metadata (permissions, ownership, link count, or content size) last changed, and `atime` records when the file was last read (throttled by `relatime`). Running `chmod 600 f1` changes only `ctime`.
 </details>
 
 <details>
 <summary>17. Why can a disk fail with `No space left on device` (`ENOSPC`) when `df -h` shows 40% free space, and how do you verify it?</summary>
+
 Every `ext4` filesystem has a fixed number of inodes alongside its data blocks; millions of small dataset files can exhaust 100% of the inodes while data blocks remain half empty. Verify with `df -i` (and check `quota -s` for user/project quotas).
 </details>
 
 <details>
 <summary>18. Why must you quote the pattern in `find /var/log -type f -name '*.log'`, and what is the difference between `-exec gzip {} \;` and `-exec gzip {} +`?</summary>
+
 Quoting `'*.log'` prevents the shell from expanding the wildcard against the current working directory before `find` starts. `-exec ... \;` forks a separate `gzip` process for every single file found, whereas `-exec ... +` batches many filenames into each `gzip` invocation like `xargs`.
 </details>
 
 <details>
 <summary>19. Why should you always run `tar -tf` before `tar -xf`, and what is a "tarbomb"?</summary>
+
 `tar -tf` lists the archive's table of contents and verifies readability without writing to disk. That check reveals whether the archive contains dangerous leading `/` or `..` paths or lacks a single top-level directory (a "tarbomb" that scatters hundreds of files directly into your current working directory). Always extract untrusted archives into a fresh directory with `-C`.
 </details>
 
 <details>
 <summary>20. Why does Docker's default `/dev/shm` size (`64 MB`) break multi-worker PyTorch `DataLoader` jobs, and how is it fixed?</summary>
+
 `/dev/shm` is an in-memory `tmpfs` used for POSIX shared-memory IPC between PyTorch `DataLoader` worker processes and NCCL. When batch tensors exceed Docker's `64 MB` default, workers crash with `Bus error` (`SIGBUS`) or `ENOSPC`; fix it by passing `--shm-size=16g` (or mounting a memory-backed `emptyDir` at `/dev/shm` in Kubernetes).
 </details>
 

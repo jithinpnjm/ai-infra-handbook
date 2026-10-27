@@ -246,101 +246,121 @@ Next, on a disposable Linux VM with `root` (all interactive VM commands below ar
 
 <details>
 <summary>1. Why does per-packet round-robin load balancing (`balance-rr`) degrade TCP throughput across parallel links?</summary>
+
 When consecutive packets of the same TCP flow are sent down different physical links with slightly different queue depths or latencies, later packets overtake earlier ones and arrive **out of order**. The receiving TCP stack immediately emits **duplicate ACKs** for the gap, causing the sender to mistake reordering for packet loss, trigger **spurious Fast Retransmits**, and repeatedly slash its congestion window (`cwnd`).
 </details>
 
 <details>
 <summary>2. How does flow hashing solve the reordering problem, and how many links of a 4-port bond can a single TCP stream use?</summary>
+
 **Flow hashing** computes a deterministic hash over packet header fields that stay constant for the life of a flow (such as the L3+L4 5-tuple) and maps `hash mod N` to one member link. Because every packet of a single TCP connection has the exact same 5-tuple, a single TCP connection uses **at most ONE physical member link** (`1 x 100G` out of `4 x 100G`), preserving packet order while scaling aggregate bandwidth statistically across many concurrent flows.
 </details>
 
 <details>
 <summary>3. Why does Linux's default `xmit_hash_policy = layer2` fail to balance routed traffic, and what policy should you set instead?</summary>
+
 `layer2` hashes only `(source MAC, destination MAC)`. When a server sends traffic to hundreds of remote IP addresses through its **default gateway**, every single outgoing packet has the **exact same source MAC (the server) and destination MAC (the gateway router)**—so 100% of routed traffic pins to a single bond member. Setting **`xmit_hash_policy = layer3+4`** hashes `(source IP, destination IP, L4 ports)` so flows spread evenly across all bond members (`encap3+4` hashes inner headers of VXLAN/tunnel packets).
 </details>
 
 <details>
 <summary>4. What are Elephant flows and Mouse flows, and what is Hash Polarization across a leaf-spine fabric?</summary>
+
 **Elephant flows** are large, long-lived, high-bandwidth transfers (`AllReduce` collectives, checkpoint writes, storage replication) while **mouse flows** are short, small requests (RPCs, DNS, SSH). If two elephant flows hash to the same 100G uplink, they collide and each gets only 50G while sibling links sit idle. **Hash polarization** occurs when a leaf switch and a spine switch use the exact same hash algorithm and seed on the same header fields: the subset of flows that hashed to Uplinks 1 at the leaf all hash to the *same* single link at the spine, leaving other spine links completely unused (prevented by per-switch hash seeds or varying fields per tier).
 </details>
 
 <details>
 <summary>5. How does RoCE v2 (`RDMA over Converged Ethernet`) create hash entropy for ECMP and LACP switches?</summary>
+
 RoCE v2 encapsulates InfiniBand transport packets inside **UDP datagrams with fixed destination port `4791`**. To prevent all RDMA traffic between two nodes from hashing to the same physical link, the NIC driver and `NCCL` **vary the outer UDP source port** across different Queue Pairs (`QP`s) (and open multiple QPs per GPU pair via `NCCL_IB_QPS_PER_CONNECTION`), giving 5-tuple ECMP and LACP hashes entropy to spread traffic across links.
 </details>
 
 <details>
 <summary>6. What standard defines `LACP`, what multicast MAC and EtherType do `LACPDU`s use, and how do `Active` and `Passive` modes interact?</summary>
+
 **LACP** (*Link Aggregation Control Protocol*) is defined by **IEEE `802.1AX`** (formerly **`802.3ad`**). Peers exchange **LACPDUs** sent to the link-local slow-protocols multicast MAC **`01:80:C2:00:00:02`** (EtherType **`0x8809`**). An **`Active`** port transmits LACPDUs proactively; a **`Passive`** port listens and replies only if it hears an LACPDU. Therefore `Active + Active` and `Active + Passive` form a bundle, whereas `Passive + Passive` never negotiates.
 </details>
 
 <details>
 <summary>7. Why is dynamic `LACP` strongly preferred over a static (`mode=on` / `balance-xor`) port-channel, and what are the `fast` vs. `slow` LACP timers?</summary>
+
 A static bundle has no negotiation protocol: if a cable is plugged into the wrong switch or a fiber fails unidirectionally (link light stays UP while TX or RX is dead), the sender keeps hashing 50% of its traffic into a black hole. **LACP** verifies that all member links terminate on the same partner System ID and Key and puts ports into `Collecting/Distributing` state only after two-way agreement. **Slow timers** send hellos every `30 s` (`90 s` timeout); **Fast timers (`lacp_rate = fast`)** send hellos every **`1 s` (`3 s` timeout)** and should be used on servers.
 </details>
 
 <details>
 <summary>8. Compare Linux bonding Mode `1` (`active-backup`) and Mode `4` (`802.3ad` LACP), and state when each is used.</summary>
+
 - **Mode `1` (`active-backup`)**: keeps one slave interface active and fails over to the backup slave on link loss (`miimon=100`). Requires **zero switch configuration** and works when the two server NICs connect to **two completely independent switches** that do not run MLAG.\n- **Mode `4` (`802.3ad` LACP)**: uses all member links active-active via flow hashing (`xmit_hash_policy=layer3+4`). Requires the switch ports to be configured as an **LACP port-channel** on either a single switch or an **MLAG / EVPN-multihomed** switch pair.
 </details>
 
 <details>
 <summary>9. In `/proc/net/bonding/bond0`, what do `Partner Mac Address: 00:00:00:00:00:00`, mismatched `Aggregator ID`s, and `min_links` mean?</summary>
+
 - **`Partner Mac Address: 00:00:00:00:00:00`**: the server is receiving **no LACPDUs** from the switch (LACP is not enabled on the switch port, or the port is suspended).\n- **Different `Aggregator ID`s across slaves** (e.g., `ens1f0` has Aggregator ID `1` and `ens1f1` has Aggregator ID `2`): the two cables are plugged into two switches that do not share an MLAG/LACP system ID, so only one aggregator is active.\n- **`min_links = N`**: forces the bond interface itself to report link `DOWN` (triggering upper-layer failover) if fewer than `N` member links are active.
 </details>
 
 <details>
 <summary>10. Why must you NEVER bond the 8 back-end compute NICs (`ens1f0..ens8f0`) on an 8-GPU training server?</summary>
+
 In a rail-optimized GPU server, each GPU `i` (`0..7`) is paired on a local PCIe switch (`PIX`) with its dedicated NIC `i` connected to Rail `i` leaf switches. `NCCL` discovers this exact GPU-to-NIC topology (`nvidia-smi topo -m`) and schedules deterministic collective rings/trees per rail. Bonding those NICs hides the individual devices behind a single Linux virtual interface, destroys PCIe/NUMA locality (routing GPU 0's DMA out NIC 5 across the CPU socket interconnect), and breaks RDMA queue-pair binding.
 </details>
 
 <details>
 <summary>11. What is Multi-Chassis Link Aggregation (`MLAG` / `vPC`), and how do two physical switches pretend to be one LACP partner?</summary>
+
 **MLAG** (Cisco `vPC`, Arista `MLAG`, Cumulus/NVIDIA `CLAG`) connects two Top-of-Rack leaf switches with an inter-switch **peer link** and an out-of-band **keepalive link**. The two switches synchronize MAC tables, ARP/ND state, and LACP state and advertise the **exact same virtual LACP System ID (MAC)** to dual-homed servers—so the server sees a single 2-port LACP bundle while being physically connected to two separate switches for rack-level high availability.
 </details>
 
 <details>
 <summary>12. What are the main operational risks of proprietary `MLAG` pairs, and how does `EVPN Multihoming` (`ESI-LAG`, RFC 7432) improve on them?</summary>
+
 Proprietary MLAG requires same-vendor switch pairs, a dedicated high-bandwidth peer link, complex **split-brain / dual-active** shutdown rules if the peer link fails, and careful handling of single-attached **orphan ports**. **EVPN Multihoming (`ESI-LAG`, RFC 7432)** is an open IETF standard that assigns a shared 10-byte **Ethernet Segment Identifier (`ESI`)** to the server's LAG and coordinates MAC/ARP/multicast state across leaf switches using **BGP EVPN Type-1 and Type-4 routes** over the L3 spine—requiring **no physical peer link** between the leaves and supporting 2 or more multihomed leaves across vendors.
 </details>
 
 <details>
 <summary>13. How does Layer 3 Equal-Cost Multipath (`ECMP`) differ from Layer 2 Link Aggregation (`LACP`)?</summary>
+
 **LACP** bundles parallel physical links between the **same two devices** (or an MLAG pair) into a single L2 interface. **ECMP** operates at **Layer 3**: a routing protocol (`BGP`, `OSPF`, `IS-IS`) installs multiple equal-cost next hops for a prefix pointing to **completely independent next-hop routers** (such as 8 separate spine switches), requiring no L2 bundle protocol or shared switch state.
 </details>
 
 <details>
 <summary>14. Why does plain `hash mod N` ECMP disrupt 75% of flows when 1 of 4 paths fails, and how does Resilient (Consistent) Hashing fix it?</summary>
+
 With plain `bucket = hash % N`, changing `N` from `4` to `3` changes the remainder for **`3/4 = 75%` of all hash values**—rerouting healthy flows onto different paths, causing out-of-order TCP packets, and breaking stateful load balancers/firewalls (which lose connection state when flows shift to a new appliance). **Resilient / consistent hashing** maps hashes onto a fixed power-of-two indirection table of buckets assigned to next hops; when 1 of 4 next hops fails, **only the buckets belonging to the failed hop (`25%`)** are reassigned to surviving hops while the other `75%` of flows stay untouched.
 </details>
 
 <details>
 <summary>15. Explain Flowlet Switching, Packet Spraying, and Adaptive Routing for overcoming ECMP elephant-flow collisions in AI fabrics.</summary>
+
 - **Flowlet switching**: detects microsecond idle gaps ("flowlets") within a single flow that are larger than the maximum path-delay difference across spine paths, and safely re-hashes the next burst onto a less congested link without causing packet reordering.\n- **Packet spraying**: spreads individual packets of a single RDMA flow across all available spine links in parallel, relying on **out-of-order-tolerant RDMA NICs** (`NVIDIA ConnectX-7/8` with Spectrum-X or InfiniBand) to reorder packets in hardware at the receiver.\n- **Adaptive Routing (`AR`)**: switches dynamically choose the egress port with the shortest real-time queue depth per packet or flowlet.
 </details>
 
 <details>
 <summary>16. How do you check which ECMP next hop the Linux kernel will pick for a specific TCP flow 5-tuple?</summary>
+
 Run **`ip route get <dst_ip> from <src_ip> iif <dev> ipproto tcp sport <src_port> dport <dst_port>`**. By varying `sport` or `dport` (with `net.ipv4.fib_multipath_hash_policy = 1`), you can observe the kernel selecting different `via <nexthop>` paths from the multipath route.
 </details>
 
 <details>
 <summary>17. Name the four node classes in an HPC/AI cluster (`SCL` Chapter 4) and explain why you must never run a storage/service daemon on a compute node.</summary>
+
 (1) **Compute nodes** (homogeneous, stripped of unnecessary daemons), (2) **Control / management nodes** (Slurm/Kubernetes controllers, provisioning, databases; deployed in HA pairs), (3) **Login / access nodes** (user SSH entry points with strict cgroup/ulimit caps so VS Code remote servers or compiles cannot crash them), and (4) **Service nodes** (storage servers, data movers, license servers, and **pre/post-processing nodes** with `256 GB+` RAM). Running an NFS or service daemon on a compute node steals CPU cores, RAM, and NIC bandwidth from the local rank—turning that compute node into a **straggler** that slows down every multi-node job using it.
 </details>
 
 <details>
 <summary>18. List the five distinct functional networks in a production supercomputer / AI cluster (`SCL` Chapter 4).</summary>
+
 (1) **Compute / communication fabric** (InfiniBand or lossless RoCEv2 Ethernet for MPI/NCCL collectives), (2) **Control / service network** (Ethernet for SSH, Slurm/kubelet control, provisioning, and monitoring), (3) **Out-of-Band (`OOB`) management network** (isolated Ethernet for BMC/IPMI/Redfish/iKVM), (4) **Storage network** (dedicated or shared high-bandwidth fabric to Lustre/BeeGFS/NVMe-oF), and (5) **External / frontend network** (user login and ingress/egress via NAT/proxies).
 </details>
 
 <details>
 <summary>19. Compare the typical MPI/RDMA point-to-point latency of `1 GbE`, `10 GbE`, and `100–400G` InfiniBand / RoCE, and the rule of thumb for real application bandwidth (`SCL` Chapter 4).</summary>
+
 - **`1 GbE` (TCP/IP)**: `~30 to 100 µs` latency.\n- **`10 GbE`**: single-digit to tens of `µs`.\n- **`100G–400G` InfiniBand / RoCEv2 RDMA**: **`~1 to 3 µs`** latency.\nAs a practical rule (`SCL` Ch. 4), real-world application throughput on a cluster fabric is typically **`1.5 to 2 times lower`** than raw theoretical peak wire speed due to protocol headers, collective synchronization barriers, and message-size mix.
 </details>
 
 <details>
 <summary>20. Compare the five classic cluster interconnect topologies: Tree/Star, Fat-Tree (Clos), Hypercube, Multidimensional Torus, and Dragonfly (`SCL` Chapter 4).</summary>
+
 - **Tree / Star**: simple hierarchy, but root switches become bandwidth bottlenecks and single points of failure.\n- **Fat-Tree (Clos)**: multiple spine/root switches connected to every leaf so bisection bandwidth stays constant (or controlled) at each tier; the standard topology for InfiniBand and Ethernet AI clusters.\n- **Hypercube**: `N`-dimensional cube with `2^N` nodes and at most `N` hops.\n- **Multidimensional Torus (3D/6D)**: grid where each axis wraps around into a ring (max hops = sum of half-dimensions; low cable cost for nearest-neighbor physics simulations).\n- **Dragonfly / Dragonfly+**: tightly coupled all-to-all local groups connected by global optical links, minimizing global hop count and long optical cables at exascale.
 </details>
 

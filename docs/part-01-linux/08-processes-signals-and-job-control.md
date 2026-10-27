@@ -831,101 +831,121 @@ systemd-cgls | head -30                 # (untested here)
 
 <details>
 <summary>1. What are the main components of a Linux process, and how does a thread (`TID`) differ from a process (`PID`)?</summary>
+
 A process consists of a virtual address space, one or more threads (each with its own stack and CPU registers), an open file descriptor table, credentials (`ruid`, `euid`, `suid`, groups, capabilities), `cwd`, `umask`, environment block, `rlimits`, signal dispositions, and `PID`/`PPID`. Linux schedules both processes and threads as kernel tasks (`clone()`): threads within a process share the address space and file descriptors, whereas separate processes have isolated address spaces.
 </details>
 
 <details>
 <summary>2. What is the difference between a mode switch and a context switch, and how do `vDSO` and `KPTI` affect them?</summary>
+
 A mode switch transitions the CPU between unprivileged user mode (ring 3) and privileged kernel mode (ring 0) within the same thread (such as a non-blocking system call). A context switch saves one thread's CPU registers and loads another thread's registers. The `vDSO` maps timekeeping code into user space to avoid mode switches on `gettimeofday`/`clock_gettime`, whereas `KPTI` (Meltdown mitigation, Linux `4.14`, softened by `PCID`) adds page-table/TLB overhead to mode and context switches.
 </details>
 
 <details>
 <summary>3. Why does `fork()` use copy-on-write (CoW), and how do `fork()`, `execve()`, and `wait4()` work together?</summary>
+
 Copy-on-write lets the child share the parent's physical memory pages marked read-only after `fork()`, copying a `4 KiB` page only if either process writes to it. When the child immediately calls `execve()` to load a new binary, no memory pages had to be copied up front; when the child exits via `exit_group()`, the kernel sends `SIGCHLD` to the parent, which reaps the exit status with `wait4()`.
 </details>
 
 <details>
 <summary>4. What do the `ps` state letters `R`, `S`, `D`, `T`, `Z`, and `I` mean?</summary>
+
 `R` is running on a CPU or runnable in the run queue; `S` is interruptible sleep waiting for an event; `D` is uninterruptible sleep inside the kernel waiting on hardware/storage I/O; `T` is stopped by `SIGSTOP`/`SIGTSTP` or `ptrace`; `Z` is a zombie (`<defunct>`) waiting for its parent to call `wait()`; and `I` is an idle kernel worker thread.
 </details>
 
 <details>
 <summary>5. Why does `kill -9` (`SIGKILL`) fail to remove a process in state `D` or state `Z`, and how do you resolve each?</summary>
+
 A process in state `D` is inside an uninterruptible kernel wait (such as a hung NFS/Lustre mount or dead disk/GPU) and does not process pending signals until the kernel call returns; resolve it by fixing the underlying storage/device or rebooting. A process in state `Z` is already dead and holds only a PID-table slot; resolve it by making its parent call `wait()` or killing/restarting the parent so `PID 1` adopts and reaps it.
 </details>
 
 <details>
 <summary>6. What does Linux's load average (`uptime`) actually count, and how can load be `60` on a 16-core server while CPUs are `90%` idle?</summary>
+
 On Linux, the 1-, 5-, and 15-minute load averages count both runnable tasks (`R`) **and** tasks in uninterruptible sleep (`D`). If 60 processes are blocked in state `D` on a stalled NFS or Lustre filesystem, the load average climbs to `60` even though the CPUs sit `90%` idle (`vmstat` shows high `b` and `wa`).
 </details>
 
 <details>
 <summary>7. How do you view individual threads of a process with `ps` and `top`?</summary>
+
 In `ps`, run `ps -eLf`, `ps m`, or `ps m -o pid,tid,command` (`HLW` Listings 8-1 and 8-2) to see each thread (`TID` / `LWP`) under its parent `PID`. In interactive `top`, press `H` to toggle thread view and `1` to toggle per-CPU core rows.
 </details>
 
 <details>
 <summary>8. What information lives in `/proc/<pid>/status`, `/proc/<pid>/fd/`, `/proc/<pid>/limits`, and `/proc/<pid>/wchan`?</summary>
+
 `/proc/<pid>/status` shows human-readable state, UIDs/GIDs, thread count, `VmRSS`, `VmSwap`, and context switches; `/proc/<pid>/fd/` contains symlinks for every open file descriptor; `/proc/<pid>/limits` shows soft and hard `rlimits`; and `/proc/<pid>/wchan` (plus `/proc/<pid>/stack`) shows the kernel function where a sleeping task is blocked.
 </details>
 
 <details>
 <summary>9. Name three production problems solved immediately by `lsof` (`lsof +L1`, `lsof /dev/nvidia0`, `lsof -i :8080`).</summary>
+
 `sudo lsof +L1` finds deleted files still held open by a running process (when `df` shows a full disk but `du` does not); `sudo lsof /dev/nvidia0` (or `fuser -v /dev/nvidia0`) identifies every process holding a GPU open; and `sudo lsof -i :8080` identifies which process owns TCP/UDP port `8080`.
 </details>
 
 <details>
 <summary>10. How do you use `strace` to diagnose a failing binary versus a hung multi-process daemon?</summary>
+
 For a failing command, run `strace -o /tmp/trace cmd` and `grep -E 'ENOENT|EACCES' /tmp/trace` to see which file open returned `-1`. For a daemon that forks children, run `strace -f -o /tmp/trace -ff daemon` (or attach to a hung process with `strace -p PID`) to see which system call (`futex`, `read`, `connect`) each child is blocked in.
 </details>
 
 <details>
 <summary>11. Contrast `SIGTERM` (`15`), `SIGKILL` (`9`), `SIGHUP` (`1`), `SIGINT` (`2`), `SIGTSTP` (`20`), and `SIGSTOP` (`19`).</summary>
+
 `SIGTERM` (`15`, default of `kill`) is a catchable request to shut down cleanly; `SIGKILL` (`9`) cannot be caught or ignored and terminates the process immediately without cleanup; `SIGHUP` (`1`) reports terminal hangup (or tells daemons to reload config); `SIGINT` (`2`, Ctrl-C) is keyboard interrupt; `SIGTSTP` (`20`, Ctrl-Z) is catchable terminal suspend; and `SIGSTOP` (`19`) is uncatchable suspend (resumed by `SIGCONT` `18`).
 </details>
 
 <details>
 <summary>12. What happens to background jobs when your SSH session disconnects, and what are the five ways to keep work running?</summary>
+
 When the SSH session closes, the login shell receives `SIGHUP` and forwards it to its child process groups. Prevent termination by: (1) running inside `tmux` or `screen`, (2) submitting a batch job via `sbatch` or Kubernetes, (3) starting with `nohup cmd > out.log 2>&1 &` or `setsid`, (4) detaching an already-running job with `disown -h %1`, or (5) running as a `systemd` service.
 </details>
 
 <details>
 <summary>13. How do `nice`/`renice` (`-20` to `+19`) and `ionice` (`-c 1`, `-c 2`, `-c 3`) control CPU and disk priority?</summary>
+
 `nice` and `renice` adjust a task's CPU niceness from `-20` (highest priority, root only) to `+19` (lowest priority, most polite to others). `ionice` sets block I/O priority class under schedulers like BFQ: `-c 1` is real-time (root only), `-c 2` is best-effort (levels `0`–`7`, default `4`), and `-c 3` is idle (disk I/O runs only when no other process requests disk access).
 </details>
 
 <details>
 <summary>14. Why must `memlock` (`ulimit -l`) and `nofile` (`ulimit -n`) be raised on GPU compute nodes, and how do `limits.conf` and `systemd` differ?</summary>
+
 InfiniBand/RoCE RDMA and CUDA pinned host memory require locking large buffers in RAM (`memlock unlimited`), and distributed training opens thousands of sockets and dataset shards (`nofile 65536+`). PAM applies `/etc/security/limits.conf` only to login sessions, whereas `systemd` services ignore `limits.conf` and require `LimitMEMLOCK=infinity` and `LimitNOFILE=65536` in the unit file.
 </details>
 
 <details>
 <summary>15. In `time` output, what do `real`, `user`, and `sys` measure, and what is the difference between a minor and a major page fault?</summary>
+
 `real` is wall-clock elapsed time, `user` is CPU time spent in user-space code, and `sys` is CPU time spent in the kernel on the process's behalf. A **minor page fault** maps a page that is already resident in RAM (or freshly zero-allocated) with zero disk I/O, whereas a **major page fault** blocks while reading the page from disk or swap.
 </details>
 
 <details>
 <summary>16. In `vmstat 2`, why do you ignore the first line, and what do `r`, `b`, `si`, `so`, `bi`, `bo`, and `wa` tell you?</summary>
+
 The first line of `vmstat 2` is the cumulative average since boot; line 2 onward shows live 2-second intervals. `r` is runnable tasks, `b` is tasks blocked in `D` state, `si`/`so` are KiB/s swapped in and out from swap (non-zero sustained `so` indicates memory thrashing), `bi`/`bo` are block device reads/writes, and `wa` is CPU percent waiting on I/O.
 </details>
 
 <details>
 <summary>17. How do `iostat -p ALL`, `iotop`, `pidstat -p PID 1`, and `sar` complement each other?</summary>
+
 `iostat -p ALL` shows device and per-partition throughput (`kB_read/s`, `kB_wrtn/s`, `await`), `iotop` attributes live disk read/write bandwidth to individual threads (`TID`), `pidstat -p PID 1` prints a scrolling per-second history of a process's `%usr`, `%system`, and CPU core without overwriting the screen, and `sar` records historical system counters under `/var/log/sa/`.
 </details>
 
 <details>
 <summary>18. How does `cgroup v2` differ from `cgroup v1`, and what do `memory.max`, `cpu.max`, and `pids.max` enforce?</summary>
+
 `cgroup v1` mounts a separate hierarchy per controller and allows a process to sit in different groups across controllers; `cgroup v2` uses a single unified hierarchy under `/sys/fs/cgroup/` where each process belongs to one leaf cgroup. Exceeding `memory.max` triggers reclamation and the cgroup OOM killer (`oom_kill` in `memory.events`, exit `137`), exceeding `cpu.max` (`"50000 100000"` = `0.5` cores) throttles the group (`nr_throttled`), and `pids.max` caps total tasks (`fork()` fails when reached).
 </details>
 
 <details>
 <summary>19. Why does a Kubernetes pod whose entrypoint is `#!/bin/sh` followed by `python train.py` ignore `SIGTERM` for 30 seconds and die with `137`?</summary>
+
 Kubernetes sends `SIGTERM` only to `PID 1` inside the container. When `/bin/sh` is `PID 1`, it does not forward `SIGTERM` to its child `python` process, so after `terminationGracePeriodSeconds` (`30 s`) Kubernetes sends `SIGKILL` (`137`). Ending the script with `exec python train.py` replaces the shell so `python` becomes `PID 1` (and running under `tini` / `--init` reaps any orphaned data-loader workers).
 </details>
 
 <details>
 <summary>20. How do you configure a Slurm batch script to save a checkpoint automatically 3 minutes before the job's walltime expires?</summary>
+
 Add `#SBATCH --signal=B:USR1@180` to ask Slurm to send `SIGUSR1` to the batch shell 180 seconds before the time limit, register `trap 'kill -USR1 "$pid"; wait "$pid"' USR1`, and run `python train.py &` followed by `wait "$pid"` so the shell catches `SIGUSR1` immediately and forwards it to the training process.
 </details>
 

@@ -312,101 +312,121 @@ For each: write the symptom as observed by the application, the hypothesis list 
 
 <details>
 <summary>1. What defines whether a network system is \"working\", and what lesson does the wind-speed cable splice story teach (`CN` Chapter 24)?</summary>
+
 **A system is working only if it accomplishes its intended end-to-end purpose for the application and business**—not merely if individual component gauges look green. In the wind-speed instrument story, the cable team insisted their splice was good because DC continuity and resistance passed, yet the splice had high **capacitive crosstalk** that corrupted the AC signal needed by the instrument. In an AI cluster, \"all ports UP and BGP Established\" means nothing if `AllReduce` collectives stall at 10% of line rate.
 </details>
 
 <details>
 <summary>2. Why is it impossible for any engineer to hold the entire state of a modern network in their head, and how do Models solve this?</summary>
+
 A network combines hardware (ASICs, optics, cables, power/thermal), software (NOS, drivers, firmware), distributed control planes, topology designs, and application workloads—creating a **combinatorial explosion of interaction surfaces**. We cope by using **models**: simplified mental abstractions that intentionally hide irrelevant detail so we can reason about one aspect of the system at a time.
 </details>
 
 <details>
 <summary>3. Contrast *How* Models, *What* Models, and *Accurate* Models in network troubleshooting (`CN` Chapter 24).</summary>
+
 - ***How* models (Theory)**: explain *how and why protocols and mechanisms work* (e.g., how TCP sliding windows, BGP best-path, or DCQCN ECN/PFC work in principle).\n- ***What* models (Your System's Baseline)**: describe *what is normal in your specific production network*—the exact signal path of each application, baseline latencies, queue depths, ECMP balance, optic power levels, and expected convergence times (learned only by repeated observation and documentation).\n- ***Accurate* models**: models whose level of abstraction is **fit to the question at hand** (for example, RINA's recurring error/flow/multiplexing model or a queue/buffer model rather than the 7-layer OSI chart when debugging microbursts).
 </details>
 
 <details>
 <summary>4. What lesson does the storm-radar inductor-vs-resistor story teach about diagnostic tools (`CN` Chapter 24)?</summary>
+
 In the radar maintenance story, a technician found a burnt resistor in parallel with an inductor, replaced the resistor, measured `0 Ω` across the pair with a DC ohmmeter, and went home—only for the radar to fail again because the inductor itself had shorted out, and **a DC ohmmeter always reads an inductor as `0 Ω` (a short) whether it is healthy or shorted**. Lesson: **every diagnostic tool has blind spots** (`ping` cannot see a TCP port block or an MTU black hole; host `tcpdump` cannot see kernel-bypassed RDMA or NIC ring drops). Always know what your instrument cannot see.
 </details>
 
 <details>
 <summary>5. What is the \"Model Tree\", and what is the most common mistake engineers make when navigating it?</summary>
+
 The **model tree** organizes mental models from high-level abstract (`End-to-End Application Path`) down into branches (`Control Plane -> BGP / OSPF / Convergence` vs `Data Plane -> Queues / QoS / Physical Optics`). The classic mistake is **diving deep into one branch (e.g., staring at QoS queue jitter for hours) and never climbing back up to the root of the tree** when new evidence arrives (missing that a flapping control-plane route or a broadcast storm from a misconfigured server is what is filling the queue).
 </details>
 
 <details>
 <summary>6. State the 5-step Half-Split (Binary Search) troubleshooting method along a signal path.</summary>
+
 (1) **Map the end-to-end path of the signal** (`Source Host -> Leaf A -> Spine -> Leaf B -> Destination Host`);\n(2) **Split the path in half** (at the midpoint, `Spine`);\n(3) **Test the signal at the midpoint** (via packet capture, counters, or synthetic test): is the signal present and healthy here?;\n(4) If **unhealthy at the midpoint**, the fault lies in the **upstream half** (toward the source: `Source Host` or `Leaf A`); if **healthy at the midpoint**, the fault lies in the **downstream half** (toward the destination: `Leaf B` or `Destination Host`); and\n(5) **Repeat** by splitting the remaining half in two (`O(log N)` probes).
 </details>
 
 <details>
 <summary>7. How do you use \"Manipulation\" to prove that a correlated event is actually the root cause (`CN` Chapter 24)?</summary>
+
 Observing that latency spikes coincided with SPF runs on Router E is **correlation, not causation** (both might be caused by a third factor, such as a power dip or traffic burst). To establish **causation**, **manipulate one variable while holding everything else constant**: trigger an SPF calculation on Router E on purpose in a controlled window while measuring application latency. If latency spikes on command, you have found a causal lever; if not, keep looking.
 </details>
 
 <details>
 <summary>8. How does \"Simplify Before Testing\" work on a complex multipath fabric, and what does it mean if the problem vanishes as soon as you simplify?</summary>
+
 When a bug occurs across an 8-spine, 8-rail ECMP fabric with overlays and load balancers, temporarily **reduce the active path to a minimal subset** (drain 7 spines so traffic uses 1 spine, test 1 rail with `ib_write_bw`, or bypass the L7 proxy). If the problem **persists** on the minimal path, you have eliminated 80% of the components and can debug a simple 3-node line. If the problem **disappears** when you remove components, either **(a) one of the removed components was the faulty hardware** (add them back one by one to catch the culprit), or **(b) the bug is an emergent interaction / positive feedback loop** (like ECMP reordering or a control-plane flood).
 </details>
 
 <details>
 <summary>9. What is the difference between an Immediate Fix and a Permanent Fix, and how do unfixed root causes become Technical Debt?</summary>
+
 The **immediate fix (mitigation)** restores production service as fast as possible (draining a bad spine, rebooting a wedged NIC, rolling back a config, raising a limit). The **permanent fix** eliminates the underlying root cause in design, code, automation, and monitoring so the incident cannot recur. Stopping after the immediate fix leaves undocumented workarounds, manual snowflakes, and latent hazards in the system (**technical debt**); always track temporary mitigations with an owner/deadline and conduct a **blameless post-incident review**.
 </details>
 
 <details>
 <summary>10. Why must you run a read-only diagnostic collector (`netdiag.sh`) BEFORE rebooting a broken node or restarting network daemons?</summary>
+
 Rebooting a server or restarting `frr`/`NetworkManager`/`containerd` **destroys the volatile forensic evidence in RAM**: socket queues (`ss -tanpi`), `conntrack` tables, `ip route`/`ip neigh` state, softnet counters, and kernel ring buffers. Running a 30-second read-only collector (`netdiag.sh`) captures the exact crime scene to a tarball before you mitigate by rebooting.
 </details>
 
 <details>
 <summary>11. In the Connectivity Decision Tree, what is the first question to ask when Client A cannot reach Service X on Server B, and how do `Connection refused` and `Timed out` diverge?</summary>
+
 First ask **scope**: *"Can OTHER clients reach Service X on Server B, or is ONLY Client A failing?"* (If only A fails, check A's local IP/route/DNS/firewall; if all clients fail, check Server B.) Next, test `nc -zv B port`:\n- **`Connection refused` (`RST` received)**: the network path is open in both directions, and either the daemon on B is not listening (`ss -tlnp`) or a firewall rule is actively rejecting with `TCP RST`.\n- **`Connection timed out` (no reply)**: a packet (`SYN` or `SYN-ACK`) was silently dropped—half-split with `tcpdump` at both ends to see if the `SYN` reached B and if the `SYN-ACK` left B.
 </details>
 
 <details>
 <summary>12. Whenever an outage or stall lasts for an \"exact round number of seconds or minutes\" (`5 s`, `60 s`, `5 min`), what should you immediately suspect?</summary>
+
 Physical hardware errors are random; **exact round durations are always software or protocol timers**. Examples:\n- **`~40 ms`**: TCP Delayed ACK + Nagle stall;\n- **`200 ms`**: Linux `TCP_RTO_MIN` retransmission timeout;\n- **`1 s`, `3 s`, `7 s`**: Linux TCP `SYN` retransmission backoff (`ListenOverflows` or dropped `SYN`);\n- **`5.0 s`**: `glibc` `/etc/resolv.conf` default DNS query timeout (Case 13);\n- **`60 s` / `300 s` / `350 s`**: `TIME_WAIT` or NAT/load-balancer idle timeout;\n- **`5 minutes` (`300 s`)**: BGP route-flap dampening penalty or ARP/MAC cache aging (Case 6).
 </details>
 
 <details>
 <summary>13. Summarize the root cause and fix of Case 1 (SNAT Port Exhaustion) and Case 3 (`nf_conntrack` Table Full).</summary>
+
 - **Case 1 (SNAT Port Exhaustion)**: 5,000 containers behind **1 NAT public IP** open connections to the **same single external database `IP:port`**, exhausting the `~60,000` ephemeral source ports available for that `(src_ip, dst_ip, dst_port)` tuple even though `nf_conntrack` is not full. Fix: add multiple SNAT IPs to the NAT gateway pool, deploy a connection pooler (`PgBouncer`), and enable keep-alives.\n- **Case 3 (`nf_conntrack` Table Full)**: total tracked flows across all destinations hit `nf_conntrack_max` (often bloated by the 5-day `432,000 s` default established TCP timeout), logging `nf_conntrack: table full, dropping packet` in `dmesg`. Fix: shorten timeouts (`3600 s`), raise `nf_conntrack_max` + `hashsize`, and `notrack` stateless high-rate flows.
 </details>
 
 <details>
 <summary>14. Summarize the root cause and fix of Case 4 (Multi-NIC ARP Flux and `rp_filter`).</summary>
+
 Because Linux uses the **weak host model**, a server with multiple NICs on the same subnet (or without source-based policy routing) answers ARP requests for any of its local IPs from whichever NIC processes the broadcast first (**ARP flux**) and routes replies using only the `main` table's default gateway—causing strict Reverse-Path Filtering (`rp_filter = 1`) to silently drop incoming packets (`IPStatsInAddrErrors`). Fix: place each NIC in its own subnet/routing table with `ip rule from <ip> lookup <table>`, and set **`arp_ignore = 1`**, **`arp_announce = 2`**, and **`rp_filter = 2`** (loose).
 </details>
 
 <details>
 <summary>15. Summarize the root cause and fix of Case 5 (UDP Receive Buffer Overflow) and Case 10 (TCP Zero Window).</summary>
+
 - **Case 5 (UDP Buffer Overflow)**: UDP has no flow control (`rwnd`) or retransmissions; when a telemetry/logging daemon (`StatsD`, `syslog`, `gNMI`/NetFlow collector) cannot `recvfrom()` fast enough during a burst, the kernel socket buffer (`rmem_default`) fills and silently drops datagrams, incrementing **`UdpRcvbufErrors` in `nstat -az`**. Fix: raise `net.core.rmem_max` and `SO_RCVBUF` and scale worker threads with **`SO_REUSEPORT`**.\n- **Case 10 (TCP Zero Window)**: the capture shows `win 0` (`tcp.analysis.zero_window`) sent by the receiver—proving the network is delivering bytes faster than the **receiving application** (blocked on disk I/O, GC, or CPU lock) is reading from its socket.
 </details>
 
 <details>
 <summary>16. In Case 7 (TCP Checksum Offload Bug), how do you distinguish a real hardware/driver checksum bug from the normal benign `[bad tcp cksum]` seen in `tcpdump`?</summary>
+
 On the **sending host**, `[bad tcp cksum]` in `tcpdump` is completely normal when TX checksum offload is enabled because `AF_PACKET` taps the packet before the NIC computes the checksum. However, if you run `tcpdump` **on the receiving host** (after the packet has crossed the sender's NIC and the physical wire) and **still see bad TCP checksums** (accompanied by `TcpInCsumErrors` in `nstat -az` on the receiver), the sender's NIC driver/firmware has a genuine TX offload bug—mitigate immediately with **`sudo ethtool -K <dev> tx off`** and update the NIC firmware/driver.
 </details>
 
 <details>
 <summary>17. Summarize the root cause and fix of Case 8 (`PFC` Storm Collapsing an `NCCL` Job).</summary>
+
 A multi-node RoCEv2 training job runs at full speed for 5 minutes until a synchronized collective incast hits a switch whose **ECN marking thresholds (`Kmin`/`Kmax`) were misconfigured higher than its PFC `XOFF` threshold**. Instead of ECN/CNP gently throttling the sending QPs, switch buffers hit `XOFF` first and blast link-level **PFC pause frames (`millions/s` in `ethtool -S rx_pause`)**, pausing entire priority classes hop-by-hop across the leaf-spine fabric. Fix: enforce **`XON < ECN Kmin < ECN Kmax < PFC XOFF`**, verify DSCP-to-priority trust on all NICs/switches, and enable the **PFC watchdog**.
 </details>
 
 <details>
 <summary>18. Summarize the root cause and fix of Case 9 (Pod `veth` CPU Bottleneck) and Case 11 (Asymmetric Host-BGP ECMP Reordering).</summary>
+
 - **Case 9 (`veth` CPU Bottleneck)**: a single high-throughput TCP flow crossing a container `veth` pair pins one CPU core at `100%` `NET_RX_SOFTIRQ` (`~15 Gb/s` ceiling). Fix: use `hostNetwork: true`, Cilium eBPF host routing, `ipvlan`, or `SR-IOV`/RDMA secondary interfaces.\n- **Case 11 (Asymmetric ECMP Reordering)**: a host advertising a VIP over BGP to two ToRs has per-packet (`balance-rr`) or miskeyed hashing across paths of unequal latency, causing packets of a single TCP flow to arrive out of order and trigger triple-dup-ACK rate cuts. Fix: enforce consistent 5-tuple flow hashing (`layer3+4` / `fib_multipath_hash_policy=1`) and equal-cost paths.
 </details>
 
 <details>
 <summary>19. Summarize the root cause and fix of Case 14 (Silent Corruption and a \"Slow Rail\" in a 4,000-GPU Cluster).</summary>
+
 In synchronous distributed training (`AllReduce`), **every rank waits at the barrier for the single slowest GPU/rail**. A dirty or degrading optical transceiver on one port of one node has low DOM `Rx power` (`ethtool -m`), causing a high pre-FEC bit error rate (`rx_corrected_bits`), occasional uncorrectable FEC codewords / CRC frame drops, and RDMA go-back-N retransmissions—never flapping the link `DOWN` (so link-down alerts stay green), yet dragging step times down by 15% across all 4,000 GPUs. Fix: alert on **rising FEC/CRC error rates, low DOM optical power, and per-rail RDMA retransmission counters**, cordon/drain the node, and clean or replace the transceiver/fiber.
 </details>
 
 <details>
 <summary>20. Why is comparing a \"broken\" node against a \"working\" sibling node (`diff`) one of the fastest troubleshooting techniques in AI clusters?</summary>
+
 In a homogeneous GPU cluster where all nodes are built from the same image and cabling plan, **configuration or hardware drift** (one node negotiated `100G` instead of `400G`, one NIC on `MTU 1500`, one missing `ip rule`, one outdated `mlnx_ofed` driver, or one loose optic) accounts for the majority of single-node anomalies. Running `netdiag.sh` on both the slow node and a healthy sibling node in the same rack and diffing their `ethtool`, `sysctl`, `ip route`, and counter outputs surfaces the discrepancy in seconds.
 </details>
 

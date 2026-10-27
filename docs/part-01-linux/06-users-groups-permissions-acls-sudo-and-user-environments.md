@@ -605,101 +605,121 @@ Next, on a GCP Ubuntu VM with `sudo` rights (all interactive VM commands below a
 
 <details>
 <summary>1. What does the Linux kernel know about user and group names, and where do the human-readable names live?</summary>
+
 The kernel knows only numeric `UID` and `GID` integers (`UID 0` is `root`). Human-readable names, password hashes, and group memberships live in user space in `/etc/passwd`, `/etc/shadow`, and `/etc/group` (or a network directory queried via NSS in `/etc/nsswitch.conf`).
 </details>
 
 <details>
 <summary>2. Name the seven colon-separated fields of `/etc/passwd` and explain `x`, `*`, and an empty second field.</summary>
+
 (1) Login name, (2) password marker, (3) numeric `UID`, (4) primary `GID`, (5) GECOS comment, (6) home directory, and (7) login shell. `x` means the password hash is stored in `/etc/shadow`; `*` disables password login; and an empty field means no password is required (a severe security hole).
 </details>
 
 <details>
 <summary>3. Why should you edit `/etc/passwd` with `vipw` and `/etc/shadow` with `vipw -s` instead of a plain text editor?</summary>
+
 `vipw` and `vipw -s` lock the target file against concurrent edits by `useradd` or `passwd`, create a backup copy, and perform basic consistency checks before replacing the live file.
 </details>
 
 <details>
 <summary>4. What is the difference between a user's primary group and supplementary groups, and what is a user-private group?</summary>
+
 The primary group is the single `GID` listed in `/etc/passwd` (assigned to new files by default); supplementary groups are additional groups listed in `/etc/group`. A user-private group gives each user a dedicated primary group with the same name and ID (`alice:1042`), making `umask 002` safe by default.
 </details>
 
 <details>
 <summary>5. Why is `usermod -G projx alice` a classic mistake, and when does `usermod -aG projx alice` take effect?</summary>
+
 `usermod -G projx alice` *replaces* `alice`'s entire supplementary group list with only `projx` (removing her from `sudo`, `docker`, etc.); `-aG` appends `projx` safely. Because group credentials are initialized at login, existing shells do not see the new group until `alice` logs in again (or runs `newgrp projx`).
 </details>
 
 <details>
 <summary>6. Contrast what `r`, `w`, and `x` mean on a regular file versus on a directory.</summary>
+
 On a regular file, `r` reads content bytes, `w` modifies content bytes, and `x` executes the file. On a directory, `r` lists entry names (`ls`), `w` (together with `x`) creates, deletes, and renames entries, and `x` traverses the directory to access inodes inside it (`cd`, `stat`, `open`).
 </details>
 
 <details>
 <summary>7. Why can you delete a read-only (`0444`) file owned by another user if you have `wx` on the parent directory (without the sticky bit)?</summary>
+
 Deleting (`unlink`) modifies the **parent directory's** `(name -> inode)` table rather than the file's content bytes, so the kernel checks write and execute (`wx`) permissions on the directory, not on the file itself.
 </details>
 
 <details>
 <summary>8. Explain why permission checks (`user`, `group`, `other`) are non-cumulative.</summary>
+
 The kernel checks only the *first* class that matches your process: if `euid == file_uid`, it evaluates **only** the owner (`user`) triple and stops. Thus if a file has mode `0070` (`---rwx---`), the owner is denied access even if they belong to the file's group.
 </details>
 
 <details>
 <summary>9. Starting from base `0666` for files and `0777` for directories, what modes do `umask 022`, `umask 077`, and `umask 002` produce, and what is `rwxr-x---` in octal?</summary>
+
 `umask 022` produces `0644` (`rw-r--r--`) for files and `0755` (`rwxr-xr-x`) for directories; `umask 077` produces `0600` and `0700`; and `umask 002` produces `0664` and `0775`. `rwxr-x---` is `0750` in octal, and `0640` is `rw-r-----`.
 </details>
 
 <details>
 <summary>10. What do the `setuid` (`4000`), `setgid` (`2000`), and `sticky` (`1000`) bits do on files and directories?</summary>
+
 `setuid` (`4000`) on an executable runs the process with the file owner's `euid` (`/usr/bin/passwd`, `/usr/bin/sudo`). `setgid` (`2000`) on an executable sets `egid`, and on a directory (`2770`) forces all newly created files and subdirectories inside it to inherit the directory's group. `sticky` (`1000`) on a directory (`1777` `/tmp`) restricts file deletion/renaming to the file owner, directory owner, or `root`.
 </details>
 
 <details>
 <summary>11. What is the POSIX ACL `mask`, and why does running `chmod 640` after `setfacl` break named user ACL entries?</summary>
+
 The ACL `mask` defines the maximum effective permissions for all named users, named groups, and the owning group. Running `chmod` changes the group bits, which POSIX ACLs map to the `mask` entry—capping `u:alice:rw` down to `#effective:r--`.
 </details>
 
 <details>
 <summary>12. Distinguish a process's real UID (`ruid`), effective UID (`euid`), and saved UID (`suid`).</summary>
+
 `ruid` identifies the user who launched the process (and governs who can send signals to it); `euid` is the identity checked for file and resource access; and `saved_uid` records the privileged UID when a setuid program temporarily drops privileges so it can restore them later.
 </details>
 
 <details>
 <summary>13. Why should user-writable filesystems (`/tmp`, `/home`, scratch mounts) be mounted with `nosuid`, and how do you audit existing setuid binaries?</summary>
+
 Mounting with `nosuid` prevents any setuid binary placed on that filesystem from escalating privileges. Audit setuid files across local filesystems with `find / -xdev -perm -4000 -type f 2>/dev/null`.
 </details>
 
 <details>
 <summary>14. Why does `sudo echo x > /root/file` fail with `Permission denied`, and what is the clean fix?</summary>
+
 The `>` output redirection is opened by your unprivileged interactive shell *before* `sudo` starts `echo`. Fix it by piping into `sudo tee /root/file` (`echo x | sudo tee /root/file >/dev/null`).
 </details>
 
 <details>
 <summary>15. Why is putting `.` (the current directory) in `PATH` a serious security hazard on a shared cluster?</summary>
+
 If `.` is in `PATH` and you `cd` into a shared or untrusted directory (`/tmp` or a dataset folder), an attacker can place a malicious executable named `ls` or `sl` in that directory that runs with your privileges when you type the command.
 </details>
 
 <details>
 <summary>16. In `SCL` Chapter 11, why is `/usr/sbin/master-sync` designed as a pull script on each compute node rather than a push script on the master?</summary>
+
 When each compute node pulls `/etc/passwd`, `/etc/shadow`, and `/etc/group` from the master at boot, any node that was powered off during an account update or replaced with spare hardware automatically synchronizes its user database before joining the cluster.
 </details>
 
 <details>
 <summary>17. How does the master-node trigger loop in `SCL` Chapter 11 avoid overloading the network and hanging on dead nodes?</summary>
+
 It runs manually only after a batch of user changes is complete, sets a `3`-second SSH connection timeout (`-o connecttimeout=3`), spaces node connections by `0.1` seconds, and schedules a background subshell `(sleep 600 && kill -ALRM "$$") &` with `trap 'exit' ALRM` to abort if the script exceeds `600` seconds.
 </details>
 
 <details>
 <summary>18. Why do NIS commands start with `yp`, what are the three NIS+ server daemons, and why is NIS+ limited to small clusters?</summary>
+
 Sun created NIS in `1985` under the name *Yellow Pages* (`yp`) before a trademark lawsuit forced the rename. Its three server daemons are `ypserv` (main lookup server), `yppasswdd` (password change server), and `ypxfrd` (map transfer to slave servers). A single NIS+ server struggles above `30 to 40` clients under concurrent RPC load.
 </details>
 
 <details>
 <summary>19. Why does a standalone LDAP server fail when a 500-node Slurm job starts, and how do production clusters prevent it?</summary>
+
 At job launch, all 500 nodes query the LDAP server simultaneously for the user's UID and groups ("explosive" burst access), overflowing the server's request queue so it drops requests and aborts job launch. Production clusters cache lookups locally on each node with `SSSD` or deploy a hierarchy of replica LDAP servers.
 </details>
 
 <details>
 <summary>20. Why does `getent passwd alice` succeed for an LDAP/SSSD user when `grep alice /etc/passwd` returns nothing?</summary>
+
 `grep alice /etc/passwd` inspects only the local text file, whereas `getent passwd alice` calls the C library's NSS resolver (`getpwnam`), which walks every source configured in `/etc/nsswitch.conf` (`files systemd sss`).
 </details>
 

@@ -419,101 +419,121 @@ Next, on a disposable Linux VM building on Chapter 2.27's containerlab fabric (a
 
 <details>
 <summary>1. What is the fundamental difference between Configuration Management (`Ansible`, `Nornir`) and Infrastructure Provisioning (`Terraform` / `OpenTofu`)?</summary>
+
 **Infrastructure provisioning (`Terraform`)** creates, modifies, and destroys API-driven infrastructure **resources** (cloud VPCs, subnets, security groups, load balancers, controller objects) using an explicit **state file (`terraform.tfstate`)** that maps declared HCL blocks to real-world resource IDs and builds a dependency graph (`plan` / `apply`). **Configuration management (`Ansible`, `Nornir`)** is **stateless** and converges the internal configuration of **existing** switches and servers to a desired state on each run.
 </details>
 
 <details>
 <summary>2. How does Ansible execute tasks on a network switch differently from how it executes tasks on a Linux server (`NPA` Chapter 12)?</summary>
+
 On a **Linux server**, Ansible connects over SSH, copies a temporary Python script into `/tmp` on the target host, executes it locally on the server's Python interpreter, and deletes it. Because traditional **network switches** do not provide an open shell or Python environment for foreign scripts, Ansible runs network modules **locally on the Ansible control node** and opens a persistent session to the switch using a **connection plugin**: **`ansible.netcommon.network_cli`** (SSH CLI), **`ansible.netcommon.netconf`** (NETCONF XML over SSH 830), **`ansible.netcommon.httpapi`** (RESTCONF / eAPI), or **`ansible.netcommon.grpc`** (`gNMI`). (On Linux-based switches like **Cumulus** and **SONiC**, you can also use standard SSH + Linux/NVUE modules.)
 </details>
 
 <details>
 <summary>3. State the order of Ansible variable precedence from lowest to highest among role defaults, group vars, host vars, playbook vars, and `-e` extra vars.</summary>
+
 From lowest priority (easiest to override) to highest priority (always wins):\n1. **Role `defaults/main.yml`**\n2. **Inventory `group_vars/all`**\n3. **Inventory parent `group_vars/<group>` -> child `group_vars/<subgroup>`**\n4. **Inventory `host_vars/<hostname>`**\n5. **Playbook `vars:` / `vars_files:`**\n6. **Role `vars/main.yml` and task `vars:`**\n7. **Command-line extra vars (`-e key=value`)** (highest precedence).
 </details>
 
 <details>
 <summary>4. Compare Ansible's `*_command`, `*_config`, and Network Resource Modules (`*_interfaces`, `*_bgp_global` with `state:`).</summary>
+
 - **`*_command` (`arista.eos.eos_command`)**: executes read-only `show` commands and returns output; **never idempotent for config changes**.\n- **`*_config` (`arista.eos.eos_config`)**: pushes raw CLI configuration lines or a rendered Jinja template (`replace: config|block|line`, `diff_against: running`) by diffing text indentation.\n- **Network Resource Modules (`arista.eos.eos_interfaces`, `eos_vlans`, `eos_bgp_global`)**: model a specific subsystem as structured YAML data and support explicit lifecycle states: **`merged`**, **`replaced`**, **`overridden`**, **`deleted`**, **`gathered`** (read live into facts), **`rendered`**, and **`parsed`**.
 </details>
 
 <details>
 <summary>5. How do `serial`, `max_fail_percentage`, `--check --diff`, `--limit`, and `block / rescue` make an Ansible network playbook safe for production?</summary>
+
 - **`--check --diff`**: dry-runs the playbook and prints the exact line-by-line configuration diff without modifying any switch.\n- **`--limit canary` (or `--limit 'leaf:!leaf4'`)**: restricts execution to a specific switch or subset.\n- **`serial: "25%"` + `max_fail_percentage: 0`**: rolls out the change in batches of 25% of switches at a time, running post-validation tasks (`until: ... Established`) at the end of each batch and **halting the entire playbook immediately** if any switch in the batch fails.\n- **`block:` / `rescue:`**: wraps the config push and post-check in a `block:` and automatically restores the pre-change backup config in the `rescue:` section if validation fails.
 </details>
 
 <details>
 <summary>6. How do you manage secrets in Ansible and CI pipelines without committing plaintext passwords to Git?</summary>
+
 Encrypt sensitive variables or files with **`ansible-vault`** (`ansible-vault encrypt group_vars/all/vault.yml` or `encrypt_string`) so they are stored ciphertext-only in Git, and pass the vault decryption key at runtime from a CI secret store; or fetch **short-lived dynamic credentials** at runtime from **HashiCorp Vault**, cloud KMS/Secret Manager, or SSH Certificate Authorities.
 </details>
 
 <details>
 <summary>7. What is `Nornir`, and when should an infrastructure team choose `Nornir` over `Ansible` (`NPA` Chapter 12)?</summary>
+
 **`Nornir`** is a **100% pure-Python automation framework**: instead of writing logic in YAML DSL loops (`when:`, `loop:`, `set_fact:`), you write normal Python functions (`Task -> Result`) that Nornir executes concurrently across an inventory (`SimpleInventory` or `NetBoxInventory`) using a **threaded worker pool (`num_workers: 20`)**. Choose Nornir when you need **complex branching control flow, custom multi-step validation algorithms, fast parallel execution across hundreds of devices, IDE debugging/type-checking, and standard `pytest` unit tests**.
 </details>
 
 <details>
 <summary>8. How do you manage `Terraform` state safely when multiple engineers automate cloud and data-center networks?</summary>
+
 (1) Store state in a **remote backend with state locking** (e.g., GCS bucket or S3 + DynamoDB lock, or Terraform Cloud/TacOS) so two engineers or CI jobs can never run `apply` concurrently;\n(2) **Split state files by blast radius and lifecycle** (`core-network/` vs `cluster-a/` vs `firewall-rules/`) so a change to one cluster cannot touch core routers;\n(3) Require **`terraform plan` output** on every pull request with `lifecycle { prevent_destroy = true }` on production VPCs/interconnects; and\n(4) Run scheduled **`terraform plan -detailed-exitcode`** jobs to detect out-of-band configuration drift.
 </details>
 
 <details>
 <summary>9. List the five components of a Network Continuous Integration (`CI`) pipeline (`NPA` Chapter 13).</summary>
+
 (1) **Peer review**: pull/merge requests with required `CODEOWNERS` review of both code/data and the **rendered device config diff**;\n(2) **Build automation**: automated linting (`yamllint`, `ansible-lint`, `ruff`), **JSON Schema** validation, **Jinja2 golden-file unit tests** (`pytest`), config rendering, and offline static analysis (**`Batfish`**);\n(3) **Test / dev / staging environment**: spinning up an ephemeral virtual fabric (**`containerlab`**, SONiC-VS, cEOS, SR Linux) and applying the candidate change;\n(4) **Deployment validation**: automated assertions on **operational state** (BGP, ECMP, LLDP, MTU), **connectivity** (ping/traceroute), and **performance / negative ACL tests**; and\n(5) **Staged production deployment strategy** (canary -> rolling batches with automated rollback).
 </details>
 
 <details>
 <summary>10. What does `Batfish` (`pybatfish`) do in a network CI pipeline that `containerlab` does not (and vice versa)?</summary>
+
 **`Batfish`** is an **offline mathematical control-plane and data-plane modeler**: given only the rendered text configuration files of all switches/firewalls in `build/`, it builds a formal model of the RIBs, FIBs, ACLs, and route policies in seconds **without booting any VMs or containers**—proving whether any prefix is unreachable, whether an ACL rule is shadowed, whether BGP policies have loops, or whether ECMP is asymmetric across all possible failure states. **`containerlab`** boots the **actual vendor NOS binaries/containers** and exchanges live wire packets (`BFD`, `BGP Unnumbered RAs`, `EVPN`), catching NOS software bugs and runtime timing issues. Production pipelines run **both**: Batfish first (fast static proof), then containerlab (live NOS test).
 </details>
 
 <details>
 <summary>11. Compare the four network deployment strategies: In-Place, Rolling, Canary, and Blue/Green (`NPA` Chapter 13).</summary>
+
 - **In-Place ("big bang")**: push to all switches simultaneously—acceptable only in labs or for trivial non-forwarding changes (like adding an SNMP/syslog server).\n- **Rolling**: push in bounded batches (`serial: "25%"`, 1 spine or 1 rack leaf pair at a time), draining before and validating after each batch.\n- **Canary**: deploy to **one single device or non-critical rack first**, bake and monitor telemetry over a soak window, and only then roll out to the rest of the fleet.\n- **Blue/Green**: build or upgrade an entire parallel routing plane / multi-planar fabric (`Plane B`) while traffic runs on `Plane A`, validate `Plane B`, shift traffic over via routing policy/weights, and keep `Plane A` ready for instant cut-back.
 </details>
 
 <details>
 <summary>12. Name the six components of the Network Automation Architecture (`NPA` Chapter 14) and how they interact.</summary>
+
 (1) **User Interactions** (Web portals, ITSM ServiceNow/Jira tickets, Grafana dashboards, **ChatOps** bots, and auto-generated docs);\n(2) **Orchestration** (thin cross-domain workflow coordinator ordering steps across IPAM, fabric, firewall, and Kubernetes);\n(3) **Source of Truth (`SoT`)** (authoritative store of inventory, DCIM, IPAM, and intent: `NetBox`/`Nautobot` + Git);\n(4) **Automation Engine** (`Ansible`, `Nornir`, `Terraform` executing backup, rendering, compliance, deployment, and NOS upgrades);\n(5) **Network Infrastructure** (switches, routers, DPUs, GPU hosts, controllers); and\n(6) **Telemetry & Observability** (gNMI/Prometheus/Loki closing the loop back to the UI and event-driven automation engine).
 </details>
 
 <details>
 <summary>13. What data belongs in a Network Source of Truth (`SoT`), and what are the six dimensions of SoT Data Quality (`NPA` Chapter 14)?</summary>
+
 An SoT stores: (1) **Device inventory** (hostnames, roles, sites, platforms, serials), (2) **DCIM** (racks, power, physical cable plan), (3) **IPAM** (VRFs, prefixes, VLANs, `/31` links, loopbacks), and (4) **Routing/Fabric intent** (ASNs, VNIs, QoS/DSCP plans). The six data-quality dimensions are **Completeness**, **Consistency**, **Validity** (conforming to schema), **Usability**, **Relevance**, and **Accuracy** (matching physical reality via continuous reconciliation).
 </details>
 
 <details>
 <summary>14. Why do many production teams combine a Relational Database (`NetBox` / `Nautobot`) with `Git` for their Source of Truth?</summary>
+
 A **relational database (`PostgreSQL` backing `NetBox` / `Nautobot`)** excels at modeling many-to-many relationships (which cable connects `gpu01:ens1f0` to `leaf1:swp1` in `rack-04`?), enforcing uniqueness/foreign-key constraints on IP/VLAN allocations, and serving GraphQL/REST queries (`nb_inventory`). **`Git`** excels at version-controlling **Jinja2 templates, YANG/JSON schemas, Ansible roles, Nornir code, and high-level policy YAML** with pull-request review, cryptographic commit history, and CI triggers.
 </details>
 
 <details>
 <summary>15. What are the four stages of Configuration Management and the five steps of an automated Switch NOS Upgrade in the Automation Engine (`NPA` Chapter 14)?</summary>
+
 The four Configuration Management stages are: **(1) Backup** (archive running config to Git/storage), **(2) Rendering** (SoT data + template -> intended config), **(3) Compliance** (diff running vs intended/policy), and **(4) Deployment** (push delta transactionally).\nThe five automated **NOS Upgrade** steps are: **(1) Pre-validate** (check flash disk space, dual power supplies, BGP/ECMP health, and **gracefully drain** the switch), **(2) Backup** config and state snapshot, **(3) Transfer & verify checksum** of the new NOS image, **(4) Activate image & reboot**, and **(5) Post-validate** (verify new OS version, interfaces, LLDP, BGP/ECMP, undrain, and update SoT).
 </details>
 
 <details>
 <summary>16. Compare On-Box Automation and Off-Box Automation (`CN` Chapter 26).</summary>
+
 - **On-Box Automation**: scripts, agents, or systemd services running **directly on the switch CPU** (Cisco EEM/Guest Shell, Junos commit/event scripts, Arista EOS event handlers, SONiC/Cumulus Python/systemd daemons). Ideal for **Zero-Touch Provisioning (`ZTP`)**, sub-second local reaction to hardware faults, and local telemetry exporters—at the cost of distributing state across hundreds of switch CPUs.\n- **Off-Box Automation**: centralized engines (`Ansible`, `Nornir`, CI runners, controllers) pushing configs and validating state across the fleet from a single version-controlled repository.
 </details>
 
 <details>
 <summary>17. Analyze Network Automation through the `CN` Chapter 26 \"State, Optimization, and Interaction Surfaces\" lens.</summary>
+
 Every engineering change trades off **State**, **Optimization**, and **Interaction Surfaces**:\n- **Surfaces**: automation shrinks the error-prone *human-to-CLI* surface, but creates a new, high-consequence *human-to-SoT-to-pipeline-to-fleet* surface (making the automation server and Git repo a Tier-0 security asset that must be protected with MFA, RBAC, and signed commits);\n- **Optimization**: standardizing 500 switches onto 2 clean templates intentionally sacrifices one-off per-switch hand-optimizations in exchange for fleet uniformity and lower `MTBM`;\n- **State**: adding an SoT database or Terraform state file introduces a second copy of state that can **drift** from the live network unless continuously reconciled.
 </details>
 
 <details>
 <summary>18. What are Virtualized Network Functions (`VNF`s / `CNF`s) and Service Chaining, and how do `DPDK`, `SR-IOV`, and `DPU`s overcome their performance bottlenecks (`CN` Chapter 27)?</summary>
+
 **VNFs** (VM-based) and **CNFs** (container-based) replace fixed hardware middleboxes (firewalls, load balancers, NAT gateways, IDS/IPS, SD-WAN edges) with software running on commodity servers, allowing operators to spin up functions on demand and steer traffic through an ordered sequence of functions (**Service Chaining** via EVPN/VXLAN, Segment Routing `SRv6`, or NSH). Because standard kernel network stacks bottleneck on interrupts and memory copies at `100G–400G`, high-speed VNFs use **`SR-IOV`**, **`DPDK`**, **`XDP`/`eBPF`**, or offload the entire virtual router/firewall/load-balancer pipeline onto **hardware `DPU`s (`NVIDIA BlueField`)**.
 </details>
 
 <details>
 <summary>19. What is Intent-Based Networking (`IBN`), and what are its four closed-loop stages?</summary>
+
 In **Intent-Based Networking** (exemplified by Juniper Apstra, Arista CloudVision, Nokia EDA, and NVIDIA UFM/NetQ), operators declare **high-level business/architectural outcomes** (*"Build a 4-pod rail-optimized RoCEv2 Clos for Tenant A with 1:1 bisection bandwidth and isolated EVPN VRFs"*) rather than device-by-device CLI syntax. An IBN system executes four continuous stages:\n(1) **Translation & Validation**: compiles high-level intent into vendor-specific device configurations;\n(2) **Automated Activation**: deploys the configurations across the fabric;\n(3) **Continuous Assurance / Telemetry**: streams real-time state (`gNMI`, LLDP, BGP, queue counters) and compares it against the declared intent graph; and\n(4) **Closed-Loop Remediation / Alerting**: automatically flags or self-heals cable swaps, config drift, or degraded links.
 </details>
 
 <details>
 <summary>20. How do you integrate Switch Fabric Automation and Linux GPU Host Networking into a single unified GitOps pipeline?</summary>
+
 Store the cluster's rack/rail wiring plan, VLANs, MTUs (`9000`), DSCP/PFC/ECN profiles (`DSCP 26 -> Prio 3`, `CNP 48 -> Prio 6`), and IP/ASN allocations in **one shared Source of Truth** (`NetBox` or `inventory/fabric.yml`). From that single SoT, the CI pipeline renders **both** the switch configurations (SONiC / Cumulus / EOS via Jinja2) **and** the GPU server host configurations (`Netplan`/`nmcli`, `/etc/iproute2/rt_tables` per-rail policy routing, `mlnx_qos`, `/etc/sysctl.d/99-ai-node-network.conf`), validates the switch topology in `containerlab`/`Batfish`, rolls out in lockstep per rack/rail, and runs an end-to-end verification job (`lldpcli` cabling check + `ping -M do -s 8972` + `ib_write_bw` + `nccl-tests`).
 </details>
 

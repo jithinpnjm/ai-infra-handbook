@@ -459,101 +459,121 @@ Next, on an `e2-small` Ubuntu 24.04 VM or any Linux machine (untested here on li
 
 <details>
 <summary>1. What three things does an operating system do for programs?</summary>
+
 It shares hardware resources fairly by scheduling CPU time and allocating RAM. It protects programs from each other and the kernel from programs. Finally, it simplifies access to diverse hardware through uniform abstractions like files and sockets.
 </details>
 
 <details>
 <summary>2. Name the three layers of a Linux system and state what runs in each.</summary>
+
 Hardware sits at the bottom, including CPU cores, main memory, NVMe disks, network cards, and GPUs. The kernel sits in the middle and runs the process scheduler, memory manager, filesystems, network stack, and device drivers. User space sits at the top and runs applications, shared libraries like `glibc` and `libcuda.so`, shells, and system services like `systemd`.
 </details>
 
 <details>
 <summary>3. Why does the CPU have a privileged mode (ring 0) and an unprivileged mode (ring 3)? What happens if a user program tries a privileged instruction?</summary>
+
 The hardware split lets the kernel enforce isolation: user programs run in unprivileged mode (ring 3) where direct hardware access and page-table modifications are forbidden. If a user program executes a privileged instruction, the CPU raises a hardware fault and traps into the kernel, which terminates the offending process without harming the rest of the system.
 </details>
 
 <details>
 <summary>4. What is the difference between "kernel mode" and "root" (UID 0)?</summary>
+
 Kernel mode (ring 0) is a hardware CPU execution state in which kernel code runs. By contrast, `root` (`UID 0`) is a user identity in user space. A root process still executes its own instructions in unprivileged user mode (ring 3) and must make system calls to ask the kernel to perform privileged operations, which the kernel grants because `UID == 0`.
 </details>
 
 <details>
 <summary>5. List the four primary jobs of the Linux kernel.</summary>
+
 The four jobs are process management and scheduling, memory management via virtual memory and page tables, device management through device drivers, and serving system calls and kernel support routines.
 </details>
 
 <details>
 <summary>6. What triggers a context switch, and what does the kernel do during it?</summary>
+
 A hardware timer interrupt at the end of a time slice, or a blocking system call, switches the CPU into kernel mode. The kernel saves the current process's CPU registers and instruction pointer, and invokes the scheduler to pick the next runnable process. It then loads that process's registers and page-table mappings, and returns the CPU to user mode.
 </details>
 
 <details>
 <summary>7. Explain virtual memory, the MMU, and page tables in three sentences.</summary>
+
 Every process uses virtual addresses rather than physical RAM addresses. On every memory access, the CPU's Memory Management Unit (MMU) translates the virtual page number (typically `4 KiB` pages) into a physical frame number using a per-process page table maintained by the kernel. If a virtual page is unmapped, the MMU raises a page fault so the kernel can allocate memory lazily, swap a page in, or send `SIGSEGV` on an illegal access.
 </details>
 
 <details>
 <summary>8. What is a pseudodevice? Name four classic Linux pseudodevices and what each does.</summary>
+
 A pseudodevice is a file under `/dev` implemented purely in kernel software with no physical hardware behind it. `/dev/null` discards all writes and returns EOF on read, while `/dev/zero` supplies an endless stream of `0x00` bytes. `/dev/random` and `/dev/urandom` provide cryptographic random numbers from the kernel's entropy pool.
 </details>
 
 <details>
 <summary>9. What is a system call, and what role does `glibc` (`libc.so.6`) play when your program calls `open()` or `printf()`?</summary>
+
 A system call is the controlled entry point from user space into the kernel (`openat`, `read`, `write`, `clone`, `execve`, `mmap`, `ioctl`). Programs normally call wrapper functions in the GNU C library (`glibc`), which format arguments and execute the architecture's syscall instruction on the program's behalf.
 </details>
 
 <details>
 <summary>10. Describe step by step what happens from typing `ls` in `bash` to seeing its output. How do `fork()`/`clone()`, `exec()`, and `execve()` fit together?</summary>
+
 First, the shell calls `fork()`, implemented via the `clone` or `clone3` system call, to create a child process with a new PID. Next, the child calls a function in the C library's `exec()` family (`execl()`, `execv()`, `execvp()`), which invokes the kernel's `execve()` system call to replace the child's memory image with `/usr/bin/ls` while keeping the same PID. Finally, `ls` opens and reads the directory (`openat`, `getdents64`), writes output via `write()`, and exits via `exit_group(0)` while the parent shell collects its exit status via `wait4()`.
 </details>
 
 <details>
 <summary>11. Why are processes arranged in a tree, and what is special about PID 1?</summary>
+
 Every process after boot is created by an existing parent process calling `clone()` or `fork()`. PID 1 (`init`, which is `systemd` on modern distributions) is the first user-space process started by the kernel. It serves as the ancestor of all other user-space processes and adopts orphaned child processes whose original parent exited.
 </details>
 
 <details>
 <summary>12. How did the GNU Project (1980s) and Linus Torvalds's 1991 kernel come together to form GNU/Linux?</summary>
+
 Richard Stallman started the GNU Project ("GNU's Not Unix") in the early 1980s and created the GPL and user-space Unix utilities, but its kernel (`GNU Hurd`) stalled. In 1991 Linus Torvalds wrote a free MINIX-inspired kernel (`Linux`) and licensed version `0.99` under the GNU GPL in 1992, combining with the GNU userland to form a complete operating system.
 </details>
 
 <details>
 <summary>13. Why is Linux central to modern data center switches as well as servers?</summary>
+
 Modern network operating systems (NOSs) run on Linux. The OpenCompute Project's Open Network Linux (`ONL`) powers Switch Light and `dentOS`. NVIDIA's Cumulus Linux is a full Debian-based distribution running on Spectrum switches, and `SONiC` (Software for Open Networking in the Cloud) runs Linux and containers on white-box switches across hyperscale fabrics.
 </details>
 
 <details>
 <summary>14. How do Fedora, CentOS Stream, RHEL, and Rocky Linux / AlmaLinux relate to each other?</summary>
+
 Fedora is Red Hat's fast-moving upstream distribution where new kernels and features are tested first. CentOS Stream sits midstream between Fedora and Red Hat Enterprise Linux (RHEL), which is the commercial enterprise release. Rocky Linux and AlmaLinux are downstream community distributions rebuilt from RHEL's GPL source code after CentOS shifted to CentOS Stream in late 2020.
 </details>
 
 <details>
 <summary>15. How do Debian's three branches (`unstable`, `testing`, `stable`) relate to Ubuntu's release cadence and NVIDIA DGX OS?</summary>
+
 Debian (founded by Ian Murdock in 1993, using *Toy Story* codenames like `1.1` *Buzz* and `11.0` *Bullseye*) matures packages from `unstable` through `testing` into `stable`. Ubuntu (started by Canonical in 2004 with `4.10` *Warty Warthog*) pulls from Debian `unstable` to ship six-month releases and two-year LTS releases (supported for five years), and NVIDIA's DGX OS is built on Ubuntu LTS.
 </details>
 
 <details>
 <summary>16. Why can't you reliably install a Fedora `.rpm` on Rocky Linux or an Ubuntu `.deb` on Debian even though they share the same package format?</summary>
+
 Sharing the `.rpm` (`rpm`, `yum`, `dnf`) or `.deb` (`dpkg`, `apt`) container format does not guarantee binary or dependency compatibility. Differences in shared library versions (`glibc`, `libssl`), package naming conventions, and filesystem paths across distributions cause dependency resolution failures or runtime crashes.
 </details>
 
 <details>
 <summary>17. The NVIDIA GPU driver has a kernel half and a user-space half. Name the files in each half and explain how they communicate.</summary>
+
 The kernel half consists of kernel modules (`nvidia.ko`, `nvidia_uvm.ko`, `nvidia_peermem.ko`) that run in ring 0 and expose `/dev/nvidia*`. The user-space half consists of libraries (`libcuda.so`, `libnvidia-ml.so`) and tools (`nvidia-smi`) that talk to the kernel modules via `ioctl` system calls on `/dev/nvidia*`.
 </details>
 
 <details>
 <summary>18. Why does a kernel module (`.ko`) built on one kernel refuse to load on another, whereas old user-space binaries keep working on newer kernels?</summary>
+
 The Linux kernel maintains a strict stable ABI for system calls ("don't break userspace"), so old user binaries keep working. Inside the kernel, internal data structures and function signatures change between builds, so `.ko` modules are version-checked (`vermagic`) against the exact kernel release (`uname -r`) they were compiled for.
 </details>
 
 <details>
 <summary>19. Why does `tcpdump` fail to see InfiniBand or RoCEv2 RDMA payload traffic on a GPU node?</summary>
+
 RDMA uses the kernel (`mlx5_core`, `ib_core`) only during setup to register pinned memory and create queue pairs. Once established, `libibverbs` in user space posts work requests directly to the ConnectX adapter hardware via kernel bypass. Because the payload never traverses the Linux kernel's TCP/IP and netfilter stack, `tcpdump` hooks never see it.
 </details>
 
 <details>
 <summary>20. Why does `kill -9` fail on a process in state `D`, and how is state `D` different from state `Z`?</summary>
+
 A process in state `D` (uninterruptible sleep) is executing inside the kernel waiting on hardware or network storage I/O (such as a dead NFS/Lustre mount); signals are not delivered until the kernel syscall returns. A process in state `Z` (zombie) has already terminated and released its memory, and only its process-table entry remains until its parent calls `wait4()`.
 </details>
 

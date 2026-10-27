@@ -498,101 +498,121 @@ Next, on a disposable GPU VM or bare-metal GPU node (all interactive node comman
 
 <details>
 <summary>1. Why does a single slow node degrade an entire 1,024-GPU synchronous training job, and why must tuning focus on fleet uniformity rather than hero-node peak numbers?</summary>
+
 Synchronous distributed training steps block at collective communication barriers (`AllReduce`, `AllGather`, `ReduceScatter`) until the **slowest rank** arrives. A single node that is 20% slower slows all 1,024 GPUs by 20%. Fleet engineering is therefore about making every node identical within a tight, audited tolerance and automatically draining outliers.
 </details>
 
 <details>
 <summary>2. Why do you build and verify a GPU server bottom-up (Hardware -> Firmware -> Kernel -> OS -> Driver -> Workload), but diagnose symptoms top-down?</summary>
+
 Lower layers cannot be repaired by higher-layer software (no `sysctl` or PyTorch flag can fix a GPU PCIe link negotiated at `x8` Gen3 or a missing DIMM channel), so provisioning and verification must validate from hardware upward. When investigating a live slowdown, starting at the workload metric (`tokens/s`, step time breakdown) ensures you only drill into resources that are actually on the critical path.
 </details>
 
 <details>
 <summary>3. How do you read `nvidia-smi topo -m`, and which GPU-to-NIC topology code is required for full-speed GPUDirect RDMA?</summary>
+
 The topology legend from fastest to slowest is: `NV#` (`#` NVLink lanes), `PIX` (traversing at most one PCIe switch), `PXB` (multiple PCIe switches), `PHB` (crossing a PCIe Host Bridge within one NUMA node), `NODE` (crossing NUMA nodes within a socket), and `SYS` (crossing the inter-socket UPI/xGMI link). For full-speed GPUDirect RDMA, each GPU and its paired RDMA NIC should sit at **`PIX`** (sharing the same PCIe switch) on the same NUMA node.
 </details>
 
 <details>
 <summary>4. List seven critical BIOS/UEFI settings for bare-metal GPU training servers.</summary>
+
 (1) **Maximum Performance / HPC power profile**, (2) **C-states restricted to `C0`/`C1`** to eliminate core wake-up jitter, (3) **NUMA enabled** with node interleaving disabled, (4) **Above-4G Decoding and Resizable BAR (`ReBAR`) enabled** for large GPU memory apertures, (5) **IOMMU (`VT-d`/`AMD-Vi`) enabled** (paired with `iommu=pt` on bare metal), (6) **PCIe ACS disabled on GPU-NIC switch ports** per vendor GPUDirect RDMA P2P guidance, and (7) **identical pinned BIOS, BMC, GPU VBIOS, NVSwitch, and ConnectX NIC firmware** across all nodes.
 </details>
 
 <details>
 <summary>5. Explain the rationale and trade-offs of the kernel boot parameters `iommu=pt`, `numa_balancing=disable`, and `transparent_hugepage=madvise`.</summary>
+
 `iommu=pt` keeps the IOMMU active for SR-IOV/VFIO while setting up a 1:1 identity mapping for host-owned DMA devices, avoiding IOTLB translation overhead on high-rate RDMA/NVMe/GPU DMA. `numa_balancing=disable` stops the kernel from periodically unmapping pages and migrating them across sockets when ranks and workers are already explicitly pinned. `transparent_hugepage=madvise` prevents synchronous compaction latency spikes while allowing opt-in `2 MiB` huge pages.
 </details>
 
 <details>
 <summary>6. How do you verify that `memlock unlimited` (`ulimit -l`) and `nofile 1048576` (`ulimit -n`) are actually active inside your training job?</summary>
+
 Checking `ulimit -a` in an interactive root SSH shell only tests PAM's `/etc/security/limits.d/*.conf`. Because `systemd` services (`slurmd`, `containerd`, `kubelet`) ignore PAM `limits.d`, you must also configure `DefaultLimitMEMLOCK=infinity` and `DefaultLimitNOFILE=1048576` in `/etc/systemd/system.conf.d/` (and container runtime ulimits), and verify by running `srun ... bash -c 'ulimit -l -n'` or `kubectl exec ... -- sh -c 'ulimit -l -n'` inside the actual job container.
 </details>
 
 <details>
 <summary>7. Trace the 3-tier fallback chain used by `get_gpu_numa_node(device)` in `ASP` Chapter 3 to find a GPU's home NUMA node.</summary>
+
 (1) **NVML (`pynvml`, primary)**: normalize the GPU's PCI bus ID to an 8-digit domain (`nvmlDeviceGetHandleByPciBusId_v2`), query `nvmlDeviceGetNUMANodeId(handle)` directly, or read `nvmlDeviceGetCpuAffinity(handle)` and match the CPU bitmask against `/sys/devices/system/node/node*/cpulist`; (2) **sysfs fallback**: read `/sys/bus/pci/devices/<bdf>/numa_node` (normalizing `-1` to `0`); and (3) **CLI/process fallback**: parse `nvidia-smi topo -m -i $GPU` or `numactl --show`.
 </details>
 
 <details>
 <summary>8. Why is launching a training script under `numactl` sometimes not enough for PyTorch `DataLoader` workers, and how do you fix it?</summary>
+
 When `DataLoader` spawns worker processes (especially with the `spawn` or `forkserver` start method) or when native thread pools initialize, CPU affinity or memory policy can be reset. Pass a **`worker_init_fn`** to `DataLoader` that explicitly binds each worker's CPU affinity (`psutil.Process().cpu_affinity(...)` / `os.sched_setaffinity`) and `libnuma` policy to the GPU's NUMA node, use `persistent_workers=True` so workers survive across epochs, and set `pin_memory=True` (`non_blocking=True`).
 </details>
 
 <details>
 <summary>9. How much faster are host-to-device PCIe transfers from pinned memory compared to pageable memory, and what tool measures both directly?</summary>
+
 Pinned (`cudaMallocHost` / `pin_memory=True`) host-to-device and device-to-host DMA transfers are **`2x` to `3x` faster** than pageable transfers (which must first be copied by the CPU into an internal driver staging buffer) and allow true asynchronous overlap with GPU compute. Measure both directly on the host with `bandwidthTest --memory=pinned` versus `bandwidthTest --memory=pageable` (or `nvbandwidth`).
 </details>
 
 <details>
 <summary>10. How should NIC, NVMe, and GPU hardware interrupts (`IRQs`) and housekeeping daemons be placed on a GPU server?</summary>
+
 Stop `irqbalance` from moving interrupts onto training cores (either disable `irqbalance` and run `set_irq_affinity_bynode.sh` / write `/proc/irq/<N>/smp_affinity_list` so each NIC/NVMe's IRQs land on cores within its own NUMA node, or set `IRQBALANCE_BANNED_CPUS`). Confine host housekeeping daemons (`kubelet`, `containerd`, `slurmd`, exporters) to reserved housekeeping cores via `systemd` `CPUAffinity=`, `kubelet --reserved-cpus`, or Slurm `CoreSpecCount`.
 </details>
 
 <details>
 <summary>11. How should local NVMe drives be configured on a GPU compute node?</summary>
+
 Use a small mirrored pair (`RAID 1`) for the OS root filesystem, and stripe the remaining fast NVMe drives (`mdadm` `RAID 0` or LVM stripe, never parity RAID 5/6) with `XFS` or `ext4` (`noatime`, `fstrim.timer`, I/O scheduler `none`) as high-bandwidth ephemeral scratch for dataset caching, container `/var/lib/containerd` storage, and local checkpoint staging before asynchronous upload to shared/object storage.
 </details>
 
 <details>
 <summary>12. State the required boot-time startup order for GPU services before a node accepts Slurm or Kubernetes jobs.</summary>
+
 (1) Load kernel modules (`nvidia`, `nvidia_uvm`, `nvidia_peermem`, `nvidia-fs`, `mlx5_core`/`mlx5_ib`); (2) start `nvidia-persistenced.service`; (3) start `nvidia-fabricmanager.service` (on NVSwitch systems); (4) apply clock/power/MIG policies; (5) start `dcgm` / `nv-hostengine`; (6) run the boot-time `node_audit.sh` health gate; and (7) only if `node_audit.sh` passes (`exit 0`), start `slurmd.service` / `kubelet.service` (otherwise keep the node drained).
 </details>
 
 <details>
 <summary>13. How do `nvidia-smi -lgc`, `nvidia-smi -ac`, `PYTORCH_ALLOC_CONF`, `TF_FORCE_GPU_ALLOW_GROWTH=true`, and `jemalloc` tune runtime behavior?</summary>
+
 `nvidia-smi -lgc` and `-ac <mem>,<gfx>` lock GPU clocks for deterministic benchmarking. `PYTORCH_ALLOC_CONF=expandable_segments:True,max_split_size_mb:128` reduces PyTorch VRAM fragmentation, and `TF_FORCE_GPU_ALLOW_GROWTH=true` stops TensorFlow from grabbing 100% of VRAM at startup. On the host CPU side, preloading `jemalloc` (`MALLOC_CONF="narenas:8,background_thread:true,dirty_decay_ms:10000,muzzy_decay_ms:10000"`) prevents arena bloat and page-fault churn in multi-threaded data loaders.
 </details>
 
 <details>
 <summary>14. What is the CPU/GPU performance overhead of running AI workloads in containers with the NVIDIA Container Toolkit versus bare metal?</summary>
+
 Because containers share the host kernel and talk directly to `/dev/nvidia*` and `/dev/infiniband/*` via host-injected `libcuda.so.1`, container runtime overhead is **`< 2%`** compared to bare metal (and Red Hat's `MLPerf Inference v5.0` submission on OpenShift/Kubernetes matched bare-metal throughput and latency when paired with host networking/SR-IOV, `--ipc=host` / large `--shm-size`, and `--ulimit memlock=-1`).
 </details>
 
 <details>
 <summary>15. Which Kubernetes kubelet policies and Pod QoS settings are required to get exclusive, NUMA-aligned CPUs, memory, and GPUs?</summary>
+
 Run the Pod in the **`Guaranteed` QoS class** (`requests == limits` for both CPU and memory, with an integer CPU request) on a kubelet configured with **`cpuManagerPolicy: static`**, **`topologyManagerPolicy: single-numa-node`** (or `restricted`), **`memoryManagerPolicy: Static`**, and `--reserved-cpus` for system daemons.
 </details>
 
 <details>
 <summary>16. Which Slurm configuration settings and `srun` flags enforce NUMA-local CPU, memory, and GPU binding?</summary>
+
 In `slurm.conf` and `cgroup.conf`: `ProctrackType=proctrack/cgroup`, `TaskPlugin=task/cgroup,task/affinity`, `SelectType=select/cons_tres`, `ConstrainCores=yes`, `ConstrainRAMSpace=yes`, `ConstrainDevices=yes`, and `gres.conf` with `AutoDetect=nvml`. At job launch (`srun`): `--gpus-per-node=8 --ntasks-per-node=8 --gpu-bind=closest --cpu-bind=cores --mem-bind=local`.
 </details>
 
 <details>
 <summary>17. What belongs inside a baked Golden Image versus boot-time configuration management, and why?</summary>
+
 Bake heavy, kernel-coupled artifacts—the **pinned Linux kernel, precompiled NVIDIA driver `.ko` modules, MOFED/DOCA RDMA stack, NVIDIA Container Toolkit, and crisis/observability tools**—once in CI into the golden image (avoiding on-node DKMS compile storms and drift). Apply per-node identity (hostname, IP, regenerated SSH host keys and `/etc/machine-id`) and site configs at boot via cloud-init, Ansible, or BCM.
 </details>
 
 <details>
 <summary>18. What 14 items does `node_audit.sh` check before allowing a GPU node into the scheduling pool?</summary>
+
 (1) `iommu=pt` in `/proc/cmdline`, (2) `numa_balancing=disable` in `/proc/cmdline`, (3) `vm.swappiness == 1`, (4) `vm.max_map_count == 1048576`, (5) `kernel.numa_balancing == 0`, (6) THP mode `madvise`, (7) zero active swap devices, (8) `ulimit -l == unlimited`, (9) CPU `scaling_governor == performance`, (10) expected GPU count present (`8`), (11) GPU persistence mode `Enabled`, (12) every GPU's PCIe link gen and width equal to its maximum with `0` uncorrected ECC errors, (13) `nvidia-fabricmanager` active, and (14) zero `NVRM: Xid` errors in `journalctl -k` over the last 24 hours.
 </details>
 
 <details>
 <summary>19. In Gregg's Chapter 16 Case Study (*The Unexplained 3 to 4x Win*), what three quantified factors explained why the container ran `3 to 4x` faster than the VM?</summary>
+
 (1) **No neighbors on the container host**: the container host was `78%` idle (load `18` on `64` CPUs), whereas the VM was saturated (`2%` idle, load `85` on `48` CPUs -> `85/48 - 1 = 77%` time spent waiting for a CPU, explaining `~4x` delay); (2) **Larger LLC and smaller working set**: the container host had a `45 MB` LLC vs `33 MB` on the VM and ran only one subcomponent, achieving a **`90%` vs `30%` LLC hit ratio** and **`1.52` vs `0.57` IPC (`2.6x`)**; and (3) **Context-switch thrashing on the VM**: the overloaded VM suffered **`2,000,000` context switches/s** with `< 10 µs` on-CPU bursts (`cpudist`), versus `1,000` cs/s and `2–4 ms` bursts on the container.
 </details>
 
 <details>
 <summary>20. Why was it critical in the Chapter 16 Case Study to warn management that part of the `3 to 4x` container speedup would not last?</summary>
+
 A large fraction of the container's advantage came from running **alone on an empty 64-CPU host** with full access to the `45 MB` L3 cache and zero run-queue wait. Once production multitenant neighbors moved onto the container host, LLC contention and CPU scheduling wait would return.
 </details>
 

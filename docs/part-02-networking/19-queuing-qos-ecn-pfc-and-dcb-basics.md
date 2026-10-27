@@ -332,101 +332,121 @@ Next, on a disposable Linux VM (and optional RoCE NIC/switch hardware for Step 8
 
 <details>
 <summary>1. Give four reasons why \"just adding more bandwidth\" does not eliminate the need for QoS (`CN` Chapter 8).</summary>
+
 (1) **Synchronized fan-in and microbursts** make momentary queue build-up a statistical certainty even when 1-minute average link utilization is low;\n(2) **Serialization delay and jitter**: a `9,000`-byte jumbo packet on a `100 Mb/s` link occupies the wire for `0.72 ms`, forcing a `64`-byte (`0.05 ms`) latency-sensitive packet behind it to wait `14x` its own transmission time;\n(3) **Adding bandwidth at one link simply shifts the bottleneck** to the next downstream hop or receiver NIC; and\n(4) **Economic/physical limits** on WAN, inter-pod, and host PCIe/NIC links.
 </details>
 
 <details>
 <summary>2. How are the 8 bits of the IPv4 `ToS` / IPv6 `Traffic Class` byte divided between `DSCP` and `ECN`, and how does `DSCP` relate to Ethernet `802.1p` `PCP`?</summary>
+
 The **upper 6 bits** are the **DSCP (*Differentiated Services Code Point*, `RFC 2474`)** (`0..63`, including Class Selectors `CS0`–`CS7`, Assured Forwarding `AF11`–`AF43`, and Expedited Forwarding **`EF = 46`** `RFC 3246`), and the **lower 2 bits** are **ECN (*Explicit Congestion Notification*, `RFC 3168`)**. At Layer 2 inside an `802.1Q` VLAN tag, **`PCP` (*Priority Code Point*, `802.1p`)** is **3 bits (`0..7`)**. Switches and NICs map 6-bit L3 DSCP values to 3-bit L2 priorities (for example, mapping RoCE data **`DSCP 26` -> Priority `3`** and RoCE CNPs **`DSCP 48` -> Priority `6`**).
 </details>
 
 <details>
 <summary>3. What is a QoS \"trust boundary\", how are markings preserved across VXLAN tunnels, and why is the public Internet called \"the unmarked Internet\" (`CN` Chapter 8)?</summary>
+
 Because any host or container can set arbitrary DSCP bits, a **trust boundary** is the first trusted switch/DPU port that either accepts DSCP markings (from managed cluster nodes) or **re-marks/classifiers** packets from untrusted tenants. Across VXLAN/GRE/IPsec tunnels, the encapsulating VTEP must copy the inner DSCP (and ECN) bits to the outer IP header (`uniform` / `tos inherit` mode) so underlay switches schedule the packet into the right queue. On the **public Internet**, ISPs bleach (`0`) or rewrite DSCP at peering boundaries because there is no cross-provider settlement for QoS classes.
 </details>
 
 <details>
 <summary>4. Contrast Traffic Policing and Traffic Shaping.</summary>
+
 Both measure traffic against a **token bucket (`CIR` rate + `CBS` burst size)**:\n- A **Policer** has **no buffer**: packets exceeding the token bucket are **immediately dropped** (or remarked down), which adds zero queueing delay but can cause sharp TCP retransmission sawtooths.\n- A **Shaper** **buffers** excess packets in a queue and clocks them out smoothly at the target rate—smoothing bursts and avoiding drops at the cost of added queueing latency and memory.
 </details>
 
 <details>
 <summary>5. Compare Strict Priority (`LLQ`) with Weighted Fair Queueing (`CBWFQ`, `DRR`, and DCB `ETS` `802.1Qaz`), and state the danger of unpoliced Strict Priority.</summary>
+
 **Strict Priority (`LLQ`)** always services the high-priority queue first as long as it has a single packet—minimizing latency and jitter for critical traffic (voice, routing keepalives, RoCE **CNPs**), but if the strict-priority class is not **policed/rate-capped**, a burst in that class **completely starves all lower-priority queues**. **Weighted Fair Queueing (`CBWFQ` / `DRR` / IEEE `802.1Qaz` `ETS` *Enhanced Transmission Selection*)** divides link bandwidth proportionally across priority groups according to configured percentage weights while redistributing unused bandwidth (work-conserving).
 </details>
 
 <details>
 <summary>6. What is \"tail drop\", how does `WRED` improve on it, and how does `CoDel` (`RFC 8290`) solve bufferbloat?</summary>
+
 Under **tail drop**, a queue accepts packets until 100% full and then drops all arriving packets—keeping buffers permanently full (**bufferbloat**, adding hundreds of milliseconds of latency) and causing all competing TCP flows to drop and back off simultaneously (**global synchronization**). **WRED (*Weighted Random Early Detection*)** drops (or ECN-marks) packets probabilistically with linearly increasing probability between a minimum queue depth (`Kmin`) and maximum depth (`Kmax`). **CoDel (*Controlled Delay*, `RFC 8290`)** measures each packet's **sojourn time** (time spent waiting in the queue) rather than byte count and begins dropping/marking when the minimum sojourn delay over a `100 ms` window exceeds a **`5 ms` target** (`fq_codel` pairs this with per-flow fair queues).
 </details>
 
 <details>
 <summary>7. Name the six congestion points in a 3-stage or 5-stage leaf-spine AI fabric (`ADC` Chapter 7).</summary>
+
 Even when leaf-to-spine bandwidth is provisioned at `1:1`:\n(1) **Leaf downlink (`leaf -> server`)**: many-to-one **incast** (several senders transmitting to one receiver NIC simultaneously);\n(2) **Local intra-leaf switching**: two servers on Leaf A sending to a third server on Leaf A;\n(3) **Leaf-to-spine uplink (`leaf -> spine`)**: ECMP hash collisions placing two 400G elephant flows onto the same uplink;\n(4) **Spine-to-leaf downlink (`spine -> leaf`)**: flows from different leaves hashing through the same spine toward the same destination leaf;\n(5) **Spine-to-super-spine links** (compounded by `2:1` or `4:1` oversubscription); and\n(6) **Sub-millisecond microbursts** at collective barriers.
 </details>
 
 <details>
 <summary>8. Why does classic `RoCEv2` (`UDP port 4791`) suffer severe throughput collapse on packet loss?</summary>
+
 RoCEv2 implements transport reliability directly in NIC hardware (`Queue Pairs`) without host CPU involvement. Classic RoCE NICs use a tiny reorder window and **go-back-N recovery**: a single dropped packet out of a multi-megabyte burst forces the sending NIC to rewind and retransmit the lost packet **plus every subsequent packet already sent in flight**, stalling the entire collective barrier across all GPUs.
 </details>
 
 <details>
 <summary>9. Trace the four steps of `ECN` + `CNP` congestion notification in `RoCEv2` (`ADC` Chapter 7).</summary>
+
 (1) The sending RoCE NIC marks outgoing IP headers with **`ECT(0)` (`ECN = 10b`)**;\n(2) When a transit switch's egress queue depth crosses its **`ECN` threshold (`Kmin..Kmax`)**, the switch rewrites the packet's ECN bits to **`CE` (*Congestion Experienced*, `11b`)** and forwards it without dropping;\n(3) The receiving RoCE NIC detects the `CE` mark and generates a **Congestion Notification Packet (`CNP`, RoCEv2 `BTH opcode 0x81 = 129`)** addressed back to the sender, identifying the congested Queue Pair (`QP`) and marked with high priority (`DSCP 48`);\n(4) Upon receiving the `CNP`, the sending NIC **throttles the injection rate of that specific `QP`** (and gradually recovers rate via timers/byte counters once CNPs stop).
 </details>
 
 <details>
 <summary>10. Why is an `ECN`-only queue still considered \"lossy\", and why must `CNP` packets be placed in a strict-priority / high-weight queue?</summary>
+
 Because ECN is an **end-to-end feedback loop**: a `CE`-marked packet must travel all the way from the congested switch to the receiver, and the resulting `CNP` must travel all the way back to the sender before the sender slows down (`>= 1 RTT` delay). During a sudden many-to-one incast burst at `400 Gb/s`, the switch buffer can overflow and drop packets before the sender ever receives the `CNP`. If `CNP` packets themselves were queued behind congested bulk data on the return path, the feedback signal would be delayed even further—so `CNP`s (`DSCP 48`) are mapped to a dedicated high-priority queue (`Priority 6`).
 </details>
 
 <details>
 <summary>11. How does IEEE `802.1Qbb` Priority Flow Control (`PFC`) work on the wire (`EtherType`, `opcode`, destination MAC, quanta, `XOFF`/`XON`)?</summary>
+
 When a receiving switch's (or NIC's) ingress buffer for lossless priority `P` (`0..7`, typically `P = 3`) fills past its **`XOFF` threshold**, it transmits an L2 **PFC Pause Frame** (**`EtherType 0x8808`**, **`opcode 0x0101`**, link-local multicast destination **`01:80:C2:00:00:01`**) directly to the upstream neighbor on that link. The frame contains an 8-bit class-enable vector and eight 16-bit pause timers in units of **`512` bit-times** (`65535` = max pause). The upstream neighbor immediately stops transmitting **only Priority `P`** while other priorities (`0..2, 4..7`) continue flowing; when the receiver's buffer drains below **`XON`**, it sends a PFC frame with `time = 0` to resume.
 </details>
 
 <details>
 <summary>12. What is `PFC Headroom`, and why does a `500 m` optical link at `400 Gb/s` require much more headroom buffer than a `10 m` link?</summary>
+
 Between the instant a receiver crosses `XOFF` and the instant the upstream sender actually stops transmitting, packets are still in flight on the fiber in both directions: the `XOFF` pause frame takes 1 one-way propagation delay (`~5 ns/m`) to reach the sender, the sender takes reaction time + 1 MTU serialization to stop, and the data bits already put on the wire take another 1 one-way propagation delay to arrive. **PFC Headroom** is the dedicated buffer space reserved **above `XOFF`** to absorb all of those in-flight bytes without dropping (`headroom >= 2 * propagation_delay * bandwidth + 2 * MTU + reaction_bytes`). At `400 Gb/s` (`50 bytes/ns`), `500 m` of fiber (`5,000 ns` RTT) has `250 KB` of data in flight on the glass alone.
 </details>
 
 <details>
 <summary>13. Explain the three major failure modes of `PFC`: Head-of-Line Blocking, `PFC` Storms (Congestion Spreading), and `PFC` Deadlocks.</summary>
+
 (1) **Class-level Head-of-Line (`HOL`) blocking**: PFC pauses an entire **priority class (`0..7`)** on a link, not an individual flow/QP—so an innocent flow on Priority 3 heading to an idle destination is stalled simply because it shares a link with a flow heading to a congested port.\n(2) **PFC Storms & Congestion Spreading**: a wedged NIC or firmware bug that continuously emits `XOFF` pause frames freezes the leaf port, which fills the leaf's ingress buffer and causes the leaf to pause all spines, spreading backpressure across the entire cluster.\n(3) **PFC Deadlock**: if routing transients, link failures, or non-Clos topologies create a **cyclic buffer dependency** (`Switch A pauses B -> B pauses C -> C pauses A`), every switch in the cycle waits on the next and traffic halts permanently.
 </details>
 
 <details>
 <summary>14. What are the three stages of a `PFC Watchdog`?</summary>
+
 (1) **Detection**: monitors each lossless queue; if a queue remains paused (unable to drain or continuously receiving `XOFF` frames) for longer than the watchdog timer (typically **`100` to `200 ms`**), it declares a PFC storm/hang;\n(2) **Mitigation**: switches the stuck queue into **drop mode** (flushing queued packets, dropping new arrivals for that queue, and ignoring incoming PFC pauses on that port) so backpressure cannot spread upstream across the fabric; and\n(3) **Restoration**: once pause frames cease for a clean recovery interval, restores normal lossless operation and fires a high-priority operator alert.
 </details>
 
 <details>
 <summary>15. How does `DCQCN` (`SIGCOMM 2015`) combine `ECN` and `PFC`, and what is the mandatory ordering of queue thresholds?</summary>
+
 **DCQCN** (*Data Center Quantized Congestion Notification*) uses **ECN/CNP** as the primary, fine-grained, per-QP rate controller and uses **PFC** only as the last-resort safety net against buffer overflow. Therefore, queue thresholds must be strictly ordered as:\n**`XON < ECN Kmin < ECN Kmax < PFC XOFF`** (+ headroom).\nAs a queue grows, it crosses `ECN Kmin..Kmax` **first**, marking packets `CE` so senders throttle their QPs smoothly; **PFC (`XOFF`)** only triggers if an abrupt incast burst outruns the 1-RTT ECN control loop.
 </details>
 
 <details>
 <summary>16. How does `Source Flow Control` (`SFC`, IEEE `802.1Qdw`) improve on both `ECN` and `PFC` (`ADC` Chapter 7)?</summary>
+
 When a switch detects congestion on an egress link (e.g., `Spine A -> Leaf D`), **SFC** trims the congested packet's payload, reverses its source/destination addresses, and sends an **SFC notification packet directly back upstream toward the source (`Leaf A` / sending NIC)**.\n- Unlike **ECN**, the signal does not have to travel forward to the receiver and wait for a `CNP` to come back (cutting reaction latency in half).\n- Unlike **PFC**, SFC identifies the specific **flow** (5-tuple/QP), so the ingress leaf/NIC pauses or throttles **only the culprit flow** rather than pausing the entire priority class.
 </details>
 
 <details>
 <summary>17. How does `Congestion Signaling` (`CSIG`) improve on ECN's single 2-bit flag (`ADC` Chapter 7)?</summary>
+
 Instead of a binary 1-bit `CE` mark that says only "some hop was congested", **CSIG** carries a small **in-band telemetry tag** in the packet header that each transit switch updates with **quantized multi-bit bottleneck metrics** (such as minimum available bandwidth ratio or maximum queue delay) plus **bottleneck locator metadata** (tier/stage, switch ID, uplink vs downlink). The receiver reflects the CSIG summary back to the sender, allowing the NIC to adjust its sending rate and path selection in a single step proportional to the exact bottleneck severity.
 </details>
 
 <details>
 <summary>18. Name the IEEE standards that make up the Data Center Bridging (`DCB`) suite.</summary>
+
 - **IEEE `802.1Qbb`**: **PFC** (*Priority-based Flow Control*)\n- **IEEE `802.1Qaz`**: **ETS** (*Enhanced Transmission Selection* bandwidth sharing) and **DCBX** (*Data Center Bridging Capability Exchange Protocol* over LLDP)\n- **IEEE `802.1Qau`**: **QCN** (*Quantized Congestion Notification*, L2 predecessor to DCQCN)\n- **IEEE `802.1Qdw`**: **SFC** (*Source Flow Control*).
 </details>
 
 <details>
 <summary>19. Which host and switch commands verify `DSCP` trust, `PFC` pause counts, `ECN` marks, `CNP` packets, and lossless queue drops on an NVIDIA ConnectX + SONiC fabric?</summary>
+
 - **On the GPU host**: `mlnx_qos -i eth2` (verifies `--trust dscp` and `--pfc 0,0,0,1,0,0,0,0`), `dcb pfc show dev eth2`, `rdma statistic show` (`np_cnp_sent`, `rp_cnp_handled`, retransmissions), and `ethtool -S eth2 | egrep 'prio3_pause|ecn_marked|cnp|out_of_sequence|discards'`.\n- **On the SONiC switch**: `show pfc counters`, `show queue counters` (verifying **`0` drops** on lossless queue 3), `show priority-group watermark headroom`, and `show pfcwd stats`.
 </details>
 
 <details>
 <summary>20. Walk through the Section 11 diagnostic flow when an AI training job shows low `AllReduce` bandwidth.</summary>
+
 (1) **Check lossless queue drops on switches and NICs**: if `> 0`, fix DSCP trust/mapping, PFC priority mismatch, or insufficient headroom (or investigate why the PFC watchdog fired);\n(2) **If drops = 0, check PFC pause counters**: if high, congestion is outrunning ECN—lower `ECN Kmin/Kmax` thresholds, check load balancing (`ECMP` / adaptive routing), or locate the incast receiver / stuck NIC;\n(3) **If PFC pauses = 0, check ECN marks and CNPs**: if constantly high, DCQCN is preventing PFC but flows are colliding on hot links (fix ECMP entropy, QP count, or oversubscription);\n(4) **If ECN/PFC = 0, check physical link health** (`FEC`/CRC errors, downtrained speed/width, MTU) and **host/NCCL software** (`NCCL_IB_TC`, NUMA/PCIe locality, CPU stragglers).
 </details>
 

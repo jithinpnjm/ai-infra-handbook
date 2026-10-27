@@ -1037,101 +1037,121 @@ patch -p0 < fix.patch && cat a.txt      # (untested here)
 
 <details>
 <summary>1. What does a package contain besides files, and what is the difference between `dpkg`/`rpm` and `apt`/`dnf`?</summary>
+
 Besides the payload file tree, a package contains metadata: name/version/architecture, dependency declarations, per-file cryptographic checksums, marked configuration file paths, maintainer scripts, and a digital signature. Low-level tools (`dpkg`, `rpm`) unpack a single local package file and update `/var/lib/dpkg` or `/var/lib/rpm` without fetching dependencies; high-level managers (`apt`, `dnf`) fetch repository indexes, verify signatures, solve the full dependency closure, and invoke `dpkg`/`rpm`.
 </details>
 
 <details>
 <summary>2. Why is it dangerous to install packages when `/` or `/var` is 100% full or to use `--nodeps` / `--force`?</summary>
+
 Running out of space or inodes mid-transaction can abort `dpkg` or `rpm` while writing `/var/lib/dpkg` or `/var/lib/rpm`, corrupting the package database. Using `--nodeps` or `--force` installs files whose requirements or ownership conflict with the database, causing future upgrades to fail or overwrite files silently.
 </details>
 
 <details>
 <summary>3. How do `rpm`/`dnf` and `dpkg`/`apt` handle modified configuration files during upgrades and removals?</summary>
+
 On RPM systems, if you modified a `%config(noreplace)` file and the package ships a new default, your file is kept and the new default is saved alongside it as `.rpmnew` (or your version is saved as `.rpmsave` if replaced). On Debian/Ubuntu, `dpkg` prompts (or honours `--force-confold` in automation), and `apt remove` leaves config files on disk (`rc` state in `dpkg -l`) whereas `apt purge` deletes them.
 </details>
 
 <details>
 <summary>4. Give the both-family commands to (a) find which installed package owns `/usr/bin/ssh`, (b) verify package file checksums, and (c) find which uninstalled package provides `zlib.h`.</summary>
+
 (a) Owner of `/usr/bin/ssh`: `dpkg -S /usr/bin/ssh` (Debian/Ubuntu) and `rpm -qf /usr/bin/ssh` (RHEL/Rocky). (b) Verify checksums: `dpkg --verify pkg` or `sudo debsums -s` (Debian/Ubuntu) and `rpm -V pkg` or `rpm -Va` (RHEL/Rocky, where `S.5....T. c` flags size, digest, and mtime changes on a config file). (c) Uninstalled header provider: `apt-file search zlib.h` and `dnf provides '*/zlib.h'`.
 </details>
 
 <details>
 <summary>5. What does a repository GPG signature protect against, and how does modern `apt` (`signed-by=`) improve on the deprecated `apt-key`?</summary>
+
 Repository signatures prove that package metadata and archives came from the repository owner and were not tampered with in transit or on a mirror. Modern `apt` stores each vendor's key in `/etc/apt/keyrings/*.gpg` and binds it to a single repository via `signed-by=` in `/etc/apt/sources.list.d/`, preventing a third-party key from signing packages for the base OS.
 </details>
 
 <details>
 <summary>6. Why should automation scripts use `apt-get` with `DEBIAN_FRONTEND=noninteractive` instead of `apt`?</summary>
+
 `apt` is designed for interactive human use and its output format can change between releases, whereas `apt-get` guarantees a stable CLI contract for scripts. Setting `DEBIAN_FRONTEND=noninteractive` with `-y` prevents `debconf` prompts from hanging unattended runs.
 </details>
 
 <details>
 <summary>7. How can an unattended upgrade cause `nvidia-smi` to fail after the next reboot, and how do you prevent it?</summary>
+
 If `apt upgrade` or `dnf-automatic` installs a newer kernel (`6.x`) for which DKMS cannot build `nvidia.ko` (missing `linux-headers` or an incompatible driver version), the next reboot boots into the new kernel without a GPU driver. Prevent this by holding kernel and driver packages together (`sudo apt-mark hold` or `sudo dnf versionlock add`) and testing upgrades on a canary node.
 </details>
 
 <details>
 <summary>8. List the six steps of building an autotools package from source into a private prefix.</summary>
+
 (1) Inspect and unpack (`tar tzf` to check for a top-level directory and ensure no absolute paths, then `tar xzf`); (2) read `README` and `INSTALL`; (3) configure (`./configure --prefix=$HOME/mycoreutils`); (4) build (`make -j"$(nproc)"`); (5) test (`make check`); and (6) dry-run then install (`make -n install` to verify nothing writes outside the prefix, followed by `make install`).
 </details>
 
 <details>
 <summary>9. How do you find the root cause of a `./configure` failure in a huge `config.log` file, and why use `CPPFLAGS` for `-I` paths?</summary>
+
 Open `config.log` in `less`, press `G` to jump to the bottom (skipping past the giant environment dump at the very end), and search backward with `?for more details` or the failing check's name to see the exact compiler command and error message. Pass `-I/path/include` in `CPPFLAGS` rather than `CFLAGS` because `./configure` frequently invokes the C preprocessor (`cpp`) standalone without `CFLAGS`.
 </details>
 
 <details>
 <summary>10. What does `pkg-config` do, and what are the two ways to make it find `/opt/openssl/lib/pkgconfig/openssl.pc`?</summary>
+
 `pkg-config` reads `.pc` metadata files (shipped in `-dev`/`-devel` packages) to print compiler flags (`--cflags`), linker flags (`--libs`), and versions (`--modversion`). When a `.pc` file sits outside the default `lib/pkgconfig` directory, either symlink/copy the `.pc` file into the central `pkgconfig` directory or add its directory to `PKG_CONFIG_PATH` for the build.
 </details>
 
 <details>
 <summary>11. Why is plain `sudo make install` into `/usr/local` hard to maintain across a fleet, and what are three better alternatives?</summary>
+
 Plain `make install` records nothing in `/var/lib/dpkg` or `/var/lib/rpm`, so files cannot be queried, verified, or cleanly removed. Better alternatives are: (1) wrap the install into a real `.deb`/`.rpm` (`checkinstall`, `rpmbuild`, or `make install DESTDIR=/tmp/stage` + `fpm`), (2) install into a versioned shared directory (`/opt/apps/foo/1.2`) managed by Environment Modules / Lmod, or (3) build a container image.
 </details>
 
 <details>
 <summary>12. How do you apply a unified diff (`diff -u`) when its headers say `--- package-3.42/src/file.c`, and how do you test it safely first?</summary>
+
 From the top of your unpacked source directory (which contains `src/file.c`), pass `-p1` to strip the leading `package-3.42/` component, and test first with `--dry-run`: `patch -p1 --dry-run < fix.patch` followed by `patch -p1 < fix.patch`.
 </details>
 
 <details>
 <summary>13. Distinguish the roles of the C preprocessor (`cpp`), compiler (`cc -c`), and linker (`ld`), and the flags `-I`, `-D`, `-L`, and `-l`.</summary>
+
 The preprocessor (`cpp` / `cc -E`) expands `#include` headers (searched via `-I/dir`) and `#define` macros (`-DNAME=val`). The compiler (`cc -c`) translates expanded C/C++ source into `.o` object files. The linker (`ld`, invoked by `cc -o`) combines `.o` files and resolves external symbols against libraries `-lname` (`libname.so` / `libname.a`) searched in `-L/dir`.
 </details>
 
 <details>
 <summary>14. Compare static libraries (`libfoo.a`) and shared libraries (`libfoo.so.N`).</summary>
+
 A static library copies needed object code directly into the executable at link time, producing a larger standalone binary that never breaks on missing runtime `.so` files but requires relinking every binary to pick up a security fix. A shared library records only the library name in the ELF binary and is mapped at runtime by `ld.so`, sharing a single copy in RAM and allowing one package upgrade to patch every dependent program.
 </details>
 
 <details>
 <summary>15. In what order does `ld.so` search for shared libraries at runtime, and when must you run `sudo ldconfig`?</summary>
+
 `ld.so` searches: (1) the binary's embedded `DT_RPATH` (if `DT_RUNPATH` is absent), (2) `LD_LIBRARY_PATH`, (3) the binary's `DT_RUNPATH`, (4) `/etc/ld.so.cache` (built from `/etc/ld.so.conf` and `/etc/ld.so.conf.d/*.conf`), and (5) `/lib` and `/usr/lib` (and multiarch equivalents). Run `sudo ldconfig` whenever you add a library to a configured directory or edit `/etc/ld.so.conf.d/`.
 </details>
 
 <details>
 <summary>16. Why should `LD_LIBRARY_PATH` never be exported globally in `.bashrc`, and how do `-Wl,-rpath` and `$ORIGIN` solve the problem?</summary>
+
 Exporting `LD_LIBRARY_PATH` globally forces every process in your session (including system binaries) to scan those directories first, causing symbol lookup crashes and performance overhead. Linking with `-Wl,-rpath=/opt/obscure/lib` (or `-Wl,-rpath='$ORIGIN/../lib'` for relocatable directories) embeds the library path inside that specific executable's ELF header (`readelf -d prog | grep -E 'RPATH|RUNPATH'`).
 </details>
 
 <details>
 <summary>17. How does `make` decide which targets to rebuild, what do `$@`, `$<`, and `$*` expand to, and why does `Makefile:7: *** missing separator` happen?</summary>
+
 `make` compares the modification timestamp (`mtime`) of each target against its dependencies and runs the recipe only if a target is missing or older than a dependency. Inside a recipe, `$@` is the target name, `$<` is the first prerequisite, and `$*` is the stem (`blah` for `blah.o`). `missing separator` occurs when a recipe line is indented with spaces instead of a literal TAB character.
 </details>
 
 <details>
 <summary>18. In a parallel `make -j8` build that fails with `make[3]`, `make[2]`, and `make[1]` errors, how do you find the actual problem?</summary>
+
 Recursive `make[N]` lines at the bottom are just the parent `make` processes unwinding after a child failed. Scroll upward above the first `make[3]: *** [file.o] Error 1` line (ignoring any `Error 1 (ignored)` lines) to read the first real compiler or linker diagnostic and the `Leaving directory` path.
 </details>
 
 <details>
 <summary>19. Summarize the 10-step mini-cluster build order from `SCL` Chapter 24 and why you test a 2-compute-node mini-cluster before cloning.</summary>
+
 (1) Control server, (2) NFS, (3) first compute node, (4) OFED communication stack, (5) second compute node (forming a mini-cluster), (6) compilers/tests, (7) fabric bandwidth/latency verification against vendor specs, (8) Slurm scheduler, (9) end-to-end job test, and (10) cloning/scaling to the remaining nodes. Testing on the mini-cluster catches configuration and performance defects once rather than replicating them across hundreds of nodes.
 </details>
 
 <details>
 <summary>20. What three things must you clean up on a prototype node before cloning its disk with `dd` or Clonezilla, and what two precautions apply to OFED?</summary>
+
 Before cloning: (1) replace hardware-specific `/dev/disk/by-id/...` entries in GRUB and `/etc/fstab` with portable `UUID=` or device names, (2) remove MAC-bound network udev rules (`70-persistent-net.rules`), and (3) remove SSH host keys and `/etc/machine-id`. For OFED: back up existing OFED packages before running the installer (which removes old packages before building) and set `soft`/`hard memlock unlimited` in `/etc/security/limits.conf`.
 </details>
 

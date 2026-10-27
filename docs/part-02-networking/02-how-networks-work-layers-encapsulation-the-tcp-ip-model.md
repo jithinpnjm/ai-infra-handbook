@@ -329,51 +329,61 @@ Next, on a disposable Linux VM (all interactive VM commands below are `untested 
 
 <details>
 <summary>1. What is the fundamental difference between circuit switching and packet switching?</summary>
+
 In **circuit switching** (such as TDM telephony), a dedicated path and fixed bandwidth time slots are reserved end-to-end before any data flows—guaranteeing bandwidth and jitter, but wasting capacity whenever the sender is silent. In **packet switching**, data is sliced into self-describing **packets** that share links via **statistical multiplexing** and are forwarded independently **hop-by-hop**.
 </details>
 
 <details>
 <summary>2. Why did ATM's 53-byte fixed cells fail against variable-length Ethernet/IP, and which ATM ideas survived?</summary>
+
 ATM used `53`-byte cells (`5`-byte header + `48`-byte payload) to make hardware switching deterministic, but slicing variable-length data into 48-byte chunks wasted massive bandwidth on headers and padding ("cell tax"). However, ATM's **label switching** evolved directly into **MPLS**, and its proof that in-network fragmentation hurts router performance led to IPv4 Path MTU Discovery (`DF` bit) and the removal of router fragmentation in IPv6.
 </details>
 
 <details>
 <summary>3. What are the four functions of any data-carrying protocol (`CN` Chapter 3), and how does the RINA model view them?</summary>
+
 The four functions are: (1) **Transport** (moving bits and addressing), (2) **Multiplexing** (separating multiple flows on a shared channel), (3) **Error control** (CRC, checksums, FEC, ARQ retransmissions), and (4) **Flow/congestion control** (matching sender rate to receiver and network capacity). The **RINA** (*Recursive InterNetwork Architecture*) model observes that these same four functions repeat recursively at different scopes: across one physical link (Ethernet), across an internetwork (IP), and end-to-end between processes (TCP).
 </details>
 
 <details>
 <summary>4. Compare the 4-layer TCP/IP (DoD) model and the 7-layer ISO OSI model, and name the PDU at each layer.</summary>
+
 The **4-layer TCP/IP model** consists of: **Application** (`Message`/`Data`, covering OSI L7 Application, L6 Presentation, and L5 Session), **Transport** (`Segment` for TCP / `Datagram` for UDP, OSI L4), **Internet** (`Packet`, OSI L3 Network), and **Link** (`Frame` at OSI L2 Data Link / `Bits` at OSI L1 Physical).
 </details>
 
 <details>
 <summary>5. Why did the TCP/IP protocol suite beat the ISO OSI protocol suite in practice, while the 7-layer OSI numbering survived?</summary>
+
 The DARPA TCP/IP specifications (RFCs) were open, free, and shipped as working C code inside BSD Unix, whereas ISO OSI specifications were slow, committee-heavy, and sold as expensive paper documents. The 7-layer OSI numbering (`L1` physical optics, `L2` Ethernet switching, `L3` IP routing, `L4` TCP/UDP load balancing, `L7` HTTP proxies) survived because it separates physical (`L1`) from data-link (`L2`) and provides a clear troubleshooting vocabulary.
 </details>
 
 <details>
 <summary>6. Give four examples of protocols that blur or straddle strict OSI layer boundaries.</summary>
+
 (1) **ARP** sits between L2 and L3 (carried in Ethernet frames `0x0806` to resolve L3 IPv4 addresses to L2 MACs); (2) **MPLS** sits at "L2.5" between Ethernet and IP; (3) **BGP** runs over TCP port `179` (an L7 application socket) yet builds the L3 IP routing table; and (4) **VXLAN** encapsulates L2 Ethernet frames inside L4 UDP datagrams (`port 4789`) over L3 IP packets.
 </details>
 
 <details>
 <summary>7. What is the difference between connection-oriented and connectionless protocols, and how does the End-to-End Principle combine them?</summary>
+
 A **connection-oriented** protocol (`TCP`, `MPLS LSPs`, `InfiniBand RC QPs`) sets up state at the endpoints (or along the path) before transferring data; a **connectionless** protocol (`IP`, `UDP`, `Ethernet`) routes every packet independently using only its header. Under the **End-to-End Principle**, the Internet keeps the core network connectionless (`IP`) so routers can route around link failures instantly without tearing down connections, while placing connection state and reliability at the endpoints (`TCP` or NIC `RDMA` engines).
 </details>
 
 <details>
 <summary>8. Calculate the on-wire goodput efficiency of a full-size TCP/IPv4 segment at `MTU = 1500` versus `MTU = 9000` (jumbo frames).</summary>
+
 At `MTU = 1500`: `MSS = 1500 - 20 (IPv4) - 20 (TCP) = 1460` bytes of application payload. On the Ethernet wire, the frame consumes `1500 + 14 (Eth hdr) + 4 (FCS) + 8 (Preamble/SFD) + 12 (Inter-Frame Gap) = 1538` byte-times, giving **`1460 / 1538 = 94.9%`** goodput (`1448 / 1538 = 94.1%` with 12-byte TCP timestamps). At `MTU = 9000`: `MSS = 8960` over `9038` wire byte-times = **`99.1%`** goodput.
 </details>
 
 <details>
 <summary>9. What is the maximum packet rate (`Mpps`) of a `100 Gb/s` link and a `400 Gb/s` link when sending minimum 64-byte Ethernet frames?</summary>
+
 A minimum `64`-byte Ethernet frame (`14`B header + `46`B payload + `4`B FCS) plus `8`B Preamble/SFD and `12`B Inter-Frame Gap occupies **`84` byte-times = `672` bits** on the wire. A `100 Gb/s` link can carry at most `100e9 / 672 = 148.8 million packets per second (Mpps)`, and a `400 Gb/s` link can carry at most **`595.2 Mpps`**.
 </details>
 
 <details>
 <summary>10. State the exact demultiplexing keys at L2 (`EtherType`), L3 (`IP Protocol`), and L4 (`Port`) for IPv4, IPv6, ARP, VLAN, TCP, UDP, ICMP, HTTPS, and RoCE v2.</summary>
+
 - **L2 `EtherType` (16-bit)**: `0x0800` = IPv4, `0x86DD` = IPv6, `0x0806` = ARP, `0x8100` = 802.1Q VLAN, `0x8915` = RoCE v1, `0x88CC` = LLDP.
 - **L3 `Protocol` / `Next Header` (8-bit)**: `1` = ICMP, `6` = TCP, `17` = UDP, `47` = GRE, `50` = IPsec ESP, `58` = ICMPv6, `89` = OSPF.
 - **L4 `Port` (16-bit)**: `22` = SSH, `53` = DNS, `80` = HTTP, `443` = HTTPS/QUIC, `4791` = RoCE v2.
@@ -381,46 +391,55 @@ A minimum `64`-byte Ethernet frame (`14`B header + `46`B payload + `4`B FCS) plu
 
 <details>
 <summary>11. How many bytes of header overhead does VXLAN add, and what happens if the inner container/VM MTU is not reduced?</summary>
+
 VXLAN adds **`50` bytes** of outer headers (`14`B outer Ethernet + `20`B outer IPv4 + `8`B UDP + `8`B VXLAN header; `70` bytes with outer IPv6). On a `1500`-MTU physical underlay, the inner virtual interface MTU must be reduced to **`1450` bytes** (or the physical underlay raised to jumbo `9000` MTU); otherwise full-size inner packets exceed the underlay MTU and are either fragmented or dropped.
 </details>
 
 <details>
 <summary>12. Distinguish the Data Plane, Control Plane, and Management Plane, and explain `RIB` versus `FIB`.</summary>
+
 The **Data Plane** forwards packets at line rate in switch ASICs or kernel/NIC fast paths using the **FIB** (*Forwarding Information Base*). The **Control Plane** runs protocols (`OSPF`, `IS-IS`, `BGP`, `STP`, `ARP`, or an InfiniBand Subnet Manager) to discover topology and populate candidate routes in the **RIB** (*Routing Information Base*), programming the best routes into the FIB. The **Management Plane** (`SSH`, `NETCONF`/`gNMI`, `SNMP`, `Prometheus`) configures and monitors the device.
 </details>
 
 <details>
 <summary>13. Name the three families of control-plane algorithms used to build loop-free forwarding paths.</summary>
+
 (1) **Distance Vector** (`RIP`, `EIGRP`: routers exchange distance vectors with immediate neighbors hop-by-hop); (2) **Link State** (`OSPF`, `IS-IS`: routers flood link-state advertisements across an area so every router runs Dijkstra's SPF algorithm on an identical topology graph); and (3) **Path Vector** (`BGP`: routes carry the explicit sequence of Autonomous Systems `AS_PATH` traversed to detect loops and enforce policy).
 </details>
 
 <details>
 <summary>14. What is the \"hourglass\" (wasp-waist) model of the Internet, and how do AI RDMA fabrics intentionally violate it?</summary>
+
 The Internet hourglass has many application protocols at the top and many physical/link media at the bottom, connected by **one narrow waist: `IP`**. This allows new applications and new link technologies to be deployed independently without knowing each other's internals. AI RDMA fabrics (`RoCE v2` and `InfiniBand`) intentionally cross layer boundaries—coupling NIC transport retry engines directly to L2 lossless flow control (`PFC`/credits) and L3 `ECN` marking—to achieve microsecond latency and zero host CPU overhead.
 </details>
 
 <details>
 <summary>15. Explain Russ White's **State / Optimization / Surface (`SOS`)** trade-off triangle and the concept of path *stretch*.</summary>
+
 Every network design balances three coupled quantities: **State** (amount of routing/flow state stored across devices), **Optimization** (how closely traffic follows the optimal path and utilizes links), and **Interaction Surface** (number of protocol touchpoints and failure interactions). **Stretch** is the difference between the shortest physical path and the path traffic actually takes; reducing stretch or engineering custom per-flow paths (higher Optimization) inevitably increases both State and Interaction Surfaces.
 </details>
 
 <details>
 <summary>16. What is `sk_buff` inside the Linux kernel, and how does it avoid copying packet bytes as a packet moves through L4, L3, and L2?</summary>
+
 `struct sk_buff` (*socket buffer*) is the kernel's metadata descriptor representing a network packet. It allocates headroom and tailroom around the payload buffer so each layer encapsulates or decapsulates headers simply by advancing or retreating data pointers (`skb_push` / `skb_pull`) without copying the payload in memory.
 </details>
 
 <details>
 <summary>17. Where do `netfilter` (`iptables`/`nftables`), `tc qdisc`, and `XDP` sit in the Linux networking stack?</summary>
+
 **`XDP`** (*eXpress Data Path*) runs eBPF programs at the earliest possible point inside the NIC driver's RX ring before an `sk_buff` is even allocated. **`netfilter`** hooks (`PREROUTING`, `INPUT`, `FORWARD`, `OUTPUT`, `POSTROUTING`) sit inside the L3 IP layer (`nftables`/`iptables` and `conntrack` NAT). **`tc qdisc`** (*queueing discipline*, such as `fq_codel` or `fq`) sits between L3 IP and the NIC driver's TX ring to schedule and shape outgoing packets.
 </details>
 
 <details>
 <summary>18. Why can `ethtool -k` offloads (`TSO`, `GSO`, `GRO`) make `tcpdump` show packets that appear larger than the `1500`-byte MTU?</summary>
+
 With **TSO** (*TCP Segmentation Offload*) and **GSO** on TX—and **GRO** (*Generic Receive Offload*) on RX—the kernel hands a single `64 KiB` super-segment to the NIC driver (where `libpcap`/`tcpdump` taps the packet), and the NIC hardware slices it into `1500`-byte MTU frames on the wire.
 </details>
 
 <details>
 <summary>19. Compare how Ethernet+TCP, RoCE v2, InfiniBand, and NVLink/NVSwitch map onto L1–L4 in an AI cluster.</summary>
+
 - **Ethernet + TCP**: L1/L2 Ethernet -> L3 IP -> L4 kernel TCP (used for management, HTTP/S3, and bootstrap).
 - **RoCE v2**: L1/L2 Lossless Ethernet (`PFC`/`DCB`) -> L3 IP (`ECN`) -> L4 UDP (`port 4791`) + InfiniBand Base Transport Header (`BTH`) implemented in NIC hardware.
 - **InfiniBand**: L1/L2 native IB link layer (credit-based flow control, Virtual Lanes, `LID`s) -> L3 IB Global Route Header (`GRH`/`GID`s) -> L4 IB transport (`RC`/`UD` Queue Pairs) in NIC hardware, managed by a Subnet Manager.
@@ -429,6 +448,7 @@ With **TSO** (*TCP Segmentation Offload*) and **GSO** on TX—and **GRO** (*Gene
 
 <details>
 <summary>20. In the `tcpdump -nn -e -v` capture `frame length 74`, `IP length 60`, `Flags [S]`, `mss 1460`, `length 0`, account for every byte of the 74-byte frame.</summary>
+
 `74` bytes total frame = **`14` bytes Ethernet II header** (`6`B dst MAC + `6`B src MAC + `2`B EtherType `0x0800`) + **`60` bytes IPv4 packet**. Inside the `60`-byte IPv4 packet: **`20` bytes IPv4 header** + **`40` bytes TCP SYN header** (`20`B base TCP header + `20`B TCP options: `mss 1460`, `sackOK`, `TS`, `nop`, `wscale 7`) + **`0` bytes TCP payload** (the 4-byte Ethernet `FCS` is stripped by the NIC before `tcpdump`).
 </details>
 

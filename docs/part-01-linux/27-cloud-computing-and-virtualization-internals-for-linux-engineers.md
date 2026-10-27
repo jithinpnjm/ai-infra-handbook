@@ -346,101 +346,121 @@ Next, on a small disposable GCP Compute Engine VM (and optionally a GPU VM and G
 
 <details>
 <summary>1. Define tenant, multitenancy, IaaS, CaaS, FaaS, and SaaS, and explain why instance type is \"a tunable parameter\" in the cloud.</summary>
+
 A **tenant** is a guest consumer on a shared physical host (**multitenancy**). **IaaS** rents hardware-virtualized VMs and storage/network; **CaaS** rents container instances; **FaaS** runs serverless functions on demand; and **SaaS** delivers complete applications. Because cloud instances can be redeployed onto a different machine family or size in minutes via API, choosing and changing the **instance type** is a primary performance tuning lever.
 </details>
 
 <details>
 <summary>2. Compare Vertical Scaling and Horizontal Scaling, and explain how stateful databases and distributed AI training map to both.</summary>
+
 **Vertical scaling** moves to a larger single machine (bounded by socket/NVLink domain size), whereas **horizontal scaling** adds many instances in parallel across cells/pods or database **shards**. In AI training, tensor parallelism (`TP`) scales vertically within a single node's NVLink/NVSwitch domain, while data/pipeline parallelism (`DP`/`FSDP`/`PP`) scales horizontally across nodes over InfiniBand/RoCE/EFA.
 </details>
 
 <details>
 <summary>3. What are the benefits and risks of cloud auto-scaling, and why are GPUs an exception to \"elastic infinite capacity\"?</summary>
+
 Auto-scaling matches instance count to diurnal load (saving cost), but risks **over-provisioning** when a performance regression or DoS attack looks like legitimate load and triggers an expensive scale-out, or thrashing on slow scale-downs. Unlike commodity CPU VMs, cloud GPUs are constrained by regional stockouts, strict project quotas, and topology-contiguous placement requirements, requiring capacity reservations or committed blocks.
 </details>
 
 <details>
 <summary>4. Contrast Ephemeral instance storage with Persistent cloud storage across File, Block, and Object tiers.</summary>
+
 **Ephemeral storage** is host-local NVMe SSD attached directly to the server—it offers the highest IOPS and lowest latency for dataset caching and checkpoint staging, but is wiped when the instance stops or fails. **Persistent storage** is network-attached and shared across tenants: **Block** (`EBS`, Persistent Disk) has per-volume and per-instance IOPS/MB/s caps; **File** (`Filestore`, `EFS`, managed `Lustre`) scales bandwidth with capacity and is often metadata-limited; and **Object** (`S3`, `GCS`) provides massive parallel throughput at high per-request latency (and egress charges across regions).
 </details>
 
 <details>
 <summary>5. What is a noisy neighbour in a multitenant cloud, and how do providers and tenants mitigate it?</summary>
+
 A **noisy neighbour** is another tenant on the same physical host or fabric whose heavy CPU, LLC cache, memory-bandwidth, disk, or network usage degrades your instance's latency or throughput. Providers mitigate it with cgroup/hypervisor quotas, `cpuset` pinning, Intel CAT LLC partitioning, and hardware I/O offloads; tenants mitigate it by using full-socket/bare-metal instance sizes, compact placement groups, and monitoring `%steal` and latency outliers.
 </details>
 
 <details>
 <summary>6. How does AWS Nitro change the hardware virtualization overhead model compared to classic Xen or un-offloaded QEMU?</summary>
+
 In classic Xen (`dom0`) or software-emulated QEMU, every virtual disk or network packet traverses a software I/O proxy, costing VM exits and host CPU cycles. **Nitro** offloads virtual networking (`ENA`/`EFA`), storage (`NVMe` EBS), interrupts, and timers onto dedicated custom ASIC cards (`SR-IOV` passthrough) and uses a stripped-down KVM hypervisor with no QEMU I/O proxy on the data path, achieving near-bare-metal performance.
 </details>
 
 <details>
 <summary>7. Why can a hypervisor not respect guest-internal process priorities (`nice`), and what is memory ballooning?</summary>
+
 To the host hypervisor, a guest vCPU is an opaque thread—the hypervisor cannot see whether the guest kernel is currently running a `nice +19` background log compressor or a `nice -10` latency-critical server inside that vCPU. **Memory ballooning** (`virtio-balloon`) inflates a driver inside the guest under host memory pressure to reclaim guest physical pages back to the host, which can trigger guest paging or OOM kills (`dmesg | grep -i balloon`).
 </details>
 
 <details>
 <summary>8. Where do I/O and orchestrator overheads appear in OS virtualization (containers)?</summary>
+
 While namespaces and cgroups add zero CPU instruction overhead, container I/O can pay extra kernel path cost in **OverlayFS** (`ovl_write_iter`, metadata `lstat` dentry-cache contention across tenants) and **bridge/NAT networking** (`veth` + `iptables`). In Kubernetes clusters with thousands of Services, sequential `iptables` rule evaluation in `kube-proxy` adds packet latency unless replaced by IPVS or eBPF (`Cilium`).
 </details>
 
 <details>
 <summary>9. Explain the \"bait-and-switch\" capacity planning hazard of CPU shares (`cpu.weight`) versus CPU bandwidth quotas (`cpu.max`).</summary>
+
 CPU shares (`cpu.weight`) guarantee a relative minimum under contention while allowing a container to **burst** into 100% of idle host CPUs. A container given `10` of `100` shares runs at `100%` CPU during a benchmark on an empty host, but drops `10x` to `10%` CPU in production once neighbor containers move in. Applying a bandwidth quota (`cpu.max`) bounds the burst ceiling so performance stays predictable.
 </details>
 
 <details>
 <summary>10. Compare `Firecracker`, `Kata Containers`, and `gVisor`.</summary>
+
 **`Firecracker`** is a minimal Rust KVM VMM (`< 5 MB` memory overhead, `~100 ms` boot, only `virtio-net`/`virtio-blk`/serial devices) built for serverless/Fargate workloads. **`Kata Containers`** runs each Kubernetes Pod/container inside a lightweight KVM virtual machine (`QEMU microvm`, `Cloud Hypervisor`, or `Firecracker`) via a CRI runtime class. **`gVisor`** (`runsc`) is a user-space application kernel written in Go that intercepts guest system calls without a full guest Linux kernel (paying higher overhead on syscall-heavy workloads).
 </details>
 
 <details>
 <summary>11. Why does Gregg state that OS containers favour host-operator observability while hardware VMs favour end-user observability?</summary>
+
 On a **container** host, all containers share the host kernel, so the host operator sees every container process, symbol, and kernel stack directly (`top`, `perf`, `bpftrace`), whereas the container tenant is blocked from kernel tracing (`perf`/`bpf` denied) and sees misleading host-wide `/proc` counters. In a **hardware VM**, the host operator sees only an opaque `qemu` process, whereas the guest tenant owns a full kernel and can run `perf`, Ftrace, and eBPF inside the VM.
 </details>
 
 <details>
 <summary>12. State Gregg's 5-fact decision flow for diagnosing whether a container is CPU-throttled by a quota, a `cpuset`, or CPU shares.</summary>
+
 Check five facts: (1) Is `throttled_usec` / `nr_throttled` in `cpu.stat` increasing? (If yes -> **CFS bandwidth quota cap** is binding.) (2) Are `nonvoluntary_ctxt_switches` in `/proc/PID/status` increasing? (3) Does the host have idle CPUs? (4) Are the container's `cpuset` CPUs 100% busy? (If yes while host has other idle CPUs -> **`cpuset` limit** is binding.) (5) Are other tenants busy? (If no quota throttling, no idle host CPUs, and rising involuntary switches -> **CPU shares contention**.)
 </details>
 
 <details>
 <summary>13. How do you map a container PID to a host PID using `/proc`, and how do you access the container's files from the host?</summary>
+
 Read `grep NSpid /proc/<hostpid>/status`: a line like `NSpid: 4915 753` means host PID `4915` is PID `753` inside its container PID namespace (and you can verify by comparing `/proc/PID/ns/pid` inode numbers). From the host, the container's root filesystem is directly accessible at **`/proc/<hostpid>/root/`**.
 </details>
 
 <details>
 <summary>14. How can a host `bpftrace` script attribute kernel events to individual containers?</summary>
+
 For synchronous events executing in process context (such as system calls), read the container's UTS nodename from `curtask`: `$task = (struct task_struct *)curtask; $nodename = $task->nsproxy->uts_ns->name.nodename; @count[$nodename] = count();`—or key the map by `cgroup` (`cgroupid()`).
 </details>
 
 <details>
 <summary>15. Inside a container, which standard Linux performance tools show container-only data and which leak host-wide data?</summary>
+
 **Container-only**: `ps`, `pidstat`, the process list of `top`, `sar -n DEV,TCP`, and `tcpdump` (because `pid` and `net` namespaces isolate `/proc/<pid>` and `/proc/net`). **Host-wide** (misleading inside a container): `uptime` (load average), `free`, `vmstat`, `mpstat`, `iostat`, and the summary header of `top` (because `/proc/loadavg`, `/proc/meminfo`, `/proc/stat`, and `/proc/diskstats` are not namespaced).
 </details>
 
 <details>
 <summary>16. What performance penalty does `SCL` Chapter 17 note for cloud HPC VMs versus bare metal, and why is placement critical for multi-node GPU jobs?</summary>
+
 Even on specialized HPC/GPU cloud instances, virtualization and shared fabric effects typically cause a **`5–15%` performance drop** compared to bare metal. Furthermore, all nodes of a coupled MPI/NCCL job must be placed inside a single **compact placement group / performance subnet / capacity domain**; if nodes span distant availability zones or spine tiers, collective latency jumps and job throughput can drop several-fold.
 </details>
 
 <details>
 <summary>17. How should you evaluate a cloud provider's shared filesystem for AI/HPC checkpointing before migrating a cluster (`SCL` Chapter 17)?</summary>
+
 Do not rely on marketing peak bandwidth numbers. Rent a set of cheap compute instances attached to the target cloud filesystem and run a benchmark that simulates your job's exact periodic burst—for example, dumping a checkpoint equal to compute-node RAM size every **`5 minutes`** and reading it back—to measure real save/reload stall times under contention.
 </details>
 
 <details>
 <summary>18. Why can `NCCL` not communicate directly across `MIG` slices on the same GPU, and when should you choose `MIG` versus full-GPU passthrough?</summary>
+
 NVIDIA **MIG** (*Multi-Instance GPU*) partitions a GPU's SMs, L2 cache, and HBM into hardware-isolated instances, but disables peer-to-peer (`P2P`) and NVLink transfers between MIG slices. Use **MIG** for small single-instance inference models, notebooks, or CI jobs that fit inside `1g`/`2g`/`3g`/`4g` slices; use **full-GPU passthrough** (or bare metal) for multi-GPU distributed training and large-model tensor parallelism.
 </details>
 
 <details>
 <summary>19. How do you query a cloud VM's instance metadata and preemption/maintenance notices from inside Linux?</summary>
+
 Query the link-local **Instance Metadata Server (IMDS)** (for example on GCP: `curl -s -H 'Metadata-Flavor: Google' http://metadata.google.internal/computeMetadata/v1/instance/?recursive=true`, polling `.../maintenance-event` and `.../preempted`). A background agent on Spot/preemptible GPU nodes watches this endpoint to trigger an emergency checkpoint and clean drain seconds before eviction.
 </details>
 
 <details>
 <summary>20. What hidden cost items must be included when comparing cloud GPU instances against an on-premises GPU cluster?</summary>
+
 Beyond raw `$/GPU-hour`, include: (1) **Goodput loss** (paid GPU-hours wasted on node failures, restarts, spot preemptions, and checkpoint stalls), (2) **Network egress and cross-zone transfer charges**, (3) **Persistent block/file/object storage charges** (including charges for volumes attached to powered-off VMs and static IPs), and (4) **Idle reservation waste** between jobs.
 </details>
 

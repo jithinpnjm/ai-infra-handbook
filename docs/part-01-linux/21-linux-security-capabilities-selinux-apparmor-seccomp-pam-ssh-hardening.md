@@ -474,101 +474,121 @@ Next, on a disposable Ubuntu 22.04+ VM and a Rocky/Alma 9 VM for SELinux (all in
 
 <details>
 <summary>1. What does the Linux kernel know about user accounts, and what do `x`, `*`, `!`, and an empty password field mean in `/etc/passwd` and `/etc/shadow`?</summary>
+
 The kernel only knows numeric UIDs and GIDs (`UID 0` is root, decomposed into capabilities). Usernames and group names live in user space (`/etc/passwd`, `/etc/group`, NSS/SSSD/LDAP). In `/etc/passwd`, `x` means the password hash is stored in `/etc/shadow`; in `/etc/shadow`, `*` or `!` disables password login (while still allowing SSH keys/sudo), and an empty field means no password is required (a critical vulnerability).
 </details>
 
 <details>
 <summary>2. Distinguish a process's real UID (`ruid`), effective UID (`euid`), saved set-user-ID (`suid`), and filesystem UID (`fsuid`).</summary>
+
 `euid` (and `fsuid`) is checked by the kernel for file access and privileged operations; `ruid` records the user who launched the process and determines who can send signals to it; and `suid` records the initial `euid` from a setuid exec so the process can temporarily drop privilege to `ruid` and later switch back.
 </details>
 
 <details>
 <summary>3. Why are setuid-root binaries a major attack surface, how do you audit them across a node, and how do mount options and file capabilities reduce that risk?</summary>
+
 A setuid-root binary (`-perm -4000`) executes with `euid = 0` regardless of who launched it, so any vulnerability or shell escape inside it yields full root compromise. Audit with `sudo find / -xdev -perm -4000 -type f -ls`, mount user-writable filesystems (`/tmp`, `/home`, `/scratch`) with `nosuid,nodev`, and replace setuid-root bits with narrow file capabilities (`setcap cap_net_raw+ep /bin/ping`).
 </details>
 
 <details>
 <summary>4. Name the four PAM function types and explain the four primary control flags (`required`, `requisite`, `sufficient`, `optional`).</summary>
+
 The four types are `auth` (verify identity), `account` (check account validity/access restrictions), `session` (run session setup/teardown such as `pam_limits`, `pam_systemd`, `pam_slurm_adopt`), and `password` (update passwords). For control flags: `required` remembers failure but continues running the rest of the stack; `requisite` aborts the stack immediately on failure; `sufficient` returns success immediately if no prior `required` module failed; and `optional` is ignored unless no other module returned a verdict.
 </details>
 
 <details>
 <summary>5. What does `pam_slurm_adopt` do on an HPC/AI compute node, and why must you always keep an open root console session when editing `/etc/pam.d/*` or `/etc/ssh/sshd_config`?</summary>
+
 `pam_slurm_adopt` denies SSH login to a compute node unless the user has an active Slurm job running on that node, and automatically places the user's SSH session into the running job's `cgroup` so it is subject to the job's CPU/memory/GPU limits and cleaned up when the job ends. Keeping an open root session prevents a syntax error in PAM or `sshd_config` from locking you out of the server.
 </details>
 
 <details>
 <summary>6. Why is granting `sudo vim` or `sudo less` equivalent to granting `sudo ALL`, and what is the safe alternative?</summary>
+
 Interactive editors and pagers (`vim`, `less`, `more`, `view`) include built-in shell-escape commands (`:!bash`), allowing the user to spawn an unrestricted root shell. Use `sudoedit` (`sudo -e`, which runs the editor as the unprivileged user on a temporary copy) or enforce `NOEXEC` in `/etc/sudoers`.
 </details>
 
 <details>
 <summary>7. What are the five per-thread Linux capability sets, and how do you inspect a running process's capabilities?</summary>
+
 The five sets are: **Permitted** (ceiling of capabilities the thread can activate), **Effective** (capabilities currently active and checked by the kernel), **Inheritable** (passed across `execve` when matched by file inheritable bits), **Bounding** (irreversible upper bound on what can ever be acquired across `execve`), and **Ambient** (inherited across non-setuid/non-filecap `execve` calls). Inspect `/proc/PID/status` (`CapInh`, `CapPrm`, `CapEff`, `CapBnd`, `CapAmb`), decode with `capsh --decode=HEX`, or run `getpcaps PID`.
 </details>
 
 <details>
 <summary>8. Why is `CAP_SYS_ADMIN` called \"the new root\", and which capabilities do GPU and RDMA containers actually need?</summary>
+
 `CAP_SYS_ADMIN` authorizes hundreds of sensitive kernel operations (`mount`, `pivot_root`, `swapon`, namespace creation, many driver `ioctl`s), making it nearly equivalent to full root. Standard GPU containers need **no extra capabilities**—only `/dev/nvidia*` character nodes and device-cgroup access; containers using InfiniBand/RoCE RDMA (`ibv_reg_mr`) or large pinned memory need `CAP_IPC_LOCK` (and `ulimit -l unlimited`).
 </details>
 
 <details>
 <summary>9. How does `seccomp-bpf` work, why does it require `no_new_privs`, and why do `perf` and `strace` fail inside default containers?</summary>
+
 `seccomp-bpf` attaches a BPF filter to a process that inspects every system call number and its register arguments, returning allow, `EPERM`/`ENOSYS`, `SIGSYS`, or killing the task (`Seccomp: 2` in `/proc/PID/status`). Unprivileged processes must set `no_new_privs` first so a filtered process cannot `execve()` a setuid binary and trick it into failing a privileged syscall. Default Docker/containerd seccomp profiles block `perf_event_open`, `bpf`, `ptrace`, `mount`, and `kexec_load`.
 </details>
 
 <details>
 <summary>10. What is the difference between Discretionary Access Control (`DAC`) and Mandatory Access Control (`MAC`)?</summary>
+
 Under **DAC** (standard Unix owner/group/other permissions and POSIX ACLs), the owner of a file decides who may access it, and `root` (`CAP_DAC_OVERRIDE`) bypasses permissions. Under **MAC** (**SELinux** or **AppArmor**, implemented via Linux Security Modules), the kernel enforces a system-wide security policy after DAC checks pass; even a compromised `root` process is confined to the actions permitted for its security domain/profile.
 </details>
 
 <details>
 <summary>11. What are the four fields of an SELinux security context (`user:role:type:level`), and what are the three SELinux modes?</summary>
+
 In `system_u:object_r:container_file_t:s0:c1,c2`, the four fields are SELinux **user** (`system_u`), **role** (`object_r`), **type/domain** (`container_file_t`, which drives Type Enforcement rules), and **MLS/MCS sensitivity level** (`s0:c1,c2`, used to isolate containers from each other). The three modes are **Enforcing** (blocks and logs denials), **Permissive** (logs AVC denials without blocking), and **Disabled**.
 </details>
 
 <details>
 <summary>12. State the proper 4-step workflow for resolving an SELinux denial without leaving `setenforce 0` enabled.</summary>
+
 (1) Reproduce the failure and inspect the AVC denial with `sudo ausearch -m avc,user_avc -ts recent` or `sudo sealert -a /var/log/audit/audit.log`; (2) check whether an existing SELinux **boolean** enables the feature (`getsebool -a | grep container`, `sudo setsebool -P container_use_devices on`); (3) check whether a file path or port has the wrong **label** (`ls -Z`, fixed persistently with `sudo semanage fcontext -a -t container_file_t '/scratch/models(/.*)?' && sudo restorecon -Rv /scratch/models` or `semanage port`); and (4) only if needed, generate and audit a minimal policy module with `audit2allow -M`.
 </details>
 
 <details>
 <summary>13. How does AppArmor differ from SELinux, and which commands inspect and switch AppArmor profile modes?</summary>
+
 AppArmor confines binaries using **file-path profiles** (`/etc/apparmor.d/`) rather than inode extended-attribute labels (`xattr`). Inspect loaded profiles with `sudo aa-status`, switch a profile into learning/logging mode with `sudo aa-complain /path/to/bin`, update rules from logs with `sudo aa-logprof`, and enforce with `sudo aa-enforce /path/to/bin`.
 </details>
 
 <details>
 <summary>14. List six essential `/etc/ssh/sshd_config` hardening settings and explain why `ProxyJump` is safer than `AllowAgentForwarding yes`.</summary>
+
 (1) `PermitRootLogin no`, (2) `PasswordAuthentication no` and `KbdInteractiveAuthentication no`, (3) `PubkeyAuthentication yes` / `AuthenticationMethods publickey`, (4) `AllowGroups ssh-users hpc-users`, (5) `MaxAuthTries 3` and `LoginGraceTime 30`, and (6) `AllowAgentForwarding no` and `X11Forwarding no`. Agent forwarding (`ssh -A`) exposes a Unix socket on the remote host that any root user on that host can use to sign challenges with your laptop's keys; `ProxyJump` (`ssh -J bastion node01`) tunnels the encrypted SSH session through the bastion without exposing your agent socket on the bastion.
 </details>
 
 <details>
 <summary>15. How do SSH certificates (`TrustedUserCAKeys` and `HostCertificate`) solve the scale problems of `~/.ssh/authorized_keys` and `known_hosts`?</summary>
+
 Instead of distributing and revoking static public keys across thousands of nodes, an SSH Certificate Authority signs short-lived user certificates (e.g., valid for 8–12 hours with embedded principals and source-IP constraints) and host certificates. Nodes trust the CA public key (`TrustedUserCAKeys`), and clients trust the host CA (`@cert-authority`), eliminating both `authorized_keys` drift and TOFU (`trust on first use`) prompts.
 </details>
 
 <details>
 <summary>16. How do you watch sensitive files and kernel module loads with `auditd`, and why must `execve` audit rules be scoped carefully on GPU nodes?</summary>
+
 Add watch rules in `/etc/audit/rules.d/*.rules` (`-w /etc/passwd -p wa -k identity`, `-w /etc/sudoers -p wa -k scope`, and `-a always,exit -F arch=b64 -S init_module,finit_module,delete_module -k modules`) and query with `ausearch -k identity` / `aureport`. Unfiltered `-S execve` rules on a busy compilation or training node generate massive log volume that can saturate disk I/O and fill `/var/log/audit`.
 </details>
 
 <details>
 <summary>17. Explain the four values of `kernel.yama.ptrace_scope` (`0`, `1`, `2`, `3`) and why setting `ptrace_scope >= 2` breaks MPI and debugging on HPC/AI nodes.</summary>
+
 `0` allows any process to `ptrace` any other process running under the same UID; `1` (default) restricts unprivileged `ptrace` to direct descendants (parent tracing child); `2` restricts `ptrace` to processes with `CAP_SYS_PTRACE`; and `3` disables `ptrace` system-wide even for root. Setting `ptrace_scope >= 2` breaks `gdb -p PID`, `py-spy`, and OpenMPI/UCX Cross-Memory Attach (`process_vm_readv`/`process_vm_writev`) between sibling MPI ranks on the same node.
 </details>
 
 <details>
 <summary>18. Why must enterprise CIS rules on core dumps, host firewalls, `rp_filter`, and `/tmp` `noexec` be tailored on GPU clusters?</summary>
+
 Debugging NCCL/CUDA segfaults requires core dumps (enable to a root-only quota-capped `/var/crash` or `systemd-coredump`); host IP firewalls add CPU overhead, can drop RoCEv2 (`UDP 4791`), and do not filter native InfiniBand RDMA (which bypasses the kernel network stack and must be isolated via IB `PKeys`); strict `rp_filter=1` drops asymmetric traffic on multi-NIC GPU fabrics (use `rp_filter=2` loose mode); and `/tmp` or `/dev/shm` `noexec` breaks Triton/CUDA/PyTorch JIT kernel compilation unless `TMPDIR` is redirected.
 </details>
 
 <details>
 <summary>19. Why does `nvidia.ko` fail to load with `Lockdown: unsigned module loading is restricted` when UEFI Secure Boot is enabled, and how is it fixed at fleet scale?</summary>
+
 Under UEFI Secure Boot, the kernel runs in integrity lockdown mode and rejects any kernel module not signed by a key in the system's trusted keyrings (`db` or Machine Owner Key `MOK`). At fleet scale, the image build or DKMS pipeline signs `nvidia*.ko` (`sign-file sha256 priv.key pub.der nvidia.ko`) using an organization key enrolled in the nodes' UEFI `db` or `MOK` (`mokutil --import`).
 </details>
 
 <details>
 <summary>20. Trace the Kubernetes API admission control chain and contrast Pod Security Admission (`privileged`, `baseline`, `restricted`) with OPA Gatekeeper / Kyverno.</summary>
+
 After Authentication and RBAC Authorization, every API request passes through **Mutating Admission** (which can modify the object via JSONPatch), **Schema Validation**, and **Validating Admission** (where any single rejection denies the request before `etcd`). **Pod Security Admission (PSA)** is the built-in controller enforcing `privileged`, `baseline`, and `restricted` standards via namespace labels (`enforce`/`audit`/`warn`), while **OPA Gatekeeper** (`ConstraintTemplate` in Rego), **Kyverno**, and CEL `ValidatingAdmissionPolicy` enforce custom organization policies.
 </details>
 

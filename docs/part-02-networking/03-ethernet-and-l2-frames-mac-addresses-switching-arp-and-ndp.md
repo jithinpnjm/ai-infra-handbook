@@ -401,26 +401,31 @@ bridge link show ; bridge fdb show br br0  # (untested here)
 
 <details>
 <summary>1. How did CSMA/CD work on shared coaxial Ethernet, why is the minimum frame 64 bytes, and why is CSMA/CD unused on modern switched links?</summary>
+
 On shared half-duplex media, **CSMA/CD** listened before transmitting, detected collisions if two stations transmitted simultaneously, sent a jam signal, and backed off for a random binary-exponential delay; the `64`-byte minimum frame ensured the sender was still transmitting when a collision from the far end of the cable propagated back. Modern Ethernet uses point-to-point switched **full-duplex** links with separate TX and RX paths, so collisions cannot occur.
 </details>
 
 <details>
 <summary>2. Decode the structure of a 48-bit MAC address (`OUI`, `I/G` bit, and `U/L` bit).</summary>
+
 The first 3 octets (`24` bits) are the IEEE-assigned **OUI** (*Organizationally Unique Identifier*) identifying the vendor, and the last 3 octets are the interface serial number. In the first octet, bit 0 (least significant bit) is the **`I/G` bit** (`0` = individual unicast, `1` = group multicast/broadcast `ff:ff:ff:ff:ff:ff`), and bit 1 is the **`U/L` bit** (`0` = universally administered burned-in MAC, `1` = locally administered software MAC such as `52:54:00:...` in QEMU).
 </details>
 
 <details>
 <summary>3. List the fields of an Ethernet II frame in wire order and state why the Destination MAC comes before the Source MAC.</summary>
+
 In wire order: `7`-byte Preamble + `1`-byte Start Frame Delimiter (`SFD` `0xAB`) -> **`6`-byte Destination MAC** -> `6`-byte Source MAC -> optional `4`-byte `802.1Q` VLAN tag (`0x8100`) -> `2`-byte EtherType -> `46–1500`-byte Payload -> `4`-byte `FCS` (CRC-32) -> `12`-byte Inter-Frame Gap. Placing the Destination MAC first allows the receiving NIC hardware or cut-through switch ASIC to decide immediately (after reading just 6 bytes) whether to accept or forward the frame.
 </details>
 
 <details>
 <summary>4. What happens when a NIC or switch detects a Frame Check Sequence (`FCS`) CRC-32 error, and how does `RS-FEC` interact with it on 50G/100G-per-lane links?</summary>
+
 Ethernet does not send NAKs or retransmit at L2: a frame failing the `FCS` check is silently dropped and increments `rx_crc_errors`. On `50G`/`100G`-per-lane **PAM4** links, physical **Reed-Solomon Forward Error Correction (`RS-FEC`)** corrects symbol bit errors on the fly before the `FCS` check; you monitor both *corrected* FEC codewords (early warning of a degrading optic/cable) and *uncorrected* FEC codewords (which become frame drops).
 </details>
 
 <details>
 <summary>5. Decode the Ethernet standard names `25GBASE-SR`, `100GBASE-CR4`, `400GBASE-DR4`, and `400GBASE-LR4`, and name the transceiver form factors.</summary>
+
 - `25GBASE-SR`: `25 Gb/s`, 1 lane NRZ, short-reach `850 nm` multi-mode fiber (`OM4` to `100 m`), `SFP28`.
 - `100GBASE-CR4`: `100 Gb/s`, `4 x 25G` NRZ lanes over twinax passive copper `DAC` (`3–5 m`), `QSFP28`.
 - `400GBASE-DR4`: `400 Gb/s`, `4 x 100G` PAM4 parallel single-mode fiber (`SMF` to `500 m`), `QSFP-DD` or `OSFP`.
@@ -429,56 +434,67 @@ Ethernet does not send NAKs or retransmit at L2: a frame failing the `FCS` check
 
 <details>
 <summary>6. Which Linux commands inspect a NIC's negotiated speed, FEC counters, optical transceiver DOM power/temperature, link flap count, and connected switch port?</summary>
+
 `ethtool eth0` (speed, duplex, link detected), `ethtool --show-fec eth0` and `ethtool -S eth0` (FEC, CRC, symbol errors, pause frames), `ethtool -m eth0` (transceiver DOM: vendor, part number, temperature, TX/RX optical power in dBm, or `mlxlink --show_module --show_ber`), `cat /sys/class/net/eth0/carrier_changes` (link flap counter), and `sudo lldpcli show neighbors` (switch hostname and port via LLDP).
 </details>
 
 <details>
 <summary>7. How does an L2 Ethernet switch build its MAC address table (`FDB`) and decide whether to forward, filter, or flood a frame?</summary>
+
 When a frame arrives on port `P`, the switch records `(VLAN, src_mac) -> P` in its FDB with an aging timer (~`300 s`). It then looks up `(VLAN, dst_mac)`: if found on port `Q != P`, it forwards the frame out port `Q` only; if found on `Q == P`, it filters (drops) the frame; if `dst_mac` is **not in the FDB (unknown unicast)**, **broadcast**, or **multicast**, it **floods** the frame out all other ports in that VLAN.
 </details>
 
 <details>
 <summary>8. What is the difference between a collision domain and a broadcast domain, and why does an L2 loop cause a broadcast storm?</summary>
+
 On a modern full-duplex switch, every port is its own collision-free point-to-point link, while the **broadcast domain** spans all ports in the same VLAN. Because Ethernet frames have **no `TTL` (Time To Live) field**, a physical or logical loop between switches causes flooded broadcast, multicast, and unknown-unicast frames to circulate and multiply around the loop indefinitely, saturating link bandwidth and switch CPUs in seconds.
 </details>
 
 <details>
 <summary>9. Compare Store-and-Forward switching with Cut-Through switching, and calculate the serialization delay of a `1500`-byte frame at `100 Gb/s` versus `1 Gb/s`.</summary>
+
 **Store-and-forward** buffers the entire frame and verifies the trailing 4-byte `FCS` before forwarding (dropping corrupt frames, but adding full serialization delay at each hop). **Cut-through** begins forwarding as soon as the destination MAC is read (`~300 ns–1 µs` latency independent of frame size, though corrupt frames cannot be dropped before transmission starts). Serialization delay (`bits / rate`) for `1500` bytes (`12,000` bits) is **`120 ns`** at `100 Gb/s` versus **`12,000 ns` (`12 µs`)** at `1 Gb/s`.
 </details>
 
 <details>
 <summary>10. What are the four steps of packet movement inside a network device (`CN` Chapter 7), and how do Virtual Output Queues (`VOQ`s) and `iSLIP` prevent Head-of-Line (`HOL`) blocking?</summary>
+
 The four steps are: (1) clock bits off the wire into an RX ring buffer, (2) perform header lookup (`FDB` or `FIB`) and policy checks, (3) move the packet across the internal crossbar/shared-memory fabric to the egress port, and (4) schedule (`QoS` queues) and clock bits out the TX ring. If an input port used a single FIFO queue, a packet at the head waiting for a congested output port would block packets behind it destined for idle output ports (**HOL blocking**). **VOQs** maintain a separate queue per destination port at every input, scheduled across the crossbar by iterative matching (**iSLIP**).
 </details>
 
 <details>
 <summary>11. What are the four general patterns for interlayer identifier discovery (`CN` Chapter 6)?</summary>
+
 (1) **Static / well-known configuration** (`/etc/hosts`, `/etc/services`), (2) **Centralized mapping database with a query protocol** (`DNS` for names to IPs, `DHCP` for assignment), (3) **Direct peer-to-peer advertisement/query on the link** (`ARP` in IPv4, `NDP` in IPv6), and (4) **Algorithmic calculation of one identifier from the other** (deriving an IPv6 EUI-64 interface identifier or multicast MAC `33:33:...` directly from the MAC/IP).
 </details>
 
 <details>
 <summary>12. How does a host decide whether to ARP for the destination IP itself or for its default gateway, and what happens if its subnet mask is too wide or too narrow?</summary>
+
 The host bitwise-ANDs its own IP and the destination IP with its subnet mask: if equal, it ARPs for the destination IP directly; if different, it ARPs for the default gateway's IP. If the host's subnet mask is configured **too wide** (e.g., `/16` instead of `/24`), it assumes off-subnet hosts are on-link and ARPs for them directly—receiving no reply (`No route to host`) unless the router runs Proxy ARP.
 </details>
 
 <details>
 <summary>13. What are Gratuitous ARP and Proxy ARP, and when is each used?</summary>
+
 **Gratuitous ARP** is an unprompted ARP announcement where `sender IP == target IP`, sent when an interface comes up or a virtual IP (`VRRP`/`keepalived`) fails over so peers and switches update their ARP/FDB tables immediately—and used before binding an IP to detect duplicate addresses (`arping -D`). **Proxy ARP** is when a router answers ARP requests on behalf of hosts on another subnet/interface so senders without a proper route can still reach them.
 </details>
 
 <details>
 <summary>14. Explain the Linux neighbour cache states (`REACHABLE`, `STALE`, `DELAY`, `PROBE`, `INCOMPLETE`, `FAILED`) and why `gc_thresh1/2/3` must be raised on large clusters.</summary>
+
 `INCOMPLETE`: ARP/NS sent, waiting for reply; `REACHABLE`: positively confirmed within `base_reachable_time_ms` (~`30 s`); `STALE`: timer expired, still usable, transitions to `DELAY` then unicast `PROBE` on next packet; `FAILED`: resolution failed after retries. The default neighbour table limits (`gc_thresh1=128`, `gc_thresh2=512`, `gc_thresh3=1024`) overflow (`neighbour: arp_cache: neighbor table overflow`) on flat cluster networks with >1,000 endpoints unless raised via `sysctl`.
 </details>
 
 <details>
 <summary>15. Why does Linux's default weak-host ARP model cause trouble on multi-NIC GPU servers, and how do `arp_ignore=1` and `arp_announce=2` fix it?</summary>
+
 By default (`arp_ignore=0`, `arp_announce=0`), Linux considers IP addresses owned by the *host* rather than the *interface*, so `eth0` will happily reply to an ARP request for `eth1`'s IP address with `eth0`'s MAC. Setting `arp_ignore=1` (reply only if the target IP is configured on the incoming interface) and `arp_announce=2` (always use the outgoing interface's own primary IP in ARP requests), paired with `rp_filter=2` and policy routing, isolates each rail NIC cleanly.
 </details>
 
 <details>
 <summary>16. Name the five ICMPv6 Neighbor Discovery (`NDP`) message types (`133`–`137`) and explain why Solicited-Node Multicast (`ff02::1:ffXX:XXXX`) is better than broadcast ARP.</summary>
+
 - `133`: **Router Solicitation (`RS`)** (host -> `ff02::2` all-routers)
 - `134`: **Router Advertisement (`RA`)** (router -> `ff02::1` all-nodes: prefixes, `A`/`M`/`O` flags, gateway lifetime, MTU)
 - `135`: **Neighbor Solicitation (`NS`)** (MAC lookup, DAD, and reachability check)
@@ -489,21 +505,25 @@ Instead of disturbing every host in the VLAN with a broadcast (`ff:ff:ff:ff:ff:f
 
 <details>
 <summary>17. How does an IPv6 host form a link-local address (`fe80::/64`), run Duplicate Address Detection (`DAD`), and configure a global address via `SLAAC`?</summary>
+
 The host combines `fe80::/64` with a 64-bit interface identifier (either modified EUI-64 from its MAC—flipping the U/L bit and inserting `ff:fe`—or a RFC 7217 privacy hash). Before using the address, it sends a **DAD** Neighbor Solicitation from `::` to that address's solicited-node multicast group; if no `NA` replies, the address is unique. Upon receiving a Router Advertisement (`134`) with the Autonomous (`A`) flag set on a `/64` prefix, the host combines that `/64` prefix with its interface ID (**SLAAC**).
 </details>
 
 <details>
 <summary>18. Why does 802.11 Wi-Fi use `CSMA/CA` with explicit ACKs (and optional `RTS/CTS`) instead of `CSMA/CD`?</summary>
+
 On radio, a transmitting antenna's own signal overwhelms its receiver (preventing collision detection while transmitting), and obstacles create the **hidden node problem** (stations A and C can both reach AP B but cannot hear each other). Therefore 802.11 uses **Collision Avoidance (`CSMA/CA`)** with random backoff, requires an immediate link-layer **ACK** for every unicast frame, and optionally exchanges short `RTS`/`CTS` reservation frames.
 </details>
 
 <details>
 <summary>19. What Layer 2 features are required on an Ethernet fabric carrying RoCE v2 (`RDMA over Converged Ethernet`)?</summary>
+
 RoCE v2 requires a **lossless Ethernet queue** across every NIC and switch port: **Priority Flow Control (`PFC`, IEEE 802.1Qbb)** enabled on the RDMA priority class (e.g., priority 3) so a congested receiver pauses the upstream sender before buffer overflow, paired with **Explicit Congestion Notification (`ECN`)** marking (`DCQCN`), consistent **DSCP-to-PCP QoS trust/mapping**, end-to-end **jumbo MTU** (`4096` RDMA MTU inside `9000` Ethernet MTU), and tuned switch buffer headroom.
 </details>
 
 <details>
 <summary>20. How do you inspect and manipulate a Linux software bridge (`br0`) and its forwarding database (`FDB`) from the command line?</summary>
+
 Create and attach ports with `ip link add br0 type bridge` and `ip link set veth0 master br0`; inspect attached ports and STP states with `bridge link show`; inspect learned and static MAC entries per port/VLAN with `bridge fdb show br br0` (or `bridge -s fdb`); inspect VLAN filtering with `bridge vlan show`; and flush learned entries with `sudo bridge fdb flush dev veth0`.
 </details>
 

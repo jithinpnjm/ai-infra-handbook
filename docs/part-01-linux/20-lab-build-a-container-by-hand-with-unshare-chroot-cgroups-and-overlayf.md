@@ -263,101 +263,121 @@ rmdir /sys/fs/cgroup/lab-ctr 2>/dev/null ; rm -rf /lab
 
 <details>
 <summary>1. What is the minimum set of Linux kernel mechanisms that together form a container?</summary>
+
 (1) **Namespaces** (`mnt`, `pid`, `uts`, `ipc`, `net`, `cgroup`, `user`), (2) **cgroups** (`cpu`, `memory`, `pids`, `io`, `devices`), (3) an isolated **root filesystem** (`OverlayFS` + `pivot_root`), and (4) **privilege restrictions** (dropped capabilities, `no_new_privs`, `seccomp`, and AppArmor/SELinux) running on a shared host kernel.
 </details>
 
 <details>
 <summary>2. Why is `chroot base /bin/sh` not enough to isolate a container?</summary>
+
 `chroot` only changes pathname resolution for `/`; the process still shares the host's PID table, network interfaces, IPC objects, hostname, and cgroup limits, and a root process inside `chroot` can easily escape back to the host root filesystem.
 </details>
 
 <details>
 <summary>3. Why does `unshare --pid` require `--fork` and a fresh `/proc` mount (`--mount-proc`)?</summary>
+
 A process's PID cannot change after `fork()`, so `unshare --pid` only places *subsequent children* into the new PID namespace (`--fork` forks the shell as PID 1). Because `ps` and `top` read `/proc`, you must also mount a new `proc` filesystem inside the new mount namespace (`--mount-proc`), or `ps` will still display the host's processes.
 </details>
 
 <details>
 <summary>4. Why must `enter.sh` run `mount --make-rprivate /` before mounting container filesystems or calling `pivot_root`?</summary>
+
 `systemd` mounts `/` with `shared` propagation by default. Without `mount --make-rprivate /`, mounts performed inside the new mount namespace propagate back to the host's mount table, and the kernel rejects `pivot_root(2)` with `EINVAL` when the current root has shared propagation.
 </details>
 
 <details>
 <summary>5. Why does `enter.sh` bind-mount `/lab/merged` onto itself (`mount --bind /lab/merged /lab/merged`) before calling `pivot_root . oldroot`?</summary>
+
 The `pivot_root(new_root, put_old)` system call requires `new_root` to be a mount point (and `put_old` to reside inside `new_root`). While `/lab/merged` is already an OverlayFS mount point in Step 4, bind-mounting a directory onto itself is the standard defensive idiom that guarantees `new_root` is a distinct mount point even when using a plain directory tree.
 </details>
 
 <details>
 <summary>6. After `pivot_root . oldroot` and `cd /`, why do we run `umount -l /oldroot && rmdir /oldroot`?</summary>
+
 Unmounting `/oldroot` detaches the entire host root filesystem from the container's mount namespace so no process inside the container can access host files or escape back to the old root.
 </details>
 
 <details>
 <summary>7. How do `lowerdir`, `upperdir`, and `workdir` work in Step 4, and how can two containers share `/lab/base` safely?</summary>
+
 `lowerdir=/lab/base` is read-only; `upperdir=/lab/upper` captures all container writes and whiteouts; and `workdir=/lab/work` is an internal staging directory on the same filesystem as `upperdir`. Two containers share `/lab/base` safely by passing the same `lowerdir=/lab/base` while giving each container its own separate `upper1`/`work1` and `upper2`/`work2` directories.
 </details>
 
 <details>
 <summary>8. When you run `touch /newfile` and `rm /etc/hostname` inside the container, what appears on the host under `/lab/upper` and `/lab/base`?</summary>
+
 `/lab/base` remains completely untouched. `/lab/upper/newfile` contains the new file, and `/lab/upper/etc/hostname` is a character device with major `0`, minor `0` (`c--------- 1 root root 0, 0`), which is the OverlayFS **whiteout** hiding `/lab/base/etc/hostname`.
 </details>
 
 <details>
 <summary>9. Why does `enter.sh` mount a `tmpfs` on `dev` and run `mknod` for `null`, `zero`, `urandom`, and `tty` instead of bind-mounting the host's `/dev`?</summary>
+
 Bind-mounting the host's `/dev` would expose raw host disks (`/dev/sda`, `/dev/nvme0n1`), `/dev/mem`, and all host hardware devices to the container. Mounting a small `64m` `tmpfs` and creating only the four safe standard character nodes (`null` `1:3`, `zero` `1:5`, `urandom` `1:9`, `tty` `5:0`) follows the principle of least privilege.
 </details>
 
 <details>
 <summary>10. Why does `enter.sh` mount `sysfs` read-only (`mount -t sysfs -o ro sysfs sys`)?</summary>
+
 `/sys` is not namespaced (apart from `/sys/class/net`); a writable `/sys` inside a container would allow root inside the container to modify host kernel/driver parameters, unbind PCI devices, or trigger uevents.
 </details>
 
 <details>
 <summary>11. Why does Step 5 write `echo $$ > /sys/fs/cgroup/lab-ctr/cgroup.procs` BEFORE `exec unshare ...`?</summary>
+
 Because `exec` replaces the current shell process image without changing its PID or cgroup membership, moving the shell's `$$` into `lab-ctr` first ensures that `unshare` and every child process it forks inside the container automatically inherit membership in `/sys/fs/cgroup/lab-ctr`.
 </details>
 
 <details>
 <summary>12. What do `cpu.max = "50000 100000"`, `memory.max = 128M`, and `pids.max = 64` enforce on `lab-ctr`, and which files record hits?</summary>
+
 `cpu.max = "50000 100000"` caps the container at `50 ms` of CPU time per `100 ms` period (`0.5` CPU, recorded in `cpu.stat` `nr_throttled`); `memory.max = 128M` triggers the cgroup OOM killer if memory usage exceeds `128 MiB` (recorded in `memory.events` `oom_kill`); and `pids.max = 64` blocks `fork()`/`clone()` once `64` processes/threads exist in the cgroup (recorded in `pids.events` `max`).
 </details>
 
 <details>
 <summary>13. In Step 6, how do you resolve the container's host PID for `ip link set vethc0 netns $PID` and `nsenter -t $PID`?</summary>
+
 Inside `unshare --pid --fork`, `$$` inside the child shell evaluates to `1` (its PID inside the new PID namespace), not its host PID. On the host, find the child's host PID using `pgrep -f 'sleep 3600'` (or `lsns -t net`) before running `ip link set vethc0 netns $PID`.
 </details>
 
 <details>
 <summary>14. Trace the host and container commands that give the container IP `10.77.0.2/24` and outbound internet access.</summary>
+
 On the host: create bridge `br-lab` (`10.77.0.1/24`), create `vethh0`/`vethc0`, attach `vethh0` to `br-lab`, move `vethc0` into the container netns (`ip link set vethc0 netns $PID`), enable `net.ipv4.ip_forward=1`, and add `iptables -t nat -A POSTROUTING -s 10.77.0.0/24 ! -o br-lab -j MASQUERADE`. Inside the container netns (`nsenter -t $PID -n`): rename `vethc0` to `eth0`, assign `10.77.0.2/24`, bring `eth0` and `lo` up, and add `ip route add default via 10.77.0.1`.
 </details>
 
 <details>
 <summary>15. What happens in Step 9 when you make PID 1 a shell script without `exec` and send `SIGTERM` from the host?</summary>
+
 Because PID 1 in a PID namespace has no default signal handlers, `/bin/sh` ignores `SIGTERM` (whereas `SIGKILL` from the host kills it immediately). Using `exec` in `enter.sh` (`exec /bin/sh` or `exec python train.py`) ensures the target program itself becomes PID 1.
 </details>
 
 <details>
 <summary>16. In Step 9, why does `free -h` inside the container still show the host's total RAM even when `memory.max` is `128M`?</summary>
+
 `/proc/meminfo` is not virtualized by mount or PID namespaces, so `free -h` reads the host's global memory statistics. The container's true limit and usage live in `/sys/fs/cgroup/lab-ctr/memory.max` and `memory.current`.
 </details>
 
 <details>
 <summary>17. What happens if you try to `rmdir /sys/fs/cgroup/lab-ctr` while a container process is still running inside it?</summary>
+
 The kernel refuses the `rmdir` with `EBUSY` (`Device or resource busy`); a cgroup directory can only be removed with `rmdir` after all member processes have exited (or been moved out) and all child cgroups have been removed.
 </details>
 
 <details>
 <summary>18. How do `capsh --drop=cap_sys_admin,cap_net_raw,cap_sys_module` and `setpriv --no-new-privs` harden the hand-built container?</summary>
+
 Dropping `CAP_SYS_ADMIN` prevents mounting filesystems or calling `pivot_root`/`swapon`, dropping `CAP_NET_RAW` prevents crafting raw/ICMP sockets, dropping `CAP_SYS_MODULE` prevents loading kernel modules, and `--no-new-privs` ensures `execve()` of a setuid binary cannot re-acquire privileges.
 </details>
 
 <details>
 <summary>19. When you compare `/proc/$P/status` and `/proc/$P/mounts` of a real `docker run` container against your hand-built container in Step 8, what extra protections does Docker add?</summary>
+
 Docker (via `containerd`/`runc`) additionally drops capabilities down to a small default bounding set, installs a ~44-syscall `seccomp` filter (`Seccomp: 2`), applies an AppArmor or SELinux profile, bind-mounts sensitive `/proc` files (`/proc/kcore`, `/proc/keys`, `/proc/sysrq-trigger`) to `/dev/null` (masked paths), and mounts `/proc/sys` and `/sys` read-only.
 </details>
 
 <details>
 <summary>20. Why is running this lab rootless (`unshare --user --map-root-user`) harder for OverlayFS and networking?</summary>
+
 Unprivileged user namespaces cannot create host `veth` pairs or attach interfaces to a host bridge without a privileged helper (requiring user-space network stacks like `slirp4netns` or `pasta`), and native unprivileged OverlayFS mounts require Linux `5.11+` (older kernels needed `fuse-overlayfs`).
 </details>
 

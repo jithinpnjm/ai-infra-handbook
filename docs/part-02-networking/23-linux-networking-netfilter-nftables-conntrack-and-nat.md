@@ -347,101 +347,121 @@ Next, on a disposable Linux VM with `root` and `nftables` installed (all interac
 
 <details>
 <summary>1. Name the five Linux `netfilter` hooks and state which hooks a local-in, local-out, forwarded, and loopback packet traverse (`NK` Chapter 2).</summary>
+
 The five hooks are **`prerouting`**, **`input`**, **`forward`**, **`output`**, and **`postrouting`**:\n- **External -> Local process**: `prerouting` ->*(routing decision: local)*-> `input`.\n- **Local process -> External**: `output` -> `postrouting`.\n- **External -> External (routed/forwarded)**: `prerouting` ->*(routing decision: forward)*-> `forward` -> `postrouting`.\n- **Local process -> Local process (loopback `lo`)**: `output` -> `postrouting` ->*(loopback re-entry)*-> `prerouting` -> `input`.
 </details>
 
 <details>
 <summary>2. In what priority order are `iptables` tables (and `netfilter` subsystems) visited at a hook, and what IP address does the `forward` filter chain see after `DNAT`?</summary>
+
 From lowest numerical priority (earliest) to highest (latest):\n**`raw` (`-300`) -> `conntrack` (`-200`) -> `mangle` (`-150`) -> `nat` `dstnat`/`DNAT` (`-100`) -> `filter` (`0`) -> `security` (`50`) -> `nat` `srcnat`/`SNAT` (`100`)**.\nBecause `DNAT` executes in `prerouting` at priority `-100` **before** the routing decision and before `forward` (`priority 0`), rules in the **`forward` filter chain see the new post-DNAT destination IP and port** (use `ct original daddr` or `ct status dnat` in `nftables` if you need to match the original pre-DNAT VIP).
 </details>
 
 <details>
 <summary>3. What is a Martian packet, and why is disabling `rp_filter` on `127.0.0.0/8` dangerous (`NK` Chapter 2)?</summary>
+
 A **Martian packet** is a packet arriving on an interface with a bogon or impossible source/destination IP (such as `127.0.0.1` arriving on a physical Ethernet NIC from the wire, or a source IP that fails Reverse-Path Filtering `rp_filter`). If `rp_filter` or `route_localnet` is misconfigured to accept external packets addressed to `127.0.0.1`, an attacker on the LAN can reach daemons bound to `127.0.0.1` that assumed \"localhost = local processes only\" ( enable `net.ipv4.conf.all.log_martians = 1` when auditing).
 </details>
 
 <details>
 <summary>4. What are the five `iptables` tables (`filter`, `nat`, `mangle`, `raw`, `security`) and their purposes?</summary>
+
 - **`filter`**: default table for packet filtering (`ACCEPT`, `DROP`, `REJECT` in `INPUT`, `FORWARD`, `OUTPUT`).\n- **`nat`**: address/port translation on the **first (`NEW`) packet** of a flow (`PREROUTING`, `INPUT`, `OUTPUT`, `POSTROUTING`).\n- **`mangle`**: header modification (`TOS`/`DSCP`, `TTL`, `fwmark`, and `TCPMSS --clamp-mss-to-pmtu` across all 5 hooks).\n- **`raw`**: runs before `conntrack` (`PREROUTING`, `OUTPUT`) to exempt traffic from connection tracking (`-j CT --notrack`) or drop floods early.\n- **`security`**: applies Mandatory Access Control (`SELinux` `secmark`) labels.
 </details>
 
 <details>
 <summary>5. What five architectural improvements does `nftables` make over legacy `iptables`?</summary>
+
 (1) **Single unified CLI (`nft`) and `inet` family** covering both IPv4 and IPv6 (plus `arp`, `bridge`, and early `netdev` `ingress`) instead of four separate tools (`iptables`, `ip6tables`, `arptables`, `ebtables`);\n(2) **Built-in `O(1)` / `O(log n)` sets, maps, and verdict maps (`vmap`)** so matching 50,000 IPs or Services takes 1 lookup instead of 50,000 linear rule evaluations;\n(3) **True atomic ruleset replacement** (`nft -f`) without lock contention;\n(4) **Multiple independent tables per hook** (so host firewall tables and container/CNI tables do not overwrite each other); and\n(5) **Fast-path `flowtable` offload** (`flow add @ft`) that bypasses the filter path for established forwarded flows.
 </details>
 
 <details>
 <summary>6. What is the difference between `iptables-legacy` and `iptables-nft`, and why must you never mix them carelessly on a node?</summary>
+
 Modern distributions ship two binaries behind the `iptables` command (`iptables --version`): **`iptables-legacy`** (which programs the old `xtables` kernel API) and **`iptables-nft`** (which translates `iptables` CLI commands into `nftables` kernel bytecode). Both subsystems can be active in the kernel at the same time. If a host admin writes rules with `iptables-legacy` while `kube-proxy` or Docker uses `iptables-nft`, `iptables -L` from one binary will not show the rules programmed by the other—causing invisible drops.
 </details>
 
 <details>
 <summary>7. In a default-deny `nftables` `input` chain, why must `iif lo accept`, `ct state invalid drop`, and `ct state established,related accept` appear at the very top of the chain?</summary>
+
 Over 99% of packets in a normal TCP/UDP flow are **`established` data and ACK packets** after the initial `SYN`. Placing `iif lo accept`, `ct state invalid drop`, and `ct state established,related accept` as the first three rules ensures that almost every legitimate packet is accepted in `O(1)` time at the top of the chain, while only the first `NEW` packet of a connection walks the port/set allow-list rules below.
 </details>
 
 <details>
 <summary>8. Define the five `nf_conntrack` states (`NEW`, `ESTABLISHED`, `RELATED`, `INVALID`, `UNTRACKED`).</summary>
+
 - **`NEW`**: the first packet of a flow (e.g., TCP `SYN` or first UDP datagram); conntrack has not yet seen a reply packet in the reverse direction.\n- **`ESTABLISHED`**: conntrack has observed valid packets in **both** the original and reply directions.\n- **`RELATED`**: a brand-new flow logically associated with an existing `ESTABLISHED` flow—most importantly **ICMP / ICMPv6 error messages** (`Fragmentation Needed` / `Packet Too Big`, `Time Exceeded`) quoting an active flow's header, or helper-tracked FTP/SIP data channels.\n- **`INVALID`**: a packet that violates the protocol state machine or matches no known flow (e.g., an unsolicited TCP `ACK`/`RST` or out-of-window segment—often caused by **asymmetric routing**); always `drop`.\n- **`UNTRACKED`**: explicitly exempted from connection tracking in the `raw` hook (`notrack`).
 </details>
 
 <details>
 <summary>9. What happens when the Linux `nf_conntrack` table fills up, how do you diagnose it, and what are the five ordered remedies?</summary>
+
 When `nf_conntrack_count` reaches `nf_conntrack_max`, the kernel **silently drops all new connections** (printing **`nf_conntrack: table full, dropping packet`** in `dmesg` / `journalctl -k` and incrementing **`insert_failed` and `drop` in `sudo conntrack -S`**). Fix it in order:\n(1) **Identify the top flow creators** (`sudo conntrack -L` / `conntrack -E`) and fix unpooled chatty clients;\n(2) **Shorten conntrack timeouts**—especially `net.netfilter.nf_conntrack_tcp_timeout_established` (whose default is **5 days = `432,000 s`**, far too long; lower to `3600 s`) and `tcp_timeout_time_wait` (`30 s`);\n(3) **Raise `nf_conntrack_max`** (e.g., `2097152`, ~350 bytes/entry ≈ `700 MiB` RAM) and scale **`hashsize` (`nf_conntrack_buckets`) to `max / 4` or `max / 8`** (`262144`) so hash chains stay O(1);\n(4) **Bypass conntrack (`notrack`)** for high-rate stateless traffic (DNS, storage); and\n(5) Move to an **eBPF datapath** (Cilium).
 </details>
 
 <details>
 <summary>10. How do you exempt a high-rate service (like UDP port 53 DNS) from `conntrack` in `nftables`, and what rule must you remember to add when you use `notrack`?</summary>
+
 Create a chain at priority `raw` (`-300`, before conntrack at `-200`) in both **`prerouting` and `output`** and apply **`notrack`** (e.g., `udp dport 53 notrack` and `udp sport 53 notrack`). Because `UNTRACKED` packets **do not match `ct state established,related accept`**, you **must** also add explicit stateless `accept` rules in your `filter` `input`/`output`/`forward` chains for both directions of that traffic, or the filter chain will drop it.
 </details>
 
 <details>
 <summary>11. Why does editing or deleting a `NAT` rule in `nftables`/`iptables` NOT change the translation of already-established connections?</summary>
+
 Because the `nat` table chains (`prerouting`, `output`, `postrouting`) are evaluated **only on the first (`NEW`) packet** of a flow. Once the translation tuple is recorded in the `nf_conntrack` entry, all subsequent packets of that flow are translated directly by `conntrack` without consulting the `nat` ruleset. To force an existing flow (such as a long-lived UDP stream or keep-alive connection) to use an updated NAT rule, you must flush its conntrack entry with **`sudo conntrack -D -s <ip>`**.
 </details>
 
 <details>
 <summary>12. What are `conntrack` Helpers (`ALGs`) and `conntrack` Zones (`ct zone`)?</summary>
+
 - **Helpers (`ALGs`)**: kernel modules (`nf_conntrack_ftp`, `tftp`, `sip`) that inspect application control payloads to dynamically open `RELATED` pinholes for secondary data connections. Since Linux 4.7+, automatic helper assignment is disabled by default (`nf_conntrack_helper = 0`) because spoofed payloads could trick helpers into opening firewall ports; helpers must be attached explicitly via `ct helper` rules.\n- **Zones (`ct zone set <id>`)**: partition the conntrack table into isolated virtual namespaces so overlapping IP addresses from different tenants or VRFs on the same host never collide.
 </details>
 
 <details>
 <summary>13. Why does `docker run -p 8080:80` bypass `ufw` or host `INPUT` firewall rules, and how do you restrict access to Docker-published ports?</summary>
+
 When Docker publishes a container port (`-p 8080:80`), it inserts a **`DNAT` rule in `PREROUTING` (`DOCKER` chain)** that rewrites the destination IP to the container's bridge IP (`172.17.0.x:80`). Because `DNAT` changes the destination to a container IP before routing, the packet takes the **`FORWARD` hook** instead of the host's `INPUT` hook (where `ufw` host rules live), and Docker places its `DOCKER` chain late in `FORWARD`. To restrict access: (1) bind published ports to localhost (`-p 127.0.0.1:8080:80`), or (2) place your filter rules inside the **`DOCKER-USER` chain**, which Docker evaluates at the very top of `FORWARD` before its own rules.
 </details>
 
 <details>
 <summary>14. How does `kube-proxy` in `iptables` mode program a Kubernetes `Service` with 4 Pod endpoints?</summary>
+
 In `nat` `PREROUTING` and `OUTPUT`, `kube-proxy` jumps to **`KUBE-SERVICES`**, which matches the Service `ClusterIP:port` and jumps to **`KUBE-SVC-<hash>`**. Inside `KUBE-SVC-<hash>`, 4 sequential rules use the `statistic` module (`--mode random --probability 0.25`, `0.3333`, `0.50`, and `1.0`) so each rule has an exact `1/4` (`25%`) chance of jumping to its corresponding endpoint chain **`KUBE-SEP-<hash>`**, which executes **`-j DNAT --to-destination <pod_ip>:<port>`** (and marks hairpin/external traffic with `KUBE-MARK-MASQ` for `POSTROUTING` `MASQUERADE`).
 </details>
 
 <details>
 <summary>15. Why must you NEVER run `nft flush ruleset` or `iptables -F` on a running Kubernetes or Docker node?</summary>
+
 Running `nft flush ruleset` or `iptables -F` wipes out every `KUBE-SERVICES`, `KUBE-FORWARD`, `DOCKER`, and CNI (`cali-*` / `cilium_*`) chain in the kernel—instantly breaking all Kubernetes `ClusterIP` Services, Pod egress NAT, and `NetworkPolicy` enforcement across the node until `kube-proxy`, the CNI daemonset, and `dockerd`/`containerd` are restarted. Always put custom host firewall rules in a **dedicated `nftables` table** (`table inet host_firewall { ... }`) and flush only your own table (`nft flush table inet host_firewall`).
 </details>
 
 <details>
 <summary>16. Does a Linux host firewall (`nftables` / `iptables`) filter `RoCEv2` or `InfiniBand` `GPUDirect RDMA` traffic?</summary>
+
 **No.** True RDMA (`ibverbs` / `GPUDirect RDMA` over InfiniBand or RoCEv2 hardware offload) **bypasses the Linux kernel networking stack and `netfilter` hooks completely**—packets travel directly between GPU HBM / host pinned memory and the NIC ASIC over PCIe DMA. Only the initial TCP/socket bootstrap (and non-offloaded control packets) traverses `netfilter`; RDMA data-plane security must be enforced via **InfiniBand `P_Key`s**, **switch ACLs / VRFs**, or **BlueField DPU hardware firewalls**.
 </details>
 
 <details>
 <summary>17. How do `nftables` `flowtable`s accelerate packet forwarding on a Linux router or firewall?</summary>
+
 Once a forwarded TCP or UDP connection reaches the `ESTABLISHED` state (`ct state established`), a rule `flow add @ft` inserts the flow's 5-tuple, next-hop MAC, and outgoing interface into an **`nftables` `flowtable`**. Subsequent packets of that flow are matched at the **ingress hook right after the driver** and forwarded directly to the egress NIC queue (or offloaded into switch/SmartNIC hardware via `flags offload`), **completely bypassing `prerouting`, routing table lookup, `forward`, and `postrouting`**.
 </details>
 
 <details>
 <summary>18. Walk through how to trace a single dropped packet rule-by-rule using `nft monitor trace`.</summary>
+
 (1) Create a temporary trace table and chain at priority `-300` (before `raw`/`conntrack`):\n`sudo nft add table inet trace_t`\n`sudo nft 'add chain inet trace_t pre { type filter hook prerouting priority -300; }'`\n(2) Add a narrow rule matching only your test packet and setting **`meta nftrace set 1`**:\n`sudo nft add rule inet trace_t pre ip saddr 10.0.0.5 tcp dport 443 meta nftrace set 1`\n(3) Run **`sudo nft monitor trace`** while sending one test packet: the kernel prints every hook, table, chain, rule expression, and verdict (`accept`, `jump`, `drop`) that the packet hits, pinpointing the exact offending rule. Clean up with `sudo nft delete table inet trace_t`.
 </details>
 
 <details>
 <summary>19. What is the safest way to apply a new `nftables` ruleset on a remote server over SSH without locking yourself out?</summary>
+
 (1) Always syntax-check the file first with **`sudo nft -c -f /etc/nftables.conf`**;\n(2) Keep a **second active SSH session** open (and verify out-of-band BMC/serial console access);\n(3) Start an **automatic rollback timer** in the background before applying (`sudo sh -c 'sleep 60 && nft -f /etc/nftables.backup' &`), apply the new ruleset (`sudo nft -f /etc/nftables.conf`), verify you can open a *new* SSH connection, and only then kill the `sleep` rollback job.
 </details>
 
 <details>
 <summary>20. Where in `netfilter` should you drop high-rate DDoS or bogon packets for maximum single-host performance?</summary>
+
 The earlier in the packet path you drop a packet, the less CPU and memory the kernel spends on it:\n(1) Fastest: **NIC hardware ACL / XDP (`eBPF` in driver RX ring)** before `sk_buff` allocation (`> 10 Mpps/core`);\n(2) Second fastest: **`nftables` `netdev` family `ingress` hook** (runs immediately after driver RX before L3 routing or `conntrack`);\n(3) Third: **`raw` `prerouting` (`priority -300`)** with `drop` (avoids allocating a `conntrack` entry for flooded SYN/UDP packets).
 </details>
 

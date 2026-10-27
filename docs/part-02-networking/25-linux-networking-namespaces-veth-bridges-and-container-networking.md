@@ -331,101 +331,121 @@ Next, on a disposable Linux VM with `root`, Docker/containerd, and `kind` (all i
 
 <details>
 <summary>1. What kernel resources are isolated inside a Linux Network Namespace (`ip netns`), and why does every Kubernetes Pod run a `pause` (sandbox) container?</summary>
+
 Each **network namespace** (`/proc/<pid>/ns/net`) owns an independent copy of: (1) network interfaces (including its own `lo`), (2) IPv4/IPv6 addresses, (3) routing tables and `ip rule`s, (4) ARP/ND neighbor tables, (5) `netfilter` (`iptables`/`nftables`) rules and `nf_conntrack` table, (6) TCP/UDP/Unix socket port space, (7) `/proc/net/*`, and (8) `net.*` sysctls. In Kubernetes, the runtime first starts a tiny **`pause` (sandbox) container** whose sole job is to create and hold open the Pod's network namespace (`--network container:pause`); all application and sidecar containers in the Pod join that shared namespace (`localhost`), so if an app container crashes and restarts, the Pod's IP and `veth` stay intact.
 </details>
 
 <details>
 <summary>2. What is a `veth` pair, and how do you find which host-side `veth` interface corresponds to a Pod's `eth0`?</summary>
+
 A **`veth` (*virtual Ethernet*) pair** is a virtual patch cable consisting of two linked interfaces: any frame transmitted into one end immediately emerges from the other end, even when the two ends sit in different network namespaces. To map a Pod's `eth0` to its host-side `vethXXXX`, run **`sudo nsenter -t <pod_pid> -n ethtool -S eth0 | grep peer_ifindex`** (or `ip -n <ns> link show eth0`, reading `@if<N>`), and then match that interface index `<N>` on the host with **`ip -o link | grep "^<N>:"`**.
 </details>
 
 <details>
 <summary>3. Why does Kubernetes require `net.bridge.bridge-nf-call-iptables = 1` (the `br_netfilter` module) on nodes using a bridge CNI?</summary>
+
 Normally, a Linux L2 software bridge (`cni0` or `docker0`) forwards frames between attached `veth` ports purely at Layer 2 without passing them through L3 `iptables`/`netfilter` hooks. When Pod A on `cni0` connects to a Kubernetes `Service` `ClusterIP` backed by Pod B on the *same* node (`cni0`), `kube-proxy` `DNAT`s the destination to Pod B; if the reply from Pod B to Pod A were bridged directly at L2 without hitting `netfilter`/`conntrack`, the source IP would not be un-DNATed back to the `ClusterIP` and Pod A would reset the connection. `bridge-nf-call-iptables = 1` passes bridged frames through host `iptables`/conntrack.
 </details>
 
 <details>
 <summary>4. Compare a Bridge (`cni0`), a Routed `veth` (`Calico`), `macvlan`, and `ipvlan` (`L2`/`L3`) for connecting containers to the network.</summary>
+
 - **Linux Bridge (`cni0` / `docker0`)**: virtual L2 switch joining container `veth`s on a node subnet (`10.244.1.0/24`).\n- **Routed `veth` (`Calico`)**: no bridge; each host-side `caliXXXX` `veth` is a point-to-point L3 link with a `/32` host route (`10.244.1.5 dev caliXXXX scope link`), and the host answers the Pod's ARP for a dummy link-local gateway (`169.254.1.1`) via `proxy_arp`.\n- **`macvlan`**: sub-interface of a physical NIC with its **own unique MAC address** on the underlay LAN (low overhead, no NAT, but can trip switch port-security MAC limits).\n- **`ipvlan` (`mode l2` / `mode l3`)**: sub-interface that **shares the parent physical NIC's MAC address** while giving each container a distinct IP (in `L3` mode, the parent acts as a pure L3 router with zero broadcast traffic).
 </details>
 
 <details>
 <summary>5. Why can't a Linux host communicate directly with `macvlan` or `ipvlan` containers created on its own physical parent NIC (`eth0`), and what is the fix?</summary>
+
 By kernel design, `macvlan` and `ipvlan` inject outgoing container frames directly toward the physical wire below the host's `eth0` stack and only hair-pin frames between sibling `macvlan` sub-interfaces—they **never loop packets back up into the parent `eth0` interface**. If the host itself needs to talk to its own local `macvlan` containers, you create a `macvlan` sub-interface on the host namespace too and route the container subnet through that sub-interface.
 </details>
 
 <details>
 <summary>6. How do you provide a custom `/etc/resolv.conf` to an `ip netns` namespace without modifying the host's `/etc/resolv.conf`?</summary>
+
 Create the file **`/etc/netns/<namespace-name>/resolv.conf`**. Whenever you run `ip netns exec <namespace-name> <cmd>`, `iproute2` automatically creates a private mount namespace for the command and bind-mounts `/etc/netns/<namespace-name>/resolv.conf` over `/etc/resolv.conf`.
 </details>
 
 <details>
 <summary>7. Compare Docker's `CNM` (*Container Network Model*) with CNCF's `CNI` (*Container Network Interface*, `NK` Chapter 3).</summary>
+
 - **Docker `CNM` (`libnetwork`)**: defines **Sandbox** (netns), **Endpoint** (veth/port), and **Network** managed by a long-running daemon (`dockerd`), with modes `bridge`, `host`, `none`, `container:<id>`, `macvlan`, and Swarm `overlay`.\n- **CNCF `CNI`**: a minimal, runtime-agnostic specification adopted by Kubernetes (`containerd`, `CRI-O`, Podman). There is no required daemon: when a Pod starts or stops, the container runtime executes a **standalone CNI binary** in **`/opt/cni/bin/`**, passes `CNI_COMMAND` (`ADD`, `DEL`, `CHECK`, `VERSION`), `CNI_NETNS`, `CNI_CONTAINERID`, and `CNI_IFNAME` via environment variables, pipes the network JSON from **`/etc/cni/net.d/`** on `stdin`, and reads the allocated IP/route JSON result on `stdout`.
 </details>
 
 <details>
 <summary>8. What is a CNI `IPAM` plugin, and what does a chained `.conflist` CNI configuration do?</summary>
+
 A main CNI interface plugin (`bridge`, `ptp`, `macvlan`, `sriov`) creates the network interface and delegates IP address allocation to an **IPAM (*IP Address Management*) sub-plugin**: **`host-local`** (allocates from a node-local subnet on disk), **`whereabouts`** (cluster-wide CRD IPAM for secondary Multus networks), **`dhcp`**, or **`static`**. A **`.conflist`** file chains an array of plugins in sequence on `ADD` (and reverse order on `DEL`): for example, `bridge` (creates `veth` + assigns IP) -> `portmap` (programs `hostPort` DNAT) -> `bandwidth` (programs `tc` token-bucket shaping) -> `tuning` (sets netns `sysctl`s).
 </details>
 
 <details>
 <summary>9. What happens if two CNI configuration files exist in `/etc/cni/net.d/` on a Kubernetes node?</summary>
+
 The container runtime (`containerd` / `CRI-O`) loads the **lexically first** `.conf` or `.conflist` file in `/etc/cni/net.d/` (for example, `05-cilium.conflist` beats `10-flannel.conflist`). Leaving stale config files in `/etc/cni/net.d/` when migrating CNIs is a classic cause of nodes booting with the wrong CNI plugin after a reboot.
 </details>
 
 <details>
 <summary>10. State the three fundamental rules of the Kubernetes Network Model (`NK` Chapter 3 / `PK` Chapter 5).</summary>
+
 (1) **Every Pod gets its own unique IP address** (shared by all containers inside that Pod);\n(2) **Every Pod can communicate with every other Pod across all nodes without NAT**;\n(3) **Agents on a node (`kubelet`) can communicate with all Pods on that node** (and a Pod sees its own IP address as the exact same IP address that other Pods see when talking to it).
 </details>
 
 <details>
 <summary>11. Compare `Flannel`, `Calico`, `Cilium`, and `AWS VPC CNI` / `GKE Alias IPs`.</summary>
+
 - **`Flannel`**: simple L3 VXLAN (`UDP 8472`) or `host-gw` CNI; **does not implement `NetworkPolicy`** on its own.\n- **`Calico`**: pure L3 routed CNI (`veth` `/32` host routes + **BGP via BIRD** to Top-of-Rack switches, or optional IPIP/VXLAN overlay) with rich L3/L4 `NetworkPolicy` (iptables/ipset or eBPF).\n- **`Cilium`**: **eBPF-native CNI** that replaces `kube-proxy` `iptables` with eBPF maps/socket load balancing, supports native routing or VXLAN/Geneve, enforces identity-based **L3/L4/L7 and DNS-aware `NetworkPolicy`**, and provides **Hubble** observability.\n- **`AWS VPC CNI` / `GKE Dataplane V2 (Alias IPs)`**: assigns **first-class cloud VPC IP addresses** directly to Pods via Elastic Network Interfaces (`ENI`s) / alias ranges—requiring zero overlay encapsulation and making Pod IPs natively routable across the VPC (at the cost of consuming VPC subnet IPs and hitting per-instance ENI/IP limits).
 </details>
 
 <details>
 <summary>12. Why do multi-node GPU training Pods in Kubernetes need secondary networks (`Multus`), and how does the NVIDIA Network Operator wire them up?</summary>
+
 A Pod's primary `eth0` interface is connected to the cluster CNI (often a VXLAN overlay or shared management network), which lacks hardware RDMA offloads, lossless `PFC`/`ECN`, and rail-aligned topology. **`Multus`** is a meta-CNI plugin that attaches `eth0` via the primary CNI and then reads the Pod's **`k8s.v1.cni.cncf.io/networks: rail0,rail1,...`** annotation to attach secondary **`net1..net8`** interfaces defined by **`NetworkAttachmentDefinition`** CRDs. The **NVIDIA Network Operator** automates deploying Multus, the `whereabouts` IPAM plugin, the **SR-IOV / RDMA Shared Device Plugin** (`rdma/hca_shared_devices_a`), and the NIC drivers/OFED.
 </details>
 
 <details>
 <summary>13. Why does `NCCL` inside a Kubernetes Pod sometimes fall back to the slow primary `eth0` overlay instead of the RDMA rail interfaces, and how do you prevent it?</summary>
+
 By default, `NCCL` scans interfaces inside the container namespace for its out-of-band bootstrap and socket transport, ignoring only `lo` and `docker0`; inside a Pod, the primary CNI interface is named **`eth0`**, so `NCCL` may pick `eth0` (the overlay) instead of the Multus secondary interface **`net1`**. Always set **`NCCL_SOCKET_IFNAME=net1`** (or `^eth0,lo,docker0`) and **`NCCL_IB_HCA=mlx5_0,mlx5_1,...`** explicitly in the Pod spec.
 </details>
 
 <details>
 <summary>14. Why must a Kubernetes Pod that uses `RDMA` (`RoCEv2` or `InfiniBand`) be granted the `IPC_LOCK` Linux capability?</summary>
+
 RDMA (`ibv_reg_mr`) requires **pinning (locking) memory pages in physical RAM** so the NIC ASIC can DMA directly to and from those addresses without the kernel paging them out to swap. In Linux, pinning memory above the default tiny `RLIMIT_MEMLOCK` (`64 KiB`) requires the **`CAP_IPC_LOCK`** capability (`securityContext.capabilities.add: ["IPC_LOCK"]` and `ulimit -l unlimited`). Without `IPC_LOCK`, `ibv_reg_mr` / `NCCL` fails immediately with `Cannot allocate memory`.
 </details>
 
 <details>
 <summary>15. What are the trade-offs of running GPU training Pods with `hostNetwork: true` versus `Multus` + `SR-IOV` / `macvlan`?</summary>
+
 - **`hostNetwork: true`** (plus `dnsPolicy: ClusterFirstWithHostNet`): the Pod shares the host node's root network namespace directly—giving instant visibility to all host RDMA NICs and zero `veth`/overlay overhead with no Multus/SR-IOV complexity. However, **all Pods on the node share the same IP and port space** (risking port collisions), cannot use per-Pod `NetworkPolicy`, and can see host network sockets.\n- **`Multus` + `SR-IOV` / `macvlan`**: gives each Pod its own isolated network namespace, dedicated `eth0` for Kubernetes Services/NetworkPolicy, and dedicated hardware VF/RDMA interfaces (`net1..netN`) for multi-tenant isolation and partial-node GPU jobs (e.g., 2 GPUs + 2 VFs per Pod).
 </details>
 
 <details>
 <summary>16. How does the Kubernetes `Topology Manager` (`single-numa-node`) prevent cross-socket PCIe bottlenecks in GPU Pods?</summary>
+
 On a dual-socket 8-GPU server, GPUs `0..3` and NICs `0..3` sit on **NUMA Node 0**, while GPUs `4..7` and NICs `4..7` sit on **NUMA Node 1**. Without coordination, the GPU device plugin might allocate `GPU 0` (Node 0) while the SR-IOV/RDMA device plugin allocates `NIC 5` (Node 1) and the CPU Manager allocates cores on Node 1—forcing every GPUDirect RDMA transfer across the inter-socket UPI/Infinity Fabric link. Configuring the kubelet **`Topology Manager` policy `single-numa-node`** forces all three managers (CPU, GPU, and NIC device plugins) to allocate resources from the **exact same NUMA node**.
 </details>
 
 <details>
 <summary>17. Does a Kubernetes `NetworkPolicy` filter traffic on secondary `Multus` `SR-IOV` or `macvlan` RDMA interfaces?</summary>
+
 **No.** Standard Kubernetes `NetworkPolicy` controllers (`Calico`, `Cilium`) enforce rules only on the **primary CNI interface (`eth0`)**. Secondary `SR-IOV` Virtual Functions and `macvlan` interfaces bypass the host software bridge/datapath and go straight to the NIC/switch; they must be isolated at the fabric layer using **VLANs, VRFs, InfiniBand `P_Key`s, or BlueField DPU policies** (or specialized multi-network policy controllers).
 </details>
 
 <details>
 <summary>18. Why can't you run `tcpdump` or `ip route` inside a minimal/distroless production container via `kubectl exec`, and how does `nsenter` solve it?</summary>
+
 Production AI and microservice images omit root shells, `tcpdump`, `ss`, and `iproute2` (and lack `CAP_NET_RAW` / `CAP_NET_ADMIN`). Instead of installing debug packages inside the container, SSH to the Kubernetes worker node, find the container's host PID (`PID=$(crictl inspect --output json <cid> | jq .info.pid)`), and run **`sudo nsenter -t $PID -n tcpdump -ni eth0`**—which enters **only the container's network namespace** while executing the **host's** binary and root privileges. (Alternatively, use `kubectl debug -it <pod> --image=nicolaka/netshoot`.)
 </details>
 
 <details>
 <summary>19. How do you size the cluster Pod CIDR and per-node Pod CIDR mask (`--node-cidr-mask-size`) in Kubernetes?</summary>
+
 Each node receives a slice of the cluster Pod CIDR (typically a **`/24` per node**, providing `256 - 2 = 254` usable Pod IPs, safely above the default `maxPods: 110`). A `/16` cluster CIDR (`10.244.0.0/16`) subdivided into `/24`s supports at most **`256` nodes**; for a `1,000+` node GPU cluster, allocate at least a **`/14` or `/12` cluster CIDR** at cluster creation time so you never run out of node `/24` blocks.
 </details>
 
 <details>
 <summary>20. Walk through the 8-step checklist when Pod A on Node 1 cannot reach Pod B on Node 2.</summary>
+
 (1) Inspect Pod A and Pod B IPs and routes (`nsenter -t <pid> -n ip addr` and `ip route`);\n(2) Verify Pod A's `veth` and its host-side peer (`peer_ifindex`) are `UP` and ARP resolves;\n(3) On Node 1, verify `sysctl net.ipv4.ip_forward = 1`, `rp_filter`, and `bridge-nf-call-iptables`;\n(4) Check Node 1's route to Pod B's `/24` (`ip route get <podB_ip>`): does it point to the tunnel (`flannel.1` / `cilium_vxlan`) or BGP peer (`via <node2_ip>`)?;\n(5) Test **underlay node-to-node reachability and MTU** (`ping -M do -s 1472 <node2_ip>`) and verify firewall/security groups allow VXLAN (`UDP 8472`/`4789`) or BGP (`TCP 179`);\n(6) Check `NetworkPolicy` drops (`cilium monitor --type drop` or `iptables -L -v -n`);\n(7) Verify the process inside Pod B is listening on `0.0.0.0` (not `127.0.0.1`) with `nsenter -t <pidB> -n ss -tulpn`; and\n(8) Capture with `tcpdump` at four points: Pod A `eth0` -> Node 1 uplink -> Node 2 uplink -> Pod B `eth0`.
 </details>
 

@@ -360,101 +360,121 @@ Next, on two GCP Ubuntu VMs (`vm1` and `vm2`; all interactive VM commands below 
 
 <details>
 <summary>1. What three security guarantees does SSH provide, and which keys participate in each?</summary>
+
 First, SSH authenticates the server to the client using the server's **host key** (`/etc/ssh/ssh_host_*_key`, verified against `~/.ssh/known_hosts`). Second, it encrypts and protects the channel using ephemeral **session keys** negotiated during key exchange. Third, it authenticates the user to the server using your **user key pair** (`~/.ssh/id_ed25519` and `~/.ssh/authorized_keys`) or certificate.
 </details>
 
 <details>
 <summary>2. What is the difference between the server's host key and your personal user key pair?</summary>
+
 The server's host key identifies the machine (`sshd`) and stays in `/etc/ssh/` on the server while clients record its public key in `~/.ssh/known_hosts`. Your user key pair identifies you: the private key stays encrypted on your client laptop and the public key is appended to `~/.ssh/authorized_keys` on the servers you log into.
 </details>
 
 <details>
 <summary>3. What does `WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!` mean, when is it benign, and how do you handle it safely?</summary>
+
 The server at that hostname or IP presented a host public key that differs from the entry in `~/.ssh/known_hosts`. It is benign when a node was reimaged or a cloud IP was reassigned, and dangerous when an attacker is intercepting the connection (MITM). Verify the new fingerprint out of band (via BMC/cloud console) before running `ssh-keygen -R hostname`.
 </details>
 
 <details>
 <summary>4. What permission modes do `sshd` (`StrictModes`) and `ssh` require on `~`, `~/.ssh`, `~/.ssh/authorized_keys`, and `~/.ssh/id_ed25519`?</summary>
+
 Your home directory `~` must not be writable by group or others (`0750` or `0755`), and `~/.ssh` must be `0700`. In addition, `~/.ssh/authorized_keys` must be `0600` (with no group or world write), and your private key `~/.ssh/id_ed25519` must be `0600` or `0400`.
 </details>
 
 <details>
 <summary>5. Why is `ProxyJump` (`ssh -J bastion gpu01`) safer than `ForwardAgent yes` (`ssh -A bastion`) for reaching internal cluster nodes?</summary>
+
 With `ForwardAgent yes`, the bastion host receives a Unix domain socket connected to your local `ssh-agent`, allowing anyone with `root` on the bastion to sign authentication challenges as you. `ProxyJump` tunnels an end-to-end encrypted SSH connection *through* the bastion from your client directly to `gpu01` without ever exposing your agent on the bastion.
 </details>
 
 <details>
 <summary>6. How does `~/.ssh/config` resolve conflicting settings across multiple matching `Host` blocks, and how do you inspect the result?</summary>
+
 OpenSSH uses a **first-match-wins** rule for each parameter: the first matching `Host` block that sets an option locks in that value, so specific host stanzas (`Host gpu01`) must appear *above* wildcard stanzas (`Host gpu*`, `Host *`). Run `ssh -G gpu01` to print the effective configuration.
 </details>
 
 <details>
 <summary>7. What do `ControlMaster auto`, `ControlPath`, and `ControlPersist 10m` do in `~/.ssh/config`?</summary>
+
 They multiplex multiple SSH, `scp`, and `rsync` sessions to the same host over a single already-authenticated TCP connection kept alive in the background for 10 minutes, eliminating repeated TCP/SSH handshakes.
 </details>
 
 <details>
 <summary>8. Explain `ssh -L 6006:localhost:6006 gpu01` versus `ssh -R 9000:localhost:8000 server` and `ssh -D 1080 bastion`.</summary>
+
 `-L 6006:localhost:6006 gpu01` listens on TCP port `6006` on your **local client** and forwards traffic through `gpu01` to `localhost:6006` on `gpu01`. `-R 9000:localhost:8000 server` listens on port `9000` on the **remote server** and forwards traffic back to `localhost:8000` on your client. `-D 1080 bastion` runs a local SOCKS proxy on port `1080` that routes traffic dynamically through `bastion`.
 </details>
 
 <details>
 <summary>9. When using X11 forwarding (`ssh -X`), what utility must be installed, and what happens if you run `sudo` on the remote host?</summary>
+
 Both hosts need `xauth` to manage the `MIT-MAGIC-COOKIE-1` display token. If you invoke `sudo` on the remote host to run a graphical tool, you must preserve or pass the `XAUTHORITY` environment variable that `ssh` set at login so the root process can read your X11 cookie.
 </details>
 
 <details>
 <summary>10. Why does `scp -r dir host:/dest` behave differently on the first run versus the second run when `/dest` already exists?</summary>
+
 If `/dest` does not exist on the remote host, `scp -r dir host:/dest` creates `/dest` with `dir`'s contents. If `/dest` already exists, `scp -r` places a nested subdirectory inside it (`/dest/dir`), and unlike `rsync` it re-copies every file unconditionally.
 </details>
 
 <details>
 <summary>11. Explain the `rsync` trailing-slash rule (`rsync -a src/ dest/` vs `rsync -a src dest/`) and why `-n` (`--dry-run`) is mandatory with `--delete`.</summary>
+
 `rsync -a src/ dest/` copies the *contents* of `src` directly into `dest/`, whereas `rsync -a src dest/` copies the directory itself to create `dest/src/...`. Because `--delete` removes any file in `dest/` not present in the source, a wrong slash or an unmounted empty source directory can wipe out `dest/` unless you preview with `-n` first.
 </details>
 
 <details>
 <summary>12. Why can an unthrottled `rsync` upload stall your downloads on the same link, and how does `--bwlimit=10000` help?</summary>
+
 Saturating the outbound uplink queues outgoing TCP `ACK` packets needed by your incoming downloads, causing TCP senders on the other end to stall. Passing `--bwlimit=10000` caps the upload at `10,000 KB/s` (`~10 MB/s`), keeping uplink queue latency low.
 </details>
 
 <details>
 <summary>13. What happens to a foreground training script when your SSH session drops, and how does `tmux` prevent it?</summary>
+
 When an SSH session disconnects, the kernel sends `SIGHUP` (hangup) to the session's foreground process group, terminating the job. `tmux` runs a persistent server daemon on the remote machine that owns the pseudo-terminals; detaching (`Ctrl-b d`) or losing SSH leaves the `tmux` session running so you can `tmux attach` later.
 </details>
 
 <details>
 <summary>14. Why should long multi-hour jobs on a Slurm cluster be submitted with `sbatch` rather than left inside `tmux` on a login node?</summary>
+
 Login nodes are shared entry points with limited CPU/RAM and no dedicated GPUs, and `tmux` does not survive a login-node reboot or enforce cgroup isolation. `sbatch` schedules the job onto dedicated compute nodes under Slurm accounting and resource limits.
 </details>
 
 <details>
 <summary>15. How do `pdsh` (`dshbak -c`) and ClusterShell (`clush -b`) simplify checking 100 GPU nodes at once?</summary>
+
 Both tools execute an SSH command across a hostlist range (`gpu[01-100]`) in parallel and **coalesce identical outputs** into a single grouped block (`gpu[01-99]: 8`), making the one outlier node (`gpu100: 7`) immediately visible.
 </details>
 
 <details>
 <summary>16. In `vim`, what are the four primary modes, and what do `i`, `Esc`, `x`, `dd`, `yy`, `p`, `u`, `:wq`, and `:q!` do?</summary>
+
 The modes are normal, insert (`i`), visual (`v`), and command-line (`:`). `Esc` returns to normal mode, `x` deletes the character under the cursor, `dd` cuts the current line, `yy` yanks (copies) the line, and `p` pastes. Finally, `u` undoes the last change, `:wq` saves and quits, and `:q!` quits immediately without saving changes.
 </details>
 
 <details>
 <summary>17. Why should you use `sudoedit` (`sudo -e`) instead of `sudo vim`, and why `visudo` for `/etc/sudoers`?</summary>
+
 `sudoedit` copies the protected file to a temporary file owned by you and runs your editor as your unprivileged user (preventing editor plugins or shell escapes from running as root), then copies the result back. `visudo` locks `/etc/sudoers` and validates its syntax before saving so a typo cannot lock everyone out of `sudo`.
 </details>
 
 <details>
 <summary>18. What is the difference between a TCP connection timeout and `Connection refused` when running `ssh host`?</summary>
+
 A timeout means SYN packets were silently dropped along the path (by a firewall, cloud security group, routing black hole, or powered-off host). `Connection refused` (TCP `RST`) means the packets reached the host IP, but no process is listening on TCP port 22 (`sshd` is stopped or listening on a different port).
 </details>
 
 <details>
 <summary>19. What is a BMC, and how does `ipmitool -I lanplus -H bmc-gpu01 -U admin -E sol activate` rescue an unbootable GPU server?</summary>
+
 A Baseboard Management Controller (BMC) is an independent microcontroller on the server motherboard with its own network interface and standby power. `sol activate` connects over encrypted RMCP+ (`lanplus`, reading `IPMI_PASSWORD` via `-E`) to the host's serial console (`ttyS0`/`ttyS1`), letting you see BIOS, GRUB, and kernel panic output even when the OS network stack is dead.
 </details>
 
 <details>
 <summary>20. List the five checks to run in order when troubleshooting `Permission denied (publickey)`.</summary>
+
 First, verify the target username (`user@host`). Second, run `ssh -vvv user@host` to see which key files were offered and whether `IdentitiesOnly` blocked the key. Third, verify the public key line exists in `~/.ssh/authorized_keys` on the server. Fourth, check `StrictModes` permissions on `~`, `~/.ssh` (`700`), and `authorized_keys` (`600`). Fifth, inspect `/var/log/auth.log` or `/var/log/secure` and SELinux labels (`restorecon -R ~/.ssh`).
 </details>
 

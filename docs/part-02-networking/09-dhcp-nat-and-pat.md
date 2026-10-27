@@ -300,101 +300,121 @@ Next, on a disposable Linux VM with `root` (all interactive VM commands below ar
 
 <details>
 <summary>1. What do the four letters of `DORA` stand for, which UDP ports do they use, and why is `REQUEST` broadcast even after the client knows the server's IP?</summary>
+
 **`DORA`** stands for **Discover, Offer, Request, Acknowledge** over **UDP port `68` (client)** and **UDP port `67` (server)**. Both `DISCOVER` and `REQUEST` are sent to the broadcast address (`255.255.255.255`): `REQUEST` is broadcast so that if multiple DHCP servers answered the `DISCOVER` with competing `OFFER`s, all of them see which server's offer the client accepted (Option `54`) and can immediately return their unaccepted offered IPs back to their pools.
 </details>
 
 <details>
 <summary>2. What happens at DHCP lease timers `T1` (`50%`), `T2` (`87.5%`), and `100%` expiry, and why are short leases dangerous on compute nodes?</summary>
+
 At **`T1` (`50%` of the lease)**, the client sends a **unicast** `REQUEST` directly to the original DHCP server to renew its lease. If the server does not respond by **`T2` (`87.5%` of the lease)**, the client broadcasts a `REQUEST` to **any** reachable DHCP server to rebind. At **`100%` expiry**, the client must **immediately remove its IP address** and restart `DORA`—which kills active TCP/MPI/NCCL connections if the provisioning DHCP server was down during a maintenance window.
 </details>
 
 <details>
 <summary>3. How does a DHCP Relay Agent (`ip helper-address` / `dhcrelay`) allow one central DHCP server to serve multiple routed rack subnets?</summary>
+
 Because local broadcast `DISCOVER` packets (`255.255.255.255`) do not cross L3 routers, the Top-of-Rack switch SVI or router runs a **DHCP relay agent**: it intercepts the broadcast on the rack VLAN, writes its own rack-interface IP into the DHCP packet's **`giaddr` (*gateway IP address*)** field (and optionally inserts switch-port circuit ID in **Option `82`**), and forwards the packet as a **unicast** to the central DHCP server. The server reads `giaddr` to know which subnet pool to allocate from.
 </details>
 
 <details>
 <summary>4. Match the key DHCPv4 option numbers (`1`, `3`, `6`, `12`, `15`/`119`, `26`, `42`, `51`, `60`, `66`/`67`, `82`, `93`, `121`) to their meanings.</summary>
+
 - `1`: Subnet mask; `3`: Default router(s); `6`: DNS servers; `12`: Hostname; `15` / `119`: Domain name / Domain search list; `26`: Interface MTU; `42`: NTP servers; `51`: Lease time; `60`: Vendor class identifier (`PXEClient`); `66` / `67`: TFTP `next-server` / boot `filename`; `82`: Relay Agent Information (switch port circuit ID); `93`: Client system architecture (`7` = UEFI x86-64); `121`: Classless static routes.
 </details>
 
 <details>
 <summary>5. Trace the 4-step PXE / iPXE network boot chain used to provision bare-metal GPU nodes.</summary>
+
 (1) The NIC's UEFI PXE ROM broadcasts a DHCP `DISCOVER` containing Option `60` (`PXEClient`) and Option `93` (architecture `7` for UEFI x86-64); (2) the provisioning server (BCM, MAAS, Ironic, `dnsmasq`, or Kea) replies with an IP address plus `next-server` (Option `66`) and boot `filename` (`ipxe.efi`, Option `67`, or an UEFI HTTP Boot URL); (3) the firmware downloads and executes `ipxe.efi` (via TFTP `UDP 69` or HTTP), which fetches the Linux kernel (`vmlinuz`), `initrd`, and installer/image profile over HTTP; and (4) the booted OS installer writes the golden image to NVMe and reboots.
 </details>
 
 <details>
 <summary>6. What is a rogue DHCP server, what symptom does it cause, and how does switch DHCP Snooping prevent it?</summary>
+
 A **rogue DHCP server** is an unauthorized device (such as a misconfigured container, VM, or lab router) answering `DISCOVER` broadcasts on a VLAN. If it answers faster than the real server, nodes receive wrong IPs, gateways, or DNS servers. **DHCP Snooping** on the switch marks all server/downlink ports as **untrusted** (dropping any `OFFER` or `ACK` packets coming from them) and allows DHCP server replies **only on trusted uplink ports**, while recording valid `(MAC, IP, VLAN, port)` bindings for Dynamic ARP Inspection (`DAI`).
 </details>
 
 <details>
 <summary>7. What does it mean when a host configures itself with a `169.254.x.x/16` IPv4 address?</summary>
+
 `169.254.0.0/16` is the IPv4 **link-local (`APIPA`, RFC 3927)** range. When a DHCP client sends `DISCOVER` retries and receives **zero `OFFER` replies**, it falls back to assigning itself a `169.254.x.x` address—indicating a wrong switch VLAN, a missing `ip helper-address` relay, an exhausted DHCP pool, or a down DHCP server.
 </details>
 
 <details>
 <summary>8. How does `DHCPv6` (`UDP 546/547`) interact with ICMPv6 Router Advertisements (`M` and `O` flags), and why does `DHCPv6` never supply the default gateway?</summary>
+
 In IPv6, **Router Advertisements (`RA`, ICMPv6 Type 134)** **always** supply the **default gateway** (the router's `fe80::` link-local address) and prefix info. Inside the `RA`, the **`A` (*Autonomous*) flag** tells hosts to use **SLAAC**; the **`O` (*Other*) flag** tells hosts to use **stateless DHCPv6** for non-address options (DNS/NTP); and the **`M` (*Managed*) flag** tells hosts to request a **stateful IPv6 address lease from a DHCPv6 server** (`UDP 546` client / `547` server, identified by a client **`DUID`**).
 </details>
 
 <details>
 <summary>9. Contrast Static NAT (1:1), Dynamic NAT, PAT / NAPT (`MASQUERADE`), `SNAT`, and `DNAT`.</summary>
+
 - **Static NAT (1:1)**: maps one private IP to one dedicated public IP in both directions (cloud Elastic IP).\n- **Dynamic NAT**: maps private IPs to a pool of public IPs 1:1 on demand.\n- **PAT / NAPT (*Port Address Translation* / IP masquerading)**: maps **many** private hosts onto **one** (or a few) public IP addresses by rewriting both the **source IP and the source TCP/UDP port**.\n- **`SNAT`**: rewrites the **source** address/port on outbound packets (`POSTROUTING`).\n- **`DNAT`**: rewrites the **destination** address/port on inbound packets (`PREROUTING`, used for port forwarding and Kubernetes Service VIPs).
 </details>
 
 <details>
 <summary>10. Why do `DNAT` and `SNAT` attach to `PREROUTING` and `POSTROUTING` respectively in Linux `netfilter`?</summary>
+
 **`DNAT`** must run in **`PREROUTING`** (**before** the kernel routing lookup) so that changing the packet's destination IP causes the routing decision to forward the packet to the real backend server rather than delivering it locally. **`SNAT` / `MASQUERADE`** must run in **`POSTROUTING`** (**after** the routing lookup has chosen the outgoing interface) so the packet's source IP is rewritten to match the chosen egress interface.
 </details>
 
 <details>
 <summary>11. What is the difference between `iptables -j MASQUERADE` and `iptables -j SNAT --to-source <IP>`?</summary>
+
 **`MASQUERADE`** dynamically looks up the outgoing interface's IP address on every new flow and automatically purges its `conntrack` entries if the interface goes down—designed for interfaces with dynamic/DHCP IPs. **`SNAT --to-source <IP>`** uses a fixed configured IP address, avoids the per-flow interface lookup, and preserves `conntrack` state across brief link flaps—preferred on production gateways with static IPs.
 </details>
 
 <details>
 <summary>12. Decode the `conntrack -L` entry: `tcp 6 431999 ESTABLISHED src=10.0.0.5 dst=198.51.100.7 sport=51000 dport=443 src=198.51.100.7 dst=203.0.113.9 sport=443 dport=40001 [ASSURED]`.</summary>
+
 `conntrack` prints two 5-tuples per flow: the **original direction** (`10.0.0.5:51000 -> 198.51.100.7:443`) and the **expected reply direction** (`198.51.100.7:443 -> 203.0.113.9:40001`). Because the reply's destination (`203.0.113.9:40001`) differs from the original source (`10.0.0.5:51000`), this entry represents an outbound **SNAT / PAT** translation where `10.0.0.5:51000` was rewritten to `203.0.113.9:40001` with `431,999` seconds remaining on the established TCP timer.
 </details>
 
 <details>
 <summary>13. Why does Linux `netfilter` evaluate `nat` table chains only on the FIRST packet (`NEW`) of a connection?</summary>
+
 The `nat` table chains (`PREROUTING`, `OUTPUT`, `POSTROUTING`) are consulted **only on the initial `NEW` packet** of a flow to decide the translation and record it inside the **`conntrack` entry**. Every subsequent packet in both directions (`ESTABLISHED` / `RELATED`) is translated automatically by the `conntrack` state machine at the hook without re-walking the `nat` rule chains. (Consequently, adding a new `nat` rule does not affect already-open connections until their `conntrack` entry is flushed.)
 </details>
 
 <details>
 <summary>14. What is Hairpin NAT (NAT Loopback), why does it fail by default on the same L2 subnet, and what are the two fixes?</summary>
+
 **Hairpin NAT** occurs when an internal host (`10.0.0.5`) connects to an internal server (`10.0.0.20`) using the NAT gateway's **public IP** (`203.0.113.9:8443`). The gateway `DNAT`s the destination to `10.0.0.20:443` while leaving the source IP as `10.0.0.5`. Because `10.0.0.20` is on the same `/24` L2 subnet as `10.0.0.5`, the server sends its `SYN-ACK` **directly to `10.0.0.5` on the LAN** with source `10.0.0.20`; the client (which expected a reply from `203.0.113.9`) rejects it with `RST`. Fix it with **split-horizon DNS** (so internal clients resolve `10.0.0.20` directly) or by adding an inside-to-inside **`MASQUERADE` rule**.
 </details>
 
 <details>
 <summary>15. How does a NAT gateway suffer Port Exhaustion when 500 GPU nodes pull containers from the same registry simultaneously, and how do you prevent it?</summary>
+
 A single public IP on a NAT gateway has at most **`~64,000` ephemeral source ports per remote `(destination IP, destination port)` pair**. If 500 nodes open hundreds of parallel HTTPS (`:443`) streams to the same registry VIP (plus sockets lingering in `TIME_WAIT`), all 64,000 ports for that destination are consumed and new connections fail. Prevent it by: (1) attaching **multiple public IPs** to the Cloud NAT / SNAT pool, (2) using **Private Google Access / VPC Endpoints** or an internal registry mirror (`Harbor`/`Dragonfly`) that bypasses NAT completely, and (3) pooling HTTP/2 connections.
 </details>
 
 <details>
 <summary>16. List five protocol behaviors or features that NAT breaks or complicates.</summary>
+
 (1) **Unsolicited inbound connections** (require explicit `DNAT` or `STUN`/`ICE`/`TURN` hole punching); (2) **Protocols embedding IP addresses/ports in application payloads** (active FTP, SIP, H.323, requiring ALGs); (3) **IPsec Authentication Header (`AH`)** (which hashes the outer IP header, broken by NAT; **IPsec `ESP`** requires **NAT-T** encapsulation inside **`UDP port 4500`**); (4) **IP fragmentation** (non-first fragments lack TCP/UDP port headers); and (5) **Stateful single point of failure / `nf_conntrack: table full` packet drops**.
 </details>
 
 <details>
 <summary>17. Why is NAT NOT a substitute for a stateful firewall?</summary>
+
 NAT is purely an address-rewriting mechanism. If routing directs traffic to an inside address, or if `DNAT` rules exist, NAT applies **zero security policy** unless paired with explicit **`FORWARD` chain filter rules** (`default drop`, allow only established/related and authorized flows).
 </details>
 
 <details>
 <summary>18. How does `kube-proxy` implement Kubernetes `ClusterIP` Services using NAT?</summary>
+
 When a Pod connects to a virtual `ClusterIP:port`, `kube-proxy` intercepts the packet in `PREROUTING` / `OUTPUT` (`KUBE-SERVICES` -> `KUBE-SVC-*` -> `KUBE-SEP-*` in `iptables` mode, or via **IPVS** / **Cilium eBPF** socket-level translation) and **`DNAT`s the destination IP and port** to one of the healthy backing Pod `EndpointSlice` IPs, recording the mapping in `conntrack` so return packets from the Pod are rewritten back to the `ClusterIP`.
 </details>
 
 <details>
 <summary>19. Why must NAT never be used inside an InfiniBand or RoCE v2 GPU back-end fabric?</summary>
+
 During RDMA Queue Pair (`QP`) connection establishment, ranks exchange their local IP/GID addresses and QP numbers inside control messages and program them directly into NIC hardware work queues. Any middlebox rewriting IP addresses or ports in flight invalidates the RDMA QP state, breaks hardware offloads, and introduces stateful bottleneck latency.
 </details>
 
 <details>
 <summary>20. Walk through the command checklist when an inside cluster node cannot reach the Internet through a Linux NAT gateway.</summary>
+
 (1) On the node, verify IP, default route, and ARP to the gateway (`ip -br addr`, `ip route`, `ping <gw>`); (2) on the gateway, verify `sysctl net.ipv4.ip_forward` is `1` and check `FORWARD` chain drop counters (`nft list ruleset` / `iptables -L FORWARD -v -n`); (3) run `sudo tcpdump -ni <outside_if> icmp or port 443` while testing from the node to verify whether packets leave the outside interface **with their source IP translated** (if still private, fix the `POSTROUTING` `MASQUERADE`/`SNAT` rule); and (4) check `conntrack -S` and `dmesg | grep conntrack` for `table full` or `insert_failed` drops.
 </details>
 

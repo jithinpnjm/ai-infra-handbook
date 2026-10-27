@@ -883,101 +883,121 @@ cd /; sudo umount /mnt/e /mnt/x 2>/dev/null; sudo losetup -d $LOOP; rm -f /tmp/d
 
 <details>
 <summary>1. Trace a `read()` call from an application to the storage device and back, naming every cache along the path.</summary>
+
 Application / C library (`stdio` buffer) -> syscall (`read`) -> VFS (dentry cache and inode cache) -> filesystem driver (`ext4`, `XFS`, or NFS/Lustre client) -> **page cache** (plus optional second-level SSD cache like `bcache`/L2ARC) -> block layer (request merging and I/O scheduler) -> device mapper (`LVM`/`md`/`dm-crypt`) -> host adapter driver (`nvme`, `sd`) -> physical device (on-drive DRAM/SLC cache and media).
 </details>
 
 <details>
 <summary>2. What is the difference between logical I/O and physical I/O? Give two reasons physical I/O is smaller (deflated) and two reasons it is larger (inflated).</summary>
+
 Logical I/O is what the application requests via system calls; physical I/O is what actually reaches the block device. Physical I/O is **deflated** by page-cache hits, write cancellation/coalescing, and compression; it is **inflated** by filesystem metadata and journaling writes, record/block-size rounding (read-modify-write), and RAID parity/mirroring.
 </details>
 
 <details>
 <summary>3. Why do rotational HDDs perform poorly on random I/O while SSDs and NVMe drives excel, and what are write amplification and TRIM?</summary>
+
 Rotational HDDs require mechanical head seeks and platter rotation (`~8 ms` per random read, `100`–`200` IOPS), whereas NAND flash has no moving parts (`10`–`100 µs` on NVMe). Because flash can only overwrite pages after erasing a much larger erase block, the SSD's Flash Translation Layer (FTL) must copy valid pages during garbage collection (**write amplification**); `TRIM` / `fstrim` informs the FTL which blocks are unmapped so it can skip copying dead data.
 </details>
 
 <details>
 <summary>4. Compare MBR (`msdos`) and GPT partition tables across disk size limit, partition count, resilience, and boot support.</summary>
+
 MBR lives in the first 512-byte sector, is limited to `2 TiB` disks (`32`-bit sector numbers) and `4` primary partitions (or `3` primary + `1` extended), has no checksums or backup table, and boots via legacy BIOS. GPT supports multi-zettabyte disks and `128` partitions by default, assigns unique `PARTUUID`s and names, stores a CRC-protected primary header at the start and a backup table at the end of the disk, and boots via UEFI (or BIOS with a `BIOS boot` partition).
 </details>
 
 <details>
 <summary>5. How do `fdisk` and `parted` differ in when they write changes to disk, and how do you force the kernel to re-read a modified partition table?</summary>
+
 `fdisk` edits an in-memory copy of the partition table and writes nothing to disk until you explicitly enter `w` (`q` aborts safely); `parted` applies every command to disk immediately. Force the kernel to re-read the table with `sudo partprobe /dev/sdX`, `sudo blockdev --rereadpt /dev/sdX`, or `partx`.
 </details>
 
 <details>
 <summary>6. Why must partitions be aligned on `1 MiB` boundaries (`sector 2048`) on SSDs and `512e` disks, and how do you check `/sys/block/sdf/sdf2/start`?</summary>
+
 Modern SSDs and `512e` drives use `4 KiB` (`4,096`-byte = `8` x `512`-byte sector) or `8 KiB` physical pages; if a partition starts at a sector not divisible by `8` (such as `1953126` in `HLW` Ch. 4, where `1953126 / 8 = 244140.75`), single 4 KiB reads and writes span two physical pages. Aligning at `1 MiB` (`sector 2048`) divides evenly into all power-of-two page and stripe sizes; verify with `parted /dev/sdX align-check optimal 1`.
 </details>
 
 <details>
 <summary>7. Compare `ext4` and `XFS` on inode allocation, online/offline resizing, and large-file parallel I/O.</summary>
+
 `ext4` allocates a fixed number of inodes at `mkfs` time (`-i` / `-N`), supports online growing and offline shrinking, and is a strong general-purpose filesystem. `XFS` allocates inodes dynamically on demand, uses multiple **allocation groups** for high-concurrency parallel I/O and huge files/directories, and supports online growing (`xfs_growfs`) but **cannot** be shrunk.
 </details>
 
 <details>
 <summary>8. What does `mkfs -t ext4` actually execute, and why does `Used + Available` in `df` not equal `Size`?</summary>
+
 `mkfs -t ext4` is a front end that invokes `mkfs.ext4`, which is a link to `mke2fs`. By default, `ext4` reserves `5%` of all blocks for `root` (`-m 5`, adjustable with `tune2fs -m 1` or `-m 0` on data disks) so system daemons can still log when a user fills the disk; `df` hides those reserved blocks from non-root `Available`.
 </details>
 
 <details>
 <summary>9. Explain the six fields of `/etc/fstab`, the options `noatime`, `nofail`, and `_netdev`, and the safe validation routine before rebooting.</summary>
+
 The six fields are: (1) source (`UUID=...`, `LABEL=...`, or `server:/path`), (2) mount point, (3) filesystem type, (4) mount options, (5) `dump` flag (`0`), and (6) `fsck` pass order (`1` root, `2` other local ext4 disks, `0` skip). `noatime` disables access-time metadata writes on reads; `nofail` prevents systemd from dropping into emergency mode at boot if an optional disk is missing; and `_netdev` waits for networking before mounting. Always test edits with `sudo findmnt --verify --verbose`, `sudo mount -a`, and `sudo systemctl daemon-reload`.
 </details>
 
 <details>
 <summary>10. List the five distinct causes of `No space left on device` (`ENOSPC`) and the command that proves each.</summary>
+
 (1) Data blocks full (`df -h`); (2) inodes 100% exhausted (`df -i`); (3) filesystem remounted read-only after an I/O error (`mount | grep ' ro,'` and `dmesg`); (4) user, group, or project quota exceeded (`repquota -a`, `xfs_quota`); and (5) deleted files still held open by a process (`sudo lsof +L1`), or writing into an unmounted directory on the small root filesystem (`findmnt -T /path`).
 </details>
 
 <details>
 <summary>11. How do inodes, directories, and link counts work inside a traditional Unix filesystem (`HLW` Section 4.5)?</summary>
+
 An inode stores file metadata (type, permissions, UID/GID, size, timestamps, link count, and block/extent pointers) but **not** the filename. A directory is a file mapping `(filename -> inode_number)` (starting from root `inode 2` on `ext4`). The link count tracks how many directory entries reference the inode; data blocks and the inode are freed only when `link_count == 0` **and** `open_fd_count == 0`.
 </details>
 
 <details>
 <summary>12. What does filesystem journaling (`data=ordered`) protect, what does it NOT protect, and how does Copy-on-Write (`btrfs`, `ZFS`) differ?</summary>
+
 Journaling logs metadata transactions to a circular journal before updating in-place structures, guaranteeing fast metadata consistency recovery (`seconds` instead of hours of `fsck`) after a crash; it does **not** protect dirty application data sitting in the page cache that was never `fsync()`ed. Copy-on-Write filesystems never overwrite live blocks in place—they write new blocks and atomically swing parent pointers, providing cheap snapshots and data checksums at the cost of fragmentation when nearly full.
 </details>
 
 <details>
 <summary>13. What are the rules for running `fsck` (`e2fsck` / `xfs_repair`), what do the five `e2fsck` passes check, and why is the `-n` flag in `mke2fs -n` critical?</summary>
+
 Never run a repairing `fsck` on a mounted read-write filesystem. `e2fsck`'s five passes check: (1) inodes/blocks/sizes, (2) directory structure, (3) directory connectivity, (4) link reference counts (placing orphaned inodes in `lost+found`), and (5) block/inode summary bitmaps. `sudo mke2fs -n /dev/sdb1` simulates filesystem creation to print backup superblock numbers (`-b 32768`); omitting `-n` overwrites the filesystem and destroys your data.
 </details>
 
 <details>
 <summary>14. Summarize the 6-step workflow for enabling Linux disk quotas (`SCL` Chapter 12) and how NFS quotas work.</summary>
+
 (1) Add `usrquota`/`grpquota` to `/etc/fstab`; (2) remount the filesystem read-only (`mount -o remount,ro /dev/sda6`); (3) build the accounting database with `quotacheck -vugc /dev/sda6`; (4) `umount` and `mount` with the new options; (5) enable enforcement with `quotaon -va`; and (6) set soft/hard block and inode limits and grace periods with `edquota` or `setquota` (`-u`, `-t`, `-T`, `-p`) and inspect with `repquota -a`. On an NFS server, run `rpc.rquotad` so clients can query quotas.
 </details>
 
 <details>
 <summary>15. How does write-back caching work in the Linux page cache, and why should large-RAM GPU servers use `vm.dirty_bytes` instead of `vm.dirty_ratio`?</summary>
+
 Normal `write()` calls copy bytes into dirty pages in the page cache and return immediately; kernel flusher threads write them out when they age past `vm.dirty_expire_centisecs` (~`30 s`), when background threshold `vm.dirty_background_ratio` is crossed, or when `fsync()` is called (and writers block once `vm.dirty_ratio` is reached). On a `1`–`2 TB` RAM GPU server, `10%` of RAM is `100`–`200 GB` of dirty data, causing multi-second I/O freeze stalls when flushed; setting `vm.dirty_background_bytes` and `vm.dirty_bytes` (e.g., a few hundred MiB to a few GiB) bounds flush stalls.
 </details>
 
 <details>
 <summary>16. What is the safe 4-step pattern for atomically replacing a critical configuration or checkpoint metadata file on disk?</summary>
+
 (1) Write the new contents to a temporary file in the **same directory** (same filesystem/inode table), (2) call `fsync()` on the temporary file descriptor so its data blocks are on stable media, (3) call `rename()` (`mv`) to atomically swap the directory entry over the target filename, and (4) call `fsync()` on the parent directory descriptor.
 </details>
 
 <details>
 <summary>17. What does `O_DIRECT` do, what three alignment rules does it enforce, and how does GPUDirect Storage (`GDS`) go one step further?</summary>
+
 `O_DIRECT` bypasses the kernel page cache, transferring data directly between the storage device and the application's user-space buffer; it requires the **buffer memory address**, **file offset**, and **transfer length** to be multiples of the device's logical block size (`512` or `4,096` bytes), returning `EINVAL` otherwise. GPUDirect Storage (`GDS` / `cuFile`) eliminates the host-memory bounce buffer too, DMAing directly between NVMe (or RDMA NIC) and GPU `HBM` over PCIe.
 </details>
 
 <details>
 <summary>18. Why is `iostat` `%util = 100%` misleading on NVMe SSDs and RAID arrays, and which columns reveal the truth?</summary>
+
 `%util` only measures the percentage of time at least *one* I/O request was in flight. Because an NVMe SSD can process dozens of requests in parallel across hardware queues, a single thread issuing synchronous `4 KiB` reads one at a time drives `%util` to `100%` while `aqu-sz` is `1.0` and the drive sits at `< 5%` of its rated IOPS/bandwidth. Always read `%util` alongside `aqu-sz` (queue depth), `await` (total latency), `r/s`/`w/s`, and `rkB/s`/`wkB/s`.
 </details>
 
 <details>
 <summary>19. Why is a random-read benchmark on a `10 GB` file meaningless on a server with `128 GB` of RAM, and how do you run an honest `fio` test?</summary>
+
 A `10 GB` file fits entirely inside the `128 GB` RAM page cache, so after warm-up the benchmark measures DRAM copy speed rather than storage. To measure the storage device honestly, either pass `--direct=1` (`O_DIRECT`), size the working set much larger than RAM, or explicitly drop caches (`sync; echo 3 > /proc/sys/vm/drop_caches`) before a cold-cache test.
 </details>
 
 <details>
 <summary>20. Why does a 64-node training job's checkpoint time jump from `45 seconds` to `8 minutes` on a shared parallel filesystem while local `iostat` is idle, and how do you fix it?</summary>
+
 All 64 nodes simultaneously issue `open`/`create`/`write`/`fsync`/`close` calls against the shared filesystem, creating a **metadata storm** that saturates the shared Metadata Server (`MDS`) (which scales with node/file count rather than byte bandwidth). Fix it by writing checkpoints to fast node-local NVMe scratch (`/scratch`) first and staging them asynchronously to shared/object storage, using sharded/distributed checkpoint formats with fewer files, or staggering checkpoint intervals.
 </details>
 

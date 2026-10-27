@@ -403,101 +403,121 @@ Next, on two or three disposable GCP VMs (all interactive VM commands below are 
 
 <details>
 <summary>1. Match each file-sharing scenario to the right tool: temporary LAN drop, repeated cross-host sync, Linux-to-Windows share, Windows-to-Linux mount, zero-setup Linux mount, LAN multi-host mount, and cloud bucket access.</summary>
+
 Temporary LAN drop: `python3 -m http.server --bind <IP>`; repeated sync: `rsync` over SSH; Linux-to-Windows share: **Samba** (`smbd`/`nmbd`); Windows-to-Linux mount: **CIFS** (`mount -t cifs`); zero-setup Linux mount: **SSHFS**; LAN multi-host mount: **NFS** (with `x-systemd.automount`); cloud bucket access: provider CLI (`gcloud storage`, `aws s3`, `rclone`) or a user-space **FUSE** mount.
 </details>
 
 <details>
 <summary>2. Why does `scp -r` fail to produce an exact mirror of a directory, and why must `rsync -a --delete` always be preceded by `-nva`?</summary>
+
 `scp -r` copies all bytes unconditionally and leaves old, deleted files sitting at the destination. `rsync -a --delete` removes any file at the destination that no longer exists in the source; if you pass the wrong path, a stray trailing slash, or an unmounted empty source directory, `--delete` wipes the destination clean. Always preview with `rsync -nva --delete` (dry-run) or use `--backup --backup-dir=../old`.
 </details>
 
 <details>
 <summary>3. What is the exact difference between `rsync -a dir host:dest_dir` and `rsync -a dir/ host:dest_dir`?</summary>
+
 Without a trailing slash (`dir`), `rsync` copies the directory itself, creating `dest_dir/dir/...`. With a trailing slash (`dir/`), `rsync` copies the **contents** of `dir` directly into `dest_dir/...` without creating a `dir` subdirectory. Watch out for shell tab-completion, which appends `/` automatically.
 </details>
 
 <details>
 <summary>4. How does `rsync`'s default \"quick check\" decide whether to skip a file, and what do `-c`, `-u`, `--ignore-existing`, `-b`, and `-P` do?</summary>
+
 By default, `rsync` skips any file whose **byte size and modification timestamp (`mtime`)** match on source and destination. `-c` (`--checksum`) forces full content checksum comparison; `-u` (`--update`) skips files that are newer on the destination; `--ignore-existing` never overwrites existing destination files; `-b` (`--backup`) renames overwritten files (`~` or `--suffix`); and `-P` (`--partial --progress`) keeps partially transferred files so interrupted large transfers can resume.
 </details>
 
 <details>
 <summary>5. How do `--exclude` and `--include` ordering work in `rsync`, and what does a leading `/` in `--exclude=/dir` mean?</summary>
+
 `rsync` evaluates filter rules in order and **the first matching rule wins**; therefore, an exception (`--include='keep.log'`) must be placed **before** the broader exclusion (`--exclude='*.log'`). A leading `/` in `--exclude=/src/.git` anchors the pattern to the **root of the transfer**, not the root `/` of the Linux filesystem.
 </details>
 
 <details>
 <summary>6. When does `rsync -z` (compression) help, when does it hurt, and what is `--bwlimit` for?</summary>
+
 `-z` helps when transferring compressible data (text, logs, source code) over slow WAN links; it **hurts** throughput on fast LANs (where CPU compression becomes the bottleneck) or when transferring already-compressed files (`.tar.gz`, images, compressed model checkpoints). `--bwlimit=RATE` caps transfer bandwidth so a bulk sync does not saturate a link and starve interactive SSH or TCP ACKs.
 </details>
 
 <details>
 <summary>7. Why is network file sharing fast for streaming a single large file but slow when touching thousands of small files?</summary>
+
 When streaming one large file sequentially, the server and client can prefetch and pipeline large blocks (**read-ahead**). When opening, `stat`ing, or reading thousands of small files randomly, every file requires separate network round trips and server metadata lookups—so **network and metadata latency** dominate and throughput collapses.
 </details>
 
 <details>
 <summary>8. Why does Samba maintain its own password database (`tdbsam` / `smbpasswd -a`), and why is `unix password sync = yes` a trap?</summary>
+
 Windows SMB authentication uses password hash formats (`NTLM`/Kerberos) that cannot be verified against `/etc/shadow`'s SHA-512/yescrypt hashes, so Samba keeps its own database managed with `sudo smbpasswd -a username` (for an existing Linux account). If `unix password sync = yes` is enabled in `smb.conf`, changing a user's SMB password silently changes their Linux login password too.
 </details>
 
 <details>
 <summary>9. How do you validate `/etc/samba/smb.conf`, inspect shares from Linux, and mount a CIFS share securely without exposing credentials in `ps`?</summary>
+
 Validate `/etc/samba/smb.conf` with `testparm`, list shares with `smbclient -L SERVER -U alice`, and mount with `sudo mount -t cifs //SERVER/sharename /mnt/share -o credentials=/root/.smbcreds,uid=1000`, storing `username=` and `password=` inside `/root/.smbcreds` (`chmod 600`).
 </details>
 
 <details>
 <summary>10. What are the pros and cons of `SSHFS`, and how do you mount and unmount it as an unprivileged user?</summary>
+
 `SSHFS` mounts a remote directory over an ordinary SSH/SFTP connection using **FUSE** (`sshfs alice@host:/data /mnt/data`), requiring zero server configuration beyond SSH and working across untrusted networks. Its downsides are FUSE/encryption overhead on metadata-heavy workloads and single-user semantics. Unmount it with `fusermount -u /mnt/data` (or `fusermount3 -u`).
 </details>
 
 <details>
 <summary>11. Compare the four NFS `sec=` security flavors (`sys`, `krb5`, `krb5i`, `krb5p`), and explain why UID consistency across nodes is mandatory under `sec=sys`.</summary>
+
 `sec=sys` (the default) simply trusts whatever numeric `UID` and `GID` the client kernel sends in the RPC header; if user `alice` is `UID 1001` on node 1 and `UID 1002` on node 2, file ownership is scrambled. `sec=krb5` authenticates users via Kerberos tickets, `sec=krb5i` adds cryptographic integrity checksums, and `sec=krb5p` encrypts all NFS traffic for privacy.
 </details>
 
 <details>
 <summary>12. How do you configure an NFS mount in `/etc/fstab` so a down NFS server does not hang node boot, and what files configure an NFS server?</summary>
+
 Add **`x-systemd.automount`** (and optionally `nofail,x-systemd.idle-timeout=60`) to the mount options in `/etc/fstab` so `systemd` mounts the share on demand only when a process accesses the mount point. An NFS server (`nfsd` + `mountd`) exports directories listed in **`/etc/exports`**, applied with `sudo exportfs -ra` and inspected remotely with `showmount -e server`.
 </details>
 
 <details>
 <summary>13. Why did the Andrew File System (`AFS`) never become the universal Linux default, and how do cloud object stores + `FUSE` change the architecture?</summary>
+
 `AFS` (1980s) solved wide-area caching and security by requiring **Kerberos** infrastructure and a complex in-kernel filesystem client—both too heavy for small sites and kernel maintainers. Cloud object stores (`S3`, `GCS`) authenticate over HTTPS/TLS using API tokens without Kerberos, and `FUSE` (`gcsfuse`, `s3fs`, `rclone mount`) keeps complex protocol and auth logic safely in user space.
 </details>
 
 <details>
 <summary>14. How should Windows, macOS, and Linux users access a cluster and transfer files, and when is `FTP` ever acceptable?</summary>
+
 Users should connect via **SSH keys** (`ed25519`/`rsa`, converting RFC 4716 keys with `ssh-keygen -i -f`, or using PuTTY `.ppk` + WinSCP on Windows) and transfer files via **`rsync`**, **`scp`**, or **`sftp`** (plus `mc` Midnight Commander on the login node). Because classic `FTP` transmits passwords in cleartext, it is acceptable only for **anonymous, public, read-only** file distribution.
 </details>
 
 <details>
 <summary>15. Why should you avoid running a public web server directly on a cluster head node, and how should cluster queue status be published to the web?</summary>
+
 Any web server (especially with dynamic scripts/modules) expands the attack surface of the head node. Run the web server on a separate external host (or isolated container/VM), and have it pull status data via `ssh`/`rsync` using a dedicated key restricted in `authorized_keys` with `from="...",command="/usr/local/bin/status-only",no-port-forwarding,no-pty`.
 </details>
 
 <details>
 <summary>16. In the X Window System (`X11`), why are the terms \"X server\" and \"X client\" the opposite of what beginners expect?</summary>
+
 The **X server** (`X.Org` on Linux, `XQuartz` on macOS, `VcXsrv`/`Xming` on Windows) is the program running on **your local workstation** that manages the physical display, keyboard, and mouse (`DISPLAY=:0`). The **X clients** (`xclock`, `xterm`, `paraview`) are the application programs running on the **remote cluster node** that send drawing requests to your X server.
 </details>
 
 <details>
 <summary>17. How does `ssh -X` (or `-Y`) authorize remote X11 clients, why is `xhost +` dangerous, and why does `sudo xclock` fail over `ssh -X`?</summary>
+
 `ssh -X` creates a proxy X11 display on the remote host (e.g., `DISPLAY=localhost:10.0`) and uses `xauth` to store a random session cookie in `~/.Xauthority`. `xhost +` disables access control and lets anyone on the network snoop keystrokes or inject windows. Running `sudo xclock` switches to `root`, stripping `DISPLAY` or looking in `/root/.Xauthority` instead of the user's `XAUTHORITY` cookie file.
 </details>
 
 <details>
 <summary>18. How do Wayland, window managers, widget toolkits, D-Bus, and CUPS fit into the Linux graphical and desktop stack (`HLW` Chapter 14)?</summary>
+
 In X11, the X server, window manager (`KWin`, `Mutter`), and compositor are separate processes; **Wayland** merges the display server and compositor into one modern protocol (`Xwayland` runs legacy X11 clients). **Toolkits** (`GTK+`, `Qt`) provide UI widgets. **D-Bus** provides structured IPC across a system bus (`dbus-monitor --system`, used by `systemd`/`NetworkManager`) and a per-user session bus. **CUPS** (`lp`, `lpr`, `lpstat`, `cancel`) manages local and network printing via IPP and RIP filters.
 </details>
 
 <details>
 <summary>19. Compare `VNC`, `RDP`, `x2go`, and `NoMachine NX` when raw X11 forwarding is too slow over a high-latency link.</summary>
+
 Raw X11 sends chatty drawing primitives and stalls over high-latency links. **VNC** (`TigerVNC`) sends compressed framebuffer updates (fast, but single-user per server instance—always set a password and tunnel over `ssh -L`). **RDP** is fast and multi-user on Windows but less standard on Linux. **`x2go`** (open-source, derived from **NoMachine NX**) compresses the X11 protocol and screen updates and connects directly over **SSH** as the user with **no persistent daemon** needed on the server.
 </details>
 
 <details>
 <summary>20. For modern AI workflows (JupyterLab, TensorBoard, Ray Dashboard, Weights & Biases local UI), why is `ssh -L` port forwarding better than X11 or VNC?</summary>
+
 AI visualization tools are browser-based web applications. Running the server bound to `127.0.0.1` on the cluster node and forwarding the port (`ssh -L 8888:localhost:8888 login-node`) lets your local laptop browser render the UI natively at 60 FPS with minimal bandwidth, full SSH encryption/authentication, and zero open ports on the cluster.
 </details>
 

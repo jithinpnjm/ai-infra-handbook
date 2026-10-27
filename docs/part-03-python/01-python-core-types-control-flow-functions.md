@@ -781,101 +781,121 @@ Next, on any machine with Python 3.11+ (all interactive shell steps below are `u
 
 <details>
 <summary>1. How does CPython execute a `.py` file, and when are `.pyc` bytecode files written to `__pycache__/`?</summary>
+
 CPython first compiles Python source code into platform-independent **bytecode** instructions (`dis.dis()`) and then executes those instructions on the stack-based **Python Virtual Machine (`PVM`)**. When a file is **imported** as a module (`import mod`), CPython saves its compiled bytecode in **`__pycache__/mod.cpython-312.pyc`** so subsequent runs skip recompilation if the `.py` timestamp matches; when a file is executed directly as the top-level script (`python3 script.py`), its bytecode is compiled in memory and not saved to `__pycache__/`.
 </details>
 
 <details>
 <summary>2. Compare `python3 -i script.py`, `import script1` (+ `importlib.reload`), and `exec(open('script1.py').read())` (`LP` Chapter 3).</summary>
+
 - **`python3 -i script.py`**: runs `script.py` to completion (or unhandled exception) and immediately opens the interactive `>>>` REPL **inside that script's global namespace** for inspection and postmortem debugging.\n- **`import script1`**: runs `script1.py` **only once per process** (cached in `sys.modules`) inside an **isolated module namespace** (`script1.x`); re-running after edits requires `importlib.reload(script1)`.\n- **`exec(open('script1.py').read())`**: compiles and runs the file's code unconditionally on every call, but executes **directly inside the caller's current namespace** by default—silently overwriting any caller variables with matching names (`x = 'hacked'`).
 </details>
 
 <details>
 <summary>3. What are the three attributes of every Python object, and what does `b = a` actually do?</summary>
+
 Every Python object has: (1) an **identity** (`id(obj)`, its memory address in CPython, constant for its lifetime), (2) a **type** (`type(obj)`, which defines its operations and mutability), and (3) a **value**. In Python, variables are not memory boxes—they are **names (labels) bound to objects**. The assignment `b = a` **never copies the object**; it simply binds the label `b` to the exact same object that `a` currently references (`a is b` is `True`).
 </details>
 
 <details>
 <summary>4. Classify Python's built-in types into Immutable and Mutable, and explain the \"tuple containing a list\" nuance.</summary>
+
 - **Immutable**: `int`, `float`, `complex`, `bool`, `str`, `bytes`, `tuple`, `frozenset`, `range`, `None`.\n- **Mutable**: `list`, `dict`, `set`, `bytearray`.\nA **`tuple`** is immutable in that **the sequence of object references it holds cannot be rebound, grown, or shrunk**. However, if a tuple holds a reference to a *mutable* object (`t = ([1, 2], "a")`), the list inside it can still be mutated in place (`t[0].append(3)` succeeds), and such a tuple is **not hashable** (cannot be used as a `dict` key or `set` element).
 </details>
 
 <details>
 <summary>5. Contrast a Shallow Copy (`a.copy()`, `list.copy`, `dict.copy`, `a[:]`, `copy.copy(a)`) and a Deep Copy (`copy.deepcopy(a)`).</summary>
+
 A **shallow copy** (`list.copy`, `dict.copy`, `a[:]`, `copy.copy(a)`) constructs a new outer container (`list` or `dict`) and populates it with **references to the exact same child objects** held by the original—so mutating a nested list (`d["rack1"].append("gpu03")`) mutates both the original and the shallow copy. **`copy.deepcopy()`** recursively traverses and duplicates all nested containers and elements (tracking object IDs in a memo dictionary to preserve shared structure and avoid infinite loops on reference cycles).
 </details>
 
 <details>
 <summary>6. What is the difference between `==` and `is`, and why does `a is b` appear to work for `256` but fail for `257`?</summary>
+
 - **`==`** compares **object values** (by calling `__eq__()`).\n- **`is`** compares **object identity (`id(a) == id(b)`)**—whether both names point to the exact same object in memory.\nAs an internal optimization, CPython pre-allocates (**interns**) a small array of integer objects from **`-5` to `256`** and short identifier-like strings. Never use `is` for numbers or strings; use `is` / `is not` **only for singletons like `None`** (`if x is None:`).
 </details>
 
 <details>
 <summary>7. How does CPython manage memory and garbage collection?</summary>
+
 CPython uses **deterministic reference counting** as its primary mechanism: the instant an object's reference count (`sys.getrefcount()`) drops to `0`, its memory is freed immediately. Because two objects referencing each other in an isolated cycle (`a.peer = b; b.peer = a`) keep each other's reference count `>= 1` even when unreachable from the program, CPython supplements reference counting with a generational **cycle detector (`gc` module)** that periodically finds and collects unreachable reference cycles.
 </details>
 
 <details>
 <summary>8. How does Floor Division (`//`, `math.floor()`) differ from Truncation (`math.trunc()`, `int()`) on negative numbers (`LP` Chapter 5)?</summary>
+
 - **Floor division (`a // b` and `math.floor(x)`)** rounds down toward **$-\infty$** (the largest integer `<=` the exact quotient): `5 // 2 == 2`, and **`5 // -2 == -3`** (`math.floor(-2.5) == -3`).\n- **Truncation (`math.trunc(x)` and `int(x)`)** strips the fractional part toward **zero**: `math.trunc(2.5) == 2`, and **`math.trunc(-2.5) == -2`** (`int(5 / -2) == -2`).\nAlso remember that Python's `round(x)` uses **round-half-to-even (banker's rounding)**: `round(2.5) == 2` and `round(3.5) == 4`.
 </details>
 
 <details>
 <summary>9. State the relative operator precedence of `**`, unary `-`, `* / // %`, `+ -`, bitwise `& ^ |`, comparisons `== < in is`, and logical `not` -> `and` -> `or` (`LP` Chapter 5).</summary>
+
 From highest (tightest binding) to lowest:\n`()` / `[]` / `{}` -> indexing/calls/attributes `x[i]` `x()` `x.attr` -> **`**`** (right-associative; note that `-2 ** 2 == -(2 ** 2) == -4` because `**` binds tighter than unary `-`) -> unary `+x -x ~x` -> `* @ / // %` -> `+ -` -> shifts `<< >>` -> bitwise `&` -> `^` -> `|` -> comparisons `< <= > >= == != is in` (chained) -> **`not`** -> **`and`** -> **`or`** -> ternary `if/else` -> `lambda` -> walrus `:=` -> `yield`.
 </details>
 
 <details>
 <summary>10. Why is `str` concatenation with `+=` inside a loop slow, and how do `string.Template` and `str.maketrans`/`str.translate` work (`LP` Chapter 7)?</summary>
+
 Because `str` is immutable, `s += chunk` allocates a new buffer and copies the growing string on every iteration (unless CPython's in-place refcount optimization applies); collecting parts in a list and calling **`"".join(parts)`** allocates the final buffer once in `O(n)` time.\n- **`string.Template('$host has ${gpus} GPUs')`**: substitutes `$name` placeholders via `.substitute()` or `.safe_substitute()` without evaluating arbitrary Python code (safe for user-supplied templates).\n- **`str.maketrans(x, y, z)` + `s.translate(table)`**: translates every character in `x` to `y` and deletes every character in `z` in a single fast C pass.
 </details>
 
 <details>
 <summary>11. Compare the time complexity of `x in c` across `list`/`tuple` versus `set`/`dict`, and explain why `[[0] * 3] * 3` is a bug.</summary>
+
 Membership testing (`x in c`) on a `list` or `tuple` scans elements linearly in **`O(n)`** time, whereas `x in s` on a **`set` or `dict`** computes a hash and looks up the bucket in **`O(1)` average time** (`10,000x` faster on 100,000 items).\nIn `grid = [[0] * 3] * 3`, the outer `* 3` does **not** create three independent inner lists—it creates a list containing **three references to the exact same inner list**, so `grid[0][0] = 9` sets column 0 of all three rows to `9`. Always write **`[[0] * 3 for _ in range(3)]`**.
 </details>
 
 <details>
 <summary>12. What is the full signature of Python 3's `print()` function, and how do you redirect output per call versus process-wide (`LP` Chapter 11)?</summary>
+
 `print(*objects, sep=' ', end='\n', file=sys.stdout, flush=False)`:\n- **Per-call redirection (preferred)**: pass any file-like object with a `.write(str)` method to **`file=`** (e.g., `print("error", file=sys.stderr, flush=True)` or `print(line, file=log_file)`).\n- **Process-wide redirection**: save `orig = sys.stdout` (or use `sys.__stdout__`), assign `sys.stdout = open('log.txt', 'a')`, and restore `sys.stdout = orig` (or use `contextlib.redirect_stdout(f)`).
 </details>
 
 <details>
 <summary>13. When does the `else:` block of a Python `for` or `while` loop execute, and how is it used in infrastructure retry/search loops?</summary>
+
 A loop's **`else:` block executes if and only if the loop terminates normally (exhausting the iterable or `while` condition becoming false) WITHOUT hitting a `break` statement**. In a bounded retry or search loop (`for attempt in range(1, 6):`), when `connect()` succeeds you `break` out of the loop (skipping `else:`); if all 5 attempts fail without `break`ing, the `else:` clause runs and raises `RuntimeError("all retries exhausted")` with zero flag variables needed.
 </details>
 
 <details>
 <summary>14. How does Python 3.10+ Structural Pattern Matching (`match` / `case`) differ from a C `switch` statement?</summary>
+
 Unlike a C `switch` on integer constants (with fall-through), Python's **`match` / `case`** destructures arbitrary nested data structures (mappings `case {"type": "temp", "value": float(v)} if v > 85:`, sequences `case ["stop", service, *flags]:`, class instances, and OR patterns `|`), **binds matched sub-parts to local variables**, supports `if` guard clauses, never falls through, and uses `_` as the wildcard catch-all.
 </details>
 
 <details>
 <summary>15. State the exact four-section parameter ordering rule in Python `def` headers and the three call-site argument ordering rules (`LP` Chapter 18).</summary>
+
 In `def func(pos_only, /, normal, *args, kw_only, **kwargs):`:\n(1) **Positional-only parameters** (before `/`),\n(2) **Positional-or-keyword parameters** (between `/` and `*`),\n(3) **`*` or `*args` positional collector followed by Keyword-only parameters** (after `*`), and\n(4) **`**kwargs` keyword collector** (always last).\nBefore `*`, once a parameter has a `=default`, all following parameters up to `*` must also have defaults; after `*`, keyword-only parameters can mix defaults freely. At the **call site**: plain positionals come before plain keywords, and all `*iterable` unpackings must precede `**mapping` unpackings.
 </details>
 
 <details>
 <summary>16. Explain the Mutable Default Argument Trap (`def add_node(ip, nodes=[]):`) and how to fix it.</summary>
+
 Default argument expressions in `def` are evaluated **exactly once when the `def` statement executes at module import time**, not on each function call. The single list object created for `nodes=[]` is stored on the function object (`add_node.__defaults__`) and **reused across every call that omits `nodes`**—leaking state across requests and tenants in long-running daemons. Always use **`None` as the sentinel default** and allocate the mutable object inside the function body:\n`def add_node(ip, nodes=None):`\n`    if nodes is None: nodes = []`
 </details>
 
 <details>
 <summary>17. Explain the `LEGB` scope lookup rule, why `UnboundLocalError` occurs, and the difference between `global` and `nonlocal`.</summary>
+
 Python resolves unqualified variable names across four nested scopes in order: **(1) `L`ocal** (current function), **(2) `E`nclosing** (any outer `def`/`lambda` functions), **(3) `G`lobal** (the module), and **(4) `B`uilt-in** (`builtins` module: `len`, `open`, `Exception`).\n- Any assignment (`x = ...` or `x += 1`) inside a function makes `x` a **Local** variable across that entire function at compile time; if you read `x` on a line before assigning to `x` without declaring `global x` or `nonlocal x`, Python raises **`UnboundLocalError`**.\n- **`global x`** tells Python that assignments to `x` rebind the **module-level (`G`)** name.\n- **`nonlocal x`** tells Python that assignments to `x` rebind the name in the nearest **enclosing function (`E`)** scope.
 </details>
 
 <details>
 <summary>18. What is the \"Late-Binding Closure Trap\" (`[lambda: i for i in range(3)]`), and how do you fix it?</summary>
+
 In `funcs = [lambda: i for i in range(3)]`, the inner `lambda` looks up the name `i` in the enclosing scope **when the lambda is called**, not when it is created. By the time you call `[f() for f in funcs]`, the loop has finished and `i` is `2`, so it returns **`[2, 2, 2]`** instead of `[0, 1, 2]`. Fix it by capturing the current value of `i` as a **default argument** evaluated at creation time: **`[lambda i=i: i for i in range(3)]`**.
 </details>
 
 <details>
 <summary>19. How does a Generator Function (`yield`) process a 100 GB log file in constant RAM?</summary>
+
 A function containing **`yield`** does not execute its body when called; instead, it returns a **generator iterator object**. On each `next()` call from a `for` loop, the generator runs only until the next `yield`, returns that single item, and **suspends its local stack frame in place**. Reading a 100 GB file line-by-line through a chain of generators (`for line in f:` -> `yield parsed`) holds **only one line in memory at a time (`O(1)` RAM)** instead of `readlines()`'s `O(N)` list allocation.
 </details>
 
 <details>
 <summary>20. Why should infrastructure scripts read required secrets with `os.environ["API_TOKEN"]` instead of `os.environ.get("API_TOKEN", "default")`, and why check `is None` for numeric defaults?</summary>
+
 Using `os.environ["API_TOKEN"]` **fails fast at startup with a clear `KeyError`** if the secret was not injected, rather than silently connecting with an empty or hardcoded fallback token. For optional numeric settings (like `timeout = 0` or `retries = 0`), testing `if not timeout:` treats valid **`0` as falsy** and overwrites it with the default; always test **`if timeout is None:`**.
 </details>
 

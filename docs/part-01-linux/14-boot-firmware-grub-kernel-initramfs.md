@@ -577,101 +577,121 @@ sudo update-grub                        # (untested here) on GCP: gcloud compute
 
 <details>
 <summary>1. List the seven stages of the Linux boot process from power-on to login prompt.</summary>
+
 (1) Firmware (`BIOS` or `UEFI`) runs `POST`, initializes hardware, and selects a boot device; (2) the boot loader (`GRUB 2`, `systemd-boot`, or `iPXE`) loads `vmlinuz` and `initramfs` into RAM with kernel parameters; (3) the kernel decompresses itself and initializes CPUs, memory, and built-in buses/drivers; (4) the kernel unpacks `initramfs` and runs `/init` to load storage/network modules and mount the real root filesystem read-only; (5) `switch_root` pivots to the real root and starts `/sbin/init` (`systemd`) as `PID 1`; (6) `systemd` mounts `/etc/fstab` filesystems and starts services in parallel toward the default target; and (7) `getty` and `sshd` accept logins.
 </details>
 
 <details>
 <summary>2. What is inside the 512-byte Master Boot Record (MBR), why must BIOS boot loaders be multi-stage, and what is a BIOS boot partition?</summary>
+
 The 512-byte MBR contains `446` bytes of boot code (`440`/`441` bytes before the 4-byte disk signature), `64` bytes for four 16-byte primary partition entries, and the 2-byte `0x55AA` magic signature. Because 446 bytes cannot hold a filesystem-aware loader, stage 1 (`boot.img`) loads `core.img` from the post-MBR sector gap. On a GPT disk booted in legacy BIOS mode, the GPT occupies that gap, so GRUB stores `core.img` in a dedicated 1–2 MiB `BIOS boot` partition (GUID `21686148-6449-6E6F-744E-656564454649`).
 </details>
 
 <details>
 <summary>3. How does UEFI boot differ from legacy BIOS boot, where is the ESP mounted, and how do you inspect or change UEFI boot order from Linux?</summary>
+
 UEFI firmware natively parses GPT partition tables and FAT32 filesystems, executing `.efi` binaries (`EFI/ubuntu/shimx64.efi`, `grubx64.efi`, or fallback `EFI/BOOT/BOOTX64.EFI`) stored on the **EFI System Partition (ESP)** mounted at `/boot/efi`. Boot entries live in motherboard NVRAM and are inspected and reordered with `efibootmgr -v`, `sudo efibootmgr -o ...`, and `sudo efibootmgr -n 0003` (one-time next boot).
 </details>
 
 <details>
 <summary>4. How do you check whether a running Linux node booted in UEFI mode or legacy BIOS mode, and whether Secure Boot is enabled?</summary>
+
 Check `[ -d /sys/firmware/efi ]` (present only when booted via UEFI) and run `sudo mokutil --sb-state` (or `efibootmgr -v`) to check Secure Boot status.
 </details>
 
 <details>
 <summary>5. Explain the UEFI Secure Boot chain (`shim` -> `GRUB` -> kernel -> modules) and why an unsigned NVIDIA driver (`nvidia.ko`) fails under Secure Boot.</summary>
+
 Under Secure Boot, UEFI firmware verifies Microsoft-signed `shimx64.efi`, which verifies `grubx64.efi` and the kernel (`vmlinuz`) against the distribution's key or an enrolled Machine Owner Key (`MOK`). When Secure Boot lockdown is active, the kernel refuses to load unsigned out-of-tree DKMS modules (`nvidia.ko`) with `Required key not available`; you must either sign the modules with a MOK enrolled via `mokutil --import`, use vendor-signed precompiled driver packages, or disable Secure Boot in firmware.
 </details>
 
 <details>
 <summary>6. Name six BIOS/UEFI firmware settings that must be verified on a production GPU server.</summary>
+
 (1) Virtualization (`VT-x`/`AMD-V`) and IOMMU (`VT-d`/`AMD-Vi`), (2) Above-4G Decoding and Large/Resizable BAR (`ReBAR`) for large GPU memory apertures, (3) `SR-IOV` for NIC/GPU virtual functions, (4) NUMA / Sub-NUMA Clustering (`NPS`) mode, (5) High-Performance power profile (`C-states` / `P-states` / PCIe `ASPM` disabled), and (6) Serial console redirection (`115200 8N1`) and PXE/UEFI boot order.
 </details>
 
 <details>
 <summary>7. What are the two different meanings of `root` inside a GRUB 2 `menuentry`?</summary>
+
 In `set root='hd0,gpt2'` (or `search --fs-uuid --set=root ...`), `root` is GRUB's own working filesystem where GRUB looks for `/boot/vmlinuz-*` and `/boot/initrd.img-*`. In `linux /boot/vmlinuz-... root=UUID=...`, `root=` is a Linux kernel command-line parameter telling the kernel/initramfs which filesystem to mount as the Linux `/` directory.
 </details>
 
 <details>
 <summary>8. Why must you never edit `/boot/grub/grub.cfg` directly, and what is the safe workflow on Ubuntu/Debian versus RHEL/Rocky?</summary>
+
 `grub.cfg` is overwritten automatically whenever a kernel package is installed or updated. Edit `/etc/default/grub` (`GRUB_CMDLINE_LINUX`, `GRUB_TIMEOUT`, etc.) and `/etc/grub.d/*`, then regenerate `grub.cfg` with `sudo update-grub` (`grub-mkconfig -o /boot/grub/grub.cfg`) on Ubuntu/Debian or `sudo grub2-mkconfig -o /boot/grub2/grub.cfg` (or `sudo grubby --update-kernel=ALL --args="..."`) on RHEL/Rocky.
 </details>
 
 <details>
 <summary>9. How do you recover from a `grub rescue>` prompt, and how do you reinstall GRUB from a live rescue ISO?</summary>
+
 At `grub rescue>`, run `ls` to locate the partition containing `/boot/grub`, then run `set root=(hd0,gpt2)`, `set prefix=(hd0,gpt2)/boot/grub`, `insmod normal`, and `normal` to reach the menu. For a permanent repair from a live ISO, mount the root partition at `/mnt` (plus `/mnt/boot` and `/mnt/boot/efi`), bind-mount `/dev`, `/proc`, `/sys`, and `/run` into `/mnt`, `chroot /mnt`, and run `grub-install` and `update-grub`.
 </details>
 
 <details>
 <summary>10. Why does the kernel command line include `ro`, and how does `console=tty0 console=ttyS0,115200n8` decide which console is `/dev/console`?</summary>
+
 `ro` mounts the root filesystem read-only initially so `fsck` can safely check an unmounted/read-only filesystem before `systemd` remounts it read-write. When multiple `console=` options are given, kernel boot messages are printed to **all** of them, and the **last** one listed (`ttyS0,115200n8`) becomes `/dev/console` (the primary console that receives `/sbin/init`'s output and emergency shells).
 </details>
 
 <details>
 <summary>11. What is the `initramfs`, how do you inspect and rebuild it on Ubuntu vs RHEL, and when is a rebuild mandatory?</summary>
+
 The `initramfs` is a compressed `cpio` archive unpacked into a temporary RAM rootfs at boot so `/init` can load storage, RAID, LVM, LUKS, and network drivers before mounting the real root filesystem and calling `switch_root`. Inspect with `lsinitramfs` (Ubuntu) or `lsinitrd` (RHEL); rebuild with `sudo update-initramfs -u` or `sudo dracut -f`. A rebuild is mandatory after changing `mdadm.conf`, `crypttab`, LVM root layout, driver blacklists (`nouveau`), or boot-critical storage/network modules.
 </details>
 
 <details>
 <summary>12. What is the difference between a host-only `initramfs` and a generic `initramfs`, and which one is required for cluster golden images?</summary>
+
 A host-only `initramfs` (`dracut`'s default) bundles only the kernel modules required by the specific machine where the image was built, so it fails with `Unable to mount root fs` if booted on a node with a different NVMe/RAID controller. A generic `initramfs` (`dracut --no-hostonly` or `MODULES=most` in `initramfs-tools`) includes all standard storage and network drivers and is required for golden images.
 </details>
 
 <details>
 <summary>13. Summarize SysV `init` runlevels (`0`–`6`), `/etc/inittab`, and `/etc/rc<N>.d/` `S`/`K` symlinks, and why `systemd` replaced them.</summary>
+
 SysV runlevels are `0` (halt), `1` (single-user), `2`/`3` (multi-user), `5` (graphical), and `6` (reboot), configured in `/etc/inittab` (`id:3:initdefault:`) and driven by sequential shell scripts in `/etc/init.d/` linked as `S<NN>name` (start) and `K<NN>name` (kill) inside `/etc/rc<N>.d/`. `systemd` replaced SysV `init` to provide dependency-driven parallel startup, `cgroup` process tracking, and unified `.service`/`.target`/`.mount` units.
 </details>
 
 <details>
 <summary>14. Why does a node hang for 90 seconds (`1min 30s`) at boot and drop into emergency mode after a disk change, and how do you fix and prevent it?</summary>
+
 An entry in `/etc/fstab` references a non-existent `UUID` or device, causing `systemd` to wait the default 90-second device timeout (`A start job is running for dev-disk-by-uuid-...`) before failing the local-fs target and entering emergency mode. Remount `/` read-write (`mount -o remount,rw /`), fix or comment out the bad `/etc/fstab` line, and add `nofail,x-systemd.device-timeout=5s` to optional data mounts.
 </details>
 
 <details>
 <summary>15. How do you reset a lost root password from the GRUB menu on Ubuntu and RHEL, and how do you secure a server against unauthorized console resets?</summary>
+
 On Ubuntu, append `init=/bin/bash` (or `systemd.unit=rescue.target`), run `mount -o remount,rw /`, and run `passwd root`. On RHEL, append `rd.break` to stop in the `initramfs` before `switch_root`, run `mount -o remount,rw /sysroot && chroot /sysroot`, run `passwd root`, create `touch /.autorelabel` so SELinux relabels `/etc/shadow`, and `exit` twice. Protect against unauthorized resets by securing BMC/physical console access, setting a GRUB password and UEFI setup password, and using LUKS disk encryption.
 </details>
 
 <details>
 <summary>16. Trace the PXE network boot sequence across DHCP, TFTP/HTTP, and NFS-root.</summary>
+
 (1) The NIC's PXE firmware broadcasts `DHCPDISCOVER` including its client architecture tag; (2) the DHCP server replies with an IP address, `next-server` (TFTP server IP), and `filename` (`pxelinux.0`, `grubnetx64.efi`, or `ipxe.efi`); (3) the firmware downloads the boot loader via TFTP (UDP port `69`) and executes it; (4) the boot loader fetches its config, `vmlinuz`, and `initrd.img` via TFTP or HTTP and boots the kernel with `ip=dhcp root=/dev/nfs nfsroot=...`; (5) the `initramfs` configures the NIC via DHCP, mounts the NFS root read-only, overlays `tmpfs` on writable paths, and calls `switch_root`.
 </details>
 
 <details>
 <summary>17. How does an ISC `dhcpd` server distinguish legacy BIOS PXE clients from UEFI PXE clients (RFC 4578)?</summary>
+
 The PXE client sends option 60 (`vendor-class-identifier`) starting with `PXEClient:Arch:XXXXX`: `00000` identifies legacy x86 BIOS (`filename "pxelinux.0"`), whereas `00007` and `00009` identify x86_64 UEFI (`filename "grubnetx64.efi"` or `"ipxe.efi"`).
 </details>
 
 <details>
 <summary>18. What are three ways to collect the MAC addresses of 100 new cluster nodes without opening the server cases?</summary>
+
 (1) Query each node's BMC via IPMI/Redfish (`ipmitool lan print`), (2) query the top-of-rack switch's bridge forwarding table by port using `snmpwalk` on `dot1dTpFdbEntry.1` (MACs) and `dot1dTpFdbEntry.2` (port numbers), or (3) power on the nodes sequentially `5 to 10 seconds` apart while tailing `DHCPDISCOVER` lines in the DHCP server log.
 </details>
 
 <details>
 <summary>19. Why must cluster node boots be staggered by at least `1 to 2 seconds`, and how should a shared NFS-root image handle writable directories and logs?</summary>
+
 Simultaneous power-on causes an electrical inrush current surge that can trip rack PDUs/breakers, and simultaneous PXE boot floods UDP-based DHCP and TFTP servers (which lack flow control, causing packet loss and `PXE-E53`/TFTP timeouts). On a shared read-only NFS-root image, mount size-limited `tmpfs` filesystems on `/tmp`, `/var/run`, `/var/lock`, `/var/cache`, and `/var/tmp`, forward logs to a central syslog/journal server, and assign hostnames dynamically from DHCP.
 </details>
 
 <details>
 <summary>20. Before rebooting a GPU node after a kernel upgrade, what five checks verify that the node and its GPUs will come back online cleanly?</summary>
+
 (1) Verify `/boot` has free space and both `vmlinuz-<new>` and `initrd.img-<new>` exist and are non-empty; (2) verify `dkms status` (or `/lib/modules/<new>/`) shows `nvidia.ko` and `mlx5_core.ko` built for `<new>`; (3) if Secure Boot is enabled (`mokutil --sb-state`), verify the new `.ko` modules are signed (`modinfo -F signer`); (4) verify `/etc/default/grub` and generated `grub.cfg` retain required parameters (`iommu`, `nouveau` blacklist, `console=ttyS0`) and keep the previous kernel as a fallback; and (5) verify ` sudo findmnt --verify` passes on `/etc/fstab`.
 </details>
 

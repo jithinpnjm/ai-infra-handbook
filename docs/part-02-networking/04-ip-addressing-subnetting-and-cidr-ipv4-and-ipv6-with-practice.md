@@ -419,36 +419,43 @@ Next, on any Linux host or VM (all interactive commands below are `untested here
 
 <details>
 <summary>1. How many bits are in an IPv4 address versus an IPv6 address, and what are the nine valid non-zero mask octet values?</summary>
+
 IPv4 addresses are **32 bits** (4 octets in dotted decimal); IPv6 addresses are **128 bits** (8 16-bit hextets in hexadecimal). Because CIDR subnet masks consist of contiguous leading `1` bits, every mask octet is one of `{0, 128, 192, 224, 240, 248, 252, 254, 255}`.
 </details>
 
 <details>
 <summary>2. Why do standard IPv4 subnets provide `2^h - 2` usable host addresses, and what are the exceptions (`/31`, `/32`, and cloud subnets)?</summary>
+
 In a standard subnet with `h` host bits, the **all-zeros** host address is reserved as the **network address** and the **all-ones** host address is reserved as the **directed broadcast address**. Exceptions: **`/31` point-to-point links** (RFC 3021) have `2` usable host addresses with no network/broadcast overhead, **`/32`** is a `1`-address host/loopback route, and cloud VPC subnets reserve additional addresses (e.g., GCP reserves 4 addresses per subnet: network, default gateway, second-to-last, and broadcast).
 </details>
 
 <details>
 <summary>3. Explain the fast \"block-size\" method for finding the network and broadcast addresses of `192.168.10.77/27` and `172.20.133.9/21`.</summary>
+
 For `192.168.10.77/27`: `/27` has mask `255.255.255.224` in the 4th octet; block size = `256 - 224 = 32`. Multiples of 32 are `0, 32, 64, 96...`, so `77` falls in the `64` block: network `192.168.10.64`, broadcast `192.168.10.95` (`96 - 1`), `30` usable hosts (`.65–.94`). For `172.20.133.9/21`: `/21` splits in the 3rd octet with mask `248`; block size = `256 - 248 = 8`. Multiples of 8 are `..., 128, 136`, so `133` falls in `128`: network `172.20.128.0`, broadcast `172.20.135.255`, `2,046` usable hosts.
 </details>
 
 <details>
 <summary>4. How do you test whether two IPv4 addresses (`10.20.37.130` and `10.20.40.5`) belong to the same `/22` subnet, and what is a wildcard mask?</summary>
+
 Bitwise-AND both addresses with the `/22` mask (`255.255.252.0`, 3rd-octet block size `4`): `37` falls in block `36..39` (`10.20.36.0/22`), whereas `40` starts the next block `40..43` (`10.20.40.0/22`), so they are in different subnets. A **wildcard mask** (`~netmask`, e.g., `0.0.3.255` for `/22`) is the bitwise inverse of the subnet mask, used in OSPF `network` statements and router ACLs.
 </details>
 
 <details>
 <summary>5. What is Variable-Length Subnet Masking (`VLSM`), and what are its four allocation rules?</summary>
+
 **VLSM** divides a parent CIDR block into child subnets of different prefix lengths tailored to each segment's size. The four rules are: (1) sort and allocate the **largest subnets first**, (2) **align** every subnet's starting address on an exact integer multiple of its block size, (3) never overlap ranges, and (4) leave contiguous unallocated blocks for future growth.
 </details>
 
 <details>
 <summary>6. What is route summarization (aggregation), why does it matter in data-center BGP fabrics, and why can `10.0.1.0/24` + `10.0.2.0/24` NOT be summarized into a `/23`?</summary>
+
 Route summarization replaces multiple contiguous, block-aligned prefixes with a single shorter covering prefix (e.g., `192.168.4.0/24`..`7.0/24` -> `192.168.4.0/22`), shrinking router FIB tables and hiding link-flap churn inside a rack/pod. A `/23` has a 3rd-octet block size of `2` and must start on an **even** number (`0, 2, 4...`), so `10.0.1.0/24` and `10.0.2.0/24` straddle the boundary between `10.0.0.0/23` and `10.0.2.0/23` and cannot be summarized into a single `/23`.
 </details>
 
 <details>
 <summary>7. List the three RFC 1918 private IPv4 ranges, the RFC 6598 CGNAT range, the loopback range, and the APIPA link-local range.</summary>
+
 - **RFC 1918 Private**: `10.0.0.0/8`, `172.16.0.0/12` (`172.16.0.0–172.31.255.255`), and `192.168.0.0/16`
 - **RFC 6598 CGNAT / Shared Space**: `100.64.0.0/10` (`100.64.0.0–100.127.255.255`, often used for large Kubernetes Pod CIDRs when RFC 1918 is scarce)
 - **Loopback**: `127.0.0.0/8` (`127.0.0.1` localhost, `127.0.0.53` `systemd-resolved`)
@@ -457,11 +464,13 @@ Route summarization replaces multiple contiguous, block-aligned prefixes with a 
 
 <details>
 <summary>8. State the two IPv6 address compression rules and why literal IPv6 addresses in URLs require square brackets.</summary>
+
 (1) Strip **leading zeros** within each 16-bit hex group (`0db8` -> `db8`, `0000` -> `0`); (2) replace at most **one** contiguous run of all-zero groups with `::` (using `::` twice in one address is ambiguous and illegal). In URLs, colons separate the port number, so literal IPv6 addresses are wrapped in brackets: `http://[2001:db8::10]:8080/`.
 </details>
 
 <details>
 <summary>9. Match the key IPv6 prefixes to their address types: `::1/128`, `2000::/3`, `fc00::/7` (`fd00::/8`), `fe80::/10`, `ff00::/8`, `2001:db8::/32`, and `64:ff9b::/96`.</summary>
+
 - `::1/128`: Loopback
 - `2000::/3` (starts with `2` or `3`): Global Unicast (publicly routable)
 - `fc00::/7` (`fd00::/8`): Unique Local Address (`ULA`, private space with a random 40-bit Global ID `/48`)
@@ -473,56 +482,67 @@ Route summarization replaces multiple contiguous, block-aligned prefixes with a 
 
 <details>
 <summary>10. Why are IPv6 LAN subnets almost always `/64` (except `/127` p2p and `/128` loopback), and how many `/64` subnets are in a `/48` site allocation?</summary>
+
 IPv6 SLAAC, Neighbor Discovery, and RFC 7217 privacy addressing are standardized around a 64-bit interface identifier (`64` prefix bits + `64` interface bits = `128` bits). A `/48` site prefix leaves `64 - 48 = 16` bits for the subnet ID, providing **`2^16 = 65,536` `/64` subnets** (a `/56` provides `2^8 = 256` `/64` subnets). Point-to-point router links use `/127` (RFC 6164) to prevent Neighbor Cache exhaustion attacks.
 </details>
 
 <details>
 <summary>11. Why do IPv6 routing protocols and Router Advertisements use the router's `fe80::` link-local address as the default gateway next hop?</summary>
+
 Link-local addresses (`fe80::/64`) are permanently bound to the physical link and never change when a site's global unicast prefix (`2000::/3`) or ULA prefix is renumbered, so routing adjacencies and host default routes remain stable across prefix renumbering.
 </details>
 
 <details>
 <summary>12. Compare the 20-byte IPv4 header and the 40-byte IPv6 header.</summary>
+
 IPv4 has a variable-length header (`20–60` bytes via `IHL`), an header checksum recomputed at every router hop, and in-header fragmentation fields (`ID`, `DF`/`MF`, `Fragment Offset`). IPv6 has a **fixed `40`-byte base header**, **no header checksum** (relying on L2 FCS and L4 TCP/UDP checksums), **no in-network router fragmentation** (fragmentation is done only by the source host via an extension header), and a 20-bit **Flow Label** used alongside the 5-tuple for ECMP load-balancing hashes.
 </details>
 
 <details>
 <summary>13. Where are the `DSCP` and `ECN` bits located in IPv4 and IPv6 headers, and how do AI RDMA fabrics use them?</summary>
+
 They occupy the 8-bit **TOS / Traffic Class** byte in both IPv4 and IPv6: `6` bits for **DSCP** (*Differentiated Services Code Point*, which classifies traffic into QoS queues such as RoCEv2 RDMA vs storage vs management) and `2` bits for **ECN** (*Explicit Congestion Notification*: `00` non-ECT, `01`/`10` ECT-capable, `11` **CE** Congestion Experienced, set by switches when queue depth crosses a threshold so NICs throttle sending rate via DCQCN before buffers overflow).
 </details>
 
 <details>
 <summary>14. Why does `ping -M do -s 1472` test a 1500-byte IPv4 MTU while `ping -6 -M do -s 1452` tests a 1500-byte IPv6 MTU?</summary>
+
 The `-s` flag in `ping` specifies only the ICMP payload bytes. In IPv4, `1472` payload + `8`B ICMP header + `20`B IPv4 header = `1500` bytes. In IPv6, the IPv6 header is `40` bytes instead of `20`, so `1452` payload + `8`B ICMPv6 header + `40`B IPv6 header = `1500` bytes.
 </details>
 
 <details>
 <summary>15. How do you configure IPv4 and IPv6 addresses, routes, and MTU transiently (`ip`) versus persistently (`Netplan` and `nmcli`)?</summary>
+
 Transiently: `sudo ip addr add 10.23.2.4/24 dev ens4`, `sudo ip link set ens4 mtu 9000 up`, and `sudo ip route add default via 10.23.2.1 dev ens4`. Persistently: define `addresses:`, `routes:`, `nameservers:`, and `mtu: 9000` in `/etc/netplan/60-fabric.yaml` (`sudo netplan apply`) on Ubuntu, or run `sudo nmcli connection modify ...` (`nmcli connection up ...`) on RHEL/Rocky.
 </details>
 
 <details>
 <summary>16. What happens if a host is configured with `192.168.1.50/24` and default gateway `192.168.0.1`?</summary>
+
 `192.168.0.1` is outside the host's connected `192.168.1.0/24` subnet, so the kernel knows the gateway is not directly reachable at Layer 2 on that interface and rejects the route with `Error: Nexthop has invalid gateway`.
 </details>
 
 <details>
 <summary>17. How do you size a Kubernetes cluster's Pod CIDR and Service CIDR for a 1,024-node GPU cluster?</summary>
+
 With the standard kubelet `maxPods = 110`, Kubernetes assigns a **`/24` (`256` IPs)** Pod CIDR slice to each node. For `1,024` nodes, that requires `1024 * 256 = 262,144` IPs = a **`/14` block** (e.g., `10.64.0.0/14`, or `/13` to leave 2x growth headroom), plus a non-overlapping `/16` (`65,534` IPs, e.g., `10.96.0.0/16`) for the Service ClusterIP CIDR.
 </details>
 
 <details>
 <summary>18. How are GKE VPC-native Pod and Service IPs allocated in Google Cloud, and why must you plan secondary ranges carefully?</summary>
+
 GKE VPC-native clusters allocate Node IPs from the subnet's primary CIDR range and allocate Pod IPs and Service IPs from **alias IP secondary ranges** on the VPC subnet. Because GKE reserves a `/24` (`256` IPs) from the Pod secondary range for every node (at default 110 max pods/node), a `/20` secondary range (`4,096` IPs) caps the cluster at just `16` nodes.
 </details>
 
 <details>
 <summary>19. How should the 8 GPU back-end NICs ("rails") on an 8-GPU server be numbered in a rail-optimized AI fabric?</summary>
+
 Assign a dedicated, deterministic address block per rail index `r in 0..7`—such as `10.100.<rail>.<node>/24` (or `/21` per rail with per-rack `/26`s, or `/31` point-to-point host-to-leaf links)—so that GPU `r` on every node connects to rail `r` leaf switches, and any engineer reading an IP address `10.100.5.42` in a log immediately knows it is **Rail 5 (GPU 5), Node 42**.
 </details>
 
 <details>
 <summary>20. What are the seven golden rules of cluster IP address planning (IPAM)?</summary>
+
 (1) **Hierarchical and aligned** on power-of-two block boundaries so routes summarize cleanly, (2) **strictly non-overlapping** with corporate LANs, VPNs, peered VPCs, and container defaults, (3) **one dedicated purpose per block** (OOB BMC, in-band mgmt, storage, per-rail compute, Pods, Services, loopbacks, `/31` links), (4) **sized for 4x growth**, (5) **deterministic encoding** of rack/rail/node in octets, (6) **tracked in a single source-of-truth IPAM** (NetBox), and (7) **dual-stack / IPv6-ready** where Pod/container scale demands it.
 </details>
 

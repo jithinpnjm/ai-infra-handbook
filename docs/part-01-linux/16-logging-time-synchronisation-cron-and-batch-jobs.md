@@ -511,101 +511,121 @@ sudo systemctl restart rsyslog          # (untested here)
 
 <details>
 <summary>1. What are syslog facility and severity, and what are the eight severity levels from `0` to `7`?</summary>
+
 The **facility** identifies the subsystem that generated the message (`kern`, `user`, `mail`, `daemon`, `auth`/`authpriv`, `cron`, `local0`–`local7`), and the **severity** indicates its urgency from `0` (highest) to `7` (lowest): `0` `emerg`, `1` `alert`, `2` `crit`, `3` `err`, `4` `warning`, `5` `notice`, `6` `info`, and `7` `debug`.
 </details>
 
 <details>
 <summary>2. How do processes submit messages to the local system logger, and how do you test logging from a shell script?</summary>
+
 Programs call the C library's `syslog()` function, which writes datagrams to the Unix domain socket `/dev/log` (listened on by `systemd-journald` and forwarded to `rsyslog` via `imuxsock` or `imjournal`). From a shell script or CLI, run `logger -p local3.warning -t gpu-health "XID 79 on GPU 3"`.
 </details>
 
 <details>
 <summary>3. In `/etc/rsyslog.conf`, what do `mail.err`, `*.*;auth,authpriv.none`, `-/var/log/syslog`, and `@@logs.example.com:514` mean?</summary>
+
 `mail.err` matches `mail` messages of severity `err` (`3`) and more severe (`crit`, `alert`, `emerg`); `*.*;auth,authpriv.none` matches all facilities except `auth` and `authpriv`; the leading `-` in `-/var/log/syslog` disables synchronous `fsync()` after every line; and `@@` forwards over TCP port `514` (`@` uses lossy UDP).
 </details>
 
 <details>
 <summary>4. What is the difference between trusted (`_PID`, `_UID`, `_SYSTEMD_UNIT`) and untrusted (`MESSAGE`, `SYSLOG_IDENTIFIER`) fields in `systemd-journald`?</summary>
+
 Fields starting with an leading underscore (`_PID`, `_UID`, `_GID`, `_COMM`, `_EXE`, `_SYSTEMD_UNIT`) are attached by `journald` using kernel-verified socket credentials (`SO_PEERCRED`) and cannot be forged by the logging process. Fields without an underscore are supplied by the client payload.
 </details>
 
 <details>
 <summary>5. Give `journalctl` commands for: (a) the last 4 hours of `slurmd`, (b) errors from the previous boot, (c) kernel messages matching `xid|nvrm`, and (d) binary login records (`wtmp`, `btmp`, `lastlog`).</summary>
+
 (a) `journalctl -u slurmd -S -4h`; (b) `journalctl -b -1 -p err`; (c) `journalctl -k -g 'xid|nvrm'`; (d) `/var/log/wtmp`, `/var/log/btmp`, and `/var/log/lastlog` are binary login databases read with `last`, `lastb` (failed logins), and `lastlog` rather than `journalctl` or `cat`.
 </details>
 
 <details>
 <summary>6. How does `logrotate` rotate a log file, and why does a daemon keep writing into `app.log.1` unless signaled or configured with `copytruncate`?</summary>
+
 `logrotate` shifts old numbered files up, renames `app.log` to `app.log.1`, and creates a fresh `app.log` with a new inode. Because open file descriptors in Linux reference the **inode** rather than the filename, a running daemon continues writing to the renamed `app.log.1` inode until `postrotate` sends `SIGHUP` (or `copytruncate` copies `app.log` and truncates the original inode in place).
 </details>
 
 <details>
 <summary>7. What do `delaycompress`, `missingok`, `notifempty`, and `sharedscripts` do in a `/etc/logrotate.d/` config?</summary>
+
 `delaycompress` postpones `gzip` compression of `.1` until the *next* rotation cycle (giving processes time to close the old descriptor); `missingok` ignores missing log files without error; `notifempty` skips rotation if the file is 0 bytes; and `sharedscripts` runs the `postrotate` script once for the whole wildcard match (`*.log`) rather than once per file.
 </details>
 
 <details>
 <summary>8. What happens if `logrotate` deletes an old log file that a process still holds open without ever reopening?</summary>
+
 The directory entry is unlinked, but the kernel cannot free the data blocks until the open file descriptor is closed (`df -h` shows the disk full while `du -sh /var/log` shows little space used). Find the process with `sudo lsof +L1` and restart or signal it.
 </details>
 
 <details>
 <summary>9. What five categories of logs must be shipped off-node to a central store on a production GPU cluster?</summary>
+
 (1) Kernel ring buffer hardware/driver events (`Xid`, `NVRM`, PCIe `AER`, `MCE`/`EDAC` ECC errors, `OOM` kills, NVMe resets), (2) NVIDIA infrastructure daemons (`nvidia-fabricmanager`, `nvidia-persistenced`, `dcgm`), (3) scheduler and container runtime daemons (`slurmd`, `munge`, `containerd`, `kubelet`), (4) authentication/audit logs (`sshd`, `sudo`, `auditd`), and (5) out-of-band BMC System Event Logs (`SEL`).
 </details>
 
 <details>
 <summary>10. What is the difference between the Linux kernel's system clock (`CLOCK_REALTIME` vs `CLOCK_MONOTONIC`) and the hardware RTC (`hwclock`)?</summary>
+
 The kernel system clock counts seconds and nanoseconds in UTC since `1970-01-01 00:00:00 UTC` (`CLOCK_REALTIME` is wall-clock time that can step/slew; `CLOCK_MONOTONIC` counts forward monotonically since boot for measuring elapsed intervals). The hardware Real-Time Clock (`RTC`) is a battery-backed motherboard chip read at boot and queried/updated with `sudo hwclock --show` and `sudo hwclock --systohc --utc`.
 </details>
 
 <details>
 <summary>11. Why should all cluster servers keep both `/etc/localtime` and the RTC in `UTC`?</summary>
+
 Running in `UTC` (`timedatectl set-timezone UTC` and `timedatectl set-local-rtc 0`) eliminates daylight-saving-time (`DST`) jumps (which cause cron jobs to run twice or be skipped) and ensures log timestamps across geographically distributed clusters and containers align directly without timezone conversion errors.
 </details>
 
 <details>
 <summary>12. Why do NTP daemons slew the clock rather than stepping it during normal operation, and what does `makestep 1.0 3` in `chrony.conf` do?</summary>
+
 Stepping the clock backward causes timers, distributed locks, database transactions, and `make` builds to malfunction. `chronyd` normally **slews** the clock by slightly adjusting the kernel tick frequency (`adjtimex`). `makestep 1.0 3` allows `chronyd` to **step** the clock immediately only during the first `3` clock updates after startup if the offset exceeds `1.0` second.
 </details>
 
 <details>
 <summary>13. How should NTP be architected on an internal HPC/AI cluster so compute nodes stay synchronized even if the internet link goes down?</summary>
+
 Configure the management/head nodes to sync with external upstream NTP servers and serve time to the internal subnet (`allow 10.0.0.0/16`) with `local stratum 10 orphan` enabled. Configure all compute nodes to point *only* at the internal head nodes (`server head.cluster iburst`), so the entire cluster shares a single coherent clock even when isolated from the internet.
 </details>
 
 <details>
 <summary>14. In `chronyc sources -v` and `chronyc tracking`, what do `^*`, `^+`, `^?`, octal `Reach 377` vs `0`, and `Stratum 16` indicate?</summary>
+
 `^*` marks the currently selected primary time source, `^+` marks combined acceptable sources, and `^?` marks an unreachable source. `Reach` is an 8-bit shift register printed in octal: `377` (`11111111` in binary) means all `8` recent polls succeeded, while `0` means zero responses (e.g., UDP port `123` blocked). `Stratum 16` means the node is unsynchronized.
 </details>
 
 <details>
 <summary>15. Why does a 6-minute clock skew on a single compute node break Slurm job launch, and what else fails under clock skew?</summary>
+
 `munge` authentication credentials (used by `slurmctld` and `slurmd`) and Kerberos tickets have a default `5`-minute (`300 s`) TTL window; a node skewed by 6 minutes rejects credentials as expired or not-yet-valid. Clock skew also breaks X.509/TLS certificate validation, Kubernetes `kubelet` lease renewals, and cross-node log correlation.
 </details>
 
 <details>
 <summary>16. State the five time fields of a `crontab` entry and explain the POSIX `cron` trap when both day-of-month and day-of-week are specified.</summary>
+
 The five fields are: (1) minute (`0-59`), (2) hour (`0-23`), (3) day of month (`1-31`), (4) month (`1-12`), and (5) day of week (`0-7`, where `0` and `7` are Sunday). If both day-of-month (field 3) and day-of-week (field 5) are restricted (not `*`), `cron` runs the job when **either** field matches (logical `OR`, not `AND`).
 </details>
 
 <details>
 <summary>17. How do `/etc/crontab` and `/etc/cron.d/*` differ from `crontab -e`, and why can a file dropped into `/etc/cron.d/` be silently ignored on Debian/Ubuntu?</summary>
+
 System crontab files (`/etc/crontab` and `/etc/cron.d/*`) include a **sixth field** specifying the username (`root`) before the command, whereas per-user crontabs (`crontab -e`, stored in `/var/spool/cron/`) omit the user field. On Debian/Ubuntu, `cron` silently ignores any file in `/etc/cron.d/` whose filename contains a dot (`.`), lacks a trailing newline, or is not owned by `root` with mode `0644`.
 </details>
 
 <details>
 <summary>18. Give five reasons a script that runs fine in your interactive `bash` session fails inside `cron`.</summary>
+
 (1) `cron` sets a minimal `PATH=/usr/bin:/bin` (missing `/usr/local/bin` and `/usr/sbin`); (2) `cron` uses `SHELL=/bin/sh` (`dash` on Ubuntu) rather than `bash`; (3) `cron` does not source `~/.bashrc` or `~/.bash_profile`; (4) the working directory is `$HOME` with no controlling TTY; and (5) unescaped `%` characters in the crontab command line are converted into newlines by `cron`.
 </details>
 
 <details>
 <summary>19. What is the difference between `at`, `batch`, `anacron`, and `systemd-run --on-active=`?</summary>
+
 `at` schedules a one-time command at a specific time (inheriting the caller's current environment); `batch` runs a one-time job only when the system load average drops below `1.5`; `anacron` runs daily/weekly/monthly jobs on machines that are not powered on 24/7; and `systemd-run --on-active=30m` creates a transient `systemd` timer and service unit with full `cgroup` and `journalctl` tracking.
 </details>
 
 <details>
 <summary>20. How do you prevent a periodic health-check cron job across 500 GPU nodes from overlapping with itself, hanging on a dead mount, or causing a thundering herd?</summary>
+
 Wrap the command in `flock -n /run/lock/health.lock` (to skip overlapping runs if the previous run is still active), `timeout 120` (to kill hung probes on dead NFS/GPU calls), and a randomized jitter delay (`sleep $((RANDOM % 300))` or `RandomizedDelaySec=` in a `systemd` timer).
 </details>
 

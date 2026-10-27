@@ -774,46 +774,55 @@ sudo systemctl daemon-reload            # (untested here)
 
 <details>
 <summary>1. What limitations of System V `init` did `systemd` solve, and how do you identify which `init` system is running as `PID 1`?</summary>
+
 SysV `init` ran shell scripts sequentially, relied on fragile PID files and `ps` grepping to track daemons, lacked dependency-based parallelism, and had no built-in process supervision or resource control. `systemd` starts units in parallel across a dependency graph, tracks every process of a service in a dedicated `cgroup`, activates services on demand (sockets, timers, paths, devices), and captures stdout/stderr in `journald`. Check `ps -p 1 -o comm=` or `readlink -f /sbin/init`.
 </details>
 
 <details>
 <summary>2. Name ten `systemd` unit types and the role of each.</summary>
+
 `.service` (daemons and one-shot commands), `.target` (synchronization milestones grouping units), `.socket` (network/IPC socket activation), `.mount` and `.automount` (filesystem mounts), `.timer` (calendar and monotonic schedules), `.path` (`inotify` file/directory watches), `.slice` (`cgroup` hierarchy nodes for resource control), `.scope` (externally spawned process groups such as user sessions and containers), `.device` (`udev`-exposed hardware nodes), and `.swap` (swap space).
 </details>
 
 <details>
 <summary>3. In what order does `systemd` search unit directories, and why must you never edit files in `/usr/lib/systemd/system`?</summary>
+
 From highest to lowest priority: `/etc/systemd/system.control` (`systemctl set-property`), `/run/systemd/transient` (`systemd-run`), **`/etc/systemd/system`** (administrator units and drop-ins), `/run/systemd/system` / `/run/systemd/generator`, and **`/usr/lib/systemd/system`** (vendor package defaults). Package upgrades overwrite `/usr/lib/systemd/system` without warning; always put custom units and `.d/*.conf` drop-ins in `/etc/systemd/system`.
 </details>
 
 <details>
 <summary>4. Contrast `Type=simple`, `Type=exec`, `Type=forking`, `Type=oneshot`, and `Type=notify`.</summary>
+
 `simple` considers the service started immediately after `systemd` forks; `exec` waits until the `execve()` call succeeds; `forking` waits for the initial parent process to exit after daemonizing into the background; `oneshot` waits for the command to finish exiting before dependent units proceed (often paired with `RemainAfterExit=yes`); and `notify` waits for the daemon to send `READY=1` over `$NOTIFY_SOCKET` (`sd_notify`).
 </details>
 
 <details>
 <summary>5. Distinguish `Wants=`, `Requires=`, `Requisite=`, `BindsTo=`, `PartOf=`, and `Conflicts=`.</summary>
+
 `Wants=` pulls in the target unit when starting but ignores its failure (the recommended default so failures do not cascade); `Requires=` aborts/stops this unit if the dependency fails; `Requisite=` fails immediately unless the dependency is *already* active; `BindsTo=` is like `Requires=` and also stops this unit if the dependency disappears at runtime; `PartOf=` propagates stops and restarts from the parent unit; and `Conflicts=` stops the other unit when this unit starts.
 </details>
 
 <details>
 <summary>6. Why is `Requires=B.service` alone insufficient to make `A.service` start after `B.service`?</summary>
+
 Requirement directives (`Wants=`, `Requires=`) and ordering directives (`After=`, `Before=`) are orthogonal in `systemd`. With `Requires=B.service` alone, `systemd` starts `A.service` and `B.service` simultaneously in parallel; you must specify **both** `Wants=B.service` (or `Requires=B.service`) **and** `After=B.service`.
 </details>
 
 <details>
 <summary>7. What does `systemctl enable` actually do on disk, and how do `enable`, `start`, and `mask` differ?</summary>
+
 `systemctl enable` reads the unit's `[Install]` section (`WantedBy=multi-user.target`) and creates a symlink in `/etc/systemd/system/multi-user.target.wants/` pointing to the unit file so it starts at boot; it does not start the service now unless `--now` is passed. `start` launches the service immediately without enabling it at boot, and `mask` symlinks the unit name in `/etc/systemd/system/` to `/dev/null` so nothing can start it manually or via dependencies.
 </details>
 
 <details>
 <summary>8. What is the difference between `systemctl reload`, `systemctl restart`, and `systemctl daemon-reload`?</summary>
+
 `reload` runs `ExecReload=` (such as `kill -HUP $MAINPID`) so the running daemon re-reads its own config without dropping connections; `restart` stops and starts the service process; and `daemon-reload` tells `PID 1` (`systemd`) to re-parse unit files and `/etc/fstab` on disk without restarting running services.
 </details>
 
 <details>
 <summary>9. How do you safely override a vendor unit's `ExecStart=` using a drop-in file?</summary>
+
 Run `sudo systemctl edit NAME` (which creates `/etc/systemd/system/NAME.service.d/override.conf`) and write an empty `ExecStart=` line before the new `ExecStart=` line so the list is cleared first:
 `[Service]`
 `ExecStart=`
@@ -822,56 +831,67 @@ Run `sudo systemctl edit NAME` (which creates `/etc/systemd/system/NAME.service.
 
 <details>
 <summary>10. Why do pipes (`|`), redirects (`>`), and `&&` fail inside `ExecStart=`, and how do specifiers `%i`, `%I`, `%n`, and `%H` work?</summary>
+
 `systemd` executes `ExecStart=` directly via `execve()` rather than through a shell, so shell operators are passed as literal arguments unless wrapped in `/bin/sh -c '...'`. In template units (`name@.service`), `%i` is the escaped instance string, `%I` is the unescaped instance string, `%n` is the full unit name, and `%H` is the system hostname (`$$` passes a literal `$`).
 </details>
 
 <details>
 <summary>11. How do `systemd` targets differ from SysV runlevels, and what is the difference between `network.target` and `network-online.target`?</summary>
+
 Multiple `systemd` targets can be active simultaneously and form a dependency graph (`multi-user.target`, `graphical.target`, `timers.target`). `network.target` only indicates that the low-level network management stack has started (interfaces may not have IP addresses yet), whereas `network-online.target` blocks until `systemd-networkd-wait-online` or `NetworkManager-wait-online` confirms interfaces are configured and routable.
 </details>
 
 <details>
 <summary>12. What are the three advantages of socket activation (`.socket`), and how does `Accept=true` differ from `Accept=false`?</summary>
+
 Socket activation provides: (1) on-demand startup of rarely used daemons, (2) parallel boot without explicit `After=` ordering because `PID 1` opens the listening socket immediately and queues client connections while the daemon starts, and (3) zero-downtime service restarts without dropping the listening socket. `Accept=true` spawns a separate `name@<conn>.service` instance per connection (like `inetd`), whereas `Accept=false` passes the listening socket (`$LISTEN_FDS`) to one persistent daemon.
 </details>
 
 <details>
 <summary>13. How do `OnCalendar=` and monotonic timers (`OnBootSec=`, `OnUnitActiveSec=`) work, and what do `Persistent=true` and `RandomizedDelaySec=` do?</summary>
+
 `OnCalendar=` triggers on wall-clock schedules (`Mon..Fri *-*-* 02:30:00`, validated with `systemd-analyze calendar`), while monotonic timers trigger relative to boot (`OnBootSec=`) or the last run (`OnUnitActiveSec=`). `Persistent=true` records the last trigger timestamp on disk so missed runs execute immediately when a powered-off machine boots, and `RandomizedDelaySec=` adds random jitter to prevent fleet-wide thundering herds.
 </details>
 
 <details>
 <summary>14. Contrast `CPUWeight=`, `CPUQuota=`, `MemoryLow=`, `MemoryHigh=`, `MemoryMax=`, and `TasksMax=`.</summary>
+
 `CPUWeight=` (`1`–`10000`, default `100`) sets proportional CPU share under contention; `CPUQuota=` (`200%` = 2 cores) sets a hard CPU ceiling; `MemoryLow=` protects memory from page reclamation on a best-effort basis; `MemoryHigh=` throttles the cgroup and forces aggressive reclamation when exceeded; `MemoryMax=` triggers the cgroup OOM killer when exceeded; and `TasksMax=` caps total processes/threads.
 </details>
 
 <details>
 <summary>15. Why must you never set `MemoryMax=` on `system.slice`, and how do you protect `sshd` and `kubelet` from GPU job OOM storms?</summary>
+
 `system.slice` contains critical host services (`sshd`, `kubelet`, `containerd`, `slurmd`, `journald`); putting `MemoryMax=` on `system.slice` causes the kernel to throttle or OOM-kill those daemons. Instead, give `system.slice` `CPUWeight=200` and `MemoryLow=2G`, set `OOMScoreAdjust=-900` on `sshd` and `kubelet`, and enforce `MemoryMax=` on workload slices (`kubepods.slice`, `user-.slice`, or Slurm job cgroups).
 </details>
 
 <details>
 <summary>16. How do you enforce aggregate CPU, memory, and process limits per login user on a shared cluster login node, and why set `KillUserProcesses=no`?</summary>
+
 Create `/etc/systemd/system/user-.slice.d/10-defaults.conf` with `[Slice]` settings (`TasksMax=1250`, `CPUQuota=800%`, `MemoryMax=64G`), which applies to every user's `user-UID.slice` across all their SSH sessions (or override a single user in `user-1007.slice.d/`). Set `KillUserProcesses=no` in `/etc/systemd/logind.conf` so logging out of SSH does not kill the user's detached `tmux`, `screen`, or `nohup` processes.
 </details>
 
 <details>
 <summary>17. What does `Delegate=yes` do in a service unit, and which AI infrastructure daemons require it?</summary>
+
 `Delegate=yes` grants the service ownership of its own `cgroup v2` subtree so the daemon can create and manage child cgroups without conflicting with `PID 1`'s single-writer rule. It is required by `containerd`, `dockerd`, `kubelet`, and `slurmd`.
 </details>
 
 <details>
 <summary>18. How do you make `systemd-journald` persistent across reboots, and what is the danger of default rate limiting on GPU nodes?</summary>
+
 Either create `/var/log/journal` (with `Storage=auto`) or set `Storage=persistent` (along with `SystemMaxUse=10G`, `SystemKeepFree=2G`) in `/etc/systemd/journald.conf.d/50-persistent.conf` and restart `systemd-journald`. Default rate limiting (`RateLimitIntervalSec=30s`, `RateLimitBurst=10000`) drops log lines during a burst ("Suppressed N messages"), which can discard critical Xid/NCCL crash tracebacks unless raised.
 </details>
 
 <details>
 <summary>19. What do `systemd-analyze blame`, `systemd-analyze critical-chain`, `systemd-analyze verify`, and `systemd-analyze security` do?</summary>
+
 `blame` lists units sorted by the time they took to initialize; `critical-chain` prints the tree of time-critical blocking dependencies that delayed the target; `verify` checks unit files for syntax errors, missing executables, and dependency cycles; and `security` audits a service's sandboxing (`ProtectSystem=strict`, `PrivateTmp=yes`, `NoNewPrivileges=yes`, `DeviceAllow=`) and scores exposure from `0` to `10`.
 </details>
 
 <details>
 <summary>20. What do the `systemd` exit status codes `203/EXEC`, `200/CHDIR`, `217/USER`, and `226/NAMESPACE` mean?</summary>
+
 `203/EXEC` means the `ExecStart=` binary could not be executed (missing file, missing `+x` permission, `noexec` mount, missing `#!` interpreter, or wrong CPU architecture); `200/CHDIR` means `WorkingDirectory=` does not exist; `217/USER` means the `User=` or `Group=` account does not exist; and `226/NAMESPACE` means a sandboxing mount-namespace directive (`ReadWritePaths=`, `PrivateTmp=`) failed.
 </details>
 

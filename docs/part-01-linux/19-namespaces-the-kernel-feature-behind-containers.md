@@ -408,101 +408,121 @@ Next, on a disposable Ubuntu 22.04+ VM with `root` (all interactive VM commands 
 
 <details>
 <summary>1. Is there a \"container\" object in the Linux kernel, and how do namespaces and cgroups divide the work?</summary>
+
 No; the closest kernel structure is `struct nsproxy` pointing to a task's namespaces. A container is an ordinary Linux process tree built from **namespaces** (limiting what the process can *see*), **cgroups** (limiting what resources the process can *use*), a **root filesystem** (`OverlayFS` + `pivot_root`), and **capabilities / seccomp / LSMs** (limiting what actions the process can *perform*), all sharing the single host kernel.
 </details>
 
 <details>
 <summary>2. Name the eight Linux namespace types, their `CLONE_NEW*` flags, and what each isolates.</summary>
+
 (1) `mnt` (`CLONE_NEWNS`): mount table; (2) `pid` (`CLONE_NEWPID`): process ID numbering; (3) `net` (`CLONE_NEWNET`): network devices, IPs, routes, firewall rules, and sockets; (4) `uts` (`CLONE_NEWUTS`): hostname and NIS domain name; (5) `ipc` (`CLONE_NEWIPC`): SysV IPC and POSIX message queues; (6) `user` (`CLONE_NEWUSER`): UID/GID number space and capabilities; (7) `cgroup` (`CLONE_NEWCGROUP`): root view of `/sys/fs/cgroup`; and (8) `time` (`CLONE_NEWTIME`, Linux 5.6+): `CLOCK_MONOTONIC` / `CLOCK_BOOTTIME` offsets.
 </details>
 
 <details>
 <summary>3. Contrast the three namespace system calls `clone(2)`, `unshare(2)`, and `setns(2)`.</summary>
+
 `clone(2)` creates a new child process placed directly into new namespaces (`CLONE_NEW*`); `unshare(2)` moves the calling process itself into newly created namespaces (except for `CLONE_NEWPID`, where only subsequent children enter the new PID namespace); and `setns(2)` joins an existing namespace specified by an open file descriptor to `/proc/PID/ns/*` (used by `nsenter`, `docker exec`, and `kubectl exec`).
 </details>
 
 <details>
 <summary>4. How do you inspect which namespaces a process belongs to, and what keeps a namespace alive when all its processes exit?</summary>
+
 Inspect `/proc/PID/ns/*` symlinks (e.g., `net:[4026531992]`, where matching inode numbers mean the same namespace) or run `lsns -p PID`. A namespace remains alive as long as at least one process belongs to it, a process holds an open file descriptor to `/proc/PID/ns/*`, or the namespace file is bind-mounted (as `ip netns add` does under `/run/netns/`).
 </details>
 
 <details>
 <summary>5. What three special rules apply to `PID 1` inside a PID namespace?</summary>
+
 (1) **Signal immunity for unhandled signals**: PID 1 has no default signal actions—signals sent to PID 1 are ignored unless PID 1 explicitly installs a signal handler (`SIGKILL` and `SIGSTOP` from inside the namespace are ignored completely, though `SIGKILL` from the parent/host namespace kills it); (2) **Orphan reaping**: orphaned processes inside the namespace are reparented to PID 1, which must `wait()` on them to prevent zombie accumulation; and (3) **Namespace teardown**: when PID 1 exits, the kernel sends `SIGKILL` to every remaining process in that PID namespace.
 </details>
 
 <details>
 <summary>6. Why does a training container started with `ENTRYPOINT ["/bin/sh", "-c", "python train.py"]` ignore `SIGTERM` on `kubectl delete pod`, and how do you fix it?</summary>
+
 `/bin/sh` becomes PID 1 inside the container's PID namespace and does not forward `SIGTERM` to its child `python train.py`, nor does `/bin/sh` exit on `SIGTERM` when running as PID 1; after `terminationGracePeriodSeconds` (`30 s`), kubelet sends `SIGKILL`, aborting the job without saving a checkpoint. Fix it by using the JSON exec form `ENTRYPOINT ["python", "train.py"]`, using `exec python train.py` at the end of a wrapper script, or running `tini` / `--init` as PID 1.
 </details>
 
 <details>
 <summary>7. Why must `unshare --pid` be combined with `--fork` and `--mount-proc`?</summary>
+
 A process's own PID is fixed at creation, so `unshare(CLONE_NEWPID)` only places *future children* into the new PID namespace (`--fork` forks a child shell as PID 1). Because `ps` and `top` read `/proc`, you must also mount a fresh `proc` instance (`--mount-proc`, which implies a new mount namespace) or `ps` will still list the host's `/proc`.
 </details>
 
 <details>
 <summary>8. Explain mount propagation modes (`shared`, `slave`, `private`, `unbindable`) and when Kubernetes needs `HostToContainer` (`rslave`).</summary>
+
 `shared` propagates mount and unmount events bidirectionally between peers; `slave` receives mount events from its master without propagating its own mounts back; `private` isolates mount events in both directions; and `unbindable` prevents bind-mounting. Container runtimes default container mounts to `rprivate`/`rslave` so container mounts never leak onto the host, while Kubernetes CSI storage plugins use `mountPropagation: HostToContainer` (`rslave`) so volumes mounted dynamically on the host appear inside running containers.
 </details>
 
 <details>
 <summary>9. Why do container runtimes use `pivot_root(2)` instead of `chroot(2)`?</summary>
+
 `chroot(2)` only alters the root directory pathname lookup for a process while leaving the host filesystem mounted and reachable via open directory descriptors or root `fchdir` escapes. `pivot_root(2)` inside a private mount namespace swaps the root mount point to the container's new rootfs and allows the old host root mount to be completely unmounted and detached.
 </details>
 
 <details>
 <summary>10. How does `OverlayFS` combine `lowerdir`, `upperdir`, and `workdir` into `merged`, and in what order are multiple `lowerdir` layers stacked?</summary>
+
 `lowerdir` holds one or more read-only image layers separated by colons (`lowerdir=layer3:layer2:layer1`, where the **leftmost** directory is the topmost read-only layer), `upperdir` is the writable container layer where all modifications go, `workdir` is an empty directory on the same filesystem as `upperdir` used for atomic staging, and `merged` presents the unified `/` view.
 </details>
 
 <details>
 <summary>11. What are `OverlayFS` copy-up and whiteouts, and why does deleting a file in a later `Dockerfile` `RUN` step not reduce image size or remove secrets?</summary>
+
 On the first write to a file residing in a `lowerdir`, OverlayFS copies the **entire file** up into `upperdir` (**copy-up**), so modifying a multi-GB file baked into an image doubles disk usage and stalls I/O. Deleting a lower-layer file creates a `0, 0` character device (**whiteout**) in `upperdir` that hides the filename in `merged`, while the underlying bytes remain untouched in the read-only lower layer tar archive.
 </details>
 
 <details>
 <summary>12. How does a `veth` pair and host bridge wire up a container's network namespace, and how do you run host `tcpdump` or `ss` inside a minimal container that lacks networking tools?</summary>
+
 A `veth` pair acts as a virtual patch cable: one end (`eth0`) is placed inside the container's network namespace (`ip link set ... netns`), and the host end is attached to a bridge (`docker0` or `cni0`) with `iptables`/`nftables` NAT. To run host diagnostic tools inside a distroless/minimal container's network namespace, find its host PID (`crictl inspect` or `docker inspect -f '{{.State.Pid}}'`) and run `sudo nsenter -t <PID> -n tcpdump -ni eth0` (or `ss -tlnp`).
 </details>
 
 <details>
 <summary>13. Which namespaces do containers inside the same Kubernetes Pod share, and what do `hostNetwork: true`, `hostPID: true`, and `hostIPC: true` do?</summary>
+
 By default, all containers in a Kubernetes Pod share the `pause` (sandbox) container's **`net`**, **`ipc`**, and **`uts`** namespaces (and `pid` if `shareProcessNamespace: true`), while each container gets its own **`mnt`** namespace (its own image rootfs). Setting `hostNetwork: true`, `hostPID: true`, or `hostIPC: true` places the pod directly in the host's corresponding namespace.
 </details>
 
 <details>
 <summary>14. How do user namespaces (`CLONE_NEWUSER`) and `/proc/PID/uid_map` enable rootless containers, and why are they problematic on shared HPC filesystems?</summary>
+
 `/proc/PID/uid_map` maps container UIDs to unprivileged host UIDs (e.g., `0 100000 65536` maps container `root` `UID 0` to host `UID 100000`), granting capabilities only over resources owned by that user namespace. On shared HPC filesystems (`NFS`, `Lustre`, `GPFS`, `BeeGFS`), files are owned by the user's real cluster UID, so remapped subordinate UIDs fail permission and quota checks—which is why `Enroot`/`Pyxis` and `Apptainer` map the user's real UID instead.
 </details>
 
 <details>
 <summary>15. Why do PyTorch `DataLoader` workers and `NCCL` often crash with `Bus error` (`SIGBUS`) inside Docker containers, and how do you fix it?</summary>
+
 PyTorch `DataLoader` multiprocessing queues and `NCCL` intra-node SHM channels allocate shared memory segments in `/dev/shm` (`tmpfs`), which Docker caps at **`64 MiB`** by default. When a batch exceeds `64 MiB`, writes into the `mmap`ed `/dev/shm` file hit `SIGBUS`. Fix it by passing `--shm-size=16g` (or `--ipc=host`) in Docker, or mounting an `emptyDir` with `medium: Memory` at `/dev/shm` in Kubernetes.
 </details>
 
 <details>
 <summary>16. Trace the hand-off between `kubelet`/`docker`, `containerd`, `containerd-shim`, and `runc` when starting a container.</summary>
+
 `kubelet` calls `containerd` via CRI; `containerd` unpacks image layers into an OverlayFS snapshot and spawns `containerd-shim`; the shim invokes `runc` with the OCI bundle (`config.json` + `rootfs`); `runc` calls `clone(CLONE_NEW*)`, configures cgroups, mounts, `pivot_root`, capabilities, and seccomp, and `execve()`s the container entrypoint as PID 1; `runc` then exits, leaving the lightweight `containerd-shim` as the parent supervising stdio and exit status.
 </details>
 
 <details>
 <summary>17. Compare hardware VMs (`KVM`/`QEMU`), OS containers (`runc`), MicroVMs (`Firecracker`/`Kata`), and user-space kernels (`gVisor`).</summary>
+
 Hardware VMs run a full guest kernel with strong hardware (`VT-x`/EPT) isolation and VFIO GPU passthrough at the cost of seconds of boot time and hundreds of MiB of RAM. OS containers share the host kernel with millisecond startup, zero memory overhead, and native `/dev/nvidia*` driver speed, but expose the host syscall surface. MicroVMs (`Firecracker`, `Kata`) boot a minimal guest kernel in `~100–200 ms` with hardware isolation, while `gVisor` intercepts container syscalls in a user-space Go kernel.
 </details>
 
 <details>
 <summary>18. Why do `top`, `free`, `vmstat`, `iostat`, and `nproc` lie when run inside a container, and what should you read instead?</summary>
+
 `/proc/meminfo`, `/proc/cpuinfo`, `/proc/stat`, and `/proc/diskstats` are **not namespaced** by the kernel, so tools reading them inside a container display the entire host's CPUs, RAM, load average, and disk I/O. Always read the container's cgroup files (`/sys/fs/cgroup/cpu.max`, `cpu.stat`, `memory.current`, `memory.max`, `memory.events`, `io.stat`, and `*.pressure`), or mount `lxcfs`.
 </details>
 
 <details>
 <summary>19. What three actions must a container runtime (`nvidia-container-toolkit` / CDI) take to give a container access to a GPU, and why must you never bake `libcuda.so.1` into an image?</summary>
+
 The runtime must: (1) expose `/dev/nvidia0..N`, `/dev/nvidiactl`, `/dev/nvidia-uvm`, and `/dev/nvidia-caps/*` in the container's mount namespace, (2) allow those major/minor numbers in the container's devices cgroup, and (3) bind-mount the host's user-space driver libraries (`libcuda.so.1`, `libnvidia-ml.so.1`) and `nvidia-smi`. Baking `libcuda.so.1` into the image causes `driver/library version mismatch` whenever the image runs on a host with a different kernel driver version.
 </details>
 
 <details>
 <summary>20. How do Python `venv` / `conda` environments (`test-venv/bin/activate`) and HPC runtimes (`Enroot` + `Pyxis`) differ from Docker?</summary>
+
 Python `venv` (`python3 -m venv test-venv` and `. test-venv/bin/activate`) is purely a user-space path manipulation (`PATH`, `VIRTUAL_ENV`, `sys.path`) with zero kernel namespace or cgroup isolation. `Enroot` + `Pyxis` (`srun --container-image=...`) is NVIDIA's daemonless HPC container runtime: it unpacks OCI images into squashfs trees and uses unprivileged user + mount namespaces running as the job's real UID inside Slurm's job cgroup.
 </details>
 

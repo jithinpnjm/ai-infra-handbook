@@ -490,101 +490,121 @@ Next, on a disposable Ubuntu 22.04+ VM with at least 4 vCPUs and cgroup v2 (all 
 
 <details>
 <summary>1. What is the difference between a processor socket, a physical core, an SMT hardware thread, and a logical CPU?</summary>
+
 A processor **socket** (package) contains multiple physical **cores**; with **SMT** (*Simultaneous Multithreading* / Hyper-Threading), each physical core exposes two (or more) **hardware threads** that share the core's execution units and L1/L2 caches. Linux sees and schedules tasks onto each hardware thread as a separate **logical CPU** (`nproc`, `lscpu -e`).
 </details>
 
 <details>
 <summary>2. Why can `100%` CPU utilization be inefficient, and what does an `IPC` below `0.5` versus above `1.0` tell you?</summary>
+
 OS CPU utilization counts all non-idle clock cycles, including **memory-stall cycles** spent waiting for L1/L2/L3 cache misses or DRAM fetches. An **IPC** (*instructions per cycle*, measured with `perf stat`) below `~0.5` indicates the CPU is mostly stalled on memory (fix with NUMA binding, huge pages, or cache-friendly data layouts); an IPC above `~1.0`–`2.0` indicates the CPU is busy retiring instructions (optimize with better algorithms, SIMD vectorization, or compiler flags).
 </details>
 
 <details>
 <summary>3. Name the five Linux scheduling classes in strict priority order and explain the danger of `SCHED_FIFO` / `SCHED_RR`.</summary>
+
 From highest to lowest priority: (1) **Stop** (kernel migration/stop tasks), (2) **Deadline** (`SCHED_DEADLINE`), (3) **Real-time** (`SCHED_FIFO`, `SCHED_RR`, priorities `1`–`99`), (4) **Fair** (`CFS` / `EEVDF`: `SCHED_NORMAL`/`SCHED_OTHER`, `SCHED_BATCH`, `SCHED_IDLE`), and (5) **Idle**. Because real-time tasks strictly preempt the Fair class, a spinning `SCHED_FIFO` thread starves all normal processes (including `sshd` and your shell) on that CPU, bounded only by the RT bandwidth safety valve (`kernel.sched_rt_runtime_us = 950000` of `1000000 µs`).
 </details>
 
 <details>
 <summary>4. How do `nice` values (`-20` to `+19`) map to scheduler weights, and what does `autogroup` do?</summary>
+
 Each `nice` step changes a task's scheduler weight by `~25%` (`nice 0` = weight `1024`, `nice -20` = `88761`, `nice +19` = `15`), so a `nice -5` task (`weight 3121`) receives roughly `3x` the CPU share of a `nice 0` task **only when competing on the same CPU**. `kernel.sched_autogroup_enabled` groups tasks by session/TTY so a parallel build (`make -j`) in one terminal does not starve interactive shells in another.
 </details>
 
 <details>
 <summary>5. How does CFS (`vruntime`) pick the next task to run, and what did EEVDF (Linux 6.6+) improve?</summary>
+
 **CFS** (*Completely Fair Scheduler*) tracks each task's weighted **virtual runtime** (`vruntime = actual_runtime * 1024 / weight`) in a per-CPU red-black tree and always runs the leftmost task (smallest `vruntime`). **EEVDF** (*Earliest Eligible Virtual Deadline First*, Linux `6.6+`) determines which tasks are *eligible* (have received no more than their fair share) and picks the eligible task with the **earliest virtual deadline** based on its requested slice length and weight, reducing wake-up latency for latency-sensitive threads without brittle heuristics.
 </details>
 
 <details>
 <summary>6. Why does Linux use per-CPU run queues and scheduling domains, and why is cross-NUMA task migration costly?</summary>
+
 Per-CPU run queues avoid contention on a global scheduler lock and keep tasks on the same CPU where their L1/L2 caches are warm. **Scheduling domains** mirror hardware topology (SMT siblings -> shared L3 cache -> socket -> NUMA nodes) so load balancing prefers cheap local migrations and strongly resists migrating a thread across sockets, where it loses both L1/L2/L3 cache state and local DRAM access.
 </details>
 
 <details>
 <summary>7. What is scheduler (run-queue) latency, and which four tools measure it?</summary>
+
 Scheduler latency is the time a runnable task (`R` state) spends waiting in a run queue before getting onto a CPU core. Measure it with: (1) `/proc/pressure/cpu` (PSI `some`), (2) `pidstat -u 1` (`%wait` column), (3) `sudo runqlat` / `runqlen` (BCC/bpftrace histograms), and (4) `sudo perf sched record` + `perf sched latency`.
 </details>
 
 <details>
 <summary>8. What does the Linux load average (`uptime`) actually count, and what does `%steal` in `mpstat` mean?</summary>
+
 Unlike other Unix systems, Linux's load average counts running tasks + runnable tasks waiting for a CPU **plus tasks in uninterruptible sleep (`D` state)** waiting on disk/NFS/lock I/O. In `mpstat -P ALL 1`, `%steal` is the percentage of time a virtual CPU had runnable work but the hypervisor scheduled another guest or host task instead.
 </details>
 
 <details>
 <summary>9. How do hardware interrupts and `softirqs` steal cycles from GPU data loaders, and how do you isolate them?</summary>
+
 NIC and NVMe interrupts execute on the CPU core their IRQ is routed to (and trigger `NET_RX` / `BLOCK` `softirqs`), preempting user-space threads on that core (visible as `%irq` and `%soft` in `mpstat -P ALL 1` and `/proc/interrupts`). Isolate workload cores by setting `/proc/irq/N/smp_affinity_list` (or boot `irqaffinity=0-1`) and configuring `IRQBALANCE_BANNED_CPUS` so `irqbalance` does not move IRQs back onto GPU-feeding cores.
 </details>
 
 <details>
 <summary>10. Compare boot-time and runtime CPU isolation mechanisms (`isolcpus`, `nohz_full`, `rcu_nocbs`, and `cpuset` partitions).</summary>
+
 `isolcpus=2-15` removes cores from general scheduler load balancing; `nohz_full=2-15` disables the periodic timer tick when a single task runs on an isolated core; `rcu_nocbs=2-15` offloads kernel RCU callback processing to housekeeping cores; and in cgroup v2, setting `cpuset.cpus.partition` to `isolated` creates an exclusive, load-balancing-isolated CPU partition dynamically at runtime without rebooting.
 </details>
 
 <details>
 <summary>11. How do CPU frequency governors (`performance` vs `powersave`) and deep C-states affect GPU cluster workloads?</summary>
+
 Frequency governors (`cpupower frequency-set -g performance`) control P-state clock scaling, while deep idle **C-states** power down core logic when idle and add puluhan-microsecond wake-up latency when a thread or RDMA/GPU completion wakes the core. GPU nodes run the `performance` governor and cap deep C-states (`processor.max_cstate=1` / `intel_idle.max_cstate=1`) to eliminate wake-up jitter; verify actual clocks and thermal/power throttling with `sudo turbostat`.
 </details>
 
 <details>
 <summary>12. What is the structural difference between `cgroups v1` and `cgroups v2`, and how do you check which version a host is running?</summary>
+
 `cgroups v1` mounts a separate hierarchy per resource controller (`/sys/fs/cgroup/cpu`, `/memory`, `/blkio`), allowing a process to sit in different paths per controller. `cgroups v2` mounts a **single unified hierarchy** at `/sys/fs/cgroup` (`stat -fc %T /sys/fs/cgroup/` prints `cgroup2fs`, and `/proc/self/cgroup` shows a single `0::/path` line) where every process belongs to exactly one cgroup.
 </details>
 
 <details>
 <summary>13. State the `cgroup v2` \"no internal processes\" rule and how controllers are enabled down the tree.</summary>
+
 In `cgroup v2`, any non-root cgroup that enables controllers for its children (by writing `+cpu +memory` to its `cgroup.subtree_control`) **cannot directly contain processes itself**—processes must live only in **leaf** cgroups while interior nodes only distribute resource budgets. If a group contains PIDs in `cgroup.procs`, enabling `subtree_control` fails with `EBUSY` (`Device or resource busy`).
 </details>
 
 <details>
 <summary>14. Contrast `cpu.weight` and `cpu.max` in `cgroup v2`.</summary>
+
 `cpu.weight` (`1`–`10000`, default `100`, corresponding to Kubernetes `requests.cpu`) is a **work-conserving relative share**: it divides CPU cycles proportionally among competing siblings under contention, but lets a group use `100%` of idle CPUs when siblings are quiet. `cpu.max` (`$MAX $PERIOD`, default `max 100000`, corresponding to Kubernetes `limits.cpu`) is a **non-work-conserving hard ceiling** (CFS bandwidth quota) that throttles the group once its quota is spent, even if all other CPUs on the machine are completely idle.
 </details>
 
 <details>
 <summary>15. Explain quantitatively why a container with `cpu.max = "200000 100000"` (`2` CPUs) and `16` threads experiences `87.5 ms` pauses at low average CPU usage.</summary>
+
 `cpu.max = "200000 100000"` grants `200 ms` of total CPU time per `100 ms` wall-clock period. When `16` threads wake up together, they burn `16 * 12.5 ms = 200 ms` of CPU quota in just **`12.5 ms` of wall-clock time**, after which the kernel throttles (pauses) all `16` threads for the remaining **`87.5 ms`** of the `100 ms` window (`nr_throttled` and `throttled_usec` in `cpu.stat` climb rapidly).
 </details>
 
 <details>
 <summary>16. Why do thread pools inside containers often oversubscribe CPUs, and how do you fix it in Python, OpenMP/PyTorch, Go, and Java?</summary>
+
 Inside a container, `/proc/cpuinfo` and `nproc` / `os.cpu_count()` still report the **host's** total logical CPU count (e.g., `128` cores) rather than the container's `cpu.max` quota (e.g., `4` cores), causing runtimes to spawn `128` threads that immediately throttle each other. Fix by inspecting `len(os.sched_getaffinity(0))` and `/sys/fs/cgroup/cpu.max`, setting `OMP_NUM_THREADS` / `MKL_NUM_THREADS` / `torch.set_num_threads()`, using `GOMAXPROCS` (`automaxprocs`) in Go, and using container-aware JVM flags (`-XX:ActiveProcessorCount`).
 </details>
 
 <details>
 <summary>17. How does `cpuset` (`cpuset.cpus` and `cpuset.mems`) differ from `cpu.max`, and what is `cpuset.cpus.partition=isolated`?</summary>
+
 `cpuset.cpus` and `cpuset.mems` bind a cgroup to a specific set of physical CPU cores and NUMA memory nodes without CFS quota time-slicing or throttling. Setting `cpuset.cpus.partition=isolated` in `cgroup v2` turns those cores into an exclusive isolated partition removed from parent scheduler load balancing.
 </details>
 
 <details>
 <summary>18. How are GPUs and `/dev/nvidia*` device nodes controlled under `cgroup v1` versus `cgroup v2`?</summary>
+
 The Linux kernel has no `gpu` cgroup controller for GPU compute/memory slices. Instead, container runtimes and Slurm (`ConstrainDevices=yes`) restrict which `/dev/nvidia*` character device nodes a cgroup may `open()`/`ioctl()`: via `devices.allow`/`devices.deny` files in `cgroup v1`, and via **eBPF `BPF_PROG_TYPE_CGROUP_DEVICE` programs** attached to the cgroup in `cgroup v2`.
 </details>
 
 <details>
 <summary>19. How does Kubernetes map Pod `requests` and `limits` to QoS classes (`Guaranteed`, `Burstable`, `BestEffort`) and `kubepods.slice`?</summary>
+
 A pod is **`Guaranteed`** (`kubepods-pod<uid>.slice`, `oom_score_adj = -997`) when every container sets `requests == limits` for both CPU and memory; **`Burstable`** (`kubepods-burstable.slice`) when at least one request or limit is set without full equality; and **`BestEffort`** (`kubepods-besteffort.slice`, `oom_score_adj = 1000`) when no requests or limits are set. With kubelet `--cpu-manager-policy=static` and Topology Manager, `Guaranteed` pods requesting integer CPUs get exclusive NUMA-aligned `cpuset` cores.
 </details>
 
 <details>
 <summary>20. Why must `kubelet` and `containerd` use the same cgroup driver (`systemd`), and what happens after `systemctl daemon-reload` if GPU CDI/device rules are misconfigured?</summary>
+
 Under `cgroup v2`'s single-writer rule, `systemd` owns `/sys/fs/cgroup`; if `kubelet` uses `cgroupfs` while `containerd` uses `systemd` (`SystemdCgroup = true`), two managers write conflicting cgroup trees. Furthermore, when `systemd` manages container scopes, a `systemctl daemon-reload` can re-evaluate unit device policies and strip `/dev/nvidia*` eBPF permissions from running containers unless the NVIDIA Container Toolkit is properly integrated with `containerd` (`--cdi.enabled` / `systemd` cgroup driver).
 </details>
 

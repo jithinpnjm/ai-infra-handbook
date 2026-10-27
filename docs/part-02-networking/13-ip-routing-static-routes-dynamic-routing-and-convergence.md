@@ -304,101 +304,121 @@ Next, on a disposable Linux VM using a four-router ring/diamond of network names
 
 <details>
 <summary>1. What is Administrative Distance (`AD` / route preference), why is it evaluated before route metrics, and what are the standard default `AD` values?</summary>
+
 Different routing protocols measure path cost in completely incompatible units (RIP counts hops, OSPF sums inverse bandwidth, BGP uses path attributes). When multiple protocols offer a route to the exact same prefix length, the router uses **Administrative Distance (`AD`)** to pick the most trustworthy protocol source **before** looking at metrics. Typical defaults: **Connected = `0`**, **Static = `1`**, **eBGP = `20`**, **EIGRP = `90`**, **OSPF = `110`**, **IS-IS = `115`**, **RIP = `120`**, **iBGP = `200`**.
 </details>
 
 <details>
 <summary>2. What is a floating static route, and why should static routes on production routers be paired with `BFD`?</summary>
+
 A **floating static route** is a backup static route configured with an Administrative Distance (`AD`) or `metric` higher than the primary dynamic/static route (e.g., `AD 200` so it loses to OSPF `110`), remaining dormant until the primary route is withdrawn. Because a plain static route stays installed in the FIB even if the next-hop router dies on a shared switch/VLAN, pairing it with **`BFD`** (`ip route 10.30.0.0/16 10.20.0.254 bfd`) withdraws the static route immediately when the next hop stops answering BFD heartbeats.
 </details>
 
 <details>
 <summary>3. State the six core jobs of any routing control plane.</summary>
+
 (1) **Discover local topology** (neighbors and links), (2) **Learn reachable destinations** (hosts, prefixes, services), (3) **Advertise and distribute** reachability reliably across the network, (4) **Compute loop-free paths** (and backups/ECMP), (5) **Install forwarding state** into the data-plane FIB, and (6) **React to topology changes** (detect, flood/update, recompute, and reprogram the FIB).
 </details>
 
 <details>
 <summary>4. How do proactive routing protocols ensure that their distributed databases stay synchronized and reliable (`CN` Chapter 11)?</summary>
+
 They combine three mechanisms: (1) **Sequence numbers and explicit acknowledgements** on update packets/LSAs so dropped updates are retransmitted and stale duplicates are ignored; (2) **Database description summaries** (sequence-number ranges or hashes, such as OSPF `DBD` packets and IS-IS `CSNP`/`PSNP` PDUs) exchanged at adjacency bring-up and periodically to detect missing records; and (3) **Keepalives / hellos** so routes learned from a failed neighbor are invalidated when the hold timer expires.
 </details>
 
 <details>
 <summary>5. Compare the three reachability distribution models: Flooding, Hop-by-Hop, and Centralized Store.</summary>
+
 - **Flooding** (`OSPF` LSAs, `IS-IS` LSPs): every node forwards raw link-state changes unmodified to all neighbors in the area, giving fast, identical topology databases at higher memory/CPU cost.\n- **Hop-by-Hop** (`RIP`, `EIGRP`, `BGP`): each node computes its own best path first and advertises **only its resulting best distance/path** to neighbors—hiding internal topology and reducing state at the cost of slower multi-hop path exploration.\n- **Centralized Store** (`SDN` controllers, `etcd`/Kubernetes API, InfiniBand `opensm`): nodes report state to and receive forwarding tables from a central cluster.
 </details>
 
 <details>
 <summary>6. Explain the Bellman-Ford Distance-Vector algorithm, the \"Count-to-Infinity\" problem, and how Split Horizon and Poison Reverse help.</summary>
+
 In **Bellman-Ford** (`1955–1958`), each router advertises its current distance to every destination to its immediate neighbors, and each neighbor selects `min(neighbor_distance + link_cost)`. If destination `N` behind `C` fails in `A — B — C — N`, `B` can hear `A`'s old route (which actually went through `B`) and think `N` is still reachable via `A` at cost `2 + 1 = 3`, causing `A` and `B` to increment costs back and forth (**count to infinity** until hitting RIP's `16`). **Split horizon** (never advertise a route back out the interface it was learned from) and **poison reverse** (advertise it back with cost `infinity`) stop 2-router loops, though 3+ router loops still require DUAL or path vectors.
 </details>
 
 <details>
 <summary>7. How does EIGRP's `DUAL` (*Diffusing Update Algorithm*) guarantee loop freedom at every instant?</summary>
+
 For each destination, DUAL tracks the router's own best historical metric (**Feasible Distance, `FD`**) and each neighbor's advertised metric (**Reported Distance, `RD`**). A neighbor is a **Feasible Successor** (an immediately usable, guaranteed loop-free backup) if and only if **`RD < FD`**—because the neighbor is strictly closer to the destination than this router, its path cannot possibly loop back through this router. If the primary successor fails and no neighbor satisfies `RD < FD`, the router enters the **`Active` state**, freezing the route and sending diffusing `Query` messages to neighbors until all `Reply` messages confirm a loop-free path.
 </details>
 
 <details>
 <summary>8. Walk through Dijkstra's Shortest-Path First (`SPF`) algorithm (`1959`) in Link-State protocols (`OSPF`, `IS-IS`).</summary>
+
 Starting from the local router as `root` (`cost = 0`) and all other nodes at `cost = ∞`:\n(1) Pop the unvisited node `u` with the smallest tentative distance from the priority queue and add it to the shortest-path tree;\n(2) For each neighbor `v` of `u` with link cost `w`, if `dist[u] + w < dist[v]`, update `dist[v] = dist[u] + w` and set `first_hop[v] = first_hop[u]` (or merge `first_hop` sets if `dist[u] + w == dist[v]` for **ECMP**);\n(3) Repeat until all reachable nodes are in the tree.
 </details>
 
 <details>
 <summary>9. What is the difference between a Full `SPF`, an Incremental `SPF` (`iSPF`), and a Partial `SPF` (`PRC`)?</summary>
+
 - **Full SPF**: recomputes the entire shortest-path tree for all routers in the area.\n- **Incremental SPF (`iSPF`)**: when a link metric changes or fails, recomputes **only the affected subtree** below that link rather than the whole graph.\n- **Partial SPF / Partial Route Calculation (`PRC`)**: when an IP prefix attached to a router (`leaf`) is added or removed without any router-to-router link change, the topology tree itself has not changed—so the router updates only that prefix's FIB entry without re-running Dijkstra.
 </details>
 
 <details>
 <summary>10. How does a Path-Vector protocol (`BGP`) prevent routing loops, and what is \"path exploration\"?</summary>
+
 Every BGP route advertisement carries an **`AS_PATH`** attribute listing the exact sequence of Autonomous System Numbers (`ASN`s) the announcement traversed. When a router receives an update, it checks whether its **own ASN is already present in `AS_PATH`**; if so, it rejects the route immediately, making steady-state routing loops impossible. When a primary path fails, **path exploration** occurs as downstream routers try and withdraw successively longer alternate AS paths before settling on the final state.
 </details>
 
 <details>
 <summary>11. State the Loop-Free Alternate (`LFA`, RFC 5286) inequality and explain the \"Waterfall\" (Continental Divide) model (`CN` Chapter 12).</summary>
+
 For source router `S` and destination `D`, an alternate neighbor `N` is a **Loop-Free Alternate (`LFA`)** if and only if:\n**`dist(N, D) < dist(N, S) + dist(S, D)`**\nmeaning `N`'s shortest path to `D` does not traverse `S`. In the **waterfall model**, imagine elevation equal to distance from `D` so packets flow downhill toward `D`; a continental divide (ridge) separates nodes whose water flows directly toward `D` from nodes whose water flows back through `S`. An LFA is any neighbor sitting on the `D` side of that ridge.
 </details>
 
 <details>
 <summary>12. Define `P-space`, `Q-space`, Remote LFA (`rLFA`, RFC 7490), and Topology-Independent LFA (`TI-LFA`).</summary>
+
 When link `S–E` fails: **`P-space`** is the set of routers reachable from `S` along shortest paths **without** crossing `S–E`; **`Q-space`** is the set of routers from which packets reach `E`/`D` along shortest paths **without** crossing `S–E`. In a symmetric ring where no direct neighbor of `S` is in `Q-space`, **Remote LFA (`rLFA`)** finds a **`PQ` node** in `P-space ∩ Q-space` and tunnels repaired packets from `S` to the `PQ` node, from which they flow normally to `D`. **`TI-LFA`** uses **Segment Routing (`SR`)** label/SID stacks to steer repaired traffic along the exact post-convergence path, guaranteeing **100% loop-free fast-reroute coverage** in any connected topology.
 </details>
 
 <details>
 <summary>13. Why can a naive \"find shortest path, delete its links, find second shortest path\" algorithm fail to find disjoint paths, and what does Suurballe's algorithm do?</summary>
+
 In "trap" topologies, the single shortest path traverses a bridge link that cuts across both sides of the network, blocking any second completely disjoint path even when a pair of slightly longer link-disjoint paths exists. **Suurballe's algorithm** (1) finds the shortest path tree, (2) reweights edges and reverses the edges of the first shortest path, (3) runs Dijkstra a second time, and (4) cancels the reversed shared edges to yield the **minimum-total-cost pair of link-disjoint paths** in any two-connected graph.
 </details>
 
 <details>
 <summary>14. Compare Event-Driven failure detection, Routing-Protocol Hello Polling, and `BFD` (`RFC 5880`).</summary>
+
 - **Event-driven (Loss of Light / Carrier)**: detects local physical link down in **`~1 to 10 ms`**, but cannot detect a wedged remote router CPU, a silent forwarding-plane drop, or a failure behind an L2/optical box.\n- **Routing Hello Polling**: detects end-to-end neighbor liveliness, but default timers are slow (`OSPF 40 s`, `BGP 180 s`).\n- **`BFD` (`RFC 5880`, UDP ports `3784` single-hop / `4784` multihop)**: runs lightweight forwarding-plane heartbeats (e.g., `50–100 ms` x `3` = **`150–300 ms`**) often offloaded to NIC/switch hardware, notifying all registered protocols (`BGP`, `OSPF`, static routes) simultaneously.
 </details>
 
 <details>
 <summary>15. How does Eric Brewer's `CAP` theorem (`Consistency`, `Accessibility`/`Availability`, `Partition tolerance`) apply to routing control planes (`CN` Chapter 14)?</summary>
+
 During a network partition or topology change, a distributed routing system cannot simultaneously be **100% Consistent** (zero loops or stale paths) and **100% Accessible** (forwarding packets without interruption). Distributed link-state and distance-vector protocols choose **Accessibility + eventual consistency** (continuing to forward packets immediately while updates propagate, accepting brief millisecond micro-loops or drops), whereas strict centralized SDN controllers that require controller consensus before forwarding choose **Consistency** over availability if the controller partition fails.
 </details>
 
 <details>
 <summary>16. Break down the five sequential components of total network convergence time after a link failure.</summary>
+
 `Total Convergence Time` = (1) **Failure Detection** (`carrier loss ~10 ms` or `BFD 150–300 ms`) + (2) **Update Origination** (`LSA generation throttle / hold-down`) + (3) **Update Propagation** (`flooding or hop-by-hop serialization/queuing`) + (4) **Path Recomputation** (`Dijkstra SPF` or `BGP best-path`) + (5) **FIB Hardware Programming** (updating ASIC `SRAM`/`TCAM` forwarding entries, optimized from `O(prefixes)` to `O(1)` via hierarchical **Prefix-Independent Convergence `PIC`**).
 </details>
 
 <details>
 <summary>17. What is a transient \"micro-loop\" during link-state convergence, and how is it mitigated?</summary>
+
 While an LSA flood is propagating and routers run SPF at slightly different times, Router A (which has already updated its FIB to route around a failed link via Neighbor B) may forward packets to Neighbor B (which has **not yet updated its FIB** and still points back to Router A), bouncing packets back and forth until `TTL` expires or B finishes updating its FIB. Mitigations include **LFA / TI-LFA fast reroute**, **Ordered FIB (`oFIB`)** updates (updating far routers before near routers), and local micro-loop avoidance delays.
 </details>
 
 <details>
 <summary>18. What are the three ways to handle incompatible metrics when redistributing routes from Protocol X into Protocol Y (`CN` Chapter 11)?</summary>
+
 (1) **Assign a fixed seed metric** at the redistribution boundary (simple, but loses internal distance visibility inside Protocol X); (2) **Translate / copy the source metric directly** (only works if metric scales overlap); or (3) **Carry the external metric in a separate attribute alongside internal cost** (such as OSPF External Type 1 `E1` vs Type 2 `E2`, or BGP `MED`), enabling either **hot-potato routing** (exit to the nearest border router) or **cold-potato routing** (exit at the border router closest to the final external destination).
 </details>
 
 <details>
 <summary>19. How does mutual (two-way) redistribution between two routing protocols at two boundary routers cause a permanent routing loop, and how do Route Tags prevent it?</summary>
+
 Suppose Boundary Router 1 redistributes prefix `P` from Protocol A (e.g., OSPF, `AD 110`) into Protocol B (e.g., RIP/eBGP). Boundary Router 2 learns `P` via Protocol B and—if Protocol B has a lower `AD` or preferred metric—installs it and redistributes `P` **back into Protocol A**; routers in Domain A now route toward Router 2, which routes back into Domain B toward Router 1 in a circle. Prevent it by setting a **Route Tag** (`set tag 1001`) when redistributing `A -> B` and blocking any route matching `tag 1001` in the `B -> A` `route-map` (alongside prefix-lists and `AD` tuning).
 </details>
 
 <details>
 <summary>20. How does `FRR` (`Free Range Routing`) split work between `zebra` and protocol daemons (`bgpd`, `ospfd`, `isisd`, `bfdd`) on Linux?</summary>
+
 Each protocol daemon (`bgpd`, `ospfd`, `isisd`) runs its own control plane and computes its best protocol routes; it then sends those candidate routes to the central **`zebra`** daemon. **`zebra`** maintains the master Linux RIB, resolves Administrative Distance (`AD`) winners and recursive next hops, coordinates with **`bfdd`**, and programs the winning routes into the **Linux kernel FIB** via `netlink` (`ip route show proto bgp` / `proto ospf`).
 </details>
 

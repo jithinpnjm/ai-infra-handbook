@@ -340,101 +340,121 @@ Next, on a disposable Linux VM using containerlab or network namespaces with FRR
 
 <details>
 <summary>1. In what sense is Spanning Tree (`STP`) a distance-vector protocol, and how does it learn host reachability (`CN` Chapter 15)?</summary>
+
 STP's Root Bridge and Root Port election is a single-destination **Bellman-Ford distance-vector calculation** where switches exchange BPDUs advertising `{root_id, cost_to_root}` and pick the port with the lowest cumulative path cost to the Root Bridge. Unlike routing protocols (which advertise prefixes proactively in the control plane), STP switches learn host MAC reachability **reactively in the data plane** by inspecting the source MAC address of arriving data frames and flooding unknown destinations.
 </details>
 
 <details>
 <summary>2. How does `RIP` (`RFC 2453`) work, what are its timers and hop limit, and why is it unsuitable for modern data centers?</summary>
+
 RIP routers broadcast/multicast (`224.0.0.9`, `UDP port 520`) their entire routing table every **`30` seconds** (`180 s` invalid timer, `240 s` flush timer). It uses pure **hop count** as its metric (ignoring whether a link is `10 Mb/s` or `400 Gb/s`) with **`16` defined as infinity (`max 15 hops`)**, has no concept of areas/hierarchy, and takes tens of seconds to minutes to converge after a link failure.
 </details>
 
 <details>
 <summary>3. What three architectural improvements did `EIGRP` (`RFC 7868`) introduce over classic distance-vector protocols like `RIP`?</summary>
+
 (1) **Explicit neighbor discovery and Reliable Transport Protocol (`RTP`, IP protocol `88`, multicast `224.0.0.10`)**: sends only incremental, sequenced, acknowledged updates when changes occur rather than periodic full-table dumps;\n(2) **DUAL (*Diffusing Update Algorithm*)**: tracks Feasible Distance (`FD`) and Reported Distance (`RD`), guaranteeing 100% loop freedom and sub-second local failover whenever a **Feasible Successor (`RD < FD`)** exists; and\n(3) **Composite metric** (combining minimum path bandwidth and cumulative delay) plus support for **unequal-cost load balancing (`variance`)**.
 </details>
 
 <details>
 <summary>4. Why does `IS-IS` run directly over Layer 2 (`CLNS`) instead of IP, and how is an IS-IS `NET` (`49.0001.1921.6800.1001.00`) structured?</summary>
+
 IS-IS (*Intermediate System to Intermediate System*, ISO 10589 / RFC 1195) was designed in the OSI protocol suite to run directly over the Data Link layer (`EtherType / SNAP`), so **forming router adjacencies does not depend on IPv4 or IPv6 interface addresses** and IS-IS control packets cannot be spoofed from remote IP hops. A **Network Entity Title (`NET`)** such as `49.0001.1921.6800.1001.00` has three parts read from right to left:\n- **`00` (1 byte)**: the **N-Selector (`NSEL`)**, always `00` for the router itself;\n- **`1921.6800.1001` (6 bytes / 12 hex digits)**: the unique **System ID** (conventionally formed by zero-padding the router's loopback IP `192.168.001.001`);\n- **`49.0001` (1–13 bytes)**: the **Area Address** (`49` = private AFI, `0001` = area ID).
 </details>
 
 <details>
 <summary>5. How does `IS-IS` marshal routing data into `LSP`s, and why did `TLV` encoding make `IS-IS` easier to extend for IPv6 and Segment Routing than `OSPFv2`?</summary>
+
 Each IS-IS router originates a **single logical Link State PDU (`LSP`)** (split into up to 256 independently flooded fragments) whose body is a sequence of extensible **Type-Length-Value (`TLV`)** records (`TLV 22` extended neighbor reachability, `TLV 135` IPv4 prefixes, `TLV 236` IPv6 prefixes). Adding IPv6 (`RFC 5308`) or Segment Routing to IS-IS required only defining new TLV numbers inside the same protocol instance, whereas OSPFv2's fixed-format 32-bit IPv4 headers required creating a whole new protocol version (**`OSPFv3`, RFC 5340**) for IPv6.
 </details>
 
 <details>
 <summary>6. Explain the roles of `IIH`, `CSNP`, `PSNP`, and the `SRM` flag in `IS-IS` adjacency formation and reliable flooding.</summary>
+
 - **`IIH` (*IS-IS Hello*)**: discovers neighbors, proves 2-way connectivity (3-way P2P handshake, `RFC 5303`), and is **padded to the full interface MTU** so MTU mismatches fail immediately.\n- **`CSNP` (*Complete Sequence Number PDU*)**: a summary catalog of every LSP header (`LSP ID`, sequence number, remaining lifetime, checksum) in the sender's database, exchanged on P2P adjacency up and sent periodically by the `DIS` on broadcast LANs.\n- **`PSNP` (*Partial Sequence Number PDU*)**: used both to **request** missing/newer LSPs discovered in a `CSNP` and to **acknowledge** received LSPs on point-to-point links.\n- **`SRM` (*Send Route Message*) flag**: set per interface on an LSP to mark that it must be transmitted (and retransmitted until acknowledged by a `PSNP`).
 </details>
 
 <details>
 <summary>7. Why must you always configure `metric-style wide` in `IS-IS`, and what does the `IS-IS` `overload` bit do?</summary>
+
 Original IS-IS (`narrow` metrics, `TLV 2`/`128`) used a **6-bit link metric (`max 63` per link, `1023` total path)**, which is far too coarse to distinguish 1G, 10G, 100G, and 400G links. **`metric-style wide`** (`TLV 22`/`135`/`236`) provides **24-bit link metrics and 32-bit path metrics**. Setting the **overload (`OL`) bit** in a router's LSP tells all other routers to **never route transit traffic through this router** (while still routing to prefixes directly attached to it)—ideal for gracefully draining traffic before a switch maintenance reboot or while waiting for BGP to converge on boot (`set-overload-bit on-startup`).
 </details>
 
 <details>
 <summary>8. List the five `OSPF` packet types (`IP protocol 89`) and the two `OSPF` multicast addresses.</summary>
+
 The five OSPF packet types are: (1) **Hello** (discover neighbors and keepalives), (2) **Database Description (`DBD`/`DD`)** (exchange LSA header summaries and check interface MTU), (3) **Link State Request (`LSR`)** (request specific missing/newer LSAs), (4) **Link State Update (`LSU`)** (carry full flooded LSAs), and (5) **Link State Acknowledgment (`LSAck`)** (explicitly acknowledge LSUs). Multicast addresses: **`224.0.0.5` (`FF02::5`)** = `AllSPFRouters`; **`224.0.0.6` (`FF02::6`)** = `AllDRRouters` (DR and BDR only).
 </details>
 
 <details>
 <summary>9. Match `OSPF` `LSA` Types `1`, `2`, `3`, `4`, `5`, and `7` to who originates them and their flooding scope.</summary>
+
 - **Type `1` (Router LSA)**: originated by **every router** (one per area); lists the router's links, neighbors, and costs; flooded **within the area**.\n- **Type `2` (Network LSA)**: originated by the **Designated Router (`DR`)** on broadcast/multi-access links; lists attached routers on that LAN; flooded **within the area**.\n- **Type `3` (Summary LSA)**: originated by an **Area Border Router (`ABR`)**; advertises prefixes from one area into another; flooded **into adjacent areas**.\n- **Type `4` (ASBR Summary LSA)**: originated by an **ABR**; advertises the reachability of an `ASBR`.\n- **Type `5` (AS-External LSA)**: originated by an **Autonomous System Boundary Router (`ASBR`)** for redistributed external routes (`E1`/`E2`); flooded across the **entire AS** (except stub/NSSA areas).\n- **Type `7` (NSSA External LSA)**: originated by an **ASBR inside a Not-So-Stubby Area (`NSSA`)**; flooded only within the NSSA and translated into Type `5` by the NSSA ABR.
 </details>
 
 <details>
 <summary>10. Walk through the seven `OSPF` neighbor states (`Down -> Init -> 2-Way -> ExStart -> Exchange -> Loading -> Full`).</summary>
+
 - **`Down`**: no Hello received.\n- **`Init`**: Hello received from neighbor, but **my own Router ID is not yet listed** in its Hello (one-way).\n- **`2-Way`**: bidirectional communication confirmed (my Router ID is in neighbor's Hello); DR/BDR elected on broadcast links (`DROTHER`-to-`DROTHER` peers stop here).\n- **`ExStart`**: Master/Slave elected by highest Router ID to sequence `DBD` exchange.\n- **`Exchange`**: routers exchange **`DBD`** summary packets (and verify matching **interface MTU**).\n- **`Loading`**: routers send **`LSR`** packets for missing/outdated LSAs and receive **`LSU`** replies.\n- **`Full`**: Link-State Databases are 100% synchronized and Dijkstra SPF runs.
 </details>
 
 <details>
 <summary>11. What are the six parameters in an `OSPF` Hello packet that MUST match for two routers to form an adjacency, and what causes an adjacency to stick in `ExStart` / `Exchange`?</summary>
+
 To pass the Hello check, two routers must match on: (1) **Area ID**, (2) **Hello and Dead intervals**, (3) **Subnet mask** (on broadcast/multi-access links), (4) **Authentication type and key**, (5) **Stub / NSSA area flags**, and (6) **unique Router IDs**. If two routers reach `2-Way` and then get stuck in **`ExStart` or `Exchange`**, the #1 cause is an **interface `MTU` mismatch** (recorded inside the `DBD` packet; the router with the smaller MTU rejects the larger `DBD`) or a **duplicate Router ID**.
 </details>
 
 <details>
 <summary>12. Why do broadcast segments elect a `DR` and `BDR` in `OSPF` (or a `DIS` in `IS-IS`), and why should data-center leaf-spine links always configure `point-to-point` mode?</summary>
+
 On a broadcast Ethernet segment with `n` routers, full-mesh adjacencies would require `n(n - 1) / 2` adjacencies and quadratic LSA flooding. Electing a **Designated Router (`DR`)** and **Backup DR (`BDR`)** creates a logical star (pseudo-node) so every `DROTHER` forms `Full` adjacencies only with the `DR` and `BDR`. However, in a data-center fabric every cable is a **2-router point-to-point link**; leaving them in default `broadcast` mode wastes seconds waiting on the `40 s` DR wait timer and generates useless Type 2 Network LSAs. Always set **`ip ospf network point-to-point`** (or `isis network point-to-point`).
 </details>
 
 <details>
 <summary>13. What is the `OSPF` `auto-cost reference-bandwidth` trap, and how do you fix it on a 10G/100G/400G fabric?</summary>
+
 OSPF calculates interface cost as `cost = max(1, reference_bandwidth / interface_bandwidth)`. Because the 1990s default `reference_bandwidth` is **`100 Mb/s`**, every link of **`100 Mb/s`, `1 Gb/s`, `10 Gb/s`, `100 Gb/s`, and `400 Gb/s` gets the exact same cost of `1`**—causing OSPF to treat a 1G management link and a 400G spine link as equal. Fix it by setting **`auto-cost reference-bandwidth 400000`** (`400 Gb/s` in `Mb/s`) identically on every router in the domain (or setting explicit `ip ospf cost` per interface).
 </details>
 
 <details>
 <summary>14. Compare `OSPF` Stub, Totally Stubby, and `NSSA` (*Not-So-Stubby*) areas.</summary>
+
 - **Stub area**: blocks Type `4` and Type `5` AS-External LSAs at the ABR, replacing them with a single Type `3` default route (`0.0.0.0/0`).\n- **Totally Stubby area**: blocks Type `3` inter-area Summary LSAs as well as Type `4`/`5`, leaving only intra-area Type `1`/`2` LSAs plus the single ABR default route.\n- **Not-So-Stubby Area (`NSSA`)**: blocks external Type `5` LSAs from entering the area like a stub area, while still allowing an `ASBR` inside the area to inject external routes as **Type `7` LSAs** (which the ABR translates into Type `5` for the rest of the network).
 </details>
 
 <details>
 <summary>15. How do `OSPF` and `IS-IS` age out and flush stale LSAs/LSPs from the Link-State Database?</summary>
+
 In **OSPF**, each LSA's `LS Age` counts **up** from `0` to `MaxAge = 3600 s` (1 hour, refreshed by the originator every `1800 s` = 30 min); to withdraw/flush an LSA immediately, the originator floods it with `LS Age = 3600` (`MaxAge`). In **IS-IS**, each LSP's `Remaining Lifetime` counts **down** from `1200 s` (default 20 min) to `0`; to flush an LSP immediately, a router floods it with `Remaining Lifetime = 0` (zero-age purge).
 </details>
 
 <details>
 <summary>16. Compare how `OSPF` and `IS-IS` place area boundaries on routers versus links.</summary>
+
 In **OSPF**, area boundaries sit **inside the router (`ABR`)**: each interface belongs to a specific area, and an ABR maintains separate LSDBs for Area 0 and each attached area. In **IS-IS**, area boundaries sit **on the links between routers**: an entire router belongs to a single area (`NET`), and hierarchy is formed by whether adjacencies are **Level 1** (intra-area), **Level 2** (inter-area backbone), or **Level 1/2** (making it trivial to run a flat `level-2-only` data-center underlay).
 </details>
 
 <details>
 <summary>17. Why should every router in an `OSPF` or `IS-IS` fabric set `passive-interface default`?</summary>
+
 Without `passive-interface default`, OSPF/IS-IS sends multicast Hellos out **every IP-enabled interface**, including server-facing access ports and management VLANs—allowing a misconfigured or compromised server/container to form a routing adjacency and inject bogus routes into the fabric. Setting `passive-interface default` and explicitly enabling `no passive-interface swp1..N` on switch-to-switch fabric uplinks advertises connected prefixes without accepting neighbor adjacencies on host ports.
 </details>
 
 <details>
 <summary>18. How do you gracefully drain traffic off an `OSPF` or `IS-IS` spine switch before a planned maintenance reboot?</summary>
+
 Before rebooting or shutting down ports, advertise the switch as unfavorable for transit so all leaf switches recompute SPF and shift ECMP flows onto the remaining spines with **zero packet loss**:\n- In **OSPF**: configure **`max-metric router-lsa administrative`** (sets all transit link costs in the Router LSA to `65535`; also use `max-metric router-lsa on-startup 120` to wait for BGP on boot).\n- In **IS-IS**: configure **`set-overload-bit`** (and `set-overload-bit on-startup 120`).
 </details>
 
 <details>
 <summary>19. Compare `OSPF` External Metric Type 1 (`E1`) and Type 2 (`E2`).</summary>
+
 - **`E2` (*External Type 2*, the default)**: the route's cost is **only the external metric** advertised by the `ASBR`, ignoring the internal OSPF path cost to reach the `ASBR` (cold-potato style unless tied).\n- **`E1` (*External Type 1*)**: the route's cost is the **sum of the external metric PLUS the internal OSPF cost to reach the `ASBR`**, allowing routers to factor internal fabric distance into exit selection.
 </details>
 
 <details>
 <summary>20. Summarize the six best-practice configuration rules for running an `OSPF` or `IS-IS` underlay in an AI leaf-spine fabric.</summary>
+
 (1) Use a **single flat domain** (`Area 0` in OSPF or `is-type level-2-only` in IS-IS); (2) configure all inter-switch links as **`network point-to-point`**; (3) assign a dedicated `/32` loopback for `router-id` / `NET` System ID; (4) set **`auto-cost reference-bandwidth 400000`** (OSPF) or **`metric-style wide`** (IS-IS) and **`maximum-paths 64`**; (5) enable **`BFD`** (`100 ms x 3`) and fast SPF/LSA timers (`timers throttle spf 50 100 2000`); and (6) enable **`passive-interface default`**, authentication (`HMAC-SHA`), and startup overload/max-metric protection.
 </details>
 

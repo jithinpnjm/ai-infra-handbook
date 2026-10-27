@@ -436,101 +436,121 @@ wc -l train.log gpus.csv; head -3 train.log; head -3 gpus.csv
 
 <details>
 <summary>1. What shared property of Unix text tools allows them to be chained into pipelines?</summary>
+
 Every tool reads lines of plain text from standard input (`fd 0`) and writes lines of plain text to standard output (`fd 1`), while sending diagnostics to standard error (`fd 2`).
 </details>
 
 <details>
 <summary>2. Why must you run `sort` before `uniq -c`, and what happens if you omit `sort`?</summary>
+
 `uniq` only compares and collapses *adjacent* identical lines. Without `sort` first, identical keys separated by other lines are counted separately in multiple partial groups.
 </details>
 
 <details>
 <summary>3. Write a one-line pipeline that prints the five most frequent values in the third whitespace-separated column of `file`.</summary>
+
 `awk '{print $3}' file | sort | uniq -c | sort -rn | head -5`.
 </details>
 
 <details>
 <summary>4. What is the difference between Basic Regular Expressions (BRE) and Extended Regular Expressions (ERE), and how do you enable ERE in `grep` and `sed`?</summary>
+
 In BRE, the operators `+`, `?`, `|`, `(`, `)`, `{`, and `}` match literally unless preceded by a backslash (`\+`, `\|`). In ERE (enabled via `grep -E` and `sed -E`, and native in `awk`), they act as regex operators directly without backslashes.
 </details>
 
 <details>
 <summary>5. Why does `grep 10.0.0.1 hosts.txt` match `10x0y0z1` and `10.0.0.100`, and how do you fix both problems?</summary>
+
 In regular expressions, `.` matches any single arbitrary character, and unanchored patterns match substrings. Use `grep -wF '10.0.0.1' hosts.txt` (`-F` for fixed literal string, `-w` for whole-word match) or escape the dots (`10\.0\.0\.1`).
 </details>
 
 <details>
 <summary>6. What does `grep -v '^#' slurm.conf | grep -v '^$'` do?</summary>
+
 The first `grep -v '^#'` removes comment lines starting with `#`, and the second `grep -v '^$'` removes empty lines, leaving only active configuration directives.
 </details>
 
 <details>
 <summary>7. What is the difference between `grep -c`, `grep -l`, `grep -o`, and `grep -q`?</summary>
+
 `-c` prints only the count of matching lines, and `-l` prints only the filenames that contain at least one match. `-o` prints only the matching substring rather than the whole line. `-q` suppresses all output and exits with status `0` as soon as a match is found, which is ideal for `if grep -q ...` conditionals.
 </details>
 
 <details>
 <summary>8. In `less`, what do the options `-S`, `-R`, `-F`, and `-N` do, and what key follows a growing log file?</summary>
+
 `-S` disables line wrapping so wide tables stay aligned horizontally, and `-R` renders ANSI color escape sequences. `-F` exits automatically if the output fits on one screen, and `-N` displays line numbers. Pressing `F` inside `less` follows a growing file like `tail -f`.
 </details>
 
 <details>
 <summary>9. What is the difference between `tail -n 20` and `tail -n +2`, and between `tail -f` and `tail -F`?</summary>
+
 `tail -n 20` prints the last 20 lines of a file, whereas `tail -n +2` prints from line 2 to the end (skipping the 1-line header). `tail -f` follows an open file descriptor, whereas `tail -F` follows by filename and automatically reopens the file when `logrotate` rotates and replaces it.
 </details>
 
 <details>
 <summary>10. Why does `awk '{print $2}'` parse `ps` and `squeue` tables accurately when `cut -d' ' -f2` fails?</summary>
+
 `awk` splits fields on *runs* of one or more whitespace characters (spaces or tabs) and strips leading whitespace by default. `cut -d' '` treats every single space character as a separate delimiter, producing empty fields whenever columns are padded with multiple spaces.
 </details>
 
 <details>
 <summary>11. In `awk '{ s += $3 } END { print s, s/NR }'`, what do `$3`, `NR`, and `END` represent?</summary>
+
 `$3` is the third whitespace-separated field of the current line, `NR` is the number of records (lines) read so far, and `END` is the block executed once after all input lines have been processed.
 </details>
 
 <details>
 <summary>12. How do you group and count occurrences of column 1 in `awk` without running `sort | uniq -c`?</summary>
+
 Use an associative array in `awk`: `awk '{ c[$1]++ } END { for (k in c) print c[k], k }' file | sort -rn`.
 </details>
 
 <details>
 <summary>13. What is the difference between `sed 's/old/new/'` and `sed 's/old/new/g'`, and how do you print only lines 10 through 20 with `sed`?</summary>
+
 Without `g`, `sed 's/old/new/'` replaces only the *first* match on each line; adding `g` replaces *all* matches on each line. To print only lines 10 to 20, suppress default output with `-n` and use an address range: `sed -n '10,20p' file`.
 </details>
 
 <details>
 <summary>14. Why does `sed -i 's/a/b/' file` fail on macOS when copied from a Linux runbook, and what is the portable alternative?</summary>
+
 GNU `sed` on Linux treats `-i`'s backup-extension argument as optional, whereas BSD `sed` on macOS requires an explicit argument (`sed -i '' 's/a/b/' file`). Passing a non-empty backup suffix (`sed -i.bak 's/a/b/' file`) works on both Linux and macOS.
 </details>
 
 <details>
 <summary>15. Why should you pair `find ... -print0` with `xargs -0`, and what do `xargs -n 50` and `xargs -P 8` control?</summary>
+
 `-print0` and `-0` delimit filenames with the NUL byte (`\0`), preventing filenames containing spaces, quotes, or newlines from splitting into bogus arguments. `-n 50` passes at most 50 items per command invocation, and `-P 8` runs up to 8 command processes in parallel.
 </details>
 
 <details>
 <summary>16. Why does `diff -u old.conf new.conf` use `-u`, and how does `comm -12 <(sort a) <(sort b)` work?</summary>
+
 `-u` produces a unified diff showing context lines alongside `-` (removed) and `+` (added) lines, which `patch` and Git understand. `comm` compares two sorted inputs and outputs three columns (only in `a`, only in `b`, and in both); `-12` suppresses columns 1 and 2, printing only the intersection present in both files.
 </details>
 
 <details>
 <summary>17. Why should you parse JSON with `jq` instead of `grep`/`sed`, and what does `jq -r` do?</summary>
+
 JSON permits arbitrary whitespace, line breaks, and nested objects/arrays that break line-oriented regexes. `jq` parses the JSON syntax tree directly, and `-r` (`--raw-output`) prints extracted string values without surrounding double quotes so shell pipelines can consume them cleanly.
 </details>
 
 <details>
 <summary>18. How do you ask `nvidia-smi` for machine-readable GPU utilization and memory usage without headers or units?</summary>
+
 Run `nvidia-smi --query-gpu=index,utilization.gpu,memory.used --format=csv,noheader,nounits`, which emits one clean comma-separated line per GPU.
 </details>
 
 <details>
 <summary>19. How can `sort` produce different orderings for the exact same file on two Linux machines, and how do you force identical byte order?</summary>
+
 Different `LANG` or `LC_ALL` locale settings apply language-specific collation rules (for example, case-folding `a` and `B` together in `en_US.UTF-8`). Prefixing the command with `LC_ALL=C` forces deterministic ASCII byte-value sorting and speeds up comparisons.
 </details>
 
 <details>
 <summary>20. Why does `grep '^ERROR$' file.log` fail on a log file copied from a Windows machine, and how do you fix it?</summary>
+
 Windows text files end lines with `CRLF` (`\r\n`), so from Linux's perspective the character before `\n` is `\r` (`ERROR\r`), preventing `$` from matching immediately after `R`. Strip carriage returns with `tr -d '\r' < file.log > clean.log` (or `dos2unix`).
 </details>
 

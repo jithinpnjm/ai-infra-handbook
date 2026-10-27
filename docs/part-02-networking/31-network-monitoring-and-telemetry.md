@@ -400,101 +400,121 @@ Next, on a disposable Linux VM with Docker and the Chapter 2.27 containerlab fab
 
 <details>
 <summary>1. What are the three fundamental questions of network monitoring, and why do 1- to 5-minute `SNMP` polls miss AI-fabric congestion?</summary>
+
 The three questions are: **(1) Is it up?** (availability), **(2) Is it healthy?** (`USE`: utilization, saturation, errors), and **(3) Is it doing its job?** (the application purpose metric: `AllReduce` collective bandwidth, training step time, and inference `TTFT`/`TPOT`). Synchronized GPU collective bursts and incast congestion last **microseconds to milliseconds**: a 60-second or 5-minute SNMP average divides a 10-millisecond 400 Gb/s queue overflow by 60,000 milliseconds, making the link look 2% utilized while collectives are stalling on PFC pauses or retransmits.
 </details>
 
 <details>
 <summary>2. Compare Historical Monitoring and Real-Time Monitoring in an AI data center (`ADC` Chapter 11).</summary>
+
 - **Historical Monitoring**: aggregates utilization, error trends, and job metrics over days, weeks, and months to drive **capacity planning** (e.g., observing a 10% biweekly growth in inter-pod bandwidth to schedule spine upgrades before saturation), optic lifecycle replacement, and post-mortem correlation.\n- **Real-Time Monitoring**: streams sub-second to 1–10s node and fabric state (ASIC buffer watermark, switch CPU/memory/flash, PFC pause rate, ECN/CNP rate, link flaps) to trigger **immediate operational or automated corrective actions** (draining a degraded link/rail, re-steering flows, or killing a runaway job).
 </details>
 
 <details>
 <summary>3. Compare `gNMI Streaming Telemetry`, `sFlow` / `IPFIX`, and `TWAMP` / `Blackbox` Active Probes.</summary>
+
 - **`gNMI` Streaming Telemetry**: switches push YANG-modeled counters (`SAMPLE` every 1–10s) and state changes (`ON_CHANGE`) over HTTP/2 + Protobuf to collectors (`gNMIc`, `Telegraf`).\n- **`sFlow` / `IPFIX` (`NetFlow`)**: exports statistically **sampled packet headers** (`1-in-1000` to `1-in-4000` in `sFlow`) or flow-cache records (`IPFIX`) to `goflow2`/`pmacct`, revealing **who is talking to whom (5-tuples), top talkers, elephant flows, and ECMP flow entropy** without exploding Prometheus label cardinality.\n- **`TWAMP` (*Two-Way Active Measurement Protocol*) / `Blackbox` Probes**: synthetic packets sent continuously between representative host pairs across rails and pods to measure real end-to-end **loss, RTT, and jitter** even when no job is running.
 </details>
 
 <details>
 <summary>4. Which `node_exporter` collectors should be enabled on every Linux GPU server to monitor host networking and RDMA?</summary>
+
 Enable: **`--collector.netdev`** (bytes/packets/errors/drops), **`--collector.netstat`** and **`--collector.sockstat`** (TCP retransmits, `ListenOverflows`, `UdpRcvbufErrors`), **`--collector.softnet`** (`softnet_stat` drops and `time_squeeze`), **`--collector.conntrack`** (`entries` vs `limit`), **`--collector.ethtool`** (filtered to include `pause`, `discard`, `drop`, `rx_missed`, `rx_out_of_buffer`, `crc`, `fcs`, `ecn`, `cnp`), **`--collector.infiniband`** and **`--collector.rdma`** (`port_xmit_wait`, RDMA bytes/errors), **`--collector.bonding`**, and **`--collector.qdisc`**.
 </details>
 
 <details>
 <summary>5. How does the Prometheus multi-target exporter pattern (`relabel_configs`) work for `snmp_exporter` (`:9116`) and `blackbox_exporter` (`:9115`)?</summary>
+
 Because legacy switches/PDUs and remote probe IPs do not run a Prometheus exporter directly on them, Prometheus scrapes the **exporter daemon (`snmp-exporter:9116/snmp` or `blackbox:9115/probe`)** while passing the actual target device IP as an HTTP query parameter **`?target=<device_ip>`**. The three `relabel_configs` rules: (1) copy `__address__` (`10.10.1.11`) into `__param_target`, (2) copy `__param_target` into the visible `instance` label so metrics are labeled with `instance="10.10.1.11"`, and (3) rewrite `__address__` to the exporter's address (`blackbox:9115`).
 </details>
 
 <details>
 <summary>6. What are the three Prometheus metric types (`Counter`, `Gauge`, `Histogram`), and why must you apply `rate()` BEFORE summing a Counter across interfaces?</summary>
+
 - **Counter**: a monotonically increasing cumulative total (`_total`, such as `node_network_receive_bytes_total`) that resets to `0` only when the device/driver reboots.\n- **Gauge**: a point-in-time value that can go up or down (temperature, queue occupancy, `node_nf_conntrack_entries`).\n- **Histogram**: buckets observations by latency/size (`_bucket`, `_sum`, `_count`, queried with `histogram_quantile()`).\nYou must **always take `rate(counter[5m])` first and `sum()` second** (`sum by (device) (rate(counter[5m]))`): `rate()` automatically detects and compensates for counter resets on individual series, whereas summing raw counters first mixes series with different start times and hides single-port counter resets.
 </details>
 
 <details>
 <summary>7. How do you write PromQL expressions to detect Per-Rail Bandwidth Skew on an 8-GPU node and ECMP Uplink Imbalance on a leaf switch?</summary>
+
 - **Per-Rail Bandwidth Skew (`max / min` across the 8 rail NICs `ens1f0..ens8f0` on a node)**:\n`max by (instance) (rate(node_network_transmit_bytes_total{device=~"ens.*"}[2m])) / min by (instance) (rate(node_network_transmit_bytes_total{device=~"ens.*"}[2m])) > 1.5` (gated by `max > 5e9` so idle nodes don't fire).\n- **Switch Uplink ECMP Imbalance (`stddev / avg` across spine uplinks)**:\n`stddev by (device) (rate(gnmi_if_counters_out_octets{interface=~"Ethernet(49|50|51|52)"}[1m])) / avg by (device) (rate(gnmi_if_counters_out_octets{interface=~"Ethernet(49|50|51|52)"}[1m])) > 0.25`.
 </details>
 
 <details>
 <summary>8. Which physical-layer telemetry signals predict a failing optical transceiver or cable DAYS before the link actually flaps down?</summary>
+
 Monitor three signals via `ethtool -m` / `ethtool -S` and switch `gNMI`: (1) **Optical DOM Receive Power (`rx_power_dbm`)** dropping toward the receiver sensitivity floor (e.g., `< -9 dBm` or `> 3 dB` drop from baseline), plus laser bias current and module temperature; (2) **Rising Pre-FEC Corrected Codewords / Bit Error Rate (`fec_corrected_codewords`)**—indicating the link is surviving only because RS-FEC is working overtime; and (3) **Any Uncorrectable FEC Codewords (`fec_uncorrectable`) or `CRC`/`FCS`/symbol errors**.
 </details>
 
 <details>
 <summary>9. How do you interpret the four combinations of `ECN Marks`, `CNP` Counters, `PFC Pauses`, and `Lossless Queue Drops` on a RoCEv2 fabric?</summary>
+
 (1) **Moderate `ECN` marks + matching `CNP`s, `0` `PFC` pauses, `0` drops**: **Healthy DCQCN**—transient microbursts are being smoothly rate-controlled by ECN/CNP before buffers fill.\n(2) **High `ECN` marks on switches + `0` `CNP`s generated/handled by NICs**: **Misconfiguration**—either NICs are not marking packets `ECT(0)`, or receiving NICs have DCQCN/CNP generation disabled, or `CNP`s (`DSCP 48`) are being dropped.\n(3) **Spiking `PFC` pauses (`rx_prio3_pause`), `0` drops**: **Incast or hash collision outrunning ECN** (or ECN `Kmin`/`Kmax` set too high above `XOFF`, or a stuck receiver NIC).\n(4) **Any drops (`> 0`) on the lossless RoCE queue (`queue 3`)**: **Critical fault**—missing DSCP trust/PFC priority mapping, insufficient PFC headroom for cable length, or the **PFC watchdog** triggered to break a pause storm.
 </details>
 
 <details>
 <summary>10. What does `ib_port_xmit_wait_total` (`port_xmit_wait`) measure on an InfiniBand or RoCE RDMA port?</summary>
+
 `port_xmit_wait` counts the number of clock ticks/cycles during which the HCA/switch port had outbound RDMA packets ready to transmit, but was **unable to send them because it was waiting for link-level flow-control credits (InfiniBand credit starvation) or paused by `PFC`**. A high `rate(ib_port_xmit_wait_total[5m])` on a specific port is the #1 hardware indicator of downstream fabric backpressure and congestion spreading.
 </details>
 
 <details>
 <summary>11. Explain how an In-Band Flow Analyzer (`IFA`, `draft-kumar-ippm-ifa-08` / `INT` / `IOAM` RFC 9197) works across Initiator, Transit, and Terminator nodes (`ADC` Chapter 11).</summary>
+
 Unlike synthetic ping/TWAMP probes (which might hash onto a different ECMP path than the real elephant flow), **IFA** instruments the **actual data flow**:\n- **Initiator (Ingress Leaf)**: samples a packet of the target flow (or clones it) and inserts an **IFA Header** + **IFA Metadata Header**;\n- **Transit Nodes (Spines / Super-Spines)**: as the packet crosses each switch ASIC, the hardware pushes a hop record onto the **IFA Metadata Stack** containing **`device_id`**, **ingress/egress port IDs**, **queue ID**, **ingress timestamp**, **nanosecond residence time** spent inside that switch's buffer, and the **ECN congestion bit**;\n- **Terminator (Egress Leaf)**: strips the IFA headers (or drops the cloned probe) and exports the complete per-hop nanosecond latency and queue trace to the telemetry collector via IPFIX.
 </details>
 
 <details>
 <summary>12. What is \"Mirror-on-Drop\" (`MoD`), and what problem does it solve (`ADC` Chapter 11)?</summary>
+
 Interface drop counters tell you *how many* packets were dropped on a port, but not *which flows* were dropped or *why*. With **Mirror-on-Drop (`MoD`)**, whenever the switch ASIC discards a packet (due to buffer exhaustion, ACL drop, TTL expiry, unroutable address, or CoPP policing), the hardware encapsulates the dropped packet's headers **plus a hardware drop-reason code and ingress/egress port metadata** and mirrors it to a collector—instantly distinguishing a collective microburst tail-drop from a security ACL drop.
 </details>
 
 <details>
 <summary>13. Walk through how to correlate Job, Host, and Switch telemetry to isolate a single \"straggler\" rank slowing down a 1,000-GPU training job.</summary>
+
 (1) **Job layer**: training/NCCL telemetry reports step-time regressions and identifies that **`rank 112`** is consistently the last rank to finish `AllReduce` barriers;\n(2) **SoT / Scheduler mapping**: map `rank 112` -> `(node = gpu-node-15, local_gpu = GPU 0, rail_nic = ens1f0 / mlx5_0)`;\n(3) **Host telemetry**: check `gpu-node-15` in Grafana: does `GPU 0` show thermal/power clock throttling (`DCGM`), or does `ens1f0` show **Rail Bandwidth Skew**, RDMA retransmissions, `rx_prio3_pause`, or `fec_corrected` spikes?;\n(4) **Switch telemetry (via LLDP neighbor label)**: inspect `leaf0-rail0:Ethernet15` and its spine uplinks (`DOM Rx power`, queue watermark, ECN/PFC counters) to pinpoint whether the fault is the host cable/optic, the leaf port, or a spine ECMP collision.
 </details>
 
 <details>
 <summary>14. What are the three levels at which corrective actions can be taken in response to fabric congestion (`ADC` Chapter 11)?</summary>
+
 (1) **Single-Hop / Local Switch Level (nanoseconds to microseconds)**: hardware adaptive routing (`AR`), flowlet switching, ECN marking, and link-level `PFC`;\n(2) **Traffic-Source / Endpoint NIC Level (microseconds)**: sender NIC rate throttling in response to `CNP`s (`DCQCN`), `SFC` (`802.1Qdw`), or `CSIG` in-band signals;\n(3) **Monitoring & Orchestration Platform Level (seconds to minutes)**: automated runbooks that adjust DPF/Flex-Algo traffic engineering weights, cordon/drain a node with a degraded optic, reschedule a job from checkpoint, or—if the entire data center's network capacity was under-provisioned—evacuate workloads to a higher-capacity facility.
 </details>
 
 <details>
 <summary>15. Calculate the active time-series cardinality and sample ingestion rate for `1,000` 64-port switches exporting `100` counters per port every `10` seconds, and state three ways to control cardinality.</summary>
+
 - **Active time series**: `1,000 switches * 64 ports * 100 counters =` **`6,400,000` (`6.4 million`) time series**;\n- **Ingestion rate**: `6,400,000 / 10 s =` **`640,000` samples/second**.\nControl cardinality by: (1) **never putting unbounded high-cardinality values** (client IP addresses, ephemeral ports, container IDs, or per-flow 5-tuples) into Prometheus labels (send flows to `sFlow`/ClickHouse/Loki instead); (2) **dropping unused metrics/labels at the collector (`metric_relabel_configs`)**; and (3) pre-computing rollups (`by (rack, rail, role)`) using **Prometheus recording rules**.
 </details>
 
 <details>
 <summary>16. How should time-series retention and downsampling be structured for AI fabric telemetry?</summary>
+
 Use a tiered TSDB architecture (**Thanos**, **Grafana Mimir**, or **VictoriaMetrics**):\n- **Raw high-resolution data (`1 s` to `10 s`)**: retain for **`7` to `14` days** for root-cause debugging of recent job stalls;\n- **`1-minute` downsampled rollups** (`min`, `max`, `avg`, `sum`): retain for **`30` to `90` days**;\n- **`5-minute` / `1-hour` rollups**: retain for **`1+` year** for capacity planning and optic degradation trends.
 </details>
 
 <details>
 <summary>17. What are the five golden rules for designing Network Alerts that do not cause pager fatigue?</summary>
+
 (1) **Page on user/job-impacting symptoms or imminent failure** (lossless queue drops, PFC storms, link flaps on active rails, SLO burn rate), and send low-urgency degradations (single optic power warning, single redundant PSU fault) to **tickets**;\n(2) Use **`for:` hold durations** (`for: 2m`) so transient 1-second blips do not page;\n(3) Configure **Alertmanager grouping and inhibition** so a spine switch reboot pages **once** for the spine rather than firing 64 separate leaf-link-down pages;\n(4) Include a **direct link to the runbook and dashboard** in every alert annotation; and\n(5) Alert on **`absent()` metrics** and run an always-firing **Dead-Man's-Switch (`Watchdog`)** alert.
 </details>
 
 <details>
 <summary>18. Why must the monitoring and alerting infrastructure never share fate with the data-center network it monitors?</summary>
+
 If Prometheus, Alertmanager, or the PagerDuty webhook egress routes over the same in-band spine switches or relies on the same in-cluster DNS/overlay that just suffered a outage, **the outage will silence the very alerts meant to wake up the on-call engineer**. Always run scraping and out-of-band management over an **isolated OOB management network**, deploy redundant HA Prometheus/Alertmanager pairs across failure domains, and route external paging via an independent path tested by a continuous **`Watchdog` heartbeat**.
 </details>
 
 <details>
 <summary>19. Give three concrete Service-Level Indicators (`SLI`s) and `SLO`s for an AI cluster network.</summary>
+
 (1) **End-to-End Fabric Reachability & Latency SLI**: percentage of synthetic `TWAMP`/`blackbox` probes between all rack pairs succeeding with `< 500 µs` RTT (SLO: **`>= 99.99%` over 28 days**);\n(2) **Lossless RoCE Class Integrity SLI**: fraction of 1-minute intervals with `0` packet drops and `0` PFC watchdog triggers on Priority 3 (SLO: **`>= 99.95%`**);\n(3) **Collective Bandwidth Efficiency SLI**: ratio of achieved `nccl-tests` / job `AllReduce` bus bandwidth to hardware baseline (SLO: **`>= 90%` of baseline for `99%` of job runs**).
 </details>
 
 <details>
 <summary>20. What guardrails are mandatory before allowing an observability platform to trigger automated closed-loop remediation on a production fabric?</summary>
+
 (1) **Strict allow-list of safe, reversible actions** (e.g., triggering a read-only `netdiag.sh` capture, cordoning an unallocated node, or shifting BGP graceful-shutdown weight on a redundant link);\n(2) **Blast-radius and rate-limit caps** (e.g., never auto-drain more than 1 spine or > 5% of leaves without human approval—preventing a bug in telemetry from draining the whole cluster);\n(3) **Pre-check verification** that surviving redundant paths have healthy capacity before draining;\n(4) **Full audit logging and ChatOps notification** of every automated action; and\n(5) A single **global kill-switch** to pause automated actions during incidents.
 </details>
 

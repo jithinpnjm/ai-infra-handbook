@@ -497,101 +497,121 @@ Next, on a disposable Linux VM with Python 3 and containerlab/FRR (all interacti
 
 <details>
 <summary>1. Why does automating a complex or broken manual network often make outages worse, and what are the six safeguards against fleet-wide automation outages (`NPA` Chapter 2)?</summary>
+
 Automation does not eliminate the underlying complexity of a snowflake network—it **relocates that complexity** into scripts and templates while giving a single bug the speed to break 500 switches in 2 seconds instead of 1 switch in 10 minutes. Six mandatory safeguards:\n(1) **Simplify and standardize topologies/roles first**;\n(2) **Validate intent data against a strict schema** (`JSON Schema` / Pydantic) and test in **`containerlab` / `Batfish`** before touching production;\n(3) **Canary and staged rollouts** bounded by failure domain (1 leaf -> 1 pod -> 1 spine at a time, never all spines at once);\n(4) **Pre-checks and automated post-checks** (BGP session count, ECMP width, error counters);\n(5) **Transactional `commit confirmed` / automatic rollback** if post-checks or reachability fail; and\n(6) **Independent out-of-band (`OOB`) management access**.
 </details>
 
 <details>
 <summary>2. Why is CLI \"screen scraping\" over SSH brittle for network automation, and why is `SNMP` (`UDP 161/162`) rarely used for configuration?</summary>
+
 The CLI is formatted for human eyes: column widths wrap, field names change between NOS minor releases, errors are returned as free-form prose, and multi-line CLI paste has no atomic transaction or rollback semantics. **`SNMP`** uses numeric `OID` trees (`MIB`s) over UDP with poor transactional write support, weak security in `SNMPv2c` community strings, high CPU polling overhead on large tables, and inconsistent vendor MIBs.
 </details>
 
 <details>
 <summary>3. What is the \"YAML Norway Problem\", why must you always call `yaml.safe_load()` instead of `yaml.load()`, and what does JSON lack compared to YAML?</summary>
+
 In YAML 1.1, unquoted strings like **`NO`, `no`, `off`, `on`, and `yes`** are implicitly parsed as **booleans (`False` / `True`)** (so country code `NO` for Norway or `no shutdown` becomes `False`), and unquoted `010` or `3.10` is parsed as octal `8` or float `3.1`. Always quote ambiguous strings and lint with `yamllint`. Always use **`yaml.safe_load()`** because `yaml.load()` can instantiate arbitrary Python objects and execute code on untrusted input. Compared to YAML, **JSON** is faster to parse and free of indentation/implicit-typing traps, but **does not support comments (`#`)** or trailing commas.
 </details>
 
 <details>
 <summary>4. Why do `gRPC` and `gNMI` use `Protocol Buffers` (`protobuf`) instead of JSON or XML for high-rate streaming telemetry (`NPA` Chapter 8)?</summary>
+
 **Protocol Buffers** define strongly typed schemas in `.proto` files (compiled into Python/Go/C++ classes via `protoc`) and serialize fields using compact **binary numeric field tags** rather than repeating verbose ASCII key names (`"in-unicast-pkts"`) on every message. This shrinks wire payload size by `3–10x`, cuts switch CPU serialization and collector parsing cost by an order of magnitude, and preserves forward/backward schema compatibility when new fields are added. (Never use Python `pickle` on network data: unpickling untrusted bytes executes arbitrary code.)
 </details>
 
 <details>
 <summary>5. What is `YANG` (`RFC 7950`), what are its four core data-node types, and how do `IETF`, `OpenConfig`, and Native YANG models differ?</summary>
+
 **YANG** is the standard data modeling language for network configuration (`config true`) and operational state (`config false`), independent of whether the wire encoding is XML (`NETCONF`), JSON (`RESTCONF`), or Protobuf (`gNMI`). Its four core data nodes are:\n- **`leaf`**: a single typed value (`leaf mtu { type uint16 { range "68..9216"; } }`);\n- **`leaf-list`**: a list of scalar values (`leaf-list dns-server`);\n- **`container`**: a grouping of related nodes;\n- **`list`**: a collection of records keyed by one or more leaves (`list interface { key "name"; ... }`).\n**`IETF` models** (`ietf-interfaces`) are standards-track RFCs; **`OpenConfig` models** (`openconfig-interfaces`, `openconfig-bgp`) are vendor-neutral models built by hyperscale operators with a strict `config/` + `state/` container split; and **Native models** expose 100% of a specific vendor's NOS features at the cost of portability.
 </details>
 
 <details>
 <summary>6. How do `pyang` and `JSON Schema` fit into a network CI pipeline?</summary>
+
 **`pyang`** validates YANG modules (`pyang --strict`) and renders compact ASCII hierarchy trees (`pyang -f tree openconfig-interfaces.yang`) so engineers can inspect exact XPath / gNMI paths. **`JSON Schema`** (validated via `jsonschema.validate()` or **Pydantic** in Python) validates your Git YAML/JSON **intent and inventory files** (`group_vars/`, `host_vars/`) on every pull request—catching an invalid VLAN (`5000`), bad IPv4 CIDR, or missing BGP ASN in CI before Jinja2 ever renders a config.
 </details>
 
 <details>
 <summary>7. In `Jinja2`, what are the three delimiter pairs, why must you enable `StrictUndefined`, and where should complex address logic live (`NPA` Chapter 9)?</summary>
+
 The three Jinja2 delimiters are **`{{ ... }}`** (expressions/variables), **`{% ... %}`** (control statements: `for`, `if`, `macro`, `extends`/`block`), and **`{# ... #}`** (comments). By default, Jinja2 renders a misspelled or missing variable as an **empty string (`""`)**—which produces a broken switch config (`router bgp ` with no ASN). Passing **`undefined=StrictUndefined`** to `jinja2.Environment` forces Jinja2 to raise an immediate `UndefinedError` if any variable is missing. Keep complex IP/subnet math in **tested Python pre-processing functions or custom Jinja filters** rather than writing unreadable logic inside `.j2` files.
 </details>
 
 <details>
 <summary>8. Describe the four layers of `NETCONF` (`RFC 6241`, `SSH port 830`) and its three configuration datastores.</summary>
+
 NETCONF's four layers are: (1) **Transport** (`SSH` over **TCP port `830`**), (2) **Messages** (`<rpc>`, `<rpc-reply>`, `<notification>`), (3) **Operations** (`<get>`, `<get-config>`, `<edit-config>`, `<copy-config>`, `<lock>`/`<unlock>`, `<validate>`, `<commit>`, `<discard-changes>`), and (4) **Content** (YANG-modeled XML data). Its three datastores are **`running`** (currently active config), **`candidate`** (scratchpad staging buffer that can be edited, validated, and diffed before committing atomically to `running`), and **`startup`** (next-boot config).
 </details>
 
 <details>
 <summary>9. How does NETCONF `commit confirmed` prevent an engineer or script from cutting off management access to a remote switch?</summary>
+
 When `ncclient` executes `m.commit(confirmed=True, timeout="120")`, the switch activates the `candidate` configuration in `running` and starts a **120-second hardware/OS countdown timer**. The automation script then runs its reachability and BGP post-checks and sends a second confirming `m.commit()`. If the change broke the network or firewall so the script can no longer reach the switch to send the confirming commit within 120 seconds, **the switch automatically rolls `running` back to the previous configuration** and restores connectivity.
 </details>
 
 <details>
 <summary>10. Compare `NETCONF`, `RESTCONF` (`RFC 8040`), and `gNMI` across transport, encoding, transaction support, and streaming telemetry (`NPA` Chapter 10).</summary>
+
 - **`NETCONF`**: SSH (`port 830`), **XML** encoding; supports **stateful multi-step transactions, datastore locking (`<lock>`), `candidate` validation, and `commit confirmed`**, making it strongest for atomic configuration changes.\n- **`RESTCONF`**: HTTPS, **JSON or XML** (`application/yang-data+json`); stateless single-request CRUD (`GET`/`POST`/`PUT`/`PATCH`/`DELETE` + multi-edit **YANG Patch `RFC 8072`**) with no `lock` or `commit confirmed` across requests.\n- **`gNMI` (*gRPC Network Management Interface*)**: **gRPC over HTTP/2 + TLS** (`port 6030`/`9339`), **Protobuf / JSON_IETF** encoding; supports `Capabilities`, `Get`, single-request atomic `Set`, and **high-rate streaming telemetry (`Subscribe`)**.
 </details>
 
 <details>
 <summary>11. What are the four `gNMI` RPCs, and what are the three `gNMI Subscribe` streaming modes?</summary>
+
 The four gNMI RPCs are **`Capabilities`**, **`Get`**, **`Set`** (`update`, `replace`, `delete`), and **`Subscribe`**. Under `Subscribe` (`STREAM` mode), a subscription path can use:\n(1) **`SAMPLE`**: pushes counters at a fixed periodic interval (e.g., `--sample-interval 2s` for interface octets, queue watermarks, PFC pauses, and ECN marks);\n(2) **`ON_CHANGE`**: pushes an update **immediately and only when the state changes** (e.g., interface `oper-status` or BGP `session-state` transitions); and\n(3) **`TARGET_DEFINED`**: lets the switch choose `SAMPLE` for counters and `ON_CHANGE` for state leaves automatically.
 </details>
 
 <details>
 <summary>12. Contrast Dial-In and Dial-Out streaming telemetry.</summary>
+
 - **Dial-In Telemetry**: the collector (`gNMIc`, `Telegraf`) initiates the gRPC connection (`Subscribe` RPC) to each switch on port `6030`/`9339` and requests the subscription paths.\n- **Dial-Out Telemetry**: the switch itself initiates the outbound gRPC/TCP connection to the central collector cluster and pushes pre-configured telemetry subscriptions—avoiding opening inbound management ports on switches.
 </details>
 
 <details>
 <summary>13. When a legacy or specialist device only supports an SSH CLI without structured JSON output, how do `Netmiko` / `Scrapli` and `TextFSM` (`ntc-templates`) turn CLI text into structured data?</summary>
+
 `Netmiko` (`send_command(..., use_textfsm=True)`) and `Scrapli` (fast, async SSH/Telnet) handle vendor prompts, paging (`terminal length 0`), and privilege escalation, and pass the raw CLI output string through a **`TextFSM` state-machine template** (from the open-source **`ntc-templates`** library) or Cisco **`Genie` / `pyATS` parser**—returning a clean Python **list of dictionaries** instead of raw text.
 </details>
 
 <details>
 <summary>14. Define Idempotency in network configuration management and explain why `--dry-run` / diff mode is essential.</summary>
+
 An operation is **idempotent** if applying it `N` times produces the **exact same device state** as applying it once, with **zero side effects or session resets** when the device is already in the desired state (unlike blindly running `ip addr add` or appending duplicate ACL lines). Running in **`--dry-run` (check/diff) mode** first fetches or computes the delta between the intended config and the current `running` config so operators and CI pipelines can review the exact lines that will be added, modified, or removed before committing.
 </details>
 
 <details>
 <summary>15. How does Open Networking / Linux-based NOS (`SONiC`, `Cumulus Linux`, `FRR`) change network automation?</summary>
+
 On a Linux-based switch NOS, switch ports are standard Linux `netdev` interfaces synchronized by hardware abstraction daemons (`syncd` over **SAI** *Switch Abstraction Interface* in SONiC, or `switchd` in Cumulus) backed by structured configuration files (`/etc/network/interfaces`, `/etc/frr/frr.conf`, Cumulus `NVUE` YAML, or SONiC's Redis **`CONFIG_DB`**). Engineers can manage switches using standard Linux tools: SSH certificates, `systemd`, Git, Ansible, Python, Prometheus `node_exporter`, and `containerlab`.
 </details>
 
 <details>
 <summary>16. Define Software-Defined Networking (`SDN`) and contrast the four control-plane interaction models (`CN` Chapter 18).</summary>
+
 **SDN** is any architecture that moves some or all control-plane functions off individual forwarding devices into a logically centralized software component (communicating with devices via a **southbound interface** and with applications via a **northbound interface**). The four interaction models are:\n(1) **Distributed**: 100% of the control plane runs on the switches (`OSPF`/`IS-IS`/`BGP`);\n(2) **Augmented**: the distributed control plane stays in place for basic reachability, while an off-box controller injects policies/paths into it (`BGP` route injection, **Fibbing**, **PCEP**, `I2RS`);\n(3) **Hybrid**: centralized and distributed control planes run side by side as peers;\n(4) **Replace**: no distributed routing protocol runs on the switches; the central controller programs hardware flow tables directly (`OpenFlow`, `P4Runtime`).
 </details>
 
 <details>
 <summary>17. In a control plane's three responsibilities (*Topology*, *Reachability*, and *Policy*), why does *Policy* separate most cleanly into an SDN controller (`CN` Chapter 18)?</summary>
+
 **Topology** (which nodes and links exist) and **Reachability** (which prefixes attach where along shortest loop-free trees) are tightly coupled to local link events and sub-second failure recovery. **Policy** (traffic engineering, elephant-flow steering, multi-tenant segmentation), however, modifies path selection on top of existing reachability and benefits from a global view of fabric utilization—making **distributed topology/reachability + centralized policy (the Augmented model)** the most resilient combination.
 </details>
 
 <details>
 <summary>18. How do `BGP-as-an-SDN`, `Fibbing`, and `PCEP` steer paths in an Augmented control plane (`CN` Chapter 18)?</summary>
+
 - **BGP-as-an-SDN**: an off-box controller peers via iBGP/eBGP (or `BMP` + BGP-LS) and injects more-specific or higher-`LOCAL_PREF` routes (or `SRv6` policies) to pin selected flows onto specific paths.\n- **Fibbing**: in an OSPF link-state network where all routers must share an identical LSDB, a controller injects **synthetic (\"fake\") nodes and links via OSPF External LSAs** with crafted metrics and forwarding addresses so that every router's unmodified Dijkstra SPF calculation naturally routes traffic along the desired engineered path.\n- **PCEP (*Path Computation Element Protocol*)**: a central **PCE** computes constrained MPLS-TE or Segment Routing (`SR-MPLS`/`SRv6`) paths across the fabric and pushes the SID list to headend routers (**PCC**s).
 </details>
 
 <details>
 <summary>19. How do the `CAP` Theorem and the Principle of Subsidiarity govern SDN controller design (`CN` Chapter 18)?</summary>
+
 Because network partitions between switches and a central controller are inevitable (`P`), the **CAP theorem** dictates that a centralized control plane must choose between **Consistency** (halting forwarding Changes if the controller is unreachable) and **Availability** (continuing to forward with local/stale state). The **Principle of Subsidiarity** states that **decisions should be made at the lowest, most local level capable of making them correctly**: keep fast, local survival actions (`BFD`, link-down ECMP next-hop removal, `TI-LFA`) on the switch itself, centralize only global optimization/intent, and ensure switches **fail static** (keep forwarding on their last known good FIB or fall back to distributed routing) if the controller crashes.
 </details>
 
 <details>
 <summary>20. Trace the 6-stage Network Automation Pipeline from Source of Truth to Continuous Drift Detection.</summary>
+
 (1) **Source of Truth (`SoT`)**: declarative intent and inventory stored in Git YAML and/or **NetBox / Nautobot**;\n(2) **Schema Validation**: CI checks every PR against **JSON Schema / Pydantic**;\n(3) **Artifact Rendering**: **Jinja2 (`StrictUndefined`)** renders device configs / YANG payloads;\n(4) **Pre-Deployment Emulation & Analysis**: test rendered configs in **`containerlab`** (`validate.py`) and static analyzer **`Batfish`**;\n(5) **Staged Transactional Delivery**: push via **NETCONF / gNMI / RESTCONF / Ansible** in canary batches with `commit confirmed`; and\n(6) **Post-Check Verification & Continuous Drift Monitoring**: assert live BGP/ECMP/MTU/PFC state via gNMI/`SuzieQ`/`pyATS` and alert on any out-of-band drift.
 </details>
 

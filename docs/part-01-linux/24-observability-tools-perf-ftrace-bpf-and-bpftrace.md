@@ -718,102 +718,122 @@ Next, on a disposable Ubuntu 22.04+ VM with `root` (and a GPU VM for Step 14; al
 
 <details>
 <summary>1. Contrast the three observability collection mechanisms—Counters, Profiling, and Tracing—and their overhead models.</summary>
+
 **Counters** (`vmstat`, `iostat`, `sar`, `nvidia-smi`) increment in-memory integers in the kernel/hardware; they are always on and nearly free to read. **Profiling** (`perf record -F 99`, `py-spy`) takes timer- or PMC-driven samples at a fixed rate (`49` or `99` Hz), giving predictable, low overhead. **Tracing** (`perf trace`, Ftrace, BCC, `bpftrace`) executes on every occurrence of an event, so its overhead scales directly with the event rate.
 </details>
 
 <details>
 <summary>2. Why do CPU profilers sample at `99 Hz` (or `49 Hz`) instead of `100 Hz`, and why is `strace` dangerous on production workloads?</summary>
+
 Sampling at `99 Hz` avoids lockstep aliasing with `100 Hz` (`10 ms`) operating-system or application timers. `strace` uses `ptrace(2)`, which stops the target process and context-switches twice on every single system call, slowing syscall-heavy workloads by `10x` to `100x+`.
 </details>
 
 <details>
 <summary>3. Compare the five primary kernel/user event sources: `tracepoints`, `kprobes`, `uprobes`, `USDT`, and `PMCs`.</summary>
+
 **Tracepoints** (`block:block_rq_issue`) are static kernel hooks (~`1,000–2,000` events) with a best-effort stable API and low cost (`~100 ns`). **kprobes**/**kretprobes** dynamically patch any of `50,000+` kernel functions (`no` API stability across kernels). **uprobes**/**uretprobes** dynamically instrument user-space functions (`libc:malloc`, `libcuda.so`), trapping into the kernel on every hit (`~1 µs+`, high overhead on hot functions). **USDT** are static user-space probes compiled into binaries/libraries. **PMCs** are hardware Performance Monitoring Counter registers measuring cycles, instructions, cache misses, and TLB misses.
 </details>
 
 <details>
 <summary>4. What is Gregg's event-rate rule of thumb for tracing overhead, and how do you check an event's rate before tracing it?</summary>
+
 For kernel tracepoints/kprobes with in-kernel aggregation, rates below **`~10,000` events/s** have negligible overhead, whereas rates above **`~100,000` events/s** (such as `sched:sched_switch`, `malloc`, or per-packet events) add measurable overhead. Always count the event rate first using `sudo perf stat -e <event> -a -- sleep 1`, `funccount`, or `bpftrace -e 'k:func { @=count(); } interval:s:1 { exit(); }'`.
 </details>
 
 <details>
 <summary>5. What does Linux Delay Accounting (`CONFIG_TASK_DELAY_ACCT`) measure, and why do `ip` and `ss` use `netlink` instead of `/proc/net`?</summary>
+
 Delay accounting tracks per-task time spent **waiting** for four resources: (1) CPU run-queue latency, (2) block I/O completion, (3) swap-in paging, and (4) memory reclaim (exposed via `taskstats` netlink to `iotop`, `atop`, and `getdelays`). `ip` and `ss` use binary `AF_NETLINK` sockets (`NETLINK_ROUTE`, `NETLINK_SOCK_DIAG`), avoiding the CPU cost of formatting and parsing huge text tables in `/proc/net/tcp`.
 </details>
 
 <details>
 <summary>6. What are PMC multiplexing and instruction-pointer skid, and why might `perf stat` fail to report hardware counters in a cloud VM?</summary>
+
 Each CPU core has only `4` to `8` programmable PMC registers; if you request more events simultaneously, `perf` time-multiplexes them and scales the estimates. **Skid** is the lag between the instruction that caused a PMC overflow and the instruction pointer recorded when the interrupt fires—reduced or eliminated by Intel PEBS / AMD IBS precise events (`cycles:p`, `:pp`, `:ppp`). Cloud hypervisors often hide guest PMU access unless running on bare-metal or dedicated GPU instances.
 </details>
 
 <details>
 <summary>7. How does `sar` (`sysstat`) work, and why should it be enabled on every cluster node even when Prometheus is deployed?</summary>
+
 `sadc` runs periodically (via a systemd timer or `/etc/cron.d/sysstat`) to record hundreds of kernel counters into binary daily archives (`/var/log/sysstat/saDD`), which `sar` and `sadf -j` (JSON) query either historically (`sar -f /var/log/sysstat/sa17 -s 02:00:00`) or live (`sar -q -r -B -d -n DEV 1 5`). Because `sadc` writes locally with almost zero overhead, it preserves historical evidence even when a node loses network connectivity to Prometheus.
 </details>
 
 <details>
 <summary>8. What is the difference between `perf record -F 99` (frequency sampling) and `perf record -c 10000` (period/overflow sampling)?</summary>
+
 `-F 99` adjusts the sampling period dynamically to capture approximately `99` samples per CPU per second, whereas `-c 10000` records one sample every `10,000` occurrences of the event. By default, `perf record` uses frequency sampling (~`4,000 Hz`) on hardware/software events and period `1` (every event) on tracepoints.
 </details>
 
 <details>
 <summary>9. Compare the three `perf record --call-graph` stack-walking modes (`fp`, `dwarf`, `lbr`).</summary>
+
 `fp` (default) walks the frame-pointer register chain—it is fast and low-overhead, but produces truncated stacks if binaries were compiled with `-fomit-frame-pointer`. `dwarf` unwinds stacks using DWARF debug tables (`-dbgsym`), working without frame pointers at the cost of large `perf.data` files and higher CPU overhead. `lbr` uses Intel Last Branch Record hardware registers (`16` or `32` branches deep).
 </details>
 
 <details>
 <summary>10. How do `perf trace`, `perf sched`, and `perf c2c` work?</summary>
+
 `perf trace` traces system calls and tracepoints live via ring buffers without stopping the process like `strace` (`perf trace --duration 10 -p PID` shows only syscalls slower than `10 ms`). `perf sched record` / `perf sched latency` / `timehist` measures per-task scheduler wakeup and run-queue delays. `perf c2c` (*cache-to-cache*) uses precise memory PMCs to pinpoint cache-line false sharing across CPU cores.
 </details>
 
 <details>
 <summary>11. On `x86-64` (AMD64 ABI), which registers hold the first six function arguments when creating a raw `perf probe` or Ftrace `kprobe` without debuginfo?</summary>
+
 The first six integer/pointer arguments are passed in `%di` (`$arg1`), `%si` (`$arg2`), `%dx` (`$arg3`), `%cx` (`$arg4`), `%r8` (`$arg5`), and `%r9` (`$arg6`), with the return value in `$retval` (`%ax`).
 </details>
 
 <details>
 <summary>12. How is Ftrace controlled without any user-space binary packages, and how do you isolate concurrent Ftrace users?</summary>
+
 Ftrace is controlled entirely by echoing strings into and reading files from the `tracefs` filesystem mounted at `/sys/kernel/tracing` (or `/sys/kernel/debug/tracing`). To run concurrent independent Ftrace sessions without colliding on `current_tracer`, create a subdirectory under `/sys/kernel/tracing/instances/<name>`.
 </details>
 
 <details>
 <summary>13. In Ftrace `tracefs`, what is the difference between `trace` and `trace_pipe`, and what does the Function Profiler (`function_profile_enabled`) provide?</summary>
+
 `trace` is a non-consuming view of the ring buffer that can be read repeatedly; `trace_pipe` is a blocking stream that **consumes** events as they are read. Enabling `echo 1 > function_profile_enabled` (with `set_ftrace_filter`) records per-CPU call counts, total time, average time, and variance for matched kernel functions in `trace_stat/function*` with very low overhead.
 </details>
 
 <details>
 <summary>14. What do the Ftrace `function_graph` duration symbols (`+`, `!`, `#`, `*`, `@`, `$`) mean, and what does the `hwlat` tracer detect?</summary>
+
 In `function_graph` output, `+` means duration `> 10 µs`, `!` `> 100 µs`, `#` `> 1 ms`, `*` `> 10 ms`, `@` `> 100 ms`, and `$` `> 1 s`. The `hwlat` (*hardware latency*) tracer spins in a tight kernel loop with interrupts disabled to detect CPU time stolen outside the OS kernel—such as BIOS System Management Interrupts (`SMI`s), BMC firmware polling, or hypervisor steal.
 </details>
 
 <details>
 <summary>15. What are Ftrace event triggers (`traceoff`, `stacktrace`, `hist`) and synthetic events?</summary>
+
 Event triggers execute an action in the kernel when a tracepoint matches a filter: `traceoff` freezes the ring buffer immediately when an anomaly occurs (e.g., `traceoff if bytes > 65536`), `stacktrace` records the kernel stack, and `hist:key=...` builds an in-kernel histogram read from the event's `hist` file. Synthetic events combine two tracepoints (such as `sys_enter` and `sys_exit`) to compute and histogram latencies purely inside `tracefs`.
 </details>
 
 <details>
 <summary>16. How does eBPF guarantee kernel safety and low overhead compared to copying raw events to user space?</summary>
+
 Before an eBPF program is attached to a probe, the kernel **verifier** statically proves that it terminates (no unbounded loops), never dereferences unchecked pointers, and stays within stack/instruction limits; the kernel then **JIT-compiles** it to native machine code. By filtering and aggregating counts, stacks, and histograms inside **BPF maps** in kernel memory, only compact summaries cross to user space.
 </details>
 
 <details>
 <summary>17. Match the core BCC / `libbpf-tools` utilities to their purpose: `execsnoop`, `opensnoop`, `biolatency`, `biosnoop`, `runqlat`, `offcputime`, `tcplife`, and `tcpretrans`.</summary>
+
 `execsnoop`: traces short-lived `execve()` processes; `opensnoop`: traces `openat()` file opens and `ENOENT` failures; `biolatency`: block I/O latency histogram per disk; `biosnoop`: per-request block I/O log with PID and latency; `runqlat`: scheduler run-queue latency histogram; `offcputime`: stack traces weighted by time spent blocked off-CPU; `tcplife`: TCP session lifespan and byte counters; and `tcpretrans`: TCP retransmissions with socket state.
 </details>
 
 <details>
 <summary>18. Write the canonical `bpftrace` program to measure the microsecond latency histogram of `vfs_read()`, and explain why `/@start[tid]/` and `delete(@start[tid])` are required.</summary>
+
 `kprobe:vfs_read { @start[tid] = nsecs; } kretprobe:vfs_read /@start[tid]/ { @us = hist((nsecs - @start[tid]) / 1000); delete(@start[tid]); }`
 Keying `@start` by `tid` handles concurrent threads; the `/@start[tid]/` predicate skips return events whose entry occurred before `bpftrace` attached (preventing a bogus `nsecs - 0` delta); and `delete(@start[tid])` frees the map entry so stale timestamps do not leak or corrupt later calls.
 </details>
 
 <details>
 <summary>19. When should you use BCC (`libbpf-tools`) versus `bpftrace`?</summary>
+
 Use **BCC / `libbpf-tools`** first when one of its `80+` canned, option-rich tools (`biolatency -D`, `tcplife -T`, `offcputime -p PID`) already answers the question. Use **`bpftrace`** (~`30` lines of high-level DSL vs ~`230` lines of C/Python in BCC) when you need a quick custom one-liner or custom filter/histogram on specific kernel or application probes.
 </details>
 
 <details>
 <summary>20. How do you combine **Nsight Systems** (`nsys`), **Nsight Compute** (`ncu`), and Linux host tracers (`perf`, `offcputime`, `biolatency`) when debugging a slow GPU training job?</summary>
+
 First capture a multi-step timeline with **Nsight Systems** (`nsys profile -t cuda,nvtx,osrt,cudnn,cublas`) to see whether the slowdown comes from **GPU idle bubbles** (gaps between kernels), **exposed NCCL collectives**, or **slow GPU kernels**. If there are GPU idle gaps, use `perf record -F 99 -g`, `offcputime`, and `biolatency`/`nfsslower` on the host to see whether the CPU is launch-bound in Python/`ioctl` or blocked in storage/network I/O. If a specific GPU kernel is slow, drill into that kernel alone with **Nsight Compute** (`ncu`).
 </details>
 

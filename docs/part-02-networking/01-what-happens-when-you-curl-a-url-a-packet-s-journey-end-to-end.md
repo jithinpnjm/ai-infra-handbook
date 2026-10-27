@@ -328,76 +328,91 @@ Next, on a disposable Linux VM with `curl`, `dig`, `tcpdump`, `strace`, `openssl
 
 <details>
 <summary>1. Which C library function resolves a hostname in Linux, and how do `/etc/nsswitch.conf`, `/etc/hosts`, and `/etc/resolv.conf` interact?</summary>
+
 Applications call `getaddrinfo()`, which reads the `hosts:` line in `/etc/nsswitch.conf` (typically `files resolve dns` or `files dns`). It checks `/etc/hosts` (`files`) first, then queries the local stub resolver (`systemd-resolved` at `127.0.0.53`) or the DNS nameservers listed in `/etc/resolv.conf`.
 </details>
 
 <details>
 <summary>2. Why do modern resolvers query both `A` and `AAAA` records in parallel, and what is \"Happy Eyeballs\" (RFC 6724 / RFC 8305)?</summary>
+
 Resolvers request both IPv4 (`A`) and IPv6 (`AAAA`) records so dual-stack clients can prefer IPv6. Under Happy Eyeballs, the client initiates an IPv6 connection first and starts a parallel IPv4 fallback attempt if IPv6 does not complete within a few tens of milliseconds, preventing broken IPv6 paths from causing multi-second hangs.
 </details>
 
 <details>
 <summary>3. What do `search` domains and `ndots` in `/etc/resolv.conf` do, and why does `ndots:5` in Kubernetes matter?</summary>
+
 Any hostname containing fewer dots than `ndots` (default `1` on Linux, `5` in Kubernetes Pods) is first queried with each `search` suffix appended before being queried as an absolute name. In Kubernetes, looking up `api.openai.com` (`2` dots `< 5`) triggers `A` and `AAAA` queries for `api.openai.com.<ns>.svc.cluster.local`, `api.openai.com.svc.cluster.local`, and `api.openai.com.cluster.local` before finally querying `api.openai.com.`.
 </details>
 
 <details>
 <summary>4. What does `ip route get 93.184.216.34` show, and how does the Linux kernel choose between multiple matching routes?</summary>
+
 `ip route get` queries the kernel's Forwarding Information Base (FIB) and prints the exact route, next-hop gateway (`via 10.0.0.1`), outgoing interface (`dev ens4`), and source IP address (`src 10.0.0.15`) the kernel will use for that destination. The kernel always picks the **longest matching prefix** (most specific subnet mask, e.g., `/24` beats `/16` beats default `0.0.0.0/0`), breaking ties by route `metric`.
 </details>
 
 <details>
 <summary>5. How is a TCP connection uniquely identified in the kernel, and where does the client's source port come from?</summary>
+
 Every TCP connection is uniquely identified by its **5-tuple**: `(protocol=TCP, source IP, source port, destination IP, destination port)`. When `connect()` is called on an unbound client socket, the kernel automatically selects an unused **ephemeral port** from `net.ipv4.ip_local_port_range` (default `32768` to `60999`).
 </details>
 
 <details>
 <summary>6. How do ARP (IPv4) and NDP (IPv6) resolve the next hop's MAC address, and where does Linux cache the result?</summary>
+
 In IPv4, the host broadcasts an **ARP Request** (`ff:ff:ff:ff:ff:ff`: *"Who has 10.0.0.1? Tell 10.0.0.15"*) and the owner replies unicast with its 6-byte MAC address. In IPv6, **NDP** (*Neighbor Discovery Protocol*) uses ICMPv6 Neighbor Solicitation and Advertisement messages sent to a solicited-node multicast address. Both populate the kernel **neighbour table**, inspected with `ip neigh show` (`REACHABLE`, `STALE`, `DELAY`, `PROBE`, `FAILED`).
 </details>
 
 <details>
 <summary>7. When a host at `10.0.0.15/24` sends a packet to `93.184.216.34` via gateway `10.0.0.1`, what MAC address is in the Ethernet frame's Destination MAC field?</summary>
+
 The **default gateway's (`10.0.0.1`) MAC address**—never the remote server's MAC address. Ethernet is strictly link-local; the host addresses the frame to its local router on the LAN segment.
 </details>
 
 <details>
 <summary>8. Name the fields of an Ethernet II frame and the Protocol Data Units (`PDU`s) at each layer of the TCP/IP stack (`NK` Chapter 1).</summary>
+
 The PDUs from top to bottom are: Application **Data** -> Transport **Segment** (TCP) / **Datagram** (UDP) -> Network **Packet** (IP) -> Link **Frame** (Ethernet) -> Physical **Bits**. An Ethernet II frame consists of an `8`-byte Preamble + SFD, `6`-byte Destination MAC, `6`-byte Source MAC, `2`-byte EtherType (`0x0800` IPv4, `0x86DD` IPv6, `0x0806` ARP), `46–1500`-byte Payload, and `4`-byte `FCS` (CRC-32).
 </details>
 
 <details>
 <summary>9. As a packet traverses 12 routers across the Internet (without NAT), what changes in the headers at each hop and what stays constant?</summary>
+
 At every router hop: (1) the outer **Ethernet source and destination MAC addresses** are stripped and replaced with the MACs for the next link, and (2) the IP header's **`TTL` (IPv4) / `Hop Limit` (IPv6)** is decremented by `1` (and the IPv4 header checksum is recomputed). The **source IP, destination IP, TCP ports, and payload** remain unchanged (except where a NAT gateway rewrites the source IP and port at a private-network boundary).
 </details>
 
 <details>
 <summary>10. How does a Layer 2 switch decide where to forward an Ethernet frame compared to a Layer 3 router?</summary>
+
 A **Layer 2 switch** inspects the incoming frame's source MAC to learn which port that MAC lives on (MAC address table), then forwards the frame out the single port matching the destination MAC—or **floods** it out all ports in the VLAN if the destination MAC is unknown or broadcast (`ff:ff:ff:ff:ff:ff`). A **Layer 3 router** terminates the Ethernet frame, looks up the destination IP in its routing table (FIB), decrements `TTL`, and encapsulates the packet in a brand-new Ethernet frame for the next hop.
 </details>
 
 <details>
 <summary>11. Trace the TCP three-way handshake (`SYN`, `SYN-ACK`, `ACK`) and the options negotiated during `SYN`.</summary>
+
 (1) Client sends `SYN` with its Initial Sequence Number (`ISN`) and TCP options: **MSS** (*Maximum Segment Size*, typically `MTU - 40 = 1460` bytes), **Window Scale** factor, **SACK Permitted**, and **Timestamps**; (2) Server replies with `SYN-ACK` containing its own `ISN`, `ACK = client_ISN + 1`, and negotiated options; and (3) Client sends `ACK` (`server_ISN + 1`), placing both sockets in `ESTABLISHED`.
 </details>
 
 <details>
 <summary>12. At the packet level, what is the difference between `Connection refused` and `Connection timed out`?</summary>
+
 `Connection refused` happens immediately (in 1 RTT) because the packet reached the destination host (or a firewall with `REJECT`), found no socket listening on that port, and received a TCP **`RST`** (Reset) packet back. `Connection timed out` happens after multiple seconds of exponential retries (`1 s, 2 s, 4 s...`) because `SYN` packets were silently dropped by a firewall (`DROP`) or blackholed in routing with no reply.
 </details>
 
 <details>
 <summary>13. What happens during a TLS 1.3 handshake (`ClientHello` -> `ServerHello`), and what roles do `SNI` and `ALPN` play?</summary>
+
 In TLS 1.3 (which completes in **1 RTT**), the client sends `ClientHello` containing its supported cipher suites, an ephemeral Diffie-Hellman key share, **`SNI`** (*Server Name Indication*, the hostname `example.com` so a multi-tenant server/load balancer selects the right X.509 certificate), and **`ALPN`** (*Application-Layer Protocol Negotiation*, offering `h2` and `http/1.1`). The server replies with `ServerHello`, its key share, its X.509 certificate chain, `CertificateVerify` signature, and `Finished`; the client verifies the certificate chain against `/etc/ssl/certs` and hostname `SAN`s before sending encrypted HTTP data.
 </details>
 
 <details>
 <summary>14. Compare HTTP/1.1, HTTP/2, and HTTP/3 (QUIC) at the transport layer.</summary>
+
 **HTTP/1.1** sends text requests sequentially over TCP (using keep-alive connection pooling). **HTTP/2** multiplexes multiple binary request/response streams over a single TCP + TLS connection with HPACK header compression, but a single lost TCP packet stalls all streams (**TCP head-of-line blocking**). **HTTP/3** runs over **QUIC** (UDP port `443` with built-in TLS 1.3), providing independent per-stream loss recovery without head-of-line blocking and 1-RTT / 0-RTT connection setup.
 </details>
 
 <details>
 <summary>15. Given cumulative `curl -w` timings (`time_namelookup`, `time_connect`, `time_appconnect`, `time_pretransfer`, `time_starttransfer`, `time_total`), how do you calculate the time spent in each phase?</summary>
+
 Because all `curl -w` timestamps are cumulative from `t = 0`:
 - **DNS lookup** = `time_namelookup`
 - **TCP handshake (1 RTT)** = `time_connect - time_namelookup`
@@ -408,16 +423,19 @@ Because all `curl -w` timestamps are cumulative from `t = 0`:
 
 <details>
 <summary>16. Why does TCP keep a closed connection in `TIME_WAIT` for ~60 seconds, and which side enters `TIME_WAIT`?</summary>
+
 The side that initiates the active close (sends the first `FIN`) enters `TIME_WAIT` for ~60 seconds after sending the final `ACK`. This prevents delayed duplicate packets from the old connection from being accepted by a new connection reusing the same 5-tuple, and ensures the peer receives a retransmitted `ACK` if the final `ACK` was lost.
 </details>
 
 <details>
 <summary>17. How does `traceroute` (or `mtr`) discover every router along a path, and how does Path MTU Discovery (`PMTUD`) work?</summary>
+
 `traceroute` sends probe packets with `TTL = 1`, then `TTL = 2`, `TTL = 3`, ... Each Nth router decrements `TTL` to `0`, drops the packet, and replies with an **ICMP Time Exceeded** message from its own IP. **PMTUD** sets the **Don't Fragment (`DF`)** bit on IPv4 packets; if a link along the path has a smaller MTU (e.g., an overlay tunnel at `1450` bytes), the router drops the oversized packet and returns **ICMP Fragmentation Needed** (or IPv6 **Packet Too Big**) with the next-hop MTU so the sender lowers its TCP segment size (`ping -M do -s 1472` tests a 1500-byte path).
 </details>
 
 <details>
 <summary>18. Map `curl` exit codes `6`, `7`, `22`, `28`, `35`, and `60` to their exact failure layers.</summary>
+
 - `6`: DNS resolution failure (`Could not resolve host`)
 - `7`: L3/L4 connect failure (`Connection refused`, `No route to host`, `Network is unreachable`)
 - `22`: HTTP 4xx/5xx error (when `-f` / `--fail` is passed)
@@ -428,11 +446,13 @@ The side that initiates the active close (sends the first `FIN`) enters `TIME_WA
 
 <details>
 <summary>19. How does distributed training traffic (`torchrun` rendezvous vs. `NCCL` RDMA collectives) use—and bypass—this packet journey?</summary>
+
 Job rendezvous (`torchrun` `c10d` store, MPI launch, and NCCL ring/tree setup) uses the **standard Linux TCP/IP journey** (`getaddrinfo`, routing table, ARP, `qdisc`, TCP sockets). Once initialized, bulk gradient/activation collectives (`AllReduce`, `AllGather`) use **RDMA verbs** over InfiniBand or RoCEv2 (**kernel bypass**): `libnccl`/`libmlx5` posts Work Queue Elements directly to the NIC hardware, which DMAs tensors straight out of GPU `HBM` (`GPUDirect RDMA`) and segments/acknowledges packets in NIC silicon—completely invisible to `tcpdump`, `ss`, and `iptables`.
 </details>
 
 <details>
 <summary>20. What extra hops are added to a `curl` request when it originates inside a Kubernetes Pod?</summary>
+
 (1) DNS queries go to **CoreDNS** with `ndots:5` search-domain expansion; (2) if the target is a Kubernetes `Service` VIP (`ClusterIP`), **`kube-proxy` (`iptables`/`IPVS`) or `Cilium` eBPF** rewrites the destination IP (DNAT) to a backing Pod endpoint IP; (3) the packet exits the container's network namespace across a **`veth` pair** into the host bridge or CNI router (and is optionally encapsulated in **VXLAN/Geneve**); and (4) **NetworkPolicy** filters check ingress/egress before the packet leaves the node's physical NIC.
 </details>
 

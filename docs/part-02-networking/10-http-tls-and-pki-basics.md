@@ -284,101 +284,123 @@ Next, on a disposable Linux VM with `openssl`, `curl`, and `nginx` or `Caddy` (a
 
 <details>
 <summary>1. Which HTTP methods are idempotent, and what is the difference between HTTP status codes `401` and `403`, and among `502`, `503`, and `504`?</summary>
+
 `GET`, `HEAD`, `PUT`, `DELETE`, and `OPTIONS` are **idempotent** (repeating the identical request has the same intended state effect as sending it once), whereas `POST` is **not idempotent**. For status codes: **`401 Unauthorized`** means **unauthenticated** (missing or invalid credentials/token); **`403 Forbidden`** means **authenticated, but unauthorized** by access policy. At a reverse proxy or load balancer: **`502 Bad Gateway`** means the upstream server reset the connection or returned an invalid response; **`503 Service Unavailable`** means no healthy upstream endpoints are available in the pool; and **`504 Gateway Timeout`** means the upstream server (e.g., a slow LLM inference call) did not respond before the proxy's read timeout expired.
 </details>
 
 <details>
 <summary>2. Compare `HTTP/1.1`, `HTTP/2` (`RFC 9113`), and `HTTP/3` (`RFC 9114`).</summary>
+
 - **`HTTP/1.1`**: text-based framing over TCP; supports `keep-alive` connection reuse, `Host:` virtual hosting, and chunked streaming, but allows only **one request in flight per TCP connection** in practice (HTTP-layer head-of-line blocking).\n- **`HTTP/2`**: binary framing over a single TCP + TLS connection (`ALPN: h2`, used by **gRPC**); multiplexes many concurrent request/response **streams** with `HPACK` header compression and per-stream flow control, but a single lost TCP packet stalls **all** streams on that connection (**TCP-level head-of-line blocking**).\n- **`HTTP/3`**: runs over **QUIC (UDP + built-in TLS 1.3)** (`ALPN: h3`), providing per-stream loss recovery without cross-stream head-of-line blocking and `1-RTT` / `0-RTT` connection setup.
 </details>
 
 <details>
 <summary>3. Why do long-lived HTTP/gRPC connection pools occasionally fail with `Connection reset by peer` on the first request after an idle gap, and how do you fix it?</summary>
+
 If a reverse proxy, cloud load balancer, or NAT gateway has an **idle timeout** (e.g., `60 s`) that is **shorter** than the client connection pool's idle keep-alive lifetime (e.g., `120 s`), the middlebox closes or drops the idle connection state while the client still thinks the socket in its pool is open; the client's next write triggers a `RST`. Always configure the server/LB `keepalive_timeout` **longer** than the client pool's max idle time (and enable TCP/HTTP2 keepalive pings).
 </details>
 
 <details>
 <summary>4. What four security properties does transport security address (`CN` Chapter 10), and why does TLS combine public-key and symmetric cryptography?</summary>
+
 (1) **Confidentiality** (preventing eavesdroppers from reading data), (2) **Integrity** (proving data was not altered in transit), (3) **Authentication** (proving the peer's identity to prevent Man-in-the-Middle attacks), and (4) **Privacy from traffic analysis** (limiting metadata / "data exhaust"). Public-key (asymmetric) algorithms solve key exchange and identity verification over an untrusted network but are computationally expensive; symmetric **AEAD** ciphers (`AES-GCM`, `ChaCha20-Poly1305`) are orders of magnitude faster (especially with CPU `AES-NI` instructions) and encrypt the bulk session data.
 </details>
 
 <details>
 <summary>5. What is Forward Secrecy (PFS), how is it achieved in TLS, and why was static-RSA key exchange removed in TLS 1.3?</summary>
+
 **Forward Secrecy** guarantees that even if a server's long-term private certificate key is stolen years later, an attacker who recorded past encrypted traffic **cannot decrypt those past sessions**. It is achieved by negotiating a fresh, per-session shared secret using **ephemeral Diffie-Hellman (`ECDHE`**, such as `X25519` or `P-256`) and destroying the ephemeral private keys as soon as the session ends. Legacy static-RSA key transport (where the client encrypted the pre-master secret directly with the server's long-term RSA public key) lacked forward secrecy and was removed completely in TLS 1.3.
 </details>
 
 <details>
 <summary>6. What is an AEAD cipher, and why is an unkeyed cryptographic hash (`SHA-256`) alone insufficient to authenticate a message?</summary>
+
 An **AEAD** (*Authenticated Encryption with Associated Data*) cipher—such as **`AES-128-GCM`**, **`AES-256-GCM`**, or **`ChaCha20-Poly1305`**—encrypts the payload and computes a keyed authentication tag in a single integrated operation, providing both confidentiality and integrity. An unkeyed hash (`SHA-256`) only detects accidental corruption; an active attacker who modifies a message in transit can trivially recompute a new valid `SHA-256` hash unless a keyed **MAC (`HMAC`)** or **digital signature** is used.
 </details>
 
 <details>
 <summary>7. Trace the 1-RTT TLS 1.3 handshake (`RFC 8446`) and list five ways it improves upon TLS 1.2 (`RFC 5246`).</summary>
+
 In TLS 1.3, `ClientHello` immediately carries the client's supported cipher suites, `SNI`, `ALPN`, and its **ephemeral `key_share` (`X25519`)**; the server responds with `ServerHello` + its `key_share`, allowing both sides to derive handshake encryption keys in **1 RTT**. Five improvements over TLS 1.2: (1) **1 RTT** instead of 2 RTTs, (2) **mandatory Forward Secrecy (`ECDHE`)**, (3) **only modern AEAD ciphers** (removing CBC, RC4, 3DES, MD5, SHA-1, compression, and renegotiation), (4) **all handshake messages after `ServerHello` (including the server's `Certificate`) are encrypted**, and (5) optional **`0-RTT` resumption**.
 </details>
 
 <details>
 <summary>8. What is the security risk of TLS 1.3 `0-RTT` early data, and when is it safe to use?</summary>
+
 In `0-RTT` resumption, the client sends application data in its very first packet alongside `ClientHello` encrypted under a pre-shared resumption key (`PSK`). If a network middlebox or attacker replays that packet, the server could execute the request twice (**replay attack**); therefore `0-RTT` is safe **only for idempotent requests** (`GET`) with no state-mutating side effects.
 </details>
 
 <details>
 <summary>9. What do `SNI` (*Server Name Indication*) and `ALPN` (*Application-Layer Protocol Negotiation*) do in `ClientHello`?</summary>
+
 **`SNI`** sends the target DNS hostname (e.g., `api.example.com`) inside `ClientHello` so an ingress controller, load balancer, or server hosting multiple domains on a single IP knows which X.509 certificate to present (and where to route TLS passthrough traffic). **`ALPN`** negotiates the inner application protocol (`h2` for HTTP/2 vs `http/1.1`) during the TLS handshake without an extra round trip.
 </details>
 
 <details>
 <summary>10. What is Mutual TLS (`mTLS`), and how is it used in Kubernetes and service meshes?</summary>
-In standard TLS, only the server presents a certificate (`extendedKeyUsage = serverAuth`). In **Mutual TLS (`mTLS`)**, the server sends a `CertificateRequest` during the handshake and the **client also presents an X.509 certificate** (`extendedKeyUsage = clientAuth`) and signs the transcript (`CertificateVerify`). It is used by `kubelet` <-> `kube-apiserver`, `etcd` peers, and service meshes (`Istio`, `Linkerd`, `Cilium` using short-lived **SPIFFE** workload identities) for cryptographic zero-trust service authentication.
+
+In standard TLS, only the server presents a certificate (`extendedKeyUsage = serverAuth`). In **Mutual TLS (`mTLS`)**, the server sends a `CertificateRequest` during the handshake and the **client also presents an X.509 certificate** (`extendedKeyUsage = clientAuth`) and signs the transcript (`CertificateVerify`). It is used by `kubelet` `&lt;->` `kube-apiserver`, `etcd` peers, and service meshes (`Istio`, `Linkerd`, `Cilium` using short-lived **SPIFFE** workload identities) for cryptographic zero-trust service authentication.
 </details>
 
 <details>
 <summary>11. Contrast the Root CA, Intermediate CA, and Leaf Certificate in a Hierarchical PKI, and explain why the Root CA must stay offline.</summary>
-- **Root CA**: self-signed trust anchor stored inside client **trust stores** (`/etc/ssl/certs/ca-certificates.crt`). Kept **completely offline** in an air-gapped HSM because compromising a Root CA compromises every system that trusts it and requires replacing trust stores across every device.\n- **Intermediate CA**: signed by the Root CA (`basicConstraints = critical, CA:TRUE`); stays online in Vault/step-ca/CA infrastructure to sign day-to-day leaf certificates and can be revoked if compromised.\n- **Leaf (end-entity) certificate**: signed by an Intermediate CA (`basicConstraints = CA:FALSE`), deployed on the server/client with its private key.
+
+- **Root CA**: self-signed trust anchor stored inside client **trust stores** (`/etc/ssl/certs/ca-certificates.crt`). Kept **completely offline** in an air-gapped HSM because compromising a Root CA compromises every system that trusts it and requires replacing trust stores across every device.
+- **Intermediate CA**: signed by the Root CA (`basicConstraints = critical, CA:TRUE`); stays online in Vault/step-ca/CA infrastructure to sign day-to-day leaf certificates and can be revoked if compromised.
+- **Leaf (end-entity) certificate**: signed by an Intermediate CA (`basicConstraints = CA:FALSE`), deployed on the server/client with its private key.
 </details>
 
 <details>
 <summary>12. Why do modern TLS clients ignore the Subject `CN` (*Common Name*), and what are the RFC 6125 rules for `SAN` (*Subject Alternative Name*) wildcards?</summary>
+
 Per RFC 6125 and CA/Browser Forum baseline requirements, TLS clients validate the requested hostname or IP address **exclusively against the `Subject Alternative Name` (`SAN`: `DNS:...`, `IP:...`) extension**. A wildcard `SAN` such as **`*.lab.internal`** matches **only a single leftmost DNS label** (`api.lab.internal`), and **never** matches multiple labels (`a.b.lab.internal`) or the bare zone apex (`lab.internal`).
 </details>
 
 <details>
 <summary>13. Which certificates must a server send during the TLS handshake, and why does omitting the Intermediate CA break `curl` and Go while working in Chrome?</summary>
+
 The server must send its **leaf certificate followed by all required Intermediate CA certificates** (omitting the Root CA, which the client already has in its trust store). Desktop browsers work around a missing intermediate by downloading it on the fly from the leaf certificate's `Authority Information Access` (`AIA`) URL or browser cache, whereas CLI/API clients (`curl`, Go, Python, Java, `containerd`) do not perform `AIA` chasing and fail immediately with **`unable to get local issuer certificate`** / **`x509: certificate signed by unknown authority`**.
 </details>
 
 <details>
 <summary>14. How does the `ACME` protocol (`RFC 8555`) automate certificate issuance, and when must you use `DNS-01` instead of `HTTP-01`?</summary>
+
 An ACME client (`cert-manager`, `certbot`, `Caddy`) generates a keypair and CSR, requests a certificate from the CA (such as Let's Encrypt, `90`-day lifetime), and proves domain control by completing an automated challenge. **`HTTP-01`** serves a token file at `http://<domain>/.well-known/acme-challenge/<token>` (requires port 80 reachable from the CA and cannot issue wildcards). **`DNS-01`** creates a signed `_acme-challenge.<domain>` `TXT` record via DNS API—required for **wildcard certificates (`*.example.com`)** and for **internal/private clusters** not exposed to the public Internet.
 </details>
 
 <details>
 <summary>15. Compare `CRL`s, `OCSP`, `OCSP Stapling`, and Short-Lived Certificates for handling certificate revocation.</summary>
+
 **`CRL`s** (*Certificate Revocation Lists*) grow large to download; live **`OCSP`** queries add handshake latency, leak which site the client is visiting to the CA, and fail open if the OCSP responder is down. **`OCSP Stapling`** has the **server** periodically fetch a signed timestamped OCSP response from the CA and attach ("staple") it directly inside the TLS handshake. Modern infrastructure increasingly favors **short-lived automated certificates** (days or hours via `cert-manager` / SPIFFE) so compromised credentials expire naturally without relying on revocation checks.
 </details>
 
 <details>
 <summary>16. How do you test a specific backend server IP (`10.0.0.5`) with `curl` while still sending the right `SNI` and verifying the `api.example.com` certificate?</summary>
+
 Run **`curl --resolve api.example.com:443:10.0.0.5 https://api.example.com/`**. Unlike `curl https://10.0.0.5/ -H 'Host: api.example.com'` (which omits the DNS name from TLS `SNI` and fails SAN verification unless `-k` is used), `--resolve` overrides only the IP lookup while keeping `SNI`, `SAN` verification, and the HTTP `Host:` header set to `api.example.com`.
 </details>
 
 <details>
 <summary>17. How do you install a private Root CA on Ubuntu/Debian, RHEL/Rocky, and `containerd` for a private container registry?</summary>
+
 - **Ubuntu/Debian**: copy `ca.crt` to `/usr/local/share/ca-certificates/my-ca.crt` and run `sudo update-ca-certificates`.\n- **RHEL/Rocky**: copy `ca.crt` to `/etc/pki/ca-trust/source/anchors/` and run `sudo update-ca-trust`.\n- **`containerd`**: configure `/etc/containerd/certs.d/<registry-host>/hosts.toml` pointing `ca = "/path/to/ca.crt"` (and remember that distroless/minimal containers or Python `certifi` / Java `cacerts` bundles inside pods may need the CA mounted via a ConfigMap/Secret).
 </details>
 
 <details>
 <summary>18. Where do `kubeadm` Kubernetes cluster certificates live, when do they expire, and how do you check and renew them?</summary>
+
 `kubeadm` stores cluster CAs (`ca.crt`, `etcd/ca.crt`, `front-proxy-ca.crt`, valid for 10 years) and leaf component certificates (`apiserver.crt`, `apiserver-kubelet-client.crt`, `etcd/server.crt`, valid for **1 year**) in **`/etc/kubernetes/pki/`**. Check expiration dates with **`sudo kubeadm certs check-expiration`** and renew them with **`sudo kubeadm certs renew all`** (followed by restarting the control-plane static pods).
 </details>
 
 <details>
 <summary>19. Compare Edge TLS Termination, TLS Re-Encryption, and TLS Passthrough on a Kubernetes Ingress / Gateway (`PK` Chapter 6).</summary>
+
 - **Edge Termination**: the Ingress/Gateway decrypts TLS at the cluster edge and forwards plain HTTP to the Pod over the CNI network (simplest, offloads TLS from the app).\n- **Re-Encryption**: the Ingress terminates external TLS, inspects L7 HTTP headers for routing, and opens a new internal TLS/mTLS connection to the Pod.\n- **TLS Passthrough**: the Ingress/LB inspects only the unencrypted **`SNI` hostname** in `ClientHello` and forwards the raw TCP/TLS stream directly to the Pod, which terminates TLS itself (required when the backend itself must verify end-to-end client mTLS certificates).
 </details>
 
 <details>
 <summary>20. What proxy settings must be tuned when serving streaming LLM token responses (`Server-Sent Events` / chunked HTTP or gRPC) behind an Ingress/reverse proxy?</summary>
+
 Disable response buffering (`proxy_buffering off;` in nginx or `X-Accel-Buffering: no`) so generated tokens are flushed to the client immediately rather than held until a buffer fills; raise upstream read/send timeouts (`proxy_read_timeout 600s;`) above the longest multi-minute reasoning generation so the proxy does not abort with **`504 Gateway Timeout`**; and enable HTTP/2 / gRPC keepalive pings.
 </details>
 

@@ -298,101 +298,121 @@ Next, on a disposable Linux VM using containerlab (`2` spines in `AS 65001`, `4`
 
 <details>
 <summary>1. Why did large-scale data centers standardize on `eBGP` (`RFC 7938`) as their sole routing protocol?</summary>
+
 (1) **Single protocol** for underlay reachability, EVPN overlays, host routing, and WAN border peering; (2) **bounded failure domains without link-state flooding** (updates propagate only along affected paths with no fabric-wide Dijkstra SPF recomputation); (3) **deterministic AS-path loop prevention** that naturally enforces valley-free Clos forwarding; (4) **rich per-hop policy and origin-ASN attribution** (knowing immediately which rack originated a prefix and draining switches cleanly with communities); and (5) **mature, interoperable multi-vendor implementations**.
 </details>
 
 <details>
 <summary>2. What is the RFC 7938 ASN allocation rule for a 3-stage leaf-spine Clos, and how does sharing one ASN across all spines prevent \"valley\" (hairpin) routing?</summary>
+
 Assign each **leaf switch (ToR) its own unique ASN** (`65101, 65102, ...` or 4-byte private `4200000000+`), and assign **all spine switches in the tier the exact same ASN (`65001`)**. If Leaf 1 loses its link to Spine 2 and Leaf 3 loses its link to Spine 1, a path `Leaf 1 -> Spine 1 (65001) -> Leaf 2 (65102) -> Spine 2 (65001) -> Leaf 3` would hairpin through Leaf 2 (`valley` routing, overloading Leaf 2's uplinks). Because Spine 2 shares ASN `65001` with Spine 1, Spine 2 sees `65001` already in `AS_PATH` and **automatically rejects the hairpin route**.
 </details>
 
 <details>
 <summary>3. List seven configuration changes required to make `eBGP` converge and load-balance like an IGP inside a data center.</summary>
+
 (1) **`bgp bestpath as-path multipath-relax`** (so equal-length paths with different leaf/spine ASNs form ECMP); (2) **`maximum-paths 64`** (matching fabric width); (3) **`neighbor ... advertisement-interval 0`** (eliminating the default `30 s` eBGP MRAI delay); (4) **short keepalive/hold timers (`timers 3 9`) plus `BFD` (`100–300 ms`)**; (5) **`bgp fast-external-failover`** (tearing down the session immediately on local carrier loss); (6) **advertising only `/32` loopbacks and server subnets** (never point-to-point link subnets); and (7) **`remove-private-as`** at the external WAN border.
 </details>
 
 <details>
 <summary>4. How does `BGP Unnumbered` (`RFC 5549` / `RFC 8950`) work, and why is it a major operational win on a 1,000-GPU fabric?</summary>
+
 In a fabric with hundreds or thousands of point-to-point switch and server links, allocating and configuring `/31` IPv4 subnets on every cable is tedious and error-prone. With **BGP unnumbered** (`neighbor swp1 interface remote-as external`), interfaces have **no IPv4 addresses**: routers automatically discover each other's **`fe80::/64` IPv6 link-local address and MAC** via **ICMPv6 Router Advertisements (`RA`)**, establish the TCP/179 session over IPv6 link-local, and use **Capability Code `5` (*Extended Next Hop Encoding*, RFC 8950)** to advertise **IPv4 prefixes with an IPv6 link-local `NEXT_HOP`** (`via inet6 fe80::... dev swp1 onlink`). Every cable is 100% plug-and-play.
 </details>
 
 <details>
 <summary>5. Define a control-plane \"failure domain\" and explain how a Positive Feedback Loop can take down a routing control plane (`CN` Chapter 19).</summary>
+
 A **failure domain** is the set of routers that receive updates and must recompute state when a link or prefix changes. A **positive feedback loop** occurs when control-plane load amplifies itself: suppose routers can process `10` events/s, and a flapping link generates `3` flaps/s (`6` events/s); because intermediate routers multiply and re-flood updates across parallel paths, a downstream router receives `12` events/s, runs out of CPU/memory, crashes or drops BFD/keepalives, and triggers a full adjacency teardown and table resync across all its neighbors—cascading across the entire network even after the original link stops flapping.
 </details>
 
 <details>
 <summary>6. Name the six techniques for bounding control-plane scope and velocity (`CN` Chapter 19), along with the cost of each.</summary>
+
 (1) **Summarizing topology** (hiding internal links/nodes behind areas/levels; cost: hides internal component failures);\n(2) **Aggregating reachability** (collapsing `/24`s into a `/16`; cost: suboptimal paths and **black holes** on link failure);\n(3) **Filtering reachability** (dropping link subnets or unneeded prefixes; cost: unreachability if misconfigured);\n(4) **Layering control planes** (separating underlay loopbacks from an EVPN overlay; cost: two control planes to operate and correlate);\n(5) **Caching / reactive learning** (learning host routes on demand; cost: first-packet latency); and\n(6) **Slowing down** (SPF/LSA throttling, MRAI, damping; cost: slower convergence).
 </details>
 
 <details>
 <summary>7. Explain the Clos Spine Summarization Black Hole and why you must never summarize server prefixes on spines toward leaves.</summary>
+
 Suppose Spine 1..4 all advertise a summary `10.10.0.0/16` (covering Leaf 1..4's `10.10.1.0/24..10.10.4.0/24`) while suppressing the specific `/24`s. If the single link between **Spine 2 and Leaf 3 (`10.10.3.0/24`)** fails, Spine 2 still reaches Leaves 1, 2, and 4—so Spine 2 **keeps advertising `10.10.0.0/16`**. Any router that hashes traffic for `10.10.3.0/24` to Spine 2 will have its packets **dropped in a black hole at Spine 2**. Never summarize on spines where specific `/24` reachability can partition; summarize only at pod/WAN borders using **conditional advertisement** or **minimum-peers rules**.
 </details>
 
 <details>
 <summary>8. What is the \"Minimum BGP Peers per Prefix\" rule, and why is it useful in AI fabrics (`ADC` Chapter 8)?</summary>
+
 For synchronous AI workloads that require full non-blocking bisection bandwidth, a spine or aggregation switch can be configured to advertise a prefix upward **only while at least `N` healthy ECMP next-hop peers exist for that prefix**. If a link failure drops the available paths below `N` (e.g., from 4 paths to 3), the spine withdraws the prefix so upstream senders steer traffic only through spines that still have 100% downstream capacity.
 </details>
 
 <details>
 <summary>9. How does the `BGP Link Bandwidth Extended Community` enable Weighted ECMP (`UCMP`)?</summary>
+
 Standard ECMP splits flows equally (`1/N`) across all next hops, which overloads a degraded path when parallel paths have unequal capacity (for example, `400G`, `800G`, `100G`, and `400G` northbound trunks, or a spine that lost 1 of its 4 super-spine uplinks). By attaching the **Link Bandwidth Extended Community** proportional to available bandwidth, the receiving router programs **weighted ECMP (`UCMP`)** buckets in the switch ASIC so each next hop receives traffic strictly proportional to its capacity.
 </details>
 
 <details>
 <summary>10. When is `AS-PATH` Strip and Replace (normalization) used in an AI data center (`ADC` Chapter 8)?</summary>
+
 When a private-ASN fabric connects to a campus/core network that also uses private ASNs, or when tenant GPU servers run their own BGP daemons and inject prefixes with varying `AS_PATH` lengths, the ToR/border router can **strip incoming private ASNs and replace them with a uniform fixed-length ASN sequence**—preventing accidental `AS_PATH` loop drops and ensuring all server/external paths have identical `AS_PATH` length for ECMP.
 </details>
 
 <details>
 <summary>11. How does `BGP Deterministic Path Forwarding` (`DPF`, `draft-wang-idr-dpf`) partition a physical Clos into multiple logical fabrics?</summary>
+
 **BGP DPF** tags eBGP sessions and routes with **colors** (e.g., `black`, `grey`). A colored route is advertised over a session **only if the route and session share at least one color**, and any unmatched colors on the route are pruned as it crosses the session—confining each color's routes to its own dedicated subset of leaf-spine links (**logical fabric**). High-priority tenant RoCE elephant flows (matched by UDP port, RoCE `BTH` destination QP, or `EVPN` VRF) are steered onto a dedicated `black` fabric (e.g., `3 x 400G = 1.2 Tb/s`) with an optional `grey` backup path, eliminating cross-tenant elephant collisions.
 </details>
 
 <details>
 <summary>12. Contrast a **Rail-Optimized** GPU fabric with a **Rail-Unified** GPU fabric (`ADC` Chapter 8).</summary>
+
 - **Rail-Optimized**: each of an 8-GPU server's 8 NICs (`NIC 0..7`) connects to a **different leaf switch** (`Leaf_Rail_0 .. Leaf_Rail_7`). Same-rank GPUs across servers communicate in 1 hop through their shared rail leaf, and a single leaf failure reduces job bandwidth by only `1/8` (`12.5%`).\n- **Rail-Unified**: all 8 NICs of a server connect to the **same ToR leaf switch** (or leaf pair). This simplifies rack cabling, but a single ToR switch failure takes down all 8 GPUs of the server, and intra-rack vs inter-rack traffic shares the same leaf uplinks (where logical fabric coloring like DPF helps isolate per-GPU planes).
 </details>
 
 <details>
 <summary>13. Why are `IGP`s (`IS-IS` and `RIFT`) being evaluated alongside `eBGP` for 16,000–32,000 GPU AI back-end fabrics (`ADC` Chapter 8)?</summary>
+
 BGP is a prefix-advertisement protocol with no native concept of topology graphs, link utilization, or switch queue depth, and requires external `BFD` sessions and higher CPU for fast failure detection. Link-state IGPs (`IS-IS` with flood reduction, `RIFT`) have built-in fast UDP/L2 hellos, full topology visibility, extensible TLVs for link/queue state, and native multi-topology / constrained-path calculation.
 </details>
 
 <details>
 <summary>14. What do `IS-IS Optimised Flooding` (`draft-white-lsr-distoptflood`) and `IS-IS Flex Algo` (`RFC 9350` / `RFC 9502`) do?</summary>
+
 - **IS-IS Optimised Flooding**: in a dense Clos where every leaf connects to every spine, classic flooding sends duplicate LSP fragments over every parallel link; optimized flooding elects a subset of flooding relays so each node receives an LSP once, scaling single-area IS-IS to **`~2,500` switches**.\n- **IS-IS Flex Algo (`RFC 9350`, and `RFC 9502` for plain IP fabrics)**: allows operators to define multiple **Flexible Algorithm IDs** combining a metric type (IGP cost, min-delay, TE) and link affinity constraints (include/exclude colored links, minimum bandwidth), computing **separate parallel SPF routing planes** on the same physical fabric.
 </details>
 
 <details>
 <summary>15. How does `RIFT` (*Routing in Fat Trees*, `RFC 9692`) work, and how does it automatically solve the Clos summarization black-hole problem?</summary>
+
 **RIFT** is a hybrid protocol purpose-built for Clos/fat-tree topologies:\n- **Northbound (toward spines)**: acts as **link-state**, flooding topology upward so spines have full visibility of the pod.\n- **Southbound (toward leaves)**: acts as **distance-vector**, advertising **only a single default route** downward so leaf FIB tables stay tiny.\n- **Automatic Disaggregation**: when a spine loses its link to a specific leaf (`Leaf 3`), RIFT automatically detects the asymmetry and pushes a **positive/negative disaggregation specific route (`10.10.3.0/24`)** downward so sibling leaves never route `Leaf 3` traffic to the broken spine—solving the Clos summarization black hole with zero manual configuration.
 </details>
 
 <details>
 <summary>16. What is a **Dragonfly** (and **Sparse Dragonfly**) topology, and why does it require non-shortest-path (Valiant) routing (`ADC` Chapter 8)?</summary>
+
 A **Dragonfly** groups switches into local pods/groups (either all-to-all meshed in canonical dragonfly, or a 2-tier leaf-spine Clos per group in **sparse dragonfly**) and connects every group directly to every other group via a small number of **global inter-group links**. When traffic between Group 1 and Group 2 saturates their direct global link, the fabric must route flows indirectly via an intermediate Group 3 (**non-shortest-path / Valiant load balancing**), which requires link-utilization awareness and loop-free group split-horizon rules that IGPs (`RIFT`, extended `IS-IS`) handle better than standard `eBGP`.
 </details>
 
 <details>
 <summary>17. Compare Network-Level Multi-Tenancy (`EVPN-VXLAN`), Server-Level Multi-Tenancy (`NVIDIA MIG` + VLANs/VRFs), and `VXLAN GBP` Microsegmentation (`ADC` Chapter 8).</summary>
+
 - **Network-Level (`EVPN-VXLAN`)**: maps whole servers/ports to per-tenant VLANs/VNIs (`MAC-VRF` for L2 and `Route Type 5 IP-VRF` for L3; e.g., an 8-leaf x 8-spine rail with `64x800G` switches provides `512` 400G GPU ports, hosting `4` isolated tenants of `128` GPUs each).\n- **Server-Level (`NVIDIA MIG` + VRFs)**: partitions each physical GPU into up to **`7` hardware-isolated MIG instances**, mapping each MIG instance to its own `802.1Q` VLAN on the server NIC and into **`7` separate MAC-VRFs / IP-VRFs** on the leaf switch.\n- **Microsegmentation (`VXLAN GBP`, Group-Based Policy)**: carries a 16-bit security group tag inside the VXLAN header so two sub-tenants sharing the same VNI/subnet can still be blocked from talking to each other at the leaf switch.
 </details>
 
 <details>
 <summary>18. What are the benefits of running `BGP to the Server` (`FRR` / `BIRD` on the host or DPU), and how does Anycast service health-checking work?</summary>
+
 Running unnumbered **eBGP on the server/DPU** to both ToR leaves gives: (1) **active-active L3 ECMP across dual ToRs without proprietary switch MLAG**, (2) advertisement of the host's `/32` loopback and local Kubernetes Pod/VM prefixes, (3) host-level multi-tenant VRFs, and (4) **Anycast VIPs**: multiple inference or DNS/caching servers advertise the **exact same `/32` VIP** into BGP so the fabric ECMP-balances requests across all healthy instances, and a local health-check daemon withdraws the `/32` route within milliseconds if the local process fails.
 </details>
 
 <details>
 <summary>19. How does `Segment Routing over IPv6` (`SRv6`, RFC 8754 / RFC 8986) with `16`-bit Micro-SIDs (`uSID`s) enable deterministic AI traffic engineering?</summary>
+
 In **SRv6**, the ingress node (or DPU/ToR) steers a flow along an explicit congestion-free path computed by a central SDN controller by inserting a sequence of IPv6 Segment Identifiers (`SID`s, each containing `Locator : Function : Args`) into the IPv6 header/Segment Routing Header (`SRH`), requiring zero per-flow state on transit switches. **Compressed `16`-bit micro-SIDs (`uSID`s)** pack up to six hop instructions inside a single standard 128-bit IPv6 destination address without header expansion overhead.
 </details>
 
 <details>
 <summary>20. Walk through the 6-item operational verification checklist for a newly provisioned leaf-spine eBGP AI fabric.</summary>
+
 (1) `show bgp summary`: every expected leaf-spine session is **`Established`** with `BFD` `Up`;\n(2) `show ip route <remote-rack-prefix>`: every leaf installs the **full expected `N`-way ECMP next hops** (verifying `multipath-relax` and `maximum-paths`);\n(3) **Prefix count audit**: every leaf's RIB count matches `#racks + #loopbacks` with no leaked link subnets or unexpected long `AS_PATH`s;\n(4) **End-to-end Jumbo MTU check**: `ping -M do -s 8972` passes across every rail/uplink;\n(5) **Flow-hash distribution check**: `ip route get` with varied L4 ports exercises all uplinks; and\n(6) **Graceful drain drill**: applying `bgp graceful-shutdown` drains traffic off a spine with `0` lost packets.
 </details>
 

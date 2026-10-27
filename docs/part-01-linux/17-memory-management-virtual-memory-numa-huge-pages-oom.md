@@ -559,101 +559,121 @@ EOF
 
 <details>
 <summary>1. What does virtual memory provide, and how do the MMU, multi-level page tables, and TLB translate a virtual address?</summary>
+
 Virtual memory provides per-process address space isolation, oversubscription, shared library/file mapping (`mmap`), and contiguous virtual addressing. On each access, the CPU checks the **TLB** (*Translation Lookaside Buffer*); on a TLB hit, the physical address is returned in ~1 cycle. On a TLB miss, the hardware **MMU** walks the 4- or 5-level page table tree in RAM (`CR3 -> PGD -> P4D -> PUD -> PMD -> PTE`) to load the translation into the TLB, or raises a page fault if the PTE is not present.
 </details>
 
 <details>
 <summary>2. Define `VSZ` (`VIRT`), `RSS` (`RES`), `PSS`, `USS`, and `WSS`, and explain why summing `RSS` across processes is misleading.</summary>
+
 `VSZ` is total allocated virtual address space; `RSS` is resident memory currently mapped in RAM (including shared pages in full); `PSS` (*Proportional Set Size*, in `/proc/PID/smaps_rollup` and `smem`) divides shared pages evenly among the processes mapping them; `USS` (*Unique Set Size*) is private resident memory only; and `WSS` (*Working Set Size*) is the subset of memory actively referenced. Summing `RSS` counts shared libraries, `tmpfs`/`/dev/shm`, and CoW pages multiple times, whereas summing `PSS` equals true physical usage.
 </details>
 
 <details>
 <summary>3. What is demand paging, and what is the difference between a minor page fault and a major page fault?</summary>
+
 Under demand paging, `malloc()` or `mmap()` reserves virtual address ranges without allocating physical RAM frames until a page is first read or written. A **minor page fault** maps a physical page already in RAM (such as a newly zeroed anonymous page or an already-cached file page) with no disk I/O. A **major page fault** blocks the thread on storage I/O to read an uncached file page or swap in a paged-out anonymous page.
 </details>
 
 <details>
 <summary>4. What are the three modes of `vm.overcommit_memory` (`0`, `1`, `2`), and why is mode `2` rarely used on GPU nodes?</summary>
+
 `0` (default) uses a heuristic that allows reasonable overcommit while rejecting single allocations larger than available virtual capacity; `1` always allows virtual allocations (`malloc()` never returns `NULL`); and `2` enforces strict commit accounting limited to `swap + vm.overcommit_ratio% of RAM` (checked in `/proc/meminfo` via `CommitLimit` and `Committed_AS`). Mode `2` is avoided on GPU nodes because CUDA runtimes, JVMs, and `fork()` of large processes reserve huge virtual address spaces that they never fully touch.
 </details>
 
 <details>
 <summary>5. In `free -h` and `/proc/meminfo`, what is the difference between `MemFree` and `MemAvailable`?</summary>
+
 `MemFree` is completely unused RAM (which Linux keeps small by using spare RAM for the page cache). `MemAvailable` estimates how much memory can be given to new applications **without swapping**, combining `MemFree` with reclaimable page cache (`Cached`) and reclaimable kernel slab caches (`SReclaimable`), minus watermarks and non-reclaimable `Shmem`/`Mlocked` pages.
 </details>
 
 <details>
 <summary>6. Trace what Linux does as free memory drops past the `high`, `low`, and `min` watermarks.</summary>
+
 Above `high`, no reclaim runs. When free memory falls below the **`low`** watermark, the per-node background daemon **`kswapd`** wakes up and asynchronously reclaims clean page-cache pages, swaps out cold anonymous pages (if swap exists, weighted by `vm.swappiness`), and shrinks reclaimable slab caches (`dentries`/`inodes`) until free memory reaches `high`. If allocations outpace `kswapd` and hit the **`min`** watermark, the allocating application thread itself is forced into synchronous **direct reclaim** (`pgscand/s`, `allocstall`), stalling the application; if reclaim fails completely, the **OOM killer** runs.
 </details>
 
 <details>
 <summary>7. How do `vm.swappiness`, `vm.min_free_kbytes`, and `vm.watermark_scale_factor` control page reclaim?</summary>
+
 `vm.swappiness` (`0`–`200`, default `60`, set to `0`–`10` or `1` on GPU nodes) sets the relative preference for swapping anonymous memory versus reclaiming file page cache. `vm.min_free_kbytes` sets the `min` free memory watermark, and `vm.watermark_scale_factor` (default `10` = `0.1%` of RAM, often raised to `50`–`100` on TiB-scale servers) sets the spacing between `min`, `low`, and `high` so `kswapd` starts background reclaim earlier before threads hit direct reclaim.
 </details>
 
 <details>
 <summary>8. Why is swap usually disabled or set to minimal `swappiness` on GPU training nodes?</summary>
+
 If a GPU training rank's host memory is partially swapped to disk, touching those pages stalls the rank for milliseconds per fault, which stalls collective `NCCL` operations across *every* GPU in the job. Failing fast via cgroup OOM (`exit 137`) so the orchestrator can restart or reschedule the job is preferable to an entire multi-node cluster limping at 1% GPU utilization.
 </details>
 
 <details>
 <summary>9. How does the Linux OOM killer select a victim, and how do you use `oom_score_adj` to protect host daemons?</summary>
+
 The kernel scores candidate processes from `0` to `1000` (`/proc/PID/oom_score`) roughly proportional to their fraction of RAM + swap, then adds `/proc/PID/oom_score_adj` (`-1000` to `+1000`). Setting `oom_score_adj = -1000` makes a process completely immune (`0`), and setting `OOMScoreAdjust=-900` in `sshd.service`, `kubelet.service`, and `containerd.service` ensures the OOM killer picks a workload process instead of a critical node daemon.
 </details>
 
 <details>
 <summary>10. How do you distinguish a cgroup OOM kill from a global host OOM kill or a NUMA-constrained OOM kill?</summary>
+
 In `dmesg -T` / `journalctl -k`, a cgroup OOM prints `oom-kill:constraint=CONSTRAINT_MEMCG,nodemask=(null),cpuset=...,mems_allowed=...,oom_memcg=/kubepods.slice/...` and increments `oom_kill` inside that cgroup's `/sys/fs/cgroup/<path>/memory.events`, even when the host has hundreds of GiB free. A global OOM prints `constraint=CONSTRAINT_NONE` with host-wide low `free:` counts, and a NUMA-constrained OOM prints `constraint=CONSTRAINT_MEMORY_POLICY` or `CONSTRAINT_CPUSET` when a pinned NUMA node is full.
 </details>
 
 <details>
 <summary>11. What is NUMA, how do you inspect a server's NUMA distance matrix and PCIe device affinity, and what do `numastat` counters mean?</summary>
+
 In a NUMA (*Non-Uniform Memory Access*) server, each CPU socket (or sub-NUMA cluster) has local DRAM controllers and PCIe root complexes, connected to other sockets by an interconnect (`UPI` or `Infinity Fabric`/`xGMI`) with `1.3x`–`2.1x` higher latency (`numactl --hardware` shows `10` local vs `21` remote). Check GPU/NIC NUMA affinity via `nvidia-smi topo -m`, `lstopo`, and `/sys/bus/pci/devices/<BDF>/numa_node`. In `numastat`, `numa_hit` is local allocation as intended, `numa_miss`/`numa_foreign` is fallback to another node when full, and `other_node` is a CPU accessing memory allocated on a remote node.
 </details>
 
 <details>
 <summary>12. What is the \"first-touch\" NUMA placement rule, how does it cause the GPU data-loader trap, and how do you fix it?</summary>
+
 Under Linux's default local policy, a physical page is allocated on the NUMA node of the CPU core that **first writes (faults)** that page. If a data loader runs on socket `0` and faults its batch buffers there while feeding a GPU on socket `1`, every host-to-device DMA transfer crosses the inter-socket link. Fix it by launching each rank bound to its GPU's NUMA node (`numactl --cpunodebind=$node --membind=$node`), pinning `DataLoader` workers in `worker_init_fn`, and setting `kernel.numa_balancing = 0`.
 </details>
 
 <details>
 <summary>13. Compare explicit huge pages (`hugetlbfs`) and Transparent Huge Pages (`THP`), and state the recommended THP policy for training vs. inference.</summary>
+
 Explicit huge pages (`2 MiB` or `1 GiB`, configured via `vm.nr_hugepages` or boot parameters) are pre-reserved in a dedicated non-swappable pool and require applications to opt in (`MAP_HUGETLB`, `hugetlbfs`). THP automatically backs anonymous memory regions with `2 MiB` pages (`[always]`, `madvise`, `never`). Throughput-oriented training nodes benefit from `always` or `madvise` (higher TLB reach), whereas latency-critical inference servers and databases use `madvise` (or `never`) with `defrag=defer` to avoid synchronous memory-compaction latency spikes (`compact_stall`).
 </details>
 
 <details>
 <summary>14. Why does a process's `RSS` often remain high after `free()` or Python `del`, and how do `jemalloc` and `tcmalloc` help?</summary>
+
 User-space allocators (`glibc ptmalloc`, CPython `pymalloc` `256 KiB` arenas) retain freed blocks in internal bins/arenas for future allocations and cannot return an arena to the OS if a single small object at the top of the arena remains live. Preloading `libjemalloc.so.2` or `libtcmalloc.so.4` (or setting `MALLOC_ARENA_MAX=2`) reduces multithreaded arena fragmentation and returns unused pages more predictably.
 </details>
 
 <details>
 <summary>15. Why do `fork()`ed Python `DataLoader` workers duplicate a shared Python `list` dataset in RAM, and how do you keep the dataset shared?</summary>
+
 Although `fork()` shares parent memory pages copy-on-write, every time a worker reads an element of a Python `list` or `dict`, CPython increments the object's reference count (`ob_refcnt`) stored inside the object header, writing to the page and triggering a copy-on-write fault for the entire `4 KiB` page. Store datasets in contiguous `NumPy` arrays, `Apache Arrow` tables, `mmap` files, or `torch.Tensor.share_memory_()` so workers read raw bytes without mutating Python object headers.
 </details>
 
 <details>
 <summary>16. How do you read `/proc/pressure/memory` (PSI) and `sar -B` when diagnosing node slowdowns?</summary>
+
 In `/proc/pressure/memory`, `some` is the percentage of wall time (`avg10`, `avg60`, `avg300`) in which at least one task was stalled waiting on memory (reclaim/compaction/swap-in), and `full` is the percentage of time *all* non-idle tasks were stalled. In `sar -B`, non-zero `majflt/s` shows major page faults, `pgscank/s` shows background `kswapd` scanning, and non-zero `pgscand/s` proves application threads are blocking in synchronous direct reclaim.
 </details>
 
 <details>
 <summary>17. In `cgroup v2`, what is the difference between `memory.min`, `memory.low`, `memory.high`, and `memory.max`, and why does `memory.current` include page cache?</summary>
+
 `memory.min` hard-protects memory from reclaim; `memory.low` best-effort protects memory from reclaim; `memory.high` throttles the cgroup and forces aggressive reclaim before killing; and `memory.max` is the hard ceiling that triggers a cgroup OOM kill. `memory.current` includes both anonymous memory and file page cache charged to the cgroup; when `memory.current` nears `memory.max`, the kernel reclaims the cgroup's clean file cache first, so inspect `anon` in `memory.stat` to see true non-reclaimable pressure.
 </details>
 
 <details>
 <summary>18. What is pinned (page-locked) host memory, why do CUDA and RDMA require it, and what happens if `RLIMIT_MEMLOCK` is too small?</summary>
+
 Pinned memory (`mlock()`, `cudaMallocHost()`, PyTorch `pin_memory=True`) locks physical pages in RAM so the kernel cannot swap or migrate them, allowing GPUs and RDMA NICs to DMA directly without an intermediate kernel bounce buffer (`2x`–`3x` faster `H2D`/`D2H` bandwidth and true async overlap with compute). Because pinned pages are unevictable (`Mlocked` in `/proc/meminfo`), Linux caps them with `RLIMIT_MEMLOCK` (`ulimit -l`); if too small, `cudaHostAlloc` or `ibv_reg_mr` fails with out-of-memory, so AI nodes set `memlock` to `unlimited` (`LimitMEMLOCK=infinity`).
 </details>
 
 <details>
 <summary>19. What causes `mmap` or `malloc` to fail with `Cannot allocate memory` (`ENOMEM`) when `free -h` shows plenty of `MemAvailable`?</summary>
+
 Common causes are: (1) hitting `vm.max_map_count` (default `65530` mappings per process; raise to `1048576`), (2) hitting `RLIMIT_MEMLOCK` (`ulimit -l`) when pinning memory, (3) hitting a cgroup `memory.max` limit, (4) strict overcommit (`vm.overcommit_memory=2`), or (5) binding (`numactl --membind`) to a single exhausted NUMA node.
 </details>
 
 <details>
 <summary>20. How do you budget host RAM for an 8-GPU training server, and which `/proc/meminfo` fields indicate a kernel/driver memory leak?</summary>
+
 Sum OS/daemon reserve (`~16 GiB`) + (`num_gpus` x `workers_per_gpu` x per-worker RSS/prefetch) + pinned staging buffers + framework/NCCL host buffers + dataset page cache + `/dev/shm` checkpoint staging headroom. A kernel or driver memory leak appears as monotonically growing `Slab` / `SUnreclaim` (inspected with `slabtop`), `PageTables`, or `VmallocUsed` in `/proc/meminfo`.
 </details>
 

@@ -626,101 +626,121 @@ Next, on a GCP Ubuntu VM (all interactive VM commands below are `untested here`)
 
 <details>
 <summary>1. What is the difference between a terminal, a shell, and a command?</summary>
+
 A terminal is the window or TTY device that displays text and captures keystrokes. A shell (`bash`, `zsh`, `dash`) is the user-space command interpreter running inside the terminal. A command is the action you ask the shell to run, which can be an alias, function, shell builtin, or external executable program.
 </details>
 
 <details>
 <summary>2. List the six steps the shell performs between pressing Enter and a program finishing.</summary>
+
 First, it splits the line into words respecting quotes. Second, it performs expansions for braces, tilde, variables, command substitution, arithmetic, and filename globs. Third, it wires up redirections and pipes on file descriptors. Fourth, it resolves the command via alias, function, builtin, and `PATH` search. Fifth, it calls `fork`/`clone` and `execve` with the expanded argument array. Sixth, it waits via `wait4` and stores the exit status in `$?`.
 </details>
 
 <details>
 <summary>3. Why does `ls *.txt` work even though `ls` knows nothing about wildcards?</summary>
+
 The shell expands `*.txt` against matching filenames in the current directory *before* launching `ls`. The `ls` binary simply receives the final list of filenames as ordinary `argv` strings.
 </details>
 
 <details>
 <summary>4. Why must `cd`, `export`, `alias`, and `umask` be shell builtins rather than external binaries in `/usr/bin`?</summary>
+
 Every process has its own private working directory, environment block, and file-creation mask, and a child process cannot modify its parent's state. If `cd` were an external program, it would change its own child directory and immediately exit, leaving the parent shell unchanged.
 </details>
 
 <details>
 <summary>5. How does `cd -` work, and how do `.` and `..` behave in relative paths?</summary>
+
 `cd -` switches back to the previous working directory (toggling between the current and prior locations). A single dot (`.`) names the current directory (so `./prog` executes `prog` in the current directory), while two dots (`..`) name the parent directory one level up.
 </details>
 
 <details>
 <summary>6. Why is `*.*` a trap for matching all files on Linux, and why is `rm -r .*` dangerous?</summary>
+
 Unlike DOS/Windows, Linux filenames do not require a dot extension, so `*.*` only matches names containing a literal dot (`.`). Conversely, `.*` matches `.` and `..` (current and parent directories); use `.[!.]*` or `find` to match dotfiles safely.
 </details>
 
 <details>
 <summary>7. How do you remove or inspect a file whose name starts with a dash, such as `-rf` or `-weird-file`?</summary>
+
 Pass `--` (end of options) before the filename (`rm -- -weird-file`) or prefix the current directory path (`rm ./-weird-file`) so the command does not parse the leading dash as an option flag.
 </details>
 
 <details>
 <summary>8. What is the difference between single quotes (`'...'`), double quotes (`"..."`), and a backslash (`\`)?</summary>
+
 Single quotes preserve every character literally with zero expansion. Double quotes suppress word splitting and filename globbing while still expanding `$VAR`, `$(cmd)`, and `\` escapes. A backslash escapes only the single character immediately following it.
 </details>
 
 <details>
 <summary>9. What are file descriptors 0, 1, and 2, and why is standard error separate from standard output?</summary>
+
 File descriptor 0 is standard input (`stdin`), 1 is standard output (`stdout`), and 2 is standard error (`stderr`). Separating `stderr` from `stdout` allows normal program output to be redirected to a file or piped into another program while error messages remain visible on the terminal instead of corrupting the data stream.
 </details>
 
 <details>
 <summary>10. Explain why `cmd > out.txt 2>&1` captures both streams into `out.txt` whereas `cmd 2>&1 > out.txt` leaves errors on the screen.</summary>
+
 Redirections are evaluated left to right. In `cmd > out.txt 2>&1`, fd 1 is pointed at `out.txt` first, and then `2>&1` points fd 2 at whatever fd 1 currently targets (`out.txt`). In `cmd 2>&1 > out.txt`, fd 2 is pointed at fd 1's initial target (the terminal) first, and only afterward is fd 1 redirected to `out.txt`.
 </details>
 
 <details>
 <summary>11. How does `my_command 3>&1 1>&2 2>&3 | grep -i warning` pipe only standard error?</summary>
+
 A pipe (`|`) carries only fd 1 (`stdout`). The redirection opens descriptor 3 as a copy of fd 1 (`3>&1`), redirects fd 1 to fd 2's destination (`1>&2`), and redirects fd 2 to saved descriptor 3 (`2>&3`). That swaps `stdout` and `stderr` so error messages flow down the pipe into `grep`.
 </details>
 
 <details>
 <summary>12. Why does `sort data.txt > data.txt` destroy `data.txt`, and what shell option prevents accidental overwrites?</summary>
+
 The shell truncates `data.txt` for the `>` redirection *before* starting `sort`, so `sort` reads an already-empty file. Enabling `set -o noclobber` (`set -C`) in `bash` prevents `>` from overwriting existing files unless forced with `>|`.
 </details>
 
 <details>
 <summary>13. What do exit codes `0`, `126`, `127`, `130`, `137`, and `143` mean?</summary>
+
 Exit `0` is success. Exit `126` means the file was found but is not executable, and `127` means the command was not found in `PATH`. By the `128 + N` rule, `130` is `128 + 2` (`SIGINT` from Ctrl-C), `137` is `128 + 9` (`SIGKILL`, typically kernel OOM killer / `OOMKilled`), and `143` is `128 + 15` (`SIGTERM`).
 </details>
 
 <details>
 <summary>14. Why does `false | cat` exit with status `0` by default, and how do you fix it in production scripts?</summary>
+
 By default, a pipeline's exit status is the exit status of its *last* command (`cat`, which succeeded with `0`). Setting `set -o pipefail` makes the pipeline return the exit status of the rightmost command that failed (or you can inspect `${PIPESTATUS[@]}`).
 </details>
 
 <details>
 <summary>15. In what order does a `bash` login shell read startup files, and how does it differ from an interactive non-login shell and a non-interactive shell?</summary>
+
 A login shell reads `/etc/profile` and then **only the first** file found among `~/.bash_profile`, `~/.bash_login`, and `~/.profile`. An interactive non-login shell reads `~/.bashrc`. A non-interactive shell (such as `ssh host cmd` or a batch script) reads none of these by default unless `BASH_ENV` is set.
 </details>
 
 <details>
 <summary>16. Why should `~/.bash_profile` source `~/.bashrc`, and why should `~/.bashrc` never print to stdout or set `LD_LIBRARY_PATH`?</summary>
+
 Sourcing `~/.bashrc` from `~/.bash_profile` keeps `PATH`, `PS1`, `umask`, and aliases identical across login and non-login interactive shells. Printing to stdout in `.bashrc` breaks non-interactive `scp`/`rsync` protocol handshakes, and setting `LD_LIBRARY_PATH` globally breaks system binaries linked against standard system libraries.
 </details>
 
 <details>
 <summary>17. What do the readline keystrokes `Ctrl-A`, `Ctrl-E`, `Ctrl-W`, `Ctrl-U`, `Ctrl-K`, `Ctrl-Y`, and `Ctrl-R` do?</summary>
+
 `Ctrl-A` jumps to the start of the line and `Ctrl-E` jumps to the end. `Ctrl-W` erases the preceding word, `Ctrl-U` erases to the start of the line, and `Ctrl-K` erases to the end of the line. `Ctrl-Y` yanks (pastes) the erased text, and `Ctrl-R` searches backward incrementally through command history.
 </details>
 
 <details>
 <summary>18. What is the difference between `man 1 passwd` and `man 5 passwd`, and how do you search across manual descriptions?</summary>
+
 Section 1 covers user commands (`man 1 passwd` documents the `/usr/bin/passwd` tool), whereas Section 5 covers file formats (`man 5 passwd` documents `/etc/passwd`). Use `man -k <keyword>` (or `apropos <keyword>`) to search manual names and one-line descriptions.
 </details>
 
 <details>
 <summary>19. Distinguish the kernel errors `ENOENT`, `EACCES`, `EPERM`, `ENOTDIR`, and `ENOSPC`.</summary>
+
 `ENOENT` ("No such file or directory") means a path component or script `#!` interpreter is missing. `EACCES` ("Permission denied") means permission bits or ACLs block access, while `EPERM` ("Operation not permitted") means the operation itself requires root or capabilities. `ENOTDIR` means a regular file was used as a directory component, and `ENOSPC` means the filesystem is out of data blocks (`df -h`) or inodes (`df -i`).
 </details>
 
 <details>
 <summary>20. Why can a script starting with `#!/bin/sh` work on Rocky Linux and fail with `[[: not found` on Ubuntu?</summary>
+
 On Rocky Linux and RHEL, `/bin/sh` is a symlink to `bash`, which allows bash extensions even in POSIX mode. On Debian and Ubuntu, `/bin/sh` is `dash`, a strict POSIX shell that does not support bashisms like `[[ ]]`, arrays, or `{a,b}` brace expansion.
 </details>
 

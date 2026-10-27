@@ -398,26 +398,31 @@ sudo ip netns exec hA ping -c1 10.2.0.2      # (untested here) fails: Network is
 
 <details>
 <summary>1. In what exact order does the Linux kernel select a route from a routing table?</summary>
+
 Within a routing table, the kernel always applies **Longest-Prefix Match (`LPM`)** first—a `/32` beats a `/24`, which beats a `/16`, which beats the `/0` default route, **regardless of metric**. Only when two routes have the **exact same prefix length** does the kernel pick the one with the **lowest `metric`** (preference).
 </details>
 
 <details>
 <summary>2. What is the difference between a connected (`scope link`) route and an indirect (`via`) route at the ARP/NDP layer?</summary>
+
 For a **connected route** (`10.0.0.0/24 dev ens4 proto kernel scope link src 10.0.0.15`), the destination IP is on the local link, so the kernel ARPs directly for the **destination IP's MAC address**. For an **indirect route** (`default via 10.0.0.1 dev ens4`), the kernel ARPs for the **gateway's (`10.0.0.1`) MAC address** and addresses the Ethernet frame to the gateway while keeping the final destination IP in the IPv4 header.
 </details>
 
 <details>
 <summary>3. What rule must a gateway IP (`via <gw>`) satisfy, and what does the `onlink` flag do?</summary>
+
 Normally, the gateway IP in `via <gw>` must be directly reachable via an existing connected (`scope link`) subnet on that interface, or the kernel rejects the route with `Error: Nexthop has invalid gateway`. The **`onlink`** flag tells the kernel to pretend the gateway is directly attached on that link and ARP for it even when the host's own IP (such as a `/32` cloud address) does not cover the gateway's prefix.
 </details>
 
 <details>
 <summary>4. What does `ip route get 93.184.216.34` (and `ip route get <dst> from <src> iif <dev>`) show that `ip route show` does not?</summary>
+
 `ip route show` only lists the contents of the `main` routing table. `ip route get` actually executes the kernel's full FIB + `ip rule` policy-routing lookup for that specific destination (and optional source IP/interface/fwmark) and prints the winning table, next hop `via`, egress `dev`, chosen `src` IP, and cached Path MTU.
 </details>
 
 <details>
 <summary>5. Compare the four special route types: `local`, `blackhole`, `unreachable`, and `prohibit`.</summary>
+
 - **`local`**: delivers packets to the local host itself (stored in table `255`, including loopback and every local interface IP).
 - **`blackhole`**: drops matching packets **silently** with no ICMP reply (used on summary-route anchors to prevent routing loops and for DDoS mitigation).
 - **`unreachable`**: drops matching packets and sends **ICMP Host/Network Unreachable** (local sockets fail immediately with `EHOSTUNREACH` / `ENETUNREACH`).
@@ -425,74 +430,95 @@ Normally, the gateway IP in `via <gw>` must be directly reachable via an existin
 </details>
 
 <details>
-<summary>6. Why do routers and GPU nodes assign `/32` (or `/128`) addresses to the loopback interface (`lo`) or a `dummy0` interface?</summary>\nA physical NIC goes down whenever its cable or switch port flaps, which withdraws its interface IP. Loopback (`lo`) and `dummy` interfaces are virtual and stay **`UP` as long as the kernel is running**, providing an indestructible router ID, BGP session source IP, or health-check/anycast VIP reachable via any active physical uplink.\n</details>
+<summary>6. Why do routers and GPU nodes assign `/32` (or `/128`) addresses to the loopback interface (`lo`) or a `dummy0` interface?</summary>
+
+A physical NIC goes down whenever its cable or switch port flaps, which withdraws its interface IP. Loopback (`lo`) and `dummy` interfaces are virtual and stay **`UP` as long as the kernel is running**, providing an indestructible router ID, BGP session source IP, or health-check/anycast VIP reachable via any active physical uplink.
+</details>
 
 <details>
 <summary>7. Why must an IPv6 route with a link-local next hop (`fe80::1`) always include `dev <iface>`?</summary>
+
 Because every IPv6-enabled interface on a host uses the exact same link-local prefix **`fe80::/64`**, the address `fe80::1` by itself is ambiguous across interfaces; `dev ens4` (or `fe80::1%ens4`) tells the kernel which physical link that neighbor lives on.
 </details>
 
 <details>
 <summary>8. What are the three default Linux routing tables (`255`, `254`, `253`) and their `ip rule` priorities (`NK` Chapter 2)?</summary>
-`ip rule show` lists three built-in rules evaluated in ascending priority order:\n- Priority **`0`** -> table **`local` (`255`)**: local interface IPs and broadcast routes (cannot be overridden without custom rules at priority `< 0` / early priorities).\n- Priority **`32766`** -> table **`main` (`254`)**: normal connected, static, and DHCP routes (`ip route show`).\n- Priority **`32767`** -> table **`default` (`253`)**: fallback table (normally empty).\n</details>
+
+`ip rule show` lists three built-in rules evaluated in ascending priority order:
+- Priority **`0`** -> table **`local` (`255`)**: local interface IPs and broadcast routes (cannot be overridden without custom rules at priority `< 0` / early priorities).
+- Priority **`32766`** -> table **`main` (`254`)**: normal connected, static, and DHCP routes (`ip route show`).
+- Priority **`32767`** -> table **`default` (`253`)**: fallback table (normally empty).
+</details>
 
 <details>
 <summary>9. Why is configuring a default gateway on more than one NIC a classic multi-homed server bug?</summary>
+
 A default route (`0.0.0.0/0`) matches every destination in the world. If a secondary NIC (such as a storage or GPU rail NIC) installs a default route with a lower or equal metric—or if DHCP installs a second default route—outbound internet/management traffic is hijacked onto the private storage/rail network and blackholed, or replies leave the wrong NIC.
 </details>
 
 <details>
 <summary>10. How does Policy-Based Routing (`ip rule` + `/etc/iproute2/rt_tables`) solve asymmetric routing on a multi-NIC server?</summary>
+
 For each additional routed NIC (e.g., `eth1` with IP `10.100.0.15/24` and gateway `10.100.0.1`), you create a dedicated routing table (`100 rail0` in `/etc/iproute2/rt_tables`) containing that NIC's connected route and default gateway (`ip route add default via 10.100.0.1 dev eth1 table rail0`), and add a source-based policy rule (`ip rule add from 10.100.0.0/24 table rail0 priority 100`) so any packet sourced from `eth1`'s IP is guaranteed to route out `eth1`.
 </details>
 
 <details>
 <summary>11. What is Linux's \"weak host model\", and how does it cause asymmetric routing when a server has multiple NICs?</summary>
+
 Linux follows the **weak host model**: it considers IP addresses to belong to the **host as a whole** rather than to individual interfaces, and standard FIB lookup depends only on the **destination IP**. If a client sends a request to `eth1`'s IP (`10.100.0.15`) from a subnet whose best route in `main` points out `ens4`, Linux accepts the packet on `eth1` and sends the reply out `ens4` (with source IP `10.100.0.15`).
 </details>
 
 <details>
 <summary>12. Explain the three modes of `rp_filter` (`0`, `1`, `2`), how the effective value is calculated, and how to check for `rp_filter` drops.</summary>
+
 - `0`: disabled (no source validation).\n- `1` (**strict**): the incoming packet is dropped unless the best route in the FIB back to the packet's **source IP** exits the **exact same interface** the packet arrived on.\n- `2` (**loose**): the packet is accepted as long as the source IP is reachable via **any** interface.\nThe kernel computes **`effective_rp_filter = max(net.ipv4.conf.all.rp_filter, net.ipv4.conf.<if>.rp_filter)`**—so you must lower **both** `all` and `<if>` to `2` (or `0`). Check drops with `nstat -az | grep -iE 'InAddrErrors|ReversePath'`.
 </details>
 
 <details>
 <summary>13. What four steps are required to make a Linux host act as a router between two networks (`HLW` Chapter 9)?</summary>
+
 (1) Enable kernel packet forwarding (`sysctl -w net.ipv4.ip_forward=1` and `net.ipv6.conf.all.forwarding=1`); (2) ensure the firewall (`nftables`/`iptables`) `FORWARD` chain permits traffic between the interfaces; (3) ensure downstream hosts point their routes at the Linux router **and** upstream routers have a return route back (or add `MASQUERADE` SNAT if downstream is private); and (4) tune `rp_filter` and disable ICMP redirects (`send_redirects=0`, `accept_redirects=0`).
 </details>
 
 <details>
 <summary>14. What is an ICMP Redirect, and why should `accept_redirects` and `send_redirects` be disabled (`0`) on servers?</summary>
+
 An **ICMP Redirect** is sent by a router when it notices a host forwarded a packet to it even though a better next-hop router sits on the same LAN subnet. On production servers, accepting ICMP Redirects allows an attacker or misconfigured router on the LAN to inject host routes into the routing cache; always set `accept_redirects=0` and `send_redirects=0`.
 </details>
 
 <details>
 <summary>15. How does Equal-Cost Multipath (`ECMP`) work on a Linux host, and why must you set `net.ipv4.fib_multipath_hash_policy = 1`?</summary>
+
 A multipath route lists multiple `nexthop via ... dev ... weight ...` entries for the same prefix. With the legacy default `fib_multipath_hash_policy = 0` (**L3 hash**), the kernel hashes only `(source IP, destination IP)`, pinning **all** TCP connections between two hosts onto a single link. Setting **`fib_multipath_hash_policy = 1` (**L4 hash**)** hashes the full **5-tuple** `(src IP, dst IP, proto, src port, dst port)` so parallel connections spread across all uplinks (pair with `fib_multipath_use_neigh = 1` to skip failed ARP neighbours).
 </details>
 
 <details>
 <summary>16. Why is per-packet round-robin load balancing across two links avoided for TCP and RDMA flows?</summary>
+
 If consecutive packets of the **same** TCP or RDMA flow take different physical paths with even slightly different queue depths or cable lengths, packets arrive **out of order** at the receiver. In TCP, out-of-order arrival triggers triple duplicate ACKs and false fast-retransmit rate cuts; in traditional RoCEv2/InfiniBand (`RC` QPs without adaptive routing), out-of-order packets trigger sequence-error drops and go-back-N retransmissions. Flow-based 5-tuple hashing keeps each flow in order on one path.
 </details>
 
 <details>
 <summary>17. How do you persist static routes and policy-routing rules in `Netplan` (Ubuntu) and `NetworkManager` (`nmcli`, RHEL/Rocky)?</summary>
+
 In **Netplan** (`/etc/netplan/*.yaml`): add `routes:` (`to:`, `via:`, `metric:`, `table:`) and `routing-policy:` (`from:`, `table:`, `priority:`) under the interface, and test safely with `sudo netplan try`. In **NetworkManager**: use `nmcli connection modify <conn> +ipv4.routes "10.200.0.0/16 10.0.0.254" +ipv4.routing-rules "priority 100 from 10.100.0.0/24 table 100"` and prevent secondary NICs from adding default routes with **`ipv4.never-default yes`**.
 </details>
 
 <details>
 <summary>18. What does a Kubernetes node's routing table look like under an overlay CNI versus a direct-routing / BGP CNI?</summary>
+
 In both modes, `net.ipv4.ip_forward=1` is enabled and each **local Pod** on the node has a `/32` host route pointing into its `veth` interface (`10.244.1.5 dev cali1234 scope link`). For **remote Pods** on other nodes: a **direct-routing / BGP CNI** (Calico, Cilium native routing) installs `/24` routes pointing directly at each peer node's underlay IP (`10.244.2.0/24 via 10.0.0.16 dev ens4`), whereas an **overlay CNI** routes remote `/24`s into a tunnel device (`flannel.1` or `cilium_vxlan`).
 </details>
 
 <details>
 <summary>19. On an 8-GPU server with management (`eno1`), storage (`eno2`), and 8 RoCE rail NICs (`ens1f0..ens8f0`), how should routing be structured?</summary>
+
 (1) Install **exactly one** default route in `main` on the management NIC (`eno1`, setting `ipv4.never-default yes` on all other NICs); (2) add a specific static prefix route (`10.30.0.0/16 via 10.30.4.1 dev eno2`) for the storage cluster; (3) place each rail NIC on its own subnet (`10.100.R.0/24`) with per-rail policy-routing tables (`ip rule add from 10.100.R.N/32 table 10R`) if L3-routed across leaf/spine; and (4) set `rp_filter=2`, `arp_ignore=1`, and `arp_announce=2`.
 </details>
 
 <details>
 <summary>20. Walk through the 4-step command sequence to debug \"Host A cannot reach Host B (`10.200.5.42`)\".</summary>
+
 (1) Run **`ip route get 10.200.5.42`** (and `ip route get 10.200.5.42 from <src_ip>`) to verify which table, next-hop gateway, outgoing `dev`, and `src` IP the kernel selects; (2) run **`ip neigh show dev <dev>`** to verify whether the next hop's MAC is `REACHABLE` or `FAILED`/`INCOMPLETE`; (3) run **`sudo tcpdump -ni <dev> host 10.200.5.42`** while pinging to see whether packets leave `<dev>` and whether replies return on `<dev>` or another NIC; and (4) check **`ip route get <src_ip>` on Host B** (and `nstat -az | grep InAddrErrors`) to verify the return path and `rp_filter`.
 </details>
 
