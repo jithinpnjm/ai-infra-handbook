@@ -199,6 +199,10 @@ Design rules:
 9. **Avoid data sources that depend on caller state**; accept IDs as inputs instead of looking things up by name inside the module unless that is the module's job (looser coupling, more testable).
 10. **Idempotent and plan-stable**: no `timestamp()`, no random values without `random_*` resources, no dependence on values unknown at plan time in `for_each` keys (derive keys from static inputs).
 11. **Respect `count`/`for_each` use on module calls**: modules that contain `provider` blocks or `configuration_aliases` have restrictions; design for the caller to repeat the module.
+12. **Module Gotchas from *Terraform: Up and Running* (`TUR` Chapter 4):**
+    - *Gotcha 1 — File paths (`path.module` vs. `path.root` vs. `path.cwd`):* When a module calls `file(...)` or `templatefile(...)`, Terraform resolves relative file paths relative to the **root module directory (`path.root`)**, *not* the child module directory. If `modules/services/webserver-cluster/main.tf` writes `templatefile("user-data.sh", ...)` and is called from `stage/services/webserver-cluster/`, Terraform fails because `user-data.sh` is not in `stage/`. Always prefix module-internal files with **`${path.module}/user-data.sh`** (`path.module` = directory of the module where the expression is written; `path.root` = directory of the root module; `path.cwd` = current working directory).
+    - *Gotcha 2 — Inline blocks vs. separate resources (`aws_security_group` vs. `aws_security_group_rule`):* Several cloud resources (`aws_security_group`, `aws_route_table`, `aws_network_acl`) allow defining rules either via **inline blocks** (`ingress { ... }`) OR via **separate standalone resources** (`aws_security_group_rule` referencing `security_group_id = aws_security_group.alb.id`). If your reusable module uses inline `ingress {}` blocks and a caller in `stage` attaches an extra `aws_security_group_rule` (`allow_testing_inbound` on port `12345`) to `module.webserver_cluster.alb_security_group_id`, **the inline block and the standalone resource will overwrite each other on alternating `terraform apply` runs**. Always use **separate `aws_security_group_rule` (`aws_route`, `aws_network_acl_rule`) resources** inside reusable modules so callers can extend them safely.
+    - *Using `locals` for internal constants and `outputs` for external extension (`TUR` Chapter 4):* Put internal constants (`http_port = 80`, `any_port = 0`, `any_protocol = "-1"`, `tcp_protocol = "tcp"`, `all_ips = ["0.0.0.0/0"]`) in a **`locals` block** rather than `variable`s when you do not want callers overriding them; and export key resource identifiers (`output "asg_name"`, `output "alb_security_group_id"`) so callers (`module.webserver_cluster.asg_name`) can attach environment-specific resources like `aws_autoscaling_schedule` (`scale_out_during_business_hours` at `0 9 * * *` and `scale_in_at_night` at `0 17 * * *` in `prod`) without bloating the module with environment conditionals.
 
 ## 3. Composition patterns
 
@@ -402,7 +406,15 @@ Points illustrated: protective lifecycle on the stateful resource inside the mod
 - Cost guardrails: variables that cap GPU counts per environment, required `ttl`/`owner` labels (4.2 policy checks).
 - Telemetry: record which module versions each stack uses (outputs, tags, a registry of deployments) so you can find stragglers on vulnerable versions.
 
-## 9. Lab (untested)
+## 9. Lab
+
+First, run the self-checking Python lab (`code/part04/terraform_modules_validator_lab.py`) locally. It verifies the `gke-gpu-pool` module input `validation` and `precondition` rules (`validate_gke_gpu_pool_inputs`, matching `tests/validation.tftest.hcl`), Git module `source` double-slash (`//`) subdirectory and `?ref=` immutability checks (`parse_git_module_source`, `TUR` Ch. 4), and the inline-vs-separate `aws_security_group_rule` conflict detector (`detect_inline_vs_separate_sg_conflict`, `TUR` Ch. 4).
+
+```bash
+python3 code/part04/terraform_modules_validator_lab.py
+```
+
+Next, on a machine with Terraform/OpenTofu 1.6+ (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **First module**: extract a "checkpoint-bucket"-like module (use `local_file`/`random_pet` if no cloud) from a flat configuration; define typed variables with validation and outputs; call it twice with different inputs.
 2. **Interface review**: write down which inputs are required vs defaulted; add `precondition`/`validation` blocks and test failure messages with invalid values.
@@ -417,8 +429,6 @@ Points illustrated: protective lifecycle on the stateful resource inside the mod
 11. **Upgrade drill**: release module v2 with a breaking change; migrate a consumer using `moved` blocks and phased environment promotion.
 12. **Clean up.**
 
-Mark tested only after execution.
-
 ## 10. Common mistakes
 
 - Designing modules before the pattern is understood; or never extracting repeated code.
@@ -432,55 +442,179 @@ Mark tested only after execution.
 
 ## 11. Interview angles
 
-- "What is a module? How do you design its interface?" 
-- "Root module vs child module; how do you compose?" 
-- "How do you version and upgrade modules without breaking production?" 
-- "Why shouldn't child modules configure providers?" 
-- "`count` vs `for_each` in modules; why do keys matter?" 
-- "How do you test a Terraform module?" 
+- "What is a module? How do you design its interface?"
+- "Root module vs child module; how do you compose?"
+- "How do you version and upgrade modules without breaking production?"
+- "Why shouldn't child modules configure providers?"
+- "`count` vs `for_each` in modules; why do keys matter?"
+- "How do you test a Terraform module?"
 - "How would you provide a standard GPU training environment to ten teams?" (facade of building-block modules, validation, policy, versioning.)
 - "A module upgrade wants to destroy the cluster. What do you do?" (stop; check `moved`; changelog; plan in lower env.)
 
-## 12. Checkpoint questions (30)
+## Exercises
 
-1. What is the root module? **A:** The directory where commands run.
-2. What are the module interface parts? **A:** Variables (inputs) and outputs.
-3. How call a module? **A:** `module "name" { source = ... }`.
-4. How pin Git modules? **A:** `?ref=tag-or-sha`.
-5. What does `//` in a Git source mean? **A:** Subdirectory.
-6. Why not branches? **A:** Unreproducible plans.
-7. Should child modules have `provider` blocks? **A:** No, accept providers from callers.
-8. How pass providers? **A:** `providers = { google = google.eu }`.
-9. What is `configuration_aliases`? **A:** Declares extra provider configs a module expects.
-10. Why use `for_each` over `count`? **A:** Stable keys avoid churn on reordering.
-11. What does `moved` do in a module release? **A:** Preserves state across renames.
-12. What do `validation` blocks provide? **A:** Early input checks with messages.
-13. Difference between `precondition` and `validation`? **A:** Resource/data-level check vs variable check.
-14. What makes a bad wrapper module? **A:** Forwards variables with no added value.
-15. What belongs in `versions.tf`? **A:** Terraform and provider requirements.
-16. How generate docs? **A:** `terraform-docs`.
-17. What is a facade module? **A:** Higher-level composition of building blocks.
-18. What data-driven pattern? **A:** `yamldecode` + `for_each`.
-19. What native test command? **A:** `terraform test` with `.tftest.hcl`.
-20. What is `expect_failures`? **A:** Asserts a validation fails.
-21. Cheap plan-level testing tool? **A:** `terraform test` with `command = plan`, mocks.
-22. Integration testing tool in Go? **A:** Terratest.
-23. Policy check input? **A:** `terraform show -json` plan.
-24. How to promote versions? **A:** Pin and move through environments.
-25. What to check on upgrade plan? **A:** Unexpected replacements.
-26. What protects irreplaceable resources? **A:** `prevent_destroy`, deletion protection.
-27. Why avoid environment `if`s in modules? **A:** Hidden behaviour, test explosion.
-28. Why dependency inversion (IDs as inputs)? **A:** Reuse in different topologies.
-29. Why sensitive outputs? **A:** Avoid printing secrets (state still stores).
-30. When not to create a module? **A:** Single-use code or premature abstraction.
+1. **Root vs. Child Modules, Interface Design (`variables.tf`, `locals.tf`, `outputs.tf`), and the Two Module Gotchas (`TUR` Chapter 4):** Using `validate_gke_gpu_pool_inputs()` and `detect_inline_vs_separate_sg_conflict()` in `code/part04/terraform_modules_validator.py`, explain: (a) how `variables.tf`, `locals.tf`, and `outputs.tf` (`module.<NAME>.<OUTPUT>`) work together; (b) why child modules must use `${path.module}/...` for local files; and (c) why reusable modules must use standalone `aws_security_group_rule` (`aws_route`) resources rather than inline `ingress {}` blocks.
+2. **Provider Inheritance, `configuration_aliases`, and Why Child Modules Must Never Contain `provider` Blocks:** Explain why defining a `provider "google" {}` block inside a child module breaks `count`, `for_each`, and module removal, and show how a multi-region root module passes `providers = { google = google.eu }` into a child module.
+3. **Module Composition Patterns: Dependency Inversion, Data-Driven `yamldecode` + `for_each`, and Facade Modules:** Trace how `envs/prod/main.tf` composes `module.network`, `module.checkpoints`, `module.cluster`, and `module.gpu_pool` (`for_each = yamldecode(file("${path.module}/gpu-pools.yaml"))`), and explain why passing `subnet_id = module.network.subnet_ids["compute"]` (dependency inversion) beats looking up the VPC inside `gke-gpu-pool`.
+4. **Module Sources (`//` Subdirectory Syntax), Semantic Versioning (`?ref=v2.3.1`), and Safe Phased Upgrades (`moved` Blocks, `TUR` Chapter 4):** Using `parse_git_module_source()` in `code/part04/terraform_modules_validator.py`, explain the double-slash `//` syntax in Git/registry module sources, why `stage` can test `?ref=v0.0.2` while `prod` stays pinned on `?ref=v0.0.1`, and how embedding a `moved {}` block inside a module's v2 release prevents resource recreation across consumers.
+5. **Testing Terraform Modules (`terraform test` `.tftest.hcl`, `expect_failures`, Mock Providers, and `Terratest`):** Trace `tests/validation.tftest.hcl` in Section 5 (`run "valid_gpu_pool_plans" { command = plan ... }` and `run "rejects_bad_gpu_count" { expect_failures = [var.gpu_count] }`), and compare fast plan-level `.tftest.hcl` unit tests with Go `Terratest` integration tests (`terraform.InitAndApply` + `defer terraform.Destroy`).
+6. **Auditing Module Anti-Patterns (God Modules, Thin Pass-Through Wrappers, `if var.env == "prod"`, and Boolean `create_x` Sprawl):** Explain why a 150-variable "God module" and a 1-to-1 resource wrapper both hurt maintainability, why `if var.env == "prod"` inside a shared module is an anti-pattern (`TUR` Ch. 4), and what value `modules/checkpoint-bucket` adds over a raw `google_storage_bucket` resource.
 
-## 13. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. What is the difference between a Root Module and a Child Module in Terraform, and how are resources inside a child module addressed in `terraform.tfstate`?</summary>
 
-- Yevgeniy Brikman, *Terraform: Up and Running* (chapter 4 on creating reusable infrastructure with Terraform modules: module basics, inputs, locals, outputs, gotchas, versioning).
-- The author's `nvidia-devops` repository, volume 10 chapter 5 (modules in AI-factory implementation).
-- Terraform/OpenTofu documentation for modules, `terraform test`, and registry protocols.
-- Examples are the author's constructions.
+- **Root module:** The working directory of `.tf` files where you run `terraform init`, `plan`, and `apply`; it holds the `backend` configuration, `provider` configurations, and top-level `module` calls.
+- **Child module:** Any module invoked by a `module "<name>" { source = "..." }` block. Every resource created inside `module "network"` is namespaced in `terraform.tfstate` under **`module.network.<resource_type>.<resource_name>`** (for example, `module.network.google_compute_network.this`), and its outputs are read by the caller as **`module.network.<output_name>`**.
+</details>
 
-**Flagged for verification before publishing:** `terraform test` mocking features by version, OCI module source support in OpenTofu, GKE node pool arguments and accelerator type names, bucket lifecycle syntax in the provider version used, and every code listing; all labs are **untested**.
+<details>
+<summary>2. In *Terraform: Up and Running* Chapter 4, why must a child module use `${path.module}` when referencing files with `file()` or `templatefile()`?</summary>
+
+By default, Terraform resolves relative file paths (`templatefile("user-data.sh", ...)`) relative to the **root module directory (`path.root`)** where `terraform plan` is executed—not the directory of the child module where the code lives. Using **`${path.module}/user-data.sh`** guarantees that Terraform resolves the file inside the child module's own directory (`path.root` = root module directory; `path.cwd` = current working directory).
+</details>
+
+<details>
+<summary>3. Why does `TUR` Chapter 4 warn against using inline `ingress {}` / `egress {}` blocks inside `aws_security_group` in a reusable module?</summary>
+
+When a reusable module defines rules using inline `ingress {}` blocks inside `aws_security_group`, `aws_security_group` assumes it owns the **complete list of rules**. If a consumer in `staging` attaches an additional standalone **`aws_security_group_rule`** (`allow_testing_inbound` on port `12345`) referencing `module.webserver_cluster.alb_security_group_id`, the inline block deletes the standalone rule on the next `apply`, and the standalone rule re-adds it on the run after that—creating an endless flip-flop conflict. Always define rules as **separate `aws_security_group_rule` (`aws_route`, `aws_network_acl_rule`) resources** inside reusable modules.
+</details>
+
+<details>
+<summary>4. When designing a module, what belongs in `variables.tf` versus `locals.tf` (`TUR` Chapter 4)?</summary>
+
+- **`variables.tf` (Module Inputs):** Defines the module's **public API**—parameters that legitimately vary across environments or callers (`name`, `machine_type`, `gpu_type`, `gpu_count`, `min_nodes`, `max_nodes`).
+- **`locals.tf` (Internal Constants & Derivations):** Defines internal named expressions and constants (`http_port = 80`, `common_labels = merge(...)`) that eliminate magic numbers inside `main.tf` **without exposing them as overridable input variables**.
+</details>
+
+<details>
+<summary>5. Why must reusable child modules NEVER contain `provider "..." {}` configuration blocks, and how do you pass providers instead?</summary>
+
+A `provider` configuration block (setting `region`, `project`, or credentials) belongs strictly in the **root module**. If a child module defines its own `provider` block:
+1. Callers **cannot use `count`, `for_each`, or `depends_on`** on that `module` block.
+2. Removing the `module` block from the root configuration fails until the provider block is also present in the root.
+Instead, child modules declare only version constraints in `versions.tf` (`required_providers`, plus `configuration_aliases = [google.replica]` if multiple providers are needed), and the root module passes configured providers via **`providers = { google = google.eu }`**.
+</details>
+
+<details>
+<summary>6. Compare `validation {}` blocks on input variables with `precondition {}` and `postcondition {}` blocks inside `lifecycle {}`.</summary>
+
+- **Variable `validation {}` block:** Checks a **single input variable** in isolation (`var.gpu_count` in `[0, 1, 2, 4, 8]` or `var.name` matching a DNS regex). In Terraform < 1.9, a `validation` block can only reference `var.<self>`.
+- **Resource/data `lifecycle { precondition {} }`:** Checks invariants across **multiple variables, locals, or data sources** before creating/updating the resource (e.g., `condition = var.gpu_count == 0 || var.gpu_type != null`, ensuring `gpu_type` is supplied whenever `gpu_count > 0`).
+- **Resource/data `lifecycle { postcondition {} }`:** Asserts properties of the **real/computed resource attributes** (`self.status`) after reading or applying.
+</details>
+
+<details>
+<summary>7. What makes a \"thin wrapper module\" an anti-pattern versus a high-value module like `modules/checkpoint-bucket`?</summary>
+
+- **Thin wrapper anti-pattern:** A module that wraps a single `google_storage_bucket` resource and exposes 35 pass-through variables matching the provider's arguments 1-for-1. It adds boilerplate indirection without enforcing any organizational standards.
+- **High-value module (`modules/checkpoint-bucket`):** Encodes **opinionated security and operational policy by default**—enforcing `uniform_bucket_level_access = true`, `public_access_prevention = "enforced"`, `versioning { enabled = true }`, `lifecycle { prevent_destroy = true }`, KMS encryption, archived-version retention rules, and companion `google_storage_bucket_iam_member` bindings behind 5 clean inputs.
+</details>
+
+<details>
+<summary>8. Why is writing `if var.env == "prod"` inside a shared module an anti-pattern, and how did `TUR` Chapter 4 attach production-only autoscaling schedules?</summary>
+
+Hardcoding environment names (`var.env == "prod" ? ...`) inside a shared module hides environment behavior inside library code and breaks as soon as a team adds `staging-eu`, `preprod`, or `bench` environments. Instead:
+1. Expose explicit capability/sizing inputs (`min_nodes`, `max_nodes`, `enable_deletion_protection`) that each environment's root module sets explicitly.
+2. Export resource IDs/names as **module outputs** (`output "asg_name"`) so the `prod` root module can attach prod-specific companion resources (`aws_autoscaling_schedule.scale_out_during_business_hours` referencing `module.webserver_cluster.asg_name`) directly in `prod/main.tf`.
+</details>
+
+<details>
+<summary>9. In a Git module source string (`git::https://git.example.com/platform/terraform-modules.git//gke-gpu-pool?ref=v2.3.1`), what do `//` and `?ref=` do (`TUR` Chapter 4)?</summary>
+
+- **`//` (double slash):** Separates the Git repository URL (`https://git.example.com/platform/terraform-modules.git`) from the **subdirectory path inside that repository** (`gke-gpu-pool`).
+- **`?ref=v2.3.1`:** Checks out the exact Git tag or commit SHA. Never set `?ref=main` in production, because any commit merged to `main` would silently alter the next `terraform plan` in production without a version bump PR. In a multi-module monorepo, use path-prefixed Git tags such as `?ref=gke-gpu-pool/v2.3.1`.
+</details>
+
+<details>
+<summary>10. How do you promote a module upgrade from `v0.0.1` to `v0.0.2` across environments (`TUR` Chapter 4)?</summary>
+
+1. Tag and release the module update as **`v0.0.2`** (`git tag -a "v0.0.2" -m "..." && git push --follow-tags`).
+2. In **`stage/`**, update `?ref=v0.0.1` to **`?ref=v0.0.2`**, run `terraform init` and `terraform plan`, verify there are no unintended resource replacements (`-/+`), apply to staging, and run smoke/integration tests.
+3. Meanwhile, **`prod/` remains pinned on `?ref=v0.0.1`** completely unaffected until you open and approve a dedicated PR bumping `prod/` to `?ref=v0.0.2`.
+</details>
+
+<details>
+<summary>11. What happens when a module author renames a resource inside a module, and how do `moved {}` blocks inside the module prevent consumer outages?</summary>
+
+If a module author renames `resource "google_container_node_pool" "pool"` to `resource "google_container_node_pool" "this"` in `v2.0.0`, every consumer upgrading to `v2.0.0` will see a plan to **destroy their existing GPU node pool (`module.gpu_pool.google_container_node_pool.pool`) and create a new one**. If the module author includes:
+```hcl
+moved {
+  from = google_container_node_pool.pool
+  to   = google_container_node_pool.this
+}
+```
+inside the module's `.tf` files, Terraform automatically migrates every consumer's state address during `plan`/`apply` with zero destruction.
+</details>
+
+<details>
+<summary>12. What is Dependency Inversion in Terraform module composition?</summary>
+
+Instead of having `module "gke_gpu_pool"` call `data "google_compute_subnetwork"` by hardcoded name (or create its own network), the module accepts **`subnet_id = var.subnet_id`** as a plain string input, and the **root module** wires `subnet_id = module.network.subnet_ids["compute"]`. This decouples the node-pool module from how the network was created, makes the dependency edge explicit to Terraform's DAG, and lets unit tests pass a dummy string `subnet_id = "sub-123"` without needing a real VPC.
+</details>
+
+<details>
+<summary>13. How does Data-Driven Module Composition (`yamldecode(file("gpu-pools.yaml"))` + `for_each`) simplify day-2 operations?</summary>
+
+By storing node-pool definitions in a clean `gpu-pools.yaml` file (`h100-train: { machine_type: a3-highgpu-8g, gpu_type: nvidia-h100-80gb, gpu_count: 8, min_nodes: 0, max_nodes: 32 }`) and iterating `module "gpu_pool" { for_each = yamldecode(file("${path.module}/gpu-pools.yaml")) ... }`, adding a new GPU pool or adjusting `max_nodes` is a 4-line YAML change validated by JSON Schema and `terraform plan`—without touching HCL logic.
+</details>
+
+<details>
+<summary>14. Why should `for_each` with stable map keys (`h100-train`, `a100-infer`) always be preferred over `count` when instantiating modules or resources?</summary>
+
+`count` identifies instances by **0-based numeric list index** (`module.gpu_pool[0]`, `module.gpu_pool[1]`, `module.gpu_pool[2]`). If you remove the first pool from a 3-element list, element `[1]` shifts to `[0]` and element `[2]` shifts to `[1]`—causing Terraform to **destroy or replace every subsequent node pool in the list**. `for_each` identifies instances by **immutable string key** (`module.gpu_pool["h100-train"]`), so removing one key affects only that single pool.
+</details>
+
+<details>
+<summary>15. Why must `for_each` keys never depend on values that are `(known after apply)`?</summary>
+
+Terraform must know the exact set of `for_each` keys during the **plan phase** to construct the resource graph nodes (`module.gpu_pool["<key>"]`). If the map keys come from a resource attribute generated only during `apply` (such as random IDs or cloud-assigned instance IDs), `terraform plan` fails with `The "for_each" map includes keys derived from resource attributes that cannot be determined until apply`. Always derive `for_each` **keys** from static input variables/YAML keys, while letting the map **values** reference computed resource attributes.
+</details>
+
+<details>
+<summary>16. How does `terraform test` (`.tftest.hcl`, Terraform 1.6+/1.7+) test a module without creating cloud resources?</summary>
+
+A `tests/validation.tftest.hcl` file defines `variables {}` and one or more **`run "<name>" {}`** blocks:
+- Setting **`command = plan`** (plus `mock_provider "google" {}` in Terraform 1.7+) executes a fast, local plan-mode evaluation without cloud credentials or API calls.
+- **`assert { condition = ...; error_message = "..." }`** verifies computed resource attributes, locals, and outputs.
+- **`expect_failures = [var.gpu_count]`** verifies that invalid inputs are rejected by `validation` or `precondition` blocks.
+</details>
+
+<details>
+<summary>17. How do `examples/` directories inside a module repository serve a dual purpose?</summary>
+
+Each subdirectory under `examples/` (`examples/basic/main.tf`, `examples/multi-pool/main.tf`) is a self-contained root module that calls `source = "../../"`:
+1. **Living documentation** for human consumers showing realistic usage.
+2. **Executable CI test targets**: CI runs `terraform init && terraform validate` (and `terraform test` / `Terratest` apply-and-destroy in a sandbox account) against every `examples/*` directory so documentation never drifts out of date.
+</details>
+
+<details>
+<summary>18. What is a \"Facade Module\", and when should a platform team introduce one?</summary>
+
+A **facade module** (`modules/ai-training-environment`) is a thin high-level module that composes several already-proven building-block modules (`network` + `checkpoint-bucket` + `gke-cluster` + `gke-gpu-pool`) into a single "golden path" call for product teams. Introduce a facade module **only after** the underlying building-block modules have stabilized, and always allow advanced consumers to compose the building-block modules directly when they outgrow the facade.
+</details>
+
+<details>
+<summary>19. Why shouldn't a module output an entire resource object (`output "node_pool" { value = google_container_node_pool.this }`) by default?</summary>
+
+Exporting the entire resource object couples callers to the provider's internal schema (so upgrading the provider major version can break callers), clutters `terraform plan` output with ratusan of attributes, and risks exporting sensitive attributes unintentionally. Instead, export **explicit, curated outputs** (`id`, `name`, `endpoint`, `service_account_email`) that form a stable contract.
+</details>
+
+<details>
+<summary>20. What tools automate documentation, linting, and security scanning in a Terraform module CI pipeline?</summary>
+
+1. **`terraform fmt -check` & `terraform validate`**: canonical formatting and schema validation.
+2. **`tflint`** (with `tflint-ruleset-google` / `aws`): catches invalid machine types, deprecated arguments, and unused declarations.
+3. **`checkov` / `trivy config` / `tfsec`**: static security policy scanners flagging public buckets, missing KMS encryption, or overly permissive firewall rules.
+4. **`terraform-docs markdown table --output-file README.md --output-check .`**: verifies that the `Inputs` and `Outputs` tables in `README.md` match `variables.tf` and `outputs.tf`.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `terraform-up-and-running-3rd-edition` — Yevgeniy Brikman, *Terraform: Up and Running*, 3rd ed., **Chapter 4: How to Create Reusable Infrastructure with Terraform Modules** (read in full: module basics, module inputs `variables.tf`, module `locals`, module `outputs` and `module.<NAME>.<OUTPUT>` composition with external `aws_autoscaling_schedule` and `aws_security_group_rule`, module gotchas `path.module` vs `path.root` vs `path.cwd` and inline `ingress` blocks vs standalone `aws_security_group_rule` resources, and module versioning with Git tags `?ref=v0.0.1` and `//` subdirectory paths across staging and production).
+  - `nvidia-devops` (`volume-10/05-terraform-for-infrastructure-as-code.md`): module structure, interface design, `gke-gpu-pool` and `checkpoint-bucket` modules, `terraform test`, and anti-patterns.
+- **Run here:** `python3 code/part04/terraform_modules_validator_lab.py` (3 passed, 0 failed).
+- **Explicitly labelled inferences:** The `validate_gke_gpu_pool_inputs`, `parse_git_module_source`, and `detect_inline_vs_separate_sg_conflict` models in `code/part04/terraform_modules_validator.py` and the `gke-gpu-pool`, `checkpoint-bucket`, and `validation.tftest.hcl` listings are the author's constructions synthesizing `TUR` Chapter 4 and `volume-10/05` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, and 30).
+- **Not verified on live hardware:** Live `terraform test`, `Terratest`, GKE GPU node pool, and GCS bucket executions (`10.20.0.0/16`, `8896` MTU, `v2.3.1`, `40` chars, `[0, 1, 2, 4, 8]` GPUs, `~> 9.0`, `a3-highgpu-8g`, `150` vars, `12345` port) are marked (`untested here`) where not executed by `terraform_modules_validator_lab.py`.
