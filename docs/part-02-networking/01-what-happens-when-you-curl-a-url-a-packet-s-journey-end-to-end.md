@@ -126,7 +126,7 @@ ip -6 route get 2606:2800:220:1:248:1893:25c8:1946
 
 The rules (chapter 2.5 in depth):
 
-- Each route is a destination prefix plus how to reach it: directly on a link (`dev ens4 scope link`) or via a **gateway** (`via 10.0.0.1`). The kernel picks the **longest matching prefix**; the **default route** `default via 10.0.0.1` (`0.0.0.0/0`) matches anything not covered by something more specific. Ties are broken by metric.
+- Each route is a destination prefix plus how to reach it: directly on a link (`dev ens4 scope link`) or via a **gateway** (`via 10.0.0.1`). The kernel picks the **longest matching prefix**; the **default route** `default via 10.0.0.1` (`0.0.0.0/0` in IPv4, `::/0` in IPv6) matches anything not covered by something more specific. Ties are broken by metric.
 - If the destination is inside a connected subnet (for example 10.0.0.0/24), the host sends directly to it; otherwise it sends to the gateway ("the router") and lets the rest of the Internet worry about the destination.
 - The kernel also chooses the **source IP**: the primary address of the outgoing interface in the same subnet as the next hop (or a configured `src`). The **source port** is an **ephemeral port** chosen from `net.ipv4.ip_local_port_range` (default 32768 to 60999). The connection is then uniquely identified by the 5-tuple (protocol, source IP, source port, destination IP, destination port).
 - Policy routing (rules, multiple tables), VRFs, VPN interfaces, and container networks can change the answer; `ip rule show` and `ip route show table all` reveal them.
@@ -147,7 +147,7 @@ sudo tcpdump -nn -e -i ens4 arp or icmp6        # watch ARP/NDP with Ethernet he
 arping -I ens4 10.0.0.1            # active ARP probe (also detects duplicate addresses)
 ```
 
-The kernel then builds the packet: application bytes → TCP segment (with ports) → IP packet (with source/destination IP and TTL) → Ethernet frame (source MAC = this NIC, destination MAC = the **next hop's MAC**, which for off-subnet traffic is the *gateway's*, not the final destination's). This detail trips up many beginners: **MAC addresses change at every router hop; IP addresses (absent NAT) stay the same end to end.**
+The kernel then builds the packet through each layer's **Protocol Data Unit (PDU)** (`NK` Chapter 1, where standards are defined by **ISO/IEC 7498-1..4** for the 7-layer OSI model and **IETF RFCs**—such as `RFC 1122` for the 4-layer TCP/IP model, progressing from *Proposed Standard* to *Internet Standard*): application **Data** → TCP **Segment** (with source/destination ports) → IP **Packet** (with source/destination IP and TTL) → Ethernet **Frame** → physical **Bits** on the wire. On the wire, an Ethernet II frame begins with an **8-byte Preamble + Start Frame Delimiter (`SFD`)** (`10101010...10101011`), followed by the **6-byte Destination MAC** (the **next hop's MAC**, which for off-subnet traffic is the *gateway's*, not the final destination's), **6-byte Source MAC** (this NIC), **2-byte EtherType** (`0x0800` for IPv4, `0x86DD` for IPv6, `0x0806` for ARP), the **46 to 1,500-byte payload**, and a **4-byte Frame Check Sequence (`FCS`)** CRC trailer. This detail trips up many beginners: **MAC addresses change at every router hop; IP addresses (absent NAT) stay the same end to end.**
 
 The frame passes through the egress **queueing discipline (qdisc)** (`tc qdisc show dev ens4`; default `fq_codel` or `fq`/`mq`), to the NIC driver, into a transmit ring in DMA-able memory; the NIC reads it, may compute checksums (offload), segments large TCP chunks (TSO/GSO), and serialises the bits onto the medium. On a VM, the "NIC" is a virtual device (virtio-net or a cloud-specific NIC) and the next hop is the cloud's virtual network (chapter 2.32).
 
@@ -273,9 +273,15 @@ The method (chapter 2.30): test each layer from the bottom up (link, address, ro
 - **Kubernetes**: a pod's request adds more steps: CoreDNS lookups with `ndots:5`, service virtual IPs translated by kube-proxy/eBPF (DNAT), CNI-managed veth/bridge or overlay (VXLAN) encapsulation, NetworkPolicy, then the node's normal path (chapters 2.23, 2.25, Part 5).
 - **Cloud**: the "router" and "switch" are virtual; VPC routing, firewall rules, NAT gateways, load balancers and peering decide what happens (chapter 2.32).
 
-## 14. Lab: trace one request end to end (untested)
+## 14. Hands-on lab: trace one request end to end
 
-Use a Linux VM with `curl`, `dig`, `tcpdump`, `strace`, `openssl`, `iproute2`, `mtr` installed (`apt install curl dnsutils tcpdump strace openssl iproute2 mtr-tiny iputils-arping`).
+First, run the self-checking Python lab (`code/part02/curl_packet_journey_lab.py`) locally. It verifies `curl -w` cumulative phase subtraction (DNS, TCP connect, TLS handshake, TTFB wait, body transfer), hop-by-hop L2 MAC rewrites vs constant L3 IP and decrementing `TTL`, and `curl` exit-code (`6`, `7`, `22`, `28`, `35`, `60`) layer diagnostics.
+
+```bash
+python3 code/part02/curl_packet_journey_lab.py
+```
+
+Next, on a disposable Linux VM with `curl`, `dig`, `tcpdump`, `strace`, `openssl`, `iproute2`, and `mtr` installed (all interactive VM commands below are `untested here`), work through these steps:
 
 1. **Record your configuration**: `ip -br addr`, `ip route`, `ip neigh`, `cat /etc/resolv.conf`, `resolvectl status`, `cat /etc/nsswitch.conf | grep hosts`. Draw your host's view: interface, address, gateway, resolver.
 2. **Narrate with strace**: run the `strace` command from section 2; list in order the files opened, sockets created, and addresses connected. Identify the DNS query socket and the TCP socket.
@@ -285,8 +291,6 @@ Use a Linux VM with `curl`, `dig`, `tcpdump`, `strace`, `openssl`, `iproute2`, `
 6. **Break it on purpose** (one at a time, undo each): (a) point `/etc/resolv.conf` at an unused IP (use a copy, restore afterwards) and observe the delay and error; (b) `sudo ip route del default` and observe `Network is unreachable` (restore with the original `ip route add default via ...`; do this only on a VM with console access); (c) `curl http://<server IP>:81/` (closed port) vs a port blocked with `iptables -A OUTPUT -p tcp --dport 81 -j DROP` (timeout vs refused); (d) `curl https://example.com --cacert /dev/null` or an expired-cert test host (`https://expired.badssl.com/`) and read the TLS error.
 7. **Path**: `traceroute -n` and `mtr -n -c 30 --report` to the server; note hop count, RTT growth, and where it increases; compare with `ping`'s RTT and with `time_connect`.
 8. **AI-cluster variant** (optional, GPU VM): `ss -tnp` while a PyTorch distributed job rendezvous runs; compare to `rdma link`/`ibv_devinfo` and note which traffic is TCP and which is RDMA.
-
-Mark the lab tested only after executing it and recording the outputs.
 
 ## 15. Common mistakes
 
@@ -311,50 +315,133 @@ Mark the lab tested only after executing it and recording the outputs.
 - "Where does TCP end up in AI training traffic, and where does it not?"
 - "A download is fast for small files and stalls for large ones. Why?" (MTU/PMTUD, window/loss.)
 
-## 17. Checkpoint questions (30)
+## Exercises
 
-1. What function resolves a name in a C program? **A:** `getaddrinfo()` (libc), which follows nsswitch.conf.
-2. What does `hosts: files dns` mean? **A:** Check `/etc/hosts` first, then DNS.
-3. Why does a resolver ask for both A and AAAA? **A:** To get IPv4 and IPv6 addresses so the client can choose/race them.
-4. What is a DNS TTL? **A:** How long a cached answer may be reused.
-5. What does `ip route get X` tell you? **A:** The route, next hop, interface and source address the kernel would use for X.
-6. How does the kernel pick between several matching routes? **A:** Longest prefix, then metric.
-7. What is the default route? **A:** `0.0.0.0/0` (`::/0`), used when nothing more specific matches; points at the default gateway.
-8. What is an ephemeral port? **A:** A temporary client-side source port chosen from a configured range.
-9. How is a TCP connection uniquely identified? **A:** By the 5-tuple (protocol, src IP, src port, dst IP, dst port).
-10. What is ARP and when is it needed? **A:** Maps an IPv4 address on the local link to a MAC address, needed before sending a frame to the next hop.
-11. IPv6 equivalent of ARP? **A:** NDP (neighbor solicitation/advertisement).
-12. Which MAC address is in the frame for an off-subnet destination? **A:** The default gateway's MAC.
-13. What changes at each router hop and what does not (without NAT)? **A:** MACs and TTL change; IP addresses stay.
-14. What does a switch do with an unknown destination MAC? **A:** Floods the frame out all other ports in the VLAN.
-15. What does NAT/PAT change? **A:** Source IP (and port) on the way out; reverses it on the way back using a state table.
-16. What is the TCP three-way handshake? **A:** SYN, SYN-ACK, ACK.
-17. What does "connection refused" mean at the packet level? **A:** The server host sent RST because nothing listens on that port.
-18. What does "timed out" usually imply? **A:** Packets were dropped silently or lost (firewall, routing, outage).
-19. What is MSS and how is it set? **A:** Largest TCP payload per segment, negotiated in SYN options (≈ MTU − 40).
-20. What is SNI and why is it needed? **A:** The hostname sent in ClientHello so a shared IP can serve the right certificate.
-21. What does ALPN do? **A:** Negotiates the application protocol (h2, http/1.1) during the TLS handshake.
-22. How many round trips does TLS 1.3 need before application data? **A:** One (full handshake).
-23. What does the client verify in a certificate? **A:** Chain to a trusted root, validity dates, hostname (SAN), key usage, revocation (soft).
-24. What does `time_starttransfer` measure? **A:** Time until the first response byte arrives (TTFB).
-25. How do you compute the TLS time from curl's output? **A:** `time_appconnect − time_connect`.
-26. Why is TIME_WAIT needed? **A:** To absorb late packets and ensure the final ACK is delivered before the 5-tuple is reused.
-27. What does `traceroute` rely on? **A:** TTL expiry and ICMP Time Exceeded replies from each hop.
-28. What breaks if ICMP "Fragmentation Needed" is filtered? **A:** Path MTU discovery: large packets blackhole.
-29. How does RDMA traffic differ from this journey? **A:** It bypasses the kernel TCP/IP stack; NIC hardware handles transport; invisible to normal firewalls/tcpdump.
-30. Where does DNS fit in Kubernetes pod requests? **A:** CoreDNS via the pod's resolv.conf with `ndots:5` and search domains, then service VIP translation.
+1. **End-to-End `curl` Sequence and `strace` Verification:** List the 9 ordered stages of `curl https://example.com/` from URL parsing to `FIN`/`ACK` (`TIME_WAIT`), and state which system calls (`openat`, `socket`, `connect`, `sendto`, `recvfrom`, `close`) in `strace` correspond to `/etc/nsswitch.conf` / `/etc/hosts` lookup, the UDP/53 DNS query, and the TCP/443 connection.
+2. **Name Resolution (`nsswitch.conf`, `systemd-resolved`, and Kubernetes `ndots:5`):** (a) Explain how `getent ahosts example.com`, `resolvectl query example.com`, and `dig +trace example.com` differ in what they test; (b) why does setting `ndots:5` in a Kubernetes Pod's `/etc/resolv.conf` multiply DNS queries when looking up `example.com`?
+3. **Routing Lookup, ARP vs. Off-Subnet Gateway MAC, and Hop-by-Hop Rewrites:** Given a host `10.0.0.15/24` with default gateway `10.0.0.1` (`bb:bb:bb:00:00:01`) sending a packet to `93.184.216.34`: (a) what does `ip route get 93.184.216.34` return, and whose MAC address is placed in the outgoing Ethernet frame's Destination MAC field? (b) Using `simulate_router_hop_headers()` in `code/part02/curl_packet_journey.py`, trace which header fields change and which stay constant across three router hops.
+4. **TCP 3-Way Handshake, `Connection refused` vs. `Connection timed out`, and PMTUD Blackholes:** (a) At the packet level (`tcpdump`), what is the difference between connecting to a host where no process is listening on port 443 (`Connection refused`) versus where a firewall drops the `SYN` (`Connection timed out`)? (b) Why does filtering ICMP `Fragmentation Needed` / `Packet Too Big` allow `curl` handshakes and tiny responses to succeed while large container layer downloads stall, and how does `ping -M do -s 1472` test it?
+5. **Decomposing `curl -w` Timings and Diagnosing `curl` Exit Codes:** (a) Given `curl -w` output `namelookup=0.012s, connect=0.032s, appconnect=0.072s, pretransfer=0.073s, starttransfer=0.123s, total=0.153s`, use `decompose_curl_timings()` to compute the exact duration of the DNS, TCP connect, TLS handshake, server TTFB wait, and body transfer phases; (b) map `curl` exit codes `6`, `7`, `22`, `28`, `35`, and `60` (`diagnose_curl_exit_code()`) to their exact network layers and first diagnostic commands.
+6. **TCP/IP vs. Kernel-Bypass RDMA in AI Clusters:** Contrast the path of a `torchrun`/`NCCL` TCP bootstrap connection (`getaddrinfo` -> `socket` -> routing table -> ARP -> `qdisc` -> NIC) with an InfiniBand or RoCEv2 **GPUDirect RDMA** collective transfer, and explain why `tcpdump`, `ss`, and `iptables` do not see RDMA data-plane packets.
 
-## 18. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. Which C library function resolves a hostname in Linux, and how do `/etc/nsswitch.conf`, `/etc/hosts`, and `/etc/resolv.conf` interact?</summary>
+Applications call `getaddrinfo()`, which reads the `hosts:` line in `/etc/nsswitch.conf` (typically `files resolve dns` or `files dns`). It checks `/etc/hosts` (`files`) first, then queries the local stub resolver (`systemd-resolved` at `127.0.0.53`) or the DNS nameservers listed in `/etc/resolv.conf`.
+</details>
 
-- Brian Ward, *How Linux Works*, 3rd ed., chapter 9 (packets, network layers, IP addresses, subnets, routes and the default gateway, ICMP and DNS tools, Ethernet and kernel interfaces, name resolution via `nsswitch.conf`, `/etc/hosts`, `resolv.conf`, `systemd-resolved`, localhost, TCP ports and connections, UDP, DHCP, NAT, ARP/NDP) and chapter 10 (services, `ssh`, diagnostic tools such as `lsof`, `tcpdump`, `netcat`, sockets).
-- Russ White and Jeff Tantsura (and co-authors), *Computer Networking Problems and Solutions*, chapters 1, 3 to 7 for the conceptual framing (packet switching and hop-by-hop forwarding, layered models, Ethernet multiplexing, interlayer discovery, how a router switches a packet). Used in more depth in chapters 2.2 to 2.7.
-- The AI-infrastructure notes (RDMA bypass, Kubernetes DNS, cloud) are the author's synthesis and are developed in Parts 2, 5, 12 and later chapters.
-- Command outputs shown as examples are illustrative; run them yourself.
+<details>
+<summary>2. Why do modern resolvers query both `A` and `AAAA` records in parallel, and what is \"Happy Eyeballs\" (RFC 6724 / RFC 8305)?</summary>
+Resolvers request both IPv4 (`A`) and IPv6 (`AAAA`) records so dual-stack clients can prefer IPv6. Under Happy Eyeballs, the client initiates an IPv6 connection first and starts a parallel IPv4 fallback attempt if IPv6 does not complete within a few tens of milliseconds, preventing broken IPv6 paths from causing multi-second hangs.
+</details>
 
-**Flagged for verification before publishing:**
+<details>
+<summary>3. What do `search` domains and `ndots` in `/etc/resolv.conf` do, and why does `ndots:5` in Kubernetes matter?</summary>
+Any hostname containing fewer dots than `ndots` (default `1` on Linux, `5` in Kubernetes Pods) is first queried with each `search` suffix appended before being queried as an absolute name. In Kubernetes, looking up `api.openai.com` (`2` dots `< 5`) triggers `A` and `AAAA` queries for `api.openai.com.<ns>.svc.cluster.local`, `api.openai.com.svc.cluster.local`, and `api.openai.com.cluster.local` before finally querying `api.openai.com.`.
+</details>
 
-- Default values: TIME_WAIT duration, ephemeral port range, `ndots` defaults per environment, TCP retry timers.
-- Exact `curl` write-out variable names and HTTP/3 availability in your build.
-- All labs are **untested**.
+<details>
+<summary>4. What does `ip route get 93.184.216.34` show, and how does the Linux kernel choose between multiple matching routes?</summary>
+`ip route get` queries the kernel's Forwarding Information Base (FIB) and prints the exact route, next-hop gateway (`via 10.0.0.1`), outgoing interface (`dev ens4`), and source IP address (`src 10.0.0.15`) the kernel will use for that destination. The kernel always picks the **longest matching prefix** (most specific subnet mask, e.g., `/24` beats `/16` beats default `0.0.0.0/0`), breaking ties by route `metric`.
+</details>
+
+<details>
+<summary>5. How is a TCP connection uniquely identified in the kernel, and where does the client's source port come from?</summary>
+Every TCP connection is uniquely identified by its **5-tuple**: `(protocol=TCP, source IP, source port, destination IP, destination port)`. When `connect()` is called on an unbound client socket, the kernel automatically selects an unused **ephemeral port** from `net.ipv4.ip_local_port_range` (default `32768` to `60999`).
+</details>
+
+<details>
+<summary>6. How do ARP (IPv4) and NDP (IPv6) resolve the next hop's MAC address, and where does Linux cache the result?</summary>
+In IPv4, the host broadcasts an **ARP Request** (`ff:ff:ff:ff:ff:ff`: *"Who has 10.0.0.1? Tell 10.0.0.15"*) and the owner replies unicast with its 6-byte MAC address. In IPv6, **NDP** (*Neighbor Discovery Protocol*) uses ICMPv6 Neighbor Solicitation and Advertisement messages sent to a solicited-node multicast address. Both populate the kernel **neighbour table**, inspected with `ip neigh show` (`REACHABLE`, `STALE`, `DELAY`, `PROBE`, `FAILED`).
+</details>
+
+<details>
+<summary>7. When a host at `10.0.0.15/24` sends a packet to `93.184.216.34` via gateway `10.0.0.1`, what MAC address is in the Ethernet frame's Destination MAC field?</summary>
+The **default gateway's (`10.0.0.1`) MAC address**—never the remote server's MAC address. Ethernet is strictly link-local; the host addresses the frame to its local router on the LAN segment.
+</details>
+
+<details>
+<summary>8. Name the fields of an Ethernet II frame and the Protocol Data Units (`PDU`s) at each layer of the TCP/IP stack (`NK` Chapter 1).</summary>
+The PDUs from top to bottom are: Application **Data** -> Transport **Segment** (TCP) / **Datagram** (UDP) -> Network **Packet** (IP) -> Link **Frame** (Ethernet) -> Physical **Bits**. An Ethernet II frame consists of an `8`-byte Preamble + SFD, `6`-byte Destination MAC, `6`-byte Source MAC, `2`-byte EtherType (`0x0800` IPv4, `0x86DD` IPv6, `0x0806` ARP), `46–1500`-byte Payload, and `4`-byte `FCS` (CRC-32).
+</details>
+
+<details>
+<summary>9. As a packet traverses 12 routers across the Internet (without NAT), what changes in the headers at each hop and what stays constant?</summary>
+At every router hop: (1) the outer **Ethernet source and destination MAC addresses** are stripped and replaced with the MACs for the next link, and (2) the IP header's **`TTL` (IPv4) / `Hop Limit` (IPv6)** is decremented by `1` (and the IPv4 header checksum is recomputed). The **source IP, destination IP, TCP ports, and payload** remain unchanged (except where a NAT gateway rewrites the source IP and port at a private-network boundary).
+</details>
+
+<details>
+<summary>10. How does a Layer 2 switch decide where to forward an Ethernet frame compared to a Layer 3 router?</summary>
+A **Layer 2 switch** inspects the incoming frame's source MAC to learn which port that MAC lives on (MAC address table), then forwards the frame out the single port matching the destination MAC—or **floods** it out all ports in the VLAN if the destination MAC is unknown or broadcast (`ff:ff:ff:ff:ff:ff`). A **Layer 3 router** terminates the Ethernet frame, looks up the destination IP in its routing table (FIB), decrements `TTL`, and encapsulates the packet in a brand-new Ethernet frame for the next hop.
+</details>
+
+<details>
+<summary>11. Trace the TCP three-way handshake (`SYN`, `SYN-ACK`, `ACK`) and the options negotiated during `SYN`.</summary>
+(1) Client sends `SYN` with its Initial Sequence Number (`ISN`) and TCP options: **MSS** (*Maximum Segment Size*, typically `MTU - 40 = 1460` bytes), **Window Scale** factor, **SACK Permitted**, and **Timestamps**; (2) Server replies with `SYN-ACK` containing its own `ISN`, `ACK = client_ISN + 1`, and negotiated options; and (3) Client sends `ACK` (`server_ISN + 1`), placing both sockets in `ESTABLISHED`.
+</details>
+
+<details>
+<summary>12. At the packet level, what is the difference between `Connection refused` and `Connection timed out`?</summary>
+`Connection refused` happens immediately (in 1 RTT) because the packet reached the destination host (or a firewall with `REJECT`), found no socket listening on that port, and received a TCP **`RST`** (Reset) packet back. `Connection timed out` happens after multiple seconds of exponential retries (`1 s, 2 s, 4 s...`) because `SYN` packets were silently dropped by a firewall (`DROP`) or blackholed in routing with no reply.
+</details>
+
+<details>
+<summary>13. What happens during a TLS 1.3 handshake (`ClientHello` -> `ServerHello`), and what roles do `SNI` and `ALPN` play?</summary>
+In TLS 1.3 (which completes in **1 RTT**), the client sends `ClientHello` containing its supported cipher suites, an ephemeral Diffie-Hellman key share, **`SNI`** (*Server Name Indication*, the hostname `example.com` so a multi-tenant server/load balancer selects the right X.509 certificate), and **`ALPN`** (*Application-Layer Protocol Negotiation*, offering `h2` and `http/1.1`). The server replies with `ServerHello`, its key share, its X.509 certificate chain, `CertificateVerify` signature, and `Finished`; the client verifies the certificate chain against `/etc/ssl/certs` and hostname `SAN`s before sending encrypted HTTP data.
+</details>
+
+<details>
+<summary>14. Compare HTTP/1.1, HTTP/2, and HTTP/3 (QUIC) at the transport layer.</summary>
+**HTTP/1.1** sends text requests sequentially over TCP (using keep-alive connection pooling). **HTTP/2** multiplexes multiple binary request/response streams over a single TCP + TLS connection with HPACK header compression, but a single lost TCP packet stalls all streams (**TCP head-of-line blocking**). **HTTP/3** runs over **QUIC** (UDP port `443` with built-in TLS 1.3), providing independent per-stream loss recovery without head-of-line blocking and 1-RTT / 0-RTT connection setup.
+</details>
+
+<details>
+<summary>15. Given cumulative `curl -w` timings (`time_namelookup`, `time_connect`, `time_appconnect`, `time_pretransfer`, `time_starttransfer`, `time_total`), how do you calculate the time spent in each phase?</summary>
+Because all `curl -w` timestamps are cumulative from `t = 0`:
+- **DNS lookup** = `time_namelookup`
+- **TCP handshake (1 RTT)** = `time_connect - time_namelookup`
+- **TLS handshake (1–2 RTTs)** = `time_appconnect - time_connect`
+- **Server processing + first byte RTT** = `time_starttransfer - time_pretransfer`
+- **Response body download** = `time_total - time_starttransfer`
+</details>
+
+<details>
+<summary>16. Why does TCP keep a closed connection in `TIME_WAIT` for ~60 seconds, and which side enters `TIME_WAIT`?</summary>
+The side that initiates the active close (sends the first `FIN`) enters `TIME_WAIT` for ~60 seconds after sending the final `ACK`. This prevents delayed duplicate packets from the old connection from being accepted by a new connection reusing the same 5-tuple, and ensures the peer receives a retransmitted `ACK` if the final `ACK` was lost.
+</details>
+
+<details>
+<summary>17. How does `traceroute` (or `mtr`) discover every router along a path, and how does Path MTU Discovery (`PMTUD`) work?</summary>
+`traceroute` sends probe packets with `TTL = 1`, then `TTL = 2`, `TTL = 3`, ... Each Nth router decrements `TTL` to `0`, drops the packet, and replies with an **ICMP Time Exceeded** message from its own IP. **PMTUD** sets the **Don't Fragment (`DF`)** bit on IPv4 packets; if a link along the path has a smaller MTU (e.g., an overlay tunnel at `1450` bytes), the router drops the oversized packet and returns **ICMP Fragmentation Needed** (or IPv6 **Packet Too Big**) with the next-hop MTU so the sender lowers its TCP segment size (`ping -M do -s 1472` tests a 1500-byte path).
+</details>
+
+<details>
+<summary>18. Map `curl` exit codes `6`, `7`, `22`, `28`, `35`, and `60` to their exact failure layers.</summary>
+- `6`: DNS resolution failure (`Could not resolve host`)
+- `7`: L3/L4 connect failure (`Connection refused`, `No route to host`, `Network is unreachable`)
+- `22`: HTTP 4xx/5xx error (when `-f` / `--fail` is passed)
+- `28`: Operation timeout (SYN dropped, read timeout)
+- `35`: SSL/TLS handshake error (wrong version, non-TLS server on TLS port, middlebox reset)
+- `60`: X.509 PKI verification failure (expired cert, untrusted CA, wrong hostname SAN, skewed system clock)
+</details>
+
+<details>
+<summary>19. How does distributed training traffic (`torchrun` rendezvous vs. `NCCL` RDMA collectives) use—and bypass—this packet journey?</summary>
+Job rendezvous (`torchrun` `c10d` store, MPI launch, and NCCL ring/tree setup) uses the **standard Linux TCP/IP journey** (`getaddrinfo`, routing table, ARP, `qdisc`, TCP sockets). Once initialized, bulk gradient/activation collectives (`AllReduce`, `AllGather`) use **RDMA verbs** over InfiniBand or RoCEv2 (**kernel bypass**): `libnccl`/`libmlx5` posts Work Queue Elements directly to the NIC hardware, which DMAs tensors straight out of GPU `HBM` (`GPUDirect RDMA`) and segments/acknowledges packets in NIC silicon—completely invisible to `tcpdump`, `ss`, and `iptables`.
+</details>
+
+<details>
+<summary>20. What extra hops are added to a `curl` request when it originates inside a Kubernetes Pod?</summary>
+(1) DNS queries go to **CoreDNS** with `ndots:5` search-domain expansion; (2) if the target is a Kubernetes `Service` VIP (`ClusterIP`), **`kube-proxy` (`iptables`/`IPVS`) or `Cilium` eBPF** rewrites the destination IP (DNAT) to a backing Pod endpoint IP; (3) the packet exits the container's network namespace across a **`veth` pair** into the host bridge or CNI router (and is optionally encapsulated in **VXLAN/Geneve**); and (4) **NetworkPolicy** filters check ingress/egress before the packet leaves the node's physical NIC.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 9: Understanding Your Network and Its Configuration** (packets, network layers, IP addresses, subnets, routes and default gateway, ICMP and DNS tools, Ethernet and kernel interfaces, name resolution via `nsswitch.conf`, `/etc/hosts`, `resolv.conf`, `systemd-resolved`, localhost, TCP ports and connections, UDP, DHCP, NAT, ARP/NDP) and **Chapter 10: Network Applications and Services** (services, `ssh`, `lsof`, `tcpdump`, `netcat`, sockets).
+  - `networking-and-kubernetes` — James Strong and Vallery Lancey, *Networking and Kubernetes*, **Chapter 1: Networking Introduction** ("Guilty until proven innocent", IETF RFC states *Proposed Standard* vs *Internet Standard*, `ISO/IEC 7498-1..4` OSI model vs `RFC 1122` TCP/IP model, Protocol Data Units `PDU`s, Ethernet frame `8`-byte Preamble/SFD + `6+6`-byte MACs + `2`-byte EtherType + `4`-byte `FCS`, and the end-to-end `cURL` walkthrough).
+  - `computer-networking-problems-and-solutions` — Russ White and Ethan Banks, *Computer Networking Problems and Solutions*, **Chapter 1: Fundamental Concepts** (packet switching, hop-by-hop forwarding, layered models, multiplexing, and interlayer discovery; cross-referenced with Chapters 2.2 to 2.10, 2.13 to 2.20, 2.22 to 2.26, 2.30, and 2.32, plus original study items 21–30).
+- **Run here:** `python3 code/part02/curl_packet_journey_lab.py` (16 passed, 0 failed).
+- **Explicitly labelled inferences:** The Section 13 AI-infrastructure comparison (container registry pulls, S3/GCS parallel HTTPS streams, `torchrun` TCP rendezvous vs `NCCL` kernel-bypass GPUDirect RDMA, and Kubernetes `ndots:5` + CNI path) connects the classic `curl` packet walkthrough to Part 5, Part 8, and Part 9 GPU cluster networking (plus original study items 23, 26, 27, and 29).
+- **Not verified on live hardware:** All interactive VM commands (`curl`, `strace`, `getent`, `resolvectl`, `dig`, `ip route`, `ip neigh`, `tcpdump`, `arping`, `traceroute`, `mtr`, `ss`, `openssl s_client`) are marked (untested here) and should be executed on a disposable Linux VM.

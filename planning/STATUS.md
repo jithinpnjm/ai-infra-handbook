@@ -30,7 +30,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 1.20 | Lab: build a container by hand with unshare, chroot, cgroups and overlayfs | drafted | 3678 |  |
 | 1.29 | Remote administration reference: SSH server and client options, host-based authentication, parallel shells, screen and tmux, IPMI and console managers | drafted | 8876 |  |
 | 1.30 | Network file sharing and remote graphical access: rsync in depth, Samba, SSHFS, NFS clients, cloud storage, X11, VNC and alternatives | drafted | 8639 |  |
-| 2.1 | What happens when you curl a URL: a packet's journey end to end | drafted | 5496 |  |
+| 2.1 | What happens when you curl a URL: a packet's journey end to end | drafted | 7180 |  |
 | 2.2 | How networks work: layers, encapsulation, the TCP/IP model | drafted | 6134 |  |
 | 2.3 | Ethernet and L2: frames, MAC addresses, switching, ARP and NDP | drafted | 7195 |  |
 | 2.4 | IP addressing, subnetting and CIDR (IPv4 and IPv6), with practice | drafted | 5944 |  |
