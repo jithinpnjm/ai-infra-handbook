@@ -32,7 +32,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 1.30 | Network file sharing and remote graphical access: rsync in depth, Samba, SSHFS, NFS clients, cloud storage, X11, VNC and alternatives | drafted | 8639 |  |
 | 2.1 | What happens when you curl a URL: a packet's journey end to end | drafted | 7180 |  |
 | 2.2 | How networks work: layers, encapsulation, the TCP/IP model | drafted | 7845 |  |
-| 2.3 | Ethernet and L2: frames, MAC addresses, switching, ARP and NDP | drafted | 7195 |  |
+| 2.3 | Ethernet and L2: frames, MAC addresses, switching, ARP and NDP | drafted | 9045 |  |
 | 2.4 | IP addressing, subnetting and CIDR (IPv4 and IPv6), with practice | drafted | 5944 |  |
 | 2.5 | Routing on a host: routing tables, default gateways and forwarding | drafted | 5480 |  |
 | 2.6 | TCP in depth: handshake, windows, congestion control, retransmission | drafted | 6681 |  |
