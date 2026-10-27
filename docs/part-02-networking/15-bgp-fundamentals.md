@@ -225,7 +225,7 @@ router bgp 65000
 
 **Resource segmentation.** Different tenants or services must reach only certain servers, sometimes along specific paths, and sometimes must not even *see* the routing information of the other. Packet filters alone can't meet requirements like "hide routes" or "force this path". A common solution is an **overlay**: tunnels (GRE, VXLAN, MPLS, SR) carry each segment through the shared underlay, with a separate overlay control plane (BGP VPNv4/EVPN, VRFs and route targets) pulling traffic into the tunnel. Underlay reachability and overlay policy are separated, which is why overlays pervade modern networks (chapter 2.17).
 
-**Flow pinning.** *Elephant* flows (large, long-lived, e.g. >20% of a link for minutes) and *mouse* flows (small, short, latency-sensitive) hashed onto the same link interfere: a single 9000-byte elephant packet occupies a 100 Mb/s link for 0.72 ms, so a 64-byte mouse packet queued behind it waits far longer than its own serialisation (0.05 ms), which shows up as jitter and hurts flow control and error recovery. Mixing them is a performance problem even when average utilisation is low. Remedies: QoS to interleave, **pinning** the elephant to a chosen path and steering other traffic away from it (using the five-tuple to distinguish flows: source and destination IP, ports, protocol), segment routing or policy-based routing, or in AI fabrics adaptive routing and packet spraying (chapters 2.12 and 2.19). Pinning in a purely hash-based ECMP fabric is difficult because the ECMP hash decides paths; this is why flow-aware controllers and per-flow policies exist. Policy at this granularity carries **complexity cost**: more state, more interactions, and more ways to fail; each policy should justify itself against the extra operational risk (a recurring theme: adding policy trades network optimality and simplicity for control).
+**Flow pinning.** *Elephant* flows (large, long-lived, e.g. >20% of a link for minutes) and *mouse* flows (small, short, latency-sensitive) hashed onto the same link interfere (`CN` Chapter 17): on a `100 Mb/s` link, a `9,000`-byte elephant packet occupies the wire for `0.72 ms` (`1,500` bytes takes `0.12 ms`), so a `64`-byte mouse packet queued behind it waits far longer than its own `0.05 ms` serialisation time, which shows up as jitter (`0.05 ms` vs `0.288 ms+` inter-packet spacing) and hurts flow control and error recovery. Mixing them is a performance problem even when average utilisation is low. Remedies: QoS to interleave, **pinning** the elephant to a chosen path and steering other traffic away from it (using the five-tuple to distinguish flows: source and destination IP, ports, protocol), segment routing or policy-based routing, or in AI fabrics adaptive routing and packet spraying (chapters 2.12 and 2.19). Pinning in a purely hash-based ECMP fabric is difficult because the ECMP hash decides paths; this is why flow-aware controllers and per-flow policies exist. Policy at this granularity carries **complexity cost**: more state, more interactions, and more ways to fail; each policy should justify itself against the extra operational risk (a recurring theme: adding policy trades network optimality and simplicity for control).
 
 ## 8. Security and operations
 
@@ -244,9 +244,15 @@ BGP trusts its peers; a mistaken or malicious announcement can divert or black-h
 - **Kubernetes**: Calico (BIRD or the Go BGP library), Cilium BGP control plane, MetalLB (LoadBalancer VIPs in BGP mode), kube-vip. Typically the node (AS per node or one shared AS) peers with the ToR and announces pod CIDRs and service IPs, with `maximum-paths` at the ToR to spread ingress traffic.
 - **Cloud**: Direct Connect / Cloud Interconnect / ExpressRoute and cloud routers exchange routes with on-prem via BGP (a private ASN on-prem, the cloud's ASN, MED/AS-path prepending for primary/backup); learn the vendor limits (max routes, BFD timers).
 
-## 10. Lab: BGP sessions, attributes and policy (untested)
+## 10. Hands-on lab: BGP sessions, attributes, and policy
 
-Use FRR in three or four namespaces/containers (containerlab, chapter 2.27): AS65001 --- AS65000 (transit) --- AS65002, plus a second link to create path choice.
+First, run the self-checking Python lab (`code/part02/bgp_fundamentals_lab.py`) locally. It verifies the BGP best-path decision algorithm (`LOCAL_PREF` -> `AS_PATH` length -> `MED` -> hot-potato `IGP` cost), `AS_PATH` loop detection and `allowas-in`, eBGP vs iBGP advertisement rules and Route Reflector scaling (`4,950` full-mesh sessions vs `197` with 2 RRs for 100 routers), and elephant/mouse serialization jitter math (`0.72 ms` vs `0.05 ms` on `100 Mb/s`).
+
+```bash
+python3 code/part02/bgp_fundamentals_lab.py
+```
+
+Next, on a disposable Linux VM using FRR in three or four namespaces/containers (`AS65001 --- AS65000 (transit) --- AS65002`; all interactive VM commands below are `untested here`), work through these steps:
 
 1. **eBGP session**: configure peers, watch `show bgp summary` go Idle → Connect → Active → Established; capture with `tcpdump -ni any port 179` and decode OPEN/KEEPALIVE/UPDATE; set mismatched ASN to see the NOTIFICATION; test an ACL that blocks 179 in one direction.
 2. **Advertise prefixes** with `network` and with `redistribute connected`; verify `received-routes`; compare AS_PATH, NEXT_HOP on each router.
@@ -258,8 +264,6 @@ Use FRR in three or four namespaces/containers (containerlab, chapter 2.27): AS6
 8. **Security**: enable MD5 and GTSM; test a mismatch; (optional) RPKI validation with a local `rtrd`/Routinator.
 9. **Failure**: down a link and measure convergence with default timers, `timers 3 9`, and BFD; observe path exploration in updates (`debug bgp updates`).
 10. **Clean up**.
-
-Mark tested only after execution.
 
 ## 11. Common mistakes
 
@@ -285,54 +289,121 @@ Mark tested only after execution.
 - "Why do data centres use eBGP? What do they change in the defaults?" (chapter 2.16.)
 - "What is hot-potato versus cold-potato routing?"
 
-## 13. Checkpoint questions (40)
+## Exercises
 
-1. What is an AS? **A:** A set of prefixes/routers under one administrative policy with an ASN.
-2. What is the difference between IGP and EGP? **A:** Within an AS (efficiency) versus between ASes (policy).
-3. Which transport does BGP use? **A:** TCP port 179.
-4. What does TCP give BGP? **A:** Reliability, flow control, MTU handling, two-way connectivity.
-5. List BGP message types. **A:** OPEN, UPDATE, KEEPALIVE, NOTIFICATION (plus ROUTE-REFRESH).
-6. What is exchanged in OPEN? **A:** Version, ASN, hold time, BGP ID, capabilities.
-7. How is hold time chosen? **A:** The lower of the two.
-8. What does Active mean in the FSM? **A:** TCP connection failed; retrying.
-9. What does End-of-RIB signal? **A:** The initial table exchange is complete.
-10. Name the mandatory attributes. **A:** ORIGIN, AS_PATH, NEXT_HOP.
-11. What does LOCAL_PREF express? **A:** Exit preference within an AS (higher wins).
-12. What does MED express? **A:** The neighbour's preferred entry point (lower wins).
-13. When is MED compared? **A:** Between paths from the same neighbouring AS.
-14. What is a community? **A:** A tag attached to routes for policy matching.
-15. Why large communities? **A:** Support 4-byte ASNs with function/value structure.
-16. Which attribute carries path loop information? **A:** AS_PATH.
-17. Is there split horizon in BGP? **A:** No.
-18. What happens when a router sees its own ASN in the path? **A:** It rejects the route.
-19. First step of best path? **A:** Highest weight (local).
-20. Second? **A:** Highest LOCAL_PREF.
-21. How does AS-path prepending work? **A:** Repeat your ASN outbound to lengthen the path and de-prefer it.
-22. Why prefer eBGP over iBGP? **A:** Exit the AS sooner/more trustworthy.
-23. What is hot-potato routing? **A:** Exit at the nearest egress (lowest IGP cost).
-24. Rule 1 of advertisement? **A:** Advertise best path to every eBGP peer.
-25. Rule 2? **A:** Advertise eBGP-learned best to every iBGP peer (not iBGP-learned to iBGP).
-26. Why iBGP full mesh? **A:** iBGP-learned routes aren't re-advertised among iBGP peers.
-27. What is a route reflector? **A:** A router allowed to reflect iBGP routes to clients.
-28. What prevents RR loops? **A:** ORIGINATOR_ID and CLUSTER_LIST.
-29. Why `next-hop-self`? **A:** iBGP preserves the external next hop, which may be unreachable inside the AS.
-30. What does `multipath-relax` do? **A:** Allows ECMP across paths with equal AS-path length but different ASNs.
-31. What is the BGP identifier? **A:** The router ID used in OPEN and tiebreaking.
-32. How do you apply a policy change without resetting? **A:** Soft reconfiguration / route refresh.
-33. What does `maximum-prefix` protect against? **A:** A peer flooding or leaking routes.
-34. What is GTSM? **A:** TTL security: accept only packets with TTL 255 from directly connected peers.
-35. What is RPKI ROV? **A:** Validating origin AS of prefixes against ROAs.
-36. What is RTBH? **A:** Remote-triggered blackhole announced via community.
-37. Why do overlays pull traffic with a separate control plane? **A:** Separate segments from the underlay; policy and path control.
-38. Why do elephant and mouse flows interfere? **A:** Large packets delay small ones, increasing jitter.
-39. Which BGP attribute influences inbound traffic from other ASes? **A:** AS-path prepend, MED, communities.
-40. Which influences outbound traffic? **A:** LOCAL_PREF (and weight locally).
+1. **Autonomous Systems, IGP vs. EGP Goals, and the BGP Session FSM over `TCP/179` (`CN` Chapter 16):** (a) Contrast the primary goal of an IGP (`OSPF`, `IS-IS`) with BGP-4 (`RFC 4271`), and state the 16-bit and 32-bit (`RFC 6793`) private ASN ranges; (b) list the four protocol functions BGP inherits for free by running over **TCP port 179**, trace the 6 BGP FSM states (`Idle -> Connect -> Active -> OpenSent -> OpenConfirm -> Established`), and explain what **`Active`** actually means when `show bgp summary` is stuck in `Active`.
+2. **BGP Path Attributes, `AS_PATH` Loop Prevention, and Traffic Steering:** (a) Classify `ORIGIN`, `AS_PATH`, `NEXT_HOP`, `LOCAL_PREF`, `MED`, and `COMMUNITY` / `Large Community` (`RFC 8092`) across the four BGP attribute categories (well-known mandatory, well-known discretionary, optional transitive, optional non-transitive); (b) using `check_as_path_loop()` in `code/part02/bgp_fundamentals.py`, explain how BGP prevents loops without split horizon, and state which attributes steer **outbound** traffic leaving your AS versus **inbound** traffic entering your AS.
+3. **The BGP Best-Path Decision Process and `multipath-relax`:** Using `select_bgp_best_path()`, determine the winning path when: (a) Path A has `LOCAL_PREF = 100, AS_PATH = [65001]` and Path B has `LOCAL_PREF = 200, AS_PATH = [65002, 65003, 65004]`; (b) both have `LOCAL_PREF = 100`, Path A has `AS_PATH = [65001, 65002], MED = 50` and Path B has `AS_PATH = [65003, 65003, 65002], MED = 10`; and (c) both have identical `LOCAL_PREF`, `AS_PATH`, `ORIGIN`, and `MED`, but Path A has IGP cost `50` to `NEXT_HOP` and Path B has IGP cost `10`. What does `bgp bestpath as-path multipath-relax` enable?
+4. **eBGP vs. iBGP Differences, `next-hop-self`, and Route Reflectors (`RFC 4456`):** (a) Contrast `eBGP` and `iBGP` across `AS_PATH` modification, `NEXT_HOP` modification (`next-hop-self`), default IP `TTL`, and advertisement rules (`evaluate_bgp_advertisement_rule()`); (b) using `compute_ibgp_sessions_full_mesh_vs_rr()`, calculate the number of iBGP sessions required for `100` routers in a full mesh (`4,950`) versus with `2` redundant Route Reflectors (`197`), and state which two attributes prevent loops across Route Reflectors.
+5. **Control-Plane Policy: Hot-Potato vs. Cold-Potato, Overlays, and Elephant vs. Mouse Flow Pinning (`CN` Chapter 17):** (a) Compare hot-potato, cold-potato, and mashed-potato routing; (b) calculate the wire serialization time on a `100 Mb/s` link for a `9,000`-byte elephant packet (`0.72 ms`), a `1,500`-byte packet (`0.12 ms`), and a `64`-byte mouse packet (`0.05 ms`), and explain the trade-off between per-flow policy pinning and operational complexity.
+6. **BGP Security, Filtering, and Operations:** Write the FRR configuration and operational checklist to secure an eBGP session using `TCP-AO` / MD5, **GTSM (`ttl-security hops 1`)**, `bgp ebgp-requires-policy`, inbound/outbound `prefix-list` and `as-path` filters, `maximum-prefix`, **RPKI ROV (`RFC 6811`)**, and the **`GRACEFUL_SHUTDOWN` community (`65535:0`)**.
 
-## 14. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. What is an Autonomous System (`AS`), what are the private 16-bit and 32-bit `ASN` ranges, and how does BGP's core design goal differ from an IGP?</summary>
+An **Autonomous System (`AS`)** is a set of IP prefixes and routers under a single administrative routing policy, identified by an **ASN**: **16-bit private ASNs are `64512` to `65534`**, and **32-bit private ASNs (`RFC 6793`) are `4200000000` to `4294967294`**. While an IGP (`OSPF`, `IS-IS`) optimizes for **fast, shortest-path efficiency** inside one organization, **BGP-4 (`RFC 4271`)** is an Exterior Gateway Protocol designed around **policy and administrative control** (whom to peer with, which prefixes to export/import, and which path to prefer for business or fabric-design reasons).
+</details>
 
-- Russ White and Jeff Tantsura (with co-authors), *Computer Networking Problems and Solutions*, chapter 16 (BGP: history and role as an exterior gateway protocol, BGP peering and its state machine, the best-path decision process, advertisement rules, route reflectors, concluding classification) and chapter 17 (policy in the control plane: hot and cold potato routing, resource segmentation with overlays, flow pinning for elephant and mouse flows, policy complexity).
-- FRR configuration, security and operations, AI/Kubernetes/cloud notes are the author's synthesis from RFCs 4271, 4456, 6793, 6811, 8092, 5925, 7938, and the FRR manual.
+<details>
+<summary>2. Why does BGP run over `TCP port 179`, and what four transport problems does TCP solve for BGP (`CN` Chapter 16)?</summary>
+By running over **TCP port 179**, BGP delegates transport mechanics to TCP: (1) **reliable, in-order delivery and retransmission** of route updates, (2) **receiver flow control and congestion control**, (3) **segmentation and Path MTU Discovery (`MSS`)** for large routing tables, and (4) **two-way connectivity verification** via the TCP 3-way handshake—so BGP only needs a simple session state machine and incremental `UPDATE` messages.
+</details>
 
-**Flagged for verification before publishing:** FRR syntax per version (`ebgp-requires-policy`, `neighbor ... bfd`), default timers, ASPA status, best-path step differences between vendors, and cloud BGP limits; all labs are **untested**.
+<details>
+<summary>3. Walk through the six BGP Finite State Machine (`FSM`) states (`Idle -> Connect -> Active -> OpenSent -> OpenConfirm -> Established`), and explain the `Active` state trap.</summary>
+- **`Idle`**: session disabled, waiting for start timer, or shut down by `maximum-prefix` / administrative state.\n- **`Connect`**: router initiated a TCP `SYN` to peer port `179` and is waiting for the TCP 3-way handshake.\n- **`Active`**: the TCP connection attempt **failed or timed out**, and BGP is **actively retrying TCP connection setup** (a classic beginner trap: **`Active` means the session is DOWN at the TCP/IP/firewall layer**, not that it is working).\n- **`OpenSent`**: TCP connected; `OPEN` message sent (version `4`, local ASN, hold time, BGP Identifier, capabilities), waiting for peer's `OPEN`.\n- **`OpenConfirm`**: valid `OPEN` received; `KEEPALIVE` sent, waiting for peer's `KEEPALIVE` (or `NOTIFICATION` on error).\n- **`Established`**: `KEEPALIVE` received; `UPDATE` messages flow.
+</details>
+
+<details>
+<summary>4. Name the five BGP message types (`RFC 4271` + `RFC 2918`) and what `End-of-RIB` (`EOR`) signals.</summary>
+(1) **`OPEN`**: negotiates version `4`, ASNs, hold time (minimum of both peers, default `180 s` with `60 s` keepalive), BGP router ID, and multiprotocol capabilities (`IPv4`/`IPv6`/`EVPN`, 4-byte ASN, Add-Path, Graceful Restart);\n(2) **`UPDATE`**: advertises a set of prefixes (`NLRI`) sharing common Path Attributes, and/or lists withdrawn prefixes;\n(3) **`KEEPALIVE`**: periodic heartbeat confirming session liveliness;\n(4) **`NOTIFICATION`**: reports a fatal protocol/policy error and immediately closes the session; and\n(5) **`ROUTE-REFRESH`**: requests that a peer re-send its prefixes so inbound policy changes can be applied non-disruptively (`clear bgp ... soft in`).\n**`End-of-RIB` (`EOR`)** is an empty `UPDATE` marker signaling that initial table synchronization after session up is complete.
+</details>
+
+<details>
+<summary>5. Classify the main BGP Path Attributes into Well-Known Mandatory, Well-Known Discretionary, Optional Transitive, and Optional Non-Transitive.</summary>
+- **Well-Known Mandatory** (must be recognized and present in every `UPDATE`): **`ORIGIN`**, **`AS_PATH`**, **`NEXT_HOP`**.\n- **Well-Known Discretionary** (must be recognized, may be omitted): **`LOCAL_PREF`**, **`ATOMIC_AGGREGATE`**.\n- **Optional Transitive** (passed along to other peers even if unrecognized): **`COMMUNITY`**, **`EXTENDED_COMMUNITY`**, **`LARGE_COMMUNITY` (`RFC 8092`)**, **`AGGREGATOR`**.\n- **Optional Non-Transitive** (dropped if unrecognized, not passed beyond the peer): **`MED` (`MULTI_EXIT_DISC`)**, **`ORIGINATOR_ID`**, **`CLUSTER_LIST`**.
+</details>
+
+<details>
+<summary>6. How does BGP prevent routing loops between Autonomous Systems without using Split Horizon?</summary>
+BGP does **not** use split horizon (an eBGP speaker sends its best path to all peers). Instead, whenever a route is advertised across an **eBGP** session, the sending router **prepends its own ASN to the front of `AS_PATH`**. When any BGP router receives an `UPDATE` whose `AS_PATH` already contains its **own local ASN**, it immediately drops the route—preventing inter-AS loops by construction.
+</details>
+
+<details>
+<summary>7. State the BGP Best-Path Decision Process in order, highlighting the \"Big Four\" attributes that decide 99% of real-world paths.</summary>
+After verifying that `NEXT_HOP` is reachable in the FIB:\n1. Highest **`WEIGHT`** (router-local, Cisco/FRR)\n2. **Big #1 — Highest `LOCAL_PREF`** (AS-wide outbound exit preference, default `100`)\n3. Locally originated (`network` / `redistribute` / `aggregate`)\n4. **Big #2 — Shortest `AS_PATH` length**\n5. Lowest `ORIGIN` code (`i` IGP < `e` EGP < `?` incomplete)\n6. **Big #3 — Lowest `MED`** (compared among paths from the same neighbor AS)\n7. Prefer **`eBGP` over `iBGP`**\n8. **Big #4 — Lowest IGP cost to `NEXT_HOP`** (hot-potato exit)\n9. Install ECMP multipath if `maximum-paths` enabled and steps 1–8 tied\n10. Oldest `eBGP` path -> lowest peer `Router ID` -> shortest `CLUSTER_LIST` -> lowest peer IP.
+</details>
+
+<details>
+<summary>8. How do you steer OUTBOUND traffic (leaving your AS) versus INBOUND traffic (entering your AS from neighbors) in BGP?</summary>
+- **Steer OUTBOUND traffic (leaving your AS)**: set **`LOCAL_PREF` inbound** on routes received from your preferred exit peer (higher wins, propagated across your AS via iBGP; or `WEIGHT` on a single router).\n- **Steer INBOUND traffic (entering your AS)**: (1) **prepend your own ASN multiple times** (`set as-path prepend 65000 65000`) outbound on less-preferred links so remote ASes see a longer `AS_PATH`; (2) set a lower **`MED`** outbound toward a single multi-connected neighbor AS; (3) attach **BGP Communities** honored by your upstream provider; or (4) advertise more-specific prefixes (with care).
+</details>
+
+<details>
+<summary>9. Summarize the four operational differences between `eBGP` and `iBGP`.</summary>
+(1) **`AS_PATH`**: `eBGP` prepends the sender's ASN; `iBGP` leaves `AS_PATH` unchanged.\n(2) **`NEXT_HOP`**: `eBGP` rewrites `NEXT_HOP` to the sender's interface IP; `iBGP` leaves the original `eBGP` `NEXT_HOP` unchanged by default (requiring **`next-hop-self`** on the border router or carrying external link subnets in the IGP).\n(3) **Re-advertisement**: `eBGP` advertises best paths to all peers; **`iBGP` never re-advertises an `iBGP`-learned route to another `iBGP` peer** (unless configured as a Route Reflector).\n(4) **Default IP `TTL`**: `eBGP` sends packets with `TTL = 1` (requiring direct connection unless `ebgp-multihop` is set); `iBGP` uses standard `TTL = 64/255`.
+</details>
+
+<details>
+<summary>10. Why does `iBGP` forbid re-advertising an `iBGP`-learned route to another `iBGP` peer, and how do Route Reflectors (`RFC 4456`) solve the `n(n-1)/2` full-mesh scaling problem?</summary>
+Because `iBGP` does not modify `AS_PATH`, BGP has no `AS_PATH` loop detection inside an AS; the split-horizon rule ("never advertise an iBGP-learned route to another iBGP peer") prevents internal loops, but requires a full mesh of **`n(n - 1) / 2` sessions** (`4,950` sessions for `100` routers). A **Route Reflector (`RR`)** is permitted to reflect routes learned from `iBGP` route-reflector clients to other peers, reducing session count to **`O(n)`** while preventing reflection loops via two non-transitive attributes: **`ORIGINATOR_ID`** (the router ID of the iBGP speaker that originated the route—dropped if a router sees its own ID) and **`CLUSTER_LIST`** (the sequence of RR `Cluster_ID`s traversed—dropped if an RR sees its own `Cluster_ID`).
+</details>
+
+<details>
+<summary>11. Why can a Route Reflector hide ECMP path diversity, and how does BGP `Add-Path` (`RFC 7911`) fix it?</summary>
+A standard BGP speaker (including a Route Reflector) advertises **only its single best path** per prefix (judged from the RR's own IGP position), hiding alternate equal- or backup-cost exit paths from its clients. **BGP `Add-Path` (`RFC 7911`)** prepends a 4-byte Path Identifier to each prefix in `NLRI`, allowing an RR or peer to advertise **multiple paths for the same prefix** without implicitly overwriting the previous path.
+</details>
+
+<details>
+<summary>12. What are BGP Communities (`RFC 1997`) and Large Communities (`RFC 8092`), and what do `no-export`, `65535:666`, and `65535:0` mean?</summary>
+**BGP Communities** are transitive tags attached to routes so upstream/downstream routers can apply group policy in `route-map`s without maintaining per-prefix IP lists. Standard communities are 32-bit (`ASN:value`); **Large Communities (`RFC 8092`)** are **96-bit (`32-bit ASN : 32-bit Function : 32-bit Parameter`)**, designed so 4-byte ASNs never collide. Well-known communities:\n- **`no-export` (`65535:65281`)**: do not advertise this route outside the local AS (keep within iBGP).\n- **`BLACKHOLE` (`65535:666`, RFC 7999)**: Remote-Triggered Black Hole (`RTBH`)—drop traffic to this `/32` at the provider edge during a DDoS attack.\n- **`GRACEFUL_SHUTDOWN` (`65535:0`, RFC 8326)**: sets `LOCAL_PREF = 0` on peers to drain traffic off a router before maintenance.
+</details>
+
+<details>
+<summary>13. What does `bgp bestpath as-path multipath-relax` do in FRR, and why is it essential in data-center eBGP fabrics?</summary>
+By default, BGP installs multiple paths as ECMP (`maximum-paths`) **only if their `AS_PATH`s are identical in both length AND exact sequence of ASN numbers**. In a leaf-spine data center where each leaf or spine group has a different ASN, paths via different switches have the **same `AS_PATH` length** but **different ASNs**; `bgp bestpath as-path multipath-relax` tells BGP to treat equal-length `AS_PATH`s as equal for ECMP.
+</details>
+
+<details>
+<summary>14. Contrast Hot-Potato Routing, Cold-Potato Routing, and Mashed-Potato Routing (`CN` Chapter 17).</summary>
+- **Hot-Potato Routing**: hands outbound traffic off to the neighbor AS at the **closest exit point** (lowest internal IGP cost to `NEXT_HOP`), minimizing bandwidth consumed on your own backbone.\n- **Cold-Potato Routing**: carries traffic across **your own backbone** as far as possible and exits at the peering point closest to the final destination (using high `LOCAL_PREF` on far-exit routes or honoring the peer's `MED`), giving content/cloud providers tight control over latency and loss.\n- **Mashed-Potato Routing**: bilateral peering where two networks negotiate coordinated exit/entry policies per prefix class.
+</details>
+
+<details>
+<summary>15. Explain quantitatively why mixing 9000-byte Elephant flows and 64-byte Mouse flows on the same link causes jitter (`CN` Chapter 17).</summary>
+On a `100 Mb/s` link, serializing a `64`-byte mouse packet takes only **`0.05 ms`**, whereas serializing a `1,500`-byte packet takes **`0.12 ms`** and a `9,000`-byte jumbo elephant packet takes **`0.72 ms` (`14x` longer)**. Whenever latency-sensitive mouse packets (RPCs, heartbeats, ACKs) queue behind a burst of 9,000-byte elephant frames, their inter-packet spacing stretches from `0.05 ms` to `0.288 ms`–`0.72 ms+`, injecting severe tail-latency jitter even at moderate average link utilization.
+</details>
+
+<details>
+<summary>16. Why is packet filtering alone insufficient for multi-tenant Resource Segmentation, and how do BGP Overlays (`VPNv4` / `EVPN` + `VRF`s) solve it (`CN` Chapter 17)?</summary>
+Stateless packet ACLs cannot hide routing tables between tenants, handle overlapping tenant IP ranges, or steer tenant traffic onto dedicated paths. By separating the **underlay** (which provides simple loopback-to-loopback reachability) from an **overlay** (VXLAN/MPLS tunnels controlled by **BGP `EVPN` / `VPNv4`** using per-tenant **VRFs** and **Route Target** extended communities), each tenant gets an isolated routing table and forwarding plane over shared physical switches.
+</details>
+
+<details>
+<summary>17. How do `TCP-AO` / `MD5` and `GTSM` (`ttl-security`) protect BGP sessions against spoofing and reset attacks?</summary>
+- **`TCP-AO` (`RFC 5925`)** (and legacy **TCP `MD5`**, `RFC 2385`) adds a cryptographic MAC to every TCP segment on port 179 using a shared key so attackers cannot inject forged `RST` or `UPDATE` packets.\n- **`GTSM` (*Generalized TTL Security Mechanism*, `RFC 5082`, `ttl-security hops 1`)** sends eBGP packets with **`IP TTL = 255`** and drops any incoming BGP packet whose **`TTL < 254`**—guaranteeing that an off-link attacker more than 1 hop away cannot even reach the BGP socket.
+</details>
+
+<details>
+<summary>18. What is a BGP \"route leak\" or \"prefix hijack\", and what four filters prevent them?</summary>
+A **prefix hijack** is originating someone else's IP block without authorization; a **route leak** is accidentally re-advertising routes learned from one transit/peer provider out to another transit/peer provider (turning your network into an unintended transit path). Prevent them with: (1) explicit **inbound and outbound `prefix-list`s** (`bgp ebgp-requires-policy`), (2) **`AS_PATH` regex filters** (e.g., `^65001_$` to accept only routes originated directly by customer AS `65001`), (3) **`maximum-prefix <limit>`** per neighbor to tear down runaway sessions, and (4) **RPKI Route Origin Validation (`ROV`, RFC 6811)**.
+</details>
+
+<details>
+<summary>19. How does `RPKI` Route Origin Validation (`ROV`, RFC 6811) work?</summary>
+Regional Internet Registries (`ARIN`, `RIPE`, `APNIC`) allow IP prefix holders to publish cryptographically signed **Route Origin Authorizations (`ROA`s)** stating which ASN is authorized to originate a prefix and up to what maximum prefix length. Local validator daemons (`Routinator`, `stayrtr`) fetch and verify the global ROA cache and feed verified `(prefix, max_len, origin_ASN)` records to routers over the **RTR protocol**; the router marks matching routes `Valid`, unrecorded routes `NotFound`, and mismatched origin ASNs or overlong prefixes **`Invalid` (dropped)**.
+</details>
+
+<details>
+<summary>20. How is BGP used inside Kubernetes clusters (`Calico`, `Cilium`, `MetalLB`) and on bare-metal GPU hosts?</summary>
+In Kubernetes, **Calico** (`BIRD` / GoBGP) and **Cilium** run a BGP speaker on every node that peers with the Top-of-Rack leaf switches to advertise the node's **Pod CIDR (`/24`)** and **Service `LoadBalancer` / `ClusterIP` VIPs** (alongside **MetalLB** or **kube-vip**), allowing the hardware fabric to route directly to Pods and ECMP-balance traffic across nodes without VXLAN encapsulation or external load-balancer appliances. On bare-metal GPU servers, running **FRR (`bgpd`)** on the host (or DPU) provides active-active L3 ECMP across dual ToR uplinks without needing switch MLAG.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `computer-networking-problems-and-solutions` — Russ White and Ethan Banks, *Computer Networking Problems and Solutions*, **Chapter 16: Link State and Path Vector Control Planes** (BGP-4 RFC `4271` history and role as an Exterior Gateway Protocol, BGP peering over TCP port `179` and its FSM state machine, the best-path decision process, advertisement rules, and Route Reflectors RFC `4456`) and **Chapter 17: Policy in the Control Plane** (hot-potato vs cold-potato routing, resource segmentation with overlays, flow pinning for elephant `9,000`-byte `0.72 ms` vs `1,500`-byte `0.12 ms` vs mouse `64`-byte `0.05 ms` packets on `100 Mb/s`, and policy complexity).
+- **Run here:** `python3 code/part02/bgp_fundamentals_lab.py` (12 passed, 0 failed).
+- **Explicitly labelled inferences:** The FRR leaf-spine eBGP (`multipath-relax`, `SPINES` peer-group, `timers 3 9`, `bfd`) and `route-map` policy examples, `GTSM`/`TCP-AO`/`RPKI` security controls, and Kubernetes (`Calico`/`Cilium`/`MetalLB`) + BGP-to-the-host overview synthesize RFCs 4271, 4456, 5925, 6793, 6811, 7938, and 8092 and the FRR user guide (cross-referenced with Chapters 2.6, 2.12–2.14, 2.16, 2.17, 2.19, and 2.27, plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Not verified on live hardware:** All interactive VM and FRR commands (`vtysh`, `show bgp summary`, `show bgp ipv4 unicast`, `clear bgp soft in`, `tcpdump port 179`) are marked (untested here) and must be executed on a disposable Linux VM or containerlab topology.
