@@ -121,16 +121,146 @@ NVIDIA recommends smart rack PDUs (rPDUs) with: a network interface and REST API
 
 ### 3.4 UPS and staged shutdown
 
-A **UPS** (uninterruptible power supply) is a battery that keeps equipment running during an outage for minutes, usually just long enough for generators to start or for an orderly shutdown. The SCL book (chapters 19 and 28) shows how the author handled this on real clusters with the `apcupsd` daemon (for APC UPS units; a similar tool is NUT, Network UPS Tools). When power fails, `apcupsd` runs an `onbattery` script which starts a `haltall` script that performs a **staged shutdown** to keep busy nodes alive as long as possible:
+A **UPS** (uninterruptible power supply) is a battery that keeps equipment running during an outage for minutes, usually just long enough for generators to start or for an orderly shutdown. The SCL book (chapters 19 and 28) shows how the author handled this on real clusters with the `apcupsd` daemon (for APC UPS units; a similar multi-vendor tool is NUT, Network UPS Tools, covered in 6.26).
 
-1. Log the event and warn users.
-2. **Wait 30 minutes**: most outages are short; if power returns, the script is stopped.
-3. Power off the **idle nodes** (checked with a load test) to stretch the battery for busy nodes.
-4. Wait until about **5 minutes of battery** remain (read from the UPS with `apcaccess`).
-5. Stop the job queue and cancel running jobs.
-6. Wait 1 minute, power off all nodes, wait 1 more minute, power off the head node.
+#### Configuring `/etc/apcupsd/apcupsd.conf`
 
-The book adds a **temperature watch** on the UPS read through SNMP: warn the administrator above 25 degrees Celsius and halt everything immediately above 30 degrees, polling every ten minutes. It cautions that these scripts are examples and must be adapted (storage servers, scheduler, power connections, UPS load).
+When building `apcupsd` from source, the book enables SNMP and CGI support (`./configure --prefix=/usr --sbindir=/sbin --enable-threads --enable-snmp --enable-cgi --with-libwrap=/lib64/libwrap.so.0 --with-cgi-bin=/usr/apache/cgi-bin && make && make install` `(untested here)`) and verifies communication with `apcaccess` (which prints `STATUS: ONLINE`, `LINEV`, `LOADPCT`, `BCHARGE`, `TIMELEFT`). In `/etc/apcupsd/apcupsd.conf`, the key daemon, network, and shutdown parameters from the book's Chapter 28 example are `(untested here)`:
+
+```text
+# /etc/apcupsd/apcupsd.conf excerpt (untested here)
+UPSNAME Smart-UPS RT 10000
+UPSCABLE smart                  # simple, smart, ether, usb
+UPSTYPE snmp
+DEVICE 195.208.252.115:161:APC:private
+#POLLTIME 60                    # polling interval in seconds (default 60)
+LOCKFILE /var/lock
+SCRIPTDIR /etc/apcupsd
+PWRFAILDIR /etc/apcupsd
+NOLOGINDIR /etc
+
+# Parameters used on power failure (whichever of BATTERYLEVEL, MINUTES, or TIMEOUT trips first triggers doshutdown)
+ONBATTERYDELAY 6                # seconds on battery before reacting to power failure
+BATTERYLEVEL 5                  # remaining battery charge (%) that triggers server shutdown
+MINUTES 3                       # remaining runtime (minutes) that triggers server shutdown
+TIMEOUT 0                       # max seconds on battery (0 disables timer)
+ANNOY 300                       # seconds between user warning broadcasts
+ANNOYDELAY 60                   # delay after power failure before warning users
+NOLOGON disable                 # when to block user logins: disable, timeout, percent, minutes, always
+KILLDELAY 0                     # seconds between UPS killpower and shutdown command (0 disables)
+
+# Network Information Server (NIS) for apcaccess and multimon.cgi
+NETSERVER on
+NISIP 0.0.0.0
+NISPORT 3551                    # default port 3551
+EVENTSFILE /var/log/apcupsd.events
+EVENTSFILEMAX 10                # max kilobytes
+
+UPSCLASS standalone             # standalone | shareslave | sharemaster
+UPSMODE disable                 # disable | share
+```
+
+(The file also holds EEPROM parameters used by `apctest` such as `WAKEUP 60`, `SLEEP 180`, `LOTRANSFER 208`, `HITRANSFER 253`, `LOWBATT 2`, `OUTPUTVOLTS 230`, and `SELFTEST 336`.) Table 28-1 of the book lists the supported `UPSTYPE` and `DEVICE` combinations:
+
+| `UPSTYPE` | `DEVICE` | Meaning |
+|---|---|---|
+| `apcsmart` | `/dev/tty**` | Serial COM port connection |
+| `usb` | `-` (blank) | USB connection (auto-detected in most cases) |
+| `net` | `hostname:port` | Slave connection to another computer running `apcupsd` |
+| `dumb` | `/dev/tty**` | Voltage-signalling serial connection for older unmanaged UPSs |
+| `pcnet` | `ipaddr:username:passphrase` | APC PowerChute Network Shutdown protocol over IP |
+| `snmp` | `hostname:port:vendor:community` | SNMP network connection (UPS must have SNMP enabled) |
+
+#### Staged cluster shutdown scripts (`onbattery`, `offbattery`, and `haltall`)
+
+While `/etc/apcupsd/apccontrol` handles standard `doshutdown` events when `BATTERYLEVEL` or `MINUTES` trips, shutting down an entire cluster takes longer than a single server and benefits from shedding idle nodes early. In the book's Chapter 28 recipe, `/etc/apcupsd/onbattery` emails the administrator (`apcaccess status`) and launches `/etc/apcupsd/haltall` in the background (`nohup /etc/apcupsd/haltall &`), while `/etc/apcupsd/offbattery` aborts an in-progress shutdown if utility power returns (`pkill -9 haltall`) `(untested here)`:
+
+1. Log the event and warn users via `wall`.
+2. **Wait 30 minutes (`sleep 1800`)**: most outages are short; if power returns, `offbattery` kills `haltall`.
+3. Power off the **idle nodes** (scanning `/etc/nodes` via `ping` and checking if node load `/usr/local/cluster/ndload` is `< 10`, then running `ssh $host /sbin/poweroff`) to stretch the battery for busy nodes.
+4. Poll `apcaccess` in `tlwait 5` (`awk '$1 == "TIMELEFT" {printf "%.0f\n", $3}'`) every 60 seconds until only **5 minutes of battery** remain.
+5. Stop the batch queue (`qstop $CLUSTERNAME`) and cancel running jobs (`qdel $LIST`).
+6. Wait 1 minute (`sleep 60`), power off all remaining compute nodes (`ssh $host /sbin/poweroff`), wait 1 more minute (`sleep 60`), and power off the head node (`/sbin/poweroff`).
+
+```sh
+#!/bin/sh
+# /etc/apcupsd/haltall excerpt from the book's PBS example (untested here)
+CLUSTERNAME=MYCLUSTER
+OUT=/etc/apcupsd/halt.log
+TPRED=7200
+
+tlprint() {
+  t=$(/sbin/apcaccess | awk '$1 == "TIMELEFT" {printf "%.0f\n", $3}')
+  echo "TIMELEFT = $t" >> $OUT 2>&1
+}
+
+tlwait() {
+  while [ $t -gt $1 ]; do
+    sleep 60
+    t=$(/sbin/apcaccess | awk '$1 == "TIMELEFT" {printf "%.0f\n", $3}')
+    echo "TIMELF=$t SECONDS=$SECONDS" >> $OUT 2>&1
+    if [ $SECONDS -gt $TPRED ]; then
+      break
+    fi
+  done
+}
+
+echo "::: Starting Shutdown process: $(date):::" | wall
+tlprint
+sleep 1800
+tlprint
+
+# Turn off free (idle) nodes
+for host in $(cat /etc/nodes); do
+  ping $host -i 1 -c 1 > /dev/null 2>&1
+  if [ $? -eq 0 ]; then
+    avg=$(ssh $host /usr/local/cluster/ndload)
+    if [ $avg -lt 10 ]; then
+      ssh $host /sbin/poweroff
+      sleep 1
+    fi
+  fi
+done
+
+tlprint
+tlwait 5
+qstop $CLUSTERNAME
+LIST=$(qstat -a | grep $CLUSTERNAME | grep " R " || awk -F. '/^[0-9]*\./ {print $1}')
+qdel $LIST
+sleep 60
+
+# Turn off all remaining nodes, then host computer
+for host in $(cat /etc/nodes); do
+  ping $host -i 1 -c 1 > /dev/null 2>&1 && ssh $host /sbin/poweroff
+done
+sleep 60
+/sbin/poweroff
+```
+
+#### APC SNMP ambient and internal temperature monitoring (`ambtemp.sh` and `upstemp`)
+
+Many APC UPS management cards expose both an internal UPS temperature sensor and an external room probe over SNMP. In Chapter 28, the book pairs `ambtemp.sh` (which queries the APC enterprise MIB OIDs via `snmpget`) with a daemon loop `upstemp` that polls every 10 minutes (`sleep 600`), warns `root` by mail and terminal `write` above `25.0` °C (`TMAXW=25.0`), and runs an immediate `haltall` emergency shutdown above `30.0` °C (`TMAXSH=30.0`) `(untested here)`:
+
+```bash
+#!/bin/bash
+# /usr/local/cluster/ambtemp.sh (untested here)
+# SNMP OID for internal temperature of the APC UPS:
+inttempcmd=".1.3.6.1.4.1.318.1.1.1.2.2.2.0"
+# SNMP OID for external ambient temperature sensor attached to the APC UPS:
+ambtempcmd=".1.3.6.1.4.1.318.1.1.10.2.3.2.1.4.0"
+
+function sendcmd(){
+  host=$1
+  cmd=$2
+  res=$(snmpget -c public -v 2c $host $cmd | awk -F: '{print $4}')
+  echo $res
+}
+
+tempamb=$(sendcmd ups_3 $ambtempcmd)
+echo $tempamb
+```
+
+The book cautions that these scripts are examples and must be adapted for your storage servers, scheduler (Slurm `scontrol` instead of Torque `qstop`/`qdel`), power connections, and UPS load distribution.
 
 `code/part06/ups_shutdown_sim.py` models these steps with made-up battery numbers (100 nodes, 60 busy; battery runtime inversely proportional to load). Output:
 
@@ -251,7 +381,7 @@ Desk exercises:
 13. What features should a smart rack PDU have?
 14. What does a UPS do and for how long?
 15. Describe the staged shutdown in six steps.
-16. At what UPS temperatures does the book warn and halt?
+16. In `apcupsd.conf`, which three parameters work together to trigger shutdown on power failure, what are the APC SNMP OIDs for internal UPS and external ambient sensor temperatures, and at what temperatures does the book's `upstemp` script warn and halt? (Answer: `BATTERYLEVEL`, `MINUTES`, and `TIMEOUT`—whichever trips first; `.1.3.6.1.4.1.318.1.1.1.2.2.2.0` for internal UPS temperature and `.1.3.6.1.4.1.318.1.1.10.2.3.2.1.4.0` for external ambient sensor temperature; warn above `25.0` °C and halt above `30.0` °C.)
 17. What is NVIDIA's airflow planning figure per kW?
 18. What inlet temperature limits apply to DGX B200?
 19. What air filtration is required?
@@ -264,11 +394,13 @@ Desk exercises:
 
 ## 13. Sources and review notes
 
+- Book source (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`):
+  - Chapter `19. Cluster Status Monitoring Systems` (read in full): APCUPS (`apcupsd`, `apcaccess`, `onbattery`/`offbattery`, `multimon.cgi`, `/etc/apcupsd/hosts.conf`).
+  - Chapter `28. One-Two-Three Instructions` (read in full): `/etc/apcupsd/apcupsd.conf` parameters (`UPSCABLE`, `UPSTYPE`, `DEVICE`, `ONBATTERYDELAY`, `BATTERYLEVEL`, `MINUTES`, `TIMEOUT`, `NETSERVER`, `NISIP`, `NISPORT`, and Table 28-1 `UPSTYPE`/`DEVICE` values), `onbattery`/`offbattery` and the staged cluster shutdown script (`haltall`), and the `upstemp`/`ambtemp.sh` APC SNMP temperature scripts (`.1.3.6.1.4.1.318.1.1.1.2.2.2.0` internal UPS temperature and `.1.3.6.1.4.1.318.1.1.10.2.3.2.1.4.0` external sensor temperature).
 - Thermal and power concepts, airflow, liquid cooling types, PUE, rack power budgets: *AI Data Center Network Design and Technologies* (ADC), chapter 5, read in full; restated in my words.
 - DGX B200 power profiles, power provisioning table, redundancy designs, ASHRAE/filtration, best practices, cabling, FAQ: NVIDIA, *Data Center Best Practices with DGX B200* (the "superpod-b200-dc" document in the corpus), read in full. It is marked NVIDIA confidential in the source; I summarised without reproducing its slides.
 - GB300 hybrid cooling, power shelves with energy storage, BMS telemetry zone: NVIDIA, *DGX SuperPOD Reference Architecture, DGX GB300* (corpus), keyword passages only.
 - Power and cooling planning numbers, energy cost example, CFM formula: the AI Factory volume-21 chapter 5 of the NVIDIA-DevOps notes (figures marked there as planning assumptions). The volume-01 summary's statements about rack power ("over 40 to 100 kW", "enterprise racks 15 kW") are loose; I limited them as above.
-- UPS monitoring and the staged shutdown, apcupsd, SNMP temperature script: *Supercomputers for Linux SysAdmins* chapters 19 and 28, re-read for this chapter.
 - Original and run: `facility_calc.py` (matches all nine table rows and the book numbers), `ups_shutdown_sim.py` (invented battery parameters).
 - Corrections noted: the ADC book's "air-assisted liquid chromatography" is a typo for liquid cooling; the 13.2 kW figure is supply capacity, not draw.
-- Unverified: current NVIDIA specifications beyond the quoted documents, regional electrical code details (derating rules vary), CDU and coolant specifics, UPS runtime for real GPU racks.
+- Unverified: current NVIDIA specifications beyond the quoted documents, regional electrical code details (derating rules vary), CDU and coolant specifics, `apcupsd.conf` and `haltall`/`ambtemp.sh` scripts (from the book, not run here), UPS runtime for real GPU racks.

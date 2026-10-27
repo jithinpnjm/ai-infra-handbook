@@ -83,6 +83,123 @@ Protected branches, required reviews and CODEOWNERS (4.1), signed commits/tags (
 7. **Isolate CI from production**: separate accounts/projects; build agents cannot reach production networks; deploy via GitOps pull (4.26) so CI holds no cluster credentials.
 8. **Protect the CI platform**: pinned and reviewed third-party actions/plugins (by SHA), restricted `pull_request_target`, no secrets for forks, workflow file protection (CODEOWNERS), audit logs, runner hardening, ephemeral self-hosted runners with network egress filtering; treat the CI system as tier-0.
 
+### The "Golden Base Image Antipattern"
+
+In traditional virtual-machine operations, security teams often mandate a single pre-approved corporate OS image (for example, a hardened CentOS base) for every workload. When organizations carry that rule into containers by requiring teams to take third-party or vendor container images (such as upstream databases, ingress proxies, or NVIDIA NGC bases) and rebase or repackage them onto the single corporate OS base image, they fall into what *Production Kubernetes* (Chapter 15) calls **the Golden Base Images Antipattern**:
+
+1. **Broken upstream dependencies and testing**: upstream and vendor images are built and tested against specific libc, runtime, and library versions; rebasing them onto a different corporate OS breaks assumptions and forces teams to reinvent upstream packaging work.
+2. **Unsustainable maintenance sprawl and worse security**: the internal platform team becomes responsible for rebuilding and maintaining forked copies of dozens or hundreds of upstream images. Because manual rebasing is slow and fragile, updates happen infrequently, leaving the fleet on older, more vulnerable software than if they tracked upstream releases.
+3. **Better alternative — codify requirements into pipeline scanning and quarantine registries**: while maintaining a small set of curated internal base images (such as `gcr.io/distroless/base` running as `USER nonroot:nonroot`, or pinned `alpine:3.12` packages like `RUN ["apk", "add", "imagemagick=7.0.10.25-r0"]` in the book's examples) works well for your own first-party applications, third-party/vendor images should instead pass through an automated **quarantine and promotion pipeline** (Section 5) that scans for CVEs, checks non-root user permissions, signs passing images, and pushes them to an approved internal registry.
+
+### In-cluster cloud-native build pipelines with Tekton (`Task` and `Pipeline`)
+
+When running container image builds inside a Kubernetes cluster without mounting the host Docker socket, cloud-native CI tools such as **Tekton** model build steps as Kubernetes Custom Resources (`Task`, `Pipeline`, `TaskRun`, `PipelineRun`) that execute in Pods using rootless builders like Kaniko or Cloud Native Buildpacks (`pack`). In the book's (*Production Kubernetes*, Chapter 15) examples (untested here), a reusable `git-clone` `Task` checks out source code into a shared `Workspace` and records the commit SHA in `$(results.commit.path)`, and a `buildpacks-phases` `Task` runs `/cnb/lifecycle/builder` to produce an OCI image that a `Pipeline` chains together from checkout to registry push:
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: git-clone
+spec:
+  workspaces:
+    - name: output
+      description: "The git repo will be cloned onto the volume backing this workspace"
+  params:
+    - name: url
+      description: git url to clone
+      type: string
+    - name: revision
+      description: git revision to checkout (branch, tag, sha, ref…)
+      type: string
+      default: master
+  results:
+    - name: commit
+      description: The precise commit SHA that was fetched by this Task
+  steps:
+    - name: clone
+      image: "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.12.1"
+      script: |
+        CHECKOUT_DIR="$(workspaces.output.path)/$(params.subdirectory)"
+        /ko-app/git-init \
+          -url "$(params.url)" \
+          -revision "$(params.revision)" \
+          -path "$CHECKOUT_DIR"
+        cd "$CHECKOUT_DIR"
+        RESULT_SHA="$(git rev-parse HEAD | tr -d '\n')"
+        echo -n "$RESULT_SHA" > $(results.commit.path)
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: buildpacks-phases
+spec:
+  params:
+    - name: BUILDER_IMAGE
+      description: "The image on which builds will run (must include lifecycle and compatible buildpacks)."
+    - name: PLATFORM_DIR
+      description: The name of the platform directory.
+      default: empty-dir
+    - name: SOURCE_SUBPATH
+      description: "A subpath within the `source` input where the source to build is located."
+      default: ""
+  resources:
+    outputs:
+      - name: image
+        type: image
+  workspaces:
+    - name: source
+  steps:
+    - name: build
+      image: $(params.BUILDER_IMAGE)
+      imagePullPolicy: Always
+      command: ["/cnb/lifecycle/builder"]
+      args:
+        - "-app=$(workspaces.source.path)/$(params.SOURCE_SUBPATH)"
+        - "-layers=/layers"
+        - "-group=/layers/group.toml"
+        - "-plan=/layers/plan.toml"
+      volumeMounts:
+        - name: layers-dir
+          mountPath: /layers
+        - name: $(params.PLATFORM_DIR)
+          mountPath: /platform
+        - name: empty-dir
+          mountPath: /tekton/home
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: clone-and-buildpack
+spec:
+  workspaces:
+    - name: shared-workspace
+  params:
+    - name: git-url
+      type: string
+    - name: builder-image
+      type: string
+  tasks:
+    - name: fetch-source
+      taskRef:
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+      params:
+        - name: url
+          value: $(params.git-url)
+    - name: build-image
+      runAfter: ["fetch-source"]
+      taskRef:
+        name: buildpacks-phases
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      params:
+        - name: BUILDER_IMAGE
+          value: $(params.builder-image)
+```
+
 ## 4. SBOMs and vulnerability management
 
 ### SBOM
@@ -323,13 +440,13 @@ Mark tested only after execution.
 37. NVIDIA toolkit CVEs matter because? **A:** Container escape risk.
 38. Dataset provenance practice? **A:** Version + hash datasets per run.
 39. ML-BOM? **A:** BOM extension for models/datasets.
-40. Fail-open vs fail-closed admission? **A:** Availability vs enforcement trade-off.
+40. Why is rebasing all third-party/vendor container images onto a single corporate "golden" OS base image an antipattern, and what should you do instead? **A:** It breaks upstream dependencies/testing and creates maintenance backlog that delays security updates; instead, validate and scan upstream images through a quarantine-and-promotion pipeline into an approved internal registry.
 
 ## 16. Sources and review notes
 
 **Written in original words.** Principal sources:
 
-- Josh Rosso, Rich Lander, Alex Brand and John Harris, *Production Kubernetes* (chapter 15 on software supply chain: image trust, scanning, signing, admission).
+- Josh Rosso, Rich Lander, Alex Brand and John Harris, *Production Kubernetes* (`production-kubernetes`, Chapter 15: `15. Software Supply Chain` — read in full for the Golden Base Images Antipattern, distroless/Alpine Dockerfile pinning, quarantine registry promotion flow, and Tekton `git-clone` / `buildpacks-phases` `Task` and `Pipeline` examples).
 - SLSA specification, in-toto, Sigstore (cosign, Fulcio, Rekor), Notary Project, OpenSSF (Scorecard, model-signing), SPDX/CycloneDX, NIST SSDF, CNCF Software Supply Chain Best Practices, Kyverno/policy-controller/Ratify documentation, NVIDIA security bulletins.
 - Incident references are described at a class level without detailed claims; verify specifics before citing.
 - Examples are the author's constructions.

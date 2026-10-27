@@ -12,177 +12,182 @@ lab_venue: "Nebius GPU"
 
 # 10.5 The roofline model and performance modelling
 
-| | |
+| Field | Value |
 |---|---|
-| **Status** | Drafted (`roofline_model_lab.py`: 25 checks pass; `ncu`/`ert` commands **untested** on live Nebius GPU VM) |
-| **Level** | Advanced |
-| **Priority tier** | 2 |
-| **Lab venue** | Nebius GPU + self-checking Python model (`code/part10/roofline_model_lab.py`) |
-| **Part** | Part 10: The GPU and CUDA |
-| **Sources used** | *AI Systems Performance Engineering* Ch. 6 & Ch. 9; *Parallel and High Performance Computing* Ch. 3 & Ch. 9; `nvidia-devops` V17 (Ch. 3); `nvidia-devops` V2 (Ch. 11, Ch. 12) |
+| Status | Drafted, with 25 checks passing in `roofline_model_lab.py` and `ncu` or `ert` commands untested on a live Nebius GPU VM |
+| Level | Advanced |
+| Priority tier | 2 |
+| Lab venue | Nebius GPU and self-checking Python model in `code/part10/roofline_model_lab.py` |
+| Part | Part 10: The GPU and CUDA |
+| Sources used | *AI Systems Performance Engineering* Chapters 6, 7, and 9; *Parallel and High Performance Computing* Chapters 3 and 9; `nvidia-devops` Volume 17 Chapter 3 and Volume 2 Chapters 11 and 12 |
 
 ## Why this matters for AI infrastructure
 
-Without running a single profiler, how can you prove mathematically that spending $500,000 to upgrade a cluster from `A100` to `H100` GPUs for a `Batch Size = 1` real-time inference workload will yield almost zero speedup from the H100's 3× higher Tensor Core TFLOPS? Or why adding more GPUs to a 90%-utilized LLM decode service fails to reduce single-request token latency?
+An engineering leader can easily waste $500,000 upgrading an A100 cluster to H100 GPUs for a real-time inference service. Even though the H100 offers three times higher Tensor Core compute, a single-stream service spends almost all its time waiting on memory reads. Adding more GPUs to an overloaded large language model decode service also fails to lower single-request token latency. Every worker is already waiting on memory bandwidth.
 
-Performance engineering begins before profiling: it begins with an analytical model connecting **what the workload demands** to **what the hardware can physically supply**. Every processor is governed by **"speeds and feeds"**:
-1. **Speeds (Peak Compute FLOP/s):** How fast the arithmetic units and Tensor Cores can crunch numbers once operands are in registers.
-2. **Feeds (Peak Memory Bandwidth in GB/s or TB/s, plus latency):** How fast the memory hierarchy, NVLink, and network can deliver bytes to those arithmetic units.
+Performance engineering begins before you open a profiler. It starts with an analytical model that connects what the workload demands to what the hardware can physically supply. Every processor is governed by its speeds and feeds.
 
-The **Roofline Model** (originated at Lawrence Berkeley National Laboratory) combines both physical limits on a single log-log graph against a workload's **Arithmetic Intensity (`FLOPs per byte moved`)**. It tells you immediately whether a kernel is pinned under the **Slanted Roof (Memory-Bandwidth-Bound)** or the **Flat Horizontal Roof (Compute-Bound)**, and dictates which engineering lever—batching, quantization, shared-memory tiling, kernel fusion, `TMA` cluster multicast, or faster compute—will actually move the needle.
+- Speeds represent Peak Compute in FLOP/s. This measures how fast the arithmetic units and Tensor Cores crunch numbers once operands sit in registers.
+- Feeds represent Peak Memory Bandwidth in GB/s or TB/s plus latency. This measures how fast the memory hierarchy, NVLink, and network deliver bytes to those arithmetic units.
+
+The Roofline Model originated at Lawrence Berkeley National Laboratory. It combines both physical limits on a single log-log graph against a workload's Arithmetic Intensity in FLOPs per byte moved. The chart shows immediately whether a kernel is pinned under the Slanted Roof as a memory-bandwidth-bound workload or under the Flat Horizontal Roof as a compute-bound workload. That distinction dictates whether batching, quantization, shared-memory tiling, kernel fusion, TMA cluster multicast, or faster compute will actually improve throughput.
 
 ## Prerequisites and outcomes
 
-**Prerequisites:**
-- Theoretical peak FLOP/s and memory bandwidth formulas (`10.1`), SIMT occupancy (`10.2`), the 7-tier GPU memory hierarchy (`10.3`), and Tensor Core precision formats (`10.4`).
+Prerequisites for this chapter include the peak compute and memory bandwidth formulas, SIMT occupancy, the GPU memory hierarchy, and Tensor Core precision formats covered in earlier chapters of Part 10.
 
-**Outcomes:** After completing this chapter, you will be able to:
-1. Define **Arithmetic Intensity (`FLOPs/byte`)**, **Machine Balance (`FLOPs/byte` or `FLOPs/word`)**, and the **Ridge Point**, and write the fundamental Roofline equation for attainable performance.
-2. Calculate the exact Ridge Points of modern GPUs—from Blackwell's scalar `FP32` roof (`80 TFLOPS / 8 TB/s = 10.0 FLOPs/byte`) to `H100 SXM` `FP16` Tensor Cores (`989 TFLOPS / 3.35 TB/s ≈ 295.2 FLOPs/byte`), `H200 SXM` (`206.0 FLOPs/byte`), and Blackwell `B200` `NVFP4` (`1,250.0 FLOPs/byte`).
-3. Prove mathematically why elementwise vector addition (`0.0833 FLOPs/byte`) and `Batch Size = 1` LLM/MLP inference (`~0.5` to `1.0 FLOP/byte`) sit two orders of magnitude below the ridge point, and how non-contiguous cache usage (`B_nc = U_cache × B_E`) lowers the slanted memory roof.
-4. Apply the five architectural levers that shift a memory-bound kernel rightward toward the compute roof: **Batching**, **Reduced Precision (`FP16`/`FP8`/`INT8`/`NVFP4`)**, **Multilevel Tiling**, **Thread Block Cluster `TMA` Multicast** (`4×` on `2 × 2` CTAs, up to `16×`), and **Kernel Fusion + Recomputation** (`36 B → 12 B` per element in `fusedL2Norm`).
-5. Execute a hypothesis-driven **six-regime GPU bottleneck elimination workflow** separating **Host/Launch**, **Memory-Bandwidth**, **Uncoalesced/Latency**, **Scalar/Divergence**, **Tensor-Compute**, **Thermal/Power Throttling**, and **Multi-GPU Straggler/Communication** bottlenecks.
+After completing this chapter, you will be able to achieve five concrete outcomes.
+
+1. Define Arithmetic Intensity, Machine Balance, and the Ridge Point. Write the Roofline equation for attainable performance.
+2. Calculate the exact Ridge Points of modern GPUs across scalar and dense Tensor Core execution modes on H100 SXM, H200 SXM, and Blackwell B200.
+3. Prove mathematically why elementwise vector addition and single-request inference sit far below the ridge point. Explain how non-contiguous cache usage lowers the slanted memory roof.
+4. Apply the five architectural levers that shift a memory-bound kernel rightward toward the compute roof. These levers include batching, reduced precision, multilevel tiling, Thread Block Cluster TMA multicast, and kernel fusion with recomputation.
+5. Execute a hypothesis-driven GPU bottleneck elimination workflow across six system regimes. Separate host or launch delays, memory bandwidth saturation, uncoalesced latency stalls, scalar divergence, Tensor Core saturation, thermal or power throttling, and multi-GPU stragglers.
 
 ---
 
 ## 1. Speeds, feeds, and the Roofline equation
 
-A processor can never compute faster than its arithmetic units can execute instructions, and it can never compute faster than its memory system can deliver the bytes those instructions need.
+When a GPU kernel runs much slower than the datasheet promises, engineers often blame the compiler or assume they need a newer GPU. In reality, a processor can never compute faster than its arithmetic units execute instructions. It also can never compute faster than its memory system delivers the bytes those instructions require. In the time required to transfer the first byte over a high-performance network, a modern processor core can execute more than a thousand floating-point operations.
 
-Think of a restaurant kitchen:
-- **Compute (`Peak FLOP/s`)** is the chef's chopping speed at the cutting board.
-- **Memory Bandwidth (`Peak Bytes/s`)** is the waiter's running speed bringing ingredients from the pantry.
-- **Arithmetic Intensity (`FLOPs / Byte`)** is the recipe's ratio of chopping work to ingredients fetched:
-  - **Making a simple salad (`Low Arithmetic Intensity`, `< Ridge Point`):** The waiter brings 100 ingredients and the chef cuts each one in half once. The chef finishes instantly and spends 95% of the time waiting on the waiter (**Memory-Bandwidth-Bound, under the Slanted Roof**). Hiring a faster chef (`more TFLOPS`) does nothing.
-  - **Carving a carrot into an intricate swan (`High Arithmetic Intensity`, `> Ridge Point`):** The waiter brings one carrot and the chef spends 10 minutes carving thousands of cuts (**Compute-Bound, under the Flat Roof**). Hiring a faster waiter (`more GB/s`) does nothing.
+Think of a restaurant kitchen to visualize how compute and memory interact. Compute is the chef's chopping speed at the cutting board. Memory bandwidth is the waiter's running speed bringing ingredients from the pantry. Arithmetic Intensity is the recipe's ratio of chopping work to ingredients fetched.
+
+- Making a simple salad has low Arithmetic Intensity below the Ridge Point. The waiter brings many ingredients and the chef cuts each one in half once. The chef finishes instantly and spends almost all the time waiting on the waiter under the Slanted Roof. Hiring a faster chef with more TFLOPS does nothing.
+- Carving a carrot into an intricate swan has high Arithmetic Intensity above the Ridge Point. The waiter brings one carrot and the chef spends ten minutes making thousands of cuts under the Flat Roof. Hiring a faster waiter with more GB/s does nothing.
 
 ### 1.1 Arithmetic Intensity, Machine Balance, and the Ridge Point
 
-For any kernel that executes `W` floating-point operations (`FLOPs`) while transferring `Q` bytes (`Bytes`) between the limiting memory tier (typically HBM DRAM) and the processor, **Arithmetic Intensity (`I`, also called Operational Intensity)** is:
+To model any kernel quantitatively, we count the floating-point work W in FLOPs and the memory traffic Q in bytes moved between the limiting memory tier and the processor. Arithmetic Intensity I, which is also called Operational Intensity, is the ratio of operations to bytes moved. Given theoretical or empirical STREAM peak compute P_peak in TFLOPS and peak memory bandwidth B_peak in TB/s, the Roofline Equation defines the attainable performance ceiling.
 
 ```text
-Arithmetic Intensity (I) = Total Floating-Point Operations (FLOPs) / Total Bytes Moved (Bytes)   [FLOPs / Byte]
-```
-
-Given a GPU with theoretical (or empirical STREAM) peak compute throughput `P_peak` (`TFLOPS`) and peak memory bandwidth `B_peak` (`TB/s`), the **Attainable Performance (`P_attainable`)** at arithmetic intensity `I` is governed by the **Roofline Equation**:
-
-```text
-Attainable Performance (TFLOPS) = min( Peak Compute (P_peak),  Arithmetic Intensity (I) × Peak Bandwidth (B_peak) )
+Arithmetic Intensity (I)        = Total FLOPs (W) / Total Bytes Moved (Q)             [FLOPs / Byte]
+Ridge Point (I_ridge)           = Peak Compute (P_peak) / Peak Bandwidth (B_peak)     [FLOPs / Byte]
+Attainable Performance (TFLOPS) = min( P_peak,  I * B_peak )
 ```
 
 ```mermaid
 flowchart LR
     subgraph Roofline["The Roofline Envelope (Log-Log Plot: TFLOPS vs FLOPs/Byte)"]
         direction LR
-        Left["Left of Ridge (I < I_ridge)<br/>SLANTED ROOF: Memory-Bandwidth-Bound<br/>P = I × B_peak<br/>(Vector Add 0.083, Batch=1 Decode ~1.0)"] --> Ridge["RIDGE POINT (Machine Balance)<br/>I_ridge = P_peak / B_peak<br/>(10.0 on B200 FP32;<br/>295.2 on H100 FP16 Tensor Core)"]
-        Ridge --> Right["Right of Ridge (I > I_ridge)<br/>FLAT ROOF: Compute-Bound<br/>P = P_peak<br/>(Large-Batch Training & Prefill GEMMs)"]
+        Left["Left of Ridge (I < I_ridge)<br/>SLANTED ROOF: Memory-Bandwidth-Bound<br/>P = I * B_peak"] --> Ridge["RIDGE POINT (Machine Balance)<br/>I_ridge = P_peak / B_peak<br/>10.0 on B200 FP32; 295.2 on H100 FP16"]
+        Ridge --> Right["Right of Ridge (I > I_ridge)<br/>FLAT ROOF: Compute-Bound<br/>P = P_peak"]
     end
 ```
 
-The exact coordinate on the X-axis where the slanted memory roof intersects the flat compute roof is the **Ridge Point (`I_ridge`)**—known in HPC literature as the processor's **Machine Balance**:
+The exact coordinate on the horizontal axis where the slanted memory roof meets the flat compute roof is the Ridge Point. High-performance computing literature also calls this ratio the processor's Machine Balance. In *Parallel and High Performance Computing*, Machine Balance is expressed in FLOPs per word by multiplying FLOPs per byte by the word size. A standard word is 8 bytes for an FP64 double or 4 bytes for an FP32 float.
+
+| Metric or Application Benchmark | Compute Rate | Bandwidth Rate | Balance in FLOPs/word | Intensity in FLOPs/byte | Roofline Regime |
+|---|---|---|---|---|---|
+| Theoretical CPU machine balance example | 236.8 GFLOP/s | 34.1 GiB/s | 56 FLOPs/word (55.55 exact) | 6.94 FLOPs/byte | Hardware ridge point |
+| Empirical McCalpin STREAM balance example | 264.4 GFLOP/s | 22.0 GiB/s | 96 FLOPs/word (96.15 exact) | 12.02 FLOPs/byte | Empirical ridge point |
+| CloverLeaf hydrodynamics mini-app (Intel Advisor and `likwid-perfctr`) | Measured | Measured | ~1 FLOP/word (~1 FLOP/load) | 0.11 to 0.3608 FLOPs/byte | Deep under slanted memory roof |
+| Dense Linpack (HPL) and `mixbench` compute limit | Measured | Measured | 62.5 FLOPs/word (~65 FLOPs/load) | ~7.81 FLOPs/byte | On the flat compute roof |
+
+### 1.2 Worked Example 1: FP32 Vector Addition on Blackwell
+
+Elementwise kernels such as vector addition, activation functions, and bias adds often surprise engineers by utilizing less than 1% of a GPU's peak compute. Reproducing the worked analysis from *AI Systems Performance Engineering* shows why `C[i] = A[i] + B[i]` in FP32 is starving for memory bandwidth on a Blackwell B200 GPU. Each thread loads two floats, performs one addition, and writes back one float.
 
 ```text
-Ridge Point (I_ridge) = Peak Compute (FLOP/s) / Peak Memory Bandwidth (Bytes/s)   [FLOPs / Byte]
+Kernel: C[i] = A[i] + B[i] in FP32 (4 bytes per element,ASP Ch. 6 pp. 209-210, Fig. 6-21)
+  Bytes read per element    = 4 B (A[i]) + 4 B (B[i]) = 8 bytes
+  Bytes written per element = 4 B (C[i])              = 4 bytes
+  Total memory traffic      = 8 + 4                   = 12 bytes
+  Floating-point operations = 1 addition              = 1 FLOP
+  Arithmetic Intensity (I)  = 1 FLOP / 12 bytes       = 0.083 FLOPs/byte (0.0833 exact)
+
+Hardware Ceiling: Blackwell B200 Scalar FP32
+  Peak scalar FP32 compute  = 80 TFLOPS
+  Peak HBM3e bandwidth      = 8 TB/s (8.0 TB/s)
+  Ridge Point (I_ridge)     = 80 TFLOPS / 8 TB/s      = 10.0 FLOPs/byte
+  Attainable Performance    = 0.0833 * 8 TB/s         = 0.667 TFLOPS (< 1% of 80 TFLOPS, >120x below ridge)
 ```
 
-In *Parallel and High Performance Computing* Chapter 3 (§3.2.5), **Machine Balance** is also expressed in **`FLOPs per word`** by multiplying `FLOPs/byte` by the word size (`8 bytes` for an `FP64` double or `4 bytes` for an `FP32` float):
-- **Theoretical Machine Balance example:** A processor with `236.8 GFLOP/s` peak compute and `34.1 GiB/s` theoretical memory bandwidth has a balance of `(236.8 / 34.1) × 8 bytes/word = 55.55 ≈ 56 FLOPs/word` (`6.94 FLOPs/byte`).
-- **Empirical Machine Balance example (measured with McCalpin `STREAM`):** When the same system achieves `264.4 GFLOP/s` and `22.0 GiB/s` on `STREAM`, its empirical balance rises to `(264.4 / 22.0) × 8 = 96.15 ≈ 96 FLOPs/word` (`12.02 FLOPs/byte`).
-- Most general scientific applications have an arithmetic intensity near **`~1 FLOP/word` (`0.11` to `0.36 FLOPs/byte`**, as measured by Intel Advisor and `likwid-perfctr` on the `CloverLeaf` hydrodynamics mini-app), placing them deep in the bandwidth-bound regime. By contrast, dense `Linpack` (`HPL`) matrix solvers reach **`62.5 FLOPs/word` (`~65 FLOPs/load`)**, pushing them onto the flat compute roof.
+Vector addition sits more than 120 times to the left of the B200 scalar FP32 ridge point. Even if the kernel saturates the entire HBM3e bus, the slanted roof caps its throughput at less than 1% of the scalar ceiling. Switching the data type to FP16, FP8, or NVFP4 shrinks the byte traffic and multiplies arithmetic intensity. However, the kernel still remains far to the left of the ridge point.
 
-### 1.2 Worked Example 1: `FP32` Vector Addition on Blackwell (`0.0833` vs `10.0 FLOPs/byte`)
+### 1.3 How uncoalesced or strided cache usage lowers the slanted roof
 
-Let us reproduce the worked Roofline analysis from *AI Systems Performance Engineering* Chapter 6 (pp. 209–210, Figure 6-21):
-1. **The Kernel (`C[i] = A[i] + B[i]` in `FP32`):**
-   - Each thread loads two 32-bit floats (`A[i]` and `B[i]` = `4 + 4 = 8 bytes`), performs **1 floating-point addition (`1 FLOP`)**, and writes back one 32-bit float (`C[i]` = `4 bytes`).
-   - Total memory traffic per operation = `8 + 4 = 12 bytes`.
-   - **Arithmetic Intensity (`I`):**
-     ```text
-     I = 1 FLOP / 12 bytes = 0.0833 FLOPs/byte
-     ```
-2. **The Hardware Ceiling (Blackwell `B200` scalar `FP32`):**
-   - Peak scalar `FP32` compute `P_peak ≈ 80 TFLOPS`, and peak `HBM3e` bandwidth `B_peak ≈ 8 TB/s`.
-   - **Ridge Point (`I_ridge`):**
-     ```text
-     I_ridge = 80 TFLOPS / 8 TB/s = 10.0 FLOPs/byte
-     ```
-3. **The Verdict:** Vector add's arithmetic intensity (`0.0833 FLOPs/byte`) sits **more than 120× to the left of the `10.0 FLOPs/byte` ridge point**. Its maximum attainable compute on an `8 TB/s` B200 is `0.0833 × 8 TB/s =` **`0.667 TFLOPS`**—less than **1%** of the GPU's `80 TFLOPS` scalar `FP32` ceiling.
-
-### 1.3 How uncoalesced or strided cache usage lowers the slanted roof (`B_nc = U_cache × B_E`)
-
-The standard slanted roof assumes your kernel uses **100% of every 128-byte cache line** fetched from HBM. As shown in *Parallel and High Performance Computing* Chapter 3 (§3.1, p. 55), if a 2D array stored in row-major order is accessed column-wise (striding across rows so only `1` out of `8` values in each cache line is actually used before eviction), your **non-contiguous effective bandwidth (`B_nc`)** drops in proportion to the fraction of each cache line utilized (`U_cache`):
+A kernel can fail to reach the slanted HBM roof even when it is completely memory-bound. The standard slanted roof assumes that your kernel uses every byte of every 128-byte cache line fetched from DRAM. When a row-major 2D array is traversed column-wise with a large stride, only a fraction of each cache line is used before eviction.
 
 ```text
-B_nc = U_cache × B_empirical
+Non-Contiguous Effective Bandwidth (PHPC Ch. 3 §3.1 p. 55):
+  B_nc = U_cache * B_empirical
+
+Example with 1 of 8 values used per cache line on an 8.0 TB/s GPU:
+  U_cache               = 1 / 8 = 0.125 (12.5%)
+  B_nc                  = 0.125 * 8.0 TB/s = 1.0 TB/s
+  Effective Ridge Point = 80 TFLOPS / 1.0 TB/s = 80.0 FLOPs/byte (8x shift rightward)
 ```
 
-If `U_cache = 1/8 = 12.5%`, an `8.0 TB/s` HBM3e bus delivers only **`1.0 TB/s`** of useful data, shifting the slanted roof downward by **8×** and pushing the effective ridge point 8× further to the right (from `10.0` out to `80.0 FLOPs/byte`).
+Using only one out of eight values in each cache line drops effective memory bandwidth by eightfold. That lowers the slanted roof and pushes the effective ridge point eight times further to the right. Coalescing memory accesses so threads read contiguous addresses restores the full slanted roof.
 
 :::info In one minute: Section 1 takeaways
-- **Arithmetic Intensity** `I = FLOPs / Bytes`; **Ridge Point (Machine Balance)** `I_ridge = Peak FLOP/s / Peak Bandwidth`.
-- **Attainable FLOP/s** `= min(Peak FLOP/s, I × Effective Bandwidth)`. If `I < I_ridge`, the workload is **Memory-Bandwidth-Bound** (under the slanted roof); if `I > I_ridge`, it is **Compute-Bound** (under the flat roof).
-- Strided/uncoalesced accesses that use only a fraction `U_cache` of each cache line drop the slanted roof to `B_nc = U_cache × B_E`.
+- Arithmetic Intensity is FLOPs divided by bytes moved, and the Ridge Point is peak compute divided by peak memory bandwidth.
+- Attainable performance is the minimum of peak compute and the product of Arithmetic Intensity and effective bandwidth.
+- Workloads to the left of the ridge point are memory-bandwidth-bound under the slanted roof. Workloads to the right are compute-bound under the flat roof.
+- Uncoalesced or strided accesses that use only a fraction U_cache of each cache line drop the slanted roof to `B_nc = U_cache * B_E`.
 :::
 
 ---
 
-## 2. Tensor Core ridge points and why `Batch Size = 1` inference hits the memory wall
+## 2. Tensor Core ridge points and why Batch Size = 1 inference hits the memory wall
 
-### 2.1 Comparing Ridge Points across `H100`, `H200`, and `Blackwell B200`
+Hardware vendors market GPUs using peak Tensor Core TFLOPS. Those compute figures have grown much faster across generations than HBM memory bandwidth. Because the numerator of the Ridge Point formula has exploded while the denominator has grown modestly, the Ridge Point for Tensor Core workloads is orders of magnitude higher than for scalar FP32 code. Operators who ignore this gap regularly overspend on compute-heavy SKUs for memory-bound inference services.
 
-Because Tensor Core TFLOPS have grown much faster than HBM bandwidth across GPU generations, the **Ridge Point** for Tensor Core workloads is orders of magnitude higher than for scalar `FP32` code:
+### 2.1 Comparing Ridge Points across H100, H200, and Blackwell B200
 
-| GPU & Execution Mode | Peak Compute (`P_peak`) | Peak HBM Bandwidth (`B_peak`) | Ridge Point (`I_ridge = P_peak / B_peak`) | Operational meaning |
+To know how much data reuse a kernel needs before it can saturate the Tensor Cores, divide the target pipeline's peak TFLOPS by the GPU's HBM bandwidth. The table below compares scalar and dense Tensor Core ridge points across Hopper and Blackwell systems.
+
+| GPU and Execution Mode | Peak Compute (P_peak) | Peak HBM Bandwidth (B_peak) | Ridge Point (I_ridge) | Operational Meaning |
 |---|---|---|---|---|
-| **Blackwell `B200` (`FP32` Scalar CUDA Cores)** | `~80 TFLOPS` | `8.0 TB/s` (`8,000 GB/s`) | **`10.0 FLOPs/byte`** | Easy to reach compute roof with modest reuse (`32 × 32` SMEM tiling reaches `8.0 FLOPs/B`). |
-| **Hopper `H200 SXM` (`FP16`/`BF16` Dense Tensor Core)** | `989 TFLOPS` | `4.8 TB/s` (`4,800 GB/s`) | **`206.0 FLOPs/byte`** | Higher HBM3e bandwidth (`4.8` vs `3.35 TB/s`) lowers the ridge point vs `H100`, making decode 1.43× faster. |
-| **Blackwell `B200` (`BF16`/`FP16` Dense Tensor Core)** | `~2,250 TFLOPS` | `8.0 TB/s` (`8,000 GB/s`) | **`281.2 FLOPs/byte`** | Balanced with `H100`/`H200` for 16-bit training and prefill. |
-| **Hopper `H100 SXM` (`FP16`/`BF16` Dense Tensor Core)** | `989 TFLOPS` | `3.35 TB/s` (`3,350 GB/s`) | **`295.2 FLOPs/byte`** (`~295` in V2 Ch. 11) | Requires **~295 FLOPs per byte** read from HBM to saturate the FP16 Tensor Cores. |
-| **Blackwell `B200` (`NVFP4` Dense Tensor Core)** | `10,000 TFLOPS` (`10 PFLOPS`) | `8.0 TB/s` (`8,000 GB/s`) | **`1,250.0 FLOPs/byte`** | Requires large tiles in `TMEM` (`256 KB/SM`), `TMA` multicast, and large token batches to stay compute-bound. |
+| Blackwell B200 FP32 Scalar CUDA Cores | ~80 TFLOPS | 8.0 TB/s (8,000 GB/s) | 10.0 FLOPs/byte | Reaches compute roof with modest shared-memory tiling |
+| Hopper H200 SXM FP16 or BF16 Dense Tensor Core | 989 TFLOPS | 4.8 TB/s (4,800 GB/s) | 206.0 FLOPs/byte | Higher HBM3e bandwidth lowers ridge point vs H100 and speeds up decode by 1.43x |
+| Blackwell B200 BF16 or FP16 Dense Tensor Core | ~2,250 TFLOPS | 8.0 TB/s (8,000 GB/s) | 281.2 FLOPs/byte | Balanced with H100 and H200 for 16-bit training and prefill |
+| Hopper H100 SXM FP16 or BF16 Dense Tensor Core | 989 TFLOPS | 3.35 TB/s (3,350 GB/s) | 295.2 FLOPs/byte (~295) | Needs ~295 FLOPs per HBM byte to saturate FP16 Tensor Cores |
+| Blackwell B200 NVFP4 Dense Tensor Core | 10,000 TFLOPS (10 PFLOPS) | 8.0 TB/s (8,000 GB/s) | 1,250.0 FLOPs/byte | Requires large TMEM tiles, TMA multicast, and large token batches |
 
-### 2.2 Mathematical proof: why `Batch Size = 1` MLP/LLM inference is pinned under the Slanted Roof
+### 2.2 Mathematical proof: why Batch Size = 1 MLP/LLM inference is pinned under the Slanted Roof
 
-Let us connect the two production stories from `nvidia-devops` Volume 17 Chapter 3 (the quantitative trading firm proposing a $500,000 `A100 → H100` upgrade for a `Batch Size = 1` MLP) and Volume 02 Chapter 11 (the `13B` `FP16` LLM missing latency SLOs at 90% GPU utilization) using exact `GEMM` arithmetic intensity math.
+Two production incidents from the cited notes illustrate this trap. In the first incident, a quantitative trading firm proposed spending $500,000 to upgrade from A100 to H100 GPUs for a real-time multilayer perceptron running at a batch size of 1. In the second incident, a 13B FP16 large language model serving single-request decode missed its latency targets while reporting 90% GPU utilization.
 
-When a linear layer multiplies an activation batch `X` of shape `[B, K]` (where `B` is the batch size in tokens/samples and `K` is input hidden dimension) by a weight matrix `W` of shape `[K, N]` to produce output `Y` of shape `[B, N]`, using `b` bytes per element:
-- **Total FLOPs** `= 2 × B × K × N` (`1` multiply + `1` add per output-inner-product element).
-- **Total Bytes moved from HBM** `= (B×K + K×N + B×N) × b`.
-- **Exact GEMM Arithmetic Intensity (`I`):**
-  ```text
-  I(B, K, N, b) = (2 × B × K × N) / ((B×K + K×N + B×N) × b)
-  ```
-  When the matrix dimensions `K, N` (such as `4,096 × 4,096`) are much larger than the batch size `B` (`K, N >> B`), the weight matrix read (`K × N × b`) completely dominates the denominator, simplifying to:
-  ```text
-  I ≈ (2 × B × K × N) / (K × N × b) = (2 × B) / b   [FLOPs / Byte]
-  ```
-  *(Note: Using this explicit `I(B, K, N, b)` derivation to connect the `Batch Size = 1` stories in Volume 17 Chapter 3 and Volume 02 Chapter 11 to the `295.2 FLOPs/byte` H100 ridge point is **my inference**.)*
+We can connect both stories to the H100 ridge point using exact matrix multiplication math. A linear layer multiplies an activation batch X of shape B by K by a weight matrix W of shape K by N to produce an output Y of shape B by N at b bytes per element. When the hidden dimensions K and N are much larger than the batch size B, reading the weight matrix dominates total HBM traffic.
 
-Plug in real numbers for a `[4096, 4096]` layer on an **`H100 SXM` (`Ridge Point = 295.2 FLOPs/byte`, `Peak = 989 TFLOPS`, `BW = 3.35 TB/s`)**:
+```text
+Exact GEMM Arithmetic Intensity for [B, K] x [K, N] at b bytes/element:
+  Total FLOPs         = 2 * B * K * N
+  Total HBM Bytes     = (B * K + K * N + B * N) * b
+  I(B, K, N, b)       = (2 * B * K * N) / ((B * K + K * N + B * N) * b)
 
-| Workload scenario (`[B, 4096] × [4096, 4096]`) | Batch size (`B`) | Precision (`b` bytes) | Exact Arithmetic Intensity (`I`) | Position vs `H100` Ridge (`295.2`) | Max Attainable TFLOPS on `H100` | Active Roof & Verdict |
+Asymptotic Regime when K, N >> B (for example K = 4096, N = 4096, B = 1):
+  I                   ≈ (2 * B * K * N) / (K * N * b) = (2 * B) / b   [FLOPs / Byte]
+```
+
+Using this explicit symbolic formula `I(B, K, N, b)` to link the single-stream stories in the notes to the H100 ridge point is my inference. The table below evaluates a 4096 by 4096 linear layer across five batch and precision configurations on an H100 SXM GPU.
+
+| Workload Scenario (`[B, 4096] x [4096, 4096]`) | Batch Size (B) | Precision (b) | Exact Intensity (I) | Position vs H100 Ridge (295.2) | Max Attainable TFLOPS on H100 | Active Roof and Verdict |
 |---|---|---|---|---|---|---|
-| **1. Unoptimized Trading MLP (`V17 Ch. 3`)** | `B = 1` | `FP32` (`4 B`) | **`0.50 FLOPs/byte`** | `590×` below ridge | `1.67 TFLOPS` | **Slanted Roof (Memory-Bound)**. SMs sit >98% idle waiting on VRAM. |
-| **2. Single-Request LLM Decode (`V2 Ch. 11`)** | `B = 1` | `FP16` (`2 B`) | **`1.00 FLOPs/byte`** | `295×` below ridge | **`3.35 TFLOPS`** (`0.34%` of `989 TFLOPS` | **Slanted Roof (Memory-Bound)**. Adding Tensor Core TFLOPS does nothing. |
-| **3. Quantized Trading MLP (`TensorRT INT8`)** | `B = 1` | `INT8` (`1 B`) | **`2.00 FLOPs/byte`** | `148×` below ridge | `6.70 TFLOPS` (**4× faster than FP32.**) | Shrinking weights `4 B → 1 B` cuts HBM reads by **75%**, quadrupling speed on existing `A100`s. |
-| **4. Continuous-Batched LLM Decode** | `B = 64` | `FP16` (`2 B`) | **`62.06 FLOPs/byte`** | `4.8×` below ridge | `207.9 TFLOPS` (**62× higher throughput.**) | Reuses each weight read across 64 sequences. |
-| **5. Large-Batch Training / Prompt Prefill** | **`B = 512`** | `FP16` (`2 B`) | **`409.60 FLOPs/byte`** | **`1.39×` ABOVE ridge.** | **`989.0 TFLOPS` (100% Compute Roof** | **Flat Roof (Compute-Bound)**. Tensor Cores run at full speed of light. |
+| 1. Unoptimized Trading MLP (V17 Ch. 3) | B = 1 | FP32 (4 B) | 0.50 FLOPs/byte | 590x below ridge | 1.67 TFLOPS | Slanted Roof; SMs sit >98% idle waiting on VRAM |
+| 2. Single-Request LLM Decode (V2 Ch. 11) | B = 1 | FP16 (2 B) | 1.00 FLOPs/byte | 295x below ridge | 3.35 TFLOPS (3.348 exact, 0.34% of 989) | Slanted Roof; adding Tensor Core TFLOPS does nothing |
+| 3. Quantized Trading MLP (TensorRT INT8) | B = 1 | INT8 (1 B) | 2.00 FLOPs/byte | 148x below ridge | 6.70 TFLOPS (4x faster than FP32) | Cuts HBM weight reads by 75% and quadruples speed on existing A100s |
+| 4. Continuous-Batched LLM Decode | B = 64 | FP16 (2 B) | 62.06 FLOPs/byte | 4.8x below ridge | 207.9 TFLOPS (62x higher throughput) | Reuses each weight read across 64 active sequences |
+| 5. Large-Batch Training or Prompt Prefill | B = 512 | FP16 (2 B) | 409.60 FLOPs/byte (409.6) | 1.39x above ridge | 989.0 TFLOPS (100% compute roof) | Flat Roof; Tensor Cores run at full speed of light |
 
-Look at Rows 1–3 versus Row 5:
-- At **`Batch Size = 1`** in `FP16`, the arithmetic intensity is **`1.00 FLOP/byte`**—**295× below** the H100's `295.2 FLOPs/byte` ridge point. Even on a 989-TFLOPS H100, the slanted memory roof (`1.00 FLOP/B × 3.35 TB/s`) caps performance at **`3.35 TFLOPS`** (`0.34%` of peak compute). Buying a GPU with higher peak TFLOPS (raising the flat roof) cannot help a workload pinned under the slanted roof.
-- By contrast, applying **`TensorRT INT8` quantization** on the existing `A100`s cuts bytes per weight from `4 B` (`FP32`) to `1 B` (`INT8`)—reducing HBM bytes read by **75%** and shifting arithmetic intensity **4× to the right** (`0.50 → 2.00 FLOPs/byte`), delivering a 4× latency reduction for $0 in hardware capex.
-- And when `Batch Size` reaches **`B = 512`** (during training or long-prompt Prefill), arithmetic intensity reaches **`409.6 FLOPs/byte`**—crossing past `295.2` onto the **Flat Compute Roof** where all `989 TFLOPS` of the H100 are unlocked.
+Look closely at the contrast between single-stream execution and batched or quantized execution in the table above.
+
+- At a batch size of 1 in FP16, arithmetic intensity sits nearly 300 times below the H100 ridge point. The slanted memory roof caps performance at a tiny fraction of peak compute. Buying a GPU with a higher flat compute roof cannot improve latency.
+- Applying TensorRT INT8 quantization on the existing A100 GPUs shrinks each weight from four bytes to one byte. That cuts HBM byte traffic by three quarters and shifts arithmetic intensity four times to the right. The team gets a fourfold speedup with zero hardware capital expenditure.
+- Raising the batch size during training or prompt prefill lifts arithmetic intensity above the ridge point onto the Flat Compute Roof. That unlocks the full Tensor Core throughput of the H100.
 
 :::info In one minute: Section 2 takeaways
-- On an `H100 SXM` (`989 TFLOPS` `FP16` / `3.35 TB/s`), the Tensor Core ridge point is **`295.2 FLOPs/byte`** (`206.0` on `H200` at `4.8 TB/s`).
-- For a matrix multiply with `K, N >> B`, arithmetic intensity is `I ≈ 2B / b`: at **`Batch = 1` in `FP16` (`b = 2`)**, `I ≈ 1.0 FLOP/byte`—nearly 300× below the ridge point.
-- Never buy higher peak TFLOPS to fix a `Batch = 1` latency problem; either **quantize (`INT8`/`FP8`/`NVFP4`)**, **increase batch size (`Continuous Batching`)**, or choose a GPU with **higher HBM bandwidth (`H200`/`B200`)**.
+- An H100 SXM has an FP16 Tensor Core ridge point of 295.2 FLOPs/byte. An H200 SXM drops that ridge point to 206.0 FLOPs/byte thanks to higher HBM3e bandwidth.
+- For a linear layer where K and N are much larger than B, arithmetic intensity is approximately `2 * B / b`. At a batch size of 1 in FP16, intensity is just 1.0 FLOP/byte.
+- Never buy higher peak TFLOPS to fix a single-request latency problem. Instead quantize weights, use continuous batching, or select a GPU with higher HBM bandwidth.
 :::
 
 ---
 
 ## 3. Five engineering levers to shift a workload rightward on the Roofline
 
-When Nsight Compute's Roofline chart shows your kernel sitting under the slanted memory roof (`I < I_ridge`), you must **increase its Arithmetic Intensity (`I = FLOPs / Bytes`)**—either by shrinking the denominator (`Bytes moved from HBM`) or by doing more useful operations per byte fetched. *AI Systems Performance Engineering* Chapter 9 provides five concrete levers:
+When Nsight Compute shows your kernel sitting under the slanted memory roof, tuning arithmetic instructions will not make the kernel faster. You must increase its Arithmetic Intensity by shrinking the HBM bytes moved in the denominator or performing more useful operations per byte fetched. *AI Systems Performance Engineering* provides five concrete engineering levers to shift a memory-bound kernel rightward.
 
 ```mermaid
 flowchart TD
@@ -198,45 +203,27 @@ flowchart TD
   L5 --> Shift
 ```
 
-Arithmetic intensity I = FLOPs / HBM bytes. The goal is I at or above the ridge point.
-
-| Lever | What it does | Numbers from the chapter |
+| Lever | Architectural Mechanism | Quantitative Impact from Chapter Sources |
 |---|---|---|
-| 1. Lower precision and hardware decompression | Shrinks the HBM byte count | FP32 4 B, BF16 2 B, FP8 1 B, NVFP4 0.5 B: cuts the denominator by 2x, 4x or 8x |
-| 2. Multilevel tiling (DRAM, shared memory, registers) | Reuses data on chip | A 32x32 shared-memory tile cuts DRAM sectors from 9,800 to 1,200, lifts intensity from 1.5 to 8.0 FLOPs/B and GFLOPS from 15 to 170 |
-| 3. Thread block cluster TMA multicast (DSMEM) | One HBM tile load serves several blocks | A 2x2 cluster (4 CTAs) means 4x less traffic. Up to 16 CTAs with `NonPortableClusterSizeAllowed` means 16x |
-| 4. Kernel fusion and in-register recomputation | Avoids HBM round trips | Fusing a 3-pass L2 norm cuts 36 B to 12 B per element (3x less traffic); recompute `x*x` or activations instead of storing them |
-| 5. Batching, 2:4 sparsity and NestedTensors | Amortizes weight reads | Weight reads shared across B tokens; prune 50% zeros; pack variable-length prompts without zero-padding waste |
+| 1. Lower precision and hardware decompression | Halves or quarters the byte width of weights and activations in HBM | Moving from FP32 (4 B) to BF16 (2 B), FP8 or INT8 (1 B), or NVFP4 (0.5 B) cuts HBM bytes by 2x, 4x, or 8x |
+| 2. Multilevel tiling across DRAM, shared memory, and registers | Stages tiles on chip so each global memory load is reused across many threads | A 32x32 shared-memory tile in Table 7-4 cuts DRAM sectors from 9,800 to 1,200, lifting intensity from 1.5 to 8.0 FLOPs/B and GFLOPS from 15 to 170 (11.3x speedup) |
+| 3. Thread Block Cluster TMA multicast into DSMEM | One HBM tile fetch is multicast simultaneously to multiple thread blocks | A 2x2 cluster of 4 CTAs cuts global traffic by 4x (4.0x); opting into 16 CTAs via `cudaFuncAttributeNonPortableClusterSizeAllowed` reaches 16x (16.0x) |
+| 4. Kernel fusion and in-register recomputation | Eliminates intermediate HBM writes and reads between chained operations | Fusing a 3-pass L2 norm into `fusedL2Norm` cuts traffic from 36 B to 12 B per element (3.0x reduction) and raises intensity from 0.111 to 0.25-0.333 FLOPs/B |
+| 5. Batching, 2:4 structured sparsity, and NestedTensors | Amortizes weight reads across tokens and skips zero or padded values | Batching multiplies intensity by B; 2:4 sparsity via `to_sparse_semi_structured()` skips 50% zeros (~2x); NestedTensors remove zero-padding waste |
 
-1. **Lever 1 — Reduced Precision (`FP16`/`BF16`, `FP8`, `INT8`, `NVFP4`) and Hardware Decompression:**
-   Every time you halve the byte width per weight, you cut the denominator (`Bytes`) in half and **double Arithmetic Intensity** (`2×` for `BF16` vs `FP32`, `4×` for `FP8`/`INT8`, and `8×` for `NVFP4`), while simultaneously raising the flat compute roof onto faster Tensor Core pipelines (`10.4`).
-2. **Lever 2 — Multilevel Microtiling (`HBM → Shared Memory → Registers / TMEM`):**
-   Loading a `32 × 32` tile from HBM into Shared Memory once and reusing each element 32 times across threads in the block (and then staging microtiles in registers or Blackwell `TMEM` using vectorized `float4` / `half2` loads) reduced global memory sector reads from `9,800` to `1,200` and lifted arithmetic intensity from **`1.5` to `8.0 FLOPs/byte`** (`15 → 170 GFLOPS`, an **11.3× speedup** in Table 7-4).
-3. **Lever 3 — Thread Block Cluster `TMA` Multicast (`DSMEM`):**
-   On Hopper and Blackwell, a **Thread Block Cluster** groups multiple CTAs across neighboring SMs. Using the **Tensor Memory Accelerator (`TMA`) multicast** feature, a `2 × 2` cluster of **4 Thread Blocks (`CTAs`)** fetches a shared weight tile from Global HBM **only once** and multicasts it simultaneously into the Shared Memory (`DSMEM`) of all 4 SMs—cutting global memory bytes by **up to 4×** and multiplying arithmetic intensity by **4×**. On Blackwell, opting into non-portable cluster sizes via:
-   ```cpp
-   cudaFuncSetAttribute(myKernel, cudaFuncAttributeNonPortableClusterSizeAllowed, 1);
-   ```
-   allows clusters of up to **16 Thread Blocks (`16×` tile reuse)** beyond the default portable limit of 8 CTAs (`10.16`).
-4. **Lever 4 — Kernel Fusion (Vertical & Horizontal) and Recomputation (`fusedL2Norm` worked example):**
-   Consider L2-normalizing each row of a `[batch, hidden]` tensor: `norm_b = sqrt(sum_i(x[b,i]^2) + eps)`, followed by `y[b,i] = x[b,i] / norm_b`.
-   - **Unfused 3-kernel pipeline (Square → Reduce → Divide):** Launches 3 separate kernels that write and re-read intermediate tensors to and from HBM, moving **`36 bytes per element`** (`3 passes × 12 bytes/pass`) for ~`4 FLOPs` of math:
-     ```text
-     Unfused Intensity ≈ 4 FLOPs / 36 bytes = 0.111 FLOPs/byte (or 1 FLOP / 12 B = 0.083 FLOPs/byte per pass)
-     ```
-   - **Fused single-pass kernel (`fusedL2Norm`):** Keeps the squared values and reduction sum inside **Registers and Shared Memory** (`sdata[]`), uses the fast hardware inverse-square-root intrinsic **`rsqrtf(sdata[0])`** on the **SFU** pipeline to multiply instead of dividing, and touches Global HBM for only **two reads and one write (`12 bytes per element`)**:
-     ```text
-     Fused Intensity ≈ 3 to 4 FLOPs / 12 bytes = 0.25 to 0.333 FLOPs/byte (3.0× reduction in HBM traffic!)
-     ```
-   - **Recomputation vs Memory trade-off:** Whenever a kernel is memory-bound, recomputing cheap expressions (`x * x` or intermediate activations during **Activation Checkpointing**) in registers is much faster than storing and reloading them from HBM, trading abundant FLOPs for scarce memory bandwidth and freeing VRAM for larger batch sizes.
-5. **Lever 5 — PyTorch Compiler Fusion, `FlashAttention`, `NestedTensor`, and `2:4` Sparsity:**
-   In PyTorch, `torch.compile` (`TorchInductor`) fuses chains of pointwise and reduction ops automatically; `torch.nn.attention.sdpa_kernel(SDPBackend.FLASH_ATTENTION)` tiles attention in SRAM; **2:4 structured sparsity** (`to_sparse_semi_structured()`) skips 50% zero weights (`~2×` intensity); and **`torch.nested.nested_tensor` (`NestedTensor` / ragged batches)** packs variable-length prompts into a single buffer without zero-padding, ensuring every byte fetched from HBM carries real tokens.
+Each of these five levers targets a specific source of redundant memory traffic in the GPU hierarchy.
+
+1. Reduced precision and hardware decompression cut the denominator of the Arithmetic Intensity equation directly. Every time you halve the byte width per weight, you double Arithmetic Intensity. You also simultaneously unlock higher Tensor Core TFLOPS ceilings.
+2. Multilevel microtiling loads a tile from HBM into Shared Memory once and reuses each element across the thread block. Threads then stage smaller microtiles into registers or Blackwell TMEM using vectorized `float4` or `half2` loads.
+3. Thread Block Cluster TMA multicast groups multiple cooperative thread arrays across neighboring SMs on Hopper and Blackwell. The Tensor Memory Accelerator fetches a shared tile from HBM once and multicasts it into the Distributed Shared Memory of all blocks in the cluster. Calling `cudaFuncSetAttribute` with `cudaFuncAttributeNonPortableClusterSizeAllowed` set to 1 scales the cluster beyond the portable limit of 8 up to 16 blocks.
+4. Kernel fusion combines vertical chains or horizontal parallel branches into a single launch. Intermediate results stay in registers and Shared Memory `sdata[]` rather than bouncing through HBM. In `fusedL2Norm`, computing the reciprocal square root with the hardware SFU intrinsic `rsqrtf(sdata[0])` and multiplying avoids an expensive division. Recomputing cheap values like `x * x` in registers during activation checkpointing also trades abundant FLOPs for scarce HBM bandwidth.
+5. Compiler and framework optimizations apply these techniques automatically in PyTorch. Using `torch.compile` with TorchInductor fuses pointwise chains. Calling `torch.nn.attention.sdpa_kernel(SDPBackend.FLASH_ATTENTION)` tiles attention in SRAM. Calling `to_sparse_semi_structured()` enables 2:4 sparsity on `cuSPARSELt`, and `torch.nested.nested_tensor` packs variable-length prompts without zero-padding.
 
 ---
 
 ## 4. Building a complete system performance model: the six bottleneck regimes
 
-A single GPU kernel's Roofline is only one piece of an AI service. As shown in `nvidia-devops` Volume 02 Chapters 11 and 12, an end-to-end workload can be constrained by **six distinct system regimes**, and `nvidia-smi` `GPU-Util` alone cannot tell them apart:
+A single GPU kernel's Roofline is only one piece of a production AI service. When an inference endpoint misses its latency objective or a distributed training job slows down, `nvidia-smi` GPU utilization alone cannot tell you why. The GPU could be thermally throttled, starving for host input, waiting on an uncoalesced memory stall, or blocked on a slow peer rank. An end-to-end workload falls into one of six distinct system bottleneck regimes.
 
 ```mermaid
 flowchart TD
@@ -253,53 +240,62 @@ flowchart TD
   Q3 -->|"sm high, tensor 50%+"| R6B["Regime 6B<br/>tensor-core compute bound"]
 ```
 
-| Step | What you check | Command or signal | Outcome |
+| Step | What You Check | Command or Telemetry Signal | Diagnostic Outcome and Engineering Fix |
 |---|---|---|---|
-| 1 | Throttle and power state | `nvidia-smi --query-gpu=power.draw,power.limit,clocks.sm,clocks_throttle_reasons.active` | Throttle active (for example SW power cap, HW thermal slowdown): **Regime 1**, fix cooling, airflow or DLC, or the power cap. No throttle (for example 305 W of 700 W, 1980 MHz): go on |
-| 2 | Per-rank step time in a multi-GPU job (for example ranks 0-1 at 50 ms against ranks 2-3 at 140 ms) | Compare ranks | A rank more than 1.5x slower, or high collective wait: **Regime 2**, check `nvidia-smi topo -m`, PCIe x16 link, NUMA affinity, InfiniBand/RoCE counters |
-| 3 | Is the GPU busy the whole time | `nvidia-smi dmon -s ucm`, `nsys` timeline | Idle gaps (for example sm=4%, mem=2%): **Regime 3**, CPU tokenization or JPEG starvation, sync gaps, or tiny kernel launches (use CUDA Graphs) |
-| 4 | Compare sm%, mem%, dram_peak% and tensor pipe% | `dmon` plus `ncu` SpeedOfLight | mem about 90%+ and dram_peak about 70%+: **Regime 4**, apply the Section 3 levers. mem about 90%+ but dram_peak below 40%: **Regime 5**, high sectors per request (above 4.0) or low occupancy, fix coalescing and warp residency. sm about 90%+ with tensor pipe below 15%: **Regime 6A**, tensor cores idle, enable TF32/BF16/FP8 and align M, N, K. sm about 90%+ with tensor pipe at 50% or more: **Regime 6B**, hardware ceiling reached, use 2:4 sparsity, FP4 or scale out |
+| 1 | Thermal and power throttle state | `nvidia-smi --query-gpu=power.draw,power.limit,clocks.sm,clocks_throttle_reasons.active` | Active throttle flags indicate Regime 1 (`THERMAL_OR_POWER_THROTTLED`); fix airflow, liquid cooling, or power caps. Clean clocks (for example 305 W of 700 W at 1980 MHz with N/A throttle) rule out Regime 1 |
+| 2 | Per-rank step time across workers | Compare `step_time_ms` across ranks (for example 48 and 51 ms on ranks 0-1 vs 142 and 139 ms on ranks 2-3, or 50 ms vs 140 ms) | A rank more than 1.5x slower (such as 2.96x) indicates Regime 2 (`MULTI_GPU_COMMUNICATION_OR_STRAGGLER_BOUND`); inspect `nvidia-smi topo -m`, PCIe x16 vs x4 width, and NUMA affinity |
+| 3 | Continuous GPU activity vs idle gaps | `nvidia-smi dmon -s ucm` and `nsys` timeline | Low activity (Case A: sm=3-5% or 4%, mem=1-2% or 2%) indicates Regime 3 (`HOST_INPUT_OR_LAUNCH_LATENCY_BOUND`); fix CPU preprocessing, DataLoader workers, or capture small kernels into CUDA Graphs |
+| 4 | Compare sm%, mem%, dram_peak%, and tensor_pipe% | `dmon` paired with `ncu` SpeedOfLight metrics | High mem (89-91% or 90%+) and high dram_peak (70%+) is Regime 4 (`MEMORY_BANDWIDTH_BOUND`). High mem with dram_peak below 40% and >4.0 sectors/request is Regime 5 (`MEMORY_TRANSACTION_UNCOALESCED_OR_LATENCY_BOUND`). High sm (92-95%) with tensor pipe &lt;15% is Regime 6A (`SCALAR_COMPUTE_OR_DIVERGENCE_BOUND_TENSOR_IDLE`), while tensor pipe ≥50% is Regime 6B (`TENSOR_COMPUTE_BOUND`) |
 
-*(Note: Encoding this 6-step elimination decision tree from `nvidia-devops` Volume 02 Chapters 11 and 12 into `classify_gpu_workload_bottleneck` in `code/part10/roofline_model.py` is **my inference**.)*
+Encoding this four-step elimination decision tree from the cited notes into the deterministic `classify_gpu_workload_bottleneck` function in `code/part10/roofline_model.py` is my inference. Three concrete diagnostic captures from the notes demonstrate how quickly this sequence isolates the true bottleneck.
 
-Look at the three concrete diagnostic proofs from Volume 02 Chapters 11 and 12 that power this decision tree:
-1. **Ruling out thermal/power throttling and proving memory-bound execution in one line (V2 Ch. 11 p. 326):**
-   ```text
+```text
+1. Single-Line Throttle and Memory-Bound Proof (V2 Ch. 11 p. 326):
    $ nvidia-smi --query-gpu=utilization.gpu,utilization.memory,power.draw,power.limit,clocks.sm,clocks_throttle_reasons.active --format=csv,noheader
    94 %, 91 %, 305 W, 700 W, 1980 MHz, Active clock throttle reasons: N/A
-   ```
-   - `power.draw = 305 W` (far below the `700 W` cap — typical of a memory-bound kernel where Tensor Cores are mostly waiting on HBM, `clocks.sm = 1980 MHz` (full boost clock), and `Active clock throttle reasons: N/A` immediately eliminate thermal and power throttling.
-   - `utilization.memory = 91%` alongside `utilization.gpu = 94%` points directly to **Memory-Bandwidth-Bound (Regime 4)** or **Uncoalesced Memory (Regime 5)**, which you separate in `ncu` by checking `dram__throughput.avg.pct_of_peak_sustained_elapsed` and `l1tex__average_t_sectors_per_request_pipe_lsu_mem_global_op_ld.ratio`.
-2. **Separating "Low Utilization" (Case A) from "High Utilization, Low Throughput" (Case B) with `dmon` (V2 Ch. 12 p. 131):**
-   - **Case A (`sm = 3–5%, mem = 1–2%`):** The GPU has nothing to do (`Regime 3: Host / Input / Launch Bound`). Kernel tuning is useless here; fix CPU preprocessing, increase batching, or capture small kernels into **CUDA Graphs** (`10.18`).
-   - **Case B (`sm = 92–95%, mem = 89–91%`):** The GPU is 100% busy waiting on memory traffic (`Regime 4/5`). Feeding it more work will only grow the queue; apply the Roofline levers from Section 3.
-3. **Catching a multi-GPU collective straggler via per-rank step times (V2 Ch. 11 p. 340):**
-   ```text
-   $ for r in 0 1 2 3; do echo "rank $r: $(tail -1 rank_${r}.log)"; done
+   -> 305 W of 700 W at 1980 MHz with N/A throttle rules out Regime 1.
+   -> 94% GPU util with 91% memory util proves Regime 4 or Regime 5.
+
+2. Separating Case A (Host/Launch Starvation) from Case B (Memory-Bound) in dmon (V2 Ch. 12 p. 131):
+   Case A: sm = 3-5% (4%),  mem = 1-2% (2%)   -> Regime 3: GPU is idle waiting on host or tiny launches.
+   Case B: sm = 92-95% (93%), mem = 89-91% (90%) -> Regime 4/5: GPU is 100% busy waiting on memory traffic.
+
+3. Catching a Multi-GPU Collective Straggler via Per-Rank Step Times (V2 Ch. 11 p. 340):
    rank 0: step_time_ms=48
    rank 1: step_time_ms=51
    rank 2: step_time_ms=142
    rank 3: step_time_ms=139
-   ```
-   When Ranks 2 and 3 run **~2.96× slower** (`142 ms` vs `48 ms`) than Ranks 0 and 1, every fast rank stalls at the `NCCL AllReduce` barrier waiting for the slow ranks. Cross-checking `nvidia-smi topo -m` and `nvidia-smi -q -d PCI` reveals whether Ranks 2 and 3 landed across a `SYS` NUMA socket link or a downgraded `x4` PCIe slot (`10.6`, `10.8`).
+   -> Ranks 2 and 3 run 2.96x (~3x) slower (142 ms vs 48 ms), stalling fast ranks at every NCCL AllReduce barrier.
+```
+
+In the first capture, low power draw on an H100 while GPU utilization sits near 100% is a classic signature of a memory-bound kernel. Because the power-hungry Tensor Cores sit idle waiting on HBM reads, power draw stays low even at full boost clocks. You then separate Regime 4 from Regime 5 in Nsight Compute by inspecting `dram__throughput.avg.pct_of_peak_sustained_elapsed` and `l1tex__average_t_sectors_per_request_pipe_lsu_mem_global_op_ld.ratio`.
+
+In the third capture, single-GPU profiling on Rank 0 looks healthy. Yet distributed scaling collapses because two slow ranks take nearly three times longer per step. Cross-checking `nvidia-smi topo -m` and `nvidia-smi -q -d PCI` reveals whether those slow ranks landed across a cross-socket SYS NUMA link or a downgraded PCIe slot.
 
 ### 4.2 Designing a production release performance gate
 
-Never roll out a model, compiler, or container update to production without an automated **8-item baseline and release performance gate**:
-1. Workload version, model architecture, and precision policy (`BF16`, `FP8`, `NVFP4`).
-2. Representative input shape, sequence length distribution, and batch size / concurrency.
-3. Driver, CUDA, `cuBLAS`/`cuDNN`/`CUTLASS`, and framework versions.
-4. GPU SKU and verified topology (`nvidia-smi topo -m`, `BAR1` ReBAR, PCIe width).
-5. End-to-end **Goodput** (tokens/s, samples/s) and tail latency percentiles (**P50, P95, P99 TTFT and TPOT**) after a warm-up period.
-6. Device counters (`dmon` `sm%`/`mem%`, `DCGM` Tensor Pipe active, `ncu` DRAM % of peak).
-7. Compile-time artifact diff (`nvcc -Xptxas=-v` register and spill counts: e.g., catching a `52 → 96 regs` + `88 B spill stores` regression in 5 seconds before profiling.
-8. Power draw (`W` / kJ) and clock state (`clocks.sm`, throttle reasons). Note from *Parallel and High Performance Computing* Chapter 3 (p. 64) that parallelizing and vectorizing a workload (`CloverLeaf` measured with `likwid-perfctr`) not only speeds up runtime by 15×, but also **reduces total energy consumption by `28.75%` (`28.7%`) and DRAM energy by `23.29%` (`23.2%`)** because the system finishes work and returns to idle much sooner.
+Without an automated performance gate in continuous integration, a minor compiler upgrade or kernel fusion change can silently regress production latency. Every model, compiler, or container release should record an eight-item baseline before promotion.
+
+| Baseline Item | Metrics and Artifacts Recorded | Why It Matters in Production |
+|---|---|---|
+| 1. Workload and precision policy | Model version, architecture, and precision (`BF16`, `FP8`, `NVFP4`) | Prevents accidental fallback to slower scalar or unquantized paths |
+| 2. Input shape and concurrency | Sequence length distribution, batch size, and request concurrency | Arithmetic intensity shifts dramatically with batch size B and sequence length |
+| 3. Software stack versions | Driver, CUDA, cuBLAS, cuDNN, CUTLASS, and framework versions | Library updates can switch GEMM tile heuristics across releases |
+| 4. Hardware SKU and verified topology | GPU SKU, `nvidia-smi topo -m`, BAR1 ReBAR status, and PCIe link width | Catches downgraded x4 PCIe slots or unaligned NUMA placements before launch |
+| 5. End-to-end goodput and tail latency | Tokens/s or samples/s plus P50, P95, and P99 TTFT and TPOT after warm-up | Measures user-visible service performance rather than synthetic peak FLOP/s |
+| 6. Device utilization counters | `dmon` sm% and mem%, DCGM Tensor Pipe active %, and `ncu` DRAM % of peak | Confirms which Roofline ceiling the workload is actually hitting |
+| 7. Compile-time register and spill diff | `nvcc -Xptxas=-v` register count and spill store/load bytes | Catches a 52 to 96 register jump with 88 B spill stores and 96 B spill loads in 5 seconds |
+| 8. Power draw, clocks, and energy | Power draw in W, total energy in kJ, `clocks.sm`, and active throttle reasons | Parallelizing CloverLeaf in *Parallel and High Performance Computing* Ch. 3 (p. 64) cut runtime by 15x while reducing total energy by 28.75% (28.7%) and DRAM energy by 23.29% (23.2%) |
 
 ---
 
 ## Commands and configurations that matter
 
-### 1. Collecting a Roofline chart and Speed-of-Light report in Nsight Compute (`ncu`, untested on live Nebius GPU VM)
+The following commands collect hardware Roofline charts, run the six-regime elimination pass, and measure empirical bandwidth ceilings. Commands using `ncu` and `ert` are reference templates and were not executed on a live Nebius GPU VM in this environment.
+
+### 1. Collecting a Roofline chart and Speed-of-Light report in Nsight Compute
+
+Before running Nsight Compute in production staging, restrict profiling to the target kernel so replay overhead does not time out the job. The commands below export a full Roofline report and query Tensor Core and DRAM utilization percentages from the command line.
 
 ```bash
 # 1. Collect the full Nsight Compute Roofline section set and export a report (.ncu-rep)
@@ -312,6 +308,8 @@ ncu --section SpeedOfLight --section SpeedOfLight_RooflineChart \
 ```
 
 ### 2. Running the 6-cause `nvidia-smi` elimination pass and per-rank straggler check
+
+Before attaching a heavyweight profiler, run this lightweight three-command triage pass on the node. It checks throttle flags, streams paired SM and memory controller utilization every second, and compares per-rank step times across distributed logs.
 
 ```bash
 # 1. Single-command elimination pass: GPU util, Mem util, Power vs Cap, SM Clock, and Throttle Reasons
@@ -328,6 +326,8 @@ done
 
 ### 3. Empirical Roofline (`ERT`), `STREAM` / `BabelStream`, and `NERSC` Roofline plotting
 
+Theoretical datasheet ceilings often exceed what real hardware can sustain. Lawrence Berkeley National Laboratory's Empirical Roofline Toolkit and the NERSC plotting scripts measure sustainable bandwidth and compute ceilings directly on the target GPU.
+
 ```bash
 # 1. Run Lawrence Berkeley Lab's Empirical Roofline Toolkit (ERT) on a GPU node
 git clone https://bitbucket.org/berkeleylab/cs-roofline-toolkit.git
@@ -341,12 +341,14 @@ git clone https://github.com/cyanguwa/nersc-roofline.git
 
 ## How it fails
 
-| Failure mode | Symptom | Root cause | Diagnosis & fix |
+Even experienced infrastructure teams misread telemetry when they skip Roofline calculations. The table below summarizes the four most common failure modes, their symptoms, and the exact fixes.
+
+| Failure Mode | Production Symptom | Root Cause | Diagnosis and Fix |
 |---|---|---|---|
-| **1. Buying higher-TFLOPS GPUs for a `Batch = 1` memory-bound service** | Upgrading from `A100` to `H100` (3× more Tensor TFLOPS) yields disappointing single-stream latency gains relative to the $500k capex. | At `Batch Size = 1`, GEMM arithmetic intensity is `~0.5–1.0 FLOP/byte`—nearly **300× below** the H100's `295.2 FLOPs/byte` ridge point, so the workload is pinned under the **Slanted Memory Roof**. | Calculate `I` and compare to `I_ridge` before buying hardware; quantize weights to **`INT8`/`FP8`/`NVFP4`** (4×–8× rightward shift on X-axis), enable **Continuous Batching**, or choose higher-bandwidth HBM (`H200`/`B200`). |
-| **2. Over-fusing kernels until registers spill to Local Memory** | Combining 5 elementwise and reduction kernels into one mega-kernel reduces kernel launch count, yet total step time *regresses* by 30%. | The fused kernel's live variable state jumped from `52` registers/thread (`0` spills) to `96` registers/thread (`88 B spill stores, 96 B spill loads`), slashing SM occupancy and adding HBM spill traffic. | Diff `nvcc -O3 -Xptxas=-v` across releases; split the mega-kernel at a natural boundary or cap fusion depth so `spill stores / loads == 0`. |
-| **3. Confusing Latency-Bound (`Low Bandwidth`) with Compute-Bound** | `ncu` reports `dram__throughput = 18%` of peak, so the team assumes memory is not the problem—yet `sm%` is also only `20%` and latency is high. | The kernel is **Memory-Latency-Bound** (or **Uncoalesced**): either too few warps are resident to hide ~800-cycle HBM latency, pointer-chasing dependencies serialize loads, or strided access wastes 7 of 8 cache-line values (`B_nc = U_cache × B_E`). | Inspect `sm__warps_active` (occupancy), `long_scoreboard` stall reasons, and `sectors_per_request` (`> 4.0`); increase parallelism/occupancy and coalesce memory layout (`SoA`). |
-| **4. Multi-GPU scaling collapse from a single straggler rank** | Single-GPU throughput hits 85% of the Roofline ceiling, but an 8-GPU DDP/FSDP job runs at 35% scaling efficiency. | Two ranks (`rank 2` and `rank 3` at `142 ms/step` vs `48 ms/step` on `rank 0–1`) sit on a degraded `x4` PCIe link, a thermally throttled GPU, or a cross-socket `SYS` NUMA path, holding all other ranks at every `NCCL AllReduce` barrier. | Log per-rank step times and run the `nvidia-smi` elimination query (`clocks.sm`, `clocks_throttle_reasons.active`, `nvidia-smi -q -d PCI`, `nvidia-smi topo -m`) across all 8 GPUs. |
+| 1. Buying higher-TFLOPS GPUs for a Batch = 1 memory-bound service | Upgrading from A100 to H100 (3x more Tensor TFLOPS) yields minimal single-stream latency gains for $500k capex | At Batch Size = 1, GEMM arithmetic intensity is ~0.5 to 1.0 FLOP/byte, nearly 300x below the H100 295.2 FLOPs/byte ridge point under the Slanted Roof | Compute I vs I_ridge before buying hardware; quantize weights to INT8, FP8, or NVFP4 (4x to 8x rightward shift), enable Continuous Batching, or pick higher HBM bandwidth (H200 or B200) |
+| 2. Over-fusing kernels until registers spill to Local Memory | Combining 5 elementwise and reduction kernels into one mega-kernel cuts launches but regresses step time by 30% | Live state jumped from 52 registers/thread (0 spills) to 96 registers/thread (88 B spill stores, 96 B spill loads), slashing occupancy and adding HBM spill traffic | Diff `nvcc -O3 -Xptxas=-v` across releases; split the mega-kernel at a natural boundary so spill stores and loads remain 0 |
+| 3. Confusing Latency-Bound (Low Bandwidth) with Compute-Bound | `ncu` reports `dram__throughput = 18%` (or 20%) of peak so the team assumes memory is fine, yet `sm%` is also 20% and latency is high | The kernel is Memory-Latency-Bound or Uncoalesced: too few active warps to hide ~800-cycle HBM latency, pointer chasing, or strided access wasting 7 of 8 cache values (`B_nc = U_cache * B_E`) | Inspect `sm__warps_active`, `long_scoreboard` stalls, and `sectors_per_request` (> 4.0); increase occupancy and coalesce memory layout to Structure of Arrays (SoA) |
+| 4. Multi-GPU scaling collapse from a single straggler rank | Single-GPU throughput hits 85% of the Roofline ceiling, but an 8-GPU DDP or FSDP job runs at 35% scaling efficiency | Ranks 2 and 3 run at 142 and 139 ms/step vs 48 and 51 ms/step on Ranks 0 and 1 due to a degraded x4 PCIe link, thermal throttle, or cross-socket SYS NUMA path | Log per-rank step times and run the `nvidia-smi` elimination query (`clocks.sm`, `clocks_throttle_reasons.active`, `nvidia-smi -q -d PCI`, `nvidia-smi topo -m`) across all 8 GPUs |
 
 ---
 
@@ -354,21 +356,24 @@ git clone https://github.com/cyanguwa/nersc-roofline.git
 
 ### Self-checking Python model (`code/part10/roofline_model_lab.py` — verified here)
 
-`code/part10/roofline_model.py` implements the Roofline equation, hardware ridge-point catalog, `FLOPs/word` machine-balance calculator, exact symbolic `GEMM` arithmetic-intensity solver, kernel-fusion and `TMA` cluster-multicast evaluator, and 6-regime GPU bottleneck classifier, and `code/part10/roofline_model_lab.py` runs **25 self-checks**:
-1. **Hardware Ridge Points** (`Blackwell B200 FP32 scalar` = `10.0 FLOPs/B`; `H100 SXM FP16 Tensor Core` = `295.2 FLOPs/B`; `H200 SXM FP16` = `206.0 FLOPs/B`; `B200 BF16` = `281.2 FLOPs/B`; `B200 NVFP4` = `1,250.0 FLOPs/B`).
-2. **Vector-Add & Precision Shifts** (`FP32` vector add `1 FLOP / 12 B = 0.0833 FLOPs/B` is `>100×` below the `10.0` ridge point; switching to `FP16` and `FP8` doubles and quadruples intensity) and **Non-Contiguous Cache Bandwidth** (`U_cache = 12.5%` drops effective bandwidth from `8.0` to `1.0 TB/s`).
-3. **Machine Balance in `FLOPs/word`** (`236.8 GFLOPS / 34.1 GiB/s × 8 B = 56 FLOPs/word` theoretical vs `264.4 / 22.0 × 8 = 96 FLOPs/word` empirical STREAM).
-4. **GEMM Batch Size vs Ridge Point** (`Batch = 1` `[1, 4096] × [4096, 4096]` `FP16` has `I = 1.0 FLOP/B` → `MEMORY_BOUND` at `3.348 TFLOPS` on `H100`; `INT8` quantization quadruples `FP32` intensity `0.5 → 2.0 FLOPs/B`; `Batch = 512` reaches `409.6 FLOPs/B > 295.2` → `COMPUTE_BOUND` at `989.0 TFLOPS`).
-5. **Kernel Fusion (`fusedL2Norm`: `36 B → 12 B = 3.0×` traffic reduction) & Thread Block Cluster `TMA` Multicast** (`4` CTAs = `4.0×` portable reuse; `16` CTAs = `16.0×` requiring `cudaFuncAttributeNonPortableClusterSizeAllowed`) and **`CloverLeaf` parallel energy reduction (`28.75%` total, `23.29%` DRAM)**.
-6. **6-Category GPU Bottleneck Classifier** (`HOST_INPUT_OR_LAUNCH_LATENCY_BOUND`, `MEMORY_BANDWIDTH_BOUND`, `MEMORY_TRANSACTION_UNCOALESCED_OR_LATENCY_BOUND`, `SCALAR_COMPUTE_OR_DIVERGENCE_BOUND_TENSOR_IDLE`, `TENSOR_COMPUTE_BOUND`, `THERMAL_OR_POWER_THROTTLED`, and `MULTI_GPU_COMMUNICATION_OR_STRAGGLER_BOUND` on `2.96×` rank outlier).
+You can verify every formula, hardware ridge point, and bottleneck classification rule in this chapter right now using `code/part10/roofline_model.py` and `code/part10/roofline_model_lab.py`. The lab script runs 25 deterministic checks covering six core areas.
 
-Run the lab from the repository root:
+| Verification Group | What the Lab Script Checks | Key Numbers Verified |
+|---|---|---|
+| 1. Hardware Ridge Points | Scalar and Tensor Core ridge points across Hopper and Blackwell | B200 FP32 scalar = 10.0 FLOPs/B; H100 SXM FP16 = 295.2 FLOPs/B; H200 SXM FP16 = 206.0 FLOPs/B; B200 BF16 = 281.2 FLOPs/B; B200 NVFP4 = 1,250.0 FLOPs/B |
+| 2. Vector Add and Cache Strides | Precision shifts and non-contiguous cache utilization | FP32 vector add = 1 FLOP / 12 B = 0.0833 FLOPs/B (>100x below 10.0); `U_cache = 12.5%` drops 8.0 TB/s bus to 1.0 TB/s |
+| 3. Machine Balance in FLOPs/word | Theoretical vs empirical McCalpin STREAM balance | Theoretical `236.8 / 34.1 * 8 = 56 FLOPs/word`; empirical STREAM `264.4 / 22.0 * 8 = 96 FLOPs/word` |
+| 4. GEMM Batch Size vs Ridge Point | Exact symbolic `[B, 4096] x [4096, 4096]` intensity across B and b | Batch = 1 FP16 gives I = 1.0 FLOP/B (`MEMORY_BOUND` at 3.348 TFLOPS on H100); INT8 shifts FP32 `0.5 -> 2.0 FLOPs/B`; Batch = 512 reaches `409.6 FLOPs/B > 295.2` (`COMPUTE_BOUND` at 989.0 TFLOPS) |
+| 5. Fusion, TMA Multicast, and Energy | `fusedL2Norm` traffic, cluster reuse, and CloverLeaf energy savings | `fusedL2Norm` `36 B -> 12 B = 3.0x`; 4 CTAs = 4.0x portable reuse, 16 CTAs = 16.0x with `cudaFuncAttributeNonPortableClusterSizeAllowed`; CloverLeaf saves 28.75% total and 23.29% DRAM energy |
+| 6. Six-Regime Bottleneck Classifier | End-to-end telemetry triage across all six system regimes | Verifies `HOST_INPUT_OR_LAUNCH_LATENCY_BOUND`, `MEMORY_BANDWIDTH_BOUND`, `MEMORY_TRANSACTION_UNCOALESCED_OR_LATENCY_BOUND`, `SCALAR_COMPUTE_OR_DIVERGENCE_BOUND_TENSOR_IDLE`, `TENSOR_COMPUTE_BOUND`, `THERMAL_OR_POWER_THROTTLED`, and `MULTI_GPU_COMMUNICATION_OR_STRAGGLER_BOUND` |
+
+Run the lab from the repository root with the command below.
 
 ```bash
 python3 -B code/part10/roofline_model_lab.py
 ```
 
-Expected output (verified in this repository):
+Expected output verified in this repository is shown below.
 
 ```text
 === Chapter 10.5 Lab: The Roofline Model and Performance Modelling ===
@@ -393,178 +398,209 @@ Summary: 25 passed, 0 failed (total 25)
 
 ## Common first mistakes
 
-1. **Comparing a workload's arithmetic intensity against the scalar `FP32` ridge point (`~10–20 FLOPs/B`) when the kernel runs on Tensor Cores (`~200–1,250 FLOPs/B`):** Always compute the ridge point using the peak TFLOPS of the **specific execution pipeline and precision** (`FP16`, `FP8`, `NVFP4`) your kernel targets.
-2. **Assuming `utilization.memory = 90%` in `nvidia-smi` means the kernel is achieving 90% of peak HBM GB/s:** `utilization.memory` in `nvidia-smi` is only the percentage of time the memory controller was busy; an uncoalesced kernel can keep the controller busy 90% of the time while delivering only 15–25% of peak useful bytes/sec. Check `dram__throughput.avg.pct_of_peak_sustained_elapsed` in `ncu`.
-3. **Treating low `power.draw` (`305 W` on a `700 W` H100) during 94% GPU utilization as a power-supply fault:** A memory-bound kernel leaves power-hungry Tensor Cores idle waiting on HBM reads, naturally drawing 300–400 W even at 100% `GPU-Util` with zero throttle flags active.
-4. **Enabling 16-CTA Thread Block Clusters without profiling occupancy:** While 16-CTA clusters (`cudaFuncAttributeNonPortableClusterSizeAllowed`) increase `TMA` multicast reuse up to 16×, they require co-scheduling 16 blocks across a GPC and can reduce SM occupancy on smaller grids.
+New performance engineers tend to fall into four traps when applying the Roofline model to production GPU workloads.
+
+1. Comparing a Tensor Core workload against the scalar FP32 ridge point leads to false confidence. A kernel with moderate arithmetic intensity is compute-bound on a scalar FP32 roof. Yet it sits deep in the memory-bound regime against a high Tensor Core roof.
+2. Assuming high `utilization.memory` in `nvidia-smi` means the kernel achieves peak HBM bandwidth hides uncoalesced memory bugs. That counter only reports the fraction of time the memory controller was busy. An uncoalesced kernel can keep the controller busy almost continuously while delivering only a small fraction of peak useful bytes per second.
+3. Treating low `power.draw` during high GPU utilization as a hardware fault wastes time chasing power supply issues. Memory-bound kernels leave power-hungry Tensor Cores idle waiting on HBM reads. They naturally draw modest power at full clock speed with zero throttle flags.
+4. Enabling large Thread Block Clusters without profiling SM occupancy can backfire on small grids. While setting `cudaFuncAttributeNonPortableClusterSizeAllowed` increases TMA multicast reuse, co-scheduling sixteen blocks across a Graphics Processing Cluster can reduce active warp occupancy when grid dimensions are small.
 
 ---
 
 ## Exercises
 
-1. Run `python3 -B code/part10/roofline_model_lab.py` and inspect `code/part10/roofline_model.py`. Use `calc_gemm_arithmetic_intensity(batch_m, 4096, 4096, 2.0)` to find the exact minimum batch size `batch_m` required for a `[B, 4096] × [4096, 4096]` `FP16` matrix multiply to cross the ridge point on: (a) `H200 SXM` (`206.0 FLOPs/B`), (b) `B200 BF16` (`281.2 FLOPs/B`), and (c) `H100 SXM` (`295.2 FLOPs/B`).
-2. Using `evaluate_roofline_point`, compare the attainable TFLOPS of a kernel with `I = 50.0 FLOPs/byte` on `H100 SXM` (`989 TFLOPS`, `3.35 TB/s`) versus `H200 SXM` (`989 TFLOPS`, `4.80 TB/s`). Why does `H200` run this kernel **1.43× faster** even though both GPUs have identical `989 TFLOPS` compute?
-3. Call `evaluate_roofline_point(50.0, 1.0, 989.0, 3.35, cache_line_utilization=u)` for `u = 1.0`, `0.5`, and `0.125`. How does poor cache-line utilization affect attainable TFLOPS and the effective ridge point?
-4. Using `compare_kernel_fusion_and_cluster_multicast`, calculate the combined HBM traffic reduction when a 4-pass elementwise pipeline (`4 × 12 = 48 B/elem`) is fused into 1 pass (`12 B/elem`) and paired with a `2 × 2` (`4`-CTA) `TMA` multicast cluster.
-5. Call `classify_gpu_workload_bottleneck` on all seven test cases in `roofline_model_lab.py` and write down the exact `nvidia-smi` and `ncu` commands you would run on Monday morning for each regime.
-6. On a Nebius GPU VM (untested here), run `ncu --set roofline -o report` on a PyTorch script comparing `torch.matmul` at `batch = 1` vs `batch = 512`, and inspect where both dots land relative to the Tensor Core Ridge Point in the Nsight Compute Roofline chart.
+The parameter sets for the exercises below are summarized in the reference block.
+
+```text
+Exercise Parameter Reference:
+  Ex 1: calc_gemm_arithmetic_intensity(batch_m, 4096, 4096, 2.0) vs H200 (206.0), B200 BF16 (281.2), H100 (295.2 FLOPs/B)
+  Ex 2: evaluate_roofline_point at I = 50.0 FLOPs/B on H100 (989 TFLOPS, 3.35 TB/s) vs H200 (989 TFLOPS, 4.80 TB/s -> 1.43x faster)
+  Ex 3: evaluate_roofline_point(50.0, 1.0, 989.0, 3.35, cache_line_utilization=u) for u in {1.0, 0.5, 0.125}
+  Ex 4: compare_kernel_fusion_and_cluster_multicast on 4-pass pipeline (4 * 12 = 48 B/elem -> 12 B/elem) + 2x2 (4-CTA) TMA cluster
+```
+
+1. Run `python3 -B code/part10/roofline_model_lab.py` and inspect `code/part10/roofline_model.py`. Use `calc_gemm_arithmetic_intensity` with the parameters in the reference block to find the exact minimum batch size required to cross the ridge point on H200 SXM, B200 BF16, and H100 SXM.
+2. Using `evaluate_roofline_point`, compare the attainable TFLOPS of the kernel in Exercise 2 of the reference block on an H100 SXM versus an H200 SXM. Explain why the H200 runs this kernel faster even though both GPUs share the exact same compute ceiling.
+3. Call `evaluate_roofline_point` across the three `cache_line_utilization` values shown in Exercise 3 of the reference block. Explain how poor cache-line utilization changes both attainable TFLOPS and the effective ridge point.
+4. Using `compare_kernel_fusion_and_cluster_multicast`, calculate the combined HBM traffic reduction for the four-pass elementwise pipeline and cluster configuration in Exercise 4 of the reference block.
+5. Call `classify_gpu_workload_bottleneck` on all seven test cases in `roofline_model_lab.py`. Write down the exact `nvidia-smi` and `ncu` commands you would run on Monday morning to verify each regime.
+6. On a live Nebius GPU VM, which is untested here, run `ncu --set roofline -o report` on a PyTorch script comparing `torch.matmul` at single-stream versus large-batch execution. Inspect where both kernels land relative to the Tensor Core Ridge Point on the Nsight Compute chart.
 
 ---
 
 ## Interview angles
 
-1. **"A trading firm runs a `Batch Size = 1` MLP on `A100` GPUs and wants to spend $500,000 upgrading to `H100` GPUs for the H100's 3× higher Tensor Core TFLOPS. How do you advise them using the Roofline Model?"**
-   *Answer:* Reject the compute-driven upgrade: for a matrix multiply with `K, N >> B`, arithmetic intensity is `I ≈ 2B / b`. At `Batch = 1` (`0.5 FLOPs/B` in `FP32` or `1.0 FLOP/B` in `FP16`), the workload sits nearly **300× to the left of the H100's `295.2 FLOPs/byte` ridge point**, pinned firmly under the **Slanted Memory Roof** where Tensor Cores sit >98% idle waiting on HBM reads. Instead of buying new GPUs for TFLOPS, quantize the weights to **`INT8` with TensorRT** on the existing `A100`s—cutting HBM bytes read by 75% and quadrupling effective bandwidth and speed for $0 in hardware capex.
-2. **"What is the Ridge Point (Machine Balance) of an `H100 SXM` vs an `H200 SXM` in `FP16`, and why does it explain why `H200` is faster on LLM decode?"**
-   *Answer:* Both `H100 SXM` and `H200 SXM` have **`989 TFLOPS`** of dense `FP16`/`BF16` Tensor Core compute, but `H100` has `3.35 TB/s` HBM3 (`Ridge Point = 989 / 3.35 = 295.2 FLOPs/byte`) while `H200` has `4.8 TB/s` HBM3e (`Ridge Point = 989 / 4.8 = 206.0 FLOPs/byte`). Because LLM decode operates at low arithmetic intensity under the slanted roof (`P = I × B_peak`), `H200`'s 1.43× steeper slanted roof directly increases decode tokens/sec by ~1.43× and reaches the flat compute roof at smaller batch sizes (`206` vs `295`).
-3. **"Walk me through how `nvidia-smi` showing `94% GPU-Util, 91% Mem-Util, 305 W / 700 W, 1980 MHz, Throttle: N/A` diagnoses a slow workload."**
-   *Answer:* `305 W` vs `700 W` with `Throttle: N/A` and full `1980 MHz` clocks immediately rules out thermal or power throttling; the low `305 W` power draw at `94%` utilization occurs because power-hungry Tensor Cores are mostly idle while warps wait on the `91%`-busy memory interface—proving the workload is **Memory-Bound**.
-4. **"How does Thread Block Cluster `TMA` multicast on Hopper and Blackwell shift a kernel on the Roofline?"**
-   *Answer:* In a `2 × 2` Thread Block Cluster (`4` CTAs across neighboring SMs), the **Tensor Memory Accelerator (`TMA`)** fetches a shared matrix tile from Global HBM once and multicasts it into the Distributed Shared Memory (`DSMEM`) of all 4 CTAs simultaneously—cutting HBM byte traffic by **up to 4×** (and up to **16×** on a 16-CTA Blackwell cluster with `cudaFuncAttributeNonPortableClusterSizeAllowed`), multiplying arithmetic intensity by 4×–16×.
-5. **"Why can a kernel have low HBM bandwidth utilization (`20%` of peak) and still be memory-limited?"**
-   *Answer:* It is **Memory-Latency-Bound** or **Uncoalesced**: either there are too few active warps (low occupancy) or serial pointer-chasing dependencies to keep the memory pipeline full, or strided access uses only 1 of 8 values per cache line (`B_nc = U_cache × B_E`), wasting transactions without saturating peak HBM bytes/sec.
+1. Question: A trading firm runs a single-stream MLP on A100 GPUs and wants to spend $500,000 upgrading to H100 GPUs for their higher Tensor Core TFLOPS. How do you advise them using the Roofline Model?
+   Answer: Reject the compute-driven hardware upgrade. When matrix dimensions K and N are much larger than batch size B, arithmetic intensity is approximately `2 * B / b`. At a batch size of 1, the workload sits nearly 300 times below the H100 ridge point. It is pinned under the Slanted Memory Roof where SMs sit idle waiting on HBM. Instead, quantize the weights to INT8 with TensorRT on the existing A100 GPUs to cut HBM weight reads by three quarters and quadruple speed for zero hardware capex.
+2. Question: What is the FP16 Ridge Point of an H100 SXM versus an H200 SXM, and why does that explain H200's advantage on LLM decode?
+   Answer: Both GPUs offer the exact same dense FP16 Tensor Core compute ceiling. However, the H200 has higher HBM3e bandwidth than the H100, which lowers its ridge point from 295.2 down to 206.0 FLOPs/byte. Because autoregressive LLM decode operates at low arithmetic intensity under the slanted memory roof, the H200's steeper slanted roof directly increases decode throughput by 1.43x and reaches the compute roof at smaller batch sizes.
+3. Question: Walk through what `nvidia-smi` reporting high GPU and memory utilization alongside low power draw and no active throttle reasons proves about a slow workload.
+   Answer: Low power draw against the board cap at full boost clock with no active throttle reasons rules out thermal or power throttling. Power draw stays low despite high GPU utilization because power-hungry Tensor Cores sit idle while warps wait on the busy memory interface. That combination proves the workload is memory-bound.
+4. Question: How does Thread Block Cluster TMA multicast on Hopper and Blackwell shift a kernel on the Roofline?
+   Answer: In a Thread Block Cluster across neighboring SMs, the Tensor Memory Accelerator fetches a shared tile from HBM once and multicasts it into the Distributed Shared Memory of all blocks in the cluster simultaneously. That cuts global memory byte traffic by the cluster size, or up to sixteenfold on a Blackwell cluster with `cudaFuncAttributeNonPortableClusterSizeAllowed`. Shrinking the denominator multiplies arithmetic intensity by the same factor.
+5. Question: Why can a kernel show low HBM bandwidth utilization in Nsight Compute and still be limited by the memory subsystem?
+   Answer: The kernel is memory-latency-bound or uncoalesced rather than bandwidth-saturated. Either occupancy is too low or pointer-chasing dependencies are too serial to hide HBM access latency. Alternatively, strided memory access uses only one value per cache line so transactions are wasted without saturating peak HBM bytes per second.
 
 ---
 
 ## Checkpoint questions (20)
 
 <details>
-<summary><strong>1. Define **"speeds and feeds"** in processor architecture. Which one corresponds to the flat roof, and which corresponds to the slanted roof?</strong></summary>
+<summary>`&lt;strong>`1. Define speeds and feeds in processor architecture. Which one corresponds to the flat roof, and which corresponds to the slanted roof?`&lt;/strong>`</summary>
 
-Speeds are the processor's peak arithmetic rate (peak FLOP/s) and feeds are the memory system's peak delivery rate (peak bytes/s). The flat roof is peak compute (speeds). The slanted roof is arithmetic intensity times peak bandwidth (feeds).
-
-</details>
-
-<details>
-<summary><strong>2. Write the formula for **Arithmetic Intensity (`I`)**, the **Ridge Point (`I_ridge`)**, and the **Roofline Equation** for attainable performance.</strong></summary>
-
-Arithmetic Intensity I = total FLOPs / total bytes moved from the limiting memory tier (FLOPs per byte). Ridge Point I_ridge = peak compute (FLOP/s) / peak memory bandwidth (bytes/s). Roofline: attainable TFLOPS = min(P_peak, I x B_peak). Left of the ridge the kernel is memory-bound, right of it compute-bound.
+Speeds are the processor's peak arithmetic execution rate in FLOP/s. Feeds are the memory subsystem's peak delivery rate in bytes/s. The flat horizontal roof represents peak compute speeds, while the slanted roof represents arithmetic intensity multiplied by peak memory bandwidth feeds.
 
 </details>
 
 <details>
-<summary><strong>3. How is **Machine Balance** in **`FLOPs/word`** calculated from `FLOPs/byte` for `FP64` (`8-byte` word) and `FP32` (`4-byte` word)? Reproduce the theoretical (`56 FLOPs/word`) and empirical STREAM (`96 FLOPs/word`) balances from *Parallel and High Performance Computing* Chapter 3.</strong></summary>
+<summary>`&lt;strong>`2. Write the formula for Arithmetic Intensity, the Ridge Point, and the Roofline Equation for attainable performance.`&lt;/strong>`</summary>
 
-Multiply FLOPs/byte by the word size (8 bytes for FP64, 4 bytes for FP32). Theoretical: (236.8 GFLOP/s / 34.1 GiB/s) x 8 = 55.55, about 56 FLOPs/word (6.94 FLOPs/byte). Empirical STREAM: (264.4 / 22.0) x 8 = 96.15, about 96 FLOPs/word (12.02 FLOPs/byte).
-
-</details>
-
-<details>
-<summary><strong>4. Calculate the arithmetic intensity of an `FP32` vector addition kernel (`C[i] = A[i] + B[i]`, reading 2 floats and writing 1 float = `12 bytes` for `1 FLOP`), and compare it against Blackwell `B200`'s scalar `FP32` ridge point (`80 TFLOPS / 8 TB/s = 10.0 FLOPs/byte`).</strong></summary>
-
-A vector add reads 8 bytes, writes 4, and does 1 FLOP: 1 / 12 = 0.0833 FLOPs/byte. The B200 scalar FP32 ridge point is 80 TFLOPS / 8 TB/s = 10.0 FLOPs/byte, so vector add sits more than 120x to the left. Attainable: 0.0833 x 8 TB/s = 0.667 TFLOPS, under 1% of the 80 TFLOPS ceiling.
+Arithmetic Intensity I equals total FLOPs divided by total bytes moved from the limiting memory tier. The Ridge Point I_ridge equals peak compute divided by peak memory bandwidth. Attainable performance equals the minimum of P_peak and the product `I * B_peak`. Workloads left of the ridge are memory-bound, and workloads right of the ridge are compute-bound.
 
 </details>
 
 <details>
-<summary><strong>5. How does changing vector addition from `FP32` (`4 B`) to `FP16` (`2 B`), `FP8` (`1 B`), or `NVFP4` (`0.5 B`) change its arithmetic intensity?</strong></summary>
+<summary>`&lt;strong>`3. How is Machine Balance in FLOPs/word calculated from FLOPs/byte for FP64 and FP32? Reproduce the theoretical and empirical STREAM balances from Chapter 3 of Parallel and High Performance Computing.`&lt;/strong>`</summary>
 
-The bytes per element shrink, so intensity grows by the same factor: FP16 2x (about 0.167 FLOPs/byte), FP8 4x (about 0.333), NVFP4 8x (about 0.667), starting from 0.0833 for FP32. The kernel is still far left of the ridge point.
+Multiply FLOPs/byte by the word size, which is 8 bytes for FP64 or 4 bytes for FP32.
 
-</details>
-
-<details>
-<summary><strong>6. State the equation for **non-contiguous cache bandwidth (`B_nc = U_cache × B_E`)** and calculate the effective bandwidth on an `8.0 TB/s` GPU when a column-wise stride uses only `1` of every `8` values in a cache line.</strong></summary>
-
-B_nc = U_cache x B_E, where U_cache is the fraction of each cache line actually used. With 1 of 8 values used, U_cache = 12.5%, so an 8.0 TB/s bus delivers 1.0 TB/s of useful data, the slanted roof drops 8x, and the effective ridge point moves from 10.0 out to 80.0 FLOPs/byte.
+```text
+Theoretical Balance = (236.8 GFLOP/s / 34.1 GiB/s) * 8 B/word = 55.55 ≈ 56 FLOPs/word (6.94 FLOPs/byte)
+Empirical STREAM    = (264.4 GFLOP/s / 22.0 GiB/s) * 8 B/word = 96.15 ≈ 96 FLOPs/word (12.02 FLOPs/byte)
+```
 
 </details>
 
 <details>
-<summary><strong>7. Calculate the dense Tensor Core **Ridge Points (`FLOPs/byte`)** for: (a) `H100 SXM` `FP16` (`989 TFLOPS / 3.35 TB/s`), (b) `H200 SXM` `FP16` (`989 TFLOPS / 4.80 TB/s`), (c) `B200` `BF16` (`2,250 TFLOPS / 8.0 TB/s`), and (d) `B200` `NVFP4` (`10,000 TFLOPS / 8.0 TB/s`).</strong></summary>
+<summary>`&lt;strong>`4. Calculate the arithmetic intensity of an FP32 vector addition kernel and compare it against Blackwell B200's scalar FP32 ridge point.`&lt;/strong>`</summary>
 
-(a) H100 FP16: 989 / 3.35 = 295.2 FLOPs/byte. (b) H200 FP16: 989 / 4.8 = 206.0. (c) B200 BF16: 2,250 / 8.0 = 281.2. (d) B200 NVFP4: 10,000 / 8.0 = 1,250.0.
-
-</details>
-
-<details>
-<summary><strong>8. Write the exact formula for the arithmetic intensity of a matrix multiplication `[B, K] × [K, N]` with `b` bytes per element, and show why it simplifies to `I ≈ 2B / b` when `K, N >> B`.</strong></summary>
-
-FLOPs = 2 x B x K x N and bytes = (B x K + K x N + B x N) x b, so I = 2BKN / ((BK + KN + BN) x b). When K and N are much larger than B, the weight read K x N x b dominates the denominator and I is about 2B / b.
+An FP32 vector addition reads two floats, writes one float for 12 bytes total, and performs 1 FLOP. That yields `1 / 12 = 0.0833 FLOPs/byte`. Against the B200 scalar FP32 ridge point of 10.0 FLOPs/byte, vector add sits more than 120x to the left and is capped at 0.667 TFLOPS.
 
 </details>
 
 <details>
-<summary><strong>9. What is the arithmetic intensity and maximum attainable TFLOPS on an `H100 SXM` for a `[1, 4096] × [4096, 4096]` `FP16` matrix multiply (`Batch = 1`) versus `[512, 4096] × [4096, 4096]` (`Batch = 512`)?</strong></summary>
+<summary>`&lt;strong>`5. How does changing vector addition from FP32 to FP16, FP8, or NVFP4 change its arithmetic intensity?`&lt;/strong>`</summary>
 
-Batch 1, FP16: I = 1.00 FLOPs/byte, so attainable = 1.00 x 3.35 TB/s = 3.35 TFLOPS (0.34% of 989). Batch 512, FP16: I = 409.6 FLOPs/byte, which is 1.39x above the 295.2 ridge, so attainable = the full 989 TFLOPS (flat roof).
+Shrinking the element byte width cuts the denominator and increases arithmetic intensity proportionally from the FP32 baseline.
 
-</details>
-
-<details>
-<summary><strong>10. Why does quantizing a `Batch = 1` `FP32` MLP to `INT8` quadruple its speed on an existing `A100` when upgrading to an `H100`'s 3× faster Tensor Cores without quantization barely helps?</strong></summary>
-
-At batch 1, intensity is only 0.5 FLOPs/byte in FP32, so the kernel sits far under the slanted roof and speed is set by HBM bytes read. INT8 cuts weight bytes 75% (0.5 to 2.0 FLOPs/byte), giving 4x on the existing A100. Faster Tensor Cores raise only the flat roof, which a batch-1 workload never reaches.
-
-</details>
-
-<details>
-<summary><strong>11. How does `32 × 32` **Shared-Memory Tiling** shift a matrix-multiply kernel on the Roofline (`1.5 → 8.0 FLOPs/byte`, `15 → 170 GFLOPS` in Table 7-4)?</strong></summary>
-
-Tiling loads each tile into shared memory once and reuses it 32 times, so DRAM sector reads drop from 9,800 to 1,200, arithmetic intensity rises from 1.5 to 8.0 FLOPs/byte, and throughput from 15 to 170 GFLOPS (11.3x), moving the kernel right along the roofline.
+```text
+FP32  (4.0 B/elem, 12 B total) : I = 1 / 12  = 0.0833 FLOPs/byte (1x baseline)
+FP16  (2.0 B/elem,  6 B total) : I = 1 / 6   = 0.167  FLOPs/byte (2x shift)
+FP8   (1.0 B/elem,  3 B total) : I = 1 / 3   = 0.333  FLOPs/byte (4x shift)
+NVFP4 (0.5 B/elem, 1.5 B total): I = 1 / 1.5 = 0.667  FLOPs/byte (8x shift)
+```
 
 </details>
 
 <details>
-<summary><strong>12. How does **Thread Block Cluster `TMA` Multicast** reduce global memory traffic across a `2 × 2` (`4`-CTA) cluster, and what attribute is required on Blackwell to scale a cluster up to **16 CTAs**?</strong></summary>
+<summary>`&lt;strong>`6. State the equation for non-contiguous cache bandwidth and calculate the effective bandwidth on an 8.0 TB/s GPU when a column-wise stride uses only 1 of every 8 values in a cache line.`&lt;/strong>`</summary>
 
-In a 2 x 2 cluster of 4 CTAs, TMA multicast fetches a shared tile from HBM once and delivers it into the shared memory (DSMEM) of all 4 SMs, cutting global traffic up to 4x. Clusters of up to 16 CTAs need cudaFuncSetAttribute(kernel, cudaFuncAttributeNonPortableClusterSizeAllowed, 1), beyond the portable limit of 8.
-
-</details>
-
-<details>
-<summary><strong>13. Compare the global memory bytes moved per element and the arithmetic intensity of an **unfused 3-pass L2 normalization pipeline (`36 bytes/elem`)** versus the **fused single-pass `fusedL2Norm` kernel (`12 bytes/elem`)**.</strong></summary>
-
-Unfused (square, reduce, divide as 3 kernels): 36 bytes per element (3 passes x 12 bytes), about 4 FLOPs / 36 bytes = 0.111 FLOPs/byte. Fused single pass: 12 bytes per element (two reads and one write), about 3 to 4 FLOPs / 12 bytes = 0.25 to 0.333 FLOPs/byte, 3x less HBM traffic.
+Non-contiguous bandwidth is `B_nc = U_cache * B_E`, where U_cache is the fraction of each cache line used before eviction. Using one of eight values gives `U_cache = 12.5%`, which reduces an 8.0 TB/s bus to 1.0 TB/s of useful data. That drops the slanted roof eightfold and shifts the scalar ridge point out to 80.0 FLOPs/byte.
 
 </details>
 
 <details>
-<summary><strong>14. Why does `fusedL2Norm` use `rsqrtf(sdata[0])` and multiplication instead of `sqrtf` and division?</strong></summary>
+<summary>`&lt;strong>`7. Calculate the dense Tensor Core Ridge Points for H100 SXM FP16, H200 SXM FP16, B200 BF16, and B200 NVFP4.`&lt;/strong>`</summary>
 
-rsqrtf is the fast hardware inverse-square-root intrinsic on the SFU pipeline. Multiplying by the reciprocal is cheaper than a sqrtf followed by a division for every element.
+Divide each GPU's peak Tensor Core TFLOPS by its peak HBM bandwidth in TB/s.
 
-</details>
-
-<details>
-<summary><strong>15. When is **recomputing** intermediate values on the fly (such as `x * x` or activation checkpointing) faster than storing and reading them from HBM?</strong></summary>
-
-When the kernel is memory-bound: recomputing a cheap expression such as x * x, or activations under activation checkpointing, in registers trades abundant FLOPs for scarce bandwidth and frees VRAM for larger batches.
-
-</details>
-
-<details>
-<summary><strong>16. How do PyTorch **`NestedTensor` (ragged tensors)** and **2:4 structured sparsity** increase effective arithmetic intensity?</strong></summary>
-
-NestedTensor packs variable-length prompts into one buffer without zero padding, so every byte fetched from HBM carries real tokens. 2:4 sparsity skips 50% zero weights, about 2x intensity.
+```text
+H100 SXM FP16 :    989 TFLOPS / 3.35 TB/s =   295.2 FLOPs/byte
+H200 SXM FP16 :    989 TFLOPS / 4.80 TB/s =   206.0 FLOPs/byte
+B200 BF16     :  2,250 TFLOPS / 8.00 TB/s =   281.2 FLOPs/byte
+B200 NVFP4    : 10,000 TFLOPS / 8.00 TB/s = 1,250.0 FLOPs/byte
+```
 
 </details>
 
 <details>
-<summary><strong>17. In the 6-regime bottleneck elimination tree, what does `nvidia-smi` reporting `94% GPU-Util, 91% Mem-Util, 305 W / 700 W, 1980 MHz, Throttle: N/A` rule out, and what does it prove?</strong></summary>
+<summary>`&lt;strong>`8. Write the exact formula for the arithmetic intensity of a matrix multiplication of shape B by K times K by N with b bytes per element, and show why it simplifies when K and N are much larger than B.`&lt;/strong>`</summary>
 
-305 W of 700 W, 1980 MHz, and "N/A" throttle reasons rule out thermal and power throttling (regime 1). 94% GPU-Util with 91% Mem-Util proves the workload is memory-bandwidth-bound (regime 4) or uncoalesced (regime 5). Separate those in ncu with dram__throughput.avg.pct_of_peak_sustained_elapsed and the sectors-per-request ratio.
-
-</details>
-
-<details>
-<summary><strong>18. How do you distinguish **Case A (`sm = 4%, mem = 2%`)** from **Case B (`sm = 93%, mem = 90%`)** in `nvidia-smi dmon`, and why do the two cases require opposite engineering fixes?</strong></summary>
-
-Case A (sm 3 to 5%, mem 1 to 2%): the GPU is idle, regime 3 (host, input, or launch bound). Fix CPU preprocessing, batching, or use CUDA Graphs, since kernel tuning is useless. Case B (sm 92 to 95%, mem 89 to 91%): the GPU is busy waiting on memory, regime 4 or 5. More work only lengthens the queue; apply the Roofline levers.
+Total compute is `2 * B * K * N` FLOPs and total HBM byte traffic is `(B * K + K * N + B * N) * b`. Exact intensity is therefore `2BKN / ((BK + KN + BN) * b)`. When K and N are much larger than B, the weight matrix read `K * N * b` dominates the denominator and the ratio simplifies to `2B / b`.
 
 </details>
 
 <details>
-<summary><strong>19. If single-GPU Roofline efficiency is 85%, but an 8-GPU job logs `step_time_ms` of `48, 51, 142, 139 ms` across ranks, what is the bottleneck and what two node-level commands do you run next?</strong></summary>
+<summary>`&lt;strong>`9. What is the arithmetic intensity and maximum attainable TFLOPS on an H100 SXM for a 4096 by 4096 FP16 matrix multiply at Batch = 1 versus Batch = 512?`&lt;/strong>`</summary>
 
-Ranks 2 and 3 at 139 to 142 ms against 48 to 51 ms for ranks 0 and 1 (about 2.96x slower) is a communication or straggler problem (regime 2): the fast ranks wait at the NCCL AllReduce barrier. Next run nvidia-smi topo -m and nvidia-smi -q -d PCI to look for a SYS NUMA link or a downgraded x4 PCIe slot.
+At Batch = 1 in FP16, arithmetic intensity is 1.00 FLOP/byte, so the slanted roof caps performance at 3.35 TFLOPS. At Batch = 512 in FP16, intensity reaches 409.6 FLOPs/byte. That crosses above the 295.2 ridge point and unlocks the full 989.0 TFLOPS flat compute roof.
 
 </details>
 
 <details>
-<summary><strong>20. List the **8 items** that belong in a production GPU release performance baseline, and state how much total and DRAM energy was saved by parallelizing `CloverLeaf` (`28.75%` and `23.29%`).</strong></summary>
+<summary>`&lt;strong>`10. Why does quantizing a Batch = 1 FP32 MLP to INT8 quadruple its speed on an existing A100 when upgrading to an H100 without quantization barely helps?`&lt;/strong>`</summary>
 
-The eight items: (1) workload version, model, precision policy; (2) input shape, sequence-length distribution, batch or concurrency; (3) driver, CUDA, cuBLAS/cuDNN/CUTLASS and framework versions; (4) GPU SKU and verified topology; (5) end-to-end goodput and P50/P95/P99 TTFT and TPOT after warm-up; (6) device counters (dmon, DCGM tensor pipe, ncu DRAM %); (7) compile-time artifact diff (registers and spills); (8) power draw and clock state. Parallelizing CloverLeaf cut total energy 28.75% and DRAM energy 23.29%.
+At Batch = 1 in FP32, intensity is only 0.5 FLOPs/byte, pinning the kernel under the slanted memory roof where latency is governed by HBM weight reads. Quantizing to INT8 cuts weight bytes by three quarters and lifts intensity to 2.0 FLOPs/byte for a fourfold speedup on the existing A100. Higher Tensor Core TFLOPS only raise the flat roof that a single-stream kernel never reaches.
+
+</details>
+
+<details>
+<summary>`&lt;strong>`11. How does 32 by 32 Shared-Memory Tiling shift a matrix-multiply kernel on the Roofline?`&lt;/strong>`</summary>
+
+Loading each tile from HBM into Shared Memory once and reusing it across threads cuts global memory sector reads from 9,800 down to 1,200. In Table 7-4 of *AI Systems Performance Engineering*, that reuse lifts arithmetic intensity from 1.5 to 8.0 FLOPs/byte. Throughput jumps from 15 to 170 GFLOPS.
+
+</details>
+
+<details>
+<summary>`&lt;strong>`12. How does Thread Block Cluster TMA Multicast reduce global memory traffic across a 4-CTA cluster, and what attribute is required on Blackwell to scale a cluster up to 16 CTAs?`&lt;/strong>`</summary>
+
+In a 2 by 2 cluster of 4 CTAs, TMA multicast fetches a shared tile from HBM once and writes it simultaneously into the Distributed Shared Memory of all four SMs. That reduces global memory traffic by up to fourfold. Scaling a cluster beyond the portable limit of 8 up to 16 CTAs requires calling `cudaFuncSetAttribute` with `cudaFuncAttributeNonPortableClusterSizeAllowed` set to 1.
+
+</details>
+
+<details>
+<summary>`&lt;strong>`13. Compare the global memory bytes moved per element and the arithmetic intensity of an unfused 3-pass L2 normalization pipeline versus the fused single-pass kernel.`&lt;/strong>`</summary>
+
+An unfused three-pass pipeline launching separate square, reduce, and divide kernels moves 36 bytes per element across HBM for 0.111 FLOPs/byte. The single-pass `fusedL2Norm` kernel keeps intermediates in registers and Shared Memory and touches HBM for only 12 bytes per element. That lifts intensity to 0.25 to 0.333 FLOPs/byte and cuts HBM traffic threefold.
+
+</details>
+
+<details>
+<summary>`&lt;strong>`14. Why does `fusedL2Norm` use `rsqrtf(sdata[0])` and multiplication instead of `sqrtf` and division?`&lt;/strong>`</summary>
+
+Calling `rsqrtf` executes the fast hardware reciprocal square root intrinsic on the Special Function Unit pipeline. Multiplying each element by that precomputed reciprocal is much faster than executing a square root followed by a floating-point division per element.
+
+</details>
+
+<details>
+<summary>`&lt;strong>`15. When is recomputing intermediate values on the fly faster than storing and reading them from HBM?`&lt;/strong>`</summary>
+
+Whenever a kernel is memory-bandwidth-bound under the slanted roof, arithmetic cycles are abundant while HBM bandwidth is scarce. Recomputing cheap values like `x * x` in registers or recomputing activations during backward passes avoids HBM round trips. It also frees VRAM for larger batch sizes.
+
+</details>
+
+<details>
+<summary>`&lt;strong>`16. How do PyTorch NestedTensor and 2:4 structured sparsity increase effective arithmetic intensity?`&lt;/strong>`</summary>
+
+A `NestedTensor` packs variable-length sequences into a single buffer without zero-padding, ensuring every byte fetched from HBM carries real tokens. Calling `to_sparse_semi_structured()` enables 2:4 structured sparsity to skip 50% zero weights in hardware. That roughly doubles effective arithmetic intensity.
+
+</details>
+
+<details>
+<summary>`&lt;strong>`17. In the 6-regime bottleneck elimination tree, what does `nvidia-smi` reporting 94% GPU-Util, 91% Mem-Util, 305 W of 700 W, 1980 MHz, and Throttle N/A rule out, and what does it prove?`&lt;/strong>`</summary>
+
+Drawing 305 W of 700 W at 1980 MHz with no active throttle reasons rules out Regime 1 thermal or power throttling. Seeing 94% GPU utilization paired with 91% memory controller utilization proves the workload is in Regime 4 memory-bandwidth-bound or Regime 5 uncoalesced memory access. You separate those two regimes in `ncu` using DRAM peak throughput and sectors per request.
+
+</details>
+
+<details>
+<summary>`&lt;strong>`18. How do you distinguish Case A from Case B in `nvidia-smi dmon`, and why do the two cases require opposite engineering fixes?`&lt;/strong>`</summary>
+
+In Case A, where SM and memory utilization sit under 5%, the GPU is idle in Regime 3 due to host input starvation or tiny kernel launch overhead. You fix Case A by tuning CPU pipelines or applying CUDA Graphs. In Case B, where SM and memory utilization both sit near 90%+, the GPU is saturated waiting on memory in Regime 4 or 5, so you apply the Roofline intensity levers from Section 3.
+
+</details>
+
+<details>
+<summary>`&lt;strong>`19. If single-GPU Roofline efficiency is 85%, but an 8-GPU job logs `step_time_ms` of 48, 51, 142, and 139 ms across ranks, what is the bottleneck and what two node-level commands do you run next?`&lt;/strong>`</summary>
+
+Ranks 2 and 3 running nearly three times slower than Ranks 0 and 1 represent a Regime 2 straggler. The slow ranks stall all fast ranks at every `NCCL AllReduce` barrier. You immediately run `nvidia-smi topo -m` and `nvidia-smi -q -d PCI` to check whether the slow ranks traverse a cross-socket SYS link or sit in a downgraded PCIe slot.
+
+</details>
+
+<details>
+<summary>`&lt;strong>`20. List the 8 items that belong in a production GPU release performance baseline, and state how much total and DRAM energy was saved by parallelizing CloverLeaf.`&lt;/strong>`</summary>
+
+The eight baseline items are workload and precision policy, input shape and concurrency, driver and library versions, GPU SKU and verified topology, warm-up goodput and tail latency, device utilization counters, compile-time register and spill diffs, and power draw and clock state. Parallelizing CloverLeaf cut total energy by 28.75% and DRAM energy by 23.29%.
 
 </details>
 
@@ -573,23 +609,23 @@ The eight items: (1) workload version, model, precision policy; (2) input shape,
 ## Sources and review notes
 
 ### Sources read in full for this chapter
-1. **Chris Fregly, *AI Systems Performance Engineering* (`ai-systems-performance-engineering`):**
-   - Chapter 6 (*GPU Architecture, CUDA Programming, and Maximizing Occupancy*, pp. 209–212): Roofline model definition, ridge point, `FP32` vector add worked example (`1 FLOP / 12 bytes = 0.083 FLOPs/byte`), Blackwell scalar `FP32` ridge point (`~80 TFLOPS / ~8 TB/s = 10 FLOPs/byte`, Fig. 6-21), and precision-driven rightward shifts (`FP16`, `FP8`, `FP4`).
-   - Chapter 9 (*Increasing CUDA Kernel Efficiency and Arithmetic Intensity*, pp. 295–305): Multilevel microtiling (`DRAM → SMEM → Registers/TMEM`), Thread Block Cluster `TMA` multicast (`2 × 2 = 4` CTAs cutting HBM traffic by `4×`, up to `16` CTAs with `cudaFuncAttributeNonPortableClusterSizeAllowed` for `16×`), Kernel Fusion (vertical vs horizontal, `sin`+`sqrt`, and `fusedL2Norm` `36 B → 12 B/elem` = `0.111 → 0.25–0.333 FLOPs/B` with `rsqrtf`), Structured Sparsity (`2:4` `cuSPARSELt`), Recomputation vs Memory trade-off, and PyTorch `torch.compile`, `SDPBackend.FLASH_ATTENTION`, and `NestedTensor`.
-2. **Robert Robey & Yuliana Zamora, *Parallel and High Performance Computing* (`parallel-and-high-performance-computing`):**
-   - Chapter 3 (*Performance limits and profiling*, Sections 3.1–3.4, pp. 52–70): "Speeds and feeds" mental model (`>1,000 FLOPs` per first network byte), Arithmetic Intensity and **Machine Balance** in `FLOPs/byte` and `FLOPs/word` (`56 FLOPs/word` theoretical vs `96 FLOPs/word` empirical STREAM; `Linpack` `62.5 FLOPs/word` vs typical `~1 FLOP/word`), non-contiguous cache bandwidth formula (`B_nc = U_cache × B_E`, `1/8` cache-line usage), McCalpin `STREAM`, Berkeley `Empirical Roofline Toolkit (ERT)`, `NERSC` Roofline plotting script, Intel Advisor (`0.11 FLOPs/B`), and `likwid-perfctr` (`CloverLeaf` parallel vs serial energy savings: `28.75%` / `28.7%` total and `23.29%` / `23.2%` DRAM).
-   - Chapter 9 (*GPU architectures and concepts*, Sections 9.3.3–9.3.4, pp. 296–298): GPU `ERT` and `mixbench` (`1 FLOP/load` vs `65 FLOPs/load`).
-3. **Migrated from `nvidia-devops`:**
-   - `nvidia-zero-to-hero/volume-17/chapter-03-roofline-model-and-analytical-performance.md`
-   - `nvidia-zero-to-hero/volume-02/chapter-11-building-a-gpu-performance-model.md`
-   - `nvidia-zero-to-hero/volume-02/chapter-12-volume-02-architecture-summary.md`
+
+| Source Type | Citation and Path | Chapters and Topics Used |
+|---|---|---|
+| Gem Book 1 | Chris Fregly, *AI Systems Performance Engineering* (`ai-systems-performance-engineering`) | Chapter 6 (pp. 209-212, Fig. 6-21): Roofline equation, ridge point, FP32 vector add (`1 FLOP / 12 bytes = 0.083 FLOPs/byte`), Blackwell scalar FP32 ridge point (`80 TFLOPS / 8 TB/s = 10 FLOPs/byte`), precision shifts (`FP16`, `FP8`, `FP4`). Chapter 7 (Table 7-4): 32x32 tiling (`9,800 -> 1,200` sectors, `1.5 -> 8.0 FLOPs/B`, `15 -> 170 GFLOPS`). Chapter 9 (pp. 295-305): Multilevel microtiling, Thread Block Cluster TMA multicast (`2x2 = 4` CTAs for 4x reuse, up to 16 CTAs with `cudaFuncAttributeNonPortableClusterSizeAllowed` for 16x), `fusedL2Norm` (`36 B -> 12 B/elem`, `0.111 -> 0.25-0.333 FLOPs/B`, `rsqrtf`), 2:4 sparsity (`cuSPARSELt`), recomputation vs memory, `torch.compile`, `SDPBackend.FLASH_ATTENTION`, and `NestedTensor` |
+| Gem Book 2 | Robert Robey and Yuliana Zamora, *Parallel and High Performance Computing* (`parallel-and-high-performance-computing`) | Chapter 3 (Sections 3.1-3.4, pp. 52-70): Speeds and feeds (`>1,000 FLOPs` per first network byte), Machine Balance in FLOPs/byte and FLOPs/word (`56 FLOPs/word` theoretical vs `96 FLOPs/word` empirical STREAM; Linpack `62.5 FLOPs/word` vs typical `~1 FLOP/word`), non-contiguous cache bandwidth (`B_nc = U_cache * B_E`, 1/8 cache line usage), McCalpin `STREAM`, Berkeley `Empirical Roofline Toolkit (ERT)`, `NERSC` Roofline script, Intel Advisor (`0.11 FLOPs/B`), and `likwid-perfctr` (`CloverLeaf` energy savings of `28.75%` / `28.7%` total and `23.29%` / `23.2%` DRAM). Chapter 9 (Sections 9.3.3-9.3.4, pp. 296-298): GPU `ERT` and `mixbench` (`1 FLOP/load` vs `65 FLOPs/load`) |
+| Primary Notes | `nvidia-devops` Volumes 2 and 17 | `nvidia-zero-to-hero/volume-17/chapter-03-roofline-model-and-analytical-performance.md`, `nvidia-zero-to-hero/volume-02/chapter-11-building-a-gpu-performance-model.md`, and `nvidia-zero-to-hero/volume-02/chapter-12-volume-02-architecture-summary.md` |
 
 ### Run here
-- `python3 -B code/part10/roofline_model_lab.py` — **25 passed, 0 failed**.
+
+- Running `python3 -B code/part10/roofline_model_lab.py` verified all 25 checks (`Summary: 25 passed, 0 failed`).
 
 ### My own choices and inferences, labelled in the text
-1. **Symbolic `GEMM` arithmetic-intensity formula (`calc_gemm_arithmetic_intensity` in `code/part10/roofline_model.py` and Section 2.2):** Writing out `I(B, K, N, b) = (2 × B × K × N) / ((B×K + K×N + B×N) × b) ≈ (2 × B) / b` to connect the `Batch Size = 1` MLP/LLM scenarios in `nvidia-devops` Volume 17 Chapter 3 and Volume 02 Chapter 11 to the `295.2 FLOPs/byte` H100 ridge point is **my inference**.
-2. **Unified 6-regime GPU bottleneck classifier (`classify_gpu_workload_bottleneck` in `code/part10/roofline_model.py` and Section 4.1):** Encoding the elimination workflow from `nvidia-devops` Volume 02 Chapters 11 and 12 into a single deterministic Python classifier is **my inference**.
+
+1. Writing out the symbolic matrix multiplication arithmetic-intensity formula `I(B, K, N, b) = (2 * B * K * N) / ((B*K + K*N + B*N) * b) ≈ (2 * B) / b` in Section 2.2 and `calc_gemm_arithmetic_intensity` in `code/part10/roofline_model.py` is my inference. It links the single-stream scenarios in the notes to the H100 ridge point.
+2. Encoding the elimination workflow from the notes into the deterministic Python classifier `classify_gpu_workload_bottleneck` in `code/part10/roofline_model.py` and Section 4 is my inference.
 
 ### Not verified on live hardware
-- `ncu --set roofline`, `ert`, `mixbench`, and `likwid-perfctr` were not executed on a live GPU VM in this authoring environment.
+
+- Profiling commands using `ncu --set roofline`, `ert`, `mixbench`, and `likwid-perfctr` were not executed on a live GPU VM in this authoring environment.
+

@@ -7,22 +7,25 @@ shifts, non-contiguous cache bandwidth, and 6-category GPU bottleneck
 diagnostics from:
 - AI Systems Performance Engineering (ASP) Chapter 6 (pp. 209-212) and
   Chapter 9 (pp. 295-305):
-  FP32 vector-add intensity (1 FLOP / 12 B = 0.0833 FLOPs/B), Blackwell B200
-  FP32 ridge point (80 TFLOPS / 8 TB/s = 10.0 FLOPs/B), precision-driven
-  intensity multipliers (FP16 2x, FP8 4x, FP4 8x), unfused vs fused L2 norm
-  (36 B vs 12 B per element), and Thread Block Cluster TMA multicast reuse
-  (up to 4x on 2x2 CTAs, up to 16x on 16 CTAs).
+  FP32 vector-add intensity (1 FLOP / 12 B = 0.0833 FLOPs/B, capped at
+  0.0833 * 8 TB/s = 0.667 TFLOPS), Blackwell B200 FP32 ridge point
+  (80 TFLOPS / 8 TB/s = 10.0 FLOPs/B), precision-driven intensity multipliers
+  (FP16 2x = 0.167, FP8 4x = 0.333, FP4 8x = 0.667 FLOPs/B), unfused vs fused
+  L2 norm (36 B vs 12 B per element), and Thread Block Cluster TMA multicast
+  reuse (up to 4x on 2x2 CTAs, up to 16x on 16 CTAs).
 - Parallel and High Performance Computing (PHPC) Chapter 3 (§3.1-3.3) and
   Chapter 9 (§9.3.3-9.3.4):
   Machine Balance in FLOPs/byte and FLOPs/word (8 B FP64 word, 4 B FP32 word;
-  236.8 GFLOPS / 34.1 GiB/s * 8 = 55.55 ~ 56 FLOPs/word theoretical;
-  264.4 GFLOPS / 22.0 GiB/s * 8 = 96.15 ~ 96 FLOPs/word empirical),
+  236.8 GFLOPS / 34.1 GiB/s * 8 = 55.55 ~ 56 FLOPs/word or 6.94 FLOPs/byte
+  theoretical; 264.4 GFLOPS / 22.0 GiB/s * 8 = 96.15 ~ 96 FLOPs/word or
+  12.02 FLOPs/byte empirical; CloverLeaf 0.11 to 0.3608 FLOPs/byte),
   non-contiguous cache bandwidth (B_nc = U_cache * B_E), and CloverLeaf
   parallel vs serial energy reduction (28.7% total, 23.2% DRAM).
 - nvidia-devops Volume 17 Chapter 3 & Volume 02 Chapters 11-12:
   H100 SXM FP16 Tensor Core ridge point (989 TFLOPS / 3.35 TB/s = 295.2 FLOPs/B),
-  Batch Size = 1 MLP/LLM decode intensity vs ridge point, 6-cause elimination
-  pass, and per-rank collective straggler detection.
+  Batch Size = 1 MLP/LLM decode intensity vs ridge point (3.35 TFLOPS = 0.34%
+  of 989 TFLOPS peak; Batch = 64 reaches 62.06 FLOPs/B and 207.9 TFLOPS),
+  6-cause elimination pass, and per-rank collective straggler detection.
 """
 
 from __future__ import annotations

@@ -172,7 +172,7 @@ One MPI rank per node (or per socket, or per GPU) with threads inside, to cut th
 
 ### PGAS and one-sided
 
-**Partitioned Global Address Space** models (OpenSHMEM, UPC, Chapel, Coarray Fortran) give each process a local partition of a logically global memory and offer one-sided put/get. OpenSHMEM is the standardised library form (the SCL book covers SHMEM). NVSHMEM is NVIDIA's GPU-resident variant used in some AI kernels (Part 10, 12). Niche in application codes, growing in GPU libraries.
+**Partitioned Global Address Space** models (OpenSHMEM, UPC, Chapel, Coarray Fortran) give each process a local partition of a logically global memory and offer one-sided put/get. OpenSHMEM is the standardised library form (the SCL book covers SHMEM, standardised from 2009 onward after earlier Cray, SGI, and Quadrics implementations; C and Fortran programs compile with `oshc` and `oshfort`, launch via `oshrun` or `mpirun`, size the symmetric heap with `SHMEM_SYMMETRIC_HEAP_SIZE`, and inspect collective algorithm options with `oshconfig` `(untested here)`). NVSHMEM is NVIDIA's GPU-resident variant used in some AI kernels (Part 10, 12). Niche in application codes, growing in GPU libraries.
 
 ### Accelerators
 
@@ -210,11 +210,87 @@ From the SCL book's chapters on compilers, environments and libraries (summarise
 - **Communication substrates**: UCX, libfabric, NCCL, NVSHMEM.
 - **Environment management**: Environment Modules and Lmod, Spack and EasyBuild for building software stacks (6.6); containers via Apptainer or enroot (6.13, 6.29).
 - **Build systems**: Make, CMake, Autotools, Meson; reproducible builds need pinned compilers and libraries.
-- **Numerical libraries**: BLAS/LAPACK (OpenBLAS, MKL, cuBLAS), **ScaLAPACK** (distributed dense linear algebra), **PETSc** (parallel sparse solvers), **FFTW** and cuFFT (Fourier transforms), HDF5/NetCDF (I/O), cuDNN and CUTLASS for deep learning (Part 10).
-- **Debuggers**: gdb, `valgrind`, Arm DDT, TotalView, `compute-sanitizer` for CUDA.
-- **Profilers**: `perf`, gprof, Intel VTune, Arm MAP, Score-P/Scalasca/TAU for MPI tracing, NVIDIA Nsight Systems and Nsight Compute (Part 10).
+- **Numerical libraries**: BLAS/LAPACK (OpenBLAS, MKL, ACML, cuBLAS), **ScaLAPACK** (distributed dense linear algebra), **PETSc** (parallel sparse solvers and PDEs), **FFTW** and cuFFT (Fourier transforms), **Intel TBB** (task-based C++ threading), HDF5/NetCDF (I/O), cuDNN and CUTLASS for deep learning (Part 10).
+- **Debuggers**: `gdb`, `valgrind`, Arm **DDT**, **TotalView**, `cuda-gdb`, `compute-sanitizer` for CUDA.
+- **Profilers and tracers**: `perf`, `gprof`, **MPE** and **JumpShot**, **Intel Trace Collector and Analyzer (ITAC)**, **Intel VTune** / Advisor / Inspector, **Vampir** / VampirTrace, **TAU** (Tuning and Analysis Utilities), Arm MAP, Score-P/Scalasca, `cuda-nsight` / NVIDIA Nsight Systems and Nsight Compute (Part 10).
 
-As an operator you rarely write these codes but you install, tune and support them, and most user problems (a job that is slow, hangs, crashes at scale, or gives different answers on different nodes) involve this layer.
+As an operator you rarely write these codes, but you install, tune, and support them, and most user tickets (a job that is slow, hangs, crashes at scale, or fails to link) involve this layer. Chapter 22 of the SCL book walks through the core numerical libraries and debugging tools you will meet in user build logs and job errors:
+
+### ScaLAPACK (`BLAS`, `PBLAS`, `BLACS`, `SLmake.inc`, and `PTXXYYYY` naming)
+
+**ScaLAPACK** (Scalable LAPACK) ports dense linear algebra (`LAPACK` and `LINPACK`) to distributed-memory clusters using two architectural layers:
+
+1. **PBLAS** (Parallel Basic Linear Algebra Subprograms, including `PTOOLS`): distributed-memory versions of Level 2 and Level 3 `BLAS` vector/matrix operations, built on top of fast single-node `BLAS` and `LAPACK` libraries (such as Intel MKL, AMD ACML, GotoBLAS, or OpenBLAS).
+2. **BLACS** (Basic Linear Algebra Communication Subprograms): the communication portability layer over MPI (`-lblacs`, `-lblacsC`, `-lblacsF`).
+
+When building ScaLAPACK from source (`http://www.netlib.org/scalapack/`), you edit `SLmake.inc` before running `make`. In the book's example `(untested here)`:
+
+```makefile
+# SLmake.inc excerpt (untested here)
+SHELL = /bin/sh
+home = /share/download/SCALAPACK
+PLAT = LINUX
+BLACSDBGLVL = 0
+BLACSdir = /usr/local/lib
+USEMPI = -DUsingMpiBlacs
+SMPLIB =
+BLACSFINIT = -lblacsF
+BLACSCINIT = -lblacsC
+BLACSLIB = -lblacs
+F77 = mpif77
+CC = mpicc
+BLASLIB = -lgoto -lpthread
+LAPACKLIB = -llapack
+```
+
+ScaLAPACK provides `530` subroutines across three categories—**driver** subroutines (14 per data type, solving complete linear systems or eigenvalue problems), **computational** subroutines (such as LU factorisation or tridiagonal reduction), and **service** subroutines. Routine names follow the LAPACK scheme prefixed with `P` in the pattern `PTXXYYYY` (or `PTXXYYY`):
+
+| Field | Code | Meaning |
+|---|---|---|
+| **`P`** (prefix) | `P` | Parallel (ScaLAPACK) routine |
+| **`T`** (data type) | `S`, `D`, `C`, `Z` | Single-precision real (`S`), double-precision real (`D`), single-precision complex (`C`), double-precision complex (`Z`) |
+| **`XX`** (matrix type) | `DB`, `DT`, `GB`, `GE`, `GT`, `HE`, `PB`, `PO`, `PT`, `ST`, `SY`, `TR`, `TZ`, `UN` | Diagonally dominant band (`DB`), diagonally dominant tridiagonal (`DT`), general band (`GB`), general (`GE`), general tridiagonal (`GT`), Hermitian (`HE`), symmetric/Hermitian positive-definite band (`PB`), symmetric/Hermitian positive-definite (`PO`), symmetric/Hermitian positive-definite tridiagonal (`PT`), symmetric tridiagonal (`ST`), symmetric (`SY`), triangular (`TR`), trapezoidal (`TZ`), unitary (`UN`) |
+| **`YYYY`** (operation) | `TRF`, `TRS`, `CON`, `SV`, `SVX`, `EV` / `EVX`, `GVX`, `SVD`, `RFS`, `LS` | Matrix factorisation (`TRF`), solve linear system using factorisation (`TRS`), estimate condition number (`CON`), solve linear system (`SV`), solve with expert diagnostics (`SVX`), eigenvalues/eigenvectors (`EV`, `EVX`), generalised eigenvalue problem (`GVX`), singular value decomposition (`SVD`), iterative solution refinement (`RFS`), least squares (`LS`) |
+
+### PETSc (`PETSC_ARCH`, `PETSC_DIR`, and runtime diagnostic flags)
+
+**PETSc** (Portable, Extensible Toolkit for Scientific Computation) provides parallel linear/nonlinear solvers and time integrators for partial differential equations (PDEs) in C, C++, Fortran, and Python using MPI, hybrid MPI+threads (`--with-pthreadclasses`), and GPUs (CUDA). A single source tree can hold multiple compiler/library builds side by side using two environment variables: `PETSC_DIR` (the installation root) and `PETSC_ARCH` (the build profile name). Compilers (`--with-cc=mpicc`, `--with-fc=mpifort`, `--with-cxx=mpicxx`), optimisation flags (`COPTFLAGS`, `FOPTFLAGS`, `CXXOPTFLAGS`), and external solver packages (`--with-PACKAGE-include` or `--download-PACKAGE` for `Hypre`, `MUMPS`, `Parmetis`, etc.) are passed to `./configure`. In the book's Intel MPI + MKL build example `(untested here)`:
+
+```bash
+# (untested here)
+./configure PETSC_ARCH=linux-intel -with-cc=mpicc \
+  --with-fc=mpifort --with-blas-lapack-dir=/opt/intel/mkl
+make PETSC_ARCH=linux-intel all test
+sudo make install
+```
+
+When a user's PETSc application crashes or runs slowly, you can pass built-in PETSc runtime flags on the job command line without recompiling `(untested here)`:
+
+- `-log_summary` — print a breakdown of subroutine execution times, FLOP rates, and MPI message counts at program exit.
+- `-fp_trap` — trap and halt immediately on floating-point exceptions (divide-by-zero, NaN, overflow).
+- `-malloc_debug` / `-trdump` / `-trmalloc` — enable PETSc memory tracing and dump unfreed memory blocks at exit.
+- `-start_in_debugger [noxterm, gdb, dbx, xxgdb]` — launch the processes directly inside a debugger.
+- `-on_error_attach_debugger [noxterm, gdb, dbx, xxgdb]` — attach a debugger automatically only when a runtime error occurs.
+
+### FFTW and Intel TBB
+
+- **FFTW** (Fastest Fourier Transform in the West) computes 1D and multivariate discrete Fourier transforms for both complex and real arrays of arbitrary size `N` (not restricted to powers of two). Keep two operational facts in mind: (1) **FFTW version 2 and version 3 have incompatible APIs**, so clusters often need both installed (`-lfftw` / `-lfftw_mpi` for v2; `-lfftw3` / `-lfftw3_mpi` for v3 `(untested here)`); and (2) Intel MKL and AMD ACML include built-in optimized FFTW interfaces, avoiding a separate build when those math libraries are used.
+- **Intel TBB** (Threading Building Blocks) is a C++ template library that expresses node-level parallelism as a directed graph of **tasks** rather than raw threads, mapping tasks dynamically onto POSIX, Windows, or Boost threads for cache and core efficiency. Because TBB hides thread creation and synchronisation internally, the book cautions that mixing TBB task graphs with asynchronous MPI calls requires care to avoid subtle thread-safety bugs.
+
+### Parallel debuggers, profilers, and trace formats
+
+Standard `gdb` inspects only a single process at a time, and running hundreds of independent `gdb` instances across an MPI job produces unreadable output. Cluster debuggers and tracers solve this in two ways:
+
+- **Parallel debuggers**:
+  - **TotalView** (RogueWave / Perforce): supports MPI, OpenMP, OpenACC, and CUDA, attaches to running jobs or launches via the batch scheduler (with a remote GUI client), stops and inspects stacks and variables across all ranks simultaneously, includes memory debugging and **ThreadSpotter** (for cache/memory bandwidth and thread-contention analysis), and supports **reverse debugging** (recording execution state and stepping backward in time to the root cause of a crash).
+  - **Arm DDT** (Distributed Debugging Tool, originally Allinea): similar multi-rank GUI debugging for MPI/OpenMP/GPU codes, plus an **offline debugging mode** (`ddt --offline ...` `(untested here)`) that runs under the batch scheduler without an interactive GUI session and writes a post-mortem HTML/text report of variable values, call stacks, and suspected memory leaks when the job finishes or crashes.
+  - **GPU debuggers**: `cuda-gdb` (drop-in replacement for `gdb` in CLI or GUIs such as DDD and VS Code) and `cuda-nsight` from the CUDA Toolkit.
+- **Profilers, tracers, and PMPI**:
+  - Most MPI tracers intercept MPI calls without source changes using the standard **PMPI** (Profiling MPI) wrapper interface, writing timestamped communication and subroutine events into open trace formats such as **CLOG**, **SLOG** / **SLOG2**, **OTF**, and **OTF2** (or Intel's **STF**).
+  - **MPE and JumpShot**: Argonne's free **MPE** library records MPI traces into `CLOG` / `SLOG2` files, which **JumpShot** visualises as a timeline of rank states and message arrows.
+  - **Vampir and VampirTrace**: commercial timeline visualiser (**Vampir**) and open-source instrumentation library (**VampirTrace**) using the open **OTF** / **OTF2** trace format to pinpoint communication bottlenecks across thousands of ranks.
+  - **Intel Trace Collector and Analyzer (ITAC)** and **Intel VTune** / Advisor / Inspector (in the Intel oneAPI HPC Toolkit): collect full or sampled **STF** traces (automatically via a startup flag when using Intel MPI) and hardware counter profiles.
+  - **TAU** (Tuning and Analysis Utilities, University of Oregon): open-source profiling and tracing suite with its own visualisers and JumpShot integration.
 
 ## 11. Examples worth keeping in mind
 
@@ -269,7 +345,7 @@ As an operator you rarely write these codes but you install, tune and support th
 22. Why aggregate small messages?
 23. How does a ring all-reduce's per-participant data volume depend on `n`?
 24. What is a halo exchange? How does surface-to-volume affect scaling?
-25. Name three numerical libraries and what each does.
+25. In ScaLAPACK (`PTXXYYYY` naming), what do `PBLAS` and `BLACS` do, and which PETSc runtime flags print a performance summary, trap floating-point exceptions, and attach a debugger on error? (Answer: `PBLAS` provides distributed Level 2/3 BLAS operations and `BLACS` provides the MPI communication layer; in PETSc, `-log_summary`, `-fp_trap`, and `-on_error_attach_debugger`.)
 26. Name two debuggers and two profilers.
 27. Why do operators care about parallel programming models?
 28. How is data-parallel training an SPMD program?
@@ -278,8 +354,10 @@ As an operator you rarely write these codes but you install, tune and support th
 
 ## 15. Sources and review notes
 
-- Software landscape (compilers, MPI implementations, PMIx, SHMEM, CUDA/UCX/NCCL, OpenACC, Environment Modules and Lmod, build systems) and support libraries (ScaLAPACK, PETSc, FFTW, TBB, debuggers and profilers): *Supercomputers for Linux SysAdmins* chapters 21 and 22 (abbreviated SCL), restated in my own words. Details on each are in 6.4 to 6.6.
+- Book source (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`):
+  - Chapter `21. Compilers and Environments, for Parallel Technologies` (read in full): MPI, OpenMP, CUDA, OpenCL, OpenACC, and OpenSHMEM (`oshc`, `oshfort`, `oshrun`, `SHMEM_SYMMETRIC_HEAP_SIZE`, `oshconfig`), `PMIx`, `UCX`, `NCCL`, Environment Modules / `LMOD`, and `EasyBuild` / `Spack`.
+  - Chapter `22. Parallel Computing Support Libraries` (read in full): `ScaLAPACK` (`BLAS`, `PBLAS`, `PTOOLS`, `BLACS`, `SLmake.inc`, `530` subroutines, and the `PTXXYYYY` routine naming table), `PETSc` (`PETSC_ARCH`/`PETSC_DIR` configure workflow and runtime diagnostic flags `-log_summary`, `-fp_trap`, `-trdump`/`-trmalloc`/`-malloc_debug`, `-start_in_debugger`, `-on_error_attach_debugger`), `FFTW` (versions 2 `-lfftw_mpi` and 3 `-lfftw3_mpi`), `Intel TBB`, and parallel debuggers/profilers (`TotalView` reverse debugging and `ThreadSpotter`, Arm `DDT` offline mode, `PMPI`, `MPE`/`JumpShot` `CLOG`/`SLOG2`, `Vampir`/`VampirTrace` `OTF`/`OTF2`, `ITAC`/`VTune`/`Advisor`/`Inspector` `STF`, `TAU`, and `cuda-gdb`/`cuda-nsight`).
 - Amdahl (1967), Gustafson (1988) and Karp-Flatt (1990) are standard results; the formulas here are the textbook forms. The cost model is the classic latency-bandwidth (Hockney) model.
 - General background on parallel programming concepts also draws on the PHPC and public-reference material listed in the handbook's source map.
 - Original: the measured script output (run once on an Apple M3) and the interpretation; numbers will vary by machine.
-- Unverified: ring all-reduce volume factor stated as `2(n-1)/n` (standard result, not re-derived here); NCCL algorithm selection details (see Part 12).
+- Unverified: ring all-reduce volume factor stated as `2(n-1)/n` (standard result, not re-derived here); NCCL algorithm selection details (see Part 12); ScaLAPACK `SLmake.inc`, PETSc configure/runtime flags, FFTW/TBB/OpenSHMEM commands, and debugger/profiler invocations (from the book, not run here).

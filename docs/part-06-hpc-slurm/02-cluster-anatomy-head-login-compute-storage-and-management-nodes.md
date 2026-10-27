@@ -126,9 +126,39 @@ Reasons for separation: performance isolation (a backup job must not disturb an 
 
 Addressing plan: decide subnets for each network up front, with room to grow, and name interfaces consistently (for example `node042`, `node042-bmc`, `node042-ib0`). A consistent naming scheme makes scripts and monitoring much easier (Part 2.30 on addressing).
 
+### Network throughput, latency, and fabric topology formulas
+
+Manufacturer datasheets state peak network throughput, whereas real applications typically achieve `1.5–2` times lower speed than peak. Latency (delay) is the net time required to transmit a zero-length message, governed by hardware and OS preparation overhead. The book's Table 4-1 summarizes typical throughput, raw latency, and MPI (Message Passing Interface) latency across cluster networking technologies:
+
+| Technology | Throughput | Latency ($\mu$sec) | MPI latency ($\mu$sec) |
+|---|---|---|---|
+| **Gigabit Ethernet** | Peak – `1000 Mbit/sec` (`125 MB/sec`), MPI – `60–120 MB/sec` | `30–100` | `50` |
+| **10-Gigabit Ethernet** | Peak – `10 Gbit/sec` (`1.2 GB/sec`), MPI – `700–900 MB/sec` | `9` | `25–30` |
+| **100-Gigabit Ethernet** | Peak – `100 Gbit/sec` (`1.2 GB/sec` in the book's table) | `0.3–1` | `1–3` |
+| **Myrinet 2000, Myrinet-10G** | Peak is `2 Gbit/sec` (`10 Gbit/sec`), full duplex. On TCP/IP, speeds on the order of `1.7-1.9 Gbit/sec` (`9.6 Gbit/sec`). On MPI, up to `200 MB/sec` (up to `400 MB/sec` on duplex operations) | `2` | `10` |
+| **InfiniBand** | `10 to 4800 Gbit/sec` or higher, implementation dependent (from SDR through NDR/XDR) | `0.1–0.6` | `1–3` |
+| **SlingShot** | Peak – `200 Gbit/s` | `0.2–1.2` | `4–5` |
+
+Beyond link speed, fabric topology determines the maximum number of switch hops and congestion points:
+
+- **Tree (star)**: standard Ethernet layout where spanning tree typically keeps only one parallel inter-switch link active unless link aggregation (EtherChannel, bonding, or trunking) is configured identically on both switches.
+- **Fat tree**: upper-level switches are multiplied so that each leaf switch connects to multiple spine/root switches, distributing traffic and tolerating non-leaf switch failures.
+- **Hypercube**: an `N`-dimensional hypercube connects two `(N-1)`-dimensional hypercubes at corresponding vertices, guaranteeing no more than `N` hops between any two vertices at the cost of complex cabling.
+- **Multidimensional torus**: each dimension forms a closed loop of multiple vertices. In a three-dimensional (3D) torus with dimension sizes `N`, `M`, and `K`, the maximum number of hops between any two vertices is:
+
+```text
+Max hops (3D torus) = [N/2]+[M/2]+[K/2]
+```
+
+where `[X]` is the integer part of `X`.
+- **Dragonfly / Dragonfly+**: switches are organized into local all-to-all groups, and groups connect to other groups at the next level (either all-to-all in basic Dragonfly or across a subset of group members in Dragonfly+ to reduce cable and port counts while keeping hop count low).
+
 ## 4. Hardware features that affect operations
 
 - **NUMA topology**: two sockets, each with local memory and PCIe lanes; a GPU or NIC attached to socket 0 is slower to reach from socket 1. Schedulers and launchers bind processes to the right cores and GPUs (Part 6.12 and 10).
+- **HyperThreading (HT) BIOS versus scheduler core declaration trick**: with HyperThreading (or AMD SMT, Simultaneous Multithreading), each physical core appears to the OS as two logical cores sharing execution units. Tightly optimized parallel HPC programs rarely speed up with HyperThreading and can even slow down when two compute threads contend for the same functional units. A practical administrator trick from the book is to **keep HyperThreading enabled in the BIOS, but configure the job scheduler with the physical core count (as if HT were disabled)**. That way, user compute jobs only get scheduled one task per physical core, while node system daemons and background services can use the extra logical threads with minimal impact on user jobs. (If your scheduler detects core counts automatically and cannot be overridden, disable HT in the BIOS instead.)
+- **License-server MAC address preservation**: commercial software license managers (such as FlexLM) are commonly hosted on a dedicated license service node and lock their license files to that machine's network MAC (Media Access Control) address. Always record the MAC address of the license server in your documentation; if the server hardware fails and is replaced, setting the old MAC address on the replacement server's network interface allows licensed applications to keep running immediately while you request a formal license reissue for the new hardware's real MAC address.
+- **Pre- and postprocessing nodes**: dedicated nodes for preparing large simulation inputs or postprocessing outputs should be provisioned with more RAM than standard compute nodes (`256 GB` or more in the book's recommendation), and login nodes should enforce strict per-user resource limits because modern remote IDE plugins (such as VSCode remote) can consume enough CPU and memory to paralyze a shared login server.
 - **GPU interconnect**: GPUs within a node are connected by NVLink/NVSwitch (fast); between nodes by the fabric (slower). Parallelism strategy follows this hierarchy (Part 14).
 - **Heterogeneity**: mixed node generations are common after expansions; the scheduler needs features/constraints to match jobs to hardware.
 - **Diskless vs local disks**: local NVMe is useful for scratch and caching but resets with reprovisioning; do not store irreplaceable data there.
@@ -150,7 +180,62 @@ The SCL book has a sensible planning list; adapted here for AI-era clusters:
 
 **Documentation** deserves its own line item: rack elevations, cable maps (port to port), IP/VLAN/name plans, serial numbers and warranties, BIOS and firmware baselines, install procedures, and runbooks. The book stresses documenting from day one; the cost of reconstructing a cable map from a live fabric during an outage is high. Keep documentation in version control where possible and generate it from the inventory (Part 4).
 
+Specifically, the book divides cluster documentation into two separate platforms and checklists—one for **SysAdmins** and one for **users** (ideally on a collaborative wiki or portal where users can comment or ask questions):
+
+1. **SysAdmin documentation checklist**:
+   - Hardware configurations of different types of nodes (insisting on identical make, model, part number, BIOS, and VBIOS within each node class).
+   - Network topology and hardware.
+   - Software installed, licenses info, special configurations.
+   - System settings, limits, etc.
+   - Admin and maintenance logins and how to get passwords.
+   - Policies to add accounts, software, etc.
+   - Backups info (how to backup, restore, schedules, etc.).
+   - How to add/delete accounts, do the maintenance, and other stuff.
+   - Important contacts (stakeholders, suppliers, engineers, tech support, people who control power, cooling, physical access).
+   - A journal of incidents and maintenance with detailed info.
+   - Temporary changes (for example, if you changed quotas for a month or gave temporary access to external tech support, record it).
+   - **HOWTOs** for emergency and routine actions: close/open the cluster in emergency cases; change quotas; add/delete/update user accounts; quick actions in simple known cases (such as rebooting a proprietary license server); inform users about problems; and run basic tests.
+2. **User documentation checklist**:
+   - How to submit a request for access, including the full process and timing.
+   - How to get a password, generate SSH keys, log into the cluster for the first time, and take first steps.
+   - What the cluster is: hardware, software, file systems, and links to user docs.
+   - How to copy data, prepare a task, and run, check, or cancel a job.
+   - Policies and limits.
+   - A growing "How to..." FAQ section for recurring user questions.
+
 **OK, we got it, what's next? (when the hardware arrives)**: inventory and verify against the order; power on in stages; update firmware to the baseline; burn-in (stress CPU, memory, GPUs, disks, network) to expose early failures; label everything; then install the head node first, then provision a few compute nodes, then scale up. **Later**: monitoring and alerting, backup verification, user onboarding, patch process, capacity reporting.
+
+### Post-build verification, the 5 check types, runbook schema, and node operations hints
+
+Once the cluster is built, verify DNS, internal and external NTP synchronization, SSH across all nodes, shared file system performance (from both login and compute nodes), network and node performance benchmarks, user add/block/unblock/delete flows, partition and quota enforcement, monitoring alerts, and backup/restore tests. Capture baseline numbers from HPL (High-Performance Linpack), `NCCL-test` (GPUs, InfiniBand, NVLink), IOR and FIO (file system performance), and STREAM (memory bandwidth) into playbooks, and schedule at least one planned maintenance window per year for firmware, hardware, and software upgrades.
+
+Organize verification around five distinct check types:
+
+1. **Full cluster check** (after each maintenance)
+2. **Performance verification** (after each maintenance)
+3. **Node performance check** (after the node fix or replacement)
+4. **Node readiness check** (before/after the job run)
+5. **Node health check** (periodically on the nodes)
+
+For any major activity—maintenance windows, software or hardware upgrades, or data migrations—track execution in a **runbook spreadsheet** with the following standard columns (plus an optional rollback action column) and have a teammate review it beforehand:
+
+| Runbook column | Purpose |
+|---|---|
+| `phase` | Stage of the maintenance or migration window |
+| `action` | Concrete step to perform |
+| `start` | Scheduled or actual start time |
+| `duration` | Expected time required for the step |
+| `dependency` | Prerequisite steps that must finish first |
+| `owner` | Person responsible for executing the step |
+| `status` | Current completion state |
+| `info` | Exact commands to run, links to documentation, and verification notes |
+
+Finally, apply the book's practical compute- and service-node operational hardening hints:
+
+- **Minimize running services on compute nodes**: disable unnecessary daemons (such as `ModemManager`, `networkmanager`, or `acpid`), use precreated device files where appropriate, and replace full mail transfer agents like `postfix` with a lightweight relay forwarder such as `ssmtp` or `nail` that forwards mail via a smarthost on the head node.
+- **Optimize kernel parameters and local timers**: avoid loading unneeded kernel modules, disable IPv6 if unused, consider `mitigations=off` only where the security environment makes it safe, and disable `cron` on compute nodes in favor of `systemd` timers. Never run a central cronjob that SSHes into every node to run checks; instead, trigger checks via local timers on the nodes, write results to a shared file system, database, or message queue, and aggregate them on a service node.
+- **Prevent accidental service-node reboots with `molly-guard`**: install `molly-guard` (or an equivalent wrapper) on head and service nodes so that interactive `reboot` or `shutdown` commands prompt for the target hostname before executing.
+- **Audit and security baselines**: install and tune `auditd` to log critical command executions, run regular vulnerability checks, and consult the NIST Special Publication **NIST SP 800-223** (*High-Performance Computing Security*, `https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-223.pdf`).
 
 ## 6. How a typical session and the job life cycle proceed
 
@@ -239,11 +324,12 @@ The analogies break in important places: Kubernetes schedules long-running desir
 22. What is a DTN?
 23. What is a bastion host for?
 24. Map `slurmd` and a partition to Kubernetes concepts.
-25. Why is Kubernetes not a drop-in replacement for the HPC scheduler?
+25. What is the maximum number of hops between any two vertices in a 3D torus of dimensions `N`, `M`, and `K`, how can you keep HyperThreading enabled for system services without slowing compute jobs, and what are the eight standard columns in a maintenance runbook spreadsheet? **A:** In a 3D torus of dimensions `N`, `M`, and `K`, the maximum number of hops between any two vertices is `[N/2]+[M/2]+[K/2]`, where `[X]` is the integer part of `X`. To benefit from HyperThreading for node system services without hurting compute tasks, leave HyperThreading enabled in the BIOS but configure the job scheduler with only the physical core count (as if HT were disabled). The eight standard runbook spreadsheet columns are: `phase`, `action`, `start`, `duration`, `dependency`, `owner`, `status`, and `info` (plus an optional rollback description).
 
 ## 12. Sources and review notes
 
-- Anatomy, planning, documentation and "what is hidden from the user": *Supercomputers for Linux SysAdmins* (Zhumatiy, Apress, 2025; abbreviated SCL here), chapters 3, 4 and 6. The four-layer framing, the planning list and the 5 to 10 percent power-headroom figure are from the book; all text is my restatement. The list of networks is extended for GPU clusters.
+- Anatomy, planning, SysAdmin and user documentation checklists, 5 post-maintenance/readiness check types, runbook spreadsheet columns, compute-node hardening hints (`molly-guard`, `ssmtp`/`nail`, `auditd`, NIST SP 800-223), Table 4-1 network throughput and latency values, 3D torus hop formula, license-server MAC preservation, and the HyperThreading BIOS/scheduler core declaration trick (read in full: `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`, "3. How to Build and Start It?" and "4. Supercomputer Hardware"; also chapter 6 for "what is hidden from the user"). The list of networks is extended for GPU clusters.
 - Cloud background (SCL chapter 17 summary) is covered in 6.1 and in the Kubernetes comparison above.
 - NVIDIA Base Command Manager manuals (in the corpus as `bcm11-*`) for the head-node-centric management model; see Part 8.
-- Unverified: typical per-node power draws and fabric counts for specific products (use datasheets, Part 9); the Kubernetes mapping is approximate by design.
+- Run here: none (design and inventory chapter).
+- Not verified on live hardware: typical per-node power draws and fabric counts for specific products (use datasheets, Part 9); the Kubernetes mapping is approximate by design.

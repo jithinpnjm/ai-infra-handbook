@@ -115,15 +115,67 @@ Never commit plaintext Secrets. Options (4.12, 4.26):
 | Approach | How | Notes |
 |---|---|---|
 | **External Secrets Operator (ESO)** | `ExternalSecret`/`SecretStore` CRs reference Vault/AWS SM/GCP SM/Azure KV; ESO syncs into native Secrets | Secret values never in Git; native Secret still in etcd; refresh intervals handle rotation |
-| **Secrets Store CSI Driver** + provider | Mounts secrets from a vault as a volume (and optionally syncs to a Secret) | Avoids etcd persistence when not syncing; per-pod volume; provider pods needed |
+| **Secrets Store CSI Driver** (`secrets-store-csi-driver`, `SecretProviderClass`) | Mounts secrets from a vault as a volume via `driver: secrets-store.csi.k8s.io` and a `SecretProviderClass` (and optionally syncs to a Secret) | Avoids etcd persistence when not syncing; per-pod volume; provider pods needed |
 | **Vault Agent Injector / Vault Secrets Operator** | Sidecar/operator renders secrets into the pod via Vault Kubernetes auth | Dynamic secrets and leases |
-| **Sealed Secrets** (Bitnami) | Encrypt to a cluster public key; controller decrypts to a Secret | Simple; cluster-bound key; rotate keys |
+| **Sealed Secrets** (`SealedSecrets`, `kubeseal`) | Encrypt a Secret into a `SealedSecret` (`bitnami.com/v1alpha1`) with `kubeseal` using the cluster public key; controller decrypts to a Secret | Simple; cluster-bound key; rotate keys every 30 days |
 | **SOPS** (age/KMS) with Flux/Argo plugins | Encrypted YAML in Git, decrypted at apply | Reviewable diffs (keys visible) |
 | **CSI/Workload Identity** | Pods authenticate to cloud APIs with federated tokens, no secret at all | Best for cloud resources |
 
 ### Rotation
 
 Rotation requires consumers to reload: file mounts update automatically (kubelet refresh), apps must re-read; env-var-based secrets require pod restart (use a reloader controller keyed on secret hash, or `kubectl rollout restart`). Two-phase rotation (add new credential, switch consumers, remove old) for databases and tokens; automate with ESO refresh + Reloader, Vault dynamic leases, cert-manager for certs (5.12).
+
+### HashiCorp Vault Agent Injector and Kubernetes authentication
+
+Instead of syncing external secrets into etcd as Kubernetes `Secret` objects, the **HashiCorp Vault Agent Injector** uses a `MutatingWebhookConfiguration` (`vault-agent-injector-cfg`) to inject a `vault-agent-init` init container (to fetch initial secrets before the workload starts) and an optional `vault-agent` sidecar container (to keep secrets updated) that write rendered files onto an in-memory volume mounted at `/vault/secrets`. As detailed in *Production Kubernetes* (Chapter 7), the injector watches for Pod annotations:
+
+- `vault.hashicorp.com/agent-inject: "true"` instructs the webhook to inject the `vault-agent-init` init container (`vault:1.3.2` in the book's example).
+- `vault.hashicorp.com/agent-inject-status: "update"` (optional) instructs the webhook to also inject the long-running `vault-agent` sidecar to refresh leased or rotated secrets.
+- `vault.hashicorp.com/role: "<role>"` (or the role bound in the agent configuration) selects the Vault Kubernetes auth role.
+- `vault.hashicorp.com/agent-inject-secret-<filename>: "<vault-path>"` (for example, `vault.hashicorp.com/agent-inject-secret-db-creds: "secrets/db/creds"` or `vault.hashicorp.com/agent-inject-secret-config`) tells the agent which Vault secret to write to `/vault/secrets/<filename>`.
+- `vault.hashicorp.com/agent-inject-template-<filename>` formats the rendered file using a Go template instead of the default Go map print format. In the book's example (untested here), a Pod template formats database credentials into a JDBC connection string at `/vault/secrets/db-creds` (or `/vault/secrets/config` for a `config` secret):
+
+```yaml
+spec:
+  template:
+    metadata:
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/agent-inject-status: "update"
+        vault.hashicorp.com/role: "database"
+        vault.hashicorp.com/agent-inject-secret-db-creds: "secrets/db/creds"
+        vault.hashicorp.com/agent-inject-template-db-creds: |
+          {{- with secret "secrets/db/creds" -}}
+          jdbc:oracle:thin:{{ .Data.data.username }}/{{ .Data.data.password }}
+          {{- end }}
+```
+
+To let Pods authenticate to Vault using their Kubernetes ServiceAccount tokens (validated by Vault against the Kubernetes `TokenReview` API), you enable and configure the Kubernetes auth method inside Vault, write a policy, and bind a Vault role to the Pod's ServiceAccount name and Namespace, as in the book's example (untested here):
+
+```bash
+# Enable Kubernetes authentication in Vault (untested here)
+vault auth enable kubernetes
+
+# Configure Vault to talk to the Kubernetes API server for TokenReview checks (untested here)
+vault write auth/kubernetes/config \
+  kubernetes_host="https://$KUBERNETES_PORT_443_TCP_ADDR:443" \
+  kubernetes_ca_cert=@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+  token_reviewer_jwt="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
+
+# Create a read policy in Vault for team-a secrets (untested here)
+vault policy write team-a - <<EOF
+path "secret/data/team-a/*" {
+  capabilities = ["read"]
+}
+EOF
+
+# Bind the Kubernetes ServiceAccount 'webapp' in namespace 'team-a' to the policy (untested here)
+vault write auth/kubernetes/role/database \
+  bound_service_account_names=webapp \
+  bound_service_account_namespaces=team-a \
+  policies=team-a \
+  ttl=20m
+```
 
 ## 3. Projected volumes and ServiceAccount tokens
 
@@ -200,7 +252,7 @@ roleRef: { kind: Role, name: trainer-runner, apiGroup: rbac.authorization.k8s.io
 
 - **Additive only**: no deny rules; permissions are the union of all bindings; a user with `edit` cannot be denied one verb except by removing the binding or using admission policy.
 - **Bindings are immutable in `roleRef`**: to change the role referenced, delete and recreate the binding.
-- **Default roles**: `cluster-admin` (everything), `admin` (namespace admin incl. RBAC within namespace), `edit` (read/write most objects, not roles/bindings; can read secrets, run pods → effectively access to namespace service account tokens), `view` (read most objects but not secrets), plus system roles (`system:node`, `system:kube-scheduler`, `system:discovery`, `system:public-info-viewer`, `system:basic-user`). **Aggregation**: ClusterRoles with `aggregationRule` collect rules from other ClusterRoles by label (`rbac.authorization.k8s.io/aggregate-to-edit: "true"`); CRD authors ship ClusterRoles labelled to extend `view/edit/admin` with their custom resources (e.g., Kueue, Argo).
+- **Default roles**: `cluster-admin` (everything), `admin` (namespace admin incl. RBAC within namespace), `edit` (read/write most objects, not roles/bindings; can read secrets, run pods → effectively access to namespace service account tokens), `view` (read most objects but not secrets), plus system roles (`system:node`, `system:kube-scheduler`, `system:discovery`, `system:public-info-viewer`, `system:basic-user`). **Auto-reconciliation of built-in roles**: as *Kubernetes: Up and Running* (3rd edition, Chapter 14) notes, `kube-apiserver` automatically reconciles built-in `ClusterRole` objects on startup and overwrites any manual edits unless you first set the annotation `rbac.authorization.kubernetes.io/autoupdate: "false"` on the `ClusterRole`. **Aggregation**: ClusterRoles with `aggregationRule` collect rules from other ClusterRoles by label (`rbac.authorization.k8s.io/aggregate-to-edit: "true"`); CRD authors ship ClusterRoles labelled to extend `view/edit/admin` with their custom resources (e.g., Kueue, Argo).
 - **Groups**: `system:authenticated`, `system:unauthenticated`, `system:serviceaccounts`, `system:serviceaccounts:<ns>`, `system:masters` (unrestricted, bypasses RBAC; avoid in certificates).
 - **Escalation prevention**: you cannot create or update a Role/binding granting permissions you don't hold, unless you have the `escalate`/`bind` verbs on roles; `impersonate` allows acting as others; `create` on `pods` implies reading any Secret/ServiceAccount token in that namespace (by mounting) and potentially node access (hostPath, privileged): pod creation is a powerful permission; `create` on `pods/exec` equals shell in pods; `nodes/proxy` equals kubelet API access (exec on any pod on the node); `get` on `secrets` equals credentials; `create` on `serviceaccounts/token` mints tokens; `*` verbs/resources and `cluster-admin` bindings to groups like `system:authenticated` are never appropriate; `update` on `validatingwebhookconfigurations`/`mutatingwebhookconfigurations` or CRDs can disrupt the cluster; `get/list` on `secrets` cluster-wide is cluster compromise.
 
@@ -215,7 +267,79 @@ roleRef: { kind: Role, name: trainer-runner, apiGroup: rbac.authorization.k8s.io
 7. **Pod Security + admission policy complement RBAC**: RBAC says who can create pods; PSA/Kyverno/ValidatingAdmissionPolicy says what pods may look like (5.21).
 8. **Read access for observability**: dedicated ClusterRole for Prometheus (`get/list/watch` on pods, nodes, endpoints, services; `/metrics` non-resource URL); avoid `nodes/proxy` where possible (use dedicated metrics endpoints or kubelet `/metrics` with `nodes/metrics` only).
 9. **Multi-tenant inference platforms**: end users don't get Kubernetes RBAC at all; they call an API gateway with API keys/JWTs (5.12); Kubernetes RBAC is for engineers and automation.
-10. **Documentation and review**: store RBAC as code with owners (CODEOWNERS), diff/review changes, run regularly an access review (`kubectl-who-can`, `rbac-tool`, `rakkess`, `kubectl auth can-i --list`, `rbac-lookup`, KubiScan, Kubescape/Polaris/Trivy RBAC checks).
+10. **Documentation and review**: store RBAC as code with owners (CODEOWNERS), diff/review changes, reconcile declaratively with `kubectl auth reconcile -f some-rbac-config.yaml` (supports `--dry-run`, as shown in *Kubernetes: Up and Running*, Chapter 14; untested here), and run regularly an access review (`kubectl-who-can`, `rbac-tool`, `rakkess`, `kubectl auth can-i --list`, `rbac-lookup`, KubiScan, Kubescape/Polaris/Trivy RBAC checks).
+
+### Least-privilege admin elevation via RBAC `impersonate` (`sudo`-style workflow)
+
+Binding `cluster-admin` directly to an operator's daily user or group identity risks accidental destructive commands when an engineer has the wrong `kubeconfig` context active. *Production Kubernetes* (Chapter 10) recommends a `sudo`-style privilege-elevation pattern built on Kubernetes user impersonation:
+
+1. Bind the operations group (`ops-team` in the book's example) to the built-in read-only `view` `ClusterRole` by default (`cluster-admin-view`).
+2. Bind the `cluster-admin` `ClusterRole` to a synthetic `User` named `cluster-admin` (`cluster-admin-crb`) that no human can log in as directly.
+3. Grant the `ops-team` group a `cluster-admin-impersonator` `ClusterRole` with `verbs: ["impersonate"]` on `resources: ["users"]` restricted to `resourceNames: ["cluster-admin"]`.
+
+In the book's example (untested here), the three RBAC manifests look like this:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-admin-view
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: ops-team
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-admin-crb
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: User
+    name: cluster-admin
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cluster-admin-impersonator
+rules:
+  - apiGroups: [""]
+    resources: ["users"]
+    verbs: ["impersonate"]
+    resourceNames: ["cluster-admin"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-admin-impersonate
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin-impersonator
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: ops-team
+```
+
+With this in place, an operator (`john` in `ops-team`) has read-only access by default and must explicitly pass `--as=cluster-admin` to perform a write, leaving both the real user and `impersonatedUser` in the Kubernetes audit log (untested here):
+
+```bash
+kubectl get configmaps
+# No resources found.
+kubectl create configmap my-config --from-literal=test=test
+# Error from server (Forbidden): configmaps is forbidden: User "john" cannot create resource "configmaps" in API group "" in the namespace "default"
+kubectl --as=cluster-admin create configmap my-config --from-literal=test=test
+# configmap/my-config created
+```
 
 ### Testing and auditing RBAC
 
@@ -341,14 +465,14 @@ Mark tested only after execution.
 37. Secret rotation for env-var consumers? **A:** Restart pods.
 38. Secret rotation for file consumers? **A:** Auto-updated files, app must reload.
 39. RBAC vs PSA? **A:** Who can act vs what pods may look like.
-40. Break-glass principle? **A:** Time-bound, audited elevation.
+40. How do you implement `sudo`-style privilege elevation in RBAC, and what annotation stops the API server from overwriting edits to a built-in `ClusterRole`? **A:** Bind operators to `view` by default and grant `verbs: ["impersonate"]` on `resourceNames: ["cluster-admin"]` (used via `kubectl --as=cluster-admin`); set `rbac.authorization.kubernetes.io/autoupdate: "false"` on the built-in `ClusterRole`.
 
 ## 12. Sources and review notes
 
 **Written in original words.** Principal sources:
 
-- Brendan Burns et al., *Kubernetes: Up and Running* (3rd edition; chapters 13 on ConfigMaps and Secrets and 14 on role-based access control).
-- Josh Rosso et al., *Production Kubernetes* (chapter 7 on secret management).
+- Brendan Burns et al., *Kubernetes: Up and Running* (`kubernetes-up-and-running-3rd-edition`, 3rd edition; Chapter 13 on ConfigMaps and Secrets and Chapter 14: `14. Role-Based Access Control for Kubernetes` — read in full for `rbac.authorization.kubernetes.io/autoupdate: "false"` and `kubectl auth reconcile -f`).
+- Josh Rosso et al., *Production Kubernetes* (`production-kubernetes`, Chapter 7: `7. Secret Management` and Chapter 10: `10. Identity` — both read in full for Vault Agent Injector annotations/templates, Vault Kubernetes auth commands, and the RBAC `cluster-admin-impersonator` recipe).
 - Kubernetes documentation on ConfigMaps, Secrets, encryption at rest, ServiceAccounts, authentication and RBAC; External Secrets, Secrets Store CSI Driver, Vault, Sealed Secrets and SOPS documentation.
 - Examples are the author's constructions.
 

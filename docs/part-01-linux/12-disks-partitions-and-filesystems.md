@@ -441,6 +441,70 @@ sudo debugfs /dev/sdb1               # ext inspector (read-only by default); can
 
 Quotas limit space (blocks) and file count (inodes) per user, group or **project** (directory tree). **ext4**: mount with `usrquota,grpquota` and manage with `quota`, `edquota`, `repquota`, `quotacheck`, `quotaon` (or the journaled quota feature). **XFS**: mount with `uquota,gquota,pquota`; manage with `xfs_quota -x -c 'limit bsoft=100g bhard=120g user' /data`; **project quotas** (`pquota`) cap a directory tree and are the right tool to limit a team's dataset directory. Quotas have a **soft limit** (exceedable for a grace period, with warnings) and a **hard limit** (blocked). Cluster filesystems have their own quota systems (Lustre, GPFS, BeeGFS). Per-process limits (`ulimit -f`) and cgroup I/O limits are different mechanisms (chapter 1.8).
 
+#### Step-by-step Linux filesystem quota commands (from *Supercomputers for Linux SysAdmins*, Ch 12)
+
+To enable and manage standard Linux disk quotas (requires installing the `quota` package), follow the book's six-step workflow (`(untested here)`):
+
+1. **Edit `/etc/fstab` to add `usrquota` and/or `grpquota`** (or `quota`) to the filesystem mount options (in the book's example, `/dev/sda6` mounted on `/export`):
+
+   ```text
+   # (untested here) — /etc/fstab example
+   /dev/sda6 /export ext3 acl,user_xattr,usrquota 1 2
+   ```
+
+2. **Set the filesystem to read-only or unmount it** so active user writes do not corrupt the initial usage scan (you can also use `quotacheck -M` to remount read-only during the check, or isolate to single-user rescue mode with `systemctl isolate rescue`):
+
+   ```bash
+   # (untested here)
+   mount -o remount,ro /dev/sda6
+   # or: umount /export
+   ```
+
+3. **Create the quota accounting database** with `quotacheck` (`quotacheck /path/to/fs`, `quotacheck -a`, or `-vugc` for verbose user/group creation):
+
+   ```bash
+   # (untested here)
+   quotacheck -vugc /dev/sda6
+   ```
+
+4. **Remount the filesystem with the new options**:
+
+   ```bash
+   # (untested here)
+   umount /dev/sda6
+   mount /dev/sda6
+   ```
+
+5. **Enable quota enforcement** (with `quotaon`; `quotaoff` turns it off):
+
+   ```bash
+   # (untested here)
+   quotaon -va
+   ```
+
+6. **Configure and inspect user or group limits** using `edquota`, `setquota`, and `repquota`:
+
+   ```bash
+   # (untested here) — open an editor ($EDITOR) to edit a user's quotas
+   edquota username
+
+   # (untested here) — set quotas directly on the command line (blocks, not kilobytes; 0 means no limit; -u user default, -g group, -b reads batch lines from stdin)
+   setquota username block-soft block-hard inode-soft inode-hard filesystems
+
+   # (untested here) — copy quotas from reference user 'foo' to user 'bar' across all quota-enabled filesystems (-a)
+   setquota -p foo -u bar -a
+
+   # (untested here) — set the global soft-quota grace period (-t, in seconds or 'unset') or per-user/group grace period (-T)
+   setquota -t [-u | -g] block-grace inode-grace -a | filesystems
+   setquota -T [-u | g] name block-grace inode-grace -a | filesystems
+
+   # (untested here) — report quota usage across all filesystems (-a) or in human-readable units (-s / -m)
+   repquota -a
+   repquota -m /
+   ```
+
+   **Quotas over NFS**: when exporting a quota-enabled partition over NFS, install the `quota` package on the NFS server, enable quotas on the exported partition, and restart the NFS service; if `repquota` on the network client still does not work, ensure the **`rpc.rquotad`** service is running on the NFS server.
+
 ## 8. Files, file descriptors and the read path
 
 A process reaches files, sockets, pipes and many kernel objects through integer **file descriptors**. The VFS offers one interface; each filesystem implements the semantics underneath. "Too many open files" is therefore a **resource-limit or descriptor-leak** problem (chapter 1.8), not a disk-capacity problem. Inspect it with:
@@ -831,7 +895,7 @@ cd /; sudo umount /mnt/e /mnt/x 2>/dev/null; sudo losetup -d $LOOP; rm -f /tmp/d
 27. A job's checkpoint time grows from 45 s to 8 min as nodes go from 16 to 64, yet per-node `iostat` is idle. Diagnose and give three mitigations.
 28. Which mount options would you use for a local NVMe scratch filesystem, and why avoid continuous `discard`?
 29. How do you identify which process holds a file on a filesystem you cannot unmount?
-30. List three ways to find out whether `/data` is local flash, a spinning disk or a network filesystem.
+30. List the step-by-step commands to initialize and enable Linux disk quotas on `/dev/sda6`, set a user's block/inode limits and grace period with `setquota`, and state which daemon must run on an NFS server for quotas to work over NFS.
 
 ### Answers
 
@@ -864,14 +928,15 @@ cd /; sudo umount /mnt/e /mnt/x 2>/dev/null; sudo losetup -d $LOOP; rm -f /tmp/d
 27. Shared-resource contention on the metadata/data servers. Stagger writes, write to local NVMe first then upload, shard to fewer larger files, tune striping and checkpoint frequency.
 28. XFS or ext4 on NVMe, `noatime,nodiratime,nofail`, a weekly `fstrim.timer`; continuous discard adds latency per delete.
 29. `lsof +f -- /mountpoint` or `fuser -vm /mountpoint`.
-30. `findmnt -T /data` (FSTYPE: nfs/lustre/ext4), `lsblk -o NAME,ROTA,TRAN,FSTYPE,MOUNTPOINTS` (`ROTA`, `TRAN` nvme/sata), `df -hT`, `nvme list`, `cat /sys/block/DEV/queue/rotational`.
+30. Add `usrquota` (and/or `grpquota`) to `/etc/fstab`, run `mount -o remount,ro /dev/sda6`, build the quota database with `quotacheck -vugc /dev/sda6`, remount (`umount /dev/sda6 && mount /dev/sda6`), and enable quotas with `quotaon -va`. Set limits with `setquota username block-soft block-hard inode-soft inode-hard filesystems` (or `edquota username`), set grace periods with `setquota -t` (global) or `setquota -T` (per user/group), view reports with `repquota -a`, and ensure `rpc.rquotad` is started on the NFS server for NFS quotas.
 
-## Sources and further reading
+## Sources and review notes
 
+- Step-by-step Linux filesystem quota workflow (`usrquota,grpquota`, `quotacheck -vugc`, `quotaon -va`, `setquota -u/-t/-T/-p`, `edquota`, `repquota -a`, and `rpc.rquotad` for NFS) (read in full: `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`, "12. Users – Quotas and Access Rights").
 - Brian Ward, *How Linux Works*, 3rd ed.: ch. 4 (partitioning: viewing tables, MBR basics, modifying and creating tables with `fdisk`, forcing a reload, disk geometry and alignment, SSD reads; filesystems: types and evolution, creating with `mkfs`, mounting, UUIDs, buffering and caching, mount options, remounting, `/etc/fstab` and alternatives, capacity with `df`/`du`, checking and repairing with `fsck`, special-purpose filesystems; swap space; the LVM material is in chapter 1.13; "inside a traditional filesystem": inodes, link counts, block allocation, user-space view). Sections 3 to 7 follow this chapter; explanations, tables, worked examples, the AI-infrastructure material and the labs are original.
 - Brendan Gregg, *Systems Performance*, 2nd ed.: ch. 8 (file system terminology and models; latency, caching, random/sequential, prefetch and read-ahead, write-back, synchronous writes, raw and direct I/O, non-blocking I/O, memory-mapped files, metadata, logical versus physical I/O, special filesystems, timestamps, capacity; the I/O stack, VFS, caches, features, FFS/ext3/ext4/XFS/ZFS/btrfs, volumes and pools; methodology, tools, experimentation and tuning) and ch. 9 (disk terminology, models, time measurement and scales, caching, random/sequential, I/O size, IOPS, utilisation, saturation, I/O wait, synchronous versus asynchronous, disk types, interfaces, RAID and storage types, the Linux block I/O stack with merging and schedulers). Sections 1, 2, 9, 10 and 11 condense these chapters in original wording; the disk-methodology, observability-tool and tuning sections of chapter 9 and RAID levels are completed in chapter 1.13 and the benchmarking chapter 1.25. The book's figures, tables of example latencies and sample outputs are not reproduced.
 - nvidia-devops (the user's earlier notes): `volume-01/02-linux-storage-io-masterclass.md`: block device, filesystem and mount primers; local versus shared storage; the five meanings of "disk full"; file descriptors and the VFS read path; the deleted-but-open leak; `O_DIRECT`, alignment and GPUDirect Storage; the capacity-versus-latency evidence table; `iostat` reading and the NVMe `%util` caveat; inode exhaustion; the write path and durability; the checkpoint storm and metadata-storm scenarios; I/O scheduler guidance. Migrated with edits, partial (RAID/NVMe operations and tooling move to chapter 1.13 and the storage part).
 - Manual pages: `parted(8)`, `fdisk(8)`, `sgdisk(8)`, `mkfs(8)`, `mke2fs(8)`, `mkfs.xfs(8)`, `mount(8)`, `fstab(5)`, `findmnt(8)`, `lsblk(8)`, `blkid(8)`, `tune2fs(8)`, `e2fsck(8)`, `xfs_repair(8)`, `xfs_info(8)`, `debugfs(8)`, `fstrim(8)`, `df(1)`, `du(1)`, `lsof(8)`, `iostat(1)`, `fio(1)`, `ext4(5)`, `xfs(5)`, `open(2)` (O_DIRECT, O_SYNC), `fsync(2)`, `mmap(2)`, `quota(1)`, `xfs_quota(8)`, `proc(5)`.
 - Related chapters: 1.3 (paths, links, inodes), 1.6 (permissions, quotas intro), 1.8 (descriptors, limits, `D` state, I/O monitoring), 1.10 (devices, sysfs, udev, sysctl), 1.13 (LVM, RAID, NVMe), 1.14 (boot, initramfs, fstab at boot), 1.15 (systemd mount units, fstrim timer), 1.17 (memory, dirty pages, swap), 1.19 and 1.20 (overlayfs), 1.23 to 1.25 (performance method, tools, benchmarking), 1.30 (NFS clients), Part 6 and the storage part (Lustre, GPFS, Weka, BeeGFS, object storage), containers and Kubernetes chapters (volumes, ephemeral storage).
-
-*Notes for review:* the thresholds and defaults quoted (ext4 5% reserved blocks, `relatime` default, 30-second flush age, `vm.dirty_*` defaults, fstab pass numbers, MBR/GPT limits, PCIe bandwidth, P/E cycle ranges, I/O scheduler defaults) vary with kernel, distribution and hardware and must be confirmed on your systems. The `mkfs.xfs` `ftype=1` and overlayfs requirement, `allocsize`, GDS compatibility-mode behaviour (`gdscheck`, cuFile) and `io_uring` support in `fio` should be verified against your versions and NVIDIA's documentation. All lab commands are **untested**; run them on a disposable VM with loop devices before this chapter moves to `reviewed`, and never against a disk holding data.
+- Run here: none.
+- Not verified on live hardware: the thresholds and defaults quoted (ext4 5% reserved blocks, `relatime` default, 30-second flush age, `vm.dirty_*` defaults, fstab pass numbers, MBR/GPT limits, PCIe bandwidth, P/E cycle ranges, I/O scheduler defaults) vary with kernel, distribution and hardware and must be confirmed on your systems. The `mkfs.xfs` `ftype=1` and overlayfs requirement, `allocsize`, GDS compatibility-mode behaviour (`gdscheck`, cuFile), `io_uring` support in `fio`, and all quota/lab commands are **untested**; run them on a disposable VM with loop devices before this chapter moves to `reviewed`, and never against a disk holding data.

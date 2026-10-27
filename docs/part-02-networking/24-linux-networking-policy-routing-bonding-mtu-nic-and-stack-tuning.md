@@ -259,7 +259,7 @@ Rule: **measure first**; most defaults are sane and the stack autotunes. Tune fo
 | Short-RTT DC 100G | Buffers 16 to 64 MB max; keep defaults for min/default; avoid huge defaults that waste memory |
 | Congestion control + pacing | `net.core.default_qdisc=fq`, `net.ipv4.tcp_congestion_control=bbr` (WAN/edge) or `cubic` (default), DCTCP+ECN in controlled fabrics (`tcp_ecn=1`) |
 | Accept bursts | `net.core.somaxconn=4096..65535`, `tcp_max_syn_backlog=8192`, application backlog; `tcp_syncookies=1` |
-| Many outbound connections | `ip_local_port_range="10240 65535"`, `tcp_tw_reuse=1`, connection pooling, spread over destination addresses |
+| Many outbound connections / NCCL bootstrap | `ip_local_port_range="10240 65535"` (or a dedicated range such as `net.ipv4.ip_local_port_range="50000 51000"` in `/etc/sysctl.conf` / `/proc/sys/net/ipv4/ip_local_port_range` paired with `NCCL_SOCKET_IFNAME` and `MASTER_PORT` to prevent TCP port exhaustion during `NCCL` out-of-band bootstrap handshakes; for socket/TCP transport paths, `NCCL_NSOCKS_PERTHREAD` × `NCCL_SOCKET_NTHREADS` cannot exceed `64` sockets total per communicator), `tcp_tw_reuse=1`, connection pooling, spread over destination addresses |
 | Idle connection hygiene | `tcp_keepalive_time/intvl/probes` (e.g. 300/30/5), `tcp_slow_start_after_idle=0` for persistent bursty connections |
 | Fail-fast clients | `tcp_syn_retries=2..3`, `tcp_retries2` lower (e.g. 8) for dead peer detection, `TCP_USER_TIMEOUT` per socket |
 | PMTUD black holes | `tcp_mtu_probing=1` |
@@ -337,7 +337,7 @@ Persisting ethtool/IRQ settings: a `systemd` unit or udev rule or NetworkManager
 3. **Softirq saturation on one core** from veth or a single-queue virtual NIC: RPS/RFS, multiqueue virtio (`ethtool -L`), host networking/SR-IOV for hot pods.
 4. **Replies leave on the wrong NIC.** Policy routing (section 1).
 5. **Jumbo frames partly working.** One hop at 1500; `ping -M do -s 8972` fails; fix MTU consistently, clamp MSS, permit ICMP.
-6. **Outbound connection failures at high rates.** Ephemeral port range, TIME_WAIT, SNAT exhaustion, conntrack full: pooling, `tcp_tw_reuse`, more source IPs.
+6. **Outbound connection failures at high rates or stalled `NCCL` bootstrap handshakes.** Ephemeral port range too narrow (`net.ipv4.ip_local_port_range` in `/etc/sysctl.conf`, e.g., `"50000 51000"` in the book's example, or `"10240 65535"`, plus explicit `MASTER_PORT` and `NCCL_SOCKET_IFNAME=ib0` so bootstrap handshakes do not land on `eth0`, `docker0`, or `lo`), TIME_WAIT, SNAT exhaustion, conntrack full: pooling, `tcp_tw_reuse`, more source IPs. When tuning `NCCL` socket transport across multiple NICs, `NCCL_NSOCKS_PERTHREAD` × `NCCL_SOCKET_NTHREADS` must not exceed `64` sockets total per communicator.
 7. **UDP telemetry loss (StatsD/syslog).** `UdpRcvbufErrors`: raise `rmem_max`, set `SO_RCVBUF`, scale receivers with `SO_REUSEPORT`, check `netdev_max_backlog`.
 8. **Latency spikes at idle then burst.** Coalescing and C-states: lower coalescing, `tuned network-latency`, busy poll, pin cores.
 9. **Asymmetric ECMP reorder.** Hosts with BGP to two ToRs reorder if paths differ; use consistent hashing and avoid per-packet balancing.
@@ -415,7 +415,7 @@ Mark tested only after execution.
 28. TSO vs GSO? **A:** Hardware vs software segmentation of large sends.
 29. When to turn off LRO? **A:** On routers/bridges/hypervisors.
 30. Which qdisc pairs with BBR classically? **A:** `fq`.
-31. Which settings set TCP buffers? **A:** `tcp_rmem`, `tcp_wmem`, `rmem_max`, `wmem_max`.
+31. Which settings set TCP buffers, and how do you avoid TCP port exhaustion or socket-limit violations during `NCCL` bootstrap and socket transport? **A:** `tcp_rmem`, `tcp_wmem`, `rmem_max`, `wmem_max` set TCP buffers; widen `net.ipv4.ip_local_port_range` (e.g. `"50000 51000"` or `"10240 65535"` in `/etc/sysctl.conf`) with explicit `NCCL_SOCKET_IFNAME` and `MASTER_PORT`, and keep `NCCL_NSOCKS_PERTHREAD` × `NCCL_SOCKET_NTHREADS` ≤ `64` total sockets per communicator.
 32. Why not set `SO_RCVBUF`? **A:** Disables receive autotuning.
 33. What does `tcp_slow_start_after_idle=0` do? **A:** Keeps cwnd after idle.
 34. What is `somaxconn`? **A:** Max accept-queue length per listener.
@@ -433,6 +433,7 @@ Mark tested only after execution.
 - The author's own `nvidia-devops` repository, volume 01 networking masterclass: the packet journey (Rx path, NAPI, RSS and interrupt affinity, ring buffers and coalescing, Tx path and offloads), policy-based routing and the multi-homed asymmetric routing fix, VRF, bonding and LACP limitations, multi-homing for RoCEv2, SR-IOV and DPDK, eBPF/XDP and Cilium, LFN/TCP window scaling and SACK, the veth bottleneck scenario, MTU, and the sysctl tuning cheat sheet (with its caveats).
 - Brendan Gregg, *Systems Performance*, 2nd ed., chapter 10 (network tuning: system-wide tunables with the production example, socket and TCP buffers, backlog, congestion control, TCP options, device queues, socket options, configuration; methodology for static performance tuning and resource controls).
 - Brian Ward, *How Linux Works*, 3rd ed., chapter 9 (manual interface and route configuration, network managers, routers).
+- `ai-systems-performance-engineering` — Chris Fregly, *AI Systems Performance Engineering*, "Chapter 4. Tuning Distributed Networking Communication" (read in full): host TCP stack and MTU 9000 tuning (`net.core.rmem_max`/`wmem_max`, `net.ipv4.tcp_rmem`/`tcp_wmem`, `net.ipv4.tcp_congestion_control` CUBIC vs BBR), NUMA-local NIC interrupt affinity, `NCCL` bootstrap ephemeral TCP port exhaustion (`net.ipv4.ip_local_port_range="50000 51000"` in `/etc/sysctl.conf`, `NCCL_SOCKET_IFNAME`, `MASTER_PORT`), and socket-transport connection limits (`NCCL_NSOCKS_PERTHREAD` × `NCCL_SOCKET_NTHREADS` ≤ `64`).
 - Kernel documentation (`ip-sysctl`, `scaling.rst`, `vrf.rst`), `ethtool(8)`, `ip-rule(8)` and driver documentation informed the commands; values in tables are starting points, not recommendations.
 
 **Flagged for verification before publishing:** every sysctl value and ethtool/driver option against the target kernel, NIC and firmware; `tcp_l3mdev_accept`, `type route` mark/reroute behaviour, `hw-tc-offload`/GRO hardware flags per NIC; BBR availability and fairness on your kernel; PCIe throughput figures; veth throughput claims (vary widely); all labs are **untested**.

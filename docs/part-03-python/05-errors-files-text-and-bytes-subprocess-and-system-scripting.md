@@ -67,6 +67,19 @@ finally:                                   # ALWAYS runs: cleanup
 - `finally` and `with` guarantee cleanup; a `return` inside `finally` swallows exceptions (avoid).
 - **Raising**: `raise ValueError("bad value")`; instantiate with context (`raise ConfigError(f"missing key {key!r} in {path}")`). **Chaining**: `raise NewError("...") from exc` sets `__cause__` (explicit translation of low-level errors into domain errors); implicit chaining shows "During handling of the above exception, another exception occurred"; `raise ... from None` suppresses context when the original is noise.
 - **Exception objects**: `exc.args`, `str(exc)`, `repr(exc)`, `exc.__traceback__`, `exc.add_note("hint")` (3.11), `traceback.format_exc()`, `logging.exception()` (logs message + traceback inside handlers).
+- **`except Exc as var:` scope and reference-cleanup rule**: the variable bound after `as` in an `except` clause is local to that `except` block and is **automatically unbound (`del var`) when the `except` block exits**—even if `var` was previously assigned a value in the surrounding scope. Python removes this binding on exit because the caught exception's `__traceback__` attribute holds references to the runtime call stack frames (and their local variables), so keeping `var` alive would create a reference cycle that delays garbage collection and retains memory. If you need the exception object after the `try` statement finishes, assign it to a separate variable inside the handler:
+
+```python
+# In the book's examples (untested here):
+X = 99
+try:
+    1 / 0
+except Exception as X:
+    print(X)               # division by zero
+    saveit = X             # assign to another name if you need the exception after the block
+# Here X is unbound (raises NameError: name 'X' is not defined), whereas saveit is ZeroDivisionError('division by zero')
+```
+
 - **Custom exceptions**: derive from `Exception` (or an application base), name them for the condition (`NodeUnreachable`), carry data as attributes, keep a shallow hierarchy.
 
 ```python
@@ -558,7 +571,7 @@ Mark tested only after execution.
 1. When does `else` run in try? **A:** When no exception occurred in try.
 2. When does `finally` run? **A:** Always.
 3. Why not bare `except:`? **A:** Catches `KeyboardInterrupt`/`SystemExit` and hides bugs.
-4. What does `raise` alone do? **A:** Re-raises the current exception.
+4. What does `raise` alone do, and what happens to `var` after an `except Exc as var:` block exits? **A:** Bare `raise` re-raises the active exception; Python automatically unbinds (`del var`) the `as var` target when the `except` block exits (even if `var` existed in the surrounding scope) so the exception's `__traceback__` frame references do not keep local variables alive in a reference cycle.
 5. What does `raise X from Y` set? **A:** `__cause__` explicit chaining.
 6. How to suppress context? **A:** `raise X from None`.
 7. Which exception base excludes Ctrl-C from `except Exception`? **A:** `KeyboardInterrupt` derives from `BaseException`.
@@ -600,7 +613,7 @@ Mark tested only after execution.
 
 **Written in original words.** Principal sources:
 
-- Mark Lutz, *Learning Python*, 6th ed.: part VII (exceptions: basics, coding details, exception objects, odds and ends) and chapter 37 (Unicode and byte strings).
+- Mark Lutz, *Learning Python*, 6th ed. (`learning-python-6th-edition`; part VII: exceptions—with `Chapter 34. Exception Coding Details` read in full for this chapter, covering `try`/`except`/`else`/`finally`, `raise`/`raise from`, `except Exc as var` scope and reference-cleanup rules, `assert`, and `with` context managers—plus chapter 37 on Unicode and byte strings).
 - Luciano Ramalho, *Fluent Python*, 2nd ed.: chapter 4 (Unicode text versus bytes) and chapter 18 (`with`, `match`, and `else` blocks).
 - The author's `nvidia-devops` repository, volume 02: interacting with the host system (`pathlib`, `subprocess`, `shutil`), error handling, tooling and operations masterclasses.
 - Brian Ward, *How Linux Works*, 3rd ed. (signals, processes, `/proc`) for the system-interaction sections.

@@ -65,7 +65,7 @@ flowchart TB
 | **UTS / IPC namespaces** | Own hostname; own SysV IPC/POSIX queues | default |
 | **User namespace** | UID/GID remapping (root inside = unprivileged outside) | rootless Podman, some runtimes |
 | **Cgroup namespace** | Virtualised view of the cgroup tree | default on cgroup v2 |
-| **cgroups (v2)** | Limits and accounting: CPU, memory, I/O, PIDs, devices | `--cpus`, `--memory`, `--pids-limit` |
+| **cgroups (v2)** | Limits and accounting: CPU, memory, I/O, PIDs, devices | `--cpus`, `--cpu-shares`, `--memory`, `--memory-swap`, `--pids-limit` |
 | **Capabilities** | Split root privileges; containers drop most by default | `--cap-drop ALL --cap-add NET_BIND_SERVICE` |
 | **seccomp** | Syscall filter (default profile blocks ~40 risky calls) | `--security-opt seccomp=...` |
 | **AppArmor / SELinux** | Mandatory access control profiles | distro defaults |
@@ -224,9 +224,9 @@ A container cannot contain a GPU driver: the **kernel driver** and its device no
 
 ```mermaid
 flowchart LR
-  A["docker run --gpus all / nvidia runtime / CDI device"] --> B["NVIDIA Container Toolkit\n(runtime hook or CDI spec)"]
-  B --> C["Injects into the container:\n/dev/nvidia*, /dev/nvidiactl, /dev/nvidia-uvm\nhost driver userspace libs: libcuda.so, libnvidia-ml.so, nvidia-smi"]
-  C --> D["Container's CUDA runtime/cuDNN/NCCL (from the image)\ncalls libcuda.so (from the host driver)"]
+  A["docker run --gpus all / CDI"] --> B["NVIDIA Container Toolkit\n(hook or CDI spec)"]
+  B --> C["Injects /dev/nvidia* and host libs:\nlibcuda.so, libnvidia-ml.so, nvidia-smi"]
+  C --> D["Container CUDA runtime/cuDNN/NCCL\ncalls host libcuda.so"]
 ```
 
 - The image provides **CUDA toolkit runtime libraries** (`libcudart`, `cublas`, `cudnn`, `nccl`); the host provides **`libcuda.so` and the kernel module**, mounted in by the toolkit at start. That split is why one host driver serves many CUDA versions.
@@ -248,6 +248,8 @@ docker run --rm --device nvidia.com/gpu=all ubuntu:22.04 ls /dev/nvidia*       #
 
 ```bash
 docker run -d --name web -p 8080:80 --restart unless-stopped --memory 512m --cpus 1 nginx:1.27
+# In the book's (*Kubernetes: Up and Running*, Chapter 2) example: cap memory + swap and set relative CPU weight with --cpu-shares (untested here)
+docker run -d --name kuard --publish 8080:8080 --memory 200m --memory-swap 1G --cpu-shares 1024 gcr.io/kuar-demo/kuard-amd64:blue
 docker ps -a; docker logs -f --tail 100 web; docker exec -it web sh
 docker stats --no-stream; docker top web; docker inspect web | jq '.[0].HostConfig'
 docker stop web   # SIGTERM then SIGKILL after grace (default 10s); `--time` to change
@@ -260,6 +262,8 @@ docker system df; docker image prune -a --filter "until=168h"            # disk 
 docker run --rm --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges --user 10001:10001 app:1.4   # hardened run
 podman run --rm -it --userns=keep-id alpine id                           # rootless
 ```
+
+Note the distinction between `--cpus` (a hard CFS quota limit on CPU cores) and `--cpu-shares` (relative CPU weight under contention, where `1024` is the default share weight, corresponding to Kubernetes `resources.requests.cpu`), and between `--memory` (RAM limit, `200m` in the book's example) and `--memory-swap` (combined RAM plus swap limit, `1G` in the book's example).
 
 Podman is CLI-compatible with Docker (`alias docker=podman`), daemonless (fork/exec per container), supports pods (`podman pod`) and generates Kubernetes YAML (`podman generate kube`) and systemd units / Quadlet files.
 
@@ -328,7 +332,7 @@ Mark tested only after execution.
 
 1. Is a container a VM? **A:** No; an isolated process sharing the host kernel.
 2. Name the Linux namespaces. **A:** PID, mount, network, UTS, IPC, user, cgroup (and time).
-3. What limits CPU/memory? **A:** cgroups.
+3. What kernel feature limits CPU and memory, and how do Docker's `--cpus` and `--cpu-shares` flags differ? **A:** cgroups; `--cpus` sets a hard CPU quota cap, whereas `--cpu-shares` (for example, `--cpu-shares 1024` alongside `--memory 200m --memory-swap 1G`) sets relative CPU weight when CPUs are contended.
 4. What is PID 1's special behaviour? **A:** Signal defaults/zombie reaping differ.
 5. What is overlayfs? **A:** Union filesystem of read-only layers plus writable layer.
 6. What is an OCI image made of? **A:** Manifest, config, layers (and index for multi-arch).
@@ -371,7 +375,7 @@ Mark tested only after execution.
 
 **Written in original words.** Principal sources:
 
-- Brendan Burns, Joe Beda, Kelsey Hightower and Lachlan Evenson, *Kubernetes: Up and Running* (3rd edition; chapter 2 on creating and running containers: images, Docker image format, building with Dockerfiles, optimising size, registries, runtime).
+- Brendan Burns, Joe Beda, Kelsey Hightower and Lachlan Evenson, *Kubernetes: Up and Running* (`kubernetes-up-and-running-3rd-edition`, 3rd edition; Chapter 2: `2. Creating and Running Containers` — read in full for images, Docker image format, building with Dockerfiles, multistage builds, optimising size, registries, runtime, and `--memory` / `--memory-swap` / `--cpu-shares` resource flags).
 - Josh Rosso, Rich Lander, Alex Brand and John Harris, *Production Kubernetes* (chapter 3 on container runtime: images, runtimes, OCI, CRI).
 - Linux namespace and cgroup mechanics follow chapters 1.19 and 1.20 of this handbook and the kernel documentation.
 - OCI Image, Runtime and Distribution specifications; BuildKit, Docker, Podman, NVIDIA Container Toolkit and CDI documentation.

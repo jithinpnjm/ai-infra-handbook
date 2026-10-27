@@ -83,11 +83,29 @@ Key facts:
 
 - `class` is an **executable statement** creating a class object (an instance of `type`). Calling the class creates an instance: `__new__` allocates, `__init__` initialises.
 - `self` is just the conventional name for the instance; methods are functions stored on the class that become **bound methods** when accessed through an instance (`node.drain` is a bound method object carrying `node`).
-- **Attribute lookup** (`obj.attr`): data descriptors on the type, instance `__dict__`, non-data descriptors/class attributes along the **MRO**, then `__getattr__` as a fallback. Assignment (`obj.attr = v`) writes to the instance `__dict__` (or invokes a data descriptor such as a property setter). Class attributes are shared; assigning via an instance **shadows** rather than modifying them (`node.cluster = "x"` creates an instance attribute).
+- **Attribute lookup (`object.attr`) and inheritance search**: every `object.attr` expression triggers a bottom-up search of a tree of linked namespace objects—looking first in the **instance** object (`self`, via `self.__dict__`), then in its **class** (`self.__class__`), and then in all higher **superclasses** in the class tree from bottom to top and left to right (linearised as `self.__class__.__mro__`), returning the first `attr` found (with data descriptors such as `@property` or `__slots__` on the class taking precedence over the instance `__dict__`, and `__getattr__` called as a fallback if nothing is found). Because lower definitions in the tree are found first, subclasses override superclass attributes simply by redefining them. Assignment (`obj.attr = v`), by contrast, does not climb the inheritance tree: it writes directly to the target object's namespace (`obj.__dict__`, or invokes a data descriptor setter). Class attributes are shared; assigning via an instance **shadows** rather than modifying them (`node.cluster = "x"` creates an instance attribute on `node`).
+- **Classes are not enclosing (`E`) scopes in LEGB**: while a `class` body executes in its own local namespace dictionary (which becomes the class's attribute dictionary), a `class` statement **never acts as an enclosing (`E`) scope** for `def` methods or nested classes inside it under the `LEGB` rule (lookup is `LEGB`, not `LCEGB`). Unqualified names inside a method skip the enclosing `class` and resolve in enclosing `def` functions, the module global (`G`) scope, or built-ins (`B`). Methods must always qualify class attributes via `self.attr` (inheritance search) or `ClassName.attr`:
+
+```python
+# In the book's classscope3.py example (untested here):
+X = 1
+def nester():
+    X = 2                        # enclosing function scope (E)
+    class C:
+        X = 3                    # class attribute C.X (not in LEGB for methods)
+        def method1(self):
+            print(X)             # prints 2 (from nester's E scope, NOT 3 in class C)
+            print(self.X)        # prints 3 (via inheritance on self -> C.X)
+```
+
 - **Mutable class attributes** (a list or dict at class level) are shared by all instances: a common bug source. Create per-instance mutable state in `__init__`.
 - **Privacy** is by convention: `_name` (internal), `__name` (name-mangled to `_Class__name` to avoid subclass clashes, not true privacy). Python trusts programmers; document the public API.
 - **`@property`** exposes methods as attributes: start with plain attributes and add properties later without changing callers. Use for validation, derived values, lazy computation (`functools.cached_property`), and read-only fields.
-- **`__slots__`** declares a fixed set of attributes: no per-instance `__dict__`, lower memory (useful for millions of small objects) and faster access, at the cost of flexibility (no dynamic attributes, careful with inheritance and weak references).
+- **`__slots__` and its inheritance rules**: assigning a sequence of attribute name strings to `__slots__` reserves fixed per-instance storage managed by class-level descriptors instead of allocating a per-instance `__dict__` (and `__weakref__`), saving memory when millions of instances exist. However, `__slots__` has strict inheritance rules:
+  - **Every class in the hierarchy must define `__slots__`:** if a subclass defines `__slots__` but a superclass does not (or a superclass defines `__slots__` and a subclass does not), the class without `__slots__` still creates an instance `__dict__` on every instance, negating the memory savings (in the book's example, `class C: pass; class D(C): __slots__ = ['a']` still gives `D()` an instance `__dict__`). Subclasses that add no new attributes must still declare `__slots__ = ()`.
+  - **Do not repeat slot names in subclasses:** instances inherit the union of all `__slots__` along the MRO; repeating a superclass slot name in a subclass hides the superclass slot descriptor and wastes space.
+  - **No class-level defaults of the same name and single non-empty base:** because each slot name is a class-level descriptor on the class, assigning a class attribute with the same name (`class C: __slots__ = ['a']; a = 99`) raises `ValueError: 'a' in __slots__ conflicts with class variable`. In multiple inheritance, at most one base class may have a non-empty `__slots__` (mixing two classes with non-empty `__slots__` raises `TypeError: multiple bases have instance lay-out conflict`; mixins should use `__slots__ = ()`).
+  - **Generic attribute inspection:** because slotted instances lack `__dict__` (unless `'__dict__'` is explicitly included in `__slots__`) and `obj.__slots__` shows only the lowest class's list rather than the union across superclasses, generic tools should use `dir(obj)` and `getattr(obj, name)` rather than indexing `obj.__dict__`.
 - **`__init__` must not do heavy IO** (network calls, file reads) when avoidable: prefer explicit factory classmethods or lazy connection, so objects are cheap to construct and test.
 
 ### Object lifecycle and identity
@@ -112,7 +130,10 @@ class GpuNode(Resource):
         return super().describe() + f" gpus={self.gpus}"
 ```
 
-- `super()` returns a proxy that delegates to the **next class in the MRO**, not necessarily the direct parent; this is what makes cooperative multiple inheritance work, provided every class calls `super()` consistently (and accepts `**kwargs` where appropriate).
+- `super()` returns a proxy that delegates to the **next class in the instance's MRO** (`self.__class__.__mro__` past the class containing the `super()` call), not necessarily the direct parent; this is what makes cooperative multiple inheritance work, provided the class hierarchy satisfies three cooperative `super()` call-chain rules:
+  1. **Universal deployment:** every class in the MRO that implements the method before the anchor must call `super().method()`. The first class that omits `super()` stops the chain (in the book's example, if `class C(B, A)` calls `super().act()` and `B.act` does not call `super().act()`, `A.act` is never reached).
+  2. **Call-chain anchors:** the MRO chain must end at an anchor class that defines the method without calling `super()` again. For `__init__`, the built-in root `object` provides an anchor (`object.__init__(self)`), but for custom methods such as `act(self)`, calling `super().act()` in the last class before `object` raises `AttributeError: 'super' object has no attribute 'act'` unless a common base/anchor class (such as `class X: def act(self): ...`) precedes `object` on the MRO.
+  3. **Compatible argument signatures:** because a class's next neighbor on `self.__class__.__mro__` depends on the subclass's inheritance graph, all cooperative implementations of a method across the tree must accept compatible signatures (or consume their own keyword arguments and forward `**kwargs`), and `object.__init__()` at the end of an `__init__` chain accepts no extra arguments beyond `self` (`TypeError: object.__init__() takes exactly one argument`).
 - **Method Resolution Order**: Python linearises the class hierarchy using the **C3 algorithm**: children before parents, parents in the declared order, and each class appears once; `Class.__mro__` or `Class.mro()` shows it. In diamond inheritance, the shared base is reached once, after all its subclasses.
 
 ```python
@@ -450,7 +471,7 @@ Mark tested only after execution.
 4. What does assigning via instance do to a class attribute? **A:** Creates a shadowing instance attribute.
 5. What is `@property` for? **A:** Attribute-style access to computed/validated values.
 6. `@classmethod` vs `@staticmethod`? **A:** Receives the class vs receives nothing.
-7. What does `__slots__` do? **A:** Fixes attributes, removes `__dict__`, saves memory.
+7. What does `__slots__` do, and what happens if a subclass defines `__slots__` while its superclass does not? **A:** `__slots__` fixes instance attributes and omits the per-instance `__dict__` to save memory, but if any class in the inheritance hierarchy omits `__slots__`, that class still creates an instance `__dict__`, negating the memory savings unless every class in the hierarchy defines `__slots__` (using `__slots__ = ()` when adding no new attributes).
 8. What is name mangling? **A:** `__x` becomes `_Class__x` to avoid subclass clashes.
 9. What does `super()` do? **A:** Delegates to the next class in the MRO.
 10. What algorithm builds the MRO? **A:** C3 linearisation.
@@ -490,7 +511,7 @@ Mark tested only after execution.
 **Written in original words.** Principal sources:
 
 - Luciano Ramalho, *Fluent Python*, 2nd ed.: chapter 5 (data class builders), chapter 8 (type hints in functions), chapter 11 (a Pythonic object), chapter 13 (interfaces, protocols and ABCs), chapter 14 (inheritance: for better or for worse), chapter 15 (more about type hints), chapter 16 (operator overloading).
-- Mark Lutz, *Learning Python*, 6th ed., part VI (classes and OOP: big picture, class coding basics, a more realistic example, class coding details, operator overloading, designing with classes, class odds and ends).
+- Mark Lutz, *Learning Python*, 6th ed. (`learning-python-6th-edition`, part VI: classes and OOP—with `Chapter 26. OOP: The Big Picture`, `Chapter 29. Class Coding Details`, and `Chapter 32. Class Odds and Ends` read in full for this chapter—covering the big picture, `object.attr` inheritance tree search, class coding basics, a more realistic example, class coding details, why `class` is not an enclosing `E` scope in `LEGB`, operator overloading, designing with classes, `__slots__` inheritance rules, cooperative `super()` call-chain rules, and class odds and ends).
 - The author's `nvidia-devops` repository, volume 02: advanced OOP and design patterns (ABC provider interfaces, factories, MRO and multiple inheritance, class vs instance variables, dataclasses, pydantic configuration validation and secrets).
 - Examples are the author's constructions.
 

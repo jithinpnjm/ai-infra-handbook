@@ -51,6 +51,37 @@ Three properties recur in every definition:
 - **Fast interconnect.** The processors must exchange data with low latency and high bandwidth, otherwise the program waits. This is the main thing that separates a supercomputer from a large pile of independent servers (a *farm*).
 - **Shared infrastructure.** A parallel file system, a scheduler, a common software stack and a management plane, because users cannot each bring their own.
 
+### Parallelism, pipelining, and the nine levels of cluster parallelism
+
+Every modern supercomputer achieves speed through parallel data processing: when two or more operations do not depend on each other's outputs, hardware can run them at the same time. In hardware, this principle takes two classic forms:
+
+- **Parallelism**: separate functional units execute different machine instructions at the same time (for example, an addition unit computes `x=a+b` while a multiplication unit computes `y=b*c`, or hundreds of GPU cores run the same kernel across different data).
+- **Pipelining**: a single operation is split into sequential hardware stages (such as loading elements from memory, normalizing mantissas, adding, correcting, and writing back to memory) that work like an assembly line. This is heavily used in vector instructions such as AVX (Advanced Vector Extensions).
+
+If the slowest pipeline stage takes `K` clock cycles and the entire pipeline takes `S` clock cycles (called the pipeline acceleration time for the first element), processing a vector of `N` elements takes:
+
+```text
+Total cycles = K*(N-1)+S
+```
+
+After the first element finishes in `S` cycles, the pipeline produces one result every `K` cycles. In modern processors, most often `K = 1` (and in the book's vector addition example, `S = 5` five stages).
+
+Even within a single server, memory banks and device controllers add further hardware parallelism: for example, on a motherboard with four independent memory banks, populating four slots with `8 GB` each (one per bank) allows overlapping writes across banks and performs better than putting a single `32 GB` module in one slot.
+
+An administrator diagnosing a slow parallel job must check the full hierarchy of hardware (`[HW]`) and software (`[SW]`) parallelism across the cluster:
+
+1. `[HW]` multiple memory banks
+2. `[HW]` multiline CPU cache
+3. `[HW]` multiple CPUs
+4. `[HW]` multiple CPU cores
+5. `[HW]` multiple functional devices in one CPU core
+6. `[HW]` accelerators, like GPUs and FPGAs
+7. `[HW]` network devices, with features like DMA (Direct Memory Access, where a device reads or writes main memory without occupying the CPU) and offloading
+8. `[SW]` multiple UNIX processes and thread (for example, via OpenMP for threads in one process)
+9. `[SW]` multiple servers, running one parallel program (maybe many processes each, using MPI for message passing across nodes, or CUDA and OpenACC for accelerators)
+
+When a parallel program runs slowly even though the MPI (Message Passing Interface) environment works, a classic root cause at the top of this hierarchy is a misconfiguration that routes MPI traffic over a slow Ethernet management network instead of the fast InfiniBand fabric.
+
 ## 2. Measuring speed: FLOPS, precision, peak and achieved
 
 **FLOPS** is floating-point operations per second. Prefixes: giga (10^9), tera (10^12), peta (10^15), exa (10^18). It is always paired with a **precision**, because the number of operations per cycle changes by an order of magnitude between precisions:
@@ -172,6 +203,23 @@ Two operational facts to absorb early:
 - **Scale makes rare things routine.** A failure with a one-in-ten-thousand daily chance per component happens regularly at fifty thousand components. Design and procedures assume failures.
 - **The slowest participant sets the pace.** In a tightly coupled job, one slow node, one flapping link or one thermally throttled GPU slows everyone. That is why health checks before every job and automated draining exist (6.14).
 
+### Command-line fleet checks and power-on surge hazards
+
+Because a cluster contains dozens to thousands of servers, graphical administration tools are impractical. For example, to check which nodes failed to detect their full amount of RAM the last time they were powered on, an administrator runs a single command across all nodes in seconds using a parallel shell tool such as `pdsh` or `clush` (ClusterShell):
+
+```bash
+# (untested here)
+grep MemTotal /proc/meminfo | awk '{print $2}'
+```
+
+Piping that output into a short shell comparison flags any node whose detected memory falls below the expected benchmark.
+
+Physical operations also differ sharply from an office network, where PCs stay idle 99% of the time and users arrive and boot their machines at different hours. A cluster operates at `80–100%` node utilization continuously, where Computing hardware can occupy less than a quarter of the total floor area and the rest goes to cooling and power equipment. Powering on a supercomputer creates three distinct operational hazards that require a strict startup sequence:
+
+1. **Power-on electrical and network request surge**: switching on the whole cluster at once causes a sudden jump of dozens or thousands of kilowatts in power draw, followed immediately by every compute node requesting storage and management services at the same time. Even turning nodes on one by one at intervals of a few seconds can cause network conflicts or overload a central service if that service is not duplicated or load-shared.
+2. **Disk-shelf spin-up and controller ordering**: in large multi-rack disk arrays, shelves and drives are spun up in a strict sequence not only to limit high starting currents, but also so the physical torque of spinning disks does not sway the rack. Array components must power up in the order expected by the storage controllers; otherwise, the controllers may assume the array is broken and start a rebuild or mark the array as dead.
+3. **Hot-corridor staggered startup**: when server racks face each other and blow exhaust into a shared hot corridor, servers must be powered on at staggered intervals so that active nodes do not overheat neighboring servers whose fans have not yet turned on.
+
 ## 7. The stack at a glance
 
 ```mermaid
@@ -244,12 +292,13 @@ The rest of Part 6 walks this diagram: anatomy (6.2), the parallel programming c
 22. Why do rare failures become routine at scale?
 23. Why does one slow node slow a whole job?
 24. What does "AI factory" emphasise?
-25. Why can a TOP500 rank be misleading for your workload?
+25. Write the pipeline cycle formula for processing a vector of `N` elements when the slowest pipeline stage takes `K` cycles and the full pipeline length is `S` cycles, and list the three physical startup hazards when powering on a large supercomputer. **A:** The vector requires `K*(N-1)+S` clock cycles (where `S` cycles is the pipeline acceleration time for the first element, and subsequent elements complete every `K` cycles; in the book's example, `S=5` and `K=1`). When powering on a supercomputer, the three startup hazards are: (1) a sudden power surge of dozens or thousands of kilowatts followed by a simultaneous storm of network requests to storage and service nodes; (2) multi-rack disk arrays swaying the rack from simultaneous disk spin-up or array controllers marking volumes dead/rebuilding if shelves start out of sequence; and (3) servers in a hot-corridor layout overheating unpowered opposing servers if not started at staggered intervals.
 
 ## 12. Sources and review notes
 
-- Sysadmin framing of what "super" means, cluster types and the administrator's view: *Supercomputers for Linux SysAdmins* (the book abbreviated SCL in this handbook), chapters 1 and 2. Ideas restated in my own words.
+- Sysadmin framing of what "super" means, cluster types, hardware/software parallelism hierarchy, vector pipeline cycle formula, CLI RAM check, and power-on surge hazards (read in full: `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`, "1. Introduction" and "2. What Is “Super”?").
 - Cloud, fog and edge background (limited relevance): *AI Factory*, chapter 9 on distributed computing; used only for the cluster-types framing.
 - Benchmark descriptions follow the public documentation of TOP500, HPL, HPCG, Green500, IO500 and MLCommons from memory; names and publication cadence are stable, rankings and numbers are not and are deliberately omitted.
 - Original: the Rpeak/MFU calculator (run once; output shown) and the HPC-versus-AI comparison table. Per-GPU rates in the script are placeholders, not specifications.
-- Unverified: any claim about which systems exceed exascale or about typical efficiency ranges. Check current lists.
+- Run here: `code/part06/flops.py` Rpeak/MFU calculator.
+- Not verified on live hardware: `pdsh` / `clush` `grep MemTotal /proc/meminfo | awk '{print $2}'` check, and any claim about which systems exceed exascale or about typical efficiency ranges. Check current lists.

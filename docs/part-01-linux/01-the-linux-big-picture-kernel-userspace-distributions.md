@@ -165,7 +165,7 @@ A **system call** (syscall) is a request from a user program to the kernel throu
 
 You almost never call them directly. Your program calls a function in a library (`printf`, `open`, `socket`), and the library function eventually performs the actual system call. The most important library is **glibc** (the GNU C library, `libc.so.6`), used by nearly every program on mainstream distributions.
 
-Two notation points you will meet in every book and manual page. System calls are written with parentheses, `fork()` and `execve()`, a habit from the C language in which they are called; you do not need to know C, just remember that *a system call is an interaction between a process and the kernel*. And a name like `exec` usually stands for a **family** of related calls that differ only in how arguments are passed (the underlying kernel call is `execve`). There is also a lighter variant of a process, the **thread**, which shares most of its memory with the process that created it and is how a single program uses several cores (chapter 1.8).
+Two notation points you will meet in every book and manual page. System calls are written with parentheses, `fork()`, `exec()`, and `execve()`, a habit from the C language in which they are called; you do not need to know C, just remember that *a system call is an interaction between a process and the kernel*. And a name like `exec()` usually stands for a **family** of related C library functions (`execl()`, `execv()`, `execvp()`, and so on) that differ only in how arguments are passed and that all invoke the underlying kernel system call `execve()`. There is also a lighter variant of a process, the **thread**, which shares most of its memory with the process that created it and is how a single program uses several cores (chapter 1.8).
 
 Everything in Linux eventually reduces to system calls, which is why **`strace`**, a tool that prints every system call a program makes, is the best learning and debugging tool you will meet. We use it throughout this chapter and the book. Section 5 shows it in action.
 
@@ -197,7 +197,7 @@ sequenceDiagram
 Two steps do all the work:
 
 - **Create** a new process. The classic Unix call is `fork()`, which makes the child an almost exact copy of the parent. On modern Linux the C library implements `fork()` using the `clone` system call, so `strace` will show `clone` (or `clone3`).
-- **Replace** its program. `execve` throws away the child's current program and loads a new one into the same process. The process ID stays the same; only the program inside it changes.
+- **Replace** its program. When the child calls one of the C library's `exec()` family of functions (for example `exec(ls)` in simplified notation), the library calls the kernel's `execve()` system call, which throws away the child's current program and loads the new program into the same process. The process ID (PID) stays the same; only the program inside it changes.
 
 Every process except the first is created this way, so processes form a **tree**. The first user-space process the kernel starts is called **init**, has process ID 1, and is the ancestor of everything. On modern distributions it is **systemd** (chapter 1.15). If a process's parent dies, the process is adopted by PID 1. This tree is why `pstree` is a useful command, and why container runtimes and Slurm care so much about "who is the parent of this process?" (chapter 6.7: `slurmstepd` must be the parent of job processes so it can clean them up).
 
@@ -410,7 +410,7 @@ Create an `e2-small` Ubuntu 24.04 VM (or use any Linux machine) and work through
 6. What triggers a context switch, and what does the kernel do during it?
 7. Explain virtual memory in three sentences. What does the MMU do, and what is a page table?
 8. What is a system call? Name five, with what they do.
-9. Describe, step by step, what happens from typing `ls` to seeing its output. Which system calls are involved?
+9. Describe, step by step, what happens from typing `ls` to seeing its output. How do `fork()`, the C library's `exec()` family, and the kernel's `execve()` system call fit together?
 10. Why are processes arranged in a tree, and what is PID 1?
 11. Is "Linux" an operating system? Explain, and define "distribution".
 12. The NVIDIA driver has a kernel half and a user half. Name an example of each and explain why they must match.
@@ -428,7 +428,7 @@ Create an `e2-small` Ubuntu 24.04 VM (or use any Linux machine) and work through
 6. Usually a hardware timer interrupt at the end of a time slice (also blocking I/O or voluntary yielding). The CPU enters kernel mode, the kernel saves the running process's state, the scheduler picks another ready process, the kernel restores that process's state and memory mappings, and returns to user mode.
 7. Each process uses virtual addresses that are translated to physical memory; the MMU does the translation in hardware using a per-process table; that table, the page table, maps pages (typically 4 KiB) of virtual addresses to physical frames, giving isolation, sharing, protection and the ability to overcommit memory.
 8. A controlled request from a user program to the kernel. Examples: `open` (open a file), `read` and `write` (move bytes), `clone` (create a process), `execve` (run a program), `mmap` (map memory), `socket` (create a network endpoint), `exit_group` (end the process), `wait4` (wait for a child).
-9. The shell calls `clone` to create a child; the child calls `execve` to load `ls`; `ls` opens and reads the directory (`openat`, `getdents64`), writes the listing (`write`), and ends (`exit_group`); the shell waits with `wait4` and then prints a prompt.
+9. The shell calls `fork()` (implemented on modern Linux via the `clone` system call) to create a child process; the child calls a function in the C library's `exec()` family, which invokes the kernel's `execve()` system call to replace the child's program with `ls` while keeping its PID; `ls` opens and reads the directory (`openat`, `getdents64`), writes the listing (`write`), and ends (`exit_group`); the shell waits with `wait4` and then prints a prompt.
 10. Because every process is created by another process (via `clone`), giving parent-child relationships; PID 1 is the first user-space process the kernel starts (systemd on modern systems), the ancestor of all others, and the adopter of orphans.
 11. Strictly, Linux is the kernel only. A distribution bundles a kernel build with a C library, core tools, init system, package manager, configuration and support policy into a complete usable system.
 12. Kernel half: the `nvidia` and `nvidia_uvm` modules (they own the GPU and create `/dev/nvidia*`). User half: `libcuda.so` or `libnvidia-ml.so`. They talk through an internal interface (system calls such as `ioctl` on the device files) that changes between versions, so the halves must be compatible.
@@ -436,9 +436,9 @@ Create an `e2-small` Ubuntu 24.04 VM (or use any Linux machine) and work through
 14. No. Containers share the host kernel; isolation comes from namespaces and cgroups. Proof: `uname -r` is identical inside and outside a container.
 15. `dmesg -T | grep -i -E "killed process|out of memory"` (or the journal). The kernel can do it because the kernel owns memory and process control; it does not need the program's consent.
 
-## Sources and further reading
+## Sources and review notes
 
-- Brian Ward, *How Linux Works*, 3rd ed., ch. 1 (levels and layers, kernel and user space, main memory and state, the kernel's tasks, context switches, virtual memory, `fork` and `exec`, users). The three-layer model and the four kernel areas follow this chapter; the analogy, diagrams, tooling exercises and GPU-node mapping here are original.
+- `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., "Chapter 1: The Big Picture" (read in full: levels and layers of abstraction, kernel mode and user mode, main memory and state/image, the kernel's four tasks, context switches, virtual memory and page tables, device drivers and pseudodevices, `fork()` and `exec()` / `execve()` system calls, user space layering, and users/groups/`root`). The three-layer model and the four kernel areas follow this chapter; the analogy, diagrams, tooling exercises and GPU-node mapping here are original.
 - Sergey Zhumatiy, *Supercomputers for Linux SysAdmins*, ch. 7 (Unix and Linux basics for cluster administrators: processes, access rights, services, manuals), used to align the cluster-administration viewpoint.
 - Brendan Gregg, *Systems Performance*, 2nd ed., ch. 3 (operating system concepts: kernel and user mode, system calls, interrupts, scheduling, virtual memory) for cross-checking the concepts above.
 - Linux man pages: `man 2 syscalls`, `man 2 execve`, `man 2 clone`, `man 7 signal`, `man 5 proc`, `man 1 strace`.

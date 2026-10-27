@@ -81,6 +81,10 @@ kubectl logs -l app=trainer --all-containers --prefix --since=30m --max-log-requ
 kubectl top pod <p> --containers; kubectl top node
 # Exec and debug
 kubectl exec -it <p> -c <c> -- sh
+kubectl attach -it <p> -c <c>                                                             # attach to PID 1 stdin/stdout when no shell is installed
+kubectl config set-context my-context --namespace=mystuff && kubectl config use-context my-context
+kubectl apply -f myobj.yaml view-last-applied                                             # or edit-last-applied / set-last-applied
+source <(kubectl completion bash)                                                         # enable bash tab completion for kubectl
 kubectl debug -it <p> --image=nicolaka/netshoot --target=<c> --share-processes          # ephemeral container sharing namespaces
 kubectl debug <p> -it --copy-to=<p>-debug --container=<c> --image=ubuntu -- bash         # copy with changed image/command (crashing app)
 kubectl debug node/<n> -it --image=ubuntu -- chroot /host                                 # node debug pod with host filesystem at /host
@@ -323,7 +327,7 @@ Mark tested only after execution.
 5. 139? **A:** SIGSEGV.
 6. 126/127? **A:** Not executable / not found.
 7. Previous logs flag? **A:** `--previous`.
-8. Ephemeral container command? **A:** `kubectl debug -it --image --target`.
+8. Ephemeral container command, and how does `kubectl attach` differ from `kubectl exec`? **A:** `kubectl debug -it --image --target`; `kubectl attach -it <pod-name>` attaches to the existing running process's `stdin`/`stdout` without spawning a new shell process.
 9. Node debug command? **A:** `kubectl debug node/<n> -it --image=...`.
 10. Runtime CLI for CRI? **A:** `crictl`.
 11. Get container PID? **A:** `crictl inspect` → `.info.pid`.
@@ -361,6 +365,7 @@ Mark tested only after execution.
 
 **Written in original words.** Principal sources:
 
+- Brendan Burns, Joe Beda, Kelsey Hightower and Lachlan Evenson, *Kubernetes: Up and Running* (`kubernetes-up-and-running-3rd-edition`, 3rd edition; Chapter 4: `4. Common kubectl Commands` — read in full for `kubectl config set-context`/`use-context`, `view-last-applied`/`edit-last-applied`/`set-last-applied`, `kubectl attach`, and `kubectl completion bash`).
 - Josh Rosso et al., *Production Kubernetes* (operations and troubleshooting chapters).
 - James Strong and Vallery Lancey, *Networking and Kubernetes* (debugging network paths and tools).
 - The author's `nvidia-devops` repository, volume 03 (troubleshooting scenarios, `crictl` debugging appendix, production logs analysis).

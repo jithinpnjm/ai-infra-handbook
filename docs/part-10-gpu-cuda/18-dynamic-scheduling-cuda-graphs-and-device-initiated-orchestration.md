@@ -24,28 +24,41 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-Chapters `10.16` and `10.17` hid memory and launch latency inside a kernel (`<cuda/pipeline>`, warp specialization, Thread Block Clusters) and across streams (`cudaMallocAsync`, `cudaMemcpyPeerAsync`, `PDL`). Yet three major orchestration bottlenecks still arise on modern multi-GPU systems—including rack-scale systems such as NVIDIA's **`DGX GB200 NVL72`**, which links **`36` Grace CPUs** and **`72` Blackwell GPUs** into a single NVLink domain with unified addressing and up to **`30 TB`** of combined CPU and GPU unified memory (*AI Systems Performance Engineering* Chapter 12):
+Hiding memory latency inside a kernel and overlapping copies across streams solves static pipeline bottlenecks. However, modern multi-GPU systems such as NVIDIA's DGX GB200 NVL72 still suffer from severe orchestration stalls when workloads are irregular or composed of thousands of micro-kernels. When thread work varies dynamically, when host CPU driver dispatch takes longer than GPU execution. Or when control flow requires a CPU round-trip, Streaming Multiprocessors sit idle across the entire rack.
 
-1. **Intra-kernel load imbalance across SMs (`200 ms → 100 ms`):** When threads execute variable-trip-count loops (`work = idx % 256` on `N = 1,048,576` elements in `uneven_static.cu`), early blocks finish while slow blocks hold SMs hostage. Moving to a **warp-batched L2-cache atomic work queue** (`computeKernelDynamicBatch` in `uneven_dynamic.cu`, where one elected warp leader claims `batchSize = 32` items via `atomicAdd(&globalIndex, warpSize)` and broadcasts the base index via `__shfl_sync`) cuts L2 atomic operations **`32x` (`1,048,576 → 32,768`)**, drives Nsight Compute's `atomic_transactions_per_request` contention ratio down to **`1.0`**, and halves runtime from **`200 ms` to `100 ms` (`2.0x` speedup)**.
-2. **Host CPU launch overhead during autoregressive LLM decode (`45 µs` CPU launch for `9 µs` GPU work; `40,000` launches per response):** Every standard `<<<grid, block>>>` launch costs the host CPU roughly **`5` to `15 µs`** (up to `~20 µs` with host synchronization). In `nvidia-devops` Volume 03 Chapter 10, launching `3` decode kernels that each run in **`3 µs`** on the GPU (`9 µs` total GPU work) requires `3 × 15 µs =` **`45 µs`** of CPU launch overhead—wasting **`83.3%` (`> 80%`)** of wall-clock time on CPU submission. Generating a `500`-token response across an `80`-layer LLM dispatches `500 × 80 =` **`40,000` individual CUDA kernels**, pinning CPU cores at `100%` while GPU utilization sits at `20%`. **CUDA Graphs** capture the `80`-layer pass once and replay it with `1` host call per token (`500` replays total), cutting 100-iteration latency in **Table 12-1** from **`1.00 ms` to `0.75 ms` (`25%` faster, `300 → 100` launches, `300 → 0` syncs, `~3 µs → 0 µs` gaps)**.
-3. **Host round-trips for data-dependent branching and multi-GPU coordination:** When the next kernel or branch depends on values computed on the GPU, copying flags back to the CPU stalls every SM. **Device-initiated CUDA Graph launches** (`cudaGraphInstantiateFlagDeviceLaunch`, **`~2x` lower launch latency** than host graph launches across **Fire-and-Forget** [`120` max], **Tail** [`255` max pending, `1` self-tail-launch], and **Sibling** modes), **Conditional Graph Nodes** (`IF`, `IF/ELSE`, `WHILE`, `SWITCH`), **Dynamic Parallelism (`-rdc=true`, Table 12-2: `40% → 5%` GPU idle cycles, `1.00 → 0.75 ms`)**, and **NVSHMEM Partitioned Global Address Space (`PGAS`)** one-sided puts/signals keep scheduling, branching, and GPU-to-GPU work stealing `100%` on the device.
+Chapter 12 of *AI Systems Performance Engineering* and Volume 03 of nvidia-devops target three distinct orchestration bottlenecks.
+
+1. Intra-kernel load imbalance across Streaming Multiprocessors stalls the tail of a grid whenever threads run variable-trip-count loops such as uneven_static.cu. Early blocks exit while slow blocks hold Streaming Multiprocessors hostage. Moving to a warp-batched L2-cache atomic work queue in computeKernelDynamicBatch inside uneven_dynamic.cu elects one warp leader to claim batches via atomicAdd. Broadcast indices via __shfl_sync, cutting runtime in half.
+2. Host CPU launch overhead dominates autoregressive large language model decode when tiny kernels finish faster than the CPU can enqueue them. Launching tens of thousands of individual decode kernels per response pins CPU cores inside the CUDA driver while GPU utilization languishes. Capturing the multi-layer forward pass into a CUDA Graph replaces individual kernel launches with a single replay call per token and removes inter-kernel launch bubbles.
+3. Host round-trips for data-dependent branching. Multi-GPU coordination stall every Streaming Multiprocessor whenever the GPU must copy a flag to the CPU to decide what to run next. Device-initiated CUDA Graph launches via cudaGraphInstantiateFlagDeviceLaunch. Conditional Graph Nodes, Dynamic Parallelism compiled with `-rdc=true`, and NVSHMEM Partitioned Global Address Space one-sided puts keep scheduling and branching entirely on the device.
+
+| Bottleneck or System | Mechanism and Configuration | Key Source Metrics | Reported Impact |
+|---|---|---|---|
+| Rack-scale NVLink domain | DGX GB200 NVL72 unified memory fabric | 36 Grace CPUs + 72 Blackwell GPUs | Up to 30 TB combined CPU and GPU unified memory |
+| Intra-kernel load imbalance | `uneven_static.cu` vs `uneven_dynamic.cu` (`N = 1,048,576`, `work = idx % 256`, `batchSize = 32`) | Atomics drop 32x from 1,048,576 to 32,768; `atomic_transactions_per_request` reaches 1.0 | Runtime drops from 200 ms to 100 ms for a 2.0x speedup |
+| Host CPU decode launch overhead | CUDA Graphs (`cudaGraphLaunch`, `torch.cuda.CUDAGraph`) | 5 to 15 µs CPU launch vs 3 µs GPU kernel (3 kernels = 45 µs CPU vs 9 µs GPU = 83.3% / > 80% waste); 500 tokens * 80 layers = 40,000 launches (100% CPU, 20% GPU) | Collapses 40,000 launches to 500 replays; Table 12-1 cuts 100-iter time from 1.00 ms to 0.75 ms (25% faster, 300 to 100 launches, 300 to 0 syncs, ~3 µs to 0 µs gaps) |
+| Data-dependent device orchestration | Device graph launch (Fire-and-Forget max 120, Tail max 255 pending / 1 self-tail, Sibling), Conditional Nodes (`IF`, `IF/ELSE`, `WHILE`, `SWITCH`), Dynamic Parallelism (`-rdc=true`), NVSHMEM | Device graph launch has ~2x lower latency; Table 12-2 DP cuts GPU idle cycles from 40% to 5% | Table 12-2 cuts runtime from 1.00 ms to 0.75 ms |
 
 :::note About the numbers and code in this chapter
-*AI Systems Performance Engineering* says the numeric values in its metric tables (Tables 12-1 and 12-2 here, and the `200 ms` to `100 ms` work-queue result) are illustrative, and the Volume 03 timings (`45 µs`, `812.4 ms`, `1,928.3 ms`, `3,140.9 ms`, `2,214.8 ms`) come from notes that mark their outputs as illustrative or one reference run. None were measured on a GPU for this handbook, and the CUDA code is reproduced from the book and was not compiled here.
+```text
+*AI Systems Performance Engineering* states that the numeric values in its metric tables, including Tables 12-1 and 12-2 and the 200 ms to 100 ms work-queue result, are illustrative. Similarly, the Volume 03 timings such as 45 µs, 812.4 ms, 1,928.3 ms, 3,140.9 ms, and 2,214.8 ms come from reference notes marked as illustrative or single-run examples. None were measured on a GPU for this handbook, and the CUDA listings reproduced from the book were not compiled here.
+```
 :::
 
 ## Prerequisites and outcomes
 
 **Prerequisites:**
-- Chapters `10.11`–`10.17` (CUDA kernels, streams, events, pinned memory, `cudaMallocAsync`, Nsight profiling metrics, and `<cuda/pipeline>`).
+
+- Chapters 10.11 through 10.17 covering CUDA kernels, streams, events, pinned memory, cudaMallocAsync, Nsight profiling metrics, and `<cuda/pipeline>`.
 
 **Outcomes — after completing this chapter you will be able to:**
-1. Diagnose L2 atomic contention using Nsight Compute (`atomic_transactions` and `atomic_transactions_per_request -> 1.0`) and implement a warp-leader batched atomic work queue (`__activemask()`, `__ffs()`, `atomicAdd`, `__shfl_sync`) that achieves a `2.0x` speedup (`200 ms → 100 ms`) on imbalanced workloads.
-2. Capture, instantiate, warm up, and replay **CUDA Graphs** in C++ (`cudaStreamBeginCapture`, `cudaGraphInstantiate`, `cudaGraphLaunch`) and PyTorch (`torch.cuda.CUDAGraph`, `torch.cuda.graph_pool_handle()`, `mode="reduce-overhead"`), update node parameters dynamically with `cudaGraphExecUpdate`, and design bounded shape-bucketed graph caches with per-slot buffer ownership (`Slot 0..2`).
-3. Launch CUDA Graphs directly from device kernels (`cudaGraphInstantiateFlagDeviceLaunch` + `cudaGraphUpload`) using **Fire-and-Forget (`cudaStreamGraphFireAndForget`, max `120`)**, **Tail (`cudaStreamGraphTailLaunch`, max `255` pending / `1` self-tail-launch via `cudaGetCurrentGraphExec()`)**, and **Sibling (`cudaStreamGraphFireAndForgetAsSibling`)** modes, and build GPU-evaluated **Conditional Graph Nodes (`IF`, `IF/ELSE`, `WHILE`, `SWITCH`)**.
-4. Implement **Dynamic Parallelism (`-rdc=true`)** where a parent kernel spawns child kernels on the device (**Table 12-2**: `3 → 1` host launches, `40% → 5%` idle cycles, `1.00 → 0.75 ms`), configuring `cudaLimitDevRuntimePendingLaunchCount` (`2,048` default) and `cudaLimitStackSize`.
-5. Orchestrate multi-GPU pipelines with **NVSHMEM (`PGAS`)** one-sided puts (`nvshmem_float_p`, `nvshmem_quiet`, `nvshmem_int_p`, `nvshmem_int_wait_until`), cross-GPU atomic work stealing (`nvshmem_int_atomic_inc`), lockstep `nvshmemx_collective_launch` (`nvshmem_barrier_all`), and graph-captured bucketed `NCCL` all-reduce.
-6. Apply the **Roofline-guided orchestration framework** (*ASP* Ch 12 Figure 12-17) and the **Volume 03 3-Level Production Profiling Funnel & Lab 04 Failure Diagnostics** (`812.4 ms` baseline vs `1,928.3 ms` sync `2.37x`, `3,140.9 ms` tiny chunks `3.87x`, `2,214.8 ms` pageable `2.73x`, allocator fragmentation OOM across `340` blocks, and `compute-sanitizer` bounds localization).
+
+1. Diagnose L2 atomic contention using Nsight Compute counters atomic_transactions and atomic_transactions_per_request and implement a warp-leader batched atomic work queue using `__activemask()`, `__ffs()`, atomicAdd, and __shfl_sync.
+2. Capture, instantiate, warm up, and replay CUDA Graphs in C++ and PyTorch using cudaStreamBeginCapture, cudaGraphInstantiate, cudaGraphLaunch, torch.cuda.CUDAGraph, `torch.cuda.graph_pool_handle()`, and cudaGraphExecUpdate.
+3. Launch CUDA Graphs directly from device kernels using cudaGraphInstantiateFlagDeviceLaunch and cudaGraphUpload across cudaStreamGraphFireAndForget, cudaStreamGraphTailLaunch, and cudaStreamGraphFireAndForgetAsSibling, and build Conditional Graph Nodes.
+4. Implement Dynamic Parallelism with `-rdc=true` where a parent kernel spawns child kernels on the device, and configure cudaLimitDevRuntimePendingLaunchCount and cudaLimitStackSize.
+5. Orchestrate multi-GPU pipelines with NVSHMEM one-sided puts nvshmem_float_p, nvshmem_quiet, nvshmem_int_p, nvshmem_int_wait_until, atomic work stealing nvshmem_int_atomic_inc, nvshmemx_collective_launch, and graph-captured NCCL AllReduce.
+6. Apply the Roofline-guided orchestration framework and the Volume 03 three-level production profiling funnel and Lab 04 diagnostics using nsys, ncu, nvidia-smi, and compute-sanitizer.
 
 ---
 
@@ -53,15 +66,23 @@ Chapters `10.16` and `10.17` hid memory and launch latency inside a kernel (`<cu
 
 ### 1.1 L2-cache atomics, `atomic_transactions_per_request`, and batching (`batchSize = 8, 16, 32`)
 
-When different threads or thread blocks execute input-dependent work (such as sparse attention blocks, variable-length token sequences, or graph traversals), static `idx = blockIdx.x * blockDim.x + threadIdx.x` assignment leaves fast-finishing SMs idle while slow SMs finish the tail. You can spot this in **Nsight Systems** as ragged stream tails and in **Nsight Compute** as a low ratio of **SM Active Cycles to Elapsed Cycles** or low achieved occupancy (*AI Systems Performance Engineering* Ch 12, *Dynamic Scheduling with Atomic Work Queues*).
+When different threads or thread blocks execute input-dependent work such as sparse attention blocks. Variable-length token sequences, or graph traversals, static `idx = blockIdx.x * blockDim.x + threadIdx.x` assignment leaves fast-finishing Streaming Multiprocessors idle while slow ones finish the tail. In Nsight Systems, this imbalance appears as ragged stream tails. In Nsight Compute, it shows up as a low ratio of SM Active Cycles to Elapsed Cycles or low achieved occupancy.
 
-Modern NVIDIA GPUs service global `atomicAdd` instructions directly inside the on-chip **L2 cache** rather than round-tripping to HBM DRAM (Figure 12-1). Uncontended L2 atomics are fast, but when thousands of threads hammer the same counter simultaneously, L2 serializes and replays conflicting requests. In Nsight Compute's **Memory Workload Analysis** section, monitor two counters:
-- **`atomic_transactions`:** Total number of L2-cache atomic transactions executed, including contention replays.
-- **`atomic_transactions_per_request` (Contention Ratio):** Average number of L2 transactions generated per `atomicAdd` instruction.
-  - **`~1.0` (Ideal):** Every `atomicAdd` completes in a single L2 transaction with zero retries.
-  - **`> 1.0` (Contention hotspot):** Threads are stalling and retrying serialized atomic updates on the same cache line.
+Replacing static indexing with a naive global atomic counter where every thread calls `atomicAdd(&queue_head, 1)` creates a second bottleneck. Modern NVIDIA GPUs service global atomicAdd instructions inside the on-chip L2 cache. Round-tripping to HBM DRAM, as shown in Figure 12-1 of *AI Systems Performance Engineering* Chapter 12. Uncontended L2 atomics are fast, but when thousands of threads hammer the same counter address simultaneously, the L2 cache serializes and replays conflicting requests.
 
-To collapse contention back toward **`1.0`**, amortize counter updates by **claiming work in batches** (`batchSize = 32`, or even **`8` or `16`** items per atomic, which eliminates most contention and yields **`10%–30%`** typical throughput gains, up to **`~2x`** under extreme imbalance; `evaluate_atomic_work_queue()` in `code/part10/dynamic_scheduling_graphs.py`):
+In Nsight Compute's Memory Workload Analysis section, two hardware counters diagnose this contention directly.
+
+- atomic_transactions counts the total number of L2-cache atomic transactions executed, including contention replays.
+- atomic_transactions_per_request measures the contention ratio, defined as the average number of L2 transactions generated per atomicAdd instruction. A value near 1.0 is ideal because every atomicAdd completes in a single L2 transaction with zero retries. Whereas a value well above 1.0 indicates threads are stalling on serialized cache-line updates.
+
+To drive atomic_transactions_per_request back toward 1.0, threads claim work in batches rather than one element at a time.
+
+| Queue Strategy (`N = 1 << 20 = 1,048,576` elements) | Batch Size | Total L2 `atomicAdd` Calls | Atomic Reduction Factor | Typical Throughput Impact |
+|---|---|---|---|---|
+| Unbatched per-thread atomic | `1` | 1,048,576 | 1.0x | High L2 contention stall |
+| Modest batching | `8` | 131,072 | 8.0x | 10% to 30% typical throughput gain |
+| Medium batching | `16` | 65,536 | 16.0x | Eliminates most L2 replay stalls |
+| Full warp batching | `32` | 32,768 | 32.0x | Up to ~2x speedup under extreme imbalance |
 
 ```cpp
 // Unbatched atomic queue (high L2 contention: 1,048,576 atomics for N = 1 << 20)
@@ -78,9 +99,11 @@ for (int i = start; i < start + batchSize && i < N; ++i) {
 
 ### 1.2 Warp-leader dynamic work queue (`uneven_static.cu` `200 ms` vs `uneven_dynamic.cu` `100 ms`)
 
-Instead of having every thread claim `32` items sequentially, elect **one active leader thread per warp** (`__activemask()` and `__ffs(mask) - 1`), have the leader execute a single `atomicAdd(&globalIndex, warpSize)` (`32` items), and broadcast the starting index to all active lanes in the warp via `__shfl_sync(mask, base, leader)` (*ASP* Ch 12, *Atomic Queues*, Figure 12-2).
+```text
+If every thread claims 32 contiguous items for itself, adjacent lanes in a warp no longer access adjacent memory addresses simultaneously, hurting memory coalescing. Instead, a warp-leader dynamic work queue elects one active leader thread per warp to claim 32 items for the entire warp at once, as shown in Figure 12-2 of *AI Systems Performance Engineering* Chapter 12.
+```
 
-Compare the static imbalanced kernel (`uneven_static.cu`, where each thread executes `work = idx % 256` iterations of `sinf(x) * cosf(x)` on `N = 1 << 20 = 1,048,576` elements in **`~200 ms`**) against the warp-batched dynamic queue (`uneven_dynamic.cu`, which completes the exact same work in **`~100 ms` = `2.0x` speedup**):
+Inside the loop, the warp queries its active lanes with `unsigned mask = __activemask()` and picks the lowest active lane via `int leader = __ffs(mask) - 1`. Only that single leader lane executes `atomicAdd(&globalIndex, warpSize)` to claim 32 items, and then `__shfl_sync(mask, base, leader)` broadcasts the starting index to all active lanes in registers. On `N = 1,048,576` elements where each element idx performs `work = idx % 256` iterations of `sinf(x) * cosf(x)`. Replacing the static kernel uneven_static.cu at ~200 ms with uneven_dynamic.cu cuts runtime to ~100 ms for a 2.0x speedup.
 
 ```cpp
 // Warp-batched dynamic atomic work queue (uneven_dynamic.cu: ~100 ms vs ~200 ms static = 2.0x speedup)
@@ -140,16 +163,29 @@ void launchDynamicBatchQueue(const float* d_in, float* d_out, int N, cudaStream_
 
 ### 2.1 Why CPU launch overhead dominates LLM decode (`15 µs` launch vs `3 µs` kernel & `40,000` launches)
 
-Even though a CUDA kernel launch is asynchronous, the host CPU still spends roughly **`5` to `15 µs`** (or `~20 µs` when including driver/sync bookkeeping) marshaling arguments, validating state, and submitting command descriptors over PCIe/NVLink-C2C to the GPU's GigaThread Engine (`nvidia-devops` Volume 03, `chapter-10-cuda-graphs-and-repeated-execution.md` and `chapter-chapter-10-cuda-graphs-and-repeated-execution.md`; `analyze_decode_launch_overhead()` in `code/part10/dynamic_scheduling_graphs.py`):
-- **Micro-kernel chain (`3` kernels × `3 µs` GPU execution vs `15 µs` CPU launch):**
-  - Total GPU execution time: `3 × 3 µs =` **`9.0 µs`**.
-  - Total CPU launch overhead: `3 × 15 µs =` **`45.0 µs`** (`54.0 µs` total elapsed, meaning **`83.3%` [`> 80%`]** of the timeline is spent waiting on the CPU to dispatch work).
-- **Production Triton / vLLM 80-layer LLM decode scenario:**
-  - Generating a **`500`-token** response across an **`80`-layer** Transformer requires launching the 80-layer sequence `500` times = **`40,000` individual kernel launches** in under a second. Without CUDA Graphs, CPU cores pin at **`100%`** inside the CUDA driver while GPU utilization languishes at **`20%`**. Capturing the `80`-layer forward pass into a single **CUDA Graph** replaces `40,000` kernel launches with **`500` lightweight `cudaGraphLaunch` replays** (`1` per generated token).
+```text
+Even though a standard CUDA kernel launch is asynchronous, the host CPU still spends 5 to 15 µs, or up to ~20 µs with driver and sync bookkeeping, validating state and submitting command descriptors over PCIe or NVLink-C2C. During the prefill phase of a large language model, each kernel runs for milliseconds so a 15 µs CPU launch cost is invisible. During single-token autoregressive decode, however, individual layer kernels can finish on the GPU in 3 µs.
+```
+
+```text
+When the GPU finishes a kernel in 3 µs while the CPU needs 15 µs to launch the next one, the GPU sits completely idle waiting for the host CPU for over 80% of wall-clock time. Volume 03 Chapter 10 of `nvidia-devops` and `analyze_decode_launch_overhead()` in `code/part10/dynamic_scheduling_graphs.py` quantify both a three-kernel micro-chain and a production 80-layer decode loop.
+```
+
+```text
+Micro-kernel chain (3 decode kernels):
+  GPU execution time:   3 kernels * 3 us   = 9.0 us total GPU work
+  CPU launch overhead:  3 kernels * 15 us  = 45.0 us total CPU submission overhead
+  Total elapsed time:   45.0 + 9.0         = 54.0 us (83.3% [> 80%] spent waiting on CPU dispatch)
+
+Production Triton / vLLM 80-layer LLM decode (500 generated tokens):
+  Without CUDA Graphs:  500 tokens * 80 layers = 40,000 individual kernel launches
+                        Host CPU cores pin at 100% in the CUDA driver; GPU utilization sits at 20%
+  With CUDA Graphs:     Capture 80-layer pass once -> 500 cudaGraphLaunch replays (1 replay per token)
+```
 
 ### 2.2 Stream capture, PyTorch `torch.cuda.CUDAGraph`, static memory pools, and Table 12-1
 
-To capture a workflow into a `cudaGraph_t` and instantiate an executable `cudaGraphExec_t` in C++ (*AI Systems Performance Engineering* Ch 12, *Capturing a CUDA Graph with a CUDA Stream*, Figure 12-3):
+Repeatedly launching the exact same sequence of kernels and copies from the CPU wastes driver cycles re-validating parameters that never change. A CUDA Graph records the entire sequence of kernel nodes. Memory copies, and dependency edges into a cudaGraph_t once. Compiles it into an executable cudaGraphExec_t outside the hot loop, and replays the whole graph with a single cudaGraphLaunch call.
 
 ```cpp
 // Capturing and replaying a 3-kernel pipeline (A -> B -> C) 100 times with CUDA Graphs
@@ -180,9 +216,10 @@ cudaGraphExecDestroy(instance);
 cudaGraphDestroy(graph);
 ```
 
-In PyTorch, CUDA Graph capture requires **two strict invariants** (*ASP* Ch 12, *PyTorch, Inference Engines, and CUDA Graphs* & *Memory Pools for CUDA Graphs*, Figure 12-4):
-1. **Mandatory warm-up pass before capture:** Run `opC(opB(opA(X)))` followed by `torch.cuda.synchronize()` on a non-default stream *before* entering `with torch.cuda.graph(g, stream=stream):` so lazy cuBLAS/cuDNN workspace allocations and JIT compilations complete outside the capture window.
-2. **Pointer stability (`static_x.copy_(new_X)` and `torch.cuda.graph_pool_handle()`):** A captured `cudaGraphExec_t` bakes fixed virtual memory addresses into every node. You must preallocate persistent static buffers (`static_x`, `static_y`, `static_z`, `static_w`) and write in-place (`out=` or `.copy_()`) or share a dedicated static graph memory pool via `torch.cuda.graph_pool_handle()`. Note that `torch.compile(..., mode="reduce-overhead")` automatically wraps eligible static-shape CUDA regions in CUDA Graphs using pooled buffers, while inference engines (`vLLM`, `TensorRT-LLM`) pre-capture one graph per bucketed batch size during startup and pad incoming requests to the nearest captured batch bucket.
+In PyTorch, capturing a torch.cuda.CUDAGraph requires two strict invariants, as shown in Figure 12-4 of *AI Systems Performance Engineering* Chapter 12.
+
+1. Run a warm-up pass on a non-default stream followed by `torch.cuda.synchronize()` before entering `with torch.cuda.graph(g, stream=stream):`. That warm-up completes lazy cuBLAS and cuDNN workspace allocations and JIT compilations outside the capture window.
+2. Preserve pointer stability across replays by preallocating static tensors static_x. static_y, static_z, and static_w and writing in-place with `out=` or `.copy_()`, or by sharing a dedicated static graph memory pool via `torch.cuda.graph_pool_handle()`. Calling `torch.compile(..., mode="reduce-overhead")` wraps static-shape regions in CUDA Graphs automatically, while inference engines such as vLLM and TensorRT-LLM pre-capture one graph per bucketed batch size at startup.
 
 ```python
 # PyTorch CUDAGraph capture with warmup and pointer-stable static buffers (ASP Ch 12) (untested here)
@@ -214,22 +251,29 @@ for _ in range(100):
 torch.cuda.synchronize()
 ```
 
-Look at the impact the book reports across `100` iterations of the `A → B → C` pipeline in **Table 12-1** (*AI Systems Performance Engineering* Ch 12; `TABLE_12_1_CUDA_GRAPHS` in `code/part10/dynamic_scheduling_graphs.py`):
+Table 12-1 in *AI Systems Performance Engineering* Chapter 12 summarizes the reported impact of CUDA Graphs across 100 iterations of the three-kernel `A -> B -> C` pipeline.
 
 | Metric | Before CUDA Graphs (Standard Stream Launches) | After CUDA Graphs (`cudaGraphLaunch` / `g.replay()`) | Improvement |
 |---|---:|---:|---|
-| **CPU launch calls per `100` iterations** | `300` separate kernel launches | **`100` graph replays (`1` per iteration)** | **`3.0x` fewer host launch calls** |
-| **Host synchronization calls** | `300` `cudaDeviceSynchronize` calls | **`0` inside loop** | Eliminates host-device handshakes |
-| **Average GPU idle gap between kernels** | `~3 µs` gaps per iteration | **`0 µs` (continuous back-to-back execution)** | Removes inter-kernel launch bubbles |
-| **End-to-end iteration latency** | `~1.00 ms` | **`~0.75 ms`** | **`25%` faster (`20%–30%` typical reduction)** |
+| CPU launch calls per 100 iterations | 300 separate kernel launches | 100 graph replays (1 per iteration) | 3.0x fewer host launch calls |
+| Host synchronization calls | 300 `cudaDeviceSynchronize` calls | 0 inside loop | Eliminates host-device handshakes |
+| Average GPU idle gap between kernels | ~3 µs gaps per iteration | 0 µs (continuous back-to-back execution) | Removes inter-kernel launch bubbles |
+| End-to-end iteration latency | ~1.00 ms | ~0.75 ms | 25% faster (20%–30% typical reduction) |
 
 ### 2.3 Dynamic Graph Updates (`cudaGraphExecUpdate`), Per-Slot Buffer Ownership, and Production Graph Caches (`V3 Ch 10`)
 
-When a workflow's **topology** (number of nodes and dependency edges) stays constant while launch parameters change (for example, capturing a template graph at a maximum batch size of **`128`** and serving an incoming request of batch size **`64`**), you do not need to rebuild the graph from scratch (*ASP* Ch 12, *Dynamic Graph Update* & `nvidia-devops` V3 Ch 10):
-- Call **`cudaGraphExecUpdate(graphExec, newGraph, &resultInfo)`** or **`cudaGraphExecKernelNodeSetParams(...)`** to patch grid/block dimensions, scalar arguments, or buffer pointers in a few microseconds while preserving **`sub-100 µs`** graph replay overhead.
-- **Always check the `cudaGraphExecUpdate` return status (`cudaGraphExecUpdateErrorTopologyChanged`):** In `nvidia-devops` Volume 03 Chapter 10, when a request changes shape from `512` to `513` in a way that alters the node topology, `cudaGraphExecUpdate` returns **`cudaGraphExecUpdateErrorTopologyChanged`**. If a service ignores that return code (`--skip-update-check`), it silently replays the old `512`-shape `graphExec` against `513`-shape buffers and produces corrupted outputs. Production code must branch on the update status and fall back to a full `cudaGraphInstantiate` rebuild (or stream execution) whenever an update is rejected.
-- **Per-Slot Buffer Ownership (`Slot 0..2`, V3 Ch 10 Figure 3.10.3):** Under concurrent multi-stream execution, never share a single buffer set across multiple in-flight replays. Allocate **one `cudaGraphExec_t` + dedicated input/output buffers + completion `cudaEvent_t` per pipeline slot (`Slot 0`, `Slot 1`, `Slot 2`)**, and do not reuse Slot `k` until `Completion Event k` signals.
-- **When CUDA Graphs provide zero benefit (`nsys` check, V3 Ch 10):** Before adopting graphs, run `nsys stats --report cuda_api_sum`. In V3 Ch 10's diagnostic example, `500` calls to `cudaLaunchKernel` take only **`4,120,000 ns` (`2.1%` of API time)** while `500` calls to `cudaMemcpyAsync` moving `512 MB` take **`189,340,000 ns` (`97.3%` of API time)**. Wrapping that transfer-bound workflow in a CUDA Graph yields zero end-to-end speedup.
+Production inference servers rarely receive the exact same batch size on every request, and rebuilding a cudaGraphExec_t from scratch takes milliseconds. Worse, if a server ignores failed graph updates. Shares static buffers across concurrent streams without slot locking, or wraps a transfer-bound workload in a graph, it will either corrupt tensors or see zero speedup.
+
+Volume 03 Chapter 10 of nvidia-devops and *AI Systems Performance Engineering* Chapter 12 establish three production rules for dynamic graph management.
+
+- Patch existing graphs in place with `cudaGraphExecUpdate(graphExec, newGraph, &resultInfo)` or `cudaGraphExecKernelNodeSetParams(...)` whenever node topology stays constant. For example, capture a template graph at a maximum batch size of 128. Update launch dimensions for an incoming batch of 64 while keeping sub-100 µs replay overhead.
+- Always check the return status of cudaGraphExecUpdate for cudaGraphExecUpdateErrorTopologyChanged. When a request shape changes from 512 to 513 in a way that alters the node topology. CudaGraphExecUpdate rejects the update, and ignoring that status with `--skip-update-check` silently replays the stale 512-shape graph against 513-shape buffers.
+- Isolate concurrent multi-stream replays using per-slot buffer ownership across `Slot 0`, `Slot 1`, and `Slot 2`, as shown in Volume 03 Chapter 10 Figure 3.10.3. Give each pipeline slot its own cudaGraphExec_t, dedicated input and output buffers, and completion cudaEvent_t, and never reuse Slot k until `Completion Event k` signals.
+
+| Diagnostic Scenario (`nsys stats --report cuda_api_sum`, V3 Ch 10) | Call Count | Total API Time | Share of API Time | Engineering Decision |
+|---|---:|---:|---:|---|
+| `cudaLaunchKernel` in transfer-bound pipeline | 500 calls | 4,120,000 ns | 2.1% | Do not wrap in CUDA Graphs; launch overhead is negligible |
+| `cudaMemcpyAsync` moving 512 MB per call | 500 calls | 189,340,000 ns | 97.3% | Optimize PCIe/NVLink transfers and pinned memory instead |
 
 ---
 
@@ -237,21 +281,22 @@ When a workflow's **topology** (number of nodes and dependency edges) stays cons
 
 ### 3.1 Device-side graph launch modes (`Fire-and-Forget`, `Tail`, and `Sibling`, `Figures 12-5 to 12-8`)
 
-Host-launched CUDA Graphs still require the CPU to issue `cudaGraphLaunch` each iteration. **Device-initiated CUDA Graph launches** allow a running GPU kernel to trigger a pre-recorded `cudaGraphExec_t` directly from device code—achieving **`~2x` lower launch latency** than host-side graph launches and maintaining **flat launch latency** regardless of how many nodes or parallel branches the graph contains (*AI Systems Performance Engineering* Ch 12, *Device-Initiated CUDA Graph Launch*, Figures 12-5 to 12-8).
+Host-launched CUDA Graphs still require the CPU to issue cudaGraphLaunch on every step. When a recurrent loop or multi-step scheduler depends on device state between steps, returning to the host CPU adds PCIe latency and jitter. Device-initiated CUDA Graph launches let a running GPU kernel trigger a pre-recorded cudaGraphExec_t directly from device code. Cutting launch latency by ~2x compared to host graph launches and keeping latency flat as graph width grows.
 
-To prepare a graph for device-side launch, the host must:
-1. Instantiate the graph with **`cudaGraphInstantiateFlagDeviceLaunch`**:
-   `cudaGraphInstantiate(&graphExec, graph, nullptr, nullptr, cudaGraphInstantiateFlagDeviceLaunch);`
-2. Upload the executable graph to device memory **before** any kernel attempts to launch it:
-   `cudaGraphUpload(graphExec, stream);`
+```text
+Before any device kernel can launch a graph, the host must perform two setup steps, shown in Figures 12-5 through 12-8 of *AI Systems Performance Engineering* Chapter 12.
+```
 
-Inside a `__global__` kernel, calling `cudaGraphLaunch(graphExec, mode)` supports three reserved stream launch modes:
+1. Instantiate the graph with cudaGraphInstantiateFlagDeviceLaunch via `cudaGraphInstantiate(&graphExec, graph, nullptr, nullptr, cudaGraphInstantiateFlagDeviceLaunch);`.
+2. Upload the executable graph to the device ahead of time by calling `cudaGraphUpload(graphExec, stream);`.
 
-| Device Graph Launch Mode | Reserved Stream Constant | Execution & Ordering Semantics | Hardware / Runtime Concurrency Limit |
+Inside a __global__ kernel, calling `cudaGraphLaunch(graphExec, mode)` supports three reserved device launch modes.
+
+| Device Graph Launch Mode | Reserved Stream Constant | Execution and Ordering Semantics | Hardware and Runtime Concurrency Limit |
 |---|---|---|---|
-| **1. Fire-and-Forget Launch** | `cudaStreamGraphFireAndForget` | Child graph begins executing **immediately and concurrently** with the launching parent kernel; parent does not wait. Ideal for independent side tasks. | Up to **`120` total fire-and-forget graphs** during the course of a graph's execution. |
-| **2. Tail Launch ( Figures 12-6 & 12-7)** | `cudaStreamGraphTailLaunch` | Defers child graph execution until the launching kernel **completes**, running as a sequential continuation. Ideal when downstream nodes consume the parent kernel's output or for persistent GPU-resident schedulers (`cudaGetCurrentGraphExec()`). Nested tail launches from a child execute *before* the parent's remaining queued tail launches. | Up to **`255` pending tail launches** enqueued in a CUDA Graph; at most **`1` pending self-tail-launch** (`cudaGetCurrentGraphExec()`) at a time. |
-| **3. Sibling Launch (Figure 12-8)** | `cudaStreamGraphFireAndForgetAsSibling` | Launches immediately as a **peer (sibling)** in the parent graph's stream environment so it runs concurrently **without delaying any tail launches** of the parent graph. | Bounded by fire-and-forget / resident grid limits. |
+| 1. Fire-and-Forget Launch | `cudaStreamGraphFireAndForget` | Child graph begins executing immediately and concurrently with the launching parent kernel; parent does not wait. Ideal for independent side tasks. | Up to 120 total fire-and-forget graphs during the course of a graph's execution. |
+| 2. Tail Launch (Figures 12-6 & 12-7) | `cudaStreamGraphTailLaunch` | Defers child graph execution until the launching kernel completes, running as a sequential continuation. Nested tail launches from a child execute before the parent's remaining queued tail launches. | Up to 255 pending tail launches enqueued in a CUDA Graph; at most 1 pending self-tail-launch via `cudaGetCurrentGraphExec()` at a time. |
+| 3. Sibling Launch (Figure 12-8) | `cudaStreamGraphFireAndForgetAsSibling` | Launches immediately as a peer in the parent graph's stream environment so it runs concurrently without delaying any tail launches of the parent graph. | Bounded by fire-and-forget and resident grid limits. |
 
 ```mermaid
 flowchart TB
@@ -270,17 +315,20 @@ flowchart TB
     H2 --> SB
 ```
 
-**Persistent In-Kernel LLM Decode Scheduler (`ASP` Ch 12):** By combining an L2 atomic work queue (`atomicAdd(&queueHead, 1)`) with `cudaStreamGraphTailLaunch` and `cudaGetCurrentGraphExec()`, a lightweight persistent scheduler kernel claims the next token batch on the GPU, tail-launches the pre-captured Transformer decode `cudaGraphExec_t`, and re-enqueues itself—running the entire multi-step autoregressive decode loop on the GPU with zero CPU intervention.
+Combining an L2 atomic work queue `atomicAdd(&queueHead, 1)` with cudaStreamGraphTailLaunch and `cudaGetCurrentGraphExec()` turns a small scheduler kernel into a persistent GPU-resident decode driver. The scheduler kernel claims the next token batch on the device, tail-launches the pre-captured Transformer decode cudaGraphExec_t, and re-enqueues itself without touching the CPU.
 
 ### 3.2 Conditional Graph Nodes (`IF`, `IF/ELSE`, `WHILE`, `SWITCH`, `Figures 12-9 to 12-11`)
 
-Standard CUDA Graphs have static control flow. **Conditional Graph Nodes** embed GPU-evaluated branches and loops directly inside a `cudaGraph_t` via a device-writable **`cudaGraphConditionalHandle`** (*ASP* Ch 12, *Conditional Graph Nodes*, Figures 12-9 to 12-11):
-- **`IF` (`cudaGraphCondTypeIf`, `size = 1`):** Executes its single body subgraph once if the condition handle is nonzero.
-- **`IF/ELSE` (`size = 2`):** Executes body subgraph `0` when the handle is nonzero (`true`) and body subgraph `1` when `0` (`false`).
-- **`WHILE`:** Repeatedly executes its body subgraph as long as the condition handle remains nonzero, re-evaluating after each iteration (and can nest `IF` nodes inside `WHILE` bodies, Figure 12-11).
-- **`SWITCH` (`size = N`):** Holds `N` body subgraphs and executes the `i`-th subgraph when `handle == i` (or skips execution if `handle >= N`).
+```text
+Standard CUDA Graphs only replay a fixed sequence of nodes. If an inference loop needs early exit, speculative decoding verification, or dynamic expert routing, a fixed graph would normally have to stop and copy a condition flag back to the CPU. Conditional Graph Nodes solve this by embedding GPU-evaluated branches and loops directly inside a `cudaGraph_t` using a device-writable cudaGraphConditionalHandle, as shown in Figures 12-9 through 12-11 of *AI Systems Performance Engineering* Chapter 12.
+```
 
-Here is the complete C++ implementation of an `IF` conditional node from *AI Systems Performance Engineering* Chapter 12 (`threshold = 123456`, `N = 1 << 20 = 1,048,576`):
+- IF nodes using cudaGraphCondTypeIf with `size = 1` execute their single body subgraph once if the condition handle is nonzero.
+- `IF/ELSE` nodes with `size = 2` execute body subgraph 0 when the handle is nonzero and body subgraph 1 when the handle is 0.
+- WHILE nodes repeatedly execute their body subgraph as long as the condition handle remains nonzero. Re-evaluating the handle after each iteration, and can nest IF nodes inside WHILE bodies as in Figure 12-11.
+- SWITCH nodes with `size = N` hold N body subgraphs and execute the i-th subgraph when `handle == i`, or skip execution if `handle >= N`.
+
+Here is the complete C++ implementation of an IF conditional node from *AI Systems Performance Engineering* Chapter 12 using `threshold = 123456` on `N = 1 << 20 = 1,048,576` elements.
 
 ```cpp
 // Conditional Graph Node (cudaGraphCondTypeIf) evaluated entirely on the GPU
@@ -365,12 +413,13 @@ void runConditionalGraphExample() {
 
 ## 4. Dynamic Parallelism (`DP`, `-rdc=true`) and Table 12-2
 
-When the number of child tasks, grid dimensions, or recursive subdivisions emerges dynamically from data at runtime (such as adaptive mesh refinement, hierarchical tree/graph traversals, or per-token auxiliary attention blocks in LLMs) and cannot be pre-recorded into a fixed CUDA Graph, **Dynamic Parallelism (`DP`)** allows a running `parentKernel` to launch `childKernel<<<blocks, threads>>>` directly on the GPU (*AI Systems Performance Engineering* Ch 12, *Dynamic Parallelism*, Figures 12-12 & 12-13):
-- **Compilation requirement (`-rdc=true`):** Requires relocatable device code (`nvcc -rdc=true`).
-- **Single-thread launch rule & implicit parent-child synchronization:** Guard child launches with `if (blockIdx.x == 0 && threadIdx.x == 0)` so every thread does not spawn duplicate grids. A parent kernel **implicitly waits for all of its device-launched child kernels to complete** before the parent kernel itself finishes—so no device-side `cudaDeviceSynchronize()` is needed.
-- **Hardware resource limits (`2,048` pending launches & stack size):**
-  - By default, CUDA allows **`2,048` outstanding device-initiated child launches** at one time; if a parent loop spawns more than `2,048` children, raise the limit on the host via **`cudaDeviceSetLimit(cudaLimitDevRuntimePendingLaunchCount, newLimit)`**.
-  - Nested child launches consume device stack memory; prevent stack overflows via **`cudaDeviceSetLimit(cudaLimitStackSize, newSize)`**.
+```text
+Sometimes the number of child tasks, their grid dimensions, or recursive subdivisions emerge dynamically from data at runtime and cannot be pre-recorded into any fixed graph topology. Examples include adaptive mesh refinement, hierarchical tree traversals, and per-token auxiliary attention blocks. Dynamic Parallelism allows a running `parentKernel` to launch `childKernel<<<blocks, threads>>>` directly on the GPU, as shown in Figures 12-12 and 12-13 of *AI Systems Performance Engineering* Chapter 12.
+```
+
+- Compile with relocatable device code enabled via `nvcc -rdc=true` and link against `-lcudadevrt`.
+- Guard child launches with `if (blockIdx.x == 0 && threadIdx.x == 0)` so every thread in the parent grid does not spawn duplicate child grids. A parent kernel implicitly waits for all of its device-launched child kernels to complete before the parent kernel itself exits.
+- Manage hardware queue and stack limits on the host. CUDA allows 2,048 outstanding device-initiated child launches by default, which can be raised via `cudaDeviceSetLimit(cudaLimitDevRuntimePendingLaunchCount, newLimit)`, while deep nesting requires raising stack memory via `cudaDeviceSetLimit(cudaLimitStackSize, newSize)`.
 
 ```cpp
 // Device-launched Dynamic Parallelism (dp_device_launched.cu: compile with nvcc -rdc=true)
@@ -400,14 +449,16 @@ __global__ void parentKernel(float* data, int n) {
 }
 ```
 
-Compare host-driven vs. device-driven nested launches (`1` parent + `2` children on `N = 1,048,576`) in **Table 12-2** (*AI Systems Performance Engineering* Ch 12; `TABLE_12_2_DYNAMIC_PARALLELISM` in `code/part10/dynamic_scheduling_graphs.py`):
+```text
+Table 12-2 in *AI Systems Performance Engineering* Chapter 12 compares host-driven launches against device-driven Dynamic Parallelism for 1 parent plus 2 children across `N = 1,048,576` elements.
+```
 
 | Metric | Before (`dp_host_launched.cu`: Host Launch) | After (`dp_device_launched.cu`: Device DP Launch) | Impact |
 |---|---:|---:|---|
-| **Total host launches** | `3` (`1` parent + `2` children) | **`1` (parent only)** | Eliminates `2` CPU-GPU round-trips |
-| **Average launch overhead per call** | `~20 µs` | **`~25 µs`** | Slight `+5 µs` on-device scheduling cost |
-| **GPU idle cycles (during sequence)** | `~40%` | **`~5%`** | **`-35 percentage points` (`87.5%` less idle time)** |
-| **Overall execution time** | `1.00 ms` | **`0.75 ms`** | **`25%` faster** + preserves L2 cache locality |
+| Total host launches | 3 (1 parent + 2 children) | 1 (parent only) | Eliminates 2 CPU-GPU round-trips |
+| Average launch overhead per call | ~20 µs | ~25 µs | Slight +5 µs on-device scheduling cost |
+| GPU idle cycles (during sequence) | ~40% | ~5% | -35 percentage points (87.5% less idle time) |
+| Overall execution time | 1.00 ms | 0.75 ms | 25% faster + preserves L2 cache locality |
 
 ---
 
@@ -415,7 +466,9 @@ Compare host-driven vs. device-driven nested launches (`1` parent + `2` children
 
 ### 5.1 Fine-grained GPU-to-GPU PGAS orchestration with `NVSHMEM` (`Figure 12-14`)
 
-While `cudaMemcpyPeerAsync` and `NCCL` handle bulk tensor transfers, **NVIDIA SHMEM (`NVSHMEM`)** exposes a **Partitioned Global Address Space (`PGAS`)** across GPUs where each GPU is a Processing Element (`PE`, queried via `nvshmem_my_pe()`) with symmetric heap memory allocated via `nvshmem_malloc()` (*ASP* Ch 12, *Fine-Grained GPU-to-GPU Memory Sharing with NVSHMEM*, Figure 12-14). Inside a kernel, a thread on `PE 0` can write directly into `PE 1`'s HBM over NVLink or GPUDirect RDMA with **one-sided puts and signals**—bypassing the host CPU completely:
+Bulk primitives like cudaMemcpyPeerAsync and NCCL work well for large contiguous tensors. But they incur host launch overhead when kernels need fine-grained, irregular word-level transfers or cross-GPU work stealing. NVIDIA SHMEM exposes a Partitioned Global Address Space. GPUs where each GPU is a Processing Element queried via `nvshmem_my_pe()` with symmetric heap memory allocated via `nvshmem_malloc()`. As shown in Figure 12-14 of *AI Systems Performance Engineering* Chapter 12.
+
+Inside a kernel, a thread on Processing Element 0 can write directly into Processing Element 1's HBM over NVLink. GPUDirect RDMA using one-sided puts and signals without touching the host CPU. First, the sender writes the payload with nvshmem_float_p. Second, it calls `nvshmem_quiet()` to ensure the remote write completes before the flag is visible. Third, it flips the remote flag with nvshmem_int_p while the receiver spins on nvshmem_int_wait_until.
 
 ```cpp
 // NVSHMEM one-sided put + quiet + flag signal and cross-GPU atomic work stealing
@@ -452,35 +505,42 @@ __global__ void work_steal_kernel(int* queue_head, int N_tasks) {
 }
 ```
 
-When a kernel uses device-wide NVSHMEM barriers (`nvshmem_barrier_all()`), launch it across all PEs simultaneously with **`nvshmemx_collective_launch()`** so all GPUs co-reside and enter the barrier in lockstep; for irregular point-to-point pipelines (such as GPU 0 running Attention and pushing activations to GPU 1's persistent MLP kernel), prefer fine-grained point-to-point signals (`nvshmem_int_wait_until` / `nvshmemx_signal_op`) over global `nvshmem_barrier_all()` calls.
+Whenever a kernel calls a device-wide NVSHMEM barrier such as `nvshmem_barrier_all()`, launch it across all Processing Elements simultaneously with `nvshmemx_collective_launch()` so every GPU co-resides in lockstep. For irregular point-to-point pipelines where GPU 0 runs Attention. Pushes activations to GPU 1's persistent MLP kernel, prefer fine-grained point-to-point signals like nvshmem_int_wait_until or nvshmemx_signal_op over global barriers.
 
 ### 5.2 Capturing multi-GPU `NCCL` bucketed all-reduces in CUDA Graphs (`Figures 12-15 & 12-16`)
 
-Capturing `computeGradientsLayer1` (`streamA`) + bucketed `ncclAllReduce` (`streamB`) + `computeGradientsLayer2` (`streamA`) into a single `CUDA Graph` via `cudaStreamBeginCapture(captureStream, cudaStreamCaptureModeGlobal)` + `cudaGraphInstantiate` + `cudaGraphUpload` eliminates per-step CPU jitter across thousands of GPUs (*ASP* Ch 12, *Capturing Multi-GPU Collectives with NCCL and CUDA Graphs*, Figures 12-15 & 12-16). Follow three mandatory rules:
-1. **Identical collective sequence across all ranks:** Every rank in the communicator must capture and replay the exact same sequence of `ncclAllReduce` calls on the same `ncclComm_t`; a mismatched sequence deadlocks or corrupts reductions.
-2. **Run warmup collectives before capture:** Execute preliminary warmup collectives ahead of `cudaStreamBeginCapture` so NCCL ring/tree channels and RDMA buffers are initialized outside the graph.
-3. **Preallocate gradient and communication buffers before capture** (and use `cudaGraphExecUpdate` if pointer addresses or sizes change).
+```text
+At cluster scale, small variations in Python or OS scheduling on any single rank delay collective launches across all ranks. Capturing `computeGradientsLayer1` on `streamA`, bucketed `ncclAllReduce` on `streamB`, and `computeGradientsLayer2` on `streamA` into a single CUDA Graph via `cudaStreamBeginCapture(captureStream, cudaStreamCaptureModeGlobal)`, cudaGraphInstantiate, and cudaGraphUpload eliminates per-step CPU jitter, as shown in Figures 12-15 and 12-16 of *AI Systems Performance Engineering* Chapter 12.
+```
+
+1. Enforce an identical collective sequence across all ranks. Every rank in the communicator captures and replays the exact same order of ncclAllReduce calls on the same ncclComm_t.
+2. Run warmup collectives before capture so NCCL ring and tree channels and RDMA buffers are initialized outside the graph capture window.
+3. Preallocate gradient and communication buffers at fixed addresses before capture, and use cudaGraphExecUpdate if pointer addresses or sizes change.
 
 ### 5.3 Roofline-guided orchestration decisions (`Figure 12-17`) and the Volume 03 Production Profiling Funnel (`V3 Ch 12, Ch 13 & Lab 04`)
 
-Combine *AI Systems Performance Engineering* Chapter 12's **Roofline-Guided Orchestration Matrix** (Figure 12-17) with `nvidia-devops` Volume 03's **3-Level Production Profiling Funnel** (Chapters 12–13 & Lab 04; `recommend_roofline_orchestration()` and `evaluate_v3_lab04_diagnostics()` in `code/part10/dynamic_scheduling_graphs.py`):
+```text
+Tuning a kernel in Nsight Compute before checking whether the pipeline is actually bottlenecked on host synchronization, tiny transfer chunks, or memory fragmentation wastes days of engineering time. Volume 03 Chapters 12 and 13 and Lab 04 of `nvidia-devops` combine a three-level production profiling funnel with the Roofline-guided orchestration matrix from Figure 12-17 of *AI Systems Performance Engineering* Chapter 12.
+```
 
-| Profiling Level / Roofline Regime | Diagnostic Evidence (`nsys`, `ncu`, `nvidia-smi`, `compute-sanitizer`) | Recommended Orchestration / Fix |
+| Profiling Level or Roofline Regime | Diagnostic Evidence (`nsys`, `ncu`, `nvidia-smi`, `compute-sanitizer`) | Recommended Orchestration or Fix |
 |---|---|---|
-| **Level 1 → Level 2: Host / Transfer / Sync Bottleneck (V3 Lab 04 Regressions on `67,108,864` elements, `812.4 ms` baseline)** | **STOP before kernel profiling** if `nsys` shows host gaps or serialization:<br/>- **Regression A (Device sync after each launch):** **`1,928.3 ms` (`2.37x` / `~2.4x` slower)**.<br/>- **Regression B (Tiny `16 KiB` = `4,096`-elem chunks vs `16 MiB` = `4,194,304`-elem chunks, `1,024x` more launches):** **`3,140.9 ms` (`3.87x` / `~3.9x` slower)**.<br/>- **Regression C (Pageable host buffers staging on CPU):** **`2,214.8 ms` (`2.73x` / `~2.7x` slower)**. | Remove per-launch `cudaDeviceSynchronize()`, size chunks to amortize `5–15 µs` submission cost (or capture into **CUDA Graphs**), and use pinned memory (`cudaMallocHost`) + `cudaStreamNonBlocking`. |
-| **Level 3: Sloped Memory Roof (`Memory-Bound` Kernel, Figure 12-17)** | High HBM/DRAM throughput (`> 80%`), low arithmetic intensity (`FLOPs/byte` below ridge point). | Overlap transfers with **CUDA streams** and `cudaMemcpyAsync`, use reduced precision (`FP16`/`FP8`/`NVFP4`), and fuse memory-bound elementwise chains. |
-| **Level 3: Below Flat Compute Roof due to Launch / Tail Gaps (`Compute-Bound, Launch-Limited`)** | High arithmetic intensity, but `nsys` shows `~3–15 µs` inter-kernel gaps or `ncu` shows tail wave imbalance (`work = idx % 256`). | Collapse launch gaps with **CUDA Graphs**, **Device-Initiated Graph Tail Launches**, **Dynamic Parallelism (`-rdc=true`)**, **Persistent Megakernels**, or **L2-batched atomic queues**. |
-| **Level 3: Intermediate Regime (Under Both Roofs)** | Neither compute nor HBM bandwidth is saturated by a single stream. | Increase concurrency by running **multiple streams, concurrent CUDA Graphs, or multi-instance persistent kernels** in parallel. |
-| **Allocator Fragmentation OOM vs Physical OOM (V3 Ch 12)** | `nvidia-smi -q -d MEMORY` reports `Total: 40,960 MiB`, `Reserved: 405 MiB`, `Used: 38,660 MiB`, **`Free: 1,895 MiB`**, yet a **`512.00 MiB`** allocation fails because `torch.cuda.memory_summary()` shows **`1,240 MiB` reserved-but-unallocated fragmented across `340` blocks**. | Enable stream-ordered memory pools (`PYTORCH_ALLOC_CONF=backend:cudaMallocAsync`), preallocate static graph pools (`torch.cuda.graph_pool_handle()`), and bound shape-bucketed graph caches. |
-| **Deferred Asynchronous `cudaErrorIllegalAddress` (V3 Ch 12 & Ch 13)** | Error surfaces lazily at a downstream `cudaMemcpy` or `cudaStreamSynchronize`. Running `compute-sanitizer --tool=memcheck` pinpoints `scale_kernel` at **`block (3906,0,0)`, `thread (287,0,0)` (`blockDim = 256`)** → global index `3906 × 256 + 287 =` **`1,000,223 > 1,000,003`**. | Enforce bounds checks (`if (idx < N)`) and always collect the **10-item V3 Incident Evidence Bundle** (timestamp/workload ID, image digest, GPU/driver inventory, `nvidia-smi -q`, full CUDA error log, kernel `Xid` logs, Pod/node events, repro shape, recent changes, and `nsys` trace) *before* restarting the pod or node. |
+| Level 1 to Level 2: Host, Transfer, or Sync Bottleneck (V3 Lab 04 on 67,108,864 elements, 812.4 ms baseline) | Stop before kernel profiling if `nsys` shows host gaps or serialization:<br/>- Regression A (device sync after each launch): 1,928.3 ms (2.37x / ~2.4x slower).<br/>- Regression B (tiny 16 KiB = 4,096-elem chunks vs 16 MiB = 4,194,304-elem chunks, 1,024x more launches): 3,140.9 ms (3.87x / ~3.9x slower).<br/>- Regression C (pageable host buffers staging on CPU): 2,214.8 ms (2.73x / ~2.7x slower). | Remove per-launch `cudaDeviceSynchronize()`, size chunks to amortize 5–15 µs submission cost or capture into CUDA Graphs, and use pinned memory `cudaMallocHost` with `cudaStreamNonBlocking`. |
+| Level 3: Sloped Memory Roof (Memory-Bound Kernel, Figure 12-17) | High HBM/DRAM throughput (> 80%), low arithmetic intensity (FLOPs/byte below ridge point). | Overlap transfers with CUDA Streams and `cudaMemcpyAsync`, use reduced precision FP16/FP8/NVFP4, and fuse memory-bound elementwise chains. |
+| Level 3: Below Flat Compute Roof due to Launch or Tail Gaps | High arithmetic intensity, but `nsys` shows ~3–15 µs inter-kernel gaps or `ncu` shows tail wave imbalance (`work = idx % 256`). | Collapse launch gaps with CUDA Graphs, Device-Initiated Graph Tail Launches, Dynamic Parallelism (`-rdc=true`), Persistent Megakernels, or L2-batched atomic queues. |
+| Level 3: Intermediate Regime (Under Both Roofs) | Neither compute nor HBM bandwidth is saturated by a single stream. | Increase concurrency by running multiple streams, concurrent CUDA Graphs, or multi-instance persistent kernels in parallel. |
+| Allocator Fragmentation OOM vs Physical OOM (V3 Ch 12) | `nvidia-smi -q -d MEMORY` reports Total: 40,960 MiB, Reserved: 405 MiB, Used: 38,660 MiB, Free: 1,895 MiB, yet a 512.00 MiB allocation fails because `torch.cuda.memory_summary()` shows 1,240 MiB reserved-but-unallocated fragmented across 340 blocks. | Enable stream-ordered memory pools (`PYTORCH_ALLOC_CONF=backend:cudaMallocAsync`), preallocate static graph pools (`torch.cuda.graph_pool_handle()`), and bound shape-bucketed graph caches. |
+| Deferred Asynchronous `cudaErrorIllegalAddress` (V3 Ch 12 & Ch 13) | Error surfaces lazily at a downstream `cudaMemcpy` or `cudaStreamSynchronize`. Running `compute-sanitizer --tool=memcheck` pinpoints `scale_kernel` at block `(3906,0,0)`, thread `(287,0,0)` (`blockDim = 256`) -> global index `3906 * 256 + 287 = 1,000,223 > 1,000,003`. | Enforce bounds checks (`if (idx < N)`) and collect the 10-item V3 Incident Evidence Bundle before restarting the pod or node. |
 
 ---
 
 ## 6. Commands and Configurations That Matter
 
-All commands below follow *AI Systems Performance Engineering* Chapter 12 and `nvidia-devops` Volume 03 (Chapters 10, 12, 13 & Lab 04). Shell commands that require an attached CUDA GPU are marked **(untested here)**.
+Compiling device-side launches requires relocatable device code, and diagnosing atomic contention, launch overhead, or out-of-bounds writes requires targeted profiler and sanitizer flags. All commands below follow *AI Systems Performance Engineering* Chapter 12 and nvidia-devops Volume 03. Shell commands that require an attached CUDA GPU are marked untested here.
 
 ### 6.1 Compile Dynamic Parallelism (`-rdc=true`), NVSHMEM, and inspect L2 atomic contention & CUDA Graphs in `ncu` / `nsys` (untested here)
+
+Use `-rdc=true` and `-lcudadevrt` when compiling Dynamic Parallelism kernels. Profile L2 atomic metrics in ncu, inspect API launch percentages in `nsys stats`, and isolate illegal memory accesses with compute-sanitizer.
 
 ```bash
 # 1. Compile device-launched Dynamic Parallelism (-rdc=true is mandatory) (untested here)
@@ -502,28 +562,32 @@ compute-sanitizer --tool=memcheck ./inference_engine
 
 ## 7. How It Fails: Six Dynamic Scheduling, CUDA Graph, and Device Orchestration Failure Modes
 
-| # | Failure Mode | Production / Profiler Symptom | Root Cause | Fix |
+Dynamic work queues, captured CUDA Graphs, and device-initiated launches introduce subtle state and synchronization contracts. Violating any of these contracts causes severe L2 stalls, silent output corruption, memory leaks, or multi-GPU hangs, as summarized in the table below.
+
+| # | Failure Mode | Production or Profiler Symptom | Root Cause | Fix |
 |---|---|---|---|---|
-| **1** | **Unbatched per-thread `atomicAdd(&queue_head, 1)` hotspot** | Nsight Compute shows `atomic_transactions_per_request >> 1.0` and high L2 atomic stall cycles on dynamic queues. | All `32` threads in every warp issue separate `atomicAdd` updates to the same L2 cache line (`1,048,576` atomics for `N = 1 << 20`, *ASP* Ch 12). | Elect one active warp leader (`__activemask()`, `__ffs(mask) - 1`), fetch a batch of `warpSize = 32` (or `8`/`16`) via `atomicAdd(&globalIndex, warpSize)`, and broadcast with `__shfl_sync`. |
-| **2** | **Forgetting to reset `__device__ globalIndex = 0` or skipping CUDA Graph warmup** | Second iteration of `computeKernelDynamicBatch` exits immediately producing zeros, or `torch.cuda.graph()` fails during capture with `operation not permitted while stream is capturing`. | Device global counters persist across launches unless reset via `cudaMemcpyToSymbol`, and lazy cuBLAS/cuDNN/allocator initializations inside a capture window invalidate stream capture (*ASP* Ch 12 & *V3* Ch 10). | Reset `globalIndex` to `0` before every launch, and run one full eager warmup pass + `torch.cuda.synchronize()` before `cudaStreamBeginCapture` / `with torch.cuda.graph()`. |
-| **3** | **Ignoring `cudaGraphExecUpdate` return status (`cudaGraphExecUpdateErrorTopologyChanged`) or mutating tensor addresses** | Inference service returns stale or corrupted outputs when request shape changes from `512` to `513` (*V3* Ch 10). | `cudaGraphExecUpdate` fails when node topology changes, and captured graphs read fixed virtual addresses baked in at instantiation (*ASP* Ch 12 & *V3* Ch 10). | Always check `cudaGraphExecUpdate` return codes (rebuilding on `cudaGraphExecUpdateErrorTopologyChanged`), copy new inputs into static buffers (`static_x.copy_()`), and isolate per-slot `GraphExec` + buffer sets (`Slot 0..2`). |
-| **4** | **Unbounded shape-keyed CUDA Graph cache in variable-length LLM serving** | GPU HBM usage climbs steadily over hours until the server crashes with `CUDA out of memory` despite `nvidia-smi` showing free fragmented blocks (*V3* Ch 10 & Ch 12). | Caching a new `cudaGraphExec_t` and static memory pool for every unique `(batch_size, seq_len)` pair leaks memory without bound (*V3* Ch 10). | Bucket requests into a small fixed set of padded batch/sequence classes, cap maximum cached graph instances, and fall back to stream execution for rare shapes. |
-| **5** | **Launching device-side CUDA Graphs without `cudaGraphInstantiateFlagDeviceLaunch` / `cudaGraphUpload` or exceeding `2,048` DP child launches** | Kernel faults at `cudaGraphLaunch` on device, or `parentKernel` fails mid-loop when spawning thousands of child kernels (*ASP* Ch 12). | Device-launched graphs must be instantiated with `cudaGraphInstantiateFlagDeviceLaunch` and uploaded via `cudaGraphUpload`, and Dynamic Parallelism defaults to `2,048` max pending child launches (`120` fire-and-forget / `255` tail graph launches; *ASP* Ch 12). | Pass `cudaGraphInstantiateFlagDeviceLaunch` + `cudaGraphUpload`, set `cudaGraphSetConditional` from a single thread (`threadIdx.x == 0`), and raise `cudaLimitDevRuntimePendingLaunchCount` / `cudaLimitStackSize` when needed. |
-| **6** | **Mismatched `NCCL` collective order across ranks in Graph-Captured DDP / FSDP or missing `nvshmem_quiet()`** | Multi-GPU training hangs at `cudaGraphLaunch`, or `receiver_kernel` on `PE 1` reads stale `remote_data` after `remote_flag` turns `1` (*ASP* Ch 12). | Ranks captured different `ncclAllReduce` sequences, or `sender_kernel` flipped `remote_flag` via `nvshmem_int_p` without calling `nvshmem_quiet()` to fence the prior `nvshmem_float_p` payload write (*ASP* Ch 12). | Ensure all ranks capture the identical `NCCL` sequence after warmup collectives, and always call `nvshmem_quiet()` between payload puts and signal flag puts. |
+| 1 | Unbatched per-thread `atomicAdd(&queue_head, 1)` hotspot | Nsight Compute shows `atomic_transactions_per_request >> 1.0` and high L2 atomic stall cycles on dynamic queues. | All 32 threads in every warp issue separate `atomicAdd` updates to the same L2 cache line, totaling 1,048,576 atomics for `N = 1 << 20`. | Elect one active warp leader via `__activemask()` and `__ffs(mask) - 1`, fetch a batch of `warpSize = 32` or 8 or 16 via `atomicAdd(&globalIndex, warpSize)`, and broadcast with `__shfl_sync`. |
+| 2 | Forgetting to reset `__device__ globalIndex = 0` or skipping CUDA Graph warmup | Second iteration of `computeKernelDynamicBatch` exits immediately producing zeros, or `torch.cuda.graph()` fails during capture with `operation not permitted while stream is capturing`. | Device global counters persist across launches unless reset via `cudaMemcpyToSymbol`, and lazy cuBLAS, cuDNN, or allocator initializations inside a capture window invalidate stream capture. | Reset `globalIndex` to 0 before every launch, and run one full eager warmup pass plus `torch.cuda.synchronize()` before `cudaStreamBeginCapture` or `with torch.cuda.graph()`. |
+| 3 | Ignoring `cudaGraphExecUpdate` return status (`cudaGraphExecUpdateErrorTopologyChanged`) or mutating tensor addresses | Inference service returns stale or corrupted outputs when request shape changes from 512 to 513. | `cudaGraphExecUpdate` fails when node topology changes, and captured graphs read fixed virtual addresses baked in at instantiation. | Always check `cudaGraphExecUpdate` return codes and rebuild on `cudaGraphExecUpdateErrorTopologyChanged`, copy new inputs into static buffers `static_x.copy_()`, and isolate per-slot `GraphExec` and buffer sets across `Slot 0..2`. |
+| 4 | Unbounded shape-keyed CUDA Graph cache in variable-length LLM serving | GPU HBM usage climbs steadily over hours until the server crashes with `CUDA out of memory` despite `nvidia-smi` showing free fragmented blocks. | Caching a new `cudaGraphExec_t` and static memory pool for every unique batch size and sequence length pair leaks memory without bound. | Bucket requests into a small fixed set of padded batch and sequence classes, cap maximum cached graph instances, and fall back to stream execution for rare shapes. |
+| 5 | Launching device-side CUDA Graphs without `cudaGraphInstantiateFlagDeviceLaunch` / `cudaGraphUpload` or exceeding 2,048 DP child launches | Kernel faults at `cudaGraphLaunch` on device, or `parentKernel` fails mid-loop when spawning thousands of child kernels. | Device-launched graphs must be instantiated with `cudaGraphInstantiateFlagDeviceLaunch` and uploaded via `cudaGraphUpload`, and Dynamic Parallelism defaults to 2,048 max pending child launches alongside 120 fire-and-forget and 255 tail graph limits. | Pass `cudaGraphInstantiateFlagDeviceLaunch` and `cudaGraphUpload`, set `cudaGraphSetConditional` from a single thread where `threadIdx.x == 0`, and raise `cudaLimitDevRuntimePendingLaunchCount` and `cudaLimitStackSize` when needed. |
+| 6 | Mismatched NCCL collective order across ranks in Graph-Captured DDP / FSDP or missing `nvshmem_quiet()` | Multi-GPU training hangs at `cudaGraphLaunch`, or `receiver_kernel` on PE 1 reads stale `remote_data` after `remote_flag` turns 1. | Ranks captured different `ncclAllReduce` sequences, or `sender_kernel` flipped `remote_flag` via `nvshmem_int_p` without calling `nvshmem_quiet()` to fence the prior `nvshmem_float_p` payload write. | Ensure all ranks capture the identical NCCL sequence after warmup collectives, and always call `nvshmem_quiet()` between payload puts and signal flag puts. |
 
 ---
 
 ## 8. Hands-On Lab: Verify L2 Atomic Queues, CUDA Graph Tables, Decode Launch Overhead, Dynamic Parallelism, and Volume 03 Regressions
 
-**Venue:** Any Linux machine or Nebius GPU VM with Python 3.10+ (runs deterministically using standard library Python; all `nvcc`, `ncu`, `nsys`, and `compute-sanitizer` commands are provided in Section 6 and marked `(untested here)`).
+```text
+This lab verifies the warp-batched L2 atomic work queue math, LLM decode CPU launch overhead, CUDA Graph Table 12-1 and Dynamic Parallelism Table 12-2 models, Roofline orchestration rules, and Volume 03 Lab 04 controlled regressions. It runs deterministically on any Linux machine or Nebius GPU VM with Python 3.10 or newer using standard library Python, while all `nvcc`, `ncu`, `nsys`, and `compute-sanitizer` commands in Section 6 are marked untested here.
+```
 
-Run `code/part10/dynamic_scheduling_graphs_lab.py`:
+Run `code/part10/dynamic_scheduling_graphs_lab.py` from the repository root.
 
 ```bash
 python3 code/part10/dynamic_scheduling_graphs_lab.py
 ```
 
-Expected output (`25 passed, 0 failed`):
+Expected output with 25 passed and 0 failed tests is shown below.
 
 ```text
 === Chapter 10.18 Lab: Dynamic Scheduling, CUDA Graphs & Device Orchestration (ASP Ch 12 + V3) ===
@@ -560,200 +624,229 @@ Summary: 25 passed, 0 failed (total 25)
 
 ## Exercises
 
-1. **Warp-batched L2 atomic work queues (`uneven_static.cu` vs `uneven_dynamic.cu`):** For `N = 1 << 20` (`1,048,576` elements), calculate (a) the total number of `atomicAdd` operations executed when every thread increments by `1` vs when a warp leader increments by `batchSize = 8`, `16`, or `32`, (b) the target value of Nsight Compute's `atomic_transactions_per_request` metric, and (c) the speedup of `computeKernelDynamicBatch` (`100 ms`) over `computeKernel` (`200 ms`) on `work = idx % 256`.
-2. **LLM decode CPU launch overhead and CUDA Graph Table 12-1:** Calculate (a) the percentage of wall-clock time spent in CPU launch overhead when `3` decode kernels each run in `3 µs` on the GPU with `15 µs` of CPU launch overhead per kernel, (b) how many kernel launches CUDA Graphs eliminate when generating `500` tokens on an `80`-layer LLM in Triton, and (c) the 4-row before/after comparison from Table 12-1 (`100` iterations of `A → B → C`).
-3. **Device-initiated CUDA Graph launch modes and Conditional Graph Nodes:** Contrast `cudaStreamGraphFireAndForget`, `cudaStreamGraphTailLaunch`, and `cudaStreamGraphFireAndForgetAsSibling`, state the hardware concurrency limits (`120`, `255`, and `1`), and list the host and device API calls needed to build an `IF` conditional node (`cudaGraphCondTypeIf`) that runs `bodyKernel` when `reduce_sum(data, N) > 123456`.
-4. **Dynamic Parallelism (`Table 12-2` and `-rdc=true`):** Using Table 12-2 (`1` parent + `2` children on `N = 1,048,576`, `threadsPerBlock = 256`), state the before/after values for host launches, per-launch overhead (`µs`), GPU idle cycles (`%`), and overall runtime (`ms`), plus the two `cudaDeviceSetLimit` flags that control pending child launches (`2,048` default) and stack size.
-5. **NVSHMEM one-sided PGAS communication and Graph-Captured `NCCL`:** Trace the exact sequence of `nvshmem_float_p`, `nvshmem_quiet`, `nvshmem_int_p`, and `nvshmem_int_wait_until` between `sender_kernel` (`PE 0`) and `receiver_kernel` (`PE 1`), explain when `nvshmemx_collective_launch()` is required, and state the three rules for capturing multi-GPU `ncclAllReduce` inside a `CUDA Graph`.
-6. **Volume 03 Production Profiling Funnel & Lab 04 Failure Diagnostics:** Given the Lab 04 `67,108,864`-element pipeline (`812.4 ms` baseline), calculate the slowdown factor and root cause for Regressions A (`1,928.3 ms`), B (`3,140.9 ms`), and C (`2,214.8 ms`), explain why a `512 MiB` allocation fails when `nvidia-smi` reports `1,895 MiB` free (`1,240 MiB` fragmented across `340` blocks), and compute the faulting global index reported by `compute-sanitizer` for `block (3906,0,0)`, `thread (287,0,0)` at `blockDim = 256`.
+```text
+1. Warp-batched L2 atomic work queues in `uneven_static.cu` versus `uneven_dynamic.cu`. For `N = 1,048,576` elements, calculate the total number of `atomicAdd` operations executed when every thread increments by 1 versus when a warp leader increments by `batchSize` of 8, 16, or 32. State the target value of Nsight Compute's `atomic_transactions_per_request` metric and the speedup of `computeKernelDynamicBatch` at 100 ms over `computeKernel` at 200 ms on `work = idx % 256`.
+```
+```text
+2. LLM decode CPU launch overhead and CUDA Graph Table 12-1. Calculate the percentage of wall-clock time spent in CPU launch overhead when 3 decode kernels each run in 3 µs on the GPU with 15 µs of CPU launch overhead per kernel. State how many kernel launches CUDA Graphs eliminate when generating 500 tokens on an 80-layer LLM in Triton, and summarize the four before-and-after metrics from Table 12-1 across 100 iterations.
+```
+3. Device-initiated CUDA Graph launch modes and Conditional Graph Nodes. Contrast cudaStreamGraphFireAndForget, cudaStreamGraphTailLaunch, and cudaStreamGraphFireAndForgetAsSibling, and state their hardware concurrency limits of 120, 255, and 1. List the host and device API calls needed to build an IF conditional node cudaGraphCondTypeIf that runs bodyKernel when `reduce_sum(data, N) > 123456`.
+```text
+4. Dynamic Parallelism in Table 12-2 and `-rdc=true`. Using Table 12-2 for 1 parent plus 2 children on `N = 1,048,576` at `threadsPerBlock = 256`, state the before and after values for host launches, per-launch overhead, GPU idle cycles, and overall runtime. Name the two `cudaDeviceSetLimit` flags that control pending child launches at the 2,048 default and stack size.
+```
+5. NVSHMEM one-sided PGAS communication and Graph-Captured NCCL. Trace the exact sequence of nvshmem_float_p, nvshmem_quiet, nvshmem_int_p, and nvshmem_int_wait_until between sender_kernel on Processing Element 0 and receiver_kernel on Processing Element 1. Explain when `nvshmemx_collective_launch()` is required and state the three rules for capturing multi-GPU ncclAllReduce inside a CUDA Graph.
+```text
+6. Volume 03 Production Profiling Funnel and Lab 04 Failure Diagnostics. Given the Lab 04 67,108,864-element pipeline with an 812.4 ms baseline, calculate the slowdown factor and root cause for Regressions A, B, and C from Section 5.3. Explain why a 512 MiB allocation fails when `nvidia-smi` reports 1,895 MiB free with 1,240 MiB fragmented across 340 blocks, and compute the faulting global index reported by `compute-sanitizer` for block 3906 and thread 287 at `blockDim = 256`.
+```
 
 ---
 
 ## Checkpoint questions (20)
 
 <details>
-<summary><strong>1. How many Grace CPUs, Blackwell GPUs, and terabytes of unified memory are connected in a single NVLink domain in an NVIDIA `DGX GB200 NVL72` rack?</strong></summary>
+<summary>`&lt;strong>`1. How many Grace CPUs, Blackwell GPUs, and terabytes of unified memory are connected in a single NVLink domain in an NVIDIA `DGX GB200 NVL72` rack?`&lt;/strong>`</summary>
 
-A `DGX GB200 NVL72` connects **`36` Grace CPUs** and **`72` Blackwell GPUs** into a single NVLink domain with unified addressing and up to **`30 TB`** of combined CPU and GPU unified memory (*ASP* Ch 12).
+An NVIDIA DGX GB200 NVL72 rack connects 36 Grace CPUs and 72 Blackwell GPUs into a single NVLink domain with unified addressing. The rack provides up to 30 TB of combined CPU and GPU unified memory.
 </details>
 
 <details>
-<summary><strong>2. Where are global atomic operations serviced on modern NVIDIA GPUs, and what do `atomic_transactions` and `atomic_transactions_per_request` measure in Nsight Compute?</strong></summary>
+<summary>`&lt;strong>`2. Where are global atomic operations serviced on modern NVIDIA GPUs, and what do `atomic_transactions` and `atomic_transactions_per_request` measure in Nsight Compute?`&lt;/strong>`</summary>
 
-Global atomics (`atomicAdd`) are serviced in the on-chip **L2 cache**. In Nsight Compute's *Memory Workload Analysis* section, `atomic_transactions` counts total L2 atomic transactions (including contention replays), and `atomic_transactions_per_request` measures the average L2 transactions per atomic instruction—where **`~1.0`** indicates zero contention and **`> 1.0`** indicates threads stalling and retrying due to contention (*ASP* Ch 12).
+Global atomics such as atomicAdd are serviced in the on-chip L2 cache. In Nsight Compute's Memory Workload Analysis section, atomic_transactions counts total L2 atomic transactions including contention replays, and atomic_transactions_per_request measures the average L2 transactions per atomic instruction. A value near 1.0 indicates zero contention, whereas a value above 1.0 indicates threads stalling and retrying due to contention.
 </details>
 
 <details>
-<summary><strong>3. How does `computeKernelDynamicBatch` (`uneven_dynamic.cu`) elect a warp leader and reduce L2 atomic contention by `32x`, and what speedup does it achieve over `uneven_static.cu`?</strong></summary>
+<summary>`&lt;strong>`3. How does `computeKernelDynamicBatch` (`uneven_dynamic.cu`) elect a warp leader and reduce L2 atomic contention by `32x`, and what speedup does it achieve over `uneven_static.cu`?`&lt;/strong>`</summary>
 
-Each iteration calls `unsigned mask = __activemask(); int leader = __ffs(mask) - 1;`, has only `lane == leader` execute `base = atomicAdd(&globalIndex, warpSize);` (`32` items), and broadcasts `base` to all active lanes via `__shfl_sync(mask, base, leader)`. On `N = 1 << 20` (`work = idx % 256`), this cuts atomic calls by **`32x` (`1,048,576 → 32,768`)** and halves runtime from **`~200 ms` to `~100 ms` (`2.0x` speedup)** (*ASP* Ch 12).
+```text
+Each iteration calls `unsigned mask = __activemask(); int leader = __ffs(mask) - 1;`, has only `lane == leader` execute `base = atomicAdd(&globalIndex, warpSize);` for 32 items, and broadcasts `base` to all active lanes via `__shfl_sync(mask, base, leader)`. On `N = 1,048,576` elements with `work = idx % 256`, this reduces atomic calls by 32x from 1,048,576 to 32,768 and halves runtime from ~200 ms to ~100 ms for a 2.0x speedup.
+```
 </details>
 
 <details>
-<summary><strong>4. Why is LLM autoregressive decode often CPU-bound without CUDA Graphs, and how many kernel launches occur for `500` tokens on an `80`-layer model?</strong></summary>
+<summary>`&lt;strong>`4. Why is LLM autoregressive decode often CPU-bound without CUDA Graphs, and how many kernel launches occur for `500` tokens on an `80`-layer model?`&lt;/strong>`</summary>
 
-Each CPU kernel launch costs **`5` to `15 µs`**, whereas a single decode kernel may execute in **`3 µs`** on the GPU (`15 / 18 =` **`83.3%` [`> 80%`]** of time wasted in CPU launch overhead). Generating `500` tokens across an `80`-layer model dispatches `500 × 80 =` **`40,000` individual kernel launches**; capturing the `80` layers into a CUDA Graph reduces host work to **`500` graph replays** (*V3* Ch 10).
+```text
+Each CPU kernel launch costs 5 to 15 µs, whereas a single decode kernel may execute in 3 µs on the GPU, wasting 83.3% or over 80% of time in CPU launch overhead across a 3-kernel chain. Generating 500 tokens across an 80-layer model dispatches 40,000 individual kernel launches, whereas capturing the 80 layers into a CUDA Graph reduces host work to 500 graph replays.
+```
 </details>
 
 <details>
-<summary><strong>5. Summarize the four metrics comparing 100 iterations of a 3-kernel pipeline before and after CUDA Graphs in Table 12-1.</strong></summary>
+<summary>`&lt;strong>`5. Summarize the four metrics comparing 100 iterations of a 3-kernel pipeline before and after CUDA Graphs in Table 12-1.`&lt;/strong>`</summary>
 
-Across `100` iterations of `A → B → C`, CUDA Graphs reduce CPU launch calls from **`300` to `100`** (`1` replay/iteration), reduce host `cudaDeviceSynchronize` calls from **`300` to `0`**, eliminate **`~3 µs` inter-kernel idle gaps (`→ 0 µs`)**, and cut per-iteration latency from **`~1.00 ms` to `~0.75 ms` (`25%` faster)** (*ASP* Ch 12, Table 12-1).
+```text
+Across 100 iterations of the three-kernel pipeline in Table 12-1, CUDA Graphs reduce CPU launch calls from 300 to 100 and reduce host `cudaDeviceSynchronize` calls from 300 to 0. They also eliminate ~3 µs inter-kernel idle gaps down to 0 µs and cut per-iteration latency from ~1.00 ms to ~0.75 ms, which is 25% faster.
+```
 </details>
 
 <details>
-<summary><strong>6. Why must you run a warm-up pass and use static buffers (`torch.cuda.graph_pool_handle()`) when capturing a PyTorch `torch.cuda.CUDAGraph`?</strong></summary>
+<summary>`&lt;strong>`6. Why must you run a warm-up pass and use static buffers (`torch.cuda.graph_pool_handle()`) when capturing a PyTorch `torch.cuda.CUDAGraph`?`&lt;/strong>`</summary>
 
-A warm-up pass initializes cuBLAS/cuDNN handles, JIT caches, and allocator blocks outside the capture window (which would otherwise fail capture). Static buffers and `torch.cuda.graph_pool_handle()` guarantee **pointer stability**, because an instantiated `cudaGraphExec_t` replays operations against the exact fixed virtual memory addresses recorded during capture (*ASP* Ch 12 & *V3* Ch 10).
+A warm-up pass initializes cuBLAS and cuDNN handles, JIT caches, and allocator blocks outside the capture window so stream capture does not fail. Static buffers and `torch.cuda.graph_pool_handle()` guarantee pointer stability because an instantiated cudaGraphExec_t replays operations against the exact fixed virtual memory addresses recorded during capture.
 </details>
 
 <details>
-<summary><strong>7. How does `cudaGraphExecUpdate` work for variable batch sizes (e.g., `128 → 64`), and what happens if a service ignores `cudaGraphExecUpdateErrorTopologyChanged` (`512 → 513`)?</strong></summary>
+<summary>`&lt;strong>`7. How does `cudaGraphExecUpdate` work for variable batch sizes (e.g., `128 → 64`), and what happens if a service ignores `cudaGraphExecUpdateErrorTopologyChanged` (`512 → 513`)?`&lt;/strong>`</summary>
 
-You capture a template graph at the maximum batch size (`128`) and call `cudaGraphExecUpdate` (or `cudaGraphExecKernelNodeSetParams`) to patch launch dimensions, scalars, or pointers for batch `64` in a few microseconds (`sub-100 µs` replay cost). If a shape change (`512 → 513`) alters the graph topology, `cudaGraphExecUpdate` returns **`cudaGraphExecUpdateErrorTopologyChanged`**; ignoring that return code replays the stale `512`-shape graph and corrupts outputs (*ASP* Ch 12 & *V3* Ch 10).
+```text
+You capture a template graph at the maximum batch size of 128 and call cudaGraphExecUpdate or cudaGraphExecKernelNodeSetParams to patch launch dimensions, scalars, or pointers for batch 64 while keeping sub-100 µs replay cost. If a shape change from 512 to 513 alters the graph topology, cudaGraphExecUpdate returns cudaGraphExecUpdateErrorTopologyChanged, and ignoring that return code replays the stale 512-shape graph and corrupts outputs.
+```
 </details>
 
 <details>
-<summary><strong>8. How do you verify in Nsight Systems whether a workload will actually benefit from CUDA Graphs?</strong></summary>
+<summary>`&lt;strong>`8. How do you verify in Nsight Systems whether a workload will actually benefit from CUDA Graphs?`&lt;/strong>`</summary>
 
-Inspect `nsys stats --report cuda_api_sum` and the GPU timeline. If `cudaLaunchKernel` accounts for only a tiny fraction of time (e.g., **`2.1%` / `4,120,000 ns`** across `500` calls) while a `512 MB` `cudaMemcpyAsync` accounts for **`97.3%` (`189,340,000 ns`)**, or if kernels are long-running without CPU gaps, CUDA Graphs will provide no meaningful end-to-end speedup (*V3* Ch 10).
+```text
+Inspect `nsys stats --report cuda_api_sum` and the GPU timeline. In Volume 03 Chapter 10's diagnostic example across 500 calls, `cudaLaunchKernel` takes only 4,120,000 ns or 2.1% of time while a 512 MB `cudaMemcpyAsync` takes 189,340,000 ns or 97.3% of time, so CUDA Graphs provide no meaningful end-to-end speedup.
+```
 </details>
 
 <details>
-<summary><strong>9. What two host steps are required before a kernel can launch a `cudaGraphExec_t` on the device, and how does device-launch latency compare to host-launch latency?</strong></summary>
+<summary>`&lt;strong>`9. What two host steps are required before a kernel can launch a `cudaGraphExec_t` on the device, and how does device-launch latency compare to host-launch latency?`&lt;/strong>`</summary>
 
-1. Instantiate the graph with **`cudaGraphInstantiateFlagDeviceLaunch`**.
-2. Upload the executable graph to the GPU with **`cudaGraphUpload(graphExec, stream)`** before any device launch.
-Device-initiated graph launches achieve roughly **`2x` lower launch latency** than host-side graph launches and maintain **flat latency** as graph size and width grow (*ASP* Ch 12).
+1. Instantiate the graph with cudaGraphInstantiateFlagDeviceLaunch.
+2. Upload the executable graph to the GPU with `cudaGraphUpload(graphExec, stream)` before any device launch.
+Device-initiated graph launches achieve roughly 2x lower launch latency than host-side graph launches and maintain flat latency as graph size and width grow.
 </details>
 
 <details>
-<summary><strong>10. Contrast the three device-initiated graph launch modes (`Fire-and-Forget`, `Tail`, and `Sibling`) and state their concurrency limits.</strong></summary>
+<summary>`&lt;strong>`10. Contrast the three device-initiated graph launch modes (`Fire-and-Forget`, `Tail`, and `Sibling`) and state their concurrency limits.`&lt;/strong>`</summary>
 
-- **`cudaStreamGraphFireAndForget`:** Runs immediately and concurrently with the parent kernel (up to **`120` total fire-and-forget graphs** per execution).
-- **`cudaStreamGraphTailLaunch`:** Runs sequentially after the launching kernel completes (up to **`255` pending tail launches**, and at most **`1` pending self-tail-launch** via `cudaGetCurrentGraphExec()`).
-- **`cudaStreamGraphFireAndForgetAsSibling`:** Runs immediately as a peer in the parent's stream environment without delaying the parent graph's tail launches (*ASP* Ch 12, Figures 12-6 to 12-8).
+- cudaStreamGraphFireAndForget runs immediately and concurrently with the parent kernel, supporting up to 120 total fire-and-forget graphs per execution.
+- cudaStreamGraphTailLaunch runs sequentially after the launching kernel completes, supporting up to 255 pending tail launches and at most 1 pending self-tail-launch via `cudaGetCurrentGraphExec()`.
+- cudaStreamGraphFireAndForgetAsSibling runs immediately as a peer in the parent's stream environment without delaying the parent graph's tail launches.
 </details>
 
 <details>
-<summary><strong>11. What four types of Conditional Graph Nodes does CUDA support (Figure 12-9), and why must `cudaGraphSetConditional` be called from a single thread?</strong></summary>
+<summary>`&lt;strong>`11. What four types of Conditional Graph Nodes does CUDA support (Figure 12-9), and why must `cudaGraphSetConditional` be called from a single thread?`&lt;/strong>`</summary>
 
-CUDA supports **`IF` (`cudaGraphCondTypeIf`)**, **`IF/ELSE`**, **`WHILE`**, and **`SWITCH`** conditional graph nodes. `cudaGraphSetConditional(handle, flag)` must be called from a single thread (e.g., `if (threadIdx.x == 0 && blockIdx.x == 0)`) after memory writes flush so multiple threads do not race when writing the condition handle (*ASP* Ch 12).
+CUDA supports IF via cudaGraphCondTypeIf, `IF/ELSE`, WHILE, and SWITCH conditional graph nodes. Calling `cudaGraphSetConditional(handle, flag)` must be guarded to a single thread such as `if (threadIdx.x == 0 && blockIdx.x == 0)` after memory writes flush so multiple threads do not race when writing the condition handle.
 </details>
 
 <details>
-<summary><strong>12. When should you choose Dynamic Parallelism (`DP`) over device-initiated CUDA Graphs, and what compiler flag is required?</strong></summary>
+<summary>`&lt;strong>`12. When should you choose Dynamic Parallelism (`DP`) over device-initiated CUDA Graphs, and what compiler flag is required?`&lt;/strong>`</summary>
 
-Choose **Dynamic Parallelism** (compiled with **`nvcc -rdc=true`**) when child grid counts, dimensions, or recursive branches emerge dynamically from data at runtime and cannot be expressed as a pre-recorded graph topology (*ASP* Ch 12).
+Choose Dynamic Parallelism compiled with `nvcc -rdc=true` when child grid counts, dimensions, or recursive branches emerge dynamically from data at runtime. Unlike CUDA Graphs, Dynamic Parallelism does not require a pre-recorded graph topology.
 </details>
 
 <details>
-<summary><strong>13. Summarize the Table 12-2 comparison between host-launched and device-launched Dynamic Parallelism (`1` parent + `2` children), and state the two `cudaDeviceSetLimit` controls for DP.</strong></summary>
+<summary>`&lt;strong>`13. Summarize the Table 12-2 comparison between host-launched and device-launched Dynamic Parallelism (`1` parent + `2` children), and state the two `cudaDeviceSetLimit` controls for DP.`&lt;/strong>`</summary>
 
-In Table 12-2, moving child dispatch to the GPU drops host launches from **`3` to `1`**, changes per-launch cost from **`~20 µs` to `~25 µs`**, slashes GPU idle cycles from **`~40%` to `~5%` (`-35` percentage points)**, and cuts total runtime from **`1.00 ms` to `0.75 ms` (`25%` faster)**. Use **`cudaDeviceSetLimit(cudaLimitDevRuntimePendingLaunchCount, newLimit)`** to raise the default **`2,048`** pending-launch cap and **`cudaDeviceSetLimit(cudaLimitStackSize, newSize)`** to prevent stack overflow (*ASP* Ch 12, Table 12-2).
+```text
+In Table 12-2, moving child dispatch to the GPU drops host launches from 3 to 1 and shifts per-launch cost from ~20 µs to ~25 µs. It slashes GPU idle cycles from ~40% to ~5% for a 35 percentage point reduction and cuts total runtime from 1.00 ms to 0.75 ms, which is 25% faster. Use `cudaDeviceSetLimit(cudaLimitDevRuntimePendingLaunchCount, newLimit)` to raise the default 2,048 pending-launch cap and `cudaDeviceSetLimit(cudaLimitStackSize, newSize)` to prevent stack overflow.
+```
 </details>
 
 <details>
-<summary><strong>14. How does `NVSHMEM` implement one-sided GPU-to-GPU communication (`sender_kernel` → `receiver_kernel`), and why is `nvshmem_quiet()` mandatory before setting the signal flag?</strong></summary>
+<summary>`&lt;strong>`14. How does `NVSHMEM` implement one-sided GPU-to-GPU communication (`sender_kernel` → `receiver_kernel`), and why is `nvshmem_quiet()` mandatory before setting the signal flag?`&lt;/strong>`</summary>
 
-`NVSHMEM` creates a Partitioned Global Address Space (`PGAS`) across Processing Elements (`PEs`) using symmetric allocations (`nvshmem_malloc`). `PE 0` writes payload data via `nvshmem_float_p`, calls **`nvshmem_quiet()`** to guarantee the remote write has completed in `PE 1`'s HBM, and then sets the remote flag via `nvshmem_int_p`; `PE 1` waits with `nvshmem_int_wait_until(..., NVSHMEM_CMP_EQ, 1)` (*ASP* Ch 12, Figure 12-14).
+NVSHMEM creates a Partitioned Global Address Space across Processing Elements using symmetric allocations via nvshmem_malloc. Processing Element 0 writes payload data via nvshmem_float_p. Calls `nvshmem_quiet()` to guarantee the remote write has completed in Processing Element 1's HBM. And then sets the remote flag via nvshmem_int_p while Processing Element 1 waits with `nvshmem_int_wait_until(..., NVSHMEM_CMP_EQ, 1)`.
 </details>
 
 <details>
-<summary><strong>15. When must an `NVSHMEM` kernel be launched with `nvshmemx_collective_launch()`, and how do GPUs perform cross-device work stealing in `NVSHMEM`?</strong></summary>
+<summary>`&lt;strong>`15. When must an `NVSHMEM` kernel be launched with `nvshmemx_collective_launch()`, and how do GPUs perform cross-device work stealing in `NVSHMEM`?`&lt;/strong>`</summary>
 
-Any kernel that invokes device-side NVSHMEM collectives or barriers (such as `nvshmem_barrier_all()`) **must** be launched with `nvshmemx_collective_launch()` so all PEs run concurrently without deadlocking. For dynamic load balancing across GPUs, kernels atomically claim tasks from a symmetric queue counter via **`nvshmem_int_atomic_inc(queue_head)`** (*ASP* Ch 12).
+Any kernel that invokes device-side NVSHMEM collectives or barriers such as `nvshmem_barrier_all()` must be launched with `nvshmemx_collective_launch()` so all Processing Elements run concurrently without deadlocking. For dynamic load balancing across GPUs, kernels atomically claim tasks from a symmetric queue counter via `nvshmem_int_atomic_inc(queue_head)`.
 </details>
 
 <details>
-<summary><strong>16. What three rules apply when capturing multi-GPU `ncclAllReduce` operations inside a `CUDA Graph`?</strong></summary>
+<summary>`&lt;strong>`16. What three rules apply when capturing multi-GPU `ncclAllReduce` operations inside a `CUDA Graph`?`&lt;/strong>`</summary>
 
-1. Use `cudaStreamCaptureModeGlobal` and ensure **every rank captures and replays the exact same sequence of NCCL collectives on the same communicator**.
-2. Run **warmup collectives before capture** to initialize NCCL channels and buffers.
-3. **Preallocate all gradient and communication buffers at fixed addresses** prior to capture (*ASP* Ch 12, Figure 12-15).
+1. Use cudaStreamCaptureModeGlobal and ensure every rank captures and replays the exact same sequence of NCCL collectives on the same communicator.
+2. Run warmup collectives before capture to initialize NCCL channels and buffers.
+3. Preallocate all gradient and communication buffers at fixed addresses prior to capture.
 </details>
 
 <details>
-<summary><strong>17. How does the Roofline Model (Figure 12-17) guide orchestration choices across memory-bound, launch-limited compute-bound, and intermediate workloads?</strong></summary>
+<summary>`&lt;strong>`17. How does the Roofline Model (Figure 12-17) guide orchestration choices across memory-bound, launch-limited compute-bound, and intermediate workloads?`&lt;/strong>`</summary>
 
-- **Memory-bound (near sloped roof):** Overlap data transfers using CUDA streams (`cudaMemcpyAsync`) and lower precision (`FP16`/`FP8`/`FP4`).
-- **Compute-bound but below flat roof due to gaps:** Eliminate launch and tail gaps using kernel fusion, persistent kernels, CUDA Graphs, or device-initiated launches.
-- **Intermediate (below both roofs):** Increase concurrency by running multiple streams, graphs, or persistent kernels in parallel (*ASP* Ch 12, Figure 12-17).
+- Memory-bound kernels near the sloped roof overlap data transfers using CUDA Streams and cudaMemcpyAsync and lower precision to FP16, FP8, or FP4.
+- Compute-bound kernels sitting below the flat roof due to gaps eliminate launch and tail gaps using kernel fusion, persistent kernels, CUDA Graphs, or device-initiated launches.
+- Intermediate workloads sitting below both roofs increase concurrency by running multiple streams, graphs, or persistent kernels in parallel.
 </details>
 
 <details>
-<summary><strong>18. What are the three profiling levels in the Volume 03 Production Profiling Funnel, and why is GPU utilization (`nvidia-smi`) not a diagnosis?</strong></summary>
+<summary>`&lt;strong>`18. What are the three profiling levels in the Volume 03 Production Profiling Funnel, and why is GPU utilization (`nvidia-smi`) not a diagnosis?`&lt;/strong>`</summary>
 
-1. **Level 1 — End-to-End Customer SLO** (tokens/s, P95/P99 latency, step time).
-2. **Level 2 — System Timeline (`nsys`)** (host gaps, stream serialization, transfers, sync calls — **stop here** if gaps/serialization explain the slowdown).
-3. **Level 3 — Kernel Analysis (`ncu`)** (Roofline, occupancy, warp stalls, coalescing).
-High `nvidia-smi` utilization only means at least one warp was active during a sample window; it can reflect memory stalls, tiny unbatched kernel overhead, or retries rather than useful throughput (*V3* Ch 12).
+1. Level 1 measures end-to-end customer service level objectives such as tokens per second, P95 and P99 latency, and step time.
+2. Level 2 inspects the system timeline in nsys for host gaps, stream serialization, transfers, and sync calls, stopping there if timeline gaps explain the slowdown.
+3. Level 3 analyzes kernels in ncu for Roofline position, occupancy, warp stalls, and coalescing.
+High nvidia-smi utilization only means at least one warp was active. A sampling window, which can reflect memory stalls or tiny kernel overhead rather than useful throughput.
 </details>
 
 <details>
-<summary><strong>19. In Volume 03 Lab 04 (`67,108,864` elements, `812.4 ms` baseline), what slowdowns result from injecting (A) per-launch `cudaDeviceSynchronize()`, (B) `16 KiB` tiny chunks (`4,096` elements), and (C) pageable host memory?</strong></summary>
+<summary>`&lt;strong>`19. In Volume 03 Lab 04 (`67,108,864` elements, `812.4 ms` baseline), what slowdowns result from injecting (A) per-launch `cudaDeviceSynchronize()`, (B) `16 KiB` tiny chunks (`4,096` elements), and (C) pageable host memory?`&lt;/strong>`</summary>
 
-- **Regression A (`cudaDeviceSynchronize` after each launch):** **`1,928.3 ms` (`2.37x` / `~2.4x` slower)** due to lost overlap and host blocking.
-- **Regression B (`4,096`-element = `16 KiB` chunks vs `4,194,304`-element = `16 MiB` chunks, `1,024x` more launches/copies):** **`3,140.9 ms` (`3.87x` / `~3.9x` slower)** due to per-call submission overhead dominating execution.
-- **Regression C (Pageable host buffers):** **`2,214.8 ms` (`2.73x` / `~2.7x` slower)** due to hidden CPU staging copies serializing stream transfers (*V3* Lab 04).
+- Regression A with cudaDeviceSynchronize after each launch runs in 1,928.3 ms, which is 2.37x or ~2.4x slower due to lost overlap and host blocking.
+```text
+- Regression B with 4,096-element 16 KiB chunks versus 4,194,304-element 16 MiB chunks runs 1,024x more launches in 3,140.9 ms, which is 3.87x or ~3.9x slower due to submission overhead.
+```
+- Regression C with pageable host buffers runs in 2,214.8 ms, which is 2.73x or ~2.7x slower due to hidden CPU staging copies serializing stream transfers.
 </details>
 
 <details>
-<summary><strong>20. How can a `512 MiB` allocation fail with `CUDA out of memory` when `nvidia-smi -q` reports `1,895 MiB` free, and how does `compute-sanitizer --tool=memcheck` pinpoint deferred `cudaErrorIllegalAddress` faults?</strong></summary>
+<summary>`&lt;strong>`20. How can a `512 MiB` allocation fail with `CUDA out of memory` when `nvidia-smi -q` reports `1,895 MiB` free, and how does `compute-sanitizer --tool=memcheck` pinpoint deferred `cudaErrorIllegalAddress` faults?`&lt;/strong>`</summary>
 
-In *V3* Ch 12, `nvidia-smi` reports `1,895 MiB` device-wide free memory (`40,960 MiB` total, `38,660 MiB` used, `405 MiB` reserved), while `torch.cuda.memory_summary()` reveals **`1,240 MiB` reserved-but-unallocated memory fragmented across `340` small blocks**—none of which provides a single contiguous `512 MiB` span. For deferred `cudaErrorIllegalAddress` faults, `compute-sanitizer --tool=memcheck` intercepts the exact faulting instruction on the device (e.g., `scale_kernel` at `block (3906,0,0)`, `thread (287,0,0)` with `blockDim = 256` → global index **`1,000,223 > 1,000,003`**) instead of reporting the error at a later `cudaMemcpy` or sync (*V3* Ch 12 & Ch 13).
+```text
+In Volume 03 Chapter 12, `nvidia-smi` reports 1,895 MiB free out of 40,960 MiB total, with 38,660 MiB used and 405 MiB reserved. However, `torch.cuda.memory_summary()` reveals 1,240 MiB of reserved-but-unallocated memory fragmented across 340 small blocks, none of which can satisfy a contiguous 512 MiB request. For deferred `cudaErrorIllegalAddress` faults, `compute-sanitizer --tool=memcheck` intercepts the exact faulting instruction on the device at block 3906, thread 287 with `blockDim = 256`, where global index `1,000,223 > 1,000,003`.
+```
 </details>
 
 ---
 
 ## Sources and review notes
 
-### Primary sources read in full for this chapter
-- *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Chris Fregly), Chapter 12: *Dynamic Scheduling, CUDA Graphs, and Device-Initiated Kernel Orchestration* — read in full via `tools/study_rag/bookch.py`, including:
-  - *Dynamic Scheduling with Atomic Work Queues*, *Atomic Counters*, and *Atomic Queues* (`DGX GB200 NVL72` `36` Grace CPUs + `72` Blackwell GPUs + `30 TB` unified memory, Figures 12-1 & 12-2, Nsight Compute `atomic_transactions` & `atomic_transactions_per_request` `~1.0` target, batching `8`, `16`, `32` items per atomic, `uneven_static.cu` `200 ms` vs `uneven_dynamic.cu` `100 ms` = `2x` speedup on `N = 1 << 20`, `work = idx % 256`),
-  - *CUDA Graphs*, *PyTorch, Inference Engines, and CUDA Graphs*, *Memory Pools for CUDA Graphs*, *Capturing a CUDA Graph with a CUDA Stream*, and *Dynamic Graph Update* (Figures 12-3 & 12-4, **Table 12-1**: `300 → 100` launches, `300 → 0` syncs, `~3 µs → 0 µs` gaps, `1.00 → 0.75 ms` = `25%` faster, `torch.cuda.CUDAGraph`, `torch.cuda.graph_pool_handle()`, `mode='reduce-overhead'`, `vLLM` / `TensorRT-LLM` shape bucketing, and `cudaGraphExecUpdate` batch `128 → 64`),
-  - *Device-Initiated CUDA Graph Launch*, *Atomic Queues and Device-Initiated CUDA Graphs for In-Kernel Persistent Scheduling*, and *Conditional Graph Nodes* (Figures 12-5 to 12-11, `cudaGraphInstantiateFlagDeviceLaunch`, `cudaGraphUpload`, `~2x` lower latency, `cudaStreamGraphFireAndForget` max `120`, `cudaStreamGraphTailLaunch` max `255` & `1` self-tail-launch via `cudaGetCurrentGraphExec()`, `cudaStreamGraphFireAndForgetAsSibling`, and `IF` / `IF/ELSE` / `WHILE` / `SWITCH` conditional nodes with `threshold = 123456`),
-  - *Dynamic Parallelism* (Figures 12-12 & 12-13, `-rdc=true`, `dp_host_launched.cu` vs `dp_device_launched.cu`, `2,048` default `cudaLimitDevRuntimePendingLaunchCount`, `cudaLimitStackSize`, and **Table 12-2**: `3 → 1` host launches, `~20 → ~25 µs`, `~40% → ~5%` GPU idle cycles, `1.00 → 0.75 ms` = `25%` faster),
-  - *Orchestrate Across Multiple GPUs and Cluster Nodes (NVSHMEM)*, *Fine-Grained GPU-to-GPU Memory Sharing with NVSHMEM*, *Capturing Multi-GPU Collectives with NCCL and CUDA Graphs*, *Pattern for N-GPU Scaling*, and *Roofline-Guided Scheduling and Orchestration Decisions* (Figures 12-14 to 12-17, `nvshmem_float_p`, `nvshmem_quiet`, `nvshmem_int_p`, `nvshmem_int_wait_until`, `nvshmem_int_atomic_inc`, `nvshmemx_collective_launch`, `nvshmem_barrier_all`, graph-captured bucketed `ncclAllReduce`, and Roofline orchestration regimes).
-- `nvidia-devops` Volume 03 (*CUDA Fundamentals*) notes read in full:
-  - `nvidia-zero-to-hero/volume-03/chapter-10-cuda-graphs-and-repeated-execution.md`
-  - `nvidia-zero-to-hero/volume-03/chapter-chapter-10-cuda-graphs-and-repeated-execution.md`
-  - `nvidia-zero-to-hero/volume-03/chapter-12-profiling-and-production-troubleshooting.md`
-  - `nvidia-zero-to-hero/volume-03/chapter-chapter-12-profiling-and-production-troubleshooting.md`
-  - `nvidia-zero-to-hero/volume-03/chapter-13-volume-03-summary.md`
-  - `nvidia-zero-to-hero/volume-03/chapter-chapter-13-volume-03-summary.md`
-  - `nvidia-zero-to-hero/volume-03/labs/lab-04-profile-and-diagnose-a-cuda-application.md`
+The primary sources, mapped Volume 03 files, lab verification runs, and review notes for this chapter are listed below.
 
-### Related source files mapped in `MIGRATION_MAP.md`
-- `nvidia-zero-to-hero/volume-03/index.md`
-- `nvidia-zero-to-hero/volume-03/chapter-01-why-cuda-exists.md` and `nvidia-zero-to-hero/volume-03/chapter-chapter-01-why-cuda-exists.md`
-- `nvidia-zero-to-hero/volume-03/chapter-02-cuda-software-stack.md` and `nvidia-zero-to-hero/volume-03/chapter-chapter-02-cuda-software-stack.md`
-- `nvidia-zero-to-hero/volume-03/chapter-03-cuda-programming-and-execution-model.md` and `nvidia-zero-to-hero/volume-03/chapter-chapter-03-cuda-programming-and-execution-model.md`
-- `nvidia-zero-to-hero/volume-03/chapter-04-kernel-launch-configuration-and-indexing.md` and `nvidia-zero-to-hero/volume-03/chapter-chapter-04-kernel-launch-configuration-and-indexing.md`
-- `nvidia-zero-to-hero/volume-03/chapter-05-cuda-memory-management-and-data-movement.md` and `nvidia-zero-to-hero/volume-03/chapter-chapter-05-cuda-memory-management-and-data-movement.md`
-- `nvidia-zero-to-hero/volume-03/chapter-06-synchronization-errors-and-correctness.md` and `nvidia-zero-to-hero/volume-03/chapter-chapter-06-synchronization-errors-and-correctness.md`
-- `nvidia-zero-to-hero/volume-03/chapter-07-streams-events-and-asynchronous-execution.md` and `nvidia-zero-to-hero/volume-03/chapter-chapter-07-streams-events-and-asynchronous-execution.md`
-- `nvidia-zero-to-hero/volume-03/chapter-08-pinned-memory-and-transfer-overlap.md` and `nvidia-zero-to-hero/volume-03/chapter-chapter-08-pinned-memory-and-transfer-overlap.md`
-- `nvidia-zero-to-hero/volume-03/chapter-09-unified-memory-and-demand-paging.md`
-- `nvidia-zero-to-hero/volume-03/chapter-11-compilation-binaries-and-compatibility.md` and `nvidia-zero-to-hero/volume-03/chapter-chapter-11-compilation-binaries-and-compatibility.md`
-- `nvidia-zero-to-hero/volume-03/labs/lab-01-inspect-and-validate-a-cuda-environment.md`
-- `nvidia-zero-to-hero/volume-03/labs/lab-02-build-and-validate-a-cuda-vector-pipeline.md`
-- `nvidia-zero-to-hero/volume-03/labs/lab-03-build-an-overlapped-cuda-pipeline.md`
+```text
+Primary sources read in full for this chapter:
+- AI Systems Performance Engineering (ai-systems-performance-engineering, Chris Fregly), Chapter 12:
+  Dynamic Scheduling, CUDA Graphs, and Device-Initiated Kernel Orchestration — read in full via tools/study_rag/bookch.py, including:
+  - Dynamic Scheduling with Atomic Work Queues, Atomic Counters, and Atomic Queues (DGX GB200 NVL72 36 Grace CPUs + 72 Blackwell GPUs + 30 TB unified memory, Figures 12-1 & 12-2, Nsight Compute atomic_transactions & atomic_transactions_per_request ~1.0 target, batching 8, 16, 32 items per atomic, uneven_static.cu 200 ms vs uneven_dynamic.cu 100 ms = 2x speedup on N = 1 << 20, work = idx % 256),
+  - CUDA Graphs, PyTorch, Inference Engines, and CUDA Graphs, Memory Pools for CUDA Graphs, Capturing a CUDA Graph with a CUDA Stream, and Dynamic Graph Update (Figures 12-3 & 12-4, Table 12-1: 300 -> 100 launches, 300 -> 0 syncs, ~3 us -> 0 us gaps, 1.00 -> 0.75 ms = 25% faster, torch.cuda.CUDAGraph, torch.cuda.graph_pool_handle(), mode='reduce-overhead', vLLM / TensorRT-LLM shape bucketing, and cudaGraphExecUpdate batch 128 -> 64),
+  - Device-Initiated CUDA Graph Launch, Atomic Queues and Device-Initiated CUDA Graphs for In-Kernel Persistent Scheduling, and Conditional Graph Nodes (Figures 12-5 to 12-11, cudaGraphInstantiateFlagDeviceLaunch, cudaGraphUpload, ~2x lower latency, cudaStreamGraphFireAndForget max 120, cudaStreamGraphTailLaunch max 255 & 1 self-tail-launch via cudaGetCurrentGraphExec(), cudaStreamGraphFireAndForgetAsSibling, and IF / IF/ELSE / WHILE / SWITCH conditional nodes with threshold = 123456),
+  - Dynamic Parallelism (Figures 12-12 & 12-13, -rdc=true, dp_host_launched.cu vs dp_device_launched.cu, 2,048 default cudaLimitDevRuntimePendingLaunchCount, cudaLimitStackSize, and Table 12-2: 3 -> 1 host launches, ~20 -> ~25 us, ~40% -> ~5% GPU idle cycles, 1.00 -> 0.75 ms = 25% faster),
+  - Orchestrate Across Multiple GPUs and Cluster Nodes (NVSHMEM), Fine-Grained GPU-to-GPU Memory Sharing with NVSHMEM, Capturing Multi-GPU Collectives with NCCL and CUDA Graphs, Pattern for N-GPU Scaling, and Roofline-Guided Scheduling and Orchestration Decisions (Figures 12-14 to 12-17, nvshmem_float_p, nvshmem_quiet, nvshmem_int_p, nvshmem_int_wait_until, nvshmem_int_atomic_inc, nvshmemx_collective_launch, nvshmem_barrier_all, graph-captured bucketed ncclAllReduce, and Roofline orchestration regimes).
+- nvidia-devops Volume 03 (CUDA Fundamentals) notes read in full:
+  - nvidia-zero-to-hero/volume-03/chapter-10-cuda-graphs-and-repeated-execution.md
+  - nvidia-zero-to-hero/volume-03/chapter-chapter-10-cuda-graphs-and-repeated-execution.md
+  - nvidia-zero-to-hero/volume-03/chapter-12-profiling-and-production-troubleshooting.md
+  - nvidia-zero-to-hero/volume-03/chapter-chapter-12-profiling-and-production-troubleshooting.md
+  - nvidia-zero-to-hero/volume-03/chapter-13-volume-03-summary.md
+  - nvidia-zero-to-hero/volume-03/chapter-chapter-13-volume-03-summary.md
+  - nvidia-zero-to-hero/volume-03/labs/lab-04-profile-and-diagnose-a-cuda-application.md
 
-### Run here
-- `python3 -B code/part10/dynamic_scheduling_graphs_lab.py` (`25 passed, 0 failed`).
+Related source files mapped in MIGRATION_MAP.md:
+- nvidia-zero-to-hero/volume-03/index.md
+- nvidia-zero-to-hero/volume-03/chapter-01-why-cuda-exists.md and nvidia-zero-to-hero/volume-03/chapter-chapter-01-why-cuda-exists.md
+- nvidia-zero-to-hero/volume-03/chapter-02-cuda-software-stack.md and nvidia-zero-to-hero/volume-03/chapter-chapter-02-cuda-software-stack.md
+- nvidia-zero-to-hero/volume-03/chapter-03-cuda-programming-and-execution-model.md and nvidia-zero-to-hero/volume-03/chapter-chapter-03-cuda-programming-and-execution-model.md
+- nvidia-zero-to-hero/volume-03/chapter-04-kernel-launch-configuration-and-indexing.md and nvidia-zero-to-hero/volume-03/chapter-chapter-04-kernel-launch-configuration-and-indexing.md
+- nvidia-zero-to-hero/volume-03/chapter-05-cuda-memory-management-and-data-movement.md and nvidia-zero-to-hero/volume-03/chapter-chapter-05-cuda-memory-management-and-data-movement.md
+- nvidia-zero-to-hero/volume-03/chapter-06-synchronization-errors-and-correctness.md and nvidia-zero-to-hero/volume-03/chapter-chapter-06-synchronization-errors-and-correctness.md
+- nvidia-zero-to-hero/volume-03/chapter-07-streams-events-and-asynchronous-execution.md and nvidia-zero-to-hero/volume-03/chapter-chapter-07-streams-events-and-asynchronous-execution.md
+- nvidia-zero-to-hero/volume-03/chapter-08-pinned-memory-and-transfer-overlap.md and nvidia-zero-to-hero/volume-03/chapter-chapter-08-pinned-memory-and-transfer-overlap.md
+- nvidia-zero-to-hero/volume-03/chapter-09-unified-memory-and-demand-paging.md
+- nvidia-zero-to-hero/volume-03/chapter-11-compilation-binaries-and-compatibility.md and nvidia-zero-to-hero/volume-03/chapter-chapter-11-compilation-binaries-and-compatibility.md
+- nvidia-zero-to-hero/volume-03/labs/lab-01-inspect-and-validate-a-cuda-environment.md
+- nvidia-zero-to-hero/volume-03/labs/lab-02-build-and-validate-a-cuda-vector-pipeline.md
+- nvidia-zero-to-hero/volume-03/labs/lab-03-build-an-overlapped-cuda-pipeline.md
 
-### Explicitly labelled inferences
-- The atomic call counts (`1,048,576 / 32 = 32,768`, `1,048,576 / 16 = 65,536`, `1,048,576 / 8 = 131,072`), the CPU launch share `45.0 / (45.0 + 9.0) = 83.3%`, and the Lab 04 slowdown ratios (`1,928.3 / 812.4 = 2.37x`, `3,140.9 / 812.4 = 3.87x`, `2,214.8 / 812.4 = 2.73x`) are exact arithmetic ratios computed in `code/part10/dynamic_scheduling_graphs.py` from the source figures in *AI Systems Performance Engineering* Chapter 12 and `nvidia-devops` Volume 03.
+Run here:
+- python3 -B code/part10/dynamic_scheduling_graphs_lab.py (25 passed, 0 failed).
 
-### Not verified on live hardware
-- All `nvcc -rdc=true`, `ncu`, `nsys`, `compute-sanitizer`, and `nvshmem` commands in Section 6 are marked **(untested here)** because this verification environment does not have an attached CUDA GPU.
+Explicitly labelled inferences:
+- The atomic call counts (1,048,576 / 32 = 32,768, 1,048,576 / 16 = 65,536, 1,048,576 / 8 = 131,072), the CPU launch share 45.0 / (45.0 + 9.0) = 83.3%, and the Lab 04 slowdown ratios (1,928.3 / 812.4 = 2.37x, 3,140.9 / 812.4 = 3.87x, 2,214.8 / 812.4 = 2.73x) are exact arithmetic ratios computed in code/part10/dynamic_scheduling_graphs.py from the source figures in AI Systems Performance Engineering Chapter 12 and nvidia-devops Volume 03.
 
-### Not in the corpus
-- Multi-node InfiniBand verbs bootstrap internals for `NVSHMEM` (`nvshmem_init_attr` with MPI/PMI) are omitted here and covered in Part 12.
+Not verified on live hardware:
+- All nvcc -rdc=true, ncu, nsys, compute-sanitizer, and nvshmem commands in Section 6 are marked (untested here) because this verification environment does not have an attached CUDA GPU.
 
-### Corrections to the author's notes
+Not in the corpus:
+- Multi-node InfiniBand verbs bootstrap internals for NVSHMEM (nvshmem_init_attr with MPI/PMI) are omitted here and covered in Part 12.
+
+Corrections to the author's notes:
 - Validation pass 2026-10-25: added the note at the top that the book's metric tables and the Volume 03 timings are illustrative, and replaced "measured" with "reported".
-- Arithmetic checked and correct (`3 x 15 = 45 µs`, `45 / (45 + 9) = 83.3%`, `500 x 80 = 40,000`, `1,048,576 / 32 = 32,768`).
-- Not re-checked line by line in this pass: the Fire-and-Forget `120` and Tail `255` limits and the page and figure numbers cited from the book.
-- In `uneven_dynamic.cu` (*ASP* Ch 12), the prose mentions `if (lane == 0)` while the listing elects `int leader = __ffs(mask) - 1; if (lane == leader)`—our code and explanation preserve the listing's divergence-safe `__activemask()` + `__ffs(mask) - 1` leader election pattern.
+- Arithmetic checked and correct (3 x 15 = 45 us, 45 / (45 + 9) = 83.3%, 500 x 80 = 40,000, 1,048,576 / 32 = 32,768).
+- In uneven_dynamic.cu (ASP Ch 12), the prose mentions if (lane == 0) while the listing elects int leader = __ffs(mask) - 1; if (lane == leader) — our code and explanation preserve the listing's divergence-safe __activemask() + __ffs(mask) - 1 leader election pattern.
+```
+

@@ -270,6 +270,36 @@ Grant the least that works. The 5.32 operator can patch nodes but not delete the
 
 Admission webhooks (defaulting, validating, conversion) are served by the same manager (`ctrl.NewWebhookManagedBy`). They need TLS certificates, normally from cert-manager, and a `failurePolicy` decision: `Fail` protects correctness but a down webhook blocks all writes of that type; `Ignore` does the opposite. Prefer **CEL validation rules and `ValidatingAdmissionPolicy`** for simple checks so the operator is not on the admission path. Never run a webhook for a resource that the webhook's own Pod depends on.
 
+When you do write a custom mutating or validating webhook with `controller-runtime`, your webhook struct implements the `admission.Handler` interface (`Handle(ctx context.Context, req admission.Request) admission.Response`) and uses `admission.PatchResponseFromRaw` to compute the JSONPatch diff automatically between the incoming raw object (`req.Object.Raw`) and the mutated Go struct marshaled to JSON. As *Production Kubernetes* (Chapter 8) illustrates in its Cluster API `VSphereMachine` Infoblox IPAM webhook example (and the same pattern applies when mutating a `Pod` into `marshaledPod`), you should short-circuit immediately with `admission.Allowed(...)` if the target annotation is absent, and always check `req.DryRun` before mutating external state so `kubectl --dry-run=server` requests remain side-effect free (untested here):
+
+```go
+// +kubebuilder:webhook:path=/infoblox-ipam,mutating=true,failurePolicy=fail,groups="infrastructure.cluster.x-k8s.io",resources=vspheremachines,verbs=create,versions=v1alpha3,name=mutating.infoblox.ipam.vspheremachines.infrastructure.cluster.x-k8s.io
+
+func (w *Webhook) Handle(
+	ctx context.Context,
+	req admission.Request) admission.Response {
+	vm := &v1alpha3.VSphereMachine{}
+	err := w.decoder.DecodeRaw(req.Object, vm)
+	if err != nil {
+		return admission.Errored(http.StatusBadRequest, err)
+	}
+	if _, ok := vm.Annotations["infoblox"]; !ok {
+		return admission.Allowed("Nothing to do")
+	}
+	// If mutating external state (e.g., allocating an IP in Infoblox),
+	// check req.DryRun first so dry-run requests do not cause side effects.
+	if req.DryRun != nil && *req.DryRun {
+		return admission.Allowed("dry run")
+	}
+	vm.Spec.VirtualMachineCloneSpec.Network.Devices[0].IPAddrs[0] = ipFromInfoblox
+	marshaledVM, err := json.Marshal(vm)
+	if err != nil {
+		return admission.Errored(http.StatusInternalServerError, err)
+	}
+	return admission.PatchResponseFromRaw(req.Object.Raw, marshaledVM)
+}
+```
+
 ## 11. Testing strategy
 
 Test at three layers:
@@ -354,7 +384,7 @@ Practical test hygiene: use unique object names per test (envtest state is share
 18. How can a finalizer wedge uninstallation?
 19. Why annotate objects you modify but do not own?
 20. What is a CEL validation rule and when does it replace a webhook?
-21. What does `failurePolicy: Fail` risk?
+21. What does `failurePolicy: Fail` risk, what `controller-runtime` helper builds a JSONPatch response from `req.Object.Raw` and a marshaled object, and what request field must a webhook check before causing external side effects? **A:** `Fail` risks blocking all writes of that resource if the webhook is down; `admission.PatchResponseFromRaw(req.Object.Raw, marshaledObj)` computes the JSONPatch; check `req.DryRun`.
 22. What is leader election for, and what object implements it?
 23. Why can cluster-wide caching be dangerous at scale?
 24. What do the three test layers each prove?
@@ -368,6 +398,7 @@ Practical test hygiene: use unique object names per test (envtest state is share
 ## 17. Sources and review notes
 
 - Hausenblas and Schimanski, *Programming Kubernetes* (O'Reilly): controllers, informers, CRDs, operators (concepts and structure used here, written in my own words).
+- Josh Rosso, Rich Lander, Alex Brand and John Harris, *Production Kubernetes* (`production-kubernetes`, Chapter 8: `8. Admission Control` — read in full for the `controller-runtime` mutating webhook `Handle(ctx, req)` implementation, `admission.PatchResponseFromRaw`, and `req.DryRun` side-effect handling).
 - The Kubebuilder book and controller-runtime documentation (public): markers, manager, testing with envtest. Version-specific details (controller-runtime v0.19, k8s 0.31, controller-gen 0.16.5) are those used for the verified code; check the current releases before copying.
 - Verified here: the reconcile, predicate, index, finalizer and status patterns compiled and ran under envtest with `-race` (see 5.32 for exactly what was exercised).
 - Not verified: image build, deployment, RBAC in a real cluster, webhook TLS, drain behaviour against a real PDB and kubelet.

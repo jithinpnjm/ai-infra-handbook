@@ -288,6 +288,33 @@ kubectl top nodes                                          # needs metrics-serve
 
 Smoke tests to automate: all nodes Ready; all kube-system pods Running; DNS resolves; pod-to-pod across nodes; Service ClusterIP and NodePort reachable; a PVC binds (after installing a storage provisioner, 5.17).
 
+### Everyday `kubectl` context, `last-applied-configuration`, `attach`, and shell completion
+
+Once `$HOME/.kube/config` is in place, *Kubernetes: Up and Running* (3rd edition, Chapter 4) highlights four `kubectl` workflows that save time on a new cluster (untested here):
+
+- **Contexts (`set-context` and `use-context`)**: instead of typing `--namespace` on every command, save a context that binds a default namespace (and optionally `--users` or `--clusters`) in `$HOME/.kube/config` and switch to it:
+
+```bash
+kubectl config set-context my-context --namespace=mystuff
+kubectl config use-context my-context
+```
+
+- **Inspecting and editing `kubectl apply` state (`view-last-applied`, `edit-last-applied`, `set-last-applied`)**: `kubectl apply` stores the previous declarative configuration inside the `kubectl.kubernetes.io/last-applied-configuration` annotation on each object so it can compute three-way merges on future applies. You can inspect or manipulate that recorded state directly:
+
+```bash
+kubectl apply -f myobj.yaml view-last-applied
+kubectl apply -f myobj.yaml edit-last-applied
+kubectl apply -f myobj.yaml set-last-applied
+```
+
+- **Attaching to a running container process (`kubectl attach`)**: when a minimal container has no `/bin/sh` or `bash` for `kubectl exec`, `kubectl attach -it <pod-name>` attaches your terminal directly to PID 1's standard input/output streams (like `kubectl logs -f` plus `stdin`).
+- **Bash tab completion (`kubectl completion bash`)**: after installing the `bash-completion` package (`apt-get install bash-completion`, `yum install bash-completion`, or `brew install bash-completion`), enable tab completion for commands and resource names in the current shell or persist it in `${HOME}/.bashrc`:
+
+```bash
+source <(kubectl completion bash)
+echo "source <(kubectl completion bash)" >> ${HOME}/.bashrc
+```
+
 ## 7. High-availability control plane (stacked etcd)
 
 Requirements: a stable API endpoint (VIP or load balancer) from the start (`controlPlaneEndpoint`), and three control-plane nodes.
@@ -504,7 +531,7 @@ Mark tested only after execution.
 29. How verify API readiness? **A:** `/readyz?verbose`.
 30. Why NTP matters? **A:** Certs and Raft need synchronised time.
 31. GPU node prerequisites? **A:** Driver, container toolkit, device plugin.
-32. How hide control-plane taints in labs? **A:** Remove taint with `taint ... -`.
+32. How do you create and activate a `kubectl` context with a default namespace, and what `kubectl apply` subcommands inspect or modify the recorded `last-applied-configuration` annotation? **A:** `kubectl config set-context my-context --namespace=mystuff` followed by `kubectl config use-context my-context`; `kubectl apply -f <file> view-last-applied`, `edit-last-applied`, and `set-last-applied`.
 33. How check CNI config? **A:** `/etc/cni/net.d` and CNI pod logs.
 34. What causes `x509 ... not valid for` errors? **A:** Missing cert SANs.
 35. What manages Kubernetes clusters declaratively? **A:** Cluster API.
@@ -513,7 +540,7 @@ Mark tested only after execution.
 
 **Written in original words.** Principal sources:
 
-- Brendan Burns, Joe Beda, Kelsey Hightower and Lachlan Evenson, *Kubernetes: Up and Running* (3rd edition; chapters 3 and 4 on deploying a cluster and the common kubectl commands, and the appendix on building a Raspberry Pi cluster for bare-metal ideas).
+- Brendan Burns, Joe Beda, Kelsey Hightower and Lachlan Evenson, *Kubernetes: Up and Running* (`kubernetes-up-and-running-3rd-edition`, 3rd edition; Chapter 3 on deploying a cluster, Chapter 4: `4. Common kubectl Commands` — read in full for `kubectl config set-context`/`use-context`, `view-last-applied`/`edit-last-applied`/`set-last-applied`, `kubectl attach`, and `kubectl completion bash` — and the appendix on building a Raspberry Pi cluster for bare-metal ideas).
 - Josh Rosso, Rich Lander, Alex Brand and John Harris, *Production Kubernetes* (chapters 1 and 2 on path to production and deployment models).
 - Kubernetes documentation for kubeadm, HA topologies, and configuration API versions; Calico, Cilium and kube-vip documentation.
 - Examples are the author's constructions.

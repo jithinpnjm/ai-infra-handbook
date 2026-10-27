@@ -20,8 +20,8 @@ peer-access / NUMA placement diagnostics from:
   remote = 2.1x), nvidia-smi topo -m path labels (X, NV#, PIX, PXB, PHB,
   NODE, SYS), worked 500 MB AllReduce transfer (0.56 ms on 900 GB/s NVLink
   vs 17.86 ms on 28 GB/s SYS PCIe = 32.1x slower), MIG disabling P2P (CNS),
-  NVLink single-lane replay/CRC error degradation, and workload placement
-  profiles.
+  NVLink single-lane replay/CRC error degradation (18 links x ~26.56 GB/s/dir
+  raw in nvlink --status), and workload placement profiles.
 """
 
 from __future__ import annotations

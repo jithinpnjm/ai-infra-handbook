@@ -182,10 +182,21 @@ JupyterHub with a Slurm spawner (batchspawner/wrapspawner); SSH-based remote dev
 
 The book opens with a blunt point: "one of the most important components of any supercomputer is its customers, or users. Without them, it is of no use to anyone". Its four themes translate directly:
 
-- **Correspondence**: set up a *virtual address* (an alias on the mail server forwarding to several admins, e.g. `support@cluster...`), never a personal address; it lets you add support staff over time and separates user requests from other mail. Use a ticketing system as soon as volume demands it (RT, Jira Service Management, GitLab issues, Zendesk, ServiceNow): one ticket per problem, categories, owners, service levels, searchable history.
-- **Accounting for requests**: keep a record of what users ask (software installs, quota increases, reservations, access) with decisions and rationale; it supports capacity planning, billing and audits and reveals recurring problems that need documentation or automation.
-- **Actualization** (keeping information current): documentation, status pages, MOTD and mailing lists must be updated with every change; stale docs generate tickets. Maintain a status page (planned maintenance, incidents, post-mortems), a changelog of software stacks and policies, and an announcements list; version the docs in Git.
-- **Education**: onboarding sessions, "first job in 15 minutes" tutorials, office hours, workshops on Slurm, data management, GPU profiling, Python environments, containers; example repositories; a FAQ built from ticket analysis; champion users in each group. For AI clusters: checkpointing and resume patterns, NCCL debugging basics, data sharding, right-sizing GPU requests.
+- **Correspondence (`/etc/aliases`, `newaliases`, and `Mailman`)**: set up a *virtual address* (an alias on the mail server forwarding to several admins), never a personal or individual work address; it lets you add support staff over time and separates user requests from other mail. On Linux mail servers, add an entry in `/etc/aliases` and rebuild the alias database with `newaliases` `(untested here)`:
+  ```text
+  # /etc/aliases (untested here)
+  cluster-support: foo, bar, expert@supermail.org
+  ```
+  ```bash
+  # (untested here)
+  newaliases
+  ```
+  Configure admins' mail clients to filter messages into `support` (open) and `support_done` (resolved) folders and to send replies from `cluster-support@your.server` with both `Reply-To` and `BCC` set to `cluster-support@your.server` so all support staff see every reply. For cluster-wide maintenance and update announcements, automate subscription at account creation using a mailing-list manager such as **Mailman** or **majordomo** configured in **moderated mode** (restricting senders to `cluster-support`) so a user who accidentally replies to the list does not broadcast to all users. If you provide a chat channel (Slack, Rocket.Chat, Microsoft Teams, Telegram), require users or a channel bot to turn support requests into tracked tickets.
+- **Accounting for requests (`RT`, `OTRS`, `Trac`, `OpenProject`)**: track user support requests, hardware failures, software installation requests, and access approvals in a dedicated helpdesk/ticketing system such as **RT** (Request Tracker), **OTRS**, **Trac**, or **OpenProject** (or modern equivalents like Jira Service Management, GitLab issues, Zendesk, ServiceNow)—one ticket per problem, with status, creator, owner, and full correspondence history. The book advises against repurposing software bug trackers such as Bugzilla or Redmine for cluster helpdesk work because their workflows fit code defects rather than operational support.
+- **Actualization (annual account re-registration for "dead soul" accounts)** and **keeping information current**:
+  - *Annual account re-registration ("actualization")*: on multi-institution or research clusters, after three or four years many accounts become inactive ("dead souls"), sometimes holding `5%` or more of disk space. The book warns against blindly deleting accounts that have not logged in for a year, because sooner or later that rule deletes critical experiment data and blames the administrator. Instead, run an **annual re-registration** campaign with a window of at least **two to three weeks** (to allow for travel and vacations) where users confirm their account is still needed and submit a brief activity report via a web form (handling duplicate submissions, recording the timestamp, notifying admins, and returning a confirmation reference number to the user). Accounts that do not re-register within the window are **blocked** (not immediately deleted) and their data is kept (or moved to archive storage) until at least the next annual re-registration cycle, allowing returning researchers to re-register and recover access.
+  - *Living documentation*: documentation, status pages, MOTD, and mailing lists must be updated with every cluster change; stale docs generate tickets. Maintain a status page (planned maintenance, incidents, post-mortems), a changelog of software stacks and policies, and versioned docs in Git.
+- **Education**: onboarding sessions, "first job in 15 minutes" tutorials, office hours, workshops on Slurm, data management, GPU profiling, Python environments, containers; example repositories; a FAQ built from ticket analysis (replying with direct links such as `http://your.server/docs/faq.html#p1.1` rather than "read the docs"); and pointers to external textbooks such as Victor Eijkhout's *The Art of HPC* (`https://theartofhpc.com/`). For AI clusters: checkpointing and resume patterns, NCCL debugging basics, data sharding, right-sizing GPU requests.
 
 Support metrics: time to first response, time to resolution, tickets per user, top categories, user satisfaction; review monthly and convert top categories into docs or tooling. Incident communication: acknowledge quickly, state impact and workaround, update on a cadence, close with cause and prevention.
 
@@ -238,7 +249,7 @@ Untested: 1) bastion + login VM: configure `ProxyJump`, `AllowGroups`, key-only 
 23. How do you stop idle interactive sessions wasting GPUs?
 24. What should `.bashrc` not do?
 25. Name three storage etiquette rules.
-26. What are the four themes of SCL chapter 27?
+26. In SCL chapter 27, how do you configure a support mail alias on Linux, and how does the annual "actualization" (re-registration) workflow handle inactive "dead soul" accounts safely? (Answer: add `cluster-support: foo, bar, expert@supermail.org` in `/etc/aliases` and run `newaliases`; once a year give users a 2–3 week window to re-register and submit an activity report, blocking—rather than immediately deleting—unconfirmed accounts until at least the next annual cycle.)
 27. Why a virtual support address?
 28. What belongs on a status page?
 29. Which metrics measure support quality?
@@ -246,7 +257,9 @@ Untested: 1) bastion + login VM: configure `ProxyJump`, `AllowGroups`, key-only 
 
 ## 10. Sources and review notes
 
-- SSH, X11/Xming/PuTTY, user-facing practice: *Supercomputers for Linux SysAdmins* chapter 18 ("Remote User Access"); user communication (correspondence, accounting for requests, actualization, education): chapter 27; both restated in my words.
+- Book source (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`):
+  - Chapter `27. Communicating with Users` (read in full): `/etc/aliases` (`cluster-support: foo, bar, expert@supermail.org`) and `newaliases`, `Reply-To`/`BCC` and `support`/`support_done` folders, `Mailman` and `majordomo` in moderated mode, ticketing systems (`RT`, `OTRS`, `Trac`, `OpenProject` vs `Bugzilla`/`Redmine`), annual account re-registration ("actualization") with a 2–3 week window to handle "dead soul" accounts without deleting active experiment data, and user education (*The Art of HPC*).
+  - Chapter `18. Remote User Access` (SSH, X11/Xming/PuTTY, Midnight Commander), restated in my words.
 - OpenSSH option semantics and defaults: `sshd_config(5)` from openssh-portable (commit `26b1363`). Open OnDemand architecture and configuration: OSC/ood-documentation (`architecture.rst`, `installation/add-cluster-config.rst`, `installation/resource-manager/slurm.rst`, commit `0d23cee`).
 - Original and run: `sshd_audit.py`.
-- Unverified: MFA/PAM module behaviour, certificate tooling specifics, VS Code server and JupyterHub spawner details, DTN/Globus practice, exact OOD app form field names.
+- Unverified: MFA/PAM module behaviour, certificate tooling specifics, VS Code server and JupyterHub spawner details, DTN/Globus practice, exact OOD app form field names, `/etc/aliases` and `newaliases` (from the book, not run here).

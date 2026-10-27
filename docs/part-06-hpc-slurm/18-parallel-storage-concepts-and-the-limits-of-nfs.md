@@ -74,6 +74,36 @@ Where NFS is the right answer: home directories and software trees for small to 
 
 Server (`/etc/exports`): `/export/home 10.0.0.0/16(rw,sync,no_subtree_check,root_squash)`; use `async` only if you accept data loss on crash for speed. Run enough `nfsd` threads (`RPCNFSDCOUNT` or `nfs.conf` `threads=64` or more on busy servers; the default 8 is far too low). Use a journaled or modern file system (XFS/ext4/ZFS) on a fast, redundant backend; separate metadata-heavy exports from bulk exports; enable jumbo frames on a dedicated storage network; monitor with `nfsstat -s`, `nfsiostat`, and `/proc/net/rpc/nfsd`.
 
+In the book's examples (Chapters 9 and 28), an NFS server requires the `portmap` (Port Mapper, which maps RPC service names to TCP/UDP ports, typically port `2049` for NFS) and `nfsd` / `mountd` services. Each line in `/etc/exports` defines an export directory, a comma-separated host/subnet list (supporting wildcards `*` and `?` in hostnames, or CIDR/netmask notation), and export options in parentheses:
+
+```text
+# (untested here) — Chapter 9 & Chapter 28 /etc/exports examples
+/export/dir host1,host2,host3(rw,root_squash)
+/home 10.0.0.0/8(rw,no_subtree_check)
+```
+
+Key `/etc/exports` options from the book (Table 9-1):
+
+| Option | Meaning |
+|---|---|
+| `ro` / `rw` | Read-only or read-write access |
+| `root_squash` (default) | Maps the client `root` user to `nobody` rights on the server |
+| `no_root_squash` | Gives the client `root` user full `root` privileges on the server |
+| `all_squash` | Maps all client users to `nobody` rights on the server |
+| `anonuid` / `anonguid` | Explicit UID / GID assigned during `root_squash` or `all_squash` (default `nobody`) |
+| `no_subtree_check` | Disables checking user permissions in parent directories above the mount point |
+| `async` | Allows the server to confirm write operations before they are executed |
+| `sync` | Confirms operations only after the server's `write` system call completes (note: data may still reside in the server OS file cache rather than on physical disk) |
+
+After editing `/etc/exports`, apply the configuration with `exportfs -r` or `exportfs -ra` (`(untested here)`), and inspect active client mounts with `showmount -d` (directories in use), `showmount -a` (`host:directory` pairs), or `showmount -e` (exported list) (`(untested here)`). On the client, the book's `/etc/fstab` recipe mounts `/home` with:
+
+```text
+# (untested here)
+10.0.0.1:/home /home nfs rw,noatime,nodiratime 0 0
+```
+
+Additional Linux NFS client mount options from the book (Table 9-2) include `soft`/`hard`, `retrans=n` (request resend count when `soft` is used), `rsize`/`wsize=n` (multiple of `1024` bytes), `ac`/`noac` (enable/disable client attribute caching), `proto=udp`/`tcp`, `intr`/`nointr` (allow interrupting hung file operations with signals, returning `EINTR`), `acl`/`noacl` (`NFSACL` auxiliary protocol), `nfsvers=N`, `sync`/`async`, and `lock`/`nolock` (enables/disables `flock` via `lockd`/`nfslockd`).
+
 Client mount options that matter:
 
 | Option | Effect |
@@ -93,6 +123,55 @@ Avoid stale-handle and hang scenarios: do not unmount under running jobs; monito
 ## 3. Time synchronisation
 
 The SCL book places NTP in the file system chapter deliberately: distributed file systems and authentication depend on synchronised clocks. Skewed clocks cause stale-cache decisions, `make` rebuild loops, Kerberos and munge failures (`Invalid credential`), confusing logs and, in some parallel file systems, lease/lock timeouts. Use `chronyd` (modern default on RHEL-family and widely elsewhere) or `ntpd`/systemd-timesyncd; point all nodes at two or more internal servers that themselves sync to reliable upstreams (GPS/PTP-backed sources in large sites); monitor offset (`chronyc tracking`, `chronyc sources -v`) and alert above a threshold (milliseconds are fine for most uses; PTP for tighter needs). A health check should include clock synchronisation (the `time_sync` check in 6.14).
+
+### `ntpd.conf` / `openntpd`, `chrony`, `ntpdate`, and `systemd-timesyncd` details
+
+Because network distance affects synchronization accuracy, install an NTP server on at least one service node that syncs with external upstream servers and serves the internal cluster network. The book covers three common implementations:
+
+1. **`ntpd` / `openntpd` (`/etc/ntpd.conf`)**: on the service node acting as the cluster NTP server, configure upstream servers, the internal interface to listen on (`listen on` in `openntpd` or `interface listen eth0` in Chapter 28's `ntpd.conf`), a `driftfile` if using standard `ntpd`, and client restriction flags:
+
+   ```text
+   # (untested here) — Chapter 9 /etc/ntpd.conf example
+   server 1.ru.pool.ntp.org
+   server 2.centos.pool.ntp.org
+   listen on 10.1.2.251
+   restrict default kod nomodify notrap nopeer noquery
+   ```
+
+   On compute nodes, `/etc/ntpd.conf` omits `listen on` and points only to the internal server (for example, `server server.cluster.myorg`). The five `restrict` flags in the book's configuration mean:
+   - `kod`: sends a "Kiss-of-death" packet to rate-limit unwanted client queries.
+   - `nomodify`: prevents clients from modifying the server's configuration remotely.
+   - `notrap`: disables protocol trap support.
+   - `nopeer`: prevents remote hosts from forming a peer association with the server.
+   - `noquery`: blocks `ntpq` and `ntpdc` status queries while still answering normal time requests (for IPv6, duplicate the `restrict` line with `-6`; to restrict by subnet, replace `default` with e.g. `192.168.2.0 mask 255.255.255.0`).
+
+   Because NTP daemons adjust large clock offsets gradually by default—meaning a 1-hour offset at boot can take many minutes to converge, during which parallel file systems may refuse to mount—run a forced step synchronization before starting the daemon on a client node (`ntpdate` cannot run while `ntpd` is already running):
+
+   ```bash
+   # (untested here)
+   ntpdate server_ntp_server_address
+   ```
+
+2. **`chrony` (`/etc/chrony.conf`)**: uses `server` or `pool` directives with the `iburst` option (which sends initial requests at a higher frequency at startup to synchronize faster) and enables server mode for the cluster subnet via `allow 10.20.30.0/24` (or `allow all`).
+
+3. **`systemd-timesyncd`**: a lightweight client-only daemon (it cannot act as an NTP server) configured via `/etc/systemd/timesyncd.conf` (and drop-in directories `/etc/systemd/timesyncd.conf.d/*.conf`, `/run/systemd/timesyncd.conf.d/*.conf`, `/usr/lib/systemd/timesyncd.conf.d/*.conf`):
+
+   ```ini
+   # (untested here) — /etc/systemd/timesyncd.conf
+   [Time]
+   NTP=0.ubuntu.pool.ntp.org 2.ubuntu.pool.ntp.org
+   FallbackNTP=0.pool.ntp.org 1.pool.ntp.org
+   ```
+
+   Enable the service and inspect the synchronization state with `timedatectl`:
+
+   ```bash
+   # (untested here)
+   systemctl enable --now systemd-timesyncd
+   timedatectl show-timesync --all
+   ```
+
+   In the book's example, `timedatectl show-timesync --all` reports `FallbackNTPServers`, `ServerName`, `ServerAddress`, `RootDistanceMaxUSec=5s`, `PollIntervalMinUSec=32s`, `PollIntervalMaxUSec=34min 8s`, and `PollIntervalUSec=1min 4s`.
 
 ## 4. Metadata, data and the parallel file system idea
 
@@ -205,7 +284,7 @@ Untested (needs two or three VMs): 3) set up an NFS server and two clients; run 
 10. What does `hard` versus `soft` mean?
 11. Why must NFS server thread counts be raised?
 12. Why does time synchronisation matter for file systems?
-13. Name two time-sync daemons and a monitoring command.
+13. Name two time-sync daemons, explain what each flag in `restrict default kod nomodify notrap nopeer noquery` does in `/etc/ntpd.conf`, and give the command to inspect `systemd-timesyncd` synchronization details. **A:** Two common time-sync daemons are `chronyd` and `openntpd`/`ntpd` (plus the client-only `systemd-timesyncd`). In `/etc/ntpd.conf`, `restrict default kod nomodify notrap nopeer noquery` sets default client restrictions: `kod` sends a "Kiss-of-death" packet to reduce unwanted queries, `nomodify` blocks remote configuration changes, `notrap` disables protocol traps, `nopeer` prevents peer associations, and `noquery` blocks `ntpq`/`ntpdc` queries while allowing time requests. For `systemd-timesyncd`, `timedatectl show-timesync --all` displays the detailed server and poll interval status.
 14. Define metadata and data.
 15. How does a parallel file system separate them?
 16. What is striping, stripe count, stripe size?
@@ -226,6 +305,6 @@ Untested (needs two or three VMs): 3) set up an NFS server and two clients; run 
 
 ## 12. Sources and review notes
 
-- Shared-file-system requirements, the NFS-scaling argument, NTP's role, Lustre architecture and the survey of distributed file systems: *Supercomputers for Linux SysAdmins* chapter 9 (NTP, NFS, Lustre, PanFS, GPFS/IBM Storage Scale, other file systems), restated in my words. Lustre and GPFS detail in 6.19 and 6.20.
-- Original and run: `iomix.py` and `ckpt_math.py` with the outputs above; the pattern table and tier choices.
-- Unverified: NFS option semantics and version details (standard knowledge), `nconnect` availability, per-parameter checkpoint byte counts, example image dataset rates, and all absolute performance expectations.
+- Shared-file-system requirements, the NFS-scaling argument, `/etc/exports` and client mount options (Tables 9-1 and 9-2), `ntpd.conf` / `openntpd` (`restrict default kod nomodify notrap nopeer noquery`), `chrony`, `ntpdate`, `timedatectl show-timesync --all`, Lustre architecture and the survey of distributed file systems (read in full: `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`, "9. Network File Systems" and "28. One-Two-Three Instructions"). Lustre and GPFS detail in 6.19 and 6.20.
+- Run here: `code/part06/iomix.py` and `code/part06/ckpt_math.py` with the outputs above; the pattern table and tier choices.
+- Not verified on live hardware: NFS server/client configuration commands (`exportfs`, `showmount`, `/etc/exports`, `/etc/fstab` mounts), NTP/timesyncd commands (`ntpdate`, `timedatectl show-timesync --all`), `nconnect` availability, per-parameter checkpoint byte counts, example image dataset rates, and all absolute performance expectations.

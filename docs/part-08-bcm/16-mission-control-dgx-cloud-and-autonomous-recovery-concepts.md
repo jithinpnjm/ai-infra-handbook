@@ -3,11 +3,11 @@ id: "c08-16"
 title: "8.16 Mission Control, DGX Cloud and autonomous recovery concepts"
 sidebar_label: "8.16 Mission Control, DGX Cloud and autonomous recovery concepts"
 sidebar_position: 16
-description: "How NVIDIA Mission Control, the Run:ai Operator, autonomous recovery profiles, head-node HA database replication, and DGX Cloud fit into a BCM-managed AI factory, with a tested checker for the configuration and prerequisite rules"
+description: "How NVIDIA Mission Control, the Run:ai Operator, autonomous recovery profiles, head-node HA database replication, and DGX Cloud fit into a BCM-managed AI factory, with a tested checker for the configuration and prerequisite rules."
 status: "drafted"
 tier: "1b"
 level: "I"
-lab_venue: "Nebius GPU"
+lab_venue: "Nebius GPU."
 ---
 
 # 8.16 Mission Control, DGX Cloud and autonomous recovery concepts
@@ -22,35 +22,53 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-In a DGX SuperPOD, Base Command Manager is not packaged by itself: NVIDIA ships it inside a wider software stack called **NVIDIA Mission Control**, alongside **NVIDIA Run:ai** for Kubernetes workload management, **Slurm** for batch jobs, and built-in validation, telemetry and autonomous recovery components. In the BCM manuals, Mission Control appears as a license edition, a set of Base View pages, nonuser security profiles, and a separate manual that many hardware and recovery sections point to. Knowing which parts live in standard BCM (`cmsh`, `cm-kubernetes-setup`, `cm-runai-setup`, `cmha-setup`) and which parts belong to Mission Control keeps you from looking in the wrong tool or breaking a cluster's self-healing and high-availability setup.
+An operations team brings up a new DGX SuperPOD and tries to flash rack firmware through standard Base Command Manager tools. The firmware flash immediately fails with a license error, and half the rack management controls appear to be missing from the administrator manual. On a SuperPOD, Base Command Manager is not deployed by itself. NVIDIA packages it inside a wider software suite called NVIDIA Mission Control. That suite combines BCM with NVIDIA Run:ai, Slurm, and built-in validation, telemetry, and autonomous recovery components.
+
+Inside the BCM documentation, Mission Control appears as a license edition, a set of Base View pages, nonuser security profiles, and a separate manual. Knowing which workflows live in standard BCM tools (`cmsh`, `cm-kubernetes-setup`, `cm-runai-setup`, and `cmha-setup`) and which belong to Mission Control prevents costly operational mistakes. You avoid searching the wrong manual or breaking a cluster's self-healing and high-availability setup.
 
 ## Prerequisites and outcomes
 
-You need chapters 8.1 (architecture), 8.5 (`cmsh` and Base View), 8.6 (certificates, tokens and profiles), 8.8 (Slurm), 8.9 (Kubernetes), 8.11 (monitoring, health checks and actions), 8.12 (head-node high availability), 8.14 (air-gapped Kubernetes and Run:ai) and 8.15 (DGX SuperPOD integration). After this chapter you can:
+Before reading this chapter, review the earlier Part 8 chapters listed in the table below.
 
-- state what the GB300 Reference Architecture says about the five-layer Mission Control stack, and which layers are named directly versus described indirectly in the prose
-- list every place where the BCM 11 manuals hand off a topic to the separate NVIDIA Mission Control Manual, and explain what a Mission Control license unlocks in BCM
-- explain the five-layer NVIDIA Mission Control software stack on a DGX SuperPOD, and what each layer is responsible for
-- identify which hardware, power, cooling, and firmware tasks in BCM require a Mission Control license or are handled by the Mission Control suite
-- explain the two preconfigured recovery profiles (`autonomous-hardware-recovery` and `autonomous-job-recovery`), why they are nonuser profiles that must never be edited, and which MySQL databases are not replicated by default during a head-node failover
-- connect Mission Control's recovery and diagnostic capabilities to BCM's monitoring pipeline (chapter 8.11) and checkpoint recovery arithmetic
-- install and validate the Run:ai Operator on BCM using `cm-runai-setup`, comparing SaaS, connected self-hosted and air-gapped self-hosted modes
-- explain how BCM's Topograph service discovers topology on DGX Cloud AWS `p5.48xlarge` instances (and what is covered in chapter 9.14)
+| Prerequisite chapter | Topic |
+|---|---|
+| Chapter 8.1 | BCM architecture and management daemons |
+| Chapter 8.5 | `cmsh` and Base View navigation |
+| Chapter 8.6 | X509v3 certificates, tokens, and profiles |
+| Chapter 8.8 | Slurm workload management |
+| Chapter 8.9 | Kubernetes cluster deployment |
+| Chapter 8.11 | Monitoring, health checks, and automated actions |
+| Chapter 8.12 | Head-node high availability and MySQL failover |
+| Chapter 8.14 | Air-gapped Kubernetes and Run:ai staging |
+| Chapter 8.15 | DGX SuperPOD integration |
+
+After completing this chapter, you will be able to accomplish the following goals.
+
+- State what the GB300 Reference Architecture says about the five-layer Mission Control stack, and distinguish explicit layer names from indirect role descriptions.
+- List every topic that the BCM manuals hand off to the separate NVIDIA Mission Control Manual.
+- Explain what a Mission Control license unlocks inside BCM.
+- Identify which hardware, power, cooling, and firmware tasks in BCM require a Mission Control license.
+- Explain the two preconfigured recovery profiles, why they are nonuser profiles that must never be edited, and which MySQL databases are omitted during failover.
+- Connect Mission Control's recovery and diagnostic capabilities to BCM's monitoring pipeline and checkpoint recovery arithmetic.
+- Install and validate the Run:ai Operator on BCM using `cm-runai-setup` across SaaS, connected self-hosted, and air-gapped self-hosted modes.
+- Explain how BCM's Topograph service discovers instance topology on DGX Cloud AWS `p5.48xlarge` nodes.
 
 ## 1. Where Mission Control sits in BCM and in a SuperPOD
 
+When a cluster engineer treats Base Command Manager and NVIDIA Mission Control as synonyms, rack-scale bring-up stalls quickly. Facility engineers cannot tell where Building Management System telemetry lands, and system administrators wonder why NVLink switch tray management is absent. Understanding the architectural boundary between the SuperPOD operations suite and BCM's underlying provisioning engine clarifies who owns each subsystem.
+
 ### 1.1 The Mission Control software stack on a DGX SuperPOD
 
-In a DGX GB300 SuperPOD, **NVIDIA Mission Control** is one of the four core building blocks alongside the DGX GB300 NVL72 rack system, Quantum-X800 InfiniBand, and Spectrum Ethernet. Mission Control manages all DGX GB300 SuperPOD deployments, integrates facility operational technology (OT) with the cluster, and uses the User Storage NFS tier for shared storage when deployed in a High Availability configuration.
+In a DGX GB300 SuperPOD, NVIDIA Mission Control is one of the four core building blocks alongside the GB300 NVL72 rack, Quantum-X800 InfiniBand, and Spectrum Ethernet. Mission Control manages all DGX GB300 SuperPOD deployments and integrates facility operational technology with the cluster. When deployed in a High Availability configuration, it uses the User Storage NFS tier for shared storage.
 
-Mission Control is built as a five-layer software stack that spans from foundational system health and diagnostics up to cluster management operations:
+Mission Control is built as a five-layer software stack that spans from foundational system health and diagnostics up to advanced cluster management operations. Only two of those five roles carry the literal word "layer" in the reference architecture prose. The table below maps all five roles described in the reference architecture.
 
 | Component or layer | Role in the stack | What it does |
 |---|---|---|
 | **System health and diagnostics** | Foundational health base | Tracks system health and hardware status across the cluster |
-| **Telemetry and Observability layer** | System insights | Uses diagnostic tools and health checks to surface cluster-wide telemetry |
-| **Validation and Diagnostics layer** | Failure recovery | Supports the built-in **autonomous recovery engine** for rapid failure recovery and system restoration |
-| **Cluster management operations (with BCM and NMX Manager)** | Provisioning and fabric control | Handles deployment optimization and works with **NVIDIA Base Command Manager (BCM)** to coordinate cluster provisioning and operations; includes **Network Manager eXperience Manager (NMX Manager)** to monitor and control NVLink switch trays |
+| **Telemetry and Observability layer** | System insights (explicitly named as a layer in the prose) | Uses proprietary diagnostic tools and health checks to surface cluster-wide telemetry |
+| **Validation and Diagnostics layer** | Failure recovery (explicitly named as a layer in the prose) | Supports the built-in **autonomous recovery engine** for rapid failure recovery and system restoration |
+| **Cluster management operations (with BCM and NMX Manager)** | Provisioning and fabric control | Handles deployment optimization and cooperates with **NVIDIA Base Command Manager (BCM)** to coordinate cluster provisioning and operations; includes **Network Manager eXperience Manager (NMX Manager)** to monitor and control NVLink switch trays |
 | **Workload orchestration (Slurm, Kubernetes, Run:ai)** | Scheduler access (my inference that this is the fifth of the five layers) | Works with BCM and **NVIDIA Run:ai** to provide scheduler access with **Slurm** and **Kubernetes** for AI and HPC workloads |
 
 ```mermaid
@@ -65,28 +83,33 @@ flowchart TB
   end
 ```
 
-*Caption: The five roles of the NVIDIA Mission Control software stack on a DGX GB300 SuperPOD (shown as unnumbered boxes because the reference architecture prose describes the roles without numbering their strict layer order).*
+The diagram shows the five roles of the NVIDIA Mission Control software stack on a DGX GB300 SuperPOD as unnumbered boxes. The reference architecture prose describes these five roles without numbering their strict layer order.
 
 ### 1.2 How Mission Control hooks into BCM 11
 
-Inside BCM 11, NVIDIA Mission Control appears as a **license edition**, a **setup script**, a set of **Base View navigation pages**, and a **dedicated administration manual** for SuperPOD-specific hardware features:
+An administrator logging into a BCM head node on a SuperPOD often wonders where Mission Control actually lives on the filesystem and in Base View. Without knowing its touchpoints, operators waste hours hunting for rack power or leak detection settings in standard BCM menus. Inside BCM, NVIDIA Mission Control appears as a separate administration manual, a license edition, a setup script, and a set of Base View navigation pages.
 
-1. **A separate administration manual.** While BCM's standard manuals cover cluster provisioning, workload managers, and containers, SuperPOD rack power shelves, liquid-cooling BMS integration, NMX Manager, and Mission Control's own recovery screens live in the separate *NVIDIA Mission Control Manual*.
-2. **A license edition.** In `main licenseinfo` (in `cmsh`) and `verify-license info`, the `Edition` field of the BCM certificate shows `NVIDIA Mission Control`. In Base View, the **License Information** tab has a **Mission Control** section with a **Manage Mission Control** hyperlink and a list of which Mission Control license features are currently active.
-3. **A setup script.** On clusters with internet access, running either `cm-mission-control-setup` or `cm-runai-setup` automatically installs the `cm-setup-runai-bcm11` plugin package.
-4. **Base View navigation entries.** In Base View, both the main navigation tree and the `License Information -> Mission Control` subtree expose pages for:
-   - `Building Management System Integration`
-   - `Leak Detection`
-   - `NMX Manager`
-   - `Inter-node Memory Exchange (IMEX) Management`
-   - `GB200 Rack Management`
-   - `GB200 Firmware Management`
-   - `Power Reservation Steering`
-   - `Run:ai`
-   - `GPU Workload Power Profiles` (in the main tree)
-   - `Autonomous Hardware Recovery`
-   - `Autonomous Job Recovery`
-5. **BCM features that require a Mission Control license or hand off to Mission Control:**
+- **A separate administration manual.** Standard BCM manuals cover cluster provisioning, workload managers, and containers. SuperPOD rack power shelves, liquid-cooling BMS integration, NMX Manager, and Mission Control's own recovery screens live in the separate *NVIDIA Mission Control Manual*.
+- **A license edition.** In `cmsh` under `main licenseinfo` and in `verify-license info`, the edition field of the BCM certificate shows NVIDIA Mission Control. In Base View, the License Information tab has a Mission Control section with a Manage Mission Control hyperlink and a list of active license features.
+- **A setup script.** On clusters with internet access, running either `cm-mission-control-setup` or `cm-runai-setup` automatically installs the `cm-setup-runai-bcm11` plugin package.
+- **Base View navigation entries.** Both the main Base View navigation tree and the Mission Control license subtree expose dedicated pages for SuperPOD hardware and autonomous recovery.
+
+```text
+Base View navigation entries for Mission Control (License Information -> Mission Control):
+- Building Management System Integration
+- Leak Detection
+- NMX Manager
+- Inter-node Memory Exchange (IMEX) Management
+- GB200 Rack Management
+- GB200 Firmware Management
+- Power Reservation Steering
+- Run:ai
+- GPU Workload Power Profiles (in the main navigation tree)
+- Autonomous Hardware Recovery
+- Autonomous Job Recovery
+```
+
+Several BCM features either require an active Mission Control license or hand off their configuration to the Mission Control suite.
 
 | BCM feature or command | How it works with Mission Control |
 |---|---|
@@ -96,43 +119,53 @@ Inside BCM 11, NVIDIA Mission Control appears as a **license edition**, a **setu
 | CDU data over MQTT from a BMS | Provided by a conforming Building Management System over MQTT (`NVIDIA-conforming BMS` object by default) |
 | `powershelfoverview` and power shelf configuration | Displays per-PSU input and rail power, current, voltage, fan speed, and temperature for a DGX power shelf |
 | Keycloak LDAP federation (`cm-setup-keycloak.py`) | Available from BCM 11.34 on Ubuntu 24.04 or 26.04 head nodes (not supported on RHEL or Rocky; needs ports `9443` HTTPS and `9999` HTTP free). Mission Control can federate its own LDAP into this Keycloak instance with no extra BCM-side setup: give Mission Control the URL `https://<head-fqdn>:9443`, realm name, admin credentials, and Keycloak TLS certificate, and open port `9443/tcp` in the head node firewall if Mission Control is not running on the head node |
-| Blackwell Workload Power Profile Settings (WPPS) | Supported on NVIDIA Blackwell GPUs (users can be granted access via `allowgpuworkloadpowerprofiles`, chapter 8.6) |
+| Blackwell Workload Power Profile Settings (WPPS) | Supported on NVIDIA Blackwell GPUs (users can be granted access via `allowgpuworkloadpowerprofiles`) |
 | Base View firmware flashing for GB200, GB300 and DGX | **Flashing fails without an active NVIDIA Mission Control license**, and the error returned states this. Only one firmware package can be selected at a time. In BCM 11.34.0, the `Dry Run` button does not work correctly on these platforms (fixed in 11.35.0; use `Flash` directly). Base View also cannot narrow a flash to named component targets (`--targets`); that requires `cmsh firmware` |
 | Extra GB200 GPU and DGX Redfish measurables | Adds GB200 GPU measurables and DGX Redfish metrics, enums, and health checks on top of the standard V100/A100 tables |
 
 ## 2. Autonomous recovery concepts and what BCM exposes
 
+When a single GPU or NVLink tray faults at 2:00 AM during a multi-node training run, manual intervention leaves hundreds of healthy GPUs sitting idle. If an administrator also misconfigures BCM's security profiles or high-availability database replication, the automated recovery tools themselves can lose permission to act. Worse yet, third-party services can lose their database state after a head-node failover.
+
 ### 2.1 The four capabilities of Mission Control's autonomous recovery
 
-Mission Control's Validation and Diagnostics layer supports a built-in **autonomous recovery engine** designed around four capabilities:
+Mission Control's Validation and Diagnostics layer supports a built-in autonomous recovery engine designed around four core capabilities.
 
-1. **Automated Failure Detection & Self-Recovery:** automated failure detection and recovery mechanisms minimize downtime compared to manual intervention, so training continues with less disruption and higher GPU utilization.
-2. **Optimized Workload Migration & Resource Allocation:** workloads are continuously reassigned to healthy nodes to prevent idle GPU time and increase training throughput.
-3. **Unified Diagnostics for Infrastructure & Applications:** infrastructure and application-level diagnostics are combined so model builders, SREs and DevOps engineers can identify and resolve issues faster.
-4. **In-Memory Checkpointing for Seamless Job Recovery:** training workloads recover by automatically restarting failed processes or ranks from the most recent valid checkpoint, avoiding data loss or rework and reducing retraining time in environments with frequent failures.
+- **Automated Failure Detection and Self-Recovery.** Automated failure detection and recovery mechanisms minimize downtime compared to manual intervention. Training jobs continue with less disruption and higher GPU utilization.
+- **Optimized Workload Migration and Resource Allocation.** Workloads are continuously reassigned to healthy nodes to prevent idle GPU time and increase overall training throughput.
+- **Unified Diagnostics for Infrastructure and Applications.** Infrastructure and application-level diagnostics are combined in one workflow. Model builders, SREs, and DevOps engineers can identify and resolve cluster issues faster.
+- **In-Memory Checkpointing for Seamless Job Recovery.** Training workloads recover by automatically restarting failed processes or ranks from the most recent valid checkpoint. This capability avoids data loss and reduces retraining time in environments with frequent failures.
 
-While the internal rules of the autonomous recovery engine and in-memory checkpointing are configured on the Mission Control side (and are not in our BCM manual corpus), you will directly encounter their touchpoints inside BCM:
-- the security profiles that authorize recovery clients in `CMDaemon` (`autonomous-hardware-recovery` and `autonomous-job-recovery`),
-- the MySQL database replication rules during head-node high availability, and
-- BCM's underlying monitoring pipeline (chapter 8.11) and multi-node training checkpoint arithmetic.
+The internal rules of the autonomous recovery engine and in-memory checkpointing are configured on the Mission Control side and are outside our BCM manual corpus. Inside BCM, however, you will directly manage the security profiles that authorize recovery clients in CMDaemon. You also manage the MySQL database replication rules during head-node high availability and the monitoring and checkpoint recovery pipeline.
 
 ### 2.2 The two recovery profiles in BCM
 
-As chapter 8.6 covered, every management operation against `CMDaemon` (on port 8081) requires a client X509v3 certificate whose **profile** holds the relevant **tokens**. Of the 14 preconfigured profiles in `cmsh`, two are dedicated to autonomous recovery:
+Every management operation against CMDaemon requires a client X509v3 certificate whose profile holds the relevant authorization tokens. If an administrator edits or deletes the built-in system profiles while trying to tighten security, internal cluster services lose their ability to talk to CMDaemon. Out of the preconfigured profiles in `cmsh`, two are dedicated specifically to autonomous recovery.
 
 | Profile name | Default tasks allowed | `nonuser`? |
 |---|---|---|
 | `autonomous-hardware-recovery` | `autonomous hardware recovery tasks` | `yes` |
 | `autonomous-job-recovery` | `autonomous job recovery tasks` | `yes` |
 
-In `cmsh`, those two descriptions (`autonomous hardware recovery tasks` and `autonomous job recovery tasks`) summarize the token sets; on a live cluster you can list the exact tokens inside either profile with `cmsh -c "profile; get autonomous-hardware-recovery tokens"` and `get autonomous-job-recovery tokens` (untested here). Any more specific statement about what hardware or job actions those tokens permit—for example, my inference that they authorize the Mission Control recovery services to trigger node power or scheduler operations through `CMDaemon`—is an inference beyond the profile table.
+In `cmsh`, those two descriptions summarize the token sets. On a live cluster, you can inspect the exact tokens inside either profile using `cmsh` profile commands, which are untested here. Any more specific claim about what hardware or job actions those tokens permit is my inference beyond the profile table. Specifically, it is my inference that they authorize Mission Control recovery services to trigger node power or scheduler operations through CMDaemon.
 
-Two hard rules govern both profiles (see also chapter 8.6):
+Two strict rules govern both recovery profiles.
 
-1. **They are `nonuser` profiles (`nonuser = yes`).** Of the 14 preconfigured profiles, 11 are nonuser profiles (`autonomous-hardware-recovery`, `autonomous-job-recovery`, `bootstrap`, `cmhealth`, `cmpam`, `litenode`, `monitoringpush`, `mqtt`, `node`, `power`, `prs`). Only three (`admin`, `readonly`, `portal`) have `nonuser = no` and can be assigned to human users.
-2. **Administrators must never modify them.** Nonuser profiles are used by cluster manager clients and must never be edited by the cluster administrator. Do not add or remove tokens from `autonomous-hardware-recovery` or `autonomous-job-recovery`, and do not assign them to user accounts. They exist so BCM's own components and Mission Control clients can authenticate to `CMDaemon`.
+- **They are nonuser profiles.** In BCM, eleven of the fourteen preconfigured profiles have the nonuser attribute enabled. Only three profiles (`admin`, `readonly`, and `portal`) have the nonuser attribute disabled and can be assigned to human users.
+- **Administrators must never modify them.** Nonuser profiles are used by cluster manager clients and must never be edited by the cluster administrator. Never add or remove tokens from `autonomous-hardware-recovery` or `autonomous-job-recovery`. Never assign either profile to human user accounts.
 
-You can check the `nonuser` flag across all profiles with a one-liner (untested here):
+```text
+14 preconfigured profiles in BCM (Administrator Manual 6.5):
+- nonuser = yes (11 profiles): autonomous-hardware-recovery, autonomous-job-recovery,
+  bootstrap, cmhealth, cmpam, litenode, monitoringpush, mqtt, node, power, prs
+- nonuser = no  (3 profiles):  admin, readonly, portal
+- CMDaemon management port: 8081
+- Inspect tokens on a live cluster (untested):
+  cmsh -c "profile; get autonomous-hardware-recovery tokens"
+  cmsh -c "profile; get autonomous-job-recovery tokens"
+```
+
+You can verify the nonuser flag across all profiles on a head node with a single command, which is untested here.
 
 ```bash
 [root@basecm11 ~]# cmsh -c "profile; foreach * (get name; get nonuser)" | paste - -
@@ -140,13 +173,21 @@ You can check the `nonuser` flag across all profiles with a one-liner (untested 
 
 ### 2.3 Head-node HA and databases that are not replicated by default
 
-In chapter 8.12, we saw how BCM head-node high availability (`cmha-setup`) runs MySQL in master-slave replication between the active and passive head nodes (see chapter 8.12 for the full failover and quorum mechanism). Whenever extra services store state in MySQL on the head node, keep this replication rule in mind:
+When an active BCM head node fails over to the passive head node, administrators often assume every MySQL database on the primary node automatically appears on the secondary node. Under the default configuration, that assumption is false. Third-party services lose their database state immediately after a failover if their schemas were excluded from replication.
 
-- **Default MySQL replication scope:** by default, head-node MySQL HA clones and replicates **only** the `cmdaemon` and `slurm_acct_db` databases to the secondary head node.
-- **Third-party application databases are left behind by default:** any third-party application database not listed in `extradbclone.xml`—for example, a database named `AJR`—is **not** cloned by default and is therefore **missing from the new active head node after a failover**.
-- **Two ways to include extra databases across a failover:**
-  1. List the named databases in `extradbclone.xml` so MySQL HA clones and replicates them.
-  2. **From BCM 11.34.0 onwards**, `cmha-setup` offers a TUI prompt after the MySQL root password: `"Replicate all non-system MySQL databases?"` (or in express mode, `--replicate-all-databases`). Answering `Yes` removes the default database filters and clones and replicates all non-system databases (`cmdaemon`, `slurm_acct_db`, and any third-party application databases such as `AJR`) along with MySQL users and grants. MySQL's built-in system schemas (`mysql`, `information_schema`, `performance_schema`, `sys`) are never replicated.
+BCM head-node high availability (`cmha-setup`) runs MySQL in master-slave replication between the active and passive head nodes. Whenever extra services store state in MySQL on the head node, you must account for three database replication rules.
+
+- **Default MySQL replication scope.** By default, head-node MySQL HA clones and replicates only the `cmdaemon` and `slurm_acct_db` databases to the secondary head node.
+- **Third-party application databases are omitted by default.** Any third-party application database not listed in `extradbclone.xml` is not cloned by default. For example, the manual's `AJR` database example is missing from the new active head node after a default failover.
+- **Two methods include extra databases across a failover.** First, you can list the named databases in `extradbclone.xml` so MySQL HA clones and replicates them. Second, starting in BCM 11.34.0, `cmha-setup` asks whether to replicate all non-system MySQL databases, or you can pass `--replicate-all-databases` in express mode. Answering yes clones and replicates all non-system databases along with MySQL users and grants. Built-in MySQL system schemas are never replicated.
+
+```text
+MySQL database replication rules in cmha-setup (Administrator Manual 15.1):
+- Replicated by default: cmdaemon, slurm_acct_db
+- Omitted by default: third-party databases not in extradbclone.xml (such as AJR)
+- Included with --replicate-all-databases (BCM 11.34.0+): all non-system databases + users/grants
+- System schemas never replicated: mysql, information_schema, performance_schema, sys
+```
 
 ```mermaid
 flowchart LR
@@ -155,42 +196,54 @@ flowchart LR
   Q -->|Yes| D2["Passive head gets:<br/>cmdaemon, slurm_acct_db, third-party DB<br/>(system schemas mysql, sys never replicated)"]
 ```
 
-### 2.4 How this connects to BCM monitoring (8.11) and training checkpoints
+### 2.4 How this connects to BCM monitoring and training checkpoints
 
-Even without the Mission Control Manual, we can see how recovery fits the two layers we already studied:
+When a single GPU drops off the bus during a large distributed training job, every other GPU in the collective waits until the communication timeout expires. Without automated node drainage and checkpoint restarts, a single hardware fault wastes hours of cluster time across all participating nodes. Even without the separate Mission Control Manual, we can trace how autonomous recovery connects BCM's monitoring pipeline to training checkpoint arithmetic.
 
-- **Detection and node actions in BCM (chapter 8.11):** BCM's monitoring pipeline runs data producers and health checks (such as `cuda-dcgm`, `ssh2node`, `mounts`, and Redfish checks like `psu_health` and `chassis_health`), evaluates triggers (`enter`, `leave`, `during`, `flapping`), and runs built-in or custom actions (such as logging an event, emailing, draining a node in Slurm, or power-cycling). In an operational playbook for a GPU failure, an SRE follows the same steps manually: detect via DCGM (`DCGM_FI_DEV_XID_ERRORS`, thermal slowdown, or hung AllReduce), confirm, stop or requeue the affected job, reset or reboot the node, resume the job from its last checkpoint on healthy nodes, and RMA persistent hardware faults. Mission Control's autonomous recovery claims automate that loop.
-- **Checkpoint math and job restarts:** when a rank or node dies in a multi-node training job, the NCCL communicator across the job is broken, so collectives error out or hang until the timeout (for example `timeout=datetime.timedelta(minutes=30)` in `dist.init_process_group`). In-process `try/except` loops generally cannot repair a broken NCCL communicator; the standard pattern is to terminate the failed processes or job, exclude the unhealthy node, and restart all ranks from the latest complete sharded checkpoint (using `torchrun --max-restarts`, Slurm `--requeue`, or a Kubernetes operator).
-  - **Worked example:** if a job writes a checkpoint every `500` steps and the cluster fails at step `5243`, the launcher loads `step-5000` and resumes from step `5001`. At most `500` steps of work are ever lost, and in this example `5243 - 5000 = 243` steps are lost. The lab function `checkpoint_resume_loss(5243, 500)` checks this exact example.
-  - The GB300 Reference Architecture's claim of **in-memory checkpointing** aims to shrink both the checkpoint write overhead and the time spent reloading checkpoints when restarting failed processes or ranks.
+- **Detection and node actions in BCM.** BCM's monitoring pipeline runs data producers and health checks across compute nodes, mounts, and Redfish sensors. It evaluates state triggers and executes built-in or custom actions like logging an event, sending email, draining a node in Slurm, or power-cycling hardware. In a manual GPU failure playbook, an SRE detects the fault via DCGM and stops or requeues the job. The SRE then resets the node and resumes from the last checkpoint on healthy nodes. Mission Control's autonomous recovery automates that operational loop.
+- **Checkpoint math and job restarts.** When a rank or node dies in a multi-node training job, the NCCL communicator across the job breaks. Collectives fail or hang until the communicator timeout expires, and in-process exception loops generally cannot repair a broken NCCL communicator. The standard recovery pattern terminates the failed processes and excludes the unhealthy node. It then restarts all ranks from the latest complete sharded checkpoint using `torchrun --max-restarts` or Slurm `--requeue`.
+- **In-memory checkpointing.** The GB300 Reference Architecture highlights in-memory checkpointing to shrink both checkpoint write overhead and reload latency when restarting failed processes or ranks.
+
+```text
+Monitoring pipeline and checkpoint recovery math (bcm_mission_control.py):
+- BCM health checks: cuda-dcgm, ssh2node, mounts, psu_health, chassis_health
+- BCM trigger states: enter, leave, during, flapping
+- DCGM telemetry alert example: DCGM_FI_DEV_XID_ERRORS
+- Process group timeout example: timeout=datetime.timedelta(minutes=30) in dist.init_process_group
+- Checkpoint interval: 500 steps
+- Failure step: 5243
+- Latest valid checkpoint loaded: step-5000
+- First step executed after resume: 5001
+- Steps lost to failure: 5243 - 5000 = 243 steps (worst-case loss <= 500 steps)
+```
 
 ## 3. NVIDIA Run:ai under BCM
 
-**NVIDIA Run:ai** is included with NVIDIA Mission Control to manage resources and workloads on GPUs in a Kubernetes cluster. (Part 11 chapter 11.19 covers the Run:ai platform view on Kubernetes in more detail; here we cover how BCM installs and validates it.)
+Organizations running Kubernetes on a GPU cluster often struggle with static GPU quotas, idle fractional GPUs, and brittle multi-step operator installations. NVIDIA Run:ai is included with NVIDIA Mission Control to manage GPU resources and workloads on Kubernetes. While Part 11 covers day-to-day Run:ai scheduling on Kubernetes, a BCM administrator must first deploy the Run:ai control plane and cluster operators cleanly. You must avoid tripping over version-specific wizard changes, missing plugin packages, or MetalLB IP conflicts.
 
 ### 3.1 Architecture and installation types
 
-Run:ai has two primary components:
+Run:ai consists of two primary components that work together across the cluster.
 
-- **The control plane (backend):** the central management system capable of orchestrating multiple Run:ai clusters across an organization.
-- **The GPU cluster (datascience cluster):** the agents and operators running on the BCM Kubernetes cluster close to the computational resources. In BCM-managed SuperPOD installations, the Run:ai control plane resides on the **"user-space Kubernetes cluster"** while the cluster components are deployed onto the **administrative Kubernetes infrastructure** (recall from chapter 8.9 that BCM supports multiple Kubernetes clusters on the same BCM head node).
+- **The control plane.** This backend serves as the central management system capable of orchestrating multiple Run:ai clusters across an organization.
+- **The GPU cluster.** This data-science cluster layer consists of the agents and operators running on the BCM Kubernetes cluster close to the computational resources. In BCM-managed SuperPOD installations, the Run:ai control plane resides on the user-space Kubernetes cluster. Meanwhile, the cluster components are deployed onto the administrative Kubernetes infrastructure.
 
-Run:ai supports **two installation modes** and **two self-hosted variants** on top of a BCM Kubernetes cluster:
+Run:ai supports two installation modes and two self-hosted network variants on top of a BCM Kubernetes cluster.
 
 | Installation mode | Variant | Where the control plane lives | Network rule |
 |---|---|---|---|
 | **SaaS (or Classic)** | Cloud-hosted | In the Run:ai cloud | The BCM cluster must allow outbound traffic to the Run:ai cloud |
 | **Self-hosted** | **1. Connected** | On-premises, installed on the BCM cluster | Download is allowed from the internet, **but upload is not allowed** |
-| **Self-hosted** | **2. Air-gapped** | On-premises, installed on the BCM cluster | The cluster is completely disconnected from the internet (see chapter 8.14 and below) |
+| **Self-hosted** | **2. Air-gapped** | On-premises, installed on the BCM cluster | The cluster is completely disconnected from the internet |
 
-### 3.2 How the setup wizard changed in BCM 11.33 (`cm-kubernetes-setup` vs `cm-runai-setup`)
+### 3.2 How the setup wizard changed in BCM 11.33
 
-BCM 11.33 introduced a version split that every BCM administrator needs to know:
+Administrators upgrading to BCM 11.33 often launch `cm-kubernetes-setup` expecting to see the Run:ai installation screen, only to find it gone. Alternatively, they check that the `cm-runai-setup` binary exists on an air-gapped head node and assume they are ready to deploy. During the maintenance window, the installer then aborts with a missing-plugin error.
 
-- **Prior to BCM 11.33:** Run:ai is installed **inside `cm-kubernetes-setup`** (or in Base View via `Containers > Kubernetes > Kubernetes Management > Launch Wizard`). You pick `Run:ai (SaaS)` or `Run:ai (self-hosted)` on the operator package selection screen and enter the credentials in that same wizard.
-- **From BCM 11.33 onwards (decoupled deployment):** Run:ai is deployed in **two sequential steps**:
-  1. Run **`cm-kubernetes-setup`** first to deploy Kubernetes **together with the operator packages that Run:ai depends on** (selected at the operator selection screen).
-  2. Once `cm-kubernetes-setup` has finished, run **`cm-runai-setup`** separately to configure the installation type (SaaS or self-hosted), credentials, and deploy Run:ai itself.
+BCM 11.33 decoupled the Run:ai deployment workflow into two separate wizards.
+
+- **Prior to BCM 11.33.** Run:ai is installed directly inside `cm-kubernetes-setup`, or in Base View under the Kubernetes Management wizard. You select the SaaS or self-hosted Run:ai option on the operator package selection screen and enter the credentials in that same wizard.
+- **From BCM 11.33 onwards.** Run:ai is deployed in two sequential steps. First, run `cm-kubernetes-setup` to deploy Kubernetes together with the operator packages that Run:ai depends on. Second, after `cm-kubernetes-setup` finishes, run `cm-runai-setup` separately to configure the installation type, supply credentials, and deploy Run:ai.
 
 ```mermaid
 flowchart TB
@@ -203,24 +256,43 @@ flowchart TB
   end
 ```
 
-**The `cm-runai-setup` and `cm-setup-runai-bcm11` trap:**
-- The **`cm-runai-setup` command** is part of the **`cm-setup` package** and is present on a BCM head node by default.
-- However, the **plugin that implements the wizard** is delivered in a **separate package: `cm-setup-runai-bcm11`**, published in the public NVIDIA Mission Control repository (`sw-dgxc-nmc-cm-setup-plugins-debian-local`).
-- Running `cm-runai-setup` without `cm-setup-runai-bcm11` installed **fails with an error stating that the main component is not installed**. Therefore, **checking whether the `cm-runai-setup` command exists on the head node does NOT tell you whether Run:ai can be deployed.**
-- **How the plugin package gets installed:**
-  - *Clusters with internet access:* no manual action is needed; `cm-setup-runai-bcm11` is installed automatically when you run `cm-runai-setup` or `cm-mission-control-setup`.
-  - *Air-gapped clusters on Ubuntu:* because air-gapped deployments must pass `cm-runai-setup --skip-packages` (without `--skip-packages`, the wizard's automatic update feature tries to reach the internet and fails), the wizard cannot install the package itself. You must download `cm-setup-runai-bcm11_<version>_<arch>.deb` on the internet host, verify its `.sha256` file (after appending the filename on the same line, chapter 8.14), and `apt install -y` it on the primary head node—and **`scp` it to the secondary head node and install it there too**, because the `.deb` is in local storage, while the `cm-runai-setup` wizard itself is run on the **active head node only**.
-  - *Supported OS distributions:* for connected clusters, `cm-runai-setup` is available on **Ubuntu 24.04, Ubuntu 26.04, and RHEL9-based distributions** (with RHEL10 planned). For **air-gapped** clusters, `cm-setup-runai-bcm11` is published **only as a `.deb`**, so **an air-gapped Run:ai deployment on RHEL is not supported in this release**.
-- **Release cadence:** BCM and Run:ai release on the same cadence—**BCM 11.33 corresponds to Run:ai 2.25**, and **BCM 11.34 corresponds to Run:ai 2.26**—but this is a matter of timing, not a hard restriction: any supported, non-EOL Run:ai version can be deployed, provided the air-gapped tarball version matches the version being deployed (and is at least **2.23.60**, when multi-arch support was added).
+When running the decoupled `cm-runai-setup` wizard, keep these five package and OS rules in mind.
+
+- **The command versus plugin package split.** The `cm-runai-setup` command is part of the `cm-setup` package and is present on a BCM head node by default. However, the plugin that implements the wizard lives in a separate package named `cm-setup-runai-bcm11` in the public NVIDIA Mission Control repository. Running `cm-runai-setup` without `cm-setup-runai-bcm11` installed fails with an error stating that the main component is not installed. Checking whether the `cm-runai-setup` binary exists does not tell you whether Run:ai can be deployed.
+- **Connected cluster auto-installation.** On clusters with internet access, no manual package step is needed. The `cm-setup-runai-bcm11` plugin is installed automatically when you run `cm-runai-setup` or `cm-mission-control-setup`.
+- **Air-gapped Ubuntu installation.** Air-gapped deployments must pass `cm-runai-setup --skip-packages` so the wizard does not attempt to reach the internet and fail. You must download the plugin `.deb` package on an internet host, verify its checksum file, and install it on both the primary and secondary head nodes. You then run `cm-runai-setup` on the active head node only.
+- **Supported OS distributions.** Connected clusters support `cm-runai-setup` on Ubuntu 24.04, Ubuntu 26.04, and RHEL9-based distributions, with RHEL10 planned. For air-gapped clusters, `cm-setup-runai-bcm11` is published only as a Debian package, so air-gapped Run:ai on RHEL is not supported in this release.
+- **Release cadence and minimum tarball version.** BCM 11.33 aligns with Run:ai 2.25 and BCM 11.34 aligns with Run:ai 2.26 by release timing. Any supported non-EOL Run:ai version can be deployed if the air-gapped tarball matches the deployed version. The tarball must also be at least version 2.23.60.
+
+```text
+Run:ai wizard paths and package details (Containerization Manual 6.11 & B.2.8):
+- Pre-11.33 Base View path: Containers > Kubernetes > Kubernetes Management > Launch Wizard
+- Public plugin repository: sw-dgxc-nmc-cm-setup-plugins-debian-local
+- Air-gapped plugin package: cm-setup-runai-bcm11_<version>_<arch>.deb (plus .sha256 checksum)
+- Air-gapped install command on both head nodes: apt install -y ./cm-setup-runai-bcm11_<version>_<arch>.deb
+```
 
 ### 3.3 Operator dependencies, prerequisites, and wizard validations
 
-When you run `cm-kubernetes-setup` with the intent of deploying Run:ai (illustrated for Run:ai 2.25), you must select the operators Run:ai depends on:
+If an administrator forgets to select a required Kubernetes operator during `cm-kubernetes-setup` or misconfigures TLS and MetalLB settings before launching `cm-runai-setup`, the Run:ai installer will either warn or abort mid-run. Reviewing the exact operator list, mode prerequisites, and wizard checks prevents failed deployments.
 
-- **12 required operators:** `NVIDIA GPU Operator`, `Grafana Operator`, `Kgateway`, `Knative Operator`, `Kubeflow Training Operator`, `Kubernetes Metrics Server`, `Kubernetes MPI Operator`, `Kubernetes State Metrics`, `LeaderWorkerSet Operator`, `MetalLB`, `Prometheus Adapter`, and `Prometheus Operator Stack`.
-- **2 optional operators:** `Network Operator` ("technically optional, but recommended") and `NIM Operator` ("optional").
+When running `cm-kubernetes-setup` for Run:ai 2.25, select the twelve required operators and consider the two optional operators listed below.
 
-Before running `cm-runai-setup`, these prerequisites must be in place according to the mode:
+```text
+Run:ai 2.25 operator dependencies in cm-kubernetes-setup:
+- 12 required operators:
+  1. NVIDIA GPU Operator            7. Kubernetes MPI Operator
+  2. Grafana Operator               8. Kubernetes State Metrics
+  3. Kgateway                       9. LeaderWorkerSet Operator
+  4. Knative Operator              10. MetalLB
+  5. Kubeflow Training Operator    11. Prometheus Adapter
+  6. Kubernetes Metrics Server     12. Prometheus Operator Stack
+- 2 optional operators:
+  1. Network Operator (technically optional, but recommended)
+  2. NIM Operator (optional)
+```
+
+Before launching `cm-runai-setup`, prepare the inputs required for your chosen deployment mode.
 
 | Mode | Required inputs and prerequisites |
 |---|---|
@@ -228,28 +300,21 @@ Before running `cm-runai-setup`, these prerequisites must be in place according 
 | **Self-hosted (connected)** | Updated BCM head node; **Run:ai JFrog / registry credentials** (as a base64-encoded token string or a file path); a **control plane FQDN** (for example `runai.example.com`) which **must differ from the Kubernetes FQDN**; a **DNS entry** resolving that FQDN to the cluster IP; the **domain full-chain certificate** (`.crt` or `.pem`) and **private key** (`.key`); an optional **local CA certificate** (`.crt` or `.pem`, required in almost all cases when the domain certificate is self-signed, omitted only for publicly trusted certificates); **Tenants Manager admin email and password** (at least 8 characters with at least one digit, one uppercase letter, and one special character); the **node category** for the Run:ai control plane (same category as Kubernetes control-plane nodes is recommended); the **Run:ai version**; and an **unused IP address for the Run:ai inference load balancer (Kourier)** |
 | **Self-hosted (air-gapped additions)** | All of the self-hosted items, prepared **before** air-gapping: **`cm-setup-runai-bcm11`** pre-installed on both head nodes; **Docker** configured via `cm-docker-setup --skip-packages` (Docker is currently only needed for the BCM Run:ai installation); **three reserved IP addresses** (none already in use: one for the **BCM gateway**, one for the **Run:ai control plane ingress**, and one for **Run:ai inference / Kourier**—the MetalLB range given to `cm-kubernetes-setup` must be large enough to cover all three, and the three addresses must be **left free rather than placed in a MetalLB pool beforehand** because `cm-runai-setup` creates its own MetalLB pools; also verify the gateway IP the wizard offers against your reserved list); **three DNS records** (`<cp-fqdn>` and workspace wildcard `*.<cp-fqdn>` pointing at the control-plane IP, plus inference wildcard `*.runai-inference.<domain>` pointing at the inference IP); **an NGC API key** (the wizard requires a value even in air-gap); files staged in `/cm/shared/runai/` (conventional location); and the air-gapped registry, Helm repo, Helm CA cert, and `runai-airgapped-package-<version>.tar.gz` paths. In air-gapped mode the wizard does **not** prompt for the Run:ai version: it takes it from the operator defaults, which must match the tarball |
 
-**What the wizard validates automatically:**
-During both the questions phase and the setup phase, `cm-runai-setup` (or `cm-kubernetes-setup` prior to 11.33) runs three groups of checks, all modeled in `bcm_mission_control.py`:
+During both the questions phase and the setup phase, `cm-runai-setup` executes three groups of automatic validations.
 
-1. **Required field validation:** checks that the JFrog/registry credentials, control plane domain name (FQDN), and domain certificate/key paths are not empty. (It allows the local CA path to be empty, with a caution that an empty CA only works for publicly signed certificates.)
-2. **Question phase validation (warnings):**
-   - *Domain name resolution:* resolves the domain name to an IP address and warns if resolution fails.
-   - *Certificate verification:* if a local CA is provided, runs:
-     ```bash
-     openssl verify -CAfile <local CA .crt file> <local .crt file>
-     ```
-     (from the manual, untested here) and warns if verification fails.
-   - *Domain FQDN validation:* checks that the domain FQDN is in the certificate's Subject Alternative Name (SAN) list, including wildcard SAN entries.
-   - *IP routability check (present since BCM 11.25.08):* checks whether the IP address that the FQDN resolved to is routable to one of the nodes in the BCM cluster. **Important exception:** this check is **disabled if MetalLB is used with Run:ai**, because the IP address is not yet in use during the questions phase.
-3. **Consistency validation (since BCM 11.25.08; aborts setup):**
-   - If a local CA certificate **is** provided, but a custom CA is **not** enabled in the Helm values, **the setup aborts**.
-   - If a local CA certificate is **not** provided, but a custom CA **is** enabled in the Helm values, **the setup aborts**.
+- **Required field validation.** The wizard checks that the JFrog or registry credentials and control plane domain name are not empty. It also checks that the domain certificate and key paths are not empty. It allows the local CA path to be empty, with a caution that an empty CA only works for publicly signed certificates.
+- **Question phase warnings.** The wizard resolves the domain name to an IP address and runs `openssl verify` if a local CA is provided. It also verifies that the domain FQDN matches the certificate's Subject Alternative Name list, including wildcard SAN entries. Starting in BCM 11.25.08, it checks whether the resolved IP address is routable to a cluster node. That routability check is disabled when MetalLB is used because the IP address is not yet active during the questions phase.
+- **Consistency validation abort.** Starting in BCM 11.25.08, setup aborts if a local CA certificate is provided without enabling custom CA in the Helm values. It also aborts if a local CA certificate is omitted while custom CA is enabled in the Helm values.
+
+```bash
+openssl verify -CAfile <local CA .crt file> <local .crt file>
+```
 
 ### 3.4 Saving the configuration, deploying, verifying, and post-installation
 
-In `cm-runai-setup` (best run inside `screen` or `tmux`), the final summary screen offers two config styles—**`minimal config`** (only settings that differ from application defaults) or **`config`** (minimal settings plus upstream defaults)—and **Save & Exit**, which writes `/root/cm-runai-setup.conf` without deploying.
-- In **BCM 11.33**, you **must** choose **Save & Exit** first because a bug in the 11.33 wizard prevents deploying in a single run.
-- Because `/root/cm-runai-setup.conf` contains sensitive credentials, restrict its permissions and delete it after confirming the deployment (commands from the manual, untested here):
+Running a long cluster installer over an unstable SSH session or hitting the BCM 11.33 single-run wizard bug can leave a deployment half-finished. On Multi-Node NVLink platforms like GB200 and GB300, stopping after the base wizard also leaves multi-node GPU memory exchange non-functional until the Dynamic Resource Allocation driver is installed.
+
+Run `cm-runai-setup` inside a persistent terminal multiplexer such as screen or tmux. At the final summary screen, the wizard offers two configuration styles (`minimal config` or `config`). It also provides a Save and Exit option that writes `/root/cm-runai-setup.conf` without deploying. In BCM 11.33, you must choose Save and Exit first because a wizard bug prevents deploying in a single run. Because `/root/cm-runai-setup.conf` contains sensitive credentials, restrict its permissions and delete it after confirming the deployment. The commands below are untested here.
 
 ```bash
 # Deploy from the saved configuration (add --skip-packages if air-gapped)
@@ -262,56 +327,61 @@ In `cm-runai-setup` (best run inside `screen` or `tmux`), the final summary scre
 [root@basecm11 ~]# kubectl get all -n runai
 ```
 
-**Post-installation steps from BCM 11.33 onwards:**
-1. **Load the right Kubernetes module** in multi-cluster setups:
-   ```bash
-   [root@basecm11 ~]# module unload kubernetes
-   [root@basecm11 ~]# module load kubernetes/k8s-user
-   ```
-2. **On Multi-Node NVLink systems (DGX B200, GB200, B300, and GB300), install the NVIDIA Dynamic Resource Allocation (DRA) driver** (`nvidia-dra-driver-gpu`), which is **required for secure Internode Memory Exchange (IMEX)** on those systems, and then patch `runaiconfig` to expose DRA capabilities (from the manual, untested here):
-   ```bash
-   [root@basecm11 ~]# helm repo add nvidia https://helm.ngc.nvidia.com/nvidia && helm repo update
-   [root@basecm11 ~]# helm install nvidia-dra-driver-gpu nvidia/nvidia-dra-driver-gpu \
-     --version="25.8.0" --create-namespace --namespace nvidia-dra-driver-gpu \
-     --set nvidiaDriverRoot=/ --set resources.gpus.enabled=false
+After the wizard completes on BCM 11.33 or later, complete these four post-installation steps.
 
-   [root@basecm11 ~]# kubectl patch runaiconfig runai -n runai --type='merge' \
-     -p '{"spec":{"workload-controller":{"GPUNetworkAccelerationEnabled":true},"global":{"tolerations":[{"key":"node-role.kubernetes.io/control-plane","operator":"Exists","effect":"NoSchedule"}]}}}'
-   ```
-3. **Verify the CLI and the Kourier ingress service:** `runai version` (on Windows: `runai config set --cp-url runai.example.com`) and `kubectl get svc -n knative-serving kourier -o wide`.
-4. **Removing Run:ai:** prior to 11.33, `helm uninstall cluster-installer -n runai`. From 11.33, use the `cm-runai-setup` uninstall option or run:
-   ```bash
-   [root@basecm11 ~]# cm-runai-setup --cluster <kube cluster> --remove --yes-i-really-mean-it
-   ```
-   Uninstalling the whole Kubernetes cluster (`cm-kubernetes-setup --cluster <kube cluster> --remove --yes-i-really-mean-it`) also removes Run:ai automatically.
+- **Load the right Kubernetes module.** In multi-cluster setups, unload the default module and load the user-space cluster module.
+- **Install the NVIDIA DRA driver on Multi-Node NVLink systems.** On DGX B200, GB200, B300, and GB300 systems, install the `nvidia-dra-driver-gpu` Helm chart, which is required for secure Internode Memory Exchange. Then patch `runaiconfig` to expose DRA capabilities.
+- **Verify the CLI and Kourier ingress service.** Check the CLI version and confirm that the Kourier service has an external IP assigned in the knative-serving namespace.
+- **Know the removal procedure.** Prior to BCM 11.33, uninstall the `cluster-installer` Helm release in the runai namespace. From BCM 11.33 onwards, use the `cm-runai-setup` removal flag or remove the whole Kubernetes cluster. Prior to BCM 11.33, post-installation uses `cm-kubernetes-setup` to configure OIDC and place the `runai` binary in `/usr/bin`, which causes about one minute of API server downtime.
 
-*(Note: Prior to BCM 11.33, post-installation uses `cm-kubernetes-setup` -> `"Enable Run:ai Config (Configure Run:ai CLI binary and OIDC settings)"`, which updates the Kubernetes API server with OIDC parameters for Researcher Access Control—causing about a minute of API server downtime—and lets you place the `runai` binary in `/usr/bin`.)*
+```bash
+# 1. Load the user-space Kubernetes module
+[root@basecm11 ~]# module unload kubernetes
+[root@basecm11 ~]# module load kubernetes/k8s-user
+
+# 2. Install NVIDIA DRA driver and patch runaiconfig on B200, GB200, B300, GB300
+[root@basecm11 ~]# helm repo add nvidia https://helm.ngc.nvidia.com/nvidia && helm repo update
+[root@basecm11 ~]# helm install nvidia-dra-driver-gpu nvidia/nvidia-dra-driver-gpu \
+  --version="25.8.0" --create-namespace --namespace nvidia-dra-driver-gpu \
+  --set nvidiaDriverRoot=/ --set resources.gpus.enabled=false
+
+[root@basecm11 ~]# kubectl patch runaiconfig runai -n runai --type='merge' \
+  -p '{"spec":{"workload-controller":{"GPUNetworkAccelerationEnabled":true},"global":{"tolerations":[{"key":"node-role.kubernetes.io/control-plane","operator":"Exists","effect":"NoSchedule"}]}}}'
+
+# 3. Verify the CLI and Kourier ingress service (on Windows: runai config set --cp-url runai.example.com)
+[root@basecm11 ~]# runai version
+[root@basecm11 ~]# kubectl get svc -n knative-serving kourier -o wide
+
+# 4. Uninstall Run:ai (pre-11.33: helm uninstall cluster-installer -n runai)
+[root@basecm11 ~]# cm-runai-setup --cluster <kube cluster> --remove --yes-i-really-mean-it
+[root@basecm11 ~]# cm-kubernetes-setup --cluster <kube cluster> --remove --yes-i-really-mean-it
+```
 
 ## 4. DGX Cloud and AWS topology awareness in BCM
 
-**DGX Cloud** is NVIDIA's managed AI training platform, where NVIDIA hosts SuperPOD-class infrastructure inside major cloud providers (AWS, Azure, GCP, Oracle) so data scientists can submit training jobs through a browser portal as an OpEx service without operating the underlying Slurm, Kubernetes, drivers, or fabric themselves.
+When a team bursts multi-node training jobs onto cloud GPU instances without switch-level topology data, the scheduler places tightly coupled ranks across distant network spines and collectives slow to a crawl. DGX Cloud is NVIDIA's managed AI training platform where NVIDIA hosts SuperPOD-class infrastructure inside major cloud providers including AWS, Azure, GCP, and Oracle. Data scientists can submit jobs through a browser portal as an operational expense service without managing the underlying fabric.
 
-When BCM manages cloud compute nodes on **AWS** (such as the **`p5.48xlarge`** instance type, which carries `8 × H100` GPUs and is used by DGX Cloud), BCM's **Topograph** service discovers instance placement so Slurm can schedule jobs with topology awareness:
+When BCM manages cloud compute nodes on AWS, such as the `p5.48xlarge` instance flavor carrying eight H100 GPUs used by DGX Cloud, BCM's Topograph service discovers instance placement so Slurm can schedule jobs with topology awareness. Four configuration rules govern AWS topology discovery in BCM.
 
-- **Instance state and flavor:** the AWS compute nodes must be **running (exist)** and must use an instance flavor that supports the **AWS EC2 instance topology API** (`ec2-instance-topology`), such as `p5.48xlarge`.
-- **IAM permission:** the IAM identity used by Topograph must have the **`ec2:DescribeInstanceTopology`** permission (which can be granted through the AWS-managed policy **`AmazonEC2ReadOnlyAccess`**).
-- **Cloud credentials in BCM:** Topograph needs cloud credentials to call the AWS API; when the administrator sets **`Pass cloud credentials`** to **`yes`**, BCM sends the credentials to the Topograph service on each topology fetch.
-- **Topograph 4 vs Topograph 3:** the legacy `FakeNodes` and `FakeNodesPool` extra settings are no longer needed in recent Slurm versions and are not supported in **Topograph 4** (BCM logs a warning and ignores them; reverting to Topograph 3 requires clearing the `version4` extra value and reinstalling the `topograph` package on every node running `topograph4`, followed by `updateprovisioners` and `imageupdate` if installed in a software image).
+- **Instance state and flavor.** The AWS compute nodes must be running and must use an instance flavor that supports the AWS EC2 instance topology API (`ec2-instance-topology`), such as `p5.48xlarge`.
+- **IAM permission.** The IAM identity used by Topograph must hold the `ec2:DescribeInstanceTopology` permission, which is included in the AWS-managed policy `AmazonEC2ReadOnlyAccess`.
+- **Cloud credentials in BCM.** Topograph needs cloud credentials to query the AWS API, so the administrator must set the Pass cloud credentials option to yes for BCM to send credentials on each topology fetch.
+- **Topograph version settings.** The legacy `FakeNodes` and `FakeNodesPool` extra settings are no longer needed in recent Slurm versions and are unsupported in Topograph 4, where BCM logs a warning and ignores them. Reverting to Topograph 3 requires clearing the `version4` extra value and reinstalling the `topograph` package on every node running `topograph4`. If it was installed in a software image, run `updateprovisioners` and `imageupdate` afterwards. Cloud GPU platforms are covered in detail in Chapter 9.14.
 
-Cloud GPU platforms (DGX Cloud, CoreWeave, Nebius, and GCP A3/A4) are covered in detail in **chapter 9.14**.
+## 5. Lab: checking Mission Control, Run:ai and recovery rules
 
-## 5. Lab: checking Mission Control, Run:ai and recovery rules (`mission_control_lab.py`)
+The companion module `code/part08/bcm_mission_control.py` encodes the verifiable rules from the sections above, and `code/part08/mission_control_lab.py` runs 31 self-checks using standard-library Python.
 
-`code/part08/bcm_mission_control.py` encodes the verifiable rules from the sections above, and `code/part08/mission_control_lab.py` runs **31 self-checks** (stdlib Python only):
+| Lab check group | Checks | What the code verifies |
+|---|---|---|
+| **GB300 five-layer prose check** | 4 checks | Verifies that 5 roles are tracked, only 2 (`telemetry_and_observability`, `validation_and_diagnostics`) carry the literal word "layer" in the prose while 3 are described indirectly, that `validation_and_diagnostics` is paired with the autonomous recovery engine, and that the 4 business-value claims match the text |
+| **Recovery and security profiles** | 5 checks | Checks all 14 preconfigured profiles, verifies the exact task strings for `autonomous-hardware-recovery` and `autonomous-job-recovery`, and confirms that modifying, disabling, or assigning either nonuser profile to a human user raises `MissionControlError` while assigning `readonly` succeeds |
+| **HA MySQL replication** | 4 checks | Checks that default HA replicates only `cmdaemon` and `slurm_acct_db` (leaving a third-party database such as the manual's `ajr` example missing after failover), that adding it to `extradbclone.xml` preserves it, that `replicate_all_non_system=True` (from BCM 11.34.0) replicates all non-system databases while excluding system schemas (`mysql`, `sys`), and that `replicate_all_non_system` is rejected before 11.34.0 |
+| **Keycloak, firmware license, and leak detection** | 4 checks | Checks Keycloak federation requirements for Mission Control (BCM 11.34+, Ubuntu 24.04/26.04, `https://<head-fqdn>:9443`, port `9443/tcp` open when Mission Control is off-head), Base View firmware flashing rules on GB200/GB300/DGX (Mission Control license required, 1 package at a time, 11.34.0 `Dry Run` bug fixed in 11.35.0, no `--targets` in Base View), and the `leak:disabled` status suffix rule |
+| **Run:ai workflow and wizard validations** | 12 checks | Checks the BCM 11.33 decoupling from `cm-kubernetes-setup` to `cm-runai-setup`, the `cm-setup` versus `cm-setup-runai-bcm11` plugin rule, the 12 required and 2 optional dependency operators, SaaS and self-hosted wizard validations, the Tenants Manager password policy (`>=8` chars, digit, uppercase, special), the 9 air-gapped Run:ai pre-flight failure conditions, and the `nvidia-dra-driver-gpu` requirement on Multi-Node NVLink systems (`B200`, `GB200`, `B300`, `GB300`) |
+| **AWS Topograph and checkpoint math** | 2 checks | Checks AWS Topograph requirements (`p5.48xlarge` used by DGX Cloud, nodes running, `ec2:DescribeInstanceTopology`, `Pass cloud credentials = yes`) and reproduces the worked example of a failure at step `5243` with a `500`-step checkpoint interval |
 
-- **GB300 five-layer prose check (4 checks):** verifies that 5 roles are tracked, only 2 (`telemetry_and_observability`, `validation_and_diagnostics`) carry the literal word "layer" in the prose while 3 are described indirectly, that `validation_and_diagnostics` is paired with the autonomous recovery engine, and that the 4 business-value claims match the text.
-- **Recovery and security profiles (5 checks):** checks all 14 preconfigured profiles, verifies the exact task strings for `autonomous-hardware-recovery` and `autonomous-job-recovery`, and confirms that modifying, disabling, or assigning either nonuser profile to a human user raises `MissionControlError` while assigning `readonly` succeeds.
-- **HA MySQL replication (4 checks):** checks that default HA replicates only `cmdaemon` and `slurm_acct_db` (leaving a third-party database such as the manual's `ajr` example missing after failover), that adding it to `extradbclone.xml` preserves it, that `replicate_all_non_system=True` (from BCM 11.34.0) replicates all non-system databases while still excluding system schemas (`mysql`, `sys`), and that `replicate_all_non_system` is rejected before 11.34.0.
-- **Keycloak federation, firmware license, and leak detection (4 checks):** checks Keycloak federation requirements for Mission Control (BCM 11.34+, Ubuntu 24.04/26.04, `https://<head-fqdn>:9443`, port `9443/tcp` open when Mission Control is off-head), Base View firmware flashing rules on GB200/GB300/DGX (Mission Control license required, 1 package at a time, 11.34.0 `Dry Run` bug fixed in 11.35.0, no `--targets` in Base View), and the `leak:disabled` status suffix rule.
-- **Run:ai workflow and wizard validations (12 checks):** checks the BCM 11.33 decoupling from `cm-kubernetes-setup` to `cm-runai-setup`, the `cm-setup` versus `cm-setup-runai-bcm11` plugin rule (connected auto-install vs `--skip-packages` air-gap failure), the 12 required and 2 optional dependency operators, SaaS and self-hosted wizard validations (CA/Helm consistency abort since 11.25.08, control-plane FQDN != Kubernetes FQDN, wildcard SAN matching, MetalLB disabling the IP routability check), the Tenants Manager password policy (`>=8` chars, digit, uppercase, special), the 9 air-gapped Run:ai pre-flight failure conditions (RHEL `.deb` restriction, minimum version `2.23.60`, tarball/operator version match, 3 distinct free IPs inside the MetalLB range, DNS wildcards, NGC key, 11.33 single-run bug), and the `nvidia-dra-driver-gpu` requirement on Multi-Node NVLink systems (`B200`, `GB200`, `B300`, `GB300`).
-- **AWS Topograph & checkpoint math (2 checks):** checks AWS Topograph requirements (`p5.48xlarge` used by DGX Cloud, nodes running, `ec2:DescribeInstanceTopology`, `Pass cloud credentials = yes`) and reproduces the worked example of a failure at step `5243` with a `500`-step checkpoint interval (resumes from step `5001` after loading `step-5000`, losing `243` steps).
-
-Run it locally:
+Run the verification script from the repository root.
 
 ```bash
 python3 code/part08/mission_control_lab.py
@@ -319,75 +389,222 @@ python3 code/part08/mission_control_lab.py
 
 ## Common first mistakes
 
-1. **Editing or assigning `autonomous-hardware-recovery` or `autonomous-job-recovery`:** both are `nonuser` profiles (`nonuser = yes`) used by BCM's own components and clients. They must never be modified and cannot be assigned to human users (chapter 8.6).
-2. **Assuming `cm-runai-setup` is in `cluster-tools` or that its presence means Run:ai is ready to install:** `cm-runai-setup` is part of `cm-setup` and is on the head node by default, but its implementation lives in the separate `cm-setup-runai-bcm11` package. Without that plugin package, `cm-runai-setup` fails with "main component is not installed." (`cluster-tools` is where `cm-setup-keycloak.py` lives.)
-3. **Forgetting third-party MySQL databases when setting up head-node HA:** by default `cmha-setup` replicates only `cmdaemon` and `slurm_acct_db`. Unless you list a third-party application database (such as the manual's `AJR` example) in `extradbclone.xml` or enable `"Replicate all non-system MySQL databases?"` (`--replicate-all-databases`, available from BCM 11.34.0), that database will be missing on the new active head node after a failover (chapter 8.12).
-4. **Providing a local CA certificate in `cm-runai-setup` without enabling custom CA in Helm values (or vice versa):** since BCM 11.25.08, the consistency check aborts the setup if those two settings disagree.
-5. **Pre-allocating the three Run:ai IPs into a MetalLB pool before running `cm-runai-setup`:** `cm-runai-setup` creates its own MetalLB address pools. The three reserved IPs (BCM gateway, Run:ai control plane ingress, Run:ai inference/Kourier) must be inside the overall range given to MetalLB during `cm-kubernetes-setup`, but left free beforehand.
-6. **Using the same FQDN for the Run:ai control plane and the Kubernetes cluster:** the Run:ai control plane FQDN must differ from the Kubernetes FQDN.
-7. **Deploying air-gapped Run:ai in a single run on BCM 11.33, or forgetting to copy `cm-setup-runai-bcm11_*.deb` to the secondary head node:** BCM 11.33 has a wizard bug that requires choosing **Save & Exit** first and then running `cm-runai-setup --skip-packages -c /root/cm-runai-setup.conf`. On an HA pair, install the `.deb` on both heads so the wizard survives a failover, but run `cm-runai-setup` on the active head only.
-8. **Skipping the NVIDIA DRA driver on GB200, GB300, B200 or B300 clusters running Run:ai:** Multi-Node NVLink systems require `nvidia-dra-driver-gpu` and the `GPUNetworkAccelerationEnabled` patch on `runaiconfig` for secure Internode Memory Exchange.
-9. **Using Base View `Dry Run` for GB200/GB300/DGX firmware on BCM 11.34.0, or flashing without a Mission Control license:** Base View firmware flashing on those platforms fails without an active Mission Control license, and `Dry Run` is broken in 11.34.0 (fixed in 11.35.0; use `Flash` directly).
-10. **Looking in the BCM Administrator Manual for Mission Control procedures:** rack power shelves, CDU/BMS MQTT integration, rack-level leak overview, NMX Manager, and Mission Control LDAP federation all hand off to the separate *NVIDIA Mission Control Manual*.
+New SuperPOD and BCM administrators frequently run into ten preventable configuration mistakes when working with Mission Control and Run:ai.
+
+- **Editing or assigning the recovery profiles.** Both `autonomous-hardware-recovery` and `autonomous-job-recovery` are nonuser profiles used by BCM components and clients, so they must never be modified or assigned to human users.
+- **Assuming the presence of the setup binary means Run:ai is ready to install.** The `cm-runai-setup` script is part of `cm-setup` on every head node, but its implementation lives in the separate `cm-setup-runai-bcm11` package. By contrast, `cluster-tools` is where `cm-setup-keycloak.py` lives.
+- **Forgetting third-party MySQL databases during head-node HA setup.** By default, `cmha-setup` replicates only `cmdaemon` and `slurm_acct_db`. Any third-party database like the manual's AJR example is lost on failover unless listed in `extradbclone.xml` or replicated via `--replicate-all-databases` on BCM 11.34.0 or later.
+- **Mismatching the local CA path and Helm custom CA flag.** Starting in BCM 11.25.08, the consistency check in `cm-runai-setup` aborts the setup if a local CA file is supplied without enabling custom CA in Helm values, or vice versa.
+- **Pre-allocating the three Run:ai IPs into a MetalLB pool beforehand.** Because `cm-runai-setup` creates its own MetalLB address pools, the three reserved IPs for the BCM gateway, Run:ai control plane ingress, and Kourier inference must remain free before running `cm-runai-setup`. They must still fall inside the overall MetalLB range from `cm-kubernetes-setup`.
+- **Reusing the Kubernetes FQDN for the Run:ai control plane.** The Run:ai control plane FQDN must be distinct from the Kubernetes cluster FQDN.
+- **Deploying air-gapped Run:ai in a single run on BCM 11.33 or skipping the secondary head node.** BCM 11.33 requires choosing Save and Exit first and then running `cm-runai-setup --skip-packages -c /root/cm-runai-setup.conf`. On an HA pair, you must install `cm-setup-runai-bcm11` on both head nodes while running `cm-runai-setup` on the active head only.
+- **Skipping the NVIDIA DRA driver on Blackwell Multi-Node NVLink systems.** Clusters with B200, GB200, B300, or GB300 GPUs running Run:ai require `nvidia-dra-driver-gpu` and the `GPUNetworkAccelerationEnabled` patch on `runaiconfig` for secure Internode Memory Exchange.
+- **Using Base View Dry Run on BCM 11.34.0 or flashing without a Mission Control license.** Base View firmware flashing on GB200, GB300, and DGX fails without an active Mission Control license, and Dry Run is broken on those platforms in version 11.34.0.
+- **Searching the BCM Administrator Manual for Mission Control procedures.** Rack power shelves, CDU and BMS MQTT integration, rack-level leak overview, NMX Manager, and Mission Control LDAP federation all live in the separate *NVIDIA Mission Control Manual*.
 
 ## Exercises
 
-1. Run `python3 code/part08/mission_control_lab.py` and inspect `code/part08/bcm_mission_control.py`. Pick four checks—one each for recovery profiles, HA database replication, Run:ai wizard validation, and air-gapped Run:ai prerequisites—and explain the rule each check enforces.
-2. Using `runai_wizard_validation` in `bcm_mission_control.py`, test two broken self-hosted configurations: (a) a self-signed certificate where `local_ca_path` is set but `custom_ca_enabled_in_helm=False`, and (b) a cluster without MetalLB where `ip_routable_to_cluster=False`. Which one aborts setup and which one only warns?
-3. A BCM 11.33 primary head node has the MySQL databases `cmdaemon`, `slurm_acct_db`, `ajr` (the manual's example third-party database), `keycloak`, `mysql`, and `performance_schema`. Call `mysql_dbs_after_failover` for default HA, for `extradbclone=["ajr", "keycloak"]`, and after upgrading to BCM 11.34.0 with `replicate_all_non_system=True`. Which databases survive a failover in each case?
-4. Write a pre-flight checklist for an air-gapped Ubuntu 24.04 head-node pair that will run Kubernetes and Run:ai 2.25.11 on BCM 11.33. Include the exact operator selections in `cm-kubernetes-setup`, the three reserved IPs, the three DNS records, the `.deb` checksum verification command, the secondary head-node step, and the two-step `cm-runai-setup` invocation.
-5. Using `checkpoint_resume_loss` from `bcm_mission_control.py`, compare a 64-GPU training job that fails at step `8390` under checkpoint intervals of `250`, `500`, and `1000` steps. How many steps are lost in each case, and what is the worst-case loss for each interval?
-6. On a live BCM 11.34+ cluster (if available; untested here), run `verify-license info` and `cmsh -c "profile; foreach * (get name; get nonuser)" | paste - -`. Check whether the `Edition` is `NVIDIA Mission Control` and confirm that `autonomous-hardware-recovery` and `autonomous-job-recovery` report `yes` for `nonuser`.
+1. Run `python3 code/part08/mission_control_lab.py` and inspect `code/part08/bcm_mission_control.py`. Pick four checks covering recovery profiles, HA database replication, Run:ai wizard validation, and air-gapped Run:ai prerequisites. Explain the rule each check enforces.
+2. Using `runai_wizard_validation` in `bcm_mission_control.py`, test two broken self-hosted configurations. First test a self-signed certificate where `local_ca_path` is set but `custom_ca_enabled_in_helm=False`, and then test a cluster without MetalLB where `ip_routable_to_cluster=False`. State which configuration aborts setup and which one only emits a warning.
+3. A BCM 11.33 primary head node holds the MySQL databases `cmdaemon`, `slurm_acct_db`, `ajr`, `keycloak`, `mysql`, and `performance_schema`. Call `mysql_dbs_after_failover` for default HA and for `extradbclone=["ajr", "keycloak"]`. Then call it after upgrading to BCM 11.34.0 with `replicate_all_non_system=True` to see which databases survive a failover in each case.
+4. Write a pre-flight checklist for an air-gapped Ubuntu 24.04 head-node pair that will run Kubernetes and Run:ai 2.25.11 on BCM 11.33. Include the operator selections in `cm-kubernetes-setup`, the three reserved IPs, and the three DNS records. Also include the checksum verification step, the secondary head-node step, and the two-step `cm-runai-setup` invocation.
+5. Using `checkpoint_resume_loss` from `bcm_mission_control.py`, evaluate a 64-GPU training job that fails at step 5243 under checkpoint intervals of 500 and 1000 steps. Calculate how many steps are lost in each case and state the worst-case loss for each interval.
+6. On a live BCM 11.34 or newer cluster, run `verify-license info` and check the profile nonuser flags in `cmsh`. Confirm whether the license edition is NVIDIA Mission Control and verify that both autonomous recovery profiles report yes for nonuser.
 
 ## Interview angles
 
-1. **"How do NVIDIA Mission Control, Base Command Manager, and Run:ai fit together on a DGX SuperPOD?"**
-   *Answer:* In the GB300 Reference Architecture, Mission Control is the full-stack operations suite; it cooperates with BCM for bare-metal provisioning and cluster operations, uses NMX Manager for NVLink switches, includes a validation and diagnostics layer with an autonomous recovery engine, and uses Slurm and Kubernetes with Run:ai for workload orchestration.
-2. **"We ran `which cm-runai-setup` on our air-gapped BCM head node and the binary is there—can we deploy Run:ai?"**
-   *Answer:* Not necessarily: `cm-runai-setup` is shipped by `cm-setup` on every head node, but the plugin that implements it is in the separate `cm-setup-runai-bcm11` `.deb` package, which must be downloaded before air-gapping and installed on both head nodes (and air-gapped Run:ai on RHEL is unsupported in this release because that package is `.deb`-only).
-3. **"What happens to a third-party application database on the BCM head node (such as the manual's `AJR` example) if the active head node fails over to the passive head node?"**
-   *Answer:* By default, BCM MySQL HA only replicates `cmdaemon` and `slurm_acct_db` (chapter 8.12), so any third-party database is missing on the new active head unless you added it to `extradbclone.xml` or enabled `--replicate-all-databases` in `cmha-setup` (available from BCM 11.34.0).
-4. **"Should an administrator tune the tokens in `autonomous-hardware-recovery` or `autonomous-job-recovery`?"**
-   *Answer:* Never: both are `nonuser` profiles used by cluster manager clients, and nonuser profiles must never be modified by the administrator or assigned to human users.
-5. **"What changes when deploying Run:ai on a Multi-Node NVLink system such as GB200 or GB300 versus an H100 cluster?"**
-   *Answer:* After `cm-runai-setup` finishes, you must install the `nvidia-dra-driver-gpu` Helm chart and patch `runaiconfig` to enable `GPUNetworkAccelerationEnabled`, because the NVIDIA DRA driver is required for secure Internode Memory Exchange (IMEX) on B200, GB200, B300, and GB300 systems.
+- **How do NVIDIA Mission Control, Base Command Manager, and Run:ai fit together on a DGX SuperPOD?** In the GB300 Reference Architecture, Mission Control is the full-stack operations suite. It cooperates with BCM for bare-metal provisioning and cluster operations and uses NMX Manager for NVLink switches. It also includes a validation and diagnostics layer with an autonomous recovery engine and uses Slurm and Kubernetes with Run:ai for workload orchestration.
+- **We ran `which cm-runai-setup` on our air-gapped BCM head node and the binary is there; can we deploy Run:ai?** Not necessarily, because `cm-runai-setup` is shipped by `cm-setup` on every head node while the plugin that implements it lives in the separate `cm-setup-runai-bcm11` package. That Debian package must be downloaded before air-gapping and installed on both head nodes. Air-gapped Run:ai on RHEL is unsupported in this release because the package is Debian-only.
+- **What happens to a third-party application database on the BCM head node if the active head node fails over to the passive head node?** By default, BCM MySQL HA only replicates `cmdaemon` and `slurm_acct_db`. Any third-party database such as the manual's AJR example is missing on the new active head unless you added it to `extradbclone.xml` or enabled `--replicate-all-databases` in `cmha-setup` on BCM 11.34.0 or later.
+- **Should an administrator tune the tokens in `autonomous-hardware-recovery` or `autonomous-job-recovery`?** Never, because both are nonuser profiles used by cluster manager clients. Nonuser profiles must never be modified by the administrator or assigned to human users.
+- **What changes when deploying Run:ai on a Multi-Node NVLink system such as GB200 or GB300 versus an H100 cluster?** After `cm-runai-setup` finishes, you must install the `nvidia-dra-driver-gpu` Helm chart and patch `runaiconfig` to enable `GPUNetworkAccelerationEnabled`. The NVIDIA DRA driver is required for secure Internode Memory Exchange on B200, GB200, B300, and GB300 systems.
 
 ## Checkpoint questions (20)
 
-1. Which two layers of the five-layer Mission Control stack are named with the literal word "layer" in the GB300 Reference Architecture prose?
-2. Which layer in that prose supports the built-in autonomous recovery engine?
-3. What are the four capabilities ("business value" items) claimed for Mission Control in the GB300 Reference Architecture?
-4. In a BCM-managed SuperPOD installation, which Kubernetes cluster hosts the Run:ai control plane, and which hosts the Run:ai cluster components?
-5. What are the exact "Default Tasks Allowed" descriptions for `autonomous-hardware-recovery` and `autonomous-job-recovery` in the BCM profiles table?
-6. Are `autonomous-hardware-recovery` and `autonomous-job-recovery` user profiles or `nonuser` profiles, and may an administrator modify their tokens?
-7. Which three preconfigured profiles in BCM have `nonuser = no` and can be assigned to human users?
-8. Why is a third-party application database (such as the manual's `AJR` example) missing after a default BCM head-node failover, and what two methods fix this (chapter 8.12)?
-9. Which four MySQL system schemas are never replicated by `cmha-setup`, even when `"Replicate all non-system MySQL databases?"` is enabled in BCM 11.34.0+?
-10. What head-node OS versions and BCM version are required by `cm-setup-keycloak.py`, and which firewall port must be open if Mission Control runs off the head node?
-11. What happens if you try to flash GB200, GB300, or DGX firmware from Base View without an active NVIDIA Mission Control license, or use `Dry Run` on BCM 11.34.0?
-12. What suffix appears on a device's status line when `leakdetection disable` is run on it, and why would an administrator disable it?
-13. How did the Run:ai installation workflow change in BCM 11.33 compared with versions prior to 11.33?
-14. Which package provides the `cm-runai-setup` command, which separate package provides the plugin that implements it, and why is air-gapped Run:ai not supported on RHEL in this release?
-15. What are the 12 required and 2 optional Kubernetes operators that Run:ai 2.25 depends on in `cm-kubernetes-setup`?
-16. In `cm-runai-setup`, why is the IP routability check (added in BCM 11.25.08) disabled when MetalLB is used, and what causes the consistency check to abort setup?
-17. What are the three reserved IP addresses and three DNS records required before an air-gapped Run:ai deployment, and why must the three IPs not be placed into a MetalLB pool beforehand?
-18. What is the minimum Run:ai version required for an air-gapped tarball (and why), and why must you select **Save & Exit** at the `cm-runai-setup` summary screen on BCM 11.33?
-19. Which extra Helm chart must be installed after `cm-runai-setup` on DGX B200, GB200, B300, and GB300 systems, and what is it required for?
-20. In what context does the BCM 11 Administrator Manual mention **DGX Cloud** and the AWS `p5.48xlarge` instance flavor, and what IAM permission and BCM setting does that feature require?
+<details>
+<summary>`&lt;strong>`1. Which two layers of the five-layer Mission Control stack are named with the literal word "layer" in the GB300 Reference Architecture prose?`&lt;/strong>`</summary>
+
+The two roles named with the literal word "layer" in the prose are the Telemetry and Observability layer and the Validation and Diagnostics layer. The remaining three roles cover foundational system health and diagnostics and cluster management operations with BCM and NMX Manager. They also cover workload orchestration with Slurm, Kubernetes, and Run:ai.
+</details>
+
+<details>
+<summary>`&lt;strong>`2. Which layer in that prose supports the built-in autonomous recovery engine?`&lt;/strong>`</summary>
+
+The Validation and Diagnostics layer supports the built-in autonomous recovery engine. It is designed to ensure rapid failure recovery and system restoration with minimal time to recovery.
+</details>
+
+<details>
+<summary>`&lt;strong>`3. What are the four capabilities ("business value" items) claimed for Mission Control in the GB300 Reference Architecture?`&lt;/strong>`</summary>
+
+The four capabilities claimed are Automated Failure Detection and Self-Recovery, Optimized Workload Migration and Resource Allocation, Unified Diagnostics for Infrastructure and Applications, and In-Memory Checkpointing for Seamless Job Recovery. Together they minimize downtime, prevent idle GPU time, speed up troubleshooting, and restart failed training processes from the latest valid checkpoint.
+</details>
+
+<details>
+<summary>`&lt;strong>`4. In a BCM-managed SuperPOD installation, which Kubernetes cluster hosts the Run:ai control plane, and which hosts the Run:ai cluster components?`&lt;/strong>`</summary>
+
+In a BCM-managed SuperPOD deployment, the Run:ai control plane resides on the user-space Kubernetes cluster. The Run:ai cluster components are deployed onto the administrative Kubernetes infrastructure.
+</details>
+
+<details>
+<summary>`&lt;strong>`5. What are the exact "Default Tasks Allowed" descriptions for `autonomous-hardware-recovery` and `autonomous-job-recovery` in the BCM profiles table?`&lt;/strong>`</summary>
+
+For `autonomous-hardware-recovery`, the Default Tasks Allowed description is autonomous hardware recovery tasks. For `autonomous-job-recovery`, the description is autonomous job recovery tasks.
+</details>
+
+<details>
+<summary>`&lt;strong>`6. Are `autonomous-hardware-recovery` and `autonomous-job-recovery` user profiles or `nonuser` profiles, and may an administrator modify their tokens?`&lt;/strong>`</summary>
+
+Both are nonuser profiles with the nonuser attribute set to yes. Administrators must never modify their tokens or assign them to human users because they are reserved for cluster manager clients.
+</details>
+
+<details>
+<summary>`&lt;strong>`7. Which three preconfigured profiles in BCM have `nonuser = no` and can be assigned to human users?`&lt;/strong>`</summary>
+
+The three preconfigured profiles that can be assigned to human users are `admin`, `readonly`, and `portal`. All other eleven preconfigured profiles in BCM have the nonuser attribute set to yes.
+</details>
+
+<details>
+<summary>`&lt;strong>`8. Why is a third-party application database (such as the manual's `AJR` example) missing after a default BCM head-node failover, and what two methods fix this?`&lt;/strong>`</summary>
+
+By default, BCM head-node MySQL high availability clones and replicates only the `cmdaemon` and `slurm_acct_db` databases. To preserve extra non-system databases across a failover, list the database names in `extradbclone.xml`. Alternatively, enable `--replicate-all-databases` in `cmha-setup` on BCM 11.34.0 or later.
+</details>
+
+<details>
+<summary>`&lt;strong>`9. Which four MySQL system schemas are never replicated by `cmha-setup`, even when `"Replicate all non-system MySQL databases?"` is enabled in BCM 11.34.0+?`&lt;/strong>`</summary>
+
+The four built-in MySQL system schemas that are never replicated are `mysql`, `information_schema`, `performance_schema`, and `sys`. Even when all non-system databases are replicated, these four schemas remain excluded.
+</details>
+
+<details>
+<summary>`&lt;strong>`10. What head-node OS versions and BCM version are required by `cm-setup-keycloak.py`, and which firewall port must be open if Mission Control runs off the head node?`&lt;/strong>`</summary>
+
+The `cm-setup-keycloak.py` script requires BCM 11.34 or later running on an Ubuntu 24.04 or Ubuntu 26.04 head node, with ports 9443 and 9999 free. If Mission Control runs outside the head node, TCP port 9443 must be open in the head node firewall so Mission Control can reach the Keycloak HTTPS endpoint.
+</details>
+
+<details>
+<summary>`&lt;strong>`11. What happens if you try to flash GB200, GB300, or DGX firmware from Base View without an active NVIDIA Mission Control license, or use `Dry Run` on BCM 11.34.0?`&lt;/strong>`</summary>
+
+Without an active NVIDIA Mission Control license, firmware flashing from Base View on GB200, GB300, and DGX fails and returns an error stating that the license is required. On BCM 11.34.0, the Dry Run button does not work properly on these platforms, so administrators should use Flash directly or upgrade to BCM 11.35.0.
+</details>
+
+<details>
+<summary>`&lt;strong>`12. What suffix appears on a device's status line when `leakdetection disable` is run on it, and why would an administrator disable it?`&lt;/strong>`</summary>
+
+Disabling leak detection appends `leak:disabled` to the device's status line. An administrator disables it on a specific node when a broken or false-positive sensor would otherwise trigger an unwanted emergency power-off.
+</details>
+
+<details>
+<summary>`&lt;strong>`13. How did the Run:ai installation workflow change in BCM 11.33 compared with versions prior to 11.33?`&lt;/strong>`</summary>
+
+Prior to BCM 11.33, Run:ai was installed directly inside the `cm-kubernetes-setup` wizard. Starting in BCM 11.33, deployment is decoupled into two sequential wizards. First, `cm-kubernetes-setup` deploys Kubernetes and the required operator packages, and then `cm-runai-setup` configures and deploys Run:ai.
+</details>
+
+<details>
+<summary>`&lt;strong>`14. Which package provides the `cm-runai-setup` command, which separate package provides the plugin that implements it, and why is air-gapped Run:ai not supported on RHEL in this release?`&lt;/strong>`</summary>
+
+The `cm-runai-setup` command is included in the default `cm-setup` package. However, the wizard implementation lives in the separate `cm-setup-runai-bcm11` package. Because `cm-setup-runai-bcm11` is published only as a Debian package, air-gapped Run:ai installation on RHEL is not supported in this release.
+</details>
+
+<details>
+<summary>`&lt;strong>`15. What are the 12 required and 2 optional Kubernetes operators that Run:ai 2.25 depends on in `cm-kubernetes-setup`?`&lt;/strong>`</summary>
+
+The twelve required operators are NVIDIA GPU Operator, Grafana Operator, Kgateway, Knative Operator, Kubeflow Training Operator, and Kubernetes Metrics Server. The remaining six required operators are Kubernetes MPI Operator, Kubernetes State Metrics, LeaderWorkerSet Operator, MetalLB, Prometheus Adapter, and Prometheus Operator Stack. The two optional operators are Network Operator and NIM Operator.
+</details>
+
+<details>
+<summary>`&lt;strong>`16. In `cm-runai-setup`, why is the IP routability check (added in BCM 11.25.08) disabled when MetalLB is used, and what causes the consistency check to abort setup?`&lt;/strong>`</summary>
+
+The IP routability check is disabled when MetalLB is used because the load-balancer IP address is not yet assigned and active during the wizard's questions phase. The consistency check aborts setup if a local CA certificate is provided without enabling custom CA in the Helm values. It also aborts if a local CA is omitted while custom CA is enabled in the Helm values.
+</details>
+
+<details>
+<summary>`&lt;strong>`17. What are the three reserved IP addresses and three DNS records required before an air-gapped Run:ai deployment, and why must the three IPs not be placed into a MetalLB pool beforehand?`&lt;/strong>`</summary>
+
+You must reserve three unused IP addresses inside the MetalLB range: one for the BCM gateway, one for the Run:ai control plane ingress, and one for Run:ai inference via Kourier. You must also create three DNS records covering the control-plane FQDN, workspace wildcard, and inference wildcard. Leave the three IPs out of existing MetalLB pools because `cm-runai-setup` creates its own MetalLB pools.
+</details>
+
+<details>
+<summary>`&lt;strong>`18. What is the minimum Run:ai version required for an air-gapped tarball (and why), and why must you select Save & Exit at the `cm-runai-setup` summary screen on BCM 11.33?`&lt;/strong>`</summary>
+
+The minimum Run:ai version for an air-gapped tarball is 2.23.60, which is the release where multi-architecture support was added. On BCM 11.33, you must choose Save and Exit first to write `/root/cm-runai-setup.conf` because a wizard bug prevents deploying in a single run. You then run `cm-runai-setup -c /root/cm-runai-setup.conf` to complete the installation.
+</details>
+
+<details>
+<summary>`&lt;strong>`19. Which extra Helm chart must be installed after `cm-runai-setup` on DGX B200, GB200, B300, and GB300 systems, and what is it required for?`&lt;/strong>`</summary>
+
+You must install the `nvidia-dra-driver-gpu` Helm chart and patch `runaiconfig` to set `GPUNetworkAccelerationEnabled` to true. This Dynamic Resource Allocation driver is required for secure Internode Memory Exchange across Multi-Node NVLink domains on B200, GB200, B300, and GB300 systems.
+</details>
+
+<details>
+<summary>`&lt;strong>`20. In what context does the BCM 11 Administrator Manual mention DGX Cloud and the AWS `p5.48xlarge` instance flavor, and what IAM permission and BCM setting does that feature require?`&lt;/strong>`</summary>
+
+The manual mentions DGX Cloud and `p5.48xlarge` when describing AWS topology discovery in BCM's Topograph service. Topograph requires running instances that support the AWS EC2 instance topology API, the `ec2:DescribeInstanceTopology` IAM permission, and Pass cloud credentials set to yes in BCM.
+</details>
 
 ## Sources and review notes
 
-- **Sources read in full for this chapter:**
-  - **DGX SuperPOD Reference Architecture, DGX GB300** (`superpod-gb300-ra`): pages 1 to 14 (overview, key components, NVIDIA Mission Control, Run:ai, User Storage HA note) and pages 26 to 36 (OOB network, storage, DGX SuperPOD Software, the five-layer Mission Control description, the four business-value bullets, NVIDIA Run:ai architecture, summary, and trademark footer). *Note:* Only the extracted text was available; Figure 17 ("NVIDIA DGX GB300 SuperPOD Software Stack" and "NVIDIA Run:ai") was not read.
-  - **BCM 11 Containerization Manual** (`bcm11-containerization`): section 6.11 in full (6.11 The Run:ai Operator, 6.11.1 installation prerequisites and wizard validation checks, 6.11.2 installing prior to 11.33 and from 11.33 with `cm-runai-setup`, 6.11.3 post-installation prior to 11.33 and from 11.33 including `nvidia-dra-driver-gpu`, pages 143 to 150) and Appendix B section B.2.8 in full (Decoupled Run:ai Deployment, `cm-setup` vs `cm-setup-runai-bcm11`, prerequisites, HA secondary head-node `.deb` copy, `--skip-packages`, 11.33 Save & Exit bug, uninstalling, pages 200 to 203), plus the Run:ai parts of B.1 (pages 194 to 196), B.2.1 (operator dependencies, page 198), B.2.4 (Docker for Run:ai, page 199), and C.2 (pages 211 to 214).
-  - **BCM 11 Administrator Manual** (`bcm11-admin`): sections 0.1 to 0.3 and 1.3 (manual scope and the separate *NVIDIA Mission Control Manual*), section 2.4 (Base View GUI tree map and License Information Mission Control section, pages 43 to 46), section 3.3 (cluster settings defaults including `NMX Manager`, `Leak action policies`, `Building Management System`, page 96), section 3.7.11 (`leakdetection`, `leakinfo`, `leakdetectionoverview`, page 122), sections 3.16.4 and 3.16.5 (rack overview and power cross-references), sections 4.3.2 and 4.3.3 (CDU/BMS MQTT and `powershelfoverview`), sections 6.4.1 to 6.4.5 (Keycloak setup and NVIDIA Mission Control LDAP federation, pages 338 to 339), section 6.5 (Tokens And Profiles table and `nonuser` rules, pages 339 to 341), chapter 7 pages 406 and 417 to 418 (Blackwell WPPS reference; Topograph on AWS, `p5.48xlarge` used by DGX Cloud, `ec2:DescribeInstanceTopology`, `Pass cloud credentials`), section 14.5 (Base View firmware flashing on GB200, GB300 and DGX requiring a Mission Control license, 11.34.0 `Dry Run` bug, page 757), section 15.1 (HA MySQL replication scope and third-party application databases such as the `AJR` example, page 802), Appendix G.1.6 and G.2.3 (GB200 and DGX Redfish measurable cross-references), and Appendix N.1.2 (Redfish uses in BCM).
-  - **BCM 11 Installation Manual** (`bcm11-install`): sections 4.1.2 and 4.2 (`main licenseinfo` and `verify-license info` showing `Edition: NVIDIA Mission Control`, pages 60 to 61).
-  - **Author's notes (`nvidia-devops` repo):** `nvidia-zero-to-hero/volume-01/chapter-08` section 6 (DGX Cloud overview), and `nvidia-zero-to-hero/volume-21` chapters 06 (CUDA/driver alignment, DDP/DeepSpeed, Kubernetes Indexed Job), 07 (multi-node training fault tolerance and checkpoint-interval worked example), and 10 (DCGM/Prometheus observability and GPU failure incident playbook).
-- **Skimmed in `nvidia-zero-to-hero/volume-21` (routed to later parts per `planning/MIGRATION_MAP.md`):** chapters 01 (AI factory design principles), 02 (GPU cluster design), 03 (networking), 04 (storage), 05 (power and thermal), 08 (inference serving), 09 (multi-region), 11 (capacity planning), 12 (cost optimization and `p5.48xlarge` spot example), 13 (128-GPU training cluster reference architecture), 14 (multi-region inference reference architecture), and labs 01 to 04. These chapters cover general AI factory design and do not mention BCM or Mission Control; they remain marked `[todo]` in `planning/MIGRATION_MAP.md` for Parts 0, 9, 16, and 17.
-- **Not read or not in the corpus:** the *NVIDIA Mission Control Manual* and the *NVIDIA Mission Control System Administration Guide* are not in the corpus. Anything that only those manuals document (the internal rules of the autonomous recovery engine, the exact tokens inside `autonomous-hardware-recovery` and `autonomous-job-recovery`, and how in-memory checkpointing is configured) is marked unknown here.
-- **Corrections to the author's notes:** none for `volume-21` (which does not make BCM-specific claims). In my own earlier draft of this chapter, I wrongly stated that `cm-runai-setup` came from `cluster-tools` (it is in `cm-setup`, with the plugin in `cm-setup-runai-bcm11`), invented a top-to-bottom ordering for the five Mission Control layers, and treated the nonuser recovery profiles as administrator-tunable; all three are corrected here.
-- **Run here:** `code/part08/mission_control_lab.py` (31 checks, testing `code/part08/bcm_mission_control.py`).
-- **My own choices and inferences, labelled in the text:**
-  1. Treating "Workload orchestration (Slurm, Kubernetes, Run:ai)" as the fifth of the five layers in the GB300 Reference Architecture prose (pages 32 to 33), since only two layers carry the literal word "layer" and Figure 17 was not read.
-  2. Inferring that the tokens inside `autonomous-hardware-recovery` and `autonomous-job-recovery` authorize Mission Control's recovery clients to call `CMDaemon` for hardware and job recovery operations (the manual's table in 6.5 states only `"autonomous hardware recovery tasks"` and `"autonomous job recovery tasks"`).
-- **Not verified:** every command (`cmsh`, `cm-runai-setup`, `cm-kubernetes-setup`, `cmha-setup`, `helm`, `kubectl`, `verify-license`) and every GUI path is from the manuals and was not run on a live BCM, Run:ai, or Mission Control system.
+The primary vendor manuals, reference architectures, and repository notes read for this chapter are summarized below.
+
+```text
+Sources read in full for Chapter 8.16:
+1. DGX SuperPOD Reference Architecture Featuring NVIDIA DGX GB300 Systems (superpod-gb300-ra):
+   - Pages 1 to 14: overview, key components, NVIDIA Mission Control, Run:ai, User Storage HA note.
+   - Pages 26 to 36: OOB network, storage, DGX SuperPOD Software, five-layer Mission Control stack,
+     four business-value bullets, NVIDIA Run:ai architecture, summary, trademark footer.
+   - Note: Only extracted text was available; Figure 17 was not read.
+2. BCM 11 Containerization Manual (bcm11-containerization):
+   - Section 6.11 (pp. 143-150): The Run:ai Operator, 6.11.1 prerequisites and wizard checks,
+     6.11.2 installing prior to 11.33 and from 11.33 with cm-runai-setup,
+     6.11.3 post-installation including nvidia-dra-driver-gpu.
+   - Appendix B section B.2.8 (pp. 200-203): Decoupled Run:ai Deployment, cm-setup vs
+     cm-setup-runai-bcm11, prerequisites, HA secondary head-node .deb copy, --skip-packages,
+     11.33 Save & Exit bug, uninstalling.
+   - Appendix B.1 (pp. 194-196), B.2.1 (p. 198), B.2.4 (p. 199), and C.2 (pp. 211-214).
+3. BCM 11 Administrator Manual (bcm11-admin):
+   - Sections 0.1-0.3, 1.3 (p. 25): manual scope and separate NVIDIA Mission Control Manual.
+   - Section 2.4 (pp. 43-46): Base View GUI tree map and License Information Mission Control section.
+   - Section 3.3 (p. 96): cluster settings defaults (NMX Manager, Leak action policies, BMS).
+   - Section 3.7.11 (p. 122): leakdetection, leakinfo, leakdetectionoverview.
+   - Sections 3.16.4-3.16.5, 4.3.2-4.3.3: rack overview/power, CDU/BMS MQTT, powershelfoverview.
+   - Sections 6.4.1-6.4.5 (pp. 338-339): Keycloak setup and Mission Control LDAP federation.
+   - Section 6.5 (pp. 339-341): Tokens And Profiles table and nonuser rules.
+   - Chapter 7 (pp. 406, 417-418): Blackwell WPPS; Topograph on AWS, p5.48xlarge used by DGX Cloud,
+     ec2:DescribeInstanceTopology, Pass cloud credentials.
+   - Section 14.5 (p. 757): Base View firmware flashing on GB200, GB300, and DGX requiring a
+     Mission Control license, 11.34.0 Dry Run bug.
+   - Section 15.1 (p. 802): HA MySQL replication scope and third-party application databases (AJR).
+   - Appendix G.1.6 (p. 1029), G.2.3 (p. 1034), and N.1.2 (p. 1090): Redfish measurables and uses.
+4. BCM 11 Installation Manual (bcm11-install):
+   - Sections 4.1.2 and 4.2 (pp. 60-61): main licenseinfo and verify-license info showing
+     Edition: NVIDIA Mission Control.
+5. Author's notes (nvidia-devops repository):
+   - Read in full and used:
+     - nvidia-zero-to-hero/volume-01/chapter-08-dgx-superpod-and-ai-factory-architecture.md (sec. 6)
+     - nvidia-zero-to-hero/volume-21/chapter-06-distributed-training-and-orchestration.md
+     - nvidia-zero-to-hero/volume-21/chapter-07-multi-node-distributed-training.md
+     - nvidia-zero-to-hero/volume-21/chapter-10-monitoring-and-operations.md
+   - Skimmed in nvidia-zero-to-hero/volume-21 (routed to Parts 0, 9, 16, and 17 per MIGRATION_MAP.md):
+     - nvidia-zero-to-hero/volume-21/index.md
+     - nvidia-zero-to-hero/volume-21/chapter-01-ai-factory-design-principles.md
+     - nvidia-zero-to-hero/volume-21/chapter-02-gpu-compute-cluster-design.md
+     - nvidia-zero-to-hero/volume-21/chapter-03-high-speed-networking-architecture.md
+     - nvidia-zero-to-hero/volume-21/chapter-04-storage-infrastructure-for-ai-pipelines.md
+     - nvidia-zero-to-hero/volume-21/chapter-05-power-delivery-and-thermal-management.md
+     - nvidia-zero-to-hero/volume-21/chapter-08-inference-serving-at-scale.md
+     - nvidia-zero-to-hero/volume-21/chapter-09-multi-region-deployment.md
+     - nvidia-zero-to-hero/volume-21/chapter-11-capacity-planning-and-forecasting.md
+     - nvidia-zero-to-hero/volume-21/chapter-12-cost-optimization-and-resource-efficiency.md
+     - nvidia-zero-to-hero/volume-21/chapter-13-reference-architecture-100-gpu-training-cluster.md
+     - nvidia-zero-to-hero/volume-21/chapter-14-reference-architecture-multi-region-inference-deployment.md
+     - nvidia-zero-to-hero/volume-21/labs/lab-01-architecture-review.md
+     - nvidia-zero-to-hero/volume-21/labs/lab-02-networking-simulation.md
+     - nvidia-zero-to-hero/volume-21/labs/lab-03-storage-pipeline-design.md
+     - nvidia-zero-to-hero/volume-21/labs/lab-04-capacity-planning-exercise.md
+```
+
+- **Not read or not in the corpus.** The *NVIDIA Mission Control Manual* and the *NVIDIA Mission Control System Administration Guide* are not in the corpus. Internal autonomous recovery engine rules, the exact tokens inside `autonomous-hardware-recovery` and `autonomous-job-recovery`, and in-memory checkpointing configuration are marked unknown here.
+- **Corrections to earlier drafts.** None are needed for Volume 21, which does not make BCM-specific claims. An earlier draft of this chapter wrongly stated that `cm-runai-setup` came from `cluster-tools` rather than `cm-setup` with `cm-setup-runai-bcm11`. It also invented a strict top-to-bottom ordering for the five Mission Control layers and treated the nonuser recovery profiles as administrator-tunable, and all three are corrected here.
+- **Executed verification lab.** We ran `code/part08/mission_control_lab.py`, which passed all 31 checks testing `code/part08/bcm_mission_control.py`.
+- **Labelled inferences.** First, treating Workload orchestration with Slurm, Kubernetes, and Run:ai as the fifth of the five layers in the GB300 Reference Architecture prose is my inference. Only two layers carry the literal word "layer" in the prose and Figure 17 was not read. Second, inferring that the tokens inside `autonomous-hardware-recovery` and `autonomous-job-recovery` authorize Mission Control's recovery clients to call CMDaemon is my inference. The summary table in Section 6.5 lists only the two high-level task strings.
+- **Not verified on live hardware.** Every cluster command (`cmsh`, `cm-runai-setup`, `cm-kubernetes-setup`, `cmha-setup`, `helm`, `kubectl`, and `verify-license`) and every GUI path comes from the manuals. None of them were run on a live BCM, Run:ai, or Mission Control system.
+

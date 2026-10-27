@@ -63,7 +63,7 @@ spec:
 
 | Type | What it creates | Notes |
 |---|---|---|
-| **ClusterIP** | Virtual IP from the service CIDR, reachable inside the cluster | Default |
+| **ClusterIP** | Virtual IP from the service CIDR (configured on `kube-apiserver` via `--service-cluster-ip-range`, e.g., `10.96.0.0/12`, which must not overlap with Pod or node subnets), reachable inside the cluster | Default |
 | **NodePort** | ClusterIP + a port (30000-32767) opened on every node forwarding to the Service | Basis for external LBs; `externalTrafficPolicy` matters |
 | **LoadBalancer** | NodePort + external load balancer (cloud controller or MetalLB/kube-vip) with an external IP/hostname | `loadBalancerClass` selects implementation; `allocateLoadBalancerNodePorts: false` for LBs that route directly to pods |
 | **ExternalName** | DNS CNAME to an external name; no proxying | No ports/selectors; avoid for TLS/host-header surprises |
@@ -175,7 +175,14 @@ External client → `<nodeIP>:30080` on any node → `KUBE-NODEPORTS` → Servic
 
 ### LoadBalancer implementations
 
-Cloud (AWS NLB/ALB, GCP LB, Azure LB): cloud-controller-manager creates LBs and node ports or direct pod targets. Bare metal/GPU clouds: **MetalLB** (L2 ARP/NDP announcements or BGP), **kube-vip**, **Cilium LB IPAM + BGP control plane**, **Calico BGP**, hardware LBs. For inference gateways prefer L7 ingress/Gateway API (5.12) in front of Services; keep L4 LBs for raw TCP (SSH bastions, databases, gRPC with specific needs).
+Cloud (AWS NLB/ALB, GCP LB, Azure LB): cloud-controller-manager creates LBs and node ports or direct pod targets. By default, a cloud `LoadBalancer` Service provisions a public internet-facing load balancer; to expose a Service only inside your private VPC/VNet, add the cloud provider's internal load-balancer annotation to `metadata.annotations`, as listed in *Kubernetes: Up and Running* (3rd edition, Chapter 7; untested here):
+
+- **Google Cloud Platform (GKE)**: `cloud.google.com/load-balancer-type: "Internal"`
+- **Amazon Web Services (EKS)**: `service.beta.kubernetes.io/aws-load-balancer-internal: "true"`
+- **Microsoft Azure (AKS)**: `service.beta.kubernetes.io/azure-load-balancer-internal: "true"`
+- **Alibaba Cloud**: `service.beta.kubernetes.io/alibaba-cloud-loadbalancer-address-type: "intranet"`
+
+Bare metal/GPU clouds: **MetalLB** (L2 ARP/NDP announcements or BGP), **kube-vip**, **Cilium LB IPAM + BGP control plane**, **Calico BGP**, hardware LBs. For inference gateways prefer L7 ingress/Gateway API (5.12) in front of Services; keep L4 LBs for raw TCP (SSH bastions, databases, gRPC with specific needs).
 
 ### Session affinity and long-lived connections
 
@@ -313,7 +320,7 @@ Mark tested only after execution.
 ## 12. Checkpoint questions (40)
 
 1. Is there a process behind a ClusterIP? **A:** No; kernel rules/BPF implement it.
-2. Service types? **A:** ClusterIP, NodePort, LoadBalancer, ExternalName (+ headless).
+2. Service types, what `kube-apiserver` flag sets the ClusterIP range, and what annotations request an internal cloud LoadBalancer on GCP, AWS, and Azure? **A:** ClusterIP, NodePort, LoadBalancer, ExternalName (+ headless); `--service-cluster-ip-range` (e.g., `10.96.0.0/12`); `cloud.google.com/load-balancer-type: "Internal"`, `service.beta.kubernetes.io/aws-load-balancer-internal: "true"`, and `service.beta.kubernetes.io/azure-load-balancer-internal: "true"`.
 3. NodePort range? **A:** 30000-32767.
 4. Headless Service means? **A:** `clusterIP: None`; DNS returns pod IPs.
 5. What replaced Endpoints? **A:** EndpointSlices.
@@ -357,7 +364,7 @@ Mark tested only after execution.
 
 **Written in original words.** Principal sources:
 
-- Brendan Burns et al., *Kubernetes: Up and Running* (3rd edition; chapter 7 on service discovery).
+- Brendan Burns et al., *Kubernetes: Up and Running* (`kubernetes-up-and-running-3rd-edition`, 3rd edition; Chapter 7: `7. Service Discovery` — read in full for Service DNS, readiness checks, `--service-cluster-ip-range` on `kube-apiserver`, internal LoadBalancer annotations across GCP/AWS/Azure/Alibaba, and selector-less Services with manual `Endpoints`).
 - James Strong and Vallery Lancey, *Networking and Kubernetes* (chapters on Services, kube-proxy modes, ingress).
 - Josh Rosso et al., *Production Kubernetes* (chapter 6 on service routing).
 - Kubernetes documentation on Services, EndpointSlices, kube-proxy modes and topology-aware routing; Cilium and MetalLB documentation.

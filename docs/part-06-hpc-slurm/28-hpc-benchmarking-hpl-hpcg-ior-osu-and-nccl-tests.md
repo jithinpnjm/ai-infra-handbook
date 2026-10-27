@@ -103,6 +103,20 @@ A sparse-matrix conjugate gradient with a multigrid preconditioner, memory-bandw
 
 The `hpc/ior` repository contains both. **IOR** (Interleaved or Random I/O) measures parallel I/O bandwidth: each MPI rank writes/reads blocks to a shared file or one file per process, with transfer size, block size, API (POSIX, MPI-IO, HDF5, S3...), collective or independent, `fsync`, reorder tasks to defeat client caching. **mdtest** measures metadata rates: create/stat/read/remove of many files and directories, with directory depth and per-rank trees. The README tells you to build with `./bootstrap && ./configure && make`. Method for storage tests (6.18, 6.19): defeat client caches (rank reordering `-C`, large sizes, drop caches), run enough ranks to saturate (scale tasks and nodes), separate write from read phases, run at your real transfer size (1 to 4 MiB), repeat, record the file system striping. The **IO500** list standardises IOR+mdtest runs and publishes results.
 
+### Benchmarking GPUDirect Storage with `gdsio`
+
+To benchmark storage-to-GPU DMA paths (GPUDirect Storage, `GDS`, Part 13), NVIDIA ships `/usr/local/cuda/gds/tools/gdsio`. You compare the CPU-staged path (`-x 2`, pinned host memory with async copies) against the direct `GDS` path (`-x 0`, storage directly into GPU HBM via `cuFile` and `nvidia-fs`) in read mode (`-I 0`) with 4 workers (`-w 4`), a 10 GiB file size (`-s 10G`), and 1 MiB I/O size (`-i 1M`) on GPU 0 (`-d 0`) (untested here):
+
+```bash
+# Before: Storage -> CPU Memory -> GPU (CPU-staged path, -x 2) (untested here)
+/usr/local/cuda/gds/tools/gdsio -f /mnt/data/large_file -d 0 -w 4 -s 10G -i 1M -I 0 -x 2
+
+# After: Storage -> GPU Memory via GPUDirect Storage (GDS path, -x 0) (untested here)
+/usr/local/cuda/gds/tools/gdsio -f /mnt/data/large_file -d 0 -w 4 -s 10G -i 1M -I 0 -x 0
+```
+
+In the book's example (Table 5-1), the CPU-staged path (`-x 2`) achieves `8.0 GB/s` total throughput at `1.25 ms` average latency (with `85%` CPU utilization), whereas the `GDS` path (`-x 0`) achieves `9.6 GB/s` total throughput at `1.00 ms` average latency (with `25%` CPU utilization)—a `+20%` throughput improvement and `20%` lower latency while freeing host CPU cores. (Similarly, VAST Data's GDS benchmarks in the book report a `+20%` sequential read throughput boost on an A100 GPU and `+30%+` on an H100 GPU.) To trace `cuFile` calls alongside CUDA and OS runtime activity on a timeline, run Nsight Systems with `nsys profile --trace=cuda,gds,nvtx,osrt` (untested here) and enable `cuFile` static tracepoints in `/etc/cufile.json`.
+
 ### OSU Micro-Benchmarks (MPI)
 
 From Ohio State University (MVAPICH team): `osu_latency` (ping-pong), `osu_bw`/`osu_bibw` (bandwidth), `osu_allreduce`, `osu_alltoall`, `osu_bcast`, `osu_barrier`, with CUDA variants (`-d cuda`) for GPU buffers. Use between two nodes (best case point-to-point), then across racks (switch hops) to expose topology. Compare to line rate: NDR InfiniBand at 400 Gb/s is about 50 GB/s per direction before protocol overhead, so a point-to-point bandwidth far below it indicates TCP fallback, a downtrained link, a PCIe issue, or wrong NIC mapping (6.4 section 10). The ping-pong model from 6.4 applies to the latency/bandwidth curve.
@@ -133,6 +147,10 @@ Flags: `-b/-e` min/max bytes, `-f` multiplicative step (`-i` additive), `-g` GPU
 (The first six rows are the document's own summary list; the Send/Recv factor of 1 is my inference, since a point-to-point transfer moves exactly its size over one link.) The AllReduce factor derives from the best-case time `t = (S/B) x 2(n-1)/n`: each of `n` links carries `2(n-1)/n` times the data. Worked example: 64 ranks, 8 GiB message, measured time 0.60 s. algbw = 8.59 GB / 0.60 s = 14.3 GB/s; busbw = 14.3 x 2 x 63/64 = 28.2 GB/s. If each GPU has a 400 Gb/s (50 GB/s) NIC, that is 56 percent of the NIC rate: worth investigating (NIC mapping, routing, congestion). A healthy 8-GPU NVSwitch node runs far higher intra-node (hundreds of GB/s), so intra-node and inter-node results should be compared separately.
 
 How to use it in practice: (1) single-node all-reduce on every node (finds a bad GPU, NVLink or PCIe link); (2) pairs of nodes (finds bad NICs or cables: rotate pairs); (3) full allocation at several sizes; (4) compare with the baseline of a golden run, per switch tier; (5) run after maintenance and before releasing nodes. Combine with `NCCL_DEBUG=INFO` to confirm the transport (6.12).
+
+**Diagnosing communication-bound versus compute-bound training with the batch-size halving/doubling test:** When profiling a real DDP backward pass, gradient `all_reduce` payload size depends on the number of model parameters rather than the batch size, whereas backward compute scales with the batch size. In the book's example, suppose your gradient `all_reduce` achieves `60 GB/s` across a `100 GB/s` NIC:
+- **Halve the batch size** (halving compute while keeping gradient communication bytes fixed): if achieved NIC throughput stays at `60 GB/s`, the network is the bottleneck (communication-bound). If NIC throughput drops from `60 GB/s` to `40 GB/s`, the GPUs were not finishing compute fast enough to keep the NIC saturated (compute-bound).
+- **Double the batch size** (reverse check): if the workload is communication-bound, the NIC remains pinned at `60 GB/s`; if it is compute-bound, the fraction of total iteration time spent in `all_reduce` shrinks relative to the growing compute time. Combine this test with `nsys` timelines (checking for NCCL wait gaps between compute kernels) and `ncu` kernel profiles (checking whether a slow NCCL kernel is at `60%` SM busy over PCIe vs `90%` SM busy over NVLink).
 
 ### MLPerf
 
@@ -193,7 +211,7 @@ Untested (cluster): 5) STREAM on every node; list outliers. 6) Single-node and 2
 14. What does HPCG measure and why is its efficiency low?
 15. What is STREAM and its bound?
 16. What do IOR and mdtest measure?
-17. How do you stop IOR measuring cache?
+17. How do you stop IOR measuring cache, how do you benchmark GPUDirect Storage with `gdsio`, and how does the batch-size halving/doubling test distinguish communication-bound from compute-bound training? **A:** For IOR, use rank reordering (`-C`), file sizes larger than RAM, and drop caches between write and read phases. For `gdsio`, compare `/usr/local/cuda/gds/tools/gdsio -f /mnt/data/large_file -d 0 -w 4 -s 10G -i 1M -I 0 -x 2` (CPU-staged: `8.0 GB/s`, `1.25 ms` latency, `85%` CPU util in the book's Table 5-1 example) against `-x 0` (`GDS`: `9.6 GB/s`, `1.00 ms` latency, `25%` CPU util, `+20%` throughput). In the batch-size test (where gradient `all_reduce` size is fixed by parameter count), if halving the batch size leaves NIC traffic at `60 GB/s` on a `100 GB/s` NIC the run is communication-bound, whereas if NIC traffic drops to `40 GB/s` (and shrinks as a share of step time when batch size is doubled) the run is compute-bound.
 18. List OSU benchmarks.
 19. What do `-b -e -f -g` mean in nccl-tests?
 20. Define algbw and busbw.
@@ -210,7 +228,8 @@ Untested (cluster): 5) STREAM on every node; list outliers. 6) Single-node and 2
 
 ## 9. Sources and review notes
 
-- Methodology, failures, benchmark types, active benchmarking, statistics, checklist: *Systems Performance*, 2nd ed. (Gregg), chapter 12 (SP 12), restated in my words; AI-specific storage and input-pipeline benchmarking: *AI Systems Performance Engineering* (ASP); MPI/HPC performance context: *Parallel and High Performance Computing* (PHPC).
+- Methodology, failures, benchmark types, active benchmarking, statistics, checklist: *Systems Performance*, 2nd ed. (Gregg), chapter 12 (SP 12), restated in my words; MPI/HPC performance context: *Parallel and High Performance Computing* (PHPC).
+- `ai-systems-performance-engineering` — Chris Fregly, *AI Systems Performance Engineering*, "Chapter 5. GPU-Based Storage I/O Optimizations" (read in full): benchmarking GPUDirect Storage with `gdsio` (`-I 0 -w 4 -s 10G -i 1M -x 0` for GDS vs `-x 2` for CPU-staged; Table 5-1 example: `8.0 GB/s` at `1.25 ms` average latency and `85%` CPU util vs `9.6 GB/s` at `1.00 ms` average latency and `25%` CPU util, a `+20%` throughput gain; VAST Data GDS showing `+20%` on A100 and `+30%+` on H100), Nsight Systems GDS tracing (`nsys profile --trace=cuda,gds,nvtx,osrt` and `/etc/cufile.json`), and the batch-size halving/doubling test to distinguish communication-bound (`60 GB/s` on a `100 GB/s` NIC stays at `60 GB/s` when batch size is halved) from compute-bound (`60 GB/s` drops to `40 GB/s`).
 - NCCL tests usage and bus-bandwidth formulas: `nccl-tests/README.md` and `doc/PERFORMANCE.md` (commit `afd59ab`). IOR/mdtest: `hpc/ior` README (commit `e4e4578`). HPCG: repository layout and README (commit `114602d`, version from 2023).
 - Original and run: `bench_stats.py` and its measured table; worked busbw example; acceptance plan.
 - Unverified: typical HPL efficiency ranges for specific hardware, STREAM efficiency percentages, OSU option names beyond the common ones, HPCG submission rules, MLPerf details, burn-in durations. No benchmark other than the harness was executed.

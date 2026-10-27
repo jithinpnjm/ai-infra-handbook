@@ -118,6 +118,43 @@ Note: Kubernetes cannot revoke client certificates (no CRL/OCSP support in the A
 - **Webhook token authentication** (cloud IAM authenticators), **authenticating proxy** (front proxy for dashboards; trust headers only from the proxy CA), **anonymous auth** disabled in production (`--anonymous-auth=false`; some health endpoints require care).
 - **Audit identity**: user.username, groups, impersonatedUser in audit events; ensure usernames are unique and not spoofable (prefixing avoids collisions between IdP names and system users).
 
+### Cloud metadata proxies (`kube2iam` / `kiam`) versus `IRSA`
+
+Before projected ServiceAccount tokens (`PSAT`s) and cloud OIDC federation were available, clusters on AWS used node-level metadata proxies such as `kube2iam` and `kiam` to map `iam.amazonaws.com/role: <role-arn>` Pod annotations to IAM roles. As *Production Kubernetes* (Chapter 10) explains, both proxy approaches have architectural security flaws compared with **IAM Roles for Service Accounts (`IRSA`)**:
+
+- **`kube2iam`** runs as a `DaemonSet` on every worker node and inserts an `iptables` rule redirecting traffic destined for the EC2 metadata API to the local `kube2iam` proxy. Every worker node's IAM instance profile must be allowed to assume the superset of all IAM roles needed by any Pod in the cluster, so a container breakout on any worker compromises every role.
+- **`kiam`** splits the proxy into a node `DaemonSet` agent and a `kiam` server placed on dedicated control-plane or server nodes so that only the server nodes hold IAM role-assumption permissions. However, if a user can submit a Pod with `spec.nodeName` already populated (bypassing the scheduler and landing directly on a server node, or starting and reaching the metadata endpoint before the proxy's IP-to-Pod cache/guards prevent it), the Pod can gain unrestricted access to the EC2 metadata API unless an admission webhook blocks pre-populated `spec.nodeName` fields.
+- **`IRSA`** eliminates metadata proxying entirely: a mutating webhook injects a projected ServiceAccount token (`audience: sts.amazonaws.com`, `expirationSeconds: 86400` mounted at `/var/run/secrets/eks.amazonaws.com/serviceaccount/token` in the book's example) along with `AWS_ROLE_ARN` and `AWS_WEB_IDENTITY_TOKEN_FILE` environment variables. The AWS SDK calls `sts:AssumeRoleWithWebIdentity` directly with that short-lived JWT, which AWS IAM verifies against the cluster's public OIDC `.well-known` discovery endpoint and JWKS keys.
+
+### Cross-platform workload identity with `SPIFFE` and `SPIRE`
+
+When workloads span multiple clouds, bare-metal GPU clusters, and virtual machines, **SPIFFE** (Secure Production Identity Framework for Everyone) and its reference implementation **SPIRE** (SPIFFE Runtime Environment) issue portable cryptographic identities (`spiffe://trust-domain/hierarchical/workload`) encoded as short-lived X.509 certificates (**X.509-SVIDs**) or JWT tokens (**JWT-SVIDs**). As *Production Kubernetes* (Chapter 10) describes, the attestation flow has two stages:
+
+1. **Node attestation (`spire-server` and `spire-agent`)**: `spire-server` runs as the central signing authority and registration store, while `spire-agent` runs as a `DaemonSet` on every node. When an agent starts, it proves its node identity to `spire-server` using platform evidence (such as a Kubernetes Projected ServiceAccount Token via the `k8s_psat` attestor or cloud instance metadata) and receives an X.509-SVID for the node. In the book's example (untested here), the administrator registers the node group with:
+
+```bash
+/opt/spire/bin/spire-server entry create \
+  -spiffeID spiffe://production-trust-domain/nodes \
+  -selector k8s_psat:cluster:production-cluster \
+  -selector k8s_psat:agent_ns:spire \
+  -selector k8s_psat:agent_sa:spire-agent \
+  -node
+```
+
+2. **Workload attestation (Workload API Unix domain socket)**: workloads connect to the node-local `spire-agent` over a Unix domain socket (`unix:///run/spire/sockets/agent.sock` in the book's example) without presenting any initial secret (solving the "secure introduction" problem). The `spire-agent` inspects kernel and `kubelet` metadata for the calling process (Pod namespace, ServiceAccount, Pod labels, container image) and matches them against registration entries created on `spire-server`, such as the book's example (untested here):
+
+```bash
+/opt/spire/bin/spire-server entry create \
+  -spiffeID spiffe://production-trust-domain/service-a \
+  -parentID spiffe://production-trust-domain/nodes \
+  -selector k8s:ns:default \
+  -selector k8s:sa:service-a \
+  -selector k8s:pod-label:app:frontend \
+  -selector k8s:container-image:docker.io/johnharris85/service-a:v0.0.1
+```
+
+Once matched, `spire-agent` returns the workload's X.509-SVID or JWT-SVID (or streams certificates directly to an Envoy sidecar over Envoy's Secret Discovery Service, `SDS`, API). Note that because the Kubernetes workload attestor queries the `kubelet` (which validates tokens via `TokenReview`), API server downtime can interrupt attestation of newly started Pods; the `--authentication-token-webhook-cache-ttl` `kubelet` flag controls how long `TokenReview` responses are cached.
+
 ## 3. Admission control
 
 Admission runs after authn/authz and before persistence (5.5). Types:
@@ -247,6 +284,108 @@ spec:
 
 Admission controller using **Rego** in `ConstraintTemplate`s (policy logic) and `Constraint` CRs (parameters/matching); audit of existing resources; external data providers; mutation support (`Assign`, `AssignMetadata`); Gatekeeper library of templates. Powerful but requires Rego skill; choose Kyverno for Kubernetes-centric YAML simplicity or Gatekeeper where OPA is already the standard across systems (also Conftest for CI, 4.2).
 
+As shown in *Production Kubernetes* (Chapter 8) and *Kubernetes: Up and Running* (3rd edition, Chapter 20), Gatekeeper runs in the `gatekeeper-system` namespace (`gatekeeper-controller-manager` and `gatekeeper-audit` deployments) and registers `gatekeeper-validating-webhook-configuration` (which defaults to `failurePolicy: Ignore` and skips namespaces carrying the `admission.gatekeeper.sh/ignore` label). Four concrete Gatekeeper building blocks cover validation, cross-resource inventory checks, dry-run auditing, and mutation:
+
+1. **Inventory replication (`Config` resource in `config.gatekeeper.sh/v1alpha1`)**: by default, OPA only sees the incoming `input.review` object. Policies that compare an incoming resource against existing objects in the cluster (such as checking that an `Ingress` host is unique across all namespaces, or reading an allowed host regex annotation from the target `Namespace`) require syncing those kinds into Gatekeeper's `data.inventory` cache. In the books' examples (untested here), a `Config` resource caches `Namespace`, `Pod`, and `Ingress` objects:
+
+```yaml
+apiVersion: config.gatekeeper.sh/v1alpha1
+kind: Config
+metadata:
+  name: config
+  namespace: "gatekeeper-system"
+spec:
+  sync:
+    syncOnly:
+      - group: ""
+        version: "v1"
+        kind: "Namespace"
+      - group: ""
+        version: "v1"
+        kind: "Pod"
+      - group: "extensions"
+        version: "v1beta1"
+        kind: "Ingress"
+      - group: "networking.k8s.io"
+        version: "v1beta1"
+        kind: "Ingress"
+```
+
+2. **`ConstraintTemplate` and `Constraint` (with `enforcementAction: deny | dryrun | warn`)**: a `ConstraintTemplate` defines both the OpenAPI v3 parameter schema for a new constraint CRD (such as `K8sAllowedRepos`, `K8sRequiredLabels` / `k8srequiredlabels`, `K8sUniqueIngressHost`, or `LimitNamespaceIngress`) and the Rego `violation[{"msg": msg}]` rule evaluated by target `admission.k8s.gatekeeper.sh`. When rolling out a new `Constraint` on an existing cluster, setting `enforcementAction: dryrun` (or `warn`) lets the `gatekeeper-audit` controller record existing non-compliant objects in the constraint's `status.totalViolations` and `status.violations` list (along with `status.auditTimestamp`) without blocking workloads until teams remediate them. In the books' examples (untested here):
+
+```yaml
+apiVersion: templates.gatekeeper.sh/v1beta1
+kind: ConstraintTemplate
+metadata:
+  name: k8sallowedrepos
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sAllowedRepos
+      validation:
+        openAPIV3Schema:
+          properties:
+            repos:
+              type: array
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sallowedrepos
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          satisfied := [good | repo = input.parameters.repos[_] ; good = startswith(container.image, repo)]
+          not any(satisfied)
+          msg := sprintf("container <%v> has an invalid image repo <%v>, allowed repos are %v", [container.name, container.image, input.parameters.repos])
+        }
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sAllowedRepos
+metadata:
+  name: repo-is-kuar-demo
+spec:
+  enforcementAction: dryrun
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    namespaces:
+      - "default"
+  parameters:
+    repos:
+      - "gcr.io/kuar-demo/"
+```
+
+Similarly, a `ConstraintTemplate` that queries `data.inventory` can enforce cross-object uniqueness (such as `k8suniqueingresshost` checking `data.inventory.namespace[ns][otherapiversion]["Ingress"][name]`) or match an `Ingress` host against a regex stored on its parent `Namespace` (`limitnamespaceingress` reading `data.inventory.cluster.v1.Namespace[input.review.object.metadata.namespace]`).
+
+3. **Gatekeeper `Assign` mutation (`mutations.gatekeeper.sh/v1alpha1`)**: when Gatekeeper's mutating webhook is enabled, an `Assign` resource can set default or enforced field values before validating constraints run. In the book's (*Kubernetes: Up and Running*, Chapter 20) example (untested here), an `Assign` object sets `imagePullPolicy: Always` on every container in all Pods outside the `system` namespace:
+
+```yaml
+apiVersion: mutations.gatekeeper.sh/v1alpha1
+kind: Assign
+metadata:
+  name: demo-image-pull-policy
+spec:
+  applyTo:
+    - groups: [""]
+      kinds: ["Pod"]
+      versions: ["v1"]
+  match:
+    scope: Namespaced
+    kinds:
+      - apiGroups: ["*"]
+        kinds: ["Pod"]
+    excludedNamespaces: ["system"]
+  location: "spec.containers[name:*].imagePullPolicy"
+  parameters:
+    assign:
+      value: Always
+```
+
+4. **Gatekeeper Prometheus metrics**: Gatekeeper exports Prometheus metrics for continuous compliance monitoring and alerting, including the total number of audit violations (`gatekeeper_violations`), the number of constraints by `enforcementAction` (`gatekeeper_constraints`), constraint templates, request latency, and audit duration.
+
 ### Others
 
 **ValidatingAdmissionPolicy** (CEL, built-in) for simple rules without extra controllers; **Kubewarden** (WASM policies), **jsPolicy**, **Polaris/kubescape** (audit/lint), **Cloud-provider policy** (Azure Policy for AKS, GKE Policy Controller), **Falco/Tetragon** for runtime detection (complement to admission). Layer them: PSA for baseline security; VAP/Kyverno/Gatekeeper for organisation rules; admission for supply chain; runtime security for detection.
@@ -369,7 +508,7 @@ Mark tested only after execution.
 29. Kyverno policy languages? **A:** YAML patterns/CEL/JMESPath.
 30. Kyverno generate use? **A:** Create default resources per namespace.
 31. Kyverno verifyImages does? **A:** Verify signatures/attestations.
-32. Gatekeeper uses? **A:** Rego ConstraintTemplates.
+32. In OPA Gatekeeper, what resource syncs cluster objects into `data.inventory`, what `enforcementAction` values exist on a `Constraint`, and what CRD mutates fields like `imagePullPolicy: Always`? **A:** `Config` (`config.gatekeeper.sh/v1alpha1`) syncs objects into `data.inventory`; `enforcementAction` accepts `deny`, `dryrun`, and `warn`; `Assign` (`mutations.gatekeeper.sh/v1alpha1`) mutates fields.
 33. Policy test tool? **A:** `kyverno test`, Conftest.
 34. mutating before validating? **A:** Yes.
 35. Reinvocation policy purpose? **A:** Re-run mutators after others change the object.
@@ -383,8 +522,8 @@ Mark tested only after execution.
 
 **Written in original words.** Principal sources:
 
-- Josh Rosso et al., *Production Kubernetes* (chapters 8 on admission control and 10 on identity: authentication, TLS and certificates).
-- Brendan Burns et al., *Kubernetes: Up and Running* (3rd edition; chapters 19 and 20 on securing applications and policy/ admission discussions).
+- Josh Rosso et al., *Production Kubernetes* (`production-kubernetes`, Chapter 8: `8. Admission Control` and Chapter 10: `10. Identity` — both read in full for Gatekeeper `Config` `data.inventory` sync and `ConstraintTemplate`/`Constraint` examples, `kube2iam`/`kiam` `spec.nodeName` bypass vs `IRSA` `sts:AssumeRoleWithWebIdentity`, and `SPIFFE`/`SPIRE` node/workload attestation with `spire-server entry create`).
+- Brendan Burns et al., *Kubernetes: Up and Running* (`kubernetes-up-and-running-3rd-edition`, 3rd edition; Chapter 19 and Chapter 20: `20. Policy and Governance for Kubernetes Clusters` — read in full for Gatekeeper `K8sAllowedRepos`, `enforcementAction: dryrun` audit status, `Assign` `mutations.gatekeeper.sh/v1alpha1` setting `imagePullPolicy: Always`, `K8sUniqueIngressHost` `data.inventory` replication, and Gatekeeper Prometheus metrics).
 - The author's `nvidia-devops` repository, volume 03 (networking, security and operations masterclass: multi-tenant RBAC, Kyverno guardrails, mutating GPU tolerations).
 - Kubernetes documentation (PKI, TLS bootstrapping, CSR API, admission controllers, ValidatingAdmissionPolicy, Pod Security Admission), Kyverno, OPA Gatekeeper, cert-manager, Sigstore/cosign documentation.
 - Examples are the author's constructions.

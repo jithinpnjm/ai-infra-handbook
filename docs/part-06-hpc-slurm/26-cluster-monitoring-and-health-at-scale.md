@@ -52,6 +52,159 @@ The SCL book (chapter 19, "Cluster Status Monitoring Systems") surveys the gener
 
 The book's "Healthchecks" and "Security Scans" sections complete the picture (below), and "lm_sensors/hwmon", "IPMI" and "APCUPS/NUT" cover the in-band and out-of-band hardware sensors and UPS monitoring.
 
+### SNMP, `snmpconf`, and `snmptrapd` handlers
+
+In SNMP, the monitored device runs an **agent** (listening on UDP port `161`, or `10161` for v3 over TLS) and the monitoring server runs a **manager** (receiving asynchronous **Trap** notifications on UDP port `162`, or `10162` for v3 TLS). The protocol defines six core operations: `GetRequest`, `GetNextRequest`, `SetRequest`, `GetResponse`, `GetBulkRequest`, and `Trap`. Each variable in a device's Management Information Base (MIB) has a numeric Object Identifier (OID), such as `1.3.6.1.2.1.1.1.3` (`iso.org.dod.internet.mgmt.mib-2.system.sysUpTime`).
+
+From the `net-snmp` (or `snmp`) package, the book highlights these client utilities `(untested here)`:
+
+```bash
+# Read a single OID (untested here)
+snmpget -v 2c -c demopublic test.net-snmp.org sysUpTime.0
+
+# Translate an OID name and display its MIB description, syntax, and full numeric path (untested here)
+snmptranslate -Td -Ib 'sysUptime'
+
+# Walk an entire OID subtree (defaults to iso.org.dod.internet.mgmt.mib-2 if omitted) (untested here)
+snmpwalk -v 2c -c demopublic test.net-snmp.org system
+```
+
+(`snmpbulkget`, `snmpbulkwalk`, and `snmpset` perform bulk reads and variable writes.)
+
+To configure the local SNMP agent (`/etc/snmp/snmpd.conf`), back up the original file (`cp /etc/snmp/snmpd.conf{,.bak}`) and run the interactive `snmpconf` utility `(untested here)`. Selecting `snmpd.conf` and section `6` (`Access Control Setup`) → option `3` (`a SNMPv1/SNMPv2c read-only access community name`) for community `public` and network `192.168.0.0` produces the directive:
+
+```text
+rocommunity public 192.168.0.0
+```
+
+To receive and act on SNMP traps from switches, PDUs, cooling units, or UPSs, configure `snmptrapd` in `/etc/snmp/snmptrapd.conf` (and if TCP wrappers are active, add `snmptrapd: 0.0.0.0` in `/etc/hosts.allow`). In the book's example, `authCommunity` authorizes the `public` community to log, execute handlers, and forward traps, while `traphandle` invokes a custom script whenever a matching notification OID arrives `(untested here)`:
+
+```text
+# /etc/snmp/snmptrapd.conf (untested here)
+authCommunity log,execute,net public
+traphandle NET-SNMP-EXAMPLES-MIB::netSnmpExampleHeartbeatNotification /tmp/demo demo-trap
+```
+
+The handler script reads the sender hostname on line 1, the sender IP/transport on line 2, and `oid val` pairs on subsequent lines of standard input `(untested here)`:
+
+```sh
+#!/bin/sh
+# /tmp/demo (chmod a+x /tmp/demo; use a non-/tmp path in production) (untested here)
+read host
+read ip
+vars=
+while read oid val
+do
+  if [ "x$vars" = "x" ]
+  then
+    vars="$oid = $val"
+  else
+    vars="$vars,\n$oid = $val"
+  fi
+done
+echo -e "trap: $1 $host $ip $vars" > /tmp/demo.log
+```
+
+You can test the trap pipeline from the command line with `snmptrap` `(untested here)`:
+
+```bash
+# (untested here)
+snmptrap -v 2c -c public localhost "" \
+  NET-SNMP-EXAMPLES-MIB::netSnmpExampleHeartbeatNotification \
+  netSnmpExampleHeartbeatRate i 123456
+```
+
+### Ganglia multicast routing, Zabbix proxies, VictoriaMetrics, and XDMoD
+
+- **Ganglia**: each node runs `gmond` and the collector server runs `gmetad` (compiled with `./configure --with-gmetad && make && make install` `(untested here)`), storing Round-Robin Database (RRD) files in `/var/lib/ganglia/rrds` (owned by `nobody:nobody`) and generating a default agent config via `gmond -t | tee /etc/ganglia/gmond.conf` `(untested here)`. Because `gmond` defaults to multicast transmission on `239.2.11.71`, the book notes you must add the multicast route on the interface facing the compute nodes (`eth0` in the book's example) so packets reach `gmetad` `(untested here)`:
+  ```bash
+  # (untested here)
+  ip route add 239.2.11.71/4 dev eth0
+  ```
+- **Nagios and Zabbix at cluster scale**: Nagios spawns a separate plugin process per check (locally via NRPE or remotely via SSH), which creates noticeable CPU and process overhead on compute nodes if polled more often than every few minutes. Zabbix uses a **Server → Proxy → Agent** hierarchy that scales to roughly `1000` nodes when proxies aggregate traffic, and includes automatic SNMP device discovery, though polling hundreds of nodes directly on one flat LAN without proxies can still cause network spikes.
+- **Time-series databases (TSDBs)**: alongside Prometheus TSDB and InfluxDB (paired with `prometheus`, `telegraf`, or `collectd` collectors and Grafana or Kibana visualizers), the book highlights **VictoriaMetrics** as a fast, disk-efficient TSDB for cluster metrics, noting one constraint: VictoriaMetrics stores only numeric values and cannot store string metrics.
+- **XDMoD and SUPReMM**: Open XDMoD ingests scheduler accounting logs (`SLURM`, `PBS`) into a MySQL/MariaDB and Apache/PHP/Node.js stack to chart usage efficiency by user, group, or project. To correlate job records with node-level hardware counters (including GPU usage, licences, and energy via Slurm TRES/GRES), extend XDMoD with its **SUPReMM** module backed by Prometheus, Performance Co-Pilot (PCP), or `TACC_Stats`.
+
+### In-band hardware sensors: `lm_sensors` and `/etc/sensors3.conf`
+
+The `lm_sensors` package (along with the kernel's `/sys/class/hwmon` interface and `libsensors`) reads over `150` sensor types across ISA, I2C, SMBus, SPI, Super-I/O, south bridge, CPU die (`coretemp`), and DIMM thermal sensors. Run `sensors-detect` `(untested here)` to probe controllers and write the required kernel module list to `/etc/sysconfig/lm_sensors`.
+
+Sensor formatting, scaling formulas, and hardware threshold limits are defined in `/etc/sensors3.conf` (or `/etc/sensors.conf` on older releases). Each stanza starts with a `chip` selector formatted as `type-bus-hexaddress` (for example `lm78-i2c-2d` for an LM78 chip at address `0x2d` on the I2C bus, or `lm78-*` using wildcards). Standardized input names are `in0, in1, ...` (voltages, with parameters such as `in0_input`, `in0_min`, `in0_max`, `in0_alarm`), `fan1, fan2, ...` (fans), and `temp1, temp2, ...` (temperatures). Inside a `chip` block, four directives control behaviour `(untested here)`:
+
+- `label`: sets the human-readable name shown by `sensors`:
+  ```text
+  label in3 "+5V"
+  ```
+- `ignore`: suppresses a noisy or unconnected sensor channel:
+  ```text
+  ignore fan1
+  ```
+- `compute`: defines two comma-separated conversion formulas using `@` for the raw value—first from raw chip reading to displayed value (needed for voltage dividers), and second the inverse formula from displayed value back to raw register value when writing limits:
+  ```text
+  compute in3 ((6.8/10)+1)*@, @/((6.8/10)+1)
+  ```
+- `set`: programs minimum or maximum alarm thresholds into the sensor chip:
+  ```text
+  set in3_min 5 * 0.95
+  set in3_max 5 * 0.05 + 5
+  ```
+  (or `set in3_max 5 * 1.05` as in the book's example).
+
+After editing `/etc/sensors3.conf`, write the configured `set` thresholds into the hardware registers and read the current values `(untested here)`:
+
+```bash
+# Program min/max limits into sensor chips (untested here)
+sensors -s
+
+# Display current voltage, fan RPM, and temperature readings (untested here)
+sensors
+```
+
+For out-of-band sensor readings via IPMI (`ipmitool`), the book cautions that polling BMCs remotely at high frequency can overload BMC controllers; prefer reading IPMI sensors locally on each node through an agent such as `node_exporter` or `prometheus-ipmi-exporter`.
+
+### UPS monitoring with Network UPS Tools (`NUT`) and `apcupsd`
+
+Cluster UPS systems are typically sized for `10–30 minutes` of runtime and should begin an orderly shutdown if utility power is not restored within `5 minutes`—stopping new jobs and powering off compute nodes first to shed load, then storage and monitoring servers last. (Concrete `apcupsd` configuration and staged shutdown scripts are detailed in 6.30; `apcupsd` also provides `apcaccess` and the `multimon.cgi` web dashboard driven by `MONITOR <address> "<host description>"` lines in `/etc/apcupsd/hosts.conf`.)
+
+For multi-vendor UPS fleets, **Network UPS Tools (`NUT`)** separates hardware drivers, the network server (`upsd`), and the reaction client (`upsmon`) across four files in `/etc/nut` `(untested here)`:
+
+1. **`/etc/nut/ups.conf` (driver settings)**: names each UPS section and selects the driver from `/usr/share/nut/driver.list`:
+   ```ini
+   [ups1]
+   driver = usbhid-ups
+   port   = auto
+   serial = 1234567890
+   ```
+2. **`/etc/nut/upsd.conf` (server settings)**: optional tuning for `MAXAGE seconds` (stale data timeout), `LISTEN interface port` (for example `172.0.0.1`), and `MAXCONN connections`.
+3. **`/etc/nut/upsd.users` (access control and roles)**: defines NUT users, passwords, allowed `actions` (`set` to modify UPS parameters, `fsd` for forced shutdown), instant commands (`instcmds`), and whether `upsmon` runs in `master` mode (shut down last, attached to the UPS) or `slave` mode (shut down first):
+   ```ini
+   [admin]
+   password = adminpass
+   actions = set
+   actions = fsd
+   instcmds = all
+
+   [tester]
+   password = tstpass
+   instcmds = test.panel.start
+   instcmds = test.panel.stop
+
+   [monmaster]
+   password = 123qweasd
+   upsmon master
+   ```
+4. **`/etc/nut/upsmon.conf` (monitor and event actions)**: connects to `upsd` and defines how to react to state transitions (`ONLINE`, `ONBATT`, `LOWBATT`, `FSD`, `COMMOK`, `COMMBAD`, `SHUTDOWN`, `REPLBATT`, `NOCOMM`, `NOPARENT`) using flags `SYSLOG`, `WALL`, `EXEC` (runs `NOTIFYCMD` with the event name in `$NOTIFYTYPE`), or `IGNORE`:
+   ```text
+   MONITOR ups1@localhost 1 monmaster 123qweasd master
+   ```
+
+Once the `nut` / `upsd` service is started, query the live UPS state with `upsc` `(untested here)`:
+
+```bash
+# (untested here)
+upsc ups1@localhost
+```
+
 ## 2. What to monitor, by layer
 
 | Layer | Signals | Source |
@@ -130,7 +283,7 @@ This is a lint, not PromQL validation: run `promtool check rules` and unit-test 
 
 - **Passive monitoring** tells you what already happened; **active health checks** (6.14: `node_health.sh`, NHC, DCGM diagnostics, NCCL pair tests) find latent faults before a job does. Schedule short checks on every node frequently and deep checks on idle nodes; feed results to the same alerting system.
 - **Burn-in and acceptance**: stress tests (CPU, memory, GPU, network, storage) on new hardware (6.28).
-- **Security scans**: the book lists regular scans as part of monitoring. Vulnerability scanning of images and packages (Trivy, Grype, OpenSCAP), port scans of internal ranges to detect unexpected services (`nmap`), configuration audits (the `sshd_audit.py` idea from 6.25), integrity monitoring (AIDE), log analysis for auth anomalies, container image provenance (5.22, Part 18). Treat scan results as inputs to the same ticketing and SLO process.
+- **Security scans**: the book lists regular scans as part of monitoring, recommending system software updates `two to four times a year` (tested on a small node subset first, after backups) and daily automated scans using open-source tools such as `chkrootkit`, `rkhunter`, `Nessus`, `Lynis`, and `Maltrail`, alongside commercial endpoint agents (SentinelOne, Palo Alto Networks, CrowdStrike) on user-facing and service nodes. Add vulnerability scanning of images and packages (Trivy, Grype, OpenSCAP), port scans of internal ranges to detect unexpected services (`nmap`), configuration audits (the `sshd_audit.py` idea from 6.25), integrity monitoring (AIDE), log analysis for auth anomalies and `sudo` activity, and container image provenance (5.22, Part 18). Treat scan results as inputs to the same ticketing and SLO process.
 - **Out-of-band**: BMC sensors, SEL logs, Redfish events (Part 7) catch problems when the OS is dead.
 
 ## 7. Usage and efficiency analytics
@@ -168,7 +321,7 @@ Untested: 4) deploy `node_exporter` and `dcgm-exporter` on a GPU node, scrape wi
 
 1. List the four questions monitoring answers.
 2. Compare SNMP versions 1, 2c and 3.
-3. What were Ganglia and Nagios designed for?
+3. What multicast route does Ganglia use by default, and what are the five directives inside a `chip` block in `/etc/sensors3.conf`? (Answer: `239.2.11.71/4` added via `ip route add 239.2.11.71/4 dev eth0`; in `/etc/sensors3.conf`, `chip` stanzas use `label`, `ignore`, `compute`, and `set`, applied to hardware via `sensors -s`.)
 4. What does XDMoD report?
 5. What is the "modern approach" stack?
 6. Name facility, node, GPU, fabric, storage and scheduler signals.
@@ -199,7 +352,8 @@ Untested: 4) deploy `node_exporter` and `dcgm-exporter` on a GPU node, scrape wi
 
 ## 12. Sources and review notes
 
-- Monitoring system survey (SNMP, Ganglia, Nagios, Zabbix, "modern approach", XDMoD, lm_sensors/hwmon, IPMI, APCUPS/NUT, healthchecks, security scans): *Supercomputers for Linux SysAdmins* chapter 19, restated in my words (only the SNMP section text was re-read in detail; the rest follows the chapter's headings and general knowledge).
+- Book source (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`):
+  - Chapter `19. Cluster Status Monitoring Systems` (read in full): SNMP operations and commands (`snmpget`, `snmptranslate`, `snmpwalk`, `snmpset`, `snmpconf`, `/etc/snmp/snmptrapd.conf` `authCommunity` and `traphandle` script, `snmptrap`), Ganglia (`gmond`, `gmetad`, multicast route `239.2.11.71/4` via `ip route add 239.2.11.71/4 dev eth0`), Nagios/Icinga and Zabbix proxy hierarchy (up to `1000` nodes), TSDBs (`Prometheus`, `InfluxDB`, `VictoriaMetrics`), XDMoD + `SUPReMM` (`PCP`, `TACC_Stats`), `lm_sensors` (`sensors-detect`, `/etc/sensors3.conf` directives `chip`, `label`, `ignore`, `compute`, `set`, `sensors -s`), IPMI local vs remote BMC polling, APCUPS (`apcupsd`, `apcaccess`, `multimon.cgi`, `/etc/apcupsd/hosts.conf`) and NUT (`ups.conf`, `upsd.conf`, `upsd.users`, `upsmon.conf`, `upsc`), LBNL Node Health Check (`NHC`), and security scanning (`chkrootkit`, `rkhunter`, `Nessus`, `Lynis`, `Maltrail`).
 - DCGM exporter metrics: NVIDIA/dcgm-exporter `etc/default-counters.csv` (commit `fafd151`). Slurm CLI formats: `sinfo(1)`, `squeue(1)` man pages (SchedMD/slurm commit `521370b`).
 - Original and run: `slurm_exporter.py`, `alerts_gpu_cluster.yml`, `check_alert_rules.py`.
-- Unverified: node_exporter metric names used in the sample rules (`node_infiniband_port_state_id`, filesystem metrics), DCGM diag levels, tool versions and features of Ganglia/Nagios/Zabbix/XDMoD, thresholds, real `sinfo` output layout.
+- Unverified: node_exporter metric names used in the sample rules (`node_infiniband_port_state_id`, filesystem metrics), DCGM diag levels, SNMP/Ganglia/lm_sensors/NUT configuration lines, tool versions and features of Ganglia/Nagios/Zabbix/XDMoD, thresholds, real `sinfo` output layout.

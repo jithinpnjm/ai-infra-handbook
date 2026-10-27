@@ -62,11 +62,19 @@ python3 -X importtime -c 'import json'     # where import time goes
 |---|---|---|
 | Interactive REPL | `python3` (better: `ipython`, `bpython`, `python3 -q`) | Exploration, debugging |
 | Script | `python3 tool.py arg1 arg2` | Automation scripts |
+| Script then REPL | `python3 -i script.py` | Runs `script.py` and drops into the `>>>` prompt in the same namespace |
 | Module | `python3 -m package.module` | Package entry points, `-m venv`, `-m pip`, `-m http.server`, `-m json.tool`, `-m pytest` |
 | One-liner | `python3 -c 'print(1)'` | Quick checks in shell scripts |
 | Executable script | First line `#!/usr/bin/env python3`, `chmod +x` | Command-line tools |
 | Notebook | Jupyter | Data/ML exploration (chapter 3.10) |
 | Embedded | Frameworks calling your code | Web servers, operators, Airflow |
+
+Passing the `-i` flag (`python3 -i script.py` `(untested here)`) executes `script.py` from top to bottom and then opens the interactive `>>>` prompt in that same global namespace, whether the script finishes normally or stops on an unhandled exception. You can immediately inspect variable values, call functions defined in the script, or launch `pdb.pm()` for postmortem debugging without adding temporary `print` calls.
+
+Inside an interactive session or another script, you can also run a file's code in two very different ways:
+
+- **`import` and `importlib.reload(mod)`:** In the book's example, `import script1` finds `script1.py`, compiles it to bytecode, and executes its top-level statements inside a separate module namespace object (`script1`). Because imports run only once per process (`sys.modules` caches the loaded module), repeating `import script1` does nothing; to re-run the file after editing it, call `from importlib import reload; reload(script1)` `(untested here)`. Every top-level assignment in `script1.py` stays isolated as an attribute (`script1.x`) unless explicitly copied.
+- **`exec(open('script1.py').read())`:** The built-in `exec()` compiles and runs a string of Python statements unconditionally each time it is called, without importing a module or needing `reload()`. By default, however, `exec(open('script1.py').read())` `(untested here)` runs the file's code directly in the caller's current namespace—as if the file's lines were pasted at the call site. In the book's example, if your session has `x = 999` and `script1.py` assigns `x = 'Hack!'`, running `exec(open('script1.py').read())` silently overwrites your local `x` with `'Hack!'` (unless you pass explicit namespace dictionaries to `exec`).
 
 Running a file also sets `__name__ == "__main__"`; importing it sets `__name__` to the module name. The standard guard keeps a file usable as both library and script:
 
@@ -159,6 +167,49 @@ Names have no type; objects do. A name can be rebound to an object of any type, 
 
 Operators: `+ - * / // % **`; `/` is always true division (float); `//` floors toward negative infinity (`-7 // 2 == -4`); `%` result has the sign of the divisor; `divmod(a, b)`; `round()` rounds half to even (`round(2.5) == 2`); bitwise `& | ^ ~ << >>` (useful for IP/mask and flags: `0xFF & addr`). Comparison chains work: `1 <= x < 10`. Use `math` (`ceil`, `floor`, `sqrt`, `log2`, `isclose`), `statistics` (`mean`, `median`, `quantiles`), and `random` (not for security: use `secrets`).
 
+### Operator precedence hierarchy
+
+When an expression mixes operators without parentheses, Python groups subexpressions from highest precedence (tightest binding) to lowest precedence. Operators on the same row group from left to right, except `**` (which groups right to left) and comparisons (which chain left to right).
+
+| Precedence (highest to lowest) | Operators | Description |
+|---|---|---|
+| 1 (highest) | `(...)`, `[...]`, `{...}` | Tuple/parenthesized expression/generator expression, list/list comprehension, dict/set/comprehensions |
+| 2 | `x[i]`, `x[i:j:k]`, `x(...)`, `x.attr` | Indexing, slicing, call, attribute reference |
+| 3 | `await x` | Await expression (`async` functions) |
+| 4 | `x ** y` | Power (exponentiation; right-associative) |
+| 5 | `-x`, `+x`, `~x` | Unary negation, identity, bitwise NOT (inversion) |
+| 6 | `x * y`, `x @ y`, `x / y`, `x // y`, `x % y` | Multiplication/repetition, matrix multiplication, true division, floor division, remainder/format |
+| 7 | `x + y`, `x - y` | Addition/concatenation, subtraction/set difference |
+| 8 | `x << y`, `x >> y` | Bitwise left and right shift |
+| 9 | `x & y` | Bitwise AND, set intersection |
+| 10 | `x ^ y` | Bitwise XOR, set symmetric difference |
+| 11 | `x \| y` | Bitwise OR, set union, dictionary merge |
+| 12 | `x in y`, `x not in y`, `x is y`, `x is not y`, `x < y`, `x <= y`, `x > y`, `x >= y`, `x == y`, `x != y` | Membership, object identity, magnitude/subset/superset comparisons, value equality |
+| 13 | `not x` | Logical negation |
+| 14 | `x and y` | Logical AND (short-circuit) |
+| 15 | `x or y` | Logical OR (short-circuit) |
+| 16 | `x if y else z` | Ternary conditional selection |
+| 17 | `lambda args: expression` | Anonymous function generation |
+| 18 | `x := y` | Named assignment expression (walrus operator) |
+| 19 (lowest) | `yield x`, `yield from x` | Generator function `send` protocol |
+
+### Floor division (`//`, `math.floor`) versus truncation (`math.trunc`, `int`)
+
+The `//` operator is often loosely called truncating division, but it actually performs **floor division**: it rounds the result down toward $-\infty$ (the closest whole number less than or equal to the true quotient). By contrast, **truncation** (`math.trunc()` and `int()`) drops the fractional part and rounds toward zero. For positive numbers, floor and truncation give the same answer; for negative numbers, they differ by 1:
+
+```python
+import math
+
+# In the book's examples (untested here):
+math.floor(2.5), math.floor(-2.5)     # (2, -3)  -- rounds down toward -infinity
+math.trunc(2.5), math.trunc(-2.5)     # (2, -2)  -- truncates fractional digits toward zero
+
+5 / 2, 5 / -2                         # (2.5, -2.5)
+5 // 2, 5 // -2                       # (2, -3)  -- floor division rounds down
+5 // 2.0, 5 // -2.0                   # (2.0, -3.0)
+math.trunc(5 / -2), int(5 / -2)       # (-2, -2) -- truncates toward zero
+```
+
 ```python
 # Infrastructure arithmetic examples
 gib = 1024 ** 3
@@ -194,6 +245,31 @@ Key points:
 - **Raw strings** `r"C:\path\n"` avoid escape processing (regexes, Windows paths); **triple-quoted** strings span lines; **bytes literals** `b"\x00\xff"`.
 - **Formatting mini-language** inside f-strings: `:>10`, `:^10`, `:08.3f`, `:,` thousands separators, `:%`, `!r` for repr (`f"{value!r}"` is essential in log messages and error text to show quoting and whitespace).
 - **`str` vs `repr`**: `str(x)` is for humans, `repr(x)` for developers (unambiguous).
+- **`string.Template` for safe, simple `$` substitutions**: Alongside `%`, `str.format`, and f-strings, the standard library's `string` module provides `Template`, which substitutes `$name` or `${name}` placeholders from keyword arguments or a dictionary without supporting arbitrary inline Python expressions (making it safer for user-supplied or file-loaded templates):
+
+```python
+import string
+from string import Template
+
+# In the book's example (untested here):
+t = string.Template('The $num ${tool}s')
+t.substitute(num=4, tool='formatter')             # 'The 4 formatters'
+t.substitute(dict(num=4, tool='formatter'))       # 'The 4 formatters'
+
+# Infrastructure example (untested here):
+Template('$host has ${gpus} GPUs').substitute(host='node1', gpus=8)
+# safe_substitute leaves missing placeholders intact instead of raising KeyError:
+Template('$host has ${gpus} GPUs').safe_substitute(host='node1')  # 'node1 has ${gpus} GPUs'
+```
+
+- **Fast multi-character replacement and deletion (`str.maketrans` and `str.translate`)**: While `S.replace(old, new[, count])` replaces one substring at a time, `S.maketrans(x[, y[, z]])` builds a character-code translation mapping for `S.translate(map)`. A one-argument `dict` maps characters (or code points) to replacement strings or `None` (to delete); two equal-length strings `x` and `y` map each character `x[i]` to `y[i]`, and an optional third string `z` lists characters to delete in a single pass:
+
+```python
+# (untested here)
+table = str.maketrans(':-', '__', ' ()')   # map ':' and '-' to '_', delete spaces and parens
+'gpu-01: (rack-2)'.translate(table)        # 'gpu_01_rack_2'
+```
+
 - Use `str.removeprefix/removesuffix`, `casefold` for case-insensitive comparison, `unicodedata.normalize` for Unicode equivalence.
 - **Security**: never build shell commands or SQL by string formatting from untrusted input (injection); use argument lists with `subprocess` and parameterised queries.
 - **Regular expressions** (`re`) for parsing logs and outputs: `re.compile(r"...")`, `search`, `fullmatch`, `findall`, `finditer`, named groups `(?P<name>...)`, `re.VERBOSE`; prefer structured outputs (`--json`, `ip -j`, `kubectl -o json`) over parsing text.
@@ -285,6 +361,40 @@ if (n := len(items)) > 10:  # walrus (3.8+): assign inside expressions
     print(n)
 x: int = 5                  # annotation (no runtime enforcement)
 ```
+
+### `print()` call format and stream redirection
+
+In Python 3, `print` is a built-in function (normally called as an expression statement returning `None`) with the signature:
+
+```python
+print([object, ...][, sep=' '][, end='\n'][, file=sys.stdout][, flush=False])
+```
+
+It converts each positional `object` to a string using `str()`, joins them with `sep` (default `' '`), appends `end` (default `'\n'`), and writes the result to `file.write()` (default `sys.stdout`), optionally forcing buffered output to flush immediately when `flush=True`. All four configuration options (`sep`, `end`, `file`, `flush`) are keyword-only and may appear in any order after the objects being printed:
+
+```python
+import sys
+
+# In the book's examples (untested here):
+x, y, z = 'python', 3.12, ['lp6e']
+print(x, y, z, sep='...', end='!\n')                # python...3.12...['lp6e']!
+print('Bad!' * 8, file=sys.stderr, flush=True)      # write to standard error and flush
+
+# Per-call stream redirection with file= (leaves sys.stdout untouched):
+log = open('log2.txt', 'w')
+print(1, 2, 3, file=log)
+log.close()
+
+# Manual process-wide stream redirection by reassigning sys.stdout:
+temp = sys.stdout                                   # save original stream (or use sys.__stdout__)
+sys.stdout = open('log.txt', 'a')                   # redirect every print() in the process
+print('lp6e was here')
+print(1, 2, 3)
+sys.stdout.close()
+sys.stdout = temp                                   # restore original stream
+```
+
+Prefer `file=log` (or `file=sys.stderr`) for per-call redirection so you do not have to save and restore `sys.stdout`. Any object that implements a `write(string)` method can be used as `file=` or assigned to `sys.stdout`.
 
 ### `if` / `elif` / `else` and conditional expressions
 
@@ -389,6 +499,45 @@ A function is an **object** (first class): it can be assigned, stored in data st
 | Positional-only | `def f(a, b, /, c)` | Parameters before `/` cannot be passed by name (3.8+) |
 
 Calling-side unpacking: `f(*args_list, **kwargs_dict)`; `print(*items, sep=", ")`. Argument matching order: positional, then keyword; duplicates raise `TypeError`. Prefer keyword-only parameters for booleans and options (`deploy(app, *, dry_run=True)`) so calls read clearly.
+
+#### Formal parameter-ordering rules in `def` and `lambda` headers
+
+In a function definition (`def` or `lambda`), the parameter list consists of four optional sections that must appear in strict left-to-right order:
+
+```python
+def func(pos_only, /, normal, *args, kw_only, **kwargs): ...
+```
+
+1. **Positional-only parameters** (`[positional-only-arguments, /]`): one or more parameters before `/` that must be passed by position.
+2. **Positional-or-keyword parameters** (`[positional-or-keyword-arguments]`): normal parameters that callers can pass either by position or by keyword.
+3. **Positional collector and keyword-only parameters** (`[* -or- *positional-collector, [keyword-only-arguments]]`): either a bare `*` or a single `*name` tuple collector, optionally followed by parameters that must be passed by keyword only.
+4. **Keyword collector** (`[**keyword-collector]`): a single `**name` dict collector, which must appear last.
+
+Any non-starred parameter can specify a `name=expression` default, but before `*` (across both positional-only and normal parameters), once one parameter has a default, every subsequent parameter up to `*` must also have a default (`def f(a, b=2, /, c):` is a `SyntaxError`). After `*` or `*args`, keyword-only parameters can freely mix parameters with and without defaults (`def kwonly(a, *, b=2, c, d=4):` is valid because keyword-only arguments never match by position). In the book's example combining all four sections (`(untested here)`):
+
+```python
+def f(a, /, b, c=3, *ps, e=4, **ks):
+    print(f'{a=}, {b=}, {c=}, {ps=}, {e=}, {ks=}')
+
+f(0, 1, 2, 3, 4, e=5, f=6, g=7)
+# a=0, b=1, c=2, ps=(3, 4), e=5, ks={'f': 6, 'g': 7}
+```
+
+#### Call-site argument-ordering rules
+
+In a function call, arguments must follow three ordering rules:
+
+1. All plain positional arguments (`value`) must appear before any plain keyword arguments (`name=value`).
+2. Multiple `*iterable` positional unpackings and multiple `**mapping` keyword unpackings are allowed in a single call (Python 3.5+).
+3. All positional arguments and `*iterable` unpackings must precede `**mapping` unpackings (`func(*[1], **dict(b=2, c=3), *[4])` raises `SyntaxError: iterable argument unpacking follows keyword argument unpacking`).
+
+```python
+# In the book's examples (untested here):
+def func(a, b, c, d): print(a, b, c, d)
+
+func(*[1], *(2,), **dict(c=3), **{'d': 4})   # 1 2 3 4
+func(*[1], 2, **dict(c=3), d=4)              # 1 2 3 4
+```
 
 ### The mutable default argument trap
 
@@ -630,7 +779,7 @@ Mark tested only after execution.
 13. How does CPython free objects? **A:** Reference counting plus a cycle collector.
 14. Is Python strongly or weakly typed? **A:** Strongly (and dynamically) typed.
 15. What does `/` return for ints? **A:** A float (true division).
-16. What does `//` do for negatives? **A:** Floors toward negative infinity.
+16. How does floor division (`5 // -2` or `math.floor(-2.5)`) differ from truncation (`math.trunc(5 / -2)` or `int(5 / -2)`)? **A:** Floor division rounds down toward $-\infty$ (`-3`), whereas truncation drops fractional digits toward zero (`-2`).
 17. Why `0.1 + 0.2 != 0.3`? **A:** Binary floating-point representation.
 18. When use `Decimal`? **A:** Exact decimal arithmetic such as money.
 19. `str` versus `bytes`? **A:** Unicode text versus raw byte sequence.
@@ -660,7 +809,7 @@ Mark tested only after execution.
 
 **Written in original words.** Principal sources:
 
-- Mark Lutz, *Learning Python*, 6th ed. (parts I to IV): how Python runs programs, object types, numbers, dynamic typing, strings, lists and dictionaries, tuples and files, statements, assignments, `if` and `match`, loops, iterations and comprehensions, documentation and benchmarking interludes, function basics, scopes, arguments, function odds and ends.
+- Mark Lutz, *Learning Python*, 6th ed. (`learning-python-6th-edition`, parts I to IV; chapters read in full for this chapter: `Chapter 3. How You Run Programs`, `Chapter 5. Numbers and Expressions`, `Chapter 7. String Fundamentals`, `Chapter 11. Assignments, Expressions, and Prints`, and `Chapter 18. Arguments`): how Python runs programs (`-i`, `import`/`reload` vs `exec(open(...).read())`), object types, numbers, operator precedence hierarchy, floor division vs truncation, dynamic typing, strings (`string.Template`, `str.maketrans`/`str.translate`), lists and dictionaries, tuples and files, statements, assignments, `print()` call format and `sys.stdout` stream redirection, `if` and `match`, loops, iterations and comprehensions, documentation and benchmarking interludes, function basics, scopes, formal parameter- and call-ordering rules, function odds and ends.
 - Luciano Ramalho, *Fluent Python*, 2nd ed.: data model preview, sequences, object references, mutability and recycling (referenced in later chapters).
 - The author's own `nvidia-devops` repository, volume 02 (Python fundamentals for infrastructure): variables and the mutability trap, the mutable default argument scenario, conditional defaults, generators for large logs, `pathlib` and `subprocess` previews.
 - Adell et al., *Network Programmability and Automation*, 2nd ed., chapter 6 (Python for network engineers) informed the infrastructure-flavoured examples.

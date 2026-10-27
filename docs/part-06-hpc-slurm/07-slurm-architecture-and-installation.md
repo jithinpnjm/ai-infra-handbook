@@ -49,6 +49,15 @@ Slurm (originally the *Simple Linux Utility for Resource Management*) was create
 
 The key property to hold on to: Slurm is a **batch** system. Users describe what they need (nodes, GPUs, time) and submit; the request waits in a queue until the scheduler can give them exactly that, all at once. This is the opposite of Kubernetes' default model of "start these containers somewhere as soon as possible and keep them running," and it is why gang scheduling, which Kubernetes needs extra projects to approximate (Part 11), is the default behaviour here.
 
+### Dedicated test partition and compute-node access control (`pam_listfile` and `pam_slurm_adopt`)
+
+Two practical operational recommendations from Chapter 13 of *Supercomputers for Linux SysAdmins* apply across all HPC batch managers:
+
+1. **Dedicated test partition for fast smoke tests**: in addition to production partitions (for example separating nodes with and without accelerators so users can pick a partition name instead of writing complex resource lists), create a small dedicated **test partition**. Set a strict time limit of `10–15 minutes` and cap the number of queued tasks per user at `3–5`. That policy guarantees that a user can run a quick multi-node test job with minimal data within `1–2 hours` to verify that their code and launch script work before submitting a long production run.
+2. **Preventing direct compute-node logins (`pam_listfile` and `pam_slurm_adopt`)**: resource managers allocate nodes to jobs, but unless you lock down SSH access on compute nodes, a user could bypass the queue by running `ssh` directly to a compute node or passing an explicit host list to `mpirun`. To prevent unscheduled access, configure PAM (Pluggable Authentication Modules) on compute nodes using one of two mechanisms:
+   - Use a scheduler-integrated PAM module such as Slurm's **`pam_slurm_adopt`**, which allows a user to `ssh` into a compute node only if they currently own a running job on that node (and adopts their SSH session into the job's cgroup).
+   - Or have the resource manager's **prolog** and **epilog** scripts dynamically add and remove the allocated user's name in a node-local allowlist file checked by the standard **`pam_listfile`** PAM module before and after the job runs.
+
 ## 2. The daemons
 
 Slurm is a small set of cooperating daemons. Learn their names and responsibilities; every later chapter assumes them.
@@ -598,7 +607,7 @@ This is rarely a Slurm problem. Either packets are being dropped on the manageme
 9. What is configless mode, and what problem does it remove?
 10. Why must you run `slurmd -C` on real hardware before writing a node line, and what does the controller do when the node disagrees?
 11. In what order do you upgrade the Slurm components, and what must you back up first?
-12. A job is stuck in `PENDING` right after installation. List five things you check.
+12. What time limit and per-user queued task cap does the book recommend for a dedicated test partition to guarantee a `1–2 hours` turnaround, and what two PAM mechanisms stop users from bypassing the scheduler via direct SSH to compute nodes?
 
 ### Answers
 
@@ -613,15 +622,15 @@ This is rarely a Slurm problem. Either packets are being dropped on the manageme
 9. The controller serves configuration files to nodes and login nodes, so there is one authoritative copy instead of hundreds that drift. Use `SlurmctldParameters=enable_configless` and start `slurmd` with `--conf-server` or a DNS SRV record.
 10. It prints the exact hardware layout Slurm sees. If `slurm.conf` and the node disagree, the controller cannot trust its CPU or memory placement, so it marks the node `invalid` or drained with a reason.
 11. `slurmdbd`, then `slurmctld`, then `slurmd` and clients; back up the database and the state directory (and configuration) first; respect the supported version window.
-12. Node states and reasons (`sinfo -R`), whether the partition is `UP`, whether the request fits any node (CPUs, memory, GRES, time limit), account and association (`sacctmgr list associations`), and the job's pending reason (`squeue -o "%i %r"` or `scontrol show job`).
+12. Set a `10–15 minutes` time limit and allow `3–5` queued tasks per user in the test partition so users can run multi-node smoke tests within `1–2 hours`. To block unscheduled SSH logins on compute nodes, use Slurm's `pam_slurm_adopt` module or have the job prolog and epilog scripts update an access list enforced by `pam_listfile`.
 
-## Sources and further reading
+## Sources and review notes
 
-- Sergey Zhumatiy, *Supercomputers for Linux SysAdmins*, ch. 13 and 15: daemon roles, launch stages, installation options, accounting model, `sacctmgr` examples, node and partition definitions.
+- Daemon roles, launch stages, test partition sizing (`10–15 minutes` limit, `3–5` tasks per user for `1–2 hours` turnaround), `pam_listfile` prolog/epilog access control, installation options, accounting model, `sacctmgr` examples, node and partition definitions (read in full: `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`, "13. Job Management Systems" and "15. Slurm").
 - Fuheng Wu, *Distributed AI Systems*, ch. 8: why Slurm for AI training, daemon overview, and the multiple-`slurmd` simulated cluster used in Lab A.
 - The author's own volumes `nvidia-devops` legacy V6 (control plane and data plane, `slurm.conf` for AI factories) and the core interview questions on Slurm HA, accounting internals and Ansible deployment, used to align the architecture and failure framing.
 - Migrated from nvidia-devops: `06-slurm-administration-ha-accounting-and-upgrades.md` (partial: the HA design and failover mechanism, split-brain, the accounting architecture and `slurmdbd.conf`, the `sacctmgr` hierarchy, scenarios 1 and 2, and the log-analysis appendix; the `slurm.conf` and cgroup deep dives, fairshare and billing, upgrades, GPU-binding and PMIx scenarios and the Ansible deployment are migrated in chapters 6.8, 6.9, 6.10, 6.12, 6.15 and 4.17).
-- SchedMD documentation (public): `slurm.conf`, `slurmdbd.conf`, `cgroup.conf` and `gres.conf` manual pages, quick-start administrator guide, configless guide, high-availability notes, and upgrade guide. **Flagged for version verification:** the HA and `SlurmctldHost` behaviour, `auth/slurm` and `sackd` details, release cadence and the supported upgrade window, `slurmrestd` options, and every parameter default quoted here.
+- SchedMD documentation (public): `slurm.conf`, `slurmdbd.conf`, `cgroup.conf` and `gres.conf` manual pages, quick-start administrator guide, configless guide, high-availability notes, and upgrade guide.
 - Related chapters: 6.8 configuration, 6.9 accounting and scheduling policy, 6.10 GPU scheduling, 6.11 job submission, 6.12 multi-node training, 6.14 operations, 6.15 upgrades and scaling, 6.16 Slurm on Kubernetes, 8.8 Slurm under BCM.
-
-*Open items:* all lab commands are **untested** and must be run on a GCP VM (Lab A and B) and, for GPU behaviour, a Nebius GPU VM before this chapter moves to `reviewed`. The reports about NVIDIA and SchedMD stewardship are flagged for verification. Add the Slurm-specific diagrams to the master architecture figure in 6.2 when that chapter is written.
+- Run here: none.
+- Not verified on live hardware: all lab commands, HA and `SlurmctldHost` behaviour, `auth/slurm` and `sackd` details, release cadence and the supported upgrade window, `slurmrestd` options, and every parameter default quoted here. The reports about NVIDIA and SchedMD stewardship are flagged for verification.

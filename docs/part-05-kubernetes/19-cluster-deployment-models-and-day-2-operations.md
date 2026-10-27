@@ -61,6 +61,16 @@ Decision factors: where GPUs physically are; who patches control planes; team sk
 
 Guidance for AI platforms: separate **production inference** from **training/research** (different SLOs and security) when stakes warrant; keep training in as large a pool as possible to allow big jobs and fair sharing; use namespaces + quotas + Kueue for tenancy inside; keep a small **management cluster** (Cluster API, Argo CD hub, observability backend) separate from workload clusters; plan for **blue/green clusters** as the safest big-upgrade and migration strategy where capacity allows.
 
+### Dedicated versus colocated etcd and node pool sizing ratios
+
+When you run a self-managed control plane, you must decide whether etcd shares the control-plane machines (colocated) or runs on its own machines (dedicated). In the book's (*Production Kubernetes*, Chapter 2) cluster-sizing guidance, colocated etcd (managed as static pods by `kubeadm`) is appropriate for smaller clusters to save management overhead and infrastructure cost, whereas anything above `50` worker nodes should prompt you to consider separating etcd onto dedicated machines to eliminate resource contention with `kube-apiserver`, `kube-scheduler`, and `kube-controller-manager`. If you plan for clusters with over `200` worker nodes, the book recommends planning for dedicated etcd clusters from the start, with fast local disks dedicated to etcd and low-latency intra-region links (and never placing a load balancer between `kube-apiserver` and etcd, because the API server's etcd client handles member connections directly).
+
+Similarly, worker node pools can be organized as **characteristic-based** pools (grouped by hardware attributes such as GPUs, NICs, or CPU-to-memory ratios) or **role-based** pools (sliced off to isolate a specific platform function such as cluster ingress). In the book's AWS EC2 example, matching node pool shapes to workload consumption ratios avoids stranded resources:
+
+- **General-purpose worker nodes** (`M5` instance types in the book's example): `1CPU:4GiB` ratio.
+- **Memory-optimized nodes** (`R5` instance types in the book's example): `1CPU:8GiB` ratio, preventing memory-heavy workloads from leaving half of a general-purpose node's CPUs unused.
+- **Compute-optimized nodes** (`C5` instance types in the book's example): `1CPU:2GiB` ratio for CPU-intensive workloads.
+
 ## 3. Node lifecycle
 
 ```mermaid
@@ -174,6 +184,8 @@ Classify changes (standard/pre-approved, normal, emergency); use progressive del
 
 **Cluster API** models clusters as objects: `Cluster`, `KubeadmControlPlane` (control-plane nodes with rolling upgrades), `MachineDeployment`/`MachineSet`/`Machine` (workers), infrastructure templates per provider (`AWSMachineTemplate`, `Metal3MachineTemplate` for bare metal via Ironic/BMC), `MachineHealthCheck` (auto-remediate unhealthy nodes by deleting/reprovisioning), `ClusterClass` (templates for many clusters), `ClusterResourceSet`/add-on providers (Helm, Argo). Management cluster runs controllers; workload clusters are cattle. For GPU bare metal, CAPI + Metal3 (or Tinkerbell, MAAS) automate provisioning end to end, while Ansible/image pipelines (4.2, 4.17) define node contents. Benefits: uniform lifecycle, rolling node image upgrades, health-based remediation; costs: operating the management plane, GPU-specific readiness gates not built in (add via hooks/operators).
 
+A subtle failure mode in a pure hub-and-spoke Cluster API layout appears when a workload cluster runs the **Cluster Autoscaler**: the autoscaler runs inside the workload cluster watching for unschedulable pods, but if the `Cluster` and `MachineDeployment` objects live only in an external management cluster, the workload cluster depends on the management cluster's availability just to scale out during peak load. As *Production Kubernetes* (Chapter 2) notes, you can remove this external runtime dependency by running the Cluster API controllers and the workload cluster's own `Cluster` and `Machine` resources inside the workload cluster itself in a self-contained (pivoted/autonomous) manner. A central management cluster can still initiate cluster creation and deletion, while day-to-day autoscaling and local controller lookups against the `Cluster` custom resource happen entirely against the local API server.
+
 ## 9. Lab (untested)
 
 1. **Node lifecycle drill**: on a lab cluster, join a worker with a validating taint, run a validation Job, remove the taint; then cordon/drain/uncordon while a Deployment with a PDB and a StatefulSet run; observe PDB blocking and fix; time a full cycle.
@@ -245,14 +257,14 @@ Mark tested only after execution.
 26. SLO example? **A:** Job start latency p95.
 27. Page on? **A:** Symptoms threatening SLOs.
 28. Runbook content? **A:** Detect, diagnose, mitigate, escalate steps.
-29. Spare pool purpose? **A:** Rapid replacement capacity.
+29. At what worker-node counts does *Production Kubernetes* recommend considering or planning for a dedicated etcd cluster? **A:** Consider separating etcd above `50` worker nodes; plan for a dedicated etcd cluster above `200` worker nodes.
 30. Why checkpoint before drain? **A:** Avoid lost training progress.
 
 ## 13. Sources and review notes
 
 **Written in original words.** Principal sources:
 
-- Josh Rosso, Rich Lander, Alex Brand and John Harris, *Production Kubernetes* (chapters 1 and 2 on the path to production, deployment models and cluster topology considerations, and later chapters on platform services and operations).
+- Josh Rosso, Rich Lander, Alex Brand and John Harris, *Production Kubernetes* (`production-kubernetes`, Chapter 2: `2. Deployment Models` — read in full for dedicated vs colocated etcd worker thresholds, `M5`/`R5`/`C5` CPU:memory ratios, and self-contained Cluster API autoscaling topology).
 - Brendan Burns et al., *Kubernetes: Up and Running* (3rd edition; chapter 3 on deploying a Kubernetes cluster and ongoing operations).
 - Kubernetes, Cluster API, kubeadm, Kueue and NVIDIA GPU Operator documentation; vendor support matrices.
 - Examples are the author's constructions.

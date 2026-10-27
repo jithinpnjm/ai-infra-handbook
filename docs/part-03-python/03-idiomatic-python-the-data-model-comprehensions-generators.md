@@ -287,7 +287,19 @@ total     = sum(n.gpus for n in nodes)                                    # gene
 
 Rules and gotchas:
 
-- **Scope**: the loop variable lives in the comprehension's own scope (does not leak, unlike Python 2); names from enclosing scopes are visible; class-body comprehensions can't see class variables except the first iterable.
+- **Scope**: in all comprehension forms (list, set, dict, and generator expressions), the `for` loop variable lives in the comprehension's own nested scope and does not leak into or overwrite names in the enclosing scope (unlike a regular `for` loop statement). However, a named assignment expression (`:=`) inside a comprehension **does** leak out and binds its target variable in the **enclosing scope** (and `yield` inside a comprehension is forbidden):
+
+```python
+# In the book's examples (untested here):
+X = 99
+[X for X in range(5)]                                  # [0, 1, 2, 3, 4]; outer X is still 99
+for X in range(5): pass                                # regular for statement changes outer X to 4
+
+S = 'hack'
+[(temp := S[i]) + temp.upper() for i in range(len(S))] # ['hH', 'aA', 'cC', 'kK']
+# temp == 'k' in the enclosing scope, whereas i raises NameError: name 'i' is not defined
+```
+
 - **Walrus** avoids recomputation: `[y for x in data if (y := expensive(x)) is not None]`.
 - **Readability limit**: more than two `for`/`if` clauses, or side effects, belong in a loop. Do not use comprehensions for side effects (`[print(x) for x in xs]` builds a useless list).
 - **Memory**: list comprehensions materialise everything; use generator expressions to feed `sum`, `any`, `all`, `max`, `sorted`, `",".join`, `set(...)`, `tuple(...)` when you don't need the list.
@@ -579,7 +591,7 @@ Mark tested only after execution.
 19. Why must dict keys be hashable? **A:** Lookup uses the hash.
 20. How to dedupe preserving order? **A:** `dict.fromkeys(items)`.
 21. Where does the conditional expression go in a comprehension? **A:** Before `for` for if/else; filter `if` after.
-22. Does a comprehension variable leak? **A:** No.
+22. Does a comprehension variable leak into the enclosing scope, and how does `:=` behave inside a comprehension? **A:** The `for` loop target is local to the comprehension and does not leak, but a `:=` named assignment inside a comprehension binds its target in the enclosing scope (and `yield` inside a comprehension is forbidden).
 23. When to use a generator expression? **A:** When you only iterate once/feed a reducer.
 24. Walrus in comprehensions? **A:** Avoid recomputation of a value used in filter and output.
 25. Iterable vs iterator? **A:** Provides an iterator vs produces items and is single-pass.
@@ -604,7 +616,7 @@ Mark tested only after execution.
 **Written in original words.** Principal sources:
 
 - Luciano Ramalho, *Fluent Python*, 2nd ed.: chapter 1 (the Python data model), chapter 2 (an array of sequences), chapter 3 (dictionaries and sets), chapter 4 (Unicode text versus bytes), chapter 6 (object references, mutability and recycling), chapter 7 (functions as first-class objects), chapter 10 (design patterns with first-class functions), chapter 12 (special methods for sequences), chapter 17 (iterators, generators and classic coroutines).
-- Mark Lutz, *Learning Python*, 6th ed.: chapters 14 and 20 (iterations, comprehensions and generations) and the function chapters.
+- Mark Lutz, *Learning Python*, 6th ed. (`learning-python-6th-edition`; chapters 14 and 20—with `Chapter 20. Comprehensions and Generations` read in full for this chapter—and the function chapters).
 - The author's `nvidia-devops` repository, volume 02 (Python core and OOP masterclass): choosing data structures by problem, lists versus sets for membership, generators for log streaming.
 - Examples are the author's constructions.
 

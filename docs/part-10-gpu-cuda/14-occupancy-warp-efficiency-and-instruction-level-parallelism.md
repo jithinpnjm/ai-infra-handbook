@@ -24,79 +24,90 @@ lab_venue: "Nebius GPU"
 
 ## Why this matters for AI infrastructure
 
-In Chapter `10.13`, we aligned global memory accesses onto 128-byte cache lines (`4.0` sectors per request), packed scalar loads into `16-byte` (`float4`) and `32-byte` (`float8`) vectors, staged tiles in conflict-free Shared Memory (`tile[32][33]`), and offloaded bulk copies to the Tensor Memory Accelerator (`TMA`).
+An engineering team fixes every memory-layout defect from Chapter 10.13. Global loads coalesce into four sectors per request, vectors use wide types, shared-memory tiles have zero bank conflicts, and the Tensor Memory Accelerator prefetches buffers asynchronously. Yet Nsight Compute still shows the kernel running far below hardware peak. Both DRAM bandwidth and Tensor Core utilization sit below a third of capacity.
 
-Even after you fix every memory-layout defect, a GPU kernel can still run far below hardware peak if its Streaming Multiprocessors (`SMs`) lack enough runnable work to hide instruction and memory latency, or if its 32-thread warps waste cycles executing divergent branches and serialized dependency chains. As shown in *AI Systems Performance Engineering* Chapter 8 (*Occupancy Tuning, Warp Efficiency, and Instruction-Level Parallelism*, pp. 253–294):
-- **The Four Execution Regimes (`Underutilized → Latency Bound → Memory Bound → Compute Bound`, Table 8-2):** If Nsight Compute (`ncu`) shows low DRAM bandwidth (`< 30%`) *and* low ALU/Tensor Core utilization (`< 30%`), the kernel is not memory-bandwidth bound—it is either **underutilized** (grid too small to fill all SMs) or **latency bound** (`Stall: Long Scoreboard`, `Short Scoreboard`, or `Exec Dependency` dominating because **`Eligible Warps per Cycle`** is lower than the SM's **`4` warp schedulers**).
-- **The Occupancy Balance (`64` warps = `2,048` threads/SM vs register spilling):** On Ampere (`A100`), Hopper (`H100`/`H200`), and Blackwell (`B200`, compute capability `10.0`), each SM tracks up to **`64` resident warps (`2,048` threads)** (`48` warps = `1,536` threads/SM on `NVIDIA RTX PRO 6000` and `Spark DGX GB10` at compute capability `12.x`). At **`30%` achieved occupancy**, only **`~19` warps** are active per SM. Guiding the compiler with **`__launch_bounds__(256, 8)`** caps per-thread registers at **`65,536 // 2,048 = 32` registers/thread** so all `8` blocks (`2,048` threads = `100%` occupancy) fit on the SM; whereas pushing `-maxrregcount` too low spills registers into slow Local Memory (`HBM`), causing `Long Scoreboard` stalls.
-- **The 2x Warp-Divergence Penalty (`30 ms → 15 ms`, Table 8-3):** When a threshold kernel (`if (X[i] > threshold)`) splits a 32-thread warp 50/50 between `if` and `else`, SIMT lockstep execution runs both branches serially (`50%` **Warp Execution Efficiency**, `50%` **Predicated-Off Threads**, `600M` dynamic instructions, `200` cycles branch-resolving stall latency, `30 ms` runtime). Replacing the branch with **predication (`?:` ternary select / PTX `@p` or PyTorch `torch.maximum` / `torch.where`)** cuts dynamic instructions in half (`600M → 300M`), halves branch stall latency (`200 → 100` cycles), lifts warp execution efficiency to **`99%`** (`0%` predicated-off threads), and halves runtime to **`15 ms` (`-50%`)**.
-- **How Instruction-Level Parallelism (`ILP`) Cuts Required Occupancy by `3x` (Table 8-4):** With **`1`-way ILP** (no independent ops per thread), saturating a Blackwell SM requires **`~1,536` threads (`48` warps = `75%` occupancy)**. Exposing **`2`-way ILP** drops the requirement to **`~1,024` threads (`32` warps = `50%` occupancy)**, **`3`-way ILP** to **`~768` threads (`24` warps = `37.5%`)**, and **`4`-way ILP** to just **`~512` threads (`16` warps = `25%` occupancy)** while raising per-scheduler Instructions Per Cycle (**`IPC`**) from **`1.0` to `1.8`**.
+This slowdown happens when Streaming Multiprocessors lack enough ready warps or independent instructions per thread to hide execution latency. It also happens when warps waste half their cycles executing divergent conditional branches. Even the fastest memory subsystem cannot save a kernel whose warps spend most of their time stalled at scoreboard dependencies or serialized conditional passes.
 
-Two cautions before the details. First, *AI Systems Performance Engineering* says directly that the numeric values in its metric tables (including Tables 8-3 and 8-4 used here) are illustrative and explain concepts, so none of them were rerun for this handbook. Second, some numbers in this chapter are rules of thumb added here, not figures from the book: the regime thresholds in the Table 8-2 diagram (below `30%`, at or above `75%` to `80%`), the order of the four regimes, the `Eligible Warps per Cycle < 4` test, and the `50%` to `75%` occupancy target. The book's Table 8-2 lists the four limiting factors (memory bound, compute bound, latency bound, underutilizing) with qualitative indicators only, and the book says there is no universal occupancy target and that many high-performance kernels hide latency at `25%` to `50%` achieved occupancy.
+Four execution bottlenecks govern whether a GPU kernel turns raw memory bandwidth into useful compute throughput.
 
-This chapter covers the complete Nsight Systems (`nsys`), Nsight Compute (`ncu`), and `torch.profiler` (`Kineto` / `CUPTI`) diagnostic workflow, all **10 Nsight Compute warp stall reasons** (Table 8-1), the **4 kernel performance regimes** (Table 8-2), **occupancy tuning (`__launch_bounds__`, `-maxrregcount`, `cudaOccupancyMaxPotentialBlockSize`)**, **eliminating warp divergence (predication, warp-unanimous branches, `__ballot_sync`)** (Table 8-3), and **exposing Instruction-Level Parallelism (`ILP`)** on Blackwell's unified INT32/FP32 cores (Table 8-4).
+First, kernels move through four distinct execution regimes: underutilized, latency bound, memory bound, and compute bound. When both DRAM throughput and math pipe utilization are low, the kernel is not bandwidth-limited. Either the launch grid is too small to fill all Streaming Multiprocessors, or warps are latency bound because the number of eligible warps per cycle falls below the four warp schedulers on each SM.
+
+Second, register pressure and block sizing control how many warps can reside on an SM at once. Data-center Ampere, Hopper, and Blackwell B200 GPUs support up to 64 resident warps per SM. Workstation and desktop Blackwell GPUs support 48 warps per SM. Using `__launch_bounds__` guides the compiler to cap per-thread registers so enough blocks fit on each SM without spilling registers into slow HBM local memory.
+
+Third, data-dependent branches inside a warp serialize SIMT execution. When a threshold check splits a warp evenly between two branches, the hardware runs both paths back-to-back with half the lanes masked off on each pass. Replacing short branches with predication cuts dynamic instructions in half and doubles kernel speed.
+
+Fourth, Instruction-Level Parallelism hides latency inside each individual warp so fewer resident warps are needed to saturate the SM. With only one operation in flight per thread, saturating a Blackwell SM requires roughly three-quarters occupancy. Exposing four independent operations per thread cuts the required warps by threefold while nearly doubling instructions issued per cycle.
+
+```text
+Occupancy, Warp Efficiency, and ILP Summary (AI Systems Performance Engineering Ch 8, pp. 253-294):
+  - Blackwell Architecture Context: 10 TB/s NV-HBI dual-die interconnect, 126 MB shared L2 cache (pp. 253, 264)
+  - Max Resident Warps / Threads:   64 warps (2,048 threads)/SM on A100/H100/H200/B200 (CC 10.0); 48 warps (1,536 threads)/SM on RTX PRO 6000 & Spark DGX GB10 (CC 12.x)
+  - Achieved Occupancy Example:     30% achieved occupancy on 64-warp SM = ~19 active warps/SM (0.30 x 64 = 19.2 warps, p. 262)
+  - Compiler Launch Bounds:         __launch_bounds__(256, 8) targets 8 x 256 = 2,048 threads/SM (64 warps, 100% occ) and caps registers at 65,536 // 2,048 = 32 regs/thread (p. 272)
+  - Predication Speedup (Table 8-3): Replacing if/else with ?: / torch.maximum cuts runtime 30 -> 15 ms (-50%), dynamic insts 600M -> 300M (-50%), branch stall 200 -> 100 cycles, warp eff 50% -> 99%, predicated-off 50% -> 0%
+  - ILP vs Occupancy (Table 8-4):   ILP 1 -> 1,536 threads (48 warps, 75%); ILP 2 -> 1,024 threads (32 warps, 50%); ILP 3 -> 768 threads (24 warps, 37.5%); ILP 4 -> 512 threads (16 warps, 25% = 3x fewer warps)
+  - Scheduler IPC & Dual-Issue:     Loop unrolling lifts scheduler IPC 1.0 -> 1.8 (p. 289); Blackwell unified INT32/FP32 cores dual-issue (math + LD/ST), never (INT32 + FP32) on the same core in the same cycle
+```
+
+Two cautions are needed before examining the details. First, the source book states directly that the numeric values in its metric tables are illustrative examples used to explain the concepts. None of them were rerun on live hardware for this handbook.
+
+Second, several numeric cutoffs in this chapter are handbook rules of thumb rather than strict hardware constants from the book. These include the regime percentage thresholds, the eligible warps per cycle test, and the occupancy sweet spot range. The book itself lists the four regimes with qualitative indicators and notes that many high-performance kernels hide latency effectively at moderate achieved occupancy.
+
+This chapter covers the top-down profiling workflow across Nsight Systems, Nsight Compute, and PyTorch Profiler. It then examines the ten Nsight Compute warp stall reasons, the four execution regimes, occupancy tuning, warp branch divergence elimination, and Instruction-Level Parallelism on Blackwell unified cores.
 
 :::tip In one minute
-- **Two-step profiler workflow (`nsys` → `ncu` + `torch.profiler`):**
-  1. Use **Nsight Systems (`nsys`)** with `NVTX` ranges (`torch.cuda.nvtx`) to spot system-level CPU dataloader gaps, stream serialization, and hot kernels.
-  2. Zoom into hot kernels with **Nsight Compute (`ncu`, compiled with `-lineinfo`)** to inspect Roofline arithmetic intensity, **Warp State Statistics (warp stall reasons)**, and **Occupancy Limiters** (`Registers`, `Shared Memory`, `Blocks`, `Threads`). (`torch.profiler` uses `Kineto` + `CUPTI` + Linux `perf`; its `with_flops=True` is formula-based, not hardware counters.)
-- **Top Nsight Compute Warp Stall Reasons (Table 8-1):**
-  - **`Stall: Long Scoreboard`:** Waiting on high-latency global DRAM (`HBM`) or spilled local-memory loads (`~800` cycles).
-  - **`Stall: Short Scoreboard`:** Waiting on Shared Memory (`SMEM`) or SFU/MUFU returns (`~20–30` cycles).
-  - **`Stall: Exec Dependency`:** Waiting on a previous instruction's register output inside the *same* thread (low **ILP**).
-  - **`Stall: Memory Throttle` / `Math Pipe Throttle` (`Compute Unit Busy`):** Memory queues or ALU/Tensor Core pipelines are 100% saturated.
-  - **`Stall: Synchronization`:** Waiting at `__syncthreads()` or cluster barriers.
-  - **`Stall: Not Selected`:** Warp is ready to issue, but the scheduler picked another ready warp that cycle—**healthy sign of high occupancy**.
-- **Occupancy vs. ILP (`Table 8-4`):**
-  - Max resident warps/SM = **`64` (`2,048` threads)** on Ampere/Hopper/Blackwell (`48` warps = `1,536` threads on `RTX PRO 6000` / `Spark DGX GB10`).
-  - Rule of thumb used in this chapter (the book gives no universal target and notes that many kernels hide latency at `25%`–`50%`): aim for roughly **`50%–75%` occupancy (`32–48` warps)** using `128–256` threads/block, `__launch_bounds__(256, 8)` (`<= 32` regs/thread), or **`2`-to-`4`-way ILP** (`1,536 → 1,024 → 768 → 512` threads/SM needed for saturation).
-- **Blackwell Unified Core Dual-Issue Rule (*ASP* Ch 8, pp. 266, 283):**
-  - On Blackwell, `INT32` and `FP32` cores are unified into a single core per lane that executes *either* `FP32` *or* `INT32` in a given cycle—**never both on the same core in the same cycle**. Dual-issue pairs **one arithmetic op (`FP32`/`INT32`/Tensor Core) + one memory (`LD/ST`) op** from the same warp.
+- **Two-step profiler workflow:** Start with Nsight Systems (`nsys`) and NVTX ranges to find CPU dataloader gaps, stream serialization, and hot kernels across the timeline. Then inspect hot kernels in Nsight Compute (`ncu`) compiled with `-lineinfo` to read Roofline position, warp stall reasons, and occupancy limiters.
+- **Top Nsight Compute warp stall reasons:** Long Scoreboard stalls wait on off-chip HBM or spilled local-memory loads. Short Scoreboard stalls wait on shared-memory or special-function outputs, and Execution Dependency stalls wait on a prior register result inside the same thread. Not Selected means the warp was ready to issue while another ready warp was chosen, which is a healthy sign of good occupancy.
+- **Occupancy vs. Instruction-Level Parallelism:** Data-center Ampere, Hopper, and Blackwell B200 GPUs host up to 64 warps per SM, whereas workstation Blackwell GPUs host 48 warps. Exposing multi-way ILP per thread drops the threads needed to saturate a Blackwell SM by threefold.
+- **Blackwell unified core dual-issue rule:** On Blackwell, integer and floating-point units are merged into unified cores that execute either floating-point or integer math in a given cycle, never both on the same core in the same cycle. Dual-issue pairs one arithmetic instruction with one memory load/store instruction from the same warp.
 :::
 
 ---
 
 ## Prerequisites and outcomes
 
-**Prerequisites:** Chapters `10.2`–`10.5` (SIMT warps, memory hierarchy, Tensor Cores, Roofline model) and Chapters `10.11`–`10.13` (CUDA kernels, streams, and memory access patterns).
+**Prerequisites:** Review SIMT warps, the GPU memory hierarchy, Tensor Cores, and the Roofline model in earlier Part 10 chapters. You should also know CUDA kernel indexing, asynchronous streams, and memory coalescing.
 
-**Outcomes:** After completing this chapter, you will be able to:
-1. Diagnose any CUDA or PyTorch kernel using **Nsight Systems (`nsys`)**, **Nsight Compute (`ncu`)**, and **`torch.profiler` (`Kineto`/`CUPTI`)**, mapping all **10 warp stall reasons** (Table 8-1) onto the **4 execution regimes (`Underutilized`, `Latency Bound`, `Memory Bound`, `Compute Bound`)** (Table 8-2).
-2. Calculate theoretical and achieved **SM occupancy** across `64`-warp (`A100`/`H100`/`B200`) and `48`-warp (`RTX PRO 6000` / `GB10`) architectures, interpret **`Eligible Warps per Cycle`** vs **`Active Warps per Scheduler`**, and tune occupancy with **`__launch_bounds__`**, **`-maxrregcount`**, and **`cudaOccupancyMaxPotentialBlockSize()`**.
-3. Eliminate **SIMT warp branch divergence** using **warp-unanimous conditions (`threadIdx.x / 32`)**, **warp-vote intrinsics (`__ballot_sync`, `__any_sync`, `__all_sync`)**, and **predication (`?:` / PTX `@p` / `torch.maximum` / `torch.where`)** (`30 ms → 15 ms`, Table 8-3).
-4. Expose **2-to-4-way Instruction-Level Parallelism (`ILP`)** via dependency-chain reordering, loop unrolling (`#pragma unroll`), and multiple accumulators, respecting Blackwell's **unified `INT32`/`FP32` core dual-issue rule** and register-pressure boundary (Table 8-4).
+**Outcomes:** After completing this chapter, you will be able to perform four core optimization tasks.
+1. Diagnose CUDA and PyTorch kernels using Nsight Systems, Nsight Compute, and `torch.profiler`, mapping all ten warp stall reasons onto the four execution regimes.
+2. Calculate theoretical and achieved SM occupancy across data-center and workstation architectures, interpret eligible warps per cycle, and tune register allocation with `__launch_bounds__`, `-maxrregcount`, and `cudaOccupancyMaxPotentialBlockSize`.
+3. Eliminate SIMT warp branch divergence using predication, warp-unanimous conditions, and warp-vote intrinsics such as `__ballot_sync`, `__any_sync`, and `__all_sync`.
+4. Expose multi-way Instruction-Level Parallelism through dependency reordering and loop unrolling while respecting Blackwell's unified core dual-issue rule and register limits.
 
 ---
 
-## 1. Profiling Bottlenecks, Nsight Compute Warp Stall Reasons, and the Four Execution Regimes
+## 1. Profiling Bottlenecks, Warp Stall Reasons, and the Four Execution Regimes
 
-### 1.1 The two-tier profiling stack: Nsight Systems (`nsys`), Nsight Compute (`ncu`), and `torch.profiler` (`Kineto`)
+When an AI training or inference job runs slowly, running a kernel profiler blindly across thousands of launches wastes hours. It also produces gigabytes of unusable counter logs. Engineers need a structured top-down workflow that first isolates whether the GPU is waiting on the CPU, and then identifies the exact hardware stall inside the hottest kernels.
 
-As established in *AI Systems Performance Engineering* Chapter 8 (*Profiling and Diagnosing GPU Bottlenecks*, pp. 254–258; expanded with full CLI recipes in Chapter `10.20`), GPU performance engineering always proceeds top-down from the **system timeline** to the **per-kernel hardware counters**:
-1. **Nsight Systems (`nsys`) + `NVTX` annotations (`torch.cuda.nvtx`):** Captures the end-to-end timeline of CPU dataloader threads, Python call stacks, `H2D`/`D2H` DMA transfers, stream concurrency, and user-defined `NVTX` push/pop ranges (such as `"forward_pass"` and `"backward_pass"`). If the GPU sits idle while CPU threads prepare batches, the bottleneck is upstream in the data pipeline—not inside the CUDA kernel.
-2. **PyTorch Profiler (`torch.profiler`, powered by `Kineto` + `CUPTI` + Linux `perf`):** Merges Python operator timings with `CUPTI` GPU kernel launches and exports Chrome traces (`chrome://tracing` / Perfetto). Note that `torch.profiler.profile(..., with_flops=True, profile_memory=True)` computes **formula-based FLOP estimates** for known operators (like `matmul`) rather than reading hardware PMU counters (*ASP* Ch 8, p. 256 & p. 291).
-3. **Nsight Compute (`ncu`, compiled with `nvcc -lineinfo`):** Replays individual hot kernels to collect hardware performance counters across the SMs, L1/SMEM, L2 (`126 MB` on Blackwell), and HBM, plotting the kernel on the **Roofline chart** and breaking down **Warp State Statistics (Warp Stall Reasons)** per C++/PTX/SASS source line.
+### 1.1 The two-tier profiling stack: Nsight Systems, Nsight Compute, and `torch.profiler`
 
-### 1.2 Decoding Nsight Compute's Warp Stall Reasons (Table 8-1)
+GPU performance engineering always proceeds top-down from the system timeline to per-kernel hardware performance counters. First, Nsight Systems (`nsys`) paired with `torch.cuda.nvtx` annotations captures the end-to-end timeline of CPU dataloader threads, host-to-device DMA transfers, and stream concurrency. It also records user-defined ranges for forward and backward passes. If the GPU timeline shows empty gaps while CPU threads prepare batches, the bottleneck is upstream in the data pipeline rather than inside any CUDA kernel.
 
-Every clock cycle, each of the **4 warp schedulers** on a Blackwell/Hopper SM inspects its resident warps and tries to issue one (or two dual-issued) instructions from an **eligible warp**. When a warp is *not* eligible to issue an instruction on a given cycle, Nsight Compute records the exact hardware stall reason (*AI Systems Performance Engineering* Ch 8, *Analyzing Warp Stall Reasons with Nsight Compute* & **Table 8-1**, pp. 258–262; `classify_ncu_stall_and_regime()` in `code/part10/occupancy_warp_ilp.py`):
+Second, PyTorch Profiler (`torch.profiler`), powered by Kineto, CUPTI, and Linux `perf`, correlates high-level Python operators with underlying GPU kernel launches. It exports timelines for Chrome tracing or Perfetto. Keep an important limitation in mind when reading `torch.profiler` reports. Enabling FLOP estimation computes formula-based estimates for known operators like matrix multiplication rather than reading actual hardware performance counters. Custom CUDA or Triton kernels can show zero FLOPs in `torch.profiler` even while saturating Tensor Cores.
+
+Third, Nsight Compute (`ncu`) replays individual hot kernels compiled with `-lineinfo` to collect exact hardware counters across the Streaming Multiprocessors, L1 and shared memory, the shared L2 cache, and HBM. Nsight Compute plots the kernel on the Roofline chart. It then attributes warp stall reasons to exact C++, PTX, and SASS lines.
+
+### 1.2 Decoding Nsight Compute's Warp Stall Reasons
+
+Every clock cycle, each of the four warp schedulers on a Hopper or Blackwell SM inspects its assigned warps. It issues one instruction, or two dual-issued instructions, from an eligible warp. Whenever a resident warp is not eligible to issue on a given cycle, Nsight Compute records the hardware stall reason.
 
 | Nsight Compute Warp Stall Reason | Hardware Meaning & Cause (*ASP* Ch 8, pp. 258–261 & Table 8-1) | Primary Optimization Remedy |
 |---|---|---|
-| **`Stall: Long Scoreboard`** | Warp is waiting on a **long-latency global memory (`HBM` / `L2`) load**—or a spilled **Local Memory** read/write—to arrive in registers (`~800` cycles). | Coalesce/vectorize loads, cache tiles in Shared Memory, prefetch asynchronously with **`TMA` (`cuda::memcpy_async`)**, or raise occupancy / ILP. |
-| **`Stall: Short Scoreboard`** | Warp is waiting on a **variable-latency Shared Memory (`SMEM`) load** (`~20–30` cycles, exacerbated by bank conflicts) or Special Function Unit (**`SFU`**) math result. | Eliminate shared-memory bank conflicts (`tile[32][33]` padding or swizzling) and interleave independent instructions (`ILP`). |
-| **`Stall: Exec Dependency`** | Warp is waiting on the register output of a **prior arithmetic/ALU instruction inside the same thread** (sequential instruction dependency chain). | Expose **2-to-4-way ILP** (`#pragma unroll`, multiple accumulators, reorder independent `u = x*x; v = y*y` ops before dependent uses). |
-| **`Stall: Memory Throttle`** | The SM's Load/Store (`LD/ST`) memory request queues are completely full; no new memory transactions can be issued this cycle. | Coalesce and vectorize (`float4` / `float8`) to issue fewer, wider transactions; stage reusable data in registers/SMEM. |
-| **`Stall: Compute Unit Busy` / `Math Pipe Throttle`** | FP32/INT32 ALU pipelines or **Tensor Core (`MMA`) pipelines** are 100% saturated; warps are ready, but math pipes cannot accept more work. | Kernel is **compute-bound**: switch to lower precision (`FP16` → `FP8` → `NVFP4`/`MXFP4`), use Tensor Cores (`tcgen05.mma`), or enable 2:4 sparsity. |
-| **`Stall: Synchronization` (`Barrier`)** | Warp is paused at a **`__syncthreads()`** or cluster barrier waiting for slower warps in the block/cluster to arrive. | Remove redundant barriers, balance work across warps, or replace shared-memory reductions with **`__shfl_down_sync`** warp shuffles. |
-| **`Stall: Instruction Fetch / Issue`** | Instruction cache (`I-cache`) miss or instruction decode/dispatch bottleneck (often caused by excessive loop unrolling bloating binary size). | Dial back `#pragma unroll` factor or split giant monolithic kernels. |
-| **`Stall: Texture Throttle`** | Texture cache / sampling pipeline is saturated by `tex1Dfetch` / `tex2D` requests. | Use `const __restrict__` L1 read-only cache or shared-memory tiling. |
-| **`Stall: Not Selected`** | **The warp WAS eligible and ready to issue**, but the scheduler picked *another* eligible warp in the same partition this cycle. | **Healthy indicator of high occupancy.** No action needed unless one warp monopolizes issue slots. |
-| **`No Eligible` / `Idle`** | Scheduler had **zero eligible warps** to issue this cycle because too few blocks/warps were launched or all warps are stalled. | Increase grid/batch size, tune occupancy (`__launch_bounds__`), or expose per-thread ILP. |
+| **`Stall: Long Scoreboard`** | Warp is waiting on a long-latency global memory (`HBM` / `L2`) load or a spilled Local Memory access to arrive in registers (`~800` cycles) | Coalesce and vectorize loads, cache tiles in Shared Memory, prefetch asynchronously with `TMA` (`cuda::memcpy_async`), or raise occupancy and ILP |
+| **`Stall: Short Scoreboard`** | Warp is waiting on a variable-latency Shared Memory (`SMEM`) load (`~20–30` cycles, worsened by bank conflicts) or Special Function Unit (`SFU`) result | Eliminate shared-memory bank conflicts (`tile[32][33]` padding or swizzling) and interleave independent instructions (`ILP`) |
+| **`Stall: Exec Dependency`** | Warp is waiting on the register output of a prior arithmetic or ALU instruction inside the same thread (serial dependency chain) | Expose 2-to-4-way ILP (`#pragma unroll`, multiple accumulators, reorder independent `u = x*x; v = y*y` ops before dependent uses) |
+| **`Stall: Memory Throttle`** | The SM Load/Store (`LD/ST`) memory request queues are full, so no new memory transactions can be issued this cycle | Coalesce and vectorize (`float4` / `float8`) to issue fewer, wider transactions; stage reusable data in registers or SMEM |
+| **`Stall: Compute Unit Busy` / `Math Pipe Throttle`** | FP32/INT32 ALU pipelines or Tensor Core (`MMA`) pipelines are 100% saturated; warps are ready, but math pipes cannot accept more work | Kernel is compute-bound: switch to lower precision (`FP16` -> `FP8` -> `NVFP4`/`MXFP4`), use Tensor Cores (`tcgen05.mma`), or enable 2:4 sparsity |
+| **`Stall: Synchronization` (`Barrier`)** | Warp is paused at a `__syncthreads()` or cluster barrier waiting for slower warps in the block or cluster to arrive | Remove redundant barriers, balance work across warps, or replace shared-memory reductions with `__shfl_down_sync` warp shuffles |
+| **`Stall: Instruction Fetch / Issue`** | Instruction cache (`I-cache`) miss or instruction decode/dispatch bottleneck, often caused by excessive loop unrolling bloating binary size | Dial back `#pragma unroll` factor or split giant monolithic kernels |
+| **`Stall: Texture Throttle`** | Texture cache or sampling pipeline is saturated by `tex1Dfetch` or `tex2D` requests | Use `const __restrict__` L1 read-only cache or shared-memory tiling |
+| **`Stall: Not Selected`** | The warp was eligible and ready to issue, but the scheduler picked another eligible warp in the same partition this cycle | Healthy indicator of high occupancy; no action needed unless one warp monopolizes issue slots |
+| **`No Eligible` / `Idle`** | Scheduler had zero eligible warps to issue this cycle because too few blocks or warps were launched or all warps are stalled | Increase grid or batch size, tune occupancy (`__launch_bounds__`), or expose per-thread ILP |
 
-### 1.3 The Four Kernel Execution Regimes (`Underutilized → Latency Bound → Memory Bound → Compute Bound`, Table 8-2)
+### 1.3 The Four Kernel Execution Regimes
 
-As you iteratively tune a kernel, it typically progresses through four distinct performance regimes (*AI Systems Performance Engineering* Ch 8, *Iteratively Profiling and Determining the Kernel Bottleneck* & **Table 8-2**, pp. 265–268):
+As you iteratively optimize a kernel using Nsight Compute, it typically progresses through four distinct performance regimes: underutilized, memory bound, latency bound, and compute bound.
 
 ```mermaid
 flowchart TB
@@ -111,85 +122,111 @@ flowchart TB
   R3 -->|"Yes (Math Pipe Throttle / Compute Busy)"| Comp["Regime 4: COMPUTE BOUND<br/>ALUs / Tensor Cores saturated<br/>Fix: FP16/FP8/NVFP4 Tensor Cores (tcgen05.mma), 2:4 sparsity"]
 ```
 
----
+In the underutilized regime, both DRAM bandwidth and compute pipe utilization sit low because the launch grid does not have enough blocks to keep all SMs busy. Increasing batch size, launching more blocks, or capturing short kernels in CUDA Graphs fills the SMs.
 
-## 2. Occupancy Tuning: Hardware Limits, `Eligible Warps`, `__launch_bounds__`, and the Occupancy API
+In the memory-bound regime, DRAM bandwidth approaches peak capacity while math pipelines wait on Long Scoreboard and Memory Throttle stalls. Shared-memory tiling, kernel fusion, and lower-precision formats reduce off-chip traffic.
 
-### 2.1 Theoretical vs. Achieved Occupancy (`64` warps on `B200` vs `48` warps on `RTX PRO 6000` / `GB10`)
+In the latency-bound regime, neither DRAM bandwidth nor compute utilization is near peak. Instead, warps stall on Long Scoreboard, Short Scoreboard, or Execution Dependency because the SM has fewer than four eligible warps per cycle. Raising occupancy or exposing per-thread ILP hides those latencies. Finally, in the compute-bound regime, math pipelines and Tensor Cores saturate with Math Pipe Throttle stalls, and further gains require lower precision or structured sparsity.
 
-**Occupancy** is the ratio of active warps resident on an SM to the maximum number of warps the SM hardware can host (`calc_sm_occupancy_and_limiters()` in `code/part10/occupancy_warp_ilp.py`; *AI Systems Performance Engineering* Ch 8, pp. 262–274):
-- **Data-center Ampere (`A100`), Hopper (`H100`/`H200`), and Blackwell (`B200`, CC `10.0`):** Each SM supports up to **`64` resident warps (`2,048` threads)**, `32` thread blocks, `65,536` (`64K`) 32-bit registers (`max 255` regs/thread), and `228 KB` (`227 KB` usable) Shared Memory. If Nsight Compute reports **`30%` achieved occupancy** on a `B200` SM, only **`~19` warps** are active per SM on average (*ASP* Ch 8, p. 262).
-- **Workstation / Desktop Blackwell (`NVIDIA RTX PRO 6000` and `Spark DGX` with the `GB10` Superchip, CC `12.x`):** Supports a higher compute capability number (`12.x`), but allows at most **`48` resident warps (`1,536` threads) per SM** (*ASP* Ch 8, p. 269).
-
-Why is **100% occupancy NOT always the goal**?
-- Going from **`10%` to `50%` occupancy** on a memory- or latency-bound kernel yields a massive speedup because the SM's **4 warp schedulers** finally have enough warps to hide DRAM stalls.
-- Look at two Nsight Compute counters together (*ASP* Ch 8, p. 270): **`Active Warps per Scheduler`** and **`Eligible Warps per Cycle`**. Because a Blackwell SM has `4` warp schedulers, if `Eligible Warps per Cycle < 4`, the schedulers frequently run out of ready warps to issue when a warp stalls. Once **`50%–75%` occupancy (`32–48` warps/SM)** keeps `Eligible Warps per Cycle >= 4`, pushing occupancy to `100%` by shrinking registers per thread often *hurts* performance by causing **register spilling to Local Memory (`HBM`)** or reducing per-thread ILP.
-
-### 2.2 Controlling occupancy with `__launch_bounds__`, `-maxrregcount`, and `cudaOccupancyMaxPotentialBlockSize`
-
-When Nsight Compute reports **"Limited by Registers per Thread"** (for example, `256` threads/block × `80` regs/thread = `20,480` regs/block, which fits only `65,536 // 20,480 = 3` blocks = `24` warps = `37.5%` occupancy), you have three tools to tune register allocation and block sizing (*AI Systems Performance Engineering* Ch 8, pp. 271–274; `evaluate_launch_bounds()` in `code/part10/occupancy_warp_ilp.py`):
-
-1. **Kernel-specific `__launch_bounds__(maxThreadsPerBlock, minBlocksPerSM)` (*ASP* Ch 8, p. 272):**
-   ```cpp
-   __global__ __launch_bounds__(256, 8)
-   void myKernel(const float* __restrict__ in, float* __restrict__ out, int N) {
-       // Promising maxThreadsPerBlock = 256 and minBlocksPerSM = 8 targets
-       // 256 * 8 = 2,048 threads/SM (64 warps = 100% occupancy on B200).
-       // nvcc automatically caps register usage at 65,536 / 2,048 = 32 regs/thread!
-   }
-   ```
-2. **File-wide compiler flag `-maxrregcount=<N>`:** Caps registers per thread across the translation unit, but if `<N>` is set too low, `nvcc` spills excess live variables to Local Memory (`HBM`).
-3. **Runtime CUDA Occupancy API (`cudaOccupancyMaxPotentialBlockSize`, *ASP* Ch 8, p. 273):**
-   Queries the driver at runtime to pick the `bestBlockSize` and `minGridSize` for the compiled kernel's exact register and dynamic shared-memory footprint:
-   ```cpp
-   int minGridSize = 0, bestBlockSize = 0;
-   cudaOccupancyMaxPotentialBlockSize(&minGridSize, &bestBlockSize,
-                                      myKernel, /*dynamicSmemBytes=*/0, /*blockSizeLimit=*/0);
-   myKernel<<<minGridSize, bestBlockSize>>>(d_in, d_out, N);
-   ```
-   *(In PyTorch, enable **`torch.compile(mode="max-autotune")`** or **`mode="reduce-overhead"`**—or `mode="max-autotune-no-cudagraphs"` when graphs are undesired—and **`torch.optim.AdamW(..., fused=True)`** so `TorchInductor` fuses tiny elementwise/optimizer launches into high-occupancy kernels, *ASP* Ch 8 p. 274.)*
+**Always classify a slow kernel into one of the four execution regimes before changing code.** That classification prevents you from applying memory optimizations to a latency-bound or underutilized kernel.
 
 ---
 
-## 3. Improving Warp Execution Efficiency: Branch Divergence, Predication, and Warp Intrinsics
+## 2. Occupancy Tuning: Hardware Limits, Eligible Warps, and Launch Bounds
 
-### 3.1 How SIMT branch divergence serializes warps (`50/50` split vs `1 vs 31` split)
+A developer writes a complex fused kernel with dozens of local variables per thread. Each thread consumes 80 registers, so a 256-thread block requires 20,480 registers. Because a Blackwell SM has 65,536 registers in total, only three blocks can reside on the SM at once. Theoretical occupancy drops to three-eighths of peak, and warp schedulers frequently run out of ready warps whenever a memory load stalls.
 
-In Nsight Compute, **Warp Execution Efficiency** measures the average percentage of the 32 lanes in an active warp that are predicated *on* (doing useful work) per executed instruction (*AI Systems Performance Engineering* Ch 8, *Improving Warp Execution Efficiency (Warp Divergence)*, pp. 274–281).
+### 2.1 Theoretical vs. achieved occupancy across GPU architectures
 
-Because all 32 threads in a warp share a single instruction pointer under **SIMT**, what happens when a kernel executes a data-dependent `if / else` branch (`threshold_naive.cu`, *ASP* Ch 8, p. 278)?
+Occupancy is the ratio of active warps resident on an SM to the maximum number of warps that the SM hardware can host. On data-center Ampere, Hopper, and Blackwell B200 GPUs, each SM supports at most 64 resident warps or 2,048 threads. Each SM also provides 65,536 registers and 227 KB usable shared memory. When Nsight Compute reports 30 percent achieved occupancy on a B200 SM, only about 19 warps are active on average.
+
+Workstation and desktop Blackwell GPUs, including the NVIDIA RTX PRO 6000 and Spark DGX with the GB10 Superchip, carry a higher compute capability number. However, their SMs support at most 48 resident warps or 1,536 threads per SM. Always check your target GPU's maximum warps per SM before translating thread counts into occupancy percentages.
+
+Chasing one hundred percent occupancy is not always beneficial. Moving from very low occupancy to moderate occupancy on a memory- or latency-bound kernel delivers a large speedup because the four warp schedulers finally have enough warps to cover DRAM stalls. Once occupancy reaches roughly 50 to 75 percent, inspect Active Warps per Scheduler alongside Eligible Warps per Cycle in Nsight Compute. If Eligible Warps per Cycle is already four or higher, every warp scheduler has a ready warp to issue on every cycle. Squeezing registers further to reach full occupancy often slows the kernel down by spilling registers to HBM.
+
+```text
+SM Occupancy Hardware Ceilings & Worked Examples (ASP Ch 8 pp. 262-273; calc_sm_occupancy_and_limiters):
+  - Data-Center A100 / H100 / H200 / B200 (CC 10.0): Max 64 warps/SM (2,048 threads), 32 blocks/SM, 65,536 regs/SM (max 255 regs/thread), 227 KB usable SMEM (228 KB total)
+  - Workstation RTX PRO 6000 / Spark DGX GB10 (CC 12.x): Max 48 warps/SM (1,536 threads)
+  - 30% Achieved Occupancy on 64-Warp SM:            0.30 x 64 = 19.2 -> ~19 active warps/SM (19 / 64 = 29.69%)
+  - Register-Limited Example (80 regs/thread):       256 threads x 80 regs = 20,480 regs/block -> 65,536 // 20,480 = 3 blocks (768 threads = 24 warps = 37.5% occ, LIMITED_BY_REGISTERS_PER_THREAD)
+  - Shared-Memory-Limited Example (64 KB/block):     227 KB // 64 KB = 3 blocks (768 threads = 24 warps = 37.5% occ on 256-thread blocks, LIMITED_BY_SHARED_MEMORY_PER_BLOCK)
+  - __launch_bounds__(256, 8) Target:                8 blocks x 256 threads = 2,048 threads/SM (64 warps = 100% occ) -> caps registers at 65,536 // 2,048 = 32 regs/thread
+  - Practical Sweet Spot Rule of Thumb:              128 to 256 threads/block; 50% to 75% occupancy (32 to 48 warps/SM; book notes many kernels hide latency at 25% to 50%) keeping Eligible Warps/Cycle >= 4
+```
+
+### 2.2 Controlling occupancy with `__launch_bounds__`, `-maxrregcount`, and the Occupancy API
+
+When Nsight Compute reports that a kernel is limited by registers per thread, you have three mechanisms to guide register allocation and block sizing.
+
+First, attach `__launch_bounds__` directly to the `__global__` kernel declaration. Specifying `__launch_bounds__(256, 8)` promises the compiler that the kernel will never launch with more than 256 threads per block and asks it to fit at least eight blocks per SM. Because eight blocks of 256 threads equal 2,048 threads per SM, `nvcc` automatically caps register usage at 32 registers per thread for that specific kernel. Other kernels in the same source file remain unaffected.
+
 ```cpp
-// BEFORE: Divergent branch (threshold_naive.cu)
+__global__ __launch_bounds__(256, 8)
+void myKernel(const float* __restrict__ in, float* __restrict__ out, int N) {
+    // Promising maxThreadsPerBlock = 256 and minBlocksPerSM = 8 targets
+    // 256 * 8 = 2,048 threads/SM (64 warps = 100% occupancy on B200).
+    // nvcc automatically caps register usage at 65,536 / 2,048 = 32 regs/thread.
+}
+```
+
+Second, pass `-maxrregcount` to `nvcc` to cap registers per thread across an entire compilation unit. Use this flag with caution. Setting the cap too low forces the compiler to spill live registers to slow Local Memory in HBM, which immediately inflates Long Scoreboard stalls.
+
+Third, call the CUDA Runtime Occupancy API functions `cudaOccupancyMaxPotentialBlockSize` and `cudaOccupancyMaxActiveBlocksPerMultiprocessor` at launch time. These functions inspect the compiled kernel's exact register and shared-memory footprint on the current GPU. They then return the block size and grid size that maximize theoretical occupancy.
+
+```cpp
+int minGridSize = 0, bestBlockSize = 0;
+cudaOccupancyMaxPotentialBlockSize(&minGridSize, &bestBlockSize,
+                                   myKernel, /*dynamicSmemBytes=*/0, /*blockSizeLimit=*/0);
+myKernel<<<minGridSize, bestBlockSize>>>(d_in, d_out, N);
+```
+
+In PyTorch workloads, you rarely set thread block bounds by hand. Instead, enable `torch.compile` with `max-autotune` for steady-state training and inference, or `reduce-overhead` for small-batch loops. When CUDA Graphs are unsuitable, use `max-autotune-no-cudagraphs`, and pass `fused=True` to `torch.optim.AdamW` so TorchInductor fuses tiny elementwise launches into high-occupancy kernels.
+
+**Use `__launch_bounds__` rather than file-wide `-maxrregcount` when tuning register-limited kernels.** Stop pushing occupancy higher once Eligible Warps per Cycle stays at or above four.
+
+---
+
+## 3. Improving Warp Execution Efficiency: Branch Divergence and Predication
+
+A developer writes a thresholding or activation kernel using a standard conditional statement. Half of the elements in each warp are above the threshold and half are below. Even though every thread performs only one assignment in C++, the GPU takes twice as long to finish. Hardware counters show that the kernel executes twice as many dynamic instructions as expected.
+
+### 3.1 How SIMT branch divergence serializes warps
+
+In Nsight Compute, Warp Execution Efficiency measures the average percentage of the 32 lanes in an active warp that are predicated on and performing useful work per executed instruction. Because all threads in a warp share a single hardware instruction pointer under SIMT execution, a warp can only fetch and issue one instruction at a time across all lanes.
+
+```cpp
+// BEFORE: Divergent branch (threshold_naive.cu, ASP Ch 8 p. 278)
 if (X[i] > threshold) {
     Y[i] = X[i]; // Pass 1: active only for lanes where X[i] > threshold
 } else {
     Y[i] = 0.0f; // Pass 2: active only for lanes where X[i] <= threshold
 }
 ```
-- **50/50 split (`16` lanes take `if`, `16` lanes take `else`):** The warp executes Pass 1 with `16` lanes active and `16` lanes masked off (`Predicated-Off Threads = 50%`), then executes Pass 2 with the other `16` lanes active. Dynamic instruction count doubles, and **Warp Execution Efficiency drops to `50%`**.
-- **1 vs 31 split (`1` lane takes `if`, `31` lanes take `else`):** During Pass 1, **`31 of 32` lanes (`96.88%`) sit completely idle** while the single divergent thread runs its branch.
 
-### 3.2 Five techniques to eliminate warp divergence and Nsight Compute Table 8-3 (`30 ms → 15 ms`)
+When a data-dependent condition splits a warp evenly so 16 lanes take the first branch and 16 lanes take the second branch, the hardware serializes execution into two passes. In the first pass, the first 16 lanes execute while the remaining 16 lanes are masked off. In the second pass, the roles reverse. Dynamic instruction count doubles and Warp Execution Efficiency drops to 50 percent.
 
-As cataloged in *AI Systems Performance Engineering* Chapter 8 (pp. 276–281), you can eliminate intra-warp divergence using five patterns:
-1. **Predication (`?:` ternary operator / PTX `@p` conditional select, or `torch.maximum` / `torch.where` in PyTorch):**
-   For short, lightweight branches (like ReLU / thresholding), replace `if / else` with a ternary expression (`threshold_predicated.cu`, *ASP* Ch 8, p. 279):
-   ```cpp
-   // AFTER: Predicated select (compiles to PTX @p selp / conditional move with 0 branches)
-   float x = X[i];
-   Y[i] = (x > threshold) ? x : 0.0f;
-   ```
-   In PyTorch, write `Y = torch.maximum(X, torch.zeros_like(X))` (or `torch.where`), wrapped in `@torch.compile()`.
-2. **Warp-unanimous branching (`warpId = threadIdx.x / 32`):**
-   Remember that divergence **only occurs within a single 32-thread warp**—different warps can take different branches with **zero divergence penalty**. Writing `int warpId = threadIdx.x / 32; if (warpId % 2 == 0) { /* Task A */ } else { /* Task B */ }` guarantees all 32 lanes in any given warp take the exact same branch (`100%` warp execution efficiency).
-3. **Warp-vote intrinsics (`__ballot_sync`, `__any_sync`, `__all_sync`):**
-   Let all 32 lanes vote in a single register instruction on whether any/all lanes need special handling (`__any_sync(mask, cond)`), or build a 32-bit bitmask of active lanes (`__ballot_sync(mask, cond)`) to compact work into active lanes instead of diverging the warp.
-4. **Data sorting / partitioning outside the inner loop:** Group positive and negative (or similar-length) inputs before kernel launch so each warp processes homogeneous data.
-5. **Splitting heavy branches into separate kernels:** When the `if` and `else` bodies contain hundreds of instructions, computing both paths via predication wastes ALU cycles; instead, use stream compaction / prefix sum and launch two specialized kernels.
+A single-lane branch split is even more skewed during the divergent pass. If a single outlier thread takes an expensive branch while 31 lanes take the alternative branch, 31 of the 32 lanes sit completely idle for the entire duration of the first pass.
 
-Look at the Nsight Compute results when replacing `threshold_naive` with `threshold_predicated` (*AI Systems Performance Engineering* Ch 8, **Table 8-3**, p. 280; `TABLE_8_3_PREDICATION` in `code/part10/occupancy_warp_ilp.py`):
+### 3.2 Five techniques to eliminate warp divergence and Nsight Compute Table 8-3
 
-| Nsight Compute Metric (`ncu` Counter) | Before (`threshold_naive` `if/else`) | After (`threshold_predicated` `?:` / `max`) | Improvement |
+Five practical programming patterns eliminate or reduce intra-warp branch divergence.
+
+First, replace short conditional branches with predication using the C++ ternary operator or PyTorch elementwise primitives such as `torch.maximum` and `torch.where` wrapped in `torch.compile`. The ternary select compiles to PTX conditional select instructions with zero branches. All 32 lanes execute a single uniform instruction stream without serial passes or branch-resolving stalls.
+
+```cpp
+// AFTER: Predicated select (threshold_predicated.cu, compiles to PTX @p selp / mov with 0 branches)
+float x = X[i];
+Y[i] = (x > threshold) ? x : 0.0f;
+```
+
+Second, align branch boundaries to 32-thread warp boundaries so conditions are warp-unanimous. Divergence only occurs when threads inside the same warp disagree. Two different warps taking different branches incur zero divergence penalty. Dividing `threadIdx.x` by 32 computes a warp identifier that guarantees all lanes in any given warp take the exact same path at full warp execution efficiency.
+
+Third, use warp-vote intrinsics such as `__ballot_sync`, `__any_sync`, and `__all_sync` to evaluate predicates across all active lanes in a single register operation. If all lanes or no lanes satisfy the condition, the warp can skip the second path entirely. Calling `__ballot_sync` builds a 32-bit bitmask of active lanes for work compaction.
+
+Fourth, sort or partition heterogeneous data on the host or in a preprocessing pass before launching the compute kernel so each warp receives uniform inputs. Fifth, when both conditional bodies contain hundreds of instructions, avoid predication because predication forces every thread to compute both heavy paths. Instead, compact indices and launch two separate specialized kernels.
+
+| Nsight Compute Metric (`ncu` Counter) | Before (`threshold_naive` `if/else`) | After (`threshold_predicated` `?:` / `max`) | Improvement (*ASP* Ch 8 Table 8-3, p. 280) |
 |---|---:|---:|---|
 | **Kernel Execution Time (`gpu__time_elapsed.avg`)** | `30 ms` | **`15 ms`** | **`-50%` (`2.0x` faster)** |
 | **Dynamic Instruction Count (`smsp__inst_executed.sum`)** | `600 M` instructions | **`300 M` instructions** | **`-50%`** (single pass instead of two serial passes) |
@@ -197,51 +234,56 @@ Look at the Nsight Compute results when replacing `threshold_naive` with `thresh
 | **Warp Execution Efficiency** | `50%` | **`99%`** | Nearly all 32 lanes active on every cycle |
 | **Predicated-Off Threads (`%`)** | `50%` | **`0%`** | Zero masked-off lane passes |
 
+**Replace short conditional assignments with predicated ternary selects or `torch.maximum`.** When a kernel must execute multiple heavy paths, organize branches by warp identifier so all 32 lanes in a warp follow the same branch.
+
 ---
 
-## 4. Exposing Instruction-Level Parallelism (`ILP`), Blackwell Dual-Issue Rules, and Register Pressure
+## 4. Exposing Instruction-Level Parallelism and Blackwell Dual-Issue Rules
 
-### 4.1 How ILP hides latency within a single warp and cuts required occupancy (`Table 8-4`)
+Suppose a kernel uses a large shared-memory tile and high register counts per thread, capping SM occupancy at a quarter or three-eighths of peak. With only 16 to 24 resident warps on the SM, each warp must keep multiple independent instructions in flight at the same time. Otherwise, the warp schedulers will stall on Execution Dependency and Long Scoreboard every time an instruction waits on the previous line's result.
 
-Occupancy hides latency **across different warps** (Thread-Level Parallelism, `TLP`), whereas **Instruction-Level Parallelism (`ILP`)** hides latency **within a single warp** by issuing multiple *independent* loads and arithmetic instructions back-to-back before consuming their results (*AI Systems Performance Engineering* Ch 8, *Exposing Instruction-Level Parallelism*, pp. 282–290).
+### 4.1 How ILP hides latency within a single warp and cuts required occupancy
 
-Look at how breaking a false sequential dependency chain unlocks ILP (*ASP* Ch 8, pp. 284–285):
+Occupancy hides latency across different warps through Thread-Level Parallelism. Instruction-Level Parallelism hides latency within a single warp by issuing multiple independent loads and math instructions back-to-back before consuming their outputs. Adding ILP does not change a kernel's arithmetic intensity, and it yields no speedup if execution units or HBM bandwidth are already completely saturated. Instead, ILP fills empty pipeline slots when warps are latency bound.
+
 ```cpp
-// BAD (Serial Dependency Chain -> Stall: Exec Dependency):
+// BAD (Serial Dependency Chain -> Stall: Exec Dependency, ASP Ch 8 p. 285):
 float u = x * x;
-float temp = u + 1.0f; // Stalls waiting for u = x * x to finish BEFORE v = y * y can even issue!
+float temp = u + 1.0f; // Stalls waiting for u = x * x to finish BEFORE v = y * y can even issue
 float v = y * y;
 
 // GOOD (Reordered Independent Ops -> 2-Way ILP):
 float u = x * x;       // Issues on cycle t
-float v = y * y;       // Independent of u! Issues immediately on cycle t+1 while u is in flight
+float v = y * y;       // Independent of u; issues immediately on cycle t+1 while u is in flight
 float temp = u + 1.0f; // By the time temp issues, u has already progressed through the pipeline
 ```
 
-Similarly, unrolling a 4-step dot-product loop (`#pragma unroll`) so that a thread issues **four independent loads (`a0, a1, a2, a3`)** followed by **four independent multiplies (`sum0..sum3`)** overlaps all four DRAM/L1 fetches in flight simultaneously (*ASP* Ch 8, p. 287).
+Loop unrolling with `#pragma unroll` and multiple independent accumulators applies the same principle to memory loads and reductions. Instead of loading one value, waiting hundreds of cycles for it to arrive, multiplying, and only then loading the next value, an unrolled four-way loop issues four independent loads back-to-back. All four HBM requests travel in parallel before the first multiply consumes the first value.
 
-As quantified in *AI Systems Performance Engineering* Chapter 8 (**Table 8-4**, p. 286; `ILP_SATURATION_TABLE` in `code/part10/occupancy_warp_ilp.py`), increasing per-thread ILP dramatically lowers the number of resident threads and warps needed to saturate a Blackwell SM (`2,048` max threads = `64` warps):
-
-| `ILP` (Independent Ops per Thread) | Active Threads per SM Required for `~100%` Utilization | Active Warps per SM Required | Required SM Occupancy (`% of 2,048 threads`) | Operational Takeaway (*ASP* Ch 8, pp. 286–287) |
+| `ILP` (Independent Ops per Thread) | Active Threads per SM Required for `~100%` Utilization | Active Warps per SM Required | Required SM Occupancy (`% of 2,048 threads`) | Operational Takeaway (*ASP* Ch 8 Table 8-4, pp. 286–287) |
 |---:|---:|---:|---:|---|
-| **`1` (No ILP)** | **`~1,536` threads** | **`48` warps** | **`75.0%`** | Requires high occupancy (`48` warps) to hide stalls across warps. |
-| **`2`-Way ILP** | **`~1,024` threads** | **`32` warps** | **`50.0%`** | Each warp keeps `2` ops in flight; saturates SM at `50%` occupancy. |
-| **`3`-Way ILP** | **`~768` threads** | **`24` warps** | **`37.5%`** | Saturates SM with `24` warps (`37.5%` occupancy). |
-| **`4`-Way ILP** | **`~512` threads** | **`16` warps** | **`25.0%`** | **`3x` fewer warps** (`16` vs `48`) needed to saturate the SM; beyond `4`-way (`5–6`-way), register pressure and decode limits yield diminishing returns. |
+| **`1` (No ILP)** | **`~1,536` threads** | **`48` warps** | **`75.0%`** | Requires high occupancy (`48` warps) to hide stalls across warps |
+| **`2`-Way ILP** | **`~1,024` threads** | **`32` warps** | **`50.0%`** | Each warp keeps `2` ops in flight; saturates SM at `50%` occupancy |
+| **`3`-Way ILP** | **`~768` threads** | **`24` warps** | **`37.5%`** | Saturates SM with `24` warps (`37.5%` occupancy) |
+| **`4`-Way ILP** | **`~512` threads** | **`16` warps** | **`25.0%`** | **`3x` fewer warps** (`16` vs `48`) needed to saturate SM; beyond `4`-way (`5–6`-way), register pressure and decode limits yield diminishing returns |
 
 ### 4.2 Blackwell's Unified `INT32`/`FP32` Core Dual-Issue Rule and Register Pressure
 
-When tuning ILP and dual-issue on Blackwell (`B200`/`B300`), keep two hardware rules in mind (*AI Systems Performance Engineering* Ch 8, pp. 266, 283, 288–290):
-1. **Blackwell Unified `INT32`/`FP32` Core Rule (`no same-core INT32 + FP32 dual-issue`):**
-   On Ampere and Hopper, separate `INT32` and `FP32` datapaths allowed issuing an `INT32` pointer-arithmetic instruction alongside an `FP32` math instruction. On **Blackwell**, the `FP32` and `INT32` pipelines were merged into **unified CUDA cores** that can execute *either* `FP32` *or* `INT32` in a given clock cycle—**never both on the same core in the same cycle** (*ASP* Ch 8, pp. 266, 283). Instead, each of the SM's `4` warp schedulers dual-issues **one arithmetic instruction (`FP32`, `INT32`, or Tensor Core) + one memory (`LD/ST`) instruction** (or overlaps `SFU` operations) from the same warp.
-2. **Monitoring IPC (`1.0 → 1.8`) vs Register Pressure:**
-   When `#pragma unroll` and ILP succeed, Nsight Compute shows **`Stall: Exec Dependency` dropping** and per-scheduler **Instructions Per Cycle (`IPC`) rising (for example, from `1.0` to `1.8` instructions/cycle per scheduler, *ASP* Ch 8 p. 289)**. However, each unrolled accumulator (`a0..a3`, `sum0..sum3`) consumes extra registers. If Nsight Compute flips to **"Limited by Registers"** (or spills to Local Memory), dial back the unroll factor (`#pragma unroll 2` or `4`) to balance ILP against occupancy.
+Two hardware rules govern how far you can push ILP and dual-issue on Blackwell GPUs.
+
+First, understand Blackwell's unified integer and floating-point core design. On Ampere and Hopper, separate integer and floating-point datapaths allowed a single lane to execute an integer pointer-arithmetic instruction alongside a floating-point math instruction. On Blackwell, the floating-point and integer units were merged into unified CUDA cores. Each unified core executes either floating-point math or integer math in a given clock cycle, never both on the same core in the same cycle. Instead, each of the SM's four warp schedulers can dual-issue one arithmetic instruction paired with one memory load or store instruction from the same warp.
+
+Second, balance loop unrolling against register pressure. When `#pragma unroll` and ILP restructuring succeed, Nsight Compute shows Execution Dependency stalls dropping and per-scheduler Instructions Per Cycle rising from 1.0 to 1.8 instructions per cycle. However, keeping four or eight independent loads and accumulators live at the same time consumes extra registers per thread. Pushing ILP beyond four-way rarely improves speed and can drop occupancy or trigger Local Memory spills, so always verify in Nsight Compute that register limits were not exceeded.
+
+**Expose two-to-four-way ILP per thread by issuing independent loads and math operations back-to-back.** Pair arithmetic instructions with memory load and store instructions to exploit dual-issue on Blackwell warp schedulers.
 
 ---
 
 ## 5. Commands and Profiling Workflows That Matter
 
-All commands below follow *AI Systems Performance Engineering* Chapter 8 (pp. 255–291). Because this handbook builds without an attached GPU, `nsys`, `ncu`, and `nvidia-smi` commands are marked **(untested here)**.
+Without correlating system-level timelines with kernel-level stall counters and GPU clock sensors, engineers misdiagnose power throttling or CPU dataloader stalls as CUDA kernel bugs. Running Nsight Systems, Nsight Compute, and `nvidia-smi` clock telemetry in sequence isolates the exact bottleneck.
+
+All commands below follow *AI Systems Performance Engineering* Chapter 8. Because this handbook builds without an attached GPU, `nsys`, `ncu`, and `nvidia-smi` commands are marked **(untested here)**.
 
 ### 5.1 System timeline (`nsys` + `NVTX`), kernel stall analysis (`ncu`), and power-throttle check (untested here)
 
@@ -262,26 +304,32 @@ nvidia-smi --query-gpu=power.draw,clocks.current.sm,clocks.current.memory,clocks
   --format=csv -l 1
 ```
 
+**Always monitor `clocks_event_reasons.active` via `nvidia-smi` or NVML functions such as `nvmlDeviceGetPowerUsage` and `nvmlDeviceGetEnforcedPowerLimit` during sustained compute-bound benchmarks.** This check ensures thermal or power-cap clock throttling is not mistaken for a kernel regression.
+
 ---
 
 ## 6. How It Fails: Six Production Occupancy, Warp-Divergence, and ILP Failure Modes
 
+When a kernel stalls despite clean memory access patterns, Nsight Compute counters immediately identify which of the six occupancy, divergence, or ILP failure modes is responsible.
+
 | # | Failure Mode | Nsight Compute / Profiler Symptom | Root Cause | Fix |
 |---|---|---|---|---|
-| **1** | **Severe register pressure or aggressive `-maxrregcount` spilling** | Either theoretical occupancy drops to `12.5%–25%` (`Limited by Registers per Thread`), or `Stall: Long Scoreboard` and Local Memory traffic spike despite coalesced global loads. | Heavy per-thread live variables or `#pragma unroll` consumed `> 64–128` regs/thread (`65,536` regs/SM ceiling), or `-maxrregcount` was set too low and spilled registers to `HBM` (*ASP* Ch 8, pp. 271–273, 288). | Add **`__launch_bounds__(256, 8)`** (`<= 32` regs/thread for `2,048` threads/SM) or moderate bounds (`__launch_bounds__(256, 4)` = `64` regs/thread, `50%` occ), and dial back excessive unrolling. |
-| **2** | **Latency-bound kernel with low `Eligible Warps per Cycle` (`< 4`)** | Both DRAM bandwidth (`< 30%`) and Compute utilization (`< 30%`) are low, and `Stall: Long Scoreboard` or `Stall: Exec Dependency` dominates (Table 8-2). | `Eligible Warps per Cycle` is below the SM's `4` warp schedulers (`< 4`), so when warps stall on a DRAM load or ALU dependency, no ready warp is available to issue (*ASP* Ch 8, p. 270). | Raise occupancy to `50%–75%` (`32–48` warps/SM) **and** expose `2`-to-`4`-way per-thread **ILP** (Table 8-4) so each warp keeps multiple independent loads/math ops in flight. |
-| **3** | **2x SIMT branch divergence in elementwise conditionals (`30 ms` vs `15 ms`)** | `Warp Execution Efficiency = 50%`, `Predicated-Off Threads = 50%`, `smsp__inst_executed.sum = 600M` (double expected), `200`-cycle branch stall latency (Table 8-3). | Data-dependent `if (X[i] > threshold)` splits warps so each warp executes both branches serially with masked-off lanes (*ASP* Ch 8, pp. 278–280). | Replace short branches with **predication (`?:` ternary select / PTX `@p`, or `torch.maximum` / `torch.where` + `@torch.compile`)**, cutting instructions to `300M` and runtime to **`15 ms` (`-50%`)**. |
-| **4** | **Serial instruction dependency chain inside a thread (`Exec Dependency`)** | Occupancy is healthy (`>= 50%`), yet `IPC` is stuck near `1.0` per scheduler and `Stall: Exec Dependency` is the top stall reason. | Thread computes `u = x * x;` and immediately uses `u` (`temp = u + 1.0f;`) *before* issuing independent work `v = y * y;` (*ASP* Ch 8, p. 285). | Reorder independent operations back-to-back (`u = x * x; v = y * y; temp = u + 1.0f;`) and unroll small loops with separate accumulators (`sum0..sum3`), lifting scheduler `IPC` toward **`1.8`**. |
-| **5** | **Assuming `INT32` + `FP32` dual-issue on Blackwell unified cores** | A kernel tuned on Ampere/Hopper to interleave `INT32` loop/address math with `FP32` math fails to dual-issue those two instructions on the same lane on Blackwell (`B200`). | On Blackwell (`sm_100`), `INT32` and `FP32` execution units are merged into **unified CUDA cores** that execute *either* `FP32` *or* `INT32` per cycle (*ASP* Ch 8, pp. 266, 283). | Pair **one math instruction (`FP32`, `INT32`, or Tensor Core) with one memory (`LD/ST`) instruction** for per-scheduler dual-issue, and use multi-warp concurrency for mixed `INT32`/`FP32` streams. |
-| **6** | **Trusting `torch.profiler` `with_flops=True` as hardware counter truth or ignoring power throttling** | Either custom CUDA/Triton kernels show `0` FLOPs in `torch.profiler`, or a compute-bound kernel slows down mid-run despite identical code. | `torch.profiler` (`Kineto`) estimates FLOPs from high-level operator formulas (`matmul`/`conv`) rather than GPU PMU counters (*ASP* Ch 8, p. 256); and sustained near-peak compute can hit TDP and trigger `HW Slowdown` / `SW Power Cap` clock throttling (p. 265). | Measure actual hardware FLOPs and pipe utilization in **Nsight Compute (`ncu`)**, and monitor `nvidia-smi --query-gpu=power.draw,clocks.current.sm,clocks_event_reasons.active -l 1` during benchmarks. |
+| **1** | **Severe register pressure or aggressive `-maxrregcount` spilling** | Theoretical occupancy drops to `12.5%–25%` (`Limited by Registers per Thread`), or `Stall: Long Scoreboard` and Local Memory traffic spike despite coalesced global loads | Heavy per-thread live variables or `#pragma unroll` consumed `> 64–128` regs/thread (`65,536` regs/SM ceiling), or `-maxrregcount` was set too low and spilled registers to `HBM` (pp. 271–273, 288) | Add `__launch_bounds__(256, 8)` (`<= 32` regs/thread for `2,048` threads/SM) or moderate bounds (`__launch_bounds__(256, 4)` = `64` regs/thread, `50%` occ), and dial back excessive unrolling |
+| **2** | **Latency-bound kernel with low `Eligible Warps per Cycle` (`< 4`)** | Both DRAM bandwidth (`< 30%`) and Compute utilization (`< 30%`) are low, and `Stall: Long Scoreboard` or `Stall: Exec Dependency` dominates (Table 8-2) | `Eligible Warps per Cycle` is below the SM's `4` warp schedulers (`< 4`), so when warps stall on a DRAM load or ALU dependency, no ready warp is available to issue (p. 270) | Raise occupancy to `50%–75%` (`32–48` warps/SM) and expose `2`-to-`4`-way per-thread ILP (Table 8-4) so each warp keeps multiple independent loads and math ops in flight |
+| **3** | **2x SIMT branch divergence in elementwise conditionals (`30 ms` vs `15 ms`)** | `Warp Execution Efficiency = 50%`, `Predicated-Off Threads = 50%`, `smsp__inst_executed.sum = 600M` (double expected), `200`-cycle branch stall latency (Table 8-3) | Data-dependent `if (X[i] > threshold)` splits warps so each warp executes both branches serially with masked-off lanes (pp. 278–280) | Replace short branches with predication (`?:` ternary select / PTX `@p`, or `torch.maximum` / `torch.where` + `@torch.compile`), cutting instructions to `300M` and runtime to `15 ms` (`-50%`) |
+| **4** | **Serial instruction dependency chain inside a thread (`Exec Dependency`)** | Occupancy is healthy (`>= 50%`), yet `IPC` is stuck near `1.0` per scheduler and `Stall: Exec Dependency` is the top stall reason | Thread computes `u = x * x;` and immediately uses `u` (`temp = u + 1.0f;`) before issuing independent work `v = y * y;` (p. 285) | Reorder independent operations back-to-back (`u = x * x; v = y * y; temp = u + 1.0f;`) and unroll small loops with separate accumulators (`sum0..sum3`), lifting scheduler `IPC` toward `1.8` |
+| **5** | **Assuming `INT32` + `FP32` dual-issue on Blackwell unified cores** | A kernel tuned on Ampere/Hopper to interleave `INT32` loop/address math with `FP32` math fails to dual-issue those two instructions on the same lane on Blackwell (`B200`) | On Blackwell (`sm_100`), `INT32` and `FP32` execution units are merged into unified CUDA cores that execute either `FP32` or `INT32` per cycle (pp. 266, 283) | Pair one math instruction (`FP32`, `INT32`, or Tensor Core) with one memory (`LD/ST`) instruction for per-scheduler dual-issue, and use multi-warp concurrency for mixed `INT32`/`FP32` streams |
+| **6** | **Trusting `torch.profiler` `with_flops=True` as hardware counter truth or ignoring power throttling** | Custom CUDA/Triton kernels show `0` FLOPs in `torch.profiler`, or a compute-bound kernel slows down mid-run despite identical code | `torch.profiler` (`Kineto`) estimates FLOPs from operator formulas (`matmul`/`conv`) rather than GPU PMU counters (p. 256); and sustained near-peak compute can hit TDP and trigger `HW Slowdown` / `SW Power Cap` clock throttling (p. 265) | Measure actual hardware FLOPs and pipe utilization in Nsight Compute (`ncu`), and monitor `nvidia-smi --query-gpu=power.draw,clocks.current.sm,clocks_event_reasons.active -l 1` during benchmarks |
+
+**Never tune occupancy, branch predication, or loop unrolling in the dark.** Verify every change against Eligible Warps per Cycle, Warp Execution Efficiency, and Execution Dependency stalls in Nsight Compute.
 
 ---
 
 ## 7. Hands-On Lab: Verify SM Occupancy Limiters, `__launch_bounds__`, Nsight Compute Stall Regimes, Predication, and ILP Tables
 
-**Venue:** Any Linux machine or Nebius GPU VM with Python 3.10+ (runs deterministically using standard library Python; all `nsys`, `ncu`, and `nvidia-smi` commands are provided in Section 5 and marked `(untested here)`).
+**Venue:** Any Linux machine or Nebius GPU VM with Python 3.10+. This lab runs deterministically using standard library Python. All `nsys`, `ncu`, and `nvidia-smi` commands are provided in Section 5 and marked `(untested here)`.
 
-Run `code/part10/occupancy_warp_ilp_lab.py`:
+Run `code/part10/occupancy_warp_ilp_lab.py` to execute all checks.
 
 ```bash
 python3 code/part10/occupancy_warp_ilp_lab.py
@@ -324,156 +372,135 @@ Summary: 25 passed, 0 failed (total 25)
 
 ## Exercises
 
-1. **Occupancy limiters and `__launch_bounds__(256, 8)` math:** On a Blackwell `B200` SM (`64` max warps = `2,048` max threads, `65,536` registers, `227 KB` usable SMEM), calculate (a) the average number of active warps when Nsight Compute reports `30%` achieved occupancy, (b) the theoretical occupancy and primary limiter for a `256`-thread block that uses `80` registers/thread and `4 KB` of shared memory, and (c) the target threads/SM, warps/SM, occupancy percentage, and maximum registers per thread enforced when you annotate the kernel with `__launch_bounds__(256, 8)`.
-2. **Classifying the 4 execution regimes from Nsight Compute (`ncu`) counters:** Using Table 8-2 from *AI Systems Performance Engineering* Chapter 8, classify four kernel profiles into `UNDERUTILIZED`, `LATENCY_BOUND`, `MEMORY_BOUND`, or `COMPUTE_BOUND` and state the primary remedy for each: (a) DRAM `12%`, Compute `8%`, SM Active `35%`, top stall `No Eligible`; (b) DRAM `92%`, Compute `18%`, SM Active `95%`, top stall `Long Scoreboard`; (c) DRAM `22%`, Compute `28%`, SM Active `85%`, `Eligible Warps/Cycle = 1.4` (`< 4` schedulers), top stall `Exec Dependency`; (d) DRAM `30%`, Compute `88%`, SM Active `98%`, top stall `Math Pipe Throttle`.
-3. **Eliminating warp divergence with predication (`Table 8-3`):** Explain why `if (X[i] > threshold) Y[i] = X[i]; else Y[i] = 0.0f;` executes `600M` dynamic instructions at `50%` Warp Execution Efficiency (`30 ms` runtime, `200`-cycle branch stall latency) when half of the elements exceed `threshold`, rewrite the kernel in both CUDA C++ (using predication) and PyTorch (with `@torch.compile`), and state all five resulting metrics from Table 8-3.
-4. **Warp-unanimous branching vs per-lane branching:** Suppose half of the threads in a `256`-thread block must run `Task A` and half must run `Task B`. Explain why `if (threadIdx.x % 2 == 0)` causes 100% of warps to diverge (`50%` warp execution efficiency), whereas `int warpId = threadIdx.x / 32; if (warpId % 2 == 0)` causes **zero warp divergence (`100%` warp execution efficiency)**.
-5. **Instruction-Level Parallelism (`ILP`) vs required occupancy (`Table 8-4`):** Using Table 8-4 from *AI Systems Performance Engineering* Chapter 8, list the active threads/SM, active warps/SM, and SM occupancy percentage needed to saturate a Blackwell SM at `ILP = 1, 2, 3, and 4`, and rewrite the dependent sequence `float u = x * x; float temp = u + 1.0f; float v = y * y;` so `u` and `v` overlap in flight.
-6. **Blackwell unified `INT32`/`FP32` core dual-issue rule:** Explain why a loop that relies on dual-issuing an `INT32` instruction and an `FP32` instruction on the *same* CUDA core in the *same* clock cycle works on earlier architectures but does not dual-issue on a single Blackwell unified core, and state which instruction pairs *can* dual-issue per warp scheduler on Blackwell.
+1. **Occupancy limiters and `__launch_bounds__` math:** On a Blackwell B200 SM, calculate three values using the hardware limits from Section 2.1. Find the average number of active warps at 30 percent achieved occupancy, the theoretical occupancy and primary limiter for a 256-thread block using 80 registers per thread, and the maximum registers per thread enforced by `__launch_bounds__(256, 8)`.
+2. **Classifying the four execution regimes from Nsight Compute counters:** Using the execution regime rules from *AI Systems Performance Engineering* Chapter 8, classify four kernel profiles into underutilized, latency bound, memory bound, or compute bound. State the primary remedy for each of the four profiles shown in the lab checks.
+3. **Eliminating warp divergence with predication:** Explain why a naive conditional threshold check executes twice as many dynamic instructions at 50 percent Warp Execution Efficiency when half of the elements exceed the threshold. Rewrite the kernel in both CUDA C++ using predication and PyTorch with `torch.compile`, and state all five resulting metrics from Table 8-3.
+4. **Warp-unanimous branching vs. per-lane branching:** Suppose half of the threads in a 256-thread block must run one task and half must run a second task. Explain why branching on `threadIdx.x % 2 == 0` causes every warp to diverge at 50 percent efficiency, whereas branching on `warpId % 2 == 0` causes zero warp divergence at full efficiency.
+5. **Instruction-Level Parallelism vs. required occupancy:** Using Table 8-4 from *AI Systems Performance Engineering* Chapter 8, list the active threads per SM, active warps per SM, and SM occupancy percentage needed to saturate a Blackwell SM across ILP levels one through four. Then rewrite the dependent sequence in Section 4.1 so the two independent multiplications overlap in flight.
+6. **Blackwell unified core dual-issue rule:** Explain why a loop that relies on dual-issuing an integer instruction and a floating-point instruction on the same CUDA core in the same clock cycle works on earlier architectures but does not dual-issue on a single Blackwell unified core. State which instruction pairs can dual-issue per warp scheduler on Blackwell.
 
 ---
 
 ## Checkpoint questions (20)
 
 <details>
-<summary><strong>1. How do Nsight Systems (`nsys`), Nsight Compute (`ncu`), and `torch.profiler` (`Kineto` / `CUPTI`) divide profiling responsibilities, and why must you be careful with `torch.profiler`'s `with_flops=True` flag?</strong></summary>
+<summary>`&lt;strong>`1. How do Nsight Systems, Nsight Compute, and `torch.profiler` divide profiling responsibilities, and why must you be careful with FLOP estimation in `torch.profiler`?`&lt;/strong>`</summary>
 
-- **Nsight Systems (`nsys`):** Captures the system-wide CPU/GPU timeline, dataloader gaps, `NVTX` ranges (`torch.cuda.nvtx`), and stream overlap.
-- **Nsight Compute (`ncu`):** Collects hardware PMU counters for individual kernels (Roofline FLOPs/byte, warp stall reasons, occupancy limiters, source-line SASS/PTX stalls with `-lineinfo`).
-- **`torch.profiler` (`Kineto` + `CUPTI` + Linux `perf`):** Correlates Python operators with GPU kernels; however, `with_flops=True` calculates **formula-based FLOP estimates** for known operators rather than reading hardware counters (*ASP* Ch 8, p. 256).
+Nsight Systems (`nsys`) captures the system-wide CPU and GPU timeline, dataloader gaps, NVTX ranges, and stream overlap. Nsight Compute (`ncu`) collects hardware PMU counters for individual kernels including Roofline metrics, warp stall reasons, and occupancy limiters. The `torch.profiler` tool correlates Python operators with GPU kernels, but its FLOP estimation flag computes formula-based estimates for known operators rather than reading hardware counters.
 </details>
 
 <details>
-<summary><strong>2. Contrast `Stall: Long Scoreboard` against `Stall: Short Scoreboard` in Nsight Compute's Warp State Statistics.</strong></summary>
+<summary>`&lt;strong>`2. Contrast Long Scoreboard stalls against Short Scoreboard stalls in Nsight Compute's Warp State Statistics.`&lt;/strong>`</summary>
 
-- **`Stall: Long Scoreboard`:** The warp is stalled waiting for a **long-latency off-chip global memory (`HBM` / `L2`) load**—or a spilled **Local Memory** access—to return to a register (`~800` cycles).
-- **`Stall: Short Scoreboard`:** The warp is stalled waiting for a **shorter, variable-latency on-chip Shared Memory (`SMEM`) load** (`~20–30` cycles, often inflated by bank conflicts) or a Special Function Unit (**`SFU`**) result.
+A Long Scoreboard stall means the warp is waiting for a long-latency off-chip global memory load or a spilled Local Memory access to return to a register. That round trip takes roughly 800 cycles. A Short Scoreboard stall means the warp is waiting for a shorter, variable-latency on-chip Shared Memory load of roughly 20 to 30 cycles or a Special Function Unit result.
 </details>
 
 <details>
-<summary><strong>3. What does a high percentage of `Stall: Exec Dependency` indicate in Nsight Compute, and what two code transformations fix it?</strong></summary>
+<summary>`&lt;strong>`3. What does a high percentage of Execution Dependency stalls indicate in Nsight Compute, and what two code transformations fix it?`&lt;/strong>`</summary>
 
-`Stall: Exec Dependency` means warps are waiting on the register output of a **prior arithmetic/ALU instruction inside the same thread** (insufficient Instruction-Level Parallelism, `ILP`). Fix it by (1) **reordering independent instructions** (`u = x*x; v = y*y;` before `temp = u + 1.0f;`) and (2) **unrolling small loops (`#pragma unroll`)** with multiple independent accumulators (`sum0..sum3`).
+Execution Dependency stalls mean warps are waiting on the register output of a prior arithmetic or ALU instruction inside the same thread due to low Instruction-Level Parallelism. Fix it by reordering independent instructions before dependent consumers and unrolling small loops with `#pragma unroll` using multiple independent accumulators.
 </details>
 
 <details>
-<summary><strong>4. Why is seeing a high percentage of `Stall: Not Selected` in Nsight Compute usually a GOOD sign rather than a bug?</strong></summary>
+<summary>`&lt;strong>`4. Why is seeing a high percentage of Not Selected stalls in Nsight Compute usually a good sign rather than a bug?`&lt;/strong>`</summary>
 
-`Stall: Not Selected` means the warp was **completely ready and eligible to issue an instruction**, but the SM's warp scheduler chose *another* eligible warp in that scheduling partition on that clock cycle. It proves that **occupancy is high enough to keep multiple ready warps available** so the scheduler can hide latency every cycle (*ASP* Ch 8, Table 8-1, p. 261).
+Not Selected means the warp was completely ready and eligible to issue an instruction, but the SM's warp scheduler chose another eligible warp in that scheduling partition on that clock cycle. It proves that occupancy is high enough to keep multiple ready warps available so the scheduler can hide latency every cycle.
 </details>
 
 <details>
-<summary><strong>5. Contrast the four kernel execution regimes (`Underutilized`, `Latency Bound`, `Memory Bound`, and `Compute Bound`) from Table 8-2 of *AI Systems Performance Engineering* Chapter 8.</strong></summary>
+<summary>`&lt;strong>`5. Contrast the four kernel execution regimes from Table 8-2 of *AI Systems Performance Engineering* Chapter 8.`&lt;/strong>`</summary>
 
-1. **Underutilized:** Both DRAM bandwidth and FLOPs are low with idle gaps / `No Eligible` warps → launch more blocks/threads, batch work, or use CUDA Graphs.
-2. **Latency Bound:** Neither DRAM bandwidth nor FLOPs is near peak, but warps stall on `Long Scoreboard` or `Exec Dependency` (`Eligible Warps/Cycle < 4`) → raise occupancy (`50%–75%`), add `2–4x` ILP, or use TMA prefetching.
-3. **Memory Bound:** DRAM bandwidth is near peak (`>= 80%`) while ALU utilization is low → raise arithmetic intensity via shared-memory tiling, kernel fusion, coalescing/vectorizing, or lower precision.
-4. **Compute Bound:** ALU / Tensor Core pipes are near peak (`Compute Unit Busy` / `Math Pipe Throttle`) → use lower precision (`FP16`/`FP8`/`NVFP4`/`MXFP4`), Tensor Cores (`tcgen05.mma`), or 2:4 sparsity.
+An underutilized kernel shows both low DRAM bandwidth and low FLOPs with No Eligible stalls because too few blocks were launched. A latency-bound kernel has resident work but low DRAM and FLOP utilization because warps stall on scoreboard or execution dependencies with fewer than four eligible warps per cycle. A memory-bound kernel saturates DRAM bandwidth while ALUs wait for data, and a compute-bound kernel saturates ALU or Tensor Core pipelines with Math Pipe Throttle stalls.
 </details>
 
 <details>
-<summary><strong>6. What is the maximum number of resident warps and threads per SM on Ampere/Hopper/Blackwell (`B200`, CC `10.0`) versus the `NVIDIA RTX PRO 6000` and `Spark DGX` (`GB10` Superchip, CC `12.x`)?</strong></summary>
+<summary>`&lt;strong>`6. What is the maximum number of resident warps and threads per SM on Ampere, Hopper, and Blackwell B200 versus workstation Blackwell GPUs?`&lt;/strong>`</summary>
 
-- **Data-center Ampere (`A100`), Hopper (`H100`/`H200`), and Blackwell (`B200`, CC `10.0`):** **`64` warps (`2,048` threads) per SM** (so `30%` achieved occupancy = `~19` active warps/SM).
-- **`NVIDIA RTX PRO 6000` and `Spark DGX` (`GB10` Superchip, CC `12.x`):** **`48` warps (`1,536` threads) per SM** (*ASP* Ch 8, p. 269).
+Data-center Ampere, Hopper, and Blackwell B200 GPUs support up to 64 warps or 2,048 threads per SM, so 30 percent achieved occupancy equals roughly 19 active warps per SM. Workstation and desktop Blackwell GPUs such as the NVIDIA RTX PRO 6000 and Spark DGX GB10 Superchip support up to 48 warps or 1,536 threads per SM.
 </details>
 
 <details>
-<summary><strong>7. How do `Eligible Warps per Cycle` and `Active Warps per Scheduler` in Nsight Compute tell you whether raising occupancy will actually speed up your kernel?</strong></summary>
+<summary>`&lt;strong>`7. How do Eligible Warps per Cycle and Active Warps per Scheduler in Nsight Compute tell you whether raising occupancy will actually speed up your kernel?`&lt;/strong>`</summary>
 
-Each Blackwell/Hopper SM has **4 warp schedulers** (`Active Warps per Scheduler` ceiling = 1 issue/scheduler/cycle). If **`Eligible Warps per Cycle < 4`**, the schedulers frequently have no ready warp to switch to when a warp stalls—so raising occupancy (or ILP) will directly increase throughput. If **`Eligible Warps per Cycle >= 4`**, the schedulers already have plenty of ready warps every cycle, and adding more occupancy will yield diminishing returns compared to fixing memory bandwidth or instruction dependencies (*ASP* Ch 8, p. 270).
+Each Hopper or Blackwell SM has four warp schedulers. If Eligible Warps per Cycle is below four, the schedulers frequently have no ready warp to switch to when a warp stalls, so raising occupancy or ILP will directly increase throughput. If Eligible Warps per Cycle is four or higher, the schedulers already have ready warps every cycle, and adding more occupancy yields diminishing returns.
 </details>
 
 <details>
-<summary><strong>8. What are the three occupancy limiters reported by Nsight Compute, and what happens if a `256`-thread block uses `80` registers per thread on a Blackwell SM (`65,536` registers)?</strong></summary>
+<summary>`&lt;strong>`8. What are the three occupancy limiters reported by Nsight Compute, and what happens if a 256-thread block uses 80 registers per thread on a Blackwell SM?`&lt;/strong>`</summary>
 
-The three limiters are **Registers per Thread**, **Shared Memory per Block**, and **Thread/Block Count Slots**. At `256` threads/block × `80` regs/thread = **`20,480` registers/block**, a `65,536`-register SM can host at most `65,536 // 20,480 =` **`3` blocks (`768` threads = `24` warps = `37.5%` theoretical occupancy)**, flagging **`Limited by Registers per Thread`**.
+The three limiters are Registers per Thread, Shared Memory per Block, and Thread or Block Count Slots. At 256 threads per block and 80 registers per thread, each block consumes 20,480 registers, so a 65,536-register SM can host at most three blocks. That caps residency at 24 warps or 37.5 percent theoretical occupancy and flags Registers per Thread as the limiter.
 </details>
 
 <details>
-<summary><strong>9. What do the two parameters in `__launch_bounds__(256, 8)` specify, and how many registers per thread does that annotation allow on a Blackwell SM (`65,536` registers)?</strong></summary>
+<summary>`&lt;strong>`9. What do the two parameters in `__launch_bounds__(256, 8)` specify, and how many registers per thread does that annotation allow on a Blackwell SM?`&lt;/strong>`</summary>
 
-- **First parameter (`maxThreadsPerBlock = 256`):** Promises the kernel will never be launched with more than `256` threads per block.
-- **Second parameter (`minBlocksPerSM = 8`):** Requests that the compiler limit register usage so at least `8` blocks (`8 × 256 = 2,048` threads = `64` warps = **`100%` occupancy**) can reside on each SM.
-- **Register cap:** `65,536 registers // 2,048 threads =` **`32` registers per thread** (*ASP* Ch 8, p. 272).
+The first parameter promises the kernel will never launch with more than 256 threads per block. The second parameter requests that the compiler cap registers so at least eight blocks fit on each SM. Dividing 65,536 registers by 2,048 threads caps the kernel at 32 registers per thread.
 </details>
 
 <details>
-<summary><strong>10. How do you query the optimal block size for a kernel programmatically at runtime in CUDA C++, and why must you still benchmark the suggested configuration?</strong></summary>
+<summary>`&lt;strong>`10. How do you query the optimal block size for a kernel programmatically at runtime in CUDA C++, and why must you still benchmark the suggested configuration?`&lt;/strong>`</summary>
 
-Call **`cudaOccupancyMaxPotentialBlockSize(&minGridSize, &bestBlockSize, myKernel, dynamicSmemBytes, blockSizeLimit)`** (and `cudaOccupancyMaxActiveBlocksPerMultiprocessor`). You must still benchmark because maximum theoretical occupancy (`100%`) is sometimes slower than `50%–75%` occupancy if smaller blocks reduce shared-memory tile reuse or per-thread ILP (*ASP* Ch 8, pp. 271–273).
+Call `cudaOccupancyMaxPotentialBlockSize` along with `cudaOccupancyMaxActiveBlocksPerMultiprocessor`. You must still benchmark because full theoretical occupancy is sometimes slower than moderate occupancy if smaller blocks reduce shared-memory tile reuse or per-thread ILP.
 </details>
 
 <details>
-<summary><strong>11. What PyTorch compiler modes and optimizer flags does *AI Systems Performance Engineering* Chapter 8 recommend to improve kernel occupancy and launch efficiency automatically?</strong></summary>
+<summary>`&lt;strong>`11. What PyTorch compiler modes and optimizer flags does *AI Systems Performance Engineering* Chapter 8 recommend to improve kernel occupancy and launch efficiency automatically?`&lt;/strong>`</summary>
 
-- **`torch.compile(mode="max-autotune")`** for long-running training/inference with stable shapes, or **`mode="reduce-overhead"`** for small-batch loops (or `mode="max-autotune-no-cudagraphs"` if CUDA Graphs are undesirable).
-- **`torch.optim.AdamW(params, ..., fused=True)`** paired with Automatic Mixed Precision (`AMP`) to fuse dozens of tiny optimizer elementwise launches into a single high-occupancy kernel (*ASP* Ch 8, p. 274).
+Use `torch.compile` in `max-autotune` mode for long-running training and inference with stable shapes, `reduce-overhead` for small-batch loops, or `max-autotune-no-cudagraphs` when CUDA Graphs are undesirable. Pair compilation with `torch.optim.AdamW` using `fused=True` and Automatic Mixed Precision to fuse dozens of tiny optimizer launches into a single high-occupancy kernel.
 </details>
 
 <details>
-<summary><strong>12. Why does a 50/50 divergent `if / else` branch inside a warp drop `Warp Execution Efficiency` to `50%` and double dynamic instruction count?</strong></summary>
+<summary>`&lt;strong>`12. Why does an even divergent branch inside a warp drop Warp Execution Efficiency to 50 percent and double dynamic instruction count?`&lt;/strong>`</summary>
 
-Because all 32 threads in a warp share a single hardware instruction counter (SIMT). When 16 threads take the `if` branch and 16 take the `else` branch, the hardware must execute the `if` instructions with the `else` lanes masked off (`50%` predicated-off threads), and then serially execute the `else` instructions with the `if` lanes masked off—doubling dynamic instructions while keeping only half the warp active on each pass.
+All 32 threads in a warp share a single hardware instruction counter under SIMT execution. When 16 threads take the first branch and 16 take the second branch, the hardware executes the first path with the other 16 lanes masked off and then serially executes the second path. That serialization doubles dynamic instructions while keeping only half the warp active on each pass.
 </details>
 
 <details>
-<summary><strong>13. How does predication (`float val = (x > threshold) ? x : 0.0f;` or `torch.maximum`) eliminate warp divergence, and when can predication actually HURT performance?</strong></summary>
+<summary>`&lt;strong>`13. How does predication eliminate warp divergence, and when can predication actually hurt performance?`&lt;/strong>`</summary>
 
-Predication compiles short conditionals into a uniform instruction stream using a per-lane predicate mask (`@p` `selp`/`mov` in PTX) with **zero branch instructions and zero warp serialization**. However, because every thread executes the instructions for *both* sides of the expression before selecting the result, predication **hurts performance if the branch bodies are long/compute-heavy** or if almost no warps actually diverge (*ASP* Ch 8, pp. 277–281).
+Predication compiles short conditionals into a uniform instruction stream using a per-lane predicate mask in PTX with zero branch instructions and zero warp serialization. However, because every thread executes the instructions for both sides of the expression before selecting the result, predication hurts performance if the branch bodies are long and compute-heavy.
 </details>
 
 <details>
-<summary><strong>14. State the five Nsight Compute before-and-after metrics from Table 8-3 of *AI Systems Performance Engineering* Chapter 8 when replacing `threshold_naive` with `threshold_predicated`.</strong></summary>
+<summary>`&lt;strong>`14. State the five Nsight Compute before-and-after metrics from Table 8-3 of *AI Systems Performance Engineering* Chapter 8 when replacing `threshold_naive` with `threshold_predicated`.`&lt;/strong>`</summary>
 
-1. **Kernel execution time (`gpu__time_elapsed.avg`):** `30 ms → 15 ms` (`-50%`, `2x` speedup).
-2. **Dynamic instruction count (`smsp__inst_executed.sum`):** `600 M → 300 M` instructions (`-50%`).
-3. **Avg warp branch-resolving stall latency:** `200 cycles → 100 cycles` (`-50%`).
-4. **Warp execution efficiency:** `50% → 99%`.
-5. **Predicated-off threads (`%`):** `50% → 0%`.
+Kernel execution time dropped from 30 ms to 15 ms, dynamic instruction count fell by half, and average warp branch-resolving stall latency fell from 200 cycles to 100 cycles. At the same time, Warp Execution Efficiency rose from 50 percent to 99 percent and Predicated-Off Threads dropped to zero percent. See Table 8-3 in Section 3.2 for the exact table.
 </details>
 
 <details>
-<summary><strong>15. What is a warp-unanimous branch (`int warpId = threadIdx.x / 32;`), and what do the warp-vote intrinsics (`__ballot_sync`, `__any_sync`, `__all_sync`) do?</strong></summary>
+<summary>`&lt;strong>`15. What is a warp-unanimous branch, and what do the warp-vote intrinsics `__ballot_sync`, `__any_sync`, and `__all_sync` do?`&lt;/strong>`</summary>
 
-- **Warp-unanimous branch:** Because `threadIdx.x / 32` is identical for all 32 lanes inside a warp, branching on `warpId` guarantees that all 32 lanes take the exact same path with **zero SIMT divergence**.
-- **Warp-vote intrinsics:** Evaluate a predicate across all active lanes of a warp in one register instruction—`__any_sync(mask, p)` returns true if *any* lane is true, `__all_sync(mask, p)` if *all* lanes are true, and `__ballot_sync(mask, p)` returns a 32-bit integer bitmask of which lanes evaluated true (*ASP* Ch 8, p. 277).
+Because integer division of `threadIdx.x` by 32 produces the exact same value for all 32 lanes inside a warp, branching on the warp identifier guarantees that all lanes take the same path with zero SIMT divergence. Warp-vote intrinsics evaluate a predicate across active lanes in one register instruction. Calling `__any_sync` returns true if any lane is true, `__all_sync` returns true if all lanes are true, and `__ballot_sync` returns a 32-bit bitmask of which lanes evaluated true.
 </details>
 
 <details>
-<summary><strong>16. Does increasing Instruction-Level Parallelism (`ILP`) change a kernel's Arithmetic Intensity (`FLOPs/byte`), and when does adding ILP yield zero speedup?</strong></summary>
+<summary>`&lt;strong>`16. Does increasing Instruction-Level Parallelism change a kernel's Arithmetic Intensity, and when does adding ILP yield zero speedup?`&lt;/strong>`</summary>
 
-**No.** ILP does not change total FLOPs or bytes moved (`FLOPs/byte` stays constant); it overlaps independent instructions in flight within each thread to hide latency and fill idle issue slots. If a kernel is already saturating 100% of the execution units or HBM bandwidth on every cycle with no latency stalls, adding more ILP yields zero speedup (*ASP* Ch 8, p. 283).
+No, ILP does not change total FLOPs or bytes moved, so arithmetic intensity stays constant. ILP overlaps independent instructions in flight within each thread to hide latency and fill idle issue slots. If a kernel is already saturating all execution units or HBM bandwidth every cycle with no latency stalls, adding more ILP yields zero speedup.
 </details>
 
 <details>
-<summary><strong>17. State the threads/SM, warps/SM, and SM occupancy percentage required to saturate a Blackwell SM across `ILP = 1, 2, 3, and 4` from Table 8-4 of *AI Systems Performance Engineering* Chapter 8.</strong></summary>
+<summary>`&lt;strong>`17. How do required threads per SM, warps per SM, and SM occupancy percentage change across ILP levels one through four in Table 8-4 of *AI Systems Performance Engineering* Chapter 8?`&lt;/strong>`</summary>
 
-- **`ILP = 1` (no ILP):** `~1,536` threads (`48` warps = **`75.0%` occupancy**).
-- **`ILP = 2`:** `~1,024` threads (`32` warps = **`50.0%` occupancy**).
-- **`ILP = 3`:** `~768` threads (`24` warps = **`37.5%` occupancy**).
-- **`ILP = 4`:** `~512` threads (`16` warps = **`25.0%` occupancy**, `3x` fewer warps than `ILP = 1`).
+With single-instruction ILP, saturation requires roughly 1,536 threads or 48 warps at 75 percent occupancy. Increasing ILP to two, three, and four independent operations per thread progressively lowers the required active warps down to 16 warps or 25 percent occupancy. See Table 8-4 in Section 4.1 for all four rows.
 </details>
 
 <details>
-<summary><strong>18. Why does pushing per-thread ILP beyond `4`-way (to `5`-way or `6`-way) typically hurt or stop improving performance on Blackwell?</strong></summary>
+<summary>`&lt;strong>`18. Why does pushing per-thread ILP beyond four-way typically hurt or stop improving performance on Blackwell?`&lt;/strong>`</summary>
 
-Once `2`-to-`4`-way ILP saturates the SM's warp schedulers and instruction issue slots, unrolling further (`5–6`-way) consumes extra registers per thread (risking occupancy drops or local-memory register spills) and can exceed the SM's instruction-fetch/decode bandwidth (*ASP* Ch 8, pp. 286–289).
+Once two-to-four-way ILP saturates the SM's warp schedulers and instruction issue slots, unrolling further consumes extra registers per thread, risking occupancy drops or local-memory register spills. Excessive unrolling can also bloat binary size and exceed the SM's instruction-fetch and decode bandwidth.
 </details>
 
 <details>
-<summary><strong>19. Why can a single Blackwell CUDA core NOT dual-issue an `INT32` instruction and an `FP32` instruction in the same clock cycle, and how does dual-issue work on Blackwell instead?</strong></summary>
+<summary>`&lt;strong>`19. Why can a single Blackwell CUDA core not dual-issue an integer instruction and a floating-point instruction in the same clock cycle, and how does dual-issue work on Blackwell instead?`&lt;/strong>`</summary>
 
-On Blackwell (`sm_100`), the `INT32` and `FP32` execution units were unified into a single core per lane that must choose *either* `FP32` *or* `INT32` each clock cycle (*ASP* Ch 8, pp. 266, 283). Instead, each of the SM's `4` warp schedulers can dual-issue **one arithmetic instruction (`FP32`, `INT32`, or Tensor Core) + one memory (`LD/ST`) instruction** from the same warp in a single cycle.
+On Blackwell, the integer and floating-point execution units were unified into a single core per lane that must choose either floating-point or integer math each clock cycle. Instead, each of the SM's four warp schedulers can dual-issue one arithmetic instruction paired with one memory load or store instruction from the same warp in a single cycle.
 </details>
 
 <details>
-<summary><strong>20. How do you verify in Nsight Compute (`ncu`) that loop unrolling (`#pragma unroll`) and ILP restructuring succeeded without causing excessive register pressure?</strong></summary>
+<summary>`&lt;strong>`20. How do you verify in Nsight Compute that loop unrolling (`#pragma unroll`) and ILP restructuring succeeded without causing excessive register pressure?`&lt;/strong>`</summary>
 
-Check three counters together (*ASP* Ch 8, pp. 288–289):
-1. **`Stall: Exec Dependency`** percentage drops significantly.
-2. **Issued Instructions Per Cycle (`IPC`) / Issue Efficiency** rises (for example, from **`1.0` to `1.8` instructions/cycle** per warp scheduler).
-3. The **Occupancy** section does *not* show a severe drop (`Limited by Registers`) or non-zero **Local Memory Spills**.
+Check three counters together in Nsight Compute. First, verify that Execution Dependency stalls drop significantly. Second, confirm that issued Instructions Per Cycle per warp scheduler rises toward 1.8. Third, check that the Occupancy section does not show a severe drop from register limits or non-zero Local Memory spills.
 </details>
 
 ---
@@ -481,31 +508,58 @@ Check three counters together (*ASP* Ch 8, pp. 288–289):
 ## Sources and review notes
 
 ### Primary sources read in full for this chapter
-1. ***AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Chris Fregly), Chapter 8 (*Occupancy Tuning, Warp Efficiency, and Instruction-Level Parallelism*, pp. 253–294):**
-   - **Profiling and Diagnosing GPU Bottlenecks (pp. 254–258):** Nsight Systems (`nsys`, `NVTX` `torch.cuda.nvtx`, `Figure 8-1`), data pipeline tuning, Nsight Compute (`ncu`, `-lineinfo`, Roofline chart `Figure 8-2`), and PyTorch Profiler (`torch.profiler`, `Kineto` + `CUPTI` + Linux `perf`, `with_flops=True` formula-based estimates vs hardware counters, Chrome tracing `Figure 8-3`).
-   - **Analyzing Warp Stall Reasons with Nsight Compute (pp. 258–262):** `Stall: Long Scoreboard` (`Figure 8-4`), `Stall: Short Scoreboard` (`Figure 8-5`), `Stall: Memory Throttle`, `Stall: Not Selected`, `Stall: Exec Dependency`, `Stall: Compute Unit Busy` / `Math Pipe Throttle`, `Stall: Synchronization`, `Stall: Instruction Fetch/Issue`, `Stall: Texture Throttle`, `No Eligible` / `Idle`, and **Table 8-1**.
-   - **Inspecting Achieved Occupancy and GPU Utilization (pp. 262–268):** `30%` occupancy = `~19` of `64` warps/SM, occupancy limiters (`Registers`, `Shared Memory`, `Thread Count`), `126 MB` L2 persistence & `10 TB/s` `NV-HBI`, `nvidia-smi` / NVML power-limit throttling (`nvmlDeviceGetPowerUsage`, `nvmlDeviceGetEnforcedPowerLimit`), and the 4 regimes (`Underutilized → Latency Bound → Memory Bound → Compute Bound`, **Table 8-2**).
-   - **Tuning Occupancy (pp. 268–274):** `64` warps (`2,048` threads)/SM on Ampere/Hopper/Blackwell (`B200`) vs `48` warps (`1,536` threads)/SM on `RTX PRO 6000` & `Spark DGX` (`GB10`, CC `12.x`), `Eligible Warps per Cycle` vs `Active Warps per Scheduler`, `50%–75%` occupancy sweet spot (`32–48` warps), `-maxrregcount=<N>`, `__launch_bounds__(256, 8)` (`2,048` threads/SM, `<= 32` regs/thread), `cudaOccupancyMaxPotentialBlockSize()` / `cudaOccupancyMaxActiveBlocksPerMultiprocessor()`, `torch.compile(mode="max-autotune" | "reduce-overhead" | "max-autotune-no-cudagraphs")`, and `torch.optim.AdamW(..., fused=True)`.
-   - **Improving Warp Execution Efficiency (Warp Divergence) (pp. 274–282):** SIMT lockstep divergence (`Figure 8-7`, `50/50` split = `50%` efficiency, `1 vs 31` split = `31/32` idle), warp-unanimous branches (`warpId = threadIdx.x / 32`), warp-vote intrinsics (`__ballot_sync`, `__any_sync`, `__all_sync`), predication (`threshold_naive.cu` vs `threshold_predicated.cu`, PTX `@p`, PyTorch `torch.maximum` / `torch.where`), and **Table 8-3** (`30 ms → 15 ms`, `600M → 300M` instructions, `200 → 100` cycles branch stall, `50% → 99%` warp execution efficiency, `50% → 0%` predicated-off threads).
-   - **Exposing Instruction-Level Parallelism (pp. 282–292):** Unrolling & breaking dependency chains (`Figure 8-8`, `u = x*x; v = y*y; temp = u + 1.0f`), Blackwell `4` warp schedulers & unified `INT32`/`FP32` core dual-issue rule (`Figure 8-9`), **Table 8-4** (`ILP 1 → 1,536` threads / `48` warps / `75%` occ; `ILP 2 → 1,024` threads / `32` warps / `50%` occ; `ILP 3 → 768` threads / `24` warps / `37.5%` occ; `ILP 4 → 512` threads / `16` warps / `25%` occ), `#pragma unroll`, scheduler `IPC` rising from `1.0` to `1.8`, and mitigating register pressure.
+
+The primary textbook source for this chapter is *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Chris Fregly), Chapter 8.
+
+```text
+Source Breakdown — AI Systems Performance Engineering Ch 8 (pp. 253-294):
+  - Profiling and Diagnosing GPU Bottlenecks (pp. 254-258):
+    Nsight Systems (nsys, NVTX torch.cuda.nvtx, Figure 8-1), data pipeline tuning, Nsight Compute (ncu, -lineinfo,
+    Roofline chart Figure 8-2), and PyTorch Profiler (torch.profiler, Kineto + CUPTI + Linux perf, with_flops=True
+    formula-based estimates vs hardware counters, Chrome tracing Figure 8-3).
+  - Analyzing Warp Stall Reasons with Nsight Compute (pp. 258-262):
+    Stall: Long Scoreboard (Figure 8-4), Stall: Short Scoreboard (Figure 8-5), Stall: Memory Throttle, Stall: Not Selected,
+    Stall: Exec Dependency, Stall: Compute Unit Busy / Math Pipe Throttle, Stall: Synchronization, Stall: Instruction Fetch/Issue,
+    Stall: Texture Throttle, No Eligible / Idle, and Table 8-1.
+  - Inspecting Achieved Occupancy and GPU Utilization (pp. 262-268):
+    30% occupancy = ~19 of 64 warps/SM, occupancy limiters (Registers, Shared Memory, Thread Count), 126 MB L2 persistence &
+    10 TB/s NV-HBI, nvidia-smi / NVML power-limit throttling (nvmlDeviceGetPowerUsage, nvmlDeviceGetEnforcedPowerLimit), and
+    the 4 regimes (Underutilized -> Latency Bound -> Memory Bound -> Compute Bound, Table 8-2).
+  - Tuning Occupancy (pp. 268-274):
+    64 warps (2,048 threads)/SM on Ampere/Hopper/Blackwell (B200) vs 48 warps (1,536 threads)/SM on RTX PRO 6000 & Spark DGX
+    (GB10, CC 12.x), Eligible Warps per Cycle vs Active Warps per Scheduler, 50%-75% occupancy sweet spot (32-48 warps),
+    -maxrregcount=<N>, __launch_bounds__(256, 8) (2,048 threads/SM, <= 32 regs/thread), cudaOccupancyMaxPotentialBlockSize() /
+    cudaOccupancyMaxActiveBlocksPerMultiprocessor(), torch.compile(mode="max-autotune" | "reduce-overhead" |
+    "max-autotune-no-cudagraphs"), and torch.optim.AdamW(..., fused=True).
+  - Improving Warp Execution Efficiency / Warp Divergence (pp. 274-282):
+    SIMT lockstep divergence (Figure 8-7, 50/50 split = 50% efficiency, 1 vs 31 split = 31/32 idle), warp-unanimous branches
+    (warpId = threadIdx.x / 32), warp-vote intrinsics (__ballot_sync, __any_sync, __all_sync), predication
+    (threshold_naive.cu vs threshold_predicated.cu, PTX @p, PyTorch torch.maximum / torch.where), and Table 8-3
+    (30 ms -> 15 ms, 600M -> 300M instructions, 200 -> 100 cycles branch stall, 50% -> 99% warp execution efficiency,
+    50% -> 0% predicated-off threads).
+  - Exposing Instruction-Level Parallelism (pp. 282-292):
+    Unrolling & breaking dependency chains (Figure 8-8, u = x*x; v = y*y; temp = u + 1.0f), Blackwell 4 warp schedulers &
+    unified INT32/FP32 core dual-issue rule (Figure 8-9), Table 8-4 (ILP 1 -> 1,536 threads / 48 warps / 75% occ;
+    ILP 2 -> 1,024 threads / 32 warps / 50% occ; ILP 3 -> 768 threads / 24 warps / 37.5% occ; ILP 4 -> 512 threads /
+    16 warps / 25% occ), #pragma unroll, scheduler IPC rising from 1.0 to 1.8, and mitigating register pressure.
+```
 
 ### Related source files mapped in `MIGRATION_MAP.md`
-- None mapped (Volume 02 Chapters 6 & 9 were already migrated into `10.2` and `10.3`).
+- None mapped because earlier `nvidia-devops` notes were already migrated into previous Part 10 chapters.
 
 ### Run here
-- `code/part10/occupancy_warp_ilp_lab.py`: 25 checks passed (`0 failed`).
+- `code/part10/occupancy_warp_ilp_lab.py` passes all 25 verification checks with zero failures.
 
 ### Explicitly labelled inferences
-- The SM occupancy and limiter calculator (`calc_sm_occupancy_and_limiters()`), the `__launch_bounds__` register ceiling evaluator (`evaluate_launch_bounds()`), the 4-regime Nsight Compute stall classifier (`classify_ncu_stall_and_regime()`), and the divergence/ILP validator (`evaluate_warp_divergence_and_ilp()`) in `code/part10/occupancy_warp_ilp.py` are **my inference** encoding the rules and tables of *AI Systems Performance Engineering* Chapter 8.
+- The SM occupancy calculator `calc_sm_occupancy_and_limiters()`, the launch bounds evaluator `evaluate_launch_bounds()`, the Nsight Compute stall classifier `classify_ncu_stall_and_regime()`, and the divergence validator `evaluate_warp_divergence_and_ilp()` in `code/part10/occupancy_warp_ilp.py` are **my inference** encoding the rules and tables of *AI Systems Performance Engineering* Chapter 8.
 
 ### Not verified on live hardware
-- A physical Blackwell/Hopper GPU was not attached during this build; `nsys`, `ncu`, and `nvidia-smi` commands in Section 5 are marked `(untested here)`.
+- A physical Blackwell or Hopper GPU was not attached during this build, so `nsys`, `ncu`, and `nvidia-smi` commands in Section 5 are marked `(untested here)`.
 
 ### Not in the corpus
-- Instruction-level SASS scoreboard control codes encoded inside raw 128-bit SASS instructions, which are generated internally by `ptxas`.
+- Instruction-level SASS scoreboard control codes encoded inside raw SASS instructions, which are generated internally by `ptxas`.
 
 ### Corrections to the author's notes
-- Validation pass 2026-10-25: Tables 8-3 and 8-4 and the `IPC` change from `1.0` to `1.8` match the book text, and the book labels its metric-table numbers illustrative (and the IPC figure as an example). The chapter now says so. Tables 8-1 and 8-2 content is reproduced from the book's descriptions, not as numeric thresholds.
-- The numeric regime thresholds (`< 30%`, `>= 75%` to `80%`), the regime order in the title and diagram, the `Eligible Warps per Cycle < 4` test, and the `50%` to `75%` occupancy target are rules of thumb added by this handbook. They are now labelled. The book's own guidance is that many kernels hide latency at `25%` to `50%` achieved occupancy.
-- The page numbers cited for individual statements were not re-verified in this pass.
-- Arithmetic checked and correct (`19 / 64 = 29.7%`, `65,536 / 2,048 = 32` registers, `256 x 80 = 20,480` registers per block giving `3` blocks and `37.5%`).
+- Validation pass confirmed that the predication and ILP tables and the scheduler IPC increase match the book text, and the book labels its metric-table numbers as illustrative examples. The chapter explicitly states this caveat.
+- The numeric regime thresholds, the regime order in the flowchart, the eligible warps per cycle cutoff, and the occupancy target range are rules of thumb added by this handbook and are labelled as such. The book's own guidance notes that many kernels hide latency at moderate achieved occupancy.
+

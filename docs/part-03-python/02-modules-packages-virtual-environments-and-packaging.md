@@ -63,6 +63,55 @@ import os.path as osp
 - **Reloading** (`importlib.reload`) re-executes the module in the same namespace; it is a development convenience, not a production update mechanism.
 - Keep import-time code cheap and side-effect free: no network calls, no reading config files, no starting threads, no heavy imports at module top level in CLI tools (import inside functions when startup time matters; measure with `python -X importtime`).
 
+### `import` versus `from`: shared references, cross-file mutation, and `reload()`
+
+Both `import` and `from` are runtime assignment statements. Conceptually, `from module import name1, name2` runs `import module`, assigns `name1 = module.name1` and `name2 = module.name2` in the importer's scope, and deletes `module` from the importer's scope. Because `from` copies object references into local variables rather than creating a two-way link back to the source module, rebinding, in-place mutation, and reloading behave differently:
+
+- **Rebinding a copied name vs mutating a module attribute:** Assigning `x = 99` after `from mod import x` only rebinds the importer's local variable `x`; `mod.x` is unchanged. To change the attribute inside `mod` itself so other importers see the new binding, qualify through the module object (`import mod; mod.x = 99`).
+- **Mutating a shared mutable object in place:** If `x` refers to a mutable object such as a list, mutating it in place (`x.append(...)` or `y[0] = 'hack'`) modifies the shared object itself and is visible in both the importer and the source module.
+- **Why `importlib.reload(mod)` does not update `from` imports:** `reload(mod)` re-executes the module file in place, updating `mod.__dict__`. Callers that access attributes via `mod.x` immediately see the updated objects, whereas callers that previously ran `from mod import x` still hold references to the old objects acquired before the reload (unless they re-run `from mod import x`).
+
+```python
+# In the book's share.py example (untested here):
+# share.py:
+# x = 1
+# y = [1, 2]
+
+from share import x, y       # copies references into the importer's namespace
+x = 'hack'                   # rebinds only the importer's local x; share.x is still 1
+y[0] = 'hack'                # mutates the shared list in place; share.y is now ['hack', 2]
+
+import share
+share.x = 23                 # mutates the module attribute across files
+```
+
+### Data hiding (`_X` and `__all__`) and top-level execution order
+
+Python modules have no enforced `private` keyword; all top-level names are exported attributes. Two conventions control what `from module import *` copies out:
+
+- **Single leading underscore (`_X`):** When `__all__` is not defined, `from module import *` skips any top-level name starting with a single underscore (in the book's `unders.py` example `a, b, _c, _d = 1, 2, 3, 4`, `from unders import *` copies only `a` and `b`).
+- **Explicit export list (`__all__`):** Assigning a list of name strings to `__all__` at the top level of a module tells `from module import *` to copy **only** those listed names—taking precedence over the `_X` rule (in the book's `alls.py` example `__all__ = ['a', '_c']; a, b, _c, _d = 1, 2, 3, 4`, `from alls import *` copies `a` and `_c`, but not `b` or `_d`). Neither `_X` nor `__all__` blocks explicit access via `import alls; alls._d` or `from alls import b, _d`.
+
+When a module is first imported (or reloaded), Python executes its top-level statements sequentially from top to bottom:
+
+- **Top-level code** runs immediately as Python reaches each line and cannot reference names assigned lower in the file.
+- **Function bodies (`def`)** do not run until the function is called. A function can reference names defined later in the file as long as those definitions have executed by the time the function is called:
+
+```python
+# In the book's forward-reference example (untested here):
+# func1()              # NameError: func1 not yet assigned
+
+def func1():
+    print(func2())     # OK when called after func2 is defined
+
+# func1()              # NameError: func2 not yet assigned when func1 runs here
+
+def func2():
+    return "Hello"
+
+func1()                # OK: both func1 and func2 have been assigned -> prints "Hello"
+```
+
 ### Where Python finds modules
 
 `import X` consults, in order: `sys.modules` (cache), built-in modules, then the **finders** on `sys.meta_path`, which search the directories in `sys.path`:
@@ -393,7 +442,7 @@ Mark tested only after execution.
 
 ## 13. Checkpoint questions (35)
 
-1. What is a module? **A:** A file (or built-in) providing a namespace; executed once on import.
+1. What is a module, and how do `from mod import x` and `import mod` differ when rebinding `x` or calling `importlib.reload(mod)`? **A:** A module is a file (or built-in) providing a namespace executed top-to-bottom once on first import; `from mod import x` copies the reference into the importer's namespace (so `x = 99` only rebinds locally and `reload(mod)` leaves the copied `x` pointing to the old object), whereas `import mod` accesses attributes on the shared module object (`mod.x`).
 2. What is cached in `sys.modules`? **A:** Imported module objects.
 3. Import search order? **A:** `sys.modules`, built-ins, then `sys.path` entries.
 4. First entry on `sys.path` for a script? **A:** The script's directory.
@@ -433,7 +482,7 @@ Mark tested only after execution.
 
 **Written in original words.** Principal sources:
 
-- Mark Lutz, *Learning Python*, 6th ed., part V (modules and packages: the big picture, module coding basics, module packages, module odds and ends).
+- Mark Lutz, *Learning Python*, 6th ed. (`learning-python-6th-edition`, part V: modules and packages—with `Chapter 23. Module Coding Basics` and `Chapter 25. Module Odds and Ends` read in full for this chapter—covering the big picture, module coding basics, `import` vs `from` reference copying and `reload()`, module packages, data hiding with `_X` and `__all__`, top-level statement execution order, and module odds and ends).
 - The author's `nvidia-devops` repository, volume 02 (Python fundamentals and tooling masterclasses) and the volume on GPU/NVIDIA software stacks for the CUDA/driver packaging scenarios.
 - Packaging standards (PEP 440, 517/518, 621, 668, 420, 427, 503/691) and the documentation of pip, uv, pip-tools, Poetry, Hatch, conda and the Python Packaging User Guide informed the details.
 - Examples are the author's constructions.

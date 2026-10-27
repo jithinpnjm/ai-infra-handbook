@@ -239,6 +239,56 @@ Core rules (mirrors 5.6): idempotence; level-triggered; short reconciles (no lon
 
 Guideline: if you only need templated resources, use Helm/Kustomize/Crossplane; if you need runtime decisions (health, ordering, rolling operations, interaction with node hardware or external APIs), write a controller (Go for production-grade; Python/kopf for prototypes and small scopes).
 
+### Programming the Kubernetes API from Python (`kubernetes` OpenAPI client)
+
+While Go (`client-go` and `controller-runtime`, covered in 5.30 and 5.31) is the primary language for cluster-core controllers, ML platform engineers frequently write automation, job launch wrappers, and lightweight controllers in Python using the official OpenAPI-generated `kubernetes` client library (`pip install kubernetes`). Because the official Python, Java, and .NET clients are generated from Kubernetes's OpenAPI specification (and you can inspect the exact HTTP calls any `kubectl` command makes by passing `--v=10`), they share a uniform structure around API groups (`CoreV1Api`, `AppsV1Api`) and namespaced versus cluster-scoped methods. As *Kubernetes: Up and Running* (3rd edition, Chapter 18) demonstrates, the core Python patterns are (untested here):
+
+```python
+from kubernetes import client, config, watch
+from kubernetes.stream import portforward, stream
+
+# 1. Authenticate: load $KUBECONFIG / ~/.kube/config outside a cluster,
+#    or the mounted ServiceAccount token + CA inside a Pod:
+config.load_kube_config()          # or: config.load_incluster_config()
+
+v1 = client.CoreV1Api()
+apps_v1 = client.AppsV1Api()
+
+# 2. List namespaced Pods:
+pod_list = v1.list_namespaced_pod("default")
+
+# 3. Construct and create a Pod (or patch a resource):
+container = client.V1Container(name="myapp", image="my_cool_image:v1")
+pod = client.V1Pod(
+    metadata=client.V1ObjectMeta(name="myapp"),
+    spec=client.V1PodSpec(containers=[container]),
+)
+v1.create_namespaced_pod(namespace="default", body=pod)
+# Partial updates use patch_namespaced_pod / patch_namespaced_deployment:
+# v1.patch_namespaced_pod(name="myapp", namespace="default", body=pod)
+
+# 4. Watch a resource stream (event-driven hanging GET instead of polling):
+w = watch.Watch()
+for event in w.stream(v1.list_namespaced_pod, "some-namespace"):
+    print(event["type"], event["object"].metadata.name)
+
+# 5. Read Pod logs and execute commands over WebSockets (stream):
+log = v1.read_namespaced_pod_log(name="my-pod", namespace="some-namespace")
+cmd = ["ls", "/foo"]
+response = stream(
+    v1.connect_get_namespaced_pod_exec,
+    "my-pod",
+    "some-namespace",
+    command=cmd,
+    stderr=True,
+    stdin=False,
+    stdout=True,
+    tty=False,
+)
+```
+
+For higher-level platform abstractions built on top of CRDs and operators (such as the `Team` self-service onboarding CRD and Pinterest's `PinterestService` workload CRD from *Production Kubernetes*, Chapter 16), see Chapter 5.22 (§4).
+
 ## 4. Packaging, distribution and lifecycle
 
 - **Packaging**: container image for the manager; Kustomize/Helm chart for deployment; **CRDs** shipped separately (Helm `crds/` directory installs but never upgrades; many projects ship CRDs as a separate chart or `kubectl apply --server-side` step, or rely on the operator to apply its own CRDs); RBAC (ClusterRole/Role generated from `+kubebuilder:rbac` markers); webhooks (cert-manager-issued certs, `caBundle` injection); ServiceMonitor, PodDisruptionBudget, NetworkPolicy, PriorityClass for the manager.
@@ -342,7 +392,7 @@ Mark tested only after execution.
 23. Level 5 means? **A:** Auto pilot.
 24. Standard Go framework? **A:** controller-runtime/kubebuilder.
 25. Helm operator limit? **A:** Template-only logic.
-26. Python operator framework? **A:** kopf.
+26. In the official Python `kubernetes` client (`pip install kubernetes`), which functions load kubeconfig versus in-cluster ServiceAccount credentials, stream watch events, and run `exec` inside a Pod? **A:** `config.load_kube_config()` vs `config.load_incluster_config()`; `watch.Watch().stream(v1.list_namespaced_pod, ...)`; and `stream(v1.connect_get_namespaced_pod_exec, ...)` (with `kopf` as a higher-level Python operator framework).
 27. Crossplane use? **A:** Compose resources into APIs.
 28. OLM objects? **A:** CSV, CatalogSource, Subscription, OperatorGroup.
 29. Helm `crds/` behaviour? **A:** Installs but doesn't upgrade/delete.
@@ -357,7 +407,8 @@ Mark tested only after execution.
 
 **Written in original words.** Principal sources:
 
-- Brendan Burns et al., *Kubernetes: Up and Running* (3rd edition; chapters 17 and 18 on extending Kubernetes and the operator pattern).
+- Brendan Burns et al., *Kubernetes: Up and Running* (`kubernetes-up-and-running-3rd-edition`, 3rd edition; Chapter 17 on extending Kubernetes and Chapter 18: `18. Accessing Kubernetes from Common Programming Languages` — read in full for OpenAPI client generation, `kubectl --v=10`, and Python `kubernetes` client authentication, CRUD/patch, `watch.Watch().stream`, and `stream(v1.connect_get_namespaced_pod_exec, ...)`).
+- Josh Rosso, Rich Lander, Alex Brand and John Harris, *Production Kubernetes* (`production-kubernetes`, Chapter 11 on building platform services and Chapter 16: `16. Platform Abstractions` — read in full for custom workload and onboarding CRDs).
 - Michael Hausenblas and Stefan Schimanski, *Programming Kubernetes* (custom resources, controllers, API machinery, versioning and conversion).
 - BCM containerization material in the study corpus (operators in NVIDIA stacks) where referenced.
 - Kubernetes CRD documentation, kubebuilder book, Operator SDK and OLM documentation, NVIDIA GPU Operator and Network Operator documentation.

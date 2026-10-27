@@ -116,6 +116,19 @@ sacctmgr modify user alice set qos=normal,urgent defaultqos=normal
 
 Partition-level QOS (`QOS=` on a partition) extends limits for jobs in that partition; where a limit exists in both the partition QOS and the job QOS, the partition QOS wins unless the job QOS has `OverPartQOS` (man page).
 
+### The 6-level QoS and association limit precedence order
+
+Because a single job can inherit limits from a partition, a job QoS, a user association, parent accounts, and the cluster root, Slurm evaluates conflicting limit definitions in a strict **6-level precedence order** (as given in Chapter 15 of *Supercomputers for Linux SysAdmins*):
+
+1. **Partition QOS limit** (if `Flags=OverPartQOS` is set on the Job QoS, this moves after Job QoS)
+2. **Job QOS limit**
+3. **User association**
+4. **Account association(s)**, ascending the hierarchy
+5. **Root/cluster association**
+6. **Partition limit**
+
+Also note that when Slurm compares whether one job has higher overall scheduling priority (or preemption authority) than another, it checks four levels in order: (1) **Reservation** (jobs with a reservation come first), (2) **Partition priority tier** (`PriorityTier`), (3) **Job priority** (the calculated multifactor integer), and (4) **Job ID** (earlier submissions with a lower job ID win ties).
+
 ## 3. Priority: the multifactor formula
 
 With `PriorityType=priority/multifactor` each pending job gets an integer priority (0 to 4,294,967,295; higher runs sooner). From the multifactor documentation:
@@ -260,6 +273,27 @@ Requirements: three teams with purchased shares (50/30/20), research bursts allo
 8. **Reporting**: `sreport cluster AccountUtilizationByUser`, `sreport cluster utilization`, `sacct -X --format=...` for monthly chargeback; review wait time per QOS.
 9. **Review loop**: monthly policy review comparing waiting times and utilisation; avoid tuning weights ad hoc during a crunch.
 
+### Concrete `sacct` and `sreport` reporting commands (from the book)
+
+Once accounting is active, `sacct` queries per-job records (and `sstat` queries live running-job CPU, memory, and disk utilization when `jobacct_gather` is enabled), while `sreport` aggregates utilization across three top-level report classes: `cluster` (total utilization), `job` (task size classes by CPU count, grouped by account), and `user` (top users by resource consumption). The book's Chapter 15 provides four ready-to-use reporting invocations (`(untested here)`):
+
+```bash
+# (untested here) — 1. One-day job summary: JobID, Partition, User, core-seconds (CPUTimeRAW), State
+sacct -S 2024-01-01 -E 2024-01-02 \
+  -o JobID,Partition,User%16,CPUTimeRAW,State%20 -X
+
+# (untested here) — 2. Weekly job size breakdown by account (0–16 cores, 17–1024 cores, and >1024 cores, in minutes)
+sreport job SizesByAccount grouping=0-16,17-1024 \
+  start=2024-01-01 end=2024-01-07
+
+# (untested here) — 3. Monthly cluster utilization percentages (Allocated, Down, PLND Down, Idle, Planned, Reported)
+sreport cluster utilization Start=2024-11-01 End=2024-12-01 -t percent
+
+# (untested here) — 4. Top 5 users by resource utilization over a month (reported in TRES Minutes and Energy)
+sreport user topusage topcount=5 start=2024-01-10 \
+  end=2024-02-10
+```
+
 Alternatives: reservations (`scontrol create reservation`) for guaranteed windows (training runs, exams, demos); hard partitions per team (simple, wasteful); dedicated nodes via `AllowAccounts`; a Kubernetes layer with Kueue where quota/borrowing semantics are expressed as ClusterQueue and cohort (Part 11, 14).
 
 ## 8. Why is my job pending: a decision list
@@ -306,7 +340,7 @@ Alternatives: reservations (`scontrol create reservation`) for guaranteed window
 5. Compare the default sum and `MAX_TRES` billing on the documentation's example.
 6. Difference between `GrpTRES` and `MaxTRESPerUser`.
 7. What does `GrpTRESMins` limit?
-8. What does a QOS contain?
+8. What does a QOS contain, what is Slurm's 6-level precedence order for enforcing limits, and which three `sreport` commands report job size groupings by account, cluster utilization percentage, and top users? **A:** A QOS bundles a priority factor, Grp\*/Max\* limits, preemption settings and grace time, a usage factor, and flags (such as `DenyOnLimit`, `NoReserve`, `OverPartQOS`). When limits conflict, Slurm enforces them in this 6-level order: (1) Partition QOS limit (moves after Job QOS if `OverPartQOS` is set), (2) Job QOS limit, (3) User association, (4) Account association(s) ascending the hierarchy, (5) Root/cluster association, and (6) Partition limit. The three `sreport` commands are `sreport job SizesByAccount grouping=0-16,17-1024 start=... end=...`, `sreport cluster utilization Start=... End=... -t percent`, and `sreport user topusage topcount=5 start=... end=...`.
 9. What do `DenyOnLimit` and `NoReserve` do?
 10. What is `UsageFactor` for?
 11. Write the multifactor priority formula.
@@ -332,7 +366,7 @@ Alternatives: reservations (`scontrol create reservation`) for guaranteed window
 
 ## 12. Sources and review notes
 
-- Accounting concepts, partitions, GRES, backfill and preemption as a sysadmin sees them: *Supercomputers for Linux SysAdmins* chapter 15 (Slurm), restated in my words.
+- Accounting concepts, the 6-level QoS/association limit precedence order, `sacct` and `sreport` commands (`sreport job SizesByAccount`, `sreport cluster utilization`, `sreport user topusage`), partitions, GRES, backfill and preemption (read in full: `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`, "15. Slurm").
 - Priority formula, factor descriptions, normalisation, TRES billing examples, Fair Tree and Level FS, decay: Slurm documentation pages `priority_multifactor`, `fair_tree`, `classic_fair_share`, `preempt`, `qos`, and man pages `slurm.conf(5)`, `sacctmgr(1)`, from SchedMD/slurm commit `521370b` (development version).
-- Original: `code/part06/fairtree_sim.py` (run; output shown above) and the policy design. The simulator ignores ties, per-partition associations, TRES billing details and many edge cases and must not be used to predict a production queue.
-- Unverified here: sacctmgr option spellings in the examples (checked against the man page headings only), typical backfill tuning values, behaviour on releases older than the documentation read.
+- Run here: `code/part06/fairtree_sim.py` (output shown above). The simulator ignores ties, per-partition associations, TRES billing details and many edge cases and must not be used to predict a production queue.
+- Not verified on live hardware: `sacctmgr`, `sacct`, `sreport`, `sprio`, `sshare`, `squeue` commands, sacctmgr option spellings in the examples (checked against the man page headings only), typical backfill tuning values, and behaviour on releases older than the documentation read.

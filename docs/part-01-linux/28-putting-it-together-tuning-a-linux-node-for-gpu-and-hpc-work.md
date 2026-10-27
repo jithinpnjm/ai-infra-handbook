@@ -195,7 +195,7 @@ Requires=nvidia-persistenced.service
 
 - **Local allocation**: by default a process allocates from the NUMA node of the CPU it runs on. Memory allocated before pinning, or by migrated threads, may be remote. Bind with `numactl --cpunodebind=N --membind=N` (or the Slurm/Kubernetes equivalents) at launch.
 - **Policy inheritance is not always reliable**: `numactl` policy is inherited by `fork`ed children, but not necessarily by `spawn`ed/`exec`ed workers, threads created by some Python frameworks, or processes started by container runtimes. **Re-assert binding explicitly in every worker** (section 7) and verify with `numastat -p PID` / `/proc/PID/numa_maps` and `taskset -cp`.
-- **Pinned (page-locked) memory** (`cudaHostAlloc`, PyTorch `pin_memory=True`) allows true asynchronous DMA and is often 2 to 3x faster for host-to-device copies than pageable memory; it is a limited resource: raise `RLIMIT_MEMLOCK`, and remember pinned memory counts against cgroup memory limits and cannot be swapped.
+- **Pinned (page-locked) memory** (`cudaHostAlloc`, PyTorch `pin_memory=True` paired with `non_blocking=True` on host-to-device copies) allows true asynchronous DMA and achieves `2x–3x` higher host-to-device PCIe throughput than pageable memory; you can measure the difference directly on the host with the CUDA utility `bandwidthTest --memory=pinned` versus `bandwidthTest --memory=pageable` (untested here). Pinned memory is a limited resource: raise `RLIMIT_MEMLOCK` (`ulimit -l`), and remember pinned memory counts against cgroup memory limits and cannot be swapped.
 - **Huge pages**: use THP policy per section 4, or explicit huge pages for pinned buffers and RDMA registrations; typical gains of a few percent via fewer page faults and TLB misses (workload dependent).
 - **Allocators**: tune `jemalloc` (`MALLOC_CONF="narenas:8,background_thread:true,dirty_decay_ms:10000,muzzy_decay_ms:10000"`) or `tcmalloc` (larger thread caches) for data-pipeline processes that allocate heavily; this keeps freed memory from being returned and re-faulted constantly. Measure.
 - **Swap**: avoid. A swapped host page behind a GPU copy costs orders of magnitude. If swap exists for safety, set low swappiness and per-job `memory.swap.max=0`.
@@ -236,6 +236,11 @@ def bind(node):
 # DataLoader(..., num_workers=N, persistent_workers=True, pin_memory=True, worker_init_fn=lambda wid: bind(node))
 # do not call CUDA APIs inside worker_init_fn; pass the node by closure/env var
 ```
+
+In the book's full `get_gpu_numa_node(device)` helper, the GPU-to-NUMA lookup follows an explicit fallback chain:
+1. **NVML** (`pynvml`, preferred): normalize the GPU's PCI bus ID from `torch.cuda.get_device_properties(device).pci_bus_id` to an 8-hex-digit domain (`nvmlDeviceGetHandleByPciBusId_v2`), query `nvmlDeviceGetNUMANodeId(handle)` directly if the driver exposes it, or otherwise read the GPU's CPU-affinity bitmask via `nvmlDeviceGetCpuAffinity(handle, elems)` and map those CPUs against `/sys/devices/system/node/node*/cpulist` to pick the majority NUMA node.
+2. **sysfs fallback**: read `/sys/bus/pci/devices/<bdf>/numa_node` (returning `0` if the value is negative).
+3. **CLI / process fallback**: query `nvidia-smi topo -m -i $GPU | awk '/NUMA Affinity/ {print $NF}'` (untested here) in shell scripts or fall back to the preferred node reported by `numactl --show` (untested here).
 
 (`numa_run_on_node` restricts CPU placement; `numa_set_preferred` biases allocations; stricter memory binding uses `set_mempolicy`/`numa_bind`; check libnuma availability, version and soname on your distribution.) Set `OMP_NUM_THREADS`, `MKL_NUM_THREADS`, `OMP_PROC_BIND`, `OMP_PLACES` so thread pools match the cores you gave each rank; oversubscription is a common silent loss. Gains reported from eliminating cross-NUMA traffic and migrations are in the range of several percent and, more importantly, lower run-to-run jitter.
 
@@ -278,21 +283,21 @@ Reserve housekeeping cores (kernel threads, kubelet, containerd, monitoring agen
 
 | Setting | How | Guidance |
 |---|---|---|
-| **Persistence mode** | `nvidia-persistenced` service (preferred) or `nvidia-smi -pm 1` | Keep the driver initialised; avoids seconds of startup per job; negligible idle power cost; enable on all nodes |
+| **Persistence mode** | `nvidia-persistenced` service (`systemctl enable nvidia-persistenced`, preferred) or `nvidia-smi -pm 1` (untested here) | Keep the driver initialised; saves `1–2 seconds` of cold driver initialization latency per job; negligible idle power cost; enable on all nodes |
 | **Driver stays loaded** | Do not unload modules between jobs | Reload only for upgrades/troubleshooting |
-| **Application clocks / locked clocks** | `nvidia-smi -lgc min,max`, `-rgc`; `-lmc` for memory | For benchmarking determinism; in production leave Boost on unless variance is a problem (then lock to a validated value); record the policy |
-| **Power limit** | `nvidia-smi -pl W` | A slightly lower limit can reduce thermal throttling with minimal loss; or enforce rack power budgets; note the permitted range per SKU |
-| **ECC** | `nvidia-smi -e 1` (needs reset) | Keep enabled on data-centre GPUs; disabling saves little and removes protection |
-| **Compute mode** | `nvidia-smi -c DEFAULT` / `EXCLUSIVE_PROCESS` | Default for typical jobs; exclusive process for MPS or strict isolation |
-| **MIG** | `nvidia-smi -mig 1` (reset needed), create GPU instances/compute instances; GPU Operator MIG Manager in Kubernetes | Only for multi-tenant small jobs/inference; no NCCL across MIG instances; plan partitions up front |
-| **MPS** | `nvidia-cuda-mps-control -d`, `CUDA_MPS_ACTIVE_THREAD_PERCENTAGE` | Overlap kernels from several processes on one GPU (inference packing); no memory isolation; same-user considerations |
+| **Application clocks / locked clocks** | `nvidia-smi -lgc min,max` (lock GPU core clocks), `-rgc`, `nvidia-smi -ac <mem_clock>,<graphics_clock>` (application clocks for memory and graphics, untested here); `-lmc` for memory | For benchmarking determinism so thermal throttling in later runs does not skew results; in production leave GPU Boost on unless variance is a problem (then lock to a validated value); record the policy |
+| **Power limit** | `nvidia-smi -pl W` (untested here) | A slightly lower limit below TDP can reduce thermal throttling with minimal loss; or enforce rack power budgets; note the permitted range per SKU |
+| **ECC** | `nvidia-smi -e 1` (needs reset, untested here) | Keep enabled on data-centre GPUs; disabling saves little and removes protection |
+| **Compute mode** | `nvidia-smi -c DEFAULT` / `EXCLUSIVE_PROCESS` (untested here) | Default for typical jobs; exclusive process for MPS or strict isolation |
+| **MIG** | `nvidia-smi -mig 1` (reset needed, untested here), create GPU instances/compute instances; GPU Operator MIG Manager in Kubernetes | Only for multi-tenant small jobs/inference; no cross-GPU MIG P2P, CUDA IPC across GPU instances, or NCCL across MIG instances; plan partitions up front |
+| **MPS** | `nvidia-cuda-mps-control -d` (untested here), `CUDA_MPS_ACTIVE_THREAD_PERCENTAGE` | Overlap kernels from several processes on one GPU (inference packing); no memory isolation; same-user considerations |
 | **Kubernetes time-slicing** | Device plugin config | Coarse sharing without overlap |
-| **Fabric Manager** | `nvidia-fabricmanager.service` (versions must match driver) | Mandatory on NVSwitch systems; verify `nvidia-smi nvlink -s` |
-| **Retired pages / row remapping, Xid** | `nvidia-smi -q -d PAGE_RETIREMENT,ROW_REMAPPER`, `journalctl -k \| grep Xid` | Health checks; replace GPUs per vendor RMA thresholds |
-| **GPUDirect Storage / RDMA** | `nvidia-fs`, `nvidia_peermem`, supported filesystems/NICs | Enable where supported; validate with `gdscheck`, `ib_write_bw --use_cuda` |
-| **Memory oversubscription** | CUDA managed memory / UVM page migration | Safety net, not a performance feature; avoid for training |
-| **Framework allocator** | `PYTORCH_ALLOC_CONF` (e.g. `expandable_segments`), `torch.cuda.empty_cache()` sparingly | Fragmentation vs reuse; diagnose with `memory_summary()` |
-| **CUDA / driver compatibility** | Host driver at least as new as the CUDA runtime in the container requires | Check NVIDIA's compatibility tables (CUDA 12.x and 13.x need different minimum driver branches); containers carry the CUDA runtime, hosts the driver |
+| **Fabric Manager** | `nvidia-fabricmanager.service` (versions must match driver) | Mandatory on NVSwitch systems; verify `nvidia-smi nvlink -s` (untested here) |
+| **Retired pages / row remapping, Xid** | `nvidia-smi -q -d PAGE_RETIREMENT,ROW_REMAPPER`, `journalctl -k \| grep Xid` (untested here) | Health checks; replace GPUs per vendor RMA thresholds |
+| **GPUDirect Storage / RDMA** | `nvidia-fs`, `nvidia_peermem`, supported filesystems/NICs | Enable where supported; validate with `gdscheck`, `ib_write_bw --use_cuda` (untested here) |
+| **Memory oversubscription** | CUDA managed memory / UVM page migration (Hopper/Blackwell Page Migration Engine, PME) | Safety net, not a performance feature; avoid for training |
+| **Framework allocator** | `PYTORCH_ALLOC_CONF=expandable_segments:True,max_split_size_mb:128` (formerly `PYTORCH_CUDA_ALLOC_CONF`), `TF_FORCE_GPU_ALLOW_GROWTH=true` for TensorFlow on-demand VRAM growth instead of pre-allocating all GPU memory, `torch.cuda.empty_cache()` sparingly | Fragmentation vs reuse; diagnose with `torch.cuda.memory_stats()` and `torch.cuda.memory_summary()` |
+| **CUDA / driver compatibility** | Host driver at least as new as the CUDA runtime in the container requires (`R580` or newer for CUDA 13.x; `R525` or newer for CUDA 12.x; `cuda-compat` forward compatibility across minor/major updates; PTX + CUBIN fatbinaries across hardware generations) | Check NVIDIA's compatibility tables; containers carry the CUDA runtime (`libcudart.so`), hosts inject the driver libraries (`libcuda.so`, `libnvidia-ml.so`) |
 
 Order of operations at boot (important): load modules → `nvidia-persistenced` → `nvidia-fabricmanager` → set clocks/power/MIG → start DCGM → run the health check → only then start `slurmd`/`kubelet` (or mark the node schedulable). A node that fails any step stays **drained**.
 
@@ -300,7 +305,7 @@ Order of operations at boot (important): load modules → `nvidia-persistenced` 
 
 ### Container runtime
 
-- NVIDIA Container Toolkit (CDI preferred): the host driver libraries and device nodes are injected into containers; the CUDA runtime comes from the image. Performance with a correctly configured runtime is essentially bare-metal (a few percent at most; chapter 1.19).
+- NVIDIA Container Toolkit (CDI preferred): the host driver libraries (`libcuda.so`, `libnvidia-ml.so`) and device nodes (`/dev/nvidia0`, `/dev/nvidiactl`, `/dev/nvidia-uvm`, `/dev/nvidia-modeset`) are injected into containers, while the CUDA runtime (`libcudart.so`) comes from the image. Performance with a properly configured container environment is within `< 2%` of bare-metal host execution (and Red Hat's `MLPerf Inference v5.0` submission on OpenShift and Kubernetes matched bare-metal efficiency and latency; chapter 1.19).
 - Use **host networking** (`--network=host`, `hostNetwork: true`) or an RDMA device plugin/SR-IOV CNI for NCCL over InfiniBand; with an overlay network you add latency and NAT; if forced, control ports and interfaces (`NCCL_SOCKET_IFNAME`, ephemeral port range).
 - `--ipc=host` or a large `--shm-size` for DataLoader/NCCL shared memory; `--ulimit memlock=-1`; do not bake the driver into images; pin image digests.
 - Avoid the overlay writable layer for data; use bind mounts of NVMe/parallel FS paths.
@@ -489,7 +494,7 @@ Mark the lab tested only after executing it and recording the outputs.
 9. Why do systemd services ignore `limits.conf`? **A:** PAM limits apply to login sessions; services use unit/manager limits.
 10. Why is `memlock` important? **A:** Pinned buffers and RDMA registrations need locked memory.
 11. Why is `numactl` inheritance unreliable for Python workers? **A:** Spawned/exec'd processes and runtime-managed workers may not inherit; re-assert in each worker.
-12. How do you find a GPU's NUMA node robustly? **A:** From its PCI BDF's `numa_node` in sysfs (or NVML).
+12. How does the `get_gpu_numa_node` fallback chain find a GPU's NUMA node, and how do you benchmark pinned vs pageable H2D throughput? **A:** It queries `NVML` first (`nvmlDeviceGetNUMANodeId` or `nvmlDeviceGetCpuAffinity` mapped against `/sys/devices/system/node/node*/cpulist`), falls back to `sysfs` (`/sys/bus/pci/devices/<bdf>/numa_node`), and then to `nvidia-smi topo -m` / `numactl --show`; `bandwidthTest --memory=pinned` vs `bandwidthTest --memory=pageable` measures the `2x–3x` pinned H2D throughput advantage.
 13. What are persistence mode's benefits? **A:** Keeps the driver initialised; removes startup latency; stable state.
 14. When lock GPU clocks? **A:** For benchmarking determinism or if variance is harmful; otherwise leave boost.
 15. Why keep ECC on? **A:** Protects against silent corruption; disabling gains little.
@@ -513,7 +518,7 @@ Mark the lab tested only after executing it and recording the outputs.
 
 **Written in original words.** Principal sources:
 
-- Chris Fregly, *AI Systems Performance Engineering*, chapter 3 (OS, Docker and Kubernetes tuning for GPU environments): NUMA awareness and CPU pinning, NUMA-friendly memory and pinning, huge pages, scheduler and interrupt affinity, swapping, filesystem caching, CPU frequency and C-states, host allocator tuning, GPU driver and runtime settings (persistence, MPS, MIG, clocks, ECC, memory oversubscription), container runtime and CUDA compatibility, Kubernetes topology awareness, scheduling, networking, jitter, resource guarantees, memory isolation, I/O isolation. The NUMA-binding Python example is rewritten in a smaller form here.
+- `ai-systems-performance-engineering` — Chris Fregly, *AI Systems Performance Engineering*, "Chapter 3. OS, Docker, and Kubernetes Tuning for GPU-Based Environments" (read in full): NUMA awareness and CPU pinning (`get_gpu_numa_node` fallback chain: `NVML` → `sysfs` `/sys/bus/pci/devices/<bdf>/numa_node` → `nvidia-smi topo -m` / `numactl --show`), NUMA-friendly memory and pinning (`bandwidthTest --memory=pinned` vs `bandwidthTest --memory=pageable` showing `2x–3x` higher H2D throughput), huge pages, scheduler and interrupt affinity, swapping, filesystem caching, CPU frequency and C-states, host allocator tuning (`jemalloc` and `tcmalloc`), GPU driver and runtime settings (`nvidia-persistenced` / `nvidia-smi -pm 1` saving `1–2 seconds` initialization latency, MPS, MIG, `nvidia-smi -lgc` and `nvidia-smi -ac <mem_clock>,<graphics_clock>`, ECC, `TF_FORCE_GPU_ALLOW_GROWTH=true` and `PYTORCH_ALLOC_CONF`), container runtime overhead (`< 2%` vs bare metal, Red Hat OpenShift/Kubernetes `MLPerf Inference v5.0`) and CUDA compatibility (`R580` for CUDA 13.x, `R525` for CUDA 12.x, `cuda-compat`), Kubernetes topology awareness, scheduling, networking, jitter, resource guarantees, memory isolation, and I/O isolation. The NUMA-binding Python example is rewritten in a smaller form here.
 - Brendan Gregg, *Systems Performance*, 2nd ed., chapter 16 (Case Study: an unexplained win), retold and adapted in section 12.
 - The project's own `nvidia-devops` notes, Volume 10 chapter 3 (kernel and GRUB parameters, sysctl, provisioning with PXE/Kickstart, golden images, DKMS vs prebuilt modules, hardening exceptions for AI nodes, Ansible examples), migrated and rewritten across chapters 1.14, 1.21, 1.22 and this one; its production-hardening contents are in chapter 1.21.
 - *Supercomputers for Linux SysAdmins* (Slurm/HPC node practices) informed the Slurm and housekeeping-core guidance; the Slurm series later in the book covers it fully.

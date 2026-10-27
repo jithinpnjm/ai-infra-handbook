@@ -36,7 +36,8 @@ def calculate_three_phase_circuit_kw(
 
     Source: nvidia-devops Volume 21 Chapter 5 ("3.1 Power Distribution Tiers", lines 164-167):
     Example: 3-phase 208V at 60A is sqrt(3) * 208 * 60 / 1000 = 21.62 kW (~21.6 kW) nameplate,
-    and at 80% continuous derating is 21.62 * 0.80 = 17.29 kW (~17.3 kW) continuous.
+    and at 80% continuous derating is 21.62 * 0.80 = 17.29 kW (~17.3 kW) continuous
+    (2 circuits = 34.6 kW continuous; 4 circuits = 69.2 kW continuous).
     """
     if voltage_v <= 0 or current_a <= 0 or not (0.0 < derating_factor <= 1.0) or not (0.0 < power_factor <= 1.0):
         raise ValueError("Invalid 3-phase circuit parameters.")
@@ -58,7 +59,9 @@ def calculate_sensible_heat_airflow_cfm(
     Source: nvidia-devops Volume 21 Chapter 5 ("2.2 Reference Cooling Design", lines 114-118):
     - delta_t_fahrenheit = delta_t_celsius * 1.8 (for 20 C, delta_t_F = 36 F)
     - CFM = 3.16 * Watts / delta_t_F
-    - Worked example: 81,600 W at 20 C (36 F) rise -> 3.16 * 81600 / 36 = 7,161.6 CFM (~7,160 CFM).
+    - 1 kW = 3,412.14 BTU/hr
+    - Worked example: 81,600 W at 20 C (36 F) rise -> 3.16 * 81600 / 36 = 7,161.6 CFM (~7,160 CFM);
+      10,200 W at 15 C (27 F) rise -> 1,194 CFM.
     """
     if heat_load_watts <= 0 or delta_t_celsius <= 0:
         raise ValueError("heat_load_watts and delta_t_celsius must be positive.")

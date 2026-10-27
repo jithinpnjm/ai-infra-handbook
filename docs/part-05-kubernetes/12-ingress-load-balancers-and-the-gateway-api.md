@@ -104,6 +104,48 @@ Features: virtual hosting by `Host`, path routing (`Exact`, `Prefix`), TLS termi
 
 Deploy the controller as a Deployment (autoscaled) or DaemonSet with `hostNetwork`/NodePort + external LB; give it dedicated nodes for heavy traffic; set resource requests, PDB, anti-affinity, `terminationGracePeriodSeconds` and lifecycle for graceful draining; expose metrics (Prometheus) and access logs (structured JSON to stdout).
 
+### Multi-team Ingress collisions and Contour's `HTTPProxy` root inclusion
+
+In a multi-tenant cluster, the standard `Ingress` API does not prevent two teams in different namespaces from claiming the same `host` (such as `app.bearcanoe.com` in the book's example). Depending on the controller, overlapping rules are either merged in surprising ways or rejected, which can cause production outages. As *Production Kubernetes* (Chapter 6) describes, platform teams solve this in one of two ways:
+
+1. **Validating admission control** (such as an Open Policy Agent / Gatekeeper policy) that checks existing `Ingress` objects across the cluster and rejects duplicate hostnames.
+2. **Delegated routing CRDs such as Contour's `HTTPProxy`**: Contour replaces flat `Ingress` objects with a root `HTTPProxy` custom resource and **inclusion** (`includes`). A platform administrator creates a root `HTTPProxy` in an administrative namespace that owns the domain (for example, `app1.bearcanoe.com`) and delegates routing for that domain or path prefix by including `HTTPProxy` resources from the `app1` team's namespace. Because only the root namespace can define top-level virtual hosts, teams cannot collide with another team's hostname. Contour's `HTTPProxy` also supports layer 3/4 TCP proxying via TLS Server Name Indication (`SNI`), as in the book's example (untested here):
+
+```yaml
+apiVersion: projectcontour.io/v1
+kind: HTTPProxy
+metadata:
+  name: tcp-proxy
+spec:
+  virtualhost:
+    fqdn: tcp.bearcanoe.com
+    tls:
+      secretName: secret
+  tcpproxy:
+    services:
+      - name: tcp-app
+        port: 8080
+```
+
+### Dedicated Ingress node pool and DaemonSet edge pattern
+
+Because Kubernetes does not isolate network I/O or file descriptors via cgroups, noisy application pods can contend with Ingress proxies if they share general worker nodes. *Production Kubernetes* (Chapter 6) recommends reserving a dedicated set of edge nodes for the Ingress tier using four combined settings:
+
+1. **Node labels, taints, and a `DaemonSet`**: label and taint the dedicated ingress nodes, then deploy the Ingress controller as a `DaemonSet` with a matching `nodeSelector` and taint `tolerations`. Having a small, fixed set of edge nodes also simplifies firewall exceptions and static backend pools on hardware load balancers.
+2. **Host networking (`hostNetwork: true`) with `ClusterFirstWithHostNet`**: binding the Ingress proxy container directly to the node's network namespace lets incoming packets reach the proxy without traversing the Kubernetes Service `iptables`/`IPVS` fabric. When `hostNetwork: true` is enabled, you must set `dnsPolicy: ClusterFirstWithHostNet` so the proxy can still resolve in-cluster `*.svc.cluster.local` Service names via CoreDNS, as in the book's Pod template snippet (untested here):
+
+```yaml
+spec:
+  containers:
+    - image: nginx
+      name: nginx
+  dnsPolicy: ClusterFirstWithHostNet
+  hostNetwork: true
+```
+
+3. **Service `externalTrafficPolicy: Local`**: if the Ingress controller is exposed through a `NodePort` or `LoadBalancer` Service rather than direct host ports, set `externalTrafficPolicy: Local` so external load balancers only send traffic to nodes running a local Ingress proxy replica, avoiding an extra cross-node hop and preserving the client's source IP address (no SNAT).
+4. **Spreading across failure domains**: when running as a `Deployment` (or selecting nodes across zones), use Pod anti-affinity rules to spread Ingress controller replicas across availability zones or racks.
+
 ## 3. Gateway API
 
 The **Gateway API** (`gateway.networking.k8s.io`, GA for HTTP features in v1) is the successor to Ingress: role-oriented, expressive, portable, extensible, and covering L4/L7 and gateways for mesh (GAMMA). Resources:
@@ -356,14 +398,14 @@ Mark tested only after execution.
 32. 413 means? **A:** Request body too large.
 33. Preserve client IP how? **A:** `externalTrafficPolicy: Local`, PROXY protocol/XFF.
 34. What is the Inference Extension? **A:** Gateway API add-on for model-aware (InferencePool) routing.
-35. What protects public edge? **A:** TLS, auth, rate limits, WAF, network policy.
+35. When running an Ingress controller Pod with `hostNetwork: true`, what `dnsPolicy` must be set so it can still resolve cluster Services, and how does Contour's `HTTPProxy` prevent multi-team hostname collisions? **A:** Set `dnsPolicy: ClusterFirstWithHostNet`; Contour uses root `HTTPProxy` resources with inclusion (`includes`) to delegate domains/paths to team namespaces.
 
 ## 12. Sources and review notes
 
 **Written in original words.** Principal sources:
 
 - Brendan Burns et al., *Kubernetes: Up and Running* (3rd edition; chapter 8 on HTTP load balancing with Ingress).
-- Josh Rosso et al., *Production Kubernetes* (chapter 6 on service routing: ingress, load balancers, and gateways).
+- Josh Rosso et al., *Production Kubernetes* (`production-kubernetes`, Chapter 6: `6. Service Routing` — read in full for Contour `HTTPProxy` root inclusion and TCP SNI proxying, dedicated Ingress node pools, `hostNetwork: true` with `dnsPolicy: ClusterFirstWithHostNet`, and `externalTrafficPolicy: Local`).
 - James Strong and Vallery Lancey, *Networking and Kubernetes* (chapter 6 on ingress, API gateways and meshes).
 - Gateway API, cert-manager, ingress-nginx, Envoy Gateway, MetalLB and Cilium documentation.
 - Examples are the author's constructions.

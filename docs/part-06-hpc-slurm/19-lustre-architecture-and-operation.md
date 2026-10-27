@@ -86,7 +86,64 @@ mkfs.lustre --fsname=testfs --index=0 --mdt --mgs --servicenode=cfs21@tcp0,cfs21
 mkfs.lustre --fsname=testfs --index=0 --mdt --mgs --backfstype=zfs zfspool/mdt1 mirror /dev/sdb /dev/sdc mirror /dev/sdd /dev/sde
 ```
 
-Then mount each target on its server (`mount -t lustre /dev/sda1 /mnt/mdt`, order: MGS/MDT, then OSTs) and mount clients: `mount -t lustre mgsnode@tcp:/testfs /mnt/testfs` (a list of MGS NIDs separated by `:` for failover). Key options: `--ost|--mdt|--mgs`, `--fsname`, `--index` (unique per target type), `--mgsnode`, `--servicenode`/`--failnode` (failover partners; do not mix), `--backfstype`, `--mkfsoptions`, `--reformat`. `tunefs.lustre` changes parameters later (e.g. changing NIDs). The SCL book's "Installing Lustre (No HA)" walks the same flow for a first lab: install the Lustre kernel/server packages (or build), configure LNet (`options lnet networks="tcp(eth1)"` or `o2ib(ib0)` in modprobe configuration, general knowledge), format MGS/MDT/OST, mount, then mount on clients.
+Then mount each target on its server (`mount -t lustre /dev/sda1 /mnt/mdt`, order: MGS/MDT, then OSTs) and mount clients: `mount -t lustre mgsnode@tcp:/testfs /mnt/testfs` (a list of MGS NIDs separated by `:` or `,` for failover). Key options: `--ost|--mdt|--mgs`, `--fsname`, `--index` (unique per target type), `--mgsnode`, `--servicenode`/`--failnode` (failover partners; do not mix), `--backfstype`, `--mkfsoptions`, `--reformat`. `tunefs.lustre` changes parameters later (e.g. changing NIDs) and must only be run on an OSS or MDS while the server is stopped.
+
+### Step-by-step Lustre creation, LNET port `988`, and OSS RAM sizing (from the book)
+
+In the book's Chapter 9 and Chapter 28 walkthroughs, Lustre runs entirely as kernel modules on both servers and clients, communicating over **LNET** (Lustre Networking) via Lustre Network Drivers (LNDs). On the client side, the software comprises the Metadata Client (MDC), Object Storage Client (OSC, where the group of OSCs forms one Logical Object Volume, or LOV), and Management Client (MGC). Each LNET interface has a unique NID (`<address>@<LND protocol><lnd#>`, such as `10.20.30.40@o2ib1` or `192.168.2.3@tcp2`). Each `<protocol><index>` forms an isolated LNET network (so `1.2.3.4@tcp0` cannot talk directly to `2.3.4.5@tcp1`). **On IP networks, the LNET kernel module uses TCP port `988`—ensure port `988` is not blocked by any firewall.**
+
+1. **Configure LNET (`/etc/modprobe.d/lustre.conf`)**: define networks using `<lnd><#>(<dev>)[,…]`, for example `options lnet networks="tcp0(eth0)"` or `options lnet networks="o2ib0(ib0),tcp0(eth2)"`. Load the module and verify the NIDs (`(untested here)`):
+
+   ```bash
+   # (untested here) — Chapter 9 LNET verification example (using networks="tcp0(eth1)")
+   modprobe lnet
+   lnetctl net show
+   lctl list_nids
+   ```
+
+2. **Format and mount the combined MGS + MDT volume on the MDS** (the file system name `--fsname` is limited to 8 characters; mount MGS and MDTs first before OSTs; the book recommend RAID-10 for MDTs due to small I/O size and RAID-6 for OSTs due to 1 MB+ I/O size):
+
+   ```bash
+   # (untested here) — Chapter 9 HA-capable example with two --servicenode NIDs
+   mkfs.lustre --mdt --mgs --index=0 \
+     --servicenode 192.168.2.3@tcp0 \
+     --servicenode 192.168.2.4@tcp0 \
+     --fsname=large-fs /dev/sdX
+   mount -t lustre /dev/sdX /mnt/mdt
+
+   # (untested here) — Chapter 28 simple non-HA recipe
+   mkfs.lustre --mdt --mgs --fsname=large-fs /dev/sdX
+   mount -t lustre /dev/sdX /mnt/mdt
+   ```
+
+3. **Format and mount each OST volume on the OSS nodes**:
+
+   ```bash
+   # (untested here) — Chapter 9 OSS initialization
+   mkfs.lustre --ost --index=0 --fsname=large-fs \
+     --mgsnode=192.168.2.3@tcp0 --mgsnode=192.168.2.4@tcp0 \
+     /dev/sdZ
+   mount -t lustre /dev/sdZ /mnt/ost1
+
+   # (untested here) — Chapter 28 simple non-HA OSS recipe
+   mkfs.lustre --ost --fsname=large-fs --index=0 \
+     --mgsnode=mds.your.org@tcp0 /dev/sdZ
+   mount -t lustre /dev/sdZ /mnt/ost0
+   ```
+
+4. **Mount the Lustre file system on the clients**:
+
+   ```bash
+   # (untested here) — Chapter 9 client mount with comma-separated MGS NIDs
+   mount -t lustre 192.168.2.3@tcp0,192.168.2.4@tcp0:/large-fs /mnt/lustre
+   ```
+
+**OSS RAM sizing formulas from the book**: Lustre OSS nodes require substantial memory. By default, each OST uses `400 MB` of RAM for logging and about `600 MB` for metadata caching, plus `1.5 MB` for each service thread (where the number of threads `N_threads` can be roughly estimated as the number of clients divided by the number of connected OSTs):
+
+```text
+Per-OST baseline RAM = 400 MB + 600 MB + 1.5 MB * N_threads
+Recommended OSS total RAM = 2 GB + 1 GB per OST (plus extra RAM for OS/network buffers and caching)
+```
 
 Sizing rules of thumb (common practice, verify with vendor guides): MDT on fast flash (NVMe, mirrored) because metadata is small random I/O; inode count chosen at format time (ldiskfs `bytes-per-inode`) for the expected file count; OSTs sized for rebuild time (RAID/ZFS groups of 8+2 on 8-12 TB disks are typical for HDD; for NVMe systems erasure-coded or ZFS vdevs); several OSTs per OSS to use all CPUs and NICs; OSS network bandwidth at least the sum of its OST bandwidth; client network matched to OSS network (400 Gb/s IB on GPU nodes is common).
 
@@ -147,7 +204,14 @@ With multiple MDTs, `lfs mkdir -i N dir` creates a directory on MDT N and `lfs s
 
 Enabled at format/`tunefs` time (`--quota` / `lctl conf_param ... quota.ost=ugp` depending on version) and managed with `lfs`: `lfs quota -u alice /lustre`, `lfs setquota -u alice -b 9T -B 10T -i 1M -I 1100K /lustre` (soft/hard block and inode limits; `-g` groups, `-p` projects; default quotas `-U/-G/-P`; `--pool` quotas; grace time `-t`; `--delete`, `--reset`). **Project quotas** (`lfs project -p ID -s dir`, then `lfs setquota -p ID ...`) enforce limits per directory tree irrespective of file owner, the natural unit for AI teams and datasets. Capacity: `lfs df -h` (per-MDT/OST usage; look for imbalance), `lfs df -i` (inodes).
 
-**Balancing and evacuation**: `lfs migrate` moves OST objects between OSTs to rebalance, change stripe count (`lfs migrate -c 16 file`), move between pools, or evacuate an OST for maintenance; it takes the same `setstripe`-style options and can run with `lfs find ... --print0 | lfs migrate -0 ...`; the layout swap is performed so that, per the man page, files are migrated while preserving data (verify behaviour for open/active files on your version; plan migrations during low load). The NVIDIA-DevOps chapter calls migration "offline"; in practice it is an online but I/O-heavy operation.
+**Balancing, OST retirement/deactivation, and evacuation**: `lfs migrate` moves OST objects between OSTs to rebalance, change stripe count (`lfs migrate -c 16 file`), move between pools, or evacuate an OST for maintenance; it takes the same `setstripe`-style options and can run with `lfs find ... --print0 | lfs migrate -0 ...`; the layout swap is performed so that, per the man page, files are migrated while preserving data (verify behaviour for open/active files on your version; plan migrations during low load). The NVIDIA-DevOps chapter calls migration "offline"; in practice it is an online but I/O-heavy operation.
+
+When an OST shows hardware trouble and needs to be retired, the book gives a four-step deactivation and evacuation sequence (`(untested here)`):
+
+1. Run `lctl dl` to list all Lustre devices visible on the client and find the numeric device index `N` of the target OST.
+2. Disable new object allocations on that OST by running `lctl --device N deactivate` (where `N` is the device number from `lctl dl`).
+3. Locate files residing on the retiring OST (for example with `lfs find --ost ...`) and migrate their data onto healthy OSTs using `lfs_migrate` (or `lfs migrate`).
+4. If an OST fails after the file system already holds data and must be repaired offline, unmount all clients first, then unmount all OSTs, then unmount the MDTs and MGS, mount the affected OST locally as `ldiskfs` (if ext4-based), and run the Lustre-patched `e2fsck` per your exact Lustre version documentation.
 
 ## 5. Failure and recovery model
 
@@ -236,7 +300,7 @@ Untested (needs Lustre VMs): 1) Build a single-node Lustre (MGS+MDT, 2 OSTs on l
 16. How do you stripe a directory across MDTs?
 17. How do you set a project quota?
 18. What does `lfs df` show and what imbalance signals trouble?
-19. What does `lfs migrate` do?
+19. What TCP port does LNET use over IP, what are the book's two OSS RAM sizing formulas, and what commands deactivate and evacuate a retiring OST? **A:** On IP networks, LNET uses TCP port `988` (configured in `/etc/modprobe.d/lustre.conf`, e.g., `options lnet networks="tcp0(eth0)"`). For OSS memory sizing, each OST requires `400 MB` (logging) + `600 MB` (metadata caching) + `1.5 MB * N_threads` (where `N_threads` is roughly the number of clients divided by the number of connected OSTs), and total OSS RAM is recommended at `2 GB + 1 GB per OST` (plus extra for OS/network caching). To retire an OST, run `lctl dl` to find its device number `N`, run `lctl --device N deactivate` so Lustre stops allocating new objects on it, and migrate existing files off the OST using `lfs find --ost ...` and `lfs_migrate` (or `lfs migrate`).
 20. What is Lustre recovery?
 21. What is client eviction and its causes?
 22. What is LFSCK?
@@ -251,7 +315,7 @@ Untested (needs Lustre VMs): 1) Build a single-node Lustre (MGS+MDT, 2 OSTs on l
 
 ## 11. Sources and review notes
 
-- Architecture, roles, scalability and distributed-file-system context: *Supercomputers for Linux SysAdmins* chapter 9 (Lustre: architecture, creation, fault tolerance, striping and PFL, quotas; also PanFS and GPFS) and chapter 28 (installing Lustre without HA); the NVIDIA-DevOps volume-15 chapter 5 (metadata/data split, measurement, tuning, AI scenarios), restated in my words with corrections: contiguous-halves description of striping, "Metadata Disk Targets", "offline" migration, and unsupported throughput figures.
+- Architecture, roles, LNET port `988`, OSS RAM sizing formulas (`400 MB + 600 MB + 1.5 MB * N_threads` and `2 GB + 1 GB per OST`), step-by-step Lustre creation (`mkfs.lustre`), OST retirement/deactivation (`lctl dl`, `lctl --device N deactivate`, `lfs_migrate`), fault tolerance, striping and PFL, quotas, and PanFS/GPFS context (read in full: `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`, "9. Network File Systems" and "28. One-Two-Three Instructions"); the NVIDIA-DevOps volume-15 chapter 5 (metadata/data split, measurement, tuning, AI scenarios), restated in my words with corrections: contiguous-halves description of striping, "Metadata Disk Targets", "offline" migration, and unsupported throughput figures.
 - Command semantics and defaults: Lustre manual pages `lfs-setstripe(1)`, `lfs-getstripe(1)`, `lfs-migrate(1)`, `lfs-setquota(1)`, `lfs-df(1)`, `lfs-project(1)`, `mkfs.lustre(8)`, `lctl(8)`, `lustre(7)` from lustre/lustre-release (commit `6325870`, development tree). Releases differ.
-- Original and run: `lustre_stripe.py`.
-- Unverified: tunable names, DNE default directory layout syntax, pool commands, recovery window values, sizing rules of thumb, managed-service details. Nothing was run against Lustre.
+- Run here: `code/part06/lustre_stripe.py`.
+- Not verified on live hardware: `mkfs.lustre`, `mount -t lustre`, `lnetctl`, `lctl`, `lfs` commands, tunable names, DNE default directory layout syntax, pool commands, recovery window values, sizing rules of thumb, managed-service details. Nothing was run against a live Lustre file system.

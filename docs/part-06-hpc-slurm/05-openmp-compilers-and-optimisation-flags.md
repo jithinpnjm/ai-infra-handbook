@@ -134,7 +134,15 @@ Other classics: `private` variables used before initialisation, missing `reducti
 | **AMD** | AOCC (LLVM-based), ROCm compilers | AMD CPUs and GPUs |
 | **Arm / Cray / HPE** | Arm Compiler for Linux, Cray compiler environment | Vendor-tuned for their systems |
 
-Operational points: use the compiler that matches the MPI and library stack (a Fortran module built by one compiler cannot be read by another; C++ ABI differences between libstdc++ and libc++); keep several versions available through modules (6.6); record `compiler --version` in the build metadata; mixing OpenMP runtimes (GOMP and libomp) in one process causes subtle failures, so make sure all libraries in a process share the runtime or are loaded carefully.
+Operational points: use the compiler that matches the MPI and library stack (a Fortran module built by one compiler cannot be read by another; C++ ABI differences between libstdc++ and libc++; interprocedural optimisation such as IPO breaks object-file compatibility across compilers); keep several versions available through modules (6.6); record `compiler --version` in the build metadata; mixing OpenMP runtimes (GOMP and libomp) in one process causes subtle failures, so make sure all libraries in a process share the runtime or are loaded carefully.
+
+### Commercial compiler licences and FlexLM operational pitfalls
+
+While GCC, LLVM, Intel oneAPI, and NVIDIA HPC SDK compilers are now freely downloadable (with optional paid support), legacy commercial compilers (such as PathScale or PGI) and many commercial engineering and EDA packages rely on floating licence servers (such as FlexLM). Chapter 21 of the SCL book highlights three licensing models and their operational traps:
+
+1. **Single-user, single-computer** or **fixed-computer, unlimited-users**: a fixed-host licence on the login/build node is the simplest for a cluster (and Intel compilers can read a local licence file directly from a directory without a licence daemon), but is not always sold by vendors.
+2. **Concurrent-use (floating) licences and the `15-minute` checkout hold**: floating licences cap how many users can invoke the compiler simultaneously (for example `3` concurrent seats). In the PathScale implementation described in the book, "simultaneity" is metered in `15-minute` blocks: a single compiler call leases a seat for that user for `15 minutes` (whether they compile once, compile 20 files, or their build job crashes immediately), blocking other users from checking out that seat until the 15-minute lease expires.
+3. **High-availability quorum and MAC address binding**: fault-tolerant licence server clusters typically run as a 3-server triad that requires at least `50%` of the licence servers to be online to maintain quorum. Licences are bound to the network interface **MAC address** (and sometimes hostname) of the licence server at activation time; if you run a licence server inside a virtual machine, you must pin the VM's virtual NIC MAC address so a reboot or host migration does not invalidate the licence.
 
 ## 6. Optimisation and floating-point flags
 
@@ -193,7 +201,9 @@ Reasons loops are not vectorised include aliasing (use `restrict`/`__restrict__`
 
 ## 7. Fortran, Python and libraries
 
-Fortran remains common in legacy and domain codes: `gfortran -O2 -fopenmp prog.f90`. A tested example, a parallel harmonic-sum reduction with `!$omp parallel do reduction(+:s)`, compiled with gfortran 16.2.0 and run on 8 threads, printed `harmonic(1e6) = 14.392726722865611  threads= 8`. Module files (`.mod`) are compiler- and version-specific.
+Fortran remains common in legacy and domain codes: `gfortran -O2 -fopenmp prog.f90` (where `gfortran` has replaced the older GNU `g77` front end). A tested example, a parallel harmonic-sum reduction with `!$omp parallel do reduction(+:s)`, compiled with gfortran 16.2.0 and run on 8 threads, printed `harmonic(1e6) = 14.392726722865611  threads= 8`. Module files (`.mod`) are compiler- and version-specific.
+
+When a project mixes C and Fortran object files (compiled separately with `-c` and linked together), symbol-naming conventions differ between the two languages: Fortran compilers historically append or prepend underscores to external subroutine names in `.o` files. As noted in Chapter 21 of the SCL book, you can align C and Fortran symbol names either by compiling the C sources with `-fleading-underscore` `(untested here)` or by controlling Fortran underscore generation with `-fno-underscoring` (or using standard `iso_c_binding` in modern Fortran). When linking C++ functions into C or Fortran programs, declare those C++ functions with `extern "C"` so their names are not mangled. Also watch argument order on the GNU linker command line (`gcc -o myexe *.o -lm`): the single-pass linker resolves unresolved symbols from left to right, so `-lzzz` flags must appear *after* the `.o` object files that call them.
 
 In Python, the GIL limits thread parallelism for pure-Python CPU work; scalable CPU code calls into compiled libraries (NumPy/BLAS, SciPy, PyTorch, Numba) that use OpenMP or pthreads internally, so the thread-count variables above matter for Python jobs too (6.11, Part 3). Prefer vendor-tuned BLAS/LAPACK (MKL, OpenBLAS, BLIS, cuBLAS) to hand-written loops.
 
@@ -266,14 +276,17 @@ For AI infrastructure the point is knowing that a "GPU-enabled" legacy HPC code 
 24. How do you get a vectorisation report in GCC and clang?
 25. What can block vectorisation?
 26. What are denormals and flush-to-zero?
-27. Why must Fortran `.mod` files match the compiler?
+27. Why must Fortran `.mod` files match the compiler, what flags align C/Fortran symbol underscores when linking `.o` files, and what are three operational pitfalls of floating compiler licence servers? (Answer: `.mod` files are compiler- and version-specific; `-fleading-underscore` on C or `-fno-underscoring` on Fortran aligns symbol names; floating licences can hold a seat for `15 minutes` after a single call or crash, require at least `50%` server quorum in redundant setups, and bind to the server's NIC MAC address.)
 28. Why do mixed OpenMP runtimes cause problems?
 29. What do OpenMP target and OpenACC do?
 30. List four rules for building software on a cluster.
 
 ## 13. Sources and review notes
 
-- OpenMP model, affinity, first touch, hybrid MPI+OpenMP and thread-placement pitfalls: *Parallel and High Performance Computing* (Robey and Zamora, Manning), chapters on OpenMP and affinity (in the corpus); compilers, OpenMP/OpenACC/OpenCL and library survey: *Supercomputers for Linux SysAdmins* chapters 21 and 22 (SCL). All prose is my own restatement.
+- Book source (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`):
+  - Chapter `21. Compilers and Environments, for Parallel Technologies` (read in full): `gcc`/`gfortran` compilation and linking (`-c`, `-o`, `-l`, `-I`, `-L`, `-On`, `-fleading-underscore` for C/Fortran symbol linking, `extern "C"` for C++, GNU linker argument order), commercial compiler licensing pitfalls (`15-minute` seat lease hold, `50%` quorum rule for redundant licence servers, and MAC address binding), OpenMP, CUDA, OpenCL, OpenACC, and OpenSHMEM overview.
+  - Chapter `22. Parallel Computing Support Libraries` (read in full): library and debugging context.
+- OpenMP model, affinity, first touch, hybrid MPI+OpenMP and thread-placement pitfalls: *Parallel and High Performance Computing* (Robey and Zamora, Manning), chapters on OpenMP and affinity (in the corpus). All prose is my own restatement.
 - Original: the four C programs and the Fortran snippet under `code/part06/` and every measurement and observation reported above, produced on the machine described in the status box. Two of my own benchmark mistakes (no warm-up; hoisted loop) are reported deliberately.
-- Not reproduced: false-sharing slowdown on Apple M3. Not tested: Linux-specific binding commands, Slurm scripts, `-march=native` crash on mismatched nodes, GCC-specific flags (listed from knowledge), compiler families other than clang and gfortran.
+- Not reproduced: false-sharing slowdown on Apple M3. Not tested: Linux-specific binding commands, Slurm scripts, `-march=native` crash on mismatched nodes, GCC-specific flags (`-fleading-underscore`, `-fno-underscoring`), compiler families other than clang and gfortran, licence servers.
 - Unverified: flag spellings for the Intel and NVIDIA compilers beyond those listed; cache-line sizes quoted for server CPUs.

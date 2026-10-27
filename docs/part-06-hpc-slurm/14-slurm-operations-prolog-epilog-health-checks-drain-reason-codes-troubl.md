@@ -187,6 +187,44 @@ Time and identity are frequent hidden causes: munge failures from clock skew (`I
 - **Metrics**: node availability, % drained, mean time to drain/repair, job failure rate by cause (`NODE_FAIL`, OOM, timeout), prolog/epilog durations, queue wait times, controller RPC rates, utilisation per partition (Part 17).
 - **Security**: restrict who can run `scontrol update`; log admin actions; protect prolog/epilog and health scripts (root-owned, not world-writable); `pam_slurm_adopt` to prevent ssh to nodes without a job.
 
+### Maintenance and user reservations (`scontrol` reservation lifecycle and flags)
+
+A Slurm **reservation** sets aside a specific node count (`NodeCnt=...`) or explicit node list (`Nodes=...`) for designated users or accounts (`Users=...`, `Accounts=...`) during a future time window (`StartTime=...`, `EndTime=...` or `Duration=...`). Other users' jobs cannot allocate those nodes during the window—or before it if the job's wall-time would cross into the reservation—making reservations the standard tool both for guaranteed user runs and for cluster maintenance windows (where admins can run verification jobs on reserved nodes while regular user jobs wait in the queue).
+
+In the book's Chapter 15 example, creating, using, inspecting, modifying, and deleting a reservation uses `scontrol` (`(untested here)`):
+
+```bash
+# (untested here) — 1. Create a 5-hour reservation of 100 nodes for user1 and user2
+scontrol create reservation name=important \
+  StartTime=2100-06-01T08:00:00 Duration=5:00:00 \
+  Users=user1,user2 NodeCnt=100 Flags=IGNORE_JOBS
+
+# (untested here) — 2. Submit a job into the reservation
+sbatch --reservation=important -N100 ./my_task
+
+# (untested here) — 3. Inspect existing reservations (or view nodes in a reservation via sinfo -T important)
+scontrol show reservation
+scontrol show reservation important
+
+# (untested here) — 4. Update a reservation (note 'reservationname=' with no space, and '+=' / '-=' on flags, users, or accounts)
+scontrol update reservationname=important \
+  duration=14-00:00:00 flags+=STATIC_ALLOC
+
+# (untested here) — 5. Delete a reservation when no longer needed
+scontrol delete reservationname=important
+```
+
+Key reservation flags from the book:
+
+| Reservation flag | Meaning |
+|---|---|
+| `IGNORE_JOBS` | Ignore currently running jobs when creating the reservation; if the requested nodes have not finished their running jobs by `StartTime`, the reservation starts with fewer available nodes than requested rather than failing creation |
+| `OVERLAP` | Allow the reservation's nodes to overlap with another existing reservation |
+| `NO_HOLD_JOBS_AFTER` | By default, jobs submitted to a reservation that have not finished when the reservation ends are placed on hold; this flag leaves them in `PENDING` state instead (note: this flag cannot be removed with `-=`) |
+| `DAILY`, `HOURLY`, `WEEKLY` | Automatically repeat the reservation every day, hour, or week (similarly `WEEKDAY` and `WEEKEND` repeat on weekdays or weekends) |
+| `STATIC_ALLOC` | When a reservation is created by node count (`NodeCnt`), Slurm normally replaces any reserved node that goes `DOWN` with a healthy spare node; `STATIC_ALLOC` disables automatic node replacement |
+| `MAINT` | Maintenance mode shorthand: combines `OVERLAP` and `STATIC_ALLOC` together (and marks nodes with the `$` maintenance state indicator in `sinfo`) |
+
 ## 8. Lab (stub test run; rest untested)
 
 1. Run `node_health.sh` with `DRY_RUN=1` using stub commands (as in the status box); change a stub to produce each failure and see the reason string.
@@ -239,12 +277,12 @@ Time and identity are frequent hidden causes: munge failures from clock skew (`I
 25. How do you spot a user overloading the controller?
 26. What does `ExitCode=0:9` mean?
 27. List five causes of munge or registration failures.
-28. How do you schedule maintenance with reservations?
+28. How do you create, update, show, and delete a Slurm reservation with `scontrol`, and what do the reservation flags `IGNORE_JOBS`, `OVERLAP`, `NO_HOLD_JOBS_AFTER`, `STATIC_ALLOC`, `MAINT`, `DAILY`, and `WEEKLY` do? **A:** Create a reservation with `scontrol create reservation name=... StartTime=... Duration=... Users=... NodeCnt=... Flags=...`, inspect it with `scontrol show reservation`, modify it with `scontrol update reservationname=... duration=... flags+=...`, and remove it with `scontrol delete reservationname=...` (users submit to it with `sbatch --reservation=...`). The flags mean: `IGNORE_JOBS` ignores currently running jobs that would overlap the start of the reservation; `OVERLAP` allows node overlap with other reservations; `NO_HOLD_JOBS_AFTER` keeps unfinished jobs in `PENDING` instead of held after the reservation expires; `STATIC_ALLOC` stops Slurm from replacing a downed reserved node with another node; `MAINT` combines `OVERLAP` and `STATIC_ALLOC` for maintenance windows; and `DAILY`/`WEEKLY` repeat the reservation every day or week.
 29. What are the steps of the troubleshooting method?
 30. How do you turn an incident into automation?
 
 ## 11. Sources and review notes
 
-- Prolog/epilog and health check semantics, `PrologFlags`, unkillable step behaviour, `scontrol` and `sinfo` options: Slurm man pages `slurm.conf(5)`, `sinfo(1)`, `scontrol(1)` and the prolog/epilog guide (SchedMD/slurm commit `521370b`). Operations perspective: *Supercomputers for Linux SysAdmins* chapter 15 (troubleshooting, `scontrol`, accounting and statistics), and chapters on monitoring and health at scale (6.26).
-- Original: `code/part06/node_health.sh` with stub-based dry-run tests, the lifecycle diagram, the playbook.
-- Unverified: the list of Xid codes that indicate hardware faults (confirm with NVIDIA documentation and your driver), real-node behaviour of the script, the exact `scontrol reboot` options on your Slurm version, `strigger` details, and sizes/timeouts quoted as practice.
+- Prolog/epilog and health check semantics, `PrologFlags`, unkillable step behaviour, `scontrol` and `sinfo` options: Slurm man pages `slurm.conf(5)`, `sinfo(1)`, `scontrol(1)` and the prolog/epilog guide (SchedMD/slurm commit `521370b`). Operations perspective, `scontrol` reservation lifecycle (`create`, `update`, `show`, `delete`), reservation flags (`IGNORE_JOBS`, `OVERLAP`, `NO_HOLD_JOBS_AFTER`, `STATIC_ALLOC`, `MAINT`, `DAILY`, `WEEKLY`), troubleshooting, and accounting/statistics (read in full: `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`, "15. Slurm"); and chapters on monitoring and health at scale (6.26).
+- Run here: `code/part06/node_health.sh` with stub-based dry-run tests.
+- Not verified on live hardware: the list of Xid codes that indicate hardware faults (confirm with NVIDIA documentation and your driver), real-node behaviour of `node_health.sh`, `scontrol` reservation and reboot commands on a live Slurm cluster, `strigger` details, and sizes/timeouts quoted as practice.

@@ -203,6 +203,23 @@ Expect one GPU listed, a Slurm job/step cgroup path, and only the allocated CPUs
 
 For multi-node jobs the placement of nodes on the network matters (6.3). Slurm's topology configuration lives in `topology.yaml` (current versions; older `topology.conf`, which is ignored if `topology.yaml` exists). The man page describes multiple named topologies, one marked `cluster_default: true`, each of exactly one type: `tree` (switch hierarchy, the classic InfiniBand/Ethernet fat-tree), `block` (nodes grouped in blocks for rail/block-oriented systems), `ring`, `torus3d`, or `flat` (default, no topology). Partitions pick a topology by name. With tree topology the scheduler prefers to place a job under the fewest switches; `sbatch --switches=N[@maxwait]` asks for that. Generating the file from the fabric (`ibnetdiscover`-based tools such as `slurm-topology` helpers, or from BCM/UFM data) is part of fabric commissioning (Part 12). Keep it in step with cabling changes, or the scheduler optimises for a network that no longer exists.
 
+### `topology.conf` examples and `TopologyParam=SwitchAsNodeRank` (from the book)
+
+In Chapter 15 of *Supercomputers for Linux SysAdmins*, `TopologyPlugin=topology/TOPO_NAME` (where `TOPO_NAME` is `default`, `block`, `3d-torus`, or `tree`) reads `topology.conf`. The book shows two classic `topology.conf` layouts (`(untested here)`):
+
+```ini
+# (untested here) — topology/block example in topology.conf
+BlockName=block1 Nodes=n[1-32]
+BlockName=block2 Nodes=n[33-64]
+
+# (untested here) — topology/tree example in topology.conf (even/odd nodes on different leaf switches)
+SwitchName=s0 Nodes=n[0,2,4,6]
+SwitchName=s1 Nodes=n[1,3,5,7]
+SwitchName=top Switches=s[0-1]
+```
+
+Notice that in the `topology/tree` example above, node names are interleaved across leaf switches (`n[0,2,4,6]` on `s0` and `n[1,3,5,7]` on `s1`). When a parallel job allocates nodes from both leaf switches, Slurm's default alphabetical node ordering places neighboring MPI ranks on alternating leaf switches, forcing nearest-neighbor communication across the `top` spine switch. To prevent that, add **`TopologyParam=SwitchAsNodeRank`** to `slurm.conf` (`(untested here)`): it sorts the allocated node list by leaf switch first and then by node name so consecutive ranks stay on the same leaf switch. Always update `topology.conf` whenever you add new compute nodes to the cluster—any node missing from the topology file will never be selected for jobs.
+
 ## 7. Applying changes safely
 
 - **`scontrol reconfigure`** re-reads configuration and applies most changes without stopping jobs. Some parameters require a restart of the daemons (the man pages mark these; changes to listening ports, `StateSaveLocation` and plugin types are typical).
@@ -301,7 +318,7 @@ Each message corresponds to a real incident type described in section 8. The scr
 24. What are the defaults of the `Constrain*` options?
 25. Which option isolates GPUs, and how do you prove it works?
 26. What kernel setting may be needed on Ubuntu for memory cgroups (cgroup v1 case)?
-27. What does `topology.yaml` define, and which types exist?
+27. What does `topology.yaml` (or `topology.conf`) define, which types exist, and what problem does `TopologyParam=SwitchAsNodeRank` solve? **A:** `topology.yaml` (and the older `topology.conf`) defines the cluster's network switch or block layout (`tree`, `block`, `ring`, `torus3d` / `3d-torus`, or `flat` / `default`) so the scheduler places multi-node jobs on the fewest switches. When node names are interleaved across leaf switches (for example `n[0,2,4,6]` on `s0` and `n[1,3,5,7]` on `s1`), `TopologyParam=SwitchAsNodeRank` in `slurm.conf` sorts the allocated node ranks by leaf switch first and then by node name, preventing neighboring MPI ranks from communicating across the spine switch.
 28. When does a config change need a restart?
 29. How do you validate a config before rollout?
 30. Describe three misconfigurations and their symptoms.
@@ -309,6 +326,6 @@ Each message corresponds to a real incident type described in section 8. The scr
 ## 12. Sources and review notes
 
 - Parameter semantics, defaults, option lists, node states, `ReturnToService`, `SlurmdTimeout`, `TaskPlugin` recommendation, `cgroup.conf` options and defaults, `topology.yaml` types: Slurm man pages `slurm.conf(5)`, `cgroup.conf(5)`, `topology.yaml(5)`, `slurmd(8)` read from SchedMD/slurm commit `521370b` (development version 26.11.0rc1). Option availability differs by release (for example `Exclusive`).
-- Concepts and the standard operational picture: *Supercomputers for Linux SysAdmins* chapter 15 (Slurm: partitions, nodes, GRES, accounting, troubleshooting), restated in my words; the existing 6.7 chapter of this handbook for the surrounding architecture.
-- Original: `code/part06/slurmconf_lint.py` (tested on two files) and the failure table.
-- Unverified: behaviour on specific older releases, cgroup v2 details on your kernel, the effect of SMT choices on your workloads.
+- Concepts, `topology.conf` block/tree examples, `TopologyParam=SwitchAsNodeRank`, and the standard operational picture (read in full: `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`, "15. Slurm"); the existing 6.7 chapter of this handbook for the surrounding architecture.
+- Run here: `code/part06/slurmconf_lint.py` (tested on two files).
+- Not verified on live hardware: `slurmd -C`, `scontrol`, `sinfo`, `srun`, `topology.conf` / `TopologyParam=SwitchAsNodeRank` behaviour on specific older releases, cgroup v2 details on your kernel, and the effect of SMT choices on your workloads.

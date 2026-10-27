@@ -68,14 +68,101 @@ Strong: flexible resource chunks and placement, hooks, mature in some industries
 
 ### Setting up Torque and customising its scheduler
 
-Naming caution from the SCL book: the *original* OpenPBS (MRJ, 1998, unsupported since about 2004), **Torque** (Adaptive Computing's fork of it) and **PBS Professional** (Altair's commercial product, later released as the *new* OpenPBS in 2020) are three different code lines; "OpenPBS" in a document may mean either the old or the new one. The sketch below is the classic Torque flow (from the book and general memory; paths vary by build and version, **unverified**):
+Naming caution from the SCL book: the *original* OpenPBS (MRJ, 1998, unsupported since about 2004), **Torque** (Adaptive Computing's fork of it) and **PBS Professional** (Altair's commercial product, later released as the *new* OpenPBS in 2020) are three different code lines; "OpenPBS" in a document may mean either the old or the new one. The sketch below follows the concrete Torque setup in Chapter 14 of *Supercomputers for Linux SysAdmins* (`(untested here)`):
 
-1. Install the Torque packages on the head node (`pbs_server`, client commands, `trqauthd`) and `pbs_mom` plus the client on each compute node.
-2. Initialise the server database once (`torque.setup <user>` or `pbs_server -t create`), then list compute nodes in `server_priv/nodes` with their CPU counts (`node01 np=16 gpus=4`).
-3. On each compute node point the MOM at the server (`mom_priv/config` with `$pbsserver head`, and `$logevent`), start `pbs_mom`.
-4. Create queues and limits with `qmgr` (`create queue batch`, `set queue batch queue_type = Execution`, `set queue batch resources_max.walltime = 48:00:00`, `set queue batch enabled = True`, `started = True`, `set server default_queue = batch`, `set server scheduling = True`).
-5. Scheduling policy: Torque ships a simple FIFO `pbs_sched`; real sites use the **Maui** or **Moab** schedulers (fair-share, backfill, reservations, priority weights in `maui.cfg`), connecting to `pbs_server` as an external scheduler.
-6. Users then use `qsub`, `qstat`, `qdel`, `qhold`/`qrls`, `qalter`; admins use `qmgr`, `pbsnodes`, `qrun`, `tracejob`.
+1. **Daemon components and fixed TCP ports (`/etc/services`)**: Torque comprises client/admin CLI tools, `pbs_server` (central server), `pbs_mom` (compute-node agent, paired with the `trqauthd` authentication daemon from Torque 4.0 onward), and `pbs_sched` (or an external scheduler such as Maui). Ensure the four fixed TCP ports in `/etc/services` are open across the cluster:
+
+   ```text
+   # (untested here) — /etc/services entries for Torque
+   pbs         15001/tcp   # pbs server
+   pbs_mom     15002/tcp   # mom to/from server
+   pbs_resmom  15003/tcp   # request mom to manage resources
+   pbs_sched   15004/tcp   # scheduler
+   ```
+
+2. **Initialise the server and define compute nodes (`$PBS_HOME/server_priv/nodes`)**: initialise the server database on first startup with `{sbindir}/pbs_server -t create` (`(untested here)`), and list compute nodes in `$PBS_HOME/server_priv/nodes` using `node_name[:ts] [property...] [np=NUMBER]` (where `:ts` marks a timeshared node and `np` is the processor count), or dynamically via `qmgr` (`create node ib01 np=1,ntype=cluster,properties="MYCLUSTER"`, `set node ...`, where `state` can be `free`, `offline`, `down`, or `excl` when running a job).
+3. **Create and configure queues and server parameters with `qmgr`**: in the book's example, queue `MYCLUSTER` (or `batch`) and server-wide parameters are configured via `qmgr` (either interactively, via `qmgr < MYCLUSTER.txt`, or dumped with `qmgr -c "print server" > /tmp/server.conf`):
+
+   ```text
+   # (untested here) — Queue setup (in the book's example, queue MYCLUSTER or batch)
+   create queue batch
+   set queue batch queue_type = Execution
+   create queue MYCLUSTER
+   set queue MYCLUSTER queue_type = Execution
+   set queue MYCLUSTER resources_max.ncpus = 20
+   set queue MYCLUSTER resources_min.ncpus = 1
+   set queue MYCLUSTER resources_max.nodect = 20
+   set queue MYCLUSTER resources_max.walltime = 336:00:00
+   set queue MYCLUSTER resources_default.ncpus = 1
+   set queue MYCLUSTER resources_default.nodect = 1
+   set queue MYCLUSTER resources_default.walltime = 01:00:00
+   set queue MYCLUSTER max_user_run = 12
+   set queue MYCLUSTER enabled = True
+   set queue MYCLUSTER started = True
+
+   # (untested here) — Server parameters via qmgr
+   set server scheduling = True
+   set server acl_host_enable = True
+   set server acl_hosts = *.mycluster.com
+   set server acl_hosts += server.mycluster.com
+   set server managers = root@server.mycluster.com
+   set server default_queue = MYCLUSTER
+   set server log_events = 511
+   set server mail_from = root
+   set server query_other_tasks = True
+   set server scheduler_iteration = 600
+   set server node_ping_rate = 300
+   set server node_check_rate = 600
+   set server tcp_timeout = 6          # (6 seconds in Ch 14; often raised e.g. tcp_timeout = 20)
+   set server task_stat_rate = 30
+   set server mail_to = mail.mycluster.com
+   ```
+
+4. **Configure `pbs_mom` on compute nodes (`/var/spool/PBS/mom_priv/config`)** and add an **epilogue cleanup script**: on each compute node, put the server hostname in `$PBS_HOME/server_name` and create `/var/spool/PBS/mom_priv/config`:
+
+   ```text
+   # (untested here) — /var/spool/PBS/mom_priv/config in the book's example
+   $logevent 255
+   $pbsserver rsufs
+   $cputmult 1.0
+   $ideal_load 1.0
+   $max_load 2.0
+   ```
+
+   When a parallel job's head process exits, stray worker processes and `/tmp` files can remain on allocated nodes after Torque marks the nodes `free`. To clean them up automatically when a node is dedicated to one user job at a time, place an executable `/var/spool/PBS/mom_priv/epilogue` script on the nodes:
+
+   ```bash
+   #!/usr/bin/env bash
+   # (untested here) — Chapter 14 Torque epilogue cleanup script example
+   JOBID=$1
+   USER=$2
+   ######### Get the list of task nodes ###########
+   if test -r "/var/spool/PBS/aux/$1"; then
+   PBS_NODEFILE="/var/spool/PBS/aux/$1"
+   # Perform cleanup on each node of the task
+   for node in $PBS_NODEFILE; do
+   ssh -o ConnectTimeout=5 $node \
+   'pkill -KILL -u $USER; \
+   find /tmp -user $USER -exec rm -r \{\} \; >& /dev/null'
+   done
+   fi
+   ```
+
+5. **Built-in scheduler configuration (`/var/spool/PBS/sched_priv/sched_config`)**: entries take the form `name:value [prime | non_prime | all]`, including `round_robin`, `by_queue`, `strict_fifo`, `fair_share` (with `half_life` and `sync_time`), `load_balancing`, `help_starving_jobs` (after `max_starve`), `log_filter`, and `sort_by`. The built-in Torque scheduler supports the following sorting keys (Table 14-2 in the book, plus `multi_sort` with multiple `key:` lines):
+
+   | Sorting key (`sort_by`) | Meaning |
+   |---|---|
+   | `no_sort` | Don't sort tasks |
+   | `shortest_task_first` | In ascending order by `cput` attribute |
+   | `longest_task_first` | Descending by `cput` attribute |
+   | `smallest_memory_first` | Ascending by `mem` attribute |
+   | `largest_memory_first` | Descending by `mem` attribute |
+   | `high_priority_first` | In descending order by `task_priority` attribute |
+   | `low_priority_first` | In ascending order by `task_priority` attribute |
+   | `large_walltime_first` | Descending by `task_walltime` attribute |
+   | `short_walltime_first` | In ascending order by `task_walltime` attribute |
+
+6. **Job control commands**: users and admins manage Torque jobs with `qsub`, `qdel`, `qhold`, `qrls`, `qmove`, `qmsg`, `qselect`, `qsig`, `qstat` (`qstat -a`, `qstat -q`), `pestat`, and the X11 GUIs `xpbs` and `xpbsmon` (if output files cannot be delivered to `$PBS_O_WORKDIR`, Torque saves them in `/var/spool/PBS/undelivered/`).
 
 ## 3. IBM Spectrum LSF (general knowledge, unverified)
 
@@ -182,7 +269,7 @@ The `ncpus=64` per chunk with `mpiprocs=8` became `--cpus-per-task=8` (64/8). Th
 3. Explain `place=scatter:excl`.
 4. How are PBS arrays and dependencies written?
 5. What are `PBS_NODEFILE` and `PBS_O_WORKDIR`?
-6. What is Torque's relationship to PBS and Maui/Moab?
+6. What is Torque's relationship to PBS and Maui/Moab, which TCP ports do `pbs_server`, `pbs_mom`, `pbs_resmom`, and `pbs_sched` use, and how does the book's `/var/spool/PBS/mom_priv/epilogue` script clean up stray processes after a job finishes? **A:** Torque is an open-source fork of the original OpenPBS (1998) maintained by Adaptive Computing and often paired with the external Maui or Moab scheduler. Its daemons use fixed TCP ports defined in `/etc/services`: `15001/tcp` (`pbs`, i.e., `pbs_server`), `15002/tcp` (`pbs_mom`), `15003/tcp` (`pbs_resmom`), and `15004/tcp` (`pbs_sched`). When a task finishes on the head node of the job, `pbs_mom` runs `/var/spool/PBS/mom_priv/epilogue`, which reads `/var/spool/PBS/aux/$1` (`PBS_NODEFILE`) and SSHes to each allocated node to run `pkill -KILL -u $USER` and remove the user's temporary files in `/tmp`.
 7. List LSF's main daemons.
 8. Give a `bsub` GPU example (unverified).
 9. What is a Flux instance and how is it started?
@@ -205,8 +292,8 @@ The `ncpus=64` per chunk with `mpiprocs=8` became `--cpus-per-task=8` (64/8). Th
 
 ## 12. Sources and review notes
 
-- OpenPBS: man pages `qsub(1B)`, `pbs(8B)` family, `pbs_resources(7B)` (openpbs/openpbs commit `cd7ab5e`). Torque and its place in Linux cluster practice: *Supercomputers for Linux SysAdmins* chapter 14 (installing and configuring Torque, MOM, scheduler, job control), restated in my words.
+- OpenPBS: man pages `qsub(1B)`, `pbs(8B)` family, `pbs_resources(7B)` (openpbs/openpbs commit `cd7ab5e`). Torque daemon ports (`15001`–`15004`), `qmgr` server and queue setup commands, `mom_priv/config`, the `/var/spool/PBS/mom_priv/epilogue` cleanup script, `sched_config` sorting keys (Table 14-2), and job control commands (read in full: `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`, "14. OpenPBS and Torque").
 - Flux: flux-core documentation (`flux-batch(1)`, job parameter and dependency pages, "Migrating from Slurm" in the admin guide), commit `40ecc8d`.
 - LSF: general knowledge only; verify with IBM documentation. SUNK/other Kubernetes bridges: see 6.16.
-- Original: `code/part06/pbs2slurm.py` and its run on `/tmp` test input, the command map, the migration plan.
-- Unverified: all LSF command syntax, the current status of Torque, the PBS wrappers shipped with Slurm, Flux roadmap dates.
+- Run here: `code/part06/pbs2slurm.py` and its run on `/tmp` test input.
+- Not verified on live hardware: all Torque (`pbs_server`, `qmgr`, `pbs_mom`, `qsub`), OpenPBS, Flux, and LSF commands, the current status of Torque, the PBS wrappers shipped with Slurm, and Flux roadmap dates.

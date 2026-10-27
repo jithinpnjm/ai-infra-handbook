@@ -68,7 +68,27 @@ The SCL book's backup chapter covers three families: `tar`, **Bacula**, and `rsy
 
 ### tar
 
-`tar` archives files (optionally compressed) to a file or tape. GNU tar supports **incremental backups** with a snapshot (listed-incremental) file that records what was archived. Tested with GNU tar 1.35 on a 4 MB directory:
+`tar` archives files (optionally compressed) to a file or tape. Every `tar` invocation requires one of the eight operation modes from Table 20-1 in the book:
+
+| Key | Meaning |
+|---|---|
+| `-A`, `--catenate` | Add archives to an existing archive |
+| `-c`, `--create` | Create a new archive |
+| `-d`, `--diff`, `--compare` | Find differences between files in the archive and on disk |
+| `--delete` | Delete files from the archive (does not work on magnetic tapes) |
+| `-r`, `--append` | Append files to the end of an uncompressed archive |
+| `-t`, `--list` | List the files in the archive |
+| `-u`, `--update` | Append only files newer than the existing copy in the archive |
+| `-x`, `--extract`, `--get` | Extract files from the archive |
+
+Besides `-z` (`gzip`) and `-j` (`bzip2`), GNU `tar` accepts `-I` to invoke an external compressor that supports `-d`, such as multi-core `pigz`. Because `tar` preserves ownership, permissions, symbolic links, and special device files more faithfully than plain `cp`, the book uses a standard-output/standard-input pipeline to clone a directory tree locally (or over `ssh`/`netcat`) `(untested here)`:
+
+```bash
+# (untested here)
+tar cf - data01 | (cd /db01; tar xvf -)
+```
+
+GNU tar supports **incremental backups** with a snapshot (`--listed-incremental`) metadata file (`.snar`) that records what was archived; passing `--level=0` (or deleting the `.snar` file, such as `/var/log/usr.snar` in the book's example) forces a full level-0 archive. Tested with GNU tar 1.35 on a 4 MB directory:
 
 ```bash
 tar --listed-incremental=lvl.snar -czf full.tgz data      # level 0 (the .snar file is created)
@@ -76,11 +96,29 @@ echo more > data/new.txt
 tar --listed-incremental=lvl.snar -czf inc1.tgz data      # only what changed since
 ```
 
-Result: `full.tgz` 4,015,302 bytes; `inc1.tgz` 578 bytes, containing the new directory entries and `data/new.txt`. To restore, extract the full archive then each incremental in order, using `--listed-incremental=/dev/null`. (macOS's default `tar` is bsdtar, which lacks this option; use GNU tar.) Limits: no deduplication, no integrity verification beyond the compressor's checksums, no catalog, restore requires the chain, ACLs/xattrs need `--acls --xattrs`, sparse files need `--sparse`. Good for simple, offline, long-term archives and as a building block.
+Result: `full.tgz` 4,015,302 bytes; `inc1.tgz` 578 bytes, containing the new directory entries and `data/new.txt`. To restore, extract the full archive then each incremental in order, using `--listed-incremental=/dev/null`. (macOS's default `tar` is bsdtar, which lacks this option; use GNU tar. Two other classic UNIX archivers mentioned in the book are `cpio`, which reads file paths from standard input via `find`, and `pax`, which also writes tape archives.) Limits: no deduplication, no integrity verification beyond the compressor's checksums, no catalog, restore requires the chain, ACLs/xattrs need `--acls --xattrs`, sparse files need `--sparse`. Good for simple, offline, long-term archives and as a building block.
 
-### rsync and hard-link snapshots
+### rsync, batch updates, and hard-link snapshots
 
-`rsync -a` mirrors a tree efficiently (delta transfer, preserves permissions/times/links). The classic trick for versioned backups without dedup software is `--link-dest`: each new snapshot directory hard-links unchanged files from the previous one. Tested with rsync 3.4.4 (200 files of 20 KB, 4,004 KB total):
+`rsync -a` mirrors a tree efficiently (one-way delta transfer comparing modification times and block checksums, preserving permissions, times, and links). The book summarises commonly used `rsync` flags in Table 20-3:
+
+| Key | Meaning |
+|---|---|
+| `--delete` | Delete destination files that are no longer in the source directory |
+| `-b` | Back up overwritten files into a separate directory (`--backup-dir`) or with a suffix (`--suffix`) |
+| `-u` / `--update` | Skip files that are newer on the destination than on the source |
+| `-n` / `--dry-run` | Show what would be transferred without copying |
+| `--ignore-errors` | Continue deleting/copying even when I/O errors occur |
+| `--max-size=N` | Skip files larger than `N` |
+| `--exclude=PAT` / `--exclude-from=FILE` | Skip files and directories matching shell pattern `PAT` (or patterns read from `FILE`) |
+| `-h` / `--human-readable` | Print sizes with `MB`, `GB` units |
+| `-8` / `--8-bit-output` | Preserve 8-bit characters in file names in output (for UTF-8) |
+| `--progress` | Show transfer progress |
+| `--daemon` | Run as `rsyncd` daemon (`rsync://host/remote_path` or `host::remote_path`), avoiding SSH encryption CPU overhead on trusted internal networks (protect with `chroot` and a dedicated secrets file) |
+
+When you need to apply the exact same incremental directory update across many nodes or backup targets without recomputing deltas for each host, `rsync --write-batch=update` `(untested here)` records the delta stream into two files—`update` and `update.sh`—instead of modifying a remote host directly. You then distribute `update` and `update.sh` (or mount them over a network file system) and execute `update.sh` (which runs `rsync --read-batch=update` under the hood) on each target machine.
+
+The classic trick for versioned backups without dedup software is `--link-dest`: each new snapshot directory hard-links unchanged files from the previous one. Tested with rsync 3.4.4 (200 files of 20 KB, 4,004 KB total):
 
 ```bash
 rsync -a data/ snaps/day1/
@@ -92,7 +130,156 @@ Results: `ls -li` showed the **same inode** for the unchanged `f1.bin` in both s
 
 ### Bacula
 
-Bacula is an enterprise network backup system (Bacula, forks Bareos). Its components as listed in the book's chapter: **Director** (the scheduler/brain; configuration `bacula-dir.conf`), **Storage Daemon** (writes to disk, tape, or virtual tape libraries), **File Daemon** (the client agent on each machine), the **Catalog** (database of what was backed up, MySQL/PostgreSQL), and the **console** (`bconsole`) for operators. Configuration objects: **Client**, **FileSet** (what to include/exclude), **Schedule** (when; full/differential/incremental levels), **Pool** (a set of volumes with retention), **Storage**, **Job**, **JobDefs**, **Messages**. Strengths: central policy, tape support, long retention, mature. Costs: complexity, catalog dependency (you must back up and be able to restore the catalog first), per-file catalog growth on huge file counts, and scan times on tens of millions of files.
+Bacula is an enterprise network backup system (Bacula, forks Bareos). Its components as listed in the book's chapter: **Director** (the scheduler/brain; configuration `/etc/bacula/bacula-dir.conf`, listening on port `9101`), **Storage Daemon** (writes to disk shelves or tape drives such as `/dev/nst0`; configuration `/etc/bacula/bacula-sd.conf`, listening on port `9103`), **File Daemon** (the data-server/client agent on each machine with direct access to the files; configuration `/etc/bacula/bacula-fd.conf`, listening on port `9102`), the **Catalog** (SQLite, MySQL, or PostgreSQL database recording where volumes and files live), and the **console** (`bconsole`, configured via `/etc/bacula/bconsole.conf`) for operators. Configuration objects: **Client**, **FileSet** (what to include/exclude), **Schedule** (when; full/differential/incremental levels), **Pool** (a set of volumes with retention), **Volume** (a single archive file or tape in a pool), **Device** (the physical drive or directory), **Storage**, **Job**, **JobDefs**, **Messages**.
+
+In the book's example, the Storage Daemon configuration `/etc/bacula/bacula-sd.conf` on `stor1` defines the `Storage` listener, authorizes the `Director`, and declares a disk `Device` (`Random Access = Yes; RemovableMedia = no;` for disk directories versus `Random Access = No; RemovableMedia = Yes;` and `Archive Device = /dev/nst0` for tape) `(untested here)`:
+
+```text
+# /etc/bacula/bacula-sd.conf (untested here)
+Storage {
+  Name = stor1
+  SDPort = 9103
+  WorkingDirectory = "/var/spool/bacula"
+  Pid Directory = "/var/run"
+  Maximum Concurrent Jobs = 10
+}
+Director {
+  Name = dir1
+  Password = "storage-password"
+}
+Device {
+  Name = DiskArray
+  Media Type = MyFiles
+  Archive Device = /mnt/backups
+  Random Access = Yes;
+  RemovableMedia = no;
+  LabelMedia = yes;
+}
+```
+
+On the Director server, `/etc/bacula/bacula-dir.conf` links the `Director`, `Storage`, `Pool`, `FileSet`, `Client`, `Schedule`, and `Job` stanzas `(untested here)`:
+
+```text
+# /etc/bacula/bacula-dir.conf (untested here)
+Director {
+  Name = my-director
+  DIRport = 9101
+  QueryFile = "/etc/bacula/query.sql"
+  WorkingDirectory = "/var/spool/bacula"
+  PidDirectory = "/var/run"
+  Maximum Concurrent Jobs = 1
+  Password = "my-password"
+  Messages = Daemon
+}
+Storage {
+  Name = dir-storage1
+  Address = stor1.localnet
+  SDPort = 9103
+  Password = "storage-password"
+  Device = DiskArray
+  Media Type = MyFiles
+}
+Pool {
+  Name = stor1-pool
+  Pool Type = Backup
+  AutoPrune = yes
+  Recycle = yes
+  Volume Retention = 1 month
+  Maximum Volume Jobs = 1
+  Maximum Volumes = 32
+  Storage = Dir-Storage1
+  Label Format = "stor1-"
+}
+FileSet {
+  Name = "users-set"
+  Include {
+    Options {
+      signature = MD5
+      compression = GZIP
+      recurse = yes
+    }
+    File = /home
+    File = /etc/passwd
+    File = /etc/shadow
+    File = /etc/group
+  }
+  Exclude {
+    File = /home/tmp
+  }
+}
+Client {
+  Name = client-1
+  Address = headnode.localnet
+  FDPort = 9102
+  Catalog = my-catalog
+  Password = "my-password"
+}
+Schedule {
+  Name = "Weekly"
+  Run = Full sat at 10:00
+  Run = Incremental mon-thu at 02:01
+}
+Job {
+  Name = "users-backup"
+  Type = Backup
+  Client = client1
+  FileSet = "users-set"
+  Schedule = "Weekly"
+  Messages = Standard
+  Pool = example-pool
+  Write Bootstrap = "/var/spool/bacula/%n.bsr"
+  Priority = 1
+}
+```
+
+Notice `Write Bootstrap = "/var/spool/bacula/%n.bsr"` (`%n` expands to the job `Name`): this bootstrap file allows emergency data recovery even if the Bacula Catalog database is unavailable.
+
+On each data server (client), `/etc/bacula/bacula-fd.conf` (or `/etc/bacula/bacula-fd`) specifies the `Director` password and the `FileDaemon` listener matching the Director's `Client` name `(untested here)`:
+
+```text
+# /etc/bacula/bacula-fd.conf (untested here)
+Director {
+  Name = my-director
+  Password = "my-password"
+}
+FileDaemon {
+  Name = client-1
+  FDport = 9102
+  WorkingDirectory = /var/spool/bacula
+  Pid Directory = /var/run
+  Maximum Concurrent Jobs = 20
+}
+```
+
+Finally, the operator console `/etc/bacula/bconsole.conf` points to the Director `(untested here)`:
+
+```text
+# /etc/bacula/bconsole.conf (untested here)
+Director {
+  Name = my-director
+  DIRport = 9101
+  Address = headnode.localnet
+  Password = "my-password"
+}
+```
+
+Inside `bconsole`, Table 20-2 of the book lists the essential interactive commands `(untested here)`:
+
+| Command | Meaning |
+|---|---|
+| `cancel` | Cancel a running task |
+| `disable` | Temporarily prevent a scheduled task from running |
+| `enable` | Re-enable a disabled task |
+| `exit` / `quit` | Exit `bconsole` |
+| `list` | View objects recorded in the catalog |
+| `messages` | View recent daemon and job messages |
+| `restore` | Start an interactive restore |
+| `reload` | Reread the Director configuration file |
+| `run` | Start a job (for example `run job=users-backup`) |
+| `status` | Show the status of the director, storage servers, client file daemons, or all together |
+| `show` | Display parsed configuration objects (use `show help` or `show tasks` to inspect job definitions) |
+
+Strengths of Bacula: central policy, tape and disk pool management, long retention, mature. Costs: manual configuration across multiple files, catalog dependency (you must back up and be able to restore the catalog or `.bsr` bootstrap files), per-file catalog growth on huge file counts, and scan times on tens of millions of files.
 
 ## 4. Deduplicating repositories: restic, borg, kopia
 
@@ -188,7 +375,7 @@ Untested: 6) Bacula/Bareos: director, storage daemon, file daemon on three VMs; 
 9. What is the restore procedure for tar incrementals?
 10. How does `--link-dest` save space? Evidence from the experiment?
 11. What are the limits of hard-link snapshots?
-12. List Bacula's components.
+12. List Bacula's four configuration files (`bacula-dir.conf`, `bacula-sd.conf`, `bacula-fd.conf`, `bconsole.conf`), their default TCP ports (`9101`, `9103`, `9102`), and what `rsync --write-batch=update` produces. (Answer: Director on `9101`, Storage Daemon on `9103`, File Daemon on `9102`, plus `bconsole.conf` connecting to `9101`; `rsync --write-batch=update` generates `update` and `update.sh` so the same delta stream can be applied across many machines.)
 13. Why must the Bacula catalog be backed up separately?
 14. How do deduplicating tools work?
 15. What did `restic check` versus `--read-data` show?
@@ -210,7 +397,8 @@ Untested: 6) Bacula/Bareos: director, storage daemon, file daemon on three VMs; 
 
 ## 12. Sources and review notes
 
-- tar, Bacula (Director, Storage Daemon, File Daemon, Catalog, FileSet, Schedule, Pool, console) and rsync coverage, and the framing of backup in the cluster context: *Supercomputers for Linux SysAdmins* chapter 20 ("Backup"), restated in my words.
+- Book source (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`):
+  - Chapter `20. Backup` (read in full): `tar` eight operation modes (Table 20-1), `-I` parallel compression (`pigz`), `tar cf - data01 | (cd /db01; tar xvf -)`, `--listed-incremental` / `--level=0`, `cpio` and `pax`, Bacula architecture and configuration stanzas (`bacula-sd.conf`, `bacula-dir.conf`, `bacula-fd.conf`, `bconsole.conf`, `Write Bootstrap = "/var/spool/bacula/%n.bsr"`, and Table 20-2 `bconsole` commands), `rsync` flags (Table 20-3), `rsync --write-batch=update` / `update.sh`, and `borgbackup`.
 - Experiments: run locally as described (tools from conda-forge: rsync 3.4.4, GNU tar 1.35, restic 0.19.1). Tool behaviours not shown there (borg, kopia, ZFS, Lustre/GPFS change tracking, Object Lock, `mpifileutils`) are from general knowledge.
 - Related: 6.15 (Slurm backups and upgrades), 6.18 to 6.21 (storage), 6.24 (identity), Part 4 (state), Part 18 (security).
-- Unverified: sizing and timing claims for petabyte-scale scans, vendor-specific snapshot/backup tooling names, Bacula configuration syntax (not shown), the exact restic flags on other versions.
+- Unverified: sizing and timing claims for petabyte-scale scans, vendor-specific snapshot/backup tooling names, Bacula configuration stanzas and `bconsole` commands (from the book, not run here), `rsync --write-batch` (not run here), the exact restic flags on other versions.

@@ -161,9 +161,32 @@ export OMPI_MCA_pml=ucx                                # environment
 # or ~/.openmpi/mca-params.conf, or the system-wide openmpi-mca-params.conf
 ```
 
-The `^` prefix excludes components. Precedence: command line, then environment, then files.
+The `^` prefix excludes components. As listed in Chapter 21 of the SCL book, Open MPI evaluates MCA parameters in five levels of increasing priority:
 
-**UCX** (Unified Communication X) is the preferred path on InfiniBand and RoCE with Open MPI. Its own environment variables select transports and devices: `UCX_TLS` (for example `rc,ud,sm,self,cuda_copy,cuda_ipc,gdr_copy`), `UCX_NET_DEVICES` (for example `mlx5_0:1`), `UCX_IB_GID_INDEX` (RoCE), `UCX_LOG_LEVEL`. Use `ucx_info -d` to list devices and transports. NVIDIA's HPC-X is a tuned Open MPI + UCX + HCOLL bundle.
+1. Global configuration file (`/etc/openmpi-mca-params.conf`, with `key=value` lines; PMIx and PRRTE parameters can use `openpmix-mca-params.conf` or `prte-mca-params.conf`).
+2. User configuration file (`$HOME/.openmpi/mca-params.conf`).
+3. Tuned option files passed via `mpiexec --tune file1,file2...` `(untested here)`.
+4. Environment variables (`export OMPI_MCA_xxx=value`, or `PMIX_MCA_` and `PRRTE_MCA_` for PMIx/PRRTE).
+5. Command-line flags (`mpiexec -mca xxx value`).
+
+**HCOLL (Host Collectives)** is NVIDIA's collective library used by Open MPI to offload or accelerate MPI collectives over InfiniBand (including hardware multicast and SHARP in-network reductions). You can enable, disable, or steer HCOLL via MCA flags and environment variables `(untested here)`:
+
+```bash
+# Enable or disable HCOLL on the command line or via environment (for srun --mpi=pmix) (untested here)
+mpiexec -mca coll_hcoll_enable 1 ... myprog
+mpiexec -mca coll_hcoll_enable 0 ... myprog
+export OMPI_MCA_coll_hcoll_enable=0
+srun --mpi=pmix ... myprog
+
+# HCOLL and UCX environment controls passed with -x (untested here)
+-x HCOLL_MAIN_IB=mlx5_0:1        # force HCOLL to use a specific InfiniBand HCA:port
+-x HCOLL_ENABLE_MCAST_ALL=1      # enable hardware multicast for HCOLL collectives
+-x HCOLL_ENABLE_NBC=1            # enable non-blocking collectives in HCOLL
+-x HCOLL_ENABLE_SHARP=1          # enable in-network SHARP collective offload
+-x OMPI_MCA_pml=^ucx             # disable UCX PML if troubleshooting a UCX issue
+```
+
+**UCX** (Unified Communication X) is the preferred path on InfiniBand and RoCE with Open MPI (for example `mpirun -np 2 -mca pml ucx -x UCX_NET_DEVICES=mlx5_0:1 ./myapp` `(untested here)`). Its own environment variables select transports and devices: `UCX_TLS` (for example `rc,ud,sm,self,cuda_copy,cuda_ipc,gdr_copy`), `UCX_NET_DEVICES` (for example `mlx5_0:1`), `UCX_IB_GID_INDEX` (RoCE), `UCX_LOG_LEVEL`. Use `ucx_info -d` to list devices and transports, and `ucx_info -c` (or `ucx_info -c -f` for full descriptions) `(untested here)` to list all UCX configuration variables. NVIDIA's HPC-X is a tuned Open MPI + UCX + HCOLL bundle.
 
 Typical tuning questions and where to look:
 
@@ -237,7 +260,26 @@ I hit the first of these myself, so it comes with a record.
 
 ## 12. MPI and NCCL
 
-NCCL covers GPU collectives (all-reduce, all-gather, reduce-scatter, broadcast, all-to-all, send/recv) with topology-aware ring/tree algorithms over NVLink, PCIe and InfiniBand/RoCE; it has no point-to-point matching semantics like MPI and runs inside CUDA streams. PyTorch and most training stacks use NCCL for tensor traffic and use MPI (or a TCP/c10d store, or Slurm environment variables) only to exchange rank and address information at start-up. Many HPC codes mix them: MPI for the application, NCCL for GPU-resident reductions. Chapters 6.12 and Part 12 and 14 go deeper; for tuning environment variables see the volume-10 reference matrix in the NVIDIA-DevOps notes, and verify any variable against the NCCL version you run.
+NCCL covers GPU collectives (all-reduce, all-gather, reduce-scatter, broadcast, all-to-all, send/recv) with topology-aware ring/tree algorithms over NVLink, PCIe and InfiniBand/RoCE; it has no point-to-point matching semantics like MPI and runs inside CUDA streams. PyTorch and most training stacks use NCCL for tensor traffic and use MPI (or a TCP/c10d store, or Slurm environment variables) only to exchange rank and address information at start-up. Many HPC codes mix them: MPI for the application, NCCL for GPU-resident reductions.
+
+When multi-NIC nodes need explicit interface selection in NCCL (`NCCL_SOCKET_IFNAME` for IP bootstrap/socket interfaces or `NCCL_IB_HCA` for RDMA HCAs), Chapter 21 of the SCL book summarizes the four prefix-matching operators (multiple entries can be comma-separated) `(untested here)`:
+
+- **Plain string (prefix match)**: `eth` matches every interface whose name starts with `eth` (`eth0`, `eth1`, `eth11`).
+- **`=` prefix (exact match)**: `=eth1` matches only `eth1` and does not match `eth11`.
+- **`^` prefix (exclude prefix)**: `^docker` matches all interfaces except those starting with `docker`.
+- **`^=` prefix (exclude exact)**: `^=eth0` matches all interfaces except `eth0` specifically.
+
+Key NCCL environment variables highlighted in the book for debugging and fabric tuning `(untested here)`:
+
+- `NCCL_DEBUG` — diagnostic verbosity (`INFO` is recommended when debugging).
+- `NCCL_SOCKET_IFNAME` — list of IP network interfaces used for bootstrap and socket communication.
+- `NCCL_IB_HCA` — list of RDMA (InfiniBand/RoCE) HCAs to use.
+- `NCCL_IB_TIMEOUT` — timeout for InfiniBand/RDMA operations.
+- `NCCL_IB_RETRY_CNT` — number of RDMA retries before reporting failure.
+- `NCCL_IB_SL` / `NCCL_IB_TC` — InfiniBand Service Level and Traffic Class (important on QoS-configured IB and RoCE fabrics).
+- `NCCL_TOPO_FILE` — path to an explicit XML PCI/network topology file when automatic topology detection is wrong.
+
+Chapters 6.12 and Part 12 and 14 go deeper; verify any variable against the NCCL version you run.
 
 ## 13. Lab
 
@@ -287,7 +329,7 @@ Parts marked (tested) were run as described in the status box; the rest are unte
 19. How do you verify bindings?
 20. Why might `--bind-to none` be right for a PyTorch job and wrong for a stencil code?
 21. What does `-x` do?
-22. What is HCOLL and what does it accelerate?
+22. What is HCOLL, what do `-mca coll_hcoll_enable 1`, `HCOLL_MAIN_IB`, and `HCOLL_ENABLE_MCAST_ALL` control, and what do the four `NCCL_SOCKET_IFNAME` prefix operators (`eth`, `=eth1`, `^docker`, `^=eth0`) match? (Answer: HCOLL accelerates MPI collectives on InfiniBand; `-mca coll_hcoll_enable 1` enables it, `HCOLL_MAIN_IB` selects the HCA:port, and `HCOLL_ENABLE_MCAST_ALL` enables hardware multicast; in `NCCL_SOCKET_IFNAME`, a plain string matches a prefix, `=` matches an exact name, `^` excludes a prefix, and `^=` excludes an exact name.)
 23. What is CUDA-aware MPI and how do you check for it?
 24. Give three benchmark tools and what each measures.
 25. Describe the five-step diagnostic ladder for an init hang.
@@ -299,8 +341,10 @@ Parts marked (tested) were run as described in the status box; the rest are unte
 
 ## 16. Sources and review notes
 
-- Concepts, affinity, mapping and binding, threading levels: *Parallel and High Performance Computing* (Robey and Zamora, Manning), chapters 8 and 14 (in the corpus; used for thread levels and the placement/binding pitfalls), and *Supercomputers for Linux SysAdmins* chapter 21 (MPI implementations, PMIx, UCX and NCCL).
+- Book source (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`):
+  - Chapter `21. Compilers and Environments, for Parallel Technologies` (read in full): MPI implementations (`mpich`, `OpenMPI`, `Mvapich`/`Mvapich2` `mpirun_rsh`, `Spectrum MPI`, `IntelMPI`), `PMIx` (`srun --mpi=list`), OpenMPI MCA five-level parameter priority (`/etc/openmpi-mca-params.conf`, `$HOME/.openmpi/mca-params.conf`, `--tune`, `OMPI_MCA_`, `-mca`), `HCOLL` controls (`-mca coll_hcoll_enable`, `HCOLL_MAIN_IB`, `HCOLL_ENABLE_MCAST_ALL`, `HCOLL_ENABLE_NBC`, `HCOLL_ENABLE_SHARP`), `UCX` (`UCX_NET_DEVICES`, `ucx_info -c -f`), and `NCCL` interface prefix matching (`=`, `^`, `^=`) and environment variables (`NCCL_DEBUG`, `NCCL_SOCKET_IFNAME`, `NCCL_IB_HCA`, `NCCL_IB_TIMEOUT`, `NCCL_IB_RETRY_CNT`, `NCCL_IB_SL`, `NCCL_IB_TC`, `NCCL_TOPO_FILE`).
+- Concepts, affinity, mapping and binding, threading levels: *Parallel and High Performance Computing* (Robey and Zamora, Manning), chapters 8 and 14 (in the corpus; used for thread levels and the placement/binding pitfalls).
 - Launch commands, HPC-X/MCA parameters and NCCL notes: the author's NVIDIA-DevOps volume-10 chapter 7 (`mpirun`, `srun --mpi=pmix`, `-x`, `--bind-to none`, MCA parameters, HCOLL), re-checked for obvious version issues (legacy `openib`).
 - Open MPI facts: 5.x runs `prterun` (observed); `vader` renamed `sm` and `openib` removed in v5 (from memory, verify with `ompi_info` on your version).
 - Original: the three scripts under `code/part06/` (syntax-checked; single-rank runs recorded; multi-rank runs not obtained) and the troubleshooting ladder.
-- Unverified: all latency/bandwidth ranges quoted for shared memory, InfiniBand and TCP, the MPI ABI status, and root cause of the observed init hang.
+- Unverified: all latency/bandwidth ranges quoted for shared memory, InfiniBand and TCP, the MPI ABI status, HCOLL/UCX/NCCL runtime variables on live InfiniBand hardware, and root cause of the observed init hang.

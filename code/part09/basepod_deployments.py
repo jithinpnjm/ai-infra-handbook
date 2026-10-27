@@ -118,7 +118,7 @@ def size_128gpu_training_pod_blueprint(
     - 16 nodes * 8 H100 SXM5 = 128 GPUs (128 * 989 = 126,592 BF16 TFLOPS).
     - 8 NDR leaf switches (1 per rail), 16 downlinks per switch.
     - 16 * 10.2 kW = 163.2 kW (~163 kW) IT load across 4 racks (4 nodes/rack = 40.8 kW/rack).
-    - CAPEX: 16 * $285K ($4.56M) + $400K IB + $200K storage + $200K racks/cooling + $100K install
+    - CAPEX: 16 * $285K ($4,560,000 / $4.56M) + $400K IB + $200K storage + $200K racks/cooling + $100K install
       = $5,460,000 (~$5.46M / ~$5.5M), or ~$42,656 (~$43K) per GPU and ~$43.13 (~$43) per BF16 TFLOP.
     """
     if nodes <= 0 or gpus_per_node <= 0 or nodes_per_rack <= 0:

@@ -104,6 +104,35 @@ spec:
     - { name: ckpt, persistentVolumeClaim: { claimName: checkpoints-team-a } }
 ```
 
+### Labels and annotations: syntax rules and selector queries
+
+Every Pod and workload controller relies on **labels** (identifying key/value pairs used for grouping and selector queries by ReplicaSets, Services, NetworkPolicies, and node selectors) and **annotations** (non-identifying key/value metadata used by tools and controllers, such as `deployment.kubernetes.io/revision`, `kubernetes.io/change-cause`, or `kubectl.kubernetes.io/last-applied-configuration`). As *Kubernetes: Up and Running* (3rd edition, Chapter 6) specifies, Kubernetes enforces strict syntax rules on label keys and values:
+
+- **Label key syntax**: a key has two parts separated by a slash (`/`): an optional prefix and a required name.
+  - **Optional prefix**: must be a valid DNS subdomain up to `253` characters (for example, `acme.com/app-version` or `kubernetes.io/cluster-service`).
+  - **Required key name**: up to `63` characters consisting of alphanumeric characters (`[a-zA-Z0-9]`), dashes (`-`), underscores (`_`), and dots (`.`), and must start and end with an alphanumeric character.
+- **Label value syntax**: a string up to `63` characters following the same character rules as label key names (starts and ends with `[a-zA-Z0-9]`, with `-`, `_`, and `.` allowed in between).
+- **Querying and displaying labels with `kubectl`** (untested here): use `--show-labels` to print all labels on each object, `-L <label_key>` to display a specific label's value as a dedicated table column, and `-l` / `--selector` with equality (`=`, `!=`) or set-based (`in`, `notin`, `key`, `!key`) operators:
+
+```bash
+kubectl get pods --show-labels
+kubectl get deployments -L canary
+kubectl get pods -l 'ver=2,!canary'
+kubectl get pods -l 'ver in (1, 2)'
+kubectl label deployments alpaca-test "canary=true"    # add or update (--overwrite) a label
+kubectl label deployments alpaca-test "canary-"        # remove the 'canary' label with a trailing dash
+```
+
+In API objects such as `Deployment` and `Job`, a selector like `app=alpaca,ver in (1, 2)` is written using `matchLabels` and `matchExpressions` (evaluated as a logical AND):
+
+```yaml
+selector:
+  matchLabels:
+    app: alpaca
+  matchExpressions:
+    - { key: ver, operator: In, values: [1, 2] }
+```
+
 ## 2. Pod spec anatomy
 
 ### Containers and init containers
@@ -203,6 +232,32 @@ spec:
 ```
 
 **PodDisruptionBudgets** limit *voluntary* disruptions (drains, upgrades, autoscaler scale-down) via the Eviction API: set `minAvailable` or `maxUnavailable`; they do not stop involuntary failures. A PDB that allows zero disruptions blocks node drains (a common upgrade-time stall), so pair with capacity to place replacements.
+
+### Controlling Deployment rollouts: `change-cause`, `pause`, `resume`, `history`, and `undo --to-revision`
+
+During a `Deployment` rollout, the Deployment controller scales up the new `ReplicaSet` (`NewReplicaSet`) and scales down the old `ReplicaSet`s (`OldReplicaSets`) while keeping up to `spec.revisionHistoryLimit` (default `10`) old `ReplicaSet`s scaled to `0` for rollback. As *Kubernetes: Up and Running* (3rd edition, Chapter 10) shows, you can record the reason for an update by setting the `kubernetes.io/change-cause` annotation inside `spec.template.metadata.annotations` (on the Pod template, not on the top-level Deployment metadata, and only when changing the template since modifying `spec.template` triggers a new rollout):
+
+```yaml
+spec:
+  template:
+    metadata:
+      annotations:
+        kubernetes.io/change-cause: "Update to green kuard"
+```
+
+You can then inspect, pause, resume, or roll back the rollout using `kubectl rollout` (in the book's `kuard` example, untested here):
+
+```bash
+kubectl rollout status deployments kuard
+kubectl rollout pause deployments kuard                    # halt a rollout mid-flight to investigate anomalies
+kubectl rollout resume deployments kuard                   # continue a paused rollout
+kubectl rollout history deployment kuard                   # list REVISION and CHANGE-CAUSE columns
+kubectl rollout history deployment kuard --revision=2      # inspect the Pod template of revision 2
+kubectl rollout undo deployments kuard                     # roll back to the previous revision (same as --to-revision=0)
+kubectl rollout undo deployments kuard --to-revision=3     # roll back to a specific revision (renumbered as the newest revision)
+```
+
+Remember that `kubectl rollout undo` mutates cluster state directly; in a GitOps workflow, prefer reverting the manifest in Git and applying it so version control matches what runs in the cluster.
 
 ### StatefulSet example (vector database)
 
@@ -306,6 +361,10 @@ kubectl get pod trainer-0 -o jsonpath='{.status.qosClass}{"\n"}'
 kubectl logs trainer-0 -c trainer --previous --timestamps --tail=200
 kubectl logs -f job/embed-corpus-142 --all-containers --max-log-requests=20
 kubectl exec -it trainer-0 -c trainer -- bash
+kubectl attach -it trainer-0 -c trainer                                       # attach to PID 1 stdin/stdout when no shell exists in the container
+kubectl apply -f pod.yaml view-last-applied                                   # inspect (or edit-/set-last-applied) the last-applied-configuration annotation
+kubectl config set-context my-context --namespace=team-a && kubectl config use-context my-context
+source <(kubectl completion bash)                                             # enable bash tab completion for kubectl
 kubectl debug -it trainer-0 --image=nicolaka/netshoot --target=trainer      # ephemeral container sharing the process namespace
 kubectl debug node/gpu-node-1 -it --image=ubuntu                              # privileged node debug pod (chroot /host)
 kubectl top pod trainer-0 --containers
@@ -425,13 +484,13 @@ Mark tested only after execution.
 37. Why `automountServiceAccountToken: false`? **A:** Reduce credential exposure.
 38. Why not Deployments for training? **A:** Wrong semantics (restart forever, no completion).
 39. Why gang scheduling for distributed training? **A:** All-or-nothing starts avoid deadlock/idle GPUs.
-40. How to see a pod's QoS? **A:** `status.qosClass`.
+40. What are the character-length limits for Kubernetes label keys and values, and what `kubectl rollout` commands pause, resume, or roll back a Deployment to revision `3`? **A:** Label keys have an optional DNS subdomain prefix up to `253` characters plus `/` and a required name up to `63` characters (`[a-zA-Z0-9]`, `-`, `_`, `.`, starting/ending alphanumeric); values are up to `63` characters with the same rules; use `kubectl rollout pause deployments <name>`, `kubectl rollout resume deployments <name>`, and `kubectl rollout undo deployments <name> --to-revision=3`.
 
 ## 10. Sources and review notes
 
 **Written in original words.** Principal sources:
 
-- Brendan Burns, Joe Beda, Kelsey Hightower and Lachlan Evenson, *Kubernetes: Up and Running* (3rd edition; chapters 5 on pods, 6 on labels and annotations, 9 to 12 on ReplicaSets, Deployments, DaemonSets and Jobs, and 22 on running batch and stateful workloads).
+- Brendan Burns, Joe Beda, Kelsey Hightower and Lachlan Evenson, *Kubernetes: Up and Running* (`kubernetes-up-and-running-3rd-edition`, 3rd edition; Chapter 4: `4. Common kubectl Commands`, Chapter 5 on pods, Chapter 6: `6. Labels and Annotations`, Chapters 9 to 12 including Chapter 10: `10. Deployments`, and Chapter 22 on running batch and stateful workloads — Chapters 4, 6, and 10 read in full for `kubectl` context/last-applied/attach/completion commands, label syntax rules and selectors, and Deployment rollout pause/resume/undo/change-cause mechanics).
 - Josh Rosso, Rich Lander, Alex Brand and John Harris, *Production Kubernetes* (chapter 14 on application considerations: resource requests, probes, graceful shutdown, config).
 - Kubernetes documentation for pods, workloads, QoS, probes, PDBs and Job features.
 - Examples are the author's constructions.

@@ -16,42 +16,52 @@ lab_venue: "Nebius GPU"
 |---|---|
 | Level | Advanced |
 | Priority tier | 1 |
-| Lab venue | Nebius GPU / GCP GKE (plus local Python 3 verification lab) |
+| Lab venue | Nebius GPU / GCP GKE, plus local Python 3 verification lab |
 | Part | Part 11: GPUs on Kubernetes, scheduling and virtualization |
-| Sources used | Packt, *Kubernetes for Generative AI Solutions* (`kubernetes-for-generative-ai-solutions`, 2025, Ch. 3, Ch. 6, Ch. 8); `nvidia-zero-to-hero/volume-25/labs/lab-01-provision-a-gpu-node-and-verify-the-stack.md`; `nvidia-zero-to-hero/volume-10/labs/lab-01-inspect-a-kubernetes-gpu-node.md`; `nvidia-zero-to-hero/volume-10/labs/lab-02-install-and-validate-gpu-operator.md` |
+| Sources used | Packt, *Kubernetes for Generative AI Solutions*; Author's Volume 25 and Volume 10 lab notes |
 | Coverage file | `planning/coverage/chapters/11-30.md` |
 
 ## Why this matters for AI infrastructure
 
-Throughout Part 11 (`Chapters 11.1` through `11.29`), we built the complete architecture of GPU-enabled Kubernetes from the kernel driver and Container Device Interface (`CDI`) up to the **NVIDIA GPU Operator**, **Network Operator**, **KAI Scheduler**, **MIG**, **Time-Slicing**, **vGPU**, **KubeVirt/Kata**, and **BlueField DPUs**. In this Part 11 Capstone Lab, we bring all of those layers together into an end-to-end **multi-node GPU cloud deployment and verification workflow** across **Nebius GPU (`L40S` / `H100`)**, **Google Kubernetes Engine (`GKE`)**, and **Amazon EKS** (*Kubernetes for Generative AI Solutions* Chapters 3, 6, 8 and `volume-10/labs/lab-01..02`, `volume-25/labs/lab-01`):
-- According to the 2023 *Kubernetes in the wild* report cited in *Kubernetes for Generative AI Solutions* Chapter 3, cloud-hosted Kubernetes clusters grew **`5x` as fast** as on-premises clusters—providing **`99.95%` control-plane SLAs** spread across **`3` Availability Zones (`AZs`)** and up to **`26 months` of extended version support** compared to the upstream community's **`12-month` support window** (`3` releases per year).
-- Yet a freshly provisioned cloud GPU VM or managed Kubernetes node pool is **never production-ready merely because the instance state says `Running` or `helm upgrade --install` exited `0`** (`volume-25/labs/lab-01` and `volume-10/labs/lab-01..02`). A node can show `STATUS Ready` and `CAPACITY: 8` while `ALLOCATABLE: 0` (`gpu-node-11` in `volume-10/labs/lab-01`), or `nvidia-smi` can succeed on the host while container GPU passthrough fails with `could not select device driver "" with capabilities: [[gpu]]` (`volume-25/labs/lab-01`).
+Across Part 11 we built the architecture of GPU-enabled Kubernetes from kernel drivers and CDI up to the GPU Operator, Network Operator, KAI Scheduler, MIG, Time-Slicing, vGPU, KubeVirt, Kata, and BlueField DPUs. When teams move from diagrams to provisioning a live cloud GPU cluster on Nebius, Google Kubernetes Engine, or Amazon EKS, they hit a hard truth. A cloud GPU VM or managed Kubernetes node pool is never ready for production merely because the instance state says running or `helm upgrade --install` exits cleanly.
 
-This capstone chapter walks step by step through **four operational phases**:
-1. **Phase 1 — 4-Layer Nebius GPU VM Stack Verification (`volume-25/labs/lab-01`):** Proving host driver, container GPU passthrough (`nvidia-ctk`), `UUID=` persistent block storage (`/data/mlops`), and non-lockout `ufw` firewall rules across a reboot.
-2. **Phase 2 — Multi-Node Cloud Kubernetes Provisioning & GPU Operator Validation (`K8GS` Ch. 3 & `volume-10/labs/lab-01..02`):** Provisioning multi-node GPU clusters with Terraform IaC (`vpc` `10.0.0.0/16` `23` resources + `eks` `1.32` `33` resources / GKE / Nebius MK8s), auditing `Capacity` vs `Allocatable` (`gpu-node-07` `8/8` vs `gpu-node-11` `8/0`), and validating the GPU Operator (`DESIRED 3 / READY 3 / AVAILABLE 3`, `GPU_NODE_VALIDATED`, and `GPU_OPERATOR_VALIDATED`).
-3. **Phase 3 — Multi-Dimensional GenAI Autoscaling (`K8GS` Ch. 6):** Combining **HPA**, **VPA**, **KEDA** (`ScaledObject` scaling on `http_requests_total > 10` and `DCGM_FI_DEV_GPU_UTIL > 70`), and **Karpenter** (`NodePool` `eks-gpu-np` launching right-sized GPU nodes in `~2 minutes` and consolidating idle nodes via `karpenter.sh/disrupted:NoSchedule`).
-4. **Phase 4 — Cloud AI Networking Optimization (`K8GS` Ch. 8):** Native vs overlay CNI, IP-mode load balancing (`aws-load-balancer-nlb-target-type: ip` + `/healthz`), multi-tier **NetworkPolicies** (`TCP/80` & Qdrant `TCP/6333`), **Service Mesh (`Istio` / `Ambient Mesh` eBPF)**, **`kube-proxy` `IPVS` mode**, **CoreDNS autoscaling + `NodeLocal DNSCache`**, and **Placement Groups (`Cluster`, `Partition`, `Spread`) + RDMA (`EFA` / GPUDirect)**.
+A worker node can report Ready with eight physical GPUs in its capacity field while exposing zero allocatable GPUs to the scheduler because the device plugin socket dropped. On a fresh Nebius GPU VM, `nvidia-smi` can succeed on the host while containers fail to launch because the container runtime was never wired to the NVIDIA toolkit. Formatting the wrong block device, enabling a firewall before allowing SSH, or running Horizontal and Vertical Pod Autoscalers together in automatic mode can bring down a deployment in minutes.
+
+This Part 11 capstone chapter brings every layer together into a four-phase cloud deployment and verification workflow. The table below outlines the cloud growth baselines, verification gates, and scaling targets we will validate step by step.
+
+| Operational phase | Primary sources | Key cloud metrics and configuration targets | Failure trap prevented |
+|---|---|---|---|
+| Cloud Kubernetes Growth Baseline | *Kubernetes for Generative AI Solutions* (`K8GS`) Ch. 3 | `5x` faster cloud K8s growth vs on-prem (2023 report); `99.95%` control-plane SLA across `3` AZs; `3` releases/yr with `12-month` community vs `26-month` extended cloud support | Eliminates manual control-plane upgrades and single-AZ control-plane outages |
+| Phase 1: 4-Layer Nebius GPU VM Stack Audit | `volume-25/labs/lab-01` | Host `nvidia-smi` -> `docker run --rm --gpus all` (`nvidia-ctk`) -> empty `blkid` check + `UUID=` `/etc/fstab` `/data/mlops` -> `ufw allow OpenSSH` (`2222/tcp`) verified from a new SSH session and across `sudo reboot` | Catches missing `capabilities: [[gpu]]` runtime wiring, disk device-name shifts, and SSH firewall lockouts |
+| Phase 2: Multi-Node Provisioning & GPU Operator | `K8GS` Ch. 3 & `volume-10/labs/lab-01..02` | Terraform (`>= 1.11`, `vpc` `10.0.0.0/16` `23` resources + `eks` `1.32` `33` resources); `gpu-node-07` (`8/8`) vs `gpu-node-11` (`8/0`); `GPU_NODE_VALIDATED` and `GPU_OPERATOR_VALIDATED` (`DESIRED 3 / READY 3 / AVAILABLE 3`) | Exposes `CAPACITY 8 / ALLOCATABLE 0` zombie nodes and untolerated GPU Operator DaemonSet taints |
+| Phase 3: Multi-Dimensional GenAI Autoscaling | `K8GS` Ch. 6 | HPA (`1..5` replicas, `70%` CPU, `180s` scaleDown), VPA (`Off`, `Auto`, `Recreate`, `Initial`), KEDA (`http_requests_total > 10` & `DCGM_FI_DEV_GPU_UTIL > 70`), and Karpenter (`eks-gpu-np`, `~2 min` launch, `karpenter.sh/disrupted:NoSchedule`) | Prevents HPA+VPA replica thrashing and idle multi-thousand-dollar GPU node waste |
+| Phase 4: Cloud AI Networking Optimization | `K8GS` Ch. 8 | Native CNI (`IPv6` / secondary CIDRs), `aws-load-balancer-nlb-target-type: ip` + `/healthz`, Chatbot `NetworkPolicies` (`TCP/80` & Qdrant `TCP/6333`), `kube-proxy` `IPVS`, `NodeLocal DNSCache`, and `Cluster` Placement Groups + RDMA (`EFA` / GPUDirect) | Eliminates `NodePort` hops, `iptables` `O(N)` bottlenecks, CoreDNS egress blackholes, and slow inter-node TCP collectives |
 
 ## Prerequisites and outcomes
 
 ### Prerequisites
-- Completion of Chapters 11.1–11.29.
-- Familiarity with `kubectl`, `helm`, `terraform`, `docker`, and `nvidia-smi`.
+
+- Completion of Chapters 11.1 through 11.29.
+- Working familiarity with kubectl, Helm, Terraform, Docker, and the NVIDIA system management interface.
 
 ### Outcomes
-After completing this chapter, you will be able to:
-- Execute the **4-Layer Nebius L40S / Cloud GPU VM Provisioning Audit (`volume-25/labs/lab-01`)** (`nvidia-smi` -> `docker run --rm --gpus all` / `nvidia-ctk runtime configure` -> `blkid` empty check + `UUID=` `/etc/fstab` `/data/mlops` mount -> `ufw allow OpenSSH` verified from a brand-new SSH session and across `sudo reboot`).
-- Provision and inspect a **Multi-Node Cloud Kubernetes GPU Cluster (`K8GS` Ch. 3 & `volume-10/labs/lab-01..02`)**, distinguishing `gpu-node-07` (`CAPACITY 8 / ALLOCATABLE 8`) from `gpu-node-11` (`CAPACITY 8 / ALLOCATABLE 0`), matching host `Bus-Id 00000000:1B:00.0` and `UUID GPU-3a1e9f2b-...` (`NVIDIA-SMI 550.90.07`, `4MiB / 81920MiB`) inside `gpu-node-validation` (`GPU_NODE_VALIDATED`), and validating `helm upgrade --install gpu-operator --timeout 15m` (`GPU_OPERATOR_VALIDATED`).
-- Configure **GenAI Pod and Node Autoscaling (`K8GS` Ch. 6)** across **HPA** (`1..5` replicas at `70%` CPU, `180s` scaleDown window `50%/15s`, `0s` scaleUp `2 pods/15s`), **VPA** (`Off`, `Auto`, `Recreate`, `Initial`, `1000m`/`2Gi` to `2000m`/`4Gi`), **KEDA** (`amazonsqs-scaler` `0..10` replicas and `my-llama-deployment-scaler` on `http_requests_total > 10` and `DCGM_FI_DEV_GPU_UTIL > 70`), and **Karpenter** (`eks-gpu-np` `WhenEmptyOrUnderutilized`).
-- Optimize **Multi-Node GenAI Cloud Networking (`K8GS` Ch. 8)** using `aws-load-balancer-nlb-target-type: ip` + `/healthz`, Chatbot **NetworkPolicies** (`TCP/80` & Qdrant `TCP/6333`), **`kube-proxy` `IPVS` mode**, **VPC CNI custom networking / IPv6**, **CoreDNS `cluster-proportional-autoscaler` + `NodeLocal DNSCache`**, and **Cluster Placement Groups + RDMA (`EFA` / GPUDirect / InfiniBand)**.
+
+- Execute the four-layer Nebius L40S and cloud GPU VM provisioning audit. Verify host drivers, container passthrough, UUID-mounted persistent storage, and non-lockout firewall rules.
+- Provision and inspect a multi-node cloud Kubernetes GPU cluster. Separate healthy allocatable nodes from degraded nodes and prove end-to-end GPU Operator readiness.
+- Configure pod and node autoscaling for generative AI workloads. Combine HPA stabilization windows, VPA recommendation modes, KEDA dual-metric Prometheus triggers, and Karpenter GPU NodePools.
+- Optimize multi-node cloud networking for inference and training. Apply IP-mode load balancers, zero-trust NetworkPolicies for RAG and vector databases, IPVS service routing, NodeLocal DNSCache, and compact RDMA placement groups.
 
 ## Concepts: basics to intermediate to advanced
 
-### 1. Basics: Phase 1 (Nebius GPU VM 4-layer stack verification, `volume-25/labs/lab-01`) and Phase 2 (Multi-node GPU Kubernetes baseline, `volume-10/labs/lab-01..02`)
+### 1. Basics: Phase 1 Nebius GPU VM verification and Phase 2 multi-node Kubernetes baseline
 
-#### 1. Phase 1: Proving All Four Layers on a Nebius L40S / Cloud GPU VM (`volume-25/labs/lab-01`)
-Before joining GPU worker nodes to a Kubernetes cluster or running a training pipeline on a Nebius `L40S` / `H100` VM, `volume-25/labs/lab-01` ("Lab 01 — Provision a GPU Node and Verify the Stack") mandates verifying **four independent layers** in strict order:
+#### 1. Phase 1: Proving All Four Layers on a Nebius L40S or Cloud GPU VM
+
+When you provision a fresh GPU virtual machine on Nebius or any cloud provider, seeing an active status in the console tells you only that the machine booted. It does not prove that the Linux kernel loaded the NVIDIA driver, that Docker or containerd can inject the GPU into containers, or that your dataset disk will survive a reboot. Before joining worker nodes to Kubernetes or launching a training job, you must verify four independent layers in strict sequence.
+
+First, run `nvidia-smi` on the host to confirm that `nvidia.ko` is loaded and communicates with the physical GPU over PCIe. Second, test container GPU passthrough by running `nvidia-smi` inside a disposable CUDA container. A working host driver says nothing about whether the NVIDIA Container Toolkit is wired into the container runtime. If the container launch fails with an empty device driver capability error, configure the runtime with `nvidia-ctk` and restart the daemon; stopping the Docker service entirely triggers a daemon connection error instead.
+
+Third, inspect attached block devices with `lsblk` and verify that `blkid` returns completely empty output before formatting with `mkfs.ext4` so you never wipe an existing dataset. Mount the filesystem at `/data/mlops` and record its `UUID=` in `/etc/fstab` rather than a raw block device path that can shift across reboots. Fourth, allow OpenSSH in UFW before enabling the firewall. Test connectivity from a brand-new SSH terminal while keeping your original session open, and reboot the VM to prove every layer persists.
 
 ```mermaid
 flowchart LR
@@ -60,48 +70,64 @@ flowchart LR
     L3 --> L4["4. Firewall & Reboot Gate: ufw allow OpenSSH BEFORE ufw enable -> Test New SSH Session -> sudo reboot & Re-Verify"]
 ```
 
-Why must each layer be proven separately (`volume-25/labs/lab-01`)?
-1. **Layer 1 (Host Driver):** Running `nvidia-smi` on the host proves `nvidia.ko` is loaded and can talk to the GPU over PCIe. If it prints `NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver`, stop and fix the kernel/driver match.
-2. **Layer 2 (Container GPU Passthrough):** A passing host `nvidia-smi` says **nothing** about whether containers can see the GPU. Run `sudo docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi`. If it fails with `could not select device driver "" with capabilities: [[gpu]]`, the toolkit is not wired into the runtime—fix it via:
-   `sudo nvidia-ctk runtime configure --runtime=docker && sudo systemctl restart docker`
-   *(Note from `volume-25/labs/lab-01` Section 11: Stopping `docker` entirely produces a `Cannot connect to the Docker daemon` error, which is distinct from the toolkit `capabilities: [[gpu]]` misconfiguration error.)*
-3. **Layer 3 (Persistent Block Storage by `UUID`):** Inspect attached disks with `lsblk -d -o NAME,SIZE,TYPE` and run **`sudo blkid /dev/vdX` first**—confirming `blkid` returns **empty output** so you never overwrite an existing filesystem with `mkfs.ext4`. Format (`sudo mkfs.ext4 -F /dev/vdX`), mount at `/data/mlops`, and register the volume in `/etc/fstab` using **`UUID=$UUID /data/mlops ext4 defaults 0 2`** (never a raw `/dev/vdX` device name, which can shift across reboots).
-4. **Layer 4 (Firewall Without Self-Lockout + Reboot Proof):** Run **`sudo ufw allow OpenSSH` first** (or `ufw allow 2222/tcp` if SSH uses a non-default port) *before* `sudo ufw --force enable`. Because `ufw enable` does not kill your existing SSH connection, **always test from a brand-new SSH terminal before closing your original session**, then run `sudo reboot` and re-verify all four checks to prove boot persistence.
+#### 2. Phase 2: Inspecting a Multi-Node Kubernetes GPU Cluster and Validating the GPU Operator
 
-#### 2. Phase 2: Inspecting a Multi-Node Kubernetes GPU Cluster and Validating the GPU Operator (`volume-10/labs/lab-01..02`)
-Once your multi-node Kubernetes cluster is up (on Nebius Managed Kubernetes, GKE, or EKS), `volume-10/labs/lab-01` and `lab-02` establish the **layered Kubernetes GPU baseline**:
+Once your cloud GPU nodes join a Kubernetes cluster on Nebius Managed Kubernetes, GKE, or EKS, you must verify the platform layer before admitting user workloads. A common operational trap is trusting `kubectl get nodes` when it reports every node as Ready. Node readiness only proves that the kubelet is passing basic health checks; it does not prove that the NVIDIA device plugin is advertising healthy GPUs to the scheduler.
 
-| Inspection Step (`volume-10/labs/lab-01` & `02`) | Command Executed | Captured Baseline Evidence | Operational Meaning & Trap Caught |
-|---|---|---|---|
-| **1. Cluster Context & Node Readiness** | `kubectl config current-context` & `kubectl get nodes -o wide` | Context `gpu-staging-us-east-1`; `cpu-node-01`, `gpu-node-07`, `gpu-node-11` all `Ready` (`v1.29.4`, `Ubuntu 22.04.4 LTS`, kernel `5.15.0-1053-aws`) | Prevents mutating prod by mistake; `STATUS Ready` only proves `kubelet` is alive, **not** that GPUs are schedulable. |
-| **2. `Capacity` vs `Allocatable` Audit** | `kubectl get nodes -o custom-columns=NAME:.metadata.name,CAPACITY:.status.capacity.nvidia\.com/gpu,ALLOCATABLE:.status.allocatable.nvidia\.com/gpu` | `gpu-node-07`: **`CAPACITY 8 / ALLOCATABLE 8`**<br/>`gpu-node-11`: **`CAPACITY 8 / ALLOCATABLE 0`** | `gpu-node-07` is healthy; `gpu-node-11` (`8 / 0`) catches a crashed device plugin, driver reload, or GPU reset in progress. |
-| **3. Taints & 5 GPU Operands** | `kubectl describe node gpu-node-07` & `kubectl get pods -A -o wide \| grep -Ei 'nvidia\|gpu-feature\|node-feature\|dcgm'` | Taint `nvidia.com/gpu=present:NoSchedule`; `5` pods `1/1 Running` in `gpu-operator` (`driver`, `toolkit`, `device-plugin`, `gfd`, `dcgm-exporter`) | Explains why Pods without the matching toleration stay `Pending`; `1/1 Running` on DaemonSets still requires host & pod verification. |
-| **4. Host Ground-Truth & Containerd Config** | `nvidia-smi`, `nvidia-smi -L`, `nvidia-smi topo -m`, `sudo crictl info` | `NVIDIA-SMI 550.90.07`, `CUDA 12.4`, `NVIDIA A100-SXM4-80GB`, `34C`, `62W / 400W`, `4MiB / 81920MiB`, `Bus-Id 00000000:1B:00.0`, `UUID GPU-3a1e9f2b-6c7d-4e91-9a02-1f8b7c0d5e11`, `CPU Affinity 0-31`, `NUMA 0`; `io.containerd.runc.v2`, `pause:3.9`, `default_runtime_name = "nvidia"` | Captures the exact physical `Bus-Id` and `UUID` join keys to match inside the validation container. |
-| **5. Bounded Validation Pod (`Lab 01` & `Lab 02`)** | Apply `gpu-node-validation` (`Pending 1s -> ContainerCreating 3s -> Running 9s -> Completed 11s`) & `gpu-operator-validation` (`--timeout 15m` Helm install, `DESIRED 3 / READY 3 / AVAILABLE 3`, `ALLOCATABLE: 4`) | In-container `kubectl logs` prints `NVIDIA-SMI 550.90.07`, `Bus-Id 00000000:1B:00.0` (or `00000000:07:00.0`), and **`GPU_NODE_VALIDATED`** / **`GPU_OPERATOR_VALIDATED`** | Proves the entire `Driver -> Toolkit -> Device Plugin -> Kubelet -> Scheduler -> Container` chain works end-to-end. |
-| **6. Safe Over-Request Failure Exercise** | Request `nvidia.com/gpu: 99` (Lab 01) or `8` on a `4`-GPU pool (Lab 02) | `Warning FailedScheduling: 0/3 nodes are available: 1 Insufficient nvidia.com/gpu` (or `3 Insufficient nvidia.com/gpu`) | Proves `kube-scheduler` enforces extended-resource capacity bounds before reaching `ContainerCreating`. |
+In our multi-node inspection lab, comparing capacity against allocatable counts immediately exposes a hidden fault. While node `gpu-node-07` reports eight capacity and eight allocatable GPUs, node `gpu-node-11` reports eight capacity and zero allocatable GPUs because its device plugin or driver health check failed. Even when all five GPU Operator DaemonSets show running pods, you must run a bounded validation pod and match the container PCIe Bus-Id and GPU UUID against the host hardware baseline.
+
+| Inspection step | Source reference | Command executed | Captured baseline evidence | Operational meaning and trap caught |
+|---|---|---|---|---|
+| 1. Cluster Context & Node Readiness | `volume-10/labs/lab-01` | `kubectl config current-context` & `kubectl get nodes -o wide` | Context `gpu-staging-us-east-1`; `cpu-node-01`, `gpu-node-07`, `gpu-node-11` all `Ready` (`v1.29.4`, `Ubuntu 22.04.4 LTS`, kernel `5.15.0-1053-aws`) | Prevents mutating prod by mistake; `STATUS Ready` only proves `kubelet` is alive, not that GPUs are schedulable |
+| 2. Capacity vs Allocatable Audit | `volume-10/labs/lab-01` | `kubectl get nodes -o custom-columns=NAME:.metadata.name,CAPACITY:.status.capacity.nvidia\.com/gpu,ALLOCATABLE:.status.allocatable.nvidia\.com/gpu` | `gpu-node-07`: `CAPACITY 8 / ALLOCATABLE 8`; `gpu-node-11`: `CAPACITY 8 / ALLOCATABLE 0` | `gpu-node-07` is healthy; `gpu-node-11` (`8 / 0`) catches a crashed device plugin, driver reload, or GPU reset in progress |
+| 3. Taints & 5 GPU Operands | `volume-10/labs/lab-01` | `kubectl describe node gpu-node-07` & `kubectl get pods -A -o wide \| grep -Ei 'nvidia\|gpu-feature\|node-feature\|dcgm'` | Taint `nvidia.com/gpu=present:NoSchedule`; `5` pods `1/1 Running` in `gpu-operator` (`driver`, `toolkit`, `device-plugin`, `gfd`, `dcgm-exporter`) | Explains why Pods without the matching toleration stay `Pending`; `1/1 Running` on DaemonSets still requires host and pod verification |
+| 4. Host Ground-Truth & Containerd Config | `volume-10/labs/lab-01` | `nvidia-smi`, `nvidia-smi -L`, `nvidia-smi topo -m`, `sudo crictl info` | `NVIDIA-SMI 550.90.07`, `CUDA 12.4`, `NVIDIA A100-SXM4-80GB`, `34C`, `62W / 400W`, `4MiB / 81920MiB`, `Bus-Id 00000000:1B:00.0`, `UUID GPU-3a1e9f2b-6c7d-4e91-9a02-1f8b7c0d5e11`, `CPU Affinity 0-31`, `NUMA 0`; `io.containerd.runc.v2`, `pause:3.9`, `default_runtime_name = "nvidia"` | Captures the exact physical `Bus-Id` and `UUID` join keys to match inside the validation container |
+| 5. Bounded Validation Pod | `volume-10/labs/lab-01` & `02` | Apply `gpu-node-validation` (`Pending 1s -> ContainerCreating 3s -> Running 9s -> Completed 11s`) & `gpu-operator-validation` (`--timeout 15m` Helm install, `DESIRED 3 / READY 3 / AVAILABLE 3`, `ALLOCATABLE: 4`) | In-container `kubectl logs` prints `NVIDIA-SMI 550.90.07`, `Bus-Id 00000000:1B:00.0` (or `00000000:07:00.0`), and `GPU_NODE_VALIDATED` / `GPU_OPERATOR_VALIDATED` | Proves the entire `Driver -> Toolkit -> Device Plugin -> Kubelet -> Scheduler -> Container` chain works end to end |
+| 6. Safe Over-Request Failure Exercise | `volume-10/labs/lab-01` & `02` | Request `nvidia.com/gpu: 99` (Lab 01) or `8` on a `4`-GPU pool (Lab 02) | `Warning FailedScheduling: 0/3 nodes are available: 1 Insufficient nvidia.com/gpu` (or `3 Insufficient nvidia.com/gpu`) | Proves `kube-scheduler` enforces extended-resource capacity bounds before reaching `ContainerCreating` |
 
 ---
 
-### 2. Intermediate: Phase 3 — Provisioning with Terraform IaC (`K8GS` Ch. 3) and autoscaling GenAI with HPA, VPA, KEDA, and Karpenter (`K8GS` Ch. 6)
+### 2. Intermediate: Phase 3 Terraform provisioning and autoscaling with HPA, VPA, KEDA, and Karpenter
 
-#### 1. Cloud Kubernetes Lifecycle and Terraform IaC (`K8GS` Chapter 3)
-As *Kubernetes for Generative AI Solutions* Chapter 3 details, cloud providers (`Amazon EKS`, `GKE Standard/Enterprise`, `AKS`, and `Nebius Managed Kubernetes`) offload control-plane HA (`3` AZs, `99.95%` SLA) and extend Kubernetes version support from **`12 months` (community support across `3` releases/year) up to `26 months`**. To make multi-node cluster provisioning repeatable across environments, `K8GS` Chapter 3 codifies the stack in **Terraform (`>= 1.11`, `aws >= 5.96`, `helm >= 2.17`, `kubernetes >= 2.36`)** using three modular layers:
-1. **Network Module (`terraform-aws-modules/vpc/aws ~> 5.21`):** Creates a `10.0.0.0/16` VPC across `3` AZs (`us-west-2`), private/public subnets (`cidrsubnet`), and NAT gateway (`23` resources added), tagging private subnets with `"karpenter.sh/discovery" = local.name`.
-2. **Cluster Module (`terraform-aws-modules/eks/aws ~> 20.36`):** Deploys Kubernetes `1.32` (`33` resources added) with four data-plane choices (**Self-managed nodes**, **Managed node groups** `eks-mng` with `desired_size = 2`, `max_size = 3` across flexible `m5.large`/`m6i.large`/`m6a.large`/`m7i.large`/`m7a.large` instances, **AWS Fargate** serverless microVMs, and **Karpenter**).
-3. **Add-ons & Model Serving (`aws-ia/eks-blueprints-addons/aws ~> 1.21`):** Deploys the Load Balancer Controller and Karpenter (`2` worker nodes and `10` system pods running), pushes the `my-llama` container image to ECR, and exposes `my-llama` (`containerPort: 5000`) via an external LoadBalancer Service on `port: 80` (`POST http://$NLB_URL/predict`).
+#### 1. Cloud Kubernetes Lifecycle and Terraform IaC
 
-#### 2. Pod-Level Autoscaling: `HPA`, `VPA`, and Event-Driven `KEDA` (`K8GS` Chapter 6)
-Scaling GenAI applications requires choosing the right signal (**Conventional metrics** like CPU/Memory—noting that exceeding a container `memory` limit causes immediate CRI OOM termination whereas exceeding a `cpu` limit only throttles—versus **Custom metrics** like HTTP request rate, queue length, latency, error rate, concurrency, and **`DCGM_FI_DEV_GPU_UTIL`** exposed via `dcgm-exporter` and `prometheus-adapter`, `K8GS` Chapter 6):
-1. **HorizontalPodAutoscaler (`HPA`, `autoscaling/v2`):** Adjusts Pod replica count (`chatbot-ui-hpa`: `minReplicas: 1`, `maxReplicas: 5`, target CPU `averageUtilization: 70`, or `ContainerResource` `60%` for multi-container sidecar pods). To prevent replica thrashing ("flapping"), configure explicit `behavior` windows (`K8GS` Ch. 6):
-   - **`scaleDown`:** `stabilizationWindowSeconds: 180` (`3 minutes` cooldown), removing at most `50%` of replicas per `15-second` `periodSeconds`.
-   - **`scaleUp`:** `stabilizationWindowSeconds: 0` (immediate reaction), adding up to `2` `Pods` per `15-second` `periodSeconds` (`selectPolicy: Max`).
-2. **VerticalPodAutoscaler (`VPA`, `autoscaling.k8s.io/v1`):** Adjusts per-Pod CPU and memory `requests` and `limits` (`minAllowed: 1000m / 2Gi`, `maxAllowed: 2000m / 4Gi`, `controlledValues: "RequestsAndLimits"` or `"RequestsOnly"`) across four modes: **`Off`** (recommendations only), **`Auto`**, **`Recreate`**, and **`Initial`**. (**Crucial rule from `K8GS` Ch. 6:** Never combine `HPA` and `VPA` on the same CPU/memory metrics unless `VPA` `updateMode` is set to **`"Off"`**, because VPA resizing a Pod's requests mid-flight distorts the utilization percentage HPA uses to scale replica counts.)
-3. **Kubernetes Event-Driven Autoscaler (`KEDA`, `keda.sh/v1alpha1` `ScaledObject`):** Extends HPA to scale deployments—**including scaling down to zero (`minReplicaCount: 0`)**—based on external event triggers (`pollingInterval: 15`, `cooldownPeriod: 180`, `maxReplicaCount: 10`, `queueLength: "10"` on Amazon SQS). For LLM inference (`my-llama-deployment-scaler` in `K8GS` Ch. 6), KEDA combines **two Prometheus triggers**:
-   - **Trigger 1 (Request Rate):** `sum(rate(http_requests_total[1m]))` with `threshold: "10"`.
-   - **Trigger 2 (GPU Utilization):** `avg(DCGM_FI_DEV_GPU_UTIL{pod=~"my-llama-.*"}[30s])` with `threshold: "70"`.
+Building multi-node clusters by clicking through cloud consoles creates configuration drift between staging and production. Managed Kubernetes offerings on EKS, GKE, AKS, and Nebius offload three-zone control-plane high availability and provide extended version support beyond the upstream community window, but the worker data plane and add-ons still require repeatable Infrastructure as Code. Without modular automation, subnet tags for node autoscalers and load balancer controllers are easily missed.
 
-#### 3. Node-Level GPU Autoscaling: Cluster Autoscaler (`CA`) vs `Karpenter` (`K8GS` Chapter 6)
-When KEDA or HPA adds a new GPU Pod and no existing node has free `nvidia.com/gpu` capacity, `kube-scheduler` marks the Pod `Pending` (`0/2 nodes are available: 2 Insufficient nvidia.com/gpu`). While the traditional **Cluster Autoscaler (`CA`)** polls predefined node groups (ASGs), **Karpenter** (introduced in `2021`, configured via **`NodePool`** and **`EC2NodeClass`** CRDs) watches unschedulable Pods directly in real time (`K8GS` Ch. 6):
+To make multi-node deployments reproducible, *Kubernetes for Generative AI Solutions* Chapter 3 structures the Terraform stack into three clean layers. The network module builds a multi-zone VPC and tags private subnets for Karpenter discovery. Next, the cluster module provisions the Kubernetes control plane alongside four worker data-plane options spanning self-managed nodes, managed node groups, serverless Fargate microVMs, and Karpenter. Finally, the blueprints add-ons module installs the load balancer controller and exposes the containerized Llama service through an external network load balancer.
+
+```text
+Terraform Multi-Node Cloud Kubernetes Architecture (K8GS Chapter 3):
+  Tooling Versions : terraform >= 1.11, aws >= 5.96, helm >= 2.17, kubernetes >= 2.36
+  1. Network Layer : terraform-aws-modules/vpc/aws ~> 5.21
+     - CIDR 10.0.0.0/16 across 3 AZs (us-west-2), private/public cidrsubnet, NAT gateway (23 resources added)
+     - Tags private subnets with "karpenter.sh/discovery" = local.name
+  2. Cluster Layer : terraform-aws-modules/eks/aws ~> 20.36
+     - Deploys Kubernetes 1.32 (33 resources added) across 4 data-plane options:
+       (a) Self-managed nodes, (b) Managed node groups (eks-mng: desired_size = 2, max_size = 3 across
+           m5.large / m6i.large / m6a.large / m7i.large / m7a.large), (c) AWS Fargate, (d) Karpenter
+  3. Add-ons & App : aws-ia/eks-blueprints-addons/aws ~> 1.21
+     - Deploys Load Balancer Controller + Karpenter (2 worker nodes and 10 system pods running)
+     - Pushes my-llama image to ECR and exposes containerPort 5000 via LoadBalancer port 80 (POST /predict)
+```
+
+#### 2. Pod-Level Autoscaling: HPA, VPA, and Event-Driven KEDA
+
+Scaling generative AI microservices with naive CPU or memory rules causes either latency spikes or endless pod restarts. In the Kubernetes container runtime interface, exceeding a CPU limit merely throttles the process, whereas exceeding a memory limit triggers an immediate out-of-memory kill. Because Python and PyTorch caching allocators hold reserved memory even when traffic drops, memory utilization is a poor horizontal scaling signal. Request rate, queue depth, and DCGM GPU utilization provide much cleaner scaling signals.
+
+Platform engineers combine three pod autoscalers with strict guardrails. HorizontalPodAutoscaler adjusts replica counts using asymmetric stabilization windows so pods scale out immediately on traffic bursts. It then waits three minutes before scaling down to prevent replica flapping. VerticalPodAutoscaler right-sizes CPU and memory requests, but you must set its update mode to Off whenever HPA scales on CPU or memory so the two controllers do not fight each other. For LLM serving and asynchronous queues, KEDA scales down to zero on idle queues and scales out on Prometheus triggers for HTTP request rate and `DCGM_FI_DEV_GPU_UTIL`.
+
+| Pod autoscaler | API version & resource | Target workload in `K8GS` Ch. 6 | Exact thresholds and stabilization parameters | Critical operational rule |
+|---|---|---|---|---|
+| HorizontalPodAutoscaler (`HPA`) | `autoscaling/v2` (`chatbot-ui-hpa`) | Stateless UI & API pods (`1` to `5` replicas) | Target CPU `averageUtilization: 70` (or `ContainerResource` `60%`); `scaleDown`: `stabilizationWindowSeconds: 180`, max `50%` per `15s`; `scaleUp`: `0s` window, max `2` `Pods` per `15s` (`selectPolicy: Max`) | Asymmetric windows prevent replica thrashing ("flapping") during spiky prompt traffic |
+| VerticalPodAutoscaler (`VPA`) | `autoscaling.k8s.io/v1` (`chatbot-ui-vpa`) | Right-sizing pod CPU/RAM requests & limits | `4` modes: `Off`, `Auto`, `Recreate`, `Initial`; bounds `minAllowed: 1000m / 2Gi` to `maxAllowed: 2000m / 4Gi` (`RequestsAndLimits` or `RequestsOnly`) | Never run HPA and VPA (`Auto`) together on CPU/memory; set VPA `updateMode: "Off"` to avoid control-loop conflicts |
+| KEDA Queue Scaler | `keda.sh/v1alpha1` `ScaledObject` (`amazonsqs-scaler`) | Batch / async worker deployments (`0` to `10` replicas) | `minReplicaCount: 0`, `maxReplicaCount: 10`, `pollingInterval: 15`, `cooldownPeriod: 180`, Amazon SQS `queueLength: "10"` | Enables true scale-to-zero (`minReplicaCount: 0`) when no batch jobs are queued |
+| KEDA Dual-Trigger LLM Scaler | `keda.sh/v1alpha1` `ScaledObject` (`my-llama-deployment-scaler`) | GPU LLM inference (`my-llama-deployment`, `1` to `10` replicas) | Trigger 1: `sum(rate(http_requests_total[1m])) > 10`; Trigger 2: `avg(DCGM_FI_DEV_GPU_UTIL{pod=~"my-llama-.*"}[30s]) > 70` via `dcgm-exporter` + `prometheus-adapter` | Scales LLM replicas on real user traffic and GPU silicon load rather than host CPU |
+
+#### 3. Node-Level GPU Autoscaling: Cluster Autoscaler vs Karpenter
+
+When KEDA or a user job creates a new GPU pod and every existing worker node is full, `kube-scheduler` leaves the pod in Pending with an insufficient `nvidia.com/gpu` warning. The traditional Kubernetes Cluster Autoscaler reacts slowly because it polls predefined cloud Auto Scaling Groups. It must also maintain separate node groups for every GPU instance type and availability zone. If a single zone runs out of capacity for that specific instance group, the pod stalls while other compatible GPU families sit unused.
+
+Karpenter solves this bottleneck by watching unschedulable pods directly at the Kubernetes API server without relying on fixed node groups. Configured through NodePool and EC2NodeClass custom resources, Karpenter detects a pending GPU job in milliseconds. It evaluates spot and on-demand capacity across compatible GPU families and launches a right-sized node in roughly two minutes. When the fine-tuning job finishes and the GPU node becomes empty, Karpenter taints the machine with `karpenter.sh/disrupted:NoSchedule` and terminates it automatically so you never pay for idle cloud GPUs.
 
 ```mermaid
 sequenceDiagram
@@ -121,36 +147,38 @@ sequenceDiagram
 
 ---
 
-### 3. Advanced: Phase 4 — Cloud networking best practices for multi-node GenAI on Kubernetes (`K8GS` Chapter 8)
+### 3. Advanced: Phase 4 cloud networking best practices for multi-node GenAI on Kubernetes
 
-To run both low-latency RAG/chatbot inference and high-bandwidth multi-node distributed training on a cloud Kubernetes cluster, *Kubernetes for Generative AI Solutions* Chapter 8 prescribes six networking optimizations:
+Default Kubernetes networking settings are designed for small web apps, not multi-node generative AI clusters. Overlay tunnels like VXLAN add encapsulation overhead to every packet, while default LoadBalancer services bounce incoming prompts through an extra NodePort and `kube-proxy` hop before reaching the inference pod. At larger scales, sequential `iptables` rule evaluation slows down service routing, high pod density exhausts primary VPC IPv4 subnets, and unencrypted east-west traffic leaves RAG pipelines and vector databases open to lateral movement.
 
-| Networking Layer (`K8GS` Ch. 8) | Standard Default (Bottleneck / Risk) | Production GenAI Optimization (`K8GS` Ch. 8) | Why It Matters for Multi-Node AI |
+To eliminate these bottlenecks, *Kubernetes for Generative AI Solutions* Chapter 8 optimizes six cloud networking layers. Use native CNI routing with secondary CIDRs or IPv6, and configure load balancers to route directly to pod IPs with model-ready `/healthz` probes. Lock down microservice tiers with Kubernetes NetworkPolicies and Istio Ambient Mesh. Finally, switch `kube-proxy` to IPVS hash tables with NodeLocal DNSCache and pack multi-node training instances into compact Cluster placement groups backed by Elastic Fabric Adapter, GPUDirect, or InfiniBand RDMA.
+
+| Networking layer | Standard default bottleneck | Production GenAI optimization (`K8GS` Ch. 8) | Operational impact for multi-node AI |
 |---|---|---|---|
-| **1. CNI Mode (`Overlay` vs `Native`)** | Overlay tunnels (`VXLAN` / `Geneve`, e.g., Flannel) add encapsulation latency | **Native Routing CNI** (`Amazon VPC CNI`, `GKE Dataplane V2 / Cilium eBPF`) + **VPC CNI Custom Networking** (secondary non-routable CIDRs or **IPv6** to prevent VPC IPv4 exhaustion) | Eliminates tunnel encapsulation overhead and prevents large Pod fleets from exhausting primary subnet IPs. |
-| **2. External Load Balancing (`NLB` Target Type & Health Checks)** | Default `LoadBalancer` routes `NLB -> NodePort -> kube-proxy iptables -> Pod` (extra hop) | Set **`service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip`** and configure **`/healthz` (`HTTP 200 OK` only after GPU weights load)** | Routes NLB traffic directly to Pod IPs (skipping the `NodePort` hop) and prevents NLB from killing slow-starting LLM pods. |
-| **3. L4/L7 Routing & Service Mesh (`Ingress`, `Gateway API`, `Istio`)** | Unencrypted internal HTTP with no L7 retries or A/B weight splitting | **Kubernetes Gateway API** + **Service Mesh** (`Istio` / `Linkerd` Envoy sidecars, or sidecarless **Istio Ambient Mesh** using eBPF for L7 traffic management & **mTLS**) | Enables canary/A-B model rollouts, circuit breaking, and end-to-end mTLS across GenAI microservices. |
-| **4. Multi-Tier Zero-Trust `NetworkPolicies` (Figure 8.4)** | Default Kubernetes allows all Pods to talk to all Pods on any port | Enforce label-based **Ingress/Egress `NetworkPolicies`**: allow `chatbot-ui -> rag-app` & `my-llama-finetuned` only on **`TCP/80`**, allow `rag-app -> qdrant` vector DB only on **`TCP/6333`**, and explicitly permit **`CoreDNS` (`kube-system`) egress** | Stops lateral movement between UI, RAG, vector DB (`6333`), and LLM serving tiers without breaking internal DNS lookups. |
-| **5. Service Routing & DNS (`kube-proxy IPVS` & `CoreDNS`)** | `kube-proxy` `iptables` mode (sequential rule scan) and fixed CoreDNS replica count | Enable **`kube-proxy` `IPVS` mode** (`mode: "ipvs"` in-memory hash table), **`cluster-proportional-autoscaler`** for CoreDNS, and **`NodeLocal DNSCache`** on every worker node | Gives `O(1)` Service routing and caches DNS locally on each node (avoiding `iptables` DNAT and `conntrack` drops). |
-| **6. Multi-Node Placement & RDMA (`Placement Groups` & `EFA` / `GPUDirect`)** | Random AZ spread with high inter-node TCP latency | Launch GPU nodes in a **`Cluster` Placement Group** (`--strategy cluster`, vs `Partition` or `Spread`) and attach **RDMA interfaces** (`aws-efa-k8s-device-plugin` `vpc.amazonaws.com/efa.present: "true"`, GKE `GPUDirect-TCPX`/`RDMA`, or Nebius `InfiniBand`) | Minimizes physical switch hops and enables OS-bypass **RDMA + NCCL** collective synchronization across nodes. |
+| 1. CNI Mode (`Overlay` vs `Native`) | Overlay tunnels (`VXLAN` / `Geneve`, Flannel) add encapsulation latency and exhaust VPC IPv4 subnets | Native Routing CNI (`Amazon VPC CNI`, `GKE Dataplane V2 / Cilium eBPF`) + VPC CNI Custom Networking (secondary non-routable CIDRs or `IPv6`) | Removes tunnel overhead and prevents large Pod fleets from exhausting primary subnet IPs |
+| 2. External Load Balancing (`NLB` Target Type) | Default `LoadBalancer` routes `NLB -> NodePort -> kube-proxy iptables -> Pod` | Set `service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip` and configure `/healthz` (`HTTP 200 OK` after GPU weights load) | Routes NLB traffic straight to Pod IPs (skipping the `NodePort` hop) and protects slow-starting LLM pods |
+| 3. L4/L7 Routing & Service Mesh | Unencrypted internal HTTP with no L7 retries or canary traffic splitting | Kubernetes Gateway API + Service Mesh (`Istio` / `Linkerd` Envoy sidecars, or sidecarless Istio Ambient Mesh using eBPF for L7 & `mTLS`) | Enables canary/A-B model rollouts, circuit breaking, and end-to-end `mTLS` across microservices |
+| 4. Multi-Tier Zero-Trust `NetworkPolicies` | Default Kubernetes allows all Pods to talk to all Pods on any port | Label-based Ingress/Egress `NetworkPolicies` (Figure 8.4): `chatbot-ui -> rag-app` & `my-llama-finetuned` on `TCP/80`, `rag-app -> qdrant` on `TCP/6333`, plus `CoreDNS` (`kube-system`) egress | Stops lateral movement between UI, RAG, vector DB (`6333`), and LLM tiers without breaking DNS lookups |
+| 5. Service Routing & DNS (`IPVS` & `CoreDNS`) | `kube-proxy` `iptables` mode (`O(N)` sequential rule scan) and fixed CoreDNS replicas | Enable `kube-proxy` `IPVS` mode (`mode: "ipvs"` `O(1)` in-memory hash table), `cluster-proportional-autoscaler` for CoreDNS, and `NodeLocal DNSCache` | Provides `O(1)` Service lookup and caches DNS on each node (avoiding `iptables` DNAT and `conntrack` drops) |
+| 6. Placement Groups & RDMA (`EFA` / `GPUDirect`) | Random AZ spread (`Spread` or `Partition`) with high inter-node TCP latency | Launch GPU nodes in a `Cluster` Placement Group (`--strategy cluster` / GKE `COMPACT`) and attach RDMA (`aws-efa-k8s-device-plugin` `vpc.amazonaws.com/efa.present: "true"`, GKE `GPUDirect-TCPX`/`RDMA`, or Nebius `InfiniBand`) | Minimizes physical switch hops and enables OS-bypass RDMA + NCCL collective synchronization |
 
 #### Part 11 End-to-End Verification Checklist: From Bare Metal and Cloud VMs to Production Multi-Tenant AI
-Before declaring a multi-node GPU Kubernetes cluster on **Nebius**, **GKE**, **EKS**, or **on-premises bare metal** ready for production traffic, verify that your platform satisfies the complete **Part 11 Acceptance Matrix** across all 30 chapters:
-1. **Host & Container Runtime Layer (`Chapters 11.1–11.5`, `11.21–11.22`, `volume-25/labs/lab-01`, `volume-10/labs/lab-01..02`):**
-   - Host `nvidia-smi` enumerates all physical GPUs (`0` volatile uncorrectable ECC errors, `0` thermal/hardware slowdowns, `PIX`/`PXB` PCIe switch affinity in `nvidia-smi topo -m`).
-   - Motherboard **IOMMU (`Intel VT-d` / `AMD-Vi`)** is active (`dmesg | grep -E "DMAR|IOMMU"`), and persistent scratch/dataset volumes (`/data/mlops`) are mounted by **`UUID=`** in `/etc/fstab`.
-   - `containerd` (`default_runtime_name = "nvidia"`, CDI `/etc/cdi`) and **NVIDIA GPU Operator** DaemonSets report `DESIRED == READY == AVAILABLE` and `ClusterPolicy` `STATUS: ready`, with `GPU_NODE_VALIDATED` and `GPU_OPERATOR_VALIDATED` probes matching host `Bus-Id` and `UUID`.
-2. **Scheduling, Gang Coordination & Network Fabric Layer (`Chapters 11.6–11.16`, `11.20`, `K8GS` Ch. 8):**
-   - `kubelet` enforces `--topology-manager-policy=single-numa-node` and `--cpu-manager-policy=static` to eliminate `50%` cross-NUMA (`SYS`) UPI/xGMI penalties.
-   - Multi-node training workloads (`JobSet`, `LeaderWorkerSet`, `PyTorchJob`, `MPIJob`) are scheduled as atomic **`PodGroups`** by **NVIDIA KAI Scheduler**, **Kueue + KAI/Volcano**, or **Apache YuniKorn**—never by pod-by-pod FIFO `kube-scheduler`.
-   - Secondary RDMA networks (`Multus` + **NVIDIA Network Operator** `NicClusterPolicy` + `SR-IOV` / `RDMA` / `DRA` / `EFA` / `GPUDirect`) and **Cluster Placement Groups** (`--strategy cluster` / `COMPACT`) are validated with `all_reduce_perf` and monitored via `/sys/class/infiniband/.../hw_counters/packet_seq_err`.
-3. **GPU Sharing, Virtualization & Zero-Trust Security Layer (`Chapters 11.17–11.19`, `11.23–11.29`, `volume-11`, `volume-18`, `volume-19`):**
-   - Workloads are routed to explicit service classes (`Interactive sandbox` on `nvidia.com/gpu.shared` or KAI `gpu-fraction`/`gpu-memory`, `Protected inference` on hardware **MIG** `1g.10gb`/`3g.40gb`, `Large job` on **Dedicated Whole GPUs**, and `Regulated VM` on **NVIDIA vGPU / KubeVirt / Kata / Confidential VMs**).
-   - Production namespaces block best-effort shared GPUs via `ResourceQuota` (`nvidia.com/gpu.shared: "0"`), bind cloud storage permissions via **OIDC `IRSA` / Workload Identity** (`medical-training-sa`), enforce **Default-Deny `NetworkPolicies`** (or **BlueField DPU** hardware firewalls), and run **4-Tier Thanos + Recording Rules**, **KEDA + Karpenter** autoscaling, **FinOps Zombie Reapers**, and **Forensic Incident Response** (*"Isolate, don't terminate"*).
+
+Before handing a multi-node GPU Kubernetes cluster on Nebius, GKE, EKS, or bare metal over to research and production teams, walk one final acceptance checklist across all thirty chapters of Part 11. Checking every layer from host PCIe topology up to multi-tenant quotas ensures no silent misconfiguration survives into production.
+
+First, verify the host and container runtime layer from Chapters 11.1 through 11.5 and 11.21 through 11.22. Host `nvidia-smi` must enumerate all physical GPUs with zero uncorrectable ECC errors and clean PCIe switch affinity. Motherboard IOMMU must be active in `dmesg`, and scratch volumes must mount by `UUID=` in `/etc/fstab`. Furthermore, containerd and the GPU Operator DaemonSets must report ready with validation probes matching host `Bus-Id` and `UUID`.
+
+Second, verify the scheduling, gang coordination, and network fabric layer from Chapters 11.6 through 11.16 and 11.20. Ensure `kubelet` runs with single-NUMA-node topology management and static CPU pinning to avoid cross-socket NUMA penalties. Schedule multi-node jobs as atomic PodGroups via KAI Scheduler, Kueue, or YuniKorn. Validate secondary RDMA networks (`Multus`, Network Operator `NicClusterPolicy`, SR-IOV, DRA, EFA, or GPUDirect) and compact placement groups using `all_reduce_perf` and hardware sequence counters.
+
+Third, verify the GPU sharing, virtualization, and zero-trust security layer from Chapters 11.17 through 11.19 and 11.23 through 11.29. Route workloads to explicit service classes spanning time-sliced sandboxes, hardware MIG inference slices, dedicated whole GPUs, and KubeVirt, Kata, or Confidential VMs. Block best-effort shared GPUs in production namespaces via ResourceQuotas, bind cloud storage via OIDC IRSA (`medical-training-sa`), and enforce default-deny NetworkPolicies or BlueField DPU firewalls. Keep four-tier Thanos, KEDA, Karpenter, and FinOps zombie reapers active.
 
 ## Commands and configurations that matter
 
-### 1. Phase 1: Nebius L40S / Cloud GPU VM 4-Layer Verification Script (`volume-25/labs/lab-01`)
+Each command block and manifest below implements one phase of our multi-node cloud deployment workflow. Run them in order when bringing up a new GPU VM, provisioning a managed node pool, or wiring KEDA, Karpenter, and zero-trust NetworkPolicies.
+
+### 1. Phase 1: Nebius L40S and Cloud GPU VM 4-Layer Verification Script
+
+Never assume a new cloud GPU virtual machine has working container passthrough, persistent storage mounts, or safe firewall rules out of the box. This script verifies the host driver, tests Docker GPU injection, checks that `blkid` is empty before formatting `/data/mlops` by `UUID`, and allows OpenSSH before enabling `ufw`.
 
 ```bash
 # 1. Layer 1 & 2: Verify host driver and Docker container GPU passthrough (untested here)
@@ -175,7 +203,9 @@ sudo ufw --force enable
 sudo ufw status verbose
 ```
 
-### 2. Phase 2: Provisioning GPU Node Pools on GKE and Nebius & Validating GPU Operator (`volume-10/labs/lab-02`)
+### 2. Phase 2: Provisioning GPU Node Pools on GKE and Nebius and Validating GPU Operator
+
+When adding multi-node GPU capacity to a managed Kubernetes cluster, co-locate the instances using a compact placement policy and pin the GPU Operator chart version explicitly. After the Helm install completes, always audit both capacity and allocatable columns across every node.
 
 ```bash
 # 1. Create a multi-node GPU pool on GKE (or Nebius mk8s node-group) with compact placement (untested here)
@@ -194,7 +224,9 @@ helm upgrade --install gpu-operator nvidia/gpu-operator \
 kubectl get nodes -o custom-columns=NAME:.metadata.name,CAPACITY:.status.capacity.nvidia\.com/gpu,ALLOCATABLE:.status.allocatable.nvidia\.com/gpu
 ```
 
-### 3. Phase 3 & 4: KEDA Dual-Trigger Autoscaler, Karpenter GPU `NodePool`, and Chatbot `NetworkPolicies` (`K8GS` Ch. 6 & Ch. 8)
+### 3. Phase 3 and 4: KEDA Dual-Trigger Autoscaler, Karpenter GPU NodePool, and Chatbot NetworkPolicies
+
+Production LLM services need pod scaling tied to both user traffic and GPU utilization. They also require fast node provisioning when capacity runs out and strict network isolation around vector databases. This combined manifest configures the KEDA dual-trigger ScaledObject, the Karpenter `eks-gpu-np` NodePool, and the ingress NetworkPolicy protecting Qdrant on TCP port 6333.
 
 ```yaml
 # keda-karpenter-and-netpol-genai.yaml (K8GS Ch. 6 & Ch. 8, untested here)
@@ -266,28 +298,32 @@ spec:
 
 ## How it fails
 
+Bringing up multi-node cloud GPU clusters exposes failure modes across container runtimes, Kubernetes device plugins, Helm taints, autoscaler control loops, and CNI policies. Use the table below to isolate the exact layer whenever a node, operator, or inference service misbehaves.
+
 | Failure mode | Exact symptom & command evidence | Root cause boundary | Remediation |
 |---|---|---|---|
-| **1. `nvidia-smi` works on the Nebius GPU host, but `docker run --gpus all` fails with `could not select device driver "" with capabilities: [[gpu]]` (`volume-25/labs/lab-01`)** | Step 1 host `nvidia-smi` prints the L40S table, but Step 2 container launch fails immediately before starting the container. | **Layer 2 Container Toolkit Not Wired into Runtime:** `nvidia-container-toolkit` is installed on the host, but `/etc/docker/daemon.json` (or `/etc/containerd/config.toml`) has not registered the `nvidia` runtime handler. | Run `sudo nvidia-ctk runtime configure --runtime=docker && sudo systemctl restart docker` (or `--runtime=containerd` + `systemctl restart containerd`) and re-run the container check. |
-| **2. `kubectl get nodes` shows `gpu-node-11` `Ready` with `CAPACITY: 8`, but `ALLOCATABLE: 0` (`volume-10/labs/lab-01` Section 7)** | Pods requesting `nvidia.com/gpu: 1` stay `Pending` (`Insufficient nvidia.com/gpu`) even though `gpu-node-11` has `8` physical GPUs. | **Layer 3 Device Plugin / Driver Registration Loss:** `Capacity` reflects the last historical count reported to `kubelet`, while `Allocatable: 0` shows all GPUs are currently unhealthy or the device-plugin socket disconnected. | Do not schedule baseline workloads on `gpu-node-11`; inspect `nvidia-driver-daemonset` and `nvidia-device-plugin-daemonset` logs (`Lab 03` workflow) and check host `nvidia-smi` / `dmesg` for XIDs. |
-| **3. `helm upgrade --install gpu-operator --wait --timeout 15m` times out with `nvidia-driver-daemonset` stuck `Pending` (`volume-10/labs/lab-02` Section 16)** | `kubectl get events -n gpu-operator` logs `0/3 nodes are available: 3 node(s) had taint {nvidia.com/gpu: NoSchedule}, that the pod didn't tolerate`. | **Values-File Toleration Mismatch:** The GPU nodes were tainted with a custom key/effect that was not added to `target-values.yaml` for the GPU Operator DaemonSets. | Do not re-run `helm upgrade` blindly; add the matching taint tolerations to `target-values.yaml` and re-apply the pinned Helm release. |
-| **4. Enabling both `HPA` and `VPA` (`updateMode: "Auto"`) on `my-llama-deployment` causes continuous Pod evictions and replica oscillation (`K8GS` Ch. 6)** | Replica count oscillates wildly between `1` and `5` while `VPA` repeatedly evicts running inference pods to rewrite their CPU/memory `requests`. | **Simultaneous HPA + VPA Control-Loop Conflict (`K8GS` Ch. 6):** VPA mutating a Pod's `requests` changes the denominator of HPA's `averageUtilization` calculation, causing HPA and VPA to fight each other. | Set VPA `updateMode: "Off"` (using VPA strictly for right-sizing recommendations) whenever HPA or KEDA is actively scaling replica counts on CPU/memory metrics. |
-| **5. Applying an Egress `NetworkPolicy` to `rag-app` breaks all internal Kubernetes Service lookups (`K8GS` Ch. 8)** | After locking down egress on `rag-app`, requests to `http://qdrant:6333` fail with `Could not resolve host: qdrant`. | **Blocked `UDP/TCP 53` Egress to `CoreDNS`:** A default-deny egress `NetworkPolicy` blocks DNS queries unless `kube-system` `CoreDNS` (and `NodeLocal DNSCache`) is explicitly permitted. | Add an egress rule allowing `UDP` and `TCP` port `53` to the `CoreDNS` pods in the `kube-system` namespace. |
+| 1. `nvidia-smi` works on the Nebius GPU host, but `docker run --gpus all` fails with `could not select device driver "" with capabilities: [[gpu]]` (`volume-25/labs/lab-01`) | Step 1 host `nvidia-smi` prints the L40S table, but Step 2 container launch fails immediately before starting the container. | Layer 2 Container Toolkit Not Wired into Runtime: `nvidia-container-toolkit` is installed on the host, but `/etc/docker/daemon.json` (or `/etc/containerd/config.toml`) has not registered the `nvidia` runtime handler. | Run `sudo nvidia-ctk runtime configure --runtime=docker && sudo systemctl restart docker` (or `--runtime=containerd` + `systemctl restart containerd`) and re-run the container check. |
+| 2. `kubectl get nodes` shows `gpu-node-11` `Ready` with `CAPACITY: 8`, but `ALLOCATABLE: 0` (`volume-10/labs/lab-01` Section 7) | Pods requesting `nvidia.com/gpu: 1` stay `Pending` (`Insufficient nvidia.com/gpu`) even though `gpu-node-11` has `8` physical GPUs. | Layer 3 Device Plugin / Driver Registration Loss: `Capacity` reflects the last historical count reported to `kubelet`, while `Allocatable: 0` shows all GPUs are currently unhealthy or the device-plugin socket disconnected. | Do not schedule baseline workloads on `gpu-node-11`; inspect `nvidia-driver-daemonset` and `nvidia-device-plugin-daemonset` logs (`Lab 03` workflow) and check host `nvidia-smi` / `dmesg` for XIDs. |
+| 3. `helm upgrade --install gpu-operator --wait --timeout 15m` times out with `nvidia-driver-daemonset` stuck `Pending` (`volume-10/labs/lab-02` Section 16) | `kubectl get events -n gpu-operator` logs `0/3 nodes are available: 3 node(s) had taint {nvidia.com/gpu: NoSchedule}, that the pod didn't tolerate`. | Values-File Toleration Mismatch: The GPU nodes were tainted with a custom key/effect that was not added to `target-values.yaml` for the GPU Operator DaemonSets. | Do not re-run `helm upgrade` blindly; add the matching taint tolerations to `target-values.yaml` and re-apply the pinned Helm release. |
+| 4. Enabling both `HPA` and `VPA` (`updateMode: "Auto"`) on `my-llama-deployment` causes continuous Pod evictions and replica oscillation (`K8GS` Ch. 6) | Replica count oscillates wildly between `1` and `5` while `VPA` repeatedly evicts running inference pods to rewrite their CPU/memory `requests`. | Simultaneous HPA + VPA Control-Loop Conflict (`K8GS` Ch. 6): VPA mutating a Pod's `requests` changes the denominator of HPA's `averageUtilization` calculation, causing HPA and VPA to fight each other. | Set VPA `updateMode: "Off"` (using VPA strictly for right-sizing recommendations) whenever HPA or KEDA is actively scaling replica counts on CPU/memory metrics. |
+| 5. Applying an Egress `NetworkPolicy` to `rag-app` breaks all internal Kubernetes Service lookups (`K8GS` Ch. 8) | After locking down egress on `rag-app`, requests to `http://qdrant:6333` fail with `Could not resolve host: qdrant`. | Blocked `UDP/TCP 53` Egress to `CoreDNS`: A default-deny egress `NetworkPolicy` blocks DNS queries unless `kube-system` `CoreDNS` (and `NodeLocal DNSCache`) is explicitly permitted. | Add an egress rule allowing `UDP` and `TCP` port `53` to the `CoreDNS` pods in the `kube-system` namespace. |
 
 ## Hands-on lab
 
 ### Venue and scope
-This capstone lab runs locally using Python 3 standard library (`code/part11/multi_node_gke_and_nebius.py` and `code/part11/multi_node_gke_and_nebius_lab.py`) to verify the `volume-25/labs/lab-01` 4-layer Nebius L40S VM provisioning state machine (`nvidia-smi` -> `nvidia-ctk` -> `blkid` empty gate + `UUID=` `/etc/fstab` `/data/mlops` -> `ufw allow OpenSSH` + reboot check), the `volume-10/labs/lab-01..02` multi-node Kubernetes GPU baseline (`gpu-node-07` `8/8` vs `gpu-node-11` `8/0`, `NVIDIA-SMI 550.90.07` `4MiB/81920MiB`, `GPU_NODE_VALIDATED`, and `GPU_OPERATOR_VALIDATED`), and the *Kubernetes for Generative AI Solutions* (`K8GS` Chapters 3, 6, and 8) Terraform IaC (`23` VPC + `33` EKS resources), KEDA (`http_requests_total > 10` & `DCGM_FI_DEV_GPU_UTIL > 70`), HPA/VPA conflict detector, Karpenter `NodePool` (`eks-gpu-np`), and GenAI networking optimizations (`nlb-target-type: ip`, `TCP/6333` Qdrant `NetworkPolicy`, `IPVS`, `NodeLocal DNSCache`, and `Cluster` Placement Groups + `EFA`). Cloud CLI commands are marked `(untested here)`.
+
+Provisioning multi-node GPU pools across Nebius, GKE, and EKS incurs cloud billing charges. This capstone lab includes a local Python 3 verification suite in `code/part11/multi_node_gke_and_nebius.py` and `code/part11/multi_node_gke_and_nebius_lab.py`. It tests the four-layer Nebius L40S VM audit, the multi-node Kubernetes GPU inspection gates, and the Terraform, HPA, VPA, KEDA, Karpenter, and cloud networking configurations from *Kubernetes for Generative AI Solutions*. All cloud CLI commands are marked `(untested here)`.
 
 ### Step 1: Run the self-checking multi-node GPU Kubernetes capstone lab (tested here)
 
-Run the lab script from the repository root:
+Run the self-checking capstone lab script from the repository root to validate all twenty-five assertions.
 
 ```bash
 python3 code/part11/multi_node_gke_and_nebius_lab.py
 ```
 
-Captured output from this repository:
+Captured output from this repository.
+
 ```text
 === Chapter 11.30 Lab: Multi-Node GPU Kubernetes on GKE, Nebius & EKS (K8GS) ===
   [PASS] Volume 25 Lab 01 defines 4 independent verification layers (Host Driver, Container GPU, UUID Storage, UFW Firewall)
@@ -321,191 +357,202 @@ Summary: 25 passed, 0 failed out of 25 checks.
 
 ### Exercises
 
-1. **Exercise 1 — Nebius L40S 4-Layer VM Provisioning (`volume-25/labs/lab-01`):** Using `validate_nebius_gpu_vm_provisioning()` in `code/part11/multi_node_gke_and_nebius.py`, state why each of the four checks in `NEBIUS_FOUR_VERIFICATION_LAYERS` is independent, how to fix `could not select device driver "" with capabilities: [[gpu]]`, why `blkid` must return nothing before `mkfs.ext4`, and why `ufw` must be verified from a **new** SSH session and across a reboot.
-2. **Exercise 2 — Multi-Node GPU Baseline Inspection (`volume-10/labs/lab-01`):** Explain why `gpu-node-07` (`CAPACITY 8 / ALLOCATABLE 8`) was chosen over `gpu-node-11` (`CAPACITY 8 / ALLOCATABLE 0`), how the host `Bus-Id` (`00000000:1B:00.0`) and `UUID` (`GPU-3a1e9f2b-...`) are verified inside `gpu-node-validation` (`GPU_NODE_VALIDATED`), and what `FailedScheduling` event is produced by the `nvidia.com/gpu: 99` safe failure test.
-3. **Exercise 3 — Installing and Validating the GPU Operator (`volume-10/labs/lab-02`):** Trace the four evidence hops (`Helm -> Operator -> ClusterPolicy/Operands -> Node Allocatable -> GPU_OPERATOR_VALIDATED`) and explain why `STATUS: deployed` in `helm status` does not prove `nvidia.ko` loaded on the worker nodes.
-4. **Exercise 4 — Autoscaling GenAI with HPA, VPA, and KEDA (`K8GS` Ch. 6):** Using `evaluate_keda_and_karpenter_autoscaling()`, state the four VPA modes (`VPA_FOUR_OPERATING_MODES`), explain why HPA and VPA conflict when VPA is in `Auto` mode, and explain how `my-llama-deployment-scaler` combines `http_requests_total` and `DCGM_FI_DEV_GPU_UTIL` triggers.
-5. **Exercise 5 — Right-Sized GPU Node Provisioning with Karpenter (`K8GS` Ch. 6):** Trace the exact timeline and log events when `my-llama-job-plgb5` triggers Karpenter (`eks-gpu-np`, `WhenEmptyOrUnderutilized`, `AL2023`) to launch `ip-10-0-32-176` (`15890m` CPU, `60398040Ki` RAM, `nvidia.com/gpu: 1`, `234` pods) and later taint (`karpenter.sh/disrupted:NoSchedule`) and delete the empty GPU node.
-6. **Exercise 6 — Multi-Node GenAI Networking Best Practices (`K8GS` Ch. 8):** Explain how `aws-load-balancer-nlb-target-type: ip`, `kube-proxy` `IPVS` mode, `NodeLocal DNSCache`, `Cluster` Placement Groups (`THREE_PLACEMENT_GROUP_STRATEGIES`), and `TCP/80` + `TCP/6333` `NetworkPolicies` optimize and secure a multi-node GenAI deployment.
+1. **Exercise 1 — Nebius L40S 4-Layer VM Provisioning.** Inspect the Nebius VM provisioning function in `code/part11/multi_node_gke_and_nebius.py` to explain why each of the four checks is independent. State how to fix the empty device driver capability error, why the block ID check must return empty output before formatting, and why UFW must be verified from a new SSH session and across a reboot.
+2. **Exercise 2 — Multi-Node GPU Baseline Inspection.** Explain why node seven was chosen over node eleven during the capacity versus allocatable audit. Describe how the host PCIe Bus-Id and GPU UUID are verified inside the validation pod, and state the exact scheduling failure event emitted by the ninety-nine-GPU test.
+3. **Exercise 3 — Installing and Validating the GPU Operator.** Trace the four evidence hops from Helm release status through operator pods, node allocatable counts, and the validation banner. Explain why a deployed status in Helm does not prove that the kernel module loaded on the worker nodes.
+4. **Exercise 4 — Autoscaling GenAI with HPA, VPA, and KEDA.** Inspect the autoscaling evaluation function to list the four VPA operating modes. Explain why HPA and VPA conflict when VPA runs in Auto mode, and show how the Llama scaler combines HTTP request rate and DCGM GPU utilization triggers.
+5. **Exercise 5 — Right-Sized GPU Node Provisioning with Karpenter.** Trace the timeline and log events when the Llama fine-tuning job triggers Karpenter to launch a right-sized GPU instance. Describe how Karpenter later taints and deletes the empty GPU node once the job finishes.
+6. **Exercise 6 — Multi-Node GenAI Networking Best Practices.** Explain how IP-mode load balancing, IPVS service routing, NodeLocal DNSCache, and Cluster placement groups optimize a multi-node deployment. State how the chatbot NetworkPolicies secure the RAG and vector database tiers.
 
 ## Checkpoint questions
 
 <details>
-<summary><strong>1. In Volume 25 Lab 01 (Provision a GPU Node and Verify the Stack on a Nebius L40S VM), what are the four layers that must be verified independently before running a training workload?</strong></summary>
+<summary>`&lt;strong>`1. In Volume 25 Lab 01 (Provision a GPU Node and Verify the Stack on a Nebius L40S VM), what are the four layers that must be verified independently before running a training workload?`&lt;/strong>`</summary>
 
-1. **Host Driver (`nvidia-smi`):** Proves the kernel module is loaded and enumerates the physical GPU.
-2. **Container GPU Passthrough (`sudo docker run --rm --gpus all ... nvidia-smi`):** Proves `nvidia-container-toolkit` is wired into the container runtime.
-3. **Persistent Block Storage (`lsblk`, `blkid`, `mkfs.ext4`, `/data/mlops` mounted by `UUID=` in `/etc/fstab`):** Proves durable storage survives device-name reordering across reboots.
-4. **Firewall Lockdown (`sudo ufw allow OpenSSH && sudo ufw --force enable`):** Proves only SSH is exposed and a **new** SSH session succeeds before and after `sudo reboot`.
+First, verify the host driver with `nvidia-smi` to confirm the kernel module enumerates the physical GPU. Second, verify container GPU passthrough with a disposable Docker CUDA container to confirm the NVIDIA Container Toolkit is wired into the runtime. Third, verify persistent block storage mounted at `/data/mlops` by UUID in `/etc/fstab` after checking that `blkid` is empty. Fourth, verify UFW firewall rules from a brand-new SSH session and across a reboot.
 </details>
 
 <details>
-<summary><strong>2. In Volume 25 Lab 01, how do you distinguish "Docker is stopped" from "nvidia-container-toolkit is not configured for Docker," and what command fixes the toolkit configuration?</strong></summary>
+<summary>`&lt;strong>`2. In Volume 25 Lab 01, how do you distinguish "Docker is stopped" from "nvidia-container-toolkit is not configured for Docker," and what command fixes the toolkit configuration?`&lt;/strong>`</summary>
 
-- If `docker` is stopped (`sudo systemctl stop docker`), running `docker run --gpus all` fails with a daemon connection-refused error.
-- If `docker` is running but the toolkit is not wired into `/etc/docker/daemon.json`, it fails with **`could not select device driver "" with capabilities: [[gpu]]`**. Fix it by running:
-  `sudo nvidia-ctk runtime configure --runtime=docker && sudo systemctl restart docker`
+If the Docker daemon is stopped, running a GPU container fails immediately with a daemon connection error. If Docker is running but the NVIDIA toolkit has not been registered in `/etc/docker/daemon.json`, the command fails with `could not select device driver "" with capabilities: [[gpu]]`. Fix the runtime registration by running `sudo nvidia-ctk runtime configure --runtime=docker && sudo systemctl restart docker`.
 </details>
 
 <details>
-<summary><strong>3. Why must you check that sudo blkid /dev/vdX returns empty output before running mkfs.ext4, and why must /etc/fstab use UUID= rather than /dev/vdX (Volume 25 Lab 01)?</strong></summary>
+<summary>`&lt;strong>`3. Why must you check that sudo blkid /dev/vdX returns empty output before running mkfs.ext4, and why must /etc/fstab use UUID= rather than /dev/vdX (Volume 25 Lab 01)?`&lt;/strong>`</summary>
 
-- If `blkid` returns an existing UUID/filesystem type, the attached block volume already contains data—running `mkfs.ext4` would destroy it.
-- Linux block device names (`/dev/vda`, `/dev/vdb`) can change enumeration order across kernel updates or volume attachments; mounting by **`UUID=$UUID`** in `/etc/fstab` guarantees the right disk mounts at `/data/mlops` after every reboot.
+If `blkid` returns an existing UUID and filesystem type, the attached block volume already holds formatted data and running `mkfs.ext4` would destroy it. Furthermore, Linux block device names such as `/dev/vda` or `/dev/vdb` can shift enumeration order across kernel updates or disk attachments. Mounting by UUID in `/etc/fstab` guarantees that the exact filesystem mounts at `/data/mlops` on every reboot.
 </details>
 
 <details>
-<summary><strong>4. Why must you verify a ufw firewall change from a brand-new SSH terminal before closing your current session (Volume 25 Lab 01)?</strong></summary>
+<summary>`&lt;strong>`4. Why must you verify a ufw firewall change from a brand-new SSH terminal before closing your current session (Volume 25 Lab 01)?`&lt;/strong>`</summary>
 
-Because `sudo ufw --force enable` does not retroactively terminate your already-established SSH connection. If `sudo ufw allow OpenSSH` was omitted or misconfigured for a non-default SSH port, you will only discover you are locked out when you open a **new** SSH connection (requiring serial console rescue if your original session was closed).
+Enabling UFW does not terminate an already-established SSH connection. If the rule allowing OpenSSH was omitted or your server listens on a non-default SSH port without a matching rule, your current terminal will keep working while all new connections are dropped. Testing from a second terminal while keeping the original session open lets you fix the rule without locking yourself out of the VM.
 </details>
 
 <details>
-<summary><strong>5. In Volume 10 Lab 01 (Inspect a Kubernetes GPU Node), what is the difference between gpu-node-07 (CAPACITY 8 / ALLOCATABLE 8) and gpu-node-11 (CAPACITY 8 / ALLOCATABLE 0)?</strong></summary>
+<summary>`&lt;strong>`5. In Volume 10 Lab 01 (Inspect a Kubernetes GPU Node), what is the difference between gpu-node-07 (CAPACITY 8 / ALLOCATABLE 8) and gpu-node-11 (CAPACITY 8 / ALLOCATABLE 0)?`&lt;/strong>`</summary>
 
-`CAPACITY 8` is the historical total GPU count reported by `kubelet`, while `ALLOCATABLE` is what the scheduler can actually assign right now. `gpu-node-07` (`8 / 8`) has `8` healthy, schedulable GPUs, whereas `gpu-node-11` (`8 / 0`) has lost all schedulable GPUs due to a driver reload, device-plugin crash, or GPU health/reset event.
+The capacity field reflects the total GPU count last reported to the kubelet, whereas allocatable reflects the healthy devices currently available for scheduling. On `gpu-node-07`, all eight physical GPUs are healthy and schedulable. On `gpu-node-11`, showing eight capacity and zero allocatable GPUs proves that the device plugin socket disconnected, the driver is reloading, or all GPUs were marked unhealthy.
 </details>
 
 <details>
-<summary><strong>6. In Volume 10 Lab 01 Section 10 and 12, how do you prove that the physical GPU enumerated on the host is the exact same GPU injected into the gpu-node-validation container?</strong></summary>
+<summary>`&lt;strong>`6. In Volume 10 Lab 01 Section 10 and 12, how do you prove that the physical GPU enumerated on the host is the exact same GPU injected into the gpu-node-validation container?`&lt;/strong>`</summary>
 
-Compare the **`Bus-Id` (`00000000:1B:00.0`)** and **`UUID` (`GPU-3a1e9f2b-6c7d-4e91-9a02-1f8b7c0d5e11`)** from host `nvidia-smi` / `nvidia-smi -L` (`NVIDIA-SMI 550.90.07`, `CUDA Version: 12.4`, `NVIDIA A100-SXM4-80GB`, `4MiB / 81920MiB`) against the banner inside `kubectl logs gpu-node-validation` followed by **`GPU_NODE_VALIDATED`**.
+Record the physical PCIe Bus-Id (`00000000:1B:00.0`) and UUID (`GPU-3a1e9f2b-6c7d-4e91-9a02-1f8b7c0d5e11`) from host `nvidia-smi` on the worker node. Then inspect the logs of the validation pod after it completes. Confirm that the in-container banner prints the exact same driver version (`550.90.07`), memory size (`81920MiB`), Bus-Id, and UUID followed by `GPU_NODE_VALIDATED`.
 </details>
 
 <details>
-<summary><strong>7. In Volume 10 Lab 01, how do the Kubernetes events for a container runtime injection failure differ from an unsatisfiable resource request (nvidia.com/gpu: 99)?</strong></summary>
+<summary>`&lt;strong>`7. In Volume 10 Lab 01, how do the Kubernetes events for a container runtime injection failure differ from an unsatisfiable resource request (nvidia.com/gpu: 99)?`&lt;/strong>`</summary>
 
-- An unsatisfiable request (`nvidia.com/gpu: 99`) never binds to a node: `kubectl describe pod` records `Warning FailedScheduling: 0/3 nodes are available: 1 Insufficient nvidia.com/gpu` and the Pod stays in `Pending`.
-- A runtime injection failure passes `Scheduled` (the Pod binds to the node) and stalls or fails in **`ContainerCreating`** (`CreateContainerError`) or exits non-zero inside the container.
+An unsatisfiable resource request for ninety-nine GPUs never binds to a worker node. Describing the pod logs `Warning FailedScheduling: 0/3 nodes are available: 1 Insufficient nvidia.com/gpu` and the pod remains Pending. By contrast, a container runtime injection failure passes the scheduler, binds to a node, and then fails during container creation or exits non-zero when starting the process.
 </details>
 
 <details>
-<summary><strong>8. In Volume 10 Lab 02 (Install and Validate GPU Operator), why is helm status showing STATUS: deployed insufficient proof of a working GPU cluster, and what four checks complete the evidence chain?</strong></summary>
+<summary>`&lt;strong>`8. In Volume 10 Lab 02 (Install and Validate GPU Operator), why is helm status showing STATUS: deployed insufficient proof of a working GPU cluster, and what four checks complete the evidence chain?`&lt;/strong>`</summary>
 
-`STATUS: deployed` only means Helm submitted the chart manifests to the API server. You must verify:
-1. `kubectl get clusterpolicy` shows `STATUS: ready`.
-2. `kubectl get daemonsets -n gpu-operator` shows `DESIRED = READY = AVAILABLE` (`3 / 3 / 3`) for `nvidia-driver-daemonset` and `nvidia-device-plugin-daemonset` (and `nvidia-cuda-validator` `0/1 Completed`).
-3. `kubectl get nodes` shows numeric `ALLOCATABLE` (`4`) and GFD labels (`nvidia.com/gpu.count=4`, `nvidia.com/gpu.product=NVIDIA-A100-80GB`, `nvidia.com/gpu.memory=81920`).
-4. `kubectl logs gpu-operator-validation` prints the `nvidia-smi` table and **`GPU_OPERATOR_VALIDATED`**.
+Seeing a deployed status in Helm only proves that the chart manifests were submitted to the Kubernetes API server. To complete the evidence chain, verify that the ClusterPolicy reports ready and that the operator DaemonSets show three desired, ready, and available pods with the CUDA validator completed. Finally, confirm numeric allocatable counts (`4`) and GFD node labels alongside `GPU_OPERATOR_VALIDATED` in the validation pod logs.
 </details>
 
 <details>
-<summary><strong>9. According to Kubernetes for Generative AI Solutions Chapter 3, what uptime SLA and extended version support window do managed cloud Kubernetes offerings provide compared to upstream community support?</strong></summary>
+<summary>`&lt;strong>`9. According to Kubernetes for Generative AI Solutions Chapter 3, what uptime SLA and extended version support window do managed cloud Kubernetes offerings provide compared to upstream community support?`&lt;/strong>`</summary>
 
-Managed cloud Kubernetes services (such as Amazon EKS across `3` AZs, GKE, and AKS) provide a **`99.95%` control-plane uptime SLA** and up to **`26 months` of extended version support**, compared to the upstream Kubernetes community's **`12-month` support window** (with new minor versions released approximately `3` times per year).
+Managed cloud Kubernetes services such as Amazon EKS across three availability zones, Google Kubernetes Engine, and Azure Kubernetes Service provide a `99.95%` control-plane uptime SLA. They also offer up to twenty-six months of extended version support. That more than doubles the upstream Kubernetes community support window of twelve months across roughly three minor releases per year.
 </details>
 
 <details>
-<summary><strong>10. Compare the four worker node data-plane options in Kubernetes for Generative AI Solutions Chapter 3 (Self-managed nodes, Managed node groups, AWS Fargate, and Karpenter).</strong></summary>
+<summary>`&lt;strong>`10. Compare the four worker node data-plane options in Kubernetes for Generative AI Solutions Chapter 3 (Self-managed nodes, Managed node groups, AWS Fargate, and Karpenter).`&lt;/strong>`</summary>
 
-- **Self-managed nodes:** User manually provisions, bootstraps, and patches VMs; maximum control but highest operational overhead.
-- **Managed node groups (`eks-mng` / GKE node pools):** Cloud provider automates VM provisioning, AMI patching, and Auto Scaling Group (`ASG`) lifecycle.
-- **AWS Fargate:** Serverless container execution with a dedicated kernel per Pod and zero node management (typically for CPU microservices rather than multi-GPU RDMA jobs).
-- **Karpenter:** High-performance, group-less Kubernetes node autoscaler that watches unschedulable Pods directly and provisions right-sized GPU/CPU instances in real time.
+Self-managed nodes give platform teams full control over custom VM images and host kernels at the cost of manual patching and lifecycle scripting. Managed node groups automate VM provisioning, OS patching, and Auto Scaling Group updates. AWS Fargate runs each pod in a serverless microVM with zero node management, while Karpenter watches pending pods directly and launches right-sized GPU or CPU instances on demand.
 </details>
 
 <details>
-<summary><strong>11. In Kubernetes for Generative AI Solutions Chapter 6, how does container memory limit enforcement differ from CPU limit enforcement in the CRI, and why is memory usually a poor HPA scaling metric?</strong></summary>
+<summary>`&lt;strong>`11. In Kubernetes for Generative AI Solutions Chapter 6, how does container memory limit enforcement differ from CPU limit enforcement in the CRI, and why is memory usually a poor HPA scaling metric?`&lt;/strong>`</summary>
 
-When a container exceeds its **CPU limit**, the Linux kernel CFS scheduler simply **throttles (slows down)** the process. When a container exceeds its **memory limit**, the container runtime (`CRI` / Linux OOM killer) **immediately terminates (`OOMKills`)** the container, and many runtimes (including Python/JVM/PyTorch caching allocators) hold reserved memory without releasing it to the OS when load drops.
+When a container exceeds its CPU limit, the Linux kernel CFS scheduler simply throttles the process without killing it. When a container exceeds its memory limit, the container runtime and Linux OOM killer immediately terminate the container. Memory is also a poor horizontal scaling trigger for AI services because Python, JVM, and PyTorch caching allocators hold reserved memory blocks without returning them to the OS when request traffic drops.
 </details>
 
 <details>
-<summary><strong>12. How do the scaleDown and scaleUp behavior policies in Kubernetes for Generative AI Solutions Chapter 6 prevent HPA replica flapping?</strong></summary>
+<summary>`&lt;strong>`12. How do the scaleDown and scaleUp behavior policies in Kubernetes for Generative AI Solutions Chapter 6 prevent HPA replica flapping?`&lt;/strong>`</summary>
 
-- **`scaleDown`:** Sets `stabilizationWindowSeconds: 180` (waits `3 minutes` after load drops before scaling in) and `policies: [{type: Percent, value: 50, periodSeconds: 15}]` (removes at most `50%` of replicas per `15 seconds`).
-- **`scaleUp`:** Sets `stabilizationWindowSeconds: 0` (scales out immediately on traffic spikes) and `policies: [{type: Pods, value: 2, periodSeconds: 15}]` with `selectPolicy: Max` (adds up to `2` Pods every `15 seconds`).
+The scale-down policy sets `stabilizationWindowSeconds: 180` so the controller waits three full minutes after traffic drops before removing pods. It also limits removal to at most fifty percent of replicas every fifteen seconds. Conversely, the scale-up policy sets `stabilizationWindowSeconds: 0` with `selectPolicy: Max` to add up to two pods every fifteen seconds as soon as a traffic spike arrives.
 </details>
 
 <details>
-<summary><strong>13. What are the four operating modes of the VerticalPodAutoscaler (VPA), and why should you not run HPA and VPA (in Auto mode) simultaneously on the same CPU/memory metrics (K8GS Chapter 6)?</strong></summary>
+<summary>`&lt;strong>`13. What are the four operating modes of the VerticalPodAutoscaler (VPA), and why should you not run HPA and VPA (in Auto mode) simultaneously on the same CPU/memory metrics (K8GS Chapter 6)?`&lt;/strong>`</summary>
 
-- **Four VPA modes:** `Off` (recommendations only), `Auto` (updates requests and restarts/evicts Pods), `Recreate` (evicts existing Pods to apply updates), and `Initial` (applies recommendations only at Pod creation).
-- **Why HPA and VPA conflict:** VPA adjusts a Pod's CPU/memory `requests`, which changes the denominator used by HPA to compute `averageUtilization %`, causing the two controllers to fight each other unless VPA is set to **`Off`** (or HPA scales strictly on external custom metrics like RPS/GPU util).
+The four VPA operating modes are Off for recommendations only, Auto for automatic request updates, Recreate for evicting pods to apply new sizes, and Initial for setting requests only at pod creation. Running HPA alongside VPA in Auto or Recreate mode on the same CPU or memory metrics creates a control-loop conflict. VPA resizing a pod's requests changes the denominator of HPA's average utilization calculation.
 </details>
 
 <details>
-<summary><strong>14. How does the KEDA ScaledObject my-llama-deployment-scaler in Kubernetes for Generative AI Solutions Chapter 6 autoscale an LLM inference Deployment?</strong></summary>
+<summary>`&lt;strong>`14. How does the KEDA ScaledObject my-llama-deployment-scaler in Kubernetes for Generative AI Solutions Chapter 6 autoscale an LLM inference Deployment?`&lt;/strong>`</summary>
 
-It configures two Prometheus triggers scraped from the application endpoint and `dcgm-exporter`:
-1. **`http_requests_total`:** Scales out when `sum(rate(http_requests_total[1m]))` exceeds `threshold: "10"`.
-2. **`DCGM_FI_DEV_GPU_UTIL`:** Scales out when `avg(DCGM_FI_DEV_GPU_UTIL{pod=~"my-llama-.*"}[30s])` exceeds `threshold: "70"` (and KEDA also supports `minReplicaCount: 0` scale-to-zero on queue triggers like `aws-sqs-queue`).
+The `my-llama-deployment-scaler` ScaledObject combines two Prometheus triggers scraped from the inference service and DCGM Exporter. First, it scales out when the one-minute request rate `sum(rate(http_requests_total[1m]))` exceeds ten requests per second. Second, it scales out when the thirty-second average GPU utilization `avg(DCGM_FI_DEV_GPU_UTIL{pod=~"my-llama-.*"}[30s])` exceeds seventy percent.
 </details>
 
 <details>
-<summary><strong>15. In Kubernetes for Generative AI Solutions Chapter 6, how does Karpenter improve upon the traditional Kubernetes Cluster Autoscaler (CA), and what two CRDs configure Karpenter?</strong></summary>
+<summary>`&lt;strong>`15. In Kubernetes for Generative AI Solutions Chapter 6, how does Karpenter improve upon the traditional Kubernetes Cluster Autoscaler (CA), and what two CRDs configure Karpenter?`&lt;/strong>`</summary>
 
-Unlike `CA` (which polls predefined node groups/ASGs), **Karpenter** watches unschedulable Pending Pods directly at the API server (`found provisionable pod(s)` in `33.662142ms`), selects the optimal instance family/size across `spot` and `on-demand`, launches a right-sized node (`ip-10-0-32-176` with `nvidia.com/gpu: 1` in `~2 minutes`), and consolidates/terminates empty or underutilized nodes automatically (`WhenEmptyOrUnderutilized`, tainting with `karpenter.sh/disrupted:NoSchedule`). It is configured via **`NodePool`** (`karpenter.sh/v1`) and **`EC2NodeClass`** (`karpenter.k8s.aws/v1`).
+Unlike Cluster Autoscaler, which polls predefined cloud Auto Scaling Groups, Karpenter watches unschedulable pending pods directly at the Kubernetes API server and detects provisionable pods in milliseconds. It selects the best instance type across spot and on-demand and brings a right-sized GPU node ready in about two minutes. When the node becomes empty, Karpenter taints it with `karpenter.sh/disrupted:NoSchedule` and deletes it automatically under `WhenEmptyOrUnderutilized` using the NodePool and EC2NodeClass custom resources.
 </details>
 
 <details>
-<summary><strong>16. Why should a Kubernetes LoadBalancer Service for a GenAI model use service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip and a /healthz endpoint (K8GS Chapter 8)?</strong></summary>
+<summary>`&lt;strong>`16. Why should a Kubernetes LoadBalancer Service for a GenAI model use service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip and a /healthz endpoint (K8GS Chapter 8)?`&lt;/strong>`</summary>
 
-- **`aws-load-balancer-nlb-target-type: ip`:** Registers Pod IP addresses directly as NLB targets, bypassing the extra `NodePort -> kube-proxy` network hop between worker nodes.
-- **`/healthz` (`HTTP 200 OK`):** Because large GenAI models take time to load weights into GPU VRAM at startup, an explicit `/healthz` readiness/health check ensures the load balancer only routes user prompts to Pods whose GPU model initialization is complete.
+Setting `service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip` registers pod IP addresses directly as load balancer targets, eliminating the extra NodePort and kube-proxy hop across worker nodes. Pairing it with an explicit `/healthz` endpoint that returns HTTP 200 OK only after model weights load into GPU VRAM protects slow-starting pods. That check prevents the load balancer from routing user prompts to pods that are still initializing.
 </details>
 
 <details>
-<summary><strong>17. In the 4-component e-commerce GenAI chatbot architecture of K8GS Chapter 8 Figure 8.4 (chatbot-ui, rag-app, qdrant vector DB, and my-llama-finetuned), what exact ports and Pod labels do the NetworkPolicies enforce?</strong></summary>
+<summary>`&lt;strong>`17. In the 4-component e-commerce GenAI chatbot architecture of K8GS Chapter 8 Figure 8.4 (chatbot-ui, rag-app, qdrant vector DB, and my-llama-finetuned), what exact ports and Pod labels do the NetworkPolicies enforce?`&lt;/strong>`</summary>
 
-- **`rag-app` and `my-llama-finetuned` Ingress:** Allow `TCP` port **`80`** only from Pods matching `app.kubernetes.io/name: chatbot-ui`.
-- **`qdrant` Vector Database Ingress:** Allow `TCP` port **`6333`** only from Pods matching `app.kubernetes.io/name: rag-app`.
-- **Egress:** When egress policies are enabled, explicitly allow DNS traffic (`port 53`) to `CoreDNS` in `kube-system`.
+The ingress policies on `rag-app` and `my-llama-finetuned` allow TCP port 80 only from pods carrying the label `app.kubernetes.io/name: chatbot-ui`. The ingress policy on the Qdrant vector database allows TCP port 6333 only from pods carrying the label `app.kubernetes.io/name: rag-app`. When egress policies are enforced, an explicit egress rule also permits DNS queries on port 53 to CoreDNS in `kube-system`.
 </details>
 
 <details>
-<summary><strong>18. Compare a Service Mesh (Istio / Linkerd / Ambient Mesh) with Kubernetes NetworkPolicies across OSI layer, mTLS, and traffic management (K8GS Chapter 8).</strong></summary>
+<summary>`&lt;strong>`18. Compare a Service Mesh (Istio / Linkerd / Ambient Mesh) with Kubernetes NetworkPolicies across OSI layer, mTLS, and traffic management (K8GS Chapter 8).`&lt;/strong>`</summary>
 
-- **Kubernetes `NetworkPolicies`:** Operate at **OSI Layers 3 and 4** (IP and TCP/UDP port); native to Kubernetes (enforced by CNI without sidecars), focused on namespace/pod traffic isolation; **no mTLS** or L7 retries.
-- **Service Mesh (`Istio` / `Linkerd` / `Ambient Mesh`):** Operates primarily at **OSI Layer 7** (HTTP/gRPC application layer); provides **mutual TLS (`mTLS`)**, L7 load balancing, retries, circuit breaking, and observability using Envoy sidecar proxies—or sidecarless eBPF in **Istio Ambient Mesh**.
+Kubernetes NetworkPolicies operate at OSI Layers 3 and 4 to filter IP addresses and TCP or UDP ports directly in the CNI without sidecars, but they do not provide mTLS encryption or Layer 7 retries. A Service Mesh such as Istio or Linkerd operates at OSI Layer 7 to provide mutual TLS, traffic splitting, retries, and circuit breaking. It enforces those policies using either Envoy sidecar proxies or sidecarless eBPF in Istio Ambient Mesh.
 </details>
 
 <details>
-<summary><strong>19. Why should large GenAI Kubernetes clusters switch kube-proxy from iptables mode to IPVS mode, and how do VPC CNI Custom Networking, cluster-proportional-autoscaler, and NodeLocal DNSCache solve scale bottlenecks (K8GS Chapter 8)?</strong></summary>
+<summary>`&lt;strong>`19. Why should large GenAI Kubernetes clusters switch kube-proxy from iptables mode to IPVS mode, and how do VPC CNI Custom Networking, cluster-proportional-autoscaler, and NodeLocal DNSCache solve scale bottlenecks (K8GS Chapter 8)?`&lt;/strong>`</summary>
 
-- **`kube-proxy` `IPVS` mode (`mode: "ipvs"`):** Uses an **in-memory hash table** (`O(1)` lookup) in the Linux kernel instead of sequential `iptables` rule lists, supporting round-robin, least-connections, and source-hashing at low latency.
-- **VPC CNI Custom Networking (or `IPv6`):** Allocates Pod IPs from secondary non-routable VPC CIDR blocks so large Pod fleets do not exhaust the primary VPC IPv4 subnet.
-- **`cluster-proportional-autoscaler` + `NodeLocal DNSCache`:** Scales `CoreDNS` replicas proportionally to cluster nodes/cores and runs a local DNS cache on every worker node, avoiding `iptables` DNAT and connection-tracking (`conntrack`) bottlenecks.
+Switching kube-proxy to IPVS mode (`mode: "ipvs"`) replaces sequential iptables rule lists with a constant-time in-memory kernel hash table supporting round-robin and least-connections balancing. VPC CNI custom networking and IPv6 prevent large pod fleets from exhausting primary VPC IPv4 subnets. Meanwhile, `cluster-proportional-autoscaler` scales CoreDNS with cluster size, and NodeLocal DNSCache caches DNS lookups locally on each worker node without iptables conntrack drops.
 </details>
 
 <details>
-<summary><strong>20. Compare the three cloud Placement Group strategies (Cluster, Partition, Spread) and explain how EFA / GPUDirect RDMA accelerates multi-node GenAI training on Kubernetes (K8GS Chapter 8).</strong></summary>
+<summary>`&lt;strong>`20. Compare the three cloud Placement Group strategies (Cluster, Partition, Spread) and explain how EFA / GPUDirect RDMA accelerates multi-node GenAI training on Kubernetes (K8GS Chapter 8).`&lt;/strong>`</summary>
 
-- **Placement Group Strategies:**
-  1. **`Cluster` (`--strategy cluster` / GKE `COMPACT`):** Packs instances physically close together in a single AZ for minimum network latency and maximum east-west bandwidth (ideal for synchronous multi-node GPU training).
-  2. **`Partition`:** Spreads instance groups across distinct hardware partitions/racks (ideal for Hadoop/Cassandra/Kafka).
-  3. **`Spread`:** Places a small set of critical instances on separate hardware racks to minimize correlated failures.
-- **RDMA Integration (`EFA` / `GPUDirect` / `InfiniBand`):** Deploying `aws-efa-k8s-device-plugin` (`enable_efa_support = true`, `vpc.amazonaws.com/efa.present = "true"`), GKE `GPUDirect-TCPX`/`RDMA`, or Nebius InfiniBand exposes OS-bypass **RDMA** interfaces directly to **NCCL** inside Kubernetes training Pods for ultra-low-latency inter-GPU collective operations.
+A Cluster placement group (`--strategy cluster` or GKE COMPACT) packs instances closely inside a single availability zone for minimum latency and maximum east-west bandwidth. Partition isolates large distributed stores across racks, while Spread places critical VMs on separate hardware. Combining compact Cluster placement with `aws-efa-k8s-device-plugin` (`vpc.amazonaws.com/efa.present: "true"`), GKE GPUDirect-TCPX/RDMA, or Nebius InfiniBand exposes OS-bypass RDMA directly to NCCL collectives inside Kubernetes pods.
 </details>
 
 ## Sources and review notes
 
 ### Primary sources read in full for this chapter
-- Book sources from the local TOON-RAG corpus (mapped in `brief.py 11.30` as `K8GS`):
-  - Packt, *Kubernetes for Generative AI Solutions* (`kubernetes-for-generative-ai-solutions`, 2025):
-    - Chapter 3 (*Getting Started with Kubernetes in the Cloud*, `/tmp/k8gs_ch3.txt`: Dynatrace `5x` cloud K8s growth, `99.95%` SLA across `3` AZs, `3` releases/yr with `12m` community vs `26m` cloud extended support, Terraform `>= 1.11` / `aws >= 5.96` / `helm >= 2.17` / `kubernetes >= 2.36`, `vpc` `10.0.0.0/16` `~> 5.21` `23` resources, `eks` `1.32` `~> 20.36` `33` resources, `eks_blueprints_addons` `~> 1.21` `2` nodes & `10` pods, and `my-llama` NLB `port 80 -> 5000` `/predict`).
-    - Chapter 6 (*Scaling GenAI Applications on Kubernetes*, `/tmp/k8gs_ch6.txt`: Conventional vs custom metrics, `chatbot-ui-hpa` `1..5` replicas at `70%` CPU with `180s` scaleDown `50%/15s` and `0s` scaleUp `2 pods/15s` + `ContainerResource` `60%`, `chatbot-ui-vpa` `Off`/`Auto`/`Recreate`/`Initial` `1000m`/`2Gi`..`2000m`/`4Gi` and HPA+VPA conflict, KEDA `amazonsqs-scaler` `0..10` & `my-llama-deployment-scaler` `http_requests_total > 10` and `DCGM_FI_DEV_GPU_UTIL > 70`, and Cluster Autoscaler vs Karpenter `eks-gpu-np` `g6` `WhenEmptyOrUnderutilized` `AL2023` `ip-10-0-32-176` `15890m` CPU / `60398040Ki` RAM / `1` GPU / `234` pods / `karpenter.sh/disrupted:NoSchedule`).
-    - Chapter 8 (*Networking Best Practices for Deploying GenAI on K8s*, `/tmp/k8gs_ch8.txt`: Native vs overlay CNI, `aws-load-balancer-nlb-target-type: ip` + `/healthz`, Ingress vs Gateway API, Service Mesh Envoy sidecars vs Istio Ambient Mesh eBPF, Chatbot `NetworkPolicies` on `TCP/80` and Qdrant `TCP/6333` + CoreDNS egress, `kube-proxy` `IPVS` vs `iptables`, VPC CNI custom networking / IPv6, CoreDNS `cluster-proportional-autoscaler` + `NodeLocal DNSCache`, `Cluster`/`Partition`/`Spread` placement groups, and `EFA` `aws-efa-k8s-device-plugin`).
-- Author's Volume 25 and Volume 10 lab notes:
-  - `nvidia-zero-to-hero/volume-25/labs/lab-01-provision-a-gpu-node-and-verify-the-stack.md` (Nebius L40S 4-layer verification: `nvidia-smi` -> `docker run --rm --gpus all` / `nvidia-ctk runtime configure` -> `blkid` empty check + `UUID=` `/etc/fstab` `/data/mlops` -> `ufw allow OpenSSH` verified from a new SSH session and across `sudo reboot`).
-  - `nvidia-zero-to-hero/volume-10/labs/lab-01-inspect-a-kubernetes-gpu-node.md` (`gpu-node-07` `8/8` vs `gpu-node-11` `8/0`, `NVIDIA-SMI 550.90.07` / `CUDA 12.4` on `NVIDIA A100-SXM4-80GB` `34C` `62W/400W` `4MiB/81920MiB` `Bus-Id 00000000:1B:00.0`, `crictl info` `default_runtime_name = "nvidia"`, `GPU_NODE_VALIDATED`, and `nvidia.com/gpu: 99` test).
-  - `nvidia-zero-to-hero/volume-10/labs/lab-02-install-and-validate-gpu-operator.md` (`helm upgrade --install gpu-operator --timeout 15m`, `DESIRED 3 / READY 3 / AVAILABLE 3`, `ALLOCATABLE: 4`, `GPU_OPERATOR_VALIDATED`, and taint toleration troubleshooting).
+
+All mapped chapters from *Kubernetes for Generative AI Solutions* and the Volume 25 and Volume 10 hands-on lab notes were read and migrated in full.
+
+```text
+Primary Corpus & Lab Sources Mapped to Chapter 11.30:
+  1. Book Sources from the Local TOON-RAG Corpus (mapped in brief.py 11.30 as K8GS):
+     - Packt, Kubernetes for Generative AI Solutions (kubernetes-for-generative-ai-solutions, 2025):
+       * Chapter 3 (Getting Started with Kubernetes in the Cloud, /tmp/k8gs_ch3.txt):
+         Dynatrace 5x cloud K8s growth, 99.95% SLA across 3 AZs, 3 releases/yr with 12m community vs 26m
+         cloud extended support, Terraform >= 1.11 / aws >= 5.96 / helm >= 2.17 / kubernetes >= 2.36,
+         vpc 10.0.0.0/16 ~> 5.21 (23 resources), eks 1.32 ~> 20.36 (33 resources, desired_size = 2, max_size = 3
+         across m5.large/m6i.large/m6a.large/m7i.large/m7a.large), eks_blueprints_addons ~> 1.21 (2 nodes & 10 pods),
+         and my-llama NLB port 80 -> 5000 /predict.
+       * Chapter 6 (Scaling GenAI Applications on Kubernetes, /tmp/k8gs_ch6.txt):
+         Conventional vs custom metrics, chatbot-ui-hpa (1..5 replicas at 70% CPU with 180s scaleDown 50%/15s
+         and 0s scaleUp 2 pods/15s + ContainerResource 60%), chatbot-ui-vpa (Off/Auto/Recreate/Initial,
+         1000m/2Gi..2000m/4Gi and HPA+VPA conflict), KEDA amazonsqs-scaler (0..10, pollingInterval 15,
+         cooldownPeriod 180, queueLength 10) & my-llama-deployment-scaler (http_requests_total > 10 and
+         DCGM_FI_DEV_GPU_UTIL > 70), and Cluster Autoscaler vs Karpenter eks-gpu-np (g6, WhenEmptyOrUnderutilized,
+         AL2023, 33.662142ms detection, 14:34:03Z -> 14:36:01Z launch of ip-10-0-32-176 with 15890m CPU /
+         60398040Ki RAM / 1 GPU / 234 pods, and 14:50:18Z -> 14:54:03Z karpenter.sh/disrupted:NoSchedule cleanup).
+       * Chapter 8 (Networking Best Practices for Deploying GenAI on K8s, /tmp/k8gs_ch8.txt):
+         Native vs overlay CNI, aws-load-balancer-nlb-target-type: ip + /healthz, Ingress vs Gateway API,
+         Service Mesh Envoy sidecars vs Istio Ambient Mesh eBPF, Chatbot NetworkPolicies on TCP/80 and Qdrant
+         TCP/6333 + CoreDNS egress, kube-proxy IPVS vs iptables, VPC CNI custom networking / IPv6, CoreDNS
+         cluster-proportional-autoscaler + NodeLocal DNSCache, Cluster/Partition/Spread placement groups, and
+         EFA aws-efa-k8s-device-plugin (vpc.amazonaws.com/efa.present = "true").
+  2. Author's Volume 25 and Volume 10 Lab Notes:
+     - nvidia-zero-to-hero/volume-25/labs/lab-01-provision-a-gpu-node-and-verify-the-stack.md
+       (Nebius L40S 4-layer verification: nvidia-smi -> docker run --rm --gpus all / nvidia-ctk runtime configure ->
+        blkid empty check + UUID= /etc/fstab /data/mlops -> ufw allow OpenSSH / 2222/tcp verified from a new SSH
+        session and across sudo reboot)
+     - nvidia-zero-to-hero/volume-10/labs/lab-01-inspect-a-kubernetes-gpu-node.md
+       (gpu-node-07 8/8 vs gpu-node-11 8/0, NVIDIA-SMI 550.90.07 / CUDA 12.4 on NVIDIA A100-SXM4-80GB 34C 62W/400W
+        4MiB/81920MiB Bus-Id 00000000:1B:00.0 UUID GPU-3a1e9f2b-6c7d-4e91-9a02-1f8b7c0d5e11, crictl info
+        io.containerd.runc.v2 pause:3.9 default_runtime_name = "nvidia", GPU_NODE_VALIDATED 1s -> 3s -> 9s -> 11s,
+        and nvidia.com/gpu: 99 test)
+     - nvidia-zero-to-hero/volume-10/labs/lab-02-install-and-validate-gpu-operator.md
+       (helm upgrade --install gpu-operator --timeout 15m, DESIRED 3 / READY 3 / AVAILABLE 3, ALLOCATABLE: 4,
+        GPU_OPERATOR_VALIDATED, and taint toleration troubleshooting)
+```
 
 ### Related source files mapped in MIGRATION_MAP.md
-- No separate `nvidia-devops` file was exclusively mapped to `11.30` in `brief.py`; this capstone chapter integrates *Kubernetes for Generative AI Solutions* (`K8GS`) Chapters 3, 6, and 8 with `volume-25/labs/lab-01` and `volume-10/labs/lab-01..02`.
+
+- No separate `nvidia-devops` file was exclusively mapped to Chapter 11.30 in `brief.py`. This capstone chapter integrates *Kubernetes for Generative AI Solutions* Chapters 3, 6, and 8 with Volume 25 Lab 01 and Volume 10 Labs 01 and 02.
 
 ### Run here
-- `python3 code/part11/multi_node_gke_and_nebius_lab.py` (`25 passed, 0 failed out of 25 checks`).
+
+- The local verification suite `python3 code/part11/multi_node_gke_and_nebius_lab.py` was executed here and passed all twenty-five checks.
 
 ### Explicitly labelled inferences
+
 - The `gcloud container node-pools create gke-gpu-pool --placement-type=COMPACT` command is the GKE equivalent of the compact cluster placement group strategy (`--strategy cluster`) documented in *Kubernetes for Generative AI Solutions* Chapter 8.
 
 ### Not verified on live hardware
+
 - All `gcloud`, `aws`, `terraform`, `helm`, `kubectl`, `docker`, `nvidia-ctk`, `mkfs.ext4`, and `ufw` commands are marked `(untested here)`.
 
 ### Not in the corpus
-- Nebius-specific Terraform provider resource names (`nebius_mk8s_node_group`); this chapter uses the vendor-neutral SSH/Linux/Kubernetes verification commands from `volume-25/labs/lab-01` and `volume-10/labs/lab-01..02` alongside the Terraform modules in `K8GS` Chapter 3.
+
+- Vendor-specific Nebius Terraform provider resource names such as `nebius_mk8s_node_group` are outside the corpus scope. This chapter uses the SSH, Linux, and Kubernetes verification commands from Volume 25 Lab 01 and Volume 10 Labs 01 and 02 alongside the Terraform modules in *Kubernetes for Generative AI Solutions* Chapter 3.
 
 ### Corrections to the author's notes
-- Validation pass 2026-10-25: `validate_chapter.py` and `check_coverage.py` pass. The YAML manifests and commands are marked untested and were not applied to a cluster. Custom resource API versions (for example `kueue.x-k8s.io/v1beta1`, `resource.k8s.io/v1`) change between releases, so check them against the version you install. Console outputs quoted from the Volume notes are illustrative unless the chapter says otherwise.
-- Earlier author note: all Terraform versions, KEDA/HPA/VPA/Karpenter parameters, NLB/NetworkPolicy/IPVS manifests, and lab outputs match `K8GS`, `volume-10`, and `volume-25` verbatim.
+
+- Validation pass 2026-10-25 confirmed that `validate_chapter.py` and `check_coverage.py` pass, and all YAML manifests and commands are marked untested. Custom resource API versions such as `kueue.x-k8s.io/v1beta1` or `resource.k8s.io/v1` change between releases, so verify them against your cluster version.
+- All Terraform versions, KEDA, HPA, VPA, and Karpenter parameters, NLB, NetworkPolicy, and IPVS manifests, and lab verification outputs match *Kubernetes for Generative AI Solutions*, Volume 10, and Volume 25 verbatim.
+

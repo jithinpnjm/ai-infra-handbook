@@ -162,7 +162,16 @@ Discovery methods: DHCP logs showing unknown MACs, switch MAC tables per port (m
 
 (Detailed in 6.23 and Part 8; the SCL book's chapters 25 and 26.)
 
-- **ROCKS** (historic Rocks Clusters, CentOS-based; "Rolls" bundle software; installs nodes via Kickstart) and **Parallel Knoppix/PelicanHPC** (live-CD clusters for teaching) are the out-of-the-box stacks the book reviews; both are largely of historic interest now.
+- **ROCKS** (historic Rocks Clusters, developed by NPACI and SDSC in 2000; Red Hat / CentOS and modified Anaconda installer, storing cluster state in a MySQL database): distributes software stacks as modular **Roll CDs** (such as `Base`, `HPC`, `Java`, `Lustre`, `Ganglia`). In the book's installation walkthrough `(untested here)`:
+  1. Boot the head node from the **Base Roll CD** and enter `frontend` mode at the boot prompt (instead of the default `compute` mode).
+  2. When prompted `"Do you have a roll CD/DVD?"`, answer `"Yes"`, insert the **HPC Roll CD**, then answer `"No"` and re-insert the Base Roll CD; use `Autopartition` and configure the internal cluster NIC manually (unselecting `"configure using DHCP"`).
+  3. After the head node reboots, log in as `root`, run `insert-ethers` `(untested here)`, and choose `compute`. Power on each compute node in PXE network-boot mode: `insert-ethers` captures each booting node's MAC address, assigns its hostname/IP in the MySQL database, and provisions its image over the network. Press `F1` to exit `insert-ethers` once all compute nodes are registered.
+  4. Create a user (`useradd USERNAME`), initialize SSH keys with `ssh-agent $SHELL` and `ssh-add`, and launch jobs either manually (`/opt/mpich/gnu/bin/mpirun -nolocal -np 2 -machinefile machines ./myexe`) or through the default **Grid Engine** batch system (`qsub sge-run-script.sh`) `(untested here)`.
+- **Parallel Knoppix / PelicanHPC**: a Debian-based **LiveCD / LiveUSB** stack designed to turn a classroom or office of workstations into a temporary diskless cluster (including OpenMPI, parallel Linpack, and Octave) without modifying local hard drives. In the book's walkthrough `(untested here)`:
+  1. Boot the head machine from the LiveCD (`Start Debian Live`), choose where `/home` lives (RAM disk by default, or persistent mount options documented in `/home/user/pelican_config`), and replace the default password (`PleaseChangeMe!`) for account `user` (optionally starting Xfce with `startx`).
+  2. Run `pelican_setup` `(untested here)` and select the network interface connected to the cluster LAN (taking care not to start PelicanHPC's DHCP server on a corporate LAN).
+  3. Confirm service startup (`DHCP`, `TFTP`, `NFS`) and PXE-boot the compute nodes until they display `"This is a PelicanHPC compute node."`.
+  4. PelicanHPC writes the discovered node list to `/home/user/tmp/bhosts`; whenever you add or remove compute nodes later, run `pelican_restart_hpc` `(untested here)` to refresh the cluster configuration.
 - **xCAT** (IBM/Lenovo lineage): DHCP/TFTP/DNS, node definitions in a database, `nodeset`, `rpower`, `rinstall`, stateless/statelite/diskful images, hierarchies of service nodes.
 - **Warewulf 4**: container-based stateless provisioning, simple and popular.
 - **Canonical MAAS**: bare-metal cloud (discover, commission, deploy Ubuntu), API-driven; **Foreman** with Katello/Puppet: lifecycle management for mixed fleets.
@@ -226,7 +235,7 @@ Untested (two VMs on a host-only network): 1) set up dnsmasq (DHCP+TFTP) with a 
 21. How are images tied to Slurm draining?
 22. List node lifecycle states.
 23. How do switch port maps help identity?
-24. Name five cluster managers and one trait each.
+24. In ROCKS and PelicanHPC, which utilities discover PXE-booting compute nodes and start the cluster services? (Answer: in ROCKS, `insert-ethers` captures PXE-booting compute nodes' MAC addresses until you press `F1`; in PelicanHPC, `pelican_setup` starts the DHCP/NFS services on the chosen interface and writes `/home/user/tmp/bhosts`, while `pelican_restart_hpc` refreshes the node list.)
 25. State D-T-B-I and one check per stage.
 26. How do you stop reimaging after install?
 27. Why does PXE fail across a VLAN trunk misconfiguration?
@@ -236,7 +245,10 @@ Untested (two VMs on a host-only network): 1) set up dnsmasq (DHCP+TFTP) with a 
 
 ## 12. Sources and review notes
 
-- Boot chain, SysV and systemd init, DHCP/TFTP/PXE/NFS-root, node setup, out-of-the-box stacks (ROCKS, Parallel Knoppix/PelicanHPC), xCAT, MAAS, Foreman, BCM: *Supercomputers for Linux SysAdmins* chapters 23 to 26, restated in my words. Network boot comparison (PXE/TFTP vs UEFI HTTP Boot), Kea DHCP and the D-T-B-I triage: the author's NVIDIA-DevOps volume-10 chapter 1 section 7, with two corrections: the TFTP slowness description (defaults, not a hard limit) and the Kea snippet (client classes added so that PXE clients are not given an HTTP URL).
+- Book source (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`):
+  - Chapter `25. Out-of-the-Box Stacks and Deployment Systems` (read in full): ROCKS cluster installation (Base and HPC Roll CDs, `frontend` boot mode, `insert-ethers` PXE discovery and `F1` exit, Grid Engine `qsub`) and Parallel Knoppix / PelicanHPC LiveCD setup (`/home/user/pelican_config`, `pelican_setup`, `/home/user/tmp/bhosts`, `pelican_restart_hpc`).
+  - Chapters 23, 24, and 26 (boot chain, SysV and systemd init, DHCP/TFTP/PXE/NFS-root, xCAT, MAAS, Foreman, BCM), restated in my words.
+- Network boot comparison (PXE/TFTP vs UEFI HTTP Boot), Kea DHCP and the D-T-B-I triage: the author's NVIDIA-DevOps volume-10 chapter 1 section 7, with two corrections: the TFTP slowness description (defaults, not a hard limit) and the Kea snippet (client classes added so that PXE clients are not given an HTTP URL).
 - dnsmasq options verified in dnsmasq(8) (mirror commit `cf08eee`).
 - Original and run: `gen_provision.py`.
-- Unverified: iPXE script syntax details beyond common usage, Kea class tests, DHCP option numbers for architectures (standard values from the PXE/UEFI specifications as I recall them), BCM and MAAS specifics, firmware behaviours. No network boot was performed.
+- Unverified: iPXE script syntax details beyond common usage, Kea class tests, DHCP option numbers for architectures (standard values from the PXE/UEFI specifications as I recall them), ROCKS/PelicanHPC commands (from the book, not run here), BCM and MAAS specifics, firmware behaviours. No network boot was performed.
