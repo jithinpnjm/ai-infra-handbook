@@ -40,19 +40,34 @@ After this chapter you can:
 
 ## 1. Concepts
 
-- **Concurrency**: structuring a program so multiple tasks make progress in overlapping time periods (dealing with many things at once). **Parallelism**: executing multiple computations simultaneously on multiple cores (doing many things at once). You can have concurrency without parallelism (one core interleaving tasks).
+- **Concurrency**: structuring a program so multiple tasks make progress in overlapping time periods ("dealing with lots of things at once", as Rob Pike defined it in *Fluent Python* Chapter 19). **Parallelism**: executing multiple computations simultaneously on multiple cores ("doing lots of things at once"). You can have concurrency without parallelism (one core interleaving tasks).
 - **I/O-bound** work spends time waiting (network, disk, subprocesses, sleeping): concurrency helps even on one core because waiting overlaps. **CPU-bound** work spends time computing: only parallelism across cores (or faster code, native libraries) helps.
 - **Latency vs throughput**; **Amdahl's law**: speed-up is limited by the serial fraction. Overheads (thread creation, context switches, serialisation between processes) can exceed gains for small tasks.
 - **Shared state is the enemy**: the more tasks share mutable data, the more locks, races and bugs. Prefer **message passing** (queues), immutable data, and per-task state.
 
-### The Global Interpreter Lock
+```mermaid
+flowchart TD
+    Work{"What dominates runtime?"} -->|I/O-Bound: Waiting on network, BMCs, APIs, disk| Scale{"Concurrency scale & library support?"}
+    Scale -->|"10 to 200 concurrent calls<br/>(blocking libs: requests, paramiko, boto3)"| TPE["ThreadPoolExecutor<br/>(GIL released during OS I/O)"]
+    Scale -->|"1,000 to 10,000+ connections<br/>(async libs: httpx.AsyncClient, aiohttp, asyncpg)"| AsyncIO["asyncio Event Loop + Semaphore<br/>(offload disk/sync calls via asyncio.to_thread)"]
+    Work -->|CPU-Bound: Parsing, hashing, math, compression| Kind{"Pure Python or Native C/Rust/CUDA?"}
+    Kind -->|"Pure Python (is_prime, AST/JSON transforms)"| PPE["ProcessPoolExecutor / multiprocessing<br/>(1 process per physical core, separate GILs)"]
+    Kind -->|"Native C/CUDA (NumPy, PyTorch, hashlib, zlib)"| Native["Vectorized / Native Calls<br/>(release GIL in C or use process-per-GPU torchrun)"]
+```
+
+### The Global Interpreter Lock and the 3 spinner scripts (`FP` Chapter 19)
 
 CPython's reference implementation has a **GIL**: a mutex ensuring only one thread executes Python bytecode at a time within a process. It simplifies memory management (reference counting is not thread-safe without it) and the implementation of C extensions. Consequences:
 
 - **Threads do not speed up pure-Python CPU-bound code**; they can slow it down (contention, switching).
-- **The GIL is released** during blocking I/O (`socket`, file reads, `time.sleep`, `subprocess` waits), and by many C extensions during long computations (NumPy, hashlib on large buffers, compression, regex in some cases, PyTorch ops, `zlib`), so threads *do* give speed-ups for I/O-bound code and for native-code-heavy work.
+- **The GIL is released** during blocking I/O (`socket`, file reads, `time.sleep`, `subprocess` waits), and by many C extensions during long computations (NumPy, hashlib on large buffers, compression, regex in some cases, PyTorch ops, `zlib`, `bz2`), so threads *do* give speed-ups for I/O-bound code and for native-code-heavy work.
 - Individual bytecode operations are atomic-ish, but compound operations (`x += 1`, check-then-act on a dict) are **not** thread-safe: races still occur. The GIL does not remove the need for locks.
-- Since 3.2 the interpreter switches threads on a time slice (`sys.getswitchinterval()`, 5 ms default).
+- Since Python 3.2 (contributed by Antoine Pitrou), the interpreter switches threads on a time slice (`sys.getswitchinterval()`, `0.005`s = `5 ms` default).
+- **A side-by-side comparison of Threads, Processes, and Coroutines (`spinner_thread.py`, `spinner_proc.py`, `spinner_async.py`, and `primes.py` in `FP` Chapter 19 `Examples 19-1` to `19-13`):**
+  1. **Threaded spinner (`spinner_thread.py`):** Starts `spinner = Thread(target=spin, args=('thinking!', done))` where `done = threading.Event()` and `spin` loops `for char in itertools.cycle(r'\|/-'):` checking `if done.wait(.1): break` (printing `f'\r{char} {msg}'` with `flush=True`), runs `slow()`, and signals `done.set(); spinner.join()`. Even if `slow()` runs a CPU-bound Python `is_prime(5_000_111_000_222_021)` check instead of `time.sleep(3)`, the threaded spinner keeps animating because CPython suspends the `is_prime` thread every `5 ms` (`sys.getswitchinterval()`) just long enough for the `spin` thread to print a frame and go back to sleep in `done.wait(.1)`. However, running 12 threads on a 20-number primality benchmark (`NUMBERS` from `2` to `9_999_999_999_999_999`, `10**16 - 1`) gives **zero speedup** over sequential execution (`~40.81s`) because all threads contend for a single GIL.
+  2. **Multiprocess spinner and worker queues (`spinner_proc.py` and `procs.py`):** Replaces `threading.Thread` with `multiprocessing.Process` and `done: synchronize.Event = Event()`. Because each child process has its own independent Python interpreter and **its own GIL**, running `procs.py` across a 6-core (12-thread hyperthreaded) laptop with `SimpleQueue[int]` `jobs` (terminated by a `0` **poison pill** per worker) and `SimpleQueue[PrimeResult]` `results` drops the 20-prime benchmark median time from `40.81s` (1 process) down to **`10.39s` with 6 processes** (with diminishing returns from 7 to 12 processes due to hyperthreading contention).
+  3. **Asyncio spinner (`spinner_async.py`):** Runs on a single thread via `asyncio.run(main())`: `supervisor()` schedules `spinner = asyncio.create_task(spin('thinking!'))`, awaits `await slow()` (`await asyncio.sleep(3)`), and calls `spinner.cancel()`, which raises `asyncio.CancelledError` at the `await asyncio.sleep(.1)` inside `spin` so it breaks out of its loop and clears the status line. Crucially, if you replace `await asyncio.sleep(3)` inside `slow()` with a CPU-bound `is_prime(5_000_111_000_222_021)` call, **the async spinner freezes completely** because cooperative multitasking has no preemptive 5 ms time-slicing—`spin` never gets control until `slow()` hits an `await`.
+  4. **Production Python web/API scaling (`WSGI` vs `ASGI`, `FP` Chapter 19 Figure 19-4):** Rather than relying on a single multi-threaded process, production Python stacks scale horizontally across CPU cores by running an application server (`gunicorn`, `uWSGI`, or `uvicorn` for ASGI) that preforks **one worker process per CPU core** behind an NGINX/Envoy reverse proxy and offloads shared state to external caches (`Redis`, `memcached`), databases (`PostgreSQL`), and task queues (`Celery`, `RabbitMQ`).
 - **Free-threaded CPython** (PEP 703): optional builds (3.13+ experimental `python3.13t`, supported builds in later releases) run without the GIL; extension compatibility and single-thread overhead are evolving; check each dependency. **Subinterpreters** (PEP 684/734, `concurrent.interpreters` in 3.14) give per-interpreter GILs. Treat both as emerging; the models below remain the practical toolkit.
 - Alternative implementations/approaches: processes (separate GILs), native extensions (Cython, Numba, Rust via PyO3), vectorised libraries (NumPy, pandas, PyTorch) that spend time outside the interpreter.
 
@@ -164,7 +179,8 @@ with ThreadPoolExecutor(max_workers=50, thread_name_prefix="probe") as pool:
 print(len(results), "ok;", len(errors), "failed")
 ```
 
-- `pool.map(fn, iterable, timeout=..)` returns results in input order and raises the first exception when iterated; `as_completed` handles results out of order and per-future errors; `wait(futs, return_when=FIRST_EXCEPTION)` for fail-fast.
+- `pool.map(fn, iterable, timeout=..)` returns a generator yielding results **in the exact order of the input `iterable`** (and raises the first exception when that item is iterated). In *Fluent Python* Chapter 20 (`Examples 20-1` to `20-16`), downloading the 20 most populous countries' flag images (`POP20_CC = 'CN IN US ID BR PK NG BD RU JP MX PH VN ET EG DE TR CD FR IR'.split()`) with `httpx.get` takes **`7.18s`** sequentially (`flags.py`), versus **`1.40s`** with `ThreadPoolExecutor.map(download_one, sorted(cc_list))` (`flags_threadpool.py`, a `5x` speedup) and **`1.35s`** with `asyncio` (`flags_asyncio.py`). However, when `proc_pool.py` (`Example 20-6`) runs `executor.map(check, sorted(NUMBERS, reverse=True))` on `ProcessPoolExecutor`, it prints the first result (`9999999999999999`, divisible by 9) immediately and then **appears to freeze** while computing the second number (`9999999999999917`, the largest prime, taking `~11s`)—even though the remaining worker processes have already finished checking all the smaller numbers—because `executor.map` must yield results strictly in input order.
+- **`executor.submit` + `futures.as_completed` + `to_do_map` (`flags2_threadpool.py`, `Example 20-16`):** To process results as soon as each task finishes, report live progress (`tqdm.tqdm(done_iter, total=len(cc_list))`), and associate any raised exception (`httpx.HTTPStatusError`, `httpx.RequestError`) with the exact input argument (`cc`) that caused it, build a dictionary mapping each submitted `Future` to its input key (`to_do_map[future] = cc`) and iterate `for future in futures.as_completed(to_do_map):` (modeled in `run_threadpool_to_do_map()` in `code/part03/python_concurrency_models.py`).
 - `Future.result(timeout)`, `.exception()`, `.cancel()` (only if not started), `.add_done_callback()`, `.done()`.
 - Leaving the `with` block waits for all pending work (`shutdown(wait=True)`); on exceptions `shutdown(wait=False, cancel_futures=True)` (3.9+) drops queued tasks.
 - Executors **do not interrupt running tasks** on timeout: always set timeouts on the I/O inside the task.
@@ -276,8 +292,12 @@ async def poll_all(nodes):
 
 - **Timeouts**: `await asyncio.wait_for(coro, timeout)` or the `async with asyncio.timeout(10):` context (3.11). **Every network await must have a timeout** (the classic silent hang: a half-open connection waits forever).
 - **Cancellation**: `task.cancel()` raises `asyncio.CancelledError` at the task's current `await`; clean up in `finally`, **re-raise `CancelledError`** (never swallow it), and use `asyncio.shield()` to protect critical sections. Timeouts and `TaskGroup` rely on cancellation.
-- **Synchronisation**: `asyncio.Lock`, `Semaphore`, `Event`, `Condition`, `Queue` (bounded with `maxsize`: `await q.put()` provides backpressure) — async versions; not thread-safe across threads.
-- **Async iteration/context managers**: `async for` over `__aiter__/__anext__` (streams, paginated APIs, async generators with `async def` + `yield`), `async with` for resources (`__aenter__/__aexit__`, `contextlib.asynccontextmanager`).
+- **Synchronisation**: `asyncio.Lock`, `Semaphore`, `Event`, `Condition`, `Queue` (bounded with `maxsize`: `await q.put()` provides backpressure) — async versions; not thread-safe across threads. In *Fluent Python* Chapter 21 (`flags2_asyncio.py`, `Example 21-7`), an `asyncio.Semaphore(concur_req)` (`async with semaphore: image = await get_flag(client, base_url, cc)`) throttles active HTTP requests on `httpx.AsyncClient` while `asyncio.as_completed(to_do_iter)` streams results into a `tqdm` progress bar as they arrive.
+- **Async iteration, async generators, async context managers (`__aenter__/__aexit__`), and async comprehensions (`LP` Chapter 20 & `FP` Chapter 21)**:
+  - An **asynchronous iterable** (`class AsyncRange:` in `LP` Chapter 20 `all_async_demos.py`) implements `def __aiter__(self):` returning an **asynchronous iterator** that defines `async def __anext__(self):` (raising `StopAsyncIteration` when exhausted), while `async with` uses `__aenter__/__aexit__` or `contextlib.asynccontextmanager`.
+  - An **asynchronous generator function** (`async def multi_probe(names: Iterable[str]) -> AsyncIterator[Result]:` in `FP` Chapter 21 `Example 21-18 domainlib.py`) combines `async def` and `yield`—launching `coros = [probe(name, loop) for name in names]` (where `await loop.getaddrinfo( domain, None)` queries DNS asynchronously) and iterating `for coro in asyncio.as_completed(coros): result = await coro; yield result`.
+  - **Asynchronous comprehensions and generator expressions (PEP 530):** `[x ** 2 async for x in AsyncRange(1, 5)]`, `{name: found async for name, found in multi_probe(names)}`, and `{name for name in names if (await probe(name)).found}` allow `async for` and `await` directly inside list/dict/set comprehensions and generator expressions (note that `async for` awaits each item sequentially as the async iterator yields it; to run a batch of coroutines concurrently, use `await asyncio.gather(*coros)` or `asyncio.TaskGroup`).
+- **Offloading blocking disk/CPU work (`asyncio.to_thread`) and multi-stage `await` (`FP` Chapter 21)**: Because the OS lacks portable non-blocking filesystem writes in standard Python, `flags_asyncio.py` (`Example 21-3`) calls `await asyncio.to_thread(save_flag, image, f'{cc}.gif')` inside `download_one` so writing files never stalls the event loop. Also remember that async database drivers (`asyncpg` in `Example 21-4`) and stream writers (`asyncio.start_server` in `tcp_mojifinder.py`, `Examples 21-12` to `21-15`, vs FastAPI/`uvicorn` `web_mojifinder.py`) split operations into explicit `await` stages (`tr = connection.transaction(); await tr.start(); ... await tr.commit()`, and `writer.write(data); await writer.drain(); writer.close(); await writer.wait_closed()`).
 - **Subprocesses**: `asyncio.create_subprocess_exec(*cmd, stdout=PIPE)`, `await proc.communicate()`: non-blocking command execution, no pipe deadlocks if you read both streams (communicate does).
 - **Blocking calls**: `await asyncio.to_thread(blocking_fn, args)` (3.9+) or `loop.run_in_executor(executor, fn, *args)` run blocking/CPU code off the loop. For CPU-bound work use a `ProcessPoolExecutor` via `run_in_executor`.
 - **Async libraries**: `aiohttp`, `httpx.AsyncClient`, `asyncssh`, `aiofiles` (threads under the hood), `asyncpg`, `aioredis/redis.asyncio`, `aiokafka`, `kubernetes_asyncio`, `aioboto3`/`aiobotocore`, `grpc.aio`. Mixing sync libraries (requests, paramiko, boto3) inside coroutines blocks the loop: wrap with `to_thread`.
@@ -395,7 +415,15 @@ When one machine isn't enough: Slurm job arrays and `srun`, Kubernetes Jobs with
 
 Tools: `faulthandler.enable()` and `faulthandler.dump_traceback_later(timeout, repeat=True)`, `kill -SIGUSR1` with `faulthandler.register`, `py-spy dump/top/record` (sampling, no code changes), `threading.enumerate()`, `sys._current_frames()`, `asyncio.all_tasks()`, `psutil.Process().num_threads()`, `ss -s`, `lsof -p`, `strace -f -p`, `perf`, `tracemalloc`, metrics for in-flight tasks, queue depth, and latency percentiles.
 
-## 7. Lab (untested)
+## 7. Lab
+
+First, run the self-checking Python lab (`code/part03/python_concurrency_models_lab.py`) locally. It verifies CPU-bound `is_prime(n)`, `spinner_thread.py` (`threading.Event`), and `spinner_async.py` (`Task.cancel` and `CancelledError`, `FP` Ch. 19), `flags2_threadpool.py`'s `to_do_map` + `as_completed` pattern and `bounded_map` backpressure (`FP` Ch. 20), and `asyncio.Semaphore` bounded fan-out, `asyncio.to_thread` offloading, `multi_probe` async generators, and PEP 530 async comprehensions over `AsyncRange` (`FP` Ch. 21 & `LP` Ch. 20).
+
+```bash
+python3 code/part03/python_concurrency_models_lab.py
+```
+
+Next, on any machine with Python 3.11+ (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **GIL experiment**: time a CPU-bound function sequentially, with 4 threads, with 4 processes; time an I/O-bound function (sleep/HTTP to a local server) sequentially, with threads, with asyncio; plot or tabulate; check `sys.getswitchinterval()`; try a NumPy function and `hashlib` on large buffers with threads to see GIL release.
 2. **Races and locks**: reproduce a lost update with `counter += 1`; fix with a lock; demonstrate a deadlock with two locks and fix by ordering; use `queue.Queue` producer/consumer with a bounded queue and sentinel shutdown.
@@ -410,8 +438,6 @@ Tools: `faulthandler.enable()` and `faulthandler.dump_traceback_later(timeout, r
 11. **Diagnose hangs**: write a program with a deadlock and one with a blocked event loop; diagnose using `faulthandler`, `py-spy dump`, `asyncio.all_tasks()`.
 12. **Containers**: run the process pool inside a container with `--cpus=2`; show `os.cpu_count()` vs `sched_getaffinity` and CPU throttling (`cpu.stat`).
 13. **Clean up.**
-
-Mark tested only after execution.
 
 ## 8. Common mistakes
 
@@ -437,55 +463,168 @@ Mark tested only after execution.
 - "How do you shut down a multi-threaded/async worker gracefully on SIGTERM?"
 - "How would you parallelise processing of a 5 TB dataset?" (shards, processes/Ray/Dask/Slurm arrays, IO, checkpointing.)
 
-## 10. Checkpoint questions (40)
+## Exercises
 
-1. Concurrency vs parallelism? **A:** Overlapping progress vs simultaneous execution.
-2. I/O-bound vs CPU-bound? **A:** Waiting-dominated vs compute-dominated.
-3. What does the GIL protect? **A:** CPython's memory management/bytecode execution; one thread runs Python at a time.
-4. When is the GIL released? **A:** During blocking I/O and many C extension calls.
-5. Does the GIL make `x += 1` safe? **A:** No.
-6. Free-threaded Python? **A:** Optional GIL-less builds (PEP 703).
-7. Can you kill a thread? **A:** No; use cooperative cancellation.
-8. What does `daemon=True` mean? **A:** Thread is killed at interpreter exit without cleanup.
-9. What do `Lock` and `RLock` differ in? **A:** RLock is re-entrant by the same thread.
-10. What is a deadlock? **A:** Tasks waiting on each other's resources forever.
-11. How to avoid deadlock? **A:** Lock ordering, timeouts, fewer locks.
-12. What does a bounded `Queue` provide? **A:** Backpressure.
-13. `submit` vs `map`? **A:** Single future vs ordered iterator of results.
-14. What does `as_completed` do? **A:** Yields futures as they finish.
-15. Do executor timeouts stop the task? **A:** No; the work keeps running.
-16. Why bound in-flight futures? **A:** Avoid memory blow-up.
-17. When use `ProcessPoolExecutor`? **A:** CPU-bound pure Python.
-18. Why `if __name__ == "__main__"`? **A:** Spawn re-imports the module.
-19. What gets pickled in multiprocessing? **A:** Function arguments and results.
-20. Fork vs spawn? **A:** Copy-on-write clone vs fresh interpreter.
-21. Why avoid fork after CUDA? **A:** CUDA contexts aren't fork-safe.
-22. What is `SharedMemory` for? **A:** Zero-copy sharing of buffers across processes.
-23. What does `maxtasksperchild` do? **A:** Recycles workers to limit leaks.
-24. `os.cpu_count()` in containers? **A:** Reports host CPUs, not the limit.
-25. What is an event loop? **A:** Single-threaded scheduler for coroutines/IO.
-26. Coroutine vs task? **A:** Awaitable object vs scheduled concurrently running wrapper.
-27. What does `await` do? **A:** Suspends until the awaitable completes, yielding control.
-28. Why keep task references? **A:** Loop holds weak refs; tasks may be collected.
-29. `gather` vs `TaskGroup`? **A:** Collect results vs structured concurrency with cancellation on failure.
-30. How to timeout a coroutine? **A:** `asyncio.timeout()` or `wait_for`.
-31. What must you do on `CancelledError`? **A:** Clean up and re-raise.
-32. How to run blocking code in asyncio? **A:** `asyncio.to_thread` / `run_in_executor`.
-33. What blocks the loop? **A:** Sync I/O, `time.sleep`, CPU-heavy code.
-34. How to debug asyncio? **A:** Debug mode, `all_tasks()`, py-spy.
-35. What is backpressure in asyncio? **A:** Bounded queue making producers await.
-36. What is full jitter? **A:** Random delay between 0 and the exponential cap.
-37. Why per-host semaphores? **A:** Prevent overloading specific targets.
-38. How to handle SIGTERM in asyncio? **A:** `loop.add_signal_handler` setting a stop event.
-39. Tool to inspect a hung Python process? **A:** `py-spy dump` / `faulthandler`.
-40. When shell `xargs -P` instead? **A:** Simple one-off parallel commands.
+1. **Concurrency vs. Parallelism, the GIL, and the Three Spinner Scripts (`FP` Chapter 19):** Using `is_prime()`, `run_thread_spinner_demo()`, and `run_async_spinner_cancellation_demo()` in `code/part03/python_concurrency_models.py`, explain: (a) Rob Pike's distinction between concurrency and parallelism, what the CPython GIL protects, and when it is released; and (b) why replacing `sleep(3)` with `is_prime(5_000_111_000_222_021)` allows `spinner_thread.py` and `spinner_proc.py` to keep spinning (`5 ms` `sys.getswitchinterval()`) while freezing `spinner_async.py`.
+2. **Thread Synchronization, Producer/Consumer Backpressure, and `ThreadPoolExecutor` (`to_do_map` + `as_completed` vs. `map`, `FP` Chapter 20):** (a) Explain why `counter += 1` is not thread-safe despite the GIL, how `threading.Event` and bounded `queue.Queue(maxsize=100)` with sentinel objects work, and how to prevent deadlocks; (b) using `run_threadpool_to_do_map()` and `bounded_map()`, compare `executor.map` (and why `proc_pool.py` stalls on `9999999999999917`) with `executor.submit` + `as_completed(to_do_map)` and `bounded_map` (`max_inflight` backpressure).
+3. **Multiprocessing (`ProcessPoolExecutor`), Start Methods (`fork` vs. `spawn` vs. `forkserver`), Pickling, and `SharedMemory` (`FP` Chapters 19 & 20):** (a) Explain why `procs.py` drops the 20-prime benchmark from `40.81s` to `10.39s` on a 6-core machine and how poison-pill shutdown works on `SimpleQueue`; (b) explain why `fork` after initializing CUDA or threads hangs or crashes, why `spawn` requires `if __name__ == "__main__":` and picklable top-level functions, and how `multiprocessing.shared_memory.SharedMemory` and `gc.freeze()` avoid memory duplication.
+4. **Asyncio Core: Event Loop, `Task`, `gather` vs. `TaskGroup`, Timeouts, Cancellation, and `asyncio.to_thread` (`FP` Chapter 21 & `LP` Chapter 20):** Using `run_async_semaphore_and_comprehension_demo()`, explain: (a) how `asyncio.Semaphore(concur_req)` bounds concurrent requests, how `asyncio.gather` differs from Python 3.11 `asyncio.TaskGroup` (`except*`), and why `CancelledError` must be re-raised; and (b) why `flags_asyncio.py` wraps `save_flag` in `await asyncio.to_thread(save_flag, image, f'{cc}.gif')`.
+5. **Asynchronous Iterators (`AsyncRange`), Async Generators (`multi_probe`), and PEP 530 Async Comprehensions (`LP` Ch. 20 & `FP` Ch. 21):** Using `AsyncRange` and `multi_probe_async_gen()` in `code/part03/python_concurrency_models.py`, contrast `__aiter__` / `__anext__` (`StopAsyncIteration`) with `async def` + `yield` async generators, and explain the difference between sequential `async for` iteration and concurrent `asyncio.as_completed` / `asyncio.gather`.
+6. **Production Fan-Out Patterns: Bounded Worker Pools, Jittered Exponential Backoff, Signal Shutdown, and Hang Diagnosis:** (a) Trace how `run_pool()` combines a bounded `asyncio.Queue(maxsize=queue_size)`, fixed worker tasks, `wait_for(..., timeout=30)`, and `loop.add_signal_handler(sig, stop.set)` for graceful `SIGTERM` drain; (b) write the full-jitter exponential backoff formula `random.uniform(0, min(cap, base * 2 ** i))` and list the tools used to diagnose a hung or throttled Python service (`PYTHONASYNCIODEBUG=1`, `faulthandler`, `py-spy dump`, `len(os.sched_getaffinity(0))`).
 
-## 11. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. Distinguish Concurrency from Parallelism and I/O-bound from CPU-bound workloads (`FP` Chapter 19).</summary>
 
-- Luciano Ramalho, *Fluent Python*, 2nd ed.: chapter 19 (concurrency models in Python), chapter 20 (concurrent executors), chapter 21 (asynchronous programming).
-- The author's `nvidia-devops` repository, volume 02 (Python systems and concurrency masterclass): the GIL and model selection, subprocess pitfalls (zombies, pipe deadlocks), `ThreadPoolExecutor` fan-out and backpressure, asyncio for BMC APIs, blocked-loop and thread-pool OOM scenarios, retries and jitter.
-- Examples are the author's constructions.
+- **Concurrency** ("dealing with lots of things at once") is structuring a program so multiple tasks overlap in time (even on a single CPU core via interleaving). **Parallelism** ("doing lots of things at once") is executing multiple computations simultaneously across multiple physical CPU cores or GPUs.
+- **I/O-bound** workloads spend most of their wall-clock time waiting on network sockets, disks, or subprocesses (concurrency via `asyncio` or threads overlaps the waits). **CPU-bound** workloads spend their time executing instructions (requiring multi-process parallelism or native C/Rust/CUDA code to go faster).
+</details>
 
-**Flagged for verification before publishing:** the status of free-threaded Python and subinterpreter APIs by version, default start methods per Python version and platform, library behaviours (aiohttp/httpx/boto3 thread-safety), and every code listing; all labs are **untested**.
+<details>
+<summary>2. What is the CPython GIL, when is it released, and why doesn't it make `counter += 1` thread-safe (`FP` Chapter 19)?</summary>
+
+The **Global Interpreter Lock (`GIL`)** is a mutex in CPython that allows only one thread per process to execute Python bytecode at a time (protecting CPython's reference-counting memory management and C extension state).
+- **When released:** The GIL is released automatically during **all blocking OS I/O syscalls** (`socket`, file read/write, `time.sleep`, `subprocess`) and by C extensions during heavy native work (`NumPy`, `PyTorch`, `hashlib`, `zlib`, `bz2`).
+- **Why `counter += 1` still races:** CPython preempts bytecode threads every `5 ms` (`sys.getswitchinterval()`), and `counter += 1` compiles into multiple bytecode steps (`LOAD_GLOBAL`, `BINARY_OP`, `STORE_GLOBAL`). A thread switch between load and store causes **lost updates** unless guarded by `with threading.Lock():` (note: Python 3.13+ offers experimental free-threaded builds under PEP 703 and subinterpreters under PEP 684).
+</details>
+
+<details>
+<summary>3. In *Fluent Python* Chapter 19's three spinner scripts (`spinner_thread.py`, `spinner_proc.py`, `spinner_async.py`), what happens if you replace `sleep(3)` with a CPU-bound `is_prime(5_000_111_000_222_021)` call?</summary>
+
+- **`spinner_thread.py` (`threading.Thread` + `threading.Event`):** Keeps spinning. Even though `is_prime` is pure-Python CPU work holding the GIL, CPython suspends `is_prime` every `5 ms` (`sys.getswitchinterval()`), allowing the spinner thread to wake up from `done.wait(0.1)`, print one character, and release the GIL again.
+- **`spinner_proc.py` (`multiprocessing.Process` + `multiprocessing.Event`):** Keeps spinning in true parallelism because the child process has its own separate Python interpreter and GIL on another CPU core.
+- **`spinner_async.py` (`asyncio.create_task`):** **Freezes completely.** On a single-threaded cooperative event loop, there is no preemptive time-slicing; `is_prime` has no `await`, so it monopolizes the thread until it finishes, starving `spin()` the entire time.
+</details>
+
+<details>
+<summary>4. How do you stop a Python `Thread` versus an `asyncio.Task`, and what does `daemon=True` mean?</summary>
+
+- **Stopping a `Thread`:** Python threads **cannot be killed or interrupted from outside**. You must use cooperative cancellation: pass a **`threading.Event`** (`done`) that the worker checks in its loop (`while not done.wait(timeout):`), and keep all blocking I/O time-bounded so the thread can exit and be joined (`t.join(timeout=10)`).
+- **Stopping an `asyncio.Task`:** Calling **`task.cancel()`** schedules an **`asyncio.CancelledError`** to be raised inside the coroutine at its currently suspended `await` expression; the coroutine runs its `finally:` cleanup and **must re-raise `CancelledError`**.
+- **`daemon=True`:** Daemon threads are terminated abruptly when the main thread exits (without running `finally:` blocks or flushing files); non-daemon threads keep the process alive until they finish.
+</details>
+
+<details>
+<summary>5. Compare `Lock`, `RLock`, `Event`, `Condition`, `Semaphore`, and `queue.Queue(maxsize=N)`.</summary>
+
+- **`Lock`**: basic mutex; acquiring it twice in the same thread deadlocks.
+- **`RLock`**: re-entrant mutex; the same thread can acquire it multiple times (and must release it the same number of times).
+- **`Event`**: thread-safe boolean flag (`set()`, `clear()`, `wait(timeout)`) for start/shutdown signaling.
+- **`Condition`**: lock + wait-set (`wait_for(predicate)`, `notify()`, `notify_all()`) for state transitions.
+- **`Semaphore(N)` / `BoundedSemaphore(N)`**: caps concurrent access to at most `N` threads.
+- **`queue.Queue(maxsize=N)`**: thread-safe FIFO queue where `put()` blocks when `maxsize` is reached, providing automatic **backpressure** to fast producers (`task_done()` + `join()` track completion, and a `SENTINEL = object()` poison pill signals workers to exit).
+</details>
+
+<details>
+<summary>6. Contrast `executor.map()` with `executor.submit()` + `as_completed(to_do_map)` in `concurrent.futures` (`FP` Chapter 20).</summary>
+
+- **`executor.map(fn, iterable)`**: returns an iterator that yields results **strictly in the order of `iterable`**. As shown in `FP` Chapter 20's `proc_pool.py`, if the second item (`9999999999999917`) takes 11 seconds while items 3..20 take microseconds, `executor.map` blocks waiting for item 2 before yielding items 3..20, and raises the first exception encountered during iteration.
+- **`executor.submit(fn, x)` + `as_completed(to_do_map)` (`flags2_threadpool.py`):** Maps each `Future` to its input key (`to_do_map = {executor.submit(fn, h): h for h in hosts}`) and yields futures **in completion order** (`for fut in as_completed(to_do_map):`), allowing immediate progress reporting and per-host error isolation (`try: res = fut.result() except Exception as exc: errors[to_do_map[fut]] = exc`).
+</details>
+
+<details>
+<summary>7. Why does `[pool.submit(fn, x) for x in ten_million_items]` cause an Out-Of-Memory crash, and how does `bounded_map` fix it?</summary>
+
+Calling `pool.submit(fn, x)` in a loop over 10 million items eagerly allocates 10 million `Future` objects, closure arguments, and internal work-queue entries in RAM before workers can drain them—consuming gigabytes of memory. `bounded_map` seeds the pool with at most `max_inflight` futures via **`islice(it, max_inflight)`**, waits for at least one future to finish via **`done, inflight = wait(inflight, return_when=FIRST_COMPLETED)`**, yields results from `done`, and submits only `len(done)` replacement items from `islice(it, len(done))`, bounding memory to **$O(\text{max\_inflight})$**.
+</details>
+
+<details>
+<summary>8. Compare the three `multiprocessing` start methods (`fork`, `spawn`, `forkserver`), and explain why you must never `fork` after initializing CUDA or threads.</summary>
+
+- **`fork`**: clones the parent process via copy-on-write (`os.fork()`). Fast, but **only the calling thread is duplicated**—if any other thread held a mutex (in Python, glibc `malloc`, gRPC, OpenMP, or the **CUDA driver runtime**), that lock remains permanently locked in the child, causing deadlocks or `CUDA_ERROR_NOT_INITIALIZED` crashes.
+- **`spawn`**: starts a fresh Python interpreter process and re-imports the main module (mandatory on macOS/Windows and default in Python 3.14+ on Linux; requires **`if __name__ == "__main__":`** and picklable top-level functions/arguments).
+- **`forkserver`**: forks workers from a clean, single-threaded server process started before CUDA/threads were initialized.
+</details>
+
+<details>
+<summary>9. How do you share large numeric arrays across worker processes without pickling overhead or copy-on-write page faults?</summary>
+
+1. **`multiprocessing.shared_memory.SharedMemory`** (or `numpy.memmap`): allocates an OS shared-memory buffer that multiple processes attach to by name with **zero serialization or copying**.
+2. **`gc.freeze()` before `fork`** (when using read-only data under `forkserver`/`fork`): moves all currently allocated Python objects into the permanent GC generation so reference-count/GC header mutations during reads do not dirty copy-on-write memory pages.
+3. Pass **`chunksize=16`** (or higher) to `ProcessPoolExecutor.map` to batch IPC transfers across many small items, and use `maxtasksperchild` on `multiprocessing.Pool` to recycle leaky workers.
+</details>
+
+<details>
+<summary>10. Why shouldn't you size a process pool with `os.cpu_count()` inside a Kubernetes pod or container (`FP` Chapter 19)?</summary>
+
+`os.cpu_count()` returns the number of logical CPUs on the **physical host node** (for example, `128` on a dual-socket GPU server), ignoring container cgroup limits (`resources.limits.cpu: "4"`). Spawning 128 worker processes inside a 4-CPU container causes severe context-switch thrashing and CFS bandwidth throttling (`nr_throttled` in `/sys/fs/cgroup/cpu.stat`). Use **`len(os.sched_getaffinity(0))`** or inspect cgroup `cpu.max` instead (and set `OMP_NUM_THREADS=1` / `MKL_NUM_THREADS=1` when using process pools so native BLAS libraries do not oversubscribe cores).
+</details>
+
+<details>
+<summary>11. How does the `asyncio` event loop achieve high concurrency on a single thread, and why must you hold a reference to `asyncio.create_task(coro)`?</summary>
+
+An `asyncio` event loop multiplexes thousands of lightweight coroutine tasks on **one OS thread** using non-blocking sockets and OS readiness notification (`epoll` on Linux, `kqueue` on macOS). Calling an `async def` function returns a coroutine object without running it; **`asyncio.create_task(coro)`** wraps it in a `Task` and schedules it on the loop. Because the event loop only holds **weak references** to scheduled tasks, a fire-and-forget `asyncio.create_task(coro)` whose return value is not saved in a variable or `set` can be garbage-collected mid-execution.
+</details>
+
+<details>
+<summary>12. Compare `asyncio.gather(*aws, return_exceptions=...)`, `asyncio.as_completed(aws)`, and Python 3.11+ `asyncio.TaskGroup()`.</summary>
+
+- **`asyncio.gather(*aws, return_exceptions=True)`**: runs awaitables concurrently and returns results **in input order**; with `return_exceptions=True`, exceptions are returned as values in the result list rather than aborting; with `return_exceptions=False`, the first exception propagates immediately to the caller **while the remaining tasks continue running in the background as orphans**.
+- **`asyncio.as_completed(aws)` (`domainlib.py`, `flags2_asyncio.py`):** yields futures/coroutines **in completion order** as each finishes.
+- **`async with asyncio.TaskGroup() as tg:`**: provides **structured concurrency**—all tasks spawned via `tg.create_task(...)` are guaranteed to be awaited before the `async with` block exits; if any task raises an unhandled exception, `TaskGroup` automatically **cancels all sibling tasks**, waits for their cleanup, and raises an `ExceptionGroup` (handled via `except*`).
+</details>
+
+<details>
+<summary>13. How do `asyncio.wait_for(coro, timeout)` / `asyncio.timeout(10)` and `CancelledError` interact?</summary>
+
+When a timeout expires in `await asyncio.wait_for(coro, timeout=10)` or `async with asyncio.timeout(10):`, `asyncio` calls **`task.cancel()`** on the inner task, raising **`asyncio.CancelledError`** at its current `await` point, waits for its `finally:` blocks to finish, and then raises `TimeoutError` to the caller. If your coroutine catches `except Exception:` (in Python 3.8+, `CancelledError` inherits from `BaseException`, not `Exception`) or uses a bare `except:` / `except BaseException:` without **re-raising `CancelledError`**, you break timeouts and `TaskGroup` cancellation. Use `asyncio.shield(coro)` only when an operation must not be interrupted mid-flight.
+</details>
+
+<details>
+<summary>14. Why does `flags_asyncio.py` (`FP` Chapter 21) call `await asyncio.to_thread(save_flag, image, filename)`, and what happens if you call `time.sleep` or `requests.get` inside a coroutine?</summary>
+
+Calling synchronous blocking functions (`time.sleep()`, `requests.get()`, `subprocess.run()`, or blocking disk I/O `save_flag()`) directly inside an `async def` coroutine **blocks the single event-loop thread**, freezing every other concurrent task and triggering `Executing <Task ...> took 0.XXX seconds` warnings under `PYTHONASYNCIODEBUG=1`. Because OS file writes block and `asyncio` has no native file I/O API, **`await asyncio.to_thread(save_flag, image, filename)`** (or `loop.run_in_executor(None, ...)`) dispatches the blocking function to `asyncio`'s default `ThreadPoolExecutor` (which releases the GIL during disk/network I/O) and awaits the result without stalling the event loop.
+</details>
+
+<details>
+<summary>15. How do Asynchronous Iterators (`__aiter__`/`__anext__`), Asynchronous Generators (`async def` + `yield`), and PEP 530 Asynchronous Comprehensions work (`LP` Ch. 20 & `FP` Ch. 21)?</summary>
+
+- **Async iterator (`AsyncRange`):** `__aiter__(self)` returns the iterator object, and `async def __anext__(self)` awaits I/O and returns the next item or raises **`StopAsyncIteration`**.
+- **Async generator (`multi_probe`):** Any `async def` function containing `yield` returns an `AsyncGenerator` object consumed with **`async for item in aiter:`**.
+- **PEP 530 async comprehensions:** `[x async for x in aiter if cond]` and `{k: v async for k, v in multi_probe(names)}` consume async iterables, while `[await probe(n) for n in names]` awaits coroutines inside any comprehension inside an `async def` function.
+</details>
+
+<details>
+<summary>16. How do you bound concurrency and memory in an `asyncio` service or fleet fan-out (`Semaphore` and bounded `asyncio.Queue` worker pool)?</summary>
+
+1. **For a known list of targets (`flags2_asyncio.py`):** Create `sem = asyncio.Semaphore(100)` and wrap each request in `async with sem: return await fetch(h)` so at most 100 sockets are open simultaneously.
+2. **For streaming/huge inputs (`run_pool`):** Create a bounded **`q = asyncio.Queue(maxsize=500)`** and spawn a fixed number of worker tasks (`concurrency=50`) looping `item = await q.get(); try: ... finally: q.task_done()`. When workers fall behind, `await q.put(item)` suspends the producer automatically (**backpressure**), keeping memory flat at $O(\text{queue\_size} + \text{concurrency})$.
+</details>
+
+<details>
+<summary>17. Why do synchronized retries cause a "Retry Storm" (Thundering Herd), and how does Exponential Backoff with Full Jitter prevent it?</summary>
+
+If 1,000 clients hit a transiently overloaded API or BMC switch and all retry at fixed intervals (`1s, 2s, 4s, 8s`), all 1,000 clients hammer the recovering server at the exact same millisecond on every wave. **Exponential backoff with full jitter** computes `delay = random.uniform(0, min(cap, base * 2 ** attempt))`, spreading retries uniformly across `[0, cap]` to smooth load while failed targets recover (complemented by per-host/per-rack semaphores and circuit breakers).
+</details>
+
+<details>
+<summary>18. How do you bridge Threads and Asyncio safely (`to_thread`, `run_in_executor`, `run_coroutine_threadsafe`)?</summary>
+
+- **From `asyncio` coroutine -> blocking thread/process:** Use **`await asyncio.to_thread(fn, *args)`** for blocking I/O or **`await loop.run_in_executor(process_pool, cpu_fn, *args)`** for CPU-bound work.
+- **From an external OS thread -> running `asyncio` event loop:** `asyncio` objects (`Loop`, `Task`, `Queue`, `Event`) are **not thread-safe**; never call `loop.create_task()` or `q.put_nowait()` directly from another thread. Instead, call **`fut = asyncio.run_coroutine_threadsafe(coro, loop)`** (which returns a thread-safe `concurrent.futures.Future`) or `loop.call_soon_threadsafe(callback, *args)`.
+</details>
+
+<details>
+<summary>19. How do production Python web/API servers (`uvicorn`, `gunicorn`, FastAPI) combine processes, threads, and `asyncio` (`FP` Chapters 19 & 21)?</summary>
+
+A single Python process is bound to one core for Python bytecode by the GIL. Production ASGI deployments (`gunicorn -k uvicorn.workers.UvicornWorker -w N` or `uvicorn --workers N`, or multiple Kubernetes Pod replicas) run **one worker process per CPU core**, where each process runs its own independent `asyncio` event loop (often accelerated by `uvloop`) handling thousands of concurrent I/O connections, offloads any blocking calls to its local thread pool (`to_thread` / FastAPI `def` endpoints), and shares state across workers via external stores (`Redis`, `PostgreSQL`).
+</details>
+
+<details>
+<summary>20. How do you diagnose a hung multi-threaded or `asyncio` Python process in production without restarting it?</summary>
+
+1. **`py-spy dump --pid <PID>`** (or `py-spy top`): samples and prints the exact Python call stack of every thread in the live process from outside with zero code changes.
+2. **`faulthandler`**: enable `faulthandler.enable()` and `faulthandler.register(signal.SIGUSR1)` at startup so `kill -SIGUSR1 <PID>` (or `faulthandler.dump_traceback_later(60, repeat=True)`) dumps all thread stacks to `stderr`.
+3. **`asyncio` debug mode**: run with `PYTHONASYNCIODEBUG=1` or `asyncio.run(main(), debug=True)` to log callbacks taking `> 100 ms`, un-awaited coroutines, and pending tasks via `asyncio.all_tasks()`.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `fluent-python-2nd-edition` — Luciano Ramalho, *Fluent Python*, 2nd ed., **Chapter 19: Concurrency Models in Python** (Rob Pike concurrency vs parallelism, the GIL and `sys.getswitchinterval()` `5 ms`, `spinner_thread.py`, `spinner_proc.py`, and `spinner_async.py`, CPU-bound `is_prime` across 20 `NUMBERS` up to `9,999,999,999,999,999` with `sequential.py` `40.81s` vs `procs.py` `10.39s` on 6 cores using `SimpleQueue` poison pills, and WSGI/ASGI multi-process architectures), **Chapter 20: Concurrent Executors** (`flags.py` `7.18s` vs `flags_threadpool.py` `1.40s` vs `flags_asyncio.py` `1.35s` on `POP20_CC`, `proc_pool.py` `ProcessPoolExecutor.map` ordering stall on `9999999999999917`, and `flags2_threadpool.py` `executor.submit` + `futures.as_completed(to_do_map)` + `tqdm` + per-future error handling), and **Chapter 21: Asynchronous Programming** (native coroutines, `blogdom.py` and `domainlib.py` `loop.getaddrinfo`, `asyncio.as_completed`, `multi_probe` async generator, PEP 530 async comprehensions, `flags_asyncio.py` and `flags2_asyncio.py` with `asyncio.Semaphore(concur_req)`, `httpx.AsyncClient`, and `await asyncio.to_thread(save_flag, ...)`, `asyncpg` multi-stage `await` transactions, and `tcp_mojifinder.py` vs FastAPI/`uvicorn` `web_mojifinder.py`).
+  - `learning-python-6th-edition` — Mark Lutz, *Learning Python*, 6th ed., **Chapter 20: Comprehensions and Generations** (`all_async_demos.py` comparing serial `time.sleep` vs `async def` + `await asyncio.sleep` with `asyncio.gather`, and `AsyncRange` implementing `__aiter__`/`__anext__` with `async for`).
+  - `nvidia-devops` (`volume-02/02-python-systems-concurrency-masterclass.md`): GIL and concurrency model selection, subprocess pitfalls, `ThreadPoolExecutor` fan-out and backpressure (`bounded_map`), `asyncio` for BMC APIs, blocked-loop and thread-pool OOM scenarios, and retries with full jitter.
+- **Run here:** `python3 code/part03/python_concurrency_models_lab.py` (4 passed, 0 failed).
+- **Explicitly labelled inferences:** The Section 2 `bounded_map`, Section 4 `run_pool` worker-pool template, and Section 5 `retry` with full jitter are the author's constructions applying *Fluent Python* Chapters 19–21 to fleet-scale infrastructure automation (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Not verified on live hardware:** Fleet-scale benchmarks (`5,000` BMCs, `800` nodes, `10 million` objects, `10,000` servers, `5 TB` dataset, `python3.13t` PEP 703, `3.14` PEP 684/734 subinterpreters) are marked (`untested here`) where not executed by `python_concurrency_models_lab.py`.
