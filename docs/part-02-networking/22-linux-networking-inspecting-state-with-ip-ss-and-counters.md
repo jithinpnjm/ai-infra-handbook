@@ -346,7 +346,15 @@ These answer questions counters cannot: *which process* is retransmitting, *whic
 | "Works for small, hangs for large" | `ping -M do -s`, `tracepath` | MTU black hole (chapter 2.7) |
 | After reboot config lost | manager, `ip` vs persistent files | Manual config not persisted; manager overriding |
 
-## 9. Lab: a guided tour with deliberate faults (untested)
+## 9. Hands-on lab: a guided tour with deliberate faults
+
+First, run the self-checking Python lab (`code/part02/linux_ip_ss_counters_lab.py`) locally. It verifies `/proc/net/softnet_stat` hexadecimal counter parsing (`processed`, `dropped`, `time_squeeze`), `ss -ti` bottleneck classification (`rwnd_limited`, `sndbuf_limited`, `cwnd_limited`, `app_limited`), and the USE method for a `400G` NIC in a PCIe Gen4 x16 (`252 Gb/s`) vs Gen5 x16 (`504 Gb/s`) slot.
+
+```bash
+python3 code/part02/linux_ip_ss_counters_lab.py
+```
+
+Next, on a disposable Linux VM with `root` (all interactive VM commands below are `untested here`), work through these steps:
 
 1. **Inventory**: on a fresh VM run the commands in sections 2 to 5 and write a one-page "network state report" (interfaces, MTU, routes, neighbours, sockets, counters). Save it as a baseline.
 2. **Interface lifecycle**: create `dummy0` and a `veth` pair with `ip`; assign addresses; watch `ip monitor` in another terminal; delete them; note what's printed.
@@ -358,8 +366,6 @@ These answer questions counters cannot: *which process* is retransmitting, *whic
 8. **Faults**: introduce (a) wrong MTU on one side, (b) a blocking nft rule, (c) a missing return route, (d) a full conntrack table (lower `nf_conntrack_max`), (e) a mismatched speed (`ethtool -s` on a veth if supported) and diagnose each with the checklist, recording the evidence that distinguishes them.
 9. **USE report**: produce a utilisation/saturation/errors table for each interface during a stress test.
 10. **Clean up.**
-
-Mark tested only after execution.
 
 ## 10. Common mistakes
 
@@ -382,58 +388,125 @@ Mark tested only after execution.
 - "What is a Unix domain socket; why is it faster; how is it secured?"
 - "Explain the USE method for a network interface."
 - "How would you find which process is causing TCP retransmits on a host?" (`tcpretrans`, bpftrace.)
-- "Why can a 400G NIC underperform on a Gen4 PCIe slot?" 
+- "Why can a 400G NIC underperform on a Gen4 PCIe slot?"
 
-## 12. Checkpoint questions (40)
+## Exercises
 
-1. What does a kernel network interface connect? **A:** The physical layer (driver/NIC) and the internet layer (IP).
-2. Which interface is index 1? **A:** `lo`.
-3. What does `LOWER_UP` mean? **A:** Carrier detected on the link.
-4. Replacement for `ifconfig`? **A:** `ip addr`/`ip link`.
-5. What does `ip -s link` show? **A:** RX/TX counters including errors, drops, overruns.
-6. What does `ip -d link` add? **A:** Type-specific details.
-7. What does `ip monitor` do? **A:** Streams netlink events.
-8. How do you get JSON output? **A:** `ip -j`.
-9. What does `ethtool -S` show? **A:** NIC/driver statistics.
-10. What does `ethtool -m` show? **A:** Transceiver diagnostics.
-11. What are ring buffers? **A:** Preallocated descriptor rings for RX/TX; sized with `ethtool -G`.
-12. Why would `ip addr add` not survive reboot? **A:** It changes runtime state only.
-13. What is Netplan? **A:** YAML front-end rendering to NetworkManager or networkd.
-14. What is `nmcli` used for? **A:** Controlling NetworkManager.
-15. Where does networkd config live? **A:** `/etc/systemd/network`.
-16. Why mark NICs `optional`? **A:** Avoid boot waiting for non-critical links.
-17. What is a socket? **A:** Kernel interface between processes and network.
-18. Stream vs datagram socket? **A:** TCP vs UDP.
-19. Listening vs connected socket? **A:** Accepts connections vs per-connection read/write.
-20. What do Unix domain sockets avoid? **A:** The network stack; access via file permissions.
-21. Danger of `docker.sock`? **A:** Root-equivalent control of the host.
-22. `ss` options for listeners with processes? **A:** `-tulpn`.
-23. What does `Recv-Q` on a listener mean? **A:** Current accept queue length.
-24. What does a persistent `Recv-Q` on ESTAB mean? **A:** Application isn't reading.
-25. Many CLOSE_WAIT indicates? **A:** App not closing sockets.
-26. `lsof -i :443` does? **A:** Lists processes using port 443.
-27. What does `rpcbind` do? **A:** Maps RPC program numbers to ports (port 111).
-28. Which command shows kernel TCP counters as deltas? **A:** `nstat`.
-29. `softnet_stat` column 2/3? **A:** Dropped / time_squeeze.
-30. Errors vs drops? **A:** Errors = bad frames (physical); drops = host couldn't process.
-31. What is USE? **A:** Utilization, Saturation, Errors per resource.
-32. How to compute interface utilization? **A:** Throughput / negotiated speed.
-33. What does workload characterization measure? **A:** Throughput, packet rate, connection rate, top talkers.
-34. What does `ss -ti` limiter flag `rwnd_limited` mean? **A:** Receiver window bounds the flow.
-35. What does `tcplife` show? **A:** Per-session duration and bytes by process.
-36. What does `tcpretrans` show? **A:** Retransmitted segments with flow and state.
-37. Which tool shows why packets are dropped in the kernel? **A:** `tcpdrop`/bpftrace on `kfree_skb`.
-38. What is static performance tuning? **A:** Auditing configuration against best practice before load.
-39. PCIe concern for 400G? **A:** Needs Gen5 x16; Gen4 x16 ≈ 252 Gb/s usable.
-40. First check when "works on loopback, not remotely"? **A:** Bind address/firewall/route; loopback bypasses the stack.
+1. **Kernel `netdev` Abstraction, `ip` Command Family, `UP` vs. `LOWER_UP`, and `ethtool`:** (a) Explain how the Linux kernel separates physical hardware from L3 protocols via `netdev` interfaces, and contrast the flags `UP` and `LOWER_UP` (`NO-CARRIER`) in `ip link` output; (b) write the `ip` and `ethtool` commands to inspect interface type-specific details (`-d`), JSON output (`-j`), live netlink events (`ip monitor`), NIC ring sizes (`-g`), RSS queue counts (`-l`), offloads (`-k`), and optical transceiver DOM power (`-m`).
+2. **Persistent Network Managers (`Netplan`, `NetworkManager`, `systemd-networkd`):** Compare `Netplan`, `NetworkManager` (`nmcli`, `nm-online`), and `systemd-networkd` (`networkctl`). Why do manual `ip addr` / `ip route` commands vanish or get overwritten, and why must non-management NICs on a GPU server set `optional: true` and `ipv4.never-default yes`?
+3. **Sockets, `Recv-Q` / `Send-Q` on Listening vs. Established Sockets, and Unix Domain Sockets (`HLW` Chapter 10):** (a) Trace the system calls of a TCP server (`socket -> bind -> listen -> accept -> recv/send -> close`), and explain what `Recv-Q` and `Send-Q` mean in `ss -ltn` (listening sockets) versus `ss -tn` (established sockets); (b) how do **Unix domain sockets** (`AF_UNIX`, `ss -xlp`) differ from loopback TCP sockets in performance and security, and why is `/var/run/docker.sock` root-equivalent?
+4. **Where Packets Disappear: Tracing Drops Across the 7 Kernel Layers:** Using `parse_softnet_stat_line()` in `code/part02/linux_ip_ss_counters.py`, decode the `/proc/net/softnet_stat` line `"000186a0 0000000f 00000100 00000000 00000000"` (`processed = 100,000, dropped = 15, time_squeeze = 256`). Map each of the 7 receive-path layers (Wire/PHY -> NIC hardware -> RX ring/driver -> NAPI softirq -> IP layer -> netfilter/conntrack -> TCP/UDP socket buffer) to the exact counter and tool that proves drops at that layer.
+5. **Gregg's `USE` Method, PCIe Gen4 vs. Gen5 Bus Bottlenecks, and `ss -ti` Limiter Flags (`SP` Chapter 10):** (a) Using `evaluate_interface_and_pcie_use()`, explain why a `400 Gb/s` NIC installed in a **PCIe Gen4 x16** slot (`~252 Gb/s` usable) saturates the PCIe bus at **`63.0%` link utilization** and requires a **PCIe Gen5 x16** slot (`~504 Gb/s`); (b) using `classify_ss_ti_bottleneck()`, interpret the `ss -ti` sample in Section 7 (`rwnd_limited:100ms(4.3%)`, `cwnd:10`, `retrans:0/9`, `app_limited`).
+6. **eBPF Network Observability (`BCC` / `bpftrace`) and Top-Down vs. Bottom-Up Troubleshooting:** Match each operational question (*which PID/process is opening short-lived TCP connections?*, *which process is causing TCP retransmits?*, *what is the TCP handshake latency per process?*, *which exact kernel function called `kfree_skb` to drop a packet?*) to its `BCC` / `bpftrace` tool (`tcplife`, `tcptop`, `tcpconnect`, `tcpaccept`, `tcpconnlat`, `tcpretrans`, `tcpdrop`).
 
-## 13. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. How does the Linux kernel separate hardware from network protocols (`HLW` Chapter 9), and what do predictable interface names (`eno1`, `ens3`, `enp0s31f6`) mean?</summary>
+The kernel abstracts every physical NIC and virtual tunnel/bridge behind a **network device (`struct net_device` / `netdev`)**: the device driver moves frames between the hardware and the `netdev`, while the IPv4/IPv6 stack binds addresses and routes to the `netdev` name (`lo` is always interface index `1`). Predictable `systemd`/`udev` names encode hardware topology: **`eno1`** = motherboard onboard NIC index 1, **`ens3`** = PCIe hotplug slot 3, and **`enp0s31f6`** = PCI bus `0`, slot `31`, function `6`.
+</details>
 
-- Brian Ward, *How Linux Works*, 3rd ed.: chapter 9 (kernel network interfaces, interface configuration with `ip`, manually adding routes, boot-activated configuration, problems with manual configuration, Netplan, network configuration managers, NetworkManager operation, interaction, configuration, unmanaged interfaces and dispatching) and chapter 10 (basics of services with telnet and curl, network servers, diagnostic tools: `lsof`, tcpdump overview, netcat, port scanning, RPC, network sockets, Unix domain sockets).
-- Brendan Gregg, *Systems Performance*, 2nd ed., chapter 10 (Network): terminology and models, concepts (latency, packet size, buffering, backlog, interface negotiation, congestion avoidance, utilization), architecture, methodology (tools method, USE, workload characterization, latency analysis, performance monitoring, packet sniffing, TCP analysis, static tuning, resource controls, micro-benchmarking), observability tools (`ss`, `ip`, `nstat`, `netstat`, `sar`, `nicstat`, `ethtool`, `tcplife`, `tcptop`, `tcpretrans`, `bpftrace`, `tcpdump`), experimentation tools.
-- *Networking and Kubernetes*, chapter 2 (Linux networking: interface and bridge concepts) is expanded in chapters 2.23 and 2.25; the `nvidia-devops` networking masterclass was consulted for GPU-server specifics.
-- The health-check script, tables and checklists are the author's synthesis.
+<details>
+<summary>2. In `ip link` / `ip addr` output, what is the difference between `UP` and `LOWER_UP` (`NO-CARRIER`)?</summary>
+- **`UP`** inside `<BROADCAST,MULTICAST,UP,...>` means the interface is **administratively enabled in software** (`ip link set dev eth0 up`).\n- **`LOWER_UP`** means the physical transceiver/PHY has **detected a valid layer-1 carrier signal** (light/electrical link pulse) from the switch. If an interface shows `<BROADCAST,MULTICAST,UP> ... state DOWN` with **`NO-CARRIER`**, the OS interface is enabled, but the cable is unplugged, the transceiver is dead, or the switch port is shut down / FEC-mismatched.
+</details>
 
-**Flagged for verification before publishing:** BCC tool names and availability per distribution (`tcplife-bpfcc` suffixes on Debian/Ubuntu), `ethtool` option support per driver, `ss` field names per iproute2 version, `kfree_skb` tracepoint arguments per kernel, PCIe throughput figures, and Netplan/NM syntax per release; all labs are **untested**.
+<details>
+<summary>3. What do `ip -br`, `ip -d`, `ip -s -s`, `ip -j`, and `ip monitor` do?</summary>
+- **`ip -br addr` / `ip -br link`**: prints a compact one-line-per-interface table (name, state, addresses/MAC).\n- **`ip -d link show <dev>`**: prints **device-type-specific details** (VLAN ID, VXLAN VNI/local/remote/port, bond mode/hash policy, bridge STP/VLAN state).\n- **`ip -s -s link show <dev>`**: prints detailed RX and TX error/drop/overrun sub-counters.\n- **`ip -j ...`**: outputs **machine-readable JSON** for `jq` and automation scripts.\n- **`ip monitor`**: subscribes to kernel `netlink` broadcasts and streams real-time link, address, route, and neighbor state changes as they happen.
+</details>
+
+<details>
+<summary>4. Match the key `ethtool` flags (`<none>`, `-i`, `-S`, `-g/-G`, `-l/-L`, `-k/-K`, `-m`, `--show-fec`) to what they inspect or tune.</summary>
+- `ethtool eth0`: negotiated **Link speed**, duplex, auto-negotiation, and `Link detected: yes/no`.\n- `ethtool -i eth0`: kernel **driver** name, NIC **firmware** version, and **PCI bus** address (`0000:c1:00.0`).\n- `ethtool -S eth0`: hardware and driver **per-queue statistics** (`rx_crc_errors`, `rx_missed_errors`, `rx_no_buffer`, pause/PFC, ECN/CNP).\n- `ethtool -g` / `-G`: RX and TX **DMA ring buffer sizes** (e.g., `4096`).\n- `ethtool -l` / `-L`: **RSS channel / queue count** (e.g., `combined 16`).\n- `ethtool -k` / `-K`: hardware **offload features** (`tso`, `gso`, `gro`, checksums).\n- `ethtool -m eth0`: **optical transceiver DOM** diagnostics (laser TX/RX power in dBm, temperature, voltage, part number).\n- `ethtool --show-fec eth0`: active **Forward Error Correction** mode (`RS-FEC`, `BaseR`/`Firecode`, `Off`).
+</details>
+
+<details>
+<summary>5. How do `Netplan`, `NetworkManager` (`nmcli`), and `systemd-networkd` (`networkctl`) relate to each other, and why are manual `ip` changes dangerous on production servers?</summary>
+**`NetworkManager`** (controlled via `nmcli`, storing profiles in `/etc/NetworkManager/system-connections/`) and **`systemd-networkd`** (controlled via `networkctl`, reading `/etc/systemd/network/*.network`) are the two main daemons that configure interfaces at boot and react to link events. **`Netplan`** (`/etc/netplan/*.yaml` on Ubuntu) is a declarative YAML front-end that compiles its configuration into backend files for either `systemd-networkd` or `NetworkManager` (`sudo netplan try` applies with an automatic rollback timer if you lose SSH). Manual `ip addr`/`ip route` commands are not saved to disk and will be wiped on reboot or clobbered mid-run when DHCP renews or the manager daemon reapplies its profile.
+</details>
+
+<details>
+<summary>6. Why should secondary storage and GPU fabric NICs set `optional: true` (Netplan) and `ipv4.never-default yes` (NetworkManager)?</summary>
+- **`optional: true`**: tells `systemd-networkd-wait-online.service` **not** to block the server's boot sequence waiting for that NIC to get carrier—so a server can still boot and accept SSH on its management NIC even if a back-end fabric switch is powered off.\n- **`ipv4.never-default yes`** (or `use-routes: false`): prevents that NIC from ever installing a competing `0.0.0.0/0` default route in the `main` routing table.
+</details>
+
+<details>
+<summary>7. Trace the system calls of a TCP server and explain the difference between a Listening Socket and a Connected Socket (`HLW` Chapter 10).</summary>
+A TCP server calls `socket(AF_INET, SOCK_STREAM, 0)` -> `bind(addr, port)` -> `listen(backlog)` to create a single **listening socket** in state `LISTEN`. Whenever a client completes the 3-way handshake, the kernel places the connection on the listening socket's accept queue; when the server calls **`accept()`**, the kernel returns a **brand-new file descriptor** representing that specific 4-tuple **connected socket** (`ESTAB`) used for `recv()`/`send()`, while the original listening socket stays open on the port to accept future clients.
+</details>
+
+<details>
+<summary>8. What do the `Recv-Q` and `Send-Q` columns in `ss` output mean for a `LISTEN` socket versus an `ESTAB` socket?</summary>
+- **On a `LISTEN` socket (`ss -ltn`)**: **`Recv-Q`** is the **current number of completed connections waiting in the accept queue** for the application to call `accept()`, and **`Send-Q`** is the **maximum accept-queue capacity (`min(backlog, somaxconn)`)**. If `Recv-Q >= Send-Q`, the accept queue is full and new connections are being dropped (`TcpExtListenOverflows`).\n- **On an `ESTAB` socket (`ss -tn`)**: **`Recv-Q`** is the **number of received bytes sitting unread in the kernel receive buffer** (a persistently high `Recv-Q` proves the local application process is stalled or reading too slowly), and **`Send-Q`** is the **number of bytes in the kernel send buffer not yet acknowledged by the remote peer**.
+</details>
+
+<details>
+<summary>9. What is a Unix Domain Socket (`AF_UNIX`), how do you inspect it, and why is `/var/run/docker.sock` security-critical?</summary>
+A **Unix domain socket** (`SOCK_STREAM` or `SOCK_DGRAM` under `AF_UNIX`, listed with **`ss -xlp`** or **`lsof -U`**) uses a **filesystem path** instead of an IP/port for local inter-process communication on the same host. Because data copies directly between kernel socket buffers without TCP/IP headers, checksums, or routing, it is significantly faster and lower-latency than `127.0.0.1` loopback TCP, and access is controlled via standard **POSIX file permissions (`chmod`/`chown`)** and `SO_PEERCRED`. Anyone with write access to `/var/run/docker.sock` can tell the Docker daemon to mount `/` into a privileged container—making `docker.sock` access **100% equivalent to `root`**.
+</details>
+
+<details>
+<summary>10. What does `rpcbind` (`TCP/UDP port 111`) do, and when should it be disabled (`HLW` Chapter 10)?</summary>
+`rpcbind` (formerly `portmap`) is a directory service for Sun **ONC RPC**: RPC daemons (such as legacy **NFSv3** `mountd`/`statd`/`lockd` and **NIS**) bind to dynamic ports at startup and register their `(RPC program number, version, port)` with `rpcbind` on port `111` (queried via `rpcinfo -p`). Modern **NFSv4** uses a single static port (`TCP 2049`) and does not require `rpcbind`. Unless the host actively uses NFSv3 or NIS, disable and mask `rpcbind.service` and `rpcbind.socket` to eliminate a frequent DDoS amplification and enumeration target.
+</details>
+
+<details>
+<summary>11. How do you distinguish Physical Link Errors, NIC Ring Buffer Drops, SoftIRQ Backlog Drops, and Socket Buffer Drops across Linux counters?</summary>
+- **Physical Layer (bad cable, dirty optic, wrong FEC)**: **`rx_crc_errors` / `rx_frame_errors`** in `ethtool -S` and `RX errors` in `ip -s link`.\n- **NIC Hardware / DMA Ring Exhaustion** (NIC received frames faster than the driver replenished descriptors): **`rx_missed_errors` / `rx_no_buffer`** in `ethtool -S` and `RX overruns`/`dropped` in `ip -s link` (fix: `ethtool -G` larger rings, `ethtool -L` more RSS queues, IRQ/NUMA pinning).\n- **Kernel SoftIRQ / NAPI Starvation**: column 2 (**`dropped`**) and column 3 (**`time_squeeze`**) in **`/proc/net/softnet_stat`** (fix: `net.core.netdev_budget`, `netdev_max_backlog`, RPS).\n- **Transport Socket Buffer Overflow** (slow application): **`UdpRcvbufErrors`** / **`TcpExtListenOverflows`** / **`TCPRcvPruned`** in **`nstat -az`**.
+</details>
+
+<details>
+<summary>12. What are the three columns of `/proc/net/softnet_stat` that matter most, and how are they formatted?</summary>
+`/proc/net/softnet_stat` has one row per CPU core, with all values printed as **32-bit hexadecimal integers**:\n- **Column 1**: total packets processed by `NET_RX_SOFTIRQ` on that CPU;\n- **Column 2 (`dropped`)**: packets dropped because that CPU's `input_pkt_queue` exceeded `net.core.netdev_max_backlog`;\n- **Column 3 (`time_squeeze`)**: number of times the NAPI poll loop ran out of `net.core.netdev_budget` (default `300` packets) or `netdev_budget_usecs` (`2000 µs`) before draining all queued packets.
+</details>
+
+<details>
+<summary>13. Explain Brendan Gregg's `USE` Method (`Utilization, Saturation, Errors`) applied to a network interface and its PCIe bus (`SP` Chapter 10).</summary>
+For every hardware and software resource along the data path (NIC port RX/TX, NIC controller ASIC, **PCIe bus**, softirq CPU cores, socket buffers):\n1. **Errors** (check first—fast and unambiguous): CRC errors, symbol/FEC uncorrectable errors, TX carrier/timeout errors;\n2. **Utilization**: `measured_throughput / negotiated_link_speed` (and compare against **PCIe slot bandwidth**—a **PCIe Gen4 x16** slot delivers only **`~252 Gb/s`** usable payload, which bottlenecks a single **`400 Gb/s` NIC** at `63%` link utilization; `400G` requires **PCIe Gen5 x16** `~504 Gb/s`);\n3. **Saturation**: `qdisc` backlog/drops (`tc -s qdisc`), NIC `rx_missed_errors`, `softnet_stat` `time_squeeze`, and TCP retransmits.
+</details>
+
+<details>
+<summary>14. How do you decompose end-to-end request latency in Network Latency Analysis (`SP` Chapter 10)?</summary>
+Break every network call into five measurable intervals (e.g., via `curl -w` timing variables and `tcpconnlat`):\n(1) **DNS resolution time** (`time_namelookup` — watch for `5 s` resolver timeouts),\n(2) **TCP 3-way handshake time** (`time_connect - time_namelookup` ≈ `1 RTT`, or `1 s / 3 s` if SYN retransmits/backlog overflow occur),\n(3) **TLS handshake time** (`time_appconnect - time_connect` ≈ `1–2 RTTs`),\n(4) **Server processing / first-byte latency (`TTFB` / `TTFT`)** (`time_starttransfer - time_appconnect`), and\n(5) **Content transfer / streaming duration** (`time_total - time_starttransfer`).
+</details>
+
+<details>
+<summary>15. How do you read `ss -ti` limiter percentages (`rwnd_limited`, `cwnd_limited`, `sndbuf_limited`, `app_limited`)?</summary>
+The Linux TCP stack tracks the exact fraction of active transmission time (`busy:2300ms`) a socket spent bottlenecked by each constraint:\n- **`rwnd_limited`**: throttled by the **remote receiver's advertised window** (slow receiving application or small peer `tcp_rmem`);\n- **`sndbuf_limited`**: throttled by the **local send socket buffer** (`tcp_wmem` too small for the path's BDP);\n- **`cwnd_limited`** (or high `retrans:cur/total`): throttled by the **network congestion window** (packet loss or congestion along the path);\n- **`app_limited`**: the **local application is not feeding data** fast enough to fill the pipe.
+</details>
+
+<details>
+<summary>16. Match the `BCC` / `eBPF` network tools (`tcplife`, `tcptop`, `tcpconnect`, `tcpaccept`, `tcpconnlat`, `tcpretrans`, `tcpdrop`) to what they trace (`SP` Chapter 10).</summary>
+- **`tcplife`**: logs one summary line per closed TCP session (`PID`, process `COMM`, `LADDR:LPORT`, `RADDR:RPORT`, `TX_KB`, `RX_KB`, `MS` duration) with low overhead (only hooks state changes).\n- **`tcptop`**: live `top`-like view of TCP send/receive KB/s grouped by `PID` and process.\n- **`tcpconnect` / `tcpaccept`**: traces every outbound active `connect()` and inbound passive `accept()`.\n- **`tcpconnlat`**: measures the time from `SYN` sent (`connect()`) to `SYN-ACK` received per process.\n- **`tcpretrans`**: prints every TCP retransmission or Tail Loss Probe (`TLP`) with `PID`, flow 4-tuple, and TCP state.\n- **`tcpdrop` / `tracepoint:skb:kfree_skb`**: prints the exact **kernel stack trace and drop reason** whenever the kernel frees/drops a packet.
+</details>
+
+<details>
+<summary>17. What is Static Performance Tuning (`SP` Chapter 10), and what configuration items should be audited on a GPU server before running benchmarks?</summary>
+**Static Performance Tuning** audits the configured state of hardware and OS against best practice *before* applying load. On a GPU node, verify: (1) negotiated link speed (`400000Mb/s`), duplex, and FEC (`ethtool`); (2) end-to-end Jumbo MTU (`9000`); (3) PCIe slot generation and link width (`lspci -vv` `Speed 32GT/s` Gen5, `Width x16`); (4) **NUMA node alignment** between each GPU and its paired NIC (`nvidia-smi topo -m`, `/sys/class/net/<if>/device/numa_node`); (5) NIC ring sizes (`-G`), RSS queue counts (`-L`), hardware offloads (`-k`), and IRQ CPU affinity; and (6) `sysctl` socket buffer limits (`rmem_max`/`wmem_max`) and `somaxconn`.
+</details>
+
+<details>
+<summary>18. What rules must you follow when micro-benchmarking network throughput with `iperf3` or `ib_write_bw` on `100G`–`400G` links?</summary>
+(1) **Pin the benchmark process to CPU cores on the exact same NUMA node as the NIC** (`numactl --cpunodebind=...` or `taskset -c`); (2) use **multiple parallel streams** (`iperf3 -P 8` or `-P 16`, or multiple QPs in `ib_write_bw -q 4`) when a single CPU core cannot saturate 100G–400G; (3) test **outside** of loopback (testing `127.0.0.1` or a local IP on the same host short-circuits the physical NIC and wire completely); and (4) calculate expected theoretical goodput (`1500` MTU TCPv4 = `1460 / 1538 ≈ 94.9%` of wire rate; `9000` MTU = `8960 / 9038 ≈ 99.1%`).
+</details>
+
+<details>
+<summary>19. Why does running `lsof -i` or `ss -tulpn` as an unprivileged user hide process names (`-p`), and how can you forcibly close a stuck TCP socket without killing the daemon?</summary>
+Reading `/proc/<pid>/fd/*` across other users' processes requires `root` (or `CAP_SYS_PTRACE` / `CAP_DAC_READ_SEARCH`), so always run **`sudo ss -tulpn`** or **`sudo lsof -i -nP`** (`-nP` skips slow DNS and `/etc/services` port-name lookups). To forcibly tear down a specific stuck TCP connection without restarting the entire server process, run **`sudo ss -K dst <peer_ip> dport = <port>`** (requires `CONFIG_INET_DIAG_DESTROY`).
+</details>
+
+<details>
+<summary>20. Walk through the 8-step Top-Down checklist when a remote client cannot connect to a service on a Linux host.</summary>
+(1) **Process & Socket**: `sudo ss -tulpn` (is the daemon listening on `0.0.0.0`/`::` or only `127.0.0.1`, and is `Recv-Q < Send-Q`?);\n(2) **Local vs. Remote connect**: `nc -zv 127.0.0.1 <port>` vs `nc -zv <host_ip> <port>` from a peer (`Connection refused` = RST vs `timed out` = drop);\n(3) **DNS & Proxy env**: `getent hosts <name>` and `env | grep -i proxy`;\n(4) **Routing & `rp_filter`**: `ip route get <client_ip>` and `ip rule show`;\n(5) **Firewall & Conntrack**: `sudo nft list ruleset`, cloud security groups, `conntrack -S`;\n(6) **L2 Neighbor**: `ip neigh show` (`REACHABLE` vs `FAILED`);\n(7) **NIC & Counters**: `ip -br link`, `ethtool <dev>`, `ip -s link`, `nstat -az`; and\n(8) **Packet Capture**: `sudo tcpdump -ni <dev> host <client_ip> and port <port>`.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 9: Understanding Your Network and Its Configuration** (kernel network interfaces, interface configuration with `ip`, manually adding routes, boot-activated configuration, problems with manual configuration, Netplan, network configuration managers, NetworkManager operation, `nmcli`, `nm-online`, unmanaged interfaces, and dispatcher scripts) and **Chapter 10: Network Applications and Services** (basics of services with `telnet` and `curl`, network servers, diagnostic tools `lsof`, `tcpdump`, `netcat`, port scanning, RPC `rpcbind` port `111`, network sockets, and Unix domain sockets `/var/run/docker.sock`).
+  - `systems-performance-2nd-edition` — Brendan Gregg, *Systems Performance: Enterprise and the Cloud*, 2nd ed., **Chapter 2: Methodologies** and **Chapter 10: Network** (terminology and models, concepts latency / packet size / buffering / backlog / interface negotiation / congestion avoidance / utilization, architecture, methodologies tools method / USE method / workload characterization / latency analysis / performance monitoring / packet sniffing / TCP analysis / static performance tuning / resource controls / micro-benchmarking, observability tools `ss`, `ip`, `nstat`, `netstat`, `sar`, `nicstat`, `ethtool`, `tcplife`, `tcptop`, `tcpretrans`, `bpftrace`, `tcpdump`, and experimentation tools).
+  - `networking-and-kubernetes` — James Strong and Vallery Lancey, *Networking and Kubernetes*, **Chapter 2: Linux Networking**.
+- **Run here:** `python3 code/part02/linux_ip_ss_counters_lab.py` (10 passed, 0 failed).
+- **Explicitly labelled inferences:** The Section 5 7-layer packet-drop Mermaid diagram and health-check one-liner script, PCIe Gen4 (`252 Gb/s`) vs Gen5 (`504 Gb/s`) 400G NIC USE calculation, and the Section 8 top-down/bottom-up symptom table synthesize the `iproute2`, `ethtool`, `bcc-tools` (`tcplife-bpfcc`), and `bpftrace` documentation and the `nvidia-devops` networking masterclass (cross-referenced with Chapters 1.28, 2.5–2.9, 2.19, 2.21, 2.23–2.26, and 2.31, plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Not verified on live hardware:** All interactive VM and eBPF commands (`ip`, `ss`, `ethtool`, `nmcli`, `netplan`, `networkctl`, `nstat`, `sar`, `nicstat`, `tcplife`, `tcptop`, `tcpretrans`, `tcpdrop`, `bpftrace`, `perf`) are marked (untested here) and must be executed on a disposable Linux VM with `root`.
