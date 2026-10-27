@@ -30,3 +30,4 @@
 | 1.26 KVM, QEMU and libvirt basics | `kvm_qemu_libvirt.py` | `kvm_qemu_libvirt_lab.py` | 16 | `python3 code/part01/kvm_qemu_libvirt_lab.py` |
 | 1.27 Cloud computing and virtualization internals | `cloud_virt_internals.py` | `cloud_virt_internals_lab.py` | 14 | `python3 code/part01/cloud_virt_internals_lab.py` |
 | 1.28 Putting it together: tuning a Linux GPU/HPC node | `tune_gpu_node.py` | `tune_gpu_node_lab.py` | 15 | `python3 code/part01/tune_gpu_node_lab.py` |
+| 1.29 Remote administration reference: SSH, pdsh, IPMI | `remote_admin_ref.py` | `remote_admin_ref_lab.py` | 15 | `python3 code/part01/remote_admin_ref_lab.py` |
