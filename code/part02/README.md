@@ -33,3 +33,4 @@
 | 2.29 Network automation in practice: Ansible, Nornir, CI/CD | `net_automation_cicd_tools.py` | `net_automation_cicd_tools_lab.py` | 9 | `python3 code/part02/net_automation_cicd_tools_lab.py` |
 | 2.30 Network troubleshooting method and case studies | `network_troubleshooting_method.py` | `network_troubleshooting_method_lab.py` | 8 | `python3 code/part02/network_troubleshooting_method_lab.py` |
 | 2.31 Network monitoring and telemetry | `network_monitoring_telemetry.py` | `network_monitoring_telemetry_lab.py` | 8 | `python3 code/part02/network_monitoring_telemetry_lab.py` |
+| 2.32 Cloud networking: VPC, peering, LBs and GCP specifics | `cloud_vpc_gke_networking.py` | `cloud_vpc_gke_networking_lab.py` | 8 | `python3 code/part02/cloud_vpc_gke_networking_lab.py` |

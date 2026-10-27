@@ -86,7 +86,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 1.28 | Putting it together: tuning a Linux node for GPU and HPC work | drafted | 9701 |  |
 | 2.24 | Linux networking: policy routing, bonding, MTU, NIC and stack tuning | drafted | 7835 |  |
 | 2.30 | Network troubleshooting method and case studies | drafted | 7632 |  |
-| 2.32 | Cloud networking: VPC, peering, load balancers and GCP specifics | drafted | 5457 |  |
+| 2.32 | Cloud networking: VPC, peering, load balancers and GCP specifics | drafted | 7790 |  |
 | 4.17 | Ansible for GPU nodes and clusters | drafted | 4715 |  |
 | 4.24 | Terraform on GCP and Nebius: networks, GPU VMs and GKE | drafted | 4211 |  |
 | 4.27 | Lab: provision a GPU cluster with Terraform and Ansible | drafted | 3405 |  |
