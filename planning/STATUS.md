@@ -35,7 +35,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 2.3 | Ethernet and L2: frames, MAC addresses, switching, ARP and NDP | drafted | 9045 |  |
 | 2.4 | IP addressing, subnetting and CIDR (IPv4 and IPv6), with practice | drafted | 7595 |  |
 | 2.5 | Routing on a host: routing tables, default gateways and forwarding | drafted | 7159 |  |
-| 2.6 | TCP in depth: handshake, windows, congestion control, retransmission | drafted | 6681 |  |
+| 2.6 | TCP in depth: handshake, windows, congestion control, retransmission | drafted | 8688 |  |
 | 2.7 | UDP, ICMP and the diagnostic tools: ping, traceroute, mtr | drafted | 4059 |  |
 | 2.8 | DNS in depth: resolution, records, resolvers and caching | drafted | 4582 |  |
 | 2.9 | DHCP, NAT and PAT | drafted | 4157 |  |

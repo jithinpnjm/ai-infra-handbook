@@ -300,16 +300,22 @@ QUIC (RFC 9000), initially designed at Google and now the transport under HTTP/3
 
 The ICMP companion (errors and diagnostics: unreachable, time exceeded, fragmentation needed) belongs to the network layer but TCP depends on it (PMTUD); it is covered with ping, traceroute and PMTUD in chapter 2.7.
 
-## 12. Lab: observe TCP behaviour (untested)
+## 12. Hands-on lab: observe TCP behaviour
 
-Use two Linux VMs, or two network namespaces joined by a veth pair with `tc netem` for delay and loss.
+First, run the self-checking Python lab (`code/part02/tcp_in_depth_lab.py`) locally. It verifies Bandwidth-Delay Product (`BDP = bandwidth * RTT`) and window-scale shift math (`12.5 MB` -> shift `8`, `87.5 MB`, `125.0 MB`), window-limited throughput (`4 MB / 70 ms ≈ 457.1 Mb/s`), Jacobson's RTO formula with Linux's `200 ms` `TCP_RTO_MIN` floor, and Tahoe vs Reno vs CUBIC (`β = 0.7`) congestion-window responses to 3 duplicate ACKs vs an RTO.
 
 ```bash
-sudo ip netns add c; sudo ip netns add s
-sudo ip link add vc type veth peer name vs; sudo ip link set vc netns c; sudo ip link set vs netns s
-sudo ip -n c addr add 10.9.0.1/24 dev vc; sudo ip -n s addr add 10.9.0.2/24 dev vs
-sudo ip -n c link set vc up; sudo ip -n s link set vs up; sudo ip -n c link set lo up; sudo ip -n s link set lo up
-sudo ip netns exec s iperf3 -s -D
+python3 code/part02/tcp_in_depth_lab.py
+```
+
+Next, on a disposable Linux VM using two network namespaces joined by a `veth` pair with `tc netem` (all interactive VM commands below are `untested here`), work through these steps:
+
+```bash
+sudo ip netns add c; sudo ip netns add s # (untested here)
+sudo ip link add vc type veth peer name vs; sudo ip link set vc netns c; sudo ip link set vs netns s # (untested here)
+sudo ip -n c addr add 10.9.0.1/24 dev vc; sudo ip -n s addr add 10.9.0.2/24 dev vs # (untested here)
+sudo ip -n c link set vc up; sudo ip -n s link set vs up; sudo ip -n c link set lo up; sudo ip -n s link set lo up # (untested here)
+sudo ip netns exec s iperf3 -s -D       # (untested here)
 ```
 
 1. **Handshake and teardown**: in `s`, `tcpdump -ni vs -S` (absolute seq); in `c`, `nc 10.9.0.2 5201` then close it; label SYN, SYN-ACK, ACK, FIN, ACK; record the options (MSS, wscale, SACK, TS). Run `ss -tan` during and after the close to see TIME_WAIT on the active closer.
@@ -323,8 +329,6 @@ sudo ip netns exec s iperf3 -s -D
 9. **TIME_WAIT and port exhaustion**: loop thousands of short connections; count TIME-WAIT; shrink `ip_local_port_range` to see `Cannot assign requested address`; test `tcp_tw_reuse`.
 10. **Wireshark**: open a capture from step 5 and use the TCP stream graphs and expert info.
 11. **Cleanup**: kill iperf3, `sudo ip netns del c; sudo ip netns del s`.
-
-Mark the lab tested only after running it and recording outputs.
 
 ## 13. Common mistakes
 
@@ -345,61 +349,133 @@ Mark the lab tested only after running it and recording outputs.
 - "What is the difference between flow control and congestion control?"
 - "Throughput over a 10 Gb/s, 80 ms path is 400 Mb/s. Why, and how do you fix it?" (Window/BDP, buffers, parallel streams, CC choice.)
 - "Explain slow start, congestion avoidance, fast retransmit and what an RTO does to throughput."
-- "CUBIC versus BBR: when would you choose each?" 
+- "CUBIC versus BBR: when would you choose each?"
 - "What is TIME_WAIT, why does it exist and when is it a problem? What does CLOSE_WAIT indicate?"
 - "Why does TCP struggle with incast and what do AI clusters do about it?"
 - "What does `ss -ti` tell you? Which fields matter?"
 - "Why is QUIC built on UDP? What does it fix?"
 
-## 15. Checkpoint questions (40)
+## Exercises
 
-1. What problems does a transport protocol solve? **A:** Multiplexing, reliability/ordering, error detection/correction, flow control, congestion control (and marshaling at the edges).
-2. What identifies a TCP connection? **A:** The 4-tuple (and protocol).
-3. Why are three packets needed to open a connection? **A:** Both directions must be confirmed and both ISNs exchanged.
-4. Why random ISNs? **A:** Prevent spoofing/injection and confusion with old segments.
-5. What does `Connection refused` mean versus `timed out`? **A:** RST received (nobody listening) versus no response (dropped).
-6. What is TIME_WAIT for? **A:** Absorb late duplicates and ensure the final ACK is delivered; held by the active closer for 2×MSL.
-7. What does a pile of CLOSE_WAIT indicate? **A:** The application is not closing sockets after the peer closed.
-8. What is the accept queue and what limits it? **A:** Completed handshakes awaiting `accept()`; `min(backlog, somaxconn)`.
-9. What are SYN cookies? **A:** Stateless SYN-ACK encoding to survive SYN floods.
-10. What does a cumulative ACK mean? **A:** All bytes before N received.
-11. How does SACK help? **A:** Tells the sender exactly which ranges arrived so only holes are retransmitted.
-12. How is the RTO computed (shape)? **A:** SRTT + 4×RTTVAR, min 200 ms in Linux, exponential backoff.
-13. What triggers fast retransmit? **A:** Three duplicate ACKs (or RACK time threshold).
-14. What does RTO do to cwnd? **A:** Resets to a small initial value; slow start.
-15. What is Nagle's algorithm? **A:** Holds small writes until outstanding data is ACKed.
-16. How do Nagle and delayed ACK interact badly? **A:** Each waits on the other, adding ~40 ms.
-17. How do you disable Nagle? **A:** `TCP_NODELAY`.
-18. What is rwnd and who sets it? **A:** Receiver's advertised window, based on its buffer.
-19. What is cwnd and who knows it? **A:** The sender's congestion window; private to the sender.
-20. What is the sender's maximum in-flight data? **A:** `min(cwnd, rwnd)`.
-21. What does zero window mean? **A:** The receiving application is not draining its buffer.
-22. What does window scaling do and when is it negotiated? **A:** Multiplies the 16-bit window; only in SYN.
-23. Compute BDP: 25 Gb/s × 40 ms. **A:** 25e9/8 × 0.04 = 125 MB.
-24. Max throughput with a 4 MB window and 80 ms RTT? **A:** ≈ 4 MB / 0.08 s = 50 MB/s = 400 Mb/s.
-25. Why shouldn't you set `SO_RCVBUF` casually? **A:** It disables receive autotuning for that socket.
-26. What is slow start's growth pattern? **A:** Doubles each RTT until ssthresh or loss.
-27. What is AIMD? **A:** Additive increase, multiplicative decrease: the fairness-converging control law.
-28. Tahoe versus Reno on fast-retransmit loss? **A:** Tahoe restarts slow start; Reno halves and continues in congestion avoidance.
-29. What distinguishes CUBIC? **A:** Window growth is a cubic function of time since the last loss, not tied to RTT.
-30. What distinguishes BBR? **A:** Model-based (bottleneck bandwidth and min RTT), pacing, not loss-driven.
-31. What is ECN? **A:** Routers mark instead of drop; the sender reduces rate without loss.
-32. What is DCTCP? **A:** ECN-based CC that reduces proportionally to the fraction of marked packets.
-33. What is incast and why is it bad for TCP? **A:** Many senders to one receiver overflow buffers; losses cause RTOs and stalls.
-34. What does `ss -ti` `rwnd_limited` mean? **A:** The flow is limited by the receiver's window.
-35. What does `TcpExtListenOverflows` tell you? **A:** The accept queue overflowed.
-36. Why does `tcpdump` show "bad cksum" on outbound packets? **A:** Checksum offload fills it in after the capture point.
-37. Why do captures show 64 KB packets? **A:** GRO/TSO coalescing.
-38. What does `tcp_slow_start_after_idle=0` do? **A:** Keeps the cwnd across idle periods.
-39. Why is QUIC over UDP? **A:** Deployability through middleboxes and user-space evolution.
-40. What does QUIC fix versus TCP? **A:** Handshake latency, stream head-of-line blocking, connection migration, ossification.
+1. **Transport Problems, Marshaling Grammars, and Flow Control vs. Congestion Control (`CN` Chapters 2 & 3):** (a) Contrast the three digital marshaling grammars (*fixed-length fields*, *Type-Length-Value `TLV`*, and *shared schemas/dictionaries*) and identify where TCP uses the first two; (b) distinguish **flow control** (`rwnd`) from **congestion control** (`cwnd`), and state the formula for the maximum bytes a TCP sender may have in flight at any instant.
+2. **TCP Handshake, Server Queues (`SYN` vs. Accept Queue), and `TIME_WAIT` vs. `CLOSE_WAIT`:** (a) Explain why TCP requires a 3-way handshake with unpredictable Initial Sequence Numbers (`RFC 6528`), and explain how Linux's two listen queues (`tcp_max_syn_backlog` / `tcp_syncookies` and `min(backlog, net.core.somaxconn)`) cause `1 s, 3 s, 7 s` connect stalls (`ListenOverflows` in `nstat`) when a server's `accept()` loop is slow; (b) contrast a server with 20,000 sockets in `TIME_WAIT` versus 20,000 sockets in `CLOSE_WAIT`.
+3. **Reliability: Cumulative ACKs, `SACK`, Jacobson's `RTO`, `RACK-TLP`, and Nagle + Delayed ACK:** (a) Using `compute_jacobson_rto_ms()` in `code/part02/tcp_in_depth.py`, compute the RTO for a datacenter path (`SRTT = 0.2 ms, RTTVAR = 0.05 ms`) versus a WAN path (`SRTT = 150 ms, RTTVAR = 30 ms`), and explain how Fast Retransmit (`3` dup ACKs), `SACK` (`RFC 2018`), and `RACK-TLP` avoid the `200 ms` `TCP_RTO_MIN` penalty; (b) why does an RPC client that calls `write(header)` followed by `write(body)` suffer `~40 ms` latency spikes, and what are the two fixes?
+4. **Sliding Window, Window Scaling, Bandwidth-Delay Product (`BDP`), and Linux Buffer Autotuning:** (a) Using `compute_bdp_and_window_scale()`, compute the BDP in `MB` and minimum window-scale shift for `100 Gb/s x 1 ms`, `10 Gb/s x 70 ms`, and `25 Gb/s x 40 ms`; (b) using `compute_window_limited_throughput_mbps()`, calculate the maximum single-stream throughput of a `4 MB` window over `70 ms` RTT (`~457.1 Mb/s`) and `80 ms` RTT (`400.0 Mb/s`), and explain why calling `setsockopt(SO_RCVBUF)` in application code is an anti-pattern on Linux.
+5. **Congestion Control (`Tahoe`, `Reno`, `CUBIC`, `BBR`, `DCTCP`) and AI Data-Center Incast:** Using `simulate_congestion_loss_event()`, compare the new `ssthresh` and `cwnd` after 3 duplicate ACKs versus an RTO from `cwnd = 100 MSS` under Tahoe, Reno, and CUBIC (`β = 0.7`). Contrast CUBIC, BBR (`fq` pacing), and DCTCP (`ECN`), and explain why synchronized many-to-one AI collective bursts (**incast**) break loss-based TCP.
+6. **Diagnosing TCP Flows with `ss -ti` / `nstat` and Comparing TCP with `QUIC` (`RFC 9000`):** (a) How do `ss -ti` (`cwnd_limited`, `rwnd_limited`, `sndbuf_limited`, `retrans`) and `tcpdump` distinguish network packet loss, a slow receiving application (`win 0`), and a small send buffer? (b) List five architectural improvements **QUIC** (`RFC 9000` over UDP) makes over TCP + TLS.
 
-## 16. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. What six problems must a full-featured transport protocol solve, and which ones does UDP omit?</summary>
+(1) **Marshaling** (framing headers and options), (2) **Error detection** (checksums), (3) **Error correction** (ARQ retransmissions or FEC), (4) **Multiplexing** (ports), (5) **Flow control** (protecting the receiver), and (6) **Congestion control** (protecting the network) plus **in-order delivery**. UDP provides only **multiplexing** (16-bit ports) and an **error-detection checksum**, leaving reliability, ordering, flow control, and congestion control entirely to the application (or NIC hardware in RoCEv2).
+</details>
 
-- Russ White and Jeff Tantsura (with co-authors), *Computer Networking Problems and Solutions*: chapter 2 (data transport problems: digital grammars and marshaling, errors, multiplexing, addressing, flow control), chapter 3 (the DoD, OSI and RINA models, connection-oriented versus connectionless transport), chapter 5 (the Internet Protocol, TCP flow and error control, port numbers, session setup, QUIC, ICMP). The window worked example is adapted from that book's sliding-window figures with fresh numbers and wording.
-- Brian Ward, *How Linux Works*, 3rd ed., chapter 9 (TCP ports and connections, three-way handshake, characteristics of TCP).
-- Linux-specific tuning, internals (accept/SYN queues, RACK-TLP, autotuning, `ss -ti`, `nstat` counters), BBR/CUBIC/DCTCP descriptions and AI-workload notes are the author's synthesis from kernel documentation (`ip-sysctl`), RFCs 793, 5681, 2018, 6298, 8312 (CUBIC), 9000 (QUIC) and `ss(8)`.
+<details>
+<summary>2. Compare the three digital marshaling grammar families (`CN` Chapter 2) and where they appear in networking.</summary>
+(1) **Fixed-length fields** (IPv4, IPv6, and base 20-byte TCP headers): fastest to parse at fixed byte offsets in hardware/software, but inflexible; (2) **Type-Length-Value (`TLV`)** (TCP options, BGP path attributes, LLDP): self-describing and extensible via a `(type, length, value)` loop, at the cost of sequential parsing; and (3) **Shared dictionaries / schemas** (`Protocol Buffers` / gRPC, `YANG`): compact and strongly typed when both endpoints share the out-of-band schema.
+</details>
 
-**Flagged for verification before publishing:** default sysctl values per kernel/distribution (rmem/wmem, `tcp_slow_start_after_idle`, syn retries), the BBR version available on target kernels, `ss -ti` field names in your iproute2 version, cloud load-balancer idle timeouts, and the NCCL socket variables; all labs are **untested**.
+<details>
+<summary>3. Why does TCP require a three-way handshake (`SYN`, `SYN-ACK`, `ACK`) and cryptographic random Initial Sequence Numbers (`ISN`s, RFC 6528)?</summary>
+Both endpoints must prove they can send and receive and must synchronize their own starting sequence numbers (`seq = x` and `seq = y`), which requires at least three messages (`SYN x` -> `SYN y, ACK x+1` -> `ACK y+1`). Unpredictable ISNs (hashed from the 4-tuple, timestamp, and a kernel secret) prevent off-path attackers from forging connections or injecting segments and prevent delayed packets from an older connection on the same 4-tuple from corrupting a new connection.
+</details>
+
+<details>
+<summary>4. What are the two server-side queues created by `listen(fd, backlog)` in Linux, and how do you diagnose an overflow?</summary>
+(1) The **SYN queue** holds half-open (`SYN_RCVD`) connections waiting for the client's final `ACK` (sized by `tcp_max_syn_backlog`; defended against floods by stateless **`tcp_syncookies = 1`**); and (2) the **accept queue** holds completed (`ESTABLISHED`) connections waiting for the application thread to call `accept()` (sized by **`min(backlog, net.core.somaxconn)`**). When the accept queue fills, `nstat -az` increments **`TcpExtListenOverflows`** and **`TcpExtListenDrops`** (and `ss -ltn` shows `Recv-Q > Send-Q`), causing clients to stall for `1 s, 3 s, 7 s` on SYN-ACK/ACK retransmits.
+</details>
+
+<details>
+<summary>5. Contrast `TIME_WAIT` and `CLOSE_WAIT`: which side enters each state, why, and which one indicates a bug in your server code?</summary>
+The **active closer** (the side that sends the first `FIN`) enters **`TIME_WAIT`** for `2 * MSL` (`60 s` on Linux) after sending the final `ACK` to absorb delayed duplicate packets and re-ACK a lost `FIN`; `TIME_WAIT` is normal protocol hygiene. The **passive closer** (the side that *receives* the peer's `FIN` and kernel-ACKs it) enters **`CLOSE_WAIT`** while waiting for the local application process to call `close(fd)`. Thousands of sockets stuck in **`CLOSE_WAIT`** is a classic **application file-descriptor leak**.
+</details>
+
+<details>
+<summary>6. How does TCP calculate the Retransmission Timeout (`RTO`), what is Linux's `TCP_RTO_MIN`, and why is an `RTO` catastrophic in a data center?</summary>
+Per RFC 6298 (Jacobson/Karels), the kernel tracks smoothed RTT (`SRTT`) and mean deviation (`RTTVAR`) and sets **`RTO = SRTT + 4 * RTTVAR`**, clamped on Linux to a minimum of **`200 ms` (`TCP_RTO_MIN`)** and a maximum of `120 s` (doubling on each consecutive timeout up to `tcp_retries2 = 15`). On a `50 µs` data-center link, a single `200 ms` RTO stalls the flow for **`4,000` round trips** and collapses `cwnd` back to `1 MSS` (`ip route change ... rto_min 5ms` lowers the floor on internal subnets).
+</details>
+
+<details>
+<summary>7. How do Fast Retransmit, Selective Acknowledgements (`SACK`), and `RACK-TLP` recover from packet loss without waiting for an `RTO`?</summary>
+When a segment is lost but subsequent segments arrive, the receiver immediately sends **duplicate ACKs** pointing at the missing sequence number and attaches **`SACK` blocks** (RFC 2018) listing the exact out-of-order byte ranges received above the gap. After **3 duplicate ACKs**—or under Linux's **`RACK`** (*Recent ACK*, which detects loss by time order rather than packet count) and **`TLP`** (*Tail Loss Probe*, which sends a probe after `~2 RTT` when the tail of a burst is unacknowledged)—the sender retransmits **only the missing holes** in 1 RTT and enters **Fast Recovery** without collapsing `cwnd` to 1.
+</details>
+
+<details>
+<summary>8. Explain the 40 ms latency trap caused by combining Nagle's algorithm with Delayed ACKs, and state how to fix it.</summary>
+**Nagle's algorithm** buffers small sub-MSS writes in the sender's kernel while any prior data is unacknowledged. **Delayed ACK** holds the receiver's ACK for up to `40 ms` waiting for a second incoming segment or a piggybacked reply. When an RPC application splits a request into two small `write()` calls (`write(header)` then `write(body)`), the sender holds `body` waiting for the ACK of `header`, while the receiver holds the ACK of `header` waiting `40 ms` (`0.04 s`) for `body`. Fix it by setting **`TCP_NODELAY`** on the socket and coalescing the message into a single `write()` / `writev()`.
+</details>
+
+<details>
+<summary>9. What is the difference between `rwnd` and `cwnd`, and what does a \"Zero Window\" in `tcpdump` / Wireshark mean?</summary>
+**`rwnd`** (*receive window*) is advertised in every TCP header by the receiver to report how many free bytes remain in its receive socket buffer (**flow control**). **`cwnd`** (*congestion window*) is maintained privately by the sender to estimate how many bytes the network path can hold without congestion (**congestion control**). The sender may have at most **`min(cwnd, rwnd)`** bytes in flight. A **Zero Window (`win 0`)** means the **receiving application is not reading from its socket fast enough** and its receive buffer is full.
+</details>
+
+<details>
+<summary>10. Why is the TCP Window Scale option (`wscale`) mandatory on modern networks, and why do middleboxes that strip SYN options break throughput?</summary>
+The base TCP header's `Window` field is only 16 bits (`max 65,535 bytes`). The **Window Scale** option (`shift = 0..14`, negotiated **only during the initial `SYN` and `SYN-ACK`**) left-shifts the advertised window by `2^shift`, allowing receive windows up to **`~1 GiB`**. On a `100 Gb/s` link with `1 ms` RTT, `BDP = 12.5 MB`, which requires `shift >= 8`; if a firewall strips TCP options on `SYN`, the window is capped at `64 KiB` (`~524 Mb/s` max).
+</details>
+
+<details>
+<summary>11. Define Bandwidth-Delay Product (`BDP`), calculate `BDP` for `10 Gb/s` at `70 ms` RTT, and calculate the maximum throughput of a `4 MB` window over `70 ms` RTT.</summary>
+**`BDP = bandwidth * RTT`** is the volume of data that must be in flight simultaneously to keep the pipe 100% full. At `10 Gb/s` (`1,250 MB/s`) and `70 ms` (`0.070 s`) RTT, **`BDP = 1,250 MB/s * 0.070 s = 87.5 MB`**. With only a `4 MB` window over `70 ms` RTT, a single TCP connection can achieve at most **`window / RTT = 4 MB / 0.070 s = 57.14 MB/s = 457.1 Mb/s`** (`< 5%` of the `10 Gb/s` link).
+</details>
+
+<details>
+<summary>12. How do `net.ipv4.tcp_rmem`, `tcp_wmem`, and `tcp_moderate_rcvbuf` work in Linux, and why shouldn't applications hardcode `SO_RCVBUF`?</summary>
+`tcp_rmem` and `tcp_wmem` specify `(min, default, max)` socket buffer sizes in bytes (e.g., raising `max` from `6 MiB` to `134217728` = `128 MiB` for high-BDP WAN paths). With `tcp_moderate_rcvbuf = 1`, the kernel dynamically autotunes each connection's receive buffer up to `tcp_rmem[2]` based on measured BDP. Calling `setsockopt(SO_RCVBUF)` in application code **disables kernel autotuning** for that socket, fixing the buffer either too small (throttling high-BDP flows) or too large (wasting RAM across idle sockets).
+</details>
+
+<details>
+<summary>13. Trace TCP Slow Start, Congestion Avoidance (`AIMD`), and the difference between Tahoe and Reno on loss.</summary>
+In **Slow Start** (starting at `IW10 = 10 MSS`), `cwnd` increases by `+1 MSS` for every ACK received, **doubling every RTT** until `cwnd >= ssthresh` or loss occurs. Above `ssthresh`, **Congestion Avoidance** grows `cwnd` linearly by **`+1 MSS` per RTT** (*Additive Increase*) and cuts `cwnd` on loss (*Multiplicative Decrease*, `AIMD`). On 3 duplicate ACKs, **Tahoe** sets `ssthresh = cwnd / 2` and resets `cwnd = 1 MSS` (slow start), whereas **Reno** sets `cwnd = ssthresh = cwnd / 2` (**Fast Recovery**) and stays in Congestion Avoidance.
+</details>
+
+<details>
+<summary>14. Why did `CUBIC` replace `Reno` as the Linux default congestion control algorithm?</summary>
+On a high-BDP path (such as `10 Gb/s` at `100 ms` RTT, where `BDP ≈ 85,000` segments), Reno's linear `+1 MSS per RTT` growth after a loss takes **thousands of RTTs (minutes)** to climb back to `W_max`. **CUBIC** (RFC 8312) reduces `cwnd` by `β = 0.7` on loss (`30%` cut instead of `50%`) and grows `cwnd` as a **cubic function of elapsed wall time** since the last loss—climbing rapidly toward the previous `W_max`, flattening into a cautious plateau right at `W_max`, and then accelerating upward to probe for new bandwidth, independent of RTT.
+</details>
+
+<details>
+<summary>15. How does Google's `BBR` differ from loss-based algorithms (`Reno`/`CUBIC`), and when is `BBR` used?</summary>
+Loss-based algorithms (`Reno`, `CUBIC`) deliberately fill switch/router queues until packets drop, causing **bufferbloat** (high queueing latency) on deep-buffered links and collapsing throughput when random non-congestion loss occurs on WAN/wireless links. **BBR** (*Bottleneck Bandwidth and Round-trip propagation time*) is **model-based**: it continuously measures bottleneck delivery rate (`BtlBw`) and minimum RTT (`RTprop`), paces packets at `BtlBw` (with the `fq` qdisc), and caps in-flight data near `1–2 * BDP` without waiting for packet drops. It excels on WAN egress and cross-region dataset transfers.
+</details>
+
+<details>
+<summary>16. How do `ECN` and `DCTCP` work inside a data center, and why does TCP struggle with AI collective incast?</summary>
+With **ECN** (`net.ipv4.tcp_ecn = 1`), switches set the IP header's **Congestion Experienced (`CE = 11`)** bits as soon as a queue exceeds a shallow threshold; the receiver echoes `ECE` in the TCP header, and **DCTCP** scales the sender's `cwnd` back smoothly in proportion to the *fraction* of marked packets—keeping switch queues nearly empty. Without ECN/DCTCP, synchronized many-to-one AI bursts (**incast**) overflow shallow switch buffers and cause packet drops and `200 ms` TCP RTOs, which is why GPU clusters move collective traffic onto lossless **RDMA** (`InfiniBand` or `RoCEv2` with `PFC` + `DCQCN`).
+</details>
+
+<details>
+<summary>17. How do you read `ss -ti` output to determine whether a slow TCP connection is limited by the network, the receiver, the send buffer, or the application?</summary>
+Run `ss -ti dst <peer>`:
+- **`cwnd_limited`** with small `cwnd` and rising **`retrans:cur/total`**: limited by **network packet loss or congestion**.
+- **`rwnd_limited`** with small peer window (or `win 0` in `tcpdump` / high `Recv-Q` on the peer): limited by a **slow receiving application** or small receiver `tcp_rmem`.
+- **`sndbuf_limited`** with full local `Send-Q`: limited by the **sender's socket buffer (`tcp_wmem`)**.
+- **`app_limited`** with empty `Send-Q`: the **sending application** is not producing bytes fast enough.
+</details>
+
+<details>
+<summary>18. Why does `tcpdump` on a sending Linux host often report `[bad tcp cksum]` and `64 KiB` segments?</summary>
+Because `libpcap` (`tcpdump`) taps outgoing `sk_buff` packets in the kernel **before** they reach the NIC hardware. With **TX checksum offload** (`tx-checksumming`), the kernel leaves a partial pseudo-header seed in the checksum field and the NIC ASIC computes the real TCP checksum on the wire. With **TSO/GSO** (and **GRO** on RX), the kernel passes a single `64 KiB` super-segment to the NIC, which segments it into `1460`-byte `MSS` frames in hardware.
+</details>
+
+<details>
+<summary>19. What do `net.ipv4.tcp_slow_start_after_idle = 0` and `net.ipv4.tcp_notsent_lowat` tune?</summary>
+By default (`tcp_slow_start_after_idle = 1`), Linux resets a connection's `cwnd` back to the initial window if the connection sits idle for one RTO—hurting bursty long-lived connections like gRPC streams, persistent HTTP/2 pools, and storage RPCs; setting **`tcp_slow_start_after_idle = 0`** preserves `cwnd` across idle gaps. **`tcp_notsent_lowat`** (e.g., `131072` bytes) limits how many *unsent* bytes an application can queue in the kernel send buffer once `cwnd` is full, reducing sender-side bufferbloat.
+</details>
+
+<details>
+<summary>20. Why was `QUIC` (`RFC 9000`) built on top of `UDP`, and what four TCP limitations does it solve?</summary>
+QUIC runs over **UDP** so its encrypted transport headers can traverse existing NATs and firewalls without being ossified or stripped by middleboxes, and so the transport implementation can be updated in user-space libraries without waiting for OS kernel upgrades. It solves four TCP limitations: (1) **1-RTT (`0-RTT` resumption) combined transport + TLS 1.3 handshake** (vs 2–3 RTTs), (2) **independent multiplexed streams with no cross-stream head-of-line blocking**, (3) **connection migration** across IP/port changes via Connection IDs, and (4) **monotonic packet numbers** that eliminate retransmission RTT ambiguity.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `computer-networking-problems-and-solutions` — Russ White and Ethan Banks, *Computer Networking Problems and Solutions*, **Chapter 2: Data Transport** (digital grammars and marshaling fixed-length / TLV / shared dictionary, error detection and correction ARQ vs FEC, multiplexing, addressing unicast/multicast/broadcast/anycast, and flow control), **Chapter 3: Modeling Network Transport** (the DoD, OSI, and RINA models, connection-oriented vs connectionless transport), and **Chapter 5: Higher Layer Data Transports** (the Internet Protocol, TCP flow and error control, sliding window worked example, fast retransmit, SACK, port numbers, session setup, QUIC, and ICMP).
+  - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 9: Understanding Your Network and Its Configuration** (TCP ports and connections, three-way handshake, and characteristics of TCP).
+  - `systems-performance-2nd-edition` — Brendan Gregg, *Systems Performance: Enterprise and the Cloud*, 2nd ed., **Chapter 10: Network** (TCP connection backlog queues, socket buffers and autotuning, Nagle and delayed ACK, congestion control algorithms Reno/CUBIC/BBR, and `ss -ti` / `nstat` diagnostics).
+- **Run here:** `python3 code/part02/tcp_in_depth_lab.py` (14 passed, 0 failed).
+- **Explicitly labelled inferences:** The BDP and window-scaling table (`25 Gb/s * 0.04 s = 125 MB`, `4 MB / 0.08 s = 50 MB/s = 400 Mb/s`), Linux `sysctl` tuning reference (`somaxconn`, `tcp_rmem`/`tcp_wmem`, `tcp_tw_reuse`, `tcp_slow_start_after_idle=0`, `tcp_notsent_lowat`), `ss -ti` diagnostic flowchart, and AI workload notes (`NCCL_SOCKET_IFNAME`, `NCCL_SOCKET_NTHREADS`, `NCCL_NSOCKS_PERTHREAD`, incast RTO penalties, and gRPC/HTTP2 head-of-line blocking) synthesize kernel documentation (`ip-sysctl`), RFCs 793, 2018, 5681, 6298, 6528, 8312 (CUBIC), and 9000 (QUIC), and `ss(8)` (cross-referenced with Chapters 1.25, 2.2, 2.4, 2.5, 2.7, 2.20, 2.22, 2.23, and Part 11, plus original study items 21, 23, 26, 27, 29, 31, 33, 34, 36, 37, 38, and 39).
+- **Not verified on live hardware:** All interactive VM commands (`ip netns`, `tc qdisc netem`, `iperf3`, `ss -ti`, `tcpdump`, `nstat`, `sysctl`) are marked (untested here) and must be executed on a disposable Linux VM.
