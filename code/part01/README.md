@@ -15,3 +15,4 @@
 | 1.11 How a program runs: syscalls, ELF, strace, ldd | `program_execution_elf.py` | `program_execution_elf_lab.py` | 21 | `python3 code/part01/program_execution_elf_lab.py` |
 | 1.12 Disks, partitions and filesystems | `disks_filesystems.py` | `disks_filesystems_lab.py` | 21 | `python3 code/part01/disks_filesystems_lab.py` |
 | 1.13 LVM, RAID and NVMe | `lvm_raid_nvme.py` | `lvm_raid_nvme_lab.py` | 21 | `python3 code/part01/lvm_raid_nvme_lab.py` |
+| 1.14 Boot: firmware, GRUB, kernel, initramfs | `boot_grub_initramfs.py` | `boot_grub_initramfs_lab.py` | 23 | `python3 code/part01/boot_grub_initramfs_lab.py` |

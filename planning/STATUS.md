@@ -19,9 +19,9 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 1.9 | Shell scripting that survives production | drafted | 11237 |  |
 | 1.10 | Devices, udev, sysfs and procfs | drafted | 9935 |  |
 | 1.11 | How a program runs: system calls, libraries, ELF, strace and ldd | drafted | 10549 |  |
-| 1.12 | Disks, partitions and filesystems | drafted | 13650 |  |
-| 1.13 | LVM, RAID and NVMe | drafted | 10340 |  |
-| 1.14 | Boot: firmware, GRUB, kernel, initramfs | drafted | 10036 |  |
+| 1.12 | Disks, partitions and filesystems | drafted | 14589 |  |
+| 1.13 | LVM, RAID and NVMe | drafted | 11253 |  |
+| 1.14 | Boot: firmware, GRUB, kernel, initramfs | drafted | 11008 |  |
 | 1.15 | systemd: units, targets, timers, journald | drafted | 9764 |  |
 | 1.16 | Logging, time synchronisation, cron and batch jobs | drafted | 7360 |  |
 | 1.17 | Memory management: virtual memory, NUMA, huge pages, OOM | drafted | 8814 |  |
