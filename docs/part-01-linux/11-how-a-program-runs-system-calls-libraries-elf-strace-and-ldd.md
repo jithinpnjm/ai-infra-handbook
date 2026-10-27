@@ -208,7 +208,7 @@ A **system call** is the controlled entry into the kernel. The C library offers 
 
 ## 5. Shared libraries in depth
 
-Chapter 1.7 covered how libraries are built and how `ld.so` searches for them. This section covers what makes a library file name and a *version* work, how a program says which version it needs, and what goes wrong.
+Chapter 1.7 covered how libraries are built and how `ld.so` searches for them. While shared libraries have their own management costs and a somewhat complicated linking procedure, you can bring shared libraries under complete control if you know four things (`HLW` Section 15.1.3): (1) how to list the shared libraries that an executable needs (`ldd`, `readelf -d`), (2) how an executable looks for shared libraries (`DT_RPATH`, `LD_LIBRARY_PATH`, `DT_RUNPATH`, `/etc/ld.so.cache`, `/lib` and `/usr/lib`), (3) how to link a program against a shared library at compile time (`-L`, `-l`, `-Wl,-rpath`), and (4) the common shared-library pitfalls. This section covers what makes a library file name and a *version* work, how a program says which version it needs, and what goes wrong.
 
 ### Names: soname, real name, linker name
 
@@ -277,7 +277,7 @@ How to read results (examples):
 
 **Overhead.** `strace` works with the `ptrace` interface: the kernel stops the target at **every** system call entry and exit and wakes `strace`, even for calls you filtered out of the output. For a program that makes millions of calls per second the slowdown can be one to two orders of magnitude (a `dd` copy of 1 KiB blocks was measured to run about 70 times slower under `strace`), and it changes timing. So: use it for short periods on production processes, prefer `-e trace=` plus `-c`, and for rate-sensitive investigation use low-overhead tracers that buffer events in the kernel: `perf trace`, `perf stat -e 'syscalls:*'`, Ftrace, and BPF tools such as `syscount`, `opensnoop`, `execsnoop`, `bpftrace` one-liners (chapter 1.24). Other systems have equivalents: `truss` (Solaris/AIX), `ktrace` (BSD), `dtruss` (macOS).
 
-**`ltrace`** traces calls into dynamic libraries: `ltrace -f -e 'malloc+free' ./prog`, `ltrace -c ./prog`. There are many more library calls than system calls, so filter. It does not work for statically linked programs and can be fragile with modern PIE binaries.
+**`ltrace`** traces calls into dynamic libraries (`malloc`, `printf`, `SSL_read`): `ltrace -f -e 'malloc+free' ./prog`, `ltrace -c ./prog`. There are many more library calls than system calls, so filter. It does not work for statically linked programs and can be fragile with modern PIE binaries.
 
 ### Other process-inspection tools
 
@@ -323,7 +323,7 @@ Two principles guide everything: **optimise the common case** (find the most fre
 4. **USE method applied to software resources**: for every resource, check **U**tilisation, **S**aturation and **E**rrors. Hardware resources first (CPU, memory, disk, network), then software ones: a thread pool (utilisation = busy threads / pool size; saturation = length of the request queue; errors = rejected requests), file descriptors (utilisation = open/limit; errors = `EMFILE` "Too many open files"), connection pools, GPU memory.
 5. **Thread-state analysis**: divide each thread's time among states: **user** on-CPU, **kernel** on-CPU, **runnable** (waiting for a CPU), **swapping** (anonymous page-in), **disk I/O**, **network I/O**, **sleeping**, **lock**, **idle**. Reduce time in every state except idle. Rough indicators on Linux: `pidstat` (`%usr`, `%system`), `vmstat r` (runnable) and `si/so` (swapping), `pidstat -d` (I/O delay), `/proc/PID/schedstat` (run-queue wait time), delay accounting; deeper with tracing. A process that appears asleep with no activity needs its stacks read (`/proc/PID/stack`, `gdb`).
 6. **Lock analysis**: contention (are threads waiting?) and excessive hold times; spin-lock contention shows up as CPU in a profile; mutex contention as off-CPU time in `futex`. Usually a developer task requiring source knowledge.
-7. **Static performance tuning**: audit the configuration rather than the behaviour: versions and dependencies, build type (debug or release!), compiler flags and architecture-specific instructions (SIMD), memory allocator, huge pages, thread pool sizes, cache sizes, resource limits and cgroup caps, whether it runs in a degraded mode after an error.
+7. **Static performance tuning**: audit the configuration rather than the behaviour: versions and dependencies, build type (debug or release), compiler flags and architecture-specific instructions (SIMD), memory allocator, huge pages, thread pool sizes, cache sizes, resource limits and cgroup caps, whether it runs in a degraded mode after an error.
 8. **Distributed tracing**: for a request that spans services, log a request ID, parent/child relationships, timings and errors at each hop and combine them (OpenTelemetry, Jaeger); head-based sampling keeps volume manageable at the price of missing rare outliers, tail-based sampling keeps the interesting ones.
 
 ### Tools at a glance
@@ -333,7 +333,7 @@ Two principles guide everything: **optimise the common case** (find the most fre
 | `perf record -F 99 -a -g -- sleep 30`; `perf report`; `perf script` | CPU sampling and flame-graph input; `perf stat` for counters; `perf trace` for syscalls |
 | `profile` (BCC) | Timed CPU sampling, low overhead |
 | `offcputime` (BCC) | Off-CPU stacks and time |
-| `strace -c / -f` | Syscall summary and trace (overhead!) |
+| `strace -c / -f` | Syscall summary and trace (high ptrace overhead) |
 | `execsnoop`, `opensnoop`, `syscount` | New processes, file opens, syscall counts system-wide, cheap |
 | `bpftrace -e '...'` | Custom one-liners: e.g. `bpftrace -e 'tracepoint:syscalls:sys_enter_read { @[comm] = count(); }'`, `bpftrace -e 'tracepoint:syscalls:sys_exit_read /args->ret/ { @bytes = hist(args->ret); }'` |
 | `py-spy top/record/dump`, `nsys`, `ncu`, PyTorch profiler | Python and GPU-side profiling (GPU chapters) |
@@ -390,21 +390,27 @@ Two principles guide everything: **optimise the common case** (find the most fre
 13. **Memory looks leaked after freeing.** Allocator keeps memory (arenas, fragmentation); measure RSS vs live objects, try `malloc_trim`/`jemalloc`/worker recycling.
 14. **Huge number of `ENOENT` in strace and a slow start.** Path searching in many directories (long `PATH`, `LD_LIBRARY_PATH`, `PYTHONPATH`) on a slow filesystem; shorten the search lists.
 
-## Hands-on lab (a GCP Ubuntu VM; untested)
+## Hands-on lab: ELF, shared libraries, strace, and VM drills
 
-Use a scratch directory. These commands have **not** been run; run them before relying on them.
+First, run the self-checking Python lab (`code/part01/program_execution_elf_lab.py`) locally. It verifies the 7-stage ELF startup order (`execve` -> `PT_INTERP` `ld.so` -> `_start` -> `main`), shared library naming (`linker_name`, `soname`, `real_name`), `GLIBC_2.xx` forward-only symbol compatibility, `1 GiB` `mmap` demand paging (`262,144` minor page faults), and USE method software resource metrics.
+
+```bash
+python3 code/part01/program_execution_elf_lab.py
+```
+
+Next, in a scratch directory on a disposable GCP Ubuntu VM (all interactive VM commands below are `untested here`), work through these steps:
 
 **A. Trace a program's life.**
 
 ```bash
-mkdir -p ~/lab/run && cd ~/lab/run
+mkdir -p ~/lab/run && cd ~/lab/run      # (untested here)
 cat > hello.c <<'EOF'
 #include <stdio.h>
 int main(void) { puts("hello"); return 0; }
 EOF
-cc -o hello hello.c && strace -f -tt ./hello 2>&1 | head -60
-strace -c ./hello 2>&1 | tail -15
-ltrace ./hello 2>&1 | head
+cc -o hello hello.c && strace -f -tt ./hello 2>&1 | head -60 # (untested here)
+strace -c ./hello 2>&1 | tail -15       # (untested here)
+ltrace ./hello 2>&1 | head              # (untested here)
 ```
 
 Identify in the output: the `execve`, the opening of `ld.so.cache` and `libc.so.6`, the `mmap` calls, the `write` of "hello", and `exit_group`. Why is there no `printf`/`puts` in the `strace` but one in `ltrace`?
@@ -412,26 +418,26 @@ Identify in the output: the `execve`, the opening of `ld.so.cache` and `libc.so.
 **B. Dynamic versus static.**
 
 ```bash
-cc -o hello_static -static hello.c 2>/dev/null || echo "install libc6-dev static libs (apt: libc6-dev) if this fails"
-ls -l hello hello_static; file hello hello_static; ldd hello hello_static
-strace ./hello_static 2>&1 | head
+cc -o hello_static -static hello.c 2>/dev/null || echo "install libc6-dev static libs (apt: libc6-dev) if this fails" # (untested here)
+ls -l hello hello_static; file hello hello_static; ldd hello hello_static # (untested here)
+strace ./hello_static 2>&1 | head       # (untested here)
 ```
 
 **C. Inspect ELF.**
 
 ```bash
-readelf -h hello | head -15
-readelf -l hello | grep -E 'INTERP|LOAD|interpreter'
-readelf -d hello | grep -E 'NEEDED|RUNPATH|RPATH'
-nm -D hello | head; nm hello | head -5
-objdump -d hello --no-show-raw-insn | sed -n '/<main>:/,/ret/p'
-strip -o hello_stripped hello; ls -l hello hello_stripped; nm hello_stripped 2>&1 | head -2
+readelf -h hello | head -15             # (untested here)
+readelf -l hello | grep -E 'INTERP|LOAD|interpreter' # (untested here)
+readelf -d hello | grep -E 'NEEDED|RUNPATH|RPATH' # (untested here)
+nm -D hello | head; nm hello | head -5  # (untested here)
+objdump -d hello --no-show-raw-insn | sed -n '/<main>:/,/ret/p' # (untested here)
+strip -o hello_stripped hello; ls -l hello hello_stripped; nm hello_stripped 2>&1 | head -2 # (untested here)
 ```
 
 **D. A library problem, on purpose.**
 
 ```bash
-mkdir -p ~/lab/lib && cd ~/lab/lib
+mkdir -p ~/lab/lib && cd ~/lab/lib      # (untested here)
 cat > foo.c <<'EOF'
 int foo(void) { return 42; }
 EOF
@@ -440,24 +446,24 @@ cat > main.c <<'EOF'
 int foo(void);
 int main(void) { printf("%d\n", foo()); return 0; }
 EOF
-cc -fPIC -shared -Wl,-soname,libfoo.so.1 -o libfoo.so.1.0.0 foo.c
-ln -sf libfoo.so.1.0.0 libfoo.so.1; ln -sf libfoo.so.1 libfoo.so
-cc -o app main.c -L. -lfoo
-./app                                   # fails: cannot open shared object file
-ldd ./app | grep foo
-LD_DEBUG=libs ./app 2>&1 | grep -i 'foo\|search' | head
-LD_LIBRARY_PATH=. ./app                  # works
-cc -o app2 main.c -L. -lfoo -Wl,-rpath,'$ORIGIN'
-./app2; readelf -d app2 | grep -E 'RPATH|RUNPATH'
-patchelf --print-rpath app2 2>/dev/null || sudo apt install -y patchelf
+cc -fPIC -shared -Wl,-soname,libfoo.so.1 -o libfoo.so.1.0.0 foo.c # (untested here)
+ln -sf libfoo.so.1.0.0 libfoo.so.1; ln -sf libfoo.so.1 libfoo.so # (untested here)
+cc -o app main.c -L. -lfoo              # (untested here)
+./app                                   # (untested here) fails: cannot open shared object file
+ldd ./app | grep foo                    # (untested here)
+LD_DEBUG=libs ./app 2>&1 | grep -i 'foo\|search' | head # (untested here)
+LD_LIBRARY_PATH=. ./app                 # (untested here) works
+cc -o app2 main.c -L. -lfoo -Wl,-rpath,'$ORIGIN' # (untested here)
+./app2; readelf -d app2 | grep -E 'RPATH|RUNPATH' # (untested here)
+patchelf --print-rpath app2 2>/dev/null || sudo apt install -y patchelf # (untested here)
 ```
 
 **E. Symbol versions and glibc.**
 
 ```bash
-ldd --version | head -1
-objdump -T /bin/ls | grep -o 'GLIBC_[0-9.]*' | sort -Vu | tail -3
-readelf -V /bin/ls | head -20
+ldd --version | head -1                 # (untested here)
+objdump -T /bin/ls | grep -o 'GLIBC_[0-9.]*' | sort -Vu | tail -3 # (untested here)
+readelf -V /bin/ls | head -20           # (untested here)
 ```
 
 **F. `LD_PRELOAD`.**
@@ -468,13 +474,13 @@ cat > fake.c <<'EOF'
 #include <stdio.h>
 unsigned int sleep(unsigned int s) { fprintf(stderr, "(sleep(%u) skipped)\n", s); return 0; }
 EOF
-cc -fPIC -shared -o libfake.so fake.c
-time sleep 3                      # coreutils sleep uses nanosleep; try a program that calls sleep(): e.g. a tiny C program
+cc -fPIC -shared -o libfake.so fake.c   # (untested here)
+time sleep 3                            # (untested here) coreutils sleep uses nanosleep; try a program that calls sleep()
 cat > s.c <<'EOF'
 #include <unistd.h>
 int main(void) { sleep(3); return 0; }
 EOF
-cc -o s s.c && time ./s && time LD_PRELOAD=./libfake.so ./s
+cc -o s s.c && time ./s && time LD_PRELOAD=./libfake.so ./s # (untested here)
 ```
 
 **G. Address space and demand paging.**
@@ -493,19 +499,19 @@ int main(void) {
   return 0;
 }
 EOF
-cd ~/lab/run && cc -o mapdemo mapdemo.c
-./mapdemo &       # then in the same terminal: 
-sleep 1; ps -o pid,vsz,rss,cmd -p $!; pmap -x $! | tail -5
-echo | cat >/proc/$!/fd/0 2>/dev/null; kill $!
-/usr/bin/time -v ./mapdemo < <(printf '\n\n') 2>&1 | grep -E 'Maximum resident|Minor'
+cd ~/lab/run && cc -o mapdemo mapdemo.c # (untested here)
+./mapdemo &                             # (untested here)
+sleep 1; ps -o pid,vsz,rss,cmd -p $!; pmap -x $! | tail -5 # (untested here)
+echo | cat >/proc/$!/fd/0 2>/dev/null; kill $! # (untested here)
+/usr/bin/time -v ./mapdemo < <(printf '\n\n') 2>&1 | grep -E 'Maximum resident|Minor' # (untested here)
 ```
 
 **H. A system-call profile.**
 
 ```bash
-strace -c -f dd if=/dev/zero of=/dev/null bs=1k count=200000 2>&1 | tail -12
-dd if=/dev/zero of=/dev/null bs=1k count=200000 2>&1 | tail -1
-dd if=/dev/zero of=/dev/null bs=1M count=200 2>&1 | tail -1
+strace -c -f dd if=/dev/zero of=/dev/null bs=1k count=200000 2>&1 | tail -12 # (untested here)
+dd if=/dev/zero of=/dev/null bs=1k count=200000 2>&1 | tail -1 # (untested here)
+dd if=/dev/zero of=/dev/null bs=1M count=200 2>&1 | tail -1 # (untested here)
 ```
 
 Compare throughput with and without `strace`, and with 1 KiB versus 1 MiB blocks. What do you conclude about per-call overhead?
@@ -513,96 +519,141 @@ Compare throughput with and without `strace`, and with 1 KiB versus 1 MiB blocks
 **I. perf and a flame graph (optional).**
 
 ```bash
-sudo apt install -y linux-tools-common linux-tools-$(uname -r) 2>/dev/null
+sudo apt install -y linux-tools-common linux-tools-$(uname -r) 2>/dev/null # (untested here)
 cat > spin.c <<'EOF'
 #include <math.h>
 double work(int n){ double s=0; for(int i=1;i<n;i++) s+=sqrt(i); return s; }
 int main(void){ double t=0; for(int k=0;k<2000;k++) t+=work(200000); return t>0?0:1; }
 EOF
-cc -O2 -fno-omit-frame-pointer -g -o spin spin.c -lm
-sudo perf record -F 99 -g -- ./spin && sudo perf report --stdio | head -30
+cc -O2 -fno-omit-frame-pointer -g -o spin spin.c -lm # (untested here)
+sudo perf record -F 99 -g -- ./spin && sudo perf report --stdio | head -30 # (untested here)
 ```
 
 **J. (GPU VM, optional) What a CUDA program loads.**
 
 ```bash
-strace -f -e trace=openat,connect python3 -c 'import torch; torch.zeros(1).cuda()' 2>&1 | grep -E '\.so|/dev/nvidia' | grep -v ENOENT | head -40
-ldd $(python3 -c 'import torch,os; print(os.path.join(os.path.dirname(torch.__file__),"lib","libtorch_cuda.so"))') | grep -E 'cuda|cudnn|nccl|not found'
-ldconfig -p | grep -E 'libcuda\.so|libnvidia-ml'
+strace -f -e trace=openat,connect python3 -c 'import torch; torch.zeros(1).cuda()' 2>&1 | grep -E '\.so|/dev/nvidia' | grep -v ENOENT | head -40 # (untested here)
+ldd $(python3 -c 'import torch,os; print(os.path.join(os.path.dirname(torch.__file__),"lib","libtorch_cuda.so"))') | grep -E 'cuda|cudnn|nccl|not found' # (untested here)
+ldconfig -p | grep -E 'libcuda\.so|libnvidia-ml' # (untested here)
 ```
 
-## Checkpoint questions
+## Exercises
 
-1. List, in order, what happens between `execve("./prog")` and the first line of `main`.
-2. What is `PT_INTERP`, and what happens if it names a file that does not exist?
-3. What is `binfmt_misc` for? What does "Exec format error" mean?
-4. What is the difference between ELF sections and segments, and who uses each?
-5. What is lazy binding? What are PLT and GOT? What does `LD_BIND_NOW` change?
-6. What is the vDSO, and why does `gettimeofday` not show in `strace`?
-7. What is a system call wrapper? What does it do on error, and where does the error code go?
-8. What is the difference between a system call and a library call? Give two examples of each.
-9. How does `malloc` get memory from the kernel? Why can RSS stay high after `free`?
-10. What do VIRT and RES mean, and why can VIRT be far larger than RAM?
-11. Distinguish soname, real name and linker name. Which one is recorded in a binary?
-12. What does the error `version 'GLIBC_2.34' not found` mean and how do you prevent it when building?
-13. Why do conda environments sometimes cause `GLIBCXX` errors?
-14. What is the difference between `RPATH` and `RUNPATH` with respect to `LD_LIBRARY_PATH`?
-15. When is it appropriate to use `LD_PRELOAD`? What are two risks?
-16. Why is `ldd` unsafe on untrusted binaries and what do you use instead?
-17. How do you find the file that a program failed to open, using `strace`?
-18. What does a process stuck in `futex(..., FUTEX_WAIT...)` indicate? In `epoll_wait`? In `ioctl` on `/dev/nvidia0`?
-19. Why is `strace` slow and how slow can it be? What alternatives exist?
-20. What is the difference between `-f`, `-ff`, `-c`, `-T`, `-tt`, `-e trace=file` in `strace`?
-21. What does `ltrace` show that `strace` does not? What are its limits?
-22. Name five application performance techniques and one downside of each.
-23. What is a flame graph and how do you read it? What does a wide plateau mean?
-24. What is off-CPU analysis, and why is it expensive and easy to misread?
-25. List the nine thread states and say which tools hint at each on Linux.
-26. How do you apply the USE method to a thread pool and to file descriptors?
-27. What causes "[unknown]" frames and short stacks in profiles, and what are the fixes?
-28. A PyTorch job prints "libcuda.so.1: cannot open shared object file" in a container. What are three things to check?
-29. Why can one node run containers with different CUDA versions on the same driver?
-30. What does "no kernel image is available for execution on the device" mean, and how do you fix it?
+1. **From `execve()` to `main()` and `PT_INTERP`:** List the 7 ordered stages in `ELF_STARTUP_STAGES` (`code/part01/program_execution_elf.py`) between typing `./train` and the parent shell reaping the exit status. Why does a glibc-linked binary executed inside an Alpine (`musl`) container fail with `No such file or directory` even though `./train` exists and is executable?
+2. **Shared Library Naming (`linker_name`, `soname`, `real_name`) and `GLIBC` Symbol Versioning:** (a) For the file `libfoo.so.1.2.3`, state its `linker_name`, `soname`, and `real_name`, and state which of the three is recorded inside an executable's `DT_NEEDED` header; (b) if `./prog` requires `GLIBC_2.34`, will it start on a host with `GLIBC_2.31` vs `GLIBC_2.35`, and how do you inspect the highest `GLIBC_` version `./prog` needs?
+3. **Demand Paging (`VIRT` vs `RSS`) and `mapdemo.c`:** In `mapdemo.c`, a process calls `mmap()` to reserve `1 GiB` (`1,073,741,824` bytes) of anonymous memory (`4,096`-byte pages). What are `VIRT`, `RSS`, and the cumulative minor page fault count (a) immediately after `mmap()` returns, (b) after touching `131,072` pages, and (c) after touching all `262,144` pages?
+4. **`strace` Overhead and Diagnosing Hung Processes:** (a) Why can running `strace` on `dd if=/dev/zero of=/dev/null bs=1k count=200000` slow execution down by `~70x`, and what low-overhead kernel tracing tools avoid stopping the process on every syscall? (b) When you attach `strace -f -p PID` to a hung training rank, what does it mean if threads are blocked in `futex(..., FUTEX_WAIT...)`, `epoll_wait`, or `ioctl` on `/dev/nvidia0`?
+5. **USE Method on Software Resources and Reading Flame Graphs (`SP` Chapter 5):** (a) Using `evaluate_software_use_metrics()`, calculate `utilization_pct`, `saturation_queue`, and `errors` for a 16-thread service pool with 16 busy threads, 45 queued requests, and 2 rejected requests; (b) in a CPU flame graph generated from `perf record -F 99 -g`, what do the x-axis width and y-axis height represent?
+6. **Fixing `[unknown]` Symbols, Broken Stacks, and Container CUDA Injection:** (a) Give two causes of `[unknown]` frames and one cause of broken/truncated call stacks in `perf` profiles, along with the compiler/runtime fix for each; (b) explain how a single GPU host can run two containers with different CUDA toolkit versions (`11.8` and `12.4`) on the same host driver (`libcuda.so.1`).
 
-### Answers
+## Checkpoint questions (20)
 
-1. Fork/exec; kernel checks permissions and file format; ELF loader maps LOAD segments, sets up stack/auxv/heap; maps the interpreter named in `PT_INTERP`; kernel jumps to `ld.so`; it finds and maps libraries, relocates (lazily for functions), runs constructors; jumps to `_start`; `__libc_start_main` initialises the C runtime and calls `main`.
-2. The program header naming the dynamic linker. If it does not exist, `execve` fails ("No such file or directory" even though the binary exists, or "bad ELF interpreter"): typical for musl/Alpine or 32-bit binaries.
-3. It lets the kernel run other binary formats through a registered handler (QEMU user emulation, Java, Wine). "Exec format error": the file is not a format the kernel can run (wrong architecture, corrupted, a script without a valid shebang).
-4. Sections (`.text`, `.data`, symbols, debug) are the linker's/debugger's view; segments (program headers: LOAD, INTERP, DYNAMIC) are the loader's view of what to map into memory.
-5. Resolving a function's address on its first call instead of at start-up. Calls go through the PLT and look up the address in the GOT. `LD_BIND_NOW=1` resolves everything at start-up (slower start, early errors, hardening).
-6. A kernel-supplied shared page mapped into every process that implements a few calls (clock reads) in user space; they never enter the kernel so `strace` cannot see them.
-7. A library function that sets up registers and executes the `syscall` instruction. On error it returns -1 and stores the positive error number in `errno`.
-8. System call: `read`, `mmap` (manual section 2). Library call: `printf`, `malloc` (section 3). Library calls may or may not use system calls.
-9. With `brk` (small requests, extending the heap) or `mmap` (large requests). Freed memory is often retained by the allocator (arenas, fragmentation, a surviving small object), so RSS does not fall.
-10. VIRT/VSZ: total mapped address space; RES/RSS: pages currently in RAM. Memory is allocated lazily, so reserving address space costs nothing until pages are touched.
-11. Linker name `libfoo.so` (build time), soname `libfoo.so.1` (ABI contract, recorded in binaries), real name `libfoo.so.1.2.3` (the file).
-12. The binary requires a newer glibc than the system has. Build on the oldest OS you support (or in an old container/manylinux), not the newest.
-13. The env ships its own, older `libstdc++` that is found before the system one (via `RPATH`/`LD_LIBRARY_PATH`) while another library needs a newer one.
-14. `RPATH` is searched before `LD_LIBRARY_PATH`; `RUNPATH` after it, so the environment can override `RUNPATH` but not `RPATH` (check `ld.so(8)`).
-15. Replacing the allocator, interposing for debugging/profiling, hot-fixing a library without relinking. Risks: ABI/architecture mismatch crashes everything; security and set-uid behaviour; hidden dependencies.
-16. Some `ldd` implementations execute the program. Use `readelf -d prog | grep NEEDED` or `objdump -p`.
-17. `strace -f -e trace=file ./prog 2>&1 | grep -E 'ENOENT|EACCES' | tail`; the last failure before the error message.
-18. A thread waiting on a lock/condition variable; waiting for events (network/file descriptors); inside the NVIDIA driver (GPU work or synchronisation).
-19. ptrace stops the process on every system call entry and exit; slowdowns of 10x to 100x for call-heavy programs. Use `strace -c` briefly, `perf trace`, Ftrace, `bpftrace`, `syscount`, `opensnoop`, `execsnoop`.
-20. `-f` follow children/threads; `-ff -o x` one output file per process; `-c` summary statistics; `-T` time spent in each call; `-tt` timestamps with microseconds; `-e trace=file` only calls that take file names.
-21. Dynamic library function calls (`malloc`, `printf`, `SSL_read`) rather than kernel calls; it does not work on static binaries, has many events, and can be unreliable with PIE/new toolchains.
-22. E.g. larger I/O size (wasted bandwidth), caching (memory/invalidation), buffering (latency/loss), epoll vs polling (complexity), threads (contention), `io_uring` (complexity), CPU pinning (conflicts on shared hosts).
-23. A visualisation of sampled stacks: each box a function, width proportional to samples, y axis call depth, x ordering meaningless. A wide plateau is where much of the CPU time goes (or where much time is spent, for off-CPU graphs).
-24. Examining threads not running (I/O, locks, sleeps, run-queue wait). It requires tracing scheduler events for many threads so overhead is high, and the result is dominated by idle waiting that must be filtered.
-25. User, kernel, runnable, swapping, disk I/O, network I/O, sleeping, lock, idle. `pidstat` `%usr`/`%system`, `vmstat r`/`si so`, `pidstat -d`, `/proc/PID/schedstat`, tracing for locks and sleeps.
-26. Pool: utilisation = busy threads / total, saturation = queue length, errors = rejected requests. Descriptors: utilisation = open/limit, saturation = blocked waiters, errors = EMFILE.
-27. Stripped binaries, JIT code (no symbols), frame pointers omitted. Use debuginfo, perf map files, `-fno-omit-frame-pointer`/`PreserveFramePointer`, or DWARF/LBR stack walking.
-28. Driver installed on the host; container runtime/toolkit configured so libraries and devices are injected (CDI/`--gpus`); `ldconfig -p | grep libcuda` inside the container and the `LD_LIBRARY_PATH`.
-29. CUDA user-space libraries are inside each image; only the driver (kernel module and `libcuda`) is shared from the host, and a driver supports older CUDA runtimes.
-30. The binary lacks code (cubin or PTX) for the GPU's architecture; build with the right architecture list (`-gencode`, `TORCH_CUDA_ARCH_LIST`) or use a framework build that supports that GPU generation.
+<details>
+<summary>1. List in order what happens between `execve("./train")` and the first line of `main()`.</summary>
+The shell calls `fork()` and the child calls `execve()`; the kernel verifies permissions and the `\x7fELF` header; the ELF loader maps the `LOAD` segments (`.text`, `.data`, `.bss`), sets up the stack (`argc`, `argv`, `envp`, `auxv`) and heap, and maps the dynamic linker named in `PT_INTERP` (`/lib64/ld-linux-x86-64.so.2`); execution begins in `ld.so`, which loads `DT_NEEDED` libraries, performs relocations (with PLT/GOT lazy binding), and runs library constructors; control jumps to `_start`, which calls `__libc_start_main` to initialize `stdio`/`atexit` and finally invokes `main()`.
+</details>
 
-## Sources and further reading
+<details>
+<summary>2. What is `PT_INTERP`, and why does running a glibc binary on Alpine Linux (`musl`) print "not found" even when the binary file is right there?</summary>
+`PT_INTERP` is the ELF program header specifying the path to the dynamic linker (`/lib64/ld-linux-x86-64.so.2`). When the kernel's ELF loader cannot find the `PT_INTERP` file on disk (because Alpine only has `/lib/ld-musl-x86_64.so.1`), `execve()` returns `ENOENT` ("No such file or directory") for the missing interpreter.
+</details>
 
-- Brian Ward, *How Linux Works*, 3rd ed.: ch. 8 (system-call tracing with `strace`, library tracing with `ltrace`; the `lsof` and process-tracking parts are in chapter 1.8), ch. 15 (the C compiler, object files, linking, static and shared libraries, `ldd`, `ld.so` and its search, `rpath`, `LD_LIBRARY_PATH`; header files and the preprocessor; `make`; scripting-language shebangs; covered in 1.7 and used here) and ch. 16 (building from source; covered in 1.7). Section 1 and 2 on program start-up and ELF are written from the kernel and glibc documentation and the book's descriptions of `exec`.
-- Brendan Gregg, *Systems Performance*, 2nd ed.: ch. 5 (applications: objectives, optimising the common case, observability, big O; I/O size, caching, buffering, polling, concurrency and parallelism, synchronisation primitives, non-blocking I/O, processor binding, performance mantras; compiled, interpreted and virtual-machine languages and garbage collection; the methodologies of CPU profiling, off-CPU analysis, syscall analysis, USE, thread-state analysis, lock analysis, static tuning and distributed tracing; the tools perf, profile, offcputime, strace, execsnoop, syscount and bpftrace; the missing symbols and missing stacks gotchas). Section 7 summarises this chapter in original words; the tool-by-tool treatment is chapters 1.23 and 1.24. The book's flame-graph figures and numeric example outputs are not reproduced.
-- nvidia-devops (the user's earlier notes): `volume-01/01-linux-compute-memory-masterclass.md`, the process and execution-context material, the `mmap` demand-paging example, the Python allocator discussion and the `strace` warning (partial: scheduler, NUMA, THP, OOM and sysctl parts migrate to chapters 1.15, 1.17, 1.18, 1.22, 1.28 and 2.23).
-- Manual pages: `execve(2)`, `ld.so(8)`, `ldd(1)`, `ldconfig(8)`, `elf(5)`, `readelf(1)`, `objdump(1)`, `nm(1)`, `strace(1)`, `ltrace(1)`, `syscalls(2)`, `errno(3)`, `vdso(7)`, `mmap(2)`, `brk(2)`, `malloc(3)`, `mallopt(3)`, `binfmt_misc` (kernel docs), `perf(1)`, `patchelf(1)`.
-- Related chapters: 1.7 (building, libraries, search order), 1.8 (processes, signals, `strace` introduction), 1.9 (shebang scripts), 1.10 (`/dev` and `ioctl` devices), 1.17 (memory), 1.22 (kernel modules, drivers), 1.23 to 1.25 (performance method, tools, benchmarking), 7 (containers and GPU library injection), NCCL and PyTorch chapters.
+<details>
+<summary>3. What is `binfmt_misc`, and what causes `Exec format error`?</summary>
+`binfmt_misc` is a kernel facility that registers user-space interpreters/emulators (such as `qemu-user-static` for ARM64 binaries on x86-64, Java `.jar` runners, or Wine) by magic bytes or file extension. `Exec format error` (`ENOEXEC`) occurs when `execve()` is given a binary for the wrong CPU architecture (`x86-64` on `aarch64` Grace) or an executable text script missing a valid `#!` shebang.
+</details>
 
-*Notes for review:* the glibc-version, `RPATH`/`RUNPATH` ordering, `strace` option behaviour (`-k`, `-yy`), `perf` options and Python 3.12 `perf` support should be verified against the versions on your systems. The statements about CUDA driver/runtime compatibility, forward-compatibility packages, `TORCH_CUDA_ARCH_LIST` and what the NVIDIA Container Toolkit injects must be confirmed in NVIDIA's current documentation. The 70x `strace` slowdown is an order-of-magnitude illustration from the source's `dd` example and varies widely. All lab commands are **untested**; run them in a scratch directory on a disposable VM before this chapter moves to `reviewed`.
+<details>
+<summary>4. What is the difference between ELF sections and ELF segments, and which tools inspect each?</summary>
+**Sections** (`.text`, `.rodata`, `.data`, `.bss`, `.symtab`, `.dynsym`, `.dynamic`, inspected with `readelf -S` and `objdump`) are the linker's and debugger's view of the file. **Segments** (program headers: `LOAD`, `INTERP`, `DYNAMIC`, `GNU_RELRO`, inspected with `readelf -l`) are the kernel loader's view describing what byte ranges to `mmap()` into memory with `r-x` or `rw-` permissions.
+</details>
+
+<details>
+<summary>5. How does lazy binding work via the PLT and GOT, and what does `LD_BIND_NOW=1` (or `-z now`) change?</summary>
+Under lazy binding, shared-library function calls jump through a stub in the Procedure Linkage Table (`PLT`) that reads the target address from the Global Offset Table (`GOT`); on the first call, the `GOT` entry points back into `ld.so` to resolve the symbol on demand and patch the `GOT`. Setting `LD_BIND_NOW=1` (or linking with `-Wl,-z,now` for full `RELRO`) forces `ld.so` to resolve all symbols at startup before `main()` runs and marks the `GOT` read-only.
+</details>
+
+<details>
+<summary>6. What are the regions of a Linux process's virtual address space, and how does `malloc()` use `brk()` versus `mmap()`?</summary>
+From low to high addresses: Text (`r-x`), Data and BSS (`rw-`), the Heap (grows upward via `brk()`), the `mmap` region (shared libraries, mapped files, thread stacks, and large anonymous allocations), `vDSO`/`vvar`, the main Stack (grows downward, `ulimit -s` `8 MiB`), and Kernel space. `malloc()` satisfies small allocations from heap arenas (`brk()`) and uses anonymous `mmap()` for large allocations (default threshold ~`128 KiB`) so `munmap()` can return large blocks directly to the kernel.
+</details>
+
+<details>
+<summary>7. Why does `mapdemo.c` show `VIRT = 1 GiB` and `RSS ≈ 0` after `mmap()`, and why does touching every `4 KiB` page cause `262,144` minor page faults?</summary>
+`mmap()` reserves virtual address space in the process's page tables without allocating physical RAM frames (**demand paging**). As the loop writes `1` byte every `4,096` bytes across `1 GiB` (`1,073,741,824 / 4,096 = 262,144` pages), each first touch triggers a **minor page fault** in which the kernel allocates and maps a zeroed physical RAM page.
+</details>
+
+<details>
+<summary>8. Why does a Python data-loader worker's `RSS` often remain high even after `del` and `gc.collect()`, and how do you mitigate it?</summary>
+Both Python's object allocator and glibc `malloc` manage memory in large arenas; if even one small object remains live inside an arena, the allocator cannot return that arena's pages to the OS. Mitigate by recycling worker processes periodically (`maxtasksperchild` / `persistent_workers` tuning), preloading `libjemalloc.so.2` or `libtcmalloc.so.4`, or tuning `MALLOC_ARENA_MAX` / `MALLOC_TRIM_THRESHOLD_`.
+</details>
+
+<details>
+<summary>9. How does a system call transition from a C library wrapper to the kernel and back, and why are `clock_gettime` and `gettimeofday` invisible in `strace`?</summary>
+The C wrapper places the syscall number and arguments in CPU registers and executes `syscall` (`x86-64`) or `svc` (`ARM64`), trapping into ring 0; on failure, the kernel returns `-errno` and the wrapper sets thread-local `errno` and returns `-1`. Hot timekeeping calls (`clock_gettime`, `gettimeofday`, `getcpu`) execute directly in user space via the kernel-mapped **`vDSO`** page without a mode switch, so `ptrace`/`strace` never sees them.
+</details>
+
+<details>
+<summary>10. Distinguish a shared library's linker name, soname, and real name (`libfoo.so`, `libfoo.so.1`, `libfoo.so.1.2.3`).</summary>
+`libfoo.so` is the **linker name** (a symlink shipped in the `-dev`/`-devel` package used by `ld` when you compile with `-lfoo`). `libfoo.so.1` is the **soname** (encoding the major ABI version, recorded inside executables' `DT_NEEDED` headers and managed by `ldconfig`). `libfoo.so.1.2.3` is the **real name** of the actual shared object file on disk.
+</details>
+
+<details>
+<summary>11. What causes `version 'GLIBC_2.34' not found` and `version 'GLIBCXX_3.4.30' not found`, and how do you prevent each?</summary>
+`GLIBC_2.34 not found` means the binary was compiled on a distribution with glibc `>= 2.34` and is being run on an older OS; prevent it by building on the oldest supported OS (such as `manylinux` containers). `GLIBCXX_3.4.30 not found` usually happens when a conda environment or vendor directory in `LD_LIBRARY_PATH` supplies an older `libstdc++.so.6` that shadows the host's newer `libstdc++.so.6`.
+</details>
+
+<details>
+<summary>12. How do `RPATH` and `RUNPATH` differ with respect to `LD_LIBRARY_PATH`, and how do `$ORIGIN` and `patchelf` work?</summary>
+`DT_RPATH` is searched **before** `LD_LIBRARY_PATH`, whereas `DT_RUNPATH` is searched **after** `LD_LIBRARY_PATH` (both before `/etc/ld.so.cache` and `/lib`, `/usr/lib`). `$ORIGIN` expands to the directory containing the executable or `.so` itself (`-Wl,-rpath,'$ORIGIN/../lib'`), allowing relocatable bundles such as Python wheels; `patchelf --set-rpath` edits the path in an already-compiled ELF file.
+</details>
+
+<details>
+<summary>13. What do `LD_PRELOAD` and `LD_DEBUG=libs` do, and why should you never run `ldd` on an untrusted binary?</summary>
+`LD_PRELOAD=/path/lib.so` loads the specified library before all others so its symbols interpose on standard functions (used for `jemalloc`/`tcmalloc` or profiling, and ignored on setuid binaries). `LD_DEBUG=libs ./prog` prints every directory and file `ld.so` searches. Because some `ldd` implementations invoke the binary under the dynamic loader, running `ldd` on an untrusted ELF file can execute arbitrary code; use `readelf -d prog | grep NEEDED` or `objdump -p prog` instead.
+</details>
+
+<details>
+<summary>14. Why can `strace` slow a syscall-heavy process down by `10x` to `70x`, and what are the low-overhead alternatives?</summary>
+`strace` uses `ptrace`, which stops the target process and context-switches to `strace` twice per system call (entry and exit), even when calls are filtered with `-e`. For low-overhead production tracing, use in-kernel buffering and eBPF aggregation: `perf trace`, `perf stat -e 'syscalls:*'`, `syscount`, `opensnoop`, `execsnoop`, or `bpftrace`.
+</details>
+
+<details>
+<summary>15. What do `strace` flags `-f`, `-ff`, `-c`, `-T`, `-tt`, `-s 200`, and `-yy` do?</summary>
+`-f` traces child processes and threads; `-ff -o prefix` writes one file per PID/TID; `-c` prints a summary table of total time, calls, and errors per syscall; `-T` prints the duration spent inside each syscall; `-tt` prints microsecond wall-clock timestamps; `-s 200` increases the printed string length from 32 to 200 bytes; and `-yy` decodes file descriptors into paths and socket IP:port endpoints.
+</details>
+
+<details>
+<summary>16. Contrast mutexes, spin locks, and hybrid `futex` locks, and explain false sharing (`SP` Chapter 5).</summary>
+A spin lock burns CPU cycles polling in user space until acquired, whereas a sleeping mutex blocks the waiting thread off-CPU. Linux `pthread_mutex` uses a hybrid **futex** (*fast userspace mutex*): it attempts an atomic compare-and-swap in user space, spins briefly if the owner is running, and calls the `futex()` syscall to sleep only under contention. **False sharing** occurs when threads on different cores modify independent variables that reside in the same `64`-byte CPU cache line, causing cache-coherency invalidation traffic.
+</details>
+
+<details>
+<summary>17. How do you read a CPU flame graph (`perf record -F 99 -g`), and how does off-CPU analysis (`offcputime`) complement it?</summary>
+In a CPU flame graph, each box is a stack frame, the y-axis shows call depth (ancestors below, children above), and the x-axis width is proportional to the fraction of on-CPU samples (sorted alphabetically, not by time); wide plateaus at the top edge show where CPU cycles are spent directly. Off-CPU analysis traces scheduler context switches to measure where threads spend time blocked on I/O, locks (`futex`), or sleeps.
+</details>
+
+<details>
+<summary>18. List the nine thread states in Gregg's thread-state analysis model and how you apply the USE method to a thread pool and file descriptors.</summary>
+The nine thread states are: User on-CPU, Kernel on-CPU, Runnable (waiting on run queue), Anonymous Paging/Swapping, Disk I/O, Network I/O, Sleeping, Lock wait, and Idle. For a **thread pool**: Utilization = busy threads / pool size, Saturation = request queue length, Errors = rejected tasks. For **file descriptors**: Utilization = open FDs / `nofile` limit, Saturation = threads waiting for an FD, Errors = `EMFILE` ("Too many open files").
+</details>
+
+<details>
+<summary>19. What causes `[unknown]` frames and truncated call stacks in `perf` profiles, and how do you fix both?</summary>
+`[unknown]` frames occur when symbol tables are stripped (fix by installing `-dbgsym`/`-debuginfo` packages or compiling with `-g`) or when code is JIT-compiled at runtime (fix with `/tmp/perf-<PID>.map`, `perf-map-agent`, or Python 3.12 `-X perf`). Truncated stacks occur when compilers omit the frame-pointer register (`-fomit-frame-pointer`); fix by compiling with `-fno-omit-frame-pointer` (or `-XX:+PreserveFramePointer` in Java, or `perf record --call-graph dwarf`).
+</details>
+
+<details>
+<summary>20. Distinguish `libcuda.so.1` from `libcudart.so.12`, and explain what `CUDA error: no kernel image is available for execution on the device` means.</summary>
+`libcuda.so.1` is the user-space half of the **NVIDIA driver** (installed on the host and injected into containers alongside `/dev/nvidia*`). `libcudart.so.12` (along with `libcublas`, `libcudnn`, `libnccl`) is the **CUDA runtime/toolkit** library bundled inside the container image or Python wheel. `no kernel image is available for execution on the device` means the binary's fatbin lacks compiled `cubin` or `PTX` code for your GPU's compute capability (`sm_80`, `sm_90`); rebuild with the appropriate `TORCH_CUDA_ARCH_LIST` or `-gencode` flags.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 8: Process and Resource Utilization** (section 8.3 tracing system calls with `strace` and library calls with `ltrace`) and **Chapter 15: Development Tools** (section 15.1.3 shared libraries: listing dependencies with `ldd`, how `ld.so` finds shared libraries via `DT_RPATH`/`LD_LIBRARY_PATH`/`DT_RUNPATH`/`/etc/ld.so.cache`, linking with `-Wl,-rpath`, and shared library pitfalls; cross-referenced with Chapter 16).
+  - `systems-performance-2nd-edition` — Brendan Gregg, *Systems Performance*, 2nd ed., **Chapter 5: Applications** (sections 5.1–5.7: application objectives latency/throughput/price-performance, optimizing the common case, observability, big-O complexity; I/O size, caching, buffering, polling vs `epoll`, concurrency and parallelism, mutexes/spinlocks/futex/RCU/false sharing on 64-byte cache lines, non-blocking I/O and `io_uring`, processor binding, performance mantras; compiled, interpreted, and VM languages and garbage collection; CPU profiling at 49/99 Hz and flame graphs, off-CPU analysis, syscall analysis, USE method for software resources, 9-state thread-state analysis, lock analysis, static performance tuning, distributed tracing; `perf`, `profile`, `offcputime`, `strace` ~70x `dd` slowdown, `execsnoop`, `syscount`, `bpftrace`; and fixing missing symbols `/tmp/perf-PID.map` and omitted frame pointers `-fno-omit-frame-pointer`).
+  - `nvidia-devops/volume-01/01-linux-compute-memory-masterclass.md` — migrated the `mapdemo.c` `1 GiB` `mmap` demand-paging example (`262,144` minor page faults), the Python/glibc arena retention explanation, and the `strace` production overhead warning (cross-referenced with Chapters 1.7, 1.8, 1.9, 1.10, 1.15, 1.17, 1.18, 1.22, 1.23, 1.24, 1.25, 1.28, and 2.23, plus items 21–30 in the original study list).
+- **Run here:** `python3 code/part01/program_execution_elf_lab.py` (21 passed, 0 failed).
+- **Explicitly labelled inferences:** The PyTorch `_C.cpython-*.so` / `libtorch_cuda.so` `RUNPATH` `$ORIGIN` packaging, `nvidia-container-runtime` CDI / `--gpus` injection of `libcuda.so.1`, and `TORCH_CUDA_ARCH_LIST` fatbin diagnostics connect the ELF/loader model to Part 5, Part 7, and Part 10 GPU workloads (and original study items 22, 23, 24, 25, 26, 27, 28, and 29).
+- **Not verified on live hardware:** All interactive VM and GPU commands (`readelf`, `objdump`, `nm`, `ldd`, `strace`, `ltrace`, `patchelf`, `perf`, `./mapdemo`) are marked (untested here) and should be executed on a disposable Linux VM.
