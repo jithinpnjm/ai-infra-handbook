@@ -14,3 +14,4 @@
 | 1.10 Devices, udev, sysfs and procfs | `devices_udev_sysfs.py` | `devices_udev_sysfs_lab.py` | 23 | `python3 code/part01/devices_udev_sysfs_lab.py` |
 | 1.11 How a program runs: syscalls, ELF, strace, ldd | `program_execution_elf.py` | `program_execution_elf_lab.py` | 21 | `python3 code/part01/program_execution_elf_lab.py` |
 | 1.12 Disks, partitions and filesystems | `disks_filesystems.py` | `disks_filesystems_lab.py` | 21 | `python3 code/part01/disks_filesystems_lab.py` |
+| 1.13 LVM, RAID and NVMe | `lvm_raid_nvme.py` | `lvm_raid_nvme_lab.py` | 21 | `python3 code/part01/lvm_raid_nvme_lab.py` |
