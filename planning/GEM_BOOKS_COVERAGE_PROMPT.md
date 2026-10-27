@@ -64,8 +64,24 @@ C. Add the missing content to the handbook chapter named in the triage file:
    - Put it under an existing heading when it fits, otherwise a new "### " subsection in the right chapter.
    - If a book chapter needs more than about 1,500 words and fits no existing chapter, do not write a new chapter. Add a row to planning/gem_books/PROPOSED_NEW_CHAPTERS.md (book, chapter, why, suggested chapter title, suggested position) and move on. I decide.
    - Keep the handbook chapter's length reasonable. Do not delete or shorten existing content.
-D. Record it in planning/gem_books/<book>_ledger.md: one row per book chapter with: handbook chapter and section, what was added (one line), and the date. Update the triage row to FULL.
+D. Record it in planning/gem_books/<book>_ledger.md: one row per book chapter with: handbook chapter and section, what was added (one line), the book passage length versus the words you added, the book_passages.py result, and the date. Update the triage row to FULL only when the acceptance check is clean.
 E. Cite the book in that handbook chapter's "Sources and review notes" by its folder name and chapter title, and say what you read in full.
+
+
+KEEP THE BOOK'S VOICE AND EXPLANATION (the most important rule of Phase 2)
+The reader wants what the gem book actually teaches: the author's reasoning, examples, scripts, stories and the "why" behind each choice, in the same natural voice. A summary that keeps the topic names and drops the explanation is a failure, even if every heading is "covered". Rules:
+1. Carry over the explanation, not only the conclusion. If the book spends three paragraphs on why something is done a certain way, the handbook spends about as many words on it. For explanatory passages aim for at least 70 percent of the book passage's length, in your own words, in the book's order and tone.
+2. Keep the author's examples, analogies, history and small stories (for example, why a tool has the name it has), every script and command sequence the author builds up step by step (with the author's reason for each step), and the warnings and "do not forget" remarks.
+3. Never replace a passage with a table. Write the passage first. Add a table afterwards only if comparison helps. A table row may not be the only place a book idea appears.
+4. Keep the author's trade-off reasoning. "Pros and cons" lists become sentences that say why each pro or con happens.
+5. Paraphrase closely; do not quote more than one short sentence (under 15 words) per source and do not copy paragraphs. Keep the author's numbers exactly. Mark the book's examples as examples.
+6. Do not add facts that are not in the book chapter. Do not remove facts that are.
+
+Worked example of what went wrong (supercomputers-for-linux-sysadmins, chapter 11, "Users - Accounting Management"). The book spends about 1,900 words on cluster accounts. It explains the classic approach with its pros and cons, then the design choice that makes it safe: copy the files from the destination node, not from the master, so a replaced or rebooted node updates itself at start-up; it gives the /usr/sbin/master-sync script and explains each line; it warns that mass user changes should trigger one manual sync, run in pools or at 0.1 to 0.5 second intervals, or with pdsh or clush, and gives the loop script with its timeout trap; it tells the history of NIS (Sun, 1985, called Yellow Pages until the trademark owner sued, hence the yp prefix), says NIS and NIS+ are not compatible, explains why NIS+ struggles beyond 30 to 40 clients, lists the three server daemons (ypserv, yppasswdd, ypxfrd), the firewall services to open, the NIS domain and what it is not, the Makefile and securenets file, and the client steps. The handbook version was a three-row table and two sentences, about 250 words. That is the failure to avoid. The correct version tells it as the book does, step by step, with the scripts and the reasons.
+
+ACCEPTANCE CHECK FOR EVERY BOOK CHAPTER YOU ADD OR EXTEND
+Run: python3 tools/book_passages.py <book> "<chapter number or title prefix>" <handbook chapter labels>
+It lists the book paragraphs whose distinctive terms are not in the handbook chapter(s). For each listed paragraph either add its content (rules above) or write one line in the book ledger saying why it is skipped (author biography, repeated material, off-topic). Paste the final command output into the ledger. Claude will run the same command and read a sample of paragraphs side by side before accepting a book.
 
 RULES (same as the chapter workflow, they are checked by tools/validate_chapter.py)
 1. Every number, command, flag, path and table value must be copied exactly from the book chapter you read. If the book gives an example, say "in the book's example" and do not present it as a specification.
