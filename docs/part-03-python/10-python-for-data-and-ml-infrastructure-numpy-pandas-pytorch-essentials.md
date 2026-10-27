@@ -111,6 +111,13 @@ if torch.cuda.is_available():
     torch.cuda.synchronize()                 # wait for the GPU (needed for correct timing)
 ```
 
+```mermaid
+flowchart LR
+    Storage["Storage: Parquet / WebDataset / np.memmap"] -->|"DataLoader num_workers=8<br/>(OMP_NUM_THREADS=1)"| HostRAM["Host DRAM: Pinned Memory<br/>(pin_memory=True, /dev/shm)"]
+    HostRAM -->|"PCIe / NVLink-C2C DMA<br/>to(dev, non_blocking=True)"| HBM["GPU HBM: Weights (2B) + Grads (2B)<br/>+ FP32 Adam (12B) = 16B/param + Activations"]
+    HBM -->|"Async CUDA Kernels<br/>(torch.autocast bf16, torch.compile)"| Step["Forward -> Backward -> clip_grad_norm_ -> opt.step()"]
+```
+
 Key facts for infrastructure:
 
 - **Asynchronous execution**: CUDA kernel launches return immediately; the CPU runs ahead until something forces a **synchronisation** (`.item()`, `.cpu()`, `print(tensor)`, `torch.cuda.synchronize()`, boolean checks on GPU tensors). Timing without synchronising measures only launch time. Accidental syncs inside the training loop (logging `loss.item()` every step) stall the pipeline.
@@ -181,7 +188,7 @@ loader = torch.utils.data.DataLoader(
     drop_last=True)
 ```
 
-GPU starvation shows as low `nvidia-smi` utilisation with CPU workers at 100% or I/O wait high. Diagnose: time `next(iter(loader))` versus the model step; check CPU per core (`top`, `mpstat`), I/O (`iostat`, network file system throughput), and decoding cost (JPEG decode, tokenisation). Fixes: more workers (up to cores available, remembering BLAS thread oversubscription), faster formats (sharded Parquet/WebDataset, pre-tokenised memory-mapped arrays), caching/prefetching to local NVMe, GPU decoding (DALI, nvJPEG), larger sequential reads, avoiding Python-heavy per-sample transforms, and keeping dataset objects lightweight (large Python lists or dicts in the Dataset are copied-on-access in forked workers because reference counts touch pages: use NumPy arrays or Arrow tables). Seed workers explicitly for reproducibility (`worker_init_fn`, `generator`). In distributed training, `DistributedSampler` shards data across ranks and `set_epoch(epoch)` must be called each epoch to reshuffle.
+GPU starvation shows as low `nvidia-smi` utilisation with CPU workers at 100% or I/O wait high. Diagnose: time `next(iter(loader))` versus the model step; check CPU per core (`top`, `mpstat`), I/O (`iostat`, network file system throughput), and decoding cost (JPEG decode, tokenisation). Fixes: more workers (up to cores available, remembering BLAS thread oversubscription), faster formats (sharded Parquet/WebDataset, pre-tokenised memory-mapped arrays), caching/prefetching to local NVMe, GPU decoding (DALI, nvJPEG), larger sequential reads, avoiding Python-heavy per-sample transforms, and keeping dataset objects lightweight (large Python lists or dicts in the Dataset are copied-on-access in forked workers because reference counts touch pages: use NumPy arrays or Arrow tables). Seed workers explicitly for reproducibility (`worker_init_fn`, `generator`). In distributed training, `DistributedSampler` shards data across ranks and `sampler.set_epoch(epoch)` (`set_epoch(epoch)`) must be called each epoch to reshuffle.
 
 ### 3.6 Checkpointing and saving
 
@@ -262,7 +269,15 @@ Determinism costs speed; use it for debugging and regression tests, not necessar
 | Slow first step, then fast | lazy init, cudnn benchmark, `torch.compile` warm-up | warm up before timing; synchronise before measuring |
 | Pandas job killed | OOM from copies and object dtype | dtypes, chunking, Parquet column pruning, Polars/DuckDB |
 
-## 9. Lab (untested)
+## 9. Lab
+
+First, run the self-checking Python lab (`code/part03/python_data_ml_infra_lab.py`) locally. It verifies NumPy `ndarray` C-contiguous vs F-contiguous byte strides (`compute_ndarray_strides`) and right-aligned broadcasting (`broadcast_shapes`), row-major CSV vs columnar Parquet read volume (`compare_row_vs_columnar_io`, `DMLS` Ch. 3), mixed-precision AdamW static memory accounting (`16 B/param` -> `112 GB` for a 7B model, `AIE` Ch. 7), and `DataLoader` worker starvation vs GPU step saturation (`diagnose_dataloader_vs_gpu_bottleneck`).
+
+```bash
+python3 code/part03/python_data_ml_infra_lab.py
+```
+
+Next, on any machine with Python 3.11+ (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **NumPy model**: create arrays and print `shape/strides/dtype`; demonstrate a view mutation bug; compare a Python loop, a list comprehension and a vectorised version of pairwise distances (time with `%timeit`/`timeit`); show quadratic `np.concatenate` in a loop versus preallocation; map a large `.npy` with `mmap_mode` and read it from two processes.
 2. **Thread oversubscription**: time a matrix multiply with `OMP_NUM_THREADS` of 1, 4 and all cores; spawn 8 worker processes each using all BLAS threads and observe the slowdown; fix with `threadpoolctl`.
@@ -277,8 +292,6 @@ Determinism costs speed; use it for debugging and regression tests, not necessar
 11. **Packaging**: build a CUDA-matched virtual environment and a container from an NGC image; verify `torch.cuda.is_available()`, driver/runtime versions, and `python -c "import torch; print(torch.__config__.show())"`.
 12. **Clean up.**
 
-Mark tested only after execution.
-
 ## 10. Interview angles
 
 - "Training is slow and GPU utilisation is 40%. Walk me through diagnosis." (loader vs compute vs sync; profiler; storage; threads.)
@@ -291,50 +304,167 @@ Mark tested only after execution.
 - "What does `num_workers`, `pin_memory`, and `persistent_workers` do?"
 - "Why can `/dev/shm` be a problem for DataLoader in Kubernetes?"
 
-## 11. Checkpoint questions (35)
+## Exercises
 
-1. What three things define an ndarray's layout? **A:** dtype, shape, strides.
-2. Is a transpose a copy? **A:** No, a view with swapped strides.
-3. How much memory is a billion float32 values? **A:** About 4 GB.
-4. What is broadcasting? **A:** Virtually stretching size-1 axes to match shapes.
-5. Why vectorise? **A:** Loops run in C/SIMD/BLAS, far faster.
-6. What controls BLAS threads? **A:** `OMP_NUM_THREADS`/`OPENBLAS_NUM_THREADS`/`MKL_NUM_THREADS`.
-7. Why memory-map large arrays? **A:** Share via page cache without loading fully.
-8. How to cut pandas memory? **A:** Narrow dtypes, categoricals, usecols, chunks, Arrow dtypes.
-9. Why avoid `iterrows`? **A:** Slow Python-level loop.
-10. What does Parquet give over CSV? **A:** Columnar compression, column pruning, predicate pushdown.
-11. What is Arrow? **A:** In-memory columnar format enabling zero-copy exchange.
-12. When Polars/DuckDB over pandas? **A:** Larger data, multi-core, lazy/SQL workloads.
-13. What is cuDF? **A:** GPU dataframe library in RAPIDS.
-14. What attributes does a tensor add to an array? **A:** Device and autograd metadata.
-15. Why is CUDA asynchronous important for timing? **A:** Must synchronise to measure real compute.
-16. Name operations that synchronise. **A:** `.item()`, `.cpu()`, printing, `synchronize()`.
-17. Why pinned memory? **A:** Faster, async host-to-device copies.
-18. bf16 versus fp16? **A:** bf16 has fp32 range, no loss scaling needed.
-19. What does `zero_grad(set_to_none=True)` do? **A:** Frees gradient tensors instead of zero-filling.
-20. What does `no_grad` / `inference_mode` do? **A:** Disables graph building, saving memory/time.
-21. Why does appending `loss` leak memory? **A:** Keeps the autograd graph alive.
-22. Per-parameter training memory with Adam mixed precision? **A:** About 16 bytes.
-23. What is activation checkpointing? **A:** Recompute activations in backward to save memory.
-24. What is `memory_reserved` vs `memory_allocated`? **A:** Cached by allocator vs live tensors.
-25. Why is `empty_cache()` rarely a fix? **A:** Doesn't free live memory; fragmentation needs other fixes.
-26. What do DataLoader workers do? **A:** Parallel processes loading and preprocessing batches.
-27. Symptom of data starvation? **A:** Low GPU utilisation, busy CPU or I/O.
-28. Why can big Python lists in a Dataset hurt workers? **A:** Copy-on-access from reference counting in forked processes.
-29. Why call `sampler.set_epoch`? **A:** Reshuffle differently each epoch in distributed training.
-30. Safe checkpoint write pattern? **A:** Temp file then atomic rename.
-31. Why distrust `torch.load` of unknown files? **A:** Pickle can execute code; use `weights_only` or safetensors.
-32. What launches multi-GPU jobs? **A:** `torchrun`.
-33. DDP vs FSDP? **A:** Replicate model with gradient all-reduce vs shard params/grads/optimiser.
-34. What does MFU mean? **A:** Model FLOPs utilisation versus peak hardware FLOPs.
-35. Why enlarge `/dev/shm` in containers? **A:** DataLoader uses shared memory for batches; small shm kills workers.
+1. **NumPy Memory Layout (`dtype`, `shape`, `strides`), Views vs. Copies, Broadcasting, and BLAS Thread Oversubscription:** Using `compute_ndarray_strides()` and `broadcast_shapes()` in `code/part03/python_data_ml_infra.py`, explain: (a) why `a = np.arange(12, dtype=np.float32).reshape(3, 4)` has strides `(16, 4)` while `b = a.T` is a zero-copy view with strides `(4, 16)` and `C_CONTIGUOUS == False`; (b) how right-aligned broadcasting stretches `(1000, 1) + (1, 64)` to `(1000, 64)` and why adding `(N,)` to `(N, 1)` silently builds an `(N, N)` matrix; and (c) why `DataLoader(num_workers=8)` with default `OMP_NUM_THREADS` causes severe CPU oversubscription.
+2. **Tabular Data at Scale: `pandas` Memory Diet, Row-Major CSV vs. Columnar Parquet/Arrow, and Data Leakage (`DMLS` Chapter 3):** Using `compare_row_vs_columnar_io()`, explain: (a) how narrow dtypes (`int8`, `float32`, `category`, `string[pyarrow]`) and `usecols` cut DataFrame RAM by 2x to 5x; (b) why reading 3 of 50 columns across 1M rows scans 400 MB in row-major CSV versus 6 MB in 4x-compressed columnar Parquet; and (c) how look-ahead time-travel leakage occurs when resampling or normalising time-series features before splitting by time.
+3. **PyTorch Tensors, Asynchronous CUDA Execution, Pinned Memory (`pin_memory=True`), and Autograd Leaks:** (a) Explain why timing `y = xg @ xg` on a CUDA tensor without `torch.cuda.synchronize()` only measures host kernel-launch overhead, and why calling `loss.item()` on every step stalls the GPU pipeline; (b) explain why `pin_memory=True` + `to(dev, non_blocking=True)` is required for overlapping host-to-device DMA transfers with compute, and why appending `loss` (instead of `loss.item()` or `loss.detach()`) to a history list causes an out-of-memory crash.
+4. **Training & Inference Memory Accounting (`16 B/param`), Caching Allocator (`allocated` vs. `reserved`), and AMP (`bf16` vs. `fp16`, `AIE` Ch. 2, 7, 9):** Using `estimate_adam_mixed_precision_memory_gb()`, calculate the exact weight, gradient, and FP32 Adam optimizer state memory for a 7B parameter model (`14 + 14 + 84 = 112 GB`), explain why `nvidia-smi` (`memory_reserved()`) stays high after freeing tensors (`PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`), and explain why `bfloat16` does not need `GradScaler` whereas `float16` does.
+5. **DataLoader Starvation Diagnosis, `/dev/shm` Bus Errors, and Fork Copy-on-Access (`diagnose_dataloader_vs_gpu_bottleneck`):** Using `diagnose_dataloader_vs_gpu_bottleneck()`, compute the effective GPU utilization when per-sample CPU decoding takes 20 ms (`batch_size=64`, `gpu_compute_ms=100`) at `num_workers=0` (`7.8%`) versus `num_workers=16` (`100%`), explain why Docker/Kubernetes containers default to a 64 MB `/dev/shm` that kills DataLoader workers with `Bus error`, and explain why storing dataset metadata in a huge Python `list` triggers copy-on-write page faults across forked workers.
+6. **Atomic Checkpointing, `weights_only=True` vs. `safetensors`, Reproducibility (`seed_everything`), and Profiling (`torch.profiler`):** (a) Explain why checkpoints must be written to a temp file and atomically renamed (`os.replace`) and why `torch.load(..., weights_only=True)` or `safetensors` (`mmap`) is mandatory for untrusted weights; (b) list the settings required for deterministic PyTorch runs (`seed_everything`, `use_deterministic_algorithms`, `cudnn.benchmark = False`, `CUBLAS_WORKSPACE_CONFIG=:4096:8`) and explain how `torch.profiler` (`schedule(wait=1, warmup=1, active=3)`) and `nsys` reveal data-loader gaps and stragglers.
 
-## 12. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. What three attributes define a NumPy `ndarray`'s memory layout, and why is `b = a.T` a view rather than a copy?</summary>
 
-- Chip Huyen, *AI Engineering* (compute and memory arithmetic, inference and training bottlenecks, evaluation and monitoring concerns) and *Designing Machine Learning Systems* (data formats, feature leakage, training data pipelines, reproducibility, deployment and monitoring).
-- NumPy, pandas, Apache Arrow/Parquet, Polars, DuckDB and PyTorch documentation (autograd, DataLoader, AMP, profiler, CUDA semantics, reproducibility notes, distributed overview) and NVIDIA Nsight and NGC documentation.
-- Examples and memory arithmetic are the author's constructions; the 16 bytes per parameter figure is a common rule of thumb for Adam with mixed precision and varies by implementation.
+A NumPy `ndarray` is defined by: (1) **`dtype`** (element type and byte size, e.g., `float32` = 4 bytes vs default `float64` = 8 bytes), (2) **`shape`** (tuple of dimension sizes, e.g., `(3, 4)`), and (3) **`strides`** (tuple of byte steps to advance by 1 element along each axis, e.g., `(16, 4)` for C-contiguous row-major `(3, 4)` `float32`). Transposing (`b = a.T`) simply swaps `shape` to `(4, 3)` and `strides` to `(4, 16)` while pointing to the **exact same underlying memory buffer** (`np.shares_memory(a, b)` is `True`, `b.flags['C_CONTIGUOUS']` is `False`), so mutating `a[0, 0] = 99` also changes `b[0, 0]`.
+</details>
 
-**Flagged for verification before publishing:** PyTorch API names and defaults across versions (`weights_only` default, `GradScaler` namespace, `torch.compile` behaviour, allocator config options), pandas copy-on-write and Arrow dtype status, CUDA index URLs, cuDNN/cuBLAS determinism settings, memory rules of thumb, and every code listing; all labs are **untested**.
+<details>
+<summary>2. How does NumPy/PyTorch broadcasting work, and what is the classic `(N,)` vs. `(N, 1)` broadcasting trap?</summary>
+
+Broadcasting aligns array shapes **from the rightmost (trailing) dimension to the left**: two dimensions are compatible if they are equal or one of them is `1` (which is virtually stretched without copying memory). If you add a 1-D vector of shape `(N,)` to a column vector of shape `(N, 1)`, right-alignment pads `(N,)` to `(1, N)` and broadcasts `(N, 1) + (1, N)` into an **`(N, N)` matrix** instead of an `(N, 1)` element-wise sum—silently multiplying memory by $N$ and corrupting losses. Always assert shapes or explicitly reshape (`x[:, None]`).
+</details>
+
+<details>
+<summary>3. Why does spawning 8 `DataLoader` workers on a node using NumPy/OpenBLAS/MKL often slow training down, and how do you fix it?</summary>
+
+NumPy, SciPy, and OpenCV link against multithreaded BLAS/OpenMP libraries (`OpenBLAS`, `MKL`, `GOMP`) that spawn up to `os.cpu_count()` threads per process by default. If 8 GPU processes each spawn 8 `DataLoader` workers (64 processes) and each worker spawns 64 BLAS threads, 4,096 threads thrash on 64 CPU cores. Fix it by setting **`OMP_NUM_THREADS=1`**, **`MKL_NUM_THREADS=1`**, and **`OPENBLAS_NUM_THREADS=1`** (or using `threadpoolctl`) inside workers.
+</details>
+
+<details>
+<summary>4. How do you reduce a `pandas` DataFrame's RAM footprint by 2x to 5x, and when should you switch to Polars, DuckDB, or Dask?</summary>
+
+- **Cut pandas RAM:** Pass explicit `usecols=[...]` and narrow `dtype=` (`int8`/`int16`/`int32`, `float32`, **`category`** for low-cardinality strings, or Pandas 2 **`dtype_backend="pyarrow"`** `string[pyarrow]`) to `pd.read_csv` / `read_parquet`, and never iterate rows with `df.iterrows()`.
+- **When to switch:** Pandas is single-threaded and requires 2x to 5x the dataset size in RAM. Use **Polars** (multithreaded, lazy query optimizer, Arrow-native) or **DuckDB** (in-process vectorized SQL with out-of-core streaming over Parquet) on a single machine up to hundreds of GB; use **Ray Data**, **Dask**, or **Spark** across multi-node clusters.
+</details>
+
+<details>
+<summary>5. Contrast Row-Major formats (CSV, JSON) with Columnar formats (Apache Parquet, Apache Arrow) and Sequential Shard formats (WebDataset, MDS) (`DMLS` Chapter 3).</summary>
+
+- **Row-major (CSV/JSON):** Stores all columns of row 1 contiguously, then row 2; reading 3 features out of 50 forces the disk to read and parse 100% of the file.
+- **Columnar on disk (Parquet) and in memory (Apache Arrow):** Stores each column contiguously in compressed row groups with min/max statistics, enabling **column projection** (reading only the 3 requested columns) and **predicate pushdown** (skipping row groups that don't match a `WHERE` filter), while Arrow allows zero-copy memory sharing across pandas, Polars, DuckDB, PyArrow, and RAPIDS `cuDF`.
+- **Sequential shards (WebDataset `.tar`, MosaicML `MDS`, `np.memmap`):** Pack thousands of small images/token sequences into 128 MB–1 GB sequential shards so Lustre/NVMe/S3 streams large contiguous blocks instead of suffering small-file metadata IOPS storms.
+</details>
+
+<details>
+<summary>6. What is time-travel (look-ahead) data leakage in feature engineering, and how do you prevent it (`DMLS` Chapter 3)?</summary>
+
+**Look-ahead leakage** occurs when information from the future leaks into training features for the past—for example, splitting a time-series log dataset randomly instead of by a timestamp cutoff (`train < T_split <= test`), computing global mean/std normalization across the entire dataset before splitting, or using centered rolling windows. It produces artificially high offline validation accuracy and fails in production. Always split by time **first** and fit scalers/aggregations strictly on historical windows.
+</details>
+
+<details>
+<summary>7. Why is CUDA kernel execution asynchronous, which PyTorch operations force a host-device synchronization, and why does `loss.item()` inside a loop hurt throughput?</summary>
+
+When Python calls `y = xg @ xg`, the CPU enqueues the kernel onto the GPU's CUDA stream and **returns immediately** so Python can prepare the next op while the GPU executes. Operations that copy data back to host RAM—**`.item()`**, **`.cpu()`**, **`.numpy()`**, **`print(cuda_tensor)`**, **`if cuda_tensor > 0:`**, and **`torch.cuda.synchronize()`**—block the CPU until all queued GPU kernels finish. Calling `loss.item()` on every single step drains the CUDA launch queue, preventing CPU-GPU overlap; log every `N` steps (`if step % 100 == 0:`) and always call `torch.cuda.synchronize()` before starting/stopping benchmark timers.
+</details>
+
+<details>
+<summary>8. How do Pinned (Page-Locked) Memory (`pin_memory=True`) and `non_blocking=True` accelerate Host-to-Device (`H2D`) transfers?</summary>
+
+Normal OS user-space memory is **pageable** (the kernel can swap or move physical pages at any time). The GPU's DMA engine cannot read pageable memory directly—so copying a pageable tensor to the GPU forces the CUDA driver to first copy the tensor on the CPU into a temporary staging buffer in page-locked memory and then DMA it over PCIe synchronously. Setting **`pin_memory=True`** on `DataLoader` allocates batches directly in page-locked host RAM, allowing **`xb.to(dev, non_blocking=True)`** to run asynchronously via DMA while the CPU and GPU compute cores continue working.
+</details>
+
+<details>
+<summary>9. Why does `losses.append(loss)` inside a training loop cause a `CUDA out of memory` crash after a few dozen steps, and why should you use `opt.zero_grad(set_to_none=True)`?</summary>
+
+- **Retained autograd graph:** `loss` is a `Tensor` with `requires_grad=True` whose `.grad_fn` points back to the entire forward-pass computational graph and all intermediate activation tensors. Appending `loss` to a Python list keeps a live reference to the graph from every step, preventing PyTorch from freeing activations after `loss.backward()`. Always append **`loss.item()`** (a plain Python `float`) or `loss.detach()`.
+- **`opt.zero_grad(set_to_none=True)`:** Resets each parameter's `.grad` reference to `None` (freeing the memory block and skipping a `memset` kernel) instead of writing zeros into every gradient tensor.
+</details>
+
+<details>
+<summary>10. Walk through the `16 bytes per parameter` mixed-precision AdamW memory rule of thumb for a 7B model (`AIE` Chapter 7).</summary>
+
+In mixed-precision (`bf16` or `fp16`) training with Adam/AdamW, each parameter $\Psi$ requires:
+- **Model weights (`bf16`):** `2 bytes`
+- **Gradients (`bf16`):** `2 bytes` (or `4 bytes` if accumulated in `fp32`)
+- **Optimizer states (`fp32`):** `4 bytes` (`fp32` master weight copy) + `4 bytes` (first moment $m$, momentum) + `4 bytes` (second moment $v$, variance) = **`12 bytes`**
+Total static state = **`16 bytes per parameter`** (`18 bytes` with `fp32` gradients). For a **7-billion-parameter model**, static state alone is $7 \times 10^9 \times 16\text{ B} = \mathbf{112\text{ GB}}$—exceeding a single 80 GB H100/A100 before adding a single byte of forward activations.
+</details>
+
+<details>
+<summary>11. What is the difference between `torch.cuda.memory_allocated()` and `torch.cuda.memory_reserved()`, and how do you mitigate allocator fragmentation?</summary>
+
+PyTorch uses a **caching memory allocator** over CUDA `cudaMalloc` so tensor allocations in the training loop do not hit slow driver calls on every step:
+- **`torch.cuda.memory_allocated()`**: bytes currently occupied by **live PyTorch tensors**.
+- **`torch.cuda.memory_reserved()`**: total GPU memory held by PyTorch's caching pool (what `nvidia-smi` reports), which includes freed blocks cached for future reuse.
+When variable sequence lengths cause large reserved blocks to fragment into non-contiguous chunks, PyTorch can raise `CUDA out of memory` even when `reserved - allocated` shows gigabytes "free". Mitigate fragmentation by padding inputs to fixed bucket lengths and setting **`PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`**.
+</details>
+
+<details>
+<summary>12. Compare `bfloat16` (`bf16`) and `float16` (`fp16`) in `torch.autocast`, and explain why `bf16` does not need `GradScaler`.</summary>
+
+- **`float16` (IEEE 754 half precision):** 1 sign bit, **5 exponent bits**, 10 mantissa bits (dynamic range $\approx 6 \times 10^{-8}$ to $65,504$). Small gradients easily underflow to zero, requiring **`torch.amp.GradScaler`** to scale up the loss before `backward()` and unscale gradients before `opt.step()`.
+- **`bfloat16` (Brain Floating Point, Ampere+):** 1 sign bit, **8 exponent bits** (the **exact same exponent range as `float32`**), 7 mantissa bits. Because `bf16` has `fp32`'s dynamic range, gradients do not underflow and **`GradScaler` is unnecessary**.
+</details>
+
+<details>
+<summary>13. How do Gradient Accumulation and Activation Checkpointing (`torch.utils.checkpoint`) let you train with large effective batch sizes on limited VRAM?</summary>
+
+- **Gradient accumulation:** Splits a large desired batch (`64`) into `accum` smaller micro-batches (`8 x 8`), dividing each micro-batch loss by `accum`, calling `loss.backward()` on each micro-batch (which sums gradients into `.grad` while freeing that micro-batch's activations), and calling `opt.step(); opt.zero_grad()` only every `accum` steps—cutting peak activation memory by `accum`x.
+- **Activation checkpointing (`torch.utils.checkpoint`):** Discards intermediate layer activations during the forward pass (keeping only layer boundary inputs) and recomputes them on the fly during the backward pass, trading ~30% extra forward compute for a 60%–80% reduction in activation memory.
+</details>
+
+<details>
+<summary>14. Why do `DataLoader` workers crash with `Bus error (core dumped)` inside Docker and Kubernetes containers, and how do you fix it?</summary>
+
+PyTorch `DataLoader` workers (`num_workers > 0`) pass prefetched tensor batches back to the main training process using POSIX shared memory (**`/dev/shm`**). Docker and Kubernetes default `/dev/shm` to just **64 MB**—as soon as prefetched batches exceed 64 MB, `mmap` on `/dev/shm` fails with **`SIGBUS` (`Bus error`)**. Fix it by running Docker with **`--shm-size=16g`** (or `--ipc=host`) and mounting a memory-backed `emptyDir` (`emptyDir: { medium: Memory, sizeLimit: 32Gi }`) at `/dev/shm` in Kubernetes Pod specs.
+</details>
+
+<details>
+<summary>15. Why does storing a 10-million-item Python `list` of strings/dicts inside a PyTorch `Dataset.__init__` cause host RAM to explode across `num_workers` under `fork`?</summary>
+
+Under Linux's default `fork` start method, worker processes initially share the parent's memory pages via **copy-on-write (CoW)**. However, every time a worker reads an element from a Python `list` or `dict`, CPython increments the element's **reference count (`ob_refcnt`)** inside the object header—writing to the memory page and triggering a kernel CoW page fault that duplicates the entire list across every worker (`8 workers x 10 GB = 80 GB RAM`). Store dataset indexes in flat **NumPy arrays, Arrow tables, or `np.memmap`** whose element reads do not mutate Python reference counts.
+</details>
+
+<details>
+<summary>16. Why is `torch.load("model.pt")` a security vulnerability on untrusted checkpoints, and how do `weights_only=True` and `safetensors` solve it?</summary>
+
+Standard `torch.save` / `torch.load` serializes objects using Python's **`pickle`**, which can execute arbitrary shell commands (`os.system`) embedded in `__reduce__` when loading an untrusted file. Always pass **`weights_only=True`** to `torch.load` (which restricts unpickling to primitive tensor storage), or store weights in Hugging Face **`safetensors`** format—which has a simple JSON header + raw contiguous tensor bytes, is 100% immune to code execution, and loads directly via zero-copy **`mmap`**.
+</details>
+
+<details>
+<summary>17. How do you interpret a PyTorch Profiler trace (`schedule(wait=1, warmup=1, active=3)`) when diagnosing low GPU utilization?</summary>
+
+1. Use `schedule(wait=1, warmup=1, active=3)` so step 0 initialization and `torch.compile` / cuDNN warmup are excluded from the trace.
+2. In TensorBoard / Perfetto (`ui.perfetto.dev`), inspect the **GPU Kernel stream**:
+   - **Wide empty gaps between kernels at the start of each step** with `aten::copy_` stalling indicate **DataLoader starvation** (disk/CPU decode bottleneck).
+   - **Thousands of tiny kernels separated by microsecond gaps** indicate **CPU launch overhead** or accidental `.item()` host-device synchronizations (fix with `torch.compile`, fused optimizers, and removing syncs).
+   - **Long `ncclDevKernel_AllReduce` bars** indicate **network fabric or straggler bottlenecks** across nodes.
+</details>
+
+<details>
+<summary>18. What environment variables does `torchrun` set, and what is the difference between `DDP` and `FSDP`?</summary>
+
+`torchrun` spawns one process per GPU and injects **`RANK`** (`0..WORLD_SIZE-1`), **`LOCAL_RANK`** (`0..7` on the node, used for `torch.cuda.set_device(local_rank)`), **`WORLD_SIZE`**, **`MASTER_ADDR`**, and **`MASTER_PORT`**.
+- **`DistributedDataParallel (DDP)`:** Replicates the full model, gradients, and optimizer states on every GPU (`16 * Psi` bytes per GPU) and `AllReduce`s gradients during backward.
+- **`FullyShardedDataParallel (FSDP)` (ZeRO-3):** Shards parameters, gradients, and optimizer states across $N$ GPUs (`16 * Psi / N` bytes per GPU), gathering layer weights on demand via `AllGather` before forward/backward and `ReduceScatter`ing gradients.
+</details>
+
+<details>
+<summary>19. Why can `nvidia-smi` report `99% GPU-Util` while a training job is actually running at 15% efficiency (MFU)?</summary>
+
+In `nvidia-smi`, `GPU-Util` only measures the **percentage of time at least one CUDA kernel was active on any single Streaming Multiprocessor (SM)** during the sampling window—a tiny element-wise kernel using 1 of 132 SMs or a memory-stalled kernel waiting on HBM reads still reports `100% GPU-Util`. True efficiency is measured by **DCGM `SM_ACTIVE` / `PIPE_TENSOR_ACTIVE`**, achieved tokens/sec, and **Model FLOPs Utilization (`MFU`)** (achieved FLOP/s divided by hardware peak Tensor Core FLOP/s).
+</details>
+
+<details>
+<summary>20. What six sources of non-determinism cause two PyTorch runs with the same code to produce different losses, and how do you lock them down for debugging?</summary>
+
+1. Unseeded RNGs -> call `random.seed(s)`, `np.random.seed(s)`, `torch.manual_seed(s)`, `torch.cuda.manual_seed_all(s)`.
+2. Unseeded `DataLoader` workers -> pass `worker_init_fn` and a seeded `torch.Generator()`.
+3. cuDNN algorithm autotuning -> set `torch.backends.cudnn.benchmark = False` and `torch.backends.cudnn.deterministic = True`.
+4. Non-deterministic GPU atomic reductions (`scatter_add_`, FlashAttention backward) -> call `torch.use_deterministic_algorithms(True)`.
+5. cuBLAS workspace non-determinism -> set `CUBLAS_WORKSPACE_CONFIG=:4096:8`.
+6. Floating-point non-associativity across different GPU counts/topologies -> keep `WORLD_SIZE` and batch size identical when comparing regression runs.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `designing-machine-learning-systems` — Chip Huyen, *Designing Machine Learning Systems*, **Chapter 3: Data Engineering Fundamentals** and **Chapter 7: Model Deployment and Prediction Service** (row-major CSV vs columnar Parquet/Arrow data models, pandas DataFrame vs Series layout, data leakage causes and prevention, batch vs streaming pipelines, and model serving/compression).
+  - `ai-engineering` — Chip Huyen, *AI Engineering*, **Chapter 2: Understanding Foundation Models**, **Chapter 7: Finetuning**, and **Chapter 9: Inference Optimization** (parameter and activation memory math across `fp32`/`fp16`/`bf16`/`int8`/`int4`, mixed-precision Adam state breakdown, LoRA/QLoRA memory savings, prefill compute-bound vs decode memory-bandwidth-bound bottlenecks, and KV cache sizing).
+  - `nvidia-devops` (`volume-02` and `volume-13`) and NumPy, pandas, Apache Arrow/Parquet, Polars, DuckDB, and PyTorch documentation (autograd, `DataLoader`, AMP, `torch.profiler`, CUDA semantics, reproducibility, and distributed hooks).
+- **Run here:** `python3 code/part03/python_data_ml_infra_lab.py` (4 passed, 0 failed).
+- **Explicitly labelled inferences:** The `compute_ndarray_strides`, `broadcast_shapes`, `compare_row_vs_columnar_io`, `estimate_adam_mixed_precision_memory_gb`, and `diagnose_dataloader_vs_gpu_bottleneck` models in `code/part03/python_data_ml_infra.py` and the `MLP` training loop are the author's deterministic constructions encoding the memory and throughput formulas from *AI Engineering* and *Designing Machine Learning Systems* (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
+- **Not verified on live hardware:** Live CUDA `torch.cuda.synchronize()`, `DataLoader(num_workers=8, pin_memory=True)`, `torch.profiler`, `nsys profile`, and `torchrun` commands (`4096x4096` `67.1 MB`, `7B` `112 GB`, `80 GB`, `128 MB to 1 GB`, `:4096:8`, `1234`, `30 GB` / `32 GB`, `hour 40`, `200 GB`) are marked (`untested here`) where not executed by `python_data_ml_infra_lab.py`.
