@@ -82,8 +82,8 @@ When Gemini rewrote chapters in commit `7cd1471` to satisfy `validate_chapter.py
 ### 2.4 Finding 4: Structural, Coverage-File, and Migration-Map Summary Across Parts 1 to 15
 | Part | Chs | Current Words (Min / Avg / Max) | `loss_check` Fails | Missing `coverage/chapters/PP-CC.md` | `CHECK` Rows in Coverage | Missing 20 Qs / Exercises / Sources / Ledger | Uncited / Unmigrated `nvidia-devops` Notes |
 |---|---|---|---|---|---|---|---|
-| **Part 1 (Linux)** | 30 | 2,451 / 8,609 / 14,483 | 0 | 0 | 1 (`1.30`: 11) | 30 / 30 | 8 chapters (`VL1`, `VL10`) |
-| **Part 2 (Networking)** | 32 | 4,058 / 5,308 / 7,195 | 0 | 0 | 0 | 32 / 32 | 1 chapter (`VL1`) |
+| **Part 1 (Linux) [DONE 30/30]** | 30 | 6,012 / 10,850 / 16,120 | 0 | 0 | 0 | 0 / 30 (**ALL 30 DONE**) | 0 (**ALL DONE**) |
+| **Part 2 (Networking) [DONE 32/32]** | 32 | 6,000 / 7,450 / 9,336 | 0 | 0 | 0 | 0 / 32 (**ALL 32 DONE**) | 0 (**ALL DONE**) |
 | **Part 3 (Python)** | 11 | 4,147 / 5,190 / 7,429 | 0 | 0 | 2 (`3.7`: 70, `3.9`: 18) | 11 / 11 | 8 chapters (`VL2`) |
 | **Part 4 (Automation)** | 27 | 3,072 / 3,758 / 5,237 | 0 | **22** (`4.4`–`4.25`) | 0 | 27 / 27 | 11 chapters (`VL10`) |
 | **Part 5 (Kubernetes)** | 35 | 2,662 / 4,249 / 5,146 | 0 | **28** (`5.2, 5.4`–`5.28, 5.30`–`5.32, 5.34, 5.35`) | 0 | 35 / 35 | 8 chapters (`V10`, `VL3`) |
