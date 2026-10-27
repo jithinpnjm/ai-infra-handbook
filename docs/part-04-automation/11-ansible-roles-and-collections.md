@@ -59,6 +59,26 @@ roles/gpu_driver/
 
 Create a skeleton with `ansible-galaxy role init gpu_driver` (or `ansible-galaxy init`). Ansible searches `roles_path`, a `roles/` directory next to the playbook, and installed collections (`namespace.collection.role`).
 
+In *Ansible: Up and Running* Chapter 9 (*Roles: Scaling Up Your Playbooks*), the authors refactor the monolithic `mezzanine.yml` playbook into reusable `database` and `mezzanine` roles (`mezzanine-across-hosts.yml`) and highlight how Ansible resolves relative file paths inside a role:
+- **Where `copy`, `script`, and `template` look inside a role:** When a task inside `roles/database/tasks/main.yml` invokes `copy: src=pg_hba.conf ...` (or `script: setadmin.py`), Ansible searches these six locations in order (modeled in `role_file_search_candidates()` in `code/part04/ansible_roles_collections.py`):
+  1. `./roles/<role_name>/files/`
+  2. `./roles/<role_name>/`
+  3. `./roles/<role_name>/tasks/files/`
+  4. `./roles/<role_name>/tasks/`
+  5. `./files/` (adjacent to the top-level playbook)
+  6. `./` (the top-level playbook directory)
+  Similarly, `template` searches `./roles/<role_name>/templates/` first before falling back to `./templates/`.
+- **How `database` and `mezzanine` split `defaults/main.yml` and `vars/main.yml` (`AUR` Chapter 9 `Examples 9-7` & `9-8`):** In `roles/database/defaults/main.yml`, user-overridable settings like `postgres_packages: [acl, libpq-dev, postgresql, python3-psycopg2]` and `locale: en_US.UTF-8` live in `defaults/`, while internal paths derived from those inputs (`mezzanine_venv_path: "{{ mezzanine_venv_home }}/{{ mezzanine_proj_name }}"`, `mezzanine_settings_path: "{{ mezzanine_proj_path }}/{{ mezzanine_proj_app }}"`) live in `roles/mezzanine/vars/main.yml` and task phases are split across `setup.yml`, `django.yml`, and `nginx.yml` included from `roles/mezzanine/tasks/main.yml`.
+
+```mermaid
+flowchart TD
+    Play["Playbook (playbooks/gpu_nodes.yml)<br/>Thin wiring: hosts, pre_tasks, roles, post_tasks"] --> Spec["meta/argument_specs.yml<br/>Validates role inputs at runtime"]
+    Spec --> Defs["defaults/main.yml (Lowest Precedence)<br/>Public role API overridden by group_vars"]
+    Defs --> Vars["vars/<os_family>.yml (High Precedence)<br/>Internal OS package/path mappings via first_found"]
+    Vars --> Tasks["tasks/main.yml -> prerequisites / install / configure / validate<br/>+ handlers/main.yml (namespaced 'role | action')"]
+    Coll["Collection (ansible_collections/acme/gpu/)<br/>galaxy.yml + meta/runtime.yml + roles/ + plugins/"] -. "Packaged & versioned via<br/>ansible-galaxy collection build" .-> Play
+```
+
 ### defaults versus vars
 
 - **`defaults/main.yml`** are the lowest-precedence variables: the role's **public API**. Everything a user may reasonably change belongs here with safe defaults.
@@ -376,7 +396,15 @@ Promote roles from the monorepo into a versioned collection when more than one t
 - **Order of roles** on a node: base OS and kernel → drivers → container runtime → monitoring → scheduler/Kubernetes agents → workload prerequisites; document this in the playbook, not hidden in role dependencies.
 - **NVIDIA-provided automation** (DeepOps, `nvidia.nvue` for Cumulus/Spectrum switches, network operator manifests, BCM Python/CLI) can be consumed as roles/collections but must be pinned and reviewed like any dependency.
 
-## 8. Lab (untested)
+## 8. Lab
+
+First, run the self-checking Python lab (`code/part04/ansible_roles_collections_lab.py`) locally. It verifies runtime `meta/argument_specs.yml` validation (`validate_role_argument_spec`), role dependency traversal and deduplication (`resolve_role_dependency_order` with `allow_duplicates`), and role relative file search precedence (`role_file_search_candidates`, `AUR` Ch. 9 & 15).
+
+```bash
+python3 code/part04/ansible_roles_collections_lab.py
+```
+
+Next, on a control node with `ansible-core` and `ansible-galaxy` (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **Extract a role**: take the playbook from 4.9 and extract `app_deploy`, `nginx_proxy`, `postgres` roles; keep behaviour identical (verify with `--check --diff` and a second run).
 2. **Interface design**: write `defaults/main.yml` with prefixed variables, `meta/argument_specs.yml`, and `README.md`; test invalid input and see the argument spec error; view with `ansible-doc -t role`.
@@ -390,8 +418,6 @@ Promote roles from the monorepo into a versioned collection when more than one t
 10. **GPU facts role**: write a role publishing `ansible_local.gpu`; use it from a driver role to decide Fabric Manager installation.
 11. **Lint and test**: run `ansible-lint` on the roles; add a Molecule scenario (4.13).
 12. **Clean up.**
-
-Mark tested only after execution.
 
 ## 9. Common mistakes
 
@@ -408,54 +434,181 @@ Mark tested only after execution.
 
 ## 10. Interview angles
 
-- "What is a role? Structure? `defaults` vs `vars`?" 
+- "What is a role? Structure? `defaults` vs `vars`?"
 - "How do you design a role interface? How do you validate arguments?" (prefixed defaults, argument specs, asserts.)
-- "Role vs collection; when do you build a collection?" 
+- "Role vs collection; when do you build a collection?"
 - "How do you manage third-party dependencies safely?" (pin, mirror, review, test upgrades.)
-- "`import_role` vs `include_role` vs `roles:`?" 
-- "How would you make a role portable across Ubuntu and RHEL?" 
-- "How do you structure automation for several teams and environments?" 
+- "`import_role` vs `include_role` vs `roles:`?"
+- "How would you make a role portable across Ubuntu and RHEL?"
+- "How do you structure automation for several teams and environments?"
 - "How do you version and release shared Ansible content?" (SemVer, changelog, CI, Hub/Artifactory.)
 
-## 11. Checkpoint questions (30)
+## Exercises
 
-1. What command creates a role skeleton? **A:** `ansible-galaxy role init`.
-2. What is `defaults/main.yml` for? **A:** Overridable public variables with lowest precedence.
-3. When use `vars/main.yml`? **A:** Internal constants not meant to be overridden.
-4. Why prefix variables? **A:** Avoid collisions in global play scope.
-5. What are argument specs? **A:** Validation and documentation of role inputs.
-6. Where do argument specs live? **A:** `meta/argument_specs.yml`.
-7. What is `meta/main.yml` for? **A:** Galaxy info and dependencies.
-8. When do dependencies run? **A:** Before the role, once per play unless duplicates allowed.
-9. `import_role` vs `include_role`? **A:** Static vs dynamic.
-10. How call one entry point? **A:** `include_role: tasks_from`.
-11. What order do roles run relative to tasks? **A:** Before `tasks` (after `pre_tasks`).
-12. How make roles portable? **A:** Per-OS vars via facts and `first_found`.
-13. Why namespace handler names? **A:** Handlers are global to the play.
-14. What file pins dependencies? **A:** `requirements.yml`.
-15. How install collections from it? **A:** `ansible-galaxy collection install -r`.
-16. What is a collection? **A:** Namespaced package of modules, plugins, roles.
-17. Collection metadata file? **A:** `galaxy.yml`.
-18. How build a collection? **A:** `ansible-galaxy collection build`.
-19. Tool for collection tests? **A:** `ansible-test`.
-20. Where does `requires_ansible` live? **A:** `meta/runtime.yml`.
-21. What is FQCN? **A:** Namespace.collection.name reference.
-22. Where keep inventories? **A:** Environment repo, not in roles.
-23. Why not secrets in roles? **A:** Roles are shared/versioned code.
-24. What makes roles check-mode friendly? **A:** Read-only probes with `check_mode: false`, guarded dependent tasks.
-25. Why avoid reboots in roles by default? **A:** Surprise outages; let the caller decide.
-26. How expose reboot-needed? **A:** Return a fact/variable.
-27. How document a role? **A:** README plus argument specs (`ansible-doc -t role`).
-28. What is `combine` used for in roles? **A:** Merge default and user dicts.
-29. When promote a role to a collection? **A:** When multiple teams reuse it.
-30. How reduce supply-chain risk? **A:** Pin, mirror, review and test upgrades.
+1. **Role Directory Anatomy, `defaults/main.yml` vs. `vars/main.yml`, and File Search Paths (`AUR` Chapter 9):** Using `role_file_search_candidates()` in `code/part04/ansible_roles_collections.py`, list the purpose of each directory inside `roles/gpu_driver/`, explain why public knobs belong in `defaults/main.yml` (prefixed with `gpu_driver_`) rather than `vars/main.yml`, and state the 6-path search order when `copy` looks up a relative filename inside a role.
+2. **Role Contract Validation (`meta/argument_specs.yml`) and Role Dependencies (`meta/main.yml`, `AUR` Chapter 9):** Using `validate_role_argument_spec()` and `resolve_role_dependency_order()` in `code/part04/ansible_roles_collections.py`, explain: (a) how `meta/argument_specs.yml` validates types, defaults, and `choices` at runtime and generates `ansible-doc -t role` documentation; and (b) how `dependencies:` in `meta/main.yml` execute and deduplicate (`allow_duplicates: false` vs `true`) and why explicit playbook ordering is usually clearer than deep dependency chains.
+3. **Invoking Roles (`roles:`, `import_role`, `include_role`, `tasks_from`) and OS Portability (`first_found`):** Compare invoking a role via the play's `roles:` section, `import_role`, and `include_role` (`tasks_from: validate`, `loop:` with `apply: { tags: [...] }`), and show how `include_vars` + `lookup('ansible.builtin.first_found', params)` loads OS-specific internal variables (`Ubuntu-22.yml` -> `Debian.yml` -> `default.yml`).
+4. **Designing Reusable GPU Infrastructure Roles (`kernel_tuning`, `gpu_facts`, `gpu_driver`):** Explain how the `kernel_tuning` role uses `kernel_tuning_sysctl | combine(kernel_tuning_sysctl_extra) | dict2items` so callers can add or override a single sysctl without replacing the default dictionary, and why `gpu_driver` exposes `gpu_driver_reboot_required` as a fact rather than rebooting nodes blindly.
+5. **Sourcing Third-Party Roles and Collections Safely (`requirements.yml` and `ansible-galaxy`, `AUR` Chapters 9 & 15):** Write a `requirements.yml` pinning both roles (from Galaxy and Git) and collections, show the `ansible-galaxy role/collection install -r requirements.yml` commands, and list the supply-chain controls required before running third-party roles as `root` on a GPU cluster.
+6. **Building, Testing (`ansible-test`), and Publishing an Ansible Collection (`galaxy.yml`, `meta/runtime.yml`, `AUR` Chapter 15):** Trace the directory layout of `ansible_collections/acme/gpu/` (`galaxy.yml`, `meta/runtime.yml`, `plugins/{modules,filter,lookup,inventory}`, `roles/`, `playbooks/`, `tests/`), and explain the workflow `ansible-galaxy collection init` -> `build` -> `install` -> `ansible-test sanity/units/integration` -> `publish`.
 
-## 12. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. What are the standard subdirectories of an Ansible role, and how do `defaults/main.yml` and `vars/main.yml` differ (`AUR` Chapter 9)?</summary>
 
-- Rene Moser and Lorin Hochstein, *Ansible: Up and Running*, 3rd edition (chapter 9 on roles for scalable playbooks, chapter 15 on collections and sharing content).
-- Ansible documentation: roles, argument specs, collections development, `ansible-galaxy`, `ansible-test`.
-- Examples are the author's constructions.
+A role (`ansible-galaxy role init gpu_driver`) contains:
+- **`defaults/main.yml`**: lowest-precedence variables forming the role's **public API** (easily overridden by `group_vars/`, `host_vars/`, or play vars).
+- **`vars/main.yml`**: high-precedence variables (ranking **above** inventory `group_vars` and `host_vars`) used only for internal constants or OS-specific mappings (`vars/Debian.yml`) that callers should not override.
+- **`tasks/main.yml`**: main task entry point (plus modular files like `install.yml`, `configure.yml`, `validate.yml`).
+- **`handlers/main.yml`**, **`templates/`** (`*.j2`), **`files/`** (static files), **`meta/main.yml`** (Galaxy info and dependencies), **`meta/argument_specs.yml`** (input validation), **`library/`** / **`plugins/`**, and **`molecule/`**.
+</details>
 
-**Flagged for verification before publishing:** `ansible-galaxy` and `ansible-test` option syntax for your version, argument-spec feature support in your ansible-core, Automation Hub publishing steps, and every code listing; all labs are **untested**.
+<details>
+<summary>2. Why should every variable and handler inside a role be prefixed with the role's name (`gpu_driver_branch`, `gpu_driver | reload persistence daemon`)?</summary>
+
+In Ansible, role variables and handler names are **global to the play**—not private to the role. If two roles (`gpu_driver` and `slurm_client`) both define a variable named `version` or a handler named `Restart daemon`, one silently overwrites or triggers the other. Prefixing public variables with `role_` (`gpu_driver_branch`), internal variables with `__role_` (`__gpu_driver_pkgs`), and handlers with `role | action` prevents cross-role collisions.
+</details>
+
+<details>
+<summary>3. Where does Ansible look when a `copy` or `template` task inside `roles/database/tasks/main.yml` references a relative filename like `src: pg_hba.conf` (`AUR` Chapter 9)?</summary>
+
+For `copy` (and `script`), Ansible searches six paths in order without needing any path prefix:
+1. `./roles/database/files/pg_hba.conf`
+2. `./roles/database/pg_hba.conf`
+3. `./roles/database/tasks/files/pg_hba.conf`
+4. `./roles/database/tasks/pg_hba.conf`
+5. `./files/pg_hba.conf` (next to the playbook)
+6. `./pg_hba.conf`
+Similarly, `template` checks `./roles/database/templates/` first before falling back to the playbook's `./templates/` directory.
+</details>
+
+<details>
+<summary>4. How does `meta/argument_specs.yml` validate role inputs and generate documentation?</summary>
+
+When `roles/<role>/meta/argument_specs.yml` defines an entry point (`main:`, `validate:`) with `options:` specifying `type:` (`str`, `int`, `bool`, `list`, `dict`), `required:`, `default:`, `choices:`, and `description:`, Ansible automatically inserts a validation task at the very start of the role at runtime—failing immediately with a clear error message if a caller passes an invalid choice or wrong type—and exposes the specification via **`ansible-doc -t role <role_name>`**.
+</details>
+
+<details>
+<summary>5. How do role `dependencies:` in `meta/main.yml` execute, when do they deduplicate, and why should deep dependency chains be avoided?</summary>
+
+Roles listed under `dependencies:` in `roles/gpu_driver/meta/main.yml` run **before** `gpu_driver`'s own tasks. If multiple roles in the same play depend on `common_base` with the same parameters, Ansible executes `common_base` **only once** (unless `allow_duplicates: true` is set in `common_base/meta/main.yml`). Keep `dependencies:` minimal and prefer listing roles explicitly in the playbook so operators can see the exact execution order at a glance.
+</details>
+
+<details>
+<summary>6. Compare the three ways to invoke a role in a playbook: `roles:`, `import_role`, and `include_role`.</summary>
+
+- **`roles:` section at the play level:** Classic declarative list; executes after `pre_tasks` and before `tasks:`.
+- **`ansible.builtin.import_role` (inside `tasks:`):** Pre-processed **statically at parse time** at that exact position in the task list; tags and `when:` are copied to every task inside the role, and tasks appear in `--list-tasks`.
+- **`ansible.builtin.include_role` (inside `tasks:`):** Executed **dynamically at runtime**; supports **`loop:`** (running a role once per filesystem or vhost), runtime variable names, and calling a specific sub-entry point via **`tasks_from: validate`**.
+</details>
+
+<details>
+<summary>7. How do you make a role portable across multiple Linux distributions (`Ubuntu` vs. `RHEL/Rocky`)?</summary>
+
+Keep `tasks/main.yml` free of duplicated `when: ansible_os_family == ...` branches on every task by placing OS-specific package names, service names, and config paths in `vars/Ubuntu-22.yml`, `vars/Debian.yml`, and `vars/RedHat.yml`, and loading the most specific match at the top of `tasks/main.yml` via **`include_vars: "{{ lookup('ansible.builtin.first_found', params) }}"`** (plus an early `assert` verifying that `ansible_facts['os_family']` is in the supported list).
+</details>
+
+<details>
+<summary>8. In the `kernel_tuning` role, why do we define both `kernel_tuning_sysctl` and `kernel_tuning_sysctl_extra: {}` in `defaults/main.yml`?</summary>
+
+Because Ansible replaces dictionaries across precedence layers by default, if a user overrides `kernel_tuning_sysctl: { vm.dirty_ratio: 10 }` in `group_vars`, they would accidentally wipe out the role's baseline defaults (`vm.swappiness`, `vm.max_map_count`, `net.core.rmem_max`). Providing **`kernel_tuning_sysctl_extra: {}`** and looping over `{{ kernel_tuning_sysctl | combine(kernel_tuning_sysctl_extra) | dict2items }}` lets callers add or override individual keys while keeping all baseline defaults intact.
+</details>
+
+<details>
+<summary>9. Why shouldn't a reusable role hardcode inventory group names like `groups['gpu']` or `groups['slurm_controller']` inside its tasks and templates?</summary>
+
+If a role hardcodes `groups['slurm_controller'][0]`, it breaks immediately in any environment where that group is named `slurm_master` or `control_plane`. Instead, define a role default variable **`slurm_client_controller_host: "{{ groups['slurm_controller'][0] | default('') }}"`** in `defaults/main.yml` (asserting it is non-empty in `tasks/main.yml`), so callers can pass any hostname or group expression without editing the role.
+</details>
+
+<details>
+<summary>10. Why should a driver or kernel role set a fact (`gpu_driver_reboot_required: true`) instead of rebooting the host unconditionally?</summary>
+
+When multiple roles run in sequence on a GPU node (`common_base` -> `kernel_tuning` -> `gpu_driver` -> `container_toolkit`), having each role trigger its own immediate reboot causes multiple slow server reboots per run—or worse, reboots an undrained production node if someone invokes the role outside a maintenance window. Have the role expose a boolean `role_allow_reboot: false` default and publish a fact (`gpu_driver_reboot_required: true`), letting the top-level maintenance playbook coordinate draining and a single consolidated reboot.
+</details>
+
+<details>
+<summary>11. How does `requirements.yml` manage both third-party Roles and Collections (`AUR` Chapters 9 & 15)?</summary>
+
+A single `requirements.yml` file can declare two top-level lists—`roles:` (from Ansible Galaxy or Git URLs with `scm: git` and `version: v2.3.0`) and `collections:` (from Galaxy, Automation Hub, or Git with `version: ">=8.0.0,<10.0.0"`). Install them into project-local directories with:
+- `ansible-galaxy role install -r requirements.yml -p roles/`
+- `ansible-galaxy collection install -r requirements.yml -p collections/`
+</details>
+
+<details>
+<summary>12. What is an Ansible Collection, and what can it package that a standalone Role cannot (`AUR` Chapter 15)?</summary>
+
+An **Ansible Collection (`namespace.name`, e.g., `acme.gpu` or `community.general`)** is the standard distribution format that packages **roles, custom modules (`plugins/modules/`), module utilities (`plugins/module_utils/`), plugins (`filter`, `lookup`, `inventory`, `callback`, `connection`), playbooks, documentation, and `ansible-test` suites** into a single versioned, namespaced tarball (`acme-gpu-1.4.0.tar.gz`) referenced everywhere by **FQCN** (`acme.gpu.gpu_driver`, `acme.gpu.gpu_facts`).
+</details>
+
+<details>
+<summary>13. What are the roles of `galaxy.yml` and `meta/runtime.yml` inside a Collection?</summary>
+
+- **`galaxy.yml`** (in the collection root): declares the collection's `namespace`, `name`, semantic `version` (`1.4.0`), `authors`, `license`, collection `dependencies` (`community.general: ">=8.0.0"`), and `build_ignore` patterns used by `ansible-galaxy collection build`.
+- **`meta/runtime.yml`**: declares the minimum supported `ansible-core` version (**`requires_ansible: ">=2.15.0"`**), plugin routing/redirects (when renaming modules), and deprecation warnings.
+</details>
+
+<details>
+<summary>14. What are the commands to initialize, build, install locally, test, and publish a Collection (`AUR` Chapter 15)?</summary>
+
+1. **Initialize skeleton:** `ansible-galaxy collection init acme.gpu`
+2. **Build artifact:** `ansible-galaxy collection build` (produces `acme-gpu-1.0.0.tar.gz`).
+3. **Install locally for verification:** `ansible-galaxy collection install ./acme-gpu-1.0.0.tar.gz -p ./collections`
+4. **Run automated test suites:** `ansible-test sanity --docker default`, `ansible-test units`, and `ansible-test integration` (run from inside `ansible_collections/acme/gpu/`).
+5. **Publish:** `ansible-galaxy collection publish ./acme-gpu-1.0.0.tar.gz --server automation_hub` (or Galaxy / Artifactory / Pulp).
+</details>
+
+<details>
+<summary>15. Where do you place a custom Filter Plugin or custom Module inside a Collection versus inside a standalone project (`AUR` Chapters 10 & 15)?</summary>
+
+- **Inside a Collection (`ansible_collections/acme/gpu/`):** Place custom modules in **`plugins/modules/`** and custom filter plugins in **`plugins/filter/`**, referenced by FQCN (`acme.gpu.my_module`, `{{ x | acme.gpu.my_filter }}`).
+- **In a standalone playbook repository:** Place custom modules in **`library/`** and custom filters in **`filter_plugins/`** adjacent to the playbook (or configured in `ansible.cfg`).
+</details>
+
+<details>
+<summary>16. Why should you prefer using explicit FQCNs (`acme.gpu.my_module`) in tasks over the play-level `collections:` search-list keyword (`AUR` Chapter 15)?</summary>
+
+While `collections: [our_namespace.her_collection]` at the play level (`AUR` Chapter 15 `Example 15-2`) lets tasks write short module names (`her_module:`), relying on implicit search order makes it ambiguous which collection provides a module when a play imports multiple collections, and `ansible-lint`'s `fqcn` rule flags short names. Writing the full FQCN (`our_namespace.her_collection.her_module`) on every task is self-documenting and immune to namespace shadowing.
+</details>
+
+<details>
+<summary>17. Where should environment inventories (`inventories/prod`, `group_vars`) and secrets live relative to shared Roles and Collections?</summary>
+
+Shared **roles and collections must be 100% environment-agnostic library code**—never commit production IP addresses, hostnames, `inventories/`, `group_vars/`, or Vault secrets inside a reusable role or collection repository. Keep `inventories/{prod,staging,lab}/`, `group_vars/`, Vault secrets, and top-level orchestration playbooks (`playbooks/site.yml`) in the **platform environment repository**, which consumes version-pinned roles/collections via `requirements.yml`.
+</details>
+
+<details>
+<summary>18. What is the recommended role execution order on a bare-metal GPU cluster node?</summary>
+
+Order roles in `playbooks/gpu_nodes.yml` from lowest hardware/OS layer up to workload schedulers:
+1. **`common_base`** (repos, time sync `chrony`, SSH/sudo hardening, users, storage mounts).
+2. **`kernel_tuning`** (pinned kernel, sysctls, hugepages, kernel modules, `nouveau` blacklist).
+3. **`gpu_facts` & `gpu_driver`** (NVIDIA driver, `nvidia-persistenced`, Fabric Manager on NVSwitch nodes, MIG config, `nvidia-smi` validation).
+4. **`container_runtime` & `nvidia_container_toolkit`** (`containerd` / Docker + `nvidia-ctk` CDI/runtime hook).
+5. **`monitoring_agents`** (`node_exporter`, `dcgm-exporter`).
+6. **`slurm_client` or `kubelet`** (scheduler agent joining the cluster only after all GPU and runtime validations pass).
+</details>
+
+<details>
+<summary>19. When should a platform team keep a role inside `roles/` in their platform monorepo versus promoting it into a separate versioned Collection?</summary>
+
+Keep a new role in the platform monorepo's **`roles/`** directory while it is evolving rapidly and used only by that single repo. Promote the role (and any shared modules/filters) into a **versioned Collection** (`acme.gpu`) once **two or more repositories or teams** consume it, so downstream teams can pin tested semantic versions (`1.4.0`) in `requirements.yml` and upgrade on their own schedule.
+</details>
+
+<details>
+<summary>20. What security and supply-chain checks should you apply before adopting a third-party role or collection from Ansible Galaxy?</summary>
+
+Remember that Ansible roles typically execute with **`become: true` (`root`) across your entire fleet** and on the control node (via lookups/local tasks):
+1. **Audit the source code** (`tasks/`, `handlers/`, `templates/`, `library/`, `plugins/`) before installation.
+2. **Pin exact semantic versions** (or commit SHAs) in `requirements.yml`—never pull floating `main` or unpinned latest in CI/production.
+3. **Mirror approved tarballs/repos** into an internal **Private Automation Hub, Pulp, Artifactory, or Nexus** proxy (`AUR` Chapters 15 & 22) so production runs never depend on public internet Galaxy/GitHub availability.
+4. Run **`ansible-lint`** and **Molecule** integration tests against any version bump in CI before merging.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `ansible-up-and-running-3rd-edition` — Bas Meijer, Lorin Hochstein & René Moser, *Ansible: Up and Running*, 3rd ed., **Chapter 9: Roles: Scaling Up Your Playbooks** (read in full: structure of `database` and `mezzanine` roles, `defaults/main.yml` vs `vars/main.yml`, 6-path relative file search order for `copy`/`script` and `template`, using roles in playbooks with `pre_tasks` and `post_tasks`, `ansible-galaxy init` / `install` / `list` / `remove`, `roles/requirements.yml` with `oefenweb.ntp` `v1.1.33` and `geerlingguy.docker`, and `meta/main.yml` `dependencies:`) and **Chapter 15: Collections** (read in full: `namespace.collection.module` FQCN notation, `requirements.yml` combining `roles:` and `collections:`, play-level `collections:` keyword, role `meta/main.yml` `collections:`, and `ansible-galaxy collection init` -> `build` -> `install -p ./collections` -> `publish` to Galaxy / Red Hat Automation Hub / private servers).
+- **Run here:** `python3 code/part04/ansible_roles_collections_lab.py` (3 passed, 0 failed).
+- **Explicitly labelled inferences:** The `validate_role_argument_spec`, `resolve_role_dependency_order`, and `role_file_search_candidates` models in `code/part04/ansible_roles_collections.py` and the `gpu_driver`, `kernel_tuning`, and `acme.gpu` collection examples are the author's constructions applying *Ansible: Up and Running* Chapters 9 & 15 to GPU platform engineering (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, and 30).
+- **Not verified on live hardware:** Live `ansible-galaxy`, `ansible-doc -t role`, `ansible-test sanity --docker default`, and `cpupower` commands (`535`, `550`, `555`, `2.16`, `7.4.1`, `v2.3.0`, `1.4.0`, `1048576`, `268435456`) are marked (`untested here`) where not executed by `ansible_roles_collections_lab.py`.
