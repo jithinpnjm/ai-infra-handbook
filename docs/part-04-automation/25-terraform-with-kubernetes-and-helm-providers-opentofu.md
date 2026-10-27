@@ -39,7 +39,7 @@ Needs 4.18 to 4.24 and Kubernetes basics (Part 5, in particular Deployments, Ser
 ```mermaid
 flowchart TB
   A["Layer 1: cloud foundation\nnetwork, IAM, KMS, buckets (Terraform)"] --> B["Layer 2: cluster\nGKE/EKS/AKS or kubeadm VMs; node pools (Terraform)"]
-  B --> C["Layer 3: cluster platform\nCRDs/operators: GPU Operator, cert-manager, CSI, ingress, monitoring, Argo CD\n(Terraform helm_release or bootstrap Argo)"]
+  B --> C["Layer 3: cluster platform\nGPU Operator, cert-manager, CSI, ingress, monitoring, Argo CD\n(Terraform helm_release or bootstrap)"]
   C --> D["Layer 4: tenancy & policy\nnamespaces, quotas, RBAC, network policies, Kueue queues (Terraform or GitOps)"]
   D --> E["Layer 5: workloads\ntraining jobs, inference services, pipelines (GitOps/Helm/CI, NOT Terraform)"]
 ```
@@ -313,7 +313,15 @@ OpenTofu (`tofu`) is an MPL-licensed fork of Terraform 1.5.x maintained under th
 - **Migration**: moving from Terraform to OpenTofu is usually: install `tofu`, `tofu init -upgrade`, run `tofu plan` expecting no changes, commit the lock file (regenerated hashes), adjust CI. Test on a copy of state. Moving back may be impossible after adopting OpenTofu-only features.
 - **Governance**: choose based on licence policy (BUSL vs MPL), vendor strategy and ecosystem tooling (Atlantis, Terragrunt, Spacelift, env0 and others support both).
 
-## 9. Lab (untested)
+## 9. Lab
+
+First, run the self-checking Python lab (`code/part04/terraform_k8s_helm_opentofu_lab.py`) locally. It verifies the CRD plan-time schema checker (`evaluate_crd_manifest_plan`: contrasting `kubernetes_manifest` against two-stack layering and `kubectl_manifest`), the multi-tenant Kubernetes `Namespace`/`ResourceQuota`/`RoleBinding`/`NetworkPolicy` generator (`generate_team_tenancy_objects`), and the wrong-cluster and Terraform-vs-Argo-CD dual-ownership safety guard (`check_cluster_and_ownership_safety`).
+
+```bash
+python3 code/part04/terraform_k8s_helm_opentofu_lab.py
+```
+
+Next, on a machine with Terraform/OpenTofu, `kind`, `kubectl`, and `helm` (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **kind + providers**: create a kind cluster with Terraform (or the CLI); in a **separate** stack configure the `kubernetes` and `helm` providers with explicit context; create a namespace and a quota; observe the plan; deliberately break the context and see the wrong-cluster protection precondition fire.
 2. **helm_release**: install `ingress-nginx` and `kube-prometheus-stack` with pinned versions and `atomic`; check ServiceMonitor CRDs; upgrade the chart version and read the plan; trigger a failed upgrade (bad value) and watch rollback.
@@ -327,8 +335,6 @@ OpenTofu (`tofu`) is an MPL-licensed fork of Terraform 1.5.x maintained under th
 10. **OpenTofu**: run the same stack with `tofu`; enable state encryption with a passphrase and inspect the state; try dynamic provider iteration if available; document differences.
 11. **Policy**: add a Conftest policy rejecting namespaces without a `team` label and quotas above a threshold; run on `plan.json`.
 12. **Clean up**.
-
-Mark tested only after execution.
 
 ## 10. Common mistakes
 
@@ -345,55 +351,184 @@ Mark tested only after execution.
 
 ## 11. Interview angles
 
-- "What would you manage with Terraform in a Kubernetes platform and what with GitOps?" 
+- "What would you manage with Terraform in a Kubernetes platform and what with GitOps?"
 - "How do you configure the Kubernetes provider for a cluster created by Terraform?" (separate stacks, data sources, exec auth.)
-- "How do you install the NVIDIA GPU Operator via IaC and upgrade it safely?" 
-- "Why does `kubernetes_manifest` fail for CRDs in the same apply? Alternatives?" 
-- "How do you prevent applying to the wrong cluster?" 
+- "How do you install the NVIDIA GPU Operator via IaC and upgrade it safely?"
+- "Why does `kubernetes_manifest` fail for CRDs in the same apply? Alternatives?"
+- "How do you prevent applying to the wrong cluster?"
 - "How do you do per-team GPU quotas as code?" (namespaces, ResourceQuota, Kueue, data-driven.)
-- "OpenTofu vs Terraform: practical differences? Would you migrate?" 
-- "What orphaned resources can appear when destroying a cluster?" 
+- "OpenTofu vs Terraform: practical differences? Would you migrate?"
+- "What orphaned resources can appear when destroying a cluster?"
 
-## 12. Checkpoint questions (30)
+## Exercises
 
-1. Which layers does Terraform own? **A:** Cloud foundation, cluster, platform add-ons, GitOps bootstrap.
-2. Why not workloads? **A:** Fast-moving, need rollout health and continuous reconciliation.
-3. Why layered stacks for Kubernetes providers? **A:** Provider config can't depend on unknown cluster values.
-4. Preferred auth style? **A:** Short-lived exec/token credentials.
-5. Danger of missing `host`? **A:** Falls back to local kubeconfig.
-6. What does `atomic` do in `helm_release`? **A:** Roll back on failure.
-7. How pin charts? **A:** `version` argument.
-8. Do Helm charts upgrade CRDs in `crds/`? **A:** No, only on first install.
-9. Why `kubernetes_manifest` fails for new CRDs? **A:** Needs schema at plan time.
-10. Alternative provider for raw YAML? **A:** `kubectl` (alekc).
-11. How set Helm values from HCL? **A:** `yamlencode` of objects.
-12. Where is Helm release state stored? **A:** Kubernetes Secrets.
-13. GPU Operator `driver.enabled=false` when? **A:** Drivers preinstalled in image.
-14. What does NFD do? **A:** Labels nodes with hardware features.
-15. What exports GPU metrics? **A:** DCGM exporter.
-16. What PSA level does the operator namespace need? **A:** Privileged.
-17. Kubernetes object for GPU quota? **A:** ResourceQuota `requests.nvidia.com/gpu`.
-18. Kueue's role? **A:** Queueing and quota for batch workloads.
-19. What bootstraps GitOps? **A:** `helm_release` Argo CD + root Application, or `flux_bootstrap_git`.
-20. One owner rule? **A:** Never manage the same object from two controllers.
-21. What is a field manager conflict? **A:** Two actors fighting over fields (SSA).
-22. How handle controller-mutated fields? **A:** `ignore_changes` / `computed_fields`.
-23. Why delete in-cluster LBs before cluster? **A:** Avoid orphaned cloud resources.
-24. How avoid wrong-cluster apply? **A:** Explicit context and a precondition/check.
-25. How manage multiple clusters? **A:** Stack per cluster using shared modules.
-26. What is OpenTofu? **A:** Open-source fork of Terraform 1.5.x.
-27. Registry for OpenTofu? **A:** `registry.opentofu.org`.
-28. OpenTofu unique feature example? **A:** Client-side state encryption.
-29. Risk mixing CLIs on one state? **A:** Incompatible features/state changes.
-30. When move tenancy to GitOps? **A:** At scale with self-service PRs.
+1. **The 5-Layer Kubernetes Platform Stack and the Single-Owner Boundary (Terraform vs. GitOps):** Using `check_cluster_and_ownership_safety()` in `code/part04/terraform_k8s_helm_opentofu.py`, explain why Terraform owns Layers 1–3 (Cloud Foundation, Cluster/Node Pools, Platform Bootstrap) while GitOps (Argo CD / Flux) owns Layer 5 (Workloads), and what happens if both Terraform and Argo CD (`selfHeal: true`) manage the same Kubernetes resource.
+2. **Configuring `kubernetes`, `helm`, and `kubectl` Providers and Preventing Wrong-Cluster Disasters:** Explain why cluster creation (Layer 2) and `kubernetes`/`helm` provider configuration (Layer 3) must live in separate states, how an empty `host` falls back to `~/.kube/config`, and how a `check` / `precondition` on `kube-system` Namespace `uid` prevents applying to the wrong cluster.
+3. **Installing the NVIDIA GPU Operator and Platform Add-Ons with `helm_release`:** Trace `resource "helm_release" "gpu_operator"` in Section 3: explain `pod-security.kubernetes.io/enforce = "privileged"` on the namespace, `atomic = true`, `wait = true`, `cleanup_on_fail = true`, `yamlencode({...})` values (`driver.enabled`, `toolkit.enabled`, `dcgmExporter`, `mig.strategy`, `nfd`, and `nvidia.com/gpu:NoSchedule` tolerations), and how Helm handles `crds/` on upgrade vs initial install.
+4. **Solving the CRD Plan-Time Schema Problem (`kubernetes_manifest` vs. `kubectl_manifest` vs. Layered Stacks):** Using `evaluate_crd_manifest_plan()` in `code/part04/terraform_k8s_helm_opentofu.py`, explain why `kubernetes_manifest` fails during `terraform plan` when its CRD is installed by a `helm_release` in the same apply, and compare the four solutions in Section 4.
+5. **Data-Driven Multi-Tenant GPU Quotas, RBAC, and Default-Deny NetworkPolicies (`generate_team_tenancy_objects`):** Using `generate_team_tenancy_objects()` in `code/part04/terraform_k8s_helm_opentofu.py`, trace how Section 5 flattens `var.teams` into per-namespace `kubernetes_namespace` (`baseline` PSA), `kubernetes_resource_quota` (`requests.nvidia.com/gpu`), `kubernetes_role_binding` (`edit`), and `kubernetes_network_policy` (`default-deny-ingress`) resources.
+6. **Bootstrapping GitOps (`argocd` + Root `Application`), Teardown Ordering, and OpenTofu Features:** Trace how Terraform bootstraps Argo CD and hands off control via the `root` `Application` (`App-of-Apps`), explain why destroying Layer 2 before deleting in-cluster `LoadBalancer` Services and `PersistentVolumeClaim`s leaks cloud resources, and summarize OpenTofu's key additions (client-side state encryption, dynamic provider `for_each`, early evaluation, OCI module sources).
 
-## 13. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. What are the five layers of a Kubernetes AI platform stack, and where is the boundary between Terraform and GitOps?</summary>
 
-- Yevgeniy Brikman, *Terraform: Up and Running* (multiple-providers and team-workflow chapters applied to Kubernetes and Helm; Kubernetes-related deployment patterns in later chapters).
-- The author's `nvidia-devops` repository, volume 10 chapters 5 and 11 (Terraform/OpenTofu concepts, GitOps hand-off).
-- Provider documentation: `hashicorp/kubernetes`, `hashicorp/helm`, `alekc/kubectl`, NVIDIA GPU Operator, kube-prometheus-stack, Kueue, Argo CD; OpenTofu documentation and release notes.
-- Examples are the author's constructions.
+1. **Layer 1 — Cloud Foundation (Terraform):** VPCs, subnets, NAT, IAM, KMS, checkpoint buckets.
+2. **Layer 2 — Kubernetes Cluster & Node Pools (Terraform):** GKE/EKS/AKS control plane, system CPU node pool, and GPU node pools (`google_container_node_pool`).
+3. **Layer 3 — Cluster Platform Add-Ons & GitOps Bootstrap (Terraform `helm_release` or Bootstrap Argo CD):** CNI, cert-manager, ingress, Prometheus/DCGM, NVIDIA GPU Operator, Network Operator, CSI drivers, Kueue, and **Argo CD / Flux** + the root `Application`.
+4. **Layer 4 — Tenancy & Policy (GitOps or Terraform—pick one owner):** Team namespaces, `ResourceQuota`s (`requests.nvidia.com/gpu`), RBAC, `NetworkPolicy`, Kueue `ClusterQueue`s.
+5. **Layer 5 — Application Workloads (GitOps / Helm / Kueue—NEVER Terraform):** Training jobs, Ray clusters, vLLM/Triton inference deployments.
+</details>
 
-**Flagged for verification before publishing:** provider versions and argument names, `kubernetes_manifest`/`kubectl` behaviours, Helm chart value keys (GPU Operator, Argo CD, Kueue), OpenTofu feature availability by release, and every code listing; all labs are **untested**.
+<details>
+<summary>2. Why is Terraform a poor fit for managing day-to-day Kubernetes application workloads (Layer 5)?</summary>
+
+Application workloads deploy dozens of times per day, require continuous drift reconciliation (`selfHeal`), rely on Kubernetes-native progressive delivery (canary/blue-green rollouts, readiness gates, HPA/KEDA autoscaling), and are authored by ML/application engineers in Kubernetes YAML/Helm rather than HCL. Running `terraform plan` against hundreds of fast-changing Pods/Jobs creates slow, noisy plans and lock contention on infrastructure state.
+</details>
+
+<details>
+<summary>3. What is the \"Wrong-Cluster Fallback\" bug in the `hashicorp/kubernetes` provider, and how do you prevent it?</summary>
+
+If `provider "kubernetes"` is evaluated when its `host` argument is empty or unconfigured, the provider **silently falls back to `~/.kube/config` or localhost**—which on an engineer's laptop can point to a completely different cluster (such as `prod` when running a `dev` destroy). Prevent this by:
+1. Always wiring explicit `host`, `cluster_ca_certificate`, and `exec` / `token` in a separate stack after the cluster exists.
+2. Adding a `check` or `precondition` verifying that `data.kubernetes_namespace.kube_system.metadata[0].uid` matches the expected cluster UID.
+</details>
+
+<details>
+<summary>4. Compare `hashicorp/kubernetes` typed resources (`kubernetes_namespace`), `kubernetes_manifest`, and `alekc/kubectl` (`kubectl_manifest`).</summary>
+
+- **Typed resources (`kubernetes_namespace`, `kubernetes_resource_quota`, `kubernetes_role_binding`, `kubernetes_network_policy`):** Built-in HCL schemas validated offline during `validate`/`plan` without contacting the cluster API schema endpoint; produce clean attribute-level diffs.
+- **`kubernetes_manifest` (`hashicorp/kubernetes`):** Supports any Kubernetes resource or CRD using HCL `manifest = { ... }` and Server-Side Apply (`SSA`), **but queries the live cluster API server for the resource's OpenAPI schema during `terraform plan`**.
+- **`kubectl_manifest` (`alekc/kubectl`):** Accepts raw YAML (`yaml_body`) and defers schema validation until **`apply`**, allowing a CRD and its Custom Resource to be applied in the same stack using `depends_on`.
+</details>
+
+<details>
+<summary>5. Why does `kubernetes_manifest` fail during `terraform plan` when its CRD is installed by a `helm_release` in the same configuration, and what are the four fixes?</summary>
+
+Because `helm_release` does not install the CRD (`ServiceMonitor`, `ClusterPolicy`, `ClusterQueue`) until the **`apply` phase**, the cluster API server does not know the CRD's OpenAPI schema during the **`plan` phase**—so `kubernetes_manifest` fails immediately at `plan` time.
+**Four fixes:**
+1. **Two layered stacks:** Install operators/Helm charts in Stack A; create CRs in Stack B (or GitOps).
+2. **Use `kubectl_manifest` (`alekc/kubectl`)** with `depends_on = [helm_release.gpu_operator]`.
+3. **Install CRDs first** in a separate step before planning CRs.
+4. **Hand off Custom Resources to Argo CD / Flux** after Terraform bootstraps Argo CD.
+</details>
+
+<details>
+<summary>6. Why must the `gpu-operator` namespace carry the label `pod-security.kubernetes.io/enforce = "privileged"`?</summary>
+
+Kubernetes Pod Security Admission (`PSA`) enforces three levels: `privileged`, `baseline`, and `restricted`. Because the NVIDIA GPU Operator DaemonSets (`nvidia-driver-daemonset`, `nvidia-container-toolkit-daemonset`, `nvidia-device-plugin`, `nvidia-dcgm-exporter`) require `privileged: true` security contexts, `hostPath` volume mounts (`/dev`, `/run/nvidia`, `/sys`), and `hostPID`/`hostNetwork` access to load kernel modules and expose GPU device nodes, `baseline` or `restricted` PSA would block the GPU Operator pods from starting. Tenant workload namespaces (`team-*`), by contrast, should enforce `baseline` or `restricted`.
+</details>
+
+<details>
+<summary>7. In `helm_release.gpu_operator`, when do you set `driver.enabled = false` versus `driver.enabled = true`?</summary>
+
+- **`driver.enabled = false`:** When the NVIDIA kernel driver is **already pre-installed on the host OS image** (for example, via a Packer + Ansible golden image in Chapter 4.17, or via GKE's built-in `gpu_driver_installation_config`).
+- **`driver.enabled = true`:** When nodes boot a clean stock OS (such as Ubuntu or Red Hat CoreOS) without a host GPU driver, and you want the GPU Operator's `nvidia-driver-daemonset` container to manage the driver lifecycle inside Kubernetes. Never enable both a host-installed driver manager and the GPU Operator driver container simultaneously.
+</details>
+
+<details>
+<summary>8. What do `atomic = true`, `wait = true`, `cleanup_on_fail = true`, and `yamlencode({...})` do on `resource "helm_release"`?</summary>
+
+- **`wait = true` & `timeout = 900`:** Waits up to 15 minutes for all Deployments, DaemonSets, and Jobs in the Helm chart to reach `Ready` state before marking the Terraform resource complete.
+- **`atomic = true` & `cleanup_on_fail = true`:** If the install or upgrade fails or times out (for example, a bad image tag or failing readiness probe), Helm **automatically rolls back to the previous working release revision** and cleans up newly created failed resources.
+- **`values = [yamlencode({ ... })]`:** Constructs Helm values from strongly typed HCL maps/lists/booleans and serializes them to valid YAML—avoiding the quoting, escaping, and type-coercion bugs of `set { name = "..."; value = "..." }`.
+</details>
+
+<details>
+<summary>9. How does Helm handle CRDs inside a chart's `crds/` directory during `helm upgrade` (`helm_release` version bump)?</summary>
+
+By design, Helm 3 installs files in a chart's **`crds/` directory only on initial `helm install` and NEVER updates or deletes them during `helm upgrade`** (to prevent accidental data loss across cluster-wide CRs). Therefore, when upgrading `kube-prometheus-stack`, `cert-manager`, `gpu-operator`, or `kueue` to a new chart version in Terraform, you must also apply any updated CRD manifests explicitly (via a dedicated `-crds` Helm chart, `kubectl_manifest`, or server-side apply) before or during the upgrade.
+</details>
+
+<details>
+<summary>10. Where does Helm store its release state inside Kubernetes, and what kind of drift does `helm_release` in Terraform NOT detect?</summary>
+
+Helm 3 stores release metadata and rendered manifest snapshots as gzipped, base64-encoded **Kubernetes `Secret`s** (`sh.helm.release.v1.<name>.v<N>`) in the release's namespace. During `terraform plan`, the `helm` provider compares the **chart version and `values` hash** against that release Secret—it does **not** diff every individual Deployment or Service rendered by the chart against the live cluster. If someone runs `kubectl edit deployment` on a chart-managed resource, `terraform plan` on `helm_release` will report `No changes` (whereas Argo CD and Flux continuously diff every rendered child resource against live state).
+</details>
+
+<details>
+<summary>11. What is the recommended installation order for platform add-ons on a GPU Kubernetes cluster?</summary>
+
+1. **Namespaces & Pod Security Admission (`PSA`) labels**
+2. **`cert-manager`** (required by admission webhooks in Kueue, GPU Operator, and ingress)
+3. **Ingress / Gateway API controller**
+4. **Observability (`kube-prometheus-stack`):** installs `ServiceMonitor` and `PodMonitor` CRDs first so subsequent operators can register their metrics endpoints.
+5. **NVIDIA GPU Operator** (and **NVIDIA Network Operator** for RDMA / SR-IOV / Multus)
+6. **Storage CSI drivers & `StorageClass`es**
+7. **Batch / AI schedulers (`Kueue`, `JobSet`, `Kubeflow Training Operator`, `KubeRay`)**
+8. **Argo CD / Flux** (GitOps hand-off) and **Policy engine (`Kyverno` / `Gatekeeper`)**.
+</details>
+
+<details>
+<summary>12. How do `kubernetes_resource_quota` and `Kueue` complement each other for managing multi-tenant GPU capacity?</summary>
+
+- **`kubernetes_resource_quota` (`requests.nvidia.com/gpu = "16"`):** Enforces a hard **instantaneous ceiling** per namespace at the Kubernetes API admission level—a team cannot have more than 16 GPUs requested by active Pods at any moment (pods exceeding quota are rejected immediately).
+- **`Kueue` (`ResourceFlavor`, `ClusterQueue`, `LocalQueue`):** Provides **batch job queueing, fair-sharing, borrowing/lending across team cohorts, preemption, and gang admission (`all-or-nothing` pod scheduling)**—so a team can submit ten 16-GPU training Jobs and Kueue queues and admits them in order as GPUs free up rather than rejecting them.
+</details>
+
+<details>
+<summary>13. Why should every tenant namespace include a `default-deny-ingress` `kubernetes_network_policy`?</summary>
+
+By default in Kubernetes, **every Pod in every namespace can connect to every other Pod in the cluster** without restriction. Creating a baseline `kubernetes_network_policy` with an empty `pod_selector {}` and `policy_types = ["Ingress"]` (and no `ingress` allow blocks) selects all Pods in that namespace and denies all unsolicited inbound traffic unless explicitly permitted by an additional allow `NetworkPolicy` (such as allowing intra-namespace NCCL traffic and Prometheus scraping).
+</details>
+
+<details>
+<summary>14. How does the \"GitOps Bootstrap\" pattern (`helm_release.argocd` + `kubectl_manifest.root_app`) work?</summary>
+
+Terraform installs the `argo-cd` Helm chart and creates a single bootstrap **`Application` (`root`, the "App of Apps" pattern)** pointing at `clusters/${var.cluster_name}` in your GitOps repository with `automated = { prune = true, selfHeal = true }`. From that moment onward, Argo CD syncs all child `Application`s, operators, and workloads directly from Git—and Terraform never touches any resource inside `clusters/${var.cluster_name}`.
+</details>
+
+<details>
+<summary>15. What happens if both Terraform and Argo CD (`selfHeal: true`) manage the same Kubernetes object, and how do Server-Side Apply (`SSA`) field managers interact?</summary>
+
+If Terraform applies a label or replica count on a resource that Argo CD also tracks with `selfHeal: true`, **Argo CD immediately reverts Terraform's change within seconds**, and the next `terraform plan` shows drift again—an endless tug-of-war. Similarly, `kubernetes_manifest` uses Kubernetes **Server-Side Apply (`SSA`)** with `field_manager = "Terraform"`; if an operator or HPA modifies a field owned by `Terraform`, the next apply fails with a field-manager conflict unless `ignore_changes` / `computed_fields` is configured or ownership is cleanly separated.
+</details>
+
+<details>
+<summary>16. Why does running `terraform destroy` on a GKE/EKS cluster BEFORE deleting in-cluster `LoadBalancer` Services and `PersistentVolumeClaim`s leak cloud resources?</summary>
+
+When you create a Kubernetes `Service` of `type: LoadBalancer` or a `PersistentVolumeClaim` inside the cluster, the cloud controller manager and CSI driver provision **external cloud load balancers, target groups, firewall rules, and persistent disks** in your GCP/AWS account—**outside `terraform.tfstate`**. If Terraform deletes the GKE/EKS cluster first, the in-cluster controllers are destroyed before they can run finalizers to delete those external load balancers and disks, leaving orphaned cloud resources billing forever (or blocking VPC subnet deletion with `resourceInUse`). Always destroy in-cluster LoadBalancers/PVCs (Layer 3–5) before destroying the cluster (Layer 2).
+</details>
+
+<details>
+<summary>17. What are five features OpenTofu (`tofu`) adds beyond Terraform 1.5.x?</summary>
+
+1. **Native client-side State and Plan Encryption:** Encrypts `terraform.tfstate` and saved `tfplan` files using AES-GCM with PBKDF2 passphrases, AWS KMS, GCP KMS, or OpenBao before uploading to the backend.
+2. **Dynamic provider iteration (`for_each` on `provider` blocks):** Allows configuring providers across a map of regions or clusters dynamically.
+3. **Early variable/local evaluation:** Allows using variables and locals inside `backend {}` blocks and `module` `source` / `version` strings.
+4. **OCI Registry support for modules** (`oci://...`).
+5. **The `-exclude` plan/apply flag** (the inverse of `-target`).
+</details>
+
+<details>
+<summary>18. Why shouldn't a team mix `terraform` and `tofu` CLIs back-and-forth on the same remote state file?</summary>
+
+Although OpenTofu forked from Terraform 1.5.x with a compatible v4 state format, the two projects are evolving independently (for example, OpenTofu client-side state encryption or provider `for_each` vs Terraform's `ephemeral` blocks and stacks). Running different CLIs or versions against the same `.tfstate` can introduce schema/lockfile incompatibilities (`registry.opentofu.org` vs `registry.terraform.io`). Standardize on one CLI per repository/state and pin its exact version in CI and `.terraform-version` / `.opentofu-version`.
+</details>
+
+<details>
+<summary>19. How do you migrate an existing Terraform stack to OpenTofu safely?</summary>
+
+1. Back up the state file (`terraform state pull > backup.tfstate`).
+2. Install the matching `tofu` version and update `required_version` if needed.
+3. Run **`tofu init -upgrade`** (which updates provider checksums in `.terraform.lock.hcl` from `registry.opentofu.org`).
+4. Run **`tofu plan`** and verify it reports **`No changes. Your infrastructure matches the configuration.`**
+5. Commit `.terraform.lock.hcl` and update the CI workflow binary in a single PR.
+</details>
+
+<details>
+<summary>20. How do you prevent `kubernetes_secret` resources from exposing secrets in Terraform state when bootstrapping a cluster?</summary>
+
+Avoid creating raw secret payloads in Terraform whenever possible: instead, install the **External Secrets Operator (`ESO`)** or **Secrets Store CSI Driver** via `helm_release`, grant it Workload Identity / IRSA access to GCP Secret Manager / AWS Secrets Manager / HashiCorp Vault, and define declarative **`ExternalSecret`** custom resources (which contain only the secret manager key name, zero secret values) so ESO syncs the actual `Secret` directly inside the cluster without touching `terraform.tfstate`.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `terraform-up-and-running-3rd-edition` — Yevgeniy Brikman, *Terraform: Up and Running*, 3rd ed., **Chapter 7: Working with Multiple Providers** (deploying Kubernetes clusters and using the `kubernetes` provider) and **Chapters 8–10** (production testing and team workflows).
+  - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 11: Building Platform Services** (platform layering, operator lifecycle, and multi-tenancy).
+  - `nvidia-devops` (`volume-10/05-terraform-for-infrastructure-as-code.md` and `volume-10/11-cicd-for-infrastructure-and-cluster-configuration.md`): Terraform/OpenTofu platform layering and GitOps bootstrap.
+- **Run here:** `python3 code/part04/terraform_k8s_helm_opentofu_lab.py` (3 passed, 0 failed).
+- **Explicitly labelled inferences:** The `evaluate_crd_manifest_plan`, `generate_team_tenancy_objects`, and `check_cluster_and_ownership_safety` models in `code/part04/terraform_k8s_helm_opentofu.py` and the `helm_release.gpu_operator`, `kubectl_manifest.cluster_policy`, multi-tenant `kubernetes_resource_quota`, and `helm_release.argocd` HCL configurations are the author's constructions synthesizing `TUR` Chapter 7, `PK` Chapter 11, and `volume-10` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, and 30).
+- **Not verified on live hardware:** Live `terraform` / `tofu` runs against GKE/EKS/`kind` with `hashicorp/kubernetes` (`~> 2.31`), `hashicorp/helm` (`~> 2.14`), and `alekc/kubectl` (`~> 2.0`), `gpu-operator` (`v24.6.0`, `timeout = 900`, `max_history = 5`), `persistentvolumeclaims = "50"`, and OpenTofu state encryption (`1.5.x`, `1.10+`) are marked (`untested here`) where not executed by `terraform_k8s_helm_opentofu_lab.py`.
