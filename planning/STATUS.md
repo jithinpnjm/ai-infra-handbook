@@ -261,7 +261,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 1.21 | Linux security: capabilities, SELinux, AppArmor, seccomp, PAM, SSH hardening | drafted | 8978 |  |
 | 1.23 | Performance methodology: USE, workload characterisation, drill-down | drafted | 10953 |  |
 | 1.24 | Observability tools: perf, ftrace, BPF and bpftrace | drafted | 11835 |  |
-| 1.25 | Benchmarking correctly | drafted | 8258 |  |
+| 1.25 | Benchmarking correctly | drafted | 9875 |  |
 | 1.26 | KVM, QEMU and libvirt basics | drafted | 6731 |  |
 | 1.27 | Cloud computing and virtualization internals for Linux engineers | drafted | 7195 |  |
 | 2.15 | BGP fundamentals | drafted | 4419 |  |

@@ -85,7 +85,7 @@ Cloud and rented GPUs make benchmarking cheap to run (a large environment can be
 | 11 | **Benchmark paradox** | Customers want a product to win all benchmarks: three 50% wins in a row is 12.5% | Understand how conclusions are made |
 | 12 | **Benchmarking the competition** | Untuned competitor numbers; tuned yours | Spend equal effort tuning both, with expert help |
 | 13 | **Friendly fire** | Mis-configured or undersold own product; not driven to its limit | Ask "what is the bottleneck?"; share results with engineers before publishing |
-| 14 | **Misleading benchmarks** | Technically true but omitting cost, config, scale, caveats ("2x faster!") | Read the fine print; use vendor results as upper bounds |
+| 14 | **Misleading benchmarks** | Technically true but omitting cost, config, scale, caveats ("2x faster") | Read the fine print; use vendor results as upper bounds |
 | 15 | **Benchmark specials** | Product engineered to score on a known benchmark but not for customers (TPC prohibits them) | Prefer your workload; check for special configuration and pricing |
 | 16 | **Cheating** | Fake numbers (rare) | Reproduce key results |
 
@@ -183,7 +183,7 @@ STREAM (`stream`, with `OMP_NUM_THREADS`, array size at least 4x the largest cac
 `fio` is the standard micro-benchmark for block devices and filesystems. The failure modes: caches, queue depth, I/O engine, test file size, and mixing devices with filesystems.
 
 ```bash
-# Raw NVMe sequential read throughput (destructive for writes! use a scratch device; read tests are safe)
+# Raw NVMe sequential read throughput (destructive for writes; use a scratch device; read tests are safe)
 sudo fio --name=seqread --filename=/dev/nvme1n1 --rw=read --bs=1M --iodepth=32 --numjobs=4 \
   --ioengine=io_uring --direct=1 --time_based --runtime=60 --group_reporting --ramp_time=10
 # Random 4 KiB read IOPS and latency percentiles
@@ -335,9 +335,15 @@ A good report answers: what was the question; what was measured (and how it was 
 
 **E. Single-threaded generator.** A load test of the metadata service plateaus at 700 req/s whatever the server size. `top` shows the generator at 100% of one core: the benchmark was limiting itself. Parallelising the generator across hosts revealed the real limit (3,500 req/s) and a CPU regression of 50% per request in the new build.
 
-## 9. Lab: benchmark carefully (untested)
+## 9. Hands-on lab: benchmark carefully
 
-Use a VM with at least 4 vCPUs and an attached scratch disk; a GPU VM for steps 8 to 11; a second node (or two GPU VMs in one network placement) for steps 7 and 12.
+First, run the self-checking Python lab (`code/part01/benchmarking_correctly_lab.py`) locally. It verifies the 6-question benchmarking checklist, bandwidth sanity-check arithmetic (`50,000` NFS IOPS x `8 KiB` = `3.28 Gbit/s` > `1 GbE`), `nccl-tests` AllReduce `algbw` to `busbw = algbw * 2(n-1)/n` conversion, the benchmark paradox (`0.5^3 = 12.5%`), and `median - 3 * MAD` non-regression gating.
+
+```bash
+python3 code/part01/benchmarking_correctly_lab.py
+```
+
+Next, on a disposable Linux VM with an attached scratch disk (and a GPU VM / 2-node pair for steps 7 to 13; all interactive VM commands below are `untested here`), work through these steps:
 
 1. **Environment capture script**: write `env_dump.sh` that records `uname -a`, `lscpu`, `numactl -H`, `lspci -vv` link status, `sysctl -a`, `cat /proc/cmdline`, governors, `nvidia-smi -q`, `ethtool -i`, package versions; run it before every benchmark.
 2. **Page cache trap**: create a 2 GiB file; run `fio` sequential read without `--direct=1`; then with `--direct=1`; then with a file larger than RAM (or after `echo 3 > /proc/sys/vm/drop_caches`); compare results with `iostat`/`cachestat`/`biolatency`.
@@ -354,8 +360,6 @@ Use a VM with at least 4 vCPUs and an attached scratch disk; a GPU VM for steps 
 13. **Inference ramp** (if a serving stack is available): run a closed-loop test at fixed concurrency and an open-loop rate sweep with realistic prompt-length distributions; plot p50/p95/p99 TTFT and TPOT versus rate; find the SLO knee; explain the difference between the two methods.
 14. **Statistics**: run each of two configurations 10 times, interleaved; compute median, MAD, and a bootstrap confidence interval for the difference; decide if it is real.
 15. **Report**: write a one-page benchmark report using the template in section 7 for one of the above.
-
-Mark the lab tested only after executing it and recording the outputs.
 
 ## 10. Common mistakes
 
@@ -381,51 +385,126 @@ Mark the lab tested only after executing it and recording the outputs.
 - "What is coordinated omission?"
 - "How do you detect a regression in CI given noisy GPUs?"
 
-## 12. Checkpoint questions (30)
+## Exercises
 
-1. List four legitimate reasons to benchmark. **A:** Design/purchase decisions, proof of concept, tuning, regression testing, capacity planning, troubleshooting, acceptance.
-2. What are the properties of a good benchmark? **A:** Repeatable, observable, portable, easily presented, realistic, runnable (and price/performance for purchasing).
-3. What is "casual benchmarking"? **A:** Benchmarking A, measuring B, concluding C.
-4. Why is blind faith in a popular tool dangerous? **A:** Popularity does not imply validity; many popular benchmarks are flawed or misinterpreted.
-5. What must accompany every benchmark number? **A:** The limit encountered and the analysis performed, or a list of unverified assumptions.
-6. What does "benchmarking the benchmark" mean? **A:** The tool itself (for example single-threaded) is the limiter.
-7. Why is ignoring errors dangerous? **A:** Failed operations may dominate, giving meaningless latency/throughput.
-8. How long should a benchmark run at minimum, and why? **A:** Not less than a second; minutes are better to average out perturbations such as interrupts and cache warmth.
-9. Why test multiple cloud instances? **A:** Instances differ in host hardware and neighbours; use the median or distribution.
-10. What is the benchmark paradox? **A:** Requiring a product to win several benchmarks multiplies probabilities, e.g. 0.5³ = 12.5%.
-11. What is a benchmark special? **A:** A product feature or configuration tuned to inflate a known benchmark without helping real workloads.
-12. Micro-benchmark versus simulation: pros and cons. **A:** Micro: simple, repeatable, must be mapped to workload; simulation: realistic, complex, can ignore variance.
-13. Why is replay hard? **A:** Clients do not react to the new system's behaviour; wrong level of replay measures the wrong thing.
-14. What is sunny-day versus rainy-day testing? **A:** Ideal peak conditions versus contention, failures, bursts and degraded components.
-15. What is passive benchmarking? **A:** Run the tool, collect numbers, no analysis during the run: error-prone.
-16. What is active benchmarking? **A:** Analysing the system with observability tools while the benchmark runs to confirm what is tested and what limits it.
-17. Why use ramping load? **A:** To find the scalability profile and the maximum load with acceptable latency.
-18. What is the sanity-check method? **A:** Check whether results exceed known physical limits using simple arithmetic.
-19. What are the six checklist questions? **A:** Why not double, did it break limits, did it error, does it reproduce, does it matter, did it even happen.
-20. Why use `--direct=1` in fio? **A:** To bypass the page cache and test the device/filesystem path rather than memory.
-21. Why does queue depth matter for NVMe? **A:** Devices need parallelism to reach rated IOPS; low depth measures latency.
-22. Why can SSD benchmark results change over time? **A:** Fresh-device bursts versus garbage-collection steady state; thermal throttling.
-23. Why does GPU timing need synchronisation? **A:** Kernels are asynchronous; without sync you measure launch, not execution.
-24. Why exclude warm-up iterations? **A:** Context creation, autotuning, JIT, allocation and cold caches distort early steps.
-25. Why lock or log GPU clocks in comparisons? **A:** Boost and throttling vary with power and temperature; unlogged clocks cause false regressions.
-26. What do algbw and busbw mean in nccl-tests? **A:** Algorithm bandwidth (size/time) and bus bandwidth (algbw scaled to make results comparable to the hardware peak).
-27. What does `NET/Socket` in NCCL logs imply when you expect InfiniBand? **A:** NCCL fell back to TCP sockets; check HCA selection, drivers, and IB configuration.
-28. Closed-loop versus open-loop load generation? **A:** Closed-loop waits for responses (hides queueing); open-loop sends at a schedule (exposes queue growth).
-29. How should an inference capacity number be chosen? **A:** The highest request rate meeting p95/p99 TTFT and TPOT SLOs under realistic length distributions.
-30. How do you decide a difference between two configs is real? **A:** Compare against run-to-run variance using repeated, interleaved runs and an appropriate statistical test or confidence interval.
+1. **Casual Benchmarking, the 16 Failures, and Active Benchmarking (Bonnie++ Case Study):** (a) Define *casual benchmarking*, *blind faith*, *benchmark specials*, and the *benchmark paradox* (`compute_benchmark_paradox_win_prob(0.5, 3)` in `code/part01/benchmarking_correctly.py`); (b) walk through how Gregg used `iostat`, `bpftrace` on `tracepoint:block:*` and `kprobe:vfs_write`, and `cachestat` to prove that Bonnie++'s `739 KB/s` "sequential per-character disk output" test never touched the disk.
+2. **The Six-Question Checklist and Instant Bandwidth Sanity-Check Arithmetic:** (a) State the six checklist questions (`SIX_CHECKLIST_QUESTIONS`); (b) evaluate `check_iops_link_sanity()` for a claim of `50,000` NFS `8 KiB` IOPS over a `1 GbE` link, and evaluate whether `"350 MB/s"` over `1 GbE`, `"55 GB/s"` unidirectional over `400 Gb/s` Ethernet, or `"40 GB/s"` unidirectional over PCIe Gen4 x16 are physically possible.
+3. **Storage Benchmarking with `fio` and Parallel Filesystem (`IOR` / `mdtest`) Rules:** Explain why `fio --rw=read --bs=1M --size=2G --numjobs=8` on a `1 TiB` RAM host reported `40 GB/s`, and write the corrected `fio` flags (`--direct=1`, `--size=64G`, `--iodepth=32`, `--ramp_time=10`, `--lat_percentiles=1`) to measure true NVMe sequential and random 4 KiB performance. How does `IOR -C` defeat client page-cache hits on multi-node parallel filesystems?
+4. **GPU Benchmarking Traps: Asynchrony, Warm-Up, Clock Locking, and Thermal Drift:** Why did Canary Node C in Worked Example C appear `6%` slower after a driver upgrade (`1,410 MHz` vs `1,740 MHz`), and what four controls (`torch.cuda.synchronize()` / CUDA events, warm-up discard, `nvidia-smi -lgc` clock locking, and explicit dtype/sparsity reporting) are required for valid GPU micro-benchmarks?
+5. **`nccl-tests` `algbw` vs. `busbw` and Diagnosing Fabric Fallbacks:** (a) Using `compute_nccl_allreduce_busbw()`, compute `algbw` (`GB/s`), the scaling factor `2(n - 1)/n`, and `busbw` (`GB/s`) when `all_reduce_perf` completes a `1 GB` (`1,000,000,000`-byte) AllReduce in `10 ms` (`0.010 s`) across `n = 8` GPUs; (b) in Worked Example B, why did 2-node `all_reduce_perf` plateau at `22 GB/s` instead of `46 GB/s`, and how did `NCCL_DEBUG=INFO` and `ibstat`/`perfquery` pinpoint both the TCP fallback and the degraded cable?
+6. **LLM Inference Open-Loop vs. Closed-Loop Benchmarking and Statistical Regression Gating:** (a) Contrast closed-loop fixed-concurrency benchmarking with open-loop Poisson-arrival benchmarking (*coordinated omission*), and explain why Worked Example D's capacity dropped from `4,200` to `1,350` tokens/s/GPU under realistic `3,000`-token prompt distributions; (b) use `evaluate_median_mad_regression_gate()` to evaluate candidate runs `[98.8, 99.2, 100.1, 99.0, 99.4]` and `[92.0, 91.5, 93.0, 92.2, 91.8]` against baseline `[100.0, 101.0, 99.0, 100.5, 99.5]`.
 
-## 13. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. What are the eight legitimate reasons to benchmark, and what six qualities define a good benchmark?</summary>
+The eight reasons are: system design/purchase (`performance/price`), proof of concept, tuning, development non-regression testing, capacity planning, troubleshooting, cluster acceptance/burn-in, and marketing upper bounds. A good benchmark is **repeatable**, **observable**, **portable**, **easily presented**, **realistic**, and **runnable**.
+</details>
 
-- Brendan Gregg, *Systems Performance: Enterprise and the Cloud*, 2nd ed., chapter 12 (Benchmarking): reasons, effective benchmarking, the sixteen failures, micro/simulation/replay/industry types, methodologies (passive and active benchmarking, CPU profiling, USE, workload characterisation, custom benchmarks, ramping load, sanity check, statistical analysis), the benchmarking checklist, and the benchmark questions. The Bonnie++ case study, the flame-graph throttling example, the NFS arithmetic and the 990,000-IOPS example are retold from the book.
-- The AI-infrastructure toolkit sections (fio recipes, perftest, nccl-tests, DCGM diagnostics, GPU-specific traps, training and inference benchmarking, acceptance sequence) are the author's synthesis of standard practice, combined with the project's other chapters; command flags change between tool versions and **must be verified** against current documentation (fio, iperf3, perftest, nccl-tests, DCGM, nvbandwidth, genai-perf and serving-benchmark tools).
-- No `nvidia-devops` file is mapped to this chapter. Related NCCL, storage, and fabric content appears in Parts 7 to 10.
+<details>
+<summary>2. What is \"casual benchmarking\", and why does Gregg warn against \"numbers without analysis\"?</summary>
+**Casual benchmarking** means "you benchmark A, actually measure B, and conclude you measured C" (for example, running a disk tool, measuring the RAM page cache, and concluding the NVMe array is fast). A benchmark number without an identified bottleneck/limiter and active observability validation is almost always misleading; if you lack time for full analysis, you must list every unverified assumption alongside the number.
+</details>
 
-**Flagged for verification before publishing:**
+<details>
+<summary>3. Explain \"benchmarking the benchmark\", \"friendly fire\", \"benchmark specials\", and the \"benchmark paradox\".</summary>
+**Benchmarking the benchmark** occurs when the load generator itself (e.g., a single-threaded client saturating 1 CPU core at `700 req/s`) caps the result while the target server is idle. **Friendly fire** is publishing an under-configured result for your own system because you did not check what limited it. **Benchmark specials** are features engineered solely to inflate a known benchmark without helping real workloads. The **benchmark paradox** notes that if a product has a 50% chance of winning one benchmark, its probability of winning three independent benchmarks in a row is `0.5^3 = 12.5%`.
+</details>
 
-- All tool options and DCGM diagnostic level semantics; permission to lock GPU clocks or change power limits.
-- Theoretical bandwidth figures (PCIe Gen4/Gen5 x16 achievable rates; NIC line-rate arithmetic).
-- Decode throughput arithmetic is illustrative.
-- MLPerf, IO500 and HPC benchmark rule details change by round.
-- All labs are **untested**.
+<details>
+<summary>4. Compare Micro-benchmarks, Macro-benchmarks (Simulations), Trace Replay, and Industry-Standard Benchmarks.</summary>
+**Micro-benchmarks** (`fio`, `iperf3`, `STREAM`, `nccl-tests`) test a single isolated operation—fast to run and root-cause, but must be mapped carefully to real workloads. **Simulations / macro-benchmarks** (`wrk`, `genai-perf`, MLPerf scenarios) model realistic client mixes. **Replay** re-runs captured traces, which fails if replayed at the wrong layer (e.g., replaying old disk I/O onto a host with 16x more RAM cache) or if client pacing ignores new server latency. **Industry standards** (`MLPerf`, `Top500/HPL`, `IO500`, `TPC`, `SPEC`) enforce strict disclosure rules and provide comparable upper bounds.
+</details>
+
+<details>
+<summary>5. What is Active Benchmarking, and how did it expose the Bonnie++ `739 KB/s` \"per-character disk\" result?</summary>
+**Active benchmarking** means running observability tools (`iostat`, `mpstat`, `perf`, `bpftrace`, `dmon`) **while the benchmark is running** to confirm what is actually being exercised and what limits it. During Bonnie++'s `739 KB/s` test, `iostat` and `tracepoint:block:*` showed zero disk requests, while `cachestat` and `kprobe:vfs_write` (`1.18 million` 1-byte writes) proved the test was measuring 1-byte C library / VFS buffered writes into the page cache.
+</details>
+
+<details>
+<summary>6. How does Ramping Load work, and why is `990,000 IOPS at 5 ms` the right capacity number rather than `1,000,000+ IOPS at 50 ms`?</summary>
+Ramping load steps concurrency or arrival rate upward, holding each step at steady state to plot both throughput and latency percentiles (`p50`, `p99`) against load. Past the saturation knee, pushing throughput by another `1%` (`990k` -> `1,000k` IOPS) causes queueing latency to explode `10x` (`5 ms` -> `50 ms`); the true usable capacity is the highest throughput that still meets your latency SLO.
+</details>
+
+<details>
+<summary>7. State the Six-Question Benchmarking Checklist.</summary>
+(1) **Why not double?** (What resource or limit prevented the score from being 2x higher?)
+(2) **Did it break limits?** (Does bandwidth arithmetic violate wire/bus speed?)
+(3) **Did it error?** (Were failed/timed-out requests counted as fast successes?)
+(4) **Does it reproduce?** (What is the spread across repeats and across other nodes?)
+(5) **Does it matter?** (Does the tested operation reflect production?)
+(6) **Did it even happen?** (Was the work cached, blocked, or optimized away by the compiler?)
+</details>
+
+<details>
+<summary>8. Perform the sanity-check arithmetic for `50,000` NFS IOPS of `8 KiB` over `1 GbE`, and for `55 GB/s` unidirectional on a `400 Gb/s` NIC.</summary>
+`50,000 IOPS * 8 KiB = 400,000 KiB/s ≈ 409.6 MB/s = 3.28 Gbit/s`, which is more than `3x` the physical `1.0 Gbit/s` (`~119 MB/s`) link ceiling—proving the reads came from the client's local RAM cache. A `400 Gb/s` NIC has a raw unidirectional wire rate of `400 / 8 = 50 GB/s` before headers, so `"55 GB/s"` per direction is physically impossible (likely a bidirectional sum or a GiB/GB unit error).
+</details>
+
+<details>
+<summary>9. List the six rules for running an honest `fio` storage benchmark on NVMe SSDs.</summary>
+(1) Pass `--direct=1` (`O_DIRECT`) to bypass the host RAM page cache; (2) size the test working set larger than host RAM (`--size=64G`) when testing through a filesystem; (3) test both `iodepth=1` (unloaded latency) and high `iodepth` x `numjobs` (peak parallel IOPS/bandwidth); (4) precondition the SSD past its fresh-out-of-box SLC burst into garbage-collection steady state (`--ramp_time`); (5) report `p50`/`p90`/`p99`/`p99.9` completion latencies (`--lat_percentiles=1`); and (6) log bandwidth over time (`--write_bw_log`) to catch thermal throttling (e.g., at `85 °C`).
+</details>
+
+<details>
+<summary>10. How do you benchmark a parallel filesystem (Lustre, BeeGFS, Weka, GPFS) at cluster scale using `IOR` and `mdtest`?</summary>
+Use **`IOR`** with MPI across multiple nodes to test sequential and random bulk read/write bandwidth (using `-F` file-per-process vs single shared file, `-e` fsync, and **`-C` reorderTasks** so rank `N+1` reads back data written by rank `N` on a *different* node, defeating local client page-cache hits). Pair it with **`mdtest`** (and the **IO500** suite) to benchmark metadata creation, `stat()`, and deletion rates across millions of small files.
+</details>
+
+<details>
+<summary>11. What are the common pitfalls when benchmarking `100–400 Gb/s` TCP (`iperf3`) and RDMA (`perftest` `ib_write_bw` / `ib_write_lat`)?</summary>
+`iperf3` is single-threaded per process, so a single stream rarely fills a `100–400 Gb/s` link; use multiple parallel streams (`-P 4..8`) or multiple pinned processes, verify jumbo MTU (`9000` Ethernet / `4096` IB), and bind to the NIC's local NUMA node. For `ib_write_bw` / `ib_write_lat`, specify the exact RDMA device (`-d mlx5_0`), GID index (`-x` for RoCEv2), and `--report_gbits`, check `lspci -vv` for PCIe link width/speed, and verify zero symbol/CRC errors or PFC pause storms in `ethtool -S` / `perfquery`.
+</details>
+
+<details>
+<summary>12. Why does timing a CUDA kernel or PyTorch op with `time.time()` without synchronization produce bogus microsecond results, and what is the right method?</summary>
+CUDA kernel launches are **asynchronous**—the CPU queues the command to the GPU stream and returns in a few microseconds before the GPU finishes executing the kernel. Always synchronize before starting and before stopping a wall-clock timer (`torch.cuda.synchronize()`), or measure elapsed time directly on the GPU stream using `torch.cuda.Event(enable_timing=True)` / `torch.utils.benchmark.Timer` after discarding warm-up iterations.
+</details>
+
+<details>
+<summary>13. Why must GPU benchmarks control warm-up, clock locking (`nvidia-smi -lgc`), and thermal state (heat-soaking)?</summary>
+Early iterations pay one-time costs (CUDA context creation, JIT compilation, `cuBLAS`/`cuDNN` autotuning, caching allocator `cudaMalloc` calls). Furthermore, GPU boost clocks drop automatically as die/HBM temperature rises or power hits TDP (`clocks_throttle_reasons.active`): comparing a cold GPU (`1,740 MHz`) against a heat-soaked GPU (`1,410 MHz`) creates a fake `6%–15%` "regression". Lock clocks (`nvidia-smi -pm 1` and `nvidia-smi -lgc`) or heat-soak both runs and log clocks/temperatures continuously.
+</details>
+
+<details>
+<summary>14. In `nccl-tests` (`all_reduce_perf`), what is the difference between `algbw` and `busbw`, and what is the AllReduce conversion formula?</summary>
+**`algbw`** (*algorithm bandwidth*) is simply `data_size_bytes / time_sec`. **`busbw`** (*bus bandwidth*) scales `algbw` by the theoretical communication volume factor of the collective so you can compare the result directly against the physical hardware link bandwidth (`NVLink` or `InfiniBand`/`RoCE` line rate). For an AllReduce across `n` ranks, `busbw = algbw * 2(n - 1) / n` (so for `n = 8`, `busbw = 1.75 * algbw`).
+</details>
+
+<details>
+<summary>15. During a 2-node `all_reduce_perf` run on `400 Gb/s` NICs, `busbw` is only `22 GB/s` (or `31 GB/s`) instead of `~46 GB/s`. What do you check?</summary>
+Run with `NCCL_DEBUG=INFO` and check the `NET/` initialization line: if it says `NET/Socket` instead of `NET/IB ... GPU Direct RDMA Enabled`, NCCL fell back to kernel TCP sockets (fix `NCCL_IB_HCA`, `nvidia_peermem`, or ACS settings). If `NET/IB` is active but one node pair gets `31 GB/s`, check `ibstat`, `perfquery`, and `lspci -vv` on each rank to find the degraded link speed, PCIe width downtrain, or high symbol-error cable.
+</details>
+
+<details>
+<summary>16. What is the difference between Closed-Loop and Open-Loop load generation in LLM inference benchmarking, and what is Coordinated Omission?</summary>
+In a **closed-loop** benchmark, a fixed number of client workers wait for each response before sending the next request—when the server stalls or queues, the clients automatically slow down their sending rate, hiding queueing delay (**coordinated omission**). An **open-loop** benchmark (`genai-perf`, `benchmark_serving` with `--request-rate`) dispatches requests on an independent arrival schedule (e.g., Poisson) regardless of server stalls, accurately measuring queue growth and `p99` `TTFT`/`TPOT`.
+</details>
+
+<details>
+<summary>17. Why is benchmarking an LLM inference server with a single fixed prompt length (`256` tokens) dangerous for capacity planning?</summary>
+Prefill compute scales quadratically (or linearly with long-context attention) with prompt length, and KV-cache memory occupancy scales with `prompt_len + output_len` times concurrency. A fixed 256-token prompt hides prefill head-of-line blocking, KV-cache preemption/eviction, and batch-scheduler stalls that occur under production prompt-length distributions (e.g., mean `3,000` tokens with a long tail).
+</details>
+
+<details>
+<summary>18. Outline the 9-stage cluster acceptance and burn-in test sequence for a newly delivered 64-node GPU cluster.</summary>
+(1) Static hardware/firmware/BIOS/PCIe-link/MTU audit (`env_dump.sh`), (2) per-node `dcgmi diag -r 3` / `-r 4`, (3) multi-hour GPU + CPU thermal/power burn-in (`gpu-burn` + `stress-ng`) logging throttle reasons and ECC/Xid errors, (4) host DRAM test, (5) local NVMe `fio` check, (6) all-pairs/all-links RDMA `ib_write_bw` and `ib_write_lat` sweep, (7) `nccl-tests` (`all_reduce_perf`, `alltoall_perf`) at `1, 2, 4, 8, ..., 64` nodes across leaf/spine tiers, (8) parallel storage `IOR` and `mdtest` at full node count, and (9) an end-to-end reference training job with failure/checkpoint recovery.
+</details>
+
+<details>
+<summary>19. How do you design a non-regression performance gate in CI so noisy hardware variance does not cause constant false alarms?</summary>
+Fix clocks, seeds, and datasets; discard warm-up steps; run `5` to `10` interleaved repetitions of baseline and candidate on the same isolated node; and gate on a robust non-parametric statistic such as **`candidate_median >= baseline_median - 3 * MAD`** (Median Absolute Deviation) or a bootstrap confidence interval rather than a single run.
+</details>
+
+<details>
+<summary>20. What eight items must be included in every reproducible benchmark report?</summary>
+(1) The exact question and pass/fail criterion, (2) what was measured and how active benchmarking verified it, (3) full hardware/OS/driver/library environment metadata (`env_dump.sh`), (4) tables of median and spread (`MAD`/SD, `p50`/`p90`/`p99`) plus scalability/latency curves, (5) the identified limiting resource with counter/profile evidence, (6) explicit list of untested assumptions and caveats, (7) exact scripts/commands/image digests to reproduce, and (8) the engineering or purchasing decision that follows.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `systems-performance-2nd-edition` — Brendan Gregg, *Systems Performance: Enterprise and the Cloud*, 2nd ed., **Chapter 12: Benchmarking** (sections 12.1–12.6: reasons for benchmarking, effective benchmarking, the 1981 4 MB TCP/IP breakdown example, the 16 benchmarking failures, micro/simulation/replay/industry-standard benchmark types TPC/SPEC, passive vs active benchmarking, CPU profiling 62% throttling example, USE method, workload characterization, custom benchmarks, ramping load 990,000 IOPS knee, sanity check `50,000` NFS IOPS x `8 KiB` = `3.2 Gbit/s` > `1 GbE`, the Bonnie++ `739 KB/s` `1.18M` 1-byte `vfs_write` case study, the 6-question benchmarking checklist, and the vendor benchmark evaluation questions).
+- **Run here:** `python3 code/part01/benchmarking_correctly_lab.py` (15 passed, 0 failed).
+- **Explicitly labelled inferences:** The AI-infrastructure benchmark toolkit (`fio` NVMe/checkpoint recipes, `IOR`/`mdtest`/`IO500`, `iperf3` and RDMA `perftest` `ib_write_bw`/`ib_write_lat`, `dcgmi diag`, `nvbandwidth`, `nccl-tests` `algbw`/`busbw` `2(n-1)/n` math, LLM open-loop vs closed-loop `genai-perf` / `benchmark_serving` coordinated omission analysis, and the 9-stage cluster acceptance sequence) translates Gregg's benchmarking methodology to Part 6, Part 8, Part 9, and Part 10 GPU cluster operations (no `nvidia-devops` file is directly mapped to `1.25`; cross-referenced with Chapters 1.13, 1.17, 1.23, 1.24, and 1.28, plus original study items 15, 21, 22, 23, 24, 25, 26, 27, 28, and 29).
+- **Not verified on live hardware:** All interactive VM, storage (`fio`, `IOR`, `mdtest`), network (`iperf3`, `ib_write_bw`, `qperf`), GPU (`dcgmi`, `nvbandwidth`, `all_reduce_perf`), and serving benchmark commands are marked (untested here) and must be executed on disposable or drained test nodes.

@@ -26,3 +26,4 @@
 | 1.22 Kernel modules, DKMS and sysctl tuning for GPU nodes | `kernel_modules_sysctl.py` | `kernel_modules_sysctl_lab.py` | 19 | `python3 code/part01/kernel_modules_sysctl_lab.py` |
 | 1.23 Performance methodology: USE, workload, drill-down | `perf_methodology_use.py` | `perf_methodology_use_lab.py` | 15 | `python3 code/part01/perf_methodology_use_lab.py` |
 | 1.24 Observability tools: perf, ftrace, BPF and bpftrace | `observability_perf_bpf.py` | `observability_perf_bpf_lab.py` | 15 | `python3 code/part01/observability_perf_bpf_lab.py` |
+| 1.25 Benchmarking correctly | `benchmarking_correctly.py` | `benchmarking_correctly_lab.py` | 15 | `python3 code/part01/benchmarking_correctly_lab.py` |
