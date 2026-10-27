@@ -414,7 +414,12 @@ GitLab CI equivalent: stages, `needs`, `cache`, `artifacts:reports:junit`, `rule
 
 Many repositories mix Python with declarative infrastructure; test those layers too:
 
-- **Ansible**: `ansible-lint`, `yamllint`, `ansible-playbook --syntax-check`, `--check --diff` against a staging host, **Molecule** with containers/VMs and **testinfra** (pytest-based assertions on the resulting host) for role tests.
+- **Ansible (`AUR` Chapter 14 *Quality Assurance with Molecule*):** Run `yamllint .` and `ansible-lint` (plus `ansible-later` configured via `.later.yml`), `ansible-playbook --syntax-check`, and `--check --diff` against a staging host. For full role lifecycle testing, use **Molecule** (`molecule init scenario -r ssh --driver-name docker`, `molecule create`, `molecule converge`, `molecule idempotence`, `molecule verify`, `molecule destroy` across Docker, Podman, Vagrant/VirtualBox, or cloud drivers) paired with **Testinfra** (`testinfra.utils.ansible_runner.AnsibleRunner(os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')`, asserting `host.package("openssh-server").is_installed`, `host.service("sshd").is_running`, `host.file("/etc/ssh/ssh_host_ed25519_key.pub").mode == 0o644`, and `host.user("sshd").exists`, modeled in `code/part03/python_testing_quality_ci.py`) or **Goss** (`goss -g test_sshd.yml validate`).
+- **Distributed software architectures, DevOps, and MLOps quality loops (`EAS` Chapter 2 *Software Engineering Background*):** In *Engineering AI Systems* Chapter 2, Len Bass et al. trace how modern AI platforms combine **virtual machines and containers** (using dynamic service discovery rather than static DNS), **distributed software architectures** (evolving from Client-Server and Service-Oriented Architecture `SOA` to **Microservices** governed by Amazon's 2002 API mandate—where teams communicate exclusively through networked service interfaces with zero shared-memory backdoors or direct cross-team database reads), and **interface styles** (**REST** over HTTP/1.1 for general resource CRUD and ad-hoc dataset retrieval vs **GraphQL** for bandwidth-constrained edge clients that query only specific fields). In **DevOps and Infrastructure as Code (IaC)**, provisioning scripts and playbooks must be tested for **idempotence** (running a script twice produces the exact same target state without errors), while **MLOps** extends the DevOps continuous integration/deployment loop (design -> code -> build -> test -> deploy -> monitor) with **data pipelines, model training/retraining, and continuous model evaluation** to guard against data drift and non-deterministic training regressions.
+- **Empirical Python benchmarking (`timer.py`, `pybench.py`, and `timeit`, `LP` Chapter 21 *The Benchmarking Interlude*):** When optimizing parsers or data pipelines, never guess about performance—measure empirically across your target Python versions (`CPython` vs `PyPy`):
+  1. **Custom timer functions (`timer.py` and `timer2.py`, modeled in `code/part03/python_testing_quality_ci.py`):** Using `time.perf_counter()`, `once(func, *pargs, **kargs)` times a single call; `total(func, *pargs, _reps=1000, **kargs)` sums `_reps` calls; `bestof(func, *pargs, _reps=5, **kargs)` takes `min(once(...) for i in range(_reps))` (relying on Python's left-to-right tuple comparison of `(elapsed, result)` to pick the lowest time); and `bestoftotal(func, *pargs, _reps1=50, _reps=1000, **kargs)` computes the **minimum across `_reps1` totals of `_reps` calls**. We take the **`min` (best-of)** rather than the average because OS background interrupts and context switches can only artificially *inflate* a run's elapsed time; the minimum time represents the code's true speed unimpeded by system noise.
+  2. **Comparing the 5 iteration alternatives (`timer_tests.py` on `range(10_000)`):** When applying a built-in C function like `abs(x)`, `list(map(abs, repslist))` (`0.144s`) beats `[abs(x) for x in repslist]` (`0.208s`), which beats a `for` loop with `res.append(abs(x))` (`0.260s`), while `list(abs(x) for x in repslist)` (`0.411s`) and `list(gen())` (`0.412s`) pay extra per-item generator suspension/resumption overhead when forced into a list all at once. However, when the operation requires a user-defined expression like `x + 10` (`timer_tests2.py`), `[x + 10 for x in repslist]` (`0.244s`) and the `for` loop (`0.287s`) easily beat `list(map(lambda x: x + 10, repslist))` (`0.496s`) because calling a Python `lambda` function 10,000 times adds function-call frame overhead.
+  3. **Standard-library `timeit` and `pybench.py`:** `python3 -m timeit -n 1000 -r 5 -s "L = list(range(1000))" "[x ** 2 for x in L]"` (or `min(timeit.repeat(stmt=..., setup=..., number=1000, repeat=5))`) isolates one-time setup code (`-s`) from the timed loop body and disables garbage collection during timing by default (`gc.enable()` inside `setup` re-enables it).
 - **Terraform/OpenTofu**: `fmt -check`, `validate`, `tflint`, policy checks (OPA/Conftest, Checkov, tfsec), `plan` in CI with reviewed output, **Terratest** (Go) or `terraform test` for module tests against ephemeral environments.
 - **Kubernetes manifests and Helm**: `kubeconform`/`kubeval` against schemas, `helm lint` and `helm template | kubeconform`, `kube-linter`, `conftest` policies, `kind` smoke deploys, `chainsaw`/`kuttl` declarative tests for operators.
 - **Dockerfiles**: `hadolint`; image scanning (`trivy`, `grype`); `container-structure-test`.
@@ -426,7 +431,15 @@ Many repositories mix Python with declarative infrastructure; test those layers 
 
 Track test duration trends, flake rate, coverage of changed lines (diff-cover), and time-to-green; fail slow tests loudly (`--durations`), parallelise with xdist when isolation permits, and keep the pipeline under about ten minutes for PR feedback (split or shard otherwise). Keep logs and JUnit reports as artefacts and attach failing-test reproduction commands to the output (seed values, `pytest -k` hints).
 
-## 9. Lab (untested)
+## 9. Lab
+
+First, run the self-checking Python lab (`code/part03/python_testing_quality_ci_lab.py`) locally. It verifies *Learning Python* Chapter 21's `timer_once`, `timer_total`, `timer_bestof`, `timer_bestoftotal`, and the 5 iteration alternatives (`forLoop`, `listComp`, `mapCall`, `genExpr`, `genFunc`), dependency-injected `Drainer` + `FakeKube` testing both pod-evacuation success and `TimeoutError` in milliseconds without real `time.sleep`, and *Ansible: Up and Running* Chapter 14's `Testinfra` host verification assertions (`verify_sshd_host`).
+
+```bash
+python3 code/part03/python_testing_quality_ci_lab.py
+```
+
+Next, on any machine with Python 3.11+ (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **Unit test suite**: take the parser/rules module from 3.8; write parametrised tests including `[N/A]`, wrong column counts, empty output; achieve 100% branch coverage on the core; run with `pytest -q --cov --cov-branch`.
 2. **Dependency injection**: implement the `Drainer` with injected clock/sleep and a `FakeKube`; test timeout and success paths with no real sleeping; then rewrite using `mocker.patch` and compare readability and fragility.
@@ -441,8 +454,6 @@ Track test duration trends, flake rate, coverage of changed lines (diff-cover), 
 11. **Mutation test**: run `mutmut` on the rules module; strengthen tests until important mutants die.
 12. **Infra linting**: add `ansible-lint`, `kubeconform`, `hadolint`, `shellcheck` jobs for a sample repo.
 13. **Clean up.**
-
-Mark tested only after execution.
 
 ## 10. Common mistakes
 
@@ -469,50 +480,183 @@ Mark tested only after execution.
 - "How do you keep a CI pipeline fast and trustworthy?" (cheap-first ordering, caching, parallelism, sharding, no flakes, required checks.)
 - "How would you gate a Terraform or Ansible change?" (lint, plan/check-mode output review, policy checks, ephemeral environment tests.)
 
-## 12. Checkpoint questions (35)
+## Exercises
 
-1. Test pyramid shape? **A:** Many unit, fewer integration, few end-to-end.
-2. Why prefer pure functions? **A:** Testable without I/O.
-3. What is a fixture? **A:** Setup/teardown and injection by parameter name.
-4. Where do shared fixtures live? **A:** `conftest.py`.
-5. What does a `yield` fixture do after the test? **A:** Runs teardown code.
-6. What does `monkeypatch` guarantee? **A:** Changes are undone after the test.
-7. Why parametrise? **A:** Cover cases without duplicate tests.
-8. Stub vs fake vs mock? **A:** Canned answers; working lightweight implementation; call-recording.
-9. Where must you patch? **A:** Where the name is looked up.
-10. Why `autospec`? **A:** The mock enforces the real signature.
-11. How to test sleeping logic fast? **A:** Inject clock and sleep.
-12. Which tool intercepts `httpx` calls? **A:** `respx`.
-13. Why scrub cassettes? **A:** They may contain secrets.
-14. How do you test subprocess wrappers? **A:** Patch `subprocess.run` or use fake executables on `PATH`.
-15. What is Hypothesis shrinking? **A:** Reducing a failing input to a minimal case.
-16. Three useful properties? **A:** Round-trip, idempotence, invariants.
-17. What are golden files? **A:** Reviewed expected outputs compared with actual.
-18. What is a contract test? **A:** Verifies that provider and consumer agree on a schema.
-19. What does testcontainers do? **A:** Starts disposable containers for tests.
-20. What does `CliRunner` return? **A:** Result with exit code and output.
-21. Why test exit codes? **A:** Automation relies on them.
-22. What does mutation testing reveal? **A:** Weak assertions.
-23. Main cause categories of flaky tests? **A:** Shared state, time, network, ordering, races.
-24. What does ruff replace? **A:** flake8, isort, pyupgrade and more.
-25. Why mypy in CI? **A:** Catches type bugs before runtime.
-26. What does `branch = true` add? **A:** Branch coverage, not just lines.
-27. Why diff coverage? **A:** Focuses on changed lines.
-28. What is pre-commit for? **A:** Local hooks before commit, mirrored in CI.
-29. Why pin actions by SHA? **A:** Supply-chain safety.
-30. What does `permissions:` do in Actions? **A:** Restricts the workflow token.
-31. Why trusted publishing? **A:** No long-lived tokens.
-32. Why smoke-test the built wheel? **A:** Catches packaging and entry-point errors.
-33. How do you run GPU tests in CI? **A:** Labelled self-hosted runners with marked tests.
-34. Which tool tests Ansible roles? **A:** Molecule with testinfra.
-35. Which tools validate Kubernetes manifests? **A:** kubeconform, helm lint, kube-linter, conftest.
+1. **The Test Pyramid, `pytest` Fixtures (`yield`, `monkeypatch`, `tmp_path`), Parametrization, and State Leakage (`FA` Chapter 8 & `volume-02`):** (a) Explain how the test pyramid (Unit -> Contract -> Integration -> End-to-End) applies to GPU fleet tooling when no physical GPU is attached to the CI runner; (b) write a `@pytest.mark.parametrize` test and a `yield` fixture in `conftest.py`, and explain how `monkeypatch.setenv` and `pytest-randomly` prevent cross-test state leakage.
+2. **Fakes vs. Stubs vs. Mocks, Dependency-Injected Clocks (`Drainer` + `FakeKube`), and HTTP Transport Interception (`respx`):** Using `Drainer` and `FakeKube` in `code/part03/python_testing_quality_ci.py`, explain: (a) why injecting `kube`, `clock`, and `sleep` lets `test_drain_waits_until_empty` test a 600-second timeout loop in 1 millisecond with zero `unittest.mock.patch` fragility; and (b) when you must use `mocker.patch`, why you must patch where the symbol is **looked up** (`fleetctl.client.httpx`) and pass `autospec=True`, or intercept at the HTTP transport layer with `respx`.
+3. **Property-Based Testing (`Hypothesis`), Golden Snapshots, Contract Testing (`schemathesis`), and Mutation Testing (`mutmut`):** (a) Explain how `@given(...)` property-based testing with input shrinking finds edge cases in `parse_smi_csv` that example-based tests miss; (b) contrast line coverage, branch coverage (`branch = true`), and mutation testing (`mutmut`) when evaluating whether a test suite actually catches regressions.
+4. **Static Quality Gates (`ruff`, `mypy --strict`, `bandit`, `pip-audit`, `pre-commit`) and GitHub Actions CI Hardening:** (a) Explain what `ruff` (`E`, `F`, `I`, `B`, `UP`, `S`, `ASYNC`), `mypy --strict`, and `coverage` (`fail_under = 85`, `branch = true`) enforce in `pyproject.toml`; (b) trace the 5-stage GitHub Actions pipeline (`lint -> test matrix -> integration -> build wheel -> OIDC trusted publish`), explaining `permissions: { contents: read }`, `id-token: write`, and why fork PRs must never receive repository secrets.
+5. **Empirical Python Benchmarking (`timer.py`, `timeit`, and the 5 Iteration Alternatives, `LP` Chapter 21):** Using `timer_once()`, `timer_total()`, `timer_bestof()`, `timer_bestoftotal()`, and `run_five_iteration_alternatives()` in `code/part03/python_testing_quality_ci.py`, explain: (a) why `bestoftotal` takes the **`min()`** across repeated runs rather than the mean; and (b) why `map(abs, repslist)` beats `[abs(x) for x in repslist]` on a built-in C function, whereas `[x + 10 for x in repslist]` beats `map(lambda x: x + 10, repslist)` when a `lambda` is required.
+6. **Testing Infrastructure-as-Code (`Molecule` + `Testinfra`) and DevOps vs. MLOps Architecture (`AUR` Ch. 14 & `EAS` Ch. 2):** Using `verify_sshd_host()` and `FakeTestinfraHost` in `code/part03/python_testing_quality_ci.py`, explain: (a) the Molecule test sequence (`create -> converge -> idempotence -> verify -> destroy`) and how `Testinfra` verifies package, service, file mode, and user state on provisioned instances; and (b) how microservices (Amazon's API mandate, REST vs GraphQL) and MLOps extend traditional DevOps continuous testing loops (`EAS` Chapter 2).
 
-## 13. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. How does the Test Pyramid apply to GPU and cluster infrastructure code, and how do you test GPU tooling on CI runners that have no physical GPUs?</summary>
 
-- The author's `nvidia-devops` repository, volume 02 (Python tooling and operations masterclass, sections on testing infrastructure code with pytest, fixtures and teardown, mocking external APIs, leaked test state, and CI/CD for distributing CLIs with GitHub Actions).
-- pytest, Hypothesis, coverage.py, ruff, mypy, pre-commit, respx, responses, testcontainers, Molecule and GitHub Actions documentation.
-- Examples are the author's constructions.
+- **Test pyramid:** Write **thousands of millisecond unit tests** against the pure functional core (`parsers.py`, `rules.py`, planners using injected fakes), **dozens of contract and integration tests** (`schemathesis`, `respx`, `testcontainers`, `kind`), and **a handful of end-to-end canary tests** on real hardware.
+- **Testing without GPUs:** Feed recorded `nvidia-smi --query-gpu=... --format=csv` and `dcgmi` payloads (including `[N/A]`, thermal throttling, XID errors, and missing GPUs) into pure parsers, mock `pynvml` at the adapter boundary, and gate hardware-in-the-loop tests with `@pytest.mark.gpu` (`pytest -m "not gpu"` on standard cloud runners, running `-m gpu` only on labelled self-hosted GPU runners).
+</details>
 
-**Flagged for verification before publishing:** tool and action version numbers in configuration snippets, ruff rule-set codes, pytest plugin option names, the GitHub Actions syntax and the PyPI trusted publishing flow, and every code listing; all labs are **untested**.
+<details>
+<summary>2. How do `pytest` fixtures (`conftest.py`, `yield`, scopes) and built-in fixtures (`tmp_path`, `monkeypatch`, `capsys`, `caplog`) prevent leaked test state (`FA` Chapter 8)?</summary>
+
+`pytest` injects fixtures by matching function parameter names to `@pytest.fixture` definitions in the test module or `conftest.py` (with scopes `function`, `class`, `module`, or `session`). In a `yield` fixture, code before `yield val` sets up the resource and code after `yield` runs teardown **even if the test fails**.
+- **`monkeypatch`** (`setenv`, `delenv`, `setattr`, `chdir`) automatically restores modified environment variables, attributes, and working directories after every test.
+- **`tmp_path`** provides an isolated temporary `pathlib.Path` directory per test.
+Running CI with **`pytest-randomly`** randomizes test order to immediately expose any test that mutates shared module-level state.
+</details>
+
+<details>
+<summary>3. Distinguish a Stub, a Fake, a Spy, and a Mock, and explain why Dependency Injection (`Drainer` + `FakeKube`) beats heavy `unittest.mock.patch` usage.</summary>
+
+- **Stub:** Returns canned responses to calls (`lambda: 200`).
+- **Fake:** A working, lightweight in-memory implementation (`FakeKube`, SQLite `:memory:`, `MockRedfishTransport`).
+- **Spy:** Wraps a real object while recording calls.
+- **Mock:** A pre-programmed object that records call arguments/counts and asserts on interaction choreography.
+Injecting collaborators (`Drainer(kube, clock=..., sleep=...)`) and testing with `FakeKube` + an iterator clock tests **observable behavior and state outcomes** in microseconds, whereas patching ten internal functions couples tests to implementation details that break on every refactor.
+</details>
+
+<details>
+<summary>4. When you do use `unittest.mock.patch` / `mocker.patch`, why must you patch where a name is looked up and enable `autospec=True`?</summary>
+
+- **Patch where looked up:** If `fleetctl/client.py` executes `from httpx import Client`, patching `"httpx.Client"` modifies the `httpx` module attribute after `client.py` already bound its own reference; you must patch **`"fleetctl.client.Client"`** (where the module under test looks up the name).
+- **`autospec=True` (`create_autospec`):** A default `MagicMock` accepts **any** method name and **any** argument signature—so if you rename a parameter on the real function or misspell `mock.assret_called_once()`, the test silently passes. `autospec=True` enforces the target object's exact function signature.
+</details>
+
+<details>
+<summary>5. Why is intercepting HTTP calls at the transport layer (`respx`, `responses`, `vcrpy`) better than mocking `client.get`?</summary>
+
+When you mock `client.get`, your test bypasses URL construction, query-parameter serialization, header injection, timeout configuration, and `raise_for_status()` handling inside your client method. Transport-level interceptors (`@respx.mock` for `httpx`, `responses` for `requests`) let your real `httpx.Client` code serialize the request and parse the response while intercepting the network socket at the bottom.
+</details>
+
+<details>
+<summary>6. How does Property-Based Testing (`Hypothesis`) with shrinking work, and what are four classic properties to test?</summary>
+
+Instead of testing 3 hardcoded examples, `@given(st.lists(...))` generates hundreds of randomized, edge-case inputs (empty strings, negative integers, Unicode, boundary values) and checks that a general invariant holds. When Hypothesis finds a failing input, it automatically **shrinks** the input down to the **smallest, simplest counterexample** that still triggers the bug (and saves it in `.hypothesis/` for regression replay). Four classic properties are:
+1. **Round-trip:** `parse_smi_csv(render_csv(gpus)) == gpus`.
+2. **Idempotence:** `normalize(normalize(x)) == normalize(x)`.
+3. **Structural invariants:** output length, sorting, or sum conservation.
+4. **Total parser safety:** arbitrary `st.text()` raises only documented `ValueError`, never an unhandled `IndexError` or `KeyError`.
+</details>
+
+<details>
+<summary>7. Contrast Line Coverage, Branch Coverage (`branch = true`), Diff Coverage, and Mutation Testing (`mutmut`).</summary>
+
+- **Line coverage** only measures whether a line of code executed during tests (a test with zero assertions achieves 100% line coverage).
+- **Branch coverage (`branch = true`)** verifies that every `if`/`else` condition evaluated to both `True` and `False`.
+- **Diff coverage (`diff-cover`)** enforces high coverage (e.g., 90%+) specifically on lines added or modified in a pull request.
+- **Mutation testing (`mutmut`)** systematically mutates the source code AST (changing `>` to `>=`, `+` to `-`, or deleting statements) and runs the test suite; if the tests still pass (a **surviving mutant**), your assertions are too weak to detect real bugs in that line.
+</details>
+
+<details>
+<summary>8. How do you test Click and `argparse` CLIs for exit codes, `stdout`/`stderr` separation, and packaging integrity?</summary>
+
+1. **In-process unit tests:** Call `CliRunner().invoke(cli, ["--output", "json", "status", "h1"])` (or `main(["status", "h1"])` with `capsys`) and assert that `r.exit_code == 0`, `json.loads(r.stdout)` parses cleanly, and diagnostic logs appeared only on `r.stderr`.
+2. **Subprocess & wheel smoke test:** In CI, build the wheel (`python -m build`), install it into a fresh virtualenv, and invoke the console-script binary (`fleetctl --version` and `fleetctl --help`) via `subprocess.run` to prove that `pyproject.toml` `[project.scripts]` entry points and package data files are not missing.
+</details>
+
+<details>
+<summary>9. What causes flaky tests in infrastructure repositories, and what is the right engineering policy for handling them?</summary>
+
+Flaky tests are caused by: (1) leaked global/module state between tests, (2) reliance on wall-clock sleeps (`time.sleep(5)`) instead of deterministic clock injection or bounded polling, (3) live network calls, (4) port/namespace collisions in parallel runs, and (5) concurrency data races. Never mask flakes by slapping blind retries (`pytest-rerunfailures`) onto the whole suite: reproduce them with `pytest-randomly --randomly-seed=<seed>` and `pytest --count=100 -n auto`, quarantine only with a tracked issue, and fix the underlying determinism bug.
+</details>
+
+<details>
+<summary>10. What roles do `ruff`, `mypy`, `bandit`, `pip-audit`, and `pre-commit` play in a Python quality gate?</summary>
+
+- **`ruff`**: ultra-fast Rust-based linter (`ruff check`, replacing `flake8`, `isort`, `pyupgrade`, `flake8-bugbear` `B`, `flake8-bandit` `S`, `pytest-style` `PT`, `ASYNC`) and Black-compatible formatter (`ruff format --check`).
+- **`mypy --strict` / `pyright`**: static type checker catching `None` dereferences, wrong argument types, and missing `await`s before execution.
+- **`bandit` (`ruff -S`)**: flags unsafe calls (`subprocess(..., shell=True)`, `yaml.load()`, hardcoded secrets, `mktemp`).
+- **`pip-audit`**: scans locked dependencies against the PyPA Advisory Database for known CVEs.
+- **`pre-commit`**: runs these hooks locally on staged files before `git commit` and identically in CI so broken commits never enter the branch.
+</details>
+
+<details>
+<summary>11. How should a GitHub Actions CI pipeline be structured and hardened for a Python infrastructure project?</summary>
+
+- **Fast-feedback staging:** Run `lint` (`ruff check`, `ruff format --check`, `mypy`) first in seconds; fan out `test` across a Python version/OS `matrix` (`3.10`, `3.11`, `3.12`) with `fail-fast: false`; run container-backed `integration` tests and wheel `build` smoke tests; and gate `publish` on version tags (`refs/tags/v*`).
+- **Security hardening:** Set minimal **`permissions: { contents: read }`**, pin third-party actions to reviewed versions/commit SHAs, use `concurrency: { cancel-in-progress: true }`, never expose secrets to untrusted fork PRs, and publish wheels to PyPI using **OIDC Trusted Publishing (`permissions: { id-token: write }`)** instead of long-lived API tokens.
+</details>
+
+<details>
+<summary>12. In *Learning Python* Chapter 21 (`timer.py` and `timeit`), why do we take the `min()` of repeated benchmark runs rather than the average, and why use `time.perf_counter()`?</summary>
+
+- **`min()` vs average:** A program on a multitasking OS can never run *faster* than its pure instruction cost, but OS scheduler interrupts, page faults, and background daemons can arbitrarily *slow down* individual runs. Therefore, variance is one-sided noise, and the **minimum (`min`) elapsed time across `repeat` runs** (`bestof` / `bestoftotal` / `min(timeit.repeat(...))`) is the most accurate measure of the code's actual execution cost.
+- **`time.perf_counter()`:** Provides the highest-resolution monotonic performance timer available on the platform.
+</details>
+
+<details>
+<summary>13. In *Learning Python* Chapter 21's 5 iteration benchmarks (`forLoop`, `listComp`, `mapCall`, `genExpr`, `genFunc`), when does `map` beat a list comprehension, and when does a list comprehension beat `map`?</summary>
+
+- **When applying an existing built-in C function (`abs(x)` or `ord(x)` in `timer_tests.py`):** `list(map(abs, repslist))` (`0.144s`) is fastest because `map` invokes the C function pointer directly inside CPython's C loop, beating `[abs(x) for x in repslist]` (`0.208s`) and `forLoop` (`0.260s`).
+- **When applying an inline expression that requires a `lambda` in `map` (`x + 10` in `timer_tests2.py`):** `[x + 10 for x in repslist]` (`0.244s`) and even a plain `forLoop` (`0.287s`) are roughly **2x faster** than `list(map(lambda x: x + 10, repslist))` (`0.496s`), because creating and calling a Python `lambda` stack frame on every iteration dwarfs the loop savings. Also note that `list(genExpr)` and `list(genFunc)` are slower when materializing a full list because they allocate a generator frame and suspend/resume on every item—their advantage is **$O(1)$ streaming memory**, not full-list materialization speed.
+</details>
+
+<details>
+<summary>14. How do `Molecule`, `ansible-lint`, `Testinfra`, and `Goss` test Ansible roles in CI (`AUR` Chapter 14)?</summary>
+
+**Molecule** orchestrates a complete ephemeral test lifecycle for an Ansible role:
+1. **`lint`:** Runs `yamllint`, `ansible-lint`, and `ansible-later`.
+2. **`create`:** Spins up ephemeral Docker/Podman systemd containers, Vagrant VMs, or cloud instances (`molecule.yml`).
+3. **`converge`:** Applies the Ansible role to the test instance(s).
+4. **`idempotence`:** Re-runs the role a second time and **fails the build if any task reports `changed > 0`**.
+5. **`verify`:** Runs **Testinfra** (`pytest` assertions via `host.package`, `host.service`, `host.file`, `host.user`) or **Goss** (`test_sshd.yml`) inside the target host to verify actual system state.
+6. **`destroy`:** Tears down the test instances.
+</details>
+
+<details>
+<summary>15. How do you validate Terraform modules, Kubernetes manifests, Helm charts, Dockerfiles, and Shell scripts in CI?</summary>
+
+- **Terraform / OpenTofu:** `terraform fmt -check`, `terraform validate`, `tflint`, security/policy scanners (`checkov`, `tfsec`, `conftest` OPA), and `terraform test` / `Terratest`.
+- **Kubernetes & Helm:** `helm lint`, `helm template ... | kubeconform -strict` (validating against Kubernetes OpenAPI JSON schemas), `kube-linter`, and declarative operator tests (`chainsaw` / `kuttl`) on `kind`.
+- **Dockerfiles & Images:** `hadolint` for Dockerfile best practices and `trivy` / `grype` for container CVE scanning.
+- **Shell scripts:** `shellcheck` and `shfmt -d`, plus `bats` unit tests.
+</details>
+
+<details>
+<summary>16. In *Engineering AI Systems* Chapter 2 (`EAS` Chapter 2), how do Microservices (Amazon's API mandate) and REST vs. GraphQL shape system testing?</summary>
+
+Under Amazon's microservice rules, services communicate **exclusively through published network APIs** with no shared databases or memory backdoors. This architectural boundary makes **contract testing** (OpenAPI schemas for **REST** services over HTTP/1.1, or typed query schemas for **GraphQL** edge services) the primary integration seam: each microservice can be unit- and integration-tested independently as long as its API contract is verified.
+</details>
+
+<details>
+<summary>17. How does MLOps extend traditional DevOps continuous testing loops (`EAS` Chapter 2)?</summary>
+
+Traditional **DevOps** tests deterministic source code and Infrastructure-as-Code (`Design -> Code -> Build -> Test -> Deploy -> Operate/Monitor`). **MLOps** adds two coupled loops—**Data Management** and **Model Development/Training**—requiring CI/CD pipelines to test not only code and infrastructure idempotence, but also **data schema/quality invariants** (like `csv-linter`), training reproducibility, model evaluation metrics against golden holdout sets, and runtime drift monitoring.
+</details>
+
+<details>
+<summary>18. Why should `pyproject.toml` set `filterwarnings = ["error"]` and `--strict-markers --strict-config` in `[tool.pytest.ini_options]`?</summary>
+
+- **`filterwarnings = ["error"]`**: turns `DeprecationWarning` and `RuntimeWarning` (such as un-awaited coroutines or upcoming library removals in Pydantic/SQLAlchemy/PyTorch) into immediate test failures when introduced, preventing hundreds of ignored warnings from breaking the service during a minor dependency upgrade.
+- **`--strict-markers` and `--strict-config`**: fail immediately if a developer misspells `@pytest.mark.slwo` or a config key in `pyproject.toml`, preventing slow/GPU tests from running accidentally due to a typo.
+</details>
+
+<details>
+<summary>19. How do you test subprocess wrappers and `/proc` or `/sys` hardware readers hermetically on a developer laptop (macOS) when target files only exist on Linux GPU nodes?</summary>
+
+- **For `/proc` and `/sys` readers:** Parameterize the root directory (`def read_ib_counters(root: Path = Path("/sys/class/infiniband")):`) so `pytest` can create a realistic directory tree inside **`tmp_path`** (`(tmp_path / "mlx5_0/ports/1/counters/port_xmit_data").write_text("1024\n")`) and test the exact file-reading and error-handling logic on any OS.
+- **For `subprocess.run` wrappers:** Either patch `subprocess.run` (`autospec=True`) to return `CompletedProcess` / raise `TimeoutExpired`, or write a small executable mock script into `tmp_path`, prepend `str(tmp_path)` to `PATH` with `monkeypatch.setenv("PATH", ...)`, and exercise the real `subprocess` pipeline end to end.
+</details>
+
+<details>
+<summary>20. What metrics should a platform team track to maintain the health of its CI test suite over time?</summary>
+
+1. **PR time-to-green (p50 and p95):** Keep under ~10 minutes by running cheap linters/typecheckers first, caching virtualenvs by lockfile hash, and parallelizing with `pytest-xdist` (`-n auto`).
+2. **Slowest test durations (`pytest --durations=10`):** Identify tests creeping from milliseconds to seconds.
+3. **Flake rate per test:** Track any test that fails and passes on the same commit SHA, and quarantine/fix immediately.
+4. **Branch and diff coverage (`--cov-branch`, `diff-cover`):** Ensure new code and error branches are tested on every PR.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `learning-python-6th-edition` — Mark Lutz, *Learning Python*, 6th ed., **Chapter 21: The Benchmarking Interlude** (read in full: `timer0.py`, `timer.py`, and `timer2.py` with `once`, `total`, `bestof`, and `bestoftotal` using `time.perf_counter()`, `timer_runner.py`, `timer_tests.py` / `timer_tests2.py` / `timer_tests3.py` comparing `forLoop`, `listComp`, `mapCall`, `genExpr`, and `genFunc` across CPython 3.12 and PyPy 3.10, `timeit` CLI and API modes with `-n`, `-r`, `-s`, and `pybench.py` cross-Python benchmark runner).
+  - `building-python-web-apis-with-fastapi` — Abdulazeez Abdulazeez Adeshina, *Building Python Web APIs with FastAPI*, **Chapter 8: Testing FastAPI Applications** (`pytest`, `conftest.py` session/module fixtures, `httpx.AsyncClient` CRUD and auth tests, and `coverage run -m pytest` / `coverage report` / `coverage html`).
+  - `ansible-up-and-running-3rd-edition` — Bas Meijer, Lorin Hochstein & René Moser, *Ansible: Up and Running*, 3rd ed., **Chapter 14: Quality Assurance with Molecule** (`yamllint`, `ansible-lint`, `ansible-later`, Molecule drivers and lifecycle `create`/`converge`/`idempotence`/`verify`/`destroy`, `Testinfra` `host.package`/`host.service`/`host.file`/`host.user`, and `Goss`).
+  - `engineering-ai-systems-architecture-and-devops-essentials` — Len Bass, Qinghua Lu, Ingo Weber & Liming Zhu, *Engineering AI Systems: Architecture and DevOps Essentials*, **Chapter 2: Software Engineering Background** (read in full: virtual machines vs containers, client-server vs SOA vs microservices and Amazon's 2002 API mandate, REST vs GraphQL interface styles, Infrastructure as Code idempotency testing, and DevOps vs MLOps continuous testing processes).
+  - `nvidia-devops` (`volume-02/03-python-tooling-operations-masterclass.md`): testing infrastructure code with `pytest`, fixtures and teardown, mocking external APIs, preventing leaked test state, and CI/CD pipelines with GitHub Actions.
+- **Run here:** `python3 code/part03/python_testing_quality_ci_lab.py` (3 passed, 0 failed).
+- **Explicitly labelled inferences:** The `Drainer` + `FakeKube` clock-injection test, `Hypothesis` round-trip property on `parse_smi_csv`, `pyproject.toml` (`ruff`, `mypy`, `coverage`), `.pre-commit-config.yaml`, and GitHub Actions `ci` workflow are the author's constructions applying the cited testing and benchmarking principles to GPU fleet tooling (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
+- **Not verified on live hardware:** Live `pytest`, `hypothesis`, `respx`, `ruff`, `mypy`, `pre-commit`, `mutmut`, `molecule`, and GitHub Actions runner invocations (`v0.6.9`, `v1.11.2`, `v4.6.0`, `fail_under = 85`, `8.0`, `10.16.0.0/24`) are marked (`untested here`) where not executed by `python_testing_quality_ci_lab.py`.
