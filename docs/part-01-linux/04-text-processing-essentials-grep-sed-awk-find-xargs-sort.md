@@ -12,24 +12,29 @@ lab_venue: "GCP VM"
 
 # 1.4 Text-processing essentials: grep, sed, awk, find, xargs, sort
 
-**Level:** basics → intermediate · **Tier 0 (foundations)** · **Lab venue:** a small Ubuntu VM (GNU tools; Mac differences are listed in section 9) · **Status:** drafted, labs untested
+| Field | Value |
+|---|---|
+| Level | Basics to Intermediate |
+| Priority tier | Tier 0 (foundations) |
+| Lab venue | Small Ubuntu VM (`text_pipeline_lab.py`: 25 checks pass; VM commands **untested** here) |
+| Part | Part 1: Linux, from the command line to the kernel and performance |
 
 ## Why this matters for AI infrastructure
 
-Infrastructure produces text: logs, `nvidia-smi` tables, `squeue` and `sinfo` listings, `dmesg`, `journalctl`, `kubectl` output, configuration files, CSV exports of metrics, and JSON from every API. When a 256-GPU job misbehaves at 3 a.m. you will not open a dashboard first; you will pull out the right ten lines from ten gigabytes of logs and count, group and compare them. The tools in this chapter are old, small and ubiquitous, and they are installed on every node you will ever log into, including the ones where you cannot install anything. Fluency here turns a half-hour investigation into a one-line pipeline, and it is the foundation for the shell scripts of chapter 1.9.
+Infrastructure produces text: logs, `nvidia-smi` tables, `squeue` and `sinfo` listings, `dmesg`, `journalctl`, `kubectl` output, configuration files, CSV exports of metrics, and JSON from every API. When a 256-GPU job misbehaves at 3 a.m. you will not open a dashboard first. You will pull out the right ten lines from ten gigabytes of logs and count, group, and compare them. The tools in this chapter are old, small, and ubiquitous, and they are installed on every node you will ever log into, including the ones where you cannot install anything. Fluency here turns a half-hour investigation into a one-line pipeline, and it is the foundation for the shell scripts of chapter 1.9.
 
 ## Prerequisites and outcomes
 
-You need chapter 1.2 (pipes, redirection, quoting). After this chapter you will be able to:
+You need chapter 1.2 for pipes, redirection, and quoting. After this chapter you will be able to:
 
-- explain the "text stream of lines" model and choose the right tool for a task;
-- read and write regular expressions (basic and extended), and know when to avoid them;
-- search with `grep`, extract with `cut`, `tr` and `awk`, transform with `sed`, order and group with `sort` and `uniq`, and build the standard "top N" and "count by key" pipelines;
-- run commands over many files safely with `find` and `xargs`, including in parallel;
-- compare files with `diff` and `comm`;
-- query JSON with `jq` and use `kubectl -o jsonpath`/`custom-columns` and `nvidia-smi --query-gpu` for machine-readable output;
-- apply a dozen ready recipes to GPU, Slurm, Kubernetes and training-log data;
-- avoid seven classic pitfalls (locale, Mac versus GNU, uniq on unsorted data, spaces and newlines in names, and more).
+- Explain the "text stream of lines" model and choose the right tool for a task.
+- Read and write regular expressions in both basic and extended dialects, and know when to avoid them.
+- Search with `grep`, extract with `cut`, `tr`, and `awk`, transform with `sed`, order and group with `sort` and `uniq`, and build the standard "top N" and "count by key" pipelines.
+- Run commands over many files safely with `find` and `xargs`, including in parallel.
+- Compare files with `diff` and `comm`.
+- Query JSON with `jq` and use `kubectl -o jsonpath` / `custom-columns` and `nvidia-smi --query-gpu` for machine-readable output.
+- Apply ten ready recipes to GPU, Slurm, Kubernetes, and training-log data.
+- Avoid seven classic pitfalls: locale differences, Mac versus GNU options, `uniq` on unsorted data, spaces and newlines in names, unescaped dots, `cut` on aligned tables, and parsing JSON with regex.
 
 ## 1. The model: lines of text flowing through small tools
 
@@ -89,13 +94,13 @@ Two dialects matter. **Basic regular expressions (BRE)** are the default in `gre
 
 Examples, in words and then as patterns:
 
-- a line that starts with a timestamp like `2026-10-23`: `^[0-9]{4}-[0-9]{2}-[0-9]{2}`
-- the word `ERROR` or `FATAL`: `ERROR|FATAL`
-- an IPv4-looking address: `([0-9]{1,3}\.){3}[0-9]{1,3}` (a rough match: it also accepts 999)
-- a line that is empty or only spaces: `^[[:space:]]*$`
-- `step=` followed by digits: `step=[0-9]+`
+- A line that starts with a timestamp like `2026-10-23`: `^[0-9]{4}-[0-9]{2}-[0-9]{2}`.
+- The word `ERROR` or `FATAL`: `ERROR|FATAL`.
+- An IPv4-looking address: `([0-9]{1,3}\.){3}[0-9]{1,3}`, which is a rough match that also accepts 999.
+- A line that is empty or only spaces: `^[[:space:]]*$`.
+- `step=` followed by digits: `step=[0-9]+`.
 
-Important habits: **quote regexes with single quotes** so the shell does not interpret `*`, `$`, `|` or `(`; remember that `.` matches *any* character, so use `\.` or `grep -F` (fixed string) when you mean a literal dot; and remember that regex is greedy (`.*` takes as much as it can). A tiny interactive practice: `echo "step=120 loss=0.43" | grep -oE 'loss=[0-9.]+'` prints just the match.
+Important habits: **quote regexes with single quotes** so the shell does not interpret `*`, `$`, `|` or `(`. Remember that `.` matches *exactly one arbitrary character*, so use `\.` or `grep -F` (fixed string) when you mean a literal dot. Also remember that regex quantifiers are greedy (`.*` takes as much as it can). A tiny interactive practice: `echo "step=120 loss=0.43" | grep -oE 'loss=[0-9.]+'` prints just the match. The `grep(1)` manual page (`man 1 grep`) and `man 7 regex` contain detailed specifications of regular expressions, though they can be dense to read. To go deeper, Brian Ward's *How Linux Works* recommends *Mastering Regular Expressions*, 3rd edition, by Jeffrey E. F. Friedl (O'Reilly, 2006), and Chapter 20 of *Unix Power Tools*, 3rd edition, by Shelley Powers, Jerry Peek, Tim O'Reilly, and Mike Loukides (O'Reilly, 2002).
 
 ## 3. `grep`: filter lines
 
@@ -181,13 +186,15 @@ The first reads: extract the key, **sort so equal keys are adjacent**, count adj
 
 ### Reading long output: `less`, and a few one-line improvements
 
-`less` is the pager you will use all day: it shows a file or a stream one screen at a time and lets you move both ways without loading everything first. Keys: space (or `f`) forward one screen, `b` back one screen, `/word` search forward and `?word` search backward, `n` next match (`N` previous), `g` and `G` first and last line, `F` follow the end of a growing file (like `tail -f`; Ctrl-C to stop following), `q` quit. Useful options: `-S` do not wrap long lines (essential for wide tables such as `ps` and `nvidia-smi`), `-R` pass colour codes through (so coloured `grep`/`ls` output stays readable), `-F` quit immediately if the whole input fits on one screen, `-N` show line numbers (and `-n` hide them), and `-f` force-open a file that looks binary. A good habit is putting your favourites in the `LESS` environment variable (for example `export LESS='-FRSX'`). `less` is the improved descendant of `more`; on a stripped-down system that lacks it, `more` works. The classic use is a pipeline ending in a pager: `grep ie /usr/share/dict/words | less`.
+`less` is the pager you will use all day: it shows a file or a stream one screen at a time and lets you move both ways without loading everything first. Key bindings include space or `f` to move forward one screen, `b` to move back one screen, `/word` to search forward, and `?word` to search backward. Press `n` for the next match or `N` for the previous match, and `g` or `G` for the first or last line. Press `F` to follow the end of a growing file like `tail -f`, Ctrl-C to stop following, and `q` to quit.
 
-Three small improvements worth adopting: **`sort -u file`** does what `sort file | uniq` does (unique sorted lines) in one step; **`grep -E`** lets you write `a+bc|xy?z(qwe){1,4}` instead of the backslash-ridden basic form `a\+bc\|xy\?z\(qwe\)\{1,4\}`; and **`tail -n +N file`** prints from line N to the end (for example `tail -n +2 data.csv` skips a header line), while `head -5 file` is a shorthand for the first five lines. `diff` has a default human-readable format, but programmers send `diff -u` (unified format) to each other because tools such as `patch` and code-review systems understand it.
+Useful options include `-S` to prevent wrapping long lines (essential for wide tables such as `ps` and `nvidia-smi`), and `-R` to pass ANSI colour codes through so coloured `grep` and `ls` output stays readable. Pass `-F` to quit immediately if the whole input fits on one screen, `-N` to show line numbers (and `-n` to hide them), and `-f` to force-open a file that looks binary. A good habit is putting your favourites in the `LESS` environment variable, such as `export LESS='-FRSX'`. `less` is the improved descendant of `more`; on a stripped-down system that lacks it, `more` works. The classic use is a pipeline ending in a pager: `grep ie /usr/share/dict/words | less`.
+
+Three small improvements are worth adopting immediately. First, **`sort -u file`** does what `sort file | uniq` does (unique sorted lines) in one step. Second, **`grep -E`** lets you write `a+bc|xy?z(qwe){1,4}` instead of the backslash-ridden basic form `a\+bc\|xy\?z\(qwe\)\{1,4\}`. Third, **`tail -n +N file`** prints from line N to the end (for example `tail -n +2 data.csv` skips a header line), while `head -5 file` is a shorthand for the first five lines. Finally, `diff` has a default human-readable format, but programmers send `diff -u` (unified format) to each other because tools such as `patch` and code-review systems understand it.
 
 ### Combining: `paste`, `join`, `column`, `tee`
 
-`paste a b` puts files side by side line by line; `join` merges two sorted files on a common field like a tiny database join; `column -t` aligns whitespace-separated text into a readable table (`mount | column -t`); `tee` (chapter 1.2) copies a stream to a file and onward.
+`paste a b` puts files side by side line by line, and `join` merges two sorted files on a common field like a tiny database join. `column -t` aligns whitespace-separated text into a readable table (`mount | column -t`), and `tee` (chapter 1.2) copies a stream to a file and onward.
 
 ## 5. `sed`: edit a stream
 
@@ -215,7 +222,7 @@ Use `sed` for quick stream edits and simple one-line substitutions. For anything
 
 ## 6. `awk`: the Swiss army knife for columns
 
-`awk` is a tiny programming language built for line-and-field data. Its basic form is **`awk 'PATTERN { ACTION }' file`**. For every input line, awk splits it into **fields** (by default on runs of whitespace), available as `$1`, `$2`, ..., with `$0` the whole line and `NF` the number of fields; `NR` is the current line number. If the PATTERN is true, the ACTION runs.
+`awk` is a tiny programming language built for line-and-field data. Its basic form is **`awk 'PATTERN { ACTION }' file`**. For every input line, awk splits it into **fields** on runs of whitespace by default, making them available as `$1`, `$2`, and so on. The variable `$0` holds the whole line, `NF` holds the number of fields, and `NR` holds the current line number. If the PATTERN is true, the ACTION runs.
 
 ```bash
 awk '{ print $1, $3 }' file                  # fields 1 and 3
@@ -242,7 +249,7 @@ awk 'NR==1 || $3 > m { m=$3; line=$0 } END { print m, line }' file
 awk '{ s[$1]+=$2; n[$1]++ } END { for (k in s) printf "%s %.2f\n", k, s[k]/n[k] }' file
 ```
 
-Two points that save time. First, because awk separates fields on *runs* of whitespace, it parses the aligned output of `ps`, `df`, `nvidia-smi` tables and `squeue` correctly where `cut -d' '` fails. Second, remember that **awk treats a field as a number when it looks like one**; if a field contains units like `120MiB`, strip them first (`sub(/MiB/,"",$3)`), or request machine-readable output from the tool, as in section 8.
+Two points save time. First, because awk separates fields on *runs* of whitespace, it parses the aligned output of `ps`, `df`, `nvidia-smi` tables and `squeue` correctly where `cut -d' '` fails. Second, remember that **awk treats a field as a number when it looks like one**. If a field contains units like `120MiB`, strip them first (`sub(/MiB/,"",$3)`), or request machine-readable output from the tool as in section 8.
 
 ## 7. Fan-out: `find`, `xargs`, and parallelism
 
@@ -255,7 +262,14 @@ printf '%s\n' gpu01 gpu02 gpu03 | xargs -I{} ssh {} nvidia-smi -L   # one call p
 find . -name '*.png' -print0 | xargs -0 -P 8 -n 20 ./resize.sh      # 8 parallel workers
 ```
 
-Key options: **`-0`** pairs with `find -print0` and separates items with the NUL byte, the only byte that cannot appear in a file name, so names with spaces or newlines are handled correctly; **`-n N`** batches N items per invocation; **`-I{}`** runs the command once per item, substituting `{}`; **`-P N`** runs N invocations in parallel (use it for I/O or network fan-out, never blindly for CPU-heavy work on a shared login node); **`-r`** (GNU) skips running the command when the input is empty (otherwise `xargs rm` with no input would run `rm` with no arguments). `find ... -exec cmd {} +` is an alternative that batches arguments without a pipe (chapter 1.3). For larger fan-out jobs, GNU `parallel` is a more featureful relative of `xargs -P`.
+Key options for `xargs`:
+- **`-0`** pairs with `find -print0` and separates items with the NUL byte, the only byte that cannot appear in a file name, so names with spaces or newlines are handled correctly.
+- **`-n N`** batches N items per command invocation.
+- **`-I{}`** runs the command once per item, substituting `{}` with the item.
+- **`-P N`** runs up to N invocations in parallel (use it for I/O or network fan-out, never blindly for CPU-heavy work on a shared login node).
+- **`-r`** (GNU) skips running the command when the input is empty; otherwise `xargs rm` with no input would run `rm` with no arguments.
+
+Note that `find ... -exec cmd {} +` is an alternative that batches arguments without a pipe (chapter 1.3). For larger fan-out jobs, GNU `parallel` is a more featureful relative of `xargs -P`.
 
 ## 8. Comparing files and handling structured text
 
@@ -282,7 +296,7 @@ kubectl get pods -A -o json | jq -r '.items[] | select(.status.phase!="Running")
 curl -s http://prometheus:9090/api/v1/query?query=up | jq -r '.data.result[] | [.metric.instance,.value[1]] | @tsv'
 ```
 
-Useful pieces: `.field`, `.[]` (iterate an array), `select(condition)`, `map(...)`, `length`, `-r` (raw strings, no quotes), `@tsv`/`@csv` to produce tables, `-e` to set the exit status from the result. For YAML, `yq` plays the same role. For Kubernetes specifically, `kubectl` has built-in extractors that avoid `jq` in simple cases:
+Useful pieces include `.field`, `.[]` to iterate an array, `select(condition)`, `map(...)`, `length`, `-r` for raw strings without quotes, `@tsv` or `@csv` to produce tables, and `-e` to set the exit status from the result. For YAML, `yq` plays the same role. For Kubernetes specifically, `kubectl` has built-in extractors that avoid `jq` in simple cases.
 
 ```bash
 kubectl get nodes -o custom-columns=NAME:.metadata.name,GPUS:.status.allocatable.nvidia\\.com/gpu
@@ -291,7 +305,7 @@ kubectl get pod mypod -o jsonpath='{.status.containerStatuses[0].lastState.termi
 
 ### Ask tools for machine-readable output first
 
-Before parsing a pretty table, check whether the tool has a parseable mode:
+Before parsing a pretty table, check whether the tool has a parseable mode.
 
 ```bash
 nvidia-smi --query-gpu=index,name,utilization.gpu,memory.used,memory.total,temperature.gpu \
@@ -304,17 +318,17 @@ ip -j addr                                                     # network address
 df -P                                                          # POSIX layout, one line per filesystem
 ```
 
-(Option names such as `-h` and `-o` vary slightly between tools and versions; confirm in the man page of the tool you are using.)
+Option names such as `-h` and `-o` vary slightly between tools and versions; confirm in the man page of the tool you are using.
 
 ## 9. Portability, locale and other traps
 
 **GNU versus BSD.** Linux servers carry the GNU versions of these tools; macOS carries the BSD versions, which differ in details that break scripts: `sed -i` needs an empty suffix argument on macOS; `grep -P` and some `-o` behaviours are absent; `sort`, `date`, `xargs -r`, `readlink -f`, and some `awk` features differ. For this book use a Linux machine for labs. When a script must run on both, stick to POSIX options, test on both, or install GNU tools on the Mac (`brew install gnu-sed grep coreutils findutils gawk`, which provide `gsed`, `ggrep` and so on).
 
-**Locale.** The language and encoding settings (`LANG`, `LC_ALL`, chapter 1.2) affect sorting order, character classes (`[a-z]`), and speed. In a UTF-8 locale `sort` compares using language rules, so `a` and `B` may interleave; many scripts set **`LC_ALL=C`** in front of `sort`, `grep` and `awk` for plain byte order and, often, a large speed-up: `LC_ALL=C sort file`. When two machines give different sort orders for the same file, locale is the first suspect.
+**Locale.** The language and encoding settings (`LANG`, `LC_ALL`, chapter 1.2) affect sorting order, character classes (`[a-z]`), and speed. In a UTF-8 locale `sort` compares using language rules, so `a` and `B` may interleave. Many scripts set **`LC_ALL=C`** in front of `sort`, `grep`, and `awk` for plain byte order and a large speed-up: `LC_ALL=C sort file`. When two machines give different sort orders for the same file, locale is the first suspect.
 
 **Line endings and encodings.** Files from Windows have `\r\n` line endings (strip with `tr -d '\r'`); files can be in encodings other than UTF-8 (`file -i name`, `iconv`). `grep` may report `Binary file matches` for files containing NUL bytes; use `-a` to treat them as text.
 
-**Large files.** These tools stream, so a 50 GB log does not need 50 GB of memory, but `sort` of a huge file spills to temporary disk (`TMPDIR`, `-T`) and `awk` arrays grow with the number of keys. Filter early (`grep` first) and use `head` only after the expensive part, remembering that a pipeline stops early when a downstream `head` closes (the upstream process receives SIGPIPE).
+**Large files.** These tools stream, so a 50 GB log does not need 50 GB of memory. However, `sort` of a huge file spills to temporary disk (`TMPDIR`, `-T`), and `awk` arrays grow with the number of keys. Filter early (`grep` first) and use `head` only after the expensive part, remembering that a pipeline stops early when a downstream `head` closes (the upstream process receives SIGPIPE).
 
 ## 10. Recipes for AI and HPC work
 
@@ -375,12 +389,18 @@ for h in gpu01 gpu02 gpu03; do ssh $h uname -r | sed "s/^/$h /"; done | sort -k2
 ### 7. Parsing JSON or YAML with regex
 **Symptom:** it works for a month, then a field order change or a value containing a quote breaks it silently. **Cause:** regex does not understand nesting or escaping. **Fix:** `jq` or `yq`.
 
-## Hands-on lab (a GCP Ubuntu VM; untested)
+## Hands-on lab: text pipelines and VM drills
 
-**Part A: build a realistic dataset.** Create a synthetic training log and a GPU metrics CSV so everything below has data (no cluster needed):
+First, run the self-checking Python lab (`code/part01/text_pipeline_lab.py`) locally. It verifies `uniq -c` versus `sort | uniq -c`, `cut -d' '` versus `awk` whitespace splitting, error log masking and ranking (`sed -E 's/[0-9]+/N/g'`), `xargs -0` NUL-delimited batching, `tail -n +2` header skipping, and `nvidia-smi` CSV aggregation.
 
 ```bash
-mkdir -p ~/lab/text && cd ~/lab/text
+python3 code/part01/text_pipeline_lab.py
+```
+
+Next, on a GCP Ubuntu VM (all interactive VM commands below are `untested here`), build a synthetic training log and GPU metrics CSV.
+
+```bash
+mkdir -p ~/lab/text && cd ~/lab/text # (untested here)
 awk 'BEGIN{srand(42); for(i=1;i<=2000;i++){loss=2.5/(1+i/200)+rand()*0.05;
  printf "2026-10-23T10:%02d:%02d step=%d loss=%.4f tokens_per_sec=%d gpu=%d\n", int(i/60)%60, i%60, i, loss, 90000+int(rand()*10000), i%8}}' > train.log
 printf '%s\n' "2026-10-23T10:20:01 ERROR NCCL timeout on rank 3" "2026-10-23T10:21:44 WARN loss spike at step 1300" \
@@ -389,61 +409,136 @@ awk 'BEGIN{srand(7); print "index,name,util,mem_used,mem_total,temp"; for(g=0;g<
 wc -l train.log gpus.csv; head -3 train.log; head -3 gpus.csv
 ```
 
-**Part B: grep.** (1) Count error lines, warning lines and all non-training lines (those without `step=`). (2) Show each ERROR with two lines of context. (3) List only the distinct error messages after masking numbers with `sed` (recipe 7). (4) Use `grep -q` in an `if` to print "found OOM" or "no OOM".
+**Part B: grep.** (1) Count error lines, warning lines, and all non-training lines without `step=` (untested here). (2) Show each ERROR with two lines of context. (3) List only the distinct error messages after masking numbers with `sed` (recipe 7). (4) Use `grep -q` in an `if` statement to print "found OOM" or "no OOM".
 
-**Part C: slicing and counting.** (5) Extract the `gpu=` value of every training line and count how many lines each GPU produced (`sort | uniq -c`). Are they equal? (6) Using `cut` and `tr`, extract the `loss` values to a file. (7) Find the line with the smallest loss with `sort -t= -k3 -n` (work out which `-t` and `-k` values are right) and then again with `awk`.
+**Part C: slicing and counting.** (5) Extract the `gpu=` value of every training line and count how many lines each GPU produced (`sort | uniq -c`) (untested here). Are they equal? (6) Using `cut` and `tr`, extract the `loss` values to a file. (7) Find the line with the smallest loss with `sort -t= -k3 -n` and then again with `awk`.
 
-**Part D: awk.** (8) Compute the mean and the maximum of `tokens_per_sec`. (9) Print the mean loss per block of 500 steps (a "group by" using `int(step/500)`). (10) From `gpus.csv` print the GPUs whose utilisation is above 80 and temperature above 60, as a nicely formatted table with `column -t`. (11) Compute total memory used as a percentage of total.
+**Part D: awk.** (8) Compute the mean and the maximum of `tokens_per_sec` (untested here). (9) Print the mean loss per block of 500 steps using `int(step/500)`. (10) From `gpus.csv` print the GPUs whose utilisation is above 80 and temperature above 60, formatted with `column -t`. (11) Compute total memory used as a percentage of total.
 
-**Part E: sed.** (12) Replace `loss=` with `L=` in a copy and show the diff with `diff -u`. (13) Print lines 100 to 105 only. (14) Remove the header of `gpus.csv` with `sed '1d'`. (15) Create a copy of `/etc/ssh/sshd_config` (do not edit the original), disable a setting with `sed -i.bak`, and show the change with `diff -u`.
+**Part E: sed.** (12) Replace `loss=` with `L=` in a copy and show the diff with `diff -u` (untested here). (13) Print lines 100 to 105 only. (14) Remove the header of `gpus.csv` with `sed '1d'`. (15) Create a copy of `/etc/ssh/sshd_config` (do not edit the original), disable a setting with `sed -i.bak`, and show the change with `diff -u`.
 
-**Part F: find and xargs.** (16) Create 1000 empty files, some with spaces in the names, in a directory; remove them first with a naive `ls | xargs rm` and watch it fail, then do it correctly with `-print0`. (17) Compress them with `xargs -P 4`.
+**Part F: find and xargs.** (16) Create 1000 empty files, some with spaces in the names, in a directory. Remove them first with a naive `ls | xargs rm` and watch it fail, then do it correctly with `-print0` and `xargs -0` (untested here). (17) Compress them with `xargs -P 4`.
 
-**Part G: JSON.** (18) Install `jq` (`sudo apt-get install -y jq`) and process `ip -j addr` to print each interface name with its first IPv4 address. (19) Use `jq` to pick two fields out of a JSON file you write by hand.
+**Part G: JSON.** (18) Install `jq` (`sudo apt-get install -y jq`) and process `ip -j addr` to print each interface name with its first IPv4 address (untested here). (19) Use `jq` to pick two fields out of a JSON file you write by hand.
 
-**Part H: traps.** (20) Make a file with mixed-case words and show how `sort` and `LC_ALL=C sort` order them differently. (21) Demonstrate the `uniq` without `sort` pitfall. (22) Create a CRLF file and show that `grep '^ERROR$'` fails on it, then fix with `tr -d '\r'`.
+**Part H: traps.** (20) Make a file with mixed-case words and show how `sort` and `LC_ALL=C sort` order them differently (untested here). (21) Demonstrate the `uniq` without `sort` pitfall. (22) Create a CRLF file and show that `grep '^ERROR$'` fails on it, then fix with `tr -d '\r'`.
 
-## Checkpoint questions
+## Exercises
 
-1. What shared property of Unix text tools allows pipelines?
-2. Why do we sort before `uniq -c`? What happens without sorting?
-3. Write a pipeline that prints the five most common values of the third space-separated column of a file.
-4. What is the difference between BRE and ERE? Which option enables ERE in `grep` and `sed`?
-5. What does `grep -v '^#'` do? What does `grep -c` count?
-6. What is the difference between `grep -F` and plain `grep`, and when do you prefer `-F`?
-7. In `awk '{ s += $3 } END { print s/NR }'`, what do `END`, `NR` and `$3` mean?
-8. Why does `awk` parse `ps` output correctly while `cut -d' '` often does not?
-9. Why use `find ... -print0 | xargs -0` instead of `find ... | xargs`?
-10. What does `xargs -P 8` do, and when is it a bad idea?
-11. Why should you use `jq` instead of `grep` for JSON?
-12. Give two different reasons the same `sort` can give different results on two machines.
-13. What does `sed -i` do on GNU and on BSD/macOS, and how do you write a portable form?
-14. `tail -f` versus `tail -F`: which should you use for logs and why?
-15. How would you list Slurm nodes by state with counts using `sinfo`?
+1. **`uniq -c` Without `sort` versus `sort | uniq -c`:** Given the input lines `["alice", "bob", "alice", "alice", "bob"]`, state the exact `(count, name)` output tuples produced by (a) `uniq -c` alone and (b) `sort | uniq -c`. Verify with `simulate_uniq_count()` in `code/part01/text_pipeline.py`.
+2. **`cut -d' '` versus `awk` on Space-Aligned Tables:** Given the `ps` output line `"root      1024  0.0  0.1 slurmd"` (where `root` and `1024` are separated by 6 spaces), what does `cut -d' ' -f2` return, and what does `awk '{print $2, $5}'` return?
+3. **Masking and Ranking Error Logs (`grep` + `sed -E` + `sort` + `uniq -c`):** Examine the 4 log lines in Part A of the lab (`rank 3` timeout, `step 1300` warn, `rank 5` timeout, and `gpu=2` OOM). What happens when you filter for `ERROR`, mask all numbers to `N` with `sed -E 's/[0-9]+/N/g'`, and rank the lines by frequency?
+4. **NUL-Delimited `find -print0 | xargs -0 -n 2` Batching:** Suppose `find . -name '*.log' -print0` emits `"run 01.log\0run 02.log\0run 03.log\0"`. What batches does `xargs -0 -n 2 gzip` form, and why would plain `find . -name '*.log' | xargs -n 2 gzip` fail?
+5. **Skipping Headers with `tail -n +2` and Aggregating `nvidia-smi` CSV:** Given the CSV lines `["index, util, mem", "0, 95, 40000", "1, 85, 20000", "2, 92, 60000"]`: (a) which rows remain after `tail -n +2`, (b) which GPU indices have utilization `> 90%`, and (c) what is the total GPU memory used (`MiB`) across all 3 GPUs?
+6. **Portable In-Place `sed` and Byte-Order `sort`:** (a) Why does `sed -i 's/debug=1/debug=0/' app.conf` work on Ubuntu Linux (`GNU sed`) but fail on macOS (`BSD sed`), and how does `sed -i.bak` solve it portably? (b) Which environment variable forces `sort`, `grep`, and `awk` to use deterministic ASCII byte order across all hosts?
 
-### Answers
+## Checkpoint questions (20)
 
-1. They read lines of plain text from standard input and write lines of plain text to standard output, so any tool's output can be another's input.
-2. `uniq` only compares adjacent lines. Sorting puts equal lines next to each other. Without sorting, the same value appears several times with partial counts.
-3. `awk '{print $3}' file | sort | uniq -c | sort -rn | head -5`.
-4. In BRE the characters `+ ? | ( ) { }` are literal unless backslash-escaped; in ERE they are operators. `grep -E` and `sed -E` (and `awk` natively) use ERE.
-5. It prints the lines that do not begin with `#` (it removes comments). `-c` counts matching lines instead of printing them.
-6. `-F` treats the pattern as a literal string, not a regex. Prefer it when searching for text containing special characters such as `.`, `*` or `[`, or for speed.
-7. `$3` is the third field of the line; `NR` is the number of the current line (at END, the total number of lines); `END` runs its action after the last line is read. The program prints the mean of column 3.
-8. `awk` splits fields on runs of whitespace by default; `cut` uses a single delimiter character, so multiple adjacent spaces create empty fields.
-9. File names can contain spaces and newlines, which plain `xargs` would split; `-print0` and `-0` separate with the NUL byte, which cannot occur in a file name.
-10. It runs up to eight invocations of the command at the same time. It is a bad idea for CPU-heavy work on a shared machine, for commands that are not safe to run concurrently, or when the target (a network filesystem, an API) cannot handle the load.
-11. JSON has nesting, escaping and flexible whitespace; regex does not understand its structure and breaks on harmless formatting changes. `jq` parses it correctly.
-12. Different locale settings (collation order) and different tool versions or implementations (GNU versus BSD).
-13. It edits files in place. GNU: `sed -i 's/a/b/' f`; macOS/BSD: `sed -i '' 's/a/b/' f`. A portable form is `sed -i.bak 's/a/b/' f` followed by removing the backup, or write to a temporary file and `mv` it.
-14. `tail -F`. It keeps following by name and reopens the file after log rotation, whereas `-f` follows the original file descriptor and goes silent after the file is rotated.
-15. `sinfo -N -h -o "%T" | sort | uniq -c`.
+<details>
+<summary>1. What shared property of Unix text tools allows them to be chained into pipelines?</summary>
+Every tool reads lines of plain text from standard input (`fd 0`) and writes lines of plain text to standard output (`fd 1`), while sending diagnostics to standard error (`fd 2`).
+</details>
 
-## Sources and further reading
+<details>
+<summary>2. Why must you run `sort` before `uniq -c`, and what happens if you omit `sort`?</summary>
+`uniq` only compares and collapses *adjacent* identical lines. Without `sort` first, identical keys separated by other lines are counted separately in multiple partial groups.
+</details>
 
-- Brian Ward, *How Linux Works*, 3rd ed., ch. 2 (grep, diff, head and tail, sort, pipes and redirection), used for the core command set; this chapter's regular-expression treatment, `sed`, `awk`, `xargs`, `jq` sections, recipes, failure modes and lab are original.
-- Sergey Zhumatiy, *Supercomputers for Linux SysAdmins*, ch. 8 (shell tricks and tips for often-used commands).
-- Man pages: `man grep`, `man 7 regex`, `man sed`, `man awk` (or `gawk`), `man sort`, `man xargs`, `man diff`, `man jq`, `man 3 locale`; the GNU `grep`, `sed`, `awk` and `coreutils` info manuals.
-- Related chapters: 1.2 (pipes and redirection), 1.3 (`find`), 1.9 (scripting), 17.3 (logs with Loki), 15.14 and 17.4 (metrics).
+<details>
+<summary>3. Write a one-line pipeline that prints the five most frequent values in the third whitespace-separated column of `file`.</summary>
+`awk '{print $3}' file | sort | uniq -c | sort -rn | head -5`.
+</details>
 
-*Notes for review:* the Slurm format specifiers (`%u`, `%T`, `%N`), `nvidia-smi` query field names and `kubectl` extractor syntax are stated from current usage and should be confirmed against the versions you run (`man squeue`, `nvidia-smi --help-query-gpu`). The macOS statements describe the stock BSD tools. All lab commands are **untested** and must be run on a Linux VM before this chapter moves to `reviewed`.
+<details>
+<summary>4. What is the difference between Basic Regular Expressions (BRE) and Extended Regular Expressions (ERE), and how do you enable ERE in `grep` and `sed`?</summary>
+In BRE, the operators `+`, `?`, `|`, `(`, `)`, `{`, and `}` match literally unless preceded by a backslash (`\+`, `\|`). In ERE (enabled via `grep -E` and `sed -E`, and native in `awk`), they act as regex operators directly without backslashes.
+</details>
+
+<details>
+<summary>5. Why does `grep 10.0.0.1 hosts.txt` match `10x0y0z1` and `10.0.0.100`, and how do you fix both problems?</summary>
+In regular expressions, `.` matches any single arbitrary character, and unanchored patterns match substrings. Use `grep -wF '10.0.0.1' hosts.txt` (`-F` for fixed literal string, `-w` for whole-word match) or escape the dots (`10\.0\.0\.1`).
+</details>
+
+<details>
+<summary>6. What does `grep -v '^#' slurm.conf | grep -v '^$'` do?</summary>
+The first `grep -v '^#'` removes comment lines starting with `#`, and the second `grep -v '^$'` removes empty lines, leaving only active configuration directives.
+</details>
+
+<details>
+<summary>7. What is the difference between `grep -c`, `grep -l`, `grep -o`, and `grep -q`?</summary>
+`-c` prints only the count of matching lines, and `-l` prints only the filenames that contain at least one match. `-o` prints only the matching substring rather than the whole line. `-q` suppresses all output and exits with status `0` as soon as a match is found, which is ideal for `if grep -q ...` conditionals.
+</details>
+
+<details>
+<summary>8. In `less`, what do the options `-S`, `-R`, `-F`, and `-N` do, and what key follows a growing log file?</summary>
+`-S` disables line wrapping so wide tables stay aligned horizontally, and `-R` renders ANSI color escape sequences. `-F` exits automatically if the output fits on one screen, and `-N` displays line numbers. Pressing `F` inside `less` follows a growing file like `tail -f`.
+</details>
+
+<details>
+<summary>9. What is the difference between `tail -n 20` and `tail -n +2`, and between `tail -f` and `tail -F`?</summary>
+`tail -n 20` prints the last 20 lines of a file, whereas `tail -n +2` prints from line 2 to the end (skipping the 1-line header). `tail -f` follows an open file descriptor, whereas `tail -F` follows by filename and automatically reopens the file when `logrotate` rotates and replaces it.
+</details>
+
+<details>
+<summary>10. Why does `awk '{print $2}'` parse `ps` and `squeue` tables accurately when `cut -d' ' -f2` fails?</summary>
+`awk` splits fields on *runs* of one or more whitespace characters (spaces or tabs) and strips leading whitespace by default. `cut -d' '` treats every single space character as a separate delimiter, producing empty fields whenever columns are padded with multiple spaces.
+</details>
+
+<details>
+<summary>11. In `awk '{ s += $3 } END { print s, s/NR }'`, what do `$3`, `NR`, and `END` represent?</summary>
+`$3` is the third whitespace-separated field of the current line, `NR` is the number of records (lines) read so far, and `END` is the block executed once after all input lines have been processed.
+</details>
+
+<details>
+<summary>12. How do you group and count occurrences of column 1 in `awk` without running `sort | uniq -c`?</summary>
+Use an associative array in `awk`: `awk '{ c[$1]++ } END { for (k in c) print c[k], k }' file | sort -rn`.
+</details>
+
+<details>
+<summary>13. What is the difference between `sed 's/old/new/'` and `sed 's/old/new/g'`, and how do you print only lines 10 through 20 with `sed`?</summary>
+Without `g`, `sed 's/old/new/'` replaces only the *first* match on each line; adding `g` replaces *all* matches on each line. To print only lines 10 to 20, suppress default output with `-n` and use an address range: `sed -n '10,20p' file`.
+</details>
+
+<details>
+<summary>14. Why does `sed -i 's/a/b/' file` fail on macOS when copied from a Linux runbook, and what is the portable alternative?</summary>
+GNU `sed` on Linux treats `-i`'s backup-extension argument as optional, whereas BSD `sed` on macOS requires an explicit argument (`sed -i '' 's/a/b/' file`). Passing a non-empty backup suffix (`sed -i.bak 's/a/b/' file`) works on both Linux and macOS.
+</details>
+
+<details>
+<summary>15. Why should you pair `find ... -print0` with `xargs -0`, and what do `xargs -n 50` and `xargs -P 8` control?</summary>
+`-print0` and `-0` delimit filenames with the NUL byte (`\0`), preventing filenames containing spaces, quotes, or newlines from splitting into bogus arguments. `-n 50` passes at most 50 items per command invocation, and `-P 8` runs up to 8 command processes in parallel.
+</details>
+
+<details>
+<summary>16. Why does `diff -u old.conf new.conf` use `-u`, and how does `comm -12 <(sort a) <(sort b)` work?</summary>
+`-u` produces a unified diff showing context lines alongside `-` (removed) and `+` (added) lines, which `patch` and Git understand. `comm` compares two sorted inputs and outputs three columns (only in `a`, only in `b`, and in both); `-12` suppresses columns 1 and 2, printing only the intersection present in both files.
+</details>
+
+<details>
+<summary>17. Why should you parse JSON with `jq` instead of `grep`/`sed`, and what does `jq -r` do?</summary>
+JSON permits arbitrary whitespace, line breaks, and nested objects/arrays that break line-oriented regexes. `jq` parses the JSON syntax tree directly, and `-r` (`--raw-output`) prints extracted string values without surrounding double quotes so shell pipelines can consume them cleanly.
+</details>
+
+<details>
+<summary>18. How do you ask `nvidia-smi` for machine-readable GPU utilization and memory usage without headers or units?</summary>
+Run `nvidia-smi --query-gpu=index,utilization.gpu,memory.used --format=csv,noheader,nounits`, which emits one clean comma-separated line per GPU.
+</details>
+
+<details>
+<summary>19. How can `sort` produce different orderings for the exact same file on two Linux machines, and how do you force identical byte order?</summary>
+Different `LANG` or `LC_ALL` locale settings apply language-specific collation rules (for example, case-folding `a` and `B` together in `en_US.UTF-8`). Prefixing the command with `LC_ALL=C` forces deterministic ASCII byte-value sorting and speeds up comparisons.
+</details>
+
+<details>
+<summary>20. Why does `grep '^ERROR$' file.log` fail on a log file copied from a Windows machine, and how do you fix it?</summary>
+Windows text files end lines with `CRLF` (`\r\n`), so from Linux's perspective the character before `\n` is `\r` (`ERROR\r`), preventing `$` from matching immediately after `R`. Strip carriage returns with `tr -d '\r' < file.log > clean.log` (or `dos2unix`).
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 2: Basic Commands and Directory Hierarchy**. Read sections 2.5.1 (`grep` and regular expressions), 2.5.2 (`less`), 2.5.4 (`diff`), 2.5.7 (`head` and `tail`), and 2.5.8 (`sort`) in full. Includes the references to Jeffrey E. F. Friedl's *Mastering Regular Expressions*, 3rd ed., and Chapter 20 of *Unix Power Tools*, 3rd ed., by Shelley Powers, Jerry Peek, Tim O'Reilly, and Mike Loukides.
+  - `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to` — Sergey Zhumatiy, *Supercomputers for Linux SysAdmins*, **Chapter 7: UNIX and Linux – the Basics** and **Chapter 8: UNIX and Linux – Working Techniques**. Read "Tips for Some Often-Used Commands" in full (`less` flags `-F`, `-R`, `-S`, `-N`, `-n`, `-f`, `grep -E`, `sort -u`, `tail -n +N`, and `diff -u`).
+- **Run here:** `python3 code/part01/text_pipeline_lab.py` (25 passed, 0 failed).
+- **Explicitly labelled inferences:** The `nvidia-smi --query-gpu`, `squeue -h -o`, `sinfo -N -h -o`, and `kubectl -o jsonpath` / `jq` recipes apply standard CLI flags from Parts 5, 6, 10, 15, and 17 (chapters 15.14, 17.3, and 17.4) to the Unix text pipeline model.
+- **Not verified on live hardware:** All interactive VM shell commands (`nvidia-smi`, `squeue`, `sinfo`, `kubectl`, `dmesg`, `jq`) are marked (untested here) and should be executed on a Linux VM or cluster login node.
