@@ -206,6 +206,13 @@ Ansible integration: the `community.sops` collection provides a vars plugin (aut
 
 A common production blend: Ansible Vault (or SOPS) holds only the **bootstrap** secrets (the identity needed to reach the secret manager); everything else is fetched at run time.
 
+```mermaid
+flowchart LR
+    Git["Git Repo: vars.yml + encrypted vault.yml<br/>($ANSIBLE_VAULT;1.2;AES256;prod) or SOPS"] --> Controller["Ansible Control Node / CI Runner<br/>(--vault-id prod@vault-client.py or OIDC)"]
+    Vault["External Secret Manager<br/>(HashiCorp Vault / Cloud Secret Manager)<br/>Dynamic Leases, SSH CA, BMC Passwords"] -->|lookup('hashi_vault', ...)<br/>on control node| Controller
+    Controller -->|"no_log: true, diff: false<br/>EnvironmentFile mode 0600"| Target["Target GPU / DB Host"]
+```
+
 ## 5. SSH keys, sudo and BMC credentials
 
 - **SSH**: prefer SSH certificates from a CA (Vault SSH secrets engine, `step-ca`, Teleport) with short lifetimes over distributing static keys; if using keys, use ed25519, per-user keys, `authorized_key` management via Ansible, passphrases with agent forwarding avoided on bastions, and rotation schedules. Never commit private keys; generate them on the controller or host and distribute only public keys.
@@ -247,7 +254,15 @@ for f in $(git ls-files | grep -E '(^|/)vault(\.|_)'); do head -1 "$f" | grep -q
 
 **Rekeying Ansible Vault**: `ansible-vault rekey` all files with the old password, update password stores and CI secrets, and remove departed members' access by rotating the password (history in Git still contains old ciphertext decryptable with the old password, so also rotate the underlying secrets when someone with access leaves).
 
-## 8. Lab (untested)
+## 8. Lab
+
+First, run the self-checking Python lab (`code/part04/ansible_vault_secrets_lab.py`) locally. It verifies `$ANSIBLE_VAULT;1.1;AES256` and `$ANSIBLE_VAULT;1.2;AES256;prod` header parsing and pre-commit plaintext rejection (`parse_ansible_vault_header`), multi-environment Vault ID isolation (`can_decrypt_vault_blob`, `AUR` Ch. 10), and two-phase zero-downtime secret rotation (`TwoPhaseSecretRotator`).
+
+```bash
+python3 code/part04/ansible_vault_secrets_lab.py
+```
+
+Next, on a control node with `ansible-core` (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **Vault basics**: create, view, edit, rekey and decrypt an encrypted file; inspect the header; try running a playbook without the password and read the error; commit the encrypted file and examine the Git diff.
 2. **Indirection pattern**: restructure variables with `vault_` names; prove `grep` finds usage; run a playbook that uses `db_password` with `no_log`.
@@ -262,8 +277,6 @@ for f in $(git ls-files | grep -E '(^|/)vault(\.|_)'); do head -1 "$f" | grep -q
 11. **Rotation drill**: rotate a DB password and an SSH key using two-phase overlap with zero downtime; record steps and verification.
 12. **Leak drill**: simulate a committed token: revoke, rotate, purge history (4.1), verify with `git log -S`, and write the five-line incident note.
 13. **Clean up.**
-
-Mark tested only after execution.
 
 ## 9. Common mistakes
 
@@ -280,55 +293,180 @@ Mark tested only after execution.
 
 ## 10. Interview angles
 
-- "How do you manage secrets in Ansible? Ansible Vault vs HashiCorp Vault vs SOPS." 
-- "How do you use vault IDs and non-interactive vault passwords in CI?" 
+- "How do you manage secrets in Ansible? Ansible Vault vs HashiCorp Vault vs SOPS."
+- "How do you use vault IDs and non-interactive vault passwords in CI?"
 - "How do you prevent secrets from showing up in logs and diffs?" (`no_log`, `diff: false`, modes, EnvironmentFile.)
 - "A token was committed. What do you do?" (revoke, rotate, assess, purge, prevent.)
 - "How do you manage BMC credentials for 1,000 servers?" (unique per device, secret manager, dedicated accounts, isolation, rotation.)
 - "How do you give CI cloud access without static keys?" (OIDC.)
-- "What are dynamic secrets and why do they matter?" 
+- "What are dynamic secrets and why do they matter?"
 - "How do you rotate a credential without downtime?" (overlap.)
 
-## 11. Checkpoint questions (30)
+## Exercises
 
-1. What cipher does Ansible Vault use? **A:** AES-256.
-2. Is Ansible Vault public-key based? **A:** No, symmetric password-based.
-3. Header of vault files? **A:** `$ANSIBLE_VAULT;1.1;AES256` (or 1.2).
-4. Command to change vault password? **A:** `ansible-vault rekey`.
-5. What are vault IDs? **A:** Labels for multiple vault passwords.
-6. Purpose of the `vault_` pattern? **A:** Reviewable names with encrypted values.
-7. How supply password non-interactively? **A:** Password file or client script.
-8. Why avoid committing the password file? **A:** It decrypts everything.
-9. What does `no_log` do? **A:** Hides task data from output/logs.
-10. What does `diff: false` do? **A:** Suppresses diff output for the task.
-11. Why does `--diff` leak secrets? **A:** It prints rendered file content.
-12. What is `encrypt_string` for? **A:** Inline encrypted values.
-13. Limitation of Ansible Vault? **A:** No per-secret ACL or audit; shared password.
-14. What does SOPS encrypt? **A:** Values, leaving keys readable.
-15. SOPS key backends? **A:** KMS, age, PGP.
-16. Ansible collection for SOPS? **A:** `community.sops`.
-17. What are dynamic secrets? **A:** Short-lived credentials generated on demand.
-18. What auth should CI use with Vault? **A:** OIDC/JWT or AppRole, not static tokens.
-19. Where do lookups run? **A:** Control node.
-20. How protect env files? **A:** Mode 0600/0640, correct owner, `EnvironmentFile`.
-21. Why not secrets in command args? **A:** Visible in process lists and logs.
-22. Why prefer SSH CA certificates? **A:** Short-lived, no key distribution.
-23. How handle BMC passwords? **A:** Unique, rotated, from a secret manager.
-24. First step after a leak? **A:** Revoke/rotate.
-25. Then? **A:** Assess use, remove, purge history, add prevention.
-26. What is two-phase rotation? **A:** Overlap old and new credentials.
-27. How block unencrypted vault commits? **A:** Pre-commit check of the vault header.
-28. What tools scan for secrets? **A:** gitleaks, trufflehog, detect-secrets.
-29. Why separate vault passwords per environment? **A:** Limit blast radius and access.
-30. Best use of Ansible Vault in prod? **A:** Bootstrap secrets only, with a secret manager for the rest.
+1. **Ansible Vault Mechanics (`create`, `encrypt`, `view`, `edit`, `rekey`, `encrypt_string`), Header Format, and the `vault_` Indirection Pattern (`AUR` Chapter 10):** Using `parse_ansible_vault_header()` in `code/part04/ansible_vault_secrets.py`, explain: (a) how AES-256 encryption works in Ansible Vault and the difference between `$ANSIBLE_VAULT;1.1;AES256` and `$ANSIBLE_VAULT;1.2;AES256;prod`; (b) why separating `group_vars/all/vars.yml` (`db_password: "{{ vault_db_password }}"`) from encrypted `group_vars/all/vault.yml` beats whole-file encryption without indirection or scattered `encrypt_string` blocks.
+2. **Multi-Environment Vault IDs (`--vault-id`, `vault_identity_list`) and Non-Interactive Client Scripts (`AUR` Chapter 10):** Using `can_decrypt_vault_blob()` in `code/part04/ansible_vault_secrets.py`, show how `vault_identity_list = dev@~/.vault_pass_dev, prod@~/.vault_pass_prod` isolates `dev` and `prod` secrets, and explain how an executable `*-client` password script fetches the vault password dynamically from a secret manager or OS keychain so no plaintext `.vault_pass` sits on disk.
+3. **Preventing Secret Leakage Across Nine Execution Paths (`no_log`, `diff: false`, `EnvironmentFile`, `cacheable: false`):** Trace the nine leak paths in Section 3 (`--diff`, `-vvv`, `register` + `debug`, CLI args in `ps`/`auditd`, `Environment=` in world-readable systemd units, fact caches, editor `.swp` files, and shell history on `encrypt_string`) and specify the exact Ansible control that closes each leak.
+4. **Comparing Ansible Vault, SOPS (`community.sops` with KMS/`age`), and HashiCorp Vault / Cloud Secret Managers:** Compare all three across storage model, access control, Git diff readability, dynamic/short-lived secrets, rotation, and operational weight, and explain how CI uses OIDC/JWT to authenticate to HashiCorp Vault (`community.hashi_vault.hashi_vault`) without static tokens.
+5. **Managing High-Privilege Fleet Credentials (SSH CA Certificates, Sudo, Redfish BMCs, and Munge/Slurm Keys):** Explain how to manage (a) SSH access using short-lived SSH CA certificates instead of static private keys, (b) unique per-BMC Redfish credentials fetched at runtime, and (c) cluster-wide shared keys (`/etc/munge/munge.key`, `mode: "0400"`) without overwriting active keys accidentally.
+6. **Two-Phase Zero-Downtime Rotation (`TwoPhaseSecretRotator`), Pre-Commit Vault Guards, and Secret Leak Incident Response:** Using `TwoPhaseSecretRotator` in `code/part04/ansible_vault_secrets.py`, explain why single-step password replacement causes outages and how two-phase overlap (Expand -> Roll consumers -> Contract) avoids downtime; then state why `ansible-vault rekey` alone is insufficient when an engineer with the old vault password leaves the team.
 
-## 12. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. What cipher and key derivation does Ansible Vault use, and what is the header format of an encrypted Vault file (`AUR` Chapter 10)?</summary>
 
-- Rene Moser and Lorin Hochstein, *Ansible: Up and Running*, 3rd edition (Ansible Vault and handling secrets in playbooks, with the chapters on advanced playbooks and CI integration).
-- The author's `nvidia-devops` repository, volume 10 chapter 11 section on secrets management in infrastructure pipelines (Vault, SOPS, BMC credentials).
-- Ansible Vault documentation, HashiCorp Vault and `community.hashi_vault` documentation, SOPS and `community.sops` documentation.
-- Examples are the author's constructions.
+Ansible Vault uses **symmetric AES-256 encryption** (`AES256`), deriving the encryption and HMAC-SHA256 keys from the user's vault password via PBKDF2. Every encrypted file or inline `!vault |` block starts with the ASCII header **`$ANSIBLE_VAULT;1.1;AES256`** (or **`$ANSIBLE_VAULT;1.2;AES256;<vault-id>`** when encrypted with a named `--vault-id` label), followed by hex-encoded ciphertext lines.
+</details>
 
-**Flagged for verification before publishing:** `ansible-vault` option names and vault-ID behaviour for your ansible-core version, `community.hashi_vault` lookup parameters, `community.sops` plugin names, vault format version strings, and every command listing; all labs are **untested**.
+<details>
+<summary>2. Compare the six main `ansible-vault` subcommands (`create`, `encrypt`, `view`, `edit`, `rekey`, `decrypt`) and `encrypt_string` (`AUR` Chapter 10 Table 10-5).</summary>
+
+- **`ansible-vault create file.yml`**: opens `$EDITOR` to author a new file and saves it encrypted on disk.
+- **`ansible-vault encrypt file.yml`**: encrypts an existing plaintext file in place.
+- **`ansible-vault view file.yml`**: decrypts to stdout/pager without touching the encrypted file on disk.
+- **`ansible-vault edit file.yml`**: decrypts to a temporary file in `$EDITOR` and re-encrypts on save.
+- **`ansible-vault rekey file.yml`**: changes the vault password on an encrypted file.
+- **`ansible-vault decrypt file.yml`**: writes plaintext back to disk (avoid in Git working trees; prefer `view` or `edit`).
+- **`ansible-vault encrypt_string --stdin-name 'vault_db_password'`**: reads a single secret from `stdin` (keeping it out of shell history) and outputs an inline `!vault |` YAML block.
+</details>
+
+<details>
+<summary>3. What is the `vault_` indirection pattern (`group_vars/all/vars.yml` + `group_vars/all/vault.yml`), and why do teams use it?</summary>
+
+When an entire `vault.yml` file is encrypted, its variable names are hidden inside the hex blob—so `git diff` and `grep -rn db_password` cannot see which secrets exist or changed. Under the **`vault_` indirection pattern**, `group_vars/all/` is a directory containing:
+1. **`vars.yml` (plaintext):** `db_password: "{{ vault_db_password }}"`
+2. **`vault.yml` (encrypted):** `vault_db_password: "s3cr3t..."`
+This keeps variable names 100% greppable and reviewable in pull requests while keeping secret values encrypted at rest.
+</details>
+
+<details>
+<summary>4. How do Vault IDs (`--vault-id` and `vault_identity_list`) isolate `dev` and `prod` secrets in the same repository (`AUR` Chapter 10)?</summary>
+
+By encrypting `group_vars/dev/vault.yml` with `--vault-id dev@~/.vault_dev` and `group_vars/prod/vault.yml` with `--vault-id prod@~/.vault_prod` (and setting `vault_identity_list = dev@~/.vault_dev, prod@~/.vault_prod` in `ansible.cfg`), each file header records its label (`$ANSIBLE_VAULT;1.2;AES256;prod`). Developers can be given only the `dev` vault password to run staging/dev playbooks, while the `prod` vault password is held exclusively by the production CI environment / AWX credential store.
+</details>
+
+<details>
+<summary>5. How can you supply a Vault password non-interactively without storing a plaintext `.vault_pass` file on disk?</summary>
+
+If the path passed to `--vault-password-file` (or configured in `vault_identity_list`) has the **executable bit set (`chmod +x`)**, Ansible executes it as a script and reads the vault password from its **`stdout`**. A 5-line executable **vault client script** (`vault-pass-client.py`, which receives `--vault-id <label>` if named `*-client`) can fetch the password on demand from macOS Keychain, `pass`, 1Password CLI, or cloud/HashiCorp Vault using your current SSO/OIDC session.
+</details>
+
+<details>
+<summary>6. Why must tasks that handle secrets set BOTH `no_log: true` AND `diff: false`?</summary>
+
+- **`no_log: true`** masks the task's input arguments and return dictionary (` Censored: 'the output has been hidden due to the fact that no_log: true was specified'`) in stdout, `-vvv` output, callback plugins (`log_path`), and target `/var/log/syslog`.
+- **`diff: false`** prevents `ansible-playbook --diff` (`-D`) from printing the before/after unified diff of rendered files (`template`, `copy`, `lineinfile`), which would otherwise print plaintext passwords in CI pull-request comments.
+</details>
+
+<details>
+<summary>7. Why should secrets never be passed via `command`/`shell` arguments or `Environment=SECRET=...` in systemd unit files?</summary>
+
+- **Command-line arguments** are world-readable to every unprivileged user and container on the host via **`/proc/<pid>/cmdline` (`ps aux`)** and are recorded permanently in `auditd` / syslog exec logs.
+- **`Environment=SECRET=...` inside `/etc/systemd/system/app.service`:** Systemd unit files are typically mode `0644` (world-readable) and visible via `systemctl show`. Instead, render secrets into a dedicated **`EnvironmentFile=/opt/fleetapp/shared/fleetapp.env`** with **`owner: root`**, **`group: fleetapp`**, and **`mode: "0600"`** (or `"0640"`).
+</details>
+
+<details>
+<summary>8. How can Ansible Fact Caching (`fact_caching = jsonfile` or `redis`) accidentally leak secrets, and how do you prevent it?</summary>
+
+If a playbook fetches a secret and stores it with `set_fact: { db_password: "..." }`, verify that **`cacheable: false`** (the default) is kept so the secret is only held in memory for the current run and never written to `.ansible_facts/` JSON files on disk—and ensure any fact cache directory is `0700` and excluded in `.gitignore`.
+</details>
+
+<details>
+<summary>9. Compare Ansible Vault, Mozilla SOPS (`community.sops`), and HashiCorp Vault / Cloud Secret Managers.</summary>
+
+- **Ansible Vault:** Encrypts whole files or inline strings with a shared symmetric password; zero external infrastructure, ideal for small teams and bootstrap secrets, but has no per-secret audit trail, no dynamic secrets, and opaque whole-file diffs.
+- **SOPS (`community.sops`):** Encrypts **only the values** in YAML/JSON/ENV files while leaving keys in cleartext (so `git diff` shows exact keys modified), and encrypts the data key for multiple **AWS/GCP/Azure KMS keys, `age` keys, or PGP keys**—giving per-recipient IAM access control and KMS audit logs without running a Vault server.
+- **HashiCorp Vault / Cloud Secret Managers:** Centralized API services providing fine-grained RBAC/IAM policies, full audit logs, automatic rotation, and **dynamic short-lived credentials** (database leases, SSH CA certs, cloud STS tokens).
+</details>
+
+<details>
+<summary>10. Where does `lookup('community.hashi_vault.hashi_vault', ...)` execute, and how should CI authenticate to HashiCorp Vault?</summary>
+
+Like all Ansible lookups, `hashi_vault` executes **on the Ansible control node** (the CI runner or AWX execution node). In CI, never store a static root/long-lived `VAULT_TOKEN`; instead, configure **JWT/OIDC authentication** on HashiCorp Vault (or Cloud IAM Workload Identity) so the CI job exchanges its short-lived OIDC token for a narrowly scoped, short-TTL Vault token at job startup.
+</details>
+
+<details>
+<summary>11. Why are SSH Certificate Authorities (`Vault SSH CA`, `step-ca`, `Teleport`) superior to static SSH public keys for managing 1,000 GPU nodes?</summary>
+
+With static SSH keys, onboarding/offboarding an engineer or rotating a compromised automation key requires running Ansible across all 1,000 nodes to update `~/.ssh/authorized_keys` (and nodes offline for maintenance miss the revocation). With an **SSH CA**, each node's `/etc/ssh/sshd_config` trusts a single `TrustedUserCAKeys /etc/ssh/ca.pub` file once at image build time, and the control node / engineer exchanges their OIDC identity for a **short-lived SSH certificate (e.g., valid for 15 minutes)** that expires automatically with zero host-side key churn.
+</details>
+
+<details>
+<summary>12. How should BMC (`Redfish` / `IPMI`) credentials be managed across a large GPU cluster?</summary>
+
+Because BMC credentials grant full out-of-band hardware control (power off, virtual media boot, BIOS/firmware flash):
+1. Change factory default passwords immediately during initial zero-touch provisioning.
+2. Create a dedicated automation BMC account with least-privilege operator roles rather than sharing `root`/`ADMIN`.
+3. Generate **unique passwords per BMC** (or per rack/security zone) stored in HashiCorp Vault / Secret Manager and fetched at runtime into `community.general.redfish_*` tasks with `no_log: true`.
+4. Isolate BMC interfaces strictly on an out-of-band management VLAN unreachable from tenant compute networks.
+</details>
+
+<details>
+<summary>13. How should a role generate and distribute a shared cluster key such as `/etc/munge/munge.key` for Slurm?</summary>
+
+Generate the random key **once** (either stored in Vault/Secret Manager or generated on the Slurm controller with `creates: /etc/munge/munge.key`), and distribute it to compute nodes with `owner: munge`, `group: munge`, **`mode: "0400"`**, `no_log: true`, and `diff: false`—ensuring that a normal playbook run never regenerates and overwrites the active key on running compute nodes unless an explicit rotation play is invoked.
+</details>
+
+<details>
+<summary>14. How do you write a `pre-commit` / CI guard that blocks accidentally committing an unencrypted `vault.yml` file?</summary>
+
+Someone who runs `ansible-vault decrypt group_vars/prod/vault.yml` instead of `ansible-vault edit` can easily forget to re-encrypt before `git commit`. Add a pre-commit hook and required CI check that inspects line 1 of every tracked file matching `vault*.yml` or `*secret*.yml`:
+```bash
+for f in $(git ls-files | grep -E '(^|/)vault(\.|_)'); do
+  head -n 1 "$f" | grep -q '^\$ANSIBLE_VAULT;' || { echo "UNENCRYPTED: $f"; exit 1; }
+done
+```
+Complement this with `gitleaks` or `trufflehog` scanning all diffs for high-entropy strings and known token prefixes.
+</details>
+
+<details>
+<summary>15. Walk through the Two-Phase (Overlap) Credential Rotation pattern for zero-downtime password or key updates.</summary>
+
+If you change a database password or API key on the server and then run Ansible across 50 app nodes to update their `fleetapp.env`, every app node fails authentication during the minutes between the DB change and its local restart. **Two-phase rotation** eliminates downtime:
+1. **Phase 1 (Expand):** Create a second valid credential (`user_v2` or secondary API key/cert) on the provider so **both `v1` and `v2` are valid simultaneously**.
+2. **Phase 2 (Roll consumers):** Run the Ansible rolling update (`serial`) switching all consumers to `v2` and verifying health.
+3. **Phase 3 (Contract):** Once 100% of consumers are verified on `v2` and connection logs show zero `v1` usage, revoke/drop `v1` on the provider.
+</details>
+
+<details>
+<summary>16. Why is running `ansible-vault rekey` NOT enough when an engineer who knew the production Vault password leaves the organization?</summary>
+
+`ansible-vault rekey` re-encrypts the file in the *new* commit with a new password—**but every previous commit in Git history still contains the old ciphertext encrypted with the old password**. Anyone who retained a copy of the repo (or reads Git history) and knows the old vault password can still decrypt every historical secret in `vault.yml`. Therefore, when rekeying after a departure or password compromise, you **must also rotate the underlying secrets themselves** (DB passwords, tokens, keys) in the target systems.
+</details>
+
+<details>
+<summary>17. What is the exact 4-step incident-response sequence when a secret leaks in a Git commit or CI build log?</summary>
+
+1. **Revoke and rotate the credential immediately** in the target system (IAM, DB, BMC, registry) before doing anything else.
+2. **Audit access logs** across the exposure window to determine if the credential was used and rotate any downstream secrets it could have read.
+3. **Remove from current code and purge history** (`git filter-repo` for Git commits; delete the CI build log and expire cached artifacts).
+4. **Add automated prevention** (`no_log: true`, `diff: false`, `gitleaks` / `$ANSIBLE_VAULT` header hook) so the same leak vector cannot recur.
+</details>
+
+<details>
+<summary>18. How do you debug a failing task that has `no_log: true` set without leaking secrets into shared CI logs?</summary>
+
+Never commit `no_log: false` to Git to debug a failure in CI. Instead, reproduce the task locally against a staging/lab host (or in an interactive SSH session using `--limit <host>` and `ANSIBLE_ENABLE_TASK_DEBUGGER=True` or a temporary local `no_log: "{{ not debug_local | default(false) }}"` override outside CI) where stdout is only visible on your own terminal, fix the underlying module error, and verify `no_log: true` is active before committing.
+</details>
+
+<details>
+<summary>19. How does `.sops.yaml` (`creation_rules`) enforce that production secrets use production KMS keys while lab secrets use developer `age` keys?</summary>
+
+When you run `sops inventories/prod/group_vars/all/secrets.sops.yml`, SOPS matches the file path against **`creation_rules` in `.sops.yaml`** (`path_regex: inventories/prod/.*secrets\.sops\.yml$`) and automatically encrypts the file using the specified cloud KMS key (`projects/my-proj/.../cryptoKeys/sops`), whereas files matching `inventories/lab/.*` are encrypted with the lab `age` public keys—preventing a developer from accidentally encrypting production secrets with a dev key.
+</details>
+
+<details>
+<summary>20. What is the "Bootstrap Secret" pattern combining Ansible Vault/SOPS with an external Secret Manager?</summary>
+
+Instead of storing 200 individual service passwords, BMC credentials, and API tokens inside Git-tracked `vault.yml` files (which require Git commits and PR merges every time a password rotates), store **only the bootstrap configuration** in Git (or use passwordless CI OIDC) and fetch all operational credentials dynamically at runtime from HashiCorp Vault or AWS/GCP Secret Manager—combining GitOps auditability for code with centralized rotation, leases, and access logs for secrets.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `ansible-up-and-running-3rd-edition` — Bas Meijer, Lorin Hochstein & René Moser, *Ansible: Up and Running*, 3rd ed., **Chapter 10: Making Playbooks Appear More Complex — Encrypting Sensitive Data with `ansible-vault`** (read in full: `ansible-vault` commands `encrypt`/`decrypt`/`view`/`edit`/`rekey`/`create`, `$ANSIBLE_VAULT;1.1;AES256` format, `no_log: true`, `--ask-vault-pass`, `--vault-password-file` with `chmod 0600` or executable script, and `vault_identity_list = dev@~/.vault_dev, prod@~/.vault_prod`) and **Chapter 22: CI/CD and Ansible** (`vaultCredentialsId: 'ANSIBLE_VAULT_PASSWORD'` in Jenkins and Ansible Automation Controller credential stores).
+  - `nvidia-devops` (`volume-10/11-cicd-for-infrastructure-and-cluster-configuration.md`): secrets management in infrastructure pipelines, HashiCorp Vault, SOPS, and BMC credential hygiene.
+- **Run here:** `python3 code/part04/ansible_vault_secrets_lab.py` (3 passed, 0 failed).
+- **Explicitly labelled inferences:** The `parse_ansible_vault_header`, `can_decrypt_vault_blob`, and `TwoPhaseSecretRotator` models in `code/part04/ansible_vault_secrets.py`, the `vault_` indirection pattern, and the `.sops.yaml` and pre-commit vault-header check are the author's constructions applying *Ansible: Up and Running* Chapter 10 and `volume-10` to GPU cluster secrets management (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, and 30).
+- **Not verified on live hardware:** Live `ansible-vault`, `sops`, `age`, and HashiCorp `vault server -dev` commands (`AES-256`, `1.1`, `1.2`, `0600`, `0640`, `0400`, `3 a.m.`, `1,000` servers) are marked (`untested here`) where not executed by `ansible_vault_secrets_lab.py`.
