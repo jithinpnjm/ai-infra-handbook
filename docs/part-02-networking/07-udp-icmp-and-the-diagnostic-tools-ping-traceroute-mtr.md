@@ -234,9 +234,15 @@ When "A cannot reach B":
 
 Each step isolates a layer; skipping to step 7 wastes time.
 
-## 8. Lab: UDP, ICMP, traceroute and an MTU black hole (untested)
+## 8. Hands-on lab: UDP, ICMP, traceroute, and an MTU black hole
 
-Use the three-namespace topology from chapter 2.5 (hA - r - hB, forwarding on in r, default routes set).
+First, run the self-checking Python lab (`code/part02/udp_icmp_pmtu_lab.py`) locally. It verifies overlay/tunnel MTU and inner TCP MSS calculations (`VXLAN` `1450`/`8950`, `WireGuard` `1420`/`1400`, `GRE` `1476`, `IPIP` `1480`), maximum `ping -M do -s` payload sizes (`1472` IPv4, `1452` IPv6, `8972` jumbo), and `mtr` hop-loss classification (control-plane ICMP rate limiting vs genuine forwarding loss).
+
+```bash
+python3 code/part02/udp_icmp_pmtu_lab.py
+```
+
+Next, on a disposable Linux VM using the three-namespace topology from Chapter 2.5 (`hA - r - hB`, forwarding on in `r`, default routes set; all interactive VM commands below are `untested here`), work through these steps:
 
 1. **UDP basics**: `ip netns exec hB nc -u -l 5000`; send from hA; capture with tcpdump; show that there is no handshake. Send to a closed port and capture ICMP port unreachable (type 3 code 3); show the connected-socket error (`nc -u` after a first send).
 2. **iperf3 UDP**: server in hB; client in hA at `-b 100M -l 1400`; add `tc qdisc add dev rB root tbf rate 50mbit burst 32kbit latency 50ms` in r and observe loss and jitter; repeat with `netem loss 1%`.
@@ -245,8 +251,6 @@ Use the three-namespace topology from chapter 2.5 (hA - r - hB, forwarding on in
 5. **MTU black hole**: set `ip -n r link set rB mtu 1400` and `ip -n hB link set vB mtu 1500`; `ip netns exec hA ping -M do -s 1472 10.2.0.2` and see the ICMP "need frag" (mtu 1400) message and `ip route get` cached PMTU. Now drop ICMP type 3 on r (`ip netns exec r iptables -A OUTPUT -p icmp --icmp-type fragmentation-needed -j DROP`) and demonstrate the hang with `curl` or `nc` sending a large payload (start a TCP server on hB, send 10 KB from hA), watching retransmissions in tcpdump. Fix with MSS clamping on r, then with `tcp_mtu_probing=1`, then by allowing ICMP.
 6. **Overlay MTU**: create a VXLAN (`ip link add vx0 type vxlan id 42 remote ... dstport 4789 dev vA`) between hA and hB, compute the overlay MTU, show that a 1500 overlay breaks with 1500 underlay, and set it correctly.
 7. **Clean up** namespaces.
-
-Mark tested only after running.
 
 ## 9. Common mistakes
 
@@ -268,40 +272,123 @@ Mark tested only after running.
 - "What is the MTU inside a VXLAN overlay on a 1500 underlay? On 9000?"
 - "How does mtr help versus traceroute? How do you read loss in it?"
 
-## 11. Checkpoint questions (25)
+## Exercises
 
-1. How big is the UDP header and what fields? **A:** 8 bytes: source port, destination port, length, checksum.
-2. Is the UDP checksum mandatory in IPv6? **A:** Yes.
-3. Does UDP preserve message boundaries? **A:** Yes, one datagram per read.
-4. How does a sender learn that a UDP port is closed? **A:** ICMP port unreachable (reported on connected sockets).
-5. Why do long-idle UDP flows break through NAT? **A:** Flow state times out; use keepalives.
-6. Which ICMP type is echo request/reply? **A:** 8 / 0 (ICMPv6: 128 / 129).
-7. Which ICMP message drives PMTUD in IPv4? **A:** Type 3 code 4.
-8. And in IPv6? **A:** Type 2 Packet Too Big.
-9. Why must ICMPv6 neighbour discovery not be blocked? **A:** It replaces ARP and RAs provide routes.
-10. What does TTL 62 in a ping reply from a Linux host tell you? **A:** Initial 64, so two routers decremented it.
-11. How does traceroute discover routers? **A:** Increasing TTL probes and ICMP time-exceeded replies.
-12. What does it mean when only one hop shows 100% loss but later hops are fine? **A:** ICMP rate limiting/control-plane filtering at that hop.
-13. How do you traceroute through a firewall that only allows port 443? **A:** `traceroute -T -p 443`.
-14. What problem does `paris-traceroute` solve? **A:** Inconsistent paths due to ECMP by holding the flow tuple constant.
-15. What does `tracepath` add over traceroute? **A:** Path MTU discovery, no root needed.
-16. MSS for MTU 1500 over IPv4? **A:** 1460.
-17. What is the DF bit? **A:** Don't Fragment: routers must drop and signal instead of fragmenting.
-18. Describe a PMTU black hole. **A:** Large packets silently dropped because the ICMP signal is blocked; small ones work.
-19. Name two fixes. **A:** Allow ICMP; MSS clamp; fix MTU; tcp_mtu_probing.
-20. Overlay MTU for VXLAN on a 1500 underlay? **A:** 1450.
-21. WireGuard overhead over IPv4? **A:** 60 bytes (MTU 1420 on 1500).
-22. How do you test a 9000-byte path? **A:** `ping -M do -s 8972 host`.
-23. What does `tcp_mtu_probing=1` do? **A:** Enables packetization-layer probing after a suspected black hole.
-24. Why can ping succeed while the application fails? **A:** Different protocol/port/size; ICMP handled differently.
-25. What does `iperf3 -u` report that TCP mode does not? **A:** Loss percentage and jitter at the receiver.
+1. **UDP Semantics, Buffer Overflows, Connected UDP Sockets, and `iperf3 -u`:** (a) State the size and four fields of the UDP header (`RFC 768`), explain how UDP preserves message boundaries unlike TCP, and state which `nstat` counter increments when a receiver's UDP socket buffer overflows; (b) how does a sender learn that a remote UDP port has no listener, and what metrics does `iperf3 -u` report at the receiver that TCP `iperf3` does not?
+2. **ICMPv4 and ICMPv6 Types/Codes and Firewall Rules:** List the essential ICMPv4 types/codes (`0`, `3/3`, `3/4`, `8`, `11/0`) and ICMPv6 types (`1`, `2`, `3`, `128`/`129`, `133`–`137`), and explain the exact failure modes caused by a blanket "drop all ICMP/ICMPv6" firewall policy.
+3. **Reading `ping`, `traceroute`, and `mtr`: Control-Plane Rate Limiting vs. Genuine Loss:** Using `classify_mtr_hop_loss()` in `code/part02/udp_icmp_pmtu.py`, compare an `mtr` report showing hop losses `[0.0, 0.0, 45.0, 0.0, 0.0]` against `[0.0, 0.0, 5.2, 5.1, 5.3]`. How do you traceroute through a firewall that blocks UDP high ports and ICMP Echo (`traceroute -T -p 443`), and what problem does `paris-traceroute` / `dublin-traceroute` solve on ECMP fabrics?
+4. **Diagnosing and Fixing Path MTU (`PMTU`) Black Holes:** Explain why an MTU black hole allows `ssh` or `curl https://...` to complete its TCP 3-way handshake and then hang indefinitely on `SSH2_MSG_KEXINIT` or `ServerHello`. Using `compute_max_ping_df_payload()`, write the exact `ping` commands to test a `1500`-byte IPv4 path, a `1500`-byte IPv6 path, and a `9000`-byte jumbo path, and state the five ordered fixes for a PMTU black hole.
+5. **Computing Overlay MTUs and Inner TCP MSS:** Using `compute_overlay_mtu_and_mss()`, calculate the maximum inner MTU and inner IPv4 TCP `MSS` on a `1500`-byte underlay (and on a `9000`-byte underlay) for `VXLAN` (`50` B), `Geneve` (`50` B), `GRE` (`24` B), `IPIP` (`20` B), and `WireGuard` (`60` B IPv4 / `80` B IPv6).
+6. **Jumbo Frames, RoCEv2 `4096` IB MTU, and the 8-Step Layered Reachability Checklist:** (a) Why do AI fabrics configure host NICs to `MTU 9000` and switch ports to `MTU 9216`, and how does that relate to RoCEv2's `4096`-byte InfiniBand MTU? (b) Walk through the 8-step layered reachability checklist from Section 7 when Node A cannot reach Node B.
 
-## 12. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. What are the size and fields of the UDP header, and why is the UDP checksum mandatory in IPv6?</summary>
+The UDP header (`RFC 768`) is **8 bytes**: 16-bit Source Port, 16-bit Destination Port, 16-bit Length, and 16-bit Checksum. In IPv4, the UDP checksum is optional (`0` = not computed) because the IPv4 header has its own header checksum; in **IPv6**, the IPv6 base header has **no header checksum**, so the UDP checksum (covering the IPv6 pseudo-header, UDP header, and payload) is mandatory to verify that packet delivery was not corrupted in transit.
+</details>
 
-- Brian Ward, *How Linux Works*, 3rd ed., chapter 9: basic ICMP and DNS tools, `ping`, the Internet layer and addresses, subnets, routes, IPv6 and dual-stack configuration, kernel network interfaces and basic configuration.
-- Russ White and Jeff Tantsura (with co-authors), *Computer Networking Problems and Solutions*, chapter 5: the Internet Protocol (fragmentation, TTL), transport and marshaling, multiplexing, and ICMP.
-- Tool behaviour, PMTUD details, overlay overheads and cloud MTU notes are the author's synthesis from RFCs 768, 792, 1191, 4443, 4821, 8201 and the `ping(8)`, `traceroute(8)`, `tracepath(8)`, `mtr(8)` manuals.
+<details>
+<summary>2. How does `recvfrom()` on a UDP socket differ from `recv()` on a TCP socket, and why should UDP applications avoid datagrams larger than the Path MTU?</summary>
+UDP **preserves message boundaries**: each `recvfrom()` returns exactly one complete datagram as sent by `sendto()`, whereas TCP is an unstructured byte stream. Although an IPv4 UDP datagram can theoretically be up to `65,507` bytes (`65535 - 20 IP - 8 UDP`), any datagram larger than the Path MTU is fragmented at the IP layer—and if **any single IP fragment** is lost, the entire UDP datagram is discarded at reassembly.
+</details>
 
-**Flagged for verification before publishing:** cloud default MTUs (GCP, AWS), exact encapsulation overheads for your CNI/VPN versions, option names of `traceroute`/`mtr` per distribution, and the nftables MSS-clamp syntax; all labs are **untested**.
+<details>
+<summary>3. Name six protocols in an AI/cloud data center that run over UDP and explain why each uses UDP instead of TCP.</summary>
+(1) **DNS** (`port 53`: single-packet query/reply without 3-way handshake delay); (2) **NTP** (`port 123`: time synchronization without retransmission buffering jitter); (3) **DHCP** (`ports 67/68`: broadcast bootstrap before an IP exists); (4) **VXLAN** (`port 4789`) and **Geneve** (`port 6081`): encapsulating L2/L3 packets with outer UDP source-port entropy for ECMP hashing without TCP-over-TCP meltdown; (5) **QUIC / HTTP/3** (`port 443`) and **WireGuard** (`port 51820`): user-space/modern encrypted transports; and (6) **RoCE v2** (`port 4791`): carrying InfiniBand RDMA transport headers across L3 Ethernet fabrics where reliability is implemented in NIC hardware.
+</details>
+
+<details>
+<summary>4. How does a sender learn that a remote UDP port is closed, and what happens when a receiver's UDP socket buffer overflows?</summary>
+When a UDP datagram arrives at a host with no socket bound to that destination port, the host replies with **ICMP Destination Unreachable — Port Unreachable** (IPv4 Type `3` Code `3`, ICMPv6 Type `1` Code `4`), which the sender's kernel delivers as `ECONNREFUSED` **only if the sender called `connect()` on its UDP socket** (`nstat` increments `UdpNoPorts`). If the receiving application reads too slowly and its socket receive buffer fills, the kernel silently drops incoming datagrams and increments **`UdpRcvbufErrors`** in `nstat -az` (fix by raising `net.core.rmem_max` and `SO_RCVBUF`).
+</details>
+
+<details>
+<summary>5. Why do idle UDP sessions (WireGuard, QUIC, long-running RPCs) drop through firewalls and NAT gateways, and what is the fix?</summary>
+Because UDP has no `SYN` or `FIN` state machine, stateful firewalls and NAT gateways track UDP flows using a **conntrack inactivity timer** (typically `30` to `180` seconds). If no packet flows within that window, the NAT mapping expires and subsequent packets from the peer are dropped; applications must send periodic **UDP keepalives** (e.g., every `25` seconds).
+</details>
+
+<details>
+<summary>6. What extra metrics does `iperf3 -u` report that TCP `iperf3` does not?</summary>
+In UDP mode (`iperf3 -c host -u -b 1G -l 1400`), the sender transmits at the requested target bitrate `-b` without congestion control, and the receiver reports **lost datagram count / loss percentage** and **inter-arrival jitter (ms)** (computed per RFC 3550 RTP jitter).
+</details>
+
+<details>
+<summary>7. Match the key IPv4 ICMP types (`0`, `3`, `5`, `8`, `11`) and codes (`3/0`, `3/1`, `3/3`, `3/4`, `3/13`, `11/0`) to their meanings.</summary>
+- Type `0`: **Echo Reply** (`ping` response)\n- Type `8`: **Echo Request** (`ping` request)\n- Type `3`: **Destination Unreachable**:\n  - Code `0`: Net Unreachable\n  - Code `1`: Host Unreachable\n  - Code `3`: **Port Unreachable** (closed UDP port)\n  - Code `4`: **Fragmentation Needed and DF Set** (carries next-hop MTU for PMTUD)\n  - Code `13`: Communication Administratively Prohibited (firewall reject)\n- Type `5`: **Redirect**\n- Type `11` Code `0`: **Time Exceeded — TTL expired in transit** (`traceroute`).
+</details>
+
+<details>
+<summary>8. Which ICMPv4 and ICMPv6 messages must NEVER be blocked by a firewall?</summary>
+In IPv4: **Type `3` Code `4` (`Fragmentation Needed and DF Set`)** (and Type `3` / Type `11` generally). In IPv6: **Type `2` (`Packet Too Big`)**, Types `1`, `3`, `4`, and **Types `133`–`137` (`Neighbor Discovery`: RS, RA, NS, NA, Redirect)**. Blocking `3/4` or ICMPv6 Type `2` causes silent Path MTU black holes; blocking ICMPv6 `133`–`137` breaks IPv6 neighbor resolution (ARP replacement) and SLAAC/default-router discovery completely.
+</details>
+
+<details>
+<summary>9. In `ping` output `64 bytes from 10.0.0.5: icmp_seq=1 ttl=62 time=0.31 ms`, what does `ttl=62` tell you, and what is the difference between `Destination Host Unreachable` from your own IP versus from a router?</summary>
+Linux initializes outgoing IPv4 packets with `TTL = 64` (Windows uses `128`, network gear often `255`); receiving `ttl=62` implies `64 - 62 = 2` routers decremented the TTL along the return path. If `ping` prints `From 10.0.0.15 ... Destination Host Unreachable` (your **own** local IP), **ARP/NDP failed** for the target or gateway on your local link; if it prints `From 10.0.0.1 ...` (a **router's** IP), that router had no route or failed ARP on the remote link.
+</details>
+
+<details>
+<summary>10. Why does a successful `ping` not prove an application can connect, and why does a failed `ping` not prove a host is down?</summary>
+Many firewalls drop ICMP Echo (`Type 8`) while allowing TCP/443 (so `ping` fails while the service is healthy). Conversely, a host's kernel walks `ICMP Echo Reply` in the interrupt handler even when the user-space application daemon has crashed, the TCP port is blocked by a firewall, or the path has an MTU black hole that drops `1500`-byte TCP segments while passing `84`-byte pings. Always test the actual application protocol/port (`nc -zv`, `curl -v`) and full MTU (`ping -M do -s 1472`).
+</details>
+
+<details>
+<summary>11. How does `traceroute` work across UDP, ICMP (`-I`), and TCP (`-T -p 443`) modes?</summary>
+In all modes, `traceroute` sends probes with `TTL = 1, 2, 3, ...` so each intermediate router decrements `TTL` to `0` and replies with **ICMP Time Exceeded (Type 11 Code 0)**. By default on Linux, probes are **UDP datagrams to high ports (`33434+`)** (the final host replies with ICMP Port Unreachable `3/3`); `-I` sends **ICMP Echo Requests** (final host replies with Echo Reply `0`); and `-T -p 443` sends **TCP `SYN` packets to port 443** (passing through firewalls that drop UDP/ICMP, with the final host replying `SYN-ACK` or `RST`).
+</details>
+
+<details>
+<summary>12. In `mtr` or `traceroute`, how do you distinguish harmless control-plane ICMP rate limiting from genuine packet loss?</summary>
+Routers prioritize hardware-forwarded transit traffic in the ASIC data plane and strictly rate-limit or deprioritize generating ICMP `Time Exceeded` packets on the router CPU. Therefore, if Hop 3 shows **`50%` loss (or `* * *` / high latency) while Hop 4 through the final destination show `0%` loss and normal latency**, the loss is **control-plane ICMP rate limiting at Hop 3 only**. Genuine forwarding packet loss starts at Hop `N` and **persists across all subsequent hops to the final destination**.
+</details>
+
+<details>
+<summary>13. Why can traditional `traceroute` report false loops or shifting routers across an ECMP leaf-spine fabric, and how does `paris-traceroute` (or `dublin-traceroute`) fix it?</summary>
+Traditional `traceroute` increments the UDP destination port on every probe, changing the packet's **5-tuple** so ECMP switches hash each probe onto a **different** spine/leaf path. **`paris-traceroute`** and **`dublin-traceroute`** hold the flow's 5-tuple header fields constant (varying the UDP checksum/payload instead) so every TTL probe follows the exact same ECMP path.
+</details>
+
+<details>
+<summary>14. How does `tracepath` differ from `traceroute`?</summary>
+`tracepath` runs without `root` privileges using UDP probes and sets the **Don't Fragment (`DF`)** bit with full-MTU packets, discovering both the **hop-by-hop router path** and the **Path MTU (`pmtu`)** along the route.
+</details>
+
+<details>
+<summary>15. Explain how Path MTU Discovery (`PMTUD`, RFC 1191 / RFC 8201) works and what causes a PMTU black hole.</summary>
+With PMTUD, the sender sets `DF = 1` (Don't Fragment) on all outgoing packets. When a router along the path has an egress link with a smaller MTU (e.g., `1400` bytes), it drops the oversized packet and returns **ICMP Type 3 Code 4 (`Fragmentation Needed`)** (or **ICMPv6 Type 2 `Packet Too Big`**) containing the next-hop MTU (`1400`), which the sender caches in its route cache (`ip route get`) and uses to re-segment. If a firewall blocks that ICMP message, the sender never learns the smaller MTU and endlessly retransmits full-size packets that are dropped (**PMTU black hole**).
+</details>
+
+<details>
+<summary>16. What are the classic user-visible symptoms of a Path MTU black hole?</summary>
+Small packets pass while full-MTU packets vanish: (1) TCP 3-way handshakes (`nc -zv`, `curl` `Connected to...`) succeed immediately, (2) interactive `ssh` connects but **hangs right after `SSH2_MSG_KEXINIT`** (when large key-exchange packets are sent), (3) TLS handshakes with large certificate chains or HTTP/S3 downloads **hang**, and (4) default 56-byte `ping` succeeds while **`ping -M do -s 1472`** times out completely.
+</details>
+
+<details>
+<summary>17. List the five ways to fix a Path MTU black hole in order of preference.</summary>
+(1) **Match MTUs end-to-end** (configure overlay/tunnel interfaces to `underlay_mtu - encapsulation_overhead`); (2) **Permit ICMP Type 3 Code 4 and ICMPv6 Type 2** across all firewalls and security groups; (3) **Clamp TCP MSS at the tunnel/edge router** (`iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu` or `nftables` `tcp option maxseg size set rt mtu`); (4) enable **Packetization-Layer PMTUD** (`sysctl net.ipv4.tcp_mtu_probing = 1`, RFC 4821); and (5) lower the endpoint interface MTU.
+</details>
+
+<details>
+<summary>18. State the encapsulation overhead and resulting inner MTU on a `1500`-byte IPv4 underlay for `VXLAN`, `Geneve`, `GRE`, `IPIP`, and `WireGuard`.</summary>
+- **`VXLAN`**: `50` bytes overhead -> inner MTU **`1450`** (`8950` on `9000` underlay)\n- **`Geneve` (no options)**: `50` bytes -> inner MTU **`1450`**\n- **`GRE`**: `24` bytes -> inner MTU **`1476`**\n- **`IPIP`**: `20` bytes -> inner MTU **`1480`**\n- **`WireGuard`**: `60` bytes (IPv4) / `80` bytes (IPv6) -> inner MTU **`1420`** / **`1400`**.
+</details>
+
+<details>
+<summary>19. How do you test a `1500`-byte MTU path and a `9000`-byte jumbo MTU path using `ping`, and why do switches use `9216`?</summary>
+Subtract `28` bytes (`20`B IPv4 header + `8`B ICMP header) for IPv4 or `48` bytes (`40`B IPv6 + `8`B ICMPv6) for IPv6:\n- `1500` IPv4: **`ping -M do -s 1472 <host>`** (`-s 1452` for IPv6)\n- `9000` IPv4: **`ping -M do -s 8972 <host>`**\nSwitches are configured to **`MTU 9216`** so `9000`-byte host packets wrapped in Ethernet, VLAN (`802.1Q`), or VXLAN headers never exceed the switch port limit.
+</details>
+
+<details>
+<summary>20. State the 8-step layered reachability checklist when Host A cannot reach Service B.</summary>
+(1) Local link & IP (`ip -br link`, `ip -br addr`), (2) Local gateway ARP/NDP (`ping <gw>`, `ip neigh`), (3) Route lookup (`ip route get <B>`), (4) L3 reachability & path (`ping -c 3 <B>`, `mtr -n <B>`), (5) L4 port (`nc -zv <B> <port>` / `traceroute -T -p <port>`), (6) Path MTU (`ping -M do -s 1472 <B>`, `tracepath -n <B>`), (7) L7/TLS (`curl -v https://<B>/`), and (8) Packet capture at both ends (`sudo tcpdump -ni any host <A>`).
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 9: Understanding Your Network and Its Configuration** (basic ICMP and DNS tools, `ping`, the Internet layer and addresses, subnets, routes, IPv6 and dual-stack configuration, and kernel network interfaces).
+  - `computer-networking-problems-and-solutions` — Russ White and Ethan Banks, *Computer Networking Problems and Solutions*, **Chapter 5: Higher Layer Data Transports** (the Internet Protocol fragmentation and TTL, UDP transport and marshaling, multiplexing, and ICMP).
+  - `systems-performance-2nd-edition` — Brendan Gregg, *Systems Performance: Enterprise and the Cloud*, 2nd ed., **Chapter 10: Network** (`ping`, `traceroute`, path MTU discovery, and UDP socket buffer error counters `UdpRcvbufErrors`).
+- **Run here:** `python3 code/part02/udp_icmp_pmtu_lab.py` (15 passed, 0 failed).
+- **Explicitly labelled inferences:** The encapsulation-overhead table (`VXLAN`, `Geneve`, `GRE`, `IPIP`, `WireGuard`, `IPsec ESP`, `MPLS`), PMTU black-hole troubleshooting workflow (`TCPMSS --clamp-mss-to-pmtu`, `tcp_mtu_probing=1`), RoCEv2 `4096` IB MTU / `9000` Ethernet jumbo-frame rules, and 8-step layered reachability checklist synthesize RFCs 768, 792, 1191, 4443, 4821, and 8201 and the `ping(8)`, `traceroute(8)`, `tracepath(8)`, and `mtr(8)` manual pages (cross-referenced with Chapters 2.3, 2.5, 2.6, and 2.25, plus original study items 21–25).
+- **Not verified on live hardware:** All interactive VM commands (`nc -u`, `iperf3 -u`, `ping -M do`, `traceroute`, `tracepath`, `mtr`, `hping3`, `nping`, `fping`, `tcpdump`, `iptables`) are marked (untested here) and must be executed on a disposable Linux VM.
