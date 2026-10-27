@@ -21,3 +21,4 @@
 | 2.17 Overlays: VXLAN and EVPN | `overlays_vxlan_evpn.py` | `overlays_vxlan_evpn_lab.py` | 10 | `python3 code/part02/overlays_vxlan_evpn_lab.py` |
 | 2.18 Data center topologies: Clos, rails, dragonfly, resilience | `dc_topologies_clos.py` | `dc_topologies_clos_lab.py` | 14 | `python3 code/part02/dc_topologies_clos_lab.py` |
 | 2.19 Queuing, QoS, ECN, PFC and DCB basics | `qos_ecn_pfc_dcqcn.py` | `qos_ecn_pfc_dcqcn_lab.py` | 13 | `python3 code/part02/qos_ecn_pfc_dcqcn_lab.py` |
+| 2.20 Load balancing: L4, L7, ECMP hashing and proxies | `load_balancing_l4_l7.py` | `load_balancing_l4_l7_lab.py` | 10 | `python3 code/part02/load_balancing_l4_l7_lab.py` |
