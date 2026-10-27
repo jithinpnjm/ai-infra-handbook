@@ -27,7 +27,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 1.17 | Memory management: virtual memory, NUMA, huge pages, OOM | drafted | 9936 |  |
 | 1.18 | CPU scheduling and cgroups v1 and v2 | drafted | 9468 |  |
 | 1.19 | Namespaces: the kernel feature behind containers | drafted | 8485 |  |
-| 1.20 | Lab: build a container by hand with unshare, chroot, cgroups and overlayfs | drafted | 2451 |  |
+| 1.20 | Lab: build a container by hand with unshare, chroot, cgroups and overlayfs | drafted | 3678 |  |
 | 1.29 | Remote administration reference: SSH server and client options, host-based authentication, parallel shells, screen and tmux, IPMI and console managers | drafted | 7736 |  |
 | 1.30 | Network file sharing and remote graphical access: rsync in depth, Samba, SSHFS, NFS clients, cloud storage, X11, VNC and alternatives | drafted | 7273 |  |
 | 2.1 | What happens when you curl a URL: a packet's journey end to end | drafted | 5496 |  |
