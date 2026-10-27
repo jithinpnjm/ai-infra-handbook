@@ -72,6 +72,15 @@ Two rules explain most of the architecture:
 1. **The API server is the only component that reads and writes etcd.** Every other component (scheduler, controllers, kubelets, kube-proxy, operators, kubectl) talks to the API server. This gives one place for authentication, authorisation, admission, validation, defaulting, versioning and auditing.
 2. **Components do not call each other to say "do X".** They write desired state to the API (objects) and **watch** for changes relevant to them, then act to make reality match. The scheduler does not tell the kubelet to run a pod; it writes `spec.nodeName` into the Pod object; the kubelet, watching pods bound to its node, sees it and starts the containers. This decoupling is why Kubernetes tolerates component restarts and is extensible.
 
+### Why Kubernetes Exists: Borg/Omega Heritage and Five Core Benefits (`KUR` Chapter 1)
+
+In *Kubernetes: Up and Running* Chapter 1 (*Introduction*), Brendan Burns, Joe Beda, Kelsey Hightower, and Lachlan Evenson trace Kubernetes's lineage back to Google's internal **Borg** and **Omega** cluster managers (open-sourced by Google in June 2014 and donated as the seed technology of the **Cloud Native Computing Foundation (`CNCF`)** in July 2015) and organize the platform's value around five core benefits:
+1. **Velocity** (measured not by raw deploy speed, but by **mean time to recovery (`MTTR`)** when things go wrong): enabled by **immutability** (building a new container image rather than mutating a server in place), **declarative configuration** (stating *what* the cluster should look like rather than an imperative list of instructions, so rollbacks are trivial), and **online self-healing systems** (controllers continuously reconciling drift).
+2. **Scaling your software and your teams**: decoupling services via load-balanced APIs (`Services`), Namespaces, and horizontal pod/cluster autoscaling so small "two-pizza teams" (Jeff Bezos) can own and scale multiple microservices independently.
+3. **Abstracting your infrastructure**: moving from host-centric VM management to an **application-oriented container API** (`Pods`, `Deployments`, `Jobs`, `PersistentVolumeClaims`) that is portable across AWS, Azure, GCP, and bare-metal on-premises GPU datacenters.
+4. **Efficiency**: bin-packing batch training/preprocessing jobs alongside latency-sensitive serving workloads on the same hardware fleet—driving up server and power utilization while isolating workloads via cgroups and QoS classes.
+5. **Cloud Native Ecosystem**: integrating seamlessly with CNCF projects across telemetry (Prometheus, Grafana, OpenTelemetry), service mesh, GitOps (Argo CD, Flux), and AI/batch scheduling (Kueue, Volcano, Ray, Kubeflow).
+
 ## 2. Control plane components
 
 ### kube-apiserver
@@ -105,6 +114,16 @@ Separates cloud-provider logic: node controller (cloud metadata, deleting nodes 
 - **kube-proxy** (or replacement): programs Service virtual IPs on each node using iptables, IPVS or nftables rules (5.10); eBPF CNIs (Cilium) can replace it.
 - **CNI plugin**: attaches pod network namespaces to the cluster network and implements pod-to-pod connectivity and (optionally) NetworkPolicy (5.13 to 5.15). Usually a DaemonSet agent plus binaries under `/opt/cni/bin` and config in `/etc/cni/net.d`.
 - **Node-level agents** common in AI clusters: **NVIDIA device plugin / DRA driver** (advertise GPUs), **GPU Feature Discovery / NFD** (labels), **DCGM exporter** (metrics), **node-problem-detector**, log shippers, CSI node drivers, RDMA/SR-IOV device plugins and Multus (multiple network interfaces), kata or sandbox runtime installers.
+
+### Inspecting Nodes (`Capacity` vs. `Allocatable` and `Conditions`) and `kube-system` (`KUR` Chapter 3)
+
+In *Kubernetes: Up and Running* Chapter 3 (*Deploying a Kubernetes Cluster*), Burns et al. walk through the first commands every cluster operator runs after connecting `kubectl`:
+1. **`kubectl version` and the Version Skew Policy:** Displays both the client (`kubectl`) version and the control-plane (`kube-apiserver`) version. Kubernetes enforces a documented **version skew policy**: `kubectl` may be within **$\pm 1$ minor version** of `kube-apiserver`, `kube-apiserver` instances in an HA cluster may skew by at most $1$ minor version during upgrades, `kube-controller-manager`/`kube-scheduler`/`cloud-controller-manager` must not be newer than `kube-apiserver` (up to $1$ minor version older), and `kubelet` may be up to **$2$–$3$ minor versions older** (never newer) than `kube-apiserver`.
+2. **`kubectl get nodes` and `kubectl describe nodes <node>` (`Capacity` vs. `Allocatable`):**
+   - **`Capacity`**: The raw physical/virtual hardware reported by the node OS (`cpu`, `memory`, `ephemeral-storage`, `pods`, `nvidia.com/gpu`).
+   - **`Allocatable`**: The slice of resources actually available to schedule Pods (`Allocatable = Capacity - kube-reserved - system-reserved - eviction-threshold`, modeled in `compute_node_allocatable()` in `code/part05/k8s_architecture_flow.py`). Reserving CPU and memory for `kube-reserved` (`kubelet`, `containerd`) and `system-reserved` (`sshd`, `systemd`, kernel daemons) prevents noisy user pods from starving the node agent and triggering a `NotReady` outage.
+   - **Node `Conditions`**: `Ready` (`True` when healthy; transitions to `Unknown` after ~40s of missed heartbeats), `MemoryPressure`, `DiskPressure`, `PIDPressure`, and `NetworkUnavailable`.
+3. **Core `kube-system` components (`kubectl get pods --namespace=kube-system`):** Control-plane static pods (`kube-apiserver-<node>`, `etcd-<node>`, `kube-controller-manager-<node>`, `kube-scheduler-<node>`), cluster DNS (**`coredns`** / `kube-dns` Deployment + `kube-dns` Service resolving `<svc>.<ns>.svc.cluster.local`), and the **`kube-proxy` DaemonSet** (1 pod per node).
 
 ## 4. Ports and trust
 
@@ -274,7 +293,15 @@ sudo ETCDCTL_API=3 etcdctl --endpoints=https://127.0.0.1:2379 \
 sudo ETCDCTL_API=3 etcdctl ... get /registry/namespaces/default                  # raw (protobuf) object
 ```
 
-## 13. Lab (untested)
+## 13. Lab
+
+First, run the self-checking Python lab (`code/part05/k8s_architecture_flow_lab.py`) locally. It verifies the hub-and-spoke communication rules (`validate_k8s_communication_edges`, ensuring only `kube-apiserver` talks to `etcd` and components coordinate via watches/writes rather than direct RPCs), the `etcd` Raft quorum and fault-tolerance calculator (`compute_etcd_raft_quorum` for 3-, 4-, and 5-node clusters), and the Node `Capacity` vs. `Allocatable` resource calculator (`compute_node_allocatable`, `KUR` Ch. 3).
+
+```bash
+python3 code/part05/k8s_architecture_flow_lab.py
+```
+
+Next, on a `kind` or `kubeadm` cluster (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **Build the map**: on a kind cluster list every system pod and, for each, write which component it is, where it runs, and what it connects to; confirm with `kubectl get pods -n kube-system -o wide` and `crictl`.
 2. **Watch the flow**: run `kubectl get events -w` and `kubectl get pods -w`, apply a Deployment, and annotate the timeline (Scheduled, Pulling, Created, Started) with the component responsible for each event (events show `reportingComponent`).
@@ -288,8 +315,6 @@ sudo ETCDCTL_API=3 etcdctl ... get /registry/namespaces/default                 
 10. **Extension points**: install a trivial CRD and a custom resource; run a mutating webhook example (e.g., a small one that adds a label) or a ValidatingAdmissionPolicy; observe in API server audit/log; list API groups.
 11. **GPU architecture sketch**: for your own planned cluster (nodes, networks, operators), draw the equivalent of section 10 with node pools, taints, secondary networks and storage, and list the controllers you will need.
 12. **Clean up**.
-
-Mark tested only after execution.
 
 ## 14. Common mistakes
 
@@ -305,65 +330,195 @@ Mark tested only after execution.
 ## 15. Interview angles
 
 - "Walk through what happens when you create a Deployment." (API, etcd, controllers, scheduler, kubelet, runtime, CNI.)
-- "Which components talk to etcd? Why only the API server?" 
-- "What happens to running pods if the control plane goes down?" 
-- "How does leader election work for the scheduler and controller manager?" 
+- "Which components talk to etcd? Why only the API server?"
+- "What happens to running pods if the control plane goes down?"
+- "How does leader election work for the scheduler and controller manager?"
 - "Explain level-triggered reconciliation and why informers/watches are used."
-- "How do you make the control plane highly available? Stacked vs external etcd?" 
-- "What are the extension points of Kubernetes? Give GPU-specific examples." 
-- "How would you scale the control plane for 5,000 GPU nodes and bursts of thousands of pods?" 
+- "How do you make the control plane highly available? Stacked vs external etcd?"
+- "What are the extension points of Kubernetes? Give GPU-specific examples."
+- "How would you scale the control plane for 5,000 GPU nodes and bursts of thousands of pods?"
 
-## 16. Checkpoint questions (40)
+## Exercises
 
-1. Which component stores state? **A:** etcd.
-2. Who talks to etcd? **A:** Only kube-apiserver.
-3. What does the scheduler write? **A:** Binding (`spec.nodeName`).
-4. What starts containers? **A:** kubelet via CRI.
-5. What is a controller? **A:** Control loop reconciling current to desired state.
-6. What is an informer? **A:** Cached list/watch client with work queue.
-7. Default API server port? **A:** 6443.
-8. etcd ports? **A:** 2379 client, 2380 peer.
-9. Kubelet port? **A:** 10250.
-10. What is `resourceVersion`? **A:** Optimistic concurrency/watch bookmark.
-11. Spec vs status? **A:** Desired vs observed.
-12. Level- vs edge-triggered? **A:** Reconcile state differences, not events.
-13. What are finalizers? **A:** Block deletion until cleanup done.
-14. What are ownerReferences? **A:** Link dependents to owners for GC.
-15. Node heartbeat object? **A:** Lease in `kube-node-lease`.
-16. Node NotReady timing? **A:** ~40 s grace; eviction after 5 min tolerations.
-17. etcd quorum for 3 members? **A:** 2.
-18. Failure tolerance of 5-member etcd? **A:** 2.
-19. What do running pods do if API is down? **A:** Keep running.
-20. What fails with scheduler down? **A:** New pods stay Pending.
-21. What fails with controller manager down? **A:** No reconciliation (replacements, endpoints, node handling).
-22. What implements Services on nodes? **A:** kube-proxy or eBPF CNI.
-23. What does cloud-controller-manager do? **A:** Cloud integrations (LB, routes, nodes).
-24. Stacked etcd means? **A:** etcd co-located with control-plane nodes.
-25. How are control-plane components deployed by kubeadm? **A:** Static pods.
-26. Where are static pod manifests? **A:** `/etc/kubernetes/manifests`.
-27. What is APF? **A:** API Priority and Fairness request queuing.
-28. What is the Scheduling Framework? **A:** Plugin extension points for scheduling.
-29. What is a CRD? **A:** Custom resource definition extending the API.
-30. What is an aggregated API server? **A:** Extra API server registered via APIService.
-31. Admission order? **A:** Mutating, schema validation, validating.
-32. What are the three runtime-facing interfaces? **A:** CRI, CNI, CSI.
-33. What is the device plugin API for? **A:** Advertising devices like GPUs to kubelet.
-34. What is DRA? **A:** Dynamic Resource Allocation for flexible device claims.
-35. Why taint GPU nodes? **A:** Keep non-GPU workloads off.
-36. Why secondary network for NCCL? **A:** RDMA traffic bypasses CNI overlay for performance.
-37. Typical scale limit per cluster? **A:** ~5,000 nodes / 150k pods.
-38. Which metric shows API latency? **A:** `apiserver_request_duration_seconds`.
-39. Which etcd metric signals slow disk? **A:** WAL fsync duration.
-40. What is server-side apply? **A:** Field-ownership-based apply on the server.
+1. **Why Kubernetes Exists (`KUR` Chapter 1) and the Two Architectural Invariants:** Summarize the five core benefits of Kubernetes in `KUR` Chapter 1 (Velocity via Immutability / Declarative State / Self-Healing, Scaling Software & Teams, Abstracting Infrastructure, Efficiency, and Cloud Native Ecosystem), and use `validate_k8s_communication_edges()` in `code/part05/k8s_architecture_flow.py` to explain the two architectural rules of Section 1: (1) only `kube-apiserver` talks to `etcd`, and (2) components coordinate by writing desired state and watching `kube-apiserver` rather than calling each other directly.
+2. **Control-Plane Components, Ports, and the `kubectl apply` -> Running Pod Sequence:** Trace every step in Section 6 from `kubectl apply -f deploy.yaml` (`POST /apis/apps/v1/namespaces/.../deployments` on port `6443`) through Authentication -> Authorization -> Mutating/Validating Admission -> `etcd` (`2379`) -> `Deployment` controller (`10257`) -> `ReplicaSet` controller -> `kube-scheduler` (`10259`) -> `kubelet` (`10250`) -> `containerd` CRI -> `EndpointSlice` controller.
+3. **Node Components, `Capacity` vs. `Allocatable`, and Version Skew (`KUR` Chapter 3):** Using `compute_node_allocatable()` in `code/part05/k8s_architecture_flow.py`, explain the difference between a Node's `Capacity` and `Allocatable` (`Capacity - kube-reserved - system-reserved - eviction-threshold`), why `nvidia.com/gpu` has 0 daemon deduction, what the 5 Node `Conditions` (`Ready`, `MemoryPressure`, `DiskPressure`, `PIDPressure`, `NetworkUnavailable`) mean, and what Kubernetes's version skew policy requires across `kubectl`, `kube-apiserver`, controllers, and `kubelet`.
+4. **The Declarative Object Model (`spec` vs. `status`, Level-Triggered Reconciliation, Informers, `resourceVersion`, `ownerReferences`, and `finalizers`):** Explain why level-triggered reconciliation with Informer list+watch caches (`resourceVersion` optimistic concurrency) recovers cleanly from missed events or controller restarts, and contrast `ownerReferences` (cascading garbage collection from `Deployment -> ReplicaSet -> Pod`) with `finalizers` (pre-deletion cleanup hooks).
+5. **High Availability (`Stacked` vs. `External` `etcd`, Raft Quorum, Leader Election) and Control-Plane vs. Node Failure Timelines:** Using `compute_etcd_raft_quorum()` in `code/part05/k8s_architecture_flow.py`, explain why a 4-node `etcd` cluster has worse availability than a 3-node cluster, how `kube-scheduler` and `kube-controller-manager` use `Lease` objects for leader election (~15s failover), why running Pods survive a complete control-plane outage, and what happens at `T+10s`, `T+40s` (`node-monitor-grace-period`), and `T+340s` (`300s` `node.kubernetes.io/unreachable` taint toleration) when a `kubelet` stops heartbeating.
+6. **Extension Points and Scaling a 5,000-Node GPU/AI Cluster:** Map the Kubernetes extension points (CRI, CNI + Multus/SR-IOV, CSI, Device Plugins / DRA, Mutating/Validating Webhooks & CEL, CRDs/Operators, Scheduling Framework & Kueue/Volcano) onto a 5,000-node GPU cluster, and list the control-plane tuning knobs needed to handle 2,000-pod distributed training bursts.
 
-## 17. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. In *Kubernetes: Up and Running* Chapter 1, what three properties of Kubernetes drive high engineering velocity (and low MTTR)?</summary>
 
-- Brendan Burns, Joe Beda, Kelsey Hightower and Lachlan Evenson, *Kubernetes: Up and Running* (3rd edition; chapter 1 introduction and chapter 3 on deploying a cluster, architecture sections).
-- Josh Rosso, Rich Lander, Alex Brand and John Harris, *Production Kubernetes* (architecture, deployment models).
-- The author's `nvidia-devops` repository, volume 03 (control plane, API machinery, etcd, scheduling for AI-factory scale).
-- Kubernetes documentation (components, API concepts, controller pattern, leader election, scalability thresholds).
-- Examples are the author's constructions.
+1. **Immutability:** Instead of mutating live servers in place with ad-hoc scripts (which causes undocumented configuration drift), changes are built into immutable container images so rolling back is simply redeploying the previous image tag/digest.
+2. **Declarative Configuration:** You declare the desired end state (`replicas: 3`, `image: vllm:v2`) rather than an imperative sequence of steps; if an upgrade fails, reverting the declarative YAML in Git restores the previous state automatically.
+3. **Online Self-Healing Systems:** Controllers continuously monitor live state and automatically replace crashed pods, reschedule workloads off failed nodes, and maintain desired replica counts without human intervention.
+</details>
 
-**Flagged for verification before publishing:** default timings (node grace period, lease interval, toleration seconds), ports, scalability thresholds for your Kubernetes version, ValidatingAdmissionPolicy and DRA status by release, and every command listing; all labs are **untested**.
+<details>
+<summary>2. What are the two foundational communication rules of the Kubernetes architecture?</summary>
+
+1. **Only `kube-apiserver` reads and writes `etcd`:** Every other component (`kube-scheduler`, `kube-controller-manager`, `kubelet`, `kube-proxy`, operators, `kubectl`) communicates strictly with `kube-apiserver`, never directly with `etcd`. This enforces a single choke point for authentication, RBAC authorization, admission control, schema validation, optimistic concurrency, and audit logging.
+2. **Choreography via API state and watches (no direct imperative RPCs between controllers/scheduler/kubelet):** `kube-scheduler` does not connect to `kubelet` to say "start this pod"; it writes `spec.nodeName` to the Pod object on `kube-apiserver`, and the target `kubelet` discovers that binding via its watch stream.
+</details>
+
+<details>
+<summary>3. Walk through the request pipeline inside `kube-apiserver` when a client sends `POST /api/v1/namespaces/default/pods`.</summary>
+
+1. **API Priority and Fairness (`APF`):** Classifies the request by `FlowSchema` and `PriorityLevelConfiguration` so noisy clients cannot starve critical system/node heartbeats.
+2. **Authentication (`AuthN`):** Verifies *who* the caller is (X.509 client certificate, ServiceAccount JWT token, OIDC token, or webhook).
+3. **Authorization (`AuthZ`):** Checks whether that authenticated identity is allowed to perform `create` on `pods` in `default` (via RBAC, Node authorizer, or webhook).
+4. **Mutating Admission:** Runs built-in mutating plugins (`DefaultStorageClass`, `ServiceAccount` token injection) and external `MutatingAdmissionWebhook`s (which may inject sidecars, defaults, or `runtimeClassName: nvidia`).
+5. **Object Schema Validation:** Validates the mutated object against the OpenAPI v3 schema.
+6. **Validating Admission:** Runs `ValidatingAdmissionPolicy` (CEL expressions) and external `ValidatingAdmissionWebhook`s.
+7. **Persistence & Watch Fan-Out:** Serializes the object (Protobuf for built-in types, JSON for CRDs) to **`etcd`**, updates the in-memory watch cache, and returns `201 Created` to the client.
+</details>
+
+<details>
+<summary>4. How does `etcd` store Kubernetes objects, and why is a 4-member `etcd` cluster worse than a 3-member cluster?</summary>
+
+- **Storage format:** `etcd` stores every Kubernetes object under `/registry/<resource_type>/<namespace>/<name>` (for example, `/registry/pods/default/train-0`), using the **Raft consensus algorithm** where every write must be committed to the Write-Ahead Log (`WAL`) on a strict majority (**quorum = $\lfloor N/2 \rfloor + 1$**) of members.
+- **3 vs. 4 vs. 5 members:**
+  - **3 members:** Quorum = 2; tolerates **1** member failure.
+  - **4 members:** Quorum = 3; still tolerates only **1** member failure, while increasing write replication overhead and the probability that 2 members fail (4 nodes instead of 3).
+  - **5 members:** Quorum = 3; tolerates **2** member failures.
+Always run an **odd number** (3 or 5) of `etcd` members on dedicated low-latency NVMe disks.
+</details>
+
+<details>
+<summary>5. Trace the exact chain of controllers and components from `kubectl apply -f deployment.yaml` to a running container on a worker node.</summary>
+
+1. **`kubectl` -> `kube-apiserver` -> `etcd`:** Persists the `Deployment` object (`spec.replicas = 3`).
+2. **`Deployment` controller** (inside `kube-controller-manager`, watching `Deployment`s): Notices the new `Deployment` and creates a **`ReplicaSet`** object on `kube-apiserver`.
+3. **`ReplicaSet` controller** (watching `ReplicaSet`s and `Pod`s): Sees `0` existing Pods vs `3` desired and creates **3 `Pod` objects** (`phase: Pending`, `spec.nodeName: ""`) on `kube-apiserver`.
+4. **`kube-scheduler`** (watching unbound `Pod`s where `spec.nodeName == ""`): Runs `Filter` and `Score` plugins across candidate nodes and writes a **`Binding`** (`spec.nodeName = "gpu-node-01"`) to `kube-apiserver`.
+5. **`kubelet` on `gpu-node-01`** (watching `Pod`s with `spec.nodeName == "gpu-node-01"`): Calls `containerd` via CRI (`RunPodSandbox` -> CNI network setup -> `PullImage` -> `CreateContainer` -> `StartContainer`), runs probes, and patches Pod `status` (`phase: Running`, `Ready: True`, `podIP`) back to `kube-apiserver`.
+6. **`EndpointSlice` controller**: Sees the Pod is `Ready` and adds its `podIP` to matching Service `EndpointSlice`s.
+</details>
+
+<details>
+<summary>6. Why is `kubelet` run as a host `systemd` service rather than a Pod, and how do Control-Plane Static Pods work in `kubeadm`?</summary>
+
+- **Why `kubelet` is a `systemd` service:** `kubelet` is the agent that starts Pods on the node; if `kubelet` itself were a normal scheduled Pod, you would have a chicken-and-egg bootstrap deadlock.
+- **How Static Pods work:** Even before `kube-apiserver` or `etcd` exists, `kubelet` watches a local directory on the host (**`/etc/kubernetes/manifests/`**). Any Pod YAML placed in `/etc/kubernetes/manifests/` (`etcd.yaml`, `kube-apiserver.yaml`, `kube-controller-manager.yaml`, `kube-scheduler.yaml`) is started directly by the local `kubelet` via CRI—which is how `kubeadm` bootstraps the control plane itself. Once `kube-apiserver` comes up, `kubelet` creates read-only **mirror Pods** (`kube-apiserver-<node>`) in `kube-system` so they are visible in `kubectl get pods`.
+</details>
+
+<details>
+<summary>7. In `KUR` Chapter 3, what is the difference between a Node's `Capacity` and `Allocatable` in `kubectl describe node`, and why does it matter?</summary>
+
+- **`Capacity`:** The total hardware resources detected on the machine (e.g., `64` CPU cores, `512Gi` RAM, `8` `nvidia.com/gpu`).
+- **`Allocatable`:** The resources `kube-scheduler` is allowed to hand out to Pods:\n  $$\text{Allocatable} = \text{Capacity} - \text{kube-reserved} - \text{system-reserved} - \text{eviction-threshold}$$\nIf you do not configure `kube-reserved` (for `kubelet`, `containerd`) and `system-reserved` (for `sshd`, `systemd`, kernel), Pods can consume 100% of host CPU and RAM, starving `kubelet` so it misses heartbeats and the node flips to `NotReady`. Note that GPUs (`nvidia.com/gpu`) are not consumed by host daemons, so GPU `Allocatable` equals GPU `Capacity` (8) whenever the NVIDIA device plugin is healthy.
+</details>
+
+<details>
+<summary>8. What are the default ports for `kube-apiserver`, `etcd`, `kubelet`, `kube-scheduler`, `kube-controller-manager`, and `NodePort` Services?</summary>
+
+- **`kube-apiserver`:** TCP **`6443`** (HTTPS)
+- **`etcd`:** TCP **`2379`** (client API) and **`2380`** (peer-to-peer Raft replication)
+- **`kubelet`:** TCP **`10250`** (authenticated HTTPS API for `logs`/`exec`/metrics) and **`10248`** (localhost `/healthz`)
+- **`kube-scheduler`:** TCP **`10259`** (HTTPS metrics/health)
+- **`kube-controller-manager`:** TCP **`10257`** (HTTPS metrics/health)
+- **`NodePort` Services:** TCP/UDP **`30000–32767`** on all nodes.
+</details>
+
+<details>
+<summary>9. In which cases does `kube-apiserver` initiate an outbound connection TO a worker node's `kubelet` (`:10250`)?</summary>
+
+Normally, `kubelet` connects outbound to `kube-apiserver:6443`. However, when a user runs **`kubectl logs <pod>`**, **`kubectl exec -it <pod> -- ...`**, **`kubectl attach`**, or **`kubectl port-forward`** (or uses `kubectl proxy` to reach a node/pod endpoint), **`kube-apiserver` acts as a client connecting to the target node's `kubelet` on port `10250`** (or via `konnectivity-agent` tunnels when control plane and workers are separated by NAT/firewalls).
+</details>
+
+<details>
+<summary>10. What is the difference between `spec` and `status` on a Kubernetes object, and why is `/status` a separate API subresource?</summary>
+
+- **`spec`:** The **desired state** specified by the user or a higher-level controller. Updating `spec` increments **`metadata.generation`**.
+- **`status`:** The **observed state** reported by the controller or `kubelet` reconciling the object (`status.observedGeneration` records which `metadata.generation` the controller has processed).
+Exposing `/status` as a separate REST subresource (`PUT /api/v1/namespaces/.../pods/<name>/status`) allows RBAC to grant `kubelet` or an operator permission to update `status` without allowing it to tamper with `spec` (and stops a `kubectl apply` on `spec` from overwriting `status`).
+</details>
+
+<details>
+<summary>11. Explain Level-Triggered vs. Edge-Triggered reconciliation and how SharedInformers work inside controllers.</summary>
+
+- **Edge-triggered:** Reacts only to a discrete transition event ("Pod X just crashed"). If the controller was restarting when that event fired, the state change is missed forever.
+- **Level-triggered (Kubernetes model):** Compares the **entire current state against the desired state** ("ReplicaSet wants 4 Pods; 3 exist; create 1"). Even if an event is dropped during a network blip or restart, the next periodic relist/reconcile converges to the right state.
+- **SharedInformer architecture:** Uses a `Reflector` (`LIST` at `resourceVersion` + streaming `WATCH`) -> `DeltaFIFO` -> thread-safe local in-memory **`Indexer`/`Store` cache** -> resource event handlers that enqueue only the `namespace/name` key onto a rate-limiting **`WorkQueue`** processed by worker goroutines.
+</details>
+
+<details>
+<summary>12. How does Optimistic Concurrency Control (`metadata.resourceVersion` and HTTP `409 Conflict`) work in Kubernetes?</summary>\n\nEvery object stored in `etcd` carries a monotonically increasing **`metadata.resourceVersion`** (mapped to the `etcd` key's `mod_revision`). When a client or controller reads an object (`resourceVersion: "5012"`), modifies it, and sends a `PUT` update, `kube-apiserver` checks whether the object in `etcd` still has `resourceVersion == "5012"`. If another actor modified the object in the meantime (`"5013"`), `kube-apiserver` rejects the stale write with **HTTP `409 Conflict`**, prompting the controller to re-read the latest version from its informer cache, re-apply its change, and retry.
+</details>
+
+<details>
+<summary>13. Compare `ownerReferences` and `finalizers` during object deletion.</summary>
+
+- **`metadata.ownerReferences` (Garbage Collection):** Points from a child object (`Pod`) to its parent owner (`ReplicaSet`). When the parent is deleted, the Kubernetes Garbage Collector controller automatically deletes all child objects according to the deletion propagation policy (`Background`, `Foreground`, or `Orphan`).
+- **`metadata.finalizers` (Pre-Deletion Hooks):** When a user runs `kubectl delete pvc data` on an object whose `metadata.finalizers` list is non-empty (e.g., `["kubernetes.io/pvc-protection"]`), `kube-apiserver` **does not delete the object from `etcd`**; instead, it sets **`metadata.deletionTimestamp`** and puts the object into terminating state. The responsible controller sees `deletionTimestamp`, cleans up external resources (or waits for Pods mounting the PVC to exit), and removes its string from `metadata.finalizers`. Once the `finalizers` list becomes empty, `kube-apiserver` removes the object from `etcd`.
+</details>
+
+<details>
+<summary>14. What happens to already-running GPU training Pods if all `kube-apiserver` instances (or `etcd`) go down?</summary>
+
+**Already-running Pods continue executing normally.** Because the container processes are managed locally by `containerd-shim-runc-v2` and `kubelet`, and existing `iptables`/`IPVS`/`eBPF` networking rules remain programmed in the node kernels, an in-progress multi-node NCCL training job keeps running. However, while the API server is down, no new Pods can be scheduled, crashed Pods that need controller replacement are not recreated, `kubectl` commands fail, and autoscalers/operators cannot act.
+</details>
+
+<details>
+<summary>15. Trace the exact timeline when a worker node's `kubelet` stops heartbeating (or the node loses network connectivity to the control plane).</summary>
+
+1. **`T + 0s` to `10s`:** Normally, `kubelet` renews its `Lease` object in the `kube-node-lease` namespace every **`10s`** (`node-status-update-frequency`).
+2. **`T + 40s` (`node-monitor-grace-period`, default `40s`):** The Node Lifecycle Controller inside `kube-controller-manager` sees no Lease renewal for 40 seconds, sets the Node's `Ready` condition to **`Unknown`**, and adds the taint **`node.kubernetes.io/unreachable:NoExecute`** (and `NoSchedule`).
+3. **`T + 340s` (`40s + 300s` default `tolerationSeconds`):** By default, Kubernetes automatically adds a **300-second (5-minute) toleration** for `node.kubernetes.io/unreachable:NoExecute` and `not-ready:NoExecute` to every Pod. Five minutes after the node went `Unknown`, that toleration expires and the controller marks the Pods for eviction/deletion (though if the node is unreachable, Pods remain in `Terminating` until the node returns or is deleted by `cloud-controller-manager`).
+</details>
+
+<details>
+<summary>16. How does Leader Election work for `kube-scheduler` and `kube-controller-manager` in a 3-node HA control plane?</summary>
+
+While all 3 `kube-apiserver` instances are **active-active** behind a load balancer, running 3 active `kube-scheduler`s or 3 active `kube-controller-manager`s simultaneously would cause conflicting scheduling bindings and duplicate ReplicaSet creations. Therefore, `kube-scheduler` and `kube-controller-manager` run in **active-standby** mode using **Leader Election over `coordination.k8s.io/v1` `Lease` objects** in `kube-system` (`kubectl get lease -n kube-system`): the active leader updates `spec.renewTime` every `2s` (`retryPeriod`), and if the leader crashes and fails to renew within **`15s` (`leaseDuration`)**, one of the standby instances acquires the Lease and takes over.
+</details>
+
+<details>
+<summary>17. Compare `Stacked etcd` vs. `External etcd` high-availability control-plane topologies.</summary>
+
+- **Stacked `etcd` (default in `kubeadm`, 3 control-plane nodes):** Each control-plane node runs `kube-apiserver`, `kube-controller-manager`, `kube-scheduler`, *and* a local `etcd` member as static pods. Requires fewer hosts (3 machines instead of 6), but couples failure domains (losing 1 control-plane host loses both an API server and an `etcd` member, and noisy API server CPU/memory can impact `etcd`).
+- **External `etcd` (3 control-plane nodes + 3 dedicated `etcd` nodes):** Isolates `etcd` onto dedicated hosts with dedicated NVMe I/O and separate blast radius; recommended for large production clusters (>1,000 nodes).
+</details>
+
+<details>
+<summary>18. What is the Kubernetes Version Skew Policy (`KUR` Chapter 3), and in what order must you upgrade a cluster?</summary>
+
+- **Version Skew Policy:**
+  - `kube-apiserver` instances in HA must be within **1 minor version** of each other (e.g., `1.30` and `1.31`).
+  - `kube-controller-manager`, `kube-scheduler`, and `cloud-controller-manager` must not be newer than `kube-apiserver` (may be up to **1 minor version older**).
+  - `kubelet` and `kube-proxy` must not be newer than `kube-apiserver` (may be up to **2–3 minor versions older**).
+  - `kubectl` may be **1 minor version newer or older** than `kube-apiserver`.
+- **Mandatory upgrade order:** Always upgrade **1 minor version at a time** (never skip a minor version): `etcd` / first `kube-apiserver` -> remaining `kube-apiserver`s -> `kube-controller-manager` & `kube-scheduler` -> `coredns`/`kube-proxy`/add-ons -> worker node `kubelet`s (drained in rolling batches).
+</details>
+
+<details>
+<summary>19. How do the Kubernetes Device Plugin API (`nvidia.com/gpu`) and Dynamic Resource Allocation (`DRA`, `resource.k8s.io`) differ for GPU workloads?</summary>
+
+- **Device Plugin API (`/var/lib/kubelet/device-plugins/`):** Exposes hardware as a **simple integer count** (`nvidia.com/gpu: 8`). It cannot natively express complex device parameters, cross-node NVLink/IMEX domain sharing, or dynamic MIG slicing at pod scheduling time without pre-creating fixed MIG resource profiles.
+- **Dynamic Resource Allocation (`DRA`, `ResourceClaim`, `DeviceClass`, `ResourceSlice`):** A flexible CRD-like resource allocation API where drivers publish rich hardware topology/attributes (`ResourceSlice`) and Pods request structured `ResourceClaim`s (such as sharing a specific GPU across containers, requesting dynamic MIG profiles, or co-allocating an H100 GPU and its PCIe-peer ConnectX-7 RDMA NIC).
+</details>
+
+<details>
+<summary>20. What are the official SIG-Scalability limits of a single Kubernetes cluster, and what are the top 5 bottlenecks when launching 2,000-Pod distributed training jobs?</summary>
+
+- **Official SIG-Scalability reference envelopes:** Up to **5,000 nodes**, **150,000 total Pods**, **300,000 total containers**, and **110 Pods per node**.
+- **Top 5 AI burst bottlenecks and fixes:**
+  1. **`etcd` WAL fsync & DB size:** Put `etcd` on dedicated local NVMe (`wal_fsync_duration_seconds` p99 < 10ms) and split high-volume `/registry/events` into a separate `etcd` instance.
+  2. **API server overload / APF queueing:** Tune `--max-requests-inflight` / `--max-mutating-requests-inflight` and APF `FlowSchema`s so batch job submission bursts don't starve `kubelet` Lease heartbeats.
+  3. **Scheduler & Gang-Scheduling throughput:** Use **Kueue** + **JobSet** / **Volcano** so 2,000 pods are admitted only when quota exists (avoiding 2,000 unschedulable pods churning the scheduler queue).
+  4. **Controller client-go QPS throttling:** Raise `--kube-api-qps` and `--kube-api-burst` on `kube-controller-manager` and operators from the low defaults (`20`/`30`).
+  5. **Image pull storms on worker nodes:** Use pull-through registry caches and P2P distribution (`Spegel` / `Dragonfly`, Chapter 5.1).
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 1: Introduction** (read in full: Borg/Omega lineage, Velocity via Immutability, Declarative Configuration, and Self-Healing Systems, Scaling software and teams, Abstracting infrastructure, Efficiency, and the Cloud Native Ecosystem) and **Chapter 3: Deploying a Kubernetes Cluster** (read in full: `kubectl version` and version skew, `kubectl get nodes`, `kubectl describe nodes` `Capacity` vs `Allocatable` and Node `Conditions`, and `kube-system` components `coredns`/`kube-dns` and `kube-proxy` DaemonSet).
+  - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes* (control plane and deployment models).
+  - `nvidia-devops` (`volume-03/01-k8s-control-plane-scheduling-masterclass.md`, `volume-03/02-k8s-node-storage-masterclass.md`, and `volume-03/03-k8s-networking-security-ops-masterclass.md`): control plane, API machinery, etcd, node/storage, and networking/security at AI-factory scale (`150k` / `150`k pods).
+- **Run here:** `python3 code/part05/k8s_architecture_flow_lab.py` (3 passed, 0 failed).
+- **Explicitly labelled inferences:** The `validate_k8s_communication_edges`, `compute_etcd_raft_quorum`, and `compute_node_allocatable` models in `code/part05/k8s_architecture_flow.py` and the GPU/AI cluster topology diagram (Section 10) are the author's constructions synthesizing `KUR` Chapters 1 & 3 and `volume-03` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Not verified on live hardware:** Live `kubectl`, `crictl`, and `etcdctl` commands (`6443`, `2379`, `2380`, `10250`, `10248`, `10255`, `10259`, `10257`, `10256`, `10249`, `30000-32767`, `53`, `9153`, `2 GiB`/`8 GiB`, `10 s`, `15 s`, `40 s`, `300 s` / `5 min`, `409 Conflict`, `8x400G`, `5,000` nodes, `150,000` pods, `300,000` containers, `110` pods/node, `-v=8`, `-v=6`) are marked (`untested here`) where not executed by `k8s_architecture_flow_lab.py`.
