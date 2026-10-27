@@ -286,9 +286,15 @@ Section 7 of chapter 1.26 covers it: the host sees one process per VM (`qemu-sys
 | Unexpected bill | Egress, idle GPUs, forgotten disks and IPs, autoscaling storms | Budgets, labels, TTL automation, idle GPU alerts |
 | Cannot trace in a container | Seccomp/capabilities/permissions | Trace from the host; use a debug node/ephemeral container with caps |
 
-## 8. Lab: look at a cloud VM from inside (untested)
+## 8. Hands-on lab: look at a cloud VM from inside
 
-Use a small Compute Engine VM (Ubuntu), and optionally a GPU VM and a GKE cluster. Costs apply; delete resources afterwards.
+First, run the self-checking Python lab (`code/part01/cloud_virt_internals_lab.py`) locally. It verifies Gregg's 5-fact container CPU throttling decision rule, CPU shares burst-to-contended drop (`100%` -> `10%` = `10x` slowdown), `/proc/PID/status` `NSpid` host-to-container PID mapping (`4915` -> `753`), and goodput-adjusted cloud GPU training cost calculation.
+
+```bash
+python3 code/part01/cloud_virt_internals_lab.py
+```
+
+Next, on a small disposable GCP Compute Engine VM (and optionally a GPU VM and GKE cluster; all interactive cloud commands below are `untested here`), work through these steps:
 
 1. **Identify the platform**: `sudo dmidecode -s system-product-name` (on Compute Engine: "Google Compute Engine"), `systemd-detect-virt`, `lscpu` (Hypervisor vendor, flags), `lspci` (virtio and NVMe devices), `ls /sys/class/net`, `cat /sys/class/dmi/id/product_name`.
 2. **Metadata server**: `curl -s -H 'Metadata-Flavor: Google' http://metadata.google.internal/computeMetadata/v1/instance/?recursive=true | jq .` (machine type, zone, scheduling, network interfaces, service accounts); poll `.../instance/maintenance-event` and `.../instance/preempted` (on spot VMs). Treat tokens as secrets.
@@ -301,8 +307,6 @@ Use a small Compute Engine VM (Ubuntu), and optionally a GPU VM and a GKE cluste
 9. **GKE (optional)**: create a small cluster (and optionally a GPU node pool where quota allows); install the GPU device plugin per documentation; run `kubectl top`, deploy a pod with requests/limits, inspect its cgroup on the node; schedule a GPU pod and run `nvidia-smi`; note the scheduling labels and placement options.
 10. **Cost sketch**: compute the cost per hour and per million tokens/epoch for two options (on-demand versus spot, VM versus bare metal), including storage and egress, using provider calculators (record assumptions).
 11. **Clean up** all instances, disks, IPs, clusters; verify billing.
-
-Mark the lab tested only after executing it and recording the outputs.
 
 ## 9. Common mistakes
 
@@ -329,51 +333,123 @@ Mark the lab tested only after executing it and recording the outputs.
 - "How would you cost-compare two cloud GPU options for inference?"
 - "Why can't NCCL run across MIG instances, and when is MIG a good idea?"
 
-## 11. Checkpoint questions (30)
+## Exercises
 
-1. Define tenant and multitenancy. **A:** A guest of a shared host; multiple guests sharing the physical resources.
-2. IaaS versus FaaS versus SaaS? **A:** Virtual infrastructure you manage / functions run on demand / ready-made software.
-3. Why is instance type "a tunable parameter" in the cloud? **A:** It can be changed quickly by redeploying, unlike purchased hardware.
-4. Horizontal versus vertical scaling? **A:** Many instances in parallel versus a bigger single machine.
-5. Why shard a database? **A:** To split data and load across multiple primaries when one instance cannot handle it.
-6. What risks does auto scaling bring? **A:** Over-provisioning from attacks or regressions, slow scale-down, cost surprises.
-7. Ephemeral versus persistent storage? **A:** Lost with the instance versus independent network service.
-8. Why are network storage performance and latency less predictable? **A:** Shared network and devices with other tenants.
-9. What is a noisy neighbour? **A:** A tenant whose heavy usage degrades others sharing a resource.
-10. What are the three virtualisation types? **A:** Hardware virtualisation, OS virtualisation, lightweight hardware virtualisation.
-11. Where do hardware virtualisation overheads arise? **A:** Guest exits, memory mapping, extra memory per guest, I/O proxying, contention.
-12. What does Nitro do differently? **A:** Offloads network, storage, interrupts and timers to hardware; no QEMU I/O proxy.
-13. What limitation do hypervisor CPU controls have regarding guest priorities? **A:** Hypervisors cannot see or respect guest-internal thread priorities.
-14. What is ballooning? **A:** A guest module that consumes guest memory so the hypervisor can reclaim it.
-15. Why are containers cheap in memory and CPU overhead? **A:** One kernel; namespaces and cgroups cost nothing for running; shared caches.
-16. List container resource controls. **A:** CPU shares/quota/cpusets, memory limits, I/O weights/throttles, network qdiscs, pids.
-17. Explain CPU shares versus bandwidth. **A:** Shares: relative minimum with bursting; bandwidth: absolute quota ceiling.
-18. Why is bursting a capacity-planning hazard? **A:** Tests on idle hosts look fast; later contention drops tenants to their minimum.
-19. What is a microVM and why use one? **A:** A lightweight KVM-based VM with minimal devices/kernel for fast boot and strong isolation.
-20. Firecracker versus gVisor? **A:** Firecracker is a hardware-virtualised minimal VMM; gVisor is a user-space kernel intercepting syscalls.
-21. Which virtualisation favours operator observability and which favours end users? **A:** Containers favour operators; VMs and microVMs favour end users.
-22. Why does `mpstat` in a container show host CPUs? **A:** `/proc/stat` is not namespaced.
-23. How do you map a container PID to a host PID? **A:** `/proc/PID/status` `NSpid`, matching `/proc/PID/ns/pid` inode.
-24. How can you run `perf` against a container's symbols? **A:** Use `/proc/PID/root`, `perf` namespace support, or enter mount namespace with `nsenter`.
-25. How do you detect CPU throttling of a cgroup? **A:** `cpu.stat` `nr_throttled`/`throttled_usec`.
-26. Why is the UTS nodename useful for BPF? **A:** It usually identifies the container, readable from the task struct in syscall context.
-27. What does `%steal` indicate in a guest? **A:** CPU time taken by the hypervisor for others or throttling.
-28. What performance drop range does the SCL book note for cloud HPC VMs versus bare metal, and how should you pre-test a cloud file system before committing? **A:** A `5-15%` performance drop depending on the provider; rent cheap instances attached to the target file system and simulate your application's periodic checkpoint pattern (for example saving data equal to compute-node memory every `5 minutes`) to measure save and reload times.
-29. Why can't NCCL be used across MIG instances? **A:** MIG instances are isolated slices without peer-to-peer/NVLink between them; communication goes via host/network.
-30. Name three considerations when planning cloud GPU capacity. **A:** Quota/availability, reservation/spot model, placement/fabric limits (plus storage, egress, cost).
+1. **The Three Virtualization Models (`KVM`/`Nitro` VMs, OS Containers, and `Firecracker`/`Kata` MicroVMs):** Compare hardware VMs, OS containers, and lightweight MicroVMs across startup time, per-instance memory overhead (`48–50 MB` Clear Containers, `< 5 MB` Firecracker), security isolation boundary, host-operator observability, and guest-tenant observability.
+2. **CPU Shares vs. Bandwidth Quotas and the 10x \"Bait-and-Switch\" Burst Trap (`SP` Section 11.3.3):** Suppose a host has `100` total CPU shares, and Container A is assigned `10` shares with no bandwidth quota cap (`cpu.max`). Using `compute_shares_burst_vs_contended_drop()` in `code/part01/cloud_virt_internals.py`, calculate Container A's CPU percentage when (a) tested alone on an idle host, (b) competing with one busy sibling holding `30` shares, and (c) competing when all `90` remaining shares on the host are busy. How do you bound this performance swing?
+3. **The 5-Fact Container CPU Throttling Decision Flow (`SP` Section 11.3.4):** Using `diagnose_container_cpu_limit_cause()`, determine the limiting mechanism for a container in each of the following three cases: (a) `throttled_usec` is rising while the host has idle CPUs; (b) `throttled_usec` is 0, the container's `cpuset` cores are 100% busy, and other host CPUs are idle; and (c) `throttled_usec` is 0, `nonvoluntary_ctxt_switches` is rising rapidly, and neighbor containers are busy on all CPUs.
+4. **Observing Containers from Host and Guest (`NSpid`, `/proc/PID/root`, and Which Tools Lie):** (a) On a container host, `/proc/4915/status` shows `NSpid: 4915 753`; what are the host PID and container PID (`parse_proc_status_nspid()`), how do you access the container's filesystem from the host for symbol resolution, and how does `bpftrace` group syscall counts by container? (b) Inside a container, classify what `ps`, `pidstat`, `top`, `uptime`, `mpstat`, `vmstat`, `free`, `iostat`, `sar -n DEV,TCP`, and `tcpdump` actually display.
+5. **AI/HPC Cloud Realities (`5–15%` VM Overhead, Placement Domains, and 5-Minute Checkpoint Testing, `SCL` Chapter 17):** (a) Why do cloud HPC/GPU VMs typically exhibit a `5–15%` performance drop compared to bare metal, and why must multi-node GPU jobs be scheduled inside a single compact placement group / performance subnet? (b) Describe Zhumatiy's method for pre-testing a cloud shared filesystem on cheap instances using a `5-minute` periodic checkpoint simulation before committing a GPU cluster.
+6. **Cloud GPU Cost and Goodput Modeling:** A distributed training job requires `640` useful GPU-hours of forward progress on `64` GPUs priced at `$3.00` per GPU-hour, plus `$200` in storage and egress. Using `compute_cloud_gpu_effective_cost()`, compute the paid GPU-hours, wall-clock duration, and total USD cost when cluster goodput is `80%` (`0.80`) versus `100%` (`1.00`), and list three engineering requirements for running on Spot/preemptible GPUs.
 
-## 12. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. Define tenant, multitenancy, IaaS, CaaS, FaaS, and SaaS, and explain why instance type is \"a tunable parameter\" in the cloud.</summary>
+A **tenant** is a guest consumer on a shared physical host (**multitenancy**). **IaaS** rents hardware-virtualized VMs and storage/network; **CaaS** rents container instances; **FaaS** runs serverless functions on demand; and **SaaS** delivers complete applications. Because cloud instances can be redeployed onto a different machine family or size in minutes via API, choosing and changing the **instance type** is a primary performance tuning lever.
+</details>
 
-- Brendan Gregg, *Systems Performance*, 2nd ed., chapter 11 (Cloud Computing): background (instance types, scalable architecture, capacity planning, storage, multitenancy, orchestration), hardware virtualisation (implementation, overhead, resource controls, observability), OS virtualisation (implementation, overhead, resource controls, observability: container tools, cgroup statistics, namespace mapping, BPF tracing, resource controls, traditional tools in a container), lightweight virtualisation, other types, comparisons. Numbers such as boot times, per-VM memory overheads and kernel-trace examples come from the book's test environments.
-- Brian Ward, *How Linux Works*, 3rd ed., chapter 17 (virtualization): hypervisors, hardware in a VM, drawbacks of VMs (used in 1.26 as well), and the container material (covered in 1.19).
-- Sergey Zhumatiy, *Supercomputers for Linux SysAdmins* (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`), chapter `17. Clouds` (read in full): `5-15%` cloud HPC VM performance drop range compared to bare metal, single performance subnet / capacity reservation / domain requirement for low-latency fabrics, simulating checkpoint writes of compute-node memory size every `5 minutes` on cheap instances to test cloud file systems, Terraform/Ansible/custom image/BCM deployment automation, and cloud API metrics and hidden cost checks (traffic and powered-off nodes).
-- The AI-cloud section (instance families, placement and fabric, quotas, spot, storage and cost) is the author's synthesis of provider documentation as of writing; the project's `nvidia-devops` files contain no content mapped here. **Provider specifics change quickly and must be verified against current documentation** (instance names, GPU counts, network offerings, MTU, quotas, nested virtualisation flags, metadata endpoints).
+<details>
+<summary>2. Compare Vertical Scaling and Horizontal Scaling, and explain how stateful databases and distributed AI training map to both.</summary>
+**Vertical scaling** moves to a larger single machine (bounded by socket/NVLink domain size), whereas **horizontal scaling** adds many instances in parallel across cells/pods or database **shards**. In AI training, tensor parallelism (`TP`) scales vertically within a single node's NVLink/NVSwitch domain, while data/pipeline parallelism (`DP`/`FSDP`/`PP`) scales horizontally across nodes over InfiniBand/RoCE/EFA.
+</details>
 
-**Flagged for verification before publishing:**
+<details>
+<summary>3. What are the benefits and risks of cloud auto-scaling, and why are GPUs an exception to \"elastic infinite capacity\"?</summary>
+Auto-scaling matches instance count to diurnal load (saving cost), but risks **over-provisioning** when a performance regression or DoS attack looks like legitimate load and triggers an expensive scale-out, or thrashing on slow scale-downs. Unlike commodity CPU VMs, cloud GPUs are constrained by regional stockouts, strict project quotas, and topology-contiguous placement requirements, requiring capacity reservations or committed blocks.
+</details>
 
-- GCP/AWS/Azure instance family names and capabilities; fabric technologies and NCCL plug-ins per provider; maximum cluster sizes and placement features.
-- Kubernetes autoscaling components and GPU time-slicing/MIG behaviour per version.
-- Overhead numbers for Firecracker/Clear Containers/Kata are from 2016 to 2020 sources.
-- All labs are **untested**.
+<details>
+<summary>4. Contrast Ephemeral instance storage with Persistent cloud storage across File, Block, and Object tiers.</summary>
+**Ephemeral storage** is host-local NVMe SSD attached directly to the server—it offers the highest IOPS and lowest latency for dataset caching and checkpoint staging, but is wiped when the instance stops or fails. **Persistent storage** is network-attached and shared across tenants: **Block** (`EBS`, Persistent Disk) has per-volume and per-instance IOPS/MB/s caps; **File** (`Filestore`, `EFS`, managed `Lustre`) scales bandwidth with capacity and is often metadata-limited; and **Object** (`S3`, `GCS`) provides massive parallel throughput at high per-request latency (and egress charges across regions).
+</details>
+
+<details>
+<summary>5. What is a noisy neighbour in a multitenant cloud, and how do providers and tenants mitigate it?</summary>
+A **noisy neighbour** is another tenant on the same physical host or fabric whose heavy CPU, LLC cache, memory-bandwidth, disk, or network usage degrades your instance's latency or throughput. Providers mitigate it with cgroup/hypervisor quotas, `cpuset` pinning, Intel CAT LLC partitioning, and hardware I/O offloads; tenants mitigate it by using full-socket/bare-metal instance sizes, compact placement groups, and monitoring `%steal` and latency outliers.
+</details>
+
+<details>
+<summary>6. How does AWS Nitro change the hardware virtualization overhead model compared to classic Xen or un-offloaded QEMU?</summary>
+In classic Xen (`dom0`) or software-emulated QEMU, every virtual disk or network packet traverses a software I/O proxy, costing VM exits and host CPU cycles. **Nitro** offloads virtual networking (`ENA`/`EFA`), storage (`NVMe` EBS), interrupts, and timers onto dedicated custom ASIC cards (`SR-IOV` passthrough) and uses a stripped-down KVM hypervisor with no QEMU I/O proxy on the data path, achieving near-bare-metal performance.
+</details>
+
+<details>
+<summary>7. Why can a hypervisor not respect guest-internal process priorities (`nice`), and what is memory ballooning?</summary>
+To the host hypervisor, a guest vCPU is an opaque thread—the hypervisor cannot see whether the guest kernel is currently running a `nice +19` background log compressor or a `nice -10` latency-critical server inside that vCPU. **Memory ballooning** (`virtio-balloon`) inflates a driver inside the guest under host memory pressure to reclaim guest physical pages back to the host, which can trigger guest paging or OOM kills (`dmesg | grep -i balloon`).
+</details>
+
+<details>
+<summary>8. Where do I/O and orchestrator overheads appear in OS virtualization (containers)?</summary>
+While namespaces and cgroups add zero CPU instruction overhead, container I/O can pay extra kernel path cost in **OverlayFS** (`ovl_write_iter`, metadata `lstat` dentry-cache contention across tenants) and **bridge/NAT networking** (`veth` + `iptables`). In Kubernetes clusters with thousands of Services, sequential `iptables` rule evaluation in `kube-proxy` adds packet latency unless replaced by IPVS or eBPF (`Cilium`).
+</details>
+
+<details>
+<summary>9. Explain the \"bait-and-switch\" capacity planning hazard of CPU shares (`cpu.weight`) versus CPU bandwidth quotas (`cpu.max`).</summary>
+CPU shares (`cpu.weight`) guarantee a relative minimum under contention while allowing a container to **burst** into 100% of idle host CPUs. A container given `10` of `100` shares runs at `100%` CPU during a benchmark on an empty host, but drops `10x` to `10%` CPU in production once neighbor containers move in. Applying a bandwidth quota (`cpu.max`) bounds the burst ceiling so performance stays predictable.
+</details>
+
+<details>
+<summary>10. Compare `Firecracker`, `Kata Containers`, and `gVisor`.</summary>
+**`Firecracker`** is a minimal Rust KVM VMM (`< 5 MB` memory overhead, `~100 ms` boot, only `virtio-net`/`virtio-blk`/serial devices) built for serverless/Fargate workloads. **`Kata Containers`** runs each Kubernetes Pod/container inside a lightweight KVM virtual machine (`QEMU microvm`, `Cloud Hypervisor`, or `Firecracker`) via a CRI runtime class. **`gVisor`** (`runsc`) is a user-space application kernel written in Go that intercepts guest system calls without a full guest Linux kernel (paying higher overhead on syscall-heavy workloads).
+</details>
+
+<details>
+<summary>11. Why does Gregg state that OS containers favour host-operator observability while hardware VMs favour end-user observability?</summary>
+On a **container** host, all containers share the host kernel, so the host operator sees every container process, symbol, and kernel stack directly (`top`, `perf`, `bpftrace`), whereas the container tenant is blocked from kernel tracing (`perf`/`bpf` denied) and sees misleading host-wide `/proc` counters. In a **hardware VM**, the host operator sees only an opaque `qemu` process, whereas the guest tenant owns a full kernel and can run `perf`, Ftrace, and eBPF inside the VM.
+</details>
+
+<details>
+<summary>12. State Gregg's 5-fact decision flow for diagnosing whether a container is CPU-throttled by a quota, a `cpuset`, or CPU shares.</summary>
+Check five facts: (1) Is `throttled_usec` / `nr_throttled` in `cpu.stat` increasing? (If yes -> **CFS bandwidth quota cap** is binding.) (2) Are `nonvoluntary_ctxt_switches` in `/proc/PID/status` increasing? (3) Does the host have idle CPUs? (4) Are the container's `cpuset` CPUs 100% busy? (If yes while host has other idle CPUs -> **`cpuset` limit** is binding.) (5) Are other tenants busy? (If no quota throttling, no idle host CPUs, and rising involuntary switches -> **CPU shares contention**.)
+</details>
+
+<details>
+<summary>13. How do you map a container PID to a host PID using `/proc`, and how do you access the container's files from the host?</summary>
+Read `grep NSpid /proc/<hostpid>/status`: a line like `NSpid: 4915 753` means host PID `4915` is PID `753` inside its container PID namespace (and you can verify by comparing `/proc/PID/ns/pid` inode numbers). From the host, the container's root filesystem is directly accessible at **`/proc/<hostpid>/root/`**.
+</details>
+
+<details>
+<summary>14. How can a host `bpftrace` script attribute kernel events to individual containers?</summary>
+For synchronous events executing in process context (such as system calls), read the container's UTS nodename from `curtask`: `$task = (struct task_struct *)curtask; $nodename = $task->nsproxy->uts_ns->name.nodename; @count[$nodename] = count();`—or key the map by `cgroup` (`cgroupid()`).
+</details>
+
+<details>
+<summary>15. Inside a container, which standard Linux performance tools show container-only data and which leak host-wide data?</summary>
+**Container-only**: `ps`, `pidstat`, the process list of `top`, `sar -n DEV,TCP`, and `tcpdump` (because `pid` and `net` namespaces isolate `/proc/<pid>` and `/proc/net`). **Host-wide** (misleading inside a container): `uptime` (load average), `free`, `vmstat`, `mpstat`, `iostat`, and the summary header of `top` (because `/proc/loadavg`, `/proc/meminfo`, `/proc/stat`, and `/proc/diskstats` are not namespaced).
+</details>
+
+<details>
+<summary>16. What performance penalty does `SCL` Chapter 17 note for cloud HPC VMs versus bare metal, and why is placement critical for multi-node GPU jobs?</summary>
+Even on specialized HPC/GPU cloud instances, virtualization and shared fabric effects typically cause a **`5–15%` performance drop** compared to bare metal. Furthermore, all nodes of a coupled MPI/NCCL job must be placed inside a single **compact placement group / performance subnet / capacity domain**; if nodes span distant availability zones or spine tiers, collective latency jumps and job throughput can drop several-fold.
+</details>
+
+<details>
+<summary>17. How should you evaluate a cloud provider's shared filesystem for AI/HPC checkpointing before migrating a cluster (`SCL` Chapter 17)?</summary>
+Do not rely on marketing peak bandwidth numbers. Rent a set of cheap compute instances attached to the target cloud filesystem and run a benchmark that simulates your job's exact periodic burst—for example, dumping a checkpoint equal to compute-node RAM size every **`5 minutes`** and reading it back—to measure real save/reload stall times under contention.
+</details>
+
+<details>
+<summary>18. Why can `NCCL` not communicate directly across `MIG` slices on the same GPU, and when should you choose `MIG` versus full-GPU passthrough?</summary>
+NVIDIA **MIG** (*Multi-Instance GPU*) partitions a GPU's SMs, L2 cache, and HBM into hardware-isolated instances, but disables peer-to-peer (`P2P`) and NVLink transfers between MIG slices. Use **MIG** for small single-instance inference models, notebooks, or CI jobs that fit inside `1g`/`2g`/`3g`/`4g` slices; use **full-GPU passthrough** (or bare metal) for multi-GPU distributed training and large-model tensor parallelism.
+</details>
+
+<details>
+<summary>19. How do you query a cloud VM's instance metadata and preemption/maintenance notices from inside Linux?</summary>
+Query the link-local **Instance Metadata Server (IMDS)** (for example on GCP: `curl -s -H 'Metadata-Flavor: Google' http://metadata.google.internal/computeMetadata/v1/instance/?recursive=true`, polling `.../maintenance-event` and `.../preempted`). A background agent on Spot/preemptible GPU nodes watches this endpoint to trigger an emergency checkpoint and clean drain seconds before eviction.
+</details>
+
+<details>
+<summary>20. What hidden cost items must be included when comparing cloud GPU instances against an on-premises GPU cluster?</summary>
+Beyond raw `$/GPU-hour`, include: (1) **Goodput loss** (paid GPU-hours wasted on node failures, restarts, spot preemptions, and checkpoint stalls), (2) **Network egress and cross-zone transfer charges**, (3) **Persistent block/file/object storage charges** (including charges for volumes attached to powered-off VMs and static IPs), and (4) **Idle reservation waste** between jobs.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `systems-performance-2nd-edition` — Brendan Gregg, *Systems Performance: Enterprise and the Cloud*, 2nd ed., **Chapter 11: Cloud Computing** (sections 11.1–11.6: instance types, scalable architecture, capacity planning, storage, multitenancy, Kubernetes orchestration; hardware virtualization implementation, overhead, resource controls, observability; OS virtualization implementation, overhead `ovl_write_iter`/`lstat`/`posix_fadvise`, resource controls CPU shares vs bandwidth quotas, observability `docker stats`/cgroup stats/`NSpid: 4915 753` mapping/`/proc/PID/root`/BPF `uts_ns->name.nodename`, the 5-fact CPU throttling decision rule, and the in-container tool visibility matrix; lightweight virtualization Clear Containers `48–50 MB` / Kata / Firecracker `< 5 MB`, `~100 ms` boot / gVisor; FaaS/SaaS/Unikernels; and the 3-way comparison table).
+  - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 17: Virtualization** (hypervisors, hardware in a VM, drawbacks of VMs, and containers).
+  - `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to` — Sergey Zhumatiy, *Supercomputers for Linux SysAdmins*, **Chapter 17: Clouds** (`5–15%` cloud HPC VM performance drop range compared to bare metal, single performance subnet / capacity reservation / domain requirement for low-latency fabrics, simulating checkpoint writes of compute-node memory size every `5 minutes` on cheap instances to test cloud file systems, Terraform/Ansible/custom image/BCM deployment automation, and cloud API metrics and hidden cost checks).
+- **Run here:** `python3 code/part01/cloud_virt_internals_lab.py` (14 passed, 0 failed).
+- **Explicitly labelled inferences:** The AI-cloud GPU family comparison (GCP A2/A3, AWS P4d/P5 EFA, Azure ND InfiniBand, neocloud bare metal), GCP metadata-server preemption polling, Firecracker/Kata overhead figures from 2016 to 2020 sources, and goodput-adjusted cloud training cost formula connect cloud virtualization internals to Part 5, Part 7, and Part 11 AI cloud architecture (no `nvidia-devops` file is directly mapped to `1.27`; cross-referenced with Chapters 1.18, 1.19, 1.23, 1.24, 1.25, 1.26, and 1.28, plus original study items 21, 22, 23, 24, 26, 28, and 29).
+- **Not verified on live hardware:** All interactive cloud VM, `dmidecode`, metadata `curl`, `sysbench`, `fio`, `iperf3`, Docker cgroup, Firecracker, and GKE commands are marked (untested here) and must be executed on a disposable cloud instance.
