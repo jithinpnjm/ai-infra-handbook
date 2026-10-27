@@ -136,6 +136,37 @@ locals {
 
 Splat `resource.name[*].attr` is shorthand for a `for` over a list of instances (for maps use `values(resource.name)[*].attr`). `flatten`, `merge`, `zipmap`, `lookup`, `setunion`, `setproduct`, `distinct`, `compact`, `concat`, `slice`, `range`, `chunklist` and `try`/`can` cover most reshaping needs. Test with `terraform console`.
 
+### String Directives (`%{ for ... }` and `%{ if ... }`, `TUR` Chapter 5)
+
+In *Terraform: Up and Running* Chapter 5, Brikman covers a fourth looping construct alongside `count`, `for_each`, and `for` expressions: **HCL string directives (`%{ ... }`)**, which embed loops and conditionals directly inside strings and heredocs (`<<-EOF`) using `~` to strip surrounding newlines and spaces:
+
+```hcl
+variable "names" {
+  default = ["neo", "trinity", "morpheus"]
+}
+
+output "for_directive_index_if_strip" {
+  value = <<-EOF
+    %{~ for i, name in var.names ~}
+    ${name}%{ if i < length(var.names) - 1 }, %{ endif }
+    %{~ endfor ~}
+    EOF
+}
+# Renders: "neo, trinity, morpheus"
+```
+
+```mermaid
+flowchart TD
+    Need["What are you repeating or gating in HCL?"] --> Res{"Multiple Resources<br/>or Modules?"}
+    Res -->|Yes: Interchangeable N or 0/1 toggle| Count["count = N (or cond ? 1 : 0)<br/>Address: type.name[0]<br/>Outputs: one(type.name[*].id)"]
+    Res -->|Yes: Distinct keyed items| ForEach["for_each = map or toset(list)<br/>Address: type.name[\"key\"]<br/>Outputs: values(type.name)[*].id"]
+    Need --> Block{"Repeated Nested<br/>Blocks inside a Resource?"}
+    Block -->|Yes| Dyn["dynamic \"block_name\" {<br/>  for_each = ...<br/>  content { ... }<br/>}"]
+    Need --> Val{"Transforming Lists/Maps<br/>or Rendering Strings?"}
+    Val -->|List / Map value| ForExpr["[for x in xs : ...] /<br/>{for k, v in m : k => v if cond}"]
+    Val -->|Inside string / heredoc| StrDir["%{~ for i, x in xs ~}...%{ endfor ~}"]
+```
+
 ## 4. dynamic blocks
 
 Dynamic blocks generate repeated *nested blocks* inside a resource (firewall `allow` rules, `ingress` rules, labels as blocks, `taint` blocks, disks).
@@ -199,7 +230,7 @@ name = coalesce(var.name_override, "${local.name}-default")
 size = try(var.disk.size, 100)
 ```
 
-Caveats: both branches of a ternary must have the same type (use `tolist`, `tomap` or `null` consistently); conditionals are evaluated at plan time and cannot depend on values known only after apply when used in `count`/`for_each` ("count value depends on resource attributes that cannot be determined until apply"): pass booleans/known inputs, not resource attributes. Each boolean toggle multiplies test cases; prefer composition over toggles in shared modules (4.20). There is no `if` statement in HCL: conditional logic is expression-level only.
+Caveats: both branches of a ternary must have the same type (use `tolist`, `tomap` or `null` consistently); conditionals are evaluated at plan time and cannot depend on values known only after apply when used in `count`/`for_each` ("count value depends on resource attributes that cannot be determined until apply"): pass booleans/known inputs, not resource attributes. Also watch out for the **if/else `[0]` index trap (`TUR` Chapter 5)**: if you create `aws_iam_user_policy_attachment.neo_cloudwatch_full_access` (`count = var.give_neo_cloudwatch_full_access ? 1 : 0`) and `aws_iam_user_policy_attachment.neo_cloudwatch_read_only` (`count = var.give_neo_cloudwatch_full_access ? 0 : 1`), writing a ternary output referencing `...full_access[0].policy_arn : ...read_only[0].policy_arn` fails because Terraform evaluates both branches and one of the lists is empty (`index 0 out of range for list of length 0`). Instead, combine their splat lists with **`one(concat(aws_iam_user_policy_attachment.neo_cloudwatch_full_access[*].policy_arn, aws_iam_user_policy_attachment.neo_cloudwatch_read_only[*].policy_arn))`** (tested in `code/part04/terraform_loops_lifecycle_lab.py`). Each boolean toggle multiplies test cases; prefer composition over toggles in shared modules (4.20). There is no `if` statement in HCL: conditional logic is expression-level only.
 
 ## 6. The lifecycle block
 
@@ -312,7 +343,15 @@ resource "kubernetes_resource_quota" "gpu" {
 
 Adding a team or namespace adds only its resources; removing one removes only its resources (a reviewer should still confirm the destroy of a namespace is intended: it deletes workloads). Add `lifecycle { prevent_destroy = true }` on namespaces holding persistent volumes.
 
-## 10. Lab (untested)
+## 10. Lab
+
+First, run the self-checking Python lab (`code/part04/terraform_loops_lifecycle_lab.py`) locally. It verifies the `count` vs `for_each` middle-element removal plan simulator (`simulate_count_vs_for_each_removal` on `["neo", "trinity", "morpheus"]`, `TUR` Ch. 5), the `one(concat(...))` safe conditional output selector (`evaluate_one_concat_conditional`, `TUR` Ch. 5), and nested `(team, namespace)` map flattening (`flatten_team_namespaces`, Section 9).
+
+```bash
+python3 code/part04/terraform_loops_lifecycle_lab.py
+```
+
+Next, on any machine with Terraform/OpenTofu 1.6+ (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **count vs for_each**: create three `terraform_data`/`random_pet` resources with `count` driven by a list; remove the middle element and read the plan; repeat with `for_each` over a map; add `moved` blocks to convert one to the other without recreation.
 2. **Unknown keys**: attempt `for_each = toset(random_id.x[*].hex)` and read the error; fix by using static keys.
@@ -326,8 +365,6 @@ Adding a team or namespace adds only its resources; removing one removes only it
 10. **Worked example**: implement the team/namespace quotas against a kind cluster; add and remove teams; verify minimal diffs.
 11. **Gotcha audit**: review an existing configuration for index-shifting `count`, `timestamp()`, `ignore_changes = all`, provisioners; file fixes.
 12. **Clean up.**
-
-Mark tested only after execution.
 
 ## 11. Common mistakes
 
@@ -343,55 +380,196 @@ Mark tested only after execution.
 
 ## 12. Interview angles
 
-- "`count` versus `for_each`: when and why? What happens when you remove an item from the middle?" 
-- "What does `create_before_destroy` do and what breaks?" 
+- "`count` versus `for_each`: when and why? What happens when you remove an item from the middle?"
+- "What does `create_before_destroy` do and what breaks?"
 - "How do you stop someone from accidentally destroying a checkpoint bucket?" (prevent_destroy, deletion protection, IAM, policy.)
-- "Why can't `for_each` use apply-time values? How do you work around it?" 
+- "Why can't `for_each` use apply-time values? How do you work around it?"
 - "How do you handle fields modified outside Terraform, e.g. autoscaler node counts?" (ignore_changes.)
 - "How do you do rolling updates of GPU nodes with Terraform?" (delegate to platform update policy/drain.)
-- "What are the main reasons a plan shows unexpected diffs?" 
+- "What are the main reasons a plan shows unexpected diffs?"
 - "Explain dynamic blocks and when not to use them."
 
-## 13. Checkpoint questions (30)
+## Exercises
 
-1. What identifies a `count` instance? **A:** Numeric index.
-2. What identifies a `for_each` instance? **A:** Map key / set element.
-3. Which is safer for distinct items? **A:** `for_each`.
-4. Why does removing a middle list item hurt `count`? **A:** Later indices shift, causing recreation.
-5. What types does `for_each` take? **A:** Map or set of strings.
-6. Convert list to set? **A:** `toset()`.
-7. Must keys be known at plan? **A:** Yes.
-8. What does `one()` do? **A:** Returns the single element or null from a 0/1 list.
-9. What does a `for` expression produce? **A:** A list or map value.
-10. What does `...` do in a `for` map? **A:** Groups values into lists per key.
-11. What is a splat? **A:** `[*]` shorthand to extract attributes from lists.
-12. What is a dynamic block? **A:** Generates nested blocks.
-13. Ternary rule? **A:** Both branches same type.
-14. Conditional resource idiom? **A:** `count = cond ? 1 : 0`.
-15. Optional block idiom? **A:** Dynamic with `[]` or single-element list.
-16. What does `create_before_destroy` need? **A:** Unique names, capacity.
-17. What does `prevent_destroy` do? **A:** Errors on plans that destroy it.
-18. Is it a security control? **A:** No.
-19. What does `ignore_changes` do? **A:** Ignores diffs on listed attributes.
-20. Why avoid `ignore_changes = all`? **A:** Hides drift.
-21. What does `replace_triggered_by` do? **A:** Forces replacement on referenced change.
-22. `precondition` vs `postcondition`? **A:** Before vs after, `self`.
-23. What is a `check` block? **A:** Non-blocking assertion with scoped data.
-24. What replaces `null_resource`? **A:** `terraform_data`.
-25. Why `timestamp()` is a problem? **A:** Changes every plan.
-26. Cause of dependency cycles? **A:** Mutual references.
-27. Fix for IAM eventual consistency? **A:** depends_on, retries, time_sleep.
-28. How roll nodes gradually? **A:** Platform update policies, drain flow.
-29. How convert count to for_each safely? **A:** `moved` blocks.
-30. What causes perpetual diffs? **A:** Provider normalisation/ordering mismatches.
+1. **The Four HCL Looping Constructs (`count`, `for_each`, `for` Expressions, and `%{ for ... }` String Directives, `TUR` Chapter 5):** Using `simulate_count_vs_for_each_removal()` in `code/part04/terraform_loops_lifecycle.py`, trace what happens when `"trinity"` is removed from `["neo", "trinity", "morpheus"]` under `count` versus `for_each = toset(var.user_names)`, and show how `moved` blocks migrate existing `count` state indices (`[0]`, `[1]`, `[2]`) to `for_each` keys (`["neo"]`, `["trinity"]`, `["morpheus"]`) without recreating resources.
+2. **Reshaping Data with `for` Expressions (`...` Grouping), `setproduct`, and `merge([for ...])` Flattening:** Using `flatten_team_namespaces()` in `code/part04/terraform_loops_lifecycle.py`, explain how Section 9 flattens a nested `{ team => { gpu_quota, namespaces } }` map into a 1-level `"team/ns"` map for `for_each`, and how `{ for p in var.pool_list : p.region => p.name... }` groups items by key.
+3. **`dynamic` Blocks (`ingress`, `tag`) vs. Provider `default_tags` (`TUR` Chapter 5):** Show how `dynamic "ingress"` (including `self = true` for EFA/NCCL intra-group traffic) and `dynamic "tag"` (filtered with `{ for k, v in var.custom_tags : k => upper(v) if k != "Name" }`) generate nested blocks, and explain when `provider "aws" { default_tags { tags = ... } }` is cleaner than `dynamic "tag"`.
+4. **Conditionals in HCL (`count = cond ? 1 : 0`, Filtered `for_each`, Optional `dynamic` Blocks, and `one(concat(...))`, `TUR` Chapter 5):** Using `evaluate_one_concat_conditional()` in `code/part04/terraform_loops_lifecycle.py`, explain why `[0]` index access fails in an if/else `count` ternary output when one resource has `count = 0`, and how `one(concat(full[*].policy_arn, ro[*].policy_arn))` solves it cleanly.
+5. **The `lifecycle` Block (`create_before_destroy`, `prevent_destroy`, `ignore_changes`, `replace_triggered_by`, `precondition`, `postcondition`) and Zero-Downtime Rolling Patterns (`TUR` Chapter 5):** Compare `TUR` Chapter 5's two zero-downtime ASG deployment patterns: (a) `create_before_destroy = true` + `name = "${var.cluster_name}-${aws_launch_configuration.example.name}"` + `min_elb_capacity` vs. (b) native `instance_refresh` (`strategy = "Rolling"`, `min_healthy_percentage = 50`) / GKE `update_policy`.
+6. **Diagnosing Terraform Sharp Edges (Unknown `for_each` Keys, Dependency Cycles, Eventual Consistency, `depends_on` on Modules, and Perpetual Diffs):** Diagnose why each of these five gotchas happens during `plan` or `apply` and state the exact architectural fix.
 
-## 14. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. In *Terraform: Up and Running* Chapter 5, what are the four looping constructs in HCL, and what does each produce?</summary>
 
-- Yevgeniy Brikman, *Terraform: Up and Running* (chapter 5 on Terraform tips and tricks: loops, conditionals, zero-downtime deployment, and gotchas).
-- The author's `nvidia-devops` repository, volume 10 chapter 5 (HCL masterclass: `count` versus `for_each`, dynamic blocks, lifecycle).
-- Terraform and OpenTofu language documentation (meta-arguments, expressions, functions, lifecycle).
-- Examples are the author's constructions.
+1. **`count = N`**: loops over an entire **resource or module**, creating a list of instances indexed `0..N-1` (`aws_iam_user.example[0]`).
+2. **`for_each = <map_or_set>`**: loops over an entire **resource, module, or `dynamic` inline block**, creating a map of instances keyed by string (`aws_iam_user.example["neo"]`).
+3. **`[for ...]` / `{for ...}` (`for` expression)**: transforms a collection into a **new list or map value** (`[for n in var.names : upper(n)]`).
+4. **`%{ for i, x in xs }...%{ endfor }` (string directive)**: loops **inside a string or heredoc template** to build a single formatted string (`"neo, trinity, morpheus"`).
+</details>
 
-**Flagged for verification before publishing:** behaviour of `replace_triggered_by`, `terraform_data` triggers, `removed` blocks and mock/test features by version; the `merge(...)...` expansion idiom; provider-specific attributes (security group rule styles, node pool update policies); and every code listing; all labs are **untested**.
+<details>
+<summary>2. Walk through what happens in `terraform plan` when you remove `"trinity"` from `user_names = ["neo", "trinity", "morpheus"]` under `count` versus `for_each` (`TUR` Chapter 5).</summary>
+
+- **With `count = length(var.user_names)`:** State initially holds `[0] = "neo"`, `[1] = "trinity"`, `[2] = "morpheus"`. Removing `"trinity"` makes the list `["neo", "morpheus"]` (`[0] = "neo"`, `[1] = "morpheus"`). Terraform sees **`[1]` changing from `"trinity"` to `"morpheus"`** (updating or replacing `[1]`) and **`[2]` ("morpheus") being destroyed**—corrupting or interrupting `"morpheus"` even though you only wanted to delete `"trinity"`.
+- **With `for_each = toset(var.user_names)`:** State holds `["neo"]`, `["trinity"]`, and `["morpheus"]`. Removing `"trinity"` plans **`Plan: 0 to add, 0 to change, 1 to destroy`** (destroying only `aws_iam_user.example["trinity"]` while leaving `"morpheus"` completely untouched).
+</details>
+
+<details>
+<summary>3. How do you migrate an existing resource from `count` (`[0]`, `[1]`) to `for_each` (`["neo"]`, `["morpheus"]`) without destroying and recreating the objects?</summary>
+
+Change the resource from `count` to `for_each` and add declarative **`moved {}`** blocks mapping each numeric index to its new string key:
+```hcl
+moved {
+  from = aws_iam_user.example[0]
+  to   = aws_iam_user.example["neo"]
+}
+moved {
+  from = aws_iam_user.example[1]
+  to   = aws_iam_user.example["morpheus"]
+}
+```
+Running `terraform plan` shows `2 moved, 0 to add, 0 to change, 0 to destroy`.
+</details>
+
+<details>
+<summary>4. How do you extract a list of attribute values (`arn` or `id`) from a resource using `count` versus a resource using `for_each` (`TUR` Chapter 5)?</summary>
+
+- **Resource with `count`** (stored as a list of instances): use the splat operator directly: **`aws_iam_user.example[*].arn`**.
+- **Resource with `for_each`** (stored as a map of instances keyed by string): `aws_iam_user.example[*].arn` does *not* work on a map; wrap the map in **`values(...)`** first: **`values(aws_iam_user.example)[*].arn`** (or use a `for` expression `[for u in aws_iam_user.example : u.arn]`).
+</details>
+
+<details>
+<summary>5. How do you loop over a two-level nested structure (such as `teams` each containing a list of `namespaces`) with `for_each`?</summary>
+
+Because `for_each` only accepts a 1-dimensional `map` or `set(string)`, flatten the hierarchy in `locals` into a single map with composite `"team/ns"` keys using **`merge([for ... : { for ... }]...)`** (note the `...` expansion operator after the list argument to `merge()`) or **`setproduct()`**:
+```hcl
+locals {
+  team_namespaces = merge([
+    for team, cfg in var.teams : {
+      for ns in cfg.namespaces : "${team}/${ns}" => { team = team, ns = ns, quota = cfg.gpu_quota }
+    }
+  ]...)
+}
+```
+</details>
+
+<details>
+<summary>6. What does the ellipsis `...` do inside a `for` map expression (`{ for p in var.pool_list : p.region => p.name... }`)?</summary>
+
+Normally, a `for` expression building a map (`{ for k, v in ... : key => val }`) fails if two elements produce the same `key`. Appending **`...` (grouping mode)** after the value expression (`p.region => p.name...`) tells Terraform to **group all values sharing the same key into a list**—producing `{"us-central1" = ["pool-a", "pool-b"], "europe-west4" = ["pool-c"]}`.
+</details>
+
+<details>
+<summary>7. How do `dynamic` blocks work, and why does `aws_security_group` for an EFA / GPUDirect cluster include an `ingress` rule with `self = true`?</summary>
+
+A `dynamic "<block_name>"` block iterates `for_each = <collection>` and renders `content { ... }` (accessing `<block_name>.key` and `<block_name>.value`) to generate repeated nested blocks inside a resource. On AWS GPU clusters using Elastic Fabric Adapter (**EFA**) or multi-node NCCL TCP/RDMA, every node in the cluster security group must accept all ports/protocols from every other node in the **same security group**—expressed via `ingress { from_port = 0; to_port = 0; protocol = "-1"; self = true }`.
+</details>
+
+<details>
+<summary>8. In `TUR` Chapter 5, how do you write an if/else conditional across two resources using `count`, and why should you use `one(concat(...))` for the output?</summary>
+
+To attach either `cloudwatch_full_access` or `cloudwatch_read_only` based on `var.give_neo_cloudwatch_full_access`:
+- Set `count = var.give_neo_cloudwatch_full_access ? 1 : 0` on `neo_cloudwatch_full_access`.
+- Set `count = var.give_neo_cloudwatch_full_access ? 0 : 1` on `neo_cloudwatch_read_only`.
+If an output writes `var.give_neo_cloudwatch_full_access ? ...full_access[0].policy_arn : ...read_only[0].policy_arn`, it can fail or be fragile when referencing `[0]` on an empty 0-length resource list. Instead, **`one(concat(aws_iam_user_policy_attachment.neo_cloudwatch_full_access[*].policy_arn, aws_iam_user_policy_attachment.neo_cloudwatch_read_only[*].policy_arn))`** concatenates the two splat lists (one has 1 element, the other has 0) and `one()` returns that single element (or `null` if both are empty).
+</details>
+
+<details>
+<summary>9. How do you make an entire resource optional per key without using `count`, and how do you make a nested block optional?</summary>
+
+- **Optional per-key resource:** Filter the `for_each` map with an `if` clause inside a `for` expression:
+  `for_each = { for k, n in var.nodes : k => n if n.scratch_gb > 0 }`.
+- **Optional nested block (e.g., `encryption` only when `var.kms_key_id != null`):** Use a `dynamic` block whose `for_each` evaluates to either an empty list `[]` (0 blocks) or a 1-element list `[var.kms_key_id]`:
+  `dynamic "encryption" { for_each = var.kms_key_id == null ? [] : [var.kms_key_id]; content { default_kms_key_name = encryption.value } }`.
+</details>
+
+<details>
+<summary>10. What happens if the two branches of a ternary expression (`cond ? a : b`) have different types?</summary>
+
+Terraform requires both branches of a ternary expression to resolve to the **exact same type**. If one branch is a `tuple` (e.g., `["a", "b"]`) and the other is a `list(string)` or `set(string)`, Terraform fails with `Inconsistent conditional result types`. Wrap branches in explicit type conversion functions (**`tolist(...)`**, **`tomap(...)`**, **`tostring(...)`**) so both sides match.
+</details>
+
+<details>
+<summary>11. Summarize the five settings supported inside a resource `lifecycle {}` block.</summary>
+
+1. **`create_before_destroy = true`**: creates the replacement resource *before* destroying the old one (`+/-`).
+2. **`prevent_destroy = true`**: aborts `terraform plan` / `apply` with an error if any change would destroy the resource.
+3. **`ignore_changes = [attr1, attr2]`**: ignores real-world or config diffs on the specified attributes (e.g., `node_count` managed by an autoscaler).
+4. **`replace_triggered_by = [resource.addr.attr]`**: forces replacement of this resource whenever the referenced resource or attribute changes.
+5. **`precondition {}` and `postcondition {}`**: custom validation assertions evaluated before or after the resource operation (`self.public_ip == ""`).
+</details>
+
+<details>
+<summary>12. Why is `prevent_destroy = true` NOT a complete protection against resource deletion on its own?</summary>
+
+Two reasons:
+1. If someone **deletes the entire `resource` block from the `.tf` file** (or comments it out), the `lifecycle { prevent_destroy = true }` block inside it is also deleted from the configuration, so `terraform plan` will happily plan to destroy the resource.
+2. It does not stop an admin from deleting the bucket/database in the cloud console or CLI.
+Therefore, always combine `prevent_destroy = true` in HCL with **cloud-side deletion protection** (`deletion_protection = true` on RDS/GKE/instances, object lock/retention on buckets), **OPA/Conftest CI policy checks** blocking `-` actions on `Mission-Critical` resources (Chapter 4.2), and least-privilege IAM.
+</details>
+
+<details>
+<summary>13. What are the three gotchas when enabling `create_before_destroy = true` on a resource?</summary>
+
+1. **Name collisions:** If the resource has a fixed unique name (`name = "prod-gpu-pool"`), creating the new resource before deleting the old one fails in the cloud API with `AlreadyExists`. You must use **`name_prefix`** or append a `random_id` / template hash suffix so old and new can coexist simultaneously.
+2. **Upward propagation:** Terraform automatically propagates `create_before_destroy = true` to dependent resources in the dependency chain, which can cause unexpected ordering changes if a dependency cannot coexist.
+3. **GPU quota / capacity exhaustion:** Creating 32 new H100 nodes *before* terminating the 32 old H100 nodes temporarily requires **64 H100 nodes of quota and physical capacity**.
+</details>
+
+<details>
+<summary>14. In `TUR` Chapter 5, why is AWS Auto Scaling Group `instance_refresh` (or GKE `update_policy`) preferred over `create_before_destroy` on the ASG itself?</summary>
+
+In early Terraform versions (`TUR` Chapter 5's first approach), achieving zero-downtime ASG updates required interpolating the launch configuration name into the ASG name (`name = "${var.cluster_name}-${aws_launch_configuration.example.name}"`) with `create_before_destroy = true` and `min_elb_capacity`—which replaced the entire ASG on every deploy, broke attached `aws_autoscaling_schedule`s, and reset the fleet size back to `min_size` if an autoscaler had scaled it up. Using native **`instance_refresh { strategy = "Rolling"; preferences { min_healthy_percentage = 50 } }`** (or GKE `google_container_node_pool` `management`/`upgrade_settings`) keeps the ASG/node-pool object stable while the cloud platform rolls nodes in batches.
+</details>
+
+<details>
+<summary>15. How do `terraform_data` and `replace_triggered_by` replace the legacy `null_resource`?</summary>
+
+Built into `ansible-core` / Terraform 1.4+ without requiring any external provider plugin, **`resource "terraform_data" "ver" { input = var.driver_version }`** stores arbitrary values in state (`output`) and supports `triggers_replace = [...]`. Other resources can reference `lifecycle { replace_triggered_by = [terraform_data.ver] }` to force a clean replacement whenever `var.driver_version` changes.
+</details>
+
+<details>
+<summary>16. What is a `check` block (Terraform 1.5+), and how does it differ from a `postcondition`?</summary>
+
+- **`lifecycle { postcondition {} }`:** Runs during `plan`/`apply` of a specific resource; if it fails, **it halts `terraform apply` immediately and marks the run failed**, blocking downstream resources.
+- **`check "<name>" { data "..." { ... } assert { condition = ...; error_message = "..." } }`:** A top-level post-apply health assertion (with its own scoped `data` source, such as checking an HTTP health endpoint or certificate expiry) that **emits a warning without halting or failing the `apply`**—making it ideal for continuous infrastructure health and drift monitoring.
+</details>
+
+<details>
+<summary>17. Why does putting `depends_on = [module.network]` on a `module` block cause noisy plans on every run?</summary>
+
+When you attach `depends_on` to an entire `module` block (or a resource that a `data` source depends on), Terraform conservatively assumes that **every `data` source inside that dependent module cannot be read until after the dependency finishes applying**. Consequently, during `terraform plan`, those `data` sources are deferred to `apply` (`<= read` / `(known after apply)`), causing every resource that references those data sources to show noisy `(known after apply)` diffs on every plan. Always prefer **implicit dependencies** (passing `module.network.vpc_id` as an input variable) over module-level `depends_on`.
+</details>
+
+<details>
+<summary>18. How do you break a Dependency Cycle (`Error: Cycle: aws_security_group.a, aws_security_group.b`) between two security groups that need to allow traffic from each other?</summary>
+
+If `aws_security_group.a` has an inline `ingress` block referencing `aws_security_group.b.id`, and `aws_security_group.b` has an inline `ingress` block referencing `aws_security_group.a.id`, neither group can be created first (`Error: Cycle`). Break the cycle by creating both `aws_security_group.a` and `aws_security_group.b` **with no inline rules**, and then creating two standalone **`aws_vpc_security_group_ingress_rule`** (or `aws_security_group_rule`) resources that reference `a.id` and `b.id` after both empty groups exist.
+</details>
+
+<details>
+<summary>19. What causes \"Eventual Consistency\" errors (`InvalidPrincipalNotFound` or `does not exist`) right after creating an IAM Service Account or Role in Terraform, and how do you handle it?</summary>
+
+Cloud IAM systems (AWS IAM, GCP IAM) replicate globally with eventual consistency: when `google_service_account.train` or `aws_iam_role.eks` returns `200 OK` from the create API, it may take 5–15 seconds before regional compute or storage APIs recognize the new principal. Mitigate this by:
+1. Ensuring proper dependency edges (`depends_on = [aws_iam_role_policy_attachment.eks]`) so consumers wait for policy attachments, not just the bare role.
+2. Relying on provider built-in IAM propagation retries, or inserting a **`time_sleep` (`create_duration = "15s"`)** resource between the IAM resource and the regional resource when a provider lacks propagation retries.
+</details>
+
+<details>
+<summary>20. Why do functions like `timestamp()` and `uuid()` break Terraform idempotency, and what should you use instead?</summary>
+
+`timestamp()` and `uuid()` evaluate to a **brand-new string on every single `terraform plan`**, causing any resource attribute or tag that calls them to show a diff (`~` or `-/+`) on every run. Instead:
+- For a persistent random UUID or suffix, use **`resource "random_uuid"`** or **`resource "random_id"`** (which generates the value once and stores it in `terraform.tfstate`).
+- For a creation-only timestamp tag, either use **`resource "time_static"`** from the `hashicorp/time` provider or add the tag key to **`lifecycle { ignore_changes = [tags["created_at"]] }`**.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `terraform-up-and-running-3rd-edition` — Yevgeniy Brikman, *Terraform: Up and Running*, 3rd ed., **Chapter 5: Terraform Tips and Tricks: Loops, If-Statements, Deployment, and Gotchas** (read in full: loops with `count` on `["neo", "trinity", "morpheus"]` and the middle-element deletion trap; loops with `for_each` over resources, modules, and `dynamic "tag"` blocks plus `provider "aws" { default_tags }`; `for` list and map expressions; string directives `%{~ for i, name in var.names ~}` and `%{ if ... }`; conditionals with `count = cond ? 1 : 0`, if-else with `one(concat(...))`, and filtered `for_each`; zero-downtime deployment with `create_before_destroy` + `min_elb_capacity` vs native ASG `instance_refresh`; and Terraform gotchas including `count`/`for_each` plan-time limitations and failed mid-apply deployments).
+  - `nvidia-devops` (`volume-10/05-terraform-for-infrastructure-as-code.md`): HCL masterclass (`count` vs `for_each`, `dynamic` blocks, `lifecycle` arguments, and common pitfalls).
+- **Run here:** `python3 code/part04/terraform_loops_lifecycle_lab.py` (3 passed, 0 failed).
+- **Explicitly labelled inferences:** The `simulate_count_vs_for_each_removal`, `evaluate_one_concat_conditional`, and `flatten_team_namespaces` models in `code/part04/terraform_loops_lifecycle.py` and the GPU node-pool and Kubernetes per-team GPU `ResourceQuota` examples are the author's constructions synthesizing `TUR` Chapter 5 and `volume-10/05` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, and 30).
+- **Not verified on live hardware:** Live `terraform` / `tofu` executions (`a2-highgpu-8g`, `a3-highgpu-8g`, `g2-standard-24`, `p5.48xlarge`, `g5.xlarge`, `16` vCPUs, `50%` min_healthy_percentage) are marked (`untested here`) where not executed by `terraform_loops_lifecycle_lab.py`.
