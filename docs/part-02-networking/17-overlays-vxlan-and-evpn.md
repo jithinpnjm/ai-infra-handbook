@@ -230,7 +230,15 @@ Virtualization is a trade: simplified endpoints and policy at the price of more 
 
 Rule of thumb: virtualize only where the isolation, mobility or policy benefit justifies the added complexity, and prefer simpler options (routed hosts, VRF-lite, native routing) where they suffice.
 
-## 9. Lab: tunnels, VXLAN and EVPN (untested)
+## 9. Hands-on lab: tunnels, VXLAN, and EVPN
+
+First, run the self-checking Python lab (`code/part02/overlays_vxlan_evpn_lab.py`) locally. It verifies EVPN Route Types `1`–`5`, Asymmetric vs Symmetric IRB per-leaf VNI state scaling (`200` vs `6` VNIs), SR-MPLS label-stack `POP` progression (`[101, 104, 105, 107]`), and Shared Risk Link Group (`SRLG`) overlay fate-sharing checks.
+
+```bash
+python3 code/part02/overlays_vxlan_evpn_lab.py
+```
+
+Next, on a disposable Linux VM using network namespaces and containerlab with FRR (all interactive VM commands below are `untested here`), work through these steps:
 
 1. **GRE and IPIP with namespaces**: build the diamond topology from chapter 2.5; create a GRE tunnel between the end routers; observe the recursive lookup with `ip route get`, packet capture of outer and inner headers at the transit router; compute MTU; break PMTUD with an ICMP drop and fix with MSS clamping.
 2. **VXLAN point-to-point**: two namespaces/VMs; VXLAN with static remote; capture UDP/4789; show source port variation across flows; inspect `bridge fdb`; change MTU and test large pings.
@@ -243,8 +251,6 @@ Rule of thumb: virtualize only where the isolation, mobility or policy benefit j
 9. **Segment routing demo**: use Linux `ip route add ... encap mpls` or `encap seg6` (SRv6) in namespaces to implement a two-segment path across a diamond topology; observe which transit routers see packets.
 10. **Troubleshooting drill**: introduce faults (wrong RT, MTU 1500 underlay, missing VTEP route, duplicate gateway MAC) and diagnose with the layered method.
 11. **Clean up**.
-
-Mark tested only after execution.
 
 ## 10. Common mistakes
 
@@ -270,56 +276,124 @@ Mark tested only after execution.
 - "What is an SRLG and why does it matter for overlay redundancy?"
 - "Why do GPU back-end fabrics usually avoid overlays?"
 
-## 12. Checkpoint questions (40)
+## Exercises
 
-1. Define a tunnel (in this chapter's sense). **A:** A virtual link where an outer header encapsulates an inner header and some devices forward on the outer header alone.
-2. Overlay versus underlay? **A:** The virtual topology versus the physical/logical network carrying it.
-3. What is a recursive lookup? **A:** Looking up the outer destination after encapsulation to find the path to the tunnel endpoint.
-4. What do VRFs add? **A:** Separate routing tables for separate reachability domains.
-5. Two questions every virtualization solves? **A:** How traffic is encapsulated; how reachability through the tunnel is advertised.
-6. Why is MTU an issue? **A:** Encapsulation reduces payload and PMTUD often fails.
-7. VXLAN header overhead? **A:** About 50 bytes.
-8. VXLAN VNI size? **A:** 24 bits.
-9. VXLAN UDP port? **A:** 4789.
-10. What is a VTEP? **A:** Tunnel endpoint that encapsulates/decapsulates.
-11. How does VXLAN give underlay ECMP entropy? **A:** Hash-derived outer UDP source port.
-12. Flood-and-learn vs EVPN? **A:** Data-plane learning with BUM flooding vs BGP-distributed MAC/IP reachability.
-13. BUM stands for? **A:** Broadcast, unknown unicast, multicast.
-14. Head-end replication? **A:** The ingress VTEP unicasts BUM copies to each remote VTEP.
-15. Which BGP address family carries EVPN? **A:** l2vpn evpn.
-16. EVPN route type 2? **A:** MAC/IP advertisement.
-17. Type 3? **A:** Inclusive multicast (BUM membership).
-18. Type 5? **A:** IP prefix.
-19. Types 1 and 4? **A:** Ethernet auto-discovery and Ethernet segment (multihoming).
-20. What is RD vs RT? **A:** RD makes routes unique; RT controls import/export.
-21. What is ARP suppression? **A:** Leaf answers ARP locally using EVPN-learned bindings.
-22. Symmetric IRB advantage? **A:** Leaves need only local VNIs plus an L3 VNI; scales better.
-23. Anycast gateway? **A:** Same gateway IP/MAC on every leaf.
-24. What is an ESI? **A:** Identifier of a multihomed Ethernet segment (MLAG replacement).
-25. MAC mobility handled how? **A:** Sequence numbers in type 2 routes.
-26. Why prefer native routing to overlays in K8s? **A:** Less overhead and MTU loss, visible pod IPs.
-27. Flannel VXLAN default port? **A:** 8472 (Linux kernel default for VXLAN vs IANA 4789).
-28. Define SR node SID. **A:** A globally unique label/ID for a router, advertised by the IGP.
-29. Adjacency SID? **A:** Local label for a specific link.
-30. MPLS label size? **A:** 20 bits (32-bit header).
-31. What are MPLS operations? **A:** PUSH, POP, SWAP.
-32. SR equivalent of SWAP? **A:** CONTINUE.
-33. SRv6 SID parts? **A:** Locator, function, argument.
-34. What is uSID? **A:** Compressed micro-segment packing 16-bit SIDs.
-35. What does the SRH hold? **A:** The list of segments and segments-left.
-36. SD-WAN in one sentence. **A:** Overlay tunnels across multiple transports with central policy and path-quality-based steering.
-37. What are interaction surfaces? **A:** Points where two systems/control planes touch and can disturb each other.
-38. What is an SRLG? **A:** Set of links sharing a failure risk.
-39. Why do AI back-ends usually avoid VXLAN? **A:** MTU, hardware complexity, lossless queue mapping, entropy.
-40. First troubleshooting step for an overlay issue? **A:** Test the underlay path between VTEPs (reachability, MTU), then the overlay.
+1. **Tunnels, Overlays, Underlays, Recursive Lookups, and the Two Core Virtualization Questions (`CN` Chapter 9):** (a) Trace the 5 steps of a packet sent from Host A through tunnel headend Router C, underlay transit Router E, and tunnel tailend Router H to Host M, explaining the **recursive lookup** at Router C and how **VRFs** change the lookup tables; (b) state the two mandatory questions (plus the optional QoS question) that every network virtualization solution must answer.
+2. **Comparing Encapsulations (`GRE`, `IPIP`, `VXLAN`, `Geneve`, `MPLS`, `SRv6`, `WireGuard`, `IPsec`) and ECMP Entropy:** Compare the byte overhead and outer header structure of `GRE` (`24` B), `IPIP` (`20` B), `VXLAN` (`50` B, `UDP 4789`), `Geneve` (`50+` B, `UDP 6081`), `MPLS` (`4` B/label), `SRv6`, `WireGuard`, and `IPsec ESP`. Why do `VXLAN` and `Geneve` balance across underlay ECMP links automatically while `GRE` and `IPIP` pin to a single link unless inner-header hashing is enabled?
+3. **VXLAN (`VNI`, `VTEP`, BUM Handling) and BGP `EVPN` Route Types `1`–`5`:** (a) Contrast VXLAN data-plane **flood-and-learn** (multicast or head-end replication `00:00:00:00:00:00` FDB entries) with the **BGP `l2vpn evpn` control plane** (`RFC 7432` / `RFC 8365`); (b) list the name and exact role of **EVPN Route Types `1`, `2`, `3`, `4`, and `5`** (`EVPN_ROUTE_TYPES` in `code/part02/overlays_vxlan_evpn.py`), and distinguish a **Route Distinguisher (`RD`)** from a **Route Target (`RT`)**.
+4. **Distributed Anycast Gateway and Asymmetric vs. Symmetric `IRB`:** Explain how a **distributed anycast gateway** works on leaf switches, and use `compute_irb_vni_scaling_per_leaf()` to compare how many VNIs must be configured on a leaf switch when a cluster has `200` total tenant L2 subnets (`5` present locally on that leaf) under **Asymmetric IRB** (`200` VNIs) versus **Symmetric IRB** (`6` VNIs using an **L3 VNI**).
+5. **Segment Routing (`SR-MPLS` and `SRv6` / `uSID`) and `SD-WAN` (`CN` Chapter 9):** (a) Distinguish a **Node SID** from an **Adjacency SID**, and trace `simulate_sr_mpls_label_stack([101, 104, 105, 107], [101, 104, 105, 107])` explaining MPLS `PUSH`, `POP`, and `CONTINUE` (`SWAP`); (b) describe the three parts of a `128`-bit **SRv6 SID** (`Locator : Function : Argument`) and `16`-bit **`uSID`s**, and summarize the core building blocks of **SD-WAN**.
+6. **Virtualization Complexity: Interaction Surfaces, `SRLG` Shared Fate, and AI Back-End Fabrics:** (a) Using `check_overlay_srlg_diversity()`, explain why two logically separate overlay tunnels fail simultaneously if their underlay paths share a **Shared Risk Link Group (`SRLG`)** (`conduit-north`), and explain what happens if overlay failure detection timers are faster than underlay BFD/ECMP convergence; (b) give four reasons GPU back-end RoCEv2/InfiniBand fabrics avoid VXLAN overlays on the collective path.
 
-## 13. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. Define a Tunnel, an Overlay, an Underlay, and a Recursive Lookup (`CN` Chapter 9).</summary>
+A **tunnel** is a virtual point-to-point link where an outer header encapsulates an inner packet and intermediate devices forward based on the outer header alone. An **overlay** is a complete virtual network topology built from tunnels, and the **underlay** is the physical/routed network that transports the tunnel packets. When a headend router routes an inner packet into a tunnel interface, it performs a **recursive lookup** in the underlay routing table to find the next hop and outgoing physical interface toward the tunnel tailend (`VTEP`) IP.
+</details>
 
-- Russ White and Jeff Tantsura (with co-authors), *Computer Networking Problems and Solutions*, chapter 9 (network virtualization: understanding virtual networks, Ethernet services over an IP network, virtual private access, summary of problems and solutions, segment routing with MPLS and IPv6, signalling, SD-WAN, complexity and virtualization, interaction surfaces and shared risk link groups, overlaid control planes).
-- *AI Data Center Network Design and Technologies*, chapter 8 sections on EVPN-VXLAN multi-tenancy, GBP and SRv6 (summarised here for the overlay context).
-- Brian Ward, *How Linux Works*, 3rd ed., chapter 9 and Linux iproute2 documentation for the tunnel and bridge commands; container-network overlay mechanics (veth, bridges, CNI) are expanded in chapter 2.25 together with *Networking and Kubernetes* (chapter 3).
-- EVPN/VXLAN and FRR specifics are the author's synthesis from RFCs 7348, 7432, 8365, 9136, 8926, 8402 (SR), 8986 (SRv6) and the FRR/containerlab documentation.
+<details>
+<summary>2. What two fundamental questions (plus one optional question) must every network virtualization technology answer?</summary>
+(1) **Data encapsulation**: how are packets wrapped so virtual traffic is isolated from the underlay (accounting for MTU tax and ASIC/ECMP hash support)?\n(2) **Control-plane reachability advertisement**: how do tunnel headends learn which inner MAC/IP destinations sit behind which tunnel tailend (integrated into one routing table vs a separate overlay control plane / VRF)?\n(3) **Optional QoS / traffic engineering**: how are inner QoS markings (`DSCP`, `PCP`, `ECN`) copied to the outer header and mapped onto underlay queues?
+</details>
 
-**Flagged for verification before publishing:** FRR EVPN/VXLAN command syntax and Linux `vnifilter` support per kernel/version, Flannel/Cilium default UDP ports, exact overhead numbers per encapsulation, IRB behaviour per vendor, and SR numbering in the illustrative example; all labs are **untested**.
+<details>
+<summary>3. Compare `VXLAN` (`RFC 7348`), `Geneve` (`RFC 8926`), `GRE`, and `IPIP` across header overhead, UDP ports, and underlay ECMP entropy.</summary>
+- **`VXLAN`**: `50` bytes overhead on IPv4 (`14`B outer Eth + `20`B IP + `8`B UDP + `8`B VXLAN), **UDP destination port `4789`** (Linux legacy/Flannel default `8472`), fixed 8-byte header with a **24-bit `VNI` (`16,777,216` segments)**.\n- **`Geneve`**: `50+` bytes overhead, **UDP destination port `6081`**, 24-bit VNI plus **variable-length extensible TLV options** (used by OVN-Kubernetes, Cilium, Antrea).\n- **`GRE`**: `24` bytes overhead (`IP protocol 47`, no UDP port).\n- **`IPIP`**: `20` bytes overhead (`IP protocol 4`, no UDP port).\nBecause `VXLAN` and `Geneve` wrap packets in UDP and **set the outer UDP source port to a hash of the inner packet's 5-tuple**, standard underlay switches automatically distribute flows across ECMP links.
+</details>
+
+<details>
+<summary>4. What are a `VNI` and a `VTEP` in VXLAN, and how does VXLAN handle `BUM` (*Broadcast, Unknown-unicast, Multicast*) traffic without EVPN?</summary>
+The **`VNI`** (*VXLAN Network Identifier*) is the 24-bit segment ID that identifies the virtual L2/L3 domain; the **`VTEP`** (*VXLAN Tunnel Endpoint*) is the switch, hypervisor, DPU, or Linux kernel interface (`vxlan0`) that encapsulates and decapsulates VXLAN packets using its underlay IP (typically a `/32` loopback). Without a control plane (**flood-and-learn**), a VTEP floods **BUM** frames either via an **underlay IP multicast group** per VNI or via **head-end replication** (sending a separate unicast copy to every remote VTEP listed in its `00:00:00:00:00:00` FDB entry) and learns remote MACs from incoming data packets.
+</details>
+
+<details>
+<summary>5. What does `BGP EVPN` (`RFC 7432` / `RFC 8365`, address family `l2vpn evpn`) replace in VXLAN?</summary>
+**BGP EVPN** replaces data-plane flood-and-learn with a **proactive MP-BGP control plane**: each leaf VTEP learns attached host MAC and IP addresses locally (from port attachment, ARP, or ND) and advertises them to all other VTEPs in **`l2vpn evpn` BGP updates**, eliminating unknown-unicast flooding, enabling local ARP/ND suppression, and unifying L2 bridging and L3 routing (`IRB`) in one protocol.
+</details>
+
+<details>
+<summary>6. Match all five `BGP EVPN` Route Types (`1` through `5`) to their exact functions.</summary>
+- **Route Type `1` (*Ethernet Auto-Discovery*)**: advertises per-Ethernet-Segment (`ES`) and per-EVI reachability for **active-active multihoming aliasing** and **fast mass withdrawal** on link failure.\n- **Route Type `2` (*MAC/IP Advertisement*)**: advertises a specific host **MAC address** (and optional **IPv4/IPv6 address**), its `L2 VNI` (and `L3 VNI`), `VTEP` next hop, and **MAC mobility sequence number**.\n- **Route Type `3` (*Inclusive Multicast Ethernet Tag, `IMET`*)**: announces that a VTEP participates in a given `VNI`, automatically building the **head-end replication list for BUM traffic**.\n- **Route Type `4` (*Ethernet Segment*)**: discovers VTEPs attached to the same multihomed 10-byte **`ESI`** and elects the **Designated Forwarder (`DF`)** for BUM traffic toward the server.\n- **Route Type `5` (*IP Prefix*)**: advertises **IPv4/IPv6 subnet prefixes** (`RFC 9136`) and external routes into tenant `IP-VRF`s.
+</details>
+
+<details>
+<summary>7. What is the difference between a Route Distinguisher (`RD`) and a Route Target (`RT`) in EVPN / VPNs?</summary>
+- **Route Distinguisher (`RD`, 64-bit, e.g. `10.255.0.11:100`)**: prepended to a MAC or IP prefix solely to make overlapping tenant addresses **globally unique inside BGP update messages** so route reflectors/spines do not overwrite Tenant A's `10.0.0.0/24` with Tenant B's `10.0.0.0/24`.\n- **Route Target (`RT`, BGP Extended Community, e.g. `65000:10100`)**: controls **policy import and export**—determining which `MAC-VRF`s and `IP-VRF`s on receiving VTEPs import the route into their tables.
+</details>
+
+<details>
+<summary>8. How does EVPN `ARP/ND Suppression` work, and how does EVPN handle VM/container live migration (`MAC Mobility`)?</summary>
+Because EVPN **Route Type 2** distributes both `(MAC, IP)` bindings to every leaf in the VNI, a leaf switch receiving an ARP Request (or IPv6 Neighbor Solicitation) for a remote host intercepts the request and **replies locally from its EVPN ARP cache** (**ARP/ND suppression**) instead of flooding the broadcast across the fabric. When a VM or container live-migrates to a new leaf, the new leaf originates a Type 2 route with an incremented **MAC Mobility extended-community sequence number**; all VTEPs immediately update their FDB to point to the new VTEP.
+</details>
+
+<details>
+<summary>9. Contrast `Asymmetric IRB` and `Symmetric IRB` (*Integrated Routing and Bridging*), and explain why Symmetric IRB scales better.</summary>
+In **Asymmetric IRB** (*bridge-route-bridge*), the ingress leaf routes the packet directly into the destination subnet's **L2 VNI**, and the egress leaf simply bridges it—requiring **every leaf switch in the data center to configure every single L2 VNI/subnet** even if no local hosts belong to that subnet. In **Symmetric IRB** (*bridge-route-route-bridge*), the ingress leaf routes the packet into a per-tenant **L3 VNI** (`IP-VRF`), and the egress leaf routes from the L3 VNI into the local destination L2 VNI—so each leaf only needs its **locally attached L2 VNIs plus one L3 VNI per tenant**.
+</details>
+
+<details>
+<summary>10. What is a Distributed Anycast Gateway in an EVPN fabric, and what must match across all leaf switches?</summary>
+With a **Distributed Anycast Gateway**, every leaf switch serving a subnet configures the **exact same default gateway IP address AND the exact same virtual MAC address** on its local VLAN SVI. Every host or VM always routes through its local top-of-rack leaf in 1 hop, and if a VM live-migrates to another rack, its cached default-gateway IP and MAC remain 100% valid on the new leaf without re-ARPing.
+</details>
+
+<details>
+<summary>11. Why must spine switches acting as EVPN route servers set `next-hop-unchanged` on `l2vpn evpn` eBGP sessions?</summary>
+In an EVPN overlay, the BGP **`NEXT_HOP`** of a Type 2, Type 3, or Type 5 route is the originating leaf's **VTEP loopback IP**, which remote leaves use as the outer VXLAN destination IP. Normally, `eBGP` rewrites `NEXT_HOP` to the spine's own IP; unless the spine leaves `NEXT_HOP` unchanged (or terminates and re-originates VXLAN tunnels itself), spines would attract encapsulated VXLAN packets they do not know how to bridge.
+</details>
+
+<details>
+<summary>12. How do you configure a scalable Single-VXLAN-Device (`vxlan0` with `external` / `vnifilter`) on Linux for FRR EVPN?</summary>
+Instead of creating hundreds of separate `vxlanN` netdevs and `brN` bridges (one per VNI), create one VLAN-aware bridge (`ip link add br0 type bridge vlan_filtering 1`) and a single VXLAN device (`ip link add vxlan0 type vxlan dstport 4789 local 10.255.0.11 nolearning external vnifilter`), enslaving `vxlan0` to `br0` and mapping VLANs to VNIs (`bridge vlan add dev vxlan0 vid 100` and `bridge vni add dev vxlan0 vni 10100`).
+</details>
+
+<details>
+<summary>13. What are a `Node SID` and an `Adjacency SID` in Segment Routing (`RFC 8402`)?</summary>
+- **Node SID**: a globally unique Segment Identifier advertised in the IGP (`OSPF`/`IS-IS`) representing a specific router's loopback; any router forwards packets carrying a Node SID along the **shortest IGP path (including ECMP)** toward that node.\n- **Adjacency SID**: a locally significant Segment Identifier advertised by a router representing a **specific outgoing local interface/link** to a neighbor—allowing a path to force traffic over one specific link without ECMP hashing.
+</details>
+
+<details>
+<summary>14. How do `PUSH`, `POP`, and `CONTINUE` work in `SR-MPLS` (`CN` Chapter 9)?</summary>
+An `SR-MPLS` label is a 32-bit shim header (`20`-bit label from the **SR Global Block `SRGB`**, `3`-bit Traffic Class, `1`-bit Bottom-of-Stack, `8`-bit TTL). At the ingress router, **`PUSH`** imposes an ordered stack of Node/Adjacency SIDs onto the packet (e.g., `[103, 107]`). Transit routers along the shortest path to `103` perform **`CONTINUE`** (MPLS `SWAP` with the same label `103`); when the packet reaches Node `103` (or its penultimate hop via `PHP`), `103` is **`POP`ped**, exposing `107` as the new active top label toward Node `107`.
+</details>
+
+<details>
+<summary>15. How does `SRv6` (`RFC 8754` / `RFC 8986`) encode segments without MPLS, and what are `Locator`, `Function`, `Argument`, and `uSID`?</summary>
+`SRv6` encodes each segment as a **128-bit IPv6 address** inside a **Segment Routing Header (`SRH`)** (or directly in the IPv6 Destination Address with `uSID`s). Each 128-bit SRv6 SID is structured as **`Locator : Function : Argument`**, where the **Locator** is the routable IPv6 prefix of the target node, the **Function** specifies the local action to execute upon arrival (`End` = advance segment, `End.X` = cross-connect out adjacency, `End.DT4`/`End.DT6` = decapsulate and look up in IPv4/IPv6 VRF), and the **Argument** passes optional parameters. **`uSID` (*micro-SID*)** packs up to six 16-bit micro-segments into one 128-bit IPv6 address.
+</details>
+
+<details>
+<summary>16. What are the core architectural components of an `SD-WAN` solution (`CN` Chapter 9)?</summary>
+(1) Edge appliances (`vEdge` / `cEdge`) terminating multiple heterogeneous underlay transports (`MPLS`, broadband Internet, `5G`/LTE); (2) encrypted **IPsec / WireGuard overlay tunnels** built across all transports; (3) a **centralized control plane / orchestrator** (`OMP` / BGP over TLS) distributing routes, keys, and security policies without full-mesh IKE complexity; and (4) **continuous active/passive path-quality probing** (loss, latency, jitter) that steers applications dynamically onto transports meeting their SLA.
+</details>
+
+<details>
+<summary>17. What are \"Interaction Surfaces\" and \"Shared Risk Link Groups\" (`SRLG`s) in virtualized networks (`CN` Chapter 9)?</summary>
+**Interaction surfaces** are the touchpoints where the overlay control plane and underlay control plane interact (for example, if an overlay BFD/keepalive timer is shorter than the underlay's ECMP/BFD convergence time, a single underlay link flap causes the entire overlay to tear down and churn). A **Shared Risk Link Group (`SRLG`)** is a set of logically separate overlay links that share a **single physical failure domain** in the underlay (such as the same fiber trench, patch panel, line card, or spine switch), causing "redundant" overlay paths to fail simultaneously (**fate sharing**).
+</details>
+
+<details>
+<summary>18. Why do high-performance AI GPU back-end fabrics (RoCE v2 and InfiniBand) generally avoid running VXLAN overlays on the collective path?</summary>
+(1) **MTU and goodput tax** (`50` bytes per packet); (2) **Lossless QoS complexity** (inner `DSCP`/`ECN` bits must be copied to outer headers on encapsulation and restored on decapsulation, and `PFC` pause frames operate on the physical link); (3) **Hardware RDMA offload constraints** (NICs must support stateless RDMA + VXLAN encap/decap and BTH UDP source-port entropy simultaneously); and (4) **Two-layer troubleshooting overhead** during collective stalls.
+</details>
+
+<details>
+<summary>19. If RoCE v2 traffic MUST traverse a VXLAN overlay, what three QoS/hardware requirements must be verified?</summary>
+(1) The VTEP (switch ASIC or DPU/NIC) must copy the inner IP **`DSCP` and `ECN` bits to the outer VXLAN IP header** on encapsulation and **copy outer `ECN` (`CE = 11`) markings back to the inner IP header on decapsulation** so end-to-end `DCQCN` congestion control still works;\n(2) Outer UDP source ports must preserve **per-QP hash entropy**;\n(3) Underlay switches must honor the outer `DSCP`/`PCP` mapping into lossless **`PFC`** queues with sufficient MTU (`9216`).
+</details>
+
+<details>
+<summary>20. Walk through the layered troubleshooting sequence when Host A in VNI `10100` on Leaf 1 cannot ping Host B in VNI `10100` on Leaf 3.</summary>
+(1) **Check the underlay first**: from Leaf 1, `ping -M do -s 8900 <Leaf3-VTEP-loopback>` to verify underlay reachability and jumbo MTU between VTEPs;\n(2) **Check EVPN control-plane sessions**: `show bgp l2vpn evpn summary` (are sessions `Established`?);\n(3) **Check VNI membership (Type 3 routes)**: `show evpn vni 10100` (does Leaf 1 see Leaf 3's VTEP IP in the Type 3 BUM replication list, and do Route Targets match?);\n(4) **Check host MAC/IP learning (Type 2 routes)**: `show evpn mac vni 10100` and `show bgp l2vpn evpn route type macip` (was Host A learned locally on `br0` and advertised, and was Host B's Type 2 route received and installed in `bridge fdb show dev vxlan0`?); and\n(5) **Capture on the underlay**: `tcpdump -ni swp1 udp port 4789` to verify encapsulated packets leave and arrive.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `computer-networking-problems-and-solutions` — Russ White and Ethan Banks, *Computer Networking Problems and Solutions*, **Chapter 9: Network Virtualization** (understanding virtual networks, tunnels vs overlays vs underlays, VRFs and recursive lookups, Ethernet services over IP, virtual private access, segment routing with MPLS and IPv6, signaling, SD-WAN, complexity and virtualization, interaction surfaces, Shared Risk Link Groups `SRLG`s, and overlaid control planes).
+  - `ai-data-center-network-design-and-technologies` — Dinakaran Setty et al., *AI Data Center Network Design and Technologies*, **Chapter 8: IP Routing for AI/ML Fabrics** (EVPN-VXLAN multi-tenancy, VXLAN Group-Based Policy `GBP` microsegmentation, and SRv6/uSID).
+  - `networking-and-kubernetes` — James Strong and Vallery Lancey, *Networking and Kubernetes*, **Chapter 3: Container Networking Basics** (container networking overlays, VXLAN, Geneve, and IPIP; Linux `veth` and CNI plugin mechanics are covered in full in Chapter 2.25).
+  - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 9: Understanding Your Network and Its Configuration** (Linux `iproute2` interface and bridge fundamentals).
+- **Run here:** `python3 code/part02/overlays_vxlan_evpn_lab.py` (10 passed, 0 failed).
+- **Explicitly labelled inferences:** The Linux `ip link add type vxlan` (`external vnifilter`) and FRR `l2vpn evpn` Symmetric IRB (`L3VNI 5001`) configurations, EVPN Route Types `1`–`5` table, and layered VTEP-to-VTEP troubleshooting sequence synthesize RFCs 7348 (VXLAN), 7432 (EVPN), 8365 (EVPN Overlay), 8402 (Segment Routing), 8926 (Geneve), 8986 (SRv6), and 9136 (EVPN IP Prefix Route) and the FRR/containerlab documentation (cross-referenced with Chapters 2.5, 2.7, 2.11–2.16, 2.19, 2.25, and 2.27, plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Not verified on live hardware:** All interactive VM and FRR commands (`ip link add type vxlan`, `bridge fdb`, `bridge vni`, `vtysh`, `show evpn vni`, `show bgp l2vpn evpn`, `tcpdump udp port 4789`) are marked (untested here) and must be executed on a disposable Linux VM or containerlab topology.
