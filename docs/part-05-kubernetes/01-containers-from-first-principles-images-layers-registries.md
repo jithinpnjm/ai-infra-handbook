@@ -104,7 +104,8 @@ flowchart LR
 - **Content addressing**: every blob is named by the SHA-256 of its bytes (`sha256:...`). Identical layers across images are stored and transferred once; a changed layer changes its digest and the digests of everything referencing it. A **tag** is a mutable pointer; a **digest** (`image@sha256:...`) is immutable. For reproducibility and supply-chain integrity deploy by digest.
 - **Layers** correspond to Dockerfile instructions that change the filesystem (`RUN`, `COPY`, `ADD`); `ENV`, `LABEL`, `CMD` change metadata only. Layers are additive: deleting a file in a later layer **hides** it (a whiteout entry) but the bytes remain in the earlier layer, so `RUN rm bigfile` does not shrink the image; cleanup must happen in the same `RUN` that created the files, or use multi-stage builds.
 - **Union filesystem**: at run time the runtime mounts layers read-only with an **overlayfs** upper writable layer (copy-on-write). Writes go to the container layer, vanish with the container, and are slow for write-heavy workloads: use volumes for data, checkpoints and scratch.
-- **OCI specifications**: the *Image Spec* (layout, manifest, index, config, layer media types such as `application/vnd.oci.image.layer.v1.tar+gzip`/`+zstd`), the *Runtime Spec* (`config.json` describing namespaces, mounts, cgroups, capabilities, hooks, executed by a runtime like `runc`, `crun` or `kata`), and the *Distribution Spec* (HTTP API for registries). Docker's older formats are compatible. Chapter 5.2 covers how containerd/CRI-O use these.
+- **OCI specifications (`PK` Chapter 3 & `KUR` Chapter 2):** In June 2015, Docker, CoreOS, and industry leaders formed the **Open Container Initiative (`OCI`)** under the Linux Foundation (`PK` Chapter 3) to standardize container formats across tools through the *Image Spec* (layout, manifest `application/vnd.oci.image.manifest.v1+json`, index `application/vnd.oci.image.index.v1+json`, config `application/vnd.oci.image.config.v1+json`, layer media types such as `application/vnd.oci.image.layer.v1.tar+gzip`/`+zstd`), the *Runtime Spec* (an unpacked filesystem bundle containing `rootfs/` + `config.json` with `ociVersion`, `process`, `mounts`, `linux.namespaces`, `linux.resources` executed by a runtime like `runc`, `crun` or `kata`), and the *Distribution Spec* (HTTP API for registries). Docker's older formats are compatible. Chapter 5.2 covers how containerd/CRI-O use these.
+- **How layer inheritance and ordering work (`KUR` Chapter 2):** As Brendan Burns, Joe Beda, Kelsey Hightower, and Lachlan Evenson explain in *Kubernetes: Up and Running* Chapter 2, container images eliminate traditional shared-library "dependency hell" on a host by packaging an application's exact runtime into a tree of reusable read-only layers (for example, Layer A = Debian base OS -> Layer B = Ruby `v2.1.10` -> Layer D = Rails `v4.2.6` and Layer E = Rails `v3.2.x`, where both D and E share layers A and B on disk and over the network). Crucially, **changing a layer invalidates the build cache for every subsequent layer built on top of it**: in `KUR` Chapter 2's Node.js Express (`package.json` + `server.js`) and `kuard` (`golang:1.17-alpine` build stage -> `alpine` deployment stage) examples, copying `package*.json` and running `npm install --production` *before* `COPY . .` ensures that editing `server.js` only rebuilds the tiny final layer, and using a **multi-stage build** leaves the Go compiler, `nodejs`, `npm`, and `git` behind in Stage 1 while copying only `/go/bin/kuard` into Stage 2 (modeled in `code/part05/oci_image_layers.py`).
 
 Inspect with standard tools:
 
@@ -284,7 +285,15 @@ Podman is CLI-compatible with Docker (`alias docker=podman`), daemonless (fork/e
 | `bash: nvidia-smi: not found` in container | Toolkit/runtime not configured, `NVIDIA_DRIVER_CAPABILITIES` lacks `utility` | `nvidia-ctk runtime configure`, CDI generate |
 | DNS inside container fails | Host resolv.conf with 127.0.0.53, network namespace DNS config | `docker run --dns`, inspect `/etc/resolv.conf` |
 
-## 9. Lab (untested)
+## 9. Lab
+
+First, run the self-checking Python lab (`code/part05/oci_image_layers_lab.py`) locally. It verifies the OCI additive layer and `.wh.` whiteout size calculator (`simulate_oci_layer_sizes`, demonstrating why `RUN rm` in a later layer hides a 500 MB file in `overlayfs` while still shipping all 500 MB in the image tarball, `KUR` Ch. 2), the Dockerfile layer cache-invalidation simulator (`simulate_dockerfile_cache_hits`), and the NVIDIA host driver vs container CUDA runtime compatibility checker (`check_cuda_driver_compatibility`).
+
+```bash
+python3 code/part05/oci_image_layers_lab.py
+```
+
+Next, on a Linux host with Docker or Podman (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **Container is a process**: run a container, find its host PID, list `/proc/<pid>/ns`, `cgroup`, `status` (CapEff, NoNewPrivs, Seccomp); `nsenter` into net and mount namespaces; show that `kill -STOP` on the host PID freezes the container; set a memory limit and trigger an OOM kill (a small Python allocator) and read `OOMKilled`.
 2. **Build a container by hand**: create a rootfs with `debootstrap` or from `docker export`, use `unshare --mount --pid --net --uts --ipc --fork`, `chroot`/`pivot_root`, mount `/proc`, and run a shell; add a cgroup v2 directory with `memory.max` and `pids.max` and move the process in; compare with `runc spec` + `runc run` on the same rootfs.
@@ -298,8 +307,6 @@ Podman is CLI-compatible with Docker (`alias docker=podman`), daemonless (fork/e
 10. **Pull behaviour**: pull a large image on a throttled link; run a local registry mirror/pull-through cache (Harbor/`registry:2` proxy) and measure a second node's pull; configure containerd `hosts.toml` mirror.
 11. **GPU container (needs a GPU host)**: install the NVIDIA Container Toolkit; run `nvidia-smi` in a CUDA image; generate a CDI spec and use `--device nvidia.com/gpu=all`; test driver/CUDA mismatch behaviour with an old driver or a deliberately new CUDA image; set `--shm-size` and show a PyTorch DataLoader failing with the default 64 MB.
 12. **Clean up**: `docker system prune -a`, remove volumes and test registries.
-
-Mark tested only after execution.
 
 ## 10. Common mistakes
 
@@ -318,67 +325,183 @@ Mark tested only after execution.
 
 ## 11. Interview angles
 
-- "What is a container, really? Which kernel features does it use?" 
-- "What is in an image? What is a layer, a manifest, an index, a digest? Why are digests safer than tags?" 
-- "Why doesn't `RUN rm` shrink an image? How would you shrink one?" 
-- "How would you speed up builds in CI? How do BuildKit cache mounts work?" 
-- "How do GPUs work inside a container? What must match between host and image?" 
-- "How do you avoid pull storms when 500 nodes need a 20 GB image?" 
-- "Rootless vs rootful containers; what are the trade-offs?" 
+- "What is a container, really? Which kernel features does it use?"
+- "What is in an image? What is a layer, a manifest, an index, a digest? Why are digests safer than tags?"
+- "Why doesn't `RUN rm` shrink an image? How would you shrink one?"
+- "How would you speed up builds in CI? How do BuildKit cache mounts work?"
+- "How do GPUs work inside a container? What must match between host and image?"
+- "How do you avoid pull storms when 500 nodes need a 20 GB image?"
+- "Rootless vs rootful containers; what are the trade-offs?"
 - "What happens on `docker run` step by step?" (client → daemon → containerd → shim → runc; pull, unpack, create namespaces and cgroups, exec.)
-- "How would you debug a container that exits immediately or is OOM-killed?" 
+- "How would you debug a container that exits immediately or is OOM-killed?"
 
-## 12. Checkpoint questions (40)
+## Exercises
 
-1. Is a container a VM? **A:** No; an isolated process sharing the host kernel.
-2. Name the Linux namespaces. **A:** PID, mount, network, UTS, IPC, user, cgroup (and time).
-3. What kernel feature limits CPU and memory, and how do Docker's `--cpus` and `--cpu-shares` flags differ? **A:** cgroups; `--cpus` sets a hard CPU quota cap, whereas `--cpu-shares` (for example, `--cpu-shares 1024` alongside `--memory 200m --memory-swap 1G`) sets relative CPU weight when CPUs are contended.
-4. What is PID 1's special behaviour? **A:** Signal defaults/zombie reaping differ.
-5. What is overlayfs? **A:** Union filesystem of read-only layers plus writable layer.
-6. What is an OCI image made of? **A:** Manifest, config, layers (and index for multi-arch).
-7. What is a digest? **A:** SHA-256 content hash identifying a blob/manifest.
-8. Tag vs digest? **A:** Mutable pointer vs immutable content address.
-9. What is an image index? **A:** Manifest list for multiple platforms.
-10. What does `RUN rm bigfile` do to size? **A:** Hides it; bytes remain in earlier layer.
-11. Best layer order? **A:** Least to most frequently changing.
-12. Why multi-stage builds? **A:** Smaller runtime images without build tools.
-13. How avoid secrets in layers? **A:** BuildKit secret mounts.
-14. `COPY` vs `ADD`? **A:** COPY is explicit; ADD extracts/fetches (avoid).
-15. Exec vs shell form? **A:** Exec form passes signals directly to the process.
-16. What does `.dockerignore` do? **A:** Excludes files from build context.
-17. What is BuildKit? **A:** Modern build engine with cache/secret mounts and parallelism.
-18. Multi-platform build tool? **A:** `docker buildx` with `--platform`.
-19. What is an SBOM? **A:** Inventory of components in an image.
-20. Tool for signing images? **A:** cosign.
-21. Tool for scanning? **A:** Trivy/Grype.
-22. What is rootless? **A:** Runtime and containers run as an unprivileged user via user namespaces.
-23. Rootless limitation example? **A:** Privileged ports, some cgroup features.
-24. Why mirror base images? **A:** Rate limits, availability, supply-chain control.
-25. What causes pull storms? **A:** Many nodes pulling large images at once.
-26. Mitigations? **A:** Pull-through caches, pre-pull, P2P, lazy pulling, shared bases.
-27. What is eStargz/SOCI? **A:** Lazy-pull formats starting containers before full download.
-28. Why deploy by digest? **A:** Immutability and reproducibility.
-29. What does the NVIDIA Container Toolkit do? **A:** Injects GPU devices and driver libs into containers.
-30. Where does `libcuda.so` come from? **A:** The host driver.
-31. Where does `libcudart` come from? **A:** The image.
-32. Driver/CUDA compatibility rule? **A:** Host driver must meet the image's CUDA minimum (newer driver OK).
-33. What is CDI? **A:** Container Device Interface for exposing devices to runtimes.
-34. Why NGC images? **A:** Pre-integrated, tested CUDA/ML stacks.
-35. Why large `/dev/shm`? **A:** PyTorch workers/NCCL use shared memory.
-36. Why avoid Alpine for CUDA? **A:** musl libc vs glibc-linked binaries.
-37. What does `OOMKilled` mean? **A:** Kernel killed the process for exceeding cgroup memory.
-38. What is a pull-through cache? **A:** Registry proxy caching upstream images.
-39. Why not bake datasets into images? **A:** Size, pull time, immutability, licensing.
-40. Podman vs Docker difference? **A:** Daemonless, rootless-first, compatible CLI.
+1. **Linux Kernel Primitives Behind a Container (Namespaces, Cgroups v2, Capabilities, Seccomp, LSMs, `overlayfs`, `KUR` Ch. 2 & `PK` Ch. 3):** Trace what happens on the host kernel when `docker run -d --name demo --memory 256m --cpus 0.5 nginx:1.27` (or `--memory 200m --memory-swap 1G --cpu-shares 1024` in `KUR` Chapter 2) executes: list all 7 namespaces, contrast `--cpus` (hard CFS quota) with `--cpu-shares` (`1024` relative weight), and explain how `nsenter -t $PID -n/-m` inspects a container from the host.
+2. **OCI Image Specification (`Image Index`, `Manifest`, `Config`, `Layers`), Content Addressing, and the Whiteout Trap (`KUR` Ch. 2 & `PK` Ch. 3):** Using `simulate_oci_layer_sizes()` in `code/part05/oci_image_layers.py`, explain the JSON hierarchy from an OCI Image Index (`application/vnd.oci.image.index.v1+json`) down to layer blobs (`sha256:...`), why tags are mutable while digests (`@sha256:...`) are immutable, and why deleting a 500 MB file in a later `RUN rm` layer hides the file in `overlayfs` without reducing the image download size.
+3. **Writing Fast, Small, Secure Dockerfiles: Layer Ordering, Multi-Stage Builds (`kuard` & Python Wheels), and BuildKit Mounts (`KUR` Chapter 2):** Using `simulate_dockerfile_cache_hits()` in `code/part05/oci_image_layers.py`, trace why copying `requirements.lock` (or `package*.json`) before `src/` preserves build-cache hits on code edits, how `KUR` Chapter 2's `kuard` multi-stage build and Section 3's Python wheel builder shrink production images, and how `RUN --mount=type=cache` and `RUN --mount=type=secret` work.
+4. **Choosing Base Images (`scratch`, `distroless`, `Alpine`, `Debian/Ubuntu`, `NVIDIA NGC`) and Exec-Form Signal Handling (`PID 1`):** Explain why `Alpine` (`musl` libc) breaks `glibc`-compiled Python wheels and NVIDIA CUDA binaries, why shell-form `ENTRYPOINT "python app.py"` swallows `SIGTERM` during Kubernetes pod termination (causing a 30-second hang followed by `SIGKILL`), and when to use `--init` / `tini`.
+5. **Operating Registries at GPU Cluster Scale: Pull Storms, Pull-Through Caches (`hosts.toml`), P2P Distribution, and Lazy Pulling:** Design a registry architecture for a 500-node GPU cluster pulling a 25 GB PyTorch training image simultaneously—combining `containerd` `hosts.toml` pull-through mirrors (Harbor), P2P distribution (`Spegel` / `Dragonfly`), `zstd` compression, lazy-pulling snapshotters (`eStargz` / `SOCI` / `Nydus`), and shared base layers.
+6. **GPU Containers Under the Hood: `libcuda.so` vs. `libcudart.so`, NVIDIA Container Toolkit, CDI (`nvidia-ctk cdi generate`), and `/dev/shm`:** Using `check_cuda_driver_compatibility()` in `code/part05/oci_image_layers.py`, explain the boundary between the host kernel driver (`nvidia.ko` + `libcuda.so`) and the container user-space libraries (`libcudart.so`, `libnccl.so`), state the forward/backward version compatibility rules, show how CDI (`--device nvidia.com/gpu=all`) works, and explain why PyTorch DataLoaders and NCCL fail with Docker's default 64 MB `/dev/shm`.
 
-## 13. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. What is a Linux container at the kernel level, and why is \"a container is a lightweight VM\" a dangerous misconception?</summary>
 
-- Brendan Burns, Joe Beda, Kelsey Hightower and Lachlan Evenson, *Kubernetes: Up and Running* (`kubernetes-up-and-running-3rd-edition`, 3rd edition; Chapter 2: `2. Creating and Running Containers` — read in full for images, Docker image format, building with Dockerfiles, multistage builds, optimising size, registries, runtime, and `--memory` / `--memory-swap` / `--cpu-shares` resource flags).
-- Josh Rosso, Rich Lander, Alex Brand and John Harris, *Production Kubernetes* (chapter 3 on container runtime: images, runtimes, OCI, CRI).
-- Linux namespace and cgroup mechanics follow chapters 1.19 and 1.20 of this handbook and the kernel documentation.
-- OCI Image, Runtime and Distribution specifications; BuildKit, Docker, Podman, NVIDIA Container Toolkit and CDI documentation.
-- Examples are the author's constructions.
+A container is **an ordinary Linux process (or process tree) running directly on the host kernel**, isolated from other processes by **Linux namespaces** (`pid`, `mnt`, `net`, `uts`, `ipc`, `user`, `cgroup`), resource-bounded by **cgroups (v2)**, rooted in an **`overlayfs` union mount** (`pivot_root`), and restricted by **Linux capabilities, seccomp syscall filters, and AppArmor/SELinux**. Unlike a VM (which boots its own guest kernel on virtualized hardware via a hypervisor), all containers on a node **share the single host kernel**—so kernel panics, non-namespaced sysctls, kernel module versions (`nvidia.ko`, `mlx5_core.ko`), and `dmesg` are shared across the entire host.
+</details>
 
-**Flagged for verification before publishing:** Dockerfile syntax version and BuildKit flags, cgroup paths (systemd driver naming) on your host, CUDA/driver compatibility rules per release, CDI/Docker version requirements, image tags used in examples, and every command listing; all labs are **untested**.
+<details>
+<summary>2. In *Kubernetes: Up and Running* Chapter 2, how do Docker's `--cpus`, `--cpu-shares`, `--memory`, and `--memory-swap` flags map to Linux cgroups?</summary>
+
+- **`--cpus 0.5`** (cgroup v2 `cpu.max`): enforces a **hard CPU bandwidth ceiling** (throttling the container via the Completely Fair Scheduler `CFS` even if host CPUs are idle; maps to Kubernetes `resources.limits.cpu`).
+- **`--cpu-shares 1024`** (cgroup v2 `cpu.weight`): sets a **relative proportional weight** that takes effect *only when host CPUs are contended* (`1024` is the default weight; maps to Kubernetes `resources.requests.cpu`).
+- **`--memory 200m`** (cgroup v2 `memory.max`): sets the hard physical RAM ceiling (`200 MiB`); exceeding it triggers the kernel **OOM killer (`OOMKilled: true`)** inside the container's cgroup.
+- **`--memory-swap 1G`**: sets the combined ceiling of physical RAM plus swap (`200 MiB` RAM + `824 MiB` swap).
+</details>
+
+<details>
+<summary>3. Trace the four JSON/blob objects in the OCI Image Specification (`PK` Chapter 3): Image Index, Image Manifest, Image Config, and Layers.</summary>
+
+1. **Image Index (`application/vnd.oci.image.index.v1+json`):** Optional top-level multi-architecture manifest list mapping each `(os, architecture)` platform (`linux/amd64`, `linux/arm64`, `linux/ppc64le`) to the SHA-256 digest of its platform-specific manifest.
+2. **Image Manifest (`application/vnd.oci.image.manifest.v1+json`):** Lists the SHA-256 digest and size of the single **Config** blob plus the ordered array of **Layer** archive blobs for one platform.
+3. **Image Config (`application/vnd.oci.image.config.v1+json`):** Stores runtime defaults (`Env`, `Entrypoint`, `Cmd`, `User`, `WorkingDir`, `ExposedPorts`, `Labels`), build `history`, and the uncompressed layer `rootfs.diff_ids`.
+4. **Filesystem Layers (`application/vnd.oci.image.layer.v1.tar+gzip` or `+zstd`):** Content-addressed tar archives of filesystem additions/modifications/whiteouts.
+</details>
+
+<details>
+<summary>4. Why doesn't `RUN rm /tmp/huge_file.tar` in a separate Dockerfile instruction shrink the final image size (`KUR` Chapter 2)?</summary>
+
+Every `RUN`, `COPY`, and `ADD` instruction creates a **new, immutable read-only layer**. If Layer 2 creates `/tmp/huge_file.tar` (500 MB) and Layer 3 runs `RUN rm /tmp/huge_file.tar`, Layer 3 merely writes a 0-byte **`.wh.huge_file.tar` whiteout marker** into the upper `overlayfs` layer to hide the file from the merged directory view—**all 500 MB of bytes remain permanently inside Layer 2's tarball** and are still downloaded on every `docker pull`. Always download, unpack, install, and `rm -rf` temporary files within the **same single `RUN` instruction** (or use a BuildKit `--mount=type=cache` or multi-stage build).
+</details>
+
+<details>
+<summary>5. Why is deploying by image digest (`app@sha256:669e01...`) safer than deploying by tag (`app:1.4` or `app:latest`)?</summary>
+
+An image **tag** (`:1.4` or `:latest`) is a **mutable pointer** in the registry: anyone with push permission (or a compromised CI pipeline) can overwrite `:1.4` to point to a completely different manifest, causing nodes scaling up tomorrow to run different code than nodes booted today. An image **digest** (`@sha256:...`) is the **cryptographic SHA-256 hash of the manifest bytes itself**: it is mathematically immutable, verified by the runtime on pull, and guarantees every node in a 500-node job runs the exact same bits.
+</details>
+
+<details>
+<summary>6. How does Dockerfile instruction ordering affect CI build speed (`KUR` Chapter 2)?</summary>
+
+BuildKit/Docker caches each layer based on the instruction string and the checksum of files copied by `COPY`/`ADD`. **As soon as one layer's cache is invalidated, every subsequent layer in that stage must be rebuilt from scratch.** If you write `COPY . .` *before* `RUN pip install -r requirements.lock` (or `npm install`), editing a single line of Python/JS code invalidates `COPY . .` and forces a 10-minute dependency reinstall on every commit. Copying **only `requirements.lock` first**, running `pip install`, and placing `COPY src/ ./src/` last ensures code edits rebuild in 1 second.
+</details>
+
+<details>
+<summary>7. How do Multi-Stage Builds (`FROM ... AS builder` -> `FROM ... AS runtime` with `COPY --from=builder`, `KUR` Chapter 2) improve both image size and security?</summary>
+
+Compiling C++/CUDA extensions, Go binaries (`kuard` in `KUR` Chapter 2), or Python wheels requires heavy compilers (`gcc`, `g++`, `nvcc`, `build-essential`, `-dev` headers, `git`). In a multi-stage Dockerfile, the `builder` stage installs those compilers and builds `/wheels` (or `/go/bin/kuard`), and the final `runtime` stage starts from a clean slim/distroless base image and copies **only the compiled wheels/binaries** (`COPY --from=builder /wheels /wheels`). None of the compilers, build caches, or intermediate layers from `builder` are shipped in the final image—slashing image size and removing hundreds of potential compiler/library CVEs.
+</details>
+
+<details>
+<summary>8. Why does passing a secret via `ARG PIP_TOKEN` or `ENV PIP_TOKEN` in a Dockerfile leak the secret, and how does `RUN --mount=type=secret` fix it?</summary>
+
+Values passed to `ARG` or `ENV` are recorded in the **OCI Image Config JSON (`history` and `Config.Env`)**, so anyone who pulls the image and runs `docker history --no-trunc <image>` or `docker inspect <image>` can read the plaintext secret. Using BuildKit's **`RUN --mount=type=secret,id=pip_token`** (`docker build --secret id=pip_token,src=.pip_token .`) mounts the secret as an in-memory `tmpfs` file at `/run/secrets/pip_token` **only for the duration of that single `RUN` command**, leaving zero trace in any image layer or `docker history`.
+</details>
+
+<details>
+<summary>9. Why must `ENTRYPOINT` and `CMD` use Exec Form (`["python", "-m", "uvicorn", ...]`) instead of Shell Form (`python -m uvicorn ...`)?</summary>
+
+- **Shell form (`ENTRYPOINT python app.py`):** Docker wraps the command as `/bin/sh -c "python app.py"`, making **`/bin/sh` PID 1** inside the container. Most `/bin/sh` implementations (`dash`, `ash`, `bash`) **do not forward `SIGTERM` signals to child processes**. When Kubernetes terminates the pod (`kubectl delete pod`), `SIGTERM` goes to `/bin/sh`, your Python app never hears it, the pod hangs for the entire 30-second `terminationGracePeriodSeconds`, and Kubernetes finally kills it abruptly with `SIGKILL`—corrupting in-flight requests or checkpoints.
+- **Exec form (`ENTRYPOINT ["python", "app.py"]`):** Executes `python` directly as **PID 1** without a shell wrapper so `SIGTERM` is delivered straight to your application (or pair with `tini` / `--init` if your app forks subprocesses and doesn't reap zombies).
+</details>
+
+<details>
+<summary>10. Why should you NEVER use `Alpine Linux` (`musl` libc) as the base image for Python ML, PyTorch, or CUDA containers?</summary>
+
+Alpine Linux uses **`musl` libc** instead of standard GNU **`glibc`**. Pre-compiled Python `manylinux` wheels (`torch`, `numpy`, `scipy`, `triton`) and **all NVIDIA CUDA user-space libraries (`libcudart.so`, `libnccl.so`, `libcuda.so` injected from the host)** are linked against **`glibc`**. On Alpine, `pip` either fails to find `musllinux` wheels (falling back to a multi-hour source compile that fails) or crashes with dynamic linker errors (`Error loading shared library ld-linux-x86-64.so.2`), and `musl`'s memory allocator is significantly slower under multi-threaded Python contention. Always use `ubuntu` or `debian-slim` (or `ubi`) bases for GPU/ML containers.
+</details>
+
+<details>
+<summary>11. How do GPU containers work: what lives on the Host versus what lives inside the Container Image?</summary>
+
+A container shares the host's Linux kernel, so **a container image cannot load its own kernel driver**:
+- **On the Host OS:** The NVIDIA kernel module (`nvidia.ko`, `nvidia-uvm.ko`, `nvidia-peermem.ko`), device nodes (`/dev/nvidia0..7`, `/dev/nvidiactl`, `/dev/nvidia-uvm`), and the user-space **CUDA Driver API library (`libcuda.so`, `libnvidia-ml.so`, `nvidia-smi`)** tightly coupled to that exact kernel module version.
+- **Inside the Container Image:** The **CUDA Runtime library (`libcudart.so`)**, math/collective libraries (`cuBLAS`, `cuDNN`, `NCCL`), and ML frameworks (`PyTorch`, `TensorRT`, `vLLM`).
+At container start, the **NVIDIA Container Toolkit** bind-mounts `/dev/nvidia*` and `libcuda.so` / `nvidia-smi` from the host into the container's mount namespace.
+</details>
+
+<details>
+<summary>12. What are the compatibility rules between the Host NVIDIA Driver (`libcuda.so`) and the Container Image's CUDA Runtime (`libcudart.so`)?</summary>
+
+1. **Backward compatibility (standard rule):** The host driver (`libcuda.so`) is **backward-compatible** with older CUDA runtimes—for example, a host running Driver `550.x` (CUDA 12.4) can run containers built with CUDA `12.4`, `12.1`, `11.8`, or `11.0`.
+2. **Insufficient driver error:** If the container image was built with a **newer** CUDA runtime (`12.6`) than the host driver supports (`525.x`), CUDA initialization fails with **`CUDA driver version is insufficient for CUDA runtime version`**.
+3. **Forward compatibility (`cuda-compat`):** On NVIDIA Data Center GPUs, installing the matching `cuda-compat-12-x` package inside the container allows designated older LTS host driver branches (e.g., `535.x`) to support newer CUDA 12.x user-space runtimes.
+4. **Architecture / SASS compatibility (`no kernel image is available`):** The container's binaries/PTX must be compiled with SM targets (`TORCH_CUDA_ARCH_LIST`: `sm_80` for A100, `sm_90` for H100, `sm_100` for B200) matching the physical GPU.
+</details>
+
+<details>
+<summary>13. What is `CDI` (Container Device Interface), and how does `nvidia-ctk cdi generate` simplify GPU access across container runtimes?</summary>
+
+Historically, exposing GPUs required runtime-specific wrapper hooks (`nvidia-container-runtime` patching `runc`). **CDI (Container Device Interface)** is an open OCI standard supported natively by `containerd` 1.7+, `CRI-O`, `Podman`, and `Docker` 25+. Running **`nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml`** inspects the host's GPUs and driver files and writes a declarative JSON/YAML specification listing the exact device nodes, bind mounts (`libcuda.so`), and hooks for `nvidia.com/gpu=0`, `nvidia.com/gpu=all`, or MIG instances—so any CDI-aware runtime can attach GPUs via `--device nvidia.com/gpu=all` without custom runtime wrappers.
+</details>
+
+<details>
+<summary>14. Why do PyTorch `DataLoader` workers and multi-GPU `NCCL` jobs crash inside Docker with `Bus error (core dumped)` or `NCCL WARN Call to posix_fallocate failed`, and how do you fix it?</summary>
+
+By default, Docker mounts `/dev/shm` (POSIX shared memory `tmpfs`) inside a container with a tiny **64 MiB** size limit (`--shm-size=64m`). PyTorch multi-process `DataLoader` (`num_workers > 0`) and intra-node NCCL shared-memory communication allocate multi-gigabyte tensors in `/dev/shm`; as soon as allocation exceeds 64 MiB, `mmap` access raises `SIGBUS` (`Bus error`). Fix it by passing **`--shm-size=16g`** (or `--ipc=host`) in Docker, and mounting a memory-backed `emptyDir` (`emptyDir: { medium: Memory, sizeLimit: 64Gi }`) at `/dev/shm` in Kubernetes Pods.
+</details>
+
+<details>
+<summary>15. When 500 GPU nodes simultaneously pull a 25 GB container image at job start, what happens, and what five techniques prevent a \"Pull Storm\"?</summary>
+
+500 nodes $\times 25\text{ GB} = 12.5\text{ TB}$ of concurrent egress, which saturates the central registry's NICs/storage and stalls job startup for 30–60 minutes. Five mitigations:
+1. **Local Pull-Through Registry Cache (`Harbor` proxy cache + containerd `hosts.toml` mirror)** inside the cluster fabric.
+2. **Peer-to-Peer (`P2P`) Image Distribution (`Spegel`, `Dragonfly`, `Kraken`):** Nodes fetch blocks from neighboring cluster nodes over the 100G/400G intra-cluster network instead of pulling 500 times from the registry.
+3. **Shared Base Layers:** Standardize all teams on the same pinned `nvcr.io/nvidia/pytorch:24.06-py3` base layer + `imagePullPolicy: IfNotPresent` so only the small 50 MB application layer is pulled per job.
+4. **Pre-pulling DaemonSets** (warming the base image onto nodes during idle windows).
+5. **Lazy-Pulling Snapshotters (`SOCI`, `eStargz`, `Nydus`):** Start the container immediately and fetch file chunks on demand.
+</details>
+
+<details>
+<summary>16. How do you inspect a remote container image's manifest, platforms, and layers without pulling 20 GB onto your laptop?</summary>
+
+Use **`skopeo`** or **`crane`**, which query the registry's HTTP `/v2/<name>/manifests/<ref>` endpoint directly without downloading layer blobs:
+- `skopeo inspect docker://nvcr.io/nvidia/pytorch:24.06-py3`
+- `crane manifest nvcr.io/nvidia/pytorch:24.06-py3 | jq .`
+- `crane config nvcr.io/nvidia/pytorch:24.06-py3@sha256:... | jq .`
+</details>
+
+<details>
+<summary>17. How do Rootless Containers (`Podman`, rootless `Docker`/`containerd`) work, and what are their limitations?</summary>
+
+Rootless runtimes use **Linux user namespaces (`CLONE_NEWUSER`)** assisted by `/etc/subuid` and `/etc/subgid` (`newuidmap`/`newgidmap`) so UID `0` (`root`) inside the container maps to an unprivileged subordinate UID (such as `100000`) on the host—meaning a container escape only grants unprivileged user permissions on the host. Limitations: cannot bind host ports `< 1024` without `net.ipv4.ip_unprivileged_port_start`, user-space network slirp4netns/pasta has higher overhead than rootful kernel veth/eBPF, and cgroup v2 resource delegation requires systemd user session support.
+</details>
+
+<details>
+<summary>18. What is the difference between `OOMKilled: true` (exit code `137`) and exit code `139` or `1` when a container exits?</summary>
+
+- **Exit code `137` (`128 + 9 = SIGKILL`) with `State.OOMKilled == true`:** The Linux kernel cgroup memory controller killed the process because the container's memory usage hit `memory.max` (`--memory` / Kubernetes `resources.limits.memory`).
+- **Exit code `143` (`128 + 15 = SIGTERM`):** Graceful termination signal.
+- **Exit code `139` (`128 + 11 = SIGSEGV`) or `135` (`128 + 7 = SIGBUS`):** Segmentation fault or `/dev/shm` shared-memory bus error.
+- **Exit code `1` / `2`:** Application-level exception or syntax error (`docker logs <container>`).
+</details>
+
+<details>
+<summary>19. What causes `exec user process caused: exec format error` when starting a container?</summary>
+
+Two classic causes:
+1. **CPU architecture mismatch:** Trying to run an `arm64` (Apple Silicon / AWS Graviton / NVIDIA Grace) ELF binary on an `x86_64` (`amd64`) host (or vice versa) without a multi-arch Image Index (`docker buildx build --platform linux/amd64,linux/arm64`).
+2. **Missing `#!` shebang line:** An `ENTRYPOINT ["/app/start.sh"]` script is marked executable (`chmod +x`) but its first line does not start with `#!/usr/bin/env bash` or `#!/bin/sh` (or has Windows `CRLF` `\r\n` line endings).
+</details>
+
+<details>
+<summary>20. What baseline security flags should every production container run with (`hardened run`)?</summary>
+
+1. **Non-root user:** `USER 10001:10001` (`--user 10001:10001`, Kubernetes `runAsNonRoot: true`).
+2. **Read-only root filesystem:** `--read-only --tmpfs /tmp` (Kubernetes `readOnlyRootFilesystem: true`).
+3. **Privilege escalation blocked:** `--security-opt no-new-privileges` (Kubernetes `allowPrivilegeEscalation: false`).
+4. **All Linux capabilities dropped:** `--cap-drop ALL` (Kubernetes `capabilities: { drop: ["ALL"] }`).
+5. **Seccomp profile active:** `RuntimeDefault` seccomp filter enabled.
+6. **Signed and scanned:** Verified by `cosign` and scanned by `Trivy`/`Grype` with an attached SBOM.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 2: Creating and Running Containers** (read in full: container images vs shared-library dependency hell, the Docker image format and OCI standardization, layer inheritance trees and why layer ordering governs build cache hits, building an Express Node.js app and the multi-stage `kuard` Go/Alpine image, why deleting files in later layers leaves bytes in earlier layers, storing images in registries, running containers with Docker/CRI, and limiting resource usage with `--memory 200m --memory-swap 1G --cpu-shares 1024`).
+  - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 3: Container Runtime** (read in full: history of containers, the Open Container Initiative `OCI` Image Specification and Runtime Specification `config.json`, `containerd`, `CRI-O`, `runc`, and VM-based runtimes like `Kata Containers`).
+- **Run here:** `python3 code/part05/oci_image_layers_lab.py` (3 passed, 0 failed).
+- **Explicitly labelled inferences:** The `simulate_oci_layer_sizes`, `simulate_dockerfile_cache_hits`, and `check_cuda_driver_compatibility` models in `code/part05/oci_image_layers.py`, the multi-stage FastAPI + BuildKit `Dockerfile`, and the `hosts.toml` pull-through mirror config are the author's constructions applying `KUR` Chapter 2 and `PK` Chapter 3 to AI infrastructure containers (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Not verified on live hardware:** Live `docker`, `podman`, `skopeo`, `crane`, `dive`, `nsenter`, and `nvidia-ctk cdi generate` commands (`10 to 30 GB`, `500` nodes, `256m`, `268435456`, `1.27`, `3.12-slim`, `10001`, `8000`, `12.4.1`, `24.05-py3`, `64 MB`, `200m`, `1G`, `1024`, `168h`) are marked (`untested here`) where not executed by `oci_image_layers_lab.py`.
