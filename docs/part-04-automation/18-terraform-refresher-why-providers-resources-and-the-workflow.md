@@ -59,6 +59,22 @@ Key ideas:
 - **Immutable replacement**: many attribute changes force **replacement** (destroy then create, or create-before-destroy); plans mark these `-/+`. Reading the plan carefully for replacements of stateful resources (disks, databases, clusters) is the core operational skill.
 - **Ansible vs Terraform**: Terraform manages the *existence and configuration of infrastructure objects* with state; Ansible configures *what runs on machines* (4.16).
 
+### The Five IaC Categories and Six Trade-Off Axes from *Terraform: Up and Running* (`TUR` Chapter 1)
+
+In *Terraform: Up and Running* Chapter 1 (*Why Terraform*), Yevgeniy Brikman maps the entire Infrastructure-as-Code landscape into **five tool categories** and **six architectural trade-off axes**:
+1. **The five categories of IaC tools:**
+   - **Ad-hoc scripts (`setup-webserver.sh`):** Imperative Bash/Python scripts; fine for one-off tasks, but lack idempotency, state tracking, and structure at scale.
+   - **Configuration management tools (`Ansible`, `Chef`, `Puppet`):** Designed to install and configure software on *existing* servers.
+   - **Server templating tools (`Packer`, `Docker`, `Vagrant`):** Bake self-contained VM images (running on a hypervisor that emulates hardware + guest OS kernel) or container images (isolating user space via Linux namespaces/cgroups while sharing the host kernel) to enable **immutable infrastructure**.
+   - **Orchestration tools (`Kubernetes`, `Nomad`, `ECS`):** Schedule, heal, scale, and route traffic across containers/VMs.
+   - **Provisioning tools (`Terraform`, `OpenTofu`, `CloudFormation`, `OpenStack Heat`, `Pulumi`):** Create the underlying servers, VPC networks, load balancers, databases, storage buckets, and IAM roles themselves.
+2. **The six IaC trade-off axes (`TUR` Chapter 1 Table 1-4):**
+   - **Configuration management vs. provisioning:** Server-templating + provisioning tools (`Packer` + `Terraform`) fit immutable infrastructure naturally, whereas configuration management tools (`Ansible`) fit mutable in-place configuration.
+   - **Mutable vs. immutable infrastructure:** Rather than SSH-ing into running servers to upgrade packages in place (accumulating subtle configuration drift), immutable deployments bake a new image and replace the server.
+   - **Procedural vs. declarative (the `count: 10 -> 15 -> 5` thought experiment):** Suppose you deploy 10 EC2 instances (`count: 10`). Later you want 15 instances: in a naive procedural script or task (`count: 15`), re-running it launches **15 additional instances (25 total)** unless you write custom tag-counting logic (`exact_count`), and if you later reduce the count to `5` or change `ami`, a stateless procedural tool has no record of which instances it created. In declarative **Terraform**, `terraform.tfstate` tracks all 10 instances: changing `count = 10` to `15` adds **5** instances, changing `15` to `5` terminates **10** instances, and changing `ami` plans an exact replacement (`-/+`).
+   - **General-purpose languages (`GPL`: Pulumi in Python/TypeScript/Go) vs. domain-specific languages (`DSL`: Terraform HCL):** HCL intentionally restricts arbitrary loops and side effects so the infrastructure dependency graph remains declarative, inspectable, and predictable across every repository.
+   - **Master server vs. masterless**, and **Agent-based vs. agentless**: Terraform is both **masterless** and **agentless** by default—the CLI talks directly to cloud provider APIs over HTTPS without requiring a background agent on target VMs or a dedicated master daemon (though HCP Terraform / Atlantis / CI runners can host remote execution when desired).
+
 ## 2. Architecture
 
 ```mermaid
@@ -226,6 +242,10 @@ resource "google_compute_firewall" "internal" {
 
 - **Provisioners** (`local-exec`, `remote-exec`) are a last resort; prefer user-data/cloud-init, images, or Ansible (4.2, 4.17). `terraform_data` and `null_resource` can trigger external actions on change.
 - **Sensitive values**: `sensitive = true` hides output but state still contains them; **ephemeral** values/resources (newer Terraform/OpenTofu) keep some secrets out of state (4.22).
+- **From a single server to an Auto Scaling Group + Application Load Balancer (`TUR` Chapter 2 walkthrough):** In *Terraform: Up and Running* Chapter 2 (*Getting Started with Terraform*), Brikman demonstrates how implicit references and `lifecycle` rules wire a multi-resource architecture together:
+  1. *Single server + Security Group:* An `aws_instance.example` (`user_data = <<-EOF ... busybox httpd -f -p ${var.server_port} & EOF`, `user_data_replace_on_change = true`) references `vpc_security_group_ids = [aws_security_group.instance.id]`, creating an implicit dependency edge visible in `terraform graph` (`[root] aws_instance.example -> [root] aws_security_group.instance`).
+  2. *Auto Scaling Group (`aws_autoscaling_group` + `aws_launch_configuration`) and `create_before_destroy`:* Because an `aws_launch_configuration` is immutable, any change to its `image_id` or `user_data` forces replacement (`-/+`). However, since `aws_autoscaling_group.example` points to `aws_launch_configuration.example.name`, AWS refuses to delete the old launch configuration while the ASG still references it. Adding **`lifecycle { create_before_destroy = true }`** flips the replacement order (`+/-`): Terraform creates the new launch configuration first, updates the ASG to point to the new one, and only then deletes the old launch configuration (modeled in `code/part04/terraform_workflow_dag.py`).
+  3. *Data sources and Application Load Balancer (`aws_lb`):* Using `data "aws_vpc" "default" { default = true }` and `data "aws_subnets" "default"` queries existing VPC subnets so `aws_lb` (`load_balancer_type = "application"`), `aws_lb_listener` (port `80`, default `fixed-response` `404`), `aws_lb_target_group` (`health_check`), and `aws_lb_listener_rule` (`path_pattern = ["*"]` forwarding to the ASG's `target_group_arns`) route traffic across the healthy instances and export `output "alb_dns_name"`.
 
 ## 4. The workflow and CLI reference
 
@@ -393,7 +413,15 @@ terraform destroy
 
 This pattern (Terraform output rendered as an Ansible inventory) is the simplest bridge between provisioning and configuration (4.27).
 
-## 10. Lab (untested)
+## 10. Lab
+
+First, run the self-checking Python lab (`code/part04/terraform_workflow_dag_lab.py`) locally. It verifies the `terraform plan` action classifier (`compute_terraform_plan_actions`: `+ create`, `~ update_in_place`, `-/+ replace_destroy_first`, `+/- replace_create_first` with `create_before_destroy`, `- destroy`, and `moved` address refactoring without recreation, `TUR` Ch. 2), the resource dependency DAG wave planner (`build_dependency_execution_waves`), and pessimistic version constraints (`matches_pessimistic_constraint` on `~> 5.30` vs `~> 5.30.1`).
+
+```bash
+python3 code/part04/terraform_workflow_dag_lab.py
+```
+
+Next, on any machine with Terraform 1.6+ or OpenTofu 1.6+ (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **Install and pin**: install Terraform and/or OpenTofu with a version manager; create `required_version` and provider constraints; run `init`; inspect `.terraform/` and `.terraform.lock.hcl`; commit the lock file.
 2. **Plan reading**: with local providers, create resources, change an attribute that forces replacement, and read the `-/+` plan; change one that updates in place; use `-replace`.
@@ -408,8 +436,6 @@ This pattern (Terraform output rendered as an Ansible inventory) is the simplest
 11. **Cloud sandbox (optional)**: apply the VPC, subnet, firewall and one small instance from section 3 in a sandbox project; add a GPU instance only if quota and budget allow; destroy immediately.
 12. **OpenTofu vs Terraform**: run the same config with both CLIs; note differences.
 13. **Clean up.**
-
-Mark tested only after execution.
 
 ## 11. Common mistakes
 
@@ -426,61 +452,183 @@ Mark tested only after execution.
 
 ## 12. Interview angles
 
-- "What is Terraform state and why is it needed? What can go wrong with it?" 
-- "Explain `plan` and `apply`; what does `-out` give you?" 
-- "How does Terraform decide ordering? What is `depends_on` for?" 
-- "A plan shows `-/+` on a database. What do you do?" 
+- "What is Terraform state and why is it needed? What can go wrong with it?"
+- "Explain `plan` and `apply`; what does `-out` give you?"
+- "How does Terraform decide ordering? What is `depends_on` for?"
+- "A plan shows `-/+` on a database. What do you do?"
 - "How do you bring existing infrastructure under Terraform?" (import blocks, plan clean.)
 - "How do you rename or move resources without recreating them?" (`moved`.)
-- "Terraform vs OpenTofu vs Pulumi vs Crossplane vs Ansible for provisioning?" 
-- "Workspaces vs directories for environments?" 
-- "How do you handle drift?" 
+- "Terraform vs OpenTofu vs Pulumi vs Crossplane vs Ansible for provisioning?"
+- "Workspaces vs directories for environments?"
+- "How do you handle drift?"
 
-## 13. Checkpoint questions (35)
+## Exercises
 
-1. Declarative vs imperative? **A:** Desired end state vs step sequence.
-2. What is the plan? **A:** The computed diff between config, state and reality.
-3. What file records provider versions? **A:** `.terraform.lock.hcl`.
-4. Should it be committed? **A:** Yes.
-5. What is a provider? **A:** Plugin that implements resources for a platform.
-6. What is state? **A:** Mapping of config addresses to real objects and attributes.
-7. Why is state sensitive? **A:** Contains secret attribute values.
-8. What builds execution order? **A:** The dependency graph from references.
-9. Default parallelism? **A:** 10.
-10. Plan symbol for replace? **A:** `-/+`.
-11. What does `~>` mean? **A:** Pessimistic constraint (compatible updates).
-12. Which input source wins for a variable? **A:** Command-line `-var`/`-var-file` (last one wins), above auto tfvars, tfvars and environment variables.
-13. What is a local? **A:** Named expression within a module.
-14. What does `sensitive = true` do? **A:** Redacts output; state still stores it.
-15. Data source vs resource? **A:** Read-only lookup vs managed object.
-16. `count` vs `for_each` key difference? **A:** Index-based vs key-based identity.
-17. What is a dynamic block? **A:** Generates repeated nested blocks.
-18. What is `terraform fmt -check` for? **A:** CI format enforcement.
-19. What does `validate` check? **A:** Syntax and internal consistency, no API.
-20. How apply exactly the reviewed plan? **A:** `terraform apply tfplan`.
-21. What replaced `taint`? **A:** `-replace`.
-22. What is `plan -refresh-only`? **A:** Show/accept drift without config changes.
-23. How import existing resources? **A:** `import` blocks or `terraform import`.
-24. After import, what proves success? **A:** A clean plan.
-25. What does `moved` do? **A:** Records a rename/move without recreate.
-26. What does `removed` with `destroy=false` do? **A:** Stop managing without deleting.
-27. `state rm` effect? **A:** Forget resource, real object remains.
-28. Why avoid `-target`? **A:** Partial state, hidden dependencies.
-29. What are workspaces? **A:** Multiple states for one config.
-30. Workspace isolation strength? **A:** Weak: same code/backend/creds.
-31. What is OpenTofu? **A:** Open-source fork of Terraform.
-32. HCP Terraform provides? **A:** Managed runs, state, RBAC, policy.
-33. Why avoid provisioners? **A:** Brittle, outside the graph/state model.
-34. What env var stops prompts in CI? **A:** `TF_INPUT=0` (and `-input=false`).
-35. How share provider downloads? **A:** `TF_PLUGIN_CACHE_DIR`.
+1. **The Five IaC Categories, Six Trade-Off Axes, and Procedural vs. Declarative Scaling (`count = 10 -> 15 -> 5`, `TUR` Chapter 1):** (a) Contrast ad-hoc scripts, configuration management (`Ansible`), server templating (`Packer`/`Docker`), orchestration (`Kubernetes`), and provisioning (`Terraform`/`OpenTofu`); (b) use the `count = 10 -> 15 -> 5` EC2 thought experiment from `TUR` Chapter 1 to explain why declarative state-backed provisioning beats stateless procedural tasks for managing cloud lifecycles.
+2. **Terraform Architecture (Core, gRPC Provider Plugins, `.terraform.lock.hcl`, State, Backends) and Dependency DAG Execution Waves (`TUR` Chapters 1 & 2):** Using `build_dependency_execution_waves()` and `matches_pessimistic_constraint()` in `code/part04/terraform_workflow_dag.py`, explain how Terraform Core and Provider plugins interact, why `.terraform.lock.hcl` must be committed to Git, the difference between `~> 5.30` and `~> 5.30.1`, and how implicit reference edges determine parallel execution waves (`-parallelism=10`).
+3. **HCL Language Essentials: Variables (Types, `optional()`, `validation`, Precedence), `locals`, `outputs`, `data` Sources, and `dynamic` Blocks (`TUR` Chapter 2):** State the exact variable precedence order from lowest (`default`) to highest (`-var` / `-var-file`), explain why `sensitive = true` does not encrypt values in `terraform.tfstate`, and trace how `data "google_compute_image"`, `google_compute_network` (`mtu = 8896`), `google_compute_subnetwork`, and `google_compute_instance` (`on_host_maintenance = "TERMINATE"`) wire together.
+4. **Reading `terraform plan` Symbols (`+`, `~`, `-/+`, `+/-`, `-`, `<=`) and `create_before_destroy` on ASGs (`TUR` Chapter 2):** Using `compute_terraform_plan_actions()` in `code/part04/terraform_workflow_dag.py`, explain every symbol in a Terraform plan, why changing `image_id` on an `aws_launch_configuration` referenced by an `aws_autoscaling_group` fails without `lifecycle { create_before_destroy = true }`, and why `terraform plan -out=tfplan` + `terraform apply tfplan` is mandatory in production.
+5. **Handling Drift (`-refresh-only`), Adopting Unmanaged Resources (`import` + `-generate-config-out`), and Safe Refactoring (`moved` and `removed` Blocks):** Trace how to: (a) inspect and resolve out-of-band drift; (b) bring an existing GCS checkpoint bucket under Terraform management with an `import {}` block and prove convergence; and (c) move `google_compute_network.fabric` into `module.network.google_compute_network.this` via a `moved {}` block in Git without destroying the VPC.
+6. **Workspaces vs. Directory-per-Environment, Terraform OSS vs. HCP Terraform vs. OpenTofu, and Rendering Ansible Inventories (`templatefile`):** Explain why `terraform workspace` is risky as a production/staging boundary compared to directory-per-environment, compare Terraform OSS (BUSL), HCP Terraform, and OpenTofu (MPL 2.0, Linux Foundation), and show how `local_file` + `templatefile()` bridges Terraform outputs into an Ansible `inventory.ini`.
 
-## 14. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. In *Terraform: Up and Running* Chapter 1, what are the five categories of Infrastructure-as-Code tools, and how do they fit together in an AI platform?</summary>
 
-- Yevgeniy Brikman, *Terraform: Up and Running* (chapters 1 and 2: why Terraform, getting started with deploying infrastructure and understanding the workflow, providers, resources, data sources, variables, outputs).
-- The author's `nvidia-devops` repository, volume 10 chapter 5 (Terraform for infrastructure as code in AI factories): paradigm, architecture, HCL masterclass, CLI reference, import and refactoring, workspaces, OSS versus HCP versus OpenTofu.
-- Terraform and OpenTofu documentation for language, CLI and provider behaviour.
-- Examples are the author's constructions.
+1. **Ad-hoc scripts (`Bash` / `Python`):** One-off operational glue and custom checks.
+2. **Server templating tools (`Packer`, `Docker`):** Bake immutable VM golden images (with pre-installed NVIDIA drivers/OFED) and container images.
+3. **Provisioning tools (`Terraform`, `OpenTofu`, `CloudFormation`, `Pulumi`):** Provision the cloud/datacenter foundation (VPCs, subnets, firewall rules, storage buckets, IAM, GKE/EKS clusters, and GPU VM instances booted from Packer images).
+4. **Configuration management tools (`Ansible`):** Perform day-2 host configuration, Slurm/fabric tuning, and rolling maintenance on running servers.
+5. **Orchestration tools (`Kubernetes`, `Slurm`):** Schedule, monitor, heal, and autoscale distributed training and inference workloads on the fleet.
+</details>
 
-**Flagged for verification before publishing:** HCL features by version (`removed` blocks, `optional` defaults, ephemeral values), OpenTofu-specific feature claims, exit codes for `fmt -check`, GPU machine type and accelerator combinations, provider version constraints, and every code listing; all labs are **untested**.
+<details>
+<summary>2. How does Brikman's `count = 10 -> 15 -> 5` example (`TUR` Chapter 1) illustrate the difference between procedural configuration management and declarative stateful provisioning?</summary>
+
+Suppose you deploy 10 EC2 instances (`count: 10`) and then change the number to `15`:
+- **Procedural & stateless:** Re-running a naive `count: 15` task executes \"launch 15 instances\" again, leaving **25 instances running** (unless you manually configure tag-based `exact_count` filters), and if you later reduce `count` to `5`, a stateless tool does not know which 10 instances to terminate.
+- **Declarative & stateful (`Terraform`):** Because `terraform.tfstate` records the exact IDs of the 10 existing instances, changing `count = 10` to `15` computes a diff of **`+5 to add`**, and changing `15` to `5` computes **`-10 to destroy`** automatically.
+</details>
+
+<details>
+<summary>3. How do Terraform Core and Provider plugins divide responsibilities, and why must `.terraform.lock.hcl` be committed to Git?</summary>
+
+- **Terraform Core (the CLI binary):** Parses HCL files, evaluates expressions, builds the resource dependency DAG, diffs configuration against state, and orchestrates parallel graph execution (`-parallelism=10`). Core contains **zero cloud-specific code**.
+- **Provider Plugins (`hashicorp/google`, `hashicorp/aws`, `nebius/nebius`):** Separate Go binaries downloaded by `terraform init` into `.terraform/providers/` that communicate with Core over **local gRPC** and translate resource CRUD operations into cloud REST API calls.
+- **`.terraform.lock.hcl`:** Records the exact resolved provider version and **cryptographic SHA-256 hashes (`h1:`, `zh:`)** across platforms. Committing `.terraform.lock.hcl` to Git guarantees that every engineer and CI runner installs the exact same verified provider binary.
+</details>
+
+<details>
+<summary>4. What is the difference between the pessimistic version constraints `~> 5.30` and `~> 5.30.1`, and how do you upgrade providers intentionally?</summary>
+
+The pessimistic constraint operator **`~>`** allows only the **rightmost specified version component** to increment:
+- **`~> 5.30`** (two components): allows any `5.x` release **`>= 5.30.0, < 6.0.0`** (e.g., `5.42.0` is allowed; `6.0.0` is blocked).
+- **`~> 5.30.1`** (three components): allows only patch releases **`>= 5.30.1, < 5.31.0`** (e.g., `5.30.9` is allowed; `5.31.0` is blocked).
+On normal runs, `terraform init` obeys `.terraform.lock.hcl`; to intentionally upgrade within your `~>` bounds and update the lock file, run **`terraform init -upgrade`** and review the `.terraform.lock.hcl` diff in a pull request.
+</details>
+
+<details>
+<summary>5. What is the exact precedence order for Terraform Input Variables from lowest to highest?</summary>
+
+From **lowest to highest** precedence (later sources override earlier ones):
+1. The `default` value inside the `variable "..." {}` block.
+2. **`TF_VAR_<name>`** environment variables.
+3. The **`terraform.tfvars`** file (if present).
+4. The **`terraform.tfvars.json`** file (if present).
+5. Any **`*.auto.tfvars`** or **`*.auto.tfvars.json`** files (processed in lexical filename order).
+6. Command-line **`-var="k=v"`** and **`-var-file="envs/prod.tfvars"`** flags, evaluated in the order they appear on the command line (**last flag wins**).
+</details>
+
+<details>
+<summary>6. What does `sensitive = true` on a variable or output actually protect, and what does it NOT protect?</summary>
+
+Setting `sensitive = true` on a `variable` or `output` redacts its value as **`(sensitive value)`** in terminal console output during `terraform plan`, `terraform apply`, and `terraform output` (and propagates sensitivity to any expression derived from it). However, **`sensitive = true` does NOT encrypt or omit the value in `terraform.tfstate` or in a saved `tfplan` file**—both files still store the raw plaintext value. Therefore, remote state buckets and plan artifacts must always be encrypted and IAM-restricted (and Terraform 1.10+ / OpenTofu `ephemeral` variables/resources can keep transient tokens out of state).
+</details>
+
+<details>
+<summary>7. How does Terraform build its Resource Dependency Graph (`DAG`), and when do you need `depends_on`?</summary>
+
+When Resource B references an attribute of Resource A (for example, `google_compute_subnetwork.compute` sets `network = google_compute_network.fabric.id`), Terraform automatically infers an **implicit dependency edge**: during `apply`, `fabric` is created before `compute`; during `destroy`, `compute` is destroyed before `fabric`; and unrelated resources are created in parallel (up to `-parallelism=10`). You only need explicit **`depends_on = [...]`** when a dependency is invisible in HCL—for example, when an instance's startup script requires an IAM role binding (`google_project_iam_member`) or NAT gateway route to be active before the VM boots, even though the VM block does not reference an attribute of the IAM binding.
+</details>
+
+<details>
+<summary>8. Why do GPU instances on GCP require `scheduling { on_host_maintenance = "TERMINATE" }`?</summary>
+
+Standard CPU VMs on Google Cloud default to `on_host_maintenance = "MIGRATE"` (live migration during host hardware maintenance). Because physical NVIDIA GPUs (`nvidia-tesla-a100`, H100 `a3-highgpu-8g`) are attached directly via PCIe/NVLink passthrough and cannot be live-migrated across hypervisors, GCP's API rejects GPU VM creation unless **`on_host_maintenance = "TERMINATE"`** is explicitly configured.
+</details>
+
+<details>
+<summary>9. Decode all six action symbols in `terraform plan` output (`+`, `~`, `-`, `-/+`, `+/-`, `<=`).</summary>
+
+- **`+` (create):** Resource will be created.
+- **`~` (update in-place):** Mutable attribute (such as labels/tags or firewall rules) will be updated via the cloud API without destroying the resource.
+- **`-` (destroy):** Resource will be permanently deleted.
+- **`-/+` (destroy and then create replacement):** An immutable attribute changed (`# forces replacement`); Terraform will **destroy the existing resource first** and then create a new one.
+- **`+/-` (create replacement and then destroy):** Triggered when **`lifecycle { create_before_destroy = true }`** is set; Terraform creates the replacement resource first, updates dependents, and destroys the old resource last.
+- **`<=` (read):** A `data` source whose inputs depend on values only known during `apply` will be read during the apply phase.
+</details>
+
+<details>
+<summary>10. In `TUR` Chapter 2, why did replacing an `aws_launch_configuration` used by an `aws_autoscaling_group` fail until `create_before_destroy = true` was added?</summary>
+
+An `aws_launch_configuration` is immutable: changing its `image_id` or `user_data` forces a `-/+` replacement. Under default order (destroy first, then create), Terraform tries to delete the old launch configuration *before* updating the `aws_autoscaling_group`—and AWS rejects the API call because an active ASG is still referencing that launch configuration. Adding `lifecycle { create_before_destroy = true }` to `aws_launch_configuration` (and the ASG) makes Terraform create the new launch config first (`+/-`), repoint the ASG to the new launch config, and then delete the old one cleanly.
+</details>
+
+<details>
+<summary>11. Compare `terraform fmt -check`, `terraform validate`, and `terraform plan` in a CI pipeline.</summary>
+
+- **`terraform fmt -recursive -check`:** Checks canonical HCL formatting in milliseconds without provider plugins (exiting **`3`** if any `.tf` file is unformatted).
+- **`terraform validate`:** Runs after `terraform init -backend=false`; verifies HCL syntax, attribute names against provider schemas, variable types, and internal references **offline without calling cloud APIs or reading state**.
+- **`terraform plan -out=tfplan` (with `TF_INPUT=0` / `-input=false`):** Authenticates to the backend and cloud APIs, locks state, refreshes live resources, evaluates `data` sources, and computes the exact execution plan.
+</details>
+
+<details>
+<summary>12. How do you force Terraform to recreate a single unhealthy VM without using the deprecated `terraform taint` command?</summary>
+
+Pass **`-replace=<resource_address>`** directly to `terraform plan` / `apply`:
+`terraform plan -replace="google_compute_instance.gpu[1]" -out=tfplan`
+Unlike `terraform taint` (which mutated the remote state file immediately before anyone reviewed a plan, affecting concurrent runs), `-replace` is a clean, reviewable plan-time flag included inside `tfplan`.
+</details>
+
+<details>
+<summary>13. What is the difference between normal `terraform plan` and `terraform plan -refresh-only` when investigating drift?</summary>
+
+- **Normal `terraform plan`:** Refreshes state from the cloud APIs and then proposes actions (`~`, `-/+`, `+`, `-`) to **overwrite real-world drift so reality matches your `.tf` code**.
+- **`terraform plan -refresh-only`:** Compares the current `terraform.tfstate` against the live cloud APIs and shows **only what changed out-of-band in the real world**, without proposing any changes to cloud resources (if you apply a `-refresh-only` plan, Terraform updates `terraform.tfstate` to match reality).
+</details>
+
+<details>
+<summary>14. How do Declarative `import {}` blocks (Terraform 1.5+) and `-generate-config-out` improve on the legacy `terraform import` CLI command?</summary>
+
+- **Legacy `terraform import ADDR ID`:** Immediately mutates the live remote state file on the command line without a PR review, requires you to hand-write the `.tf` block beforehand, and can only import one resource at a time.
+- **Declarative `import { to = ..., id = "..." }` blocks:** Are committed and reviewed in Git like any other code, can import dozens of resources in a single `plan`/`apply` cycle, and support **`terraform plan -generate-config-out=generated.tf`** to automatically scaffold the HCL resource block from the cloud API. Always run a follow-up `terraform plan` until it reports **`No changes`** before merging.
+</details>
+
+<details>
+<summary>15. How do `moved {}` and `removed {}` blocks allow safe refactoring in CI without manual `terraform state mv/rm` surgery?</summary>
+
+- **`moved { from = google_compute_network.fabric, to = module.network.google_compute_network.this }`:** When you rename a resource or extract it into a child module, Terraform would normally see the old address removed (`- destroy`) and the new address added (`+ create`). Adding a `moved` block in `.tf` code tells Terraform during `plan` to rebind the existing state object to the new address (`# google_compute_network.fabric has moved to module.network.google_compute_network.this`) with **zero infrastructure destruction**, reviewed safely in a PR.
+- **`removed { from = google_compute_instance.legacy, lifecycle { destroy = false } }` (`destroy=false`, Terraform 1.7+):** Declaratively removes a resource from Terraform state (`terraform state rm` as code) while leaving the real cloud object running.
+</details>
+
+<details>
+<summary>16. Why is routine use of `terraform plan -target=...` an anti-pattern, and what should you do instead?</summary>
+
+`-target=module.net` tells Terraform to evaluate only a subgraph of the dependency DAG—meaning dependent resources outside the target are ignored, leaving your `.tf` code, `terraform.tfstate`, and live cloud infrastructure out of sync until a full untargeted `apply` is run. Reserve `-target` strictly for emergency break-glass recovery; if routine plans are too slow or risky, **split the monolithic root module into smaller, layered root modules** (`network/`, `storage/`, `gke/`, `gpu-pools/`, Chapter 4.23).
+</details>
+
+<details>
+<summary>17. Why are `terraform workspace`s risky for separating `prod` and `staging`, and when ARE workspaces useful?</summary>
+
+All CLI workspaces (`terraform workspace select prod`) in a directory **share the exact same backend storage bucket, the same cloud credentials, and the same `.tf` files**—so an engineer who forgets which workspace their terminal is in (`terraform workspace show`) can accidentally apply a dev change to production, and you cannot restrict IAM permissions per workspace easily. Use **separate directories (`envs/prod/`, `envs/staging/`)** with separate state buckets and separate OIDC IAM roles for permanent environments; use CLI workspaces only for short-lived ephemeral feature/benchmark copies inside a dev account.
+</details>
+
+<details>
+<summary>18. Why shouldn't you create a Kubernetes cluster (`google_container_cluster`) and deploy resources into it (`kubernetes_namespace`, `helm_release`) inside the same root module?</summary>
+
+The `kubernetes` and `helm` providers initialize their API connections during the **plan phase**. If `google_container_cluster.main` does not exist yet (or is being replaced), its `endpoint` and CA certificate are `(known after apply)`—causing the `kubernetes`/`helm` providers to fail during `plan` or fall back to `localhost:8080` (and if you `terraform destroy` a combined stack, cluster deletion races with in-cluster finalizers). Always split **Layer 1 (Cluster & Node Pools)** and **Layer 2 (Platform Helm Charts / GitOps Bootstrap)** into separate root modules (Chapter 4.25).
+</details>
+
+<details>
+<summary>19. Compare Terraform OSS, HCP Terraform (Terraform Cloud/Enterprise), and OpenTofu.</summary>
+
+- **Terraform OSS CLI:** HashiCorp's standard CLI (licensed under the Business Source License `BUSL 1.1` since v1.5.6); ubiquitous provider ecosystem via `registry.terraform.io`.
+- **HCP Terraform / Terraform Enterprise:** HashiCorp's managed control plane adding remote execution runners, state storage, RBAC, Sentinel/OPA policy gates, private module registry, and continuous drift detection.
+- **OpenTofu (`tofu` CLI):** The Linux Foundation open-source (`MPL 2.0`) drop-in fork of Terraform 1.6+, adding native client-side **state and plan encryption** (AES-GCM via KMS/passphrase), `for_each` on `provider` blocks, and early variable evaluation in `backend` / `module` source blocks.
+</details>
+
+<details>
+<summary>20. How do `local_file` and `templatefile()` bridge Terraform provisioning with Ansible configuration management?</summary>
+
+After Terraform provisions GPU VMs and networks, a `resource "local_file" "inventory"` task (or `terraform output -json`) renders `inventory.tftpl` using **`templatefile("${path.module}/inventory.tftpl", { cluster = ..., nodes = ... })`** to produce a ready-to-use `inventory.ini` / `hosts.yml` containing every provisioned node's private IP, rack/zone label, and GPU count—eliminating manual IP copy-pasting between Terraform and Ansible.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `terraform-up-and-running-3rd-edition` — Yevgeniy Brikman, *Terraform: Up and Running*, 3rd ed., **Chapter 1: Why Terraform** (read in full: the DevOps transformation, the 5 categories of IaC tools—ad-hoc scripts, configuration management, server templating VMs vs containers, orchestration, and provisioning; the 6 benefits of IaC; and comparing Chef, Puppet, Ansible, Pulumi, CloudFormation, Heat, and Terraform across 6 axes including mutable vs immutable, procedural vs declarative `count = 10 -> 15 -> 5` EC2 scaling, GPL vs DSL, master vs masterless, and agent vs agentless) and **Chapter 2: Getting Started with Terraform** (read in full: AWS account setup, deploying a single EC2 server with `user_data` `<<-EOF` and `user_data_replace_on_change = true`, `aws_security_group`, `terraform init`/`plan`/`apply`/`destroy`/`graph`, input `variable`s and `output`s, deploying a cluster with `aws_launch_configuration` + `aws_autoscaling_group` and `lifecycle { create_before_destroy = true }`, `data` sources `aws_vpc` and `aws_subnets`, and deploying an `aws_lb` Application Load Balancer with listener, target group, and listener rule).
+  - `nvidia-devops` (`volume-10/05-terraform-for-infrastructure-as-code.md`): paradigm, architecture, HCL masterclass, CLI reference, import and refactoring (`import`, `moved`, `removed`), workspaces, and OSS vs HCP vs OpenTofu.
+- **Run here:** `python3 code/part04/terraform_workflow_dag_lab.py` (3 passed, 0 failed).
+- **Explicitly labelled inferences:** The `compute_terraform_plan_actions`, `build_dependency_execution_waves`, and `matches_pessimistic_constraint` models in `code/part04/terraform_workflow_dag.py` and the GCP `google_compute_network`/`google_compute_instance` and `local_file` `inventory.tftpl` examples are the author's constructions synthesizing `TUR` Chapters 1 & 2 and `volume-10/05` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
+- **Not verified on live hardware:** Live `terraform` / `tofu` executions against GCP/AWS (`1.6.0`, `2.0.0`, `~> 5.30`, `~> 3.6`, `~> 2.5`, `1..64` nodes, `8896` MTU, `10.10.0.0/20`, `10.10.0.0/16`, `a2-highgpu-1g`, `200` GB, `0-65535`, `8080`, `10` parallelism, exit code `3`) are marked (`untested here`) where not executed by `terraform_workflow_dag_lab.py`.
