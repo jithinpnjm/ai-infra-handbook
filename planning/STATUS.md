@@ -265,7 +265,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 1.26 | KVM, QEMU and libvirt basics | drafted | 8425 |  |
 | 1.27 | Cloud computing and virtualization internals for Linux engineers | drafted | 8630 |  |
 | 2.15 | BGP fundamentals | drafted | 6650 |  |
-| 2.16 | BGP in the data center: eBGP Clos, unnumbered, ECMP, anycast | drafted | 6258 |  |
+| 2.16 | BGP in the data center: eBGP Clos, unnumbered, ECMP, anycast | drafted | 8410 |  |
 | 2.17 | Overlays: VXLAN and EVPN | drafted | 5081 |  |
 | 2.18 | Data center topologies: Clos, leaf-spine, oversubscription, failure domains | drafted | 6130 |  |
 | 2.19 | Queuing, QoS, ECN, PFC and DCB basics | drafted | 5635 |  |

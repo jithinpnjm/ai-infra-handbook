@@ -17,3 +17,4 @@
 | 2.13 IP routing: static, dynamic and convergence | `ip_routing_convergence.py` | `ip_routing_convergence_lab.py` | 12 | `python3 code/part02/ip_routing_convergence_lab.py` |
 | 2.14 OSPF and IS-IS (plus RIP and EIGRP) | `ospf_isis_protocols.py` | `ospf_isis_protocols_lab.py` | 15 | `python3 code/part02/ospf_isis_protocols_lab.py` |
 | 2.15 BGP fundamentals | `bgp_fundamentals.py` | `bgp_fundamentals_lab.py` | 12 | `python3 code/part02/bgp_fundamentals_lab.py` |
+| 2.16 BGP in the data center: eBGP Clos, unnumbered, ECMP | `bgp_datacenter_clos.py` | `bgp_datacenter_clos_lab.py` | 14 | `python3 code/part02/bgp_datacenter_clos_lab.py` |
