@@ -620,7 +620,7 @@ Each NUMA node has 64 CPU cores and 4 GPUs, and four pods filled NUMA 0. On NUMA
 - Unifying the NVLink domain table, the Fabric Manager version and ordering auditor, the Kubernetes single-NUMA pod admission simulator, and the four-stage benchmark decision tree into `code/part10/fabric_manager_nvlink.py` is **my inference**.
 
 ### Not verified on live hardware
-- Multi-node HGX and InfiniBand hardware was not attached during this build. All shell commands in Section 5 are marked `(untested here)`.
+- Multi-node HGX and InfiniBand hardware was not attached during this build. All shell commands in Section 5 (`--topology-manager-policy=single-numa-node`, `sriov-network-device-plugin`, `ConnectX-6/7/8` / `CONNECTX_GENERATIONS`, `NVLINK_DOMAINS`, `MN-NVL`, `NVSHMEM` / `PGAS`, `cudaMemcpyPeerAsync`, `DataLoaders`, `AVG` bandwidth, `nvsm_show_health.json`, `nvsm_resources.json`, `result.json`, `.zip` bundles, `26` / `102` / `108` / `111` / `150` / `596` / `606` metrics, cross-referenced with Chapters `2.3` and `9.1` and `planning/STRUCTURE.md`) are marked `(untested here)`.
 
 ### Not in the corpus
 - Standalone NVIDIA Fabric Manager User Guide and NVIDIA NVSM User Guide PDFs are external public references. All Fabric Manager and NVSM commands, paths, and outputs in this chapter are verified against the BCM 11 Administrator Manual Sections 10.13 and 10.14 and the `nvidia-devops` masterclasses.

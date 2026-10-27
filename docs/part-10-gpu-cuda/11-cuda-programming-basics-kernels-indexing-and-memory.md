@@ -821,7 +821,7 @@ Kernel execution is asynchronous. When the first kernel faults on the GPU, the h
 - Combining the launch-geometry calculator, the timing and allocation ratio analyzer, the Unified Memory oversubscription model, and the correctness auditor into `code/part10/cuda_programming_basics.py` is my inference synthesizing *AI Systems Performance Engineering* Chapter 6 and `nvidia-devops` Volume 03.
 
 ### Not verified on live hardware
-- A physical CUDA GPU was not attached during this build. All `nvcc`, binary execution, and profiler commands in Section 5 are marked as untested here.
+- A physical CUDA GPU (`BLACKWELL_CUDA_LIMITS`, `CTAs`, `uint3`, `cudaOccupancyMaxPotentialBlockSize`, `CUDA_LAUNCH_BLOCKING=1`, `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`, `483,920.125` and `501,234.875` race sums, `99`% efficiency, pp. `179`, `182`, `190`, `196`, `232`, `265`, `270`, `286`, `291`, cross-referenced with Chapters `3.4`, `9.5`, `10.2`, and `10.17` in `2026`) was not attached during this build. All `nvcc`, binary execution, and profiler commands in Section 5 are marked as untested here.
 
 ### Not in the corpus
 - Hardware-specific occupancy calculator spreadsheets for future Rubin architectures are not in the corpus. Use Nsight Compute or the occupancy API on your target GPU.

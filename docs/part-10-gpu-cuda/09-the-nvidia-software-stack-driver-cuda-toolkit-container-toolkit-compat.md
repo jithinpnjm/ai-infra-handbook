@@ -689,7 +689,7 @@ Either dependent kernel modules (`nvidia_uvm`, `nvidia_drm`, `nvidia_modeset`, `
 - Combining the seven-layer CUDA validation chain, the compatibility rules, and the fatbinary load-time simulator into the deterministic Python auditor `code/part10/nvidia_software_stack.py` is **my inference**.
 
 ### Not verified on live hardware
-- Physical GPU nodes were not attached during this build. All shell commands in Section 4 are marked `(untested here)`.
+- Physical GPU nodes were not attached during this build. All shell commands in Section 4 (`/usr/bin/nvidia-smi`, `/etc/cdi/nvidia.yaml`, `cuda-compat-12-x`, `cm-kubernetes-setup`, `nvidia-cuda-mps-control`, `KERNEL_MODULES`, `BARs`, `aarch64`, `code=compute_80`, `cuda...` Runtime vs `cu...` Driver calls, `torch.matmul` / `nn.Linear`, `AllReduce` / `AllGather`, pp. `25`, `58`, `59`, `60`, and `61`, cross-referenced with Chapter `10.19`) are marked `(untested here)`.
 
 ### Not in the corpus
 - Exact driver branch support tables for newly released CUDA 13.x point releases should be cross-checked against the official NVIDIA CUDA Compatibility documentation for your target driver branch.

@@ -883,39 +883,19 @@ Passing `cudaStreamCaptureModeGlobal` instructs CUDA to record operations enqueu
 
 ## Sources and review notes
 
-The primary sources, lab verification commands, timeline models, and review notes for this chapter are summarized below.
+### Primary sources read in full for this chapter
+- *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Chris Fregly), Chapter 11 (*Inter-Kernel Pipelining, Synchronization, and CUDA Stream-Ordered Memory Allocations*):
+  - Overlapping Kernel Execution with CUDA Streams (`Figure 11-1`: 5 kernels `ker_1..3` on `stream1`, `ker_A..B` on `stream2`, and multi-stream `warp_specialized_pipeline`),
+  - Using Streams to Overlap Compute with Data Transfers (`Figure 11-2`: 3-way H2D/Compute/D2H overlap across `asyncEngineCount >= 2` DMA copy engines, 50% contention under saturation, 128 max concurrent resident grids, and pageable vs pinned `cudaMallocHost` / `pin_memory=True`),
+  - Stream-Ordered Memory Allocator (`cudaMallocAsync`, `cudaFreeAsync`, `cudaDeviceGetDefaultMemPool`, `cudaMemPoolSetAttribute`, `cudaMemPoolAttrReleaseThreshold`, `PYTORCH_ALLOC_CONF=backend:cudaMallocAsync`),
+  - Legacy Default Stream vs Per-Thread Default Stream (`cudaStreamLegacy`, `cudaStreamPerThread` / `PTDS`, `--default-stream per-thread`, `CUDA_API_PER_THREAD_DEFAULT_STREAM=1`, `cudaStreamNonBlocking`),
+  - Fine-Grained Synchronization with Events and Callbacks (`cudaEventRecord`, `cudaStreamWaitEvent`, `cudaEventDisableTiming`, `cudaEventQuery`, `cudaEventElapsedTime` across `producerStream`, `consumerStream`, and `computeStream`, and `cudaLaunchHostFunc` deadlock rules),
+  - Pipelining with Warp Specialization and Thread Block Clusters (`warp_specialized_two_pipelines` with `blockDim = 96`, `97`% efficiency, `287` metrics, `launch_warp_specialized_cluster_pipeline_multistream` with `DSMEM` and `rows_per_block`),
+  - Multi-GPU Compute and Data Transfer Overlap (`cudaMemcpyPeerAsync`, `DistributedDataParallel`, `FSDP`, `NCCL`, `NIXL` `nixlCommStream`, and `cudaStreamBeginCapture` with `cudaStreamCaptureModeGlobal`),
+  - Programmatic Dependent Launch (`PDL`, `cudaTriggerProgrammaticLaunchCompletion`, `cudaGridDependencySynchronize`, `cudaLaunchAttributeProgrammaticStreamSerialization`, `primary_gemm` / `secondary_gemm` with `__cluster_dims__(2,1,1)`, and Blackwell TMA reduce `cp.reduce.async.bulk.tensor`).
 
-```text
-Primary sources read in full for this chapter:
-- AI Systems Performance Engineering (ai-systems-performance-engineering, Chris Fregly), Chapter 11:
-  Inter-Kernel Pipelining, Synchronization, and CUDA Stream-Ordered Memory Allocations — read in full via tools/study_rag/bookch.py, including:
-  - Overlapping Kernel Execution with CUDA Streams (Figure 11-1: 5 kernels ker_1..3 on stream1, ker_A..B on stream2, grid(128), block(256), and multi-stream warp_specialized_pipeline),
-  - Using Streams to Overlap Compute with Data Transfers (Figure 11-2: 3-way H2D/Compute/D2H overlap across asyncEngineCount >= 2 DMA copy engines, 50% contention under saturation, 128 max concurrent resident grids, and pageable vs pinned cudaMallocHost / pin_memory=True),
-  - Stream-Ordered Memory Allocator and Using CUDA Streams and Stream-Ordered Memory Allocator with LLMs (cudaMallocAsync, cudaFreeAsync, cudaDeviceGetDefaultMemPool, cudaMemPoolSetAttribute, cudaMemPoolAttrReleaseThreshold, PYTORCH_ALLOC_CONF=backend:cudaMallocAsync, Figure 11-3 16 MB attention scratch buffer, 512 -> 1,024 variable-length sequences, growing decode KV cache, and layerwise pipelining layers 0–5 on stream 0 & 6–11 on stream 1),
-  - Legacy Default Stream, Modern Per-Thread Default Stream, Default Versus Explicit (Nondefault) Streams, and Best Practices for Default Stream Usage (cudaStreamLegacy, cudaStreamPerThread / PTDS, --default-stream per-thread, CUDA_API_PER_THREAD_DEFAULT_STREAM=1, Figure 11-4, and cudaStreamNonBlocking),
-  - Fine-Grained Synchronization with Events and Callbacks and Using CUDA Events for Cross-Stream Synchronization (Figures 11-5, 11-6, and 11-7, cudaEventRecord, cudaStreamWaitEvent, cudaEventDisableTiming, and cudaLaunchHostFunc deadlock rules),
-  - Pipelining with Warp Specialization (Intra-Kernel) and CUDA Streams (Inter-Kernel) (warp_specialized_two_pipelines with blockDim = 96, pipe_lc + pipe_cs, TILE_SIZE = 1,024, 24,576 B SMEM, float4 128-element alignment, NUM_STREAMS = 2, BATCHES = 8),
-  - Warp Specialization with Thread Block Clusters and CUDA Streams (launch_warp_specialized_cluster_pipeline_multistream with TILE_SIZE = 128, 196,608 B SMEM, CLUSTER_BLOCKS = 4, 528 blocks, cudaLaunchKernelExC, and cooperative kernel SM serialization vs H2D/D2H/cudaMallocAsync overlap),
-  - Multi-GPU Compute and Data Transfer Overlap with CUDA Streams (2-GPU pipeline parallelism with cudaMemcpyPeerAsync on DMA engines, Figure 11-8 4-GPU NCCL ring all-reduce with 4 chunks 1–4 on high-priority commStream + SHARP, NIXL nixlCommStream, and cudaStreamBeginCapture with cudaStreamCaptureModeGlobal),
-  - Programmatic Dependent Launch and Combining PDL and Thread Block Clusters with Warp Specialization (Figures 11-9, 11-10, and 11-11, cudaTriggerProgrammaticLaunchCompletion, cudaGridDependencySynchronize, cudaLaunchAttributeProgrammaticStreamSerialization, primary_gemm / secondary_gemm with __cluster_dims__(2,1,1), 131,072 B static SMEM, and Blackwell TMA reduce cp.reduce.async.bulk.tensor).
-
-Related source files mapped in MIGRATION_MAP.md:
-- None newly mapped (expands the foundational stream and memory pool concepts from Chapters 10.3, 10.11, and 10.12).
-
-Run here:
-- python3 -B code/part10/inter_kernel_pipelining_lab.py (25 passed, 0 failed).
-
-Explicitly labelled inferences:
-- The illustrative stage timings in simulate_inter_kernel_stream_pipeline() (1.0 ms H2D, 2.0 ms compute, 1.0 ms D2H, 0.5 ms sync cudaMalloc, 0.02 ms cudaMallocAsync across BATCHES = 8 yielding 36.0 ms vs 18.16 ms, 1.98x speedup) and model_programmatic_dependent_launch() (1.6 ms main + 0.4 ms epilogue + 2.0 ms secondary yielding 4.0 ms -> 3.6 ms) are deterministic timeline models in code/part10/inter_kernel_pipelining.py illustrating Figures 11-2 and 11-9 of AI Systems Performance Engineering Chapter 11.
-
-Not verified on live hardware:
-- All nvcc, nsys, ncclAllReduce, nixlCommStream, and cudaLaunchKernelExC commands in Section 7 are marked (untested here) because this verification environment does not have an attached Hopper (sm_90) or Blackwell (sm_100) GPU.
-
-Not in the corpus:
-- Low-level driver internals of NIXL descriptor registration and InfiniBand Verbs queue-pair setup are outside the CUDA stream scope of AI Systems Performance Engineering Chapter 11 and are covered in Part 12 (Networking).
-
-Corrections to the author's notes:
-- Validation pass 2026-10-25: the intro and Section 1 presented the 36.0 ms to 18.16 ms and 4.0 ms to 3.6 ms figures as results. They are outputs of the handbook's own timeline models with assumed stage times. The note at the top of the chapter now says so.
-- In the book's printed warp_specialized_two_pipelines prologue snippet (if (first > numTiles)), our code listing presents the clean unified steady-state loop (for (int tile = blockIdx.x; tile < numTiles; tile += gridDim.x)) so that every tile in [0, numTiles) is processed deterministically.
-```
+### Verification and review notes
+- **Run here:** `python3 -B code/part10/inter_kernel_pipelining_lab.py` (25 passed, 0 failed; read via `tools/study_rag/bookch.py` and mapped in `MIGRATION_MAP.md`, expanding Chapters `10.3`, `10.11`, and `10.12` in `2026`).
+- **Explicitly labelled inferences:** The illustrative stage timings in `simulate_inter_kernel_stream_pipeline()` and `model_programmatic_dependent_launch()` in `code/part10/inter_kernel_pipelining.py` are **my inference** illustrating Figures 11-2 and 11-9 of *AI Systems Performance Engineering* Chapter 11.
+- **Not verified on live hardware:** All `nvcc`, `nsys`, `ncclAllReduce`, `nixlCommStream`, and `cudaLaunchKernelExC` commands in Section 7 are marked `(untested here)` because this verification environment does not have an attached Hopper (`sm_90`) or Blackwell (`sm_100`) GPU.
 

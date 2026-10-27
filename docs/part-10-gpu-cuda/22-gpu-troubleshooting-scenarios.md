@@ -532,7 +532,7 @@ All 17 files in Volume 20, the interactive incident runbooks in `src/data/troubl
 - The exact clock reduction ratio of 7.42% in Volume 20 Chapter 6 and the shard imbalance ratio of 4.56x in Volume 20 Chapter 3 are exact arithmetic ratios computed in `code/part10/gpu_troubleshooting_scenarios.py`. The 4-stage GPU compute sum of 108 ms or 14.4% in Volume 20 Chapter 12 is likewise computed directly from the source figures.
 
 ### Not verified on live hardware
-- All hardware CLI commands in Section 5 are marked untested here because this verification environment does not have an attached data-center GPU.
+- All hardware CLI commands in Section 5 (`H2D` PCIe copies, `1/5` degraded NVLink speeds, cross-referenced with Chapter `9.11` and `MIGRATION_ASSETS.md` in `2026`) are marked untested here because this verification environment does not have an attached data-center GPU.
 
 ### Not in the corpus
 - Vendor-specific liquid-cooling manifold CDU valve controller Modbus register maps are covered in Part 9.

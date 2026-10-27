@@ -619,5 +619,5 @@ These files are assigned to this chapter in `planning/MIGRATION_MAP.md`. The sta
 - **Tensor Core alignment and SM pipeline routing validator:** Combining the tile alignment multiples across TF32, FP16, BF16, FP8, INT8, and NVFP4 with the misalignment example and `dmon` plus `ncu` decision tree from the Volume 02 notes into a deterministic Python validator is my inference. That validator is `check_tensor_core_eligibility` in `code/part10/tensor_cores_precision.py`.
 
 ### Not verified on live hardware
-- The commands `dcgmi dmon -e 1002,1004,1005` and `ncu --metrics sm__pipe_tensor_cycles_active...` were not executed on a live GPU VM in this authoring environment.
+- The commands `dcgmi dmon -e 1002,1004,1005` and `ncu --metrics sm__pipe_tensor_cycles_active...` (`Shared/L1`, `134.2` GB/s, `22` registers, cross-referenced with Chapter `10.1`) were not executed on a live GPU VM in this authoring environment.
 

@@ -610,7 +610,7 @@ Source Breakdown — AI Systems Performance Engineering Ch 7 (pp. 215-252):
 - The warp sector simulator `analyze_warp_global_memory_access()`, the vectorized load validator `calc_vectorized_warp_load()`, the bank-conflict analyzer `analyze_shared_memory_bank_conflicts()`, and the residency calculator `calc_tile_residency_and_register_budget()` in `code/part10/memory_access_patterns.py` are **my inference** encoding the hardware formulas and benchmark tables of *AI Systems Performance Engineering* Chapter 7.
 
 ### Not verified on live hardware
-- A physical Blackwell or Hopper GPU was not attached during this build, so `nvcc` and `ncu` commands in Section 5 are marked `(untested here)`.
+- A physical Blackwell or Hopper GPU was not attached during this build, so `nvcc` and `ncu` commands in Section 5 (`64K` constant memory, `tile0` and `tile1` ping-pong staging, `30` / `217` cycle latencies, Volume `02` notes, cross-referenced with Chapters `10.2`, `10.5`, `10.11`, `10.12`, and `10.16` in `2026`) are marked `(untested here)`.
 
 ### Not in the corpus
 - Low-level CUTLASS CuTe layout swizzling algebra beyond the conceptual XOR swizzling overview in *AI Systems Performance Engineering* Chapter 7.

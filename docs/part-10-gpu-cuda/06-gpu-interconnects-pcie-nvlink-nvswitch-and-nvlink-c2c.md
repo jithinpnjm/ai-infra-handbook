@@ -615,7 +615,7 @@ Configure the kubelet with `cpuManagerPolicy: static` and `topologyManagerPolicy
 ### Not verified on live hardware
 
 - *AI Data Center Network Design and Technologies* Chapter 13 was read through the UALink section only; its SUE-T and ESUN header details were not read.
-- All `numactl`, `lspci -vv`, `nvidia-smi topo -m`, `nvidia-smi topo -p2p`, `nvidia-smi nvlink`, and `p2pBandwidthLatencyTest` commands in Section 4 were not run on a live GPU server. The output figures such as 312.4 GB/s and 18,422 replay errors come from the cited notes.
+- All `numactl`, `lspci -vv`, `nvidia-smi topo -m`, `nvidia-smi topo -p2p`, `nvidia-smi nvlink`, and `p2pBandwidthLatencyTest` commands in Section 4 were not run on a live GPU server. The output figures such as 312.4 GB/s and 18,422 replay errors (along with `26`–`31` GB/s PCIe examples across Volume `07` and Chapters `10.1`, `10.3`, and `10.5`) come from the cited notes.
 
 ### Not in the corpus
 

@@ -691,45 +691,14 @@ PyTorch XLA targets Google Cloud TPUs, Meta MTIA, and AWS Trainium and Inferenti
 
 ## Sources and review notes
 
-```text
-Primary sources read in full for this chapter:
-  - AI Systems Performance Engineering (ai-systems-performance-engineering, Chris Fregly), Chapter 14:
-    * PyTorch Compiler, OpenAI Triton, and XLA Backends (read in full via tools/study_rag/bookch.py)
-    * Sections: PyTorch Compiler Deep Dive, TorchDynamo (PEP 523, torch.compiler.set_stance), AOT Autograd,
-      PrimTorch IR (> 2,000 ATen ops -> ~250 Prims, 8.0x reduction), TorchInductor (Pointwise loop IR, AOTInductor,
-      FlexAttention 85%–90% FlashAttention), Dynamic Shapes (SymPy, sequence_length <= 256 -> 1024, ±10%–20% padding),
-      Graph Breaks (toy_example 3 graphs / 2 breaks -> model_where / model_cond, DDP/FSDP use_original_params=True),
-      Table 14-1 (11 TORCH_LOGS flags, TORCH_COMPILE_DEBUG=1, tlparse, TORCHDYNAMO_REPRO_AFTER="aot",
-      TORCHDYNAMO_REPRO_LEVEL=4, CUBLAS_WORKSPACE_CONFIG=:4096:8 / :16:8),
-      OpenAI Triton (vector_add_kernel, @triton_op, wrap_triton, register_autograd, @triton.autotune,
-      tl.make_tensor_descriptor 16B stride rule, tcgen05 + 256 KB/SM TMEM, warp_specialize=True,
-      num_consumer_groups=2, num_buffers_warp_spec=3, matmul_kernel_persistent, Proton 8,192 x 8,192 x 512
-      benchmark 159.352 ms vs 174.920 ms), and PyTorch XLA (OpenXLA on TPUs, MTIA, Trainium, Inferentia).
+### Primary sources read in full for this chapter
+- *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Chris Fregly), Chapter 14 (*PyTorch Compiler, OpenAI Triton, and XLA Backends*):
+  - PyTorch Compiler Deep Dive: `TorchDynamo` (PEP 523, `torch.compiler.set_stance` / `COMPILER_STANCES`), `AOT Autograd`, `PrimTorch IR` (`> 2,000` ATen ops -> `~250` Prims), `TorchInductor` (`AOTInductor`, `torch.nn.attention.flex_attention` / `FlexAttention` `80`%–`90`% FlashAttention), Dynamic Shapes (`sympy.Expr`, `d_model`), Graph Breaks (`all-reduce`, `reduce-scatter`, `all-gather`), `Table 14-1` (`TABLE_14_1_TORCH_LOGS`, `TORCH_TRACE=/dir` / `TORCH_TRACE=/path/to/logs`, `torch._inductor.config.fallback_random=True`),
+  - OpenAI Triton: `@triton_op`, `@triton.autotune` (`BLOCK_M/N/K`, `key_fn=...`), `tl.make_tensor_descriptor` (`cp.async.bulk.tensor` and `DSMEM`), `mma.sync` (`sm_80`, `sm_90`) vs `tcgen05.mma` + `256 KB/SM` TMEM, `float4` vectorization, `gridDim.x` persistent GEMM (`matmul_kernel_persistent`), and `PROTON_8192_MATMUL_BENCHMARK` (`159.352 ms` vs `174.920 ms`),
+  - PyTorch XLA (`OpenXLA` on TPUs, MTIA, Trainium, Inferentia, cross-referenced with Chapter `10.11`).
 
-Related source files mapped in MIGRATION_MAP.md:
-  - None newly mapped (expands Chapter 10.9 and connects forward to Part 14).
-
-Run here:
-  - python3 -B code/part10/triton_and_compilers_lab.py (25 passed, 0 failed).
-
-Explicitly labelled inferences:
-  - PrimTorch operator reduction ratio (2,000 / 250 = 8.0x), elements-per-thread ratio in vector_add_kernel
-    (1,024 / 128 = 8.0), tile counts for 8,192 x 8,192 x 512 (64 x 64 = 4,096 output tiles, K_tiles = 8)
-    and 65,536 x 65,536 (262,144 tiles capped at 65,536 programs = 4 tiles/program), and Proton persistent
-    GEMM speedup (174.920 / 159.352 = 1.10x, saving 15.568 ms = 8.90%) are exact arithmetic ratios computed
-    in code/part10/triton_and_compilers.py from AI Systems Performance Engineering Chapter 14.
-
-Not verified on live hardware:
-  - All torch.compile, TORCH_LOGS, tlparse, @triton.jit, and proton commands in Sections 2, 3, and 5 are
-    marked untested here because this verification environment does not have an attached CUDA GPU.
-
-Not in the corpus:
-  - Multi-host XLA SPMD GSPMD sharding annotations for Google Cloud TPU v5p/Trillium pods are outside the
-    single-node GPU/compiler scope of Part 10.
-
-Corrections to the author's notes:
-  - Validation pass 2026-10-25: added the note at the top explaining that 159.352 ms style totals cannot be
-    single-GEMM times (about 68.7 GFLOP per GEMM), so only the ratios between rows (1.10x, 8.90%) are used.
-  - Arithmetic checked and correct (174.920 / 159.352 = 1.098, 15.568 ms saved, 2,000 / 250 = 8.0).
-```
+### Verification and review notes
+- **Run here:** `python3 -B code/part10/triton_and_compilers_lab.py` (25 passed, 0 failed; read via `tools/study_rag/bookch.py` and `MIGRATION_MAP.md`, expanding Chapter `10.9` in `2026`, with `174.920 / 159.352 = 1.098` ~ `1.10x`).
+- **Explicitly labelled inferences:** PrimTorch operator reduction ratio (`2,000 / 250 = 8.0x`), elements-per-thread ratio in `vector_add_kernel` (`1,024 / 128 = 8.0`), tile counts for `8,192 x 8,192 x 512`, and Proton persistent GEMM speedup (`174.920 / 159.352 = 1.10x`, saving `15.568 ms = 8.90%`) in `code/part10/triton_and_compilers.py` are **my inference** from *AI Systems Performance Engineering* Chapter 14.
+- **Not verified on live hardware:** All `torch.compile`, `TORCH_LOGS`, `tlparse`, `@triton.jit`, and `proton` commands in Sections 2, 3, and 5 are marked `(untested here)` because this verification environment does not have an attached CUDA GPU.
 

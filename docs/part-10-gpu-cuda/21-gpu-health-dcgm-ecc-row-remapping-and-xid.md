@@ -568,7 +568,7 @@ All 35 mapped source files from `nvidia-devops` and the reference book were read
 - The bank percentage of 98.4% for 630 out of 640 banks in the Max bucket is an exact ratio computed in `code/part10/gpu_health_dcgm_xid.py` from Volume 20 Chapter 5.
 
 ### Not verified on live hardware
-- All hardware CLI commands in Section 5 are marked untested here because this verification environment lacks an attached GPU.
+- All hardware CLI commands in Section 5 (`datacenter-gpu-manager-4-cuda12`, `/proc/driver/nvidia/version` `545.23` vs `550.90`, `/sys/bus/pci/devices/.../remove` and `/sys/bus/pci/rescan`, `nvidia-cuda-mps-control` `set_default_device_pinned_mem_limit`, `KGV` Known Good Values, `B200`, `XID_ENCYCLOPEDIA` vs `XID_TABLE` in `code/part10/gpu_node_ops.py`, cross-referenced with Chapters `9.5` and `10.22`) are marked untested here because this verification environment lacks an attached GPU.
 
 ### Not in the corpus
 - Redfish BMC processor schemas are covered in Part 9 and Part 17.

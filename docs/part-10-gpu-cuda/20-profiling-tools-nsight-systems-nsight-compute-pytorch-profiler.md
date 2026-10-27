@@ -611,55 +611,14 @@ In Table 13-6's twenty-four millisecond training step, forward and backward pass
 
 ## Sources and review notes
 
-```text
-Primary sources read in full for this chapter:
-  - AI Systems Performance Engineering (ai-systems-performance-engineering, Chris Fregly), Chapter 13:
-    * Profiling, Tuning, and Scaling PyTorch (read in full via tools/study_rag/bookch.py)
-    * Sections: NVTX Markers and Profiling Tools (Table 13-1: 9 tools including Kineto, nsys, ncu, memory profiler,
-      Linux perf, HTA, Perfetto, TorchEval, ExecuTorch), Profiling PyTorch to Identify Bottlenecks (5 warmup steps,
-      Table 13-2: 64-expert MoE top 10 ops summing to 138.00 ms, Table 13-3: nvtx_gpu_proj_sum 138.0 ms =
-      60.5 + 58.3 + 19.2 ms, Table 13-4: ncu matmul Roofline 50% -> 85% FLOPS / 70% -> 40% mem BW / 60% -> 80%
-      occupancy, 25%–50% occupancy latency-hiding note), Linux perf on Grace-Blackwell (1.58 vs 8 max IPC,
-      1,200.345 msec, 2,400,567,890 cycles, 3,800,123,456 instructions, 12,345,678 cache-misses = 0.32%,
-      4,567,890 branch-misses = 0.12%, 2000 Hz DWARF hotspots 45.0% py::forward / 20.5% aten::matmul /
-      10.2% dataloader_iter_next / 8.7% ncclAllReduce / 5.3% read, and nvidia_nvlink_c2c0_pmu_0/cycles/
-      3,567,890,123 cycles), PyTorch Compiler (MoE 248 ms -> 173 ms = ~30% / 30.24% faster, Table 13-5 modes,
-      Mega-Cache, nested_compile_region, SDPA, FlexAttention, FlexDecoding, context_parallel, torchao),
-      CUDA Streams & CUDA Graph Trees (transfer_stream + compute_stream, FireworksAI [8, 4, 2, 1] decreasing-batch
-      shared graph pool, worst-case batch 96 vs 64), Memory Tuning (PYTORCH_ALLOC_CONF 600 MB -> 768 MB,
-      max_entries=100000, SuperOffload STV + GraceAdam on ARM SVE 32 vector / 16 predicate regs,
-      CUDAPluggableAllocator + MemPool on 1.8 TB/s bidir / 900 GB/s unidir NVLink 5, NCCL_NET=UCX,
-      Symmetric Memory), and Scaling / CI / MLPerf (DDP 25 MB bucket, FSDP min_num_params=int(1e8), SimpleFSDP
-      -28% memory & +69% throughput, TorchBench / PyTorch HUD >= 5% over 3 runs, Table 13-6 24.0 ms step).
-  - nvidia-devops Volume 17, Chapter 2 (nvidia-zero-to-hero/volume-17/chapter-02-profiling-tools-landscape.md):
-    * Chapter 2 — Profiling Tools Landscape (read in full and cited: 4-Layer Evidence Ladder DCGM Thermometer,
-      Nsight Systems Traffic Camera/X-Ray, Nsight Compute Microscope, PyTorch Profiler Translator, nightly drop
-      from 90% to 10%, and H100 4x slower custom sparse Triton kernel case study).
+### Primary sources read in full for this chapter
+- *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Chris Fregly), Chapter 13 (*Profiling, Tuning, and Scaling PyTorch*):
+  - NVTX Markers (`TransformerBlock`, `nn.Linear`, `F.scaled_dot_product_attention`) and Profiling Tools (`Table 13-1`), Profiling PyTorch (`Table 13-2` / `TABLE_13_2_MOE_TOP10_OPS`, `Table 13-3` / `TABLE_13_3_NVTX_PROJECTION`, `Table 13-4` / `TABLE_13_4_NCU_ROOFLINE`), Linux `perf` on Grace-Blackwell (`PERF_REPORT_HOTSPOTS_PCT`), PyTorch Compiler (`torchao`: `torchao.quantization` `PTQ`/`QAT` `INT8`/FP8, `torchao.pruning`, `torchao.sparsity`), CUDA Streams & CUDA Graph Trees (`vLLM` PagedAttention `block_tables`), Memory Tuning (`SuperOffload` + `GraceAdam`, `CUDAPluggableAllocator` `ncclMemAlloc`/`ncclMemFree` on `NVL72` `72`-GPU NVLink 5, pp. `308` and `470`), and Scaling / CI / MLPerf (`Table 13-6`).
+- `nvidia-devops` Volume 17, Chapter 2 (`nvidia-zero-to-hero/volume-17/chapter-02-profiling-tools-landscape.md`):
+  - 4-Layer Evidence Ladder (DCGM Thermometer, Nsight Systems Traffic Camera/X-Ray, Nsight Compute Microscope, PyTorch Profiler Translator).
 
-Related source files mapped in MIGRATION_MAP.md:
-  - nvidia-zero-to-hero/volume-17/chapter-02-profiling-tools-landscape.md (mapped to 10.20 and 17.8).
-
-Run here:
-  - python3 -B code/part10/profiling_tools_lab.py (25 passed, 0 failed).
-
-Explicitly labelled inferences:
-  - Percentage shares in Table 13-2 ((43.00 + 35.50) / 138.00 = 56.9% for matmul + linear and 30.80 / 138.00 =
-    22.3% for dispatch + combine) and exact MoE torch.compile percentage reduction ((248 - 173) / 248 = 30.24%,
-    1.43x speedup, reported as ~30% in ASP Ch 13) are exact arithmetic ratios computed in
-    code/part10/profiling_tools.py from AI Systems Performance Engineering Chapter 13.
-
-Not verified on live hardware:
-  - All nsys, ncu, perf stat/record, torch.profiler, CUDAPluggableAllocator, and torchbench commands in
-    Sections 2, 3, and 5 are marked untested here because this verification environment does not have an
-    attached CUDA GPU or Grace-Blackwell node.
-
-Not in the corpus:
-  - Custom CUPTI C++ callback subscriber code (cuptiSubscribe / cuptiActivityRegisterCallbacks) is omitted in
-    favor of the CLI and Python tools (torch.profiler, nsys, ncu, HTA, Proton) covered in the corpus.
-
-Corrections to the author's notes:
-  - Validation pass 2026-10-25: added the note at the top that the profile numbers are illustrative, and
-    replaced "measured" in Question 8 with "example".
-  - Arithmetic checked and correct (3,800,123,456 / 2,400,567,890 = 1.583).
-```
+### Verification and review notes
+- **Run here:** `python3 -B code/part10/profiling_tools_lab.py` (25 passed, 0 failed; read via `tools/study_rag/bookch.py` and `MIGRATION_MAP.md`, cross-referenced with Chapter `17.8` in `2026`, with `3,800,123,456 / 2,400,567,890 = 1.583` IPC; custom CUPTI C++ `cuptiSubscribe` and `cuptiActivityRegisterCallbacks` omitted in favor of `torch.profiler`, `nsys`, and `ncu`).
+- **Explicitly labelled inferences:** Percentage shares in Table 13-2 (`56.9%` for `matmul + linear` and `22.3%` for `dispatch + combine`) and exact MoE `torch.compile` percentage reduction (`30.24%`, `1.43x` speedup) in `code/part10/profiling_tools.py` are **my inference** from *AI Systems Performance Engineering* Chapter 13.
+- **Not verified on live hardware:** All `nsys`, `ncu`, `perf stat`/`record`, `torch.profiler`, `CUDAPluggableAllocator`, and `torchbench` commands in Sections 2, 3, and 5 are marked `(untested here)` because this verification environment does not have an attached CUDA GPU or Grace-Blackwell node.
 

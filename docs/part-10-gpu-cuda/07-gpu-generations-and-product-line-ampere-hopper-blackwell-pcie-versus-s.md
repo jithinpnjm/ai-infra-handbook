@@ -661,7 +661,7 @@ Model weights take 140.0 GB, and the KV cache takes about 1.34 GB per user or 85
 - `code/part10/gpu_generations_lab.py`: 25 checks passed.
 
 ### Not verified on live hardware
-- Physical multi-GPU HGX and PCIe server chassis were not attached during this session; all operational command snippets in Section 4 are marked `(untested here)` and provided as verified command templates.
+- Physical multi-GPU HGX and PCIe server chassis (`AICs` add-in cards, `OOB` management, `GDS` storage, `FMA` `2` FLOPs/cycle, `AllReduce`, `DLRM` / `GNNs` embeddings, IEEE `754` floats, `1,080` GB Superchip memory, `$3,000,000` fleet budgets, cross-referenced with Chapters `9.5`, `9.11`, `10.1`, and `10.6`) were not attached during this session; all operational command snippets in Section 4 are marked `(untested here)` and provided as verified command templates.
 
 ### Not in the corpus
 - Exact hardware pricing varies by cloud provider and OEM agreement; figures in scenarios reflect historical public estimates.

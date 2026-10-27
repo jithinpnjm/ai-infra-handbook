@@ -796,57 +796,22 @@ In Volume 03 Chapter 12, `nvidia-smi` reports 1,895 MiB free out of 40,960 MiB t
 
 ## Sources and review notes
 
-The primary sources, mapped Volume 03 files, lab verification runs, and review notes for this chapter are listed below.
+### Primary sources read in full for this chapter
+- *AI Systems Performance Engineering* (`ai-systems-performance-engineering`, Chris Fregly), Chapter 12 (*Dynamic Scheduling, CUDA Graphs, and Device-Initiated Kernel Orchestration*):
+  - Dynamic Scheduling with Atomic Work Queues (`DGX GB200 NVL72`, `atomic_transactions_per_request ~ 1.0`, `uneven_static.cu` `200 ms` vs `uneven_dynamic.cu` `100 ms` = `2x` speedup on `N = 1 << 20`),
+  - CUDA Graphs (`Table 12-1` / `TABLE_12_1_CUDA_GRAPHS`: `300 -> 100` launches, `300 -> 0` syncs, `~3 us -> 0 us` gaps, `1.00 -> 0.75 ms` = `25%` faster, `torch.cuda.CUDAGraph`, `torch.cuda.graph_pool_handle()`, `cudaGraphExecUpdate`),
+  - Device-Initiated CUDA Graph Launch (`cudaGraphInstantiateFlagDeviceLaunch`, `cudaGraphUpload`, `cudaStreamGraphFireAndForget` max `120`, `cudaStreamGraphTailLaunch` max `255` & `1` self-tail-launch, Conditional Graph Nodes `IF`/`IF/ELSE`/`WHILE`/`SWITCH`),
+  - Dynamic Parallelism (`-rdc=true`, `2,048` default `cudaLimitDevRuntimePendingLaunchCount`, `Table 12-2` / `TABLE_12_2_DYNAMIC_PARALLELISM`),
+  - Orchestrate Across Multiple GPUs (`NVSHMEM`, `nvshmem_float_p`, `nvshmem_quiet`, `nvshmem_int_p`, `nvshmem_int_wait_until`, `nvshmemx_collective_launch`, Programmatic Dependent Launch `PDL` cross-referenced with Chapter `10.16`, and Roofline orchestration regimes).
+- `nvidia-devops` Volume 03 (*CUDA Fundamentals*) notes read in full:
+  - `nvidia-zero-to-hero/volume-03/chapter-10-cuda-graphs-and-repeated-execution.md` (`chapter-10-cuda-graphs-and-repeated-execution.md`) and `nvidia-zero-to-hero/volume-03/chapter-chapter-10-cuda-graphs-and-repeated-execution.md`
+  - `nvidia-zero-to-hero/volume-03/chapter-12-profiling-and-production-troubleshooting.md` and `nvidia-zero-to-hero/volume-03/chapter-chapter-12-profiling-and-production-troubleshooting.md`
+  - `nvidia-zero-to-hero/volume-03/chapter-13-volume-03-summary.md` and `nvidia-zero-to-hero/volume-03/chapter-chapter-13-volume-03-summary.md`
+  - `nvidia-zero-to-hero/volume-03/labs/lab-04-profile-and-diagnose-a-cuda-application.md`
+  - Related Volume 03 files in `MIGRATION_MAP.md` (read via `tools/study_rag/bookch.py` in `2026`): `nvidia-zero-to-hero/volume-03/index.md`, `nvidia-zero-to-hero/volume-03/chapter-01-why-cuda-exists.md` (`nvidia-zero-to-hero/volume-03/chapter-chapter-01-why-cuda-exists.md`), `nvidia-zero-to-hero/volume-03/chapter-02-cuda-software-stack.md` (`nvidia-zero-to-hero/volume-03/chapter-chapter-02-cuda-software-stack.md`), `nvidia-zero-to-hero/volume-03/chapter-03-cuda-programming-and-execution-model.md` (`nvidia-zero-to-hero/volume-03/chapter-chapter-03-cuda-programming-and-execution-model.md`), `nvidia-zero-to-hero/volume-03/chapter-04-kernel-launch-configuration-and-indexing.md` (`nvidia-zero-to-hero/volume-03/chapter-chapter-04-kernel-launch-configuration-and-indexing.md`), `nvidia-zero-to-hero/volume-03/chapter-05-cuda-memory-management-and-data-movement.md` (`nvidia-zero-to-hero/volume-03/chapter-chapter-05-cuda-memory-management-and-data-movement.md`), `nvidia-zero-to-hero/volume-03/chapter-06-synchronization-errors-and-correctness.md` (`nvidia-zero-to-hero/volume-03/chapter-chapter-06-synchronization-errors-and-correctness.md`), `nvidia-zero-to-hero/volume-03/chapter-07-streams-events-and-asynchronous-execution.md` (`nvidia-zero-to-hero/volume-03/chapter-chapter-07-streams-events-and-asynchronous-execution.md`), `nvidia-zero-to-hero/volume-03/chapter-08-pinned-memory-and-transfer-overlap.md` (`nvidia-zero-to-hero/volume-03/chapter-chapter-08-pinned-memory-and-transfer-overlap.md`), `nvidia-zero-to-hero/volume-03/chapter-09-unified-memory-and-demand-paging.md`, `nvidia-zero-to-hero/volume-03/chapter-11-compilation-binaries-and-compatibility.md` (`nvidia-zero-to-hero/volume-03/chapter-chapter-11-compilation-binaries-and-compatibility.md`), `nvidia-zero-to-hero/volume-03/labs/lab-01-inspect-and-validate-a-cuda-environment.md`, `nvidia-zero-to-hero/volume-03/labs/lab-02-build-and-validate-a-cuda-vector-pipeline.md`, and `nvidia-zero-to-hero/volume-03/labs/lab-03-build-an-overlapped-cuda-pipeline.md` (multi-node `nvshmem_init_attr` covered in Part 12).
 
-```text
-Primary sources read in full for this chapter:
-- AI Systems Performance Engineering (ai-systems-performance-engineering, Chris Fregly), Chapter 12:
-  Dynamic Scheduling, CUDA Graphs, and Device-Initiated Kernel Orchestration — read in full via tools/study_rag/bookch.py, including:
-  - Dynamic Scheduling with Atomic Work Queues, Atomic Counters, and Atomic Queues (DGX GB200 NVL72 36 Grace CPUs + 72 Blackwell GPUs + 30 TB unified memory, Figures 12-1 & 12-2, Nsight Compute atomic_transactions & atomic_transactions_per_request ~1.0 target, batching 8, 16, 32 items per atomic, uneven_static.cu 200 ms vs uneven_dynamic.cu 100 ms = 2x speedup on N = 1 << 20, work = idx % 256),
-  - CUDA Graphs, PyTorch, Inference Engines, and CUDA Graphs, Memory Pools for CUDA Graphs, Capturing a CUDA Graph with a CUDA Stream, and Dynamic Graph Update (Figures 12-3 & 12-4, Table 12-1: 300 -> 100 launches, 300 -> 0 syncs, ~3 us -> 0 us gaps, 1.00 -> 0.75 ms = 25% faster, torch.cuda.CUDAGraph, torch.cuda.graph_pool_handle(), mode='reduce-overhead', vLLM / TensorRT-LLM shape bucketing, and cudaGraphExecUpdate batch 128 -> 64),
-  - Device-Initiated CUDA Graph Launch, Atomic Queues and Device-Initiated CUDA Graphs for In-Kernel Persistent Scheduling, and Conditional Graph Nodes (Figures 12-5 to 12-11, cudaGraphInstantiateFlagDeviceLaunch, cudaGraphUpload, ~2x lower latency, cudaStreamGraphFireAndForget max 120, cudaStreamGraphTailLaunch max 255 & 1 self-tail-launch via cudaGetCurrentGraphExec(), cudaStreamGraphFireAndForgetAsSibling, and IF / IF/ELSE / WHILE / SWITCH conditional nodes with threshold = 123456),
-  - Dynamic Parallelism (Figures 12-12 & 12-13, -rdc=true, dp_host_launched.cu vs dp_device_launched.cu, 2,048 default cudaLimitDevRuntimePendingLaunchCount, cudaLimitStackSize, and Table 12-2: 3 -> 1 host launches, ~20 -> ~25 us, ~40% -> ~5% GPU idle cycles, 1.00 -> 0.75 ms = 25% faster),
-  - Orchestrate Across Multiple GPUs and Cluster Nodes (NVSHMEM), Fine-Grained GPU-to-GPU Memory Sharing with NVSHMEM, Capturing Multi-GPU Collectives with NCCL and CUDA Graphs, Pattern for N-GPU Scaling, and Roofline-Guided Scheduling and Orchestration Decisions (Figures 12-14 to 12-17, nvshmem_float_p, nvshmem_quiet, nvshmem_int_p, nvshmem_int_wait_until, nvshmem_int_atomic_inc, nvshmemx_collective_launch, nvshmem_barrier_all, graph-captured bucketed ncclAllReduce, and Roofline orchestration regimes).
-- nvidia-devops Volume 03 (CUDA Fundamentals) notes read in full:
-  - nvidia-zero-to-hero/volume-03/chapter-10-cuda-graphs-and-repeated-execution.md
-  - nvidia-zero-to-hero/volume-03/chapter-chapter-10-cuda-graphs-and-repeated-execution.md
-  - nvidia-zero-to-hero/volume-03/chapter-12-profiling-and-production-troubleshooting.md
-  - nvidia-zero-to-hero/volume-03/chapter-chapter-12-profiling-and-production-troubleshooting.md
-  - nvidia-zero-to-hero/volume-03/chapter-13-volume-03-summary.md
-  - nvidia-zero-to-hero/volume-03/chapter-chapter-13-volume-03-summary.md
-  - nvidia-zero-to-hero/volume-03/labs/lab-04-profile-and-diagnose-a-cuda-application.md
-
-Related source files mapped in MIGRATION_MAP.md:
-- nvidia-zero-to-hero/volume-03/index.md
-- nvidia-zero-to-hero/volume-03/chapter-01-why-cuda-exists.md and nvidia-zero-to-hero/volume-03/chapter-chapter-01-why-cuda-exists.md
-- nvidia-zero-to-hero/volume-03/chapter-02-cuda-software-stack.md and nvidia-zero-to-hero/volume-03/chapter-chapter-02-cuda-software-stack.md
-- nvidia-zero-to-hero/volume-03/chapter-03-cuda-programming-and-execution-model.md and nvidia-zero-to-hero/volume-03/chapter-chapter-03-cuda-programming-and-execution-model.md
-- nvidia-zero-to-hero/volume-03/chapter-04-kernel-launch-configuration-and-indexing.md and nvidia-zero-to-hero/volume-03/chapter-chapter-04-kernel-launch-configuration-and-indexing.md
-- nvidia-zero-to-hero/volume-03/chapter-05-cuda-memory-management-and-data-movement.md and nvidia-zero-to-hero/volume-03/chapter-chapter-05-cuda-memory-management-and-data-movement.md
-- nvidia-zero-to-hero/volume-03/chapter-06-synchronization-errors-and-correctness.md and nvidia-zero-to-hero/volume-03/chapter-chapter-06-synchronization-errors-and-correctness.md
-- nvidia-zero-to-hero/volume-03/chapter-07-streams-events-and-asynchronous-execution.md and nvidia-zero-to-hero/volume-03/chapter-chapter-07-streams-events-and-asynchronous-execution.md
-- nvidia-zero-to-hero/volume-03/chapter-08-pinned-memory-and-transfer-overlap.md and nvidia-zero-to-hero/volume-03/chapter-chapter-08-pinned-memory-and-transfer-overlap.md
-- nvidia-zero-to-hero/volume-03/chapter-09-unified-memory-and-demand-paging.md
-- nvidia-zero-to-hero/volume-03/chapter-11-compilation-binaries-and-compatibility.md and nvidia-zero-to-hero/volume-03/chapter-chapter-11-compilation-binaries-and-compatibility.md
-- nvidia-zero-to-hero/volume-03/labs/lab-01-inspect-and-validate-a-cuda-environment.md
-- nvidia-zero-to-hero/volume-03/labs/lab-02-build-and-validate-a-cuda-vector-pipeline.md
-- nvidia-zero-to-hero/volume-03/labs/lab-03-build-an-overlapped-cuda-pipeline.md
-
-Run here:
-- python3 -B code/part10/dynamic_scheduling_graphs_lab.py (25 passed, 0 failed).
-
-Explicitly labelled inferences:
-- The atomic call counts (1,048,576 / 32 = 32,768, 1,048,576 / 16 = 65,536, 1,048,576 / 8 = 131,072), the CPU launch share 45.0 / (45.0 + 9.0) = 83.3%, and the Lab 04 slowdown ratios (1,928.3 / 812.4 = 2.37x, 3,140.9 / 812.4 = 3.87x, 2,214.8 / 812.4 = 2.73x) are exact arithmetic ratios computed in code/part10/dynamic_scheduling_graphs.py from the source figures in AI Systems Performance Engineering Chapter 12 and nvidia-devops Volume 03.
-
-Not verified on live hardware:
-- All nvcc -rdc=true, ncu, nsys, compute-sanitizer, and nvshmem commands in Section 6 are marked (untested here) because this verification environment does not have an attached CUDA GPU.
-
-Not in the corpus:
-- Multi-node InfiniBand verbs bootstrap internals for NVSHMEM (nvshmem_init_attr with MPI/PMI) are omitted here and covered in Part 12.
-
-Corrections to the author's notes:
-- Validation pass 2026-10-25: added the note at the top that the book's metric tables and the Volume 03 timings are illustrative, and replaced "measured" with "reported".
-- Arithmetic checked and correct (3 x 15 = 45 us, 45 / (45 + 9) = 83.3%, 500 x 80 = 40,000, 1,048,576 / 32 = 32,768).
-- In uneven_dynamic.cu (ASP Ch 12), the prose mentions if (lane == 0) while the listing elects int leader = __ffs(mask) - 1; if (lane == leader) — our code and explanation preserve the listing's divergence-safe __activemask() + __ffs(mask) - 1 leader election pattern.
-```
+### Verification and review notes
+- **Run here:** `python3 -B code/part10/dynamic_scheduling_graphs_lab.py` (25 passed, 0 failed).
+- **Explicitly labelled inferences:** The atomic call counts (`1,048,576 / 32 = 32,768`, `1,048,576 / 16 = 65,536`, `1,048,576 / 8 = 131,072`), the CPU launch share `45.0 / (45.0 + 9.0) = 83.3%`, and the Lab 04 slowdown ratios (`1,928.3 / 812.4 = 2.37x`, `3,140.9 / 812.4 = 3.87x`, `2,214.8 / 812.4 = 2.73x`) are exact arithmetic ratios computed in `code/part10/dynamic_scheduling_graphs.py` from the source figures.
+- **Not verified on live hardware:** All `nvcc -rdc=true`, `ncu`, `nsys`, `compute-sanitizer`, and `nvshmem` commands in Section 6 are marked `(untested here)` because this verification environment does not have an attached CUDA GPU.
 

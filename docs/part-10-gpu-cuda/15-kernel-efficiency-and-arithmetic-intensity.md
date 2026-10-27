@@ -627,7 +627,7 @@ The primary source for this chapter is *AI Systems Performance Engineering* by C
 ### Explicitly labelled inferences and verification notes
 
 - The helper functions in `code/part10/kernel_efficiency.py` are **my inference** encoding the equations and tables of *AI Systems Performance Engineering* Chapter 9.
-- A physical Blackwell or Hopper GPU was not attached during this build. Therefore, `nvcc`, `cuobjdump`, `ncu`, and PyTorch CUDA commands in Section 5 are marked untested here.
+- A physical Blackwell or Hopper GPU (`H100`, `CGA` Cooperative Grid Array, `SFU` pipeline, `ld.global.ca` / `ld.global.ca.f32`, `33` / `314` metrics, Volume `02` and `MIGRATION_MAP.md`, cross-referenced with Chapter `10.16` in `2026`) was not attached during this build. Therefore, `nvcc`, `cuobjdump`, `ncu`, and PyTorch CUDA commands in Section 5 are marked untested here.
 - Full source code of DeepSeek's DeepEP repository beyond the `ld.global.nc.l1::no_allocate.l2::256b` and `DISABLE_AGGRESSIVE_PTX_INSTRS=1` analysis in Chapter 9 is not in the local corpus.
 - Validation notes: in the book's `fusedL2Norm` code, every thread computes `rsqrtf(sdata[0])` rather than broadcasting from thread zero. In addition, Tables 9-1 and 9-2 are illustrative in the source text and are described as reported figures here.
 

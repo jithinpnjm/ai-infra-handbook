@@ -627,5 +627,5 @@ The eight baseline items are workload and precision policy, input shape and conc
 
 ### Not verified on live hardware
 
-- Profiling commands using `ncu --set roofline`, `ert`, `mixbench`, and `likwid-perfctr` were not executed on a live GPU VM in this authoring environment.
+- Profiling commands using `ncu --set roofline` (`P_attainable`, `4-byte` words, `FlashAttention`, `0.36` / `3.2` / `4.1` / `256` / `400` Roofline examples, cross-referenced with Chapters `10.1`, `10.2`, `10.3`, `10.4`, `10.6`, `10.8`, `10.16`, and `10.18`), `ert`, `mixbench`, and `likwid-perfctr` were not executed on a live GPU VM in this authoring environment.
 

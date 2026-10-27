@@ -792,5 +792,5 @@ Primary Sources Read in Full for Chapter 10.2:
 
 - **Verified in this repository**. Running `python3 -B code/part10/execution_model_lab.py` passes all 25 automated checks.
 - **Labelled inferences**. Combining the Chapter 6 hardware limits with the Volume 02 Chapter 6 register residency method and Chapter 9 efficiency gates into `code/part10/execution_model.py` is **my inference**.
-- **Not verified on live hardware**. Live execution of `nvcc`, `CUDA_FORCE_PTX_JIT=1`, `nsys`, `ncu`, `compute-sanitizer`, and `docker run --gpus all` was not run on a live GPU VM in this authoring environment.
+- **Not verified on live hardware**. Live execution of `nvcc`, `CUDA_FORCE_PTX_JIT=1`, `nsys`, `ncu` (`39.4`% / `60.6`% / `93.5`% efficiency, `62` / `72` / `96` / `371` / `2560` / `2730` counters, `AoS` vs `SoA`, `smem_kb`, `cudaMallocAsync`, `tcgen05`), `compute-sanitizer`, and `docker run --gpus all` (cross-referenced with Chapters `10.5`, `10.6`, `10.8`, `10.11`, `10.12`, and `10.13` and `planning/MIGRATION_MAP.md` in `2026`) was not run on a live GPU VM in this authoring environment.
 

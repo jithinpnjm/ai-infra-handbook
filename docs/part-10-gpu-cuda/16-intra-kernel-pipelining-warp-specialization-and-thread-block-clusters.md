@@ -1000,7 +1000,7 @@ The primary source for this chapter is *AI Systems Performance Engineering* by C
 ### Explicitly labelled inferences and verification notes
 
 - Dynamic shared-memory utilization ratios (`150,528 / 227,328 = 66.22%` and `196,608 / 227,328 = 86.49%`) and the overall speedup ratio `41.3 ms / 17.2 ms = 2.40x` across Table 10-5 are exact arithmetic ratios computed in `code/part10/intra_kernel_pipelining.py` from the book's byte counts and timings.
-- All `nvcc`, `ncu`, `cudaLaunchCooperativeKernel`, and `cudaLaunchKernelEx` commands in Section 5 are marked untested here because this verification environment does not have an attached Hopper or Blackwell GPU.
+- All `nvcc`, `ncu`, `cudaLaunchCooperativeKernel`, and `cudaLaunchKernelEx` commands in Section 5 (`GPCs`, `ILP` vs TLP, `cp.async.bulk.tensor`, `232,448` B total SMEM carveout, cross-referenced with Chapter `10.13` in `2026`) are marked untested here because this verification environment does not have an attached Hopper or Blackwell GPU.
 - Low-level PTX barrier arrival count encodings for `mbarrier.init` and `mbarrier.arrive.expect_tx` inside `<cuda/pipeline>` implementation headers are not in the corpus. They are omitted in favor of the C++ `<cuda/pipeline>` and Cooperative Groups APIs covered in Chapter 10.
 - Validation notes: Table 10-4 reports `0.6x` relative time and calls it a forty percent speedup, which corresponds to forty percent less time (`1.67x` faster). All lab checks in `code/part10/intra_kernel_pipelining_lab.py` pass (`25 passed, 0 failed`).
 

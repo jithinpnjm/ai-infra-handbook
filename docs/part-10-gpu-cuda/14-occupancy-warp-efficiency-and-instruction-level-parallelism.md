@@ -554,7 +554,7 @@ Source Breakdown — AI Systems Performance Engineering Ch 8 (pp. 253-294):
 - The SM occupancy calculator `calc_sm_occupancy_and_limiters()`, the launch bounds evaluator `evaluate_launch_bounds()`, the Nsight Compute stall classifier `classify_ncu_stall_and_regime()`, and the divergence validator `evaluate_warp_divergence_and_ilp()` in `code/part10/occupancy_warp_ilp.py` are **my inference** encoding the rules and tables of *AI Systems Performance Engineering* Chapter 8.
 
 ### Not verified on live hardware
-- A physical Blackwell or Hopper GPU was not attached during this build, so `nsys`, `ncu`, and `nvidia-smi` commands in Section 5 are marked `(untested here)`.
+- A physical Blackwell or Hopper GPU (`B300` Ultra, `TLP` vs ILP, `FLOPs/byte`, `16-byte` / `32-byte` vector loads, `64K` register file, `H2D` / `D2H` overlap, `a0..a3` unrolled accumulators in `ILP_SATURATION_TABLE` and `TABLE_8_3_PREDICATION`, `chrome://tracing`, `29.7` / `85` / `95` / `96.88` / `98`% metrics, pp. `276`, `277`, `279`, `281`, `284`, `290`, `291`, Volume `02`, cross-referenced with Chapters `10.2`, `10.3`, `10.5`, `10.11`, and `10.20` in `2026`) was not attached during this build, so `nsys`, `ncu`, and `nvidia-smi` commands in Section 5 are marked `(untested here)`.
 
 ### Not in the corpus
 - Instruction-level SASS scoreboard control codes encoded inside raw SASS instructions, which are generated internally by `ptxas`.

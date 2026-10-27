@@ -627,7 +627,7 @@ PyTorch distributed training launches backward-pass math kernels on a compute st
 - Combining the pageable, pinned, and NUMA transfer calculator, the Nsight Systems trace overlap verifier, the double-buffered slot-ownership simulator, and the stream and callback auditor into `code/part10/streams_events_pinned.py` is my inference synthesizing *AI Systems Performance Engineering* Chapter 11 and `nvidia-devops` Volume 03 Chapters 7 and 8 and Lab 03.
 
 ### Not verified on live hardware
-- A physical CUDA GPU was not attached during this build. All `nvcc`, binary execution, and profiler commands in Section 4 are marked as untested here.
+- A physical CUDA GPU (`cudaStream_t` `streamA`, `cudaEvent_t`, `cudaMemcpyPeerAsync`, `ncclCommRegister`, `DistributedDataParallel` / `FSDP`, `0.096` / `0.412` / `0.847` / `1.259` ms `13.11`x transfer ratios, `199` / `358` / `359` / `360` / `363` / `368` / `371` / `384` pp. in `2026`) was not attached during this build. All `nvcc`, binary execution, and profiler commands in Section 4 are marked as untested here.
 
 ### Not in the corpus
 - Multi-GPU NVLink stream pipelining with peer asynchronous copies and `NCCL` user-buffer registration are not in this chapter's corpus and are covered in Part 12.
