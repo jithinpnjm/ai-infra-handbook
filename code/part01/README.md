@@ -18,3 +18,4 @@
 | 1.14 Boot: firmware, GRUB, kernel, initramfs | `boot_grub_initramfs.py` | `boot_grub_initramfs_lab.py` | 23 | `python3 code/part01/boot_grub_initramfs_lab.py` |
 | 1.15 systemd: units, targets, timers, journald | `systemd_units_journald.py` | `systemd_units_journald_lab.py` | 21 | `python3 code/part01/systemd_units_journald_lab.py` |
 | 1.16 Logging, time synchronisation, cron and batch jobs | `logging_time_cron.py` | `logging_time_cron_lab.py` | 21 | `python3 code/part01/logging_time_cron_lab.py` |
+| 1.17 Memory management: virtual memory, NUMA, huge pages, OOM | `memory_numa_oom.py` | `memory_numa_oom_lab.py` | 21 | `python3 code/part01/memory_numa_oom_lab.py` |

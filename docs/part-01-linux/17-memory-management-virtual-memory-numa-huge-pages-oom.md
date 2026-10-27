@@ -206,7 +206,7 @@ grep -E 'MemTotal|MemFree|MemAvailable|Buffers|^Cached|SwapTotal|SwapFree|Dirty|
 ```bash
 vmstat 1 5                    # si/so = swap in/out per second; free/buff/cache; b = blocked; wa = I/O wait
 cat /proc/pressure/memory     # some avg10=.. avg60=.. avg300=.. total=..  and  full ...
-sar -B 1 5                    # paging: pgpgin/out, fault/s, majflt/s, pgscank/s, pgscand/s (direct scan!), pgsteal/s, %vmeff
+sar -B 1 5                    # paging: pgpgin/out, fault/s, majflt/s, pgscank/s, pgscand/s (direct scan), pgsteal/s, %vmeff
 sar -r 1 5; sar -S 1 5        # memory utilisation; swap
 grep -E 'pgscan|pgsteal|allocstall|oom_kill|thp_|compact_stall|numa_' /proc/vmstat
 ```
@@ -335,11 +335,11 @@ When using large **pinned** host buffers, see section 11 for `memlock`.
 | **jemalloc** | Multiple arenas, per-thread caches, size classes; scalable and fragmentation-resistant; heap profiling (`MALLOC_CONF=prof:true`); used by Facebook/Meta, Redis, Firefox; often reduces RSS growth in Python/C++ services |
 | **tcmalloc** (gperftools / Google tcmalloc) | Per-thread caches, central heap, periodic return of memory; good for many small allocations; heap profiler; `libtcmalloc_minimal.so` |
 | **mimalloc** | Compact, fast, good defaults |
-| **Kernel: slab/SLUB** | Per-type object caches for kernel structs (`slabtop`); SLUB is the default |
+| **Kernel: slab/SLUB** | Per-type object caches for kernel structs (`slabtop`, `kmem_cache_alloc`); originally developed by Jeff Bonwick for Solaris 2.4 (`[Bonwick 94]`) and enhanced with per-CPU object caches called *magazines* (`[Bonwick 01]`); SLUB is the modern Linux default |
 
 Switch without recompiling with `LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2 python train.py` (verify in `/proc/PID/maps`); measure RSS and throughput before and after; the effect can be negative. **Python specifics**: CPython's `pymalloc` allocates 256 KiB arenas from the OS; a single surviving small object keeps an entire arena resident, so deleting a big list and calling `gc.collect()` does not drop RSS to its old value; reference cycles need the cyclic collector; native extension memory (NumPy, PyTorch host tensors) is allocated outside `pymalloc`. Mitigations: recycle worker processes (`maxtasksperchild`), use `jemalloc`, avoid holding giant Python object collections (use NumPy/Arrow/memory-mapped files), `del` plus `torch.cuda.empty_cache()` is for GPU memory only. For data loaders with many workers, `fork` shares pages copy-on-write, but Python reference counting writes to objects and **breaks sharing** (each worker gradually copies the dataset); store datasets in NumPy/Arrow/`mmap`/shared memory instead of Python lists to keep pages shared.
 
-**Leak detection**: confirm monotonic growth of `RssAnon` over long periods under steady load; ask whether it is a cache or pool; use allocator debug/profiling (jemalloc `prof`, tcmalloc heap profiler, `valgrind massif` for small tests), `memleak`/`bpftrace` in production (cost!), Python `tracemalloc`/`memray`, `/proc/PID/smaps` to see which mapping grows (heap vs anonymous mmap vs shared), and `pmap -x` over time. Kernel-side leaks show as growing `Slab`/`SUnreclaim` or `PageTables`.
+**Leak detection**: confirm monotonic growth of `RssAnon` over long periods under steady load; ask whether it is a cache or pool; use allocator debug/profiling (jemalloc `prof`, tcmalloc heap profiler, `valgrind massif` for small tests), `memleak` or `bpftrace -e 'uprobe:/lib/x86_64-linux-gnu/libc.so.6:malloc /pid == 4840/ { @[ustack] = hist(arg0); }'` in production (watch the overhead), Python `tracemalloc`/`memray`, `/proc/PID/smaps` to see which mapping grows (heap vs anonymous mmap vs shared), and `pmap -x` over time. Kernel-side leaks show as growing `Slab`/`SUnreclaim` or `PageTables`.
 
 ## 10. Tuning parameters
 
@@ -435,24 +435,30 @@ Budget per node: operating system and daemons (a few GB) + data-loader workers (
 15. **Kubernetes pod OOMKilled below node capacity.** Limit set too low or page cache counted; look at `memory.stat` working set; set `requests` = `limits` for Guaranteed QoS on training pods.
 16. **OOM killer picks `sshd`/`kubelet`.** Missing `OOMScoreAdjust`; slices without protection.
 
-## Hands-on lab (an Ubuntu VM; untested)
+## Hands-on lab: virtual memory, NUMA, huge pages, OOM, and VM drills
 
-Use a throwaway VM with at least 4 GiB RAM and `sudo`. These commands have **not** been run; run them before relying on them. Do not run the memory-exhaustion steps on a shared or production machine.
+First, run the self-checking Python lab (`code/part01/memory_numa_oom_lab.py`) locally. It verifies TLB reach (`4 KiB` vs `2 MiB` vs `1 GiB` huge pages), `USS`/`PSS`/`RSS` shared-memory accounting, zone reclaim watermarks (`min`, `low`, `high` from `min_free_kbytes` and `watermark_scale_factor`), OOM badness scoring (`oom_score_adj`), and 8-GPU host RAM budgeting.
+
+```bash
+python3 code/part01/memory_numa_oom_lab.py
+```
+
+Next, on a disposable GCP Ubuntu VM with at least 4 GiB RAM and `sudo` (all interactive VM commands below are `untested here`; never run memory-exhaustion drills on a shared or production machine), work through these steps:
 
 **A. Read memory.**
 
 ```bash
-free -h; grep -E 'MemAvailable|Cached|AnonPages|Slab|SReclaimable|SUnreclaim|PageTables|Mlocked|Huge|Committed_AS|CommitLimit' /proc/meminfo
-vmstat 1 3; cat /proc/pressure/memory; sar -B 1 3 2>/dev/null
-ps -eo pid,rss,vsz,comm --sort=-rss | head -5
-cat /proc/$$/smaps_rollup; pmap -x $$ | tail -5
-sudo slabtop -o -s c | head -10
+free -h; grep -E 'MemAvailable|Cached|AnonPages|Slab|SReclaimable|SUnreclaim|PageTables|Mlocked|Huge|Committed_AS|CommitLimit' /proc/meminfo # (untested here)
+vmstat 1 3; cat /proc/pressure/memory; sar -B 1 3 2>/dev/null # (untested here)
+ps -eo pid,rss,vsz,comm --sort=-rss | head -5 # (untested here)
+cat /proc/$$/smaps_rollup; pmap -x $$ | tail -5 # (untested here)
+sudo slabtop -o -s c | head -10         # (untested here)
 ```
 
 **B. Demand paging.**
 
 ```bash
-python3 - <<'EOF'
+python3 - <<'EOF' # (untested here)
 import mmap, os, time, resource
 n = 1<<30
 m = mmap.mmap(-1, n)        # 1 GiB anonymous, untouched
@@ -466,49 +472,49 @@ EOF
 **C. Page cache and `available`.**
 
 ```bash
-free -h; dd if=/dev/zero of=/tmp/big bs=1M count=2048 status=none; sync
-free -h        # buff/cache grew, available barely changed
-echo 3 | sudo tee /proc/sys/vm/drop_caches >/dev/null; free -h
-rm /tmp/big
+free -h; dd if=/dev/zero of=/tmp/big bs=1M count=2048 status=none; sync # (untested here)
+free -h                                 # (untested here) buff/cache grew, available barely changed
+echo 3 | sudo tee /proc/sys/vm/drop_caches >/dev/null; free -h # (untested here)
+rm /tmp/big                             # (untested here)
 ```
 
 **D. cgroup memory limit and OOM.**
 
 ```bash
-sudo systemd-run --scope -p MemoryMax=300M -p MemorySwapMax=0 --unit=oomlab python3 -c 'x=[bytearray(10*1024*1024) for _ in range(100)]'; echo "exit $?"
-sudo dmesg -T | tail -15 | grep -iE 'oom|killed'
+sudo systemd-run --scope -p MemoryMax=300M -p MemorySwapMax=0 --unit=oomlab python3 -c 'x=[bytearray(10*1024*1024) for _ in range(100)]'; echo "exit $?" # (untested here)
+sudo dmesg -T | tail -15 | grep -iE 'oom|killed' # (untested here)
 sudo systemd-run --scope -p MemoryHigh=200M -p MemoryMax=600M --unit=highlab python3 -c '
 import time
 x=[bytearray(10*1024*1024) for _ in range(40)]
-time.sleep(5)'
-# inspect while running in another shell:  systemctl show highlab.scope -p MemoryCurrent; cat /sys/fs/cgroup/system.slice/highlab.scope/memory.events
+time.sleep(5)' # (untested here)
+# inspect while running in another shell: systemctl show highlab.scope -p MemoryCurrent; cat /sys/fs/cgroup/system.slice/highlab.scope/memory.events
 ```
 
 **E. oom_score_adj.**
 
 ```bash
-sleep 600 & P=$!; cat /proc/$P/oom_score /proc/$P/oom_score_adj
-echo 500 | sudo tee /proc/$P/oom_score_adj; cat /proc/$P/oom_score; sudo kill $P
+sleep 600 & P=$!; cat /proc/$P/oom_score /proc/$P/oom_score_adj # (untested here)
+echo 500 | sudo tee /proc/$P/oom_score_adj; cat /proc/$P/oom_score; sudo kill $P # (untested here)
 ```
 
 **F. NUMA (on a multi-node machine, or `numactl --hardware` on any).**
 
 ```bash
-sudo apt install -y numactl hwloc
-numactl --hardware; numastat; lscpu | grep -i numa
-numactl --cpunodebind=0 --membind=0 python3 -c 'import os; print(open("/proc/self/numa_maps").read()[:400])'
-numastat -p $$
+sudo apt install -y numactl hwloc       # (untested here)
+numactl --hardware; numastat; lscpu | grep -i numa # (untested here)
+numactl --cpunodebind=0 --membind=0 python3 -c 'import os; print(open("/proc/self/numa_maps").read()[:400])' # (untested here)
+numastat -p $$                          # (untested here)
 ```
 
 **G. Huge pages and THP.**
 
 ```bash
-cat /sys/kernel/mm/transparent_hugepage/{enabled,defrag}; grep -E 'AnonHugePages|HugePages_|Hugepagesize' /proc/meminfo
-echo 128 | sudo tee /proc/sys/vm/nr_hugepages; grep HugePages_ /proc/meminfo; echo 0 | sudo tee /proc/sys/vm/nr_hugepages
-sudo sh -c 'echo always > /sys/kernel/mm/transparent_hugepage/enabled'
-python3 -c 'import mmap,time; m=mmap.mmap(-1,512<<20); [m.__setitem__(i,1) for i in range(0,512<<20,4096)]; print(open("/proc/self/smaps_rollup").read().split("AnonHugePages:")[1].split()[0],"kB in THP"); time.sleep(1)'
-sudo sh -c 'echo madvise > /sys/kernel/mm/transparent_hugepage/enabled'
-grep -E 'thp_fault_alloc|thp_collapse_alloc|compact_stall' /proc/vmstat
+cat /sys/kernel/mm/transparent_hugepage/{enabled,defrag}; grep -E 'AnonHugePages|HugePages_|Hugepagesize' /proc/meminfo # (untested here)
+echo 128 | sudo tee /proc/sys/vm/nr_hugepages; grep HugePages_ /proc/meminfo; echo 0 | sudo tee /proc/sys/vm/nr_hugepages # (untested here)
+sudo sh -c 'echo always > /sys/kernel/mm/transparent_hugepage/enabled' # (untested here)
+python3 -c 'import mmap,time; m=mmap.mmap(-1,512<<20); [m.__setitem__(i,1) for i in range(0,512<<20,4096)]; print(open("/proc/self/smaps_rollup").read().split("AnonHugePages:")[1].split()[0],"kB in THP"); time.sleep(1)' # (untested here)
+sudo sh -c 'echo madvise > /sys/kernel/mm/transparent_hugepage/enabled' # (untested here)
+grep -E 'thp_fault_alloc|thp_collapse_alloc|compact_stall' /proc/vmstat # (untested here)
 ```
 
 **H. Allocator behaviour.**
@@ -521,21 +527,21 @@ d=[str(i)*1000 for i in range(1000000)]; print("allocated", rss())
 del d; print("after del", rss())
 import gc; gc.collect(); print("after gc", rss())
 EOF
-python3 /tmp/alloc.py
-sudo apt install -y libjemalloc2; LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2 python3 /tmp/alloc.py
-MALLOC_ARENA_MAX=1 python3 /tmp/alloc.py
+python3 /tmp/alloc.py                   # (untested here)
+sudo apt install -y libjemalloc2; LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2 python3 /tmp/alloc.py # (untested here)
+MALLOC_ARENA_MAX=1 python3 /tmp/alloc.py # (untested here)
 ```
 
 **I. memlock.**
 
 ```bash
-ulimit -l; ulimit -Sl 64; python3 -c 'import mmap,ctypes; libc=ctypes.CDLL("libc.so.6",use_errno=True); b=ctypes.create_string_buffer(1<<20); print(libc.mlock(b,ctypes.c_size_t(1<<20)), ctypes.get_errno())'
+ulimit -l; ulimit -Sl 64; python3 -c 'import mmap,ctypes; libc=ctypes.CDLL("libc.so.6",use_errno=True); b=ctypes.create_string_buffer(1<<20); print(libc.mlock(b,ctypes.c_size_t(1<<20)), ctypes.get_errno())' # (untested here)
 ```
 
 **J. (GPU VM, optional) pinned versus pageable.**
 
 ```bash
-python3 - <<'EOF'
+python3 - <<'EOF' # (untested here)
 import torch,time
 x=torch.empty(1<<28,dtype=torch.uint8); y=torch.empty(1<<28,dtype=torch.uint8).pin_memory()
 for name,t in (("pageable",x),("pinned",y)):
@@ -545,77 +551,117 @@ for name,t in (("pageable",x),("pinned",y)):
 EOF
 ```
 
-## Checkpoint questions
+## Exercises
 
-1. What does virtual memory provide and what is the cost? Describe the translation path including the TLB.
-2. Define RSS, VSZ, PSS and USS. Why is summing RSS misleading?
-3. What is demand paging? What are minor and major page faults, with examples?
-4. What is overcommit and what are the three `vm.overcommit_memory` modes?
-5. What is the difference between "free", "available" and "buff/cache" in `free`?
-6. How does Linux free memory as pressure rises? What do kswapd and direct reclaim do, and why do stalls appear?
-7. What do `vm.swappiness`, `vm.min_free_kbytes` and `vm.watermark_scale_factor` change?
-8. Why is swap often disabled on GPU nodes? What is the downside of no swap?
-9. How does the OOM killer choose a victim? What are `oom_score` and `oom_score_adj` and how do you protect `sshd`?
-10. How is a cgroup OOM different from a global OOM? What evidence tells you which occurred?
-11. What does exit code 137 mean? What would you check first?
-12. What is NUMA? Local versus remote memory? How do you view topology and which GPU belongs to which node?
-13. What is first-touch placement and why does it hurt GPU feeding?
-14. Write a command that runs a training process on NUMA node 1's CPUs and memory. What happens to the memory policy in spawned workers?
-15. What do `numa_hit`, `numa_miss` and `other_node` indicate?
-16. Why is automatic NUMA balancing often disabled on AI nodes?
-17. What are huge pages and why do they help? Explicit versus transparent: differences?
-18. Recommend THP settings for training nodes versus latency-sensitive inference, and name two risks of THP.
-19. Why does RSS stay high after freeing memory? Name three ways to reduce it.
-20. Compare glibc malloc, jemalloc and tcmalloc. How do you switch without recompiling and verify it?
-21. Why do forked DataLoader workers still copy a Python list dataset?
-22. How do you tell a memory leak from memory growth? Name three tools.
-23. What is PSI and how do you read `some` and `full`?
-24. What do `memory.high`, `memory.max`, `memory.low` and `memory.events` mean?
-25. Why does a container's `memory.current` include page cache and should that alarm you?
-26. What is pinned memory, why is it faster, what limits it, and what happens with a low `memlock`?
-27. A node with 1 TiB RAM shows periodic multi-second stalls. List three memory-related causes and a check for each.
-28. Which `/proc/meminfo` fields would you check for a suspected kernel memory leak?
-29. What does `vm.max_map_count` limit and when must it be raised?
-30. Draw up a host-memory budget for an 8-GPU node and say which numbers you would measure.
+1. **Page Tables, TLB Reach, and Huge Pages (`4 KiB` vs `2 MiB` vs `1 GiB`):** (a) How many `4 KiB` page-table entries (`PTE`s) are required to map a `256 GiB` host dataset, and how many memory reads can a 5-level page walk (`CR3 -> PGD -> P4D -> PUD -> PMD -> PTE`) require on a TLB miss? (b) Using `compute_tlb_reach_bytes()` in `code/part01/memory_numa_oom.py`, compute the TLB reach in `MiB` of a `64`-entry data TLB with `4 KiB`, `2 MiB`, and `1 GiB` pages.\n2. **`VSZ`, `RSS`, `PSS`, `USS` Accounting and `free -h` `MemAvailable`:** (a) Four data-loader worker processes each have `100,000 KiB` of private anonymous memory and share a single `400,000 KiB` memory-mapped dataset; compute `USS`, `PSS`, and `RSS` per worker and compare `4 * RSS` against `4 * PSS`; (b) why is a node with `2 GiB` `free` and `400 GiB` `buff/cache` (`MemAvailable = 400 GiB`) healthy?\n3. **Page Reclaim Watermarks (`min`, `low`, `high`), `kswapd` vs. Direct Reclaim, and `OOM` Scoring:** (a) Using `compute_zone_watermarks_kib()` on a `100,000,000 KiB` (`~100 GB`) server with `min_free_kbytes = 90,000`, compare the `low` and `high` watermarks when `vm.watermark_scale_factor = 10` (`0.1%`) versus `100` (`1.0%`), and explain how waking `kswapd` earlier prevents synchronous direct-reclaim stalls (`pgscand/s`); (b) compute the effective `oom_score` (`compute_oom_effective_score()`) for `sshd` (`oom_score_adj = -1000`) and for a worker using `40%` of RAM with `oom_score_adj = +500`.\n4. **The NUMA GPU Trap, First-Touch Placement, and `numactl`:** Explain why a training rank whose CPU threads run on NUMA node `0` while driving a GPU attached to NUMA node `1` suffers reduced host-to-device bandwidth and high `other_node` counts in `numastat`. Write the command to bind the rank's CPUs and memory to the GPU's local NUMA node, and state what happens to that memory policy if a child worker is created via `spawn`/`exec` rather than `fork`.\n5. **User-Space Allocators, CPython `256 KiB` Arenas, and Copy-on-Write Refcount Breakage:** (a) Why does a Python process's `RSS` remain high after `del big_list; gc.collect()`, and how do `LD_PRELOAD=.../libjemalloc.so.2` and `MALLOC_ARENA_MAX=2` change heap retention? (b) Why do `fork()`ed PyTorch `DataLoader` workers gradually duplicate a shared Python `list` dataset across every worker in RAM, and what data structures prevent this copy-on-write breakage?\n6. **Pinned Host Memory, `RLIMIT_MEMLOCK`, and 8-GPU Host RAM Budgeting:** (a) Why are `cudaMemcpyAsync(..., pin_memory=True)` and GPUDirect RDMA `ibv_reg_mr` transfers `2x` to `3x` faster from pinned memory than from pageable memory, and what `ulimit` / `systemd` directive prevents `ENOMEM` registration failures? (b) Use `audit_training_node_ram_budget()` to evaluate whether `8` GPUs x `16` workers/GPU x `2 GiB`/worker + `32 GiB` pinned buffers + `16 GiB` OS fits on a `256 GiB` vs `512 GiB` host.
 
-### Answers
+## Checkpoint questions (20)
 
-1. Private, large, linear address spaces; isolation, oversubscription, sharing, mmap. Cost: address translation. The MMU translates via page tables (4 to 5 levels) cached in the TLB; a miss triggers a page walk; no mapping triggers a page fault.
-2. RSS: pages in RAM; VSZ: all allocated address space; PSS: private plus shared divided by users; USS: private only. Shared pages are counted in every mapping process's RSS, so sums overcount.
-3. Physical pages are assigned on first touch. Minor: no I/O (zero page, mapping a cached/shared page); major: requires disk I/O (uncached file page or swapped-out page).
-4. Granting more virtual memory than RAM+swap. 0 heuristic, 1 always allow, 2 strict limit by ratio.
-5. free: unused; available: estimate of memory obtainable without swapping (includes reclaimable cache); buff/cache: file cache and buffers, mostly reclaimable.
-6. Free lists, then kswapd background reclaim (page cache, swap, slab) below the low watermark, direct reclaim in the allocating thread below min, finally the OOM killer. Direct reclaim and compaction stall the thread.
-7. Swappiness: bias toward swapping vs dropping cache; min_free_kbytes: size of the reserve and base of watermarks; watermark_scale_factor: gap between watermarks (earlier kswapd wake-up).
-8. Swapped pages cause huge slowdowns and stalls of collective ops; fail fast instead. Downside: no grace period, OOM kills happen immediately; need limits and monitoring.
-9. By badness score (proportional to memory use) plus `oom_score_adj` (-1000 immune to +1000 first). `echo -1000 > /proc/PID/oom_score_adj` or `OOMScoreAdjust=-900/-1000` in the unit.
-10. cgroup OOM: the group exceeded `memory.max`, killing within it; host has free memory. Evidence: `memory.events oom_kill`, `constraint=CONSTRAINT_MEMCG` and cgroup path in dmesg; global shows system-wide exhaustion.
-11. Killed by SIGKILL (128+9), typically the OOM killer. Check dmesg, cgroup `memory.events`, container limits.
-12. Memory attached per CPU socket/node with remote access slower. `numactl -H`, `lscpu`, `lstopo`, `nvidia-smi topo -m`, `/sys/bus/pci/devices/*/numa_node`.
-13. A page is allocated on the node of the CPU that first touches it; if the loader initialises buffers on node 0 but the GPU is on node 1, every copy crosses the interconnect.
-14. `numactl --cpunodebind=1 --membind=1 python train.py`. Policy is inherited by `fork`ed children; `exec`/spawn'd processes do not inherit and must be re-bound.
-15. Hit: allocated on the intended node; miss: allocated here though another node was intended; other_node: process on one node touching memory of another; rising values mean remote placement.
-16. Its scanning and migrations add overhead and jitter, and explicit binding is better than its heuristics for GPU feeding.
-17. Larger pages (2 MiB/1 GiB) reduce page-table size and TLB misses. Explicit: reserved pool, not swappable, application opts in; transparent: automatic promotion/demotion, may stall on compaction or bloat memory.
-18. Training: `always` or `madvise` (measure); inference: `madvise`/`never` with `defrag=defer`. Risks: compaction latency spikes and memory bloat.
-19. Allocators keep freed memory (arenas, fragmentation, Python pymalloc arenas). Recycle workers, use jemalloc/tcmalloc or tuning (`MALLOC_ARENA_MAX`, trim), use mmap-based storage.
-20. glibc: default, arenas; jemalloc: scalable, low fragmentation, profiling; tcmalloc: thread caches. `LD_PRELOAD=libjemalloc.so.2 cmd` and check `/proc/PID/maps`.
-21. Python refcount updates write to object headers, triggering copy-on-write of pages; use NumPy/Arrow/mmap data.
-22. Leak: memory never freed; growth: expected increase (cache, warm-up). Tools: RSS time series (`pidstat -r`, `smem`), `memleak`/`bpftrace`, jemalloc/tcmalloc profiling, `tracemalloc`/`memray`, `smaps`.
-23. Pressure stall information: `some` = time at least one task stalled for memory, `full` = all tasks stalled; averages over 10/60/300 s; sustained values mean saturation.
-24. `high` soft limit with throttling/reclaim, `max` hard limit with OOM, `low` best-effort protection, `events` counters of high/max/oom/oom_kill occurrences.
-25. The cgroup is charged for its page cache; the kernel reclaims it when near the limit, so high `current` is normal; watch anonymous/working-set memory and events.
-26. Page-locked memory that cannot be swapped/moved so devices can DMA; avoids a staging copy and permits async overlap; limited by `RLIMIT_MEMLOCK` and physical RAM; low `memlock` makes registrations fail.
-27. Direct reclaim (`pgscand`, `allocstall`, PSI), THP compaction (`compact_stall`, `thp_*`), NUMA balancing/writeback stalls (`numa_pages_migrated`, dirty/writeback in `/proc/meminfo`); check `sar -B`, `/proc/vmstat`, PSI, perf.
-28. `Slab`, `SUnreclaim`, `PageTables`, `KernelStack`, `VmallocUsed`, `Unevictable`; `slabtop`.
-29. The number of memory mappings per process; raise for programs with many mmaps (PyTorch loaders, Elasticsearch, JVM) when `mmap` fails with ENOMEM.
-30. OS and daemons, loader workers x GPUs x per-worker memory, pinned buffers, framework host allocations, NCCL buffers, page cache for datasets, tmpfs/checkpoint staging, margin; measure `RssAnon` per process, `MemAvailable`, PSI, cgroup `memory.stat`, NUMA distribution.
+<details>
+<summary>1. What does virtual memory provide, and how do the MMU, multi-level page tables, and TLB translate a virtual address?</summary>
+Virtual memory provides per-process address space isolation, oversubscription, shared library/file mapping (`mmap`), and contiguous virtual addressing. On each access, the CPU checks the **TLB** (*Translation Lookaside Buffer*); on a TLB hit, the physical address is returned in ~1 cycle. On a TLB miss, the hardware **MMU** walks the 4- or 5-level page table tree in RAM (`CR3 -> PGD -> P4D -> PUD -> PMD -> PTE`) to load the translation into the TLB, or raises a page fault if the PTE is not present.
+</details>
 
-## Sources and further reading
+<details>
+<summary>2. Define `VSZ` (`VIRT`), `RSS` (`RES`), `PSS`, `USS`, and `WSS`, and explain why summing `RSS` across processes is misleading.</summary>
+`VSZ` is total allocated virtual address space; `RSS` is resident memory currently mapped in RAM (including shared pages in full); `PSS` (*Proportional Set Size*, in `/proc/PID/smaps_rollup` and `smem`) divides shared pages evenly among the processes mapping them; `USS` (*Unique Set Size*) is private resident memory only; and `WSS` (*Working Set Size*) is the subset of memory actively referenced. Summing `RSS` counts shared libraries, `tmpfs`/`/dev/shm`, and CoW pages multiple times, whereas summing `PSS` equals true physical usage.
+</details>
 
-- Brendan Gregg, *Systems Performance*, 2nd ed.: ch. 7 (memory: terminology; virtual memory, paging, demand paging, overcommit, process swapping, file-system cache usage, utilisation and saturation, allocators, shared memory, working set size, word size; hardware: main memory, DDR, multichannel, CPU caches, MMU, multiple page sizes, TLB; software: freeing memory, free lists, reaping, page scanning, process address space and heap growth, allocators slab, SLUB, glibc, TCMalloc, jemalloc; methodology: tools method, USE, characterising usage, cycle analysis, monitoring, leak detection, static tuning, resource controls, micro-benchmarking, memory shrinking; observability tools: `vmstat`, PSI, `swapon`, `sar`, `slabtop`, `numastat`, `ps`, `top`, `pmap`, `perf`, `drsnoop`, `wss`, `bpftrace`; tuning: tunable parameters, multiple page sizes, allocators, NUMA binding, resource controls). Sections 2 to 6 and 9 to 10 condense this chapter in original wording; the book's figures, tables of DDR bandwidths and TLB sizes, and tool outputs are not reproduced.
-- nvidia-devops (the user's earlier notes): `volume-01/01-linux-compute-memory-masterclass.md` (the NUMA GPU trap, page tables and TLB walk, page cache and reclaim watermarks, swappiness, NUMA policies and `numactl`, OOM score mechanics, the `mmap` and Python allocator examples, `numastat`, sysctl guide). Reused with edits in sections 2, 4, 5, 7 and 10 (partial: CPU scheduling and CFS/EEVDF migrate to chapter 1.18; the `perf` scenarios to 1.24).
-- Manual pages and kernel documents: `proc(5)` (`meminfo`, `smaps`, `oom_score_adj`, `vmstat`), `free(1)`, `vmstat(8)`, `numactl(8)`, `numastat(8)`, `numa(7)`, `mbind(2)`, `mmap(2)`, `madvise(2)`, `mlock(2)`, `malloc(3)`, `mallopt(3)`, `sysctl(8)`; kernel `Documentation/admin-guide/sysctl/vm.rst`, `admin-guide/mm/transhuge.rst`, `admin-guide/mm/hugetlbpage.rst`, `admin-guide/cgroup-v2.rst`, `accounting/psi.rst`; `systemd.resource-control(5)`, `systemd-oomd(8)`.
-- Related chapters: 1.8 (page faults, `vmstat`, limits, cgroup basics), 1.11 (address space layout, allocators in practice), 1.12 (page cache, write-back), 1.14 (kernel parameters for huge pages and NUMA), 1.15 (slices, `MemoryMax`, `OOMScoreAdjust`), 1.18 (CPU scheduling and cgroups), 1.22 (kernel tuning), 1.24 (BPF memory tools), 1.28 (node tuning), Kubernetes and Slurm chapters (memory limits, Topology Manager, `--mem`, `--gpu-bind`), NCCL and RDMA chapters (memlock, registration).
+<details>
+<summary>3. What is demand paging, and what is the difference between a minor page fault and a major page fault?</summary>
+Under demand paging, `malloc()` or `mmap()` reserves virtual address ranges without allocating physical RAM frames until a page is first read or written. A **minor page fault** maps a physical page already in RAM (such as a newly zeroed anonymous page or an already-cached file page) with no disk I/O. A **major page fault** blocks the thread on storage I/O to read an uncached file page or swap in a paged-out anonymous page.
+</details>
 
-*Notes for review:* defaults (swappiness range, watermark factors, THP defaults, `oom_score` details, `vm.max_map_count`), the cgroup file names and the behaviour of Kubernetes QoS and OOM scoring depend on kernel and distribution versions; the numerical tuning values and the pinned-memory speed-up factors are illustrative and must be measured. NUMA binding commands must be derived from the actual topology; the Grace-system NUMA description should be checked against NVIDIA's platform documentation. All lab commands are **untested**; run them on a disposable VM before this chapter moves to `reviewed`.
+<details>
+<summary>4. What are the three modes of `vm.overcommit_memory` (`0`, `1`, `2`), and why is mode `2` rarely used on GPU nodes?</summary>
+`0` (default) uses a heuristic that allows reasonable overcommit while rejecting single allocations larger than available virtual capacity; `1` always allows virtual allocations (`malloc()` never returns `NULL`); and `2` enforces strict commit accounting limited to `swap + vm.overcommit_ratio% of RAM` (checked in `/proc/meminfo` via `CommitLimit` and `Committed_AS`). Mode `2` is avoided on GPU nodes because CUDA runtimes, JVMs, and `fork()` of large processes reserve huge virtual address spaces that they never fully touch.
+</details>
+
+<details>
+<summary>5. In `free -h` and `/proc/meminfo`, what is the difference between `MemFree` and `MemAvailable`?</summary>
+`MemFree` is completely unused RAM (which Linux keeps small by using spare RAM for the page cache). `MemAvailable` estimates how much memory can be given to new applications **without swapping**, combining `MemFree` with reclaimable page cache (`Cached`) and reclaimable kernel slab caches (`SReclaimable`), minus watermarks and non-reclaimable `Shmem`/`Mlocked` pages.
+</details>
+
+<details>
+<summary>6. Trace what Linux does as free memory drops past the `high`, `low`, and `min` watermarks.</summary>
+Above `high`, no reclaim runs. When free memory falls below the **`low`** watermark, the per-node background daemon **`kswapd`** wakes up and asynchronously reclaims clean page-cache pages, swaps out cold anonymous pages (if swap exists, weighted by `vm.swappiness`), and shrinks reclaimable slab caches (`dentries`/`inodes`) until free memory reaches `high`. If allocations outpace `kswapd` and hit the **`min`** watermark, the allocating application thread itself is forced into synchronous **direct reclaim** (`pgscand/s`, `allocstall`), stalling the application; if reclaim fails completely, the **OOM killer** runs.
+</details>
+
+<details>
+<summary>7. How do `vm.swappiness`, `vm.min_free_kbytes`, and `vm.watermark_scale_factor` control page reclaim?</summary>
+`vm.swappiness` (`0`–`200`, default `60`, set to `0`–`10` or `1` on GPU nodes) sets the relative preference for swapping anonymous memory versus reclaiming file page cache. `vm.min_free_kbytes` sets the `min` free memory watermark, and `vm.watermark_scale_factor` (default `10` = `0.1%` of RAM, often raised to `50`–`100` on TiB-scale servers) sets the spacing between `min`, `low`, and `high` so `kswapd` starts background reclaim earlier before threads hit direct reclaim.
+</details>
+
+<details>
+<summary>8. Why is swap usually disabled or set to minimal `swappiness` on GPU training nodes?</summary>
+If a GPU training rank's host memory is partially swapped to disk, touching those pages stalls the rank for milliseconds per fault, which stalls collective `NCCL` operations across *every* GPU in the job. Failing fast via cgroup OOM (`exit 137`) so the orchestrator can restart or reschedule the job is preferable to an entire multi-node cluster limping at 1% GPU utilization.
+</details>
+
+<details>
+<summary>9. How does the Linux OOM killer select a victim, and how do you use `oom_score_adj` to protect host daemons?</summary>
+The kernel scores candidate processes from `0` to `1000` (`/proc/PID/oom_score`) roughly proportional to their fraction of RAM + swap, then adds `/proc/PID/oom_score_adj` (`-1000` to `+1000`). Setting `oom_score_adj = -1000` makes a process completely immune (`0`), and setting `OOMScoreAdjust=-900` in `sshd.service`, `kubelet.service`, and `containerd.service` ensures the OOM killer picks a workload process instead of a critical node daemon.
+</details>
+
+<details>
+<summary>10. How do you distinguish a cgroup OOM kill from a global host OOM kill or a NUMA-constrained OOM kill?</summary>
+In `dmesg -T` / `journalctl -k`, a cgroup OOM prints `oom-kill:constraint=CONSTRAINT_MEMCG,nodemask=(null),cpuset=...,mems_allowed=...,oom_memcg=/kubepods.slice/...` and increments `oom_kill` inside that cgroup's `/sys/fs/cgroup/<path>/memory.events`, even when the host has hundreds of GiB free. A global OOM prints `constraint=CONSTRAINT_NONE` with host-wide low `free:` counts, and a NUMA-constrained OOM prints `constraint=CONSTRAINT_MEMORY_POLICY` or `CONSTRAINT_CPUSET` when a pinned NUMA node is full.
+</details>
+
+<details>
+<summary>11. What is NUMA, how do you inspect a server's NUMA distance matrix and PCIe device affinity, and what do `numastat` counters mean?</summary>
+In a NUMA (*Non-Uniform Memory Access*) server, each CPU socket (or sub-NUMA cluster) has local DRAM controllers and PCIe root complexes, connected to other sockets by an interconnect (`UPI` or `Infinity Fabric`/`xGMI`) with `1.3x`–`2.1x` higher latency (`numactl --hardware` shows `10` local vs `21` remote). Check GPU/NIC NUMA affinity via `nvidia-smi topo -m`, `lstopo`, and `/sys/bus/pci/devices/<BDF>/numa_node`. In `numastat`, `numa_hit` is local allocation as intended, `numa_miss`/`numa_foreign` is fallback to another node when full, and `other_node` is a CPU accessing memory allocated on a remote node.
+</details>
+
+<details>
+<summary>12. What is the \"first-touch\" NUMA placement rule, how does it cause the GPU data-loader trap, and how do you fix it?</summary>
+Under Linux's default local policy, a physical page is allocated on the NUMA node of the CPU core that **first writes (faults)** that page. If a data loader runs on socket `0` and faults its batch buffers there while feeding a GPU on socket `1`, every host-to-device DMA transfer crosses the inter-socket link. Fix it by launching each rank bound to its GPU's NUMA node (`numactl --cpunodebind=$node --membind=$node`), pinning `DataLoader` workers in `worker_init_fn`, and setting `kernel.numa_balancing = 0`.
+</details>
+
+<details>
+<summary>13. Compare explicit huge pages (`hugetlbfs`) and Transparent Huge Pages (`THP`), and state the recommended THP policy for training vs. inference.</summary>
+Explicit huge pages (`2 MiB` or `1 GiB`, configured via `vm.nr_hugepages` or boot parameters) are pre-reserved in a dedicated non-swappable pool and require applications to opt in (`MAP_HUGETLB`, `hugetlbfs`). THP automatically backs anonymous memory regions with `2 MiB` pages (`[always]`, `madvise`, `never`). Throughput-oriented training nodes benefit from `always` or `madvise` (higher TLB reach), whereas latency-critical inference servers and databases use `madvise` (or `never`) with `defrag=defer` to avoid synchronous memory-compaction latency spikes (`compact_stall`).
+</details>
+
+<details>
+<summary>14. Why does a process's `RSS` often remain high after `free()` or Python `del`, and how do `jemalloc` and `tcmalloc` help?</summary>
+User-space allocators (`glibc ptmalloc`, CPython `pymalloc` `256 KiB` arenas) retain freed blocks in internal bins/arenas for future allocations and cannot return an arena to the OS if a single small object at the top of the arena remains live. Preloading `libjemalloc.so.2` or `libtcmalloc.so.4` (or setting `MALLOC_ARENA_MAX=2`) reduces multithreaded arena fragmentation and returns unused pages more predictably.
+</details>
+
+<details>
+<summary>15. Why do `fork()`ed Python `DataLoader` workers duplicate a shared Python `list` dataset in RAM, and how do you keep the dataset shared?</summary>
+Although `fork()` shares parent memory pages copy-on-write, every time a worker reads an element of a Python `list` or `dict`, CPython increments the object's reference count (`ob_refcnt`) stored inside the object header, writing to the page and triggering a copy-on-write fault for the entire `4 KiB` page. Store datasets in contiguous `NumPy` arrays, `Apache Arrow` tables, `mmap` files, or `torch.Tensor.share_memory_()` so workers read raw bytes without mutating Python object headers.
+</details>
+
+<details>
+<summary>16. How do you read `/proc/pressure/memory` (PSI) and `sar -B` when diagnosing node slowdowns?</summary>
+In `/proc/pressure/memory`, `some` is the percentage of wall time (`avg10`, `avg60`, `avg300`) in which at least one task was stalled waiting on memory (reclaim/compaction/swap-in), and `full` is the percentage of time *all* non-idle tasks were stalled. In `sar -B`, non-zero `majflt/s` shows major page faults, `pgscank/s` shows background `kswapd` scanning, and non-zero `pgscand/s` proves application threads are blocking in synchronous direct reclaim.
+</details>
+
+<details>
+<summary>17. In `cgroup v2`, what is the difference between `memory.min`, `memory.low`, `memory.high`, and `memory.max`, and why does `memory.current` include page cache?</summary>
+`memory.min` hard-protects memory from reclaim; `memory.low` best-effort protects memory from reclaim; `memory.high` throttles the cgroup and forces aggressive reclaim before killing; and `memory.max` is the hard ceiling that triggers a cgroup OOM kill. `memory.current` includes both anonymous memory and file page cache charged to the cgroup; when `memory.current` nears `memory.max`, the kernel reclaims the cgroup's clean file cache first, so inspect `anon` in `memory.stat` to see true non-reclaimable pressure.
+</details>
+
+<details>
+<summary>18. What is pinned (page-locked) host memory, why do CUDA and RDMA require it, and what happens if `RLIMIT_MEMLOCK` is too small?</summary>
+Pinned memory (`mlock()`, `cudaMallocHost()`, PyTorch `pin_memory=True`) locks physical pages in RAM so the kernel cannot swap or migrate them, allowing GPUs and RDMA NICs to DMA directly without an intermediate kernel bounce buffer (`2x`–`3x` faster `H2D`/`D2H` bandwidth and true async overlap with compute). Because pinned pages are unevictable (`Mlocked` in `/proc/meminfo`), Linux caps them with `RLIMIT_MEMLOCK` (`ulimit -l`); if too small, `cudaHostAlloc` or `ibv_reg_mr` fails with out-of-memory, so AI nodes set `memlock` to `unlimited` (`LimitMEMLOCK=infinity`).
+</details>
+
+<details>
+<summary>19. What causes `mmap` or `malloc` to fail with `Cannot allocate memory` (`ENOMEM`) when `free -h` shows plenty of `MemAvailable`?</summary>
+Common causes are: (1) hitting `vm.max_map_count` (default `65530` mappings per process; raise to `1048576`), (2) hitting `RLIMIT_MEMLOCK` (`ulimit -l`) when pinning memory, (3) hitting a cgroup `memory.max` limit, (4) strict overcommit (`vm.overcommit_memory=2`), or (5) binding (`numactl --membind`) to a single exhausted NUMA node.
+</details>
+
+<details>
+<summary>20. How do you budget host RAM for an 8-GPU training server, and which `/proc/meminfo` fields indicate a kernel/driver memory leak?</summary>
+Sum OS/daemon reserve (`~16 GiB`) + (`num_gpus` x `workers_per_gpu` x per-worker RSS/prefetch) + pinned staging buffers + framework/NCCL host buffers + dataset page cache + `/dev/shm` checkpoint staging headroom. A kernel or driver memory leak appears as monotonically growing `Slab` / `SUnreclaim` (inspected with `slabtop`), `PageTables`, or `VmallocUsed` in `/proc/meminfo`.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `systems-performance-2nd-edition` — Brendan Gregg, *Systems Performance*, 2nd ed., **Chapter 7: Memory** (sections 7.1–7.8: terminology, virtual memory, paging, demand paging, overcommit, process swapping, file system cache usage, utilization and saturation, allocators, shared memory, working set size WSS, word size; hardware: main memory DRAM, DDR4/DDR5 multichannel, CPU caches, MMU, multiple page sizes, TLB; software: freeing memory, free lists, reaping, page scanning `kswapd`, slab/SLUB and Jeff Bonwick's per-CPU magazines `[Bonwick 94]`/`[Bonwick 01]`, process address space, `glibc`/`TCMalloc`/`jemalloc`; methodology: tools method, USE, characterizing usage, cycle analysis, monitoring, leak detection, static tuning, resource controls, micro-benchmarking, memory shrinking; observability tools: `vmstat`, PSI, `swapon`, `sar -B/-r/-S`, `slabtop`, `numastat`, `ps`, `top`, `pmap`, `perf`, `drsnoop`, `wss`, `bpftrace` `uprobe:libc:malloc`; and tuning).
+  - `nvidia-devops/volume-01/01-linux-compute-memory-masterclass.md` — migrated the NUMA GPU trap, page tables and TLB walk, page cache and reclaim watermarks, `vm.swappiness`, NUMA policies and `numactl`, OOM score mechanics, the `mmap` and Python allocator arena examples, `numastat`, and `sysctl` tuning guide (cross-referenced with `volume-01/02-linux-storage-io-masterclass.md`, `volume-01/03-linux-networking-masterclass.md`, and `volume-01/04-linux-systemd-containers-masterclass.md`, plus original study items 21–30 and Chapters 1.8, 1.11, 1.12, 1.14, 1.15, 1.18, 1.22, 1.24, and 1.28).
+- **Run here:** `python3 code/part01/memory_numa_oom_lab.py` (21 passed, 0 failed).
+- **Explicitly labelled inferences:** The 8-GPU `DataLoader` worker RAM budget formula, CPython copy-on-write reference-count page dirtying in forked workers, `OOMScoreAdjust=-900/-1000`, `numa_pages_migrated`, kernel docs (`admin-guide/mm/transhuge.rst`, `admin-guide/mm/hugetlbpage.rst`, `admin-guide/cgroup-v2.rst`, `accounting/psi.rst`), and Grace GH200/GB200 NVLink-C2C NUMA topology guidance connect Linux virtual memory and NUMA internals to Part 5, Part 6, and Part 10 GPU workloads (plus original study items 22, 23, 24, 25, 26, 27, and 29).
+- **Not verified on live hardware:** All interactive VM and GPU commands (`free`, `vmstat`, `sar`, `slabtop`, `systemd-run`, `numactl`, `numastat`, `pmap`, `ulimit -l`) are marked (untested here) and must be executed on a disposable test VM, never on a production host.
