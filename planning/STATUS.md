@@ -271,7 +271,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 2.19 | Queuing, QoS, ECN, PFC and DCB basics | drafted | 7945 |  |
 | 2.20 | Load balancing: L4, L7, ECMP hashing and proxies | drafted | 7749 |  |
 | 2.21 | Network security: firewalls, TLS and zero trust | drafted | 7593 |  |
-| 2.28 | Network automation fundamentals: APIs, YANG, NETCONF, gNMI, SDN, templates | drafted | 5893 |  |
+| 2.28 | Network automation fundamentals: APIs, YANG, NETCONF, gNMI, SDN, templates | drafted | 7963 |  |
 | 2.29 | Network automation in practice: Ansible, Nornir and CI/CD for networks | drafted | 5628 |  |
 | 2.31 | Network monitoring and telemetry | drafted | 5333 |  |
 | 3.1 | Python core: types, control flow, functions | drafted | 7429 |  |
