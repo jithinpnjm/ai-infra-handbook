@@ -22,6 +22,8 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
+At two in the morning, a training job stops reaching its storage network. The on-call engineer finds that an interface MTU changed earlier in the day from `9000` to `1500`. No one remembers who changed it, what else changed in the same session, or which value was working before the incident. The cluster is expensive, the training deadline is close, and the only available evidence is a few shell histories and an unreviewed terminal note.
+
 In an AI factory almost everything that matters is, or should be, text in a repository: Terraform that creates networks and GPU VMs, Ansible roles that install drivers and tune kernels, Slurm configuration, Kubernetes manifests and Helm values, Dockerfiles for training images, CI pipelines, runbooks. Git is the evidence trail for all of it: who changed the NCCL settings, when MTU went from 9000 to 1500, which commit introduced the regression that halved training throughput, and how to go back. A cluster that cannot be rebuilt from Git is a pet; a change that did not pass through review is an incident waiting to happen. This chapter teaches Git from the object model up, then the workflows (trunk-based development, review, rebase, recovery) used by infrastructure teams, and connects Git to CI/CD (4.2) and GitOps (4.26).
 
 ## Prerequisites and outcomes
@@ -40,7 +42,16 @@ You should be comfortable at a shell (Part 1). After this chapter you can:
 
 Version control provides **change tracking** (every modification, who, when, why), **accountability** (blame and review trails), **collaboration** (parallel work merged deterministically), **reversibility** (restore any prior state), and **process hooks** (CI, approvals, deployment triggers). For networks and infrastructure specifically it turns "I changed something on the switch last night" into a reviewed, diffable, revertable commit and enables automated validation before anything touches hardware. Configuration that is not in version control is undocumented, unreviewable and unrecoverable.
 
-Git won because it is **distributed** (every clone is a full backup with full history; work offline; no single point of failure), **fast** (local operations on a content-addressed database), **nonlinear** (branches are 41-byte pointers, so experimenting is free), and **integrity-protected** (every object is named by a hash of its content, so silent corruption or tampering is detectable).
+Git won because it is **distributed** (every clone is a full backup with full history; work offline; no single point of failure), **fast** (local operations on a content-addressed database), **nonlinear** (branches are 41-byte pointers—a 40-character hexadecimal SHA-1 hash plus a newline in `.git/refs/heads/<branch>`, so experimenting is free), and **integrity-protected** (every object is named by a hash of its content, so silent corruption or tampering is detectable). As Christian Adell, Scott Lowe, Matt Oswalt, and Jason Edelman recount in *Network Programmability and Automation* Chapter 11 (`NPA` Chapter 11), Linus Torvalds created Git in April 2005 when the Linux kernel community stopped using the proprietary BitKeeper system and needed a fast, non-linear, fully distributed version control system that could scale to thousands of kernel contributors.
+
+### Infrastructure developer environments (`NPA` Chapter 5)
+
+Before touching production fabrics or GPU clusters, an infrastructure engineer needs a local developer environment where code and topologies are edited, diffed, and tested reproducibly (`NPA` Chapter 5):
+- **Editors, IDEs, and the Language Server Protocol (`LSP`):** Whether you use **Vim/Neovim**, **Visual Studio Code**, **Sublime Text**, or **PyCharm**, modern editors talk to language servers over **LSP** to provide syntax highlighting, real-time linting, auto-completion, and semantic navigation (*Go to Definition*, *Find References*, *Refactor*) across Python, Go, YAML, Jinja2, and Terraform HCL, alongside built-in Git gutter diffs and branch status prompts (`git-sh-prompt` in `/usr/lib/git-core/git-sh-prompt` on Debian/Ubuntu or `/usr/share/git-core/contrib/completion/git-prompt.sh` on RHEL/Fedora).
+- **Semantic YAML diffing (`dyff`):** Plain line-based `diff` struggles when keys are reordered in YAML manifests or switch configs; `dyff between -b before.yaml after.yaml` parses the YAML AST and reports exact structural changes (for example, `switches.sw02.interfaces.eth3.vlans -> + one list entry added: - 50`).
+- **Emulating network and server topologies locally from text in Git (`Vagrant` and `Containerlab`):**
+  1. **Vagrant + VirtualBox/libvirt (`Vagrantfile`):** Defines multi-VM network labs (such as three `vyos/current` routers `r1` `192.168.12.11`, `r2` `192.168.12.12`, and `r3` `192.168.12.13` wired over `virtualbox__intnet` private networks and configured automatically via `config.vm.provision "ansible" { |ansible| ansible.playbook = "playbook.yml" }`), launched with `vagrant up`, accessed via `vagrant ssh r1`, and torn down with `vagrant destroy -f`.
+  2. **Containerlab (`topology1.clab.yaml`):** Launches lightweight containerized network operating systems (such as Nokia SR Linux `ghcr.io/nokia/srlinux`, Arista cEOS, or SONiC nodes `srl01` and `srl02` with `startup-config: srl1.cfg` and point-to-point `endpoints: ["srl01:e1-1", "srl02:e1-1"]`) in seconds via `containerlab deploy`, inspected with `ssh admin@172.20.20.2` or `docker exec`, and destroyed with `containerlab destroy`. Because both `Vagrantfile` and `*.clab.yaml` are plain text files tracked in Git, every engineer and CI runner boots the exact same lab topology.
 
 ## 2. The Git object model
 
@@ -227,7 +238,9 @@ git branch -d feature                   # delete merged branch; -D forces
 git push origin --delete feature
 ```
 
-- `git pull` is `fetch` plus `merge` (or rebase). Understand both halves; prefer explicit `fetch` then decide.
+- `git pull` is `fetch` plus `merge` (or rebase). Understand both halves; prefer explicit `fetch` then decide (`NPA` Chapter 11 demonstrates why: running `git fetch origin` updates your remote-tracking branch `origin/main` in `.git/refs/remotes/origin/main` without touching your working directory or local `main`, allowing you to inspect incoming changes safely with `git log main..origin/main` and `git diff main..origin/main` before merging with `git merge origin/main`).
+- **Working vs. bare repositories (`git init --bare` / `git clone --bare`, `NPA` Chapter 11):** A normal repository has a working directory and a `.git/` subfolder; pushing directly into a non-bare repository that has a checked-out branch causes the working tree and index to fall out of sync with `HEAD` (so Git refuses by default). Central shared repositories on a Git server (or `na-shared.git` over SSH `ssh://host/~/na-shared.git`) are created as **bare repositories** (`git clone --bare net-auto na-shared.git`), which contain only the contents of `.git/` (`HEAD`, `config`, `objects/`, `refs/`) with **no working tree**—designed exclusively to receive `git push` and serve `git fetch`/`git clone`.
+- **Lightweight vs. annotated tags (`git tag`, `NPA` Chapter 11):** A **lightweight tag** (`git tag golive d40fe74`) is simply an unchanging ref file pointing directly to a commit hash, whereas an **annotated tag** (`git tag -a v1.0 -m "Version 1.0 of network automation tools"`) creates a full tag object in `.git/objects` recording the tagger name, email, date, message, and optional GPG/SSH signature (`git show v1.0`). Remember that `git push` does not transfer tags by default; push them explicitly with `git push origin v1.0` or `git push origin --tags`.
 - **Never force-push shared branches** (`main`, release branches). Use `--force-with-lease` only on your own feature branch after a rebase. Protect `main` on the server so it is impossible.
 - **Authentication**: SSH keys (ed25519), credential helpers, short-lived tokens; deploy keys with read-only scope for CI; never embed tokens in URLs (they land in `.git/config` and logs).
 - **Forks and pull/merge requests**: the review unit. Keep them small (hundreds of lines), describe intent and risk, link the plan output for IaC changes, and require passing checks.
@@ -410,7 +423,15 @@ flowchart LR
 
 Practical conventions: separate **application code repos** from **environment/config repos** (CI updates an image tag in the config repo via PR, the agent deploys it), pin by immutable digests or tags, keep one source of truth per environment, and keep secrets out of Git by using external secret operators or SOPS-encrypted files.
 
-## 15. Lab (untested)
+## 15. Lab
+
+First, run the self-checking Python lab (`code/part04/git_infrastructure_workflow_lab.py`) locally. It verifies Git's content-addressed SHA-1 object hashing (`blob <size>\0<content>` -> `ce013625030ba8dba906f756967f9e9ca394464a`), blob reuse across file renames (`main.tf` -> `providers.tf`) and Merkle DAG commit chaining (`build_git_commit_dag`), `.github/CODEOWNERS` last-matching-pattern evaluation (`resolve_codeowners`), and automated `git bisect run` binary search (`simulate_git_bisect_run`).
+
+```bash
+python3 code/part04/git_infrastructure_workflow_lab.py
+```
+
+Next, on any machine with Git 2.40+ (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **Object model**: init a repo, make three commits, and use `cat-file`, `ls-tree`, `rev-parse`, `count-objects -v` to trace commit to tree to blob; modify one file and see which objects are new; run `git gc` and compare `.git` size; show that renaming a file creates no new blob.
 2. **Staging discipline**: edit two unrelated things in one file; split into two commits with `git add -p`; use `git diff --staged --check` to catch a trailing space in YAML.
@@ -426,8 +447,6 @@ Practical conventions: separate **application code repos** from **environment/co
 12. **LFS**: track `*.bin`, commit a 50 MB file, inspect the pointer, clone and observe `git lfs pull`; compare repository size without LFS.
 13. **Worktrees and stash**: patch a "production" hotfix in a second worktree while a feature branch has uncommitted changes; use `stash` and compare.
 14. **Clean up** the throwaway remote and repos.
-
-Mark tested only after execution.
 
 ## 16. Common mistakes
 
@@ -446,7 +465,7 @@ Mark tested only after execution.
 ## 17. Interview angles
 
 - "What is a commit physically? Why are branches cheap?" (snapshot object with parents; branch is a pointer.)
-- "Merge versus rebase: trade-offs? What is the golden rule?" 
+- "Merge versus rebase: trade-offs? What is the golden rule?"
 - "You pushed a bad change to main. What do you do?" (revert via PR, not reset/force; follow CI; consider incident process.)
 - "A secret was committed. Walk through remediation." (rotate first, then purge, then prevent.)
 - "How do you find which commit broke throughput?" (bisect with an automated test.)
@@ -456,56 +475,181 @@ Mark tested only after execution.
 - "How do CODEOWNERS and branch protection enforce team boundaries?"
 - "I lost commits after a rebase. How do I get them back?" (reflog.)
 
-## 18. Checkpoint questions (40)
+## Exercises
 
-1. What four object types does Git store? **A:** Blob, tree, commit, tag.
-2. What names a Git object? **A:** Hash of its content.
-3. Is a commit a diff or a snapshot? **A:** A snapshot (of the root tree).
-4. What is a branch? **A:** A ref file holding a commit hash.
-5. What is `HEAD`? **A:** Pointer to the current branch (or commit when detached).
-6. Why is history tamper-evident? **A:** Each hash covers parents; changing one changes descendants.
-7. Three areas of Git? **A:** Working tree, index, repository.
-8. What does `git add -p` do? **A:** Stages selected hunks.
-9. What does `diff --staged` compare? **A:** Index with HEAD.
-10. Why `fetch` before branching? **A:** Start from the latest remote state.
-11. Why avoid `git add .`? **A:** It stages untracked junk and secrets.
-12. What does `--check` catch? **A:** Whitespace errors.
-13. What should a commit message explain? **A:** Why the change was made.
-14. What are Conventional Commits for? **A:** Structured messages enabling changelogs and versioning.
-15. Does `.gitignore` untrack tracked files? **A:** No; use `git rm --cached`.
-16. Why keep `.terraform.lock.hcl` in Git? **A:** Pins provider versions and hashes.
-17. What does `--force-with-lease` do? **A:** Force-pushes only if remote hasn't changed unexpectedly.
-18. Why trunk-based for infrastructure? **A:** Small changes, mainline mirrors reality, easy rollback.
-19. Why directories not branches for environments? **A:** Avoid drift and cherry-pick folklore.
-20. Merge vs rebase difference? **A:** Merge preserves branching with a merge commit; rebase replays commits for linear history.
-21. Golden rule of rebase? **A:** Never rebase shared/published history.
-22. In a rebase, what is "ours"? **A:** The branch you're rebasing onto.
-23. What does `rebase --onto` do? **A:** Transplants a range of commits onto a new base.
-24. How handle a lock-file conflict? **A:** Take mainline version and regenerate.
-25. What does `rerere` do? **A:** Records and reuses conflict resolutions.
-26. How undo a published commit? **A:** `git revert`.
-27. Difference between `reset --soft`, `--mixed`, `--hard`? **A:** Keep index+tree, keep tree, discard both.
-28. What does `cherry-pick` do? **A:** Applies one commit onto the current branch.
-29. What is the reflog? **A:** Local log of ref movements enabling recovery.
-30. How does `bisect run` decide? **A:** Script exit code (0 good, 1 bad, 125 skip).
-31. Polyrepo vs monorepo trade-off? **A:** Ownership/versioning independence vs atomic changes/shared tooling.
-32. What do submodules store? **A:** A pointer to a commit in another repo.
-33. What does `git worktree` provide? **A:** Multiple checkouts of one repo.
-34. Why can't local hooks be the only control? **A:** They can be bypassed.
-35. First step after a secret leak? **A:** Revoke and rotate it.
-36. Tool to purge history? **A:** `git filter-repo` (or BFG).
-37. What does CODEOWNERS enforce? **A:** Required reviewers per path.
-38. Branch protection essentials? **A:** Required review, checks, no force push, up-to-date branch.
-39. Why not store checkpoints in Git? **A:** Bloat; use LFS, object storage, registries.
-40. Push- vs pull-based delivery? **A:** CI pushes changes vs in-cluster agent pulls and reconciles from Git.
+1. **The Git Object Model (`blob`, `tree`, `commit`, `tag`), Merkle DAG Integrity, and the Three Areas (`NPA` Chapter 11):** Using `git_hash_object()` and `build_git_commit_dag()` in `code/part04/git_infrastructure_workflow.py`, explain: (a) why renaming `main.tf` to `providers.tf` creates zero new `blob` objects while changing the `tree` and `commit` SHA-1 hashes; (b) why branches are 41-byte ref files (`.git/refs/heads/main`) and what `HEAD` points to; and (c) what `git diff`, `git diff --staged`, and `git diff HEAD` each compare across the Working Tree, Index, and Repository.
+2. **Safe Operational Workflow, `.gitignore` Hygiene, and Remotes (`fetch` vs. `pull` and Bare Repos, `NPA` Chapters 5 & 11):** (a) Trace the 9-step operational workflow (`git fetch origin` -> `git switch -c` -> edit -> `git status` -> `git diff` -> `git add <path>` -> `git diff --staged --check` -> `git commit` -> `git push -u`), explaining why `.gitignore` must exclude `*.tfstate*`, `.terraform/`, `*.tfvars`, and keys while **keeping** `.terraform.lock.hcl` and how `git rm --cached` untracks a file committed by mistake; (b) contrast `git fetch` + `git diff main..origin/main` with `git pull`, and explain why shared remotes (`na-shared.git`) are initialized with `git clone --bare` (and how Vagrant/Containerlab topologies in `NPA` Chapter 5 are versioned in Git).
+3. **Branching Strategies (Trunk-Based vs. GitFlow), Merge vs. Rebase, the Ours/Theirs Rebase Inversion, and `--onto`:** (a) Explain why infrastructure teams use trunk-based development with directory-based environments (`envs/staging`, `envs/prod`) rather than long-lived `staging` and `prod` branches; (b) state the golden rule of rebase, explain why `"ours"` and `"theirs"` invert during a rebase compared to a merge, show how to resolve conflicts in generated lock files (`.terraform.lock.hcl`), and show how `git rebase --onto main feature-A feature-B` transplants a stacked branch.
+4. **Undoing Mistakes (`restore`, `revert`, `reset --soft/--mixed/--hard`, `reflog`) and Automated Regression Hunting (`git bisect run`):** (a) Contrast `git revert <sha>` (and `git revert -m 1 <merge_sha>`) on a published branch with `git reset --soft/--mixed/--hard` on local history, and show how `git reflog` recovers a commit lost to a bad `reset --hard`; (b) using `simulate_git_bisect_run()` in `code/part04/git_infrastructure_workflow.py`, explain how `git bisect run ./tests/check_bandwidth.sh` locates a regression across 40 commits in 5 steps and what exit codes `0`, `1..127` (except `125`), and `125` mean.
+5. **Secrets Remediation Order, Pre-Commit Hooks, Branch Protection, and `CODEOWNERS` (`volume-10`):** (a) State the 4-step remediation order when a credential or private key is committed to Git (why must rotation precede `git filter-repo`?), and explain why `.pre-commit-config.yaml` checks (`check-yaml`, `detect-private-key`, `gitleaks`, `terraform_fmt`, `ansible-lint`) must also run as required status checks in CI; (b) using `resolve_codeowners()`, explain how `.github/CODEOWNERS` last-matching-pattern rules enforce domain-owner approvals by blast radius.
+6. **Repository Architecture (Polyrepo vs. Monorepo, `git worktree`), Large Files (`Git LFS` vs. Object Storage), and Push vs. Pull GitOps:** (a) Compare polyrepos (versioned Terraform modules / Ansible roles) with a live environment monorepo, and explain when to use `git worktree add`, `git lfs track`, or content-addressed object storage; (b) contrast push-based CI deployment (`terraform apply` from CI runner) with pull-based GitOps reconciliation (`Argo CD` / `Flux` in-cluster agent).
 
-## 19. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. What four object types exist in `.git/objects`, how are they named, and why does renaming a file create no new `blob`?</summary>
 
-- Jason Edelman, Scott Lowe and Matt Oswalt, *Network Programmability and Automation* (chapter 11 on source control with Git: benefits, Git terminology, repositories, commits, ignoring files, history, branches, remotes; chapter 5 on developer environments).
-- The author's `nvidia-devops` repository, volume 10 chapter 17 (Git for infrastructure and operations: object model, safe workflow, `.gitignore` for AI infrastructure, pre-commit, repository architecture, trunk-based development, rebase workflows, blast-radius review, GitOps, secrets remediation, branch protection and CODEOWNERS, recovery, bisect, LFS).
-- Pro Git (Chacon and Straub) and Git documentation for command semantics.
-- Examples are the author's constructions.
+Git's content-addressed object store holds four object types, each named by the 40-character hexadecimal SHA-1 (or SHA-256) hash of `<type> <size>\0<content>`:
+1. **`blob`**: raw byte contents of a file (contains **no filename** or permissions).
+2. **`tree`**: directory listing mapping `(file mode, filename, blob/subtree SHA)`.
+3. **`commit`**: snapshot pointing to the root `tree` SHA, parent `commit` SHA(s), author/committer timestamps, and commit message.
+4. **`tag` (annotated)**: named, optionally signed object pointing to a commit with tagger metadata and a message.
+Because a `blob` stores only file content and the filename lives in the enclosing `tree`, renaming `main.tf` to `providers.tf` creates a new `tree` and `commit` that point to the **exact same `blob` SHA**.
+</details>
 
-**Flagged for verification before publishing:** Git option names and defaults for the version in use, pre-commit hook repository tags, `git filter-repo` invocations, branch-protection feature names per platform (GitHub versus GitLab), SHA-256 repository support status, and every command listing; all labs are **untested**.
+<details>
+<summary>2. Is a Git commit a diff or a snapshot, why is Git history a tamper-evident Merkle DAG, and why is creating a branch practically free (`NPA` Chapter 11)?</summary>
+
+- **Snapshot, not diff:** Every commit points to a root `tree` representing the **complete snapshot** of all tracked files at that moment (unchanged files share existing `blob` and `tree` objects, and `git gc` delta-compresses packfiles later).
+- **Merkle DAG:** Because each commit's hash is computed over its root `tree` hash and its **parent commit hashes**, altering a single byte in any historical file changes its `blob` hash, its `tree` hash, that `commit` hash, and the hash of **every descendant commit** after it.
+- **Cheap branches:** A branch in `.git/refs/heads/<name>` is just a **41-byte plain-text file** containing a 40-character commit SHA plus a newline (`\n`), and `HEAD` (`ref: refs/heads/main`) points to the active branch.
+</details>
+
+<details>
+<summary>3. Compare `git diff`, `git diff --staged`, `git diff HEAD`, `git diff A..B`, and `git diff A...B`.</summary>
+
+- **`git diff`**: compares the **Working Tree** against the **Index (staging area)** (unstaged edits).
+- **`git diff --staged` (or `--cached`)**: compares the **Index** against **`HEAD`** (exact changes that will go into the next commit; add `--check` to fail on trailing whitespace or conflict markers).
+- **`git diff HEAD`**: compares the **Working Tree** directly against **`HEAD`** (both staged and unstaged changes combined).
+- **`git diff main..feature` (two-dot)**: compares the current tip of `main` directly against the tip of `feature`.
+- **`git diff main...feature` (three-dot)**: compares the **merge-base (common ancestor)** of `main` and `feature` against `feature`—showing only the changes introduced on `feature` since it branched off `main`.
+</details>
+
+<details>
+<summary>4. How does `.gitignore` work, how do you untrack a file that was already committed, and why must `.terraform.lock.hcl` NOT be ignored?</summary>
+
+`.gitignore` rules only prevent **untracked** files from being staged (`git status --ignored` and `git check-ignore -v <path>` debug matching rules). If a file (such as `inventory/secrets.yml` or `terraform.tfstate`) was already committed before being added to `.gitignore`, Git continues tracking it until you remove it from the index with **`git rm --cached <path>`** and commit.
+While `.terraform/`, `*.tfstate*`, and secret `*.tfvars` must be ignored, **`.terraform.lock.hcl` must be committed** because it locks the exact cryptographic SHA-256 hashes of every Terraform provider binary across developer laptops and CI runners.
+</details>
+
+<details>
+<summary>5. What is the difference between `git fetch` and `git pull`, and why must shared central repositories be created as Bare Repositories (`git clone --bare`, `NPA` Chapter 11)?</summary>
+
+- **`git fetch` vs `git pull`:** `git fetch origin` downloads new objects from the remote and updates remote-tracking refs (`.git/refs/remotes/origin/main`) **without modifying your local branches or working tree**, letting you inspect incoming changes (`git log main..origin/main`) first. `git pull` runs `git fetch` immediately followed by `git merge` (or `git rebase` when `pull.rebase=true`).
+- **Bare repositories (`git init --bare` / `git clone --bare`):** A bare repository has no working tree or checked-out branch—only the `.git` database itself. Pushing to a non-bare repo that has the target branch checked out would desynchronize its working tree from `HEAD`, so central collaboration remotes (`origin`) are always bare repositories.
+</details>
+
+<details>
+<summary>6. Why does Trunk-Based Development with directory-based environments (`envs/staging`, `envs/prod`) beat GitFlow and environment branches for infrastructure?</summary>
+
+When teams maintain long-lived `staging` and `prod` branches (or GitFlow `develop`/`release` branches) for infrastructure, hotfixes, environment-specific tunings, and cherry-picks quickly cause the branches to diverge—until nobody knows what is actually deployed or what a merge from `staging` to `prod` will overwrite. Under **trunk-based development**, `main` is the single source of truth, feature branches merge within a day, and environments are modeled as **directories (`envs/staging`, `envs/prod`)** referencing version-pinned modules (`ref=v1.4.2`) so promoting a change from staging to production is a small, auditable pull request on `main`.
+</details>
+
+<details>
+<summary>7. Contrast `git merge` and `git rebase`, state the Golden Rule of Rebase, and explain why `--force-with-lease` is mandatory when pushing a rebased branch.</summary>
+
+- **`git merge`** joins two histories by creating a new merge commit with two parents, preserving the exact historical branching graph.
+- **`git rebase`** lifts the commits from your feature branch and **replays them one by one onto the tip of the target branch**, creating brand-new commits with new SHA-1 hashes for a clean linear history.
+- **Golden rule:** **Never rebase commits that have been pushed to a shared branch (`main`)** on which teammates base their work. When updating your own feature branch after a rebase, push with **`git push --force-with-lease`**—which checks that the remote branch ref still matches the commit you last fetched and aborts if a teammate pushed a new commit in the meantime (unlike blind `--force`, which silently overwrites their work).
+</details>
+
+<details>
+<summary>8. During a rebase conflict, why do `"ours"` (`--ours`) and `"theirs"` (`--theirs`) mean the opposite of what they mean during a merge, and how should you resolve conflicts in generated lock files?</summary>
+
+During `git rebase origin/main`, Git first checks out `origin/main` as `HEAD` and then replays your feature commits onto it one at a time. Therefore, during a rebase conflict:
+- **`--ours` (`HEAD`)** is **`origin/main`** (the upstream base branch you are rebasing onto).
+- **`--theirs`** is **your feature commit** currently being replayed.
+For generated lock files (`.terraform.lock.hcl`, `poetry.lock`, `uv.lock`), never resolve conflict markers by hand: check out the mainline version (`git checkout --ours -- .terraform.lock.hcl` during rebase, or `--theirs` during merge), re-run the tool (`terraform init` or `uv lock`) to regenerate a valid lock file, `git add`, and `git rebase --continue`.
+</details>
+
+<details>
+<summary>9. How does `git rebase --onto newbase oldbase branch` work when unstacking dependent branches?</summary>
+
+Suppose you branched `feature-B` off `feature-A`, and `feature-A` was squash-merged into `main` (or had commits amended). Running **`git rebase --onto main feature-A feature-B`** tells Git: take all commits reachable from `feature-B` that are **not** reachable from `feature-A` (`feature-A..feature-B`), and replay **only those commits** onto `main`—cleanly transplanting `feature-B` without dragging along `feature-A`'s old pre-squash commits.
+</details>
+
+<details>
+<summary>10. Contrast `git restore`, `git reset --soft`, `git reset --mixed`, `git reset --hard`, and `git revert` (including `git revert -m 1` for merge commits).</summary>
+
+- **`git restore <file>`**: overwrites `<file>` in the working tree from the index (discards unstaged local edits); `git restore --staged <file>` unstages `<file>` from the index without touching the working tree.
+- **`git reset --soft <sha>`**: moves `HEAD` (and the current branch pointer) to `<sha>`, keeping both the **Index** and **Working Tree** unchanged (all changes since `<sha>` remain staged).
+- **`git reset --mixed <sha>` (default)**: moves `HEAD` to `<sha>` and resets the **Index** to match `<sha>`, keeping edits in the **Working Tree** (unstaged).
+- **`git reset --hard <sha>`**: moves `HEAD` and overwrites **both the Index and Working Tree** to match `<sha>` (destructive to uncommitted changes).
+- **`git revert <sha>`**: creates a **new commit** that applies the exact inverse diff of `<sha>`, safely undoing a published change on `main` without rewriting history. Reverting a merge commit requires **`git revert -m 1 <merge_sha>`** to specify mainline parent `1` as the side to keep.
+</details>
+
+<details>
+<summary>11. How does `git reflog` rescue commits lost after a mistaken `git reset --hard` or bad rebase, and what are its limits?</summary>
+
+Whenever `HEAD` or a local branch tip moves (by commit, checkout, reset, merge, or rebase), Git appends an entry to `.git/logs/HEAD` and `.git/logs/refs/heads/*` (**the reflog**). Even if `git reset --hard HEAD~3` makes three commits unreachable from any branch, the commit objects remain in `.git/objects` until garbage collection (`git gc`, ~30 days for unreachable objects). Running **`git reflog`** reveals the previous SHA (`HEAD@{1}`), and **`git branch rescue HEAD@{1}`** (or `git reset --hard HEAD@{1}`) restores the lost commits immediately. Limitation: reflogs are **strictly local to your clone** (never pushed to remotes) and cannot recover uncommitted working-tree edits that were never staged or committed.
+</details>
+
+<details>
+<summary>12. How does `git bisect run` find a regression across hundreds of commits automatically, and what do script exit codes `0`, `1`, and `125` mean?</summary>
+
+Given `git bisect start`, `git bisect bad HEAD`, and `git bisect good v2.3.0`, Git performs a **binary search** ($O(\log_2 N)$ steps—at most 6 steps for 40 commits, or 10 steps for 1,000 commits). Running **`git bisect run ./check_perf.sh`** executes the script at each midpoint commit:
+- **Exit code `0`**: marks the commit **`good`** and searches the newer half.
+- **Exit code `1..127` (except `125`)**: marks the commit **`bad`** and searches the older half.
+- **Exit code `125`**: marks the commit **`skip`** (for example, when that commit fails to build for an unrelated reason) so Git tests an adjacent commit.
+Finish with `git bisect reset` to return `HEAD` to your original branch.
+</details>
+
+<details>
+<summary>13. What is the exact 4-step remediation order when a secret (API token, SSH key, BMC password) is committed and pushed to Git?</summary>
+
+1. **Revoke and rotate the credential immediately** in the target system (cloud IAM, BMC, vault)—this is the *only* step that neutralizes the breach, because any clone, CI log, or webhook listener may have already copied the secret. Audit access logs for unauthorized use.
+2. **Remove the secret** from the current code and replace it with an external secret reference (Vault, AWS/GCP Secret Manager, SOPS, or environment variable).
+3. **Purge the secret from all historical commits and refs** using **`git filter-repo --invert-paths --path <file>`** (or `--replace-text`), force-push all branches/tags, and ask collaborators to re-clone (and purge server-side PR cached refs).
+4. **Prevent recurrence** by adding `gitleaks` / `detect-private-key` to `.pre-commit-config.yaml`, enabling server-side push protection, and tightening `.gitignore`.
+</details>
+
+<details>
+<summary>14. Why can't local Git hooks (`.git/hooks` / `pre-commit`) be your only quality or security gate?</summary>
+
+`.git/hooks` is not tracked by Git, so a developer who forgets to run `pre-commit install`—or passes **`git commit --no-verify` (`-n`)** or pushes from a machine without `pre-commit`—bypasses all local hooks completely. Local `pre-commit` hooks exist to give developers sub-second feedback before committing; **every check (`yamllint`, `ansible-lint`, `terraform fmt/validate`, `gitleaks`) must also run in CI as a required branch-protection status check** before merge.
+</details>
+
+<details>
+<summary>15. How do `.github/CODEOWNERS` and Branch Protection rules enforce blast-radius governance?</summary>
+
+- **`.github/CODEOWNERS`:** Maps repository file paths to owning teams (`* @org/sre`, `/terraform/network/ @org/network-team`, `/ansible/roles/gpu_* @org/hpc-team`); **the last matching pattern in the file wins**.
+- **Branch protection on `main`:** Enforces pull requests (blocking direct pushes and force pushes, including by admins), requires approval from **Code Owners** of touched paths, dismisses stale approvals when new commits are pushed, requires all CI status checks (lint, `terraform plan`, `ansible --check`) to pass on an up-to-date branch, and optionally requires **SSH/GPG-signed commits** (`git config commit.gpgsign true`).
+</details>
+
+<details>
+<summary>16. Compare a Monorepo and a Polyrepo for AI infrastructure code, and explain how they are commonly combined.</summary>
+
+- **Polyrepo (one repo per reusable module/role/chart):** Clear ownership and ACL boundaries, independent semantic versioning (`v1.4.2`), and small clones; harder to make atomic cross-cutting changes.
+- **Monorepo (all environments and platform services in one repo):** Atomic cross-stack PRs, unified search, and shared CI; requires path-filtered CI workflows and `CODEOWNERS` so teams don't block each other.
+- **Hybrid production pattern:** Put reusable **Terraform modules and Ansible roles/collections in versioned repos** (or a `modules/` tree tagged by release), and keep a **live environment monorepo** (`envs/staging`, `envs/prod`, `clusters/`) that pins module versions by Git tag (`?ref=v1.4.2`).
+</details>
+
+<details>
+<summary>17. How do `git worktree`, `git stash`, and `git cherry-pick` help during an urgent production incident?</summary>
+
+- **`git worktree add ../hotfix-mtu origin/main`**: checks out a second, independent working directory backed by the **same `.git` repository** in milliseconds—letting you write, test, and push an urgent production hotfix without disturbing or stashing an in-progress feature branch in your main working directory.
+- **`git stash push -u -m "wip"`**: saves uncommitted tracked and untracked (`-u`) edits onto a local stack (`stash@{0}`) and restores a clean working tree (`git stash pop` or `git stash apply`).
+- **`git cherry-pick <sha>`**: applies the diff of a single commit `<sha>` (such as a bugfix on `main`) onto another branch (such as a supported `release/1.2` branch) as a new commit.
+</details>
+
+<details>
+<summary>18. Why must large binary files (OS images, `.pt`/`.safetensors` weights, datasets) stay out of standard Git history, and what are the alternatives?</summary>
+
+Because every Git clone downloads the repository's history, committing a 10 GB `.qcow2` node image or model checkpoint bloats `.git/objects` permanently—even if you `git rm` it in the next commit—making clones and CI checkouts time out. Instead:
+1. Store container and OS images in an **OCI / artifact registry** and model weights/datasets in **object storage (S3/GCS)** referenced by SHA-256 digests or **DVC / Hugging Face Hub**.
+2. If binary assets must be versioned alongside code, use **Git LFS (`git lfs track "*.qcow2"`)**, which commits a tiny ~130-byte pointer file into Git and stores the binary payload on an external LFS server fetched on demand.
+3. Enforce `check-added-large-files` (`--maxkb=500`) in `pre-commit` and CI.
+</details>
+
+<details>
+<summary>19. Contrast Push-Based CI/CD delivery with Pull-Based GitOps reconciliation (`Argo CD` / `Flux`).</summary>
+
+- **Push-based delivery:** A CI runner executes `kubectl apply`, `helm upgrade`, `ansible-playbook`, or `terraform apply` against the target cluster after merge. This requires storing **external cluster-admin credentials inside the CI system** (making CI a high-value attack vector), and manual out-of-band changes (`kubectl edit` on the cluster) go undetected until the next CI run.
+- **Pull-based GitOps (`Argo CD`, `Flux`):** An agent running **inside** the target Kubernetes cluster continuously pulls the desired manifests from the Git repository and reconciles live cluster state toward Git—keeping cluster credentials inside the cluster, detecting and alerting on (or auto-healing) configuration drift continuously, and making every rollback a standard `git revert` PR.
+</details>
+
+<details>
+<summary>20. How do `Vagrant`, `Containerlab`, and `dyff` (`NPA` Chapter 5) complement Git in an infrastructure engineer's daily workflow?</summary>
+
+- **`Vagrant` (`Vagrantfile`) and `Containerlab` (`*.clab.yaml`):** Define multi-node virtual router/switch/server topologies (VyOS VMs, Nokia SR Linux, Arista cEOS, SONiC containers) as small text files tracked in Git, allowing engineers and CI pipelines to boot an identical network lab (`vagrant up` or `containerlab deploy`), run Ansible/Python automation against it, and tear it down (`containerlab destroy`).
+- **`dyff between -b before.yaml after.yaml`:** Performs structure-aware AST diffs on YAML files (Kubernetes manifests, Ansible vars, Netplan configs), ignoring key-order noise to highlight exact semantic additions, deletions, and value changes during code review.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `network-programmability-and-automation-2nd-edition` — Christian Adell, Scott Lowe, Matt Oswalt & Jason Edelman, *Network Programmability and Automation*, 2nd ed., **Chapter 5: Network Developer Environments** (editors, IDEs, Language Server Protocol `LSP`, Docker/Compose, `dyff between`, `Vagrant` 3-router `vyos/current` `Vagrantfile` with Ansible provisioner, and `Containerlab` `topology1.clab.yaml` with Nokia SR Linux `ghcr.io/nokia/srlinux`) and **Chapter 11: Source Control with Git** (read in full: Linus Torvalds 2005 BitKeeper history, benefits of source control, Working Directory vs Index `.git/index` vs Repository `.git/objects` and 41-byte `.git/refs/heads/*`, `git init`, `git config`, `git add`, `git commit`, `git commit --amend`, `.gitignore` excluding `credentials.yml`, lightweight vs annotated tags `git tag -a v1.0`, `git log` range syntax `A..B` and `HEAD~N`, branching, fast-forward vs three-way merges, conflict resolution, `git stash`, remotes, `git clone --bare` `na-shared.git`, `git fetch` + `git diff main..origin/main` vs `git pull`, and GitHub forks and pull requests).
+  - `nvidia-devops` (`volume-10/17-git-for-infrastructure-and-operations.md`): Git object model, safe operational workflow, `.gitignore` for AI infrastructure, `pre-commit` hooks, polyrepo vs monorepo architecture, trunk-based development, rebase workflows (`--onto`, `--force-with-lease`), blast-radius review (`CODEOWNERS`), GitOps push vs pull models, secret leak remediation (`git filter-repo`), recovery (`reflog`), and `git bisect run`.
+- **Run here:** `python3 code/part04/git_infrastructure_workflow_lab.py` (4 passed, 0 failed).
+- **Explicitly labelled inferences:** The `git_hash_object`, `build_git_commit_dag`, `resolve_codeowners`, and `simulate_git_bisect_run` models in `code/part04/git_infrastructure_workflow.py`, the AI-factory `.gitignore` and `.pre-commit-config.yaml` templates, and the `CODEOWNERS` ruleset are the author's constructions applying *Network Programmability and Automation* Chapters 5 & 11 and `volume-10` to GPU cluster operations (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Not verified on live hardware:** Interactive `git`, `vagrant`, `containerlab`, `dyff`, `pre-commit`, `gitleaks`, and `git filter-repo` shell commands (`Git 2.40+` / `2.41.0`, `9000` to `1500` MTU, `v4.6.0`, `v1.92.0`, `v24.9.0`, `v8.18.4`, `500` KB, `192.168.12.11..13`, `172.20.20.2`, `90`/`30` days reflog) are marked (`untested here`) where not executed by `git_infrastructure_workflow_lab.py`.
