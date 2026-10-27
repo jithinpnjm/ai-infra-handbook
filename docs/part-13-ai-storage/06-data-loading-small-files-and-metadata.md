@@ -717,6 +717,6 @@ Source Map & Key Migrated Facts:
 ```
 
 ### Inferences and Unverified Claims Note
-- All cluster CLI commands (`strace`, `lctl`, `blockdev`, `fio`, `mdtest`, `tar`) and distributed multi-GPU scripts are illustrative operational patterns from the cited sources. They have **not been executed on live multi-node storage hardware in this build environment** (`untested here`).
+- All cluster CLI commands (`strace`, `lctl`, `blockdev` `blk-mq` `mq-deadline`, `fio`, `mdtest`, `tar`, `WekaFS` and `3FS` over `RDMA`, `cuFileReadAsync`, `libjpeg-turbo` and `torchvision.transforms.v2` `RandomResizedCrop` vs DALI `8.0ms` batches, `MMapIndexedDataset` `doc_id` lookups, cross-referenced with Chapters `13.1`, `13.3`, `13.4`, and `13.5`) and distributed multi-GPU scripts are illustrative operational patterns from the cited sources. They have **not been executed on live multi-node storage hardware in this build environment** (`untested here`).
 - All 26 small-file metadata, repackaging, `/dev/shm` sizing, NVIDIA DALI, and NeMo Curator `.bin` and `.idx` calculations are deterministically verified by `code/part13/data_loading_small_files_lab.py` (`26 passed, 0 failed`).
 

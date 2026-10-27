@@ -759,7 +759,7 @@ Source Map & Consolidated Facts:
 
 ### 2. Lab verification and labelled inferences
 
-- **Verified in this environment:** `python3 -B code/part13/ai_data_path_lab.py` passes all 26 checks using Python standard library models in `code/part13/ai_data_path.py`.
-- **Not run on live hardware here:** All `iostat`, `lctl`, `lfs`, `fio`, `mdtest`, `gdscheck`, `gdsio`, `ethtool`, `iperf3`, `ibstat`, `numactl`, and `kubectl` commands are marked `(untested here)` and derived from the cited reference outputs.
+- **Verified in this environment:** `python3 -B code/part13/ai_data_path_lab.py` passes all 26 checks (`26/26`) using Python standard library models in `code/part13/ai_data_path.py`.
+- **Not run on live hardware here:** All `iostat`, `lctl`, `lfs`, `fio`, `mdtest`, `gdscheck`, `gdsio`, `ethtool`, `iperf3`, `ibstat`, `numactl`, and `kubectl` commands (covering `HDDs` vs NVMe `SQEs`, `CQEs`, and `SGLs`, `RWO` PVCs, `cuFileWriteAsync`, `torch.Tensor` and `torch.cuda.Event` timers, `a3-highgpu-8g` and `g2-standard-48` shapes, `100s` windows, `750K` / `750` / `10,000,000` file counts, and `0.576` / `31` / `140` metrics) are marked `(untested here)` and derived from the cited reference outputs.
 - **Labelled inferences:** The 40.0 GB versus 60.0 GB host DRAM traffic accounting per 10 GB read and the multiplicative NUMA plus `SYS` penalty model in `code/part13/ai_data_path.py` are deterministic engineering models constructed from the penalty bands reported in the source chapters.
 

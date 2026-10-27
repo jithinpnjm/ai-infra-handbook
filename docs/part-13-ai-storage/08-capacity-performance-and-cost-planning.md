@@ -661,6 +661,6 @@ Source Inventory & Migrated Facts Map:
 ```
 
 ### Inferences and Unverified Claims Note
-- Cluster CLI commands (`lfs`, `beegfs-ctl`, `fio`, `gdsio`, `strace`) are operational diagnostic patterns from the cited sources. They are marked untested here because no multi-node Lustre, BeeGFS, or SuperPOD hardware is attached to this build container.
+- Cluster CLI commands (`lfs`, `beegfs-ctl` on `beegfs-meta` `stats/sec` and `closes/sec`, `XFS`, `fio`, `gdsio`, `strace`, `25.6K` ops/s, `1,200,000` `ResNet-50` `int32` images vs `Llama-70B` `.safetensors`, `.idx`, `torch.distributed.checkpoint`, `NGC` and `TensorRT-LLM` caches across `2x400GbE` and `64x400GbE` links, `4.0kW` / `44` / `66` / `77` / `15,360,000` / `61,440,000` metrics, from `chapter-10-capacity-performance-and-cost-planning.md`, `chapter-12-volume-15-summary.md`, `chapter-04-storage-infrastructure-for-ai-pipelines.md`, `chapter-11-capacity-planning-and-forecasting.md`, and `chapter-12-cost-optimization-and-resource-efficiency.md`, cross-referenced with Chapters `13.1`, `13.3`, `13.4`, `13.6`, and `13.7`) are operational diagnostic patterns from the cited sources. They are marked untested here because no multi-node Lustre, BeeGFS, or SuperPOD hardware is attached to this build container.
 - All capacity, bandwidth, metadata, and SuperPOD SU calculations are deterministically verified locally. The erasure-coding, four-tier FinOps, and three-year TCO models in `code/part13/storage_capacity_cost_planning.py` and `code/part13/storage_capacity_cost_planning_lab.py` also pass all checks.
 

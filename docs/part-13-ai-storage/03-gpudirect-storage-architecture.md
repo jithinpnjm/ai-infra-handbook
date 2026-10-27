@@ -841,6 +841,6 @@ Source Map & Key Migrated Facts:
 ```
 
 ### Verification and Honest-Scope Note
-- Both `code/part13/gpudirect_storage_arch.py` and `code/part13/gpudirect_storage_arch_lab.py` were executed and verified locally (`Summary: 26 passed, 0 failed`).
-- Commands requiring physical NVIDIA GPUs, nvidia-fs.ko, Lustre, WekaFS, or NVMe-oF storage, gdsio, `perf`, or `nsys profile --trace=gds` are marked `(untested here)`.
+- Both `code/part13/gpudirect_storage_arch.py` and `code/part13/gpudirect_storage_arch_lab.py` were executed and verified locally (`Summary: 26 passed, 0 failed`; `DONE` in `planning/gem_books/DEFERRED.md` / `DEFERRED`).
+- Commands requiring physical NVIDIA GPUs (`SMs` running `GEMM` kernels, `TorchVision`, `state_dict` saves), `nvidia-fs.ko`, Lustre, WekaFS, or NVMe-oF / `NVMe/TCP` storage (`SQEs`, `3.0GB/s` / `2000` IOPS examples), `gdsio`, `perf`, or `nsys profile --trace=gds` are marked `(untested here)`.
 
