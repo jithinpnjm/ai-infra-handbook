@@ -195,6 +195,15 @@ kubectl get nodes         # cp1 NotReady until a CNI is installed
 
 ### What `kubeadm init` did (phases)
 
+```mermaid
+flowchart TD
+    P1["1. preflight & certs<br/>Validate swap/modules/ports;<br/>generate CAs, certs & SA keys in<br/>/etc/kubernetes/pki"] --> P2["2. kubeconfig & kubelet-start<br/>Write admin.conf, kubelet.conf,<br/>controller-manager.conf, scheduler.conf;<br/>start local kubelet"]
+    P2 --> P3["3. control-plane & etcd<br/>Write static pod YAML manifests in<br/>/etc/kubernetes/manifests;<br/>kubelet boots etcd & kube-apiserver"]
+    P3 --> P4["4. upload-config/certs, mark-control-plane,<br/>bootstrap-token, addon<br/>Taint NoSchedule; CoreDNS & kube-proxy"]
+    P4 --> P5["5. Install CNI (Calico / Cilium)<br/>Configures /etc/cni/net.d;<br/>CoreDNS starts; cp1 becomes Ready"]
+    P5 --> P6["6. kubeadm join (workers & cp2/cp3)<br/>Verify CA hash, TLS bootstrap CSR,<br/>write /etc/kubernetes/kubelet.conf"]
+```
+
 | Phase | Result |
 |---|---|
 | `preflight` | Checks: root, ports free, swap off, runtime reachable, kernel modules, cgroup driver |
@@ -369,6 +378,13 @@ Operating HA: keep an odd number of control-plane nodes; replace failed etcd mem
 | **NVIDIA Base Command Manager (BCM) / DeepOps** | Cluster management with Kubernetes and Slurm deployment for DGX/HGX | NVIDIA reference environments (Part 8) |
 | **Managed services** | GKE/EKS/AKS, provider-managed Kubernetes on GPU clouds | When you do not want to run the control plane (5.34) |
 
+In *Production Kubernetes* Chapters 1 and 2 (*Path to Production* and *Deployment Models*), Josh Rosso, Rich Lander, Alexander Brand, and John Harris frame this choice through two architectural analogies:
+- **Kubernetes is the foundation ("the engine"), not the finished house ("the driveable car", `PK` Chapter 1):** Core `kubernetes/kubernetes` intentionally focuses on container orchestration and exposes plug-in interfaces—**CRI** (runtime), **CNI** (networking), **CSI** (storage), and **CPI** (Cloud Provider Interface, moving historical "in-tree" cloud integrations out-of-tree)—while leaving service routing, observability, secret management, CI/CD, and multi-tenancy to the surrounding **application platform** you assemble on top.
+- **Managed Services vs. Prebuilt Installers vs. Roll Your Own, and Bare Metal vs. Virtualization (`PK` Chapter 2):**
+  1. *Managed Services (GKE, EKS, AKS):* Lowest operational burden for the control plane, at the cost of provider-imposed limits on control-plane flags, Kubernetes versions, and custom hardware topologies.
+  2. *Prebuilt Installers (Kubespray, RKE2, OpenShift, Cluster API) vs. Roll Your Own (`kubeadm` + Packer + Ansible):* Rolling your own or using bare metal gives total control over kernel parameters, custom GPUDirect RDMA/InfiniBand fabrics, and control-plane flags, but requires automating what virtualization previously gave you for free (PXE booting via **Matchbox**/**MAAS**/**Tinkerbell**/**BCM**, out-of-band IPMI/Redfish power management, BGP/L2 load balancing via **MetalLB**/**kube-vip**, and building immutable node images with **Packer + Ansible**).
+  3. *Environment tiers (`Development`, `Testing` with automated `< 1 week` TTL reapers, `Staging`, and `Production`) and Cluster Sizing (`Few Large` vs. `Many Small`, `PK` Chapter 2):* Fewer large clusters reduce control-plane overhead and improve bin-packing (using tainted **node pools** for GPU or high-memory hardware), whereas many smaller clusters reduce blast radius and control-plane scaling bottlenecks (detailed in Chapter 5.19).
+
 ## 9. Adding a GPU worker (preview of Part 11)
 
 Prepare the node like any worker plus the GPU stack:
@@ -460,7 +476,15 @@ Hand-built is for learning. For repeatable clusters: (1) bake the preparation st
 - ansible.posix.mount: { name: swap, fstype: swap, state: absent }
 ```
 
-## 13. Lab checklist (untested)
+## 13. Lab checklist
+
+First, run the self-checking Python lab (`code/part05/kubeadm_bootstrap_validator_lab.py`) locally. It verifies the node preflight and CIDR non-overlap validator (`validate_node_preflight_and_cidrs`: checking `swapoff -a`, `overlay` & `br_netfilter` kernel modules, bridge/forwarding sysctls, `systemd` cgroup driver alignment, and non-overlapping `node_cidr`/`pod_subnet`/`service_subnet` + CNI pool matching) and the `kubeadm join` credential verifier (`verify_kubeadm_join_credentials`: checking `[a-z0-9]{6}.[a-z0-9]{16}` bootstrap token format, `--discovery-token-ca-cert-hash` pinning, and the 2-hour `--upload-certs` key expiry).
+
+```bash
+python3 code/part05/kubeadm_bootstrap_validator_lab.py
+```
+
+Next, on your lab VMs (all interactive shell steps below are `untested here`), work through this checklist:
 
 1. Provision VMs and prepare them as in section 2; write down the version matrix and CIDRs; verify prerequisites with a script.
 2. Install containerd with `SystemdCgroup = true`; verify with `crictl info`.
@@ -473,8 +497,6 @@ Hand-built is for learning. For repeatable clusters: (1) bake the preparation st
 9. Add a GPU node (or simulate with a fake extended resource via `kubectl patch node ... --subresource=status`), install the device plugin, run the smoke pod.
 10. Rebuild the whole cluster from your Ansible role + config in under an hour; record timings.
 11. Tear down with `kubeadm reset` and verify nothing remains.
-
-Mark tested only after execution.
 
 ## 14. Common mistakes
 
@@ -490,59 +512,188 @@ Mark tested only after execution.
 
 ## 15. Interview angles
 
-- "Walk me through bootstrapping a cluster with kubeadm. What do the phases do? Which files and certificates are created?" 
-- "Why must swap be off? What are the prerequisite sysctls and modules?" 
-- "How does a worker securely join? What are the token and CA hash for?" 
-- "How do you build an HA control plane with kubeadm? Why an odd number of etcd members?" 
-- "A node is NotReady with 'cni config uninitialized'. What do you check?" 
+- "Walk me through bootstrapping a cluster with kubeadm. What do the phases do? Which files and certificates are created?"
+- "Why must swap be off? What are the prerequisite sysctls and modules?"
+- "How does a worker securely join? What are the token and CA hash for?"
+- "How do you build an HA control plane with kubeadm? Why an odd number of etcd members?"
+- "A node is NotReady with 'cni config uninitialized'. What do you check?"
 - "How do you rotate certificates and what expires after a year?" (5.21)
-- "kubeadm vs Kubespray vs managed Kubernetes for a GPU cluster?" 
+- "kubeadm vs Kubespray vs managed Kubernetes for a GPU cluster?"
 
-## 16. Checkpoint questions (35)
+## Exercises
 
-1. What does kubeadm do? **A:** Bootstraps a cluster (certs, static pods, tokens, add-ons).
-2. Where are static pod manifests? **A:** `/etc/kubernetes/manifests`.
-3. Why disable swap? **A:** Kubelet/scheduler assume no swap by default.
-4. Which module/sysctl for bridged traffic? **A:** `br_netfilter` and `bridge-nf-call-iptables`.
-5. Why `ip_forward`? **A:** Route pod traffic.
-6. Cgroup driver setting? **A:** `cgroupDriver: systemd` + containerd `SystemdCgroup=true`.
-7. What does `--control-plane-endpoint` do? **A:** Stable API address for HA/changes.
-8. What is the pod CIDR for? **A:** Pod IP allocation; must match the CNI.
-9. Why do nodes stay NotReady initially? **A:** No CNI installed.
-10. What installs CoreDNS and kube-proxy? **A:** kubeadm addon phase.
-11. What is the bootstrap token? **A:** Short-lived credential for joining/TLS bootstrap.
-12. What does the discovery CA hash protect? **A:** Against rogue API servers.
-13. Default token TTL? **A:** 24 hours.
-14. What does `--upload-certs` do? **A:** Stores encrypted control-plane certs for 2 h for joins.
-15. Default leaf certificate lifetime? **A:** 1 year.
-16. Command to check expiry? **A:** `kubeadm certs check-expiration`.
-17. Where is `admin.conf`? **A:** `/etc/kubernetes/admin.conf`.
-18. What is TLS bootstrapping? **A:** Kubelet gets a client cert via CSR using the token.
-19. What are serving CSRs? **A:** Kubelet serving cert requests with `serverTLSBootstrap`.
-20. Taint on control plane? **A:** `node-role.kubernetes.io/control-plane:NoSchedule`.
-21. Minimum etcd members for HA? **A:** 3.
-22. Why not 2 etcd members? **A:** No quorum tolerance gain.
-23. Tools providing VIP? **A:** kube-vip, keepalived+HAProxy.
-24. Command to join a control plane? **A:** `kubeadm join ... --control-plane --certificate-key`.
-25. How reset a node? **A:** `kubeadm reset` + cleanup CNI/iptables/etcd data.
-26. kubeadm vs Kubespray? **A:** Bootstrapper vs Ansible installer built on it.
-27. What does `apt-mark hold` do? **A:** Prevents unplanned upgrades.
-28. kubelet/kubeadm/kubectl version skew rules? **A:** kubelet ≤ API server (up to n-3), kubectl ±1.
-29. How verify API readiness? **A:** `/readyz?verbose`.
-30. Why NTP matters? **A:** Certs and Raft need synchronised time.
-31. GPU node prerequisites? **A:** Driver, container toolkit, device plugin.
-32. How do you create and activate a `kubectl` context with a default namespace, and what `kubectl apply` subcommands inspect or modify the recorded `last-applied-configuration` annotation? **A:** `kubectl config set-context my-context --namespace=mystuff` followed by `kubectl config use-context my-context`; `kubectl apply -f <file> view-last-applied`, `edit-last-applied`, and `set-last-applied`.
-33. How check CNI config? **A:** `/etc/cni/net.d` and CNI pod logs.
-34. What causes `x509 ... not valid for` errors? **A:** Missing cert SANs.
-35. What manages Kubernetes clusters declaratively? **A:** Cluster API.
+1. **Cluster Network Planning (`podSubnet`, `serviceSubnet`, `controlPlaneEndpoint`) and Linux Node Preparation (`KUR` Ch. 3 & Appendix A):** Using `validate_node_preflight_and_cidrs()` in `code/part05/kubeadm_bootstrap_validator.py`, explain why `podSubnet` (`10.244.0.0/16`), `serviceSubnet` (`10.96.0.0/12`), and the host network (`10.0.0.0/24`) must never overlap, why `controlPlaneEndpoint` (`k8s-api.lab.local:6443`) must be set before `kubeadm init`, and why each step in Section 2 (`swapoff -a`, `overlay` & `br_netfilter`, `bridge-nf-call-iptables = 1`, `ip_forward = 1`, `SystemdCgroup = true`, `apt-mark hold`) is required.
+2. **Inside `kubeadm init`: The 11 Phases, PKI Certificates, Kubeconfigs, and Static Pod Manifests:** Trace `KUBEADM_INIT_PHASES` in `code/part05/kubeadm_bootstrap_validator.py` (`preflight -> certs -> kubeconfig -> kubelet-start -> control-plane -> etcd -> upload-config -> upload-certs -> mark-control-plane -> bootstrap-token -> addon`), listing the exact files created in `/etc/kubernetes/pki/`, `/etc/kubernetes/manifests/`, and `/etc/kubernetes/*.conf`.
+3. **Installing the CNI (`Calico` / `Cilium`) and Secure Worker TLS Bootstrapping (`kubeadm join`):** Using `verify_kubeadm_join_credentials()` in `code/part05/kubeadm_bootstrap_validator.py`, explain why `cp1` stays `NotReady` and `coredns` stays `Pending` until a CNI is installed, how `--token` (`[a-z0-9]{6}.[a-z0-9]{16}`) and `--discovery-token-ca-cert-hash sha256:<hex>` prevent a rogue API server MITM attack during `kubeadm join`, and how `serverTLSBootstrap: true` affects `kubectl logs`/`exec`.
+4. **High-Availability Control Plane (`kube-vip` / `HAProxy`, `--control-plane`, `--upload-certs`) and `etcd` Membership:** Trace how `kube-vip` provides a floating ARP/BGP virtual IP (`10.0.0.100`) as a static pod on `cp1..cp3`, how `--upload-certs` encrypts control-plane PKI keys into a short-lived (2-hour) Secret for `kubeadm join --control-plane --certificate-key <key>`, and how to verify the 3-member `etcd` cluster and leader failover when `cp1` is powered off.
+5. **Adding a Bare-Metal GPU Worker Node and Everyday `kubectl` Power Workflows (`KUR` Chapter 4):** Trace the 4-step sequence in Section 9 to join `gpu1` (`nvidia-smi` -> `nvidia-ctk runtime configure --runtime=containerd` -> `kubeadm join` -> `nvidia-device-plugin` + `nvidia.com/gpu=present:NoSchedule` taint), and write the `KUR` Chapter 4 commands for `kubectl config set-context`/`use-context`, `kubectl apply view-last-applied`/`edit-last-applied`/`set-last-applied`, `kubectl attach`, and `kubectl completion bash`.
+6. **Comparing Deployment Models (`PK` Chapters 1 & 2) and Troubleshooting `kubeadm` Failure Modes:** Compare Managed Kubernetes, Prebuilt Installers (`Kubespray`, `RKE2`, `Cluster API`, `BCM`), and `kubeadm` + Packer/Ansible across control, toil, and bare-metal requirements (`PK` Ch. 1–2), and diagnose three classic failures from Section 11: (a) `kubeadm init` hanging waiting for `kubelet`, (b) CoreDNS crash-looping on `/etc/resolv.conf` `127.0.0.53`, and (c) dirty state left behind after `kubeadm reset`.
 
-## 17. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. Why must `swap` be disabled (`swapoff -a`), and why are the `overlay` and `br_netfilter` kernel modules plus `net.bridge.bridge-nf-call-iptables = 1` required on every node?</summary>
 
-- Brendan Burns, Joe Beda, Kelsey Hightower and Lachlan Evenson, *Kubernetes: Up and Running* (`kubernetes-up-and-running-3rd-edition`, 3rd edition; Chapter 3 on deploying a cluster, Chapter 4: `4. Common kubectl Commands` — read in full for `kubectl config set-context`/`use-context`, `view-last-applied`/`edit-last-applied`/`set-last-applied`, `kubectl attach`, and `kubectl completion bash` — and the appendix on building a Raspberry Pi cluster for bare-metal ideas).
-- Josh Rosso, Rich Lander, Alex Brand and John Harris, *Production Kubernetes* (chapters 1 and 2 on path to production and deployment models).
-- Kubernetes documentation for kubeadm, HA topologies, and configuration API versions; Calico, Cilium and kube-vip documentation.
-- Examples are the author's constructions.
+- **`swapoff -a`:** By default, `kubelet` refuses to start if swap is active because Kubernetes QoS classes (`Guaranteed`, `Burstable`) and memory eviction thresholds expect deterministic physical RAM accounting (`memory.max`), and swapping a latency-sensitive GPU training process to disk destroys gang-synchronous step times.
+- **`overlay` module:** Provides the `overlayfs` union filesystem used by `containerd` / `CRI-O` for container root filesystems.
+- **`br_netfilter` + `net.bridge.bridge-nf-call-iptables = 1` + `net.ipv4.ip_forward = 1`:** Ensures that L2 bridged Pod traffic traversing a Linux bridge is passed through the host's `netfilter`/`iptables` chains (required for `kube-proxy` `ClusterIP` Service DNAT and CNI `NetworkPolicy` enforcement) and that the kernel routes packets between Pod and host interfaces.
+</details>
 
-**Flagged for verification before publishing:** all package repository URLs, versions, kubeadm config API versions (`v1beta3`/`v1beta4` field names), kube-vip procedure on current kubeadm versions, CNI manifest URLs and versions, version skew policy numbers, image tags, and every command listing; all labs are **untested**.
+<details>
+<summary>2. Why does `systemctl enable --now kubelet` crash-loop immediately after installing the `kubelet` package, before `kubeadm init` or `kubeadm join` is run?</summary>
+
+This is completely normal and expected: the `kubelet` systemd unit requires `/var/lib/kubelet/config.yaml` and `/etc/kubernetes/kubelet.conf` (or `--bootstrap-kubeconfig`), which **do not exist until `kubeadm init` or `kubeadm join` generates them** during the `kubeconfig` and `kubelet-start` phases.
+</details>
+
+<details>
+<summary>3. Why should you always set `controlPlaneEndpoint: "k8s-api.lab.local:6443"` and `apiServer.certSANs` in `ClusterConfiguration` even if you start with a single control-plane node?</summary>
+
+`controlPlaneEndpoint` sets the canonical DNS/VIP address written into `kubeadm-config`, `cluster-info`, and every node's `kubelet.conf`. If you initialize `cp1` using `cp1`'s raw node IP (`10.0.0.11:6443`) without `controlPlaneEndpoint`, converting the cluster to a 3-node HA control plane later requires manually regenerating API server certificates (`certSANs`), editing ConfigMaps, and rewriting `/etc/kubernetes/kubelet.conf` on every worker node. Pointing `controlPlaneEndpoint` at a DNS name or VIP (`10.0.0.100:6443`) from Day 1 makes adding `cp2` and `cp3` a single `kubeadm join --control-plane` command.
+</details>
+
+<details>
+<summary>4. Walk through the 11 phases of `kubeadm init` and the directories they populate on `cp1`.</summary>
+
+1. **`preflight`:** Validates root privileges, swap off, free ports (`6443`, `2379–2380`, `10250–10259`), kernel modules, and CRI socket reachability.
+2. **`certs`:** Generates the cluster CA, etcd CA, front-proxy CA, ServiceAccount keypair (`sa.key`/`sa.pub`), and leaf TLS certificates in **`/etc/kubernetes/pki/`**.
+3. **`kubeconfig`:** Generates `admin.conf`, `super-admin.conf`, `kubelet.conf`, `controller-manager.conf`, and `scheduler.conf` in **`/etc/kubernetes/`**.
+4. **`kubelet-start`:** Writes `/var/lib/kubelet/config.yaml` and starts `kubelet`.
+5. **`control-plane`:** Writes Static Pod manifests (`kube-apiserver.yaml`, `kube-controller-manager.yaml`, `kube-scheduler.yaml`) into **`/etc/kubernetes/manifests/`**.
+6. **`etcd`:** Writes the Static Pod manifest **`/etc/kubernetes/manifests/etcd.yaml`** (`dataDir: /var/lib/etcd`).
+7. **`upload-config`:** Uploads `ClusterConfiguration` and `KubeletConfiguration` to `kube-system` ConfigMaps (`kubeadm-config`, `kubelet-config`).
+8. **`upload-certs`:** When `--upload-certs` is passed, encrypts control-plane PKI private keys into the `kube-system/kubeadm-certs` Secret with a **2-hour TTL**.
+9. **`mark-control-plane`:** Applies label `node-role.kubernetes.io/control-plane` and taint `node-role.kubernetes.io/control-plane:NoSchedule`.
+10. **`bootstrap-token`:** Creates a 24-hour bootstrap token Secret in `kube-system` and RBAC rules for node TLS bootstrapping.
+11. **`addon`:** Deploys the **`coredns`** Deployment/Service and **`kube-proxy`** DaemonSet.
+</details>
+
+<details>
+<summary>5. What are the default lifetimes of the CA certificates and leaf certificates created by `kubeadm` in `/etc/kubernetes/pki`, and how do you check or renew them?</summary>
+
+- **Root CAs (`ca.crt`, `etcd/ca.crt`, `front-proxy-ca.crt`):** Valid for **10 years**.
+- **Leaf certificates (`apiserver.crt`, `apiserver-kubelet-client.crt`, `front-proxy-client.crt`, `etcd/server.crt`, `etcd/peer.crt`):** Valid for **1 year** (and automatically renewed during `kubeadm upgrade apply`).
+- **Check expiration:** `sudo kubeadm certs check-expiration`.
+- **Manual renewal:** `sudo kubeadm certs renew all` followed by restarting the control-plane static pods (`crictl stopp` or moving manifests out and back into `/etc/kubernetes/manifests/`).
+</details>
+
+<details>
+<summary>6. Why does `cp1` remain `NotReady` and `coredns` remain `Pending` right after `kubeadm init` finishes?</summary>
+
+`kubeadm init` intentionally does **not** install a CNI plugin. Until a CNI plugin (Calico, Cilium, Flannel) installs its configuration into `/etc/cni/net.d/`, `kubelet`'s network readiness check fails (`network plugin is not ready: cni config uninitialized`), keeping the Node condition `Ready=False` (`node.kubernetes.io/not-ready:NoSchedule` taint)—which in turn prevents the `coredns` Deployment pods from being scheduled. As soon as the CNI DaemonSet writes `/etc/cni/net.d/` and starts, `cp1` turns `Ready` and `coredns` transitions to `Running`.
+</details>
+
+<details>
+<summary>7. How do `--token` and `--discovery-token-ca-cert-hash` work together during `kubeadm join`?</summary>
+
+When a new worker runs `kubeadm join k8s-api.lab.local:6443 --token <id>.<secret> --discovery-token-ca-cert-hash sha256:<hash>`:
+1. The worker fetches the public `cluster-info` ConfigMap (which contains the cluster's root `ca.crt` and is signed with a JWS signature using the bootstrap `<secret>`).
+2. The worker hashes the public key of `ca.crt` with SHA-256 and verifies it equals **`--discovery-token-ca-cert-hash`**—preventing a Man-in-the-Middle attacker from spoofing the API server.
+3. Using the now-trusted `ca.crt` and the bootstrap token (valid for **24 hours** by default), `kubelet` connects over TLS to `kube-apiserver`, submits a **Certificate Signing Request (`CSR`)** for its own unique `system:node:<hostname>` client certificate, receives the signed cert from `kube-controller-manager`'s `csrapproving` controller, and writes **`/etc/kubernetes/kubelet.conf`**.
+</details>
+
+<details>
+<summary>8. What does `serverTLSBootstrap: true` in `KubeletConfiguration` do, and what happens if you forget to approve the resulting CSRs?</summary>
+
+By default, `kubelet` generates a **self-signed** serving certificate for its HTTPS API on port `10250`—which means `kube-apiserver` (or `metrics-server`) cannot cryptographically verify the kubelet's serving certificate without `--kubelet-insecure-tls`. Setting **`serverTLSBootstrap: true`** instructs each `kubelet` to submit a `CertificateSigningRequest` (`kubernetes.io/kubelet-serving`) signed by the cluster CA. Until you approve those CSRs (`kubectl get csr && kubectl certificate approve <csr-name>`, or run `kubelet-csr-approver`), **`kubectl logs`, `kubectl exec`, `kubectl port-forward`, and `metrics-server` will fail with TLS certificate verification errors**.
+</details>
+
+<details>
+<summary>9. In *Kubernetes: Up and Running* Chapter 4, how do you create and switch `kubectl` contexts, and how do you inspect the `last-applied-configuration` annotation?</summary>
+
+- **Create and switch contexts:**
+  ```bash
+  kubectl config set-context my-context --namespace=mystuff
+  kubectl config use-context my-context
+  ```
+- **Inspect or edit the client-side `kubectl.kubernetes.io/last-applied-configuration` annotation:**
+  - `kubectl apply -f myobj.yaml view-last-applied`
+  - `kubectl apply -f myobj.yaml edit-last-applied`
+  - `kubectl apply -f myobj.yaml set-last-applied`
+</details>
+
+<details>
+<summary>10. In `KUR` Chapter 4, what is the difference between `kubectl exec` and `kubectl attach`?</summary>
+
+- **`kubectl exec -it <pod> -- /bin/sh`:** Spawns a **brand-new process** inside the running container's namespaces and cgroups (requires a shell or binary like `/bin/sh` to exist inside the container image, so it fails on `scratch` or `distroless` images).
+- **`kubectl attach -it <pod>`:** Attaches your terminal directly to the `stdin`/`stdout`/`stderr` streams of the **already-running PID 1 main container process** without spawning a new binary inside the container.
+</details>
+
+<details>
+<summary>11. How does `kube-vip` provide a highly available control-plane endpoint on bare metal without an external hardware load balancer?</summary>
+
+`kube-vip` runs as a **Static Pod** (`/etc/kubernetes/manifests/kube-vip.yaml`) alongside `kube-apiserver` on all 3 control-plane nodes (`cp1`, `cp2`, `cp3`). Using Kubernetes Lease leader election (in ARP/L2 mode) or BGP peering (in L3 mode), the elected `kube-vip` leader binds the virtual IP (`10.0.0.100` / `k8s-api.lab.local`) to its network interface and answers ARP requests (send gratuitous ARP on failover). If `cp1` goes down, `cp2` or `cp3` wins the Lease within seconds and claims `10.0.0.100` seamlessly.
+</details>
+
+<details>
+<summary>12. How does joining a second control-plane node (`cp2`) differ from joining a worker node (`w1`), and what happens if `--upload-certs` was run more than 2 hours ago?</summary>
+
+Joining a control-plane node requires passing **`--control-plane --certificate-key <64-char-hex-key>`** in addition to `--token` and `--discovery-token-ca-cert-hash`. `kubeadm` uses `<certificate-key>` to download and decrypt the cluster CA private key (`ca.key`), `etcd/ca.key`, and ServiceAccount key (`sa.key`) from the `kube-system/kubeadm-certs` Secret so `cp2` can mint its own local static pod certificates and join the stacked `etcd` Raft cluster. For security, `kubeadm` automatically deletes the `kubeadm-certs` Secret after **2 hours**; if it has expired, run **`sudo kubeadm init phase upload-certs --upload-certs`** on `cp1` to generate a fresh 2-hour key.
+</details>
+
+<details>
+<summary>13. Why does `coredns` enter `CrashLoopBackOff` with `loop ... detected` on Ubuntu nodes running `systemd-resolved`, and how does `kubeadm` / `kubelet` handle it?</summary>
+
+On Ubuntu hosts using `systemd-resolved`, `/etc/resolv.conf` points to the local stub resolver **`nameserver 127.0.0.53`**. When `coredns` pods inherit `/etc/resolv.conf` from the node to forward external DNS queries, `127.0.0.53` inside the `coredns` pod's own network namespace points back to the `coredns` pod itself—creating an infinite forwarding loop caught by CoreDNS's `loop` plugin. Fix it by setting `resolvConf: /run/systemd/resolve/resolv.conf` in `KubeletConfiguration` (which `kubeadm` auto-detects when `systemd-resolved` is active at init time).
+</details>
+
+<details>
+<summary>14. Why must every node in a Kubernetes cluster have a unique hostname, MAC address, and `/sys/class/dmi/id/product_uuid`?</summary>
+
+`kubelet` and cloud/network plugins use the hostname, primary interface MAC address, and SMBIOS `product_uuid` to uniquely identify each `Node` object, allocate per-node Pod CIDR blocks, and track volume attachments. If two VMs are cloned from the same template without regenerating MAC addresses, `product_uuid`, and `/etc/machine-id` (or hostnames), the second node will overwrite the first node's registration in `kube-apiserver`, causing erratic `Ready`/`NotReady` flapping and broken Pod routing.
+</details>
+
+<details>
+<summary>15. Why must `apt-mark hold kubelet kubeadm kubectl` be run immediately after installing the Kubernetes packages?</summary>
+
+Without `apt-mark hold`, an unattended `apt-get upgrade` or security patching job on a node will silently upgrade `kubelet` and `kubeadm` to the latest patch or minor version in the repository—violating Kubernetes's version skew policy (`kubelet` must never be newer than `kube-apiserver`) or restarting `kubelet` outside a controlled maintenance drain.
+</details>
+
+<details>
+<summary>16. What are the exact steps to add a bare-metal GPU worker node (`gpu1`) to a `kubeadm` cluster and protect it from CPU-only pods?</summary>
+
+1. Prepare OS prerequisites (disable swap, load `overlay`/`br_netfilter`, sysctls, chrony, `containerd` with `SystemdCgroup = true`).
+2. Install the host **NVIDIA GPU driver** (`nvidia-smi` working) and **NVIDIA Container Toolkit**, then run `sudo nvidia-ctk runtime configure --runtime=containerd` and restart `containerd`.
+3. Run `sudo kubeadm join ...` to join the cluster.
+4. Taint the node: **`kubectl taint node gpu1 nvidia.com/gpu=present:NoSchedule`**.
+5. Deploy the **NVIDIA Device Plugin** (or GPU Operator with `driver.enabled=false`) and verify `status.allocatable["nvidia.com/gpu"]` reports the expected GPU count.
+</details>
+
+<details>
+<summary>17. In *Production Kubernetes* Chapters 1 and 2, why is Kubernetes described as an \"engine\" or \"foundation\" rather than a finished PaaS like Heroku or Cloud Foundry?</summary>
+
+Prebuilt PaaS offerings (`Heroku`, `Cloud Foundry`) give developers a "move-in-ready apartment" for 12-factor web apps, but break down as soon as you need custom GPU scheduling, RDMA networking, DaemonSets, or stateful distributed operators. Kubernetes instead provides a modular **foundation** with standardized plug-in interfaces (**CRI, CNI, CSI, CPI, Device Plugins, Webhooks, CRDs**) so platform engineers can build a custom application/AI platform aligned to their exact hardware and organizational needs.
+</details>
+
+<details>
+<summary>18. In `PK` Chapter 2, what virtualization conveniences do you lose when running Kubernetes on Bare Metal, and what tools replace them?</summary>
+
+On bare metal, you lose cloud/hypervisor APIs for instant VM cloning, virtual networks, cloud load balancers (`Service type=LoadBalancer`), and elastic block storage. You replace them with:
+- **PXE / Image Provisioning & BMC control:** NVIDIA Base Command Manager (`BCM`), Canonical MAAS, Tinkerbell, Matchbox, or Metal3 (`Cluster API Provider Metal3`) driving IPMI/Redfish.
+- **OS & Node Consistency:** Immutable golden images built with **Packer + Ansible** (or Talos Linux / Flatcar).
+- **Service Load Balancing:** **MetalLB** or **Cilium BGP / L2 announcements** or **kube-vip**.
+- **Storage:** Local NVMe CSI (`topolvm`, `openebs-localpv`) + distributed/parallel filesystems (`Ceph-CSI`, `Lustre`, `WEKA`, `VAST`).
+</details>
+
+<details>
+<summary>19. Why is running `sudo kubeadm reset -f` alone NOT sufficient to completely clean a node before re-initializing or switching CNI plugins?</summary>
+
+`kubeadm reset -f` stops `kubelet`, removes static pod containers, and cleans `/etc/kubernetes` and `/var/lib/kubelet`, **but it does NOT delete `/etc/cni/net.d/*`, CNI virtual interfaces (`cali*`, `cilium_*`, `flannel.1`, `cni0`), or `iptables` / `IPVS` rules**. Leftover `/etc/cni/net.d/10-calico.conflist` files or stale `KUBE-SVC-*` iptables chains will break the next install. Always follow `kubeadm reset -f` with `rm -rf /etc/cni/net.d /var/lib/etcd $HOME/.kube`, flush `iptables`/`ipvsadm`, and restart `containerd` (or reboot the node).
+</details>
+
+<details>
+<summary>20. How do you replace a permanently failed control-plane node (`cp2`) in a 3-node stacked-etcd `kubeadm` cluster?</summary>
+
+Because 2 of 3 `etcd` members (`cp1` and `cp3`) are still alive, the cluster retains Raft quorum (`2/3`):
+1. Delete the dead Kubernetes Node object: `kubectl delete node cp2`.
+2. Connect to `etcd-cp1` with `etcdctl member list` to find the dead `cp2` member ID, and remove it from the Raft cluster: **`etcdctl member remove <cp2-member-id>`** (and clean up its entry in `kubeadm-config` `ClusterStatus` if present on older versions).
+3. Provision a fresh replacement host, run `sudo kubeadm init phase upload-certs --upload-certs` on `cp1`, and join the new node with `sudo kubeadm join ... --control-plane --certificate-key <key>`.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 3: Deploying a Kubernetes Cluster** (cluster setup, `kubectl version`, `get/describe nodes`, `kube-system` components), **Chapter 4: Common kubectl Commands** (read in full: namespaces, contexts `set-context`/`use-context`, `kubectl get/describe`, `kubectl apply` and `view-last-applied`/`edit-last-applied`/`set-last-applied`, `kubectl delete`, labels, `logs`/`exec`/`attach`/`cp`/`port-forward`, `kubectl top`, and `kubectl completion bash`), and **Appendix A: Building a Raspberry Pi Kubernetes Cluster** (bare-metal cluster assembly).
+  - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 1: Path to Production** (read in full: core Kubernetes components, CRI/CNI/CSI/CPI plug-in interfaces, in-tree vs out-of-tree providers, and building an application platform on Kubernetes) and **Chapter 2: Deployment Models** (read in full: Managed Services vs Prebuilt Installers vs Roll Your Own, bare-metal vs virtualization trade-offs, HA control plane and etcd topologies, Dev/Testing/Staging/Prod cluster tiers, and Packer + Ansible machine image automation).
+- **Run here:** `python3 code/part05/kubeadm_bootstrap_validator_lab.py` (2 passed, 0 failed).
+- **Explicitly labelled inferences:** The `validate_node_preflight_and_cidrs` (`SystemdCgroup=true`) and `verify_kubeadm_join_credentials` models in `code/part05/kubeadm_bootstrap_validator.py` and the `kubeadm-config.yaml` (`v1beta3` / `v1beta4`), Calico `Installation`, `kube-vip`, and Ansible node-prep snippets are the author's constructions synthesizing `KUR` Chapters 3–4, `PK` Chapters 1–2, and upstream `kubeadm` documentation (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
+- **Not verified on live hardware:** Live `kubeadm init`, `kubeadm join`, Calico/Cilium, `kube-vip`, and NVIDIA device plugin executions (`v1.30.4`, `10.0.0.11..100`, `10.244.0.0/16`, `10.96.0.0/12`, `524288`, `8192`, `262144`, `v3.28.0`, `blockSize: 26`, `v0.8.0`, `0.16.2`, `v0.0.28`, `127.0.0.53`, `24 h` token, `2 h` upload-certs, `1 year` leaf certs, `10 years` CA) are marked (`untested here`) where not executed by `kubeadm_bootstrap_validator_lab.py`.
