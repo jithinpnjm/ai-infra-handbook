@@ -121,7 +121,7 @@ flowchart TB
 
 Proposed by ISO in 1977 as an alternative to the DoD stack (an attempt to blend circuit- and packet-oriented thinking, driven by telecom and database interests). The full OSI protocol suite never won (the specifications were slow, complex and sold in paper form to members, whereas TCP/IP specifications and implementations were free), but the **model** became the universal teaching and troubleshooting vocabulary, and it made lasting contributions: strict modularity, well-defined interfaces, and the idea that intermediate systems (routers and switches) are part of the architecture. Several OSI-era protocols survive, notably **IS-IS** (Intermediate System to Intermediate System, a routing protocol widely used in data centres and ISP backbones: chapter 2.14).
 
-Practical mapping and usage: people say **L1** (cables, optics, signal, link up/down), **L2** (Ethernet, MAC addresses, VLANs, switching, ARP lives between 2 and 3), **L3** (IP, routing), **L4** (TCP/UDP, ports; load balancers, firewalls), **L7** (HTTP and application-aware proxies). Layers 5 and 6 rarely matter in practice (TLS is often described at L6 or "L4.5"). Protocols often straddle layers: Ethernet is L1+L2; TCP covers parts of L4 and L5; TLS is "Transport Layer Security" yet sits above TCP; BGP runs over TCP (an application!) but provides the L3 forwarding information; IPsec is arguably L3 or L4; VXLAN is L2 over L3 over UDP; MPLS is "L2.5". Do not waste energy on classification quarrels; use the model to **ask the right questions**.
+Practical mapping and usage: people say **L1** (cables, optics, signal, link up/down), **L2** (Ethernet, MAC addresses, VLANs, switching, ARP lives between 2 and 3), **L3** (IP, routing), **L4** (TCP/UDP, ports; load balancers, firewalls), **L7** (HTTP and application-aware proxies). Layers 5 and 6 rarely matter in practice (TLS is often described at L6 or "L4.5"). Protocols often straddle layers: Ethernet is L1+L2; TCP covers parts of L4 and L5; TLS is "Transport Layer Security" yet sits above TCP; BGP runs over TCP (an application protocol) but provides the L3 forwarding information; IPsec is arguably L3 or L4; VXLAN is L2 over L3 over UDP; MPLS is "L2.5". Do not waste energy on classification quarrels; use the model to **ask the right questions**.
 
 ### Comparison
 
@@ -277,7 +277,15 @@ A frame decoded by `tcpdump -nn -e -v` (illustrative):
 
 Layer by layer: **L2** source MAC 52:54:00:12:34:56 to destination 52:54:00:ab:cd:ef, EtherType 0x0800 → next header is IPv4; frame length 74 = 14 (Eth) + 60 (IP). **L3** source 10.0.0.15, destination 93.184.216.34, TTL 64, DF set, protocol 6 → TCP; IP total length 60 = 20 (IP) + 40 (TCP with options). **L4** TCP source port 51234 (ephemeral) to destination 443; flag S (SYN); options MSS 1460, SACK, timestamps, window scale 7. No payload yet (length 0): this is the first packet of the handshake. The same frame viewed in Wireshark expands each header's fields as a tree; the OSI/TCP-IP model is the table of contents of that tree.
 
-## 9. Lab: layers in practice (untested)
+## 9. Hands-on lab: layers, overhead, and captures
+
+First, run the self-checking Python lab (`code/part02/layers_encapsulation_lab.py`) locally. It verifies Ethernet/IP/TCP goodput efficiency (`94.9%` at `1500` MTU vs `99.1%` at `9000` jumbo MTU), `50`-byte VXLAN MSS reduction (`1410` B), maximum packet rate (`148.8 Mpps` on `100 Gb/s` and `595.2 Mpps` on `400 Gb/s` for `64`-byte frames), and L2 -> L3 -> L4 demultiplexing keys.
+
+```bash
+python3 code/part02/layers_encapsulation_lab.py
+```
+
+Next, on a disposable Linux VM (all interactive VM commands below are `untested here`), work through these steps:
 
 1. **Capture and label**: run `sudo tcpdump -nn -e -v -w layers.pcap -i any 'host example.com or port 53'` while running `curl -s https://example.com/ >/dev/null`; open in Wireshark (or `tshark -r layers.pcap -V -c 3`). For one DNS packet and one TCP packet, write down each header's key fields and the demultiplexing key that selected the next layer.
 2. **Overhead calculator**: write a small script (Python) taking MTU, L3 (IPv4/IPv6), L4 (TCP/UDP, options), VLAN yes/no and returning MSS, bytes on the wire per full segment, and efficiency; test 1500, 9000, 4096-byte RDMA payloads, VXLAN encapsulation; compute max packets/s for a 100 Gb/s and 400 Gb/s link for 64-byte and 1500-byte frames.
@@ -286,8 +294,6 @@ Layer by layer: **L2** source MAC 52:54:00:12:34:56 to destination 52:54:00:ab:c
 5. **Encapsulation by hand**: create a VXLAN device between two namespaces (or two VMs), capture the outer and inner headers, and verify the 50-byte overhead and the MTU reduction.
 6. **RDMA contrast** (if hardware available): run `ib_write_bw` and observe with `tcpdump` (nothing appears for IB; RoCE appears only on a mirrored port or with a special capture tool); read `ethtool -S` / `rdma statistic` counters; write down which layers the traffic "skips".
 7. **Complexity exercise**: pick a cluster design choice (for example, using a dedicated RDMA VLAN and policy routing for a second NIC) and write down the added state, the optimisation gained and the new interaction surfaces; discuss the trade-off.
-
-Mark the lab tested only after executing it and recording outputs.
 
 ## 10. Common mistakes
 
@@ -310,46 +316,127 @@ Mark the lab tested only after executing it and recording outputs.
 - "What is the hourglass model and why did the Internet scale?"
 - "Where does NCCL traffic live in these layers when it uses InfiniBand versus sockets?"
 
-## 12. Checkpoint questions (30)
+## Exercises
 
-1. What is the essential difference between circuit and packet switching? **A:** Reserved path/bandwidth set up in advance versus independent per-packet forwarding on shared links.
-2. Name two advantages of packet switching. **A:** Efficient bandwidth use; resilience via hop-by-hop forwarding around failures.
-3. What is statistical multiplexing? **A:** Sharing a link among flows that use it only when they have data.
-4. Why did ATM fail but its ideas persist? **A:** 53-byte cells wasted bandwidth for data; label switching lives on as MPLS and fragmentation avoidance as a design rule.
-5. List the four functions of a data-carrying protocol. **A:** Transport, multiplexing, error control, flow control.
-6. Which of the four does UDP implement? **A:** Mostly multiplexing (ports) plus optional error detection; no flow or reliability.
-7. Name the four layers of the TCP/IP model. **A:** Application, transport, internet, link.
-8. Where does the transport layer run in Linux? **A:** In the kernel (TCP/UDP), with the socket API to user space.
-9. Why did the OSI protocols lose but the model survive? **A:** Slow, complex, closed specs vs free TCP/IP implementations; the model is a useful teaching and troubleshooting vocabulary.
-10. What does encapsulation do? **A:** Each layer wraps the data from above with its own header (and trailer) as it moves down.
-11. What are the PDU names by layer? **A:** Frame (L2), packet (L3), segment/datagram (L4).
-12. What are the EtherType values for IPv4, IPv6, ARP? **A:** 0x0800, 0x86DD, 0x0806.
-13. What IP protocol numbers do TCP and UDP use? **A:** 6 and 17.
-14. What is the MSS for a 1500-byte MTU with IPv4 and TCP without options? **A:** 1460.
-15. What is the on-wire efficiency of full-size TCP/IPv4 segments at MTU 1500? **A:** About 94.9% (1460/1538).
-16. How much overhead does VXLAN add? **A:** 50 bytes (outer Ethernet 14 + IP 20 + UDP 8 + VXLAN 8).
-17. What happens if an overlay does not reduce the MTU? **A:** Large packets are fragmented or dropped (PMTUD blackhole if ICMP is filtered).
-18. What defines the data plane versus control plane? **A:** Data plane forwards packets at line rate; control plane computes the tables and state it uses.
-19. What is the RIB versus FIB? **A:** RIB holds candidate routes from all protocols; FIB is the best-route forwarding table used per packet.
-20. Name three loop-free path algorithm families. **A:** Distance vector, link state, path vector.
-21. Why is the Internet shaped like an hourglass? **A:** One IP at the middle limits state and interaction surfaces between many link and application protocols.
-22. What is "stretch"? **A:** Difference between the shortest physical path and the path traffic actually takes.
-23. State the SOS trade-off. **A:** Improving optimisation increases state or interaction surfaces; reducing state or surfaces costs optimisation or the other.
-24. What is connection-oriented versus connectionless? **A:** State set up before data (TCP, MPLS LSP) versus every unit self-contained (IP, UDP, Ethernet).
-25. What is the `sk_buff`? **A:** The Linux kernel's packet buffer descriptor passed through the stack.
-26. What is a qdisc? **A:** The queueing discipline that schedules packets leaving an interface.
-27. Where do netfilter hooks sit? **A:** In the IP layer paths (prerouting, input, forward, output, postrouting).
-28. Why can't tcpdump see RDMA traffic on a host? **A:** RDMA bypasses the kernel stack; the NIC handles the transport.
-29. Which layers does RoCE v2 use? **A:** Ethernet, IP, UDP (4791), then InfiniBand transport headers.
-30. How is a frame demultiplexed to a process? **A:** EtherType selects the L3 protocol, IP protocol selects TCP/UDP, port/5-tuple selects the socket.
+1. **Circuit Switching vs. Packet Switching, Statistical Multiplexing, and ATM's Legacy (`CN` Chapter 1):** (a) Compare circuit switching (TDM time slots) and packet switching (hop-by-hop statistical multiplexing) across link utilization, resilience to link failures, and control-plane complexity; (b) why did ATM's `53`-byte fixed cells (`5`-byte header + `48`-byte payload) lose to variable-length IP/Ethernet packets, and what two ATM concepts survived into modern networks?
+2. **The Four Jobs of a Data-Carrying Protocol and the RINA Scope View (`CN` Chapter 3):** State the four functions performed by data-carrying protocols (transport, multiplexing, error control, flow/congestion control), and compare how Ethernet, IPv4, UDP, TCP, QUIC, InfiniBand, and RoCE v2 (`UDP 4791` + IB `BTH` + `ICRC`) implement each of the four.
+3. **Encapsulation Overhead, Goodput (`1500` vs. `9000` MTU vs. `VXLAN`), and `Mpps` Limits:** (a) Using `compute_tcp_ethernet_goodput()` in `code/part02/layers_encapsulation.py`, compute the TCP/IPv4 `MSS`, total on-wire byte-times (including `14`B Eth + `4`B FCS + `8`B preamble/SFD + `12`B inter-frame gap), and goodput percentage for `MTU = 1500`, `MTU = 9000` (jumbo), and `MTU = 1500` with a `50`-byte VXLAN overlay; (b) using `compute_max_frame_rate_mpps()`, compute the maximum packet rate in `Mpps` for minimum `64`-byte frames (`84` byte-times on the wire) on a `100 Gb/s` link and a `400 Gb/s` link.
+4. **Demultiplexing Keys (`EtherType`, `IP Protocol`, and `TCP/UDP Port`):** Trace how a receiving Linux kernel demultiplexes an incoming frame (`demultiplex_packet()`) for: (a) `EtherType = 0x0800`, `proto = 6`, `dst_port = 443`, (b) `EtherType = 0x0800`, `proto = 17`, `dst_port = 4791`, and (c) `EtherType = 0x86DD`, `next_header = 58`.
+5. **The Three Network Planes, the Hourglass Model, and the State/Optimization/Surface (`SOS`) Triangle:** (a) Distinguish the Data Plane (`FIB`), Control Plane (`RIB`, distance vector / link state / path vector, or centralized IB Subnet Manager), and Management Plane; (b) explain the Internet hourglass (*wasp waist*) and use White's **State / Optimization / Surface (`SOS`)** triangle to explain the cost of reducing path *stretch* via traffic-engineering policies or overlays.
+6. **Mapping the Layers to the Linux Kernel (`sk_buff`, `netfilter`, `qdisc`, `XDP`) vs. AI Fabrics:** Trace a packet through the Linux kernel stack (`socket` -> `sk_buff` -> TCP/UDP -> IP FIB & `netfilter` hooks -> `tc qdisc` -> NIC ring / `XDP`) and contrast it with how `RoCE v2`, `InfiniBand`, and `NVLink`/`NVSwitch` map onto L1–L4.
 
-## 13. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. What is the fundamental difference between circuit switching and packet switching?</summary>
+In **circuit switching** (such as TDM telephony), a dedicated path and fixed bandwidth time slots are reserved end-to-end before any data flows—guaranteeing bandwidth and jitter, but wasting capacity whenever the sender is silent. In **packet switching**, data is sliced into self-describing **packets** that share links via **statistical multiplexing** and are forwarded independently **hop-by-hop**.
+</details>
 
-- Russ White and Jeff Tantsura (with co-authors), *Computer Networking Problems and Solutions*, chapter 1 (Fundamental Concepts: art or engineering; circuit switching and TDM; packet switching and hop-by-hop forwarding; flow control; fixed versus variable length frames and label switching; loop-free path algorithms; QoS; centralised control planes; complexity, stretch, the State/Optimisation/Surface model, interaction surfaces, the wasp waist; trade-off triangles) and chapter 3 (DoD, OSI and RINA models; connection-oriented versus connectionless).
-- Brian Ward, *How Linux Works*, 3rd ed., chapter 9 (network layers, packets, hosts, routers; the Linux view of kernel network interfaces).
-- Linux stack and AI fabric mappings are the author's synthesis; RDMA/InfiniBand/RoCE details are developed in Part 12.
-- Overhead arithmetic uses standard Ethernet/IP/TCP/VXLAN header sizes.
+<details>
+<summary>2. Why did ATM's 53-byte fixed cells fail against variable-length Ethernet/IP, and which ATM ideas survived?</summary>
+ATM used `53`-byte cells (`5`-byte header + `48`-byte payload) to make hardware switching deterministic, but slicing variable-length data into 48-byte chunks wasted massive bandwidth on headers and padding ("cell tax"). However, ATM's **label switching** evolved directly into **MPLS**, and its proof that in-network fragmentation hurts router performance led to IPv4 Path MTU Discovery (`DF` bit) and the removal of router fragmentation in IPv6.
+</details>
 
-**Flagged for verification before publishing:** header sizes for specific options (TCP timestamps, IPv6 extension headers), RoCE v2 header overheads, and EtherType assignments; all labs are **untested**.
+<details>
+<summary>3. What are the four functions of any data-carrying protocol (`CN` Chapter 3), and how does the RINA model view them?</summary>
+The four functions are: (1) **Transport** (moving bits and addressing), (2) **Multiplexing** (separating multiple flows on a shared channel), (3) **Error control** (CRC, checksums, FEC, ARQ retransmissions), and (4) **Flow/congestion control** (matching sender rate to receiver and network capacity). The **RINA** (*Recursive InterNetwork Architecture*) model observes that these same four functions repeat recursively at different scopes: across one physical link (Ethernet), across an internetwork (IP), and end-to-end between processes (TCP).
+</details>
+
+<details>
+<summary>4. Compare the 4-layer TCP/IP (DoD) model and the 7-layer ISO OSI model, and name the PDU at each layer.</summary>
+The **4-layer TCP/IP model** consists of: **Application** (`Message`/`Data`, covering OSI L7 Application, L6 Presentation, and L5 Session), **Transport** (`Segment` for TCP / `Datagram` for UDP, OSI L4), **Internet** (`Packet`, OSI L3 Network), and **Link** (`Frame` at OSI L2 Data Link / `Bits` at OSI L1 Physical).
+</details>
+
+<details>
+<summary>5. Why did the TCP/IP protocol suite beat the ISO OSI protocol suite in practice, while the 7-layer OSI numbering survived?</summary>
+The DARPA TCP/IP specifications (RFCs) were open, free, and shipped as working C code inside BSD Unix, whereas ISO OSI specifications were slow, committee-heavy, and sold as expensive paper documents. The 7-layer OSI numbering (`L1` physical optics, `L2` Ethernet switching, `L3` IP routing, `L4` TCP/UDP load balancing, `L7` HTTP proxies) survived because it separates physical (`L1`) from data-link (`L2`) and provides a clear troubleshooting vocabulary.
+</details>
+
+<details>
+<summary>6. Give four examples of protocols that blur or straddle strict OSI layer boundaries.</summary>
+(1) **ARP** sits between L2 and L3 (carried in Ethernet frames `0x0806` to resolve L3 IPv4 addresses to L2 MACs); (2) **MPLS** sits at "L2.5" between Ethernet and IP; (3) **BGP** runs over TCP port `179` (an L7 application socket) yet builds the L3 IP routing table; and (4) **VXLAN** encapsulates L2 Ethernet frames inside L4 UDP datagrams (`port 4789`) over L3 IP packets.
+</details>
+
+<details>
+<summary>7. What is the difference between connection-oriented and connectionless protocols, and how does the End-to-End Principle combine them?</summary>
+A **connection-oriented** protocol (`TCP`, `MPLS LSPs`, `InfiniBand RC QPs`) sets up state at the endpoints (or along the path) before transferring data; a **connectionless** protocol (`IP`, `UDP`, `Ethernet`) routes every packet independently using only its header. Under the **End-to-End Principle**, the Internet keeps the core network connectionless (`IP`) so routers can route around link failures instantly without tearing down connections, while placing connection state and reliability at the endpoints (`TCP` or NIC `RDMA` engines).
+</details>
+
+<details>
+<summary>8. Calculate the on-wire goodput efficiency of a full-size TCP/IPv4 segment at `MTU = 1500` versus `MTU = 9000` (jumbo frames).</summary>
+At `MTU = 1500`: `MSS = 1500 - 20 (IPv4) - 20 (TCP) = 1460` bytes of application payload. On the Ethernet wire, the frame consumes `1500 + 14 (Eth hdr) + 4 (FCS) + 8 (Preamble/SFD) + 12 (Inter-Frame Gap) = 1538` byte-times, giving **`1460 / 1538 = 94.9%`** goodput (`1448 / 1538 = 94.1%` with 12-byte TCP timestamps). At `MTU = 9000`: `MSS = 8960` over `9038` wire byte-times = **`99.1%`** goodput.
+</details>
+
+<details>
+<summary>9. What is the maximum packet rate (`Mpps`) of a `100 Gb/s` link and a `400 Gb/s` link when sending minimum 64-byte Ethernet frames?</summary>
+A minimum `64`-byte Ethernet frame (`14`B header + `46`B payload + `4`B FCS) plus `8`B Preamble/SFD and `12`B Inter-Frame Gap occupies **`84` byte-times = `672` bits** on the wire. A `100 Gb/s` link can carry at most `100e9 / 672 = 148.8 million packets per second (Mpps)`, and a `400 Gb/s` link can carry at most **`595.2 Mpps`**.
+</details>
+
+<details>
+<summary>10. State the exact demultiplexing keys at L2 (`EtherType`), L3 (`IP Protocol`), and L4 (`Port`) for IPv4, IPv6, ARP, VLAN, TCP, UDP, ICMP, HTTPS, and RoCE v2.</summary>
+- **L2 `EtherType` (16-bit)**: `0x0800` = IPv4, `0x86DD` = IPv6, `0x0806` = ARP, `0x8100` = 802.1Q VLAN, `0x8915` = RoCE v1, `0x88CC` = LLDP.
+- **L3 `Protocol` / `Next Header` (8-bit)**: `1` = ICMP, `6` = TCP, `17` = UDP, `47` = GRE, `50` = IPsec ESP, `58` = ICMPv6, `89` = OSPF.
+- **L4 `Port` (16-bit)**: `22` = SSH, `53` = DNS, `80` = HTTP, `443` = HTTPS/QUIC, `4791` = RoCE v2.
+</details>
+
+<details>
+<summary>11. How many bytes of header overhead does VXLAN add, and what happens if the inner container/VM MTU is not reduced?</summary>
+VXLAN adds **`50` bytes** of outer headers (`14`B outer Ethernet + `20`B outer IPv4 + `8`B UDP + `8`B VXLAN header; `70` bytes with outer IPv6). On a `1500`-MTU physical underlay, the inner virtual interface MTU must be reduced to **`1450` bytes** (or the physical underlay raised to jumbo `9000` MTU); otherwise full-size inner packets exceed the underlay MTU and are either fragmented or dropped.
+</details>
+
+<details>
+<summary>12. Distinguish the Data Plane, Control Plane, and Management Plane, and explain `RIB` versus `FIB`.</summary>
+The **Data Plane** forwards packets at line rate in switch ASICs or kernel/NIC fast paths using the **FIB** (*Forwarding Information Base*). The **Control Plane** runs protocols (`OSPF`, `IS-IS`, `BGP`, `STP`, `ARP`, or an InfiniBand Subnet Manager) to discover topology and populate candidate routes in the **RIB** (*Routing Information Base*), programming the best routes into the FIB. The **Management Plane** (`SSH`, `NETCONF`/`gNMI`, `SNMP`, `Prometheus`) configures and monitors the device.
+</details>
+
+<details>
+<summary>13. Name the three families of control-plane algorithms used to build loop-free forwarding paths.</summary>
+(1) **Distance Vector** (`RIP`, `EIGRP`: routers exchange distance vectors with immediate neighbors hop-by-hop); (2) **Link State** (`OSPF`, `IS-IS`: routers flood link-state advertisements across an area so every router runs Dijkstra's SPF algorithm on an identical topology graph); and (3) **Path Vector** (`BGP`: routes carry the explicit sequence of Autonomous Systems `AS_PATH` traversed to detect loops and enforce policy).
+</details>
+
+<details>
+<summary>14. What is the \"hourglass\" (wasp-waist) model of the Internet, and how do AI RDMA fabrics intentionally violate it?</summary>
+The Internet hourglass has many application protocols at the top and many physical/link media at the bottom, connected by **one narrow waist: `IP`**. This allows new applications and new link technologies to be deployed independently without knowing each other's internals. AI RDMA fabrics (`RoCE v2` and `InfiniBand`) intentionally cross layer boundaries—coupling NIC transport retry engines directly to L2 lossless flow control (`PFC`/credits) and L3 `ECN` marking—to achieve microsecond latency and zero host CPU overhead.
+</details>
+
+<details>
+<summary>15. Explain Russ White's **State / Optimization / Surface (`SOS`)** trade-off triangle and the concept of path *stretch*.</summary>
+Every network design balances three coupled quantities: **State** (amount of routing/flow state stored across devices), **Optimization** (how closely traffic follows the optimal path and utilizes links), and **Interaction Surface** (number of protocol touchpoints and failure interactions). **Stretch** is the difference between the shortest physical path and the path traffic actually takes; reducing stretch or engineering custom per-flow paths (higher Optimization) inevitably increases both State and Interaction Surfaces.
+</details>
+
+<details>
+<summary>16. What is `sk_buff` inside the Linux kernel, and how does it avoid copying packet bytes as a packet moves through L4, L3, and L2?</summary>
+`struct sk_buff` (*socket buffer*) is the kernel's metadata descriptor representing a network packet. It allocates headroom and tailroom around the payload buffer so each layer encapsulates or decapsulates headers simply by advancing or retreating data pointers (`skb_push` / `skb_pull`) without copying the payload in memory.
+</details>
+
+<details>
+<summary>17. Where do `netfilter` (`iptables`/`nftables`), `tc qdisc`, and `XDP` sit in the Linux networking stack?</summary>
+**`XDP`** (*eXpress Data Path*) runs eBPF programs at the earliest possible point inside the NIC driver's RX ring before an `sk_buff` is even allocated. **`netfilter`** hooks (`PREROUTING`, `INPUT`, `FORWARD`, `OUTPUT`, `POSTROUTING`) sit inside the L3 IP layer (`nftables`/`iptables` and `conntrack` NAT). **`tc qdisc`** (*queueing discipline*, such as `fq_codel` or `fq`) sits between L3 IP and the NIC driver's TX ring to schedule and shape outgoing packets.
+</details>
+
+<details>
+<summary>18. Why can `ethtool -k` offloads (`TSO`, `GSO`, `GRO`) make `tcpdump` show packets that appear larger than the `1500`-byte MTU?</summary>
+With **TSO** (*TCP Segmentation Offload*) and **GSO** on TX—and **GRO** (*Generic Receive Offload*) on RX—the kernel hands a single `64 KiB` super-segment to the NIC driver (where `libpcap`/`tcpdump` taps the packet), and the NIC hardware slices it into `1500`-byte MTU frames on the wire.
+</details>
+
+<details>
+<summary>19. Compare how Ethernet+TCP, RoCE v2, InfiniBand, and NVLink/NVSwitch map onto L1–L4 in an AI cluster.</summary>
+- **Ethernet + TCP**: L1/L2 Ethernet -> L3 IP -> L4 kernel TCP (used for management, HTTP/S3, and bootstrap).
+- **RoCE v2**: L1/L2 Lossless Ethernet (`PFC`/`DCB`) -> L3 IP (`ECN`) -> L4 UDP (`port 4791`) + InfiniBand Base Transport Header (`BTH`) implemented in NIC hardware.
+- **InfiniBand**: L1/L2 native IB link layer (credit-based flow control, Virtual Lanes, `LID`s) -> L3 IB Global Route Header (`GRH`/`GID`s) -> L4 IB transport (`RC`/`UD` Queue Pairs) in NIC hardware, managed by a Subnet Manager.
+- **NVLink / NVSwitch**: high-speed GPU-to-GPU memory-semantic interconnect inside a node or rack (`NVL72`) used directly by CUDA/NCCL load/store and DMA engines without IP or Ethernet headers.
+</details>
+
+<details>
+<summary>20. In the `tcpdump -nn -e -v` capture `frame length 74`, `IP length 60`, `Flags [S]`, `mss 1460`, `length 0`, account for every byte of the 74-byte frame.</summary>
+`74` bytes total frame = **`14` bytes Ethernet II header** (`6`B dst MAC + `6`B src MAC + `2`B EtherType `0x0800`) + **`60` bytes IPv4 packet**. Inside the `60`-byte IPv4 packet: **`20` bytes IPv4 header** + **`40` bytes TCP SYN header** (`20`B base TCP header + `20`B TCP options: `mss 1460`, `sackOK`, `TS`, `nop`, `wscale 7`) + **`0` bytes TCP payload** (the 4-byte Ethernet `FCS` is stripped by the NIC before `tcpdump`).
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `computer-networking-problems-and-solutions` — Russ White and Ethan Banks, *Computer Networking Problems and Solutions*, **Chapter 1: Fundamental Concepts** (art vs engineering, circuit switching and TDM vs packet switching and statistical multiplexing, ATM `53`-byte cells and label switching -> MPLS, flow control and TCP `1973`/`1974`, loop-free path algorithm families distance vector / link state / path vector, QoS `4 to 8` queues, centralized SDN control planes, the hourglass / wasp-waist model, and the State / Optimization / Surface `SOS` trade-off triangle and path *stretch*) and **Chapter 3: Modeling Network Transport** (the 4 jobs of a data-carrying protocol transport / multiplexing / error control / flow control, the 4-layer DoD TCP/IP model vs the 7-layer `1977` ISO OSI model vs the Recursive InterNetwork Architecture `RINA` model, and connection-oriented vs connectionless transport).
+  - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 9: Understanding Your Network and Its Configuration** (network layers, packets, hosts, routers, and Linux network interfaces).
+- **Run here:** `python3 code/part02/layers_encapsulation_lab.py` (15 passed, 0 failed).
+- **Explicitly labelled inferences:** The `1500` vs `9000` MTU goodput (`94.9%` vs `99.1%`) and `148.8`/`595.2 Mpps` frame-rate math, Linux `sk_buff`/`netfilter`/`qdisc`/`XDP` stack diagram, and AI fabric comparison table (`Ethernet/TCP`, `RoCE v2` UDP `4791`, `InfiniBand`, `NVLink/NVSwitch`, `PCIe`) connect foundational layering models to Part 8 and Part 9 AI cluster fabrics (cross-referenced with Chapters 1.28, 2.1, 2.3, 2.11, 2.13–2.16, 2.19, and 2.25, plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, and 30).
+- **Not verified on live hardware:** All interactive VM commands (`tcpdump`, `tshark`, `ethtool`, `ip -d link`, `ss`, `nstat`, `tc`, `nft`, `bpftool`, `ping -M do`, `tracepath`, `ib_write_bw`) are marked (untested here) and should be executed on a disposable Linux VM.
