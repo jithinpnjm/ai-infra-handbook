@@ -301,7 +301,15 @@ Logs: `journalctl -u kubelet -f` (verbosity `--v=2` default; `4` for sync detail
 8. Observability: scrape kubelet/cAdvisor, DCGM, NPD; alert on pressure and throttling.
 9. Roll changes through drains and canary nodes; keep config in Git (4.26) and verify with `configz`.
 
-## 13. Lab (untested)
+## 13. Lab
+
+First, run the self-checking Python lab (`code/part05/kubelet_node_managers_lab.py`) locally. It verifies the Kubelet CPU Manager (`evaluate_cpu_manager_static` with `full-pcpus-only: "true"`), the Topology Manager NUMA hint intersection evaluator (`evaluate_topology_manager`: comparing `single-numa-node`, `restricted`, and `best-effort` policies), and the Node-Pressure Memory Eviction victim selector (`rank_memory_eviction_victims`).
+
+```bash
+python3 code/part05/kubelet_node_managers_lab.py
+```
+
+Next, on a Linux Kubernetes worker node (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **Config and allocatable**: print live kubelet config via `configz`; compute allocatable from capacity and reservations by hand; change `kubeReserved`/`systemReserved` and observe `kubectl describe node` changes after restart.
 2. **cgroup tree**: with `systemd-cgls`/`systemd-cgtop`, find `kubepods.slice`, QoS slices, pod and container scopes; read `memory.max`/`cpu.weight` for Guaranteed, Burstable, BestEffort pods; match to requests/limits.
@@ -318,8 +326,6 @@ Logs: `journalctl -u kubelet -f` (verbosity `--v=2` default; `4` for sync detail
 13. **Dashboards/alerts**: build panels for pressure signals, throttling, PLEG latency, eviction counts; write alerts.
 14. **Clean up**.
 
-Mark tested only after execution.
-
 ## 14. Common mistakes
 
 - Running GPU nodes with no reserved resources and tiny eviction thresholds; surprise kernel OOM on the node.
@@ -335,66 +341,191 @@ Mark tested only after execution.
 
 ## 15. Interview angles
 
-- "What does the kubelet do? Walk through its main loops and managers." 
-- "How is node allocatable computed? Why reserve resources?" 
-- "Explain QoS classes, OOM scores and eviction." 
-- "What is the difference between kernel OOM kill, node-pressure eviction and API eviction?" 
-- "What do the CPU, Memory and Topology Managers do? When would you use `static` and `single-numa-node` for AI?" 
-- "How do probes work and what are common mistakes?" 
-- "What happens when a node loses network connectivity to the control plane?" 
-- "How would you tune kubelet for an 8-GPU training node versus a 1-GPU inference node?" 
+- "What does the kubelet do? Walk through its main loops and managers."
+- "How is node allocatable computed? Why reserve resources?"
+- "Explain QoS classes, OOM scores and eviction."
+- "What is the difference between kernel OOM kill, node-pressure eviction and API eviction?"
+- "What do the CPU, Memory and Topology Managers do? When would you use `static` and `single-numa-node` for AI?"
+- "How do probes work and what are common mistakes?"
+- "What happens when a node loses network connectivity to the control plane?"
+- "How would you tune kubelet for an 8-GPU training node versus a 1-GPU inference node?"
 
-## 16. Checkpoint questions (40)
+## Exercises
 
-1. Preferred kubelet config method? **A:** `KubeletConfiguration` file.
-2. What is node allocatable? **A:** Capacity minus reservations and hard eviction threshold.
-3. What enforces allocatable? **A:** Cgroup limit on `kubepods`.
-4. QoS cgroup parents? **A:** guaranteed (directly), burstable, besteffort slices.
-5. Guaranteed `oom_score_adj`? **A:** -997.
-6. BestEffort `oom_score_adj`? **A:** 1000.
-7. What does CPU Manager `static` give? **A:** Exclusive CPUs for Guaranteed integer-CPU pods.
-8. Requirement for exclusive CPUs? **A:** Guaranteed QoS and integer CPU requests.
-9. What does `full-pcpus-only` do? **A:** Allocates whole physical cores.
-10. Memory Manager `Static` needs? **A:** `reservedMemory` matching reservations.
-11. Topology Manager policies? **A:** none, best-effort, restricted, single-numa-node.
-12. What are topology hints? **A:** NUMA affinity masks from resource managers.
-13. When `TopologyAffinityError`? **A:** Policy can't be satisfied at admission.
-14. What registers GPUs with kubelet? **A:** Device plugin.
-15. Device plugin RPCs? **A:** ListAndWatch, Allocate, GetPreferredAllocation.
-16. What is Pod Resources API? **A:** Reports devices/CPUs allocated per pod.
-17. DRA advantage? **A:** Structured, flexible device claims.
-18. Probe types? **A:** startup, readiness, liveness.
-19. Who runs HTTP probes? **A:** Kubelet from the node network.
-20. What does failing readiness do? **A:** Removes from endpoints, no restart.
-21. What does failing liveness do? **A:** Restarts container.
-22. Startup time budget formula? **A:** `failureThreshold × periodSeconds`.
-23. Hard vs soft eviction? **A:** Immediate vs after grace period.
-24. Signals for eviction? **A:** memory.available, nodefs/imagefs, inodes, pid.available.
-25. Eviction ignores PDBs? **A:** Yes (node-pressure).
-26. Who gets evicted first? **A:** Pods over requests, lowest priority.
-27. Image GC thresholds? **A:** High 85%, low 80% default.
-28. Log rotation settings? **A:** `containerLogMaxSize`, `containerLogMaxFiles`.
-29. Node lease namespace? **A:** `kube-node-lease`.
-30. Node grace period default? **A:** 40 s.
-31. Default NoExecute toleration for not-ready? **A:** 300 s.
-32. What is graceful node shutdown? **A:** Terminates pods in order during OS shutdown via inhibitor.
-33. `out-of-service` taint use? **A:** Non-graceful shutdown recovery.
-34. What are static pods? **A:** Kubelet-run from manifest files; mirrored to API.
-35. Kubelet API port? **A:** 10250.
-36. RBAC to avoid? **A:** Broad `nodes/proxy`.
-37. NodeRestriction does what? **A:** Limits kubelet's API writes.
-38. Why `protectKernelDefaults`? **A:** Enforce required sysctls.
-39. What causes PLEG unhealthy? **A:** Slow relist from runtime/node overload.
-40. Why reserve system CPUs? **A:** Protect OS/kubelet/runtime from workload contention.
+1. **Designing a Production `KubeletConfiguration` for Dual-Socket 8-GPU Nodes:** Walk through the `KubeletConfiguration` in Section 2, explaining why `cgroupDriver: systemd`, `protectKernelDefaults: true`, `seccompDefault: true`, `serializeImagePulls: false` (`maxParallelImagePulls: 3`), `reservedSystemCPUs: "0-3"`, `kubeReserved` / `systemReserved`, and `evictionHard` / `evictionSoft` are set as shown.
+2. **The Cgroup v2 Hierarchy (`kubepods.slice`), QoS Placement, and `Node Allocatable`:** Trace the `/sys/fs/cgroup` tree under `systemd` (`system.slice`, `kubepods.slice`, `kubepods-burstable.slice`, `kubepods-besteffort.slice`), explain why `Guaranteed` pods sit directly under `kubepods.slice`, and calculate `Allocatable` from `Capacity`, `kubeReserved`, `systemReserved`, and `evictionHard`.
+3. **CPU Manager (`static` + `full-pcpus-only`), Memory Manager (`Static`), and Topology Manager (`single-numa-node` vs. `best-effort`):** Using `evaluate_cpu_manager_static()` and `evaluate_topology_manager()` in `code/part05/kubelet_node_managers.py`, explain: (a) what happens when a `Guaranteed` Pod requests 3 CPUs on an SMT-enabled host with `full-pcpus-only: "true"`; (b) why `/var/lib/kubelet/cpu_manager_state` must be removed when changing CPU Manager policy; and (c) why 1–4 GPU inference pools use `topologyManagerPolicy: single-numa-node` whereas 8-GPU training pools use `best-effort` (or `restricted` with `pod` scope).
+4. **Device Manager (`ListAndWatch`, `Allocate`, `GetPreferredAllocation`), Pod Resources API, and Dynamic Resource Allocation (`DRA`):** Explain how the NVIDIA device plugin registers at `/var/lib/kubelet/device-plugins/kubelet.sock`, how `kubelet_internal_checkpoint` preserves GPU assignments across `kubelet` restarts, how `dcgm-exporter` uses `/var/lib/kubelet/pod-resources/kubelet.sock`, and what `DRA` (`ResourceClaim`, `ResourceSlice`) improves over integer device counting.
+5. **Node-Pressure Eviction Signals (`memory.available`, `nodefs`, `imagefs`, `pid.available`), Victim Ranking, and the Three Kill Mechanisms:** Using `rank_memory_eviction_victims()` in `code/part05/kubelet_node_managers.py`, trace the exact order in which `kubelet` selects Pods for eviction under `MemoryPressure`, and contrast (1) Kernel Cgroup OOM Kill (`OOMKilled`), (2) Kubelet Node-Pressure Eviction (`Reason: Evicted`), and (3) API-Initiated Eviction (`kubectl drain`).
+6. **Graceful Node Shutdown (`shutdownGracePeriod`), Static Pods, and Kubelet API Security (`:10250`, `nodes/proxy`, `NodeRestriction`):** Explain how `shutdownGracePeriod` (`120s`) and `shutdownGracePeriodCriticalPods` (`30s`) use systemd inhibitor locks to drain Pods cleanly during OS reboots, how Static Pods and mirror Pods work, and why granting `nodes/proxy` RBAC permissions is a major security risk.
 
-## 17. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. How do you inspect the live `KubeletConfiguration` running on a specific worker node from `kubectl`?</summary>
 
-- Josh Rosso, Rich Lander, Alex Brand and John Harris, *Production Kubernetes* (chapter 3 on container runtime and node considerations).
-- Brendan Burns et al., *Kubernetes: Up and Running* (3rd edition; chapter 5 and node-level material).
-- The author's `nvidia-devops` repository, volume 03 (node operations masterclass: KubeletConfiguration for AI nodes, eviction and QoS, CRI and sandbox, `crictl` debugging).
-- Kubernetes documentation on kubelet, resource managers, node-pressure eviction, probes, graceful node shutdown and the device plugin framework.
-- Examples are the author's constructions.
+Query the node's `/configz` endpoint through the API server proxy:
+```bash
+kubectl get --raw "/api/v1/nodes/<node-name>/proxy/configz" | jq .kubeletconfig
+```
+This returns the exact merged `KubeletConfiguration` currently active in memory on that `kubelet`.
+</details>
 
-**Flagged for verification before publishing:** all KubeletConfiguration field names and defaults for your release (memory manager, topology manager scope, shutdown settings, image GC options), DRA and MemoryQoS status, metric names, and every command listing; all labs are **untested**.
+<details>
+<summary>2. What does `protectKernelDefaults: true` in `KubeletConfiguration` do?</summary>
+
+When `protectKernelDefaults: true` is set, `kubelet` **refuses to start** if any kernel `sysctl` parameter (`vm.overcommit_memory = 1`, `vm.panic_on_oom = 0`, `kernel.panic = 10`, `kernel.panic_on_oops = 1`, `kernel.keys.root_maxkeys = 1000000`, `kernel.keys.root_maxbytes = 25000000`) differs from the values `kubelet` expects—instead of attempting to mutate host kernel tunables at runtime. This enforces CIS Kubernetes Benchmark compliance and ensures kernel parameters are managed declaratively in node bootstrap (Ansible/Packer).
+</details>
+
+<details>
+<summary>3. Where are `Guaranteed`, `Burstable`, and `BestEffort` Pods placed inside `/sys/fs/cgroup/kubepods.slice` when `cgroupsPerQOS: true` and `cgroupDriver: systemd` are used?</summary>
+
+- **`Guaranteed` Pods:** Placed **directly under `kubepods.slice/`** as `/sys/fs/cgroup/kubepods.slice/kubepods-pod<uid>.slice/cri-containerd-<id>.scope`.
+- **`Burstable` Pods:** Placed under **`kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod<uid>.slice/...`**.
+- **`BestEffort` Pods:** Placed under **`kubepods.slice/kubepods-besteffort.slice/kubepods-besteffort-pod<uid>.slice/...`**.
+`kubepods.slice` itself has its `memory.max` set to the node's **Allocatable** memory (`enforceNodeAllocatable: ["pods"]`) so user Pods combined can never encroach on `kubeReserved` + `systemReserved` + `evictionHard`.
+</details>
+
+<details>
+<summary>4. Why is `reservedSystemCPUs: "0-3"` preferred over `kubeReserved.cpu` + `systemReserved.cpu` when using `cpuManagerPolicy: static` on a GPU node?</summary>
+
+When `cpuManagerPolicy: static` is active, `kubelet` must know **which specific physical CPU cores** to keep in the shared/system pool so it never pins a user `Guaranteed` Pod onto the cores running `kubelet`, `containerd`, `sshd`, kernel softirqs, or NVMe/NIC interrupts. Specifying **`reservedSystemCPUs: "0-3"`** explicitly reserves hardware threads `0..3` (on NUMA node 0) for OS and Kubernetes daemons, leaving all remaining cores cleanly available for exclusive `cpuset` assignment.
+</details>
+
+<details>
+<summary>5. What three requirements must a Pod meet to receive exclusive pinned CPU cores from `cpuManagerPolicy: static`, and what does `full-pcpus-only: "true"` add?</summary>
+
+1. The Pod's QoS class must be **`Guaranteed`** (every container sets CPU and memory `requests == limits`).
+2. The container must request a **whole integer number of CPUs** (`cpu: "8"`, `cpu: "16"`—not `cpu: "7500m"`).
+3. With **`cpuManagerPolicyOptions: { full-pcpus-only: "true" }`** on an SMT (Hyper-Threading) server with 2 threads per physical core, the container must request a **multiple of 2 vCPUs** (`2, 4, 8, 16...`) so `kubelet` allocates complete physical cores (both hyperthread siblings) and prevents two different containers from sharing the L1/L2 cache and execution units of the same physical core. If a Guaranteed container requests an odd number of vCPUs (e.g., `3`) under `full-pcpus-only: "true"`, `kubelet` rejects the Pod at node admission (`SMTAlignmentError`).
+</details>
+
+<details>
+<summary>6. Why does `kubelet` fail to start with `policy ... is not allowed to be changed` after you edit `cpuManagerPolicy` or `reservedSystemCPUs` in `/var/lib/kubelet/config.yaml`, and how do you fix it?</summary>
+
+`kubelet` persists its current CPU assignments and policy name in **`/var/lib/kubelet/cpu_manager_state`** (and `/var/lib/kubelet/memory_manager_state`). If you change `cpuManagerPolicy` (`none` -> `static`) or `reservedSystemCPUs` without clearing that checkpoint file, `kubelet` refuses to start to avoid corrupting live container `cpuset`s. Always **drain the node first**, stop `kubelet`, **`sudo rm -f /var/lib/kubelet/cpu_manager_state`**, and start `kubelet`.
+</details>
+
+<details>
+<summary>7. Compare the four `topologyManagerPolicy` modes (`none`, `best-effort`, `restricted`, `single-numa-node`) and explain which to use for 1–4 GPU inference nodes vs. 8-GPU HGX training nodes.</summary>
+
+- **`none` (default):** Performs no NUMA alignment between CPUs, memory, GPUs, and NICs.
+- **`best-effort`:** Stores the preferred NUMA affinity hint and tries to align resources on the minimal set of NUMA nodes, **but still admits the Pod** if alignment is impossible.
+- **`restricted`:** Admits the Pod **only** if all requested resources can be allocated on the **minimum theoretical number of NUMA nodes** required by the request size (for example, 1 NUMA node for a 2-GPU pod, or 2 NUMA nodes for an 8-GPU pod on a dual-socket server); otherwise rejects with `TopologyAffinityError`.
+- **`single-numa-node`:** Admits the Pod **only** if **all** requested CPUs, memory, GPUs, and NICs fit on a **single NUMA node** (`1–4` GPUs on one socket).
+**Rule of thumb:** Use **`single-numa-node`** (with `topologyManagerScope: pod`) on **1–4 GPU inference pools** so CPUs, RAM, GPU, and NIC never cross the inter-socket UPI/Infinity Fabric link; use **`restricted` or `best-effort`** on **8-GPU training pools** where a single Pod intentionally spans both CPU sockets (all 8 GPUs).
+</details>
+
+<details>
+<summary>8. What are the three gRPC methods of the Kubernetes Device Plugin API, and what does `GetPreferredAllocation` do on an 8-GPU NVLink/PCIe node?</summary>
+
+Every device plugin (`nvidia-device-plugin`, SR-IOV/RDMA plugin) registers with `/var/lib/kubelet/device-plugins/kubelet.sock` and implements:
+1. **`ListAndWatch`:** Streams the list of device IDs (`GPU-uuid-0..7`), their **health status** (`Healthy` vs `Unhealthy` on XID faults), and their **NUMA topology hints** to `kubelet`.
+2. **`GetPreferredAllocation`:** When a Pod requests a subset of GPUs (e.g., `2` or `4` GPUs out of `8`), `kubelet` calls `GetPreferredAllocation(available_gpus, required_count)` so the NVIDIA plugin can pick a **topologically optimal subset** (e.g., 2 GPUs sharing the same NVLink bridge or PCIe switch rather than 2 GPUs on opposite sockets).
+3. **`Allocate`:** Called during `syncPod` to get the exact `NVIDIA_VISIBLE_DEVICES` env vars, `/dev/nvidia*` device paths, and CDI annotations for the chosen GPUs.
+</details>
+
+<details>
+<summary>9. How does `kubelet` compute `memory.available` for Node-Pressure Eviction, and why is it different from `free` in `/proc/meminfo`?</summary>
+
+Linux aggressively uses free RAM for filesystem **page cache** (`Buffers`/`Cached` in `/proc/meminfo`), so raw `MemFree` is almost always near zero on a busy node even when plenty of memory is reclaimable. Instead, `kubelet` reads cgroup memory stats (`memory.stat`) and computes:
+$$\text{memory.available} = \text{NodeCapacity} - \text{working\_set}$$
+where **`working_set = total_usage - total_inactive_file`** (i.e., anonymous/heap memory + pinned memory + `/dev/shm` tmpfs + active file cache, excluding easily reclaimable `inactive_file` page cache).
+</details>
+
+<details>
+<summary>10. What is the difference between `evictionHard`, `evictionSoft`, and `evictionMinimumReclaim` in `KubeletConfiguration`?</summary>
+
+- **`evictionHard` (e.g., `memory.available: "2Gi"`, `nodefs.available: "10%"`):** As soon as the signal drops below the hard threshold, `kubelet` **immediately evicts Pods with a 0-second grace period** (`SIGKILL`).
+- **`evictionSoft` + `evictionSoftGracePeriod` (e.g., `memory.available: "4Gi"` for `"2m"`):** If `memory.available` stays below `4Gi` continuously for 2 minutes, `kubelet` triggers a **graceful eviction** (honoring the Pod's `terminationGracePeriodSeconds` up to `evictionMaxPodGracePeriod`)—giving training jobs time to write an emergency checkpoint before hitting `evictionHard`.
+- **`evictionMinimumReclaim` (e.g., `memory.available: "1Gi"`, `imagefs.available: "5Gi"`):** Once an eviction is triggered, `kubelet` continues evicting/reclaiming until at least `threshold + minimumReclaim` (`2Gi + 1Gi = 3Gi`) is free, preventing rapid oscillation right at the threshold boundary.
+</details>
+
+<details>
+<summary>11. In what exact order does `kubelet` choose which Pod to evict first during `MemoryPressure`?</summary>
+
+`kubelet` ranks all active Pods on the node into two tiers and evicts from the top of the list:
+1. **Tier 1 — Pods whose memory usage (`working_set`) EXCEEDS their memory request** (note: `BestEffort` Pods have `request = 0`, so any `BestEffort` Pod using > 0 bytes is in Tier 1 alongside `Burstable` Pods exceeding their request). Ordered by **lowest `PriorityClass` first**, and then by **largest `(usage - request)` byte excess**.
+2. **Tier 2 — Pods whose memory usage is BELOW or EQUAL to their memory request** (`Burstable` Pods within request and `Guaranteed` Pods). Ordered by **lowest `PriorityClass` first**, and then by usage. (`Guaranteed` Pods and `system-node-critical` Pods are never evicted unless system daemons themselves exceed reserved memory.)
+</details>
+
+<details>
+<summary>12. What is the difference between `nodefs` and `imagefs` in `kubelet` disk-pressure eviction?</summary>
+
+- **`nodefs`:** The node's root filesystem where `/var/lib/kubelet` lives—holding **Pod `emptyDir` volumes (disk-backed), `/var/log/pods` container logs, and kubelet state**. When `nodefs.available < 10%`, `kubelet` deletes dead pods/containers and evicts Pods using the most ephemeral storage (`logs + emptyDir`).
+- **`imagefs`:** The filesystem where `/var/lib/containerd` stores **pulled container image layers and container writable layers**. Putting `/var/lib/containerd` on a dedicated NVMe partition separates `imagefs` from `nodefs` so pulling 30 GB container images never fills the OS root disk (`nodefs`).
+</details>
+
+<details>
+<summary>13. Why can a CPU-limited container (`limits.cpu: "2"`) fail its `httpGet` or `exec` `livenessProbe` even when the application has zero bugs, and how do you fix it?</summary>
+
+When a container has a strict CFS CPU quota (`limits.cpu`) and experiences a burst of request or garbage-collection activity, the Linux kernel throttles all threads in the container for the remainder of the 100ms CFS period (`nr_throttled` in `cpu.stat`). If `livenessProbe.timeoutSeconds` is left at the default **`1` second**, a few consecutive throttled periods delay the HTTP `/healthz` handler past 1,000 ms, causing `kubelet` to kill and restart a healthy container. Fix it by:
+1. Raising **`timeoutSeconds` to `5`–`10` seconds** on probes.
+2. Removing `limits.cpu` (keeping `requests.cpu`) or using `cpuManagerPolicy: static` so latency-sensitive servers are never CFS-throttled.
+</details>
+
+<details>
+<summary>14. How do `nodeStatusUpdateFrequency` (`10s`) and `nodeStatusReportFrequency` (`5m`) work together with `kube-node-lease` to reduce API server load on a 5,000-node cluster?</summary>
+
+In early Kubernetes, every `kubelet` PATCHed its entire heavy `Node.status` object (containing dozens of conditions, addresses, capacity, and a list of the 50 largest container images on the node) every 10 seconds—which overwhelmed `etcd` at 5,000 nodes.
+Today:
+- Every **`10s` (`nodeStatusUpdateFrequency` / `nodeLeaseDurationSeconds/4`)**, `kubelet` updates only its tiny ~200-byte **`Lease` object** in `kube-node-lease`.
+- `kubelet` only sends a full **`Node.status` update** when a condition/capacity actually changes OR once every **`5 minutes` (`nodeStatusReportFrequency`)**—cutting `etcd` heartbeat write load by >95%.
+</details>
+
+<details>
+<summary>15. How does Graceful Node Shutdown (`shutdownGracePeriod: 120s`, `shutdownGracePeriodCriticalPods: 30s`) work on a `systemd` Linux host?</summary>
+
+When `shutdownGracePeriod` is configured, `kubelet` acquires a **systemd delay inhibitor lock** via D-Bus (`systemd-inhibit --list`). When an operator or cloud autoscaler initiates an OS shutdown (`systemctl reboot` / `poweroff` / spot termination ACPI signal), `systemd` delays the actual shutdown for up to `120s` and notifies `kubelet`:
+1. **First `90s` (`120s - 30s`):** `kubelet` marks the node not-ready (`Shutdown` condition) and terminates all regular user Pods (running their `preStop` hooks and sending `SIGTERM` so training jobs can flush a final checkpoint).
+2. **Final `30s` (`shutdownGracePeriodCriticalPods`):** `kubelet` terminates `system-node-critical` / `system-cluster-critical` Pods (CNI,CSI, storage flushers) and releases the systemd inhibitor lock so the kernel powers off cleanly.
+</details>
+
+<details>
+<summary>16. What are the differences between a Static Pod (`/etc/kubernetes/manifests`) and a `DaemonSet` Pod?</summary>
+
+- **Static Pod:** Managed directly by the local **`kubelet`** reading a file on disk (`/etc/kubernetes/manifests/*.yaml`), with **zero dependency on `kube-apiserver` or `kube-scheduler`**. Cannot reference `ConfigMap`s or `Secret`s, cannot be deleted via `kubectl delete pod` (deleting the mirror Pod in `kube-apiserver` causes `kubelet` to recreate it immediately), and is used for bootstrapping `etcd`, `kube-apiserver`, `kube-controller-manager`, `kube-scheduler`, and `kube-vip`.
+- **`DaemonSet` Pod:** Managed by the **`DaemonSet` controller** in `kube-controller-manager` and scheduled by `kube-scheduler` through `kube-apiserver`. Can mount `ConfigMap`s, `Secret`s, and PVCs, supports rolling updates across the fleet, and is used for node agents (`nvidia-device-plugin`, `dcgm-exporter`, `calico-node`/`cilium`, `fluent-bit`).
+</details>
+
+<details>
+<summary>17. Why is granting RBAC permission on `nodes/proxy` (`verbs: ["*"]` or `["get", "create"]`) equivalent to granting root/exec access to every Pod on every node?</summary>
+
+The `nodes/proxy` subresource authorizes direct proxying to the **Kubelet HTTPS API (`:10250`)**—which includes the `/exec`, `/run`, `/attach`, and `/portForward` endpoints for every container on the node. An attacker or compromised monitoring ServiceAccount with `nodes/proxy` `create`/`get` permission can execute arbitrary commands inside any `kube-system` or tenant Pod on any node, completely bypassing namespace-level `pods/exec` RBAC rules. Monitoring scrapers (Prometheus) should only be granted **`nodes/metrics`** and **`nodes/stats`** (`get`), never `nodes/proxy`.
+</details>
+
+<details>
+<summary>18. What do the `Node` Authorizer and `NodeRestriction` Admission Plugin prevent a compromised worker node's `kubelet` from doing?</summary>
+
+Every `kubelet` authenticates to `kube-apiserver` as `system:node:<nodename>` (in group `system:nodes`). If a single worker node is compromised:
+- **The `Node` Authorizer** restricts `system:node:<nodename>` so it can **only read `Secret`s, `ConfigMap`s, and `PV`s mounted by Pods currently scheduled onto `<nodename>`**—it cannot read Secrets belonging to Pods on other nodes.
+- **The `NodeRestriction` Admission Plugin** restricts `system:node:<nodename>` so it can only modify its **own** `Node` and bound `Pod` status objects, and **forbids the kubelet from adding or modifying `node-role.kubernetes.io/*` or `node-restriction.kubernetes.io/*` labels** on itself (so a compromised worker cannot relabel itself as a control-plane or trusted security node).
+</details>
+
+<details>
+<summary>19. Why should `podPidsLimit` (and `evictionHard["pid.available"]`) be configured explicitly on multi-GPU training nodes?</summary>
+
+A single 8-GPU PyTorch `torchrun` job spawns 8 rank processes, each spawning 8–16 `DataLoader` worker processes, OpenMP/MKL thread pools, and NCCL proxy threads—easily creating **500 to 2,000 Linux tasks (PIDs) per Pod** (in Linux, every thread is a task consuming a PID from `/proc/sys/kernel/pid_max`). Setting `podPidsLimit: 8192` (or `16384`) in `KubeletConfiguration` (which writes `pids.max` in each Pod's cgroup) gives legitimate multi-GPU training jobs enough headroom while still preventing a runaway fork bomb in one container from exhausting the host's global `kernel.pid_max` and crashing `sshd`/`kubelet`.
+</details>
+
+<details>
+<summary>20. Contrast the `KubeletConfiguration` tuning for an 8-GPU HGX Training Node vs. a 1-GPU / MIG Multi-Tenant Inference Node.</summary>
+
+| Setting | 8-GPU HGX Training Node (1 Pod = Whole Node) | 1-GPU / MIG Multi-Tenant Inference Node (Many Pods) |
+|---|---|---|
+| `maxPods` | Low (`30`–`40`: system daemons + 1 training pod) | Standard (`60`–`110`) |
+| `topologyManagerPolicy` | `restricted` or `best-effort` (pod spans 2 sockets) | `single-numa-node` (`scope: pod`) for strict PCIe/NUMA locality |
+| `cpuManagerPolicy` | `static` (`full-pcpus-only: "true"`) | `static` (`full-pcpus-only: "true"`) |
+| `podPidsLimit` | High (`8192`–`32768`) for multi-process DataLoaders | Moderate (`2048`–`4096`) |
+| `shutdownGracePeriod` | Long (`120s`–`300s`) to allow emergency checkpointing | Moderate (`60s`–`120s`) for connection draining |
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 3: Container Runtime** (node runtime, CRI, and cgroup considerations).
+  - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 5: Pods** (probes, resource requests/limits, volumes, and node behavior).
+  - `nvidia-devops` (`volume-03/02-k8s-node-storage-masterclass.md`): node operations masterclass (`KubeletConfiguration` for AI nodes, CPU/Memory/Topology/Device managers, eviction and QoS, CRI and sandbox, and `crictl` debugging).
+- **Run here:** `python3 code/part05/kubelet_node_managers_lab.py` (3 passed, 0 failed).
+- **Explicitly labelled inferences:** The `evaluate_cpu_manager_static`, `evaluate_topology_manager`, and `rank_memory_eviction_victims` models in `code/part05/kubelet_node_managers.py` and the production GPU `KubeletConfiguration` (Section 2) are the author's constructions synthesizing `PK` Chapter 3, `KUR` Chapter 5, and `volume-03/02` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Not verified on live hardware:** Live `kubelet`, `systemd-cgls`, `numactl`, and `grpcurl` executions (`169.254.20.10`, `50Mi`, `110` maxPods, `8192` podPidsLimit, `85%`/`70%`/`80%` image GC, `120s`/`30s` shutdownGracePeriod, `reservedSystemCPUs: "0-3"`, `4Gi`/`8Gi` reserved, `2Gi`/`4Gi` eviction, `-997`/`-999`/`1000` oom_score_adj, `:10250`, `10255`) are marked (`untested here`) where not executed by `kubelet_node_managers_lab.py`.
