@@ -8,4 +8,5 @@
 | 1.4 Text-processing essentials | `text_pipeline.py` | `text_pipeline_lab.py` | 25 | `python3 code/part01/text_pipeline_lab.py` |
 | 1.5 Working remotely: SSH, rsync, tmux, editors | `remote_ssh_rsync.py` | `remote_ssh_rsync_lab.py` | 25 | `python3 code/part01/remote_ssh_rsync_lab.py` |
 | 1.6 Users, groups, permissions, ACLs, sudo | `users_permissions.py` | `users_permissions_lab.py` | 25 | `python3 code/part01/users_permissions_lab.py` |
-| 1.7 Packages, repositories and software installation | `packages_toolchain.py` | `packages_toolchain_lab.py` | 24 | `python3 code/part01/packages_toolchain_lab.py` |
+| 1.7 Packages, repositories and software installation | `packages_toolchain.py` | `packages_toolchain_lab.py` | 23 | `python3 code/part01/packages_toolchain_lab.py` |
+| 1.8 Processes, signals and job control | `processes_signals.py` | `processes_signals_lab.py` | 24 | `python3 code/part01/processes_signals_lab.py` |

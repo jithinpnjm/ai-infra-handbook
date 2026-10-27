@@ -15,7 +15,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 1.5 | Working remotely: SSH keys, file transfer, tmux and editors | drafted | 7823 |  |
 | 1.6 | Users, groups, permissions, ACLs, sudo and user environments | drafted | 11924 |  |
 | 1.7 | Packages, repositories and software installation | drafted | 15590 |  |
-| 1.8 | Processes, signals and job control | drafted | 12717 |  |
+| 1.8 | Processes, signals and job control | drafted | 13885 |  |
 | 1.9 | Shell scripting that survives production | drafted | 9862 |  |
 | 1.10 | Devices, udev, sysfs and procfs | drafted | 8940 |  |
 | 1.11 | How a program runs: system calls, libraries, ELF, strace and ldd | drafted | 9642 |  |
