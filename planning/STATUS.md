@@ -157,26 +157,26 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 12.18 | NCCL debugging: hangs, timeouts and errors | drafted | 14468 |  |
 | 12.19 | GPUDirect RDMA and GPUDirect Storage | drafted | 10651 |  |
 | 12.24 | AI networking troubleshooting playbook | drafted | 12285 |  |
-| 14.13 | Fine-tuning: SFT, LoRA and QLoRA, preference alignment | scaffold |  |  |
-| 14.14 | Dataset engineering for fine-tuning | scaffold |  |  |
-| 14.15 | Fine-tuning infrastructure and cost | scaffold |  |  |
-| 15.1 | The anatomy of an inference request | scaffold |  |  |
-| 15.2 | Batching, the KV cache and quantization fundamentals | scaffold |  |  |
-| 15.3 | vLLM in depth | scaffold |  |  |
-| 15.4 | SGLang and cross-request optimisation | scaffold |  |  |
-| 15.5 | TensorRT and TensorRT-LLM | scaffold |  |  |
-| 15.6 | Triton Inference Server | scaffold |  |  |
-| 15.7 | NVIDIA NIM and the NIM Operator | scaffold |  |  |
-| 15.8 | NVIDIA Dynamo, llm-d and disaggregated serving | scaffold |  |  |
-| 15.9 | Multinode inference: parallelism, decoding and routing | scaffold |  |  |
-| 15.10 | Prefill and decode disaggregation | scaffold |  |  |
-| 15.11 | Advanced prefill-decode and KV cache tuning | scaffold |  |  |
-| 15.12 | Dynamic and adaptive inference engine optimisations | scaffold |  |  |
-| 15.13 | Profiling, debugging and tuning inference at scale | scaffold |  |  |
-| 15.14 | Benchmarking: genai-perf, latency percentiles and goodput | scaffold |  |  |
-| 15.15 | Autoscaling inference: HPA, KEDA and scale-to-zero | scaffold |  |  |
-| 15.16 | Production serving stack and reliability | scaffold |  |  |
-| 15.17 | Lab: serve and benchmark on GKE and Nebius | scaffold |  |  |
+| 14.13 | Fine-tuning: SFT, LoRA and QLoRA, preference alignment | drafted | 13639 |  |
+| 14.14 | Dataset engineering for fine-tuning | drafted | 10131 |  |
+| 14.15 | Fine-tuning infrastructure and cost | drafted | 14694 |  |
+| 15.1 | The anatomy of an inference request | drafted | 12275 |  |
+| 15.2 | Batching, the KV cache and quantization fundamentals | drafted | 12493 |  |
+| 15.3 | vLLM in depth | drafted | 13817 |  |
+| 15.4 | SGLang and cross-request optimisation | drafted | 11200 |  |
+| 15.5 | TensorRT and TensorRT-LLM | drafted | 10394 |  |
+| 15.6 | Triton Inference Server | drafted | 10126 |  |
+| 15.7 | NVIDIA NIM and the NIM Operator | drafted | 9706 |  |
+| 15.8 | NVIDIA Dynamo, llm-d and disaggregated serving | drafted | 10897 |  |
+| 15.9 | Multinode inference: parallelism, decoding and routing | drafted | 12360 |  |
+| 15.10 | Prefill and decode disaggregation | drafted | 12209 |  |
+| 15.11 | Advanced prefill-decode and KV cache tuning | drafted | 11378 |  |
+| 15.12 | Dynamic and adaptive inference engine optimisations | drafted | 12458 |  |
+| 15.13 | Profiling, debugging and tuning inference at scale | drafted | 11054 |  |
+| 15.14 | Benchmarking: genai-perf, latency percentiles and goodput | drafted | 13802 |  |
+| 15.15 | Autoscaling inference: HPA, KEDA and scale-to-zero | drafted | 10507 |  |
+| 15.16 | Production serving stack and reliability | drafted | 13403 |  |
+| 15.17 | Lab: serve and benchmark on GKE and Nebius | drafted | 9440 |  |
 | 16.1 | MLOps foundations and lifecycle | scaffold |  |  |
 | 16.2 | Data versioning and experiment tracking: DVC, MLflow, Weights and Biases | scaffold |  |  |
 | 16.3 | Data pipelines and feature stores | scaffold |  |  |
@@ -357,20 +357,20 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 13.7 | Checkpoint architecture and recovery | drafted | 12037 |  |
 | 13.8 | Capacity, performance and cost planning | drafted | 12552 |  |
 | 13.9 | Storage troubleshooting | drafted | 12017 |  |
-| 14.1 | ML and deep learning fundamentals for infrastructure engineers | scaffold |  |  |
-| 14.2 | Transformers and LLM architecture | scaffold |  |  |
-| 14.3 | Training memory and compute anatomy | scaffold |  |  |
-| 14.4 | Data parallelism and DDP | scaffold |  |  |
-| 14.5 | FSDP and parameter sharding | scaffold |  |  |
-| 14.6 | DeepSpeed and ZeRO | scaffold |  |  |
-| 14.7 | Tensor, pipeline and expert parallelism; Megatron | scaffold |  |  |
-| 14.8 | PyTorch performance: profiling, tuning and scaling | scaffold |  |  |
-| 14.9 | PyTorch compilers and kernels: torch.compile | scaffold |  |  |
-| 14.10 | Multi-node training architecture | scaffold |  |  |
-| 14.11 | Checkpointing, fault tolerance and elastic training | scaffold |  |  |
-| 14.12 | Training performance engineering and troubleshooting | scaffold |  |  |
-| 14.16 | NeMo framework and customisation | scaffold |  |  |
-| 15.18 | Inference cost, capacity and cost per token | scaffold |  |  |
+| 14.1 | ML and deep learning fundamentals for infrastructure engineers | drafted | 15438 |  |
+| 14.2 | Transformers and LLM architecture | drafted | 15288 |  |
+| 14.3 | Training memory and compute anatomy | drafted | 12788 |  |
+| 14.4 | Data parallelism and DDP | drafted | 11778 |  |
+| 14.5 | FSDP and parameter sharding | drafted | 12585 |  |
+| 14.6 | DeepSpeed and ZeRO | drafted | 12654 |  |
+| 14.7 | Tensor, pipeline and expert parallelism; Megatron | drafted | 13472 |  |
+| 14.8 | PyTorch performance: profiling, tuning and scaling | drafted | 11038 |  |
+| 14.9 | PyTorch compilers and kernels: torch.compile | drafted | 10758 |  |
+| 14.10 | Multi-node training architecture | drafted | 11722 |  |
+| 14.11 | Checkpointing, fault tolerance and elastic training | drafted | 9735 |  |
+| 14.12 | Training performance engineering and troubleshooting | drafted | 10771 |  |
+| 14.16 | NeMo framework and customisation | drafted | 9151 |  |
+| 15.18 | Inference cost, capacity and cost per token | drafted | 14117 |  |
 | 16.11 | Cloud MLOps platforms: Vertex AI, SageMaker and Azure ML | scaffold |  |  |
 | 16.13 | Governance, privacy and compliance for ML platforms | scaffold |  |  |
 | 17.1 | Observability foundations: metrics, logs and traces | scaffold |  |  |

@@ -821,5 +821,5 @@ Table 13-6 MLPerf Logging (:::MLL) 24.0 ms Step Breakdown:
 
 ### Cross-References and Review Notes
 - **Cross-reference to Chapter 10.20.** Chapter 10.20 covers the 4-layer hardware profiling Evidence Ladder across DCGM, Nsight Systems, Nsight Compute, and the PyTorch profiler. This chapter focuses on applying those profiles to PyTorch compiler tuning, memory allocator and superchip offload engineering, multi-GPU distributed scaling, HTA multi-rank trace alignment, and CI regression governance.
-- **Labelled inferences and worked lab extensions.** The specific numerical inputs used in the companion lab's worked scaling examples are deterministic pedagogical models in `code/part14/pytorch_performance_scaling.py`. They apply SimpleFSDP, AsyncTP, and HTA mechanisms and percentages directly from *AI Systems Performance Engineering* Chapter 13.
+- **Labelled inferences and worked lab extensions.** The specific numerical inputs used in the companion lab's worked scaling examples (`FlashAttention-2/3`, `PTQ` and `QAT`, `GDS`, `D2H` copies, `reduce_scatter`, cross-referenced with Chapter `14.6`) are deterministic pedagogical models in `code/part14/pytorch_performance_scaling.py`. They apply SimpleFSDP, AsyncTP, and HTA mechanisms and percentages directly from *AI Systems Performance Engineering* Chapter 13.
 
