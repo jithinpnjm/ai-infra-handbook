@@ -79,6 +79,37 @@ Needs 4.3 to 4.5. After this chapter you can:
 
 Order within a play: `pre_tasks` → handlers flushed → `roles` → `tasks` → handlers flushed → `post_tasks` → handlers. Plays run in file order, each across all its hosts; later plays can use facts gathered earlier. Use multiple plays when different host groups need different steps, or when you want a **gate** (a play that validates the world before the destructive one).
 
+```mermaid
+flowchart LR
+    Pre["1. pre_tasks<br/>(assert OS, check Slurm DRAIN)"] --> Flush1["2. Flush handlers<br/>(notified by pre_tasks)"]
+    Flush1 --> Main["3. roles -> tasks<br/>(packages, sysctl, templates)"]
+    Main --> Flush2["4. Flush handlers<br/>(Restart service once even if<br/>notified by multiple tasks)"]
+    Flush2 --> Post["5. post_tasks<br/>(nvidia-smi / uri smoke test)"]
+    Post --> Flush3["6. Flush handlers<br/>(notified by post_tasks)"]
+```
+
+### Walkthrough from *Ansible: Up and Running* Chapter 3: `webservers-tls.yml`
+
+In *Ansible: Up and Running* Chapter 3 (`Examples 3-1` to `3-10`), the authors build a complete playbook `webservers-tls.yml` that configures NGINX with TLS and verifies the deployment—demonstrating seven idiomatic playbook patterns:
+1. **Executable playbook shebang (`#!/usr/bin/env ansible-playbook`):** Adding `#!/usr/bin/env ansible-playbook` as line 1 of `webservers-tls.yml` and running `chmod +x webservers-tls.yml` lets you execute `./webservers-tls.yml` directly like a shell script. (And if `cowsay` is installed on the control node, Ansible renders play headers as ASCII art cows—customizable via `cow_selection = random` or disabled via `nocows = 1` in `ansible.cfg`.)
+2. **Play-level `vars:` and directory/symlink state (`file`):** Defines `tls_dir: /etc/nginx/ssl/`, `key_file: nginx.key`, `cert_file: nginx.crt`, `conf_file: /etc/nginx/sites-available/default`, and `server_name: localhost`. It creates `/etc/nginx/ssl/` with `file: path={{ tls_dir }} state=directory mode='0750'` and enables the site by creating a **symbolic link** with `file: src={{ conf_file }} dest=/etc/nginx/sites-enabled/default state=link` (`state: absent` removes a symlink or file).
+3. **Looping file uploads (`copy` with `loop:`):** Generates a self-signed certificate locally (`openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -subj /CN=localhost -keyout files/nginx.key -out files/nginx.crt`) and uploads both files in one task using `copy: src={{ item }} dest={{ tls_dir }} mode='0600'` with `loop: ["{{ key_file }}", "{{ cert_file }}"]` ( note that `copy` automatically searches the `files/` subdirectory adjacent to the playbook, just as `template` automatically searches `templates/`).
+4. **Handler deduplication (`notify: Restart nginx`):** Four separate tasks (`Copy TLS files`, `Manage nginx config template`, `Enable configuration`, `Install home page`) all attach `notify: Restart nginx`. Even if all four tasks report `changed` during the first run, Ansible **deduplicates notifications and runs the `Restart nginx` handler only once** at the end of the `tasks` phase (before `post_tasks`), and **zero times** on the second run when all tasks report `ok` (tested in `code/part04/ansible_playbook_execution_lab.py`).
+5. **Embedded HTTP smoke test (`uri` + `register` + `failed_when` + `tags`):** At the end of the play, a verification task queries the newly configured HTTPS endpoint from the control node:
+   ```yaml
+   - name: Test it! https://localhost:8443/index.html
+     delegate_to: localhost
+     become: false
+     uri:
+       url: 'https://localhost:8443/index.html'
+       validate_certs: false
+       return_content: true
+     register: this
+     failed_when: "'Running on ' not in this.content"
+     tags:
+       - test
+   ```
+
 ### Task anatomy and common keywords
 
 ```yaml
@@ -359,7 +390,15 @@ gpu002 : ok=12 changed=3 unreachable=0 failed=1 skipped=2 rescued=0 ignored=0   
 
 Run: `--check --diff --limit gpu001` first; then the real run with the canary batch; the validation failure stops the play before the 10% batch (`max_fail_percentage`). Resume Slurm nodes in a separate, explicit play after validation.
 
-## 8. Lab (untested)
+## 8. Lab
+
+First, run the self-checking Python lab (`code/part04/ansible_playbook_execution_lab.py`) locally. It verifies play phase execution order (`pre_tasks -> roles -> tasks -> post_tasks`) and handler deduplication (`simulate_play_execution_and_handlers`, `AUR` Ch. 3), `command`/`shell` idempotency guards (`creates`, `--check` mode vs `check_mode: false`, and `changed_when: false` in `evaluate_command_task_guards`), and progressive `serial: [1, '20%', '100%']` batch calculation (`compute_serial_batches`).
+
+```bash
+python3 code/part04/ansible_playbook_execution_lab.py
+```
+
+Next, on a control node with 2–3 Linux targets (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **Multi-play playbook**: create `site.yml` with `pre_tasks`, `roles` (empty), `tasks`, `post_tasks`, handlers; observe execution order using `debug` tasks and `--list-tasks`.
 2. **Modules tour**: with one task each, use `package`, `service`, `user`, `file`, `copy`, `lineinfile`, `blockinfile`, `template`, `stat`, `get_url` (with checksum), `unarchive`, `sysctl`, `cron`, `wait_for`; run twice and confirm `changed=0` the second time.
@@ -373,8 +412,6 @@ Run: `--check --diff --limit gpu001` first; then the real run with the canary ba
 10. **Canary rollout**: implement the worked example against containers; inject a validation failure on the canary and confirm the play halts.
 11. **Lint**: run `ansible-lint` and fix FQCN, naming, `command-instead-of-module`, `no-changed-when`, and `risky-file-permissions` findings.
 12. **Clean up.**
-
-Mark tested only after execution.
 
 ## 9. Common mistakes
 
@@ -393,60 +430,209 @@ Mark tested only after execution.
 
 ## 10. Interview angles
 
-- "How do you make a playbook idempotent? What breaks idempotency?" 
+- "How do you make a playbook idempotent? What breaks idempotency?"
 - "Explain check mode and its limits. How would you do a safe production change?" (check/diff, canary via `serial`, validation, `max_fail_percentage`.)
-- "`command` vs `shell` vs `raw` vs `script`?" 
-- "How do you perform a rolling update across 500 nodes with a canary?" 
-- "What does `delegate_to` do and when do you use `run_once`?" 
+- "`command` vs `shell` vs `raw` vs `script`?"
+- "How do you perform a rolling update across 500 nodes with a canary?"
+- "What does `delegate_to` do and when do you use `run_once`?"
 - "How do you handle long-running tasks and SSH timeouts?" (async/poll.)
-- "What do `changed_when` and `failed_when` do?" 
-- "Tags: how do you use them and what are the risks?" 
+- "What do `changed_when` and `failed_when` do?"
+- "Tags: how do you use them and what are the risks?"
 - "How do you know the playbook is safe to rerun?" (second run `changed=0`, Molecule idempotence test.)
 
-## 11. Checkpoint questions (35)
+## Exercises
 
-1. Order of execution in a play? **A:** pre_tasks, roles, tasks, post_tasks, with handlers flushed between.
-2. What is idempotency in modules? **A:** Compares desired vs actual and changes only when different.
-3. Task names should describe what? **A:** Desired state.
-4. What does `register` do? **A:** Stores the module result in a variable.
-5. What does `changed_when: false` do? **A:** Task never reports changed (read-only probes).
-6. What does `creates:` do? **A:** Skips the command if the path exists.
-7. When does `command` skip in check mode? **A:** Always, unless `creates/removes` or `check_mode: false`.
-8. What does `--diff` show? **A:** Before/after content of changed files.
-9. How leak-proof is `--diff`? **A:** Not; use `diff: false` for secrets.
-10. What is `serial`? **A:** Limits batch size of hosts per play iteration.
-11. Meaning of `serial: [1, "10%", "100%"]`? **A:** Canary then growing batches.
-12. `max_fail_percentage` effect? **A:** Aborts play if too many hosts in a batch fail.
-13. `any_errors_fatal`? **A:** First failure aborts the play for all hosts.
-14. `strategy: free`? **A:** Hosts run independently without waiting.
-15. `throttle`? **A:** Concurrency cap for a task.
-16. `run_once`? **A:** Execute task on one host only.
-17. `delegate_to`? **A:** Run the task on another host with current host context.
-18. `async` with `poll: 0`? **A:** Fire and forget; check later with `async_status`.
-19. Special tags? **A:** `always` and `never`.
-20. How to start at a task? **A:** `--start-at-task`.
-21. Exit code for failed hosts? **A:** 2.
-22. Exit code for unreachable hosts? **A:** 3.
-23. Module for kernel parameters? **A:** `ansible.posix.sysctl`.
-24. Module to pin packages on Debian? **A:** `dpkg_selections` (hold).
-25. `state: latest` risk? **A:** Unplanned upgrades.
-26. How to validate before installing a config? **A:** `validate:` on `copy`/`template`.
-27. How to make downloads safe? **A:** `checksum:` on `get_url`.
-28. How to reboot and wait? **A:** `ansible.builtin.reboot`.
-29. Module for waiting on ports? **A:** `wait_for`.
-30. Handler trigger condition? **A:** Notified task reports changed.
-31. `meta: flush_handlers` effect? **A:** Runs pending handlers immediately.
-32. `force_handlers`? **A:** Run handlers even if a later task fails.
-33. Why avoid timestamps in templates? **A:** Breaks idempotency.
-34. What does `lineinfile` do? **A:** Ensures a single line matches desired state.
-35. Why tags are not a safety mechanism? **A:** Partial runs skip prerequisites.
+1. **Playbook Anatomy, Phase Execution Order (`pre_tasks` -> `roles` -> `tasks` -> `post_tasks`), and Handler Deduplication (`AUR` Chapter 3):** Using `simulate_play_execution_and_handlers()` in `code/part04/ansible_playbook_execution.py`, trace the exact order in which `pre_tasks`, `roles`, `tasks`, `post_tasks`, and their handler flushes execute, and explain why four tasks notifying `Restart nginx` in `webservers-tls.yml` trigger only a single restart.
+2. **Core Module Families (`package`, `dpkg_selections`, `file`, `copy`, `template`, `lineinfile`, `get_url`, `sysctl`, `systemd_service`, `uri`):** Explain how each module checks current state before acting, why `dpkg_selections` (`selection: hold` on `nvidia-driver-550` and `linux-image-generic`) and `state: present` with pinned versions beat `state: latest` on GPU nodes, and how `webservers-tls.yml` uses `file: state=link` and `uri: return_content=true` with `failed_when`.
+3. **Preserving Idempotency and Guarding `command` / `shell` Tasks (`creates`, `removes`, `changed_when`, `failed_when`):** Using `evaluate_command_task_guards()` in `code/part04/ansible_playbook_execution.py`, explain: (a) why embedding `{{ ansible_date_time.iso8601 }}` in a config template breaks idempotency and triggers handler storms; and (b) how `creates:`, `changed_when: false`, `failed_when:`, and `set -o pipefail` (with `executable: /bin/bash`) make `command`/`shell` tasks safe.
+4. **Check Mode (`--check`), Unified Diffs (`--diff`), and Per-Task `check_mode:` / `diff:` Overrides:** Explain why `command`/`shell` tasks without `creates`/`removes` are skipped under `--check`, why read-only pre-flight probes (`scontrol show node`, `nvidia-smi -L`) must set `check_mode: false` and `changed_when: false`, how dependent tasks behave in check mode, and why secret tasks must set `diff: false` and `no_log: true`.
+5. **Execution Controls: Tags (`always`, `never`), `serial: [1, '10%', '100%']`, `strategy: linear` vs. `free`, `throttle`, `delegate_to`, `run_once`, and `async`/`poll`:** Using `compute_serial_batches()` in `code/part04/ansible_playbook_execution.py`, trace how `serial: [1, "10%", "100%"]` and `max_fail_percentage: 5` implement a progressive canary rollout, contrast `strategy: linear` with `strategy: free` and `throttle: 5`, and explain how `delegate_to` and `async: 3600` + `poll: 0`/`15` work.
+6. **End-to-End Safe GPU Parameter Rollout and `ansible-playbook` Exit Codes:** Trace the Section 7 worked example (`pre_tasks` checking Slurm `DRAIN` via `delegate_to: "{{ groups['slurm_controller'][0] }}"`, `tasks` applying `sysctl` and `nvidia-persistenced` override, `handlers` restarting `nvidia-persistenced` with `daemon_reload: true`, and `post_tasks` verifying `nvidia-smi` GPU count), and list the meaning of `ansible-playbook` exit codes `0`, `1`, `2`, `3`, `4`, `5`, and `99`.
 
-## 12. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. What is the exact execution order of phases within an Ansible play (`pre_tasks`, `roles`, `tasks`, `post_tasks`, and `handlers`)?</summary>
 
-- Rene Moser and Lorin Hochstein, *Ansible: Up and Running*, 3rd edition (chapter 3 on playbook basics, plus chapters on error handling and execution control).
-- Ansible documentation: playbook keywords, modules index, check mode and diff, strategies, async, delegation.
-- Examples are the author's constructions.
+Within a single play, Ansible executes phases in this strict sequence:
+1. Fact gathering (`setup`, if `gather_facts: true`).
+2. **`pre_tasks`** (e.g., asserting OS family, verifying the node is `DRAIN`ed in Slurm, or taking the node out of a load balancer).
+3. **Flush handlers** notified by `pre_tasks`.
+4. **`roles`** listed under `roles:`.
+5. **`tasks`** listed under `tasks:`.
+6. **Flush handlers** notified by `roles` and `tasks`.
+7. **`post_tasks`** (e.g., running `nvidia-smi` or `uri` smoke tests and returning the node to service).
+8. **Flush handlers** notified by `post_tasks`.
+Use `meta: flush_handlers` inside a phase if you need pending handlers to run immediately before the phase ends.
+</details>
 
-**Flagged for verification before publishing:** collection ownership of modules (several moved between `ansible.builtin`, `ansible.posix` and `community.general`), module option names for your ansible-core version, `ansible-playbook` exit code table, `validate` behaviour for `sshd` drop-ins, and every code listing; all labs are **untested**.
+<details>
+<summary>2. How does Handler deduplication and ordering work when multiple tasks notify the same handler (`AUR` Chapter 3)?</summary>
+
+A handler is triggered **only when the notifying task reports `changed: true`**. If four tasks in `webservers-tls.yml` (`Copy TLS files`, `Manage nginx config template`, `Enable configuration`, `Install home page`) all report `changed` and all specify `notify: Restart nginx`, Ansible **deduplicates the notifications and runs `Restart nginx` only once** at the end of the phase. If multiple *different* handlers are notified, they execute in the **order they are defined in the `handlers:` section**, not the order in which tasks notified them. By default, if a host fails a later task in the play, its pending handlers are skipped unless **`force_handlers: true`** is set.
+</details>
+
+<details>
+<summary>3. What makes a task idempotent, and why does putting `{{ ansible_date_time.iso8601 }}` inside a template break idempotency?</summary>
+
+A task is **idempotent** when running it a second time against a host that is already in the desired state makes **zero changes** and reports `ok` (`changed=0`). If a template embeds a dynamic timestamp (`{{ ansible_date_time.iso8601 }}`) or random value, the rendered file content differs on every single playbook run—causing `template` to overwrite the file, report `changed=1` on every run, ruin `--check` drift detection, and trigger service-restart **handler storms** across the fleet on every run.
+</details>
+
+<details>
+<summary>4. Why should GPU node playbooks use `state: present` with pinned versions and `dpkg_selections` (`hold`) instead of `state: latest`?</summary>
+
+Using `state: latest` on `package` or `apt` upgrades packages whenever upstream repositories publish a new version—meaning running a routine configuration playbook can unexpectedly upgrade the Linux kernel or NVIDIA driver (`nvidia-driver-550`) on a subset of nodes, breaking kernel-module ABI matching across a multi-node training job. Always use **`state: present`** with pinned version strings (`nvidia-driver-550=550.90.07-1`) and lock critical packages with **`ansible.builtin.dpkg_selections`** (`selection: hold`, or `yum versionlock` on RHEL).
+</details>
+
+<details>
+<summary>5. In `AUR` Chapter 3's `webservers-tls.yml`, how does `ansible.builtin.file` create directories and symlinks, and where do `copy` and `template` look for source files?</summary>
+
+- **`ansible.builtin.file`:** Setting `state: directory` (`path: /etc/nginx/ssl/`, `mode: '0750'`) creates the directory tree (`mkdir -p`); setting **`state: link`** (`src: /etc/nginx/sites-available/default`, `dest: /etc/nginx/sites-enabled/default`) creates a symbolic link (`ln -s`); setting `state: absent` removes a file, symlink, or directory tree.
+- **Relative search paths:** `ansible.builtin.copy` automatically searches for relative `src:` files inside the **`files/`** subdirectory adjacent to the playbook (or role), and `ansible.builtin.template` automatically searches inside the **`templates/`** subdirectory.
+</details>
+
+<details>
+<summary>6. Compare `lineinfile`, `blockinfile`, `assemble`, and `template`—when should you avoid `lineinfile`?</summary>
+
+- **`template` (preferred whenever you own the whole file or a `.d/` drop-in):** Renders the complete file deterministically from Git so no unmanaged lines can linger (`WISB == WIRI`).
+- **`blockinfile`:** Inserts/updates a multi-line block surrounded by `# BEGIN ANSIBLE MANAGED BLOCK` / `# END ANSIBLE MANAGED BLOCK` markers in a shared file.
+- **`lineinfile`:** Ensures a single line matching `regexp:` is present or absent. Avoid `lineinfile` on complex structured configs (or when a drop-in directory like `/etc/ssh/sshd_config.d/` or `/etc/sysctl.d/` exists), because a loose `regexp` can accidentally rewrite the wrong line or append duplicate entries.
+- **`assemble`:** Concatenates multiple fragment files from a directory into a single target file.
+</details>
+
+<details>
+<summary>7. How does `ansible.posix.sysctl` manage kernel parameters idempotently?</summary>
+
+`ansible.posix.sysctl` (`name: vm.swappiness`, `value: "1"`, `sysctl_file: /etc/sysctl.d/90-ai.conf`, `state: present`, `reload: true`) both reads the live `/proc/sys/` value and checks the target `sysctl_file`: only if either differs does it update `/etc/sysctl.d/90-ai.conf` and run `sysctl -p /etc/sysctl.d/90-ai.conf` to apply the setting in memory.
+</details>
+
+<details>
+<summary>8. How do you make `command` and `shell` tasks idempotent and safe using `creates`, `removes`, `changed_when`, `failed_when`, and `pipefail`?</summary>
+
+1. **`args: { creates: /path/to/file }`:** Skips executing the command if `/path/to/file` already exists on the target (`removes:` skips if the path does *not* exist).
+2. **`changed_when:`:** Overrides when the task reports `CHANGED`. For read-only probes (`dcgmi profile --status`, `scontrol show node`), set **`changed_when: false`**; for state-toggling commands (`nvidia-smi -i 0 -mig 1`), evaluate stdout (`changed_when: "'Enabled' in mig_set.stdout"`).
+3. **`failed_when:`:** Overrides failure detection (`failed_when: prof.rc != 0 and 'not supported' not in prof.stderr`).
+4. **Shell pipes:** In `/bin/sh`, `cmd1 | cmd2` returns the exit code of `cmd2` only, hiding failures in `cmd1`. Set `args: { executable: /bin/bash }` and start the command with **`set -o pipefail;`** (and always sanitize variables with `{{ var | quote }}`).
+</details>
+
+<details>
+<summary>9. How do `--check`, `--diff`, and the per-task `check_mode:` keyword interact?</summary>
+
+When you run `ansible-playbook site.yml --check --diff`:
+- Declarative modules (`package`, `file`, `template`, `service`, `sysctl`) simulate execution and print unified before/after file diffs (`--diff`).
+- **`command`, `shell`, and `raw` tasks are skipped** in `--check` mode unless they specify `creates:`/`removes:` **or** set **`check_mode: false`** on the task.
+- Therefore, any read-only inspection task (`command: scontrol show node ...` or `stat`) whose registered output is needed by later `when:` conditions during a `--check` run **must set `check_mode: false` and `changed_when: false`** so it executes during `--check`. Conversely, setting `check_mode: true` on a task forces that single task to run in dry-run mode even during a real playbook run.
+</details>
+
+<details>
+<summary>10. How do `until`, `retries`, and `delay` work on a task waiting for a service or daemon to converge?</summary>
+
+```yaml
+- name: Wait for DCGM exporter metrics endpoint
+  ansible.builtin.uri:
+    url: http://127.0.0.1:9400/metrics
+  register: dcgm_http
+  retries: 6
+  delay: 5
+  until: dcgm_http.status == 200
+```
+Ansible executes the module, stores the result in `dcgm_http`, and evaluates the **`until:`** Jinja2 expression; if `False`, it sleeps `delay` seconds (`5`s) and retries up to `retries` times (`6` attempts) before marking the task failed.
+</details>
+
+<details>
+<summary>11. How do Tags (`--tags`, `--skip-tags`, `always`, `never`) work, and why are tags NOT a safety boundary?</summary>
+
+Attaching `tags: [packages, monitoring]` to a task/role/block lets you run only matching tasks (`--tags monitoring`) or skip them (`--skip-tags slow`).
+- **`always` tag:** A task tagged `tags: [always]` runs on every invocation regardless of `--tags`, unless explicitly excluded with `--skip-tags always` (useful for pre-flight assertions or setting critical facts).
+- **`never` tag:** A task tagged `tags: [never, debug_dump]` is skipped on normal runs and executes **only** when explicitly requested via `--tags debug_dump` (or `--tags never`).
+**Why tags are not a safety boundary:** Running `--tags config` skips prerequisite `packages` or `pre_tasks` drain checks unless those checks are tagged `always`, which can push config to an undrained node or a node missing the binary.
+</details>
+
+<details>
+<summary>12. How does progressive batching with `serial: [1, "10%", "100%"]` and `max_fail_percentage: 5` work?</summary>
+
+When a play sets `serial: [1, "10%", "100%"]` and `max_fail_percentage: 5`:
+1. **Batch 1 (Canary):** Ansible runs the entire play (`pre_tasks` -> `roles` -> `tasks` -> `handlers` -> `post_tasks`) on **1 single host** first. If that 1 host fails ($100\% > 5\%$), Ansible **aborts the entire play immediately** before touching any other host.
+2. **Batch 2 (10%):** If the canary succeeds, Ansible runs the entire play on the next **10% of the group**. If more than 5% of that batch fails, the play aborts.
+3. **Batch 3 (100%):** Remaining hosts run in batches of 100% (or if the last list entry is `"25%"`, in repeating 25% batches until all hosts finish). Inside the play, `ansible_play_batch` lists the hosts active in the current batch.
+</details>
+
+<details>
+<summary>13. Compare `any_errors_fatal: true`, `max_fail_percentage`, `ignore_errors: true`, and `ignore_unreachable: true`.</summary>
+
+- **Default behavior:** When a task fails on `gpu002`, `gpu002` is dropped from the rest of the play while all other hosts continue running.
+- **`any_errors_fatal: true`:** If **any single host** fails any task, Ansible aborts the play across **all hosts** immediately after finishing the current task.
+- **`max_fail_percentage: N`:** Aborts the play if more than `N%` of the hosts in the current `serial` batch fail.
+- **`ignore_errors: true`:** Marks the task failure as `ignored=1` and continues running subsequent tasks on that same host (use `block`/`rescue` or specific `failed_when` instead of blanket `ignore_errors`).
+- **`ignore_unreachable: true`:** Continues running subsequent tasks even if SSH connection to the host timed out.
+</details>
+
+<details>
+<summary>14. Contrast `strategy: linear`, `strategy: free`, `strategy: host_pinned`, and the task-level `throttle` keyword.</summary>
+
+- **`strategy: linear` (default):** Lockstep execution—every host in the batch must finish Task 1 before *any* host starts Task 2.
+- **`strategy: free`:** Each host races through the play's task list as fast as it can without waiting for slower hosts on earlier tasks (faster when one host has a slow disk/network, but unsafe if Task 3 depends on Task 2 having completed on all nodes).
+- **`strategy: host_pinned`:** Like `free`, except once a worker fork starts a host, it stays pinned to that host until the host finishes the entire play.
+- **`throttle: 5` (task/block keyword):** Caps concurrency for that specific task to at most `5` hosts at a time even when global `forks = 50` (preventing 50 GPU nodes from saturating an internal artifact server or license server on a heavy download task).
+</details>
+
+<details>
+<summary>15. How do `delegate_to` and `run_once: true` work together, and how does `delegate_to` resolve variables vs. connection settings?</summary>
+
+- **`delegate_to: <target_host>`:** Executes the task on `<target_host>` (for example, `delegate_to: localhost` or `delegate_to: "{{ groups['slurm_controller'][0] }}"` to run `scontrol show node {{ inventory_hostname }}`), while **still evaluating Jinja2 variables (`{{ inventory_hostname }}`, `{{ ansible_host }}`) from the perspective of the original loop host**. Connection settings (`ansible_host`, `ansible_user`, `become`), however, apply to the delegated host.
+- **`run_once: true`:** Runs the task only once per batch (on the first host in the batch, or on the `delegate_to` target) instead of repeating it once per host in the group (ideal for database schema migrations or cluster-wide API calls; pair with `delegate_facts: true` if facts should attach to the delegated host).
+</details>
+
+<details>
+<summary>16. How do `async` and `poll` work in a playbook task, and how do you check on a fire-and-forget (`poll: 0`) task later?</summary>
+
+- **Polling mode (`async: 3600`, `poll: 15`):** Launches the task in a background daemon on the target host with a 1-hour maximum runtime and reconnects over SSH every 15 seconds to check completion—preventing firewall or SSH `ServerAliveInterval` idle disconnects during long driver builds or firmware flashes.
+- **Fire-and-forget mode (`async: 3600`, `poll: 0`):** Starts the background job on the target, registers the job handle (`register: fw_job`), and **immediately proceeds to the next task** without waiting. Later in the play, wait for completion using **`ansible.builtin.async_status`**:
+  `async_status: { jid: "{{ fw_job.ansible_job_id }}" }` with `register: job_res`, `until: job_res.finished`, `retries: 120`, `delay: 10`.
+</details>
+
+<details>
+<summary>17. What are the standard `ansible-playbook` POSIX exit codes (`0`, `1`, `2`, `3`, `4`, `5`, `99`, `250`)?</summary>
+
+- **`0`**: All hosts succeeded (`failed=0` and `unreachable=0`).
+- **`1`**: Generic / fatal error.
+- **`2`**: One or more hosts had **failed** tasks (`failed > 0`).
+- **`3`**: One or more hosts were **unreachable** (`unreachable > 0`).
+- **`4`**: Parser / syntax error in playbook or inventory.
+- **`5`**: Bad or incomplete CLI options.
+- **`99`**: User interrupted execution (`Ctrl-C` / `SIGINT`).
+- **`250`**: Unexpected internal exception.
+</details>
+
+<details>
+<summary>18. How do `--start-at-task` and `--step` help during interactive playbook development and recovery?</summary>
+
+- **`--start-at-task "Install nvidia-persistenced unit override"`:** Skips all earlier tasks in the playbook and begins execution directly at the named task.
+- **`--step`:** Prompts interactively before every task (`Perform task: ... (N)o/(y)es/(c)ontinue:`), allowing an operator to step through a new playbook task-by-task on a test node and type `c` once confident.
+</details>
+
+<details>
+<summary>19. How do `ansible.builtin.get_url` (`checksum:`) and `ansible.builtin.uri` improve security and verification in playbooks (`AUR` Chapter 3)?</summary>
+
+- **`get_url` with `checksum: "sha256:{{ tool_sha256 }}"`:** Before downloading, `get_url` checks if the destination file already exists with that exact SHA-256 digest (skipping the download idempotently if so), and after downloading, verifies the SHA-256 digest before moving the file into place—protecting against corrupted downloads and tampered upstream binaries.
+- **`uri` (`return_content: true`):** Performs native HTTP/HTTPS REST API calls and health checks (`status_code: 200`, `failed_when: "'Running on ' not in this.content"`) without shelling out to `curl`.
+</details>
+
+<details>
+<summary>20. What `ansible-lint` rules catch the most common playbook bugs in CI?</summary>
+
+1. **`fqcn[action-core]`**: Enforces fully qualified module names (`ansible.builtin.copy` instead of `copy`).
+2. **`name[missing]` / `name[casing]`**: Requires descriptive task names on every task.
+3. **`command-instead-of-module`**: Flags `command`/`shell` calls invoking `apt`, `systemctl`, `git`, `mkdir`, `chmod`, `curl`, or `rsync` when native modules exist.
+4. **`no-changed-when`**: Flags `command`/`shell` tasks missing `creates:`, `removes:`, or `changed_when:`.
+5. **`risky-file-permissions`**: Flags `copy`, `template`, or `file` tasks that omit explicit `mode:` (which would otherwise depend on the target's ambient `umask`).
+6. **`risky-shell-pipe`**: Flags `shell` tasks using `|` without `set -o pipefail`.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `ansible-up-and-running-3rd-edition` — Bas Meijer, Lorin Hochstein & René Moser, *Ansible: Up and Running*, 3rd ed., **Chapter 3: Playbooks: A Beginning** (read in full: executable playbook shebang `#!/usr/bin/env ansible-playbook`, `cowsay` / `cow_selection`, play-level `vars:`, `package` `update_cache: true`, `file` `state: directory` and `state: link` symlinks, `copy` with `loop:` from `files/`, `template` from `templates/`, `notify: Restart nginx` handler deduplication, and `uri` smoke-test verification with `return_content: true`, `register: this`, `failed_when:`, and `tags: [test]`).
+- **Run here:** `python3 code/part04/ansible_playbook_execution_lab.py` (3 passed, 0 failed).
+- **Explicitly labelled inferences:** The `simulate_play_execution_and_handlers`, `evaluate_command_task_guards`, and `compute_serial_batches` models in `code/part04/ansible_playbook_execution.py` and the Section 7 GPU driver-parameter rollout playbook are the author's constructions applying *Ansible: Up and Running* Chapter 3 and Ansible playbook execution semantics to GPU fleets (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
+- **Not verified on live hardware:** Live `ansible-playbook`, `scontrol`, `dcgmi`, and `nvidia-smi` commands (`20%`, `10%`, `25%`, `550.90.07-1`, `268435456`, `0644`, `0600`, `0750`, `3600`s, exit codes `0..250`) are marked (`untested here`) where not executed by `ansible_playbook_execution_lab.py`.
