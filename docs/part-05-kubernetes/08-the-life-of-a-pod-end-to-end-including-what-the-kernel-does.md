@@ -106,6 +106,14 @@ The kubelet is event-driven plus periodic: its config sources (API server watch 
 
 If CNI fails: events show `FailedCreatePodSandBox ... failed to set up sandbox container network`; common reasons: CNI binary/config missing, IP pool exhausted, IPAM state corruption, MTU/route conflicts, CNI agent not running yet (nodes start `NotReady` until it is).
 
+### How CNI `ADD`, IPAM, `readinessGates`, and `podCIDRs` Work (`NK` Chapters 3–4 & `PK` Chapter 5)
+
+In *Networking and Kubernetes* (`NK` Chapters 3 & 4) and *Production Kubernetes* (`PK` Chapter 5), James Strong, Vallery Lancey, and Josh Rosso et al. trace the exact kernel and control-plane plumbing during `RunPodSandbox`:
+1. **Per-node Pod CIDR allocation (`--allocate-node-cidrs` and `spec.podCIDRs`):** When `kubeadm init --pod-network-cidr 10.244.0.0/16` (or `10.30.0.0/16`) sets `--cluster-cidr` on `kube-controller-manager` (`--allocate-node-cidrs=true`, `--cidr-allocator-type=RangeAllocator`, `--node-cidr-mask-size-ipv4=24`, `--node-cidr-mask-size-ipv6=64`), the node IPAM controller assigns each `Node` object a `/24` slice (`spec.podCIDR` and the dual-stack array `spec.podCIDRs`), or CNI operators like Cilium (`CiliumNode` `spec.ipam.podCIDRs`) and Calico (`ipPools` with `blockSize: 26`) manage block allocation via CRDs.
+2. **Kernel network namespace & `veth` creation (`NK` Chapter 3):** Creating a Pod sandbox mirrors the Linux `ip netns` sequence: `ip netns add <netns>`, `ip link add veth0 type veth peer name eth0`, `ip link set eth0 netns <netns>`, `ip netns exec <netns> ip addr add <pod_ip>/24 dev eth0`, `ip netns exec <netns> ip link set dev eth0 up`, and `ip netns exec <netns> ip route add default via <gw_ip>` (with `net.ipv4.ip_forward = 1` on the host). Because container runtimes create namespaces at `/proc/$PID/ns/net` without always creating a symlink in `/var/run/netns/`, `nsenter --net=/proc/$PID/ns/net` (or `ln -sf /proc/$PID/ns/net /var/run/netns/<id>`) lets you inspect the sandbox with `ip netns exec`.
+3. **CNI plugin execution & JSON IPAM result (`NK` Chapter 4 & `PK` Chapter 5):** The CNI DaemonSet (`cilium` / `calico-node`) installs CNI binaries into **`/opt/cni/bin/`** (`cilium-cni`, `calico`, `loopback`, `host-local`, `portmap`, `bandwidth`) and writes its JSON configuration into **`/etc/cni/net.d/`** (e.g., `/etc/cni/net.d/05-cilium.conf`). On `RunPodSandbox`, `containerd` executes the CNI binary with `CNI_COMMAND=ADD`, `CNI_CONTAINERID`, `CNI_NETNS=/var/run/netns/cni-...`, and `CNI_IFNAME=eth0`, and the IPAM plugin returns a JSON payload (`{"cniVersion": "0.4.0", "ips": [{"version": "4", "address": "10.244.1.188/24", "gateway": "10.244.1.1"}], "routes": [...], "dns": {...}}`). Crucially, **the CNI must always allow traffic from the local node IP into every Pod on that node** so `kubelet` can execute `httpGet`, `tcpSocket`, and `grpc` liveness/readiness probes.
+4. **Custom `readinessGates` (`NK` Chapter 4):** A Pod is only marked `Ready=True` (and added to `EndpointSlice`s) when **all** containers in the Pod are `Ready` **AND** every custom condition listed in `spec.readinessGates` (`conditionType: www.example.com/feature-X`, or cloud load-balancer target health gates like AWS ALB `target-health.alb.ingress.k8s.aws`) is `True` in `status.conditions`.
+
 Inspect on the node:
 
 ```bash
@@ -151,7 +159,7 @@ Allocation: the NVIDIA device plugin advertises `nvidia.com/gpu: N` per node; th
 
 - **Heartbeats**: node Lease renewed every 10 s; node status every 5 minutes or on change; pod status updated on changes (batched).
 - **cAdvisor** (inside the kubelet) scrapes cgroup stats for `kubectl top` and metrics-server; **summary API** `/stats/summary`.
-- **Log handling**: the runtime pipes container stdout/stderr to files under `/var/log/pods/<ns>_<name>_<uid>/<container>/<restart>.log` (CRI format `timestamp stream tag message`), rotated by kubelet (`containerLogMaxSize`, `containerLogMaxFiles`); `kubectl logs` streams via the API server → kubelet → file.
+- **Log handling**: the runtime pipes container stdout/stderr to files under `/var/log/pods/<ns>_<name>_<uid>/<container>/<restart>.log` (`/var/log/pods/...`, CRI format `timestamp stream tag message`), rotated by kubelet (`containerLogMaxSize`, `containerLogMaxFiles`); `kubectl logs` streams via the API server → kubelet (`serverTLSBootstrap`) → file.
 - **OOM handling**: memory cgroup limit breach triggers the kernel OOM killer for processes in that cgroup (`memory.oom.group` can make it kill the whole group); kubelet observes container exit with `OOMKilled`; node-level memory pressure triggers kubelet **eviction** based on thresholds (`memory.available<100Mi` hard, soft thresholds with grace) choosing pods by QoS and usage over requests; kernel OOM score adjustments make BestEffort and over-request Burstable processes preferred victims.
 - **Kernel interactions to remember**: CPU throttling (`cpu.stat` `nr_throttled`), memory cgroup charging of page cache and tmpfs, `pids.max` limiting fork bombs (kubelet `podPidsLimit`), `fs.inotify` and file descriptor limits on nodes, `conntrack` table size for Services, NUMA locality and hugepages, IRQ and CPU isolation for latency-critical pods.
 - **Restart behaviour**: if a container exits and `restartPolicy` allows, the kubelet restarts it in the same sandbox (same network namespace and IP) with backoff; if the sandbox dies (pause container killed, runtime restart quirks), the kubelet recreates the sandbox and containers (new IP possible).
@@ -205,7 +213,15 @@ Speed-ups for AI clusters: pre-pull images (DaemonSet), lazy-pulling snapshotter
 | Readiness | Running but `0/1` | probe events, app logs, port/path |
 | Termination | `Terminating` forever | kubelet logs, `lsof`/`fuser` on mounts, process state, `crictl ps -a`, node health |
 
-## 10. Lab (untested)
+## 10. Lab
+
+First, run the self-checking Python lab (`code/part05/pod_lifecycle_kernel_trace_lab.py`) locally. It verifies the Pod startup latency interval and `kubelet_pod_start_sli_duration_seconds` analyzer (`compute_pod_startup_intervals`), the `/proc/<pid>/ns` inode sharing vs isolation verifier between the `pause` sandbox container and application containers (`verify_pod_namespace_inodes`), and the GPU device plugin + cgroup v2 eBPF device allow-list verifier (`verify_gpu_cgroup_device_isolation`).
+
+```bash
+python3 code/part05/pod_lifecycle_kernel_trace_lab.py
+```
+
+Next, on a Linux Kubernetes node with `crictl`, `nsenter`, and `ip` (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **Trace a pod**: tail `kubectl get events -w`, the scheduler log, kubelet journal and containerd journal while applying a pod; build a timeline with timestamps per component.
 2. **Kernel artefacts**: for a running pod, list its namespaces, compare inodes with the pause container, read its cgroup files, mount info, capability masks, seccomp status; use `nsenter` to run `ip addr`, `ss -ltn`, `mount` inside; find the host-side veth and its peer index; list iptables/nft rules referencing the pod IP.
@@ -219,8 +235,6 @@ Speed-ups for AI clusters: pre-pull images (DaemonSet), lazy-pulling snapshotter
 10. **Startup latency report**: script that computes created→scheduled→initialized→ready intervals for pods in a namespace and prints percentiles; run for 100 pods and identify the slowest phase.
 11. **PLEG and runtime overload**: create hundreds of short-lived pods and watch kubelet PLEG metrics and node conditions; tune `maxPods`, CPU reservations; see behaviour when containerd is slow.
 12. **Clean up**.
-
-Mark tested only after execution.
 
 ## 11. Common mistakes
 
@@ -236,67 +250,188 @@ Mark tested only after execution.
 
 ## 12. Interview angles
 
-- "Describe everything that happens from `kubectl apply -f pod.yaml` until the process runs." 
-- "What does the kubelet do in its sync loop? What is PLEG?" 
-- "How is the pod network namespace created and wired? When is CNI called?" 
-- "How does the NVIDIA device plugin give a pod a GPU? What stops another pod from using it?" 
-- "How is a memory limit enforced? What happens at OOM? What is evicted vs OOM-killed?" 
-- "Walk through pod termination. Why do pods drop traffic during rolling updates, and how do you fix it?" 
-- "A pod is stuck in ContainerCreating. How do you find out why?" 
-- "How do you measure and reduce pod startup time for large images?" 
+- "Describe everything that happens from `kubectl apply -f pod.yaml` until the process runs."
+- "What does the kubelet do in its sync loop? What is PLEG?"
+- "How is the pod network namespace created and wired? When is CNI called?"
+- "How does the NVIDIA device plugin give a pod a GPU? What stops another pod from using it?"
+- "How is a memory limit enforced? What happens at OOM? What is evicted vs OOM-killed?"
+- "Walk through pod termination. Why do pods drop traffic during rolling updates, and how do you fix it?"
+- "A pod is stuck in ContainerCreating. How do you find out why?"
+- "How do you measure and reduce pod startup time for large images?"
 
-## 13. Checkpoint questions (40)
+## Exercises
 
-1. Who writes `spec.nodeName`? **A:** The scheduler via Binding.
-2. Who creates pods for a Deployment? **A:** ReplicaSet controller.
-3. What is PLEG? **A:** Pod lifecycle event generator relisting container state.
-4. What runs first in the sandbox? **A:** Pause container.
-5. When is CNI ADD called? **A:** During RunPodSandbox.
-6. What is created for pod networking? **A:** Network namespace + veth + IP/routes.
-7. Where is the pod cgroup path? **A:** Under `kubepods.slice/...-pod<uid>.slice`.
-8. Who allocates GPUs? **A:** Device plugin via kubelet device manager.
-9. What injects `/dev/nvidia*`? **A:** NVIDIA runtime/CDI.
-10. How is device access restricted? **A:** Only allocated device nodes exist + cgroup device filter.
-11. What does NodeStageVolume do? **A:** Prepare/mount volume to a node-global staging path.
-12. NodePublishVolume? **A:** Bind mount into the pod.
-13. Why ContainerCreating for long? **A:** Volumes, sandbox/CNI, image pull.
-14. How are image pulls serialised? **A:** `serializeImagePulls` default true per node.
-15. Who executes probes? **A:** Kubelet.
-16. What gates traffic? **A:** Readiness → EndpointSlice membership.
-17. Where are container logs on node? **A:** `/var/log/pods/...`.
-18. Memory limit enforcement? **A:** cgroup `memory.max` + OOM killer.
-19. OOMKilled exit code? **A:** 137.
-20. Eviction ordering? **A:** BestEffort, Burstable over request, then Guaranteed.
-21. Does node-pressure eviction respect PDBs? **A:** No.
-22. Does API-initiated eviction respect PDBs? **A:** Yes.
-23. Default grace period? **A:** 30 s.
-24. Signal sequence on termination? **A:** preStop → SIGTERM → SIGKILL.
-25. Why 30 s deaths? **A:** App ignores SIGTERM (PID 1).
-26. What reverses CNI ADD? **A:** CNI DEL.
-27. Why force delete is dangerous for RWO? **A:** Node might still write; split brain.
-28. What causes `D`-state processes? **A:** Hung I/O on storage mounts.
-29. Static pod location? **A:** Kubelet manifest directory.
-30. What is `TopologyAffinityError`? **A:** Topology manager couldn't align resources.
-31. What does `serverTLSBootstrap` affect? **A:** Kubelet serving certs.
-32. What do restarts reuse? **A:** Same sandbox/IP (container restart).
-33. What triggers sandbox recreation? **A:** Sandbox failure/changes.
-34. Startup SLI excludes? **A:** Image pull time.
-35. Pod resources API for? **A:** Mapping devices to pods (DCGM exporter).
-36. What mount type is `/dev/shm`? **A:** tmpfs.
-37. Where ConfigMap volume updates land? **A:** Symlink swap (`..data`) except subPath.
-38. What increases pull throughput? **A:** Mirrors/P2P/pre-pull/lazy-pull.
-39. What does CPU throttling look like? **A:** `nr_throttled` in `cpu.stat`.
-40. What marks pod Ready? **A:** All containers ready + readiness gates.
+1. **The End-to-End 20-Step Pod Lifecycle (`kubectl apply` -> Running Process -> `DELETE`):** Trace the Section 1 sequence diagram across `kube-apiserver`, `kube-scheduler`, `kubelet` (`syncPod`), `DevicePlugin` (`Allocate`), `CSI` (`NodeStageVolume` / `NodePublishVolume`), `containerd` (`RunPodSandbox` -> `PullImage` -> `CreateContainer` -> `StartContainer`), `CNI` (`ADD`), and `runc`/Kernel, naming the observable status condition or event at each boundary.
+2. **Inside `kubelet`'s `syncPod` Loop, Node-Level Admission (`TopologyAffinityError`), and CSI Volume Staging/Publishing:** Explain how `kubelet`'s pod worker goroutines and PLEG drive `syncPod`, why a Pod that already passed `kube-scheduler` can still be rejected by `kubelet` node admission with `TopologyAffinityError` or `OutOfnvidia.com/gpu`, and how `/var/lib/kubelet/pods/<uid>/` and CSI `NodeStageVolume` -> `NodePublishVolume` work.
+3. **Sandbox Creation (`RunPodSandbox`), CNI `ADD` / IPAM JSON, and `/proc/<pid>/ns` Namespace Inodes (`NK` Ch. 3–4 & `PK` Ch. 5):** Using `verify_pod_namespace_inodes()` in `code/part05/pod_lifecycle_kernel_trace.py`, explain which namespaces an application container shares with the `pause` container (`net`, `ipc`, `uts`, `cgroup`) vs keeps isolated (`mnt`, `pid`), and trace how `CNI_COMMAND=ADD` wires the `veth` pair, IPAM JSON response, `/etc/resolv.conf`, and `readinessGates`.
+4. **GPU and RDMA Attachment Under the Hood (`Allocate` RPC, CDI / NVIDIA Runtime Hook, and Cgroup v2 eBPF Device Filters):** Using `verify_gpu_cgroup_device_isolation()` in `code/part05/pod_lifecycle_kernel_trace.py`, trace how `kubelet`'s device manager calls `Allocate` on `/var/lib/kubelet/device-plugins/`, how the runtime injects `/dev/nvidia*` and `libcuda.so.*`, and how the cgroup v2 eBPF device allow-list prevents a container from accessing unallocated GPUs on the same host.
+5. **Measuring and Accelerating Pod Startup Latency on 64-Node GPU Jobs:** Using `compute_pod_startup_intervals()` in `code/part05/pod_lifecycle_kernel_trace.py`, explain how to compute `scheduling`, `initialization`, `container_start`, `readiness_probe`, and `kubelet_pod_start_sli_duration_seconds` (which excludes image pull time), and list 6 concrete optimizations to cut a 12-minute cold-start down to under 90 seconds.
+6. **Pod Termination, `D`-State Uninterruptible Sleep on Hung Mounts, and Debugging by Lifecycle Stage:** Trace the 5 steps of Pod termination (`deletionTimestamp` -> parallel `EndpointSlice` removal & `preStop` -> `SIGTERM` -> `SIGKILL` -> `CNI DEL` + CSI `NodeUnpublishVolume` + `gracePeriod 0` delete), and explain why a process stuck in kernel `D` state on a dead NFS/Lustre mount ignores `SIGKILL` and keeps the Pod in `Terminating`.
 
-## 14. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. Why can a Pod stay in `status.phase: Pending` even after `kube-scheduler` has already bound it to a node (`PodScheduled=True`)?</summary>
 
-- Brendan Burns et al., *Kubernetes: Up and Running* (3rd edition; chapter 5 pods and the node-level material).
-- Josh Rosso et al., *Production Kubernetes* (chapters 3 and 5 on container runtime and pod networking).
-- Linux kernel and systems chapters of this handbook (namespaces, cgroups, networking) and *How Linux Works* (3rd edition) for kernel concepts.
-- James Strong and Vallery Lancey, *Networking and Kubernetes*, for the CNI and network namespace walkthroughs (chapters 3 and 4).
-- Kubernetes documentation (pod lifecycle, kubelet, device plugins) and NVIDIA device plugin/Container Toolkit documentation.
-- Examples are the author's constructions.
+A Pod remains in `phase: Pending` from creation until **all init containers have completed and all regular application containers have been created and at least one has started running**. Therefore, a scheduled Pod waiting on **CSI volume attachment/mounts**, **CNI sandbox creation**, **25 GB container image pulls (`Pulling`)**, or **long-running `initContainers`** still shows `phase: Pending` (with container state `Waiting: ContainerCreating` or `Init:0/1`).
+</details>
 
-**Flagged for verification before publishing:** metric names for kubelet startup durations, `serializeImagePulls` defaults, cgroup path naming under your cgroup driver, OOM group-kill behaviour, CRI log format details, and every command listing; all labs are **untested**.
+<details>
+<summary>2. What causes a Pod that already passed `kube-scheduler` to fail immediately on the node with `TopologyAffinityError`?</summary>
+
+`kube-scheduler` evaluates node-level resource sums (`allocatable` CPUs, memory, and total `nvidia.com/gpu` count), **but does not know the exact per-NUMA-node allocation state inside the node**. When the node's `kubelet` runs **Topology Manager** with the `restricted` or `single-numa-node` policy, `kubelet`'s local node admission checks whether the requested GPUs, RDMA NICs, and exclusive CPUs can be allocated from the **same NUMA node**. If fragmentation across existing pods prevents single-NUMA alignment, `kubelet` rejects the Pod at node admission with **`TopologyAffinityError`**.
+</details>
+
+<details>
+<summary>3. If you run `ls -l /proc/$PID/ns` on the `pause` container and on your `trainer` container in the same Pod, which namespace inode numbers are identical and which are different?</summary>
+
+- **Identical inode numbers (shared across the Pod):** **`net`** (network stack, IP, ports, routing table), **`ipc`** (System V IPC and POSIX message queues), **`uts`** (hostname), and **`cgroup`** (or user namespace if enabled).
+- **Different inode numbers (isolated per container):** **`mnt`** (each container has its own `overlayfs` root filesystem and volume bind-mounts) and **`pid`** (isolated per container by default, unless `shareProcessNamespace: true` is set on the Pod spec, in which case `pid` is also shared with `pause`).
+</details>
+
+<details>
+<summary>4. Walk through the exact two-step CSI volume mount sequence (`NodeStageVolume` -> `NodePublishVolume`) inside `/var/lib/kubelet/pods/<uid>/`.</summary>
+
+After the control-plane `attachdetach` controller attaches the cloud disk / block device to the node (`VolumeAttachment`):
+1. **`NodeStageVolume` (once per volume per node):** The CSI node plugin formats (if first use) and mounts the block device or shared filesystem to a **node-global staging directory** (`/var/lib/kubelet/plugins/kubernetes.io/csi/.../globalmount`). This allows multiple pods on the same node to share one underlying device mount.
+2. **`NodePublishVolume` (once per Pod mounting the volume):** The CSI node plugin **bind-mounts** from the global staging path into the specific Pod's directory at **`/var/lib/kubelet/pods/<pod-uid>/volumes/kubernetes.io~csi/<pvc-name>/mount`**, which `runc` then bind-mounts into the container's mount namespace.
+</details>
+
+<details>
+<summary>5. In *Networking and Kubernetes* Chapters 3 and 4, what environment variables and stdin data does `containerd` pass to the CNI plugin binary during `RunPodSandbox`, and what does the CNI return?</summary>
+
+During `RunPodSandbox`, `containerd` invokes the CNI binary (`/opt/cni/bin/<plugin>`) passing:
+- **`stdin`:** The JSON CNI network configuration file from **`/etc/cni/net.d/`** (e.g., `05-cilium.conf` or `10-calico.conflist`).
+- **Environment variables:** `CNI_COMMAND=ADD` (or `DEL` on teardown), `CNI_CONTAINERID=<sandbox-id>`, `CNI_NETNS=/var/run/netns/cni-<uuid>`, `CNI_IFNAME=eth0`, `CNI_PATH=/opt/cni/bin`, and `CNI_ARGS="K8S_POD_NAMESPACE=...;K8S_POD_NAME=...;K8S_POD_INFRA_CONTAINER_ID=..."`.
+The CNI wires the `veth` pair / eBPF programs, calls its IPAM plugin, and prints a **JSON result to `stdout`** containing `cniVersion`, `interfaces`, `ips` (Pod IPv4/IPv6 CIDR and gateway), `routes`, and `dns`.
+</details>
+
+<details>
+<summary>6. Why does `kubelet` generate `/etc/hosts` and `/etc/resolv.conf` at the Pod level, and what does `ndots:5` in `/etc/resolv.conf` mean?</summary>
+
+All containers in a Pod share one network namespace and hostname, so `kubelet` writes `/var/lib/kubelet/pods/<uid>/etc-hosts` and a shared `resolv.conf` bind-mounted into every container:
+```text
+nameserver 10.96.0.10
+search team-a.svc.cluster.local svc.cluster.local cluster.local
+options ndots:5
+```
+`options ndots:5` tells the C library resolver that any hostname containing **fewer than 5 dots** (such as `redis` or `qdrant.data`) must be tried against the `search` domains **first** (`qdrant.data.team-a.svc.cluster.local`, `qdrant.data.svc.cluster.local`) before querying it as an absolute external FQDN.
+</details>
+
+<details>
+<summary>7. How does `kubelet` allocate specific GPUs to a Pod, and what two kernel mechanisms stop a container allocated 2 GPUs from accessing the other 6 GPUs on an 8-GPU node?</summary>
+
+1. During `syncPod`, `kubelet`'s Device Manager calls the **`Allocate` gRPC method** on the NVIDIA device plugin's Unix socket (`/var/lib/kubelet/device-plugins/nvidia-gpu.sock`), which returns the UUIDs/CDI IDs of 2 free GPUs (e.g., `GPU-0`, `GPU-1`).
+2. When `containerd` and the NVIDIA Container Runtime / CDI create the container, two kernel mechanisms enforce isolation:
+   - **Mount namespace (`mnt`):** Only `/dev/nvidia0` and `/dev/nvidia1` (plus `/dev/nvidiactl` and `/dev/nvidia-uvm`) are created/bind-mounted inside `/proc/$PID/root/dev/`; `/dev/nvidia2..7` do not exist in the container's `/dev`.
+   - **Cgroup v2 eBPF device controller (`DEVCG_ACC_MKNOD`/`OPEN`):** An eBPF program attached to the container's cgroup rejects `open()` on major/minor device numbers for GPUs `2..7` even if a process inside the container somehow called `mknod`.
+</details>
+
+<details>
+<summary>8. What is the Kubelet `PodResourcesLister` gRPC socket (`/var/lib/kubelet/pod-resources/kubelet.sock`), and why does `dcgm-exporter` need it?</summary>
+
+Inside the NVIDIA driver and DCGM on the host, hardware metrics (`DCGM_FI_DEV_GPU_UTIL`, temperature, XID errors, NVLink bandwidth) are indexed by physical **GPU UUID / minor number (`gpu=0..7`)**—the NVIDIA driver has no built-in knowledge of Kubernetes Pod names or namespaces. **`dcgm-exporter`** connects to `kubelet`'s local read-only gRPC socket **`/var/lib/kubelet/pod-resources/kubelet.sock`** (`List` RPC) to query which `(namespace, pod_name, container_name)` currently owns each GPU device ID, and enriches every Prometheus metric series with `pod="..."`, `namespace="..."`, and `container="..."` labels.
+</details>
+
+<details>
+<summary>9. By default in `kubelet`, why does pulling one 25 GB training image block all other image pulls on the same node, and what setting controls this?</summary>
+
+By default, `KubeletConfiguration.serializeImagePulls` is set to **`true`**—meaning `kubelet` issues only **1 `PullImage` CRI call at a time** on the node. While a single pod is pulling and unpacking a 25 GB PyTorch image over 3 minutes, even a tiny 5 MB `busybox` or monitoring pod scheduled onto that node sits stuck in `Waiting: PodInitializing`/`ContainerCreating` waiting for the pull lock. On nodes with fast NVMe disks and high-bandwidth networks, you can set **`serializeImagePulls: false`** and **`maxParallelImagePulls: 4`** (e.g., 3–5 concurrent pulls) so one large pull never head-of-line blocks the node.
+</details>
+
+<details>
+<summary>10. How does `kubelet` execute `exec` probes versus `httpGet`/`tcpSocket`/`grpc` probes, and what CNI firewall rule does this require (`NK` Chapter 4)?</summary>
+
+- **`exec` probe:** `kubelet` calls CRI **`ExecSync`** via `containerd`, which tells the shim/`runc` to spawn the probe command **inside the container's own namespaces and cgroups** (note: frequent heavy `exec` probes consume container CPU/memory and PIDs).
+- **`httpGet`, `tcpSocket`, and `grpc` probes:** `kubelet` (running in the **host network namespace**) opens a network connection from the node's local IP to **`<podIP>:<port>`**. Therefore, as `NK` Chapter 4 warns, **every CNI plugin and `NetworkPolicy` implementation must unconditionally allow traffic from the local host node into all Pods on that node**, or else applying a `default-deny-ingress` `NetworkPolicy` would block `kubelet`'s own health probes and cause healthy Pods to fail liveness/readiness checks.
+</details>
+
+<details>
+<summary>11. On a Linux node with `cgroupDriver: systemd` and cgroup v2, what is the exact `/sys/fs/cgroup` path for a `Burstable` container, and which files record CPU throttling and OOM kills?</summary>
+
+- **Cgroup path:**
+  `/sys/fs/cgroup/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod<pod_uid_with_underscores>.slice/cri-containerd-<container_id>.scope/`
+- **Key cgroup v2 files in that directory:**
+  - `cpu.max` (CFS quota and period, e.g., `400000 100000` for 4 CPUs) and `cpu.weight` (shares).
+  - **`cpu.stat`**: check `nr_periods`, **`nr_throttled`**, and **`throttled_usec`** for CFS CPU throttling.
+  - `memory.max` (hard RAM limit) and `memory.current` (current RAM + tmpfs + page cache usage).
+  - **`memory.events`**: check **`oom`** and **`oom_kill`** counters.
+</details>
+
+<details>
+<summary>12. What is the difference between a Kernel Cgroup OOM Kill (`OOMKilled`, exit code 137) and a Kubelet Node-Pressure Eviction (`Phase: Failed, Reason: Evicted`)?</summary>
+
+- **Kernel Cgroup OOM Kill (`OOMKilled`):** Triggered synchronously in the Linux kernel (`mm/oom_kill.c`) when a container's memory usage (`memory.current`) hits its own cgroup limit (`memory.max` = `resources.limits.memory`) or when the host kernel runs completely out of physical memory. The kernel sends `SIGKILL` (`137`) to the process; `kubelet` sees the container exit and **restarts the container in place** if `restartPolicy` allows.
+- **Kubelet Node-Pressure Eviction (`Reason: Evicted`):** Triggered proactively in user space by `kubelet`'s eviction manager when **node-wide** available memory or disk drops below `evictionHard` (e.g., `memory.available < 100Mi` or `nodefs.available < 10%`). `kubelet` ranks Pods (`BestEffort` -> `Burstable` exceeding requests -> `Guaranteed`), fails the entire Pod (`Phase: Failed, Reason: Evicted`), and lets the owning controller reschedule a replacement Pod onto a healthier node.
+</details>
+
+<details>
+<summary>13. What is the difference between `kubelet_pod_start_duration_seconds` and `kubelet_pod_start_sli_duration_seconds`?</summary>
+
+- **`kubelet_pod_start_duration_seconds`:** Measures the total wall-clock time on the node from when `kubelet` first sees the Pod bound to the node until all its regular containers are running—**including image pull time**.
+- **`kubelet_pod_start_sli_duration_seconds` (Kubernetes SIG-Scalability Pod Startup SLI):** Subtracts image pull duration (and init container runtime) so platform teams can measure **pure kubelet + CRI + CNI + volume mount overhead** independent of whether a user specified a 20 MB or 25 GB container image.
+</details>
+
+<details>
+<summary>14. When a container inside a Pod crashes and is restarted by `kubelet`, does the Pod get a new IP address?</summary>
+
+**No.** Because the Pod's network namespace (`netns`), `eth0` interface, and IP address belong to the **`pause` sandbox container**, restarting an application container (`RESTARTS` incrementing from `0` to `1`) simply calls `CreateContainer` and `StartContainer` inside the **existing** `pause` sandbox—preserving the exact same Pod IP and mounted volumes. A Pod only gets a new IP on the same node if the `pause` sandbox container itself is killed or recreated.
+</details>
+
+<details>
+<summary>15. Why does a container whose entrypoint is a shell script (`#!/bin/sh`) or a bare C/Python process that doesn't register a `SIGTERM` handler always take exactly 30 seconds to terminate?</summary>
+
+In Linux, **PID 1 inside a PID namespace has special kernel signal semantics**: the kernel ignores any signal (`SIGTERM`, `SIGINT`) sent to PID 1 **unless PID 1 has explicitly registered a signal handler** for that signal. If PID 1 is `/bin/sh` or a process without a `SIGTERM` handler, `kubelet` sends `SIGTERM`, the kernel drops it, nothing happens for the entire **`terminationGracePeriodSeconds` (default 30s)**, and at `T+30s` `kubelet` sends **`SIGKILL`** (which the kernel never ignores).
+</details>
+
+<details>
+<summary>16. Why can a Pod stay stuck in `Terminating` even AFTER `kubelet` has sent `SIGKILL` (`kill -9`) to its container processes?</summary>
+
+In the Linux kernel, a process waiting inside an **uninterruptible kernel I/O sleep (`TASK_UNINTERRUPTIBLE`, shown as `D` state in `ps aux`)**—most commonly caused by a hung NFS, Lustre, or Ceph mount whose storage server became unreachable—**cannot process any signal, including `SIGKILL`, until the kernel I/O call returns or times out**. Because the `D`-state process cannot exit, `runc` cannot destroy the container cgroup, CSI cannot unmount the busy volume (`EBUSY`), and `kubelet` cannot complete Pod deletion until the storage mount recovers or the node is rebooted.
+</details>
+
+<details>
+<summary>17. Compare API-Initiated Eviction (`kubectl drain`), Kubelet Node-Pressure Eviction, and Scheduler Preemption: which ones respect `PodDisruptionBudget` (`PDB`)?</summary>
+
+- **API-Initiated Eviction (`POST /api/v1/namespaces/.../pods/<name>/eviction`, used by `kubectl drain`, Cluster Autoscaler, Karpenter):** **Strictly enforces `PodDisruptionBudget`**—if evicting the Pod would violate `minAvailable` / `maxUnavailable`, `kube-apiserver` rejects the eviction with `429 Too Many Requests`.
+- **Kubelet Node-Pressure Eviction (`memory.available < 100Mi`, `nodefs.available < 10%`):** **Does NOT respect `PodDisruptionBudget`**—the node is in immediate danger of kernel OOM or disk exhaustion and must shed load immediately.
+- **Scheduler Preemption (evicting lower-priority Pods to make room for a high-priority Pod):** Attempts to respect `PodDisruptionBudget` on a **best-effort** basis (prefers victims that do not violate a PDB, **but will still preempt a PDB-protected Pod** if no other feasible node exists for the high-priority workload).
+</details>
+
+<details>
+<summary>18. What is `spec.readinessGates` on a Pod (`NK` Chapter 4), and when is it used?</summary>
+
+Even after all containers in a Pod pass their `readinessProbe` (`ContainersReady=True`), an external load balancer (such as an AWS ALB / GCP NEG controller configuring cloud target groups directly to Pod IPs) may still need 10–20 seconds to register the new Pod IP and pass health checks before shifting external traffic. Adding an entry to **`spec.readinessGates`** (`conditionType: target-health.alb.ingress.k8s.aws/...`) prevents `Ready` from becoming `True` (and stops a rolling update from terminating old Pods) until the external controller patches that custom condition to `True` in `pod.status.conditions`.
+</details>
+
+<details>
+<summary>19. How do you find the host-side `veth` interface corresponding to a specific Pod's `eth0` interface?</summary>
+
+1. Find the Pod's network namespace path or container PID: `PID=$(crictl inspect $CTR | jq -r '.info.pid')`.
+2. Inside the Pod's network namespace, check the peer interface index (`@if<N>`) of `eth0`:
+   `nsenter -t $PID -n ip link show eth0` -> e.g., `2: eth0@if47: <BROADCAST,MULTICAST,UP,LOWER_UP> ...`
+3. On the **host** network namespace, look up interface index **`47`**:
+   `ip link | grep '^47:'` -> `47: cali8a9b1c2d@if2` (or `veth...` / `lxc...`). You can now run `tcpdump -i cali8a9b1c2d -nn` on the host to capture only that Pod's traffic.
+</details>
+
+<details>
+<summary>20. Summarize the six highest-impact optimizations to reduce 64-node GPU Pod startup time from 12 minutes to under 90 seconds.</summary>
+
+1. **Eliminate cold registry pull storms:** Use a local pull-through cache + **P2P distribution (`Spegel` / `Dragonfly`)** or a **lazy-pulling snapshotter (`SOCI` / `eStargz`)** + pre-pulled base images via a DaemonSet.
+2. **Enable parallel image pulls on NVMe nodes:** Set `serializeImagePulls: false` and `maxParallelImagePulls: 4` in `KubeletConfiguration` with `/var/lib/containerd` on dedicated PCIe Gen4/Gen5 NVMe.
+3. **Avoid slow cloud block-volume attaches (`FailedAttachVolume`) for scratch/weights:** Read model weights from a pre-mounted shared parallel filesystem (Lustre/WEKA/VAST) or local NVMe cache (`emptyDir`) instead of attaching 64 cloud EBS/PD volumes at job start.
+4. **Set `fsGroupChangePolicy: OnRootMismatch`** so `kubelet` does not `chown -R` millions of dataset files before starting the container.
+5. **Keep `initContainers` lightweight:** Never download 100 GB datasets inside an `initContainer` on every Pod boot.
+6. **Tune `startupProbe` `periodSeconds` (e.g., `2`–`5s`)** so readiness transitions immediately once the server initializes.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 5: Pods** (Pod lifecycle, volumes, probes, resource management).
+  - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 3: Container Runtime** (`kubelet` CRI calls, `RunPodSandbox`, `runc`) and **Chapter 5: Pod Networking** (`--pod-network-cidr`, `spec.podCIDRs`, `/opt/cni/bin`, `/etc/cni/net.d`, Cilium/Calico IPAM and overlay vs native routing).
+  - `networking-and-kubernetes` — James Strong & Vallery Lancey, *Networking and Kubernetes*, **Chapter 3: Container Networking Basics** (read in full: hypervisors vs containers, OCI/CRI, `ip netns` & `veth` pair walkthrough, `/proc/$PID/ns/net` inspection, Docker bridge/host modes) and **Chapter 4: Kubernetes Networking Introduction** (read in full: Pod network model, `livenessProbe`/`readinessProbe` host-to-pod CNI requirement, `spec.readinessGates`, `--allocate-node-cidrs` & `RangeAllocator`, CNI 0.4 IPAM JSON output, CoreDNS, and `NetworkPolicy`).
+  - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 17: Virtualization** (read in full: VMs vs containers, overlay filesystems, namespaces, cgroups).
+- **Run here:** `python3 code/part05/pod_lifecycle_kernel_trace_lab.py` (3 passed, 0 failed).
+- **Explicitly labelled inferences:** The `compute_pod_startup_intervals`, `verify_pod_namespace_inodes`, and `verify_gpu_cgroup_device_isolation` models in `code/part05/pod_lifecycle_kernel_trace.py` and the 20-step end-to-end sequence diagram (Section 1) are the author's constructions synthesizing `KUR` Chapter 5, `PK` Chapters 3 & 5, `NK` Chapters 3 & 4, and `HLW` Chapter 17 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Not verified on live hardware:** Live `crictl`, `nsenter`, `ip`, and `journalctl -u kubelet` commands (`64`-node job, `12 minutes` vs `90 seconds`, `100 to 500 ms` sandbox, `20 GB` image, `5 to 60 s` PVC attach, `ndots:5`, `100` GPU nodes, `10 s` Lease, `5 minutes` node status, `memory.available<100Mi`, `30 s` grace, exit code `137`) are marked (`untested here`) where not executed by `pod_lifecycle_kernel_trace_lab.py`.
