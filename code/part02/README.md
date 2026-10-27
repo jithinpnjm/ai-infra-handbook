@@ -14,3 +14,4 @@
 | 2.10 HTTP, TLS and PKI basics | `http_tls_pki.py` | `http_tls_pki_lab.py` | 13 | `python3 code/part02/http_tls_pki_lab.py` |
 | 2.11 VLANs, trunking and spanning tree | `vlans_stp_switching.py` | `vlans_stp_switching_lab.py` | 12 | `python3 code/part02/vlans_stp_switching_lab.py` |
 | 2.12 Link aggregation: LACP and MLAG | `lacp_mlag_ecmp.py` | `lacp_mlag_ecmp_lab.py` | 12 | `python3 code/part02/lacp_mlag_ecmp_lab.py` |
+| 2.13 IP routing: static, dynamic and convergence | `ip_routing_convergence.py` | `ip_routing_convergence_lab.py` | 12 | `python3 code/part02/ip_routing_convergence_lab.py` |
