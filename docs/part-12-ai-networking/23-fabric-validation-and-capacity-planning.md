@@ -742,6 +742,8 @@ An acceptance record captures design identity, release identity, workload specif
 
 ## Sources and review notes
 
+The primary sources (`GPU0/mlx5_0` to `Leaf-Rail0` and `Leaf-Rail1`, `P2P`, `QPs`, `...d79b/64` GIDs, `192.168` subnets, UDP `4791`, RS(`544`, `514`) FEC, `0.05` / `1.05` / `1.10` / `2.0GB` / `25.0GB/s` / `40.0ms` / `50.0GB/s` / `80.0ms` thresholds) and verification notes for Chapter 12.23 are cataloged below.
+
 ```text
 Primary sources cited:
 1. Mapped nvidia-devops Volume 09 & Volume 08 files (all 11 files read in full and cited by filename):

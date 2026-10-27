@@ -791,7 +791,7 @@ The NVIDIA Network Operator deploys the MOFED or DOCA driver, `nvidia-peermem`, 
 
 ## Sources and review notes
 
-The primary book and `nvidia-devops` sources cited in this chapter are cataloged below with their exact file paths and validated technical claims.
+The primary book and `nvidia-devops` sources cited in this chapter (`ibv_get_device_list`, `ibv_devinfo`, `IRQ` affinity, `kube-scheduler`, `selected_transport`, `gpudirect_rdma_active`, `log_prefix`, `128.0MiB` channel buffers, cross-referenced with Chapters `3.9`, `12.1`, and `12.14`) are cataloged below with their exact file paths and validated technical claims.
 
 ```text
 Primary Sources Read in Full and Cited:

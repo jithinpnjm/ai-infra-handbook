@@ -732,5 +732,5 @@ Primary Sources & Mapped Files (brief.py 12.5 & check_coverage.py 12.5):
 
 ### Not verified on live hardware
 
-- All `mlnx_qos`, `dcb`, `lldptool`, `cma_roce_tos`, `ethtool -S`, `tcpdump`, `lspci`, `nvidia-smi`, `rdma link`, `ibv_devinfo`, `cmsh`, and SONiC or Cumulus CLI commands are marked `(untested here)` and were not executed on live switch or ConnectX and BlueField hardware in this environment.
+- All `mlnx_qos` (`swpX`, `BufferMax`, `encode_ip_tos_byte` and `decode_ip_tos_byte`, `VL1`, `NVMe-oF`, `fe80::0c42:a1ff:fec8:d79b/64` and `fe80::0c42:a1ff:fec8:d79d/64`, `42` / `79` / `180.0ns` metrics), `dcb`, `lldptool`, `cma_roce_tos`, `ethtool -S`, `tcpdump`, `lspci`, `nvidia-smi`, `rdma link`, `ibv_devinfo`, `cmsh`, and SONiC or Cumulus CLI commands are marked `(untested here)` and were not executed on live switch or ConnectX and BlueField hardware in this environment.
 

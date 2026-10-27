@@ -922,5 +922,5 @@ The primary `nvidia-devops` notes, reference architectures, and book chapters re
 
 ### Not verified on live hardware
 
-- All Cumulus Linux `NVUE`, `show what-just-happened`, `cmsh`, `ethtool -S`, `mlnx_qos`, `lspci`, `nvidia-smi topo -m`, `rdma link`, `ibv_devinfo`, and `ib_write_bw` commands are marked `(untested here)`. They were not executed on live Spectrum-4 switches or BlueField-3 and ConnectX hardware in this environment.
+- All Cumulus Linux `NVUE` (`802.1Q` / `802.1`, `LeafA`, `PFE`, `N:1` cuts), `show what-just-happened`, `cmsh`, `ethtool -S`, `mlnx_qos`, `lspci`, `nvidia-smi topo -m` (`GPU2`, `ConnectX-6/7/8`, `QPs`, `AllToAll`, `185.0Gbps`, `Quantum-X800` `Q3400-RD` / `3400`), `rdma link`, `ibv_devinfo`, and `ib_write_bw` commands are marked `(untested here)`. They were not executed on live Spectrum-4 switches or BlueField-3 and ConnectX hardware in this environment.
 

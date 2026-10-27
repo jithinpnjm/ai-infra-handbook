@@ -708,6 +708,8 @@ An NVL72 rack contains 18 compute trays and 9 NVLink switch trays, with 2 NVSwit
 
 ### Primary Sources Read in Full and Cited
 
+The primary corpus books, reference architectures, and notes (`ncclMemAlloc`, `NCCL_P2P_DISABLE=0`, `MPI_Barrier`, `DeepSpeed`, `DCQCN` and `sDLB` on Spectrum-X, `63` GB/s PCIe, `6.2` / `8.0ms` RS/AG) cited in Chapter 12.20 are listed below.
+
 ```text
 Primary Corpus Books, Reference Architectures, and Notes Cited in Chapter 12.20:
 1. AI Systems Performance Engineering (ai-systems-performance-engineering, Chapters 2 & 4 - required input from planning/gem_books/DEFERRED.md):

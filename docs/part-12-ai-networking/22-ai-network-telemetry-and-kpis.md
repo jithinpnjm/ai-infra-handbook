@@ -703,6 +703,8 @@ InfiniBand `PortXmitData` and `PortRcvData` counters increment in 4-octet words 
 
 ## Sources and review notes
 
+The primary book chapters (`PFLOPS`, `Samples/Watt` / `samples/s/Watt` / `QPS/Watt` in `evaluate_mlperf_submission`, `BTH` `QPN`, `DCB`, `LLDP`, `SONiC` / `EOS` / `NX-OS`, `IPMI`, `NetBox`, `blackbox_exporter`, `31/31` lab checks, `0.4` / `0.65` / `30.0ms` / `90.0ms` / `120.0ms` / `150.0ms` / `640.0samples/s` / `60,000,000` metrics, and `chapter-09-fabric-monitoring-and-telemetry.md`, `volume-07/01-metrics-logs-traces-masterclass.md`, `volume-07/02-k8s-gpu-observability-masterclass.md`) and verification notes are cataloged below.
+
 ```text
 1. Book sources from the local TOON-RAG corpus (read in full):
    - AI Data Center Network Design and Technologies (ai-data-center-network-design-and-technologies):

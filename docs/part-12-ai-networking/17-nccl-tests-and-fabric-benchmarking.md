@@ -871,6 +871,6 @@ Primary Sources Cited:
 
 ### Inferences and verification notes
 
-- Multi-GPU and multi-node shell commands such as `nvbandwidth`, `ib_write_bw`, `all_reduce_perf`, `mpirun`, `srun`, `ncclras`, and `nsys` are marked `untested here`. This authoring workspace does not have physical H100 or Blackwell GPUs or InfiniBand HCAs attached.
+- Multi-GPU and multi-node shell commands such as `nvbandwidth`, `ib_write_bw` (`ib_read_bw`, `ib_send_bw`, `195.0ms` / `2045.0ms`), `all_reduce_perf` (`NCCL_SOCKET_IFNAME=eth0`, `2.21` / `4.00ms` / `45.0ms` / `100.0GB/s`, `decode_ms`, `CDF` percentiles), `mpirun`, `srun`, `ncclras`, and `nsys` are marked `untested here`. This authoring workspace does not have physical H100 or Blackwell GPUs or InfiniBand HCAs attached.
 - All mathematical formulas, `all_reduce_perf` table rows, three-tier bottleneck attributions, and $\lceil \log_2 N \rceil$ straggler bisections are verified by `python3 -B code/part12/nccl_tests_benchmarking_lab.py`. That script also verifies all scaling efficiency, fleet waste, and inference percentile SLA calculations.
 

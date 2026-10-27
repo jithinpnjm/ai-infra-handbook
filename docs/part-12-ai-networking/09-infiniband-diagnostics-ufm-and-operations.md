@@ -832,5 +832,5 @@ Bind the `ib_write_bw` or `ib_write_lat` benchmark process to a remote CPU and m
 - The synthetic degraded `mlxlink` Lane 2 optical scenario and the `ibdiagnet` stage summary tuple in `code/part12/infiniband_diagnostics_ufm_lab.py` are deterministic pedagogical examples built on the exact hardware alarm ranges from Chapter 5 of *Supercomputers for Linux SysAdmins*.
 
 ### Not verified on live hardware
-- All diagnostic, Subnet Manager, benchmark, and UFM REST commands shown in the listings above are marked `(untested here)` and were not executed on live InfiniBand switches, ConnectX adapters, or UFM Enterprise appliances in this environment.
+- All diagnostic (`infiniband-diags`, `PortXmitWait=998432`, `CCTI`, `NCCL_IB_TIMEOUT`, `Routing/P_Key`, `fabric_healthy`, `first_failing_stage`, `typical_ratio`, `p99_ratio`, `p999_ratio` `999`th-permille, `35` / `42` / `45` / `112` metrics), Subnet Manager, benchmark, and UFM REST commands shown in the listings above are marked `(untested here)` and were not executed on live InfiniBand switches, ConnectX adapters, or UFM Enterprise appliances in this environment.
 

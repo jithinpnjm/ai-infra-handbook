@@ -796,7 +796,7 @@ Processes enter Linux state D when blocked inside a kernel syscall such as `rpc_
 
 ## Sources and review notes
 
-Primary book sources, mapped `nvidia-devops` source chapters, and verification scope for this chapter are summarized below.
+Primary book sources, mapped `nvidia-devops` source chapters, and verification scope (`BAR5` NVMe registers, `MRs` and `VMM` Virtual Memory Management, `mlx5_k` rails, `cuCheckpointProcessLock/Checkpoint/Restore/Unlock`, `0644` permissions, `33.3` GB/s checkpoint throughput) for this chapter are summarized below.
 
 ```text
 1. Primary book sources read in full from the local corpus:

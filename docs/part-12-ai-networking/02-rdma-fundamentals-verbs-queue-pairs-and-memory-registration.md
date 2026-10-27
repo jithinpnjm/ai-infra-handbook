@@ -937,7 +937,7 @@ The primary `nvidia-devops` notes and book chapters read in full and migrated in
 - `python3 code/part12/rdma_fundamentals_lab.py` passes all 25 checks with 0 failures.
 
 ### Not verified on live hardware
-- All InfiniBand, RoCEv2, and BCM commands in this chapter are marked `(untested here)`.
+- All InfiniBand, RoCEv2, and BCM commands in this chapter (`IBTA` Verbs, `TCA` Target Channel Adapters, `VLs`, `RQs`, `CNPs`, `DAC` vs `AOC` cables, `AllReduce`, `AllGather`, `ReduceScatter`, `NVSHMEM`, `DEVX`, `rdma-core` / `mlnx-ofed`, `ib_umad`, `ib_mad`, `ib_sa`, `ib_cm`, `rdma_ucm`, `get_user_pages` / `pin_user_pages` `IOVA` and `uint64_t` virtual addresses vs `Use-After-Deregister`, `sk_buff` and `IRQs` vs `p99` polling, `IBV_EVENT_CQ_ERR` and `ibv_wc.status`, `vendor_id_hex`, `total_ranks`, `rc_qps_per_rank`, `rc_qps_per_node`, `total_cluster_rc_qps`, `securityContext`, `/var/log/cm-doca-ofed.log`, `UBUNTU2404-dist-extrapackages.xml` on Ubuntu `2404`, `156` Gbps / `2025` examples) are marked `(untested here)`.
 
 ### Not in the corpus
 - Low-level C code for `mlx5dv_*` Direct Verbs provider-specific hardware doorbell programming is outside the scope of the corpus. This chapter focuses on the standard `libibverbs` architecture, queue state machine, memory registration, and wire packet formats.

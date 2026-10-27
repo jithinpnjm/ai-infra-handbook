@@ -816,5 +816,5 @@ Primary Sources Read in Full for Chapter 12.1:
 
 ### Not verified on live hardware
 
-- Multi-node InfiniBand and RoCEv2 switches were not attached during this build, so all `ibstat`, `nvbandwidth`, `ib_write_bw`, `all_reduce_perf`, and `cmsh` commands in `Commands and configurations that matter` are marked `(untested here)`.
+- Multi-node InfiniBand and RoCEv2 switches were not attached during this build, so all `ibstat`, `nvbandwidth`, `ib_write_bw`, `all_reduce_perf`, and `cmsh` commands (`NCCL_NVLS_ENABLE=1`, `NCCL_SHARP_DISABLE=1`, `NVSM`, `cudaStreamSynchronize`, `compute_ms` and `comm_sync_ms`, `srcAgent` and `dstAgent` in NIXL, and `1.0s`, `2.0ms`, `10.0ms`, `12.0ms`, `22.0ms`, `52.0ms` timing examples) in `Commands and configurations that matter` are marked `(untested here)`.
 

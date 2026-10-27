@@ -696,7 +696,7 @@ Liquid cooling can cut cooling power by `~70%`:
 
 ## Sources and review notes
 
-The primary book chapters, reference architecture tables, administrator manual sections, and mapped Volume 07, Volume 08, and Volume 09 source files for this chapter are cataloged below.
+The primary book chapters, reference architecture tables, administrator manual sections, and mapped Volume 07, Volume 08, and Volume 09 source files (`HGX` vs `SuperMicro`, `MoE`, `CBFC`, `SHIELD`, `UFM`, `EVPN-VXLAN` `MAC-VRF`, cross-referenced with Chapters `2.4`, `9.1`, `9.14`, and `12.7`) for this chapter are cataloged below.
 
 ```text
 1. Primary book sources read in full from the local corpus:

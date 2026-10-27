@@ -820,7 +820,7 @@ The GPU utilization metric in `nvidia-smi` only measures the percentage of time 
 
 ## Sources and review notes
 
-Primary book sources, mapped `nvidia-devops` source chapters, and verification scope for this chapter are summarized below.
+Primary book sources, mapped `nvidia-devops` source chapters, and verification scope (`ncclSuccess=0`, `1056.0MiB` / `32Gi` `/dev/shm` with `securityContext`, `nvidia-peermem`, `nvlink-degraded=gpu2-gpu3`, `max/min` straggler ratios) for this chapter are summarized below.
 
 ```text
 1. Primary book sources read in full from the local corpus:

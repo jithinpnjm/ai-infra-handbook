@@ -738,5 +738,5 @@ Primary Sources & Mapped Files (brief.py 12.4 & check_coverage.py 12.4):
 
 ### Not verified on live hardware
 
-- All `mlnx_qos`, `ethtool -S`, `mlx5_cnp_stats`, `rdma link`, `ibv_devinfo`, and `ib_write_bw` commands are marked `(untested here)` and were not executed on live switch or ConnectX hardware in this environment.
+- All `mlnx_qos`, `ethtool -S` (`LINK_UP`, `Spine1`, `EWMA`, `half-RTT`, `PLB`, `rx_pfc_prio3=41823`, `tx_pfc_prio3=41810`, `rx_ecn_marked_prio3=190`, `tx_pfc_prio3=0`, `rx_ecn_marked_prio3=2200`, `rp_current_rate=98Gbps`, and `10.0Gbps`, `40.0Gbps`, `200.0Gbps`, `280.0Gbps`, `300.0Gbps`, `335.0Gbps`, `400.0Gbps`, `18000` metrics), `mlx5_cnp_stats`, `rdma link`, `ibv_devinfo`, and `ib_write_bw` commands are marked `(untested here)` and were not executed on live switch or ConnectX hardware in this environment.
 

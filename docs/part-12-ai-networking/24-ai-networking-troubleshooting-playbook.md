@@ -966,6 +966,6 @@ Primary Source Inventory & Key Migrated Artifacts / Numbers
 ```
 
 ### Inferences and Unverified Claims Note
-- All hardware CLI commands shown for InfiniBand, RoCEv2, PCIe, and GPU inspection are illustrative operational patterns from the cited sources. They have not been executed on live multi-node switch hardware in this build environment (`untested here`).
+- All hardware CLI commands shown for InfiniBand (`ib_core`, `mlx5_core`, `200G` / 400G links, `2.9141`x tail ratio, `984500` ticks, `-works/` runbook paths), RoCEv2 (`RoCEv1`, `Ready-to-Receive`, `CNPs`), PCIe (`H2D` copies), and GPU inspection (`utilization.gpu`, `DCGM_FI_DEV_CLOCK_THROTTLE_REASONS`, `GPU2_transceiver`, `1250` ms straggler) are illustrative operational patterns from the cited sources. They have not been executed on live multi-node switch hardware in this build environment (`untested here`).
 - The Python diagnostic models and logarithmic straggler bisection algorithm reside in `code/part12/ai_networking_troubleshooting.py` and `code/part12/ai_networking_troubleshooting_lab.py`. They are deterministic encodings of the source decision trees and were verified locally (`28 passed, 0 failed`).
 

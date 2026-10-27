@@ -747,6 +747,8 @@ A compute unit issues a request in Guest Virtual Address space. The source MMU a
 
 ## Sources and review notes
 
+The primary book sources (`SQs`/`SQEs`, `CQs`/`CQEs`, `SQ/CQ-to-QPair` 1:1 mapping, `RKEYs`, `16-VL` InfiniBand, `JCT` Job Completion Time, `Key-Value` stores) and verification notes for Chapter 12.21 are cataloged below.
+
 ```text
 Primary Book Sources and Verification Notes for Chapter 12.21:
 1. AI Data Center Network Design and Technologies (ai-data-center-network-design-and-technologies, Chapters 9, 12, and 13):

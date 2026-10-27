@@ -985,5 +985,5 @@ The primary book chapters, reference architectures, and `nvidia-devops` notes re
 
 ### Not verified on live hardware
 
-- All InfiniBand and optical inspection commands in this chapter are marked `(untested here)`. They were not executed on physical InfiniBand switches or ConnectX adapters in this environment.
+- All InfiniBand and optical inspection commands (`SFF-8636` / `8636` and `CMIS`, `DD-QSFP` / `QSFP-DD400`, `AOCs` across `ISLs` and `Storage-to-Leaf` links, `25GbE`, `PCS`, `RS-FEC`, `EMI`, `NVMe-o-F`, `27.0m` / `29` / `45.0m` / `90.0m` / `200.0Gbps` / `310` / `450.0m` examples) in this chapter are marked `(untested here)`. They were not executed on physical InfiniBand switches or ConnectX adapters in this environment.
 
