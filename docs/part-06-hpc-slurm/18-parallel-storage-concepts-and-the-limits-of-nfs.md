@@ -4,7 +4,7 @@ title: "6.18 Parallel storage concepts and the limits of NFS"
 sidebar_label: "6.18 Parallel storage concepts and the limits of NFS"
 sidebar_position: 18
 description: "Why clusters need shared storage and why a single NFS server stops scaling: NFS semantics and tuning, metadata versus data paths, striping, locking and caching, N-to-1 versus N-to-N I/O, small-file problems, checkpoint bandwidth arithmetic, the landscape of parallel file systems, time synchronisation, and a micro-benchmark with measured numbers"
-status: "drafted"
+status: "reviewed"
 tier: "2"
 level: "I"
 lab_venue: "GCP / GKE"
@@ -254,6 +254,12 @@ Decision inputs: peak aggregate bandwidth, metadata rate, capacity, client count
 
 ## 9. Lab
 
+First, run the self-checking Python lab (`code/part06/iomix_lab.py`) locally. It verifies `ckpt_math.py` across `70B` (`0.98 TB`, `16 GB/s`, `98 s` / `2.7%` hourly loss at `10 GB/s`) and `405B` (`5.67 TB`, `94 GB/s`, `567 s` / `15.8%` hourly loss) models, checks the dataset read bandwidth equations (`49 MB/s` pre-tokenized text vs `150 GB/s` raw image streaming), and executes `code/part06/iomix.py --mb 4 --files 100` to measure sequential write/read, random 4 KiB IOPS, and small-file `create` / `stat` / `unlink` rates:
+
+```bash
+python3 code/part06/iomix_lab.py
+```
+
 Tested: 1) run `iomix.py` in `/tmp` and your home directory; record the three lines; explain differences. 2) Run `ckpt_math.py`; change bytes/param to 18 and to 2; change the interval and bandwidth; decide what bandwidth your target model needs.
 
 Untested (needs two or three VMs): 3) set up an NFS server and two clients; run `iomix.py` on a client against the NFS mount; vary `rsize/wsize`, `nconnect`, `actimeo`; compare. 4) Demonstrate close-to-open: client A appends to a file while client B reads it repeatedly without closing; compare with `noac`. 5) Create 100,000 files in one directory vs sharded over 1,000 directories on NFS. 6) Run `iomix.py` on two clients concurrently and watch `nfsiostat` on both; see the server limits. 7) Configure `chronyd` on all VMs; skew a clock; observe what breaks first (munge, make, Kerberos).
@@ -270,41 +276,175 @@ Untested (needs two or three VMs): 3) set up an NFS server and two clients; run 
 - Why is time synchronisation a storage topic?
 - Which tiers would you put in an AI cluster and why?
 
-## 11. Checkpoint questions (30)
+## Exercises
 
-1. Why must compute nodes share a namespace?
-2. Why are iSCSI/ATAoE unsuitable as the shared layer?
-3. List the data classes on a cluster and their access patterns.
-4. What does NFS provide and which versions exist?
-5. State the NFS consistency model.
-6. Why is the single server a bandwidth and a metadata funnel?
-7. What is pNFS?
-8. Name six client mount options and their effects.
-9. What is `nconnect`?
-10. What does `hard` versus `soft` mean?
-11. Why must NFS server thread counts be raised?
-12. Why does time synchronisation matter for file systems?
-13. Name two time-sync daemons, explain what each flag in `restrict default kod nomodify notrap nopeer noquery` does in `/etc/ntpd.conf`, and give the command to inspect `systemd-timesyncd` synchronization details. **A:** Two common time-sync daemons are `chronyd` and `openntpd`/`ntpd` (plus the client-only `systemd-timesyncd`). In `/etc/ntpd.conf`, `restrict default kod nomodify notrap nopeer noquery` sets default client restrictions: `kod` sends a "Kiss-of-death" packet to reduce unwanted queries, `nomodify` blocks remote configuration changes, `notrap` disables protocol traps, `nopeer` prevents peer associations, and `noquery` blocks `ntpq`/`ntpdc` queries while allowing time requests. For `systemd-timesyncd`, `timedatectl show-timesync --all` displays the detailed server and poll interval status.
-14. Define metadata and data.
-15. How does a parallel file system separate them?
-16. What is striping, stripe count, stripe size?
-17. How does coherence work with locks or leases?
-18. List four parallel file systems.
-19. What is N-to-1 I/O and its problem?
-20. What is the small-file problem?
-21. Why avoid giant directories?
-22. What is the read storm at job start and how to avoid it?
-23. How big is a 70B-parameter training checkpoint, and why?
-24. How do you compute required checkpoint bandwidth?
-25. Why is a text dataset's bandwidth small but its access pattern hard?
-26. What limits per-file bandwidth?
-27. Why were the benchmark's read numbers misleading?
-28. Which tools do real storage benchmarks use?
-29. How do you reduce checkpoint stall?
-30. Which tier holds container images and why squashfs?
+1. **Checkpoint Bandwidth and Stall-Overhead Arithmetic (`code/part06/ckpt_math.py` & `iomix_lab.py`):** Run `python3 code/part06/iomix_lab.py`. Using `ckpt_bytes(params, 14)`, `need_gbs(size, 60)`, and `overhead(size, 10, 3600)`, verify why a `70B` mixed-precision Adam checkpoint (`0.98 TB`) requires `16 GB/s` to write in 60 seconds and wastes `98 s` (`2.7%` of an hour) on a `10 GB/s` NFS server, whereas a `405B` checkpoint (`5.67 TB`) requires `94 GB/s` and wastes `567 s` (`15.8%` of every hour) at `10 GB/s`.
+2. **Characterizing Metadata vs Data Paths with `iomix.py` (`code/part06/iomix.py`):** Run `python3 code/part06/iomix.py --mb 64 --files 2000`. Explain why sequential read bandwidth (`11,562 MB/s` in the laptop run) exceeds physical SSD write bandwidth (`633 MB/s` `fsync`'d), why `create` (`4,585 files/s`) is roughly $80\times$ slower than cached `stat` (`378,127/s`), and how to defeat OS page-cache inflation during storage benchmarks.
+3. **Configuring an HPC NFS Server and Client Mounts (`SCL` Chapters 9 & 28):** Write the `/etc/exports` entries (`/export/dir host1,host2,host3(rw,root_squash)` and `/home 10.0.0.0/8(rw,no_subtree_check)`), the `exportfs -ra` and `showmount -e/-d/-a` commands, and the client `/etc/fstab` mount line (`rw,noatime,nodiratime,vers=4.2,rsize=1048576,wsize=1048576,nconnect=8,hard`). Explain the trade-offs of `root_squash` vs `no_root_squash`, `sync` vs `async`, and `hard` vs `soft`.
+4. **Hardening Cluster Time Synchronization (`ntpd`, `chrony`, and `systemd-timesyncd`, `SCL` Chapter 9):** Write `/etc/ntpd.conf` for a cluster service node (`listen on 10.1.2.251` and `restrict default kod nomodify notrap nopeer noquery`), explain each of the five `restrict` flags, state why `ntpdate` (or `chronyd` with `iburst`) is needed before mounting parallel filesystems after a cold boot with a large clock offset, and write the `timedatectl show-timesync --all` verification command.
+5. **Dataset Streaming Bandwidth (Pre-Tokenized LLM Text vs Raw Computer Vision):** Using `iomix_lab.py`, calculate the aggregate cluster read bandwidth for (a) `4,096` GPUs training on pre-tokenized text at `3,000 tokens/s/GPU` and `4 bytes/token` (`49 MB/s`) versus (b) `500` nodes training a vision model at `2,000 images/s/node` and `150 KB/image` (`150 GB/s`). Explain why converting millions of small JPEG files into WebDataset `.tar` shards solves both metadata and bandwidth bottlenecks.
+6. **Designing a 4-Tier Storage Architecture for a 2,048-GPU AI Cluster:** Specify the storage technology, capacity/bandwidth targets, and data lifecycle policies for (a) `/home` and `/opt` software trees, (b) `/scratch` and active training datasets, (c) node-local NVMe burst tier for asynchronous checkpointing and Enroot `ENROOT_DATA_PATH`, and (d) cold S3 object archive.
 
-## 12. Sources and review notes
+## Checkpoint
 
-- Shared-file-system requirements, the NFS-scaling argument, `/etc/exports` and client mount options (Tables 9-1 and 9-2), `ntpd.conf` / `openntpd` (`restrict default kod nomodify notrap nopeer noquery`), `chrony`, `ntpdate`, `timedatectl show-timesync --all`, Lustre architecture and the survey of distributed file systems (read in full: `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`, "9. Network File Systems" and "28. One-Two-Three Instructions"). Lustre and GPFS detail in 6.19 and 6.20.
-- Run here: `code/part06/iomix.py` and `code/part06/ckpt_math.py` with the outputs above; the pattern table and tier choices.
-- Not verified on live hardware: NFS server/client configuration commands (`exportfs`, `showmount`, `/etc/exports`, `/etc/fstab` mounts), NTP/timesyncd commands (`ntpdate`, `timedatectl show-timesync --all`), `nconnect` availability, per-parameter checkpoint byte counts, example image dataset rates, and all absolute performance expectations.
+<details>
+<summary>1. Why must all compute nodes in an HPC/AI cluster share a writable filesystem namespace, and why can't raw block protocols like iSCSI or ATA-over-Ethernet serve directly as that shared user layer (`SCL` Chapter 9)?</summary>
+
+Compute nodes are stateless workers where any job rank may land on any node and must read inputs and write outputs in a consistent directory tree. Raw block protocols (`iSCSI`, `ATA-over-Ethernet`, `NBD`) expose a block device without coordinating concurrent filesystem metadata or block allocations across multiple writers—mounting standard `ext4` or `XFS` read-write from two nodes over raw iSCSI immediately corrupts the filesystem (unless paired with a clustered filesystem like GPFS/GFS2/OCFS2 on top).
+</details>
+
+<details>
+<summary>2. What are the seven primary data classes on an AI cluster, and how do their I/O patterns differ?</summary>
+
+1. **Home (`/home`):** GBs of small source/config files; interactive, latency-sensitive, requires backups and quotas.
+2. **Software (`/opt`, modules, conda, containers):** 100 GB–TB read-mostly; massive metadata read storms at job launch.
+3. **Datasets:** TB–PB shared sequential or random reads across thousands of ranks.
+4. **Scratch (`/scratch`):** PB high-bandwidth parallel read/write; unbacked-up with automated age purge.
+5. **Checkpoints:** TBs written synchronously in bursts by all ranks every $K$ minutes; requires extreme aggregate write bandwidth.
+6. **Logs/metrics/traces:** GB–TB high-frequency small appends.
+7. **Archive:** Multi-PB cold object storage.
+</details>
+
+<details>
+<summary>3. Explain NFS's **close-to-open consistency** model and what cluster access patterns it breaks.</summary>
+
+Under close-to-open consistency, a client caches file data and attributes locally (`actimeo`); bytes written by Client A are **only guaranteed to become visible to Client B after Client A closes the file and Client B subsequently opens it**. If two compute nodes append to the same log file or poll an already-open status file without closing/reopening, they read stale cached blocks unless `noac` / `lookupcache=none` is forced (at a severe metadata RPC penalty).
+</details>
+
+<details>
+<summary>4. Give five architectural reasons why a single NFS server stops scaling on an HPC or GPU cluster (`SCL` Chapter 9).</summary>
+
+1. **Single bandwidth funnel:** All reads and writes pass through one server's NICs and disk controller (even 24 compute nodes checkpointing simultaneously can saturate and block an NFS server).
+2. **Single metadata funnel:** Every `open`, `stat`, `create`, and `unlink` hits a single server CPU and filesystem journal.
+3. **Single point of failure** (unless built on an active/passive or clustered NAS).
+4. **`GETATTR` cache-validation storms** from thousands of concurrent clients.
+5. **No native multi-server striping** in classic NFSv3/v4.0 (outside pNFS).
+</details>
+
+<details>
+<summary>5. In `/etc/exports`, what is the difference between `root_squash`, `no_root_squash`, and `all_squash`, and between `sync` and `async` (`SCL` Chapter 9 `Table 9-1`)?</summary>
+
+- **`root_squash` (default):** Maps UID `0` (`root`) on NFS clients to the unprivileged `nobody` (`anonuid`/`anonguid`) account on the server so a compromised compute node cannot modify root-owned files on `/home`.
+- **`no_root_squash`:** Preserves `root` privileges for client UID `0` (required only for diskless NFS-root OS boot exports).
+- **`all_squash`:** Maps *all* client UIDs to `nobody`.
+- **`sync` vs `async`:** `sync` replies to the client only after the server's `write` syscall completes, whereas `async` replies immediately before writing to storage (faster, but risks silent data loss if the NFS server crashes).
+</details>
+
+<details>
+<summary>6. Which commands apply changes to `/etc/exports` and inspect active NFS exports and client mounts (`SCL` Chapter 9)?</summary>
+
+- **Apply `/etc/exports` changes:** `exportfs -r` or `exportfs -ra`
+- **Inspect exports and mounts:** `showmount -e` (exported directories), `showmount -d` (directories currently mounted by clients), and `showmount -a` (`client:directory` pairs).
+</details>
+
+<details>
+<summary>7. Compare the NFS client mount options `hard` vs `soft`, `rsize`/`wsize`, `nconnect=N`, and `noatime,nodiratime` (`SCL` Chapter 9 `Table 9-2`).</summary>
+
+- **`hard` (default) vs `soft`:** `hard` retries RPCs indefinitely when the NFS server is unreachable (blocking processes until the server returns, preserving data integrity), whereas `soft` fails the I/O call after `retrans=n` timeouts (risking silent application file corruption).
+- **`rsize` / `wsize`:** Maximum bytes per read/write RPC payload (e.g., `1048576` = 1 MiB).
+- **`nconnect=N`:** Opens $N$ parallel TCP connections (up to 16) between the client and NFS server so a single mount isn't bottlenecked by one TCP stream.
+- **`noatime,nodiratime`:** Disables writing access-time metadata updates on every file/directory read.
+</details>
+
+<details>
+<summary>8. Why must `RPCNFSDCOUNT` (`threads=` in `/etc/nfs.conf`) be increased on a cluster NFS server?</summary>
+
+The historical default of 8 `nfsd` kernel threads means that if 8 client RPCs block on disk I/O simultaneously, all other compute nodes wait in the socket backlog. Production cluster NFS servers run 64 to 256+ `nfsd` threads.
+</details>
+
+<details>
+<summary>9. Why does `SCL` Chapter 9 treat **NTP time synchronization** as a core prerequisite for network filesystems?</summary>
+
+Distributed filesystems, lock leases, file modification timestamps (`mtime` used by `make` and attribute caches), Munge credentials (`Invalid credential`), and Kerberos tickets all depend on synchronized clocks across nodes. Clock skew causes stale cache decisions, lock/lease expirations, and authentication rejections.
+</details>
+
+<details>
+<summary>10. Explain each of the five flags in `restrict default kod nomodify notrap nopeer noquery` in `/etc/ntpd.conf` (`SCL` Chapter 9).</summary>
+
+- **`kod`:** Sends a "Kiss-of-Death" rate-limiting packet to abusive clients.
+- **`nomodify`:** Prevents clients from altering the `ntpd` server's runtime configuration.
+- **`notrap`:** Disables `ntpd` mode-6 control message trap service.
+- **`nopeer`:** Prevents unauthorized hosts from forming symmetric peer associations to skew the server's clock.
+- **`noquery`:** Blocks `ntpq`/`ntpdc` status queries from clients while still answering standard NTP time-sync requests.
+</details>
+
+<details>
+<summary>11. Why does `SCL` Chapter 9 run `ntpdate <server>` before starting `ntpd` (or use `iburst` in `chrony`), and how do you inspect `systemd-timesyncd` status?</summary>
+
+Standard NTP daemons slew the system clock slowly to avoid backward time jumps, so a node booting with a 1-hour BIOS clock offset can take hours to converge—causing parallel filesystem mounts and Munge authentication to fail at boot. `ntpdate` forces an immediate step sync prior to starting `ntpd` (while `chrony` uses `iburst` and `makestep`). For `systemd-timesyncd`, inspect status with **`timedatectl show-timesync --all`**.
+</details>
+
+<details>
+<summary>12. How does a **parallel filesystem** separate **metadata** from **data**, and what is **striping**?</summary>
+
+A parallel filesystem splits file operations across two independent server tiers:
+- **Metadata servers (`MDS` / `MDT`):** Handle filenames, directories, permissions, and stripe layout maps.
+- **Data servers (`OSS` / `OST`):** Store the actual file bytes.
+When a client opens a file, it queries the MDS once for the file's **layout** and then reads/writes chunks (**stripe size**, e.g., `1 MiB` or `4 MiB`) in parallel across **`stripe_count`** data servers via RDMA.
+</details>
+
+<details>
+<summary>13. How do parallel filesystems provide strict **POSIX coherence** across thousands of nodes, and when does that coherence hurt performance?</summary>
+
+Parallel filesystems use **distributed lock managers** (such as Lustre `LDLM` extent locks or GPFS token managers): before a client writes a byte range, the server revokes conflicting read/write locks cached on other clients so any subsequent read immediately sees the new bytes. When many ranks perform unaligned small writes or append to the *same* file (`N-to-1` without stripe alignment), distributed locks ping-pong between nodes and collapse throughput.
+</details>
+
+<details>
+<summary>14. Compare **N-to-N** (one file per rank) versus **N-to-1** (shared file) checkpointing and the **small-file problem**.</summary>
+
+- **N-to-N (file per process):** Avoids extent lock contention on data blocks and streams well across data targets (`__0_0.distcp`, `__0_1.distcp`), but at `10,000+` ranks can trigger a metadata `create` storm if all files are placed in a single unsharded directory.
+- **N-to-1 (single shared file):** Creates only 1 metadata entry, but requires stripe-aligned collective writes (MPI-IO) to avoid extent lock thrashing.
+- **Small-file problem:** Reading or creating millions of KB-sized files (raw ImageNet JPEGs or unpacked Conda environments) is latency- and metadata-IOPS-bound rather than bandwidth-bound; pack datasets into large sequential shards (WebDataset/TFRecord/MDS) and software into `.sqsh` containers.
+</details>
+
+<details>
+<summary>15. Why does a full mixed-precision (`bf16` + `fp32` Adam) training checkpoint consume $\approx 14\text{ bytes}$ per parameter (`code/part06/ckpt_math.py`), and how big are the checkpoints for `70B` and `405B` models?</summary>
+
+Per parameter: `2` bytes (`bf16` model weights) + `4` bytes (`fp32` master weights) + `4` bytes (`fp32` Adam first moment $m$) + `4` bytes (`fp32` Adam second moment $v$) = **`14 bytes/parameter`** (or `18` bytes if `fp32` gradients are also saved).
+- **`70B` model:** $70 \times 10^9 \times 14 = \mathbf{0.98\text{ TB}}$ (requires `16 GB/s` to write in 60 s).
+- **`405B` model:** $405 \times 10^9 \times 14 = \mathbf{5.67\text{ TB}}$ (requires `94 GB/s` to write in 60 s).
+</details>
+
+<details>
+<summary>16. If a `405B` training run saves a synchronous `5.67 TB` checkpoint once every hour to a `10 GB/s` storage tier, how much GPU cluster time is lost to checkpoint stalls (`ckpt_math.py`)?</summary>
+
+Writing `5.67 TB` (`5,670 GB`) at `10 GB/s` blocks the training loop for **`567 seconds` (9.45 minutes)** every hour—wasting **`15.8%`** of total GPU cluster capacity (`567 / 3600`).
+</details>
+
+<details>
+<summary>17. How do two-tier **asynchronous checkpointing** and **distributed sharded checkpoints** eliminate that GPU stall?</summary>
+
+1. **Distributed sharding (`torch.distributed.checkpoint` / `.distcp`):** Every rank writes its own unique shard in parallel (`N` nodes driving aggregate parallel filesystem bandwidth instead of rank 0 writing a single file).
+2. **Two-tier async staging:** Ranks copy checkpoint tensors from HBM to pinned host RAM (or node-local NVMe) in a few seconds, immediately resume GPU training steps, and let background threads drain the checkpoint to the parallel filesystem or object store.
+</details>
+
+<details>
+<summary>18. Contrast the storage bandwidth required to feed `4,096` GPUs with pre-tokenized LLM text (`3,000 tok/s/GPU`) versus `500` nodes training a multimodal vision/video model (`2,000 images/s/node` at `150 KB/image`).</summary>
+
+- **Pre-tokenized text:** $4,096 \times 3,000 \times 4\text{ B} \approx \mathbf{49\text{ MB/s}}$ cluster-wide (negligible bandwidth).
+- **Raw image streaming:** $500 \times 2,000 \times 150\text{ KB} = \mathbf{150\text{ GB/s}}$ cluster-wide (requires a high-bandwidth parallel filesystem or local NVMe dataset cache).
+</details>
+
+<details>
+<summary>19. What three lessons did the `code/part06/iomix.py` micro-benchmark illustrate?</summary>
+
+1. **OS page cache distorts naive read benchmarks:** Reading back a `512 MB` file immediately after writing measured RAM speed (`11,562 MB/s` and `705,949 IOPS` vs `633 MB/s` `fsync`'d write); real benchmarks (`fio`, `IOR`) must use `O_DIRECT`, drop caches, or read data larger than host RAM.
+2. **Data bandwidth and metadata IOPS are independent dimensions:** A drive delivering `633 MB/s` sequential writes only completed `4,585` small-file creates per second.
+3. **File creation (`create`) is ~80$\times$ slower than cached `stat`:** On a networked filesystem, every `create` requires synchronous journaled metadata transactions and lock coordination.
+</details>
+
+<details>
+<summary>20. How should storage tiers be mapped across an AI factory (`Home/Software`, `Scratch/Datasets`, `Fast Checkpoint Burst`, and `Cold Archive`)?</summary>
+
+- **Home & Software (`/home`, `/opt`):** HA NFS/NAS (or metadata-tuned parallel FS pool) with snapshots, backups, and user quotas; container images stored as single `.sqsh` files.
+- **Active Datasets & Scratch (`/scratch`):** Parallel filesystem (Lustre, IBM Storage Scale/GPFS, WEKA, VAST, BeeGFS) over InfiniBand/RoCE RDMA.
+- **Fast Checkpoint & Container Unpack Tier:** Node-local NVMe RAID (`ENROOT_DATA_PATH` and async checkpoint staging).
+- **Cold Datasets & Model Registry:** S3-compatible object storage.
+</details>
+
+## Sources and review notes
+
+- Shared-file-system requirements, the NFS-scaling argument, `/etc/exports` and client mount options (Tables 9-1 and 9-2), `ntpd.conf` / `openntpd` (`restrict default kod nomodify notrap nopeer noquery`), `chrony`, `ntpdate`, `timedatectl show-timesync --all`, Lustre architecture and the survey of distributed file systems: read in full from *Supercomputers for Linux SysAdmins* (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware`, `SCL`) Chapter 9 ("9. Network File Systems") and Chapter 28 ("28. One-Two-Three Instructions"). Lustre and GPFS detail continues in Chapters 6.19 and 6.20.
+- Run here: `code/part06/iomix.py`, `code/part06/ckpt_math.py`, and `python3 code/part06/iomix_lab.py` (3 passed, 0 failed) with the outputs above.
+- Explicitly labelled inferences: The checkpoint bandwidth table (`ckpt_math.py`, using `14 bytes/param`) and dataset streaming examples (`49 MB/s` text vs `150 GB/s` vision in `iomix_lab.py`) are deterministic sizing calculations.
+- Not verified on live hardware: NFS server/client configuration commands (`exportfs`, `showmount`, `/etc/exports`, `/etc/fstab` mounts), NTP/timesyncd commands (`ntpdate`, `timedatectl show-timesync --all`), `nconnect` behaviour on live NAS fabrics, and multi-node parallel filesystem benchmark numbers (`untested here`).
