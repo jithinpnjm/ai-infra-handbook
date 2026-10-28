@@ -319,7 +319,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 6.21 | Parallel I/O and checkpoint patterns | reviewed | 6217 | `ckpt_atomic_lab.py` (3/3 pass), `ASP 5`, `PHPC 16`, `V15` |
 | 6.23 | xCAT, Warewulf and cluster managers compared with BCM | reviewed | 5541 | `cluster_mgr_lab.py` (3/3 pass), `SCL 26`, `SCL 28` |
 | 6.24 | Users, LDAP, SSSD, quotas and accounting at scale | reviewed | 6221 | `identity_gen_lab.py` (3/3 pass), `SCL 11, 12, 28` |
-| 6.26 | Cluster monitoring and health at scale | drafted | 4367 |  |
+| 6.26 | Cluster monitoring and health at scale | reviewed | 6459 | `slurm_exporter_lab.py` (3/3 pass), `SCL 19` |
 | 6.28 | HPC benchmarking: HPL, HPCG, IOR, OSU and NCCL tests | drafted | 4168 |  |
 | 6.29 | Containers and reproducibility in HPC: Apptainer and enroot | drafted | 3132 |  |
 | 6.30 | Facility basics: power, cooling, racks and liquid cooling | drafted | 5273 |  |
