@@ -173,7 +173,7 @@ This gathers settings from the whole part. Each item names where it was covered.
 9. Removing `cmsupport`.
 10. Replacing a license and not regenerating user certificates.
 
-## 10. Exercises
+## Exercises
 
 1. Run `python3 security_lab.py`. Pick four checks and explain each rule in your own words.
 2. Design three profiles for a team: an operator who can only power-cycle nodes, an auditor who sees everything but changes nothing, a researcher who sees only their own jobs. For each, say which preconfigured profile you start from, and what you remove.
@@ -190,30 +190,131 @@ This gathers settings from the whole part. Each item names where it was covered.
 - "A user's new account does not work." The password is unset (a safe default), or the profile/ssh settings block it; fix and recommit.
 - "What do you rotate after an incident?" The four administrative passwords, the LDAP root password separately, certificates, and BMC credentials.
 
-## 12. Checkpoint questions (20)
+## Checkpoint questions (20)
 
-1. Where do cluster users live, and what is `cmsupport`?
-2. What happens to a user committed with no password?
-3. From which ID do new users start, and where is that changed?
-4. How do you add three members to a group, and how do you empty it?
-5. What does `remove -d` do on a user?
-6. Which four passwords does `cm-change-passwd` change, and which one does it not?
-7. What extra step does an image password need?
-8. What must you do on an HA cluster after changing passwords?
-9. How is SSH set up between the head node and regular nodes by default?
-10. How does cmsh authenticate by default?
-11. What is a profile, and what is a token?
-12. Name the three preconfigured profiles meant for people.
-13. Why should nonuser profiles not be modified?
-14. How do you stop `readonly` users from reading the burn log?
-15. Can you extend a certificate's expiry?
-16. In which order does cmsh look for certificate files?
-17. What happens to other certificates if the administrator certificate is replaced?
-18. Which files change on a RHEL 9 node to use an external LDAP server?
-19. What are the Keycloak prerequisites for the head node OS and ports?
-20. What do `CMDaemonAudit` and `DisableAuditorForProfiles` do?
+<details>
+<summary>1. Where do standard cluster users live in BCM, and what is the built-in `cmsupport` account?</summary>
 
-## 13. Sources and review notes
+Cluster users live in BCM's own **OpenLDAP directory** on the head node (not in `/etc/passwd`). **`cmsupport`** is a pre-created diagnostic account with no password (so interactive login is disabled) used by BCM for internal health checks like `ldap`—**never remove `cmsupport`**.
+</details>
+
+<details>
+<summary>2. What happens if you `add` a new user in `cmsh` and `commit` without setting a password?</summary>
+
+`commit` populates default POSIX fields (`uid`, `/bin/bash`, `/home/<user>`), but leaves the password **empty**, and **any login attempt to that account is refused** until `set password` and a second `commit` are run.
+</details>
+
+<details>
+<summary>3. At what numeric UID do newly created BCM users start by default, and which directive changes that starting number?</summary>
+
+New users start at UID **`1000`** (`500` on SLES), controlled by the **`LowUserId`** directive.
+</details>
+
+<details>
+<summary>4. In `cmsh` `group` mode, which commands add members, remove specific members, and empty a group completely?</summary>
+
+**`append members maureen tim fred`** adds members, **`removefrom members tim fred`** removes specific members, and **`clear members`** empties the group.
+</details>
+
+<details>
+<summary>5. What is the difference between `remove <user>` and `remove -d <user>` in `cmsh` `user` mode?</summary>
+
+`remove <user>` deletes the LDAP account while **keeping `/home/<user>` on disk**; `remove -d <user>` deletes both the LDAP account and the user's home directory.
+</details>
+
+<details>
+<summary>6. Which four administrative passwords does `cm-change-passwd` update, and which directory password does it NOT update?</summary>
+
+It updates: (1) **head node `root`**, (2) **software image `root`**, (3) **`node-installer` `root`**, and (4) **MySQL `root`**. It does **not** change the **LDAP root password** (which has its own procedure in Appendix I).
+</details>
+
+<details>
+<summary>7. After changing the software image root password with `cm-change-passwd`, what step is needed for already-running compute nodes to get the new password?</summary>
+
+Run **`imageupdate -w`** or **reboot** the regular nodes so they synchronize from the updated software image.
+</details>
+
+<details>
+<summary>8. On an HA cluster with two head nodes, why must you run `cm-change-passwd` on both head nodes?</summary>
+
+Because while the software image root password is automatically synced to the passive head node, the **head node `root`, `node-installer` `root`, and MySQL `root` passwords are not copied automatically** to the partner head node.
+</details>
+
+<details>
+<summary>9. How does default root SSH behavior differ from the head node to regular nodes versus from a regular node back to the head node?</summary>
+
+From the **head node to regular nodes**, root SSH is **passwordless** by default (`/root/.ssh` keys). From a **regular node back to the head node**, root SSH deliberately **prompts for a password** so a compromised compute node cannot trivially compromise the head node.
+</details>
+
+<details>
+<summary>10. How do `cmsh` and Base View authenticate to `CMDaemon` on port `8081`?</summary>
+
+Using **client-side X.509v3 PEM certificates** (`/root/.cm/admin.pem` and `admin.key` for root, or PKCS#12 `.pfx` imported into a browser for certificate-based Base View login).
+</details>
+
+<details>
+<summary>11. What are a **Profile** and a **Token** in BCM's management authorization model (§6.5)?</summary>
+
+A **Token** is an atomic permission required to perform a specific `CMDaemon` operation (e.g., `burn_status_token`), and a **Profile** is a named collection of tokens embedded in a user's X.509 certificate.
+</details>
+
+<details>
+<summary>12. Which three preconfigured profiles are designed to be assigned to human users?</summary>
+
+**`admin`** (full administrative access), **`readonly`** (view-only cluster inspection), and **`portal`** (user portal access).
+</details>
+
+<details>
+<summary>13. Why must `nonuser` profiles (such as `node`, `bootstrap`, `cmhealth`, `power`, `litenode`) never be modified or assigned to human accounts?</summary>
+
+They are internal service profiles used by BCM's own daemons and components to authenticate component-to-head-node RPCs; altering their tokens breaks internal cluster services.
+</details>
+
+<details>
+<summary>14. Write the `cmsh` commands to prevent holders of the `readonly` profile from viewing burn-in status or logs.</summary>
+
+`profile use readonly; removefrom tokens burn_status_token get_burn_log_token; commit`.
+</details>
+
+<details>
+<summary>15. Can the expiration date of an existing BCM X.509 client certificate be extended in place?</summary>
+
+**No.** X.509 validity dates are cryptographically signed at issuance; once a certificate expires (or needs a longer lifetime), you must issue a **new certificate** with `createcertificate`.
+</details>
+
+<details>
+<summary>16. In what order does `cmsh` search for client certificate and key files when starting up?</summary>
+
+1. Explicit **`-i <cert>` and `-k <key>`** command-line flags.
+2. **`~/.cm/admin.pem` and `~/.cm/admin.key`**.
+3. **`~/.cm/cert.pem` and `~/.cm/cert.key`**.
+</details>
+
+<details>
+<summary>17. In which two situations must regular user certificates be regenerated across the cluster?</summary>
+
+When the signing **administrator certificate is replaced**, or when the cluster **license (including an evaluation license) is replaced** (verify with `cm-check-certificates.sh`).
+</details>
+
+<details>
+<summary>18. Which configuration files must be updated on both the head node and inside the software image to point RHEL 9 / Rocky 9 nodes at an external LDAP server?</summary>
+
+**`/etc/sssd/sssd.conf`** and **`/etc/openldap/ldap.conf`** (whereas RHEL 8 used `/etc/nslcd.conf`), followed by restarting `sssd`, running `updateprovisioners`, and running `imageupdate` or rebooting nodes.
+</details>
+
+<details>
+<summary>19. What are the head-node OS and TCP port prerequisites for installing Keycloak via `cm-setup-keycloak.py` (BCM 11.34+)?</summary>
+
+Requires **BCM 11.34+**, **Ubuntu 24.04 or 26.04** on the head node (RHEL/Rocky are not supported for the Keycloak installer), running MySQL/MariaDB and BCM LDAP, and free TCP ports **`9443` and `9999`**.
+</details>
+
+<details>
+<summary>20. What do the `cmd.conf` directives `CMDaemonAudit`, `CMDaemonAuditorFile`, and `DisableAuditorForProfiles` control?</summary>
+
+`CMDaemonAudit` enables audit logging of management actions performed in `CMDaemon`, `CMDaemonAuditorFile` sets the log file path, and `DisableAuditorForProfiles` lists profiles excluded from audit logging (never exclude `admin` on a multi-administrator cluster).
+</details>
+
+## Sources and review notes
 
 - **BCM 11 Administrator Manual:** section 2.3 (administrative passwords, SSH, certificates, profiles), chapter 6 (6.1 and 6.2 users and groups, 6.3 external LDAP including replication, 6.4 Keycloak, 6.5 tokens, profiles, custom certificates, audit logging, `cm-component-certificate`).
 - **Corrections to the notes:** none new; the CMDaemon port correction is in 8.1 and 8.5.

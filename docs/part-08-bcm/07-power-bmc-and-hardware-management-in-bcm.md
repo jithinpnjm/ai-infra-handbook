@@ -194,7 +194,7 @@ Rules of thumb from the manual: **115200 bps** (higher is possible but more like
 9. Leaving leak detection disabled after a sensor swap.
 10. Using a DHCP address for BMCs and expecting BCM power control.
 
-## 11. Exercises
+## Exercises
 
 1. Run `python3 hardware_lab.py`. Pick four checks and explain each rule in your own words.
 2. Write the cmsh commands (from this chapter, untested) to give 150 nodes BMC interfaces on a new BMC network and set the BMC credentials cluster-wide, with one category overriding them.
@@ -211,30 +211,134 @@ Rules of thumb from the manual: **115200 bps** (higher is possible but more like
 - "How do you power on a rack without tripping the breakers?" Delay and batch options; PDU limits come first.
 - "How do you find which node has a different BMC password?" `credentialsoverview --inverse`.
 
-## 13. Checkpoint questions (20)
+## Checkpoint questions (20)
 
-1. Which `powercontrol` values does BCM understand?
-2. What happens to PDU ports when `powercontrol` is `ipmi0`?
-3. What does `PowerOffPDUOutlet` do and what must the BIOS be set to?
-4. What happens when two nodes share a PDU port and you power one off?
-5. What arguments does a custom power script receive, and what does exit code 0 mean?
-6. What is the default delay between nodes in `power on`, and what do `-p` and `--parallel-delay` do?
-7. Why does `power` not work inside `foreach`?
-8. What are the five power status values?
-9. What is the default BMC network and its interface name pattern?
-10. What are the default BMC user and user ID, and who sets them on the BMC?
-11. In which order do node, category and partition BMC settings apply?
-12. What does `credentialsoverview --inverse` show first?
-13. What does `bmcreset` do to the running node?
-14. Name the four BIOS states and the three operations.
-15. What does a `<default>` BIOS setting do?
-16. What does `firmwaremanagemode` select?
-17. What does `pending` with "AC power cycle to activate" mean, and why does `power reset` not fix it?
-18. Name the three places SOL must be configured.
-19. Which SOL port and speed does the manual suggest for x86_64?
-20. When would you disable leak detection on one device?
+<details>
+<summary>1. Which `powercontrol` property values does BCM support on a device?</summary>
 
-## 14. Sources and review notes
+**`apc`** (managed PDU outlet), **`ipmi0`** (IPMI BMC), **`ilo0`** (HPE iLO), **`drac0`** (Dell iDRAC), **`cimc0`** (Cisco CIMC), **`rf0`** (Redfish BMC), and **`custom`** (`custompowerscript`).
+</details>
+
+<details>
+<summary>2. What happens to any `powerdistributionunits` ports configured on a node when its `powercontrol` is set to `ipmi0`?</summary>
+
+They are **ignored** for normal power operations (unless `PowerOffPDUOutlet = true` is explicitly enabled in `cmd.conf`).
+</details>
+
+<details>
+<summary>3. What does `PowerOffPDUOutlet = true` in `cmd.conf` do, and what BIOS setting does it require on the compute nodes?</summary>
+
+After shutting a node down via its BMC, BCM also switches off the node's PDU outlet (cutting standby power to the BMC as well). The node's BIOS **`Power Restore Policy` must be set to `Always On` (power on after AC loss)**, or the node will remain off when the PDU outlet is turned back on.
+</details>
+
+<details>
+<summary>4. What happens if two twin nodes share a single PDU outlet port and you issue a PDU power operation on one of them?</summary>
+
+With `powercontrol = apc`, switching the shared outlet affects **all nodes plugged into that port**; with `PowerOffPDUOutlet = true`, BCM turns the shared PDU outlet off only after **all** nodes sharing that outlet are powered off.
+</details>
+
+<details>
+<summary>5. What command-line arguments and environment variables does a `custompowerscript` receive, and what exit code indicates success?</summary>
+
+It is invoked as **`<script> <operation> <device> [custompowerscriptargument]`**, where `<operation>` is `ON`, `OFF`, `RESET`, or `STATUS`, with `CMD_*` variables (such as `CMD_MAC` and `CMD_IP`) in the environment. Exit code **`0`** indicates success; non-zero indicates failure.
+</details>
+
+<details>
+<summary>6. What is the default per-device delay (`-d`) in `device power on`, and how do `-p N` and `--parallel-delay` schedule batch power-ons?</summary>
+
+The default delay between individual devices is **`1` second** (`-d 1`). Passing **`-p N`** starts `N` items simultaneously per batch (with `0` delay inside the batch) and waits **`20` seconds** (`--parallel-delay`) between batches (so `12` racks with `-p 3` start at `0`, `20`, `40`, and `60` seconds).
+</details>
+
+<details>
+<summary>7. Why are `power` commands blocked inside `foreach` and `range` loops in `cmsh`?</summary>
+
+Because loop timing across hundreds of objects can inadvertently stack concurrent power-on spikes or cloud API bursts. Instead, pass `-n`, `-c`, `-g`, or `-r` directly to `device power`.
+</details>
+
+<details>
+<summary>8. What are the five standard power status values returned by `device power status`?</summary>
+
+**`ON`**, **`OFF`**, **`RESET`** (momentarily off during a reset cycle), **`FAILED`** (BMC/PDU communication failure), and **`UNKNOWN`** (timeout).
+</details>
+
+<details>
+<summary>9. What is the default subnet for `bmcnet` in BCM, and what naming prefixes are used for BMC interfaces?</summary>
+
+The default subnet is **`10.148.0.0/16`**, and BMC interface names start with **`ipmi`**, **`ilo`**, **`drac`**, **`cimc`**, or **`rf`** (e.g., `ipmi0`, `rf0`).
+</details>
+
+<details>
+<summary>10. What are BCM's default BMC username, user slot ID, and privilege level, and which component configures them on the node's BMC?</summary>
+
+Default username **`bright`**, random password generated at cluster install, **User ID `4`**, and **Administrator** privilege, configured onto each node's BMC at boot by the **`node-installer`**.
+</details>
+
+<details>
+<summary>11. In what precedence order do partition, category, and node `bmcsettings` apply, and which flag shows the effective source?</summary>
+
+**Node overrides Category, which overrides Partition (`base`)**. Running `bmcsettings --show` displays the effective settings and which level supplied each value.
+</details>
+
+<details>
+<summary>12. How does `credentialsoverview --inverse` in `cmsh` `device` mode help spot drifted BMC passwords?</summary>
+
+It hashes each device's effective credentials into a **per-session salted SHA-256 fingerprint** and groups devices by identical fingerprint with the **smallest (outlier) groups listed first**, never exposing cleartext passwords.
+</details>
+
+<details>
+<summary>13. What does `bmcreset -n node001` do, and does it reboot the running Linux OS on `node001`?</summary>
+
+`bmcreset` performs a hardware cold reset of the node's **BMC microcontroller only**. Out-of-band BMC access drops for a couple of minutes while the BMC reboots, but the **host server's power state and running Linux OS are completely unaffected**.
+</details>
+
+<details>
+<summary>14. What are the four states and three transitions for managing BIOS settings in BCM (§14.5.2)?</summary>
+
+1. Edit in `cmsh` / Base View (`biossettings`, after setting `model`).
+2. **`commit`** $\rightarrow$ saved in `CMDaemon` database as **`Configured`**.
+3. **`bios apply`** $\rightarrow$ staged to the BMC via Redfish as **`Pending`**.
+4. **Node reboot** $\rightarrow$ applied by UEFI at POST as **`Live`**.
+</details>
+
+<details>
+<summary>15. In BCM `biossettings`, what happens to a BIOS attribute whose Configured value is `<default>` (`null`, after `clear`)?</summary>
+
+BCM **leaves that BIOS attribute untouched** on the server—only attributes with explicit non-default Configured values are pushed during `bios apply`.
+</details>
+
+<details>
+<summary>16. What does `firmwaremanagemode` in `bmcsettings` configure, and list six supported platform values?</summary>
+
+It tells BCM which Redfish/platform firmware workflow (`cm-nvfwupd` / iLO) to use for the device. Supported values include **`auto`**, **`h100`**, **`b200`**, **`b300`**, **`gb200`**, **`gb200sw`**, **`gb300`**, **`gb300sw`**, **`iLO`**, and **`none`**.
+</details>
+
+<details>
+<summary>17. After `firmware flash <pkg>.fwpkg` completes on a DGX H100, why does `firmware status` show state `pending` with `success: AC power cycle to activate`, and why is `power reset` insufficient?</summary>
+
+Because the new firmware is staged in inactive flash and requires cutting **all AC input power** (via rack PDU outlets or mains cords so standby rails discharge) to reinitialize the GPU tray's `ERoT`, CPLD, FPGA, NVSwitch, and retimer chips. A standard `power reset` in `cmsh` only performs a **DC board reset**, leaving the old firmware running.
+</details>
+
+<details>
+<summary>18. Which three places must have matching baud rate, port, and flow-control settings for Serial over LAN (`SOL` / `rconsole`) to work?</summary>
+
+1. **The BMC BIOS / SOL configuration.**
+2. **The node's motherboard BIOS serial redirection settings.**
+3. **The software image's kernel SOL parameters** (`softwareimage use default-image; set enablesol yes`).
+</details>
+
+<details>
+<summary>19. What serial port device name and baud rate does the BCM manual recommend for `SOL` on `x86_64` versus `aarch64` (ARMv8)?</summary>
+
+**`115200` bps** with hardware flow control on **`ttyS0`** (COM1, or `ttyS1` for COM2) on `x86_64`, and **`ttyAMA0`** (COM1, or `ttyAMA1` for COM2) on `aarch64`.
+</details>
+
+<details>
+<summary>20. When should you run `leakdetection disable` on a liquid-cooled node, and what status indicator reminds you that it is disabled?</summary>
+
+Only temporarily when a faulty leak sensor triggers false alarms and would otherwise cause an unwanted emergency power-off while waiting for sensor replacement. While disabled, the node's status line displays **`leak:disabled`**.
+</details>
+
+## Sources and review notes
 
 - **BCM 11 Administrator Manual:** chapter 4 (power methods, operations, overviews, monitoring, switch settings), section 3.7 (BMC networks, authentication, `credentialsoverview`, identification, event log, reset, port queries, leak detection), 14.5 (BIOS via Redfish templates and four states; firmware via Redfish with the DGX H100 example; the DOS image and iLO upload skimmed), 14.7 (serial over LAN), 14.11 (hardware information), appendix N (Redfish in BCM).
 - **Companion chapters:** Part 7 (Redfish, firmware, BIOS, hardening) for the protocol side; 8.4 for node-installer BMC settings and the BMC cold reset.

@@ -250,7 +250,7 @@ BCM packages a **BCM Kubernetes CAPI Infrastructure Provider**, derived from the
 9. Removing the GPU operator with the wizard instead of Helm.
 10. Upgrading control planes and forgetting etcd, CNI or the BCM version record.
 
-## 10. Exercises
+## Exercises
 
 1. Run `python3 k8s_lab.py`. Pick four checks and explain each rule in your own words.
 2. Size a cluster for 300 GPU nodes: etcd and control plane layout, pod CIDR, Typha replicas.
@@ -267,30 +267,133 @@ BCM packages a **BCM Kubernetes CAPI Infrastructure Provider**, derived from the
 - "How are users isolated?" Namespace per user, RBAC, Kyverno policies for hostPath and UID/GID; without Kyverno the isolation is incomplete.
 - "How do you upgrade without downtime?" Hot upgrade rules above.
 
-## 12. Checkpoint questions (20)
+## Checkpoint questions (20)
 
-1. Where does etcd run in BCM, and why an odd count?
-2. What is the minimum RAM and CPU per node?
-3. What does the API server proxy do and on which port?
-4. Can a node belong to two Kubernetes clusters?
-5. Which tool deploys Kubernetes, and what does it use underneath?
-6. Which CNIs does the wizard offer?
-7. When is Typha deployed and how many replicas?
-8. How many nodes can a /16 pod network hold with the default per-node range?
-9. Which four operators are selected by default?
-10. What happens if a GPU cluster is deployed without the GPU operator?
-11. What are the three GPU operator checklist options and their defaults?
-12. What is different about the GPU driver on DGX OS?
-13. How do you remove the GPU operator?
-14. What kubelet settings does BCM 11.34 apply on GPU workers, and why?
-15. What priorities do the etcd, master and worker overlays have?
-16. What does `--add-user john` create?
-17. What does Kyverno restrict for a Kubernetes user by default?
-18. What changes with `--allow-all-uids`?
-19. Why does installing the Kgateway operator alone expose nothing?
-20. What does kubeadm not upgrade?
+<details>
+<summary>1. How does BCM deploy `etcd` for Kubernetes, and why must `etcd` run on an odd number of nodes (`3` recommended)?</summary>
 
-## 13. Sources and review notes
+BCM runs `etcd` **outside** Kubernetes as a system daemon (`cm-etcd` package via the `EtcdHost` role, protected by `datanode yes`). Because Raft quorum requires $\lfloor N/2 \rfloor + 1$ nodes, an even cluster (`4` nodes) tolerates no more failures (`1`) than the odd number below it (`3` nodes) while adding write consensus overhead.
+</details>
+
+<details>
+<summary>2. What is the minimum RAM and CPU per node required by BCM for Kubernetes nodes?</summary>
+
+At least **`16 GB` of RAM and `2` CPU cores** per node.
+</details>
+
+<details>
+<summary>3. How does BCM make the Kubernetes control plane API highly available across head nodes and workers?</summary>
+
+By running an **NGINX API server proxy** (`KubernetesAPIServerProxy` role) on the head node(s) and on every node in the cluster listening on **TCP port `10443`**, which load-balances requests across all `kube-apiserver` static pods.
+</details>
+
+<details>
+<summary>4. Can a single BCM cluster host multiple Kubernetes clusters, and can a single node belong to two Kubernetes clusters simultaneously?</summary>
+
+BCM supports **multiple Kubernetes clusters** (since BCM 8.2, reserving a unique API proxy port per cluster on the head node), but **a single node cannot be shared between two Kubernetes clusters at the same time**.
+</details>
+
+<details>
+<summary>5. Which wizard deploys Kubernetes in BCM, and what upstream tool does it use under the hood to bootstrap the control plane?</summary>
+
+**`cm-kubernetes-setup`** (from the `cm-setup` package), which uses upstream **`kubeadm`** to run the control plane as static pods (`kube-apiserver`, `kube-scheduler`, `kube-controller-manager`, `kube-proxy`, `CoreDNS`).
+</details>
+
+<details>
+<summary>6. Which CNI plugins does `cm-kubernetes-setup` offer in the wizard, and how does Calico route pod traffic by default in BCM?</summary>
+
+The wizard offers **Calico** (via Tigera operator, pre-selected and recommended) and **Flannel** (with Cilium supported outside the wizard). Calico uses **BGP** without IP-in-IP overlays by default to avoid encapsulation overhead on bare-metal networks.
+</details>
+
+<details>
+<summary>7. At what node count does `cm-kubernetes-setup` automatically deploy Calico Typha, and how many replicas does it run?</summary>
+
+Above **`50` nodes**, deploying **`1` Typha replica per `150` nodes** with a **minimum of `3`** and a **maximum of `20`** replicas.
+</details>
+
+<details>
+<summary>8. With the default `/24` per-node pod subnet allocation (`Pod Network Node Mask`), what is the maximum number of Kubernetes nodes that fit inside a `/16` pod network CIDR?</summary>
+
+**`256` nodes** ($2^{24 - 16} = 256$ `/24` blocks).
+</details>
+
+<details>
+<summary>9. Which four operators are pre-selected by default in `cm-kubernetes-setup`, and is the NVIDIA GPU Operator one of them?</summary>
+
+Only **Kgateway**, **Metrics Server**, **State Metrics**, and **MetalLB** are selected by default. The **NVIDIA GPU Operator is NOT selected by default** and must be explicitly checked (or installed via Helm).
+</details>
+
+<details>
+<summary>10. What happens if you deploy Kubernetes onto GPU nodes in BCM without selecting the NVIDIA GPU Operator?</summary>
+
+Nodes join Kubernetes as `Ready`, but `nvidia.com/gpu` capacity is never advertised to the scheduler and **any pod requesting `nvidia.com/gpu` remains stuck in `Pending`**.
+</details>
+
+<details>
+<summary>11. What are the three checklist options for the NVIDIA GPU Operator in `cm-kubernetes-setup` and their default states?</summary>
+
+1. **Container toolkit via operator (`toolkit.enabled`):** **`on`** by default.
+2. **GPU drivers as a container (`driver.enabled`):** **`off`** by default (because BCM already installs the NVIDIA driver in the node's software image).
+3. **Node Feature Discovery (`nfd.enabled`):** **`on`** by default.
+</details>
+
+<details>
+<summary>12. On DGX OS software images, how is the NVIDIA GPU driver always provisioned?</summary>
+
+On DGX OS images, the GPU driver is **always provisioned directly in the host OS image** (`driver.enabled=false` in the GPU Operator).
+</details>
+
+<details>
+<summary>13. How should you uninstall the NVIDIA GPU Operator (even if it was originally installed by `cm-kubernetes-setup`), and how do you add/remove operators in BCM 11.34+?</summary>
+
+Remove the GPU Operator using **`helm uninstall -n gpu-operator gpu-operator`**. From BCM 11.34+, you can also use the **`Modify operators`** workflow in `cm-kubernetes-setup` (which removes dependent Helm releases in reverse dependency order while leaving CRDs, namespaces, labels, and taints for manual cleanup).
+</details>
+
+<details>
+<summary>14. Which four `kubelet` settings does BCM 11.34+ automatically apply to GPU worker nodes, and why?</summary>
+
+- **`cpuManagerPolicy: static`** (allows guaranteed pods with integer CPU requests to pin exclusive CPU cores without time-slicing jitter).
+- **`topologyManagerPolicy: best-effort`** and **`topologyManagerScope: pod`** (aligns allocated CPUs, RAM, NICs, and GPUs on the same NUMA node so DMA does not cross the inter-socket UPI/Infinity Fabric link).
+- **`kubeReserved: {cpu: 250m}`** (reserves CPU headroom for node daemons).
+</details>
+
+<details>
+<summary>15. What numeric priorities are assigned to `kube-default-etcd`, `kube-default-master`, `kube-default-worker`, and `kube-default-netq` overlays?</summary>
+
+`kube-default-etcd` = **`500`**, `kube-default-worker` = **`500`**, `kube-default-netq` = **`501`**, and `kube-default-master` = **`510`** (so a node placed in both master and worker overlays receives the `510` control-plane `kubelet` settings).
+</details>
+
+<details>
+<summary>16. What resources does `cm-kubernetes-setup --add-user john` create?</summary>
+
+It creates a Kubernetes user certificate and `~/.kube/config` for PAM user `john`, a dedicated namespace **`john-restricted`**, a ServiceAccount `john`, an RBAC `edit` role binding inside `john-restricted` (plus read-only node access), and Kyverno policy rules managed by the BCM Permissions Manager.
+</details>
+
+<details>
+<summary>17. What two security restrictions does Kyverno enforce by default on a user added with `--add-user john`, and how does `--allow-all-uids` change that?</summary>
+
+By default, Kyverno (1) forces the user's pods to run with **`john`'s own POSIX UID and GID**, and (2) restricts **`hostPath` volume mounts strictly to `/home/john`** (plus any paths in `--user-paths`). If `--allow-all-uids` is enabled so containers can run as arbitrary UIDs, **`hostPath` mounts are rejected completely** to prevent host-filesystem privilege escalation.
+</details>
+
+<details>
+<summary>18. In BCM's operator wizard, what is the dependency rule between Grafana Alloy and Grafana Loki, and when does Loki's `SimpleScalable`/`Distributed` mode screen appear?</summary>
+
+Grafana Alloy (log collector) **requires** Grafana Loki (log store)—selecting Alloy without Loki is rejected by the wizard. Loki's deployment-mode screen (`SingleBinary` vs `SimpleScalable` vs `Distributed`) appears **only if the cluster has at least `3` worker nodes AND a default `StorageClass`**; otherwise `SingleBinary` is chosen automatically.
+</details>
+
+<details>
+<summary>19. How does external ingress traffic reach Kubernetes services in BCM 11.33+ via the Gateway API?</summary>
+
+External HTTPS traffic on **port `443`** hits the head node's NGINX Gateway proxy (`KubernetesIngressServerProxy`), which routes by TLS SNI to the **`bcm-gateway`** `Gateway` resource's **MetalLB LoadBalancer VIP**, where **Kgateway proxy pods** forward traffic via `HTTPRoute` / `TLSRoute` objects to backend services.
+</details>
+
+<details>
+<summary>20. In BCM's Kubernetes Cluster API (`cm-kubernetes-capi-setup`), why do newly created BYOH workload clusters start in `NotReady`, and what is the template fallback order?</summary>
+
+Newly created CAPI workload clusters start `NotReady` because **no CNI plugin is installed by default** until you apply a CNI manifest (such as Calico). When resolving the BCM `KubeCluster` template, BCM checks in order: (1) the `infrav1.nvidia.x-k8s.io/capi-kube-template` label on the `Cluster` YAML, (2) **`capi-<mgmt_cluster_name>-template`**, and (3) **`capi-template`**.
+</details>
+
+## Sources and review notes
 
 - **BCM 11 Containerization Manual:** chapter 1 (introduction), chapter 4 in full (4.1 reference architecture, 4.2 setup, add-ons, Helm, CLI options, TUI screens, testing; 4.3 NVIDIA GPUs and `generic::containerd`; 4.4 AMD GPUs and `labelsets`; 4.5 overlays; 4.6 disabling; 4.7 `kubernetes` mode options; 4.8 `EtcdCluster` options; 4.9 roles; 4.10 to 4.15 security, users, Kyverno, Permissions Manager; 4.16 external access; 4.17 Gateway; 4.18 Calico BGP model; 4.19 the 4 Kubernetes health checks; 4.20 `local-path` StorageClass; 4.21 Harbor `imagePullSecrets`; 4.22 upgrades), chapter 5 (Kubernetes Apps and `appgroups`), chapter 6 in full (6.1–6.2 operator versions and Helm charts, 6.3 Argo CD, 6.4 Grafana Alloy, 6.5 Grafana Loki, 6.6 Jupyter Kernel Operator, 6.7 GPU Operator, 6.8 Network Operator, 6.9 NetQ Operator, 6.10 Prometheus/Grafana, 6.12 Spark Operator, 6.13 Zalando Postgres Operator, 6.14 NVIDIA NIM Operator, 6.15 `Modify operators` in 11.34+; Run:ai 6.11 is in chapter 8.16), chapter 7 (Kubernetes on Edge `--skip-*` flags), chapter 8 (Kubernetes Cluster API / CAPI), and Appendix A (self-signed Gateway TLS certificate for testing; Appendices B and C are in chapter 8.14).
 - **Cross-reference:** Part 11 for Kubernetes GPU scheduling, DCGM and MIG in depth; Part 12 for the Network operator and RDMA.

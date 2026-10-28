@@ -224,11 +224,11 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 8.3 | Cluster configuration: networks, nodes and categories | reviewed | 6415 | `netconf_lab.py` (67/67 pass), `BCM-A 3`, `VL10 ch2` |
 | 8.4 | Node provisioning: images, kernels, categories and the PXE flow | reviewed | 6650 | `provision_lab.py` (82/82 pass), `BCM-A 5,9`, `VL10 ch2` |
 | 8.5 | cmsh and Base View: administering the cluster | reviewed | 3570 | `cmsh_lab.py` (55/55 pass), `BCM-A 2` |
-| 8.6 | Users, authentication and security in BCM | drafted | 2780 |  |
-| 8.7 | Power, BMC and hardware management in BCM | drafted | 3287 |  |
-| 8.8 | Workload managers under BCM: Slurm setup | drafted | 4206 |  |
-| 8.9 | Kubernetes under BCM: deployment and GPU enablement | drafted | 5519 |  |
-| 8.10 | Containerization in BCM: Docker, Apptainer and enroot | drafted | 2535 |  |
+| 8.6 | Users, authentication and security in BCM | reviewed | 3383 | `security_lab.py` (51/51 pass), `BCM-A 2.3,6` |
+| 8.7 | Power, BMC and hardware management in BCM | reviewed | 3969 | `hardware_lab.py` (45/45 pass), `BCM-A 3.7,4,14.5,14.7` |
+| 8.8 | Workload managers under BCM: Slurm setup | reviewed | 5017 | `slurm_lab.py` (60/60 pass), `BCM-A 7` |
+| 8.9 | Kubernetes under BCM: deployment and GPU enablement | reviewed | 6292 | `k8s_lab.py` (64/64 pass), `BCM-C 4,5,6,7,8` |
+| 8.10 | Containerization in BCM: Docker, Apptainer and enroot | reviewed | 3190 | `containers_lab.py` (35/35 pass), `BCM-C 2,3`, `SCL 16` |
 | 8.11 | Monitoring, health checks and alerts in BCM | drafted | 3939 |  |
 | 8.12 | High availability and head-node failover | drafted | 3853 |  |
 | 8.13 | Day-2 operations: updates, scaling, hardware replacement, disaster recovery | drafted | 3014 |  |

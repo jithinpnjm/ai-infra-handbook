@@ -222,7 +222,7 @@ Slurm's three cgroup plugins are on by default: `proctrack/cgroup`, `task/cgroup
 9. Hand-editing `slurm.conf`.
 10. `ConstrainDevices` off on a shared GPU cluster.
 
-## 12. Exercises
+## Exercises
 
 1. Run `python3 slurm_lab.py`. Pick four checks and explain each rule in your own words.
 2. Using `wlm_cluster()`, add a third overlay that fixes the GPU trap without moving nodes. Which priority is legal?
@@ -239,30 +239,140 @@ Slurm's three cgroup plugins are on by default: `proctrack/cgroup`, `task/cgroup
 - "How do you run containers on Slurm under BCM?" Pyxis and Enroot via `cm-wlm-setup`, `srun --container-image`, shared Squashfs images for a controlled cache.
 - "Upgrade Slurm without losing config?" One major at a time, drain, stop, replace packages in head and images, set the version, reinstall Pyxis.
 
-## 14. Checkpoint questions (20)
+## Checkpoint questions (20)
 
-1. Which workload managers does BCM 11 support?
-2. What are the three values of `usernodelogin` and which is the default?
-3. How can a diagnostic user bypass `onlywhenjob`?
-4. Name the four Slurm roles.
-5. What does the `wlm-headnode-submit` overlay do and at what priority?
-6. Why can't you create a WLM from cmsh?
-7. What is the default priority of the GPU client overlay, and what problem can it cause?
-8. How do you find which overlay supplies a node's `slurmclient` role?
-9. What are the seven `gpuautodetect` values, and which writes no AutoDetect line?
-10. What does a `nodesets` value turn into in `slurm.conf`?
-11. When a queue has `nodesets` set, what happens to its compute nodes list?
-12. Can WLM servers be one head and one compute node?
-13. What are the three `slurmctldstartpolicy` values and their defaults?
-14. Which script is the pre-failover script for Slurm takeover?
-15. What mix is not allowed for accounting nodes?
-16. What do Pyxis and Enroot each do?
-17. What does a shared Enroot cache change in the prolog?
-18. What is `ConstrainDevices` for?
-19. Which steps does a Slurm major upgrade need besides installing packages in the head node?
-20. What does `drain --setactions reboot` do?
+<details>
+<summary>1. Which workload managers does BCM 11 support, and why must you never install upstream OS distribution `slurm` packages on a BCM cluster?</summary>
 
-## 15. Sources and review notes
+BCM 11 supports **Slurm** (`25.05`, `25.11`, `26.05`) and **IBM Spectrum LSF 10.1** (or none). Distribution `slurm` packages conflict with BCM's integrated Slurm packages and are not managed by `CMDaemon`.
+</details>
+
+<details>
+<summary>2. What are the three values of the category property `usernodelogin`, and how is `onlywhenjob` enforced on compute nodes?</summary>
+
+- **`always` (default):** All users can SSH directly into the node at any time.
+- **`never`:** Only `root` can SSH into the node.
+- **`onlywhenjob`:** Regular users can SSH into the node **only while they have an active WLM job running on that node**, enforced via **`pam_bright.so`** in `/etc/pam.d/sshd`.
+</details>
+
+<details>
+<summary>3. When `usernodelogin` is set to `onlywhenjob`, how do you allow a diagnostic account or admin group to SSH into compute nodes without a running job?</summary>
+
+Add the username to **`/etc/security/pam_bright.d/pam_allow.conf`** (or the group name to **`pam_allow_group.conf`**) inside the node's **software image**, then run `imageupdate -w`.
+</details>
+
+<details>
+<summary>4. Name the four Slurm roles in BCM and the daemon or function each represents.</summary>
+
+1. **`slurmserver`:** Runs the Slurm controller (`slurmctld`).
+2. **`slurmclient`:** Runs the compute node daemon (`slurmd`) and generates `NodeName`/`gres.conf` entries.
+3. **`slurmsubmit`:** Configures login/submit nodes with client binaries and config.
+4. **`slurmaccounting`:** Runs the accounting daemon (`slurmdbd`).
+</details>
+
+<details>
+<summary>5. What is the `wlm-headnode-submit` configuration overlay, and why is its priority set to `600`?</summary>
+
+It is a built-in overlay applied to **all head nodes** at priority **`600`** (above the standard `500` WLM overlays) carrying the `slurmsubmit` role across all installed workload managers so the head node can always submit and query jobs.
+</details>
+
+<details>
+<summary>6. Why must you use `cm-wlm-setup` (or the Base View WLM wizard) to create a WLM cluster rather than running `add` inside `cmsh` `wlm` mode?</summary>
+
+Because setting up a WLM requires coordinated creation of the `wlm` object, MUNGE keys, database accounting, cgroup trees, configuration overlays, and health checks—creating a bare `wlm` object manually in `cmsh` is unsupported due to configuration pitfalls.
+</details>
+
+<details>
+<summary>7. Explain the **GPU client overlay priority trap** (`slurm-client` at `500` vs `slurm-client-gpu` at `450`).</summary>
+
+When `cm-wlm-setup` creates `slurm-client` at default priority **`500`** (covering `default` category) and `slurm-client-gpu` at priority **`450`**, any GPU node left in both overlays resolves its `slurmclient` role from the higher-priority **`500` (`slurm-client`) overlay**—silently dropping all GPU GRES settings. Fix it by placing GPU nodes in their own category excluded from `slurm-client`, or setting `slurm-client-gpu` to a priority above `500` (e.g., `550`).
+</details>
+
+<details>
+<summary>8. Which `cmsh` command shows the exact configuration overlay and numeric priority supplying each role on `gpu001`?</summary>
+
+**`cmsh -c "device use gpu001; roles; list -p"`** (which prints `[overlay:slurm-client:500] slurmclient` vs `[750]` for a node-assigned role).
+</details>
+
+<details>
+<summary>9. What are the seven supported values for `gpuautodetect` in BCM, and what does `none` do?</summary>
+
+**`bcm`** (BCM writes vendor/count), **`none`** (writes **no** `AutoDetect` line in `gres.conf`), **`nvml`** (NVIDIA NVML), **`rsmi`** (AMD ROCm SMI), **`oneapi`** (Intel), **`nrt`** (AWS Neuron), and **`off`**.
+</details>
+
+<details>
+<summary>10. What does setting `nodesets ns1` vs `nodesetfeatures bigmem` on a `slurmclient` role generate in `slurm.conf`?</summary>
+
+`nodesets ns1` writes **`NodeSet=ns1 Nodes=node001`**; `nodesetfeatures bigmem` appends `bigmem` to the node's **`Features=`** list and writes **`NodeSet=bigmem Feature=bigmem`**.
+</details>
+
+<details>
+<summary>11. On a Slurm `jobqueue` (partition) in BCM, what happens to the queue's explicit compute-nodes list if the queue's `nodesets` parameter is non-empty?</summary>
+
+If `nodesets` is set on the queue, BCM **uses only the `nodesets` and completely ignores the queue's compute-nodes list**.
+</details>
+
+<details>
+<summary>12. Can you place primary and backup `slurmserver` (`slurmctld`) roles—or `slurmaccounting` (`slurmdbd`) roles—on one head node and one regular compute node?</summary>
+
+**No.** Both `slurmserver` and `slurmaccounting` HA pairs must be placed on **either two head nodes OR two regular compute nodes, never a mix of one head node and one compute node**.
+</details>
+
+<details>
+<summary>13. What are the three values of `slurmctldstartpolicy` on the `slurmserver` role, and why is `TAKEOVER` the default on HA head nodes?</summary>
+
+The three values are **`TAKEOVER`** (default on HA), **`ALWAYS`** (default on non-HA), and **`ACTIVEONLY`**. Under `TAKEOVER`, when `cmha makeactive` runs `/cm/local/apps/cmd/scripts/slurm.takeover.sh` (`scontrol takeover`), `CMDaemon` does not fight the takeover by immediately restarting the stopped primary `slurmctld`.
+</details>
+
+<details>
+<summary>14. How do you add custom `NodeName` parameters (like `BcastExclude=/dev/shm`) to `slurm.conf` without `CMDaemon` overwriting them (`FreezeChangesToSlurmConfig = false`)?</summary>
+
+Configure them under **`roles[slurmclient] -> nodecustomizations`** (`add BcastExclude; set value /dev/shm; commit`), which causes `CMDaemon` to append `BcastExclude=/dev/shm` directly to the generated `NodeName` lines in `slurm.conf` within ~1 minute.
+</details>
+
+<details>
+<summary>15. In `cmsh` `wlm -> jobs` mode, what is the difference between `show <job_id>` and `info <job_id>`?</summary>
+
+`show <job_id>` queries **Slurm directly** (`scontrol show jobs`) for a currently pending or running job; `info <job_id>` queries the **BCM database** (which works for completed historical jobs up to `JobInformationKeepDuration = 28 days` / `JobInformationKeepCount = 8192` and includes `Wh` power usage from `wlmjobpowerusagesettings`, with up to ~1 minute lag on brand-new jobs).
+</details>
+
+<details>
+<summary>16. Which two switches must BOTH be enabled in `cmsh` for a health check (such as `ib`) to run as a Slurm `prejob` check and prevent the "Black Hole Node Syndrome"?</summary>
+
+1. Enable `prejob` on the health check itself: **`monitoring setup; set ib prejob yes; commit`**.
+2. Enable `enableprejob` on the WLM instance: **`wlm use slurm; set enableprejob yes; commit`**.
+(Note: a node drained by a failing prejob check is **not** automatically undrained; an admin must `undrain` it after repair.)
+</details>
+
+<details>
+<summary>17. How does `cm-wlm-setup --with-pyxis` integrate Enroot and Pyxis with Slurm, and does it require a compute node reboot?</summary>
+
+It installs the `enroot` package into the client software images, compiles the `pyxis` SPANK plugin against the installed Slurm version, links `/etc/enroot/enroot.conf` to `/cm/shared/apps/slurm/etc/enroot.conf`, and enables `srun --container-image=...` **without requiring a node reboot**.
+</details>
+
+<details>
+<summary>18. Why must `ConstrainDevices` be enabled in the WLM `cgroups` submode on a multi-tenant GPU cluster?</summary>
+
+`ConstrainDevices` configures `task/cgroup` in `cgroup.conf` to isolate `/dev/nvidia*` device nodes per job step so a job requesting 1 GPU cannot access the other 7 GPUs on the node.
+</details>
+
+<details>
+<summary>19. List the required steps to upgrade Slurm from one major version to the next (e.g., `25.05` $\rightarrow$ `25.11`) in BCM.</summary>
+
+1. Upgrade **one major version at a time** (never skip a major release).
+2. `drain` compute nodes and wait for running jobs to finish; stop `slurmctld` and `slurmdbd`.
+3. Remove old Slurm packages and install the new Slurm packages on **both the head node AND inside every software image**.
+4. Update the `version` property in `cmsh` (`wlm use slurm; set version 25.11; commit`).
+5. **Reinstall Pyxis** (`cm-wlm-setup --reinstall-pyxis`) so the SPANK plugin is recompiled against the new Slurm ABI.
+</details>
+
+<details>
+<summary>20. How do you chain `drain` actions in `cmsh` to automatically power-reset (reprovision) busy nodes as their jobs finish and undrain them once healthy?</summary>
+
+Run: **`cmsh -c 'device; drain -n <nodes> --setactions powerreset ; drain -n <nodes> --appendactions undrain'`**.
+</details>
+
+## Sources and review notes
 
 - **BCM 11 Administrator Manual, chapter 7:** 7.1 (choices), 7.2 (forcing jobs through the WLM, HA, `slurmctldstartpolicy`), 7.3 (`cm-wlm-setup` CLI and TUI, GPU screens, accounting, Pyxis and Enroot), 7.4 (enabling and disabling, the role overlays, 7.4.3 monitoring WLM services and `list -p`), 7.5 (Slurm configuration, `FreezeChangesTo<WLM>Config`, nodesets, queues, GPU autodetect, upgrade steps), 7.6 (Base View jobs and queues), 7.7 (`wlm`, `activeservers`, `jobs` submode `show` vs `info`, `wlmjobpowerusagesettings`, `filter`, `statistics`, `grid`, `trackedjobs`, `pidsgpus`, `stdout`/`stderr`/`stdin`, `persistent`/`forget` and `JobInformation*` directives, `jobqueue`, 7.7.4 `drain` action chaining), 7.8 (new category/queue example and 7.8.2 prejob/postjob health checks and Black Hole Node Syndrome), 7.9 (power saving with `cm-scale`), 7.10 (cgroups), 7.11 (`nodecustomizations` in `slurm.conf` and `lsb.hosts`).
 - **Not read in depth:** LSF installation details (7.5.2), and 7.5 subsections on building Slurm RPMs from source, IMEX per-job flags, GPU workload power profiles, Prometheus job accounting and the PRS plugin.
