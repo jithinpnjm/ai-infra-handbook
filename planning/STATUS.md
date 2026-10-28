@@ -411,6 +411,6 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 5.35 | Multicluster and fleet management | drafted | 3699 |  |
 | 6.5 | OpenMP, compilers and optimisation flags | drafted | 7252 | `omp_compilers_lab.py` (3/3 pass); `validate_chapter.py` 12/12 PASS |
 | 6.17 | Other schedulers: PBS, Torque, LSF and Flux | reviewed | 5211 | `pbs2slurm_lab.py` (3/3 pass), `loss_check.py` PASS, `SCL 14` |
-| 6.25 | Remote access, bastions, Open OnDemand and user environments | drafted | 3380 |  |
+| 6.25 | Remote access, bastions, Open OnDemand and user environments | reviewed | 5859 | `sshd_audit_lab.py` (3/3 pass), `SCL 18`, `SCL 27` |
 | 6.27 | Backup and data protection | drafted | 4375 |  |
 | 19.10 | Customer workshops and the consulting method | scaffold |  |  |

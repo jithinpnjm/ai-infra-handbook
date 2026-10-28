@@ -4,7 +4,7 @@ title: "6.25 Remote access, bastions, Open OnDemand and user environments"
 sidebar_label: "6.25 Remote access, bastions, Open OnDemand and user environments"
 sidebar_position: 25
 description: "How users reach and use a cluster: SSH (login nodes, bastions, jump hosts, keys, certificates, MFA, hardening with a tested sshd audit), X11 and port forwarding, Open OnDemand architecture and cluster configuration, Jupyter and VS Code access, shells and dotfiles, quotas and etiquette, and the human side: tickets, documentation, onboarding and education"
-status: "drafted"
+status: "reviewed"
 tier: "3"
 level: "I"
 lab_venue: "GCP / GKE"
@@ -108,9 +108,20 @@ Host login
 
 Use `ProxyJump` (not agent forwarding) to reach internal hosts: agent forwarding exposes the user's agent socket to root on intermediate hosts and should be avoided or limited (`ssh -J` keeps keys on the laptop). Use `scp`/`rsync`/`sftp` or Globus for data; `ssh -L 8888:localhost:8888` style tunnels to reach a Jupyter server running on a compute node via login (`ssh -L 8888:gpu014:8888 login`), if the policy allows `AllowTcpForwarding`; `tmux`/`screen` on login nodes to keep sessions across disconnects (not for compute).
 
-### X11 and graphical tools
+### X11 and graphical tools (`SCL` Chapter 18)
 
-The SCL book walks through X11 forwarding with an X server on the client (Xming on Windows, with a firewall rule restricted to the machines in use; PuTTY's "Connection/SSH/X11 Forwarding" option sets `DISPLAY` and `XAUTHORITY` automatically; the remote host needs `xauth`). Today: X11 forwarding (`ssh -X`/`-Y`, server `X11Forwarding yes`) is slow over WAN and increases attack surface, so prefer web-based apps (Open OnDemand VNC desktops, Jupyter) or VS Code remote. If needed, `ssh -X` works with `salloc`/`srun --x11` (Slurm's `PrologFlags=X11`, 6.14).
+`SCL` Chapter 18 (*Remote User Access*) explains how graphical access works when scientific visualization or graphical tools must run on the cluster rather than transferring multi-terabyte datasets to a workstation:
+
+- **X-Window System (`X11` / `X.Org Server`) architecture:** Unlike Microsoft Windows, the Linux graphics subsystem is not baked into the kernel. X-Window uses a client/server model where the **X server** owns the physical or virtual display (`:0` by default, e.g., `xclock -display :0` or `export DISPLAY=:0`) and consists of two main parts: (1) hardware drivers for input/output devices (keyboard, mouse, video adapters, monitors) and (2) an **X protocol** handler communicating with graphical application **X clients** over UNIX domain sockets or Internet TCP sockets.
+- **Window managers, desktop environments, and screen managers:** X11 draws and moves windows but delegates window framing and placement to a **window manager**—ranging from Microsoft Windows / Macintosh-like managers (**`Kwin`** in **KDE**, **`Metacity`** in **GNOME**), to frame-based tiling managers like **`Ion`**, minimalistic **`twm`**, or full-featured **`Enlightenment`** (with the Single UNIX Specification standardizing **`CDE`**, and **`freedesktop.org`** standardizing interoperability). The reference **`X.Org Server`** reads **`/etc/X11/xorg.conf`** (which has higher priority if it exists) and **`/etc/X11/xorg.conf.d/`** (containing multiple files with separate configuration sections; if auto-detection fails, `Xorg -configure` generates `xorg.conf.new`—documented in `SCL` Chapter 28 *"One-Two-Three Instructions"* and `man xorg.conf`—and logs startup errors to `/var/log/Xorg.0.log` where `0` is the display number). From a terminal, **`startx`** launches the X server and `~/.xsession` / `/etc/X11/Xsession.d`; when run as a system service, a **screen manager**—**`xdm`** (`/etc/X11/xdm/` running `/etc/X11/xdm/Xsession`), **`gdm`** (`/etc/gdm/`), **`kdm`** (`/etc/kde4/kdm/`), or **`lightdm`**—authenticates the user and starts the session.
+- **Remote X11 from Windows (`Xming` and PuTTY):** On Windows workstations, `SCL` Chapter 18 highlights the open-source **`Xming`** X server (`http://www.straightrunning.com/XmingNotes/`), available on the official site in two variants—standard **`xming`** and **`xming Mesa`** (which allows running applications using OpenGL on a remote terminal)—alongside downloadable backgrounds (including Cyrillic ones) and **`Xlaunch`** for managing startup parameters:
+  ```text
+  "C:\Program Files\Xming\Xming.exe" :0 -clipboard \
+    -multiwindow -xkblayout us,ru -xkbvariant winkeys \
+    -xkboptions grp:ctrl_shift_toggle
+  ```
+  Here `:0` sets the display number, `-clipboard` shares the Windows clipboard, `-multiwindow` gives each X11 app its own native window, `-xkblayout us,ru` sets English and Russian keyboard layouts, `-xkboptions grp:ctrl_shift_toggle` switches layouts on `Ctrl+Shift`, and `-xkbvariant winkeys` enables Windows keys. Restrict Xming's Windows Firewall rule to known cluster hosts. Enabling **"Connection/SSH/X11 Forwarding"** in PuTTY automatically sets `DISPLAY` and populates `XAUTHORITY` via **`xauth`** on the remote node (avoiding insecure IP-based `C:\Program Files\Xming\X0.hosts` or `xhost +computer_name` rules).
+- **Faster remote desktop alternatives (`VNC`, `RDP`, `x2go`, `NX`, `SPICE`):** Because raw X11 forwarding (`ssh -X`/`-Y`, or `srun --x11` with `PrologFlags=X11`) is chatty and slow over WAN links, `SCL` Chapter 18 compares compressed remote desktop protocols: **VNC** (`tightvncserver`, **`TigerVNC`**), **RDP**, **`x2go`** (open-source protocol derived from NoMachine **`NX`** that tunnels over SSH without a persistent daemon and can stream individual application windows), **NoMachine `NX`**, and **`SPICE`** (alongside browser terminals like `shellinabox` and log monitors like `logcheck` and `logwatch`). As `SCL` Chapter 18 summarizes: for a supercomputer, as for any server, the principle is **the less access, the better—without clamping users in a hedgehog's grip**; SSH combined with SCP/SFTP (and web portals like Open OnDemand) is sufficient for 99% of normal operation.
 
 ## 3. Open OnDemand
 
@@ -182,7 +193,7 @@ JupyterHub with a Slurm spawner (batchspawner/wrapspawner); SSH-based remote dev
 
 The book opens with a blunt point: "one of the most important components of any supercomputer is its customers, or users. Without them, it is of no use to anyone". Its four themes translate directly:
 
-- **Correspondence (`/etc/aliases`, `newaliases`, and `Mailman`)**: set up a *virtual address* (an alias on the mail server forwarding to several admins), never a personal or individual work address; it lets you add support staff over time and separates user requests from other mail. On Linux mail servers, add an entry in `/etc/aliases` and rebuild the alias database with `newaliases` `(untested here)`:
+- **Correspondence (`/etc/aliases`, `newaliases`, and `Mailman`)**: set up a *virtual address* (an alias on the mail server forwarding emails to multiple addresses—rather than a personal/work address or a shared `IMAP` mailbox on the server), so you can connect support assistants immediately and separate user requests from other correspondence. On Linux mail servers, add an entry in `/etc/aliases` and rebuild the alias database with `newaliases` `(untested here)`:
   ```text
   # /etc/aliases (untested here)
   cluster-support: foo, bar, expert@supermail.org
@@ -191,12 +202,12 @@ The book opens with a blunt point: "one of the most important components of any 
   # (untested here)
   newaliases
   ```
-  Configure admins' mail clients to filter messages into `support` (open) and `support_done` (resolved) folders and to send replies from `cluster-support@your.server` with both `Reply-To` and `BCC` set to `cluster-support@your.server` so all support staff see every reply. For cluster-wide maintenance and update announcements, automate subscription at account creation using a mailing-list manager such as **Mailman** or **majordomo** configured in **moderated mode** (restricting senders to `cluster-support`) so a user who accidentally replies to the list does not broadcast to all users. If you provide a chat channel (Slack, Rocket.Chat, Microsoft Teams, Telegram), require users or a channel bot to turn support requests into tracked tickets.
-- **Accounting for requests (`RT`, `OTRS`, `Trac`, `OpenProject`)**: track user support requests, hardware failures, software installation requests, and access approvals in a dedicated helpdesk/ticketing system such as **RT** (Request Tracker), **OTRS**, **Trac**, or **OpenProject** (or modern equivalents like Jira Service Management, GitLab issues, Zendesk, ServiceNow)—one ticket per problem, with status, creator, owner, and full correspondence history. The book advises against repurposing software bug trackers such as Bugzilla or Redmine for cluster helpdesk work because their workflows fit code defects rather than operational support.
+  Configure admins' mail clients (for example in Thunderbird under `Tools/Message Filters` filtering on the `to whom/copy` field) to route incoming messages into `support` (open) and `support_done` (resolved, problem solved, question answered) folders and to send replies from `cluster-support@your.server` with both `return address (reply-to)` and `blind carbon copy (bcc)` set to `cluster-support@your.server` so all support assistants immediately see every reply. Observe clean email correspondence culture: remove unnecessary quotations of the user's question (headers, addresses, signatures), leaving only the key lines, and write your answer directly underneath them; if a letter contains several questions, answer each question separately under its corresponding quotation (`SCL` Chapter 27). For cluster-wide maintenance and update announcements, automate subscription at account creation using a mailing-list manager such as **Mailman** or **majordomo** configured in **moderated mode** (restricting senders to `cluster-support`) so a user who accidentally replies to the list does not broadcast to all users. If you provide a chat channel (Slack, Rocket.Chat, Microsoft Teams, Telegram), require users or a channel bot to turn support requests into tracked tickets.
+- **Accounting for requests (`RT`, `OTRS`, `Trac`, `OpenProject`)**: track user support requests, hardware failures, software installation requests, and access approvals in a dedicated helpdesk/ticketing system such as **RT** (Request Tracker), **OTRS**, **Trac**, or **OpenProject** (or modern equivalents like Jira Service Management, GitLab issues, Zendesk, ServiceNow)—one ticket per problem, with status, creator, owner, and full correspondence history, plus internal data such as event logs, requests to hardware and software manufacturers' technical support, and preventive maintenance plans. These systems integrate well with email and web forms, though `SCL` Chapter 27 notes two recurring implementation challenges: (1) **complexity of authorization of users**, because helpdesk accounts are often not tied directly to supercomputer user accounts, and (2) **complexity of linking actions in the ticketing system to actions on the supercomputer and vice versa**. The book also advises against repurposing software bug trackers such as Bugzilla or Redmine for cluster helpdesk work because their workflows fit code defects rather than operational support.
 - **Actualization (annual account re-registration for "dead soul" accounts)** and **keeping information current**:
-  - *Annual account re-registration ("actualization")*: on multi-institution or research clusters, after three or four years many accounts become inactive ("dead souls"), sometimes holding `5%` or more of disk space. The book warns against blindly deleting accounts that have not logged in for a year, because sooner or later that rule deletes critical experiment data and blames the administrator. Instead, run an **annual re-registration** campaign with a window of at least **two to three weeks** (to allow for travel and vacations) where users confirm their account is still needed and submit a brief activity report via a web form (handling duplicate submissions, recording the timestamp, notifying admins, and returning a confirmation reference number to the user). Accounts that do not re-register within the window are **blocked** (not immediately deleted) and their data is kept (or moved to archive storage) until at least the next annual re-registration cycle, allowing returning researchers to re-register and recover access.
+  - *Annual account re-registration ("actualization")*: on multi-institution or research clusters, after three or four years when the number of accounts is in the dozens or hundreds, many accounts become inactive ("dead souls"), sometimes occupying `5%` or more of disk space. The book warns against introducing draconian rules that blindly delete accounts that have not logged in for a year, because sooner or later that rule deletes the data of an important experiment or an important employee and the administrator will be blamed despite the rules. Instead, run an **annual re-registration** campaign with a window of at least **two to three weeks** (to allow for business trips, vacations, and time to write an activity report) where users confirm their account is up to date—either via email distribution with automated processing of letters or, more conveniently, by filling out a web form (part of your IT infrastructure or a standalone `cgi-script`) that enters the results into a database or log, handles duplicate data (when someone submits the form two or three times by mistake), saves the submission date, notifies the administrator, and returns a confirmation message number to the submitter. Users who have not re-registered within the window are **blocked** (not deleted) and their data is kept or sent to archive storage until at least the next re-registration cycle, ensuring that users who have not re-registered are still able to re-register later.
   - *Living documentation*: documentation, status pages, MOTD, and mailing lists must be updated with every cluster change; stale docs generate tickets. Maintain a status page (planned maintenance, incidents, post-mortems), a changelog of software stacks and policies, and versioned docs in Git.
-- **Education**: onboarding sessions, "first job in 15 minutes" tutorials, office hours, workshops on Slurm, data management, GPU profiling, Python environments, containers; example repositories; a FAQ built from ticket analysis (replying with direct links such as `http://your.server/docs/faq.html#p1.1` rather than "read the docs"); and pointers to external textbooks such as Victor Eijkhout's *The Art of HPC* (`https://theartofhpc.com/`). For AI clusters: checkpointing and resume patterns, NCCL debugging basics, data sharding, right-sizing GPU requests.
+- **Education**: provide as much information as possible to help users solve issues before asking support—covering day-to-day cluster limits, partitioning, and priorities structure, software vendor best practices and FAQs, onboarding sessions, "first job in 15 minutes" tutorials, workshops on Slurm, data management, GPU profiling, Python environments, and containers, a FAQ built from ticket analysis (replying with direct links such as `http://your.server/docs/faq.html#p1.1` and reusable email templates rather than "read the docs, it's written for you"), and pointers to Victor Eijkhout's *The Art of HPC* (`https://theartofhpc.com/`) from TACC (Texas Advanced Computing Center), which covers parallel programming, HPC packages, and Slurm fundamentals. For AI clusters: checkpointing and resume patterns, NCCL debugging basics, data sharding, right-sizing GPU requests.
 
 Support metrics: time to first response, time to resolution, tickets per user, top categories, user satisfaction; review monthly and convert top categories into docs or tooling. Incident communication: acknowledge quickly, state impact and workaround, update on a cadence, close with cause and prevention.
 
@@ -205,6 +216,12 @@ Support metrics: time to first response, time to resolution, tickets per user, t
 Least privilege everywhere; restrict portal and bastion networks; MFA on all remote access; short-lived certificates; log and review; patch bastion/portal/OOD promptly (internet-facing); isolate management networks (Part 7, 18); protect tokens (JWT for Slurm REST, Jupyter tokens); disable Jupyter terminal where policy requires; scan user-run web apps; data classification for what may leave via DTNs; acceptable-use policy and a documented process for suspending an account quickly; incident response runbook (compromised key: revoke in directory, kill sessions, search for persistence, rotate shared secrets).
 
 ## 7. Lab
+
+First, run the self-checking Python lab (`code/part06/sshd_audit_lab.py`) locally. It verifies `parse()` and `audit()` in `code/part06/sshd_audit.py` on a vulnerable `sshd_config` (`4` `ERROR`s caught: `PermitRootLogin=yes`, `PasswordAuthentication=yes`, `PermitEmptyPasswords=yes`, `PermitUserEnvironment=yes`) and a hardened bastion `sshd_config` (`0` findings), confirms that `parse()` enforces OpenSSH's "first occurrence of a keyword wins" rule and stops before `Match` blocks, and checks the access architecture ports (`22`, `443`, `8888`) and `SCL` Chapter 27's `5%` inactive-account disk threshold:
+
+```bash
+python3 code/part06/sshd_audit_lab.py
+```
 
 Tested: run `sshd_audit.py` against your own `sshd_config` (or `sshd -T` output saved to a file, global section only) and fix every ERROR and warn.
 
@@ -222,44 +239,170 @@ Untested: 1) bastion + login VM: configure `ProxyJump`, `AllowGroups`, key-only 
 - What do you put in a bastion's `sshd_config`?
 - A user can SSH to the login node but not to their compute node. What are the possible policy and technical reasons?
 
-## 9. Checkpoint questions (30)
+## Exercises
 
-1. What roles do the bastion, login node, DTN and portal play?
-2. What is `ProxyJump` and why use it?
-3. Why avoid agent forwarding?
-4. List SSH authentication methods and one risk each.
-5. How do SSH certificates work?
-6. How can keys come from the directory?
-7. State the default of `PermitRootLogin` in current OpenSSH.
-8. What is `MaxStartups` default?
-9. What is `PerSourcePenalties`?
-10. Why is `PermitUserEnvironment yes` dangerous?
-11. What do `ClientAliveInterval` and `ClientAliveCountMax` do?
-12. How do you see the effective sshd configuration?
-13. What does `sshd_audit.py` check and what does it ignore?
-14. What does `pam_slurm_adopt` do?
-15. How does X11 forwarding work and why discourage it?
-16. What is OOD's Apache role?
-17. What is a PUN?
-18. Where do OOD cluster configs live?
-19. What must the cluster YAML file name match?
-20. What is the Slurm `--export` caveat in OOD?
-21. What is batch connect?
-22. Which interactive apps suit AI work?
-23. How do you stop idle interactive sessions wasting GPUs?
-24. What should `.bashrc` not do?
-25. Name three storage etiquette rules.
-26. In SCL chapter 27, how do you configure a support mail alias on Linux, and how does the annual "actualization" (re-registration) workflow handle inactive "dead soul" accounts safely? (Answer: add `cluster-support: foo, bar, expert@supermail.org` in `/etc/aliases` and run `newaliases`; once a year give users a 2–3 week window to re-register and submit an activity report, blocking—rather than immediately deleting—unconfirmed accounts until at least the next annual cycle.)
-27. Why a virtual support address?
-28. What belongs on a status page?
-29. Which metrics measure support quality?
-30. Outline a compromised-key response.
+1. **Auditing and Hardening `sshd_config` on Bastion and Login Nodes (`code/part06/sshd_audit.py` & `sshd_audit_lab.py`):** Run `python3 code/part06/sshd_audit_lab.py`. Explain why `sshd_audit.py` treats `PermitRootLogin=yes`, `PasswordAuthentication=yes`, `PermitEmptyPasswords=yes`, and `PermitUserEnvironment=yes` as hard `ERROR`s, why `parse()` uses `cfg.setdefault()` to honor OpenSSH's "first occurrence wins" semantics, and how to inspect effective `Match`-evaluated settings with `sshd -T -C user=alice,host=x,addr=1.2.3.4`.
+2. **Designing `ProxyJump` Client Configs and SSH Certificate + MFA Authentication:** Write a user `~/.ssh/config` that reaches `login.cluster.internal` through `bastion.cluster.example.org` via `ProxyJump` (explaining why `ForwardAgent yes` is a privilege-escalation risk on shared hosts), and write the server `sshd_config` settings for short-lived SSH user certificates (`TrustedUserCAKeys`) combined with second-factor PAM TOTP (`AuthenticationMethods publickey,keyboard-interactive`).
+3. **Configuring Open OnDemand for a Slurm GPU Cluster (`/etc/ood/config/clusters.d/`):** Write `/etc/ood/config/clusters.d/my_cluster.yml` for a Slurm cluster. Explain the roles of OOD's front-end Apache reverse proxy and Per-User NGINX (`PUN`), why the YAML filename must match `ClusterName` in `slurm.conf`, and how OOD's `--export=NONE` behavior affects `sbatch` jobs that invoke `srun`.
+4. **Comparing Remote Graphical Access (`X11`, `Xming`, `TigerVNC`, `x2go`, and OOD Batch-Connect, `SCL` Chapter 18):** Explain the X11 client/server role inversion (`X server` on the user's workstation, `X client` on the cluster node), trace the flags in `"C:\Program Files\Xming\Xming.exe" :0 -clipboard -multiwindow -xkblayout us,ru -xkbvariant winkeys -xkboptions grp:ctrl_shift_toggle`, explain why `xauth` is strongly preferred over `xhost +` / `X0.hosts`, and compare `TigerVNC`, `x2go`, and Open OnDemand browser desktops over high-latency WAN links.
+5. **Preventing Dotfile Pollution and Login-Node Abuse:** Explain why placing `conda activate` or `module load cuda` inside `~/.bashrc` breaks batch reproducibility when `sbatch` runs with `--export=ALL`, and design a login-node protection policy combining `/etc/skel` templates, `systemd` `user-.slice` CPU/RAM caps, `pam_slurm_adopt` on compute nodes, and dedicated Data Transfer Nodes (`DTN`s).
+6. **Implementing User Support, Ticketing, and Annual Account "Actualization" (`SCL` Chapter 27):** Write the `/etc/aliases` (`cluster-support: foo, bar, expert@supermail.org`) and `newaliases` setup, explain why `Mailman`/`majordomo` announcement lists must use moderated mode, compare `RT`/`OTRS`/`Trac`/`OpenProject` with `Bugzilla`/`Redmine`, and design the 3-week annual account re-registration ("actualization") workflow so inactive "dead soul" accounts are blocked and archived without ever deleting active experiment data.
 
-## 10. Sources and review notes
+## Checkpoint
 
-- Book source (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`):
-  - Chapter `27. Communicating with Users` (read in full): `/etc/aliases` (`cluster-support: foo, bar, expert@supermail.org`) and `newaliases`, `Reply-To`/`BCC` and `support`/`support_done` folders, `Mailman` and `majordomo` in moderated mode, ticketing systems (`RT`, `OTRS`, `Trac`, `OpenProject` vs `Bugzilla`/`Redmine`), annual account re-registration ("actualization") with a 2–3 week window to handle "dead soul" accounts without deleting active experiment data, and user education (*The Art of HPC*).
-  - Chapter `18. Remote User Access` (SSH, X11/Xming/PuTTY, Midnight Commander), restated in my words.
-- OpenSSH option semantics and defaults: `sshd_config(5)` from openssh-portable (commit `26b1363`). Open OnDemand architecture and configuration: OSC/ood-documentation (`architecture.rst`, `installation/add-cluster-config.rst`, `installation/resource-manager/slurm.rst`, commit `0d23cee`).
-- Original and run: `sshd_audit.py`.
-- Unverified: MFA/PAM module behaviour, certificate tooling specifics, VS Code server and JupyterHub spawner details, DTN/Globus practice, exact OOD app form field names, `/etc/aliases` and `newaliases` (from the book, not run here).
+<details>
+<summary>1. Separate the roles of the **Bastion (jump host)**, **Login nodes**, **Data Transfer Nodes (DTNs)**, **Open OnDemand portal**, and **Compute nodes** in a cluster access architecture.</summary>
+
+- **Bastion / jump host:** Hardened, minimal SSH entry point in the DMZ with MFA and session logging; holds no user data or compilers.
+- **Login nodes:** Internal nodes reached via `ProxyJump` where users edit code, compile, and run `sbatch`/`squeue`.
+- **Data Transfer Nodes (DTNs):** Dedicated Science-DMZ hosts with high-bandwidth WAN links and parallel mounts running `Globus`, `rsync`, and `rclone` so bulk transfers never bog down login nodes.
+- **Open OnDemand portal:** HTTPS web portal providing browser file management, job submission, and reverse-proxied interactive GPU apps (Jupyter, VS Code, VNC).
+- **Compute nodes:** Reached only via Slurm jobs (`srun`/`salloc`) or `pam_slurm_adopt` SSH when the user owns an active allocation on that node.
+</details>
+
+<details>
+<summary>2. Why should users connect through a bastion using `ProxyJump` (`ssh -J bastion login`) rather than `ForwardAgent yes` (`ssh -A`)?</summary>
+
+`ForwardAgent yes` creates a UNIX domain socket on the intermediate host linked back to the user's local SSH agent; any `root` user (or attacker who compromises the intermediate host) can use that socket to impersonate the user on every system their key unlocks. **`ProxyJump` (`ssh -J`)** tunnels the end-to-end encrypted SSH connection through the bastion so private key operations happen exclusively on the user's laptop.
+</details>
+
+<details>
+<summary>3. How do **SSH user certificates** (`TrustedUserCAKeys`) improve on static `~/.ssh/authorized_keys` files?</summary>
+
+With an SSH Certificate Authority (such as Smallstep, HashiCorp Vault, Teleport, or FreeIPA), a user authenticates via corporate SSO + MFA and receives a **short-lived signed SSH certificate** (valid for e.g. 8–12 hours). Cluster nodes trust the CA's public key (`TrustedUserCAKeys`) without needing per-user key files distributed, and credentials expire automatically at the end of the workday.
+</details>
+
+<details>
+<summary>4. How do you convert an RFC-formatted multiline SSH public key into OpenSSH single-line format and append it to `authorized_keys` (`SCL` Chapter 18)?</summary>
+
+Run:
+`ssh-keygen -i -f rfc-key.pub >> ~user/.ssh/authorized_keys`
+(using `>>` to append rather than `>` so existing keys are not overwritten).
+</details>
+
+<details>
+<summary>5. What four `sshd_config` settings does `code/part06/sshd_audit.py` flag as hard `ERROR`s if misconfigured?</summary>
+
+1. **`PermitRootLogin`:** Must be `no`, `prohibit-password`, or `forced-commands-only` (never `yes`).
+2. **`PasswordAuthentication`:** Must be `no` on exposed login/bastion nodes.
+3. **`PermitEmptyPasswords`:** Must be `no`.
+4. **`PermitUserEnvironment`:** Must be `no` (allowing `~/.ssh/environment` or `environment=` options in `authorized_keys` lets users inject variables like `LD_PRELOAD` to bypass restricted shells).
+</details>
+
+<details>
+<summary>6. How does `sshd` resolve duplicate keywords in `sshd_config`, and what command prints the fully evaluated configuration for a specific user/host/IP?</summary>
+
+In `sshd_config`, the **first occurrence** of a configuration keyword wins (`cfg.setdefault()` in `sshd_audit.py`). To inspect the effective configuration after all `Include` files and conditional `Match` blocks are evaluated, run:
+`sshd -T -C user=alice,host=login01,addr=10.10.1.5`
+</details>
+
+<details>
+<summary>7. What do `MaxStartups 10:30:100` and `PerSourcePenalties` do in OpenSSH (`sshd_config(5)`)?</summary>
+
+- **`MaxStartups 10:30:100`:** Controls unauthenticated concurrent connection throttling: once `10` unauthenticated connections are open, `sshd` begins dropping new connections with a `30%` probability that rises linearly to `100%` at `100` unauthenticated connections (raise this on bastions that experience simultaneous class/workshop login bursts).
+- **`PerSourcePenalties`:** Automatically tracks and temporarily blocks client IP addresses that repeatedly fail authentication or crash pre-auth `sshd` child processes.
+</details>
+
+<details>
+<summary>8. Explain the X-Window (`X11`) client/server architecture and why `xauth` is used instead of `xhost +` (`SCL` Chapter 18).</summary>
+
+In X11, the **X server** runs on the **user's local workstation** (owning the physical screen, keyboard, and mouse on display `:0`), while the graphical application running on the remote supercomputer is the **X client**. Using `xhost +computer_name` (or `X0.hosts` in Xming) authorizes every user on that remote host to snoop keystrokes and windows on your display, whereas **`xauth`** (used automatically by `ssh -X` and PuTTY's X11 Forwarding) generates a per-session secret `MIT-MAGIC-COOKIE-1` token in `XAUTHORITY` readable only by your user account.
+</details>
+
+<details>
+<summary>9. Compare **X11 forwarding**, **VNC (`TigerVNC`)**, and **`x2go`** for running remote graphical applications on a cluster (`SCL` Chapter 18).</summary>
+
+- **X11 forwarding (`ssh -X`):** Sends raw X11 drawing primitives over the network; high round-trip latency makes complex GUIs nearly unusable over WAN links.
+- **VNC (`tightvncserver` / `TigerVNC`):** Runs a virtual X11 framebuffer on the node and streams compressed/scaled pixel rectangles; fast over WAN and supportsOpenGL via VirtualGL.
+- **`x2go` (open-source `NX` derivative):** Tunnels compressed X11/desktop traffic over standard **SSH** without requiring a separate background daemon on the server, and supports seamless single-application window mode.
+</details>
+
+<details>
+<summary>10. Walk through the request flow in **Open OnDemand (OOD)**: what does **Apache** do, and what is a **Per-User NGINX (`PUN`)**?</summary>
+
+1. The user's browser connects over HTTPS (`443`) to OOD's front-end **Apache** server, which authenticates the user via OIDC/SAML/LDAP.
+2. Apache maps the authenticated username to a local POSIX UID, spawns a **Per-User NGINX (`PUN`)** process running **as that user's UID/GID**, and reverse-proxies the user's browser requests to their PUN over a local UNIX domain socket.
+3. Because the PUN runs as the user, file-browser actions and `sbatch`/`squeue` commands execute with the user's exact Linux permissions and Slurm associations.
+</details>
+
+<details>
+<summary>11. How does Open OnDemand's **batch-connect** workflow launch and proxy an interactive JupyterLab or VS Code session on a GPU compute node?</summary>
+
+1. The user selects partition, GPU count, CPUs, RAM, and walltime in OOD's web form.
+2. The user's PUN renders a batch script from an ERB template and submits it to Slurm via `sbatch`.
+3. When the job starts on a GPU compute node (e.g., `gpu014`), the job script generates a one-time password/token, starts JupyterLab on a random high TCP port, and writes connection metadata (`host`, `port`, `password`) to a shared directory in the user's `$HOME`.
+4. OOD's front-end Apache reads that connection file and reverse-proxies the user's authenticated browser session directly to `gpu014:<port>`.
+</details>
+
+<details>
+<summary>12. Where do Open OnDemand cluster configurations live, what must the YAML filename match, and what is the Slurm `--export=NONE` gotcha?</summary>
+
+Cluster configurations live in **`/etc/ood/config/clusters.d/<cluster_name>.yml`**, where `<cluster_name>` should match `ClusterName` in `slurm.conf`. By default, OOD's Slurm adapter submits jobs with **`sbatch --export=NONE`** (unlike interactive CLI `sbatch`, which defaults to `--export=ALL`). If a batch-connect job script runs `srun` inside the script, `srun` inherits `--export=NONE` and strips `PATH`/`LD_LIBRARY_PATH` unless the script explicitly runs `export SLURM_EXPORT_ENV=ALL`.
+</details>
+
+<details>
+<summary>13. Why should users never put `conda activate` or `module load` inside their `~/.bashrc` on a Slurm cluster?</summary>
+
+Because CLI `sbatch` defaults to `--export=ALL` and non-interactive subshells source `~/.bashrc`. Having `~/.bashrc` automatically activate a heavy Conda environment or load specific CUDA modules silently pollutes every batch job's environment—causing version clashes across different projects and slowing down every non-interactive SSH/step invocation. Modules and virtual environments should be loaded explicitly inside each job's `#SBATCH` script.
+</details>
+
+<details>
+<summary>14. Why is running VS Code Remote-SSH directly against a shared login node problematic at scale, and what is the clean alternative?</summary>
+
+VS Code Remote-SSH spawns multiple `node` extension-host processes, language servers (`Pylance`, `rust-analyzer`), file watchers, and Git indexers that can easily consume 4–8 CPU cores and 16+ GiB of RAM per user—crashing a shared login node when dozens of researchers connect. Instead, provide an **Open OnDemand VS Code (`code-server` or tunnel) batch-connect app** (or instruct users to `ProxyJump` into an interactive `salloc` compute/MIG node).
+</details>
+
+<details>
+<summary>15. How do you configure a support email alias on a Linux mail server, and how should support staff configure `Reply-To`, `BCC`, and mail folders (`SCL` Chapter 27)?</summary>
+
+Add a virtual support alias in **`/etc/aliases`**:
+`cluster-support: foo, bar, expert@supermail.org`
+and run **`newaliases`**. Support staff should filter incoming mail into **`support`** (open) and **`support_done`** (resolved) folders and configure their mail client profile to reply from `cluster-support@your.server` with both **`Reply-To`** and **`BCC`** set to `cluster-support@your.server` so all admins see every response.
+</details>
+
+<details>
+<summary>16. Why must a cluster announcement mailing list (`Mailman` or `majordomo`) always be configured in **moderated mode** (`SCL` Chapter 27)?</summary>
+
+In moderated mode (with only `cluster-support` authorized to post), if one of the 500 cluster users hits "Reply" to a maintenance announcement instead of replying to support, their message is held for moderator approval rather than broadcasting spam to all 500 users.
+</details>
+
+<details>
+<summary>17. Which open-source helpdesk/ticketing systems does `SCL` Chapter 27 recommend, why does it advise against `Bugzilla` or `Redmine`, and what two integration challenges arise?</summary>
+
+`SCL` Chapter 27 recommends **`RT` (Request Tracker)**, **`OTRS`**, **`Trac`**, or **`OpenProject`** (and advises against software defect trackers like `Bugzilla` or `Redmine`, whose workflows do not fit user support and hardware maintenance). The two main integration challenges are:
+1. **User authorization complexity** when helpdesk accounts are separate from cluster POSIX/LDAP accounts.
+2. **Complexity of linking ticket actions to cluster actions** (and vice versa).
+</details>
+
+<details>
+<summary>18. What is the **"dead soul" account problem** on multi-organization clusters, why is a 1-year auto-delete rule dangerous, and how does annual **"actualization" (re-registration)** solve it (`SCL` Chapter 27)?</summary>
+
+After 3–4 years, dozens or hundreds of inactive accounts ("dead souls") can occupy `5%` or more of cluster disk capacity. Blindly deleting accounts that have not logged in for 1 year inevitably destroys critical experiment data of a researcher on sabbatical or between grants. Instead, run an **annual re-registration ("actualization")** campaign with a **2–3 week window**: users submit a brief activity report via a web form (which deduplicates repeat clicks, logs the date, and returns a confirmation reference number). Accounts that do not re-register are **blocked (not deleted)** and their data is archived/retained until at least the next annual cycle so returning users can still re-register and recover their work.
+</details>
+
+<details>
+<summary>19. What email communication etiquette rules does `SCL` Chapter 27 emphasize when answering user support messages?</summary>
+
+1. Strip unnecessary quoted headers, addresses, and signatures, keeping only the essential lines of the user's question and writing your answer directly below each quoted question separately.
+2. Never reply with a dismissive *"read the docs, it's written for you"*—instead, give the direct URL anchor to the exact FAQ item (e.g., `http://your.server/docs/faq.html#p1.1`) and maintain reusable response templates.
+</details>
+
+<details>
+<summary>20. Outline the immediate incident-response steps when a researcher's SSH private key or bastion session is suspected of compromise.</summary>
+
+1. **Revoke the SSH public key / certificate** in LDAP/FreeIPA and flush SSSD caches across all bastions and login nodes (`sss_cache -E`) and lock the account (`pam_access` / LDAP lock).
+2. **Terminate all active processes and sessions** (`pkill -KILL -u <user>` on bastions and login nodes) and cancel all running/pending Slurm jobs (`scancel -u <user>`).
+3. **Audit persistence locations** (`~/.ssh/authorized_keys`, `~/.bashrc`, `crontab`, `at`, `/tmp`, `/dev/shm`, and Open OnDemand tokens/PUNs) and inspect `sshd` `LogLevel VERBOSE` key-fingerprint and bastion session logs (`tlog`) to trace lateral movement.
+4. **Re-enroll the user** with a newly generated hardware-backed (`FIDO2` `sk-ssh-ed25519`) or CA-signed key and MFA.
+</details>
+
+## Sources and review notes
+
+- Book source (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware`, `SCL`):
+  - Chapter 18 ("18. Remote User Access", read in full): SSH key authentication, `ssh-keygen -i -f rfc-key.pub >> ~user/.ssh/authorized_keys`, Midnight Commander (`mc`), PuTTY (`putty-gen`, `.ppk`, `putty-agent`), WinSCP / FileZilla, FTP vs SFTP/SCP, HTTP/WWW isolation (`chroot` / `LXC` / `IDS`), X-Window (`X11` / `X.Org Server` client/server architecture, `:0`, `Kwin`/`Metacity`/`Ion`/`twm`/`Enlightenment`/`CDE`, `/etc/X11/xorg.conf`, `Xorg -configure`, `startx`, `xdm`/`gdm`/`kdm`/`lightdm`), Windows `Xming` and `xming Mesa` (`Xlaunch`, `X0.hosts` vs `xhost +` vs `xauth`), and alternatives (`TigerVNC`, `RDP`, `x2go`, `NX`, `SPICE`).
+  - Chapter 27 ("27. Communicating with Users", read in full): `/etc/aliases` (`cluster-support: foo, bar, expert@supermail.org`) and `newaliases`, Thunderbird `Tools/Message Filters`, `Reply-To`/`BCC` and `support`/`support_done` folders, `Mailman` and `majordomo` in moderated mode, email quoting etiquette and direct FAQ anchor links (`http://your.server/docs/faq.html#p1.1`), ticketing systems (`RT`, `OTRS`, `Trac`, `OpenProject` vs `Bugzilla`/`Redmine`, and the two authorization/linking challenges), annual account re-registration ("actualization") with a 2–3 week window to handle "dead soul" accounts (`5%` disk space) without deleting active experiment data, and user education (Victor Eijkhout's *The Art of HPC*, `https://theartofhpc.com/`).
+- OpenSSH option semantics and defaults: `sshd_config(5)` from `openssh/openssh-portable` (commit `26b1363`).
+- Open OnDemand architecture and configuration: `OSC/ood-documentation` (`architecture.rst`, `installation/add-cluster-config.rst`, `installation/resource-manager/slurm.rst`, commit `0d23cee`).
+- Run here: `code/part06/sshd_audit.py` and `python3 code/part06/sshd_audit_lab.py` (3 passed, 0 failed).
+- Explicitly labelled inferences: `BAD_SSHD` and `GOOD_SSHD` in `code/part06/sshd_audit_lab.py` are deterministic test fixtures verifying `sshd_audit.py`.
+- Not verified on live hardware: MFA/PAM module behaviour, SSH CA certificate tooling specifics, VS Code server and JupyterHub spawner live deployment, DTN/Globus tuning, and `/etc/aliases` + `newaliases` on a live mail server (`untested here`).
