@@ -318,7 +318,7 @@ Four things must all be true: `installbootrecord yes`, **the BIOS tries the disk
 9. Closing a node and assuming its jobs stopped.
 10. Leaving STP on a managed switch.
 
-## 13. Exercises
+## Exercises
 
 1. Run `python3 provision_lab.py`. Pick four checks and explain each rule in your own words.
 2. Add a fourth provisioner with `nodegroups={"rack-b"}` and show where nodes in `rack-b` and nodes in no group go.
@@ -335,30 +335,149 @@ Four things must all be true: `installbootrecord yes`, **the BIOS tries the disk
 - "What does CLOSED mean?" Monitoring stops; jobs do not. Only `open` clears it.
 - "How does the head node avoid being the bottleneck?" Boot role, provisioning role, slots, nodegroups; but CMDaemon and the database stay on the head.
 
-## 15. Checkpoint questions (20)
+## Checkpoint questions (20)
 
-1. What is the difference between booting and provisioning?
-2. Which protocol does the first PXE stage use on x86_64 even when `bootloaderprotocol` is HTTP?
-3. What does the boot role fix?
-4. Name the 13 node-installer steps (at least ten).
-5. What does `signinstallercertificates` control, and what does `allowautosign` add?
-6. What is `BOOTIF`?
-7. Name the five install modes.
-8. Which install modes can wipe a disk?
-9. Why is NOSYNC not data protection?
-10. What does `datanode` do, and how is it combined between category and node?
-11. How do you give new nodes names in the order they were powered on?
-12. What is a port mismatch and what usually causes it?
-13. What is the default number of provisioning slots?
-14. How is a provisioner chosen among several?
-15. After how many failures does a provisioning request fail?
-16. What does `dirtyautoupdatetimeout` do?
-17. Is `imageupdate` a dry run by default? How do you apply it?
-18. Which filesystems does BCM skip automatically, and which must you add yourself?
-19. What replaces what when kernel modules are set at several levels?
-20. What does CLOSED do to running jobs?
+<details>
+<summary>1. What is the difference between **booting** (`boot` role) and **provisioning** (`provisioning` role) in BCM?</summary>
 
-## 16. Sources and review notes
+**Booting** delivers the initial network bootloader (`pxelinux` / `iPXE` / `GRUB`), kernel, and ramdisk via DHCP, TFTP, and HTTP (`boot` role). **Provisioning** transfers and synchronizes the full multi-gigabyte **software image** root filesystem onto the node's local drives via `rsync` (`provisioning` role).
+</details>
+
+<details>
+<summary>2. Which network protocol does the very first PXE stage use on `x86_64` even when `bootloaderprotocol` is set to `HTTP` (the default)?</summary>
+
+The first PXE stage on `x86_64` still uses **TFTP** (from `/tftpboot/pxelinux.cfg/`) to fetch the initial boot menu/loader, after which **HTTP** takes over to transfer the larger kernel and ramdisk. (On ARMv8 `aarch64` nodes, `bootloaderprotocol` must be `tftp` only.)
+</details>
+
+<details>
+<summary>3. What cluster symptom indicates that the head node's `boot` role is overloaded, and how do you fix it?</summary>
+
+During a mass cluster boot ("boot storm"), random nodes fail to get DHCP leases or time out on TFTP, with a different set of nodes failing on each attempt. The fix is to assign the **`boot` role** to one regular node per rack or subnet.
+</details>
+
+<details>
+<summary>4. List the 13 sequential steps executed by the BCM `node-installer` (§5.4).</summary>
+
+1. Request a node X.509 certificate (`signinstallercertificates` / `allowautosign`).
+2. Determine node identity and configuration (MAC and switch port).
+3. Bring up network interfaces (`BOOTIF`, IP conflict check).
+4. Determine the **install mode** (`FULL`, `AUTO`, `MAIN`, `NOSYNC`, `SKIP`).
+5. Run the **`initialize` script** (category then node).
+6. Check/create disk partitions (`disksetup` XML) and mount filesystems.
+7. Synchronize local disks with the **software image** via `rsync`.
+8. Write network interface configuration files.
+9. Write `/etc/fstab`.
+10. Install the local boot record (`installbootrecord`) and configure SELinux.
+11. Run the **`finalize` script** (category then node).
+12. Unload temporary installer drivers (`removeModulesBeforeInit`, e.g., IPMI).
+13. Hand over execution (`pivot_root` / `exec`) to **`/sbin/init`** on the local disk.
+</details>
+
+<details>
+<summary>5. What do `signinstallercertificates` (on the partition) and `allowautosign` (on a network) control during Step 1 of `node-installer`?</summary>
+
+`signinstallercertificates` (`AUTO` default or `MANUAL`) controls whether `CMDaemon` automatically signs new node certificate requests. `allowautosign` (`Always`, `Automatic` for internal networks only, `Never`, or `Secret`) refines this per network; on untrusted networks, set `MANUAL` and approve requests in `cert` mode (`listrequests`, `issuecertificate`).
+</details>
+
+<details>
+<summary>6. What is `BOOTIF` in BCM, and what rule applies if you provision over InfiniBand (`ib0`)?</summary>
+
+`BOOTIF` is a special interface alias representing *"whichever physical network interface the node PXE-booted from."* Critically, the interface from which a node boots (`BOOTIF`) **must not also be configured as a separate named interface** (such as a separate `ib0` entry) on that node in `CMDaemon`.
+</details>
+
+<details>
+<summary>7. Name the five BCM install modes (`FULL`, `AUTO`, `MAIN`, `NOSYNC`, `SKIP`) and what each does.</summary>
+
+- **`FULL`:** Repartitions drives, creates fresh filesystems, and copies the full software image (wipes local data).
+- **`AUTO` (default):** Checks disk partition layout; if healthy, runs a fast incremental `rsync`; if unhealthy/mismatched, falls back to **`FULL`**.
+- **`MAIN`:** Drops the node into the interactive `node-installer` maintenance shell without touching disks.
+- **`NOSYNC`:** Checks disk layout; if healthy, skips `rsync` and boots existing disk contents; if unhealthy/mismatched, falls back to **`FULL`**.
+- **`SKIP`:** Skips both the disk check and `rsync` (used for emergency data recovery).
+</details>
+
+<details>
+<summary>8. Which three install modes can wipe local disk data, and why is `NOSYNC` NOT a data-protection mechanism?</summary>
+
+**`FULL`**, **`AUTO`**, and **`NOSYNC`** can all wipe local disks. Because both `AUTO` and `NOSYNC` check the partition table first and automatically fall back to a **`FULL` repartition and sync** if the partition layout does not match (for example, after a destructive burn run, a drive renumbering `/dev/sdb` $\rightarrow$ `/dev/sda`, or a MAC swap), `NOSYNC` must never be relied on to protect local data.
+</details>
+
+<details>
+<summary>9. How does `datanode yes` protect a node that holds important local data, and how does it combine between category and node?</summary>
+
+When `datanode` is `yes`, any `FULL` install (including an automatic fallback from `AUTO` or `NOSYNC`) **halts and waits for explicit human confirmation** on the console or via `installerinteractions -w -n node001 --confirm` (or `--deny` to enter maintenance mode). Because `datanode` is a Boolean, it combines via **`category OR node`**.
+</details>
+
+<details>
+<summary>10. In the 7-case node identification table (§5.4.2), which four cases halt and wait for manual human intervention?</summary>
+
+- **Cases 2 and 3:** A brand-new unknown MAC address where no switch-port rule identifies the node.
+- **Cases 5 and 6 (Port mismatch):** A known MAC address that boots on a **different switch port** than configured (Case 5), or where no switch port is detected even though the node's config expects one (Case 6)—protecting you when two servers are physically cabled to the wrong ports.
+</details>
+
+<details>
+<summary>11. What is the default number of `provisioningslots` on a provisioning node, and how does the head node pick among multiple eligible provisioners?</summary>
+
+The default is **`10` slots** (`provisioningslots`). Requests are handled first-come, first-served, and among eligible provisioners (matching `nodegroups`), the head node assigns the request to the provisioner with the **fewest started tasks**.
+</details>
+
+<details>
+<summary>12. After how many failed transfer attempts does a provisioning request fail, and how long does a disconnected provisioner hold active requests?</summary>
+
+A failed transfer is retried **`5` times** before failing, and a provisioner that loses connectivity holds its active requests for **`180` seconds** before they fail.
+</details>
+
+<details>
+<summary>13. What do `updateprovisioners` and `dirtyautoupdatetimeout` (default `300 s`) do, and what is the "five-minute trap"?</summary>
+
+`updateprovisioners` syncs software image changes from the head node out to the provisioning nodes. `dirtyautoupdatetimeout` (`300` seconds) rate-limits automatic triggers after `cmsh`/Base View edits, and changes made directly in a shell chroot outside `cmsh` do **not** trigger it automatically until midnight UTC—so if you run `imageupdate` on compute nodes before running `updateprovisioners`, nodes pull stale files from the provisioners.
+</details>
+
+<details>
+<summary>14. Is `imageupdate` a live write or a dry run by default, and what flag applies the changes to a running node?</summary>
+
+`imageupdate` is a **dry run by default** (it writes nothing and logs planned changes to `synclog`). You must pass **`-w`** (`imageupdate -n node001 -w`) to actually write changes to the running node.
+</details>
+
+<details>
+<summary>15. In `excludelistupdate`, what is the difference between a standard excluded path and a path prefixed with `no-new-files:`?</summary>
+
+- **Standard excluded path:** If the file/directory already exists on the node, it is left untouched; if it is missing on the node, it is copied from the image.
+- **`no-new-files:` path:** Left untouched if present on the node, and **not copied** even if missing on the node.
+Any path on neither list is overwritten from the image, and node-only files outside the exclude list are **deleted**.
+</details>
+
+<details>
+<summary>16. Which network/parallel filesystems does BCM automatically protect during `imageupdate`, and which mount type must you manually add to `excludelistupdate`?</summary>
+
+BCM automatically skips statically mounted **NFS, Lustre, FUSE, CephFS, CIFS, PanFS, FhGFS, BeeGFS, GlusterFS, and GPFS** filesystems. However, **`autofs` mounts** (and manual ad-hoc mounts) are **not** detected automatically and must be added to `excludelistupdate` or `imageupdate -w` can wipe them.
+</details>
+
+<details>
+<summary>17. When kernel modules (`kernelmodules`) are configured on a software image, a category, and a node, do lower levels append to or replace higher levels?</summary>
+
+A lower level **completely replaces** the higher level's list—it does **not** append to it. Setting an incomplete `kernelmodules` list on a node or category will drop the image's storage/network drivers and prevent the node from booting.
+</details>
+
+<details>
+<summary>18. After installing a new kernel package inside a chrooted software image (`cm-chroot-sw-img`), what two `cmsh` steps are required so nodes actually boot the new kernel?</summary>
+
+1. Set the image's **`kernelversion`** property (`softwareimage use default-image; set kernelversion <ver>; commit`).
+2. Run **`createramdisk`** so BCM rebuilds its extended provisioning initrd with the new kernel's modules.
+</details>
+
+<details>
+<summary>19. What are the four requirements for PXE provisioning over a tagged VLAN (§5.3.4), and what is the pre-11.30.0 `cm-create-image` `doca.list` bug on B200/GB200?</summary>
+
+VLAN provisioning requires: (1) a VLAN network and node VLAN interface, (2) the **`8021q`** kernel module in the image's `kernelmodules`, (3) **BIOS PXE VLAN ID support** enabled on the node, and (4) **`VLANID=<id>`** appended to the image's `kernelparameters`. On BCM versions prior to `11.30.0`, DGX images created with `cm-create-image` for B200/GB200 must have `/etc/apt/sources.list.d/doca.list` removed inside the image or `cm-kubernetes-setup` fails at `~22%`.
+</details>
+
+<details>
+<summary>20. If you run `close -m "fan dead" -n node001` in `cmsh`, what happens to Slurm or Kubernetes jobs currently running on `node001`?</summary>
+
+**Running jobs continue executing**, because `close` only tells `CMDaemon` to stop monitoring/provisioning the node; the workload manager (`slurmd` / `kubelet`) is independent. Always **drain** the node in the scheduler first before closing or powering it off.
+</details>
+
+## Sources and review notes
 
 - **BCM 11 Administrator Manual, chapter 5:** 5.1 (PXE, labels, protocol, boot role), 5.2 (provisioning nodes, housekeeping), 5.3 (kernel modules, 5.3.3 InfiniBand provisioning, 5.3.4 VLAN provisioning), 5.4 (all 13 steps, install-mode execution list in 5.4.4), 5.5 (states), 5.6 (live updates and exclude lists), 5.7 (adding nodes), 5.8 (troubleshooting, to the BMC section).
 - **Chapter 9:** 9.3 (kernels), 9.4 (packages in images, `cm-chroot-sw-img`), 9.5 (non-RPM software, `grabimage`), 9.6 (`cm-create-image`, base archives, `rsyncxattr no` for SELinux, `--skipdist`, `--updateimage`, `--dgx`, `--dgx-type`, `--extra-pkg-group`, `image="slave"`, pre-11.30.0 `doca.list` removal on B200/GB200), and 9.7 (multi-distro and multi-arch Table 9.1, `nodearchosinfo`, `cm-image create all`, `archos` `primaryimage`, ARMv8 `tftp` and `ttyAMA0`, Fujitsu `a64fx`). (Sections 9.1 and 9.2 are covered in chapter 8.13.)

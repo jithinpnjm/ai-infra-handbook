@@ -194,7 +194,7 @@ There is exactly one partition, called `base`, which stands for the whole physic
 8. Leaving CMDaemon in debug.
 9. Editing the same object in Base View and cmsh at once.
 
-## 13. Exercises
+## Exercises
 
 1. Run `python3 cmsh_lab.py`. Pick four checks and explain each rule in your own words.
 2. Using `cmsh_sim.Session`, reproduce the manual's add/commit/remove session and write down each prompt. Then find where the asterisks disappear.
@@ -212,30 +212,129 @@ There is exactly one partition, called `base`, which stands for the whole physic
 - "Why can't you `foreach` a power-on?" Loop timing can stack up power-on operations; cmsh blocks it and wants the selection on the power command.
 - "What happens if CMDaemon stops?" You lose management, monitoring and provisioning decisions; running jobs continue.
 
-## 15. Checkpoint questions (20)
+## Checkpoint questions (20)
 
-1. Which port does CMDaemon accept connections on, and how is it secured?
-2. What database does CMDaemon use on the head node?
-3. What URL reaches Base View?
-4. What do the asterisks in the cmsh prompt mean?
-5. What is the order of cmsh start-up files?
-6. Name three built-in aliases.
-7. What does `-c` do on the cmsh command line, and what does `-f` do?
-8. What does `commit -w` wait for?
-9. What does `refresh` do?
-10. What does `modified` show with `+` and `-`?
-11. What happens to image data on `remove`? Which options change that?
-12. How does `clone` guess an IP, and when does it not?
-13. What spellings does a Boolean accept?
-14. Write a node list for every second node from `node001` to `node099`.
-15. Why can you not write `node[1-3]..node5`?
-16. How do you exclude one node from a range?
-17. What is the difference between `foreach` and `range`?
-18. Why does cmsh refuse power commands inside `foreach` and `range`?
-19. What does `rename node001..node003 test` give?
-20. What is the `base` partition?
+<details>
+<summary>1. On which TCP port does CMDaemon accept management connections from `cmsh` and Base View, and how is it authenticated?</summary>
 
-## 16. Sources and review notes
+**TCP port `8081` over SSL (`SSLPort = 8081` in `cmd.conf`)**, authenticated using client-side X.509v3 PEM certificates (`/root/.cm/admin.pem` and `/root/.cm/admin.key`). Non-SSL `Port = 8080` is used only during `init` / pre-init HTTP boot.
+</details>
+
+<details>
+<summary>2. Which database engine does CMDaemon use on the head node to store cluster configuration and monitoring metadata?</summary>
+
+**MySQL / MariaDB** running on the head node.
+</details>
+
+<details>
+<summary>3. What is the URL for Base View, and which package can be removed if a site wants to disable the web GUI?</summary>
+
+`https://<head-node>:8081/base-view`, served by the **`base-view`** package.
+</details>
+
+<details>
+<summary>4. What do the asterisks `*` in the `cmsh` prompt `[basecm11->device*[node001*]]%` indicate?</summary>
+
+They indicate that there are **uncommitted local modifications** pending in `device` mode (`device*`) and specifically on the `node001` object (`node001*`) that have not yet been sent to `CMDaemon` via `commit`.
+</details>
+
+<details>
+<summary>5. In what order does `cmsh` load startup `rc` files, and which path wins on conflict?</summary>
+
+It reads `/etc/cmshrc` first, followed by user dotfiles `~/.cm/cmsh/.cmshrc`, `~/.cm/.cmshrc`, and `~/.cmshrc`, where **the shortest path overrides** earlier settings.
+</details>
+
+<details>
+<summary>6. Name four built-in `cmsh` aliases.</summary>
+
+**`..`** (`exit` up one level), **`/`** (`home` to top level), **`?`** (`help`), **`ds`** (`device status`), and **`ls`** (`list`).
+</details>
+
+<details>
+<summary>7. What is the difference between `cmsh -c "..."` and `cmsh -f script.cmsh -q -x`?</summary>
+
+`-c` executes a semicolon-separated string of commands in batch mode and exits; `-f` executes commands from a script file, where `-q` aborts at the first error and `-x` echoes each command before running it.
+</details>
+
+<details>
+<summary>8. What does `commit -w` do compared to a plain `commit`?</summary>
+
+`commit -w` **waits** synchronously for long-running background operations triggered by the commit (such as cloning a multi-gigabyte software image) to finish before returning the prompt.
+</details>
+
+<details>
+<summary>9. How do you discard uncommitted local changes in `cmsh` before `commit`?</summary>
+
+Run **`refresh`**, which reloads the object/mode state from `CMDaemon` and clears your uncommitted edits.
+</details>
+
+<details>
+<summary>10. What does the `modified` command display, and what do the prefixes `+`, `-`, and blank mean?</summary>
+
+`modified` lists all objects in the current mode that have uncommitted changes: **`+`** indicates a newly added object, **`-`** indicates an object marked for removal (`remove`), and a blank prefix indicates an existing object with modified properties.
+</details>
+
+<details>
+<summary>11. When you `remove` a software image in `cmsh` and `commit`, what happens to the files under `/cm/images/<name>` by default, and which flag deletes them?</summary>
+
+By default, `remove` only removes the database object while **keeping the image directory on disk**; you must pass **`-d`** (`remove -d <image>`) to delete the underlying files on disk (and `-a` if removing image revisions).
+</details>
+
+<details>
+<summary>12. When cloning `node001` (`10.141.0.1`) to `node022..node024`, how does `cmsh` guess the new IP addresses, and when does IP guessing fail?</summary>
+
+When the base name and digit count match (`node001` $\rightarrow$ `node022..node024`), `cmsh` substitutes the trailing number into the host part of the IP (`.22`, `.23`, `.24`). If the base name or digit width differs (`node001` $\rightarrow$ `node02`), `cmsh` prints `Base name mismatch, IP settings will not be modified!` and duplicates `.1` unless you pass **`--next-ip`**.
+</details>
+
+<details>
+<summary>13. Which eight case-insensitive strings does `cmsh` accept for Boolean properties?</summary>
+
+Truthy: **`yes`**, **`1`**, **`on`**, **`true`**. Falsy: **`no`**, **`0`**, **`off`**, **`false`**.
+</details>
+
+<details>
+<summary>14. Write a compact `cmsh` node list expression for every odd-numbered node from `node001` to `node099`.</summary>
+
+**`node0[01..99:2]`** (or `node[001-099:2]`, using the `:2` stride suffix).
+</details>
+
+<details>
+<summary>15. Why is `node[001-003]..node005` rejected by the `cmsh` node-list parser?</summary>
+
+Because `cmsh` forbids mixing square-bracket range syntax `[...]` and double-dot range syntax `..` within the same range token (though `..` inside brackets like `node00[1..7:2]` is valid).
+</details>
+
+<details>
+<summary>16. Write a `cmsh` node list expression that selects `node001` through `node032` excluding `node013` and `node014`.</summary>
+
+**`node001..node032,-node013..node014`** (prefixing excluded ranges or nodes with `,-`).
+</details>
+
+<details>
+<summary>17. What is the difference between `foreach -n node001..node024 (...)` and `range -n node[001-024]`?</summary>
+
+`foreach` executes the parenthesized block of commands immediately across the selected nodes and returns to the normal mode prompt. `range` enters an interactive **modal range context** (changing the prompt to `{...}`) where every subsequent command typed applies to all nodes in the range until you exit the range.
+</details>
+
+<details>
+<summary>18. Why does `cmsh` refuse to run `power` commands inside `foreach` or `range` (`foreach -n node001 (power on)`)?</summary>
+
+To prevent loop iteration timing from stacking concurrent power-on surges across racks or cloud APIs. Instead, pass the node selection directly to the `power` command itself: **`power on -n node001..node016`**.
+</details>
+
+<details>
+<summary>19. What new hostnames are produced by `rename node001..node003 test` versus `rename node001..node010 test`?</summary>
+
+`rename` restarts numbering at `1` and zero-pads to match the width of the total count: `3` nodes become **`test1, test2, test3`**, whereas `10` nodes become **`test01..test10`** (or use `test%04d` to force 4-digit padding).
+</details>
+
+<details>
+<summary>20. How do you export selected columns of `device list` as JSON objects from the command line?</summary>
+
+Run **`cmsh --color=no -c "device; list -f hostname,ip,mac,status -d {}"`** (or use `list --json` / `show --json` for full objects).
+</details>
+
+## Sources and review notes
 
 - **BCM 11 Administrator Manual:** 2.4 (Base View: access, login, navigation; the full Cluster resource tree was read only in part), 2.5 (cmsh: invocation, rc files, aliases, options, modes, objects, `format`, `list`, `foreach`, `range`, node lists, `rename`, `bookmark`, JSON output; read in full), 2.6 (CMDaemon, 2.6.1 and 2.6.2), and the start of Appendix M (tree view of cmsh modes).
 - **Port note:** Administrator Manual section 2.6 says management goes through TCP 8081 only (SSL), and Appendix C (pp. 905–906) states the two `cmd.conf` directives: `Port = 8080` (non-SSL HTTP, used only during `init` / HTTP boot) and `SSLPort = 8081` (SSL HTTPS, used for all communication with Base View and `cmsh`), both changeable with `cm-cmd-ports --http ... --https ...` (details in chapter 8.1).

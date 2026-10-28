@@ -219,11 +219,11 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 7.13 | Redfish on NVIDIA DGX and HGX: BMC, GPU baseboard and management | reviewed | 4651 | `dgx_record_lab.py` (3/3 pass), `V5 ch3`, `V6`, `SPGB300`, `BCM` |
 | 7.14 | Fleet-scale hardware management and node lifecycle automation | reviewed | 4187 | `lifecycle_lab.py` (24/24 pass), `BCM 14.5`, `VL10 ch1` |
 | 7.15 | BMC security hardening and attestation | reviewed | 4518 | `hardening_lab.py` (28/28 pass), `V18 ch2`, `RF-S 13`, `RF-G` |
-| 8.1 | BCM architecture and concepts | drafted | 4137 |  |
-| 8.2 | Planning and installing BCM | drafted | 3059 |  |
-| 8.3 | Cluster configuration: networks, nodes and categories | drafted | 5418 |  |
-| 8.4 | Node provisioning: images, kernels, categories and the PXE flow | drafted | 5586 |  |
-| 8.5 | cmsh and Base View: administering the cluster | drafted | 3038 |  |
+| 8.1 | BCM architecture and concepts | reviewed | 4736 | `bcm_model_lab.py` (35/35 pass), `BCM-A 1,2,8.1`, `VL10 ch2` |
+| 8.2 | Planning and installing BCM | reviewed | 3814 | `install_lab.py` (32/32 pass), `BCM-I` |
+| 8.3 | Cluster configuration: networks, nodes and categories | reviewed | 6415 | `netconf_lab.py` (67/67 pass), `BCM-A 3`, `VL10 ch2` |
+| 8.4 | Node provisioning: images, kernels, categories and the PXE flow | reviewed | 6650 | `provision_lab.py` (82/82 pass), `BCM-A 5,9`, `VL10 ch2` |
+| 8.5 | cmsh and Base View: administering the cluster | reviewed | 3570 | `cmsh_lab.py` (55/55 pass), `BCM-A 2` |
 | 8.6 | Users, authentication and security in BCM | drafted | 2780 |  |
 | 8.7 | Power, BMC and hardware management in BCM | drafted | 3287 |  |
 | 8.8 | Workload managers under BCM: Slurm setup | drafted | 4206 |  |

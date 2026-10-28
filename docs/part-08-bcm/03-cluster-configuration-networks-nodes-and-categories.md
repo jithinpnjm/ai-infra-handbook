@@ -251,7 +251,7 @@ The reason for the order is maintenance: the further you move from CMDaemon, the
 9. Freezing files because it is quick.
 10. Running `cm-iperf.py` on a big cluster with defaults.
 
-## 10. Exercises
+## Exercises
 
 1. Run `python3 netconf_lab.py`. Pick four checks and explain each rule in your own words.
 2. Plan a two-network cluster: management (`10.141.0.0/16`) and storage (`10.150.0.0/16`) with 64 nodes. Write down which object holds each setting.
@@ -268,30 +268,143 @@ The reason for the order is maintenance: the further you move from CMDaemon, the
 - "A node's configured IP and its real IP differ. How do you find it fleet-wide?" `ipaddresses --check`.
 - "You need a setting BCM does not model. What are your options and which is best?" Image file placement or initialize/finalize scripts before `FrozenFile`.
 
-## 12. Checkpoint questions (20)
+## Checkpoint questions (20)
 
-1. What is the partition, and where do you edit it?
-2. Which three events make BCM email the administrator?
-3. Why can't you set FIPS on the head node through CMDaemon?
-4. What are `internalnet`, `externalnet` and `globalnet` for?
-5. What does "lock down dhcpd" do?
-6. Name the four sources of an internal-network value.
-7. In what order is a node's default gateway decided?
-8. What does `onnetworkpriority` decide?
-9. How many search domains does an older glibc read, and what does the index suffix do?
-10. When is the cluster's IP address part of BCM, and when not?
-11. What does `portforward` do and what can block it?
-12. What are the four states of `ipaddresses --check`?
-13. How many pairs does `cm-iperf.py` check for n nodes?
-14. Which bonding mode is the default, and which is active-backup?
-15. Can the provisioning interface be a bond member? Can a bond be the provisioning interface?
-16. Where is a disk layout stored?
-17. Can BCM change the head node's disk layout after install?
-18. How do you remove a category's NFS mount from a node?
-19. If you stop a monitored service with autostart on through BCM, what happens?
-20. What is the order of preference for configuring beyond CMDaemon?
+<details>
+<summary>1. What is the `partition` object in BCM, and how do you open it in `cmsh` and Base View?</summary>
 
-## 13. Sources and review notes
+The `partition` object (`base`) holds cluster-wide global settings (cluster name, admin email, DNS/NTP servers, default category, BMC/SNMP/UFM/NetQ settings). You edit it in `cmsh` with **`partition use base`** or in Base View under **Cluster > Settings**.
+</details>
+
+<details>
+<summary>2. Which three cluster events cause BCM to automatically send an email to the administrator?</summary>
+
+1. **License expiration warning:** One month before the BCM license expires (and daily during the final week).
+2. **First-boot service failure:** A head-node service that fails on its very first boot after installation.
+3. **Failed automatic HA failover:** When an automatic failover between active and passive head nodes fails.
+</details>
+
+<details>
+<summary>3. Why can FIPS mode be enabled on regular nodes and categories through CMDaemon, but NOT on the head node through CMDaemon?</summary>
+
+Because an incomplete or mismatched FIPS kernel/boot configuration could leave the head node itself **unbootable**, taking down the entire cluster management plane.
+</details>
+
+<details>
+<summary>4. What are the three default network objects (`internalnet`, `externalnet`, `globalnet`) and why must `globalnet` never be deleted?</summary>
+
+- **`internalnet` (`10.141.0.0/16`, `eth.cluster`):** Default network for PXE-booting nodes and internal cluster management.
+- **`externalnet`:** Uplinks the head node to the corporate/campus network (the only network where BCM supports IPv6).
+- **`globalnet` (`cm.cluster`):** Provides the unified cluster namespace (`node001.cm.cluster`) across local and cloud nodes; **never remove it**.
+</details>
+
+<details>
+<summary>5. What does `lockdowndhcpd` on a network object do?</summary>
+
+Once all legitimate cluster nodes have had their MAC addresses recorded in BCM, enabling `lockdowndhcpd` configures `dhcpd` to **refuse DHCP leases to unknown MAC addresses**, preventing rogue or unconfigured machines from netbooting on the cluster network.
+</details>
+
+<details>
+<summary>6. Name the four BCM object levels from which an internal-network parameter can originate.</summary>
+
+1. The **network object** (`internalnet`: base address, netmask, gateway, MTU, domain).
+2. The **cluster / partition object** (`base`: management network, naming prefix/digits, default category).
+3. The **device interface** (`interfaces[BOOTIF]`: IP address, network binding).
+4. The **node category** (default gateway, management network, DNS/NTP servers, search domains).
+</details>
+
+<details>
+<summary>7. In what exact fallback order is a regular node's default gateway determined?</summary>
+
+1. The **category's** default gateway (if set).
+2. Otherwise, the **network object's** gateway.
+3. If the network gateway is `0.0.0.0`, DHCP hands out **`10.141.255.254`** (the head node's internal alias).
+</details>
+
+<details>
+<summary>8. What does `onnetworkpriority` on a node interface control, and what is the default priority order across interface types?</summary>
+
+It determines which interface IP is returned when resolving the node's primary hostname (highest number wins). Defaults from highest to lowest: **bridge (`80`) $>$ bond (`70`) $>$ physical (`60`) $>$ VLAN (`50`) $>$ alias (`40`) $>$ tunnel (`30`) $>$ netmap (`20`) $>$ BMC (`10`)**.
+</details>
+
+<details>
+<summary>9. How many search domains in `/etc/resolv.conf` do older `glibc` resolvers read, and how does BCM's `:index` suffix order them?</summary>
+
+Older `glibc` resolvers read only the **first `6` search domains**. Attaching `:index` (such as `example.com:1`) causes `CMDaemon` to sort search domains by ascending index and write the `6` lowest-indexed domains first.
+</details>
+
+<details>
+<summary>10. How do you add custom DNS zones to the head node's BIND server without `CMDaemon` overwriting them?</summary>
+
+Place custom zones in **`/etc/named.conf.include`** (on RHEL/Rocky and SLES) or **`/etc/bind/named.conf.include`** (on Ubuntu), which `CMDaemon` includes automatically and never overwrites.
+</details>
+
+<details>
+<summary>11. How does `portforward` in `cmsh` `device` mode work, and what does `portforward bmc node001` do?</summary>
+
+`portforward` spawns a `socat` listener on the head node that forwards traffic to an internal node port (`portforward create node001 1234 4321`), subject to the head node's Shorewall/`nftables` firewall. `portforward bmc node001` forwards the node's BMC HTTPS (`443`) and console ports through the head node so engineers can reach a Type-1 internal BMC remotely.
+</details>
+
+<details>
+<summary>12. What are the four status values reported by `ipaddresses --check` in `cmsh` `device` mode?</summary>
+
+**`OK`** (configured IP matches live detected IP), **`Mismatch`** (live IP differs from BCM config), **`Not detected`** (configured in BCM but not seen on node), and **`Not configured`** (live on node but not in BCM).
+</details>
+
+<details>
+<summary>13. How many node pairs does `cm-iperf.py` test by default across $n$ nodes, and why must you pass `--count` or `-r` on a 1,000-node cluster?</summary>
+
+It tests all **$n(n - 1) / 2$** pairs at `~10` seconds per pair. On `1,000` nodes, that is `499500` pairs (`~58` days continuously), so you must use `-r` (random sample), `--count`, and `-p` (parallel threads).
+</details>
+
+<details>
+<summary>14. In BCM interface bonding, which mode is default (`0`), which is `active-backup` (`1`), and why does putting `mode=` inside bond `options` fail validation?</summary>
+
+Mode `0` (`balance-rr`) is the default and Mode `1` is `active-backup` (Mode `4` is `802.3ad` LACP). In BCM, the bonding mode **must be set via the dedicated `mode` property** (`set mode 1`), not inside the free-form `options` string (where you set `miimon=100`).
+</details>
+
+<details>
+<summary>15. Can a node's provisioning interface (`BOOTIF`) be a slave member of a bond? Can `bond0` itself be the provisioning interface?</summary>
+
+A physical interface named as `provisioninginterface` **cannot** be a member of a bond; however, **`bond0` itself CAN be set as the `provisioninginterface`** (in which case the node installer brings up `bond0` and its member NICs during boot).
+</details>
+
+<details>
+<summary>16. When configuring persistent Mellanox ConnectX parameters (`MLX_<field>`) in `extra_values`, what is the precedence order across BCM objects, and how does IPoIB `datagram` mode differ from `connected` mode?</summary>
+
+The precedence order is **`category.extra_values < node.extra_values < interface.extra_values`**. For IPoIB (`ibnet`, default `10.149.0.0/16`), **datagram mode** (the default) scales better across many peers with an **MTU up to `4k` (`4092`)**, whereas **connected mode** (`set connectedmode yes`) supports an **MTU up to `64k` (`65520`)**.
+</details>
+
+<details>
+<summary>17. Where are node disk layouts stored in BCM, and why can't BCM modify the head node's disk layout after installation?</summary>
+
+Disk layouts are XML documents stored inside the **`CMDaemon` database** (seeded from templates in `.../htdocs/disk-setup/`, such as `slave-diskless.xml`). Regular node layouts are applied when `node-installer` partitions the node at boot, whereas the head node is already running live and never runs `node-installer`.
+</details>
+
+<details>
+<summary>18. Which three NFS exports are built into the `headnode` role since BCM 9.0, and how do you remove a category-inherited `fsmount` from a node?</summary>
+
+The three built-in head-node exports are **`/var/spool/burn`**, **`/home`**, and **`/cm/shared`** (controlled by `disableautomaticexports`). A category `fsmount` marked `[default]` on a node **cannot be deleted on the node object**—you must either remove it in the category or move that node to a different category.
+</details>
+
+<details>
+<summary>19. In BCM's Multi-Instance GPU (`mig`) management (§3.17.3), how many GPU slices exist on an A100/H100 GPU, which GPU generation requires a reboot to enable MIG, and what happens if `migprofiles` specifies more than 7 slices (e.g., `6*1g.5gb,2g.10gb`)?</summary>
+
+An A100/H100 has **7 GPU slices** (`7` SM slices and `8` memory slices). Enabling/disabling MIG requires a **node reboot on A100**, but **no reboot on H100 and newer GPUs**. If `migprofiles` exceeds 7 slices (`6*1g.5gb,2g.10gb` asks for `6 + 2 = 8` slices), BCM **silently drops slices that arrive after the budget of 7 is exhausted** (allocating six `1g.5gb` instances and zero `2g.10gb` instances).
+</details>
+
+<details>
+<summary>20. List the manual's 6-level order of preference (§3.20) when you need to configure a node beyond standard CMDaemon properties.</summary>
+
+1. **Configure through `CMDaemon`** (`cmsh` / Base View) whenever a native property exists.
+2. **Use a cloned/separate Software Image** for the category or node.
+3. **Image file placement** (`/cm/images/<img_name>/cm/conf/category/<cat>/<path>` or `.../node/<node>/<path>`, where node wins over category).
+4. **`FrozenFile` directive** in `cmd.conf` (avoid when possible).
+5. **`initialize` and `finalize` scripts** (run during the pre-init node-installer stage).
+6. **Shared directory** (`/cm/shared`) holding site scripts/software.
+</details>
+
+## Sources and review notes
 
 - **BCM 11 Administrator Manual, chapter 3:** 3.1 (cluster settings, email, FIPS, open files), 3.2 (networks, interfaces, DNS, routes, port forwarding, tools), 3.3 (bridges), 3.4 (VLANs, the cmsh part), 3.5 (bonds), 3.6 (InfiniBand OFED, `mlxconfig` and `MLX_` extra_values precedence, subnet managers, `ibnet` datagram vs connected mode, IMB PingPong), 3.8 (switches, interface-level `switchports`, APC PDUs, SNMP v1/v2c/v3 and `snmptrap` role), 3.9 (Cumulus switches, ONIE, ZTP, CMDaemon Lite vs YAML preconfiguration, `nvconfigurationmode` `auto`/`manual`/`file`, `uplinks`, `showport`, `finddevicebyswitchport`, `switchoverview`, `setmacviaswitchport`, `checkfactorydefaultpassword`), 3.10 (`nodeoverview`, `additionalnodeinformation`, `minimalconfig`, `checkremotemount`, `proxysettings`, `selinuxsettings`, `remotedaemon` for DPUs), 3.11 (NetQ settings), 3.12 (UFM settings), 3.13 (disk layouts), 3.14 (NFS), 3.15 (services, read in part), 3.16 (racks, chassis), 3.17.1 to 3.17.3 (GPU settings and full MIG configuration commands, `gpuprofiling`, `:k` colon syntax, and overallocation behavior; AMD GPUs skipped), 3.18 (sampling a Prometheus exporter), 3.19 (custom scripts), 3.20 (beyond CMDaemon).
 - **Not read:** 3.7 (BMC; read for 8.7), 3.21 (saving configuration files), appendices A and E (Appendix C read for 8.1 and 8.12; Appendix D LUKS part read in 8.16 search).

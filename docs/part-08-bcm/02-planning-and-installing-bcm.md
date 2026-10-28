@@ -175,7 +175,7 @@ SELinux is **disabled by default** in BCM. The manual says to enable it only if 
 7. Putting 20 hours of burn tests behind a spool path that was never tested.
 8. Turning on SELinux enforcing on day one.
 
-## 11. Exercises
+## Exercises
 
 1. Run `python3 install_lab.py`. Pick three checks and explain each in your own words.
 2. Use `bcm_plan.py` to size a head node for 256 nodes with 150 metrics per device, then for 2000 nodes. Compare with the manual's table.
@@ -192,30 +192,134 @@ SELinux is **disabled by default** in BCM. The manual says to enable it only if 
 - "Why is SELinux off by default?" Policies are site-specific and add support cost; enable only when required, start permissive.
 - "How does the head node grow with the cluster?" Roughly linearly in RAM and disk; large heads add RAM for caching.
 
-## 13. Checkpoint questions (20)
+## Checkpoint questions (20)
 
-1. Which machine do you install first, and why?
-2. Name the two ways to install a head node.
-3. What are the manual's minimum RAM, disk and NICs for the head node?
-4. Write the head node RAM formula from Appendix B.
-5. What does extra head node RAM do on a large cluster?
-6. Describe a Type 1 network in one sentence.
-7. What is different in a Type 2 network?
-8. Why does Type 3 need a DHCP relay?
-9. Which networks does the installer define for Types 1, 2 and 3?
-10. How many nodes fit in three-digit names?
-11. What is an IP offset and what problem does it solve?
-12. Why is the head node disk layout a careful choice?
-13. What is the license tied to?
-14. Which command shows licensed and used nodes?
-15. What happens when a license expires?
-16. How do you name newly booted nodes in order?
-17. Why is the default burn configuration dangerous?
-18. What must be in place before a burn can run?
-19. What is an endless test and when does it end?
-20. Why is SELinux disabled by default, and what does the permissive mode help with?
+<details>
+<summary>1. Which machine in a BCM cluster do you install first, and why?</summary>
 
-## 14. Sources and review notes
+You install the **head node** first, because it hosts `CMDaemon`, the MySQL database, DHCP/TFTP/HTTP boot services, and the `/cm/images` software images used to provision every regular node over the network.
+</details>
+
+<details>
+<summary>2. Name the two supported methods for installing a BCM head node.</summary>
+
+1. **Bare-metal ISO installer:** Booting the head node directly from the BCM installation DVD/ISO and completing the graphical/text wizard.
+2. **Ansible add-on installer (`brightcomputing.installer.head_node`):** Converting an existing supported Linux host into a BCM head node.
+</details>
+
+<details>
+<summary>3. What are the Installation Manual's minimum hardware requirements for a head node versus its recommendation for clusters above 1,000 nodes?</summary>
+
+- **Minimums:** `2` NICs (for Type 1), at least `80 GB` disk, and `8 GB` RAM recommended (`1 GB` RAM and `1` NIC minimum for a regular node).
+- **Above `1,000` nodes (Appendix B):** `24` CPU cores, `128 GB` RAM, and a `512 GB` SSD.
+</details>
+
+<details>
+<summary>4. State the Appendix B formulas for head node RAM and disk scaling as a function of node count.</summary>
+
+- **Head node RAM:** $\text{OS RAM} + 100\text{ MB} + 1.8\text{ MB} \times N_{\text{nodes}}$ (for up to `100` metrics/health checks per device, plus `~1 MB` per device for each additional `100` metrics).
+- **Head node disk:** $\text{OS disk} + 5\text{ GB} \times N_{\text{images}} + 100\text{ kB} \times N_{\text{metrics}} \times N_{\text{devices}}$.
+</details>
+
+<details>
+<summary>5. At 1,000 nodes, `CMDaemon` itself uses only ~2 GB of RAM (`~16 GB` with MySQL). Why does the manual recommend 128 GB of RAM on the head node?</summary>
+
+Because the Linux kernel uses the extra head-node RAM as **page cache** for `/cm/images` and `/cm/shared`, allowing software image transfers (`rsync`) and shared NFS reads to be served from memory rather than disk.
+</details>
+
+<details>
+<summary>6. Describe a BCM **Type 1** network topology.</summary>
+
+In **Type 1** (the default), regular nodes sit on an isolated private network (`internalnet`) and have no direct connection to the external network; the head node has two NICs (`internalnet` and `externalnet`) and acts as the NAT/routing gateway between the cluster and the outside world.
+</details>
+
+<details>
+<summary>7. How does a **Type 2** network topology differ from Type 1, and what DHCP hazard does it introduce?</summary>
+
+In **Type 2**, only `internalnet` is defined by the installer, and both the head node and regular nodes sit on a shared campus/datacenter network that reaches the outside world through an external router. Because the network is shared, the head node's DHCP server can **clash with an existing corporate DHCP server**.
+</details>
+
+<details>
+<summary>8. Describe a **Type 3** network topology and explain why it requires an external DHCP relay (`ip helper-address`).</summary>
+
+In **Type 3**, the head node sits on `managementnet` while regular nodes sit on separate routed subnets (`internalnet`) separated by Layer-3 routers. Because DHCP broadcast packets (`DHCPDISCOVER`) do not cross Layer-3 routers by default, the network team must configure a **DHCP relay agent** on the routers pointing to the head node.
+</details>
+
+<details>
+<summary>9. Which network objects does the BCM installer create by default for Type 1, Type 2, and Type 3?</summary>
+
+- **Type 1:** `internalnet` and `externalnet` (plus `globalnet`).
+- **Type 2:** `internalnet` only (plus `globalnet`).
+- **Type 3:** `internalnet` and `managementnet` (plus `globalnet`).
+</details>
+
+<details>
+<summary>10. Why is choosing `3` digits for node numbering (`node001`) a problem if your cluster grows to 1,000 nodes?</summary>
+
+Three digits only accommodate `node001` through `node999` (`999` nodes maximum); adding a 1,000th node requires 4 digits (`node0001`).
+</details>
+
+<details>
+<summary>11. What is an **IP offset** in the BCM installer (such as `0.0.0.20` for BMC interfaces), and what collision does it prevent?</summary>
+
+When a node's boot interface (`BOOTIF`) and its `bmc` interface share the same subnet, both default to starting at `.1` (`10.141.0.1`), causing every node's BMC IP to collide with a boot IP. Setting an IP offset (e.g., `0.0.0.20` for `10` nodes) shifts the BMC sequence to `10.141.0.21`..`.30`.
+</details>
+
+<details>
+<summary>12. How does the installer's default head-node disk layout change around the `500 GB` disk threshold, and why is `/var` separation important?</summary>
+
+Below `~500 GB`, the installer defaults to a single root `/` partition (plus `/boot`, EFI, and swap); at `500 GB` and above, it creates separate `/tmp` and **`/var`** partitions. Separating `/var` prevents MySQL monitoring tables, `/var/spool/burn`, and `/var/log` from filling `/` and wedging the head node.
+</details>
+
+<details>
+<summary>13. What hardware identifier is a BCM license cryptographically bound to, and what happens if you replace that component?</summary>
+
+The license is bound to the **MAC address** of the head node's primary network interface. Replacing the head node motherboard or NIC changes the MAC address and requires requesting/installing a re-hosted license.
+</details>
+
+<details>
+<summary>14. Which commands display and verify the installed BCM license?</summary>
+
+`cmsh -c "main licenseinfo"` (in `cmsh`), and the CLI utilities `verify-license verify`, `verify-license info`, and `verify-license monthsleft`.
+</details>
+
+<details>
+<summary>15. What happens to `CMDaemon` when the BCM cluster license expires?</summary>
+
+`CMDaemon` **refuses to start** (logging `License has expired`), halting cluster management and provisioning until a valid license is installed with `install-license`.
+</details>
+
+<details>
+<summary>16. When brand-new regular nodes PXE-boot for the first time, how do you assign them sequential names `node001..node032`?</summary>
+
+Power the nodes on in physical rack order and run **`device newnodes -s -n node001..node032`** in `cmsh` (which assigns names in the order their MAC addresses were detected and saves them).
+</details>
+
+<details>
+<summary>17. Why is BCM's `default-destructive` burn-in configuration dangerous if run on an existing production node?</summary>
+
+Because `default-destructive` **wipes and overwrites all attached storage drives** during disk stress testing (re-provisioning the node from its software image afterward).
+</details>
+
+<details>
+<summary>18. What hardware management prerequisite must be working before you start a BCM `burn` run?</summary>
+
+Working **power control** (such as a configured BMC via IPMI or Redfish), because the burn framework automatically power-cycles and reboots the node between `<pre-install>` and `<post-install>` phases.
+</details>
+
+<details>
+<summary>19. In a BCM burn XML configuration, how are phases ordered, and when does a test marked `endless="1"` terminate?</summary>
+
+Phases must have unique names and execute in **alphanumeric sort order** (e.g., `01-hwcheck`, `02-stress`). All tests within a phase start in parallel; a background monitor test marked `endless="1"` (such as `mce_check` or `kmon`) runs until **every non-endless test in that same phase completes**.
+</details>
+
+<details>
+<summary>20. Why is SELinux disabled by default in BCM, and what trap occurs if you re-sync a node from an image that lacks SELinux file contexts?</summary>
+
+SELinux is disabled by default because custom cluster paths and daemons require site-specific policy tuning (start in `permissive` mode with `cmd` unconfined). In `FULL` or `AUTO` install modes, syncing from an image where `setfiles` has not labeled the SELinux file contexts will **erase the file contexts on the compute node**.
+</details>
+
+## Sources and review notes
 
 - **BCM 11 Installation Manual:** chapter 1 (quickstart: GUI install, first boot, adding nodes, GPUs), chapter 3 (hardware, ISO flow, topologies 3.3.9, network screens 3.3.13, naming 3.3.11, IP offset 3.3.15, disk layout 3.3.17, LUKS; the Ansible installer only partly read), chapter 4 (licensing), chapter 6 (changing head node network parameters), chapter 11 (burning nodes), chapter 12 (SELinux; I read the RHEL 8 and Rocky 9 part), appendix B (hardware formulas and observed table) and appendix C (scope of support).
 - **Run here:** `install_lab.py` (32 checks): the Appendix B formulas against the observed table, naming limits, IP offsets, disk layout choice, topology table, license warnings, burn configuration rules and burn status parsing.
