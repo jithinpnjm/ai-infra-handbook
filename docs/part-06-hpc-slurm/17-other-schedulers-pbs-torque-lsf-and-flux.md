@@ -4,7 +4,7 @@ title: "6.17 Other schedulers: PBS, Torque, LSF and Flux"
 sidebar_label: "6.17 Other schedulers: PBS, Torque, LSF and Flux"
 sidebar_position: 17
 description: "The other batch schedulers you will meet: OpenPBS/PBS Professional and the legacy Torque, IBM Spectrum LSF, and Flux (El Capitan's workload manager): architecture, request syntax, a command map against Slurm, a tested PBS-to-Slurm directive converter, and guidance for migrations and mixed environments"
-status: "drafted"
+status: "reviewed"
 tier: "3"
 level: "I"
 lab_venue: "GCP / GKE"
@@ -34,6 +34,19 @@ Needs 6.7 to 6.11. After this chapter you can:
 - Plan a migration: inventory, translation, policy mapping, accounting continuity, user retraining, parallel run.
 
 ## 1. What all batch schedulers share
+
+```mermaid
+flowchart TB
+  subgraph PBS["OpenPBS / Torque"]
+    P1["pbs_server + pbs_sched (or Maui maui.cfg)"] --> P2["pbs_mom (+ trqauthd) on compute nodes"]
+  end
+  subgraph LSF["IBM Spectrum LSF"]
+    L1["mbatchd + mbschd + master LIM"] --> L2["sbatchd + res + host LIM"]
+  end
+  subgraph Flux["LLNL Flux (Hierarchical)"]
+    F1["System flux-broker tree + Fluxion"] --> F2["Job Subinstance flux-broker (flux batch)"]
+  end
+```
 
 A **queue/partition** concept; a **server/controller** holding state; a **per-node daemon** (MOM in PBS, `sbatchd` in LSF, broker in Flux, `slurmd`); a **policy engine** (priority, fair-share, backfill, limits, preemption); a **job script with directives** in comments; **arrays**, **dependencies**, **interactive** jobs; **accounting**. Differences are in vocabulary, resource-request model, defaults and extensibility. The SCL book devotes a chapter to OpenPBS/Torque because its target readers meet them; the same skills transfer.
 
@@ -81,12 +94,13 @@ Naming caution from the SCL book: the *original* OpenPBS (MRJ, 1998, unsupported
    ```
 
 2. **Initialise the server and define compute nodes (`$PBS_HOME/server_priv/nodes`)**: initialise the server database on first startup with `{sbindir}/pbs_server -t create` (`(untested here)`), and list compute nodes in `$PBS_HOME/server_priv/nodes` using `node_name[:ts] [property...] [np=NUMBER]` (where `:ts` marks a timeshared node and `np` is the processor count), or dynamically via `qmgr` (`create node ib01 np=1,ntype=cluster,properties="MYCLUSTER"`, `set node ...`, where `state` can be `free`, `offline`, `down`, or `excl` when running a job).
-3. **Create and configure queues and server parameters with `qmgr`**: in the book's example, queue `MYCLUSTER` (or `batch`) and server-wide parameters are configured via `qmgr` (either interactively, via `qmgr < MYCLUSTER.txt`, or dumped with `qmgr -c "print server" > /tmp/server.conf`):
+3. **Create and configure queues and server parameters with `qmgr`**: in the book's example, queue `MYCLUSTER` (or `batch`, with walltime caps such as `24:00:00` or `48:00:00` and core/slot caps such as `20`, `21`, `22`, `24`, or `25`) and server-wide parameters are configured via `qmgr` (either interactively, via `qmgr < MYCLUSTER.txt`, or dumped with `qmgr -c "print server" > /tmp/server.conf`):
 
    ```text
    # (untested here) — Queue setup (in the book's example, queue MYCLUSTER or batch)
    create queue batch
    set queue batch queue_type = Execution
+   set queue batch resources_max.walltime = 48:00:00
    create queue MYCLUSTER
    set queue MYCLUSTER queue_type = Execution
    set queue MYCLUSTER resources_max.ncpus = 20
@@ -148,7 +162,7 @@ Naming caution from the SCL book: the *original* OpenPBS (MRJ, 1998, unsupported
    fi
    ```
 
-5. **Built-in scheduler configuration (`/var/spool/PBS/sched_priv/sched_config`)**: entries take the form `name:value [prime | non_prime | all]`, including `round_robin`, `by_queue`, `strict_fifo`, `fair_share` (with `half_life` and `sync_time`), `load_balancing`, `help_starving_jobs` (after `max_starve`), `log_filter`, and `sort_by`. The built-in Torque scheduler supports the following sorting keys (Table 14-2 in the book, plus `multi_sort` with multiple `key:` lines):
+5. **Customizing the scheduler (`pbs_sched`, `/var/spool/PBS/sched_priv/sched_config`, and `maui.cfg`)**: In Torque, a separate process—the scheduler—is responsible for selecting the next task to launch for execution (`SCL` Chapter 14, *Customizing the Scheduler*). This separation allows a flexible policy of task execution organization that evaluates each task by time of day, system load, task size, and queuing time. When the server's `scheduling` attribute is set to `True`, `pbs_server` responds to events (**adding a task to the queue** or **completion of the assignment**) by calling the scheduler to select the next task to run. Torque ships with several schedulers selectable at installation time via `./configure --set-sched=cc --set-sched-code=sgi_origin` (by default installing the FIFO scheduler), and production sites frequently pair Torque with the external **Maui** or **Moab** scheduler (configuring fair-share, backfill, reservations, and priority weights in **`maui.cfg`**). For the built-in scheduler, entries in `/var/spool/PBS/sched_priv/sched_config` take the form `name:value [prime | non_prime | all]`, including `round_robin`, `by_queue`, `strict_fifo`, `fair_share` (with `half_life` and `sync_time`), `load_balancing`, `help_starving_jobs` (after `max_starve`), `log_filter`, and `sort_by`. The built-in Torque scheduler supports the following sorting keys (Table 14-2 in the book, plus `multi_sort` with multiple `key:` lines):
 
    | Sorting key (`sort_by`) | Meaning |
    |---|---|
@@ -162,7 +176,12 @@ Naming caution from the SCL book: the *original* OpenPBS (MRJ, 1998, unsupported
    | `large_walltime_first` | Descending by `task_walltime` attribute |
    | `short_walltime_first` | In ascending order by `task_walltime` attribute |
 
-6. **Job control commands**: users and admins manage Torque jobs with `qsub`, `qdel`, `qhold`, `qrls`, `qmove`, `qmsg`, `qselect`, `qsig`, `qstat` (`qstat -a`, `qstat -q`), `pestat`, and the X11 GUIs `xpbs` and `xpbsmon` (if output files cannot be delivered to `$PBS_O_WORKDIR`, Torque saves them in `/var/spool/PBS/undelivered/`).
+6. **Using Torque (`qsub`, `myprog.batch`, OpenMP, MPI, and output files; `SCL` Chapter 14)**: Users submit tasks with `qsub -q QUEUE -l ncpus=CORES script_name` or place `#PBS` directives inside the batch script (`qsub myprog.batch`). In the book's examples (`(untested here)`):
+   - **Single-node / multi-process script (`myprog.batch`):** `#PBS -l nodes=1:ppn=4` and `#PBS -q MYCLUSTER`, followed by `cd $PBS_O_WORKDIR` (which specifies the path to the working directory where the executable program named `progname` is located) and `./progname`.
+   - **OpenMP multithreaded script:** By default an OpenMP program spawns as many threads as there are cores on the node; to cap threads at 2 cores, add `#PBS -l nodes=1`, `#PBS -q MYCLUSTER`, and `#PBS -v OMP_NUM_THREADS=2` (and for long jobs, add `#PBS -l walltime=300:20:00` for 300 hours and 20 minutes).
+   - **Multi-node MPI script:** `#PBS -l walltime=30:00:00` and `#PBS -l nodes=4:MYCLUSTER`, followed by `cd $PBS_O_WORKDIR` and `mpirun -np 4 ./progname`.
+   - **Standard output, error streams, and live redirection:** Everything written to standard output and error while the task is running is buffered to a file on the compute node and copied back to the directory from which the task was started at the end of the run, automatically named **`<script_name>.o<task_number>`** (standard output) and **`<script_name>.e<task_number>`** (error stream). To inspect output live while the program is still executing (with `cat`, `less`, or `tail -f`), redirect output directly inside the script: `mpirun -np 4 progname > $PBS_JOBID` (or with keyboard input redirection: `mpirun -np 4 progname < input_file > $PBS_JOBID`). If Torque has trouble finding the destination path when the job ends, the files remain in `/var/spool/PBS/undelivered/` on the compute node and the user is notified by mail.
+7. **Job control commands**: users and admins manage Torque jobs with `qsub`, `qdel`, `qhold`, `qrls`, `qmove`, `qmsg`, `qselect`, `qsig`, `qstat` (`qstat -a`, `qstat -q`), `pestat`, and the X11 GUIs `xpbs` and `xpbsmon`.
 
 ## 3. IBM Spectrum LSF (general knowledge, unverified)
 
@@ -243,7 +262,15 @@ The `ncpus=64` per chunk with `mpiprocs=8` became `--cpus-per-task=8` (64/8). Th
 - Workflow tools abstract the scheduler: Nextflow, Snakemake, Airflow providers, Parsl, Dask-Jobqueue support Slurm, PBS and LSF through executors.
 - Cloud bursting: PBS and LSF have cloud connectors; Slurm has power-save/cloud nodes (6.15).
 
-## 9. Lab (converter tested; rest untested)
+## 9. Lab (self-checking converter lab tested; live scheduler installs untested)
+
+First, run the self-checking Python lab (`code/part06/pbs2slurm_lab.py`) locally. It verifies `convert_line()` and `mem_to_slurm()` in `code/part06/pbs2slurm.py` on a 9-directive PBS GPU script (checking that `select=2:ncpus=64:mpiprocs=8:ngpus=8:mem=500gb` translates to `--nodes=2`, `--ntasks-per-node=8`, `--cpus-per-task=8`, `--gpus-per-node=8`, `--mem=500G`), checks the Torque `/etc/services` port mapping (`15001`–`15004`), and validates the 9 `sort_by` keys from `SCL` Chapter 14 `Table 14-2`:
+
+```bash
+python3 code/part06/pbs2slurm_lab.py
+```
+
+Next, work through these steps:
 
 1. Run `pbs2slurm.py` on two of your own PBS scripts; fix every TODO by hand; lint with `sbatch_lint.py`.
 2. Install OpenPBS in a single-node container or VM; submit a `select` job; inspect `pbsnodes -a` and `qstat -f`.
@@ -262,38 +289,177 @@ The `ncpus=64` per chunk with `mpiprocs=8` became `--cpus-per-task=8` (64/8). Th
 - Which schedulers run the top supercomputers?
 - Why do most GPU clouds standardise on Slurm or Kubernetes?
 
-## 11. Checkpoint questions (25)
+## Exercises
 
-1. Name the PBS daemons and roles.
-2. What is a PBS chunk? A vnode?
-3. Explain `place=scatter:excl`.
-4. How are PBS arrays and dependencies written?
-5. What are `PBS_NODEFILE` and `PBS_O_WORKDIR`?
-6. What is Torque's relationship to PBS and Maui/Moab, which TCP ports do `pbs_server`, `pbs_mom`, `pbs_resmom`, and `pbs_sched` use, and how does the book's `/var/spool/PBS/mom_priv/epilogue` script clean up stray processes after a job finishes? **A:** Torque is an open-source fork of the original OpenPBS (1998) maintained by Adaptive Computing and often paired with the external Maui or Moab scheduler. Its daemons use fixed TCP ports defined in `/etc/services`: `15001/tcp` (`pbs`, i.e., `pbs_server`), `15002/tcp` (`pbs_mom`), `15003/tcp` (`pbs_resmom`), and `15004/tcp` (`pbs_sched`). When a task finishes on the head node of the job, `pbs_mom` runs `/var/spool/PBS/mom_priv/epilogue`, which reads `/var/spool/PBS/aux/$1` (`PBS_NODEFILE`) and SSHes to each allocated node to run `pkill -KILL -u $USER` and remove the user's temporary files in `/tmp`.
-7. List LSF's main daemons.
-8. Give a `bsub` GPU example (unverified).
-9. What is a Flux instance and how is it started?
-10. What does `flux batch` do?
-11. What does `flux proxy` do?
-12. What is hierarchical scheduling?
-13. What is `flux-sched`/Fluxion?
-14. Which production system runs Flux as its only workload manager?
-15. Name two limitations in Flux's own migration guide.
-16. Map `sbatch`, `squeue`, `scancel`, `sinfo` to PBS and LSF.
-17. How do you express "8 GPUs per node, exclusive" in each of the four?
-18. Why is ncpus-per-chunk not the same as `--cpus-per-task`?
-19. What can't an automatic PBS-to-Slurm translator do?
-20. How do PBS hooks map to Slurm?
-21. What are the first steps of a scheduler migration?
-22. How do you preserve fair-share history?
-23. Which workflow tools abstract the scheduler?
-24. How can you run a nested scheduler inside a Slurm job?
-25. Why is Torque a poor greenfield choice?
+1. **Automated PBS-to-Slurm Script Translation (`code/part06/pbs2slurm.py` & `pbs2slurm_lab.py`):** Run `python3 code/part06/pbs2slurm_lab.py`. Explain why `pbs2slurm.py` divides `ncpus` (`64`) by `mpiprocs` (`8`) to produce `#SBATCH --cpus-per-task=8`, how it translates `-l place=scatter:excl`, `-J 0-9%3`, and `-m abe`, and why custom resources (`-l software=matlab`) and heterogeneous `+` chunks are emitted as `# TODO` comments for manual review.
+2. **Configuring Torque Queues, Server Parameters, and `pbs_mom` Epilogue (`SCL` Chapter 14):** Write the `/etc/services` port lines (`15001`–`15004`), `qmgr` commands to create queue `MYCLUSTER` (`resources_max.ncpus = 20`, `resources_max.walltime = 336:00:00`, `max_user_run = 12`) and dump `/tmp/server.conf`, and explain how `/var/spool/PBS/mom_priv/epilogue` uses `/var/spool/PBS/aux/$1` to clean up orphan user processes and `/tmp` files across nodes.
+3. **Customizing Torque's Scheduler (`sched_config` vs `maui.cfg`, `SCL` Chapter 14):** Explain the difference between `round_robin`, `by_queue`, `strict_fifo`, `fair_share`, and `help_starving_jobs` (`max_starve`) in `/var/spool/PBS/sched_priv/sched_config`, write a `multi_sort` block combining three keys from `Table 14-2`, and state why production Torque sites often replace `pbs_sched` with Maui/Moab (`maui.cfg`).
+4. **Cross-Scheduler Translation Matrix (Slurm, OpenPBS, LSF, and Flux):** Write equivalent job submission commands and directives across Slurm (`sbatch`), OpenPBS (`qsub`), IBM Spectrum LSF (`bsub`), and LLNL Flux (`flux batch`) for a 2-node job requesting 8 GPUs per node, 64 CPU cores per node, 500 GiB RAM per node, exclusive node access, and a 12-hour walltime.
+5. **Running Nested Hierarchical Scheduling with LLNL Flux Inside Slurm:** Explain how `flux batch` creates a nested `flux-broker` subinstance inside an enclosing Slurm allocation, why hierarchical scheduling prevents a 50,000-task hyperparameter/RL ensemble from overwhelming `slurmctld`, and which missing features Flux's own "Migrating from Slurm" guide highlights for large centers.
+6. **Planning a Production Scheduler Migration (PBS or LSF to Slurm):** Design a 7-step migration plan from PBS or LSF to Slurm covering script/hook inventory, queue-to-partition/QoS policy mapping, automated `pbs2slurm.py` + `sbatch_lint.py` conversion, historical fair-share seeding in `slurmdbd`, dual-partition parallel validation, and workflow engine (Nextflow/Airflow/Snakemake) cutover.
 
-## 12. Sources and review notes
+## Checkpoint
 
-- OpenPBS: man pages `qsub(1B)`, `pbs(8B)` family, `pbs_resources(7B)` (openpbs/openpbs commit `cd7ab5e`). Torque daemon ports (`15001`–`15004`), `qmgr` server and queue setup commands, `mom_priv/config`, the `/var/spool/PBS/mom_priv/epilogue` cleanup script, `sched_config` sorting keys (Table 14-2), and job control commands (read in full: `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`, "14. OpenPBS and Torque").
-- Flux: flux-core documentation (`flux-batch(1)`, job parameter and dependency pages, "Migrating from Slurm" in the admin guide), commit `40ecc8d`.
-- LSF: general knowledge only; verify with IBM documentation. SUNK/other Kubernetes bridges: see 6.16.
-- Run here: `code/part06/pbs2slurm.py` and its run on `/tmp` test input.
-- Not verified on live hardware: all Torque (`pbs_server`, `qmgr`, `pbs_mom`, `qsub`), OpenPBS, Flux, and LSF commands, the current status of Torque, the PBS wrappers shipped with Slurm, and Flux roadmap dates.
+<details>
+<summary>1. Distinguish between the three historical code lines associated with the name **PBS** (`SCL` Chapter 14).</summary>
+
+1. **Original OpenPBS (1998, MRJ Technology Solutions for NASA):** Discontinued around 2004.
+2. **Torque (Terascale Open-Source Resource and QUEue Manager):** Adaptive Computing's open-source fork of OpenPBS 2.3.12, commonly paired with the Maui/Moab scheduler.
+3. **PBS Professional / modern OpenPBS (Altair Engineering):** Altair's commercial evolution of PBS, open-sourced as the modern `openpbs/openpbs` project in 2020.
+</details>
+
+<details>
+<summary>2. Name the four core daemons of **OpenPBS / PBS Professional** and their Slurm equivalents.</summary>
+
+- **`pbs_server`:** Central job/queue server and state manager (backed by PostgreSQL) $\leftrightarrow$ `slurmctld` + `slurmdbd`.
+- **`pbs_sched`:** Policy scheduler daemon deciding which job runs next $\leftrightarrow$ `slurmctld` scheduling plugin (`sched/backfill`).
+- **`pbs_mom` ("Machine Oriented Mini-server"):** Compute-node execution agent $\leftrightarrow$ `slurmd` + `slurmstepd`.
+- **`pbs_comm`:** Inter-node communication relay $\leftrightarrow$ Slurm hierarchical `TreeWidth` communication.
+</details>
+
+<details>
+<summary>3. How do PBS `select` chunks and `place` directives work, and what is a **vnode**?</summary>
+
+- **`-l select=<N>:<chunk>[+<M>:<chunk>]`:** Requests $N$ resource chunks, where each chunk specifies per-chunk `ncpus`, `mpiprocs`, `ngpus`, and `mem` (and `+` joins heterogeneous chunks in a single job).
+- **`-l place=<arrangement>:<sharing>:<grouping>`:** Controls how chunks map onto hosts (`free`, `pack`, `scatter`, `vscatter` combined with `excl`, `shared`, or `exclhost`).
+- **vnode (virtual node):** An abstract schedulable subdivision of a physical host (for example one vnode per NUMA socket or GPU).
+</details>
+
+<details>
+<summary>4. How are job arrays, job dependencies, and node hostlists expressed in PBS compared to Slurm?</summary>
+
+- **Arrays:** `#PBS -J 0-9%3` (`$PBS_ARRAY_INDEX`) vs `#SBATCH --array=0-9%3` (`$SLURM_ARRAY_TASK_ID`).
+- **Dependencies:** `#PBS -W depend=afterok:1234` vs `#SBATCH --dependency=afterok:1234`.
+- **Allocated hostlist:** `$PBS_NODEFILE` (a file containing one hostname line per allocated slot) vs `$SLURM_JOB_NODELIST` (a compressed range string expanded via `scontrol show hostnames`).
+</details>
+
+<details>
+<summary>5. Which four TCP ports in `/etc/services` are used by **Torque**, and what daemon was added alongside `pbs_mom` in Torque 4.0 (`SCL` Chapter 14)?</summary>
+
+- **`15001/tcp` (`pbs`):** `pbs_server`
+- **`15002/tcp` (`pbs_mom`):** `pbs_mom` to/from server
+- **`15003/tcp` (`pbs_resmom`):** resource management requests to `pbs_mom`
+- **`15004/tcp` (`pbs_sched`):** scheduler daemon
+Starting in Torque 4.0, the **`trqauthd`** client authentication daemon must also run alongside `pbs_mom`.
+</details>
+
+<details>
+<summary>6. How are compute nodes defined in Torque's `$PBS_HOME/server_priv/nodes` file and via `qmgr`, and what does `:ts` mean (`SCL` Chapter 14 `Table 14-1`)?</summary>
+
+Each line in `$PBS_HOME/server_priv/nodes` has the format `node_name[:ts] [property...] [np=NUMBER]`, or is added dynamically via `qmgr: create node ib01 np=1,ntype=cluster,properties="MYCLUSTER"`. Appending **`:ts`** (`ntype=time-shared`) marks the node as timeshared (polled for status and interactive use, not batch cluster allocation). Node states in `Table 14-1` are `free`, `offline`, `down`, plus `excl` when running a task.
+</details>
+
+<details>
+<summary>7. How do you initialize `pbs_server` for the first time, back up all server/queue settings with `qmgr`, and restore them (`SCL` Chapter 14)?</summary>
+
+- **First-time DB initialization:** `{sbindir}/pbs_server -t create`
+- **Dump server and queue configuration:** `qmgr -c "print server" > /tmp/server.conf`
+- **Restore configuration:** `qmgr < /tmp/server.conf`
+</details>
+
+<details>
+<summary>8. What parameters go into `/var/spool/PBS/mom_priv/config`, and how does `/var/spool/PBS/mom_priv/epilogue` clean up stray processes after a Torque job ends (`SCL` Chapter 14)?</summary>
+
+`/var/spool/PBS/mom_priv/config` defines `$logevent 255`, `$pbsserver <head_host>`, `$cputmult 1.0`, `$ideal_load 1.0`, and `$max_load 2.0`. When a job finishes on the head compute node, `pbs_mom` executes `/var/spool/PBS/mom_priv/epilogue` with `JOBID=$1` and `USER=$2`, which reads `/var/spool/PBS/aux/$1` (`PBS_NODEFILE`) and SSHes to every allocated node to run `pkill -KILL -u $USER` and delete the user's files in `/tmp`.
+</details>
+
+<details>
+<summary>9. In Torque's `/var/spool/PBS/sched_priv/sched_config`, what do `round_robin`, `strict_fifo`, `help_starving_jobs`, and `sort_by` (`Table 14-2`) control (`SCL` Chapter 14)?</summary>
+
+- **`round_robin`:** Cycles one task at a time across queues (vs draining one queue until a limit is hit).
+- **`strict_fifo`:** Strictly blocks younger tasks when the oldest queued task cannot start yet (preventing starvation of large jobs at the cost of idle gaps).
+- **`help_starving_jobs`:** Halts starting other tasks once a job has waited longer than `max_starve`.
+- **`sort_by` (`Table 14-2`):** Orders queued tasks by `no_sort`, `shortest_task_first` / `longest_task_first` (`cput`), `smallest_memory_first` / `largest_memory_first` (`mem`), `high_priority_first` / `low_priority_first` (`task_priority`), `large_walltime_first` / `short_walltime_first` (`task_walltime`), or `multi_sort`.
+</details>
+
+<details>
+<summary>10. How does Torque name standard output and error files by default, how can a user watch output in real time, and where do undeliverable output files land (`SCL` Chapter 14)?</summary>
+
+By default, Torque buffers stdout and stderr on the execution node and copies them back to the submission directory at job completion as **`<script_name>.o<task_number>`** and **`<script_name>.e<task_number>`**. To watch output live during execution, redirect stdout inside the batch script (`mpirun -np 4 progname > $PBS_JOBID`) and run `tail -f`. If Torque cannot write to the submission path when the job ends, the files are saved in **`/var/spool/PBS/undelivered/`** and the user is notified by mail.
+</details>
+
+<details>
+<summary>11. Name the core daemons of **IBM Spectrum LSF** and its primary CLI commands.</summary>
+
+- **Master host daemons:** `mbatchd` (master batch daemon), `mbschd` (scheduler daemon), and master `LIM` (Load Information Manager).
+- **Execution host daemons:** `sbatchd` (slave batch daemon), `res` (Remote Execution Server), and host `LIM`.
+- **CLI commands:** `bsub` (submit), `bjobs` (queue status), `bkill` (cancel), `bqueues` (queues), `bhosts` / `lsload` (nodes), `bhist` / `bacct` (history/accounting).
+</details>
+
+<details>
+<summary>12. How do you request 16 tasks packed 8 per node with 4 GPUs and a 12-hour walltime in LSF (`bsub`)?</summary>
+
+`bsub -n 16 -R "span[ptile=8]" -gpu "num=4" -q gpu -W 12:00 < script.sh` (using `#BSUB` directives inside the script and reading `$LSB_JOBID` and `$LSB_DJOB_HOSTFILE`).
+</details>
+
+<details>
+<summary>13. What is **LLNL Flux**, and how does its **hierarchical subinstance** model (`flux batch`) differ from Slurm?</summary>
+
+Flux (`flux-core` + the `Fluxion` graph scheduler in `flux-sched`) builds each scheduler instance out of a tree overlay of `flux-broker` processes. When a user runs **`flux batch script.sh`**, Flux spawns a **new child Flux instance ("subinstance")** inside the allocated resources with its own job manager, KVS, and scheduling policy. Users can launch millions of fine-grained `flux submit` / `flux run` tasks inside their subinstance without putting any RPC load on the top-level system scheduler.
+</details>
+
+<details>
+<summary>14. What does `flux proxy JOBID` do, and how are job dependencies expressed in Flux?</summary>
+
+`flux proxy JOBID` attaches an interactive shell or command to the message bus of a running Flux subinstance (`flux uptime` displays the nesting `depth` and `size`). Dependencies use RFC 26 URIs via `--dependency=afterok:ID` (which behave like shell `&&` chains).
+</details>
+
+<details>
+<summary>15. Which TOP500 #1 supercomputer runs Flux as its sole system workload manager, and what limitations does Flux's Slurm migration guide note for general centers?</summary>
+
+**El Capitan** at Lawrence Livermore National Laboratory (LLNL) runs Flux as its system workload manager. Flux's own migration guide cautions general HPC centers that pre-1.0 Flux still lacks rolling daemon upgrades without matching `flux-core` versions across nodes, controller restarts that preserve running jobs, and immovable future maintenance reservations.
+</details>
+
+<details>
+<summary>16. Why does `code/part06/pbs2slurm.py` translate `#PBS -l select=2:ncpus=64:mpiprocs=8:ngpus=8:mem=500gb` into `--cpus-per-task=8` instead of `--cpus-per-task=64`?</summary>
+
+Because PBS `ncpus=64` specifies the **total CPUs per chunk (node)** while `mpiprocs=8` specifies the **number of MPI tasks per chunk**. In Slurm, `--cpus-per-task` multiplies `--ntasks-per-node=8`, so each of the 8 tasks on the node must request $64 / 8 = \mathbf{8}$ CPUs (`--cpus-per-task=8`).
+</details>
+
+<details>
+<summary>17. Name five PBS features or constructs that an automated directive translator (`pbs2slurm.py`) cannot mechanically convert without human review.</summary>
+
+1. Heterogeneous multi-chunk requests (`select=1:...+4:...`).
+2. Custom site resource attributes (`-l software=matlab` $\to$ Slurm licenses, features, or GRES).
+3. Python admission/execution hooks (`pbs_python` $\to$ Slurm `job_submit.lua` and `Prolog`/`Epilog`).
+4. Queue-level fair-share, routing queues, and preemption policies (must be rebuilt in `sacctmgr` QoS/Fair Tree).
+5. `mpirun -machinefile $PBS_NODEFILE` launch lines (should be replaced by `srun --mpi=pmix`).
+</details>
+
+<details>
+<summary>18. What are the 7 steps of a safe production migration from PBS or LSF to Slurm?</summary>
+
+1. **Inventory** queues, limits, custom resources, hooks, user scripts, and workflow integrations.
+2. **Map policies** to Slurm partitions, QoS, Fair Tree accounts, GRES/licenses, and `job_submit`/`Prolog`/`Epilog`.
+3. **Translate user scripts** (`pbs2slurm.py` + `sbatch_lint.py`, plus optional `qsub` compatibility wrappers).
+4. **Preserve accounting continuity** by exporting historical usage and seeding initial fair-share.
+5. **Run a parallel pilot** on a subset of nodes with a user command-map cheat sheet.
+6. **Cut over in node waves** with a defined rollback window.
+7. **Switch workflow executors** (Nextflow, Snakemake, Airflow, Ray/Dask) to their native Slurm backends.
+</details>
+
+<details>
+<summary>19. When should you run **Flux, Ray, or Dask inside a Slurm allocation** instead of submitting 100,000 individual `sbatch` jobs?</summary>
+
+When running high-throughput ensembles, reinforcement-learning rollouts, or sub-minute task graphs. Launching a single multi-node Slurm allocation and starting Flux (`srun flux start ...`), Ray, or Dask inside it keeps `slurmctld` completely insulated from high-frequency task scheduling.
+</details>
+
+<details>
+<summary>20. Map the five everyday user commands (submit batch, interactive shell, list queue, cancel job, inspect nodes) across **Slurm**, **PBS**, **LSF**, and **Flux**.</summary>
+
+- **Submit batch:** `sbatch` (Slurm) | `qsub` (PBS) | `bsub <` (LSF) | `flux batch` (Flux)
+- **Interactive:** `salloc` / `srun --pty` (Slurm) | `qsub -I` (PBS) | `bsub -Is` (LSF) | `flux alloc` (Flux)
+- **List queue:** `squeue` (Slurm) | `qstat` (PBS) | `bjobs` (LSF) | `flux jobs` (Flux)
+- **Cancel job:** `scancel` (Slurm) | `qdel` (PBS) | `bkill` (LSF) | `flux cancel` (Flux)
+- **Inspect nodes:** `sinfo` (Slurm) | `pbsnodes -a` (PBS) | `bhosts` / `lsload` (LSF) | `flux resource list` (Flux)
+</details>
+
+## Sources and review notes
+
+- OpenPBS: man pages `qsub(1B)`, `pbs(8B)` family, `pbs_resources(7B)` (`openpbs/openpbs` commit `cd7ab5e`).
+- Torque history (MRJ 1998 OpenPBS, Adaptive Computing Torque, Altair PBS Pro), daemon ports (`15001`–`15004`), `trqauthd`, `$PBS_HOME/server_priv/nodes` (`:ts` timeshared), `qmgr` `Table 14-1` node attributes and server/queue setup commands (`qmgr -c "print server" > /tmp/server.conf`), `mom_priv/config`, the `/var/spool/PBS/mom_priv/epilogue` cleanup script, `configure --set-sched=cc --set-sched-code=sgi_origin`, `maui.cfg`, `sched_config` sorting keys (`Table 14-2`), `myprog.batch` / OpenMP / MPI batch scripts, `<script_name>.o<task_number>` and `/var/spool/PBS/undelivered/`, and job control commands (`pestat`, `xpbs`, `xpbsmon`): read in full from *Supercomputers for Linux SysAdmins* (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware`, `SCL`) Chapter 14 ("14. OpenPBS and Torque").
+- Flux: `flux-core` documentation (`flux-batch(1)`, job parameter and dependency pages, "Migrating from Slurm" in the admin guide, commit `40ecc8d`).
+- LSF: general knowledge only; verify with IBM Spectrum LSF documentation. SUNK/other Kubernetes bridges: see Chapter 6.16.
+- Run here: `code/part06/pbs2slurm.py` and `python3 code/part06/pbs2slurm_lab.py` (3 passed, 0 failed).
+- Explicitly labelled inferences: The semantic `ncpus // mpiprocs` translation in `code/part06/pbs2slurm.py` and `pbs2slurm_lab.py` is a deterministic migration aid for converting chunk-level PBS CPU requests into per-task Slurm requests.
+- Not verified on live hardware: all Torque (`pbs_server`, `qmgr`, `pbs_mom`, `qsub`), OpenPBS, Flux, and LSF commands, the current upstream status of Torque, the PBS wrappers shipped with Slurm, and Flux roadmap dates (`untested here`).
