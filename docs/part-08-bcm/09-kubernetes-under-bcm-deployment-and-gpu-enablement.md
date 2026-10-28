@@ -314,7 +314,7 @@ Above **`50` nodes**, deploying **`1` Typha replica per `150` nodes** with a **m
 <details>
 <summary>8. With the default `/24` per-node pod subnet allocation (`Pod Network Node Mask`), what is the maximum number of Kubernetes nodes that fit inside a `/16` pod network CIDR?</summary>
 
-**`256` nodes** ($2^{24 - 16} = 256$ `/24` blocks).
+**`256` nodes** (`2^(24 - 16) = 256` `/24` blocks).
 </details>
 
 <details>

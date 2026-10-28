@@ -217,8 +217,8 @@ You install the **head node** first, because it hosts `CMDaemon`, the MySQL data
 <details>
 <summary>4. State the Appendix B formulas for head node RAM and disk scaling as a function of node count.</summary>
 
-- **Head node RAM:** $\text{OS RAM} + 100\text{ MB} + 1.8\text{ MB} \times N_{\text{nodes}}$ (for up to `100` metrics/health checks per device, plus `~1 MB` per device for each additional `100` metrics).
-- **Head node disk:** $\text{OS disk} + 5\text{ GB} \times N_{\text{images}} + 100\text{ kB} \times N_{\text{metrics}} \times N_{\text{devices}}$.
+- **Head node RAM:** `OS_RAM + 100 MB + 1.8 MB * N_nodes` (for up to `100` metrics/health checks per device, plus `~1 MB` per device for each additional `100` metrics).
+- **Head node disk:** `OS_disk + 5 GB * N_images + 100 kB * N_metrics * N_devices`.
 </details>
 
 <details>

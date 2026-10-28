@@ -263,7 +263,7 @@ Approximately **`150 CFM per kW`** at sea level: **`~2,145 CFM`** for `1` system
 <details>
 <summary>17. In the DGX B200 rack power table (`superpod_lab.py`), how is usable 3-phase power calculated for two circuits, and why does a `66 kW` rack support `4` systems (`57.2 kW`) with `8.4 kW` stranded power?</summary>
 
-Each 3-phase circuit provides $3 \times V_{\text{L-N}} \times I \times \text{derating} \times 0.95\text{ PF}$ (e.g., two `415V`/`240V L-N`, `60A` circuits at `80%` derating provide `~65.6 kW`). Because racks are deployed in fixed `2`-system (`28.6 kW`) or `4`-system (`57.2 kW`) patterns, a `65.6 kW` rack supports `4` systems (`57.2 kW`) and leaves **`8.4 kW` stranded**.
+Each 3-phase circuit provides `3 * V_LN * I * derating * 0.95 PF` (e.g., two `415V`/`240V L-N`, `60A` circuits at `80%` derating provide `~65.6 kW`). Because racks are deployed in fixed `2`-system (`28.6 kW`) or `4`-system (`57.2 kW`) patterns, a `65.6 kW` rack supports `4` systems (`57.2 kW`) and leaves **`8.4 kW` stranded**.
 </details>
 
 <details>
