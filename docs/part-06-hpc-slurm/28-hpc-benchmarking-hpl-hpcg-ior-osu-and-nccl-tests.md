@@ -4,7 +4,7 @@ title: "6.28 HPC benchmarking: HPL, HPCG, IOR, OSU and NCCL tests"
 sidebar_label: "6.28 HPC benchmarking: HPL, HPCG, IOR, OSU and NCCL tests"
 sidebar_position: 28
 description: "Benchmarking a cluster properly: methodology (active benchmarking, USE, sanity checks, statistics, failure modes), the standard benchmarks (STREAM, HPL, HPCG, IOR/mdtest, OSU micro-benchmarks, NCCL tests with bus-bandwidth formulas, MLPerf), acceptance testing and burn-in, with a tested statistics harness that exposes a 4x thread-count surprise on a heterogeneous-core CPU"
-status: "drafted"
+status: "reviewed"
 tier: "2"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -37,30 +37,62 @@ Needs 6.3 (scaling), 6.4 (MPI), 6.18 (I/O arithmetic), 6.12 (NCCL). After this c
 
 ## 1. Methodology (Systems Performance, chapter 12)
 
-Gregg's chapter opens with the warning "there are lies, damn lies and then there are performance measures" and the point that "benchmarks tell you only how fast the system can run the benchmark; it's up to you to understand the result and determine how it applies to your environment". Its structure, adapted to clusters:
+```mermaid
+flowchart LR
+  Char["1. Characterize & Design<br/>Question, Working Set, Bounds"] --> Run["2. Execute & Ramp Load<br/>STREAM, HPL/HPCG, IOR/gdsio, nccl-tests"]
+  Run --> Active["3. Active Benchmarking<br/>USE, bpftrace, Flame Graphs, Nsight"]
+  Active --> Sanity["4. Sanity Check & Stats<br/>Physics Limits, Mean/CV/95% CI"]
+  Sanity --> Gate["5. Acceptance & Regression<br/>Why not double? Did it error?"]
+```
 
-**Reasons to benchmark**: system design and capacity planning, proof of concept, tuning, development regression testing, capacity planning, troubleshooting, marketing. **Effective benchmarks** are repeatable, observable, portable, easily presented, realistic, runnable, backwards compatible, and scalable.
+Gregg's chapter opens with the warning "there are lies, damn lies and then there are performance measures" (`[Anon 85]`) and the point that "benchmarks tell you only how fast the system can run the benchmark; it's up to you to understand the result and determine how it applies to your environment". Its structure, adapted to clusters:
 
-**Types**: *micro-benchmarks* (one component: memory bandwidth, one collective, one file operation), *simulation/macro* (synthetic client workload), *replay* (real traces), *industry standards* (TOP500/HPL, SPEC, MLPerf, IO500).
+**Background and reasons to benchmark (`SP` 12.1 & 12.1.1)**: system design and purchase decisions (specifically the `price/performance` ratio—or `performance/price` ratio so "bigger is better"—quantified over the five-year capital cost of the equipment `[Anon 85]`), proofs of concept, tuning tunable parameters, development (both automated non-regression testing and limit investigations), capacity planning, troubleshooting (verifying components still hit maximum throughput), and marketing ("benchmarketing"). While on-premises hardware proofs of concept can take weeks or months to ship, rack, cable, and install, cloud computing instances can be spun up in minutes, benchmarked, or tested directly with fault-tolerant production traffic (for example, Netflix's automated micro-benchmarking and CPU profiling of new cloud instance types). Key references from `SP` 12.6 (`References`) appear throughout this section (`[Joy 81]`, `[Anon 85]`, `[Jain 91]`, `[Gunther 97]`, `[Shanley 98]`, `[Coker 01]`, `[Smaalders 06]`, `[Gunther 07]`, `[Bourbonnais 08]`, `[DeWitt 08]`, `[Traeger 08]`, `[Gregg 09b/09c/14c/14d/18d]`).
 
-**Common failures** (the book has a long list; those most relevant here):
+**Effective benchmarking (`SP` 12.1.2)**: As shown in "A Nine Year Study of File System and Storage Benchmarking" (`[Traeger 08]`, which surveyed `415` file system and storage benchmarks across `106` research papers), most popular benchmarks are flawed and fail to explain true system behavior. Good benchmarks are **repeatable**, **observable**, **portable**, **easily presented**, **realistic**, and **runnable** (`[Smaalders 06]`). Above all, engage performance engineers *while* the benchmark is running rather than handing them numbers afterward. Gregg cites Bill Joy's classic `1981` BSD TCP/IP analysis (`[Joy 81]`): transmitting `4 Megabytes` in `1024`-byte records encapsulated in `1068`-byte Ethernet packets from a DEC `VAX-11/750` (`1980`) to a `VAX-11/780` took `28 seconds` (`1.2 Megabaud` user-to-user throughput), during which the `11/750` was CPU-saturated while the `11/780` had `30%` idle time, with kernel CPU time split across Ethernet handling (`20%`), IP packet processing (`10%`), TCP processing (`30%`), checksumming (`25%`), and user system call handling (`15%`).
 
-1. **Casual benchmarking**: a quick tool run with default settings, no understanding of what it does.
-2. **Blind faith**: believing a number without checking whether the benchmark measured what you think. Example: a "disk" benchmark that reads from page cache (6.18's `iomix.py`).
-3. **Numbers without analysis**: no explanation of the result; no check against theoretical limits.
-4. **Complex benchmark tools**: unexplained behaviour hidden behind many options.
-5. **Testing the wrong thing**: measuring a different layer (loopback instead of the fabric) or the benchmark's own bottleneck.
-6. **Ignoring errors**, **ignoring variance** (a single run), **ignoring perturbations** (background jobs, thermal throttling, other tenants in a cloud).
-7. **Changing multiple factors** at once.
-8. **Friendly fire**: the benchmark disturbs the production system or the monitoring.
-9. **The benchmark paradox**: "If your product's chances of winning a benchmark are 50/50, you'll usually lose" because customers want to win several in a row (three 50 percent benchmarks: 12.5 percent). Corollary for buyers: define the benchmarks and pass criteria before looking at results.
-10. **Cloud variance**: instances may land on faster or slower hosts or noisy neighbours; test several instances, record the distribution, use the median rather than a single run.
+**16 Benchmarking Failures (`SP` 12.1.3)**:
+1. **Casual benchmarking**: "you benchmark A, but actually measure B, and conclude you've measured C" (for example, testing file system RAM cache while concluding you measured disk I/O; beginners lack the instinct to recognize a "1,000-degree room thermometer" number).
+2. **Blind faith (`argumentum ad populum`)**: assuming a popular or vendor-promoted open-source benchmark is valid without verifying what it actually executes.
+3. **Numbers without analysis**: "If you've spent less than a week studying a benchmark result, it's probably wrong." When time is short, explicitly list unverified assumptions (e.g., assuming the tool isn't buggy, assuming the disk test measures disk I/O, assuming it drove disk I/O to its limit, and assuming that I/O pattern matches your application).
+4. **Complex benchmark tools**: benchmarking the benchmark itself (e.g., a single-threaded load generator bottlenecking before the target). Prefer short C micro-benchmarks, or client simulations written in the same language as the real client.
+5. **Testing the wrong thing**: testing disk IOPS when the production working set runs 100% in RAM cache, or optimizing engineering effort around an outdated benchmark.
+6. **Ignoring the environment**: testing a database or filesystem with default OS/storage tunables when production runs heavily tuned parameters.
+7. **Ignoring errors**: a benchmark tool reporting fast or slow completion when every request actually failed (Gregg cites a web server benchmark reporting `> 1 second` average latency because a firewall blocked 100% of requests and the tool measured client connection timeout errors).
+8. **Ignoring variance**: applying a steady average rate (e.g., `500 reads/s` and `50 writes/s` at a fixed `10:1` ratio) when real production writes arrive in synchronous/asynchronous bursts every `10 seconds` that queue behind reads; model stateful request clustering with a **Markov model** (`[Jain 91]`).
+9. **Ignoring perturbations**: cron backups, per-minute monitoring agents, cloud noisy neighbors, device interrupts, kernel CPU affinity migration delays, and cold caches. Run benchmarks for minutes (never `< 1 second`), repeat multiple times, and inspect full latency distributions.
+10. **Changing multiple factors**: comparing two hosts separated by different switch hop counts or cloud instance placements (test multiple cloud instances and take the median/distribution).
+11. **The benchmark paradox (`[Gregg 14c]`)**: "If your product's chances of winning a benchmark are 50/50, you'll usually lose"—because a buyer running three independent benchmarks and requiring your system to win all three gives a win probability of $0.5 \times 0.5 \times 0.5 = 0.125 = \mathbf{12.5\%}$.
+12. **Benchmarking the competition**: posting untuned results for a competitor's product (which customers have spent months tuning) destroys your credibility.
+13. **Friendly fire**: underselling your own product by misconfiguring an undocumented new feature, failing to drive a physical resource to `100%` utilization, or testing an older unpatched software release.
+14. **Misleading benchmarks**: lying by omission (testing a prohibitively expensive custom configuration without disclosing price, or hiring multiple inexperienced third parties and cherry-picking the highest outlier).
+15. **Benchmark specials (`[Shanley 98]`)**: engineering a product feature solely to inflate a benchmark score without helping real workloads—a term coined in `1993` during the **TPC-A** benchmark when the Standish Group accused Oracle of adding a `discrete transactions` option solely for TPC-A. TPC responded with an anti-benchmark-special clause and a pricing rule (`[TPC 19a]`) requiring total disclosed price to be within **`2%`** of what a real customer would pay.
+16. **Cheating**: fabricating fake numbers outright (rare compared to failures 1–15).
 
-**Micro-benchmarking** exercises one component with a simple artificial workload (a single collective, a memory stream, one file operation); **simulation** drives the system with a synthetic client workload (a generator mimicking users or a training job's I/O pattern); **replay** re-issues a captured trace. **CPU profiling** during a benchmark (`perf record -g`, flame graphs, Nsight for GPUs) shows what the benchmark is really executing, a core part of active benchmarking. **Workload characterisation** (who, what, how much, over time) tells you which benchmark resembles your workload before you run anything; *custom benchmarks* written for your workload are the final arbiter. The book ends the chapter with exercises and references, which I do not reproduce.
+**Benchmarking Types (`SP` 12.2)**:
+- **Micro-benchmarking (`SP` 12.2.1)**: tests one isolated operation type (`SysBench` for CPU, `lmbench` for memory I/O, `fio` for file system, `hdparm`/`dd`/`fio` direct I/O for disk, `iperf` for network). In Gregg's `Table 12.1` file system micro-benchmark design, five core tests—(1) `sequential 512-byte reads` (maximum realistic IOPS, since disks round 1-byte I/O up to `512`-byte or `4-Kbyte` sectors), (2) `sequential 1-Mbyte reads` (maximum read throughput, noting OS-specific sweet spots such as Solaris's `128 Kbyte` largest slab cache size), (3) `sequential 1-Mbyte writes` (maximum write throughput), (4) `random 512-byte reads` (random seek/IOPS effect), and (5) `random 512-byte writes` (rewrite effect)—are multiplied by **working set size** (much smaller than main memory to test file system software cache vs much larger than main memory to test physical disk I/O) and **thread count** (single-threaded for clock-speed bound vs multithreaded to saturate all CPUs). Complement **sunny day performance testing** (top speeds under ideal conditions) with **cloudy day / rainy day performance testing** (contention, perturbations, variance, and degraded components).
+- **Simulation / macro-benchmarking (`SP` 12.2.2)**: simulates a composite client workload (for example, an NFS mix of `reads 40%`, `writes 7%`, `getattr 19%`, `readdir 1%`; classic CPU simulations `Whetstone` from `1972` and `Dhrystone` from `1984`; HTTP load generators `wrk` `[Glozer 19]`, `siege` `[Fulmer 12]`, and `hey` `[Dogan 20]`), using stateless random probabilities or stateful **Markov models**.
+- **Replay (`SP` 12.2.3)**: replays a captured production trace log. Beware of replaying at the wrong layer: Gregg describes a storage upgrade where replaying a block-level disk trace from an old system (`10 K rpm` disks) onto a new system (`7,200 rpm` disks, but with **`16x` more file system RAM cache** and faster CPUs) showed worse performance and lost the sale because the block-level replay bypassed the `16x` larger file system page cache that would have served the real workload from RAM.
+- **Industry standards (`SP` 12.2.4)**: Originating from Jim Gray's `1985` paper "A Measure of Transaction Processing Power" (`[Anon 85]`, defining `Sort`, `Scan`, and `DebitCredit` and transactions per second `TPS` alongside `MIPS` and `FLOPS`), major standards include **TPC** (`TPC-C`, `TPC-DS`, `TPC-E`, `TPC-H`, `TPC-VMS`, `TPCx-HS`, `TPCx-V`) and **SPEC** (`SPEC Cloud IaaS 2018`, `SPEC CPU 2017`, `SPECjEnterprise 2018 Web Profile`, `SPECsfs2014`, `SPECvirt_sc2013`), plus HPC/AI standards (**TOP500 HPL**, **HPCG**, **IO500**, **MLPerf**).
 
-**Methodology elements**: *passive benchmarking* (run a tool, record the number: weak), **active benchmarking** (analyse the system *while* the benchmark runs, with observability tools, to confirm what limits it), the **USE method** (Utilisation, Saturation, Errors for every resource), workload characterisation, custom benchmarks written for your workload, **ramping load** (increase until saturation to find the knee), **sanity checks** (does the result exceed hardware limits? does it scale as predicted?), **statistical analysis** (repetitions, mean/median/standard deviation, coefficient of variation, confidence intervals), and a **benchmarking checklist**.
+**Methodology (`SP` 12.3, `Table 12.2`)**:
+1. **Passive benchmarking (`12.3.1`)**: fire-and-forget execution ("pick tool $\to$ run options $\to$ make slide deck $\to$ hand to management")—an anti-methodology prone to software bugs, single-thread bottlenecks, and testing the wrong layer.
+2. **Active benchmarking (`12.3.2`, `bonnie++` Case Study)**: analyze the system with observability tools *while* the benchmark runs (`[Gregg 14d]`). In Gregg's case study of `bonnie++` (`Version 1.97` `[Coker 01]`), the "Sequential Output — Per Chr" test reported `739 Kbytes/sec` at `99%` CPU (which, if truly 1-byte disk I/O, would require an impossible `739,000` disk IOPS). Running `iostat -sxz 1` during the test showed **`0` disk IOPS**; `bpftrace -e 'tracepoint:block:* { @[probe] = count(); }'` showed `block_dirty_buffer: 808225` and `block_touch_buffer: 1025678` with zero `block_rq_issue`; `cachestat 1` confirmed `100.00%` page-cache hits/dirties; `bpftrace -e 'kprobe:vfs_* /comm == "bonnie++"/ { @[probe] = count(); }'` and `k:vfs_write { @bytes = hist(arg2); }` proved `bonnie++` was issuing `1,176,936` 1-byte `vfs_write()` calls into the OS page cache; and `strace bonnie++ -b` showed `write(3, "6", 1) = 1` without calling `fsync(2)` after each byte (older versions also buffered inside `libc` `putc(3)` / `setbuffer(3)` `[Bourbonnais 08]`).
+3. **CPU profiling (`12.3.3`, Flame Graph Case Study)**: profile both user and kernel stacks during the benchmark. When a new storage server unexpectedly underperformed an older server on a disk benchmark while disks were mostly idle, a kernel CPU flame graph immediately revealed **`62.17%`** of CPU samples inside **`zfs_zone_io_throttle()`**—an overlooked default ZFS I/O resource control throttling the benchmark.
+4. **USE Method (`12.3.4`) and Workload Characterization (`12.3.5`)**: check **U**tilization, **S**aturation, and **E**rrors on every hardware and software resource until you confirm which resource hit `100%` utilization.
+5. **Custom benchmarks (`12.3.6`) and Ramping load (`12.3.7`, `randread.pl` Case Study)**: write minimal C or Perl load generators (verifying that compiler optimizations do not elide dead loops) and increment client threads one by one to plot the throughput and latency knee. Gregg's `randread.pl` script (`$IOSIZE = 8192`, using unbuffered `sysread()` across a farm of NFS clients) drove a Sun ZFS Storage Appliance (`[Gregg 09b]`) to nearly `500,000` reads/s (`> 3.5 Gbytes/s`). Always pair throughput with latency limits: if a storage array delivers **`990,000 IOPS` at `5 ms` average latency**, and adding more clients scrapes past `1,000,000 IOPS` only by queueing operations to **`> 50 ms` average latency**, the valid engineering result is **`990,000 IOPS`**.
+6. **Sanity check (`12.3.8`)**: check whether reported numbers violate physical wire or bus limits. For example, an NFS server connected via a single **`1 Gbit/s` Ethernet port** reported to deliver `50,000 IOPS` of `8 Kbyte` reads would require $50,000 \times 8\text{ KB} = 400,000\text{ KB/s} \approx \mathbf{3.2\text{ Gbits/s}}$ (plus headers)—more than $3\times$ the `1 Gbit/s` line rate (whose practical single-direction TCP throughput ceiling is **`119–120 Mbytes/s`**, exposing single-direction claims of `200`, `350`, `800`, or `1,150 Mbytes/s` `[Gregg 09c]` as client-cache illusions).
+7. **Statistical analysis (`12.3.9`)**: when time on a shared "max config" cluster is scarce (contended by Sales, Marketing, Support, Engineering, and Quality), capture full distributions, standard deviations, error margins, and before/after `/proc` counter snapshots (using a custom read script rather than `tar(1)`, because `tar` sees zero-sized `/proc` files from `stat(2)` and skips their contents).
+8. **Gregg's 6-Question Benchmarking Checklist (`12.3.10`, `[Gregg 18d]`)**:
+   - *Why not double?* (What is the actual bottleneck preventing $2\times$ the rate?)
+   - *Did it break limits?* (Physical bandwidth/IOPS sanity check.)
+   - *Did it error?* (Are timeouts or failed requests skewing the rate?)
+   - *Does it reproduce?* (What is the variance/CV across repetitions?)
+   - *Does it matter?* (Does this operation match the production workload?)
+   - *Did it even happen?* (Confirm with `iostat`/`bpftrace`/counters that traffic reached the target.)
+9. **Vendor Benchmark Questions (`SP` 12.4)**: When auditing a vendor's benchmark claim without direct system access, demand disclosures across four domains: **General** (production relevance, single node vs cluster, total system cost, client configuration, test duration and sample count, average vs peak, full distribution/percentiles, limiting factor, success/fail ratio, active analysis screenshots, error margins), **CPU/Memory** (exact SKU, overclocking/water cooling, DIMM count and socket population, disabled cores, system-wide CPU utilization and turbo boost state, physical cores vs hyperthreads, BIOS settings), **Storage** (drive count/type/protocol, RAID level, write-back cache, filesystem journaling/tuning, working set size vs RAM cache hit ratio, file count), and **Network** (NIC count/type, topology, protocols, socket options, TCP/UDP sysctl tunables).
 
-A practical checklist for cluster benchmarks: (1) question and success criterion written down; (2) hardware, firmware, BIOS, driver, library and kernel versions recorded; (3) idle system verified (`top`, `squeue`, no other jobs); (4) clocks and power state noted (governor, GPU persistence, application clocks); (5) warm-up excluded; (6) at least 5 to 10 repetitions with statistics; (7) compared against a theoretical bound; (8) errors checked (`dmesg`, fabric counters before/after); (9) one factor changed at a time; (10) raw data and command lines archived.
+A practical 10-point checklist for cluster benchmarks: (1) question and success criterion written down; (2) hardware, firmware, BIOS, driver, library and kernel versions recorded; (3) idle system verified (`top`, `squeue`, no other jobs); (4) clocks and power state noted (governor, GPU persistence, application clocks); (5) warm-up excluded; (6) at least 5 to 10 repetitions with statistics; (7) compared against a theoretical bound; (8) errors checked (`dmesg`, fabric counters before/after); (9) one factor changed at a time; (10) raw data and command lines archived.
 
 ## 2. A statistics harness (tested)
 
@@ -93,7 +125,7 @@ Four kernels (copy, scale, add, triad) over arrays much larger than caches; repo
 
 ### HPL (High-Performance Linpack)
 
-Solves `Ax = b` with LU factorisation (6.1). Inputs in `HPL.dat`: problem size **N** (as large as memory allows, typically 80 to 90 percent of total RAM: matrix is 8N^2 bytes), block size **NB** (tuned, e.g. 192 to 512 on CPUs; larger on GPUs), process grid **P x Q** (P at most Q, product = number of ranks, near-square), broadcast/panel algorithms, lookahead depth. The result is Rmax in GFLOP/s and a pass/fail residual. Interpretation: efficiency = Rmax/Rpeak; typical well-tuned values for GPU systems are in the broad range of 60 to 90 percent depending on architecture (verify against published results for your hardware generation); a node that scores well below its peers has a hardware problem (throttling, a failing DIMM, slow link). NVIDIA provides optimised HPL containers (HPL for GPUs, HPL-AI/HPL-MxP for mixed precision) with their own run scripts; build and tune instructions are in the NGC catalogue. HPL stresses compute and moderately the network, so it is also a **burn-in** workload (power and thermals!). A full HPL run on a large cluster takes hours: use it as an acceptance test and for power/thermal validation (6.30).
+Solves `Ax = b` with LU factorisation (6.1). Inputs in `HPL.dat`: problem size **N** (as large as memory allows, typically 80 to 90 percent of total RAM: matrix is 8N^2 bytes), block size **NB** (tuned, e.g. 192 to 512 on CPUs; larger on GPUs), process grid **P x Q** (P at most Q, product = number of ranks, near-square), broadcast/panel algorithms, lookahead depth. The result is Rmax in GFLOP/s and a pass/fail residual. Interpretation: efficiency = Rmax/Rpeak; typical well-tuned values for GPU systems are in the broad range of 60 to 90 percent depending on architecture (verify against published results for your hardware generation); a node that scores well below its peers has a hardware problem (throttling, a failing DIMM, slow link). NVIDIA provides optimised HPL containers (HPL for GPUs, HPL-AI/HPL-MxP for mixed precision) with their own run scripts; build and tune instructions are in the NGC catalogue. HPL stresses compute and moderately the network, so it is also a **burn-in** workload (power and thermals). A full HPL run on a large cluster takes hours: use it as an acceptance test and for power/thermal validation (6.30).
 
 ### HPCG (High-Performance Conjugate Gradient)
 
@@ -177,6 +209,12 @@ A good benchmark report states: the question; the system (hardware, firmware, so
 
 ## 6. Lab
 
+First, run the self-checking Python lab (`code/part06/bench_stats_lab.py`) locally. It runs `hpl_like()` and `triad()` from `code/part06/bench_stats.py` (verifying that the dense LU solve passes HPL's scaled residual check $< 16.0$), verifies the `nccl-tests` `algbw` and `busbw` formulas (`8 GiB` across `64` ranks in `0.60 s` $\to$ `algbw = 14.3 GB/s`, `busbw = 28.2 GB/s` for `AllReduce` and `14.1 GB/s` for `AllGather`), and checks `SP` Chapter 12's sanity-check math (`50,000 IOPS * 8 KB = 400,000 KB/s = 3.2 Gbps > 1 Gbps` limit) and Benchmark Paradox (`0.5^3 = 12.5%`):
+
+```bash
+python3 code/part06/bench_stats_lab.py
+```
+
 Tested: 1) run `bench_stats.py` with `OPENBLAS_NUM_THREADS` set to 1, 2, 4, 8 (and the number of your physical cores), 10 repetitions each; record mean/CV; explain the shape. 2) Change `n` to 1000 and 6000; how does GFLOP/s scale and why? 3) Compare the triad to a compiled STREAM (6.5 toolchain). 4) Compute busbw for 8 sample measurements by hand with the formulas above.
 
 Untested (cluster): 5) STREAM on every node; list outliers. 6) Single-node and 2-node HPL (or the NVIDIA HPL container) and compute efficiency. 7) OSU latency/bandwidth between node pairs across racks. 8) `nccl-tests` all_reduce at 1, 2, 4, 8 nodes; plot busbw vs size. 9) IOR/mdtest on `/home` and scratch with 1 to 64 ranks. 10) Burn-in plan for 16 nodes. 11) Inject a fault (throttle a GPU with a lower power cap or unplug a cable) and see what each test shows.
@@ -193,43 +231,176 @@ Untested (cluster): 5) STREAM on every node; list outliers. 6) Single-node and 2
 - A benchmark shows a node 8 percent slower than peers. How do you decide if it is a problem?
 - What is active benchmarking?
 
-## 8. Checkpoint questions (30)
+## Exercises
 
-1. State three reasons to benchmark.
-2. List five benchmarking failures.
-3. What is the benchmark paradox?
-4. What is active benchmarking?
-5. What does the USE method check?
-6. What belongs in a benchmarking checklist?
-7. Why are warm-up and repetitions required?
-8. Define CV and why it matters.
-9. What did the thread sweep show on the M3?
-10. Why is `solve` flop count `2/3 n^3 + 2 n^2`?
-11. What does HPL's residual check do?
-12. Which HPL parameters matter most?
-13. Why choose N from memory size?
-14. What does HPCG measure and why is its efficiency low?
-15. What is STREAM and its bound?
-16. What do IOR and mdtest measure?
-17. How do you stop IOR measuring cache, how do you benchmark GPUDirect Storage with `gdsio`, and how does the batch-size halving/doubling test distinguish communication-bound from compute-bound training? **A:** For IOR, use rank reordering (`-C`), file sizes larger than RAM, and drop caches between write and read phases. For `gdsio`, compare `/usr/local/cuda/gds/tools/gdsio -f /mnt/data/large_file -d 0 -w 4 -s 10G -i 1M -I 0 -x 2` (CPU-staged: `8.0 GB/s`, `1.25 ms` latency, `85%` CPU util in the book's Table 5-1 example) against `-x 0` (`GDS`: `9.6 GB/s`, `1.00 ms` latency, `25%` CPU util, `+20%` throughput). In the batch-size test (where gradient `all_reduce` size is fixed by parameter count), if halving the batch size leaves NIC traffic at `60 GB/s` on a `100 GB/s` NIC the run is communication-bound, whereas if NIC traffic drops to `40 GB/s` (and shrinks as a share of step time when batch size is doubled) the run is compute-bound.
-18. List OSU benchmarks.
-19. What do `-b -e -f -g` mean in nccl-tests?
-20. Define algbw and busbw.
-21. Give the busbw factor for all-reduce, all-gather, reduce-scatter, broadcast.
-22. Compute busbw for 8 GiB, 64 ranks, 0.60 s.
-23. How do you compare busbw to hardware?
-24. Why test pairs of nodes?
-25. What does `NCCL_TESTS_SPLIT` do?
-26. What is MLPerf?
-27. List burn-in steps.
-28. How do you detect an outlier node?
-29. What should a report contain?
-30. How does a benchmark suite become a regression test?
+1. **Statistical Benchmarking and Heterogeneous-Core Stragglers (`code/part06/bench_stats.py` & `bench_stats_lab.py`):** Run `python3 code/part06/bench_stats_lab.py`. Explain why `hpl_like()` performs a throwaway warm-up solve before timing repetitions, how the scaled residual $\frac{\|Ax - b\|_\infty}{\epsilon (\|A\|_\infty \|x\|_\infty + \|b\|_\infty) n} < 16$ validates numerical correctness, and why running `OPENBLAS_NUM_THREADS=8` on a 4P+4E Apple M3 collapsed throughput from `90.8 GFLOP/s` (`CV = 4.8%`) down to `22.9 GFLOP/s` (`CV = 13.0%`).
+2. **Calculating `nccl-tests` Algorithm Bandwidth (`algbw`) and Bus Bandwidth (`busbw`) (`code/part06/bench_stats_lab.py`):** Using `nccl_busbw()` in `code/part06/bench_stats_lab.py`, calculate `algbw` (`14.3 GB/s`) and `busbw` (`28.2 GB/s` for `AllReduce`, `14.1 GB/s` for `AllGather`/`ReduceScatter`/`AlltoAll`) when an `8 GiB` (`8,589,934,592` B) collective across `64` ranks completes in `0.60 s`. Compare `28.2 GB/s` against a `400 Gb/s` (`50 GB/s`) NDR InfiniBand rail and list the four checks to diagnose the `56%` efficiency gap.
+3. **Active Benchmarking and Debunking Cached Benchmarks (`SP` Chapter 12 `bonnie++` & Sanity Checks):** Trace how Brendan Gregg used `iostat -sxz 1`, `bpftrace` (`tracepoint:block:*` and `kprobe:vfs_*`), `cachestat 1`, and `strace` to prove that `bonnie++`'s `739 KB/s` `Per Chr` disk test actually issued `1`-byte `vfs_write()` calls into the page cache with zero block I/O. Perform the `SP` Chapter 12 sanity check on a vendor claim of `50,000 IOPS` of `8 KB` reads over a `1 Gbit/s` Ethernet link (`400,000 KB/s = 3.2 Gbps > 1 Gbps`).
+4. **Sizing HPL (`HPL.dat`) and Contrasting HPL, HPCG, and STREAM:** For an 8-GPU node with `640 GiB` total HBM (or `2,048 GiB` host RAM), calculate the problem size $N$ (`8 * N^2` bytes) that fills `85%` of memory, choose a near-square process grid $P \times Q$ across 64 ranks ($P=8, Q=8$), and contrast what HPL (`Rmax/Rpeak` $\approx 60\text{–}90\%$), HPCG (sparse multigrid, a few percent of `Rpeak`), and STREAM Triad measure.
+5. **Benchmarking Parallel Storage (`IOR`, `mdtest`, and `gdsio`, `ASP` Chapter 5):** Write the `IOR` and `mdtest` flags needed to defeat client page caching on a parallel filesystem (`-C` rank reordering, file size $> 2\times$ aggregate client RAM, separate write/read phases), and compare the two `gdsio` commands (`-x 2` CPU-staged `8.0 GB/s` at `1.25 ms` / `85%` CPU vs `-x 0` GPUDirect Storage `9.6 GB/s` at `1.00 ms` / `25%` CPU).
+6. **Distinguishing Communication-Bound vs Compute-Bound Training (`ASP` Chapter 5 Batch-Size Test):** Given a multi-node DDP training run achieving `60 GB/s` during gradient `all_reduce` over `100 GB/s` NICs, explain how halving and doubling the micro-batch size (combined with `nsys` timeline gaps and `ncu` SM occupancy) isolates whether the job is network-bound (`60 GB/s` unchanged) or compute-bound (`60 GB/s` drops to `40 GB/s`).
 
-## 9. Sources and review notes
+## Checkpoint
 
-- Methodology, failures, benchmark types, active benchmarking, statistics, checklist: *Systems Performance*, 2nd ed. (Gregg), chapter 12 (SP 12), restated in my words; MPI/HPC performance context: *Parallel and High Performance Computing* (PHPC).
-- `ai-systems-performance-engineering` — Chris Fregly, *AI Systems Performance Engineering*, "Chapter 5. GPU-Based Storage I/O Optimizations" (read in full): benchmarking GPUDirect Storage with `gdsio` (`-I 0 -w 4 -s 10G -i 1M -x 0` for GDS vs `-x 2` for CPU-staged; Table 5-1 example: `8.0 GB/s` at `1.25 ms` average latency and `85%` CPU util vs `9.6 GB/s` at `1.00 ms` average latency and `25%` CPU util, a `+20%` throughput gain; VAST Data GDS showing `+20%` on A100 and `+30%+` on H100), Nsight Systems GDS tracing (`nsys profile --trace=cuda,gds,nvtx,osrt` and `/etc/cufile.json`), and the batch-size halving/doubling test to distinguish communication-bound (`60 GB/s` on a `100 GB/s` NIC stays at `60 GB/s` when batch size is halved) from compute-bound (`60 GB/s` drops to `40 GB/s`).
-- NCCL tests usage and bus-bandwidth formulas: `nccl-tests/README.md` and `doc/PERFORMANCE.md` (commit `afd59ab`). IOR/mdtest: `hpc/ior` README (commit `e4e4578`). HPCG: repository layout and README (commit `114602d`, version from 2023).
-- Original and run: `bench_stats.py` and its measured table; worked busbw example; acceptance plan.
-- Unverified: typical HPL efficiency ranges for specific hardware, STREAM efficiency percentages, OSU option names beyond the common ones, HPCG submission rules, MLPerf details, burn-in durations. No benchmark other than the harness was executed.
+<details>
+<summary>1. What is the difference between **passive benchmarking** and **active benchmarking** (`SP` Chapter 12)?</summary>
+
+- **Passive benchmarking:** "Fire-and-forget" execution where a tool is run and only its final summary number is recorded—frequently measuring the wrong layer (such as page cache or firewall timeouts) or bottlenecking on the benchmark client itself.
+- **Active benchmarking (`[Gregg 14d]`):** Analyzing the system *while* the benchmark is running using observability tools (`iostat`, `bpftrace`, `perf` flame graphs, `cachestat`, `nvidia-smi dmon`, `nsys`, `ibstat`) to confirm what is actually being tested and identify the exact 100%-utilized limiting resource (**USE method**).
+</details>
+
+<details>
+<summary>2. State Brendan Gregg's **6-Question Benchmarking Checklist** (`SP` Chapter 12.3.10).</summary>
+
+1. **Why not double?** (What specific physical or software resource prevented the benchmark from running $2\times$ faster?)
+2. **Did it break limits?** (Sanity-check against physical wire/bus/disk ceilings.)
+3. **Did it error?** (Check whether failed requests or timeouts skewed the result.)
+4. **Does it reproduce?** (Check CV and confidence intervals across repetitions.)
+5. **Does it matter?** (Does the benchmark's workload match production?)
+6. **Did it even happen?** (Confirm via kernel/hardware counters that I/O or network packets actually reached the target.)
+</details>
+
+<details>
+<summary>3. Explain the **Benchmark Paradox** (`SP` Chapter 12.1.3) and its mathematical implication for multi-test evaluations.</summary>
+
+If a product has a $50\%$ ($0.5$) chance of winning any single noisy/untuned benchmark and a buyer requires the product to win **three benchmarks in a row**, the probability of winning all three is:
+$$0.5 \times 0.5 \times 0.5 = 0.125 = \mathbf{12.5\%}$$
+("If your product's chances of winning a benchmark are 50/50, you'll usually lose.")
+</details>
+
+<details>
+<summary>4. What is a **Benchmark Special** (`SP` Chapter 12.1.3), when did the term originate, and what two rules did the TPC introduce to stop it?</summary>
+
+A **benchmark special** is a hardware/software feature or pricing discount engineered solely to inflate a benchmark score without benefiting real-world customer workloads. The term originated in **`1993`** when the Standish Group challenged Oracle's `discrete transactions` option in the **TPC-A** benchmark (`[Shanley 98]`). The TPC responded by (1) prohibiting any implementation that improves benchmark scores without improving real-world performance, and (2) requiring disclosed pricing to be within **`2%`** of actual customer pricing (`[TPC 19a]`).
+</details>
+
+<details>
+<summary>5. How did active benchmarking with `iostat`, `bpftrace`, `cachestat`, and `strace` expose what `bonnie++`'s "Per Chr" disk test was actually measuring (`SP` Chapter 12.3.2)?</summary>
+
+`bonnie++` reported `739 Kbytes/sec` on "Sequential Output — Per Chr" (which would imply an impossible `739,000` disk IOPS). Active analysis showed `iostat -sxz 1` had `0` disk IOPS, `bpftrace` on `tracepoint:block:*` had zero `block_rq_issue` events, `cachestat 1` showed `100%` page-cache dirties, `bpftrace` on `k:vfs_write` showed `1`-byte writes into the VFS page cache, and `strace bonnie++ -b` proved `fsync(2)` was never called per byte.
+</details>
+
+<details>
+<summary>6. How did CPU kernel flame-graph profiling solve the mystery of a new storage server underperforming an older server while disks were idle (`SP` Chapter 12.3.3)?</summary>
+
+Although CPU profiling is often overlooked during disk benchmarks, capturing a kernel CPU flame graph revealed that **`62.17%`** of kernel CPU samples were spent inside **`zfs_zone_io_throttle()`**—an enabled-by-default ZFS I/O throttling resource control on the new OS that was artificially capping throughput.
+</details>
+
+<details>
+<summary>7. Why can a block-level **trace replay** benchmark make a faster new storage server look slower than an old server (`SP` Chapter 12.2.3)?</summary>
+
+In Gregg's example, the old server had `10 K rpm` disks and a small RAM cache, while the new server had `7,200 rpm` disks but **`16x` more file system RAM cache**. Replaying the old server's post-cache block-device trace directly against the new disks bypassed the `16x` larger file system cache that would have served the real production workload out of RAM.
+</details>
+
+<details>
+<summary>8. When ramping load (`SP` Chapter 12.3.7), why must you report `990,000 IOPS` at `5 ms` latency instead of `1,000,000 IOPS` at `50 ms` latency?</summary>
+
+Pushing client concurrency past the saturation knee (`990,000 IOPS` at `5 ms`) forces all requests into deep queues (`> 50 ms` average latency), violating acceptable service-level latency for a negligible `1%` throughput gain. Always report throughput at an acceptable target latency ceiling.
+</details>
+
+<details>
+<summary>9. Perform a **sanity check** (`SP` Chapter 12.3.8) on a benchmark claiming `50,000 IOPS` of `8 Kbyte` reads from an NFS server over a single `1 Gbit/s` Ethernet port.</summary>
+
+$$50,000\text{ IOPS} \times 8\text{ KB} = 400,000\text{ KB/s} \approx \mathbf{3.2\text{ Gbits/s}}$$
+Because a single `1 Gbit/s` Ethernet link has a physical wire ceiling of `1.0 Gbit/s` (`~119–120 Mbytes/s` practical TCP payload in one direction), `3.2 Gbits/s` is physically impossible over the wire—proving the benchmark measured local **client RAM caching** rather than the NFS server.
+</details>
+
+<details>
+<summary>10. Why must you never use `tar(1)` to archive `/proc` counter files before and after a benchmark run (`SP` Chapter 12.3.9)?</summary>
+
+Because virtual files in `/proc` report a file size of **`0` bytes** to the `stat(2)` system call; `tar(1)` trusts `stat(2)`'s zero size and archives empty 0-byte files without reading their text contents. Use a script that reads (`cat`/`cp`) `/proc` files explicitly.
+</details>
+
+<details>
+<summary>11. Why did running `code/part06/bench_stats.py` with `OPENBLAS_NUM_THREADS=8` on an Apple M3 run $4\times$ slower (`22.9 GFLOP/s`, `CV = 13.0%`) than 4 threads (`90.8 GFLOP/s`, `CV = 4.8%`)?</summary>
+
+The Apple M3 has a heterogeneous core architecture (**4 Performance cores + 4 Efficiency cores**). OpenBLAS partitions panel/update blocks evenly across all 8 threads; at every LU synchronization barrier, the 4 fast P-cores sit idle waiting for the 4 slower E-cores (and OS thread migration jitter inflates the coefficient of variation from `0.8–4.8%` to `13.0%`).
+</details>
+
+<details>
+<summary>12. What is the floating-point operation count of a dense $n \times n$ LU solve (`HPL`), and what is HPL's scaled residual acceptance formula?</summary>
+
+- **Operation count:** $\frac{2}{3} n^3 + 2 n^2$ floating-point operations.
+- **Scaled residual check:**
+  $$R = \frac{\|Ax - b\|_\infty}{\epsilon \left(\|A\|_\infty \|x\|_\infty + \|b\|_\infty\right) n} < \mathbf{16}$$
+  where $\epsilon$ is machine epsilon (`np.finfo(float).eps` $\approx 2.22 \times 10^{-16}$ for FP64). Any run with $R \ge 16$ is invalid due to memory bit flips, unstable overclocking, or numerical corruption.
+</details>
+
+<details>
+<summary>13. How do you choose the problem size $N$, block size $NB$, and process grid $P \times Q$ in `HPL.dat`?</summary>
+
+- **Problem size $N$:** Sized so the FP64 matrix ($8 N^2$ bytes) occupies **`80–90%` of total aggregate memory** (maximizing compute-to-communication ratio without triggering swap/OOM).
+- **Block size $NB$:** Tuned to the CPU cache or GPU tensor-core tile size (typically `192–512` on CPUs, `1024–4096` on GPUs).
+- **Process grid $P \times Q$:** $P \times Q = N_{\text{ranks}}$ with $P \le Q$ and **as close to square as possible** (e.g., $8 \times 8$ for 64 ranks) to balance row and column collective broadcasts.
+</details>
+
+<details>
+<summary>14. Contrast what **HPL**, **HPCG**, and **STREAM** measure on a supercomputer.</summary>
+
+- **HPL (High-Performance Linpack):** Dense FP64 LU factorization ($O(n^3)$ flops over $O(n^2)$ bytes); measures peak compute (`Rmax`) and sustained power/thermal stability (`60–90%` of `Rpeak`).
+- **HPCG (High-Performance Conjugate Gradient):** Sparse multigrid solver with irregular memory access and halo exchanges; measures memory-subsystem and interconnect latency/bandwidth under realistic PDE workloads (typically `< 5%` of `Rpeak`).
+- **STREAM (`Copy`, `Scale`, `Add`, `Triad`):** Sequential vector streaming over arrays $\ge 4\times$ last-level cache size; measures sustainable DRAM/HBM memory bandwidth (`80–90%` of theoretical memory bus bandwidth).
+</details>
+
+<details>
+<summary>15. What do **IOR** and **mdtest** measure, and what three rules prevent client page caches from invalidating an IOR run?</summary>
+
+- **IOR:** Parallel `N-to-1` (shared file) and `N-to-N` (file-per-process) read/write streaming bandwidth and IOPS.
+- **mdtest:** Parallel directory and small-file metadata `create`, `stat`, `read`, and `remove` rates (standardized together in **IO500**).
+- **Three anti-cache rules:** (1) Pass **`-C` (`reorderTasks`)** so rank $i$ reads back the data written by rank $(i+1) \bmod N$ on a different node, (2) write a total dataset size exceeding $2\times$ aggregate client RAM, and (3) use `O_DIRECT` or drop caches between write and read phases.
+</details>
+
+<details>
+<summary>16. How do you benchmark GPUDirect Storage (`GDS`) against CPU bounce-buffer I/O using `gdsio`, and what did `ASP` Chapter 5 Table 5-1 show?</summary>
+
+Run `/usr/local/cuda/gds/tools/gdsio -f /mnt/data/large_file -d 0 -w 4 -s 10G -i 1M -I 0` comparing:
+- **`-x 2` (CPU-staged through pinned host RAM):** `8.0 GB/s` throughput, `1.25 ms` latency, `85%` CPU utilization.
+- **`-x 0` (GPUDirect Storage via `cuFile` / `nvidia-fs`):** **`9.6 GB/s` throughput (`+20%`)**, **`1.00 ms` latency (`-20%`)**, and **`25%` CPU utilization**.
+</details>
+
+<details>
+<summary>17. In `nccl-tests`, define **algorithm bandwidth (`algbw`)** and **bus bandwidth (`busbw`)**, and state the `busbw` multiplier for `AllReduce`, `AllGather`, `ReduceScatter`, `AlltoAll`, and `Broadcast`.</summary>
+
+- **Algorithm bandwidth (`algbw`):** $\text{algbw} = \frac{S}{t}$ (tensor size $S$ divided by elapsed time $t$).
+- **Bus bandwidth (`busbw`):** $\text{busbw} = \text{algbw} \times \text{factor}$, normalizing for the actual bytes moved across each rank's bottleneck link so the result can be compared directly against hardware NVLink/NIC wire speed regardless of rank count $n$:
+  - **`AllReduce`:** $\text{busbw} = \text{algbw} \times \mathbf{\frac{2(n-1)}{n}}$
+  - **`ReduceScatter` / `AllGather` / `AlltoAll`:** $\text{busbw} = \text{algbw} \times \mathbf{\frac{n-1}{n}}$
+  - **`Broadcast` / `Reduce` / `SendRecv`:** $\text{busbw} = \text{algbw} \times \mathbf{1}$
+</details>
+
+<details>
+<summary>18. Calculate `algbw` and `busbw` for an `8 GiB` (`8.59 GB`) `all_reduce_perf` run across `64` GPUs that takes `0.60 s`, and interpret the result on a `400 Gb/s` (`50 GB/s`) NDR InfiniBand cluster.</summary>
+
+$$\text{algbw} = \frac{8.5899\text{ GB}}{0.60\text{ s}} = \mathbf{14.3\text{ GB/s}}$$
+$$\text{busbw} = 14.3 \times \frac{2 \times 63}{64} = 14.3 \times 1.96875 = \mathbf{28.2\text{ GB/s}}$$
+Against a `50 GB/s` (`400 Gb/s`) NIC per GPU, `28.2 GB/s` is only `56%` of line rate—indicating a topology, rail-alignment (`NCCL_CROSS_NIC`), PCIe/GDR, or congestion issue that should be bisected with pairwise `osu_bw` / `nccl-tests`.
+</details>
+
+<details>
+<summary>19. How does the **batch-size halving/doubling test** (`ASP` Chapter 5) determine whether a distributed training job is communication-bound or compute-bound?</summary>
+
+In DDP, gradient `all_reduce` volume depends only on parameter count (fixed), whereas forward/backward compute time scales linearly with micro-batch size. If your run achieves `60 GB/s` on a `100 GB/s` NIC and **halving the batch size** leaves NIC throughput pinned at `60 GB/s`, the fabric is the bottleneck (**communication-bound**). If halving the batch size causes average NIC throughput to drop (e.g., to `40 GB/s`, and doubling the batch size shrinks the `all_reduce` fraction of step time), the GPUs are **compute-bound**.
+</details>
+
+<details>
+<summary>20. List the eight stages of a production **cluster acceptance and burn-in test plan** before signing off on vendor hardware.</summary>
+
+1. **Inventory & firmware baseline audit** (BIOS, BMC, GPU VBIOS, NIC/switch firmware).
+2. **24–72 hour thermal/power burn-in** (`stress-ng`, `memtester`, `dcgmi diag -r 3`, `gpu-burn`/HPL, `fio`, `ib_write_bw`) to catch infant-mortality hardware faults.
+3. **Single-node sweeps across every node** (`STREAM`, single-node `HPL`/`DGEMM`, 8-GPU `all_reduce_perf`) to flag outlier nodes $> 5\%$ below peer median.
+4. **All-pairs / shifted-pair fabric validation** (`osu_latency`, `osu_bw`, `ib_write_bw`, and `NCCL_TESTS_SPLIT` rail tests) checking port error counters before and after.
+5. **Parallel storage validation at scale** (`IOR`, `mdtest`, `fio`, `gdsio`).
+6. **Full-cluster scale runs** (multi-hour full-fleet `HPL`, `nccl-tests`, and a reference multi-node training job).
+7. **Fault-injection & HA drills** (kill a node/link during a checkpointed job, test `slurmctld` failover and `HealthCheckProgram` auto-drain).
+8. **Baseline archival & automated regression suite** (converting the acceptance scripts into nightly/post-maintenance canary checks).
+</details>
+
+## Sources and review notes
+
+- Methodology, reasons to benchmark, `[Traeger 08]` (415 benchmarks in 106 papers), `[Smaalders 06]`, Bill Joy's 1981 VAX-11/750 to 11/780 4 MB TCP/IP analysis `[Joy 81]`, the 16 benchmarking failures (including the Benchmark Paradox `0.5^3 = 12.5%` `[Gregg 14c]` and 1993 TPC-A Standish Group vs Oracle `discrete transactions` Benchmark Specials `[Shanley 98]` / TPC `2%` pricing rule `[TPC 19a]`), micro-benchmarking (`Table 12.1` 5 file system tests, Solaris `128 Kbyte` slab cache, sunny/cloudy/rainy day testing), simulation (`Whetstone` 1972, `Dhrystone` 1984, `wrk`, `siege`, `hey`, Markov models), trace replay (`10 K rpm` vs `7,200 rpm` + `16x` cache), industry standards (Jim Gray 1985 `Sort, Scan, DebitCredit` / `TPS` `[Anon 85]`, `TPC-C..TPCx-V`, `SPEC`), active benchmarking (`bonnie++` 739 KB/s `Per Chr` analyzed with `iostat`, `bpftrace`, `cachestat`, `strace`, and `putc(3)`/`setbuffer(3)` `[Bourbonnais 08]`), CPU profiling (`zfs_zone_io_throttle()` `62.17%`), ramping load (`randread.pl` `$IOSIZE = 8192` `sysread()` on Sun ZFS Storage Appliance `[Gregg 09b]` and `990,000 IOPS` at `5 ms` vs `1,000,000 IOPS` at `50 ms`), sanity checks (`50,000 IOPS * 8 KB = 400,000 KB/s = 3.2 Gbps` over `1 Gbps` Ethernet `[Gregg 09c]`), statistical analysis, the 6-question Benchmarking Checklist `[Gregg 18d]`, and Section 12.4 Benchmark Questions: read in full from Brendan Gregg, *Systems Performance*, 2nd ed. (`systems-performance-2nd-edition`, `SP`), Chapter 12 ("Chapter 12. Benchmarking").
+- MPI/HPC performance context: *Parallel and High Performance Computing* (`parallel-and-high-performance-computing`, `PHPC`).
+- `ai-systems-performance-engineering` — Chris Fregly, *AI Systems Performance Engineering* (`ASP`), "Chapter 5. GPU-Based Storage I/O Optimizations" (read in full): benchmarking GPUDirect Storage with `gdsio` (`-I 0 -w 4 -s 10G -i 1M -x 0` for GDS vs `-x 2` for CPU-staged; Table 5-1 example: `8.0 GB/s` at `1.25 ms` average latency and `85%` CPU util vs `9.6 GB/s` at `1.00 ms` average latency and `25%` CPU util, a `+20%` throughput gain; VAST Data GDS showing `+20%` on A100 and `+30%+` on H100), Nsight Systems GDS tracing (`nsys profile --trace=cuda,gds,nvtx,osrt` and `/etc/cufile.json`), and the batch-size halving/doubling test to distinguish communication-bound (`60 GB/s` on a `100 GB/s` NIC stays at `60 GB/s` when batch size is halved) from compute-bound (`60 GB/s` drops to `40 GB/s`).
+- `nccl-tests` usage and bus-bandwidth formulas: `NVIDIA/nccl-tests` `README.md` and `doc/PERFORMANCE.md` (commit `afd59ab`). `IOR`/`mdtest`: `hpc/ior` README (commit `e4e4578`). `HPCG`: `hpcg-benchmark/hpcg` README (commit `114602d`).
+- Run here: `code/part06/bench_stats.py` and `python3 code/part06/bench_stats_lab.py` (3 passed, 0 failed).
+- Explicitly labelled inferences: The Send/Recv `busbw` factor of `1.0` in `nccl_busbw()` is a direct point-to-point identity; the `8 GiB`, `64`-rank, `0.60 s` calculation (`algbw = 14.3 GB/s`, `busbw = 28.2 GB/s`) is a worked application of `doc/PERFORMANCE.md`.
+- Not verified on live hardware: multi-node HPL, HPCG, OSU, `nccl-tests`, `IOR`/`mdtest`, and `gdsio` runs on a live GPU cluster (`untested here`).
