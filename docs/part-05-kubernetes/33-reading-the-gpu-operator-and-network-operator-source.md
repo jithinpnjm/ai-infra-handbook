@@ -266,7 +266,15 @@ Shared lessons: one policy object as the product surface; label-based placement;
 | Changes to the policy not applied | Predicates: ClusterPolicy uses a generation-changed filter, so only spec changes trigger; check the hash-annotation compare for a DaemonSet that did not update |
 | Policy ignored | Singleton rules: oldest ClusterPolicy wins; NicClusterPolicy must have the expected name |
 
-## 12. Lab (untested; read-only parts need only the clones)
+## 12. Lab
+
+First, run the self-checking Python lab (`code/part05/gpu_net_operator_source_sim_lab.py`) locally. It verifies the GPU Operator `gpuStateLabels` workload-config label resolver (`compute_gpu_node_deploy_labels`), the `isDaemonSetReady` evaluator across `RollingUpdate` and `OnDelete` (`is_daemonset_ready`), and the `/run/nvidia/validations` vs `network.nvidia.com/operator.mofed.wait` per-node dependency gate and `state_skel.go` stale-object cleanup detector (`evaluate_node_operand_gating_and_stale_objects`).
+
+```bash
+python3 code/part05/gpu_net_operator_source_sim_lab.py
+```
+
+Next, with shallow clones of `NVIDIA/gpu-operator` and `Mellanox/network-operator` (all cluster steps below are `untested here`), work through these exercises:
 
 1. Clone both repos (`--depth 1`). In the GPU Operator, list the `addState` calls in `state_manager.go` and map each to an `assets/` directory and a `Transform*` function in `object_controls.go`.
 2. Trace `DaemonSet()` for the device plugin: write down which of the numbered steps in section 4 each code block performs, and where the hash annotation is written.
@@ -288,42 +296,201 @@ Shared lessons: one policy object as the product surface; label-based placement;
 - NVIDIADriver CRD vs driver in ClusterPolicy: why was it introduced?
 - Describe how you would debug "nvidia.com/gpu: 0" on one node of an otherwise healthy cluster.
 
-## 14. Checkpoint questions (30)
+## Exercises
 
-1. Which directories hold the GPU Operator's API types, reconcilers and operand templates?
-2. What decides which ClusterPolicy is active when several exist?
-3. In what order are states deployed, and does the controller wait for each to be ready?
-4. What makes a state "Disabled", and what happens to its DaemonSet?
-5. How does the reconciler behave when no node has NFD labels? When there are no GPU nodes?
-6. What is a `Transform*` function, and why is it easy to unit test?
-7. How does the operator avoid constantly updating DaemonSets that it already created?
-8. What does `SetControllerReference` give you here?
-9. What are the readiness criteria for a RollingUpdate vs an OnDelete DaemonSet?
-10. What is `nvidia.com/gpu.deploy.operands` for?
-11. What does `nvidia.com/gpu.workload.config` change?
-12. Where do the `gpu.deploy.*` labels come from?
-13. What is the role of the validator, and where do its status files live?
-14. Why does the device plugin pod have a `toolkit-validation` init container?
-15. Name the status files the validator writes.
-16. Why does a driver DaemonSet use OnDelete?
-17. What does the upgrade controller record on nodes, and why?
-18. What happens to the legacy driver DaemonSets when the NVIDIADriver CRD is enabled?
-19. Which Node events does the ClusterPolicy controller react to?
-20. Why does it use a single concurrent worker?
-21. What are the top-level fields of NicClusterPolicy?
-22. What methods does the Network Operator `State` interface define?
-23. How are overall readiness and requeue timing derived from the states?
-24. Why does every Node event map to one fixed request key?
-25. What does the not-found path of the NicClusterPolicy reconcile do, and why?
-26. What is `network.nvidia.com/operator.mofed.wait` and who sets it?
-27. How does the state skeleton deal with objects no longer rendered?
-28. What do the secondary-network CRs produce?
-29. Compare the two operators' mechanisms for per-node dependency ordering.
-30. Give a debugging path for a policy stuck NotReady in each operator.
+1. **The 7-Step Method for Reading Any Kubernetes Operator Source Repository (`API -> SetupWithManager -> Reconcile -> State/Operands -> Readiness -> Node Gating -> Tests`):** Apply Section 1's reading order to map the directory structure and controller files of both `NVIDIA/gpu-operator` (Section 2) and `Mellanox/network-operator` (Section 8).
+2. **Tracing `ClusterPolicyReconciler.Reconcile`, `ClusterPolicyController.init`, and `step()` (`state_manager.go` & `resource_manager.go`):** Trace the Section 3 flowchart, explaining how the GPU Operator enforces the `ClusterPolicy` singleton rule, what happens when no nodes have `feature.node.kubernetes.io/*` NFD labels vs no GPU nodes, and why `step()` continues deploying later states even when an earlier state returns `NotReady`.
+3. **Inside `DaemonSet(n ClusterPolicyController)` (`object_controls.go`), `Transform*` Functions, Hash Annotations, and `isDaemonSetReady`:** Using `is_daemonset_ready()` in `code/part05/gpu_net_operator_source_sim.py`, walk through the 8 steps of `DaemonSet()` in Section 4, explaining why a hash annotation (`isDaemonsetSpecChanged`) prevents spurious API server update loops and how `isDaemonSetReady` differs between `RollingUpdate` and `OnDelete` DaemonSets.
+4. **Node Gating (`NodeLabelingReconciler`, `gpuStateLabels`) and the Per-Node `/run/nvidia/validations` Init-Container Chain (`cmd/nvidia-validator`):** Using `compute_gpu_node_deploy_labels()` and `evaluate_node_operand_gating_and_stale_objects()` in `code/part05/gpu_net_operator_source_sim.py`, explain how `nvidia.com/gpu.workload.config` (`container`, `vm-passthrough`, `vm-vgpu`) and `nvidia.com/gpu.deploy.<operand>=false` control operand placement, and trace the exact sequence of marker files written under `/run/nvidia/validations` (`driver-ready` $\rightarrow$ `toolkit-ready` $\rightarrow$ `plugin-ready` / `cuda-ready`).
+5. **Driver Lifecycle: `ClusterPolicy.spec.driver` vs. `NVIDIADriver` CRD, `OnDelete` Strategy, and `UpgradeReconciler` (`upgrade_controller.go`):** Explain why `NVIDIADriver` was introduced for heterogeneous multi-pool GPU clusters, why `ClusterPolicy` deletes its legacy driver DaemonSets with orphan propagation when `NVIDIADriver` is enabled, and how `UpgradeReconciler` drives rolling kernel-driver upgrades via node state labels.
+6. **Comparing `Mellanox/network-operator` (`NicClusterPolicy`, `pkg/state/state_skel.go`, `mofed.wait` Labels, and Secondary Network CRDs) with `NVIDIA/gpu-operator`:** Compare how the Network Operator's `State` interface (`Sync`, `GetWatchSources`), Go-template rendering, `state_skel.go` stale-object deletion, and `network.nvidia.com/operator.mofed.wait: "false"` node-selector gating differ from the GPU Operator's design, and walk through the 8 debugging recipes in Section 11.
 
-## 15. Sources and review notes
+## Checkpoint questions (20)
 
-- Primary sources: the `NVIDIA/gpu-operator` and `Mellanox/network-operator` repositories (Apache 2.0), read from shallow clones on 2026-10-24 at the commits named above. I describe their behaviour in my own words and quote no substantial code.
-- Concept sources: *Programming Kubernetes* (Hausenblas, Schimanski) for controller and operator patterns; the Kubernetes documentation for DaemonSet update strategies.
-- Caveats: these projects change quickly (new CRDs, the DRA-oriented stack, state renames). Function names and file layout are as of the commits above; re-verify with `grep` before relying on a name. I did not run either operator, so runtime behaviour statements (messages, label flows) are from reading the code and manifests, not from observation.
-- Cross-references: 5.31 and 5.32 (writing operators), 5.8 (device plugins), 5.14 (CNI), Part 10 and 11 (GPU, CUDA, GPU on Kubernetes), Part 12 (RDMA networking).
+<details>
+<summary>1. In `NVIDIA/gpu-operator`, which directories contain (a) the `ClusterPolicy` and `NVIDIADriver` CRD Go types, (b) the static YAML operand templates, (c) the reconcilers, and (d) the validator binary?</summary>
+
+- **`api/nvidia/v1` and `api/nvidia/v1alpha1`:** `ClusterPolicy` (`v1`) and `NVIDIADriver` / `GPUCluster` (`v1alpha1`) CRD Go structs.
+- **`assets/`:** Static YAML manifests for each operand state (`state-driver`, `state-container-toolkit`, `state-device-plugin`, `state-dcgm-exporter`, `gpu-feature-discovery`, `state-mig-manager`, `state-operator-validation`, etc.).
+- **`controllers/`:** `clusterpolicy_controller.go`, `state_manager.go`, `object_controls.go`, `resource_manager.go`, `nodelabeling_controller.go`, `nvidiadriver_controller.go`, `upgrade_controller.go`.
+- **`cmd/nvidia-validator`:** The validator binary executed inside operand init containers and the `nvidia-operator-validator` DaemonSet.
+</details>
+
+<details>
+<summary>2. What happens if an administrator accidentally creates two `ClusterPolicy` objects in the same cluster, and how does the GPU Operator decide which one wins?</summary>
+
+`ClusterPolicy` is a **singleton** cluster-scoped configuration. In `ClusterPolicyReconciler.Reconcile`, the controller lists all `ClusterPolicy` objects in the cluster and selects the one with the **oldest `metadata.creationTimestamp`** (using alphabetical `metadata.name` as a tiebreaker) as the single active policy. Any newer `ClusterPolicy` instance has its status set to **`Ignored`** and performs no actions. Because this rule is derived purely from cluster metadata, it is deterministic across operator restarts.
+</details>
+
+<details>
+<summary>3. Does `ClusterPolicyReconciler` wait for the `state-driver` DaemonSet to become 100% Ready on all nodes before creating the `state-container-toolkit` and `state-device-plugin` DaemonSets?</summary>
+
+**No.** In `ClusterPolicyReconciler.Reconcile`, `step()` iterates through all registered states in order and creates/updates all enabled DaemonSets in a single pass—if an earlier state (like `state-driver`) returns `NotReady`, the reconciler records that the overall policy is not yet ready (and schedules `RequeueAfter: 5s`), **but continues the loop to create the downstream DaemonSets immediately**.
+Why doesn't that start the Device Plugin before the driver is ready on a node? Because **per-node dependency ordering is enforced on each individual node by Init Containers waiting on `/run/nvidia/validations/<component>-ready` files**. That way, Node A (whose driver finished loading in 30s) can immediately start its Toolkit and Device Plugin without waiting for Node B (which is still compiling a driver).
+</details>
+
+<details>
+<summary>4. What happens in `ClusterPolicyController.init()` when (a) NO node in the cluster has `feature.node.kubernetes.io/*` NFD labels vs. (b) NFD labels exist, but NO node has an NVIDIA GPU (`pci-10de.present`)?</summary>
+
+- **Case (a) — No NFD labels on any node:** The operator logs a warning, marks `ClusterPolicy` condition `Ready` with reason `NoNFDLabels`, creates **zero** operand DaemonSets, and polls every **45 seconds** waiting for Node Feature Discovery (`NFD`) to label the nodes.
+- **Case (b) — NFD labels present, but zero GPU nodes:** `hasGPUNodes` is false (so the target OS/kernel versions of GPU nodes are not yet known). Operand `DaemonSet()` control functions return `Ready` without creating DaemonSets until a GPU node joins and triggers the `Node` watch.
+</details>
+
+<details>
+<summary>5. In `controllers/object_controls.go`, what is the purpose of the `Transform*` functions (`TransformDriver`, `TransformToolkit`, `TransformDevicePlugin`, `TransformDCGMExporter`) and the hash annotation (`nvidia.com/last-applied-hash`)?</summary>
+
+- **`Transform*` functions:** `resource_manager.go` loads a static baseline YAML file from `assets/state-<name>/` into a Go `appsv1.DaemonSet` struct; `preProcessDaemonSet` then calls the state's `Transform*` function to mutate that struct in memory according to `ClusterPolicy.spec` (setting image repository/tag/digest, env vars, `RuntimeClass`, volume mounts, tolerations, and security contexts). Because `Transform*` is a pure in-memory struct transformation (`(DaemonSet, ClusterPolicySpec) -> DaemonSet`), it can be unit-tested in `transforms_test.go` without a cluster.
+- **Hash annotation (`isDaemonsetSpecChanged`):** When you `Create` a DaemonSet, `kube-apiserver` fills in dozens of server-side default fields on the stored object. If the controller compared its freshly rendered `DaemonSet` struct against the live `DaemonSet` from the cache with `reflect.DeepEqual`, they would *always* differ and trigger an `Update` on every single reconcile. Instead, the GPU Operator computes a hash of the desired `DaemonSetSpec` *before* sending it to the API server, stores that hash in an annotation on the DaemonSet, and only calls `r.Update` when the newly computed hash differs from the stored annotation.
+</details>
+
+<details>
+<summary>6. In `isDaemonSetReady()` (`object_controls.go`), how does readiness checking differ between a `RollingUpdate` DaemonSet (like `dcgm-exporter`) and an `OnDelete` DaemonSet (like `nvidia-driver-daemonset`)?</summary>
+
+First, both strategies require `ds.Status.ObservedGeneration == ds.Generation` and `ds.Status.NumberUnavailable == 0` (with `DesiredNumberScheduled == 0` treated as trivially Ready). Then:
+- **`RollingUpdate` DaemonSet:** Ready when `ds.Status.UpdatedNumberScheduled == ds.Status.DesiredNumberScheduled`.
+- **`OnDelete` DaemonSet (used for GPU and OFED drivers):** Kubernetes's DaemonSet controller does *not* automatically replace pods when the DaemonSet template changes under `OnDelete`. Therefore, `isDaemonSetReady` lists every Pod belonging to the DaemonSet, verifies that **`len(pods) == DesiredNumberScheduled`**, checks that every Pod's **`controller-revision-hash` label matches the DaemonSet's current revision hash**, and checks that every container in every Pod has `Ready == true`. Until the upgrade controller restarts an old-revision driver pod, `isDaemonSetReady` accurately reports `NotReady`.
+</details>
+
+<details>
+<summary>7. How do `NodeLabelingReconciler`, `nvidia.com/gpu.workload.config`, and `nvidia.com/gpu.deploy.<operand>` control which DaemonSet pods run on each GPU node?</summary>
+
+1. `NodeLabelingReconciler` watches NFD PCI labels (`feature.node.kubernetes.io/pci-10de.present=true` or `pci-0302_10de.present=true`) and labels the node with `nvidia.com/gpu.present=true`.
+2. It reads the node's **`nvidia.com/gpu.workload.config`** label (defaulting to **`container`**, or `vm-passthrough` / `vm-vgpu`) and looks up the corresponding label map in `gpuStateLabels` (`state_manager.go`):
+   - `container` $\rightarrow$ sets `nvidia.com/gpu.deploy.{driver,container-toolkit,device-plugin,dcgm,dcgm-exporter,gpu-feature-discovery,operator-validator}=true`.
+   - `vm-passthrough` $\rightarrow$ sets `nvidia.com/gpu.deploy.{sandbox-validator,vfio-manager,sandbox-device-plugin}=true` (and sets container operand labels to `false`).
+3. Every operand DaemonSet's `spec.template.spec.nodeSelector` matches its specific `nvidia.com/gpu.deploy.<operand>: "true"` label.
+4. Setting **`nvidia.com/gpu.deploy.dcgm-exporter=false`** on one node disables only `dcgm-exporter` on that node; setting **`nvidia.com/gpu.deploy.operands=false`** removes all GPU Operator pods from that node.
+</details>
+
+<details>
+<summary>8. Walk through the `/run/nvidia/validations` file sequence on a GPU worker node (`cmd/nvidia-validator/main.go`), and explain how it helps you debug a Device Plugin Pod stuck in `Init:0/1`.</summary>
+
+On each GPU worker node, the `nvidia-operator-validator` DaemonSet and operand init containers share the host directory **`/run/nvidia/validations`** (`hostPath`):
+1. **`nvidia-driver-daemonset`** compiles/loads `nvidia.ko`, `nvidia-uvm.ko`, and `nvidia-modeset.ko`.
+2. **`driver-validation`** init container (in the validator / toolkit) runs `nvidia-validator` for component `driver`; once `nvidia-smi` / NVML succeeds, it writes **`/run/nvidia/validations/driver-ready`**.
+3. **`nvidia-container-toolkit-daemonset`**'s init container (`driver-validation`) unblocks once `driver-ready` exists, configures `/etc/containerd/config.toml` with the `nvidia` runtime handler, and **`toolkit-validation`** writes **`/run/nvidia/validations/toolkit-ready`**.
+4. **`nvidia-device-plugin-daemonset`**'s init container (`toolkit-validation`) waits until **`toolkit-ready`** exists and `/proc/driver/nvidia/version` is live, then starts the main device-plugin container to register `nvidia.com/gpu` with `kubelet`.
+5. Finally, the validator runs a test CUDA vector-add pod (`cuda-validation`) and plugin check, writing **`cuda-ready`** and **`plugin-ready`**.
+**Debugging tip:** If `nvidia-device-plugin-daemonset-xyz` is stuck in `Init:0/1` logging `waiting for nvidia container stack to be setup`, check `ls -la /run/nvidia/validations/` on the node and inspect the logs of the `nvidia-operator-validator` and `nvidia-container-toolkit` pods on that node.
+</details>
+
+<details>
+<summary>9. Why did the GPU Operator introduce the `NVIDIADriver` CRD (`api/nvidia/v1alpha1`) alongside `ClusterPolicy.spec.driver`, and how does `ClusterPolicy` avoid fighting `NVIDIADriver`?</summary>
+
+- **Why `NVIDIADriver` was introduced:** `ClusterPolicy.spec.driver` only allows **one single cluster-wide driver version and configuration**. In large production clusters with mixed hardware pools (e.g., an A100 node pool needing driver `535.x` and a new B200/H200 node pool needing driver `560.x` or OpenRM/Confidential Computing), administrators need multiple **`NVIDIADriver` CRs** each targeting its own `nodeSelector`.
+- **Avoiding controller conflict:** When `NVIDIADriver` CRs are used, `ClusterPolicyController.step()` skips `state-driver` and deletes any legacy ClusterPolicy-owned driver DaemonSets using **`metav1.DeletePropagationOrphan` (`Orphan` propagation)**—so the old DaemonSet object is removed while existing running driver pods on nodes stay alive until `NVIDIADriverReconciler` adopts/rolls them cleanly.
+</details>
+
+<details>
+<summary>10. Why do both the GPU Operator's driver DaemonSet and the Network Operator's OFED driver DaemonSet use `updateStrategy.type: OnDelete` instead of `RollingUpdate`?</summary>
+
+Unloading and reloading a kernel module (`nvidia.ko` or `mlx5_core`/`ib_core`) fails with `Module is in use` if any GPU or RDMA pod is running on the node—and forcibly killing the driver container crashes every running training job on that node.
+With Kubernetes's built-in `RollingUpdate` strategy, the DaemonSet controller in `kube-controller-manager` would blindly kill and restart driver pods without cordoning the node, without draining GPU/RDMA workloads, and without unloading dependent device-plugin pods first.
+Setting **`updateStrategy.type: OnDelete`** prevents `kube-controller-manager` from restarting driver pods automatically, handing 100% of restart timing over to the operator's **`UpgradeReconciler` (`upgrade_controller.go`)**, which cordons the node, waits for or drains GPU jobs, stops device plugins, deletes the old driver pod (`OnDelete` then creates the new revision pod), validates readiness, and uncordons the node.
+</details>
+
+<details>
+<summary>11. What node labels does `UpgradeReconciler` (`upgrade_controller.go` / `k8s-operator-libs`) write on a node as it progresses through a rolling GPU driver upgrade?</summary>
+
+`UpgradeReconciler` stores the per-node upgrade state machine in label **`nvidia.com/gpu-driver-upgrade-state`** on each `Node` object:
+1. `upgrade-required` (driver pod revision hash differs from target DaemonSet revision)
+2. `cordon-required` $\rightarrow$ cordons node
+3. `wait-for-jobs` (waits for running GPU jobs up to timeout)
+4. `pod-deletion` / `drain` (evicts remaining GPU pods and stops operator operand pods holding `/dev/nvidia*`)
+5. `pod-restart` (deletes the `OnDelete` driver pod so the new driver pod starts)
+6. `validation` (waits for validator pod to pass on the new driver)
+7. `uncordon-required` $\rightarrow$ `upgrade-done` (or `upgrade-failed` if validation fails).
+</details>
+
+<details>
+<summary>12. Look at `ClusterPolicyReconciler.SetupWithManager` (Section 7). What seven specific Node transitions does its custom `Node` predicate allow through, while dropping all other Node updates?</summary>
+
+The custom `Node` predicate in `clusterpolicy_controller.go` only triggers a reconcile when:
+1. A new Node already carrying the GPU label is created.
+2. `nvidia.com/gpu.present` is added or removed on a Node.
+3. `nvidia.com/gpu.deploy.operands` flips between `"true"` and `"false"`.
+4. `nvidia.com/gpu.workload.config` changes (`container` $\leftrightarrow$ `vm-passthrough` $\leftrightarrow$ `vm-vgpu`).
+5. An OS/kernel NFD label (`feature.node.kubernetes.io/system-os_release.*` or `ostree`) changes.
+6. `nvidia.com/gpu-driver-upgrade-state` changes.
+7. An RHCOS/precompiled-driver GPU Node is deleted (so unused per-kernel driver DaemonSets can be garbage-collected).
+All other Node updates (`kubelet` heartbeats, image list changes, allocatable tweaks) are ignored at the predicate boundary.
+</details>
+
+<details>
+<summary>13. Why does `ClusterPolicyReconciler` configure `MaxConcurrentReconciles: 1`?</summary>
+
+Because `ClusterPolicy` is a **singleton** resource (`1` active instance per cluster), running multiple concurrent workers for `ClusterPolicy` would not reconcile different objects in parallel—and because `ClusterPolicyController` mutates shared package/controller state slices (`state_manager.go`) across `init()` and `step()`, serializing reconciliation through a single worker (`MaxConcurrentReconciles: 1`) eliminates internal data races while coalescing bursts of Node/DaemonSet events in the WorkQueue.
+</details>
+
+<details>
+<summary>14. In `Mellanox/network-operator`, what are the top-level component fields of `NicClusterPolicySpec` (`api/v1alpha1/nicclusterpolicy_types.go`)?</summary>
+
+`NicClusterPolicy.spec` configures:
+- **`ofedDriver`:** DOCA / Mellanox OFED kernel driver container (`mlx5_core`, `ib_core`).
+- **`rdmaSharedDevicePlugin`:** Exposes `rdma/rdma_shared_device_a` (shared HCA mode).
+- **`sriovDevicePlugin`:** Exposes SR-IOV Virtual Function RDMA/netdev resources (`nvidia.com/mlx5_sriov`).
+- **`ibKubernetes`:** InfiniBand PKey / GUID UFM integration daemon.
+- **`secondaryNetwork`:** Deploys **Multus CNI**, container-networking CNI plugins (`macvlan`, `ipvlan`, `host-device`), **IPoIB CNI**, and `whereabouts` IPAM.
+- **`nvIpam`:** NVIDIA's fast per-node CIDR block IPAM plugin (`nv-ipam`).
+- **`nicFeatureDiscovery`**, **`nicConfigurationOperator`**, **`docaTelemetryService` (`DTS`)**, and **`spectrumXOperator`**.
+</details>
+
+<details>
+<summary>15. In the Network Operator's `pkg/state/` package, what methods does the `State` interface define, and what does `state_skel.go` handle for every state?</summary>
+
+- **`State` interface (`pkg/state/state.go`):**
+  - `Name() string` and `Description() string`
+  - **`Sync(ctx context.Context, customResource interface{}, infoCatalog InfoCatalog) (SyncState, error)`** (returning `SyncStateReady`, `SyncStateNotReady`, `SyncStateIgnore`, `SyncStateReset`, or `SyncStateError`)
+  - **`GetWatchSources() map[string]*source.Kind`** (declaring which Kubernetes object kinds owned by this state should be watched by the controller).
+- **`state_skel.go` (shared skeleton):** Renders the state's Go-template YAML files from `manifests/state-<name>/`, injects owner references and state labels, creates or updates each unstructured object, **detects and deletes stale objects** that were created by a previous render of that state but are no longer in the rendered manifest list, and checks DaemonSet/Deployment rollout readiness.
+</details>
+
+<details>
+<summary>16. How does the Network Operator's `network.nvidia.com/operator.mofed.wait` node label (`mofed_wait_labels.go`) prevent RDMA and SR-IOV device plugins from starting before the OFED driver is ready on a node?</summary>
+
+1. While the `mofed` driver pod on a Mellanox node (`feature.node.kubernetes.io/pci-15b3.present=true`) is starting or not yet ready, the Network Operator patches the node label **`network.nvidia.com/operator.mofed.wait: "true"`**.
+2. Once the `mofed` pod on that node becomes `Ready`, `mofed_wait_labels.go` patches the node label to **`network.nvidia.com/operator.mofed.wait: "false"`** (and also sets `"false"` if `NicClusterPolicy.spec.ofedDriver` is omitted, meaning inbox OS drivers are used).
+3. The DaemonSet manifests for `rdma-shared-device-plugin`, `sriov-device-plugin`, and `nv-ipam` include **`nodeSelector: { "network.nvidia.com/operator.mofed.wait": "false" }`**—so Kubernetes's scheduler does not even place the device-plugin pods onto a node until its OFED driver pod is Ready.
+</details>
+
+<details>
+<summary>17. Compare the per-node dependency mechanism of the **GPU Operator** (`/run/nvidia/validations/*` files + Init Containers) against the **Network Operator** (`network.nvidia.com/operator.mofed.wait` label + `nodeSelector`).</summary>
+
+| Dimension | GPU Operator (`/run/nvidia/validations`) | Network Operator (`mofed.wait` Node Label) |
+|---|---|---|
+| **When downstream DaemonSet Pods are scheduled** | Scheduled **immediately** onto the node; held in **`Init:0/1` (`PodInitializing`)** by `driver-validation` / `toolkit-validation` init containers polling `/run/nvidia/validations/` | **Not scheduled at all** until `NicClusterPolicyReconciler` sees the OFED pod Ready and flips `network.nvidia.com/operator.mofed.wait` from `"true"` to `"false"` |
+| **Control-plane involvement** | Zero control-plane round-trips required to advance from driver $\rightarrow$ toolkit $\rightarrow$ device plugin on a node | Requires the central operator to watch the OFED Pod status and PATCH the `Node` label |
+| **How it looks in `kubectl get pods`** | Downstream pods appear immediately in `Init:0/1` on the node | Downstream pods do not appear on the node until `mofed.wait=false` |
+</details>
+
+<details>
+<summary>18. In `NicClusterPolicyReconciler.Reconcile`, why does the `NotFound` branch (when `NicClusterPolicy` is deleted) actively clear `mofed.wait` labels on nodes instead of returning immediately?</summary>
+
+While `NicClusterPolicy` was active, the controller wrote `network.nvidia.com/operator.mofed.wait` (and NIC-configuration wait labels) onto `Node` objects—and `Node` objects are not garbage-collected when `NicClusterPolicy` is deleted. By clearing those wait labels inside the `apierrors.IsNotFound(err)` branch when `NicClusterPolicy` is deleted, the Network Operator ensures nodes are not left with stale wait labels.
+</details>
+
+<details>
+<summary>19. What do the Network Operator's secondary-network CRDs (`MacvlanNetwork`, `HostDeviceNetwork`, `IPoIBNetwork`) reconcile?</summary>
+
+Each secondary-network controller watches its high-level CRD (`MacvlanNetwork`, `HostDeviceNetwork`, or `IPoIBNetwork`) and renders + reconciles a corresponding **`k8s.cni.cncf.io/v1` `NetworkAttachmentDefinition` (`NAD`)** CR for **Multus CNI**—automatically populating the CNI JSON config (`cniVersion`, `type: "macvlan"` / `"host-device"` / `"ipoib"`, `master` interface, `mtu`, `ipam` settings for `nv-ipam` or `whereabouts`, and the `k8s.v1.cni.cncf.io/resourceName` annotation linking the network to the RDMA/SR-IOV device plugin).
+</details>
+
+<details>
+<summary>20. A new GPU worker node joins your cluster, `kubectl get nodes` shows `Ready`, but `kubectl describe node` shows `nvidia.com/gpu: 0` (no GPUs in `Allocatable`). Trace the exact 5-step diagnostic checklist from the GPU Operator source.</summary>
+
+1. **Check NFD PCI label on the node:** Does `kubectl get node <n> --show-labels` include **`feature.node.kubernetes.io/pci-10de.present=true`** (or `pci-0302_10de.present=true`)? If not, check the `node-feature-discovery-worker` pod on that node (`lspci -nn | grep -i 10de`).
+2. **Check GPU Operator deploy labels (`NodeLabelingReconciler`):** Does the node have **`nvidia.com/gpu.present=true`** and **`nvidia.com/gpu.deploy.driver=true`**, `container-toolkit=true`, `device-plugin=true` (and NOT `nvidia.com/gpu.deploy.operands=false`)?
+3. **Check `nvidia-driver-daemonset` pod on that node:** Is the driver pod `Running` (`1/1`)? If CrashLooping, inspect `kubectl logs -n gpu-operator nvidia-driver-daemonset-<id>` for missing kernel headers, repo mirror failure, or Secure Boot key rejection.
+4. **Check `/run/nvidia/validations` & `nvidia-operator-validator` / `nvidia-container-toolkit` pods:** Are `driver-ready` and `toolkit-ready` present under `/run/nvidia/validations` on the host? Check `kubectl logs -n gpu-operator nvidia-operator-validator-<id> -c driver-validation`.
+5. **Check `nvidia-device-plugin-daemonset` pod on that node:** Is it stuck in `Init:0/1` (`toolkit-validation` waiting on `toolkit-ready`) or running and failing to register over `/var/lib/kubelet/device-plugins/kubelet.sock`?
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `NVIDIA/gpu-operator` (shallow clone at commit `0fbefd5`, Apache 2.0): `api/nvidia/v1`, `api/nvidia/v1alpha1`, `controllers/clusterpolicy_controller.go`, `controllers/state_manager.go`, `controllers/object_controls.go`, `controllers/resource_manager.go`, `controllers/nodelabeling_controller.go`, `controllers/nvidiadriver_controller.go`, `controllers/upgrade_controller.go`, `cmd/nvidia-validator/main.go`, and `assets/`.
+  - `Mellanox/network-operator` (shallow clone at commit `041bd87`, Apache 2.0): `api/v1alpha1`, `controllers/nicclusterpolicy_controller.go`, `controllers/mofed_wait_labels.go`, `controllers/predicate.go`, `pkg/state/state.go`, `pkg/state/manager.go`, `pkg/state/state_skel.go`, and `manifests/`.
+  - `kubernetes-programming-with-go-programming-kubernetes-clients-and-operators-using-go-and-the-kuberne` — Philippe Martin / Stefan Schimanski & Michael Hausenblas, *Kubernetes Programming with Go* / *Programming Kubernetes* (controller and operator patterns).
+- **Run here:** `python3 code/part05/gpu_net_operator_source_sim_lab.py` (3 passed, 0 failed).
+- **Explicitly labelled inferences:** The `compute_gpu_node_deploy_labels`, `is_daemonset_ready`, and `evaluate_node_operand_gating_and_stale_objects` models in `code/part05/gpu_net_operator_source_sim.py` and the architectural diagrams and comparison tables are the author's constructions synthesizing the `NVIDIA/gpu-operator` (`0fbefd5`) and `Mellanox/network-operator` (`041bd87`) source trees and `KPG` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, and 30).
+- **Not verified on live hardware:** Live cluster installations of the GPU Operator and Network Operator (`5s` not-ready requeue, `45s` no-NFD poll, `0500_daemonset.yaml`, `pci-10de.present`, `pci-15b3.present`, `2,000`-node predicate scaling) are marked (`untested here`) where not executed by `gpu_net_operator_source_sim_lab.py`.
