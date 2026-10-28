@@ -322,7 +322,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 6.26 | Cluster monitoring and health at scale | reviewed | 6459 | `slurm_exporter_lab.py` (3/3 pass), `SCL 19` |
 | 6.28 | HPC benchmarking: HPL, HPCG, IOR, OSU and NCCL tests | reviewed | 7648 | `bench_stats_lab.py` (3/3 pass), `SP 12`, `ASP 5` |
 | 6.29 | Containers and reproducibility in HPC: Apptainer and enroot | reviewed | 4886 | `container_lint_lab.py` (3/3 pass), `SCL 16` |
-| 6.30 | Facility basics: power, cooling, racks and liquid cooling | drafted | 5273 |  |
+| 6.30 | Facility basics: power, cooling, racks and liquid cooling | reviewed | 6693 | `facility_calc_lab.py` (3/3 pass), `ADC 5`, `SCL 28`, `SPB200` |
 | 10.1 | Why GPUs: CPU versus GPU and throughput design | drafted | 13317 |  |
 | 10.2 | The execution model: threads, warps, blocks and SMs | drafted | 11312 |  |
 | 10.3 | The GPU memory hierarchy | drafted | 10882 |  |

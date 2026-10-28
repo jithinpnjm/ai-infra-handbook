@@ -4,7 +4,7 @@ title: "6.30 Facility basics: power, cooling, racks and liquid cooling"
 sidebar_label: "6.30 Facility basics: power, cooling, racks and liquid cooling"
 sidebar_position: 30
 description: "The physical side of a GPU cluster explained from scratch: how much power servers and switches use, how power reaches a rack (circuits, breakers, redundancy), how heat is removed (air, containment, liquid), racks, cables, UPS and safe shutdown, PUE and energy cost, with calculators that reproduce NVIDIA's published rack tables"
-status: "drafted"
+status: "reviewed"
 tier: "2"
 level: "I"
 lab_venue: "GCP / GKE"
@@ -37,6 +37,13 @@ Nothing special. After this chapter you can:
 - Describe what a UPS does and how to shut a cluster down in stages when power fails.
 
 ## 1. Start with the simple idea
+
+```mermaid
+flowchart LR
+  Grid["1. Utility / Generator + UPS<br/>apcupsd (:3551) + Staged haltall"] --> PDU["2. 3-Phase Rack PDUs (N=2)<br/>sqrt(3) * V * I * 0.80 * 0.95"]
+  PDU --> Server["3. GPU Server (DGX B200 14.3 kW)<br/>6 PSUs (5-of-6 N+1 Required)"]
+  Server --> Cool["4. Heat Rejection (100% of Watts)<br/>Air (150 CFM/kW) or Cold-Plate CDU"]
+```
 
 Every watt a server draws becomes a watt of heat. A server that draws 10 kilowatts (kW) heats the room like ten space heaters of 1 kW each running all day. Cooling must remove exactly as much heat as the machines make.
 
@@ -338,20 +345,20 @@ The guide's closing point: a deployment succeeds only if five groups agree on th
 
 Feed these into 6.26's monitoring: rack inlet and outlet temperature, PDU and outlet power, UPS state and time left, CDU temperature/flow/pressure, leak sensors, BMC sensors (Part 7), GPU temperature and throttle reasons (DCGM). Alert on rising temperature at constant load (a failing fan or blocked airflow), power near the circuit limit, and any containment breach. Practise the response: a cooling failure can overheat a dense rack within minutes, so know in advance which jobs to stop and which nodes to power off first (the staged-shutdown idea).
 
-## 10. Exercises
+## Exercises
 
-Tested with the calculators:
+First, run the self-checking Python lab (`code/part06/facility_calc_lab.py`) locally:
 
-1. Run `facility_calc.py` and match each row of the power table by hand for one row.
-2. A site offers 3-phase 400 V, 63 A circuits, 80 percent derating. How many DGX B200 fit on two circuits? How much power is stranded? (Compute with the formula, then verify with the script.)
-3. Change the cost example: PUE 1.15, electricity $0.08 per kWh, training 20 hours a day. What changes most?
-4. Run `ups_shutdown_sim.py`; change the number of busy nodes and the battery size; find the busy-node count at which step 3 no longer helps much.
+```bash
+python3 code/part06/facility_calc_lab.py
+```
 
-Desk exercises:
-
-5. Sketch a "6 to make 5" power diagram and a diagram with a failed UPS in the interleaved design.
-6. List what you would ask the facility team before accepting 16 DGX B200 servers.
-7. Write a one-page runbook for a cooling failure.
+1. **Reproducing the NVIDIA DGX B200 Rack Power Table (`code/part06/facility_calc.py` & `facility_calc_lab.py`):** Run `python3 code/part06/facility_calc_lab.py`. Using $P_{\text{circuit}} = \sqrt{3} \times V_{\text{LL}} \times I \times \text{derating} \times \text{PF} / 1000$ (`PF = 0.95`), verify that two 3-phase `415 V`, `60 A` circuits at `80%` breaker derating deliver `65.6 kW` total capacity (`57.2 kW` demand for 4 DGX B200 servers at `14.3 kW` each, leaving `8.4 kW` stranded power).
+2. **Evaluating 400 V / 63 A Rack Circuits and Stranded Power (`facility_calc_lab.py`):** A facility offers two 3-phase `400 V`, `63 A` circuits per rack with `80%` breaker derating. Calculate the usable rack capacity (`66.3 kW`), the maximum number of `14.3 kW` DGX B200 servers that fit (`4` servers = `57.2 kW`), and the resulting stranded power (`9.1 kW`), and verify your answer with `rack_plan(400, 63, 0.8, 4)`.
+3. **Analyzing Server Internal `5-of-6` PSU Redundancy vs Facility Dual-Feed Topologies:** Draw the power-supply connection diagram for a rack of four DGX B200 servers (each having 6 PSUs and requiring 5 energized PSUs to stay up). Prove why **interleaved dual-source** wiring (3 PSUs on UPS A, 3 PSUs on UPS B) causes *every* server in the rack to crash if UPS A fails, and why putting half the servers entirely on UPS A and half on UPS B (**N with two separate sources**) or using **"6 to make 5"** avoids a full-rack outage.
+4. **Calculating Rack Airflow (`CFM`), PUE, and Monthly Electricity Cost (`code/part06/facility_calc.py`):** Calculate the required cold-air volume for 2 and 4 DGX B200 servers per rack at `150 CFM/kW` (`4,290 CFM` and `8,580 CFM`) and for an `81.6 kW` H100 cluster with a $20^\circ\text{C}$ ($36^\circ\text{F}$) temperature rise using $\text{CFM} = 3.16 \times W / \Delta T_{\text{F}}$ (`7,163 CFM`). Then compute the monthly kWh and electricity bill at `$0.12/kWh` and `PUE = 1.35` (`60,000 kWh`, `$7,200/month`, `$86,400/year`).
+5. **Simulating Staged UPS Cluster Shutdown and Ambient Temperature Protection (`code/part06/ups_shutdown_sim.py` & `SCL` Chapter 28):** Trace the 6-step `haltall` algorithm in `code/part06/ups_shutdown_sim.py` across a 10-minute outage, a 45-minute outage, and a full battery drain, explaining why powering off the 40 idle nodes at $t+30\text{ min}$ extends runtime for the 60 busy nodes by 15 minutes. State the two APC SNMP temperature OIDs in `ambtemp.sh` and the warning (`25.0` °C) and shutdown (`30.0` °C) thresholds in `upstemp`.
+6. **Comparing Air Cooling, Cold-Plate DLC, Rear-Door Heat Exchangers, and Immersion Cooling (`ADC` Chapter 5):** Compare the five cooling technologies in `ADC` Chapter 5 (air with hot/cold aisle containment, rear-door heat exchanger, direct-to-chip cold plate + CDU, single-phase immersion, and two-phase immersion) along rack power density, retrofit complexity, PUE impact, and operational failure modes.
 
 ## 11. Interview angles
 
@@ -364,43 +371,185 @@ Desk exercises:
 - What happens in your cluster when power is lost for 10 minutes? For two hours?
 - Which teams must agree before a GPU cluster is installed?
 
-## 12. Checkpoint questions (25)
+## Checkpoint
 
-1. Define watt, kilowatt, megawatt, kilowatt-hour.
-2. What are the three resource limits of a data center?
-3. Roughly how is data center electricity split between IT and cooling?
-4. What is a DGX H100's rated maximum? A DGX B200's?
-5. What does "4 x 3.3 kW = 13.2 kW" actually represent?
-6. Write the three-phase circuit power formula.
-7. What do breaker derating and power factor mean?
-8. What is stranded power?
-9. How many of the six power supplies must a DGX B200 have energized?
-10. Why is interleaved dual-source power not recommended?
-11. What are the issues with static transfer switches here?
-12. What is "6 to make 5"?
-13. What features should a smart rack PDU have?
-14. What does a UPS do and for how long?
-15. Describe the staged shutdown in six steps.
-16. In `apcupsd.conf`, which three parameters work together to trigger shutdown on power failure, what are the APC SNMP OIDs for internal UPS and external ambient sensor temperatures, and at what temperatures does the book's `upstemp` script warn and halt? (Answer: `BATTERYLEVEL`, `MINUTES`, and `TIMEOUT`—whichever trips first; `.1.3.6.1.4.1.318.1.1.1.2.2.2.0` for internal UPS temperature and `.1.3.6.1.4.1.318.1.1.10.2.3.2.1.4.0` for external ambient sensor temperature; warn above `25.0` °C and halt above `30.0` °C.)
-17. What is NVIDIA's airflow planning figure per kW?
-18. What inlet temperature limits apply to DGX B200?
-19. What air filtration is required?
-20. Name five good air-cooling habits.
-21. Compare front-to-back and back-to-front airflow.
-22. List the four liquid cooling methods and one trait each.
-23. What is hybrid cooling in the GB300?
-24. Define PUE; what is ideal?
-25. Which cable distance limits apply to DAC and AOC, and why can't they be extended?
+<details>
+<summary>1. Define **Watt (W)**, **Kilowatt (kW)**, **Megawatt (MW)**, and **Kilowatt-hour (kWh)**, and state the three linked physical constraints of every data center.</summary>
 
-## 13. Sources and review notes
+- **Watt (`W`) / Kilowatt (`1,000 W`) / Megawatt (`1,000 kW`):** Instantaneous rate of electrical power consumption (and heat generation).
+- **Kilowatt-hour (`kWh`):** Energy consumed (`1 kW` sustained for `1 hour`).
+- **Three linked data-center constraints:** **Power**, **Cooling**, and **Space** (packing more kW per rack requires higher-capacity cooling; spreading servers across more racks to cool them increases InfiniBand cable lengths).
+</details>
 
-- Book source (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`):
-  - Chapter `19. Cluster Status Monitoring Systems` (read in full): APCUPS (`apcupsd`, `apcaccess`, `onbattery`/`offbattery`, `multimon.cgi`, `/etc/apcupsd/hosts.conf`).
-  - Chapter `28. One-Two-Three Instructions` (read in full): `/etc/apcupsd/apcupsd.conf` parameters (`UPSCABLE`, `UPSTYPE`, `DEVICE`, `ONBATTERYDELAY`, `BATTERYLEVEL`, `MINUTES`, `TIMEOUT`, `NETSERVER`, `NISIP`, `NISPORT`, and Table 28-1 `UPSTYPE`/`DEVICE` values), `onbattery`/`offbattery` and the staged cluster shutdown script (`haltall`), and the `upstemp`/`ambtemp.sh` APC SNMP temperature scripts (`.1.3.6.1.4.1.318.1.1.1.2.2.2.0` internal UPS temperature and `.1.3.6.1.4.1.318.1.1.10.2.3.2.1.4.0` external sensor temperature).
-- Thermal and power concepts, airflow, liquid cooling types, PUE, rack power budgets: *AI Data Center Network Design and Technologies* (ADC), chapter 5, read in full; restated in my words.
-- DGX B200 power profiles, power provisioning table, redundancy designs, ASHRAE/filtration, best practices, cabling, FAQ: NVIDIA, *Data Center Best Practices with DGX B200* (the "superpod-b200-dc" document in the corpus), read in full. It is marked NVIDIA confidential in the source; I summarised without reproducing its slides.
-- GB300 hybrid cooling, power shelves with energy storage, BMS telemetry zone: NVIDIA, *DGX SuperPOD Reference Architecture, DGX GB300* (corpus), keyword passages only.
-- Power and cooling planning numbers, energy cost example, CFM formula: the AI Factory volume-21 chapter 5 of the NVIDIA-DevOps notes (figures marked there as planning assumptions). The volume-01 summary's statements about rack power ("over 40 to 100 kW", "enterprise racks 15 kW") are loose; I limited them as above.
-- Original and run: `facility_calc.py` (matches all nine table rows and the book numbers), `ups_shutdown_sim.py` (invented battery parameters).
-- Corrections noted: the ADC book's "air-assisted liquid chromatography" is a typo for liquid cooling; the 13.2 kW figure is supply capacity, not draw.
-- Unverified: current NVIDIA specifications beyond the quoted documents, regional electrical code details (derating rules vary), CDU and coolant specifics, `apcupsd.conf` and `haltall`/`ambtemp.sh` scripts (from the book, not run here), UPS runtime for real GPU racks.
+<details>
+<summary>2. Roughly what share of total data-center electricity is consumed by IT equipment versus the cooling system (`ADC` Chapter 5), and what are the rated maximum power draws of a DGX H100 and a DGX B200 server?</summary>
+
+In traditional data centers surveyed in `ADC` Chapter 5, IT equipment consumes roughly **`40–45%`** of total facility power while the **cooling system consumes `35–40%`** (with power distribution, UPS losses, and lighting taking the remainder). A **DGX H100 (8 GPUs)** has a rated maximum draw of **`~10.2 kW`**, and a **DGX B200 (8 GPUs)** has a rated maximum draw of **`14.3 kW`**.
+</details>
+
+<details>
+<summary>3. Why does a DGX H100 have six `3.3 kW` power supplies ($4 \times 3.3\text{ kW} = 13.2\text{ kW}$) when its rated maximum draw is `10.2 kW`, and how much power do 64 `OSFP` (`15 W`) optical transceivers add to a switch?</summary>
+
+`13.2 kW` is the combined output **nameplate capacity** of the 4 active power supplies (in a `4+2` redundant PSU configuration), providing headroom above the server's actual **`10.2 kW`** maximum draw. On a 64-port `400G`/`800G` switch, 64 `OSFP` optical modules at `15 W` each add **`960 W` (`~1 kW`)** of power and heat from optics alone (`QSFP28` draws `~3.2 W`, `QSFP56-DD` draws `~12 W`).
+</details>
+
+<details>
+<summary>4. Write the 3-phase usable power formula (`code/part06/facility_calc.py`), and explain **breaker derating**, **power factor**, and **stranded power**.</summary>
+
+$$\text{Usable kW per circuit} = \frac{\sqrt{3} \times V_{\text{line-to-line}} \times I_{\text{amps}} \times \text{derating} \times \text{PF}}{1000}$$
+- **Breaker derating (`0.80`):** Electrical codes commonly cap continuous loads at **80%** of a breaker's rated amperage.
+- **Power factor (`0.95`):** Ratio of real working power to apparent power.
+- **Stranded power:** Installed and paid-for rack circuit capacity (`Capacity - Demand`) that cannot be used because adding one more whole server (`14.3 kW`) would exceed the circuit limit.
+</details>
+
+<details>
+<summary>5. Why does a DGX B200's internal **`5-of-6` PSU redundancy** break traditional **interleaved dual-source (`A/B`)** rack power designs, and what are the two recommended designs?</summary>
+
+A DGX B200 has 6 internal PSUs and **requires at least 5 energized PSUs to run** (it survives losing 1 PSU, but shuts down if 2 PSUs lose power). If you wire 3 PSUs to UPS A and 3 PSUs to UPS B (**interleaved dual-source**), a failure of *either* UPS A or UPS B drops 3 PSUs on every server—**crashing 100% of the servers in the rack**. Instead, use:
+1. **`N` with two separate sources:** Place half the servers entirely on UPS A (all 6 cords) and half entirely on UPS B, so a single UPS failure affects only 50% of servers.
+2. **`N+1` "6 to make 5":** Feed each of the 6 PSUs from 6 independent power sources so any single source failure drops only 1 PSU per server.
+</details>
+
+<details>
+<summary>6. What capabilities should smart **rack PDUs (`rPDU`s)** provide in an AI data center?</summary>
+
+Network management interface (REST API / Redfish / SNMP), per-PDU and **per-outlet power/current metering**, remote per-outlet power switching, environmental sensor ports (inlet/outlet temperature and humidity probes), locking power receptacles (`C13`/`C19` or `C20`), and color-coded chassis (e.g., red and blue) to prevent cross-wiring circuits.
+</details>
+
+<details>
+<summary>7. In `/etc/apcupsd/apcupsd.conf`, which three parameters work together to trigger a server shutdown on battery, and what are the six `UPSTYPE` modes in `SCL` Chapter 28 `Table 28-1`?</summary>
+
+The three shutdown-trigger parameters (whichever trips first initiates shutdown) are:
+1. **`BATTERYLEVEL`** (remaining battery charge percentage, e.g., `5%`),
+2. **`MINUTES`** (remaining estimated runtime in minutes, e.g., `3` min), and
+3. **`TIMEOUT`** (maximum seconds on battery; `0` disables).
+The six `UPSTYPE` modes in `Table 28-1` are **`apcsmart`** (`/dev/tty**`), **`usb`** (blank/auto), **`net`** (`hostname:port`), **`dumb`** (`/dev/tty**`), **`pcnet`** (`ipaddr:user:passphrase`), and **`snmp`** (`hostname:port:vendor:community`).
+</details>
+
+<details>
+<summary>8. Walk through the 6-step staged cluster shutdown algorithm (`haltall`) in `SCL` Chapter 28 (`code/part06/ups_shutdown_sim.py`).</summary>
+
+1. Power fails: `apcupsd` invokes `/etc/apcupsd/onbattery`, which emails the admin, broadcasts a `wall` notice, and starts `/etc/apcupsd/haltall` in the background.
+2. **Wait 30 minutes (`sleep 1800`):** Ride through brief utility outages (if power returns, `/etc/apcupsd/offbattery` kills `haltall`).
+3. **Power off idle compute nodes** (`ndload < 10`) via SSH `/sbin/poweroff` to reduce load on the UPS and stretch remaining battery time for busy nodes.
+4. **Poll `TIMELEFT` (`tlwait 5`)** every 60 seconds until only **5 minutes** of battery runtime remain.
+5. **Stop the batch queue and terminate running jobs** (`qstop` / `scontrol` + `qdel` / `scancel`), then wait 1 minute (`sleep 60`).
+6. **Power off all remaining compute nodes**, wait 1 minute (`sleep 60`), and **power off the head/storage server** (`/sbin/poweroff`).
+</details>
+
+<details>
+<summary>9. What are the two APC SNMP temperature OIDs in `ambtemp.sh`, and what two temperature thresholds does `upstemp` enforce (`SCL` Chapter 28)?</summary>
+
+- **Internal UPS temperature OID:** `.1.3.6.1.4.1.318.1.1.1.2.2.2.0`
+- **External ambient room probe OID:** `.1.3.6.1.4.1.318.1.1.10.2.3.2.1.4.0`
+`upstemp` polls every 10 minutes (`sleep 600`), sends an admin warning (`mail` + `write`) when ambient temperature exceeds **`25.0` °C (`TMAXW=25.0`)**, and triggers an immediate `haltall` emergency cluster shutdown when ambient temperature exceeds **`30.0` °C (`TMAXSH=30.0`)**.
+</details>
+
+<details>
+<summary>10. State NVIDIA's airflow planning rule of thumb (`CFM` per `kW`) and the general sensible-heat airflow formula (`code/part06/facility_calc.py`).</summary>
+
+- **NVIDIA sea-level planning rule:** **`150 CFM` per `kW`** (so 1 DGX B200 at `14.3 kW` requires `2,145 CFM`, 2 per rack require `4,290 CFM`, and 4 per rack require `8,580 CFM`).
+- **General sensible-heat formula:**
+  $$\text{CFM} \approx \frac{3.16 \times \text{Watts}}{\Delta T\ (^\circ\text{F})}$$
+  (For `81,600 W` and a $20^\circ\text{C} = 36^\circ\text{F}$ temperature rise, $\text{CFM} = 3.16 \times 81600 / 36 \approx \mathbf{7,163\text{ CFM}}$.)
+</details>
+
+<details>
+<summary>11. What inlet air temperature, filtration, and clean-room standards does the DGX B200 site guide specify?</summary>
+
+- **Inlet air temperature:** ASHRAE Class A1 envelope, capped at **`30` °C (`86` °F)** maximum at the server inlet ($5\text{–}30^\circ\text{C}$ at sea level; derated to $5\text{–}25^\circ\text{C}$ at $5,000\text{–}10,000$ feet altitude).
+- **Filtration and cleanliness:** At least **MERV 13** air filtration and **ISO 14644-1 Class 8** clean-room particulate levels (with acoustic levels reaching `96–101 dB`).
+</details>
+
+<details>
+<summary>12. List six physical best practices for air-cooled GPU rooms, and explain why **front-to-back** airflow is standard (`ADC` Chapter 5).</summary>
+
+1. **Hot/cold aisle containment** (physical doors/curtains separating cold supply air from hot exhaust air).
+2. **Blanking panels** in every empty rack U-slot to prevent hot exhaust air from recirculating to the cold inlet.
+3. **Brush grommets** sealing floor and rack cable cutouts.
+4. **Perforated floor tile audits** with an anemometer and CFD modeling.
+5. **Humidity and MERV 13 filtration control.**
+6. **Uniform airflow direction:** **Front-to-back (port-side intake)** draws cold air across temperature-sensitive optical transceivers (`OSFP`/`QSFP-DD`) first before exhausting through the rear; mixing front-to-back servers with back-to-front switches in the same rack causes one device to inhale the other's hot exhaust.
+</details>
+
+<details>
+<summary>13. Compare the five liquid cooling technologies described in `ADC` Chapter 5 (**Rear-door heat exchanger**, **Cold-plate direct-to-chip**, **Single-phase immersion**, **Two-phase immersion**, and **Spray**).</summary>
+
+- **Rear-door heat exchanger (Air-Assisted Liquid Cooling, `AALC`):** Chilled-water radiator door mounted on the back of an air-cooled rack (handles `~20 kW`/rack; easiest retrofit).
+- **Cold-plate (direct-to-chip):** Liquid-cooled copper plates mounted directly on CPUs/GPUs/NVSwitches fed by a **Coolant Distribution Unit (`CDU`)** while fans cool lower-power DIMMs/NICs (the standard for dense HGX/GB200/GB300 racks).
+- **Single-phase immersion:** Whole servers submerged in a sealed bath of dielectric hydrocarbon/synthetic fluid circulated through a heat exchanger.
+- **Two-phase immersion:** Servers submerged in a low-boiling-point fluorochemical liquid that boils on hot chips and condenses on a top-mounted chiller coil.
+- **Spray cooling:** Dielectric coolant sprayed directly onto hot dies (`25.8%` lower total energy than air cooling in `ADC` Chapter 5, but requires specialized chassis).
+</details>
+
+<details>
+<summary>14. What is **hybrid liquid cooling** in NVIDIA's DGX GB300 / NVL72 rack architecture, and what new facility components must be monitored?</summary>
+
+**Hybrid cooling** uses direct-to-chip liquid cold plates to capture `80–90%+` of the rack's heat from the GPUs, CPUs, and NVLink switches into a facility water loop, while standard air cooling handles the remaining heat from power shelves, boot drives, and optics. Operators must monitor **CDUs (Coolant Distribution Units)**, supply/return coolant temperatures, flow rates (`L/min`), differential pressure, coolant pH/conductivity/biocide quality, drip trays, and **leak-detection ropes/sensors** (isolated in the untrusted BMS telemetry zone).
+</details>
+
+<details>
+<summary>15. Define **PUE (Power Usage Effectiveness)**, calculate the total facility load for an `81.6 kW` IT cluster at `PUE = 1.35`, and compare an older `PUE = 2.2` site with a modern liquid-cooled site.</summary>
+
+$$\text{PUE} = \frac{\text{Total Facility Power}}{\text{IT Equipment Power}}$$
+- Ideal PUE is **`1.0`**.
+- For `81.6 kW` of IT load at `PUE = 1.35`, total facility power is $81.6 \times 1.35 = \mathbf{110.16\text{ kW}}$ (`~110 kW`).
+- An older air-cooled site where IT is `40–45%` of total power has $\text{PUE} = 1 / 0.45 \text{ to } 1 / 0.40 = \mathbf{2.22 \text{ to } 2.50}$, whereas modern liquid-cooled AI factories achieve **`PUE = 1.08 to 1.25`**.
+</details>
+
+<details>
+<summary>16. What are the minimum and recommended physical rack dimensions (`EIA-310`) for DGX B200 systems, and how big is a single DGX B200 chassis?</summary>
+
+Racks must comply with **EIA-310** (19-inch rails):
+- **Minimum rack size:** `24 x 44 inches` (`600 x 1100 mm`) footprint, at least **`48U`** tall.
+- **Recommended rack size:** **`30 x 48 inches x 52U`** (`700 x 1200 mm`) to accommodate wide PDU power cords and InfiniBand/liquid manifolds.
+- **DGX B200 chassis:** **`10U`** tall, `897 mm` deep, weighing over **`130 kg`**.
+</details>
+
+<details>
+<summary>17. How many nodes, switches, and cables make up a 1-SU (`31`-node) and a 4-SU (`127`-node / `1,016`-GPU) DGX B200 SuperPOD?</summary>
+
+- **1 Scalable Unit (`1 SU`):** `31` compute nodes (up to `32` DGX B200s, `~458 kW`), `8` leaf switches, `4` spine switches, and **`252` node cables**.
+- **4 Scalable Units (`4 SUs`):** `127` compute nodes (`1,016` GPUs), `32` leaf switches, `16` spine switches, **`1,020` node cables**, and **`1,024` spine-to-leaf cables**.
+</details>
+
+<details>
+<summary>18. What are the maximum supported cable lengths for InfiniBand **passive DAC** (Direct-Attach Copper) and **AOC** (Active Optical Cable), and why can't you extend them with patch panels?</summary>
+
+- **Passive DAC (copper):** Up to **`5 m`** at `100G` (and up to **`3 m`** at `400G` NDR).
+- **AOC (Active Optical Cable):** Up to **`30 m`** (longer spans require discrete optical transceivers and single-mode fiber).
+You cannot extend DAC/AOC limits with passive patch panels because high-speed PAM4 signaling budgets are governed by **total end-to-end insertion loss and latency**; every connector pair in a patch panel adds signal attenuation and reflections that cause link down-training or symbol errors. Keep planned runs under **90%** of the rated maximum length.
+</details>
+
+<details>
+<summary>19. Which five organizational teams must sign off on a GPU cluster deployment plan before installation begins?</summary>
+
+1. **Facility operations** (electrical feeds, breakers, chillers, CDUs, floor loading)
+2. **IT operations** (racks, PDUs, cabling, asset management)
+3. **Systems operations center** (OS provisioning, Slurm/K8s, monitoring, on-call)
+4. **Network operations** (InfiniBand/RoCE fabric, spine-leaf routing, firewalls, WAN/DTN)
+5. **Application owners** (workload power profiles, checkpointing, acceptance criteria)
+</details>
+
+<details>
+<summary>20. What physical-layer telemetry should trigger an immediate page or automated workload throttling on a GPU rack?</summary>
+
+1. **CDU or chilled-water flow loss / high supply coolant temperature** (a dense rack can overheat in under 2 minutes without coolant flow).
+2. **Leak-detection sensor alarm** under a rack or manifold.
+3. **Rack inlet air temperature approaching `30` °C** or rising rapidly at constant IT load (fan failure or containment breach).
+4. **Rack PDU current exceeding `80%` breaker derating** or loss of one feed (`N` redundancy degradation).
+5. **UPS switching to `ONBATT`** or ambient room temperature exceeding `25` °C / `30` °C.
+</details>
+
+## Sources and review notes
+
+- Book source (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware`, `SCL`):
+  - Chapter 19 ("19. Cluster Status Monitoring Systems", read in full): APCUPS (`apcupsd`, `apcaccess`, `onbattery`/`offbattery`, `multimon.cgi`, `/etc/apcupsd/hosts.conf`).
+  - Chapter 28 ("28. One-Two-Three Instructions", read in full): `/etc/apcupsd/apcupsd.conf` parameters (`UPSCABLE`, `UPSTYPE`, `DEVICE`, `ONBATTERYDELAY`, `BATTERYLEVEL`, `MINUTES`, `TIMEOUT`, `NETSERVER`, `NISIP`, `NISPORT` `3551`, and Table 28-1 `UPSTYPE`/`DEVICE` values), `onbattery`/`offbattery` and the staged cluster shutdown script (`haltall`), and the `upstemp`/`ambtemp.sh` APC SNMP temperature scripts (`.1.3.6.1.4.1.318.1.1.1.2.2.2.0` internal UPS temperature and `.1.3.6.1.4.1.318.1.1.10.2.3.2.1.4.0` external sensor temperature).
+- Thermal and power concepts, airflow, liquid cooling types (`25.8%` spray energy reduction, `70%` cooling power reduction), PUE (`40–45%` IT, `35–40%` cooling), optical module power (`3.2 W` / `12 W` / `15 W`), rack power budgets: read in full from *AI Data Center Network Design and Technologies* (`ai-data-center-network-design-and-technologies`, `ADC`), Chapter 5 ("5. Thermal and Power Efficiency Considerations").
+- DGX B200 power profiles (`14.3 kW`), 9-row power provisioning table, `5-of-6` PSU redundancy designs, ASHRAE/MERV 13/ISO Class 8 filtration, best practices, cabling (`1 SU` `31` nodes / `252` cables; `4 SUs` `127` nodes / `1,016` GPUs / `1,020` + `1,024` cables), FAQ: read in full from NVIDIA, *Data Center Best Practices with DGX B200* (`superpod-b200-dc`).
+- GB300 hybrid cooling (`~1.2 MW`), power shelves with energy storage, Tier 3 availability, BMS telemetry untrusted zone: NVIDIA, *DGX SuperPOD Reference Architecture, DGX GB300* (`superpod-gb300`).
+- AI Factory power, cooling, PUE (`1.35`, `60,000 kWh`, `$7,200/month`), and infrastructure landscape: *AI Factory* (`ai-factory`, `AF`) and migrated from `nvidia-devops` (`nvidia-zero-to-hero/volume-01/04-nvidia-ecosystem-overview.md`, `nvidia-zero-to-hero/volume-01/05-enterprise-ai-platforms.md`, `nvidia-zero-to-hero/volume-01/06-volume-01-summary.md`, `nvidia-zero-to-hero/volume-01/chapter-01-what-is-ai-infrastructure.md`, `nvidia-zero-to-hero/volume-01/chapter-02-why-cpus-became-insufficient.md`, `nvidia-zero-to-hero/volume-01/chapter-03-cpu-vs-gpu.md`, `nvidia-zero-to-hero/volume-01/chapter-04-what-happens-when-chatgpt-answers.md`, `nvidia-zero-to-hero/volume-01/chapter-05-ai-infrastructure-landscape.md`, `nvidia-zero-to-hero/volume-01/chapter-06-modern-ai-factory.md`, `nvidia-zero-to-hero/volume-01/labs/lab-01-inspect-an-ai-infrastructure-host.md`, and `nvidia-zero-to-hero/volume-01/labs/lab-02-trace-an-ai-request-path.md`).
+- Run here: `code/part06/facility_calc.py`, `code/part06/ups_shutdown_sim.py`, and `python3 code/part06/facility_calc_lab.py` (3 passed, 0 failed).
+- Explicitly labelled inferences: The battery capacity parameters in `code/part06/ups_shutdown_sim.py` are illustrative teaching values demonstrating `SCL` Chapter 28's staged `haltall` algorithm.
+- Not verified on live hardware: regional electrical code breaker derating rules, live CDU/facility BMS loops, and live `apcupsd` / `haltall` execution (`untested here`).
