@@ -14,8 +14,11 @@ import json, os, re, sys
 BASE = "http://redfish.dmtf.org/schemas/v1/"
 
 
+DEFAULT_REDFISH_PUBS = "/private/var/folders/5k/hkmswyf95w5b0y7_xc87ddf80000gn/T/opencode/Redfish-Publications"
+
+
 def schema_dir():
-    root = os.environ.get("REDFISH_PUBLICATIONS", "")
+    root = os.environ.get("REDFISH_PUBLICATIONS") or (DEFAULT_REDFISH_PUBS if os.path.isdir(DEFAULT_REDFISH_PUBS) else "")
     d = os.path.join(root, "json-schema")
     if not os.path.isdir(d):
         raise SystemExit("set REDFISH_PUBLICATIONS to a clone of github.com/DMTF/Redfish-Publications")

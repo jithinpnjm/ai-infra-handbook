@@ -24,7 +24,7 @@ def check(name, cond, detail=""):
 
 
 def main():
-    root = os.environ.get("REDFISH_PUBLICATIONS")
+    root = os.environ.get("REDFISH_PUBLICATIONS") or (st.DEFAULT_REDFISH_PUBS if os.path.isdir(st.DEFAULT_REDFISH_PUBS) else "")
     if not root:
         print("set REDFISH_PUBLICATIONS to a clone of DMTF/Redfish-Publications"); return 2
     mock = os.path.join(root, "mockups", "public-rackmount1")
