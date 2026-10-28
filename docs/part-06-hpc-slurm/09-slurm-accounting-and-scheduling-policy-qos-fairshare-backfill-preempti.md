@@ -38,6 +38,25 @@ Needs 6.7 (accounting database, associations) and 6.8 (partitions, memory/GPU de
 
 ## 1. The accounting model
 
+```mermaid
+flowchart TB
+  subgraph TREE["sacctmgr Association Tree (Cluster: mycluster)"]
+    ROOT["root account (100 total shares)"]
+    PHYS["physics account (shares=60, LF=0.622)"]
+    BIO["biology account (shares=40, LF=11.400)"]
+    ALICE["alice (usage=5000, FairShare=0.25)"]
+    BOB["bob (usage=500, FairShare=0.50)"]
+    CAROL["carol (usage=100, FairShare=1.00)"]
+    DAVE["dave (usage=100, FairShare=0.75)"]
+    ROOT --> PHYS
+    ROOT --> BIO
+    PHYS --> ALICE
+    PHYS --> BOB
+    BIO --> CAROL
+    BIO --> DAVE
+  end
+```
+
 With `slurmdbd` and a database (6.7), Slurm records every job and keeps a tree of **associations**. An association is a tuple (cluster, account, user, optionally partition) to which limits, shares and a default QOS attach.
 
 ```text
@@ -208,11 +227,11 @@ Note bob (usage 500) ranks below dave (usage 100) because **biology as an accoun
 
 ### Practical fair-share guidance
 
-- Shares express entitlement (what you bought), usage expresses consumption; pick a decay half-life that matches the planning horizon (days for interactive research, weeks for allocations). Very long half-lives let a past burst punish a group for months.
-- `sshare` shows `NormShares`, `RawUsage`, `EffectvUsage`, `LevelFS`, `FairShare`.
+- Shares express entitlement (what you bought), usage expresses consumption; pick a decay half-life (`PriorityDecayHalfLife=3-6:30` for 3 days, 6 hours, 30 minutes in `SCL` Chapter 15, or `0` to use `PriorityUsageResetPeriod=WEEKLY` / `DAILY` / `MONTHLY` / `QUARTERLY` / `YEARLY` / `NONE` / `NOW`) that matches the planning horizon. Very long half-lives let a past burst punish a group for months.
+- `sshare` shows `RawShares`, `NormShares` (allocated shares divided by total shares, in `0..1`), `RawUsage`, `EffectvUsage`, `LevelFS`, and `FairShare` (for example in `SCL` Chapter 15: `root` `RawUsage=694362950`, `abc` `RawShares=2000` `NormShares=0.011481` `RawUsage=28` `FairShare=0.999998`, `foo` `RawShares=3000` `NormShares=0.017221` `RawUsage=45166247` `EffectvUsage=0.065072` `FairShare=0.072870`, `bar` `RawShares=100` `FairShare=1.000000`, `baz` `RawShares=300` `RawUsage=19770` `FairShare=0.988597`).
 - New users with no usage get high LF (infinity if no usage), which is intentionally welcoming but can be exploited by creating accounts; control account creation.
-- Fair-share needs `slurmdbd` and honest accounting of GPUs (billing weights).
-- Hard budgets use `GrpTRESMins` with `AccountingStorageEnforce=limits` (and `safe` if you want jobs to finish within the budget).
+- Fair-share needs `slurmdbd` and honest accounting of GPUs (`TRESBillingWeights=GPU=1.0,CPU=0.001,Mem=0.01G` in `SCL` Chapter 15, where a job requesting `2` GPUs, `16` CPUs, and `1024G` memory consumes `2*1.0 + 16*0.001 + 1024*0.01 = 12.256` shares per second, or `max = 10.24` under `PriorityFlags=MAX_TRES`).
+- Hard budgets use `GrpTRESMins` with `AccountingStorageEnforce=limits` (and `safe` if you want jobs to finish within the budget). To delete a limit set on an association in `sacctmgr`, set its value to **`-1`** (`SCL` Chapter 15).
 
 ## 5. Backfill
 
@@ -273,9 +292,9 @@ Requirements: three teams with purchased shares (50/30/20), research bursts allo
 8. **Reporting**: `sreport cluster AccountUtilizationByUser`, `sreport cluster utilization`, `sacct -X --format=...` for monthly chargeback; review wait time per QOS.
 9. **Review loop**: monthly policy review comparing waiting times and utilisation; avoid tuning weights ad hoc during a crunch.
 
-### Concrete `sacct` and `sreport` reporting commands (from the book)
+### Accounting and Statistics: Concrete `sacct` and `sreport` reporting commands
 
-Once accounting is active, `sacct` queries per-job records (and `sstat` queries live running-job CPU, memory, and disk utilization when `jobacct_gather` is enabled), while `sreport` aggregates utilization across three top-level report classes: `cluster` (total utilization), `job` (task size classes by CPU count, grouped by account), and `user` (top users by resource consumption). The book's Chapter 15 provides four ready-to-use reporting invocations (`(untested here)`):
+Once accounting is active, `sacct` queries per-job accounting and statistics records (and `sstat` queries live running-job CPU, memory, and disk utilization when `jobacct_gather` is enabled), while `sreport` aggregates utilization statistics across three top-level report classes: `cluster` (total utilization), `job` (task size classes by CPU count, grouped by account), and `user` (top users by resource consumption). The book's Chapter 15 (*Accounting and Statistics*) provides four ready-to-use reporting invocations (`(untested here)`):
 
 ```bash
 # (untested here) — 1. One-day job summary: JobID, Partition, User, core-seconds (CPUTimeRAW), State
@@ -309,7 +328,15 @@ Alternatives: reservations (`scontrol create reservation`) for guaranteed window
 
 ## 9. Lab (simulator tested; cluster parts untested)
 
-1. Run `fairtree_sim.py`; change usage so that physics has less usage than biology; predict, then verify the ranking.
+First, run the self-checking Python lab (`code/part06/fairtree_sim_lab.py`) locally. It verifies the Fair Tree `Level Fairshare` (`LF = S / U`) and depth-first user ranking (`fair_tree`), the 7-day half-life exponential usage decay and multifactor job priority formula (`decay`, `priority`), and the `TRESBillingWeights` additive vs `MAX_TRES` billing calculation from `SCL` Chapter 15 (`compute_tres_billing`):
+
+```bash
+python3 code/part06/fairtree_sim_lab.py
+```
+
+Next, work through these steps:
+
+1. Run `python3 code/part06/fairtree_sim.py`; change usage so that physics has less usage than biology; predict, then verify the ranking.
 2. Add a third account with no usage and observe LF (infinity) and its users' rank. Discuss the incentive problem.
 3. Change the decay half-life; compute how long until a one-off burst stops mattering.
 4. Modify the priority weights and find the QOS weight at which an urgent job of a heavy user beats a normal job of a light user.
@@ -331,42 +358,187 @@ Alternatives: reservations (`scontrol create reservation`) for guaranteed window
 - What breaks if `PriorityWeightFairshare` is 10?
 - Difference between Grp and Max limits.
 
-## 11. Checkpoint questions (30)
+## Exercises
 
-1. What is an association?
-2. What does `AccountingStorageEnforce=limits` require and imply?
-3. What is a TRES? Give four.
-4. Why use billing weights?
-5. Compare the default sum and `MAX_TRES` billing on the documentation's example.
-6. Difference between `GrpTRES` and `MaxTRESPerUser`.
-7. What does `GrpTRESMins` limit?
-8. What does a QOS contain, what is Slurm's 6-level precedence order for enforcing limits, and which three `sreport` commands report job size groupings by account, cluster utilization percentage, and top users? **A:** A QOS bundles a priority factor, Grp\*/Max\* limits, preemption settings and grace time, a usage factor, and flags (such as `DenyOnLimit`, `NoReserve`, `OverPartQOS`). When limits conflict, Slurm enforces them in this 6-level order: (1) Partition QOS limit (moves after Job QOS if `OverPartQOS` is set), (2) Job QOS limit, (3) User association, (4) Account association(s) ascending the hierarchy, (5) Root/cluster association, and (6) Partition limit. The three `sreport` commands are `sreport job SizesByAccount grouping=0-16,17-1024 start=... end=...`, `sreport cluster utilization Start=... End=... -t percent`, and `sreport user topusage topcount=5 start=... end=...`.
-9. What do `DenyOnLimit` and `NoReserve` do?
-10. What is `UsageFactor` for?
-11. Write the multifactor priority formula.
-12. What range do factors and weights have?
-13. What does normalisation do, and how do you disable it for the partition factor?
-14. Why should weights be at least ~1000 for dominant factors?
-15. When does the age factor accrue?
-16. What does `sprio -l` show?
-17. What do shares and usage mean in fair-share?
-18. Define Level Fairshare.
-19. How is the final Fair Tree factor derived?
-20. In the simulator, why does bob rank below dave?
-21. What does `PriorityDecayHalfLife` do?
-22. How does backfill decide whether a job may start?
-23. Why must `bf_window` cover the longest time limit?
-24. Name four backfill parameters and defaults.
-25. Which tool shows scheduler cycle statistics?
-26. Compare `preempt/partition_prio` and `preempt/qos`.
-27. List the preempt modes and which need `GANG`.
-28. What is `GraceTime` and which signals are sent?
-29. Why is suspend a poor choice for NCCL jobs?
-30. Describe a scavenger QOS design.
+1. **Fair Tree Level Fairshare (`LF = S / U`) and Sibling Account Ranking (`code/part06/fairtree_sim.py`):** Using `level_fs()` and `fair_tree()` in `code/part06/fairtree_sim.py`, compute `S`, `U`, and `LF` for `physics` (`60` shares, `alice=5000`, `bob=500`) and `biology` (`40` shares, `carol=100`, `dave=100`). Explain why `bob` (`usage=500`) ranks below `dave` (`usage=100`), and explain how `PriorityFlags=NO_FAIR_TREE` changes the algorithm.
+2. **Multifactor Priority Weights and Usage Half-Life Decay (`code/part06/fairtree_sim.py`):** Using `decay(8000, elapsed_days, 7.0)` and `priority()` in `code/part06/fairtree_sim.py`, compute the remaining usage after `7`, `14`, and `28` days, and calculate the priority score of `alice`'s 1-hour-old urgent-QoS job (`36,005`) versus `carol`'s 3-day-old normal-QoS job (`102,428`). What `PriorityWeightQOS` value is needed if an `urgent` QoS job (`qos_prio=10`) from `alice` (`fairshare=0.25`) must beat a `normal` QoS job (`qos_prio=1`) from `carol` (`fairshare=1.00`)?
+3. **`TRESBillingWeights` Sum vs. `MAX_TRES` Billing (`SCL` Chapter 15 & `fairtree_sim_lab.py`):** Given `TRESBillingWeights=GPU=1.0,CPU=0.001,Mem=0.01G` from `SCL` Chapter 15, use `compute_tres_billing()` in `code/part06/fairtree_sim_lab.py` to compute the billed shares per second for a job requesting `2` GPUs, `16` CPUs, and `1024G` memory under (a) default additive billing (`12.256`) and (b) `PriorityFlags=MAX_TRES` (`10.24`).
+4. **The 6-Level Limit Precedence Order and `Grp*` vs. `Max*` Limits (`SCL` Chapter 15):** State the 6-level precedence order Slurm uses when enforcing limits across Partition QoS, Job QoS (`OverPartQOS`), User association, Account hierarchy, Root association, and Partition limits. Contrast `GrpTRES=gres/gpu=64` with `MaxTRESPerUser=gres/gpu=64`, and state how to remove a limit in `sacctmgr` (`set maxjobs=-1`).
+5. **Backfill Look-Ahead (`sched/backfill`) and Preemption for AI Workloads:** Explain why inaccurate `--time` requests break backfill scheduling, why `bf_window` must cover the longest partition `MaxTime`, and why GPU training clusters use `PreemptMode=REQUEUE` (with `--requeue` and checkpointing) rather than `SUSPEND,GANG`.
+6. **Accounting & Utilization Reporting (`sacct`, `sstat`, and `sreport`, `SCL` Chapter 15):** Write the exact `sacct` and `sreport` commands from `SCL` Chapter 15 to report (a) a 1-day job summary (`JobID,Partition,User%16,CPUTimeRAW,State%20 -X`), (b) weekly job sizes by account (`SizesByAccount grouping=0-16,17-1024`), (c) monthly cluster utilization percentage (`cluster utilization -t percent`), and (d) the top 5 users by monthly TRES usage (`user topusage topcount=5`).
 
-## 12. Sources and review notes
+## Checkpoint questions (20)
 
-- Accounting concepts, the 6-level QoS/association limit precedence order, `sacct` and `sreport` commands (`sreport job SizesByAccount`, `sreport cluster utilization`, `sreport user topusage`), partitions, GRES, backfill and preemption (read in full: `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`, "15. Slurm").
+<details>
+<summary>1. What is an association in Slurm accounting, and what does `AccountingStorageEnforce=associations,limits,qos,safe` enforce?</summary>
+
+An **association** is the 4-tuple `(cluster, account, user, [optional partition])` in `slurmdbd` to which shares, limits, and QoS permissions attach.
+- `associations`: rejects jobs from users lacking a valid association.
+- `limits` (implies `associations`): enforces `Grp*` and `Max*` resource/job/time limits.
+- `qos`: requires every job to use an allowed QoS.
+- `safe`: only starts a job if its remaining cumulative `GrpTRESMins` / `MaxTRESMins` budget is large enough for the job to run for its full requested `--time`.
+</details>
+
+<details>
+<summary>2. What is the `billing` TRES, and how does `TRESBillingWeights` prevent a 1-CPU, 500-GiB RAM job from being under-charged?</summary>
+
+**`billing`** is a synthetic TRES calculated from a partition's `TRESBillingWeights` (for example, `TRESBillingWeights="CPU=1.0,Mem=0.25G,GRES/gpu=10.0"`). Without billing weights, usage is billed purely by CPU-seconds, so a 1-CPU job consuming 100% of a node's RAM (or 8 GPUs) looks almost free. With `TRESBillingWeights`, Slurm bills either the **weighted sum** of requested resources (default) or the **maximum single weighted resource** (`PriorityFlags=MAX_TRES` / `MAX_TRES_GRES`).
+</details>
+
+<details>
+<summary>3. Using the `SCL` Chapter 15 example `TRESBillingWeights=GPU=1.0,CPU=0.001,Mem=0.01G`, how many billing units per second does a job requesting `2` GPUs, `16` CPUs, and `1024G` RAM consume under default sum vs. `MAX_TRES`?</summary>
+
+- **Default sum:** $2 \times 1.0 + 16 \times 0.001 + 1024 \times 0.01 = 2.0 + 0.016 + 10.24 = \mathbf{12.256}$ units/s.
+- **`PriorityFlags=MAX_TRES`:** $\max(2.0,\ 0.016,\ 10.24) = \mathbf{10.24}$ units/s.
+</details>
+
+<details>
+<summary>4. What is the difference between `Grp*` limits (`GrpTRES`, `GrpJobs`, `GrpSubmitJobs`) and `Max*` limits (`MaxTRESPerUser`, `MaxJobsPerUser`, `MaxTRESPerJob`), and how do you delete a limit in `sacctmgr` (`SCL` Chapter 15)?</summary>
+
+- **`Grp*` limits:** Aggregate ceiling summed across **all running (or submitted) jobs sharing that association/account (including subaccounts) or QoS simultaneously** (for example, `GrpTRES=gres/gpu=64` on an account caps the entire team's combined running GPUs at 64).
+- **`Max*` limits:** Cap applied **per individual user, per individual job, or per node** within that association or QoS.
+- **Deleting a limit in `sacctmgr`:** Set the limit value to **`-1`** (for example, `sacctmgr modify assoc where user=user1 account=acc1 set maxjobs=-1`).
+</details>
+
+<details>
+<summary>5. What is Slurm's 6-level precedence order when conflicting limit definitions exist across Partition, QoS, User, and Account (`SCL` Chapter 15)?</summary>
+
+From highest (1) to lowest (6) precedence:
+1. **Partition QoS limit** (unless the Job QoS has `Flags=OverPartQOS`, in which case Job QoS wins).
+2. **Job QoS limit**.
+3. **User association limit**.
+4. **Account association limit(s)** (ascending the account hierarchy).
+5. **Root / cluster association limit**.
+6. **Partition limit**.
+</details>
+
+<details>
+<summary>6. What do the QoS flags `DenyOnLimit`, `OverPartQOS`, `NoReserve`, and `NoDecay` do?</summary>
+
+- **`DenyOnLimit`:** Rejects a job immediately at `sbatch`/`srun` submission time if it violates a `Max*` limit, rather than letting it sit pending in the queue.
+- **`OverPartQOS`:** Allows the job's QoS limits to override the partition's QoS limits.
+- **`NoReserve`:** Prevents jobs in this QoS from creating future backfill reservations (used for low-priority `scavenger` queues so they never delay large jobs).
+- **`NoDecay`:** Prevents historical usage accumulated under this QoS from decaying over time (used for fixed-term allocation grants).
+</details>
+
+<details>
+<summary>7. What is the 4-level overall order Slurm uses to decide which pending job has higher scheduling priority (`SCL` Chapter 15)?</summary>
+
+1. **Reservation:** Jobs holding an active reservation on the nodes go first.
+2. **Partition `PriorityTier`:** Jobs in a partition with a higher `PriorityTier` strictly precede jobs in lower-tier partitions.
+3. **Job priority (`priority/multifactor`):** Higher calculated multifactor integer priority wins within the same tier.
+4. **Job ID:** Earlier submissions (lower Job ID) break ties.
+</details>
+
+<details>
+<summary>8. Write the multifactor job priority formula (`priority/multifactor`), and explain why dominant `PriorityWeight*` values should be at least `1,000` (`10,000–100,000`).</summary>
+
+$$\text{Priority} = \text{Site} + W_{\text{Age}} F_{\text{Age}} + W_{\text{Assoc}} F_{\text{Assoc}} + W_{\text{FS}} F_{\text{FS}} + W_{\text{Size}} F_{\text{Size}} + W_{\text{Part}} F_{\text{Part}} + W_{\text{QOS}} F_{\text{QOS}} + \sum W_{\text{TRES}} F_{\text{TRES}} - \text{Nice}$$
+Each factor $F \in [0.0, 1.0]$ is multiplied by its integer weight $W$ and truncated to an integer. If `PriorityWeightFairshare=10`, two users with fair-share factors `0.595` and `0.501` both truncate to `5` and tie. Using weights of `1,000` to `100,000` preserves 3–5 significant digits.
+</details>
+
+<details>
+<summary>9. How does **Fair Tree** compute **Level Fairshare (`LF`)** at each level of the account tree, and what does it guarantee about sibling accounts?</summary>
+
+$$\text{LF} = \frac{S}{U}, \qquad S = \frac{\text{shares}}{\sum \text{sibling shares}}, \qquad U = \frac{\text{usage}}{\sum \text{sibling usage}}$$
+At every level of the tree, sibling accounts/users are sorted by `LF` descending (`LF > 1.0` means under-served; `LF < 1.0` means over-served), and the tree is walked depth-first to assign each user `rank / N_users`. **Guarantee:** If Account A has a higher `LF` than sibling Account B, **every user in Account A receives a higher FairShare factor than every user in Account B**, regardless of individual user usage.
+</details>
+
+<details>
+<summary>10. In the `fairtree_sim.py` example (`physics` `60` shares with `alice=5000, bob=500`; `biology` `40` shares with `carol=100, dave=100`), why does `bob` (`500` usage) rank below `dave` (`100` usage) even though `physics` has more shares?</summary>
+
+Together `alice` and `bob` used $5500 / 5700 = 96.5\%$ of the cluster's recent usage while owning $60\%$ of the shares, giving `physics` $\text{LF} = 0.60 / 0.965 = \mathbf{0.622}$ (over-served). `biology` used only $3.5\%$ of the cluster while owning $40\%$ of the shares ($\text{LF} = 0.40 / 0.035 = \mathbf{11.400}$, under-served). Because `biology` outranks `physics` at the account level, Fair Tree ranks all `biology` users (`carol=1.00`, `dave=0.75`) above all `physics` users (`bob=0.50`, `alice=0.25`).
+</details>
+
+<details>
+<summary>11. How do `PriorityDecayHalfLife` and `PriorityUsageResetPeriod` manage historical fair-share usage (`SCL` Chapter 15)?</summary>
+
+- **`PriorityDecayHalfLife` (default `7` days; e.g., `3-6:30` for 3d 6h 30m):** Exponentially decays historical usage so half of an account's accumulated usage disappears every half-life period ($U(t) = U_0 \cdot 2^{-t / T_{1/2}}$).
+- **`PriorityUsageResetPeriod` (`NONE` default, or `DAILY`, `WEEKLY`, `MONTHLY`, `QUARTERLY`, `YEARLY`, `NOW`):** Hard-resets accumulated usage to zero at midnight on the first day of the period (used when `PriorityDecayHalfLife=0`).
+</details>
+
+<details>
+<summary>12. How do you decode the columns of `sshare` (`RawShares`, `NormShares`, `RawUsage`, `EffectvUsage`, `FairShare`) (`SCL` Chapter 15)?</summary>
+
+- **`RawShares`:** Integer shares assigned to the account/user in `sacctmgr`.
+- **`NormShares`:** Normalized share fraction ($0.0 \dots 1.0$) relative to the cluster total.
+- **`RawUsage`:** Decayed TRES-seconds consumed by the account/user.
+- **`EffectvUsage`:** Normalized share of cluster usage ($0.0 \dots 1.0$).
+- **`FairShare`:** Final fair-share factor ($0.0 \dots 1.0$) multiplied by `PriorityWeightFairshare` in `sprio`.
+</details>
+
+<details>
+<summary>13. How does the backfill scheduler (`sched/backfill`) prevent starvation of large multi-node jobs while filling idle GPU gaps?</summary>
+
+When the highest-priority pending job cannot start immediately because enough nodes are not yet free, `sched/backfill` looks at the running jobs' remaining `--time` limits, computes the **earliest future start time** for that large job, and reserves those nodes from that timestamp onward (`PLANNED` state). It then scans down the queue and starts smaller/shorter jobs **only if their requested `--time` finishes before the reserved start time of every higher-priority planned job**.
+</details>
+
+<details>
+<summary>14. Why does setting an overly loose `--time` limit on small jobs hurt both the user and cluster utilization under backfill?</summary>
+
+If a job that only needs 30 minutes is submitted with `--time=2-00:00:00` (48 hours), the backfill scheduler must assume the job will occupy the GPUs for a full 48 hours. As a result, the job cannot fit into a 4-hour backfill window ahead of a planned 64-node training run—so the user's job stays `PENDING` while the GPUs sit `IDLE`.
+</details>
+
+<details>
+<summary>15. What are the default values and meanings of `bf_interval`, `bf_window`, `bf_resolution`, `bf_max_job_test`, and `bf_max_job_user` in `SchedulerParameters`?</summary>
+
+- **`bf_interval` (default `30` s):** Pause between backfill scheduling passes.
+- **`bf_window` (default `1440` min = 1 day):** Look-ahead horizon for planning future job reservations (must be $\ge$ the longest partition `MaxTime`).
+- **`bf_resolution` (default `60` s):** Time-step bucket resolution inside the backfill window (increase to `300` s when `bf_window` is 7–14 days).
+- **`bf_max_job_test` (default `500`):** Maximum depth of pending jobs evaluated per backfill pass.
+- **`bf_max_job_user` (default `0` = unlimited):** Maximum pending jobs per user evaluated per backfill pass (set to `50–200` so one user's 5,000-job sweep cannot block other users from backfilling).
+</details>
+
+<details>
+<summary>16. Compare the `PreemptMode` options `OFF`, `CANCEL`, `REQUEUE`, and `SUSPEND,GANG`, and explain why `SUSPEND` fails for multi-node GPU jobs (`SCL` Chapter 15).</summary>
+
+- **`OFF`:** Preemption disabled.
+- **`CANCEL`:** Preempted job is killed permanently.
+- **`REQUEUE`:** Preempted job is terminated (after optional `GraceTime` `SIGTERM`) and placed back into the `PENDING` queue (if submitted with `--requeue` or `JobRequeue=1`).
+- **`SUSPEND,GANG`:** Preempted job processes are frozen with `SIGSTOP` in memory while the preempting job runs, then resumed with `SIGCONT`. **Why `SUSPEND` fails on GPUs:** Suspended processes do not release GPU VRAM (`HBM`), causing the preempting GPU job to OOM immediately, and freezing multi-node `NCCL` ranks triggers RDMA queue-pair and watchdog timeouts.
+</details>
+
+<details>
+<summary>17. How do `GraceTime` and `--signal=B:USR1@120` allow a preempted or time-limited LLM training job to save a checkpoint before dying?</summary>
+
+When a job is selected for preemption, Slurm grants it `GraceTime` seconds (for example `120` s on the `scavenger` QoS), sending `SIGTERM` at the start of the grace period and `SIGKILL` only when `GraceTime` expires (or sending a custom warning signal like `SIGUSR1` 120 seconds before walltime via `--signal=B:USR1@120`). The training framework traps the signal, flushes an asynchronous checkpoint to Lustre/object storage, exits cleanly, and resumes automatically from the latest checkpoint when `REQUEUE`d.
+</details>
+
+<details>
+<summary>18. Write the three `sreport` commands from `SCL` Chapter 15 to audit weekly job sizes by account, monthly cluster utilization percentage, and top 5 users.</summary>
+
+1. **Weekly job sizes by account (`0–16`, `17–1024`, `>1024` CPUs):**
+   `sreport job SizesByAccount grouping=0-16,17-1024 start=2024-01-01 end=2024-01-07`
+2. **Monthly cluster utilization in percent (`Allocated`, `Down`, `Idle`, `Planned`):**
+   `sreport cluster utilization Start=2024-11-01 End=2024-12-01 -t percent`
+3. **Top 5 users by monthly TRES consumption:**
+   `sreport user topusage topcount=5 start=2024-01-10 end=2024-02-10`
+</details>
+
+<details>
+<summary>19. A researcher complains their job is stuck `PENDING`. How do you distinguish `Priority`, `Resources`, `AssocGrpGRES`, `ReqNodeNotAvail`, and `PartitionTimeLimit`?</summary>
+
+Run `squeue -j <jobid> -o "%i %T %r %S"` to read the pending **Reason (`%r`)**:
+- **`Priority`:** Higher-priority jobs are ahead of it in the queue (inspect `sprio -l` and `sshare -al`).
+- **`Resources`:** This job is at the top of the queue waiting for currently busy nodes/GPUs to free up (`squeue --start` shows the planned start time).
+- **`AssocGrpGRES` / `QOSMaxGRESPerUser`:** The user or their account has hit a running GPU quota limit (`sacctmgr show assoc` / `show qos`).
+- **`ReqNodeNotAvail`:** Requested nodes are `DOWN`, `DRAIN`, or covered by an active maintenance/user reservation (`sinfo -R`, `scontrol show reservation`).
+- **`PartitionTimeLimit` / `PartitionNodeLimit`:** Job requested more `--time` or `--nodes` than the partition's `MaxTime` or `MaxNodes` permits.
+</details>
+
+<details>
+<summary>20. How do you design a 3-QoS policy (`normal`, `urgent`, `scavenger`) so teams get their purchased GPU shares, urgent deadlines can jump the queue at a cost, and idle GPUs are never wasted?</summary>
+
+1. **`normal` QoS (default):** `Priority=100`, `UsageFactor=1.0`, standard per-user/per-account `GrpTRES`/`MaxTRES` caps; ordered by Fair Tree fair-share (`PriorityWeightFairshare=100000`).
+2. **`urgent` QoS (restricted via `AllowQos`):** `Priority=1000` (with `PriorityWeightQOS=50000` so it can jump ahead), **`UsageFactor=2.0`** (charges double fair-share usage so teams cannot abuse it without lowering their subsequent FairShare), `Preempt=scavenger`, `Flags=DenyOnLimit`.
+3. **`scavenger` QoS (open to all for Spot/preemptible work):** `Priority=0`, **`UsageFactor=0.0`** (free idle cycles), `PreemptMode=REQUEUE`, `GraceTime=120`, and **`Flags=NoReserve`** (so scavenger jobs fill backfill holes immediately without ever delaying `normal` or `urgent` jobs).
+</details>
+
+## Sources and review notes
+
+- Accounting concepts, the 6-level QoS/association limit precedence order, the 4-level overall priority order (`Reservation -> PriorityTier -> Job priority -> Job ID`), `TRESBillingWeights=GPU=1.0,CPU=0.001,Mem=0.01G` (`2*1.0 + 16*0.001 + 1024*0.01` vs `MAX_TRES`), `PriorityDecayHalfLife=3-6:30` and `PriorityUsageResetPeriod=WEEKLY`, `sshare` decoding (`abc`/`foo`/`bar`/`baz`), setting `-1` to delete limits in `sacctmgr`, `sacct` and `sreport` commands (`sreport job SizesByAccount`, `sreport cluster utilization`, `sreport user topusage`), partitions, GRES, backfill and preemption (read in full: `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware`, "15. Slurm").
 - Priority formula, factor descriptions, normalisation, TRES billing examples, Fair Tree and Level FS, decay: Slurm documentation pages `priority_multifactor`, `fair_tree`, `classic_fair_share`, `preempt`, `qos`, and man pages `slurm.conf(5)`, `sacctmgr(1)`, from SchedMD/slurm commit `521370b` (development version).
-- Run here: `code/part06/fairtree_sim.py` (output shown above). The simulator ignores ties, per-partition associations, TRES billing details and many edge cases and must not be used to predict a production queue.
-- Not verified on live hardware: `sacctmgr`, `sacct`, `sreport`, `sprio`, `sshare`, `squeue` commands, sacctmgr option spellings in the examples (checked against the man page headings only), typical backfill tuning values, and behaviour on releases older than the documentation read.
+- Migrated from `nvidia-devops`: `volume-10/06-slurm-administration-ha-accounting-and-upgrades.md` and `volume-10/14-senior-deep-dive-2-slurm-ha-and-accounting-internals.md` (fairshare, TRES billing weights, QoS preemption, and accounting policy).
+- Run here: `python3 code/part06/fairtree_sim.py` and `python3 code/part06/fairtree_sim_lab.py` (3 passed, 0 failed).
+- Explicitly labelled inferences: The `fairtree_sim.py` and `compute_tres_billing` (`12.256` sum vs `10.24` `MAX_TRES`) models are deterministic teaching implementations built on SchedMD's Fair Tree documentation and `SCL` Chapter 15.
+- Not verified on live hardware: `sacctmgr`, `sacct`, `sreport`, `sprio`, `sshare`, `squeue` commands, sacctmgr option spellings in the examples (checked against the man page headings only), typical backfill tuning values, and behaviour on releases older than the documentation read (`untested here`).
