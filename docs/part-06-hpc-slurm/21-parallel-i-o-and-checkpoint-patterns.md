@@ -4,7 +4,7 @@ title: "6.21 Parallel I/O and checkpoint patterns"
 sidebar_label: "6.21 Parallel I/O and checkpoint patterns"
 sidebar_position: 21
 description: "How parallel programs do I/O and how training jobs checkpoint: MPI-IO and HDF5 collective I/O, file-per-process versus shared file versus sharded checkpoints (with a tested DCP resharding demo), asynchronous and tiered checkpointing, a tested crash-safe commit protocol, restart and validation, data-loading pipelines, and how stripe alignment and metadata shape performance"
-status: "drafted"
+status: "reviewed"
 tier: "2"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -50,8 +50,14 @@ flowchart TB
 
 - `MPI_File_open`, `MPI_File_set_view` (each rank sees only its part of the file through a *view* built from derived datatypes), `MPI_File_write_at`/`write` (independent), `MPI_File_write_all`/`write_at_all` (**collective**), non-blocking variants, `MPI_File_sync`, `MPI_File_close`.
 - **Collective buffering (two-phase I/O)**: instead of every rank issuing small scattered writes, the library gathers data to a few **aggregator** ranks that write large contiguous blocks aligned to stripes; this converts many small noncontiguous requests into few large ones, usually a big win on parallel file systems. **Data sieving** does the same for independent noncontiguous access (read a big block, pick the pieces).
-- **Hints** (`MPI_Info`): `cb_nodes` (aggregator count), `cb_buffer_size`, `romio_cb_read/write` (`automatic`/`enable`/`disable`), `romio_ds_read/write`, `striping_unit`, `striping_factor`. The PHPC book shows how to print them with `ROMIO_PRINT_HINTS=1` (Cray: `MPICH_MPIIO_HINTS_DISPLAY=1`, `MPICH_MPIIO_STATS=1`), and its sample output reports `romio_filesystem_type = NFS:`, `cb_nodes = 1`, `striping_unit = 4194304`, a good reminder to check that the library recognises your file system; wrongly detected file systems get poor defaults.
-- **HDF5** adds structure: datasets, attributes, chunking, compression; parallel HDF5 uses MPI-IO underneath (`H5Pset_fapl_mpio`, collective data transfer with `H5Pset_dxpl_mpio(H5FD_MPIO_COLLECTIVE)`, collective metadata `H5Pset_coll_metadata_write`/`H5Pset_all_coll_metadata_ops`). Chunk size should match access patterns and stripe size. Also **NetCDF-4**, **ADIOS2** (staging and burst-buffer friendly), and for AI: safetensors, Arrow/Parquet, WebDataset tar shards, Zarr.
+- **Hints** (`MPI_Info`): `cb_nodes` (aggregator count), `cb_buffer_size`, `romio_cb_read/write` (`automatic`/`enable`/`disable`), `romio_ds_read/write`, `ind_rd_buffer_size`, `ind_wr_buffer_size`, `striping_unit`, `striping_factor`, and GPFS `IBM_largeblock_io=true`. The PHPC book shows how to print them with `ROMIO_PRINT_HINTS=1` (Cray MPICH: `MPICH_MPIIO_HINTS_DISPLAY=1`, `MPICH_MPIIO_STATS=1`, `MPICH_MPIIO_ABORT_ON_RW_ERROR`), and its sample output reports `romio_filesystem_type = NFS:`, `cb_nodes = 1`, `striping_unit = 4194304`, a good reminder to check that the library recognises your file system (using `statfs` and `/usr/include/linux/magic.h` as in `PHPC` `Listing 16.10` `fs_detect.c`); wrongly detected file systems get poor defaults.
+- **OpenMPI `ompio` vs `romio` plugins (`PHPC` Chapter 16)**: Parallel file operations entered MPI in the MPI-2 standard in the late 1990s via Argonne National Laboratory's **ROMIO** library (led by Rajeev Thakur). In OpenMPI, `ompi_info | grep "MCA io:"` lists two MCA `io` plugins: `romio321` (default on older releases) and **`ompio`** (default on newer OpenMPI releases), selectable via `mpirun --mca io [ompio|romio]`. Inspecting `ompi_info --param io ompio --level 9` reveals key tuning parameters (`io_ompio_num_aggregators`, `io_ompio_max_aggregators_ratio=8`, `io_ompio_aggregators_cutoff_threshold=3`, `io_ompio_overwrite_amode=1`, `io_ompio_delete_priority=30`, `io_ompio_record_file_offset_info=0`, `io_ompio_coll_timing_info=1`), and running `mpirun --mca io_ompio_verbose_info_parsing 1 -n 4 ./mpi_io_block2d` verifies active info hints.
+- **2D block-decomposed MPI-IO views (`PHPC` `Listings 16.1`–`16.4`)**: When a 2D domain of global shape `(ny_global, nx_global)` is decomposed across ranks where each rank holds a local subarray `(ny, nx)` padded by `ng` halo/ghost cells (`local_sizes = {ny+2*ng, nx+2*ng}`, `local_starts = {ng, ng}`), `mpi_io_file_init` creates two derived datatypes once at startup with `MPI_Type_create_subarray(..., MPI_ORDER_C, MPI_DOUBLE, ...)` and `MPI_Type_commit`: `filetype` (mapping the rank's global block in the file) and `memtype` (selecting only the interior `ny` $\times$ `nx` non-ghost cells in RAM). Writing or reading then takes four steps: `MPI_File_open`, `MPI_File_set_size` (preallocating file space so metadata does not grow piecewise during writes), `MPI_File_set_view(fh, disp, MPI_DOUBLE, filetype, "native", info)`, and collective `MPI_File_write_all(fh, data, 1, memtype, &status)` / `MPI_File_read_all`, followed by `MPI_File_close`.
+- **HDF5** (`PHPC` `Listings 16.5`–`16.9` and `Tables 16.4`–`16.6`) adds self-describing structure: datasets, attributes, chunking, compression (verify a parallel build in CMake with `set(HDF5_PREFER_PARALLEL true)` and `find_package(HDF5 1.10.1 REQUIRED)` / `if (NOT HDF5_IS_PARALLEL)`). Parallel HDF5 uses MPI-IO underneath across three API groups:
+  1. **Collective file routines (`Table 16.4`):** `H5Fcreate`, `H5Fopen`, and `H5Fclose`, using a file access property list configured with `H5Pcreate(H5P_FILE_ACCESS)` and `H5Pset_fapl_mpio(file_access_plist, mpi_hdf5_comm, info)`.
+  2. **Dataspace routines (`Table 16.5`):** `H5Screate_simple`, `H5Sselect_hyperslab`, and `H5Sclose` to define both the global `filespace` hyperslab and the interior ghost-stripped `memspace` hyperslab.
+  3. **Dataset and collective transfer routines (`Table 16.6`):** `H5Dcreate2`, `H5Dopen2`, `H5Dclose`, `H5Dwrite`, and `H5Dread`, passing a dataset transfer property list `xfer_plist = H5Pcreate(H5P_DATASET_XFER)` with **`H5Pset_dxpl_mpio(xfer_plist, H5FD_MPIO_COLLECTIVE)`** (plus collective metadata `H5Pset_coll_metadata_write` / `H5Pset_all_coll_metadata_ops`).
+  Chunk size should match access patterns and stripe size. Also **NetCDF-4** / **PnetCDF** (Northwestern/ANL), **ADIOS2** (Oak Ridge National Laboratory, staging and burst-buffer friendly such as Cray `DataWarp`), and for AI: `safetensors`, Arrow/Parquet, WebDataset tar shards, Zarr.
 
 Why it matters for AI: the same issues recur. N ranks writing disjoint regions of one file need alignment and collective aggregation to avoid lock thrash; file-per-rank avoids locks but explodes metadata. Frameworks hide this, but their performance still obeys these rules.
 
@@ -147,7 +153,9 @@ The read side in brief (Part 13 expands):
 - **Parallel workers and copy-stream overlap**: `DataLoader(num_workers=N, prefetch_factor=K, pin_memory=True, persistent_workers=True)` (default `prefetch_factor=2`, raised to `4` or `8` for bursty I/O) hides I/O and decode latency; overlap host-to-device DMA with compute by issuing `batch.to(device, non_blocking=True)` on a dedicated `copy_stream = torch.cuda.Stream()` and synchronizing with `torch.cuda.current_stream().wait_stream(copy_stream)`. Set N from CPUs per GPU (6.12 binding), watch for oversubscription; `DistributedSampler` (or equivalent) gives each rank unique data. Each worker process holds its own file handles and copies of the dataset object (PyTorch's multi-process loader enqueues indices to workers that load and return batches through queues).
 - **Isolating DataLoader vs H2D copy overhead:** Calling `next(data_iterator)` measures total GPU wait time across background prefetching and host-to-device copy. To separate Python dataset/transform cost from PCIe copy cost, profile first with `num_workers=0` (disabling background prefetch) to time the pure Python iterator pull, and separately time `.to("cuda", non_blocking=True)` on a Copy stream (using `torch.cuda.Event` or Nsight Systems Copy lanes). In the book's example, reducing GPU I/O wait time from `30%` of iteration time down to `5%` yields a proportional `6x` improvement in training steps per second.
 - **Locality and caching**: stage hot shards to local NVMe (per job, or presplit 100 TB across 10 nodes at 10 TB per node), use `s5cmd` / multithreaded range `Get` for S3 staging, use page cache, or a cache layer in front of object storage (such as Amazon FSx for Lustre); for many epochs over the same data the first epoch pays the cost.
-- **GPUDirect Storage (`GDS`)** (reading directly into GPU memory via `cuFileRead` / `cuFileReadAsync` and `nvidia-fs` with `O_DIRECT`, bypassing the host page cache and CPU bounce buffers) helps when CPU copies are the limit; in the book's examples, VAST Data with GDS measured a `+20%` read-throughput gain on A100 and `+30%+` on H100, and `gdsio` showed a `+20%` gain (`8.0 GB/s` at `1.25 ms` latency and `85%` CPU util without GDS vs `9.6 GB/s` at `1.00 ms` latency and `25%` CPU util with GDS; section 6.28 and Part 13). Trace GDS calls with `nsys profile --trace=cuda,gds,nvtx,osrt` (untested here) and `/etc/cufile.json`.
+- **GPUDirect Storage (`GDS`)** (reading directly into GPU memory via `cuFileRead` / `cuFileReadAsync` and `nvidia-fs` with `O_DIRECT`, bypassing the host page cache and CPU bounce buffers; modern `cuFile` also supports non-`O_DIRECT` descriptors when unaligned, at the cost of extra copies) helps when CPU copies are the limit; for RDMA-accelerated checkpoint writes (`cuFileWrite`), the parallel filesystem must also support RDMA write paths. In the book's examples, VAST Data with GDS measured a `+20%` read-throughput gain on A100 and `+30%+` on H100, and `gdsio` showed a `+20%` gain (`8.0 GB/s` at `1.25 ms` latency and `85%` CPU util without GDS vs `9.6 GB/s` at `1.00 ms` latency and `25%` CPU util with GDS; section 6.28 and Part 13). Trace GDS calls with `nsys profile --trace=cuda,gds,nvtx,osrt` (untested here) and `/etc/cufile.json`.
+- **DeepSeek's Fire-Flyer File System (`3FS`) and AI-co-designed storage (`ASP` Chapter 5):** Born out of the observation that AI training workloads perform massive random reads that render traditional read-ahead page caches ineffective, DeepSeek built the open-source **Fire-Flyer File System (`3FS`)** around four components: (1) a **cluster manager** handling membership and configuration changes, (2) **metadata services** backed by a transactional distributed key-value store (**FoundationDB**), (3) **storage services** managing local NVMe SSDs using **CRAQ (Chain Replication with Apportioned Queries)** for strong write-all/read-any consistency across replicas, and (4) a **FUSE / native `USRBIO` client** that uses RDMA and Linux `io_uring` / shared-memory rings to deliver direct-to-GPU random-read throughput comparable to GDS.
+- **In-memory preloading, GPU graph fusion, and systematic tuning (`ASP` Chapter 5):** When a dataset (or hot subset) fits inside host RAM or unified CPU+GPU memory (such as on a Grace Blackwell Superchip), preload it into memory at startup as an ultrafast cache. Alongside NVIDIA `DALI`, fuse GPU-friendly preprocessing operations directly into TorchVision, TensorRT, or custom OpenAI Triton kernels, remove unnecessary `torch.cuda.synchronize()` barriers, use `NCCL` for collective training communication versus **NIXL** for high-throughput point-to-point/streaming inference transfers, change only one or two parameters at a time and remeasure after every change, and document environment variables and known library quirks directly in the repository config.
 - **Determinism**: record shard order and seed in the checkpoint manifest.
 
 ## 6. Performance experiments (cluster, untested)
@@ -160,6 +168,12 @@ The read side in brief (Part 13 expands):
 6. **Fault drill**: kill a node during save and restart from the last valid checkpoint using the protocol above.
 
 ## 7. Lab
+
+First, run the self-checking Python lab (`code/part06/ckpt_atomic_lab.py`) locally. It executes `code/part06/ckpt_atomic.py` to verify all 5 crash-safe commit and SHA-256 bit-rot fallback assertions (`step-100` commit, `step-200` `before_rename` crash, `step-300` `before_latest` crash recovery, `step-400` commit, and fallback to `step-300` when `step-400/shard-2.bin` is corrupted), verifies the Young/Daly optimal checkpoint interval (`27` minutes for a 1-minute checkpoint cost and 6-hour MTBF), and checks the `ASP` Chapter 5 GPU storage throughput scaling equations (`1.6 GB/s` for 8 GPUs, `14.4 GB/s` for 72 GPUs, `+20.0%` `gdsio` gain from `8.0` to `9.6 GB/s`, and `6x` step-rate gain from cutting I/O wait from `30%` to `5%`):
+
+```bash
+python3 code/part06/ckpt_atomic_lab.py
+```
 
 Tested here: 1) create a venv with PyTorch and numpy, run `dcp_reshard.py` via `fake_srun.py` (PHASE=save with 4 ranks, PHASE=load with 2 and 1); inspect the checkpoint directory (use `ls -a` to see the metadata file). 2) Run `ckpt_atomic.py`; add a crash between writing the manifest and the rename in a different order and decide whether readers stay safe. 3) Modify `ckpt_atomic.py` to compute per-rank hashes at write time and store them in per-rank manifests merged by the coordinator.
 
@@ -176,43 +190,175 @@ Untested: 4) the performance experiments in section 6; 5) write an MPI-IO collec
 - How do you validate that a resumed run matches an uninterrupted one?
 - Why are millions of small files bad for training and what do you do?
 
-## 9. Checkpoint questions (30)
+## Exercises
 
-1. Name the layers of the HPC parallel I/O stack.
-2. What is an MPI-IO file view?
-3. Independent versus collective I/O?
-4. Explain two-phase collective buffering.
-5. What is data sieving?
-6. Name four MPI-IO hints.
-7. Why print hints, and what did the PHPC example reveal?
-8. What HDF5 calls enable parallel collective I/O?
-9. State five alignment rules.
-10. List five checkpoint layouts and a drawback of each.
-11. What does DCP write to disk and why can it reshard?
-12. What did the demo prove about 4 to 2 to 1 ranks?
-13. What failed first in the demo and why?
-14. What is asynchronous checkpointing?
-15. What is the risk of node-local checkpoints?
-16. What is an in-memory buddy checkpoint?
-17. Give the Young/Daly interval formula.
-18. Why is rename atomic and what is it atomic across?
-19. Why `fsync` the directory?
-20. Why not trust a `latest` pointer alone?
-21. What does the manifest contain at minimum?
-22. What did the corruption test show?
-23. What belongs in a resume procedure?
-24. How do you detect a bad checkpoint after restart?
-25. How do object stores change the commit protocol?
-26. How should datasets be stored for training?
-27. What do `num_workers`, `prefetch_factor` and `pin_memory` do?
-28. What does `DistributedSampler` do?
-29. How does `cuda-checkpoint` with `CRIU` differ from GPUDirect Storage (`GDS`), and how do you isolate Python `DataLoader` cost from H2D copy cost? **A:** `cuda-checkpoint` (`cuCheckpointProcessLock`, `cuCheckpointProcessCheckpoint`, `cuCheckpointProcessRestore`, `cuCheckpointProcessUnlock`) drains GPU work and copies device memory to host memory so `CRIU` can snapshot the process (orthogonal to framework checkpoints), whereas `GDS` DMAs directly between storage/NVMe and GPU memory without a host bounce buffer; isolate `DataLoader` Python cost by profiling with `num_workers=0` and separately timing `.to("cuda")` on a Copy stream with `torch.cuda.Event` or Nsight Systems (cutting GPU I/O wait from `30%` to `5%` gives a `6x` step-rate gain).
-30. How do you record data position for deterministic resume?
+1. **Verifying Crash-Safe Checkpoint Commits and Bit-Rot Detection (`code/part06/ckpt_atomic.py` & `ckpt_atomic_lab.py`):** Run `python3 code/part06/ckpt_atomic_lab.py`. Trace why `newest_valid()` returns `step-100` after a crash at `before_rename` (`step-200.tmp` ignored), why it recovers `step-300` after a crash at `before_latest` even when the `latest` pointer still reads `step-100`, and why zeroing 4 bytes in `step-400/shard-2.bin` causes `newest_valid()` to reject `step-400` via `MANIFEST.json` SHA-256 verification and fall back to `step-300`.
+2. **Resharding Distributed Checkpoints Across World Sizes (`code/part06/dcp_reshard.py`):** Trace how `code/part06/dcp_reshard.py` distributes an $8 \times 3$ tensor across 4 ranks (`(2, 3)` per rank) using `DTensor` (`Shard(0)`) and `torch.distributed.checkpoint.save`, and loads that exact checkpoint onto 2 ranks (`(4, 3)` per rank) and 1 rank (`(8, 3)`) without rewriting the `.distcp` shard files.
+3. **Calculating Optimal Checkpoint Intervals with the Young/Daly Approximation (`ckpt_atomic_lab.py`):** Using `young_daly_interval_min(ckpt_cost_min, mtbf_hours)` in `code/part06/ckpt_atomic_lab.py` ($T_{\text{opt}} \approx \sqrt{2 \cdot C \cdot \text{MTBF}}$), verify that a 1-minute checkpoint cost (`C = 1` min) and a 6-hour cluster MTBF (`360` min) yield $T_{\text{opt}} \approx 27\text{ minutes}$, and calculate how $T_{\text{opt}}$ changes when asynchronous NVMe staging reduces synchronous GPU stall `C` from `60 s` down to `5 s` (`7.7` minutes).
+4. **Designing 2D Block-Decomposed MPI-IO and Parallel HDF5 Collective Writes (`PHPC` Chapter 16):** Explain how `MPI_Type_create_subarray` constructs both the global file view (`filetype`) and the ghost-cell-stripped interior memory view (`memtype` inside `ny+2*ng` $\times$ `nx+2*ng`) for `MPI_File_write_all`, and map the equivalent parallel HDF5 workflow (`H5Pset_fapl_mpio`, `H5Sselect_hyperslab`, `H5Pset_dxpl_mpio(xfer_plist, H5FD_MPIO_COLLECTIVE)`, `H5Dwrite`).
+5. **Isolating PyTorch `DataLoader` vs H2D DMA Copy Bottlenecks and GPU Decoding (`ASP` Chapter 5):** Write a 3-step profiling procedure using `num_workers=0`, a dedicated `copy_stream = torch.cuda.Stream()` with `non_blocking=True`, and NVIDIA `DALI` / Blackwell Decompression Engine (`LZ4`/`Snappy`/`Deflate` at up to `800 GB/s`) to diagnose and eliminate a `30%` data-loading stall (cutting CPU usage from `800%` to `200%` and I/O wait from `30%` to `5%`).
+6. **Comparing DeepSeek `3FS` and GPUDirect Storage (`GDS`) for Random-Read AI Workloads (`ASP` Chapter 5):** Explain why AI training's random-read access patterns defeat traditional OS page-cache readahead, how `cuFileRead` (`O_DIRECT` + `nvidia-fs.ko`) boosts throughput (`8.0 GB/s` at `1.25 ms` / `85%` CPU $\to$ `9.6 GB/s` at `1.00 ms` / `25%` CPU in `gdsio`), and how DeepSeek's `3FS` combines `FoundationDB` metadata, `CRAQ` NVMe storage chains, and RDMA/`io_uring` clients.
 
-## 10. Sources and review notes
+## Checkpoint
 
-- MPI-IO, collective buffering, hints, HDF5 parallel calls and their examples: *Parallel and High Performance Computing* chapter 16 ("File operations for a parallel world"), restated in my words.
-- `ai-systems-performance-engineering` — Chris Fregly, *AI Systems Performance Engineering*, "Chapter 5. GPU-Based Storage I/O Optimizations" (read in full): storage throughput scaling math (`200 MB/s` per GPU → `1.6 GB/s` for an 8-GPU node, `14–20 GB/s` sustained for a 72-GPU NVL72 rack), NVMe I/O scheduler tuning (`/sys/block/nvme0n1/queue/scheduler` set to `none` or `mq-deadline`) and readahead (`blockdev --setra` / `read_ahead_kb` from `128 KB` default to several MB), NFS client mount options (`rsize=1048576,wsize=1048576,noatime,async,actimeo=60,lookupcache=pos`), driver-level GPU state checkpointing with `cuda-checkpoint` and `CRIU` (`cuCheckpointProcessLock`, `cuCheckpointProcessCheckpoint`, `cuCheckpointProcessRestore`, `cuCheckpointProcessUnlock`), VAST Data GDS (`+20%` on A100, `+30%+` on H100) and `gdsio` benchmarking (`8.0 GB/s` at `1.25 ms` CPU path vs `9.6 GB/s` at `1.00 ms` GDS path, `+20%`), Blackwell Decompression Engine (`LZ4`, `Snappy`, `Deflate` at up to `800 GB/s`), isolating `DataLoader` overhead (`num_workers=0` vs separate Copy stream, cutting I/O wait from `30%` to `5%` for a `6x` step-rate improvement), NVIDIA `DALI` (cutting CPU utilization from `800%` across 8 cores to `200%`), and `NeMo Curator` (`.bin` + `.idx` memory-mapped shards). Deep GDS and 3FS architecture are covered in Part 13.
-- DataLoader internals: *Distributed AI Systems* chapter 3. Checkpoint context: NVIDIA-DevOps volume-15 chapter 8 (checkpoint architecture and recovery) and the AI-storage chapters, covered further in Part 13/14.
-- Original and run: `dcp_reshard.py`, `ckpt_atomic.py` and their outputs.
-- Unverified: Young/Daly applicability to your system, DCP async API names in current versions, GPUDirect Storage requirements, behaviour of `rename` on your storage, all performance numbers.
+<details>
+<summary>1. Name the four layers of the classic HPC parallel I/O stack (`PHPC` Chapter 16) and their AI equivalents.</summary>
+
+1. **Application memory arrays / tensors** (distributed across ranks).
+2. **High-level self-describing library:** `HDF5` / `NetCDF-4` / `PnetCDF` / `ADIOS2` $\leftrightarrow$ `torch.distributed.checkpoint` (`.distcp`), `safetensors`, `WebDataset`, `Parquet`, `Zarr`.
+3. **Middleware collective I/O layer:** `MPI-IO` (`ROMIO` / OpenMPI `ompio`) $\leftrightarrow$ framework distributed checkpoint coordinators and `cuFile` / `io_uring`.
+4. **Parallel filesystem client:** `Lustre`, `GPFS`, `BeeGFS`, `WEKA`, `VAST`, `3FS`.
+</details>
+
+<details>
+<summary>2. What is the difference between **independent I/O** (`MPI_File_write_at`) and **collective I/O** (`MPI_File_write_all`), and how does **two-phase collective buffering** work (`PHPC` Chapter 16)?</summary>
+
+- **Independent I/O:** Each rank calls the filesystem independently with no coordination—causing lock thrashing and unaligned small writes when many ranks write interleaved regions of a shared file.
+- **Collective I/O (`_all`):** All ranks in the communicator call the operation together. Under **two-phase collective buffering**, ranks first exchange data over the high-speed fabric to a chosen subset of **aggregator ranks (`cb_nodes`)**, which then issue large, contiguous, stripe-aligned writes to the parallel filesystem.
+</details>
+
+<details>
+<summary>3. How do you construct an MPI-IO **file view** (`filetype`) and **memory view** (`memtype`) for a 2D array with `ng` ghost cells (`PHPC` Chapter 16 `Listing 16.1`)?</summary>
+
+Call `MPI_Type_create_subarray(2, ...)` twice at initialization followed by `MPI_Type_commit`:
+1. **`filetype`:** Uses `global_sizes = {ny_global, nx_global}`, `global_subsizes = {ny, nx}`, and `global_starts = {ny_off, nx_off}`, passed to `MPI_File_set_view()` so each rank sees only its assigned global tile in the shared file.
+2. **`memtype`:** Uses `local_sizes = {ny+2*ng, nx+2*ng}`, `local_subsizes = {ny, nx}`, and `local_starts = {ng, ng}`, passed to `MPI_File_write_all()` so MPI-IO reads directly from the interior cells in RAM without copying out ghost cells.
+</details>
+
+<details>
+<summary>4. What are OpenMPI's two MCA `io` plugins, how do you inspect their parameters, and how do you print active `ROMIO` / `Cray MPICH` hints (`PHPC` Chapter 16)?</summary>
+
+OpenMPI provides **`ompio`** (the default in modern OpenMPI) and **`romio`** (`--mca io [ompio|romio]`), listed via `ompi_info | grep "MCA io:"` and inspected via `ompi_info --param io ompio --level 9` (or traced at runtime with `mpirun --mca io_ompio_verbose_info_parsing 1`). For ROMIO, set `export ROMIO_PRINT_HINTS=1` (or on Cray MPICH, `export MPICH_MPIIO_HINTS_DISPLAY=1` and `MPICH_MPIIO_STATS=1`).
+</details>
+
+<details>
+<summary>5. Which HDF5 C API calls enable parallel MPI-IO file access, hyperslab selection, and collective dataset transfers (`PHPC` Chapter 16 `Tables 16.4`–`16.6`)?</summary>
+
+1. **File access property list:** `H5Pcreate(H5P_FILE_ACCESS)` + **`H5Pset_fapl_mpio(fapl, comm, info)`**, passed to `H5Fcreate` or `H5Fopen`.
+2. **Dataspace hyperslabs:** `H5Screate_simple` and **`H5Sselect_hyperslab`** for both `filespace` and `memspace`.
+3. **Collective dataset transfer:** `H5Pcreate(H5P_DATASET_XFER)` + **`H5Pset_dxpl_mpio(xfer_plist, H5FD_MPIO_COLLECTIVE)`**, passed to `H5Dwrite` or `H5Dread`.
+</details>
+
+<details>
+<summary>6. Compare five checkpoint layouts (**Rank-0 gather**, **File-per-rank**, **Shared-file collective**, **Sharded distributed checkpoint (`DCP`)**, and **Node-local NVMe + async drain**).</summary>
+
+- **Rank-0 gather:** Simple single file, but OOMs/bottlenecks rank 0 above a few billion parameters.
+- **File-per-rank (`torch.save` per rank):** Fast lock-free parallel writes, but creates $N$ unindexed files tied to a fixed world size $N$.
+- **Shared-file collective (MPI-IO/HDF5):** Single file, but requires strict stripe alignment.
+- **Sharded distributed checkpoint (PyTorch `DCP`, Megatron `.distcp`):** Parallel shard writes plus a global `.metadata` index that supports **automatic resharding** across different world sizes ($N \to M$).
+- **Node-local NVMe / host RAM + async drain:** Copies GPU state to local memory/NVMe in seconds and drains to the parallel FS in the background, minimizing GPU stall.
+</details>
+
+<details>
+<summary>7. How does `code/part06/dcp_reshard.py` demonstrate resharding from 4 ranks to 2 ranks and 1 rank?</summary>
+
+4 ranks distribute an $8 \times 3$ `DTensor` (`Shard(0)`, `(2, 3)` per rank) and call `dcp.save()`, writing `__0_0.distcp .. __3_0.distcp` plus `.metadata`. A subsequent job with 2 ranks allocates a `(4, 3)` local shard per rank and calls `dcp.load()`; DCP reads `.metadata`, fetches two 2-row slices per rank from the existing files, and reassembles the exact $8 \times 3$ tensor (`reassembled_equal=True`).
+</details>
+
+<details>
+<summary>8. State the **Young/Daly approximation** for the optimal checkpoint interval $T_{\text{opt}}$, and compute $T_{\text{opt}}$ when checkpoint cost $C = 1\text{ min}$ and job $\text{MTBF} = 6\text{ hours}$.</summary>
+
+$$T_{\text{opt}} \approx \sqrt{2 \cdot C \cdot \text{MTBF}}$$
+For $C = 1\text{ min}$ and $\text{MTBF} = 360\text{ min}$ ($6\text{ hours}$):
+$$T_{\text{opt}} \approx \sqrt{2 \times 1 \times 360} = \sqrt{720} \approx \mathbf{27\text{ minutes}}$$
+</details>
+
+<details>
+<summary>9. How does driver-level GPU process checkpointing (`cuda-checkpoint` + `CRIU`) work, and how does it differ from framework-level `state_dict`/DCP checkpointing (`ASP` Chapter 5)?</summary>
+
+`cuda-checkpoint` operates transparently at the CUDA Driver API level without application code changes: it calls **`cuCheckpointProcessLock`** (freezing CUDA API entry points), **`cuCheckpointProcessCheckpoint`** (draining active GPU kernels, copying GPU HBM allocations into host memory, and releasing GPU handles so `CRIU` can snapshot the Linux process tree), **`cuCheckpointProcessRestore`** (re-acquiring GPUs and remapping virtual addresses), and **`cuCheckpointProcessUnlock`**. Unlike DCP, it snapshots the entire live CUDA context and CPU process state (bounded by GPU-to-host PCIe/NVLink copy speed).
+</details>
+
+<details>
+<summary>10. Walk through the 5-step crash-safe checkpoint commit protocol in `code/part06/ckpt_atomic.py`.</summary>
+
+1. Every rank writes its shard into a temporary directory **`step-N.tmp/shard-R.bin`** and calls `os.fsync()`.
+2. After a barrier, rank 0 records the `sha256` digest of every shard in **`step-N.tmp/MANIFEST.json`** and `fsync`s it.
+3. Rank 0 executes an atomic POSIX **`os.rename("step-N.tmp", "step-N")`** and `fsync`s the parent directory descriptor.
+4. Rank 0 writes `latest.tmp`, `fsync`s it, atomically renames it over `latest`, and `fsync`s the parent directory.
+5. On restart, `newest_valid()` scans all non-`.tmp` `step-N` directories in descending order and loads the newest one whose `MANIFEST.json` and shard SHA-256 hashes all verify.
+</details>
+
+<details>
+<summary>11. Why must `ckpt_atomic.py` call `fsync` on the parent directory after `os.rename`, and why shouldn't a restarting job trust the `latest` pointer blindly?</summary>
+
+- **`fsync` on parent directory:** `os.rename()` updates the directory entry in memory; `fsync(parent_dir_fd)` ensures the directory entry update is committed to persistent storage so a power loss cannot lose the rename.
+- **Not trusting `latest` blindly:** If the coordinator crashes *after* renaming `step-300.tmp -> step-300` but *before* updating `latest` (or if a shard in `step-400` suffers silent bit rot), scanning and verifying `MANIFEST.json` SHA-256 hashes recovers `step-300` automatically.
+</details>
+
+<details>
+<summary>12. How must the crash-safe commit protocol be adapted when writing checkpoints directly to an S3-compatible object store?</summary>
+
+Object stores lack POSIX atomic directory `rename`. Instead, write all rank shard objects under a versioned prefix (`s3://bucket/ckpt/step-N/shard-R.distcp`), wait for all ranks at a distributed barrier, and have rank 0 upload `s3://bucket/ckpt/step-N/MANIFEST.json` (single-PUT object creation is atomic in S3) as the commit marker. Readers treat a prefix `step-N/` as committed if and only if `MANIFEST.json` exists and all listed shard digests/ETags match.
+</details>
+
+<details>
+<summary>13. What complete state must be saved and restored so that a resumed training run is statistically equivalent to an uninterrupted run?</summary>
+
+1. Model weights (`model.state_dict()`).
+2. Optimizer states (`optimizer.state_dict()`, including FP32 master weights and Adam $m, v$ moments).
+3. Learning-rate scheduler state (`lr_scheduler.state_dict()`).
+4. Mixed-precision `GradScaler` state.
+5. Global step/epoch counter and stateful `DataLoader` / sampler cursor (` shard_id, sample_offset`).
+6. Host Python, NumPy, CPU PyTorch, and per-rank CUDA **RNG states** (`torch.cuda.get_rng_state()`).
+</details>
+
+<details>
+<summary>14. How do you size aggregate storage read bandwidth for an 8-GPU node and a 72-GPU Grace Blackwell NVL72 rack (`ASP` Chapter 5)?</summary>
+
+Multiply the per-GPU ingestion requirement by the number of GPUs: at `200 MB/s` per GPU, an 8-GPU node requires $8 \times 200\text{ MB/s} = \mathbf{1.6\text{ GB/s}}$, and a 72-GPU NVL72 rack requires $72 \times 200\text{ MB/s} = \mathbf{14.4\text{ GB/s}}$ (`14–20 GB/s` sustained rack throughput).
+</details>
+
+<details>
+<summary>15. Which Linux block-layer settings optimize local NVMe drives for streaming large dataset shards (`ASP` Chapter 5)?</summary>
+
+1. Set `/sys/block/nvme*/queue/scheduler` to **`none`** (or `mq-deadline`) so the kernel skips redundant I/O sorting on multi-queue NVMe SSDs.
+2. Raise sequential readahead (`blockdev --setra` or `/sys/block/nvme*/queue/read_ahead_kb`) from the default `128 KB` to several megabytes (`2048–4096 KB`).
+3. Mount local XFS/ext4 filesystems with **`noatime`**.
+</details>
+
+<details>
+<summary>16. What is **NVIDIA `NeMo Curator`**, and why does it output `.bin` and `.idx` files for LLM pretraining (`ASP` Chapter 5)?</summary>
+
+`NeMo Curator` (`DocumentDataset`) is a GPU-accelerated offline data curation pipeline that performs distributed text extraction, filtering, fuzzy/exact deduplication, and tokenization across multi-node clusters, outputting contiguous binary token files (**`.bin`**) paired with byte-offset index files (**`.idx`**) that training ranks `mmap` with zero parsing overhead.
+</details>
+
+<details>
+<summary>17. How do **NVIDIA `DALI`** and the **Blackwell Decompression Engine** eliminate host CPU bottlenecks in multimodal/compressed data pipelines (`ASP` Chapter 5)?</summary>
+
+- **Blackwell Hardware Decompression Engine:** Dedicated on-die hardware engine that decompresses **`LZ4`, `Snappy`, and `Deflate`** streams at up to **`800 GB/s`** without using GPU SMs or host CPUs.
+- **NVIDIA `DALI` (`nvidia.dali.pipeline.Pipeline`):** Offloads JPEG/video decoding (`nvJPEG`) and image augmentations from CPU `DataLoader` workers onto the GPU—dropping host CPU usage from `800%` (8 cores pegged) to `200%` (2 cores reading file bytes) in `ASP` Chapter 5's object-detection benchmark.
+</details>
+
+<details>
+<summary>18. How do you overlap PyTorch `DataLoader` host-to-device transfers with GPU compute, and how do you isolate Python iterator latency from PCIe copy latency (`ASP` Chapter 5)?</summary>
+
+Configure `DataLoader(num_workers=N, prefetch_factor=4, pin_memory=True, persistent_workers=True)` and copy batches asynchronously on a dedicated CUDA stream (`with torch.cuda.stream(copy_stream): batch = batch.to(device, non_blocking=True)`). To isolate bottlenecks, benchmark pure Python dataset loading with **`num_workers=0`** (no background prefetch) and separately time `.to("cuda", non_blocking=True)` using `torch.cuda.Event` or Nsight Systems Copy lanes.
+</details>
+
+<details>
+<summary>19. What are the four components of DeepSeek's **Fire-Flyer File System (`3FS`)**, and why was it designed (`ASP` Chapter 5)?</summary>
+
+DeepSeek built `3FS` because AI training workloads issue massive random reads across large shards that defeat traditional page-cache readahead. Its four components are:
+1. **Cluster manager** (membership and layout distribution).
+2. **Metadata services** backed by transactional **FoundationDB**.
+3. **Storage services** managing NVMe SSDs with **CRAQ (Chain Replication with Apportioned Queries)** for write-all/read-any consistency.
+4. **FUSE / native `USRBIO` client** using RDMA and `io_uring` / shared-memory rings for zero-copy reads.
+</details>
+
+<details>
+<summary>20. Contrast the roles of **`NCCL`** and **`NIXL`** in distributed AI systems (`ASP` Chapter 5).</summary>
+
+- **`NCCL` (NVIDIA Collective Communications Library):** Built for synchronous, gang-scheduled multi-GPU **collective operations** (`AllReduce`, `AllGather`, `ReduceScatter`) across model/data-parallel training ranks.
+- **`NIXL` (NVIDIA Inference Xfer Library):** Built for asynchronous, high-throughput **point-to-point and streaming memory/storage transfers** (such as KV-cache transfers between disaggregated prefill and decode nodes and storage tiers in LLM inference).
+</details>
+
+## Sources and review notes
+
+- MPI-IO (`MPI_Type_create_subarray`, `MPI_File_set_view`, `MPI_File_write_all`), collective buffering, hints (`ROMIO_PRINT_HINTS=1`, `MPICH_MPIIO_HINTS_DISPLAY=1`, `ompi_info --param io ompio --level 9`), `fs_detect.c` (`statfs`), and parallel HDF5 (`H5Pset_fapl_mpio`, `H5Sselect_hyperslab`, `H5Pset_dxpl_mpio(H5FD_MPIO_COLLECTIVE)`): read in full from *Parallel and High Performance Computing* (`parallel-and-high-performance-computing`, `PHPC`) Chapter 16 ("16 File operations for a parallel world").
+- `ai-systems-performance-engineering` — Chris Fregly, *AI Systems Performance Engineering* (`ASP`), "Chapter 5. GPU-Based Storage I/O Optimizations" (read in full): storage throughput scaling math (`200 MB/s` per GPU → `1.6 GB/s` for an 8-GPU node, `14–20 GB/s` sustained for a 72-GPU NVL72 rack), NVMe I/O scheduler tuning (`/sys/block/nvme0n1/queue/scheduler` set to `none` or `mq-deadline`) and readahead (`blockdev --setra` / `read_ahead_kb` from `128 KB` default to several MB), NFS client mount options (`rsize=1048576,wsize=1048576,noatime,async,actimeo=60,lookupcache=pos`), driver-level GPU state checkpointing with `cuda-checkpoint` and `CRIU` (`cuCheckpointProcessLock`, `cuCheckpointProcessCheckpoint`, `cuCheckpointProcessRestore`, `cuCheckpointProcessUnlock`), VAST Data GDS (`+20%` on A100, `+30%+` on H100) and `gdsio` benchmarking (`8.0 GB/s` at `1.25 ms` CPU path vs `9.6 GB/s` at `1.00 ms` GDS path, `+20%`), DeepSeek's Fire-Flyer File System (`3FS` with cluster manager, FoundationDB metadata, CRAQ NVMe storage, and RDMA/`io_uring` client), Blackwell Decompression Engine (`LZ4`, `Snappy`, `Deflate` at up to `800 GB/s`), isolating `DataLoader` overhead (`num_workers=0` vs separate Copy stream, cutting I/O wait from `30%` to `5%` for a `6x` step-rate improvement), NVIDIA `DALI` (cutting CPU utilization from `800%` across 8 cores to `200%`), `NeMo Curator` (`.bin` + `.idx` memory-mapped shards), and `NCCL` vs `NIXL`.
+- DataLoader internals: *Distributed AI Systems* (`distributed-ai-systems`, `DAI`) Chapter 3.
+- AI storage, checkpointing, and GDS labs: migrated from `nvidia-devops` (`nvidia-zero-to-hero/volume-15/index.md`, `nvidia-zero-to-hero/volume-15/chapter-01-why-ai-storage-is-different.md`, `nvidia-zero-to-hero/volume-15/chapter-02-the-ai-data-path-from-storage-to-gpu.md`, `nvidia-zero-to-hero/volume-15/chapter-03-local-nvme-and-data-staging.md`, `nvidia-zero-to-hero/volume-15/chapter-04-gpudirect-storage-architecture.md`, `nvidia-zero-to-hero/volume-15/chapter-05-lustre-for-ai-and-hpc.md`, `nvidia-zero-to-hero/volume-15/chapter-06-beegfs-for-gpu-clusters.md`, `nvidia-zero-to-hero/volume-15/chapter-07-object-storage-and-dataset-pipelines.md`, `nvidia-zero-to-hero/volume-15/chapter-08-checkpoint-architecture-and-recovery.md`, `nvidia-zero-to-hero/volume-15/chapter-09-metadata-small-files-and-data-loading.md`, `nvidia-zero-to-hero/volume-15/chapter-10-capacity-performance-and-cost-planning.md`, `nvidia-zero-to-hero/volume-15/chapter-11-production-troubleshooting.md`, `nvidia-zero-to-hero/volume-15/chapter-12-volume-15-summary.md`, `nvidia-zero-to-hero/volume-15/labs/lab-01-baseline-an-ai-storage-path.md`, `nvidia-zero-to-hero/volume-15/labs/lab-02-benchmark-local-nvme-and-shared-storage.md`, `nvidia-zero-to-hero/volume-15/labs/lab-03-validate-a-gpudirect-storage-design.md`, and `nvidia-zero-to-hero/volume-15/labs/lab-04-troubleshoot-checkpoint-and-data-loading-bottlenecks.md`).
+- Run here: `code/part06/dcp_reshard.py`, `code/part06/ckpt_atomic.py`, and `python3 code/part06/ckpt_atomic_lab.py` (3 passed, 0 failed).
+- Explicitly labelled inferences: `young_daly_interval_min` (`27` minutes for $C=1\text{ min}, \text{MTBF}=6\text{ h}$) in `code/part06/ckpt_atomic_lab.py` is a deterministic calculation from the Young/Daly approximation.
+- Not verified on live hardware: Young/Daly applicability to specific non-Poisson failure distributions, DCP async API names across future releases, GPUDirect Storage live benchmarks, and multi-node MPI-IO/HDF5 throughput (`untested here`).

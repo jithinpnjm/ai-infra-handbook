@@ -316,7 +316,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 6.18 | Parallel storage concepts and the limits of NFS | reviewed | 5912 | `iomix_lab.py` (3/3 pass), `SCL 9`, `SCL 28` |
 | 6.19 | Lustre architecture and operation | reviewed | 5745 | `lustre_stripe_lab.py` (3/3 pass), `SCL 9`, `SCL 28`, `V15 ch5` |
 | 6.20 | BeeGFS, GPFS, WekaFS and VAST | reviewed | 5347 | `parallel_fs_compare_lab.py` (3/3 pass), `SCL 9`, `V15` |
-| 6.21 | Parallel I/O and checkpoint patterns | drafted | 3917 |  |
+| 6.21 | Parallel I/O and checkpoint patterns | reviewed | 6217 | `ckpt_atomic_lab.py` (3/3 pass), `ASP 5`, `PHPC 16`, `V15` |
 | 6.23 | xCAT, Warewulf and cluster managers compared with BCM | drafted | 3992 |  |
 | 6.24 | Users, LDAP, SSSD, quotas and accounting at scale | drafted | 4648 |  |
 | 6.26 | Cluster monitoring and health at scale | drafted | 4367 |  |
