@@ -102,7 +102,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 6.11 | Submitting and launching jobs: sbatch, srun, salloc, arrays, dependencies | reviewed | 6237 | `sbatch_lint_lab.py` (3/3 pass), `SCL 15`, `DAI 8` |
 | 6.12 | Multi-node training on Slurm: PMIx, torchrun, NCCL environment, binding, topology | reviewed | 6065 | `slurm_dist_init_lab.py` (3/3 pass), `DAI 8`, `ASP 4` |
 | 6.13 | Containers on Slurm: enroot and pyxis | reviewed | 5267 | `enroot_pyxis_lab.py` (3/3 pass), `SCL 16`, `DAI 8` |
-| 6.14 | Slurm operations: prolog, epilog, health checks, drain, reason codes, troubleshooting | drafted | 3999 |  |
+| 6.14 | Slurm operations: prolog, epilog, health checks, drain, reason codes, troubleshooting | reviewed | 6357 | `node_health_lab.py` (3/3 pass), `SCL 15`, `V20` |
 | 6.15 | Slurm high availability, upgrades and scaling | drafted | 3019 |  |
 | 6.16 | Slurm on Kubernetes: Slinky and Soperator | drafted | 2725 |  |
 | 6.31 | Capstone: build and operate a small Slurm GPU cluster | drafted | 3186 |  |
