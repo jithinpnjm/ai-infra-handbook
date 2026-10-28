@@ -161,7 +161,7 @@ Hybrid vs unified: cgroup v1 is deprecated in Kubernetes (maintenance mode; some
 - **tmpfs**: `emptyDir{medium: Memory}`, `/dev/shm`, Secret/ConfigMap volumes; charged to the container's memory cgroup; `sizeLimit` enforced by tmpfs `size=`.
 - **Page cache and writeback**: large writes (checkpoints) fill dirty pages; `vm.dirty_ratio`/`dirty_background_ratio` and cgroup writeback limits cause stalls ("freezes" when flushing); tune for large-memory nodes (smaller ratios or absolute bytes: `vm.dirty_bytes`, `vm.dirty_background_bytes`); `O_DIRECT`, `fsync` strategy in checkpoint code; `posix_fadvise`/`drop_caches` only for testing.
 - **Block layer**: NVMe queues and IRQ affinity, I/O schedulers (`none` for NVMe), `blk-mq`; filesystem choice (XFS for large files/parallel writes; ext4 default); mount options `noatime`; discard/trim policies.
-- **Network filesystems**: NFS client (`nconnect`, rsize/wsize, `hard`/`soft`, `actimeo`), Lustre/WEKA/BeeGFS kernel clients (module versions tied to kernel and OFED!), CephFS kernel client, FUSE (S3/GCS FUSE, JuiceFS: single user-space daemon bottleneck; `fuse` device `/dev/fuse` access in containers).
+- **Network filesystems**: NFS client (`nconnect`, rsize/wsize, `hard`/`soft`, `actimeo`), Lustre/WEKA/BeeGFS kernel clients (module versions tied to kernel and OFED), CephFS kernel client, FUSE (S3/GCS FUSE, JuiceFS: single user-space daemon bottleneck; `fuse` device `/dev/fuse` access in containers).
 - **inotify/fanotify** limits (`fs.inotify.max_user_watches`, `max_user_instances`) affect kubelet, log shippers, config reloaders: raise on busy nodes.
 - **File descriptors and limits**: `fs.file-max`, `fs.nr_open`, per-process `ulimit -n` (containers inherit runtime defaults: containerd `LimitNOFILE=infinity` pitfalls with some apps), `nofile` for training processes with many open files (datasets).
 
@@ -265,7 +265,15 @@ runqlat 10 1; biolatency -D 10 1; tcpretrans; tcplife; cachestat; oomkill
 | NUMA-related low throughput | Cross-socket memory/device access, `numa_balancing` | `numastat -p`, `nvidia-smi topo -m`, `perf stat` |
 | Clock skew / odd timeouts | NTP failure, VM time drift | `chronyc tracking`, `timedatectl` |
 
-## 12. Lab (untested)
+## 12. Lab
+
+First, run the self-checking Python lab (`code/part05/k8s_kernel_primitives_map_lab.py`) locally. It verifies the Cgroup v2 CFS CPU quota throttling and `working_set` memory calculator (`simulate_cgroup_v2_cpu_and_memory`: showing how 8 threads on a 2-CPU limit burn a 200ms quota in 25ms and stall for 75ms, and how `working_set = memory.current - inactive_file` triggers OOM), the GPU node `sysctl` and `protectKernelDefaults` compliance auditor (`audit_gpu_node_kernel_sysctls`), and the Linux kernel version capability checker (`check_kernel_version_features`).
+
+```bash
+python3 code/part05/k8s_kernel_primitives_map_lab.py
+```
+
+Next, on a Linux Kubernetes node with root access (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **Build a container by hand**: create a rootfs, then use `unshare -fp --mount-proc --mount --net --uts --ipc`, `pivot_root`, a cgroup v2 directory with `cpu.max`, `memory.max`, `pids.max`, and device allow-list via `bpftool`/`systemd-run -p DeviceAllow=` equivalents; compare with `runc`.
 2. **Namespace tour**: for a pod, list namespaces with `lsns`; compare inode numbers across containers of one pod and a different pod; join each with `nsenter` and run commands; show `shareProcessNamespace` effect.
@@ -280,8 +288,6 @@ runqlat 10 1; biolatency -D 10 1; tcpretrans; tcplife; cachestat; oomkill
 11. **eBPF observability**: install Inspektor Gadget or bcc tools; trace `oomkill`, `execsnoop`, `tcpretrans`, `runqlat` while running load in pods; correlate to symptoms.
 12. **Sysctl audit**: gather `sysctl -a` from a GPU node and compare with the baseline in section 9; list deviations and whether each is safe; encode the baseline in Ansible (4.7) with `protectKernelDefaults` verification.
 13. **Clean up**.
-
-Mark tested only after execution.
 
 ## 13. Common mistakes
 
@@ -298,66 +304,207 @@ Mark tested only after execution.
 
 ## 14. Interview angles
 
-- "What is a container at the kernel level? Which kernel features does Kubernetes use for isolation and limits?" 
-- "How does the kernel enforce CPU and memory limits? Why does CPU throttling happen at low average usage?" 
-- "What happens in the kernel when a container exceeds its memory limit? How is it different from node-pressure eviction?" 
-- "How does a Service get implemented in the kernel under iptables, IPVS, and eBPF?" 
-- "How does a GPU device get into a container and what stops other containers from using it?" 
-- "Which sysctls and boot parameters do you set on GPU nodes and why?" 
-- "What are the container-escape surfaces and how do seccomp/capabilities/user namespaces reduce them?" 
+- "What is a container at the kernel level? Which kernel features does Kubernetes use for isolation and limits?"
+- "How does the kernel enforce CPU and memory limits? Why does CPU throttling happen at low average usage?"
+- "What happens in the kernel when a container exceeds its memory limit? How is it different from node-pressure eviction?"
+- "How does a Service get implemented in the kernel under iptables, IPVS, and eBPF?"
+- "How does a GPU device get into a container and what stops other containers from using it?"
+- "Which sysctls and boot parameters do you set on GPU nodes and why?"
+- "What are the container-escape surfaces and how do seccomp/capabilities/user namespaces reduce them?"
 - "How would you diagnose a node that's slow but whose pods look healthy?" (PSI, softirq, IO wait, throttling, NUMA.)
 
-## 15. Checkpoint questions (40)
+## Exercises
 
-1. Namespaces count? **A:** Eight (mnt, pid, net, uts, ipc, user, cgroup, time).
-2. What keeps a namespace alive? **A:** Member process, open fd, or bind mount.
-3. Pod shares which namespaces? **A:** net, ipc, uts (pid optional).
-4. PID 1 signal behaviour? **A:** Ignores signals without handlers.
-5. cgroup v2 hierarchy? **A:** Single unified tree.
-6. `cpu.max` format? **A:** `quota period`.
-7. `cpu.weight` from? **A:** CPU requests.
-8. Throttling metric? **A:** `nr_throttled`/`throttled_usec`.
-9. `memory.max` is? **A:** Hard limit.
-10. `memory.high` is? **A:** Soft throttle threshold.
-11. OOM evidence file? **A:** `memory.events`.
-12. tmpfs charged to? **A:** The cgroup's memory.
-13. `pids.max` set by? **A:** `podPidsLimit`.
-14. cpuset used for? **A:** Exclusive CPUs/NUMA pinning.
-15. Device access in v2? **A:** BPF cgroup device programs.
-16. Capabilities default set size? **A:** ~14 caps.
-17. `no_new_privs` effect? **A:** Blocks privilege gain on exec.
-18. seccomp RuntimeDefault blocks? **A:** Dangerous syscalls (~40+).
-19. LSMs? **A:** AppArmor/SELinux.
-20. User namespace benefit? **A:** Root in container is unprivileged on host.
-21. overlayfs layers? **A:** lowerdirs + upperdir + workdir.
-22. Copy-up means? **A:** Whole-file copy to upper layer on first write.
-23. Bind mount propagation `Bidirectional` used by? **A:** CSI node plugins.
-24. `/dev/shm` type? **A:** tmpfs.
-25. veth is? **A:** Virtual Ethernet pair.
-26. Services via? **A:** netfilter NAT/IPVS/eBPF.
-27. conntrack role? **A:** Tracks flows for NAT/stateful filtering.
-28. `br_netfilter` needed for? **A:** Bridged traffic through iptables.
-29. eBPF program types in CNI? **A:** tc, XDP, cgroup sock_addr.
-30. tc qdisc for shaping? **A:** htb/fq (EDT).
-31. `nvidia_peermem` enables? **A:** GPUDirect RDMA.
-32. IOMMU passthrough param? **A:** `iommu=pt`.
-33. NUMA balancing on GPU nodes? **A:** Usually disable.
-34. THP recommendation? **A:** `madvise`/`never` for sensitive workloads.
-35. `vm.overcommit_memory` for kubelet? **A:** 1.
-36. PSI files? **A:** `/proc/pressure/{cpu,memory,io}`.
-37. Dirty page tuning goal? **A:** Avoid long writeback stalls.
-38. Why pin kernel versions? **A:** Driver/OFED/CNI compatibility.
-39. Kernel logs to watch on GPU nodes? **A:** Xid, EDAC, AER, MCE.
-40. eBPF debugging tool for pods? **A:** Inspektor Gadget/bcc tools.
+1. **The Complete Kubernetes-to-Linux-Kernel Master Map (`HLW` Ch. 17, `NK` Ch. 2–5, `PK` Ch. 3–5):** For each Kubernetes primitive in Section 1 (Pod Sandbox, CPU/Memory/PID requests & limits, Exclusive CPUs, Volumes/Images/Secrets, `/dev/shm`, GPU/RDMA devices, `securityContext`, `Service`, and `NetworkPolicy`), name the exact Linux kernel subsystem and the `/proc`, `/sys`, or CLI inspection command that verifies it on the node.
+2. **The Eight Linux Namespaces (`mnt`, `pid`, `net`, `uts`, `ipc`, `user`, `cgroup`, `time`) and Pod User Namespaces (`hostUsers: false`):** Explain which namespaces are shared across a Pod vs isolated per container, why PID 1 inside a PID namespace ignores `SIGTERM` unless a signal handler is registered, and what kernel features (`check_kernel_version_features()` in `code/part05/k8s_kernel_primitives_map.py`: idmapped mounts $\ge 5.12$ and idmapped `overlayfs` $\ge 5.19$) enable `hostUsers: false` Pods.
+3. **Cgroup v2 Unified Hierarchy, Multi-Threaded CFS CPU Throttling (`cpu.max`), and `memory.current` vs. `working_set` (`PK` Chapter 12):** Using `simulate_cgroup_v2_cpu_and_memory()` in `code/part05/k8s_kernel_primitives_map.py`, prove why an 8-thread process inside a `limits.cpu: "2"` container stalls for 75 ms out of every 100 ms period even at low average CPU usage, and explain which memory categories (`anon`, `tmpfs`, `active_file`, `inactive_file`, `slab`) count toward `memory.max` OOM vs kubelet `working_set` eviction.
+4. **Kernel Security Primitives (`Capabilities`, `no_new_privs`, `seccomp-bpf`, `AppArmor`/`SELinux`) and `overlayfs` / Page-Cache Writeback Stalls:** Explain how `drop: ["ALL"]`, `allowPrivilegeEscalation: false` (`PR_SET_NO_NEW_PRIVS`), and `seccompProfile: RuntimeDefault` shrink the kernel syscall attack surface, why writing a 50 GB checkpoint inside the container rootfs triggers an `overlayfs` copy-up stall, and why `vm.dirty_bytes` / `vm.dirty_background_bytes` must be tuned on 1–2 TiB RAM GPU nodes.
+5. **Kernel Networking (`veth`, `bridge`, `VXLAN`/`Geneve`, `netfilter`/`conntrack`, `IPVS`, `eBPF`/`XDP`/`tc`/`netkit`) and the GPU/RDMA Kernel Stack (`nvidia.ko`, `nvidia_peermem.ko`, `nvidia_fs.ko`, `mlx5`, `IOMMU`):** Trace the kernel modules and hooks behind CNI/Service datapaths and the NVIDIA GPU + RDMA + GPUDirect Storage (`GDS`) kernel driver stack, explaining why `intel_iommu=on iommu=pt` and `CAP_IPC_LOCK` (`ulimit -l`) are required.
+6. **Auditing Boot Parameters, `sysctl` Baselines, and Kernel Observability (`PSI`, `perf`, `bpftrace`, `Inspektor Gadget`):** Using `audit_gpu_node_kernel_sysctls()` in `code/part05/k8s_kernel_primitives_map.py`, explain the Section 9 sysctl baseline (including `protectKernelDefaults` requirements) and match the 15 Kubernetes failure symptoms in Section 11 to their exact kernel cause and verification command.
 
-## 16. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. What is a \"Container\" from the perspective of the Linux kernel (`HLW` Chapter 17 & `PK` Chapter 3)?</summary>
 
-- Brian Ward, *How Linux Works* (3rd edition; chapter 17 on virtualization/containers, kernel and device chapters).
-- James Strong and Vallery Lancey, *Networking and Kubernetes* (chapters 2 to 5: Linux networking, container networking, Kubernetes networking).
-- Josh Rosso et al., *Production Kubernetes* (chapters 3 to 5 on runtime and networking).
-- Linux kernel documentation (cgroup-v2, namespaces, seccomp, overlayfs, BPF), man pages (`namespaces(7)`, `cgroups(7)`, `capabilities(7)`), NVIDIA driver and Container Toolkit documentation.
-- Examples are the author's constructions.
+There is no single kernel object called a "container" in Linux. At the kernel level, a container is simply **an ordinary Linux process (or group of processes)** created via `clone(2)`/`unshare(2)`/`execve(2)` that is simultaneously configured with:
+1. **Eight Linux Namespaces (`mnt`, `pid`, `net`, `uts`, `ipc`, `user`, `cgroup`, `time`)** governing *what the process can see*.
+2. **Cgroup v2 membership (`/sys/fs/cgroup/kubepods.slice/...`)** governing *how much CPU, memory, PIDs, I/O, and which device nodes (`BPF_PROG_TYPE_CGROUP_DEVICE`) the process can use*.
+3. **A `pivot_root(2)` into an `overlayfs` union root filesystem** with bind-mounted volumes.
+4. **Restricted Linux Capabilities, `PR_SET_NO_NEW_PRIVS`, a `seccomp-bpf` syscall filter, and an AppArmor/SELinux LSM profile.**
+</details>
 
-**Flagged for verification before publishing:** all kernel version thresholds (idmapped mounts, EEVDF, netkit, BPF features), cgroup file names for your kernel, default capability set per runtime version, recommended sysctl values (scale with hardware), and every command listing; all labs are **untested**.
+<details>
+<summary>2. What are the eight Linux namespaces (`man 7 namespaces`), and what three mechanisms keep a namespace alive in the kernel?</summary>
+
+- **The 8 namespaces:** **`mnt`** (mount points), **`pid`** (process IDs), **`net`** (network devices, IPs, routing tables, sockets, netfilter), **`uts`** (hostname/domainname), **`ipc`** (SysV IPC & POSIX message queues), **`user`** (UID/GID mappings & namespace-scoped capabilities), **`cgroup`** (virtualized `/sys/fs/cgroup` root), and **`time`** (`CLOCK_MONOTONIC` / `CLOCK_BOOTTIME` offsets).
+- **Three things that keep a namespace alive:**
+  1. At least one live process is a member of the namespace (e.g., the `pause` container).
+  2. An open file descriptor to `/proc/$PID/ns/<type>` is held by a process.
+  3. `/proc/$PID/ns/<type>` is **bind-mounted** onto the filesystem (such as `/var/run/netns/cni-<uuid>`).
+</details>
+
+<details>
+<summary>3. How do Pod User Namespaces (`spec.hostUsers: false`) protect a node against container escape vulnerabilities, and what kernel version features did they require?</summary>
+
+When a container runs with `hostUsers: true` (the historical default), UID `0` inside the container is **real host UID `0` (root)** in the initial user namespace—so if a process escapes its container (via a runc or kernel bug), it is immediately root on the host.
+With **`hostUsers: false`** (`CLONE_NEWUSER`), UID `0` inside the Pod is mapped to an **unprivileged high UID range (e.g., `65536..131071`)** on the host, and any Linux capabilities the container holds (`CAP_NET_ADMIN`, `CAP_SYS_ADMIN`) are valid *only* inside its own user namespace, with zero privilege over host files or host namespaces.
+Making `hostUsers: false` practical without slow recursive `chown` required **idmapped mounts (Linux 5.12+)** and **idmapped `overlayfs` support (Linux 5.19+ / 6.3+)**.
+</details>
+
+<details>
+<summary>4. What is the "No Internal Process Constraint" in Cgroup v2, and how does `kubelet` structure `kubepods.slice` to satisfy it?</summary>
+
+In Cgroup v2, **processes (`cgroup.procs`) are only allowed to reside in leaf cgroup nodes** (except the root cgroup)—an interior cgroup node that enables controllers for its children via `cgroup.subtree_control` (`+cpu +memory +pids`) cannot simultaneously hold processes directly (`EBUSY`).
+Therefore, `kubelet` and `systemd` place all hierarchy and QoS limits on interior `.slice` nodes (`kubepods.slice` -> `kubepods-burstable.slice` -> `kubepods-burstable-pod<uid>.slice`) and place the actual container processes exclusively inside leaf **`.scope` nodes** (`cri-containerd-<container-id>.scope`).
+</details>
+
+<details>
+<summary>5. Explain how a Pod with `limits.cpu: "2"` (`cpu.max: "200000 100000"`) can suffer severe 75 ms latency stalls even when its average CPU utilization is only 30% (`PK` Chapter 12).</summary>
+
+In Cgroup v2 (`cpu.max = 200000 100000`), the CFS bandwidth controller grants **200 ms of total CPU execution time across all threads** in each **100 ms wall-clock period**.
+Suppose a Python/Go/Java server spawns **8 worker threads** that wake up simultaneously when a batch of requests arrives:
+- All 8 threads run in parallel across 8 physical cores for **25 ms of wall-clock time**, consuming $8 \times 25\text{ ms} = \mathbf{200\text{ ms}}$ of CPU quota.
+- At `T = 25 ms`, the cgroup's quota for that 100 ms period is 0—so the kernel **throttles (freezes) all 8 threads for the remaining 75 ms** (`nr_throttled` and `throttled_usec` in `cpu.stat`) until the next 100 ms period refills the bucket.
+If no requests arrive in the next two periods, average CPU utilization looks low (~30%), yet p99 request latency spiked by 75+ ms.
+</details>
+
+<details>
+<summary>6. Compare `memory.max`, `memory.high`, `memory.min`, and `memory.oom.group` in Cgroup v2 (`MemoryQoS`).</summary>
+
+- **`memory.max` (mapped from `resources.limits.memory`):** Hard limit. If usage reaches `memory.max` and synchronous page cache reclaim cannot free pages, the kernel **OOM killer** is invoked in the cgroup (`oom_kill` in `memory.events`).
+- **`memory.high` (used by Kubernetes `MemoryQoS`):** Soft throttling threshold. When usage exceeds `memory.high`, the kernel puts allocating threads into **direct memory reclaim and throttles their allocation rate** without immediately OOM-killing them.
+- **`memory.min` / `memory.low` (mapped from `resources.requests.memory` in `MemoryQoS`):** Protects the cgroup's pages from being reclaimed by host-level `kswapd` when other noisy containers on the node cause memory pressure.
+- **`memory.oom.group = 1`:** Instructs the kernel that if an OOM kill occurs inside the container cgroup, **all processes in the container cgroup must be killed together as an atomic unit** (preventing a multi-process training rank from limping along in a corrupted half-dead state after one helper process was OOM-killed).
+</details>
+
+<details>
+<summary>7. Which five types of memory are charged to a container's Cgroup v2 `memory.current`, and why does `kubelet` use `working_set` instead of `memory.current`?</summary>
+
+`memory.current` charges:
+1. **Anonymous memory (`anon`):** Process heap, stack, and `mmap(MAP_ANONYMOUS)` allocations.
+2. **`tmpfs` / shared memory (`shmem`):** Every byte written to `/dev/shm` (`emptyDir: { medium: Memory }`).
+3. **Active file cache (`active_file`)** and **Inactive file cache (`inactive_file`):** Linux VFS page cache from files read/written by the container.
+4. **Kernel memory (`slab_reclaimable`, `slab_unreclaimable`, `pagetables`, `sock`):** Dentries, inodes, page tables, and socket buffers allocated on behalf of the container.
+Because **`inactive_file` page cache can be trivially discarded by the kernel under memory pressure**, `kubelet` defines:
+$$\text{working\_set} = \text{memory.current} - \text{inactive\_file}$$
+for eviction decisions (note that `/dev/shm` `tmpfs` and `mlock`ed pinned buffers are **not** discardable and count 100% toward both `working_set` and OOM).
+</details>
+
+<details>
+<summary>8. What is a "Dying Cgroup Leak" (`nr_dying_descendants` in `/sys/fs/cgroup/cgroup.stat`), and how does it hurt high-churn Kubernetes nodes?</summary>
+
+When a container exits and `runc` removes its cgroup directory (`rmdir`), the cgroup disappears from `/sys/fs/cgroup`, **but the kernel `mem_cgroup` structure remains in memory as a "dying cgroup" (`nr_dying_descendants`) as long as any cached file pages (`page cache`) or slab dentries charged to that container remain in RAM**. On a node that churns thousands of short-lived batch Pods reading large dataset files, tens of thousands of zombie `mem_cgroup` structs accumulate in the kernel, causing `cAdvisor` and `kubelet` scans of `memory.stat` to burn high kernel CPU (`mem_cgroup_*` in `perf top`). Modern kernels (5.19+/6.x) reparent page cache/slab on cgroup deletion to mitigate this.
+</details>
+
+<details>
+<summary>9. How does Cgroup v2 enforce GPU device access isolation (`BPF_PROG_TYPE_CGROUP_DEVICE`), and how can you inspect it on a node?</summary>
+
+In Cgroup v1, device access was controlled via ASCII text files (`devices.allow` / `devices.deny`). In **Cgroup v2**, there are no `devices.*` files—instead, `runc`/`crun` compiles and attaches an **eBPF program of type `BPF_PROG_TYPE_CGROUP_DEVICE`** directly to the container's cgroup fd.
+Whenever a process in the container calls `open()`, `mknod()`, or `ioctl()` on a character or block device, the eBPF filter checks the `(type, major, minor, access_mode)` tuple and returns `0` (`EPERM`) for any unallocated GPU (`/dev/nvidia*` major `195`) or InfiniBand device.
+Inspect attached device filters across the cgroup tree with:
+`sudo bpftool cgroup tree /sys/fs/cgroup/kubepods.slice`
+</details>
+
+<details>
+<summary>10. What does `allowPrivilegeEscalation: false` do in the Linux kernel (`PR_SET_NO_NEW_PRIVS`)?</summary>
+
+Setting `securityContext.allowPrivilegeEscalation: false` makes the container runtime call **`prctl(PR_SET_NO_NEW_PRIVS, 1, ...)`** before `execve`ing the container process. Once the `NoNewPrivs: 1` bit is set on a task (visible in `/proc/$PID/status`), the Linux kernel **guarantees that no `execve(2)` call by that process or any of its children can ever grant new privileges**—even if the container image contains a `setuid-root` (`chmod u+s`) binary like `/usr/bin/sudo` or `/bin/su` or a binary with file capabilities (`setcap`). (`PodSecurity: restricted` requires `allowPrivilegeEscalation: false` on every container.)
+</details>
+
+<details>
+<summary>11. Why does writing a 50 GB training checkpoint inside a container's root filesystem (instead of a mounted Volume) cause a severe I/O stall (`overlayfs` copy-up)?</summary>
+
+A container's root filesystem is an **`overlayfs`** union mount (`lowerdir` = read-only image layers, `upperdir` = writable container layer on the node's root/containerd disk).
+1. **Copy-up penalty:** If a process opens an existing multi-GB file from a `lowerdir` layer for modification (`O_WRONLY` / `O_RDWR`), `overlayfs` must **synchronously copy the entire file from `lowerdir` to `upperdir`** inside the `open(2)` syscall before the first 1-byte write can proceed.
+2. **Metadata & root-disk contention:** Writing 50 GB into `upperdir` fills `imagefs`/`nodefs` (triggering `DiskPressure` eviction) and goes through `overlayfs` vfs redirection. Always mount a dedicated `emptyDir` (on scratch NVMe) or CSI `PVC` for checkpoints and datasets.
+</details>
+
+<details>
+<summary>12. Why do default Linux dirty-page writeback ratios (`vm.dirty_ratio = 20`, `vm.dirty_background_ratio = 10`) cause multi-second system freezes on 1–2 TiB RAM GPU nodes, and what sysctls fix it?</summary>
+
+On a GPU node with **2 TiB (2,048 GiB) of system RAM**, `vm.dirty_background_ratio = 10` means the kernel waits until **204 GiB of dirty pages** accumulate in RAM before background `flusher` threads start writing to disk, and `vm.dirty_ratio = 20` allows **409 GiB** of dirty RAM before throttling writers. When a training job checkpoints or flushes `fsync()`, flushing hundreds of gigabytes of dirty page cache at once saturates NVMe queues for tens of seconds, stalling `kubelet`, `containerd`, and all processes on the host.
+**Fix:** Replace percentage ratios with explicit byte thresholds in `/etc/sysctl.d/`:
+`vm.dirty_background_bytes = 268435456` (**256 MiB**) and `vm.dirty_bytes = 1073741824` (**1 GiB**).
+</details>
+
+<details>
+<summary>13. Why should `kernel.numa_balancing` be set to `0` (`disable`) and Transparent HugePages (`THP`) set to `madvise` on GPU training nodes?</summary>
+
+- **`kernel.numa_balancing = 0`:** Automatic NUMA balancing periodically unmaps pages from process page tables to trap soft page faults and migrate pages toward the CPU thread touching them. On a GPU node where `Kubelet` Topology Manager / `torchrun` has already pinned processes and CUDA DMA buffers (`mlock` / pinned memory) to specific NUMA sockets, background NUMA scanning and page migration injects latency jitter across all ranks during synchronous collectives.
+- **`transparent_hugepage = madvise`:** Setting THP to `always` causes synchronous **direct memory compaction stalls** when the kernel tries to defragment 2 MiB contiguous physical chunks under heavy memory load; `madvise` provides 2 MiB hugepages only to memory regions that explicitly request them (`MADV_HUGEPAGE`).
+</details>
+
+<details>
+<summary>14. What are the six kernel modules in the NVIDIA GPU, NVSwitch, GPUDirect RDMA, and GPUDirect Storage (`GDS`) stack, and what does each do?</summary>
+
+1. **`nvidia.ko`:** Core GPU driver managing `/dev/nvidia0..N` and `/dev/nvidiactl`, context management, and power/clocks (paired with `nvidia-fabricmanager` daemon on NVSwitch HGX/DGX systems).
+2. **`nvidia_uvm.ko` (`/dev/nvidia-uvm`):** Unified Virtual Memory manager enabling CUDA managed memory, page fault handling, and HBM allocations.
+3. **`nvidia_modeset.ko` & `nvidia_drm.ko`:** Display/DRM kernel modesetting modules.
+4. **`nvidia_peermem.ko`:** Registers with the InfiniBand/RDMA subsystem (`ib_core`) so RDMA NICs (`mlx5_ib`) can perform **GPUDirect RDMA** peer-to-peer DMA directly to/from GPU BAR1 HBM memory without host CPU copies.
+5. **`nvidia_fs.ko` (`/dev/nvidia-fs*`):** Enables **GPUDirect Storage (`GDS` / `cuFile`)** DMA between NVMe / parallel filesystems (WEKA, Lustre, VAST) and GPU HBM memory.
+</details>
+
+<details>
+<summary>15. Why do bare-metal GPU nodes set `intel_iommu=on iommu=pt` (or `amd_iommu=on iommu=pt`) on the kernel command line?</summary>
+
+Enabling the IOMMU (`intel_iommu=on`) is required to expose SR-IOV Virtual Functions and VFIO devices, **but full IOMMU DMA remapping adds page-table lookup latency and IOTLB shootdowns on every 400 Gb/s RDMA and NVMe DMA transfer** (reducing GPUDirect RDMA throughput by 10–30%).
+Adding **`iommu=pt` (Pass-Through mode)** tells the kernel to use **identity (1:1 physical) mapping with zero IOMMU translation overhead for host/container drivers**, while still enabling full IOMMU isolation whenever a device is explicitly bound to `vfio-pci` for VM passthrough.
+</details>
+
+<details>
+<summary>16. What are the exact six kernel `sysctl` values required by `kubelet` when `protectKernelDefaults: true` is enabled?</summary>
+
+If `protectKernelDefaults: true` is set in `KubeletConfiguration`, `kubelet` checks these six sysctls at startup and exits if any do not match:
+1. **`vm.overcommit_memory = 1`** (always allow `malloc`/`mmap` virtual address space overcommit; required because Go/JVM/Python/CUDA reserve large virtual address ranges before touching physical pages).
+2. **`vm.panic_on_oom = 0`** (invoke the OOM killer on OOM rather than panicking the kernel).
+3. **`kernel.panic = 10`** (automatically reboot 10 seconds after a fatal kernel panic).
+4. **`kernel.panic_on_oops = 1`** (treat a kernel oops as a panic so a corrupted kernel reboots cleanly instead of limping along).
+5. **`kernel.keys.root_maxkeys = 1000000`**
+6. **`kernel.keys.root_maxbytes = 25000000`**.
+</details>
+
+<details>
+<summary>17. What is Linux **PSI (`Pressure Stall Information`)** in `/proc/pressure/{cpu,memory,io}`, and what is the difference between the `some` and `full` lines?</summary>
+
+PSI (`/proc/pressure/cpu`, `/proc/pressure/memory`, `/proc/pressure/io`, available per-cgroup too in `cpu.pressure`, `memory.pressure`, `io.pressure`) measures the exact percentage of wall-clock time over `avg10`, `avg60`, and `avg300` seconds that tasks were **stalled waiting for that resource**:
+- **`some` line:** Percentage of time during which **at least one runnable task** was delayed waiting for the resource (e.g., waiting in the CPU runqueue, waiting on page reclaim, or waiting on block I/O) while other tasks may still have been making progress.
+- **`full` line:** Percentage of time during which **ALL non-idle tasks simultaneously were stalled** on the resource and **zero productive work was happening** (a high `memory` or `io` `full` avg10 > 10–20% means the node is thrashing).
+</details>
+
+<details>
+<summary>18. Why can upgrading the host Linux kernel (`apt-get dist-upgrade`) break a working GPU Kubernetes node on reboot, and how do you prevent it?</summary>
+
+The NVIDIA GPU driver (`nvidia.ko`, `nvidia_peermem.ko`), Mellanox OFED (`mlx5_core`, `ib_core`), and kernel storage clients (`lustre`, `wekafs`) are **out-of-tree kernel modules** compiled against the exact kernel headers and ABI of the running kernel (`uname -r`).
+If an unattended update installs a new kernel and reboots:
+1. **DKMS build may fail** (missing `linux-headers-$(uname -r)` or compiler version mismatch), OR
+2. **UEFI Secure Boot** may reject the newly compiled unsigned `.ko` module (`Required key not available`), OR
+3. The GPU Operator's precompiled driver container for the new kernel tag may not exist in your registry.
+**Prevention:** Hold kernel packages (`apt-mark hold linux-image-generic linux-headers-generic`), use immutable tested node images (Packer/CAPI), or use GPU Operator precompiled driver containers validated in staging before rolling kernel updates.
+</details>
+
+<details>
+<summary>19. What is `Inspektor Gadget` (`kubectl gadget`), and how does it help debug kernel-level container issues in Kubernetes?</summary>
+
+**Inspektor Gadget** is a CNCF project that packages eBPF diagnostic programs ("gadgets") as OCI artifacts and runs them via a DaemonSet on your Kubernetes nodes, automatically **enriching low-level kernel eBPF trace events with Kubernetes `namespace`, `pod`, and `container` names**:
+- `kubectl gadget trace oomkill`: catches every cgroup OOM kill with victim PID, command, and Pod name.
+- `kubectl gadget trace exec -n team-a`: traces every short-lived process `execve()` inside containers (catching processes that crash in 5ms before `ps` can see them).
+- `kubectl gadget trace tcpdrop` / `tcpretrans`: shows exact kernel stack locations (`kfree_skb` reason) where packets are dropped.
+- `kubectl gadget profile cpu -p trainer-0`: captures eBPF CPU flamegraphs of a Pod.
+</details>
+
+<details>
+<summary>20. Why do many security-hardened Kubernetes nodes disable `io_uring` (`kernel.io_uring_disabled = 2`) for untrusted multi-tenant containers?</summary>
+
+Linux's **`io_uring`** asynchronous I/O subsystem submits ring-buffer operations directly to kernel threads without going through traditional per-operation syscalls—which both **bypasses traditional `seccomp-bpf` per-syscall argument filtering** and has accounted for a large share of high-severity Linux kernel privilege-escalation CVEs in recent years (to the point that Google disabled `io_uring` by default on GKE nodes and Android). Unless a trusted storage/database workload specifically requires `io_uring`, setting `kernel.io_uring_disabled = 2` (and blocking `io_uring_setup` in `seccomp`) eliminates a major kernel escape surface.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 17: Virtualization** (read in full: VMs vs containers, overlay filesystems, namespaces, and cgroups).
+  - `networking-and-kubernetes` — James Strong & Vallery Lancey, *Networking and Kubernetes*, **Chapters 2–5** (*Linux Networking*, *Container Networking Basics*, *Kubernetes Networking Introduction*, and *Kubernetes Networking Abstractions*: netfilter, conntrack, routing, `veth`, bridges, CNI, and `kube-proxy` modes).
+  - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapters 3–5** (*Container Runtime*, *Container Storage*, and *Pod Networking*) and **Chapter 12** (CPU CFS quota throttling).
+- **Run here:** `python3 code/part05/k8s_kernel_primitives_map_lab.py` (3 passed, 0 failed).
+- **Explicitly labelled inferences:** The `simulate_cgroup_v2_cpu_and_memory`, `audit_gpu_node_kernel_sysctls`, and `check_kernel_version_features` models in `code/part05/k8s_kernel_primitives_map.py` and the master Kubernetes-to-kernel mapping table (Section 1) and sysctl baseline (Section 9) are the author's constructions synthesizing `HLW` Chapter 17, `NK` Chapters 2–5, and `PK` Chapters 3–5 & 12 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Not verified on live hardware:** Live `unshare`, `bpftool`, `kubectl gadget`, `bcc`, and `sysctl` executions (`8` namespaces, kernels `4.19`/`4.20`/`5.1`/`5.2`/`5.4`/`5.10`/`5.12`/`5.15`/`5.19`/`6.1`/`6.3`/`6.6`/`6.7`, `200000 100000` `cpu.max`, `25 ms` / `75 ms` throttling, `~40-60` blocked syscalls, `262144` / `1048576` `max_map_count`, `268435456` / `1073741824` dirty bytes, `2097152` `nf_conntrack_max`) are marked (`untested here`) where not executed by `k8s_kernel_primitives_map_lab.py`.
