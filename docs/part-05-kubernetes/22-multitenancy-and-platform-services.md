@@ -49,6 +49,19 @@ Needs 5.7, 5.15, 5.16, 5.18, 5.21. After this chapter you can:
 
 Kubernetes itself provides **soft multi-tenancy**: the control plane is shared; tenants share the API server, scheduler, etcd, nodes' kernel, DNS, and often storage and network. Hard guarantees require separation at the layer you worry about (nodes, kernel, control plane). Choose by **threat model and compliance**, not by default.
 
+In *Production Kubernetes* Chapter 12 (*Multitenancy*), Josh Rosso et al. illustrate the difference using a housing analogy:
+- **Soft multitenancy ("a family living together in one house"):** Family members share the kitchen, living room, and utilities (the control plane, nodes, CNI, and storage), while each member has their own private bedroom (`Namespace` isolated by RBAC, `ResourceQuota`, `LimitRange`, `PodSecurity`, and `default-deny-all` `NetworkPolicy`). Also requires **Namespace-per-team** vs. **Namespace-per-application** planning and per-tenant log routing (for example, configuring **Fluent Bit** tag-based routing `Match kube.var.log.containers.*_alice-ns_*` so logs from `alice-ns` only ship to Alice's Elasticsearch/Loki index).
+- **Hard multitenancy ("tenants in an apartment building or hotel" / hostile tenants):** Either dedicate a **Cluster per tenant** (at the cost of multi-cluster fleet management and lower GPU bin-packing efficiency) or combine **virtual control planes (`vCluster`/`Kamaji`)**, **dedicated tainted node pools**, **sandboxed runtimes (`Kata`/`gVisor`)**, and **fabric-isolated storage/networks**.
+
+```mermaid
+flowchart TD
+    PR["Tenant Onboarding Spec<br/>(tenants/team-a.yaml or Team / AcmeNamespace CR)"] --> Op["GitOps / Namespace Operator<br/>(Level-triggered reconciliation of child objects)"]
+    Op --> NS["1. Namespace & Identity<br/>Labels (team, cost-center, PSA baseline/restricted)<br/>+ OIDC RoleBindings"]
+    Op --> Quota["2. Compute & GPU Fairness<br/>ResourceQuota (requests.nvidia.com/gpu, count/*)<br/>+ LimitRange + Kueue LocalQueue/ClusterQueue"]
+    Op --> Net["3. Network & Storage Isolation<br/>default-deny-all + allow-dns NetworkPolicy<br/>+ per-tenant StorageClass / CSI subPathExpr"]
+    Op --> Obs["4. Observability & Showback<br/>Fluent Bit / Loki tenant log routing<br/>+ Grafana Folder + OpenCost + DCGM GPU-hours"]
+```
+
 ### Isolation layers (what to configure)
 
 | Layer | Mechanisms | Notes |
@@ -172,6 +185,10 @@ spec:
     storage: "300Gi"
 ```
 
+In *Production Kubernetes* Chapter 11 (*Building Platform Services*), Rosso et al. walk through the Go implementation of a custom **`AcmeNamespace` operator** (`AcmeNamespaceSpec` with `namespaceName` and `adminUsername`) built with **Kubebuilder** (`controller-runtime`) and highlight two essential operator design rules (modeled in `reconcile_acme_namespace_operator()` in `code/part05/multitenancy_quota_reconciler.py`):
+1. **Never rely solely on `status.phase == "Created"` to skip checking child resources (`PK` Chapter 11):** A naive `Reconcile` loop that sets `acmeNs.Status.Phase = "CreationInProgress"`, creates the child `Namespace`, `Role` (`namespace-admin`), and `RoleBinding`, sets `acmeNs.Status.Phase = "Created"`, and does nothing whenever `Phase == "Created"` has two critical bugs: (a) if the controller crashes mid-flight while `Phase == "CreationInProgress"`, it must query the local Informer cache to see which children already exist; and (b) if someone later deletes the child `RoleBinding` or `ResourceQuota` by hand, a controller that only checks `Phase == "Created"` will never notice or heal the missing child. Instead, `Reconcile` must inspect the Informer cache for every expected child object (`Namespace`, `Role`, `RoleBinding`, `ResourceQuota`, `NetworkPolicy`) on every pass and watch child resources via **`ownerReferences`** (`ctrl.SetControllerReference`).
+2. **Resource scoping rule for `ownerReferences` (`PK` Chapter 11):** In Kubernetes, **a namespaced object CANNOT be the `ownerReference` owner of a cluster-scoped object** (like a `Namespace`). Therefore, an operator CRD that creates and owns `Namespace` objects (`AcmeNamespace` or `Team`) must be annotated with **`// +kubebuilder:resource:scope=Cluster`** (`spec.scope: Cluster` in the `CustomResourceDefinition`). Chapter 11 also compares **Kubebuilder** (Go), **Operator SDK** (Go, Ansible, or Helm), and **Metacontroller** (language-agnostic webhook "lambda controllers").
+
 When deciding how much of Kubernetes to expose to application and ML developers after onboarding, *Production Kubernetes* (Chapter 16) organizes developer interfaces along a **4-stage spectrum of abstraction** (from least abstracted on the left to fully invisible Kubernetes on the right):
 
 1. **Stage 1 — Command-line tooling and local UIs (no API abstraction)**: developers use raw `kubectl` augmented by shell helpers (`kubectx` for switching contexts, `kubens` for switching namespaces, log-tailing plugins, SSO credential plugins) and workstation graphical clients such as `Octant` and `Lens` that render cluster state using the developer's local `kubeconfig`. Full flexibility, but requires RBAC, admission guardrails, and Kubernetes knowledge from every developer.
@@ -270,7 +287,15 @@ sum by (namespace) (increase(container_cpu_usage_seconds_total[24h])) / 3600    
 | vCluster pods violate host policy | Syncer creates pods with tenant-chosen specs | Host-level PSA/Kyverno on synced pods, node selectors for tenant pools |
 | Operator upgrades break tenants | Cluster-wide CRDs shared | Version per tenant via vCluster or strict CRD upgrade policy and compatibility testing |
 
-## 8. Lab (untested)
+## 8. Lab
+
+First, run the self-checking Python lab (`code/part05/multitenancy_quota_reconciler_lab.py`) locally. It verifies the `LimitRange` default injector and `ResourceQuota` admission evaluator (`evaluate_resource_quota_and_limitrange`), the `PK` Chapters 11 & 16 `AcmeNamespace`/`Team` operator level-triggered reconciler (`reconcile_acme_namespace_operator`: detecting and healing deleted child `RoleBinding`/`ResourceQuota` objects rather than blindly trusting `status.phase`), and the multi-tenant GPU cost and idle-waste calculator (`compute_tenant_gpu_cost_and_waste`).
+
+```bash
+python3 code/part05/multitenancy_quota_reconciler_lab.py
+```
+
+Next, on a `kind` or `kubeadm` cluster (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **Namespace baseline**: build a tenant template (namespace, labels, RBAC for an OIDC group, ResourceQuota/LimitRange, default-deny + DNS NetworkPolicy, PSA labels, StorageClass access) as Helm/Kustomize; instantiate for two teams; verify isolation with cross-tenant access tests (pod-to-pod, secrets, PVCs).
 2. **Quota behaviour**: exceed each quota type (pods, GPUs via fake extended resource, storage, object counts); read errors; test quota with Pending and completed pods; apply PriorityClass scoped quotas.
@@ -286,8 +311,6 @@ sum by (namespace) (increase(container_cpu_usage_seconds_total[24h])) / 3600    
 12. **Platform product review**: define SLOs, build a dashboard (queue wait p95, job success, utilisation, onboarding time), write the tenant guide.
 13. **Clean up**.
 
-Mark tested only after execution.
-
 ## 9. Common mistakes
 
 - Assuming namespaces alone provide isolation; skipping network policy, quotas, PSA, node isolation or runtime sandboxing where trust requires it.
@@ -302,61 +325,187 @@ Mark tested only after execution.
 
 ## 10. Interview angles
 
-- "How do you design multi-tenancy on a shared GPU Kubernetes cluster? What isolation layers?" 
-- "Soft vs hard multi-tenancy; when virtual clusters; when a cluster per tenant?" 
-- "How do you share GPUs fairly across teams? Kueue, quotas, preemption, MIG, time-slicing: trade-offs." 
-- "How do you stop one tenant from DoSing the API server or the storage?" 
-- "How would you onboard a new team in 10 minutes?" 
-- "How do you attribute GPU cost to teams?" 
-- "What platform services does an AI platform need beyond Kubernetes?" 
-- "How do you provide self-service while keeping guardrails?" 
+- "How do you design multi-tenancy on a shared GPU Kubernetes cluster? What isolation layers?"
+- "Soft vs hard multi-tenancy; when virtual clusters; when a cluster per tenant?"
+- "How do you share GPUs fairly across teams? Kueue, quotas, preemption, MIG, time-slicing: trade-offs."
+- "How do you stop one tenant from DoSing the API server or the storage?"
+- "How would you onboard a new team in 10 minutes?"
+- "How do you attribute GPU cost to teams?"
+- "What platform services does an AI platform need beyond Kubernetes?"
+- "How do you provide self-service while keeping guardrails?"
 
-## 11. Checkpoint questions (35)
+## Exercises
 
-1. Namespace isolation strength? **A:** Soft (shared kernel/control plane).
-2. Hard multi-tenancy options? **A:** Cluster per tenant, sandboxed runtimes + node isolation.
-3. ResourceQuota prefix for GPUs? **A:** `requests.nvidia.com/gpu`.
-4. What does LimitRange do? **A:** Defaults and min/max per container/PVC.
-5. `count/*` quotas for? **A:** Protect API from object floods.
-6. Kueue cohort purpose? **A:** Share/borrow quota among queues.
-7. PriorityClass-scoped quota purpose? **A:** Cap high-priority usage per team.
-8. MIG isolation? **A:** Hardware partition with dedicated resources.
-9. Time-slicing isolation? **A:** None.
-10. MPS suitable for? **A:** Single-tenant concurrent processes.
-11. vGPU needs? **A:** Hypervisor and licences.
-12. Node isolation mechanism? **A:** Taints/labels/dedicated pools.
-13. Sandboxed runtime examples? **A:** gVisor, Kata.
-14. HNC does? **A:** Hierarchical namespaces with propagation.
-15. Capsule does? **A:** Tenant abstraction over namespaces.
-16. vCluster does? **A:** Virtual control plane in a namespace.
-17. Virtual cluster still shares? **A:** Host nodes/scheduler.
-18. Tenant onboarding as code tools? **A:** GitOps/Terraform/Kyverno generate.
-19. What are the four stages on *Production Kubernetes*'s spectrum of platform abstractions, and what does the `Team` CRD operator pattern automate? **A:** (1) CLI helpers/local UIs (`kubectl`, `kubectx`, `kubens`, `Octant`, `Lens`), (2) templating (`Helm`, `Kustomize`), (3) custom workload CRDs (`PinterestService`), and (4) invisible-Kubernetes PaaS/portals (`Backstage`, `Waypoint`); the `Team` operator reconciles a tenant's `Namespace`, RBAC, and `ResourceQuota`s from a single `Team` CR.
-20. Registry multi-tenancy feature? **A:** Projects/robot accounts/quotas.
-21. Notebook controls? **A:** Culling, time limits, egress policy.
-22. Storage tenancy control? **A:** Per-tenant paths/quotas/ACLs.
-23. Observability tenancy? **A:** Tenants in Mimir/Loki, Grafana RBAC.
-24. Cost tools? **A:** OpenCost/Kubecost.
-25. Allocation methods? **A:** Requests, usage, hybrid.
-26. Idle GPU detection? **A:** Allocated but low DCGM utilisation.
-27. Platform as product means? **A:** Customers, SLOs, docs, roadmap.
-28. Golden path? **A:** Supported default workflow with templates.
-29. APF per tenant helps? **A:** Prevents control-plane starvation.
-30. RDMA tenant isolation? **A:** Fabric-level (VLAN/VRF/PKey).
-31. Offboarding steps? **A:** Revoke, retain/backup, delete, reclaim.
-32. Exposing LoadBalancer in tenant ns? **A:** Restrict by policy/quota.
-33. Shared CRDs risk? **A:** Version conflicts affect all tenants.
-34. Tenant secrets approach? **A:** Namespaced + external store per tenant.
-35. Quota exceeded error source? **A:** Admission (ResourceQuota).
+1. **Multi-Tenancy Models (`Soft` vs. `Hard`), Trust Boundaries, and the 9 Isolation Layers (`PK` Chapter 12):** Compare the 6 tenancy models in Section 1 (Namespace per team, Dedicated node pools, Sandboxed runtimes `gVisor`/`Kata`, Virtual clusters `vCluster`/`Kamaji`, Cluster per tenant, and Multi-cluster fleet) and explain how to isolate all 9 layers (API/APF, Identity, Compute/GPU, Network, Storage, Secrets, Runtime/Kernel, Observability/Fluent Bit log routing, and Cost).
+2. **`ResourceQuota`, `LimitRange`, `scopeSelector`, and Sub-GPU Sharing (`MIG` vs. `Time-Slicing` vs. `MPS` vs. `vGPU`):** Using `evaluate_resource_quota_and_limitrange()` in `code/part05/multitenancy_quota_reconciler.py`, trace the `team-a-compute` `ResourceQuota` and `defaults` `LimitRange` manifests in Section 2, explaining why `requests.nvidia.com/gpu`, `<storageclass>.storageclass.storage.k8s.io/requests.storage`, `count/jobs.batch`, and `scopeSelector` (`PriorityClass`) are configured, and compare `MIG`, `Time-slicing`, `MPS`, and `vGPU` across hardware memory/fault isolation.
+3. **Delegated Administration (`Capsule`, `HNC`) vs. Virtual Clusters (`vCluster`, `Kamaji`, `HyperShift`):** Compare how `Capsule` (`Tenant` CRD) and `vCluster` (virtual control plane + pod syncer) allow tenants to create multiple namespaces or install conflicting CRDs/operators on a shared GPU cluster, and explain what host-level policies must still be enforced on `vCluster`-synced pods.
+4. **Building a Self-Service `AcmeNamespace` / `Team` Onboarding Operator (`PK` Chapters 11 & 16):** Using `reconcile_acme_namespace_operator()` in `code/part05/multitenancy_quota_reconciler.py`, explain why an onboarding operator CRD (`AcmeNamespace` or `Team`) must be **cluster-scoped** (`+kubebuilder:resource:scope=Cluster`) to own a `Namespace`, why trusting `status.phase == "Created"` without checking the Informer cache fails to heal deleted child `RoleBinding`s, and compare `Kubebuilder`, `Operator SDK`, and `Metacontroller`.
+5. **The 4-Stage Spectrum of Platform Abstractions (`PK` Chapter 16) and Operating the AI Platform as a Product:** Compare `PK` Chapter 16's 4 stages of developer abstraction (`kubectl`/`kubectx`/`kubens`/`Lens` -> `Helm` + `Kustomize` -> custom workload CRDs like `PinterestService` / `WebApp` with a break-glass window -> full PaaS/portals like `Backstage`/`Waypoint`), and list the golden paths and SLO metrics of a product-oriented AI platform.
+6. **Multi-Tenant GPU Cost Attribution, PromQL Showback, and Idle-GPU Reclamation:** Using `compute_tenant_gpu_cost_and_waste()` in `code/part05/multitenancy_quota_reconciler.py` and the PromQL queries in Section 6, design a weekly team showback report that attributes requested GPU-hours, proportional shared platform overhead, and wasted idle-allocated GPU dollars.
 
-## 12. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. In *Production Kubernetes* Chapter 12, what is the difference between Soft Multi-Tenancy and Hard Multi-Tenancy, and why does vanilla Kubernetes default to Soft Multi-Tenancy?</summary>
 
-- Josh Rosso, Rich Lander, Alex Brand and John Harris, *Production Kubernetes* (`production-kubernetes`, chapters 11 on building platform services, 12 on multitenancy, and Chapter 16: `16. Platform Abstractions` — read in full for the 4-stage spectrum of abstraction, `Team` onboarding CRD, `PinterestService` custom workload CRD, and `Backstage`/`Waypoint`).
-- Brendan Burns et al., *Kubernetes: Up and Running* (3rd edition; chapters on namespaces, quotas and role-based access).
-- The author's `nvidia-devops` repository, volume 03 (multi-tenant RBAC, Kyverno guardrails, platform engineering sections).
-- Kubernetes multi-tenancy documentation, Kueue, Capsule, HNC, vCluster, OpenCost documentation, NVIDIA GPU Operator (MIG/time-slicing) documentation.
-- Examples are the author's constructions.
+- **Soft Multi-Tenancy ("a family sharing a house"):** Assumes cooperative internal teams that are not actively trying to kernel-exploit each other, but need protection from accidents, noisy neighbors, and unauthorized cross-team access. Implemented within a single shared cluster using `Namespace`s, `RBAC`, `ResourceQuota`s, `LimitRange`s, `PodSecurity`, and `default-deny` `NetworkPolicy`.
+- **Hard Multi-Tenancy ("strangers in a hotel"):** Assumes mutually untrusted or hostile external tenants. Because vanilla Kubernetes shares a single `kube-apiserver`, `etcd`, and host Linux kernel (`runc` containers), achieving hard multi-tenancy requires either **separate clusters per tenant** or combining **virtual control planes (`vCluster` / `HyperShift`)**, **dedicated hardware node pools**, **VM-sandboxed runtimes (`Kata Containers` / `gVisor`)**, and **fabric-level network/storage isolation**.
+</details>
 
-**Flagged for verification before publishing:** project maintenance status (HNC), Kueue API versions, MIG/time-slicing/MPS configuration details per GPU generation, PromQL metric/label names in your exporters, and every manifest/command; all labs are **untested**.
+<details>
+<summary>2. Compare \"Namespace-per-Team\" vs. \"Namespace-per-Application/Environment\" (`team-a-dev`, `team-a-train`, `team-a-serve`, `PK` Chapter 12).</summary>
+
+- **Single Namespace per Team (`team-a`):** Easy to apply a single `ResourceQuota` for the whole team, **but mixes dev notebooks, batch training, and production inference inside the same security/network/RBAC boundary**.\n- **Multiple Namespaces per Team (`team-a-dev`, `team-a-train`, `team-a-serve`):** Gives each environment its own `NetworkPolicy`, `ServiceAccount`s, and `PodSecurity` profile, while using **Kueue `ClusterQueue` / `Capsule` `Tenant` quotas** to enforce a unified GPU and storage cap across all of `team-a`'s namespaces.
+</details>
+
+<details>
+<summary>3. In a `ResourceQuota` manifest, what exact key names restrict (a) GPUs, (b) a specific `StorageClass`'s capacity, (c) total `Job` objects, and (d) external `LoadBalancer` Services?</summary>
+
+1. **GPUs (extended resources):** Must use the **`requests.` prefix**—**`requests.nvidia.com/gpu: "32"`**.
+2. **Per-StorageClass capacity:** **`<storage-class-name>.storageclass.storage.k8s.io/requests.storage: 20Ti`** (and `/persistentvolumeclaims: "10"`).
+3. **Object count quota (protecting `etcd` / API server from object floods):** **`count/jobs.batch: "500"`**, `count/pods: "2000"`, `count/secrets: "200"`.
+4. **Blocking unauthorized external Services:** **`services.loadbalancers: "0"`** and **`services.nodeports: "0"`**.
+</details>
+
+<details>
+<summary>4. Why does creating a Pod with NO `resources.requests` or `limits` fail immediately in a namespace that has a CPU/memory `ResourceQuota`, and how does `LimitRange` solve this?</summary>
+
+When a `ResourceQuota` tracks `requests.cpu`, `limits.cpu`, `requests.memory`, or `limits.memory` in a namespace, Kubernetes's `ResourceQuota` admission controller **rejects any Pod that omits those fields** (`must specify limits.memory`) because an unbounded container would bypass the quota.
+Deploying a **`LimitRange`** with `default` (default limits) and `defaultRequest` (default requests) in every tenant namespace runs during the **mutating admission phase** *before* `ResourceQuota` validation—automatically injecting sensible defaults (`cpu: 1..2`, `memory: 4Gi..8Gi`) into any Pod that omitted them.
+</details>
+
+<details>
+<summary>5. Why can a tenant's new Pod fail with `exceeded quota: count/pods` or `requests.nvidia.com/gpu` even when `kubectl get pods` shows zero `Running` Pods?</summary>
+
+- **`count/pods` quota** counts **all Pod objects currently stored in `etcd`** in that namespace—including **`Completed` (`Succeeded`) and `Failed` Pods** left behind by finished `Job`s.
+- **Compute and GPU `ResourceQuota` (`requests.nvidia.com/gpu`)** counts all **non-terminal Pods**—including **`Pending` Pods** that are unschedulable or waiting on volumes/images (and terminating Pods).
+Always configure `ttlSecondsAfterFinished` on `Job`s (or a Kyverno cleanup policy) to garbage-collect finished Pods, and use **Kueue** (`suspend: true`) so queued jobs do not create `Pending` Pods until quota is available.
+</details>
+
+<details>
+<summary>6. How do you stop a tenant from marking all of their batch training jobs with `priorityClassName: inference-critical`?</summary>
+
+Attach a **`scopeSelector`** matching `scopeName: PriorityClass` to a **`ResourceQuota`** in the tenant's namespace:
+- Create a `ResourceQuota` for `priorityClassName: inference-critical` setting `requests.nvidia.com/gpu: "0"` in training namespaces (and a specific cap in serving namespaces).
+- Any attempt by a developer in a training namespace to submit a Pod with `priorityClassName: inference-critical` is immediately rejected by `ResourceQuota` admission (`exceeded quota`).
+</details>
+
+<details>
+<summary>7. Compare `MIG` (Multi-Instance GPU), `Time-Slicing`, `CUDA MPS`, and `Whole GPUs` for sharing GPUs across multiple tenants.</summary>
+
+- **Whole GPUs (`nvidia.com/gpu: 1..8`):** Complete per-device isolation; best for training and large model serving.
+- **MIG (`Multi-Instance GPU` on A100/H100/B200, e.g., `1g.10gb`, `2g.20gb`, `3g.40gb`):** **Hardware-enforced isolation**—each MIG instance gets dedicated SMs, dedicated HBM memory capacity, dedicated L2 cache, dedicated memory bandwidth crossbars, and **isolated GPU page tables / fault containment** (an XID fault or OOM in one MIG slice does not crash other slices on the same physical GPU). **Safe for multi-tenant sharing of sub-GPU workloads.**
+- **Time-Slicing (Device Plugin `replicas: 4`):** **Zero memory isolation and zero fault isolation**—all 4 containers share the same GPU HBM address space and context-switch SMs; if one container allocates all 80 GB of VRAM or triggers a fatal GPU fault, **all 4 tenants crash**. Only use for trusted dev notebooks from the same team.
+- **CUDA MPS (`Multi-Process Service`):** Shares a single CUDA context across processes for higher concurrent kernel utilization (`CUDA_MPS_ACTIVE_THREAD_PERCENTAGE`), **but shares fault fate**; use only within a single tenant/workload.
+</details>
+
+<details>
+<summary>8. How does `vCluster` (Virtual Clusters) work, and when should you give a tenant a `vCluster` instead of a standard `Namespace`?</summary>
+
+A **`vCluster`** runs a lightweight **virtual Kubernetes control plane** (`kube-apiserver` + state store + a **Syncer** controller) as a StatefulSet/Deployment **inside a single host Namespace**:
+- **What stays inside the virtual cluster:** Namespaces, CRDs, Operators, RBAC `ClusterRole`s, Webhooks, ConfigMaps, and Deployments/StatefulSets (`etcd` of the host cluster never sees them).
+- **What the Syncer copies down to the host Namespace:** Only low-level executable resources (**`Pod`s, `PVC`s, `Service`s**), rewritten into the single host Namespace so the host's `kube-scheduler` and GPU nodes execute them.
+**Use `vCluster` when:** Tenants need to install their own **CRDs, Operators, or cluster-scoped webhooks** (or test different operator versions) without colliding on the shared host control plane. (Always enforce host-level PSA/Kyverno on the host Namespace so the Syncer cannot create privileged Pods.)
+</details>
+
+<details>
+<summary>9. What problem does `Capsule` solve on a multi-tenant Kubernetes cluster?</summary>
+
+Without `Capsule`, if Team A needs 5 namespaces (`team-a-dev`, `team-a-stage`, `team-a-prod`, `team-a-exp1`, `team-a-exp2`), they must either file a ticket with the platform team every time they want a namespace, or be granted cluster-wide `create namespaces` permission (which lets them create unlimited namespaces with no quotas).
+**`Capsule`** introduces a cluster-scoped **`Tenant` CRD** (`name: team-a`, `owners: [oidc:team-a-leads]`, `namespaceQuota: 10`, aggregate `ResourceQuota` across all namespaces in the Tenant, allowed `StorageClasses`, allowed `IngressClasses`, and required `nodeSelector`). Team A's leads can now run `kubectl create namespace team-a-exp3` self-service, and Capsule's admission webhook automatically attaches it to `Tenant/team-a` and enforces the team-wide aggregate quota and guardrails.
+</details>
+
+<details>
+<summary>10. In *Production Kubernetes* Chapter 11, why is it a bug for a custom `AcmeNamespace` / `Team` operator to check `if acmeNs.Status.Phase == "Created" { return }` and skip inspecting child resources?</summary>
+
+Two failure modes break a status-only check:
+1. **Mid-reconcile crash:** If the operator sets `Status.Phase = "CreationInProgress"`, creates the `Namespace` and `Role`, and crashes *before* creating the `RoleBinding` or updating status, the next pass must query the actual cluster state (via the local Informer cache) to see which children exist and which are still missing.
+2. **Drift / accidental deletion of child objects:** After `Status.Phase` reaches `"Created"`, if someone accidentally runs `kubectl delete rolebinding namespace-admin -n team-a` or deletes the `ResourceQuota`, an operator that blindly trusts `Status.Phase == "Created"` will **never recreate the deleted child object**. A level-triggered operator must set **`ownerReferences`** (`ctrl.SetControllerReference`) on all child resources, watch those child kinds (`Owns(&rbacv1.RoleBinding{})`), and verify every child in the Informer cache on every `Reconcile`.
+</details>
+
+<details>
+<summary>11. In `PK` Chapter 11, why must a CustomResourceDefinition (`AcmeNamespace` or `Team`) that creates and owns `Namespace` objects be **Cluster-Scoped** (`scope: Cluster`)?</summary>
+
+In Kubernetes garbage collection, **a namespaced resource is forbidden from being the `ownerReference` owner of a cluster-scoped resource** (cross-scope ownership from namespaced -> cluster-scoped is disallowed by `kube-apiserver`). Because a `Namespace` is a **cluster-scoped** resource, the parent `AcmeNamespace` / `Team` CRD that sets `ownerReferences` on `Namespace`s (and on `Role`s/`RoleBinding`s inside that namespace) must itself be **cluster-scoped** (`// +kubebuilder:resource:scope=Cluster`).
+</details>
+
+<details>
+<summary>12. In `PK` Chapter 11, compare `Kubebuilder`, `Operator SDK`, and `Metacontroller` for building custom platform operators.</summary>
+
+- **`Kubebuilder` (and `Operator SDK` Go):** Official SIG API-Machinery scaffolding framework in **Go** built on `controller-runtime` and `controller-gen`. Best performance, native shared informers, type safety, and webhook scaffolding (`+kubebuilder:*` markers).
+- **`Operator SDK` (Ansible / Helm plugins):** Allows packaging existing **Helm charts** or **Ansible playbooks/roles** into a Kubernetes Operator without writing Go code (great for Day-1/Day-2 deployment automation, less suited for complex high-frequency control loops).
+- **`Metacontroller` (`CompositeController` / `DecoratorController`):** Runs a generic informer/reconcile loop in the cluster and invokes your custom logic as a **simple JSON HTTP webhook ("lambda controller")** written in **any language (Python, Node.js, Ruby, Starlark)**—receives `{parent, children}` JSON and returns `{status, children}` JSON.
+</details>
+
+<details>
+<summary>13. Summarize the 4-Stage Spectrum of Platform Abstractions from *Production Kubernetes* Chapter 16 (`Figure 16-2`), and state the trade-off of moving from Stage 1 to Stage 4.</summary>
+
+1. **Stage 1 — Raw Kubernetes + CLI/UI Helpers (`kubectl`, `kubectx`, `kubens`, `Octant`, `Lens`):** Zero API abstraction; 100% upstream Kubernetes compatibility and skill transferability, but requires every developer to understand Kubernetes primitives and requires strict RBAC/admission guardrails.
+2. **Stage 2 — Templating (`Helm` + `Kustomize`, `K8s Initializer`):** Developers fill in a small `values.yaml` (or web wizard) that renders standard `Deployment`/`Service`/`Ingress` objects. Hides YAML boilerplate while keeping standard Kubernetes objects visible for debugging.
+3. **Stage 3 — Custom Workload CRDs (`PinterestService`, `WebApp`):** A 25-line custom CRD replaces 350+ lines of multi-object YAML and triggers an in-cluster operator. Simplifies onboarding, **but requires providing a "break-glass" view into underlying `Pod`s/events** when abstractions leak.
+4. **Stage 4 — Invisible Kubernetes / Full PaaS (`Cloud Foundry`, `Backstage`, `HashiCorp Waypoint`):** Developers push code or a 10-line `waypoint.hcl` (`build`, `deploy`, `release`) with zero awareness of Kubernetes. Fastest developer onboarding, highest platform engineering maintenance burden when custom GPU/RDMA features are needed.
+</details>
+
+<details>
+<summary>14. In `PK` Chapter 12, how do you isolate container logs per tenant using `Fluent Bit` or `Loki` so Team A cannot read Team B's application logs?</summary>
+
+When `Fluent Bit` tails `/var/log/pods/<namespace>_<pod>_<uid>/<container>/0.log` on each node, its `kubernetes` filter tags each log stream with **`kube.var.log.containers.<pod>_<namespace>_<container>-<id>.log`**. You can isolate logs in two ways:
+1. **Tag-based `[OUTPUT]` routing (`PK` Chapter 12):** Configure `[OUTPUT]` stanzas with `Match kube.var.log.containers.*_alice-ns_*` routing each tenant's logs to their own dedicated Elasticsearch index / S3 bucket / Splunk index.
+2. **Multi-tenant Loki (`X-Scope-OrgID`):** Extract `$kubernetes['namespace_name']` (or the namespace's `team` label) and set it as the **`X-Scope-OrgID`** HTTP header when shipping to Grafana Loki, paired with Grafana org/folder RBAC so each team can only query their own tenant ID.
+</details>
+
+<details>
+<summary>15. How do you prevent one tenant's buggy custom controller or CLI script from exhausting `kube-apiserver` concurrency for all other tenants?</summary>
+
+Combine two built-in controls:
+1. **API Priority and Fairness (`APF`, Chapter 5.5):** Create a `FlowSchema` matching the tenant's ServiceAccounts/OIDC group (`subjects: [{kind: Group, group: {name: "oidc:team-a"}}, {kind: ServiceAccount, serviceAccount: {namespace: "team-a", name: "*"}}]`) and map it to a tenant-isolated `PriorityLevelConfiguration` with **shuffle sharding (`ByNamespace` / `ByUser`)** and bounded concurrency shares.
+2. **Object-count `ResourceQuota`s (`count/pods`, `count/jobs.batch`, `count/configmaps`, `count/secrets`):** Prevents a runaway loop in `team-a` from creating 500,000 objects and filling `etcd`.
+</details>
+
+<details>
+<summary>16. How do you isolate shared high-performance storage (`Lustre`, `WEKA`, `VAST`, `NFS`, `CephFS`) across multiple tenants on a shared GPU cluster?</summary>
+
+Never mount the root `/` export of a shared parallel filesystem directly into multiple tenants' Pods (any tenant could `ls` or overwrite another tenant's checkpoints and datasets). Instead:
+1. **Per-tenant CSI provisioning / subvolumes:** Use the storage system's CSI driver to dynamically provision an isolated **per-PVC subdirectory/fileset/subvolume** with a **hard storage-array capacity and inode quota**.
+2. **Network/VLAN or CephX/Kerberos authentication per tenant StorageClass:** Restrict which nodes or tenant credentials can mount a given export.
+3. **Admissions policy:** Block raw `nfs:` / `hostPath:` volume blocks in Pod specs (`PodSecurity` `baseline`/`restricted`), forcing all storage consumption to go through approved `PersistentVolumeClaim`s and `StorageClass`es.
+</details>
+
+<details>
+<summary>17. What security controls must be applied to multi-tenant Interactive Jupyter Notebook services (`JupyterHub` / `Kubeflow Notebooks`) on a GPU cluster?</summary>
+
+Interactive notebooks execute arbitrary user-typed Python and shell commands and are the #1 source of both security incidents and wasted GPUs:
+1. **Runtime sandboxing:** Run untrusted notebooks under `PodSecurity: restricted` (`runAsNonRoot: true`, `allowPrivilegeEscalation: false`, `drop: ["ALL"]`) or a sandboxed `RuntimeClass` (`gVisor` / `Kata`).
+2. **No default cluster API access:** Set **`automountServiceAccountToken: false`** unless the user explicitly needs to submit jobs.
+3. **Strict Egress `NetworkPolicy`:** Block `169.254.169.254/32` (cloud metadata) and restrict egress to approved internal package mirrors (`pypi-mirror`, `huggingface-cache`, `s3`).
+4. **Automated Idle Culling & Time-Boxing:** Run `jupyterhub-idle-culler` (and a DCGM GPU-idle detector) to stop notebook servers whose kernel/GPU utilization is `< 5%` for `> 2 hours`, saving their home directory to a small PVC while freeing the GPU.
+</details>
+
+<details>
+<summary>18. When attributing GPU costs across teams in `OpenCost` / `Kubecost`, should you charge teams based on **Requested GPU-Hours** or **Actual Utilized GPU-Hours**?</summary>
+
+**Charge based on `Requested (Allocated) GPU-Hours` (while reporting `Utilized GPU-Hours` alongside it as an efficiency score).**
+Why? When a Pod requests `nvidia.com/gpu: 8` for 10 hours (`80` GPU-hours), **no other team can use those 8 GPUs during those 10 hours**—even if the Pod's data loader is bottlenecked and actual GPU compute utilization is only 15%. Charging for **requested GPU-hours** (plus a proportional share of unallocated cluster overhead) gives teams a direct financial incentive to shut down idle notebooks, right-size requests, and optimize their data loaders.
+</details>
+
+<details>
+<summary>19. What happens during Tenant Offboarding, and why is a formal offboarding workflow important on an AI platform?</summary>
+
+When a research project ends or a tenant leaves, simply running `kubectl delete namespace team-a` without an offboarding runbook either **destroys irreplaceable trained model weights/datasets** (if PVCs use `reclaimPolicy: Delete`) or **leaves terabytes of orphaned `Released` PVs, cloud S3 buckets, Harbor images, and Vault secrets** accumulating monthly bills forever.\nA clean automated offboarding pipeline:\n1. Revokes OIDC group RBAC bindings and suspends Kueue `LocalQueue`s.\n2. Archives final model artifacts/checkpoints to cold storage per data-retention policy.\n3. Deletes the tenant's GitOps config (`tenants/team-a.yaml`), triggering clean teardown of Namespaces, Kueue queues, Vault paths, Harbor robot accounts, and reclaimed PVs.
+</details>
+
+<details>
+<summary>20. What does \"Operating the AI Platform as a Product\" mean in practice, and what four KPIs measure its success?</summary>
+
+Instead of treating the cluster as a ticket-driven IT gatekeeper, the platform team treats ML researchers and application engineers as **internal customers**—providing **self-service golden paths** (templates, CLI, Backstage portal), **automated policy guardrails** instead of manual change-review meetings, published documentation/runbooks, and transparent SLOs.\n**Four core Platform-as-a-Product KPIs:**\n1. **Time to Onboard a New Team / Project** (target: $< 10$ minutes via GitOps PR).\n2. **Fleet GPU Allocation & Utilization Efficiency** (e.g., $> 85\%$ allocated, $> 65\%$ active compute duty cycle, $< 5\%$ idle-allocated waste).\n3. **Job Queue Wait Time & Pod Startup Latency (`p95`)** by priority class.\n4. **Developer Satisfaction (`CSAT`/`NPS`) & Support Ticket Ratio per Tenant.**
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 11: Building Platform Services** (read in full: operator history, points of extension, `WebApp` and `AcmeNamespace` CRDs and Kubebuilder controller implementation, why checking `status.phase == "Created"` alone fails on controller crash or deleted children, cluster-scoped `ownerReferences` rule, Kubebuilder vs Operator SDK vs Metacontroller, and scheduler policies), **Chapter 12: Multitenancy** (read in full: soft vs hard multitenancy housing analogy, Namespace-per-application vs Namespace-per-team, RBAC, `default-deny-all` NetworkPolicy, Pod security, CPU CFS quota throttling and QoS classes, and Fluent Bit tag-based per-namespace log routing), and **Chapter 16: Platform Abstractions** (read in full: self-service `Team` operator CRD and the 4-stage spectrum of abstraction from `kubectl`/`kubectx`/`kubens`/`Octant`/`Lens` -> `Helm`+`Kustomize` / `K8s Initializer` -> `PinterestService` custom workload CRDs -> `Cloud Foundry`/`Backstage`/`Waypoint`).
+  - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed. (namespaces, quotas, and RBAC).
+  - `nvidia-devops` (`volume-03/03-k8s-networking-security-ops-masterclass.md`): multi-tenant RBAC, Kyverno guardrails, and platform engineering.
+- **Run here:** `python3 code/part05/multitenancy_quota_reconciler_lab.py` (3 passed, 0 failed).
+- **Explicitly labelled inferences:** The `evaluate_resource_quota_and_limitrange`, `reconcile_acme_namespace_operator`, and `compute_tenant_gpu_cost_and_waste` models in `code/part05/multitenancy_quota_reconciler.py` and the `team-a-compute` `ResourceQuota`, `defaults` `LimitRange`, and `tenants/team-a.yaml` onboarding spec are the author's constructions synthesizing `PK` Chapters 11, 12, and 16 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
+- **Not verified on live hardware:** Live `Capsule`, `HNC`, `vCluster`, `OpenCost`, and `Kueue` executions (`512` CPUs, `4Ti` RAM, `32` GPUs, `20Ti`/`100Ti` storage, `50` PVCs, `500` jobs, `2000` pods, `budgetMonthlyUsd: 120000`, `pods: "50", storage: "300Gi"`, `8080`, `350` lines vs `25` lines) are marked (`untested here`) where not executed by `multitenancy_quota_reconciler_lab.py`.
