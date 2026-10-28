@@ -275,6 +275,24 @@ _ = yaml.Unmarshal(b, &p2)
 - **Meta helpers**: `metav1.NewControllerRef`, `controllerutil.SetControllerReference`, `metav1.IsControlledBy`, `labels.Set`, `fields.OneTermEqualSelector("spec.nodeName", n)`.
 - **DeepCopy**: generated `DeepCopy()` methods for API types (never share and mutate).
 
+In *Kubernetes Programming with Go* (`KPG`) Chapters 4 and 5 and *Network Programmability and Automation* (`NPA`) Chapter 7, Philippe Martin and Jason Edelman et al. detail the inner mechanics of `apimachinery` and Go type conventions:
+1. **`resource.Quantity` Binary (`Ki..Ei`) vs. Decimal (`n..E`) Suffixes and `intstr.IntOrString` (`KPG` Chapter 4):**
+   - `resource.Quantity` (`k8s.io/apimachinery/pkg/api/resource`) represents resource values with exact fixed-point arithmetic (avoiding IEEE-754 floating-point drift) using two exponent formats: **`BinarySI`** ($2^{10x}$: `Ki`, `Mi`, `Gi`, `Ti`, `Pi`, `Ei`, so `1Ki == 1024`) and **`DecimalSI`** ($10^{3x}$: `n`, `u`, `m`, `k`, `M`, `G`, `T`, `P`, `E`, so `1k == 1000` and `2500m == 2.5`).
+   - `intstr.IntOrString` (`k8s.io/apimachinery/pkg/util/intstr`, used in `ServicePort.TargetPort`, `RollingUpdateDeployment.MaxSurge`/`MaxUnavailable`, and `PodDisruptionBudget`) holds either an `IntVal` or a `StrVal` (`"25%"`), evaluated via **`intstr.GetScaledValueFromIntOrPercent(&intOrStr, totalReplicas, roundUp)`** (modeled in `code/part05/client_go_mechanics_sim.py`).
+2. **`runtime.Scheme`, `GVK <-> GVR` `RESTMapper`, and Serializers (`KPG` Chapter 5):**
+   - **`runtime.Scheme`:** In-memory registry mapping Go `reflect.Type` structs $\leftrightarrow$ `schema.GroupVersionKind` (`GVK`, via `AddKnownTypes`, `ObjectKinds`, `New`), performing defaulting (`Default`) and version conversion (`Convert`).
+   - **`RESTMapper` (`meta.DefaultRESTMapper` vs. `restmapper.NewDeferredDiscoveryRESTMapper`):** Because Go code operates on **`GVK`** (`apps/v1, Kind=Deployment`) while HTTP REST endpoints use **`GVR`** (`/apis/apps/v1/namespaces/{ns}/deployments`), a `RESTMapper` translates between `GVK` and `GVR` (`RESTMapping`, `KindFor`, `ResourceFor`) and reports whether a resource is `RESTScopeNamespace` or `RESTScopeRoot`. `NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(discoveryClient))` queries `/apis` dynamically at runtime and caches discovery responses in memory.
+   - **Serializers (`k8s.io/apimachinery/pkg/runtime/serializer`):** `json.NewSerializerWithOptions` (handling both JSON and YAML) and `protobuf.NewSerializer` (`application/vnd.kubernetes.protobuf` for high-throughput native core types).
+3. **Go Pointer vs. Value Method Receivers and `net/netip` (`NPA` Chapter 7):** In Go, a type `T` with a **pointer receiver** method `func (r *Router) Trim()` only satisfies an interface when passed as a pointer (`*Router`), whereas a value `Router` causes a compile-time error (`Router does not implement Trimmable (method has pointer receiver)`). For IP and CIDR manipulation in Kubernetes network controllers, Go 1.18+'s **`net/netip`** (`netip.ParseAddr`, `netip.ParsePrefix`) provides an immutable, comparable, allocation-free value type replacing legacy `net.IP` slices.
+
+```mermaid
+flowchart LR
+    API["kube-apiserver<br/>(/api & /apis List+Watch)"] -->|"Reflector<br/>(List @ rv -> Watch)"| DF["DeltaFIFO Queue<br/>(Added / Updated / Deleted)"]
+    DF -->|"Pop & Index"| Store["Indexer & Local Thread-Safe Store<br/>(Lister reads here; DeepCopy before mutate)"]
+    DF -->|"ResourceEventHandler"| WQ["WorkQueue (RateLimitingInterface)<br/>(Enqueue 'namespace/name' key only)"]
+    WQ -->|"Get() -> Reconcile -> Done()/Forget()<br/>or AddRateLimited() on err"| Worker["Worker Goroutines<br/>(Apply / Patch via Clientset)"]
+```
+
 ## 5. client-go
 
 ### Building clients
@@ -582,7 +600,15 @@ ENTRYPOINT ["/nodectl"]
 | Match client-go and Kubernetes versions | Mixed versions causing type or API mismatches |
 | `ptr.To` for optional fields; check nil before dereferencing | Nil pointer panics on optional API fields |
 
-## 10. Lab (untested)
+## 10. Lab
+
+First, run the self-checking Python lab (`code/part05/client_go_mechanics_sim_lab.py`) locally. It verifies the `KPG` Chapter 4 `resource.Quantity` (`BinarySI` `Ki..Ei` vs `DecimalSI` `m..T`) and `intstr.GetScaledValueFromIntOrPercent` calculator, the `KPG` Chapter 5 `DefaultRESTMapper` (`GVK <-> GVR` pluralization and scope mapping), and the `KPG` Chapters 6 & 7 `Lister` `DeepCopy()` cache safety guard + `fake.NewSimpleClientset` `PrependReactor` and `Actions()` verifier.
+
+```bash
+python3 code/part05/client_go_mechanics_sim_lab.py
+```
+
+Next, with a Go toolchain (`go 1.22+`) and a `kind` cluster (all interactive steps below are `untested here`), work through these exercises:
 
 1. **Toolchain**: install Go, create the module, add client-go dependencies matching your kind cluster version, build and run a program that lists nodes with GPU labels (use fake labels on kind nodes).
 2. **Language drills**: implement `Classify`, a generic `Filter/Map/GroupBy`, an `errors.Is/As` example with a custom error type, and a bounded-concurrency prober using `errgroup`; run `go vet` and `go test -race`.
@@ -597,63 +623,221 @@ ENTRYPOINT ["/nodectl"]
 11. **Envtest**: write one integration test using envtest that installs a CRD and verifies status subresource behaviour.
 12. **Clean up**.
 
-Mark tested only after execution.
-
 ## 11. Interview angles
 
-- "Why is Go used for Kubernetes? What Go features matter (interfaces, goroutines, static binaries)?" 
-- "How do informers work and why must you not mutate objects from a lister?" 
-- "How do you avoid write conflicts when updating Kubernetes objects from code?" 
-- "How do you structure a controller's work queue and retries?" 
-- "Explain contexts and goroutine leaks. How do you test for data races?" 
+- "Why is Go used for Kubernetes? What Go features matter (interfaces, goroutines, static binaries)?"
+- "How do informers work and why must you not mutate objects from a lister?"
+- "How do you avoid write conflicts when updating Kubernetes objects from code?"
+- "How do you structure a controller's work queue and retries?"
+- "Explain contexts and goroutine leaks. How do you test for data races?"
 - "How do you test code that talks to the Kubernetes API?" (fake clientset, envtest, kind e2e.)
-- "How would you write a tool that safely drains nodes at scale?" 
+- "How would you write a tool that safely drains nodes at scale?"
 
-## 12. Checkpoint questions (35)
+## Exercises
 
-1. Go module file? **A:** `go.mod`.
-2. Export rule? **A:** Capitalised identifiers.
-3. Interface satisfaction? **A:** Implicit.
-4. Error wrapping verb? **A:** `%w`.
-5. Check wrapped error? **A:** `errors.Is`/`errors.As`.
-6. `defer` runs when? **A:** At function return.
-7. Slice vs array? **A:** Slice is a view over an array; dynamic.
-8. Map concurrency? **A:** Not safe for concurrent writes.
-9. Loop var semantics 1.22? **A:** Per-iteration variables.
-10. Generics syntax? **A:** `func F[T any](...)`.
-11. Goroutine exit requirement? **A:** Clear termination path.
-12. Who closes a channel? **A:** The sender.
-13. `context` first param? **A:** Convention.
-14. errgroup gives? **A:** Wait + first error + limit.
-15. Race detector flag? **A:** `-race`.
-16. `resource.Quantity` use? **A:** CPU/memory/GPU amounts.
-17. Optional API fields type? **A:** Pointers.
-18. `ptr.To` does? **A:** Returns pointer to value.
-19. Unstructured is? **A:** Map-based generic object.
-20. Scheme maps? **A:** Go types ↔ GVK.
-21. Typed clientset interface? **A:** `kubernetes.Interface`.
-22. Dynamic client for? **A:** CRDs without types.
-23. Conflict retry helper? **A:** `retry.RetryOnConflict`.
-24. SSA in client-go? **A:** `Apply` with apply configurations + FieldManager.
-25. Eviction vs delete? **A:** Eviction respects PDBs.
-26. Informer provides? **A:** Cached list/watch with handlers.
-27. Lister reads from? **A:** Local cache.
-28. Mutate cached objects? **A:** Never; DeepCopy.
-29. Work queue enqueues? **A:** Keys.
-30. `Forget` does? **A:** Reset rate limiter for key.
-31. Tombstone type? **A:** `DeletedFinalStateUnknown`.
-32. Leader election lock? **A:** Lease.
-33. Fake client limits? **A:** No real API server semantics.
-34. envtest provides? **A:** Real kube-apiserver + etcd for tests.
-35. Static binary flag? **A:** `CGO_ENABLED=0`.
+1. **Go Type System, Pointer vs. Value Receivers, Error Wrapping (`%w`, `errors.Is`/`As`, `k8s.io/apimachinery/pkg/api/errors`), and `ptr.To` (`NPA` Ch. 7 & `KPG` Ch. 4):** Explain why optional fields in Kubernetes Go structs use pointers (`*int32`, `*bool` via `ptr.To` / `ptr.Deref`), why a method with a pointer receiver (`func (r *Router) Trim()`) does not satisfy an interface when passed by value (`NPA` Ch. 7), and how to wrap and inspect Kubernetes API status errors (`apierrors.IsNotFound`, `apierrors.IsConflict`).
+2. **Concurrency, `context.Context`, `errgroup.WithContext`, and Race Detection (`-race`):** Trace the bounded-concurrency node prober (`errgroup` with `g.SetLimit(16)`) in Section 3, explaining how `context.Context` cancellation propagates when one worker returns an error, why every goroutine must have an explicit exit path, and why concurrent map writes panic at runtime.
+3. **`apimachinery` Common Types (`resource.Quantity`, `intstr.IntOrString`, `metav1.Time`, `labels.Selector`) and `runtime.Scheme` / `RESTMapper` (`KPG` Chapters 4 & 5):** Using `parse_k8s_quantity_milli()`, `get_scaled_value_from_int_or_percent()`, and `DefaultRESTMapperSim` in `code/part05/client_go_mechanics_sim.py`, contrast `BinarySI` (`1Ki = 1024`) vs `DecimalSI` (`1k = 1000`, `2500m = 2.5`), explain how `runtime.Scheme` maps Go structs to `GVK`, and explain how `DefaultRESTMapper` and `DeferredDiscoveryRESTMapper` translate `GVK <-> GVR`.
+4. **`client-go` Clients (`Clientset`, `Dynamic`, `Metadata`, `Discovery`), `QPS`/`Burst`, Conflict-Safe `RetryOnConflict`, and Server-Side Apply (`ApplyConfigurations`, `KPG` Chapter 6):** Compare `Update` (with `retry.RetryOnConflict`), `Patch` (`MergePatchType`/`StrategicMergePatchType`), and typed Server-Side Apply (`applycorev1.Node(name)` with `FieldManager`), and explain why `EvictV1` (`policyv1.Eviction`) is used instead of `Delete` when draining nodes.
+5. **Inside `SharedInformerFactory`, `Lister`s (`DeepCopy`), `Indexer`s, `workqueue.TypedRateLimitingInterface`, and Leader Election (`KPG` Chapter 6):** Trace the Section 5 informer + workqueue program (`Reflector -> DeltaFIFO -> Indexer/Store + ResourceEventHandler -> WorkQueue -> Worker`), explaining why event handlers only enqueue `"namespace/name"` keys, why `cache.DeletedFinalStateUnknown` tombstones must be unwrapped on `DeleteFunc`, and why mutating an object returned by a `Lister` without `DeepCopy()` corrupts the shared process cache.
+6. **Testing `client-go` Applications (`fake.NewSimpleClientset`, `Actions()`, `PrependReactor`, `fakediscovery`, and `envtest`, `KPG` Chapter 7) and Packaging Static Distroless Binaries:** Using `FakeClientsetWithCacheSim` in `code/part05/client_go_mechanics_sim.py`, show how to inject a `409 Conflict` or `500` error into a unit test with `cs.PrependReactor("patch", "nodes", ...)` and verify recorded client calls via `cs.Actions()`, compare `client-go/kubernetes/fake` with `envtest`, and trace the multi-stage `CGO_ENABLED=0` distroless `Dockerfile` in Section 8.
 
-## 13. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. Why are optional fields in Kubernetes Go API structs (such as `DeploymentSpec.Replicas` or `Container.SecurityContext.RunAsNonRoot`) defined as pointers (`*int32`, `*bool`) rather than plain values (`int32`, `bool`), and how do `ptr.To` and `ptr.Deref` help (`KPG` Chapter 4)?</summary>
 
-- Michael Hausenblas and Stefan Schimanski, *Programming Kubernetes* (client-go, informers, work queues, API machinery, custom resources).
-- Network programmability material in the study corpus for Go-based tooling context where cross-referenced (NPA chapter 7).
-- Go documentation (effective Go, language spec, standard library), client-go, apimachinery and controller-runtime documentation and examples (`kubernetes/sample-controller`).
-- Examples are the author's constructions; the CLI, informer program and `health` tests were compiled/tested as noted in section 6.
+In Go, every value type has a **zero value** (`0` for `int32`, `false` for `bool`, `""` for `string`). If `DeploymentSpec.Replicas` were a plain `int32`, the JSON/YAML serializer (`omitempty`) and `kube-apiserver` could not distinguish between:
+- **"The user omitted `replicas` in their YAML (so default to `1`)"** vs.
+- **"The user explicitly set `replicas: 0` (scale down to zero pods)"**.
+Using a pointer (`*int32`) provides a third state—**`nil` (unspecified)** vs. **`&0` (`0`)** vs. **`&3` (`3`)**.
+- **`ptr.To[T](v)` (`k8s.io/utils/ptr`):** Returns a pointer to any literal value (`Replicas: ptr.To(int32(3))`).
+- **`ptr.Deref(p, defaultVal)`:** Safely dereferences pointer `p`, returning `defaultVal` if `p == nil` without panicking.
+</details>
 
-**Flagged for verification before publishing:** client-go API names and signatures for the version you pin (typed work queues, `WithTweakListOptions`, apply configurations), Go version-specific features (loop variable semantics, `slices`/`maps` helpers, range-over-func), XID code classifications (use NVIDIA's catalogue), and every Go listing not listed as compiled in section 6; the live-cluster labs are **untested**.
+<details>
+<summary>2. In *Network Programmability and Automation* Chapter 7, why does passing a value `rtr` of type `Router` fail to compile when a function expects an interface `Trimmable` whose method was defined as `func (r *Router) TrimHostname()`?</summary>
+
+In Go's method-set rules:
+- A **value type `T`** (`Router`) only has in its method set the methods declared with a **value receiver (`func (r Router) ...`)**.
+- A **pointer type `*T`** (`*Router`) has in its method set **both pointer-receiver (`*Router`) and value-receiver (`Router`) methods**.
+Because `TrimHostname` modifies the struct in place and was declared with a **pointer receiver (`func (r *Router)`)**, only `*Router` (e.g., `&rtr`) implements the `Trimmable` interface—passing `rtr` by value triggers `Router does not implement Trimmable (TrimHostname method has pointer receiver)`. (This is the exact same reason Kubernetes `runtime.Object` methods like `GetObjectKind()` and `DeepCopyObject()` are implemented on pointer receivers `*corev1.Pod`, so you always pass `&corev1.Pod{}` rather than `corev1.Pod{}` as a `runtime.Object`.)
+</details>
+
+<details>
+<summary>3. How do you wrap errors in Go (`%w`), check for specific error values or types (`errors.Is`, `errors.As`), and classify Kubernetes API errors (`k8s.io/apimachinery/pkg/api/errors`)?</summary>
+
+- **Wrapping:** `return fmt.Errorf("cordon node %s: %w", name, err)` preserves the underlying error chain.
+- **Inspecting standard Go errors:** `errors.Is(err, context.DeadlineExceeded)` checks whether any error in the chain matches a target value; `errors.As(err, &targetErr)` extracts a specific error struct/interface type from the chain.
+- **Inspecting Kubernetes API `StatusError`s (`apierrors`):** Use `apierrors.IsNotFound(err)` (`404`), `apierrors.IsAlreadyExists(err)` (`409`), `apierrors.IsConflict(err)` (`409` optimistic concurrency `resourceVersion` conflict), `apierrors.IsForbidden(err)` (`403`), and `apierrors.IsTooManyRequests(err)` (`429` PDB or APF rate limit).
+</details>
+
+<details>
+<summary>4. Why does `sigs.k8s.io/yaml` work properly with Kubernetes Go structs (`corev1.Pod`), whereas calling `gopkg.in/yaml.v3` directly on a `corev1.Pod` produces broken field names?</summary>
+
+All official Kubernetes API Go structs in `k8s.io/api` define **`json:"..."` struct tags** (and `protobuf:"..."` tags), **NOT `yaml:"..."` struct tags**.
+- If you pass a `corev1.Pod` directly to `gopkg.in/yaml.v3`, it ignores `json:` tags and serializes Go struct field names in lowercase (`objectmeta`, ` restartpolicy`) and fails to invoke custom `MarshalJSON` methods on types like `resource.Quantity` and `metav1.Time`.
+- **`sigs.k8s.io/yaml`** first marshals the Go struct to **JSON** (honoring all `json:"..."` tags and `MarshalJSON` methods) and then converts the JSON bytes to YAML (and vice versa on `Unmarshal`).
+</details>
+
+<details>
+<summary>5. In *Kubernetes Programming with Go* Chapter 4, how does `resource.Quantity` avoid floating-point rounding bugs, and what is the difference between `100Mi` and `100M` or `500m`?</summary>
+
+`resource.Quantity` stores every quantity as an exact scaled integer (`inf.Dec` / `int64` mantissa + base-2 or base-10 exponent):
+- **BinarySI suffixes (`Ki`, `Mi`, `Gi`, `Ti`, `Pi`, `Ei` — powers of $2^{10} = 1024$):** `resource.MustParse("100Mi")` equals $100 \times 2^{20} = \mathbf{104,857,600}$ bytes.
+- **DecimalSI suffixes (`n`, `u`, `m`, `k`, `M`, `G`, `T`, `P`, `E` — powers of $10^3 = 1000$):** `100M` equals $100 \times 10^6 = \mathbf{100,000,000}$; `500m` (millicores) equals $0.5$ (`q.MilliValue() == 500`).
+Always compare two quantities using **`q1.Cmp(q2)`** (`-1`, `0`, `1`) or `q1.Equal(q2)`—never `q1 == q2` (because internal representations of `"1000m"` and `"1"` have different scale exponents even though they represent the same value).
+</details>
+
+<details>
+<summary>6. In `KPG` Chapter 4, how does `intstr.GetScaledValueFromIntOrPercent` evaluate a `maxUnavailable` or `maxSurge` field?</summary>
+
+Fields like `RollingUpdateDeployment.MaxUnavailable` or `PodDisruptionBudgetSpec.MinAvailable` use `intstr.IntOrString`, which can hold either an integer (`intstr.FromInt32(2)`) or a percentage string (`intstr.FromString("25%")`).
+Calling **`intstr.GetScaledValueFromIntOrPercent(&val, totalReplicas, roundUp)`** returns `val.IntVal` directly if it is an integer, or computes `totalReplicas * (pct / 100.0)`—rounding **up (`ceil`)** when `roundUp == true` (e.g., `maxSurge: "25%"` of 10 pods $\rightarrow 3$) or **down (`floor`)** when `roundUp == false` (e.g., `maxUnavailable: "25%"` of 10 pods $\rightarrow 2$).
+</details>
+
+<details>
+<summary>7. In `KPG` Chapter 5, what is the difference between `GVK` (`GroupVersionKind`) and `GVR` (`GroupVersionResource`), and what component translates between them?</summary>
+
+- **`GVK` (`schema.GroupVersionKind`):** Identifies a **Go struct / YAML schema type**, e.g., `{Group: "apps", Version: "v1", Kind: "Deployment"}`.
+- **`GVR` (`schema.GroupVersionResource`):** Identifies an **HTTP REST endpoint collection path** in `kube-apiserver`, e.g., `{Group: "apps", Version: "v1", Resource: "deployments"}` (`/apis/apps/v1/namespaces/{ns}/deployments`).
+- **Translator (`meta.RESTMapper`):** Because pluralization in English is irregular (`Ingress -> ingresses`, `NetworkPolicy -> networkpolicies`, and CRDs can define arbitrary `spec.names.plural`), you cannot simply append `"s"` to a `Kind`. A **`RESTMapper`** (such as `restmapper.NewDeferredDiscoveryRESTMapper` backed by the Discovery API) translates `GVK <-> GVR` (`RESTMapping`, `ResourceFor`, `KindFor`) and tells the client whether the resource is namespaced or cluster-scoped.
+</details>
+
+<details>
+<summary>8. In `KPG` Chapter 5, what are the four core responsibilities of `runtime.Scheme` (`k8s.io/apimachinery/pkg/runtime`)?</summary>
+
+1. **Type Registration (`AddKnownTypes` / `AddToScheme`):** Maps Go `reflect.Type` structs (like `&corev1.Pod{}`) $\leftrightarrow$ `schema.GroupVersionKind` (`v1, Kind=Pod`).
+2. **Object Instantiation (`scheme.New(gvk)`):** Allocates a new Go struct pointer given a `GVK` read from JSON/YAML (`apiVersion` + `kind`) during deserialization.
+3. **Type Lookup (`scheme.ObjectKinds(obj)`):** Determines the `GVK`(s) registered for a given Go `runtime.Object` pointer.
+4. **Defaulting & Conversion (`scheme.Default(obj)` and `scheme.Convert(in, out, ctx)`):** Invokes registered defaulting functions and hub-and-spoke version conversion functions.
+</details>
+
+<details>
+<summary>9. Why are the default `rest.Config` `QPS` (`5.0`) and `Burst` (`10`) settings a major bottleneck for custom controllers and CLI tools (`KPG` Chapter 6)?</summary>
+
+By default, `client-go` attaches a client-side token-bucket rate limiter (`flowcontrol.NewTokenBucketRateLimiter`) with **`QPS: 5` (5 requests/second)** and **`Burst: 10`**. If an operator reconciles 100 Pods or a CLI drains a 64-pod GPU node, `client-go` throttles itself on the client side and logs:
+`Waited for 1.198s due to client-side throttling, not priority and fairness`
+taking 20+ seconds to complete a batch of calls. For production controllers and administrative CLIs, explicitly set **`cfg.QPS = 50` and `cfg.Burst = 100`** (while relying on server-side API Priority and Fairness `APF` to protect `kube-apiserver`).
+</details>
+
+<details>
+<summary>10. Compare the four main ways to modify an existing Kubernetes object in `client-go`: (a) `Get` + `Update`, (b) `Get` + `Update` inside `retry.RetryOnConflict`, (c) `Patch` (`MergePatchType` / `StrategicMergePatchType`), and (d) Server-Side `Apply` (`ApplyConfigurations`).</summary>
+
+1. **Plain `Get` + `Update`:** Fragile—if any other controller (kubelet, HPA, status updater) modifies the object between your `Get` and `Update`, `resourceVersion` changes and `Update` fails with **`409 Conflict`**.
+2. **`retry.RetryOnConflict(retry.DefaultRetry, func() error { Get -> mutate -> Update })`:** Re-fetches the latest `resourceVersion` and re-applies your mutation on `409 Conflict`. Good when mutation depends on reading current fields first.
+3. **`Patch` (`types.MergePatchType` / `types.StrategicMergePatchType`):** Sends only the diff payload (`{"metadata":{"labels":{"quarantine":"true"}}}`) in a single round-trip without needing a prior `Get` or `resourceVersion`.
+4. **Server-Side Apply (`Apply` with `applyconfigurations` and `FieldManager: "nodectl"`, `KPG` Chapter 6):** Declaratively applies only the fields your controller owns using type-safe builders (`applycorev1.Node(name).WithLabels(...)`); `kube-apiserver` tracks per-field ownership in `metadata.managedFields` and rejects conflicting edits from other managers unless `Force: true` is set.
+</details>
+
+<details>
+<summary>11. Why should a node-drain CLI in Go call `cs.CoreV1().Pods(ns).EvictV1(ctx, eviction)` instead of `cs.CoreV1().Pods(ns).Delete(ctx, name, opts)`?</summary>
+
+- **`Pods().Delete(...)`** bypasses **`PodDisruptionBudget` (`PDB`)** checks—it terminates the Pod immediately even if doing so takes down the last remaining replica of a critical quorum or inference service.
+- **`Pods().EvictV1(...)` (`policy/v1` `Eviction` subresource)** asks `kube-apiserver` to check all matching `PodDisruptionBudget`s first: if `disruptionsAllowed == 0`, the API server rejects the eviction with **`429 Too Many Requests`** (so your drain loop can sleep and retry with backoff until replacement replicas become `Ready`).
+</details>
+
+<details>
+<summary>12. Trace the internal data flow of a `client-go` Shared Informer (`Reflector -> DeltaFIFO -> Indexer/Lister -> ResourceEventHandler -> WorkQueue`, `KPG` Chapter 6).</summary>
+
+1. **`Reflector`:** Performs an initial `List` (recording `resourceVersion`) followed by a long-lived `Watch` against `kube-apiserver` (automatically re-listing on `410 Gone`), and pushes `Added`, `Updated`, `Deleted`, and `Sync` deltas into the **`DeltaFIFO`** queue.
+2. **`SharedInformer` / `Controller` loop:** Pops deltas from `DeltaFIFO`, updates the thread-safe local in-memory cache (**`Indexer` / `Store`**), and invokes all registered **`ResourceEventHandler`s** (`AddFunc`, `UpdateFunc`, `DeleteFunc`).
+3. **`ResourceEventHandler`:** Extracts the `"namespace/name"` key (`cache.MetaNamespaceKeyFunc(obj)`) and calls **`queue.Add(key)`** on the rate-limited **`WorkQueue`**.
+4. **Worker Goroutines:** Call `queue.Get()`, read the current object from the zero-network-hop **`Lister`** (backed by the local `Indexer`), reconcile desired state, and call `queue.Done(key)` + `queue.Forget(key)` (or `queue.AddRateLimited(key)` on error).
+</details>
+
+<details>
+<summary>13. Why must you NEVER mutate an object pointer returned by a `Lister` (`node, _ := nodeLister.Get(name)`) without calling `node = node.DeepCopy()` first (`KPG` Chapter 6)?</summary>
+
+For performance and memory efficiency, a **`SharedInformer`'s `Lister` returns a direct pointer to the shared object stored inside the in-memory `Indexer` cache**—the exact same pointer read concurrently by every other informer handler and worker goroutine in your process.
+If you modify `node.Labels["foo"] = "bar"` without calling **`node = node.DeepCopy()`** first:
+1. You trigger a **concurrent map/struct data race** (`fatal error: concurrent map read and map write`) with other goroutines reading the cache.
+2. If your subsequent `Update()` API call fails, the **local Informer cache remains permanently corrupted** with your unsaved mutation, so future reconciles think the label is already set in `etcd` when it isn't.
+</details>
+
+<details>
+<summary>14. What is `cache.DeletedFinalStateUnknown` (a "Tombstone") in an Informer's `DeleteFunc(obj interface{})`, and how do you handle it safely?</summary>
+
+If a watch connection drops briefly and an object is deleted in `etcd` *while* the watch is disconnected, when the `Reflector` re-lists, it notices the object disappeared from the list without having seen the `DELETED` watch event. Because it doesn't know the exact final state at the moment of deletion, it wraps the **last known cached object** inside a **`cache.DeletedFinalStateUnknown`** struct (a "tombstone") and passes it to `DeleteFunc`.
+Always unwrap it before casting or calling `MetaNamespaceKeyFunc` (`cache.DeletionHandlingMetaNamespaceKeyFunc` handles this automatically):
+```go
+node, ok := obj.(*corev1.Node)
+if !ok {
+    tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+    if !ok { return }
+    node, ok = tombstone.Obj.(*corev1.Node)
+    if !ok { return }
+}
+```
+</details>
+
+<details>
+<summary>15. In a `client-go` `WorkQueue` (`workqueue.TypedRateLimitingInterface`), what is the difference between `queue.Done(key)` and `queue.Forget(key)`?</summary>
+
+- **`queue.Done(key)` (`defer queue.Done(key)`):** Tells the WorkQueue that the current worker goroutine has **finished processing `key` right now**. While `key` is between `Get()` and `Done()`, the WorkQueue guarantees no other worker goroutine will be handed the same `key` concurrently (and if a new event arrives for `key` while it is in flight, it is held in the `dirty` set until `Done(key)` is called).
+- **`queue.Forget(key)`:** Resets the **rate-limiter failure counter** for `key` back to `0` after a successful reconcile. If you call `Done(key)` without calling `Forget(key)` on success, the next time `key` fails in the future, its exponential backoff will resume from its old high failure count instead of starting fresh.
+</details>
+
+<details>
+<summary>16. How do you restrict a `SharedInformerFactory`'s memory usage when your controller only cares about GPU nodes or a specific label selector (`WithTweakListOptions`)?</summary>
+
+By default, `informers.NewSharedInformerFactory(cs, resync)` caches **every object of each watched kind across all namespaces**, which can consume gigabytes of RAM in a large cluster (especially for Pods, Secrets, or ConfigMaps).
+Use **`informers.NewSharedInformerFactoryWithOptions`** with **`informers.WithNamespace(ns)`** and **`informers.WithTweakListOptions`**:
+```go
+factory := informers.NewSharedInformerFactoryWithOptions(cs, 10*time.Minute,
+    informers.WithTweakListOptions(func(opts *metav1.ListOptions) {
+        opts.LabelSelector = "nvidia.com/gpu.present=true"
+    }),
+)
+```
+You can also register a **`cache.TransformFunc`** (`informer.SetTransform`) to strip large unused fields (like `managedFields` or large annotations) from objects before they enter the in-memory cache.
+</details>
+
+<details>
+<summary>17. When should you use `client-go`'s `dynamic.Interface` (`unstructured.Unstructured`) vs. `metadata.Interface` (`metav1.PartialObjectMetadata`)?</summary>
+
+- **`dynamic.Interface` (`k8s.io/client-go/dynamic`):** Operates on `unstructured.Unstructured` (`map[string]interface{}`) addressed by `schema.GroupVersionResource` (`GVR`). Use when your tool needs to inspect or mutate **arbitrary Custom Resources (`CRD`s) whose compiled Go structs you do not import** (like a generic backup tool, policy engine, or Kueue CLI).
+- **`metadata.Interface` (`k8s.io/client-go/metadata`):** Sends `Accept: application/vnd.kubernetes.protobuf;as=PartialObjectMetadata` so `kube-apiserver` returns **only `TypeMeta` and `ObjectMeta` (`name`, `namespace`, `uid`, `labels`, `annotations`, `ownerReferences`, `finalizers`)** without `.spec` or `.status`. Ideal for garbage collectors, label auditors, or finalizer tools that scan tens of thousands of objects with ~90% lower memory and network overhead.
+</details>
+
+<details>
+<summary>18. In *Kubernetes Programming with Go* Chapter 7, how do `fake.NewSimpleClientset`, `cs.Actions()`, and `cs.PrependReactor` work in unit tests, and what are the limitations of the fake clientset?</summary>
+
+- **`fake.NewSimpleClientset(initialObjs...)`:** Creates an in-memory `kubernetes.Interface` backed by an `ObjectTracker` so unit tests run in milliseconds without a cluster.
+- **`cs.Actions()`:** Returns the ordered slice of `testing.Action`s (`GetAction`, `CreateAction`, `PatchAction`) performed by your code under test so you can assert exact verbs, resources, and payloads.
+- **`cs.PrependReactor(verb, resource, reactionFunc)` (`KPG` Chapter 7):** Intercepts matching client calls *before* the default `ObjectTracker` runs—allowing unit tests to simulate API server errors (`409 Conflict`, `429 Too Many Requests`, `500 Internal Error`) or custom server-side mutations:
+  ```go
+  cs.PrependReactor("patch", "nodes", func(action ktesting.Action) (bool, runtime.Object, error) {
+      return true, nil, apierrors.NewConflict(schema.GroupResource{Resource: "nodes"}, "n1", errors.New("conflict"))
+  })
+  ```
+- **Limitations of `fake.NewSimpleClientset`:** It does **not** enforce OpenAPI/CRD schema validation, CEL rules, defaulting, real `resourceVersion` optimistic concurrency, `/status` subresource isolation, or garbage collection—use **`envtest`** (`sigs.k8s.io/controller-runtime/pkg/envtest`, which spawns real local `kube-apiserver` and `etcd` binaries) for integration tests that need real API server semantics.
+</details>
+
+<details>
+<summary>19. How does Leader Election (`leaderelection.RunOrDie` with `resourcelock.LeasesResourceLock`) prevent split-brain when running 2+ HA replicas of a custom controller?</summary>
+
+All replicas of the controller attempt to acquire/renew a `coordination.k8s.io/v1` **`Lease`** object in the controller's namespace (`LeaseDuration: 15s`, `RenewDeadline: 10s`, `RetryPeriod: 2s`):
+- Only the **1 replica holding the Lease (`OnStartedLeading`)** starts its active reconciliation workers and writes to the cluster.
+- Standby replicas can pre-warm their read-only Informer caches so failover is fast.
+- **`ReleaseOnCancel: true`:** When the leader Pod receives `SIGTERM` (`ctx` canceled), it immediately releases the `Lease` so a standby replica takes over in `< 2` seconds instead of waiting 15 seconds for `LeaseDuration` to expire.
+- **`OnStoppedLeading: func() { os.Exit(1) }`:** If the leader ever fails to renew its Lease within `RenewDeadline: 10s` (e.g., due to a network partition), it must **immediately abort in-flight contexts and exit** so two replicas never reconcile simultaneously.
+</details>
+
+<details>
+<summary>20. Explain the flags used in Section 8's multi-stage Dockerfile (`CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}"`) and why `gcr.io/distroless/static:nonroot` is used as the runtime base.</summary>
+
+- **`CGO_ENABLED=0`:** Disables `cgo` and compiles a **100% pure-Go statically linked binary** with zero dependency on `libc.so` (`glibc` vs `musl`)—allowing the binary to run inside an empty `scratch` or `distroless/static` image.
+- **`-trimpath`:** Strips local build-machine filesystem paths (`/Users/alice/go/src/...`) from stack traces inside the binary for reproducible builds.
+- **`-ldflags="-s -w -X main.version=${VERSION}"`:** `-s` and `-w` strip symbol-table and DWARF debug headers (shrinking binary size by ~30%), and `-X main.version=...` injects the Git tag/commit version string into the Go `var version string` variable at link time.
+- **`FROM gcr.io/distroless/static:nonroot` (`USER 65532:65532`):** Contains only CA certificates, `/etc/passwd` (`nonroot`), and tzdata—**no shell (`/bin/sh`), no package manager, and no root privileges**, minimizing image size (~2 MB + binary) and CVE surface.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `kubernetes-programming-with-go-programming-kubernetes-clients-and-operators-using-go-and-the-kuberne` — Philippe Martin / Stefan Schimanski & Michael Hausenblas, *Kubernetes Programming with Go* / *Programming Kubernetes*, **Chapter 4: Using Common Types** (`pointer`/`ptr`, `resource.Quantity` `BinarySI` vs `DecimalSI`, `intstr.IntOrString` and `GetScaledValueFromIntOrPercent`, `metav1.Time`), **Chapter 5: The API Machinery** (`GVK` vs `GVR`, `runtime.Scheme`, `DefaultRESTMapper` & `DeferredDiscoveryRESTMapper`, JSON/YAML/Protobuf serializers), **Chapter 6: The Client-go Library** (`rest.Config` `QPS`/`Burst`, typed/dynamic/discovery clients, `labels.NewRequirement`, `fields`, `ApplyConfigurations`, `SharedInformerFactory`, `Lister` `DeepCopy()`, and `workqueue`), and **Chapter 7: Testing Applications Using Client-go** (`fake.NewSimpleClientset`, `Actions()`, `PrependReactor`, and `fakediscovery.FakeDiscovery`).
+  - `network-programmability-and-automation-2nd-edition` — Jason Edelman, Scott S. Lowe & Matt Oswalt, *Network Programmability and Automation*, 2nd ed., **Chapter 7: Go** (read in full: Go compilation and execution, types, slices/maps, pointer vs value method receivers on interfaces, structs, goroutines/channels, `context`, `encoding/json`, `net/netip` `ParsePrefix`, and testing).
+- **Run here:** `python3 code/part05/client_go_mechanics_sim_lab.py` (3 passed, 0 failed); Go listings in Section 6 compiled and unit-tested with Go 1.23.2 / `client-go v0.31.0`.
+- **Explicitly labelled inferences:** The `parse_k8s_quantity_milli`, `get_scaled_value_from_int_or_percent`, `DefaultRESTMapperSim`, and `FakeClientsetWithCacheSim` models in `code/part05/client_go_mechanics_sim.py` and the `nodectl`, `XIDEvent`, and informer+workqueue Go programs are the author's constructions synthesizing `KPG` Chapters 4–7 and `NPA` Chapter 7 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
+- **Not verified on live hardware:** Live cluster executions of `nodectl` (`go 1.22` / `1.23.2`, `client-go v0.31.0`, XIDs `79`/`74`/`13`/`999`, `g.SetLimit(16)`, `cuda:12.4.1-base-ubuntu22.04`, `100Mi`, `QPS: 50, Burst: 100` vs `5/10`, `Limit: 500`, `410 Gone`, `maxRetries = 5`, `LeaseDuration: 15s, RenewDeadline: 10s, RetryPeriod: 2s`, `USER 65532:65532`) are marked (`untested here`) where not executed by `client_go_mechanics_sim_lab.py`.
