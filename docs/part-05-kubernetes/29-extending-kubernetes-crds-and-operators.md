@@ -272,7 +272,7 @@ w = watch.Watch()
 for event in w.stream(v1.list_namespaced_pod, "some-namespace"):
     print(event["type"], event["object"].metadata.name)
 
-# 5. Read Pod logs and execute commands over WebSockets (stream):
+# 5. Read Pod logs, execute commands over WebSockets (stream), and port-forward:
 log = v1.read_namespaced_pod_log(name="my-pod", namespace="some-namespace")
 cmd = ["ls", "/foo"]
 response = stream(
@@ -284,6 +284,12 @@ response = stream(
     stdin=False,
     stdout=True,
     tty=False,
+)
+pf = portforward(
+    v1.connect_get_namespaced_pod_portforward,
+    "my-pod",
+    "some-namespace",
+    ports="8080",
 )
 ```
 
@@ -323,7 +329,15 @@ For higher-level platform abstractions built on top of CRDs and operators (such 
 
 When evaluating an operator: maturity level, upgrade story (CRD handling), RBAC breadth, failure semantics (what happens when the operator is down or CRs are deleted), observability, resource footprint, support policy, supply-chain posture (signed images/SBOM), documentation and API stability (alpha vs v1).
 
-## 6. Lab (untested)
+## 6. Lab
+
+First, run the self-checking Python lab (`code/part05/crd_schema_conversion_sim_lab.py`) locally. It verifies the CRD structural schema pruner, defaulter, and `x-kubernetes-validations` CEL rule evaluator (`evaluate_crd_schema_and_cel`), the hub-and-spoke multi-version conversion and `status.storedVersions` migrator (`convert_crd_via_hub_and_migrate_storage`), and the operator finalizer and `/status` subresource reconciler (`reconcile_cr_with_finalizer_and_status`).
+
+```bash
+python3 code/part05/crd_schema_conversion_sim_lab.py
+```
+
+Next, on a `kind` or `kubeadm` cluster (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **Write a CRD**: create the `GPUHealthPolicy` CRD above; apply; test valid and invalid objects (enum violation, missing `codes`, CEL rule failure, unknown field pruning); inspect `kubectl explain gpuhealthpolicy.spec --recursive`; add printer columns and check `kubectl get`.
 2. **Defaults and pruning**: remove a field from the schema and observe pruning; add `x-kubernetes-preserve-unknown-fields` and compare; test defaulting on create vs update.
@@ -338,8 +352,6 @@ When evaluating an operator: maturity level, upgrade story (CRD handling), RBAC 
 11. **Upgrade drill**: upgrade the operator image with a CRD schema change in a populated cluster; verify existing CRs; roll back; document the playbook (also relevant to 5.20).
 12. **Design review**: take a proposed `TrainingRun` CRD and review against the API design guidance: spec/status separation, immutability, references, conditions, quotas; rewrite.
 13. **Clean up**.
-
-Mark tested only after execution.
 
 ## 7. Common mistakes
 
@@ -356,62 +368,201 @@ Mark tested only after execution.
 
 ## 8. Interview angles
 
-- "What is a CRD? How is it different from an aggregated API server?" 
-- "What is an operator? Describe its reconcile loop and the capability levels." 
-- "How do you version a CRD and migrate stored objects?" 
-- "What are finalizers and owner references? How do they apply to external resources?" 
-- "How do you validate custom resources? CEL vs webhooks?" 
-- "How do you decide between Helm, Ansible, Go and Crossplane for automation?" 
-- "What happens to CRs and workloads when an operator is uninstalled or crashes?" 
-- "Explain how the GPU Operator is structured and what could go wrong during an upgrade." 
+- "What is a CRD? How is it different from an aggregated API server?"
+- "What is an operator? Describe its reconcile loop and the capability levels."
+- "How do you version a CRD and migrate stored objects?"
+- "What are finalizers and owner references? How do they apply to external resources?"
+- "How do you validate custom resources? CEL vs webhooks?"
+- "How do you decide between Helm, Ansible, Go and Crossplane for automation?"
+- "What happens to CRs and workloads when an operator is uninstalled or crashes?"
+- "Explain how the GPU Operator is structured and what could go wrong during an upgrade."
 
-## 9. Checkpoint questions (35)
+## Exercises
 
-1. CRD scope options? **A:** Namespaced, Cluster.
-2. CRD name format? **A:** `<plural>.<group>`.
-3. Structural schema required for? **A:** v1 CRDs.
-4. Pruning means? **A:** Unknown fields dropped on write.
-5. CEL validation field? **A:** `x-kubernetes-validations`.
-6. Immutability CEL rule? **A:** `self == oldSelf`.
-7. Default keyword? **A:** `default:` in schema.
-8. Subresource for status? **A:** `/status`.
-9. Why status subresource? **A:** Separate RBAC and avoid spec conflicts.
-10. Scale subresource for? **A:** HPA/kubectl scale.
-11. Storage version count? **A:** One.
-12. Conversion strategies? **A:** None, Webhook.
-13. Hub-and-spoke? **A:** Convert via a hub version.
-14. storedVersions field? **A:** Tracks versions in etcd.
-15. Owner reference purpose? **A:** Garbage collection of children.
-16. Finalizer purpose? **A:** Run cleanup before deletion.
-17. Stuck Terminating CR cause? **A:** Finalizer not removed.
-18. Conditions convention? **A:** type/status/reason/message/time.
-19. `observedGeneration` use? **A:** Status freshness.
-20. List type map? **A:** Merge by key with SSA.
-21. Operator definition? **A:** Controller encoding operational knowledge.
-22. Capability levels count? **A:** Five.
-23. Level 5 means? **A:** Auto pilot.
-24. Standard Go framework? **A:** controller-runtime/kubebuilder.
-25. Helm operator limit? **A:** Template-only logic.
-26. In the official Python `kubernetes` client (`pip install kubernetes`), which functions load kubeconfig versus in-cluster ServiceAccount credentials, stream watch events, and run `exec` inside a Pod? **A:** `config.load_kube_config()` vs `config.load_incluster_config()`; `watch.Watch().stream(v1.list_namespaced_pod, ...)`; and `stream(v1.connect_get_namespaced_pod_exec, ...)` (with `kopf` as a higher-level Python operator framework).
-27. Crossplane use? **A:** Compose resources into APIs.
-28. OLM objects? **A:** CSV, CatalogSource, Subscription, OperatorGroup.
-29. Helm `crds/` behaviour? **A:** Installs but doesn't upgrade/delete.
-30. Safe CRD change? **A:** Additive optional fields.
-31. Predicate to avoid hot loops? **A:** GenerationChanged.
-32. Leader election for? **A:** Single active reconciler.
-33. Webhook failure effect? **A:** Blocks matching writes.
-34. GPU Operator main CRD? **A:** ClusterPolicy.
-35. Network Operator main CRD? **A:** NicClusterPolicy.
+1. **CustomResourceDefinition (`CRD`) Anatomy, Structural Schemas, Unknown-Field Pruning, and `x-kubernetes-validations` CEL Rules (`KPG` Ch. 8):** Using `evaluate_crd_schema_and_cel()` in `code/part05/crd_schema_conversion_sim.py`, trace the `GPUHealthPolicy` CRD in Section 2, explaining why structural schemas are mandatory, why undeclared fields are silently pruned on write (`preserveUnknownFields: false`), how `x-kubernetes-list-type: map` (`x-kubernetes-list-map-keys: [type]`) works with Server-Side Apply, and how CEL rules enforce cross-field validation (`CordonAndDrain` requiring `maxUnavailableNodes`) and immutability (`self == oldSelf`).
+2. **CRD Subresources (`/status` and `/scale`), Multi-Version Serving, Hub-and-Spoke Conversion, and Storage Version Migration:** Using `convert_crd_via_hub_and_migrate_storage()` in `code/part05/crd_schema_conversion_sim.py`, explain why enabling `subresources.status: {}` prevents `spec` updates from overwriting `status` (and vice versa), why `etcd` stores only one `storage: true` version, and trace the 4-step procedure to migrate a CRD from `v1alpha1` to `v1beta1` and remove `v1alpha1` from `status.storedVersions`.
+3. **The Operator Pattern, the 5 Operator Capability Levels, and the Reconcile Loop (`ownerReferences` vs. `finalizers`):** Using `reconcile_cr_with_finalizer_and_status()` in `code/part05/crd_schema_conversion_sim.py`, trace the Section 3 reconcile flowchart, contrasting `ownerReferences` (for Kubernetes child objects) with `finalizers` (for external resources like node cordons or cloud buckets) and explaining why uninstalling an operator before deleting its CRs deadlocks CR deletion.
+4. **Programming Kubernetes from Python (`kubernetes` OpenAPI Client and `kopf`, `KUR` Chapter 18):** Trace the 5 Python patterns in Section 3 (`config.load_kube_config()` vs `config.load_incluster_config()`, `CoreV1Api`/`AppsV1Api` CRUD and `patch_namespaced_deployment`, `watch.Watch().stream()`, `stream(v1.connect_get_namespaced_pod_exec, ...)`, and `portforward(v1.connect_get_namespaced_pod_portforward, ...)`), and compare `kubebuilder` (Go), `Operator SDK` (Go/Helm/Ansible), `kopf` (Python), `Metacontroller`, and `Crossplane`.
+5. **Packaging, Distributing, and Upgrading Operators (`Helm crds/` Pitfall, `OLM`, RBAC, and Operational Readiness):** Explain why Helm's `crds/` directory installs CRDs on `helm install` but **never updates them on `helm upgrade`**, how to safely upgrade CRDs in GitOps without deleting CRs, and how OLM (`ClusterServiceVersion`, `CatalogSource`, `Subscription`, `OperatorGroup`) manages operator lifecycles.
+6. **Mapping the AI-Platform Operator Ecosystem (`GPU Operator`, `Network Operator`, `Kueue`, `JobSet`, `Kubeflow Training Operator`, `KubeRay`, `KServe`):** For each AI operator in Section 5, list its primary CRDs, what child resources it reconciles, and what happens to running GPU workloads if the operator controller Pod crashes or is upgraded.
 
-## 10. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. Compare a `CustomResourceDefinition` (`CRD`) with an `Aggregated API Server` (`APIService`).</summary>
 
-- Brendan Burns et al., *Kubernetes: Up and Running* (`kubernetes-up-and-running-3rd-edition`, 3rd edition; Chapter 17 on extending Kubernetes and Chapter 18: `18. Accessing Kubernetes from Common Programming Languages` — read in full for OpenAPI client generation, `kubectl --v=10`, and Python `kubernetes` client authentication, CRUD/patch, `watch.Watch().stream`, and `stream(v1.connect_get_namespaced_pod_exec, ...)`).
-- Josh Rosso, Rich Lander, Alex Brand and John Harris, *Production Kubernetes* (`production-kubernetes`, Chapter 11 on building platform services and Chapter 16: `16. Platform Abstractions` — read in full for custom workload and onboarding CRDs).
-- Michael Hausenblas and Stefan Schimanski, *Programming Kubernetes* (custom resources, controllers, API machinery, versioning and conversion).
-- BCM containerization material in the study corpus (operators in NVIDIA stacks) where referenced.
-- Kubernetes CRD documentation, kubebuilder book, Operator SDK and OLM documentation, NVIDIA GPU Operator and Network Operator documentation.
-- Examples are the author's constructions.
+- **`CustomResourceDefinition` (`CRD`, `apiextensions.k8s.io/v1`):** Requires **zero extra API server binaries or databases**—`kube-apiserver` itself serves the REST endpoints (`/apis/<group>/<version>/...`), validates schemas/CEL rules, and persists the JSON objects in the cluster's main **`etcd`**. Used for 99% of Kubernetes extensions.
+- **`Aggregated API Server` (`APIService`, `apiregistration.k8s.io/v1`):** You run your own custom HTTPS API server Deployment behind `kube-apiserver`'s front-proxy. Used only when your resource **should NOT be stored in `etcd`** (like `metrics-server` serving in-memory `metrics.k8s.io` or `prometheus-adapter` serving `custom.metrics.k8s.io`) or requires custom non-CRUD subresources (like `exec`/`portforward`).
+</details>
 
-**Flagged for verification before publishing:** CEL feature and cost-limit details for your Kubernetes version, controller-gen markers, OLM resource API versions, operator CRD names/versions for the AI projects listed (they evolve quickly), and every manifest; all labs are **untested**.
+<details>
+<summary>2. What is a "Structural Schema" in a `v1` CRD, and what happens when a user applies a Custom Resource containing a field that is not declared in `openAPIV3Schema`?</summary>
+
+A **structural schema** requires that every field at every nesting level (and in every version) explicitly declares its OpenAPI `type` (`object`, `array`, `string`, `integer`, `boolean`) without ambiguous type-less polymorphism.
+By default in `apiextensions.k8s.io/v1`, **`preserveUnknownFields` is `false` (Pruning enabled)**: if a user applies a Custom Resource YAML containing a typo or an undeclared field (e.g., `spec.maxUnavailbleNodes` instead of `spec.maxUnavailableNodes`), **`kube-apiserver` silently prunes (drops) the unknown field before persisting to `etcd`** (unless the client uses `kubectl apply --validate=strict`, which catches unknown fields on the client/server).
+</details>
+
+<details>
+<summary>3. How do `x-kubernetes-validations` (CEL rules) inside a CRD schema enforce (a) cross-field invariants and (b) field immutability (`self == oldSelf`) without a Validating Admission Webhook?</summary>
+
+`x-kubernetes-validations` embeds **Common Expression Language (`CEL`)** rules directly inside `openAPIV3Schema` at any field or object level:
+- **Cross-field validation:**
+  ```yaml
+  x-kubernetes-validations:
+    - rule: "self.xid.action != 'CordonAndDrain' || has(self.maxUnavailableNodes)"
+      message: "maxUnavailableNodes is required when action is CordonAndDrain"
+  ```
+- **Transition / Immutability rule (comparing `self` against `oldSelf` on `UPDATE`):**
+  ```yaml
+  targetPool:
+    type: string
+    x-kubernetes-validations:
+      - rule: "self == oldSelf"
+        message: "spec.targetPool is immutable once set"
+  ```
+Because `kube-apiserver` evaluates these CEL rules in-process during schema validation, they execute in microseconds with zero webhook network dependency.
+</details>
+
+<details>
+<summary>4. Why do `x-kubernetes-list-type: map` and `x-kubernetes-list-map-keys: [type]` matter on a `status.conditions` array in a CRD?</summary>
+
+Without `x-kubernetes-list-type: map`, OpenAPI treats a YAML array as an **`atomic` list**—meaning any Server-Side Apply (`SSA`) patch or merge replaces the entire list as a single unit, causing two controllers that update different condition types (`Ready` vs `Validated`) to overwrite each other's conditions.
+Annotating `conditions` with **`x-kubernetes-list-type: map`** and **`x-kubernetes-list-map-keys: [type]`** tells `kube-apiserver` to treat the array as an associative map keyed by the `type` field, allowing multiple controllers to merge individual condition entries cleanly.
+</details>
+
+<details>
+<summary>5. What happens when `subresources.status: {}` is enabled on a CRD version?</summary>
+
+Enabling `subresources.status: {}` exposes a separate REST endpoint `/apis/<group>/<version>/.../gpuhealthpolicies/<name>/status` and changes three behaviors:
+1. **`PUT`/`PATCH` to the main resource endpoint ignores `.status`:** A user running `kubectl apply -f policy.yaml` cannot accidentally overwrite or spoof `.status`.
+2. **`PUT`/`PATCH` to the `/status` subresource ignores `.spec` and `.metadata` (except labels/annotations)** and **does NOT increment `metadata.generation`**.
+3. **Separate RBAC:** Users can be granted `create`/`update` on `gpuhealthpolicies` while only the operator's ServiceAccount is granted `update`/`patch` on **`gpuhealthpolicies/status`**.
+</details>
+
+<details>
+<summary>6. How does `subresources.scale` allow `HorizontalPodAutoscaler` (`HPA`), `Kueue`, and `kubectl scale` to scale a Custom Resource (`RayCluster` or `InferenceService`)?</summary>
+
+Enabling `subresources.scale` on a CRD version maps three JSONPaths in the Custom Resource to the standard `autoscaling/v1` `Scale` object:
+- **`specReplicasPath: .spec.replicas`** (where `kubectl scale --replicas=4` or HPA writes desired replicas).
+- **`statusReplicasPath: .status.replicas`** (where HPA reads current active replicas).
+- **`labelSelectorPath: .status.selector`** (the serialized label selector string that HPA uses to query per-Pod custom metrics for the CR's Pods).
+</details>
+
+<details>
+<summary>7. Walk through the exact 5-step procedure to evolve a CRD from `v1alpha1` to `v1beta1` with a breaking schema change and safely remove `v1alpha1`.</summary>
+
+1. **Deploy the Hub-and-Spoke Conversion Webhook** in your operator (`conversion.strategy: Webhook` on the CRD) and add `v1beta1` to `spec.versions` with **`served: true, storage: false`** (`v1alpha1` remains `storage: true` during canary testing).
+2. **Flip the Storage Version:** Set **`v1beta1` to `storage: true`** and `v1alpha1` to `served: true, storage: false`. All *new* writes are now persisted in `etcd` as `v1beta1`, while older untouched objects in `etcd` are still stored as `v1alpha1` (so `crd.status.storedVersions` lists `["v1alpha1", "v1beta1"]`).
+3. **Migrate Existing Stored Objects in `etcd`:** Run `kube-storage-version-migrator` or rewrite every existing CR (`kubectl get ghp -A -o json | kubectl replace -f -`) so `etcd` re-persists all objects in `v1beta1`.
+4. **Stop Serving `v1alpha1`:** Once all clients/manifests have migrated to `v1beta1` (verified via deprecated API metrics/audit logs), set `v1alpha1` to **`served: false`** and patch `crd.status.storedVersions` to `["v1beta1"]`.
+5. **Remove `v1alpha1` from `spec.versions`** in a subsequent release. (If you try to remove `v1alpha1` from `spec.versions` while it is still listed in `status.storedVersions`, `kube-apiserver` rejects the CRD update.)
+</details>
+
+<details>
+<summary>8. When should an Operator use `ownerReferences` vs. `finalizers` (`platform.example.com/cleanup`), and what happens if you uninstall an Operator *before* deleting its Custom Resources?</summary>
+
+- **`ownerReferences`:** Used for **in-cluster Kubernetes child objects** (`Deployment`, `DaemonSet`, `Service`, `ConfigMap`) in the same namespace (or any scope if the owner is cluster-scoped). Kubernetes's built-in Garbage Collector deletes them automatically when the parent CR is deleted—even if the operator pod is down.
+- **`finalizers`:** Mandatory whenever deleting the CR requires **custom external cleanup logic** that the Kubernetes Garbage Collector cannot perform (such as uncordoning/removing labels from Nodes, deleting an external S3 bucket/DNS record, or cleanly draining a GPU driver).
+- **The Uninstall Trap:** If a CR has `finalizers: ["platform.example.com/cleanup"]` and you **delete the operator Deployment first** and then run `kubectl delete ghp default`, `kube-apiserver` sets `deletionTimestamp` on `ghp/default` and waits for the operator to remove the finalizer—leaving the CR (and its namespace) **stuck in `Terminating` forever**. Always delete CRs *before* uninstalling their operator.
+</details>
+
+<details>
+<summary>9. What are the five levels of the **Operator Capability Model** (Operator Framework), and how do they map to a GPU Operator?</summary>
+
+1. **Level 1 — Basic Install:** Automated provisioning and configuration of child resources (`DaemonSet`s for driver, toolkit, device plugin) from a single `ClusterPolicy` CR.
+2. **Level 2 — Seamless Upgrades:** Automated patch and minor upgrades of both the operator and the managed operands (rolling GPU driver upgrade controller with cordon/drain).
+3. **Level 3 — Full Lifecycle:** Backup/restore, state management, and failure recovery (re-validating GPU nodes after reboot or maintenance).
+4. **Level 4 — Deep Insights:** Exposing Prometheus metrics (`dcgm-exporter`), `ServiceMonitor`s, alerts, and detailed `status.conditions`.
+5. **Level 5 — Auto Pilot:** Horizontal/vertical auto-scaling, auto-tuning, anomaly detection, and self-healing (automatically cordoning a GPU node on fatal XID errors or reconfiguring MIG profiles dynamically).
+</details>
+
+<details>
+<summary>10. In `Reconcile(ctx, req)`, what are the three ways a `controller-runtime` reconciler can return (`Result{}`, `Result{RequeueAfter: d}`, or an `error`), and how does the WorkQueue handle each?</summary>
+
+1. **`return ctrl.Result{}, nil` (Success, Done):** The worker calls `queue.Forget(req)` (resetting the key's backoff counter) and `queue.Done(req)`. The key will not run again until a watched event (`Create`/`Update`/`Delete` on the CR or an owned child) occurs.
+2. **`return ctrl.Result{RequeueAfter: 30 * time.Second}, nil` (Success, Poll External State):** Resets error backoff and schedules the key to be re-enqueued after a fixed 30-second delay (used when waiting on an external non-watchable job or hardware power-cycle).
+3. **`return ctrl.Result{}, err` (Transient Error):** The worker calls **`queue.AddRateLimited(req)`**, which re-enqueues the key with **exponential backoff** (`5ms, 10ms, 20ms, ...` up to `1000s`) and increments `controller_runtime_reconcile_errors_total`.
+</details>
+
+<details>
+<summary>11. Why does Helm's built-in `crds/` directory cause upgrade bugs for Operators in production, and how do mature teams manage CRD upgrades?</summary>
+
+By design, **Helm 3 installs YAML files placed in a chart's `crds/` directory on `helm install`, but completely ignores the `crds/` directory on `helm upgrade` and `helm rollback`** (to prevent accidental CRD deletion and cluster-wide CR data loss).
+Consequently, when you run `helm upgrade gpu-operator` to a new chart version that added new fields to `ClusterPolicy`, the operator Pod upgrades to the new binary while the old CRD schema remains in `etcd`—causing the operator to fail when writing the new fields.
+**Production fix:** Manage CRDs as a **separate, explicit step before upgrading the operator chart**—either via a dedicated `-crds` Helm chart, a pre-sync Argo CD wave (`argocd.argoproj.io/sync-wave: "-1"` with `ServerSideApply=true`), or an explicit `kubectl apply --server-side -f crds/` step in GitOps.
+</details>
+
+<details>
+<summary>12. Why do large CRDs (like `kube-prometheus-stack`, `Istio`, or `GPU Operator` CRDs) often fail on client-side `kubectl apply -f crd.yaml` with `metadata.annotations: Too long: must have at most 262144 bytes`, and what flag fixes it?</summary>
+
+Client-side `kubectl apply` copies the entire YAML of the CRD into the **`kubectl.kubernetes.io/last-applied-configuration` annotation**, which is capped at **256 KiB (`262,144` bytes)**. A comprehensive CRD with OpenAPI v3 schemas for multiple versions easily exceeds 256 KiB.
+Running **`kubectl apply --server-side -f crd.yaml`** (or `ServerSideApply=true` in Argo CD) uses **Server-Side Apply (`managedFields`)** instead of the `last-applied-configuration` annotation, completely avoiding the 256 KiB annotation limit.
+</details>
+
+<details>
+<summary>13. What happens to already-running GPU workloads (or `PyTorchJob` / `RayCluster` Pods) if the Operator controller Pod (`gpu-operator` or `kuberay-operator`) crashes or is scaled to 0?</summary>
+
+**Already-running Pods and DaemonSets continue running normally.** Because operators work by creating native Kubernetes child resources (`DaemonSet`, `Pod`, `Service`, `ConfigMap`) or configuring host drivers that are already active, a crashed operator does not kill running workloads.
+However, while the operator is down, **reconciliation is paused**: new `PyTorchJob` or `RayCluster` CRs will sit unhandled, scaling/auto-healing actions will not occur, and new worker nodes joining the cluster may not have their GPU state labels orchestrated until the operator Pod restarts.
+</details>
+
+<details>
+<summary>14. In *Kubernetes: Up and Running* Chapter 18, how are the official Python, Java, and .NET Kubernetes client libraries generated, and how can you see the exact REST calls any `kubectl` command makes?</summary>
+
+- **OpenAPI Code Generation:** `kube-apiserver` publishes a >4 MB **OpenAPI specification** (`/openapi/v2` and `/openapi/v3`) describing every API group, version, kind, and REST operation. The official Python (`kubernetes`), Java, .NET, and JavaScript client libraries are automatically generated from this OpenAPI spec using `openapi-generator`.
+- **Inspecting `kubectl`'s raw HTTP calls (`KUR` Chapter 18):** Append **`--v=10`** (or `-v=8` for headers + truncated bodies, `-v=10` for full `curl`-equivalent request/response dumps) to any `kubectl` command (`kubectl get pods --v=10`).
+</details>
+
+<details>
+<summary>15. In the Python `kubernetes` client (`KUR` Chapter 18), what is the difference between `config.load_kube_config()` and `config.load_incluster_config()`?</summary>
+
+- **`config.load_kube_config()`:** Reads `$KUBECONFIG` or `~/.kube/config` on a developer laptop or external CI runner.
+- **`config.load_incluster_config()`:** Used when your Python script or operator runs **inside a Kubernetes Pod**; it automatically reads the `KUBERNETES_SERVICE_HOST`/`PORT` environment variables and the Pod's mounted ServiceAccount token and `ca.crt` from **`/var/run/secrets/kubernetes.io/serviceaccount/`** without needing a kubeconfig file.
+</details>
+
+<details>
+<summary>16. In the Python `kubernetes` client (`KUR` Chapter 18), how do `watch.Watch().stream()`, `stream(v1.connect_get_namespaced_pod_exec, ...)`, and `portforward()` work under the hood?</summary>
+
+1. **`watch.Watch().stream(v1.list_namespaced_pod, "default")`:** Opens a long-lived HTTP chunked streaming `GET /api/v1/namespaces/default/pods?watch=true` request and yields `{ "type": "ADDED"|"MODIFIED"|"DELETED", "object": V1Pod }` events as they arrive (avoiding tight `while True:` polling loops).
+2. **`stream(v1.connect_get_namespaced_pod_exec, ...)` and `portforward(v1.connect_get_namespaced_pod_portforward, ...)`:** Because `GET/POST /pods/<name>/exec` and `/portforward` upgrade the HTTP connection to a **bidirectional multiplexing protocol (WebSockets / SPDY)**, calling `v1.connect_get_namespaced_pod_exec` directly without wrapping it in `kubernetes.stream.stream(...)` fails; `stream(...)` negotiates the WebSocket upgrade and demultiplexes `stdin`/`stdout`/`stderr` channels.
+</details>
+
+<details>
+<summary>17. When should you build an Operator in Go (`kubebuilder` / `controller-runtime`) vs. Python (`kopf`) vs. using `Crossplane` / `Kro` compositions?</summary>
+
+- **Go (`kubebuilder` / `controller-runtime`):** The production standard for cluster-wide infrastructure, hardware, and high-scale workload operators (like GPU Operator, Kueue, KubeRay, CAPI). Compiles to a single small binary, shares upstream `apimachinery`/`client-go` types natively, and handles thousands of objects with minimal RAM.
+- **Python (`kopf`):** Great for internal ML-platform glue controllers or prototypes maintained by Python-heavy ML teams with modest object counts (<500 CRs).
+- **`Crossplane` Compositions / `Kro` (Kube Resource Orchestrator):** Best when your "operator" only needs to **template and wire together a DAG of existing Kubernetes/cloud resources** from a simplified high-level CRD (`XPostgreSQLInstance` or `TeamEnv`) without custom imperative hardware or network control loops.
+</details>
+
+<details>
+<summary>18. What is the "Two Controllers Fighting" anti-pattern (e.g., `Argo CD` vs. an Operator or `HPA`), and how does Server-Side Apply field ownership help diagnose it?</summary>
+
+If two controllers (for example, Argo CD and an in-cluster Operator or HPA/MutatingWebhook) have different opinions about a field on the same object (e.g., `spec.replicas` or an annotation), Controller A patches the field to `X` (`resourceVersion` increments), which wakes Controller B's watch to patch it back to `Y`, which wakes Controller A—burning 100% API server QPS in an infinite tug-of-war.
+Inspect **`kubectl get <obj> -o yaml --show-managed-fields`** (`metadata.managedFields`) and API server audit logs to see which two `manager` names are alternating `Update`/`Apply` operations on the same field, then configure `ignoreDifferences` in Argo CD or relinquish ownership of that field in one controller.
+</details>
+
+<details>
+<summary>19. Why should you NEVER store high-frequency telemetry, logs, or unbounded history arrays inside a Custom Resource's `.status` block?</summary>
+
+Every update to `.status` is a full-object serialization and Raft WAL `fsync` write in **`etcd`** (capped at `1.5 MiB` per object) and fans out a full copy of the CR to every Informer watching that CRD. If an operator appends a new entry to `.status.history[]` or updates `.status.gpuTemperature` every 5 seconds across 1,000 CRs, it will **saturate `etcd` disk I/O, trigger `NOSPACE` alarms, and OOM watchers**.
+Store time-series telemetry in **Prometheus metrics**, discrete transition milestones in **Kubernetes `Event`s**, and keep `.status` strictly to compact **level-triggered `conditions` and `observedGeneration`**.
+</details>
+
+<details>
+<summary>20. Compare the roles and primary CRDs of the **NVIDIA GPU Operator** (`ClusterPolicy`) and the **NVIDIA Network Operator** (`NicClusterPolicy`) (`bcm11-containerization` Chapter 6).</summary>
+
+- **NVIDIA GPU Operator (`ClusterPolicy`, `NVIDIADriver`):** Manages the **intra-node GPU software stack**—reconciling DaemonSets for the NVIDIA GPU driver (`nvidia.ko`), NVIDIA Container Toolkit (`containerd` runtime configuration), Kubernetes Device Plugin, GPU Feature Discovery (`GFD`), DCGM & `dcgm-exporter`, MIG Manager, Kata/Confidential Computing manager, and GPUDirect Storage (`nvidia-fs`).
+- **NVIDIA Network Operator (`NicClusterPolicy`, `MacvlanNetwork`, `HostDeviceNetwork`, `IPoIBNetwork`, `SriovNetworkNodePolicy`):** Manages the **inter-node high-speed RDMA / InfiniBand / RoCEv2 networking stack**—reconciling DOCA/Mellanox OFED drivers (`mlx5`), RDMA Shared Device Plugin, SR-IOV Network Device Plugin, Multus CNI, secondary CNI plugins (`macvlan`, `sriov`, `ipoib`), and `NV-IPAM` for multi-node GPU collective fabrics.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 17: Extending Kubernetes** (patterns of extension, CRDs, validation, and admission webhooks) and **Chapter 18: Accessing Kubernetes from Common Programming Languages** (read in full: OpenAPI specification >4 MB, `kubectl --v=10`, Python/Java/.NET client generation, `config.load_kube_config()` vs `config.load_incluster_config()`, `CoreV1Api` & `AppsV1Api` list/create/patch/delete, `watch.Watch().stream()`, `stream(connect_get_namespaced_pod_exec)`, and `portforward(connect_get_namespaced_pod_portforward)`).
+  - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 11: Building Platform Services** and **Chapter 16: Platform Abstractions** (operator history, `WebApp` and `AcmeNamespace` CRDs, Kubebuilder, Operator SDK, Metacontroller, and custom platform CRDs).
+  - `kubernetes-programming-with-go-programming-kubernetes-clients-and-operators-using-go-and-the-kuberne` — Philippe Martin / Stefan Schimanski & Michael Hausenblas, *Kubernetes Programming with Go* / *Programming Kubernetes* (CRDs, structural schemas, subresources, conversion webhooks, and controllers).
+  - `bcm11-containerization` — *NVIDIA Base Command Manager 11 Containerization Manual*, **Chapter 6: Kubernetes Operators** (GPU Operator and Network Operator architecture).
+- **Run here:** `python3 code/part05/crd_schema_conversion_sim_lab.py` (3 passed, 0 failed).
+- **Explicitly labelled inferences:** The `evaluate_crd_schema_and_cel`, `convert_crd_via_hub_and_migrate_storage`, and `reconcile_cr_with_finalizer_and_status` models in `code/part05/crd_schema_conversion_sim.py` and the `GPUHealthPolicy` CRD and instance manifests are the author's constructions synthesizing `KUR` Chapters 17 & 18, `PK` Chapters 11 & 16, `KPG`, and `bcm11-containerization` Chapter 6 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
+- **Not verified on live hardware:** Live `kubectl`, `kubebuilder`, `OLM`, and `GPU Operator` executions (`minimum: 1, maximum: 200`, `windowSeconds: 600` / `300`, `codes: [48, 63, 64, 79]`, `~1.5 MiB` object limit, `5` capability levels, `--v=10`, port `8080`) are marked (`untested here`) where not executed by `crd_schema_conversion_sim_lab.py`.
