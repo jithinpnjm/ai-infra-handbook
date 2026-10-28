@@ -203,7 +203,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 
 | # | Chapter | Status | Words | Notes |
 |---|---|---|---|---|
-| 6.22 | Provisioning with PXE, iPXE, DHCP, TFTP and image management | drafted | 3754 |  |
+| 6.22 | Provisioning with PXE, iPXE, DHCP, TFTP and image management | reviewed | 5609 | `gen_provision_lab.py` (3/3 pass), `SCL 23-26`, `VL10 ch1,3` |
 | 7.1 | BMCs, IPMI and out-of-band management | drafted | 3445 |  |
 | 7.2 | Redfish concepts: service root, resources, collections, OData | drafted | 2801 |  |
 | 7.3 | The Redfish protocol: HTTP methods, headers, status codes, query parameters | drafted | 3134 |  |

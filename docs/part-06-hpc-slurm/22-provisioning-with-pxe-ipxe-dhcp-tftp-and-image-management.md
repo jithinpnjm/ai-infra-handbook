@@ -4,7 +4,7 @@ title: "6.22 Provisioning with PXE, iPXE, DHCP, TFTP and image management"
 sidebar_label: "6.22 Provisioning with PXE, iPXE, DHCP, TFTP and image management"
 sidebar_position: 22
 description: "How cluster nodes get an operating system: the boot chain (firmware, bootloader, kernel, initramfs, init), DHCP/TFTP/PXE, iPXE and UEFI HTTP boot, stateless and diskless images, NFS-root and squashfs, image building and versioning, node identity and discovery, a tested inventory-to-dnsmasq/iPXE generator, and a boot-failure triage method"
-status: "drafted"
+status: "reviewed"
 tier: "1b"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -36,6 +36,14 @@ Needs Part 1 (boot process, systemd), Part 2 (DHCP, VLANs), 6.2 (management netw
 - Relate xCAT, Warewulf, MAAS, Foreman, BCM and out-of-the-box stacks to this foundation.
 
 ## 1. The boot chain
+
+```mermaid
+flowchart LR
+  FW["1. Firmware (BIOS / UEFI)<br/>DHCPDISCOVER (Opt 60, 93)"] --> TFTP["2. DHCP + TFTP (Port 69)<br/>Loads undionly.kpxe / ipxe.efi"]
+  TFTP --> iPXE["3. iPXE Chain-Load (Opt 175)<br/>Fetches HTTP boot.ipxe -> node.ipxe"]
+  iPXE --> HTTP["4. HTTP Image Fetch<br/>vmlinuz + initrd.img + rootfs.squashfs"]
+  HTTP --> Init["5. Rootfs (OverlayFS / Disk)<br/>systemd PID 1 + cloud-init / Slurm"]
+```
 
 1. **Firmware** (legacy BIOS or UEFI) initialises hardware, selects a boot device from the boot order (disk, USB, network).
 2. **Boot loader**: from disk (GRUB, systemd-boot) or from the network (PXE ROM/UEFI network stack loads a small NBP, "network bootstrap program").
@@ -162,13 +170,13 @@ Discovery methods: DHCP logs showing unknown MACs, switch MAC tables per port (m
 
 (Detailed in 6.23 and Part 8; the SCL book's chapters 25 and 26.)
 
-- **ROCKS** (historic Rocks Clusters, developed by NPACI and SDSC in 2000; Red Hat / CentOS and modified Anaconda installer, storing cluster state in a MySQL database): distributes software stacks as modular **Roll CDs** (such as `Base`, `HPC`, `Java`, `Lustre`, `Ganglia`). In the book's installation walkthrough `(untested here)`:
+- **ROCKS** (historic Rocks Clusters, developed by the National Partnership for Advanced compute Infrastructure and San Diego Supercomputer Center in `2000`; based on the RedHat distribution and CentOS with a modified version of the RedHat `anaconda` auto-installer, storing all cluster configuration information in a `MySQL` database; `http://www.rocksclusters.org/`): divides the distribution into modular **Roll CDs** with software suites (for example `Base`, `HPC`, `Java`, `Lustre`, and `Ganglia`), allowing you to create custom Roll CDs and update installed software from new Roll CD images. In the book's installation walkthrough `(untested here)`:
   1. Boot the head node from the **Base Roll CD** and enter `frontend` mode at the boot prompt (instead of the default `compute` mode).
   2. When prompted `"Do you have a roll CD/DVD?"`, answer `"Yes"`, insert the **HPC Roll CD**, then answer `"No"` and re-insert the Base Roll CD; use `Autopartition` and configure the internal cluster NIC manually (unselecting `"configure using DHCP"`).
   3. After the head node reboots, log in as `root`, run `insert-ethers` `(untested here)`, and choose `compute`. Power on each compute node in PXE network-boot mode: `insert-ethers` captures each booting node's MAC address, assigns its hostname/IP in the MySQL database, and provisions its image over the network. Press `F1` to exit `insert-ethers` once all compute nodes are registered.
   4. Create a user (`useradd USERNAME`), initialize SSH keys with `ssh-agent $SHELL` and `ssh-add`, and launch jobs either manually (`/opt/mpich/gnu/bin/mpirun -nolocal -np 2 -machinefile machines ./myexe`) or through the default **Grid Engine** batch system (`qsub sge-run-script.sh`) `(untested here)`.
-- **Parallel Knoppix / PelicanHPC**: a Debian-based **LiveCD / LiveUSB** stack designed to turn a classroom or office of workstations into a temporary diskless cluster (including OpenMPI, parallel Linpack, and Octave) without modifying local hard drives. In the book's walkthrough `(untested here)`:
-  1. Boot the head machine from the LiveCD (`Start Debian Live`), choose where `/home` lives (RAM disk by default, or persistent mount options documented in `/home/user/pelican_config`), and replace the default password (`PleaseChangeMe!`) for account `user` (optionally starting Xfce with `startx`).
+- **Parallel Knoppix/PelicanHPC** (`https://sourceforge.net/projects/pelicanhpc/`): a Debian-based **LiveCD / LiveUSB** stack designed to turn a BeoWulf-class cluster assembled from improvised materials, or an idle classroom or office of workstations at night, into a temporary diskless computing cluster (including OpenMPI, parallel versions of Linpack and Octave, and `apt-get` `.deb` package delivery) without modifying local hard drives. While out-of-the-box LiveCD stacks have lower flexibility than custom-built clusters, spending a day setting up a deployment system lets you install an entire cluster in an hour and expand or reconfigure it in half an hour (`SCL` Chapter 25). In the book's walkthrough `(untested here)`:
+  1. Boot the head machine from the LiveCD (`Start Debian Live`), choose where `/home` lives (RAM disk by default, or persistent mount options documented in `/home/user/pelican_config`), and replace the default password (`PleaseChangeMe`) for account `user` (optionally starting Xfce with `startx`).
   2. Run `pelican_setup` `(untested here)` and select the network interface connected to the cluster LAN (taking care not to start PelicanHPC's DHCP server on a corporate LAN).
   3. Confirm service startup (`DHCP`, `TFTP`, `NFS`) and PXE-boot the compute nodes until they display `"This is a PelicanHPC compute node."`.
   4. PelicanHPC writes the discovered node list to `/home/user/tmp/bhosts`; whenever you add or remove compute nodes later, run `pelican_restart_hpc` `(untested here)` to refresh the cluster configuration.
@@ -194,6 +202,12 @@ Always get **serial-over-LAN** or BMC console access (Part 7) before debugging r
 
 ## 9. Lab
 
+First, run the self-checking Python lab (`code/part06/gen_provision_lab.py`) locally. It verifies `validate()`, `dnsmasq_conf()`, and `ipxe_node()` in `code/part06/gen_provision.py` on a valid 3-node inventory (checking `dhcp-match=set:ipxe,175` chain-load loop prevention, BIOS `undionly.kpxe` vs UEFI `ipxe.efi`, and per-node HTTP `rootfs.squashfs` `.ipxe` scripts), verifies that the broken inventory is rejected with all 5 expected errors (subnet mismatch, duplicate MAC, duplicate IP, invalid hostname, malformed MAC), and checks DHCP Option `93` architecture codes (`0, 7, 9, 11, 16=0x0010`) and TFTP RFC `1350`/`2348`/`7440` parameters:
+
+```bash
+python3 code/part06/gen_provision_lab.py
+```
+
 Tested: run the generator on the sample inventory and the broken one; extend `validate()` to check that BMC IPs are in a different /16 than node IPs and that role values come from an allowed list; add a `--check` mode that only validates.
 
 Untested (two VMs on a host-only network): 1) set up dnsmasq (DHCP+TFTP) with a BIOS client and boot an iPXE ROM, then chain to an HTTP script that boots a small live image. 2) Switch the VM to UEFI and observe the different boot file; add `ipxe.efi`. 3) Add per-node scripts; boot two clients with different images. 4) Intentionally run two DHCP servers and capture the intermittent failure with tcpdump. 5) Boot a stateless node with squashfs+overlay; reboot to show clean state; add a persistent overlay for logs. 6) Practise D-T-B-I: break each stage and write the symptom. 7) Time a boot storm of ten VMs against one TFTP server vs an HTTP server.
@@ -210,45 +224,169 @@ Untested (two VMs on a host-only network): 1) set up dnsmasq (DHCP+TFTP) with a 
 - Two DHCP servers on one VLAN: symptoms and fix.
 - What belongs in the image versus modules/containers?
 
-## 11. Checkpoint questions (30)
+## Exercises
 
-1. List the steps of the boot chain.
-2. What is the role of the initramfs?
-3. Compare SysV init and systemd.
-4. What information does a DHCP offer carry for network boot?
-5. What are DHCP options 60 and 93 for?
-6. Name three DHCP servers.
-7. What is PXE? What protocol transfers the NBP?
-8. Why is TFTP slow by default and how is it improved?
-9. What is a boot storm?
-10. What is iPXE and what does it add?
-11. What does dnsmasq tag `ipxe` match (option 175) and why?
-12. What is UEFI HTTP Boot and what does the DHCP offer contain?
-13. Why does the generator emit separate BIOS and UEFI boot files?
-14. List validation checks in `gen_provision.py`.
-15. What does `dhcp-host` do?
-16. Describe stateless, stateful, NFS-root, hybrid designs.
-17. What per-node state must be injected at boot?
-18. Name three image build tools.
-19. What are image layers for a GPU node?
-20. How do you promote and roll back an image?
-21. How are images tied to Slurm draining?
-22. List node lifecycle states.
-23. How do switch port maps help identity?
-24. In ROCKS and PelicanHPC, which utilities discover PXE-booting compute nodes and start the cluster services? (Answer: in ROCKS, `insert-ethers` captures PXE-booting compute nodes' MAC addresses until you press `F1`; in PelicanHPC, `pelican_setup` starts the DHCP/NFS services on the chosen interface and writes `/home/user/tmp/bhosts`, while `pelican_restart_hpc` refreshes the node list.)
-25. State D-T-B-I and one check per stage.
-26. How do you stop reimaging after install?
-27. Why does PXE fail across a VLAN trunk misconfiguration?
-28. What security measures protect boot infrastructure?
-29. Why firmware/BIOS baselines belong to provisioning?
-30. Why is inventory-as-source-of-truth valuable?
+1. **Generating and Validating `dnsmasq.conf` and iPXE Scripts (`code/part06/gen_provision.py` & `gen_provision_lab.py`):** Run `python3 code/part06/gen_provision_lab.py`. Explain how `validate()` catches all 5 inventory mistakes (`bmc_ip` outside `10.20.0.0/16`, duplicate MAC, duplicate IP, uppercase/underscore hostname `GPU_3`, and non-hex MAC `'aa:bb:cc:00:00:zz'`), and how `dnsmasq_conf()` uses `dhcp-match=set:ipxe,175` and `option:client-arch` (`7` and `9`) to chain-load `ipxe.efi` / `undionly.kpxe` into `http://10.10.0.1:8080/boot.ipxe`.
+2. **Configuring ISC Kea Client Classes for BIOS PXE, UEFI PXE, and UEFI HTTP Boot:** Write the Kea `Dhcp4` `client-classes` configuration distinguishing `option[93].hex == 0x0000` (`undionly.kpxe`), `option[93].hex == 0x0007` (`ipxe.efi`), and `option[93].hex == 0x0010` (`HTTPClient` with `http://10.10.0.1:8080/boot/shimx64.efi`). Explain what breaks if `boot-file-name` is set globally at the subnet level without client classes.
+3. **Comparing Stateless (`RAM-root`), Stateful (`Diskful`), `NFS-root`, and Hybrid Node Provisioning:** Compare the boot speed, RAM consumption, provisioning-server HA dependency, and configuration-drift trade-offs of all four models on a 512-node H100 cluster (where each node has 2 TB host RAM and 8 local NVMe drives), and explain how SSH host keys, `/etc/machine-id`, and `/etc/munge/munge.key` are persisted or injected in a hybrid RAM-root + local-NVMe design.
+4. **Building, Testing, and Rolling Out a Versioned GPU OS Image in Rings:** Design a 5-step image promotion pipeline for `dgx-os-24.04-2026-10-24` (layered with matched kernel, NVIDIA driver, CUDA, DCGM, MOFED/DOCA, and `slurmd`), including canary validation (`node_health.sh`, `nccl-tests`), rolling wave assignment in the inventory CSV, drain-aware reboots (`scontrol reboot ASAP nextstate=resume`), and one-line iPXE pointer rollback.
+5. **Applying the `D-T-B-I` Network Boot Triage Method:** Given four non-booting nodes—(a) serial console hangs at `DHCP....`, (b) TFTP times out downloading `initrd.img` during a 200-node rack power-on, (c) UEFI screen flashes `Server response timeout` or `Security Violation` immediately after downloading `ipxe.efi`, and (d) kernel boots but drops into the `dracut` / `initramfs` emergency shell unable to fetch `rootfs.squashfs`—diagnose the exact stage (`D`, `T`, `B`, or `I`) and state the fix for each.
+6. **Comparing Out-of-the-Box Stacks (`ROCKS` and `Parallel Knoppix/PelicanHPC`) with Modern Provisioners (`SCL` Chapter 25):** Contrast how `ROCKS` (`frontend` mode, `Base` + `HPC` Roll CDs, `insert-ethers` PXE MAC capture into MySQL, `F1` exit, Grid Engine `qsub`) and `Parallel Knoppix/PelicanHPC` (`pelican_setup`, `/home/user/tmp/bhosts`, `pelican_restart_hpc`) provision compute nodes compared to xCAT, Warewulf 4, and NVIDIA Base Command Manager (BCM).
 
-## 12. Sources and review notes
+## Checkpoint
 
-- Book source (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`):
-  - Chapter `25. Out-of-the-Box Stacks and Deployment Systems` (read in full): ROCKS cluster installation (Base and HPC Roll CDs, `frontend` boot mode, `insert-ethers` PXE discovery and `F1` exit, Grid Engine `qsub`) and Parallel Knoppix / PelicanHPC LiveCD setup (`/home/user/pelican_config`, `pelican_setup`, `/home/user/tmp/bhosts`, `pelican_restart_hpc`).
-  - Chapters 23, 24, and 26 (boot chain, SysV and systemd init, DHCP/TFTP/PXE/NFS-root, xCAT, MAAS, Foreman, BCM), restated in my words.
-- Network boot comparison (PXE/TFTP vs UEFI HTTP Boot), Kea DHCP and the D-T-B-I triage: the author's NVIDIA-DevOps volume-10 chapter 1 section 7, with two corrections: the TFTP slowness description (defaults, not a hard limit) and the Kea snippet (client classes added so that PXE clients are not given an HTTP URL).
-- dnsmasq options verified in dnsmasq(8) (mirror commit `cf08eee`).
-- Original and run: `gen_provision.py`.
-- Unverified: iPXE script syntax details beyond common usage, Kea class tests, DHCP option numbers for architectures (standard values from the PXE/UEFI specifications as I recall them), ROCKS/PelicanHPC commands (from the book, not run here), BCM and MAAS specifics, firmware behaviours. No network boot was performed.
+<details>
+<summary>1. List the five stages of the Linux boot chain and state how network booting replaces stages 2–4 (`SCL` Chapter 23).</summary>
+
+1. **Firmware (`BIOS` or `UEFI`):** Initializes hardware and selects the network boot device.
+2. **Bootloader (`NBP`):** Firmware PXE/HTTP client fetches `undionly.kpxe`, `ipxe.efi`, or `shimx64.efi`/`grubx64.efi` over TFTP/HTTP instead of reading GRUB from a local disk.
+3. **Kernel (`vmlinuz`) + `initramfs` (`initrd.img`):** Downloaded into RAM over HTTP/TFTP; `initramfs` loads NIC/storage drivers and assembles the root filesystem.
+4. **Root filesystem (`/`):** Mounted from a downloaded `rootfs.squashfs` + `overlayfs` in RAM, an `NFS-root` export, or a newly partitioned local disk.
+5. **Init (`PID 1`):** `systemd` (parallel unit graph with cgroups, replacing sequential SysV init runlevel scripts) starts system and cluster services (`munged`, `slurmd`).
+</details>
+
+<details>
+<summary>2. Which DHCP options carry the boot server, boot filename/URL, vendor class, and client CPU/firmware architecture?</summary>
+
+- **`siaddr` (`next-server`):** IP address of the TFTPboot server.
+- **Option `67` (`boot-file-name`):** TFTP boot filename (e.g., `ipxe.efi`) or HTTP Boot URL (`http://.../shimx64.efi`).
+- **Option `60` (`vendor-class-identifier`):** Identifies `PXEClient` vs `HTTPClient`.
+- **Option `93` (`client-arch`):** Identifies client firmware architecture: `0` = x86 legacy BIOS, `7` and `9` = x86_64 UEFI, `11` = ARM64 UEFI, `16` (`0x0010`) = x86_64 UEFI HTTP Boot.
+</details>
+
+<details>
+<summary>3. Why does running two uncoordinated DHCP servers on the same provisioning VLAN cause intermittent boot failures?</summary>
+
+DHCP uses broadcast `DHCPDISCOVER` messages, and the client accepts whichever `DHCPOFFER` arrives first. If a rogue or corporate DHCP server (without `next-server` / Option `67`) answers faster than the cluster provisioning server, the compute node receives an IP address with no boot image and fails PXE boot intermittently.
+</details>
+
+<details>
+<summary>4. Why is classic **TFTP** (UDP port `69`, RFC `1350`) slow over high-latency or congested links, and what RFC extensions and architectural pattern solve it?</summary>
+
+By default, RFC `1350` TFTP is a stop-and-wait protocol that sends **one `512`-byte block at a time** and waits for an explicit UDP `ACK` before sending the next block. RFC `2348` (`blksize`) and RFC `7440` (`windowsize`) negotiate larger blocks and sliding windows, and **chain-loading iPXE** transfers only the tiny (~1 MB) `ipxe.efi` binary over TFTP before switching to multi-gigabit **TCP HTTP** for the large kernel, initramfs, and multi-GB `rootfs.squashfs`.
+</details>
+
+<details>
+<summary>5. Explain **iPXE chain-loading** and how DHCP **Option `175`** prevents an infinite boot loop (`code/part06/gen_provision.py`).</summary>
+
+1. On first boot, the NIC's built-in PXE ROM sends a DHCP request *without* Option `175`. `dnsmasq` matches `tag:!ipxe` and serves `ipxe.efi` (UEFI) or `undionly.kpxe` (BIOS) over TFTP.
+2. When `iPXE` starts, it sends a second DHCP request that includes **Option `175`** (`dhcp-match=set:ipxe,175`).
+3. `dnsmasq` sees `tag:ipxe` and replies with `http://10.10.0.1:8080/boot.ipxe` instead of `ipxe.efi`, breaking the loop and handing control to the HTTP boot script.
+</details>
+
+<details>
+<summary>6. How does **UEFI HTTP Boot** differ from PXE + TFTP?</summary>
+
+UEFI HTTP Boot (Option `93` = `16` / `0x0010`, Option `60` = `HTTPClient`) uses a TCP/HTTP(S) stack built directly into modern server UEFI firmware to download the bootloader (`shimx64.efi` / `grubx64.efi`) and OS artifacts from a standard web server—eliminating TFTP (UDP port `69`) entirely and supporting TLS certificate verification.
+</details>
+
+<details>
+<summary>7. What five validation checks does `code/part06/gen_provision.py` enforce on the cluster inventory CSV before writing `dnsmasq.conf`?</summary>
+
+1. Valid lowercase hostname syntax (`[a-z][a-z0-9-]*`).
+2. Host IP (`ip`) is a valid IPv4 address within `--subnet` (`10.10.0.0/16`).
+3. BMC IP (`bmc_ip`) is a valid IPv4 address within `--bmc-subnet` (`10.20.0.0/16`).
+4. Host MAC (`mac`) and BMC MAC (`bmc_mac`) match 6-octet hex syntax (`([0-9a-f]{2}:){5}[0-9a-f]{2}`).
+5. Zero duplicate hostnames, MAC addresses, or IP addresses across the entire inventory.
+</details>
+
+<details>
+<summary>8. Compare **Stateless (RAM-root)**, **Stateful (local-disk install)**, **NFS-root**, and **Hybrid** node provisioning on a GPU cluster.</summary>
+
+- **Stateful (diskful):** Fast local reboot and survives provisioning server outages, but suffers from package/config drift across nodes and slow reinstalls.
+- **Stateless (RAM-root `squashfs` + `tmpfs`):** Zero drift (every reboot gives a byte-identical clean OS) and no boot-disk failure risk; costs a few GBs of RAM (negligible on 1–2 TB GPU nodes) and requires HA HTTP provisioning servers.
+- **NFS-root:** Minimal RAM usage, but puts the NFS server on the critical path for every binary load and creates a single point of failure.
+- **Hybrid (RAM-root `squashfs` + local NVMe for `/tmp`, `/var/log`, and `ENROOT_DATA_PATH`):** Combines stateless OS immutability with local NVMe scratch speed—the standard pattern for large GPU clusters.
+</details>
+
+<details>
+<summary>9. Which per-node identity artifacts must never be baked into a shared golden OS image and must instead be injected at boot?</summary>
+
+1. Hostname and static/DHCP network configuration.
+2. `/etc/machine-id` (must be unique per node for systemd/journald).
+3. SSH host keys (`/etc/ssh/ssh_host_*_key`), so `known_hosts` does not break after every stateless reboot.
+4. Cluster secrets (`/etc/munge/munge.key`, TLS certificates), injected from a secure store or provisioning metadata channel.
+</details>
+
+<details>
+<summary>10. Why must the NVIDIA kernel driver (`nvidia.ko`), Mellanox OFED (`mlx5_core`), and kernel (`vmlinuz`) be coupled in the same immutable node image build?</summary>
+
+Kernel modules (`nvidia.ko`, `nvidia-modeset.ko`, `nvidia-uvm.ko`, ` nvidia-peermem.ko`, `nvidia-fs.ko`, and `mlx5_ib.ko`) compile against exact kernel ABI symbols. Building and versioning the kernel, GPU driver, and RDMA stack together in one immutable `rootfs.squashfs` image (`dgx-os-24.04-2026-10-24`) eliminates runtime DKMS compile failures and driver-to-fabric mismatches.
+</details>
+
+<details>
+<summary>11. How do you roll out a new OS image across a 1,000-node Slurm GPU cluster without disrupting running training jobs?</summary>
+
+1. Boot and validate the candidate image on a canary node group (`node_health.sh`, DCGM, multi-node `nccl-tests`).
+2. Update the target wave's image pointer in the Git inventory and regenerate the iPXE scripts.
+3. Run **`scontrol reboot ASAP nextstate=resume reason="image upgrade dgx-os-24.04-2026-10-24" gpu[001-100]`** so Slurm drains each node, reboots it into the new iPXE image as soon as its running jobs finish, runs `HealthCheckProgram`, and returns it to service. Keep the old image on the HTTP server for instant pointer rollback.
+</details>
+
+<details>
+<summary>12. How do switch **LLDP / MAC port tables** make replacing a failed bare-metal GPU node a zero-touch operation?</summary>
+
+When the top-of-rack switch maps each physical switch port (`sw01:Ethernet1/14`) to a logical node identity (`gpu014` in Rack 2, U10), replacing a dead motherboard or NIC automatically associates the new MAC address seen on `sw01:Ethernet1/14` (or discovered via DHCP/Redfish) with `gpu014`'s IP, hostname, and iPXE script.
+</details>
+
+<details>
+<summary>13. How does **ROCKS** organize software packages and discover PXE-booting compute nodes (`SCL` Chapter 25)?</summary>
+
+Developed by NPACI and SDSC in 2000 on RedHat/CentOS with a modified `anaconda` installer and a `MySQL` configuration database, **ROCKS** packages software suites into modular **Roll CDs** (`Base`, `HPC`, `Java`, `Lustre`, `Ganglia`). After installing the head node in `frontend` mode, the admin runs **`insert-ethers`** (selecting `compute`) and PXE-boots the compute nodes; `insert-ethers` captures each node's MAC address, registers it in MySQL, and installs its image until the admin presses **`F1`** to exit.
+</details>
+
+<details>
+<summary>14. What is **Parallel Knoppix/PelicanHPC**, and which commands initialize and refresh its diskless compute nodes (`SCL` Chapter 25)?</summary>
+
+**Parallel Knoppix/PelicanHPC** (`https://sourceforge.net/projects/pelicanhpc/`) is a Debian-based **LiveCD / LiveUSB** distribution that turns a classroom or office of workstations into a temporary diskless BeoWulf cluster (bundling OpenMPI, Linpack, and Octave). After booting the head node and setting the `user` password, running **`pelican_setup`** starts DHCP, TFTP, and NFS on the selected cluster NIC, PXE-boots compute nodes, and writes the node list to **`/home/user/tmp/bhosts`**. Running **`pelican_restart_hpc`** refreshes the cluster when nodes are added or removed.
+</details>
+
+<details>
+<summary>15. State the four stages of the **D-T-B-I** network-boot troubleshooting method and the primary diagnostic tool for each.</summary>
+
+1. **D — DHCP:** Did the node receive an IP, `next-server`, and Option `67` boot file? Check `tcpdump -i <iface> -n -vvv port 67 or port 68` and `dnsmasq`/`Kea` DHCP logs.
+2. **T — Transfer:** Did the bootloader download over TFTP (port `69`) or HTTP? Check `tcpdump port 69`, TFTP file permissions under `tftp-root`, firewall ephemeral UDP tracking, and HTTP access logs.
+3. **B — Boot-mode:** Does the NBP binary match the firmware mode (`ipxe.efi` for UEFI vs `undionly.kpxe` for BIOS, x86_64 vs ARM64, and Secure Boot `shim` signatures)? Check BMC Serial-over-LAN / iKVM console.
+4. **I — Image:** Did `vmlinuz` and `initrd.img` load NIC drivers, fetch `rootfs.squashfs`, and start `systemd`? Check serial console kernel logs (`console=ttyS0,115200`) and `rd.break` initramfs shell.
+</details>
+
+<details>
+<summary>16. A stateful node finishes its Kickstart/autoinstall OS installation onto local NVMe, reboots, and immediately starts reinstalling itself again in an infinite loop. Why, and how do you prevent it?</summary>
+
+The node's BIOS/UEFI boot order still lists **Network (PXE)** ahead of the local NVMe disk, and the provisioning server's iPXE script for that MAC address still points to the OS installer instead of `exit` / `sanboot` (local disk boot). Fix by having the installer's post-install webhook flip the node's iPXE state to `localboot` on the provisioning server, or use one-time PXE boot overrides (`ipmitool chassis bootdev pxe options=efiboot` or Redfish `BootSourceOverrideEnabled: Once`).
+</details>
+
+<details>
+<summary>17. Why does a stateless node boot kernel `vmlinuz` and `initrd.img` fine over iPXE, but then fail inside `initramfs` with `Connection timed out` when fetching `rootfs.squashfs`?</summary>
+
+`iPXE` used its own UNDI/SNP driver to download `vmlinuz` and `initrd.img`, but once the Linux kernel took over, **`initramfs` lacked the Linux kernel driver for the provisioning NIC** (or lacked the VLAN/bonding configuration needed on that switch port) to bring up networking and HTTP-fetch `rootfs.squashfs`. Rebuild `initramfs` (`dracut --add-drivers ...`) with the required NIC driver included.
+</details>
+
+<details>
+<summary>18. Why does TFTP often fail across a stateful firewall even when UDP port `69` is open?</summary>
+
+In TFTP (RFC `1350`), only the client's initial `RRQ` (Read Request) packet goes to destination **UDP port `69`**. The TFTP server sends all subsequent data packets from a **random ephemeral UDP source port** back to the client's port. Unless the firewall loads the state-tracking helper module (`nf_conntrack_tftp`) or allows the ephemeral UDP range on the provisioning VLAN, the server's data packets are dropped.
+</details>
+
+<details>
+<summary>19. How do you prevent a **boot storm** when an entire 256-node GPU pod power-cycles simultaneously?</summary>
+
+1. Stagger node power-on via BMC/PDU scripting (e.g., 1–2 second delay per node or rack wave; `SCL` Chapter 23).
+2. Chain-load iPXE so the multi-gigabyte `rootfs.squashfs` transfers over **HTTP** (backed by `nginx` worker pools, local NVMe sendfile, or hierarchical service/caching nodes) rather than single-threaded UDP TFTP.
+</details>
+
+<details>
+<summary>20. Why does `gen_provision.py` set `port=0` in `dnsmasq.conf`?</summary>
+
+Setting **`port=0`** disables `dnsmasq`'s built-in DNS server so `dnsmasq` runs purely as a **DHCP + TFTP server**, avoiding port `53` conflicts with an existing cluster DNS server (`named`/Unbound/`systemd-resolved`).
+</details>
+
+## Sources and review notes
+
+- Book source (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware`, `SCL`):
+  - Chapter 25 ("25. Out-of-the-Box Stacks and Deployment Systems", read in full): ROCKS cluster installation (`2000` NPACI/SDSC, RedHat/CentOS modified `anaconda`, `MySQL` database, `Base` and `HPC` Roll CDs, `frontend` boot mode, `insert-ethers` PXE discovery and `F1` exit, Grid Engine `qsub`, `http://www.rocksclusters.org/`) and Parallel Knoppix/PelicanHPC LiveCD setup (`https://sourceforge.net/projects/pelicanhpc/`, BeoWulf classroom/workstation cluster, `/home/user/pelican_config`, `pelican_setup`, `/home/user/tmp/bhosts`, `pelican_restart_hpc`).
+  - Chapters 23, 24, and 26 (boot chain, SysV and systemd init, DHCP/TFTP/PXE/NFS-root, xCAT, MAAS, Foreman, BCM), restated in our words.
+- Network boot comparison (PXE/TFTP vs UEFI HTTP Boot), Kea DHCP and the D-T-B-I triage: migrated from `nvidia-devops` (`volume-10/01-bare-metal-and-bmc-lifecycle.md` and `volume-10/03-os-provisioning-and-linux-security-hardening.md`), with two corrections: the TFTP slowness description (defaults, not a hard limit) and the Kea snippet (client classes added so that PXE clients are not given an HTTP URL).
+- `dnsmasq` options verified in `dnsmasq(8)` (mirror commit `cf08eee`).
+- Run here: `code/part06/gen_provision.py` and `python3 code/part06/gen_provision_lab.py` (3 passed, 0 failed).
+- Explicitly labelled inferences: The `GOOD_ROWS` and `BAD_ROWS` validation test cases in `code/part06/gen_provision_lab.py` are deterministic unit checks of `gen_provision.py`.
+- Not verified on live hardware: iPXE script syntax details beyond common usage, Kea class tests on live hardware, ROCKS/PelicanHPC interactive installers, BCM and MAAS live provisioning, and server UEFI HTTP Boot firmware quirks (`untested here`).
