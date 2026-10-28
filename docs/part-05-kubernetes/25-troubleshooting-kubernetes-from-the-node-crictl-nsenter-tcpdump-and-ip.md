@@ -259,7 +259,7 @@ PVC Pending/Multi-Attach/FailedMount playbook (5.17); filesystem full or read-on
 
 ### 4.11 Control-plane slowness
 
-API latency by verb/resource, APF rejections, etcd fsync and DB size, controller queue depth, admission webhook latency, noisy clients in audit logs, node count/watch load (5.5). Mitigate: throttle clients, fix webhooks, defrag etcd, increase resources.
+API latency by verb/resource (`apiserver_request_duration_seconds`), APF rejections, etcd fsync and DB size, controller queue depth, admission webhook latency, noisy clients in audit logs, node count/watch load (5.5). Mitigate: throttle clients, fix webhooks, defrag etcd, increase resources.
 
 ### 4.12 Cluster-wide incidents after change
 
@@ -276,7 +276,15 @@ Prove playbooks work by injecting faults in staging: kill pods and nodes, delay/
 - **Communication**: status updates at fixed intervals; clear impact statement; ETA only with basis.
 - **Post-incident review** (blameless): timeline, contributing factors (not "root cause" singular), detection gaps, mitigation effectiveness, action items with owners (automation, alerts, guardrails, docs, tests), and share learnings. Convert recurring manual diagnosis into automated checks (preflight, node problem detector rules, health probes).
 
-## 7. Lab (untested)
+## 7. Lab
+
+First, run the self-checking Python lab (`code/part05/k8s_node_troubleshooter_lab.py`) locally. It verifies the container exit-code and OOM classifier (`classify_container_exit_code`: decoding exit codes `137`, `139`, `143`, `126`, `127`, and `/dev/shm` cgroup OOM), the 4-hop Pod connectivity bisection engine (`diagnose_pod_connectivity_bisection`: isolating `Pod/App` vs `Cross-Node CNI` vs `Service/kube-proxy` vs `CoreDNS`), and the GPU/PCIe/XID hardware triager (`triage_gpu_node_symptoms`).
+
+```bash
+python3 code/part05/k8s_node_troubleshooter_lab.py
+```
+
+Next, on a multi-node Kubernetes cluster with node root access (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **Toolbox**: build a debug image (netshoot-based plus nvidia-smi/ibstat/perftest/py-spy/fio); practise `kubectl debug` ephemeral, copy, and node modes; write the RBAC/policy that allows it only for the platform team.
 2. **Pod-to-pod trace**: client pod to server pod across nodes; capture at client veth (via `nsenter -n tcpdump` from the host), node uplink, server veth; induce loss with `tc netem` and with a NetworkPolicy drop; locate where packets vanish using the three captures plus policy counters.
@@ -291,8 +299,6 @@ Prove playbooks work by injecting faults in staging: kill pods and nodes, delay/
 11. **Game day**: run a 60-minute exercise with 3 injected faults unknown to responders; score detection, diagnosis, and recovery; write the post-incident review and update runbooks.
 12. **Automate**: turn two playbooks into scripts or node-problem-detector custom plugins that run checks and publish node conditions/metrics.
 13. **Clean up**.
-
-Mark tested only after execution.
 
 ## 8. Common mistakes
 
@@ -309,67 +315,233 @@ Mark tested only after execution.
 
 ## 9. Interview angles
 
-- "A pod is stuck in ContainerCreating. Walk me through diagnosing it." 
-- "A service is intermittently failing. How do you localise whether it's DNS, kube-proxy, CNI or the app?" 
+- "A pod is stuck in ContainerCreating. Walk me through diagnosing it."
+- "A service is intermittently failing. How do you localise whether it's DNS, kube-proxy, CNI or the app?"
 - "How do you capture traffic from inside a pod without tools in the image?" (`nsenter -n` from the node, ephemeral containers.)
 - "A training job hangs after hours. What do you check?" (ranks, NCCL, Xid, `py-spy`, network counters, stragglers.)
-- "A node goes NotReady intermittently. What are the likely causes and how do you confirm?" 
-- "What do exit codes 137, 139, 143 mean?" 
-- "How do you debug a distroless container?" 
-- "How do you run effective incident response and post-incident reviews?" 
+- "A node goes NotReady intermittently. What are the likely causes and how do you confirm?"
+- "What do exit codes 137, 139, 143 mean?"
+- "How do you debug a distroless container?"
+- "How do you run effective incident response and post-incident reviews?"
 
-## 10. Checkpoint questions (40)
+## Exercises
 
-1. First step in troubleshooting? **A:** Define scope/symptom and recent changes.
-2. Why bisect the path? **A:** Isolate the failing hop.
-3. Exit code 137 means? **A:** SIGKILL (often OOM).
-4. 143? **A:** SIGTERM.
-5. 139? **A:** SIGSEGV.
-6. 126/127? **A:** Not executable / not found.
-7. Previous logs flag? **A:** `--previous`.
-8. Ephemeral container command, and how does `kubectl attach` differ from `kubectl exec`? **A:** `kubectl debug -it --image --target`; `kubectl attach -it <pod-name>` attaches to the existing running process's `stdin`/`stdout` without spawning a new shell process.
-9. Node debug command? **A:** `kubectl debug node/<n> -it --image=...`.
-10. Runtime CLI for CRI? **A:** `crictl`.
-11. Get container PID? **A:** `crictl inspect` → `.info.pid`.
-12. Enter pod network ns from host? **A:** `nsenter -t PID -n`.
-13. See namespaces of a PID? **A:** `lsns -p` / `/proc/PID/ns`.
-14. Cgroup path? **A:** `/proc/PID/cgroup`.
-15. OOM evidence? **A:** `memory.events`, `dmesg`.
-16. Conntrack stats? **A:** `conntrack -S`.
-17. Packet capture tool? **A:** `tcpdump`.
-18. PMTU test? **A:** `ping -M do -s`.
-19. DNS test tool? **A:** `dig`.
-20. TCP internals? **A:** `ss -tin`.
-21. Kernel stack of hung proc? **A:** `/proc/PID/stack`.
-22. Python stack without attach? **A:** `py-spy dump`.
-23. Native stacks? **A:** `gdb -p`.
-24. Syscall tracing? **A:** `strace`.
-25. GPU health tool? **A:** `dcgmi health` / `nvidia-smi -q`.
-26. Xid error source? **A:** Kernel log (`dmesg`/journal).
-27. GPU support bundle? **A:** `nvidia-bug-report.sh`.
-28. PCIe link status? **A:** `lspci -vv` LnkSta.
-29. NCCL debug env? **A:** `NCCL_DEBUG=INFO`.
-30. RDMA tools? **A:** `ibstat`, `ib_write_bw`.
-31. Stuck Terminating cause? **A:** Finalizers, D-state I/O, unmount, kubelet down.
-32. FailedMount first check? **A:** Events, VolumeAttachment, CSI logs.
-33. FailedCreatePodSandBox suspects? **A:** CNI/IPAM/runtime.
-34. NotReady first checks? **A:** kubelet/runtime status, disk, certs, API reachability.
-35. Pending message source? **A:** Scheduler event `FailedScheduling`.
-36. API slowness metrics? **A:** `apiserver_request_duration_seconds`, APF, etcd fsync.
-37. Compare healthy vs failing means? **A:** Find differentiating factor.
-38. Chaos purpose? **A:** Validate runbooks and detection.
-39. Blameless review goal? **A:** Systemic fixes.
-40. Evidence to preserve? **A:** Logs, describes, journals, pcaps, metrics, bundles.
+1. **The Layered Diagnostic Method (`Scope -> Recent Changes -> Bisect Layer -> Hypothesis -> Test`) and `kubectl` Power Diagnostics (`KUR` Chapter 4):** Explain why you must capture evidence before restarting a failing Pod or node, compare the three `kubectl debug` modes (ephemeral container `--target`, Pod copy `--copy-to`, and node debug `node/<n>`), and write the `kubectl` commands to list all `OOMKilled` Pods across the cluster and inspect `--previous` logs.
+2. **Container Runtime and Namespace Inspection from the Node (`crictl`, `ctr`, `nsenter`, `lsns`, `/proc/$PID`):** Trace the exact commands to map a Kubernetes Pod/Container to its host PID (`crictl inspect`), run host `tcpdump` and `ss -tnap` inside a distroless container's network namespace (`sudo nsenter -t $PID -n`), and inspect `/proc/$PID/stack`, `/proc/$PID/cgroup`, and `/sys/fs/cgroup/.../memory.events`.
+3. **4-Hop Pod Network Bisection and Packet Capture (`ip`, `ss -tin`, `conntrack`, `iptables-save`, `tcpdump`, `ethtool`, `ibstat`):** Using `diagnose_pod_connectivity_bisection()` in `code/part05/k8s_node_troubleshooter.py`, trace how testing (1) Same-Node Pod IP, (2) Cross-Node Pod IP, (3) Service ClusterIP, and (4) Service DNS name isolates any network failure to a single layer, and show where to run `tcpdump` (`client veth`, `node uplink`, `server veth`) to catch dropped packets.
+4. **Exit Code Triage (`137`, `139`, `143`, `126`, `127`), Cgroup vs. Host OOM (`CONSTRAINT_MEMCG` vs. `CONSTRAINT_NONE`), and Hung `Terminating` Pods (`D` State):** Using `classify_container_exit_code()` in `code/part05/k8s_node_troubleshooter.py`, explain the exact Linux signal or error behind exit codes `137`, `139`, `143`, `126`, and `127`, how to distinguish a container cgroup OOM from a host-wide OOM in `dmesg`, and how to diagnose a Pod stuck in `Terminating` with `D`-state processes.
+5. **GPU, PCIe, NVLink, and Distributed `NCCL` Hang Playbooks:** Using `triage_gpu_node_symptoms()` in `code/part05/k8s_node_troubleshooter.py`, walk through the diagnostic steps for: (a) `nvidia-smi` missing inside a Pod, (b) `NCCL` hanging at `init_process_group` rendezvous vs timing out mid-training, (c) `py-spy dump --pid $PID` and `gdb -p $PID -batch -ex 'thread apply all bt'` on hung training ranks, and (d) `Xid 79` / PCIe link downtraining (`lspci -vv`).
+6. **Incident Evidence Preservation (`nvidia-bug-report.sh`, `sosreport`, `cluster-info dump`), Blameless Post-Mortems, and Game-Day Chaos Drills:** List the exact artifacts to collect before remediating a 1,000-GPU training incident, and design a 60-minute Game Day drill testing three injected node/network/storage faults.
 
-## 11. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. Why is "Restart the Pod / Reboot the Node First" an anti-pattern on a production GPU cluster, and what should you capture before restarting?</summary>
 
-- Brendan Burns, Joe Beda, Kelsey Hightower and Lachlan Evenson, *Kubernetes: Up and Running* (`kubernetes-up-and-running-3rd-edition`, 3rd edition; Chapter 4: `4. Common kubectl Commands` — read in full for `kubectl config set-context`/`use-context`, `view-last-applied`/`edit-last-applied`/`set-last-applied`, `kubectl attach`, and `kubectl completion bash`).
-- Josh Rosso et al., *Production Kubernetes* (operations and troubleshooting chapters).
-- James Strong and Vallery Lancey, *Networking and Kubernetes* (debugging network paths and tools).
-- The author's `nvidia-devops` repository, volume 03 (troubleshooting scenarios, `crictl` debugging appendix, production logs analysis).
-- Kubernetes documentation on debugging pods, services, nodes and ephemeral containers; Linux tooling manuals; NVIDIA DCGM and NCCL documentation.
-- Examples are the author's constructions.
+Restarting a Pod or rebooting a node **destroys volatile forensic evidence**:
+- In-memory Python/CUDA call stacks (`py-spy dump`, `gdb` backtraces) of a deadlocked collective vanish.
+- Kernel `/proc/$PID/stack` and `conntrack` state are wiped.
+- If a container crashes a second time after restart, the original crash logs in `kubectl logs --previous` are overwritten.
+**Always capture first:** `kubectl describe pod`, `kubectl logs --previous`, `py-spy dump` / `gdb` thread stacks (if hung), `dmesg -T`, `journalctl -u kubelet -u containerd`, and `nvidia-bug-report.sh` before draining or rebooting.
+</details>
 
-**Flagged for verification before publishing:** `crictl` output paths for your runtime version, `nsenter` flags on your distribution, Xid code meanings (verify against NVIDIA's current Xid catalogue), metric names, and every command listing; all labs are **untested**.
+<details>
+<summary>2. Decode container exit codes `1`, `126`, `127`, `137`, `139`, and `143` (and explain the `128 + N` Linux signal rule).</summary>
+
+In Linux, when a process is terminated by signal $N$, its exit status is reported as **`128 + N`**:
+- **`1` / `2`:** Application exited normally with an error status (check `kubectl logs --previous`).
+- **`126`:** Command invoked **cannot execute** (e.g., entrypoint script is missing `chmod +x` or binary architecture `arm64` vs `amd64` mismatch).
+- **`127`:** **Command not found** (entrypoint binary path does not exist in the container image or `$PATH`).
+- **`137` (`128 + 9 = SIGKILL`):** Process was forcefully killed by `SIGKILL`—caused by **Cgroup/Host OOM killer (`OOMKilled`)**, failing a `livenessProbe` after its grace period, or exceeding `terminationGracePeriodSeconds` during Pod deletion/eviction.
+- **`139` (`128 + 11 = SIGSEGV`):** **Segmentation fault** (invalid memory access in C/C++/CUDA library, corrupt shared memory, or CUDA driver/runtime ABI mismatch).
+- **`143` (`128 + 15 = SIGTERM`):** Process received **`SIGTERM`** (graceful shutdown signal from `kubelet`) and exited with the signal's status code.
+</details>
+
+<details>
+<summary>3. Compare the three modes of `kubectl debug`: (a) Ephemeral Container on a live Pod, (b) Pod Copy (`--copy-to`), and (c) Node Debug (`node/<name>`).</summary>
+
+1. **Ephemeral Container on a live running Pod (`kubectl debug -it <pod> --image=nicolaka/netshoot --target=<ctr>`):** Injects a debugging container directly into the *existing* running Pod (`spec.ephemeralContainers`), sharing its network, IPC, and target PID namespace. Ideal when a **distroless/minimal container is currently running (or hung)** and lacks a shell or `tcpdump`/`strace`.
+2. **Pod Copy (`kubectl debug <pod> -it --copy-to=<pod>-debug --container=<ctr> -- bash`):** Creates a **clone Pod** with the exact same volumes, env vars, and labels, but overrides the entrypoint command (`bash` or `sleep infinity`) or image. Ideal when the original Pod is in **`CrashLoopBackOff`** (exiting in 100ms before you can `exec` into it).
+3. **Node Debug (`kubectl debug node/<node-name> -it --image=ubuntu`):** Creates a privileged Pod in the host network/PID/IPC namespaces with the node's root filesystem mounted at **`/host`** (`chroot /host`). Ideal when SSH to the worker node is disabled or broken.
+</details>
+
+<details>
+<summary>4. How do you run the host's `tcpdump`, `ss`, or `ip` binary inside a running Pod's network namespace without installing any tools inside the container image?</summary>
+
+On the worker node hosting the Pod:
+1. Find the container's host PID via `crictl`:
+   `PID=$(sudo crictl inspect <container-id> | jq -r '.info.pid')`
+2. Use **`nsenter -t $PID -n`** to enter *only* the container's **network namespace (`-n`)** while staying in the **host's mount namespace** (so you execute the host's `/usr/sbin/tcpdump`, `/usr/sbin/ss`, and `/usr/sbin/ip` binaries directly against the Pod's `eth0` and sockets):
+   ```bash
+   sudo nsenter -t $PID -n ss -tnap
+   sudo nsenter -t $PID -n tcpdump -ni eth0 -nn port 8000
+   ```
+</details>
+
+<details>
+<summary>5. Why shouldn't you run `sudo nsenter -t $PID -a` (enter ALL namespaces, including the container's mount namespace `-m`) on an untrusted tenant container?</summary>
+
+When you pass `-m` (or `-a`, which includes `-m`), `nsenter` switches your root filesystem (`/`) to the **container's filesystem**. Any command you run next (such as `bash`, `ps`, or `ls`) executes the **binary inside the tenant's container image**—with your **host root privileges**. If a malicious tenant replaced `/bin/bash` or `libc.so` inside their container with a trojan binary, running `nsenter -t $PID -a bash` gives the tenant instant root code execution on the host node. Always enter `-n` (network) or inspect `/proc/$PID/root/...` using trusted host binaries without chrooting into untrusted mounts.
+</details>
+
+<details>
+<summary>6. Walk through the 4-Hop Bisection Method when Pod A cannot reach Service B (`http://vllm.serving.svc.cluster.local:80/health`).</summary>
+
+From Pod A (or `nsenter -t $PID_A -n` on Pod A's node), test in order:
+1. **Hop 1 — Same-node Backend Pod IP (`curl http://<pod-b1-same-node-ip>:8000/health`):** If this fails, the issue is the backend application (`ss -ltnp`), `targetPort`, or local CNI/NetworkPolicy.
+2. **Hop 2 — Cross-node Backend Pod IP (`curl http://<pod-b2-other-node-ip>:8000/health`):** If Hop 1 works but Hop 2 fails, the issue is **cross-node CNI routing, overlay firewall (`UDP 4789`/`6081`, BGP `179`), or MTU**.
+3. **Hop 3 — Service `ClusterIP` (`curl http://10.96.45.12:80/health`):** If Hops 1 & 2 work (direct Pod IPs work) but `ClusterIP` fails, the issue is **`EndpointSlice`s (0 Ready endpoints, wrong selector, or wrong `targetPort`), `kube-proxy` / Cilium Socket-LB rules, or `conntrack` exhaustion**.
+4. **Hop 4 — Service DNS Name (`curl http://vllm.serving.svc.cluster.local:80/health`):** If Hop 3 (`ClusterIP`) works but the hostname fails, the issue is **CoreDNS, `/etc/resolv.conf`, or egress `NetworkPolicy` blocking port `53`**.
+</details>
+
+<details>
+<summary>7. In Linux `dmesg` output after an OOM kill, what is the difference between `CONSTRAINT_MEMCG` and `CONSTRAINT_NONE`?</summary>
+
+When the Linux kernel OOM killer (`oom-kill:constraint=...`) logs a kill in `dmesg -T`:
+- **`CONSTRAINT_MEMCG` (`oom_memcg=/kubepods.slice/...`):** The **container's own cgroup memory limit (`resources.limits.memory` / `memory.max`)** was reached—even though the host node itself may have plenty of free RAM. Fix by increasing the Pod's `limits.memory` (remembering that `/dev/shm` tmpfs counts toward `memory.current`) or fixing the application/dataloader memory leak.
+- **`CONSTRAINT_NONE`:** The **entire physical host node ran out of RAM** (host-level OOM). Fix by configuring `kubeReserved`, `systemReserved`, and `evictionHard` (`memory.available`) in `KubeletConfiguration` so `kubelet` evicts pods gracefully before the host kernel panics or kills system daemons.
+</details>
+
+<details>
+<summary>8. How do you inspect what a hung Python/PyTorch training process AND its underlying C++/CUDA/NCCL threads are doing on a node without restarting the Pod?</summary>
+
+Find the container's host PID (`crictl inspect`) and run two non-destructive stack samplers on the node:
+1. **Python call stack (`py-spy`):**
+   `sudo py-spy dump --pid $PID` (reads Python interpreter memory out-of-process with zero ptrace pause, showing the exact `.py` file and line number—e.g., stuck in `dist.all_reduce()`, `DataLoader.__next__()`, or `boto3` S3 download).
+2. **Native C / C++ / CUDA / NCCL thread backtraces (`gdb` batch mode) and Kernel wait channel:**
+   - Kernel sleep stack: `sudo cat /proc/$PID/task/*/stack` and `wchan`.
+   - Native user-space stacks: `sudo gdb -p $PID -batch -ex 'thread apply all bt'` (shows whether threads are inside `ncclKernel_AllReduce`, `ibv_poll_cq`, `epoll_wait`, or `pthread_mutex_lock`).
+</details>
+
+<details>
+<summary>9. A Pod is stuck in `Terminating` for 30 minutes. How do you determine why from the API server and from the worker node?</summary>
+
+1. **Check the Pod YAML in the API server (`kubectl get pod <p> -o yaml`):**
+   - Does `metadata.finalizers` contain a custom finalizer waiting on a dead controller?
+   - Is the Pod's node `NotReady` / unreachable (so `kubelet` cannot confirm container death)?
+2. **On the worker node (if reachable):**
+   - Run `crictl ps -a | grep <pod>`: is the container still running?
+   - Check for **uninterruptible kernel I/O sleep (`D` state)**: `ps -eo pid,stat,wchan:30,cmd | awk '$2 ~ /D/'` and `sudo cat /proc/$PID/stack`. If the process is stuck in `nfs_wait_on_request` or `ll_file_io_generic` (Lustre), `SIGKILL` cannot take effect until the storage server recovers or the mount is force-unmounted (`umount -l` / node reboot).
+   - Check `journalctl -u kubelet` for `UnmountVolume` (`device or resource busy` — find open file descriptors with `sudo lsof +D /var/lib/kubelet/pods/<uid>`).
+</details>
+
+<details>
+<summary>10. What does `ss -tin dst <peer-pod-ip>` show on a Linux node when debugging slow pod-to-pod TCP throughput?</summary>
+
+`ss -tin` prints the Linux kernel's live **internal TCP control block state** for every active socket to that destination:
+- **`rtt:<ms>/<var>`:** Smoothed round-trip time and variance.
+- **`cwnd:<segments>` and `ssthresh`:** Current TCP congestion window and slow-start threshold.
+- **`retrans:<current>/<total>`:** Number of TCP packet retransmissions (a climbing `retrans` count with a collapsing `cwnd` immediately proves packet loss or MTU blackholing on the network path).
+- **`send <bps>` / `pacing_rate` / `delivery_rate`** and whether `bbr` or `cubic` is active.
+</details>
+
+<details>
+<summary>11. How do you check whether the Linux kernel is dropping packets due to `conntrack` table exhaustion or socket listen-queue overflows (`nstat` / `conntrack -S`)?</summary>
+
+On the worker or gateway node:
+1. **`conntrack -S` and `dmesg | grep conntrack`:** Check the `insert_failed` and **`drop`** counters in `conntrack -S`, and compare `cat /proc/sys/net/netfilter/nf_conntrack_count` against `nf_conntrack_max`.
+2. **`nstat -az | grep -E 'ListenOverflows|ListenDrops|TcpExtTCPSynRetrans'`:**
+   - If **`TcpExtListenOverflows`** / **`TcpExtListenDrops`** is incrementing inside the Pod's netns (`nsenter -t $PID -n nstat -az`), the application's `listen(fd, backlog)` queue (`somaxconn`) is overflowing because the server process is accepting connections too slowly (or is CPU-throttled).
+</details>
+
+<details>
+<summary>12. What causes a multi-NIC GPU Pod (using primary CNI `eth0` + secondary Multus `net1..net8`) to silently drop incoming packets on `net1`, and which sysctl fixes it?</summary>
+
+**Linux Reverse Path Filtering (`rp_filter`, Asymmetric Routing drop).**
+By default on many Linux distributions, `net.ipv4.conf.all.rp_filter = 1` (Strict mode): when a packet arrives on `net1` from source IP `192.168.50.20`, the kernel checks whether the Pod's routing table would send a reply to `192.168.50.20` out `net1`. If `192.168.50.20` matches the Pod's **default route (which points out `eth0`)**, strict `rp_filter=1` treats the packet on `net1` as spoofed and **silently drops it in the kernel** (`IPReversePathFilter` counter in `nstat -az`).
+**Fix:** Set **`rp_filter = 2` (Loose mode)** or `0` on multi-homed interfaces, or configure explicit subnet/policy routes for each secondary interface.
+</details>
+
+<details>
+<summary>13. A GPU Pod is `Running`, `nvidia-smi` works on the host node, but inside the Pod `nvidia-smi` returns `command not found` or `Failed to initialize NVML: Driver/library version mismatch`. Diagnose both cases.</summary>
+
+- **Case 1 (`nvidia-smi: command not found` or `No devices were found` inside Pod):**
+  1. Did the Pod spec include `resources.limits["nvidia.com/gpu"]: 1`? (If omitted, `kubelet` never calls the device plugin and the runtime does not inject `/dev/nvidia*` or `nvidia-smi` unless `NVIDIA_VISIBLE_DEVICES=all` was used on an unguarded runtime.)
+  2. Is `RuntimeClass` (`runtimeClassName: nvidia`) or the default `containerd` runtime configured with the `nvidia-container-runtime` hook / CDI (`crictl inspect <ctr-id> | jq '.info.runtimeSpec.linux.devices'`)?
+- **Case 2 (`Failed to initialize NVML: Driver/library version mismatch`):**
+  The host kernel module (`nvidia.ko`, seen in `cat /proc/driver/nvidia/version`) was upgraded (e.g., by unattended `apt-get upgrade`) **without unloading the old kernel module or restarting the driver/pods**, OR the container image bind-mounted a mismatched `libnvidia-ml.so` / `libcuda.so` into `LD_LIBRARY_PATH` shadowing the host driver library.
+</details>
+
+<details>
+<summary>14. Why does a multi-node `PyTorch` job hang during `dist.init_process_group("nccl")` right after printing `NCCL INFO Bootstrap : Using eth0:10.244.1.15`, and how do you debug it?</summary>
+
+During `init_process_group`, NCCL first establishes a TCP bootstrap ring over the socket interface (`NCCL_SOCKET_IFNAME`, here `eth0`) and then exchanges RDMA queue-pair (`QP`) / GID information to connect the high-speed data plane (`mlx5_0..7` or TCP sockets) on dynamic ephemeral ports:
+1. Re-run with **`NCCL_DEBUG=INFO` and `NCCL_DEBUG_SUBSYS=INIT,NET,ENV`** to see the exact step where initialization stops.
+2. **Common causes of a hang right after `Bootstrap: Using ...`:**
+   - A **`NetworkPolicy` or host firewall** allows the `MASTER_PORT` (`29500`), **but blocks the dynamic ephemeral TCP ports** that NCCL opens between every rank pair during bootstrap ring formation.
+   - **Wrong `NCCL_SOCKET_IFNAME` or `NCCL_IB_HCA`:** NCCL picked a non-routable interface (`docker0`, `lo`, or an unconfigured `net1`).
+   - **Wrong RoCEv2 GID index (`NCCL_IB_GID_INDEX`):** On RoCEv2 Ethernet fabrics, if `NCCL_IB_GID_INDEX` (usually `3` for RoCEv2 IPv4) points to a RoCEv1 GID, queue-pair connection times out across L3 switches.
+   - **Missing `/dev/shm` (`64 MiB` default) or missing `IPC_LOCK` (`ulimit memlock`).**
+</details>
+
+<details>
+<summary>15. How do you check whether a GPU's PCIe link has downtrained (e.g., from PCIe Gen5 `x16` to Gen3 `x4`), causing a mysterious 4x slowdown on one node?</summary>
+
+On the worker node, run:
+```bash
+nvidia-smi --query-gpu=index,gpu_bus_id,pcie.link.gen.max,pcie.link.gen.current,pcie.link.width.max,pcie.link.width.current --format=csv
+```
+and inspect the Linux PCIe Capabilities (`LnkCap` = maximum capable speed/width) vs. Link Status (`LnkSta` = currently negotiated speed/width) and PCIe Advanced Error Reporting (`AER`) counters:
+```bash
+sudo lspci -vv -s <bus_id> | grep -E 'LnkCap:|LnkSta:|AER'
+```
+If `LnkCap` says `Speed 32GT/s, Width x16` but `LnkSta` says **`Speed 8GT/s (downgraded), Width x4 (downgraded)`**, the riser card or PCIe slot has signal integrity issues; cordon the node for hardware repair.
+</details>
+
+<details>
+<summary>16. What is the PyTorch / NCCL "Flight Recorder" (`TORCH_NCCL_TRACE_BUFFER_SIZE`), and how does it help diagnose mid-training hangs on 1,000-GPU jobs?</summary>
+
+On a 1,000-GPU job, if 1 rank hangs or crashes, all other 999 ranks time out after 10 minutes (`Watchdog caught collective operation timeout`), making it hard to tell *which* rank caused the stall vs which ranks were merely waiting for it.
+Enabling the **PyTorch NCCL Flight Recorder** (`TORCH_NCCL_TRACE_BUFFER_SIZE=2000`, `TORCH_NCCL_DUMP_ON_TIMEOUT=1`) maintains a ring buffer in each rank's memory recording the sequence number, collective type (`AllReduce`, `AllGather`), tensor size, and start/end timestamps of recent collectives, and dumps them on timeout:
+- **The culprit rank(s)** are the ones that **never entered** collective sequence `#48291` (stuck earlier in a data loader, checkpoint write, or custom CUDA kernel).
+- **The victim ranks** are the 999 ranks that **entered** collective `#48291` and timed out waiting for the culprit rank.
+</details>
+
+<details>
+<summary>17. How do you check on a worker node whether `kubelet`'s PLEG (Pod Lifecycle Event Generator) or `containerd` is the reason a node flipped to `NotReady`?</summary>
+
+1. Check `kubectl describe node <node>` or `journalctl -u kubelet` for:
+   `PLEG is not healthy: pleg was last seen active 3m12s ago; threshold is 3m0s`
+2. Time a direct CRI call on the node:
+   `time sudo crictl ps` and `time sudo crictl pods`
+   - If `crictl ps` hangs or takes $> 10$ seconds, **`containerd` is overloaded or hung** (often blocked on slow disk I/O in `/var/lib/containerd` during image unpacking, or a hung `runc` shim process stuck in kernel `D` state).
+   - Inspect `journalctl -u containerd` and check disk I/O latency with `iostat -xz 1` and `/proc/pressure/io` (PSI).
+</details>
+
+<details>
+<summary>18. In *Kubernetes: Up and Running* Chapter 4, when debugging a container that has NO `/bin/sh` or `/bin/bash` (and where ephemeral containers are disabled), how can `kubectl attach` and `kubectl cp` / `port-forward` help?</summary>
+
+- **`kubectl attach -it <pod> -c <ctr>`:** Connects your terminal directly to the `stdin`/`stdout`/`stderr` streams of the already-running PID 1 process without executing a shell binary inside the container.
+- **`kubectl port-forward pod/<pod> 8080:8080`:** Tunnels a local workstation port over the API server to the Pod's localhost port—allowing you to hit internal debug/profiler endpoints (`/debug/pprof/`, `/metrics`, `/healthz`) that are not exposed on a Service.
+</details>
+
+<details>
+<summary>19. What is the single command to generate an official NVIDIA hardware/driver diagnostic bundle on a GPU node, and what does `kubectl cluster-info dump` collect?</summary>
+
+- **On the GPU worker node:**
+  **`sudo nvidia-bug-report.sh`**
+  Generates `nvidia-bug-report.log.gz` containing `nvidia-smi -q`, kernel `dmesg` XID logs, PCIe `lspci -vvv` topology, NVLink status, Fabric Manager logs, and driver module parameters (required for any NVIDIA Enterprise Support / RMA ticket).
+- **From `kubectl`:**
+  `kubectl cluster-info dump --namespaces kube-system,gpu-operator,training --output-directory=./incident-bundle`
+  Exports nodes, events, pod descriptions, and container logs for the specified namespaces into a structured directory.
+</details>
+
+<details>
+<summary>20. What are the core elements of a Blameless Post-Incident Review (Post-Mortem) after a major GPU cluster outage, and how should action items be structured?</summary>
+
+1. **Impact Summary:** Duration, GPU-hours lost, affected teams/SLOs (`RTO`/`RPO` achieved).
+2. **UTC Timeline:** Exact timestamps of trigger event, first alert fired, on-call acknowledgment (`TTD`), root layer isolation, mitigation applied (`TTR`), and full recovery.
+3. **Contributing Factors (Five Whys across systems, never blaming individuals):** Why did the bug happen, why didn't staging/validation catch it, and why did detection/mitigation take as long as it did?
+4. **Tracked Action Items (Categorized by `Prevent`, `Detect`, and `Mitigate`):** Every recurring manual diagnostic command run during the incident should be converted into an **automated preflight gate, a `node-problem-detector` rule, an admission policy, or a runbook link in the alert annotation**.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 4: Common kubectl Commands** (read in full: `kubectl get/describe`, `logs`, `exec`, `attach`, `cp`, `port-forward`, `top`, `config set-context/use-context`, `view-last-applied`/`edit-last-applied`/`set-last-applied`, and `completion bash`).
+  - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes* (operations, runtime, networking, storage, and troubleshooting patterns).
+  - `networking-and-kubernetes` — James Strong & Vallery Lancey, *Networking and Kubernetes* (debugging container and Kubernetes network paths with `ip`, `nsenter`, `tcpdump`, `iptables`, `conntrack`, and `dig`).
+  - `nvidia-devops` (`volume-03/01-k8s-control-plane-scheduling-masterclass.md`, `volume-03/02-k8s-node-storage-masterclass.md`, and `volume-03/03-k8s-networking-security-ops-masterclass.md`): troubleshooting scenarios, `crictl` debugging appendix, and production logs analysis.
+- **Run here:** `python3 code/part05/k8s_node_troubleshooter_lab.py` (3 passed, 0 failed).
+- **Explicitly labelled inferences:** The `classify_container_exit_code`, `diagnose_pod_connectivity_bisection`, and `triage_gpu_node_symptoms` models in `code/part05/k8s_node_troubleshooter.py` and the layered diagnostic flowchart and failure playbooks are the author's constructions synthesizing `KUR` Chapter 4, `PK`, `NK`, and `volume-03` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Not verified on live hardware:** Live `kubectl debug`, `crictl`, `nsenter`, `tcpdump`, `py-spy`, `gdb`, `dcgmi`, and `nvidia-bug-report.sh` executions (`1,000`-GPU job, exit codes `1`/`2`/`126`/`127`/`137`/`139`/`143`, `ping -M do -s 1422`, XIDs `13, 31, 43, 48, 61, 63, 64, 74, 79`, `60`-minute game day) are marked (`untested here`) where not executed by `k8s_node_troubleshooter_lab.py`.
