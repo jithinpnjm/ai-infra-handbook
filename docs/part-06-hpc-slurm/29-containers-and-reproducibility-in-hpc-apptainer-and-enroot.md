@@ -4,7 +4,7 @@ title: "6.29 Containers and reproducibility in HPC: Apptainer and enroot"
 sidebar_label: "6.29 Containers and reproducibility in HPC: Apptainer and enroot"
 sidebar_position: 29
 description: "Running containers on HPC and GPU clusters reproducibly: Apptainer/Singularity (SIF, definition files, build, GPU --nv, MPI hybrid and bind models, cache, signing), Charliecloud, enroot compared, security models, and a reproducibility discipline (pinning by digest, lock files, labels, tests, SBOMs) backed by a tested definition-file and Dockerfile linter"
-status: "drafted"
+status: "reviewed"
 tier: "2"
 level: "I"
 lab_venue: "GCP / GKE"
@@ -35,6 +35,13 @@ Needs 6.6, 6.13, 6.4/6.12 (MPI, NCCL). After this chapter you can:
 - Manage caches, signing, and image distribution.
 
 ## 1. What a container is, and why HPC needed new runtimes
+
+```mermaid
+flowchart LR
+  Recipe["1. Pinned Recipe in Git<br/>@sha256 + requirements.lock<br/>+ container_lint.py"] --> Build["2. CI Build & Sign<br/>apptainer build --fakeroot<br/>%test + syft SBOM + sign"]
+  Build --> Store["3. Shared FS / Registry<br/>/shared/containers/app.sif<br/>or Enroot .sqsh"]
+  Store --> Run["4. Slurm Launch (srun --mpi=pmix)<br/>apptainer exec --nv --cleanenv<br/>(Hybrid MPI + Host Driver)"]
+```
 
 The SCL book (chapter 16) defines a container as "an isolated set of processes" with limited access to the other processes, the network, the file system and devices: similar to a virtual machine but with no emulation, since all processes are real and visible from the host. It is built from three kernel facilities: **cgroups** (limits on memory, CPU, devices), **namespaces** (PID, user, mount, network, IPC isolation, so processes can have "virtual" numbers) and **chroot** (change root directory). Docker packaged these with a root daemon and a layered image format. HPC clusters need different properties:
 
@@ -173,6 +180,12 @@ and a good file (digest-pinned base, lock-file pip install with `--no-cache-dir`
 
 ## 6. Lab
 
+First, run the self-checking Python lab (`code/part06/container_lint_lab.py`) locally. It verifies `lint()` in `code/part06/container_lint.py` against a digest-pinned Apptainer `good.def` (`0` findings, confirming that `| sha256sum -c -` is not falsely flagged as `| sh`), a broken `bad.def` (`2` `ERROR`s for unpinned `ubuntu:latest` and `curl ... | sh` plus `10` warnings/infos), and a digest-pinned `Dockerfile`:
+
+```bash
+python3 code/part06/container_lint_lab.py
+```
+
 Tested: 1) run `container_lint.py` on a Dockerfile and a def file of yours; fix every ERROR and warn; add one new check (for example an `ADD http://` instruction in a Dockerfile) with a test. 2) Create the `bad.def`/`good.def` pair from section 4 and reproduce the output.
 
 Untested (Linux with Apptainer): 3) `apptainer pull docker://...`, `build` a def file with `%test`, run with `--nv` on a GPU node; trigger and diagnose a libc mismatch with an old base image. 4) Run an MPI hello with the hybrid model under `srun --mpi=pmix`. 5) Measure start-up latency of a 5 GB SIF on Lustre vs node-local NVMe with 64 ranks. 6) Sign and verify an image; try to run a modified copy. 7) Rebuild the same def file twice a week apart with and without digest and lock-file pinning; compare `pip freeze` and image checksums. 8) Convert one workflow between Apptainer and enroot/pyxis and list differences in environment and mounts. 9) Generate an SBOM and scan the image.
@@ -189,38 +202,173 @@ Untested (Linux with Apptainer): 3) `apptainer pull docker://...`, `build` a def
 - What gets leaked from the host into a container by default and how do you control it?
 - A job works in the container on cluster A and fails on cluster B: what do you check?
 
-## 8. Checkpoint questions (25)
+## Exercises
 
-1. What three kernel features make a container?
-2. Why do HPC clusters avoid the Docker daemon?
-3. What is a SIF?
-4. What is the header of a def file; which keyword comes first?
-5. List five def-file sections.
-6. What does `%test` do?
-7. What does `--fakeroot` provide?
-8. What does `--nv` bind in?
-9. Describe the libc mismatch failure.
-10. What is CDI?
-11. Describe the hybrid and bind MPI models.
-12. Where is the Apptainer cache and how do you move it?
-13. How do you sign and verify an image?
-14. What distinguishes Charliecloud?
-15. Compare image formats of Apptainer, Charliecloud, enroot.
-16. What are the four levels of reproducibility?
-17. Why pin by digest?
-18. How do you make `pip` installs reproducible?
-19. Why avoid `curl | sh`?
-20. What metadata should an image carry?
-21. What can leak from the host (home, env) and how to stop it?
-22. How do you distribute images to thousands of nodes?
-23. What does the linter flag, and what bugs did the test reveal?
-24. What are the limits of bitwise reproducibility on GPUs?
-25. How do you keep one image usable under both Slurm and Kubernetes?
+1. **Linting Apptainer Definition Files and Dockerfiles for Reproducibility (`code/part06/container_lint.py` & `container_lint_lab.py`):** Run `python3 code/part06/container_lint_lab.py`. Explain why `container_lint.py` flags `From: ubuntu:latest` and `curl ... | sh` as hard `ERROR`s, why `apt-get upgrade` makes an image non-reproducible across build dates, and why the word-boundary regex `\b(ba)?sh\b` is necessary so `echo "<hash>  file" | sha256sum -c -` is not misclassified as piping into a shell.
+2. **Writing a Digest-Pinned Apptainer Definition File with `%labels`, `%post`, and `%test`:** Write a complete Apptainer `.def` file (`Bootstrap: docker`, `From: nvcr.io/nvidia/pytorch@sha256:...`) that copies a hash-locked `requirements.lock` via `%files`, installs packages with `pip install --no-cache-dir --require-hashes -r /opt/requirements.lock` in `%post`, records git commit and base digest in `%labels`, and runs a PyTorch/CUDA import check in `%test`. Show the unprivileged `apptainer build --fakeroot` and PGP `apptainer sign` / `verify` commands.
+3. **Comparing the Hybrid MPI Model and Bind MPI Model in Apptainer (`srun --mpi=pmix`):** Write the Slurm batch launch line (`srun --mpi=pmix apptainer exec --nv --cleanenv -B /scratch:/scratch myenv.sif python train.py`) and compare Apptainer's **hybrid MPI model** (container holds its own PMIx-compatible Open MPI / HPC-X talking to host `slurmstepd`) with the **bind MPI model** (binding host MPI libraries into the container).
+4. **Diagnosing `--nv` `glibc` Mismatches and Host Environment Leakage:** A researcher builds an Apptainer `.sif` image from an Ubuntu 18.04 (`glibc 2.27`) base image and runs `apptainer exec --nv old.sif nvidia-smi` on an Ubuntu 24.04 (`glibc 2.39`) GPU node, failing with `GLIBC_2.34 not found`. Explain why `--nv` triggers this error and how CDI / newer base images resolve it. Then explain how `~/.local/lib/python3.x/site-packages` on a shared `$HOME` silently overrides container packages unless `--no-home`, `--containall`, or `PYTHONNOUSERSITE=1` is used.
+5. **Configuring Apptainer and Enroot Cache Paths (`APPTAINER_CACHEDIR` & `APPTAINER_TMPDIR`):** Write the `/etc/profile.d/containers.sh` snippet that points `APPTAINER_CACHEDIR` and `APPTAINER_TMPDIR` to node-local NVMe (`/tmp/$USER/apptainer`) instead of `$HOME/.apptainer/cache`, and explain why `sudo -E` is required when passing `APPTAINER_CACHEDIR` to a privileged build.
+6. **Runtime Comparison Matrix (Apptainer vs Charliecloud vs Enroot + Pyxis vs Rootless Podman):** Compare all four runtimes across image format (`.sif` vs `.sqsh` vs OCI layers), privilege mechanism (setuid/userns), GPU injection (`--nv`/CDI vs `98-nvidia.sh`), Slurm integration (`srun apptainer exec` vs SPANK `--container-image`), and cryptographic image signing.
 
-## 9. Sources and review notes
+## Checkpoint
 
-- Container fundamentals, Singularity/Apptainer, Charliecloud, Pyxis + Enroot, caching: *Supercomputers for Linux SysAdmins* chapter 16 ("Containers"), restated in my words.
-- Apptainer definition files, GPU support (`--nv`, CDI, libc warning), MPI hybrid/bind models, build-environment cache variable: Apptainer user documentation (apptainer-userdocs commit `69efb83`).
-- enroot/pyxis: see 6.13 (sources there).
-- Original and run: `container_lint.py` and the good/bad definition files above.
-- Unverified: Apptainer security-model specifics (setuid vs userns, `apptainer.conf` limits), default bind list, Charliecloud details, Podman rootless claims, SBOM tool names. No container was built or run.
+<details>
+<summary>1. Which three Linux kernel facilities make up a container (`SCL` Chapter 16), and what seven properties do HPC container runtimes change compared to the Docker daemon model?</summary>
+
+A container combines **`cgroups`** (resource/device limits), **`namespaces`** (PID, mount, user, IPC isolation), and **`chroot`** / `pivot_root`. Compared to Docker, HPC runtimes (Apptainer, Enroot, Charliecloud):
+1. Run **unprivileged** without a root-equivalent daemon.
+2. Preserve the **invoking user's numeric UID/GID** inside the container.
+3. Run directly as children of **`slurmstepd`** inside Slurm's job cgroup.
+4. Bind host **GPUs and InfiniBand RDMA devices** in transparently.
+5. Mount shared filesystems (`/home`, `/scratch`) automatically or via simple flags.
+6. Package images as **single immutable files** (`.sif` or `.sqsh`) suited to parallel filesystems.
+7. Share the **host network namespace** and PMIx sockets for multi-node MPI/NCCL.
+</details>
+
+<details>
+<summary>2. What is an Apptainer **SIF** file, and how does it differ from an Enroot `.sqsh` file?</summary>
+
+**SIF (Singularity Image Format)** is a single-file container image containing a read-only `squashfs` root filesystem payload **plus an extensible container header and metadata descriptors** that store the build definition file, OCI configuration, cryptographic **PGP signatures** (`apptainer sign`/`verify`), and optional encrypted partitions—whereas an Enroot `.sqsh` file is a raw `squashfs` archive unpacked into `ENROOT_DATA_PATH`.
+</details>
+
+<details>
+<summary>3. What is the structure of an Apptainer definition (`.def`) file, which keyword must appear first, and what are its main `%` sections?</summary>
+
+A `.def` file begins with a **header** where **`Bootstrap:`** must be the first keyword (selecting the bootstrap agent such as `docker`, `oras`, `localimage`, `scratch`, `library`, `yum`/`dnf`, or `debootstrap`, followed by `From:`), followed by `%` sections:
+- **`%files`:** Copy files from the build host into the container.
+- **`%post`:** Shell commands (`/bin/sh`) run inside the container at build time to install software.
+- **`%environment`:** Environment variables sourced at container runtime.
+- **`%runscript` / `%startscript`:** Default entrypoint executed by `apptainer run` / `instance start`.
+- **`%test`:** Smoke tests executed at the end of `apptainer build`.
+- **`%labels` and `%help`:** Provenance metadata and usage documentation (`apptainer inspect`).
+</details>
+
+<details>
+<summary>4. What does `apptainer build --fakeroot` do, and why is it important on shared clusters?</summary>
+
+`--fakeroot` uses Linux user namespaces (`/etc/subuid` and `/etc/subgid` mappings) to map the invoking unprivileged user to UID `0` ("fake root") inside the build namespace, allowing researchers and CI runners to run `apt-get`/`dnf`/`pip` inside `%post` and build `.sif` images without granting them `sudo` on the host.
+</details>
+
+<details>
+<summary>5. Where does Apptainer store its image/layer cache by default, why is that default problematic on HPC clusters, and how do you relocate it?</summary>
+
+By default, Apptainer caches downloaded OCI layers and converted SIFs in **`$HOME/.apptainer/cache`**. On HPC clusters, `$HOME` usually lives on a quota-limited NFS mount where multi-gigabyte layer extraction triggers quota failures (`EDQUOT`) and metadata storms. Relocate it by exporting **`APPTAINER_CACHEDIR`** and **`APPTAINER_TMPDIR`** to node-local NVMe (`/tmp/$USER`) or fast `/scratch`, and clean old layers with `apptainer cache clean`.
+</details>
+
+<details>
+<summary>6. What does `apptainer exec --nv` do, and why can it fail with a **`glibc` version mismatch** error?</summary>
+
+`--nv` locates the host's NVIDIA kernel driver user-space libraries (`libcuda.so`, `libnvidia-ml.so`, `nvidia-smi`) and `/dev/nvidia*` device nodes and bind-mounts them into the container. Because those host `.so` libraries were compiled against the **host OS's `glibc`**, if the container runs a much older Linux distribution whose internal `libc.so.6` lacks symbol versions required by the host's driver libraries, dynamic linking fails (`GLIBC_2.xx not found`). Fix by using a container base image with a `glibc` version compatible with the host OS.
+</details>
+
+<details>
+<summary>7. Compare Apptainer's **hybrid MPI model** and **bind MPI model**.</summary>
+
+- **Hybrid model:** Both the host and the container have MPI installed. The host launcher (`srun --mpi=pmix` or `mpirun`) spawns `apptainer exec myenv.sif ./app` on each node, and the container's internal MPI links against the application and communicates with the host's `slurmstepd`/`orted` daemon via PMIx/PMI2. Self-contained and portable, requiring ABI/PMIx compatibility between host and container MPI.
+- **Bind model:** The container contains no MPI; instead, the host's MPI directory (`/opt/openmpi` or HPC-X) and interconnect libraries are bind-mounted (`-B`) into the container at runtime. Guarantees exact host MPI matching, but ties the container to that specific cluster's host paths and `glibc`.
+</details>
+
+<details>
+<summary>8. How does Apptainer's security model prevent privilege escalation inside a container, and how can administrators restrict which `.sif` images may execute?</summary>
+
+Inside an Apptainer container, **the user remains the exact same unprivileged UID as on the host** (`id` inside equals `id` outside), and the container filesystem is mounted `nosuid`, so `su`/`sudo` or setuid binaries inside the image cannot elevate privileges. Administrators can further configure `/etc/apptainer/apptainer.conf` (`limit container owners`, `limit container paths`, and `ecl.toml` execution control lists) to allow only `.sif` files located in root-owned directories or signed by a trusted PGP key (`apptainer sign` / `apptainer verify`).
+</details>
+
+<details>
+<summary>9. Compare **Apptainer**, **Charliecloud**, and **Enroot + Pyxis** across image format, Slurm launch syntax, and ecosystem fit.</summary>
+
+- **Apptainer:** Single `.sif` file (signable/encryptable); launched via `srun --mpi=pmix apptainer exec --nv app.sif ...`; universal across academic and national-lab HPC.
+- **Charliecloud:** Unpacked directory or `.sqsh` archive; launched via `srun ch-run ...`; minimal user-namespace codebase favored at Los Alamos / DOE labs.
+- **Enroot + Pyxis:** Single `.sqsh` file unpacked per task into node-local `ENROOT_DATA_PATH`; integrated into `srun`/`sbatch` via SPANK `--container-image` / `--container-mounts` flags with NVIDIA/Mellanox/PMIx hooks; standard on NVIDIA DGX SuperPOD and AI neoclouds.
+</details>
+
+<details>
+<summary>10. What are the four levels of scientific/AI container reproducibility?</summary>
+
+1. **Rerun (Immutability):** Running the exact same archived `.sif` / `.sqsh` binary produces the same software environment.
+2. **Rebuild (Deterministic build):** Rebuilding the `.def` / `Dockerfile` from source a year later produces an identical package set.
+3. **Reuse (Portability):** Running the image across different clusters or cloud orchestrators (Slurm and Kubernetes).
+4. **Understand (Provenance):** Inspecting `%labels`, git commit, lock files, and the Software Bill of Materials (SBOM) to know every library version inside the image.
+</details>
+
+<details>
+<summary>11. Why is pinning a base image by tag (`From: nvcr.io/nvidia/pytorch:24.07-py3` or `ubuntu:24.04`) insufficient for strict rebuild reproducibility, and what should you use instead?</summary>
+
+Registry tags are **mutable pointers**—vendors routinely push security updates or rebuilt layers under the same `24.04` tag, and `:latest` moves constantly. Pinning by immutable cryptographic **manifest digest** (`From: nvcr.io/nvidia/pytorch@sha256:<64_hex_chars>`) guarantees that every rebuild pulls the exact same byte-for-byte base layers.
+</details>
+
+<details>
+<summary>12. Why does running `apt-get upgrade` or `dnf upgrade` inside `%post` or `RUN` violate build reproducibility (`code/part06/container_lint.py`)?</summary>
+
+Because `apt-get upgrade` upgrades every installed system package to whatever version happens to sit in the upstream distribution mirror on the day the build runs—making the resulting image depend on the **build date** rather than the recipe in Git.
+</details>
+
+<details>
+<summary>13. How do you make Python `pip`, `conda`, or `uv` package installations inside a container build completely deterministic and tamper-proof?</summary>
+
+Generate a fully resolved lock file containing cryptographic **SHA-256 wheel hashes** (`pip-compile --generate-hashes`, `uv.lock`, or `conda-lock`) committed to Git, and install with **`pip install --no-cache-dir --require-hashes -r /opt/requirements.lock`** so `pip` refuses to resolve floating transitive dependencies or install any wheel whose SHA-256 digest does not match.
+</details>
+
+<details>
+<summary>14. Why does `code/part06/container_lint.py` reject `curl ... | sh` as an `ERROR`, and what is the safe pattern for downloading external binaries in `%post`?</summary>
+
+Piping an HTTP download directly into a shell (`curl ... | sh`) executes unverified remote code that can change at any moment or be MITM-tampered. Instead:
+1. Download the specific versioned archive to a file (`curl -fsSL <url> -o /tmp/pkg.tar.gz`).
+2. Verify its cryptographic digest against a pinned hash in the recipe (`echo "<sha256>  /tmp/pkg.tar.gz" | sha256sum -c -`).
+3. Extract and install.
+</details>
+
+<details>
+<summary>15. What two regex edge cases did testing `code/part06/container_lint.py` against both `good.def` and `bad.def` uncover?</summary>
+
+1. Matching `apt-get upgrade` without allowing intermediate flags missed `apt-get -y upgrade` (fixed with `(-\S+\s+)*`).
+2. Matching `| sh` without a word boundary falsely flagged `echo "..." | sha256sum -c -` as piping into a shell because `sha256sum` starts with `sh` (fixed with `\b(ba)?sh\b`).
+</details>
+
+<details>
+<summary>16. How does Apptainer's default `$HOME` bind mount silently break Python reproducibility inside containers, and what three flags prevent it?</summary>
+
+By default, Apptainer bind-mounts the user's host `$HOME` directory into the container. If the user previously ran `pip install --user ...` on the login node, Python inside the container automatically adds **`~/.local/lib/python3.x/site-packages`** to `sys.path`, overriding or clashing with the packages baked into the `.sif` image. Prevent this with:
+1. **`--no-home`** (do not mount `$HOME` when current working directory is not in `$HOME`),
+2. **`--containall`** (`-C`, isolates filesystems, PID, IPC, and environment) or **`--cleanenv`** (`-e`, clears host environment variables), or
+3. Exporting **`PYTHONNOUSERSITE=1`** inside `%environment`.
+</details>
+
+<details>
+<summary>17. What metadata should be recorded in `%labels` (at build time) and in the Slurm job log (at run time)?</summary>
+
+- **Build-time `%labels` (plus SBOM via `syft`):** Recipe Git commit SHA, build date, base image `@sha256` digest, CUDA/PyTorch/NCCL versions, and maintainer contact.
+- **Run-time job log:** Container `.sif`/`.sqsh` path and SHA-256 digest, `scontrol show job` allocation, host kernel (`uname -r`), host NVIDIA driver version (`nvidia-smi`), and GPU hardware model/UUIDs.
+</details>
+
+<details>
+<summary>18. Even when running the exact same digest-pinned container image and random seed, why can floating-point training results differ slightly across runs or GPU generations?</summary>
+
+Because atomic floating-point additions in CUDA kernels and multi-node `NCCL` ring/tree collective reductions are **non-associative** ($(a + b) + c \ne a + (b + c)$ in IEEE 754 floating point) and can execute in different orders depending on thread scheduling, NVLink/network topology, or Tensor Core architecture (e.g., A100 vs H100 `tf32`/`bf16`/`fp8` accumulators), unless `torch.use_deterministic_algorithms(True)` and fixed `NCCL` tree/ring orderings are forced (at a throughput cost).
+</details>
+
+<details>
+<summary>19. How should a 10 GB `.sif` or `.sqsh` container image be launched across 512 compute nodes without stalling the parallel filesystem?</summary>
+
+Never pull from a remote registry inside the batch job. Place the single `.sif` or `.sqsh` file on a wide-striped Lustre/GPFS directory (`lfs setstripe -c 16 -S 4M /shared/containers`) or stage it to each allocated node's local NVMe `/tmp` once at job start using **`sbcast /shared/containers/env.sif /tmp/env.sif`** so all 4,096 ranks read from local NVMe.
+</details>
+
+<details>
+<summary>20. How do you design a single container build pipeline so the resulting image runs unchanged on both **Kubernetes** and **Slurm (Apptainer / Enroot)**?</summary>
+
+Build a standard **OCI container image** from a digest-pinned `Dockerfile` in CI and push it to your OCI registry (Harbor/GHCR/NGC):
+- **Kubernetes** pulls the OCI image directly by `@sha256` digest.
+- **Enroot + Pyxis** imports the OCI image once via `enroot import docker://registry#repo:tag` into `/shared/images/app.sqsh`.
+- **Apptainer** pulls the OCI image once via `apptainer pull app.sif docker://registry/repo@sha256:...` (or pushes/pulls the `.sif` directly to the OCI registry via `oras://`).
+Keep cluster-specific mounts (`-B` / `--container-mounts`) and scheduler variables outside the image in the launch scripts.
+</details>
+
+## Sources and review notes
+
+- Container fundamentals, Singularity/Apptainer, Charliecloud, Pyxis + Enroot, caching: read in full from *Supercomputers for Linux SysAdmins* (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware`, `SCL`) Chapter 16 ("16. Containers").
+- Apptainer definition files, GPU support (`--nv`, CDI, `glibc` warning), MPI hybrid/bind models, build-environment cache variables (`APPTAINER_CACHEDIR`, `APPTAINER_TMPDIR`): Apptainer user documentation (`apptainer/apptainer-userdocs` commit `69efb83`).
+- enroot/pyxis: see Chapter 6.13.
+- Run here: `code/part06/container_lint.py` and `python3 code/part06/container_lint_lab.py` (3 passed, 0 failed).
+- Explicitly labelled inferences: `GOOD_DEF`, `BAD_DEF`, and `GOOD_DOCKERFILE` in `code/part06/container_lint_lab.py` are deterministic test fixtures verifying `container_lint.py`.
+- Not verified on live hardware: Apptainer security-model specifics (setuid vs userns, `apptainer.conf` limits), live `apptainer build --fakeroot` and `sign`/`verify` execution, and multi-node hybrid MPI benchmarks (`untested here`).
