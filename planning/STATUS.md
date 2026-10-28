@@ -99,7 +99,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 6.8 | Slurm configuration: nodes, partitions and cgroups | drafted | 5042 | `slurmconf_lint_lab.py` (3/3 pass); `validate_chapter.py` 12/12 PASS |
 | 6.9 | Slurm accounting and scheduling policy: QoS, fairshare, backfill, preemption | reviewed | 6109 | `fairtree_sim_lab.py` (3/3 pass), `SCL 15` |
 | 6.10 | Slurm GPU scheduling: gres, NVML autodetect, MIG and device constraints | reviewed | 5789 | `gpu_env_check_lab.py` (3/3 pass), `DAI 8`, `SCL 15` |
-| 6.11 | Submitting and launching jobs: sbatch, srun, salloc, arrays, dependencies | drafted | 3758 |  |
+| 6.11 | Submitting and launching jobs: sbatch, srun, salloc, arrays, dependencies | reviewed | 6237 | `sbatch_lint_lab.py` (3/3 pass), `SCL 15`, `DAI 8` |
 | 6.12 | Multi-node training on Slurm: PMIx, torchrun, NCCL environment, binding, topology | drafted | 3934 |  |
 | 6.13 | Containers on Slurm: enroot and pyxis | drafted | 3379 |  |
 | 6.14 | Slurm operations: prolog, epilog, health checks, drain, reason codes, troubleshooting | drafted | 3999 |  |
