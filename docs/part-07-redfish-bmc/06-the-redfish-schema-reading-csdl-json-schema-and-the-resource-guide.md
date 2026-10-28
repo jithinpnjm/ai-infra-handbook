@@ -52,6 +52,27 @@ There is also a human-readable guide: the **Redfish Resource and Schema Guide (D
 
 All of these are published together by DMTF, and the GitHub repository `DMTF/Redfish-Publications` holds the folders `csdl`, `json-schema`, `openapi`, `registries`, `profiles`, `dictionaries` and `mockups`. I used it for the lab.
 
+```mermaid
+flowchart TD
+    PAYLOAD["Redfish JSON Payload<br/>@odata.type: #ComputerSystem.v1_17_0.ComputerSystem<br/>MessageId: Base.1.17.PropertyNotWritable"]
+    subgraph SCHEMAS["DMTF Schema Files (CSDL / JSON Schema / OpenAPI)"]
+        UNVER["Unversioned File: ComputerSystem.json<br/>Allowed URIs, Capabilities (insertable/updatable/deletable)"]
+        VER["Versioned File: ComputerSystem.v1_17_0.json<br/>Properties, Types, Readonly, Required, Actions"]
+        PREV["Earlier Versions: v1_16_0 ... v1_0_0<br/>Additive minor-version inheritance chain"]
+    end
+    subgraph REGISTRIES["DMTF Registries (/redfish/v1/Registries)"]
+        MSG["Message Registry (Base.1.24.0.json)<br/>125 MessageIds, Severity, Args, Resolution"]
+        ATTR["Attribute Registry (BiosAttributeRegistry)<br/>Platform-specific BIOS attributes & menus"]
+        PRIV["Privilege Registry (Redfish_1.x_PrivilegeRegistry)<br/>OperationMap + Property/URI/Subordinate Overrides"]
+    end
+    PAYLOAD -->|"@odata.type namespace"| UNVER
+    UNVER -->|"$ref versioned definition"| VER
+    VER -. "steps backward across minor versions" .-> PREV
+    PAYLOAD -->|"MessageId lookup"| MSG
+    PAYLOAD -->|"BIOS Attributes"| ATTR
+    PAYLOAD -->|"HTTP Verb Authorization"| PRIV
+```
+
 ## 2. From `@odata.type` to the schema file
 
 Every answer has an `@odata.type` such as `#ComputerSystem.v1_17_0.ComputerSystem`. Read it in three parts:
@@ -246,7 +267,7 @@ PASS  null is allowed where the schema says nullable (AssetTag)
 PASS  annotations (Prop@Namespace.Term) and Oem extensions are allowed
 PASS  a v1_0_0 payload cannot carry properties added later (versioning rule, 9.14)
 PASS  the same data is valid under the version it really is (v1_29_0)
-PASS  all 110 resources of our mock validate against the official schemas
+PASS  all 167 resources of our mock validate against the official schemas
 PASS  every MessageId our mock returned (14 different ones) exists in the official Base registry
 ```
 
@@ -260,7 +281,7 @@ When I first ran the validator over the mock I wrote for chapters 7.2 to 7.5, **
 4. A fan sensor had `ReadingType: "Fan"`. The allowed value is **`Rotational`**.
 5. Two error message IDs I had made up (`ActionParameterValueNotInList`, `QueryParameterUnsupported`) are not in the Base registry. I switched to registry messages (`PropertyValueNotInList`, `QueryNotSupported`).
 
-After the fixes all 30 resources validated, and the mock has since grown to 110 resources (GPUs, NICs, drives, firmware) that all still validate. Those are the kind of errors a hand-written tool or a lazy BMC firmware makes, and a person reading JSON by eye would miss most of them.
+After the fixes all 30 resources validated, and the mock has since grown to 167 resources (GPUs, NICs, drives, firmware, certificates, logs) that all still validate. Those are the kind of errors a hand-written tool or a lazy BMC firmware makes, and a person reading JSON by eye would miss most of them.
 
 ### Validating a real service
 
@@ -295,15 +316,14 @@ python3 redfish_crawl.py http://127.0.0.1:8443 admin adminpass
 
 In the mockup mode the data is read-only. The login accounts are the same fake ones as before. I use these trees in the next chapters.
 
-## 9. Exercises
+## Exercises
 
-1. Run `schema_tools.py explain Chassis.v1_23_0`. Find three read-only properties and three read-write ones.
-2. Use `--prop` to look at the definition of `Boot` in `ComputerSystem`. What do the `BootSourceOverrideTarget` allowed values look like?
-3. Take the sample file `Systems/437XR1138R2/index.json` from the rackmount example, change `PowerState` to `"Maybe"`, and run `schema_tools.py check` on it. Read the message.
-4. Look up `PropertyValueNotInList` in the Base registry. What are its arguments and what is the suggested resolution?
-5. Serve `public-pdu` with the mock. Crawl it and list the resource types you find. Which would a data center team care about?
-6. Find a property that is `deprecated` in the `Chassis` schema and the one that replaces it.
-7. Write a Python function that, given a payload, returns the list of properties a client could set (`readonly` false) according to the schema.
+1. **Inspecting a schema from the command line (`code/part07/schema_tools.py`):** Run `python3 code/part07/schema_tools.py explain Chassis.v1_23_0`. Identify three read-only properties, three read-write properties, one required property (`Id`), and the resource capabilities (`insertable=False updatable=True deletable=True`).
+2. **Drilling into a nested property definition (`--prop`):** Run `python3 code/part07/schema_tools.py explain ComputerSystem.v1_17_0 --prop Boot` (and `--prop PowerState`). Inspect the JSON Schema definition for `BootSourceOverrideTarget` and `PowerState`, noting why `PowerState` has `"readonly": true`.
+3. **Validating mutated payloads (`schema_tools.py check` & `schema_lab.py`):** Run `python3 code/part07/schema_lab.py` (`11 passed, 0 failed`). Then copy `Systems/437XR1138R2/index.json` from the `public-rackmount1` mockup to `/tmp/bad_sys.json`, change `"PowerState"` to `"Maybe"`, and run `python3 code/part07/schema_tools.py check /tmp/bad_sys.json` to inspect the exact schema validation error.
+4. **Looking up a `MessageId` in the Base Message Registry:** Open the latest `Base.1.*.json` file in `$REDFISH_PUBLICATIONS/registries/` and inspect the entry for `PropertyValueNotInList`. Record its `Message` template string (`%1`, `%2`), `NumberOfArgs`, `Severity`, and `Resolution`.
+5. **Crawling and validating a DMTF mockup tree:** Start `python3 code/part07/redfish_mock.py --mockup $REDFISH_PUBLICATIONS/mockups/public-liquid-cooled-server --port 8443` and run `python3 code/part07/schema_tools.py crawl http://127.0.0.1:8443 admin adminpass`. Confirm that all `241` resources validate cleanly against the official DMTF JSON Schemas.
+6. **Extracting writable properties programmatically:** Write a 15-line Python function using `schema_tools.load()` that takes a versioned `@odata.type` string (such as `"#ComputerSystem.v1_17_0.ComputerSystem"`) and returns the sorted list of top-level property names where `"readonly"` is `False`.
 
 ## 10. Interview angles
 
@@ -313,30 +333,149 @@ In the mockup mode the data is read-only. The login accounts are the same fake o
 - "What is a message registry and why does it exist?" A shared table of message IDs, text, severity and resolution, so errors and events are machine-readable and translatable.
 - "When do you use Oem data?" Only when no standard property exists, and wrapped so one vendor's change does not break the rest.
 
-## 11. Checkpoint questions (20)
+## Checkpoint questions (20)
 
-1. Name the three formats of the Redfish schema.
-2. Which format would you load in Python to validate?
-3. What do the three parts of `#Chassis.v1_23_0.Chassis` mean?
-4. What are the JSON Schema file names for versioned and unversioned definitions?
-5. What does the unversioned definition contain?
-6. What does a minor version change mean? An errata change?
-7. Can a `v1_0_0` payload contain a `v1_5_0` property?
-8. What should a client do with an unknown property?
-9. What does `read-only` mean in the Resource Guide, and what does `required` mean?
-10. What does `(v1.13+)` after a property name tell you?
-11. What is a deprecated property and when can it be removed?
-12. What does `@Redfish.AllowablePattern` do?
-13. What is a MessageId and what is its format?
-14. What is in a registry entry?
-15. Name three kinds of registries.
-16. Where do vendors put extra data?
-17. What is the Resource Guide for?
-18. What does `schema_tools.py crawl` do?
-19. Name two real mistakes the validator found in the mock.
-20. Why is the DMTF `mockups` folder useful?
+<details>
+<summary>1. Name the three machine-readable formats in which the DMTF publishes the Redfish schema (DSP0266 §11.1).</summary>
 
-## 12. Sources and review notes
+1. **CSDL (OData Common Schema Definition Language)** in XML (`*_v1.xml`), used by OData tools and exposed at `/redfish/v1/$metadata`.
+2. **JSON Schema** (`*.json`), used for programmatic payload validation in Python, Go, and CI pipelines.
+3. **OpenAPI YAML** (`openapi.yaml`), used by REST code generators and API exploration tools (supported from Redfish protocol v1.6.0+).
+</details>
+
+<details>
+<summary>2. Which schema format is easiest to load in Python to validate BMC JSON responses, and which two Python libraries does `code/part07/schema_tools.py` use?</summary>
+
+**JSON Schema** (`json-schema/` in `DMTF/Redfish-Publications`), loaded in `code/part07/schema_tools.py` using the **`jsonschema`** (`Draft4Validator`) and **`referencing`** libraries.
+</details>
+
+<details>
+<summary>3. What do the three segments of `#Chassis.v1_23_0.Chassis` in `@odata.type` represent?</summary>
+
+1. **`Chassis` (first segment):** The schema namespace.
+2. **`v1_23_0` (middle segment):** The schema version (`Major = 1`, `Minor = 23`, `Errata = 0`).
+3. **`Chassis` (final segment):** The entity/type name defined inside that schema namespace.
+</details>
+
+<details>
+<summary>4. How are the JSON Schema and CSDL files named for versioned versus unversioned definitions (DSP0266 §11.4)?</summary>
+
+- **JSON Schema:** Has one **unversioned** file (`Chassis.json`) and one **versioned** file per minor/errata release (`Chassis.v1_23_0.json`).
+- **CSDL XML:** Has one file per **major** version (`Chassis_v1.xml`) containing both the unversioned `Chassis` namespace and every minor version namespace (`Chassis.v1_0_0` .. `Chassis.v1_23_0`).
+</details>
+
+<details>
+<summary>5. What information lives in the unversioned JSON Schema file (`Chassis.json`) versus the versioned file (`Chassis.v1_23_0.json`)?</summary>
+
+The **unversioned** file (`Chassis.json`) holds no property definitions; instead, it lists all published version references (`anyOf`), the canonical **URI patterns** (`/redfish/v1/Chassis/{ChassisId}`), and the resource-level **capabilities** (`insertable`, `updatable`, `deletable`). The **versioned** file (`Chassis.v1_23_0.json`) defines the actual properties, types, `readonly` flags, `required` arrays, and `Actions` for that specific version.
+</details>
+
+<details>
+<summary>6. In Redfish schema versioning (`vMajor_Minor_Errata`), what is the difference between a Major, Minor, and Errata increment (DSP0266 §9.14)?</summary>
+
+- **Major (`v1` $\rightarrow$ `v2`):** Introduces backward-incompatible breaking changes or removes deprecated properties (extremely rare).
+- **Minor (`v1_16_0` $\rightarrow$ `v1_17_0`):** Strictly additive and backward-compatible—adds new optional properties, actions, or enumeration values without removing or breaking existing properties.
+- **Errata (`v1_17_0` $\rightarrow$ `v1_17_1`):** Clarifies descriptions, documentation, or non-breaking typographical fixes in an existing minor version.
+</details>
+
+<details>
+<summary>7. Is a BMC allowed to include a property introduced in `v1_5_0` inside a payload that declares `@odata.type: "#ComputerSystem.v1_0_0.ComputerSystem"`?</summary>
+
+**No.** Under DSP0266 §9.14 (and enforced by `additionalProperties: false` in the official JSON Schemas, Check 8 of `schema_lab.py`), a resource payload must strictly conform to the schema version it declares in `@odata.type` and cannot carry properties added in later minor versions unless it updates `@odata.type` to that newer version.
+</details>
+
+<details>
+<summary>8. How must a Redfish client behave when it encounters an unrecognized property, annotation, or enumeration value in a response?</summary>
+
+It must **ignore unrecognized properties and annotations without failing** and handle unknown enumeration strings gracefully, so that minor BMC firmware upgrades never break existing automation scripts.
+</details>
+
+<details>
+<summary>9. In the Redfish Resource and Schema Guide (DSP2046), what do `read-only`, `read-write`, `required`, and `(null)` mean in a property table?</summary>
+
+- **`read-only`:** The property is reported by the BMC and cannot be modified by a client (`PATCH` returns `400`/`PropertyNotWritable`).
+- **`read-write`:** The property is defined as modifiable in the schema (though a specific BMC implementation may still treat some writable properties as read-only).
+- **`required`:** Every conforming resource instance must include this property (such as `@odata.id`, `@odata.type`, `Id`, `Name`).
+- **`(null)`:** The property is nullable (`"type": [..., "null"]`) and may be `null` when the BMC cannot obtain a value.
+</details>
+
+<details>
+<summary>10. What do `(v1.13+)` and `(deprecated v1.8)` next to a property name in the Resource Guide tell you?</summary>
+
+- **`(v1.13+)`:** The property was introduced in minor version `1.13.0` of that schema (and is absent in `1.0.0` through `1.12.x`).
+- **`(deprecated v1.8)`:** The property was marked deprecated in version `1.8.0` in favor of a newer property or subsystem; BMCs may still return it for backward compatibility, and it can only be removed in a future major version (`v2`).
+</details>
+
+<details>
+<summary>11. Give a real example of a deprecated Redfish URI tree on `Chassis` and name the newer resources that replaced it.</summary>
+
+`/redfish/v1/Chassis/{ChassisId}/Power` and `/redfish/v1/Chassis/{ChassisId}/Thermal` are deprecated (`Redfish.DeprecatedUris`) and replaced by **`PowerSubsystem`**, **`ThermalSubsystem`**, **`Sensors`**, and **`EnvironmentMetrics`**.
+</details>
+
+<details>
+<summary>12. What do `@Redfish.AllowablePattern` and `@Redfish.AllowableNumbers` specify on a writable property?</summary>
+
+- **`@Redfish.AllowablePattern`:** A regular expression string (`"^[\\w:-]{0,31}$"`) constraining valid string values.
+- **`@Redfish.AllowableNumbers`:** An array of `"<min>:<max>:<step>"` range strings constraining valid numbers or ISO 8601 durations.
+</details>
+
+<details>
+<summary>13. What is a Redfish `MessageId`, and what are its four dot-separated components (DSP0266 §9.12)?</summary>
+
+A `MessageId` is a machine-readable identifier pointing into a Message Registry, formatted as **`<RegistryPrefix>.<Major>.<Minor>.<MessageKey>`** (for example, `Base.1.17.PropertyNotWritable` or `ResourceEvent.1.0.ResourceStatusChanged`).
+</details>
+
+<details>
+<summary>14. What fields are stored inside each message definition of a Redfish Message Registry file?</summary>
+
+- **`Description`:** Context of when the message is emitted.
+- **`Message`:** Human-readable template string with `%1`, `%2` positional placeholders.
+- **`Severity` / `MessageSeverity`:** `OK`, `Warning`, or `Critical`.
+- **`NumberOfArgs` and `ParamTypes`:** Expected argument count and types.
+- **`Resolution`:** Recommended remediation steps for the operator or client.
+</details>
+
+<details>
+<summary>15. Name the three types of registries defined by the Redfish specification and what each holds.</summary>
+
+1. **Message Registry:** Holds structured error, event, and log message templates (`Base`, `ResourceEvent`, `TaskEvent`, `Update`).
+2. **Attribute Registry:** Holds platform-specific BIOS/boot attribute definitions, types, default values, and dependencies (`BiosAttributeRegistry`).
+3. **Privilege Registry:** Maps each resource type (`Entity`) and HTTP verb (`OperationMap`) to the required Redfish privileges and overrides.
+</details>
+
+<details>
+<summary>16. How do vendors add proprietary properties, actions, and query parameters without violating the standard Redfish schemas (DSP0266 §9.8)?</summary>
+
+Vendor properties and links go inside the **`Oem`** object under a vendor identifier (`"Oem": {"Nvidia": {...}}`), OEM actions go under `Actions.Oem.#<OEMSchema>.<Action>`, and OEM query parameters use the prefix **`OEM-<Vendor>-<Name>`**.
+</details>
+
+<details>
+<summary>17. What is the difference between the Redfish Data Model Specification (DSP0268) and the Redfish Resource and Schema Guide (DSP2046)?</summary>
+
+**DSP0268** is the normative specification text generated from the schema long descriptions, whereas **DSP2046 (Resource and Schema Guide)** organizes every standard resource into a practical reference manual with release history, URI patterns, property tables, action tables, and sample JSON payloads.
+</details>
+
+<details>
+<summary>18. How does `code/part07/schema_tools.py crawl` validate a live or mock Redfish service?</summary>
+
+It logs into the service, walks every reachable resource from `/redfish/v1/` by following `@odata.id` links, looks up the exact versioned JSON Schema file matching each payload's `@odata.type` in `$REDFISH_PUBLICATIONS/json-schema`, and runs `jsonschema.Draft4Validator` to report any invalid properties, types, enums, or missing required fields.
+</details>
+
+<details>
+<summary>19. Name three real schema bugs that `schema_lab.py` caught in the initial version of `redfish_mock.py`.</summary>
+
+1. Naming the `ServiceRoot` link to the task service `TaskService` instead of the schema-defined **`Tasks`**.
+2. Omitting the required **`AccountTypes`** property on `ManagerAccount`.
+3. Setting a fan sensor's `ReadingType` to `"Fan"` instead of the schema enum value **`"Rotational"`** (plus inventing non-existent Base `MessageId` keys instead of `PropertyValueNotInList` and `QueryNotSupported`).
+</details>
+
+<details>
+<summary>20. Why is the `mockups/` directory in `DMTF/Redfish-Publications` valuable when building AI infrastructure automation?</summary>
+
+It provides dozens of official, multi-hundred-resource Redfish trees (`public-rackmount1`, `public-liquid-cooled-server`, `public-pdu`, `public-power-shelf`, `public-cooling-unit`, blade enclosures, SmartNICs, CXL) that you can serve locally with `redfish_mock.py --mockup` to test crawlers, inventory tools, and monitoring exporters before touching production hardware.
+</details>
+
+## Sources and review notes
 
 - **Redfish Specification DSP0266 v1.21.0:** goals and design (5.1 to 5.4), data model, resources, OEM, types, naming and annotations (9.1 to 9.13), registries (9.12), versioning (9.14), schema definition languages and file naming (11.1 to 11.4), OData metadata and service document (8.4). I read these clauses.
 - **Redfish Resource and Schema Guide DSP2046 (2024.4):** how to read the guide (section 2), common properties and objects (sections 3 and 4), and the Reference Guide property tables.

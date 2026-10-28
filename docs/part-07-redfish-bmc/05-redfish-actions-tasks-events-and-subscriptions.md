@@ -107,6 +107,11 @@ Before you restart a node in a cluster, drain it in the scheduler (chapter 6.14)
 
 - **`@Redfish.ActionInfo`** points to a separate resource describing the parameters (names, types, allowed values) when the list is too large for the inline form.
 - **`@Redfish.OperationApplyTime`** (spec 7.12) lets a request say **when** to apply the operation. Values include `Immediate`, `OnReset`, `AtMaintenanceWindowStart` and `InMaintenanceWindowOnReset`, and the resource says which it supports through `@Redfish.OperationApplyTimeSupport`. For example you can delete a storage volume "on the next reset". Services must run pending operations in the order received. I did not build this in the mock.
+- **Complete Action response status table (DSP0266 §7.11 Table 10):** Depending on whether an action finishes immediately, spawns a background job, or creates a new resource, DSP0266 §7.11 defines four valid `2xx` responses to an Action `POST`:
+  1. **`200 OK`:** The action completed synchronously and returned either a schema-defined action response body or a standard status message object (`Base.1.17.Success`, or `Base.1.17.NoOperation` if the requested state was already active, such as `ResetType: "On"` on a powered-on node).
+  2. **`201 Created`:** The action synchronously created a new resource; the `Location` header points to the new resource URI and the body conforms to the action's response schema.
+  3. **`202 Accepted`:** The action requires asynchronous background processing; the `Location` header points to a **Task Monitor URI** (`/redfish/v1/TaskService/TaskMonitors/<id>`), accompanied by an optional `Retry-After` header and a `Task` representation in the body.
+  4. **`204 No Content`:** The action completed synchronously and defines no response body.
 
 ## 2. Long jobs: 202 and the task monitor
 
@@ -134,7 +139,8 @@ The facts, from the spec:
 - The **task monitor** is an address the service makes up and you must treat as opaque. It usually looks like `/redfish/v1/TaskService/TaskMonitors/<id>`.
 - As long as the job is running, a `GET` of the monitor returns **202**. When it ends, the monitor returns the status and body the original request would have returned, as if it had run immediately.
 - The `Location` header gives the monitor. An optional `Retry-After` gives how long to wait. A `GET` on the monitor must return right away without blocking.
-- The **Task** resource (under `TaskService`) holds the details: `TaskState`, `TaskStatus`, start and end time, `PercentComplete`, and messages.
+- The **Task** resource (under `TaskService`) holds the details: `TaskState`, `TaskStatus`, start and end time, `PercentComplete`, and messages. It can also include a **`Payload`** object recording the original `HttpHeaders`, `HttpOperation`, `JsonBody` (with sensitive fields sanitized), and `TargetUri`—unless the `Task` sets `HidePayload: true` for security (DSP2046 `Task`).
+- **Task privilege enforcement (DSP0266 §13.6):** Regardless of which user started an asynchronous task, services **shall** enforce the Privilege Registry requirements on all `GET` and `DELETE` operations against the `Task` and `TaskMonitor` resources.
 - To **cancel**, send `DELETE` to the monitor or the Task. If the service allows it, the `Allow` header on the monitor includes `DELETE`. Afterwards the monitor returns 410 or 404.
 - A task that has finished and was cleaned up may return 410 or 404 if you wait too long. So read results soon.
 - The spec also says `GET`, `PUT` and `PATCH` should always be synchronous, but your client **must** be ready for either answer to any method.
@@ -293,14 +299,14 @@ It starts a mock service and a small event receiver, then runs 34 checks in grou
 
 A real error I found while writing it: the SSE check failed in my first run because my test asked for `ForceOff` when the system was already off, so there was no state change and no event. The lesson is a real one. **Events fire on change, not on commands.** A restart that changes nothing sends nothing.
 
-## 6. Exercises
+## Exercises
 
-1. Run `actions_lab.py`. Pick the five checks you think matter most for a restart script and explain why.
-2. Using `curl`, start the mock (`python3 redfish_mock.py`) and call `Reset` with `GracefulShutdown`. Then read `PowerState`.
-3. Write a Python function `wait_for_task(client, monitor, timeout)` following the polling loop above. Test it against the mock in slow mode (`st.async_reset = True` in code).
-4. What should your script do when it calls `Reset` and gets a `504` from a gateway? (Hint: do not assume it failed. Read `PowerState` and the log first.)
-5. Design the event path for 500 BMCs: one receiver or several, retry policy, what you store, and the poll fallback.
-6. Explain why an event body should lead you to `GET` the origin resource instead of trusting the event alone.
+1. **Auditing the 34 action, task, and event assertions (`code/part07/actions_lab.py`):** Run `python3 code/part07/actions_lab.py` and inspect the four test sections in `code/part07/actions_lab.py` (synchronous `Reset` and `NoOperation`, `202 Accepted` task monitor lifecycle and cancellation, push `Subscriptions` and `TerminateAfterRetries`, and `SSE` streaming with `$filter`). Identify the five checks most critical for an automated node-reboot runbook.
+2. **Triggering `GracefulShutdown` and `NoOperation` with `curl`:** Start `python3 code/part07/redfish_mock.py --profile dgx --port 18441`, discover the `#ComputerSystem.Reset` `target` URI on `System_0`, and `POST {"ResetType": "GracefulShutdown"}`. Verify that `PowerState` transitions to `"Off"`, then send `POST {"ResetType": "ForceOff"}` a second time and verify that the mock returns `200 OK` with `Base.1.17.NoOperation`.
+3. **Writing a resilient `wait_for_task()` poller:** Implement a Python function `wait_for_task(client, monitor_uri, timeout_sec=300)` that polls a `202 Accepted` task monitor URI, respects the `Retry-After` response header (defaulting to `2` seconds), logs `PercentComplete`, returns the final `200`/`201`/`204` payload on completion, raises an error on `4xx`/`5xx`, and returns an explicit `"UNKNOWN_TIMEOUT"` state if `timeout_sec` expires.
+4. **Handling an ambiguous `504 Gateway Timeout` on a node reset:** Suppose your automation sends `POST .../Actions/ComputerSystem.Reset {"ResetType": "GracefulRestart"}` through an OOB proxy and receives `504 Gateway Timeout`. Explain why blindly retrying `ForceRestart` immediately is dangerous, and list the two Redfish resources (`PowerState`/`LastResetTime` on `ComputerSystem` and `/LogServices/SEL/Entries`) you should inspect first.
+5. **Architecting a 500-BMC hybrid event + polling pipeline:** Design an event collection architecture for `500` DGX BMCs using push subscriptions (`Protocol: "Redfish"`, `EventFormatType: "Event"`, `Context` per rack, `DeliveryRetryPolicy: "RetryForeverWithBackoff"`, `SendHeartbeat: true`) behind a load-balanced receiver, paired with a low-frequency (`5`-minute) conditional `GET` (`If-None-Match`) reconciliation poll.
+6. **Testing `SubmitTestEvent` and `OriginOfCondition` verification:** Explain why an event receiver should treat an incoming push event as a notification hint—using `OriginOfCondition["@odata.id"]` to `GET` the authoritative resource state over TLS—and how `EventService.SubmitTestEvent` (`redfishevent -m test1` in BCM `cmsh`) verifies end-to-end firewall and receiver routing before an actual hardware fault occurs.
 
 ## 7. Interview angles
 
@@ -309,30 +315,138 @@ A real error I found while writing it: the SSE check failed in my first run beca
 - "Push events or polling?" Both: events for speed, polling as a safety net, because events have no history.
 - "What is the difference between `ForceRestart` and `PowerCycle`?" Non-graceful restart versus removing and restoring power. Use the weakest option that works.
 
-## 8. Checkpoint questions (20)
+## Checkpoint questions (20)
 
-1. What is a Redfish action?
-2. Where do you find the address of an action?
-3. What does `ResetType@Redfish.AllowableValues` give you?
-4. What status do you get for a missing action parameter?
-5. Why can you not change `PowerState` with `PATCH`?
-6. What does `GracefulRestart` do that `ForceRestart` does not?
-7. When would you use `PowerCycle`?
-8. What does a `200` with `NoOperation` mean?
-9. What does `202 Accepted` mean?
-10. Which headers come with a `202`?
-11. What does a `GET` on a task monitor return while the job runs? When it ends?
-12. How do you cancel a task?
-13. What should a script do on timeout?
-14. What are `TaskState` values `Running`, `Exception` and `Cancelled`?
-15. How do you create an event subscription and what comes back?
-16. What is `Context` for?
-17. Why do you get no old events?
-18. What happens to a subscription after repeated failed deliveries with `TerminateAfterRetries`?
-19. How does SSE differ from a push subscription?
-20. Why should event delivery have a polling fallback?
+<details>
+<summary>1. What is a Redfish Action, and why does it use `POST` to a `target` URI instead of `PATCH` on a property?</summary>
 
-## 9. Sources and review notes
+An Action is a procedural operation (such as resetting a server, flashing firmware, or clearing a log) that cannot be modeled cleanly as setting a static property value. Clients invoke an action by sending an HTTP **`POST`** request to the URI advertised in `Actions.#<ResourceType>.<ActionName>.target` (DSP0266 §7.11, §9.6.14).
+</details>
+
+<details>
+<summary>2. Why must clients read the action `target` URI from the resource payload rather than constructing `<ResourceUri>/Actions/...` by string concatenation?</summary>
+
+While the specification recommends `<ResourceUri>/Actions/<QualifiedActionName>`, DSP0266 §9.6.14 states that the `target` property inside `Actions` is the normative URL to invoke the action, ensuring compatibility across all BMC implementations and proxy gateways.
+</details>
+
+<details>
+<summary>3. What does `ResetType@Redfish.AllowableValues` tell a client, and how does it differ from the full `ResetType` enumeration in the schema?</summary>
+
+The schema lists every possible `ResetType` defined by the DMTF (`On`, `ForceOff`, `GracefulShutdown`, `GracefulRestart`, `ForceRestart`, `PowerCycle`, `FullPowerCycle`, `Nmi`, `PushPowerButton`, etc.), whereas `ResetType@Redfish.AllowableValues` lists **only the values supported and currently valid on this specific system instance** (DSP0266 §9.9.2).
+</details>
+
+<details>
+<summary>4. What HTTP status code does a BMC return when a required action parameter is missing or its value is not in `@Redfish.AllowableValues`?</summary>
+
+HTTP **`400 Bad Request`** with an `@Message.ExtendedInfo` error entry (`ActionParameterMissing` or `PropertyValueNotInList`).
+</details>
+
+<details>
+<summary>5. Why does `PATCH {"PowerState": "Off"}` on a `ComputerSystem` resource fail with `400 Bad Request`?</summary>
+
+`PowerState` is defined in the `ComputerSystem` schema with `"readonly": true`—it reports the current power rail state and cannot be modified via `PATCH`. Changing power state requires `POST` to the `#ComputerSystem.Reset` action.
+</details>
+
+<details>
+<summary>6. What is the operational difference between `GracefulRestart`, `ForceRestart`, `PowerCycle`, and `FullPowerCycle`?</summary>
+
+- **`GracefulRestart`:** Signals the host OS (via ACPI) to flush filesystems, stop services cleanly, and reboot.
+- **`ForceRestart`:** Immediately resets the host without OS cooperation (use only when the OS is hung).
+- **`PowerCycle`:** Drops main DC power rails to the host components and restores them.
+- **`FullPowerCycle`:** Simulates removing and restoring AC utility power lines (resetting standby rails/auxiliary controllers as well).
+</details>
+
+<details>
+<summary>7. What does `ResetType: "Nmi"` do, and what determines whether it produces a Linux kernel crash dump?</summary>
+
+`Nmi` injects a hardware **Non-Maskable Interrupt** (diagnostic interrupt) into the host CPUs, which normally halts the system. Whether Linux captures a `vmcore` crash dump depends on the host OS having `kdump` and `sysctl kernel.panic_on_unrecovered_nmi=1` configured.
+</details>
+
+<details>
+<summary>8. What does HTTP `200 OK` containing a `Base.x.y.NoOperation` message mean when returned by an Action (DSP0266 §7.11)?</summary>
+
+It means the requested action was valid but **had no effect because the system was already in the requested state** (for example, sending `{"ResetType": "On"}` to a server whose `PowerState` is already `"On"`).
+</details>
+
+<details>
+<summary>9. What does HTTP `202 Accepted` mean, and which two response headers should the client read from a `202 Accepted` response?</summary>
+
+`202 Accepted` means the BMC validated and accepted the request for **asynchronous background execution**, and the work is **not finished yet**. The client must read the **`Location`** header (the Task Monitor URI to poll) and the **`Retry-After`** header (how many seconds to wait between polls).
+</details>
+
+<details>
+<summary>10. What does `GET` on a Task Monitor URI return while the background job is still running, versus once the job finishes (DSP0266 §12.2)?</summary>
+
+- **While running:** Returns **`202 Accepted`** (with the in-progress `Task` JSON showing `TaskState: "Running"` and `PercentComplete`).
+- **Once finished:** Returns the **exact final HTTP status code (`200`, `201`, `204`, or `4xx`/`5xx`) and response body that the original request would have returned** if it had executed synchronously.
+</details>
+
+<details>
+<summary>11. How does a client cancel a running asynchronous task, and what status code does its Task Monitor URI return after cancellation?</summary>
+
+Send an HTTP **`DELETE`** request to the Task Monitor URI (when `Allow` includes `DELETE`) or the `Task` resource URI, which returns `204 No Content` (or `409 Conflict` if the task already finished). Subsequent `GET` requests to the cancelled task monitor return **`410 Gone`** (or `404 Not Found`).
+</details>
+
+<details>
+<summary>12. If a script's polling timer expires while a Task Monitor is still returning `202 Accepted`, how should the script classify the outcome?</summary>
+
+It must classify the state as **`UNKNOWN` (timed out)**—never assume the operation succeeded and never assume it failed cleanly without inspecting the target resource and task status.
+</details>
+
+<details>
+<summary>13. What are the meanings of `TaskState` values `Running`, `Completed`, `Exception`, and `Cancelled`, and what property gives the final health outcome?</summary>
+
+- **`Running`:** The asynchronous operation is actively executing.
+- **`Completed`:** The operation finished normally.
+- **`Exception`:** The operation halted due to an error.
+- **`Cancelled`:** The operation was aborted by a `DELETE` request.
+The **`TaskStatus`** property (`"OK"`, `"Warning"`, `"Critical"`) reports the severity/health of the completed or failed task.
+</details>
+
+<details>
+<summary>14. How do you subscribe to Redfish push events, and what status code and headers are returned (DSP0266 §12.1.2)?</summary>
+
+Send `POST /redfish/v1/EventService/Subscriptions` with a JSON body specifying at least `"Destination"` (your HTTPS webhook receiver URL), `"Protocol": "Redfish"`, and optional filters (`RegistryPrefixes`, `ResourceTypes`, `Context`). The BMC returns **`201 Created`** with a `Location` header pointing to the new `EventDestination` subscription resource.
+</details>
+
+<details>
+<summary>15. What is the purpose of the `Context` property in an `EventDestination` subscription?</summary>
+
+`Context` is a client-supplied string (such as `"gpu-rack-7"` or a correlation token) that the BMC echoes back unchanged in every pushed `Event` payload created for that subscription, allowing a central webhook receiver to identify which subscription or rack rule generated the event.
+</details>
+
+<details>
+<summary>16. Does subscribing to `/redfish/v1/EventService/Subscriptions` replay historical hardware events that occurred before the subscription was created (DSP0266 §12.1.2)?</summary>
+
+**No.** Redfish eventing is strictly a live notification stream with **no historical replay** (historical records live in `/LogServices/SEL/Entries`). Furthermore, pushed event payloads are capped at `1 MiB` (excluding metric reports), and subscriptions persist across BMC reboots.
+</details>
+
+<details>
+<summary>17. What are the four `DeliveryRetryPolicy` options on an `EventDestination`, and what does `TerminateAfterRetries` do?</summary>
+
+The four policies are **`RetryForever`**, **`RetryForeverWithBackoff`**, **`SuspendRetries`**, and **`TerminateAfterRetries`**. Under `TerminateAfterRetries`, once the BMC fails `DeliveryRetryAttempts` consecutive times to deliver an event to `Destination`, it automatically deletes/terminates the subscription (`GET` on the subscription returns `404`).
+</details>
+
+<details>
+<summary>18. What is `OriginOfCondition` inside an `Event` record, and what is `EventGroupId`?</summary>
+
+- **`OriginOfCondition`:** An `{"@odata.id": "..."}` link pointing to the specific Redfish resource (`Systems/System_0`, `Sensors/Fan_1`) that triggered the event.
+- **`EventGroupId`:** An integer shared across multiple separate event records that were all caused by the same underlying physical incident (such as a single pulled cable triggering link-down, redundancy-lost, and status-changed events).
+</details>
+
+<details>
+<summary>19. How do Server-Sent Events (SSE, DSP0266 §12.5) differ from push subscriptions in connection direction, `Content-Type`, and subscription lifecycle?</summary>
+
+With **SSE**, the client opens a single long-lived outbound **`GET`** request to `ServerSentEventUri` (`/redfish/v1/EventService/SSE`), avoiding the need to expose an inbound webhook server through firewalls. The BMC responds with `200 OK` and **`Content-Type: text/event-stream`**, streaming `id:` and `data:` lines. Opening the SSE stream automatically creates a subscription in `Subscriptions`, and closing the TCP stream automatically removes that subscription.
+</details>
+
+<details>
+<summary>20. Why do production AI fleets combine Redfish push events (or SSE) with periodic low-frequency polling?</summary>
+
+Push events provide sub-second notification when a power supply fails or a GPU overheats, but because events have **no history** and can be dropped during an OOB network partition or receiver restart, a periodic background poll (or `SendHeartbeat` check) guarantees eventual consistency.
+</details>
+
+## Sources and review notes
 
 - **Redfish Specification DSP0266 v1.21.0:** `POST` (action) rules and status table (7.11), operation apply time (7.12), eventing, subscription properties and event formats (12.1), asynchronous operations and task monitors (12.2), server-sent events (12.5). I read these clauses.
 - **Redfish Resource and Schema Guide DSP2046 (2024.4):** `ComputerSystem` `ResetType` and `PowerState` definitions, `Task` and `TaskState`, `EventDestination` (`DeliveryRetryPolicy`, `SubscriptionType`), `EventService`.

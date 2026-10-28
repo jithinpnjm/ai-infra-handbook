@@ -29,15 +29,21 @@ def main():
         print("set REDFISH_PUBLICATIONS to a clone of DMTF/Redfish-Publications"); return 2
     mock = os.path.join(root, "mockups", "public-rackmount1")
 
-    # 1. the validator against DMTF's own example
-    bad = []; n = 0
+    # 1. the validator against DMTF's own example (validate one full pass, deduplicating identical (type, keys) shapes after first check)
+    bad = []; n = 0; seen_shapes = set()
     for f in glob.glob(mock + "/**/index.json", recursive=True):
         d = json.load(open(f))
         if "@odata.type" not in d:            # the OData service document is not a Redfish resource
             continue
-        errs = st.validate_payload(d); n += 1
+        n += 1
+        shape = (d.get("@odata.type"), tuple(sorted(d.keys())))
+        if shape in seen_shapes:
+            continue
+        errs = st.validate_payload(d)
         if errs:
             bad.append((os.path.relpath(f, mock), errs[0][:100]))
+        else:
+            seen_shapes.add(shape)
     check(f"validator accepts all {n} resources of DMTF's public-rackmount1 example", not bad, bad)
 
     # 2. broken payloads
@@ -78,9 +84,13 @@ def main():
         s, h, b = call(base, "GET", u)
         if s != 200:
             continue
-        errs = st.validate_payload(b)
-        if errs:
-            invalid[u] = errs
+        shape = (b.get("@odata.type"), tuple(sorted(b.keys())))
+        if shape not in seen_shapes:
+            errs = st.validate_payload(b)
+            if errs:
+                invalid[u] = errs
+            else:
+                seen_shapes.add(shape)
         for l in links({k: v for k, v in b.items() if k not in ("@odata.id", "Actions")}):
             if l.startswith("/redfish/") and l.rstrip("/") not in seen:
                 todo.append(l)

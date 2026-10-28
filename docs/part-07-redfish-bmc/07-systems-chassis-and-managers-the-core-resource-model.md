@@ -18,7 +18,7 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | Laptop |
 | Part | Part 7: Redfish and BMC |
-| Status | Drafted (`rf_model.py` and `rf_inventory.py` run against mock and DMTF trees; **untested** on live BMC) |
+| Status | Drafted (`rf_model.py`, `rf_inventory.py`, and `model_inventory_lab.py` 3/3 self-checks pass against mock and DMTF trees; **untested** / **not verified** on live BMC) |
 
 ## Why this matters for AI infrastructure
 
@@ -253,14 +253,14 @@ The user's notes describe a DGX H100 like this. They are given as the notes stat
 
 My mock's `dgx` profile copies the shape (a host system, a baseboard system with eight GPU processors and per-GPU metrics, one chassis, one BMC) but the names inside are invented.
 
-## 10. Exercises
+## Exercises
 
-1. Run `rf_model.py` on the mock and on a DMTF example (serve one with `redfish_mock.py --mockup`). Draw the graph by hand.
-2. Run `rf_inventory.py --csv` against the blade example. Why are there four systems but five managers?
-3. In the SmartNIC example find the DPU. What `SystemType` does it have and what manages it?
-4. Write a function that, given a ComputerSystem, returns the list of its GPUs (by `ProcessorType`), without using any fixed URI.
-5. Break one link in the mock on purpose (remove `ManagerForChassis`). Does the checker find it?
-6. For a server in your own lab or a vendor demo, list which of `Power`/`Thermal` (old) or `PowerSubsystem`/`ThermalSubsystem` (new) are present.
+1. **Mapping and verifying bidirectional links (`code/part07/rf_model.py` & `model_inventory_lab.py`):** Run `python3 code/part07/model_inventory_lab.py` (`3/3` checks pass). Then start `redfish_mock.py` (`--profile dgx`) and run `python3 code/part07/rf_model.py http://127.0.0.1:18441 admin adminpass --mermaid` to print the complete `System` $\leftrightarrow$ `Chassis` $\leftrightarrow$ `Manager` relationship graph.
+2. **Exporting a multi-system CSV inventory (`code/part07/rf_inventory.py`):** Serve the DMTF multi-blade enclosure mockup (`$REDFISH_PUBLICATIONS/mockups/public-bladed-system`) using `redfish_mock.py --mockup` and run `rf_inventory.py --csv`. Explain why the enclosure exposes `4` `ComputerSystem` instances (`Blade1`..`Blade4`) alongside `5` `Manager` instances (`4` blade BMCs + `1` `MultiBladeBMC` of `ManagerType: "EnclosureManager"`).
+3. **Inspecting a SmartNIC / BlueField DPU as a second `ComputerSystem`:** Serve the DMTF SmartNIC mockup (`$REDFISH_PUBLICATIONS/mockups/public-smartnic`) and inspect `/redfish/v1/Systems/Card1-SoC`. Record its `SystemType` (`"DPU"`), its CPU and memory counts (`1` CPU, `8 GiB` RAM), and which `Manager` (`Links.ManagedBy`) controls both the host system (`437XR1138R2`) and the DPU.
+4. **Discovering GPUs dynamically across all `ComputerSystem` members:** Write a 12-line Python function `find_all_gpus(client)` that starts at `/redfish/v1/`, iterates through every member of `Systems`, traverses each system's `Processors` collection, and returns every processor resource where `ProcessorType == "GPU"` without hard-coding `"HGX_Baseboard_0"`.
+5. **Catching a broken `Links` back-reference (`rf_model.check`):** Inspect Check 3 of `code/part07/model_inventory_lab.py`, where removing `ManagerForChassis` from `BMC_0` triggers `ONE-WAY /redfish/v1/Chassis/Chassis_0 --ManagedBy--> /redfish/v1/Managers/BMC_0`. Test what `rf_model.check()` outputs if you instead point `Links.Chassis` at a non-existent URI `"/redfish/v1/Chassis/Ghost"` (`DANGLING`).
+6. **Counting populated DIMMs while excluding `Status.State == "Absent"` (DSP0266 §9.11):** Write a Python snippet that reads `/redfish/v1/Systems/System_0/Memory` and counts both total DIMM slots (`Members@odata.count`) and populated DIMMs (`Status.State != "Absent"`), summing `CapacityMiB` only across populated slots.
 
 ## 11. Interview angles
 
@@ -269,30 +269,136 @@ My mock's `dgx` profile copies the shape (a host system, a baseboard system with
 - "How do you map a GPU to its temperature?" Follow links: system, processors, GPU, its metrics or the chassis sensors. Use discovery.
 - "What does HealthRollup mean?" The worst health among the resource and everything beneath it. It is a summary, so open the children to find the cause.
 
-## 12. Checkpoint questions (20)
+## Checkpoint questions (20)
 
-1. What does the `Systems` family describe?
-2. What does `Chassis` describe?
-3. What does `Managers` describe?
-4. Why do sensors live under the chassis?
-5. What is `HealthRollup`?
-6. What is `SystemType: DPU`?
-7. How can a server have more than one `ComputerSystem`?
-8. Name four sub-collections reachable from a system.
-9. What do `Processors` contain besides CPUs?
-10. What are the three settings of `BootSourceOverrideEnabled`?
-11. Name three `ChassisType` values.
-12. What are `ThermalSubsystem` and `PowerSubsystem` and what replaced them?
-13. What do `Contains` and `ContainedBy` mean?
-14. What is a `ManagerType` of `EnclosureManager`?
-15. What does `NetworkProtocol` hold?
-16. What does `Manager.Reset` do?
-17. What does `PreserveNetworkAndUsers` do?
-18. What does `State: Absent` mean and how should you count DIMMs?
-19. Why check that links agree in both directions?
-20. Why must scripts not assume one system and one BMC per server?
+<details>
+<summary>1. What does the `Systems` (`ComputerSystem`) resource family represent in Redfish?</summary>
 
-## 13. Sources and review notes
+It represents the **logical, software-visible computer**—its CPUs, GPUs/accelerators (`Processors`), system RAM (`Memory`), `Bios`, `SecureBoot`, `Boot` order/override settings, `Storage`, host `EthernetInterfaces`, and `PowerState` (DSP2046 `ComputerSystem`).
+</details>
+
+<details>
+<summary>2. What does the `Chassis` resource family represent in Redfish?</summary>
+
+It represents the **physical sheet-metal enclosure, tray, rack, or container** (`RackMount`, `Blade`, `Enclosure`, `Sled`, `Sidecar`, `ImmersionTank`, `PowerStrip`) and houses out-of-band physical telemetry (`Sensors`, `ThermalSubsystem`, `PowerSubsystem`, `EnvironmentMetrics`) and physical slots (`PCIeDevices`, `NetworkAdapters`, `Drives`).
+</details>
+
+<details>
+<summary>3. What does the `Managers` (`Manager`) resource family represent in Redfish?</summary>
+
+It represents the **management controller itself** (such as a server's `BMC`, an `EnclosureManager`, a `RackManager`, or an `AuxiliaryController`), holding the controller's `FirmwareVersion`, OOB `EthernetInterfaces`, enabled `NetworkProtocol` services, `SerialInterfaces`, `VirtualMedia`, and `LogServices` (`SEL`).
+</details>
+
+<details>
+<summary>4. Why do temperature, fan, and power sensors belong under `Chassis` rather than under `ComputerSystem`?</summary>
+
+Because physical thermistors, fan tachometers, and PSU power monitors are wired directly to the BMC/chassis management buses (`I2C`/`SMBus`/`PMBus`) and operate outside the host OS data plane—remaining readable even when the logical `ComputerSystem` is powered off.
+</details>
+
+<details>
+<summary>5. What is `Status.HealthRollup` on a `ComputerSystem` or `Chassis`, and how should an operator act when `Health` is `OK` but `HealthRollup` is `Warning`?</summary>
+
+`HealthRollup` aggregates the **worst-case health state** across the resource itself and all of its subordinate resources (`Processors`, `Memory`, `Storage`, `Sensors`). When `Health` is `OK` but `HealthRollup` is `Warning`, the top-level system is running, but at least one child component (such as a degraded DIMM or fan) has a warning—walk the subordinate collections to isolate the faulted component.
+</details>
+
+<details>
+<summary>6. What does `SystemType: "DPU"` mean on a `ComputerSystem` resource?</summary>
+
+It indicates that the `ComputerSystem` represents a **Data Processing Unit (DPU) or SmartNIC** (such as an NVIDIA BlueField-3 card), which has its own ARM cores, memory, OS, and boot lifecycle modeled as a separate `ComputerSystem` alongside the host server's `Physical` system.
+</details>
+
+<details>
+<summary>7. Give three architectural reasons why a single BMC endpoint might expose more than one `ComputerSystem` in `/redfish/v1/Systems`.</summary>
+
+1. **Dual-tray GPU servers (DGX / HGX):** One `ComputerSystem` (`DGX` / `System_0`) for the host CPU tray and a second `ComputerSystem` (`HGX_Baseboard_0`) for the 8-GPU + NVSwitch baseboard.
+2. **DPUs / SmartNICs:** One `ComputerSystem` (`SystemType: "Physical"`) for the x86 host and additional `ComputerSystem` instances (`SystemType: "DPU"`) for each installed DPU.
+3. **Multi-node / blade enclosures:** An enclosure manager exposing one `ComputerSystem` per installed server blade (`Blade1`..`Blade4`).
+</details>
+
+<details>
+<summary>8. Name six subordinate collections or resources directly linked from a `ComputerSystem` resource.</summary>
+
+**`Processors`**, **`Memory`**, **`Storage`**, **`Bios`**, **`SecureBoot`**, and **`EthernetInterfaces`** (plus `LogServices`, `NetworkInterfaces`, `TrustedModules`, `OperatingSystem`, and `VirtualMedia`).
+</details>
+
+<details>
+<summary>9. Which resource collection under `ComputerSystem` holds GPUs and FPGAs, and which property distinguishes them from host CPUs?</summary>
+
+The **`Processors`** collection (`/redfish/v1/Systems/<id>/Processors`), where each member's **`ProcessorType`** property identifies whether it is a `"CPU"`, `"GPU"`, `"FPGA"`, `"DSP"`, `"Accelerator"`, or `"OEM"`.
+</details>
+
+<details>
+<summary>10. Which three properties inside `ComputerSystem.Boot` control a one-time PXE or UEFI HTTP network boot?</summary>
+
+1. **`BootSourceOverrideEnabled`:** `"Disabled"`, `"Once"` (resets after one boot), or `"Continuous"`.
+2. **`BootSourceOverrideTarget`:** `"Pxe"`, `"UefiHttp"`, `"Hdd"`, `"Cd"`, `"BiosSetup"`, `"UefiTarget"`, `"None"`, etc.
+3. **`BootSourceOverrideMode`:** `"UEFI"` or `"Legacy"`.
+</details>
+
+<details>
+<summary>11. Name six `ChassisType` enumeration values used in AI data centers (DSP2046 `Chassis`).</summary>
+
+**`RackMount`** (standard 1U–8U server), **`Blade`**, **`Enclosure`**, **`Sled`**, **`Rack`**, **`ImmersionTank`**, **`HeatExchanger`** (CDU/rear-door), **`Shelf`** (power shelf), and **`PowerStrip`** (rack PDU).
+</details>
+
+<details>
+<summary>12. Which four modern `Chassis` properties expose thermal, power, and sensor data, and which two older `Chassis` properties did they deprecate?</summary>
+
+The modern properties are **`Sensors`**, **`ThermalSubsystem`**, **`PowerSubsystem`**, and **`EnvironmentMetrics`**, which replaced the deprecated **`Power`** and **`Thermal`** resources.
+</details>
+
+<details>
+<summary>13. How does Redfish represent physical nesting when a rack enclosure contains four server blades or a host chassis contains a GPU expansion tray?</summary>
+
+Through bidirectional links inside `Chassis.Links`: the outer enclosure lists the child chassis in **`Links.Contains`**, and each child chassis points back to its parent enclosure in **`Links.ContainedBy`**.
+</details>
+
+<details>
+<summary>14. What are the six standard `ManagerType` values on a `Manager` resource?</summary>
+
+**`BMC`**, **`EnclosureManager`**, **`RackManager`**, **`ManagementController`**, **`AuxiliaryController`**, and **`Service`**.
+</details>
+
+<details>
+<summary>15. What does `/redfish/v1/Managers/<id>/NetworkProtocol` contain, and why is it central to BMC security hardening?</summary>
+
+It lists every network management protocol supported by the BMC (`HTTPS`, `HTTP`, `SSH`, `IPMI`, `SNMP`, `SSDP`, `Telnet`, `KVMIP`, `VirtualMedia`, `NTP`), whether each protocol is enabled (`ProtocolEnabled`), and its port—allowing administrators to `PATCH` legacy protocols (`IPMI`, `Telnet`, `HTTP`, `SSDP`) to `false` (Chapter 7.15).
+</details>
+
+<details>
+<summary>16. What is the Redfish equivalent of `ipmitool mc reset cold`, and what rule must the BMC follow when responding to it?</summary>
+
+The **`#Manager.Reset`** action (`/redfish/v1/Managers/<id>/Actions/Manager.Reset` with `ResetType: "GracefulRestart"` or `"ForceRestart"`). The schema notes that when the resetting `Manager` hosts the Redfish web service itself, it must send the HTTP `200 OK` response **before** rebooting its network stack so the client does not fail with a connection timeout.
+</details>
+
+<details>
+<summary>17. What are the three `ResetType` values supported by `#Manager.ResetToDefaults`, and why is `PreserveNetworkAndUsers` useful in remote data centers?</summary>
+
+**`ResetAll`**, **`PreserveNetworkAndUsers`**, and **`PreserveNetwork`**. Using `PreserveNetworkAndUsers` resets corrupt BMC configuration settings back to factory defaults while keeping the BMC's OOB IP address and administrator credentials intact so you do not lose remote access.
+</details>
+
+<details>
+<summary>18. Under DSP0266 §9.11, how does Redfish represent an empty DIMM socket or empty drive bay, and how must inventory scripts count installed hardware?</summary>
+
+An empty slot is represented by a resource whose **`Status.State` is `"Absent"`** (with unknown properties set to `null`). Inventory scripts must filter for `Status.State != "Absent"` (e.g., `"Enabled"` or `"StandbyOffline"`) rather than using raw `Members@odata.count`.
+</details>
+
+<details>
+<summary>19. Which four pairs of reciprocal `Links` does `code/part07/rf_model.py` verify across `Systems`, `Chassis`, and `Managers`?</summary>
+
+1. `ComputerSystem.Links.Chassis` $\leftrightarrow$ `Chassis.Links.ComputerSystems`
+2. `ComputerSystem.Links.ManagedBy` $\leftrightarrow$ `Manager.Links.ManagerForServers`
+3. `Chassis.Links.ManagedBy` $\leftrightarrow$ `Manager.Links.ManagerForChassis`
+4. `Chassis.Links.Contains` $\leftrightarrow$ `Chassis.Links.ContainedBy`
+</details>
+
+<details>
+<summary>20. On an NVIDIA DGX H100/H200 vs a GB300 system in BCM, how do the `Systems` and `Chassis` member names illustrate the need for dynamic link discovery?</summary>
+
+On a DGX H100/H200, the host and GPU baseboard appear as `Systems/DGX` and `Systems/HGX_Baseboard_0` with `Chassis/DGX` and `Managers/BMC`, whereas BCM's GB300 examples show chassis such as `BMC_0`, `CBC_0`, and `Chassis_0`. Walking from `/redfish/v1/` and inspecting `SystemType`, `ProcessorType`, and `Links` works across every generation without hard-coded names.
+</details>
+
+## Sources and review notes
 
 - **Redfish Resource and Schema Guide DSP2046 (2024.4), and the official JSON Schemas** (`ComputerSystem` v1.23.1, `Chassis` v1.26.0, `Manager` v1.20.0 and later, `Processor` v1.20.1, `ManagerNetworkProtocol` v1.10.1, `Resource`): property descriptions, enumerations (`SystemType`, `ChassisType`, `ManagerType`, `ProcessorType`, `State`, `Health`, `ResetType`) and the Manager actions.
 - **Redfish Specification DSP0266 v1.21.0:** absent and transiently unavailable resources (9.11), resource tree stability and discovery (12.3, 12.4).

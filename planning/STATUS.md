@@ -207,10 +207,10 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 7.1 | BMCs, IPMI and out-of-band management | reviewed | 7338 | `oob_cred_lab.py` (3/3 pass), `RF-S`, `SCL 10`, `V5 ch3`, `VL10 ch1` |
 | 7.2 | Redfish concepts: service root, resources, collections, OData | reviewed | 5666 | `crawl_concepts_lab.py` (3/3 pass), `RF-S 5,6,9,12`, `RF-G` |
 | 7.3 | The Redfish protocol: HTTP methods, headers, status codes, query parameters | reviewed | 5729 | `protocol_lab.py` (36/36 pass), `RF-S 6,7,8` |
-| 7.4 | Redfish authentication, sessions and security | drafted | 2897 |  |
-| 7.5 | Redfish actions, tasks, events and subscriptions | drafted | 3106 |  |
-| 7.6 | The Redfish schema: reading CSDL, JSON schema and the resource guide | drafted | 3246 |  |
-| 7.7 | Systems, Chassis and Managers: the core resource model | drafted | 2984 |  |
+| 7.4 | Redfish authentication, sessions and security | reviewed | 4534 | `auth_lab.py` (44/44 pass), `RF-S 13`, `RF-G` |
+| 7.5 | Redfish actions, tasks, events and subscriptions | reviewed | 4212 | `actions_lab.py` (34/34 pass), `RF-S 7.11,12`, `RF-G` |
+| 7.6 | The Redfish schema: reading CSDL, JSON schema and the resource guide | reviewed | 4023 | `schema_lab.py` (11/11 pass), `RF-SC`, `RF-G`, `RF-S 9,11` |
+| 7.7 | Systems, Chassis and Managers: the core resource model | reviewed | 3846 | `model_inventory_lab.py` (3/3 pass), `RF-G`, `RF-S 9.11` |
 | 7.8 | Power, thermal, sensors and environment | drafted | 2874 |  |
 | 7.9 | Storage, network adapters and PCIe devices | drafted | 2528 |  |
 | 7.10 | Firmware inventory and the UpdateService | drafted | 3806 |  |
