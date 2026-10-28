@@ -45,7 +45,7 @@ def main():
         if abs(cap - cap_doc) > 1.3 or abs(strand - strand_doc) > 1.3:
             bad.append((v, a, d, round(cap, 1), strand, cap_doc, strand_doc))
     check("the formula 2 circuits x 3 x V x A x derating x 0.95 reproduces all 10 rows of the document's table (capacity and stranded power within 1.3 kW)", not bad, bad)
-    check("380 V 32 A at 80 percent supports 2 systems; 415 V 60 A at 80 percent supports 4", s.systems_supported(s.rack_capacity_kw(219, 32, 0.8)) == 2 and s.systems_supported(s.rack_capacity_kw(240, 60, 0.8)) == 4)
+    check("380 V 32 A at 80 percent (15.98 kW per circuit) supports 2 systems; 415 V 60 A at 80 percent supports 4", s.systems_supported(s.rack_capacity_kw(219, 32, 0.8)) == 2 and s.systems_supported(s.rack_capacity_kw(240, 60, 0.8)) == 4 and round(s.rack_capacity_kw(219, 32, 0.8) / 2, 2) == 15.98)
     check("even with huge capacity the deployment pattern caps a rack at 4 systems", s.systems_supported(s.rack_capacity_kw(240, 63, 1.0)) == 4)
     check("N pattern: a 17 kW circuit can carry 2 systems (14.3 kW needed per circuit) but not 4", s.n_circuit_ok(2, 17.0) and not s.n_circuit_ok(4, 17.0))
 

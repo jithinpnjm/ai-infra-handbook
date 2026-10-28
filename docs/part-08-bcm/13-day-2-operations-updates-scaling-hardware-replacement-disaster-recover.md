@@ -135,6 +135,14 @@ From the notes' fleet-scale chapter, in short: split the loads (boot and provisi
 
 ## 10. Change runbooks (my assembly)
 
+```mermaid
+flowchart LR
+    BACKUP["1. Pre-Change Backup<br/>cmdaemon-backup before-change<br/>+ clone/lock software image"] --> CANARY["2. Canary Test (1 Node)<br/>chroot edit -> updateprovisioners<br/>-> imageupdate dry-run & synclog -> -w"]
+    CANARY --> WAVE["3. Rolling Rack Waves<br/>drain -> apply/reboot -> health check<br/>-> undrain (Active head first for HA)"]
+    WAVE --> VERIFY["4. Post-Change Verification<br/>cmha status, hardware-profile,<br/>sinfo / kubectl get nodes"]
+    WAVE -. "regression detected" .-> ROLLBACK["Rollback Path<br/>setparent / previous image<br/>or cmha dbreclone / sql.gz"]
+```
+
 Every change starts the same way: **write down the change and its undo, and take a named database backup** (`cmdaemon-backup before-change`). Then:
 
 **Image change.** Lock or clone the image; change it in a chroot; `updateprovisioners`; `imageupdate` as a dry run, read `synclog`, apply to one node; roll out in batches with drain first; verify; keep the old image until the new one has run for a while.
@@ -143,7 +151,7 @@ Every change starts the same way: **write down the change and its undo, and take
 
 **BIOS or firmware.** Test on one node; one rack at a time; an AC power cycle if the Result column says so; verify versions and a GPU test (chapter 8.7).
 
-## 11. Exercises
+## Exercises
 
 1. Run `python3 ops_lab.py`. Pick four checks and explain each rule in your own words.
 2. Classify these versions as calendar, semantic or hotfix: `10.25.03`, `11.25.08`, `11.30.0`, `11.31.0b`.
@@ -160,30 +168,135 @@ Every change starts the same way: **write down the change and its undo, and take
 - "Why not `pdsh` for a rack reboot?" Power surge; use `device power` with its delay.
 - "Walk me through a bad image rollout." Lock, previous revision or image, drain, `imageupdate` or reboot, verify.
 
-## 13. Checkpoint questions (20)
+## Checkpoint questions (20)
 
-1. What are the two point release formats?
-2. What does a lowercase letter on a point release mean?
-3. Is an in-place OS major upgrade supported?
-4. What do `refresh` and `update` do differently for zypper and apt?
-5. What are the default genders?
-6. Which tool is required to restart CMDaemon on many nodes?
-7. Why not power-cycle nodes with `pdsh`?
-8. What do `--limit` and `--timeout` of `cm-diagnose` change?
-9. Which product category do you pick for BCM 11 support cases?
-10. How many local database backups are kept and what are they called?
-11. What does `cmdaemon-backup manual` produce?
-12. What is not backed up locally?
-13. What happens if MySQL cannot start?
-14. How do you recover a corrupt database with HA and without?
-15. What does `newrevision` create?
-16. Why is Btrfs a problem on RHEL?
-17. How does the hardware-profile check reveal a faulty reference node?
-18. What are the two ways to replace a node's MAC?
-19. What is the Ansible collection for BCM 11?
-20. What does `cm-slurm-mysql-ha ... remediate` do?
+<details>
+<summary>1. What are the two point-release numbering schemes used in BCM 10 and 11 (§9.1)?</summary>
 
-## 14. Sources and review notes
+1. **Calendar versioning (`YY.MM`):** Used up to `10.25.03` and `11.25.08` (e.g., `11.25.08` = August 2025).
+2. **Semantic versioning (`Major.Minor.Patch`):** Used from `11.30.0` onward (`11.30.0`, `11.31.0`, `11.34.0`), where a non-zero third number indicates a backward-compatible bug-fix release.
+</details>
+
+<details>
+<summary>2. What does a lowercase letter suffix on a BCM version (such as `10.23.02a`) signify, and does it appear in semantic releases?</summary>
+
+It denotes a **hotfix** release on calendar-versioned point releases; lowercase letter suffixes are **never used** in semantic versioning releases.
+</details>
+
+<details>
+<summary>3. Is an in-place major OS upgrade (such as RHEL 8 to RHEL 9) supported on a BCM head node?</summary>
+
+**No.** Upgrading the underlying Linux distribution to a new major release in place while keeping BCM is unsupported; you must perform a fresh BCM installation on the new OS major version.
+</details>
+
+<details>
+<summary>4. How can you recognize a BCM-supplied RPM or DEB package from its filename, and why must you never replace it with an upstream distribution package?</summary>
+
+BCM packages embed **`_cm<x.y>_<git_hash>`** (RPM) or **`-cm<x.y>-<git_hash>`** (DEB) in the filename and are signed with GPG key **`0x5D849C16`**. Replacing a BCM-supplied package with a standard OS distro package puts the cluster in an unsupported state and breaks `CMDaemon` integration.
+</details>
+
+<details>
+<summary>5. What are the four default `genders` groups configured for `pdsh -g` in BCM?</summary>
+
+**`all`**, **`category=default`**, **`computenode`**, and **`headnode`**.
+</details>
+
+<details>
+<summary>6. Why must you use `pdsh` (an OS-level SSH tool) rather than `cmsh`'s `pexec` to restart or start `cmd` (`CMDaemon`) across regular nodes?</summary>
+
+Because `pexec` executes commands **through the remote node's running `CMDaemon` (`cmd` service)**—so `pexec` cannot start a stopped `cmd` daemon and cuts off its own connection if used to stop `cmd`.
+</details>
+
+<details>
+<summary>7. Why should you never use `pdsh` or `pexec` to power-cycle or reboot a rack of GPU servers simultaneously?</summary>
+
+Because `pdsh` executes across all target nodes in parallel with zero stagger delay, risking a massive electrical inrush **power surge** when all nodes boot together. Use `cmsh` `device power` (which enforces a `1 s` per-node delay or `20 s` batch delay).
+</details>
+
+<details>
+<summary>8. What does `cm-diagnose` collect for NVIDIA Enterprise Support, and what do `--limit` and `--timeout` adjust?</summary>
+
+`cm-diagnose` packages head-node and image logs, configs, and `cmsh` outputs (plus an optional `gdb` trace of `CMDaemon`) into a support tarball. `--limit` raises the maximum log file size collected (default `50 MB`, e.g., `--limit 100`) and `--timeout` raises the per-command timeout (default `60 s`, e.g., `--timeout 240`) for large clusters.
+</details>
+
+<details>
+<summary>9. When opening a support case in the NVIDIA Enterprise Support Portal for BCM 10 or 11, which Product Type and Product Category do you select?</summary>
+
+**Product Type: `Software`**, **Product Category: `Base Command Manager`** (versions prior to 10 used `Bright Cluster Manager`).
+</details>
+
+<details>
+<summary>10. What does BCM back up automatically out of the box, where are those files stored, and how many are kept?</summary>
+
+BCM automatically backs up **only the `CMDaemon` MySQL database** every night into **`/var/spool/cmd/backup/`** as **seven rotating daily files** named `backup-Mon.sql.gz` through `backup-Sun.sql.gz`.
+</details>
+
+<details>
+<summary>11. What filename format does `cmdaemon-backup before-change` create compared to running `cmdaemon-backup` with no arguments?</summary>
+
+With no arguments, `cmdaemon-backup` overwrites today's rotating `backup-<Day>.sql.gz` file. With a label argument (`before-change`), it writes a timestamped file **`before-change-<YY-MM-DD_HH-MM-SS>_<Day>.sql.gz`** that is never overwritten by the nightly rotation.
+</details>
+
+<details>
+<summary>12. Which critical cluster assets are NOT backed up by `cmdaemon-backup` and require your own site backup solution?</summary>
+
+1. **Software images (`/cm/images/*`)**.
+2. **Shared storage (`/cm/shared` and `/home`)**.
+3. **Head node OS filesystem and custom scripts**.
+4. **Raw monitoring time-series data**.
+</details>
+
+<details>
+<summary>13. What happens to `CMDaemon` if MySQL cannot start, versus if MySQL starts but detects table corruption later?</summary>
+
+If MySQL cannot start, **`CMDaemon` refuses to start**. If MySQL detects corruption while running, it switches into **read-only mode**, causing the `mysql` health check to fail and logging checksum errors in `journalctl -xeu mysql.service`.
+</details>
+
+<details>
+<summary>14. How do you recover a corrupted `CMDaemon` MySQL database on an HA cluster versus a single-head-node cluster?</summary>
+
+- **On an HA cluster:** Run **`cmha dbreclone <passive>`** from the healthy head node (with `CMDaemon` stopped) to re-clone the live `cmdaemon` and `slurm_acct_db` databases.
+- **On a single head node:** Gunzip the newest `/var/spool/cmd/backup/backup-<Day>.sql.gz` (or manual backup) and pipe it into the `mysql` client.
+</details>
+
+<details>
+<summary>15. What filesystem does BCM's built-in `softwareimage` revision control (`newrevision`, `setparent`) require, and why is it unavailable on RHEL 8/9?</summary>
+
+It requires **Btrfs** subvolumes, and Red Hat **removed Btrfs support from RHEL 8 onward** (it remains supported on SLES 15).
+</details>
+
+<details>
+<summary>16. Why should you never run `device packages -a` across 1,000 nodes without `-f <package>`?</summary>
+
+Because `packages -a` returns roughly **`100 KB` (`~1,000` lines) per node**, producing **`~100 MB` (`~1,000,000` lines)** across 1,000 nodes. Always filter with `-f cmdaemon` or use `packages --outdated`.
+</details>
+
+<details>
+<summary>17. How does `node-hardware-profile` verify that a newly delivered batch of servers matches a reference node, and how can you tell if the reference node itself was faulty?</summary>
+
+`node-hardware-profile -n node129 -s newbunch` saves `node129`'s hardware inventory under `/cm/shared/apps/cmd/hardware-profiles/`, and the `hardware-profile` data producer alerts on any node in `newbunch` that differs. If `node129` itself had a missing DIMM or bad card, **every other healthy node in the batch is flagged as mismatched**.
+</details>
+
+<details>
+<summary>18. What are the two ways in `cmsh` to replace a dead compute node `node031` with a new physical chassis?</summary>
+
+1. **If the replacement MAC is known:** `device use node031; set mac <new-mac>; commit` and PXE-boot the new machine.
+2. **If the replacement MAC is not known in advance:** `device use node031; clear mac; commit` (turning `node031` into a placeholder), PXE-boot the new machine, and select `node031` at the `node-installer` console prompt.
+</details>
+
+<details>
+<summary>19. What is the official Ansible Galaxy collection name for BCM 11, and where are example playbooks stored on the head node?</summary>
+
+**`brightcomputing.bcm110`**, with example playbooks located in **`/cm/local/examples/cmd/ansible/`**.
+</details>
+
+<details>
+<summary>20. When MySQL for Slurm accounting is deployed on compute nodes via `cm-mysql-setup`, how do you fail over after a primary crash and re-sync the old primary afterward?</summary>
+
+Run **`cm-slurm-mysql-ha --config /root/mysql-ha-config.conf failover --host <primary> --force`**, and once the old primary node is repaired, run **`cm-slurm-mysql-ha --config /root/mysql-ha-config.conf remediate --host <new-primary> --target <old-primary>`**.
+</details>
+
+## Sources and review notes
 
 - **BCM 11 Administrator Manual:** chapter 9 (9.1 package naming and point releases, 9.2 head node packages and the HA note), chapter 14 (14.1 parallel shells, 14.2 support and `cm-diagnose`, 14.3 backups and database recovery, 14.4 image revision control, 14.6 hardware match, 14.9 node replacement, 14.10 Ansible, 14.12 `cm-mysql-setup` and its maintenance).
 - **NVIDIA-DevOps notes**, volume 10 chapter 13: fleet-scale operating habits (used here and in 8.4, 8.11 and 8.12).

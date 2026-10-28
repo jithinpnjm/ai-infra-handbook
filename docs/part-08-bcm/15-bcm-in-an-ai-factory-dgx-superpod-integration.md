@@ -141,7 +141,7 @@ Other planning points from the deck: align the multiple groups (facility, IT, sy
 9. Ignoring supply air above 30 °C.
 10. Not reading the document critically (the NVL32/72 slip).
 
-## 8. Exercises
+## Exercises
 
 1. Run `python3 superpod_lab.py`. Pick four checks and explain each rule in your own words.
 2. Size a cluster of 2,304 GB300 GPUs: SUs, racks, MW, compute fabric Tb/s.
@@ -158,30 +158,133 @@ Other planning points from the deck: align the multiple groups (facility, IT, sy
 - "Where does BCM fit?" Provisioning, configuration, monitoring and management layer inside Mission Control, with Slurm and Run:ai on top.
 - "What physical components make BCM add features?" Power shelves, NVLink switches, CDUs, leak sensors, BMS integration.
 
-## 10. Checkpoint questions (20)
+## Checkpoint questions (20)
 
-1. How many racks make a GB300 scalable unit?
-2. How many GPUs per tray and per rack?
-3. What is the maximum size in the GB300 reference architecture?
-4. What is the TDP of one SU?
-5. What availability tier should the data center meet?
-6. Which cooling does a GB300 rack use?
-7. What are the four networks?
-8. Why are storage and in-band on separate ports?
-9. What does the out-of-band network carry?
-10. What is the edge uplink recommendation?
-11. Which software layers sit above BCM in Mission Control?
-12. How many DGX B200 in a 32-system SU and how many kW?
-13. Why at most 127 in a full SuperPOD?
-14. How many kW for a 2-system and a 4-system rack?
-15. What is the CFM rule of thumb?
-16. What is the maximum supply air temperature for B200?
-17. What does "N pattern" mean for circuits?
-18. How many PSUs does a B200 need energized?
-19. Why is interleaving not recommended?
-20. Which BCM commands show power shelves and CDUs?
+<details>
+<summary>1. In the DGX GB300 SuperPOD reference architecture, how many compute racks form one Scalable Unit (SU)?</summary>
 
-## 11. Sources and review notes
+**`8` compute racks** per Scalable Unit (`144` compute trays, `576` B300 GPUs).
+</details>
+
+<details>
+<summary>2. How many compute trays and GPUs sit inside a single GB300 NVL72 rack?</summary>
+
+**`18` compute trays** per rack, where each tray holds `2` GB300 Superchips (`4` B300 GPUs + `2` Grace CPUs per tray), totaling **`72` GPUs per rack** in a single NVLink domain.
+</details>
+
+<details>
+<summary>3. What is the maximum reference scale shown in the GB300 SuperPOD architecture in racks, SUs, and GPUs?</summary>
+
+Up to **`16` Scalable Units = `128` compute racks = `9,216` B300 GPUs**.
+</details>
+
+<details>
+<summary>4. What is the approximate Thermal Design Power (TDP) of a single 8-rack GB300 Scalable Unit?</summary>
+
+Approximately **`1.2 MW`** per Scalable Unit.
+</details>
+
+<details>
+<summary>5. Which data-center availability tier standard does the GB300 reference architecture recommend?</summary>
+
+**Uptime Institute Tier 3** (or TIA-942-B Rated 3 / EN 50600 Class 3: concurrent maintainability with no single point of failure).
+</details>
+
+<details>
+<summary>6. How are GB300 NVL72 racks cooled?</summary>
+
+Using **hybrid cooling**: direct-to-chip **liquid cooling** for the high-power GPUs, Grace CPUs, and NVLink switches, combined with **air cooling** for lower-power peripheral components.
+</details>
+
+<details>
+<summary>7. Name the four networks in the GB300 SuperPOD reference architecture and the NIC/switch hardware used for each.</summary>
+
+1. **Compute fabric:** `4 x ConnectX-8` (`800 Gb/s` each) per tray connected to a rail-optimized **Quantum-X800 InfiniBand** fat-tree (managed by UFM, with NMX Manager for intra-rack NVLink).
+2. **Storage fabric:** `1 x 400 Gb/s` port on the **BlueField-3 DPU** connected to **Spectrum-4 `SN5600`** switches running **RoCEv2**.
+3. **In-band management network:** At least `200 Gb/s` Ethernet on the BlueField-3 DPU for BCM provisioning, Slurm/Kubernetes control, NFS, and external uplinks.
+4. **Out-of-band (OOB) management network:** **Spectrum `SN2201`** (`48 x 1 Gb/s`) switches connecting tray BMCs, BlueField BMCs, NVSwitch BMCs, power shelves, and PDUs.
+</details>
+
+<details>
+<summary>8. Why does the GB300 reference architecture separate storage traffic and in-band management traffic onto distinct BlueField-3 ports rather than bonding them?</summary>
+
+To prevent heavy parallel-storage checkpoint bursts (`400 Gb/s` RoCEv2) from contending with or starving BCM provisioning, Slurm/Kubernetes heartbeats, and interactive in-band services.
+</details>
+
+<details>
+<summary>9. Which endpoints sit on the Out-of-Band (OOB) network, and how is it isolated from users?</summary>
+
+It connects all compute tray BMCs, BlueField BMCs, NVLink switch BMCs/NVOS ports, power shelves, rack PDUs, and switch management ports, and is physically and logically isolated from tenant/user networks (rolled up into a spine VXLAN per SU).
+</details>
+
+<details>
+<summary>10. What is the recommended customer edge uplink for a GB300 SuperPOD, and which untrusted facility system flows through it?</summary>
+
+At least **`2 x 100GbE`** (`DR1` single-mode optics) using **eBGP** routing; the facility **Building Management System (BMS)** power and cooling telemetry flows through the uplink as part of the untrusted zone.
+</details>
+
+<details>
+<summary>11. What are the core layers of **NVIDIA Mission Control**, and how does it use BCM?</summary>
+
+Mission Control is a five-layer AI factory software stack that **uses BCM as its bare-metal provisioning, configuration, and cluster operations engine**, layering **Slurm** (batch training), **Run:ai** on Kubernetes (split across an administrative K8s cluster and a user-space K8s cluster), **NMX Manager** (NVLink fabric management), telemetry/BMS integration, and an **autonomous hardware and job recovery engine** on top.
+</details>
+
+<details>
+<summary>12. For air-cooled **DGX B200** systems, what is the maximum power draw per server and for a 32-node Scalable Unit?</summary>
+
+Each DGX B200 (`10 RU`, `~130 kg`) draws **`14.3 kW`** maximum, so a `32`-node SU draws **`457.6 kW` (`~458 kW`)**.
+</details>
+
+<details>
+<summary>13. Why does a full 4-SU DGX B200 SuperPOD hold at most `127` DGX B200 systems instead of `128`?</summary>
+
+Because **one system slot is displaced by the UFM (Unified Fabric Manager) appliances** in the InfiniBand compute fabric (`128 - 1 = 127` nodes).
+</details>
+
+<details>
+<summary>14. What are the two supported rack density patterns for DGX B200 and their peak rack power demands?</summary>
+
+- **2 systems per rack:** **`28.6 kW`** (`2 x 14.3 kW`, in a `42U` or `52U` rack).
+- **4 systems per rack:** **`57.2 kW`** (`4 x 14.3 kW`, high-density `52U` rack).
+</details>
+
+<details>
+<summary>15. What is the airflow rule of thumb (`CFM/kW`) for air-cooled DGX B200 systems, and how many `CFM` are required for 1, 2, and 4 systems?</summary>
+
+Approximately **`150 CFM per kW`** at sea level: **`~2,145 CFM`** for `1` system (`14.3 kW`), **`~4,290 CFM`** for a `2`-system rack (`28.6 kW`), and **`~8,580 CFM`** for a `4`-system rack (`57.2 kW`).
+</details>
+
+<details>
+<summary>16. What are the ASHRAE supply air temperature, filtration, and cleanliness requirements for air-cooled DGX B200 halls?</summary>
+
+**ASHRAE Class A1** with a **maximum supply air temperature of `30 °C`** (`18–27 °C` recommended), at least **MERV 13** filtration, and **ISO 14644-1 Class 8** room cleanliness.
+</details>
+
+<details>
+<summary>17. In the DGX B200 rack power table (`superpod_lab.py`), how is usable 3-phase power calculated for two circuits, and why does a `66 kW` rack support `4` systems (`57.2 kW`) with `8.4 kW` stranded power?</summary>
+
+Each 3-phase circuit provides $3 \times V_{\text{L-N}} \times I \times \text{derating} \times 0.95\text{ PF}$ (e.g., two `415V`/`240V L-N`, `60A` circuits at `80%` derating provide `~65.6 kW`). Because racks are deployed in fixed `2`-system (`28.6 kW`) or `4`-system (`57.2 kW`) patterns, a `65.6 kW` rack supports `4` systems (`57.2 kW`) and leaves **`8.4 kW` stranded**.
+</details>
+
+<details>
+<summary>18. How many internal PSUs does a DGX B200 have, and how many must remain energized for the server to stay running?</summary>
+
+Each DGX B200 has **six internal PSUs** and requires **at least five energized PSUs (`5 of 6`)** to stay running.
+</details>
+
+<details>
+<summary>19. Why is **interleaved dual-feed** wiring (`3` PSUs on Feed A, `3` PSUs on Feed B) strongly discouraged for DGX B200 racks, and which two wiring schemes work?</summary>
+
+If you split a server's `6` PSUs `3 + 3` across two feeds, losing either Feed A or Feed B drops `3` PSUs on every server—leaving only `3` energized PSUs (`< 5`) and **crashing 100% of the servers in the rack**. Instead, use **Two discrete sources (`N`, half the servers on Feed A, half on Feed B)** so a single feed loss affects only 50% of servers, or **"6 to make 5"** (`6` independent power sources feeding `1` PSU each, `0` servers lost on a single feed failure).
+</details>
+
+<details>
+<summary>20. Which BCM `cmsh` commands inspect power shelves, liquid-cooling CDUs, racks, and multi-node NVLink IMEX domains on rack-scale SuperPOD hardware?</summary>
+
+**`powershelfoverview`**, **`cduoverview`** (fed by the BMS over MQTT), **`rackoverview`** (showing nodes, DPUs, NVLink switches, and power shelves), and the network **`imex`** settings (writing `/etc/nvidia-imex/nodes_config.cfg`).
+</details>
+
+## Sources and review notes
 
 - **NVIDIA DGX SuperPOD Reference Architecture, DGX GB300** (35 pages): architecture, components, design requirements, network fabrics and segmentation, edge, software stack, Run:ai. I read the text; I did not see the figures.
 - **Data Center Best Practices with DGX B200** (slide deck): specifications, scalable unit, power profiles and provisioning table, redundancy schemes, cooling parameters. I read the slide text; I did not read the cabling and FAQ slides in detail.

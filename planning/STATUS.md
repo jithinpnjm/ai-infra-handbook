@@ -229,11 +229,11 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 8.8 | Workload managers under BCM: Slurm setup | reviewed | 5017 | `slurm_lab.py` (60/60 pass), `BCM-A 7` |
 | 8.9 | Kubernetes under BCM: deployment and GPU enablement | reviewed | 6292 | `k8s_lab.py` (64/64 pass), `BCM-C 4,5,6,7,8` |
 | 8.10 | Containerization in BCM: Docker, Apptainer and enroot | reviewed | 3190 | `containers_lab.py` (35/35 pass), `BCM-C 2,3`, `SCL 16` |
-| 8.11 | Monitoring, health checks and alerts in BCM | drafted | 3939 |  |
-| 8.12 | High availability and head-node failover | drafted | 3853 |  |
-| 8.13 | Day-2 operations: updates, scaling, hardware replacement, disaster recovery | drafted | 3014 |  |
-| 8.14 | Air-gapped installation and upgrades | drafted | 3145 |  |
-| 8.15 | BCM in an AI factory: DGX SuperPOD integration | drafted | 2604 |  |
+| 8.11 | Monitoring, health checks and alerts in BCM | reviewed | 4770 | `monitoring_lab.py` (46/46 pass), `BCM-A 10,G` |
+| 8.12 | High availability and head-node failover | reviewed | 4671 | `ha_lab.py` (50/50 pass), `BCM-A 15`, `VL10 ch13` |
+| 8.13 | Day-2 operations: updates, scaling, hardware replacement, disaster recovery | reviewed | 3871 | `ops_lab.py` (45/45 pass), `BCM-A 9,14`, `VL10 ch13` |
+| 8.14 | Air-gapped installation and upgrades | reviewed | 3793 | `airgap_lab.py` (34/34 pass), `BCM-C A,B,C` |
+| 8.15 | BCM in an AI factory: DGX SuperPOD integration | reviewed | 3444 | `superpod_lab.py` (29/29 pass), `SPGB300`, `SPB200`, `BCM-A` |
 | 8.16 | Mission Control, DGX Cloud and autonomous recovery concepts | drafted | 7324 |  |
 | 9.1 | DGX system families and what they are for | drafted | 10032 |  |
 | 9.2 | Inside a DGX H100 and H200 system | drafted | 8283 |  |

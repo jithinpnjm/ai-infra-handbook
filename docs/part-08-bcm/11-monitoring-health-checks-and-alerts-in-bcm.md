@@ -209,7 +209,7 @@ Also: treat `UNKNOWN` as its own signal; remember an action that drains must be 
 9. Reducing a consolidator's sample count and losing history.
 10. Using `CPUUser` (jiffies per second) as if it were a percentage.
 
-## 10. Exercises
+## Exercises
 
 1. Run `python3 monitoring_lab.py`. Pick four checks and explain each rule in your own words.
 2. Using `evaluate_trigger`, find a series where Enter fires twice but During fires only once.
@@ -226,30 +226,138 @@ Also: treat `UNKNOWN` as its own signal; remember an action that drains must be 
 - "How do you avoid alert storms?" Flapping detection, severities, `mute` during maintenance (chapter 8.4), consolidation of notifications.
 - "When does head-node monitoring stop scaling?" Around 10,000 to 20,000 nodes; offloaded monitoring.
 
-## 12. Checkpoint questions (20)
+## Checkpoint questions (20)
 
-1. Name the three kinds of measurable.
-2. What are the four health check states?
-3. What are the default severities for FAIL, UNKNOWN and PASS?
-4. How can a health check script override its severity?
-5. What do AlertLevel count, max and sum show?
-6. State the four trigger launch options.
-7. Why can the first sample never fire Enter?
-8. How many pre-defined triggers exist and what do they do?
-9. What is the default sampling period in the basic example?
-10. What is the difference between `CPUUser` and `CPUUsage`?
-11. What does `validate` warn about?
-12. Which built-in actions run on the head node and which on the node?
-13. Which actions are hard power actions?
-14. What is `post-drain-actions` for?
-15. How are GPU metric names written for one GPU?
-16. How does a DCGM WARN appear by default and how do you change it?
-17. What does the default `hour` consolidator keep?
-18. In what increment does the raw monitoring store grow?
-19. When should offloaded monitoring be considered?
-20. Why does the recommended remediation design cap reimages?
+<details>
+<summary>1. Name the three kinds of measurables in BCM monitoring and how their values differ.</summary>
 
-## 13. Sources and review notes
+1. **Metrics:** Numerical measurements (or `no data`), such as `CPUUser` or `gpu_temp:gpu0`.
+2. **Enummetrics:** Discrete state values from a small set (such as `DeviceStatus`: `UP`, `DOWN`, `CLOSED`).
+3. **Health checks:** Diagnostic checks returning one of four states: **`PASS`**, **`FAIL`**, **`UNKNOWN`**, or **`no data`**.
+</details>
+
+<details>
+<summary>2. What is the difference between a health check returning `UNKNOWN` versus `no data`?</summary>
+
+**`UNKNOWN`** means the health check ran but could neither confirm `PASS` nor `FAIL` (for example, a command timeout that requires investigation). **`no data`** means the check did not run at all during that interval (for example, because it is disabled), and `CMDaemon` records the gap explicitly.
+</details>
+
+<details>
+<summary>3. What are the default numeric severities assigned by the three pre-defined health-check trigger templates?</summary>
+
+**`FAIL = 15`**, **`UNKNOWN = 10`**, and **`PASS = 0`**.
+</details>
+
+<details>
+<summary>4. How can a standalone health check script override the default `FAIL 15` severity?</summary>
+
+By printing its own severity integer after `FAIL` in its output—for example, **`FAIL 40`** (as used by the `hpraid` check).
+</details>
+
+<details>
+<summary>5. What do the three forms of `AlertLevel` (`count`, `max`, `sum`) displayed by `healthoverview` represent?</summary>
+
+- **`count`:** Number of active events at `"notice"` (`>= 10`) severity or higher on the entity.
+- **`max`:** The highest current severity among active problems on the entity.
+- **`sum`:** The sum of the latest severities across all active problems on the entity (for example, two severity-`15` failures give `sum = 30, max = 15, count = 2`).
+</details>
+
+<details>
+<summary>6. Define the four trigger action launch options (`Enter`, `Leave`, `During`, `State flapping`).</summary>
+
+- **`Enter`:** Fires when the **current sample is inside the trigger zone AND the previous sample was outside**.
+- **`Leave`:** Fires when the current sample is outside the zone and the previous sample was inside.
+- **`During`:** Fires when **both the current sample and the previous sample are inside the zone**.
+- **`State flapping`:** Fires when the threshold is crossed repeatedly (`5` times within `5` minutes by default).
+</details>
+
+<details>
+<summary>7. Why can the very first sample collected by a data producer NEVER fire an `Enter` action?</summary>
+
+Because `Enter` requires a transition from *"previous sample outside the zone"* to *"current sample inside the zone,"* and on the very first sample no previous sample exists.
+</details>
+
+<details>
+<summary>8. Which three pre-defined triggers exist in a fresh BCM installation, and what action do they run?</summary>
+
+**Failing health checks** (severity `15`), **Unknown health checks** (severity `10`), and **Passing health checks** (severity `0`), each configured with an `Enter` action that runs the built-in **`Event`** action.
+</details>
+
+<details>
+<summary>9. Why can a measurable sampled at `120 s` intervals never trigger the default `State flapping` rule (`5` crossings in `300 s`)?</summary>
+
+In `300` seconds (`5` minutes), a `120 s` sampler collects at most `2–3` intervals (`0 s, 120 s, 240 s`), which can produce at most **2 threshold crossings**—far below the required `5` crossings. Detecting flapping requires a shorter sampling interval or a longer flapping window.
+</details>
+
+<details>
+<summary>10. What is the difference between the metrics `CPUUser` and `CPUUsage` in BCM?</summary>
+
+**`CPUUser`** is measured in **jiffies per second** (from `/proc/stat`), whereas **`CPUUsage`** is a **percentage (`0–100%`)**.
+</details>
+
+<details>
+<summary>11. What two configuration mistakes does running `validate` on a new trigger in `cmsh` catch?</summary>
+
+1. **`"No actions were set"`** (a trigger that does nothing when its condition matches).
+2. **`"No known measurable matches the specified regexes"`** (such as typing the data producer name `devicestate` instead of the measurable name `devicestatus`).
+</details>
+
+<details>
+<summary>12. Which built-in trigger actions execute on the **active head node** versus on the **target regular node**?</summary>
+
+- **Run on the active head node:** `Drain`, `Undrain`, `Send e-mail to administrators`, `Event`, `ImageUpdate`, and the hard BMC/PDU power actions (`PowerOff`, `PowerOn`, `PowerReset`).
+- **Run on the target node:** OS-level `Reboot` and `Shutdown`, plus node scripts like `killprocess`, `remount`, and `testaction`.
+</details>
+
+<details>
+<summary>13. What does the hidden `post-drain-actions` parameter on the `Drain` action do?</summary>
+
+It chains additional actions (such as `send e-mail to administrators` and `poweroff`) to execute **only after** all running WLM jobs on the drained node have finished.
+</details>
+
+<details>
+<summary>14. How are per-GPU metrics and the 14 `GPUSampler` health checks named for a single GPU versus the whole node?</summary>
+
+Appending **`:gpuN`** (for example, `gpu_ecc_dbe_agg:gpu1` or `gpu_health_nvlink:gpu0`) scopes the metric or check to GPU `N`; omitting `:gpuN` (`gpu_health_overall`, `gpu_health_hostengine`) scopes it to the entire node.
+</details>
+
+<details>
+<summary>15. How does `GPUSampler` report a DCGM `WARN` condition by default, and how do you make DCGM warnings fail the health check?</summary>
+
+By default, a DCGM `WARN` is reported as **`PASS`** (with the warning reason placed in the `Info` field). To treat warnings as failures across all `gpu_health_*` checks, set **`monitoring setup use gpusampler; set -e "Warn as fail" true; commit`**.
+</details>
+
+<details>
+<summary>16. What does `Fuzzy offset` (e.g., `0.25` on a `120 s` interval) on a data producer do?</summary>
+
+It spreads node sampling uniformly across `[0, fuzzy_offset * interval]` (`0` to `30 s` for `0.25 * 120 s`) so hundreds of nodes do not all sample and push monitoring data at the exact same second.
+</details>
+
+<details>
+<summary>17. What does the default `hour` consolidator retain, and what happens if you change a consolidator's `Kind` (`average`, `maximum`, `minimum`)?</summary>
+
+The default `hour` consolidator (`3600 s` interval) retains up to **`65,536` samples** (**`7` years `26` weeks**, `~7.5` years). Changing a consolidator's `Kind` **discards all previously consolidated data** for that consolidator.
+</details>
+
+<details>
+<summary>18. How does a custom health check script set its human-readable `InfoMessage`, and how do scripts inject events into `/var/spool/cmd/eventbucket`?</summary>
+
+A health check or metric script writes its `InfoMessage` to **file descriptor 3 (`echo "reason" >&3`)**. External scripts can pipe lines into **`/var/spool/cmd/eventbucket`** (with optional `EVENT_SEVERITY_WARNING:` prefixes, `STATE.USERMESSAGE.node001:text` to tag `device status`, or `LOGGING.RELOAD.CONFIG` to reload logging without restarting `cmd`).
+</details>
+
+<details>
+<summary>19. At roughly what node count does traditional head-node monitoring reach its limit, and how does BCM scale beyond it?</summary>
+
+Traditional head-node monitoring handles roughly **`10,000` to `20,000` nodes**; beyond that (or to remove the head node as a monitoring bottleneck), assign the **`monitoring` role** to dedicated regular nodes (**offloaded monitoring**, §10.7).
+</details>
+
+<details>
+<summary>20. In a three-tier automated remediation design (Hardware vs Software state vs Transient), why must Tier 1 (hardware faults) never auto-reboot/reimage, and why must Tier 2 (software drift) cap reimage attempts?</summary>
+
+Rebooting or reimaging a node with a hardware fault (`Xid 79`, double-bit ECC, dead PSU) does not fix broken silicon and risks returning a faulty node to the scheduler. For Tier 2 software drift, capping automatic `ImageUpdate`/reboot attempts (e.g., max `2` attempts before escalating to Tier 1 quarantine) prevents an infinite reimage loop when a persistent fault masquerades as a software check failure.
+</details>
+
+## Sources and review notes
 
 - **BCM 11 Administrator Manual:** chapter 10 (10.1 basic example; 10.2 concepts and 10.2.11 Base View top-right icons; 10.3 Base View monitoring window and regex/path filters; 10.4 Base View configuration of data producers, RLE, `Fuzzy offset`, `Only when idle`, cumulative metrics, consolidator equations, action `Allowed time` syntax, triggers, `post-drain-actions`, standalone entities, and 10.4.9 PromQL queries; 10.5.2 consolidators; 10.6 on-demand sampling, health overview, action history, pickup intervals; 10.7 offloaded monitoring; 10.8 User Portal `cm-webportal` and `common-credentials.json`; 10.9 AWS Cloud Job Tagging; 10.10 Events, `/var/spool/cmd/eventbucket`, `/tmp/eventbucket`, and fd 3 InfoMessages), appendix G (GPU metrics, health checks, Redfish checks, actions), 14.8 (monitoring data storage).
 - **NVIDIA-DevOps notes**, volume 10 chapter 13: the health check, trigger and action pipeline and the remediation tiers; the notes say the tiers are a design recommendation, not a BCM feature. The Xid mapping there is a catalog matter I did not re-check.

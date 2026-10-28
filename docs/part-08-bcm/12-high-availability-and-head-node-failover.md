@@ -201,7 +201,7 @@ Running workload manager jobs continue through a head-node failover handover—a
 9. Letting users log in to the passive head.
 10. Assuming a license change leaves certificates valid.
 
-## 11. Exercises
+## Exercises
 
 1. Run `python3 ha_lab.py`. Pick four checks and explain each rule in your own words.
 2. Using `failover_decision`, write a table for six situations (reboot, crash, crash without power control, cable pulled, mostly dead, quorum no) and the passive's reaction.
@@ -218,30 +218,132 @@ Running workload manager jobs continue through a head-node failover handover—a
 - "How would you update the head nodes?" Active first for CMDaemon and MySQL, confirm `cmha status`, then the passive; migrate services by switching first.
 - "Is a second head enough for HA?" Also shared storage, power control, a heartbeat link, static addresses, HA license, and tested scripts.
 
-## 13. Checkpoint questions (20)
+## Checkpoint questions (20)
 
-1. What is the difference between primary and active?
-2. Which services run on both heads?
-3. Which services migrate on failover?
-4. Which databases are replicated by default?
-5. What does the 11.34 replicate-all option add?
-6. What are the shared IP addresses and how are they implemented?
-7. Why should the failover network be a direct cable?
-8. Where are the shared filesystems mounted?
-9. What is split brain?
-10. What is fencing mode?
-11. What is STONITH?
-12. How does the quorum check work?
-13. Which `cmha status` checks define "all dead"?
-14. What is "mostly dead" and what happens?
-15. Why does pulling the power cable not cause an automatic failover?
-16. What does automatic failover require?
-17. How do you disable it?
-18. How do you test automatic failover safely?
-19. In what order are CMDaemon and MySQL updated?
-20. How does regular node HA differ from head node HA?
+<details>
+<summary>1. In BCM head-node High Availability, what is the difference between **Primary / Secondary** and **Active / Passive**?</summary>
 
-## 14. Sources and review notes
+**Primary** and **Secondary** are permanent hardware identities assigned at installation and never change. **Active** and **Passive** are runtime operational roles that swap on failover (so the Secondary head node becomes Active after a failover, while the Primary becomes Passive).
+</details>
+
+<details>
+<summary>2. Which services run simultaneously on BOTH head nodes at all times?</summary>
+
+**`CMDaemon`** (including provisioning), **DHCP** (load-balanced), **TFTP**, **OpenLDAP** (replicated), **MySQL** (master-replica replication), **NTP**, **DNS**, and the **workload manager controller** (one active, one standby).
+</details>
+
+<details>
+<summary>3. Which services run ONLY on the currently Active head node and migrate during failover?</summary>
+
+**NFS exports**, the **User Portal**, **`slurmdbd`** (Slurm accounting daemon), and LSF batch daemons.
+</details>
+
+<details>
+<summary>4. Which MySQL databases are replicated between head nodes by default, and what happens to third-party databases after failover if nothing else is configured?</summary>
+
+By default, only **`cmdaemon`** and **`slurm_acct_db`** are replicated. Any other database is not copied and will be missing after failover unless listed in `extradbclone.xml`.
+</details>
+
+<details>
+<summary>5. What new option did BCM 11.34 add to `cmha-setup` for MySQL replication?</summary>
+
+The option to **replicate all non-system MySQL databases** (plus users and grants) automatically (`--replicate-all-databases` / `-a` in express mode; system databases `mysql`, `information_schema`, `performance_schema`, and `sys` are never replicated).
+</details>
+
+<details>
+<summary>6. How are the shared internal and external IP addresses implemented on the head nodes?</summary>
+
+As **virtual IP alias interfaces** (such as `eth0:0` and `eth1:0`, or `bond0:0` when bonded) brought up only on whichever head node is currently **Active**.
+</details>
+
+<details>
+<summary>7. Why does the manual recommend using a direct crossover/patch cable with no switch for `failovernet`?</summary>
+
+So that a management switch reboot, spanning-tree reconvergence, or switch firmware bug cannot interrupt the heartbeat between the two head nodes and cause a false split-brain alarm.
+</details>
+
+<details>
+<summary>8. On which head node are `/home` and `/cm/shared` (from the NAS) mounted during normal operation, and what happens if the pre-failover unmount script exits `0` when an unmount actually failed?</summary>
+
+Shared storage is mounted **only on the Active head node**. If the unmount script fails to unmount the old active head node but exits `0` anyway, both head nodes could mount the shared storage simultaneously and corrupt the filesystem (which is why the unmount script must return non-zero on failure, placing the node in `UNABLETOBECOMEACTIVE`).
+</details>
+
+<details>
+<summary>9. What is a **split-brain** condition in cluster HA?</summary>
+
+A condition where communication between the two head nodes breaks while both head nodes are still running, so the passive head cannot tell by heartbeat alone whether the active head crashed or only the network link failed.
+</details>
+
+<details>
+<summary>10. What is **Fencing mode** (`FENCING` state in `cmha status`)?</summary>
+
+The transitional protective state entered by the passive head when it loses contact with the active head: it tags local changes as a backlog while it runs the quorum check and verifies power-off (STONITH) before becoming Active.
+</details>
+
+<details>
+<summary>11. What is **STONITH**, and why is it mandatory for automatic failover?</summary>
+
+**STONITH ("Shoot The Other Node In The Head")** means forcefully powering off the unresponsive active head node via its out-of-band BMC or PDU and verifying that its power state is `OFF` before the passive head mounts shared storage and assumes the shared IPs.
+</details>
+
+<details>
+<summary>12. How does the **Quorum** check work before the passive head executes STONITH?</summary>
+
+The passive head queries all regular compute nodes within `Quorum time` (`60 s` default) to ask whether they can still reach the active head node. Only if **more than half** confirm that the active head is unreachable does the passive proceed with STONITH—preventing an isolated passive head with a bad NIC from shooting a healthy active head.
+</details>
+
+<details>
+<summary>13. Which four checks appear in `cmha status`, and which three must all fail for the active head to be classified as **"all dead"**?</summary>
+
+The four checks are **`failoverping`**, **`ping`**, **`status`** (`CMDaemon` REST check), and **`mysql`**. Automatic failover triggers only when **`ping`, `failoverping`, and `status` are all NOT OK ("all dead")**.
+</details>
+
+<details>
+<summary>14. What does **"mostly dead"** ("slightly alive") mean in BCM HA, and what does the passive head do?</summary>
+
+It means some—but not all three—of `ping`, `failoverping`, and `status` failed (for example, `CMDaemon` is hung so `status` fails, but `ping` still answers). The passive head takes **no automatic failover action** and alerts the administrator to inspect and fail over manually.
+</details>
+
+<details>
+<summary>15. Why does yanking the AC power cords out of the active head node NOT trigger an automatic failover when power control is via the BMC?</summary>
+
+Because pulling the AC cords powers off the active head's **BMC** as well. When the passive head tries to query the active head's BMC to verify or command power-off (STONITH), the BMC does not answer, so BCM cannot prove the active head is powered off and waits for manual confirmation.
+</details>
+
+<details>
+<summary>16. Why does a clean `reboot` or `shutdown -h now` on the active head node not trigger automatic failover?</summary>
+
+Because BCM treats a graceful OS shutdown or reboot on the active head as an intentional administrative maintenance action; to switch active heads intentionally, run **`cmha makeactive`** on the passive head.
+</details>
+
+<details>
+<summary>17. How do you disable automatic failover during maintenance while keeping HA replication running?</summary>
+
+In `cmsh`, set **`partition failover base; set disableautomaticfailover yes; commit`**.
+</details>
+
+<details>
+<summary>18. What is the manual's recommended command to test automatic failover realistically in a maintenance window?</summary>
+
+Trigger an immediate kernel panic on the active head node with **`echo c > /proc/sysrq-trigger`** (which freezes the host OS just like a real crash while leaving the BMC powered on so STONITH succeeds).
+</details>
+
+<details>
+<summary>19. When updating `cmdaemon` and `mysql` packages on an HA head-node pair, which head node must be updated first and why?</summary>
+
+Always update the **Active head node first**, verify `cmha status` and restart `cmd`, and **then** update the Passive head node (because a `CMDaemon` update may include a MySQL schema migration that must be applied on the master database first; on Ubuntu, update `mysql` separately before `cmdaemon`).
+</details>
+
+<details>
+<summary>20. Give four architectural differences between **Regular Node HA** (`failovergroups`) and **Head Node HA** (`cmha-setup`).</summary>
+
+1. Configured via `partition[base] -> failovergroups` rather than `cmha-setup`.
+2. Supports **two or more** nodes per group (`1` active, $N-1$ passive).
+3. Uses **no dedicated `failovernet` cable** (heartbeats travel over the regular internal network).
+4. The **active head node** performs the health checks and STONITH directly rather than running a cluster-wide node quorum poll.
+</details>
+
+## Sources and review notes
 
 - **BCM 11 Administrator Manual, chapter 15:** 15.0 to 15.6 read in full (concepts, shared IP and storage, fencing, quorum, automatic and manual failover, `cmha-setup` TUI and 15.3 `-x` express XML mode, cloning and 15.4.8 `excludelistnormal`/`excludelistfailover` and `--btrfs-full-clone`, states, failover decisions, keeping heads in sync, parameters in 15.4.6 and 15.5.3, regular node HA and failover sequence in 15.5.3–15.5.4, and WLM job continuation in 15.6).
 - **NVIDIA-DevOps notes**, volume 10 chapter 13, section 4: the same material in the author's words, including the trap about databases and the interview framing.

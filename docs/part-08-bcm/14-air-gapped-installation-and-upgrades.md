@@ -178,7 +178,7 @@ Same principles as chapter 8.9, with these differences:
 9. Upgrading across minors or with nodes on three minors.
 10. Planning air-gapped Run:ai on RHEL.
 
-## 10. Exercises
+## Exercises
 
 1. Run `python3 airgap_lab.py`. Pick four checks and explain each rule in your own words.
 2. Write a pre-flight checklist for the connected host with ten items, each with the command that verifies it.
@@ -195,30 +195,135 @@ Same principles as chapter 8.9, with these differences:
 - "Why not run the wizard on the passive head?" Images are local to each head and synchronized from the active head, so passive writes are lost.
 - "What can the bundle not do?" Contain what you forgot; there is no way to fetch it later.
 
-## 12. Checkpoint questions (20)
+## Checkpoint questions (20)
 
-1. What does air-gapped mean for BCM?
-2. What must the initial host match?
-3. How many architectures does one bundle support?
-4. Why pass `--kube-version` explicitly to the download scripts?
-5. What are Docker Hub's pull limits, and how do you work around them?
-6. Which seven categories must hold files?
-7. How do you check completeness?
-8. How large is the bundle without and with Run:ai?
-9. Why extract to `/tmp` on Ubuntu?
-10. On which head do you run the package installation?
-11. Why not use `--force` on a passive head?
-12. Where does the head node get Skopeo?
-13. What does `--airgap-registry-as-helm` do?
-14. Which steps push content into the registry?
-15. Why must a downloaded GPU operator chart match the wizard choice?
-16. Why is air-gapped Run:ai unsupported on RHEL?
-17. Which BCM point releases allow the air-gapped Kubernetes upgrade?
-18. State the version skew rule.
-19. What is `trusted=yes` acceptable for, according to the manual?
-20. What does `--cmdvd` do for DOCA OFED?
+<details>
+<summary>1. What four artifact streams must be prepared locally when operating BCM and Kubernetes in an air-gapped site?</summary>
 
-## 13. Sources and review notes
+1. **OS and BCM packages** (`.rpm` or `.deb` repositories from ISOs or mirrors).
+2. **Container images** (pushed via Skopeo into a local registry on the head node, such as `master.cm.cluster:5000`).
+3. **Helm charts** (pushed as OCI charts into the local registry).
+4. **Kubernetes CRDs** (extracted on the head node via `extract_crds.sh`).
+</details>
+
+<details>
+<summary>2. What must the internet-connected initial staging host match relative to the air-gapped BCM cluster?</summary>
+
+It must run the **same Linux distribution/version** (`Ubuntu 22.04`/`24.04`/`26.04`, `RHEL 9`, or `Rocky 9`) and the **same CPU architecture** (`x86_64` or `aarch64`) as the target cluster.
+</details>
+
+<details>
+<summary>3. How many CPU architectures does a single air-gapped download bundle (`airgapped.tgz`) support by default?</summary>
+
+**One architecture at a time** (either `x86_64` or `aarch64`).
+</details>
+
+<details>
+<summary>4. Why must you pass `--kube-version=1.34` (or `-c cm-kubernetes-setup.conf`) explicitly to `download_ubuntu_packages.sh`, `download_container_images.sh`, and `download_helm_charts.sh`?</summary>
+
+Because without an explicit `--kube-version` or `-c` flag, each download script falls back to its own internal default Kubernetes version, which may not match the version you selected in the wizard.
+</details>
+
+<details>
+<summary>5. What are Docker Hub's unauthenticated versus authenticated pull rate limits, and how do you avoid hitting them while building the bundle?</summary>
+
+Unauthenticated pulls are capped at **`100` pulls per `6` hours**, and free authenticated accounts at **`200` pulls per `6` hours**. Authenticate with `skopeo login docker.io` before running `download_container_images.sh` (or use a paid Pro/Team/Business account).
+</details>
+
+<details>
+<summary>6. Which seven directories inside the air-gapped workspace must all be non-empty before creating `airgapped.tgz`?</summary>
+
+**`packages`**, **`packages-head`**, **`packages-non-dgx`**, **`packages-cuda`**, **`k8s-images`**, **`helm-charts`**, and **`crds`** (verified with `find packages packages-head packages-non-dgx packages-cuda k8s-images helm-charts crds -type f`).
+</details>
+
+<details>
+<summary>7. Roughly how much disk space does the air-gapped bundle require without Run:ai versus with Run:ai?</summary>
+
+About **`8.6 GB`** (`8.1 GB` of container images) without Run:ai, plus **`13 to 14 GB`** for Run:ai (plan **upwards of `20 GB`** of free working space).
+</details>
+
+<details>
+<summary>8. On an Ubuntu head node, why must `airgapped.tgz` be extracted under `/tmp` rather than under `/root`?</summary>
+
+Because Ubuntu's `apt` drops privileges to the unprivileged **`_apt`** user when reading local package archives, and `_apt` lacks traverse permissions on `/root` (`0700`).
+</details>
+
+<details>
+<summary>9. On an HA head-node pair, which head node must run `--airgap-install-system-packages` and `cm-kubernetes-setup`, and why must you never pass `--force` on the passive head?</summary>
+
+Always run them on the **Active head node only** (which automatically updates the secondary head). Software images are local to each head node and synced from Active to Passive, so running the wizard on the Passive head with `--force` creates temporary split state that is overwritten on the next sync.
+</details>
+
+<details>
+<summary>10. Where does the air-gapped head node obtain the `skopeo` binary?</summary>
+
+From the **air-gapped package bundle itself** during `cm-kubernetes-setup --airgap-install-system-packages`—never try to install `skopeo` from an upstream internet repo on the air-gapped head.
+</details>
+
+<details>
+<summary>11. What do `--airgap-registry master.cm.cluster:5000` and `--airgap-registry-as-helm` configure when generating `cm-kubernetes-setup.conf`?</summary>
+
+They populate the `airgap` section of the configuration file so Kubernetes pulls all container images from `master.cm.cluster:5000` and Helm pulls all operator charts from `oci://master.cm.cluster:5000/helm-charts`.
+</details>
+
+<details>
+<summary>12. After deploying the local Docker Registry on the active head node (`cm-container-registry-setup --skip-packages`), how do you make the OS and Helm trust its TLS certificate?</summary>
+
+Copy `/cm/local/apps/docker-registry/var/etc/<host>:5000-ca.crt` into **`/usr/local/share/ca-certificates/`** and run **`update-ca-certificates`**.
+</details>
+
+<details>
+<summary>13. Which three commands push and unpack the bundle's images, Helm charts, and CRDs onto the active head node before final deployment?</summary>
+
+1. `cm-kubernetes-setup --airgap-push-container-images -c /root/cm-kubernetes-setup.conf`
+2. `cm-kubernetes-setup --airgap-push-helm-charts -c /root/cm-kubernetes-setup.conf`
+3. `$K8S_AG_SCRIPTS/extract_crds.sh`
+</details>
+
+<details>
+<summary>14. Why can selecting a GPU Operator version marked with an asterisk `*` (NVAIE certified) in the wizard still fail during an air-gapped install?</summary>
+
+Because the air-gapped bundle only contains the chart version(s) downloaded on the connected host; if you pick a version in the wizard that is not present inside `helm-charts/`, installation fails. Always check `ls helm-charts/` first.
+</details>
+
+<details>
+<summary>15. Why is air-gapped Run:ai not supported on RHEL/Rocky in the documented BCM 11 release?</summary>
+
+Because the required `cm-setup-runai-bcm11` helper package is published **only as a Debian/Ubuntu `.deb` package** in that release.
+</details>
+
+<details>
+<summary>16. What are the minimum BCM point releases required for the air-gapped Kubernetes upgrade procedure (Appendix C)?</summary>
+
+**BCM `11.32.0`** (for BCM 11) or **`10.31.0`** (for BCM 10).
+</details>
+
+<details>
+<summary>17. State the Kubernetes minor-version skew rule enforced during air-gapped upgrades.</summary>
+
+At most **two adjacent minor versions** may coexist in the cluster at any time (for example, `1.34` and `1.35`), and skipping a minor version is forbidden. If nodes currently span two adjacent minors (`1.34` and `1.35`), the **only** valid upgrade target is the newer minor (`1.35.x`).
+</details>
+
+<details>
+<summary>18. During an air-gapped Kubernetes upgrade, what exact `kubeadm` command runs on the **first** control-plane node versus on **subsequent** control-plane and worker nodes?</summary>
+
+- **First control-plane node:** After `imageupdate -w controlplane01 --wait`, run `kubeadm upgrade plan --kubeconfig=...` followed by **`kubeadm upgrade apply v<target> --kubeconfig=/root/.kube/config-default`**.
+- **Subsequent control-plane and worker nodes:** After `imageupdate -w <node> --wait`, run **`kubeadm upgrade node --kubeconfig=/root/.kube/config-default`** (no version argument).
+</details>
+
+<details>
+<summary>19. Why does the manual allow `trusted=yes` on the base Ubuntu APT line when mounting a local ISO loop image, while warning against copying that flag to network repositories?</summary>
+
+Because the mounted ISO is local, physically controlled installation media whose checksum was already verified, whereas setting `trusted=yes` on a network-hosted APT repository disables GPG signature verification over the network.
+</details>
+
+<details>
+<summary>20. How do you install NVIDIA DOCA OFED offline from the BCM installation DVD/ISO?</summary>
+
+Run **`cm-doca-ofed-install.sh -v <version> -h --cmdvd`**, which reads the bundled DOCA OFED packages directly from the mounted BCM installation medium.
+</details>
+
+## Sources and review notes
 
 - **BCM 11 Containerization Manual:** appendix A (self-signed server certificate pair for testing, covered in 8.10 and checked here), appendix B (installation: host preparation, head node preparation, registry, Docker for Run:ai, pushing content, CRDs, deployment, decoupled Run:ai) and appendix C in full (upgrade prerequisites, preparation, head node steps, and C.4 step-by-step `kubeadm upgrade plan` / `upgrade apply` / `upgrade node` sessions for the first control-plane node, subsequent control-plane nodes, and drained workers). (Run:ai chapter 6.11 is covered in chapter 8.16.)
 - **BCM 11 Administrator Manual:** 9.6.3 and 9.6.4 (local repositories and offline images), 14.12 (offline MySQL).
