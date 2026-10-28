@@ -236,14 +236,14 @@ I wrote a small read-only lister, `rf_attest.py`, and ran it on DMTF's rack-serv
 10. A tested recovery path for a locked-out or bricked BMC (chapter 7.14).
 11. Re-run the audit and the profile after every firmware update, because updates can reset settings.
 
-## 9. Exercises
+## Exercises
 
-1. Run `hardening_lab.py`. For each of the 29 checks write down which layer of section 2 it tests.
-2. Edit `profiles/bmc_policy.json` to also require `SSH` off and rerun the audit. What must you check before switching SSH off on a real BMC?
-3. Make a CSR through `GenerateCSR` with two alternative names. Sign it with the lab CA (`tls_setup.sign_csr`) and show that a client using `localhost` and one using `127.0.0.1` both verify.
-4. Reproduce the self lock-out check: connect over plain HTTP and try to disable HTTP.
-5. Write the policy text for what your team allows tenants to do on GPU hosts regarding firmware tools. Which part is a technical control and which is a process?
-6. Pick one `ComponentIntegrity` resource in DMTF's example and write down what a verifier would need to check it.
+1. **Mapping the 29 security checks to the 7 defense layers (`code/part07/hardening_lab.py`):** Run `python3 code/part07/hardening_lab.py` (`28` / `29` checks pass) and map each group of checks in `code/part07/hardening_lab.py` (`GenerateCSR`/`ReplaceCertificate`, `rf_harden.py` protocol & account audit/apply, self-lockout prevention, and `SecureBoot` `SetupMode` $\rightarrow$ `UserMode`) to the 7 layers in Figure 1.
+2. **Enforcing `SSH: false` in `profiles/bmc_policy.json`:** Edit a copy of `code/part07/profiles/bmc_policy.json` to require `"SSH": false` under `protocols`, run `rf_harden.py audit`, and list what out-of-band console/recovery paths (`SOL` vs Redfish `SerialConsole` vs KCS) you must verify before disabling SSH on a production BMC.
+3. **End-to-end CSR generation and SAN verification (`CertificateService` & `tls_setup.py`):** Using `GenerateCSR` (`CommonName="bmc-lab"`, `AlternativeNames=["DNS:localhost", "IP:127.0.0.1"]`) and `tls_setup.sign_csr()`, sign the BMC's CSR with the lab CA, install it via `ReplaceCertificate`, and verify that HTTPS connections to both `https://localhost:<port>` and `https://127.0.0.1:<port>` pass TLS verification with `REDFISH_CA`.
+4. **Proving the anti-self-lockout guard in `rf_harden.py`:** Connect `rf_harden.py apply --yes` to a mock server over plain `http://` while the policy requires `"HTTP": false`. Verify that `rf_harden.py` refuses to disable HTTP over an active HTTP connection (`"refusing to disable HTTP while connected over HTTP"`).
+5. **Remediating the defense-contractor tenant `sudo` audit finding (`volume-18/ch2`):** Write a 5-point remediation plan for an AI cluster where researchers previously had `sudo` on bare-metal GPU hosts (`nvfwupd`, `mstflint` exposure), combining host privilege removal, unprivileged containers, out-of-band Redfish firmware lockdown, and nightly `rf_firmware.py drift` checks.
+6. **Inspecting SPDM and TPM `ComponentIntegrity` resources (`code/part07/rf_attest.py`):** Serve `$REDFISH_PUBLICATIONS/mockups/public-rackmount1` and run `python3 code/part07/rf_attest.py http://127.0.0.1:8443 admin adminpass`. Inspect `TPM-0`, `SS-SPDM-0`, `SS-SPDM-1`, and `SecurityPolicy`, and write down the four cryptographic verification steps required to turn a measurement listing into true hardware attestation.
 
 ## 10. Interview angles
 
@@ -253,34 +253,153 @@ I wrote a small read-only lister, `rf_attest.py`, and ran it on DMTF's rack-serv
 - "What is attestation and what do you need beyond Redfish?" Signed measurements with a nonce, a trusted certificate chain, and known-good values.
 - "A data scientist has sudo on the GPU hosts. What is the risk?" They can run firmware tools and flash devices. Remove root, containerise, control the update path.
 
-## 11. Checkpoint questions (20)
+## Checkpoint questions (20)
 
-1. Name four things an attacker can do through a BMC.
-2. What does the SuperPOD reference architecture say about the OOB network?
-3. List the seven layers of defence in this chapter.
-4. Why not leave Telnet or plain HTTP on?
-5. Why does `GenerateCSR` come before `ReplaceCertificate`?
-6. Why does the BMC make the private key itself?
-7. What happens if the certificate does not match the pending key?
-8. Does the new certificate apply to existing connections?
-9. Which findings can `rf_harden.py` fix and which does it leave to people?
-10. Why does it refuse to disable the protocol it is using?
-11. What does `HTTPBasicAuth: Disabled` mean for scripts?
-12. What are `PK`, `KEK`, `db` and `dbx`?
-13. Why can `SecureBootEnable: true` still mean no protection?
-14. Whose key databases are the Secure Boot databases: the BMC's or the host's?
-15. What is a hardware root of trust?
-16. Why is device firmware signed by the vendor, not your CA?
-17. What is a downgrade attack?
-18. What does `ForceUpdate` bypass?
-19. What do SPDM and TPM attestation each report?
-20. What four things does real attestation need that `rf_attest.py` does not do?
+<details>
+<summary>1. Name six high-impact actions an attacker can perform if they compromise a server's BMC.</summary>
 
-## 12. Sources and review notes
+1. **Power off or reset nodes** repeatedly to disrupt training runs.
+2. **Mount malicious virtual media** (`.iso`) and boot a rogue OS into RAM without touching host disks.
+3. **Access `iKVM` or `SOL` consoles** to intercept console logins or modify BIOS settings.
+4. **Flash persistent malicious or downgraded firmware** onto the BIOS, BMC, GPUs, or NICs.
+5. **Read hardware telemetry, serial numbers, and event logs** for reconnaissance.
+6. **Modify boot order, BIOS attributes, or BMC accounts** for persistent backdoor access.
+</details>
+
+<details>
+<summary>2. What is the architectural mandate for BMC network isolation in the DGX SuperPOD Reference Architecture and `volume-18/ch2`?</summary>
+
+The BMC out-of-band management network (`SN2201` switches in a SuperPOD, rolled up into a dedicated spine VXLAN) must be **physically or logically isolated from all AI training/data/tenant networks**, protected by strict firewall rules, and reachable **only via a bastion/VPN requiring Multi-Factor Authentication (MFA)** by authorized infrastructure administrators.
+</details>
+
+<details>
+<summary>3. List the seven defense-in-depth layers for BMC and hardware security covered in this chapter.</summary>
+
+1. **Network isolation** (dedicated OOB network, MFA bastion, no tenant routing).
+2. **Attack-surface minimization** (disable `HTTP`, `Telnet`, `IPMI-over-LAN`, `SSDP` in `ManagerNetworkProtocol`).
+3. **Identity & least privilege** (rotate factory passwords, per-purpose `ReadOnly`/`Operator` accounts, lockout policy).
+4. **Encrypted & verified transport** (TLS 1.2+, internal CA certificates, `SessionService` tokens, `HTTPBasicAuth: Disabled`).
+5. **Firmware trust & controlled update paths** (hardware roots of trust `ERoT`, vendor-signed bundles, no tenant root/`sudo`).
+6. **Host boot integrity** (UEFI Secure Boot in `UserMode` with enrolled `PK`/`KEK`/`db`/`dbx`).
+7. **Continuous evidence & attestation** (`NTP` clock sync, centralized SEL/EventLogs, `rf_harden.py` audits, SPDM/TPM attestation).
+</details>
+
+<details>
+<summary>4. Which four protocols in `ManagerNetworkProtocol` does `profiles/bmc_policy.json` disable by default, and which time-sync protocol does it enable?</summary>
+
+It disables plain **`HTTP`**, **`Telnet`**, **`IPMI`** (IPMI-over-LAN), and **`SSDP`** multicast discovery, and enables **`NTP`** with approved time servers.
+</details>
+
+<details>
+<summary>5. In the Redfish `CertificateService` workflow, why do you call `#CertificateService.GenerateCSR` before `#CertificateService.ReplaceCertificate`?</summary>
+
+Calling `GenerateCSR` causes the BMC to generate a **new private key internally inside the BMC** and return only the public Certificate Signing Request (`CSRString`). Once your CA signs the CSR, `ReplaceCertificate` installs the signed public certificate matching that internal private key.
+</details>
+
+<details>
+<summary>6. What security advantage does `GenerateCSR` on the BMC have over generating the private key and certificate on an admin laptop and uploading both?</summary>
+
+When the BMC generates the keypair internally via `GenerateCSR`, the **private key never leaves the BMC and never traverses the network** or sits on an administrator's filesystem.
+</details>
+
+<details>
+<summary>7. What happens if you call `ReplaceCertificate` with a valid CA-signed certificate whose public key does not match the BMC's pending CSR key?</summary>
+
+The BMC rejects the request with HTTP **`400 Bad Request`** (`"certificate public key does not match the pending CSR key"`).
+</details>
+
+<details>
+<summary>8. When `ReplaceCertificate` succeeds (`200 OK`), how can you verify that the BMC is actively serving the new certificate?</summary>
+
+Open a **new** TLS connection to the BMC verified against your CA bundle (`REDFISH_CA=/path/to/ca.pem` without `-k`), and `GET` the `Certificate` resource under `NetworkProtocol/HTTPS/Certificates/1` to confirm `Issuer`, `Subject`, `ValidNotBefore`, and `ValidNotAfter`.
+</details>
+
+<details>
+<summary>9. In `code/part07/rf_harden.py`, which security findings are marked `FIX` (auto-remediable) versus `MANUAL` (requiring human action)?</summary>
+
+- **`FIX` (7 items on default mock):** Disabling `HTTP`, `Telnet`, `IPMI`, and `SSDP`, enabling `NTP` + `NTPServers`, setting `HTTPBasicAuth: "Disabled"`, and raising `MinPasswordLength` (`>= 12`) and `AccountLockoutThreshold`.
+- **`MANUAL` (4 items on default mock):** Replacing an expiring/self-signed X.509 certificate, rotating an account with `PasswordChangeRequired: true`, renaming/disabling default-style admin usernames (`factory`/`admin`), and enrolling keys / enabling UEFI `SecureBoot`.
+</details>
+
+<details>
+<summary>10. Why does `rf_harden.py apply --yes` refuse to disable `HTTP` when the client is connected to an `http://` endpoint?</summary>
+
+Disabling the plain HTTP protocol while connected over `http://` would immediately **lock the administrator and tool out of the BMC** if HTTPS is not yet verified and working.
+</details>
+
+<details>
+<summary>11. Once `HTTPBasicAuth` is set to `"Disabled"` in `AccountService`, how must all automation scripts authenticate?</summary>
+
+They must authenticate exclusively via **Redfish Sessions** (`POST /redfish/v1/SessionService/Sessions` and `X-Auth-Token`, or OAuth 2.0 / mTLS where configured); any request carrying `Authorization: Basic ...` is rejected with `401 Unauthorized`.
+</details>
+
+<details>
+<summary>12. Under `/redfish/v1/Systems/{id}/SecureBoot/SecureBootDatabases`, what are the four standard UEFI key databases (`PK`, `KEK`, `db`, `dbx`)?</summary>
+
+- **`PK` (Platform Key):** Top-level key establishing ownership between the platform owner and UEFI firmware (`1` key; enrolling `PK` transitions UEFI from `SetupMode` to `UserMode`).
+- **`KEK` (Key Exchange Key):** Keys authorized to update `db` and `dbx`.
+- **`db` (Signature Database):** Allowed public certificates and SHA-256 hashes of trusted bootloaders (`shimx64.efi`) and option ROMs.
+- **`dbx` (Forbidden Signature Database):** Revoked/blocklisted certificates and binary hashes known to be vulnerable.
+</details>
+
+<details>
+<summary>13. Why does setting `PATCH /SecureBoot {"SecureBootEnable": true}` NOT immediately enforce Secure Boot, and what two conditions are required for enforcement (`hardening_lab.py`)?</summary>
+
+1. Like BIOS settings, `SecureBootEnable: true` only takes effect **after the next host system reboot** (`SecureBootCurrentBoot` remains `"Disabled"` until reboot).
+2. If no Platform Key (`PK`) is enrolled (`SecureBootMode == "SetupMode"`), UEFI still cannot enforce Secure Boot even after a reboot. Keys must be enrolled (e.g., via `SecureBoot.ResetKeys` with `ResetAllKeysToDefault` to enter **`UserMode`**) and the host rebooted before `SecureBootCurrentBoot` becomes `"Enabled"`.
+</details>
+
+<details>
+<summary>14. Do the UEFI Secure Boot databases (`PK`, `KEK`, `db`, `dbx`) protect the BMC's own firmware or the host operating system's boot chain?</summary>
+
+They belong to the **host system's UEFI firmware** and protect the **host boot chain** (`BIOS` $\rightarrow$ `shimx64.efi` $\rightarrow$ `grubx64.efi` $\rightarrow$ Linux kernel `vmlinuz`). The BMC merely exposes those host UEFI databases over Redfish under `/redfish/v1/Systems/{id}/SecureBoot`.
+</details>
+
+<details>
+<summary>15. What is a Hardware Root of Trust (such as NVIDIA `ERoT` on an HGX baseboard, `volume-18/ch2`)?</summary>
+
+An immutable silicon security microcontroller with fuse-burned cryptographic public keys that verifies the digital signature of a component's firmware (BMC, BIOS, GPU VBIOS, NVSwitch, PCIe switch) in hardware **before** releasing the main processor from reset.
+</details>
+
+<details>
+<summary>16. Why can't an enterprise sign NVIDIA GPU VBIOS or ConnectX NIC firmware with its own internal corporate CA (`volume-18/ch2`)?</summary>
+
+Because the public root-of-trust keys fused into GPU and NIC silicon at manufacturing belong to **NVIDIA**, so the hardware will only boot firmware signed by NVIDIA's private signing keys. Therefore, the enterprise controls **access to the firmware update path** (`nvfwupd`, `mstflint`, Redfish `UpdateService`) rather than signing device firmware itself.
+</details>
+
+<details>
+<summary>17. What is a firmware downgrade attack, and why does signature verification alone not stop it?</summary>
+
+In a downgrade attack, an attacker flashes an **older, legitimately vendor-signed firmware version** that contains a known exploitable CVE. Because the old image carries a valid vendor signature, basic signature checks pass—defending against it requires hardware anti-rollback fuses (`LowestSupportedVersion`), restricting `ForceUpdate`, and removing tenant `sudo` access on hosts.
+</details>
+
+<details>
+<summary>18. Why is granting data scientists `sudo` / root access on bare-metal GPU compute nodes a critical firmware security vulnerability (`volume-18/ch2`)?</summary>
+
+Root access on the host OS allows running in-band hardware flashing and KCS tools (`nvfwupd`, `mstflint`, `ipmitool`) to alter device/BMC firmware or configurations. Users should run inside unprivileged containers without host root access.
+</details>
+
+<details>
+<summary>19. Under Redfish `ComponentIntegrity`, what is the difference between **SPDM** and **TPM** attestation?</summary>
+
+- **SPDM (Security Protocol and Data Model):** A DMTF standard where peripheral hardware components (GPUs, NICs, NVSwitches, drives) act as responders that return cryptographic hashes (measurements) of their firmware and configuration signed by a device certificate chaining to the hardware vendor (`SPDMGetSignedMeasurements`).
+- **TPM (Trusted Platform Module):** A motherboard crypto-processor that records cumulative boot hashes in Platform Configuration Registers (`PCRs`) and signs quotes over them (`TPMGetSignedMeasurements`).
+</details>
+
+<details>
+<summary>20. What four steps are required for real cryptographic attestation beyond simply listing `ComponentIntegrity` resources with `rf_attest.py`?</summary>
+
+1. Generate a fresh cryptographic **nonce** (`32` random bytes) and invoke `SPDMGetSignedMeasurements` / `TPMGetSignedMeasurements`.
+2. Receive the **digitally signed measurement statement** from the device.
+3. Verify the **digital signature and device X.509 certificate chain** up to the manufacturer's root CA (and verify the nonce matches to prevent replay).
+4. Compare the signed measurement hashes against an external, tamper-proof **Reference Integrity Manifest (RIM) / golden measurement database** from the vendor.
+</details>
+
+## Sources and review notes
 
 - **Redfish Specification DSP0266 v1.21.0:** TLS and certificates (13.1), sensitive data (13.2), authentication and sessions (13.3), authorization (13.4), account service (13.5), discovery with SSDP and its disable rule (12.4).
 - **Redfish Resource and Schema Guide and the official JSON Schemas:** `CertificateService` (`GenerateCSR`, `ReplaceCertificate`), `Certificate`, `ManagerNetworkProtocol`, `AccountService`, `SecureBoot` (modes, `ResetKeys`), `SecureBootDatabase`, `ComponentIntegrity` (SPDM and TPM, signed-measurement actions) and `SecurityPolicy`.
-- **NVIDIA-DevOps notes:** volume 18 chapter 2 (hardware and firmware trust: the root of trust chain, the BMC as most dangerous component, the `sudo` customer scenario and the firmware lockdown answer), volume 10 chapter 1 sections 6 and 9 (BMC security commands, scenario 5 on Secure Boot). All unverified against NVIDIA documents; one correction is in section 6.
+- **NVIDIA-DevOps notes:** `nvidia-zero-to-hero/volume-18/chapter-02-hardware-and-firmware-trust.md` (hardware and firmware trust: the root of trust chain, the BMC as most dangerous component, the `sudo` customer scenario and the firmware lockdown answer), `nvidia-zero-to-hero/volume-18/chapter-12-incident-response-and-troubleshooting.md`, `nvidia-zero-to-hero/volume-18/chapter-12-volume-18-summary.md`, `nvidia-zero-to-hero/volume-18/index.md`, and `volume-10/01-bare-metal-and-bmc-lifecycle.md` sections 6 and 9 (BMC security commands, scenario 5 on Secure Boot). All unverified against NVIDIA documents; one correction is in section 6.
 - **DGX GB300 SuperPOD reference architecture** (out-of-band network design). **Supercomputers for Linux SysAdmins** chapter 10 (separate IPMI network). **BCM 11 Administrator Manual** (BMC interface types, firmware ERoT items).
 - **DMTF tools:** Redfish-Interop-Validator 3.0.4 with my profile `bmc_hardening.json`; DMTF example trees for `ComponentIntegrity` and `SecurityPolicy` (commit `fa6d23d9`).
 - **Run here:** `hardening_lab.py` (29 checks, real TLS, real lab CA), `rf_harden.py` (audit and apply), `rf_attest.py` (read-only, DMTF example), the interop validator before and after hardening.

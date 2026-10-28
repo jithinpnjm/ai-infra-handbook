@@ -196,6 +196,18 @@ Output: `System_0 Off OK`, `HGX_Baseboard_0 On OK`, `reset sent`. Notes:
 
 ## 5. Running on a fleet: the runner and its lab
 
+```mermaid
+flowchart LR
+    CSV["endpoints.csv<br/>(1,000 BMCs)"] --> POOL["Bounded Worker Pool<br/>(--workers 16, --timeout 10)"]
+    POOL --> LOGIN["POST SessionService/Sessions<br/>(TLS verified via REDFISH_CA)"]
+    LOGIN -->|"201 Created"| TASK["Run Read/Audit Task<br/>(health, inventory, drift)"]
+    LOGIN -->|"401 / 403 / 404"| NORETRY["Fail Immediately (1 attempt)<br/>Never retry 401 (prevents lockout)"]
+    LOGIN -->|"502 / 503 / 504 / Timeout"| RETRY["Exponential Backoff + Jitter<br/>(up to --retries 3)"]
+    RETRY --> LOGIN
+    TASK --> LOGOUT["finally: DELETE Session URI<br/>(Zero leaked sessions)"]
+    NORETRY & LOGOUT --> SUMMARY["Per-Host Outcome Summary<br/>(ok, http 401, http 503, timeout)"]
+```
+
 `code/part07/fleet_run.py` runs a read-only task on many BMCs. The rules in code:
 
 | Rule | Why |
@@ -244,14 +256,14 @@ This runner only **reads**. A runner that changes things needs more: batches, a 
 | Go and gofish | services, operators, high concurrency | more code for small jobs |
 | BCM `redfish*` commands | cluster-wide actions in a BCM cluster (chapter 7.2) | tied to BCM |
 
-## 7. Exercises
+## Exercises
 
-1. Run `fleet_lab.py` and change the retry rule so a 401 is retried. Which check fails and why is that retry dangerous?
-2. Write a playbook with `redfish_info` that prints the BIOS version of every host in an inventory of three mock BMCs on different ports.
-3. Change `uri_session.yml` to log out even when reading the system fails. Test by pointing it at a wrong system ID.
-4. Port `rf_inventory.py`'s idea to Go with gofish: list each system's GPUs from `Processors`.
-5. Add `--task firmware-drift` to `fleet_run.py` using `rf_firmware.drift` and a baseline file.
-6. Start the mock with `--tls` and a self-signed certificate (`selfsigned.pem`). Show that a client with the lab CA refuses it.
+1. **Proving why `401 Unauthorized` must never be retried (`code/part07/fleet_lab.py`):** Run `python3 code/part07/fleet_lab.py` (`14 passed, 0 failed`). Temporarily edit `code/part07/fleet_run.py` to include `401` in the retryable status tuple, re-run `fleet_lab.py`, and explain why retrying `badpw` `4` times triggers `AccountLockoutThreshold` (`3` failures) and locks out legitimate administrators.
+2. **Writing a multi-host Ansible `redfish_info` playbook:** Using `code/part07/ansible/inventory_and_restart.yml` as a template, write an Ansible task using `community.general.redfish_info` (`category: Systems`, `command: GetSystemInventory`) that collects `BiosVersion` across three mock BMCs and asserts they match an expected string.
+3. **Testing `block` / `always` session cleanup on mid-playbook failure (`uri_session.yml`):** In `code/part07/ansible/uri_session.yml`, point the `Read the system` task at a non-existent URI (`/redfish/v1/Systems/DoesNotExist`) so it fails with `404`. Verify that the `always:` block still executes `DELETE` on `{{ login.location }}` and leaves `0` open sessions on the BMC.
+4. **Enumerating GPUs in Go with `gofish` (`code/part07/go_gofish/main.go`):** Extend `code/part07/go_gofish/main.go` to iterate over `s.Processors()` for each `ComputerSystem` and print the `ID`, `Model`, and `ProcessorType` of every processor where `ProcessorType == schemas.GPUProcessorType`.
+5. **Adding a `firmware-drift` task to `fleet_run.py`:** Add a `--task firmware-drift` option to `code/part07/fleet_run.py` that calls `rf_firmware.drift(client, baseline)` across all healthy BMCs in parallel and summarizes drifted vs compliant nodes.
+6. **Verifying X.509 CA trust vs self-signed rejection (`code/part07/tls_setup.py`):** Run `python3 code/part07/tls_setup.py /tmp/pki`, start `redfish_mock.py --tls /tmp/pki/selfsigned.pem /tmp/pki/selfsigned.key`, and verify that `redfish_crawl.py` with `REDFISH_CA=/tmp/pki/ca.pem` rejects the untrusted certificate (`SSLCertVerificationError`).
 
 ## 8. Interview angles
 
@@ -261,30 +273,134 @@ This runner only **reads**. A runner that changes things needs more: batches, a 
 - "How do you test automation without hardware?" A mock with fault injection (slow, flaky, down, wrong password, hang), plus validation against the official schemas (chapter 7.6).
 - "How do you keep a hung BMC from stopping a fleet run?" Timeouts per request, a bounded pool and per-host failure isolation.
 
-## 9. Checkpoint questions (20)
+## Checkpoint questions (20)
 
-1. Why is `curl -k` unsafe, and what do you use instead?
-2. What does TLS 1.2 or newer mean for a Redfish service?
-3. What does the Redfish library handle for you, and what not?
-4. Why log out in a `finally` or `always` block?
-5. What is the `uri` module's name for the `X-Auth-Token` response header?
-6. Why did my logout task fail the first time?
-7. What does `no_log: true` do?
-8. What do `redfish_info`, `redfish_command` and `redfish_config` do?
-9. Why do the Redfish modules need HTTPS?
-10. When would you choose `uri` over a Redfish module?
-11. Which Ansible settings protect your network when you hit many BMCs?
-12. What does `Insecure: true` do in gofish and when is it acceptable?
-13. Which statuses should a runner retry? Which never?
-14. What is exponential backoff with jitter for?
-15. Why must one failing host not stop the run?
-16. How do you detect a leaked session?
-17. What should a script do when a task times out?
-18. How does the mock inject faults?
-19. Name three outcomes you test in a fleet lab.
-20. Why is the runner read-only, and what must a changing runner add?
+<details>
+<summary>1. Why is `curl -k` (or `REDFISH_INSECURE=1`) unsafe in production, and what should automation use instead?</summary>
 
-## 10. Sources and review notes
+Disabling certificate verification allows any man-in-the-middle on the network path to impersonate a BMC and steal credentials or inject hardware commands. Production automation should install certificates signed by an internal CA on every BMC and pass `--cacert ca.pem` / `REDFISH_CA=/path/to/ca.pem` / `ca_path`.
+</details>
+
+<details>
+<summary>2. What minimum TLS protocol version does DSP0266 §13.1 mandate for Redfish services?</summary>
+
+**TLS 1.2 or later** (with IANA "Recommended" cipher suites).
+</details>
+
+<details>
+<summary>3. What does the official DMTF `redfish` Python library (`pip install redfish`) handle automatically, and what must your application still implement?</summary>
+
+The `redfish` library handles session login (`c.login(auth="session")`), token headers, JSON parsing (`.dict`), and `c.logout()`. Your application must still implement **dynamic link discovery**, **bounded fleet concurrency**, **selective retry/backoff**, and **202 task polling**.
+</details>
+
+<details>
+<summary>4. Why must every Python script or Ansible playbook wrap Redfish session usage in a `try ... finally` or `block ... always` structure?</summary>
+
+To guarantee that `DELETE` is called on the session `Location` URI even when an intermediate request raises an exception or fails an assertion, preventing leaked sessions from exhausting the BMC's session table.
+</details>
+
+<details>
+<summary>5. When using Ansible's `ansible.builtin.uri` module to create a Redfish session (`register: login`), what variable names hold the session token and the session URI?</summary>
+
+`ansible.builtin.uri` normalizes response headers to lowercase with underscores: **`login.x_auth_token`** holds the `X-Auth-Token` header and **`login.location`** holds the `Location` header.
+</details>
+
+<details>
+<summary>6. What subtle bug occurs in Ansible `uri` playbooks if you write `url: "{{ bmc }}{{ login.location }}"` in the logout task?</summary>
+
+`ansible.builtin.uri` resolves the `Location` response header into a **complete absolute URL** (`https://host:port/redfish/v1/SessionService/Sessions/1`). Prepending `{{ bmc }}` a second time produces a malformed URL (`https://host:porthttps://host:port/...`); always pass `url: "{{ login.location }}"` directly.
+</details>
+
+<details>
+<summary>7. Why is `no_log: true` mandatory on the Ansible task that posts `UserName` and `Password` to `/redfish/v1/SessionService/Sessions`?</summary>
+
+Without `no_log: true`, Ansible prints the request body (`Password`) and response headers (`x_auth_token`) in cleartext to stdout, CI logs, and AWX/Tower job histories.
+</details>
+
+<details>
+<summary>8. Name the three Redfish modules in the `community.general` Ansible collection and the role of each.</summary>
+
+1. **`community.general.redfish_info`:** Read-only inventory and telemetry queries (`GetSystemInventory`, `GetFirmwareInventory`, `GetHealthReport`, `GetBiosAttributes`).
+2. **`community.general.redfish_command`:** Execute state-changing actions (`PowerGracefulRestart`, `PowerForceOff`, `SetOneTimeBoot`, `SimpleUpdate`).
+3. **`community.general.redfish_config`:** Modify configuration properties (`SetBiosAttributes`, network/account settings).
+</details>
+
+<details>
+<summary>9. Why do the `community.general.redfish_*` modules require HTTPS on the target BMC, and how do you format the `baseuri` parameter?</summary>
+
+The modules construct the target URL internally as `https://<baseuri>/redfish/v1/...`, so `baseuri` must be passed as **`host:port` without an `http://` or `https://` scheme**, and the endpoint must speak TLS.
+</details>
+
+<details>
+<summary>10. When should you prefer `ansible.builtin.uri` over `community.general.redfish_*`?</summary>
+
+Use `community.general.redfish_*` for standard inventory, BIOS, and power tasks where built-in idempotency and `changed` reporting save boilerplate. Use `ansible.builtin.uri` when you need exact control over custom URI paths, `@Redfish.OperationApplyTime`, `If-Match` ETag headers, or OEM actions not covered by the collection.
+</details>
+
+<details>
+<summary>11. Which three Ansible play keywords protect OOB management switches and the cluster when running playbooks across hundreds of BMCs?</summary>
+
+1. **`forks`:** Caps the number of concurrent SSH/HTTP worker processes so OOB switches are not overwhelmed.
+2. **`serial`:** Executes the play in staged rolling batches (e.g., `serial: [1, 8, "25%"]`).
+3. **`max_fail_percentage` / `any_errors_fatal`:** Aborts the entire rollout immediately if the canary or current batch exceeds the failure threshold.
+</details>
+
+<details>
+<summary>12. In the Go `gofish` library (`github.com/stmcginnis/gofish`), what does `Insecure: true` in `gofish.ClientConfig` do, and how should production Go code configure TLS instead?</summary>
+
+`Insecure: true` skips TLS certificate verification (for lab testing only). Production Go services should leave `Insecure: false` and pass a custom `HTTPClient` whose `tls.Config.RootCAs` loads the cluster's internal BMC CA bundle.
+</details>
+
+<details>
+<summary>13. In `code/part07/fleet_run.py`, which HTTP status codes and errors are retried, and which status codes must NEVER be retried?</summary>
+
+- **Retryable (transient):** Socket timeouts, connection errors, and HTTP **`502 Bad Gateway`**, **`503 Service Unavailable`**, and **`504 Gateway Timeout`**.
+- **Never retry (permanent/auth):** HTTP **`401 Unauthorized`**, **`403 Forbidden`**, **`404 Not Found`**, and **`400 Bad Request`**. Retrying `401` will never succeed with the same credentials and will trip `AccountLockoutThreshold`.
+</details>
+
+<details>
+<summary>14. Why does `fleet_run.py` use exponential backoff with random jitter between retries?</summary>
+
+If 200 BMCs reboot simultaneously after a BMC firmware update and return `503 Service Unavailable`, fixed-interval retries cause all 200 workers to hammer the BMCs in synchronized waves. Exponential backoff (`0.15 * 2^attempt`) plus random jitter spreads retry traffic smoothly as the BMCs come online.
+</details>
+
+<details>
+<summary>15. Why must a fleet runner isolate failures per host rather than letting an unhandled exception on one BMC abort the worker pool?</summary>
+
+In any 1,000-node cluster, at least 1 or 2 nodes will be powered down for maintenance or undergoing RMA at any given time. Catching per-host exceptions and recording structured outcomes (`ok`, `http 401`, `http 503`, `timeout`, `connection refused`) ensures the other 998 nodes complete cleanly and the operator gets a complete status report.
+</details>
+
+<details>
+<summary>16. How does `code/part07/fleet_lab.py` verify that `fleet_run.py` leaked zero sessions across the 15 test BMCs?</summary>
+
+After `fleet_run.py` finishes, `fleet_lab.py` inspects the in-memory `st.sessions` dictionary on every mock BMC server (`sum(len(st.sessions) for _, st in servers) == 0`) to prove every session created during the run was deleted before exit.
+</details>
+
+<details>
+<summary>17. How does `redfish_crawl.Client` handle a session token that expires mid-run during a multi-minute operation?</summary>
+
+If a request returns `401 Unauthorized` while `self.token` is set (and the request is not itself a login attempt), `Client.req()` clears the expired token, calls `self.login()` **once** (`self.relogins += 1`), and replays the request once with the fresh token.
+</details>
+
+<details>
+<summary>18. What fault-injection modes does `redfish_mock.py` support to test fleet automation resiliency on a laptop?</summary>
+
+Artificial per-request latency (`slow_ms`), transient `503` failures for the first $N$ requests (`fail_first_n`), permanent `503` overload (`always_503`), infinite socket hang (`hang`), and asynchronous `202` reset tasks (`async_reset`).
+</details>
+
+<details>
+<summary>19. How much speedup did 8 worker threads achieve over 1 worker thread when querying 8 slow (`0.6 s`) BMCs in `fleet_lab.py`?</summary>
+
+With 8 workers (`--workers 8`), all 8 slow BMCs completed in roughly **`~0.6–1.0` second** in parallel, compared to **`~4.8+` seconds** sequentially with 1 worker.
+</details>
+
+<details>
+<summary>20. Why is `fleet_run.py` restricted to read-only tasks, and what four additional safeguards are required for a fleet runner that mutates state?</summary>
+
+Read-only tasks (`health`, `inventory`, `drift`) can safely run at high concurrency across the entire cluster at once. A mutating fleet runner must add: (1) **canary/wave batching** (`1` node $\rightarrow$ `1` rack $\rightarrow$ `1` SU), (2) **circuit-breaker stop-on-failure** between waves, (3) **pre-check idempotency and post-check verification**, and (4) **explicit `--yes` human approval**.
+</details>
+
+## Sources and review notes
 
 - **Redfish Specification DSP0266 v1.21.0:** TLS 1.2 or later and certificate replacement (13.1), HTTP Basic and sessions (13.3), tasks and status codes (7.3, 8.3, 12.2).
 - **Tools run here:** `redfish` 3.4.2 (PyPI), `ansible-core` 2.21.5, `community.general` 13.5.0 (modules `redfish_info`, `redfish_command`, `redfish_config`; I read their documentation text in the installed collection), `gofish` v0.27.0, Go 1.23.2, OpenSSL for the lab CA.

@@ -215,10 +215,10 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 7.9 | Storage, network adapters and PCIe devices | reviewed | 3343 | `hardware_lab.py` pass, `RF-G` |
 | 7.10 | Firmware inventory and the UpdateService | reviewed | 5415 | `firmware_lab.py` pass, `RF-G`, `BCM 14.5`, `VL10 ch16` |
 | 7.11 | Log services, event logs and diagnostics | reviewed | 3517 | `logs_lab.py` pass, `RF-G` |
-| 7.12 | Automating Redfish with Python, Ansible and Go | drafted | 2694 |  |
-| 7.13 | Redfish on NVIDIA DGX and HGX: BMC, GPU baseboard and management | drafted | 3011 |  |
-| 7.14 | Fleet-scale hardware management and node lifecycle automation | drafted | 3156 |  |
-| 7.15 | BMC security hardening and attestation | drafted | 3662 |  |
+| 7.12 | Automating Redfish with Python, Ansible and Go | reviewed | 3480 | `fleet_lab.py` (14/14 pass), `RF-S`, `AUR` |
+| 7.13 | Redfish on NVIDIA DGX and HGX: BMC, GPU baseboard and management | reviewed | 4651 | `dgx_record_lab.py` (3/3 pass), `V5 ch3`, `V6`, `SPGB300`, `BCM` |
+| 7.14 | Fleet-scale hardware management and node lifecycle automation | reviewed | 4187 | `lifecycle_lab.py` (24/24 pass), `BCM 14.5`, `VL10 ch1` |
+| 7.15 | BMC security hardening and attestation | reviewed | 4518 | `hardening_lab.py` (28/28 pass), `V18 ch2`, `RF-S 13`, `RF-G` |
 | 8.1 | BCM architecture and concepts | drafted | 4137 |  |
 | 8.2 | Planning and installing BCM | drafted | 3059 |  |
 | 8.3 | Cluster configuration: networks, nodes and categories | drafted | 5418 |  |

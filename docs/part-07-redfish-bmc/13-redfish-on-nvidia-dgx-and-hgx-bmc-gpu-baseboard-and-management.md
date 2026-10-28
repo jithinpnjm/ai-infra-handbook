@@ -18,7 +18,7 @@ lab_venue: "GCP / GKE"
 | Priority tier | 1 |
 | Lab venue | Laptop |
 | Part | Part 7: Redfish and BMC |
-| Status | Drafted (DMTF validators and Tacklebox run against mock; **untested** on live DGX/HGX) |
+| Status | Drafted (DMTF validators, Tacklebox, and `dgx_record_lab.py` 3/3 self-checks run against mock; **untested** / **not verified** on live DGX/HGX) |
 
 ## Why this matters for AI infrastructure
 
@@ -45,6 +45,19 @@ You need chapters 7.1 to 7.12. After this chapter you can:
 | Support | NVIDIA | the OEM for the system, NVIDIA for the GPU parts | NVIDIA |
 
 The user's HGX notes (volume 6) put it clearly: in an HGX server "firmware management is the single most dangerous operational task", because there are dozens of independent firmware ecosystems, and each has an owner: system BIOS and BMC (the OEM, for example Dell iDRAC), network cards (NVIDIA, often repackaged and certified by the OEM), GPU VBIOS, NVSwitch firmware, and the baseboard controllers (the HGX management controller, **HMC**, and the external root of trust, **ERoT**). The same notes' lab table says: enforce change control and make no independent firmware updates on OEM systems, because the OEM qualifies the bundle. The practical rule: **do not apply NVIDIA firmware to an OEM server unless the OEM supports that exact combination**.
+
+### 1.1 Physical anatomy, PCIe topology, and support boundaries on OEM HGX vs DGX (`volume-06/ch1–ch6`)
+
+Understanding the physical and operational boundary between the **top half** (OEM host tray) and the **bottom half** (NVIDIA HGX baseboard) prevents costly purchasing and troubleshooting mistakes (`nvidia-zero-to-hero/volume-06/chapter-01` through `chapter-06`):
+
+1. **Why hyperscalers and enterprise OEMs buy HGX baseboards (`volume-06/ch1`):** Cloud providers (AWS Nitro, Azure Cerberus) and enterprise OEMs (Dell PowerEdge `XE9680`, HPE, Supermicro, Lenovo) buy the raw **NVIDIA HGX baseboard** (8 or 4 SXM GPUs + NVSwitches + VRMs) and integrate it into their own chassis, power/cooling manifolds, host CPU motherboards, and BMC stacks (`iDRAC`, `iLO`, `XClarity`).
+2. **SXM FRU modules versus soldered NVSwitch ASICs (`volume-06/ch2`):**
+   - **SXM GPUs are bolted Field Replaceable Units (FRUs):** They mate with the HGX PCB via high-density mezzanine connectors and precision torque screws. A single failed GPU can be unbolted and replaced without replacing the whole baseboard.
+   - **NVSwitch chips (`4` on an 8-GPU H100 board, providing `900 GB/s` non-blocking mesh) are permanently soldered to the HGX PCB:** If an NVSwitch ASIC fails (causing a GPU to lose NVLink connectivity and fall back to PCIe while still computing normally in `nvidia-smi`), replacing the SXM GPU will fix nothing—the entire bottom-half HGX baseboard must be RMA'd.
+   - **4-GPU ("Redstone") vs 8-GPU ("Delta") boards:** 4-GPU baseboards often wire GPUs via direct point-to-point NVLink without NVSwitch chips and cannot be upgraded to 8 GPUs later.
+   - **High-voltage DC power delivery (`48–54V` class vs `12V`):** Because $I = P / V$, feeding `5.6+ kW` (`8 x 700 W` GPUs) at `12 V` would require `> 460 A` and massive $I^2 R$ copper losses; stepping the distribution bus up to the `48–54 V` class cuts current roughly $4\times$ before on-board VRMs step down to `~1 V` at the GPU die.
+3. **Top-half PCIe and networking differences (`volume-06/ch1, ch4, ch6` & `lab-01, lab-02`):** Even when two servers share the exact same NVIDIA HGX baseboard, the OEM controls the **top half**: whether there is a strict **1:1 ratio of GPUs to `400 Gbps` ConnectX-7 NICs** (`8` compute NICs = `3.2 Tbps` egress) connected through dedicated **PCIe Gen5 switches** for lossless GPUDirect RDMA, or whether a cheaper SKU omits PCIe switches and routes traffic across the host CPU's UPI/Infinity Fabric. NVIDIA's **NVIDIA-Certified Systems** program (`NVQual`) validates thermal, power, and PCIe topology baselines, but architects must always verify the exact PCIe switch and NIC count before procurement.
+4. **Hardware RMA escalation boundary (`volume-06/ch3`):** On an OEM HGX server, **the OEM owns the hardware warranty and field dispatch for the entire server** (both top and bottom halves). For example, if a Lenovo or Dell HGX server logs `Xid 79 (GPU has fallen off the bus)`, the root cause could be a loose OEM PCIe riser cable or an HGX retimer/GPU fault. Do not open a hardware dispatch ticket directly with NVIDIA; collect both `nvidia-bug-report.sh` and the OEM's Redfish/diagnostic bundle (`XClarity`/`iDRAC`) and escalate to the **OEM's support team**.
 
 ## 2. Inside a GPU server, from the management point of view
 
@@ -189,14 +202,14 @@ Do this once on a real DGX, on one machine, with permission, and keep the record
 7. Run the vendor's diagnostics and burn-in (the notes name `dcgmi diag -r 3`, then `-r 4` for extended; `nvbandwidth` for NVLink; `ib_write_bw` for the network) and keep the output as acceptance evidence. I did not run these tools.
 8. Only then admit the node to the scheduler (chapter 6.14).
 
-## 8. Exercises
+## Exercises
 
-1. Run `run_dmtf_validators.sh` on the mock. Open the HTML report and find one "Not tested" item. Why was it not tested?
-2. Add a requirement to the acceptance profile (for example `Chassis.LocationIndicatorActive` as `Recommended`) and rerun it.
-3. Write an acceptance profile for a DPU system: a `ComputerSystem` of type `DPU` with `Processors`, `Memory` and `Bios`.
-4. Record one of DMTF's example trees served by the mock, replay it, and diff the two JSON folders. What differs?
-5. List the BMCs in one GB300 NVL72 rack from the sources (compute trays, switch trays, power shelves). How many management addresses do you need?
-6. Explain to a new engineer why an OEM HGX server's firmware must not be updated with NVIDIA's DGX bundle.
+1. **Running the Redfish Interoperability Profile & recording lab (`code/part07/dgx_record_lab.py`):** Run `python3 code/part07/dgx_record_lab.py` (`3/3` checks pass). Then run `code/part07/run_dmtf_validators.sh` against the mock server and inspect the generated HTML report to see why conditional or absent resources appear as `"Not tested"`.
+2. **Adding a requirement to `profiles/gpu_node_acceptance.json`:** Open `code/part07/profiles/gpu_node_acceptance.json`, add `"LocationIndicatorActive": {"Requirement": "Recommended"}` under `Chassis.PropertyRequirements`, and re-run `dgx_record_lab.py` and the Interop Validator.
+3. **Writing an Interoperability Profile fragment for a BlueField-3 DPU:** Write a JSON profile snippet requiring a `ComputerSystem` resource with `SystemType`, `Processors`, `Memory`, and `Bios` to validate DPU management readiness.
+4. **Recording and replaying a live or mockup Redfish tree (`code/part07/rf_record.py`):** Run `rf_record.py` with `--redact` against a running mock server, inspect `Systems/System_0/index.json` to confirm `SerialNumber` and `UUID` are replaced with `"REDACTED"` (and IPv4 strings with `"0.0.0.0"`), and serve the recorded folder with `redfish_mock.py --mockup`.
+5. **Counting management endpoints in a GB300 NVL72 rack (`superpod-gb300-ra` & `volume-06/ch7`):** Using Section 3 (`18` compute trays, `9` NVLink switch trays each with `1` BMC port + `2` COMe NVOS ports, `8` power shelves each with `6 x 5.5 kW = 33 kW` PSUs and `1` BMC port, plus rack PDUs and `SN2201` OOB switches), calculate the total number of OOB switch ports and IP addresses needed per rack.
+6. **Triaging `Xid 79` vs NVLink fallback on an OEM HGX server (`volume-06/ch2, ch3`):** Contrast the hardware diagnosis and vendor escalation path on a Dell/Lenovo 8-GPU HGX H100 server when: (a) `GPU 2` works in `nvidia-smi` over PCIe but falls back from NVLink to PCIe during NCCL collectives (suspect NVSwitch ASIC on the HGX baseboard vs SXM pin seating), versus (b) `GPU 4` throws `Xid 79 (GPU has fallen off the bus)` (suspect OEM PCIe riser cable/retimer vs SXM module; escalate to OEM support with both `nvidia-bug-report.sh` and OEM Redfish logs).
 
 ## 9. Interview angles
 
@@ -206,32 +219,136 @@ Do this once on a real DGX, on one machine, with permission, and keep the record
 - "How do you test Redfish compatibility of a new server model?" Schema validation, an interoperability profile of the features you use, and a recorded tree to test your parsers.
 - "NVSM or Redfish?" Both: NVSM for host-side GPU health, Redfish for out-of-band hardware state and control.
 
-## 10. Checkpoint questions (20)
+## Checkpoint questions (20)
 
-1. Who owns the BMC on a DGX? On an OEM HGX server?
-2. Why is firmware management especially risky on OEM HGX systems?
-3. Name four controllers or chips on a GPU baseboard besides the GPUs.
-4. What is an ERoT?
-5. Why does the main BMC expose GPU data?
-6. Why must you not hard-code NVIDIA's resource names?
-7. How many NVLink switch trays and power shelves does a GB300 NVL72 rack have, per the reference architecture?
-8. How is a NVLink switch tray's firmware managed in BCM?
-9. What is the OOB network of a SuperPOD made of?
-10. What does BCM's `nvsm health` do and how long may it take?
-11. What does `redfishsubscriptions` show?
-12. What is a Redfish Interoperability Profile?
-13. What does the Service Validator check?
-14. What can a profile not express?
-15. Why did the Interop Validator fail my first profile run?
-16. How must booleans be written in a profile `Values` list?
-17. What does `rf_record.py --redact` replace?
-18. Why record a real service?
-19. What can you not test against a recording?
-20. List four steps of bringing up a new GPU server model.
+<details>
+<summary>1. Who designs and supports the BMC and system BIOS on an NVIDIA DGX server versus an OEM HGX server (such as a Dell PowerEdge XE9680 or Lenovo ThinkSystem)?</summary>
 
-## 11. Sources and review notes
+On an **NVIDIA DGX** server, NVIDIA designs and supports the entire system—the host motherboard, BMC, BIOS, and HGX GPU tray—under a single validated firmware bundle. On an **OEM HGX** server, the **OEM** (Dell, HPE, Supermicro, Lenovo) designs and owns the host motherboard, chassis, cooling, BIOS, and BMC (`iDRAC`, `iLO`, `XClarity`) and qualifies the integrated firmware bundle.
+</details>
 
-- **NVIDIA-DevOps notes:** volume 5 chapter 3 (DGX management plane, NVSM, the firmware-over-SSH argument), volume 10 chapter 1 (hardware hierarchy, dual-tray design, satellite controllers, the endpoint list, burn-in commands), volume 6 chapters 1 and 3 (HGX ownership and the firmware boundary), volume 6 lab 1 (OEM responsibility table). All unchecked against NVIDIA documents.
+<details>
+<summary>2. Why is flashing raw NVIDIA GPU/NVSwitch firmware directly onto an OEM HGX server ("Frankenstein flashing") dangerous (`volume-06/ch3`)?</summary>
+
+OEMs tightly couple their chassis fan curves, power-capping logic, and BMC sensor tables (`iDRAC`/`iLO`) to specific co-tested versions of System BIOS, HMC, VBIOS, and NVSwitch firmware. Flashing an uncertified standalone firmware package can break thermal telemetry or power handshakes between the OEM BMC and the HGX baseboard.
+</details>
+
+<details>
+<summary>3. Name the four auxiliary management/security/signal chips on an HGX GPU baseboard besides the SXM GPUs and NVSwitches.</summary>
+
+1. **HMC (HGX Management Controller):** Satellite BMC/microcontroller that aggregates GPU, NVSwitch, and retimer telemetry and reports to the host BMC.
+2. **ERoT (External Root of Trust):** Dedicated hardware security chips (`HGX_FW_ERoT_BMC_0`, `ERoT_FPGA_0`, `ERoT_NVSwitch_n`, `ERoT_PCIeSwitch_0`) that cryptographically verify firmware signatures before boot.
+3. **FPGA and CPLD (`HGX_FW_FPGA_0`, `CPLDMB_0`):** Board power-sequencing and glue logic controllers.
+4. **PCIe Gen5 Retimers and Switches (`HGX_FW_PCIeRetimer_n`, `HGX_FW_PCIeSwitch_0`):** Signal regeneration and switching chips between the host CPU tray and the GPUs/NICs.
+</details>
+
+<details>
+<summary>4. What is the physical difference in field replaceability between an SXM GPU module and an NVSwitch chip on an 8-GPU HGX baseboard (`volume-06/ch2`)?</summary>
+
+**SXM GPUs** attach via high-density mezzanine connectors and bolts, making them **Field Replaceable Units (FRUs)** that a technician can swap individually. **NVSwitch chips** (`4` ASICs on an H100 8-GPU board) are **permanently soldered to the HGX PCB**—if an NVSwitch chip fails, the entire HGX baseboard must be replaced.
+</details>
+
+<details>
+<summary>5. How does the main motherboard BMC expose GPU and NVSwitch sensors over Redfish when those chips sit on a separate HGX tray?</summary>
+
+The GPU tray's **HMC (Satellite Management Controller)** polls the SXM GPUs and NVSwitches locally over `I2C`/`SMBus` and forwards the telemetry over an internal management bus (`I2C`/`MCTP`/`USB-NIC`) to the main motherboard BMC, which publishes them under `/redfish/v1/Systems/HGX_Baseboard_0` and `/redfish/v1/Chassis/DGX/Sensors`.
+</details>
+
+<details>
+<summary>6. Why must your Redfish scripts discover collection member IDs dynamically even across NVIDIA's own DGX generations?</summary>
+
+Because member names change across generations and firmware releases—for example, DGX H100/H200 uses `Systems/DGX`, `Systems/HGX_Baseboard_0`, and `Chassis/DGX`, whereas BCM's GB300 examples show chassis named `BMC_0`, `CBC_0`, and `Chassis_0`.
+</details>
+
+<details>
+<summary>7. In the DGX GB300 NVL72 SuperPOD reference architecture, how many NVLink switch trays and power shelves sit in each rack, and what management ports does each have?</summary>
+
+Each NVL72 rack contains **nine NVLink switch trays** (each having two COMe RJ45 ports for **NVOS** plus **one dedicated BMC RJ45 port**) and **eight power shelves** (each holding six `5.5 kW` PSUs for up to `33 kW` in `N` redundancy, with a front BMC RJ45 port and rear RJ45 control ports).
+</details>
+
+<details>
+<summary>8. How does firmware management for an NVLink switch tray (`gb200sw` / `gb300sw`) in BCM differ from a compute tray?</summary>
+
+Compute trays are flashed over **Redfish** (`bmcsettings`), whereas NVLink switch trays are flashed over the switch's **NVOS REST API** using credentials stored in BCM's `accesssettings`.
+</details>
+
+<details>
+<summary>9. How is the Out-of-Band (OOB) management network architected in a DGX SuperPOD (`superpod-gb300-ra`)?</summary>
+
+It is a physically separate 1 GbE Ethernet fabric built on **NVIDIA Spectrum `SN2201` switches** connecting every compute tray BMC, NVLink switch tray BMC/NVOS port, power shelf BMC, rack PDU, storage controller, and management server, rolled up into a dedicated VXLAN at the SU spine layer with zero access from unprivileged tenant networks.
+</details>
+
+<details>
+<summary>10. In BCM's `cmsh` `device` mode (§10.13), what do `nvsm alerts`, `nvsm health`, and `nvsm versions` do?</summary>
+
+- **`nvsm alerts`:** Lists hardware/fabric alerts detected by the in-band NVSM daemon (such as NVLink or C2C link issues).
+- **`nvsm health`:** Triggers an `nvsm dump health` archive on target nodes, saving `.tar.xz` bundles under `/cm/shared/nvsm/<node>/` (taking `~15` minutes, or faster with `--quick`).
+- **`nvsm versions [--details]`:** Reports installed BMC, CPLD, GPU driver, DCGM, and VBIOS versions across nodes.
+</details>
+
+<details>
+<summary>11. What does `redfishsubscriptions` in BCM `cmsh` display?</summary>
+
+It lists every managed device along with its hostname, Redfish event subscription ID, initialization/subscription state, BMC IP, hardware kind (`GB300`, `GB200SW`), port (`443`), and SSL status.
+</details>
+
+<details>
+<summary>12. What is a DMTF Redfish Interoperability Profile (`RedfishInteroperabilityProfile`), and which official tool validates a BMC against it?</summary>
+
+A machine-readable JSON specification (such as `code/part07/profiles/gpu_node_acceptance.json`) declaring which Redfish resources, properties, actions, and values a server must implement to be accepted by your automation, validated using DMTF's **`Redfish-Interop-Validator` (`rf_interop_validator`)**.
+</details>
+
+<details>
+<summary>13. What does DMTF's `Redfish-Service-Validator` (`rf_service_validator`) check, and what two deprecation warnings did it catch in the early version of `redfish_mock.py`?</summary>
+
+`rf_service_validator` crawls a Redfish service and validates every resource payload against the official DMTF CSDL/JSON schemas. On our early mock, it caught drives placed under the deprecated `Storage/<id>/Drives/<n>` path (instead of `Chassis/<id>/Drives/<n>`) and the deprecated `EventType` property in `SSEFilterPropertiesSupported`.
+</details>
+
+<details>
+<summary>14. What hardware acceptance checks can a Redfish Interoperability Profile NOT express on its own?</summary>
+
+A profile checks schema presence and allowed values across all instances of a resource type, but cannot easily express **per-instance conditional rules** (e.g., requiring `Reset` on `System_0` but not on `HGX_Baseboard_0`), **exact component counts** ("must have 8 GPUs and 8 400G NICs"), or **live threshold/link-speed degradation**—which is why you pair the profile with `rf_inventory.py` and `rf_hardware.py`.
+</details>
+
+<details>
+<summary>15. When writing a `"Comparison": "Equal"` check on a boolean property inside a Redfish Interoperability Profile, how must the expected value in `Values` be formatted?</summary>
+
+It must be a native **JSON boolean (`true` or `false`)**, never a quoted string (`"True"` or `"true"`), or `rf_interop_validator` will fail the comparison even when the BMC returns the right boolean.
+</details>
+
+<details>
+<summary>16. What is DMTF `Redfish-Tacklebox` (`redfish_utilities`), and name three CLI scripts it provides.</summary>
+
+`Redfish-Tacklebox` is DMTF's pre-built command-line utility suite (`pip install redfish_utilities`), including **`rf_sys_inventory.py`**, **`rf_firmware_inventory.py`**, **`rf_sensor_list.py`**, and **`rf_power_reset.py`**.
+</details>
+
+<details>
+<summary>17. What does `code/part07/rf_record.py --redact` do, and which sensitive fields does it scrub?</summary>
+
+It crawls a live Redfish service using read-only `GET` requests, writes every resource to `<outdir>/<path>/index.json` in DMTF mockup format, and replaces **`SerialNumber`, `UUID`, `MACAddress`, `PermanentMACAddress`, `AssetTag`, `HostName`, `FQDN`, `SKU`** with `"REDACTED"` and IPv4 addresses with `"0.0.0.0"`.
+</details>
+
+<details>
+<summary>18. Why should you record one node of each GPU server model (`rf_record.py`) and commit the redacted tree to Git?</summary>
+
+It gives your engineering team a permanent, offline replica of that exact vendor/firmware resource tree (`redfish_mock.py --mockup <dir>`) to run in CI tests and allows you to `diff` the resource tree before and after BMC firmware upgrades.
+</details>
+
+<details>
+<summary>19. What can you test against a `redfish_mock.py --mockup` recording, and what can you NOT test against it?</summary>
+
+You can test **read-only discovery, inventory, sensor scraping, hardware link-degradation checks, log parsing, and firmware drift detection**, because `--mockup` serves static `index.json` files. You cannot test stateful mutations or hardware side effects (power resets, firmware flashing) against a static recording.
+</details>
+
+<details>
+<summary>20. If an OEM HGX server quote is 15% cheaper than an NVIDIA DGX H100 (`volume-06/ch1`), what top-half architectural details must you verify before buying?</summary>
+
+Verify the **host-to-GPU PCIe topology and network card ratio**: whether the OEM server includes a full **1:1 ratio of `400 Gbps` ConnectX-7 NICs to GPUs** (`8` compute NICs for `3.2 Tbps` egress) connected via dedicated **PCIe Gen5 switches** for GPUDirect RDMA, and whether the OEM chassis airflow/liquid cooling can sustain `8 x 700 W` GPUs without thermal throttling (`NVIDIA-Certified` / `NVQual`).
+</details>
+
+## Sources and review notes
+
+- **NVIDIA-DevOps notes:** `nvidia-zero-to-hero/volume-05/chapter-03-dgx-management-plane.md` (DGX management plane, NVSM, firmware-over-SSH risk), `volume-10/01-bare-metal-and-bmc-lifecycle.md` (hardware hierarchy, dual-tray design, satellite controllers, endpoint list, burn-in commands), and all 10 files of `nvidia-zero-to-hero/volume-06/`: `nvidia-zero-to-hero/volume-06/chapter-01-why-hgx-exists.md` (merchant silicon strategy, AWS Nitro/Azure Cerberus, Dell XE9680 1:1 NIC ratio), `nvidia-zero-to-hero/volume-06/chapter-02-inside-an-hgx-platform.md` (bolted SXM FRUs vs soldered NVSwitches, PCIe retimers, `48–54V` power delivery, 4-GPU Redstone vs 8-GPU Delta), `nvidia-zero-to-hero/volume-06/chapter-03-oem-integration-and-support-boundaries.md` (OEM vs NVIDIA firmware and RMA boundary, `NVIDIA-Certified` / `NVQual`, `Xid 79` escalation), `nvidia-zero-to-hero/volume-06/chapter-04-hgx-topology-and-data-paths.md`, `nvidia-zero-to-hero/volume-06/chapter-05-hgx-power-cooling-and-rack-integration.md`, `nvidia-zero-to-hero/volume-06/chapter-06-hgx-networking-storage-and-cluster-integration.md`, `nvidia-zero-to-hero/volume-06/chapter-07-gb200-nvl72-rack-scale-architecture.md`, `nvidia-zero-to-hero/volume-06/labs/lab-01-compare-hgx-server-designs.md`, and `nvidia-zero-to-hero/volume-06/labs/lab-02-review-an-hgx-rack-design.md`. All unchecked against live hardware.
 - **BCM 11 Administrator Manual:** appendix N (Redfish management and device naming), section 14.5 (firmware: component lists), section 10.13 (monitoring with `nvsm`).
 - **NVIDIA DGX SuperPOD reference architecture for DGX GB300** (study corpus book `superpod-gb300-ra`): NVL72 rack contents, NVLink switch tray BMC and NVOS ports, power shelves, the OOB management network of SN2201 switches. The B200 reference architecture was searched for BMC details but returned none, so it is not used here.
 - **DMTF tools and data:** Redfish-Service-Validator 3.1.8, Redfish-Interop-Validator 3.0.4, Redfish-Tacklebox (`redfish_utilities`), the profile schema `RedfishInteroperabilityProfile.v1_10_0` and the mockups in `Redfish-Publications` at commit `fa6d23d9`.

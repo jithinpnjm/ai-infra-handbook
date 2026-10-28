@@ -133,6 +133,18 @@ The trap: a `Continuous` network boot left in place makes the node reinstall its
 
 ## 4. A node lifecycle you can re-run
 
+```mermaid
+flowchart LR
+    S1["1. inventory<br/>rf_inventory.py"] --> S2["2. health<br/>rf_sensors + rf_hardware"]
+    S2 -->|"0 flagged"| S3["3. firmware<br/>rf_firmware.py drift"]
+    S3 -->|"0 drift"| S4["4. bios<br/>rf_bios.py (Registry + /Bios/Settings)"]
+    S4 -->|"--yes --reset-ok"| S5["5. boot<br/>BootSourceOverrideEnabled=Once"]
+    S5 -->|"consumed on reset"| S6["6. ready<br/>State file recorded"]
+    S2 -. "degraded link/sensor" .-> STOP["STOP & Quarantine<br/>(Re-run resumes cleanly)"]
+    S3 -. "firmware mismatch" .-> STOP
+    S4 -. "pending / invalid attr" .-> STOP
+```
+
 `code/part07/node_lifecycle.py` takes one node from "racked" to "ready". It runs six steps; each **checks first and skips what is already right**:
 
 | Step | What it does | Stops when |
@@ -207,14 +219,14 @@ Use chapter 7.11: look at the BMC event log and SEL around the time of the crash
 
 The notes' steps: signed shim and bootloader, HTTPS boot, a signed kernel (or enrolled owner key), and a Redfish check that Secure Boot is on. Chapter 7.15 covers Secure Boot and corrects one detail of the notes.
 
-## 7. Exercises
+## Exercises
 
-1. Run `lifecycle_lab.py`, then read `node_lifecycle.py`. Add a seventh step `accounts` that fails if any account has `PasswordChangeRequired` true.
-2. Change `profiles/ai_node_bios.json` to include an attribute that does not exist in the registry. What does `plan` show?
-3. Write the BIOS target for a second server model with different attribute names. Where do you find the names?
-4. Add a `--wave N` option to a wrapper that runs `node_lifecycle.py` on N nodes at a time with `fleet_run.py`'s worker pool. What should stop the whole wave?
-5. Explain, to someone new, why `Continuous` network boot is risky.
-6. Design a nightly drift job for 500 nodes: what it reads, what it stores, what raises a ticket.
+1. **Running the 24-check node lifecycle state machine (`code/part07/lifecycle_lab.py`):** Run `python3 code/part07/lifecycle_lab.py` (`24 passed, 0 failed`) and inspect `code/part07/node_lifecycle.py`. Add a seventh step (`accounts`) that checks whether any `ManagerAccount` still has `PasswordChangeRequired: true` and halts bring-up if found.
+2. **Validating BIOS targets against the Attribute Registry (`code/part07/rf_bios.py`):** Copy `code/part07/profiles/ai_node_bios.json` to `/tmp/bad_bios.json`, add an invalid attribute `"PowerProfile": "SuperTurbo"`, and run `rf_bios.py plan --target /tmp/bad_bios.json`. Verify that `rf_bios.py` catches the invalid enum against the `AttributeRegistry` *before* sending any HTTP `PATCH` to the BMC.
+3. **Writing a BIOS target profile for a second server platform:** Inspect the `AttributeRegistry` JSON on a DMTF mockup (`public-rackmount1`) and construct a target JSON file mapping equivalent performance and PCIe settings using that platform's attribute names.
+4. **Building a wave-based rollout wrapper (`--wave N`):** Write a 20-line Python wrapper that runs `node_lifecycle.py` in waves (`Wave 1 = 1` canary node, `Wave 2 = 8` nodes, `Wave 3 = 32` nodes) and aborts immediately if any node in the current wave fails a gate.
+5. **Proving the `Continuous` vs `Once` network boot trap:** Trace checks 10–12 of `code/part07/lifecycle_lab.py`. Explain what happens to a newly installed OS on local NVMe when `BootSourceOverrideEnabled` is left set to `"Continuous"` with `BootSourceOverrideTarget: "UefiHttp"` versus `"Once"`.
+6. **Designing a nightly 500-node drift audit pipeline:** Combine `fleet_run.py`, `rf_firmware.py drift`, `rf_bios.py plan`, and `rf_hardware.py` into a scheduled read-only nightly audit that compares all 500 nodes against Git baselines and opens an automated ticket whenever a node drifts (for example, after a field RMA swap).
 
 ## 8. Interview angles
 
@@ -224,35 +236,155 @@ The notes' steps: signed shim and bootloader, HTTPS boot, a signed kernel (or en
 - "A job is slow on one node. Where do you start?" Compare that node with a healthy twin: firmware drift, BIOS drift, link speed and width, thermals.
 - "What would you automate first?" Inventory and drift detection, because it is read-only and shows the size of the problem.
 
-## 9. Checkpoint questions (20)
+## Checkpoint questions (20)
 
-1. What are the four ideas of the fleet mindset?
-2. What does the Settings resource pattern solve?
-3. Which property links `Bios` to its pending settings?
-4. What is the difference between pending and live?
-5. What does the attribute registry contain?
-6. Why validate against the registry before sending?
-7. What are BCM's Configured, Pending and Live states?
-8. Why are the BIOS attribute names in this chapter only an example?
-9. Give two BIOS settings the notes change for AI nodes and the reason given.
-10. What is the difference between a `Once` and a `Continuous` boot override?
-11. How do you verify that a provisioning override is gone?
-12. Why does the lifecycle tool stop at the first failure?
-13. What does the state file hold?
-14. Why is the run safe to repeat?
-15. Why is firmware updating not part of the lifecycle tool?
-16. Name three baselines to keep in version control.
-17. What is a wave and why use it?
-18. What happens to a replacement node's firmware?
-19. For the ghost-throttling scenario, which three boundaries does the notes' answer check?
-20. Why does the bricked-BMC scenario need an in-band route?
+<details>
+<summary>1. What are the four core principles of fleet-scale hardware management?</summary>
 
-## 10. Sources and review notes
+1. **Declare target state in version-controlled files** (firmware baseline, BIOS profile, acceptance profile, security policy).
+2. **Measure actual state uniformly** across every BMC (`rf_inventory.py`, `rf_hardware.py`, `rf_sensors.py`, `rf_logs.py`).
+3. **Detect and report drift automatically** on a schedule (`rf_firmware.py drift`, `rf_bios.py plan`).
+4. **Apply changes in small, idempotent, verified waves** with explicit human approval (`--yes`, `--reset-ok`) before disruptive steps.
+</details>
+
+<details>
+<summary>2. What architectural problem does the Redfish `@Redfish.Settings` resource pattern solve (DSP0266 §9.10)?</summary>
+
+It separates attributes that can only take effect at a future hardware event (such as UEFI BIOS attributes applied at the next host reboot) into a writable **pending Settings resource** (`/Bios/Settings` or `/Bios/SD`) while keeping the **active resource** (`/Bios`) as an accurate read-only view of what is currently running.
+</details>
+
+<details>
+<summary>3. Which annotation and sub-property on `/redfish/v1/Systems/{id}/Bios` tells a client where to send its `PATCH` request?</summary>
+
+**`@Redfish.Settings.SettingsObject["@odata.id"]`** (which points to `/redfish/v1/Systems/{id}/Bios/Settings` or `/SD`).
+</details>
+
+<details>
+<summary>4. Trace the values of `/Bios` (live) and `/Bios/Settings` (pending) before `PATCH`, immediately after `PATCH`, and after `ComputerSystem.Reset`.</summary>
+
+- **Before `PATCH`:** `/Bios` has `"PowerProfile": "Balanced"`, `/Bios/Settings` has `{}`.
+- **After `PATCH /Bios/Settings {"Attributes": {"PowerProfile": "MaxPerf"}}`:** `/Bios` (live) still shows `"Balanced"`, while `/Bios/Settings` (pending) shows `{"PowerProfile": "MaxPerf"}`.
+- **After `ComputerSystem.Reset`:** `/Bios` (live) updates to `"MaxPerf"`, and `/Bios/Settings` (pending) is cleared back to `{}`.
+</details>
+
+<details>
+<summary>5. What does a Redfish `AttributeRegistry` JSON file contain, and how does a client locate it?</summary>
+
+Referenced by the `AttributeRegistry` property on `Bios` (and found under `/redfish/v1/Registries`), it lists every platform BIOS attribute along with its `AttributeName`, `Type` (`Enumeration`, `Integer`, `String`, `Boolean`, `Password`), allowed `Value` list or numeric bounds, `ReadOnly`, `ResetRequired`, and `DefaultValue`.
+</details>
+
+<details>
+<summary>6. Why does `code/part07/rf_bios.py` validate target BIOS settings against the `AttributeRegistry` before sending a `PATCH` request?</summary>
+
+Because BIOS attribute names and enum values vary across server models and BIOS versions. Pre-validating against the node's own `AttributeRegistry` catches typos, unsupported values (`PropertyValueNotInList`), and read-only attributes locally before mutating any node state.
+</details>
+
+<details>
+<summary>7. In NVIDIA Base Command Manager (`cmsh` `biossettings`, §14.5), what do the `Configured`, `Pending`, and `Live` columns represent, and which commands check and stage them?</summary>
+
+- **`Configured`:** The target value defined in BCM for the node/category.
+- **`Pending`:** The value staged on the BMC's `/Bios/Settings` waiting for a reboot.
+- **`Live`:** The value currently active on the booted server (`/Bios`).
+`bios check` compares Configured vs Live, and `bios apply` stages Configured values into Pending.
+</details>
+
+<details>
+<summary>8. Why must you treat BIOS attribute names (such as `OperatingPerformance` vs `PowerProfile`) as platform-specific rather than universal Redfish standard names?</summary>
+
+Unlike `ComputerSystem.PowerState`, UEFI setup variables are defined by each motherboard/BIOS vendor (`AMI`, `Insyde`, `Dell`, `HPE`), which is why Redfish delegates their schema to per-platform `AttributeRegistry` files.
+</details>
+
+<details>
+<summary>9. Name four BIOS settings commonly tuned for multi-GPU AI training nodes (`volume-10/01` §5.1) and the architectural reason for each.</summary>
+
+1. **Power Profile = Maximum Performance / C-States Disabled:** Prevents CPU core wake-up latency jitter from stalling synchronous MPI/NCCL collective barriers.
+2. **Sub-NUMA Clustering (`SNC2`/`SNC4` or AMD `NPS4`) Enabled:** Pins GPU PCIe root complexes to local memory controllers to minimize cross-socket fabric traffic.
+3. **PCIe Relaxed Ordering = Enabled & Max Payload Size = `512B`:** Required for optimal GPUDirect RDMA / GPUDirect Storage DMA throughput on `400G` ConnectX HCAs.
+4. **Above 4G Decoding = Enabled & IOMMU passthrough (`iommu=pt`):** Allows mapping eight `80 GB`/`141 GB` HBM3 GPU BAR spaces into 64-bit physical address space without DMA translation overhead.
+</details>
+
+<details>
+<summary>10. What is the difference between `BootSourceOverrideEnabled: "Once"` and `"Continuous"`, and why is `"Continuous"` a classic provisioning trap?</summary>
+
+`"Once"` boots from `BootSourceOverrideTarget` (`Pxe` or `UefiHttp`) on the **next reboot only**, then automatically resets `BootSourceOverrideEnabled` to `"Disabled"` so the newly installed OS boots from local disk thereafter. `"Continuous"` forces a network boot on **every** future reboot, causing the node to wipe and reinstall itself in an infinite loop.
+</details>
+
+<details>
+<summary>11. How does `code/part07/node_lifecycle.py` verify that a one-time PXE/HTTPBoot override was properly consumed?</summary>
+
+After triggering the host reset, it re-reads `ComputerSystem.Boot` and asserts that `BootSourceOverrideEnabled` has transitioned from `"Once"` back to **`"Disabled"`**.
+</details>
+
+<details>
+<summary>12. What are the six sequential gates in `code/part07/node_lifecycle.py`, and why does it halt on the first failed gate?</summary>
+
+The six gates are **`inventory` $\rightarrow$ `health` $\rightarrow$ `firmware` $\rightarrow$ `bios` $\rightarrow$ `boot` $\rightarrow$ `ready`**. Halting at the first failure prevents provisioning an OS onto a node that has a degraded PCIe link (`health`), an un-baselined GPU VBIOS (`firmware`), or an unapplied BIOS setting (`bios`).
+</details>
+
+<details>
+<summary>13. What does the JSON state file written by `node_lifecycle.py` store, and how does it support idempotent re-execution?</summary>
+
+It records the timestamp, status (`ok`, `failed`, `pending`, `dry-run`), and evidence summary for each of the six steps. When re-run after fixing a fault, `node_lifecycle.py` re-verifies live state, skips changes that are already applied (such as BIOS settings that already match `Live`), and completes the remaining steps without redundant reboots.
+</details>
+
+<details>
+<summary>14. What is the difference between passing `--yes` alone versus passing `--yes --reset-ok` to `node_lifecycle.py`?</summary>
+
+With `--yes` alone, `node_lifecycle.py` stages non-disruptive changes (`PATCH /Bios/Settings`) and stops safely at `"pending"` without rebooting the server. Adding **`--reset-ok`** explicitly authorizes the tool to reboot the host (`ComputerSystem.Reset`) to activate BIOS settings and consume the boot override.
+</details>
+
+<details>
+<summary>15. Why does `node_lifecycle.py` stop and flag firmware drift at the `firmware` step rather than automatically flashing firmware inside the bring-up loop?</summary>
+
+Because flashing BMC, BIOS, or 30-component GPU-tray firmware is a high-risk operation requiring specific package selection, quiescing, and DC/AC power-cycle activation rules (Chapter 7.10) that should be executed as a dedicated, reviewed maintenance task.
+</details>
+
+<details>
+<summary>16. Which four declarative JSON profile/baseline files in `code/part07/profiles/` define a cluster's desired hardware state?</summary>
+
+1. **`gpu_node_acceptance.json`** (DMTF Redfish Interoperability Profile for hardware capabilities).
+2. **`ai_node_bios.json`** (target BIOS attributes).
+3. **`bmc_policy.json`** (`rf_harden.py` security policy).
+4. **`bmc_hardening.json`** (DMTF Interoperability Profile for hardened BMC protocols and account settings), alongside the firmware baseline JSON.
+</details>
+
+<details>
+<summary>17. Why must every RMA-replaced server or motherboard re-enter `node_lifecycle.py` at Step 1 before rejoining the Slurm/Kubernetes pool?</summary>
+
+Spare motherboards and GPU trays sit on warehouse shelves for months and almost always ship with factory-default BMC credentials, factory-default BIOS settings (`Balanced` power, `Auto` PCIe), and older firmware versions that would cause collective straggler slowdowns if admitted directly into production.
+</details>
+
+<details>
+<summary>18. In Scenario 1 ("Ghost" throttling across a 64-node training job, `volume-10/01` §9), which three hardware boundaries do you inspect and with which tools?</summary>
+
+1. **PCIe link width/speed degradation:** Out-of-band via `rf_hardware.py` (`PCIeInterface` `LanesInUse`/`PCIeType`) and in-band via `lspci -vvv` / `dmesg | grep -i aer`.
+2. **NVLink fabric errors:** In-band via `nvidia-smi nvlink --status` and `nvidia-smi nvlink -e` replay/symbol counters.
+3. **Thermal/power clock throttling:** Out-of-band via `rf_sensors.py` (fans, inlet temp, PSUs) and `rf_firmware.py drift`, correlated with in-band `nvidia-smi --query-gpu=clocks.current.graphics,clocks_event_reasons.hw_slowdown`.
+</details>
+
+<details>
+<summary>19. In Scenario 2 (Greenfield bring-up of 128 DGX H100 nodes), which three acceptance benchmarks must pass after firmware and BIOS baselining before nodes enter BCM/Slurm?</summary>
+
+1. **DCGM Diagnostics:** `dcgmi diag -r 3` (`~15` min validation) and `-r 4` (extended burn-in).
+2. **Intra-node NVLink bandwidth:** `nvbandwidth` compared against the platform baseline (`900 GB/s` per H100).
+3. **Inter-node GPUDirect RDMA fabric bandwidth:** `ib_write_bw` (and `all_reduce_perf`) across leaf switches verifying `400 Gb/s` line rate per port.
+</details>
+
+<details>
+<summary>20. In Scenario 3 (Recovering a hung/bricked BMC whose fans are at 100% while the host OS is still running), why can't you use Redfish `Manager.Reset`, and what is the 3-step escalation path?</summary>
+
+Because the BMC's network stack and Redfish web server are unresponsive on the OOB network. Instead:
+1. **In-band KCS cold reset:** SSH into the running host Linux OS and run `sudo ipmitool mc reset cold` (or `ipmitool bmc reset cold`) over `/dev/ipmi0`.
+2. **Out-of-band PDU AC power drain:** Drain the node and cut AC power on its smart PDU outlets for `60` seconds to reset the BMC standby rail.
+3. **Smart-hands physical pinhole or USB SPI recovery:** If the BMC SPI flash is corrupt, re-flash via the physical recovery port.
+</details>
+
+## Sources and review notes
 
 - **Redfish Specification DSP0266 v1.21.0:** the Settings resource and settings annotations (9.10), operation apply time (7.12).
 - **Redfish Resource and Schema Guide, official JSON Schemas and registries:** `Bios` v1.2, `AttributeRegistry` v1.5 (attribute types and entries), the Base registry (`ResetRequired`) and the Update registry (`UpdatePending`).
 - **BCM 11 Administrator Manual, section 14.5:** the `biossettings` states (Configured, Pending, Live), `bios check`, `bios apply`.
-- **NVIDIA-DevOps notes (volume 10 chapter 1):** section 5 (BIOS matrix and Redfish BIOS automation), section 9 (the five scenarios). The notes' BIOS rationale and attribute names (`OperatingPerformance`, `SubNumaClustering` and others) are unverified; I used my own lab names.
+- **NVIDIA-DevOps notes (`volume-10/01-bare-metal-and-bmc-lifecycle.md`):** section 5 (BIOS matrix and Redfish BIOS automation), section 9 (the five scenarios). The notes' BIOS rationale and attribute names (`OperatingPerformance`, `SubNumaClustering` and others) are unverified; I used my own lab names.
 - **Chapter 6.22** for provisioning (HTTP boot, D-T-B-I).
 - **Run here:** `rf_bios.py` (plan, apply, reset, verify), `node_lifecycle.py`, and `lifecycle_lab.py` (24 checks); the mock's BIOS, registry and attribute resources validate against the official DMTF schemas.
 - **Not verified:** real BIOS attribute registries, real apply behaviour on DGX or HGX BMCs, anything about the numerical effect of the BIOS settings, and the burn-in tools (`dcgmi`, `nvbandwidth`, `ib_write_bw`), which I did not run.
