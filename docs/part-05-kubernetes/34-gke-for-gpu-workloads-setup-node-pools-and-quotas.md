@@ -47,6 +47,14 @@ Needs 5.8 to 5.10, 5.14 (CNI), Part 2 (cloud networking basics) and 4.x (Terrafo
 
 Serious multi-node training with RDMA-class networking, reservations and compact placement uses **Standard**. Use Autopilot for smaller or intermittent GPU inference where you do not want to manage nodes. Check the current docs for which GPUs Autopilot offers.
 
+```mermaid
+flowchart TD
+    Quota["1. Quota & Capacity Model<br/>Verify Regional GPU/CPU/SSD Quota;<br/>Reservation / Flex-Start / Spot"] --> Cluster["2. GKE Standard Cluster<br/>CPU-only system pool (e2-standard-4);<br/>Dataplane V2 + Workload Identity + DCGM"]
+    Cluster --> Pool["3. Dedicated GPU Node Pool(s)<br/>a3-highgpu-8g / a2-highgpu-8g / g2-standard;<br/>gpu-driver-version=default|latest + gVNIC"]
+    Pool --> Net["4. Multi-Node Training Fabric<br/>--placement-type COMPACT + Multi-Networking<br/>(--additional-node-network / network-profile)"]
+    Net --> Sched["5. Scheduling & Sub-GPU Sharing<br/>nvidia.com/gpu=present:NoSchedule + Kueue;<br/>Whole 8-GPU training vs MIG / Time-Sharing"]
+```
+
 ## 2. GPU machine families and accelerators
 
 GPUs on GCE come in two forms:
@@ -211,6 +219,14 @@ gcloud container node-pools create mig-pool --cluster "$CLUSTER" --zone "$ZONE" 
 
 With time-sharing, a Pod's `nvidia.com/gpu: 1` limit consumes one *slice*; nothing stops a slice holder from using all GPU memory. Never use it for tenants you do not trust. Compare with NVIDIA-side options (time-slicing and MPS in the device plugin, MIG manager) in Part 11.
 
+In *Generative AI on Kubernetes* (`GAK`) Chapter 3 (*Kubernetes and GPUs*), Roland Huss et al. highlight four nuances of GPU discovery labels, MIG strategies, time-slicing, and **Dynamic Resource Allocation (`DRA`)**:
+1. **Decimal `GB` vs. Binary `GiB` and GPU Feature Discovery (`GFD`) Labels (`GAK` Chapter 3):** GPU vendors advertise HBM capacity in decimal gigabytes (`40 GB` $\approx 37.25\text{ GiB}$, `80 GB` $\approx 74.5\text{ GiB}$). GFD exports rich node labels for fine-grained `nodeAffinity` placement: `nvidia.com/gpu.product` (`A100-SXM4-40GB`, or with a `-SHARED` suffix in time-slicing mode), `nvidia.com/gpu.memory` (in MiB, e.g., `40536` or `81920`—enabling `Gt: "40000"` nodeAffinity expressions to select 80 GB GPUs), `nvidia.com/gpu.compute.major` (`8` for Ampere, `9` for Hopper), `nvidia.com/gpu.machine` (`dgx-a100`), and `nvidia.com/mig.capable` (`true`).
+2. **MIG `single` vs. `mixed` Strategy (`GAK` Chapter 3):**
+   - **`nvidia.com/mig.strategy=single`:** Every GPU on the node is partitioned identically (for example, 2 A100 GPUs each split into seven `1g.5gb` slices $\rightarrow$ the node advertises **`nvidia.com/gpu: 14`**).
+   - **`nvidia.com/mig.strategy=mixed`:** Different MIG slice sizes coexist on the same node and are advertised under distinct extended resource names: **`nvidia.com/mig-1g.5gb`**, **`nvidia.com/mig-2g.10gb`**, and **`nvidia.com/mig-3g.20gb`**.
+3. **Time-Slicing with `renameByDefault: true` (`GAK` Chapter 3 `Example 3-12`):** In the GPU Operator's `gpu-sharing-config` ConfigMap, setting `renameByDefault: true` with `replicas: 8` advertises time-sliced slots as **`nvidia.com/gpu.shared: 8`** (appending `-SHARED` to `nvidia.com/gpu.product`) so Pods explicitly opt into shared time-sliced GPUs rather than accidentally landing on them when requesting a whole `nvidia.com/gpu`.
+4. **Kubernetes Dynamic Resource Allocation (`DRA`, `resource.k8s.io/v1beta1`, `GAK` Chapter 3 `Examples 3-8 & 3-9`):** Traditional Kubernetes Device Plugins only expose integer counts (`nvidia.com/gpu: 1`) with no native way to express minimum VRAM (`memory >= 40Gi`), compute capability, or fractional sharing inside the resource request itself. Kubernetes **DRA** replaces static integer counters with `DeviceClass`, **`ResourceClaimTemplate`**, and `ResourceClaim` (referenced in `Pod.spec.resourceClaims` and `Container.resources.claims`), allowing a Pod to declaratively request a `DeviceClass` (`gpu.nvidia.com`) filtered by CEL attributes.
+
 ## 8. Networking for multi-node training
 
 For a single-node job, the default VPC networking is enough. For multi-node training, inter-node bandwidth and latency dominate (Part 12). On GKE this involves several pieces; the details depend on the machine family and change between generations, so treat the following as a map and read the current guide for your shape:
@@ -286,7 +302,15 @@ Argument names are from the Google provider as I remember it and **must be valid
 | Upgrade stuck | No surge capacity, PDB blocking drain | Upgrade settings, PDBs |
 | Unexpected bill | Idle pools, unused reservations, egress | Billing export, labels, utilisation |
 
-## 13. Lab (untested; costs money)
+## 13. Lab
+
+First, run the self-checking Python lab (`code/part05/gke_gpu_pool_planner_lab.py`) locally. It verifies the GKE GPU node-pool configuration and `GAK` Chapter 3 MIG/time-sharing resource calculator (`evaluate_gke_gpu_node_pool_config`), the GKE GPU capacity error classifier (`classify_gke_gpu_capacity_error`: distinguishing `QUOTA_EXCEEDED` vs `ZONE_RESOURCE_POOL_EXHAUSTED` stockouts), and the GPU node-pool upgrade surge validator (`validate_gpu_pool_upgrade_surge`).
+
+```bash
+python3 code/part05/gke_gpu_pool_planner_lab.py
+```
+
+Next, in a GCP lab project with a budget alert configured (all live cloud steps below are `untested here` and incur GPU billing), work through these exercises:
 
 1. Create a project budget alert first.
 2. Create a small Standard cluster (`e2-standard-4`, 1 node), then a single-GPU pool with a cheap GPU (for example L4 or T4, whichever your quota allows). Record the exact commands and errors.
@@ -310,42 +334,193 @@ Argument names are from the Google provider as I remember it and **must be valid
 - How do you make multi-node training network performance predictable on GKE?
 - How would you attribute GPU cost to teams?
 
-## 15. Checkpoint questions (30)
+## Exercises
 
-1. When do you choose Standard over Autopilot for GPUs?
-2. What are the two ways GPUs attach to GCE machine shapes?
-3. What does `gpu-driver-version` accept and what does `latest` require?
-4. What happens by default for driver installation on recent GKE versions?
-5. Which taint is normally on GPU nodes, and who adds the toleration?
-6. How do you request a whole 8-GPU node?
-7. Name the three capacity problem categories and a fix for each.
-8. What does a reservation guarantee, and what does it not change?
-9. When is Spot appropriate, and what must the job tolerate?
-10. What is flex-start, and which flags did we verify?
-11. What does `--placement-type COMPACT` do and what does it limit?
-12. Time-sharing vs MIG: isolation difference?
-13. What flag partitions a GPU with MIG on node pool creation?
-14. What flags attach extra NICs to nodes, and what cluster flag enables Pod access?
-15. Why does GPU networking differ between generations?
-16. How do you validate inter-node bandwidth before a training run?
-17. Why can surge upgrades fail on GPU pools?
-18. What is the effect of auto-repair on long jobs?
-19. What does `--monitoring SYSTEM,DCGM` need?
-20. What GPU metrics and events do you alert on?
-21. Why use Workload Identity?
-22. Why separate system CPU pool from GPU pools?
-23. How would you scale a GPU pool to zero, and what is the cost?
-24. How does image pull time affect GPU idle cost, and how do you reduce it?
-25. When would you run the GPU Operator on GKE, and what must you disable?
-26. What is Kueue used for here?
-27. How do you attribute cost per team?
-28. Where do you look first when `nvidia.com/gpu` is 0?
-29. Which facts in this chapter were verified offline, and which are from memory?
-30. How would you structure Terraform for cluster and GPU pools?
+1. **GKE `Standard` vs. `Autopilot` and Designing a Multi-Pool GPU Cluster Architecture:** Explain why multi-node distributed training with compact placement, reservations, and multi-NIC RDMA/TCPXO uses GKE `Standard` with a small CPU-only default system pool (`e2-standard-4`) and separate GPU node pools (`a3-highgpu-8g`, `g2-standard`), and trace the `gcloud container clusters create` flags in Section 3 (`--workload-pool`, `--enable-dataplane-v2`, `--enable-managed-prometheus`, `--monitoring SYSTEM,DCGM`).
+2. **Creating a GPU Node Pool (`--accelerator`), Driver Management (`gpu-driver-version`), and Taints/Tolerations:** Using `evaluate_gke_gpu_node_pool_config()` in `code/part05/gke_gpu_pool_planner.py`, explain the three values of `gpu-driver-version` (`default`, `latest`, `disabled`), why `latest` requires Container-Optimized OS (`COS`), why you must set `gpu-driver-version=disabled` if the NVIDIA GPU Operator manages drivers, and how GKE's `nvidia.com/gpu=present:NoSchedule` taint and automatic toleration injection work.
+3. **Triaging GKE Capacity Errors (`QUOTA_EXCEEDED` vs. `ZONE_RESOURCE_POOL_EXHAUSTED`) and Choosing a Consumption Model:** Using `classify_gke_gpu_capacity_error()` in `code/part05/gke_gpu_pool_planner.py`, contrast `QUOTA_EXCEEDED` (project quota) with `ZONE_RESOURCE_POOL_EXHAUSTED` (physical zone stockout), and select the right GKE consumption model (`Reservation`, `CUD`, `On-Demand`, `Spot`, or `Flex-start` / Dynamic Workload Scheduler `--flex-start --max-run-duration`) for (a) a 14-day 256-GPU pre-training run, (b) a 4-hour fine-tuning job without a reservation, and (c) stateless batch scoring.
+4. **Sub-GPU Sharing (`Time-Sharing` vs. `MPS` vs. `MIG` `single`/`mixed`) and Dynamic Resource Allocation (`DRA`, `GAK` Chapter 3):** Compare `--accelerator` `gpu-sharing-strategy=time-sharing` (`max-shared-clients-per-gpu`), `MPS`, and `gpu-partition-size=1g.5gb` (`MIG`), contrast `nvidia.com/mig.strategy` `single` vs `mixed` (`GAK` Ch. 3), and explain how Kubernetes `DRA` (`ResourceClaimTemplate` in `resource.k8s.io/v1beta1`) overcomes the limitations of integer Device Plugin requests.
+5. **High-Performance Multi-Node GPU Networking on GKE (`gVNIC`, Multi-Networking, `TCPX`/`TCPXO` vs. `RoCE` RDMA, and `COMPACT` Placement):** Explain the role of `--enable-gvnic`, `--enable-multi-networking` + `--additional-node-network` (up to 7 additional NICs) / `--accelerator-network-profile=auto`, and `--placement-type COMPACT`, and explain how to verify multi-node fabric throughput with `nccl-tests` (`all_reduce_perf`) before launching training.
+6. **Zero-Spare-Capacity GPU Node Pool Upgrades (`max-surge-upgrade` vs. `max-unavailable-upgrade`) and Terraform IaC Structure:** Using `validate_gpu_pool_upgrade_surge()` in `code/part05/gke_gpu_pool_planner.py`, explain why default `max-surge-upgrade=1` stalls on a GPU node pool backed by a fully utilized reservation or exact quota, how to configure `max-surge-upgrade=0, max-unavailable-upgrade=1` with maintenance exclusions, and why Terraform should decouple `google_container_cluster` (`remove_default_node_pool = true`) from `google_container_node_pool` resources.
 
-## 16. Sources and review notes
+## Checkpoint questions (20)
 
-- Verified locally: `gcloud container clusters create --help` and `gcloud container node-pools create --help` from Google Cloud SDK 584.0.0 (flag names, accepted values, and the quoted behaviour of `gpu-driver-version`, `--placement-type`, `--reservation-affinity`, `--monitoring`, `--additional-node-network`).
-- From Google Cloud documentation, remembered rather than re-read: GPU machine family names, accelerator type strings, taint behaviour, quota names, TCPX/TCPXO and RDMA networking details, Spot notice times, Terraform argument names. Treat these as leads to confirm in the current docs.
-- Concept sources: the Kubernetes documentation on device plugins and scheduling GPUs; this handbook's 5.8, 5.9, 5.33, Part 11, 12 and 14.
-- Not done: no cluster was created, so no output, error text or cost in this chapter comes from a real run.
+<details>
+<summary>1. When should you choose GKE `Standard` vs. GKE `Autopilot` for GPU workloads?</summary>
+
+- **Choose GKE `Standard` when:** You run multi-node distributed GPU training or low-latency serving that requires **explicit node-pool topology control (`--placement-type COMPACT`)**, **multi-NIC GPU networking (`--enable-multi-networking`, `--additional-node-network`, GPUDirect-TCPXO / RoCE RDMA)**, **specific capacity reservations (`--reservation-affinity=specific`)**, custom privileged DaemonSets, or custom kernel/driver configurations.
+- **Choose GKE `Autopilot` when:** You run simpler single-node or bursty GPU inference/batch workloads where you want Google to provision nodes automatically from Pod `nodeSelector` / resource requests and bill per Pod rather than managing node pools.
+</details>
+
+<details>
+<summary>2. What is the difference between GCE's two GPU attachment models (Accelerator-Optimized machine families vs. General-Purpose N1 machines with attached GPUs)?</summary>
+
+1. **Accelerator-Optimized Machine Families (`A2` = A100, `A3` = H100, `A3 Ultra` = H200, `A4` = B200, `G2` = L4):** The GPU model and count (e.g., `a3-highgpu-8g` has 8 H100 GPUs connected via NVLink/NVSwitch plus dedicated high-speed GPU NICs and local NVMe SSDs) are **fixed parts of the machine shape** (though you still pass `--accelerator type=...,count=...` in `gcloud container node-pools create`).
+2. **General-Purpose Machine Types (`N1`) with Attached GPUs (`T4`, `V100`, `P100`):** You attach 1, 2, 4, or 8 PCIe GPUs onto a standard VM shape.
+</details>
+
+<details>
+<summary>3. Why should a GKE Standard cluster always be created with a small CPU-only default pool (`e2-standard-4`) and `remove_default_node_pool = true` in Terraform, adding GPU pools as separate `google_container_node_pool` resources?</summary>
+
+1. **Cost & System Pod Isolation:** Cluster-critical system Pods (`kube-dns`/`coredns`, `metrics-server`, `gmp-operator`, `kueue-controller-manager`) do not need $30–$100/hour GPU VMs. Running them on a small CPU-only system pool allows GPU node pools to **scale down to `0` nodes when idle** without evicting cluster control/monitoring pods.
+2. **Independent Node-Pool Lifecycle in Terraform:** If a node pool is defined inline inside `google_container_cluster`, changing a node-pool setting (machine type, disk size, taint, or reservation) forces Terraform to **destroy and recreate the entire GKE cluster**. Setting `remove_default_node_pool = true` and managing each `google_container_node_pool` as a separate resource lets you add, resize, or replace GPU pools with zero impact on the control plane.
+</details>
+
+<details>
+<summary>4. What are the three accepted values for `gpu-driver-version` in `--accelerator` on GKE (`gcloud` 584.0.0), what is the default in GKE 1.30.1+, and what OS restriction applies to `latest`?</summary>
+
+- **Three accepted values:** **`default`** (GKE's default tested driver for that GKE release), **`latest`** (the newest driver branch available on GKE for that OS), and **`disabled`** (do not install any GKE-managed GPU driver DaemonSet).
+- **Default in GKE 1.30.1+:** GKE automatically installs the **`default`** GPU driver DaemonSet (whereas in versions prior to 1.30.1 the default was `disabled`).
+- **OS restriction on `latest`:** `gpu-driver-version=latest` is **only supported on nodes running Container-Optimized OS (`COS`)**, not Ubuntu.
+- **When to use `disabled`:** Whenever you install the **NVIDIA GPU Operator** with `driver.enabled=true` to manage drivers yourself (never allow both GKE's driver installer and the GPU Operator's driver DaemonSet to install drivers on the same node).
+</details>
+
+<details>
+<summary>5. How does GKE prevent CPU-only Pods from accidentally scheduling onto expensive GPU nodes, and how do GPU Pods bypass that block?</summary>
+
+1. When GKE creates a GPU node pool, it automatically applies the taint **`nvidia.com/gpu=present:NoSchedule`** to every node in that pool. Any CPU-only Pod (which lacks `resources.limits["nvidia.com/gpu"]` and lacks a matching toleration) is rejected by `TaintToleration` filtering.
+2. When a Pod is submitted with **`resources.limits["nvidia.com/gpu"] > 0`**, GKE's built-in **`ExtendedResourceToleration` admission controller** automatically mutates the Pod spec to inject the toleration for `nvidia.com/gpu:NoSchedule`. (If you add your *own* custom taint like `team=research:NoSchedule` to a GPU node pool, Pods must explicitly include a toleration for `team=research:NoSchedule`.)
+</details>
+
+<details>
+<summary>6. What is the exact difference between a `QUOTA_EXCEEDED` error and a `ZONE_RESOURCE_POOL_EXHAUSTED` error when creating or scaling a GKE GPU node pool, and how do you fix each?</summary>
+
+- **`QUOTA_EXCEEDED` (e.g., `Quota 'NVIDIA_H100_GPUS' exceeded` or `PREEMPTIBLE_NVIDIA_A100_GPUS`):** An **account/project billing & IAM policy limit** in your GCP project is lower than what you requested.
+  - *Fix:* Request a quota increase in IAM & Admin $\rightarrow$ Quotas for that specific GPU family in that region, **plus** the global GPU quota (`GPUS_ALL_REGIONS`), **plus** the vCPU (`N2_CPUS` / `A3_CPUS`), memory, and local SSD quotas consumed by that machine type.
+- **`ZONE_RESOURCE_POOL_EXHAUSTED` (Stockout):** Your project has plenty of quota, **but Google's physical data center in `us-central1-a` currently has no free physical GPU servers of that shape available on-demand**.
+  - *Fix:* Use multi-zone node pools with **`--location-policy=ANY`**, use **Flex-start (`--flex-start` / Dynamic Workload Scheduler)** to queue the capacity request until hardware frees up, or purchase a **Specific Capacity Reservation**.
+</details>
+
+<details>
+<summary>7. Compare GKE's five GPU capacity consumption models: (a) **Specific Reservation**, (b) **Committed Use Discount (`CUD`)**, (c) **On-Demand**, (d) **Flex-Start (`DWS`)**, and (e) **Spot VMs**.</summary>
+
+| Model | Capacity Guarantee? | Preemptible? | Best Workload Fit |
+|---|---|---|---|
+| **1. Specific Reservation (`--reservation-affinity=specific --reservation=NAME`)** | **Yes** (hardware physically held for you) | No | Large multi-node training & baseline 24/7 production inference |
+| **2. Resource CUD (1y/3y)** | **No** without an attached reservation (billing discount only) | No | Steady baseline spend (always pair with a reservation for scarce GPUs) |
+| **3. On-Demand** | No (subject to zone stockouts) | No | Elastic burst serving when on-demand capacity exists |
+| **4. Flex-Start (`--flex-start --max-run-duration`, DWS)** | Queues request and provisions all nodes atomically for a bounded duration (up to 7 days) | Terminates at `max-run-duration` | Multi-node fine-tuning, evaluation, and batch jobs when you lack a reservation |
+| **5. Spot (`--spot`)** | No | **Yes (~25–30s notice)** | Stateless batch inference, data embedding, and checkpoint-tolerant jobs |
+</details>
+
+<details>
+<summary>8. Does having a GCP Capacity Reservation automatically grant your project the GCP Quota required to use those GPUs?</summary>
+
+**No.** In GCP, **Reservations and Quotas are tracked separately**: creating or consuming a reservation for 64 H100 GPUs still requires your GCP project to hold **at least 64 H100 GPUs of regional quota** (plus the corresponding vCPU and local SSD quotas). Always request and verify the regional GPU/CPU/SSD quota *before* attempting to create a reservation or node pool.
+</details>
+
+<details>
+<summary>9. Why is Spot preemption (`--spot`) particularly challenging for large LLM training jobs on GKE, and what must a workload do if it runs on Spot GPUs?</summary>
+
+When GCE reclaims a Spot GPU VM, it sends an ACPI preemption signal (`SIGTERM` to Pods via `kubelet`) with only a **25 to 30 second grace period** before the VM is hard-terminated.
+Writing a 500 GB distributed checkpoint to GCS over the network takes much longer than 30 seconds. Therefore, workloads running on Spot GPUs must either:
+1. Be **stateless/idempotent** (batch offline scoring, Ray data preprocessing, or multi-replica inference behind a load balancer with on-demand fallback), OR
+2. Use **frequent asynchronous in-memory / local-NVMe / peer-rank checkpointing** (so at most a few minutes of steps are lost when a node vanishes without finishing a shutdown checkpoint) paired with elastic `torchrun` / `JobSet` restart.
+</details>
+
+<details>
+<summary>10. How does GKE Flex-Start (`--flex-start` with `--max-run-duration`) integrate with `Kueue` and `ProvisioningRequest` (Dynamic Workload Scheduler)?</summary>
+
+Instead of trying to grab 16 GPU nodes one by one (and paying for 10 idle nodes while 6 are stuck in stockout), you create a Flex-Start GPU node pool (`min-nodes=0`, `--flex-start`, `--enable-queued-provisioning`).
+When a user submits a `JobSet` or `RayJob` managed by **Kueue** with a **`ProvisioningRequest` AdmissionCheck**:
+1. Kueue creates a `ProvisioningRequest` CR asking GKE's **Dynamic Workload Scheduler (`DWS`)** for all 16 GPU nodes atomically for e.g. `maxRunDuration: 12h`.
+2. DWS queues the request in Google Cloud's capacity scheduler (costing $0 while queued).
+3. Once all 16 nodes can be allocated together (including compact placement if requested), GKE provisions all 16 nodes simultaneously and Kueue unsuspends the training job.
+</details>
+
+<details>
+<summary>11. Why should a multi-GPU training Pod on an 8-GPU node (`a3-highgpu-8g` or `a2-highgpu-8g`) request all 8 GPUs (`nvidia.com/gpu: 8`), or else request `1`, `2`, or `4` GPUs aligned to NVLink/PCIe topology?</summary>
+
+On an 8-GPU HGX/A2/A3 node, all 8 GPUs are connected inside a high-speed intra-node **NVSwitch** fabric (600–900 GB/s bidirectional) and paired with specific NUMA sockets and NICs:
+- If a Pod requests an odd number like `nvidia.com/gpu: 5` or `6`, the remaining `3` or `2` GPUs on that node become **stranded fragments** that no 4-GPU or 8-GPU job can use.
+- For multi-node training, always request the **entire node (`nvidia.com/gpu: 8`, plus matching CPU/memory/NICs)** as 1 Pod per node (with `torchrun --nproc_per_node=8`) so each node is dedicated to a single training rank group with zero cross-job NVSwitch or NIC contention.
+</details>
+
+<details>
+<summary>12. Compare GKE's three GPU sharing mechanisms (`Time-Sharing`, `MPS`, and `MIG`), and explain the difference between `nvidia.com/mig.strategy=single` and `mixed` (`GAK` Chapter 3).</summary>
+
+- **Time-Sharing (`gpu-sharing-strategy=time-sharing,max-shared-clients-per-gpu=4`):** Context-switches processes in time; **zero memory or fault isolation** (one container OOM or XID kills all 4 containers).
+- **MPS (`Multi-Process Service`):** Runs kernels from multiple processes concurrently on the same GPU context; higher SM utilization than time-sharing, **but still shares fault fate**.
+- **MIG (`gpu-partition-size=1g.5gb` / `1g.10gb` / `2g.20gb`):** **Hardware-isolated partitions** with dedicated SMs, dedicated HBM memory, and isolated page tables/fault domains.
+- **`single` vs. `mixed` MIG (`GAK` Chapter 3):**
+  - **`single`:** Every GPU on the node is partitioned into the exact same slice size (e.g., 2 A100 GPUs $\times 7$ slices = **`nvidia.com/gpu: 14`**).
+  - **`mixed`:** Different slice profiles coexist on the node and are exposed as separate resource names (`nvidia.com/mig-1g.5gb`, `nvidia.com/mig-3g.20gb`).
+</details>
+
+<details>
+<summary>13. In *Generative AI on Kubernetes* Chapter 3, why is there a difference between an advertised `80 GB` GPU and ~`74.5 GiB` in Kubernetes, and how do you select GPUs with $> 40\text{ GB}$ of VRAM using GFD labels?</summary>
+
+- **Decimal `GB` vs. Binary `GiB`:** Hardware vendors market GPU HBM in base-10 gigabytes ($80 \times 10^9\text{ bytes} = 80\text{ GB}$), whereas Kubernetes memory quantities (`Gi`) use base-2 gibibytes ($80 \times 10^9 / 2^{30} \approx \mathbf{74.5\text{ GiB}}$, and $40\text{ GB} \approx \mathbf{37.25\text{ GiB}}$).
+- **Selecting GPUs by VRAM via GFD labels (`GAK` Chapter 3 `Example 3-4`):** GPU Feature Discovery (`GFD`) labels each node with `nvidia.com/gpu.memory` in MiB (e.g., `40536` or `81920`). You can require $> 40\text{ GB}$ VRAM using a `nodeAffinity` `matchExpressions` rule:
+  ```yaml
+  key: nvidia.com/gpu.memory
+  operator: Gt
+  values: ["40000"]
+  ```
+</details>
+
+<details>
+<summary>14. What is Kubernetes **Dynamic Resource Allocation (`DRA`, `resource.k8s.io/v1beta1`)** (`GAK` Chapter 3), and what limitations of traditional Device Plugins does it solve?</summary>
+
+Traditional Kubernetes Device Plugins (`kubelet` gRPC API) only allow a container to request an **integer count of an opaque resource name** (`nvidia.com/gpu: 2`). They cannot pass parameters (such as *"I need 1 GPU with at least 40 GiB of VRAM and compute capability $\ge 9.0$"*, *"share 1 GPU across 2 containers inside the same Pod"*, or *"dynamically carve a MIG slice at Pod schedule time"*).
+**DRA (`resource.k8s.io`)** introduces **`DeviceClass`**, **`ResourceClaimTemplate`**, and **`ResourceClaim`**, allowing Pods to request structured device attributes (evaluated via CEL by the scheduler) and share a claimed device across multiple containers in the same Pod.
+</details>
+
+<details>
+<summary>15. What are the four networking components required for full-bandwidth multi-node GPU training on GKE (`A3` / `A3 Ultra` / `A4` shapes)?</summary>
+
+1. **`gVNIC` (`--enable-gvnic`):** Google Virtual NIC driver required for high-bandwidth VM networking.
+2. **GKE Multi-Networking (`--enable-multi-networking` on the cluster + `--additional-node-network` or `--accelerator-network-profile=auto` on the node pool):** Attaches the dedicated GPU backend NICs (4 to 8 additional NICs per VM) into the training Pod's network namespace via `Network` and `GKENetworkParamSet` CRs.
+3. **GPUDirect-TCPX / TCPXO or GPUDirect-RDMA (`RoCE`) NCCL Plugin:** Allows NCCL collectives to DMA tensor payloads directly between GPU HBM and the dedicated GPU NICs without copying through host CPU memory.
+4. **Compact Placement (`--placement-type COMPACT`):** Co-locates all VMs in the node pool within the same physical cluster/fabric spine to minimize switch hops and tail latency.
+</details>
+
+<details>
+<summary>16. What is the trade-off of setting `--placement-type COMPACT` on a GKE GPU node pool?</summary>
+
+- **Benefit:** Guarantees all nodes in the pool are physically placed close together in the data center network topology, minimizing inter-node RTT and maximizing `AllReduce` bus bandwidth for synchronous multi-node training.
+- **Downsides:**
+  1. **Caps the maximum number of nodes** allowed in the pool (to the size of a physical placement block).
+  2. **Increases the likelihood of `ZONE_RESOURCE_POOL_EXHAUSTED` stockouts** on on-demand pools, because Google must find N contiguous physical hosts in the same rack/spine block rather than scattered across the zone.
+</details>
+
+<details>
+<summary>17. Why does a GKE GPU node pool upgrade often get stuck when using the default Surge Upgrade settings (`max-surge-upgrade=1, max-unavailable-upgrade=0`), and how do you fix it?</summary>
+
+By default, GKE upgrades a node pool using a **Surge Upgrade (`max-surge-upgrade=1, max-unavailable-upgrade=0`)**: it tries to create **1 extra new GPU VM (`N + 1` total)** before draining the first old VM.
+However, on a GPU node pool:
+- Your **Specific Reservation** or **Project GPU Quota** is almost always sized to **exact `N` nodes** (`0` spare GPUs available), OR the zone is out of spare on-demand GPUs.
+- Therefore, creating the `N + 1` surge VM fails immediately with `QUOTA_EXCEEDED` or `ZONE_RESOURCE_POOL_EXHAUSTED`, stalling the upgrade.
+**Fix:** Configure GPU node pools with **`--max-surge-upgrade=0 --max-unavailable-upgrade=1`** (or a percentage matching your maintenance batch size) so GKE cordons, drains, upgrades, and reboots 1 existing node in place without needing extra GPU quota.
+</details>
+
+<details>
+<summary>18. How does GKE Image Streaming (`--enable-image-streaming`) reduce GPU cold-start waste?</summary>
+
+AI/ML container images (PyTorch + CUDA + cuDNN + vLLM + dependencies) frequently weigh **15 to 30 GB**. Without Image Streaming, a newly scaled GPU node sits 100% idle for **3 to 8 minutes** downloading and decompressing the entire 25 GB tarball before the container's entrypoint can even start.
+Enabling **`--enable-image-streaming` (Artifact Registry in the same region)** mounts container image layers over a network block/filesystem backing store and streams only the specific file chunks the process actually reads at startup—cutting container start time from minutes to **a few seconds** while streaming remaining pages in the background.
+</details>
+
+<details>
+<summary>19. What happens to a GKE GPU VM during Google Cloud **Host Maintenance Events**, and why is it different from standard CPU VMs?</summary>
+
+Standard CPU VMs (`e2`, `n2`, `c3`) support **Live Migration**: Google transparently migrates the running VM to another physical host without rebooting the guest OS or interrupting containers.
+**GPU VMs CANNOT be live-migrated** (because physical GPU HBM state, NVSwitch fabric context, and VFIO PCIe passthrough state cannot be live-copied across hosts). Instead, GPU VMs have `onHostMaintenance: TERMINATE`: when Google performs host hardware maintenance, the VM is **terminated** (emitting a maintenance notification event beforehand in Node metadata / Node Problem Detector) and restarted on another host. Always monitor upcoming maintenance events (`scheduled-event` metadata) to trigger an emergency checkpoint and drain before termination.
+</details>
+
+<details>
+<summary>20. How do you enable managed `DCGM` GPU telemetry on GKE, and what prerequisite flag does it require (`gcloud` 584.0.0)?</summary>
+
+Pass **`--enable-managed-prometheus`** AND **`--monitoring=SYSTEM,DCGM`** (optionally adding `,JOBSET` and `,KUBE state` components) on `gcloud container clusters create` or `update`.
+As verified in `gcloud container clusters create --help`, the `DCGM` monitoring component **requires Google Managed Prometheus (`--enable-managed-prometheus`)** to be enabled on the cluster; GKE then automatically deploys and scrapes the managed DCGM exporter on GPU nodes and ships GPU utilization, memory, temperature, power, XID, and ECC metrics into Cloud Monitoring.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full / verified locally:**
+  - Google Cloud SDK `584.0.0` (`gcloud container clusters create --help` and `gcloud container node-pools create --help`): verified offline for flag names and accepted values (`--release-channel`, `--workload-pool`, `--enable-dataplane-v2`, `--enable-ip-alias`, `--enable-managed-prometheus`, `--monitoring SYSTEM,DCGM,JOBSET`, `--accelerator` `gpu-driver-version=default|latest|disabled`, `gpu-partition-size`, `gpu-sharing-strategy`, `max-shared-clients-per-gpu`, `--placement-type COMPACT`, `--reservation-affinity`, `--spot`, `--flex-start`, `--max-run-duration`, `--additional-node-network`, `--accelerator-network-profile=auto`, `--enable-gvnic`, `--enable-image-streaming`).
+  - `generative-ai-on-kubernetes` — Roland Huss, Courtney Pacheco & Bryanoster, *Generative AI on Kubernetes* (`GAK`), **Chapter 3: Kubernetes and GPUs** (read in full: decimal `40 GB`/`80 GB` vs binary `37.25 GiB`/`74.5 GiB`, NFD and GFD labels `nvidia.com/gpu.product`, `nvidia.com/gpu.memory`, `nvidia.com/gpu.compute.major`, `nvidia.com/mig.strategy` `single` vs `mixed` exposing `14` slices on 2x A100, time-slicing `renameByDefault: true`, and Dynamic Resource Allocation `DRA` `ResourceClaimTemplate` `Examples 3-8 & 3-9`).
+  - `scalable-kubernetes-infrastructure-for-ai-platforms` (`SKI`) & `kubernetes-for-generative-ai-solutions` (`K8GS`): cloud GPU node pool and scaling patterns.
+- **Run here:** `python3 code/part05/gke_gpu_pool_planner_lab.py` (3 passed, 0 failed).
+- **Explicitly labelled inferences:** The `evaluate_gke_gpu_node_pool_config`, `classify_gke_gpu_capacity_error`, and `validate_gpu_pool_upgrade_surge` models in `code/part05/gke_gpu_pool_planner.py` and the `gcloud` and Terraform examples are the author's constructions synthesizing `gcloud` 584.0.0 CLI help, `GAK` Chapter 3, `SKI`, and `K8GS` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, and 30).
+- **Not verified on live hardware:** Live GKE cluster creation, GPU node pool provisioning, and Terraform apply (`gcloud 584.0.0`, `e2-standard-4`, `a3-highgpu-8g`, `nvidia-h100-80gb`, `a2-highgpu-1g`, `nvidia-tesla-a100`, `1g.5gb`, `cuda:12.4.1-base-ubuntu22.04`, `1.30.1`, `25 to 30` second Spot preemption notice, `up to 7` additional networks, `40 GB ~ 37.25 GiB` / `80 GB ~ 74.5 GiB`, `14` MIG slices) are marked (`untested here`) where not executed by `gke_gpu_pool_planner_lab.py`.
