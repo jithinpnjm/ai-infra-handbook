@@ -105,7 +105,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 6.14 | Slurm operations: prolog, epilog, health checks, drain, reason codes, troubleshooting | reviewed | 6357 | `node_health_lab.py` (3/3 pass), `SCL 15`, `V20` |
 | 6.15 | Slurm high availability, upgrades and scaling | reviewed | 4540 | `slurm_upgrade_path_lab.py` (3/3 pass), `SCL 15` |
 | 6.16 | Slurm on Kubernetes: Slinky and Soperator | reviewed | 4247 | `slinky_soperator_lab.py` (3/3 pass), Slinky & Soperator |
-| 6.31 | Capstone: build and operate a small Slurm GPU cluster | drafted | 3186 |  |
+| 6.31 | Capstone: build and operate a small Slurm GPU cluster | reviewed | 7870 | `capstone_demo_lab.py` (3/3 pass), `volume-10/00c-slurm-bcm-interview-lab.md` |
 | 10.8 | Operating GPU nodes: nvidia-smi, topology, clocks and throttling | drafted | 10110 |  |
 | 10.9 | The NVIDIA software stack: driver, CUDA toolkit, container toolkit, compatibility | drafted | 9332 |  |
 | 10.10 | Fabric Manager, NVSM and NVLink domains | drafted | 9528 |  |
@@ -323,6 +323,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 6.28 | HPC benchmarking: HPL, HPCG, IOR, OSU and NCCL tests | reviewed | 7648 | `bench_stats_lab.py` (3/3 pass), `SP 12`, `ASP 5` |
 | 6.29 | Containers and reproducibility in HPC: Apptainer and enroot | reviewed | 4886 | `container_lint_lab.py` (3/3 pass), `SCL 16` |
 | 6.30 | Facility basics: power, cooling, racks and liquid cooling | reviewed | 6693 | `facility_calc_lab.py` (3/3 pass), `ADC 5`, `SCL 28`, `SPB200` |
+| 6.31 | Capstone: build and operate a small Slurm GPU cluster | reviewed | 7870 | `capstone_demo_lab.py` (3/3 pass), `volume-10/00c-slurm-bcm-interview-lab.md` |
 | 10.1 | Why GPUs: CPU versus GPU and throughput design | drafted | 13317 |  |
 | 10.2 | The execution model: threads, warps, blocks and SMs | drafted | 11312 |  |
 | 10.3 | The GPU memory hierarchy | drafted | 10882 |  |
