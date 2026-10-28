@@ -4,7 +4,7 @@ title: "6.15 Slurm high availability, upgrades and scaling"
 sidebar_label: "6.15 Slurm high availability, upgrades and scaling"
 sidebar_position: 15
 description: "Keeping Slurm running and current: controller and database failover, state storage, backups, the documented upgrade order and compatibility window (with a path planner), reverting, scaling to thousands of nodes and high job rates (sysctls, timers, select plugin, tree fan-out, munge), configless and sackd, REST and authentication, federation and elastic nodes"
-status: "drafted"
+status: "reviewed"
 tier: "1"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -45,6 +45,25 @@ Components: `slurmctld` (scheduler, state), `slurmdbd` (accounting) + database, 
 - **munge or time skew**: authentication failures everywhere.
 
 ## 2. Controller high availability
+
+```mermaid
+flowchart TB
+  subgraph ControlHA["Controller HA Pair (SlurmctldTimeout=120s)"]
+    Ctl1["Primary: SlurmctldHost=ctl1"]
+    Ctl2["Standby: SlurmctldHost=ctl2"]
+    State["Shared StateSaveLocation<br/>(HA NFS / Replicated Block)"]
+    Ctl1 --> State
+    Ctl2 -.->|Heartbeat & Takeover| State
+  end
+  subgraph AcctHA["Accounting HA Pair"]
+    Dbd1["Primary: slurmdbd (db1)"]
+    Dbd2["Backup: DbdBackupHost (db2)"]
+    MySQL[("Galera / Replicated MySQL")]
+    Dbd1 --> MySQL
+    Dbd2 -.-> MySQL
+  end
+  ControlHA -->|"1. Upgrade slurmdbd -> 2. slurmctld -> 3. slurmd"| AcctHA
+```
 
 From `slurm.conf(5)`:
 
@@ -160,7 +179,15 @@ Recommendations (for example inference or evaluation fans with thousands of jobs
 | Document dependencies (DNS, NTP/chrony, LDAP, NFS) with the same HA level | Slurm HA is only as good as these |
 | Keep an out-of-band path to controllers | You need them when the network is the problem |
 
-## 7. Lab (planner tested; rest untested)
+## 7. Lab (self-checking upgrade planner lab tested; cluster failover parts untested)
+
+First, run the self-checking Python lab (`code/part06/slurm_upgrade_path_lab.py`) locally. It verifies `window()` and `path()` in `code/part06/slurm_upgrade_path.py` across the 9-month and 6-month Slurm compatibility windows (`22.05 -> 23.11 -> 25.05 -> 26.05`), checks the `TreeWidth=16` 3-hop communication fan-out math (`16 + 16^2 + 16^3 = 4,368` nodes), and validates the mandatory daemon upgrade sequence (`slurmdbd -> slurmctld -> slurmd -> clients`):
+
+```bash
+python3 code/part06/slurm_upgrade_path_lab.py
+```
+
+Next, on a test cluster, work through these steps:
 
 1. Run `slurm_upgrade_path.py` for your current and target versions; compare with the release notes.
 2. Build a 3-VM test: `ctl1`, `ctl2` sharing an NFS state dir, and `db1`; configure `SlurmctldHost` twice; submit jobs; stop `slurmctld` on `ctl1`; time the takeover; verify running jobs survived and `squeue` works through `ctl2`.
@@ -182,41 +209,157 @@ Recommendations (for example inference or evaluation fans with thousands of jobs
 - What is a SPANK plugin and why does it complicate upgrades?
 - When would you run multiple Slurm clusters instead of one?
 
-## 9. Checkpoint questions (30)
+## Exercises
 
-1. Which components can fail and what is the impact of each?
-2. Do running jobs survive a controller restart?
-3. How do you configure a backup controller?
-4. What is `SlurmctldTimeout`?
-5. Why must `StateSaveLocation` be shared and reliable?
-6. How do you avoid split-brain?
-7. What redundancy exists for slurmdbd and the database?
-8. What do you back up before an upgrade?
-9. How do you verify a backup?
-10. What does a Slurm version number mean?
-11. State the compatibility window rules.
-12. What happens when you upgrade outside the window?
-13. Why is downgrade unsupported?
-14. Give the component upgrade order.
-15. Why wait for old jobs to finish after upgrading slurmd?
-16. What is special about pyxis and Slurm upgrades?
-17. Why exclude Slurm from EPEL?
-18. What is the "seamless upgrade" idea?
-19. What can slow the slurmdbd migration?
-20. List the OS limits tuned for large clusters.
-21. Why avoid `cons_tres` on CPU-only giant clusters and why can't GPU clusters?
-22. How does job accounting create system noise?
-23. What do `MinJobAge`, `EpilogMsgTime` and `TreeWidth` control?
-24. What changes for high job throughput?
-25. How many munge threads does the guide suggest?
-26. What is configless mode and what does `sackd` do?
-27. What is `slurmrestd` and how is it authenticated?
-28. What is federation?
-29. What are elastic/cloud nodes and which parameters drive them?
-30. Why run Slurm clusters per failure domain?
+1. **Planning Multi-Hop Slurm Upgrades (`code/part06/slurm_upgrade_path.py` & `slurm_upgrade_path_lab.py`):** Run `python3 code/part06/slurm_upgrade_path_lab.py`. Explain why upgrading from `22.05` to `26.05` requires three intermediate hops (`22.05 -> 23.11 -> 25.05 -> 26.05`), why `24.05` accepts only 2 prior major versions (`23.02, 23.11`) whereas `24.11` accepts 3 (`23.02, 23.11, 24.05`), and what happens if you attempt an out-of-window upgrade directly.
+2. **Enforcing the Mandatory Daemon Upgrade Sequence and Rollback Backup Plan:** Write a pre-upgrade checklist and ordered execution plan for upgrading an HA Slurm cluster (`slurmdbd` pair, `slurmctld` pair, `slurmd` compute fleet, login nodes with `sackd`, and `pyxis` SPANK plugin). Explain why in-place downgrades are unsupported once any daemon has started and what two artifacts (`StateSaveLocation` snapshot and `mysqldump --single-transaction`) are required to revert.
+3. **Designing `slurmctld` and `slurmdbd` High Availability:** Write the `SlurmctldHost`, `SlurmctldTimeout`, and `StateSaveLocation` stanzas in `slurm.conf` plus the `AccountingStorageHost` and `AccountingStorageBackupHost` (`DbdBackupHost`) stanzas in `slurmdbd.conf`. Explain what happens to running `slurmstepd` GPU training steps during a 3-minute `slurmctld` failover versus a 30-minute `slurmdbd` outage.
+4. **Calculating Hierarchical `slurmd` Fan-Out (`TreeWidth`):** Using `tree_fanout_nodes(16, 3)` in `code/part06/slurm_upgrade_path_lab.py`, verify why `TreeWidth=16` reaches $16 + 16^2 + 16^3 = \mathbf{4,368}$ compute nodes in 3 communication hops, and calculate how many nodes `TreeWidth=32` reaches in 2 hops ($32 + 32^2 = 1,056$) and 3 hops ($32 + 1,024 + 32,768 = 33,824$).
+5. **Tuning Kernel `sysctl` and `SchedulerParameters` for High-Throughput Clusters:** Write the `/etc/sysctl.d/99-slurm-scale.conf` (`fs.file-max >= 388067`, `net.core.somaxconn = 4096`, `net.ipv4.ip_local_port_range`) and `slurm.conf` settings (`MinJobAge`, `JobAcctGatherFrequency=task=300`, `SchedulerParameters=defer,max_rpc_cnt=128,default_queue_depth=100`, `munge --num-threads=10`) for a cluster handling thousands of short evaluation jobs per minute.
+6. **Deploying Configless Slurm with `sackd` and DNS `SRV` Records:** Explain how configless mode (`SlurmctldParameters=enable_configless`) distributes `slurm.conf`, `gres.conf`, and `cgroup.conf` from `slurmctld` to `slurmd` and login-node `sackd` daemons, and write the `_slurmctld._tcp` DNS `SRV` records that allow nodes to discover `ctl1` and `ctl2` automatically.
 
-## 10. Sources and review notes
+## Checkpoint
 
-- HA, upgrade, large-cluster, high-throughput, configless and authentication behaviour: `slurm.conf(5)`, `slurmdbd.conf(5)` and the HTML guides (Upgrade Guide, Large Cluster Administration, High Throughput, Configless, Authentication, Federation, Power Save, Dynamic Nodes) in SchedMD/slurm commit `521370b`. Operational context: *Supercomputers for Linux SysAdmins* chapter 15 (installation, troubleshooting, advanced slurm.conf parameters).
-- Original: `slurm_upgrade_path.py` and its outputs, the failure-impact table, drills.
-- Unverified: exact behaviour of accounting buffering and association enforcement while slurmdbd is down on your version, windows for releases older than the guide's table, tuning values beyond those the guides state.
+<details>
+<summary>1. What happens to already-running GPU jobs when `slurmctld` crashes or restarts, and what happens when `slurmdbd` goes down?</summary>
+
+- **`slurmctld` down:** Running jobs **continue executing normally** because `slurmstepd` on each compute node manages the job's processes independently; however, no new jobs can start, `squeue`/`sbatch` block or fail, and job completion messages queue on `slurmd` until `slurmctld` returns.
+- **`slurmdbd` down:** `slurmctld` continues scheduling jobs and buffers accounting records in memory/state files for later delivery (though fair-share usage updates pause, and if `AccountingStorageEnforce=safe` or uncached associations are required, new submissions may be blocked).
+</details>
+
+<details>
+<summary>2. How do you configure primary and standby controllers in `slurm.conf`, and what does `SlurmctldTimeout` control?</summary>
+
+List multiple `SlurmctldHost` lines in priority order (`SlurmctldHost=ctl1`, `SlurmctldHost=ctl2`, `SlurmctldHost=ctl3`) pointing to a shared `StateSaveLocation`. The standby pings the primary and assumes control if the primary stops responding for **`SlurmctldTimeout` seconds** (default `120` s); when `ctl1` recovers, `ctl2` flushes state to `StateSaveLocation` and yields control back to `ctl1`.
+</details>
+
+<details>
+<summary>3. Why is `StateSaveLocation` the true single point of failure in `slurmctld` HA, and what storage properties does it require?</summary>
+
+Both the primary and standby `slurmctld` daemons read and write all pending/running job state files in `StateSaveLocation`. It must reside on a **low-latency, highly available shared filesystem with strict POSIX locking semantics** (or replicated block storage) and ample inodes; high write latency in `StateSaveLocation` directly stalls the main scheduling loop.
+</details>
+
+<details>
+<summary>4. How is high availability achieved for `slurmdbd` and the underlying accounting database?</summary>
+
+Configure `AccountingStorageBackupHost` / `DbdBackupHost` in `slurm.conf` and `slurmdbd.conf` for the daemon, and back both `slurmdbd` instances with a **replicated MySQL/MariaDB cluster** (such as a Galera multi-primary cluster or primary/replica with automated failover) plus regular `Purge*` policies.
+</details>
+
+<details>
+<summary>5. What five items must be backed up before every Slurm upgrade, and how do you take a consistent database backup?</summary>
+
+1. `StateSaveLocation` directory snapshot/rsync.
+2. Slurm accounting database via **`mysqldump --single-transaction`** (or replica snapshot).
+3. `/etc/slurm/*` configuration files (`slurm.conf`, `slurmdbd.conf`, `gres.conf`, `cgroup.conf`, `topology.conf`, `plugstack.conf`).
+4. `/etc/munge/munge.key`.
+5. Custom `Prolog`, `Epilog`, `HealthCheckProgram`, SPANK, and `job_submit.lua` scripts.
+</details>
+
+<details>
+<summary>6. How are Slurm version numbers (`YY.MM.patch`) structured, and what is the supported in-place upgrade compatibility window (`code/part06/slurm_upgrade_path.py`)?</summary>
+
+`YY.MM` identifies the major release (year and month; 9-month cadence up to `24.05`, 6-month cadence twice a year since `24.05`), and `.patch` is the maintenance bug-fix level. In-place live upgrades are supported from the **previous 2 major releases** prior to `24.11`, and from the **previous 3 major releases** starting with `24.11` (for example, `25.05` accepts live upgrades from `24.11`, `24.05`, and `23.11`).
+</details>
+
+<details>
+<summary>7. What happens if you upgrade Slurm across versions outside the compatibility window (for example `22.05` directly to `26.05`)?</summary>
+
+The new daemons **refuse to parse the old state/database format and fail immediately on startup**, killing running jobs and risking accounting loss. Out-of-window upgrades must be performed in multi-hop steps (`22.05 -> 23.11 -> 25.05 -> 26.05`), starting daemons at each intermediate version so state files and DB schemas migrate cleanly.
+</details>
+
+<details>
+<summary>8. Why is downgrading Slurm in place unsupported once a newer daemon has started?</summary>
+
+On startup, a newer `slurmdbd` or `slurmctld` immediately rewrites `StateSaveLocation` binary state files and migrates MySQL schema tables into the new version's format, which older daemons cannot read. Reverting requires stopping the daemons and restoring the pre-upgrade `StateSaveLocation` and MySQL backups.
+</details>
+
+<details>
+<summary>9. State the mandatory component upgrade order for a Slurm cluster and explain why that order is required.</summary>
+
+1. **`slurmdbd`** (first—must be at or above the version of `slurmctld` and `slurmd`, and its MySQL schema migration can take minutes to hours).
+2. **`slurmctld`** (primary and standby controllers).
+3. **`slurmd`** (compute nodes, upgraded alongside or right after `slurmctld`).
+4. **Client binaries (`sbatch`, `srun`, `sackd`) and SPANK plugins (`pyxis`)** on login/submit nodes.
+Newer daemons understand RPCs from older daemons (within the compatibility window), whereas older `slurmdbd`/`slurmctld` daemons reject RPCs from newer components.
+</details>
+
+<details>
+<summary>10. Why can `slurmd` be upgraded and restarted on compute nodes without draining or killing running jobs?</summary>
+
+Because running job steps are owned by independent per-step **`slurmstepd`** processes rather than `slurmd` itself. Restarting `slurmd` with the upgraded binary leaves existing `slurmstepd` processes running until those jobs finish.
+</details>
+
+<details>
+<summary>11. Why must NVIDIA `pyxis` (and any C SPANK plugin) be rebuilt during a major Slurm upgrade, and why should `slurm*` be excluded from EPEL?</summary>
+
+SPANK plugins link directly against Slurm's internal shared libraries and ABI structs, which change across major Slurm releases. `slurm*` packages must be excluded in `/etc/yum.repos.d/epel.repo` (`exclude=slurm*`) so an automated OS `dnf update` does not accidentally overwrite a custom/site Slurm build with an incompatible EPEL version.
+</details>
+
+<details>
+<summary>12. Which Linux kernel `sysctl` and `systemd` limits must be raised for large clusters ($\ge 1,024$ nodes) and high job throughput?</summary>
+
+- `/proc/sys/fs/file-max` ($\ge 388,067$ for large clusters; $\ge 32,832$ for high throughput) and daemon `LimitNOFILE`.
+- `net.core.somaxconn` ($\ge 1,024$ to $8,192$) and `net.ipv4.tcp_max_syn_backlog` to absorb bursty RPC connections.
+- `net.ipv4.ip_local_port_range` (widened ephemeral port range).
+- `systemd` unit `TasksMax=infinity` (or high limit) so `slurmctld` and `slurmd` thread pools are not capped by systemd's default cgroup pids limit.
+</details>
+
+<details>
+<summary>13. Why does the Large Cluster Guide recommend `SelectType=select/linear` for giant CPU clusters, and why must GPU clusters stick with `select/cons_tres`?</summary>
+
+`select/linear` schedules whole nodes only (1 bit per node), which is dramatically faster for `slurmctld` than tracking per-core/per-socket bitmaps. However, GPU clusters require **`select/cons_tres`** to track and co-allocate consumable GPUs (`gres/gpu`), MIG slices, CPUs per GPU, and memory per GPU.
+</details>
+
+<details>
+<summary>14. How does `jobacct_gather` introduce "system noise" on compute nodes, and how do you mitigate it at scale?</summary>
+
+Polling `/proc` and cgroup counters every few seconds across all tasks via `jobacct_gather` steals CPU cycles and interrupts tightly coupled MPI/NCCL collectives. Mitigate by increasing the sampling interval (e.g., `JobAcctGatherFrequency=task=300`) or using `jobacct_gather/none` when step-level memory polling is unnecessary.
+</details>
+
+<details>
+<summary>15. What do `SlurmdTimeout`, `MinJobAge`, `EpilogMsgTime`, and `TreeWidth` control on a large cluster?</summary>
+
+- **`SlurmdTimeout`:** Seconds before an unresponsive node is marked `DOWN` (raise to $\ge 120\text{–}300$ s at scale).
+- **`MinJobAge`:** Seconds a finished job stays in `slurmctld` memory before being purged (lower it under high throughput so `MaxJobCount` does not fill up).
+- **`EpilogMsgTime`:** Microseconds over which `slurmd` spreads `Epilog` completion messages when a massive multi-node job ends, preventing an RPC storm at `slurmctld`.
+- **`TreeWidth`:** Fan-out of hierarchical `slurmd`-to-`slurmd` message forwarding (default `16`, reaching $16 + 16^2 + 16^3 = 4,368$ nodes in 3 hops).
+</details>
+
+<details>
+<summary>16. How do you tune `munge` and `SchedulerParameters` when a cluster experiences high short-job submission rates?</summary>
+
+1. Increase `munged` worker threads (`--num-threads=10` or higher) on `slurmctld` and login hosts so credential verification does not bottleneck RPCs.
+2. Set `SchedulerParameters=defer,batch_sched_delay=3,max_rpc_cnt=128,default_queue_depth=100,sched_min_interval=2000000` so `slurmctld` batches scheduling passes instead of running the main loop on every single `sbatch`.
+</details>
+
+<details>
+<summary>17. How does **configless Slurm** work, and what is the role of `sackd` and `_slurmctld._tcp` DNS `SRV` records?</summary>
+
+With `SlurmctldParameters=enable_configless`, `slurmctld` serves `slurm.conf`, `gres.conf`, `cgroup.conf`, and `topology.conf` directly over the network to `slurmd` on compute nodes and **`sackd`** (Slurm Auth and Cred Kiosk Daemon) on login/client nodes, which cache the files locally in `/run/slurm/conf`. Nodes discover the controllers automatically via **`_slurmctld._tcp` DNS `SRV` records** (or `--conf-server`), eliminating shared `/etc/slurm` NFS mounts and config drift.
+</details>
+
+<details>
+<summary>18. What is `slurmrestd`, how is it authenticated, and what must you check in `RELEASE_NOTES` before upgrading a cluster that uses it?</summary>
+
+`slurmrestd` is Slurm's HTTP/OpenAPI REST daemon used by web portals and workflow orchestrators, authenticated via **JSON Web Tokens (`AuthAltTypes=auth/jwt`)**. Before upgrading, always check `RELEASE_NOTES` for removed or versioned **`data_parser` / OpenAPI schema plugins** (e.g., `v0.0.40` $\to$ `v0.0.42`) so client integrations do not break.
+</details>
+
+<details>
+<summary>19. How do Slurm **elastic / power-saving nodes** (`CLOUD` state) work?</summary>
+
+Nodes configured with `State=CLOUD` (or idle on-prem nodes under `SuspendTime`) call `SuspendProgram` to power down or terminate cloud VMs after sitting idle for `SuspendTime` seconds, and call `ResumeProgram` when a queued job needs them, waiting up to `ResumeTimeout` seconds for `slurmd` to register.
+</details>
+
+<details>
+<summary>20. When is running **multiple independent Slurm clusters** (or Slurm Federation) behind a single shared `slurmdbd` better than one giant monolithic `slurmctld`?</summary>
+
+When a site operates distinct failure domains, security zones, or hardware generations (for example an InfiniBand H100 pretraining pod, an Ethernet L40S inference/eval pool, and a staging cluster). Separate `slurmctld` pairs isolate blast radius, keep scheduler queues fast, and allow rolling Slurm upgrades one cluster at a time while `slurmdbd` (and optional `sacctmgr add federation`) provides unified accounting and cross-cluster visibility.
+</details>
+
+## Sources and review notes
+
+- HA, upgrade, large-cluster, high-throughput, configless and authentication behaviour: `slurm.conf(5)`, `slurmdbd.conf(5)` and the HTML guides (Upgrade Guide, Large Cluster Administration, High Throughput, Configless, Authentication, Federation, Power Save, Dynamic Nodes) in SchedMD/slurm commit `521370b`.
+- Operational context: read in full from *Supercomputers for Linux SysAdmins* (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware`, `SCL`) Chapter 15 ("15. Slurm": installation, troubleshooting, advanced `slurm.conf` parameters), and migrated from `nvidia-devops` (`volume-10/06-slurm-administration-ha-accounting-and-upgrades.md` and `volume-10/14-senior-deep-dive-2-slurm-ha-and-accounting-internals.md`).
+- Run here: `code/part06/slurm_upgrade_path.py` and `python3 code/part06/slurm_upgrade_path_lab.py` (3 passed, 0 failed).
+- Explicitly labelled inferences: `tree_fanout_nodes` (`4,368` nodes for `TreeWidth=16` in 3 hops) and `validate_daemon_upgrade_order` in `code/part06/slurm_upgrade_path_lab.py` are deterministic teaching checks of SchedMD's Large Cluster and Upgrade guides.
+- Not verified on live hardware: exact behaviour of accounting buffering and association enforcement while `slurmdbd` is down on your version, windows for releases older than the guide's table, and live multi-thousand-node failover timings (`untested here`).
