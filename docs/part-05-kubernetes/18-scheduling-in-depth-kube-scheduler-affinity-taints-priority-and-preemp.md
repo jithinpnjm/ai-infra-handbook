@@ -176,7 +176,7 @@ System taints applied automatically: `node.kubernetes.io/not-ready`, `unreachabl
 
 ### Other fields
 
-`nodeName` bypasses the scheduler (no checks!), `schedulerName`, `priorityClassName`, `runtimeClassName`, `hostPort` conflicts, `resourceClaims`, `schedulingGates` (hold a pod from scheduling until a controller removes gates: used by Kueue/queueing and capacity controllers), `readinessGates`, `topologySpreadConstraints`, `affinity`. Cordon: `kubectl cordon` sets `spec.unschedulable` (tainted `unschedulable`); `drain` cordons + evicts respecting PDBs.
+`nodeName` bypasses the scheduler (no checks), `schedulerName`, `priorityClassName`, `runtimeClassName`, `hostPort` conflicts, `resourceClaims`, `schedulingGates` (hold a pod from scheduling until a controller removes gates: used by Kueue/queueing and capacity controllers), `readinessGates`, `topologySpreadConstraints`, `affinity`. Cordon: `kubectl cordon` sets `spec.unschedulable` (tainted `unschedulable`); `drain` cordons + evicts respecting PDBs.
 
 ## 4. Priority, preemption and disruption
 
@@ -366,7 +366,15 @@ kubectl get --raw "/api/v1/nodes/n/proxy/configz" | jq '.kubeletconfig.topologyM
 5. **Visibility**: dashboards for pending reasons, queue wait time, GPU allocation vs utilisation (DCGM), fragmentation (largest placeable GPU block), preemption counts, admission latency, per-team usage versus quota.
 6. **Governance**: ResourceQuota for objects and storage; LimitRange defaults; admission policy to require queue labels and priority classes from an allow-list; namespace-to-team mapping through GitOps (4.26).
 
-## 10. Lab (untested)
+## 10. Lab
+
+First, run the self-checking Python lab (`code/part05/gpu_scheduler_simulator_lab.py`) locally. It verifies the `NodeResourcesFit` `LeastAllocated` vs `MostAllocated` bin-packing and GPU fragmentation simulator (`simulate_gpu_placement_and_fragmentation`), the Kueue `ClusterQueue` cohort borrowing and gang admission evaluator (`evaluate_kueue_cohort_gang_admission`), and the DRA `ResourceClaimTemplate` same-`pcieRoot` device allocator (`allocate_dra_same_pcie_root`).
+
+```bash
+python3 code/part05/gpu_scheduler_simulator_lab.py
+```
+
+Next, on a 4-node `kind` or `KWOK` cluster (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **Predict placement**: create a 4-node kind cluster with labels (zone, rack, gpu type) and taints; write pods with various constraints; predict and verify placement; read scheduler logs at `-v=4`.
 2. **Required vs preferred**: node affinity required with unsatisfiable terms (Pending + event) vs preferred (placed); show OR-of-terms vs AND-of-expressions with a truth table of manifests.
@@ -384,8 +392,6 @@ kubectl get --raw "/api/v1/nodes/n/proxy/configz" | jq '.kubeletconfig.topologyM
 14. **Dashboard**: build panels for pending pods by reason, queue wait time, GPU fragmentation, preemptions; define alerts.
 15. **Clean up**.
 
-Mark tested only after execution.
-
 ## 11. Common mistakes
 
 - Expecting a toleration to attract pods (it only permits); forgetting node selectors/affinity for dedicated pools.
@@ -402,65 +408,194 @@ Mark tested only after execution.
 
 ## 12. Interview angles
 
-- "How does kube-scheduler pick a node? Explain filters, scores, and the binding cycle." 
-- "Taints vs node affinity; why do GPU pools need both?" 
-- "Pod anti-affinity vs topology spread constraints." 
-- "Explain priority and preemption; what can go wrong with training jobs?" 
-- "Why is the default scheduler unsuitable for distributed training? How do Kueue and Volcano solve it?" 
-- "How do you avoid GPU fragmentation?" 
-- "How do you make scheduling topology-aware (NUMA, NVLink, rack)? What is DRA?" 
-- "A pod is Pending with 'Insufficient nvidia.com/gpu' but monitoring shows idle GPUs. Why?" 
+- "How does kube-scheduler pick a node? Explain filters, scores, and the binding cycle."
+- "Taints vs node affinity; why do GPU pools need both?"
+- "Pod anti-affinity vs topology spread constraints."
+- "Explain priority and preemption; what can go wrong with training jobs?"
+- "Why is the default scheduler unsuitable for distributed training? How do Kueue and Volcano solve it?"
+- "How do you avoid GPU fragmentation?"
+- "How do you make scheduling topology-aware (NUMA, NVLink, rack)? What is DRA?"
+- "A pod is Pending with 'Insufficient nvidia.com/gpu' but monitoring shows idle GPUs. Why?"
 
-## 13. Checkpoint questions (40)
+## Exercises
 
-1. Scheduler input? **A:** Pods without nodeName.
-2. Scheduler output? **A:** Binding setting `spec.nodeName`.
-3. Filter vs score? **A:** Eliminate infeasible nodes vs rank feasible ones.
-4. PostFilter default plugin? **A:** DefaultPreemption.
-5. Permit used for? **A:** Delay/approve binding (gang).
-6. Where do unschedulable pods wait? **A:** unschedulable pool until events.
-7. Default fit strategy? **A:** LeastAllocated.
-8. Bin-packing strategy? **A:** MostAllocated.
-9. Does scheduler use limits? **A:** No, requests.
-10. Does scheduler see utilisation? **A:** No (by default).
-11. GPU resource name? **A:** `nvidia.com/gpu`.
-12. Who picks specific GPUs? **A:** Kubelet device manager/plugin.
-13. nodeSelector semantics? **A:** AND of equality pairs.
-14. nodeSelectorTerms semantics? **A:** OR of terms, AND within.
-15. `IgnoredDuringExecution`? **A:** Running pods not evicted on label change.
-16. topologyKey meaning? **A:** Node label defining a domain.
-17. Anti-affinity cost? **A:** Expensive at scale.
-18. `maxSkew` meaning? **A:** Max pod-count difference between domains.
-19. `whenUnsatisfiable` options? **A:** DoNotSchedule, ScheduleAnyway.
-20. Taint effects? **A:** NoSchedule, PreferNoSchedule, NoExecute.
-21. Does a toleration schedule pods there? **A:** No, only allows.
-22. `tolerationSeconds` use? **A:** Grace before NoExecute eviction.
-23. System-critical priority classes? **A:** `system-cluster-critical`, `system-node-critical`.
-24. `preemptionPolicy: Never` effect? **A:** Pod doesn't evict others.
-25. Victim selection criteria? **A:** Fewest PDB violations, lowest priority, fewest victims.
-26. `nominatedNodeName` meaning? **A:** Node reserved for a preemptor.
-27. PDB applies to? **A:** Voluntary disruptions.
-28. Gang scheduling means? **A:** All-or-nothing placement.
-29. Deadlock cause? **A:** Partial allocation holding resources.
-30. Kueue vs kube-scheduler? **A:** Admission/quota vs placement.
-31. Kueue objects? **A:** ResourceFlavor, ClusterQueue, LocalQueue, Workload.
-32. How Kueue holds jobs? **A:** `suspend: true` until admitted.
-33. Cohort purpose? **A:** Borrow/lend quota between queues.
-34. Volcano key CRDs? **A:** Queue, PodGroup, Job.
-35. Coscheduling plugin gate? **A:** Permit with PodGroup minMember.
-36. JobSet is? **A:** API for groups of Jobs with policies.
-37. Topology Manager scheduling gap? **A:** Scheduler unaware, kubelet rejects.
-38. NodeResourceTopology provides? **A:** Per-NUMA allocatable to scheduler plugins.
-39. DRA objects? **A:** ResourceClaim, ResourceClaimTemplate, ResourceSlice, DeviceClass.
-40. Descheduler does? **A:** Evicts pods to improve placement.
+1. **Inside `kube-scheduler`: Queues (`activeQ`, `backoffQ`, `unschedulablePods`), the Scheduling Framework (`PreFilter -> Filter -> PostFilter -> Score -> Reserve -> Permit -> Bind`), and `MostAllocated` Bin-Packing:** Using `simulate_gpu_placement_and_fragmentation()` in `code/part05/gpu_scheduler_simulator.py`, trace why default `LeastAllocated` scoring fragments two 8-GPU nodes when scheduling two 4-GPU inference pods (leaving a subsequent 8-GPU training pod stuck `Pending`), and show the `KubeSchedulerConfiguration` `gpu-binpack` profile (`MostAllocated` with `nvidia.com/gpu` weight `5`).
+2. **Placement Constraints (`nodeSelector`, `nodeAffinity`, `podAffinity`/`podAntiAffinity`, `topologySpreadConstraints`, and `Taints`/`Tolerations`):** Explain why dedicating a GPU node pool requires **both** a taint (`nvidia.com/gpu=present:NoSchedule` + Pod `tolerations`) **and** a `nodeSelector`/`nodeAffinity`, state the OR-of-`nodeSelectorTerms` vs AND-of-`matchExpressions` rule, and explain why `topologySpreadConstraints` scales better than `required` `podAntiAffinity`.
+3. **PriorityClasses, Preemption (`DefaultPreemption`), `preemptionPolicy: Never`, and Training Job Disruption Hazards:** Trace how `PostFilter` `DefaultPreemption` chooses victim pods (`nominatedNodeName`), explain why preempting 1 pod of a 64-pod synchronous training job wastes all 64 pods' work, and design a 5-tier `PriorityClass` hierarchy (`system-*`, `inference-critical`, `training-normal` with `preemptionPolicy: Never`, `interactive-notebook`, `training-spot`).
+4. **Solving the Gang-Scheduling Deadlock with `Kueue` (`ResourceFlavor`, `ClusterQueue`, `LocalQueue`, `Cohort`) vs. `Volcano` and `Coscheduling`:** Using `evaluate_kueue_cohort_gang_admission()` in `code/part05/gpu_scheduler_simulator.py`, trace how two 4-pod jobs deadlock on a 6-node cluster under default pod-by-pod scheduling, how Kueue's `suspend: true` + `ClusterQueue` (`nominalQuota: 128, borrowingLimit: 64, lendingLimit: 32`) + `Cohort` prevents partial starts and enables fair-share borrowing/reclaiming, and how Kueue compares with Volcano (`PodGroup`).
+5. **Topology-Aware and Device-Aware Scheduling (`NodeResourceTopology`, Rack/Rail/NVLink Labels, Kueue `TAS`, and `DRA`):** Using `allocate_dra_same_pcie_root()` in `code/part05/gpu_scheduler_simulator.py`, trace the `four-gpus-same-root` `ResourceClaimTemplate` in Section 6 (`cel` selector + `matchAttribute: "resource.kubernetes.io/pcieRoot"`), and explain how `DRA` and `NodeResourceTopologyMatch` prevent post-scheduling `TopologyAffinityError` rejections on the node.
+6. **Diagnosing `FailedScheduling` Events and Scaling the Scheduler to 2,000+ Nodes:** Parse the multi-reason `FailedScheduling` message in Section 8 (`0/20 nodes are available: 8 Insufficient nvidia.com/gpu, 6 node(s) had untolerated taint, 6 node(s) didn't match Pod's node affinity`), and explain why monitoring can show 0% GPU utilization (`DCGM_FI_DEV_GPU_UTIL`) while `kube-scheduler` reports `Insufficient nvidia.com/gpu`.
 
-## 14. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. What are the three internal queues inside `kube-scheduler` (`activeQ`, `backoffQ`, `unschedulablePods`), and how do Pods move between them?</summary>
 
-- Brendan Burns et al., *Kubernetes: Up and Running* (3rd edition; scheduler and scheduling-related material in chapters on pods, labels and cluster operations).
-- The author's `nvidia-devops` repository, volume 03 (control plane and scheduling masterclass: scheduling framework, preemption and priority classes, topology and NUMA alignment, gang scheduling with Kueue/Volcano, Dynamic Resource Allocation).
-- Kubernetes documentation (scheduling framework, assigning pods to nodes, taints and tolerations, pod priority and preemption, topology spread, DRA), Kueue, Volcano and scheduler-plugins project documentation.
-- Examples are the author's constructions.
+1. **`activeQ`:** A priority heap (sorted by `QueueSort`: highest `PriorityClass` first, then earliest timestamp) from which the scheduler's main loop pops the next Pod to schedule.
+2. **`unschedulablePods`:** When a Pod fails the `Filter` (and `PostFilter` preemption) phase because no node currently fits, it is placed into `unschedulablePods` tagged with the exact plugin events that could make it schedulable (e.g., `NodeAdd`, `PodDelete`, `PvAdd`, `NodeLabelChange`). It stays parked there without wasting CPU cycles until a matching cluster event occurs (or the 5-minute `podMaxInUnschedulablePodsDuration` safety timer fires).
+3. **`backoffQ`:** When an unschedulable Pod is woken by a cluster event (or fails with a transient error), it waits in `backoffQ` for an exponential backoff interval (`1s` up to `10s`) before moving into `activeQ`, preventing a single unschedulable Pod from monopolizing the scheduling loop.
+</details>
 
-**Flagged for verification before publishing:** scheduling feature status by Kubernetes release (DRA API version and fields, `matchLabelKeys`, `minDomains`, scheduling gates, native gang/Workload APIs, queue behaviour changes), Kueue API versions and TAS/MultiKueue maturity, Volcano API groups, default percentages and timings, and every manifest; all labs are **untested**.
+<details>
+<summary>2. Walk through the extension points of the Kubernetes Scheduling Framework in execution order, and distinguish the Scheduling Cycle from the Binding Cycle.</summary>
+
+- **Scheduling Cycle (runs SERIALLY, one Pod at a time, against an in-memory cluster cache snapshot):**
+  1. **`PreFilter`:** Precomputes pod-level state and checks basic invariants.
+  2. **`Filter` (run in parallel across candidate nodes):** Eliminates nodes that cannot run the Pod (`NodeResourcesFit`, `NodeAffinity`, `TaintToleration`, `VolumeBinding`, `PodTopologySpread`).
+  3. **`PostFilter`:** Runs **only if 0 nodes passed `Filter`**; `DefaultPreemption` simulates evicting lower-priority pods to find a feasible node (`nominatedNodeName`).
+  4. **`PreScore` -> `Score` -> `NormalizeScore` (run in parallel across feasible nodes):** Ranks surviving nodes from `0` to `100` multiplied by plugin weights; highest total score wins.
+  5. **`Reserve`:** Optimistically updates the scheduler's in-memory cache so the very next Pod's serial scheduling cycle immediately sees the resources as taken.
+  6. **`Permit`:** Approves, denies, or holds the Pod in a **`Wait`** state (used by `Coscheduling` gang plugins until all `minMember` pods in a `PodGroup` reach `Permit`).
+- **Binding Cycle (runs ASYNCHRONOUSLY in goroutines so slow API writes don't block the next Pod):**
+  7. **`PreBind` -> `Bind` -> `PostBind`:** Writes the `Binding` (`spec.nodeName`) to `kube-apiserver` (or calls `Unreserve` if binding fails).
+</details>
+
+<details>
+<summary>3. Why can `kubectl describe pod` report `0/20 nodes are available: 20 Insufficient nvidia.com/gpu` even when Grafana (`DCGM_FI_DEV_GPU_UTIL`) shows that 12 of those nodes have 0% GPU utilization?</summary>
+
+**`kube-scheduler` schedules strictly based on `resources.requests` (and `limits` for extended resources) vs. `Node.status.allocatable`—it NEVER looks at actual real-time GPU or CPU utilization (`DCGM` or `metrics-server`).**
+If interactive Jupyter notebooks, hung zombie Jobs, or un-terminated Pods have *requested* `nvidia.com/gpu: 8` on those 12 nodes, `kube-scheduler` considers all 8 GPUs 100% allocated even if the processes inside those Pods are completely idle. (Two other causes: the `nvidia-device-plugin` DaemonSet crashed or marked GPUs unhealthy so `allocatable["nvidia.com/gpu"]` dropped to `0`, or GPU fragmentation left 4 free GPUs per node when the new Pod requests `8`.)
+</details>
+
+<details>
+<summary>4. How does `LeastAllocated` (the default `NodeResourcesFit` scoring strategy) cause GPU Fragmentation, and how does a `MostAllocated` (`gpu-binpack`) scheduler profile prevent it?</summary>
+
+Suppose you have four 8-GPU nodes (`32` GPUs total) and users submit eight 1-GPU inference Pods followed by three 8-GPU training Pods:
+- **With `LeastAllocated` (default spread):** `kube-scheduler` prefers nodes with the *most* free resources, placing **two 1-GPU pods on each of the four nodes**. Every node now has only `6` free GPUs (`4 x 6 = 24` free GPUs total), so **all three 8-GPU training Pods sit stuck in `Pending` (`Insufficient nvidia.com/gpu`)**.
+- **With `MostAllocated` (`gpu-binpack` profile, weighting `nvidia.com/gpu: 5`):** `kube-scheduler` packs all eight 1-GPU pods onto **Node 0** (`0` free GPUs on Node 0), leaving **Nodes 1, 2, and 3 completely empty (`8` free GPUs each)** so all three 8-GPU training Pods schedule immediately.
+</details>
+
+<details>
+<summary>5. Why do you need BOTH a Taint + Toleration AND a `nodeSelector` / `nodeAffinity` to dedicate a GPU node pool to GPU workloads?</summary>
+
+- **Taint (`nvidia.com/gpu=present:NoSchedule`) + Toleration:** A taint **repels** Pods that lack a matching toleration (keeping CPU-only Pods off the expensive GPU nodes). However, **a toleration only *permits* a Pod to land on a tainted node—it does NOT prevent that GPU Pod from being scheduled onto an untainted CPU-only node** (if you are matching by a non-GPU resource or before device plugin registration).
+- **`nodeSelector` / `nodeAffinity` (`nvidia.com/gpu.product: NVIDIA-H100-80GB-HBM3`):** **Attracts/restricts** the Pod so it can *only* land on nodes carrying that label. Combining both guarantees CPU pods never land on GPU nodes and GPU pods only land on the intended GPU SKU pool.
+</details>
+
+<details>
+<summary>6. In `nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution`, how are multiple `nodeSelectorTerms` combined versus multiple `matchExpressions` inside a single term?</summary>
+
+- **Multiple items under `nodeSelectorTerms` are OR'd:** The Pod can schedule onto a node if the node satisfies **at least one** `nodeSelectorTerm`.
+- **Multiple items under `matchExpressions` (inside a single `nodeSelectorTerm`) are AND'd:** The node must satisfy **every** `matchExpression` in that term.
+</details>
+
+<details>
+<summary>7. Why should you prefer `topologySpreadConstraints` over `requiredDuringScheduling` `podAntiAffinity` for spreading inference replicas across zones or nodes?</summary>
+
+1. **`required` `podAntiAffinity` (`topologyKey: kubernetes.io/hostname`) hard-caps replica count at the number of nodes:** If you have 8 GPU nodes and scale a `Deployment` from 8 to 10 replicas during a traffic spike (or during a `maxSurge: 1` rolling update), replicas 9 and 10 stay permanently `Pending`.
+2. **`topologySpreadConstraints` (`maxSkew: 1`):** Evenly balances replicas across domains (`1` per node across 8 nodes -> then `2` per node as you scale to 16 replicas) without deadlocking when `replicas > domains`, and supports `matchLabelKeys: [pod-template-hash]` so rolling updates spread the new ReplicaSet revision independently of the old revision.
+3. **Performance:** Cluster-wide `required` `podAntiAffinity` is one of the slowest plugins in `kube-scheduler` ($O(\text{Pods} \times \text{Nodes})$).
+</details>
+
+<details>
+<summary>8. What does `preemptionPolicy: Never` on a `PriorityClass` do, and why is it ideal for batch GPU training queues?</summary>
+
+By default (`preemptionPolicy: PreemptLowerPriority`), a higher-priority Pod that cannot fit will evict running lower-priority Pods—which on a multi-node training cluster can kill 1 rank of a 32-node job that is 90% done.
+Setting **`preemptionPolicy: Never`** on a `PriorityClass` gives the Pod **high priority in the scheduling queue (`activeQ`)**—so it jumps ahead of lower-priority pending Pods to claim the *next* GPUs that become free naturally—**without ever evicting already-running Pods**.
+</details>
+
+<details>
+<summary>9. When `DefaultPreemption` runs during `PostFilter`, what is `status.nominatedNodeName`, and is the preempting Pod guaranteed to get that node?</summary>
+
+When `DefaultPreemption` selects a node (`gpu-node-03`) and sends graceful `DELETE` requests to the lower-priority victim Pods on `gpu-node-03`, the victims take `terminationGracePeriodSeconds` (e.g., 30–120s) to exit. During that wait, `kube-scheduler` sets **`pod.status.nominatedNodeName = "gpu-node-03"`** on the high-priority preemptor Pod so other scheduler cycles know `gpu-node-03` is reserved for it.
+However, it is **not an absolute lock**: if an even **higher-priority Pod** arrives while the victims are terminating (or if another node frees up first), the new higher-priority Pod can claim `gpu-node-03` or the preemptor can bind to the other node first.
+</details>
+
+<details>
+<summary>10. Explain the \"Gang-Scheduling Resource Hold-and-Wait Deadlock\" when two 4-Pod distributed training jobs are submitted to a cluster with 6 free GPU nodes.</summary>
+
+Suppose Job A needs `4` nodes (all 4 ranks must start before `torchrun` collective rendezvous can proceed) and Job B also needs `4` nodes, and the cluster currently has `6` free nodes:
+- With the default pod-by-pod `kube-scheduler`, `3` Pods of Job A and `3` Pods of Job B get scheduled onto the 6 nodes.
+- Job A's 3 Pods sit at 0% GPU utilization waiting for rank 3 (which is `Pending`); Job B's 3 Pods sit at 0% GPU utilization waiting for rank 3 (which is `Pending`).
+- **Neither job can ever finish to free its nodes, and neither job can start its 4th Pod—100% of the cluster's GPUs are deadlocked forever.**
+</details>
+
+<details>
+<summary>11. How does `Kueue` prevent gang-scheduling deadlocks without replacing `kube-scheduler`?</summary>
+
+Kueue operates at the **Workload Admission layer** *above* `kube-scheduler`:
+1. Every submitted `Job`, `JobSet`, `PyTorchJob`, `MPIJob`, or `RayJob` starts with **`suspend: true`** (or `schedulingGates` on Pods), so **zero Pods are created** when the job is submitted.
+2. Kueue creates an internal **`Workload`** object summing the total resources (`4 x 8 = 32` GPUs) required by the entire job.
+3. Kueue only admits the `Workload` (setting **`suspend: false`** and injecting `ResourceFlavor` nodeSelectors/tolerations) when the **`ClusterQueue` (and `Cohort`) has enough available quota for ALL pods of the job simultaneously**.
+4. Once unsuspended, all 4 Pods are created and scheduled by the standard `kube-scheduler` without competing against un-admitted jobs (and `waitForPodsReady` evicts and re-queues the whole workload if any pod fails to become Ready within a timeout).
+</details>
+
+<details>
+<summary>12. In `Kueue`, explain how `ResourceFlavor`, `LocalQueue`, `ClusterQueue`, and `Cohort` (`nominalQuota`, `borrowingLimit`, `lendingLimit`) work together.</summary>
+
+- **`ResourceFlavor` (`h100-ondemand`, `h100-spot`, `l4-infer`):** Defines a hardware tier by its node labels and taints.
+- **`LocalQueue` (Namespaced, e.g., `research-ns/research-gpu`):** The queue name developers reference in their job labels (`kueue.x-k8s.io/queue-name: research-gpu`); points to a `ClusterQueue`.
+- **`ClusterQueue` (Cluster-scoped, e.g., `research`):** Holds the actual resource quotas per `ResourceFlavor`:
+  - **`nominalQuota: 128`:** The team's guaranteed baseline GPU quota.
+  - **`borrowingLimit: 64`:** Max extra GPUs this team can borrow from idle peers in the same `Cohort` (up to $128 + 64 = 192$ GPUs total).
+  - **`lendingLimit: 32`:** Max idle GPUs from this team's `nominalQuota` that other teams in the `Cohort` are allowed to borrow.
+- **`Cohort` (`gpu-fleet`):** Links multiple `ClusterQueue`s so team A can burst onto team B's idle GPUs, and when team B submits a job, Kueue (`reclaimWithinCohort: Any`) preempts team A's borrowed workload at **whole-job granularity** so team B immediately reclaims its guaranteed `nominalQuota`.
+</details>
+
+<details>
+<summary>13. Compare `Kueue` and `Volcano` for batch GPU scheduling.</summary>
+
+- **Kueue (SIG Scheduling):** Kubernetes-native **queueing and quota controller** that works *with* the standard `kube-scheduler`, `Cluster Autoscaler` (`ProvisioningRequest`), `Job`, `JobSet`, `Kubeflow Training Operator`, and `KubeRay`. Lightweight, non-intrusive, supports Topology-Aware Scheduling (`TAS`) and multi-cluster dispatch (`MultiKueue`).
+- **Volcano (CNCF):** Full **replacement batch scheduler binary** (`schedulerName: volcano`) with its own `PodGroup`, `Queue`, and `vcjob` CRDs and an action pipeline (`enqueue -> allocate -> preempt -> reclaim -> backfill`) supporting DRF (Dominant Resource Fairness), gang scheduling, and network-topology (`HyperNode`) awareness.
+</details>
+
+<details>
+<summary>14. Why does `kubelet`'s `Topology Manager` (`single-numa-node`) sometimes reject Pods *after* `kube-scheduler` binds them, and what two mechanisms make `kube-scheduler` NUMA-aware?</summary>
+
+Standard `Node.status.allocatable` only reports **node-wide totals** (`64` CPUs, `512Gi` RAM, `8` GPUs across 2 NUMA sockets). If NUMA 0 has `4` free CPUs and `0` free GPUs while NUMA 1 has `0` free CPUs and `4` free GPUs, `kube-scheduler` sees `4` CPUs and `4` GPUs free on the node and binds the Pod—which `kubelet` then rejects with **`TopologyAffinityError`**.
+Two solutions give `kube-scheduler` per-NUMA visibility:
+1. **`NodeResourceTopology` (`NRT`) CRD + `NodeResourceTopologyMatch` scheduler plugin:** Node Feature Discovery (`NFD` Topology Updater) publishes per-NUMA-zone free CPU/memory/device counts in `NodeResourceTopology` CRs, which the scheduler plugin filters on during the `Filter` phase.
+2. **Dynamic Resource Allocation (`DRA`, `resource.k8s.io`).**
+</details>
+
+<details>
+<summary>15. How does Dynamic Resource Allocation (`DRA`: `ResourceSlice`, `DeviceClass`, `ResourceClaim`, `ResourceClaimTemplate`) work in `kube-scheduler`?</summary>
+
+1. The node's DRA driver (`nvidia-dra-driver-gpu`) publishes **`ResourceSlice`** objects to the API server describing every physical GPU/MIG slice/NIC on the node along with rich **attributes** (`productName`, `memory`, `pcieRoot`, `numaNode`, `nvlinkDomain`).
+2. A workload references a **`ResourceClaimTemplate`**, which uses **CEL expressions** (`device.attributes['gpu.nvidia.com'].productName == 'NVIDIA H100 80GB HBM3'`) and **`constraints`** (`matchAttribute: "resource.kubernetes.io/pcieRoot"`).
+3. During the scheduling cycle, `kube-scheduler`'s built-in **`DynamicResources` plugin** evaluates the CEL selectors and topology constraints against the cluster's `ResourceSlice`s—selecting both the node **and the exact hardware devices** before binding the Pod.
+</details>
+
+<details>
+<summary>16. How does `Kueue` Topology-Aware Scheduling (`TAS`) or rack/block node labeling keep multi-node training jobs within a single InfiniBand leaf switch or NVLink domain?</summary>
+
+Nodes are labeled with their physical fabric hierarchy (`cloud.google.com/gce-topology-block`, `topology.example.com/ib-leaf: leaf-03`, `topology.example.com/rack: rack-07`, `nvidia.com/nvlink-CliqueId`). When admitting a 16-node `JobSet`/`PyTorchJob` requesting `TAS` (`kueue.x-k8s.io/podset-required-topology: "topology.example.com/ib-leaf"`), Kueue inspects free capacity grouped by topology domain and pins all 16 Pods to a single InfiniBand leaf switch (or minimal set of racks) so NCCL all-reduce traffic stays 1 hop inside a single leaf switch rather than traversing spine links.
+</details>
+
+<details>
+<summary>17. What does `percentageOfNodesToScore` in `KubeSchedulerConfiguration` do on a 5,000-node cluster?</summary>
+
+On a 5,000-node cluster, running `Filter` and `Score` plugins across all 5,000 nodes for every single Pod would limit scheduling throughput. When `percentageOfNodesToScore` is set (e.g., `50`, or adaptive down to `5`–`10%` on huge clusters), `kube-scheduler` iterates through nodes in round-robin zones and **stops filtering as soon as it finds `percentageOfNodesToScore` feasible nodes** (minimum 100 nodes), then scores only that subset. On the next Pod, it resumes scanning from where it left off so all nodes are covered fairly.
+</details>
+
+<details>
+<summary>18. Why is running two separate scheduler binaries (e.g., `kube-scheduler` and a second custom scheduler) over the SAME set of nodes dangerous, and how do Scheduler Profiles avoid it?</summary>
+
+Because `kube-scheduler` uses an **in-memory optimistic cache (`Reserve`)** during its serial scheduling cycle and writes `Binding`s asynchronously, two separate scheduler processes scheduling onto the same nodes do not share an in-memory cache—so both schedulers can simultaneously assign two 8-GPU Pods to the same 8-GPU node (**scheduling race conflict**), causing one Pod to be rejected by `kubelet` (`OutOfnvidia.com/gpu`).
+Defining multiple **Scheduler Profiles** (`default-scheduler` and `gpu-binpack`) inside a **single `KubeSchedulerConfiguration` process** allows different workloads to use different scoring strategies (`LeastAllocated` vs `MostAllocated`) while sharing a single unified in-memory node cache with zero races.
+</details>
+
+<details>
+<summary>19. How do you read a multi-reason `FailedScheduling` event message (`0/20 nodes are available: 8 Insufficient nvidia.com/gpu, 6 node(s) had untolerated taint, 10 node(s) didn't match Pod's node affinity`)?</summary>
+
+Each plugin that rejected a node during `Filter` increments its own counter—and **a single node can be rejected by multiple plugins simultaneously** (which is why $8 + 6 + 10 = 24 > 20$ nodes):
+1. First, check **`nodeAffinity` / `nodeSelector`** (`10 node(s) didn't match`) and **`untolerated taint`** (`6 node(s)`) to see which node pool your Pod was actually targeting (here, an 8-node GPU pool where 12 other nodes are CPU/other pools).
+2. Within the 8 nodes of your target GPU pool, all 8 failed with **`Insufficient nvidia.com/gpu`**—meaning the target pool is full or fragmented.
+</details>
+
+<details>
+<summary>20. When should you run the Kubernetes `Descheduler` on an AI cluster, and which workloads must be excluded from it?</summary>
+
+The **Descheduler** runs as a periodic Job/Deployment that evicts running Pods whose placement has drifted suboptimally (e.g., consolidating fragmented nodes via `LowNodeUtilization` / `RemovePodsHavingTooManyRestarts` / `RemovePodsViolatingNodeTaints` / `RemovePodsViolatingTopologySpreadConstraint`).
+- **Enable for:** Stateless microservices, web gateways, and multi-replica inference `Deployment`s protected by a `PodDisruptionBudget` (`PDB`).
+- **Strictly exclude (`descheduler.alpha.kubernetes.io/evict: "false"` or priority/namespace exclusion):** **All batch and distributed GPU training Pods**, where evicting a single running Pod restarts an entire multi-node training step.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed. (Pods, labels, affinity, taints/tolerations, and cluster operations).
+  - `nvidia-devops` (`volume-03/01-k8s-control-plane-scheduling-masterclass.md`, `volume-03/02-k8s-node-storage-masterclass.md`, and `volume-03/03-k8s-networking-security-ops-masterclass.md`): scheduling framework, preemption and priority classes, topology and NUMA alignment, gang scheduling with Kueue and Volcano, and Dynamic Resource Allocation (`DRA`).
+- **Run here:** `python3 code/part05/gpu_scheduler_simulator_lab.py` (3 passed, 0 failed).
+- **Explicitly labelled inferences:** The `simulate_gpu_placement_and_fragmentation`, `evaluate_kueue_cohort_gang_admission`, and `allocate_dra_same_pcie_root` models in `code/part05/gpu_scheduler_simulator.py` and the `KubeSchedulerConfiguration` (`gpu-binpack`), `PriorityClass`, Kueue `ResourceFlavor`/`ClusterQueue`/`LocalQueue`, and DRA `ResourceClaimTemplate` manifests are the author's constructions synthesizing `KUR` and `volume-03` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Not verified on live hardware:** Live `kube-scheduler`, `Kueue`, `Volcano`, `DRA`, and `KWOK` executions (`5 min` unschedulable duration, `10 s` backoff, `percentageOfNodesToScore: 50`, `parallelism: 16`, `weight: 80` / `50`, `maxSkew: 1, minDomains: 3`, `tolerationSeconds: 60` / `300`, PriorityClass `1000000` / `1000` / `2000000000` / `2000001000`, `nominalQuota: 128, borrowingLimit: 64, lendingLimit: 32`, `2,000` nodes / `20,000` pods) are marked (`untested here`) where not executed by `gpu_scheduler_simulator_lab.py`.
