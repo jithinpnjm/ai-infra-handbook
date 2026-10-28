@@ -4,7 +4,7 @@ title: "6.23 xCAT, Warewulf and cluster managers compared with BCM"
 sidebar_label: "6.23 xCAT, Warewulf and cluster managers compared with BCM"
 sidebar_position: 23
 description: "Cluster management systems compared: xCAT (architecture, object model, key commands, current project status), Warewulf 4 (nodes.conf, images, overlays, wwctl), Confluent, Canonical MAAS and Foreman, and NVIDIA Base Command Manager (head node, software images, categories, cmsh), with a selection matrix for GPU clusters"
-status: "drafted"
+status: "reviewed"
 tier: "2"
 level: "I"
 lab_venue: "GCP / GKE"
@@ -34,6 +34,25 @@ Needs 6.2, 6.22 and Part 7 awareness (BMC/Redfish). After this chapter you can:
 - Compare managers on scalability, GPU-cluster fit, extensibility, support model and lock-in; choose and justify.
 
 ## 1. Common model
+
+```mermaid
+flowchart TB
+  subgraph xCAT["xCAT (Relational Tables + Objects)"]
+    X1["xcatd + Service Nodes<br/>tabdump / chdef / nodeset / rpower"]
+    X2["statelite: NFS root + litefile tmpfs"]
+    X1 --> X2
+  end
+  subgraph WW4["Warewulf 4 (GitOps + OCI)"]
+    W1["warewulfd + nodes.conf (YAML)<br/>wwctl configure / node / image"]
+    W2["Container Chroot + System/Runtime Overlays (.ww)"]
+    W1 --> W2
+  end
+  subgraph BCM["NVIDIA Base Command Manager"]
+    B1["Head Node CMDaemon + Provisioning Nodes<br/>cmsh / Base View / JSON-RPC"]
+    B2["/cm/images + Categories + Node Installer"]
+    B1 --> B2
+  end
+```
 
 All managers implement the same abstractions under different names:
 
@@ -71,7 +90,24 @@ In Chapters 26 and 28 of the SCL book, xCAT is installed on a Red Hat/CentOS man
 
 #### Database tables vs logical objects
 
-xCAT stores all state in relational tables (inspected with `tabdump`, listed with descriptions via `tabdump -d`, edited interactively in `$EDITOR` via `tabedit <table>`, replaced with `tabrestore`, or updated scripted-style with `chtab`). Because a single logical object (such as a `node` or `osimage`) spans many underlying tables, object-level commands (`lsdef`, `mkdef`, `chdef`, `rmdef`, or node-specific `nodech`) maintain cross-table consistency; you can also export and re-import an object stanza with `lsdef -z node01 > /tmp/n01.stanza` and `cat /tmp/n01.stanza | mkdef -z` `(untested here)`. Key tables highlighted in the book include:
+xCAT stores all state in relational tables: the list of all tables can be obtained with the `tabdump` command (if you add the `-d` parameter, `tabdump -d` outputs the same list with explanations in English), edited interactively in `$EDITOR` via `tabedit <table>`, replaced with `tabrestore`, or updated scripted-style with `chtab`. Because a single logical object spans many underlying tables, object-level commands (`lsdef`, `mkdef`, `chdef`, `rmdef`, or node-specific `nodech`) maintain cross-table consistency; you can also export and re-import an object stanza with `lsdef -z node01 > /tmp/n01.stanza` and `cat /tmp/n01.stanza | mkdef -z` `(untested here)`. In `SCL` Chapter 26, the primary logical object types are `site` (cluster(s)), `node`, `group` (group of nodes), `network` (subnetwork), `osdistro` (OS distribution), `osimage` (OS image), and `route` (routing description)—and besides these types, there are `auditlog`, `boottarget`, `eventlog`, `firmware`, `kit`, `kitcomponent`, `kitrepo`, `monitoring`, `notification`, `pdu`, `policy`, `rack`, `taskstate`, and `zone`. Inspecting a configured node object with `lsdef node1` displays its aggregated attributes across tables `(untested here)`:
+
+```text
+# (untested here) — SCL Chapter 26 lsdef node1 output
+Object name: node1
+    arch=x86_64
+    bmc=10.1.1.3
+    bmcpassword=admin
+    bmcusername=ADMIN
+    groups=all,compute
+    mac=00:10:30:30:40:03
+    mgt=ipmi
+    netboot=pxe
+    postbootscripts=otherpkgs
+    postscripts=syslog,remoteshell,syncfiles
+```
+
+Key tables highlighted in the book include:
 
 - `site` — cluster-wide settings (`domain`, `installdir` `/install`, `tftpdir` `/tftpboot`, `xcatconfdir` `/etc/xcat`, `master`, `nameservers`, `forwarders`, `timezone`, `ipmiretries`, `ipmitimeout`, `SNsyncfiledir`, `nodesyncfiledir`). For example: `chtab key=tftpdir site.value=/tftpboot` or `chdef -t site -o clustersite domain=mycluster` `(untested here)`.
 - `hosts` — hostname-to-IP mappings, supporting regular-expression rules so you do not have to enter each node's IP by hand.
@@ -106,7 +142,7 @@ In `tabedit policy` (`#priority,name,host,commands,noderange,parameters,time,rul
 "2","xadmin","*","nodels",,,,"allow",
 ```
 
-#### Step-by-step `statelite` provisioning workflow (Chapters 26 and 28)
+#### Loading and Controlling: Step-by-step `statelite` provisioning workflow (Chapters 26 and 28)
 
 xCAT supports three provisioning modes: **statefull** (installed to local disk, typical for service nodes), **stateless** (entire image unpacked in RAM), and **statelite** (root mounted read-only over NFS with specific writable files/directories mounted in RAM via `tmpfs` as listed in `litefile`, and optional persistent state in `statelite`). Combining the book's Chapter 26 and Chapter 28 recipes `(untested here)`:
 
@@ -250,7 +286,15 @@ Decision flow: buying DGX/HGX with NVIDIA support, or needing integrated monitor
 - Document the node replacement procedure (update MAC in inventory, reprovision, verify, resume).
 - Secure the management plane: network isolation, BMC credentials rotation, TLS, auditing, restricted access.
 
-## 8. Lab (untested)
+## 8. Lab (self-checking xCAT/Warewulf/BCM lab tested; VM cluster parts untested)
+
+First, run the self-checking Python lab (`code/part06/cluster_mgr_lab.py`) locally. It verifies xCAT's `hosts.ip` regular-expression rule (`|\D+(\d+)|10.0.0.(10+$1)|` mapping `node1 -> 10.0.0.11`, `node15 -> 10.0.0.25`, `node100 -> 10.0.0.110`), tests xCAT's `policy` table authorization engine in ascending numeric priority order (`priority 1` `root`, `priority 2` `xadmin nodels`, `priority 7` `xadmin rpower stat` on `h02-h05`), and checks the 15 `litefile` writable tmpfs paths, MAAS port `5240`, and BCM `180 s` provisioning retry / `16`-node free tier parameters:
+
+```bash
+python3 code/part06/cluster_mgr_lab.py
+```
+
+Next, on a VM testbed, work through these steps:
 
 1. Install Warewulf on a Rocky/Alma VM following the quickstart; import a Rocky image; add two VM nodes with MACs; boot them; use `wwctl node status`, `wwctl overlay blame`.
 2. Add a Slurm client and munge to the image (build your own image from a Dockerfile) and a template overlay that renders each node's `slurm.conf` fragment from tags in `nodes.conf`.
@@ -269,41 +313,174 @@ Decision flow: buying DGX/HGX with NVIDIA support, or needing integrated monitor
 - What does xCAT's current status mean for planning?
 - What does a cluster manager not do that Slurm and Kubernetes do?
 
-## 10. Checkpoint questions (25)
+## Exercises
 
-1. List the abstractions all managers share.
-2. What are xCAT's management, service and compute nodes?
-3. In xCAT, how do `tabdump`/`tabedit`/`chtab` differ from `lsdef`/`mkdef`/`chdef`, what IP address does `chtab node=compute hosts.ip='|\D+(\d+)|10.0.0.(10+$1)|'` assign to `node15`, and what is the `litefile` table for? (Answer: `tab*`/`chtab` edit individual database tables directly while `*def` commands manage logical objects spanning multiple tables; the regex rule strips `node` and adds `10` to `15` to assign `10.0.0.25`; `litefile` lists files and directories mounted as writable `tmpfs` in RAM on read-only NFS `statelite` nodes.)
-4. What is a noderange?
-5. What is the xCAT project's recommended successor and what is the current status statement?
-6. What files hold Warewulf's server and node configuration?
-7. What is a Warewulf profile? An overlay?
-8. How does `wwctl overlay blame` help?
-9. What does `wwctl configure --all` do?
-10. How does Warewulf choose the iPXE binary per architecture?
-11. Where are BCM software images kept?
-12. What is CMDaemon?
-13. What is a BCM category?
-14. What does `updateprovisioners` do?
-15. What is the node-installer phase?
-16. What do MAAS and Foreman each emphasise?
-17. What does Confluent aim to replace?
-18. Which managers include monitoring and health?
-19. How do licence models differ?
-20. What should be in version control regardless of manager?
-21. How do you test a new image safely?
-22. Why isolate the management network?
-23. How does service-node hierarchy scale provisioning?
-24. How do you decide between BCM and Warewulf?
-25. What happens to node identity on hardware replacement?
+1. **Evaluating xCAT `hosts.ip` Regex Rules and `policy` Table Authorization (`code/part06/cluster_mgr_lab.py`):** Run `python3 code/part06/cluster_mgr_lab.py`. Using `eval_xcat_hosts_ip_regex()` and `eval_xcat_policy()`, verify why `chtab node=compute hosts.ip='|\D+(\d+)|10.0.0.(10+$1)|'` assigns `10.0.0.25` to `node15`, and trace how xCAT's `policy` table allows `xadmin` to run `rpower stat` on `h02-h05` (priority `7`) while blocking `rpower off` on `h03` and `rpower stat` on `h09`.
+2. **Provisioning a 100-Node `statelite` Cluster in xCAT (`SCL` Chapters 26 & 28):** Write the complete 6-step xCAT command sequence to import `CentOS-7.6-x86_64-bin-DVD1.iso` (`copycds`), define `node[1-100]` (`mkdef`), build `centos7.6-x86_64-statelite-compute` (`genimage`, `litefile` with 15 writable tmpfs paths, `add_ssh`, `add_passwd`, `liteimg`), generate `/etc/hosts`, DHCP, and DNS (`makehosts`, `makedhcp`, `makenamed.conf`, `makedns`), and boot the nodes (`nodeset`, `rpower`).
+3. **Designing Warewulf 4 Images, Profiles, and `.ww` Overlays:** Write the `wwctl` commands to import an OCI container image (`wwctl image import`), register 4 nodes (`wwctl node add`), inspect file provenance (`wwctl overlay blame n1`), and regenerate services (`wwctl configure --all`). Explain the difference between **system overlays** (applied once at boot) and **runtime overlays** (applied periodically while the node is running).
+4. **Managing Software Images and Categories in NVIDIA Base Command Manager (`cmsh`):** Write the `cmsh` command sequence to clone the `default` category into `categorytwo`, bind it to a modified software image (`imagetwo` under `/cm/images/imagetwo`), move `node099` into `categorytwo`, and propagate the updated image to provisioning nodes (`updateprovisioners`).
+5. **Comparing Canonical MAAS (`New -> Commission -> Deploy`) and Foreman (`smart-proxies`, `SCL` Chapter 26):** Trace the 3-stage node lifecycle in Canonical MAAS (`http://<MAAS_IP>:5240/MAAS`, region controller vs rack controllers), state why `SCL` Chapter 26 warns against enabling automatic public OS repository updates on GPU/InfiniBand compute nodes, and explain how Foreman scales DHCP/TFTP/DNS via `smart-proxies`.
+6. **Cluster Manager Selection Matrix for Three Production Scenarios:** Select and justify the optimal cluster manager (NVIDIA BCM, Warewulf 4, Confluent, or MAAS) for: (a) a 512-node DGX H100 SuperPOD requiring turnkey DCGM health checks and vendor support, (b) a 256-node open-source academic cluster managed via GitOps and OCI Dockerfiles, and (c) an existing 1,000-node IBM/Lenovo xCAT estate planning its next-generation upgrade.
 
-## 11. Sources and review notes
+## Checkpoint
 
-- Book source (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`):
-  - Chapter `26. Cluster Management Systems – xCAT and Others` (read in full): xCAT installation, database tables (`site`, `hosts`, `mac`, `noderes`, `nodelist`, `nodetype`, `networks`, `passwd`, `policy`, `litefile`, `litetree`, `statelite`, `postscripts`), `tabdump`/`tabedit`/`tabrestore`/`chtab` vs `lsdef`/`mkdef`/`chdef`/`rmdef`/`nodech`, `setup-local-client.sh` and `policy` table authorization, regex IP rule `chtab node=compute hosts.ip='|\D+(\d+)|10.0.0.(10+$1)|'`, `litefile` entries and `liteimg`, `rpower` Table 26-1, `psh`/`pscp`, Canonical MAAS (`ppa:maas/3.2`, port `5240/MAAS`, `New` → `Commission` → `Deploy`, rack controllers), Foreman (`smart-proxies`), and NVIDIA Base Command Manager (`16` nodes / `16` GPUs free tier).
-  - Chapter `28. One-Two-Three Instructions` (read in full): xCAT 100-node `statelite` recipe (`copycds`, `mkdef`, `chtab`, `genimage`, `litefile`, `add_ssh`, `add_passwd`, `liteimg`, `makehosts`, `makedhcp`, `makenamed.conf`, `makedns`, `nodeset`, `rpower`).
-- xCAT architecture and commands: `xcat-core` README and docs tree (overview/architecture, admin guide manual pages) at commit `56a009b`; positioning text quoted/paraphrased from the README ("sunset ... changed course", Confluent recommendation).
+<details>
+<summary>1. Map the five core cluster-management abstractions (**Node record**, **Group/template**, **OS image**, **Per-node customization**, and **Remote shell**) across **xCAT**, **Warewulf 4**, and **NVIDIA BCM**.</summary>
+
+- **Node record:** `node` object (`mkdef`/`chdef`) in xCAT | node in `/etc/warewulf/nodes.conf` (`wwctl node`) in Warewulf 4 | `device` in CMDaemon DB (`cmsh`) in BCM.
+- **Group / template:** `nodegroup` in xCAT | `profile` in Warewulf 4 | `category` in BCM.
+- **OS image:** `osimage` (`genimage`/`packimage`/`liteimg`) in xCAT | container chroot (`/var/lib/warewulf/chroots/`) in Warewulf 4 | software image (`/cm/images/<name>`) in BCM.
+- **Per-node customization:** `postscripts` / `synclists` in xCAT | `.ww` `overlays` (system & runtime) in Warewulf 4 | node-installer & finalize scripts in BCM.
+- **Remote shell:** `xdsh` / `psh` in xCAT | `pdsh` in Warewulf 4 | `pdsh` / `cmsh` in BCM.
+</details>
+
+<details>
+<summary>2. What are the roles of the **Management node**, **Service nodes**, and **Compute nodes** in xCAT?</summary>
+
+- **Management node:** Runs `xcatd`, holds the central configuration database, and orchestrates the cluster.
+- **Service nodes:** Hierarchical relay servers deployed per rack or pod that offload DHCP, TFTP, HTTP, DNS, and image serving from the management node on multi-thousand-node clusters.
+- **Compute nodes:** Target worker nodes provisioned and controlled via IPMI/Redfish (`rpower`, `rcons`).
+</details>
+
+<details>
+<summary>3. In xCAT, what is the difference between table-level commands (`tabdump`, `tabedit`, `chtab`) and object-level commands (`lsdef`, `mkdef`, `chdef`, `rmdef`) (`SCL` Chapter 26)?</summary>
+
+- **Table-level commands (`tabdump`, `tabdump -d`, `tabedit`, `tabrestore`, `chtab`):** Read and write individual relational database tables directly (`site`, `hosts`, `mac`, `noderes`, `nodelist`, `nodetype`, `policy`, `litefile`).
+- **Object-level commands (`lsdef`, `mkdef`, `chdef`, `rmdef`, `nodech`):** Operate on logical objects (`node`, `group`, `osimage`, `network`, `site`, `policy`) that span multiple underlying tables, preserving cross-table consistency (and exporting/importing stanzas via `lsdef -z` / `mkdef -z`).
+</details>
+
+<details>
+<summary>4. What IP address does the xCAT regex rule `chtab node=compute hosts.ip='|\D+(\d+)|10.0.0.(10+$1)|'` assign to `node15`, and how does it work (`SCL` Chapters 26 & 28)?</summary>
+
+It assigns **`10.0.0.25`**. The regex `\D+(\d+)` strips the non-digit prefix (`node`) and captures the numeric suffix (`15`) as `$1`, and the replacement expression evaluates `10 + 15 = 25` for the fourth octet.
+</details>
+
+<details>
+<summary>5. How do you grant a non-root user (`xadmin`) permission to run specific xCAT commands on a subset of nodes (`SCL` Chapter 26)?</summary>
+
+1. Run `/opt/xcat/share/xcat/scripts/setup-local-client.sh xadmin` to generate TLS client certificates in `~xadmin/.xcat/`.
+2. Add an `allow` rule to the **`policy`** table (evaluated in ascending numeric `priority` order, first match wins):
+   `mkdef -t policy -o 7 name=xadmin commands=rpower parameters=stat noderange=h02-h05 rule=allow`.
+</details>
+
+<details>
+<summary>6. Compare xCAT's `statefull`, `stateless`, and `statelite` provisioning modes, and what is the role of the `litefile` table (`SCL` Chapter 26)?</summary>
+
+- **`statefull`:** Installs the OS permanently onto the node's local disk.
+- **`stateless`:** Downloads and unpacks the entire root image (`packimage`) into RAM (`tmpfs`) on every boot.
+- **`statelite`:** Mounts the root filesystem read-only over NFS (`liteimg`) while mounting specific writable paths (such as `/etc/resolv.conf`, `/etc/ssh/`, `/tmp/`, `/var/`, `/root/.ssh/`) in RAM as `tmpfs` according to the 15+ entries in the **`litefile`** table.
+</details>
+
+<details>
+<summary>7. What is the current upstream status of **xCAT**, and what is its recommended successor?</summary>
+
+While the xCAT Consortium (with VersatusHPC) reversed the earlier sunset and continues maintaining `xcat-core` (including Enterprise Linux 10 plans), the consortium recommends **Confluent** (`xcat2/confluent`, a modern Python-based provisioning system from the same community) for new deployments.
+</details>
+
+<details>
+<summary>8. Where does **Warewulf 4** store its server configuration, node inventory, container chroots, and overlays?</summary>
+
+- **Server config:** `/etc/warewulf/warewulf.conf`
+- **Node & profile database:** `/etc/warewulf/nodes.conf` (plain YAML, ideal for GitOps)
+- **Unpacked OS container chroots:** `/var/lib/warewulf/chroots/`
+- **Overlays:** `/usr/share/warewulf/overlays/` (distribution defaults) and `/var/lib/warewulf/overlays/` (site customizations)
+- **Built per-node overlay archives:** `/var/lib/warewulf/provision/`
+</details>
+
+<details>
+<summary>9. How do Warewulf 4 **system overlays** and **runtime overlays** work, and what does `wwctl overlay blame <node>` show?</summary>
+
+Overlays are directories of files and `.ww` Go templates (parameterized by per-node attributes from `nodes.conf`) layered on top of the base container image without modifying the image itself:
+- **System overlays:** Applied once during early boot (`initramfs`).
+- **Runtime overlays:** Fetched and applied periodically while the node is running (`wwclient`).
+`wwctl overlay blame <node>` lists every overlaid file on the node and identifies which specific overlay contributed it.
+</details>
+
+<details>
+<summary>10. What does `wwctl configure --all` do in Warewulf 4?</summary>
+
+It reads `/etc/warewulf/warewulf.conf` and `/etc/warewulf/nodes.conf` and automatically writes/updates the host's `/etc/hosts`, DHCP (`dhcpd.conf` / `dnsmasq`), TFTP (copying iPXE binaries for BIOS `00:00`, x64 EFI `00:07`/`00:09`, and ARM64 `00:0B`), NFS (`/etc/exports`), SSH keys, and TLS certificates.
+</details>
+
+<details>
+<summary>11. Describe the architecture of **NVIDIA Base Command Manager (BCM)** (`Head node`, `CMDaemon`, `/cm/images`, `Categories`, and `Provisioning nodes`).</summary>
+
+- **Head node & `CMDaemon`:** Central management server running `CMDaemon` (configured via `cmsh`, Base View web UI, or JSON-RPC) and storing master software images under **`/cm/images/<image>`**.
+- **Categories:** Node groupings that bind a **software image**, disk partitioning layout, network roles, and service configurations to member devices.
+- **Provisioning nodes:** Scale-out relay nodes that mirror software images from the head node (`updateprovisioners`) to provision large compute fleets.
+</details>
+
+<details>
+<summary>12. How do you safely test a modified OS image on a canary node in NVIDIA BCM using `cmsh`?</summary>
+
+Clone the existing software image (`default-image` $\to$ `imagetwo`), modify `/cm/images/imagetwo`, clone the category (`category; clone default categorytwo; set softwareimage imagetwo; commit`), and assign the canary node to the new category (`device; use node099; set category categorytwo; commit`) before rebooting `node099`.
+</details>
+
+<details>
+<summary>13. What happens during BCM's **node-installer** boot phase on diskless versus diskful compute nodes?</summary>
+
+When a BCM node boots over PXE/HTTP, it enters the **node-installer** environment, which identifies the device, configures hardware/disks, and synchronizes the category's software image:
+- **Diskless node:** Downloads and unpacks the software image directly into RAM (`tmpfs`).
+- **Diskful node:** Compares the local disk contents against the head node's software image via `rsync`-style delta sync, correcting any drifted files, runs finalize scripts (such as SELinux labeling), and pivots into the OS.
+</details>
+
+<details>
+<summary>14. What free license tier does `SCL` Chapter 26 note for NVIDIA Base Command Manager?</summary>
+
+BCM offers a free license tier for small clusters of up to **`16` nodes and `16` GPUs** (or fewer).
+</details>
+
+<details>
+<summary>15. How does **Canonical MAAS** structure its controllers, and what are the three lifecycle states when onboarding a bare-metal server (`SCL` Chapter 26)?</summary>
+
+MAAS separates a central **region controller** (`http://<MAAS_IP>:5240/MAAS`) from distributed **rack controllers** (which handle local DHCP, TFTP, HTTP images, and BMC power). Onboarding a server progresses through:
+1. **`New`:** Node MAC and BMC (`LAN_2_0` IPMI or Redfish) registered.
+2. **`Commission`:** Node PXE-boots an ephemeral image to inventory CPU, RAM, NICs, LLDP, and disks and run hardware tests.
+3. **`Deploy`:** Installs the target OS image onto the node.
+</details>
+
+<details>
+<summary>16. Why does `SCL` Chapter 26 warn against enabling automatic public repository updates on MAAS-deployed HPC/GPU compute nodes?</summary>
+
+Because an unattended `apt upgrade` or `dnf update` from a public repository can install a new Linux kernel version that breaks ABI compatibility with the installed NVIDIA GPU driver or Mellanox OFED InfiniBand stack (and introduces software drift between nodes).
+</details>
+
+<details>
+<summary>17. How does **Foreman** (with Katello) scale bare-metal provisioning across multiple network segments (`SCL` Chapter 26)?</summary>
+
+Because a single Foreman server does not scale horizontally by itself, Foreman deploys **`smart-proxies`** (`foreman-proxy`) on each subnet/rack to handle local DHCP, DNS, TFTP, Puppet/Ansible execution, and content caching (`Katello`/`Pulp`).
+</details>
+
+<details>
+<summary>18. Which of the six cluster managers (xCAT, Warewulf 4, Confluent, MAAS, Foreman, BCM) include built-in GPU/DCGM telemetry, health checks, and native Slurm/Kubernetes deployment?</summary>
+
+**NVIDIA Base Command Manager (BCM)** includes integrated DCGM GPU monitoring, automated health checks, and turnkey Slurm and Kubernetes cluster deployment out of the box. With **Warewulf 4**, **xCAT**, **Confluent**, **MAAS**, and **Foreman**, the operator layers Slurm, DCGM/Prometheus, and health checks on top via images, overlays, or Ansible/Puppet.
+</details>
+
+<details>
+<summary>19. Regardless of which cluster manager you use, why must you export and version-control your node inventory and image definitions in Git?</summary>
+
+A cluster manager's internal SQLite/MySQL/PostgreSQL database is runtime state, not a design audit trail. Keeping the canonical node inventory (MACs, IPs, rack/U locations, roles) and image build recipes (`Dockerfile`s, package lists, overlays) in Git allows deterministic disaster recovery, peer-reviewed changes, and migration between cluster managers.
+</details>
+
+<details>
+<summary>20. Walk through the standard operational procedure for replacing a failed bare-metal compute node (`gpu042`) under any cluster manager.</summary>
+
+1. Drain `gpu042` in Slurm (`scontrol update NodeName=gpu042 State=drain Reason="motherboard swap INC456"`).
+2. Physically swap the node/motherboard and record the new host NIC and BMC MAC addresses (or discover them via switch port LLDP / DHCP).
+3. Update `gpu042`'s MAC address in the version-controlled inventory and cluster manager (`chdef` / `wwctl node set` / `cmsh`).
+4. Boot `gpu042` over the network (`rpower gpu042 boot`) so it receives the exact same hostname, IP, and golden OS image.
+5. Run acceptance and health checks (`node_health.sh`, DCGM, IB link check) and resume in Slurm (`scontrol update NodeName=gpu042 State=resume`).
+</details>
+
+## Sources and review notes
+
+- Book source (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware`, `SCL`):
+  - Chapter 26 ("26. Cluster Management Systems – xCAT and Others", read in full): xCAT installation, logical object types (`site`, `node`, `group`, `network`, `osdistro`, `osimage`, `route`, `auditlog`, `boottarget`, `eventlog`, `firmware`, `kit`, `kitcomponent`, `kitrepo`, `monitoring`, `notification`, `pdu`, `policy`, `rack`, `taskstate`, `zone`), database tables (`site`, `hosts`, `mac`, `noderes`, `nodelist`, `nodetype`, `networks`, `passwd`, `policy`, `litefile`, `litetree`, `statelite`, `postscripts`), `tabdump`/`tabdump -d`/`tabedit`/`tabrestore`/`chtab` vs `lsdef`/`mkdef`/`chdef`/`rmdef`/`nodech`, `lsdef node1` output, `setup-local-client.sh` and `policy` table authorization, regex IP rule `chtab node=compute hosts.ip='|\D+(\d+)|10.0.0.(10+$1)|'`, `litefile` 15 entries and `liteimg`, `rpower` Table 26-1, `psh`/`pscp`, Canonical MAAS (`ppa:maas/3.2`, port `5240/MAAS`, `New` → `Commission` → `Deploy`, rack controllers), Foreman (`smart-proxies`), and NVIDIA Base Command Manager (`16` nodes / `16` GPUs free tier).
+  - Chapter 28 ("28. One-Two-Three Instructions", read in full): xCAT 100-node `statelite` recipe (`copycds`, `mkdef`, `chtab`, `genimage`, `litefile`, `add_ssh`, `add_passwd`, `liteimg`, `makehosts`, `makedhcp`, `makenamed.conf`, `makedns`, `nodeset`, `rpower`).
+- xCAT architecture and commands: `xcat-core` README and docs tree (overview/architecture, admin guide manual pages) at commit `56a009b`; positioning text paraphrased from the README ("sunset ... changed course", Confluent recommendation).
 - Warewulf: `warewulf/userdocs` (introduction, EL quickstart, quick reference, overlays) at commit `324c0bc`.
-- BCM: BCM 11 administrator and installation manuals in the corpus (software images, categories, provisioning, node installer); see Part 8.
-- Original: the comparison tables and decision flow.
-- Unverified: Confluent details, MAAS and Foreman feature descriptions, licences, scale claims, any command not shown in the cited docs (nothing was installed or run here).
+- BCM: `bcm11-admin`, `bcm11-install`, and `bcm11-containerization` manuals in the corpus (software images, categories, provisioning, `180` s retry, node installer); see Part 8.
+- Run here: `python3 code/part06/cluster_mgr_lab.py` (3 passed, 0 failed).
+- Explicitly labelled inferences: `eval_xcat_hosts_ip_regex` and `eval_xcat_policy` in `code/part06/cluster_mgr_lab.py` are deterministic Python models of xCAT's `hosts.ip` regex substitution and `policy` table priority evaluation from `SCL` Chapter 26.
+- Not verified on live hardware: Confluent CLI commands, MAAS and Foreman live deployments, and live `xcatd` / `warewulfd` / `CMDaemon` daemon execution (`untested here`).
