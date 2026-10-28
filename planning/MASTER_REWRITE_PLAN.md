@@ -298,8 +298,8 @@ Work in this exact book order:
 
 | Done | Book Chapter | Rel | Target Handbook Chapter(s) | Not Found % | Exact `book_passages.py` Command |
 |---|---|---|---|---|---|
-| [ ] | 1. Introduction | PARTLY | 6.1 | **86%** | `python3 tools/book_passages.py supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware "1. " 6.1` |
-| [ ] | 2. What Is “Super”? | YES | 6.1 | **70%** | `python3 tools/book_passages.py supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware "2. " 6.1` |
+| [x] | 1. Introduction | PARTLY | 6.1 | **60%** (copyright/book-notations only) | `python3 tools/book_passages.py supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware "1. " 6.1` |
+| [x] | 2. What Is “Super”? | YES | 6.1 | **12%** | `python3 tools/book_passages.py supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware "2. " 6.1` |
 | [ ] | 3. How to Build and Start It? | YES | 6.2 | **74%** | `python3 tools/book_passages.py supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware "3. " 6.2` |
 | [ ] | 4. Supercomputer Hardware | YES | 6.2, 2.12, 1.13, 1.17 | **44%** | `python3 tools/book_passages.py supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware "4. " 1.13 1.17 2.12 6.2` |
 | [ ] | 5. InfiniBand | YES | 12.2, 12.6, 12.9 | **5%** | `python3 tools/book_passages.py supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware "5. " 12.2 12.6 12.9` |
@@ -380,7 +380,7 @@ Work in this exact book order:
 | Done | Book Chapter | Rel | Target Handbook Chapter(s) | Not Found % | Exact `book_passages.py` Command |
 |---|---|---|---|---|---|
 | [DEFERRED] | Chapter 8 Software Engineering | PARTLY | deferred to Part 17: Cluster lifecycle, upgrades and change management | **-** | *(Deferred to deferred to Part 17: Cluster lifecycle, upgrades and change management)* |
-| [ ] | Chapter 9 Distributed Computing | PARTLY | 6.1, 1.27 | **100%** | `python3 tools/book_passages.py ai-factory "Chapter 9 " 1.27 6.1` |
+| [x] | Chapter 9 Distributed Computing | PARTLY | 6.1, 1.27 | **100%** (in-scope Cloud/Fog/Edge & IaaS/PaaS/SaaS/Storage covered; out-of-scope blockchain/cognitive/railway skipped in `06-01.md`) | `python3 tools/book_passages.py ai-factory "Chapter 9 " 1.27 6.1` |
 | [DEFERRED] | Chapter 11 AI Factory: A Roadmap for AI Transformation | PARTLY | deferred to Part 0: The AI factory landscape and the roles in it (0.1; | **100%** | *(Deferred to deferred to Part 0: The AI factory landscape and the roles in it (0.1;)* |
 
 ---
@@ -557,7 +557,7 @@ Use this table when working **Volume by Volume (Part 1 to Part 15), Chapter by C
 
 | Done | Ch | Title & File Path | Words | Mapped Gem Books & Vendor PDFs (`structure.txt`) | Mapped `nvidia-devops` Files | Pre-Computed Gaps & Required Actions |
 |---|---|---|---|---|---|---|
-| [ ] | **6.1** | What a supercomputer is: TOP500, Linpack, HPC versus AI factory<br/>`docs/part-06-hpc-slurm/01-what-a-supercomputer-is-top500-linpack-hpc-versus-ai-factory.md` | 4,253 | `SCL 1,2; AF 9` | — | add 20 `<details>` checkpoint questions (has 0); add `## Exercises`; add `## Sources and review notes`; create `planning/ledgers/6-01.md`; expand depth from mapped gembooks (4253w -> 6k–9k target) in human storytelling voice |
+| [x] | **6.1** | What a supercomputer is: TOP500, Linpack, HPC versus AI factory<br/>`docs/part-06-hpc-slurm/01-what-a-supercomputer-is-top500-linpack-hpc-versus-ai-factory.md` | 9,505 | `SCL 1,2; AF 9` | — | **DONE (2026-10-28):** `SCL 1,2` (`12%` missing) & `AF 9` integrated; `flops_lab.py` (3/3 pass); 20 `<details>` questions, 6 exercises, `planning/ledgers/6-01.md`; `validate_chapter.py` 12/12 PASS & 5/5 readability `ok` |
 | [ ] | **6.2** | Cluster anatomy: head, login, compute, storage and management nodes<br/>`docs/part-06-hpc-slurm/02-cluster-anatomy-head-login-compute-storage-and-management-nodes.md` | 4,719 | `SCL 3,4,6; SCL 17` | — | **RESTORE LOSS (`git:0f258b4`):** 0 of 6 terms, 1 of 54 nums, 0 src files (see `LOSS_REPORT_PARTS_6_TO_14.md`); remove raw `text` calculation dumps & restore inline backticks in storytelling prose; add 20 `<details>` checkpoint questions (has 0); add `## Exercises`; add `## Sources and review notes`; create `planning/ledgers/6-02.md`; expand depth from mapped gembooks (4719w -> 6k–9k target) in human storytelling voice |
 | [ ] | **6.3** | Parallel computing concepts: Amdahl, scaling, shared memory versus message passing<br/>`docs/part-06-hpc-slurm/03-parallel-computing-concepts-amdahl-scaling-shared-memory-versus-messag.md` | 4,392 | `SCL 21,22; PUB; PHPC` | — | add 20 `<details>` checkpoint questions (has 0); add `## Exercises`; add `## Sources and review notes`; add Mermaid diagram; create `planning/ledgers/6-03.md`; expand depth from mapped gembooks (4392w -> 6k–9k target) in human storytelling voice |
 | [ ] | **6.4** | MPI in practice: Open MPI, ranks, collectives and tuning<br/>`docs/part-06-hpc-slurm/04-mpi-in-practice-open-mpi-ranks-collectives-and-tuning.md` | 4,489 | `SCL 21,22; PHPC; VL10 ch7` | `volume-10/07-mpi-fundamentals-for-hpc-ai-workloads.md` **(UNMIGRATED/PARTIAL)** | add 20 `<details>` checkpoint questions (has 0); add `## Exercises`; add `## Sources and review notes`; add Mermaid diagram; create `planning/ledgers/6-04.md`; expand depth from mapped gembooks (4489w -> 6k–9k target) in human storytelling voice |

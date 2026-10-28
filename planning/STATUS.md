@@ -308,7 +308,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 5.31 | Operators in Go: controller-runtime and kubebuilder | drafted | 3743 |  |
 | 5.32 | Project: a GPU-node-health operator | drafted | 2662 |  |
 | 5.33 | Reading the GPU Operator and Network Operator source | drafted | 4360 |  |
-| 6.1 | What a supercomputer is: TOP500, Linpack, HPC versus AI factory | drafted | 4253 |  |
+| 6.1 | What a supercomputer is: TOP500, Linpack, HPC versus AI factory | drafted | 9505 | `flops_lab.py` (3/3 pass); `validate_chapter.py` 12/12 PASS |
 | 6.2 | Cluster anatomy: head, login, compute, storage and management nodes | drafted | 4719 |  |
 | 6.3 | Parallel computing concepts: Amdahl, scaling, shared memory versus message passing | drafted | 4392 |  |
 | 6.4 | MPI in practice: Open MPI, ranks, collectives and tuning | drafted | 4489 |  |
