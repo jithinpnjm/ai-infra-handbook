@@ -380,7 +380,7 @@ In mixed-precision (`bf16` or `fp16`) training with Adam/AdamW, each parameter $
 - **Model weights (`bf16`):** `2 bytes`
 - **Gradients (`bf16`):** `2 bytes` (or `4 bytes` if accumulated in `fp32`)
 - **Optimizer states (`fp32`):** `4 bytes` (`fp32` master weight copy) + `4 bytes` (first moment $m$, momentum) + `4 bytes` (second moment $v$, variance) = **`12 bytes`**
-Total static state = **`16 bytes per parameter`** (`18 bytes` with `fp32` gradients). For a **7-billion-parameter model**, static state alone is $7 \times 10^9 \times 16\text{ B} = \mathbf{112\text{ GB}}$—exceeding a single 80 GB H100/A100 before adding a single byte of forward activations.
+Total static state = **`16 bytes per parameter`** (`18 bytes` with `fp32` gradients). For a **7-billion-parameter model**, static state alone is `7 * 10^9 * 16 B = 112 GB`—exceeding a single 80 GB H100/A100 before adding a single byte of forward activations.
 </details>
 
 <details>

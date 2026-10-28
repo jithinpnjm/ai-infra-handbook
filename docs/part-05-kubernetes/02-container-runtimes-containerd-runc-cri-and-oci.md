@@ -382,7 +382,7 @@ When `kubelet` uses `systemd` (`kubepods.slice/...`) and `containerd` uses `cgro
 <summary>8. Compare `containerd` and `CRI-O` (`PK` Chapter 3).</summary>
 
 - **`containerd`:** Graduated CNCF project originally extracted from Docker; general-purpose container daemon with a plugin architecture supporting Kubernetes (via its built-in CRI plugin), Docker (`moby`), BuildKit, and standalone `nerdctl`/`ctr` workflows. Default in GKE, EKS, AKS, Cluster API, and upstream `kubeadm`.
-- **`CRI-O`:** Purpose-built solely to implement the Kubernetes CRI (`/var/run/crio/crio.sock`), sharing `containers/image` and `containers/storage` libraries with Podman/Buildah/Skopeo and using `conmon` as its per-container monitor. Default in Red Hat OpenShift, with CRI-O versions locked 1:1 to Kubernetes minor releases (`v1.30` <-> `v1.30`).
+- **`CRI-O`:** Purpose-built solely to implement the Kubernetes CRI (`/var/run/crio/crio.sock`), sharing `containers/image` and `containers/storage` libraries with Podman/Buildah/Skopeo and using `conmon` as its per-container monitor. Default in Red Hat OpenShift, with CRI-O versions locked 1:1 to Kubernetes minor releases (`v1.30 <-> v1.30`).
 </details>
 
 <details>

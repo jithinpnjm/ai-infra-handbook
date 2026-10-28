@@ -364,7 +364,7 @@ Therefore, `kubelet` and `systemd` place all hierarchy and QoS limits on interio
 
 In Cgroup v2 (`cpu.max = 200000 100000`), the CFS bandwidth controller grants **200 ms of total CPU execution time across all threads** in each **100 ms wall-clock period**.
 Suppose a Python/Go/Java server spawns **8 worker threads** that wake up simultaneously when a batch of requests arrives:
-- All 8 threads run in parallel across 8 physical cores for **25 ms of wall-clock time**, consuming $8 \times 25\text{ ms} = \mathbf{200\text{ ms}}$ of CPU quota.
+- All 8 threads run in parallel across 8 physical cores for **25 ms of wall-clock time**, consuming `8 * 25 ms = 200 ms` of CPU quota.
 - At `T = 25 ms`, the cgroup's quota for that 100 ms period is 0—so the kernel **throttles (freezes) all 8 threads for the remaining 75 ms** (`nr_throttled` and `throttled_usec` in `cpu.stat`) until the next 100 ms period refills the bucket.
 If no requests arrive in the next two periods, average CPU utilization looks low (~30%), yet p99 request latency spiked by 75+ ms.
 </details>
@@ -387,7 +387,7 @@ If no requests arrive in the next two periods, average CPU utilization looks low
 3. **Active file cache (`active_file`)** and **Inactive file cache (`inactive_file`):** Linux VFS page cache from files read/written by the container.
 4. **Kernel memory (`slab_reclaimable`, `slab_unreclaimable`, `pagetables`, `sock`):** Dentries, inodes, page tables, and socket buffers allocated on behalf of the container.
 Because **`inactive_file` page cache can be trivially discarded by the kernel under memory pressure**, `kubelet` defines:
-$$\text{working\_set} = \text{memory.current} - \text{inactive\_file}$$
+`working_set = memory.current - inactive_file`
 for eviction decisions (note that `/dev/shm` `tmpfs` and `mlock`ed pinned buffers are **not** discardable and count 100% toward both `working_set` and OOM).
 </details>
 

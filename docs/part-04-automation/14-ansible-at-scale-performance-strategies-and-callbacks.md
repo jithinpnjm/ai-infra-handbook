@@ -352,8 +352,8 @@ Next, on a control node with lightweight targets (all interactive shell steps be
 <summary>1. What is the wall-clock runtime formula for an Ansible play under the default `linear` strategy, and why do stragglers dominate runtime?</summary>
 
 Under `strategy: linear`, every host in the active batch must finish Task $i$ before any host starts Task $i+1$. For $H$ hosts and $F$ forks (`waves = ceil(H / F)`), total play time is approximately:
-$$T \approx \left\lceil\frac{H}{F}\right\rceil \times T_{\text{setup}} + \sum_{i} \left\lceil\frac{H}{F}\right\rceil \times \max_{h}(T_{\text{task } i, h})$$
-Because each wave waits for $\max_{h}(T_{\text{task } i, h})$, **a single slow straggler host (slow disk, DNS timeout, or high latency) stretches every task across the entire batch**.
+`T ≈ ceil(H / F) * T_setup + sum_i(ceil(H / F) * max_h(T_task_i,h))`
+Because each wave waits for `max_h(T_task_i,h)`, **a single slow straggler host (slow disk, DNS timeout, or high latency) stretches every task across the entire batch**.
 </details>
 
 <details>

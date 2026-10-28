@@ -351,8 +351,8 @@ Next, on a `kind` or cloud cluster (all interactive shell steps below are `untes
 <summary>1. State the core HPA replica formula (`PK` Chapter 13), and explain how HPA handles (a) the $\pm 10\%$ tolerance band and (b) multiple metrics defined on the same HPA.</summary>
 
 - **Core formula:**
-  $$\text{desiredReplicas} = \left\lceil \text{currentReplicas} \times \frac{\text{currentMetricValue}}{\text{targetMetricValue}} \right\rceil$$
-- **$\pm 10\%$ tolerance band (`--horizontal-pod-autoscaler-tolerance=0.1`):** If the ratio $\text{currentMetricValue} / \text{targetMetricValue}$ is between **`0.90` and `1.10`**, HPA makes **no change** to replica count, preventing constant 1-pod jitter on minor load fluctuations.
+  `desiredReplicas = ceil(currentReplicas * (currentMetricValue / targetMetricValue))`
+- **$\pm 10\%$ tolerance band (`--horizontal-pod-autoscaler-tolerance=0.1`):** If the ratio `currentMetricValue / targetMetricValue` is between **`0.90` and `1.10`**, HPA makes **no change** to replica count, preventing constant 1-pod jitter on minor load fluctuations.
 - **Multiple metrics:** HPA evaluates the formula independently for each metric in `spec.metrics[]` and selects the **maximum** proposed replica count across all metrics.
 </details>
 
@@ -361,7 +361,7 @@ Next, on a `kind` or cloud cluster (all interactive shell steps below are `untes
 
 For HPA `type: Resource` (`averageUtilization: 60`) to compute a percentage:
 1. **`metrics-server` (`metrics.k8s.io/v1beta1`) must be installed and healthy** in the cluster (verify with `kubectl top pods`).
-2. **Every container in the target Pod MUST declare `resources.requests.cpu`** (because HPA defines "utilization" as $\text{current CPU usage} / \text{requested CPU}$, *not* usage over node capacity or limits; if any container in the Pod omits `requests.cpu`, HPA cannot compute the denominator and reports `<unknown>` unless you use `ContainerResource` scoped to a specific container).
+2. **Every container in the target Pod MUST declare `resources.requests.cpu`** (because HPA defines "utilization" as `current CPU usage / requested CPU`, *not* usage over node capacity or limits; if any container in the Pod omits `requests.cpu`, HPA cannot compute the denominator and reports `<unknown>` unless you use `ContainerResource` scoped to a specific container).
 </details>
 
 <details>

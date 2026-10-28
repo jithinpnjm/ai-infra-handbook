@@ -440,7 +440,7 @@ Because the kernel checks `ESTABLISHED` **before** walking the policy chains (in
 </details>
 
 <details>
-<summary>7. How does Calico's `iptables` dataplane avoid an $O(\text{Pods})$ rule explosion inside `iptables` chains when enforcing label selectors?</summary>
+<summary>7. How does Calico's `iptables` dataplane avoid an `O(Pods)` rule explosion inside `iptables` chains when enforcing label selectors?</summary>
 
 Instead of writing a separate `iptables` rule for every Pod IP matching `app=gateway`, Calico's `Felix` agent creates a single Linux kernel **`ipset` hash table** per unique selector (`cali40s:<selector-hash>`) and writes **one fixed `iptables` rule** (`-m set --match-set cali40s:<hash> src -p tcp --dport 8000 -j MARK --set-xmark 0x10000/0x10000`). When Pods scale up or down, `Felix` simply adds or removes the Pod IP in the kernel `ipset` in $O(1)$ time without rewriting the `iptables` policy chain.
 </details>

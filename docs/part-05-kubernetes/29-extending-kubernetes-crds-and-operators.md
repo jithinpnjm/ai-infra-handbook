@@ -531,7 +531,7 @@ However, while the operator is down, **reconciliation is paused**: new `PyTorchJ
 <summary>17. When should you build an Operator in Go (`kubebuilder` / `controller-runtime`) vs. Python (`kopf`) vs. using `Crossplane` / `Kro` compositions?</summary>
 
 - **Go (`kubebuilder` / `controller-runtime`):** The production standard for cluster-wide infrastructure, hardware, and high-scale workload operators (like GPU Operator, Kueue, KubeRay, CAPI). Compiles to a single small binary, shares upstream `apimachinery`/`client-go` types natively, and handles thousands of objects with minimal RAM.
-- **Python (`kopf`):** Great for internal ML-platform glue controllers or prototypes maintained by Python-heavy ML teams with modest object counts (<500 CRs).
+- **Python (`kopf`):** Great for internal ML-platform glue controllers or prototypes maintained by Python-heavy ML teams with modest object counts (`< 500` CRs).
 - **`Crossplane` Compositions / `Kro` (Kube Resource Orchestrator):** Best when your "operator" only needs to **template and wire together a DAG of existing Kubernetes/cloud resources** from a simplified high-level CRD (`XPostgreSQLInstance` or `TeamEnv`) without custom imperative hardware or network control loops.
 </details>
 

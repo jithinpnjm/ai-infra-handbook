@@ -354,7 +354,7 @@ Setting **`maxEjectionPercent: 50`** guarantees that if a downstream database ou
 <details>
 <summary>13. Why does a sidecar-meshed `Deployment` in a 5,000-Pod cluster consume hundreds of gigabytes of Envoy RAM if you don't create an Istio `Sidecar` resource?</summary>
 
-By default, `istiod` pushes the Envoy cluster/listener/endpoint configuration (`xDS`) for **EVERY Service and Pod in the entire Kubernetes cluster** to **every single `istio-proxy` sidecar**. In a 5,000-Pod, 2,000-Service cluster, every sidecar holds a massive routing table in RAM (100–300 MiB per proxy $\times 5,000 = 500\text{–}1,500\text{ GiB}$ of cluster RAM) and every Pod churn event triggers a cluster-wide `xDS` push.
+By default, `istiod` pushes the Envoy cluster/listener/endpoint configuration (`xDS`) for **EVERY Service and Pod in the entire Kubernetes cluster** to **every single `istio-proxy` sidecar**. In a 5,000-Pod, 2,000-Service cluster, every sidecar holds a massive routing table in RAM (`100–300 MiB per proxy * 5,000 = 500–1,500 GiB` of cluster RAM) and every Pod churn event triggers a cluster-wide `xDS` push.
 Creating a default **`Sidecar`** resource in each namespace with:
 ```yaml
 spec:

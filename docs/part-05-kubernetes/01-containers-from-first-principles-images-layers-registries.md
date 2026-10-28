@@ -446,7 +446,7 @@ By default, Docker mounts `/dev/shm` (POSIX shared memory `tmpfs`) inside a cont
 <details>
 <summary>15. When 500 GPU nodes simultaneously pull a 25 GB container image at job start, what happens, and what five techniques prevent a \"Pull Storm\"?</summary>
 
-500 nodes $\times 25\text{ GB} = 12.5\text{ TB}$ of concurrent egress, which saturates the central registry's NICs/storage and stalls job startup for 30–60 minutes. Five mitigations:
+500 nodes pulling a 25 GB image simultaneously generates `500 * 25 GB = 12.5 TB` of concurrent egress, which saturates the central registry's NICs/storage and stalls job startup for 30–60 minutes. Five mitigations:
 1. **Local Pull-Through Registry Cache (`Harbor` proxy cache + containerd `hosts.toml` mirror)** inside the cluster fabric.
 2. **Peer-to-Peer (`P2P`) Image Distribution (`Spegel`, `Dragonfly`, `Kraken`):** Nodes fetch blocks from neighboring cluster nodes over the 100G/400G intra-cluster network instead of pulling 500 times from the registry.
 3. **Shared Base Layers:** Standardize all teams on the same pinned `nvcr.io/nvidia/pytorch:24.06-py3` base layer + `imagePullPolicy: IfNotPresent` so only the small 50 MB application layer is pulled per job.

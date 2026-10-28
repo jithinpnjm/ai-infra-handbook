@@ -526,7 +526,7 @@ The **Global Interpreter Lock (`GIL`)** is a mutex in CPython that allows only o
 <details>
 <summary>7. Why does `[pool.submit(fn, x) for x in ten_million_items]` cause an Out-Of-Memory crash, and how does `bounded_map` fix it?</summary>
 
-Calling `pool.submit(fn, x)` in a loop over 10 million items eagerly allocates 10 million `Future` objects, closure arguments, and internal work-queue entries in RAM before workers can drain them—consuming gigabytes of memory. `bounded_map` seeds the pool with at most `max_inflight` futures via **`islice(it, max_inflight)`**, waits for at least one future to finish via **`done, inflight = wait(inflight, return_when=FIRST_COMPLETED)`**, yields results from `done`, and submits only `len(done)` replacement items from `islice(it, len(done))`, bounding memory to **$O(\text{max\_inflight})$**.
+Calling `pool.submit(fn, x)` in a loop over 10 million items eagerly allocates 10 million `Future` objects, closure arguments, and internal work-queue entries in RAM before workers can drain them—consuming gigabytes of memory. `bounded_map` seeds the pool with at most `max_inflight` futures via **`islice(it, max_inflight)`**, waits for at least one future to finish via **`done, inflight = wait(inflight, return_when=FIRST_COMPLETED)`**, yields results from `done`, and submits only `len(done)` replacement items from `islice(it, len(done))`, bounding memory to **`O(max_inflight)`**.
 </details>
 
 <details>
@@ -589,7 +589,7 @@ Calling synchronous blocking functions (`time.sleep()`, `requests.get()`, `subpr
 <summary>16. How do you bound concurrency and memory in an `asyncio` service or fleet fan-out (`Semaphore` and bounded `asyncio.Queue` worker pool)?</summary>
 
 1. **For a known list of targets (`flags2_asyncio.py`):** Create `sem = asyncio.Semaphore(100)` and wrap each request in `async with sem: return await fetch(h)` so at most 100 sockets are open simultaneously.
-2. **For streaming/huge inputs (`run_pool`):** Create a bounded **`q = asyncio.Queue(maxsize=500)`** and spawn a fixed number of worker tasks (`concurrency=50`) looping `item = await q.get(); try: ... finally: q.task_done()`. When workers fall behind, `await q.put(item)` suspends the producer automatically (**backpressure**), keeping memory flat at $O(\text{queue\_size} + \text{concurrency})$.
+2. **For streaming/huge inputs (`run_pool`):** Create a bounded **`q = asyncio.Queue(maxsize=500)`** and spawn a fixed number of worker tasks (`concurrency=50`) looping `item = await q.get(); try: ... finally: q.task_done()`. When workers fall behind, `await q.put(item)` suspends the producer automatically (**backpressure**), keeping memory flat at `O(queue_size + concurrency)`.
 </details>
 
 <details>

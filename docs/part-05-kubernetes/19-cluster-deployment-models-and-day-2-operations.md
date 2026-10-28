@@ -315,10 +315,10 @@ With a bootstrap `validating` taint, an automated validation Job ( tolerating `v
 <summary>8. What is the difference between \"GPU Allocation Efficiency\" and \"GPU Utilization Efficiency\", and what does a large gap between them mean?</summary>
 
 - **GPU Allocation Efficiency:**
-  $$\frac{\sum \text{Pod GPU Requests}}{\sum \text{Node Allocatable GPUs}}$$
+  `sum(Pod GPU Requests) / sum(Node Allocatable GPUs)`
   Measures what fraction of the cluster's GPUs are *reserved* by scheduled Pods.
 - **GPU Utilization Efficiency:**
-  $$\frac{\text{Active GPU Compute Duty Cycle (`DCGM_FI_DEV_GPU_UTIL` / `SM_ACTIVE`)}}{\sum \text{Node Allocatable GPUs}}$$
+  `Active GPU Compute Duty Cycle (DCGM_FI_DEV_GPU_UTIL / SM_ACTIVE) / sum(Node Allocatable GPUs)`
   Measures what fraction of the cluster's GPUs are actually *executing CUDA kernels*.
 - **Diagnostic meaning of a large gap (e.g., 95% Allocated, 18% Utilized):** Developers are hoarding GPUs in idle interactive Jupyter notebooks, `sleep infinity` debug pods, CPU-bottlenecked data loaders, or hung NCCL jobs. Fix with automated idle-notebook culling, TTLs, and per-team utilization showback dashboards.
 </details>
@@ -378,9 +378,9 @@ By running **`clusterctl move`** to **pivot** the workload cluster's own CAPI co
 <details>
 <summary>15. What are the five most actionable user-facing SLOs (`Service Level Objectives`) for an internal GPU Kubernetes Platform?</summary>
 
-1. **Control-Plane API Availability & Latency:** e.g., $99.95\%$ of non-watch API calls succeed with p99 latency $< 1\text{s}$.
-2. **Good GPU Fleet Availability ("Goodput Readiness"):** Percentage of contracted GPUs in `Ready`, validated, un-quarantined state ($\ge 97\%$).
-3. **Admitted Job Startup Latency (SLI):** p95 time from Kueue `Admitted=True` to `ContainersReady=True` (excluding user code bugs) $< 90\text{s}$ (with cached images).
+1. **Control-Plane API Availability & Latency:** e.g., `99.95%` of non-watch API calls succeed with p99 latency `< 1s`.
+2. **Good GPU Fleet Availability ("Goodput Readiness"):** Percentage of contracted GPUs in `Ready`, validated, un-quarantined state (`>= 97%`).
+3. **Admitted Job Startup Latency (SLI):** p95 time from Kueue `Admitted=True` to `ContainersReady=True` (excluding user code bugs) `< 90s` (with cached images).
 4. **Inference Gateway Availability & TTFT/ITL Latency:** $99.9\%$ non-5xx responses and p95 Time-To-First-Token within target.
 5. **Checkpoint Storage Write Availability & Bandwidth:** $99.99\%$ successful checkpoint commits at target GB/s.
 </details>

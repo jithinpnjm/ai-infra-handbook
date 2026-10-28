@@ -277,7 +277,7 @@ _ = yaml.Unmarshal(b, &p2)
 
 In *Kubernetes Programming with Go* (`KPG`) Chapters 4 and 5 and *Network Programmability and Automation* (`NPA`) Chapter 7, Philippe Martin and Jason Edelman et al. detail the inner mechanics of `apimachinery` and Go type conventions:
 1. **`resource.Quantity` Binary (`Ki..Ei`) vs. Decimal (`n..E`) Suffixes and `intstr.IntOrString` (`KPG` Chapter 4):**
-   - `resource.Quantity` (`k8s.io/apimachinery/pkg/api/resource`) represents resource values with exact fixed-point arithmetic (avoiding IEEE-754 floating-point drift) using two exponent formats: **`BinarySI`** ($2^{10x}$: `Ki`, `Mi`, `Gi`, `Ti`, `Pi`, `Ei`, so `1Ki == 1024`) and **`DecimalSI`** ($10^{3x}$: `n`, `u`, `m`, `k`, `M`, `G`, `T`, `P`, `E`, so `1k == 1000` and `2500m == 2.5`).
+   - `resource.Quantity` (`k8s.io/apimachinery/pkg/api/resource`) represents resource values with exact fixed-point arithmetic (avoiding IEEE-754 floating-point drift) using two exponent formats: **`BinarySI`** (`2^(10x)`: `Ki`, `Mi`, `Gi`, `Ti`, `Pi`, `Ei`, so `1Ki == 1024`) and **`DecimalSI`** (`10^(3x)`: `n`, `u`, `m`, `k`, `M`, `G`, `T`, `P`, `E`, so `1k == 1000` and `2500m == 2.5`).
    - `intstr.IntOrString` (`k8s.io/apimachinery/pkg/util/intstr`, used in `ServicePort.TargetPort`, `RollingUpdateDeployment.MaxSurge`/`MaxUnavailable`, and `PodDisruptionBudget`) holds either an `IntVal` or a `StrVal` (`"25%"`), evaluated via **`intstr.GetScaledValueFromIntOrPercent(&intOrStr, totalReplicas, roundUp)`** (modeled in `code/part05/client_go_mechanics_sim.py`).
 2. **`runtime.Scheme`, `GVK <-> GVR` `RESTMapper`, and Serializers (`KPG` Chapter 5):**
    - **`runtime.Scheme`:** In-memory registry mapping Go `reflect.Type` structs $\leftrightarrow$ `schema.GroupVersionKind` (`GVK`, via `AddKnownTypes`, `ObjectKinds`, `New`), performing defaulting (`Default`) and version conversion (`Convert`).
@@ -684,8 +684,8 @@ All official Kubernetes API Go structs in `k8s.io/api` define **`json:"..."` str
 <summary>5. In *Kubernetes Programming with Go* Chapter 4, how does `resource.Quantity` avoid floating-point rounding bugs, and what is the difference between `100Mi` and `100M` or `500m`?</summary>
 
 `resource.Quantity` stores every quantity as an exact scaled integer (`inf.Dec` / `int64` mantissa + base-2 or base-10 exponent):
-- **BinarySI suffixes (`Ki`, `Mi`, `Gi`, `Ti`, `Pi`, `Ei` — powers of $2^{10} = 1024$):** `resource.MustParse("100Mi")` equals $100 \times 2^{20} = \mathbf{104,857,600}$ bytes.
-- **DecimalSI suffixes (`n`, `u`, `m`, `k`, `M`, `G`, `T`, `P`, `E` — powers of $10^3 = 1000$):** `100M` equals $100 \times 10^6 = \mathbf{100,000,000}$; `500m` (millicores) equals $0.5$ (`q.MilliValue() == 500`).
+- **BinarySI suffixes (`Ki`, `Mi`, `Gi`, `Ti`, `Pi`, `Ei` — powers of `2^10 = 1024`):** `resource.MustParse("100Mi")` equals `100 * 2^20 = 104,857,600` bytes.
+- **DecimalSI suffixes (`n`, `u`, `m`, `k`, `M`, `G`, `T`, `P`, `E` — powers of `10^3 = 1000`):** `100M` equals `100 * 10^6 = 100,000,000`; `500m` (millicores) equals `0.5` (`q.MilliValue() == 500`).
 Always compare two quantities using **`q1.Cmp(q2)`** (`-1`, `0`, `1`) or `q1.Equal(q2)`—never `q1 == q2` (because internal representations of `"1000m"` and `"1"` have different scale exponents even though they represent the same value).
 </details>
 

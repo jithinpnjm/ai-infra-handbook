@@ -409,7 +409,9 @@ Always run an **odd number** (3 or 5) of `etcd` members on dedicated low-latency
 <summary>7. In `KUR` Chapter 3, what is the difference between a Node's `Capacity` and `Allocatable` in `kubectl describe node`, and why does it matter?</summary>
 
 - **`Capacity`:** The total hardware resources detected on the machine (e.g., `64` CPU cores, `512Gi` RAM, `8` `nvidia.com/gpu`).
-- **`Allocatable`:** The resources `kube-scheduler` is allowed to hand out to Pods:\n  $$\text{Allocatable} = \text{Capacity} - \text{kube-reserved} - \text{system-reserved} - \text{eviction-threshold}$$\nIf you do not configure `kube-reserved` (for `kubelet`, `containerd`) and `system-reserved` (for `sshd`, `systemd`, kernel), Pods can consume 100% of host CPU and RAM, starving `kubelet` so it misses heartbeats and the node flips to `NotReady`. Note that GPUs (`nvidia.com/gpu`) are not consumed by host daemons, so GPU `Allocatable` equals GPU `Capacity` (8) whenever the NVIDIA device plugin is healthy.
+- **`Allocatable`:** The resources `kube-scheduler` is allowed to hand out to Pods:
+  `Allocatable = Capacity - kube-reserved - system-reserved - eviction-threshold`
+If you do not configure `kube-reserved` (for `kubelet`, `containerd`) and `system-reserved` (for `sshd`, `systemd`, kernel), Pods can consume 100% of host CPU and RAM, starving `kubelet` so it misses heartbeats and the node flips to `NotReady`. Note that GPUs (`nvidia.com/gpu`) are not consumed by host daemons, so GPU `Allocatable` equals GPU `Capacity` (8) whenever the NVIDIA device plugin is healthy.
 </details>
 
 <details>
@@ -446,7 +448,9 @@ Exposing `/status` as a separate REST subresource (`PUT /api/v1/namespaces/.../p
 </details>
 
 <details>
-<summary>12. How does Optimistic Concurrency Control (`metadata.resourceVersion` and HTTP `409 Conflict`) work in Kubernetes?</summary>\n\nEvery object stored in `etcd` carries a monotonically increasing **`metadata.resourceVersion`** (mapped to the `etcd` key's `mod_revision`). When a client or controller reads an object (`resourceVersion: "5012"`), modifies it, and sends a `PUT` update, `kube-apiserver` checks whether the object in `etcd` still has `resourceVersion == "5012"`. If another actor modified the object in the meantime (`"5013"`), `kube-apiserver` rejects the stale write with **HTTP `409 Conflict`**, prompting the controller to re-read the latest version from its informer cache, re-apply its change, and retry.
+<summary>12. How does Optimistic Concurrency Control (`metadata.resourceVersion` and HTTP `409 Conflict`) work in Kubernetes?</summary>
+
+Every object stored in `etcd` carries a monotonically increasing **`metadata.resourceVersion`** (mapped to the `etcd` key's `mod_revision`). When a client or controller reads an object (`resourceVersion: "5012"`), modifies it, and sends a `PUT` update, `kube-apiserver` checks whether the object in `etcd` still has `resourceVersion == "5012"`. If another actor modified the object in the meantime (`"5013"`), `kube-apiserver` rejects the stale write with **HTTP `409 Conflict`**, prompting the controller to re-read the latest version from its informer cache, re-apply its change, and retry.
 </details>
 
 <details>

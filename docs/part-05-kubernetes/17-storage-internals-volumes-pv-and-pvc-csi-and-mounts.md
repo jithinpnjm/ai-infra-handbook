@@ -401,7 +401,7 @@ automatically creates and bind-mounts an isolated `/ckpt/runs/142/rank-0`, `rank
 <details>
 <summary>16. Compare the four best ways to distribute a 140 GB LLM model weight directory to 16 `vLLM` inference Pods scaling up simultaneously.</summary>
 
-If 16 Pods simultaneously read 140 GB over the network ($16 \times 140\text{ GB} = 2.24\text{ TB}$), a standard 2 GB/s NAS or cloud bucket gateway will take **18+ minutes** to start the pods. Four scalable patterns:
+If 16 Pods simultaneously read 140 GB over the network (`16 * 140 GB = 2.24 TB`), a standard 2 GB/s NAS or cloud bucket gateway will take **18+ minutes** to start the pods. Four scalable patterns:
 1. **High-bandwidth parallel filesystem (`Lustre` / `WEKA` / `VAST` `RWX`/`ROX` PVC):** Delivers 50–200 GB/s aggregate read throughput across nodes.
 2. **Pre-populated Node-Local NVMe Cache (via a DaemonSet or `Fluid`/`Alluxio`/`JuiceFS`):** A DaemonSet syncs popular model weights onto each GPU node's local RAID-0 NVMe array once; inference Pods mount the local NVMe read-only at **20–40 GB/s** (`140 GB / 25 GB/s = 5.6 seconds`).
 3. **Kubernetes `image` Volume (OCI Model Artifact) + P2P Registry (`Spegel` / `Dragonfly`):** Package weights as an OCI artifact mounted via `volumes[].image`; nodes share blocks peer-to-peer over the 100G/400G cluster network and cache layers in `containerd`.
@@ -412,7 +412,7 @@ If 16 Pods simultaneously read 140 GB over the network ($16 \times 140\text{ GB}
 <summary>17. How do Asynchronous Two-Tier Checkpointing (`Local NVMe` -> `Durable Parallel FS / Object Store`) and Sharded Checkpointing (`torch.distributed.checkpoint`) minimize GPU training stall time?</summary>
 
 Suppose a 512-GPU training job saves a **1 TB (`1,000 GB`) distributed state checkpoint** every 30 minutes:
-- **Synchronous write to a 2 GB/s network volume:** Stalls all 512 GPUs for **$1000 / 2 = 500\text{ seconds}$ (8.3 minutes)** on every checkpoint.
+- **Synchronous write to a 2 GB/s network volume:** Stalls all 512 GPUs for **`1000 / 2 = 500 seconds` (8.3 minutes)** on every checkpoint.
 - **Two-tier async + sharded checkpointing:**
   1. Each of the 64 nodes writes its own **15.6 GB shard** (`torch.distributed.checkpoint` / Megatron `dist_ckpt`) directly to its **local NVMe `emptyDir` / Local PV** at ~15 GB/s per node (**~1 second GPU stall**).
   2. Training resumes immediately on the GPUs while a background process/thread asynchronously flushes the checkpoint shards from local NVMe to the durable `RWX` parallel filesystem or S3/GCS bucket and performs an atomic manifest commit once all 64 shards succeed.

@@ -484,7 +484,7 @@ Suppose you have four 8-GPU nodes (`32` GPUs total) and users submit eight 1-GPU
 
 1. **`required` `podAntiAffinity` (`topologyKey: kubernetes.io/hostname`) hard-caps replica count at the number of nodes:** If you have 8 GPU nodes and scale a `Deployment` from 8 to 10 replicas during a traffic spike (or during a `maxSurge: 1` rolling update), replicas 9 and 10 stay permanently `Pending`.
 2. **`topologySpreadConstraints` (`maxSkew: 1`):** Evenly balances replicas across domains (`1` per node across 8 nodes -> then `2` per node as you scale to 16 replicas) without deadlocking when `replicas > domains`, and supports `matchLabelKeys: [pod-template-hash]` so rolling updates spread the new ReplicaSet revision independently of the old revision.
-3. **Performance:** Cluster-wide `required` `podAntiAffinity` is one of the slowest plugins in `kube-scheduler` ($O(\text{Pods} \times \text{Nodes})$).
+3. **Performance:** Cluster-wide `required` `podAntiAffinity` is one of the slowest plugins in `kube-scheduler` (`O(Pods * Nodes)`).
 </details>
 
 <details>

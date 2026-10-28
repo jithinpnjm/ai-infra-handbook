@@ -317,7 +317,7 @@ Next, on three `kind` clusters (`mgmt`, `dev`, `prod`; all interactive steps bel
 <details>
 <summary>1. What is the practical heuristic for deciding when to split an AI platform into multiple Kubernetes clusters, and why does a single synchronous `NCCL` training job almost always run inside one cluster?</summary>
 
-- **Heuristic:** Start with **one cluster per environment (`dev`/`staging`/`prod`) per region per tightly-coupled hardware fabric domain**, and split further only for a concrete requirement (capacity spread across multiple clouds/regions, blast-radius containment, strict compliance/regulatory isolation, or control-plane scale limits $> 2,000\text{–}5,000$ nodes).
+- **Heuristic:** Start with **one cluster per environment (`dev`/`staging`/`prod`) per region per tightly-coupled hardware fabric domain**, and split further only for a concrete requirement (capacity spread across multiple clouds/regions, blast-radius containment, strict compliance/regulatory isolation, or control-plane scale limits `> 2,000–5,000` nodes).
 - **Why one `NCCL` training job stays inside one cluster:** Synchronous `AllReduce` / `AllGather` collectives require **100–800 Gb/s per GPU of non-blocking, microsecond-latency RDMA (InfiniBand or RoCEv2)** within a single rail-optimized leaf-spine fabric. Stretching a single synchronous training job across WAN/VPC links between two separate clusters bottlenecks every step on the slowest cross-cluster link. Instead, use multicluster queueing (**`MultiKueue`**) to place *each whole training job* into a cluster that has a contiguous fabric big enough to run it.
 </details>
 
@@ -334,7 +334,7 @@ Next, on three `kind` clusters (`mgmt`, `dev`, `prod`; all interactive steps bel
 <summary>3. In `KUR` Chapter 21, what is the "Replicated Silo" multicluster pattern, and why can it cause severe GPU overprovisioning in low-traffic regions?</summary>
 
 In the **Replicated Silo** pattern, every regional cluster runs a complete, self-contained copy of the application stack with zero cross-cluster dependencies.
-However, every production service requires a **minimum replica floor for High Availability** (e.g., at least **3 replicas** across zones in each cluster so a node failure or rolling update does not cause downtime). If you deploy a 70B LLM inference service (requiring 4 H100 GPUs per replica $\times 3\text{ HA replicas} = 12\text{ H100 GPUs per cluster}$) into **8 regional clusters**, you must run at least $8 \times 3 = \mathbf{24\text{ replicas}}$ (`96` H100 GPUs)—even if 5 of those smaller regions have so little traffic that 10 replicas globally would have handled the entire load.
+However, every production service requires a **minimum replica floor for High Availability** (e.g., at least **3 replicas** across zones in each cluster so a node failure or rolling update does not cause downtime). If you deploy a 70B LLM inference service (requiring `4 H100 GPUs per replica * 3 HA replicas = 12 H100 GPUs per cluster`) into **8 regional clusters**, you must run at least `8 * 3 = 24 replicas` (`96` H100 GPUs)—even if 5 of those smaller regions have so little traffic that 10 replicas globally would have handled the entire load.
 </details>
 
 <details>

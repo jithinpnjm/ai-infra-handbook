@@ -466,7 +466,7 @@ Next, on a `kind` or GPU cluster (all interactive shell steps below are `unteste
 
 ## Exercises
 
-1. **Pod Design (`KUR` Ch. 5), Init Containers vs. Native Sidecars, and Effective Scheduling Requests:** Using `compute_pod_qos_and_effective_requests()` in `code/part05/pod_qos_workload_validator.py`, explain `KUR` Chapter 5's rule for deciding what belongs in a single Pod vs separate Pods, how ` kube-scheduler` calculates a Pod's effective resource request across `initContainers` and `containers` ($\max(\max(\text{init}), \sum(\text{app}))$), and how native sidecars (`initContainers` with `restartPolicy: Always`) solve the Job-completion hang caused by traditional sidecar containers.
+1. **Pod Design (`KUR` Ch. 5), Init Containers vs. Native Sidecars, and Effective Scheduling Requests:** Using `compute_pod_qos_and_effective_requests()` in `code/part05/pod_qos_workload_validator.py`, explain `KUR` Chapter 5's rule for deciding what belongs in a single Pod vs separate Pods, how `kube-scheduler` calculates a Pod's effective resource request across `initContainers` and `containers` (`max(max(init), sum(app))`), and how native sidecars (`initContainers` with `restartPolicy: Always`) solve the Job-completion hang caused by traditional sidecar containers.
 2. **Labels, Annotations, and Selector Queries (`KUR` Chapter 6):** Using `validate_k8s_label()` in `code/part05/pod_qos_workload_validator.py`, state the exact character and length rules for Kubernetes label keys (optional `253`-char DNS subdomain prefix + `/` + `63`-char name) and values (`63` chars), contrast labels with annotations (`deployment.kubernetes.io/revision`, `kubernetes.io/change-cause`), and write `kubectl get pods` selector queries using both equality (`=`, `!=`) and set-based (`in`, `notin`, `!canary`) operators.
 3. **Resource Requests, Limits, Extended Resources (`nvidia.com/gpu`), QoS Classes, and `/dev/shm` Accounting:** Using `compute_pod_qos_and_effective_requests()`, compare `Guaranteed` (`oom_score_adj: -997`), `Burstable`, and `BestEffort` (`oom_score_adj: 1000`) QoS classes, explain why many AI platform teams set `requests.memory == limits.memory` while omitting `limits.cpu` (or using static CPU Manager with `Guaranteed` QoS), and explain how `emptyDir: { medium: Memory, sizeLimit: 64Gi }` at `/dev/shm` is charged against the container's memory cgroup limit.
 4. **Pod Termination Sequence, the `EndpointSlice` vs. `SIGTERM` Race, and Probes for Slow-Starting 140 GB LLM Servers (`PK` Chapter 14):** Trace the parallel timeline when `kubectl delete pod` is called (`deletionTimestamp` -> `EndpointSlice` removal racing with `preStop` -> `SIGTERM` -> `terminationGracePeriodSeconds` -> `SIGKILL`), and design the `startupProbe`, `readinessProbe`, `livenessProbe`, and `preStop` configuration for a `vllm-llama` server that takes 12 minutes to load model weights and capture CUDA graphs.
@@ -503,7 +503,7 @@ Case matters in Kubernetes resource quantities:
 <summary>4. How does `kube-scheduler` calculate a Pod's effective resource request when the Pod has both `initContainers` and regular `containers`?</summary>
 
 Because `initContainers` run **sequentially one at a time** before `containers` start (unless they are native sidecars), `kube-scheduler` takes the **highest request among all `initContainers`** for each resource type (`cpu`, `memory`, `nvidia.com/gpu`) and compares it against the **sum of requests across all regular `containers`** (plus any active native sidecars):
-$$\text{EffectivePodRequest}(R) = \max\left(\max_{i \in \text{init}} \text{req}_i(R),\; \sum_{c \in \text{app}} \text{req}_c(R)\right)$$
+`EffectivePodRequest(R) = max(max_{i in init} req_i(R), sum_{c in app} req_c(R))`
 </details>
 
 <details>
@@ -525,7 +525,7 @@ QoS class is computed automatically by `kube-apiserver` from container `resource
 <details>
 <summary>7. Why does mounting `/dev/shm` via `emptyDir: { medium: Memory, sizeLimit: 64Gi }` affect container `OOMKilled` behavior?</summary>
 
-In Kubernetes, files written to a `tmpfs` volume (`emptyDir` with `medium: Memory`) reside in host RAM and **every page in that `tmpfs` is charged directly against the writing container's memory cgroup (`memory.current`)**. If your container has `limits.memory: 80Gi`, your Python training process uses 50 GiB of heap/pinned RAM, and PyTorch DataLoader workers + NCCL buffers write 35 GiB into `/dev/shm`, total cgroup memory hits $50 + 35 = 85\text{ GiB} > 80\text{ GiB}$—triggering an immediate kernel **`OOMKilled` (exit code 137)**. Always set `limits.memory` to cover **process RSS + pinned host memory + `/dev/shm` `sizeLimit` + page cache**.
+In Kubernetes, files written to a `tmpfs` volume (`emptyDir` with `medium: Memory`) reside in host RAM and **every page in that `tmpfs` is charged directly against the writing container's memory cgroup (`memory.current`)**. If your container has `limits.memory: 80Gi`, your Python training process uses 50 GiB of heap/pinned RAM, and PyTorch DataLoader workers + NCCL buffers write 35 GiB into `/dev/shm`, total cgroup memory hits `50 + 35 = 85 GiB > 80 GiB`—triggering an immediate kernel **`OOMKilled` (exit code 137)**. Always set `limits.memory` to cover **process RSS + pinned host memory + `/dev/shm` `sizeLimit` + page cache**.
 </details>
 
 <details>
@@ -555,7 +555,7 @@ If the container has no `preStop` delay and closes its listening socket the mill
 <details>
 <summary>11. Why does a GPU `Deployment` with `rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }` hang indefinitely when all GPUs in the node pool are already in use?</summary>
 
-`maxUnavailable: 0` forbids terminating any existing Pod until a new replacement Pod is `Ready`, while `maxSurge: 1` tries to schedule 1 extra Pod first. If your node pool has 12 GPUs and 3 replicas $\times 4\text{ GPUs} = 12\text{ GPUs}$ are already allocated, the 4th surge Pod stays permanently **`Pending` (`0/N nodes are available: Insufficient nvidia.com/gpu`)**. On fixed-capacity GPU pools without spare surge GPUs, set **`maxSurge: 0, maxUnavailable: 1`** (so 1 old replica terminates first to free 4 GPUs for the new replica).
+`maxUnavailable: 0` forbids terminating any existing Pod until a new replacement Pod is `Ready`, while `maxSurge: 1` tries to schedule 1 extra Pod first. If your node pool has 12 GPUs and `3 replicas * 4 GPUs = 12 GPUs` are already allocated, the 4th surge Pod stays permanently **`Pending` (`0/N nodes are available: Insufficient nvidia.com/gpu`)**. On fixed-capacity GPU pools without spare surge GPUs, set **`maxSurge: 0, maxUnavailable: 1`** (so 1 old replica terminates first to free 4 GPUs for the new replica).
 </details>
 
 <details>

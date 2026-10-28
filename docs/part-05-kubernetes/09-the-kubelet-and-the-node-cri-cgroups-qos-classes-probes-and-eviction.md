@@ -429,7 +429,7 @@ Every device plugin (`nvidia-device-plugin`, SR-IOV/RDMA plugin) registers with 
 <summary>9. How does `kubelet` compute `memory.available` for Node-Pressure Eviction, and why is it different from `free` in `/proc/meminfo`?</summary>
 
 Linux aggressively uses free RAM for filesystem **page cache** (`Buffers`/`Cached` in `/proc/meminfo`), so raw `MemFree` is almost always near zero on a busy node even when plenty of memory is reclaimable. Instead, `kubelet` reads cgroup memory stats (`memory.stat`) and computes:
-$$\text{memory.available} = \text{NodeCapacity} - \text{working\_set}$$
+`memory.available = NodeCapacity - working_set`
 where **`working_set = total_usage - total_inactive_file`** (i.e., anonymous/heap memory + pinned memory + `/dev/shm` tmpfs + active file cache, excluding easily reclaimable `inactive_file` page cache).
 </details>
 

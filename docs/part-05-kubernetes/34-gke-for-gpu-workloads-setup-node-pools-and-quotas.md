@@ -220,7 +220,7 @@ gcloud container node-pools create mig-pool --cluster "$CLUSTER" --zone "$ZONE" 
 With time-sharing, a Pod's `nvidia.com/gpu: 1` limit consumes one *slice*; nothing stops a slice holder from using all GPU memory. Never use it for tenants you do not trust. Compare with NVIDIA-side options (time-slicing and MPS in the device plugin, MIG manager) in Part 11.
 
 In *Generative AI on Kubernetes* (`GAK`) Chapter 3 (*Kubernetes and GPUs*), Roland Huss et al. highlight four nuances of GPU discovery labels, MIG strategies, time-slicing, and **Dynamic Resource Allocation (`DRA`)**:
-1. **Decimal `GB` vs. Binary `GiB` and GPU Feature Discovery (`GFD`) Labels (`GAK` Chapter 3):** GPU vendors advertise HBM capacity in decimal gigabytes (`40 GB` $\approx 37.25\text{ GiB}$, `80 GB` $\approx 74.5\text{ GiB}$). GFD exports rich node labels for fine-grained `nodeAffinity` placement: `nvidia.com/gpu.product` (`A100-SXM4-40GB`, or with a `-SHARED` suffix in time-slicing mode), `nvidia.com/gpu.memory` (in MiB, e.g., `40536` or `81920`—enabling `Gt: "40000"` nodeAffinity expressions to select 80 GB GPUs), `nvidia.com/gpu.compute.major` (`8` for Ampere, `9` for Hopper), `nvidia.com/gpu.machine` (`dgx-a100`), and `nvidia.com/mig.capable` (`true`).
+1. **Decimal `GB` vs. Binary `GiB` and GPU Feature Discovery (`GFD`) Labels (`GAK` Chapter 3):** GPU vendors advertise HBM capacity in decimal gigabytes (`40 GB` $\approx$ `37.25 GiB`, `80 GB` $\approx$ `74.5 GiB`). GFD exports rich node labels for fine-grained `nodeAffinity` placement: `nvidia.com/gpu.product` (`A100-SXM4-40GB`, or with a `-SHARED` suffix in time-slicing mode), `nvidia.com/gpu.memory` (in MiB, e.g., `40536` or `81920`—enabling `Gt: "40000"` nodeAffinity expressions to select 80 GB GPUs), `nvidia.com/gpu.compute.major` (`8` for Ampere, `9` for Hopper), `nvidia.com/gpu.machine` (`dgx-a100`), and `nvidia.com/mig.capable` (`true`).
 2. **MIG `single` vs. `mixed` Strategy (`GAK` Chapter 3):**
    - **`nvidia.com/mig.strategy=single`:** Every GPU on the node is partitioned identically (for example, 2 A100 GPUs each split into seven `1g.5gb` slices $\rightarrow$ the node advertises **`nvidia.com/gpu: 14`**).
    - **`nvidia.com/mig.strategy=mixed`:** Different MIG slice sizes coexist on the same node and are advertised under distinct extended resource names: **`nvidia.com/mig-1g.5gb`**, **`nvidia.com/mig-2g.10gb`**, and **`nvidia.com/mig-3g.20gb`**.
@@ -448,10 +448,10 @@ On an 8-GPU HGX/A2/A3 node, all 8 GPUs are connected inside a high-speed intra-n
 </details>
 
 <details>
-<summary>13. In *Generative AI on Kubernetes* Chapter 3, why is there a difference between an advertised `80 GB` GPU and ~`74.5 GiB` in Kubernetes, and how do you select GPUs with $> 40\text{ GB}$ of VRAM using GFD labels?</summary>
+<summary>13. In *Generative AI on Kubernetes* Chapter 3, why is there a difference between an advertised `80 GB` GPU and ~`74.5 GiB` in Kubernetes, and how do you select GPUs with `> 40 GB` of VRAM using GFD labels?</summary>
 
-- **Decimal `GB` vs. Binary `GiB`:** Hardware vendors market GPU HBM in base-10 gigabytes ($80 \times 10^9\text{ bytes} = 80\text{ GB}$), whereas Kubernetes memory quantities (`Gi`) use base-2 gibibytes ($80 \times 10^9 / 2^{30} \approx \mathbf{74.5\text{ GiB}}$, and $40\text{ GB} \approx \mathbf{37.25\text{ GiB}}$).
-- **Selecting GPUs by VRAM via GFD labels (`GAK` Chapter 3 `Example 3-4`):** GPU Feature Discovery (`GFD`) labels each node with `nvidia.com/gpu.memory` in MiB (e.g., `40536` or `81920`). You can require $> 40\text{ GB}$ VRAM using a `nodeAffinity` `matchExpressions` rule:
+- **Decimal `GB` vs. Binary `GiB`:** Hardware vendors market GPU HBM in base-10 gigabytes (`80 * 10^9 bytes = 80 GB`), whereas Kubernetes memory quantities (`Gi`) use base-2 gibibytes (`80 * 10^9 / 2^30 ≈ 74.5 GiB`, and `40 GB ≈ 37.25 GiB`).
+- **Selecting GPUs by VRAM via GFD labels (`GAK` Chapter 3 `Example 3-4`):** GPU Feature Discovery (`GFD`) labels each node with `nvidia.com/gpu.memory` in MiB (e.g., `40536` or `81920`). You can require `> 40 GB` VRAM using a `nodeAffinity` `matchExpressions` rule:
   ```yaml
   key: nvidia.com/gpu.memory
   operator: Gt

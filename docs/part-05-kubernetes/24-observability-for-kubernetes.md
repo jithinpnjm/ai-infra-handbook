@@ -506,7 +506,7 @@ When you view a `p99` latency spike on a Grafana panel (with Exemplars enabled),
 <details>
 <summary>18. What causes a "Prometheus Cardinality Explosion", how do you identify the culprit metric and label, and how do you fix it immediately without restarting applications?</summary>
 
-- **Cause:** Cardinality is the **product** of unique values across all labels on a metric. Adding a single unbounded label like `user_id` (50,000 users) or `path="/v1/items/98231"` (un-normalized URL path) to a 20-bucket histogram on 50 pods multiplies $50 \times 20 \times 50,000 = \mathbf{50,000,000}$ time series, causing Prometheus to OOM-kill.
+- **Cause:** Cardinality is the **product** of unique values across all labels on a metric. Adding a single unbounded label like `user_id` (50,000 users) or `path="/v1/items/98231"` (un-normalized URL path) to a 20-bucket histogram on 50 pods multiplies `50 * 20 * 50,000 = 50,000,000` time series, causing Prometheus to OOM-kill.
 - **Identify the culprit:** Check the Prometheus **TSDB Status** page (`/tsdb-status`) or query:
   `topk(10, count by (__name__)({__name__=~".+"}))`
 - **Immediate mitigation without redeploying the app:** Add a `metricRelabelings` rule on the `ServiceMonitor`/`PodMonitor` with **`action: labeldrop` (`regex: "user_id"`)** or `action: drop` on the offending series, and set `sampleLimit: 10000` on `ServiceMonitor`s so a single rogue target fails its scrape instead of crashing the whole Prometheus server.

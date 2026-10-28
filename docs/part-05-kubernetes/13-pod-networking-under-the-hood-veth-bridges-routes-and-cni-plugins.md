@@ -105,7 +105,7 @@ flowchart TB
 
 As James Strong and Vallery Lancey show in *Networking and Kubernetes* Chapter 6 (*Kubernetes and Cloud Networking*) and Josh Rosso et al. explain in *Production Kubernetes* Chapter 5 (*Pod Networking*), subnet sizing and workload routability must be planned before cluster creation:
 - **Subnet Netmask Sizing Formula (`NK` Chapter 6 Table 6-2):** When sizing a node subnet (reserving 4 addresses for network, gateway, broadcast, and cloud reserved use), the maximum number of nodes $N$ for an IPv4 prefix length $S$ is:
-  $$N = 2^{(32 - S)} - 4 \quad \Longleftrightarrow \quad S = 32 - \lceil \log_2(N + 4) \rceil$$
+  `N = 2^(32 - S) - 4  <==>  S = 32 - ceil(log2(N + 4))`
   For example, supporting $N = 250$ nodes requires $S = 32 - \lceil \log_2(254) \rceil = 24$ (`/24`, 252 usable IPs); in VPC-native mode where Pods also draw IPs or `/24` alias blocks from the VPC, size the secondary Pod CIDR (`10.244.0.0/14` or `/16`) for peak `nodes * maxPods`.
 - **Workload Routability and Pod-to-Pod Encryption Trade-offs (`PK` Chapter 5):** Making Pod IPs directly routable on the corporate WAN sounds convenient, but exhausts enterprise RFC 1918 address space and exposes ephemeral Pod IPs beyond cluster boundaries—keep Pod CIDRs internal to the cluster and expose services through LoadBalancers/Gateways (5.12). Similarly, before enabling CNI-level WireGuard or IPsec encryption across all Pod traffic, check whether your underlay or service mesh already encrypts traffic and account for the 50–60 byte MTU reduction and CPU overhead on high-bandwidth GPU flows.
 
@@ -406,7 +406,7 @@ Short packets (`ping` = 84 bytes, HTTP `GET /healthz` = ~200 bytes) are well bel
 <summary>9. Why does `ping -M do -s 1422 <peer-pod-ip>` test a `1450`-byte Pod MTU?</summary>
 
 The `-s 1422` flag sets the **ICMP payload size** to `1422` bytes, and `-M do` sets the IPv4 **`DF` (Don't Fragment)** bit. Adding the **`8`-byte ICMP header** and the **`20`-byte IPv4 header** produces a total IP packet of:
-$$1422 + 8 + 20 = \mathbf{1450\text{ bytes}}$$
+`1422 + 8 + 20 = 1450 bytes`
 If `-s 1422` succeeds and `-s 1423` fails with `Frag needed and DF set (mtu = 1450)`, you have verified an exact end-to-end unfragmented path MTU of 1,450 bytes.
 </details>
 
@@ -462,8 +462,8 @@ Instead of creating an overlay network, **AWS VPC CNI** attaches Elastic Network
 <details>
 <summary>16. In `NK` Chapter 6, given a requirement to run $N = 500$ Kubernetes nodes in a subnet (where the cloud reserves 4 IPs), what is the largest subnet prefix length $S$ you can use?</summary>
 
-Using $S = 32 - \lceil \log_2(N + 4) \rceil$:
-$$S = 32 - \lceil \log_2(504) \rceil = 32 - 9 = \mathbf{/23}$$
+Using `S = 32 - ceil(log2(N + 4))`:
+`S = 32 - ceil(log2(504)) = 32 - 9 = /23`
 A `/23` subnet provides $2^9 - 4 = 512 - 4 = 508$ usable node IP addresses.
 </details>
 
@@ -498,7 +498,7 @@ Because intra-node pod-to-pod traffic stays inside the local bridge/veth table w
 ## Sources and review notes
 
 - **Sources read in full:**
-  - `networking-and-kubernetes` — James Strong & Vallery Lancey, *Networking and Kubernetes*, **Chapter 3: Container Networking Basics** (`ip netns`, `veth` pairs, bridge vs host networking), **Chapter 4: Kubernetes Networking Introduction** (Kubernetes network model, CNI specification `ADD`/`DEL`/`CHECK`/`VERSION`, IPAM JSON), and **Chapter 6: Kubernetes and Cloud Networking** (subnet sizing formula $N = 2^{(32-S)} - 4$, AWS VPC CNI ENIs, GCP VPC-native alias IPs, Azure CNI).
+  - `networking-and-kubernetes` — James Strong & Vallery Lancey, *Networking and Kubernetes*, **Chapter 3: Container Networking Basics** (`ip netns`, `veth` pairs, bridge vs host networking), **Chapter 4: Kubernetes Networking Introduction** (Kubernetes network model, CNI specification `ADD`/`DEL`/`CHECK`/`VERSION`, IPAM JSON), and **Chapter 6: Kubernetes and Cloud Networking** (subnet sizing formula `N = 2^(32-S) - 4`, AWS VPC CNI ENIs, GCP VPC-native alias IPs, Azure CNI).
   - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 5: Pod Networking** (`--pod-network-cidr`, `spec.podCIDRs`, `/etc/cni/net.d`, `/opt/cni/bin`, VXLAN encapsulation and MTU overhead, Calico BGP, Cilium eBPF, workload routability, and encryption trade-offs).
 - **Run here:** `python3 code/part05/cni_pod_networking_sim_lab.py` (3 passed, 0 failed).
 - **Explicitly labelled inferences:** The `compute_pod_mtu_and_df_ping`, `compute_subnet_prefix_for_nodes`, `CNIHostLocalIPAM`, and `plan_multus_pod_interfaces` models in `code/part05/cni_pod_networking_sim.py` and the `10-calico.conflist`, `rdma-net-a` `NetworkAttachmentDefinition`, and `nccl-worker` Pod manifests are the author's constructions synthesizing `NK` Chapters 3, 4, 6 and `PK` Chapter 5 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
