@@ -315,7 +315,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 6.6 | Environment modules, Spack and EasyBuild | drafted | 5860 | `modules_spack_lab.py` (3/3 pass); `validate_chapter.py` 12/12 PASS |
 | 6.18 | Parallel storage concepts and the limits of NFS | reviewed | 5912 | `iomix_lab.py` (3/3 pass), `SCL 9`, `SCL 28` |
 | 6.19 | Lustre architecture and operation | reviewed | 5745 | `lustre_stripe_lab.py` (3/3 pass), `SCL 9`, `SCL 28`, `V15 ch5` |
-| 6.20 | BeeGFS, GPFS, WekaFS and VAST | drafted | 2647 |  |
+| 6.20 | BeeGFS, GPFS, WekaFS and VAST | reviewed | 5347 | `parallel_fs_compare_lab.py` (3/3 pass), `SCL 9`, `V15` |
 | 6.21 | Parallel I/O and checkpoint patterns | drafted | 3917 |  |
 | 6.23 | xCAT, Warewulf and cluster managers compared with BCM | drafted | 3992 |  |
 | 6.24 | Users, LDAP, SSSD, quotas and accounting at scale | drafted | 4648 |  |
