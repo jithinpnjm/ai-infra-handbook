@@ -3,7 +3,7 @@ import {themes as prismThemes} from 'prism-react-renderer';
 
 function preprocessPart12Markdown({filePath, fileContent}) {
   const withoutSectionMarkers = fileContent.replace(/^\s*<!-- PART2 -->\s*$/gm, '');
-  if (!filePath.includes('/docs/part-12-ai-networking/')) {
+  if (!filePath.includes('/docs/')) {
     return withoutSectionMarkers;
   }
 
@@ -44,7 +44,11 @@ function preprocessPart12Markdown({filePath, fileContent}) {
             mathDelimiter = '';
             continue;
           }
-        } else {
+        } else if (
+          line[index + 1] === '$' ||
+          (!/^[\d,]+\s*$/.test(line.slice(index + 1, line.indexOf('$', index + 1))) &&
+            line.indexOf('$', index + 1) !== -1)
+        ) {
           mathDelimiter = line[index + 1] === '$' ? '$$' : '$';
           output += mathDelimiter;
           index += mathDelimiter.length - 1;
