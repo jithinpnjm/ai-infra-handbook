@@ -186,7 +186,15 @@ Classify changes (standard/pre-approved, normal, emergency); use progressive del
 
 A subtle failure mode in a pure hub-and-spoke Cluster API layout appears when a workload cluster runs the **Cluster Autoscaler**: the autoscaler runs inside the workload cluster watching for unschedulable pods, but if the `Cluster` and `MachineDeployment` objects live only in an external management cluster, the workload cluster depends on the management cluster's availability just to scale out during peak load. As *Production Kubernetes* (Chapter 2) notes, you can remove this external runtime dependency by running the Cluster API controllers and the workload cluster's own `Cluster` and `Machine` resources inside the workload cluster itself in a self-contained (pivoted/autonomous) manner. A central management cluster can still initiate cluster creation and deletion, while day-to-day autoscaling and local controller lookups against the `Cluster` custom resource happen entirely against the local API server.
 
-## 9. Lab (untested)
+## 9. Lab
+
+First, run the self-checking Python lab (`code/part05/day2_node_lifecycle_sim_lab.py`) locally. It verifies the GPU node validation gate (`dcgmi_diag`, `nccl_allreduce`, `ib_write_bw`) and `kubectl drain` eviction simulator (`evaluate_node_validation_and_drain`) and the `PK` Chapter 2 `etcd` topology advisor (`50` / `200` worker thresholds) and GPU fleet allocation-vs-utilization analyzer (`analyze_gpu_fleet_and_etcd_sizing`).
+
+```bash
+python3 code/part05/day2_node_lifecycle_sim_lab.py
+```
+
+Next, on a multi-node `kind` or `kubeadm` cluster (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **Node lifecycle drill**: on a lab cluster, join a worker with a validating taint, run a validation Job, remove the taint; then cordon/drain/uncordon while a Deployment with a PDB and a StatefulSet run; observe PDB blocking and fix; time a full cycle.
 2. **Drain with checkpointing**: run a training stub that checkpoints on SIGTERM; drain its node; verify checkpoint written and job resumes on another node; test grace period too short and observe loss.
@@ -200,8 +208,6 @@ A subtle failure mode in a pure hub-and-spoke Cluster API layout appears when a 
 10. **SLO and alerts**: define two SLOs (job start latency, inference availability); implement recording rules and burn-rate alerts; test with a synthetic failure.
 11. **Audit and compliance**: run kube-bench and kubescape; triage findings; encode accepted exceptions; schedule recurring scans.
 12. **Clean up**.
-
-Mark tested only after execution.
 
 ## 10. Common mistakes
 
@@ -218,55 +224,212 @@ Mark tested only after execution.
 
 ## 11. Interview angles
 
-- "Managed vs self-managed Kubernetes for a GPU training platform: how do you decide?" 
-- "One cluster or many? How do you decide cluster boundaries?" 
-- "Walk me through safely maintaining 500 GPU nodes: patching, drains, validation." 
-- "How do you manage capacity and prevent idle GPU waste?" 
-- "How do you keep add-ons and the GPU stack consistent across clusters?" 
-- "What do you monitor in a GPU Kubernetes platform? What do you page on?" 
-- "What is Cluster API and when is it useful?" 
-- "How do you handle a node with a failing GPU automatically?" 
+- "Managed vs self-managed Kubernetes for a GPU training platform: how do you decide?"
+- "One cluster or many? How do you decide cluster boundaries?"
+- "Walk me through safely maintaining 500 GPU nodes: patching, drains, validation."
+- "How do you manage capacity and prevent idle GPU waste?"
+- "How do you keep add-ons and the GPU stack consistent across clusters?"
+- "What do you monitor in a GPU Kubernetes platform? What do you page on?"
+- "What is Cluster API and when is it useful?"
+- "How do you handle a node with a failing GPU automatically?"
 
-## 12. Checkpoint questions (30)
+## Exercises
 
-1. Managed control plane pros? **A:** Operated HA, faster start, SLAs.
-2. Managed cons? **A:** Less control, provider limits.
-3. kubeadm is? **A:** Cluster bootstrapper.
-4. Kubespray is? **A:** Ansible-based installer.
-5. Cluster API is? **A:** Declarative cluster lifecycle via Kubernetes objects.
-6. `MachineHealthCheck` does? **A:** Auto-remediates unhealthy nodes.
-7. Why blue/green clusters? **A:** Safest large upgrades/migrations.
-8. Why a management cluster? **A:** Host CAPI/GitOps/observability separate from workloads.
-9. Node validation gate purpose? **A:** Keep unhealthy nodes from receiving jobs.
-10. Join taint use? **A:** Hold workloads until validated.
-11. `cordon` does? **A:** Marks unschedulable.
-12. `drain` does? **A:** Cordons and evicts pods.
-13. Drain respects? **A:** PDBs and grace periods.
-14. Drain flags for DaemonSets/emptyDir? **A:** `--ignore-daemonsets`, `--delete-emptydir-data`.
-15. Why immutable nodes? **A:** Avoid drift.
-16. Capacity vs usage? **A:** Allocation (requests) vs utilisation (busy).
-17. Fragmentation metric? **A:** Largest free GPU block per node/pool.
-18. Quota tools? **A:** ResourceQuota, Kueue ClusterQueue.
-19. Chargeback labels? **A:** team/project/cost-center.
-20. Idle GPU detection? **A:** Allocated but ~0% DCGM util.
-21. Compatibility matrix includes? **A:** K8s, CNI, CSI, driver, toolkit, kernel, operators.
-22. Upgrade order typical? **A:** Control plane then nodes then add-ons.
-23. Drift detection tools? **A:** GitOps controller, Ansible check, scanners.
-24. kube-bench is? **A:** CIS benchmark checker.
-25. Sonobuoy is? **A:** Conformance test runner.
-26. SLO example? **A:** Job start latency p95.
-27. Page on? **A:** Symptoms threatening SLOs.
-28. Runbook content? **A:** Detect, diagnose, mitigate, escalate steps.
-29. At what worker-node counts does *Production Kubernetes* recommend considering or planning for a dedicated etcd cluster? **A:** Consider separating etcd above `50` worker nodes; plan for a dedicated etcd cluster above `200` worker nodes.
-30. Why checkpoint before drain? **A:** Avoid lost training progress.
+1. **Comparing Kubernetes Deployment Models and Cluster Topologies (`PK` Chapters 1–2 & `KUR` Chapter 3):** Compare the 6 deployment models in Section 1 (Hyperscaler Managed, GPU-Cloud Managed, Self-Managed `kubeadm`/`Kubespray`, Packaged Distributions, `Cluster API` + `Metal3`, and Vendor-Integrated `NVIDIA BCM`) and the 6 cluster topologies in Section 2, and explain why separating production inference clusters from large shared training clusters is a common AI platform pattern.
+2. **Colocated vs. Dedicated `etcd` Thresholds (`50` and `200` Worker Nodes) and Node Pool Sizing Ratios (`PK` Chapter 2):** Using `analyze_gpu_fleet_and_etcd_sizing()` in `code/part05/day2_node_lifecycle_sim.py`, explain why `PK` Chapter 2 recommends considering dedicated `etcd` hosts above `50` workers and planning for dedicated `etcd` above `200` workers, why you should never place a load balancer between `kube-apiserver` and `etcd`, and how characteristic-based vs role-based node pools (`M5` `1:4`, `R5` `1:8`, `C5` `1:2`, and GPU pools) prevent stranded resources.
+3. **The 9-State GPU Node Lifecycle, Join Validation Gates (`validating` Taint), and PDB-Aware `kubectl drain`:** Using `evaluate_node_validation_and_drain()` in `code/part05/day2_node_lifecycle_sim.py`, trace the Section 3 state diagram (`Provisioned -> Configured -> Validating -> Ready -> Cordoned -> Draining -> Maintenance/Quarantined/Decommissioned`), list the hardware checks required before removing the `validating` taint, and explain how `kubectl drain` interacts with DaemonSets, `emptyDir`, unmanaged pods, and `PodDisruptionBudget`s.
+4. **GPU Capacity Management: Allocation Efficiency vs. Utilization Efficiency, Idle Reclamation, and Fragmentation:** Using `analyze_gpu_fleet_and_etcd_sizing()`, define and contrast **GPU Allocation Efficiency** (`requested / allocatable`) and **GPU Utilization Efficiency** (`DCGM busy / allocatable`), explain how to detect and reclaim "zombie/idle-allocated" GPUs (100% requested, 0% DCGM utilization), and size N+k spare headroom by failure domain (rack).
+5. **The Add-On Compatibility Matrix (`Kubernetes x CNI x CSI x GPU Operator x Driver x Kernel x OFED`) and Drift Detection:** Explain why upgrading Kubernetes or a host Linux kernel on a GPU cluster without checking the full compatibility matrix breaks `nvidia.ko`/`mlx5_core` or CNI eBPF datapaths, and show how GitOps, `Sonobuoy`, `kube-bench`, and `kubescape` enforce consistency across clusters.
+6. **Cluster API (`CAPI` + `Metal3` + `MachineHealthCheck`), Pivoted Self-Contained Autoscaling (`PK` Chapter 2), and On-Call SLOs/Runbooks:** Explain how `Cluster`, `KubeadmControlPlane`, `MachineDeployment`, and `MachineHealthCheck` automate bare-metal node replacement, why `PK` Chapter 2 recommends pivoting CAPI objects into the workload cluster when running `Cluster Autoscaler`, and write the 6-step runbook for a GPU node reporting `Xid 79 (GPU has fallen off the bus)`.
 
-## 13. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. In *Production Kubernetes* Chapter 2, at what worker-node counts should you move from colocated (stacked) `etcd` to dedicated `etcd` machines, and why shouldn't you put a load balancer between `kube-apiserver` and `etcd`?</summary>
 
-- Josh Rosso, Rich Lander, Alex Brand and John Harris, *Production Kubernetes* (`production-kubernetes`, Chapter 2: `2. Deployment Models` — read in full for dedicated vs colocated etcd worker thresholds, `M5`/`R5`/`C5` CPU:memory ratios, and self-contained Cluster API autoscaling topology).
-- Brendan Burns et al., *Kubernetes: Up and Running* (3rd edition; chapter 3 on deploying a Kubernetes cluster and ongoing operations).
-- Kubernetes, Cluster API, kubeadm, Kueue and NVIDIA GPU Operator documentation; vendor support matrices.
-- Examples are the author's constructions.
+- **Worker-node thresholds (`PK` Chapter 2):**
+  - **$\le 50$ worker nodes:** Colocated (stacked) `etcd` running on the control-plane nodes is generally sufficient.
+  - **$> 50$ worker nodes:** Strongly consider separating `etcd` onto dedicated hosts so `kube-apiserver` / `kube-controller-manager` CPU and memory bursts cannot starve `etcd`.
+  - **$> 200$ worker nodes:** Plan for a **dedicated 3- or 5-node `etcd` cluster** with dedicated local NVMe storage from Day 1.
+- **Why no load balancer between `kube-apiserver` and `etcd`:** `etcd`'s Go client library (embedded inside `kube-apiserver`) is topology- and Raft-aware: when given the full list of `etcd` member URLs (`--etcd-servers=https://etcd1:2379,https://etcd2:2379,https://etcd3:2379`), it maintains health-checked gRPC streams to all members, automatically routes writes to the leader, and fails over instantly without an intermediate TCP load balancer adding latency or a single point of failure.
+</details>
 
-**Flagged for verification before publishing:** managed GPU-cloud offering names and capabilities, CAPI/Metal3 resource names and versions, drain flag semantics for your kubectl version, and compatibility matrices (must be taken from current vendor docs); all labs are **untested**.
+<details>
+<summary>2. In `PK` Chapter 2, what is the difference between a \"Characteristic-Based\" node pool and a \"Role-Based\" node pool, and what are the CPU:Memory ratios of `C5`, `M5`, and `R5` shapes?</summary>
+
+- **Characteristic-based node pool:** Grouped by hardware profile so workloads with specific resource ratios or accelerators bin-pack cleanly without stranding resources:
+  - **Compute-optimized (`C5`):** **`1 vCPU : 2 GiB RAM`**
+  - **General-purpose (`M5`):** **`1 vCPU : 4 GiB RAM`**
+  - **Memory-optimized (`R5`):** **`1 vCPU : 8 GiB RAM`**
+  - **GPU-accelerated (`P4d`/`P5`, `A3`, `HGX`):** 8 GPUs + high-bandwidth RDMA NICs.
+- **Role-based node pool:** Dedicated to a specific operational tier (annotated with taints and `nodeSelector`s) to isolate blast radius and noisy neighbors—such as a dedicated `system` pool (CoreDNS, monitoring, operators) and a dedicated `ingress`/`edge` pool.
+</details>
+
+<details>
+<summary>3. Compare \"One Large Shared Cluster\" vs. \"Cluster-per-Workload-Class (Training vs. Inference)\" for a 1,000-GPU AI platform.</summary>
+
+- **One Large Shared Cluster:** Maximizes GPU pooling and borrowing (inference can burst into training GPUs during peak daytime traffic, and batch training can use those GPUs overnight via Kueue cohorts), with only one control plane to upgrade. *Drawbacks:* a bad CRD/webhook or control-plane upgrade affects both training and live production inference simultaneously.
+- **Cluster-per-Workload-Class (Dedicated Production Inference Cluster + Large Shared Training Cluster):** Isolates customer-facing inference SLOs, security boundaries, and `KubeletConfiguration` (`single-numa-node` + strict `PDB`s on inference vs `best-effort` + gang scheduling on training) so a 2,000-pod training burst never impacts production inference tail latency.
+</details>
+
+<details>
+<summary>4. Why must a newly provisioned or repaired GPU node join the cluster with a `validating` taint (`node.example.com/validating=true:NoSchedule`), and what five checks must pass before the taint is removed?</summary>
+
+If a new or repaired GPU node joins the cluster untainted, `kube-scheduler` will assign production training Pods to it **within milliseconds of `Ready=True`**—often before the GPU device plugin finishes initializing or while the node has a degraded PCIe link, a bad InfiniBand cable, or a missing NVMe mount, causing the job to crash immediately ("blackhole node").
+With a bootstrap `validating` taint, an automated validation Job ( tolerating `validating=true`) runs five gates before a controller removes the taint:
+1. **GPU presence & driver/fabricmanager health (`nvidia-smi` + `dcgmi diag -r 2/3`).**
+2. **Intra-node NVLink bandwidth (`nccl-tests` `all_reduce_perf` across all 8 GPUs).**
+3. **Inter-node RDMA / InfiniBand link speed and `ib_write_bw` / `all_reduce_perf` against a reference peer.**
+4. **End-to-end Jumbo MTU (`ping -M do -s 8868`).**
+5. **Shared storage mount & local NVMe `fio` IOPS/throughput.**
+</details>
+
+<details>
+<summary>5. What is the exact difference between `kubectl cordon <node>` and `kubectl drain <node>`, and what flags are typically required when draining a worker node?</summary>
+
+- **`kubectl cordon <node>`:** Sets `node.spec.unschedulable = true` (which adds the taint `node.kubernetes.io/unschedulable:NoSchedule`). Existing Pods on the node **keep running undisturbed**, while new Pods are prevented from scheduling onto the node.
+- **`kubectl drain <node>`:** Cordons the node first, and then calls the **Kubernetes Eviction API** (`POST /api/v1/namespaces/.../pods/<name>/eviction`) on every Pod on the node, respecting `PodDisruptionBudget`s and `terminationGracePeriodSeconds`.
+- **Standard drain flags:**
+  `kubectl drain <node> --ignore-daemonsets --delete-emptydir-data --grace-period=600 --timeout=30m`
+  (`--ignore-daemonsets` skips node agents like CNI/CSI/device-plugin that would immediately reschedule onto the same node; `--delete-emptydir-data` acknowledges that scratch `emptyDir` data on the node will be lost).
+</details>
+
+<details>
+<summary>6. What four conditions will cause `kubectl drain` to fail or hang, and how do you handle each?</summary>
+
+1. **A `PodDisruptionBudget` (`PDB`) has `disruptionsAllowed == 0`** (e.g., `minAvailable` equals current `Ready` replicas, or replacement pods are stuck `Pending` for lack of spare capacity): scale up capacity or fix the overly strict PDB.
+2. **DaemonSet pods or `emptyDir` pods** when `--ignore-daemonsets` or `--delete-emptydir-data` was omitted.
+3. **Standalone ("bare") Pods not managed by any controller** (`ReplicaSet`, `StatefulSet`, `Job`, `DaemonSet`): `drain` refuses to delete them because nothing will recreate them (requires `--force` or migrating them to a controller).
+4. **Pods stuck in `Terminating`** due to hung NFS/Lustre I/O (`D` state) or unfulfilled finalizers.
+</details>
+
+<details>
+<summary>7. How should a platform drain a GPU node that is currently running a multi-day distributed training job?</summary>
+
+1. **Cordon the node immediately** (`kubectl cordon <node>`) so no new jobs land on it.
+2. **Trigger an on-demand checkpoint:** Send the training framework's checkpoint signal (e.g., `SIGUSR1` or `SIGTERM` with `terminationGracePeriodSeconds: 600` configured in the Pod spec, or set a Kueue/JobSet drain annotation) so all ranks write a consistent checkpoint to shared storage before exiting.
+3. **Evict/drain once the checkpoint completes** and let Kueue / `JobSet` / `PyTorchJob` reschedule the replacement pod onto a healthy spare node from the latest checkpoint.
+</details>
+
+<details>
+<summary>8. What is the difference between \"GPU Allocation Efficiency\" and \"GPU Utilization Efficiency\", and what does a large gap between them mean?</summary>
+
+- **GPU Allocation Efficiency:**
+  $$\frac{\sum \text{Pod GPU Requests}}{\sum \text{Node Allocatable GPUs}}$$
+  Measures what fraction of the cluster's GPUs are *reserved* by scheduled Pods.
+- **GPU Utilization Efficiency:**
+  $$\frac{\text{Active GPU Compute Duty Cycle (`DCGM_FI_DEV_GPU_UTIL` / `SM_ACTIVE`)}}{\sum \text{Node Allocatable GPUs}}$$
+  Measures what fraction of the cluster's GPUs are actually *executing CUDA kernels*.
+- **Diagnostic meaning of a large gap (e.g., 95% Allocated, 18% Utilized):** Developers are hoarding GPUs in idle interactive Jupyter notebooks, `sleep infinity` debug pods, CPU-bottlenecked data loaders, or hung NCCL jobs. Fix with automated idle-notebook culling, TTLs, and per-team utilization showback dashboards.
+</details>
+
+<details>
+<summary>9. Why should you prefer \"Immutable Node Replacement\" (re-imaging or recreating nodes) over in-place `apt-get upgrade` / manual SSH patching on a 500-node GPU cluster?</summary>
+
+In-place package upgrades across 500 nodes inevitably drift (failed DKMS builds on 3 nodes, mismatched `nvidia-fabricmanager` versions, leftover config files, partial restarts), creating "snowflake" nodes where distributed training fails mysteriously whenever a job lands on node #147.
+Building a versioned, tested **golden OS image** (Packer + Ansible, Chapter 4.17) containing the exact matched Linux kernel, NVIDIA driver, OFED, `containerd`, and `kubelet` binaries—and rolling nodes via CAPI `MachineDeployment` / PXE re-image through the `Validating` taint gate—guarantees every node in a pool is byte-for-byte identical.
+</details>
+
+<details>
+<summary>10. What components belong in a GPU Kubernetes Platform \"Compatibility Matrix\", and why can't you upgrade them independently at random?</summary>
+
+Every production release of your platform must lock and test a matrix of **8 coupled versions**:
+1. **Host Linux Kernel version** (`uname -r`)
+2. **NVIDIA GPU Driver + Fabric Manager version** (`550.x` / `560.x`)
+3. **Mellanox OFED / DOCA-Host RDMA driver version** + **NIC/Switch Firmware**
+4. **`containerd` + `runc` + NVIDIA Container Toolkit version**
+5. **Kubernetes (`kube-apiserver` / `kubelet`) minor version** (`1.30` / `1.31`)
+6. **CNI (`Cilium` / `Calico`) and CSI driver versions**
+7. **NVIDIA GPU Operator & Network Operator chart versions**
+8. **User base container CUDA runtime (`nvcr.io/nvidia/pytorch:24.xx`)**.
+Upgrading the host kernel without testing against the NVIDIA driver and MOFED DKMS matrix can break `nvidia-peermem.ko` (`GPUDirect RDMA`), and upgrading Kubernetes past what your CNI or GPU Operator supports can break CRD API versions.
+</details>
+
+<details>
+<summary>11. What is `Cluster API` (`CAPI`), and what are its core Custom Resources?</summary>
+
+**Cluster API (`CAPI`)** is a Kubernetes subproject that uses declarative Kubernetes CRDs and operators (running in a **management cluster**) to provision, upgrade, scale, and heal **workload clusters** across cloud and bare-metal infrastructure providers:
+- **`Cluster`:** Top-level cluster definition (network CIDRs, control-plane endpoint, infrastructure ref).
+- **`KubeadmControlPlane` (`KCP`):** Manages the lifecycle, certificates, and rolling upgrades of the control-plane nodes.
+- **`MachineDeployment` -> `MachineSet` -> `Machine`:** Works just like `Deployment -> ReplicaSet -> Pod`, but for **physical/virtual worker nodes**. Updating the OS image or Kubernetes version on a `MachineDeployment` triggers a rolling node replacement (`maxSurge` / `maxUnavailable`).
+- **`Metal3MachineTemplate` / `AWSMachineTemplate` / `GCPMachineTemplate`:** Provider-specific hardware/VM spec (Metal3 uses **Ironic** over IPMI/Redfish to PXE-boot and image bare-metal GPU servers).
+</details>
+
+<details>
+<summary>12. How does a Cluster API `MachineHealthCheck` (`MHC`) automate dead-node replacement?</summary>
+
+A `MachineHealthCheck` watches `Node` status conditions (`Ready: Unknown` or `Ready: False`, or custom Node Problem Detector conditions like `GPUXidFatal: True`) for a configured `timeout` (e.g., `5m`). When a node exceeds the unhealthy threshold, `MachineHealthCheck` automatically marks the corresponding CAPI **`Machine`** for remediation—draining the node, instructing the infrastructure provider (cloud API or Metal3/Ironic BMC) to terminate/re-image the machine, and provisioning a fresh replacement node. Always configure **`maxUnhealthy` (e.g., `"10%"` or `2`)** on `MachineHealthCheck` so a network partition or power blip never triggers a mass deletion of the entire cluster.
+</details>
+
+<details>
+<summary>13. In *Production Kubernetes* Chapter 2, what is the \"Self-Contained (Pivoted) Cluster API\" pattern (`clusterctl move`), and why does it help when running `Cluster Autoscaler`?</summary>
+
+If a workload cluster runs `Cluster Autoscaler` (scaling `MachineDeployment` replicas when Pods are `Pending`), and the `Cluster`/`MachineDeployment` objects live **only on an external central management cluster**, then any outage or network maintenance on the management cluster breaks autoscaling on all workload clusters (and requires cross-cluster admin credentials).
+By running **`clusterctl move`** to **pivot** the workload cluster's own CAPI controllers and `Cluster`/`MachineDeployment` CRs into the workload cluster itself after bootstrap, each cluster becomes **self-contained and autonomous** for day-to-day autoscaling and node healing.
+</details>
+
+<details>
+<summary>14. What are `Sonobuoy` and `kube-bench`, and when do you run them in Day-2 operations?</summary>
+
+- **`Sonobuoy`:** CNCF conformance and diagnostic test runner that launches official Kubernetes end-to-end (`e2e`) conformance tests inside your cluster to verify that the cluster (and its CNI, CSI, and DNS) behaves identically to upstream Kubernetes standards. Run after initial cluster build and after every minor Kubernetes/CNI upgrade in staging.
+- **`kube-bench`:** Runs automated **CIS (Center for Internet Security) Kubernetes Benchmark** checks against `/etc/kubernetes/manifests`, `/var/lib/kubelet/config.yaml`, file permissions (`/etc/kubernetes/pki`), and TLS flags on control-plane and worker nodes.
+</details>
+
+<details>
+<summary>15. What are the five most actionable user-facing SLOs (`Service Level Objectives`) for an internal GPU Kubernetes Platform?</summary>
+
+1. **Control-Plane API Availability & Latency:** e.g., $99.95\%$ of non-watch API calls succeed with p99 latency $< 1\text{s}$.
+2. **Good GPU Fleet Availability ("Goodput Readiness"):** Percentage of contracted GPUs in `Ready`, validated, un-quarantined state ($\ge 97\%$).
+3. **Admitted Job Startup Latency (SLI):** p95 time from Kueue `Admitted=True` to `ContainersReady=True` (excluding user code bugs) $< 90\text{s}$ (with cached images).
+4. **Inference Gateway Availability & TTFT/ITL Latency:** $99.9\%$ non-5xx responses and p95 Time-To-First-Token within target.
+5. **Checkpoint Storage Write Availability & Bandwidth:** $99.99\%$ successful checkpoint commits at target GB/s.
+</details>
+
+<details>
+<summary>16. Why should on-call engineers be paged on \"Symptom / SLO Burn-Rate Alerts\" rather than raw single-node hardware alerts?</summary>
+
+In a 2,000-GPU cluster, individual GPUs, optical transceivers, or NVMe drives fail several times a week. If PagerDuty wakes an on-call engineer at 3 a.m. every time 1 single node experiences an XID error (even when automated remediation already cordoned the node, drained the job to a spare node, and opened a hardware ticket), the team suffers **alert fatigue** and misses real outages.
+- **Ticket (automated remediation + daytime hardware queue):** Single-node GPU fault when spare pool headroom is healthy.
+- **Page immediately:** High SLO error-budget burn rate—such as API server down, `etcd` quorum degraded, $> 5\%$ of a GPU pool `NotReady`, spare pool exhausted (`0` spare nodes left), or inference gateway 5xx spike.
+</details>
+
+<details>
+<summary>17. Walk through the Day-2 Runbook when a GPU node triggers `Xid 79 (GPU has fallen off the bus)` or `Xid 48/74 (DBE ECC / NVLink Error)`.</summary>
+
+1. **Detect & Tag:** `node-problem-detector` / `dcgm-exporter` detects the fatal XID in `dmesg`/NVML and sets Node condition `GPUHealth=False` (or taint `nvidia.com/gpu-fault=Xid79:NoSchedule`).
+2. **Cordon (within concurrency budget):** The node health controller cordons the node (`kubectl cordon`) so no new jobs land on it.
+3. **Collect Forensics:** Capture `nvidia-bug-report.sh`, `dmesg -T`, `lspci -vvv`, and DCGM telemetry to object storage before rebooting.
+4. **Checkpoint & Drain:** Signal running training pods to checkpoint, drain the node (`kubectl drain --ignore-daemonsets --delete-emptydir-data`), and let Kueue/JobSet reschedule the job onto a spare node.
+5. **Remediate & Re-Validate:** Apply the `validating` taint, perform a cold power cycle via BMC/Redfish (`ipmitool chassis power cycle`—a warm `reboot` often cannot recover a GPU that fell off the PCIe bus in `Xid 79`), and run the full `dcgmi diag -r 3` + NCCL validation suite.
+6. **Uncordon or Quarantine for RMA:** If validation passes, remove the `validating` taint and uncordon; if it fails again, move the node to `Quarantined` and file an automated hardware RMA ticket with the node's serial/asset tag.
+</details>
+
+<details>
+<summary>18. How do you prevent \"Snowflake Add-On Sprawl\" across 10 Kubernetes clusters in a multi-cluster AI fleet?</summary>
+
+1. Manage all cluster add-ons (`cilium`, `coredns`, `cert-manager`, `gpu-operator`, `network-operator`, `kueue`, `kube-prometheus-stack`, `kyverno`) from a **single GitOps repository** using Argo CD `ApplicationSet`s (or Flux Kustomize overlays) organized by **deployment rings (`lab -> staging -> prod-canary -> prod-fleet`)**.
+2. Encode the **Compatibility Matrix** in CI so a PR bumping `gpu-operator` or `cilium` is automatically tested in `lab`/`staging` before touching `prod`.
+3. Enable automated drift detection (`selfHeal: true` or drift alerts) so manual `helm upgrade` or `kubectl edit` changes are rejected or reverted.
+</details>
+
+<details>
+<summary>19. How do you size N+k \"Spare Node Headroom\" for a 128-node (1,024-GPU) training cluster?</summary>
+
+Track your historical node Mean Time Between Failures (**`MTBF`**) and hardware Mean Time To Repair/RMA (**`MTTR`**, e.g., 3–7 days for on-prem RMA replacements). If a 128-node cluster averages 1.5 node hardware failures per week and RMA turnaround is 1 week, keeping **4 to 8 pre-validated spare nodes (3%–6% headroom, or 1 spare node per rack/rail domain)** allows jobs to reschedule and resume from checkpoints within 2 minutes of a node failure instead of waiting days for a physical technician swap.
+</details>
+
+<details>
+<summary>20. How do `OpenCost` / `Kubecost` and DCGM metrics work together for GPU Chargeback and Showback?</summary>
+
+- **`OpenCost` / `Kubecost`** tracks Pod resource requests (`requests.nvidia.com/gpu`, CPU, RAM, PVC storage) and runtime duration grouped by namespace and labels (`team`, `project`, `cost-center`), multiplying by your amortized hardware or cloud SKU cost per GPU-hour to compute **Allocated Cost**.
+- Combining `OpenCost` with **`DCGM_FI_DEV_GPU_UTIL` / `DCGM_FI_PROF_GR_ENGINE_ACTIVE`** produces an **Efficiency / Idle-Waste Report per team**—showing each team Lead: *"Your team was billed for 10,000 H100 GPU-hours this month, of which 3,200 GPU-hours (32%) sat at 0% compute utilization in idle notebooks."*
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 1: Path to Production** and **Chapter 2: Deployment Models** (read in full: Managed Services vs Prebuilt Installers vs Roll Your Own, bare metal vs virtualization, colocated vs dedicated `etcd` at `50` and `200` worker nodes, characteristic-based vs role-based node pools `M5`/`R5`/`C5`, Dev/Testing/Staging/Prod cluster tiers, and self-contained Cluster API autoscaling topology).
+  - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 3: Deploying a Kubernetes Cluster** (cluster deployment and day-2 inspection).
+- **Run here:** `python3 code/part05/day2_node_lifecycle_sim_lab.py` (2 passed, 0 failed).
+- **Explicitly labelled inferences:** The `evaluate_node_validation_and_drain` and `analyze_gpu_fleet_and_etcd_sizing` models in `code/part05/day2_node_lifecycle_sim.py` and the 9-state GPU node lifecycle state diagram (Section 3) are the author's constructions synthesizing `PK` Chapters 1–2 and `KUR` Chapter 3 (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, and 30).
+- **Not verified on live hardware:** Live `kubectl cordon/drain/uncordon`, Cluster API, Metal3, `Sonobuoy`, and `kube-bench` executions (`5k` node limit, `50` and `200` worker `etcd` thresholds, `1CPU:4GiB` / `1CPU:8GiB` / `1CPU:2GiB`, `--grace-period=600 --timeout=30m`, `Xid 79`, `500` GPU nodes) are marked (`untested here`) where not executed by `day2_node_lifecycle_sim_lab.py`.
