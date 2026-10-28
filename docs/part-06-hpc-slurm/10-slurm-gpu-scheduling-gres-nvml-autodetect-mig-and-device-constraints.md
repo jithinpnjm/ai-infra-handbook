@@ -4,7 +4,7 @@ title: "6.10 Slurm GPU scheduling: GRES, NVML autodetect, MIG and device constra
 sidebar_label: "6.10 Slurm GPU scheduling: GRES, NVML autodetect, MIG and device constraints"
 sidebar_position: 10
 description: "Making Slurm schedule GPUs correctly: GRES configuration (slurm.conf, gres.conf, AutoDetect), types, topology (Cores and Links), the request options (--gres, --gpus*, --cpus-per-gpu, --mem-per-gpu, --gpu-bind, --gres-flags), device isolation, MIG, MPS and sharding, accounting for GPUs, and debugging"
-status: "drafted"
+status: "reviewed"
 tier: "1"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -37,6 +37,20 @@ Needs 6.8, 6.9, Part 9/10 for GPU topology basics (NVLink, PCIe, NUMA). After th
 - Account for GPU usage in TRES, billing and limits.
 
 ## 1. Generic resources (GRES)
+
+```mermaid
+flowchart LR
+  subgraph Discovery["1. Node GRES Discovery (slurmd -G)"]
+    NVML["gres.conf: AutoDetect=nvml<br/>Type, File, Cores, Links, MIG"]
+    SConf["slurm.conf: GresTypes=gpu<br/>NodeName=gpu[01-16] Gres=gpu:h100:8"]
+    NVML --> Sched["slurmctld (select/cons_tres)<br/>Tracks GRES, NUMA Sockets & NVLink"]
+    SConf --> Sched
+  end
+  subgraph Launch["2. Isolation & Task Binding (slurmstepd)"]
+    Sched --> Cgroup["cgroup.conf: ConstrainDevices=yes<br/>Allows only /dev/nvidia3, /dev/nvidia7"]
+    Cgroup --> Bind["--gpus-per-task=1 / --gpu-bind=closest<br/>Rank 0 -> CVD=0; Rank 1 -> CVD=1"]
+  end
+```
 
 A **GRES** is a consumable resource other than CPU and memory: GPUs, but also licences, network devices, burst buffers, bandwidth tokens. Each has a **name** (`gpu`), an optional **type** (`h100`, `a100_3g.20gb`), a **count** per node, and optionally device files and topology. Configuration lives in two places:
 
@@ -111,6 +125,13 @@ Which to use:
 - **Interactive**: `salloc --gres=gpu:1 --cpus-per-gpu=8 --mem-per-gpu=64G --time=1:00:00` then `srun --pty bash` (6.11).
 
 Defaults make life easier: partition `DefCpuPerGPU` and `DefMemPerGPU` (6.8) give a sane share when users type only `--gres=gpu:1`. A job asking for GPUs without CPUs on a node where CPUs are scarce can otherwise block, or get a starved allocation.
+
+### Portable resource allocation rules (`DAI` Chapter 8)
+
+As emphasized in *Distributed AI Systems* (`DAI` Chapter 8, *Best practices: Resource allocation*), relying on implicit cluster defaults is one of the most common causes of silent training failures when moving batch scripts between a lab cluster and a shared production HPC system. Make every GPU batch script portable and self-documenting by specifying all five core resource dimensions explicitly:
+
+1. **Always specify `--nodes`, `--gres`, `--cpus-per-task` (or `--cpus-per-gpu`), `--mem` (or `--mem-per-cpu` / `--mem-per-gpu`), and `--time`:** Different clusters configure very different defaults (such as 1 CPU core or 2 GiB of host RAM per task), which causes PyTorch `DataLoader` workers (`num_workers > 0`) to exhaust host memory and get killed by the Linux OOM killer even while GPU VRAM has plenty of headroom.
+2. **Use `--exclusive` for large multi-node training:** Requesting `--exclusive` guarantees that no other jobs share your allocated nodes, eliminating PCIe, NUMA memory-bandwidth, and shared-filesystem page-cache interference even if your job does not request every CPU core on the node.
 
 ### What the job sees
 
@@ -202,7 +223,29 @@ Mixing MIG and whole-GPU nodes in one cluster is common: a `mig` partition for i
 - **Changing GRES counts**: drain first (man page note), then restart `slurmctld`/`slurmd` as required.
 - **Containers**: pyxis/enroot exposes GPUs according to the Slurm allocation (6.13).
 
+### Live GPU job monitoring and distributed profiling (`DAI` Chapter 8)
+
+Once a multi-node GPU job is running, you need to verify that every allocated GPU is actively computing rather than stalling on data loading or a hung collective (`DAI` Chapter 8, *Monitoring and debugging*):
+
+1. **Live queue and GPU inspection without SSH:**
+   - Watch job state transitions in real time with `watch -n 1 squeue -u $USER` and `watch -n 1 scontrol show job <job_id>`.
+   - Attach directly to a running job's allocation to inspect `nvidia-smi` across nodes—even on clusters where direct `ssh` to compute nodes is disabled—using `srun --jobid=<job_id> nvidia-smi` (or `srun -N 2 nvidia-smi` inside an interactive `salloc` shell), and stream stdout via `tail -f slurm-<job_id>.out`.
+   - Query historical CPU and memory footprint after completion with `sacct -j <job_id> --format=JobID,JobName,Elapsed,MaxRSS,MaxVMSize,State` and `sacct -u $USER --starttime=2024-01-01`.
+
+2. **Automated multi-node GPU utilization and anomaly polling (`SLURMJobMonitor`):**
+   You can poll per-GPU compute utilization and VRAM consumption across every node in a job (`squeue -j <job_id> -o "%N" -h`) by running `srun -w <node> nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total --format=csv,noheader,nounits` and flagging two classic anomalies (`DAI` Chapter 8):
+   - **Straggler / stalled rank (`utilization < 50%`):** Indicates CPU data-loader starvation, a slow storage read, or a rank waiting at a barrier.
+   - **Imminent VRAM OOM (`memory_used_gb / memory_total_gb > 0.95`):** Warns that CUDA caching allocator fragmentation or activation spikes are within 5% of exhausting HBM.
+
+3. **Profiling GPU compute vs `ncclAllReduce` communication with `torch.profiler`:**
+   When GPU utilization looks high (because NCCL polling loops spin CUDA kernels at 100% utilization!) yet step throughput is slow, wrap 5 training steps in `torch.profiler.profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True, profile_memory=True, with_stack=True)` with `record_function("forward")`, `record_function("backward")`, and `record_function("optimizer")` context managers (`DAI` Chapter 8). Export the Chrome trace **only on rank 0** (`if dist.get_rank() == 0: prof.export_chrome_trace("trace.json")`) and print `prof.key_averages().table(sort_by="cuda_time_total", row_limit=10)`. If `ncclAllReduce` dominates `cuda_time_total`, you have an inter-node communication bottleneck (remedied by increasing micro-batch size, gradient accumulation, or communication-computation overlap). For lower-level transport diagnostics, selectively enable `export NCCL_DEBUG=INFO`, `export NCCL_DEBUG_SUBSYS=ALL`, and `export TORCH_DISTRIBUTED_DEBUG=DETAIL`.
+
 ## 8. Troubleshooting
+
+When diagnosing GPU allocation or node availability issues on a Slurm cluster (`DAI` Chapter 8, *Troubleshooting common issues*), start with four fast triage commands:
+- Check node states across the cluster: `sinfo -N -l` (`idle`, `alloc`, `down`, `drain`), and resume virtual or recovered test nodes with `scontrol update NodeName=node[6-7] State=RESUME`.
+- Verify that `slurmctld` registered the GPUs on each node: `scontrol show nodes | grep Gres`.
+- Test single-GPU allocation directly outside your training script: `srun -N 1 --gres=gpu:1 nvidia-smi -L`. If this fails, the fault is in Slurm's `gres.conf` / cgroup setup rather than your PyTorch code.
 
 | Symptom | Likely cause | Check |
 |---|---|---|
@@ -217,7 +260,15 @@ Mixing MIG and whole-GPU nodes in one cluster is common: a `mig` partition for i
 | MIG count wrong after reboot | MIG layout not recreated before slurmd | systemd ordering, `nvidia-smi -L` |
 | `slurmd` fails: "unable to load NVML" | Slurm built without NVML, or library missing | build config, `ldconfig -p \| grep nvidia-ml` |
 
-## 9. Lab (untested; needs GPU nodes or fake GRES)
+## 9. Lab (self-checking simulator tested; live GPU cluster parts untested)
+
+First, run the self-checking Python lab (`code/part06/gpu_env_check_lab.py`) locally. It verifies that `code/part06/gpu_env_check.py` prints all 15 GPU/Slurm environment variables, simulates `ConstrainDevices=yes` vs `ConstrainDevices=no` cgroup `/dev/nvidia*` device fencing and task-relative `CUDA_VISIBLE_DEVICES` remapping (`[3, 7] -> 0, 1`), and tests the `SLURMJobMonitor` `nvidia-smi` CSV parser and anomaly detector (`< 50%` GPU utilization stragglers and `> 95%` VRAM OOM risk) from `DAI` Chapter 8:
+
+```bash
+python3 code/part06/gpu_env_check_lab.py
+```
+
+Next, on a GPU cluster or test VM, work through these steps:
 
 1. On a GPU node run `slurmd -C` and `slurmd -G` with `AutoDetect=nvml`; record types, files, cores, links for each GPU; compare with `nvidia-smi topo -m`.
 2. Write `slurm.conf`/`gres.conf` for the node; restart; `scontrol show node` should show `Gres=gpu:h100:8` (or your type).
@@ -240,42 +291,159 @@ Mixing MIG and whole-GPU nodes in one cluster is common: a `mig` partition for i
 - How do you bill GPU hours fairly in fair-share?
 - Describe what happens when a GPU falls off the bus mid-job.
 
-## 11. Checkpoint questions (30)
+## Exercises
 
-1. What is a GRES, and what are its name, type and count?
-2. Which two files describe GPUs and what goes in each?
-3. List the AutoDetect values and what NVML detects.
-4. Which tool prints the merged GRES configuration of a node?
-5. What does `Cores` use as numbering, and why in sockets?
-6. What does `Links` express?
-7. What does `Flags=explicit` change?
-8. What does `env_uuid` do?
-9. Which options give per-node vs total GPU counts?
-10. Which option implicitly sets task binding?
-11. Why use `--cpus-per-gpu` and `--mem-per-gpu`?
-12. What defaults protect users who omit them?
-13. What environment variables does Slurm set for GPU jobs?
-14. What does `CUDA_VISIBLE_DEVICES=0` mean when the job holds physical GPU 3?
-15. What does `--gpu-bind=closest` do?
-16. What do `enforce-binding` and `disable-binding` do?
-17. What isolates devices in practice, and what is its default?
-18. Why are environment variables insufficient isolation?
-19. Which device files must stay accessible to all jobs?
-20. How does Slurm treat MIG instances?
-21. Can Slurm create MIG partitions? What must happen before slurmd starts?
-22. How is MPS capacity expressed, and what are its limits?
-23. What does sharding provide and not provide?
-24. When do you prefer whole GPUs?
-25. How do you enable GPU accounting?
-26. What is `MAX_TRES_GRES`?
-27. How do you restrict a user to 32 GPUs total?
-28. What do you do before changing a node's GRES count?
-29. List three causes of "job sees wrong GPUs".
-30. What node health actions should GPU faults trigger?
+1. **Verifying `gpu_env_check.py` and `CUDA_VISIBLE_DEVICES` Remapping (`code/part06/gpu_env_check_lab.py`):** Run `python3 code/part06/gpu_env_check_lab.py`. Using `simulate_gpu_binding_and_isolation([3, 7], ntasks=2, constrain_devices=True, gpu_bind="per_task:1")`, verify why Task 0 sees `CUDA_VISIBLE_DEVICES=0` and Task 1 sees `CUDA_VISIBLE_DEVICES=1` (even though `SLURM_JOB_GPUS=3,7` and the cgroup exposes `/dev/nvidia3,/dev/nvidia7`), whereas setting `constrain_devices=False` and `gpu_bind="none"` exposes all 8 `/dev/nvidia0..7` devices and `CUDA_VISIBLE_DEVICES=3,7` to both tasks.
+2. **Writing `slurm.conf` and `gres.conf` for Mixed H100 + MIG Nodes (`SCL` Chapter 15 & Slurm `gres` docs):** Write the `GresTypes`, `AccountingStorageTRES`, `NodeName`, and `gres.conf` (`AutoDetect=nvml`) entries for a cluster with 16 whole-GPU nodes (`gpu[01-16]`, 8 `h100` GPUs per node) and 4 interactive MIG nodes (`mig[01-04]`, each with 1 whole `a100` GPU and 2 `a100_3g.20gb` MIG instances). Explain how to verify the merged configuration on a node before starting `slurmd`.
+3. **Writing a Portable Multi-Node PyTorch Batch Script (`DAI` Chapter 8):** Following the `DAI` Chapter 8 resource-allocation and exercise guidelines, write a complete `#SBATCH` header for a 2-node, 4-GPU-per-node DDP training job (`--nodes=2`, `--ntasks-per-node=4`, `--gres=gpu:4`, `--cpus-per-task=8`, `--mem=128G`, `--time=04:00:00`, `--exclusive`), and explain why `--gpus-per-node=4` (or `--gres=gpu:4`) is preferred over `--gpus=8` for multi-node NCCL collectives.
+4. **NUMA Socket Affinity (`Cores=`) and NVLink Topology (`Links=`):** On a 2-socket, 64-core, 8-GPU HGX node (`Cores=0-31` on Socket 0 for GPUs `0–3`; `Cores=32-63` on Socket 1 for GPUs `4–7`), compare what happens when a 2-GPU job is submitted with default binding vs `--gres-flags=enforce-binding` vs `--gres-flags=disable-binding`, and how `Links=-1,18,18,18,0,0,0,0` helps `select/cons_tres` avoid allocating poorly connected GPU pairs.
+5. **Automated Multi-Node GPU Straggler and OOM Detection (`DAI` Chapter 8 `SLURMJobMonitor`):** Using `parse_nvidia_smi_csv_and_detect_anomalies()` in `code/part06/gpu_env_check_lab.py`, feed `nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total --format=csv,noheader,nounits` output (`94, 65536, 81920` on GPU 0; `32, 79872, 81920` on GPU 1) and verify that GPU 1 triggers both the straggler alert (`< 50%` utilization: `32%`) and the high-memory alert (`> 95%` VRAM: `78.0 / 80.0 GiB`).
+6. **Profiling `ncclAllReduce` vs Compute Bottlenecks on Slurm (`DAI` Chapter 8):** Show how to instrument 5 steps of a multi-node Slurm training job with `torch.profiler.profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True, profile_memory=True, with_stack=True)`, why `prof.export_chrome_trace("trace.json")` must be guarded by `if dist.get_rank() == 0:`, and which three environment variables (`NCCL_DEBUG=INFO`, `NCCL_DEBUG_SUBSYS=ALL`, `TORCH_DISTRIBUTED_DEBUG=DETAIL`) diagnose low-level NCCL ring/tree stalls.
 
-## 12. Sources and review notes
+## Checkpoint
 
-- GRES and GPU scheduling concepts, partitions and operations: *Supercomputers for Linux SysAdmins* chapter 15 (generic and trackable resources), restated in my words; distributed-training launch patterns from *Distributed AI Systems* chapter 8 (SLURM for AI training), used in 6.11 and 6.12 more fully.
+<details>
+<summary>1. What is a Slurm GRES, and which two configuration files define GPUs on a cluster (`SCL` Chapter 15 & `gres.conf(5)`)?</summary>
+
+A **GRES (Generic Resource)** is any consumable node resource beyond CPU and memory (such as GPUs, MIG slices, MPS shares, shards, or fast local storage).
+1. **`slurm.conf`** (cluster-wide): Declares `GresTypes=gpu`, `AccountingStorageTRES=gres/gpu,...`, and each node's inventory (`NodeName=gpu[01-16] Gres=gpu:h100:8`).
+2. **`gres.conf`** (node-level): Declares `AutoDetect=nvml` or manual device attributes (`Name`, `Type`, `File=/dev/nvidia[0-7]`, `Cores`, `Links`, `Flags`).
+</details>
+
+<details>
+<summary>2. Compare `AutoDetect=nvml` vs `AutoDetect=nvidia` vs `AutoDetect=rsmi` in `gres.conf`, and how do you verify what `slurmd` detected?</summary>
+
+- **`AutoDetect=nvml`:** Queries NVIDIA's Management Library (`libnvidia-ml.so`) to automatically populate `Type`, `File`, `Cores` (NUMA CPU affinity), `Links` (NVLink connectivity), `UUID`, and **MIG instances**. Always use `nvml` on NVIDIA data-center nodes.
+- **`AutoDetect=nvidia`:** Lightweight fallback that discovers `/dev/nvidia*` device files without linking against NVML, but **does not detect MIG instances or NVLink links**.
+- **`AutoDetect=rsmi` / `amd`:** Queries AMD ROCm SMI for Instinct GPUs.
+Verify on the compute node by running **`slurmd -G`**, which prints the merged `slurm.conf` + `gres.conf` + NVML-discovered GRES records and exits.
+</details>
+
+<details>
+<summary>3. What core numbering does `Cores=` in `gres.conf` use, and why must `Cores=` cover whole sockets (or NUMA nodes)?</summary>
+
+`Cores=` uses **abstract logical core indices** (matching `lstopo -l` `"Core L#"`, not physical OS `/proc/cpuinfo` processor IDs). Because Slurm co-allocates GRES and CPUs at **socket granularity**, `Cores=` must specify all cores belonging to the GPU's attached socket(s) (or NUMA node when `SlurmdParameters=numa_node_as_socket` is enabled). Changing `Cores=` requires a `slurmctld` restart.
+</details>
+
+<details>
+<summary>4. What does `Links=` in `gres.conf` represent, and how does `slurmctld` use it?</summary>
+
+`Links=` is a comma-separated vector of integer link weights between a GPU and every GPU on the node (`-1` for self, `0` for no direct link, or higher integers such as `18` for NVLink bonds). `slurmctld` uses `Links` (auto-populated by `AutoDetect=nvml`) to co-allocate strongly connected GPU pairs/quads when a job requests a subset of a node's GPUs.
+</details>
+
+<details>
+<summary>5. What do `Flags=explicit` and `Flags=env_uuid` do in `gres.conf`?</summary>
+
+- **`Flags=explicit`:** Prevents the GRES from being automatically granted to `--exclusive` whole-node jobs unless the user explicitly requests that GRES (`--gres=...`).
+- **`Flags=env_uuid`:** Populates `CUDA_VISIBLE_DEVICES` with GPU/MIG `UUID` strings (`GPU-...` or `MIG-...`) instead of integer device indices.
+</details>
+
+<details>
+<summary>6. Compare `--gres=gpu:4`, `--gpus-per-node=4`, `--gpus=8`, and `--gpus-per-task=1` for a 2-node PyTorch job.</summary>
+
+- **`--gres=gpu:4` / `--gpus-per-node=4`:** Allocates **4 GPUs on each node** (8 GPUs total across 2 nodes), guaranteeing a symmetric topology for multi-node `NCCL` collectives.
+- **`--gpus=8` (`-G 8`):** Requests **8 GPUs total across the job**, allowing Slurm to pack them asymmetrically (e.g., 6 GPUs on node A and 2 GPUs on node B), which degrades collective balance.
+- **`--gpus-per-task=1`:** Allocates 1 GPU per task (`-n`) and **implicitly enables `--tres-bind=gres/gpu:per_task:1`**, binding each task to its own distinct GPU.
+</details>
+
+<details>
+<summary>7. Why should batch scripts explicitly specify `--nodes`, `--gres`, `--cpus-per-task`, `--mem`, and `--time` (`DAI` Chapter 8), and how do `DefCpuPerGPU` and `DefMemPerGPU` protect users who forget?</summary>
+
+Different clusters configure different defaults (often 1 CPU and minimal RAM), causing multi-worker PyTorch `DataLoader` processes to OOM on host memory or starve GPU kernels (`DAI` Chapter 8). On the administrator side, setting partition-level **`DefCpuPerGPU`** (e.g., `8` or `16`) and **`DefMemPerGPU`** (e.g., `65536` for 64 GiB) automatically scales CPU and RAM allocations proportionally whenever a user only writes `--gres=gpu:N`.
+</details>
+
+<details>
+<summary>8. Suppose a 2-task job is allocated physical GPUs `3` and `7` (`SLURM_JOB_GPUS=3,7`). What does `CUDA_VISIBLE_DEVICES` equal for each task when `ConstrainDevices=yes` and `--gpus-per-task=1`?</summary>
+
+When `TaskPlugin=task/cgroup` and `ConstrainDevices=yes` are active, cgroup device fencing hides `/dev/nvidia0,1,2,4,5,6` so only the two allocated GPUs exist inside the job's device namespace as relative indices `0` and `1`. With `--gpus-per-task=1`, **Task 0 receives `CUDA_VISIBLE_DEVICES=0`** (physical GPU 3) and **Task 1 receives `CUDA_VISIBLE_DEVICES=1`** (physical GPU 7).
+</details>
+
+<details>
+<summary>9. Why is `CUDA_VISIBLE_DEVICES` alone insufficient for multi-tenant GPU isolation, and what enforces real hardware isolation?</summary>
+
+`CUDA_VISIBLE_DEVICES` is merely an user-space environment variable that any process can `unset` or override (or bypass by opening `/dev/nvidia*` directly). True kernel-level isolation requires **`TaskPlugin=task/cgroup`** in `slurm.conf` and **`ConstrainDevices=yes`** in `cgroup.conf` (whose default is `no`!), which configures the Linux cgroup device controller (`devices.allow` / eBPF device program in cgroup v2) so opening any unallocated `/dev/nvidiaN` fails with `EPERM`.
+</details>
+
+<details>
+<summary>10. Which `/dev/nvidia*` control devices must remain accessible to all GPU jobs even when `ConstrainDevices=yes` is enabled?</summary>
+
+The shared driver control nodes **`/dev/nvidiactl`**, **`/dev/nvidia-uvm`** (Unified Virtual Memory), **`/dev/nvidia-uvm-tools`**, and **`/dev/nvidia-caps/*`** (required for MIG capability access).
+</details>
+
+<details>
+<summary>11. Compare `--gpu-bind=closest`, `--gpu-bind=map:0,1,2,3`, and `--gpu-bind=none`.</summary>
+
+- **`--gpu-bind=closest`:** Binds each task to the GPU(s) closest to its allocated CPU cores/NUMA domain.
+- **`--gpu-bind=map:0,1,2,3`:** Explicitly maps task 0 to job GPU 0, task 1 to job GPU 1, task 2 to job GPU 2, and task 3 to job GPU 3.
+- **`--gpu-bind=none`:** Disables per-task GPU binding (overriding the implicit binding of `--gpus-per-task`) so every task sees all GPUs allocated to the job on that node.
+</details>
+
+<details>
+<summary>12. What is the trade-off between `--gres-flags=enforce-binding` and `--gres-flags=disable-binding`?</summary>
+
+- **`--gres-flags=enforce-binding`:** Forces Slurm to allocate CPUs strictly from the socket/NUMA cores listed in `Cores=` for the allocated GPUs. This guarantees optimal PCIe/NVLink/NUMA locality but may increase queue wait time until co-located CPUs and GPUs are simultaneously free.
+- **`--gres-flags=disable-binding`:** Allows Slurm to pair a GPU with CPU cores from *any* socket on the node. Required when a job requests more CPUs per GPU than exist on the GPU's attached socket.
+</details>
+
+<details>
+<summary>13. How does Slurm schedule NVIDIA MIG (Multi-Instance GPU) slices, and can Slurm dynamically partition a GPU into MIG instances?</summary>
+
+With `AutoDetect=nvml` in `gres.conf` and typed `Gres=gpu:a100_3g.20gb:2` entries in `slurm.conf`, Slurm schedules each MIG slice as an independent GPU with full cgroup isolation and task binding. **Slurm cannot dynamically create or destroy MIG partitions**—the MIG instances must already be created (via `nvidia-smi mig` or systemd/GPU Operator scripts) *before* `slurmd` starts.
+</details>
+
+<details>
+<summary>14. Compare MIG, MPS (`gres/mps`), and Sharding (`gres/shard`) for sharing a single GPU across multiple Slurm jobs.</summary>
+
+- **MIG (`gpu:<profile>`):** Hardware partitioning of SMs, L2 cache, and HBM bandwidth (up to 7 instances on A100/H100). Provides hardware fault and memory isolation, but static layout and no multi-GPU NVLink across slices.
+- **MPS (`gres/mps`, e.g., `mps:200` for 2 GPUs = 100% per GPU):** Concurrent spatial sharing of SM compute percentages via the CUDA MPS daemon (`select/cons_tres` required). High throughput for cooperative small processes, but **no hardware memory isolation** (one process can OOM the GPU).
+- **Sharding (`gres/shard`, e.g., `shard:64`):** Generic Slurm token for time-sliced GPU sharing across jobs. Simple and flexible, though by default it does not fence GPU processes or memory unless opt-in shard memory enforcement is configured.
+</details>
+
+<details>
+<summary>15. How do you track per-GPU-model usage in `slurmdbd` and ensure GPUs dominate fair-share billing?</summary>
+
+1. Add both generic and typed GPU TRES to `slurm.conf`: `AccountingStorageTRES=gres/gpu,gres/gpu:h100,gres/gpu:a100`.
+2. Configure high GPU billing weights on the partition (`TRESBillingWeights="GRES/gpu=10,CPU=1,Mem=0.1G"`) and optionally set `PriorityFlags=MAX_TRES` (or `MAX_TRES_GRES` in Slurm 25.05+) so GPU hours determine fair-share billing.
+</details>
+
+<details>
+<summary>16. Why does a compute node enter `DRAIN` state with reason `gres/gpu count too low (0 < 8)` after a reboot, and how do you fix it (`DAI` Chapter 8 & `gres.conf(5)`)?</summary>
+
+`slurmd` started before the NVIDIA kernel module (`nvidia.ko`), NVML library, or MIG partition layout was ready, or a GPU fell off the PCIe bus (`Xid` hardware fault in `dmesg`). Verify all 8 GPUs appear in `nvidia-smi` and `slurmd -G`, ensure the systemd service orders `slurmd.service` after `nvidia-persistenced` / MIG setup, and clear the drain with `scontrol update NodeName=<node> State=RESUME`.
+</details>
+
+<details>
+<summary>17. How can you inspect live `nvidia-smi` metrics across all nodes of a running batch job when direct SSH to compute nodes is disabled (`DAI` Chapter 8)?</summary>
+
+Attach a diagnostic step directly into the running job's allocation using **`srun --jobid=<job_id> nvidia-smi`** (or query a specific allocated node with `srun --jobid=<job_id> -w <node> nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total --format=csv,noheader,nounits`).
+</details>
+
+<details>
+<summary>18. In the `SLURMJobMonitor` tool (`DAI` Chapter 8), what two thresholds detect straggler ranks and imminent VRAM OOM across allocated GPUs?</summary>
+
+- **Low GPU utilization (`utilization < 50%`):** Flags a straggler or stalled GPU caused by CPU `DataLoader` bottlenecks, slow storage reads, or a rank blocked on a collective barrier.
+- **High GPU memory usage (`memory_used_gb / memory_total_gb > 0.95`):** Flags a GPU using more than 95% of its total HBM, warning of imminent OOM crashes.
+</details>
+
+<details>
+<summary>19. Why can `nvidia-smi` report `100%` GPU utilization even when a distributed job is stalled or bottlenecked on communication, and how do you confirm the real bottleneck (`DAI` Chapter 8)?</summary>
+
+Active `NCCL` spin-wait polling kernels keep CUDA streaming multiprocessors busy (`100%` `utilization.gpu` in `nvidia-smi`) while waiting for network packets. Wrapping 5 training steps in `torch.profiler.profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], ...)` and inspecting `prof.key_averages().table(sort_by="cuda_time_total")` (or Chrome `trace.json` exported on rank 0) reveals whether `ncclAllReduce` communication kernels dominate actual CUDA execution time.
+</details>
+
+<details>
+<summary>20. What three quick Slurm commands isolate whether a GPU launch failure is caused by unavailable nodes, missing GRES registration, or the user's training script (`DAI` Chapter 8)?</summary>
+
+1. **`sinfo -N -l`:** Checks whether target nodes are `idle`, `alloc`, `down`, or `drain`.
+2. **`scontrol show nodes | grep Gres`:** Verifies that `slurmctld` sees the expected `Gres=gpu:...` inventory on each node.
+3. **`srun -N 1 --gres=gpu:1 nvidia-smi -L`:** Tests raw Slurm GPU allocation and cgroup device visibility independent of Python/PyTorch.
+</details>
+
+## Sources and review notes
+
+- GRES and GPU scheduling concepts, partitions and operations: *Supercomputers for Linux SysAdmins* (`supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware`, `SCL`) Chapter 15 ("15. Slurm": generic and trackable resources), restated in our words.
+- Distributed-training GPU resource allocation best practices (`--nodes`, `--gres`, `--cpus-per-task`, `--mem`, `--time`, `--exclusive`), live job monitoring (`srun --jobid=<job_id> nvidia-smi`, `SLURMJobMonitor` CSV polling and `<50%` util / `>95%` memory anomaly detection), distributed GPU profiling (`torch.profiler`, `ncclAllReduce`, `NCCL_DEBUG=INFO`, `NCCL_DEBUG_SUBSYS=ALL`, `TORCH_DISTRIBUTED_DEBUG=DETAIL`), and GPU allocation troubleshooting (`sinfo -N -l`, `scontrol show nodes | grep Gres`, `srun -N 1 --gres=gpu:1 nvidia-smi -L`): read in full from *Distributed AI Systems* (`distributed-ai-systems`, `DAI`) Chapter 8 ("Chapter 8: Running Distributed Training with SLURM").
 - Parameters and semantics: Slurm man pages `gres.conf(5)`, `slurm.conf(5)`, `cgroup.conf(5)`, `sbatch(1)`, `srun(1)`, `slurmd(8)` and the `gres` documentation page (MIG, MPS, sharding), SchedMD/slurm commit `521370b`. Several AutoDetect values and shard memory enforcement belong to very recent releases.
-- Original: `code/part06/gpu_env_check.py` (run once without GPUs), the request-choice guidance and troubleshooting table.
-- Unverified: NVSwitch/HGX socket-to-GPU layout statement (typical, check `nvidia-smi topo -m`); the systemd/cgroup device-reset incident remark; accounting field names for GPU utilisation; all cluster behaviour.
+- Run here: `python3 code/part06/gpu_env_check.py` and `python3 code/part06/gpu_env_check_lab.py` (3 passed, 0 failed).
+- Explicitly labelled inferences: `simulate_gpu_binding_and_isolation` and `parse_nvidia_smi_csv_and_detect_anomalies` in `code/part06/gpu_env_check_lab.py` are deterministic teaching models of Slurm `ConstrainDevices=yes` remapping and `DAI` Chapter 8's `SLURMJobMonitor`.
+- Not verified on live hardware: NVSwitch/HGX socket-to-GPU layout statement (typical, check `nvidia-smi topo -m`); the systemd/cgroup device-reset incident remark; accounting field names for GPU utilisation; all live GPU cluster behaviour (`untested here`).
