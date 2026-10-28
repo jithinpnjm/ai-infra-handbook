@@ -211,10 +211,10 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 7.5 | Redfish actions, tasks, events and subscriptions | reviewed | 4212 | `actions_lab.py` (34/34 pass), `RF-S 7.11,12`, `RF-G` |
 | 7.6 | The Redfish schema: reading CSDL, JSON schema and the resource guide | reviewed | 4023 | `schema_lab.py` (11/11 pass), `RF-SC`, `RF-G`, `RF-S 9,11` |
 | 7.7 | Systems, Chassis and Managers: the core resource model | reviewed | 3846 | `model_inventory_lab.py` (3/3 pass), `RF-G`, `RF-S 9.11` |
-| 7.8 | Power, thermal, sensors and environment | drafted | 2874 |  |
-| 7.9 | Storage, network adapters and PCIe devices | drafted | 2528 |  |
-| 7.10 | Firmware inventory and the UpdateService | drafted | 3806 |  |
-| 7.11 | Log services, event logs and diagnostics | drafted | 2843 |  |
+| 7.8 | Power, thermal, sensors and environment | reviewed | 3793 | `sensors_lab.py` pass, `RF-G` |
+| 7.9 | Storage, network adapters and PCIe devices | reviewed | 3343 | `hardware_lab.py` pass, `RF-G` |
+| 7.10 | Firmware inventory and the UpdateService | reviewed | 5415 | `firmware_lab.py` pass, `RF-G`, `BCM 14.5`, `VL10 ch16` |
+| 7.11 | Log services, event logs and diagnostics | reviewed | 3517 | `logs_lab.py` pass, `RF-G` |
 | 7.12 | Automating Redfish with Python, Ansible and Go | drafted | 2694 |  |
 | 7.13 | Redfish on NVIDIA DGX and HGX: BMC, GPU baseboard and management | drafted | 3011 |  |
 | 7.14 | Fleet-scale hardware management and node lifecycle automation | drafted | 3156 |  |

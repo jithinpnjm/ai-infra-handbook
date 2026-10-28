@@ -50,6 +50,24 @@ DMTF's rack-server example even carries a hint inside the chassis: `"Thermal@Red
 
 The lab shows the difference in the same example tree: through the modern `Sensors` collection the tool found **41** readings. When I removed that link to force the old route it found **9**, from `Thermal` and `Power`. The modern way exposes more, with more detail.
 
+```mermaid
+flowchart TD
+    CH["/redfish/v1/Chassis/{ChassisId}"]
+    subgraph MODERN["Modern Subsystem & Sensor Model (Preferred)"]
+        SEN["Sensors Collection<br/>1 Sensor resource per measurement (41 in 1U example)"]
+        TS["ThermalSubsystem<br/>Fans, FanRedundancy, ThermalMetrics, LeakDetection"]
+        PS["PowerSubsystem<br/>PowerSupplies, PowerSupplyRedundancy, CapacityWatts"]
+        EM["EnvironmentMetrics & Controls<br/>PowerWatts, EnergykWh, PowerLimit SetPoint"]
+    end
+    subgraph LEGACY["Legacy Monolithic Model (Deprecated)"]
+        TH["Thermal (Deprecated)<br/>Temperatures[], Fans[] arrays"]
+        PW["Power (Deprecated)<br/>PowerControl[], Voltages[], PowerSupplies[] arrays"]
+    end
+    CH --> SEN & TS & PS & EM
+    CH -. "fallback only if modern links absent" .-> TH & PW
+    EM -. "DataSourceUri" .-> SEN
+```
+
 ## 2. Sensors: one resource per measurement
 
 A `Sensor` is a single reading with its meaning attached. The most useful properties (from the schema):
@@ -223,14 +241,14 @@ Because layouts differ, use a fallback order. For "the GPU temperature" on a ser
 3. Otherwise try the old `Thermal` resource and look for temperatures whose `PhysicalContext` or `RelatedItem` points to the GPU.
 4. If none exist, say so. Do not invent a value. "No data" is a finding to report.
 
-## 9. Exercises
+## Exercises
 
-1. Run `sensors_lab.py`. Which check would catch a BMC whose health flag is stuck on `OK`?
-2. Serve DMTF's `public-pdu` and run `rf_sensors.py --all`. List the kinds of readings (current, voltage, energy). Why does a PDU need a chassis?
-3. In the rack-server example, find the control for power limit and the sensor it watches. What would you `PATCH` to lower the limit to 450 W, and what must you check first?
-4. Write an alert rule (in words) for "a power supply is predicting failure". Which property do you read?
-5. Extend `rf_sensors.py` to also read `ThermalSubsystem/Fans` and report `SpeedPercent`. Test it on the rack-server example.
-6. Using `redfish_mock.py` in-process, change a sensor so `Thresholds.UpperCritical.Activation` is `Disabled`. What should your tool do?
+1. **Verifying value-based vs health-based sensor alerts (`code/part07/sensors_lab.py`):** Run `python3 code/part07/sensors_lab.py` (`9 passed, 0 failed` or `13` sub-assertions). Inspect `code/part07/sensors_lab.py` and `code/part07/rf_sensors.py` to see how a GPU sensor at `92.0 Cel` (above `UpperCritical: 88.0`) is flagged even when `Status.Health` is still `"OK"`.
+2. **Reading rack PDU telemetry via Redfish (`public-pdu`):** Serve `$REDFISH_PUBLICATIONS/mockups/public-pdu` with `redfish_mock.py --mockup` and run `python3 code/part07/rf_sensors.py http://127.0.0.1:8443 admin adminpass --all`. List the `ReadingType` values returned across the `115` sensors (`Voltage`, `Current`, `Power`, `EnergykWh`, `Frequency`, `Temperature`) and explain why a smart rack PDU exposes a `Chassis` resource.
+3. **Inspecting and staging a chassis Power Limit (`Control`):** In the `public-rackmount1` mockup (`/redfish/v1/Chassis/1U/Controls/PowerLimit`), inspect `SetPoint` (`500`), `AllowableMin` (`150`), `AllowableMax` (`1000`), and `Sensor.Reading` (`374`). Write the exact `PATCH` request (including `If-Match`) to lower `SetPoint` to `450` W and state the performance trade-off on a training node.
+4. **Alerting on PSU predictive failure (`Status.Conditions`):** Inspect `/redfish/v1/Chassis/1U/PowerSubsystem/PowerSupplies` in `public-rackmount1` and write a Python check that flags any `PowerSupply` where `Status.Health != "OK"`, `LineInputStatus != "Normal"`, or `Status.Conditions` is non-empty.
+5. **Extending `rf_sensors.py` to report `FanRedundancy` and `SpeedPercent`:** Extend `code/part07/rf_sensors.py` to read `ThermalSubsystem/Fans` and `FanRedundancy`, printing each fan's `SpeedPercent` and whether the fan group has margin above `MinNeededInGroup`.
+6. **Handling `Activation: "Disabled"` on sensor thresholds:** Using `redfish_mock.py` in-process, set a sensor's `Thresholds.UpperCritical.Activation` to `"Disabled"` while setting `Reading` above `Thresholds.UpperCritical.Reading`. Verify how a compliant threshold evaluator should treat a disabled threshold.
 
 ## 10. Interview angles
 
@@ -240,30 +258,143 @@ Because layouts differ, use a fallback order. For "the GPU temperature" on a ser
 - "What is a power cap and what is the risk?" A limit on server power. It protects the rack budget but slows the hardware; change it deliberately and record it.
 - "How would you monitor 1,000 BMCs without overloading them?" Telemetry reports or events where supported, a moderate poll interval, and controlled concurrency.
 
-## 11. Checkpoint questions (20)
+## Checkpoint questions (20)
 
-1. Name the two Redfish designs for thermal and power data.
-2. How many readings did the tool find in the rack-server example through `Sensors`, and through the old route?
-3. What does `ReadingType` tell you? `ReadingUnits`? `PhysicalContext`?
-4. Name the three upper thresholds in order.
-5. What is `DwellTime` for?
-6. What is the difference between a reading, a threshold and `Health`?
-7. What does `State: Absent` mean for a sensor?
-8. Why should a tool check the reading against the threshold itself?
-9. What does `FanRedundancy` tell you?
-10. What does `LineInputStatus` mean?
-11. What is a power supply `Condition` such as a predictive failure?
-12. What is `EnvironmentMetrics`?
-13. What is a `Control` and what is `SetPoint`?
-14. Why is a power cap not a free setting?
-15. What does `TelemetryService` offer that polling does not?
-16. What is a `MetricReportDefinition`?
-17. What can the BMC see that the GPU driver cannot, and the reverse?
-18. What is the fallback order for finding a GPU temperature?
-19. What should a tool do when no data exists?
-20. Why keep the number of Prometheus label values small?
+<details>
+<summary>1. Name the two Redfish designs for exposing thermal and power telemetry on a `Chassis`, and state which one is deprecated.</summary>
 
-## 12. Sources and review notes
+1. **Modern design (current):** `/redfish/v1/Chassis/{id}/Sensors`, `ThermalSubsystem`, `PowerSubsystem`, `EnvironmentMetrics`, and `Controls` (one addressable resource per sensor, fan, or PSU).
+2. **Legacy design (deprecated):** `/redfish/v1/Chassis/{id}/Thermal` and `/redfish/v1/Chassis/{id}/Power` (monolithic resources containing `Temperatures[]`, `Fans[]`, `Voltages[]`, `PowerControl[]`, and `PowerSupplies[]` arrays).
+</details>
+
+<details>
+<summary>2. In DMTF's `public-rackmount1` server example, how many readings does `rf_sensors.py` discover via the modern `Sensors` collection versus the legacy `Thermal`/`Power` fallback?</summary>
+
+It finds **`41` readings** through the modern `Sensors` collection versus only **`9` readings** when forced onto the legacy `Thermal` and `Power` resources.
+</details>
+
+<details>
+<summary>3. On a `Sensor` resource, what do `ReadingType`, `ReadingUnits`, and `PhysicalContext` specify?</summary>
+
+- **`ReadingType`:** The physical quantity measured (`Temperature`, `Power`, `EnergykWh`, `Voltage`, `Current`, `Rotational`, `Humidity`, `Pressure`, `LiquidFlow`, `AirFlow`, `Percent`).
+- **`ReadingUnits`:** The unit of measurement in UCUM notation (`Cel`, `W`, `kW.h`, `V`, `A`, `RPM`, `%`, `L/min`).
+- **`PhysicalContext`:** The subsystem or location where the sensor sits (`CPU`, `GPU`, `Intake`, `Exhaust`, `PowerSupply`, `Memory`, `LiquidInlet`).
+</details>
+
+<details>
+<summary>4. Name the three upper threshold levels on a `Sensor` in ascending order of severity.</summary>
+
+1. **`UpperCaution`** (above normal operating range; warning).
+2. **`UpperCritical`** (significantly above normal; action required).
+3. **`UpperFatal`** (dangerous hardware limit; triggers emergency shutdown/protection).
+</details>
+
+<details>
+<summary>5. What do `Activation` and `DwellTime` mean inside a sensor threshold object?</summary>
+
+- **`Activation`:** The direction of travel (`Increasing`, `Decreasing`, `Either`, or `Disabled`) that triggers the threshold.
+- **`DwellTime`:** An ISO 8601 duration specifying how long the reading must continuously violate the threshold before the threshold event is asserted (filtering out sub-second spikes).
+</details>
+
+<details>
+<summary>6. What is the difference between a sensor's `Reading`, its `Thresholds`, and its `Status.Health`?</summary>
+
+`Reading` is the raw numerical measurement (`92.0`); `Thresholds` are the configured numeric boundaries (`UpperCritical: 88.0`); and `Status.Health` (`OK`, `Warning`, `Critical`) is the BMC firmware's own summary judgment.
+</details>
+
+<details>
+<summary>7. What does `Status.State: "Absent"` or `"Disabled"` mean on a sensor, and how should a monitoring scraper handle it?</summary>
+
+`Absent` means the optional hardware probe or component is not installed, and `Disabled` means the sensor is turned off (`Reading` is typically `null`). Scrapers should skip `Absent` and `Disabled` sensors rather than alerting on `Reading == null`.
+</details>
+
+<details>
+<summary>8. Why should your monitoring tool compare `Reading` against `Thresholds` directly in addition to checking `Status.Health`?</summary>
+
+Some BMC firmware builds fail to update `Status.Health` when a sensor crosses a threshold (or leave `Health` at `OK`). Comparing `Reading` directly against `UpperCritical`/`UpperFatal`/`UpperCaution` catches thermal and power excursions even when BMC health rollup logic has a bug.
+</details>
+
+<details>
+<summary>9. What does `FanRedundancy` inside `ThermalSubsystem` tell an operator when a single fan fails?</summary>
+
+It specifies the redundancy group (`RedundancyType`, such as `NPlusM`), the member fans, and `MinNeededInGroup`—telling you immediately whether losing one fan leaves cooling redundant (schedule maintenance) or breaches the minimum required fan count (drain and shut down immediately).
+</details>
+
+<details>
+<summary>10. Which Redfish resources under `ThermalSubsystem` and `Chassis` model direct-to-chip liquid cooling and CDUs?</summary>
+
+**`CoolingUnit`** (CDU), **`CoolantConnector`**, **`Pump`**, **`Reservoir`**, **`Filter`**, and **`LeakDetection` / `LeakDetector`** (used by BCM on liquid-cooled NVL racks).
+</details>
+
+<details>
+<summary>11. On a `PowerSupply` resource under `PowerSubsystem`, what do `LineInputStatus` and `Status.Conditions` report?</summary>
+
+- **`LineInputStatus`:** Whether AC/DC utility input power to that PSU is present and normal (`Normal`, `LossOfInput`, `OutOfRange`).
+- **`Status.Conditions`:** Active diagnostic conditions on the PSU, such as a predictive failure warning (`"Power supply 'PSU 1' has a predicted failure condition"`).
+</details>
+
+<details>
+<summary>12. What is `EnvironmentMetrics`, and what does `DataSourceUri` inside its properties do?</summary>
+
+`EnvironmentMetrics` (attached to a `Chassis`, `Processor`, or `Memory`) provides a convenient roll-up of key environmental readings (`PowerWatts`, `EnergykWh`, `TemperatureCelsius`, `PowerLimitWatts`), where each metric's **`DataSourceUri`** links directly to the underlying `Sensor` resource.
+</details>
+
+<details>
+<summary>13. How do you read and modify a server's power cap using a Redfish `Control` resource?</summary>
+
+Inspect the `Control` resource (`ControlType: "Power"`) under `/redfish/v1/Chassis/{id}/Controls/{controlId}`, check `AllowableMin` and `AllowableMax`, and send a `PATCH` request (with `If-Match`) setting **`SetPoint`** (in `SetPointUnits: "W"`) and `ControlMode: "Automatic"`.
+</details>
+
+<details>
+<summary>14. Why is lowering a server's power cap (`SetPoint`) below its peak workload draw dangerous for multi-node distributed training?</summary>
+
+When power draw hits `SetPoint`, the BMC/hardware throttles CPU and GPU clock frequencies to stay under the power cap. In synchronous multi-node training (`AllReduce`), throttling even a single node forces all other nodes in the job to wait at every collective barrier.
+</details>
+
+<details>
+<summary>15. How does `TelemetryService` reduce monitoring overhead across a 1,000-node cluster compared to polling individual `Sensor` URIs?</summary>
+
+Instead of the client making 40+ HTTP `GET` requests per node per poll cycle, the BMC's `TelemetryService` aggregates readings locally according to a `MetricReportDefinition` and delivers a single compact **`MetricReport`** (via `GET` or pushed automatically via `EventService`).
+</details>
+
+<details>
+<summary>16. What are the four core sub-collections under `/redfish/v1/TelemetryService`?</summary>
+
+1. **`MetricDefinitions`:** Properties and units that the BMC knows how to measure.
+2. **`MetricReportDefinitions`:** Schedules and lists of metrics to bundle into a report.
+3. **`MetricReports`:** The generated time-stamped metric bundles (`MetricValues`).
+4. **`Triggers`:** Threshold rules that fire alerts or actions when a metric crosses a boundary.
+</details>
+
+<details>
+<summary>17. What hardware health signals can the BMC see that `nvidia-smi` / DCGM cannot, and vice versa?</summary>
+
+- **BMC / Redfish sees:** Chassis inlet/exhaust air temperatures, fan RPMs and redundancy, PSU input voltage/wattage, liquid leak detectors, and board sensors when the host OS is dead.
+- **GPU driver (`nvidia-smi` / DCGM) sees:** Per-SM clock frequencies, exact clock-throttle reason bitmasks (`hw_slowdown`, `sw_thermal_slowdown`), HBM ECC error counters, and NVLink symbol/replay counters.
+</details>
+
+<details>
+<summary>18. What is the 4-step discovery fallback order for reading a GPU's temperature on an unfamiliar server via Redfish?</summary>
+
+1. Traverse `Systems` $\rightarrow$ `Processors` (`ProcessorType == "GPU"`) $\rightarrow$ `EnvironmentMetrics` (`TemperatureCelsius`).
+2. Search `Chassis/{id}/Sensors` for `ReadingType == "Temperature"` and `PhysicalContext == "GPU"`.
+3. Fall back to deprecated `Chassis/{id}/Thermal` `Temperatures[]` matching `PhysicalContext == "GPU"`.
+4. If none exist, explicitly report `"no GPU temperature sensor exposed"` rather than guessing.
+</details>
+
+<details>
+<summary>19. Why must a monitoring tool report an explicit warning when an `Enabled` sensor returns `Reading: null`?</summary>
+
+While `null` on a `Disabled` or `Absent` sensor is normal (or on a host-powered domain when `PowerState == "Off"`), `Reading: null` on an `Enabled` sensor of a running server indicates a broken `I2C`/`SMBus` sensor read or hung satellite controller.
+</details>
+
+<details>
+<summary>20. When exporting Redfish sensor readings to Prometheus (`rf_sensors.py --prom`), why must you watch label cardinality across heterogeneous server vendors?</summary>
+
+Prometheus creates a separate time series for every unique combination of metric name and key-value labels (`{chassis=..., sensor=..., kind=..., units=...}`). Avoid putting high-cardinality or rapidly changing strings (such as timestamps or raw serial numbers) into labels unless bounded by the node count.
+</details>
+
+## Sources and review notes
 
 - **Redfish Resource and Schema Guide DSP2046 (2024.4)** and the official JSON Schemas (`Sensor` v1.10 and later, `PowerSubsystem`, `PowerSupply`, `ThermalSubsystem`, `ThermalMetrics`, `EnvironmentMetrics`, `Control`, `Fan`, `Thermal`, `Power`, `TelemetryService`, `MetricReport`, `MetricReportDefinition`, `Triggers`): property meanings and enumerations.
 - **DMTF example trees** (`public-rackmount1`, `public-pdu`, `public-power-shelf`, `public-cooling-unit`, `public-liquid-cooled-server`) at commit `fa6d23d9`: all numbers in the lab.

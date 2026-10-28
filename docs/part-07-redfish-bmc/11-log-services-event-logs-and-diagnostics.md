@@ -75,6 +75,22 @@ A `LogService` has these useful properties (from the schema):
 
 Its actions: `ClearLog`, `CollectDiagnosticData`, `DownloadRawLog` and `PushDiagnosticData`.
 
+```mermaid
+flowchart LR
+    subgraph OWNERS["LogService Owners"]
+        MGR["Managers/{id}/LogServices<br/>(EventLog, SEL)"]
+        SYS["Systems/{id}/LogServices<br/>(BIOS/POST, Memory/CPU)"]
+        CHS["Chassis/{id}/LogServices<br/>(Thermal/Power events)"]
+    end
+    subgraph LOG["LogService Resource"]
+        POL["MaxNumberOfRecords & OverWritePolicy<br/>(WrapsWhenFull vs NeverOverWrites)"]
+        ENT["Entries Collection (Inlined Members)<br/>EntryType: Event vs SEL, EventGroupId"]
+        ACT["Actions:<br/>ClearLog (LogEntriesETag -> 412 guard)<br/>CollectDiagnosticData (202 -> LogEntry -> AdditionalDataURI)"]
+    end
+    MGR & SYS & CHS --> POL
+    POL --> ENT & ACT
+```
+
 ## 2. A log entry
 
 Two kinds are common.
@@ -227,14 +243,14 @@ One real bug the schema check caught while I built this: I had put `OriginOfCond
 - **Tie logs to jobs.** The scheduler knows which job ran on a node when an event happened.
 - **Keep sample logs** from healthy nodes. Knowing what normal chatter looks like makes the unusual entry stand out.
 
-## 9. Exercises
+## Exercises
 
-1. Run `logs_lab.py` and `rf_logs.py services` on the mock. Cause three events (reset the system) and read them with `show`.
-2. Serve DMTF's blade example and run `rf_logs.py show --min Warning`. Which manager reported the fan problem and why that one?
-3. Set a tiny `MaxNumberOfRecords` and `NeverOverWrites` on the mock (see the lab). Show the warning from the tool.
-4. Write down the steps you take to prepare a node for an RMA: which bundles, in which order, and what you record.
-5. A log entry has `Created` two hours later than your host's `dmesg` for the same event. Give three possible explanations.
-6. Add a `--json` flag to `rf_logs.py show` that prints entries as JSON lines.
+1. **Discovering log services and inline entries (`code/part07/logs_lab.py` & `rf_logs.py`):** Run `python3 code/part07/logs_lab.py` (`22` / `23` checks pass). Then start `redfish_mock.py` (`--profile dgx`), trigger three power-state transitions on `System_0`, and run `python3 code/part07/rf_logs.py show http://127.0.0.1:18441 admin adminpass` to inspect the generated `Event` entries.
+2. **Triaging an enclosure fan failure across multiple `LogServices` (`public-bladed-system`):** Serve `$REDFISH_PUBLICATIONS/mockups/public-bladed-system` with `redfish_mock.py --mockup` and run `rf_logs.py show --min Warning`. Identify which `Manager` (`MultiBladeBMC`) logged `Fan 2 crossed Lower Fatal Threshold; fans are no longer redundant` and why that event sits on the enclosure manager rather than an individual blade BMC.
+3. **Testing `WrapsWhenFull` vs `NeverOverWrites` capacity warnings:** Inspect checks 8–10 of `code/part07/logs_lab.py`, where `MaxNumberOfRecords` is set to `5`. Explain why `rf_logs.py` alerts at `>= 80%` capacity on a `NeverOverWrites` log and `>= 95%` capacity on a `WrapsWhenFull` log.
+4. **Writing a pre-RMA evidence collection checklist:** Write the exact sequence of commands to run before unbolting a faulted DGX node for RMA, combining in-band `sudo nvsm dump health` (if the host OS is reachable), out-of-band `rf_logs.py collect --out bundle.bin` (`LogService.CollectDiagnosticData`), and `rf_logs.py show`—before anyone runs `ClearLog`.
+5. **Diagnosing BMC vs host clock skew (`DateTime`):** Suppose a PCIe fatal error appears in host `dmesg -T` at `14:02:10 UTC`, while the corresponding BMC `LogEntry.Created` timestamp says `16:02:10` (or `1970-01-01`). Give three causes (missing BMC NTP configuration in `NetworkProtocol`, `DateTimeLocalOffset` timezone mismatch, or dead CMOS/RTC coin-cell battery after AC power loss) and how `rf_logs.py` detects clock drift `> 300 s`.
+6. **Protecting logs from race-condition deletion (`LogEntriesETag`):** Test calling `POST .../LogServices/EventLog/Actions/LogService.ClearLog` with an outdated `"LogEntriesETag"` string against `redfish_mock.py` and verify that the BMC rejects the clear with HTTP `412 Precondition Failed` so new unread entries are never wiped accidentally.
 
 ## 10. Interview angles
 
@@ -244,30 +260,132 @@ One real bug the schema check caught while I built this: I had put `OriginOfCond
 - "How do you gather evidence before a repair?" A diagnostic bundle through `CollectDiagnosticData`, plus the host-side bundle, before clearing anything.
 - "How do you tell if two log entries are the same incident?" `EventGroupId` and `OriginOfCondition`.
 
-## 11. Checkpoint questions (20)
+## Checkpoint questions (20)
 
-1. Where are log services found?
-2. What are the two common `EntryType` values and how do they differ?
-3. What do `Severity` values mean?
-4. What is `MessageId` and what is it a key to?
-5. What is `OriginOfCondition` for? Where is it in the entry?
-6. What is `EventGroupId` for?
-7. What do `SensorType` and `EntryCode` mean for a SEL entry?
-8. Why are `LogEntryCollection` members inline by default?
-9. What does `OverWritePolicy: NeverOverWrites` do when the log is full?
-10. Why can `WrapsWhenFull` also hide the cause?
-11. Why check the BMC clock before reading logs?
-12. What does the `LogEntriesETag` parameter of `ClearLog` protect against?
-13. Why collect a bundle before clearing?
-14. What does `CollectDiagnosticData` return first?
-15. Where do you find the download address of the bundle?
-16. How do you check that the download is complete?
-17. Name three `DiagnosticDataType` values.
-18. What is `nvsm dump health` and how does it differ from a BMC bundle?
-19. Why centralise BMC logs?
-20. How do logs, sensors and GPU tools fit together in an investigation?
+<details>
+<summary>1. Under which three Redfish resource families can a `LogServices` collection appear?</summary>
 
-## 12. Sources and review notes
+Under **`Managers/{id}/LogServices`** (BMC hardware/audit/SEL logs), **`Systems/{id}/LogServices`** (host boot, CPU, memory, and BIOS logs), and **`Chassis/{id}/LogServices`** (physical enclosure, thermal, and power logs).
+</details>
+
+<details>
+<summary>2. What are the two most common `EntryType` (and `LogEntryType`) values in Redfish logs, and how do they differ?</summary>
+
+- **`Event`:** Modern Redfish structured entries where `MessageId` points into a standard or OEM Message Registry (`ResourceEvent.1.0.ResourceStatusChanged`) and `Links.OriginOfCondition` links to the affected resource.
+- **`SEL`:** Legacy IPMI System Event Log records translated by the BMC, using `SensorType`, `SensorNumber`, `EntryCode`, and raw hex `MessageId` (`0x592A28`).
+</details>
+
+<details>
+<summary>3. What are the three standard `Severity` values on a `LogEntry` resource?</summary>
+
+**`OK`** (informational/normal state change), **`Warning`** (degraded or caution condition), and **`Critical`** (fatal fault or threshold breach requiring immediate attention).
+</details>
+
+<details>
+<summary>4. What does `MessageId` represent on an `EntryType: "Event"` log entry versus an `EntryType: "SEL"` log entry?</summary>
+
+On an `Event` entry, `MessageId` is a `<RegistryPrefix>.<Major>.<Minor>.<MessageKey>` lookup key into a Redfish Message Registry. On a `SEL` entry, `MessageId` holds the raw hexadecimal IPMI event data bytes (`0x592A28`).
+</details>
+
+<details>
+<summary>5. Where is `OriginOfCondition` located inside a `LogEntry` resource (as verified by `schema_lab.py`), and what is it used for?</summary>
+
+Inside **`Links.OriginOfCondition`** (`{"Links": {"OriginOfCondition": {"@odata.id": "/redfish/v1/Systems/System_0"}}}`). It lets an operator or automation script immediately `GET` the exact hardware resource that generated the log entry.
+</details>
+
+<details>
+<summary>6. What is `EventGroupId` on a `LogEntry`?</summary>
+
+An integer identifier shared across multiple log entries that were triggered by the same underlying root cause (for example, `"Fan 3 speed low"` and `"Fan 3 redundancy lost"` sharing `EventGroupId: 7`).
+</details>
+
+<details>
+<summary>7. On an `EntryType: "SEL"` record, what information do `SensorType`, `SensorNumber`, and `EntryCode` provide?</summary>
+
+`SensorType` names the hardware category (`Temperature`, `Voltage`, `Fan`, `Memory`, `Processor`, `Power Supply / Converter`, `Drive Slot/Bay`, `Watchdog`), `SensorNumber` gives the numeric IPMI sensor ID, and `EntryCode` gives the IPMI assertion/transition code (`Assert`, `Deassert`, `Upper Non-recoverable going high`).
+</details>
+
+<details>
+<summary>8. Why does `GET` on `/redfish/v1/Managers/{id}/LogServices/{log}/Entries` return the full `LogEntry` objects inside `Members` instead of just `{"@odata.id": "..."}` links (DSP0266 §9.13.11)?</summary>
+
+The `LogEntryCollection` schema marks `Members` with the **Expanded resource** annotation, meaning the BMC expands `Members` inline by default (`$expand=.($levels=1)` behavior) so clients can read a page of 75 log entries in a single HTTP request instead of 76 requests.
+</details>
+
+<details>
+<summary>9. What happens when a `LogService` with `OverWritePolicy: "NeverOverWrites"` reaches `MaxNumberOfRecords`?</summary>
+
+The BMC **silently discards all new log entries** until an administrator clears the log (`ClearLog`), meaning critical hardware faults occurring after the log fills up are completely lost.
+</details>
+
+<details>
+<summary>10. What is the operational risk of `OverWritePolicy: "WrapsWhenFull"` during a cascading hardware failure?</summary>
+
+`WrapsWhenFull` overwrites the oldest entries in a circular buffer. If a primary hardware fault triggers hundreds of secondary symptom messages, the initial root-cause entry at the start of the incident can be overwritten before an engineer reads the log.
+</details>
+
+<details>
+<summary>11. Why should a log-reading tool always compare `LogService.DateTime` against the management host's NTP-synchronized clock?</summary>
+
+If NTP is not enabled on the BMC (`Managers/{id}/NetworkProtocol`), `LogEntry.Created` timestamps can drift by minutes, hours, or years—making it impossible to correlate BMC hardware events with Linux `dmesg` or Slurm job timestamps.
+</details>
+
+<details>
+<summary>12. What does the optional `LogEntriesETag` parameter on `#LogService.ClearLog` protect against?</summary>
+
+Passing the `ETag` of the `Entries` collection you just archived in `LogEntriesETag` ensures the BMC returns **`412 Precondition Failed`** if new log entries arrived between your read and your `ClearLog` call, preventing accidental deletion of unread events.
+</details>
+
+<details>
+<summary>13. Why should `ClearLog` never be run before collecting a diagnostic bundle and exporting the existing entries?</summary>
+
+Because `ClearLog` permanently erases the non-volatile hardware fault history (`SEL` and `EventLog`) that vendor support engineers require to approve an RMA or diagnose intermittent ECC/PCIe/PSU faults.
+</details>
+
+<details>
+<summary>14. What does `POST .../LogServices/{id}/Actions/LogService.CollectDiagnosticData` return initially?</summary>
+
+Because assembling a support bundle takes seconds or minutes, it returns HTTP **`202 Accepted`** with a `Location` header pointing to a **Task Monitor URI**.
+</details>
+
+<details>
+<summary>15. Once the `CollectDiagnosticData` task completes (`200 OK` or `201 Created`), how do you locate the URL to download the binary diagnostic bundle?</summary>
+
+Per the `LogService` schema, the completed task monitor response's `Location` header (or returned resource) points to a newly created **`LogEntry`** resource, and that `LogEntry`'s **`AdditionalDataURI`** property holds the download URI for the raw archive.
+</details>
+
+<details>
+<summary>16. How does `code/part07/rf_logs.py collect` verify that a downloaded diagnostic bundle was not truncated in transit?</summary>
+
+It compares the exact byte length of the data downloaded from `AdditionalDataURI` against the **`AdditionalDataSizeBytes`** integer recorded on the `LogEntry` resource (exiting with status `7` on a size mismatch).
+</details>
+
+<details>
+<summary>17. Name the five standard `DiagnosticDataType` values supported by `LogService.CollectDiagnosticData`.</summary>
+
+**`Manager`** (BMC internal logs and state), **`PreOS`** (UEFI/BIOS/POST logs), **`OS`** (host operating system crash/diagnostic data), **`Device`** (specific adapter/controller dump), and **`OEM`** (vendor-specific support archive).
+</details>
+
+<details>
+<summary>18. On an NVIDIA DGX node, how does `sudo nvsm dump health` complement `LogService.CollectDiagnosticData`?</summary>
+
+`LogService.CollectDiagnosticData` collects **out-of-band BMC/chassis/FPGA telemetry** (and works even when the host OS refuses to boot), whereas `sudo nvsm dump health` runs **in-band inside the host Linux OS** to package kernel logs, `nvidia-smi`/DCGM state, InfiniBand counters, and driver configs. NVIDIA Enterprise Support typically requests both when diagnosing complex hardware faults.
+</details>
+
+<details>
+<summary>19. Why should every production AI cluster ship BMC logs centrally (via Redfish `EventService` or periodic scraping) instead of relying on local BMC storage?</summary>
+
+Local BMC flash buffers are small (often a few hundred to a few thousand records) and can wrap, fill up under `NeverOverWrites`, or become unreachable if the BMC itself suffers a hardware failure.
+</details>
+
+<details>
+<summary>20. Walk through how you combine host GPU counters, BMC `LogServices`, and BMC `Sensors` when a PyTorch job crashes with an unexplained memory error (`volume-10/01` Scenario 4).</summary>
+
+1. Check in-band GPU HBM ECC counters (`nvidia-smi -q -d ECC`) to see if a GPU suffered an uncorrectable double-bit ECC error.
+2. Query out-of-band BMC `LogServices` (`EventLog/Entries` and `SEL/Entries`) around the job crash timestamp for host `DIMM` parity/ECC errors, PCIe AER fatal events, or CPU Machine Check Exceptions (MCEs).
+3. Check BMC `Sensors` (`rf_sensors.py`) for thermal or PSU voltage transients at that timestamp, isolating whether to RMA a host DIMM, reset/drain a GPU, or repair cooling.
+</details>
+
+## Sources and review notes
 
 - **Redfish Resource and Schema Guide DSP2046 and the official JSON Schemas:** `LogService` v1.9 and later (properties, `OverWritePolicy`, `LogEntryTypes`, `LogPurpose`, the actions, `LogDiagnosticDataTypes`) and `LogEntry` v1.22 (`EntryType`, `SensorType`, `Links`, attachments). I read the property descriptions and the action definitions, including the rule that the finished task's `Location` is the `LogEntry`.
 - **Redfish Specification DSP0266 v1.21.0:** expanded resource annotation (`LogEntryCollection` members, 9.13.11 and `$expand`, 7.3.2), tasks and monitors (12.2).

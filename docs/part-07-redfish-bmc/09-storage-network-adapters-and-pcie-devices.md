@@ -195,15 +195,14 @@ Fleet use: run this on every BMC after racking and after every maintenance. A GP
 
 So use Redfish for the cheap first check and for machines whose OS is not running, then the host tools for depth.
 
-## 7. Exercises
+## Exercises
 
-1. Run `hardware_lab.py`. Pick the check you think catches the most expensive real-life fault and explain why.
-2. Serve DMTF's `public-localstorage` and run `rf_hardware.py --all`. List the drives with their protocol and capacity.
-3. Add a new check to `rf_hardware.py`: flag a `Volume` whose `Operations` array shows a rebuild. Test it by editing the mock tree.
-4. A GPU shows `PCIeType: Gen4` and `MaxPCIeType: Gen5`. List three possible causes and the next check for each.
-5. A 400G port shows `LinkUp` at 100 Gbps. What do you check on both sides of the link?
-6. Why does the tool ignore ports where `LinkState` is `Disabled`?
-7. How would you store the result of a fleet run so you can notice a change from last week?
+1. **Running the 15-check hardware degradation suite (`code/part07/hardware_lab.py`):** Run `python3 code/part07/hardware_lab.py` (`12` / `15` checks pass) and inspect `code/part07/rf_hardware.py`. Explain why a GPU whose `PCIeInterface` shows `PCIeType: "Gen3"`, `MaxPCIeType: "Gen5"`, `LanesInUse: 8`, `MaxLanes: 16` is flagged for both speed and width degradation.
+2. **Auditing NVMe and SAS drives (`public-localstorage`):** Serve `$REDFISH_PUBLICATIONS/mockups/public-localstorage` with `redfish_mock.py --mockup` and run `python3 code/part07/rf_hardware.py http://127.0.0.1:8443 admin adminpass --all`. List the drives discovered along with their `Protocol`, `MediaType`, `CapacityBytes`, `FailurePredicted`, and `PredictedMediaLifeLeftPercent`.
+3. **Detecting an active RAID `Volume` rebuild (`Operations`):** Extend `code/part07/rf_hardware.py` so that any `Volume` with a non-empty `Operations` array (such as `"OperationName": "Rebuild"`, `"PercentageComplete": 42`) is reported as a warning during pre-job health checks.
+4. **Triaging a PCIe Gen5 $\rightarrow$ Gen4/Gen3 link downgrade:** A GPU on `node019` reports `PCIeType: "Gen4"` (`MaxPCIeType: "Gen5"`). List three physical or firmware root causes (riser/retimer signal integrity, BIOS PCIe speed set to `Auto` instead of `Gen5`, thermal/power state) and the host-side commands (`lspci -vvv`, `dmesg | grep -i aer`) you would run to correlate with Redfish.
+5. **Diagnosing a 400G port negotiating at 100G or 200G:** A `NetworkAdapter` `Port` reports `LinkState: "Enabled"`, `LinkStatus: "LinkUp"`, `CurrentSpeedGbps: 200`, `MaxSpeedGbps: 400`, and `ActiveWidth: 2` (`Width: 4`). Explain what `ActiveWidth: 2` of `4` tells you about the optical transceiver or DAC cable lanes.
+6. **Why administratively `Disabled` ports are ignored:** Explain why `rf_hardware.py` flags `{LinkState: "Enabled", LinkStatus: "LinkDown"}` as an error while treating `{LinkState: "Disabled", LinkStatus: "LinkDown"}` as healthy, and why `@odata.id` mismatches (such as the `Card2` port in `public-smartnic` claiming a `Card1` `@odata.id`) must be logged.
 
 ## 8. Interview angles
 
@@ -212,30 +211,142 @@ So use Redfish for the cheap first check and for machines whose OS is not runnin
 - "What is the difference between `LinkState` and `LinkStatus`?" Desired and actual.
 - "Why is a degraded PCIe link dangerous even when nothing errors?" It silently reduces bandwidth. Training synchronises on the slowest member.
 
-## 9. Checkpoint questions (20)
+## Checkpoint questions (20)
 
-1. Where do drives live, and where do network adapters live?
-2. What is the difference between `Storage` and `SimpleStorage`?
-3. Name four `Drive` properties that signal health.
-4. What do `CapableSpeedGbs` and `NegotiatedSpeedGbs` tell you together?
-5. What is a `Volume`?
-6. What are `NetworkAdapter`, `Port` and `NetworkDeviceFunction`?
-7. What is the difference between `LinkState` and `LinkStatus`?
-8. What does `CurrentSpeedGbps` below `MaxSpeedGbps` suggest?
-9. What do `ActiveWidth` and `Width` mean?
-10. What do PCIe speed and width mean, and how are they combined?
-11. Which four properties are in `PCIeInterface`?
-12. How do you detect a downgraded PCIe link?
-13. Give three causes of a PCIe downgrade.
-14. Why might a device be missing from the BMC's PCIe list?
-15. What does the `@odata.id` mismatch warning mean?
-16. Why does the tool skip logs and sensors?
-17. Why is a `Disabled` port with `LinkDown` not a problem?
-18. Why use Redfish before the OS is installed?
-19. What does Redfish not tell you about network speed?
-20. When should this check run in a node's life?
+<details>
+<summary>1. Under which Redfish top-level collections do `Storage` (`Drive`, `Volume`) versus `NetworkAdapters` and `PCIeDevices` typically reside?</summary>
 
-## 10. Sources and review notes
+- **`Storage` (`Drive`, `Volume`, `StorageController`) and `SimpleStorage`:** Under **`Systems/{id}/Storage`** (and `Chassis/{id}/Drives` for physical drive slots).
+- **`NetworkAdapters` (`Port`, `NetworkDeviceFunction`), `PCIeDevices` (`PCIeFunction`), and `FabricAdapters`:** Under **`Chassis/{id}`** (with cross-links from `ComputerSystem`).
+</details>
+
+<details>
+<summary>2. What is the difference between `Storage` and `SimpleStorage` on a `ComputerSystem`?</summary>
+
+**`Storage`** is the modern, full-featured Redfish storage model exposing separate addressable `StorageController`, `Drive`, and `Volume` resources (with RAID actions, NVMe metrics, and PCIe link details). **`SimpleStorage`** is an older, flat summary resource listing basic device names and capacities in an array for simple SATA/USB controllers.
+</details>
+
+<details>
+<summary>3. Name four properties on a `Drive` resource that provide early warning of a failing or degraded disk.</summary>
+
+1. **`FailurePredicted`** (`true` when SMART/telemetry predicts imminent drive failure).
+2. **`PredictedMediaLifeLeftPercent`** (remaining SSD/NVMe write endurance percentage, e.g., `< 10%`).
+3. **`NegotiatedSpeedGbs` vs `CapableSpeedGbs`** (drive link trained below its capable bus speed).
+4. **`Status.Health`** (`Warning` or `Critical`).
+</details>
+
+<details>
+<summary>4. What does it mean when a `Drive` reports `NegotiatedSpeedGbs: 8` and `CapableSpeedGbs: 32`?</summary>
+
+The drive and backplane are capable of `32 Gb/s` (PCIe Gen5 NVMe or SAS-4), but the physical link negotiated down to `8 Gb/s` (PCIe Gen3), cutting sequential I/O bandwidth to a quarter of its rated speed.
+</details>
+
+<details>
+<summary>5. What is a `Volume` resource under `Storage`, and what does its `Operations` array indicate?</summary>
+
+A `Volume` represents a logical disk, namespace, or RAID array built from one or more physical `Drive` resources (`RAIDType`, `CapacityBytes`, `Encrypted`). Its `Operations` array lists background tasks currently running on the volume (such as a RAID rebuild or consistency check) and their `PercentageComplete`.
+</details>
+
+<details>
+<summary>6. How do `NetworkAdapter`, `Port`, `NetworkDeviceFunction`, and `EthernetInterface` relate to one another?</summary>
+
+- **`NetworkAdapter`** (`Chassis`): The physical NIC/HCA board (`ConnectX-7`), its ASICs (`Controllers`), serial number, and PCIe interface.
+- **`Port`** (`NetworkAdapter/Ports`): The physical cage/connector (`OSFP`/`QSFP`), optical link status, lane width, and speed (`400 Gbps`).
+- **`NetworkDeviceFunction`** (`NetworkAdapter/NetworkDeviceFunctions`): The logical function configured on the adapter (`Ethernet`, `InfiniBand`, MAC/WWN, SR-IOV VFs).
+- **`EthernetInterface`** (`Systems/{id}/EthernetInterfaces`): The OS-facing network interface with IPv4/IPv6 addresses, MTU, and VLANs.
+</details>
+
+<details>
+<summary>7. On a `Port` resource, what is the difference between `LinkState` and `LinkStatus`?</summary>
+
+- **`LinkState`:** The **administrative (desired)** state of the port (`"Enabled"` or `"Disabled"`).
+- **`LinkStatus`:** The **operational (actual)** physical link state (`"LinkUp"`, `"LinkDown"`, `"NoLink"`, `"Starting"`, `"Training"`).
+</details>
+
+<details>
+<summary>8. What does it indicate when an enabled `Port` is `LinkUp` but `CurrentSpeedGbps` (`200`) is lower than `MaxSpeedGbps` (`400`)?</summary>
+
+The port failed to auto-negotiate full line rate—commonly caused by a damaged DAC/AOC cable, dirty optical ferrule, mismatched switch-port speed/FEC configuration, or a dead lane (`ActiveWidth < Width`).
+</details>
+
+<details>
+<summary>9. What do `ActiveWidth` and `Width` represent on a high-speed network `Port`?</summary>
+
+`Width` is the total number of electrical/optical SerDes lanes in the port (for example, `4` lanes of `100G PAM4` in a `400G` port), and `ActiveWidth` is how many lanes actually trained up. If `ActiveWidth` is `2` of `4`, half the lanes are dead and the port runs at half speed (`200G`).
+</details>
+
+<details>
+<summary>10. What two physical parameters determine the bandwidth of a PCIe link?</summary>
+
+1. **PCIe Generation (`PCIeType`):** The per-lane transfer rate (`Gen3 = 8 GT/s`, `Gen4 = 16 GT/s`, `Gen5 = 32 GT/s`, `Gen6 = 64 GT/s`).
+2. **Link Width (`LanesInUse`):** The number of active differential lane pairs (`x1`, `x2`, `x4`, `x8`, `x16`). Total unidirectional bandwidth is the product of per-lane rate and active lane count (`Gen5 x16 = ~64 GB/s`).
+</details>
+
+<details>
+<summary>11. Which four properties inside the `PCIeInterface` object of a `PCIeDevice` let you detect a downgraded link without logging into the host OS?</summary>
+
+**`PCIeType`** (current speed), **`MaxPCIeType`** (maximum supported speed), **`LanesInUse`** (current width), and **`MaxLanes`** (maximum supported width).
+</details>
+
+<details>
+<summary>12. State the exact boolean condition that `code/part07/rf_hardware.py` uses to flag a degraded PCIe link.</summary>
+
+A PCIe interface is flagged whenever **`LanesInUse < MaxLanes`** (width downgrade) **or** **`GEN_RANK[PCIeType] < GEN_RANK[MaxPCIeType]`** (generation speed downgrade, unless the device sits in a motherboard slot whose capabilities are lower) **or** **`Status.Health != "OK"`**.
+</details>
+
+<details>
+<summary>13. Give three physical or configuration causes of a GPU or ConnectX HCA training down from PCIe Gen5 x16 to Gen3 x8.</summary>
+
+1. **Signal integrity degradation:** Loose SXM/PCIe riser card, dust/debris in the connector, or a failing PCIe Gen5 retimer chip.
+2. **BIOS power/speed policy:** BIOS PCIe Link Speed left on `Auto` or `ASPM` power saving instead of forced `Gen5`.
+3. **Thermal or electrical stress:** High retimer temperature or voltage droop during link training at boot.
+</details>
+
+<details>
+<summary>14. Why might a PCIe device visible in Linux `lspci` be missing from `/redfish/v1/Chassis/{id}/PCIeDevices` on some BMCs?</summary>
+
+The BMC discovers PCIe topology either via out-of-band SMBus/MCTP wiring or via BIOS SMBIOS/BDF tables handed off during POST. Devices not wired to management buses or before BIOS POST completes may not appear in the BMC's `PCIeDevices` collection.
+</details>
+
+<details>
+<summary>15. What does an `@odata.id` mismatch warning in `rf_hardware.py` mean (such as the one found in DMTF's `public-smartnic` example)?</summary>
+
+It means the URI from which the resource was fetched (`/redfish/v1/Chassis/Card2/...`) does not match the `"@odata.id"` string inside the returned JSON body (`"/redfish/v1/Chassis/Card1/..."`), indicating a firmware templating or copy-paste bug in the BMC's Redfish provider.
+</details>
+
+<details>
+<summary>16. Why does `rf_hardware.py` skip `LogServices`, `Sensors`, and `Certificates` subtrees when walking a BMC for hardware degradation?</summary>
+
+Log collections and sensor trees often contain hundreds of URIs (`75+` SEL entries, `40+` sensors) that contain no `Drive`, `Port`, or `PCIeDevice` resources; skipping those subtrees cuts crawl time from seconds to milliseconds per node.
+</details>
+
+<details>
+<summary>17. Why is `{LinkState: "Disabled", LinkStatus: "LinkDown"}` considered healthy by `rf_hardware.py`?</summary>
+
+Because the port was intentionally shut down by the administrator (`LinkState: "Disabled"`), so having no carrier (`LinkDown`) is the expected state rather than a cable or switch failure.
+</details>
+
+<details>
+<summary>18. Why is checking `PCIeInterface`, `Port`, and `Drive` health via Redfish valuable during Day-0 bare-metal bring-up before Linux is installed?</summary>
+
+It catches unseated riser cables, dead optical transceivers, wrong port speeds, and DOA NVMe drives across all racks immediately after power-on—before spending hours provisioning OS images or running multi-node NCCL jobs.
+</details>
+
+<details>
+<summary>19. What aspects of network and GPU interconnect performance can Redfish NOT measure?</summary>
+
+Redfish reports static link negotiation (`Gen5 x16`, `400 Gbps LinkUp`), but cannot measure **actual end-to-end data throughput, RDMA packet loss under congestion, PFC pause storms, or GPU-to-GPU NVLink fabric bandwidth**, which require active in-band benchmarks (`ib_write_bw`, `nvbandwidth`, `all_reduce_perf`).
+</details>
+
+<details>
+<summary>20. At which three points in a compute node's operational lifecycle should `rf_hardware.py` be executed automatically?</summary>
+
+1. **Day-0 acceptance:** Right after racking, cabling, and firmware baselining.
+2. **Post-maintenance / post-reboot gate:** After any BIOS/firmware update or physical component replacement before returning the node to Slurm/Kubernetes.
+3. **Periodic fleet audit / straggler triage:** Whenever a multi-node job exhibits a slow step time without throwing a fatal error.
+</details>
+
+## Sources and review notes
 
 - **Redfish Resource and Schema Guide DSP2046 (2024.4) and the official JSON Schemas** (`Drive` v1.22, `Volume` v1.11, `Storage` v1.23, `StorageController` v1.12, `NetworkAdapter` v1.14, `NetworkDeviceFunction` v1.11, `Port` v1.20, `PCIeDevice` v1.23): property descriptions and enumerations including `PCIeTypes` (`Gen1` to `Gen6`) and `LinkStatus`.
 - **DMTF example trees** (`public-tower`, `public-acd`, `public-smartnic`, `public-localstorage`, `public-nvmeof-jbof`, `public-rackmount1`) at commit `fa6d23d9`.
