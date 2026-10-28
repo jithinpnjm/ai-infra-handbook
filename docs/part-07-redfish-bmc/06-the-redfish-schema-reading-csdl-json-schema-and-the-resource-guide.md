@@ -316,6 +316,45 @@ python3 redfish_crawl.py http://127.0.0.1:8443 admin adminpass
 
 In the mockup mode the data is read-only. The login accounts are the same fake ones as before. I use these trees in the next chapters.
 
+### 8.1 How CSDL, JSON Schema, and OpenAPI fit together in practice
+
+Why does the DMTF publish the exact same Redfish data model in three separate file formats, and when will you encounter each one in your daily work as an infrastructure engineer?
+
+The primary source of truth inside the DMTF's own specification process is **OData CSDL (Common Schema Definition Language)**, written in XML (`*_v1.xml`). When a client queries `/redfish/v1/$metadata` on a BMC, the BMC returns a CSDL XML document listing the exact schemas and entity types that firmware build implements. CSDL is expressive and captures OData navigation properties, action bindings, and capability annotations cleanly, which is why enterprise OData client generators and DMTF's `Redfish-Service-Validator` read CSDL directly.
+
+However, most infrastructure engineers writing Python, Go, or Rust tools do not want to parse XML namespaces and XPath expressions just to validate a JSON response body. That is why the DMTF compiles every CSDL schema into **JSON Schema** (`*.json`). In JSON Schema, every version of a resource—such as `ComputerSystem.v1_17_0.json`—is a self-contained JSON document with standard `properties`, `required`, `type`, `enum`, and `$ref` keywords. With fifty lines of Python using `jsonschema` and `referencing` (as in `code/part07/schema_tools.py`), you can validate any live BMC response or mock payload against the official standard in milliseconds.
+
+The third format, **OpenAPI v3.0 YAML** (`openapi.yaml`), targets API gateways, documentation portals (Swagger UI / Redoc), and REST client stub generators (`openapi-generator`). While JSON Schema validates a single resource payload at a time based on its `@odata.type`, OpenAPI maps out the URL path templates (`/redfish/v1/Systems/{ComputerSystemId}`) and HTTP verbs (`GET`, `PATCH`, `POST`, `DELETE`) across the entire service tree. Understanding that all three formats are generated from the same underlying DMTF model means you can pick whichever format fits your tool: read the **Resource and Schema Guide (DSP2046)** when designing a script by hand, use **JSON Schema** in your automated CI test suites, and point OData or OpenAPI generators at `csdl/` or `openapi/` when scaffolding typed SDKs.
+
+### 8.2 Stepping through `$ref` resolution and `allOf` version chains
+
+When you open an official Redfish JSON Schema file inside `$REDFISH_PUBLICATIONS/json-schema/` for the first time, the structure can look surprising if you are used to flat JSON Schemas. Let us trace how `code/part07/schema_tools.py` resolves a type like `#ComputerSystem.v1_17_0.ComputerSystem`.
+
+First, every Redfish resource has both an **unversioned** file (`ComputerSystem.json`) and a family of **versioned** files (`ComputerSystem.v1_0_0.json` through `ComputerSystem.v1_23_1.json`). Whenever another resource—say, `Chassis`—defines a link to a `ComputerSystem` inside `Links.ComputerSystems`, the `Chassis` schema does not point to a specific version like `v1_17_0`. If it did, upgrading `ComputerSystem` to `v1_18_0` would require updating `Chassis` and every other schema that links to it. Instead, cross-resource `$ref` pointers always reference the **unversioned** schema (`http://redfish.dmtf.org/schemas/v1/ComputerSystem.json#/definitions/ComputerSystem`), which uses an `anyOf` array to accept any published version of `ComputerSystem` (plus an id-ref object `{"@odata.id": "..."}` when the link is not expanded inline).
+
+Second, when you validate a concrete resource payload that declares `"@odata.type": "#ComputerSystem.v1_17_0.ComputerSystem"`, your validator must validate against the **versioned** schema file `ComputerSystem.v1_17_0.json`, not the unversioned wrapper. Inside `ComputerSystem.v1_17_0.json`, the schema sets `"additionalProperties": false` (except for pattern properties matching OData/Redfish/Message annotations like `@odata.*` and `@Redfish.*`) and lists every property valid up to version `1.17.0`.
+
+This explains why Check 8 in `code/part07/schema_lab.py` is such a powerful test of BMC firmware quality. If a BMC vendor takes an old `v1_0_0` payload template and tacks on newer properties like `BootProgress` or `LastResetTime` without updating the `@odata.type` string from `v1_0_0` to the minor version that introduced those properties, the official JSON Schema validator immediately flags an `additionalProperties` violation. Conversely, if a BMC claims `v1_20_0` but omits a required property or spells a sensor `ReadingType` as `"Fan"` instead of `"Rotational"`, the enum and required checks catch it instantly.
+
+### 8.3 Using Message and Attribute Registries to build self-diagnosing tools
+
+In legacy IPMI scripts, error handling usually meant matching brittle substrings in `ipmitool` stderr output and hoping the text did not change across firmware releases. Redfish replaces ad-hoc error strings with **Message Registries** and **Attribute Registries**, turning both error handling and BIOS configuration into deterministic table lookups.
+
+When any Redfish operation returns a `4xx`/`5xx` error—or a `200 OK` with partial-update warnings or an asynchronous `Task` with progress notes—every entry in `@Message.ExtendedInfo` or `Task.Messages` carries a machine-readable `MessageId` such as `Base.1.17.PropertyNotWritable` or `Update.1.0.AwaitToActivate`. The first three dot-separated tokens (`Base.1.17`) tell your tool which registry file to open, and the fourth token (`PropertyNotWritable`) is the exact dictionary key inside that file's `"Messages"` object.
+
+By loading the DMTF registries from `$REDFISH_PUBLICATIONS/registries/` (or downloading the BMC's own `/redfish/v1/Registries` collection), your automation can inspect `Severity` (`OK`, `Warning`, `Critical`), substitute `MessageArgs` into the `Message` template, and print the official `Resolution` string directly in your incident ticket or Slack alert. More importantly, your code branches on the stable `MessageKey` (`if msg_id.endswith(".AwaitToActivate"):`) rather than regex-matching English sentences.
+
+The same principle applies to **Attribute Registries** for BIOS and boot configuration (which we use in Chapter 7.14). Because a dual-socket Intel Xeon server, an AMD EPYC server, and an NVIDIA Grace ARM server have completely different UEFI setup options, no fixed `Bios` schema could list every possible BIOS attribute. Instead, the `Bios` resource carries a free-form `Attributes` dictionary alongside an `AttributeRegistry` pointer (for example, `"BiosAttributeRegistry.v1_0_0"`). By fetching that Attribute Registry JSON from the BMC, your tool learns the exact data type, allowed enum values, read-only status, and menu hierarchy of every BIOS setting on that specific motherboard before sending a single `PATCH` request.
+
+### 8.4 Building a schema-first CI pipeline for infrastructure code
+
+One of the biggest challenges in bare-metal AI infrastructure engineering is testing your Python, Ansible, or Go automation before a maintenance window. You rarely have a spare eight-GPU DGX node sitting idle just so you can test what your script does when a PSU reports a predictive failure or a BIOS `PATCH` is rejected.
+
+Combining `code/part07/redfish_mock.py`, `code/part07/schema_tools.py`, and the official DMTF `mockups/` library gives you a two-way contract testing pipeline that runs in seconds on every Git pull request:
+
+1. **Test your client scripts against official DMTF mockup trees:** Serve `public-rackmount1`, `public-liquid-cooled-server`, `public-pdu`, and `public-power-shelf` through `redfish_mock.py --mockup` in CI. Because those trees come directly from the DMTF standard and use varied collection member IDs (`437XR1138R2`, `1U`, `Rack1`), any script that accidentally hard-codes `/redfish/v1/Systems/1` or fails to handle missing optional properties will fail immediately in CI.
+2. **Test your stateful mock server against the official DMTF JSON Schemas:** Whenever you add a new simulated resource or error path to `redfish_mock.py` (to test firmware flashing, certificate rotation, or log clearing), run `schema_lab.py` so every single resource and `MessageId` emitted by the mock is verified against `$REDFISH_PUBLICATIONS/json-schema` and `registries/`. That guarantees your mock never drifts into an invented dialect that passes in CI but fails on real hardware.
+
 ## Exercises
 
 1. **Inspecting a schema from the command line (`code/part07/schema_tools.py`):** Run `python3 code/part07/schema_tools.py explain Chassis.v1_23_0`. Identify three read-only properties, three read-write properties, one required property (`Id`), and the resource capabilities (`insertable=False updatable=True deletable=True`).

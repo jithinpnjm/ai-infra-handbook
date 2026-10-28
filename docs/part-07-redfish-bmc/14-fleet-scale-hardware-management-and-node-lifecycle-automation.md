@@ -219,6 +219,32 @@ Use chapter 7.11: look at the BMC event log and SEL around the time of the crash
 
 The notes' steps: signed shim and bootloader, HTTPS boot, a signed kernel (or enrolled owner key), and a Redfish check that Secure Boot is on. Chapter 7.15 covers Secure Boot and corrects one detail of the notes.
 
+### 6.1 Deep dive: How each BIOS setting affects GPU collectives and RDMA
+
+Why does Section 2.3 insist on auditing and enforcing BIOS settings across every GPU server before running a single benchmark? Let us trace the exact hardware mechanism behind each row of the AI BIOS matrix so you can explain *why* a drifted BIOS setting creates a silent straggler in a 512-GPU job:
+
+1. **CPU Power Management (`MaxPerf`) and C-States (`Disabled`):** By default, enterprise server BIOS profiles enable ACPI processor sleep states (`C1E`, `C6`) to save electricity when CPU cores are briefly idle. During distributed training, the GPUs perform the heavy matrix math while host CPU threads orchestrate CUDA kernel launches, feed DataLoader rings, and participate in PMIx/NCCL control barriers. When a CPU core enters deep `C6` sleep while waiting a few hundred microseconds for a GPU kernel to finish, waking that core back up to flush the next RDMA door-bell or launch the next CUDA kernel costs tens to hundreds of microseconds of wake-up latency. Multiplied across thousands of collective steps per hour across 512 ranks, random C-state wake-up jitter turns into a 5-to-15% throughput loss.
+2. **Sub-NUMA Clustering (`SNC2` / `SNC4` on Intel Xeon) and NUMA Per Socket (`NPS4` on AMD EPYC):** A modern server socket contains multiple memory controller channels and multiple PCIe Gen5 root complexes distributed across chiplets or tiles. If the BIOS groups the entire socket into a single flat NUMA node (`NPS1` / `SNC Disabled`), the Linux kernel allocates host pinned memory for GPU 0 across all memory channels on the socket—forcing half of the DMA transfers between host memory and GPU 0 to traverse internal die-to-die interconnects. Enabling `SNC2`/`SNC4` or `NPS4` exposes the physical chiplet topology to Linux and Slurm (`task/affinity`), allowing `torchrun` and `slurmd` to bind each GPU rank strictly to the CPU cores and DDR5 memory channels physically adjacent to that GPU's PCIe root complex.
+3. **PCIe Link Speed (`Gen5` forced vs `Auto`), Relaxed Ordering (`Enabled`), and Max Payload Size (`512B`):**
+   - Leaving PCIe Link Speed on `Auto` allows runtime link-power management to down-shift PCIe lanes under transient electrical noise; forcing `Gen5` ensures a link that cannot sustain `32 GT/s` fails visibly during boot acceptance rather than degrading silently mid-job.
+   - Enabling **PCIe Relaxed Ordering** allows PCIe switches and root complexes to reorder non-dependent DMA write completions ahead of posted reads when transaction layer packets (TLPs) carry the Relaxed Ordering bit—a mandatory setting for achieving full line rate with GPUDirect RDMA and GPUDirect Storage (`nvidia-fs`) on `400 Gbps` ConnectX-7 adapters.
+   - Raising **PCIe Max Payload Size (MPS)** from `128B`/`256B` to `512B` halves TLP header framing overhead for large streaming DMA transfers between GPU HBM and NVMe/RDMA endpoints.
+4. **Above 4G Decoding (`Enabled`) and `iommu=pt`:** Eight H100 GPUs (`80 GB` HBM3 each) or B200 GPUs (`180+ GB` HBM3e each) require mapping more than a terabyte of 64-bit PCIe Base Address Register (BAR1) space (`MemoryMappedIO`). Without `Above 4G Decoding` (and 64-bit PCIe resource allocation), UEFI runs out of 32-bit address space during POST and fails to initialize the GPUs. Pairing `IOMMU: Enabled` in BIOS with `iommu=pt` (passthrough mode) on the Linux kernel command line keeps SR-IOV hardware virtualization support active while bypassing per-packet IOMMU page-table translation overhead for bare-metal GPUDirect RDMA.
+
+### 6.2 Designing an idempotent, resumable state machine for node bring-up
+
+Look at how `code/part07/node_lifecycle.py` structures the six stages of bringing a node from racked hardware to scheduler readiness (`inventory` $\rightarrow$ `health` $\rightarrow$ `firmware` $\rightarrow$ `bios` $\rightarrow$ `boot` $\rightarrow$ `ready`). Why is a persisted state-machine design so much safer than a linear shell script?
+
+In a 128-node cluster bring-up, at least five to ten percent of newly racked servers will hit a physical or configuration snag on Day 0: one server has a loose DAC cable (`health` gate fails), two servers shipped from a different manufacturing batch with older BMC firmware (`firmware` gate fails), and another server times out during its reboot (`bios` gate stays `pending`).
+
+If your bring-up tool is a naive procedural script that does not check live state before acting, re-running the script after fixing that one loose cable would re-stage BIOS settings and trigger a second unnecessary reboot across every server that already finished. Worse, if the script does not stop at the first failed gate on a broken node, it will happily trigger an OS network boot (`boot` stage) onto a node whose GPU PCIe riser is running at `Gen2 x4` or whose BIOS still has `SubNumaClustering` disabled.
+
+By making every gate in `node_lifecycle.py` **check-then-act** and writing a per-node JSON state ledger after every transition:
+- Running `node_lifecycle.py` with no flags performs a **100% read-only dry run**, telling you the exact first gate where the node differs from target state without sending a single `PATCH` or `POST`.
+- Running with `--yes` (without `--reset-ok`) stages pending BIOS edits into `/Bios/Settings` during business hours without interrupting or rebooting the host.
+- Running with `--yes --reset-ok` during a maintenance window executes the reboot, verifies that `/Bios` (live) now matches `profiles/ai_node_bios.json`, confirms that `BootSourceOverrideEnabled: "Once"` was consumed and reset to `"Disabled"`, and stamps the node `ready`.
+- Re-running the exact same command `--yes --reset-ok` ten minutes later sees that all six gates already match target state and completes in under one second with zero writes and zero reboots.
+
 ## Exercises
 
 1. **Running the 24-check node lifecycle state machine (`code/part07/lifecycle_lab.py`):** Run `python3 code/part07/lifecycle_lab.py` (`24 passed, 0 failed`) and inspect `code/part07/node_lifecycle.py`. Add a seventh step (`accounts`) that checks whether any `ManagerAccount` still has `PasswordChangeRequired: true` and halts bring-up if found.

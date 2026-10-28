@@ -195,6 +195,73 @@ Fleet use: run this on every BMC after racking and after every maintenance. A GP
 
 So use Redfish for the cheap first check and for machines whose OS is not running, then the host tools for depth.
 
+### 6.1 Anatomy of a silent PCIe link downgrade in distributed training
+
+To understand why `code/part07/rf_hardware.py` is one of the highest-leverage tools in this part of the handbook, trace what happens physically when a single PCIe link degrades inside a 64-node (`512`-GPU) training cluster.
+
+On an 8-GPU training server, each SXM GPU communicates with its paired `400 Gbps` (`50 GB/s`) ConnectX-7 network adapter over a dedicated PCIe Gen5 x16 link. At PCIe Gen5 (`32 GT/s` per lane across `16` lanes), the raw unidirectional bandwidth is `64 GB/s`—comfortably above the `50 GB/s` line rate of a `400G` InfiniBand or RoCEv2 port. During the backward pass of a large language model, GPUDirect RDMA streams gradient tensors directly from GPU HBM memory through the PCIe switch/retimer into the ConnectX-7 HCA and out onto the rail-aligned leaf switch at full line rate.
+
+Now suppose a technician replaces a fan tray on `node042` during maintenance, and slight mechanical vibration unseats a high-density PCIe riser cable by a fraction of a millimeter—or a PCIe Gen5 retimer chip overheats during boot link training. The PCIe link-training state machine (LTSSM) does not fail the boot or throw a kernel panic. Instead, PCIe is designed for resilience: it automatically negotiates down to the highest speed and lane width that achieve clean signal lock. If eight of the sixteen differential pairs have high bit-error rates at `32 GT/s`, the link silently trains up at **PCIe Gen3 x8** (`8 GT/s` across `8` lanes = `~8 GB/s` unidirectional bandwidth).
+
+Look at the operational consequence when `node042` rejoins the Slurm pool:
+- The Linux OS boots cleanly.
+- All eight GPUs appear healthy in `nvidia-smi` with `0` ECC errors.
+- All eight `400G` InfiniBand ports show `State: Active` and `Rate: 400 Gb/sec` in `ibstat` (because the optical link between the NIC and the leaf switch is still `400G`).
+- Yet whenever a 64-node training job lands on `node042`, GPU 3 can only push gradients to its `400G` NIC at `8 GB/s` instead of `50 GB/s`. Because ring and tree `AllReduce` collectives synchronize all `512` GPUs at every micro-batch step, **a single PCIe link running at `Gen3 x8` on one GPU throttles the effective network throughput of all `512` GPUs by more than 80%**.
+
+Running `rf_hardware.py` against the BMC catches this fault in two seconds before the node ever enters Slurm: it compares `PCIeInterface.PCIeType` (`"Gen3"`) against `MaxPCIeType` (`"Gen5"`) and `LanesInUse` (`8`) against `MaxLanes` (`16`), flags the exact `PCIeDevice` URI, and blocks the node at the acceptance gate.
+
+### 6.2 Diagnosing optical and copper `Port` speed mismatches
+
+The second silent performance killer in AI fabrics is a high-speed network port (`NetworkAdapter/Ports`) that links up at a fraction of its rated speed or lane width. Modern `400 Gbps` (and `800 Gbps`) InfiniBand and Ethernet links are built from parallel SerDes lanes—typically `4` lanes of `100 Gbps` PAM4 signaling (or `8` lanes of `100 Gbps`).
+
+When you inspect a `Port` resource via Redfish, four properties tell you the physical layer story:
+1. **`LinkState` (`Enabled` vs `Disabled`) and `LinkStatus` (`LinkUp`, `LinkDown`, `NoLink`, `Training`):** If `LinkState` is `Enabled` and `LinkStatus` is `LinkDown` or `NoLink`, check `SignalDetected`. If `SignalDetected` is `false`, no light is arriving on the receive fibers (check for an unplugged cable, a swapped TX/RX polarity, or a powered-off leaf switch port). If `SignalDetected` is `true` while `LinkStatus` stays `Training` or `LinkDown`, the transceivers see light but cannot lock FEC/auto-negotiation (often a mismatched port protocol—such as InfiniBand vs Ethernet mode in `mlxconfig`—or an incompatible FEC setting on the switch).
+2. **`CurrentSpeedGbps` versus `MaxSpeedGbps`:** If a `400G` port shows `LinkUp` with `CurrentSpeedGbps: 200` and `MaxSpeedGbps: 400`, the link negotiated down to half speed.
+3. **`ActiveWidth` versus `Width`:** Comparing `ActiveWidth` (`2`) against `Width` (`4`) immediately tells you *why* `CurrentSpeedGbps` dropped: two of the four optical lanes inside the OSFP/QSFP-DD transceiver or MTP fiber trunk are dead or dirty. Cleaning the optical connector with a single-click fiber cleaner or swapping the transceiver restores all `4` lanes and brings `CurrentSpeedGbps` back to `400`.
+4. **`PortMetrics` (`Metrics` link):** Following the `Metrics` link on a `Port` exposes hardware counters for RX/TX bytes, frame errors, symbol errors, and transceiver optical power (`RXInputPowerMilliWatts` and `TXOutputPowerMilliWatts` per lane), letting you spot a fading laser diode before the lane drops completely.
+
+### 6.3 Proactive NVMe and boot drive lifecycle management
+
+While training checkpoints and datasets live on high-speed parallel filesystems (Lustre, WekaFS, GPFS), every GPU compute node still relies on local NVMe drives for two critical tasks: booting the local OS (unless running diskless) and providing multi-terabyte local NVMe scratch/cache storage (`/lscratch` or GDS P2PDMA staging).
+
+When a local NVMe drive fails suddenly mid-job, the Linux kernel remounts the scratch filesystem read-only or hangs I/O worker threads in uninterruptible sleep (`D` state), crashing the training run. Redfish's `Storage` and `Drive` model under `/redfish/v1/Systems/{id}/Storage` (and `/redfish/v1/Chassis/{id}/Drives`) gives you four proactive signals to replace aging SSDs during scheduled maintenance windows instead of mid-job:
+
+- **`FailurePredicted: true`:** The drive's internal SMART controller has tripped a pre-fail threshold (such as uncorrectable media errors or depleted spare blocks). Drain the node after the current job finishes and schedule a drive swap.
+- **`PredictedMediaLifeLeftPercent`:** Reports the percentage of rated program/erase (P/E) endurance remaining (`100` on a new drive, counting down toward `0`). On nodes running heavy local dataset caching, alerting when `PredictedMediaLifeLeftPercent` drops below `10%` prevents surprise wear-out failures.
+- **`NegotiatedSpeedGbs` versus `CapableSpeedGbs`:** Just like GPUs and NICs, U.2/U.3/E3.S NVMe drives connect over PCIe lanes. If an NVMe drive capable of `32 Gbps` (PCIe Gen5) negotiates at `8 Gbps` (Gen3) due to a backplane fault, local checkpoint staging slows by $4\times$.
+- **`Volume.Operations`:** On nodes that mirror their boot drives with a hardware RAID controller (`StorageController`), checking `Volume` `Status.Health` and `Operations` shows whether a mirror is degraded or actively running a background `"Rebuild"`.
+
+### 6.4 Integrating `rf_hardware.py` into Day-0 and Day-2 automation
+
+To make hardware link and drive checks automatic across your cluster's life, wire `code/part07/rf_hardware.py` into three operational gates:
+
+1. **Pre-OS Day-0 Racking Gate:** Immediately after rack-and-stack cablers plug in power and network cords, run `rf_hardware.py` across all BMC IPs from the head node. Because it runs entirely out-of-band over Redfish, you get a complete punch-list of unseated PCIe risers, dark `400G` ports, and missing NVMe drives before you even configure DHCP/PXE for the host OS.
+2. **Post-Maintenance Return-to-Service Gate:** Require `rf_hardware.py` to exit `0` (`0 flagged`) before `scontrol update NodeName=<node> State=RESUME` or `kubectl uncordon` is permitted after any board swap or firmware upgrade.
+3. **Weekly Fleet Baseline Diff:** Run `rf_hardware.py` across all nodes via `fleet_run.py` once a week and diff the count of discovered `PCIeDevices`, `Ports`, and `Drives` against your saved Day-1 JSON inventory so a device that completely vanishes from the PCIe bus (and therefore disappears from the BMC's `PCIeDevices` list) is caught by the count mismatch.
+
+### 6.5 Correlating Redfish PCIe and NIC inventory with Linux `lspci`, `ethtool`, and `mlx5`
+
+While Redfish gives you an agentless out-of-band view of every `PCIeDevice`, `NetworkAdapter`, and `Drive`, production troubleshooting is fastest when you know how each Redfish property maps to the corresponding Linux in-band command once the host OS is booted:
+
+| Subsystem & Check | Out-of-Band Redfish Property (`rf_hardware.py`) | In-Band Linux Command & Equivalent Field |
+|---|---|---|
+| **PCIe Link Speed & Width** | `PCIeDevice.PCIeInterface`: `PCIeType` vs `MaxPCIeType` (`Gen5`), `LanesInUse` vs `MaxLanes` (`16`) | `sudo lspci -vvv -s <bdf>` $\rightarrow$ `LnkSta: Speed 32GT/s, Width x16` vs `LnkCap: Speed 32GT/s, Width x16` |
+| **PCIe Bus Errors** | `Status.Health` (`Warning`/`Critical`) and BMC `LogServices` AER entries | `dmesg -T \| grep -iE "aer\|pcieport"` and `/sys/bus/pci/devices/<bdf>/aer_dev_*` |
+| **Network Port State & Speed** | `Port`: `LinkState` (`Enabled`), `LinkStatus` (`LinkUp`), `CurrentSpeedGbps` vs `MaxSpeedGbps` (`400`) | `ibstat` (`State: Active`, `Physical state: LinkUp`, `Rate: 400`) or `ethtool <iface>` (`Speed: 400000Mb/s`, `Link detected: yes`) |
+| **Optical Lane Width & Power** | `Port`: `ActiveWidth` vs `Width` (`4`), `PortMetrics` RX/TX optical power (`mW`) | `mlxlink -d mlx5_0 -m` or `ethtool -m <iface>` (per-lane RX/TX dBm and bias current) |
+| **NVMe Drive Health & Speed** | `Drive`: `FailurePredicted`, `PredictedMediaLifeLeftPercent`, `NegotiatedSpeedGbs` vs `CapableSpeedGbs` | `sudo nvme smart-log /dev/nvme0n1` (`critical_warning`, `percentage_used`) and `lspci -vvv` on the NVMe BDF |
+
+Why maintain both views? Because each plane catches failures that the other misses. When a PCIe switch or GPU falls completely off the bus during a hard lockup, the host OS kernel panics and `lspci` / `mlxlink` become unreachable—yet the BMC's out-of-band `PCIeDevices` and `Ports` tree remains queryable over Redfish. Conversely, when a link trains up at full `Gen5 x16` and `400 Gbps` at boot (so Redfish reports `OK`), but intermittent bit errors cause thousands of link-level PCIe replay events or RDMA symbol errors under heavy DMA load, in-band `nvidia-smi nvlink -e`, `mlxlink`, and `perfquery` deltas expose the signal-integrity degradation before the link ever drops its width.
+
+### 6.6 Handling OEM topology quirks and `FabricAdapters`
+
+As you run `rf_hardware.py` across different server vendors and DMTF mockup trees (`public-tower`, `public-smartnic`, `public-nvmeof-jbof`, `public-localstorage`), you will notice three structural variations that every portable Redfish hardware scanner must handle gracefully:
+
+1. **`PCIeInterface` placement on `PCIeDevice` versus `Controller`:** On newer Redfish implementations, `PCIeInterface` (`PCIeType`, `MaxPCIeType`, `LanesInUse`, `MaxLanes`) sits directly on each `PCIeDevice` under `/redfish/v1/Chassis/{id}/PCIeDevices/{dev}`. On older implementations—or on integrated network and storage cards—the `PCIeInterface` block sits inside the `Controllers[]` array of a `NetworkAdapter` or inside a `StorageController` object. That is why `rf_hardware.py` inspects `@odata.type` across all three resource types (`PCIeDevice`, `NetworkAdapter`, and `Storage` / `StorageController`) rather than looking only in `PCIeDevices`.
+2. **Ports under `NetworkAdapter` versus `FabricAdapters`:** Standard Ethernet and InfiniBand NICs expose their physical ports under `Chassis/{id}/NetworkAdapters/{nic}/Ports`. However, switches, NVLink fabric boards, CXL enclosures, and JBOF storage fabrics often expose ports under `Chassis/{id}/FabricAdapters/{fa}/Ports` or top-level `/redfish/v1/Fabrics/{fabric}/Switches/{sw}/Ports`. Because `rf_hardware.py` walks all `@odata.id` links from `Systems` and `Chassis` and matches resources by `@odata.type == "Port"` (rather than by URL path), it validates port link state and speed regardless of which parent collection holds the `Port`.
+3. **Cross-card `@odata.id` aliasing bugs:** As we saw in DMTF's own `public-smartnic` mockup (where two ports fetched under `Chassis/Card2/...` returned `"@odata.id": "/redfish/v1/Chassis/Card1/..."` in their JSON bodies), real BMC firmware occasionally contains templating bugs when a server holds multiple identical adapter cards. Always key your inventory and fault reports by the **actual URI fetched** (and log a warning when `res.get("@odata.id")` disagrees with the request URI) so a firmware copy-paste bug on Card 2 never overwrites Card 1's status in your database.
+
 ## Exercises
 
 1. **Running the 15-check hardware degradation suite (`code/part07/hardware_lab.py`):** Run `python3 code/part07/hardware_lab.py` (`12` / `15` checks pass) and inspect `code/part07/rf_hardware.py`. Explain why a GPU whose `PCIeInterface` shows `PCIeType: "Gen3"`, `MaxPCIeType: "Gen5"`, `LanesInUse: 8`, `MaxLanes: 16` is flagged for both speed and width degradation.

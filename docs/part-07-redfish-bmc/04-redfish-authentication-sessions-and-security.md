@@ -229,6 +229,46 @@ A mistake I made while writing the lab, worth noticing: one check failed because
 7. **Audit regularly** (chapter 7.1 has a credential audit tool; BCM's `credentialsoverview` does this too).
 8. **Rate-limit your scripts.** Many failed logins can lock an account and block the real owner. Stop on the first 401, do not retry hundreds of times.
 
+### 6.1 Anatomy of a session-table exhaustion outage
+
+Consider what happens when a monitoring team writes a naive health scraper for a large GPU cluster. Every thirty seconds, a cron job opens a new Redfish session on each BMC. It reads the chassis sensors, prints the temperatures, and exits the Python process without calling `DELETE` on the session URI.
+
+Each embedded BMC has a small, fixed table of active sessions in RAM. The Redfish specification leaves the maximum count of simultaneous open sessions up to the firmware implementation. While a session stays idle, the BMC must retain it until `SessionTimeout` expires. If the default timeout is thirty minutes and your scraper logs in twice a minute without logging out, a single script will consume sixty session slots per BMC.
+
+Long before the thirty-minute idle timer reclaims the first orphaned token, the BMC's session table fills completely. From that moment onward, every new login attempt from your provisioning engine, your Slurm power-fencing scripts, and your human operators is rejected. The node is still running, and its hardware is healthy, yet the out-of-band control plane has locked you out.
+
+Preventing this failure requires three habits in every client you write. First, wrap every session login in a `try` and `finally` block so the `DELETE` call runs even when an exception interrupts the script. Second, reuse a single long-lived session across multiple read requests to the same BMC instead of logging in once per metric. Third, give your scraper its own dedicated `ReadOnly` account so that an administrator can inspect `/redfish/v1/SessionService/Sessions`, see which `UserName` owns the orphaned sessions, and terminate them selectively via `DELETE` without dropping active maintenance sessions.
+
+### 6.2 How the Privilege Registry governs multi-team operations
+
+In a mature AI data center, three separate teams touch the server fleet every day. The observability team scrapes temperatures, fan speeds, and power consumption. The compute operations team drains and reboots wedged nodes when training jobs hang. The platform security and hardware engineering team rotates X.509 certificates, updates firmware, and manages user accounts.
+
+If all three teams share the factory `admin` account, a bug in a metrics scraper or a leaked environment variable in a CI runner grants full administrative control over every BMC in the building. Redfish's **Privilege Registry** lets you enforce strict separation of duties across these three workflows.
+
+When the observability scraper authenticates with a `ReadOnly` account, its role carries only `Login` and `ConfigureSelf`. The Privilege Registry maps `GET` and `HEAD` across `ComputerSystem`, `Chassis`, `Sensor`, and `Manager` to the `Login` privilege. If someone accidentally modifies the scraper to send a `POST` to `ComputerSystem.Reset` or a `PATCH` to `Bios/Settings`, the BMC checks the `OperationMap` for those endpoints, sees that `ConfigureComponents` is required, and immediately rejects the request with HTTP `403 Forbidden`.
+
+Similarly, the compute operations team receives an `Operator` account. That role adds `ConfigureComponents` on top of `Login` and `ConfigureSelf`. An operator can reboot a hung GPU node, set a one-time PXE boot override, or adjust a chassis power cap. However, if that operator tries to create a backdoor user account under `/redfish/v1/AccountService/Accounts` or disable TLS certificate checks on the BMC under `/redfish/v1/Managers/BMC/NetworkProtocol`, the Privilege Registry blocks the call. Account mutations require `ConfigureUsers`, and BMC network changes require `ConfigureManager` through the `SubordinateOverrides` rule. Only the `Administrator` role holds those privileges.
+
+### 6.3 Designing zero-touch factory password rotation on Day 0
+
+When a pallet of new GPU servers arrives on the data-center floor, their BMCs either ship with a well-known factory default password or a unique per-chassis password printed on the physical pull-tab. On hardened platforms, the factory account also sets `PasswordChangeRequired` to `true`.
+
+If your Day-0 discovery pipeline assumes that a successful `201 Created` response from `/redfish/v1/SessionService/Sessions` means the node is ready for inventory and firmware checks, the pipeline will fail on its very next step. As soon as the script sends `GET /redfish/v1/Systems`, the BMC returns `403 Forbidden` with the `PasswordChangeRequired` message from the Base Message Registry.
+
+A resilient Day-0 onboarding workflow handles this state machine explicitly right after establishing the initial session:
+
+1. Inspect the `201 Created` login response body for `@Message.ExtendedInfo`. If any message entry contains `PasswordChangeRequired`, enter the bootstrap rotation branch before running any hardware discovery.
+2. Follow the account link or query `/redfish/v1/AccountService` to check whether `RequireChangePasswordAction` is `true`.
+3. If `RequireChangePasswordAction` is `true`, invoke the `ManagerAccount.ChangePassword` action with both `NewPassword` and `SessionAccountPassword` set to the factory password. Otherwise, send a `PATCH` with the new password to the user's own `ManagerAccount` URI.
+4. Read the `ManagerAccount` resource back to confirm that `PasswordChangeRequired` is now `false`, and verify that `GET /redfish/v1/Systems` returns `200 OK`.
+5. Once the bootstrap account is rotated to your vault-managed secret, provision the dedicated `ReadOnly` and `Operator` service accounts and disable `HTTPBasicAuth` on `AccountService` so all subsequent automation uses session tokens exclusively.
+
+### 6.4 External directory integration and certificate lifecycle
+
+Managing local `ManagerAccount` resources on each BMC works well for small clusters and emergency break-glass access, but human administrators should not have local accounts scattered across hundreds of BMCs. When an engineer leaves the team, revoking their access should happen in one central directory rather than requiring a fleet-wide `DELETE` loop across every rack.
+
+Redfish supports central directory integration through `ExternalAccountProvider` resources under `AccountService` (supporting LDAP, Active Directory, TACACS+, and OAuth 2.0). An administrator configures the directory server addresses, TLS trust certificates, and `RemoteRoleMapping` rules that map enterprise directory groups directly to Redfish roles such as `Administrator`, `Operator`, and `ReadOnly`. You then keep only one vault-escrowed local `Administrator` account on each BMC for out-of-band break-glass recovery when the corporate directory or management network is unreachable during a facility outage.
+
 ## Exercises
 
 1. **Verifying non-leaking login errors (`code/part07/auth_lab.py`):** Run `python3 code/part07/auth_lab.py` and inspect lines 56–70 of `code/part07/auth_lab.py`. Verify that an unknown username (`nosuchuser`), a wrong password on a valid user (`admin`), and a valid password on a locked account (`viewer` after `3` failed attempts) all return the exact same HTTP `401 Unauthorized` status and generic error message (`DSP0266` §13.3.2.3).
