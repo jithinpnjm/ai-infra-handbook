@@ -104,7 +104,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 6.13 | Containers on Slurm: enroot and pyxis | reviewed | 5267 | `enroot_pyxis_lab.py` (3/3 pass), `SCL 16`, `DAI 8` |
 | 6.14 | Slurm operations: prolog, epilog, health checks, drain, reason codes, troubleshooting | reviewed | 6357 | `node_health_lab.py` (3/3 pass), `SCL 15`, `V20` |
 | 6.15 | Slurm high availability, upgrades and scaling | reviewed | 4540 | `slurm_upgrade_path_lab.py` (3/3 pass), `SCL 15` |
-| 6.16 | Slurm on Kubernetes: Slinky and Soperator | drafted | 2725 |  |
+| 6.16 | Slurm on Kubernetes: Slinky and Soperator | reviewed | 4247 | `slinky_soperator_lab.py` (3/3 pass), Slinky & Soperator |
 | 6.31 | Capstone: build and operate a small Slurm GPU cluster | drafted | 3186 |  |
 | 10.8 | Operating GPU nodes: nvidia-smi, topology, clocks and throttling | drafted | 10110 |  |
 | 10.9 | The NVIDIA software stack: driver, CUDA toolkit, container toolkit, compatibility | drafted | 9332 |  |

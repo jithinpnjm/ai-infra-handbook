@@ -4,7 +4,7 @@ title: "6.16 Slurm on Kubernetes: Slinky and Soperator"
 sidebar_label: "6.16 Slurm on Kubernetes: Slinky and Soperator"
 sidebar_position: 16
 description: "Running Slurm clusters on Kubernetes: why, the two open-source approaches (Slinky slurm-operator and Nebius Soperator) with their CRDs and design, drain/cordon coordination, shared root (jail), active health checks, ephemeral nodes, and how to choose between bare-metal Slurm, Slurm on Kubernetes, and native Kubernetes batch (Kueue)"
-status: "drafted"
+status: "reviewed"
 tier: "1"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -50,6 +50,22 @@ Costs and risks:
 - **Performance sensitivity**: AI training wants bare-metal-like networking (host network, RDMA devices, SR-IOV or device plugins) and NUMA/CPU pinning; container layers must not interfere.
 
 ## 2. Slinky: `slurm-operator`
+
+```mermaid
+flowchart TB
+  subgraph Slinky["SchedMD Slinky (slurm-operator)"]
+    Op1["Slinky Operator<br/>K8s Cordon <-> slurm-operator: Drain"]
+    CRDs["CRDs: Controller, NodeSet,<br/>LoginSet, Accounting, RestApi, Token"]
+    Op1 -->|"JWT via slurmrestd"| CRDs
+  end
+  subgraph Soperator["Nebius Soperator (SlurmCluster)"]
+    Op2["Soperator + ActiveCheck CRs<br/>(k8sJob & slurmJob probes)"]
+    Pods["StatefulSets: Login, Controller, Worker"]
+    Jail[("Shared 'Jail' Rootfs PVC<br/>Unified / across all nodes")]
+    Op2 --> Pods
+    Pods --> Jail
+  end
+```
 
 Slinky is SchedMD's project (the Slurm maintainers). The operator manages the lifecycle (creation, upgrade, graceful shutdown) of Slurm components as Kubernetes resources, with a Helm chart as a reference deployment.
 
@@ -133,7 +149,15 @@ Evaluation questions: How are GPU drivers and the host stack provided to worker 
 
 Method from 5.33: start at the API types, then `SetupWithManager`, `Reconcile`, state/rendering, readiness. For Slinky read `api/`, `internal/controller/nodeset`, `docs/concepts/*`; for Soperator read `api/`, `internal/controller/clustercontroller/reconcile.go`, `images/`, `docs/architecture.md` and `docs/active-checks.md`. Compare with the GPU Operator: Slinky resembles it in modelling components as CRs with drain-aware lifecycle; Soperator additionally owns the image and root filesystem.
 
-## 8. Lab (untested)
+## 8. Lab (self-checking operator state-machine lab tested; Kubernetes cluster parts untested)
+
+First, run the self-checking Python lab (`code/part06/slinky_soperator_lab.py`) locally. It verifies Slinky's `NodeSet` drain/cordon and scale-in state machine (`reconcile_slinky_node_drain`, proving that pod deletion waits for `DRAINED` and never overwrites or clears external non-`slurm-operator:` admin/health-check drain reasons), validates Slinky's 6 CRDs (`Controller`, `NodeSet`, `LoginSet`, `Accounting`, `RestApi`, `Token`) and RWX PVC HA requirement, and checks Soperator's `SlurmCluster` (`Login`, `Controller`, `Worker`) + shared `jail` + `ActiveCheck` (`k8sJob` / `slurmJob`) model:
+
+```bash
+python3 code/part06/slinky_soperator_lab.py
+```
+
+Next, on a Kubernetes test cluster (`kind` or GPU cluster), work through these steps:
 
 1. On kind, install cert-manager and the Slinky chart; create a Controller and a NodeSet with CPU workers; submit a Slurm job from a LoginSet pod; scale the NodeSet and watch `sinfo` drain nodes before pod deletion.
 2. Cordon a Kubernetes node and observe the Slurm node going to DRAIN with a `slurm-operator:` reason; set your own reason with `scontrol` and confirm the operator preserves it.
@@ -152,36 +176,161 @@ Method from 5.33: start at the API types, then `SetupWithManager`, `Reconcile`, 
 - How do you upgrade Slurm, the operator and Kubernetes in a Slurm-on-Kubernetes cluster?
 - When would you choose Kueue and JobSet instead?
 
-## 10. Checkpoint questions (25)
+## Exercises
 
-1. State the Slurm versus Kubernetes workload contrast.
-2. List three benefits and three costs of Slurm on Kubernetes.
-3. Who maintains Slinky? Who maintains Soperator?
-4. Name Slinky's CRDs.
-5. What does `scalingMode` choose?
-6. What Slurm features does the Slinky operator require and why?
-7. How does Slinky enable controller HA?
-8. What is the scale-in lifecycle of a NodeSet pod?
-9. What does the `slurm-operator:` drain-reason prefix guarantee?
-10. How does a Kubernetes cordon propagate to Slurm?
-11. What is hybrid support?
-12. What does Soperator's `SlurmCluster` resource describe?
-13. What is the jail?
-14. What problem does the jail solve and what risks does it add?
-15. What are ActiveChecks and their two execution modes?
-16. How are checks deployed?
-17. What is ephemeral node scaling?
-18. Which integrations does Soperator list?
-19. Why might docs disagree with the README?
-20. What is SUNK, and how reliable is what you know about it?
-21. List five evaluation questions.
-22. Why must worker pods use Guaranteed QoS and CPU pinning?
-23. How do upgrade tracks interact?
-24. What does a node failure mean for a running job?
-25. How does 5.32's safety design relate to Slinky's drain prefix?
+1. **Verifying Slinky's Drain-and-Cordon Ownership State Machine (`code/part06/slinky_soperator_lab.py`):** Run `python3 code/part06/slinky_soperator_lab.py`. Trace the four transitions in `reconcile_slinky_node_drain()`: (a) a busy `ALLOCATED` pod selected for scale-in transitions to `DRAINING` (`can_delete_pod=False`), (b) once the job finishes (`DRAINED`), `can_delete_pod` becomes `True`, (c) an admin drain (`Reason="Xid79 GPU3 ticket INC123"`) is never overwritten or cleared when the Kubernetes node is uncordoned, and (d) an operator-owned drain (`Reason="slurm-operator: node-cordoned"`) automatically resumes to `IDLE` on uncordon.
+2. **Designing Slinky CRDs for an HA GPU Cluster:** Write the architectural specification for Slinky's six CRDs (`Controller`, `NodeSet`, `LoginSet`, `Accounting`, `RestApi`, `Token`), explaining when to choose `scalingMode: StatefulSet` vs `scalingMode: DaemonSet` on the `NodeSet`, and why `controller.ha.enabled: true` requires a `ReadWriteMany` (`RWX`) PersistentVolumeClaim (`existingClaim`).
+3. **Evaluating Nebius Soperator's Shared `jail` Root Filesystem:** Explain how Soperator mounts a shared PersistentVolume as the `chroot` / root filesystem (`jail`) across all `Login` and `Worker` pods so package installs, user accounts, and files appear cluster-wide without per-node drift. Analyze the storage IOPS/caching requirements and blast-radius trade-offs of a shared root filesystem.
+4. **Designing `ActiveCheck` Health Probes in Soperator:** Compare passive Kubernetes node conditions with Soperator's `ActiveCheck` CRs (`k8sJob` vs `slurmJob` execution modes). Design two `ActiveCheck` workflows—one `k8sJob` checking host NVMe/mount readiness and one `slurmJob` running multi-node `nccl-tests` / DCGM diagnostics—that automatically drain and replace degraded GPU workers.
+5. **Configuring Pod QoS, CPU Pinning, and Host RDMA for `slurmd` Worker Pods:** Specify the Kubernetes pod resource requests/limits (`Guaranteed` QoS class), kubelet `static` CPU Manager and Topology Manager policies, `hostNetwork` / SR-IOV RDMA device plugin mounts, and security capabilities required so containerized `slurmd` pods achieve bare-metal `NCCL` bus bandwidth.
+6. **Platform Architecture Decision Matrix (Bare-Metal Slurm vs Slurm-on-K8s vs Native Kueue):** Given three organizations—(a) a traditional national HPC lab with 100% MPI/Slurm workloads, (b) a neocloud shifting GPU capacity dynamically between customer Slurm training clusters and Kubernetes vLLM inference endpoints, and (c) a cloud-native ML platform running Ray, Kubeflow Trainer, and JobSet—justify the right scheduler architecture for each.
 
-## 11. Sources and review notes
+## Checkpoint
 
-- Slinky: `README.md`, `docs/concepts/architecture.md`, `docs/concepts/nodeset-controller.md`, CRD names in `config/crd/bases` (commit `7e01fc1`). Soperator: `README.md`, `docs/architecture.md`, `docs/active-checks.md`, `docs/limitations.md` (commit `b2a58e1`). All restated in my own words; short phrases quoted from the READMEs for the Slurm/Kubernetes contrast and the Soperator tagline.
-- Context: 5.29 to 5.35 (operators and fleets), 6.13 and 6.15 in this part.
-- Unverified: SUNK details, current feature completeness of either project, performance overhead, behaviour of any component at scale. Nothing was deployed or executed.
+<details>
+<summary>1. How does the Slinky documentation contrast the scheduling strengths of **Slurm** versus **Kubernetes**, and why do AI platforms combine them?</summary>
+
+- **Slurm:** Excels at scheduling finite-duration, tightly coupled multi-node jobs with strict topology, gang scheduling, and fair-share policy across a known resource pool.
+- **Kubernetes:** Excels at running indefinite-duration services and elastic workloads with declarative GitOps reconciliation, self-healing, and dynamic cluster autoscaling.
+Combining them lets an AI platform run Slurm training clusters and Kubernetes inference/data services on a single unified Kubernetes node fleet and GitOps control plane.
+</details>
+
+<details>
+<summary>2. What are the four main architectural costs and risks of running Slurm on top of Kubernetes?</summary>
+
+1. **Two schedulers:** Kubernetes schedules `slurmd` worker pods onto nodes while Slurm schedules jobs onto those pods—risking capacity fragmentation or uncoordinated pod evictions killing multi-node jobs.
+2. **Pods are not VMs/hosts:** `slurmd` expects host-level cgroups, `/dev/nvidia*`, `/dev/infiniband/*`, SSH, SSSD/LDAP identity, and shared filesystems inside a container.
+3. **Extra operational complexity:** Operator CRDs, RWX storage classes, and CNI/SR-IOV plumbing add failure domains.
+4. **Performance sensitivity:** Any misconfiguration in host networking, RDMA passthrough, or NUMA CPU pinning degrades multi-node `NCCL` throughput.
+</details>
+
+<details>
+<summary>3. Who maintains **Slinky (`slurm-operator`)** and who maintains **Soperator**?</summary>
+
+**Slinky (`SlinkyProject/slurm-operator`)** is maintained by **SchedMD** (the creators and maintainers of Slurm). **Soperator (`nebius/soperator`)** is an open-source Kubernetes operator maintained by **Nebius**.
+</details>
+
+<details>
+<summary>4. Name the six Custom Resource Definitions (CRDs) provided by Slinky's `slurm-operator`.</summary>
+
+1. **`Controller`** (`slurmctld` control plane)
+2. **`NodeSet`** (homogeneous group of `slurmd` compute worker pods)
+3. **`LoginSet`** (SSH submission pods with SSSD identity)
+4. **`Accounting`** (`slurmdbd` accounting daemon)
+5. **`RestApi`** (`slurmrestd` REST daemon)
+6. **`Token`** (JWT authentication tokens for `slurmrestd` and operator-to-Slurm communication)
+</details>
+
+<details>
+<summary>5. Compare `scalingMode: StatefulSet` and `scalingMode: DaemonSet` in a Slinky `NodeSet`.</summary>
+
+- **`StatefulSet` mode:** Manages a fixed `replicas` count of `slurmd` pods with stable ordinal hostnames (e.g., `gpu-2-0`, `gpu-2-1`), supporting scale-to-zero and Kubernetes Horizontal Pod Autoscaler (HPA).
+- **`DaemonSet` mode:** Runs exactly one `slurmd` pod per matching Kubernetes node (ignoring `replicas`), providing a strict 1:1 mapping between physical Kubernetes nodes and Slurm compute nodes.
+</details>
+
+<details>
+<summary>6. Which four modern Slurm features does Slinky's `slurm-operator` rely on to manage dynamic worker pods?</summary>
+
+1. **Configless Slurm** (`slurmd` and `sackd` fetch configuration from `slurmctld`).
+2. **`slurmrestd` with `auth/jwt`** (allows the Kubernetes operator to query and drain Slurm nodes via HTTP REST).
+3. **`auth/slurm`** internal authentication.
+4. **Dynamic nodes (`slurmd -Z`)** (worker pods register themselves dynamically with `slurmctld` on startup without static `NodeName` edits in `slurm.conf`).
+</details>
+
+<details>
+<summary>7. How does Slinky configure high availability (`HA`) for the `Controller` CRD?</summary>
+
+Set `controller.ha.enabled: true` and provide a **`ReadWriteMany` (`RWX`) PersistentVolumeClaim** (`controller.persistence.existingClaim`) mounted as the shared `StateSaveLocation` across the primary and standby `slurmctld` pods (with optional `controller.inplaceReconfigure: true` to reload configs without recreating pods).
+</details>
+
+<details>
+<summary>8. Walk through the safe scale-in lifecycle when Slinky's `NodeSet` controller reduces replica count.</summary>
+
+Before deleting a target `slurmd` pod, the `NodeSet` controller marks the pod with a pod-cordon annotation, calls `slurmrestd` to place the corresponding Slurm node into **`DRAIN`** (`Reason="slurm-operator: ..."`), and **waits until all running Slurm jobs on that pod finish** (node state reaches `DRAINED` / no allocated jobs). Only then does it delete the Kubernetes pod.
+</details>
+
+<details>
+<summary>9. Why does Slinky prefix all operator-initiated Slurm drain reasons with `slurm-operator:`, and how does it treat reasons without that prefix?</summary>
+
+The **`slurm-operator:`** prefix tracks ownership of the drain state. If an administrator or `HealthCheckProgram` drains a node via `scontrol` (producing a reason without the `slurm-operator:` prefix, such as `"Xid79 GPU3"`), the Slinky operator treats that drain as **externally owned** and refuses to overwrite or auto-resume the node when Kubernetes node cordons change.
+</details>
+
+<details>
+<summary>10. How does cordoning or uncordoning a Kubernetes node propagate to Slurm in Slinky?</summary>
+
+When a Kubernetes node is cordoned (`kubectl cordon`), Slinky's controller detects the node's `Unschedulable` taint/condition and drains the `slurmd` pod(s) hosted on that node with a `slurm-operator:` reason. When the Kubernetes node is uncordoned (`kubectl uncordon`), Slinky automatically resumes the Slurm node—provided its drain reason still carries the `slurm-operator:` prefix.
+</details>
+
+<details>
+<summary>11. What does Slinky's "hybrid support" allow an infrastructure team to build?</summary>
+
+It allows running some Slurm components on bare metal (for example an existing bare-metal `slurmctld` / `slurmdbd` pair and static compute nodes) while bursting elastic `NodeSet` worker pods inside a Kubernetes cluster connected to the same Slurm controller.
+</details>
+
+<details>
+<summary>12. What are the three StatefulSet pod groups created by Nebius **Soperator** from a `SlurmCluster` custom resource?</summary>
+
+1. **`Controller`** (`slurmctld` control plane)
+2. **`Worker`** (`slurmd` GPU/CPU compute nodes)
+3. **`Login`** (SSH user entry nodes)
+</details>
+
+<details>
+<summary>13. What is the **jail** in Nebius Soperator, what problem does it solve, and what is its main trade-off?</summary>
+
+The **jail** is a shared PersistentVolume containing a complete Linux root filesystem (`/`) mounted across all `Login` and `Worker` pods; users SSHing in or running Slurm jobs execute `chroot`ed inside the jail.
+- **Benefit:** Eliminates node-to-node software drift—any apt/pip package installed, user created, or file written on a login node is immediately visible on every compute node, mimicking a bare-metal cluster.
+- **Trade-off:** Places the shared storage backend directly on the critical path for `/usr` binary loads and Python `import` storms, and a corrupted jail filesystem affects the entire cluster.
+</details>
+
+<details>
+<summary>14. How do `ActiveCheck` custom resources work in Soperator, and what are their two execution modes?</summary>
+
+`ActiveCheck` resources define automated health and performance probes deployed via GitOps (Flux/Helm) that run either as **Kubernetes `Job`s (`k8sJob`)** or as **Slurm batch jobs (`slurmJob`)** across nodes (testing GPU health, InfiniBand bandwidth, storage, and hardware acceptance), automatically draining and replacing unhealthy nodes.
+</details>
+
+<details>
+<summary>15. What is CoreWeave **SUNK**, and how does it relate to Slinky and Soperator?</summary>
+
+**SUNK (Slurm on Kubernetes)** is CoreWeave's proprietary production integration that runs Slurm clusters natively on CoreWeave's Kubernetes infrastructure with shared node scheduling between Slurm jobs and Kubernetes workloads.
+</details>
+
+<details>
+<summary>16. Why must `slurmd` worker pods on Kubernetes run with `Guaranteed` QoS and static CPU/topology pinning?</summary>
+
+If `slurmd` pods run as `Burstable` without integer CPU requests equal to limits (`Guaranteed` QoS) and kubelet `static` CPU Manager + Topology Manager alignment, Kubernetes may throttle the pod's CFS quota or migrate ranks across NUMA sockets away from their allocated GPUs and RDMA NICs.
+</details>
+
+<details>
+<summary>17. How do `slurmd` pods on Kubernetes obtain GPU drivers and InfiniBand RDMA access?</summary>
+
+Through the **NVIDIA GPU Operator** (injecting host driver libraries and `/dev/nvidia*` devices) and the **NVIDIA Network Operator** (providing MOFED drivers, SR-IOV / RDMA device plugins, or `hostNetwork` access to `/dev/infiniband/*`).
+</details>
+
+<details>
+<summary>18. How do the two upgrade tracks (Kubernetes/Operator vs Slurm) interact in a Slurm-on-Kubernetes deployment?</summary>
+
+You must respect **both** Kubernetes operator compatibility matrices and Slurm's internal upgrade rules (Chapter 6.15: `slurmdbd -> slurmctld -> slurmd -> clients/pyxis`, within the 2- or 3-major compatibility window, with pre-upgrade `StateSaveLocation` and MySQL backups).
+</details>
+
+<details>
+<summary>19. When should a platform team choose **Slurm on Kubernetes** versus **native Kubernetes batch (`Kueue` + `JobSet` / `Kubeflow Trainer`)**?</summary>
+
+- **Choose Slurm on Kubernetes:** When researchers rely heavily on existing `sbatch`/`srun` workflows, Pyxis/Enroot `.sqsh` images, PMIx MPI, and Slurm Fair Tree accounting, while the infra team standardizes on Kubernetes for node lifecycle and inference sharing.
+- **Choose `Kueue` + `JobSet`:** When teams are already cloud-native (building Kubernetes containers, Ray jobs, and Kubeflow pipelines) and want a single scheduler stack without running Slurm daemons inside pods.
+</details>
+
+<details>
+<summary>20. Where in the Slinky and Soperator source trees do you start when auditing their reconciliation logic (following the Chapter 5.33 method)?</summary>
+
+Start with the CRD API definitions in `api/`, then trace controller registration and the main `Reconcile` loop: `internal/controller/nodeset` and `docs/concepts/nodeset-controller.md` in `SlinkyProject/slurm-operator`, and `internal/controller/clustercontroller/reconcile.go`, `docs/architecture.md`, and `docs/active-checks.md` in `nebius/soperator`.
+</details>
+
+## Sources and review notes
+
+- Slinky: `README.md`, `docs/concepts/architecture.md`, `docs/concepts/nodeset-controller.md`, CRD names in `config/crd/bases` (`SlinkyProject/slurm-operator` commit `7e01fc1`).
+- Soperator: `README.md`, `docs/architecture.md`, `docs/active-checks.md`, `docs/limitations.md` (`nebius/soperator` commit `b2a58e1`). All restated in our own words; short phrases quoted from the READMEs for the Slurm/Kubernetes contrast and the Soperator tagline.
+- Context: Chapters 5.29 to 5.35 (operators and fleets), 6.13 and 6.15 in this part.
+- Run here: `python3 code/part06/slinky_soperator_lab.py` (3 passed, 0 failed).
+- Explicitly labelled inferences: `reconcile_slinky_node_drain` and `validate_slinky_crds` in `code/part06/slinky_soperator_lab.py` are deterministic teaching models of Slinky's documented `nodeset-controller.md` flowchart and CRD requirements.
+- Not verified on live hardware: CoreWeave SUNK internal details, current feature completeness of either project on live clusters, and multi-node RDMA performance inside Slinky/Soperator pods (`untested here`).
