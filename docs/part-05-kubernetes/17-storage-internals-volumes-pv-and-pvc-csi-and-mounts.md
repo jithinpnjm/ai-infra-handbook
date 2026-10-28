@@ -99,6 +99,18 @@ spec:
 - **Volume group snapshots, CSI storage capacity tracking (`CSIStorageCapacity`), `VolumeAttributesClass`** (modify IOPS/throughput without recreating), ephemeral storage limits: newer features to check in your version.
 - **Retention of StatefulSet PVCs**: `persistentVolumeClaimRetentionPolicy` controls deletion on scale-down/delete (5.7).
 
+### Integrating External and Replicated Stateful Storage (`KUR` Chapter 16 & `PK` Chapter 4)
+
+In *Kubernetes: Up and Running* Chapter 16 (*Integrating Storage Solutions and Kubernetes*) and *Production Kubernetes* Chapter 4 (*Container Storage*), the authors trace three progressive patterns for connecting stateful storage to Kubernetes workloads:
+1. **Importing External Storage Services into Cluster DNS (`KUR` Chapter 16):** When a database or storage appliance lives outside Kubernetes, represent it as a Kubernetes `Service` so applications use standard service discovery:
+   - *External DNS name (`type: ExternalName`):* `externalName: database.company.com` creates a CNAME record (`external-database.default.svc.cluster.local -> database.company.com`).
+   - *External IP address(es) (Selector-less `Service` + manual `Endpoints` / `EndpointSlice`):* Create a `Service` (`external-ip-database`) with no `spec.selector` and a matching `Endpoints` object listing `subsets: [{ addresses: [{ ip: 192.168.0.1 }], ports: [{ port: 3306 }] }]`.
+2. **Singleton Stateful Pod (`ReplicaSet`/`Deployment` with `replicas: 1` + `PVC`, `KUR` Chapter 16):** Mounting a `PersistentVolumeClaim` (`claimName: database` at `/var/lib/mysql`) into a single-replica controller survives pod/node restarts without data loss, **but cannot scale beyond 1 replica** on a single RWO volume without risking concurrent corruption.
+3. **Replicated Cloud-Native Storage with `StatefulSet` + Headless Service + `volumeClaimTemplates` (`KUR` Chapter 16):** For a 3-node MongoDB (or Qdrant/Milvus/etcd) cluster, combine:
+   - A **Headless Service (`clusterIP: None`, `name: mongo`, `port: 27017`)** so CoreDNS publishes stable per-pod records `mongo-0.mongo.default.svc.cluster.local`, `mongo-1.mongo`, and `mongo-2.mongo`.
+   - A **`StatefulSet` (`serviceName: "mongo"`, `replicas: 3`)** with **`volumeClaimTemplates`** so each replica gets its own dedicated PVC (`database-mongo-0`, `database-mongo-1`, `database-mongo-2`) and deterministic ordinal startup (`0 -> 1 -> 2`).
+   - An **`initContainer` (`init-mongo`)** mounting a `ConfigMap` (`mongo-init` `init.sh`) that uses `mongo-0.mongo` as the primary (`rs.initiate`) and automatically joins `mongo-1.mongo` and `mongo-2.mongo` (`rs.add`) into replica set `rs0`.
+
 ## 3. The CSI architecture
 
 The **Container Storage Interface** is a gRPC specification between orchestrators and storage drivers; Kubernetes' implementation uses sidecar containers so driver authors implement only the CSI services.
@@ -106,14 +118,14 @@ The **Container Storage Interface** is a gRPC specification between orchestrator
 ```mermaid
 flowchart TB
   subgraph CP["CSI Controller Service (Deployment, any node)"]
-    EXT1["external-provisioner"] --> CTRL["CSI driver (Controller RPCs):\nCreateVolume / DeleteVolume\nControllerPublishVolume / Unpublish\nControllerExpandVolume\nCreateSnapshot / ..."]
+    EXT1["external-provisioner"] --> CTRL["CSI driver (Controller RPCs):\nCreateVolume / DeleteVolume\nControllerPublish / Expand / Snapshot"]
     EXT2["external-attacher"] --> CTRL
     EXT3["external-resizer"] --> CTRL
     EXT4["external-snapshotter"] --> CTRL
   end
   subgraph Node["CSI Node Service (DaemonSet on every node)"]
     REG["node-driver-registrar"] --> KL["kubelet (plugin registration socket)"]
-    NODE["CSI driver (Node RPCs):\nNodeStageVolume / NodeUnstageVolume\nNodePublishVolume / NodeUnpublishVolume\nNodeGetVolumeStats / NodeExpandVolume"]
+    NODE["CSI driver (Node RPCs):\nNodeStageVolume / NodeUnstageVolume\nNodePublish / Unpublish / GetVolumeStats"]
     LIV["livenessprobe"]
   end
   API["API server objects: PVC, PV, VolumeAttachment, CSINode, VolumeSnapshot"] <--> EXT1
@@ -200,7 +212,15 @@ Snapshots are not backups (they live with the volume); use **backup tools** (Vel
 
 Namespaced PVCs bound to cluster-scoped PVs: a user who can create PVs or `hostPath` volumes can read host data; restrict via RBAC and admission (Pod Security forbids hostPath in baseline/restricted). Multi-tenant PVC access control relies on namespaces and, for shared filesystems, per-tenant subdirectories/quotas, export rules and UID mapping. Node plugins run privileged. Avoid sharing one RWX volume across tenants without filesystem-level isolation. Encrypt in transit where supported (NFS over Kerberos/TLS, Lustre with o2ib trusted networks, Ceph msgr2 secure mode).
 
-## 7. Lab (untested)
+## 7. Lab
+
+First, run the self-checking Python lab (`code/part05/csi_storage_simulator_lab.py`) locally. It verifies the `StorageClass` `volumeBindingMode` (`Immediate` vs `WaitForFirstConsumer`) zonal GPU placement evaluator (`evaluate_zonal_pvc_binding`, `PK` Ch. 4), the CSI `VolumeAttachment` `RWO`/`RWOP`/`RWX` `Multi-Attach error` checker (`check_csi_volume_attachment`), and the AI training checkpoint and inference weight-loading bandwidth calculator (`compute_checkpoint_and_weight_timings`).
+
+```bash
+python3 code/part05/csi_storage_simulator_lab.py
+```
+
+Next, on a `kind` or `kubeadm` cluster (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **Provision and bind**: install `local-path-provisioner` or `csi-driver-host-path`; create a StorageClass and PVC (Immediate and WaitForFirstConsumer); watch PV creation and binding; consume from a pod; delete the pod and PVC with `Delete` and `Retain` policies and inspect the backend.
 2. **CSI sequence**: with the hostpath CSI driver and verbose logs, trace `CreateVolume`, `NodeStageVolume`, `NodePublishVolume` calls (driver logs) as you create/delete a pod; list the staging and publish paths; `findmnt` them; observe bind mounts in the container.
@@ -215,8 +235,6 @@ Namespaced PVCs bound to cluster-scoped PVs: a user who can create PVs or `hostP
 11. **Backup/restore**: Velero with CSI snapshots to MinIO; back up a namespace; delete; restore; verify PV data.
 12. **Monitoring**: dashboard for PVC usage, attach/mount latency, CSI errors; alerts at 80% bytes and inodes; test an alert.
 13. **Clean up**.
-
-Mark tested only after execution.
 
 ## 8. Common mistakes
 
@@ -234,66 +252,202 @@ Mark tested only after execution.
 
 ## 9. Interview angles
 
-- "Explain PV, PVC, StorageClass and dynamic provisioning." 
-- "What is CSI? Describe the controller and node services and the call sequence from PVC creation to a mounted volume." 
-- "RWO vs RWX vs RWOP; what do access modes actually guarantee?" 
-- "What is `WaitForFirstConsumer` and why does it matter?" 
-- "A pod is stuck in ContainerCreating with a Multi-Attach error. Why and how do you fix it?" 
-- "How would you design storage for a multi-node LLM training job: dataset reads, checkpoint writes, and fast restart?" 
-- "How do you serve a 140 GB model to many inference replicas efficiently?" 
-- "How do you back up and restore stateful workloads on Kubernetes?" 
+- "Explain PV, PVC, StorageClass and dynamic provisioning."
+- "What is CSI? Describe the controller and node services and the call sequence from PVC creation to a mounted volume."
+- "RWO vs RWX vs RWOP; what do access modes actually guarantee?"
+- "What is `WaitForFirstConsumer` and why does it matter?"
+- "A pod is stuck in ContainerCreating with a Multi-Attach error. Why and how do you fix it?"
+- "How would you design storage for a multi-node LLM training job: dataset reads, checkpoint writes, and fast restart?"
+- "How do you serve a 140 GB model to many inference replicas efficiently?"
+- "How do you back up and restore stateful workloads on Kubernetes?"
 
-## 10. Checkpoint questions (40)
+## Exercises
 
-1. PV scope? **A:** Cluster-scoped.
-2. PVC scope? **A:** Namespaced.
-3. Static vs dynamic provisioning? **A:** Admin-created PVs vs StorageClass-created on demand.
-4. Reclaim policies? **A:** Delete, Retain.
-5. Binding modes? **A:** Immediate, WaitForFirstConsumer.
-6. Why WFFC? **A:** Provision in the pod's topology.
-7. Access modes list? **A:** RWO, ROX, RWX, RWOP.
-8. RWO means? **A:** One node read-write.
-9. RWOP means? **A:** One pod only.
-10. Are access modes enforced by filesystems? **A:** Not generally.
-11. Volume modes? **A:** Filesystem, Block.
-12. Can PVCs shrink? **A:** No.
-13. Expansion flag? **A:** `allowVolumeExpansion`.
-14. CSI transport? **A:** gRPC over unix sockets.
-15. CSI controller RPC examples? **A:** CreateVolume, ControllerPublishVolume.
-16. CSI node RPC examples? **A:** NodeStageVolume, NodePublishVolume.
-17. What does Stage do? **A:** Mount to a node-global staging path (format if needed).
-18. What does Publish do? **A:** Bind mount to the pod path.
-19. What object records attachment? **A:** VolumeAttachment.
-20. Sidecar for provisioning? **A:** external-provisioner.
-21. Sidecar for registration? **A:** node-driver-registrar.
-22. `CSINode` shows? **A:** Per-node driver registration/topology/limits.
-23. `CSIDriver` field `attachRequired`? **A:** Whether attach step is needed.
-24. Snapshot API? **A:** VolumeSnapshot/Class/Content.
-25. Clone how? **A:** PVC `dataSource` from another PVC.
-26. Populator use? **A:** Fill new volumes from arbitrary sources.
-27. Multi-Attach cause? **A:** RWO volume still attached to another node.
-28. fsGroup cost? **A:** Recursive ownership change on mount.
-29. Mitigation? **A:** `fsGroupChangePolicy: OnRootMismatch`.
-30. Where are pod volumes on node? **A:** `/var/lib/kubelet/pods/<uid>/volumes`.
-31. Mount propagation for CSI node plugin? **A:** Bidirectional.
-32. FUSE failure symptom? **A:** Transport endpoint not connected.
-33. `emptyDir` counts toward? **A:** Ephemeral storage.
-34. Local PV requires? **A:** Node affinity.
-35. Checkpoint time formula? **A:** Size ÷ aggregate write bandwidth.
-36. Weights cold start formula? **A:** Size ÷ read bandwidth.
-37. Snapshots vs backups? **A:** Snapshots are not independent backups.
-38. Backup tool example? **A:** Velero.
-39. Metric for PVC usage? **A:** `kubelet_volume_stats_used_bytes`.
-40. Stuck `Terminating` PVC cause? **A:** Still used by a pod (protection finalizer).
+1. **`PersistentVolume`, `PersistentVolumeClaim`, `StorageClass`, and `Immediate` vs. `WaitForFirstConsumer` (`PK` Chapter 4):** Using `evaluate_zonal_pvc_binding()` in `code/part05/csi_storage_simulator.py`, trace the 1:1 binding lifecycle between a namespaced `PVC` and a cluster-scoped `PV`, and explain why `volumeBindingMode: Immediate` causes a scheduling deadlock when a zonal block volume is provisioned in `us-central1-a` while available GPU nodes are in `us-central1-b`.
+2. **Access Modes (`RWO`, `ROX`, `RWX`, `RWOP`), Reclaim Policies (`Delete` vs. `Retain`), and `Multi-Attach error` Recovery:** Using `check_csi_volume_attachment()` in `code/part05/csi_storage_simulator.py`, contrast `ReadWriteOnce` (single-node, multiple pods allowed on that same node) with `ReadWriteOncePod` (single pod), explain what triggers `Multi-Attach error for volume` when a GPU node crashes, and state how `node.kubernetes.io/out-of-service` or the 6-minute `maxWaitForUnmountDuration` resolves it.
+3. **Inside the CSI Architecture: Controller Sidecars, Node DaemonSet, and the 7-Step Lifecycle (`PK` Chapter 4):** Trace the Section 3 diagram and 7-step CSI sequence (`CreateVolume` -> `ControllerPublishVolume` / `VolumeAttachment` -> `NodeStageVolume` `blkid`/`mkfs` -> `NodePublishVolume` bind-mount -> `NodeGetVolumeStats` -> `NodeUnpublishVolume` / `NodeUnstageVolume` / `ControllerUnpublishVolume`), naming the exact Kubernetes sidecar container responsible for each controller RPC.
+4. **Linux Kernel Mount Mechanics (`bind` Mounts, `mountPropagation: Bidirectional`, `subPathExpr`, FUSE vs. Kernel Clients, and Online Expansion):** Explain why a CSI Node DaemonSet requires `mountPropagation: Bidirectional` on `/var/lib/kubelet/pods`, how `ResizeFS` (`ControllerExpandVolume` -> `NodeExpandVolume`) expands an `ext4`/`xfs` volume online (`PK` Ch. 4), and why a crashing FUSE daemon leaves running containers with `Transport endpoint is not connected`.
+5. **Integrating External and Replicated Stateful Storage (`KUR` Chapter 16):** Compare `KUR` Chapter 16's three patterns: (a) external storage via `ExternalName` or selector-less `Service` + `Endpoints`, (b) singleton MySQL with a `PVC`, and (c) replicated MongoDB `StatefulSet` + Headless Service (`mongo-0.mongo..mongo-2.mongo`) + `volumeClaimTemplates` + `init-mongo` replica-set bootstrap.
+6. **Storage Architecture and Throughput Sizing for AI Training Datasets, Checkpoints, and 140 GB LLM Weights:** Using `compute_checkpoint_and_weight_timings()` in `code/part05/csi_storage_simulator.py`, calculate checkpoint stall time and cold-start weight loading time, and design a complete storage tiering strategy combining shared parallel filesystems (`Lustre`/`WEKA`/`VAST`), local NVMe (`emptyDir` / `TopoLVM` async checkpoint staging), and `Velero` + `VolumeSnapshot` data protection.
 
-## 11. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. What is the scope of a `PersistentVolume` (`PV`), a `PersistentVolumeClaim` (`PVC`), and a `StorageClass` (`SC`), and how are a `PVC` and `PV` bound?</summary>
 
-- Brendan Burns et al., *Kubernetes: Up and Running* (3rd edition; chapter 16 on integrating storage solutions and Kubernetes).
-- Josh Rosso et al., *Production Kubernetes* (chapter 4 on container storage).
-- The author's `nvidia-devops` repository, volume 03 (node and storage masterclass: CSI, StatefulSets, a minimal CSI driver walkthrough, production logs analysis).
-- Kubernetes documentation (volumes, PV/PVC, StorageClass, CSI, snapshots, storage capacity tracking) and CSI specification.
-- Examples are the author's constructions.
+- **`PersistentVolume` (`PV`) and `StorageClass` (`SC`):** **Cluster-scoped** resources (no namespace).
+- **`PersistentVolumeClaim` (`PVC`):** **Namespaced** resource requesting storage (`size`, `accessModes`, `storageClassName`, `volumeMode`).
+- **1:1 Exclusive Binding:** A `PV` and `PVC` have an **exclusive 1-to-1 binding** (via `pv.spec.claimRef` and `pvc.spec.volumeName`). Even if a `PVC` requests only `10Gi` and binds to a static `100Gi` `PV`, no other `PVC` can claim the remaining `90Gi` of that `PV` (though multiple Pods in the same namespace can reference that single `PVC`).
+</details>
 
-**Flagged for verification before publishing:** feature status for `image` volumes, VolumeAttributesClass, volume group snapshots, RWOP and non-graceful shutdown detach timers by version; driver parameter names; throughput numbers; and every manifest/command; all labs are **untested**.
+<details>
+<summary>2. Why should every zonal block `StorageClass` (`ebs.csi.aws.com`, `pd.csi.storage.gke.io`, local NVMe) set `volumeBindingMode: WaitForFirstConsumer` instead of `Immediate` (`PK` Chapter 4)?</summary>
+
+With **`volumeBindingMode: Immediate`**, the CSI provisioner creates the cloud disk **the instant the `PVC` YAML is applied**—*before* `kube-scheduler` knows which Pod will use it or where GPU capacity exists. If the provisioner picks zone `us-central1-a` at random, and your H100 GPU node pool is in `us-central1-b`, the Pod later fails scheduling permanently with **`0/N nodes are available: node(s) had volume node affinity conflict`**.
+With **`WaitForFirstConsumer`**, PVC provisioning is delayed until a Pod mounting the PVC is scheduled; `kube-scheduler` picks a feasible GPU node in `us-central1-b` first, annotates the PVC with **`volume.kubernetes.io/selected-node`**, and the provisioner creates the disk in `us-central1-b`.
+</details>
+
+<details>
+<summary>3. Compare the four PVC `accessModes` (`ReadWriteOnce`, `ReadOnlyMany`, `ReadWriteMany`, `ReadWriteOncePod`): can two Pods on the SAME node mount a `ReadWriteOnce` (`RWO`) volume simultaneously?</summary>
+
+- **`ReadWriteOnce` (`RWO`):** The volume can be attached read-write to a **single Node**—and **YES, multiple Pods running on that SAME node are allowed to mount an `RWO` volume simultaneously**.
+- **`ReadWriteOncePod` (`RWOP`):** Restricts the volume so that **only a single Pod in the entire cluster** can mount it (preventing two pods on the same node from concurrently writing to the same SQLite/RocksDB/checkpoint directory).
+- **`ReadOnlyMany` (`ROX`):** Can be mounted read-only across multiple nodes simultaneously.
+- **`ReadWriteMany` (`RWX`):** Can be mounted read-write across multiple nodes simultaneously (requires a shared/clustered filesystem like NFS, CephFS, Lustre, WEKA, VAST, Filestore, or FSx).
+</details>
+
+<details>
+<summary>4. What happens to a `PersistentVolume` when a user runs `kubectl delete pvc data` under `reclaimPolicy: Delete` vs. `reclaimPolicy: Retain`, and why can't a `Released` PV be immediately bound to a new PVC?</summary>
+
+- **`reclaimPolicy: Delete` (default for dynamic StorageClasses):** Deleting the `PVC` automatically deletes **both the `PV` object and the underlying physical cloud disk / storage volume** (destroying all data permanently).
+- **`reclaimPolicy: Retain`:** Deleting the `PVC` leaves the `PV` and the underlying physical disk intact, and transitions the `PV`'s status phase from `Bound` to **`Released`**.
+- **Why a `Released` PV cannot bind to a new PVC automatically:** The `PV` still holds the old PVC's reference in **`pv.spec.claimRef`** (because the volume still contains the previous user's sensitive data). After an admin verifies/backs up the data and manually deletes `spec.claimRef` from the `PV`, the `PV` transitions back to **`Available`** and can bind to a new `PVC`.
+</details>
+
+<details>
+<summary>5. What prevents a `PVC` (or `PV`) from being deleted while a running Pod is still mounting it?</summary>
+
+Kubernetes's built-in **Storage Object in Use Protection** controller automatically adds the finalizer **`kubernetes.io/pvc-protection`** to every `PVC` (and **`kubernetes.io/pv-protection`** to every `PV`). If you run `kubectl delete pvc checkpoints` while `trainer-0` is still mounting `checkpoints`, `kube-apiserver` sets `deletionTimestamp` (`Status: Terminating`) on the PVC **and keeps it alive until `trainer-0` terminates**, at which point the controller removes the finalizer and completes deletion.
+</details>
+
+<details>
+<summary>6. Name the five standard Kubernetes CSI Sidecar containers and state what each one watches and calls.</summary>
+
+1. **`external-provisioner`:** Watches `PersistentVolumeClaim` objects -> calls CSI **`CreateVolume` / `DeleteVolume`** and creates/deletes `PV` objects.
+2. **`external-attacher`:** Watches `VolumeAttachment` objects (created by `kube-controller-manager`'s attach/detach controller) -> calls CSI **`ControllerPublishVolume` / `ControllerUnpublishVolume`** to attach/detach block disks to/from nodes.
+3. **`external-resizer`:** Watches `PVC` size increases -> calls CSI **`ControllerExpandVolume`** and sets the `FileSystemResizePending` condition on the PVC for `kubelet` to run `NodeExpandVolume`.
+4. **`external-snapshotter`:** Watches `VolumeSnapshot` objects -> calls CSI **`CreateSnapshot` / `DeleteSnapshot`** and manages `VolumeSnapshotContent`.
+5. **`node-driver-registrar` (on each node DaemonSet):** Fetches driver info via `NodeGetInfo` and registers the CSI node plugin's Unix socket with the local **`kubelet`**.
+</details>
+
+<details>
+<summary>7. Trace the exact difference between `ControllerPublishVolume`, `NodeStageVolume`, and `NodePublishVolume` when mounting an AWS EBS or GCP Persistent Disk (`PK` Chapter 4).</summary>
+
+1. **`ControllerPublishVolume` (Control plane -> Cloud API):** Calls the AWS EC2 `AttachVolume` or GCP `attachDisk` API so the virtual hypervisor attaches the block device (`/dev/nvme1n1` or `/dev/sdb`) to the worker VM.
+2. **`NodeStageVolume` (Node plugin, once per volume per node):** Inspects the newly attached block device with **`blkid`** (`PK` Chapter 4); if unformatted, runs **`mkfs.ext4` / `mkfs.xfs`**, and mounts the device onto a **node-global staging directory** (`/var/lib/kubelet/plugins/kubernetes.io/csi/.../globalmount`).
+3. **`NodePublishVolume` (Node plugin, once per Pod mounting the volume):** Creates a **Linux bind-mount** from the global staging directory to the Pod's private volume path (`/var/lib/kubelet/pods/<pod-uid>/volumes/kubernetes.io~csi/<pv>/mount`).
+</details>
+
+<details>
+<summary>8. Why must a CSI Node DaemonSet container configure `mountPropagation: Bidirectional` on its `/var/lib/kubelet/pods` volume mount?</summary>
+
+By default in Linux and Kubernetes (`mountPropagation: None`), any `mount` syscall executed *inside* a container's mount namespace is **isolated to that container** and invisible to the host OS and other containers. Because the CSI Node Plugin runs inside a DaemonSet container (`csi-node`) and executes `mount` / bind-mount calls during `NodeStageVolume` and `NodePublishVolume` that **must appear on the host filesystem** (so `kubelet` and `runc` can pass them into workload Pods), the CSI node container's volume mount for `/var/lib/kubelet` must set **`mountPropagation: Bidirectional`**.
+</details>
+
+<details>
+<summary>9. What causes `Multi-Attach error for volume ... Volume is already exclusively attached to one node and can't be attached to another`, and how do you resolve it?</summary>
+
+This occurs when a Pod mounting an **`RWO` (`ReadWriteOnce`) block volume** on `node-a` is rescheduled onto `node-b` after `node-a` abruptly crashes or loses network connectivity. Because `node-a`'s `kubelet` is unreachable, it cannot confirm that the old container unmounted the disk, so the `VolumeAttachment` for `node-a` remains attached to prevent two nodes from corrupting the `ext4`/`xfs` block device simultaneously.
+**Resolution:**
+- Wait for the attach/detach controller's **`maxWaitForUnmountDuration` (6 minutes)** to force-detach the unhealthy node's volume, OR
+- Fence/power off `node-a` via BMC/cloud API and apply the **`node.kubernetes.io/out-of-service=nodeshutdown:NoExecute`** taint to `node-a` so Kubernetes immediately detaches the volume and attaches it to `node-b`.
+</details>
+
+<details>
+<summary>10. How does Online PVC Volume Expansion (`allowVolumeExpansion: true`) work in two phases (`PK` Chapter 4)?</summary>
+
+When you increase `spec.resources.requests.storage` from `200Gi` to `500Gi` on a PVC whose `StorageClass` has `allowVolumeExpansion: true`:
+1. **Phase 1 — Controller Expansion (`external-resizer` -> `ControllerExpandVolume`):** Resizes the underlying cloud disk or Ceph RBD image from 200 GiB to 500 GiB and sets condition **`FileSystemResizePending`** on the PVC.
+2. **Phase 2 — Node Filesystem Expansion (`kubelet` -> `NodeExpandVolume`):** When a Pod is mounting the volume (or next mounts it), `kubelet` calls `NodeExpandVolume` (`ResizeFS` in `PK` Chapter 4), which invokes **`resize2fs`** (for `ext4`) or **`xfs_growfs`** (for `xfs`) online to expand the filesystem to fill the 500 GiB block device.
+</details>
+
+<details>
+<summary>11. What is the difference between a CSI `VolumeSnapshot` and a real Disaster-Recovery Backup (`Velero` / `Kasten`)?</summary>
+
+A **`VolumeSnapshot`** (`snapshot.storage.k8s.io/v1`) instructs the underlying storage array or cloud provider to take a point-in-time snapshot (e.g., an EBS snapshot, GCP PD snapshot, or Ceph RBD CoW snapshot). However, **many on-prem CSI snapshots reside on the exact same storage cluster/pool as the primary volume** (so if the Ceph cluster or storage array suffers a catastrophic failure, both the PV and the snapshot are lost), and a `VolumeSnapshot` does not back up your Kubernetes YAML manifests (`StatefulSet`, `ConfigMap`, `Secret`, `Service`). A complete backup solution like **Velero** (or **Kasten K10**) pairs CSI `VolumeSnapshot`s with **off-cluster object-store replication (S3/GCS)** and backs up all Kubernetes API resources together.
+</details>
+
+<details>
+<summary>12. Why do FUSE-based CSI drivers (such as `gcsfuse`, `s3fs` / Mountpoint for S3, or `JuiceFS` in FUSE mode) sometimes fail with `Transport endpoint is not connected`, and what are their performance trade-offs?</summary>
+
+Unlike kernel filesystem clients (`nfs`, `lustre`, `wekafs`, `ext4`, `xfs`), a **FUSE (`Filesystem in Userspace`)** mount relies on a **user-space daemon process** reading and writing `/dev/fuse`.
+1. **`Transport endpoint is not connected` (`ENOTCONN`):** If the user-space FUSE daemon container crashes, is OOM-killed, or is restarted during a CSI DaemonSet upgrade while application Pods are still running, the existing `/dev/fuse` file descriptor inside the application Pods is orphaned and every file operation fails with `Transport endpoint is not connected` until the application Pod is restarted (unless the CSI driver uses a FUSE pass-through/fd-handover recovery proxy).
+2. **Performance trade-off:** Every file read/write not in page cache crosses the kernel-to-userspace boundary twice (`App -> VFS -> /dev/fuse -> FUSE daemon -> VFS/Socket`). Great for streaming large sequential `.tar` shards (`WebDataset`) or loading model weights, **poor for millions of tiny random `open()`/`stat()` calls**.
+</details>
+
+<details>
+<summary>13. How do `subPath` and `subPathExpr` work on shared `RWX` checkpoint volumes across distributed training ranks?</summary>
+
+When 64 training Pods mount the same shared `RWX` PVC (`checkpoints`), having all 64 Pods write into the same root directory without coordination can cause filename collisions. Using **`subPathExpr`** with a Downward API environment variable (`POD_NAME` or `JOB_COMPLETION_INDEX`):
+```yaml
+env:
+  - name: RANK_ID
+    valueFrom: { fieldRef: { fieldPath: "metadata.annotations['batch.kubernetes.io/job-completion-index']" } }
+volumeMounts:
+  - name: ckpt
+    mountPath: /ckpt/my-rank
+    subPathExpr: runs/$(RUN_ID)/rank-$(RANK_ID)
+```
+automatically creates and bind-mounts an isolated `/ckpt/runs/142/rank-0`, `rank-1`, ... subdirectory per worker Pod.
+</details>
+
+<details>
+<summary>14. Why can a Pod write fail with `No space left on device` (`ENOSPC`) even when `df -h` shows 40% free disk space on the PVC?</summary>
+
+**Inode exhaustion (`df -i` shows `IUse% = 100%`).** Traditional `ext4` filesystems format a fixed number of inodes at `mkfs` time. If an ML preprocessing job writes 20 million tiny 4 KB image or JSON files onto an `ext4` volume, all inodes are consumed while 40% of the byte capacity remains free.
+**Fixes:** Pack training datasets into large sequential shard archives (`.tar` `WebDataset`, `.parquet`, `.mds`, `.tfrecord`), format large volumes with **`xfs`** (which allocates inodes dynamically) or higher inode density, and alert on **`kubelet_volume_stats_inodes_used / kubelet_volume_stats_inodes > 0.8`**.
+</details>
+
+<details>
+<summary>15. In *Kubernetes: Up and Running* Chapter 16, how does the 3-replica MongoDB `StatefulSet` (`mongo-0`, `mongo-1`, `mongo-2`) bootstrap its replica set automatically using a `ConfigMap` and Headless Service?</summary>
+
+1. The Headless Service (`name: mongo, clusterIP: None`) gives the Pods deterministic DNS names: `mongo-0.mongo.default.svc.cluster.local`, `mongo-1.mongo`, and `mongo-2.mongo`.
+2. Because `StatefulSet` starts Pods sequentially in ordinal order (`0 -> 1 -> 2`), the `mongo-init` script checks the Pod's hostname:
+   - When **`mongo-0`** starts, it initializes the replica set (`rs.initiate({_id: "rs0", members: [{_id: 0, host: "mongo-0.mongo:27017"}]})`).
+   - When **`mongo-1` and `mongo-2`** start, their init script connects to `mongo-0.mongo:27017` and runs `rs.add("<hostname>.mongo:27017")` to join the primary.
+3. Each Pod stores `/data/db` on its own `volumeClaimTemplates` PVC (`database-mongo-0..2`) and runs a `livenessProbe` (`mongo --eval "db.serverStatus()"`).
+</details>
+
+<details>
+<summary>16. Compare the four best ways to distribute a 140 GB LLM model weight directory to 16 `vLLM` inference Pods scaling up simultaneously.</summary>
+
+If 16 Pods simultaneously read 140 GB over the network ($16 \times 140\text{ GB} = 2.24\text{ TB}$), a standard 2 GB/s NAS or cloud bucket gateway will take **18+ minutes** to start the pods. Four scalable patterns:
+1. **High-bandwidth parallel filesystem (`Lustre` / `WEKA` / `VAST` `RWX`/`ROX` PVC):** Delivers 50–200 GB/s aggregate read throughput across nodes.
+2. **Pre-populated Node-Local NVMe Cache (via a DaemonSet or `Fluid`/`Alluxio`/`JuiceFS`):** A DaemonSet syncs popular model weights onto each GPU node's local RAID-0 NVMe array once; inference Pods mount the local NVMe read-only at **20–40 GB/s** (`140 GB / 25 GB/s = 5.6 seconds`).
+3. **Kubernetes `image` Volume (OCI Model Artifact) + P2P Registry (`Spegel` / `Dragonfly`):** Package weights as an OCI artifact mounted via `volumes[].image`; nodes share blocks peer-to-peer over the 100G/400G cluster network and cache layers in `containerd`.
+4. **Parallel Multipart Object-Store Streaming (`s5cmd` / `hf_transfer` / `tensorizer` / `safetensors` mmap over fast network) into local NVMe `emptyDir`.**
+</details>
+
+<details>
+<summary>17. How do Asynchronous Two-Tier Checkpointing (`Local NVMe` -> `Durable Parallel FS / Object Store`) and Sharded Checkpointing (`torch.distributed.checkpoint`) minimize GPU training stall time?</summary>
+
+Suppose a 512-GPU training job saves a **1 TB (`1,000 GB`) distributed state checkpoint** every 30 minutes:
+- **Synchronous write to a 2 GB/s network volume:** Stalls all 512 GPUs for **$1000 / 2 = 500\text{ seconds}$ (8.3 minutes)** on every checkpoint.
+- **Two-tier async + sharded checkpointing:**
+  1. Each of the 64 nodes writes its own **15.6 GB shard** (`torch.distributed.checkpoint` / Megatron `dist_ckpt`) directly to its **local NVMe `emptyDir` / Local PV** at ~15 GB/s per node (**~1 second GPU stall**).
+  2. Training resumes immediately on the GPUs while a background process/thread asynchronously flushes the checkpoint shards from local NVMe to the durable `RWX` parallel filesystem or S3/GCS bucket and performs an atomic manifest commit once all 64 shards succeed.
+</details>
+
+<details>
+<summary>18. What is a Kubernetes `Generic Ephemeral Volume` (`volumes[].ephemeral.volumeClaimTemplate`), and when is it better than `emptyDir`?</summary>
+
+An `emptyDir` is just a directory on the node's root/kubelet filesystem (or RAM `tmpfs`). A **Generic Ephemeral Volume** instructs Kubernetes to dynamically provision a real **CSI `PersistentVolumeClaim`** bound to the Pod's lifecycle (automatically created when the Pod is scheduled and automatically deleted when the Pod is deleted). This lets a scratch volume use any **CSI `StorageClass`**—such as dedicated provisioned-IOPS NVMe block volumes, `TopoLVM` thin-provisioned LVMs with strict hardware disk quotas, or storage-array encryption/snapshots—without leaving orphaned PVCs behind when the Job finishes.
+</details>
+
+<details>
+<summary>19. What is required on a Kubernetes GPU node to use `GPUDirect Storage` (`GDS` / `cuFile`) inside a Pod?</summary>
+
+**GPUDirect Storage (`GDS`)** allows NVMe drives or RDMA-capable parallel filesystems (WEKA, VAST, Lustre, DDN EXAScaler, IBM Storage Scale) to DMA data directly into and out of **GPU HBM memory (`cuFileRead`/`cuFileWrite`)** over PCIe without bouncing through host CPU page cache (`bounce buffers`). Inside Kubernetes, GDS requires:
+1. **`nvidia-fs` (`nvidia_fs.ko`) kernel module** loaded on the host node and `/dev/nvidia-fs*` exposed to the container (managed by the NVIDIA GPU Operator with `gds.enabled=true`).
+2. **A kernel-native CSI mount** (e.g., native `wekafs`, `lustre`, or local NVMe `xfs`/`ext4` mounted with `O_DIRECT` support—FUSE mounts cannot do GDS DMA).
+3. **`IPC_LOCK` capability** and `cufile.json` configured inside the container.
+</details>
+
+<details>
+<summary>20. What does `CSINode` (`kubectl get csinodes -o yaml`) tell you when a Pod fails to schedule with `0/10 nodes are available: 10 node(s) exceed max volume count`?</summary>
+
+Every CSI node plugin registers its capabilities in the node's **`CSINode`** object (`spec.drivers[]`), including:
+- Whether the CSI driver is actually installed and running on that node.
+- **`topologyKeys`** (`["topology.kubernetes.io/zone"]`).
+- **`allocatable.count`:** The maximum number of volumes of that CSI driver that can be attached to a single node (for example, AWS EBS and GCP PD enforce per-instance-type disk attachment limits like 16, 28, or 128 disks). If Pods on a node mount too many separate small PVCs, `kube-scheduler` blocks new Pods with `exceed max volume count`.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 16: Integrating Storage Solutions and Kubernetes** (read in full: importing external storage services via `ExternalName` and selector-less `Service` + `Endpoints`, running a singleton MySQL Pod with a `PersistentVolume` and `PersistentVolumeClaim`, dynamic volume provisioning, and deploying a 3-replica MongoDB `StatefulSet` with a Headless Service `mongo-0.mongo..mongo-2.mongo`, `volumeClaimTemplates`, `init-mongo` `ConfigMap` replica-set initialization, and `livenessProbe`).
+  - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 4: Container Storage** (read in full: Block vs File vs Object storage Table 4-1, in-tree to out-of-tree CSI transition, `CSIDriver` and `CSINode`, `StorageClass` parameters and `Immediate` vs `WaitForFirstConsumer` binding modes, `blkid` and `ResizeFS` online volume expansion, and `VolumeSnapshot` / `VolumeSnapshotClass`).
+  - `nvidia-devops` (`volume-03/02-k8s-node-storage-masterclass.md`): node and storage masterclass (CSI architecture, `StatefulSet`s, minimal CSI driver walkthrough, and production storage log analysis).
+- **Run here:** `python3 code/part05/csi_storage_simulator_lab.py` (3 passed, 0 failed).
+- **Explicitly labelled inferences:** The `evaluate_zonal_pvc_binding`, `check_csi_volume_attachment`, and `compute_checkpoint_and_weight_timings` models in `code/part05/csi_storage_simulator.py` and the `fast-nvme` `StorageClass` and `checkpoints` `PVC` manifests are the author's constructions synthesizing `KUR` Chapter 16, `PK` Chapter 4, and `volume-03/02` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Not verified on live hardware:** Live CSI driver, `fio`, `findmnt`, `lsblk`, and `Velero` executions (`1,000` GPUs, `30 seconds` vs `15 minutes` checkpoint, `iops: "6000", throughput: "500"`, `2Ti`, `6-minute` `maxWaitForUnmountDuration`, `140 GB at 2 GB/s = 70 s`, `80%` alert threshold, `1 million` small files, `100 GB` / `20 GB` benchmarks) are marked (`untested here`) where not executed by `csi_storage_simulator_lab.py`.
