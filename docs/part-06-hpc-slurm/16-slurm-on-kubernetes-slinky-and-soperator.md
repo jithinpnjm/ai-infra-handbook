@@ -176,6 +176,34 @@ Next, on a Kubernetes test cluster (`kind` or GPU cluster), work through these s
 - How do you upgrade Slurm, the operator and Kubernetes in a Slurm-on-Kubernetes cluster?
 - When would you choose Kueue and JobSet instead?
 
+### 6.1 Deep dive: Tuning Kubernetes worker pods for bare-metal RDMA and NCCL performance
+
+When an organization deploys Slurm on Kubernetes using **SchedMD Slinky** or **Nebius Soperator**, the most common engineering concern is: *will running `slurmd` inside a Kubernetes pod hurt multi-node GPU training performance compared to bare-metal Slurm?*
+
+The answer depends entirely on how the `slurmd` worker PodSpec is configured on the underlying Kubernetes nodes. A default, un-tuned Kubernetes pod uses virtualized bridge networking (`veth` pairs + CNI overlay), time-sliced CFS CPU scheduling, and default `memlock` ulimits—which will cripple GPUDirect RDMA and add millisecond-level jitter to `AllReduce` collectives. To achieve bare-metal parity inside a `slurmd` worker pod, verify these five pod and kubelet invariants:
+
+1. **`Guaranteed` Pod QoS Class and Kubelet `static` CPU / Topology Manager:**
+   Every `slurmd` worker pod on a GPU node should request and limit the exact same integer CPU, memory, and `nvidia.com/gpu` (or privileged device) resources so Kubernetes assigns it the **`Guaranteed` QoS class**. When paired with kubelet `cpuManagerPolicy: static` and `topologyManagerPolicy: single-numa-node` (or `best-effort` at `pod` scope), the pod's CPUs, host memory, GPUs, and RDMA NICs are pinned cleanly without interference from background node agents.
+2. **Unlimited locked memory (`ulimit -l unlimited` / `RLIMIT_MEMLOCK`):**
+   InfiniBand and RoCEv2 GPUDirect RDMA require pinning large memory regions in RAM and GPU BAR space (`ibv_reg_mr`). If the container runtime (`containerd`) applies a default `64 KB` or `64 MB` `memlock` limit to the `slurmd` container, multi-node NCCL jobs launched via `srun` inside that pod will fail immediately during communicator initialization. Configure `containerd` (or the pod's security context / privileged container entrypoint) so `ulimit -l` inside `srun` job steps reports `unlimited`.
+3. **Direct RDMA / InfiniBand device passthrough (`hostNetwork` or SR-IOV / RDMA CNI):**
+   For GPU-to-GPU traffic across nodes to bypass the kernel TCP/IP stack, the `slurmd` worker pod must have direct access to `/dev/infiniband/uverbs*` and `/dev/infiniband/rdma_cm` (via the NVIDIA Network Operator / RDMA shared device plugin or SR-IOV VF passthrough, with `IPC_LOCK` capability) and either run with `hostNetwork: true` on the compute fabric or attach secondary high-speed RDMA interfaces via Multus CNI.
+4. **Shared `/dev/shm` sizing (`emptyDir: {medium: Memory}`):**
+   PyTorch `DataLoader` multi-processing workers and NCCL intra-node shared-memory channels allocate gigabytes of POSIX shared memory in `/dev/shm`. By default, Kubernetes mounts `/dev/shm` inside a container with a tiny `64 MiB` cap, which causes multi-GPU PyTorch jobs to crash on step 1 with `Bus error (core dumped) — Insufficient shared memory`. Always mount a memory-backed `emptyDir` (`medium: Memory`, `sizeLimit: 64Gi` or `128Gi`) at `/dev/shm` on every `slurmd` worker pod.
+5. **Coordinated drain state machine (`slinky_soperator_lab.py`):**
+   Because two control planes (Kubernetes and Slurm) now watch the same physical node, never allow `kubectl drain` or a Kubernetes cluster autoscaler scale-in to abruptly `SIGKILL` a `slurmd` pod that is in the middle of a 64-node training job. As verified in `code/part06/slinky_soperator_lab.py`, the operator intercepts node cordoning and pod deletion via PodDisruptionBudgets / finalizers, sets the Slurm node state to `DRAIN` (`Reason="slurm-operator: node-cordoned"`), waits until all active Slurm jobs on that pod complete and transition to `DRAINED`, and only then permits pod eviction—while preserving any manual administrator hardware drain (`Reason="Xid79 GPU3 ticket INC123"`) across Kubernetes uncordons.
+
+### 6.2 Comparing Slinky, Soperator, BCM Auto Scaler (`cm-scale`), and Native Kubernetes (`Kueue`)
+
+When an interviewer or architecture review board asks how you should share a fleet of 1,024 GPUs between Slurm training researchers and Kubernetes inference services, compare the four production patterns along operational ownership and workload isolation:
+
+| Architecture Pattern | How It Works | Best For | Key Operational Trade-Off |
+|---|---|---|---|
+| **1. SchedMD Slinky (`slurm-operator`)** | Runs `slurmctld`, `slurmdbd`, `slurmrestd`, `sackd`, and `slurmd` `NodeSet` pods as Kubernetes CRDs; syncs K8s cordon/scale-in with Slurm `DRAIN` | Cloud-native platform teams who want Kubernetes as the single substrate while giving researchers standard `sbatch`/`srun` clusters | Requires careful pod-in-pod / Enroot privilege configuration and RWX storage for `StateSaveLocation` |
+| **2. Nebius Soperator** | Kubernetes operator that mounts a shared PersistentVolume (`jail`) as a unified `chroot` root filesystem across all `Login` and `Worker` pods, with built-in `ActiveCheck` CRDs | Multi-user research teams who want a traditional shared-OS HPC login/worker experience (`apt install` once, visible everywhere) on top of K8s | Shared rootfs (`jail`) requires high-IOPS parallel storage; an uncoordinated edit in `jail` affects all nodes in that Slurm cluster |
+| **3. BCM Auto Scaler (`cm-scale`, Ch. 6.31 & 8.1)** | Bare-metal nodes run native OS; BCM dynamically switches idle nodes between `slurm-client` and `kube-worker` configuration overlays based on queue demand | Bare-metal DGX SuperPODs managed by NVIDIA Base Command Manager where zero container-nesting overhead is desired | Repurposing happens at whole-node, between-job boundaries rather than sub-node pod packing |
+| **4. Pure Kubernetes Batch (`Kueue` + `JobSet` / `Kubeflow`)** | Eliminates Slurm completely; all training and inference run as native Kubernetes pods gang-scheduled by `Kueue` with `TopologyAwareScheduling` | Organizations whose ML engineers are already 100% cloud-native (`kubectl`, YAML/Helm, Ray, PyTorchJob) and have no legacy `sbatch` scripts | Researchers accustomed to `salloc`, `srun`, and `.sbatch` scripts must migrate their workflows to Kubernetes manifests |
+
 ## Exercises
 
 1. **Verifying Slinky's Drain-and-Cordon Ownership State Machine (`code/part06/slinky_soperator_lab.py`):** Run `python3 code/part06/slinky_soperator_lab.py`. Trace the four transitions in `reconcile_slinky_node_drain()`: (a) a busy `ALLOCATED` pod selected for scale-in transitions to `DRAINING` (`can_delete_pod=False`), (b) once the job finishes (`DRAINED`), `can_delete_pod` becomes `True`, (c) an admin drain (`Reason="Xid79 GPU3 ticket INC123"`) is never overwritten or cleared when the Kubernetes node is uncordoned, and (d) an operator-owned drain (`Reason="slurm-operator: node-cordoned"`) automatically resumes to `IDLE` on uncordon.

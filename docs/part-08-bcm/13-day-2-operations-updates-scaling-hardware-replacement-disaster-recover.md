@@ -151,6 +151,64 @@ Every change starts the same way: **write down the change and its undo, and take
 
 **BIOS or firmware.** Test on one node; one rack at a time; an AC power cycle if the Result column says so; verify versions and a GPU test (chapter 8.7).
 
+### 10.1 Deep dive: Managing software-image lifecycles without breaking running jobs
+
+In a busy AI cluster where multi-node training jobs run twenty-four hours a day for weeks at a time, how do you roll out a security patch, an updated CUDA toolkit, an `MLNX_OFED` / `DOCA-Host` driver, or a new Linux kernel across five hundred compute nodes without interrupting active jobs?
+
+BCM's separation of **software images (`/cm/images/<name>`)**, **categories**, and **drain-action chaining** gives you two complementary rollout patterns depending on whether the change is a user-space package update or a kernel/driver change:
+
+1. **Pattern A — In-place canary and wave sync for user-space updates (`imageupdate`):**
+   When you add or update user-space packages (such as `htop`, monitoring agents, `/etc/sssd/sssd.conf`, or container hooks) that do not require a kernel reboot:
+   - First, take a database backup (`cmdaemon-backup before-pkg-update`) and clone the production image (`softwareimage; clone default-image default-image-rollback; commit -w`) so you have an instant rollback copy.
+   - Enter the image cleanly with `cm-chroot-sw-img /cm/images/default-image` (locking it first with `softwareimage lock default-image` while `apt`/`dnf` runs, then unlocking afterward).
+   - Run **`updateprovisioners`** (`softwareimage; updateprovisioners`) so any regular nodes holding the `provisioning` role receive the updated image immediately rather than waiting for the `300 s` `dirtyautoupdatetimeout` or midnight UTC sync.
+   - Run a **dry-run** `imageupdate -n node001` (with no `-w` flag) against a single canary node and inspect `synclog node001` to verify that no unexpected node-local files or `autofs` mounts are slated for deletion (`excludelistupdate`).
+   - Apply to the canary node with `imageupdate -n node001 -w`, verify health checks (`samplenow`), and roll out across the category in waves.
+2. **Pattern B — Zero-downtime rolling category switch for kernel, driver, and OFED upgrades:**
+   When an update changes the Linux kernel (`set kernelversion` + `createramdisk`), the NVIDIA GPU kernel driver (`nvidia.ko`), or the `MLNX_OFED`/`DOCA-Host` RDMA stack, syncing files onto a running node with `imageupdate -w` is dangerous because the running kernel and loaded `.ko` modules in RAM no longer match the files on disk—causing any new job step or `nvidia-smi` invocation on that node to fail with a driver/library version mismatch!
+   Instead, use a **rolling category / image switch with chained drain actions**:
+   - Clone the production software image (`dgx-prod-v1` $\rightarrow$ `dgx-prod-v2`) and perform all kernel, driver, and `createramdisk` updates inside `dgx-prod-v2` while production nodes continue running on `dgx-prod-v1`.
+   - Clone or create a canary category (`dgx-canary`) pointing to `dgx-prod-v2`, move one idle test node into `dgx-canary`, reboot it, and validate GPUDirect RDMA and GDS (`gdscheck.py -p`, `all_reduce_perf`).
+   - Once validated, point the production category at `dgx-prod-v2` (or move racks into the new category) and schedule a non-disruptive rolling reboot across busy nodes using chained drain actions:
+     ```bash
+     cmsh -c 'device; drain -n node001..node032 --setactions powerreset ; drain -n node001..node032 --appendactions undrain'
+     ```
+     Each node finishes its currently running Slurm job, automatically power-resets and provisions `dgx-prod-v2` at boot, passes its `prejob` / boot health checks, and automatically undrains itself back into the Slurm pool.
+
+### 10.2 End-to-end bare-metal disaster recovery rehearsal
+
+Every quarter, review Table 7 in Section 7 and ask your team: *if the primary storage array in our management rack suffered a double-fault tonight and both head nodes lost their local disks, could we rebuild this cluster from our off-cluster backups?*
+
+A complete off-cluster disaster recovery bundle for a BCM cluster requires five artifacts stored on an external backup target (outside the cluster's own `/cm/shared` NAS):
+1. **The latest `CMDaemon` MySQL dump (`/var/spool/cmd/backup/backup-<Day>.sql.gz` or `cmdaemon-backup`)** plus any external databases (`slurm_acct_db`, Keycloak, Harbor).
+2. **Tarballs or `rsync` mirrors of `/cm/images/*` and `/cm/node-installer*`** (the exact golden software images for every category and architecture).
+3. **Configuration files outside the `CMDaemon` database:** `/cm/local/apps/cmd/etc/cmd.conf`, `/etc/named.conf.include`, `/cm/excludelistnormal`, `/cm/excludelistfailover`, custom health checks and actions in `/cm/local/apps/cmd/scripts/`, and TLS/CA keys under `/root/.cm/` and `/etc/kubernetes/pki/`.
+4. **The BCM cluster license file and its bound head-node MAC addresses** (so you can either restore onto the same NIC MAC or request an emergency license re-host from NVIDIA Enterprise Support before the maintenance window).
+5. **The written Day-0 installation parameters (Chapter 8.2):** Network topology type, `internalnet`/`externalnet`/`bmcnet` subnets and IP offsets, and disk layout XMLs.
+
+Rehearsing a database restore (`gunzip < backup.sql.gz | mysql ...`) and a single-node image boot in a small virtual or lab environment turns disaster recovery from a hope into a verified thirty-minute procedure.
+
+### 10.3 Automating BCM Day-2 configuration as code with `brightcomputing.bcm110`
+
+As your cluster grows from a single rack to multiple Scalable Units managed by a team of infrastructure engineers, making ad-hoc interactive changes in `cmsh` without peer review introduces configuration drift between your staging and production clusters. How do you manage BCM objects—categories, networks, racks, users, profiles, and monitoring triggers—using Git pull requests and CI pipelines?
+
+Section 6 introduced the official **`brightcomputing.bcm110`** Ansible collection (`/cm/local/examples/cmd/ansible/`). Understanding how the collection interacts with `CMDaemon` lets you combine GitOps discipline with BCM's bare-metal provisioning engine:
+
+1. **Query-and-mutate module pairs talking directly to `CMDaemon`:** Unlike generic Linux Ansible modules (`ansible.builtin.copy` or `lineinfile`) that SSH into compute nodes and edit files in `/etc` behind `CMDaemon`'s back, the modules in `brightcomputing.bcm110` (`category`, `physical_node`, `network`, `user`, `profile`, `software_image`, `configuration_overlay`) connect directly to `CMDaemon` on the active head node. Each module reads the current object state from `CMDaemon`, compares it with the YAML attributes declared in your Ansible playbook, commits only the properties that differ, and reports `ok` or `changed` idempotently.
+2. **Cloning categories and staging canary rollouts from Git:** For example, when preparing a new CUDA/driver software image rollout, a playbook using `brightcomputing.bcm110.category` with `cloneFrom: "dgx-h100-prod"` creates the `dgx-h100-canary` category, points its `softwareImageProxy` at the new image, and updates its kernel parameters in a single reviewed Git commit.
+3. **Never mix live node-level Ansible file edits with BCM image sync:** Keep the ownership boundary from Chapter 8.1 Section 3.8 crystal clear. Use Ansible (`brightcomputing.bcm110`) to manage **BCM objects on the head node** (or run Ansible inside a chrooted software image on the head node before running `updateprovisioners` and `imageupdate -w`). Never use Ansible to SSH directly into running compute nodes and overwrite files that are managed by `CMDaemon` or the software image, because the next `imageupdate -w` or node reboot will erase those unmanaged edits.
+
+### 10.4 Pre-flight and post-flight checklist for every Day-2 maintenance window
+
+Before your team begins any scheduled cluster maintenance window—whether updating BCM packages on the head nodes, rolling a new kernel image across GPU categories, replacing faulted hardware, or expanding a Slurm partition with a new rack of nodes—run through this six-point operational checklist:
+
+1. **Take an explicit, named database backup first:** Run `cmdaemon-backup pre-maint-<date>` on the active head node and verify the `.sql.gz` file was written under `/var/spool/cmd/backup/`.
+2. **Verify HA and replication health before touching either head node:** Run `cmha status` and confirm both head nodes show `OK` across `ping`, `failoverping`, `status`, and `mysql`.
+3. **Check active provisioning and lock or clone target software images:** Run `softwareimage; provisioningstatus` to ensure no nodes are mid-transfer, and clone any software image (`clone <img-prod> <img-backup>; commit -w`) before modifying packages or kernels inside it.
+4. **Drain target compute nodes cleanly through the workload manager:** Use `drain -n <nodes>` (or a Slurm maintenance reservation) and confirm running jobs have completed (`wlm; jobs; list`) before rebooting or power-cycling nodes.
+5. **Validate on a single canary node before widening to rack waves:** Apply the image, BIOS, or firmware change to one node first, check `samplenow` health checks, `ipaddresses --check`, and a quick GPU/fabric test, and only then roll out across racks using `device power` stagger delays or chained `drain --setactions powerreset --appendactions undrain`.
+6. **Confirm post-window convergence:** Before closing the change ticket, verify `cmha status`, `cmdaemonversions`, `packages --outdated`, `healthoverview`, and `sinfo` / `kubectl get nodes` to prove the entire cluster returned to a clean, uniform baseline.
+
 ## Exercises
 
 1. Run `python3 ops_lab.py`. Pick four checks and explain each rule in your own words.

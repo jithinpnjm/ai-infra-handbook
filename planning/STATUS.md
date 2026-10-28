@@ -103,8 +103,8 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 6.12 | Multi-node training on Slurm: PMIx, torchrun, NCCL environment, binding, topology | reviewed | 6065 | `slurm_dist_init_lab.py` (3/3 pass), `DAI 8`, `ASP 4` |
 | 6.13 | Containers on Slurm: enroot and pyxis | reviewed | 5267 | `enroot_pyxis_lab.py` (3/3 pass), `SCL 16`, `DAI 8` |
 | 6.14 | Slurm operations: prolog, epilog, health checks, drain, reason codes, troubleshooting | reviewed | 6357 | `node_health_lab.py` (3/3 pass), `SCL 15`, `V20` |
-| 6.15 | Slurm high availability, upgrades and scaling | reviewed | 4540 | `slurm_upgrade_path_lab.py` (3/3 pass), `SCL 15` |
-| 6.16 | Slurm on Kubernetes: Slinky and Soperator | reviewed | 4247 | `slinky_soperator_lab.py` (3/3 pass), Slinky & Soperator |
+| 6.15 | Slurm high availability, upgrades and scaling | reviewed | 5241 | `slurm_upgrade_path_lab.py` (3/3 pass), `SCL 15` |
+| 6.16 | Slurm on Kubernetes: Slinky and Soperator | reviewed | 5083 | `slinky_soperator_lab.py` (3/3 pass), Slinky & Soperator |
 | 6.31 | Capstone: build and operate a small Slurm GPU cluster | reviewed | 7870 | `capstone_demo_lab.py` (3/3 pass), `volume-10/00c-slurm-bcm-interview-lab.md` |
 | 10.8 | Operating GPU nodes: nvidia-smi, topology, clocks and throttling | drafted | 10110 |  |
 | 10.9 | The NVIDIA software stack: driver, CUDA toolkit, container toolkit, compatibility | drafted | 9332 |  |
@@ -206,34 +206,34 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 6.22 | Provisioning with PXE, iPXE, DHCP, TFTP and image management | reviewed | 5609 | `gen_provision_lab.py` (3/3 pass), `SCL 23-26`, `VL10 ch1,3` |
 | 7.1 | BMCs, IPMI and out-of-band management | reviewed | 7338 | `oob_cred_lab.py` (3/3 pass), `RF-S`, `SCL 10`, `V5 ch3`, `VL10 ch1` |
 | 7.2 | Redfish concepts: service root, resources, collections, OData | reviewed | 5666 | `crawl_concepts_lab.py` (3/3 pass), `RF-S 5,6,9,12`, `RF-G` |
-| 7.3 | The Redfish protocol: HTTP methods, headers, status codes, query parameters | reviewed | 5729 | `protocol_lab.py` (36/36 pass), `RF-S 6,7,8` |
-| 7.4 | Redfish authentication, sessions and security | reviewed | 4534 | `auth_lab.py` (44/44 pass), `RF-S 13`, `RF-G` |
-| 7.5 | Redfish actions, tasks, events and subscriptions | reviewed | 4212 | `actions_lab.py` (34/34 pass), `RF-S 7.11,12`, `RF-G` |
-| 7.6 | The Redfish schema: reading CSDL, JSON schema and the resource guide | reviewed | 4023 | `schema_lab.py` (11/11 pass), `RF-SC`, `RF-G`, `RF-S 9,11` |
-| 7.7 | Systems, Chassis and Managers: the core resource model | reviewed | 3846 | `model_inventory_lab.py` (3/3 pass), `RF-G`, `RF-S 9.11` |
-| 7.8 | Power, thermal, sensors and environment | reviewed | 3793 | `sensors_lab.py` pass, `RF-G` |
-| 7.9 | Storage, network adapters and PCIe devices | reviewed | 3343 | `hardware_lab.py` pass, `RF-G` |
+| 7.3 | The Redfish protocol: HTTP methods, headers, status codes, query parameters | reviewed | 5731 | `protocol_lab.py` (36/36 pass), `RF-S 6,7,8` |
+| 7.4 | Redfish authentication, sessions and security | reviewed | 5469 | `auth_lab.py` (44/44 pass), `RF-S 13`, `RF-G` |
+| 7.5 | Redfish actions, tasks, events and subscriptions | reviewed | 5236 | `actions_lab.py` (34/34 pass), `RF-S 7.11,12`, `RF-G` |
+| 7.6 | The Redfish schema: reading CSDL, JSON schema and the resource guide | reviewed | 5133 | `schema_lab.py` (11/11 pass), `RF-SC`, `RF-G`, `RF-S 9,11` |
+| 7.7 | Systems, Chassis and Managers: the core resource model | reviewed | 5067 | `model_inventory_lab.py` (3/3 pass), `RF-G`, `RF-S 9.11` |
+| 7.8 | Power, thermal, sensors and environment | reviewed | 5029 | `sensors_lab.py` pass, `RF-G` |
+| 7.9 | Storage, network adapters and PCIe devices | reviewed | 5060 | `hardware_lab.py` pass, `RF-G` |
 | 7.10 | Firmware inventory and the UpdateService | reviewed | 5415 | `firmware_lab.py` pass, `RF-G`, `BCM 14.5`, `VL10 ch16` |
-| 7.11 | Log services, event logs and diagnostics | reviewed | 3517 | `logs_lab.py` pass, `RF-G` |
-| 7.12 | Automating Redfish with Python, Ansible and Go | reviewed | 3480 | `fleet_lab.py` (14/14 pass), `RF-S`, `AUR` |
-| 7.13 | Redfish on NVIDIA DGX and HGX: BMC, GPU baseboard and management | reviewed | 4651 | `dgx_record_lab.py` (3/3 pass), `V5 ch3`, `V6`, `SPGB300`, `BCM` |
-| 7.14 | Fleet-scale hardware management and node lifecycle automation | reviewed | 4187 | `lifecycle_lab.py` (24/24 pass), `BCM 14.5`, `VL10 ch1` |
-| 7.15 | BMC security hardening and attestation | reviewed | 4518 | `hardening_lab.py` (28/28 pass), `V18 ch2`, `RF-S 13`, `RF-G` |
-| 8.1 | BCM architecture and concepts | reviewed | 4736 | `bcm_model_lab.py` (35/35 pass), `BCM-A 1,2,8.1`, `VL10 ch2` |
-| 8.2 | Planning and installing BCM | reviewed | 3814 | `install_lab.py` (32/32 pass), `BCM-I` |
-| 8.3 | Cluster configuration: networks, nodes and categories | reviewed | 6415 | `netconf_lab.py` (67/67 pass), `BCM-A 3`, `VL10 ch2` |
+| 7.11 | Log services, event logs and diagnostics | reviewed | 5025 | `logs_lab.py` pass, `RF-G` |
+| 7.12 | Automating Redfish with Python, Ansible and Go | reviewed | 5018 | `fleet_lab.py` (14/14 pass), `RF-S`, `AUR` |
+| 7.13 | Redfish on NVIDIA DGX and HGX: BMC, GPU baseboard and management | reviewed | 5173 | `dgx_record_lab.py` (3/3 pass), `V5 ch3`, `V6`, `SPGB300`, `BCM` |
+| 7.14 | Fleet-scale hardware management and node lifecycle automation | reviewed | 5066 | `lifecycle_lab.py` (24/24 pass), `BCM 14.5`, `VL10 ch1` |
+| 7.15 | BMC security hardening and attestation | reviewed | 5292 | `hardening_lab.py` (28/28 pass), `V18 ch2`, `RF-S 13`, `RF-G` |
+| 8.1 | BCM architecture and concepts | reviewed | 5033 | `bcm_model_lab.py` (35/35 pass), `BCM-A 1,2,8.1`, `VL10 ch2` |
+| 8.2 | Planning and installing BCM | reviewed | 5176 | `install_lab.py` (32/32 pass), `BCM-I` |
+| 8.3 | Cluster configuration: networks, nodes and categories | reviewed | 6418 | `netconf_lab.py` (67/67 pass), `BCM-A 3`, `VL10 ch2` |
 | 8.4 | Node provisioning: images, kernels, categories and the PXE flow | reviewed | 6650 | `provision_lab.py` (82/82 pass), `BCM-A 5,9`, `VL10 ch2` |
-| 8.5 | cmsh and Base View: administering the cluster | reviewed | 3570 | `cmsh_lab.py` (55/55 pass), `BCM-A 2` |
-| 8.6 | Users, authentication and security in BCM | reviewed | 3383 | `security_lab.py` (51/51 pass), `BCM-A 2.3,6` |
-| 8.7 | Power, BMC and hardware management in BCM | reviewed | 3969 | `hardware_lab.py` (45/45 pass), `BCM-A 3.7,4,14.5,14.7` |
+| 8.5 | cmsh and Base View: administering the cluster | reviewed | 5016 | `cmsh_lab.py` (55/55 pass), `BCM-A 2` |
+| 8.6 | Users, authentication and security in BCM | reviewed | 5039 | `security_lab.py` (51/51 pass), `BCM-A 2.3,6` |
+| 8.7 | Power, BMC and hardware management in BCM | reviewed | 5142 | `hardware_lab.py` (45/45 pass), `BCM-A 3.7,4,14.5,14.7` |
 | 8.8 | Workload managers under BCM: Slurm setup | reviewed | 5017 | `slurm_lab.py` (60/60 pass), `BCM-A 7` |
 | 8.9 | Kubernetes under BCM: deployment and GPU enablement | reviewed | 6292 | `k8s_lab.py` (64/64 pass), `BCM-C 4,5,6,7,8` |
-| 8.10 | Containerization in BCM: Docker, Apptainer and enroot | reviewed | 3190 | `containers_lab.py` (35/35 pass), `BCM-C 2,3`, `SCL 16` |
-| 8.11 | Monitoring, health checks and alerts in BCM | reviewed | 4770 | `monitoring_lab.py` (46/46 pass), `BCM-A 10,G` |
-| 8.12 | High availability and head-node failover | reviewed | 4671 | `ha_lab.py` (50/50 pass), `BCM-A 15`, `VL10 ch13` |
-| 8.13 | Day-2 operations: updates, scaling, hardware replacement, disaster recovery | reviewed | 3871 | `ops_lab.py` (45/45 pass), `BCM-A 9,14`, `VL10 ch13` |
-| 8.14 | Air-gapped installation and upgrades | reviewed | 3793 | `airgap_lab.py` (34/34 pass), `BCM-C A,B,C` |
-| 8.15 | BCM in an AI factory: DGX SuperPOD integration | reviewed | 3444 | `superpod_lab.py` (29/29 pass), `SPGB300`, `SPB200`, `BCM-A` |
+| 8.10 | Containerization in BCM: Docker, Apptainer and enroot | reviewed | 5086 | `containers_lab.py` (35/35 pass), `BCM-C 2,3`, `SCL 16` |
+| 8.11 | Monitoring, health checks and alerts in BCM | reviewed | 5171 | `monitoring_lab.py` (46/46 pass), `BCM-A 10,G` |
+| 8.12 | High availability and head-node failover | reviewed | 5188 | `ha_lab.py` (50/50 pass), `BCM-A 15`, `VL10 ch13` |
+| 8.13 | Day-2 operations: updates, scaling, hardware replacement, disaster recovery | reviewed | 5134 | `ops_lab.py` (45/45 pass), `BCM-A 9,14`, `VL10 ch13` |
+| 8.14 | Air-gapped installation and upgrades | reviewed | 5104 | `airgap_lab.py` (34/34 pass), `BCM-C A,B,C` |
+| 8.15 | BCM in an AI factory: DGX SuperPOD integration | reviewed | 5124 | `superpod_lab.py` (29/29 pass), `SPGB300`, `SPB200`, `BCM-A` |
 | 8.16 | Mission Control, DGX Cloud and autonomous recovery concepts | drafted | 7324 |  |
 | 9.1 | DGX system families and what they are for | drafted | 10032 |  |
 | 9.2 | Inside a DGX H100 and H200 system | drafted | 8283 |  |
@@ -312,7 +312,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 6.2 | Cluster anatomy: head, login, compute, storage and management nodes | drafted | 9848 | `cluster_anatomy_lab.py` (3/3 pass); `loss_check.py` PASS; `validate_chapter.py` 12/12 PASS |
 | 6.3 | Parallel computing concepts: Amdahl, scaling, shared memory versus message passing | drafted | 8371 | `scaling_lab.py` (3/3 pass); `validate_chapter.py` 12/12 PASS |
 | 6.4 | MPI in practice: Open MPI, ranks, collectives and tuning | drafted | 8186 | `mpi_tuning_lab.py` (3/3 pass); `validate_chapter.py` 12/12 PASS |
-| 6.6 | Environment modules, Spack and EasyBuild | drafted | 5860 | `modules_spack_lab.py` (3/3 pass); `validate_chapter.py` 12/12 PASS |
+| 6.6 | Environment modules, Spack and EasyBuild | drafted | 5846 | `modules_spack_lab.py` (3/3 pass); `validate_chapter.py` 12/12 PASS |
 | 6.18 | Parallel storage concepts and the limits of NFS | reviewed | 5912 | `iomix_lab.py` (3/3 pass), `SCL 9`, `SCL 28` |
 | 6.19 | Lustre architecture and operation | reviewed | 5745 | `lustre_stripe_lab.py` (3/3 pass), `SCL 9`, `SCL 28`, `V15 ch5` |
 | 6.20 | BeeGFS, GPFS, WekaFS and VAST | reviewed | 5347 | `parallel_fs_compare_lab.py` (3/3 pass), `SCL 9`, `V15` |
@@ -321,7 +321,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 6.24 | Users, LDAP, SSSD, quotas and accounting at scale | reviewed | 6221 | `identity_gen_lab.py` (3/3 pass), `SCL 11, 12, 28` |
 | 6.26 | Cluster monitoring and health at scale | reviewed | 6459 | `slurm_exporter_lab.py` (3/3 pass), `SCL 19` |
 | 6.28 | HPC benchmarking: HPL, HPCG, IOR, OSU and NCCL tests | reviewed | 7648 | `bench_stats_lab.py` (3/3 pass), `SP 12`, `ASP 5` |
-| 6.29 | Containers and reproducibility in HPC: Apptainer and enroot | reviewed | 4886 | `container_lint_lab.py` (3/3 pass), `SCL 16` |
+| 6.29 | Containers and reproducibility in HPC: Apptainer and enroot | reviewed | 5382 | `container_lint_lab.py` (3/3 pass), `SCL 16` |
 | 6.30 | Facility basics: power, cooling, racks and liquid cooling | reviewed | 6693 | `facility_calc_lab.py` (3/3 pass), `ADC 5`, `SCL 28`, `SPB200` |
 | 6.31 | Capstone: build and operate a small Slurm GPU cluster | reviewed | 7870 | `capstone_demo_lab.py` (3/3 pass), `volume-10/00c-slurm-bcm-interview-lab.md` |
 | 10.1 | Why GPUs: CPU versus GPU and throughput design | drafted | 13317 |  |

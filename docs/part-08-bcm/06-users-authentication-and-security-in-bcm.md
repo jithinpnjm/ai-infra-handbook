@@ -173,6 +173,70 @@ This gathers settings from the whole part. Each item names where it was covered.
 9. Removing `cmsupport`.
 10. Replacing a license and not regenerating user certificates.
 
+### 9.1 Architecting least-privilege management profiles for multi-team AI clusters
+
+In a production AI factory, giving every systems engineer, NOC operator, help-desk technician, and platform developer a copy of `/root/.cm/admin.pem` (or the `admin` profile) is an audit and reliability nightmare. With the `admin` profile, a single mistyped `remove` or `power off` in `cmsh` can wipe a software image or drop power to an entire Scalable Unit.
+
+BCM's **Profile and Token architecture** (§6.5) lets you carve management authority into fine-grained, cryptographically enforced roles without sharing `root`:
+
+1. **Tier 1 — Read-Only Observability & Auditors (`readonly` profile, customized):** Start by cloning the built-in `readonly` profile (`profile; clone readonly noc-viewer`). Holders of this profile can log into Base View or `cmsh`, inspect device status, view monitoring graphs, and check job queues, but lack every `set_*`, `add_*`, `remove_*`, and `power_*` token. If compliance rules forbid auditors or contractors from reading sensitive burn-in or system logs, strip those specific tokens (`removefrom tokens burn_status_token get_burn_log_token; commit`).
+2. **Tier 2 — Data-Center Smart-Hands & Rack Operators (custom `rack-operator` profile):** Field technicians swapping failed DIMMs, optical transceivers, or SXM GPUs need to blink chassis locator LEDs (`identify`), check BMC event logs (`bmceventlog`), close/open nodes for maintenance (`close`/`open`), and run `power status`/`power reset`—without being able to modify software images, edit LDAP users, or change network subnets. By creating a custom profile containing only the read tokens plus device power and state tokens, and issuing each technician a personal X.509 certificate (`createcertificate`) valid for their contract duration (`30` or `90` days), every power reset is logged under that technician's exact certificate identity in `CMDaemonAuditorFile`.
+3. **Tier 3 — Senior Cluster Administrators (`admin` profile on named accounts):** Even senior infrastructure architects should not share the literal `root` UNIX login for daily `cmsh` work. By assigning the `admin` profile to each architect's individual user account (`user use alice; set profile admin; commit`) and enabling `CMDaemonAudit` in `cmd.conf` (with `DisableAuditorForProfiles` left empty), `~/.cm/cert.pem` authenticates `alice` personally so the audit log records `alice`—never an anonymous shared `root`—for every committed change.
+
+### 9.2 Enterprise identity architectures: Local LDAP vs Direct External LDAP vs `syncrepl`
+
+Every cluster needs POSIX user and group resolution (`uidNumber`, `gidNumber`, `homeDirectory`, `loginShell`) across the head node, login nodes, and all compute nodes so Slurm jobs and shared filesystem permissions (`Lustre`, `GPFS`, `NFS`) match everywhere. Section 6 introduced the three directory architectures supported by BCM; here is how to choose between them based on cluster size and organizational boundaries:
+
+| Architecture | How It Works | Best For | Operational Trade-Offs |
+|---|---|---|---|
+| **1. BCM Standalone OpenLDAP (Default)** | Head node runs OpenLDAP as the primary authority; users/groups managed via `cmsh` `user`/`group` modes | Standalone clusters (`< 500` users) or isolated air-gapped sites | Zero external dependencies, but requires managing a separate cluster password/SSH key lifecycle unless federated with Keycloak |
+| **2. Direct External LDAP / AD (`sssd` / `nslcd`)** | Compute and login nodes point `/etc/sssd/sssd.conf` and `/etc/openldap/ldap.conf` directly at corporate LDAP/Active Directory | Small-to-medium enterprise clusters with reliable low-latency links to corporate IT | Centralizes user lifecycle in corporate IT, but a corporate WAN blip or overloaded AD controller can stall `srun` UID lookups across all compute nodes |
+| **3. OpenLDAP `syncrepl` Consumer on Head Node** | Corporate LDAP is the provider; the BCM head node's OpenLDAP replicates the tree locally via `syncrepl` (`rid=2`), and compute nodes query the head node | Large-scale AI factories (`500–5,000+` nodes) within an enterprise | Best of both worlds: corporate IT owns user accounts, while high-rate job-launch UID lookups stay inside the cluster on the local head-node replica |
+
+When implementing Option 2 or Option 3, remember two practical details from the manual:
+- **Update both the head node AND the software image:** If you configure `/etc/sssd/sssd.conf` only on the head node (or only on running compute nodes without updating `/cm/images/<image>/etc/sssd/sssd.conf`), any compute node that reboots will revert to BCM's default local LDAP config and fail to resolve external users (`id <user>: no such user`).
+- **Adjust the `ldap` health check (`cmsupport`):** BCM's built-in `ldap` health check queries for the `cmsupport` user. If you point nodes directly at an external corporate directory that does not contain a `cmsupport` account, the `ldap` health check will fail on every node until you either create a read-only `cmsupport` probe account in the external directory or reconfigure/disable the check.
+
+### 9.3 Single Sign-On (SSO) with Keycloak for Base View, User Portal, and Mission Control
+
+Starting in BCM 11.34, `cm-setup-keycloak.py` (and `cm-setup-keycloak-realm.py --ldap`) adds an OpenID Connect (OIDC) / SAML identity broker on the head node, federating BCM's OpenLDAP directory into a Keycloak realm on port `9443`. Why is this important for modern AI factories?
+
+While traditional HPC clusters only needed POSIX UIDs for SSH and Slurm, a modern AI factory exposes multiple web and API surfaces: **Base View**, the **BCM User Portal**, **Kubernetes / Run:ai**, **Grafana / Prometheus**, **Argo CD**, and **NVIDIA Mission Control**. Deploying Keycloak and federating it with your cluster LDAP (or upstream corporate IdP) gives researchers and operators a single OIDC login flow across all web portals—provided you deploy it on a supported Ubuntu `24.04`/`26.04` head node, explicitly rotate the default `--admin-password` and `--db-password` at setup time, and keep port `9443` free from conflicting services like Harbor (Chapter 8.10).
+
+### 9.4 Step-by-step incident response: Revoking compromised credentials and rotating cluster secrets
+
+What happens when a contractor leaves the project early, an engineer's laptop containing `~/.cm/cert.pem` is lost, or a security audit requires rotating all administrative credentials across an HA BCM cluster? Because BCM separates **management certificates (`cert` mode)**, **cluster POSIX users (`user` mode)**, **administrative daemon passwords (`cm-change-passwd`)**, and **out-of-band BMC credentials (`bmcsettings`)**, a complete secret rotation follows four distinct steps:
+
+1. **Revoke or expire the management X.509 certificate (`cert` mode):**
+   - Run `cmsh -c "cert; listcertificates"` to locate the certificate serial number, common name, system login, and profile associated with the lost laptop or departing contractor.
+   - Revoke the certificate in `cert` mode (and if the user had a local cluster account in `user` mode, either disable SSH login with `set disablepasswordssh yes` and `clear authorizedsshkeys`, set an immediate `expirationdate`, or `remove` the user and `commit`).
+   - If the root administrator certificate (`/root/.cm/admin.pem`) itself was exposed, replace the administrator certificate and immediately regenerate all dependent user certificates signed by it (verifying with `cm-check-certificates.sh`).
+2. **Rotate the four core infrastructure passwords with `cm-change-passwd`:**
+   - Run `cm-change-passwd` on the **active head node** to rotate the head-node `root` password, the software-image `root` password, the `node-installer` `root` password, and the MySQL `root` password.
+   - If the cluster runs an HA head-node pair, run `cm-change-passwd` on the **passive head node** as well (because only the software-image password is synced automatically between heads).
+   - Push the updated software-image `/etc/shadow` hash out to running regular nodes by running `updateprovisioners` followed by `imageupdate -w` (or a rolling reboot).
+3. **Rotate the OpenLDAP root password if directory administration was exposed:**
+   - Because `cm-change-passwd` does not touch the OpenLDAP `cn=admin` password (which is generated randomly at installation time and stored in `cmd.conf`), follow the Appendix I procedure if the head node's `cmd.conf` was ever exposed to an unauthorized party.
+4. **Rotate out-of-band BMC passwords across the fleet (`bmcsettings`):**
+   - In `cmsh`, update the password under `partition use base; bmcsettings` (and any category or node overrides), commit, push the change to the BMCs, and run `credentialsoverview --inverse` in `device` mode to confirm that all nodes converge onto the single new salted SHA-256 fingerprint with zero outliers left behind.
+
+### 9.5 Hardening SSH and login-node boundaries (`usernodelogin` and `AllowUsers`)
+
+In a multi-tenant AI cluster, researchers should interact with the cluster through **dedicated login nodes**, **Open OnDemand / Jupyter portals**, **Slurm (`sbatch`/`srun`)**, or **Kubernetes APIs**—never by SSHing directly into the head node or into idle GPU compute nodes. Enforce this boundary at three points:
+
+- **On the head node (`/etc/ssh/sshd_config`):** Restrict SSH access to infrastructure administrators only (`AllowUsers root` or `AllowGroups wheel cluster-admins`), require SSH public-key authentication (`PasswordAuthentication no`), and place the head node's external interface behind your corporate MFA bastion.
+- **On regular GPU compute nodes (`usernodelogin`):** Set `set usernodelogin onlywhenjob` on every compute category (Chapter 8.8) so `pam_bright.so` permits a researcher to SSH to `gpu014` **only** while that researcher has an active Slurm job allocated on `gpu014` (while keeping your platform team's diagnostic group in `/etc/security/pam_bright.d/pam_allow_group.conf` inside the software image).
+- **On dedicated login nodes (`login` category):** Place user-facing login nodes in their own `login` category with `usernodelogin always`, resource limits (`cgroup` / `/etc/security/limits.conf`) so a user compiling code on a login node cannot exhaust RAM, and no direct route to `bmcnet` (`10.148.0.0/16`).
+
+### 9.6 Auditing user, certificate, and profile state across the cluster
+
+To keep identity and access controls from drifting over years of cluster operation, schedule a monthly security review in `cmsh` that checks four invariants across `user`, `group`, `profile`, and `cert` modes:
+
+1. **Certificate inventory and expiration check (`cert; listcertificates` and `cm-check-certificates.sh`):** Verify that every active certificate belongs to a current team member or active BCM service, that no contractor certificate has been left unrevoked after project completion, and that `cm-check-certificates.sh` reports no expiring system or LDAP certificates.
+2. **Profile token audit (`profile; foreach * (show)`):** Confirm that only named human administrators hold the `admin` profile, that operators hold `readonly` or least-privilege custom profiles, and that none of the internal `nonuser` profiles (`node`, `bootstrap`, `cmhealth`, `power`, `litenode`, `autonomous-hardware-recovery`, `autonomous-job-recovery`) have been altered from their factory token sets.
+3. **Orphaned user and home-directory audit (`user; list`):** Cross-check the users in BCM's LDAP directory against your organization's active HR/IdP roster, verify that `cmsupport` remains intact with no password set, and confirm that any departed user removed with `remove` either had their `/home/<user>` archived and cleaned up (`remove -d`) or transferred to their research group's project lead.
+4. **Auditor log integrity (`CMDaemonAudit`):** Inspect `/cm/local/apps/cmd/etc/cmd.conf` on both active and passive head nodes to confirm `CMDaemonAudit` is enabled, `CMDaemonAuditorFile` is shipping to your central SIEM, and `DisableAuditorForProfiles` does not exclude `admin`.
+
 ## Exercises
 
 1. Run `python3 security_lab.py`. Pick four checks and explain each rule in your own words.

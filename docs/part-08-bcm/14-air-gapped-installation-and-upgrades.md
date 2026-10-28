@@ -178,6 +178,55 @@ Same principles as chapter 8.9, with these differences:
 9. Upgrading across minors or with nodes on three minors.
 10. Planning air-gapped Run:ai on RHEL.
 
+### 9.1 Deep dive: End-to-end air-gapped lifecycle from staging host to DMZ transfer
+
+Operating an air-gapped AI factory in a defense, sovereign-cloud, or financial data center is fundamentally a **supply-chain engineering discipline**. When an internet-connected cluster needs a missing RPM package or Helm chart, an administrator fixes it in ten seconds with `apt install` or `helm install`. In an air-gapped facility behind a one-way data diode or physical media escort, discovering a single missing dependency mid-window means aborting the change window and waiting days for a new media transfer approval.
+
+To make air-gapped installations and upgrades deterministic on the first try, structure your workflow around three isolated zones:
+
+1. **Zone 1 — The Connected Staging Host (Internet-facing lab):**
+   - Maintain a dedicated virtual machine or bare-metal host whose **OS distribution, minor version, and CPU architecture (`x86_64` or `aarch64`) match your air-gapped head node**.
+   - Copy `/etc/apt/sources.list.d/cm-*.list` and `ubuntu.sources` (or `/etc/yum.repos.d/cm.repo` and `epel.repo`) from your cluster so the staging host pulls the exact BCM point-release packages your head node expects.
+   - Authenticate Skopeo to Docker Hub (`skopeo login docker.io`) and NGC (`skopeo login nvcr.io`) before running `$K8S_AG_SCRIPTS/download_container_images.sh` so you never hit the `100`-pull unauthenticated Docker Hub rate limit partway through downloading two hundred container layers.
+   - Always pass `--kube-version=<major.minor>` (or `-c cm-kubernetes-setup.conf`) explicitly to `download_ubuntu_packages.sh` / `download_r9_packages.sh`, `download_container_images.sh`, and `download_helm_charts.sh`, and run `download_crds.sh`.
+2. **Zone 2 — Pre-Transfer Verification & Cryptographic Manifest Gate:**
+   - Before writing `airgapped.tgz` to encrypted removable media or pushing it across a DMZ diode, run the seven-directory completeness check (`find packages packages-head packages-non-dgx packages-cuda k8s-images helm-charts crds -type f`). Every single directory must contain files; an empty directory means a script exited early on a network blip.
+   - Check `ls helm-charts/` and record the exact version strings of the downloaded **NVIDIA GPU Operator**, **Network Operator**, and **Run:ai** charts. Your air-gapped wizard run on the inside **must** select those exact chart versions—even if the wizard's TUI marks a different version with an NVAIE certification asterisk (`*`).
+   - Generate a `SHA256SUMS` manifest covering `airgapped.tgz`, the BCM DVD ISO (which carries `--cmdvd` DOCA OFED packages and base OS repos), and any `.fwpkg` firmware bundles.
+3. **Zone 3 — The Air-Gapped Active Head Node:**
+   - Verify `sha256sum -c SHA256SUMS` immediately after copying files onto the **Active** head node (never run setup scripts on the Passive head node).
+   - On Ubuntu head nodes, extract `airgapped.tgz` under **`/tmp/airgap`** (or `/var/tmp/airgap` with world-readable directory permissions) rather than `/root`, so the unprivileged `_apt` sandbox user can read the `.deb` archives during `--airgap-install-system-packages`.
+   - Follow the strict dependency sequence enforced by `code/part08/airgap_lab.py`: (1) generate config (`--airgap-registry master.cm.cluster:5000 --airgap-registry-as-helm`, save without deploying), (2) `--airgap-install-system-packages` (which installs `skopeo` from the bundle), (3) deploy the local Docker Registry (`cm-container-registry-setup --skip-packages`) and copy its `<host>:5000-ca.crt` into `/usr/local/share/ca-certificates/` + `update-ca-certificates`, (4) push images (`--airgap-push-container-images`), (5) push Helm charts (`--airgap-push-helm-charts`), (6) extract CRDs (`extract_crds.sh`), and finally (7) deploy (`cm-kubernetes-setup -c ...`).
+
+### 9.2 Planning multi-hop air-gapped Kubernetes upgrades under the skew policy
+
+Because upstream Kubernetes and BCM enforce a strict **two-adjacent-minor-versions skew limit** and forbid skipping minor releases (for example, you cannot jump directly from `1.33` to `1.35`), an air-gapped cluster that falls two minor versions behind (`1.33` $\rightarrow$ `1.35`) requires **two separate air-gapped bundles** (`airgapped-1.34.tgz` and `airgapped-1.35.tgz`) prepared on the connected staging host.
+
+During each minor-version hop, follow the exact node-by-node cadence from Section 6:
+- Upgrade **control-plane nodes first, one at a time**: push the updated binaries into the node from the software image (`imageupdate -w controlplane01 --wait`), run `kubeadm upgrade plan` and `kubeadm upgrade apply v<target> --kubeconfig=/root/.kube/config-default` on the **first** control-plane node, verify that `kube-apiserver` is running from `master.cm.cluster:5000/kube-apiserver:v<target>`, and then run `kubeadm upgrade node` (without `apply` or a version argument) on each remaining control-plane node.
+- Upgrade **worker nodes in drained batches**: run `kubectl drain $host --ignore-daemonsets` and `imageupdate -w --wait` from the head node, then run `kubeadm upgrade node`, `systemctl daemon-reload`, and `systemctl restart kubelet` on the worker before `kubectl uncordon $host`. Only after every control-plane and worker node has completed the `1.34` hop and passed health checks should you load the `1.35` air-gapped bundle and begin the second hop.
+
+### 9.3 Building offline software images and local OS mirrors (`--cmdvd` and `file://` repos)
+
+While Appendices B and C of the Containerization Manual focus on Kubernetes and Run:ai, an air-gapped AI cluster also needs to patch its base Linux OS, update `MLNX_OFED` / `DOCA-Host` drivers, and build new software images (`cm-create-image`) without internet access. BCM provides four built-in mechanisms for offline OS and driver management:
+
+1. **Loop-mounting the BCM DVD ISO as a local package repository:** The BCM installation ISO contains the complete set of BCM packages (`data/packages/11.0-<subminor>`) plus bundled **NVIDIA DOCA OFED** packages. By mounting the ISO on the head node (`mount -o loop /root/bcm-11.0.iso /mnt/cdrom`) and bind-mounting it inside the target software image (`/cm/images/<image>/mnt/cdrom`), you can point a local `/etc/yum.repos.d/cm11.0-dvd.repo` (or `/etc/apt/sources.list.d/cm-dvd.list`) at `file:///mnt/cdrom/...` and install or update packages completely offline.
+2. **Offline DOCA OFED installation (`cm-doca-ofed-install.sh --cmdvd`):** Instead of downloading Mellanox/DOCA OFED tarballs from `linux.mellanox.com`, running `cm-doca-ofed-install.sh -v <version> -h --cmdvd` installs the InfiniBand and RoCEv2 driver stack directly from the mounted BCM DVD ISO into both the head node and the target software images, rebuilding the kernel modules and initrd ramdisk automatically.
+3. **Offline image creation (`cm-create-image -e -s` / `--air-gapped`):** When creating a brand-new software image on an air-gapped head node using `cm-create-image`, pass **`-e`** (do not overwrite the custom local `file://` or internal mirror `.repo`/`.list` files inside the image) and **`-s`** (skip attempting to fetch extra base distribution packages from external mirrors), or use `--air-gapped` so the tool relies strictly on the base tar archive (`/data/UBUNTU2404.tar.gz` on the ISO) and your local repositories.
+4. **Offline Slurm MySQL HA (`cm-mysql-setup --skip-packages`):** When deploying a dedicated MySQL GTID pair on compute nodes for Slurm accounting (`slurmdbd`), pre-install `mysql-server` in the database nodes' software image and `mysql-router` in the client nodes' software image from your local ISO repository, then run `cm-mysql-setup --skip-packages` so the wizard configures GTID replication without attempting an online package download.
+
+### 9.4 Troubleshooting common air-gapped deployment and upgrade failures
+
+When an air-gapped installation or Kubernetes upgrade stalls inside a secure facility, use this diagnostic table to identify the exact missing prerequisite or ordering mistake without needing internet access:
+
+| Air-Gapped Failure Symptom | Root Cause | Remediation Inside the Air-Gapped Environment |
+|---|---|---|
+| `--airgap-install-system-packages` fails on Ubuntu with `Permission denied` reading `.deb` files | `airgapped.tgz` was extracted under `/root` (`0700`), which the unprivileged `_apt` user cannot traverse | Move or re-extract the bundle under **`/tmp`** (or `/var/tmp` with `0755` permissions) and re-run `--airgap-install-system-packages`. |
+| Helm chart push or operator install fails with `x509: certificate signed by unknown authority` | The head node's OS trust store does not trust the local Docker Registry's self-signed CA certificate | Copy `/cm/local/apps/docker-registry/var/etc/<host>:5000-ca.crt` to **`/usr/local/share/ca-certificates/`**, run **`update-ca-certificates`**, and retry the push. |
+| Wizard refuses to run with `"This node is not the active head node"` and operator is tempted to pass `--force` | Operator logged into the **Passive** head node by mistake | **Never pass `--force` on a passive head.** Log into the **Active** head node (`cmha status` asterisk `*`) and run the command there; it updates the passive head automatically. |
+| GPU Operator installation fails with `chart version not found` in `oci://master.cm.cluster:5000/helm-charts` | The version chosen in the wizard (e.g., an NVAIE `*`-marked version) differs from the version downloaded in `helm-charts/` | Inspect `ls helm-charts/` inside the extracted bundle to see which exact chart version was downloaded, and select that exact version in `cm-kubernetes-setup`. |
+| `kubeadm upgrade apply` or `node` pulls from `registry.k8s.io` and times out instead of using `master.cm.cluster:5000` | `cm-kubernetes-setup.conf` was generated without `--airgap-registry` or binaries were not pushed via `imageupdate -w` | Confirm `airgap` settings in `cm-kubernetes-setup.conf`, ensure `cmsh -c "device; imageupdate -w <node> --wait"` completed before running `kubeadm`, and verify `Image: master.cm.cluster:5000/...` on static pods. |
+
 ## Exercises
 
 1. Run `python3 airgap_lab.py`. Pick four checks and explain each rule in your own words.

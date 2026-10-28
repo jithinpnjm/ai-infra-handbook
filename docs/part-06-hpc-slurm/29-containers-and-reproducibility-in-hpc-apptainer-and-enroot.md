@@ -202,6 +202,21 @@ Untested (Linux with Apptainer): 3) `apptainer pull docker://...`, `build` a def
 - What gets leaked from the host into a container by default and how do you control it?
 - A job works in the container on cluster A and fails on cluster B: what do you check?
 
+### 6.1 Troubleshooting guide: Why a "reproducible" container fails when moved between GPU clusters
+
+One of the most common interview and on-call scenarios in HPC and AI infrastructure is: *"A researcher built an Apptainer `.sif` or Enroot `.sqsh` container on Cluster A where their multi-node training job ran at full speed. They copied the exact same image file to Cluster B, and it either crashes on launch or runs ten times slower. Why?"*
+
+Because HPC containers share the host Linux kernel and dynamically bind host GPU and RDMA driver libraries at runtime, an immutable container image is **not** completely self-contained at the hardware boundary. Walk through these five host-to-container boundary checks in order:
+
+1. **Host `glibc` versus injected NVIDIA driver `.so` libraries (`--nv` / `98-nvidia.sh`):**
+   When you pass `--nv` in Apptainer (or run Pyxis/Enroot with `nvidia-container-cli`), the runtime bind-mounts the **host OS's** user-space NVIDIA driver libraries (`libcuda.so`, `libnvidia-ml.so`) into the container so they match the host kernel's loaded `nvidia.ko` module. Those host `.so` files were compiled against the **host OS's `glibc`**. If Cluster B runs a newer host OS (say, Ubuntu 24.04 with `glibc 2.39`) while the researcher's container was built on an ancient base distribution (say, Ubuntu 18.04 with `glibc 2.27`), dynamic linking inside the container fails immediately with `version 'GLIBC_2.34' not found (required by libcuda.so.1)`. The fix is to rebase the container onto a modern base distribution whose `glibc` is at least as new as the host's.
+2. **CUDA Driver-to-Runtime forward compatibility (`cudaDriverGetVersion` vs `cudaRuntimeGetVersion`):**
+   The container holds the **CUDA Toolkit / Runtime (`libcudart.so`, e.g., CUDA `12.6`)**, while the host node provides the **NVIDIA Kernel Driver (`libcuda.so`)**. If Cluster B is running an older NVIDIA driver branch that does not support the CUDA Toolkit version inside the container (and does not have the matching `cuda-compat` forward-compatibility package installed and added to `LD_LIBRARY_PATH`), `torch.cuda.is_available()` returns `False` or throws `CUDA driver version is insufficient for CUDA runtime version`.
+3. **Host `$HOME` environment and `~/.local` Python site-packages leakage:**
+   By default, Apptainer bind-mounts the user's shared `$HOME` directory and inherits the calling shell's environment variables. If the researcher previously ran `pip install --user ...` on Cluster B's login node, Python inside the container automatically prepends `~/.local/lib/python3.x/site-packages` to `sys.path`—silently shadowing the container's locked PyTorch or Triton packages with broken host files! Always pass `--cleanenv` (`-e`) and either `--no-home` / `--containall` or export `PYTHONNOUSERSITE=1` in the job script.
+4. **MPI / PMIx / UCX / `libfabric` provider mismatch across interconnects:**
+   Suppose Cluster A uses NVIDIA Quantum InfiniBand (`mlx5` Verbs + UCX), while Cluster B uses RoCEv2 (`NCCL_IB_GID_INDEX`), Slingshot (`libfabric` CXI provider), or AWS EFA. If the container image only compiled Open MPI and NCCL against standard `libibverbs` without the target cluster's fabric plugin (or if `/dev/infiniband` / host OFED user-space providers are not bind-mounted into the container), NCCL silently falls back from `NET/IB` (GPUDirect RDMA) to `NET/Socket` (host TCP over Ethernet), causing a $10\times$ drop in multi-node `AllReduce` bandwidth. Inspect `NCCL_DEBUG=INFO` on Rank 0 (`NET/IB` vs `NET/Socket`) to verify immediately.
+
 ## Exercises
 
 1. **Linting Apptainer Definition Files and Dockerfiles for Reproducibility (`code/part06/container_lint.py` & `container_lint_lab.py`):** Run `python3 code/part06/container_lint_lab.py`. Explain why `container_lint.py` flags `From: ubuntu:latest` and `curl ... | sh` as hard `ERROR`s, why `apt-get upgrade` makes an image non-reproducible across build dates, and why the word-boundary regex `\b(ba)?sh\b` is necessary so `echo "<hash>  file" | sha256sum -c -` is not misclassified as piping into a shell.

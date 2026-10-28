@@ -175,6 +175,51 @@ SELinux is **disabled by default** in BCM. The manual says to enable it only if 
 7. Putting 20 hours of burn tests behind a spool path that was never tested.
 8. Turning on SELinux enforcing on day one.
 
+### 10.1 Deep dive: Why head-node disk and network planning cannot be deferred
+
+Why does Section 5 warn so strongly that the head node's disk layout and network topology are the two choices you cannot casually change after installation? Walk through what happens physically on the head node over the first year of operating a large GPU cluster.
+
+During initial installation, the BCM ISO installer partitions the head node's local drives and extracts `default-image` under `/cm/images/default-image`. On Day 1, that single software image occupies roughly five to ten gigabytes. Three months later, your team clones `default-image` to create `dgx-h100-cuda12-4`, `dgx-h100-cuda12-6-canary`, `login-image`, and `storage-image`, and stages several `135 MB` `.fwpkg` firmware bundles plus offline Kubernetes air-gap tarballs. Each cloned software image on an `ext4` or `xfs` filesystem is a full directory tree of twenty to forty gigabytes. At the same time, MySQL under `/var/lib/mysql` is recording monitoring samples and job accounting records across hundreds of nodes, and `/var/spool/burn` is collecting hardware burn-in logs.
+
+If an engineer clicked straight through the installer on a single small root partition without sizing `/cm/images` and separating `/var`, filling `/var/log` or `/var/spool/burn` during a rack burn-in run starves MySQL of disk space on `/`. When MySQL cannot write to disk, `CMDaemon` stops accepting commits, DHCP lease updates stall, and the entire cluster control plane freezes. Putting `/var`, `/cm/images`, and `/tmp` on properly sized partitions (or LVM volumes that can be extended online) during the initial ISO install prevents a full head-node rebuild later.
+
+The same permanence applies to the **network topology (Types 1, 2, and 3)** and **node digit width (`node001` vs `node0001`)**:
+- In **Type 1**, the head node is the strict Layer-3 boundary between `internalnet` and `externalnet`. Compute nodes have private IPs (`10.141.0.x`), use the head node (`10.141.255.254`) as their default gateway, and never touch the corporate network directly. This is the gold standard for dedicated AI factories because DHCP, PXE, TFTP, and HTTP boot traffic on `internalnet` are completely isolated from corporate IT switches.
+- In **Type 2**, nodes and the head node share a routed corporate subnet and use an external router as their default gateway. If corporate IT already runs a DHCP server on that VLAN—or blocks rogue DHCP servers via DHCP snooping on the top-of-rack switches—your compute nodes will either boot into the wrong corporate PXE environment or fail to get a lease at all.
+- In **Type 3**, the head node sits in a central management rack (`managementnet`) separated by Layer-3 spine routers from the compute racks (`internalnet`). Because PXE `DHCPDISCOVER` packets are Layer-2 broadcasts (`255.255.255.255`), they die at the first Layer-3 router unless the network engineering team configures `ip helper-address` (DHCP relay) on every rack subnet pointing to the head node's IP (and both head nodes in an HA pair).
+
+### 10.2 Designing a production burn-in gate with `burnconfigs`
+
+When a vendor delivers sixty-four new GPU servers, the worst mistake an operations team can make is installing Slurm and opening the queue to researchers the same afternoon. Infant-mortality hardware failures follow a steep "bathtub curve": marginal HBM3 memory stacks, cold-soldered SXM mezzanine pins, optical transceivers that drop lanes at `65 °C`, and weak power supplies almost always fail during their first twenty-four to forty-eight hours under sustained thermal and electrical load.
+
+BCM's built-in **burn framework** (`burnconfigs` under `partition` mode and `burn` under `device` mode) automates this exact pre-production stress test, but using it safely in an AI data center requires three operational rules:
+
+1. **Understand the `<pre-install>` versus `<post-install>` execution split:** When you start a burn (`burn --config <name> -n node001..node064 start`), BCM reboots the target nodes into the lightweight RAM-based `node-installer` environment and runs all `<pre-install>` phases first. Because the node's local drives are not mounted as a root filesystem during `<pre-install>`, destructive block-level disk tests (`disktest`) and low-level memory sweeps can write across every sector of every NVMe drive without corrupting a running OS. Once all `<pre-install>` phases pass, the burn engine automatically provisions the node's full software image onto disk, boots into the production Linux kernel, and executes the `<post-install>` phases—where full-stack tests like `hpl` (Linpack), GPU DCGM stress tests, and InfiniBand bandwidth checks run with full driver support.
+2. **Pair bounded stress tests with `endless="1"` hardware monitors:** Inside any burn phase (`01-precheck`, `02-stress`), all tests listed in that phase launch in parallel. By pairing a timed compute/memory stress test (such as `hpl` or `memtester`) with background monitors marked `endless="1"` (such as `mce_check` watching for CPU Machine Check Exceptions and `kmon` watching kernel logs for PCIe AER or Xid errors), the monitors run continuously for the exact duration of the stress test and automatically stop as soon as the last non-endless test in that phase finishes. Never put an unbounded test like `memtest86` into an automated multi-phase burn without a time limit, because `memtest86` loops forever until stopped by hand.
+3. **Clone and customize `default-destructive` before touching existing racks:** Because `default-destructive` wipes all attached storage drives, create a separate non-destructive burn profile (`post-maint-burn`) that omits destructive `<pre-install>` disk wipes for re-validating nodes after minor component swaps (such as a fan or optical transceiver replacement). Always test a new burn XML with a five-minute run on a single canary node first to verify that `/var/spool/burn/<mac>/` receives logs cleanly and that `burn status` transitions from `S` (started) to `P` (passed) without hanging on a missing BMC power-control credential.
+
+### 10.3 Navigating the SELinux and LUKS encryption trade-offs
+
+Regulated government, defense, and healthcare AI clusters frequently mandate two host security controls at installation time: **LUKS disk encryption** and **SELinux mandatory access control**. Both are supported in BCM 11, and both carry specific operational constraints you must plan for on Day 0:
+
+- **LUKS disk encryption:** The BCM head-node installer offers LUKS encryption for head-node partitions, and regular node disk-layout XMLs can encrypt local compute-node partitions. Remember that encrypting the head node's disks requires entering the LUKS passphrase on the head-node console (or BMC `iKVM`/`SOL`) whenever the head node cold-boots or recovers from a power outage—meaning an unattended reboot of a single head node will wait at the pre-root passphrase prompt until an operator connects over out-of-band console.
+- **SELinux across software images:** When SELinux is required on compute nodes, never run `setenforce 1` manually over `pdsh`. Manage it through BCM's `selinuxsettings` (`Initialize = yes`, `Mode = permissive` first, `Policy = targeted`, `Allow NFS home directories = yes`), ensure `rsyncxattr` is configured properly in `fspart` (or run `setfiles` inside a cloned software image after every package update), and verify all audit denials in `permissive` mode across a full training job lifecycle before switching to `enforcing`.
+
+### 10.4 Pre-installation worksheet for a new AI cluster
+
+Before booting the BCM installation ISO on the primary head node, walk through this eight-row worksheet with the facility, network, and storage engineering teams and commit the agreed answers to your cluster design repository:
+
+| Planning Item | Decision to Record Before Running Installer | Where It Lands in BCM |
+|---|---|---|
+| **1. Network Topology** | Type 1 (isolated `internalnet` behind head NAT), Type 2 (shared VLAN), or Type 3 (routed L3 subnets with DHCP relay) | Installer network topology screen |
+| **2. Node Naming & Digits** | Prefix (`node`, `dgx`, `gpu`) and zero-padded digit width (`3` digits up to `999` nodes, `4` digits for `1,000+` nodes) | `partition[base]` naming settings |
+| **3. Subnet & IP Offsets** | Base CIDR for `internalnet` (`10.141.0.0/16`), `bmcnet` (`10.148.0.0/16`), `ibnet` (`10.149.0.0/16`), and BMC IP offset (`0.0.0.20`) | `network` objects & `addinterface` |
+| **4. Head-Node Disk Layout** | Separate `/var`, `/tmp`, and `/cm/images` partitions (or LVM), plus optional LUKS encryption | Installer disk partitioning screen |
+| **5. License Binding** | Primary head-node MAC address (plus secondary head-node MAC if building an HA pair) | `main licenseinfo` / `install-license` |
+| **6. BMC Credentials** | Initial `bmcsettings` username (`bright` or site admin), user slot ID (`4`), and `firmwaremanagemode` | `partition[base] -> bmcsettings` |
+| **7. Burn-In Spool & Policy** | Location of `/var/spool/burn` (`BurnSpoolDir`) and choice of `<pre-install>` / `<post-install>` burn XML | `partition[base] -> burnconfigs` |
+| **8. SELinux & FIPS Mode** | Disabled (default) vs `permissive`/`enforcing` on compute categories (`selinuxsettings`, `fips`) | `category` / `partition` security settings |
+
 ## Exercises
 
 1. Run `python3 install_lab.py`. Pick three checks and explain each in your own words.

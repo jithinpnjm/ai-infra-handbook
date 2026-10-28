@@ -354,7 +354,7 @@ Place custom zones in **`/etc/named.conf.include`** (on RHEL/Rocky and SLES) or 
 <details>
 <summary>13. How many node pairs does `cm-iperf.py` test by default across $n$ nodes, and why must you pass `--count` or `-r` on a 1,000-node cluster?</summary>
 
-It tests all **$n(n - 1) / 2$** pairs at `~10` seconds per pair. On `1,000` nodes, that is `499500` pairs (`~58` days continuously), so you must use `-r` (random sample), `--count`, and `-p` (parallel threads).
+It tests all **$n(n - 1) / 2$** pairs at `~10` seconds per pair. On `1,000` nodes, that is nearly half a million pairs (`~58` days continuously), so you must use `-r` (random sample), `--count`, and `-p` (parallel threads).
 </details>
 
 <details>

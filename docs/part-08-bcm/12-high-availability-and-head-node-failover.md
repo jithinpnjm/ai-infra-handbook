@@ -201,6 +201,20 @@ Running workload manager jobs continue through a head-node failover handover—a
 9. Letting users log in to the passive head.
 10. Assuming a license change leaves certificates valid.
 
+### 10.1 Deep dive: Anatomy of a head-node failover from second `0` to `ACTIVE`
+
+To understand why every detail in this chapter—direct heartbeat cabling, NAS unmount exit codes, BMC power control, and node quorum—matters simultaneously, trace the exact second-by-second timeline when the Active head node (`head1`) suffers a kernel panic in a production AI factory:
+
+1. **`T = 0 s` (`head1` panics):** The Linux kernel on `head1` halts. Notice what happens on the compute nodes first: **running Slurm and Kubernetes jobs do not die**. On the compute nodes, `slurmd`, `srun`, `kubelet`, and `containerd` keep executing user GPU kernels. If `head1` and `head2` use an external NAS for `/home` and `/cm/shared` (or if compute nodes mount `/scratch` directly from Lustre/WekaFS), compute node storage I/O continues without interruption.
+2. **`T = 1 s` to `5 s` (`Keep alive = 1 s`, `Warn time = 5 s`):** The Passive head node (`head2`) polls `head1` every `1` second over both `internalnet` (`ping`), `failovernet` (`failoverping`), and port `8081` (`status`). At `T = 5 s` (`Warn time`), `head2` logs a warning that `head1` has stopped answering.
+3. **`T = 10 s` (`Dead time = 10 s` $\rightarrow$ `FENCING` & Quorum):** Once `head1` fails to answer for `10` seconds across all three checks (`ping`, `failoverping`, and `status` are all `NOT OK`, meaning `head1` is **"all dead"** rather than "mostly dead"), `head2` transitions to **`FENCING`** state and initiates a **cluster quorum poll** (`Quorum time = 60 s`). `head2` queries the regular compute nodes to confirm whether they also lost contact with `head1`. When more than half of the responding nodes confirm `head1` is unreachable, `head2` knows the failure is not a local NIC fault on `head2`.
+4. **STONITH power-off verification:** With quorum established and `disableautomaticfailover = no`, `head2` contacts `head1`'s BMC (or rack PDU) over `bmcnet` and issues a hard power-off (**STONITH**), polling `power status` until `head1`'s BMC confirms main chassis power is `OFF`. (This is why pulling `head1`'s AC cords during a test blocks automatic failover: if `head1`'s BMC has no standby AC power, `head2` cannot get proof that `head1` is powered off!)
+5. **Pre-failover, NAS mount, VIP takeover, and `slurm.takeover.sh` (`BECOMEACTIVE` $\rightarrow$ `ACTIVE`):** Now guaranteed that `head1` cannot write to shared storage, `head2` transitions to `BECOMEACTIVE`:
+   - It runs the `Prefailover script` (including `/cm/local/apps/cmd/scripts/slurm.takeover.sh` when Slurm HA is configured with `slurmctldstartpolicy = TAKEOVER`) and executes the `Mount script` to mount the shared NAS (`/cm/shared` and `/home`).
+   - It brings up the **shared internal virtual IP (`eth0:0` / `bond0:0`)** and **shared external virtual IP (`eth1:0`)**, sending gratuitous ARP broadcasts so compute nodes and external SSH users seamlessly route to `head2`.
+   - It starts the active-only migrating services (`nfs-server`, `slurmdbd`, User Portal) and transitions to **`ACTIVE`**.
+6. **Recovering `head1` as the new Passive head (`dbreclone`):** When `head1` is repaired and booted back up, it detects that `head2` is now Active and comes up in **`PASSIVE`** state. If the hard crash left `head1`'s MySQL binlog replication out of sync (`mysql` check failing in `cmha status`), running `cmha dbreclone head1` (with `cmd` stopped on `head1`) re-clones a clean snapshot of `cmdaemon` and `slurm_acct_db` from `head2` to `head1`.
+
 ## Exercises
 
 1. Run `python3 ha_lab.py`. Pick four checks and explain each rule in your own words.

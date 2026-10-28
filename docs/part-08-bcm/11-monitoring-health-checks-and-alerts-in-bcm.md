@@ -209,6 +209,19 @@ Also: treat `UNKNOWN` as its own signal; remember an action that drains must be 
 9. Reducing a consolidator's sample count and losing history.
 10. Using `CPUUser` (jiffies per second) as if it were a percentage.
 
+### 9.1 End-to-end walkthrough: Building a custom health check, trigger, and bounded remediation action
+
+To see how every piece of BCM's monitoring pipeline fits together in production, let us trace the complete lifecycle of a custom health check from a shell script on a compute node to an automated, loop-protected `Drain` action on the active head node:
+
+1. **Write the health check script to return `PASS`, `FAIL [severity]`, or `UNKNOWN` plus fd 3 `InfoMessage`:**
+   A standalone health check script in `/cm/local/apps/cmd/scripts/healthchecks/` (on the head node and inside the software image) must follow a strict output contract:
+   - Print **`PASS`**, **`FAIL`** (optionally followed by a custom severity integer such as `FAIL 40`, overriding the default `15`), or **`UNKNOWN`** (default severity `10`) to standard output (`fd 1`).
+   - Optionally write a concise human-readable diagnostic reason to **file descriptor 3 (`>&3`)**, which `CMDaemon` captures as the check's `InfoMessage` (`echo "Scratch mount /scratch is read-only" >&3`) and substitutes into `{infomessage}` in administrator alert emails.
+2. **Register the measurable and tune its data producer (`Fuzzy offset` and `prejob`):**
+   In `cmsh` `monitoring setup`, add the health check script, scope it to the relevant node categories (`nodeexecutionfilters`), and set a sampling interval (`120 s`) with a `Fuzzy offset` (e.g., `0.25`) so a thousand nodes spread their execution evenly across a thirty-second window instead of spiking at once. If the check verifies a prerequisite for running training jobs—such as InfiniBand port `ACTIVE` state or parallel scratch mount responsiveness—set `prejob yes` on the check *and* `enableprejob yes` on the Slurm WLM instance so BCM runs the check immediately before allocating any job to the node (preventing the **Black Hole Node Syndrome**).
+3. **Wire the trigger (`Enter` vs `During` vs `State flapping`) and validate before committing:**
+   Create a trigger watching the new health check measurable. Use an **`Enter`** action when you want the action (such as `Drain` + `Send e-mail to administrators`) to fire **once** when the check transitions from `PASS` to `FAIL`. Remember that if you want a **`State flapping`** action (`5` crossings in `300 s`) to catch an intermittently bouncing optical link, you must lower the data producer's sampling interval (for example, to `15 s` or `30 s`), because a `120 s` sampler can never cross a threshold five times inside a five-minute window. Always run `validate` before `commit` so `cmsh` verifies that your measurable regex matches a real registered measurable and that at least one action is attached.
+
 ## Exercises
 
 1. Run `python3 monitoring_lab.py`. Pick four checks and explain each rule in your own words.

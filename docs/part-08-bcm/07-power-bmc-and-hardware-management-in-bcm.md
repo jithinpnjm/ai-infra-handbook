@@ -194,6 +194,41 @@ Rules of thumb from the manual: **115200 bps** (higher is possible but more like
 9. Leaving leak detection disabled after a sensor swap.
 10. Using a DHCP address for BMCs and expecting BCM power control.
 
+### 10.1 Deep dive: How BCM orchestrates Redfish, IPMI, and PDUs across a rack
+
+Chapters 7.1 through 7.15 showed how to speak Redfish and IPMI to a single BMC or a CSV of endpoints. In an NVIDIA Base Command Manager cluster, you rarely run standalone `curl` or `ipmitool` loops by hand for daily operations, because **`CMDaemon` acts as a stateful, topology-aware Redfish and IPMI proxy for the entire cluster**.
+
+To appreciate what BCM adds on top of raw Redfish calls, trace what happens when an operator runs `device power on -p 3 rack[01-12]` or `firmware flash nvfw_DGX-HGX-H100x8_...fwpkg` in `cmsh`:
+
+1. **Hierarchical credential and interface resolution (`bmcsettings`):** Instead of reading passwords from a flat file on disk, `CMDaemon` resolves the target node's BMC IP address from its `bmc` interface (`ipmi0` or `rf0` on `bmcnet` `10.148.0.0/16`) and resolves the username, password, user slot ID (`4`), and `firmwaremanagemode` (`h100`, `b200`, `gb200`, `gb300`) by walking the inheritance chain from `partition[base]` $\rightarrow$ `category` $\rightarrow$ `device`.
+2. **Surge-protected power sequencing (`-d` and `-p` / `--parallel-delay`):** When an entire cooling row or Scalable Unit recovers from a planned facility maintenance window, powering on a hundred `10.2 kW` or `14.3 kW` GPU servers at the exact same millisecond creates a massive transformer and breaker inrush current surge. By enforcing a default `1`-second stagger (`-d 1`) between individual nodes—or starting `-p 3` racks at a time with a `20`-second pause (`--parallel-delay`) between rack waves—`CMDaemon` smooths the electrical ramp across the data-center PDUs automatically.
+3. **Coordinated BMC + PDU power-off (`PowerOffPDUOutlet`):** In high-security or energy-saving modes where even the BMC's standby power rail should be de-energized when a node is powered down (`PowerOffPDUOutlet = true` in `cmd.conf`), `CMDaemon` first issues a clean BMC power-off, waits for the host to power down, checks whether any twin node shares the same PDU outlet (`mypdu:1`), and only then switches the physical PDU outlet off—reversing the sequence (`PDU outlet ON` $\rightarrow$ wait for BMC boot / BIOS `Always On`) when powering the node back up.
+4. **Unified hardware, cooling, and power-shelf telemetry (`rackoverview`, `powershelfoverview`, `cduoverview`):** On liquid-cooled GB200 and GB300 NVL72 racks, power and cooling are no longer confined to individual compute nodes. `CMDaemon` subscribes to Redfish event streams (`redfishsubscriptions`) across compute trays (`GB300`) and NVLink switch trays (`GB200SW`), polls `33 kW` power shelves (`powershelfoverview`), ingests Coolant Distribution Unit (CDU) flow and pressure metrics from the facility Building Management System over MQTT (`cduoverview`), and monitors tray-level leak sensors (`leakdetection` / `leakinfo`) inside a single object model.
+
+### 10.2 End-to-end runbook: Flashing and activating DGX H100/B200 firmware via BCM
+
+Because firmware updates on 8-GPU servers touch over thirty independent microcontrollers (`BIOS`, `BMC`, `CPLD`, `FPGA`, `ERoT` roots of trust, `8x` SXM GPU VBIOS, `4x` NVSwitches, and `8x` PCIe retimers), let us consolidate the exact end-to-end operational runbook for executing a firmware upgrade in `cmsh` without leaving nodes in a half-updated `pending` state:
+
+1. **Stage the vendor `.fwpkg` bundles on the active head node:** Download the co-validated motherboard-tray and GPU-tray `.fwpkg` archives from the NVIDIA Enterprise Support Portal and place them in `/cm/local/apps/cmd/etc/htdocs/bios/firmware/<platform>/` (for example, `h100/` or `b200/`). Run `cmsh -c "device; firmware info"` to confirm both packages show state `available`.
+2. **Verify BMC reachability, credentials, and `firmwaremanagemode`:** Run `credentialsoverview --inverse` in `device` mode to confirm no target node has a drifted BMC password, and verify that `bmcsettings -> get firmwaremanagemode` is set to the matching platform (`h100`, `b200`, `gb200`, or `auto`).
+3. **Drain and close the target canary node (or rack wave):** Drain the nodes in Slurm (`drain -n node001..node008`) and wait for running jobs to finish (`jobs; list`). Stop any in-band GPU polling agents if required by the platform release notes, and mark the nodes closed (`close -m "FW upgrade ticket CHG-402" -n node001..node008`).
+4. **Check pre-update firmware baseline (`firmware status`):** Run `firmware status -n node001` and archive the output so you have a complete record of the pre-change versions across all thirty-plus components.
+5. **Execute the flash (`firmware flash`):** Start the update on your canary node first (`firmware flash nvfw_DGX-HGX-H100x8_...fwpkg -n node001`) and monitor progress with `firmware status -n node001`. Watch the state transition from `flashing` (with percentage progress) to **`pending`** with result **`success: AC power cycle to activate`**.
+6. **Perform the required AC power cycle (not a warm `power reset`):** Remember the golden rule from Section 7: a normal `power reset` in `cmsh` only performs a DC board-level reset and **will not activate** GPU-tray `ERoT`, CPLD, FPGA, NVSwitch, or retimer firmware. Shut the host down cleanly and trigger a full **AC power cycle** via the rack PDU outlets (or the platform's documented virtual AC cycle procedure), waiting at least sixty seconds for standby capacitors to discharge before restoring AC power.
+7. **Verify `activated` state, PCIe link widths, and DCGM health before undraining:** Once `node001` boots back to `[ UP ]`, run `firmware status -n node001` and verify that every component shows state **`completed`**, result **`success: activated`**, and the new target version string. Run `lspci` / `accelerators` and a quick `dcgmi diag -r 2` check, then `open` and `undrain` the node before advancing to the next rack wave.
+
+### 10.3 Troubleshooting common BMC, SOL, and power-control failures in BCM
+
+When a power, console, or firmware command fails in `cmsh` `device` mode, use this diagnostic table to isolate the root cause in under two minutes:
+
+| Symptom in `cmsh` | Root Cause | Diagnostic & Remediation Steps |
+|---|---|---|
+| `power status -n node001` returns **`UNKNOWN`** | `CMDaemon` timed out reaching the BMC or PDU | 1. Check whether a non-manageable ("dumb") PDU was accidentally assigned to `powerdistributionunits` (clear it and record in `notes`).<br/>2. Ping the node's `ipmi0`/`rf0` IP from the active head node (`10.148.x.y`).<br/>3. Run `credentialsoverview --inverse` to check if `node001`'s BMC password drifted. |
+| `power status` prints nothing at all on the terminal | Private event display is turned off in your `cmsh` session | Because `power status` returns its result asynchronously as a private event, run **`events on private`** (or `events on`) in `cmsh` and retry. |
+| `rconsole node001` connects, but prints garbled text or hangs at `freeing unused kernel memory` | Baud rate / port mismatch across BMC BIOS, Node BIOS, and Software Image (`enablesol`), or hardware UART lockup | Verify all three layers use **`115200` bps**, flow control on, and **`ttyS0`** (`x86_64`) or **`ttyAMA0`** (`aarch64`). If the node-installer hangs at `freeing unused kernel memory`, disable SOL in the node BIOS during installation. |
+| `firmware status` stays at `pending` (`AC power cycle to activate`) after `power reset` | `power reset` only performs a DC board-level reset, leaving standby rails energized | Perform a true **AC power cycle** by switching off the node's PDU outlets (or virtual AC cycle) so `5V`/`12V` standby rails discharge completely. |
+| Node powers off cleanly with `PowerOffPDUOutlet = true`, but never boots on `power on` | Node BIOS `Power Restore Policy` is set to `Always Off` | When `CMDaemon` re-energizes the PDU outlet, the server waits for a physical button press unless its BIOS is set to **`Power On` (`Always On`) after AC power loss**. |
+
 ## Exercises
 
 1. Run `python3 hardware_lab.py`. Pick four checks and explain each rule in your own words.
