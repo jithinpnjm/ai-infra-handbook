@@ -95,7 +95,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 5.22 | Multitenancy and platform services | drafted | 4167 |  |
 | 5.23 | Autoscaling: HPA, VPA, KEDA and the cluster autoscaler | drafted | 4193 |  |
 | 5.34 | GKE for GPU workloads: setup, node pools and quotas | drafted | 3576 |  |
-| 6.7 | Slurm architecture and installation | drafted | 8600 | First full chapter; coverage file done; verify HA, sackd/auth-slurm, upgrade window, NVIDIA/SchedMD reports. Labs untested. |
+| 6.7 | Slurm architecture and installation | drafted | 9470 | `slurm_arch_lab.py` (3/3 pass); `validate_chapter.py` 12/12 PASS |
 | 6.8 | Slurm configuration: nodes, partitions and cgroups | drafted | 4058 |  |
 | 6.9 | Slurm accounting and scheduling policy: QoS, fairshare, backfill, preemption | drafted | 4369 |  |
 | 6.10 | Slurm GPU scheduling: gres, NVML autodetect, MIG and device constraints | drafted | 3519 |  |

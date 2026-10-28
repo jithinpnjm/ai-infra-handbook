@@ -49,12 +49,14 @@ Slurm (originally the *Simple Linux Utility for Resource Management*) was create
 
 The key property to hold on to: Slurm is a **batch** system. Users describe what they need (nodes, GPUs, time) and submit; the request waits in a queue until the scheduler can give them exactly that, all at once. This is the opposite of Kubernetes' default model of "start these containers somewhere as soon as possible and keep them running," and it is why gang scheduling, which Kubernetes needs extra projects to approximate (Part 11), is the default behaviour here.
 
-### Dedicated test partition and compute-node access control (`pam_listfile` and `pam_slurm_adopt`)
+### Dedicated test partition, scheduler overhead, and compute-node access control (`pam_listfile` and `pam_slurm_adopt`)
 
-Two practical operational recommendations from Chapter 13 of *Supercomputers for Linux SysAdmins* apply across all HPC batch managers:
+In *Supercomputers for Linux SysAdmins* Chapter 13 (*Job Management Systems*), Zhumatiy notes that a task management system consists of at least three components: the **queue manager** itself, the **scheduler**, and the **agents on compute nodes**. While simple "first-come, first-served" queuing leaves many processors idle whenever small tasks wait behind a giant job, an overly complex scheduler logic across huge resource pools and task queues can take **tens of minutes** to compute a schedule—which is unacceptable in production. Some legacy systems such as `Torque` pair with an external scheduler service like **`MAUI`** (`http://www.adaptivecomputing.com`) or commercial **`Moab`**, alongside other batch managers like **`LSF`**, **`SGE`** (Grid Engine), **`Condor`**, and **`OpenLava`**. And why not simply use **Kubernetes** or **Swarm** for everything? As Zhumatiy puts it, Kubernetes is built for scaling long-running services where capacity exceeds demand ("submit to K8s and forget"), whereas in HPC the resource demand is much higher than available hardware and requires deep queue prioritization and network topology placement—*"why should you tune a tractor for the Formula-1 races, when you have special race cars?"*
 
-1. **Dedicated test partition for fast smoke tests**: in addition to production partitions (for example separating nodes with and without accelerators so users can pick a partition name instead of writing complex resource lists), create a small dedicated **test partition**. Set a strict time limit of `10–15 minutes` and cap the number of queued tasks per user at `3–5`. That policy guarantees that a user can run a quick multi-node test job with minimal data within `1–2 hours` to verify that their code and launch script work before submitting a long production run.
-2. **Preventing direct compute-node logins (`pam_listfile` and `pam_slurm_adopt`)**: resource managers allocate nodes to jobs, but unless you lock down SSH access on compute nodes, a user could bypass the queue by running `ssh` directly to a compute node or passing an explicit host list to `mpirun`. To prevent unscheduled access, configure PAM (Pluggable Authentication Modules) on compute nodes using one of two mechanisms:
+Two practical operational recommendations from Chapter 13 apply across all HPC batch managers:
+
+1. **Dedicated test partition for fast smoke tests:** In addition to production partitions (for example separating nodes with and without accelerators so users can pick a partition name instead of writing complex resource lists), create a small dedicated **test partition**. Set a strict time limit of `10–15 minutes` and cap the number of queued tasks per user at `3–5`. That policy guarantees that a user can run a quick multi-node test job with minimal data within `1–2 hours` to verify that their code and launch script work before submitting a long production run.
+2. **Preventing direct compute-node logins (`pam_listfile` and `pam_slurm_adopt`):** Resource managers allocate nodes to jobs, but unless you lock down SSH access on compute nodes, a user could bypass the queue by running `ssh` directly to a compute node or passing an explicit host list to `mpirun`. To prevent unscheduled access, configure PAM (Pluggable Authentication Modules) on compute nodes using one of two mechanisms:
    - Use a scheduler-integrated PAM module such as Slurm's **`pam_slurm_adopt`**, which allows a user to `ssh` into a compute node only if they currently own a running job on that node (and adopts their SSH session into the job's cgroup).
    - Or have the resource manager's **prolog** and **epilog** scripts dynamically add and remove the allocated user's name in a node-local allowlist file checked by the standard **`pam_listfile`** PAM module before and after the job runs.
 
@@ -321,8 +323,8 @@ Prerequisites you must have *before* touching Slurm packages: DNS or `/etc/hosts
 
 ### Installation methods
 
-1. **Distribution packages.** `apt install slurm-wlm` on Ubuntu, `dnf install slurm` from EPEL on Rocky and RHEL. Quick to start, but usually old, and package splits differ between distributions. Good for learning, rarely for production GPU clusters.
-2. **Build packages from source.** Download a release from schedmd.com or the SchedMD GitHub repository, and build RPMs or DEBs yourself: `rpmbuild -ta slurm-VERSION.tar.bz2`, or the Debian packaging flow (`mk-build-deps -i debian/control; debuild -b -uc -us`). This is what serious sites do: you choose the version, you enable the features you need (PMIx, NVML, hwloc, UCX, JWT for slurmrestd, MariaDB headers for slurmdbd), and you get reproducible packages you can sign and ship in your image pipeline. Install the development headers *before* building: a missing `nvml.h` quietly produces a Slurm without `AutoDetect=nvml` support, a classic way to lose an afternoon.
+1. **Distribution packages:** `apt install slurm-wlm` on Ubuntu or `dnf install slurm` from EPEL on Rocky and RHEL. Quick to start, but usually old, and package splits differ between distributions. As listed in `SCL` Chapter 15, on compute and control nodes you install `slurm` and `slurm-munge` (plus optional `slurm-perlapi` and `slurm-torque` for Torque script compatibility); on the controller node you add `slurm-slurmctld` and `slurm-plugins`; on compute nodes you add `slurm-slurmd`; on the database node you install MySQL/MariaDB along with `slurm`, `slurm-munge`, `slurm-slurmdbd`, `slurm-sql`, and `slurm-plugins`; and on Slurm 23.11+ login nodes you can optionally use `slurm-sackd`.
+2. **Build packages from source:** Download a release from `schedmd.com` or the `https://github.com/SchedMD/slurm` repository, check out the desired tag (for example `slurm-24-11-5-1`), and either build directly (`./configure --prefix=/opt/slurm && make && make install`) or build RPMs or DEBs yourself: `rpmbuild -ta slurm-VERSION.tar.bz2`, or the Debian packaging flow (`mk-build-deps -i debian/control; debuild -b -uc -us`). This is what serious sites do: you choose the version, you enable the features you need (PMIx, NVML, hwloc, UCX, JWT for `slurmrestd`, MariaDB `mysql_config` headers for `slurmdbd`), and you get reproducible packages you can sign and ship in your image pipeline. Install the development headers *before* building: a missing `nvml.h` quietly produces a Slurm without `AutoDetect=nvml` support, a classic way to lose an afternoon.
 3. **Use a cluster manager.** BCM (chapter 8.8), DGX OS images or vendor tools install and configure Slurm for you; you still need the knowledge in this chapter to operate it.
 4. **Containerised Slurm on Kubernetes.** Slinky and Soperator (chapter 6.16).
 
@@ -551,6 +553,12 @@ This is rarely a Slurm problem. Either packets are being dropped on the manageme
 
 ## Hands-on lab
 
+First, run the self-checking Python lab (`code/part06/slurm_arch_lab.py`) locally. It verifies the Slurm daemon port map (`6817`, `6818`, `6819`) and the `SCL` Chapter 13 dedicated test-partition policy (`check_test_partition_policy`), the `TreeWidth` hierarchical RPC fan-out depth calculator (`compute_rpc_tree_depth`), and the Munge shared-key and 5-minute clock-skew validator (`validate_munge_credential`):
+
+```bash
+python3 code/part06/slurm_arch_lab.py
+```
+
 **Lab A: a single-node "virtual cluster" on a GCP VM (untested).** The purpose is to install the full stack and see every daemon, using one machine with several `slurmd` processes pretending to be several nodes. Use an `e2-standard-4` Ubuntu 24.04 VM. If you use a Nebius GPU VM later, replace the fake nodes with real GPUs.
 
 1. Install prerequisites:
@@ -592,45 +600,173 @@ This is rarely a Slurm problem. Either packets are being dropped on the manageme
 
 **Lab B: three VMs and a real separation of roles (untested).** Create `ctl1` (controller and database), `gpu01`, `gpu02` on a private network. Repeat the install with a shared munge key, UIDs created identically, `slurm.conf` identical on all (or configless), and install `slurmd` only on the compute nodes. Add a login VM with only client tools and munge. Verify cross-node `srun -N2 hostname`. Test `scontrol ping`, then stop `slurmctld` and watch what `sinfo` does and what happens to a running `sleep` job when you restart it.
 
-**Lab C: break it on purpose (untested).** On Lab B, one at a time: stop `munged` on one node; change the clock by ten minutes; alter `RealMemory` to a larger value than physically present and restart `slurmd`; make the state directory read-only; fill the disk holding it. For each, write down the symptom, the log line, and the fix. Compare your notes with the seven failure modes above.
+**Lab C: break it on purpose (untested).** On Lab B, one at a time: stop `munged` on one node; change the clock by ten minutes; alter `RealMemory` to a larger value than physically present and restart `slurmd`; make the state directory read-only; fill the disk holding it. For each, write down the symptom, the log line, and the fix. Compare your notes with the eight failure modes above.
 
-## Checkpoint questions
+## Exercises
 
-1. Name the four problems a workload manager solves and the Slurm component most responsible for each.
-2. What does `slurmctld` do, and why can it become a bottleneck at scale?
-3. Why does Slurm use a separate `slurmdbd` rather than writing to the database from `slurmctld`?
-4. What is `slurmstepd`, and why is it forked before your program runs?
-5. Walk through the life of a job from `sbatch` to the accounting record. At which steps does munge matter?
-6. What is in `StateSaveLocation`, and what happens to queued jobs if it is lost?
-7. Describe active/passive controller HA in Slurm. What is shared, how does failover trigger, and what is the main risk?
-8. What are the prerequisites munge imposes on UIDs, time and keys? How do you test it across nodes?
-9. What is configless mode, and what problem does it remove?
-10. Why must you run `slurmd -C` on real hardware before writing a node line, and what does the controller do when the node disagrees?
-11. In what order do you upgrade the Slurm components, and what must you back up first?
-12. What time limit and per-user queued task cap does the book recommend for a dedicated test partition to guarantee a `1–2 hours` turnaround, and what two PAM mechanisms stop users from bypassing the scheduler via direct SSH to compute nodes?
+1. **Slurm Daemons, Ports, and Hierarchical RPC Fan-Out (`code/part06/slurm_arch.py`):** Map `slurmctld` (port `6817`), `slurmd` (port `6818`), `slurmstepd`, `slurmdbd` (port `6819`), `slurmrestd`, `sackd`, and `munged` to their roles, and use `compute_rpc_tree_depth(num_nodes=1024, tree_width=50)` to explain how `slurmctld` launches a 1,024-node job in `2` tree hops while sending at most `50` direct RPCs.
+2. **Munge Authentication, Clock Skew, and UID Consistency (`code/part06/slurm_arch.py`):** Using `validate_munge_credential()` in `code/part06/slurm_arch.py`, explain what happens when a node has (a) a mismatched `/etc/munge/munge.key`, (b) a clock ahead of the controller by more than the 5-minute TTL (`Rewound credential`), or (c) a clock behind by more than 5 minutes (`Expired credential`), and explain why numeric UIDs must match across all nodes.
+3. **Dedicated Test Partition Sizing and Compute-Node SSH Lockdown (`SCL` Chapter 13):** Using `check_test_partition_policy()` in `code/part06/slurm_arch.py`, state the recommended walltime limit (`10–15 minutes`) and per-user queued task cap (`3–5` tasks) for a dedicated test partition to guarantee `1–2 hours` turnaround, and compare `pam_slurm_adopt` with prolog/epilog `pam_listfile` access control.
+4. **Controller High Availability (`SlurmctldHost`), `StateSaveLocation`, and Split-Brain Recovery (`volume-10/06` & `14`):** Configure an active/passive `SlurmctldHost` pair with a shared `StateSaveLocation`, compare `slurmctld` startup flags (default vs `-R` vs `-i` vs destructive `-c`), and write the step-by-step recovery procedure after a split-brain event.
+5. **Accounting Architecture (`slurmdbd.conf`), `sacctmgr` Hierarchy, and Database Protection (`SCL` Ch. 15 & `volume-10/14`):** Trace why `slurmctld` talks to MariaDB through `slurmdbd` rather than directly, build a 3-level `sacctmgr` account tree (`root -> genai -> llm-pretrain -> jsmith`), and explain why `PurgeJobAfter`, `ArchiveJobs`, and `MaxQueryTimeRange` are required in production.
+6. **Hardware Discovery (`slurmd -C`), `cgroup.conf` v2, and Configless Mode:** Explain why guessing `RealMemory` or `CoresPerSocket` in `slurm.conf` causes nodes to drain as `invalid` (`Low RealMemory`), how `ConstrainCores=yes`, `ConstrainRAMSpace=yes`, and `ConstrainDevices=yes` in `cgroup.conf` isolate GPUs and prevent zombie processes, and how `SlurmctldParameters=enable_configless` (`slurmd --conf-server`) eliminates configuration drift across 1,000 nodes.
 
-### Answers
+## Checkpoint questions (20)
 
-1. Resource management (controller state, `slurmd` reporting, cgroup enforcement), scheduling (`slurmctld`'s scheduler and backfill, priority and select plugins), launching and control (`slurmd` and `slurmstepd`), accounting (`slurmdbd` and the database).
-2. It holds all cluster and job state in memory, runs scheduling, and processes every submit, query and state change; much of that work is serialised behind locks. Thousands of clients polling, huge queues or short-job storms exhaust its capacity.
-3. To isolate the scheduling loop from database latency and failures. `slurmdbd` buffers and serves accounting queries; `slurmctld` queues records if the database is slow or down.
-4. The per-step supervisor on each node. It starts the program, tracks all of its processes through cgroups, applies limits, forwards I/O and collects usage. It must be the parent so it can reliably clean up and report.
-5. `sbatch` sends the request with a munge credential (munge matters at every RPC: submit, controller-to-node launch, `srun` to `slurmd`); the controller validates, queues, schedules, allocates; prolog and `slurmstepd` start the script; epilog and cleanup follow; completion RPC; record written to `slurmdbd`.
-6. Queue, running and pending job state, node states and reservations. Losing it loses queued jobs and may orphan running ones; so keep it on reliable storage and back it up before upgrades.
-7. Several `SlurmctldHost` entries; the primary writes state to a shared `StateSaveLocation`; the backup takes over after `SlurmctldTimeout` seconds without contact from the primary. The main risks are the shared state storage being a single point of failure and split-brain if two controllers become active on independent state.
-8. Identical key on all nodes with correct permissions, identical numeric UIDs and GIDs, clocks within a few minutes. Test with `munge -n | ssh node unmunge`.
-9. The controller serves configuration files to nodes and login nodes, so there is one authoritative copy instead of hundreds that drift. Use `SlurmctldParameters=enable_configless` and start `slurmd` with `--conf-server` or a DNS SRV record.
-10. It prints the exact hardware layout Slurm sees. If `slurm.conf` and the node disagree, the controller cannot trust its CPU or memory placement, so it marks the node `invalid` or drained with a reason.
-11. `slurmdbd`, then `slurmctld`, then `slurmd` and clients; back up the database and the state directory (and configuration) first; respect the supported version window.
-12. Set a `10–15 minutes` time limit and allow `3–5` queued tasks per user in the test partition so users can run multi-node smoke tests within `1–2 hours`. To block unscheduled SSH logins on compute nodes, use Slurm's `pam_slurm_adopt` module or have the job prolog and epilog scripts update an access list enforced by `pam_listfile`.
+<details>
+<summary>1. Name the four problems a workload manager solves and the Slurm component most responsible for each.</summary>
+
+1. **Resource management:** `slurmctld` state tracking, `slurmd` hardware registration, and `cgroup` enforcement.
+2. **Scheduling:** `slurmctld`'s main scheduling loop, `sched/backfill`, `priority/multifactor`, and `select/cons_tres` plugins.
+3. **Launching and control:** `slurmd` and `slurmstepd` (plus PMIx wire-up and prolog/epilog scripts).
+4. **Accounting:** `slurmdbd` backed by MariaDB/MySQL.
+</details>
+
+<details>
+<summary>2. What does `slurmctld` (port `6817`) do, and why can it become a bottleneck at scale?</summary>
+
+`slurmctld` is the single central brain of the cluster (listening on port `6817`). It holds all node, partition, and job state in memory, runs the scheduling and backfill loops, and processes every submit, query (`squeue`, `sinfo`), and state-change RPC. Because much of its state mutation is serialized behind internal locks, polling storms (`squeue` in tight loops) or tens of thousands of short jobs can saturate its RPC threads (`sdiag`).
+</details>
+
+<details>
+<summary>3. Why does Slurm use a separate `slurmdbd` daemon (port `6819`) rather than writing to MariaDB directly from `slurmctld`?</summary>
+
+`slurmdbd` isolates the real-time scheduling loop in `slurmctld` from SQL database latency, lock waits, and maintenance outages. `slurmdbd` handles heavy `sacct`/`sreport` queries directly, and if `slurmdbd` or MariaDB is temporarily unreachable, `slurmctld` buffers job completion records in memory and replays them when `slurmdbd` recovers.
+</details>
+
+<details>
+<summary>4. What is the difference between `slurmd` (port `6818`) and `slurmstepd` on a compute node?</summary>
+
+**`slurmd`** is the persistent node agent (one per compute node, port `6818`) that registers hardware with `slurmctld`, answers health pings, and runs node-level prolog/epilog scripts. Whenever a job or `srun` step starts on the node, `slurmd` forks a dedicated **`slurmstepd`** process for that step: `slurmstepd` creates the job's cgroup, applies CPU/RAM/GPU device constraints, drops privileges to the user, spawns the application tasks, forwards stdio, and kills all processes in the cgroup when the step ends.
+</details>
+
+<details>
+<summary>5. Walk through the life of a batch job from `sbatch` to the accounting record, noting where `munge` and the `TreeWidth` RPC tree act.</summary>
+
+1. **Submit:** `sbatch` sends the job script and resource request to `slurmctld` with a **munge** credential.
+2. **Validate & Queue:** `slurmctld` verifies the munge credential, runs `job_submit` plugins, checks `sacctmgr` associations/limits, and queues the job as `PENDING`.
+3. **Schedule & Allocate:** The main or backfill scheduler selects nodes via `select/cons_tres` and transitions the job to `RUNNING`.
+4. **Hierarchical Launch:** `slurmctld` fans out launch RPCs (authenticated with **munge**) across the **`TreeWidth` RPC tree** to allocated `slurmd` daemons, which run `prolog` and fork `slurmstepd` on the first node to run the batch script (and across all nodes for `srun` steps).
+5. **Complete & Account:** When the job finishes, `slurmstepd` cleans up the cgroup, `slurmd` runs `epilog` and notifies `slurmctld`, and `slurmctld` frees the nodes and sends the usage record asynchronously to `slurmdbd`.
+</details>
+
+<details>
+<summary>6. What is stored in `StateSaveLocation`, and what do the `slurmctld` startup flags `-R`, `-i`, and `-c` do?</summary>
+
+`StateSaveLocation` holds the controller's persistent runtime state on disk (all queued and running jobs, node `DOWN`/`DRAIN` states and reasons, and reservations).
+- **Default startup:** Recovers jobs and node states, but resets partition states to `slurm.conf`.
+- **`slurmctld -R`:** Recovers full state including dynamic partition changes.
+- **`slurmctld -i`:** Ignores errors while reading corrupted state files (losing unreadable records).
+- **`slurmctld -c`:** **Clears all state and deletes every running and queued job** (never run `-c` in production unless deliberately wiping the queue).
+</details>
+
+<details>
+<summary>7. How does active/passive `slurmctld` High Availability work, what is `scontrol takeover`, and why is split-brain destructive?</summary>
+
+You list primary and backup controllers via multiple `SlurmctldHost` lines sharing a common `StateSaveLocation` on HA storage. The primary writes state continuously while the backup polls it; if the primary stops responding for `SlurmctldTimeout` seconds (or an admin runs **`scontrol takeover`** for planned maintenance), the backup reads `StateSaveLocation` and takes over (`SlurmctldPrimaryOnProg`/`OffProg` can move a VIP). If both controllers ever become active simultaneously (**split-brain**), they overwrite `StateSaveLocation` and issue conflicting allocations to `slurmd` nodes, corrupting cluster state.
+</details>
+
+<details>
+<summary>8. What three prerequisites does `munge` require across every node in the cluster, and how do you test it?</summary>
+
+1. **Identical secret key:** `/etc/munge/munge.key` (mode `0400`, owned by `munge`) on every controller, login, database, and compute node.
+2. **Identical numeric UIDs and GIDs:** Munge encodes numeric UIDs/GIDs, so every user and system account (`slurm`, `munge`) must have the exact same UID/GID everywhere.
+3. **Synchronized clocks:** Clocks must agree within Munge's TTL window (5 minutes by default, via `chrony`/`ntp`).
+Test locally with `munge -n | unmunge` and across nodes with `munge -n | ssh node1 unmunge`.
+</details>
+
+<details>
+<summary>9. What is Slurm **configless mode** (`enable_configless`), and how do compute and login nodes use it?</summary>
+
+Setting `SlurmctldParameters=enable_configless` on `slurmctld` allows the controller to serve `slurm.conf`, `gres.conf`, `cgroup.conf`, and `topology.conf` directly over the network to compute nodes (`slurmd --conf-server ctl1:6817` or via a `_slurmctld._tcp` DNS SRV record) and login nodes (running `sackd`). You edit config files in one place on the controller and run `scontrol reconfigure`, eliminating configuration drift across hundreds of nodes.
+</details>
+
+<details>
+<summary>10. Why must you run `slurmd -C` on a physical compute node before writing its `NodeName` line in `slurm.conf`?</summary>
+
+`slurmd -C` probes the node's actual hardware and prints the exact `CPUs`, `Boards`, `SocketsPerBoard`, `CoresPerSocket`, `ThreadsPerCore`, and `RealMemory` values that `slurmd` will report at registration. If `slurm.conf` declares more RAM or cores than `slurmd` detects at startup, `slurmctld` refuses to schedule onto the node and drains it with state `invalid` (`Low RealMemory` or `Low socket*core*thread count`). Always set `RealMemory` slightly below the `slurmd -C` total (or use `MemSpecLimit`) to leave headroom for the OS.
+</details>
+
+<details>
+<summary>11. What is the mandatory component upgrade order in Slurm, and why does violating it cause `invalid RPC` errors?</summary>
+
+Always upgrade in strict order: **`slurmdbd` first $\rightarrow$ `slurmctld` second $\rightarrow$ `slurmd` compute nodes and client tools third** (within the supported 2-major-release compatibility window, after backing up the MariaDB database and `StateSaveLocation`). Higher-level daemons understand RPCs from older lower-level daemons during a rolling upgrade, but a newer `slurmd` sending new RPCs to an older `slurmctld` fails with unknown/invalid RPC errors.
+</details>
+
+<details>
+<summary>12. What time limit and per-user queued task cap does `SCL` Chapter 13 recommend for a dedicated test partition, and what two PAM mechanisms stop users from bypassing the scheduler via direct SSH to compute nodes?</summary>
+
+- **Test partition sizing:** Set a `10–15 minutes` walltime limit and cap queued tasks at `3–5` per user so researchers can always run a quick multi-node smoke test within `1–2 hours`.
+- **Blocking unscheduled compute-node SSH:** Use Slurm's **`pam_slurm_adopt`** PAM module (which only permits SSH if the user owns a running job on that node and places the SSH session inside the job's cgroup, requiring `PrologFlags=Contain`), or have the job `prolog` and `epilog` scripts dynamically add/remove the user in an allowlist enforced by **`pam_listfile`**.
+</details>
+
+<details>
+<summary>13. Which two plugin types in Slurm have stable APIs across versions and are recommended for custom site policy (`SCL` Chapter 15)?</summary>
+
+1. **`job_submit` plugins (especially `job_submit/lua`):** Run inside `slurmctld` at job submission time to validate, reject, or rewrite job requests (such as assigning partitions, enforcing `--gres=gpu`, or setting default time limits).
+2. **`SPANK` plugins (`plugstack.conf`):** Hook into the job and step launch path on nodes with a version-stable C API (used by NVIDIA's **Pyxis** container plugin to add `--container-image` to `srun`/`sbatch`).
+</details>
+
+<details>
+<summary>14. What do `ConstrainCores=yes`, `ConstrainRAMSpace=yes`, and `ConstrainDevices=yes` in `cgroup.conf` do?</summary>
+
+- **`ConstrainCores=yes`:** Pins the job step to its allocated CPU cores via the `cpuset` cgroup controller.
+- **`ConstrainRAMSpace=yes`:** Enforces the job's requested memory limit (`--mem`) via the `memory` cgroup controller so a runaway process triggers a cgroup OOM kill rather than crashing the whole node.
+- **`ConstrainDevices=yes`:** Uses the `devices` cgroup controller (or eBPF device filter in cgroup v2) to hide unallocated `/dev/nvidia*` GPUs so a job asking for 2 GPUs on an 8-GPU node can only access its 2 assigned GPUs.
+</details>
+
+<details>
+<summary>15. How do you build Slurm RPM or DEB packages from a source tarball (`SCL` Chapter 15), and why must development headers (`nvml.h`, `mysql_config`, `dbus`) be installed *before* building?</summary>
+
+- **RPM build:** `rpmbuild -ta slurm-XX.YY.Z.tar.bz2`
+- **DEB build:** `mk-build-deps -i debian/control && debuild -b -uc -us` (or `./configure --prefix=/opt/slurm && make && make install`).
+Slurm's `configure` script auto-detects optional features at build time: if `nvml.h` (CUDA/driver devel), `mysql_config` (MariaDB devel), or `dbus` (cgroup v2) headers are missing on the build host, the build succeeds silently **without** `AutoDetect=nvml`, `slurmdbd` MySQL storage, or cgroup v2 support.
+</details>
+
+<details>
+<summary>16. What are the three administrative privilege levels in `sacctmgr` (`SCL` Chapter 15)?</summary>
+
+1. **`Administrator` (`Admin`):** Full control over all Slurm and database operations (`root` and `SlurmUser` by default).
+2. **`Operator`:** Can add, modify, and remove database objects (users, accounts), manage reservations, and view `PrivateData`-restricted info.
+3. **`Coordinator`:** Trusted team lead assigned to specific accounts who can add users/subaccounts, adjust association limits (up to parent limits), and cancel/requeue jobs within their accounts.
+Set via `sacctmgr update user name=<user> set adminlevel=[admin|operator|coordinator|none]`.
+</details>
+
+<details>
+<summary>17. In `slurmdbd.conf`, what happens if `PurgeJobAfter` is left unset, and what does `MaxQueryTimeRange` protect against (`volume-10/14`)?</summary>
+
+If `PurgeJobAfter` and `PurgeStepAfter` are unset, **`slurmdbd` never purges historical records**, causing the MariaDB database to grow unboundedly until queries slow down. (Set `ArchiveJobs=yes` alongside `PurgeJobAfter` to archive records before deletion.) **`MaxQueryTimeRange`** caps the maximum time span a single `sacct` or `sreport` command can query, preventing a user from running an unindexed multi-year query that locks the database.
+</details>
+
+<details>
+<summary>18. How do you diagnose an RPC storm or sluggish `slurmctld` controller using `sdiag` (`SCL` Chapter 15)?</summary>
+
+Run **`sdiag`** and inspect:
+1. **`Agent queue size`** and **server thread count** (comparing against the maximum).
+2. **Scheduler and backfill cycle times** (how many microseconds/seconds each scheduling pass takes).
+3. **`Remote Procedure Call statistics by message type`** (such as `REQUEST_PARTITION_INFO` or `REQUEST_JOB_INFO`) and **`by user`**—which immediately exposes which user's monitoring script is hammering `squeue` hundreds of times per second.
+</details>
+
+<details>
+<summary>19. What happens to already-running compute jobs if `slurmctld` crashes or is stopped for an upgrade?</summary>
+
+**Already-running jobs continue executing normally on the compute nodes.** `slurmstepd` and `slurmd` continue supervising the application processes on each node and buffer completion notifications until `slurmctld` restarts (or the backup `slurmctld` takes over) within `SlurmdTimeout`. Only new job submissions, new `srun` step launches, and queue queries are paused while the controller is down.
+</details>
+
+<details>
+<summary>20. How do you run a multi-node virtual Slurm cluster on a single Linux VM for testing (`DAI` Chapter 8 & Lab A)?</summary>
+
+In `slurm.conf`, declare multiple virtual `NodeName` entries (`vn1`, `vn2`) that all set `NodeHostname=localhost` with distinct port numbers (`Port=17001`, `Port=17002`), and start multiple `slurmd` daemons on the VM using `-N <nodename>` (`sudo slurmd -N vn1` and `sudo slurmd -N vn2`).
+</details>
 
 ## Sources and review notes
 
 - Daemon roles, launch stages, test partition sizing (`10–15 minutes` limit, `3–5` tasks per user for `1–2 hours` turnaround), `pam_listfile` prolog/epilog access control, installation options, accounting model, `sacctmgr` examples, node and partition definitions (read in full: `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`, "13. Job Management Systems" and "15. Slurm").
 - Fuheng Wu, *Distributed AI Systems*, ch. 8: why Slurm for AI training, daemon overview, and the multiple-`slurmd` simulated cluster used in Lab A.
 - The author's own volumes `nvidia-devops` legacy V6 (control plane and data plane, `slurm.conf` for AI factories) and the core interview questions on Slurm HA, accounting internals and Ansible deployment, used to align the architecture and failure framing.
-- Migrated from nvidia-devops: `06-slurm-administration-ha-accounting-and-upgrades.md` (partial: the HA design and failover mechanism, split-brain, the accounting architecture and `slurmdbd.conf`, the `sacctmgr` hierarchy, scenarios 1 and 2, and the log-analysis appendix; the `slurm.conf` and cgroup deep dives, fairshare and billing, upgrades, GPU-binding and PMIx scenarios and the Ansible deployment are migrated in chapters 6.8, 6.9, 6.10, 6.12, 6.15 and 4.17).
+- Migrated from nvidia-devops: `volume-06/04-distributed-orchestration-masterclass.md`, `volume-10/06-slurm-administration-ha-accounting-and-upgrades.md`, and `volume-10/14-senior-deep-dive-2-slurm-ha-and-accounting-internals.md` (the HA design and failover mechanism, split-brain recovery, the accounting architecture and `slurmdbd.conf` `PurgeJobAfter`/`ArchiveJobs`/`MaxQueryTimeRange`, the `sacctmgr` hierarchy, scenarios 1 and 2, and the log-analysis appendix; the `slurm.conf` and cgroup deep dives, fairshare and billing, upgrades, GPU-binding and PMIx scenarios and the Ansible deployment are migrated in chapters 6.8, 6.9, 6.10, 6.12, 6.15 and 4.17).
 - SchedMD documentation (public): `slurm.conf`, `slurmdbd.conf`, `cgroup.conf` and `gres.conf` manual pages, quick-start administrator guide, configless guide, high-availability notes, and upgrade guide.
 - Related chapters: 6.8 configuration, 6.9 accounting and scheduling policy, 6.10 GPU scheduling, 6.11 job submission, 6.12 multi-node training, 6.14 operations, 6.15 upgrades and scaling, 6.16 Slurm on Kubernetes, 8.8 Slurm under BCM.
-- Run here: none.
-- Not verified on live hardware: all lab commands, HA and `SlurmctldHost` behaviour, `auth/slurm` and `sackd` details, release cadence and the supported upgrade window, `slurmrestd` options, and every parameter default quoted here. The reports about NVIDIA and SchedMD stewardship are flagged for verification.
+- Run here: `python3 code/part06/slurm_arch.py` and `python3 code/part06/slurm_arch_lab.py` (3 passed, 0 failed).
+- Explicitly labelled inferences: The `compute_rpc_tree_depth` (`50` direct RPCs, `2` tree hops for `1,024` nodes at `TreeWidth=50`), `validate_munge_credential` (`300` s TTL), and `check_test_partition_policy` functions in `code/part06/slurm_arch.py` are deterministic models built on `SCL` Chapters 13 and 15 and SchedMD documentation.
+- Not verified on live hardware: all lab commands, HA and `SlurmctldHost` behaviour, `auth/slurm` and `sackd` details, release cadence and the supported upgrade window, `slurmrestd` options, and every parameter default quoted here (`untested here`). The reports about NVIDIA and SchedMD stewardship are flagged for verification.
