@@ -310,7 +310,7 @@ Legacy pilot drafts (superseded, kept as reference for the rewrite): `planning/p
 | 5.33 | Reading the GPU Operator and Network Operator source | drafted | 4360 |  |
 | 6.1 | What a supercomputer is: TOP500, Linpack, HPC versus AI factory | drafted | 9505 | `flops_lab.py` (3/3 pass); `validate_chapter.py` 12/12 PASS |
 | 6.2 | Cluster anatomy: head, login, compute, storage and management nodes | drafted | 9848 | `cluster_anatomy_lab.py` (3/3 pass); `loss_check.py` PASS; `validate_chapter.py` 12/12 PASS |
-| 6.3 | Parallel computing concepts: Amdahl, scaling, shared memory versus message passing | drafted | 4392 |  |
+| 6.3 | Parallel computing concepts: Amdahl, scaling, shared memory versus message passing | drafted | 8371 | `scaling_lab.py` (3/3 pass); `validate_chapter.py` 12/12 PASS |
 | 6.4 | MPI in practice: Open MPI, ranks, collectives and tuning | drafted | 4489 |  |
 | 6.6 | Environment modules, Spack and EasyBuild | drafted | 3727 |  |
 | 6.18 | Parallel storage concepts and the limits of NFS | drafted | 4188 |  |
