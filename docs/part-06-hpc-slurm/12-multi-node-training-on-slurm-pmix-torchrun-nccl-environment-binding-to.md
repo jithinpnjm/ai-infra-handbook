@@ -4,7 +4,7 @@ title: "6.12 Multi-node training on Slurm: PMIx, torchrun, NCCL environment, bin
 sidebar_label: "6.12 Multi-node training on Slurm: PMIx, torchrun, NCCL environment, binding"
 sidebar_position: 12
 description: "Launching distributed training under Slurm: control plane versus data plane, srun with one task per GPU versus torchrun per node, rendezvous from Slurm variables (tested with a fake-srun DDP harness), PMIx for MPI, NCCL environment variables, CPU/GPU/NIC binding, FSDP/DeepSpeed/Megatron launch patterns, and diagnosing hangs"
-status: "drafted"
+status: "reviewed"
 tier: "1"
 level: "A"
 lab_venue: "GCP / GKE"
@@ -152,10 +152,20 @@ Targets: each rank on cores of the socket/NUMA node closest to its GPU and NIC; 
 
 ## 7. Framework patterns
 
-- **DDP**: replicate model, all-reduce gradients; launch as above. Set `find_unused_parameters` only if needed (cost).
-- **FSDP/ZeRO**: shard parameters, gradients and optimiser state; all-gather and reduce-scatter dominate; sensitive to fabric bandwidth and to rank placement within nodes (shard groups). Use `--ntasks-per-node=8` with consistent ordering (`--distribution=block` default) so that adjacent ranks share a node.
-- **DeepSpeed**: its launcher can use `mpirun` or `pdsh`; on Slurm prefer launching with `srun` and `deepspeed` in `--no_ssh`-style or the Slurm runner, configured with a hostfile derived from `scontrol show hostnames`. Verify against the version.
-- **Megatron-LM / NeMo**: tensor and pipeline parallel groups are built from the ranks; tensor-parallel groups should fit inside a node (NVLink). Rank-to-node ordering therefore matters; keep Slurm's default block distribution and the framework's expected order consistent (Part 14).
+*Distributed AI Systems* (`DAI` Chapter 8, *Launching distributed training frameworks with SLURM*) contrasts how the four major distributed training stacks integrate with Slurm environment variables and launchers:
+
+| Framework | Launcher under `srun` | Distributed Init | Slurm Environment Handling |
+|---|---|---|---|
+| **PyTorch DDP** | `torchrun` or direct `srun python` | Manual (`dist.init_process_group(backend="nccl")`) | Export `MASTER_ADDR`, `MASTER_PORT`, `WORLD_SIZE`, `RANK`, `LOCAL_RANK` |
+| **PyTorch FSDP** | `torchrun` | Manual (`dist.init_process_group(backend="nccl")`) | Same as DDP (`--cpus-per-task=28`, `--mem=200G` for sharded CPU offload) |
+| **DeepSpeed (ZeRO-1/2/3)** | `srun --label bash -c "... python train.py --deepspeed ..."` | Automatic (`deepspeed.init_distributed()`) | Reads Slurm vars directly, but requires explicit `export LOCAL_RANK=$SLURM_LOCALID`, `RANK=$SLURM_PROCID`, `CUDA_VISIBLE_DEVICES=$SLURM_LOCALID` |
+| **Megatron-LM** | `srun --label bash -c "... torchrun ... pretrain_gpt.py ..."` | Automatic (via `megatron.training`) | Reads Slurm/torchrun vars directly; requires `CUDA_DEVICE_MAX_CONNECTIONS=1` and `OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK` |
+
+- **DDP (`code/train_ddp.py` & `code/train_ddp.sh` in `DAI` Chapter 8)**: Replicates the entire model on each GPU (`DDP(model, device_ids=[local_rank])`) and all-reduces gradients. You can either launch one `torchrun` per node (`srun torchrun --nproc_per_node=1 --nnodes=$SLURM_JOB_NUM_NODES --node_rank=$SLURM_NODEID --master_addr=$MASTER_ADDR --master_port=$MASTER_PORT code/train_ddp.py`) or launch `srun python code/train_ddp.py` directly after exporting `WORLD_SIZE=$SLURM_NTASKS`, `RANK=$SLURM_PROCID`, and `LOCAL_RANK=$SLURM_LOCALID`. Set `find_unused_parameters` only if needed (cost).
+- **FSDP (`code/train_fsdp.py` & `code/train_fsdp.sh` in `DAI` Chapter 8)**: Shards parameters, gradients, and optimizer states across GPUs (`FullyShardedDataParallel` with `size_based_auto_wrap_policy` and `CPUOffload(offload_params=True)` in FSDP1, or `fully_shard()` and `CPUOffloadPolicy` in PyTorch 2.4+ FSDP2). All-gather and reduce-scatter dominate; use `--ntasks-per-node=8` with consistent block ordering (`--distribution=block` default) so adjacent ranks share a node, and use `torch.distributed.checkpoint` so each rank writes its own shard without gathering the full model on rank 0.
+- **DeepSpeed (`code/deepspeed/train.py`, `ds_zero3_offload.json`, & `run.slurm` in `DAI` Chapter 8)**: Unlike DDP/FSDP, DeepSpeed calls `deepspeed.init_distributed()` and `model_engine, optimizer, _, _ = deepspeed.initialize(model=model, model_parameters=model.parameters(), config="ds_zero3_offload.json")` (`model_engine.backward(loss)` and `model_engine.step()`). In `ds_zero3_offload.json`, `"stage": 3` shards parameters across GPUs while `"offload_param": {"device": "cpu", "pin_memory": true}` and `"offload_optimizer": {"device": "cpu", "pin_memory": true}` offload states to pinned host RAM (validate NCCL/Slurm wiring with ZeRO stage `1` or `2` first). In `run.slurm`, always derive `MASTER_ADDR` via `scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1` (never `127.0.0.1`, which silently creates isolated 1-node process groups on each host), exclude virtual/loopback interfaces with `export NCCL_SOCKET_IFNAME=^docker,lo` and `export GLOO_SOCKET_IFNAME=eth0`, and export `LOCAL_RANK=\$SLURM_LOCALID` inside the `srun --chdir="$SLURM_SUBMIT_DIR" --label bash -c "..."` subshell.
+- **Megatron-LM (`code/megatron/run.slurm` & `convert_megatron_checkpoint.py` in `DAI` Chapter 8)**: Tensor, pipeline, context/sequence, and data parallelism (`--tensor-model-parallel-size`, `--pipeline-model-parallel-size`) are built from the ranks; tensor-parallel groups must stay inside a node over NVLink. Note that the PyPI `megatron-core` package only ships `megatron.core` building blocks; running `pretrain_gpt.py` requires cloning `NVIDIA/Megatron-LM` and installing from source (`pip install --no-build-isolation '.[mlm,dev]'`). Set `export CUDA_DEVICE_MAX_CONNECTIONS=1` and `export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK`.
+  - **Megatron-LM checkpoint sizing and conversion (`DAI` Chapter 8):** For an `8B` (`8.03B` parameter) GPT model (`--num-layers 32 --hidden-size 4096 --num-attention-heads 32 --vocab-size 128256`), `bf16` model weights consume $8.03\text{B} \times 2\text{ bytes} = \mathbf{16.06\text{ GB}}$ and `fp32` Adam momentum + variance states consume $8.03\text{B} \times 8\text{ bytes} = \mathbf{64.24\text{ GB}}$, totaling $\mathbf{80.30\text{ GB}}$ theoretically and **$\sim\mathbf{108\text{ GB}}$ on disk** across four `27G` distributed checkpoint shards (`__0_0.distcp`, `__0_1.distcp`, `__1_0.distcp`, `__1_1.distcp`, plus `24K common.pt` and `4.0K metadata.json`) due to distributed optimizer metadata and alignment padding. Control storage footprint with `--save-interval` and checkpoint rotation, and convert `.distcp` shards to standalone weight-only PyTorch checkpoints (`model.pt`) for vLLM/SGLang inference using `convert_megatron_checkpoint.py` (or `NVIDIA-NeMo/Megatron-Bridge` for HuggingFace format).
 - **Checkpointing and resume**: periodic async checkpoints; resume logic keyed on `SLURM_RESTART_COUNT` or on the existence of the latest checkpoint (the toy script shows the pattern); coordinate with `--signal` and `--requeue` (6.11 section 7).
 - **Containers**: pyxis/enroot `--container-image` with `--container-mounts`; NCCL and CUDA come from the image; the host provides the driver and the IB device nodes (6.13).
 
@@ -173,6 +183,11 @@ Targets: each rank on cores of the socket/NUMA node closest to its GPU and NIC; 
 | Different speed per rerun | Placement/topology variance, noisy neighbours | `--switches`, exclusive nodes, topology config (6.8) |
 
 Method: reproduce small first (1 node, then 2), run `nccl-tests` (`all_reduce_perf -b 8 -e 8G -f 2 -g 1`, untested here) with `srun` on the same allocation to separate fabric problems from application problems (6.28), compare to baseline bus bandwidth for the node type, and bisect by node subsets.
+
+In addition to `nccl-tests`, *Distributed AI Systems* (`DAI` Chapter 8, *Configure Multi-Node NCCL communication*) provides a pure-PyTorch `diagnose_nccl()` diagnostic script that you can launch directly under `srun` to verify connectivity, ring/tree collective bandwidth, and point-to-point latency across nodes:
+1. **Verify basic IP reachability first:** `srun -N 2 bash -c 'echo "$(hostname): $(ping -c 1 node6 | grep time=)"'` (`(untested here)`).
+2. **Sweep AllReduce tensor sizes (`sizes_mb = [1, 10, 100, 500]`):** Allocate `torch.randn(int(size_mb * 1e6 / 4)).cuda()`, run 3 warmup `dist.all_reduce(tensor)` calls followed by `torch.cuda.synchronize()`, time 10 benchmark iterations (`elapsed`), and compute effective Ring AllReduce bandwidth as `(size_mb * 2 * 10) / elapsed`.
+3. **Measure point-to-point rank-0-to-target latency:** Loop 100 round-trip `dist.send(tensor, dst=target)` / `dist.recv(tensor, src=target)` pairs on a 1-element tensor (`torch.zeros(1).cuda()`) and compute one-way latency in microseconds as `(elapsed / 200) * 1e6`.
 
 ### 8.1 Six multinode communication pitfalls
 
@@ -196,7 +211,13 @@ From *AI Systems Performance Engineering* (Chapter 4), six host- and launch-leve
 
 ## 9. Lab
 
-Tested part (laptop): 1) Create a venv with PyTorch (CPU). 2) Run `python fake_srun.py 2 2 python ddp_toy.py` twice and confirm `start_step` goes from 0 to 1. 3) Change the world to 2 nodes x 4 tasks; confirm the all-reduce assertion. 4) Break it: unset `MASTER_ADDR` in `fake_srun.py` and observe that the node name does not resolve.
+First, run the self-checking Python lab (`code/part06/slurm_dist_init_lab.py`) locally. It verifies `expand_hostlist()` and `dist_env()` in `code/part06/slurm_dist_init.py` (`SLURM_JOB_ID=4242 -> MASTER_PORT=14242`), checks the Megatron-LM `8.03B` parameter distributed checkpoint math (`16.06 GB` `bf16` weights + `64.24 GB` `fp32` Adam states = `80.30 GB` theoretical vs `4 * 27G = 108.0 GB` `.distcp` shards) and `ASP` Chapter 4 `gloo` (`200.0 ms`) vs `nccl` (`4.0 ms`) timings, and tests the `diagnose_nccl()` AllReduce bandwidth and point-to-point latency formulas from `DAI` Chapter 8:
+
+```bash
+python3 code/part06/slurm_dist_init_lab.py
+```
+
+Tested part (laptop): 1) Create a venv with PyTorch (CPU). 2) Run `python code/part06/fake_srun.py 2 2 python code/part06/ddp_toy.py` twice and confirm `start_step` goes from 0 to 1. 3) Change the world to 2 nodes x 4 tasks; confirm the all-reduce assertion. 4) Break it: unset `MASTER_ADDR` in `fake_srun.py` and observe that the node name does not resolve.
 
 Untested part (cluster): 5) Run the `srun` style and the `torchrun` style on 2 nodes with `NCCL_DEBUG=INFO`; save logs; find the transport lines. 6) Run `all_reduce_perf` across 2 nodes and record bus bandwidth. 7) Deliberately set `NCCL_IB_DISABLE=1` and compare. 8) Kill one rank mid-run with and without `-K`. 9) Print `taskset -pc` and GPU per rank with and without `--gpu-bind=closest`. 10) Write the site's standard multi-node template.
 
@@ -211,39 +232,164 @@ Untested part (cluster): 5) Run the `srun` style and the `torchrun` style on 2 n
 - Why do tensor-parallel groups stay inside a node?
 - What happens when one rank crashes? How do you make the job fail fast?
 
-## 11. Checkpoint questions (25)
+## Exercises
 
-1. What does Slurm do versus the framework versus NCCL?
-2. Does PyTorch use PMIx?
-3. What variables does `env://` need?
-4. How do you obtain `MASTER_ADDR` from Slurm?
-5. Why derive `MASTER_PORT` from the job id?
-6. Compare srun-per-GPU and torchrun-per-node.
-7. What does `--kill-on-bad-exit` do?
-8. What does `SLURM_LOCALID` map to?
-9. Why does the harness set `MASTER_ADDR=127.0.0.1`?
-10. What did `weights_identical=True` prove?
-11. What is the OpenMP runtime clash and its fix?
-12. What does `NCCL_DEBUG=INFO` show?
-13. How are `NCCL_SOCKET_IFNAME` prefixes and `^` interpreted?
-14. What format does `NCCL_IB_HCA` take?
-15. What is `NCCL_IB_GID_INDEX` for?
-16. How is `NCCL_IB_TIMEOUT` computed?
-17. When use `NCCL_ALGO`?
-18. What is `NCCL_CROSS_NIC` about?
-19. How do you verify CPU/GPU binding?
-20. Why does rank placement matter for FSDP and tensor parallelism?
-21. Why set a process-group timeout and initialize `dist.init_process_group("nccl")` once outside the training loop, and what did Meta's 54-day Llama 3 405B run on `16,384` H100 GPUs show about failures at scale? **A:** A short timeout plus `TORCH_NCCL_ASYNC_ERROR_HANDLING=1`, `TORCH_NCCL_ENABLE_MONITORING=1`, and `TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC` turns silent rank hangs into fast aborts (`419` unexpected interruptions, `~7.8`/day, occurred in Meta's 54-day run: `148` GPU/NVLink = `30.1%`, `72` HBM3 = `17.2%`, `54` software bugs = `12.9%`, `35` network switch/cable = `8.4%`); initializing `nccl` once outside the loop avoids the `48.0 ms` per-iteration setup/teardown cost vs `0.5 ms` for the `all_reduce` (`48.5 ms` → `0.5 ms`, saving `>98%`).
-22. How do you separate fabric problems from application problems?
-23. What does a `NET/Socket` line on an IB cluster mean?
-24. Why exclusive nodes for benchmarks?
-25. What resume logic should a training script have?
+1. **Testing Slurm-to-PyTorch Rendezvous Glue Without a Cluster (`code/part06/slurm_dist_init.py` & `slurm_dist_init_lab.py`):** Run `python3 code/part06/slurm_dist_init_lab.py`. Verify that `expand_hostlist("gpu[01-03,07],cpu1,x[9-10]")` expands zero-padded and unpadded bracket ranges accurately and that `dist_env()` maps `SLURM_JOB_ID=4242` and `SLURM_JOB_NODELIST="gpu[01-03,07]"` to `MASTER_ADDR=gpu01` and `MASTER_PORT=14242`.
+2. **Comparing `srun`-per-GPU vs `torchrun`-per-Node Launch Scripts (`DAI` Chapter 8):** Write both `#SBATCH` + `srun` launch blocks for a 4-node, 8-GPU-per-node (`32` GPUs total) training job: Pattern A (`--ntasks-per-node=8 --gpus-per-node=8 --cpus-per-gpu=12` with `srun --kill-on-bad-exit=1 --cpu-bind=cores --gpu-bind=closest python train.py`) and Pattern B (`--ntasks-per-node=1 --gpus-per-node=8 --cpus-per-task=96` with `srun torchrun --nnodes=$SLURM_NNODES --nproc-per-node=8 ...`). Explain the trade-offs in cgroup CPU/GPU binding vs elasticity.
+3. **DeepSpeed ZeRO-3 Slurm Launch and the `127.0.0.1` Trap (`DAI` Chapter 8):** Write the `srun --chdir="$SLURM_SUBMIT_DIR" --label bash -c "..."` block for launching `python train.py --deepspeed --deepspeed_config ds_zero3_offload.json` across 2 nodes (`DAI` Chapter 8). Explain why `LOCAL_RANK=$SLURM_LOCALID` must be exported manually for `deepspeed.init_distributed()`, and what happens on a 2-node cluster if `MASTER_ADDR` defaults to `127.0.0.1`.
+4. **Megatron-LM 8B Checkpoint Footprint and `.distcp` Conversion (`DAI` Chapter 8 & `slurm_dist_init_lab.py`):** Using `megatron_checkpoint_gb(8.03, 4, 27.0)` in `code/part06/slurm_dist_init_lab.py`, calculate the exact `bf16` parameter size (`16.06 GB`), `fp32` Adam optimizer state size (`64.24 GB`), theoretical total (`80.30 GB`), and 4-shard `.distcp` disk footprint (`108.0 GB`) for an `8.03B` parameter GPT model, and explain how to convert `.distcp` shards into a standalone PyTorch checkpoint for vLLM/SGLang inference.
+5. **Quantifying `gloo` vs `nccl` Bandwidth and Communicator Init Overhead (`ASP` Chapter 4):** Calculate the all-reduce time for a `400 MB` (`100M` `fp32`) gradient tensor over `2 GB/s` TCP (`gloo`, `200.0 ms`) versus `100 GB/s` (`800 Gb/s`) InfiniBand (`nccl`, `4.0 ms`), and explain why calling `dist.init_process_group("nccl")` inside the training step loop adds `48.0 ms` per step on top of a `0.5 ms` collective (`48.5 ms` vs `0.5 ms`, a `>98%` slowdown).
+6. **Multi-Node `NCCL` Diagnostic Benchmarking (`DAI` Chapter 8 `diagnose_nccl()`):** Using `nccl_diag_metrics()` in `code/part06/slurm_dist_init_lab.py`, compute the effective Ring AllReduce bandwidth `(size_mb * 2 * 10) / elapsed` (`100.0 GB/s` for `100 MB` over 10 iterations in `20.0` units) and one-way point-to-point latency `(elapsed / 200) * 1e6` (`20.0 us` for 100 round-trips taking `0.004 s`).
 
-## 12. Sources and review notes
+## Checkpoint
 
-- Launch layering, PMIx and torchrun/srun patterns, NCCL tuning discussion: the author's NVIDIA-DevOps volume-10 chapter 7 (sections 3 to 6), and *Distributed AI Systems* chapter 8 (DDP, FSDP, DeepSpeed, Megatron-LM with Slurm; environment variables; failure handling), restated in my words with version caveats added.
-- `ai-systems-performance-engineering` — Chris Fregly, *AI Systems Performance Engineering*, "Chapter 4. Tuning Distributed Networking Communication" (read in full): the 6 multinode communication pitfalls (`gloo` `~200 ms` at `2 GB/s` TCP vs `nccl` `~4 ms` at `100 GB/s` / 800 Gbps IB for a 400 MB all-reduce; mismatched `NCCL` versions via `torch.cuda.nccl.version()`; TCP port exhaustion `net.ipv4.ip_local_port_range="50000 51000"`, `NCCL_SOCKET_IFNAME`, `MASTER_PORT`; fallback to `eth0`/`docker0`/`lo` vs `ib0` with `NCCL_DEBUG=INFO` and `NCCL_IB_DISABLE=0`; straggler monitoring with `TORCH_NCCL_ENABLE_MONITORING=1` and `TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC`; GPU memory fragmentation under UCX/RDMA where `0.800 GB` allocated reserves `1.240 GB` without `PYTORCH_ALLOC_CONF="max_split_size_mb:128,expandable_segments:True"`) and the 6 `NCCL` communicator lifecycle and environment gotchas (Table 4-3 `init_process_group` `48.0 ms` + `0.5 ms` `all_reduce` = `48.5 ms` vs `0.5 ms` initialized once saving `>98%`; `NCCL_NSOCKS_PERTHREAD` × `NCCL_SOCKET_NTHREADS` ≤ `64`, `NCCL_BUFFSIZE` starting at `4 MB` / `4194304`, `NCCL_MIN_NCHANNELS`/`NCCL_MAX_NCHANNELS`, `NCCL_TOPO_FILE`, `NCCL_MNNVL_ENABLE`, `NCCL_SHARP_DISABLE`; `NCCL_IGNORE_CPU_AFFINITY=1`; Table 4-4 Llama 3 405B 54-day run on `16,384` H100 GPUs with `419` unexpected interruptions, `~7.8`/day, `>90%` effective training time). Deep NCCL internals, SHARP/NVLS, and NIXL are covered in Part 12 and Part 15.
+<details>
+<summary>1. Separate the responsibilities of **Slurm**, the **launcher (`srun`/`torchrun`)**, **rendezvous (`env://` / PMIx)**, and **`NCCL`** during a multi-node training job.</summary>
+
+- **Slurm (`slurmctld` / `slurmd`):** Allocates nodes/GPUs, creates Linux cgroups (`ConstrainDevices=yes`), and spawns `slurmstepd`.
+- **Launcher (`srun` or `torchrun`):** Spawns the per-GPU rank processes and populates rank environment variables.
+- **Rendezvous (`c10d` TCP store at `MASTER_ADDR:MASTER_PORT` or PMIx):** Lets ranks discover each other out-of-band and exchange `NCCL`'s `ncclUniqueId`.
+- **`NCCL` (Data Plane):** Detects intra-node (`NVLink`/`NVSwitch`) and inter-node (`GPUDirect RDMA` over InfiniBand/RoCE) topology and executes collectives directly over the fabric without involving Slurm.
+</details>
+
+<details>
+<summary>2. Does PyTorch `torch.distributed` use PMIx for collective communication, and which five environment variables does `init_method="env://"` require?</summary>
+
+No—PyTorch does not use PMIx for data-plane collectives; it uses `c10d` TCP rendezvous followed by `NCCL` (or `gloo`). `init_method="env://"` requires **`MASTER_ADDR`**, **`MASTER_PORT`**, **`WORLD_SIZE`**, **`RANK`**, and (for GPU device selection) **`LOCAL_RANK`**.
+</details>
+
+<details>
+<summary>3. Compare Launch Style A (`srun` with 1 task per GPU) and Launch Style B (`srun` with 1 `torchrun` per node).</summary>
+
+- **Style A (`--ntasks-per-node=8`, `srun python train.py`):** Slurm directly launches and tracks every GPU process, giving fine-grained per-rank `--cpu-bind`, `--gpu-bind=closest`, cgroup accounting, and `-K` (`--kill-on-bad-exit=1`) failure handling, at the cost of requiring `train.py` (or a wrapper) to translate `SLURM_PROCID`/`SLURM_LOCALID`/`SLURM_NTASKS`.
+- **Style B (`--ntasks-per-node=1`, `srun torchrun --nproc-per-node=8 ...`):** `torchrun` spawns the 8 local workers and automatically exports `RANK`, `LOCAL_RANK`, and `WORLD_SIZE` (plus elastic restart features), but Slurm only sees 1 coarse task per node.
+</details>
+
+<details>
+<summary>4. How do `code/part06/fake_srun.py`, `slurm_dist_init.py`, and `ddp_toy.py` test Slurm-to-PyTorch DDP glue on a laptop without a cluster?</summary>
+
+`fake_srun.py 2 2` spawns 4 local processes with `SLURM_JOB_ID=4242`, `SLURM_JOB_NODELIST=node[01-02]`, `SLURM_PROCID=0..3`, `SLURM_LOCALID=0..1`, `SLURM_NTASKS=4`, and `MASTER_ADDR=127.0.0.1`. `slurm_dist_init.py` maps those to `RANK`, `LOCAL_RANK`, `WORLD_SIZE`, and `MASTER_PORT=14242`, and `ddp_toy.py` verifies `dist.all_reduce` (`world*(world+1)/2`), identical post-step DDP weights across all ranks (`weights_identical=True`), and rank-0 checkpoint save/resume (`start_step=0 -> 1`).
+</details>
+
+<details>
+<summary>5. What causes `OMP: Error #15: Initializing libomp.dylib, but found libomp.dylib already initialized`, and what is the proper fix?</summary>
+
+Two incompatible OpenMP runtime libraries (for example Intel `libiomp5` from Conda/MKL and LLVM `libomp` / GNU `libgomp` from a pip wheel) are linked into the same Python process (Chapter 6.5). While `KMP_DUPLICATE_LIB_OK=TRUE` suppresses the abort unsafely, the proper fix is using a clean virtual environment with a single consistent OpenMP runtime.
+</details>
+
+<details>
+<summary>6. How do DDP, FSDP, DeepSpeed, and Megatron-LM differ in how they initialize distributed state under Slurm (`DAI` Chapter 8)?</summary>
+
+- **DDP & FSDP:** Manual initialization (`dist.init_process_group(backend="nccl")`), reading standard `RANK`, `LOCAL_RANK`, `WORLD_SIZE`, `MASTER_ADDR`, `MASTER_PORT` variables exported by `torchrun` or your batch script.
+- **DeepSpeed:** Automatic initialization via `deepspeed.init_distributed()`, which reads Slurm variables directly—**except `LOCAL_RANK`**, which must be explicitly exported from `SLURM_LOCALID` inside the `srun` subshell.
+- **Megatron-LM:** Automatic initialization inside `megatron.training` launched via `srun ... torchrun ... pretrain_gpt.py`, requiring `CUDA_DEVICE_MAX_CONNECTIONS=1` and `OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK`.
+</details>
+
+<details>
+<summary>7. Why does setting `MASTER_ADDR=127.0.0.1` in a multi-node DeepSpeed or DDP script cause a dangerous silent bug (`DAI` Chapter 8)?</summary>
+
+If `MASTER_ADDR` is `127.0.0.1` across two physical nodes, each node connects only to its own local loopback interface and forms an **independent 1-node process group**—so training appears to run without crashing, but gradients are never synchronized across nodes. Always derive `MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)`.
+</details>
+
+<details>
+<summary>8. Why does an `8.03B` parameter Megatron-LM GPT model produce a `~108 GB` distributed checkpoint directory (`DAI` Chapter 8), and how do you export it for inference?</summary>
+
+- **Theoretical size (`80.30 GB`):** `bf16` model weights take $8.03\text{B} \times 2\text{ B} = \mathbf{16.06\text{ GB}}$, and `fp32` Adam states (4 bytes momentum + 4 bytes variance) take $8.03\text{B} \times 8\text{ B} = \mathbf{64.24\text{ GB}}$.
+- **On-disk size (`~108 GB` = $4 \times 27\text{ GB}$ `.distcp` shards):** Distributed optimizer metadata and parallel I/O alignment padding add $\sim 28\text{ GB}$.
+- **Export for inference:** Run `convert_megatron_checkpoint.py` (or `Megatron-Bridge`) to strip optimizer states and merge `.distcp` shards into a standalone PyTorch `model.pt` or HuggingFace checkpoint.
+</details>
+
+<details>
+<summary>9. What do `NCCL_DEBUG=INFO`, `NCCL_DEBUG_SUBSYS`, and `NCCL_DEBUG_FILE=file.%h.%p` do, and what log line reveals an InfiniBand fallback?</summary>
+
+`NCCL_DEBUG=INFO` logs `NCCL`'s topology discovery, ring/tree channels, HCA selection, and transport layer (`NCCL_DEBUG_SUBSYS=INIT,NET,GRAPH,ENV` filters subsystems, and `NCCL_DEBUG_FILE=file.%h.%p` writes separate logs per hostname `%h` and PID `%p`). Seeing **`NCCL INFO NET/Socket`** instead of **`NCCL INFO NET/IB`** on an InfiniBand/RoCE cluster proves that `NCCL` fell back to slow TCP sockets.
+</details>
+
+<details>
+<summary>10. How do `NCCL_SOCKET_IFNAME` and `NCCL_IB_HCA` interpret prefix lists, `^`, and `=`?</summary>
+
+By default, comma-separated entries are matched as **prefixes** (e.g., `eth` matches `eth0,eth1`; `mlx5_` matches all `mlx5_*` HCAs).
+- Prefixing the list with **`^`** **excludes** matching interfaces/HCAs (e.g., `NCCL_SOCKET_IFNAME=^lo,docker` ignores loopback and Docker bridges).
+- Prefixing with **`=`** forces **exact** string matching.
+</details>
+
+<details>
+<summary>11. What do `NCCL_IB_GID_INDEX`, `NCCL_IB_TIMEOUT`, and `NCCL_NET_GDR_LEVEL` control?</summary>
+
+- **`NCCL_IB_GID_INDEX`:** Selects the RoCE v2 Global Identifier index (inspected via `show_gids`) so RDMA traffic uses the correct VLAN/DSCP/PFC priority queue.
+- **`NCCL_IB_TIMEOUT`:** Sets the InfiniBand Verbs queue-pair timeout to $4.096\ \mu\text{s} \times 2^{\text{value}}$ (increase on large fabrics if congestion triggers `ibv_poll_cq` error `12`).
+- **`NCCL_NET_GDR_LEVEL`:** Sets the maximum PCIe/NUMA topological distance between a GPU and NIC at which GPUDirect RDMA (`GDR`) remains enabled.
+</details>
+
+<details>
+<summary>12. What constraint applies to `NCCL_NSOCKS_PERTHREAD` and `NCCL_SOCKET_NTHREADS`, and how should `NCCL_BUFFSIZE` be tuned (`ASP` Chapter 4)?</summary>
+
+When tuning TCP socket transport, the product **`NCCL_NSOCKS_PERTHREAD` $\times$ `NCCL_SOCKET_NTHREADS` cannot exceed `64` sockets** per communicator. When tuning `NCCL_BUFFSIZE` for large collectives, start at **`4 MB` (`4194304` bytes)** and increase stepwise while monitoring GPU VRAM pressure.
+</details>
+
+<details>
+<summary>13. Why is leaving `NCCL_P2P_DISABLE=1` or `NCCL_SHM_DISABLE=1` in a production batch script disastrous (`ASP` Chapter 4)?</summary>
+
+Those diagnostic flags disable intra-node NVLink/PCIe peer-to-peer (`P2P`) and host shared-memory (`SHM`) transfers, forcing same-node GPUs to stage all collective data through host RAM or network interfaces—increasing latency from a few microseconds to tens of microseconds and slashing intra-node bandwidth from hundreds of GB/s to tens of GB/s.
+</details>
+
+<details>
+<summary>14. How do you bind each rank to the right CPU cores, GPU, and NIC under Slurm, and when is `NCCL_IGNORE_CPU_AFFINITY=1` needed (`ASP` Chapter 4)?</summary>
+
+Use `srun --cpus-per-gpu=12 --cpu-bind=cores --gpu-bind=closest` with `--gres-flags=enforce-binding` (and verify via `taskset -pc $$`, `nvidia-smi topo -m`, and `NCCL`'s `GPU Direct RDMA Enabled for GPU x / HCA y` log lines). If a launcher pins a rank to a single CPU core or overly narrow mask, set **`NCCL_IGNORE_CPU_AFFINITY=1`** so `NCCL`'s background proxy threads can spread across cores within the GPU's local NUMA domain.
+</details>
+
+<details>
+<summary>15. Compare the time to all-reduce a `400 MB` (`100M` `fp32`) buffer across 8 GPUs using CPU `gloo` over `2 GB/s` TCP versus GPU `nccl` over `800 Gb/s` (`100 GB/s`) InfiniBand (`ASP` Chapter 4).</summary>
+
+- **`gloo` over `2 GB/s` TCP:** $\approx \mathbf{200.00\text{ ms}}$ (copies GPU $\to$ host RAM, traverses TCP sockets, copies host RAM $\to$ GPU).
+- **`nccl` over `100 GB/s` InfiniBand (GPUDirect RDMA):** $\approx \mathbf{4.00\text{ ms}}$ (a **$50\times$ speedup**).
+</details>
+
+<details>
+<summary>16. Why does PyTorch's CUDA caching allocator cause UCX/RDMA memory pressure across iterations, and which `PYTORCH_ALLOC_CONF` setting fixes it (`ASP` Chapter 4)?</summary>
+
+PyTorch's caching allocator retains freed blocks in its pool without returning them to the OS/UCX registration pool (in `ASP` Chapter 4's 10-iteration test, a `0.800 GB` initial allocation plus alternating `40 MB` and `200 MB` temporaries leaves `memory_allocated()` at `0.000 GB` after free while `memory_reserved()` ratchets from `0.800 GB` to `1.040 GB` and **`1.240 GB`**). Setting **`PYTORCH_ALLOC_CONF="max_split_size_mb:128,expandable_segments:True"`** prevents large block splitting and enables virtual-memory expandable segments.
+</details>
+
+<details>
+<summary>17. How much overhead does calling `dist.init_process_group("nccl")` inside the training loop add (`ASP` Chapter 4 Table 4-3), and how should TP/PP subcommunicators be managed?</summary>
+
+In `ASP` Chapter 4 Table 4-3, initializing and destroying the `nccl` process group inside the step loop costs **`48.0 ms` per iteration** compared to just **`0.5 ms`** for the `all_reduce` itself (`48.5 ms` vs `0.5 ms`, wasting **`>98%`** of step time). Always initialize the global process group and any `torch.distributed.new_group()` TP/PP subcommunicators **once before the training loop** (or batch C++ `ncclCommInitRank` calls inside `ncclGroupStart()` / `ncclGroupEnd()`).
+</details>
+
+<details>
+<summary>18. What did Meta's 54-day Llama 3 405B pretraining run on `16,384` H100 GPUs reveal about hardware failure rates at scale (`ASP` Chapter 4 Table 4-4)?</summary>
+
+The run experienced **`419` unexpected interruptions (`~7.8` per day)** while achieving `>90%` effective training time:
+- **Faulty GPUs / NVLink:** `148` (`30.1%`)
+- **GPU HBM3 memory:** `72` (`17.2%`)
+- **Software bugs:** `54` (`12.9%`)
+- **Network switch / cable:** `35` (`8.4%`)
+- **Unplanned host maintenance:** `32` (`7.6%`)
+- **GPU SRAM (`19`, `4.5%`), GPU GSP (`17`, `4.1%`), NIC (`7`, `1.7%`), and `NCCL` watchdog (`7`, `1.7%`).**
+</details>
+
+<details>
+<summary>19. Which PyTorch and Slurm settings ensure that when one rank crashes or stalls, the remaining 63 GPUs fail fast with a diagnostic stack trace instead of hanging for hours?</summary>
+
+1. Pass **`srun -K` (`--kill-on-bad-exit=1`)** so Slurm tears down the step as soon as any task exits non-zero.
+2. Pass an explicit **`timeout`** to `dist.init_process_group(..., timeout=timedelta(minutes=10))`.
+3. Enable **`TORCH_NCCL_ASYNC_ERROR_HANDLING=1`**, **`TORCH_NCCL_ENABLE_MONITORING=1`**, and **`TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC`** so stuck collectives abort cleanly.
+</details>
+
+<details>
+<summary>20. How do you separate an underlying InfiniBand/RoCE fabric fault from an application bug on a multi-node Slurm allocation (`DAI` Chapter 8 & `nccl-tests`)?</summary>
+
+Run `nccl-tests` (`srun all_reduce_perf -b 8 -e 8G -f 2 -g 1`) or `DAI` Chapter 8's standalone `diagnose_nccl()` script (measuring `[1, 10, 100, 500]` MB AllReduce bus bandwidth `(size_mb * 2 * 10) / elapsed` and point-to-point send/recv latency `(elapsed / 200) * 1e6`) on the exact same node allocation. If `all_reduce_perf` hits expected wire speed, the fault is in the application/dataloader; if it stalls or reports low bandwidth, bisect the node list with `--exclude`.
+</details>
+
+## Sources and review notes
+
+- Launch layering, PMIx and torchrun/srun patterns, NCCL tuning discussion: migrated from `nvidia-devops` (`volume-10-hpc-foundations-cluster-management/07-mpi-fundamentals-for-hpc-ai-workloads.md` sections 3 to 6), and read in full from *Distributed AI Systems* (`distributed-ai-systems`, `DAI`) Chapter 8 ("Chapter 8: Running Distributed Training with SLURM": DDP, FSDP, DeepSpeed `ds_zero3_offload.json`, Megatron-LM 8B `16.06 GB` + `64.24 GB` = `80.30 GB` vs `108 GB` `.distcp` checkpoints and `convert_megatron_checkpoint.py`, environment variables, `diagnose_nccl()`, and failure handling).
+- `ai-systems-performance-engineering` — Chris Fregly, *AI Systems Performance Engineering* (`ASP`), "Chapter 4. Tuning Distributed Networking Communication" (read in full): the 6 multinode communication pitfalls (`gloo` `~200 ms` at `2 GB/s` TCP vs `nccl` `~4 ms` at `100 GB/s` / 800 Gbps IB for a 400 MB all-reduce; mismatched `NCCL` versions via `torch.cuda.nccl.version()`; TCP port exhaustion `net.ipv4.ip_local_port_range="50000 51000"`, `NCCL_SOCKET_IFNAME`, `MASTER_PORT`; fallback to `eth0`/`docker0`/`lo` vs `ib0` with `NCCL_DEBUG=INFO` and `NCCL_IB_DISABLE=0`; straggler monitoring with `TORCH_NCCL_ENABLE_MONITORING=1` and `TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC`; GPU memory fragmentation under UCX/RDMA where `0.800 GB` allocated reserves `1.240 GB` without `PYTORCH_ALLOC_CONF="max_split_size_mb:128,expandable_segments:True"`) and the 6 `NCCL` communicator lifecycle and environment gotchas (Table 4-3 `init_process_group` `48.0 ms` + `0.5 ms` `all_reduce` = `48.5 ms` vs `0.5 ms` initialized once saving `>98%`; `NCCL_NSOCKS_PERTHREAD` × `NCCL_SOCKET_NTHREADS` ≤ `64`, `NCCL_BUFFSIZE` starting at `4 MB` / `4194304`, `NCCL_MIN_NCHANNELS`/`NCCL_MAX_NCHANNELS`, `NCCL_TOPO_FILE`, `NCCL_MNNVL_ENABLE`, `NCCL_SHARP_DISABLE`; `NCCL_IGNORE_CPU_AFFINITY=1`; Table 4-4 Llama 3 405B 54-day run on `16,384` H100 GPUs with `419` unexpected interruptions, `~7.8`/day, `>90%` effective training time). Deep NCCL internals, SHARP/NVLS, and NIXL are covered in Part 12 and Part 15.
 - NCCL variable semantics: NVIDIA/nccl `docs/userguide/source/env.rst` (commit `3e46c08`).
-- Slurm options: man pages as in 6.10 and 6.11.
-- Original and run: `slurm_dist_init.py`, `ddp_toy.py`, `fake_srun.py` (PyTorch 2.14.1, gloo, macOS) with the output above.
-- Unverified: multi-node NCCL behaviour, DeepSpeed/Megatron launch flags for current versions, PyTorch NCCL environment variable names, topology layout of HGX nodes.
+- Slurm options: man pages as in 6.10 and 6.11 (`521370b`).
+- Run here: `slurm_dist_init.py`, `ddp_toy.py`, `fake_srun.py` (PyTorch 2.14.1, gloo, macOS) and `python3 code/part06/slurm_dist_init_lab.py` (3 passed, 0 failed).
+- Explicitly labelled inferences: `megatron_checkpoint_gb` and `nccl_diag_metrics` in `code/part06/slurm_dist_init_lab.py` are deterministic teaching checks of the formulas in `DAI` Chapter 8 and `ASP` Chapter 4.
+- Not verified on live hardware: multi-node NCCL behaviour, DeepSpeed/Megatron launch flags on live clusters, PyTorch NCCL environment variable names across releases, and live HGX topology layout (`untested here`).
