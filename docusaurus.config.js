@@ -1,6 +1,69 @@
 // @ts-check
 import {themes as prismThemes} from 'prism-react-renderer';
 
+function preprocessPart12Markdown({filePath, fileContent}) {
+  const withoutSectionMarkers = fileContent.replace(/^\s*<!-- PART2 -->\s*$/gm, '');
+  if (!filePath.includes('/docs/part-12-ai-networking/')) {
+    return withoutSectionMarkers;
+  }
+
+  const content = withoutSectionMarkers.replace(/<details><summary>(.*?)<\/summary>/gs, '<details>\n<summary>$1</summary>\n\n');
+  const lines = content.split('\n');
+  let inFence = false;
+  let mathDelimiter = '';
+  let inlineCodeDelimiter = '';
+
+  return lines.map((line) => {
+    if (/^\s*(```|~~~)/.test(line)) {
+      inFence = !inFence;
+      return line;
+    }
+    if (inFence) {
+      return line;
+    }
+
+    let output = '';
+    for (let index = 0; index < line.length; index += 1) {
+      const char = line[index];
+      if (char === '`') {
+        let end = index + 1;
+        while (line[end] === '`') end += 1;
+        const delimiter = line.slice(index, end);
+        if (!inlineCodeDelimiter) inlineCodeDelimiter = delimiter;
+        else if (inlineCodeDelimiter === delimiter) inlineCodeDelimiter = '';
+        output += delimiter;
+        index = end - 1;
+        continue;
+      }
+
+      if (!inlineCodeDelimiter && char === '$' && line[index - 1] !== '\\') {
+        if (mathDelimiter) {
+          if (line.startsWith(mathDelimiter, index)) {
+            output += mathDelimiter;
+            index += mathDelimiter.length - 1;
+            mathDelimiter = '';
+            continue;
+          }
+        } else {
+          mathDelimiter = line[index + 1] === '$' ? '$$' : '$';
+          output += mathDelimiter;
+          index += mathDelimiter.length - 1;
+          continue;
+        }
+      }
+
+      if (mathDelimiter && !inlineCodeDelimiter) {
+        output += {'{': '&#123;', '}': '&#125;', '<': '&lt;', '>': '&gt;'}[char] ?? char;
+      } else {
+        output += char;
+      }
+    }
+    inlineCodeDelimiter = '';
+    if (mathDelimiter === '$') mathDelimiter = '';
+    return output;
+  }).join('\n');
+}
+
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'AI Infrastructure Handbook',
@@ -12,7 +75,11 @@ const config = {
   url: 'http://localhost',
   baseUrl: '/',
   onBrokenLinks: 'throw',
-  markdown: {mermaid: true, hooks: {onBrokenMarkdownLinks: 'warn'}},
+  markdown: {
+    mermaid: true,
+    preprocessor: preprocessPart12Markdown,
+    hooks: {onBrokenMarkdownLinks: 'warn'},
+  },
   themes: ['@docusaurus/theme-mermaid'],
   clientModules: ['./src/clientModules/mermaidZoom.js'],
   i18n: {defaultLocale: 'en', locales: ['en']},
