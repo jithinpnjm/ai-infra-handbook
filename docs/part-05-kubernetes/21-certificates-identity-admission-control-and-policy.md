@@ -203,6 +203,11 @@ spec:
 
 Webhook design rules (they are production-critical, 5.5): high availability (≥2-3 replicas, PDB, anti-affinity), fast (under 100 ms typical), idempotent, no external dependencies in the request path, `failurePolicy: Ignore` for non-security-critical mutations (and `Fail` only where the risk of bypass is worse than outage), exclude `kube-system` and the webhook's own namespace to avoid bootstrap deadlocks (a webhook that blocks creation of its own pods), selectors to limit scope, certificate auto-renewal, metrics and alerts (`apiserver_admission_webhook_admission_duration_seconds`, rejection counters), dry-run safe (`sideEffects: None`), test with `kubectl --dry-run=server`, and a break-glass procedure (delete the webhook configuration) documented.
 
+In *Production Kubernetes* Chapter 8 (*Admission Control*), Josh Rosso et al. contrast built-in ("in-tree") controllers like **`NamespaceLifecycle`** (which rejects any `CREATE` request inside a Namespace whose `status.phase == Terminating`, while automatically creating the `default`, `kube-system`, and `kube-public` namespaces) against custom Go webhooks built with **`controller-runtime`** and **`Kubebuilder`**:
+- **`controller-runtime` `Handle` and `PatchResponseFromRaw`:** Instead of manually constructing RFC 6902 `JSONPatch` arrays by hand, a `controller-runtime` mutating webhook implements `func (w *Webhook) Handle(ctx context.Context, req admission.Request) admission.Response`, decodes `req.Object.Raw` into a typed Go struct (such as a Cluster API `VSphereMachine` checking for `vm.Annotations["infoblox"]`), mutates the struct fields (allocating an IP from Infoblox), marshals the modified struct to `marshaledVM`, and returns **`admission.PatchResponseFromRaw(req.Object.Raw, marshaledVM)`**—which automatically computes the JSONPatch diff between the original raw request and the mutated struct.
+- **Kubebuilder webhook code-generation markers:** Adding a single comment marker above the Go handler generates the `MutatingWebhookConfiguration` YAML automatically:
+  `// +kubebuilder:webhook:path=/infoblox-ipam,mutating=true,failurePolicy=fail,groups="infrastructure.cluster.x-k8s.io",resources=vspheremachines,verbs=create;update,versions=v1alpha3,name=infoblox.mutations.io`
+
 ## 4. Pod Security Standards and Admission
 
 The **Pod Security Standards** define three cumulative profiles:
@@ -221,6 +226,13 @@ kubectl label ns team-a pod-security.kubernetes.io/enforce=baseline pod-security
 ```
 
 Modes: `enforce` (reject), `audit` (record in audit log), `warn` (client warning). Cluster-wide defaults and exemptions (usernames, runtimeClasses, namespaces) in the `AdmissionConfiguration`. Rollout: start with `warn`/`audit` at `restricted`, fix workloads, then `enforce`.
+
+In *Kubernetes: Up and Running* Chapter 19 (*Securing Applications in Kubernetes*), Brendan Burns et al. demonstrate four practical tools for auditing and hardening Pod security:
+1. **Inspecting inside-container security posture with `amicontained` (`r.j3ss.co/amicontained:v0.4.9`):** Running `amicontained` inside a Pod prints the active container runtime, enabled namespaces (`pid: true, user: false`), AppArmor profile (`docker-default (enforce)` or `unconfined`), bounding Linux capabilities (`chown`, `dac_override`, `net_raw`, `setuid`, etc.), seccomp status (`disabled` vs `filtering`), and the exact count of blocked syscalls.
+2. **Cluster-wide Pod Security dry-run preview (`--dry-run=server`):** Before enforcing `baseline` or `restricted` on existing namespaces, run a server-side dry-run label across all namespaces to get an instant report of every existing Pod in the cluster that would violate the standard without actually modifying any namespace:
+   `kubectl label --dry-run=server --overwrite ns --all pod-security.kubernetes.io/enforce=baseline`
+3. **Stronger workload isolation with `RuntimeClass` (`gvisor`, `firecracker` / `kata`):** Setting `spec.runtimeClassName: firecracker` (or `gvisor` / `kata`) routes the Pod through a sandboxed/VM-isolated CRI runtime handler rather than standard shared-kernel `runc`.
+4. **Benchmarking node and control-plane configurations with `kube-bench`:** Running Aqua Security's `kube-bench` Job checks the live cluster against the **CIS Kubernetes Benchmark** (such as `4.2.1 Ensure that the --anonymous-auth argument is set to false`, `4.2.4 Ensure that the --read-only-port argument is set to 0`, `4.2.6 Ensure that the --protect-kernel-defaults argument is set to true`, and `4.2.12 Verify that the RotateKubeletServerCertificate argument is set to true`) and outputs `[PASS]`/`[WARN]`/`[FAIL]` with exact remediation steps.
 
 GPU/HPC realities: many GPU stacks need exceptions: the **GPU Operator, device plugin, DCGM exporter, NVIDIA driver containers, Network Operator, CNI agents, CSI node plugins, node-problem-detector** require privileged/hostPath/hostNetwork and live in dedicated system namespaces labelled `privileged`. Tenant training pods can usually meet `baseline` (no hostPath/privileged; GPUs via device plugin) and often `restricted` with `runAsNonRoot` images; RDMA workloads need `IPC_LOCK` (baseline allows only a default capability set; `IPC_LOCK` is not in it, so requires a policy exception or a profile-level allowance via policy engine/namespace label). Document exceptions per namespace instead of weakening the cluster default.
 
@@ -433,7 +445,15 @@ Rollout approach: policy-as-code in Git with tests (4.13, 4.26), `Audit`/`warn` 
 | CSR stuck Pending | No approver | Approve manually or deploy approver |
 | ServiceAccount tokens invalid after maintenance | `sa.key` rotated without keeping old public key | Keep old key in `--service-account-key-file` list during rotation |
 
-## 8. Lab (untested)
+## 8. Lab
+
+First, run the self-checking Python lab (`code/part05/pki_admission_policy_eval_lab.py`) locally. It verifies the Pod Security Standards evaluator (`evaluate_pod_security_standard`: testing `privileged`, `baseline`, and `restricted`, `KUR` Ch. 19), the `ValidatingAdmissionPolicy` + OPA Gatekeeper `K8sAllowedRepos` evaluator (`evaluate_vap_and_gatekeeper_policies`, `KUR` Ch. 20 & `PK` Ch. 8), and the `SPIFFE`/`SPIRE` workload attestation selector matcher (`match_spire_workload_entry`, `PK` Ch. 10).
+
+```bash
+python3 code/part05/pki_admission_policy_eval_lab.py
+```
+
+Next, on a `kubeadm` or `kind` cluster (all interactive shell steps below are `untested here`), work through these exercises:
 
 1. **PKI tour**: list `/etc/kubernetes/pki`; decode each cert with `openssl x509`; draw who signs whom and which components present which certs; check SANs on the API server cert.
 2. **Expiry drill**: in a throwaway cluster, shorten cert validity (or use `faketime`/clock jump on a lab VM), watch failures; renew with `kubeadm certs renew all`, restart static pods, restore kubeconfigs; add Prometheus alerts for expiry.
@@ -448,8 +468,6 @@ Rollout approach: policy-as-code in Git with tests (4.13, 4.26), `Audit`/`warn` 
 11. **Image verification**: sign an image with cosign (keyless or key), enforce verification with Kyverno `verifyImages`, test a tampered/unsigned image; add digest mutation.
 12. **Break-glass drill**: block the cluster with a bad webhook; recover via deleting the webhook configuration; write the runbook.
 13. **Clean up**.
-
-Mark tested only after execution.
 
 ## 9. Common mistakes
 
@@ -466,66 +484,205 @@ Mark tested only after execution.
 
 ## 10. Interview angles
 
-- "What certificates exist in a kubeadm cluster? What expires and when? How do you renew?" 
-- "How do kubelets get certificates? What is TLS bootstrapping and why aren't serving CSRs auto-approved?" 
-- "Why can't Kubernetes revoke client certificates? What do you do after a leak?" 
-- "Explain admission control: mutating vs validating, webhooks vs ValidatingAdmissionPolicy. What can go wrong with webhooks?" 
-- "What are the Pod Security Standards? How do you roll them out in a cluster with GPU operators?" 
-- "Kyverno vs OPA Gatekeeper vs VAP: how do you choose?" 
-- "How would you enforce that only signed images from your registry run in training namespaces?" 
-- "Describe a guardrail set for a multi-tenant GPU cluster." 
+- "What certificates exist in a kubeadm cluster? What expires and when? How do you renew?"
+- "How do kubelets get certificates? What is TLS bootstrapping and why aren't serving CSRs auto-approved?"
+- "Why can't Kubernetes revoke client certificates? What do you do after a leak?"
+- "Explain admission control: mutating vs validating, webhooks vs ValidatingAdmissionPolicy. What can go wrong with webhooks?"
+- "What are the Pod Security Standards? How do you roll them out in a cluster with GPU operators?"
+- "Kyverno vs OPA Gatekeeper vs VAP: how do you choose?"
+- "How would you enforce that only signed images from your registry run in training namespaces?"
+- "Describe a guardrail set for a multi-tenant GPU cluster."
 
-## 11. Checkpoint questions (40)
+## Exercises
 
-1. Leaf cert default validity? **A:** 1 year.
-2. CA default validity? **A:** 10 years.
-3. Check expiry command? **A:** `kubeadm certs check-expiration`.
-4. Renew command? **A:** `kubeadm certs renew all`.
-5. Does `kubeadm upgrade` renew certs? **A:** Yes (by default).
-6. Three CAs in kubeadm? **A:** Cluster, etcd, front-proxy.
-7. What signs SA tokens? **A:** `sa.key`.
-8. Kubelet client cert CN? **A:** `system:node:<name>`.
-9. Which CSR needs manual approval? **A:** Kubelet serving.
-10. Bootstrap token group? **A:** `system:bootstrappers`.
-11. CSR API group? **A:** `certificates.k8s.io/v1`.
-12. Client cert signer name? **A:** `kubernetes.io/kube-apiserver-client`.
-13. Revoke certs? **A:** Not supported by API server.
-14. cert-manager injects CA where? **A:** Webhook/APIService caBundle.
-15. OIDC flags? **A:** `--oidc-issuer-url`, client-id, username/groups claims.
-16. Why prefix OIDC names? **A:** Avoid collisions with system identities.
-17. Admission phases? **A:** Mutating, schema validation, validating.
-18. Built-in quota admission? **A:** ResourceQuota.
-19. Webhook `failurePolicy` values? **A:** Fail, Ignore.
-20. Webhook timeout max? **A:** 30 s.
-21. Why exclude kube-system? **A:** Avoid deadlocks/outages.
-22. VAP language? **A:** CEL.
-23. VAP actions? **A:** Deny, Warn, Audit.
-24. PSP replaced by? **A:** Pod Security Admission.
-25. PSA labels modes? **A:** enforce, audit, warn.
-26. Profiles? **A:** privileged, baseline, restricted.
-27. Restricted requires? **A:** runAsNonRoot, drop ALL caps, seccomp, no privilege escalation.
-28. GPU system namespaces profile? **A:** Privileged (exceptions).
-29. Kyverno policy languages? **A:** YAML patterns/CEL/JMESPath.
-30. Kyverno generate use? **A:** Create default resources per namespace.
-31. Kyverno verifyImages does? **A:** Verify signatures/attestations.
-32. In OPA Gatekeeper, what resource syncs cluster objects into `data.inventory`, what `enforcementAction` values exist on a `Constraint`, and what CRD mutates fields like `imagePullPolicy: Always`? **A:** `Config` (`config.gatekeeper.sh/v1alpha1`) syncs objects into `data.inventory`; `enforcementAction` accepts `deny`, `dryrun`, and `warn`; `Assign` (`mutations.gatekeeper.sh/v1alpha1`) mutates fields.
-33. Policy test tool? **A:** `kyverno test`, Conftest.
-34. mutating before validating? **A:** Yes.
-35. Reinvocation policy purpose? **A:** Re-run mutators after others change the object.
-36. Audit-mode policy reports? **A:** PolicyReport CRs.
-37. Break-glass for bad webhook? **A:** Delete its configuration.
-38. mTLS rotation tool? **A:** cert-manager/mesh CA.
-39. What distributes CA bundles? **A:** trust-manager.
-40. Runtime detection tool? **A:** Falco/Tetragon.
+1. **The Kubernetes PKI Hierarchy (`/etc/kubernetes/pki`), Certificate Renewal, and the `certificates.k8s.io/v1` CSR API (`PK` Chapter 10):** Map the three CAs (`ca.crt`, `etcd/ca.crt`, `front-proxy-ca.crt`), the ServiceAccount keypair (`sa.key`/`sa.pub`), and every leaf certificate in Section 1, explain how `kubelet` client vs serving TLS bootstrapping works (`serverTLSBootstrap`), and explain why X.509 client certificates cannot be revoked individually in Kubernetes.
+2. **Identity Federation: OIDC, `kube2iam`/`kiam` vs. `IRSA`, and Cross-Platform `SPIFFE`/`SPIRE` Attestation (`PK` Chapter 10):** Using `match_spire_workload_entry()` in `code/part05/pki_admission_policy_eval.py`, explain the architectural security flaws of `kube2iam` and `kiam` (`spec.nodeName` scheduler bypass) compared to OIDC-based `IRSA` (`sts:AssumeRoleWithWebIdentity`), and trace the two-stage `SPIFFE`/`SPIRE` node (`k8s_psat`) and workload (`unix:///run/spire/sockets/agent.sock`) attestation flow.
+3. **Admission Control Pipeline: Built-In Controllers (`NamespaceLifecycle`), Custom `controller-runtime` Webhooks (`PatchResponseFromRaw`), and `ValidatingAdmissionPolicy` (`CEL`, `PK` Chapter 8):** Using `evaluate_vap_and_gatekeeper_policies()` in `code/part05/pki_admission_policy_eval.py`, trace `ValidatingAdmissionPolicy/gpu-request-limits` and `ValidatingAdmissionPolicyBinding/gpu-request-limits-prod` in Section 3, and compare custom `controller-runtime` webhooks (`Handle(ctx, req)`, `PatchResponseFromRaw`, `+kubebuilder:webhook`) with in-process CEL policies.
+4. **Pod Security Standards (`privileged`, `baseline`, `restricted`), `amicontained`, `RuntimeClass`, and `kube-bench` (`KUR` Chapter 19):** Using `evaluate_pod_security_standard()` in `code/part05/pki_admission_policy_eval.py`, compare the three Pod Security profiles, show how `kubectl label --dry-run=server --overwrite ns --all pod-security.kubernetes.io/enforce=baseline` previews violations across a live cluster, and explain how to handle `privileged` exceptions for the `gpu-operator` namespace and `IPC_LOCK` for RDMA training pods.
+5. **Policy Engines: `Kyverno` (`validate`, `mutate`, `generate`, `verifyImages`) vs. `OPA Gatekeeper` (`Config` `data.inventory`, `ConstraintTemplate`, `Constraint`, `Assign`, `KUR` Ch. 20 & `PK` Ch. 8):** Compare the Kyverno `ClusterPolicy` manifests (`require-queue-and-limits`, `default-namespace-guardrails` with Cosign keyless `verifyImages`) and the OPA Gatekeeper manifests (`Config` syncing `Namespace`/`Pod`/`Ingress` into `data.inventory`, `K8sAllowedRepos` with `enforcementAction: dryrun`, and `Assign` mutating `imagePullPolicy: Always`).
+6. **Designing a 15-Point Multi-Tenant GPU Cluster Guardrail Set and Troubleshooting PKI/Admission Outages:** Combine PSA, VAP, Kyverno/Gatekeeper, and RBAC to enforce the 15 guardrails in Section 6, and diagnose three classic incidents from Section 7: (a) expired webhook `caBundle`, (b) `kubectl logs` failing after enabling `serverTLSBootstrap`, and (c) invalid ServiceAccount tokens after rotating `sa.key`.
 
-## 12. Sources and review notes
+## Checkpoint questions (20)
 
-**Written in original words.** Principal sources:
+<details>
+<summary>1. What are the three Root Certificate Authorities (`CA`s) and the non-CA keypair created by `kubeadm` in `/etc/kubernetes/pki`, and why are they separated into three trust domains?</summary>
 
-- Josh Rosso et al., *Production Kubernetes* (`production-kubernetes`, Chapter 8: `8. Admission Control` and Chapter 10: `10. Identity` — both read in full for Gatekeeper `Config` `data.inventory` sync and `ConstraintTemplate`/`Constraint` examples, `kube2iam`/`kiam` `spec.nodeName` bypass vs `IRSA` `sts:AssumeRoleWithWebIdentity`, and `SPIFFE`/`SPIRE` node/workload attestation with `spire-server entry create`).
-- Brendan Burns et al., *Kubernetes: Up and Running* (`kubernetes-up-and-running-3rd-edition`, 3rd edition; Chapter 19 and Chapter 20: `20. Policy and Governance for Kubernetes Clusters` — read in full for Gatekeeper `K8sAllowedRepos`, `enforcementAction: dryrun` audit status, `Assign` `mutations.gatekeeper.sh/v1alpha1` setting `imagePullPolicy: Always`, `K8sUniqueIngressHost` `data.inventory` replication, and Gatekeeper Prometheus metrics).
-- The author's `nvidia-devops` repository, volume 03 (networking, security and operations masterclass: multi-tenant RBAC, Kyverno guardrails, mutating GPU tolerations).
-- Kubernetes documentation (PKI, TLS bootstrapping, CSR API, admission controllers, ValidatingAdmissionPolicy, Pod Security Admission), Kyverno, OPA Gatekeeper, cert-manager, Sigstore/cosign documentation.
-- Examples are the author's constructions.
+1. **Cluster CA (`ca.crt` / `ca.key`, 10-year validity):** Signs `kube-apiserver` serving certs, `apiserver-kubelet-client`, `kubelet` client/serving certs, `controller-manager`/`scheduler` client certs, and `admin.conf`.
+2. **etcd CA (`etcd/ca.crt` / `etcd/ca.key`, 10-year validity):** Dedicated strictly to mutual TLS between `etcd` peers (`etcd/peer.crt`), `etcd` server (`etcd/server.crt`), and `kube-apiserver`'s etcd client (`apiserver-etcd-client.crt`). Separating `etcd` into its own CA ensures that a valid Kubernetes user/kubelet client certificate signed by the Cluster CA **cannot connect directly to `etcd:2379`**.
+3. **Front-Proxy CA (`front-proxy-ca.crt` / `front-proxy-ca.key`, 10-year validity):** Dedicated to mutual TLS between `kube-apiserver` (`front-proxy-client.crt`) and aggregated API servers (`metrics-server`, custom `APIService`s) so normal user client certs cannot spoof `X-Remote-User` identity headers to aggregated APIs.
+4. **ServiceAccount signing keypair (`sa.key` / `sa.pub`):** RSA/ECDSA keypair (not an X.509 CA) used by `kube-controller-manager` / `kube-apiserver` to sign and verify ServiceAccount JWT tokens.
+</details>
 
-**Flagged for verification before publishing:** ValidatingAdmissionPolicy/MutatingAdmissionPolicy version and feature status, structured AuthenticationConfiguration schema, Kyverno policy schema (`failureAction` placement changed across releases), kubelet-csr-approver availability, cert default durations, and every manifest/command; all labs are **untested**.
+<details>
+<summary>2. How do you rotate the ServiceAccount signing key (`sa.key` / `sa.pub`) without invalidating all currently running Pods' tokens?</summary>
+
+`kube-apiserver` accepts **`--service-account-key-file` multiple times** (for public-key verification), while `--service-account-signing-key-file` (and `kube-controller-manager`'s `--service-account-private-key-file`) specifies the single private key used to sign *new* tokens:
+1. Generate `sa-new.key` and `sa-new.pub`.
+2. Add `--service-account-key-file=/etc/kubernetes/pki/sa-new.pub` **alongside** the existing `sa.pub` on all `kube-apiserver` instances and restart them (so all API servers trust both old and new signatures).
+3. Switch `--service-account-signing-key-file` to `sa-new.key` (and `sa-new.pub` as first verifier).
+4. Wait until all bound tokens signed by the old key have rotated (e.g., > 24 hours; delete any legacy token Secrets if present), then remove the old `sa.pub`.
+</details>
+
+<details>
+<summary>3. Why does `kube-controller-manager` automatically approve `kubelet` CLIENT certificate CSRs (`kubernetes.io/kube-apiserver-client-kubelet`), but does NOT auto-approve `kubelet` SERVING certificate CSRs (`kubernetes.io/kubelet-serving`)?</summary>
+
+- **Client CSR (`kube-apiserver-client-kubelet`):** Only allows the node to authenticate *as a client* (`system:node:<name>`), restricted by the `Node` authorizer and `NodeRestriction` admission plugin.
+- **Serving CSR (`kubelet-serving`, requested when `serverTLSBootstrap: true` is set):** Contains **IP addresses and DNS Subject Alternative Names (`SAN`s)** that `kube-apiserver` will trust when connecting to `:10250/exec` and `/logs`. If `kube-controller-manager` blindly auto-approved any serving CSR without verifying that the requesting node actually owns the IP addresses and DNS names listed in the CSR's SANs, a compromised worker node could request a serving cert with another node's (or an internal service's) IP/DNS SAN and perform a Man-in-the-Middle attack. Use **`kubelet-csr-approver`** to validate node IP/hostname ownership before approving serving CSRs.
+</details>
+
+<details>
+<summary>4. When issuing a user X.509 client certificate via the `certificates.k8s.io/v1` `CertificateSigningRequest` API (`PK` Chapter 10), how are the Kubernetes `Username` and `Groups` encoded in the certificate?</summary>
+
+In Kubernetes X.509 client certificate authentication:
+- The certificate Subject's **Common Name (`CN`)** becomes the Kubernetes **Username** (e.g., `/CN=jane` -> user `jane`).
+- Each **Organization (`O`)** field in the Subject becomes a Kubernetes **Group** membership (e.g., `/CN=jane/O=team-a-researchers/O=ml-platform` -> groups `team-a-researchers` and `ml-platform`). Never set `O=system:masters` on a user certificate, as `system:masters` bypasses RBAC completely.
+</details>
+
+<details>
+<summary>5. Why should you configure `--oidc-username-prefix=oidc:` and `--oidc-groups-prefix=oidc:` on `kube-apiserver` (or in `AuthenticationConfiguration`)?</summary>
+
+Without a prefix, if an OIDC Identity Provider allows a user or group claim with a name like `system:admin`, `system:node:w1`, or `system:masters` (or collides with a local certificate identity), the OIDC user could impersonate a privileged Kubernetes system identity or group. Prefixing all OIDC usernames and groups with **`oidc:`** (`oidc:jane@example.com`, `oidc:team-a`) guarantees complete namespace separation between external IdP claims and internal `system:*` identities.
+</details>
+
+<details>
+<summary>6. In *Production Kubernetes* Chapter 10, what are the security vulnerabilities of `kube2iam` and `kiam`, and how does `IRSA` (`IAM Roles for Service Accounts`) fix them?</summary>
+
+- **`kube2iam` flaw:** Runs on every worker node and requires the worker node's EC2 IAM instance profile to have permission to assume **every IAM role used by any Pod on the cluster**; a container breakout or proxy bypass on one node compromises all roles.
+- **`kiam` flaw:** Concentrates IAM role assumption on dedicated `kiam-server` nodes, **but if a user submits a Pod with `spec.nodeName` set to a server node** (bypassing `kube-scheduler`) or races the agent's IP-to-Pod cache at container startup, the Pod can hit `169.254.169.254` and assume unauthorized roles.
+- **`IRSA` fix:** Eliminates metadata proxying entirely. A mutating webhook injects a short-lived, audience-bound **Projected ServiceAccount Token (`PSAT`)** (`audience: sts.amazonaws.com`) and sets `AWS_ROLE_ARN` + `AWS_WEB_IDENTITY_TOKEN_FILE`. The AWS SDK calls **`sts:AssumeRoleWithWebIdentity`** directly, and AWS IAM cryptographically verifies the JWT signature against the cluster's OIDC `.well-known/openid-configuration` and `JWKS` keys.
+</details>
+
+<details>
+<summary>7. In `PK` Chapter 10, how does `SPIFFE`/`SPIRE` solve the "Secure Introduction" problem across bare-metal, VM, and Kubernetes clusters without storing initial secrets in containers?</summary>
+
+1. **Node Attestation (`spire-agent` -> `spire-server`):** Each node's `spire-agent` proves its identity to `spire-server` using platform-verifiable hardware/control-plane evidence (such as a Kubernetes Projected ServiceAccount Token via `k8s_psat`, AWS/GCP instance identity documents, or TPM hardware quotes).
+2. **Workload Attestation (over `unix:///run/spire/sockets/agent.sock`):** A container connects to the local Unix socket **with zero pre-shared secrets**. `spire-agent` inspects the caller's kernel PID (`SO_PEERCRED`), queries `kubelet` and `containerd` to verify the process's `k8s:ns`, `k8s:sa`, `k8s:pod-label`, and `k8s:container-image` (or binary SHA-256 hash), matches them against `spire-server` registration entries, and returns a short-lived **X.509-SVID** or **JWT-SVID** (`spiffe://production-trust-domain/service-a`).
+</details>
+
+<details>
+<summary>8. In `PK` Chapter 8, what does the built-in `NamespaceLifecycle` admission controller do?</summary>
+
+`NamespaceLifecycle` is a built-in ("in-tree") admission controller that enforces three critical invariants:
+1. **Rejects any `CREATE` request in a Namespace that is currently `Terminating`** (preventing new objects from being created while `kube-controller-manager` is trying to empty and delete the namespace).
+2. **Rejects any request for a Namespace that does not exist.**
+3. **Prevents deletion of the three system namespaces (`default`, `kube-system`, `kube-public`)** and ensures they exist.
+</details>
+
+<details>
+<summary>9. In `PK` Chapter 8, how does `controller-runtime`'s `admission.PatchResponseFromRaw(req.Object.Raw, marshaledObj)` simplify writing a Mutating Admission Webhook in Go?</summary>
+
+When writing a raw HTTP mutating webhook, you must manually construct and base64-encode an array of RFC 6902 `JSONPatch` operations (`[{"op": "add", "path": "/spec/...", "value": ...}]`), which is brittle and error-prone on nested structs or nil slices.
+With `controller-runtime`, your `Handle(ctx, req)` method simply unmarshals `req.Object.Raw` into a standard Go struct (`vm := &VSphereMachine{}`), modifies the Go struct fields normally (`vm.Spec.IPAddr = ip`), marshals `vm` back to JSON (`marshaledVM`), and calls **`admission.PatchResponseFromRaw(req.Object.Raw, marshaledVM)`**—which automatically diffs the two JSON byte slices and builds the exact `JSONPatch` `AdmissionResponse` for you.
+</details>
+
+<details>
+<summary>10. What are the advantages of `ValidatingAdmissionPolicy` (and `MutatingAdmissionPolicy`) using `CEL` over external Admission Webhooks?</summary>
+
+1. **Zero network hops & sub-millisecond latency:** CEL expressions are compiled and evaluated **in-process inside `kube-apiserver`**—no HTTPS serialization or round-trip to an external Pod.
+2. **Zero webhook availability / bootstrap deadlock risk:** Because there is no external webhook Deployment, a node drain, CNI blip, or expired webhook TLS certificate can never take down cluster API writes.
+3. **Parameterized reuse:** A single `ValidatingAdmissionPolicy` can be bound to different namespaces with different `ValidatingAdmissionPolicyBinding` parameter CRs and `validationActions` (`Warn`, `Audit`, `Deny`).
+</details>
+
+<details>
+<summary>11. What is `reinvocationPolicy: IfNeeded` on a `MutatingWebhookConfiguration`, and why is it needed?</summary>
+
+During the mutating admission phase, multiple mutating plugins/webhooks run in sequence. Suppose Mutator A (which adds a default `securityContext` or sidecar proxy to every container) runs **before** Mutator B (which injects a new monitoring sidecar container into `spec.containers`). Unless Mutator A runs a second time, the container injected by Mutator B will miss Mutator A's security defaults.
+Setting **`reinvocationPolicy: IfNeeded`** tells `kube-apiserver` to **re-invoke the mutating webhook one additional time** if any subsequent mutating plugin modified the object after its first run (which is why every mutating webhook **must be strictly idempotent**).
+</details>
+
+<details>
+<summary>12. Compare the three Pod Security Standards profiles (`privileged`, `baseline`, `restricted`), and explain how `Pod Security Admission` (`PSA`) is configured on a Namespace (`KUR` Chapter 19).</summary>
+
+- **Three cumulative profiles:**
+  1. **`privileged`:** Unrestricted (for trusted system DaemonSets like `gpu-operator`, `cilium`, `csi`).
+  2. **`baseline`:** Blocks known host escapes (`hostNetwork`, `hostPID`, `hostIPC`, `privileged: true`, `hostPath` volumes, unsafe `sysctls`, arbitrary `capabilities.add`) with minimal changes to standard app images.
+  3. **`restricted`:** Everything in `baseline` **plus** mandatory `runAsNonRoot: true`, `allowPrivilegeEscalation: false`, `capabilities.drop: ["ALL"]` (allowing only `NET_BIND_SERVICE`), `seccompProfile: RuntimeDefault`/`Localhost`, and restricted volume types.
+- **Namespace configuration via labels across 3 modes (`enforce`, `audit`, `warn`):**
+  ```yaml
+  pod-security.kubernetes.io/enforce: baseline
+  pod-security.kubernetes.io/enforce-version: latest
+  pod-security.kubernetes.io/audit: restricted
+  pod-security.kubernetes.io/warn: restricted
+  ```
+</details>
+
+<details>
+<summary>13. In *Kubernetes: Up and Running* Chapter 19, what single `kubectl` command previews which existing Pods across all namespaces would fail the `baseline` Pod Security Standard without actually enforcing it?</summary>
+
+Run a server-side dry-run label command across all namespaces:
+```bash
+kubectl label --dry-run=server --overwrite ns --all \
+  pod-security.kubernetes.io/enforce=baseline
+```
+`kube-apiserver`'s Pod Security Admission plugin evaluates every existing Pod in every namespace against `baseline` and prints a `Warning:` line listing the exact Pod names and violation reasons (`host namespaces, hostPath volumes`) while making zero changes to `etcd`.
+</details>
+
+<details>
+<summary>14. Why do GPU RDMA training Pods (`NCCL` over InfiniBand / RoCEv2) conflict with the `restricted` (and strict `baseline`) Pod Security Standard, and what is the clean way to handle it?</summary>
+
+GPUDirect RDMA requires pinning memory pages via **`capabilities.add: ["IPC_LOCK"]`**. However:
+- `restricted` forbids adding any capability other than `NET_BIND_SERVICE`.
+- `baseline` allows only the standard OCI default capability list (which does *not* include `IPC_LOCK`).
+Rather than setting the entire tenant training namespace to `privileged` (which would dangerously allow `hostPath: /` and `privileged: true`), keep `hostNetwork: false`, `privileged: false`, and `hostPath` forbidden via **Kyverno / Gatekeeper / `ValidatingAdmissionPolicy`** (or use a custom policy profile that permits `IPC_LOCK` while enforcing all other `baseline`/`restricted` controls).
+</details>
+
+<details>
+<summary>15. Compare `Kyverno` and `OPA Gatekeeper` across policy language, capabilities (`validate`, `mutate`, `generate`, `verifyImages`), and operational fit.</summary>
+
+| Dimension | Kyverno | OPA Gatekeeper |
+|---|---|---|
+| **Policy Language** | Native Kubernetes YAML patterns, JMESPath, and CEL (`ClusterPolicy` / `Policy`) | **Rego** inside `ConstraintTemplate` CRDs + parameterized `Constraint` CRDs |
+| **Validation & Audit** | Yes (`Enforce` / `Audit` + standard `PolicyReport` CRs) | Yes (`deny` / `dryrun` / `warn` + violations in `Constraint.status`) |
+| **Mutation** | Rich strategic-merge and JSONPatch (`mutate`) | Dedicated `Assign` / `AssignMetadata` CRDs (`mutations.gatekeeper.sh`) |
+| **Resource Generation** | **Yes (`generate`):** automatically creates default `NetworkPolicy`, `ResourceQuota`, `LimitRange`, or `RoleBinding` when a new `Namespace` is created | No native resource generator |
+| **Supply-Chain Image Verification** | **Built-in `verifyImages`** (Cosign keyless/keyed signatures, SLSA attestations, digest mutation) | Requires external data provider (`Ratify` / `Connaisseur`) |
+</details>
+
+<details>
+<summary>16. In *Production Kubernetes* Chapter 8 and *Kubernetes: Up and Running* Chapter 20, why does OPA Gatekeeper need a `Config` resource (`config.gatekeeper.sh/v1alpha1`) for policies like `K8sUniqueIngressHost` or `LimitNamespaceIngress`?</summary>
+
+By default, when `kube-apiserver` sends an `AdmissionReview` request to Gatekeeper, OPA only receives **`input.review.object`** (the single incoming object being created or updated). It has no visibility into other objects already in the cluster.
+Creating the `gatekeeper-system/config` `Config` resource with `spec.sync.syncOnly` (listing `Namespace`, `Pod`, `Ingress`) tells Gatekeeper to replicate those cluster resources into OPA's in-memory **`data.inventory`** cache—so a Rego policy can check whether another `Ingress` in `data.inventory.namespace` already uses the same hostname, or read an `allowed-ingress-pattern` annotation from `data.inventory.cluster.v1.Namespace`.
+</details>
+
+<details>
+<summary>17. In `KUR` Chapter 20, how do you safely roll out a new OPA Gatekeeper `Constraint` (`K8sAllowedRepos`) on a live production cluster without breaking existing deployments?</summary>
+
+1. Create the `ConstraintTemplate` (`k8sallowedrepos`) and apply the `Constraint` (`repo-is-kuar-demo`) with **`spec.enforcementAction: dryrun`** (or `warn`).
+2. Wait for the `gatekeeper-audit` controller to scan all existing resources in the cluster and populate **`status.totalViolations`** and **`status.violations`** on the `Constraint` (and export the `gatekeeper_violations` Prometheus metric).
+3. Work with application teams to remediate every violation listed in `status.violations` until `totalViolations: 0`.
+4. Switch `spec.enforcementAction` to **`deny`**.
+</details>
+
+<details>
+<summary>18. How does Kyverno's `verifyImages` rule with `mutateDigest: true` prevent the "Mutable Tag Time-of-Check to Time-of-Use (`TOCTOU`)" attack?</summary>
+
+If an admission controller verifies that the image tag `registry.example.com/ml/trainer:v1` has a valid Cosign signature at admission time, and leaves `image: registry.example.com/ml/trainer:v1` as a tag in the Pod spec, an attacker who compromises the registry 10 seconds later (or when the Pod reschedules onto another node tomorrow) can overwrite `:v1` with an unsigned malicious image that `kubelet` will pull.
+Setting **`mutateDigest: true`** in Kyverno's `verifyImages` rule **mutates `spec.containers[].image` during admission to pin the exact verified immutable SHA-256 digest** (`registry.example.com/ml/trainer:v1@sha256:4a8c...`), guaranteeing `kubelet` can only ever pull the exact signed bytes.
+</details>
+
+<details>
+<summary>19. How does `cert-manager`'s `cainjector` prevent `x509: certificate signed by unknown authority` errors on Admission Webhooks and `APIService`s?</summary>
+
+Every `ValidatingWebhookConfiguration`, `MutatingWebhookConfiguration`, and `APIService` contains a **`clientConfig.caBundle`** field holding the base64-encoded CA certificate that `kube-apiserver` must use to verify the webhook server's TLS certificate. When you annotate the webhook configuration with **`cert-manager.io/inject-ca-from: <namespace>/<certificate-name>`**, `cert-manager`'s `cainjector` controller automatically watches the generated TLS `Secret` and patches `caBundle` whenever the CA or self-signed certificate rotates.
+</details>
+
+<details>
+<summary>20. Why must every multi-tenant GPU cluster enforce an admission rule denying `spec.nodeName` on tenant-submitted Pods (`PK` Chapter 10)?</summary>
+
+When a Pod is created with **`spec.nodeName` already populated**, **`kube-apiserver` completely skips `kube-scheduler`** and binds the Pod directly to that node. A tenant who sets `spec.nodeName: gpu-node-01` bypasses:
+- All **Taints and Tolerations** (landing on dedicated control-plane, system, or other teams' reserved nodes, or `kiam` server nodes as shown in `PK` Chapter 10).
+- **Node Affinity / NodeSelector** rules.
+- **Kueue / Volcano** queue admission and `NodeResourcesFit` checks.
+Always deny user-specified `spec.nodeName` via a `ValidatingAdmissionPolicy`, Kyverno, or Gatekeeper rule.
+</details>
+
+## Sources and review notes
+
+- **Sources read in full:**
+  - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 8: Admission Control** (read in full: in-tree admission controllers `NamespaceLifecycle`, mutating vs validating webhooks, building a custom `controller-runtime` webhook with `Handle`, `PatchResponseFromRaw`, and `+kubebuilder:webhook` markers, and OPA Gatekeeper `Config` `data.inventory` replication, `ConstraintTemplate`, and `Constraint` `limit-namespace-ingress`) and **Chapter 10: Identity** (read in full: `admin.conf` client certs, X.509 `CertificateSigningRequest` flow and lack of CRL/OCSP revocation, OIDC authentication, `kube2iam` and `kiam` `spec.nodeName` vulnerabilities vs `IRSA` `sts:AssumeRoleWithWebIdentity`, Calico `Dikastes`, Cilium identity policies, and `SPIFFE`/`SPIRE` node/workload attestation with `spire-server entry create`).
+  - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 19: Securing Applications in Kubernetes** (read in full: `securityContext`, `amicontained` container capability/seccomp/AppArmor inspection, Pod Security Standards `privileged`/`baseline`/`restricted` and `--dry-run=server` cluster evaluation, `RuntimeClass` `firecracker`/`gvisor`, `automountServiceAccountToken: false`, `kube-bench` CIS benchmarks) and **Chapter 20: Policy and Governance for Kubernetes Clusters** (read in full: OPA Gatekeeper architecture, `K8sAllowedRepos` `ConstraintTemplate` and `Constraint` with `enforcementAction: dryrun`, `Assign` mutation setting `imagePullPolicy: Always`, `data.inventory` `K8sUniqueIngressHost`, and Gatekeeper Prometheus metrics).
+  - `nvidia-devops` (`volume-03/03-k8s-networking-security-ops-masterclass.md`): multi-tenant RBAC, Kyverno guardrails, and mutating GPU tolerations.
+- **Run here:** `python3 code/part05/pki_admission_policy_eval_lab.py` (3 passed, 0 failed).
+- **Explicitly labelled inferences:** The `evaluate_pod_security_standard`, `evaluate_vap_and_gatekeeper_policies`, and `match_spire_workload_entry` models in `code/part05/pki_admission_policy_eval.py` and the `gpu-request-limits` `ValidatingAdmissionPolicy`, `require-queue-and-limits` / `default-namespace-guardrails` Kyverno `ClusterPolicy`, and 15-point GPU guardrail table are the author's constructions synthesizing `PK` Chapters 8 & 10, `KUR` Chapters 19 & 20, and `volume-03/03` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, and 40).
+- **Not verified on live hardware:** Live `kubeadm certs`, `openssl`, `spire-server`, `kyverno`, `gatekeeper`, and `kube-bench` executions (`1`-year leaf certs, `10`-year CAs, `:10250`, `2048`-bit RSA, `expirationSeconds: 86400`, `timeoutSeconds <= 30` / `<= 10`, `100 ms` webhook latency, `variables.gpus <= 8`, `amicontained:v0.4.9`) are marked (`untested here`) where not executed by `pki_admission_policy_eval_lab.py`.
