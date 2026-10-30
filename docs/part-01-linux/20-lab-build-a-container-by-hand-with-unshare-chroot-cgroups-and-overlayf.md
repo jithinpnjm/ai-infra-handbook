@@ -22,13 +22,15 @@ lab_venue: "GCP / GKE"
 
 ## Why this lab
 
-Chapters 1.18 and 1.19 explained the parts. Here you assemble them into something that behaves like `docker run`, so that a container is never magic again. At the end you compare your hand-made container with a real one (`docker run` or `ctr run`) and see the same namespaces, cgroup and overlay mount. This is also the best preparation for interview questions such as "what happens when a pod starts?".
+Every engineer who runs containers eventually hits the moment where something odd happens and the only honest answer is "I don't know what Docker is actually doing". This lab removes that moment. Chapters 1.18 and 1.19 explained the parts one at a time. Here you pick them up and assemble them yourself, until you have something that behaves like `docker run`.
+
+At the end you place your hand-made container next to a real one, started with `docker run` or `ctr run`. You will see the same namespaces, the same cgroup and the same overlay mount. After that a container is never magic again, and you are ready for the classic interview question, "what happens when a pod starts?".
 
 Outcomes: build a root filesystem; give a process private PID, mount, UTS, IPC and network namespaces; change root with `pivot_root`; stack layers with OverlayFS; confine CPU, memory and PIDs with a cgroup; wire the network with a veth pair, bridge and NAT; drop privileges; then break and fix it on purpose.
 
 ## Safety
 
-Use a throwaway VM. Everything here needs root and touches mounts, network and cgroups. Never run it on a GPU production node. Keep a second SSH session open in case you lose networking. Work under `/lab`.
+Use a throwaway VM. Everything in this lab needs root, and it changes mounts, networking and cgroups. A mistake can cut your own SSH session, so keep a second one open as a lifeline. Never run this on a GPU production node. Do all the work under `/lab` so cleanup is one command at the end.
 
 ## Architecture of what we build
 
@@ -52,13 +54,13 @@ flowchart TB
 
 ## Step 0. Preconditions and local Python verification
 
-First, run the self-checking Python lab (`code/part01/build_container_hand_lab.py`) locally. It verifies the 6-stage `enter.sh` container assembly order, `pivot_root(2)` preconditions (`EINVAL` if `/` is shared or `merged` is not a mount point), the 4 minimal `/dev` character device nodes (`null` `1:3`, `zero` `1:5`, `urandom` `1:9`, `tty` `5:0`), `lab-ctr` cgroup limits (`0.5` CPU, `128 MiB`, `64` PIDs), and `veth` + `br-lab` + `MASQUERADE` connectivity.
+Before touching a VM, run the self-checking Python lab (`code/part01/build_container_hand_lab.py`) on your laptop. It is a quick way to learn what the later steps must get right. It verifies the 6-stage `enter.sh` container assembly order, `pivot_root(2)` preconditions (`EINVAL` if `/` is shared or `merged` is not a mount point), the 4 minimal `/dev` character device nodes (`null` `1:3`, `zero` `1:5`, `urandom` `1:9`, `tty` `5:0`), `lab-ctr` cgroup limits (`0.5` CPU, `128 MiB`, `64` PIDs), and `veth` + `br-lab` + `MASQUERADE` connectivity.
 
 ```bash
 python3 code/part01/build_container_hand_lab.py
 ```
 
-Next, on your disposable Ubuntu 22.04+ VM (all interactive VM commands below are `untested here`):
+Then move to your disposable Ubuntu 22.04+ VM. Every interactive command from here on is marked `untested here`, because it was not captured on live hardware. Run it, and record what you really see.
 
 ```bash
 sudo -i                                 # (untested here)
@@ -69,7 +71,7 @@ mkdir -p /lab && cd /lab                # (untested here)
 
 ## Step 1. Root filesystem
 
-Any minimal tree works. Two options:
+A container needs a filesystem to live in, and the smallest useful one is only a few megabytes. Any minimal tree will do. Here are two ways to get one.
 
 ```bash
 # Option A: Alpine mini root filesystem (check the current release URL and checksum first)
@@ -89,7 +91,7 @@ Verify checksums before trusting any download (flag: confirm the URL and version
 chroot base /bin/sh -c 'ls /; cat /etc/os-release; ps aux | head -3'
 ```
 
-You get a different filesystem but the host's hostname, network and processes (`ps` fails because `/proc` is absent; mount it and you see the whole host). Record what is shared. Note that a root process can escape a chroot; it is not isolation.
+Start with the oldest trick, because it shows exactly what is missing. After the `chroot`, you see a different filesystem, but everything else still belongs to the host: the hostname, the network and the processes. `ps` fails because `/proc` is absent. If you mount `/proc`, you see the whole host. Write down everything that is still shared. And remember that a root process can escape a chroot, so it is a convenience and not isolation.
 
 ## Step 3. Namespaces with unshare
 
@@ -104,11 +106,11 @@ mount | head
 exit
 ```
 
-Questions to answer in your notes: What PID is the shell? Which interfaces exist? Is the hostname change visible on the host? Why did `--mount-proc` need a path under the new root?
+Now the container starts to feel real. Before you leave this step, answer four questions in your notes. What PID does the shell have? Which network interfaces exist? Can the host see the hostname change? And why did `--mount-proc` need a path under the new root?
 
 ## Step 4. Layers with OverlayFS and a proper root switch
 
-Use a read-only base plus a writable layer so the base stays pristine, and swap root with `pivot_root` instead of `chroot`.
+Two problems remain. Every container would write into the same base directory, and `chroot` can be escaped. OverlayFS solves the first: a read-only base plus a private writable layer, so the base stays pristine. `pivot_root` solves the second, because it swaps the root and lets you detach the old one completely.
 
 ```bash
 mkdir -p upper work merged
@@ -138,11 +140,11 @@ chmod +x enter.sh
 unshare --pid --fork --mount --uts --ipc --net /lab/enter.sh
 ```
 
-Inside: `cat /proc/1/cmdline`, `mount | head`, `touch /newfile`, `rm /etc/hostname`. Exit and inspect on the host: `ls /lab/upper`, `ls -l /lab/upper/etc` (look for the whiteout character device), confirm `/lab/base` is untouched. Run two containers with separate `upper` and `work` directories on the same `base` to see layer sharing.
+Poke around inside with `cat /proc/1/cmdline`, `mount | head`, `touch /newfile` and `rm /etc/hostname`. Then exit and inspect from the host: `ls /lab/upper`, `ls -l /lab/upper/etc` (look for the whiteout character device), confirm `/lab/base` is untouched. Run two containers with separate `upper` and `work` directories on the same `base` to see layer sharing.
 
 ## Step 5. Put it in a cgroup (CPU, memory, PIDs)
 
-Create the group before entering and move the starting process into it so its children inherit membership.
+So far the container can see little, but it can still eat the whole machine. A cgroup puts a ceiling on it. The order matters: create the group first, then move the starting shell into it, so every child inherits the membership.
 
 ```bash
 echo "+cpu +memory +pids" > /sys/fs/cgroup/cgroup.subtree_control
@@ -166,7 +168,7 @@ On the host: `cat /sys/fs/cgroup/lab-ctr/{cpu.stat,memory.events,pids.current}` 
 
 ## Step 6. Networking
 
-Prepare the host side once, then give each container a veth pair. Because the container's network namespace is created by `unshare --net`, find it through the child's PID.
+A container with no network is a sealed box. Prepare the host side once with a bridge and NAT, then give each container one end of a veth pair. The container's network namespace is created by `unshare --net`, so you reach it through the child's PID.
 
 ```bash
 ip link add br-lab type bridge && ip addr add 10.77.0.1/24 dev br-lab && ip link set br-lab up
@@ -193,7 +195,7 @@ The `ctr.pid` value may be the PID inside the new PID namespace; if `nsenter` fa
 
 ## Step 7. Reduce privilege
 
-Containers drop most capabilities and filter system calls. Experiment with:
+Your container still runs as full root inside its namespaces, which is more power than any real workload needs. Real runtimes drop most capabilities and filter system calls. Try the same ideas yourself:
 
 ```bash
 capsh --print                                  # current bounding set (install libcap2-bin)
@@ -216,7 +218,7 @@ ip -br link | grep veth ; bridge link
 docker rm -f real
 ```
 
-Make a table: for each property (namespaces, cgroup limits, rootfs mount, veth/bridge, capabilities from `grep Cap /proc/$P/status`, seccomp from `grep Seccomp /proc/$P/status`) record what your hand-built container has and what Docker adds. Typical gaps: masked `/proc` paths, read-only `/sys`, default seccomp profile, capability drop list, a user-defined bridge with DNS, port publishing rules.
+Now comes the payoff. Make a table: for each property (namespaces, cgroup limits, rootfs mount, veth/bridge, capabilities from `grep Cap /proc/$P/status`, seccomp from `grep Seccomp /proc/$P/status`) record what your hand-built container has and what Docker adds. The typical gaps you will find are masked `/proc` paths, read-only `/sys`, default seccomp profile, capability drop list, a user-defined bridge with DNS, port publishing rules.
 
 ## Step 9. Break it on purpose
 
@@ -282,7 +284,7 @@ A process's PID cannot change after `fork()`, so `unshare --pid` only places *su
 <details>
 <summary>4. Why must `enter.sh` run `mount --make-rprivate /` before mounting container filesystems or calling `pivot_root`?</summary>
 
-`systemd` mounts `/` with `shared` propagation by default. Without `mount --make-rprivate /`, mounts performed inside the new mount namespace propagate back to the host's mount table, and the kernel rejects `pivot_root(2)` with `EINVAL` when the current root has shared propagation.
+`systemd` mounts `/` as `shared` by default. That means any mount you make in the new namespace leaks back into the host's mount table, and the kernel refuses `pivot_root(2)` with `EINVAL` while the current root is shared. Running `mount --make-rprivate /` first cuts the link, so your mounts stay private.
 </details>
 
 <details>
@@ -294,7 +296,7 @@ The `pivot_root(new_root, put_old)` system call requires `new_root` to be a moun
 <details>
 <summary>6. After `pivot_root . oldroot` and `cd /`, why do we run `umount -l /oldroot && rmdir /oldroot`?</summary>
 
-Unmounting `/oldroot` detaches the entire host root filesystem from the container's mount namespace so no process inside the container can access host files or escape back to the old root.
+After `pivot_root`, the old host root is still mounted at `/oldroot`, which would hand the container the whole host. Unmounting it detaches the host filesystem from the container's mount namespace, so nothing inside can reach host files or climb back to the old root.
 </details>
 
 <details>
@@ -324,7 +326,7 @@ Bind-mounting the host's `/dev` would expose raw host disks (`/dev/sda`, `/dev/n
 <details>
 <summary>11. Why does Step 5 write `echo $$ > /sys/fs/cgroup/lab-ctr/cgroup.procs` BEFORE `exec unshare ...`?</summary>
 
-Because `exec` replaces the current shell process image without changing its PID or cgroup membership, moving the shell's `$$` into `lab-ctr` first ensures that `unshare` and every child process it forks inside the container automatically inherit membership in `/sys/fs/cgroup/lab-ctr`.
+Think of it as putting the person in the room before the work starts. `exec` replaces the shell's program but keeps its PID and its cgroup. So if you move the shell's `$$` into `lab-ctr` first, then `unshare` and every process it forks inside the container are born into `/sys/fs/cgroup/lab-ctr`.
 </details>
 
 <details>
@@ -348,7 +350,7 @@ On the host: create bridge `br-lab` (`10.77.0.1/24`), create `vethh0`/`vethc0`, 
 <details>
 <summary>15. What happens in Step 9 when you make PID 1 a shell script without `exec` and send `SIGTERM` from the host?</summary>
 
-Because PID 1 in a PID namespace has no default signal handlers, `/bin/sh` ignores `SIGTERM` (whereas `SIGKILL` from the host kills it immediately). Using `exec` in `enter.sh` (`exec /bin/sh` or `exec python train.py`) ensures the target program itself becomes PID 1.
+PID 1 in a PID namespace gets no default signal handlers, so a plain `/bin/sh` simply ignores `SIGTERM`. Only `SIGKILL` from the host stops it. That is why `enter.sh` ends with `exec`: with `exec /bin/sh` or `exec python train.py`, the real program becomes PID 1 and can handle the signal itself.
 </details>
 
 <details>
