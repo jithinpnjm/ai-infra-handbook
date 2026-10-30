@@ -25,3 +25,4 @@ __pycache__/
 # EPUB build output
 /build-epub
 /tools/epub/node_modules
+planning/restore/backup/

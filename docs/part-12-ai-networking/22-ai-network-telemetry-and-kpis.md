@@ -68,6 +68,10 @@ This chapter connects two essential disciplines of AI fabric performance enginee
 
 Without standardized benchmarks, infrastructure teams cannot tell whether a faster training run came from a better switch fabric, lower numeric precision, or an easier dataset. Just as transportation evolved from walking and pack animals to stone wheels, wooden wheels, outer bands, and alloy rims, AI fabrics evolve across hardware generations. Each interconnect jump from 100G to 400G, 800G, and 1.6T moves larger parameter volumes with less friction. Repeatable Key Performance Indicators let operators separate genuine architectural gains from workload noise.
 
+The wheel story makes the point clearly. People first walked and carried goods themselves. Animals carried loads farther, but the weight and distance stayed limited. The first wheels were made of stone, and pulling carts on them took a lot of effort with little gain in speed. Wooden wheels were lighter, needed less effort to pull, and covered greater distance.
+
+Wooden wheels wore out quickly and gave a rough ride, so engineers added an outer band to absorb shock. That band began as leather, then changed to metal, then to rubber. It reduced the force needed to move, increased the distance covered, and improved the ride. Rims later moved from wood to metal to alloy, and rubber kept improving. AI fabrics follow the same pattern, so benchmarking each generation against the last one with the same yardstick is the only way to see real progress.
+
 In an AI data center, tracking basic server uptime and facility power is never enough. Every AI system combines two tightly coupled halves: the model and the data. Each half stresses the network fabric in a distinct way.
 
 | Component / KPI Dimension | Specific Indicators & Units | How Precision, Scale & Network Fabrics Interact |
@@ -150,6 +154,10 @@ Every MLPerf benchmark rests on the AI model tripod: a specific model, a standar
 | **Step 2: System Under Test (`SUT`) Setup** | Configure physical hardware (servers, GPUs, CPUs, NICs, switch fabric), software stack (OS, drivers, PyTorch/TensorFlow, collective libraries), and official MLPerf reference source code (model, data loaders, and `LoadGen`). | Requires verified clock synchronization (`PTP`/`NTP`), NUMA/rail pinning, and baseline fabric counter health before timing starts. |
 | **Step 3: Execution (`Training` vs `Inference LoadGen`)** | **Training:** End-to-end **time to train** from data loading until the target accuracy metric is reached. **Data Center Inference (`LoadGen`):** Dispatches queries in two scenarios—**`Offline`** (all queries delivered at once to measure maximum batch throughput in `samples/s` or `QPS`) and **`Server`** (queries streamed following a **Poisson distribution** to measure throughput in `QPS` under a strict tail-latency SLA, e.g., `p99 <= 15.0 ms`, where `14.2 ms` passes and `18.4 ms` fails). Both speed and accuracy validation runs are mandatory. | Poisson arrivals in the Server scenario create realistic bursty queuing; any fabric microburst or shared-VL head-of-line blocking (`p99` jumping from `1.8 ms` to `14.2 ms`) threatens the latency SLA. |
 | **Steps 4 & 5: Submission, Peer Review & Publication** | Full results, system configuration metadata, and **all source code** are submitted publicly, audited by peer member organizations for rule compliance, accuracy targets, and reproducibility, and published at `https://mlcommons.org`. | Public peer review prevents cherry-picked hero runs that skip data loading or relax convergence accuracy. |
+
+MLPerf gives the industry one set of rules for training, inference, and storage. It defines reference models, data sets, accuracy targets, and test harnesses. Those rules let teams compare hardware, software, and cloud services on equal terms. Peer review and public publication then add transparency to every result.
+
+The two divisions serve different readers. The closed division fixes the model, the data set, and the reference implementation, so a vendor comparison stays direct. The open division lets a team try a new model or training method, but the system must still reach the same quality target. Reproducibility holds both divisions together. Public code, fixed data sets, and checked accuracy let an outside team rerun a test and reach the same answer.
 
 ---
 
@@ -356,6 +364,10 @@ flowchart TB
 Operators often hope that tighter ECN watermarks or faster streaming telemetry intervals will cure chronic collective stalls on an under-provisioned cluster. Telemetry and minor runtime traffic engineering can never compensate for a fundamentally flawed network capacity plan. If a fabric was built with an undersized leaf-to-spine uplink ratio, static 5-tuple ECMP hashing, or sub-grade optics, telemetry only confirms the pain.
 
 When a 512-GPU pod uses a 2:1 oversubscribed leaf cut instead of a 32-port nonblocking leaf, cross-rack bandwidth drops nearly in half. AllReduce step time then doubles across the cluster. Similarly, static routing that pins elephant flows at a twenty-to-one uplink imbalance or failing optics will trigger constant ECN marks and pause storms. No threshold adjustment will eliminate those stalls until physical bisection bandwidth, load-balancing mode, and optical links are fixed.
+
+Benchmarking results also guide architecture and operations. They expose bottlenecks such as network congestion or storage latency. They show whether a design choice worked as planned. They also show where a hardware or software upgrade will pay off.
+
+Continuous benchmarking turns these results into routine decisions about scaling and tuning. Start with one benchmark that you can repeat, then compare every change against it.
 
 ---
 

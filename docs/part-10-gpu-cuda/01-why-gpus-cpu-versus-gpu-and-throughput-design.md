@@ -126,6 +126,38 @@ Third, Host Starvation occurs when the CPU cannot feed the accelerators fast eno
 
 ---
 
+### 1.4 The performance engineer's daily work
+
+An AI systems performance engineer commands top salaries, and the reason is clear. The work has a direct effect on the bottom line. The role blends expertise across hardware, software, and algorithms. Engineers need low-level operating system knowledge, memory hierarchies, networking fundamentals, and languages such as Python and C++. They also need frameworks such as PyTorch, OpenAI's Triton, and NVIDIA's CUDA.
+
+On any given day, the engineer might examine GPU kernel efficiency, tune OS thread scheduling, analyze memory access patterns, raise network throughput, or debug distributed training. The core duties are benchmarking, profiling, debugging, optimizing, scaling, and managing resources. Hardware, software, and algorithm specialties must be codesigned together. Their trade-offs need to be understood as a set.
+
+Benchmarking and profiling measure latency, throughput, memory usage, and other metrics under training and inference workloads. To find bottlenecks, combine NVIDIA Nsight Systems, NVIDIA Nsight Compute, and the PyTorch profiler. Automated performance tests should also run, so regressions are caught early in the development cycle.
+
+Debugging traces each problem to its root cause. That cause might be a suboptimal CUDA kernel, unnecessary communication overhead, or an imbalance in the training or inference workload. The fix might be the latest NVIDIA Transformer Engine for matrix operations on modern LLMs. It might be a higher degree of parallelism for an embarrassingly parallel inference workload. It might also be better memory management in attention, which moves less data in and out of GPU RAM.
+
+Even minor code tweaks can produce major wins. A Python preprocessing step can hold up an entire training pipeline. Reimplement that step in C++, or use NVIDIA cuPyNumeric, a drop-in NumPy replacement that spreads array work across CPUs and GPUs.
+
+Scaling from research to production is its own discipline. Moving from 8 GPUs to 80,000 GPUs should keep overhead low and efficiency high. That requires NVIDIA's Collective Communications Library (NCCL, pronounced "nickel") for all-reduce and other collectives in training. For distributed inference, the NVIDIA Inference Xfer Library (NIXL) moves data point to point across GPU memory and storage tiers. Optimize all-to-all and all-gather as well, since training and inference both use them heavily.
+
+Data placement across nodes uses data, tensor, and pipeline parallelism. A model too large for one GPU may need tensor or pipeline parallelism. A mixture-of-experts model can also use expert parallelism.
+
+Resource management is the next duty. A model uses CPU cores, GPU memory, interconnect bandwidth, and storage I/O. The engineer keeps GPUs fed with data at full throttle, pins threads to CPU cores, and reduces context-switch overhead. The engineer also avoids out-of-memory errors on GPUs. When a job does not need a full GPU, GPU virtualization such as NVIDIA's Multi-Instance GPU (MIG) partitions the device for better utilization.
+
+Cross-team collaboration is critical. Performance engineers work with researchers, data scientists, and application developers. They also work with networking and storage teams. Changing model code means coordinating with researchers. Deploying a new GPU driver means working with the infrastructure team. Updating the CUDA driver or CUDA version for bug fixes and efficiency involves DevOps, infrastructure, and support teams. The performance engineer sits at the intersection and speaks the language of AI, computer science, and systems engineering.
+
+Transparency matters too. In performance engineering, measure everything and trust data, not assumptions. Publishing your work lets others learn, reproduce, and build on your findings.
+
+This broad, deep understanding is rare. It is why AI systems performance engineers are so scarce today.
+
+### 1.5 Core competencies and tools of the role
+
+The book's first chapter starts by tracing how AI workloads moved from traditional computing to today's demands. That history shows why specialized performance engineering became necessary. The chapter then lists the core competencies. These include a deep understanding of hardware architectures, software optimization techniques, and system-level integration. Soft skills matter as well, including problem solving, communication, and collaboration.
+
+The practical side covers how engineers analyze system bottlenecks, implement optimization strategies, and keep AI systems scalable and reliable. Real-world scenarios show the challenges and fixes found in the field. Performance testing, monitoring, and benchmarking tools round out the toolkit. Each tool shows how to assess and improve a system.
+
+---
+
 ## 2. CPU latency design versus GPU throughput design
 
 Why can we not simply build a server CPU with 10,000 cores to run deep learning? The answer lies in how thermal physics forced processor architects to choose between minimizing the latency of one complex thread and maximizing the throughput of thousands of simple threads.
@@ -324,6 +356,14 @@ GB200 / GB300 NVL72 Rack Envelope & MLPerf v5.0 Gains (ASP Ch 1, V1 Ch 7):
   - MLPerf v5.0 (2025):     Up to 2.6x higher training throughput/GPU and 3.4x higher inference throughput/GPU vs Hopper
 ```
 
+The rack-scale story continues past Blackwell. Vera Rubin VR200 arrives in 2026, and Feynman follows in 2028. Both extend the idea of exascale supercomputers condensed into one data center rack. NVIDIA calls these NVL rack systems, such as NVL72, NVL144, and NVL576, "AI supercomputers in a rack." The label fits.
+
+Each NVL72 rack is a building block. Racks can be combined into ultrascale clusters that support multi-trillion-parameter models. Cloud providers such as AWS, Google Cloud Platform (GCP), Microsoft Azure, CoreWeave, and Lambda Labs can provision racks and rack clusters with a few clicks. Expect a real bill, though.
+
+The NVLink fabric inside the rack unifies all 72 GPUs into one high-speed cluster. Frameworks such as PyTorch for training and vLLM for inference can use that single domain for data, tensor, pipeline, and expert parallelism. CUDA Unified Memory can migrate pages or access them remotely over NVLink. Remote memory has distinct latency and bandwidth, so treat it as nonuniform.
+
+For managed allocations across Grace and Blackwell, prefer explicit prefetching. Use `cudaMemPrefetchAsync` and `cudaMemAdvise` to reduce page-fault stalls.
+
 ### 3.2 The precision cascade: trading bits for memory bandwidth and FLOPs
 
 Every step down in numerical precision cuts the bytes stored in HBM and moved across memory buses while multiplying Tensor Core math throughput.
@@ -414,9 +454,29 @@ Goodput Efficiency Formula & Production Benchmarks (ASP Ch 1 pp. 13-15):
 
 Raising cluster goodput by even 20 percentage points recovers millions of dollars in hardware and electricity without buying a single additional server.
 
+Meta's AI infrastructure team described the same gap in its "Revisiting Reliability" paper. That paper introduces the effective training time ratio. It shows that preemptions, hardware faults, and network congestion reduce realized training time, even when headline utilization looks high. In that analysis, the cluster looked fully utilized, yet 70% to 75% of its compute was lost to communication delays, suboptimal parallelization, data delays, and failure recovery.
+
+NVIDIA calls the theoretical hardware maximum the speed of light. You will see that phrase in NVIDIA blogs, documentation, webinars, and conference talks. In simple terms, goodput counts the useful work completed per unit time. That work might be tokens processed or inference requests completed. Everything that does not directly contribute to training or inference is discounted. Dividing by the cluster's maximum possible throughput gives a percent efficiency value.
+
+A simple case shows the idea. Take a training job that could process 1,000 samples per second on ideal hardware. A poor input pipeline and excessive synchronization hold it to 300 samples per second. That job runs at 30% goodput. The remaining 70% of capacity is essentially wasted.
+
+MLPerf results need careful reading. MLPerf cautions that per-GPU results are not a primary metric across platforms. Use system-level, end-to-end throughput as the correct basis for comparison. Treat per-GPU numbers as component-level indicators only.
+
+Investments in performance engineers return well above their cost. A performance engineer who helps lift cluster efficiency by 20% can cut hardware costs by millions of dollars in a large AI environment.
+
+Goodput beats raw FLOPS or device utilization because it measures what matters. It shows how much useful training you get per dollar of cost and per joule of power. It reflects how well hardware, software, and algorithms work together toward faster, cheaper model training.
+
+Improving goodput requires understanding how these layers interact. Hardware includes CPUs, GPUs, network topologies, memory hierarchies, and storage layouts. Software includes operating system configurations, paged memory, and I/O utilization. Algorithms include transformer variants, attention alternatives, and caching and batching strategies.
+
 ### 5.2 Mechanical sympathy, 100-trillion-parameter math, and the DeepSeek-V3 case study
 
 Coined by race-car driver Jackie Stewart and brought to computing by Martin Thompson, **mechanical sympathy** means designing software that works with the physical grain of the hardware. For example, standard self-attention materializes a large `N x N` attention matrix in off-chip HBM. **FlashAttention** tiles the attention math inside fast on-chip SRAM shared memory, cutting HBM reads and writes to deliver a **2x to 4x** speedup while shrinking memory footprint. Similarly, because transformer attention relies heavily on exponentials in `softmax`, NVIDIA expanded the **Special Function Units** inside modern SMs to accelerate transcendental math alongside the Tensor Cores.
+
+Real-world experience shows that even minor tweaks to GPU kernels or memory access patterns can produce outsized gains. FlashAttention is a classic example. It reimplements transformer attention in a hardware-aware way. It tiles GPU computation, which minimizes the reads and writes issued to GPU memory. That change shrinks attention, a major bottleneck, to a fraction of total runtime.
+
+Replacing default attention with FlashAttention gives a 2x to 4x speedup in training and inference for long sequences. It also reduces the overall memory footprint. FlashAttention became the default in many libraries almost overnight. Since then, many new attention algorithms have appeared, including DeepSeek's Multi-Head Latent Attention (MLA).
+
+NVIDIA's work on special-function throughput and fast-math pipelines follows the same codesign pattern. Those changes target attention bottlenecks directly, in close cooperation with the researchers and practitioners who run LLMs on the hardware. That is mechanical sympathy in its purest form.
 
 Why can we not rely on brute-force dense scaling forever? Using the dense transformer training heuristic `C = 6 x N x D`, consider the hardware required to train a hypothetical **100-trillion-parameter** dense model on **29 trillion** tokens.
 
@@ -428,6 +488,22 @@ Why can we not rely on brute-force dense scaling forever? Using the dense transf
   - NVIDIA B300 Sizing:     200,000 GB / 288 GB per B300 =   695 B300 GPUs (~86 to 87 8-GPU nodes)
   - Note: Excludes optimizer states, gradients, activations, and KV cache
 ```
+
+A 100-trillion-parameter model is an aspirational milestone for AI. People often compare it with the estimated 100 trillion synaptic connections in the human neocortex, treating each connection as one parameter. Building such a model is possible in theory. Doing it by brute force would be impractical for all but the wealthiest organizations.
+
+One prominent idea is sparsity, especially mixture-of-experts (MoE) models. Dense models, such as the GPT-series LLMs made popular by OpenAI, use their full network for every token. A MoE model routes each input token through only a subset of its many experts. FLOPs per token stay roughly constant as total parameters grow. Sparse models also tend to have lower request latency at inference, because fewer parameters are active.
+
+There is public speculation that some frontier models, including OpenAI's GPT-series and o-series reasoning models, use the MoE architecture. Sparse models show that multi-trillion-parameter scale does not need an equal explosion in computation. Google's Switch Transformer from 2021 is a 1.6-trillion-parameter MoE. It matched dense-model accuracy with a fraction of the computation. It trained 7x faster than a comparable dense approach.
+
+DeepSeek-V3 and DeepSeek-R1 are strong MoE examples. They hold about 680 billion total parameters, with about 37 billion active per input token. Each token uses 1 shared expert plus 8 selected experts. Those experts come from a pool of 256. That makes them far more resource-efficient than similarly sized dense LLMs.
+
+Memory is a second major bottleneck. A 100-trillion-parameter model needs about 200 TB of GPU memory just to load FP16 weights. That is 100 trillion parameters times 2 bytes each. The figure is roughly three orders of magnitude above the 180 GB of addressable HBM on one NVIDIA Blackwell B200.
+
+Loading only the weights takes about 1,110 B200 GPUs at 180 GB each. With 288 GB B300 GPUs, it takes about 695. Activations, optimizer states, KV cache, and serving workspace add more. A B200 node holds 8 GPUs, so loading the model takes about 125 GPU nodes. A cluster of B300 nodes, with 8 GPUs per node, takes about 86 nodes.
+
+Feeding data fast enough to keep such a model busy is also hard. Communication overhead grows as the model is split across 1,000 B200 GPUs or 700 B300 GPUs. One training run can consume millions of GPU-hours and megawatt-hours of energy. That cost is why the era of 100-trillion-parameter AI forces a redesign of system design. Hardware, algorithms, and software must coevolve.
+
+While the optimizations here also apply to smaller models, we will keep returning to the 100-trillion-parameter case. It shows that we cannot just throw hardware at the scaling problem. We need software and algorithmic innovation codesigned with compute, networking, memory, and storage.
 
 The **DeepSeek-V3 and DeepSeek-R1** training run demonstrates how mechanical sympathy and hardware-software co-design overcome severe hardware limits. Restricted from buying B200 or H100 GPUs at 900 GB/s NVLink, DeepSeek trained its 680-billion-parameter model on export-compliant **NVIDIA H800 GPUs** throttled to **400 GB/s** NVLink. Dense frontier training runs cost an estimated **$100M** for GPT-4 and **$191M** for Gemini Ultra. DeepSeek instead reported completing its run for under **$6M** in compute through five co-designed optimizations released during its February 2025 Open-Source Week.
 
@@ -483,6 +559,30 @@ Scale up processors per job when minimizing latency for one critical run. Scale 
 
 ---
 
+### 5.4 Why DeepSeek's export limits shaped its design
+
+In late 2024, DeepSeek.AI, a small startup in China, stunned the AI community. It trained a frontier large language model without access to the latest NVIDIA GPUs. Export restrictions blocked top-tier Blackwell and Hopper parts. Its engineers used export-compliant alternatives, including the NVIDIA H800. They also wrote custom kernels and used techniques such as model distillation to squeeze out performance.
+
+Despite those limits, DeepSeek trained DeepSeek-R1 to reasoning performance near leading frontier models. Those models were trained on the most capable chips of the time. The case shows that performance engineers can get the most from their hardware, whatever the constraints. DeepSeek treated communication bandwidth as a scarce resource. It optimized every byte on the wire and scaled out to thousands of constrained GPUs.
+
+Contrast that with the brute-force path of the largest frontier labs in the United States and Europe. Those labs keep building larger clusters for larger models. Model sizes grew from millions to billions, and now to trillions of parameters. Each 10x jump in scale unlocked new capabilities. It also brought enormous cost. Training GPT-4 in 2023 reportedly cost an estimated ~$100 million. Google's Gemini Ultra, in late 2023, is estimated at ~$191 million.
+
+DeepSeek claims its model was trained for less than $6 million in compute. That figure is an order of magnitude below GPT-4 and Gemini Ultra. Its performance on the benchmarks it reports is comparable to far more expensive closed-model systems. Doubt remains about the $6 million number. It may cover only a single training run, and it may exclude experimentation and the model-development pipeline.
+
+The announcement briefly shocked US financial markets. NVIDIA's stock dropped ~17% in a single day, on fears that efficiency gains would need less NVIDIA hardware. That reaction was somewhat overblown, and the stock recovered in later sessions. It still shows how an efficiency breakthrough can move global markets.
+
+DeepSeek also reports large inference efficiency gains. They come from hardware-aware changes to the transformer architecture behind most frontier LLMs. The rest of this book covers these optimizations.
+
+At these scales, every bit of squeezed performance can mean millions or billions of dollars saved. Each removed bottleneck has an outsized effect on training throughput and inference latency. That lowers cost and makes end users happier. AI systems performance engineering is not only about speed. It makes the previously impossible both possible and affordable.
+
+DeepSeek delivered GPT-4-level model performance for millions of dollars less. It did this by extracting every ounce of performance from the H800, even with reduced communication bandwidth. It also saved money by needing less human-labeled data for R1's reasoning fine-tuning.
+
+DeepSeek built DeepSeek-R1 on top of the V3 base. R1 is a reasoning model, designed much like OpenAI's o1 and o3 series. Its staged pipeline uses cold-start data, supervised fine-tuning (SFT), rejection sampling, and reinforcement learning (RL). DeepSeek-R1-Zero took a different path. It emphasized RL over SFT, used minimal supervised data, and trained with RL on chain-of-thought reasoning data. That approach cut training cost and time.
+
+The lessons are clear. Large, sparsely activated MoE models can scale even on limited memory and compute budgets. Novel training schedules and low-level communication and computation overlap can overcome hardware limits. The return on investment was large. Smart software and algorithm design overcame brute-force hardware limits, which let DeepSeek build large-scale models on a tight budget.
+
+---
+
 ## 6. From one GPU to the full-stack AI factory
 
 A fast GPU cannot deliver high goodput in isolation. Network packet drops, partial rank launches, missing `/dev/nvidia*` container access, or tripped rack circuit breakers will leave the SMs idle.
@@ -517,6 +617,48 @@ To orient you for the rest of Part 10 and Parts 11 through 17, four infrastructu
 | **2. Compilation & Serving Stack** | `TensorRT-LLM`, `Triton`, `NIM`, `NVAIE` | `TensorRT-LLM` fuses layers into FP8 and FP4 engines; `Triton` provides HTTP/gRPC endpoints and continuous batching; `NIM` packages everything under `NVAIE` enterprise SLAs and CVE patching (Chapters 15.5–15.7, 16.12). |
 | **3. Provisioning & Orchestration** | `BCM`, `Kubernetes + GPU Operator`, `Slurm` | `BCM` boots golden PXE images and runs `dcgmi diag` and `nccl-tests` pre-flight gates (Part 8). `GPU Operator` manages K8s driver/device/DCGM/MIG DaemonSets for inference (Chapters 11.1–11.5). `Slurm` (`slurmctld`/`slurmd` with Enroot/Pyxis) or K8s `KAI Scheduler`, `Kueue`, and `Volcano` provide **gang scheduling** so multi-node jobs never deadlock waiting on partial pods (Chapters 11.7–11.20). |
 | **4. Sharing & Facility Envelopes** | `MIG`, `vGPU`, `RDHx`, `DLC` | `MIG` partitions one GPU in hardware into up to **7** isolated instances for K8s pods, while `vGPU` shares GPUs across VMware or KVM hypervisors (Chapters 11.23–11.26). Legacy racks supply **5–15 kW** air cooling, whereas 4x DGX H100s (**>40 kW**), 8x DGX H100s (**~85 kW**, **>1,000 lbs**), and NVL72 racks (**120–132 kW**) require Rear Door Heat Exchangers or Direct Liquid Cooling (Chapters 6.30, 9.11). |
+
+---
+
+### 6.1 Where the rest of the book goes
+
+The book follows one path. It starts with hardware fundamentals, moves up through the software stack, and ends with algorithmic techniques. Each stage includes hands-on analysis. The goal is to optimize 100-trillion-parameter AI systems, so every layer gets examined.
+
+Chapter 2 covers NVIDIA AI system hardware in depth. That includes the GB200 and GB300 NVL72 rack, which combines Grace Blackwell Superchip design with the NVLink network. Chapters 3 through 5 cover OS, networking, and storage optimizations for GPU systems. They explain CPU and memory pinning, Docker and Kubernetes, and network and storage setup for GPU environments.
+
+Chapters 6 through 12 teach CUDA programming and kernel optimization. These skills are needed to build hardware-aware algorithms such as FlashAttention and DeepSeek's MLA. Those algorithms target attention, the resource-heavy part of the transformer that dominates generative AI. The book then moves to distributed communication. It shows how to minimize communication and overlap computation with it, a pattern that applies across the whole stack.
+
+Chapters 13 and 14 cover PyTorch-specific optimization. They explain the PyTorch compiler stack and OpenAI's Python-based Triton language for custom GPU kernels. Triton lowers the barrier, because it does not require deep C++ knowledge. These chapters also cover parallelism: data (DP), fully sharded data (FSDP), tensor (TP), pipeline (PP), context (CP), and mixture-of-experts (MoE). They close with memory techniques such as activation checkpointing, sharding optimizer states, and offloading to CPU memory.
+
+Chapters 15 through 19 focus on inference and agentic AI. The central pattern is disaggregated prefill and decode. NVIDIA Dynamo supports it, with KV cache movement over UCX with GPUDirect RDMA, NCCL point-to-point, or framework transports. The book also covers the serving engines vLLM, SGLang, and NVIDIA TensorRT LLM. The Dynamo framework integrates with those engines and uses NIXL for low-latency KV cache transfer. Other topics include the Grace CPU for preprocessing, draft models for speculative decoding, and request routing and batching. Compression methods include 4-bit quantization, knowledge distillation, sparsity and pruning, and specialized TensorRT kernels. Adaptive runtime tuning appears throughout.
+
+Chapter 20 covers AI-assisted tools for kernel and system optimization. It includes case studies on training and serving multi-billion- and multi-trillion-parameter models. It also covers self-improving optimization and agents. The appendix gives a checklist of common performance and cost-saving tips.
+
+Throughout the book, each generation's gains in compute, memory, networking, and storage add to AI scaling. Those gains show up as ultrascale clusters, multi-trillion-parameter models, high-throughput training, and extreme-low-latency inference servers.
+
+### 6.2 Key takeaways and the closing argument
+
+These qualities define the performance engineer's role. The role merges deep technical knowledge with strategic, profile-driven optimization. It turns raw hardware into cost-effective, high-performance AI.
+
+**Measure goodput.** Look beyond raw FLOPS or utilization. Measure how much of the GPU's time goes to useful work, such as forward and backward computation, versus waiting on data or other overhead. Use Nsight Systems, Nsight Compute, or the PyTorch profiler to measure that ratio, and push it up.
+
+**Prefer skillful engineering over brute-force spending.** More hardware is not a silver bullet. Clever software and system work can close gaps when hardware is limited. DeepSeek trained a model that matched far more powerful hardware by optimizing communication and hardware use. It did so on H800 GPUs with limited interconnect bandwidth, at a fraction of the cost. Skillful engineering beat brute-force spending.
+
+**Look for order-of-magnitude impact with incremental optimizations.** At scale, a small percentage gain can save millions of dollars. Small inefficiencies, such as redundant computation and slow data pipelines, quietly raise cost as a system grows.
+
+**Approach tuning with a profile-driven mindset.** Let data and profilers find the true bottleneck. It may be compute utilization, memory bandwidth, memory latency, cache misses, or communication delays. Then apply targeted optimization to that bottleneck.
+
+**Maintain a holistic view.** Performance spans the GPU, CPU, memory, network, algorithms, and libraries. A weak link in any layer can bottleneck the whole system. Sometimes an algorithm change relieves a hardware limit. Sometimes a new hardware feature enables a new algorithm.
+
+**Stay informed on the latest hardware, software, and algorithms.** Unified CPU-GPU memory, faster interconnects, and new numerical precision formats can change the best strategy. Keep your mental models current so you can remove bottlenecks quickly. The MLPerf benchmark suites are a good resource for hardware performance across models.
+
+The conclusion is simple. At large scale, optimization is not optional. It separates a system that works from one that is impractical. Traditional approaches in hardware or algorithms break down at this scale, so we need advanced hardware and smart software together. AI models push physical resource limits, and hardware races to keep up. Performance engineers make sure that expensive machinery delivers results.
+
+Throwing money and hardware at the problem is not enough. We must co-optimize model architectures, algorithms, hardware, and system design together. The performance engineer's job spans many disciplines. You may profile a GPU one day, study network topology the next, and analyze algorithmic complexity after that. The role suits a full-stack performance enthusiast who wants every bit of performance from hardware and software.
+
+The mantra for this role is mechanical sympathy. Understand the machinery, both hardware and software, so you can tailor solutions that use the whole stack. This book is a study in that idea. New hardware features and constraints inspire new software. New algorithms encourage new hardware.
+
+A 100-trillion-parameter model stays beyond today's hardware. Even an exascale system would need several millennia of GPU time for one training run. That is impractical. It is why advanced hardware and clever software optimizations are both needed. The following chapters break an AI system into processors, memory, interconnects, and frameworks, and show how to optimize each part on principle.
 
 ---
 

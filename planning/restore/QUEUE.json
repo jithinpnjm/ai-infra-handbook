@@ -1,0 +1,1922 @@
+[
+ {
+  "book": "ai-data-center-network-design-and-technologies",
+  "book_chapter": "1. Wonders in the Workload",
+  "prefix": "1. ",
+  "pct": 41,
+  "labels": [
+   "12.1",
+   "12.2"
+  ],
+  "primary": "docs/part-12-ai-networking/01-ai-traffic-collectives-incast-and-elephant-flows.md",
+  "files": [
+   "docs/part-12-ai-networking/01-ai-traffic-collectives-incast-and-elephant-flows.md",
+   "docs/part-12-ai-networking/02-rdma-fundamentals-verbs-queue-pairs-and-memory-registration.md"
+  ],
+  "id": "U103"
+ },
+ {
+  "book": "ai-data-center-network-design-and-technologies",
+  "book_chapter": "3. Network Design Considerations",
+  "prefix": "3. ",
+  "pct": 34,
+  "labels": [
+   "2.18",
+   "9.9",
+   "12.13"
+  ],
+  "primary": "docs/part-02-networking/18-data-center-topologies-clos-leaf-spine-oversubscription-failure-domain.md",
+  "files": [
+   "docs/part-02-networking/18-data-center-topologies-clos-leaf-spine-oversubscription-failure-domain.md",
+   "docs/part-09-nvidia-systems/09-compute-storage-in-band-and-out-of-band-networks-in-a-superpod.md",
+   "docs/part-12-ai-networking/13-fabric-design-topology-oversubscription-and-scale.md"
+  ],
+  "id": "U017"
+ },
+ {
+  "book": "ai-data-center-network-design-and-technologies",
+  "book_chapter": "6. Efficient Load Balancing",
+  "prefix": "6. ",
+  "pct": 15,
+  "labels": [
+   "12.14"
+  ],
+  "primary": "docs/part-12-ai-networking/14-load-balancing-and-routing-for-ai-fabrics.md",
+  "files": [
+   "docs/part-12-ai-networking/14-load-balancing-and-routing-for-ai-fabrics.md"
+  ],
+  "id": "U105"
+ },
+ {
+  "book": "ai-data-center-network-design-and-technologies",
+  "book_chapter": "8. IP Routing for AI/ML Fabrics",
+  "prefix": "8. ",
+  "pct": 22,
+  "labels": [
+   "2.16",
+   "12.7",
+   "12.14"
+  ],
+  "primary": "docs/part-02-networking/16-bgp-in-the-data-center-ebgp-clos-unnumbered-ecmp-anycast.md",
+  "files": [
+   "docs/part-02-networking/16-bgp-in-the-data-center-ebgp-clos-unnumbered-ecmp-anycast.md",
+   "docs/part-12-ai-networking/07-infiniband-subnet-manager-routing-topologies-and-rails.md",
+   "docs/part-12-ai-networking/14-load-balancing-and-routing-for-ai-fabrics.md"
+  ],
+  "id": "U016"
+ },
+ {
+  "book": "ai-data-center-network-design-and-technologies",
+  "book_chapter": "9. Storage Network Design and Technologies",
+  "prefix": "9. ",
+  "pct": 23,
+  "labels": [
+   "12.6",
+   "12.19",
+   "12.21"
+  ],
+  "primary": "docs/part-12-ai-networking/06-infiniband-fundamentals-and-addressing.md",
+  "files": [
+   "docs/part-12-ai-networking/06-infiniband-fundamentals-and-addressing.md",
+   "docs/part-12-ai-networking/19-gpudirect-rdma-and-gpudirect-storage.md",
+   "docs/part-12-ai-networking/21-storage-networks-ultra-ethernet-and-scale-up-fabrics.md"
+  ],
+  "id": "U104"
+ },
+ {
+  "book": "ai-data-center-network-design-and-technologies",
+  "book_chapter": "10. AI Network Performance KPIs",
+  "prefix": "10. ",
+  "pct": 47,
+  "labels": [
+   "12.22"
+  ],
+  "primary": "docs/part-12-ai-networking/22-ai-network-telemetry-and-kpis.md",
+  "files": [
+   "docs/part-12-ai-networking/22-ai-network-telemetry-and-kpis.md"
+  ],
+  "id": "U108"
+ },
+ {
+  "book": "ai-data-center-network-design-and-technologies",
+  "book_chapter": "12. Ultra Ethernet Consortium (UEC)",
+  "prefix": "12. ",
+  "pct": 51,
+  "labels": [
+   "12.21"
+  ],
+  "primary": "docs/part-12-ai-networking/21-storage-networks-ultra-ethernet-and-scale-up-fabrics.md",
+  "files": [
+   "docs/part-12-ai-networking/21-storage-networks-ultra-ethernet-and-scale-up-fabrics.md"
+  ],
+  "id": "U106"
+ },
+ {
+  "book": "ai-data-center-network-design-and-technologies",
+  "book_chapter": "13. Scale-Up Systems",
+  "prefix": "13. ",
+  "pct": 26,
+  "labels": [
+   "12.21"
+  ],
+  "primary": "docs/part-12-ai-networking/21-storage-networks-ultra-ethernet-and-scale-up-fabrics.md",
+  "files": [
+   "docs/part-12-ai-networking/21-storage-networks-ultra-ethernet-and-scale-up-fabrics.md"
+  ],
+  "id": "U107"
+ },
+ {
+  "book": "ai-factory",
+  "book_chapter": "Chapter 9 Distributed Computing",
+  "prefix": "Chapter 9 Distributed Computing:",
+  "pct": 98,
+  "labels": [
+   "6.1",
+   "1.27"
+  ],
+  "primary": "docs/part-06-hpc-slurm/01-what-a-supercomputer-is-top500-linpack-hpc-versus-ai-factory.md",
+  "files": [
+   "docs/part-06-hpc-slurm/01-what-a-supercomputer-is-top500-linpack-hpc-versus-ai-factory.md",
+   "docs/part-01-linux/27-cloud-computing-and-virtualization-internals-for-linux-engineers.md"
+  ],
+  "id": "U089"
+ },
+ {
+  "book": "ai-factory",
+  "book_chapter": "Chapter 11 AI Factory: A Roadmap for AI Transformation",
+  "prefix": "Chapter 11 AI Factory:",
+  "pct": 99,
+  "labels": [
+   "0.1"
+  ],
+  "primary": "docs/part-00-orientation/01-the-ai-factory-landscape-and-the-roles-in-it.md",
+  "files": [
+   "docs/part-00-orientation/01-the-ai-factory-landscape-and-the-roles-in-it.md"
+  ],
+  "id": "U000"
+ },
+ {
+  "book": "ai-systems-performance-engineering",
+  "book_chapter": "1. Introduction and AI System Overview",
+  "prefix": "1. ",
+  "pct": 67,
+  "labels": [
+   "10.1"
+  ],
+  "primary": "docs/part-10-gpu-cuda/01-why-gpus-cpu-versus-gpu-and-throughput-design.md",
+  "files": [
+   "docs/part-10-gpu-cuda/01-why-gpus-cpu-versus-gpu-and-throughput-design.md"
+  ],
+  "id": "U098"
+ },
+ {
+  "book": "ai-systems-performance-engineering",
+  "book_chapter": "2. AI System Hardware Overview",
+  "prefix": "2. ",
+  "pct": 39,
+  "labels": [
+   "9.1",
+   "9.2",
+   "9.4",
+   "9.5",
+   "10.4",
+   "10.6"
+  ],
+  "primary": "docs/part-09-nvidia-systems/01-dgx-system-families-and-what-they-are-for.md",
+  "files": [
+   "docs/part-09-nvidia-systems/01-dgx-system-families-and-what-they-are-for.md",
+   "docs/part-09-nvidia-systems/02-inside-a-dgx-h100-and-h200-system.md",
+   "docs/part-09-nvidia-systems/04-grace-cpu-gh200-and-gb200-superchips.md",
+   "docs/part-09-nvidia-systems/05-gb200-and-gb300-nvl72-rack-scale-systems.md",
+   "docs/part-10-gpu-cuda/04-tensor-cores-and-numerical-precision.md",
+   "docs/part-10-gpu-cuda/06-gpu-interconnects-pcie-nvlink-nvswitch-and-nvlink-c2c.md"
+  ],
+  "id": "U097"
+ },
+ {
+  "book": "ai-systems-performance-engineering",
+  "book_chapter": "3. OS, Docker, and Kubernetes Tuning for GPU-Based Environments",
+  "prefix": "3. ",
+  "pct": 30,
+  "labels": [
+   "1.22",
+   "1.28",
+   "4.17",
+   "10.9",
+   "11.6"
+  ],
+  "primary": "docs/part-01-linux/22-kernel-modules-dkms-and-sysctl-tuning-for-gpu-nodes.md",
+  "files": [
+   "docs/part-01-linux/22-kernel-modules-dkms-and-sysctl-tuning-for-gpu-nodes.md",
+   "docs/part-01-linux/28-putting-it-together-tuning-a-linux-node-for-gpu-and-hpc-work.md",
+   "docs/part-04-automation/17-ansible-for-gpu-nodes-and-clusters.md",
+   "docs/part-10-gpu-cuda/09-the-nvidia-software-stack-driver-cuda-toolkit-container-toolkit-compat.md",
+   "docs/part-11-gpu-kubernetes/06-scheduling-gpus-requests-topology-manager-cpu-and-numa-alignment.md"
+  ],
+  "id": "U014"
+ },
+ {
+  "book": "ai-systems-performance-engineering",
+  "book_chapter": "5. GPU-Based Storage I/O Optimizations",
+  "prefix": "5. ",
+  "pct": 23,
+  "labels": [
+   "6.21",
+   "6.28"
+  ],
+  "primary": "docs/part-06-hpc-slurm/21-parallel-i-o-and-checkpoint-patterns.md",
+  "files": [
+   "docs/part-06-hpc-slurm/21-parallel-i-o-and-checkpoint-patterns.md",
+   "docs/part-06-hpc-slurm/28-hpc-benchmarking-hpl-hpcg-ior-osu-and-nccl-tests.md"
+  ],
+  "id": "U095"
+ },
+ {
+  "book": "ai-systems-performance-engineering",
+  "book_chapter": "7. Profiling and Tuning GPU Memory Access Patterns",
+  "prefix": "7. ",
+  "pct": 28,
+  "labels": [
+   "10.3",
+   "10.13"
+  ],
+  "primary": "docs/part-10-gpu-cuda/03-the-gpu-memory-hierarchy.md",
+  "files": [
+   "docs/part-10-gpu-cuda/03-the-gpu-memory-hierarchy.md",
+   "docs/part-10-gpu-cuda/13-memory-access-patterns-and-profiling.md"
+  ],
+  "id": "U099"
+ },
+ {
+  "book": "ai-systems-performance-engineering",
+  "book_chapter": "8. Occupancy Tuning, Warp Efficiency, and Instruction-Level Parallelis",
+  "prefix": "8. ",
+  "pct": 37,
+  "labels": [
+   "10.14"
+  ],
+  "primary": "docs/part-10-gpu-cuda/14-occupancy-warp-efficiency-and-instruction-level-parallelism.md",
+  "files": [
+   "docs/part-10-gpu-cuda/14-occupancy-warp-efficiency-and-instruction-level-parallelism.md"
+  ],
+  "id": "U101"
+ },
+ {
+  "book": "ai-systems-performance-engineering",
+  "book_chapter": "9. Increasing CUDA Kernel Efficiency and Arithmetic Intensity",
+  "prefix": "9. ",
+  "pct": 19,
+  "labels": [
+   "10.4",
+   "10.5",
+   "10.15"
+  ],
+  "primary": "docs/part-10-gpu-cuda/04-tensor-cores-and-numerical-precision.md",
+  "files": [
+   "docs/part-10-gpu-cuda/04-tensor-cores-and-numerical-precision.md",
+   "docs/part-10-gpu-cuda/05-the-roofline-model-and-performance-modelling.md",
+   "docs/part-10-gpu-cuda/15-kernel-efficiency-and-arithmetic-intensity.md"
+  ],
+  "id": "U100"
+ },
+ {
+  "book": "ai-systems-performance-engineering",
+  "book_chapter": "12. Dynamic Scheduling, CUDA Graphs, and Device-Initiated Kernel Orche",
+  "prefix": "12. ",
+  "pct": 22,
+  "labels": [
+   "10.18"
+  ],
+  "primary": "docs/part-10-gpu-cuda/18-dynamic-scheduling-cuda-graphs-and-device-initiated-orchestration.md",
+  "files": [
+   "docs/part-10-gpu-cuda/18-dynamic-scheduling-cuda-graphs-and-device-initiated-orchestration.md"
+  ],
+  "id": "U102"
+ },
+ {
+  "book": "ai-systems-performance-engineering",
+  "book_chapter": "15. Multinode Inference, Parallelism, Decoding, and Routing Optimizati",
+  "prefix": "15. ",
+  "pct": 50,
+  "labels": [
+   "15.9"
+  ],
+  "primary": "docs/part-15-inference/09-multinode-inference-parallelism-decoding-and-routing.md",
+  "files": [
+   "docs/part-15-inference/09-multinode-inference-parallelism-decoding-and-routing.md"
+  ],
+  "id": "U110"
+ },
+ {
+  "book": "ai-systems-performance-engineering",
+  "book_chapter": "16. Profiling, Debugging, and Tuning Inference at Scale",
+  "prefix": "16. ",
+  "pct": 64,
+  "labels": [
+   "15.13"
+  ],
+  "primary": "docs/part-15-inference/13-profiling-debugging-and-tuning-inference-at-scale.md",
+  "files": [
+   "docs/part-15-inference/13-profiling-debugging-and-tuning-inference-at-scale.md"
+  ],
+  "id": "U113"
+ },
+ {
+  "book": "ai-systems-performance-engineering",
+  "book_chapter": "17. Scaling Disaggregated Prefill and Decode for Inference",
+  "prefix": "17. ",
+  "pct": 16,
+  "labels": [
+   "15.8",
+   "15.10"
+  ],
+  "primary": "docs/part-15-inference/08-nvidia-dynamo-llm-d-and-disaggregated-serving.md",
+  "files": [
+   "docs/part-15-inference/08-nvidia-dynamo-llm-d-and-disaggregated-serving.md",
+   "docs/part-15-inference/10-prefill-and-decode-disaggregation.md"
+  ],
+  "id": "U109"
+ },
+ {
+  "book": "ai-systems-performance-engineering",
+  "book_chapter": "18. Advanced Prefill-Decode and KV Cache Tuning",
+  "prefix": "18. ",
+  "pct": 32,
+  "labels": [
+   "15.11"
+  ],
+  "primary": "docs/part-15-inference/11-advanced-prefill-decode-and-kv-cache-tuning.md",
+  "files": [
+   "docs/part-15-inference/11-advanced-prefill-decode-and-kv-cache-tuning.md"
+  ],
+  "id": "U111"
+ },
+ {
+  "book": "ai-systems-performance-engineering",
+  "book_chapter": "19. Dynamic and Adaptive Inference Engine Optimizations",
+  "prefix": "19. ",
+  "pct": 71,
+  "labels": [
+   "15.12"
+  ],
+  "primary": "docs/part-15-inference/12-dynamic-and-adaptive-inference-engine-optimisations.md",
+  "files": [
+   "docs/part-15-inference/12-dynamic-and-adaptive-inference-engine-optimisations.md"
+  ],
+  "id": "U112"
+ },
+ {
+  "book": "how-linux-works-3rd-edition",
+  "book_chapter": "Chapter 2: Basic Commands and Directory Hierarchy",
+  "prefix": "Chapter 2:",
+  "pct": 19,
+  "labels": [
+   "1.2",
+   "1.3",
+   "1.4",
+   "1.5",
+   "1.6",
+   "1.8"
+  ],
+  "primary": "docs/part-01-linux/02-the-command-line-shells-commands-pipes-and-redirection.md",
+  "files": [
+   "docs/part-01-linux/02-the-command-line-shells-commands-pipes-and-redirection.md",
+   "docs/part-01-linux/03-files-and-the-directory-hierarchy-paths-links-inodes.md",
+   "docs/part-01-linux/04-text-processing-essentials-grep-sed-awk-find-xargs-sort.md",
+   "docs/part-01-linux/05-working-remotely-ssh-keys-file-transfer-tmux-and-editors.md",
+   "docs/part-01-linux/06-users-groups-permissions-acls-sudo-and-user-environments.md",
+   "docs/part-01-linux/08-processes-signals-and-job-control.md"
+  ],
+  "id": "U001"
+ },
+ {
+  "book": "how-linux-works-3rd-edition",
+  "book_chapter": "Chapter 4: Disks and Filesystems",
+  "prefix": "Chapter 4:",
+  "pct": 41,
+  "labels": [
+   "1.3",
+   "1.12",
+   "1.13"
+  ],
+  "primary": "docs/part-01-linux/03-files-and-the-directory-hierarchy-paths-links-inodes.md",
+  "files": [
+   "docs/part-01-linux/03-files-and-the-directory-hierarchy-paths-links-inodes.md",
+   "docs/part-01-linux/12-disks-partitions-and-filesystems.md",
+   "docs/part-01-linux/13-lvm-raid-and-nvme.md"
+  ],
+  "id": "U002"
+ },
+ {
+  "book": "how-linux-works-3rd-edition",
+  "book_chapter": "Chapter 5: How the Linux Kernel Boots",
+  "prefix": "Chapter 5:",
+  "pct": 15,
+  "labels": [
+   "1.14",
+   "1.22"
+  ],
+  "primary": "docs/part-01-linux/14-boot-firmware-grub-kernel-initramfs.md",
+  "files": [
+   "docs/part-01-linux/14-boot-firmware-grub-kernel-initramfs.md",
+   "docs/part-01-linux/22-kernel-modules-dkms-and-sysctl-tuning-for-gpu-nodes.md"
+  ],
+  "id": "U010"
+ },
+ {
+  "book": "how-linux-works-3rd-edition",
+  "book_chapter": "Chapter 6: How User Space Starts",
+  "prefix": "Chapter 6:",
+  "pct": 20,
+  "labels": [
+   "1.14",
+   "1.15"
+  ],
+  "primary": "docs/part-01-linux/14-boot-firmware-grub-kernel-initramfs.md",
+  "files": [
+   "docs/part-01-linux/14-boot-firmware-grub-kernel-initramfs.md",
+   "docs/part-01-linux/15-systemd-units-targets-timers-journald.md"
+  ],
+  "id": "U009"
+ },
+ {
+  "book": "how-linux-works-3rd-edition",
+  "book_chapter": "Chapter 7: System Configuration: Logging, System Time, Batch Jobs, and",
+  "prefix": "Chapter 7:",
+  "pct": 15,
+  "labels": [
+   "1.6",
+   "1.15",
+   "1.16",
+   "1.21"
+  ],
+  "primary": "docs/part-01-linux/06-users-groups-permissions-acls-sudo-and-user-environments.md",
+  "files": [
+   "docs/part-01-linux/06-users-groups-permissions-acls-sudo-and-user-environments.md",
+   "docs/part-01-linux/15-systemd-units-targets-timers-journald.md",
+   "docs/part-01-linux/16-logging-time-synchronisation-cron-and-batch-jobs.md",
+   "docs/part-01-linux/21-linux-security-capabilities-selinux-apparmor-seccomp-pam-ssh-hardening.md"
+  ],
+  "id": "U006"
+ },
+ {
+  "book": "how-linux-works-3rd-edition",
+  "book_chapter": "Chapter 8: A Closer Look at Processes and Resource Utilization",
+  "prefix": "Chapter 8:",
+  "pct": 35,
+  "labels": [
+   "1.8",
+   "1.11",
+   "1.17",
+   "1.18"
+  ],
+  "primary": "docs/part-01-linux/08-processes-signals-and-job-control.md",
+  "files": [
+   "docs/part-01-linux/08-processes-signals-and-job-control.md",
+   "docs/part-01-linux/11-how-a-program-runs-system-calls-libraries-elf-strace-and-ldd.md",
+   "docs/part-01-linux/17-memory-management-virtual-memory-numa-huge-pages-oom.md",
+   "docs/part-01-linux/18-cpu-scheduling-and-cgroups-v1-and-v2.md"
+  ],
+  "id": "U008"
+ },
+ {
+  "book": "how-linux-works-3rd-edition",
+  "book_chapter": "Chapter 9: Understanding Your Network and Its Configuration",
+  "prefix": "Chapter 9:",
+  "pct": 27,
+  "labels": [
+   "2.1",
+   "2.2",
+   "2.3",
+   "2.4",
+   "2.5",
+   "2.6",
+   "2.7",
+   "2.8",
+   "2.9",
+   "2.22",
+   "2.23"
+  ],
+  "primary": "docs/part-02-networking/01-what-happens-when-you-curl-a-url-a-packet-s-journey-end-to-end.md",
+  "files": [
+   "docs/part-02-networking/01-what-happens-when-you-curl-a-url-a-packet-s-journey-end-to-end.md",
+   "docs/part-02-networking/02-how-networks-work-layers-encapsulation-the-tcp-ip-model.md",
+   "docs/part-02-networking/03-ethernet-and-l2-frames-mac-addresses-switching-arp-and-ndp.md",
+   "docs/part-02-networking/04-ip-addressing-subnetting-and-cidr-ipv4-and-ipv6-with-practice.md",
+   "docs/part-02-networking/05-routing-on-a-host-routing-tables-default-gateways-and-forwarding.md",
+   "docs/part-02-networking/06-tcp-in-depth-handshake-windows-congestion-control-retransmission.md",
+   "docs/part-02-networking/07-udp-icmp-and-the-diagnostic-tools-ping-traceroute-mtr.md",
+   "docs/part-02-networking/08-dns-in-depth-resolution-records-resolvers-and-caching.md",
+   "docs/part-02-networking/09-dhcp-nat-and-pat.md",
+   "docs/part-02-networking/22-linux-networking-inspecting-state-with-ip-ss-and-counters.md",
+   "docs/part-02-networking/23-linux-networking-netfilter-nftables-conntrack-and-nat.md"
+  ],
+  "id": "U015"
+ },
+ {
+  "book": "how-linux-works-3rd-edition",
+  "book_chapter": "Chapter 10: Network Applications and Services",
+  "prefix": "Chapter 10:",
+  "pct": 29,
+  "labels": [
+   "1.5",
+   "1.21",
+   "1.29",
+   "2.1",
+   "2.10",
+   "2.21",
+   "2.22",
+   "2.26"
+  ],
+  "primary": "docs/part-01-linux/05-working-remotely-ssh-keys-file-transfer-tmux-and-editors.md",
+  "files": [
+   "docs/part-01-linux/05-working-remotely-ssh-keys-file-transfer-tmux-and-editors.md",
+   "docs/part-01-linux/21-linux-security-capabilities-selinux-apparmor-seccomp-pam-ssh-hardening.md",
+   "docs/part-01-linux/29-remote-administration-reference-ssh-server-and-client-options-host-bas.md",
+   "docs/part-02-networking/01-what-happens-when-you-curl-a-url-a-packet-s-journey-end-to-end.md",
+   "docs/part-02-networking/10-http-tls-and-pki-basics.md",
+   "docs/part-02-networking/21-network-security-firewalls-tls-and-zero-trust.md",
+   "docs/part-02-networking/22-linux-networking-inspecting-state-with-ip-ss-and-counters.md",
+   "docs/part-02-networking/26-packet-capture-from-scratch-tcpdump-tshark-and-wireshark.md"
+  ],
+  "id": "U004"
+ },
+ {
+  "book": "how-linux-works-3rd-edition",
+  "book_chapter": "Chapter 12: Network File Transfer and Sharing",
+  "prefix": "Chapter 12:",
+  "pct": 32,
+  "labels": [
+   "1.5",
+   "1.30"
+  ],
+  "primary": "docs/part-01-linux/05-working-remotely-ssh-keys-file-transfer-tmux-and-editors.md",
+  "files": [
+   "docs/part-01-linux/05-working-remotely-ssh-keys-file-transfer-tmux-and-editors.md",
+   "docs/part-01-linux/30-network-file-sharing-and-remote-graphical-access-rsync-in-depth-samba.md"
+  ],
+  "id": "U003"
+ },
+ {
+  "book": "how-linux-works-3rd-edition",
+  "book_chapter": "Chapter 17: Virtualization",
+  "prefix": "Chapter 17:",
+  "pct": 32,
+  "labels": [
+   "1.19",
+   "1.20",
+   "1.26",
+   "3.2",
+   "5.1",
+   "5.8",
+   "5.26"
+  ],
+  "primary": "docs/part-01-linux/19-namespaces-the-kernel-feature-behind-containers.md",
+  "files": [
+   "docs/part-01-linux/19-namespaces-the-kernel-feature-behind-containers.md",
+   "docs/part-01-linux/20-lab-build-a-container-by-hand-with-unshare-chroot-cgroups-and-overlayf.md",
+   "docs/part-01-linux/26-kvm-qemu-and-libvirt-basics.md",
+   "docs/part-03-python/02-modules-packages-virtual-environments-and-packaging.md",
+   "docs/part-05-kubernetes/01-containers-from-first-principles-images-layers-registries.md",
+   "docs/part-05-kubernetes/08-the-life-of-a-pod-end-to-end-including-what-the-kernel-does.md",
+   "docs/part-05-kubernetes/26-how-kubernetes-uses-the-linux-kernel-a-complete-map.md"
+  ],
+  "id": "U012"
+ },
+ {
+  "book": "kubernetes-up-and-running-3rd-edition",
+  "book_chapter": "2. Creating and Running Containers",
+  "prefix": "2. ",
+  "pct": 51,
+  "labels": [
+   "5.1",
+   "5.2"
+  ],
+  "primary": "docs/part-05-kubernetes/01-containers-from-first-principles-images-layers-registries.md",
+  "files": [
+   "docs/part-05-kubernetes/01-containers-from-first-principles-images-layers-registries.md",
+   "docs/part-05-kubernetes/02-container-runtimes-containerd-runc-cri-and-oci.md"
+  ],
+  "id": "U061"
+ },
+ {
+  "book": "kubernetes-up-and-running-3rd-edition",
+  "book_chapter": "3. Deploying a Kubernetes Cluster",
+  "prefix": "3. ",
+  "pct": 81,
+  "labels": [
+   "5.3",
+   "5.4",
+   "5.34"
+  ],
+  "primary": "docs/part-05-kubernetes/03-kubernetes-architecture-overview-components-and-what-talks-to-what.md",
+  "files": [
+   "docs/part-05-kubernetes/03-kubernetes-architecture-overview-components-and-what-talks-to-what.md",
+   "docs/part-05-kubernetes/04-bare-metal-kubernetes-from-scratch-with-kubeadm-lab.md",
+   "docs/part-05-kubernetes/34-gke-for-gpu-workloads-setup-node-pools-and-quotas.md"
+  ],
+  "id": "U063"
+ },
+ {
+  "book": "kubernetes-up-and-running-3rd-edition",
+  "book_chapter": "4. Common kubectl Commands",
+  "prefix": "4. ",
+  "pct": 40,
+  "labels": [
+   "5.4",
+   "5.7",
+   "5.19",
+   "5.25"
+  ],
+  "primary": "docs/part-05-kubernetes/04-bare-metal-kubernetes-from-scratch-with-kubeadm-lab.md",
+  "files": [
+   "docs/part-05-kubernetes/04-bare-metal-kubernetes-from-scratch-with-kubeadm-lab.md",
+   "docs/part-05-kubernetes/07-pods-and-workloads-deployments-statefulsets-daemonsets-and-jobs.md",
+   "docs/part-05-kubernetes/19-cluster-deployment-models-and-day-2-operations.md",
+   "docs/part-05-kubernetes/25-troubleshooting-kubernetes-from-the-node-crictl-nsenter-tcpdump-and-ip.md"
+  ],
+  "id": "U066"
+ },
+ {
+  "book": "kubernetes-up-and-running-3rd-edition",
+  "book_chapter": "5. Pods",
+  "prefix": "5. ",
+  "pct": 69,
+  "labels": [
+   "5.7",
+   "5.8",
+   "5.9"
+  ],
+  "primary": "docs/part-05-kubernetes/07-pods-and-workloads-deployments-statefulsets-daemonsets-and-jobs.md",
+  "files": [
+   "docs/part-05-kubernetes/07-pods-and-workloads-deployments-statefulsets-daemonsets-and-jobs.md",
+   "docs/part-05-kubernetes/08-the-life-of-a-pod-end-to-end-including-what-the-kernel-does.md",
+   "docs/part-05-kubernetes/09-the-kubelet-and-the-node-cri-cgroups-qos-classes-probes-and-eviction.md"
+  ],
+  "id": "U074"
+ },
+ {
+  "book": "kubernetes-up-and-running-3rd-edition",
+  "book_chapter": "6. Labels and Annotations",
+  "prefix": "6. ",
+  "pct": 68,
+  "labels": [
+   "5.7",
+   "5.18"
+  ],
+  "primary": "docs/part-05-kubernetes/07-pods-and-workloads-deployments-statefulsets-daemonsets-and-jobs.md",
+  "files": [
+   "docs/part-05-kubernetes/07-pods-and-workloads-deployments-statefulsets-daemonsets-and-jobs.md",
+   "docs/part-05-kubernetes/18-scheduling-in-depth-kube-scheduler-affinity-taints-priority-and-preemp.md"
+  ],
+  "id": "U075"
+ },
+ {
+  "book": "kubernetes-up-and-running-3rd-edition",
+  "book_chapter": "7. Service Discovery",
+  "prefix": "7. ",
+  "pct": 86,
+  "labels": [
+   "5.10",
+   "5.11"
+  ],
+  "primary": "docs/part-05-kubernetes/10-services-endpoints-and-kube-proxy-the-life-of-a-service.md",
+  "files": [
+   "docs/part-05-kubernetes/10-services-endpoints-and-kube-proxy-the-life-of-a-service.md",
+   "docs/part-05-kubernetes/11-dns-and-service-discovery-with-coredns.md"
+  ],
+  "id": "U079"
+ },
+ {
+  "book": "kubernetes-up-and-running-3rd-edition",
+  "book_chapter": "8. HTTP Load Balancing with Ingress",
+  "prefix": "8. ",
+  "pct": 72,
+  "labels": [
+   "5.12"
+  ],
+  "primary": "docs/part-05-kubernetes/12-ingress-load-balancers-and-the-gateway-api.md",
+  "files": [
+   "docs/part-05-kubernetes/12-ingress-load-balancers-and-the-gateway-api.md"
+  ],
+  "id": "U081"
+ },
+ {
+  "book": "kubernetes-up-and-running-3rd-edition",
+  "book_chapter": "9. ReplicaSets",
+  "prefix": "9. ",
+  "pct": 17,
+  "labels": [
+   "5.6",
+   "5.7",
+   "5.23"
+  ],
+  "primary": "docs/part-05-kubernetes/06-controllers-and-the-reconcile-loop-how-kubernetes-thinks.md",
+  "files": [
+   "docs/part-05-kubernetes/06-controllers-and-the-reconcile-loop-how-kubernetes-thinks.md",
+   "docs/part-05-kubernetes/07-pods-and-workloads-deployments-statefulsets-daemonsets-and-jobs.md",
+   "docs/part-05-kubernetes/23-autoscaling-hpa-vpa-keda-and-the-cluster-autoscaler.md"
+  ],
+  "id": "U073"
+ },
+ {
+  "book": "kubernetes-up-and-running-3rd-edition",
+  "book_chapter": "10. Deployments",
+  "prefix": "10. ",
+  "pct": 37,
+  "labels": [
+   "5.6",
+   "5.7"
+  ],
+  "primary": "docs/part-05-kubernetes/06-controllers-and-the-reconcile-loop-how-kubernetes-thinks.md",
+  "files": [
+   "docs/part-05-kubernetes/06-controllers-and-the-reconcile-loop-how-kubernetes-thinks.md",
+   "docs/part-05-kubernetes/07-pods-and-workloads-deployments-statefulsets-daemonsets-and-jobs.md"
+  ],
+  "id": "U072"
+ },
+ {
+  "book": "kubernetes-up-and-running-3rd-edition",
+  "book_chapter": "11. DaemonSets",
+  "prefix": "11. ",
+  "pct": 58,
+  "labels": [
+   "5.6",
+   "5.7"
+  ],
+  "primary": "docs/part-05-kubernetes/06-controllers-and-the-reconcile-loop-how-kubernetes-thinks.md",
+  "files": [
+   "docs/part-05-kubernetes/06-controllers-and-the-reconcile-loop-how-kubernetes-thinks.md",
+   "docs/part-05-kubernetes/07-pods-and-workloads-deployments-statefulsets-daemonsets-and-jobs.md"
+  ],
+  "id": "U070"
+ },
+ {
+  "book": "kubernetes-up-and-running-3rd-edition",
+  "book_chapter": "12. Jobs",
+  "prefix": "12. ",
+  "pct": 57,
+  "labels": [
+   "5.6",
+   "5.7"
+  ],
+  "primary": "docs/part-05-kubernetes/06-controllers-and-the-reconcile-loop-how-kubernetes-thinks.md",
+  "files": [
+   "docs/part-05-kubernetes/06-controllers-and-the-reconcile-loop-how-kubernetes-thinks.md",
+   "docs/part-05-kubernetes/07-pods-and-workloads-deployments-statefulsets-daemonsets-and-jobs.md"
+  ],
+  "id": "U071"
+ },
+ {
+  "book": "kubernetes-up-and-running-3rd-edition",
+  "book_chapter": "13. ConfigMaps and Secrets",
+  "prefix": "13. ",
+  "pct": 27,
+  "labels": [
+   "5.8",
+   "5.16"
+  ],
+  "primary": "docs/part-05-kubernetes/08-the-life-of-a-pod-end-to-end-including-what-the-kernel-does.md",
+  "files": [
+   "docs/part-05-kubernetes/08-the-life-of-a-pod-end-to-end-including-what-the-kernel-does.md",
+   "docs/part-05-kubernetes/16-configuration-secrets-and-rbac.md"
+  ],
+  "id": "U078"
+ },
+ {
+  "book": "kubernetes-up-and-running-3rd-edition",
+  "book_chapter": "14. Role-Based Access Control for Kubernetes",
+  "prefix": "14. ",
+  "pct": 21,
+  "labels": [
+   "5.16"
+  ],
+  "primary": "docs/part-05-kubernetes/16-configuration-secrets-and-rbac.md",
+  "files": [
+   "docs/part-05-kubernetes/16-configuration-secrets-and-rbac.md"
+  ],
+  "id": "U083"
+ },
+ {
+  "book": "kubernetes-up-and-running-3rd-edition",
+  "book_chapter": "15. Service Meshes",
+  "prefix": "15. ",
+  "pct": 30,
+  "labels": [
+   "5.28"
+  ],
+  "primary": "docs/part-05-kubernetes/28-service-mesh.md",
+  "files": [
+   "docs/part-05-kubernetes/28-service-mesh.md"
+  ],
+  "id": "U086"
+ },
+ {
+  "book": "kubernetes-up-and-running-3rd-edition",
+  "book_chapter": "17. Extending Kubernetes",
+  "prefix": "17. ",
+  "pct": 20,
+  "labels": [
+   "5.5",
+   "5.6",
+   "5.21",
+   "5.29"
+  ],
+  "primary": "docs/part-05-kubernetes/05-the-api-server-and-etcd-how-a-request-becomes-cluster-state.md",
+  "files": [
+   "docs/part-05-kubernetes/05-the-api-server-and-etcd-how-a-request-becomes-cluster-state.md",
+   "docs/part-05-kubernetes/06-controllers-and-the-reconcile-loop-how-kubernetes-thinks.md",
+   "docs/part-05-kubernetes/21-certificates-identity-admission-control-and-policy.md",
+   "docs/part-05-kubernetes/29-extending-kubernetes-crds-and-operators.md"
+  ],
+  "id": "U069"
+ },
+ {
+  "book": "kubernetes-up-and-running-3rd-edition",
+  "book_chapter": "18. Accessing Kubernetes from Common Programming Languages",
+  "prefix": "18. ",
+  "pct": 85,
+  "labels": [
+   "5.29",
+   "5.30"
+  ],
+  "primary": "docs/part-05-kubernetes/29-extending-kubernetes-crds-and-operators.md",
+  "files": [
+   "docs/part-05-kubernetes/29-extending-kubernetes-crds-and-operators.md",
+   "docs/part-05-kubernetes/30-go-for-kubernetes-engineers.md"
+  ],
+  "id": "U087"
+ },
+ {
+  "book": "kubernetes-up-and-running-3rd-edition",
+  "book_chapter": "19. Securing Applications in Kubernetes",
+  "prefix": "19. ",
+  "pct": 30,
+  "labels": [
+   "5.2",
+   "5.7",
+   "5.15",
+   "5.16",
+   "5.19",
+   "5.21"
+  ],
+  "primary": "docs/part-05-kubernetes/02-container-runtimes-containerd-runc-cri-and-oci.md",
+  "files": [
+   "docs/part-05-kubernetes/02-container-runtimes-containerd-runc-cri-and-oci.md",
+   "docs/part-05-kubernetes/07-pods-and-workloads-deployments-statefulsets-daemonsets-and-jobs.md",
+   "docs/part-05-kubernetes/15-networkpolicy-and-the-kernel-netfilter-conntrack-and-ebpf.md",
+   "docs/part-05-kubernetes/16-configuration-secrets-and-rbac.md",
+   "docs/part-05-kubernetes/19-cluster-deployment-models-and-day-2-operations.md",
+   "docs/part-05-kubernetes/21-certificates-identity-admission-control-and-policy.md"
+  ],
+  "id": "U062"
+ },
+ {
+  "book": "kubernetes-up-and-running-3rd-edition",
+  "book_chapter": "21. Multicluster Application Deployments",
+  "prefix": "21. ",
+  "pct": 65,
+  "labels": [
+   "5.35"
+  ],
+  "primary": "docs/part-05-kubernetes/35-multicluster-and-fleet-management.md",
+  "files": [
+   "docs/part-05-kubernetes/35-multicluster-and-fleet-management.md"
+  ],
+  "id": "U088"
+ },
+ {
+  "book": "kubernetes-up-and-running-3rd-edition",
+  "book_chapter": "22. Organizing Your Application",
+  "prefix": "22. ",
+  "pct": 79,
+  "labels": [
+   "4.26",
+   "5.7",
+   "5.35"
+  ],
+  "primary": "docs/part-04-automation/26-gitops-with-argo-cd-and-flux.md",
+  "files": [
+   "docs/part-04-automation/26-gitops-with-argo-cd-and-flux.md",
+   "docs/part-05-kubernetes/07-pods-and-workloads-deployments-statefulsets-daemonsets-and-jobs.md",
+   "docs/part-05-kubernetes/35-multicluster-and-fleet-management.md"
+  ],
+  "id": "U057"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "2. How Python Runs Programs",
+  "prefix": "2. ",
+  "pct": 59,
+  "labels": [
+   "3.1",
+   "3.2"
+  ],
+  "primary": "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+  "files": [
+   "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+   "docs/part-03-python/02-modules-packages-virtual-environments-and-packaging.md"
+  ],
+  "id": "U034"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "3. How You Run Programs",
+  "prefix": "3. ",
+  "pct": 95,
+  "labels": [
+   "3.1"
+  ],
+  "primary": "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+  "files": [
+   "docs/part-03-python/01-python-core-types-control-flow-functions.md"
+  ],
+  "id": "U021"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "4. Introducing Python Objects",
+  "prefix": "4. ",
+  "pct": 94,
+  "labels": [
+   "3.1"
+  ],
+  "primary": "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+  "files": [
+   "docs/part-03-python/01-python-core-types-control-flow-functions.md"
+  ],
+  "id": "U022"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "5. Numbers and Expressions",
+  "prefix": "5. ",
+  "pct": 62,
+  "labels": [
+   "3.1"
+  ],
+  "primary": "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+  "files": [
+   "docs/part-03-python/01-python-core-types-control-flow-functions.md"
+  ],
+  "id": "U031"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "6. The Dynamic Typing Interlude",
+  "prefix": "6. ",
+  "pct": 84,
+  "labels": [
+   "3.1",
+   "3.3"
+  ],
+  "primary": "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+  "files": [
+   "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+   "docs/part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md"
+  ],
+  "id": "U026"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "7. String Fundamentals",
+  "prefix": "7. ",
+  "pct": 83,
+  "labels": [
+   "3.1"
+  ],
+  "primary": "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+  "files": [
+   "docs/part-03-python/01-python-core-types-control-flow-functions.md"
+  ],
+  "id": "U027"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "8. Lists and Dictionaries",
+  "prefix": "8. ",
+  "pct": 60,
+  "labels": [
+   "3.1",
+   "3.3"
+  ],
+  "primary": "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+  "files": [
+   "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+   "docs/part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md"
+  ],
+  "id": "U033"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "9. Tuples, Files, and Everything Else",
+  "prefix": "9. ",
+  "pct": 72,
+  "labels": [
+   "3.1",
+   "3.4",
+   "3.5"
+  ],
+  "primary": "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+  "files": [
+   "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+   "docs/part-03-python/04-classes-dataclasses-typing-and-protocols.md",
+   "docs/part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md"
+  ],
+  "id": "U029"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "10. Introducing Python Statements",
+  "prefix": "10. ",
+  "pct": 100,
+  "labels": [
+   "3.1"
+  ],
+  "primary": "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+  "files": [
+   "docs/part-03-python/01-python-core-types-control-flow-functions.md"
+  ],
+  "id": "U019"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "11. Assignments, Expressions, and Prints",
+  "prefix": "11. ",
+  "pct": 80,
+  "labels": [
+   "3.1"
+  ],
+  "primary": "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+  "files": [
+   "docs/part-03-python/01-python-core-types-control-flow-functions.md"
+  ],
+  "id": "U028"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "12. if and match Selections",
+  "prefix": "12. ",
+  "pct": 86,
+  "labels": [
+   "3.1"
+  ],
+  "primary": "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+  "files": [
+   "docs/part-03-python/01-python-core-types-control-flow-functions.md"
+  ],
+  "id": "U024"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "13. while and for Loops",
+  "prefix": "13. ",
+  "pct": 85,
+  "labels": [
+   "3.1"
+  ],
+  "primary": "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+  "files": [
+   "docs/part-03-python/01-python-core-types-control-flow-functions.md"
+  ],
+  "id": "U025"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "14. Iterations and Comprehensions",
+  "prefix": "14. ",
+  "pct": 21,
+  "labels": [
+   "3.1",
+   "3.3"
+  ],
+  "primary": "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+  "files": [
+   "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+   "docs/part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md"
+  ],
+  "id": "U037"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "16. Function Basics",
+  "prefix": "16. ",
+  "pct": 100,
+  "labels": [
+   "3.1"
+  ],
+  "primary": "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+  "files": [
+   "docs/part-03-python/01-python-core-types-control-flow-functions.md"
+  ],
+  "id": "U020"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "17. Scopes",
+  "prefix": "17. ",
+  "pct": 51,
+  "labels": [
+   "3.1",
+   "3.11"
+  ],
+  "primary": "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+  "files": [
+   "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+   "docs/part-03-python/11-python-under-the-hood-decorators-descriptors-and-metaprogramming-how-f.md"
+  ],
+  "id": "U035"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "18. Arguments",
+  "prefix": "18. ",
+  "pct": 67,
+  "labels": [
+   "3.1"
+  ],
+  "primary": "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+  "files": [
+   "docs/part-03-python/01-python-core-types-control-flow-functions.md"
+  ],
+  "id": "U030"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "19. Function Odds and Ends",
+  "prefix": "19. ",
+  "pct": 87,
+  "labels": [
+   "3.1",
+   "3.3"
+  ],
+  "primary": "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+  "files": [
+   "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+   "docs/part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md"
+  ],
+  "id": "U023"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "20. Comprehensions and Generations",
+  "prefix": "20. ",
+  "pct": 48,
+  "labels": [
+   "3.3",
+   "3.6"
+  ],
+  "primary": "docs/part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md",
+  "files": [
+   "docs/part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md",
+   "docs/part-03-python/06-concurrency-threads-processes-and-asyncio.md"
+  ],
+  "id": "U043"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "21. The Benchmarking Interlude",
+  "prefix": "21. ",
+  "pct": 61,
+  "labels": [
+   "3.1",
+   "3.9"
+  ],
+  "primary": "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+  "files": [
+   "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+   "docs/part-03-python/09-testing-quality-and-ci-for-python-tooling.md"
+  ],
+  "id": "U032"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "22. Modules: The Big Picture",
+  "prefix": "22. ",
+  "pct": 27,
+  "labels": [
+   "3.2"
+  ],
+  "primary": "docs/part-03-python/02-modules-packages-virtual-environments-and-packaging.md",
+  "files": [
+   "docs/part-03-python/02-modules-packages-virtual-environments-and-packaging.md"
+  ],
+  "id": "U040"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "23. Module Coding Basics",
+  "prefix": "23. ",
+  "pct": 30,
+  "labels": [
+   "3.2"
+  ],
+  "primary": "docs/part-03-python/02-modules-packages-virtual-environments-and-packaging.md",
+  "files": [
+   "docs/part-03-python/02-modules-packages-virtual-environments-and-packaging.md"
+  ],
+  "id": "U039"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "24. Module Packages",
+  "prefix": "24. ",
+  "pct": 16,
+  "labels": [
+   "3.2"
+  ],
+  "primary": "docs/part-03-python/02-modules-packages-virtual-environments-and-packaging.md",
+  "files": [
+   "docs/part-03-python/02-modules-packages-virtual-environments-and-packaging.md"
+  ],
+  "id": "U041"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "25. Module Odds and Ends",
+  "prefix": "25. ",
+  "pct": 16,
+  "labels": [
+   "3.1",
+   "3.2",
+   "3.11"
+  ],
+  "primary": "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+  "files": [
+   "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+   "docs/part-03-python/02-modules-packages-virtual-environments-and-packaging.md",
+   "docs/part-03-python/11-python-under-the-hood-decorators-descriptors-and-metaprogramming-how-f.md"
+  ],
+  "id": "U038"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "26. OOP: The Big Picture",
+  "prefix": "26. ",
+  "pct": 59,
+  "labels": [
+   "3.4"
+  ],
+  "primary": "docs/part-03-python/04-classes-dataclasses-typing-and-protocols.md",
+  "files": [
+   "docs/part-03-python/04-classes-dataclasses-typing-and-protocols.md"
+  ],
+  "id": "U046"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "27. Class Coding Basics",
+  "prefix": "27. ",
+  "pct": 79,
+  "labels": [
+   "3.4"
+  ],
+  "primary": "docs/part-03-python/04-classes-dataclasses-typing-and-protocols.md",
+  "files": [
+   "docs/part-03-python/04-classes-dataclasses-typing-and-protocols.md"
+  ],
+  "id": "U045"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "28. A More Realistic Example",
+  "prefix": "28. ",
+  "pct": 58,
+  "labels": [
+   "3.4",
+   "3.5"
+  ],
+  "primary": "docs/part-03-python/04-classes-dataclasses-typing-and-protocols.md",
+  "files": [
+   "docs/part-03-python/04-classes-dataclasses-typing-and-protocols.md",
+   "docs/part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md"
+  ],
+  "id": "U047"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "29. Class Coding Details",
+  "prefix": "29. ",
+  "pct": 55,
+  "labels": [
+   "3.4"
+  ],
+  "primary": "docs/part-03-python/04-classes-dataclasses-typing-and-protocols.md",
+  "files": [
+   "docs/part-03-python/04-classes-dataclasses-typing-and-protocols.md"
+  ],
+  "id": "U048"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "30. Operator Overloading",
+  "prefix": "30. ",
+  "pct": 21,
+  "labels": [
+   "3.3",
+   "3.4",
+   "3.11"
+  ],
+  "primary": "docs/part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md",
+  "files": [
+   "docs/part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md",
+   "docs/part-03-python/04-classes-dataclasses-typing-and-protocols.md",
+   "docs/part-03-python/11-python-under-the-hood-decorators-descriptors-and-metaprogramming-how-f.md"
+  ],
+  "id": "U044"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "31. Designing with Classes",
+  "prefix": "31. ",
+  "pct": 51,
+  "labels": [
+   "3.4",
+   "3.11"
+  ],
+  "primary": "docs/part-03-python/04-classes-dataclasses-typing-and-protocols.md",
+  "files": [
+   "docs/part-03-python/04-classes-dataclasses-typing-and-protocols.md",
+   "docs/part-03-python/11-python-under-the-hood-decorators-descriptors-and-metaprogramming-how-f.md"
+  ],
+  "id": "U050"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "32. Class Odds and Ends",
+  "prefix": "32. ",
+  "pct": 53,
+  "labels": [
+   "3.4",
+   "3.11"
+  ],
+  "primary": "docs/part-03-python/04-classes-dataclasses-typing-and-protocols.md",
+  "files": [
+   "docs/part-03-python/04-classes-dataclasses-typing-and-protocols.md",
+   "docs/part-03-python/11-python-under-the-hood-decorators-descriptors-and-metaprogramming-how-f.md"
+  ],
+  "id": "U049"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "33. Exception Basics",
+  "prefix": "33. ",
+  "pct": 87,
+  "labels": [
+   "3.5"
+  ],
+  "primary": "docs/part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md",
+  "files": [
+   "docs/part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md"
+  ],
+  "id": "U052"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "34. Exception Coding Details",
+  "prefix": "34. ",
+  "pct": 56,
+  "labels": [
+   "3.3",
+   "3.5"
+  ],
+  "primary": "docs/part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md",
+  "files": [
+   "docs/part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md",
+   "docs/part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md"
+  ],
+  "id": "U042"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "35. Exception Objects",
+  "prefix": "35. ",
+  "pct": 29,
+  "labels": [
+   "3.5",
+   "3.6"
+  ],
+  "primary": "docs/part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md",
+  "files": [
+   "docs/part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md",
+   "docs/part-03-python/06-concurrency-threads-processes-and-asyncio.md"
+  ],
+  "id": "U054"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "36. Exception Odds and Ends",
+  "prefix": "36. ",
+  "pct": 59,
+  "labels": [
+   "3.5"
+  ],
+  "primary": "docs/part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md",
+  "files": [
+   "docs/part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md"
+  ],
+  "id": "U053"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "37. Unicode and Byte Strings",
+  "prefix": "37. ",
+  "pct": 33,
+  "labels": [
+   "3.1",
+   "3.3",
+   "3.5"
+  ],
+  "primary": "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+  "files": [
+   "docs/part-03-python/01-python-core-types-control-flow-functions.md",
+   "docs/part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md",
+   "docs/part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md"
+  ],
+  "id": "U036"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "38. Managed Attributes",
+  "prefix": "38. ",
+  "pct": 33,
+  "labels": [
+   "3.4",
+   "3.11"
+  ],
+  "primary": "docs/part-03-python/04-classes-dataclasses-typing-and-protocols.md",
+  "files": [
+   "docs/part-03-python/04-classes-dataclasses-typing-and-protocols.md",
+   "docs/part-03-python/11-python-under-the-hood-decorators-descriptors-and-metaprogramming-how-f.md"
+  ],
+  "id": "U051"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "39. Decorators",
+  "prefix": "39. ",
+  "pct": 54,
+  "labels": [
+   "3.11"
+  ],
+  "primary": "docs/part-03-python/11-python-under-the-hood-decorators-descriptors-and-metaprogramming-how-f.md",
+  "files": [
+   "docs/part-03-python/11-python-under-the-hood-decorators-descriptors-and-metaprogramming-how-f.md"
+  ],
+  "id": "U056"
+ },
+ {
+  "book": "learning-python-6th-edition",
+  "book_chapter": "40. Metaclasses and Inheritance",
+  "prefix": "40. ",
+  "pct": 58,
+  "labels": [
+   "3.11"
+  ],
+  "primary": "docs/part-03-python/11-python-under-the-hood-decorators-descriptors-and-metaprogramming-how-f.md",
+  "files": [
+   "docs/part-03-python/11-python-under-the-hood-decorators-descriptors-and-metaprogramming-how-f.md"
+  ],
+  "id": "U055"
+ },
+ {
+  "book": "production-kubernetes",
+  "book_chapter": "1. A Path to Production",
+  "prefix": "1. ",
+  "pct": 67,
+  "labels": [
+   "5.3",
+   "5.4",
+   "5.19",
+   "5.22"
+  ],
+  "primary": "docs/part-05-kubernetes/03-kubernetes-architecture-overview-components-and-what-talks-to-what.md",
+  "files": [
+   "docs/part-05-kubernetes/03-kubernetes-architecture-overview-components-and-what-talks-to-what.md",
+   "docs/part-05-kubernetes/04-bare-metal-kubernetes-from-scratch-with-kubeadm-lab.md",
+   "docs/part-05-kubernetes/19-cluster-deployment-models-and-day-2-operations.md",
+   "docs/part-05-kubernetes/22-multitenancy-and-platform-services.md"
+  ],
+  "id": "U064"
+ },
+ {
+  "book": "production-kubernetes",
+  "book_chapter": "2. Deployment Models",
+  "prefix": "2. ",
+  "pct": 65,
+  "labels": [
+   "5.4",
+   "5.5",
+   "5.19",
+   "5.20",
+   "5.35"
+  ],
+  "primary": "docs/part-05-kubernetes/04-bare-metal-kubernetes-from-scratch-with-kubeadm-lab.md",
+  "files": [
+   "docs/part-05-kubernetes/04-bare-metal-kubernetes-from-scratch-with-kubeadm-lab.md",
+   "docs/part-05-kubernetes/05-the-api-server-and-etcd-how-a-request-becomes-cluster-state.md",
+   "docs/part-05-kubernetes/19-cluster-deployment-models-and-day-2-operations.md",
+   "docs/part-05-kubernetes/20-upgrades-etcd-backup-and-restore-and-disaster-recovery.md",
+   "docs/part-05-kubernetes/35-multicluster-and-fleet-management.md"
+  ],
+  "id": "U065"
+ },
+ {
+  "book": "production-kubernetes",
+  "book_chapter": "3. Container Runtime",
+  "prefix": "3. ",
+  "pct": 55,
+  "labels": [
+   "5.1",
+   "5.2",
+   "5.8",
+   "5.9",
+   "5.26"
+  ],
+  "primary": "docs/part-05-kubernetes/01-containers-from-first-principles-images-layers-registries.md",
+  "files": [
+   "docs/part-05-kubernetes/01-containers-from-first-principles-images-layers-registries.md",
+   "docs/part-05-kubernetes/02-container-runtimes-containerd-runc-cri-and-oci.md",
+   "docs/part-05-kubernetes/08-the-life-of-a-pod-end-to-end-including-what-the-kernel-does.md",
+   "docs/part-05-kubernetes/09-the-kubelet-and-the-node-cri-cgroups-qos-classes-probes-and-eviction.md",
+   "docs/part-05-kubernetes/26-how-kubernetes-uses-the-linux-kernel-a-complete-map.md"
+  ],
+  "id": "U060"
+ },
+ {
+  "book": "production-kubernetes",
+  "book_chapter": "4. Container Storage",
+  "prefix": "4. ",
+  "pct": 29,
+  "labels": [
+   "5.17",
+   "5.26"
+  ],
+  "primary": "docs/part-05-kubernetes/17-storage-internals-volumes-pv-and-pvc-csi-and-mounts.md",
+  "files": [
+   "docs/part-05-kubernetes/17-storage-internals-volumes-pv-and-pvc-csi-and-mounts.md",
+   "docs/part-05-kubernetes/26-how-kubernetes-uses-the-linux-kernel-a-complete-map.md"
+  ],
+  "id": "U084"
+ },
+ {
+  "book": "production-kubernetes",
+  "book_chapter": "6. Service Routing",
+  "prefix": "6. ",
+  "pct": 30,
+  "labels": [
+   "2.20",
+   "5.10",
+   "5.11",
+   "5.12",
+   "5.28"
+  ],
+  "primary": "docs/part-02-networking/20-load-balancing-l4-l7-ecmp-hashing-and-proxies.md",
+  "files": [
+   "docs/part-02-networking/20-load-balancing-l4-l7-ecmp-hashing-and-proxies.md",
+   "docs/part-05-kubernetes/10-services-endpoints-and-kube-proxy-the-life-of-a-service.md",
+   "docs/part-05-kubernetes/11-dns-and-service-discovery-with-coredns.md",
+   "docs/part-05-kubernetes/12-ingress-load-balancers-and-the-gateway-api.md",
+   "docs/part-05-kubernetes/28-service-mesh.md"
+  ],
+  "id": "U018"
+ },
+ {
+  "book": "production-kubernetes",
+  "book_chapter": "7. Secret Management",
+  "prefix": "7. ",
+  "pct": 54,
+  "labels": [
+   "5.5",
+   "5.16"
+  ],
+  "primary": "docs/part-05-kubernetes/05-the-api-server-and-etcd-how-a-request-becomes-cluster-state.md",
+  "files": [
+   "docs/part-05-kubernetes/05-the-api-server-and-etcd-how-a-request-becomes-cluster-state.md",
+   "docs/part-05-kubernetes/16-configuration-secrets-and-rbac.md"
+  ],
+  "id": "U067"
+ },
+ {
+  "book": "production-kubernetes",
+  "book_chapter": "8. Admission Control",
+  "prefix": "8. ",
+  "pct": 20,
+  "labels": [
+   "1.21",
+   "5.5",
+   "5.21",
+   "5.31"
+  ],
+  "primary": "docs/part-01-linux/21-linux-security-capabilities-selinux-apparmor-seccomp-pam-ssh-hardening.md",
+  "files": [
+   "docs/part-01-linux/21-linux-security-capabilities-selinux-apparmor-seccomp-pam-ssh-hardening.md",
+   "docs/part-05-kubernetes/05-the-api-server-and-etcd-how-a-request-becomes-cluster-state.md",
+   "docs/part-05-kubernetes/21-certificates-identity-admission-control-and-policy.md",
+   "docs/part-05-kubernetes/31-operators-in-go-controller-runtime-and-kubebuilder.md"
+  ],
+  "id": "U013"
+ },
+ {
+  "book": "production-kubernetes",
+  "book_chapter": "9. Observability",
+  "prefix": "9. ",
+  "pct": 49,
+  "labels": [
+   "5.5",
+   "5.22",
+   "5.24"
+  ],
+  "primary": "docs/part-05-kubernetes/05-the-api-server-and-etcd-how-a-request-becomes-cluster-state.md",
+  "files": [
+   "docs/part-05-kubernetes/05-the-api-server-and-etcd-how-a-request-becomes-cluster-state.md",
+   "docs/part-05-kubernetes/22-multitenancy-and-platform-services.md",
+   "docs/part-05-kubernetes/24-observability-for-kubernetes.md"
+  ],
+  "id": "U068"
+ },
+ {
+  "book": "production-kubernetes",
+  "book_chapter": "10. Identity",
+  "prefix": "10. ",
+  "pct": 41,
+  "labels": [
+   "5.15",
+   "5.16",
+   "5.21"
+  ],
+  "primary": "docs/part-05-kubernetes/15-networkpolicy-and-the-kernel-netfilter-conntrack-and-ebpf.md",
+  "files": [
+   "docs/part-05-kubernetes/15-networkpolicy-and-the-kernel-netfilter-conntrack-and-ebpf.md",
+   "docs/part-05-kubernetes/16-configuration-secrets-and-rbac.md",
+   "docs/part-05-kubernetes/21-certificates-identity-admission-control-and-policy.md"
+  ],
+  "id": "U082"
+ },
+ {
+  "book": "production-kubernetes",
+  "book_chapter": "11. Building Platform Services",
+  "prefix": "11. ",
+  "pct": 37,
+  "labels": [
+   "4.26",
+   "5.6",
+   "5.18",
+   "5.29",
+   "5.31"
+  ],
+  "primary": "docs/part-04-automation/26-gitops-with-argo-cd-and-flux.md",
+  "files": [
+   "docs/part-04-automation/26-gitops-with-argo-cd-and-flux.md",
+   "docs/part-05-kubernetes/06-controllers-and-the-reconcile-loop-how-kubernetes-thinks.md",
+   "docs/part-05-kubernetes/18-scheduling-in-depth-kube-scheduler-affinity-taints-priority-and-preemp.md",
+   "docs/part-05-kubernetes/29-extending-kubernetes-crds-and-operators.md",
+   "docs/part-05-kubernetes/31-operators-in-go-controller-runtime-and-kubebuilder.md"
+  ],
+  "id": "U059"
+ },
+ {
+  "book": "production-kubernetes",
+  "book_chapter": "12. Multitenancy",
+  "prefix": "12. ",
+  "pct": 36,
+  "labels": [
+   "5.7",
+   "5.9",
+   "5.15",
+   "5.21",
+   "5.22",
+   "5.26"
+  ],
+  "primary": "docs/part-05-kubernetes/07-pods-and-workloads-deployments-statefulsets-daemonsets-and-jobs.md",
+  "files": [
+   "docs/part-05-kubernetes/07-pods-and-workloads-deployments-statefulsets-daemonsets-and-jobs.md",
+   "docs/part-05-kubernetes/09-the-kubelet-and-the-node-cri-cgroups-qos-classes-probes-and-eviction.md",
+   "docs/part-05-kubernetes/15-networkpolicy-and-the-kernel-netfilter-conntrack-and-ebpf.md",
+   "docs/part-05-kubernetes/21-certificates-identity-admission-control-and-policy.md",
+   "docs/part-05-kubernetes/22-multitenancy-and-platform-services.md",
+   "docs/part-05-kubernetes/26-how-kubernetes-uses-the-linux-kernel-a-complete-map.md"
+  ],
+  "id": "U077"
+ },
+ {
+  "book": "production-kubernetes",
+  "book_chapter": "13. Autoscaling",
+  "prefix": "13. ",
+  "pct": 42,
+  "labels": [
+   "5.11",
+   "5.18",
+   "5.23"
+  ],
+  "primary": "docs/part-05-kubernetes/11-dns-and-service-discovery-with-coredns.md",
+  "files": [
+   "docs/part-05-kubernetes/11-dns-and-service-discovery-with-coredns.md",
+   "docs/part-05-kubernetes/18-scheduling-in-depth-kube-scheduler-affinity-taints-priority-and-preemp.md",
+   "docs/part-05-kubernetes/23-autoscaling-hpa-vpa-keda-and-the-cluster-autoscaler.md"
+  ],
+  "id": "U080"
+ },
+ {
+  "book": "production-kubernetes",
+  "book_chapter": "14. Application Considerations",
+  "prefix": "14. ",
+  "pct": 46,
+  "labels": [
+   "5.7",
+   "5.9",
+   "5.16",
+   "5.18",
+   "5.24"
+  ],
+  "primary": "docs/part-05-kubernetes/07-pods-and-workloads-deployments-statefulsets-daemonsets-and-jobs.md",
+  "files": [
+   "docs/part-05-kubernetes/07-pods-and-workloads-deployments-statefulsets-daemonsets-and-jobs.md",
+   "docs/part-05-kubernetes/09-the-kubelet-and-the-node-cri-cgroups-qos-classes-probes-and-eviction.md",
+   "docs/part-05-kubernetes/16-configuration-secrets-and-rbac.md",
+   "docs/part-05-kubernetes/18-scheduling-in-depth-kube-scheduler-affinity-taints-priority-and-preemp.md",
+   "docs/part-05-kubernetes/24-observability-for-kubernetes.md"
+  ],
+  "id": "U076"
+ },
+ {
+  "book": "production-kubernetes",
+  "book_chapter": "15. Software Supply Chain",
+  "prefix": "15. ",
+  "pct": 42,
+  "labels": [
+   "4.26",
+   "5.1",
+   "5.27"
+  ],
+  "primary": "docs/part-04-automation/26-gitops-with-argo-cd-and-flux.md",
+  "files": [
+   "docs/part-04-automation/26-gitops-with-argo-cd-and-flux.md",
+   "docs/part-05-kubernetes/01-containers-from-first-principles-images-layers-registries.md",
+   "docs/part-05-kubernetes/27-software-supply-chain-security.md"
+  ],
+  "id": "U058"
+ },
+ {
+  "book": "production-kubernetes",
+  "book_chapter": "16. Platform Abstractions",
+  "prefix": "16. ",
+  "pct": 47,
+  "labels": [
+   "5.22",
+   "5.29"
+  ],
+  "primary": "docs/part-05-kubernetes/22-multitenancy-and-platform-services.md",
+  "files": [
+   "docs/part-05-kubernetes/22-multitenancy-and-platform-services.md",
+   "docs/part-05-kubernetes/29-extending-kubernetes-crds-and-operators.md"
+  ],
+  "id": "U085"
+ },
+ {
+  "book": "supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware",
+  "book_chapter": "1. Introduction",
+  "prefix": "1. ",
+  "pct": 60,
+  "labels": [
+   "6.1"
+  ],
+  "primary": "docs/part-06-hpc-slurm/01-what-a-supercomputer-is-top500-linpack-hpc-versus-ai-factory.md",
+  "files": [
+   "docs/part-06-hpc-slurm/01-what-a-supercomputer-is-top500-linpack-hpc-versus-ai-factory.md"
+  ],
+  "id": "U090"
+ },
+ {
+  "book": "supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware",
+  "book_chapter": "3. How to Build and Start It?",
+  "prefix": "3. ",
+  "pct": 41,
+  "labels": [
+   "6.2"
+  ],
+  "primary": "docs/part-06-hpc-slurm/02-cluster-anatomy-head-login-compute-storage-and-management-nodes.md",
+  "files": [
+   "docs/part-06-hpc-slurm/02-cluster-anatomy-head-login-compute-storage-and-management-nodes.md"
+  ],
+  "id": "U092"
+ },
+ {
+  "book": "supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware",
+  "book_chapter": "11. Users \u2013 Accounting Management",
+  "prefix": "11. ",
+  "pct": 17,
+  "labels": [
+   "1.6",
+   "6.24"
+  ],
+  "primary": "docs/part-01-linux/06-users-groups-permissions-acls-sudo-and-user-environments.md",
+  "files": [
+   "docs/part-01-linux/06-users-groups-permissions-acls-sudo-and-user-environments.md",
+   "docs/part-06-hpc-slurm/24-users-ldap-sssd-quotas-and-accounting-at-scale.md"
+  ],
+  "id": "U005"
+ },
+ {
+  "book": "supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware",
+  "book_chapter": "13. Job Management Systems",
+  "prefix": "13. ",
+  "pct": 57,
+  "labels": [
+   "6.7"
+  ],
+  "primary": "docs/part-06-hpc-slurm/07-slurm-architecture-and-installation.md",
+  "files": [
+   "docs/part-06-hpc-slurm/07-slurm-architecture-and-installation.md"
+  ],
+  "id": "U093"
+ },
+ {
+  "book": "supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware",
+  "book_chapter": "16. Containers",
+  "prefix": "16. ",
+  "pct": 20,
+  "labels": [
+   "6.13",
+   "6.29"
+  ],
+  "primary": "docs/part-06-hpc-slurm/13-containers-on-slurm-enroot-and-pyxis.md",
+  "files": [
+   "docs/part-06-hpc-slurm/13-containers-on-slurm-enroot-and-pyxis.md",
+   "docs/part-06-hpc-slurm/29-containers-and-reproducibility-in-hpc-apptainer-and-enroot.md"
+  ],
+  "id": "U094"
+ },
+ {
+  "book": "supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware",
+  "book_chapter": "17. Clouds",
+  "prefix": "17. ",
+  "pct": 100,
+  "labels": [
+   "6.2",
+   "1.27"
+  ],
+  "primary": "docs/part-06-hpc-slurm/02-cluster-anatomy-head-login-compute-storage-and-management-nodes.md",
+  "files": [
+   "docs/part-06-hpc-slurm/02-cluster-anatomy-head-login-compute-storage-and-management-nodes.md",
+   "docs/part-01-linux/27-cloud-computing-and-virtualization-internals-for-linux-engineers.md"
+  ],
+  "id": "U091"
+ },
+ {
+  "book": "supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware",
+  "book_chapter": "24. Node Setup and Software Installation",
+  "prefix": "24. ",
+  "pct": 15,
+  "labels": [
+   "1.7",
+   "6.6",
+   "6.22"
+  ],
+  "primary": "docs/part-01-linux/07-packages-repositories-and-software-installation.md",
+  "files": [
+   "docs/part-01-linux/07-packages-repositories-and-software-installation.md",
+   "docs/part-06-hpc-slurm/06-environment-modules-spack-and-easybuild.md",
+   "docs/part-06-hpc-slurm/22-provisioning-with-pxe-ipxe-dhcp-tftp-and-image-management.md"
+  ],
+  "id": "U007"
+ },
+ {
+  "book": "supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware",
+  "book_chapter": "25. Out-of-the-Box Stacks and Deployment Systems",
+  "prefix": "25. ",
+  "pct": 18,
+  "labels": [
+   "6.22"
+  ],
+  "primary": "docs/part-06-hpc-slurm/22-provisioning-with-pxe-ipxe-dhcp-tftp-and-image-management.md",
+  "files": [
+   "docs/part-06-hpc-slurm/22-provisioning-with-pxe-ipxe-dhcp-tftp-and-image-management.md"
+  ],
+  "id": "U096"
+ },
+ {
+  "book": "supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to-hardware",
+  "book_chapter": "28. One-Two-Three Instructions",
+  "prefix": "28. ",
+  "pct": 18,
+  "labels": [
+   "1.16",
+   "6.18",
+   "6.19",
+   "6.23",
+   "6.24",
+   "6.30"
+  ],
+  "primary": "docs/part-01-linux/16-logging-time-synchronisation-cron-and-batch-jobs.md",
+  "files": [
+   "docs/part-01-linux/16-logging-time-synchronisation-cron-and-batch-jobs.md",
+   "docs/part-06-hpc-slurm/18-parallel-storage-concepts-and-the-limits-of-nfs.md",
+   "docs/part-06-hpc-slurm/19-lustre-architecture-and-operation.md",
+   "docs/part-06-hpc-slurm/23-xcat-warewulf-and-cluster-managers-compared-with-bcm.md",
+   "docs/part-06-hpc-slurm/24-users-ldap-sssd-quotas-and-accounting-at-scale.md",
+   "docs/part-06-hpc-slurm/30-facility-basics-power-cooling-racks-and-liquid-cooling.md"
+  ],
+  "id": "U011"
+ }
+]

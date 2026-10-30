@@ -30,6 +30,8 @@ A single high-end GPU cannot hold a frontier foundation model. Even an eight-GPU
 
 Scaling inference across nodes is much harder than scaling distributed training. Training jobs optimize for aggregate token throughput over hours or days. They can easily hide network latency behind large micro-batches. Online inference must deliver each output token in under 25 milliseconds while handling unpredictable user prompts. Partitioning a model places network communication directly on the synchronous critical path of every generated token.
 
+This chapter covers the methods that make multinode inference fast for these massive models. It shows how to design distributed serving systems that keep latency low and throughput high. The methods combine hardware features with algorithm changes, so each design choice has to work with the others.
+
 ```text
 Multi-Node Inference Scaling Reference Numbers (ASP Ch. 1, 15; Volume 12 Ch. 9; DAI Ch. 6, 11):
 - Llama-3-70B (80 layers, 140 GB FP16 weights + 20+ GB KV cache):
@@ -159,6 +161,16 @@ That math establishes a hard law for inference infrastructure: **never span Tens
 | PCIe Gen5 x16 (Host Bus Switch) | Local PCIe root / switch without NVLink | 64 GB/s per dir (128 GB/s bidir) | `5 - 10 us` | Pipeline Parallelism (PP) or Data Parallel Replicas (DP) |
 | Standard 100GbE Ethernet | Host kernel TCP/IP socket stack | 100 Gbps (12.5 GB/s) | `50 - 150 us` | Data Parallel Replicas (DP) ONLY |
 
+Tensor parallelism is close to linear for compute-bound work. That holds only while the all-reduce of activations stays fast compared with the math. In inference, TP mainly targets the large matrix multiplies in the attention projections and the MLP networks.
+
+Activations for one token are small, so those all-reduces are cheap on NVLink. That makes TP a practical way to split giant dense models without approximating their weights. Teams also use it when one expert or one layer is too large for a single GPU, or when they want lower latency per layer.
+
+TP efficiency falls once the group grows past a certain size. The drop is steepest across nodes or racks that connect over InfiniBand or Ethernet. For that reason, TP works best inside one node or one NVLink domain.
+
+Blackwell systems with fifth-generation NVLink offer up to 1.8 TB/s of aggregate bidirectional bandwidth per GPU. That lets TP scale across a node of 8 to 16 GPUs. In a GB200 or GB300 NVL72 rack, the NVLink Switch provides about 130 TB/s of GPU bandwidth across the 72-GPU domain.
+
+The NVLink Switch System can join up to 8 racks, or 576 GPUs, into one fully connected fabric. That makes 576-way tensor parallelism possible on paper. Even so, choose TP group sizes with the topology in mind. Keep them inside one NVLink or NVSwitch island when you can, because crossing racks adds switch latency.
+
 ### 1.3 Pipeline Parallelism, Context Parallelism, and Helix Parallelism
 
 When a model is too large to fit inside a single eight-GPU node even after quantization, combine intra-node Tensor Parallelism with inter-node **Pipeline Parallelism**. Pipeline Parallelism slices the model vertically into contiguous layer stages across *P* nodes. For an eighty-layer model with two pipeline stages, the first node runs the first forty layers with eight-way Tensor Parallelism. The second node runs the remaining forty layers with eight-way Tensor Parallelism.
@@ -169,7 +181,47 @@ Pipeline Parallelism has one major drawback during single-request decoding: **pi
 
 For workloads with extreme prompt lengths of one hundred thousand to one million tokens, **Context Parallelism** partitions the input sequence itself across multiple GPUs. This strategy is also called Sequence Parallelism or Helix Parallelism when pipelined across attention and Key-Value dimensions. Using Ring Attention or blocked attention, each GPU stores the Key-Value cache only for its local sequence chunk. The GPUs exchange compact boundary statistics around a logical ring. Context Parallelism cuts prefill Time to First Token roughly in half every time you double the GPU count. On million-token contexts with DeepSeek-V3.1, SGLang's long-context pipeline and sequence parallelism achieves a 3.31x increase in prefill throughput. It also delivers an 81 percent reduction in Time to First Token at 82.8 percent scaling efficiency.
 
+Context Parallelism is harder to build than the other strategies. Transformers use global self-attention, so every token attends to every earlier token. If you split the sequence naively, GPUs must exchange large amounts of data to compute attention across each partition boundary.
+
+Ring parallelism and blocked attention reduce that cost. Each GPU then attends mostly within its own part of the context, plus a small amount of boundary data. In effect, CP works like pipeline parallelism along the sequence length instead of the layer depth. Prompt processing time drops roughly in half each time the GPU count doubles, minus the boundary overhead.
+
+CP does not speed up the token-by-token decode step. It helps prefill for very long inputs, where a document is sliced into segments that run at the same time. It also lets a context larger than one GPU's memory fit across the group, because each GPU stores only its own segment of the KV cache. For short prompts, the extra per-layer communication often costs more than it saves. Measure prefill speed and accuracy at your maximum context before you turn CP on.
+
 Always keep Tensor Parallelism inside a single NVLink domain and use Pipeline or Context Parallelism only when model weights or million-token contexts exceed single-node memory.
+
+### 1.4 Disaggregated Prefill and Decode
+
+Prefill and decode have different needs, so running both on the same GPUs causes trouble. Traditional servers colocate the two stages on the same nodes and batch everything together. That design causes prefill-decode interference. A long prompt prefill can occupy the GPU and delay time-sensitive decode work for other requests, and the reverse also happens.
+
+Prefill is made of large, parallel computations. Decode is made of many small, sequential ones. A shared node must either favor one phase or over-provision hardware to serve both. Neither choice is comfortable, and both waste capacity.
+
+Disaggregation gives each phase its own GPU pool, which removes the direct interference between them. The DistServe system reported up to 7.4x more goodput while meeting both TTFT and TPOT constraints. It also handled latency SLOs up to 12.6x tighter. Gains depend on the workload and the network fabric, so results range from moderate improvements to several times higher goodput.
+
+Goodput is the throughput you get while meeting a latency target. Separating the pools cuts the dead time in which decode waits behind prefill, and the reverse. GPUs then do more useful work and sit idle less. Separation also lets each stage be tuned for its own goal, throughput or latency.
+
+Prefill can be batched aggressively on the prefill GPUs to raise throughput, without slowing decode on other GPUs. Decode GPUs can run lower batch sizes, or use a scheduler that puts urgent decode work first. Time to first token (TTFT) is the prefill goal, and time per output token (TPOT) is the decode goal. Before disaggregation, teams had to trade one against the other. Separate pools let both targets be met at once.
+
+Each pool scales on its own. Prefill workers process the prompt and produce the KV cache. The cache then moves to decode workers, which generate the output tokens one at a time. The two pools talk only during that handoff.
+
+The handoff works only when both sides share the same KV cache layout and dtypes. Cross-vendor or cross-architecture pairs often break this rule. Keep prefill and decode on compatible GPU families, so both sides use the same numeric formats and the cache can move without conversion.
+
+The handoff is cheap when the fabric is fast. Multinode clusters with ConnectX-8 SuperNICs reach up to 800 Gb/s per port with GPUDirect RDMA. The recommendation is one NIC per GPU, which helps both disaggregation and MoE all-to-all. Monitor NVLink and NIC utilization during KV transfer and all-to-all phases.
+
+Disaggregation adds complexity, too. The KV cache of a long prompt can reach a few gigabytes, and that data must be moved and tracked. Scheduling is harder. At ultra scale, though, the gains from using hardware efficiently are large. Chapters 17 and 18 cover advanced scheduling, routing, and deployment for disaggregated PD.
+
+### 1.5 Trade-offs of Each Parallelism Strategy
+
+Each strategy buys one benefit and pays for it somewhere else. The table below lists the main gain and the main cost of each one. Use it to decide which combination fits your model and your network.
+
+| Strategy | Main gain | Main cost |
+|---|---|---|
+| Tensor | Near-linear speedup on compute-bound layers, with all-reduce overlapped with compute | Frequent all-reduce at every layer, and it needs NVLink-class bandwidth |
+| Pipeline | Fits very deep models by splitting layers, and adds throughput for large batches or long inputs | Fill and flush bubbles, weak for one-token decode, and more activation memory |
+| Expert | Total capacity grows with GPU count, and each GPU computes only a share of tokens | An all-to-all shuffle at every MoE layer, and load imbalance when gating is uneven |
+| Data | Near-linear throughput scaling, and simple to build | No per-query latency gain, and each replica holds a full copy of the model |
+| Context | Near-linear prefill speedup for very long sequences | Per-layer boundary communication and custom attention kernels |
+
+Start with the smallest set of strategies that fits the model in memory. Then add the rest only for throughput or context length.
 
 ---
 
@@ -243,6 +295,64 @@ Second, eliminate **hot-expert stragglers**. Because AllToAll is a synchronous c
 
 Always combine Data-Parallel Attention with hierarchical double-buffered AllToAll and EPLB expert replication when serving large Mixture-of-Experts models at scale.
 
+### 2.5 Expert Communication Optimization
+
+The MoE all-to-all is the step that can dominate inference time. Every MoE layer shuffles token activations between GPUs, so each GPU receives only the tokens its experts need. The exchange repeats at every layer, so small inefficiencies add up quickly.
+
+A hierarchical route cuts the cross-node traffic. Tokens first move between GPUs inside a node over NVSwitch and NVLink, which is fast. Only the tokens that need an expert on another node cross the network in a second stage.
+
+Overlap hides much of the remaining latency. High-performance MoE servers use double buffers. While one batch of tokens moves across the network, the previous batch runs its expert computation. Measure link utilization on both the internode NIC and the intranode NVLink paths. Near-optimal all-to-all times depend on keeping the internode fabric busy.
+
+A single global all-to-all barrier leaves GPUs waiting on one another. That wastes bandwidth when not every link is in use. A butterfly schedule, also called a shifted all-to-all, splits the exchange into phased rounds. Every NVLink and NIC then carries part of the traffic, and idle time drops.
+
+All-to-all can run through NCCL's `ncclAllToAll` collective or through grouped send and receive calls. Chunked, pipelined exchanges often run faster, and so do hierarchical schedules such as butterfly across nodes. Test the options and choose the one that fits your topology.
+
+Expert collocation reduces traffic further. If experts 5 and 7 often serve the same token, placing them on one GPU removes an extra all-to-all hop. Gating-frequency analysis and profiling tools reveal which pairs to group for your workload.
+
+Compression is another lever. Casting activations to FP8 or NVFP4 on Tensor Cores, with NVIDIA Transformer Engine, lowers the bytes sent over the NIC. The precision cost is tiny, and the cast and pack overhead is usually small next to the network savings.
+
+Finally, configure the cluster for all-to-all traffic. Choose the NCCL all-to-all algorithm that suits your topology. Confirm that GPUDirect RDMA is enabled on internode paths. Bond the InfiniBand links so that several physical ports act as one logical channel with combined bandwidth and seamless failover.
+
+### 2.6 Load Balancing, Capacity Factor, and Expert Replication
+
+At scale, a well-balanced MoE activates all of its experts at once. One token touches only a few experts, but across all users every expert stays busy. Picture an MoE with 100 experts spread over 100 GPUs. If each token activates only two experts, the compute per token looks like a much smaller dense model. That is why expert parallelism lets some very large MoE models run at all.
+
+Top-2 gating is the usual choice. Each token goes to two experts, which keeps quality high and load reasonably balanced. Top-1 gating cuts communication, because each token reaches only one expert. The trade-off is lower model quality and more uneven load. Top-2 doubles the expert outputs compared with top-1.
+
+Placement helps as well. Experts that often pair up for the same tokens can share a GPU or a node. Many token assignments then stay local, which reduces traffic. Expert replicas and backup copies also help when a few experts draw most of the traffic.
+
+Training teaches balance first. Google's GLaM introduced load-balancing losses and gating noise to spread tokens evenly across experts during training. Inference-time gating that reacts to live load is still a research topic. In production, top-2 gating with a modest capacity factor, plus occasional expert swaps or replicas, is the common compromise.
+
+A hot expert creates a straggler effect. The all-to-all waits for every expert to finish, so one overloaded expert stalls the whole pipeline and leaves other GPUs idle. Many MoE servers therefore cap the load per expert with a capacity factor, typically set at 1.2 to 1.5 times the average token load.
+
+Tokens above the cap go to a second-choice expert or wait for a second pass. Training-time penalties and gating noise work alongside this cap. Together they keep the token-to-expert load close to even. Inference hotspots still appear when prompts or topics concentrate on a subset of experts. A cap is the simplest guard against them.
+
+In practice, a capacity factor of 1.2 with top-2 gating is common. Each expert takes up to 120 percent of its average load, and the excess moves to the next expert. That smooths the load across the system.
+
+Replication handles experts that stay hot. The system clones a hot expert onto another GPU, and the gate then sends part of the traffic to the clone. The model never sees the replica. The engine registers each copy as a separate expert with its own index, so routing can spread tokens across the original and the clone.
+
+Replicas add memory and must stay identical. Because only a few experts run hot, copying a handful of them costs far less than copying the whole model. Load the replicas from the same checkpoint as the original, and do not update them independently. The router knows about only one expert, so divergent copies would break its assumptions.
+
+### 2.7 Adaptive Expert Routing and Real-Time Monitoring
+
+Most expert gates are fixed after training. They rely on routing scores learned in training and ignore current conditions. Adaptive routing changes the gate's decisions at inference time, based on live load. Suppose one expert GPU falls behind. The gate can send some tokens to another expert with a slightly lower score, as long as that expert has spare capacity.
+
+Doing this well requires monitoring. Each expert should publish utilization and latency metrics, for example to Prometheus and Grafana. The system then adjusts the capacity factor or the gating algorithm based on what it sees. Most gating functions consider only training-time scores, so a truly adaptive system has to run inside the inference engine.
+
+The engine wraps the forward pass in custom logic. It can intercept the gating softmax and reallocate tokens to other experts. It uses live signals, such as per-GPU utilization and per-expert token counts, to decide where tokens should go.
+
+One adaptive approach uses biased gating scores. Training used it first, but a simpler version fits inference. A modified expert-bias rule diverts tokens to alternate experts when the primary experts are heavily loaded. This can reduce needless communication and even out the load.
+
+Adaptive routing also adds cost. It brings extra monitoring, decision logic, configuration to manage, and more logging. Whether the benefit outweighs that cost depends on the workload, so test it before you rely on it.
+
+Nsight Systems helps find imbalance. In the timeline, an all-to-all segment that runs much longer on one GPU usually means that GPU handles more tokens. Use that signal to adjust the gating probabilities, move experts to other GPUs, or add and remove expert replicas.
+
+Spawning new expert replicas during inference is hard. It requires pre-provisioned capacity or very fast model loading, so treat it as an advanced step. Grouping experts differently across GPUs can help too. The GPUs then finish each layer more in step. When imbalance persists, schedulers can add expert replicas on the fly, which softens hotspots caused by uneven gating.
+
+Log every dynamic change the system makes. Set an alert when an expert's utilization rises above a threshold, such as 80 percent. The alert gives you a record of what changed and when.
+
+Adaptive MoE systems can scale close to linearly when routing overhead stays low and load stays balanced. Doubling the GPUs can then nearly double throughput. Balanced load comes from top-1 or top-2 gating, capacity-aware gates, and dynamic replication with expert reassignment. Advanced engines can also skip some expert computation, switch off underused experts, or cache results to skip experts for some tokens.
+
 ---
 
 ## 3. Speculative Decoding, Parallel Token Generation, and Constrained Decoding
@@ -284,6 +394,16 @@ Speculative Decoding Expected Tokens and Net Speedup Equations (ASP Ch. 15; HLS 
 
 Three operational rules govern two-model speculative decoding in production. First, the draft model must be **at least 4x faster** than the target model or draft overhead will erase verification gains. Second, both models **must share the exact same tokenizer and vocabulary**. Third, monitor per-position acceptance rates and trim *K* whenever tail positions drop below ten percent acceptance.
 
+Draft quality decides whether speculation pays off. The draft's predictions must closely match the large model's likely outputs. A draft that often guesses wrong wastes compute, because many of its tokens get rejected. A common fix is a distilled version of the main model, or a smaller model fine-tuned on the same data so its outputs correlate well.
+
+The draft also has to be much faster than the target. Typically it should be 4x faster or more, or the speed gain disappears. The draft samples from the same prompt, often at a slightly higher temperature. That raises its chance of matching one of the target's likely continuations. The target then processes all the draft tokens in one batch.
+
+Standard acceptance keeps the target's output distribution. Final samples match the large model when the sampling settings line up. A rejected draft token is replaced, so correctness holds. The only gain is that up to k target calls are skipped when the small model guesses right.
+
+Engines such as vLLM, SGLang, and TensorRT-LLM include built-in coordination for the draft and target models. Speedups of 1.5 to 2.5 times are common. Careful batching and draft design can push the gains higher.
+
+Check the attention kernel too. In PyTorch, `torch.nn.functional.scaled_dot_product_attention` picks a backend, such as FlashAttention or a cuDNN kernel, based on device, shapes, mask, and dtype. You can pin one with `torch.nn.attention.sdpa_kernel()` and an explicit `SDPABackend`. Confirm that the fused backend is active when you benchmark LLM decoding.
+
 ### 3.2 Medusa, EAGLE-1/2/3, Multi-Token Prediction (MTP), and Lookahead Decoding
 
 Deploying a separate draft model complicates cluster operations because you must allocate HBM for two models and coordinate two schedulers. Modern inference engines therefore favor **single-model self-drafting** and **model-free speculation**.
@@ -302,6 +422,14 @@ Let us examine how each single-model method improves upon two-model drafting.
 - **EAGLE, EAGLE-2, and EAGLE-3:** Predicting multiple tokens independently from the same hidden state suffers when a later token depends strongly on the immediately preceding choice. **EAGLE** solves this by running a tiny autoregressive module at the *feature level*. It feeds both the previous hidden state and the sampled token embedding into a single-layer head. EAGLE achieved up to **3.5x speedup** on four-token drafts. **EAGLE-2** added a context-aware dynamic draft tree that expands or prunes branches based on draft confidence, running **20 to 40 percent faster** than EAGLE. **EAGLE-3** removed the feature-prediction constraint and fused representations from lower, middle, and upper target layers to predict draft tokens directly. That design achieves up to **1.4x speedup over EAGLE-2** and up to **6.5x over unoptimized baselines**.
 - **Multi-Token Prediction:** Introduced in DeepSeek-V3 and DeepSeek-R1, Multi-Token Prediction bakes sequential prediction modules directly into the foundation model during pretraining. Unlike Medusa's independent heads, each module uses a complete causal Transformer block. It takes the previous depth's hidden representation and token embedding to predict the next token. At inference time, those built-in heads act as a native, zero-configuration speculative drafter with high acceptance rates.
 - **Lookahead and N-gram Prompt Lookup:** When users summarize documents, edit code, or fill structured templates, the generated output frequently copies multi-word phrases directly from the prompt. N-gram prompt lookup maintains a fast hash table of prompt n-grams and proposes matching continuations with zero neural network overhead. Lookahead decoding extends this idea by maintaining a two-dimensional window of Jacobi iteration trajectories and cached n-grams in parallel.
+
+Medusa changes the model itself. It adds extra decoding heads that branch off at certain layers, which is where the name comes from. Those heads let the model propose several next tokens at once. Medusa therefore needs custom training, and the model ends up slightly larger because of the extra head parameters.
+
+The candidates from the heads form a tree. A binary tree of depth 2 can produce up to 4 tokens, and the model verifies them in parallel. Medusa's tree-based attention keeps the parallel guesses consistent with one another. In theory, that cuts forward passes by up to 4x. In practice, backtracking usually limits the gain to about 2 to 3 times.
+
+Medusa is worth considering when you can train it for your own use case. Once trained, it can give excellent low-latency performance. The cost is the model change and the fine-tuning work, so budget for both before you commit.
+
+EAGLE takes a different route. It predicts at the feature level instead of the token level. It runs a one-step extrapolation of the large model's own intermediate representation to predict the next token's features. Resolving that uncertainty raises the acceptance rate.
 
 ### 3.3 Concurrency Trade-Offs and vLLM Speculative Decoding Configuration
 
@@ -339,7 +467,51 @@ Production applications frequently require **constrained decoding**—also calle
 
 To eliminate that bottleneck, TensorRT-LLM, vLLM, and SGLang integrate **XGrammar** and **Outlines**. These engines precompile the JSON schema into a compact finite-state machine or pushdown automaton ahead of time. They precompute valid token bitmasks for each state and inject the bitmask directly into the GPU softmax kernel while overlapping mask preparation on the CPU. For moderate JSON schemas at scale, compiled grammar masking keeps latency overhead in the **low single-digit percent range**. Overly restrictive or deeply nested schemas can still trigger first-request compilation stalls or double-digit backtracking overhead.
 
+Constrained decoding also matters for function calling. OpenAI's function-calling API relies on well-structured outputs. The model must choose the right function, then produce inputs and outputs that match that function's signature. These rules are not negotiable at the application level.
+
+Constrained decoding changes token selection. At each step, only valid tokens are allowed. The simplest version is a list of allowed tokens. A more advanced version embeds a formal grammar and runs a state machine that filters out invalid tokens.
+
+The mask is not free. Each step pays some extra latency, and naive implementations can add milliseconds per token. Optimized engines with grammar masks cut that cost sharply, although the exact overhead depends on the runtime, the grammar, and the implementation path. Backtracking happens inside the generation loop, so debugging and profiling need fine-grained telemetry.
+
+Cache behavior matters as well. Pruning the full probability distribution at every step can blow the caches. The effect is strongest when the allowed token set is very small. Many frameworks therefore compile the JSON grammar ahead of time and precompute the valid tokens for each state. The engine then masks invalid softmax outputs at runtime. That reduces backtracking, improves cache use, and raises acceptance rates.
+
+Simple JSON schemas can run with overhead in the low single-digit percent at scale. Complex grammars or small batches can still reach double-digit overhead. Measure TTFT and tokens per second under your exact schema.
+
+Several libraries support these techniques, including Hugging Face Transformers, NVIDIA NeMo, and vLLM. TensorRT-LLM exposes guided decoding with JSON schema and context-free grammar support through the XGrammar backend. TensorRT-LLM and Transformers also accept user-defined vocabulary masks, with a negligible speed penalty.
+
+XGrammar compiles constraints on the GPU and avoids large Python-side mask work. Some configurations fall back to slower backends and cause long first-request stalls. Keep grammars compact so the cache and the token-mask bandwidth stay efficient.
+
+You can also push the masking into the kernel, injecting the token mask during the final softmax. Done well, constrained decoding can run as fast as unconstrained decoding. Very restrictive rules, however, turn decoding into a search over a small token space. That means more backtracking and slower generation. Avoid large or overly strict constraints where you can. Letting the model decode normally and filtering the output afterward is one option, but it is not always viable. Profile each option and pick the one that fits your case.
+
 Enable EAGLE-3 or Multi-Token Prediction for low-concurrency interactive workloads, and precompile compact JSON schemas with XGrammar so structured outputs never stall the GPU decode loop.
+
+### 3.5 Self-Speculative and Single-Model Variants
+
+Some methods skip the external draft model. The large target model drafts for itself by taking a fast, approximate pass. Self-speculative decoding, also called draft-and-verify, is one example. The model runs only half of its layers, perhaps in reduced precision, for each new token. It skips every other layer and produces draft output much as a smaller model would.
+
+The second stage is a full forward pass that verifies the k drafted tokens together. If all k match, the system has saved the work of the skipped layers for those tokens. If not, it accepts tokens up to the first mismatch and continues the normal way. When acceptance rates and draft depth cooperate, this approaches a 2x speedup.
+
+No second model needs training, maintenance, or memory. The hard part is finding a draft-stage reduction, such as dropping layers or lowering precision, that does not hurt accuracy. Other draft-cost cuts include dynamic depth decoding, which skips layers that matter least for quality. Some teams skip every Nth transformer layer. Others run the draft in FP8 or NVFP4, or use a smaller hidden size during the draft stage.
+
+Consistent decoding trains one LLM to both generate and validate several tokens. That single-model approach reports about 3x speedups without a separate draft model. It shows a broader trend of building speculation into the model's own weights. Because the optimization stays local to the model, the inference engine itself can stay simple.
+
+These methods are active research areas. Some prototypes skip parts of the network or lower precision during decoding, trading accuracy for speed. They are not yet universal in production models. Validate quality and speed on your own tasks before you enable any of them. Future models might also ship a built-in fast-generation mode.
+
+### 3.6 Interleaving Decode Steps Across Requests
+
+Another way to keep the GPU busy is to interleave decode steps from many concurrent requests. This is mostly an inference-engine feature rather than an algorithm change. It batches work at the token level across users, which fills the gaps that a single sequence leaves behind.
+
+Engines such as vLLM do this through request routing, continuous batching, and token scheduling. If one sequence stalls on I/O or a data dependency, the scheduler runs another sequence's next-token step on that same GPU. Pair the engine's scheduling with CUDA streams. Then use Nsight Systems to confirm that token-step kernels overlap with NIC and NVLink transfers, instead of queuing behind each other on one stream.
+
+Interleaving does not shorten a single sequence. It can add a small per-token cost from context switching. It does raise overall throughput and GPU utilization when many users share a server. That lowers the average request latency under heavy load.
+
+### 3.7 Combining Decoding Techniques and Evaluating Complexity
+
+These decoding optimizations can be stacked. For example, you could run speculative decoding with a Medusa-enabled target model. In that setup, the big target model verifies several tokens at a time that a small draft predicted.
+
+Every technique adds complexity. You may need to maintain an extra model, alter the main model, or manage more elaborate control logic. Weigh that cost against the performance gain. For interactive applications, cutting response time by even a few milliseconds can justify the effort, especially at scale.
+
+Each optimization also needs a return on investment. For interactive applications, a 2 to 3x latency improvement is usually worth the work. For simpler use cases, a plain approach may be enough. Start with the largest bottleneck, such as prefill-decode interference. Then add complexity only when you need it, and profile to see which change pays back the most.
 
 ---
 
@@ -502,6 +674,10 @@ At cluster scale, even bounded-load prefix routing cannot prevent a long prefill
 - **Zero-Copy KV Cache Transfer via NIXL and LMCache:** After a prefill worker computes the prompt's KV cache and first token, **NVIDIA NIXL** and **LMCache** transfer the KV blocks directly to the selected decode worker. They use device-to-device NVLink when co-located on the same node, or **GPUDirect RDMA** over InfiniBand NDR and ConnectX-8 SuperNICs across nodes. Overlapping layer-by-layer transfer with prefill compute keeps transfer latency overhead below one percent.
 - **Kubernetes `llm-d` Variant Autoscaler:** On Kubernetes, the open-source `llm-d` architecture pairs a KV-aware gateway with a **Workload Variant Autoscaler**. That autoscaler dynamically shifts GPU replica counts between the prefill pool and the decode pool as prompt-to-output token ratios change.
 
+NIXL picks the transfer path for you. Within a node, it moves data device to device over NVLink and NVSwitch, without host staging. Across nodes, it uses GPUDirect RDMA over InfiniBand or RoCEv2, which avoids host copies. NVIDIA Dynamo and TensorRT-LLM use NIXL to move KV cache over peer-to-peer links and RDMA. vLLM pairs LMCache with NIXL for disaggregated prefilling.
+
+When the fabric or the virtualization layer blocks direct peer access, NIXL falls back to host-staged paths. Those paths are slower, so validate end-to-end KV transfer time on your own deployment.
+
 Always pair prefix-aware routing with a hard queue and KV-cache load ceiling so a popular system prompt replicates across workers instead of saturating a single node.
 
 ---
@@ -615,6 +791,8 @@ Summary: 25 passed, 0 failed
 - **Eliminate MoE network microbursts and hot-expert stragglers:** Split large NVL72 AllToAll collectives into staggered waves to cut instantaneous messages by 16.71x. Set a capacity factor of 1.2 and use DeepSeek EPLB to clone hot experts when utilization exceeds eighty percent.
 - **Accelerate sequential decode with lossless speculative decoding:** Draft-verify rejection sampling preserves the exact target distribution while generating multiple tokens per target pass. Single-model methods like EAGLE-3, Medusa, and DeepSeek Multi-Token Prediction deliver 1.96x to 6.5x speedups without managing an external draft model.
 - **Orchestrate multi-node shards with LeaderWorkerSet and bounded-load prefix routing:** Use Kubernetes `LeaderWorkerSet` for gang-scheduled, atomic multi-node pod groups. Combine prefix-cache affinity with a queue and KV-cache ceiling so popular prefixes achieve over 85 percent cache hits without creating a single-node hotspot.
+
+The key is an end-to-end, adaptable architecture that matches algorithmic innovations with high-performance hardware. Engines such as vLLM, SGLang, and NVIDIA Dynamo already combine many of these techniques. The chapters that follow go deeper into adaptive and multinode serving strategies.
 
 ---
 
