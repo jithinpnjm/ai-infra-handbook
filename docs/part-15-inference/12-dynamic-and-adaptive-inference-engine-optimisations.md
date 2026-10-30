@@ -412,6 +412,97 @@ Place an endpoint-level semantic cache and ModernBERT classifier in front of you
 
 ---
 
+### 5.3 Topology-Aware and Congestion-Aware GPU Communication (ASP Ch. 19, restored)
+
+Picture a rack of 72 GPUs that can all talk to each other at once. It sounds like the problem is solved, but the fast network is still a shared road. If everyone drives to the same destination at the same minute, you get a traffic jam, and in serving the jam shows up as slow outlier responses. This section is about scheduling the traffic, not just buying the road.
+
+#### The road and its limits
+
+In an NVL72 rack, 72 GPUs sit in one NVLink and NVSwitch domain. Each GPU has 18 NVLink 5 ports, which gives up to about 1.8 TB/s of bidirectional bandwidth per GPU and over 130 TB/s across the whole switch network. A GB200 rack uses B200 GPUs with 180 GB of HBM each, and the GB300 rack uses B300 GPUs with 288 GB each. Any GPU can reach any other in one hop through NVSwitch.
+
+Each port carries 100 GB/s bidirectional, which is 50 GB/s per direction. Those are hard limits. When many GPUs send to one GPU, they all share that one GPU's ingress, and queues build up. The same happens in NVSwitch when every GPU exchanges data at the same moment. Once traffic leaves the rack over InfiniBand or Ethernet, each hop costs 5 to 10 µs for NDR, compared with under 1 µs for an NVSwitch hop.
+
+**The practical rule:** never assume the topology. Ask for it with the CUDA topology APIs and NCCL's topology hints, query NVML and DCGM for per-port NVLink counters, and use Fabric Manager or NVSwitch tools for switch-level mapping.
+
+#### Seeing congestion before you fix it
+
+You cannot schedule around what you cannot see. NVML exposes per-link throughput through `nvmlDeviceGetNvLinkUtilizationCounter`, and DCGM exposes the same counters for dashboards. The command `nvidia-smi nvlink --status` shows link health and configuration, but NVML and DCGM are the right sources for performance counters. Counters add overhead, so sample at a sensible interval.
+
+The counters reveal hotspot links near 100% while others sit idle. Nsight Systems adds the timeline view, and it can show, for example, every pipeline stage sending activations over the same link at the same instant. Feed the DCGM exporter into Prometheus and Grafana so you see utilisation live and over time. When a hotspot appears, the scheduler can insert a slight delay, overlap work differently, or reassign GPU roles.
+
+#### Adaptive process-to-GPU mapping
+
+Suppose layer 0 on GPU 0 feeds layer 2 on GPU 2, but those GPUs sit at opposite ends of the switch network. Large activations then take a long, shared path. Moving layer 2 to GPU 1, a closer GPU, shortens the path. NVIDIA's Topology-Aware GPU Selection (NVTAGS) automates this. It profiles the topology and assigns GPU affinity from the real communication pattern.
+
+Treat it as a graph problem. The nodes are processes, the edge weights are data volume, and you look for the minimum cut. If two processes exchange tens of GB per second, put them on the same node. A well-chosen move can turn one 50 GB/s cross-node transfer into two 25 GB/s transfers inside nodes, cutting that communication latency by 50%. Moving a layer also moves its weights, which can be many GB, so remap between large batches or when the mapping will stay stable for a while.
+
+#### Choosing the NCCL algorithm
+
+A ring all-reduce passes data around a closed loop. It keeps every link busy, but latency grows with GPU count: on 72 GPUs the data makes 71 hops. A tree all-reduce organises GPUs as a logical binary tree, with chains inside a node and a pipelined dual-binary tree across nodes. It finishes in about log₂(72), roughly 6 steps. The tree may not saturate every link every moment, but no single link becomes a chokepoint.
+
+For small, latency-sensitive messages, a tree usually wins. For very large messages where bandwidth dominates, a ring usually wins, if the network is not congested. NCCL chooses heuristically, often rings inside NVSwitch nodes and hierarchical or tree variants across nodes. On a single NVL72 rack it is usually better to force a tree for large reductions, using the `NCCL_ALGO` environment variable.
+
+Two further tricks help. First, rotate the ring: if the same GPU pairs always carry the wrap-around traffic, shift the starting GPU between collectives. NCCL's alternating-rings enhancement does part of this, and a scheduler can do more by calling `ncclCommInitRank` with a permuted rank order. Second, use wave scheduling. A single all-to-all among 72 GPUs means 72 × 71 messages at once. Splitting it into 4 waves of 18 GPUs smooths the load. Staggering the waves is called temporal multiplexing, and it also lets later layers' compute overlap with earlier waves' communication.
+
+#### Leaving the rack: multirail and GPUDirect RDMA
+
+Beyond one rack, GPUs talk through NICs and switches. GPUDirect RDMA lets a GPU read and write a remote GPU's memory without the host CPU, but the network is still slower than NVLink, so it becomes the limit unless you schedule it.
+
+Use several NICs, called multirail. Two NICs per node give nearly twice the throughput of one, with a little overhead. NCCL splits rings and trees across NICs, and `NCCL_CROSS_NIC` controls whether a collective may use different NICs on different nodes. Enable it for large collectives on topologies designed for multirail. Also enforce NIC affinity: bind each GPU to the NIC on the same PCIe root complex or CPU complex, for example GPUs 0–3 to NIC 0 and GPUs 4–7 to NIC 1, using a static topology description for NCCL. If one NIC is saturated, move one GPU's traffic to another port for the next round.
+
+For the heaviest MoE clusters, replicate popular experts on several nodes to cut cross-node queries, or reduce hierarchically: aggregate inside each node first, then exchange a summary. NVIDIA SHARP can offload aggregation to the switch, and with network adaptive routing it removes bottlenecks. Treat the network as a schedulable resource, like GPUs and memory, and make the scheduler aware of the full fabric, for example fat-tree or dragonfly.
+
+#### MoE expert rebalancing and regrouping
+
+In an MoE model each token goes to a few experts living on different GPUs, so traffic is all-to-all. With static placement, a popular expert makes its GPU a hotspot, and experts that work on the same tokens may sit at opposite ends of the fabric, say GPU 0 and GPU 71.
+
+The fix is to rearrange the experts. Put frequently co-used experts, for example experts 5 and 19, on the same GPU or node. Spread out or duplicate the very popular expert 7. Group experts that are used together on the same NVSwitch or server, a technique called expert bucketing. Treat it as graph partitioning with a minimum cut over token traffic. Moving an expert moves potentially GB of weights, so do it from logged routing statistics during scheduled maintenance windows. In short: spread the popular experts and colocate the chatty ones. This rearranges the workload to fit the network, not the other way round.
+
+#### Reacting while traffic is running
+
+Static settings are not enough for bursty traffic, so the best systems adapt continuously from telemetry.
+
+- **Temporal load balancing:** if a link is saturated by a huge pipeline activation transfer, delay a second transfer by a few milliseconds. Brief queuing beats overload. If a big transfer is idle because its source GPU is computing, use the gap for low-priority data.
+- **Software adaptive routing:** with several NVSwitch planes or NIC rails, pick the less busy path for the next transfer, for example by keeping several NCCL communicators mapped to different paths. NVSwitch also offers virtual channels and hardware quality of service, so nonurgent traffic can use a lower-priority channel.
+- **Load-dependent scheduling:** if query A is about to run a massive all-gather and query B would add another at the same time, delay B briefly. If 8 parallel queries spike NVSwitch utilisation, try 4 and then 4.
+- **Backpressure:** a destination GPU whose buffers are full tells senders to pause. NCCL applies this when receivers cannot keep up, and a scheduler can use the blocked sends as a signal to run other compute meanwhile.
+
+A centralised scheduler can watch all links, backed by a distributed backpressure protocol, using either an RL agent or heuristic rules.
+
+#### Coordinating NVSwitch transfers
+
+NVSwitch is a central crossbar with its own adaptive routing across chips and planes. It also interleaves packets from competing flows fairly. Software can still do better by using application knowledge of pipeline, tensor and expert parallelism.
+
+Take a parameter-server pattern, where GPU 0 collects results from all 71 others. If all send at once, GPU 0's 18 NVLink ports receive 71 inputs and NVSwitch must buffer and serialise them, which causes latency spikes. Instead split senders into four groups: GPUs 1–18 first, then GPUs 19–36 a few microseconds later, and so on. At any instant only about 18 GPUs send, matching GPU 0's 18 ports, so nothing queues. Generalise it with rotating pairwise exchanges, the butterfly or shuffle pattern, or with time-sliced slots that work like time-division multiplexing.
+
+Also limit concurrency. Roughly 2 to 4 simultaneous large expert-gather or broadcast transfers is the sweet spot. For 12 collectives, run 4 at a time and then the next 4. The serialised plan usually finishes sooner because it avoids congestion. Treating the fabric as a shared, scheduled resource keeps tail latency low, which is what serving users cares about.
+
+#### Experimental ideas worth knowing
+
+The book labels these experimental and not widely available. Treat them as things to watch, not defaults.
+
+| Technique | What it does | Reported effect |
+|---|---|---|
+| Dynamic early-exit networks | Stop computing when confidence is high, using auxiliary classifiers at intermediate layers | 30% to 50% speedup on reasoning tasks without accuracy loss |
+| Input-aware layer skipping (DASH) | Per token, decide to execute or skip each layer, modelled as a Markov decision process with a small scoring network | Skips 20% to 40% of layers for many tokens |
+| Speculative MoE expert routing | Predict which experts upcoming tokens need and send tokens early; wrong guesses waste work | Up to 30% less cross-node bandwidth than static EP plus TP |
+| Dynamic token pruning (LazyLLM) | Compute KV only for important tokens, pruning stopwords and filler in prefill and decode | 20% to 30% lower end-to-end latency on long contexts |
+| Edge-oriented MoE memory budgeting | Keep a subset of low-bit experts in GPU memory and swap others from flash by usage | Keeps expert activation high with lower memory |
+| Dynamic quantisation and activation-range adjustment | Recompute observer ranges every N tokens from sliding-window statistics; FP8 for low-variance "cool" layers, FP16 for high-variance "hot" layers | Compute and memory savings without noticeable accuracy loss |
+
+For FP8, the book suggests a hybrid recipe: E4M3 for the forward pass and E5M2 for gradients, with delayed scaling in Transformer Engine. Keep `amax_compute_algo="max"` unless convergence analysis says otherwise.
+
+```python
+from transformer_engine.common.recipe import Format, DelayedScaling
+recipe = DelayedScaling(
+    fp8_format=Format.HYBRID,       # E4M3 forward, E5M2 backward
+    amax_history_len=1024,          # delayed scaling window, a common default
+    amax_compute_algo="max",
+)
+```
+
+Source: *AI Systems Performance Engineering*, Chapter 19, sections on congestion-aware scheduling and additional adaptive techniques.
+
 ## 6. Test-Time Compute Scaling, Multi-LoRA, Multimodal V1, and RL Runtime Tuning
 
 ### 6.1 Test-Time Compute Scaling Budgets: Best-of-N and MCTS with Prefix Sharing
