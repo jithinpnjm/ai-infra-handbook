@@ -3750,6 +3750,1013 @@ If a type is immutable, you cannot change its value in place. Python raises an e
 
 Immutable types give you some integrity. Nothing else in the program can change their values behind your back. A mutable value can change at any time, and that is useful only when you expect it.
 
+## Tuples in depth
+
+Tuples are the last collection type in this part. A tuple groups a few objects into one unit. It works much like a list, with one big difference: you cannot change it in place. Tuples are usually written inside parentheses instead of square brackets.
+
+A tuple keeps its items in left-to-right order. It can hold any kind of object, including lists, dictionaries and other tuples. You reach items by offset, with the same indexing and slicing you already know from strings and lists. Because tuples are fixed in size, changing the size means building a new tuple.
+
+### Tuple syntax and operations
+
+The table lists the common ways to write tuples and the operations you can run on them.
+
+| Form or operation | Meaning |
+|---|---|
+| `()` | An empty tuple |
+| `T = (0,)` | A one-item tuple |
+| `T = (0, 'Py', 1.2, 3)` | A four-item tuple |
+| `T = 0, 'Py', 1.2, 3` | The same four-item tuple without parentheses |
+| `T = ('Pat', ('dev', 'mgr'))` | Nested tuples |
+| `T = tuple('hack')` | A tuple of the items in an iterable |
+| `T[i]`, `T[i][j]`, `T[i:j]`, `len(T)` | Index, index of index, slice, length |
+| `T1 + T2`, `T * 3` | Concatenate, repeat |
+| `T1 > T2`, `T1 == T2` | Comparisons: magnitude, equality |
+| `'code' in T` | Membership |
+| `for x in T: print(x)` | Iteration |
+| `[x ** 2 for x in T]` | Build a list from the items |
+| `T = (*x, 0, *y, *x)` | Iterable unpacking |
+| `T.index('Py')`, `T.count('Py')` | Methods: search, count |
+| `namedtuple('Emp', ['name', 'jobs'])` | Named-tuple extension type |
+
+Tuples have far fewer methods than lists. An `append` call does not work on a tuple. They do support the usual sequence operations, compare recursively, and accept the `*` unpacking syntax in their literals, as this session shows:
+
+```
+$ python3 # Start your REPL
+>>> (1, 2) + (3, 4) # Concatenation
+(1, 2, 3, 4)
+>>> (1, 2) * 4 # Repetition
+(1, 2, 1, 2, 1, 2, 1, 2)
+>>> T = (1, 2, 3, 4)
+>>> T[0], T[1:3] # Indexing, slicing
+(1, (2, 3))
+>>> T == (1, 2, 3, 4), T > (1, 2, 3, 3), T > (1, 2, 3)
+(True, True, True)
+>>> L = ['code', 'hack']
+>>> (*L, 1, 2, *(3, 4)) # Iterable unpacking
+('code', 'hack', 1, 2, 3, 4)
+```
+
+#### One-item tuples and the comma
+
+Parentheses also group expressions, so Python needs a hint when one object sits in parentheses. The comma is that hint. A single item needs a trailing comma, or Python reads it as a plain value:
+
+```
+>>> x = (40) # An integer!
+>>> x
+40
+>>> y = (40,) # A tuple containing an integer
+>>> y
+(40,)
+```
+
+You can also leave out the parentheses where the syntax is clear. A comma builds the tuple, not the parentheses. The REPL shows the result in parentheses even when you typed none:
+
+```
+>>> 1, 2, 3, 4 # Tuple without parentheses, in REPL and elsewhere
+(1, 2, 3, 4)
+```
+
+Sequence assignment uses the same trick. Names on the left pair with values on the right by position, and both sides are tuples without parentheses:
+
+```
+>>> a, b, c = 1, 2, 3 # Sequence assignment: tuples on both sides
+>>> a, b, c
+(1, 2, 3)
+```
+
+Parentheses are required in some places. They matter inside a function call or when a tuple sits inside a larger expression. Commas matter inside a function call or inside a list or dictionary literal. Everywhere else, the parentheses are optional. For a beginner, writing them every time is simpler than remembering the rules. Many programmers also find that parentheses make tuples easier to read.
+
+The comma acts as a low-precedence operator when nothing else claims it. That is why it builds tuples. Leaving out the parentheses can cause odd syntax errors, for example inside a `lambda` expression. Adding them as a habit avoids those problems.
+
+#### Conversions, methods and immutability
+
+Apart from the literal syntax, tuple operations match those for strings and lists. The `+`, `*` and slicing operations return new tuples. Tuples also lack the methods that strings, lists and dictionaries provide. To sort a tuple, convert it to a list first, or use the `sorted` built-in, which accepts any sequence:
+
+```
+>>> T = ('cc', 'aa', 'dd', 'bb')
+>>> tmp = list(T) # Make a list from a tuple's items
+>>> tmp.sort() # Sort the list
+>>> tmp
+['aa', 'bb', 'cc', 'dd']
+>>> T = tuple(tmp) # Make a tuple from the list's items
+>>> T
+('aa', 'bb', 'cc', 'dd')
+>>> sorted(T, reverse=True) # Or use the sorted built-in, and save steps
+['dd', 'cc', 'bb', 'aa']
+```
+
+The `list` and `tuple` functions build new objects from any iterable. The effect is a conversion. A list comprehension can convert a tuple too, and it can change each item on the way:
+
+```
+>>> T = (1, 2, 3, 4, 5)
+>>> L = [x + 20 for x in T] # Like list(T) + expression logic
+>>> L
+[21, 22, 23, 24, 25]
+```
+
+A list comprehension always builds a new list. It can loop over any sequence, including tuples and strings, and over other iterables such as files. Python has no tuple comprehension. To get one, pass a generator to `tuple`:
+
+```
+>>> tuple(x + 20 for x in T) # Tuple "comprehension" = generator + builder
+(21, 22, 23, 24, 25)
+```
+
+Tuples have two methods of their own, `index` and `count`. They work as they do for lists:
+
+```
+>>> T = (1, 2, 3, 2, 4, 2) # Tuple methods
+>>> T.index(2) # Offset of first appearance of 2: index _of_!
+1
+>>> T.index(2, 2) # Offset of appearance after offset 2
+3
+>>> T.count(2) # How many 2s are there?
+3
+```
+
+The immutability rule applies only to the top level of a tuple. A list inside a tuple can still change:
+
+```
+>>> T = (1, [2, 3], 4)
+>>> T[1] = 'mod' # This fails: can't change tuple itself
+TypeError: 'tuple' object does not support item assignment
+>>> T[1][0] = 'mod' # This works: can change mutables inside
+>>> T
+(1, ['mod', 3], 4)
+```
+
+### Why lists and tuples
+
+Beginners often ask why tuples exist when lists do. Part of the answer is meaning. A tuple is a simple grouping of objects, while a list is a structure that changes over time. The idea comes from mathematics, and it also matches a row in a relational database table.
+
+Immutability gives integrity. You can be sure that no other reference elsewhere in the program changes a tuple. A list has no such guarantee. Tuples play a role similar to constants in other languages, although in Python the constant quality belongs to the object, not the name.
+
+Tuples can also do things lists cannot. They can serve as dictionary keys. Some built-in operations expect tuples, such as the substitution values for the `%` string formatting operator. As a rule of thumb, use a list for an ordered collection that may change. Use a tuple for a fixed association.
+
+### Named tuples
+
+Tuples can act as records too. A tuple record stores each field by position:
+
+```
+>>> pat = ('Pat', 40.5, ['dev', 'mgr']) # Tuple record
+>>> pat
+('Pat', 40.5, ['dev', 'mgr'])
+>>> pat[0], pat[2] # Access by position
+('Pat', ['dev', 'mgr'])
+```
+
+A dictionary record gives each field a name, which is easier to read:
+
+```
+>>> pat = dict(name='Pat', age=40.5, jobs=['dev', 'mgr']) # Dictionary record
+>>> pat['name'], pat['jobs'] # Access by key
+('Pat', ['dev', 'mgr'])
+```
+
+You can also convert parts of the dictionary to tuples when needed:
+
+```
+>>> tuple(pat.values()) # Values to tuple
+('Pat', 40.5, ['dev', 'mgr'])
+>>> list(pat.items()) # Items to tuple list
+[('name', 'Pat'), ('age', 40.5), ('jobs', ['dev', 'mgr'])]
+```
+
+The choice between these forms is a false dichotomy. The `namedtuple` utility gives you both styles. It lives in the standard library `collections` module. Each field is reachable by position and by attribute name, and the record converts to a dictionary-like form when you need keys:
+
+```
+>>> from collections import namedtuple # Import extension type
+>>> Rec = namedtuple('Rec', ['name', 'age', 'jobs']) # Make a generated class
+>>> pat = Rec('Pat', age=40.5, jobs=['dev', 'mgr']) # A named-tuple record
+>>> pat
+Rec(name='Pat', age=40.5, jobs=['dev', 'mgr'])
+>>> pat[0], pat[2] # Access by position
+('Pat', ['dev', 'mgr'])
+>>> pat.name, pat.jobs # Access by attribute
+('Pat', ['dev', 'mgr'])
+```
+
+Converting to a dictionary adds key-based access:
+
+```
+>>> D = pat._asdict() # Dictionary-like form
+>>> D['name'], D['jobs'] # Access by key too
+('Pat', ['dev', 'mgr'])
+>>> D
+{'name': 'Pat', 'age': 40.5, 'jobs': ['dev', 'mgr']}
+```
+
+Named tuples mix a tuple, a class and a dictionary. That extra utility has a cost. You need two startup lines to import the type and build the class, and the magic adds some runtime cost. Named tuples are extension types from the standard library, like the `Fraction` and `Decimal` types. The Python library reference covers them in full.
+
+## Files in depth
+
+A file is a named storage area on your computer, managed by the operating system. The built-in `open` function creates a file object. That object links your program to one file. After that, you move strings to and from the file by calling the object's methods.
+
+A file object is an unusual core type. It is not a number, a sequence or a mapping, and it does not respond to expression operators. It exports only methods. Most methods move data in and out. Others seek to a new position or flush output buffers. The table summarizes common file operations.
+
+| Operation | Meaning |
+|---|---|
+| `output = open(r'C:\data', 'w')` | Create an output file (Windows path, `'w'` means write) |
+| `input = open('/home/me/data', 'r')` | Create an input file (Unix path, `'r'` means read) |
+| `input = open('data')` | Create an input file in the current directory; `'r'` is the default |
+| `aString = input.read()` | Read the entire file into one string |
+| `aString = input.read(N)` | Read up to the next `N` characters or bytes into a string |
+| `aString = input.readline()` | Read the next line, including its `\n`, into a string |
+| `aList = input.readlines()` | Read the entire file into a list of line strings, each with its `\n` |
+| `output.write(aString)` | Write a string of characters or bytes to the file |
+| `output.writelines(aList)` | Write all line strings in a list to the file, exactly as given |
+| `output.close()` | Close the file manually; Python does it for you when the object is reclaimed |
+| `output.flush()` | Flush the output buffer to disk without closing |
+| `input.seek(N)` | Change the file position to offset `N` for the next operation |
+| `for line in input: use line` | File iterators read one line at a time |
+| `open('f.txt', encoding='utf-8')` | Unicode text files, using `str` strings |
+| `open('f.bin', 'rb')` | Bytes files, using `bytes` strings |
+| `codecs.open('f.txt', ...)` | Alternative Unicode text-file interface |
+
+### Opening files
+
+To open a file, call `open` with the external filename first and a processing mode second. Both arguments are strings. The call returns a file object, which has methods for transferring data:
+
+```
+afile = open(filename, mode)
+afile.method()
+```
+
+The filename can include a directory path. That path can be absolute, which is complete, or relative, which is partial. On Unix systems such as macOS and Linux, a path uses forward slashes, as in `a/b/file.txt`. On Windows, a path uses backslashes, as in `a\b\file.txt`.
+
+A filename without a path refers to the current working directory (CWD). That is the folder where the script runs, or where you are working in a REPL. Run `pwd` in most shells to see it. In Python, `os.getcwd()` after `import os` shows the same folder.
+
+The second argument is the processing mode. Use `'r'` to open a file for text input, which is the default. Use `'w'` to create and open a file for text output. Use `'a'` to append text to the end, which suits log files. The mode can carry extra options:
+
+- Adding `b`, as in `'wb'`, processes binary content. End-of-line translation and text encoding are turned off.
+- Adding `+`, as in `'r+'`, opens the file for both input and output. Use `seek` to move between reads and writes.
+
+A third optional argument controls buffering. Passing zero makes output unbuffered, so each write reaches the file at once. Other arguments handle special cases, such as the name of a Unicode encoding for text files. Run `help(open)` in a REPL for the full set of options.
+
+### Reading and writing files
+
+Once you have a file object, its methods read from or write to the file. Content always takes the form of strings in your program. Reading returns strings, and writing expects strings. Keep three points in mind.
+
+First, file iterators are often the best way to read text lines. A file is also an iterator that returns one line at a time in a `for` loop. The read methods remain useful, but you will often skip them for line work.
+
+Second, content is strings, not objects. Reads return strings even when the file holds numbers. Writes do not format or convert anything, so you must convert values yourself. The `int`, `float` and `str` functions and string formatting help here. Also, `print` adds newlines but file writes do not. Printing text read from a file can double the spacing, so skip the extra newline when it matters.
+
+Third, output files are buffered. Written text may wait in memory before it reaches the disk. Closing a file, or calling `flush`, forces buffered data to disk. You can turn buffering off with extra `open` arguments, but that can slow the program. Files are also random-access by byte offset. The `seek` method lets a script jump to a position before it reads or writes.
+
+Closing a file is often optional. Calling `close` ends the connection, frees system resources and flushes buffered output. When a file object is no longer referenced, Python reclaims it and closes it if it is still open. Simple scripts and short-lived temporary files can skip `close`. Still, an explicit `close` is a good habit, especially in long-running programs and in REPL sessions. The automatic close is a detail of CPython, the standard implementation, not part of the language itself. It may not run when you expect in a REPL, and other implementations may behave differently. The `with` statement, covered below, closes files for you.
+
+Here is a short session that writes two lines and reads them back:
+
+```
+>>> myfile = open('myfile.txt', 'w') # Open for text output: create/empty
+>>> myfile.write('hello text file\n') # Write a line of text: string
+16
+>>> myfile.write('goodbye text file\n')
+18
+>>> myfile.close() # Ensure output is flushed to disk
+>>> myfile = open('myfile.txt') # Open for text input: 'r' is default
+>>> myfile.readline() # Read the lines back
+'hello text file\n'
+>>> myfile.readline()
+'goodbye text file\n'
+>>> myfile.readline() # Empty string: end-of-file
+''
+```
+
+The third `readline` returns an empty string. Most read methods use that value to signal the end of the file. Empty lines in the file come back as strings containing only `'\n'`, not as empty strings. Each write call returns the number of characters written. That count is mostly useful for error checks.
+
+Writes do not add a newline for you. Include `\n` in each string, or the next write extends the same line. To display the file with its newlines interpreted, read it all at once and print it:
+
+```
+>>> open('myfile.txt').read() # Read all at once into string
+'hello text file\ngoodbye text file\n'
+>>> print(open('myfile.txt').read()) # User-friendly display
+hello text file
+goodbye text file
+```
+
+To scan a text file line by line, use the file iterator in a loop:
+
+```
+>>> for line in open('myfile.txt'): # Use file iterators, not reads
+...     print(line, end='') # Don't add another \n: line has one!
+...
+hello text file
+goodbye text file
+```
+
+Other kinds of objects must be converted to strings before you write them. The `str` call and explicit separators and newlines do the job. They copy what `print` does automatically. Passing a float to `write` fails, so convert it first:
+
+```
+>>> myfile = open('myfile2.txt', 'w') # Nonstring objects fail
+>>> myfile.write(3.14)
+TypeError: write() argument must be str, not float
+>>> myfile.write(str(3.14) + '\n') # Convert (and emulate print)
+5
+>>> myfile.close()
+>>> open('myfile2.txt').read() # Can reconvert with float()
+'3.14\n'
+```
+
+The `os` module shows the current directory and the files in it:
+
+```
+>>> import os
+>>> os.getcwd() # Show the current working directory
+'/Users/me/code/Chapter09'
+>>> os.listdir() # List files here (or in a passed path)
+['myfile2.txt', 'myfile.txt']
+```
+
+The files appear in the CWD because their names have no path prefix. The filename `myfile.txt` in that folder means the same as `/Users/me/code/Chapter09/myfile.txt` to `open` and other tools.
+
+On Windows, a full path needs care. The backslash is also the escape character in Python strings. Any of these forms works for a Windows path:
+
+```python
+open(r'C:\Users\me\code\newdata.txt') # Raw strings
+open('C:/Users/me/code/newdata.txt') # Forward slashes
+open('C:\\Users\\me\\code\\newdata.txt') # Doubled-up escapes
+```
+
+The raw string form turns off unintended escapes, such as `\n`. The other two forms avoid the issue too. On Unix, use forward slashes and leave out the drive letter, because drives are mounted rather than separate.
+
+### Text and binary files
+
+File type depends on the mode string you pass to `open`. Text files represent content as normal `str` strings. They encode and decode Unicode automatically, and they translate line endings to and from `\n` by default. Binary files represent content as `bytes` and hand you the content unchanged. Use binary mode for media and other nontext data.
+
+Programs that handle plain ASCII text can use the basic text interface. ASCII is a subset of Unicode, so ASCII files are Unicode files too. For non-ASCII text or byte-oriented data, match the object type to the file mode. Use `bytes` for binary files and `str` for text files. Do not open binary data in text mode, because decoding it will likely fail.
+
+A `bytes` object is a sequence of small integers, each one a byte value. It has a leading `b` and behaves much like a text string. Each item, though, is a number:
+
+```
+>>> myfile = open('myfile3.bin', 'wb') # Make binary file: wb=write binary
+>>> myfile.write(b'\x00\x01hack\x02\x03') # Bytes string holds binary data
+8
+>>> myfile.close()
+>>> data = open('myfile3.bin', 'rb').read() # Read binary file: rb=read binary
+>>> data # Raw, unaltered bytes returned
+b'\x00\x01hack\x02\x03'
+>>> data[2:6] # Bytes act like text strings
+b'hack'
+>>> byte = data[2:6][0] # But really small 8-bit integers
+>>> byte, chr(byte), bin(byte)
+(104, 'h', '0b1101000')
+```
+
+Binary files do no newline translation. Text files also accept an `encoding` argument to `open`. If you leave it out, Python falls back on the platform default, which may not match other systems.
+
+### Storing objects with conversions
+
+Next, store several Python objects in one text file, one per line. Writes accept only strings, so convert each value first:
+
+```
+>>> X, Y, Z = 62, 63, 64 # Native Python objects
+>>> S = 'Text' # Must be strings to store in file
+>>> D = {'a': 1, 'b': 2}
+>>> L = [1, 2, 3]
+>>> F = open('datafile.txt', 'w') # Create output text file
+>>> F.write(S + '\n') # Terminate lines with \n
+>>> F.write(f'{X},{Y},{Z}\n') # Convert numbers to strings
+>>> F.write(str(L) + '$' + str(D) + '\n') # Convert and separate with $
+>>> F.close()
+```
+
+Reading the file back shows the exact characters. The raw display shows the escaped newlines, while `print` shows a friendlier view:
+
+```
+>>> chars = open('datafile.txt').read() # Raw string display
+>>> chars
+"Text\n62,63,64\n[1, 2, 3]${'a': 1, 'b': 2}\n"
+>>> print(chars) # User-friendly display
+Text
+62,63,64
+[1, 2, 3]${'a': 1, 'b': 2}
+```
+
+Parsing the file back takes conversions. Python never turns strings into numbers or other objects on its own. Start with the first line, and remove its trailing newline with `rstrip`:
+
+```
+>>> F = open('datafile.txt') # Open again
+>>> line = F.readline() # Read one line
+>>> line
+'Text\n'
+>>> line.rstrip() # Remove newline
+'Text'
+```
+
+A slice such as `line[:-1]` also works, but only if every line ends with `\n`. The last line of a file sometimes does not.
+
+Next, read the line of numbers and split it on commas. Then convert the pieces to integers:
+
+```
+>>> line = F.readline() # Next line from file
+>>> line # It's a string here
+'62,63,64\n'
+>>> parts = line.rstrip().split(',') # Split (parse) on commas
+>>> parts
+['62', '63', '64']
+>>> int(parts[1]) # Convert from string to int
+63
+>>> numbers = [int(P) for P in parts] # Convert all in list at once
+>>> numbers
+[62, 63, 64]
+```
+
+The `int` function ignores whitespace around digits, so `rstrip` was not strictly needed here. Being explicit is still a good habit.
+
+The third line holds a list and a dictionary. Split it on `$`, then run each part through `eval`:
+
+```
+>>> line = F.readline() # Next line from file
+>>> line
+"[1, 2, 3]${'a': 1, 'b': 2}\n"
+>>> parts = line.split('$') # Split (parse) on $
+>>> parts
+['[1, 2, 3]', "{'a': 1, 'b': 2}\n"]
+>>> eval(parts[0]) # Convert to any object type
+[1, 2, 3]
+>>> objects = [eval(P) for P in parts] # Do same for all in list
+>>> objects
+[[1, 2, 3], {'a': 1, 'b': 2}]
+```
+
+The `eval` function treats a string as Python code and runs it. That makes it powerful and risky. It runs any expression it receives, including one that deletes files if your account has permission to do so. The `pickle` module offers a safer route for native objects, as the next section shows. Once parsing ends, the result is a list of normal Python objects, and list and dictionary operations apply to them.
+
+### Storing objects with pickle
+
+The `pickle` module stores almost any Python object in a file directly. You skip the string conversions. It works like a general formatting and parsing tool. To store a dictionary, open the file in binary mode and call `pickle.dump`:
+
+```python
+D = {'a': 1, 'b': 2}
+F = open('datafile.pkl', 'wb')
+import pickle
+pickle.dump(D, F)  # Pickle almost any object to file
+F.close()
+```
+
+To get the dictionary back, open the file in binary mode and call `pickle.load`:
+
+```python
+F = open('datafile.pkl', 'rb')
+E = pickle.load(F)  # Load almost any object from file
+```
+
+Pickle performs serialization. It converts objects to and from a bytes form, and you never handle that form yourself. The format is not meant for reading, and it can change with protocol options and future versions. Pickle files must use binary mode:
+
+```
+>>> open('datafile.pkl', 'rb').read() # Format is prone to change!
+b'\x80\x04\x95\x11\x00\x00\x00\x00\ …etc… \x8c\x01a\x94K\x01\x8c\x01b\x94K\x02u.'
+```
+
+The `shelve` module uses pickle to store Python objects in an access-by-key file. This handbook does not cover it, but it is worth a look once you need keyed storage. The Python library reference covers both modules in full.
+
+### Storing objects with JSON
+
+Pickle translates nearly any Python object into a format built for Python. JSON is a newer data interchange format. It is neutral across programming languages and supported by many systems. MongoDB stores documents in a JSON-style format, and JSON often appears in configuration files.
+
+JSON supports fewer Python types than pickle. Its portability is the advantage. JSON looks very close to Python dictionaries and lists, so the `json` standard-library module translates between them automatically. A nested Python dictionary is almost JSON already:
+
+```
+>>> who = dict(first='Pat', last='Smith')
+>>> rec = dict(name=who, job=['dev', 'mgr'], age=40.5)
+>>> rec
+{'name': {'first': 'Pat', 'last': 'Smith'}, 'job': ['dev', 'mgr'], 'age': 40.5}
+```
+
+The `json` module makes the translation official. This example works on strings in memory:
+
+```
+>>> import json
+>>> json.dumps(rec)
+'{"name": {"first": "Pat", "last": "Smith"}, "job": ["dev", "mgr"], "age": 40.5}'
+>>> S = json.dumps(rec) # Python => JSON
+>>> O = json.loads(S) # JSON => Python
+>>> O
+{'name': {'first': 'Pat', 'last': 'Smith'}, 'job': ['dev', 'mgr'], 'age': 40.5}
+>>> O == rec
+True
+```
+
+JSON data in files works the same way. Use `json.dump` to write and `json.load` to read. Both use text files, because JSON is text:
+
+```
+>>> file = open('testjson.txt', 'w')
+>>> json.dump(rec, fp=file, indent=4) # Python => JSON
+>>> file.close()
+>>> print(open('testjson.txt').read()) # Human-readable file content
+{
+"name": {
+"first": "Pat",
+"last": "Smith"
+},
+"job": [
+"dev",
+"mgr"
+],
+"age": 40.5
+}
+>>> P = json.load(open('testjson.txt')) # JSON => Python
+>>> P
+{'name': {'first': 'Pat', 'last': 'Smith'}, 'job': ['dev', 'mgr'], 'age': 40.5}
+>>> P == rec
+True
+```
+
+You could also store dictionaries and lists in a `.py` module. That data would be just as readable and editable. JSON is not run as code, though, and many people see it as more interoperable today. JSON strings are Unicode. Python strings in memory are Unicode too, so the text encoding matters most when you move JSON in and out of files.
+
+### Other storage tools: struct and csv
+
+The `struct` module creates and parses packed binary data, the kind often shared with C programs:
+
+```
+>>> import struct
+>>> data = struct.pack('i6s', 62, b'Python') # Pack an int and str in bytes
+>>> data
+b'>\x00\x00\x00Python'
+>>> file = open('data.bin', 'wb') # Write/read file, and unpack
+>>> file.write(data) # Binary data in binary files
+>>> file.close()
+>>> struct.unpack('i6s', open('data.bin', 'rb').read())
+(62, b'Python')
+```
+
+The `csv` module parses and creates comma-separated value (CSV) data. It maps less directly to Python objects than JSON does, so each field needs a conversion after parsing:
+
+```
+>>> import csv
+>>> rdr = csv.reader(open('csvdata.txt'))
+>>> for row in rdr: print(row)
+...
+['a', 'bbb', 'cc', 'dddd']
+['11', '22', '33', '44']
+```
+
+YAML and SQLite are other common storage options for data files.
+
+### Closing files with a context manager
+
+The `with` statement wraps file code in a block. The file closes when the block exits, and output is flushed to disk. This happens even when an error occurs. That is safer than relying on garbage collection or on a manual `close` call:
+
+```python
+with open('data.txt') as myfile:  # File closed on "with" exit
+    for line in myfile:  # Read one line at a time
+        ...  # Use line here
+```
+
+Without `with`, a `try` and `finally` pair does a similar job. It costs three extra lines of code:
+
+```python
+myfile = open('data.txt')
+try:
+    for line in myfile:
+        ...  # Use line here
+finally:
+    myfile.close()
+```
+
+The `with` form guarantees release of system resources on every Python version. It is especially useful for output files, because it guarantees that buffers flush. The `try` form is more general, but the `with` form works only with objects that support its protocol. Files support it, so use `with` for file work.
+
+### More file methods and tools
+
+The `seek` method resets your position in a file, so the next read or write happens there. The `flush` method writes buffered output to disk without closing the file. The `readlines` and `writelines` methods work with lists of lines. For the full list, run `dir` on a file object, then run `help` on the names you want.
+
+Beyond `open`, Python offers other file-like tools:
+
+- Standard streams: preopened file objects in the `sys` module, such as `sys.stdout`, connected to the interface where the script runs.
+- Descriptor files in the `os` module: integer handles for lower-level tools, such as read-only access. The `x` mode modifier in `open` creates a file only if it does not exist.
+- Sockets, pipes and FIFOs: file-like objects that synchronize processes or communicate over a network.
+- Shelves: access-by-key files that store pickled Python objects by key.
+- Shell command streams: `os.popen` and `subprocess.Popen` start shell commands and read and write their standard streams.
+
+Third-party projects add more, such as PySerial for serial ports and pexpect for interactive programs.
+
+The `open` function is an interface to the standard-library `io` module. That module adds logic on top of the system's file tools, which makes them portable and efficient. Look there for documentation or customization hooks. The `io` module is a package, which is a folder of modules.
+
+## Core types review
+
+Python's core types fall into categories, and each category shares operations. The table classifies the main types and shows which ones can change in place:
+
+| Object type | Category | Mutable? |
+|---|---|---|
+| Numbers | Numeric | No |
+| Strings | Sequence | No |
+| Lists | Sequence | Yes |
+| Dictionaries | Mapping | Yes |
+| Tuples | Sequence | No |
+| Files | Extension | N/A |
+| Sets | Set | Yes |
+| `frozenset` | Set | No |
+| `bytearray` | Sequence | Yes |
+
+A few points help when you read the table:
+
+- Objects share operations by category. Sequences such as strings, lists and tuples share concatenation, length and indexing.
+- Only mutable objects change in place: lists, dictionaries and sets. You cannot change a number, string or tuple in place, but you can create a new one with a different value.
+- Files export only methods. Mutability does not really apply to them, because their state changes as you process them.
+- The Numbers row covers every number type, including integer, float, complex, decimal and fraction.
+- The Strings row covers `str` for text and `bytes` for binary data. The `bytearray` type breaks the pattern, because it is a mutable string.
+- Sets act like the keys of a dictionary with no values. They are unordered and map to nothing, so they are neither mappings nor sequences. The `frozenset` type is an immutable set.
+- Every type in the table also has methods, which are specific to that type.
+
+### Object flexibility
+
+Lists, dictionaries and tuples can hold any kind of object. Sets can hold only immutable objects. Lists, dictionaries and tuples can nest to any depth. Lists, dictionaries and sets can grow and shrink as needed.
+
+That flexibility makes these types good at representing complex information. A dictionary value can be a list, which can hold a tuple, which can hold a dictionary. The nesting can go as deep as your data needs. To reach a nested item, chain as many index operations as you need. Python evaluates them from left to right:
+
+```
+>>> L = ['abc', [(1, 2), ([3], 4)], 5]
+>>> L[1]
+[(1, 2), ([3], 4)]
+>>> L[1][1]
+([3], 4)
+>>> L[1][1][0]
+[3]
+>>> L[1][1][0][0]
+3
+```
+
+### Operator overloading
+
+A class can choose which categories its objects belong to. A class can build a sequence that behaves like the built-in sequences. It does this by overloading indexing and concatenation with special methods:
+
+```python
+class MySequence:
+    def __getitem__(self, index):
+        ...  # Called on self[index], others
+    def __add__(self, other):
+        ...  # Called on self + other
+    def __iter__(self):
+        ...  # Preferred in iterations
+```
+
+A class can also be mutable or not. Implementing `__setitem__` makes `self[index] = value` assignments work. Types written in C as extension types choose their operation sets in a similar way. That is beyond this chapter.
+
+## Shared references and copies
+
+Assignment stores a reference to an object, not a copy of it. Two names can point to one list. Here, `X` is also referenced from inside `L` and from inside `D`:
+
+```
+>>> X = [1, 2, 3]
+>>> L = ['a', X, 'b'] # Embed references to X's object in two others
+>>> D = {'x':X, 'y':2}
+```
+
+Lists are mutable, so changing the shared list through any one reference changes what the other two see:
+
+```
+>>> X[1] = 'surprise' # Changes all three references!
+>>> L
+['a', [1, 'surprise', 3], 'b']
+>>> D
+{'x': [1, 'surprise', 3], 'y': 2}
+```
+
+A reference acts like a pointer that Python always follows. You cannot grab the reference itself, but you can store it in many places. That lets you pass a large object around without copying it. When you want independence, request a copy explicitly:
+
+- A slice with empty limits, `L[:]`, copies a sequence.
+- The `copy` method, `X.copy()`, copies a dictionary, set or list.
+- The built-in functions `list`, `dict` and `set` make copies, as in `list(L)`, `dict(D)` and `set(S)`.
+- The `copy` standard-library module makes full, recursive copies when needed.
+
+Suppose you want changes to one variable to stay out of another. Assign copies, not the same objects:
+
+```
+>>> L = [1,2,3]
+>>> D = {'a':1, 'b':2}
+>>> A = L[:] # Instead of A = L (or list(L), L.copy())
+>>> B = D.copy() # Instead of B = D (ditto for sets)
+>>> A[1] = 'Py'
+>>> B['c'] = 'code' # Changes copies, not originals
+>>>
+>>> L, D
+([1, 2, 3], {'a': 1, 'b': 2})
+>>> A, B
+([1, 'Py', 3], {'a': 1, 'b': 2, 'c': 'code'})
+```
+
+Empty-limit slices and the dictionary `copy` method copy only the top level. Nested structures still share their inner objects. For a complete, independent copy of a deeply nested structure, use the `copy` module:
+
+```python
+import copy
+X = copy.deepcopy(Y)  # Fully copy an arbitrarily nested object Y
+```
+
+A deep copy traverses every part of the object, however deep it goes. It is rarer than you might expect. References are usually what you want. When they are not, a slice or a copy method is usually enough.
+
+### Common reference mistakes
+
+Shared references matter most when a program grows. If objects change in ways you did not expect, copy them. Here, `M` holds a reference to `L`, so changing `L` also changes `M`:
+
+```
+>>> L = [1, 2, 3]
+>>> M = ['X', L, 'Y'] # Embed a reference to L
+>>> M
+['X', [1, 2, 3], 'Y']
+>>> L[1] = 0 # Changes M (what M references) too
+>>> M
+['X', [1, 0, 3], 'Y']
+```
+
+Embedding a copy avoids the problem:
+
+```
+>>> L = [1, 2, 3]
+>>> M = ['X', L[:], 'Y'] # Embed a copy of L
+>>> L[1] = 0 # Changes only L, not M
+>>> L
+[1, 0, 3]
+>>> M
+['X', [1, 2, 3], 'Y']
+```
+
+Slice limits default to 0 and to the length of the sequence. If you omit both, the slice takes every item and makes a top-level copy with no shared objects.
+
+Repetition also adds one level deep. Repeating a sequence is like adding it to itself several times. When the sequence holds mutable items, the result can surprise you. Here, `X` repeats `L` as flat items, but `Y` repeats a list that contains `L`:
+
+```
+>>> L = [4, 5, 6]
+>>> X = L * 4 # Like [4, 5, 6] + [4, 5, 6] + ...
+>>> Y = [L] * 4 # [L] + [L] + ... = [L, L, ...]
+>>> X
+[4, 5, 6, 4, 5, 6, 4, 5, 6, 4, 5, 6]
+>>> Y
+[[4, 5, 6], [4, 5, 6], [4, 5, 6], [4, 5, 6]]
+```
+
+Because `L` sits inside `Y`, changing `L` changes `Y` but not `X`:
+
+```
+>>> L[1] = 0 # Impacts Y but not X
+>>> X
+[4, 5, 6, 4, 5, 6, 4, 5, 6, 4, 5, 6]
+>>> Y
+[[4, 0, 6], [4, 0, 6], [4, 0, 6], [4, 0, 6]]
+```
+
+Copy the list when you want a separate version. This copies once, but all four slots still share that one copy:
+
+```
+>>> L = [4, 5, 6]
+>>> Y = [list(L)] * 4 # Embed a (shared) copy of L
+>>> L[1] = 0
+>>> Y
+[[4, 5, 6], [4, 5, 6], [4, 5, 6], [4, 5, 6]]
+>>> Y[0][1] = 99 # All four copies are still the same
+>>> Y
+[[4, 99, 6], [4, 99, 6], [4, 99, 6], [4, 99, 6]]
+```
+
+To give each slot its own copy, build the list in a comprehension:
+
+```
+>>> L = [4, 5, 6]
+>>> Y = [list(L) for i in range(4)]
+>>> Y
+[[4, 5, 6], [4, 5, 6], [4, 5, 6], [4, 5, 6]]
+>>> Y[0][1] = 99 # And now they're not!
+>>> Y
+[[4, 99, 6], [4, 5, 6], [4, 5, 6], [4, 5, 6]]
+```
+
+Repetition, concatenation and slicing copy only the top level of their operands. Keep that rule in mind, and these cases make more sense.
+
+### Cyclic data structures
+
+A collection can contain a reference to itself. Such an object is cyclic. Python prints `[...]` when it detects a cycle, instead of looping forever:
+
+```
+>>> L = ['stuff'] # Append reference to same object
+>>> L.append(L) # Makes a cycle back to the same object: [...]
+>>> L
+['stuff', [...]]
+```
+
+The three dots in brackets mark a cycle. Cycles can cause trouble in your own code. A program that walks structured data may loop endlessly if it does not expect them. Such programs often keep a list, dictionary or set of items they have already visited, and check it before they step into a cycle again. Cycle detection matters in recursion, which you will meet later.
+
+The solution is knowledge. Avoid cyclic references unless you need them. If you create one, make sure the code that handles it knows about the cycle.
+
+### Immutable types cannot change in place
+
+You cannot change an immutable object in place. Build a new object with slicing or concatenation, then assign it back to the name if you still need it:
+
+```python
+T = (1, 2, 3)
+T[2] = 4  # Error!
+T = T[:2] + (4,)  # OK: (1, 2, 4)
+```
+
+That takes extra work, but it avoids most of the side effects described above. Immutable objects like tuples and strings cannot change in place, so other references cannot change them by surprise.
+
+## Comparisons, equality and truth
+
+Every Python object responds to comparisons. Equality tests and magnitude tests work across all core types. Python comparisons inspect every part of a compound object until they can decide the result. They work from left to right, and they go as deep as the nesting requires. The first difference found decides the result.
+
+This process is recursive. The same comparison applies to each nested object, and to the objects inside those, until Python reaches a result. You do not need to write that recursion. The core types do it for you. A list comparison checks each component until it finds a mismatch or reaches the end:
+
+```
+>>> L1 = [1, ('a', 3)] # Same value, but different objects
+>>> L2 = [1, ('a', 3)]
+>>> L1 == L2, L1 is L2 # Same value? Same object?
+(True, False)
+```
+
+The `==` operator tests value equivalence. Python compares all nested objects recursively. The `is` operator tests object identity. It asks whether both names refer to the same object in memory. Here, `L1` and `L2` have equal values but are separate objects.
+
+Short strings can fool the `is` test:
+
+```
+>>> S1 = 'text'
+>>> S2 = 'text'
+>>> S1 == S2, S1 is S2
+(True, True)
+```
+
+Python caches and reuses some objects as an optimization, so there is only one `'text'` in memory. Longer strings behave as you might expect:
+
+```
+>>> S1 = 'a longer string'
+>>> S2 = 'a longer string'
+>>> S1 == S2, S1 is S2
+(True, False)
+```
+
+Strings are immutable, so caching never affects your code. For almost all equality checks, use `==`. Reserve `is` for specialized cases.
+
+Magnitude comparisons also apply recursively to nested structures:
+
+```
+>>> L1 = [1, ('a', 3)] # Nested 3 > nested 2
+>>> L2 = [1, ('a', 2)]
+>>> L1 < L2, L1 == L2, L1 > L2 # Less, equal, greater: tuple of results
+(False, False, True)
+```
+
+Here, `L1` is greater than `L2`, because the nested `3` is greater than the nested `2`. The core types compare as follows:
+
+- Numbers compare by magnitude, after conversion to the highest common type. For example, `1` becomes `1.0` before `1 < 1.1` is checked.
+- Strings compare lexicographically, character by character, using the code point values that `ord` returns. For example, `'abc' < 'ac'` is true.
+- Lists and tuples compare component by component, from left to right, recursing into nested structures. For example, `[1, 3] > [1, 2]` is true.
+- Sets are equal when each contains the other's items. Magnitude operators on sets apply subset and superset tests.
+- Dictionaries compare as equal when their sorted `(key, value)` lists are equal. Magnitude comparisons do not work on dictionaries.
+- Magnitude comparisons between nonnumeric mixed types are errors. Sorting uses those comparisons, so mixed collections cannot be sorted without conversion.
+
+In general, comparing structured objects works as if you had written both as literals and compared their parts one at a time. Classes can change how their objects compare, which you will see later.
+
+### Mixed-type comparisons and sorts
+
+Equality works across types, but magnitude does not. Python allows magnitude tests only between numbers and between values you convert by hand:
+
+```
+>>> 11 == '11' # Equality works but magnitude does not
+False
+>>> 11 >= '11'
+TypeError: '>=' not supported between instances of 'int' and 'str'
+>>> ['11', '22'].sort() # Ditto for sorts
+>>> [11, '11'].sort()
+TypeError: '<' not supported between instances of 'str' and 'int'
+>>> 11 > 9.123 # Mixed numbers convert to highest type
+True
+>>> str(11) >= '11', 11 >= int('11') # Manual conversions force the issue
+(True, True)
+>>> [11, '11'].sort(key=str) # Ditto for sorts: see Chapter 8
+```
+
+### Dictionary comparisons
+
+Magnitude comparisons do not work on dictionaries. Equality does work, because it does not need to compare items in order:
+
+```
+>>> D1 = {'b':3, 'a':1}
+>>> D2 = {'a':1, 'b':3}
+>>> D1 == D2 # Equality, not magnitude
+True
+>>> D1 < D2
+TypeError: '<' not supported between instances of 'dict' and 'dict'
+```
+
+To compare dictionaries by magnitude, write loops that compare values by key. Or compare sorted item lists, which combine the `items` method with `sorted`:
+
+```
+>>> list(D1.items())
+[('b', 3), ('a', 1)]
+>>> sorted(D1.items())
+[('a', 1), ('b', 3)]
+>>> sorted(D1.items()) < sorted(D2.items()) # Dictionary magnitude tests
+False
+>>> sorted(D1.items()) >= sorted(D2.items())
+True
+```
+
+That approach takes more code and may run slowly. Most programs that need it either find a faster way or do not need the speed.
+
+### The meaning of True and False
+
+The comparisons above return `True` and `False`. Both words print as plain text, but they carry a precise meaning. In Python, the integer `0` means false and the integer `1` means true. Python also treats an empty data structure as false and a nonempty one as true. Every object is either true or false:
+
+- Numbers are false if they are zero, and true otherwise.
+- Collections are false if they are empty, and true otherwise.
+- The `None` placeholder is always false.
+- `True` and `False` are preset to true and false.
+
+The table gives examples:
+
+| Object | Value |
+|---|---|
+| `'text'` | `True` |
+| `''` | `False` |
+| `[1, 2]` | `True` |
+| `[]` | `False` |
+| `{'a': 1}` | `True` |
+| `{}` | `False` |
+| `1` | `True` |
+| `0.0` | `False` |
+| `None` | `False` |
+
+Because objects carry their own truth values, you can test the object directly. Writing `if X:` for a string means the same as `if X != '':`. You ask the object whether it holds anything, instead of comparing it to an empty value of the same type.
+
+### The None object
+
+`None` is the special object that always counts as false. It is the only value of its type. It usually serves as an empty placeholder, much like a `NULL` pointer in C.
+
+Lists do not grow when you assign past the end. To preset a list so you can store values at any offset, fill it with `None` objects:
+
+```
+>>> size = 50
+>>> L = []
+>>> L[size - 1] = 'NO'
+IndexError: list assignment index out of range
+>>> L = [None] * size
+>>> L[size - 1] = 'OK'
+>>> L[-10:]
+[None, None, None, None, None, None, None, None, None, 'OK']
+```
+
+This does not limit the list's size. The list can still grow and shrink later. It only sets an initial size for future index assignments. You could fill the list with zeros instead. Best practice is to use `None` when the type of the contents is variable or not yet known.
+
+`None` does not mean undefined. It is something, not nothing, despite its name. It is a real object with real memory, created by Python. Functions that finish without a `return` statement that gives a value also return `None`.
+
+### The bool type
+
+The `bool` type gives `True` and `False` their names. The two words are customized versions of the integers `1` and `0`, as if Python preassigned them. Using the words makes your intent clearer. Two cases stand out:
+
+- In a truth test, `True` and `False` work the same as `1` and `0`, but they say what you mean.
+- Results of Boolean tests print as `True` and `False` in the REPL, not as `1` and `0`.
+
+You do not have to use Booleans in an `if` statement. Any object works there. The `bool` built-in function reports the truth value of any object, which is useful for checking whether an object holds something:
+
+```
+>>> bool(1)
+True
+>>> bool('text')
+True
+>>> bool({})
+False
+```
+
+## Type hierarchies and other objects
+
+Everything a Python program processes is an object. This is called a first-class object model. All objects stand on equal footing. You can pass a class to a function, assign it to a variable, or store it in a list or dictionary.
+
+Types are objects too. The type of an object is an object of type `type`. The call `type(X)` returns the type object for `X`. You can compare type objects in `if` statements. Manual type checks usually limit your code, though. Python code is generally more flexible when it asks what an object can do, not what its type is.
+
+Core type names such as `dict`, `list`, `str`, `tuple`, `int`, `float`, `complex`, `bytes`, `type` and `set` refer to classes. Calling one of them constructs an object, so it is more than a simple conversion. The `types` standard-library module supplies type names that are not built in, such as `types.FunctionType`. The `isinstance` built-in checks types with inheritance in mind. Use it only when code must know a specific type.
+
+Beyond the core types, a typical Python install offers dozens more. They come from C extensions or imported classes. Examples include regular-expression objects, GUI widgets and network sockets. Named tuples, along with `Decimal` and `Fraction`, belong to this group too. Core types have built-in syntax, such as `4` for an integer or `[1,2]` for a list. Other types come from standard-library modules that you import. For example, `re.compile()` creates a regular-expression object after `import re`.
+
+The Python documentation places `range` among the sequence types. It returns an iterable that produces values on demand, so it is not a stored sequence. It supports indexing but not concatenation. Calling it an immutable sequence of integers mixes up the categories.
+
+## Common object gotchas
+
+Several pitfalls trap new users and some experienced ones. Most come from shared references, repetition, cycles and immutability. The sections above showed each idea. This section puts the rules side by side.
+
+### Assignment creates references, not copies
+
+Shared references to mutable objects matter, and this pitfall is common enough to repeat. Here, the list assigned to `L` is referenced from `L` and from inside `M`. Changing `L` in place also changes `M`:
+
+```
+>>> L = [1, 2, 3]
+>>> M = ['X', L, 'Y'] # Embed a reference to L
+>>> M
+['X', [1, 2, 3], 'Y']
+>>> L[1] = 0 # Changes M (what M references) too
+>>> M
+['X', [1, 0, 3], 'Y']
+```
+
+If objects change in ways you do not want, copy them explicitly. Shared references are often exactly what you want, so copy only when needed.
+
+### Repetition adds one level deep
+
+Repetition copies only the top level, as the earlier section showed. A nested list repeated four times still shares its inner list. Copy each inner list when you need separate values. Use a comprehension to build a new list for each slot.
+
+### Cyclic structures need care
+
+A collection that refers to itself is a cyclic object. Python prints the cycle as `[...]`. Code that walks structured data must track visited items, or it may loop forever. Use cycles only when you need them, and handle them where they can occur.
+
+### Immutable types cannot change in place
+
+You cannot change an immutable object in place. Build a new object by slicing or concatenation, then assign the result. Tuples and strings are immutable, so most of the shared-reference surprises cannot happen with them.
+
 ## Checkpoint questions
 
 1. Name four of Python's core object types.
