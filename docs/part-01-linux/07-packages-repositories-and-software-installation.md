@@ -22,34 +22,36 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Almost everything you will operate arrives on a node as software somebody else built: the NVIDIA driver, the CUDA toolkit, the container runtime, `nvidia-container-toolkit`, the Slurm daemons, the InfiniBand stack (OFED or the distribution's inbox drivers), monitoring agents. Three kinds of incident in GPU fleets come from getting this layer wrong:
+Picture a GPU node that worked on Friday. After an automatic upgrade and a reboot on Monday, its GPUs have disappeared. Almost everything you will operate arrives on a node as software somebody else built. The NVIDIA driver, the CUDA toolkit, the container runtime, `nvidia-container-toolkit`, the Slurm daemons, the InfiniBand stack (OFED or the distribution's inbox drivers) and the monitoring agents all arrive this way. Getting this layer wrong produces three kinds of incident in GPU fleets.
 
 1. **Version drift.** One node is auto-upgraded and ends up with a kernel that the installed driver does not support, so the GPUs vanish after the next reboot. Another node has a different CUDA minor version, and a job that worked on the first fails on the second.
 2. **Unknown provenance.** A library copied into `/usr/local/lib` years ago shadows the one the package manager installed, and nobody can say where it came from.
 3. **Broken dependency resolution.** An engineer forces an install with `--nodeps` or `--force` to get past an error, and the node's package database no longer describes what is on disk.
 
-This chapter gives you the vocabulary and the mechanics to avoid all three. It covers what a package is, how the two package families (deb and rpm) work, how repositories and signatures protect you, how to inspect and verify what is installed, how to hold versions, how software is built from source when no package exists (and how to do that without damaging the system), how shared libraries are found at run time (the cause of many "works on my machine" bugs), and how a whole cluster node is assembled in practice. It also introduces `make`, because you will constantly read other people's build instructions, Dockerfiles and driver installers that call it.
+The rest of this chapter gives you the vocabulary and the mechanics to avoid all three. You will learn what a package is and how the two package families, deb and rpm, work. You will see how repositories and signatures protect you, and how to inspect, verify and hold versions. Software built from source is covered too, including how to do it without damaging the system. You will also learn how shared libraries are found at run time, which causes many "works on my machine" bugs. Finally, you will see how a whole cluster node is assembled in practice, and you will meet `make`, because you will constantly read other people's build instructions, Dockerfiles and driver installers that call it.
 
 ## Prerequisites and outcomes
 
-You should be comfortable with the shell (1.2), the directory layout (1.3) and users and `sudo` (1.6).
+Before you start, you should be comfortable with the shell (1.2), the directory layout (1.3) and users and `sudo` (1.6). This chapter builds on those habits and does not repeat them.
 
 After this chapter you can:
 
-- Explain what a package contains, what metadata it carries, and why dependency metadata makes installation tractable.
-- Install, remove, query, verify and hold packages with `apt`/`dpkg` on Debian-family systems and `dnf`/`rpm` on Red Hat-family systems, and translate between the two.
-- Add a third-party repository safely, and say how signature checking works and why `--nogpgcheck` is a smell.
+- Explain what a package contains and what metadata it carries, and why dependency metadata makes installation practical.
+- Install, remove, query, verify and hold packages with apt and dpkg on Debian-family systems, and dnf and rpm on Red Hat-family systems, and translate between the two.
+- Add a third-party repository safely, explain how signature checking works, and say why `--nogpgcheck` is a red flag.
 - Find which package owns a file, and which package would provide a missing file or header.
 - Build and install software from source with `./configure`, `make` and `make install` into a private prefix, read the build log, and turn the result into a real package.
-- Diagnose "cannot open shared object file" and "undefined reference" errors with `ldd`, `ldconfig`, `rpath` and `LD_LIBRARY_PATH`, and explain why `LD_LIBRARY_PATH` should not be exported globally.
-- Read a simple `Makefile` and apply a source patch.
+- Diagnose "cannot open shared object file" and "undefined reference" errors with `ldd`, `ldconfig`, rpath and `LD_LIBRARY_PATH`, and explain why `LD_LIBRARY_PATH` should not be exported globally.
+- Read a simple Makefile and apply a source patch.
 - Describe the order of operations for building a small HPC cluster node, including NFS, OFED, kickstart, cloning pitfalls and diskless booting.
+
+If one of these outcomes feels unfamiliar, read the matching section before you touch a production node.
 
 ## 1. What a package is
 
-A **package** is one file (usually a compressed archive) that holds a tree of files belonging to one piece of software, plus **metadata** describing it. A web server, a single encryption module, a documentation set: each is a package. The files are what gets copied to disk; the metadata is what lets a tool reason about them.
+Suppose a node needs a new encryption module. You could copy the files over by hand, but then nobody would know what they are, what they depend on or how to remove them. A **package** solves that problem. It is one file, usually a compressed archive, that holds a tree of files belonging to one piece of software. It also carries **metadata**, which describes the software. A web server, a single encryption module and a documentation set are each a package. The files are what gets copied to disk. The metadata is what lets a tool reason about them.
 
-The most useful metadata fields are:
+The most useful metadata fields are listed in the table below. Each one exists to answer a question you will ask later.
 
 | Metadata | What it enables |
 |---|---|
@@ -60,7 +62,7 @@ The most useful metadata fields are:
 | Maintainer scripts (pre/post install and remove) | Creating a system user, enabling a service, rebuilding a cache |
 | Signature | Proof that the package came from the repository owner |
 
-The set of fields differs between package systems, and so do their capabilities. The common families are:
+Package systems differ in their fields and in what they can do. The common families are in the next table. Find the one your nodes use before you read anything else.
 
 | Family | Package file | Used by | Low-level tool | High-level manager |
 |---|---|---|---|---|
@@ -68,14 +70,15 @@ The set of fields differs between package systems, and so do their capabilities.
 | **rpm** | `.rpm` | Red Hat Enterprise Linux and clones (Rocky, Alma, CentOS Stream), Fedora, SUSE | `rpm` | `dnf` (older: `yum`), `zypper` on SUSE |
 | Source-oriented ports | build recipes | Arch (pacman, with a ports-like build system), Gentoo (ebuild), Slackware | | |
 
-For AI infrastructure you will meet deb on Ubuntu (the default for most GPU cloud images and NVIDIA's DGX OS) and rpm on RHEL-family systems (common in HPC and enterprise). Know both.
+For AI infrastructure, you will meet deb on Ubuntu, which is the default for most GPU cloud images and for NVIDIA's DGX OS. You will meet rpm on RHEL-family systems, which are common in HPC and enterprise environments. Know both.
 
 ### Two layers, and why they exist
 
-Every package system splits into two layers, and keeping them apart in your head resolves most confusion:
+Every package system splits into two layers. Keeping them apart in your head clears up most of the confusion.
 
-- The **low-level tool** (`dpkg`, `rpm`) works on **one package file**. It unpacks files, runs maintainer scripts and records the result in a local database. It does **not** fetch anything and, with a few exceptions, it does not solve dependencies: if a dependency is missing it complains.
-- The **high-level manager** (`apt`, `dnf`) talks to **repositories**, works out the full set of packages that must be installed, removed or upgraded, downloads them, and then calls the low-level tool to do the unpacking.
+The **low-level tool**, `dpkg` or `rpm`, works on one package file. It unpacks files, runs maintainer scripts and records the result in a local database. It does not fetch anything. With a few exceptions, it does not solve dependencies either, so if a dependency is missing, it complains.
+
+The **high-level manager**, `apt` or `dnf`, talks to repositories. It works out the full set of packages that must be installed, removed or upgraded. Then it downloads them and calls the low-level tool to do the unpacking.
 
 ```mermaid
 flowchart LR
@@ -99,22 +102,21 @@ flowchart LR
 
 ### The package database is precious
 
-The low-level tool records every installed package, its files and its checksums in a local database. If that database is damaged, the system no longer knows what is installed and repairing it is difficult. One concrete cause is installing or removing packages on a **filesystem that is 100% full**, because the tool can fail halfway while writing its own records. So before a big install on a node, check `df -h /` and `df -i /` (chapter 1.3 explains inodes); a full `/var` is just as bad as a full `/`.
+The low-level tool records every installed package, its files and its checksums in a local database. If that database is damaged, the system no longer knows what is installed, and repairing it is hard. One concrete cause is installing or removing packages on a **filesystem that is 100% full**. The tool can fail halfway through writing its own records. So before a big install on a node, check `df -h /` and `df -i /`. Chapter 1.3 explains inodes. A full `/var` is just as bad as a full `/`.
 
-Two related habits:
-
-- Never use the "force" switches (`--force`, `--nodeps`, `dpkg --force-all`) as a way to get unblocked. They produce a system whose database disagrees with the disk.
-- Do not mix installation methods for the same software. If the distribution already ships `foo`, installing a second `foo` into `/usr/local` or via a tarball creates two copies and the one that runs depends on `$PATH` order (chapter 1.2).
+Two habits protect the database. The first is to avoid the "force" switches. Never use `--force`, `--nodeps` or `dpkg --force-all` as a way to get unblocked, because they produce a system whose database disagrees with the disk. The second is to avoid mixing installation methods. If the distribution already ships `foo`, installing a second copy into `/usr/local` or from a tarball gives you two copies. Which one runs then depends on `$PATH` order (chapter 1.2).
 
 ### Configuration files and upgrades
 
-Packages mark certain files as **configuration**. When you upgrade, the manager must not discard your edits and also must not ignore the packager's improvements. The conventions are:
+Packages mark certain files as **configuration**. When you upgrade, the manager must neither discard your edits nor ignore the packager's improvements. The two families handle this differently.
 
-- On **rpm**, if you changed a config file and the new package also changed it, your file is kept and the new default is written next to it with the suffix `.rpmnew` (or, if the packager decided the old file must be replaced, your version is saved as `.rpmsave`).
-- On **deb**, `dpkg` asks you interactively whether to keep your version or take the package's, and offers to show the difference. In scripts and automation you set an option so the choice is made without a prompt (for example `-o Dpkg::Options::="--force-confold"`, which keeps your files).
-- When you **remove** a package, its configuration files normally stay behind so a later reinstall finds your settings. To remove them too, use `apt purge` (deb) or remove the leftover files (rpm, where the files are usually already gone but `.rpmsave` files may linger).
+On **rpm**, if you changed a config file and the new package also changed it, your file is kept. The new default is written next to it with the suffix `.rpmnew`. If the packager decided the old file must be replaced, your version is saved as `.rpmsave` instead.
 
-After any large upgrade, search for the leftovers and compare them:
+On **deb**, `dpkg` asks you interactively whether to keep your version or take the package's, and it can show you the difference. In scripts and automation, you set an option so the choice is made without a prompt. For example, `-o Dpkg::Options::="--force-confold"` keeps your files.
+
+When you **remove** a package, its configuration files normally stay behind, so a later reinstall finds your settings. To remove them as well, use `apt purge` on deb. On rpm, the files are usually already gone, but `.rpmsave` files may linger.
+
+After any large upgrade, search for these leftovers and compare them with the new defaults:
 
 ```bash
 sudo find /etc -name '*.rpmnew' -o -name '*.rpmsave' -o -name '*.dpkg-dist' -o -name '*.dpkg-old'
@@ -122,15 +124,15 @@ sudo find /etc -name '*.rpmnew' -o -name '*.rpmsave' -o -name '*.dpkg-dist' -o -
 
 ### Dependencies, and how the two families express them
 
-A dependency says "package A needs package B (possibly at a given version) to work". The managers read these and compute the full closure, which is what turns "install this driver" into a list of forty packages.
+A dependency says "package A needs package B, possibly at a given version, to work". The managers read these statements and compute the full closure. That closure is what turns "install this driver" into a list of forty packages.
 
-The deb format has a richer vocabulary than rpm. A deb package can say a dependency is **required** (`Depends`), **strongly recommended** (`Recommends`, installed by default by `apt`), **merely suggested** (`Suggests`, typically documentation or examples), or **in conflict** (`Conflicts`, `Breaks`). A smart interactive manager can choose the set of optional packages that fits what you want. On the rpm side, installing one package has historically sometimes pulled in a dozen more that are not strictly needed, because there are fewer gradations; modern `dnf` has `--setopt=install_weak_deps=False` to skip "weak" dependencies, which is useful for small compute node images.
+The deb format has a richer vocabulary than rpm. A deb package can mark a dependency as **required** (`Depends`), **strongly recommended** (`Recommends`, which `apt` installs by default), **merely suggested** (`Suggests`, typically documentation or examples), or **in conflict** (`Conflicts`, `Breaks`). A smart interactive manager can choose the optional packages that fit what you want. On the rpm side, installing one package has sometimes pulled in a dozen more that are not strictly needed, because rpm has fewer gradations. Modern `dnf` offers `--setopt=install_weak_deps=False` to skip weak dependencies. That is useful for small compute node images.
 
-A dependency can also name a **capability** instead of a package: "any package that provides an `smtp-server`", or "a library providing `libcuda.so.1`". This is why you can ask the manager which package provides a file you are missing (section 5).
+A dependency can also name a **capability** instead of a package. For example, it can ask for any package that provides an `smtp-server`, or a library providing `libcuda.so.1`. This is why you can ask the manager which package provides a file you are missing (section 5).
 
 ### Integrity: checksums
 
-Because the package system stores a checksum for every file, you can later ask "has anything the package installed been changed?" This is a cheap integrity check, useful after a suspected compromise, after a disk problem, and when a node behaves differently from its siblings:
+The package system stores a checksum for every file it installs. That means you can later ask whether anything the package installed has changed. This is a cheap integrity check. It is useful after a suspected compromise, after a disk problem, or when one node behaves differently from its siblings.
 
 ```bash
 # rpm: verify one package, or everything
@@ -143,39 +145,45 @@ sudo debsums -s              # show only files that fail
 dpkg --verify openssh-server
 ```
 
-An `rpm -V` line looks like `S.5....T.  c /etc/ssh/sshd_config`, where each letter flags what differs (S size, 5 digest, T modification time, and so on) and the trailing `c` marks a config file. Differences in config files are normal; differences in `/usr/bin` or `/usr/lib` binaries deserve an explanation. Only files that belong to packages are checked: a file that was dropped in by hand is invisible to this method.
+An `rpm -V` line looks like `S.5....T.  c /etc/ssh/sshd_config`. Each letter flags one thing that differs. For example, S means size, 5 means digest, and T means modification time. The trailing `c` marks a config file. Differences in config files are normal. Differences in `/usr/bin` or `/usr/lib` binaries deserve an explanation. Only files that belong to packages are checked, so a file that someone dropped in by hand stays invisible to this method.
+
+Run the verifier on a suspicious node before you reinstall anything. It shows you what changed, which tells you where to look.
 
 ## 2. Repositories: where packages come from
 
-A **repository** is an indexed directory of packages, served over HTTP(S), from local disk, or from an optical medium. The index lets the manager find a package and its dependencies without downloading them. When you install an operating system, a repository (the installation medium, or a network mirror) is configured for you. After installation the main network repositories are added, normally including separate channels for the base release, bug-fix updates and security updates.
+Every package on your node came from somewhere. A **repository** is an indexed directory of packages. You can reach it over HTTP(S), read it from local disk, or read it from an optical medium. The index lets the manager find a package and its dependencies without downloading anything first. When you install an operating system, a repository (the installation medium or a network mirror) is set up for you. After installation, the main network repositories are added. These normally include separate channels for the base release, bug-fix updates and security updates.
 
-Beyond the distribution's own repositories there are three more kinds you will configure:
+Beyond the distribution's own repositories, you will configure three more kinds. Third-party repositories come first. The standard Red Hat repositories, for example, omit many packages, so people enable **EPEL** (Extra Packages for Enterprise Linux), a trusted community repository for the RHEL family. NVIDIA, Docker, Kubernetes and others publish their own repositories for their own software. Vendor mini-repositories are small repositories that a project publishes just for its own software. The InfiniBand OFED distribution is one example.
 
-- **Third-party repositories.** The standard Red Hat repositories, for example, omit many packages, so people enable **EPEL** (Extra Packages for Enterprise Linux), a trusted community repository for the RHEL family. NVIDIA, Docker, Kubernetes and others publish their own repositories for their own software.
-- **Vendor mini-repositories.** Some projects, like the InfiniBand OFED distribution, publish their own small repositories just for their software.
-- **Local mirrors and internal repositories.** For machines without Internet access (typical for HPC clusters on a private network) or for reproducibility, you copy the packages you need to a server on your network and point nodes at it. That also lets you freeze a known-good set of versions and roll the whole fleet forward on your schedule.
+Local mirrors and internal repositories make up the third kind. Machines without Internet access need them, which is typical for HPC clusters on a private network. Teams that want reproducibility use them too. You copy the packages you need to a server on your network and point nodes at it. That also lets you freeze a known-good set of versions and roll the whole fleet forward on your schedule.
 
 ### Signatures and trust
 
-A repository signs its metadata (and, for rpm, usually each package). The manager checks the signature against a key you have **explicitly trusted**. This is the mechanism that stops someone who can intercept your download from substituting a malicious package. Consequences:
+A repository signs its metadata, and for rpm usually each package as well. The manager checks each signature against a key you have **explicitly trusted**. This check is what stops someone who can intercept your download from substituting a malicious package. Two consequences follow.
 
-- **Adding a repository is a trust decision**, because its packages run as root during installation (maintainer scripts) and then run on your node. Only add repositories from the real owner, over HTTPS, and verify the key fingerprint against the vendor's documentation.
-- Switches that disable the check (`dnf --nogpgcheck`, `gpgcheck=0` in a repo file, apt's `--allow-unauthenticated` or `[trusted=yes]`) are for emergencies and for your own internal test repositories; do not leave them in configuration.
+Adding a repository is a trust decision. Its packages run as root during installation, through maintainer scripts, and then run on your node. Only add repositories from the real owner, over HTTPS, and verify the key fingerprint against the vendor's documentation.
+
+Switches that disable the check are for emergencies and for your own internal test repositories. They include `dnf --nogpgcheck`, `gpgcheck=0` in a repo file, and apt's `--allow-unauthenticated` or `[trusted=yes]`. Do not leave them in configuration.
 
 ### Debian-family configuration
 
-- **Sources**: `/etc/apt/sources.list` and files in `/etc/apt/sources.list.d/`. Older entries are one line each (`deb [signed-by=/etc/apt/keyrings/vendor.gpg] https://repo.example.com/apt stable main`). Newer Ubuntu and Debian releases are moving to a multi-line "deb822" format in files ending `.sources`; both formats work, but check which your release uses. *(Review note: confirm the default format on the release you run.)*
-- **Keys**: the modern practice is a key file in `/etc/apt/keyrings/` (or `/usr/share/keyrings/`) referenced from the entry with `signed-by=`, so each repository's key is trusted for that repository only. The old global keyring managed by `apt-key` is deprecated; guides that tell you to run `apt-key add` are out of date.
-- **Update the index** before installing: `sudo apt update` downloads the package lists (it does not install anything). Forgetting this, or running it on a node whose repository has moved, is the usual reason for "Unable to locate package" or "404 Not Found".
+Sources live in `/etc/apt/sources.list` and in files inside `/etc/apt/sources.list.d/`. Older entries take one line each, such as `deb [signed-by=/etc/apt/keyrings/vendor.gpg] https://repo.example.com/apt stable main`. Newer Ubuntu and Debian releases are moving to a multi-line "deb822" format in files ending in .sources. Both formats work, so check which one your release uses. *(Review note: confirm the default format on the release you run.)*
+
+Keys belong in a file under `/etc/apt/keyrings/` (or `/usr/share/keyrings/`), and the entry points at it with `signed-by=`. That way each repository's key is trusted for that repository only. The old global keyring managed by apt-key is deprecated. If a guide tells you to run `apt-key add`, it is out of date.
+
+Update the index before you install anything. `sudo apt update` downloads the package lists, but it installs nothing. Forgetting this step, or running it on a node whose repository has moved, is the usual reason for "Unable to locate package" or "404 Not Found".
 
 ### Red Hat-family configuration
 
-- **Repository definitions**: files ending `.repo` in `/etc/yum.repos.d/`. Each section has a `baseurl` or `mirrorlist`/`metalink`, `enabled=1`, `gpgcheck=1` and a `gpgkey=` URL.
-- **Keys**: imported once with `sudo rpm --import <key-url-or-file>` or fetched automatically when you first install from a repository that provides `gpgkey=` (you are asked to accept it).
-- **Temporary control** without editing files: `--enablerepo=NAME`, `--disablerepo=NAME` and `--disablerepo='*' --enablerepo=NAME` on the command line.
-- Newer RHEL-family releases split content into **BaseOS** and **AppStream** repositories and add *modules* (streams of software versions such as multiple Python or Node.js versions). Modules and streams are an extra layer you only need to know exist; check your distribution's current documentation.
+Repository definitions are files ending in .repo in `/etc/yum.repos.d/`. Each section names a baseurl or a mirrorlist or metalink, and sets enabled=1, gpgcheck=1 and a `gpgkey=` URL. You import a key once with `sudo rpm --import <key-url-or-file>`. Alternatively, the key is fetched the first time you install from a repository that provides `gpgkey=`, and you are asked to accept it.
+
+To control repositories for one command, without editing files, use `--enablerepo=NAME`, `--disablerepo=NAME` or `--disablerepo='*' --enablerepo=NAME` on the command line.
+
+Newer RHEL-family releases split content into **BaseOS** and **AppStream** repositories. They also add *modules*, which are streams of software versions, such as several Python or Node.js versions side by side. Modules and streams are an extra layer. You only need to know they exist, and you should check your distribution's current documentation for details.
 
 ### Verbs you need on both sides
+
+Most day-to-day tasks have a matching command in each family. The table below lines them up.
 
 | Task | Debian family | Red Hat family |
 |---|---|---|
@@ -195,20 +203,21 @@ A repository signs its metadata (and, for rpm, usually each package). The manage
 | Package groups | `tasksel`, meta-packages | `sudo dnf group install "Development Tools"` |
 | Transaction history and undo | `/var/log/apt/history.log` | `dnf history`, `dnf history undo N` |
 
-A few details that surprise people:
+Read the table as a translation guide. Learn the one family you use daily, then check the other when you move between machines.
 
-- `yum` is the older name; on current RHEL-family releases `yum` is a compatibility alias for `dnf`. The option tables you find in older books and on forums still work.
-- `apt` is the friendly front end with progress bars and sensible defaults for humans; **`apt-get`** and `apt-cache` have stable output and behaviour and are what you should use in scripts, Dockerfiles and automation. (`apt` warns you that its interface is not stable for scripting.)
-- Add `-y` (assume yes) in automation, and `DEBIAN_FRONTEND=noninteractive` so debconf does not stop to ask questions.
-- `--skip-broken` (dnf/yum) installs what it can and skips what has dependency problems. Use it only when you are certain you understand what is being skipped.
+A few details surprise people. `yum` is the older name. On current RHEL-family releases, `yum` is a compatibility alias for `dnf`, so the option tables in older books and on forums still work. `apt` is the friendly front end, with progress bars and sensible defaults for people at a terminal. For scripts, Dockerfiles and automation, use `apt-get` and `apt-cache` instead, because their output and behaviour are stable. The `apt` tool itself warns that its interface is not stable for scripting.
+
+In automation, add `-y` to assume yes, and set `DEBIAN_FRONTEND=noninteractive` so debconf does not stop to ask questions. The `--skip-broken` switch on dnf and yum installs what it can and skips what has dependency problems. Use it only when you are certain you understand what is being skipped.
+
+Before you change a repository, confirm which one a package would come from. Run `apt policy` or `dnf list --showduplicates` first, and only then install.
 
 ## 3. The low-level tools
 
-You use `dpkg` and `rpm` directly for three jobs: installing a single package file, interrogating the database, and verifying.
+Sometimes the high-level manager is not enough. When a package problem lands on your desk, you drop below it and use `dpkg` or `rpm` directly. You do this for three jobs: installing a single package file, interrogating the database, and verifying what is on disk.
 
 ### `rpm`: modes and selectors
 
-`rpm` has **modes** (what to do) and **selectors** (which packages):
+Every `rpm` command has a **mode**, which says what to do, and a **selector**, which says which packages to act on. The table lists the options on both sides.
 
 | Mode | Meaning | Selector | Meaning |
 |---|---|---|---|
@@ -218,7 +227,7 @@ You use `dpkg` and `rpm` directly for three jobs: installing a single package fi
 | `-e` | Erase | | |
 | `-V` | Verify | | |
 
-Combined, they answer nearly every question:
+Combined, the modes and selectors answer nearly every question. Read the commands below as questions you can ask a node. Each one tells you something about what is installed there.
 
 ```bash
 rpm -qa | grep -i cuda          # which CUDA-related packages are installed
@@ -231,9 +240,11 @@ rpm -qR somepackage             # its dependencies (what it requires)
 rpm -q --whatprovides libcuda.so.1   # which installed package provides this
 ```
 
-Use `rpm -i` and `-U` only for a package file whose dependencies are already satisfied. Switches such as `--nodeps` (skip dependency check) and `--force` (overwrite files owned by another package, or install an older version) exist for repair work. Treat them as dangerous tools.
+Use `rpm -i` and `-U` only when the dependencies of the package file are already satisfied, because `rpm` will not fetch them for you. The switches `--nodeps` and `--force` exist for repair work. `--nodeps` skips the dependency check. `--force` overwrites files owned by another package, or installs an older version. Treat both as dangerous tools.
 
 ### `dpkg`: the equivalents
+
+On Debian-family systems, the same questions go to `dpkg`.
 
 ```bash
 dpkg -l | grep -i cuda          # installed packages (name, version, status)
@@ -246,9 +257,11 @@ sudo dpkg -i pkg.deb            # install (does not fetch dependencies)
 sudo apt -f install             # then let apt fix up missing dependencies
 ```
 
-In `dpkg -l` output the first two columns are a state code. `ii` means installed and correctly configured; `rc` means removed but configuration remains; `iU` or `iF` mean half-installed or failed configuration (usually fixed with `sudo dpkg --configure -a`).
+In `dpkg -l` output, the first two columns are a state code. `ii` means installed and correctly configured. `rc` means removed, but the configuration remains. `iU` or `iF` mean half-installed or failed configuration, and you usually fix those with `sudo dpkg --configure -a`.
 
 ### Translation table
+
+If you know one family, the table below gives you the matching command in the other. Use these commands to answer questions before you change anything.
 
 | Question | rpm | dpkg |
 |---|---|---|
@@ -262,15 +275,19 @@ In `dpkg -l` output the first two columns are a state code. `ii` means installed
 
 ## 4. Holding, pinning and reproducibility
 
-On GPU nodes the point of package management is not "always newest". It is "exactly the versions we validated". Tools for that:
+On a GPU node, the goal of package management is not "always newest". The goal is "exactly the versions we validated". Picture a training cluster where every node runs the same driver. If one node quietly moves to a newer driver, its jobs may behave differently from the rest of the fleet. You need tools that keep versions fixed until you choose to change them.
 
-- **Hold a package** so routine upgrades skip it: `sudo apt-mark hold nvidia-driver-XXX linux-image-generic` (and `unhold`); on RHEL-family, the `dnf versionlock` plugin (`sudo dnf install python3-dnf-plugin-versionlock`, then `sudo dnf versionlock add pkg`). *(Review note: package names for the plugin differ by release.)*
-- **Install an exact version**: `sudo apt install pkg=1.2.3-1` ; `sudo dnf install pkg-1.2.3-1.el9`. Use `apt policy pkg` or `dnf list --showduplicates pkg` to see what versions your repositories offer.
-- **Apt pinning** (`/etc/apt/preferences.d/`) assigns priorities to repositories or versions, so a third-party repository cannot silently replace a base package. It is powerful and easy to get wrong; reach for `apt-mark hold` first.
-- **Freeze the whole repository.** The strongest approach for a fleet is to mirror the repositories you depend on at a point in time (or use a snapshot service) and have nodes install only from that snapshot. Two nodes built a month apart then get identical packages.
-- **Unattended upgrades** (`unattended-upgrades` on Ubuntu, `dnf-automatic` on RHEL-family) are valuable for security patches on servers, but on a GPU node they can replace the kernel without rebuilding the driver. Restrict them to security updates for packages outside the driver/kernel set, or disable them on compute nodes and patch via a controlled process.
+The simplest tool is a hold. `sudo apt-mark hold nvidia-driver-XXX linux-image-generic` tells routine upgrades to skip those packages, and `unhold` releases them. On RHEL-family systems, install the `dnf versionlock` plugin with `sudo dnf install python3-dnf-plugin-versionlock`, then add a package to the lock with `sudo dnf versionlock add pkg`. *(Review note: package names for the plugin differ by release.)*
 
-The failure this prevents is concrete and common:
+You can also install an exact version. Use `sudo apt install pkg=1.2.3-1` on Debian-family systems, or `sudo dnf install pkg-1.2.3-1.el9` on Red Hat-family systems. Before you pick a version, run `apt policy pkg` or `dnf list --showduplicates pkg` to see what your repositories offer.
+
+Apt pinning, stored in `/etc/apt/preferences.d/`, goes one step further. It assigns priorities to repositories or versions, so a third-party repository cannot silently replace a base package. Pinning is powerful and easy to get wrong. Reach for `apt-mark hold` first.
+
+For a whole fleet, the strongest approach is to freeze the repositories themselves. Mirror the repositories you depend on at a point in time, or use a snapshot service, and have nodes install only from that snapshot. Two nodes built a month apart then get identical packages.
+
+Unattended upgrades are valuable for security patches on servers. They run as `unattended-upgrades` on Ubuntu and as `dnf-automatic` on RHEL-family systems. On a GPU node, though, they can replace the kernel without rebuilding the driver. Restrict them to security updates for packages outside the driver and kernel set. Alternatively, disable them on compute nodes and patch through a controlled process.
+
+The failure these rules prevent is concrete and common. The diagram below shows how a routine upgrade can leave a node without a working driver.
 
 ```mermaid
 sequenceDiagram
@@ -291,37 +308,33 @@ sequenceDiagram
   end
 ```
 
-Chapter 1.22 develops DKMS and kernel modules. The package-layer fix is: hold kernel and driver packages together, upgrade them in a controlled step, and test a rebooted canary node before rolling out.
+Chapter 1.22 develops DKMS and kernel modules in detail. The fix at the package layer is to hold the kernel and driver packages together, upgrade them in one controlled step, and test a rebooted canary node before you roll out the change.
 
 ## 5. Finding the package you need
 
-Three questions come up daily.
+Three questions come up almost every day. The first is "which package does this file belong to?" On Red Hat-family systems, use `rpm -qf`. On Debian-family systems, use `dpkg -S`.
 
-**"Which package does this file belong to?"** Use `rpm -qf`, `dpkg -S`.
+The second question is harder. You need a file you do not have, such as a header, a library or a command. Which package provides it? On deb, search with `apt-file search pkg.h`. On rpm, use `dnf provides '*/pkg.h'`, where the older spelling `yum provides` also works. Two cases come up often.
 
-**"I need a file I do not have (a header, a library, a command). Which package provides it?"** On deb: `apt-file search pkg.h`. On rpm: `dnf provides '*/pkg.h'` (the older spelling `yum provides` works). The usual cases:
+The first case is a compiler error such as `fatal error: foo.h: No such file or directory`. It means the development package for the library is missing. Libraries come in two flavours. The runtime package, such as `libfoo1` on Debian or `foo` on Red Hat, holds the shared library. The development package, such as `libfoo-dev` or `foo-devel`, holds the headers and `.pc` files. The same split explains why `openssl.pc` is absent until you install `libssl-dev` or `openssl-devel`.
 
-- A compiler error `fatal error: foo.h: No such file or directory` means the **development package** for the library is missing. Libraries are packaged in two flavours: the runtime package (`libfoo1` on Debian, `foo` on Red Hat) with the shared library, and the development package (`libfoo-dev`, `foo-devel`) with the headers and `.pc` files. The same distinction explains why `openssl.pc` is absent until you install `libssl-dev`/`openssl-devel`.
-- A runtime error `error while loading shared libraries: libfoo.so.1: cannot open shared object file` means the runtime package is missing, or the library is installed in a location the dynamic linker does not search (section 8).
+The second case is a runtime error such as `error while loading shared libraries: libfoo.so.1: cannot open shared object file`. It means one of two things. Either the runtime package is missing, or the library sits in a location the dynamic linker does not search. Section 8 covers that second case.
 
-**"What would this install do?"** Simulate first: `apt install -s pkg` (or `apt-get -s`), `dnf install --assumeno pkg`, and read the list of packages that will be removed. A line that says an unrelated meta-package such as `ubuntu-desktop` or a driver will be **removed** is a reason to stop.
+The third question is "what would this install do?" Simulate the install before you run it. Use `apt install -s pkg` (or `apt-get -s`), or `dnf install --assumeno pkg`. Then read the list of packages that will be removed. If that list says an unrelated meta-package, such as `ubuntu-desktop` or a driver, will be **removed**, stop and find out why.
+
+Before you run any install on a production node, simulate it and read the removal list first.
 
 ## 6. Installing from source
 
-Packages exist because most open-source software is distributed as **source code**: Unix and Linux come in so many flavours and architectures that distributing binaries for every combination is impractical. Source distribution also lets users fix bugs and add features, which is the point of open source. Nearly everything on a Linux system, from the kernel to the libraries, can be obtained as source.
+Sometimes the package you need does not exist, or it is the wrong build. You then install from source. Most open-source software is distributed as **source code**, because Unix and Linux come in so many flavours and architectures that shipping a binary for every combination would be impractical. Source distribution also lets users fix bugs and add features, which is the point of open source. Nearly everything on a Linux system, from the kernel to the libraries, can be obtained as source.
 
-You should not replace your distribution's packages with source builds wholesale. Distributions fix security problems quickly, keep dependencies consistent, and let you upgrade with one command. But there are good reasons to build from source yourself:
+You should not replace your distribution's packages with source builds wholesale. Distributions fix security problems quickly, keep dependencies consistent, and let you upgrade with one command. There are good reasons to build from source yourself, though. You may need control over the options, such as building an MPI library with exactly the network backends your cluster has, or a Slurm with specific plugins. You may need control over the version, because the distribution's copy is too old or too new, which is common for add-ons such as language libraries. You may need control over the install location, including keeping several versions of the same software side by side. And you may simply want to understand how the software works and what it depends on.
 
-- **Control of options**, for example building an MPI library with exactly the network backends your cluster has, or a Slurm with specific plugins.
-- **Control of the version**, when the distribution's is too old or too new (particularly for add-ons such as language libraries).
-- **Install location**, including keeping several versions of the same software side by side.
-- **Understanding** how the software works and what it depends on.
-
-The costs are real: it takes time; custom installs **do not update themselves** (a security issue for anything network-facing); you may overwrite files the distribution owns; and a typo in an option can leave a half-working build. So the rule is: *prefer the package; build from source into an isolated prefix when you need control; turn the result into a package if you will deploy it to more than one machine*.
+The costs are real. Building takes time. Custom installs **do not update themselves**, which is a security issue for anything network-facing. You may overwrite files the distribution owns. A typo in an option can leave a half-working build. So the rule is this: prefer the package, build from source into an isolated prefix when you need control, and turn the result into a package if you will deploy it to more than one machine.
 
 ### The standard sequence
 
-Most C and C++ projects built with the GNU autotools follow four steps, and the pattern transfers to other build systems (CMake, Meson, SCons):
+Most C and C++ projects built with the GNU autotools follow four steps. The pattern transfers to other build systems, such as CMake, Meson and SCons. The diagram below shows the steps and where each one can fail.
 
 ```mermaid
 flowchart LR
@@ -334,24 +347,19 @@ flowchart LR
   C -.->|"fails?"| M["find the first real error,\nnot the make[N] cascade"]
 ```
 
-**Unpack carefully.** Source archives come as `.tar.gz`, `.tar.bz2` or `.tar.xz` (chapter 1.3 covered `tar`). *Before* extracting, list the contents with `tar tvf` or `tar ztvf`, for two reasons:
+**Unpack carefully.** Source archives come as .tar.gz, .tar.bz2 or .tar.xz files. Chapter 1.3 covered `tar`. Before you extract, list the contents with `tar tvf` or `tar ztvf`, for two reasons. The first is that a well-formed archive has everything under one top directory, such as `package-1.23/...`. Some archives instead spill their files straight into the current directory. Picture an engineer who unpacks an archive into a shared home directory and then cannot tell which files came from it. If the listing shows bare names such as `Makefile` and `main.c`, extract into a new, empty directory so you do not make a mess.
 
-- A well-formed archive has everything under one top directory (`package-1.23/...`). Some archives instead spill files directly into the current directory; if the listing shows bare names such as `Makefile` and `main.c`, extract into a new, empty directory so you do not make a mess.
-- Never unpack an archive that contains **absolute paths** such as `/etc/passwd` or `/etc/inetd.conf`. That is almost certainly a booby trap, and extracting as root would overwrite system files. Delete such an archive. (Modern `tar` strips leading slashes by default, but do not rely on that.)
+The second reason is safety. Never unpack an archive that contains **absolute paths** such as `/etc/passwd` or `/etc/inetd.conf`. That is almost certainly a booby trap, and extracting it as root would overwrite system files. Delete such an archive. Modern `tar` strips leading slashes by default, but do not rely on that.
 
-**Read the documentation in the tree first.** Open `README`, then `INSTALL` if there is one, before doing anything else; they often state special options, prerequisites and supported platforms. Then get a feel for the files by their role:
+**Read the documentation in the tree first.** Open `README`, then `INSTALL` if there is one, before you do anything else. They often state special options, prerequisites and supported platforms. Then get a feel for the files by their role. Build-system files include `Makefile`, `Makefile.in`, `configure`, `CMakeLists.txt` and `meson.build`. Very old packages ship a plain `Makefile` that you edit by hand. Most packages use a configuration script or file that generates the `Makefile` for your system. Source files are .c and .h for C, and .cc, .cxx or .C for C++. Object files (.o) and binaries should not be in a source archive. If you find them, run `make clean` so you get a fresh compile.
 
-- Build-system files: `Makefile`, `Makefile.in`, `configure`, `CMakeLists.txt`, `meson.build`. Very old packages ship a plain `Makefile` you edit by hand; most use a configuration script or file that generates the `Makefile` for your system.
-- Source files: `.c`, `.h` for C; `.cc`, `.cxx`, `.C` for C++.
-- Object files (`.o`) or binaries should not be in a source archive. If you find them, run `make clean` so you get a fresh compile.
+**Configure.** GNU autoconf-based packages ship a `configure` script and template files that end in .in, such as Makefile.in and config.h.in. Running `./configure` probes your system. It checks which compiler you have, which headers and libraries exist, and which functions are available. It then substitutes the results into the templates to produce the real `Makefile` and a `config.h` header. It also writes config.cache and a detailed log, `config.log`. The output is long and tells you what is being checked. A successful configure does not guarantee a successful build, but the odds are good.
 
-**Configure.** GNU autoconf-based packages ship a `configure` script and template files ending in `.in` (`Makefile.in`, `config.h.in`). Running `./configure` probes your system (which compiler, which headers and libraries exist, which functions are available) and substitutes the results into the templates to produce the real `Makefile` and a `config.h` header. It also writes `config.cache` and a detailed log, `config.log`. The output is long and tells you what is being checked; a successful configure does not guarantee a successful build, but the odds are good.
-
-You need the build tools installed first. On Debian and Ubuntu the quick way is `sudo apt install build-essential`; on RHEL-family, `sudo dnf group install "Development Tools"`. If some tool is absent, search for `gcc` or "C compiler".
+You need the build tools installed first. On Debian and Ubuntu, the quick way is `sudo apt install build-essential`. On RHEL-family systems, use `sudo dnf group install "Development Tools"`. If a tool is absent, search for `gcc` or "C compiler".
 
 ### Safe first install: a private prefix
 
-The key option is `--prefix`. By default an autoconf package installs under `/usr/local` (programs in `/usr/local/bin`, libraries in `/usr/local/lib`, and so on). To experiment safely, install into a directory you own:
+Suppose you want to test a newer version of coreutils on a shared login node. The key option is `--prefix`. By default, an autoconf package installs under `/usr/local`, with programs in `/usr/local/bin` and libraries in `/usr/local/lib`. To experiment safely, install into a directory you own instead.
 
 ```bash
 mkdir -p ~/src && cd ~/src
@@ -365,9 +373,11 @@ make install
 $HOME/mycoreutils/bin/ls --version
 ```
 
-Everything lands under `~/mycoreutils`, independent of the rest of the system, so you can delete that directory and nothing else is affected. After `make install` finishes, you have a subdirectory named `mycoreutils` in your home directory containing `bin`, `info`, `lib`, `man`, and `share`. Always do the dry run (`make -n install`) and browse through its output before running `make install` for real: the `install` target of a `Makefile` can copy files anywhere the author thought appropriate, and the dry run prints the commands without executing them. If anything is installed outside your `mycoreutils` prefix, stop.
+Everything lands under `~/mycoreutils`, independent of the rest of the system. You can delete that directory and nothing else is affected. After `make install` finishes, your home directory holds a `mycoreutils` subdirectory with `bin`, `info`, `lib`, `man` and `share` inside it.
 
-**Other useful `configure` options:**
+Always do the dry run before the real install. Run `make -n install`, then browse its output. The `install` target of a `Makefile` can copy files anywhere the author thought appropriate. The dry run prints those commands without executing them. If anything would be installed outside your `mycoreutils` prefix, stop.
+
+**Other useful `configure` options.** The table below lists the ones you will meet most often.
 
 | Option | Meaning |
 |---|---|
@@ -377,24 +387,24 @@ Everything lands under `~/mycoreutils`, independent of the rest of the system, s
 | `--with-pkg=DIR` | Tell the build where a dependency lives, when it is in a nonstandard place. Not every script supports this and the exact spelling varies. |
 | `--help` | Lists all options (long; search it) |
 
-**Separate build directory.** If you want to try several option sets, or build for several configurations from one source tree, create a new empty directory anywhere and run the `configure` script by its path from there (`mkdir build && cd build && ../pkg-1.23/configure ...`). The source tree is not modified; the build directory gets generated files and links back. Many maintainers prefer this ("out-of-tree" build).
+**Separate build directory.** If you want to try several option sets, or build for several configurations from one source tree, create a new empty directory anywhere. Then run the `configure` script by its path from there, for example `mkdir build && cd build && ../pkg-1.23/configure ...`. The source tree is not modified. The build directory gets the generated files and links back to the source. Many maintainers prefer this, and it is called an "out-of-tree" build.
 
-**Environment variables.** `configure` reads `CPPFLAGS` (preprocessor options, such as `-I` include paths and `-D` macro definitions), `CFLAGS` (compiler options), `LDFLAGS` (linker options such as `-L` paths) and `CC`. Set them in front of the command or as arguments:
+**Environment variables.** `configure` reads `CPPFLAGS`, which holds preprocessor options such as `-I` include paths and `-D` macro definitions. It also reads `CFLAGS` for compiler options, `LDFLAGS` for linker options such as `-L` paths, and `CC`. Set them in front of the command or as arguments:
 
 ```bash
 CPPFLAGS=-DDEBUG ./configure
 ./configure CPPFLAGS="-I$HOME/opt/zlib/include" LDFLAGS="-L$HOME/opt/zlib/lib -Wl,-rpath=$HOME/opt/zlib/lib"
 ```
 
-Use `CPPFLAGS`, not `CFLAGS`, for include directories, because `configure` often runs the preprocessor on its own. Be exact: a missing dash (`CPPFLAGS=Iinclude`) makes the compiler treat the argument as a file name and `configure` aborts with "C compiler cannot create executables".
+Use `CPPFLAGS`, not `CFLAGS`, for include directories, because `configure` often runs the preprocessor on its own. Be exact with the syntax. A missing dash, as in `CPPFLAGS=Iinclude`, makes the compiler treat the argument as a file name, and `configure` aborts with "C compiler cannot create executables".
 
-**Reading `config.log` (autoconf logfiles).** If something goes wrong during the `configure` process and the cause is not obvious, you can examine `config.log` to find the problem. Unfortunately, `config.log` is often a gigantic file because `configure` dumps the entire shell environment, `config.h` definitions, and cache variables at the bottom, which makes it hard to locate the exact source of the failure. The efficient technique is to open `config.log` with `less config.log`, press `G` (shift-G) to go to the very end of the file, and then use `?` to search **backward** for a string from the failing output—such as `for more details` or the specific test string that failed. The error is right above that match, showing the exact compiler command line and compiler diagnostic that triggered the failure.
+**Reading `config.log`.** If something goes wrong during `configure` and the cause is not obvious, examine `config.log`. The file is often gigantic, because `configure` dumps the entire shell environment, `config.h` definitions and cache variables at the bottom. That makes the exact source of the failure hard to find. The efficient technique is to open the file with `less config.log`, press `G` (shift-G) to jump to the very end, and then press `?` to search **backward** for a string from the failing output. Good search strings include `for more details` or the specific test that failed. The error appears right above that match. It shows the exact compiler command line and the compiler diagnostic that triggered the failure.
 
-**Targets in an autoconf `Makefile`.** Besides `all` (default) and `install`: `clean` (remove built objects), `distclean` (remove everything generated, including `Makefile` and `config.h`, returning the tree to its freshly unpacked state), `check` (run tests) and `install-strip` (install with debug symbols stripped, saving space).
+**Targets in an autoconf `Makefile`.** Besides `all`, which is the default, and `install`, the file has several targets. `clean` removes built objects. `distclean` removes everything generated, including `Makefile` and `config.h`, which returns the tree to its freshly unpacked state. `check` runs the tests, and `install-strip` installs with debug symbols stripped, which saves space.
 
 ### `pkg-config`: how builds find libraries
 
-When libraries are scattered across prefixes, a build must be told where each one's headers and libraries are and which link flags it needs. Most libraries solve this with a small text file ending `.pc`, read by the `pkg-config` program:
+When libraries are scattered across prefixes, a build must be told where each library's headers and libraries are, and which link flags it needs. Most libraries solve this with a small text file that ends in .pc. The `pkg-config` program reads those files:
 
 ```bash
 pkg-config --cflags --libs zlib      # prints e.g. "-lz" (flags vary by system)
@@ -402,28 +412,29 @@ pkg-config --modversion openssl      # installed version
 pkg-config --list-all | less         # everything it knows
 ```
 
-A `.pc` file contains variables (`prefix`, `libdir`, `includedir`), the name, version, dependencies (`Requires`), and the flags to compile and link (`Cflags`, `Libs`). By default `pkg-config` looks only in the `lib/pkgconfig` directory of its **own** installation prefix (and `share/pkgconfig`). Files elsewhere (say `/opt/openssl/lib/pkgconfig/openssl.pc` or `/opt/foo/lib/pkgconfig`) are invisible unless you use one of two methods:
-1. Make symbolic links (or copies) from the actual `.pc` files to the central `pkgconfig` directory.
-2. Set your `PKG_CONFIG_PATH` environment variable to include any extra `pkgconfig` directories. Note that this strategy works well per build, but does not work well on a systemwide basis. You will not see `.pc` files for most libraries until you install their development packages (`libssl-dev` / `openssl-devel`).
+A `.pc` file holds variables, such as `prefix`, `libdir` and `includedir`. It also holds the name, the version, the dependencies (`Requires`), and the flags to compile and link (`Cflags` and `Libs`). By default, `pkg-config` looks only in the `lib/pkgconfig` directory of its **own** installation prefix, plus `share/pkgconfig`. Files stored elsewhere are invisible to it. An example is `/opt/openssl/lib/pkgconfig/openssl.pc`, or any `/opt/foo/lib/pkgconfig` directory. Two methods make them visible. You can make symbolic links, or copies, from the actual `.pc` files into the central `pkgconfig` directory. Or you can set the `PKG_CONFIG_PATH` environment variable to include the extra `pkgconfig` directories. The second method works well for one build, but it does not work well system-wide. You will also find that most `.pc` files do not appear until you install the matching development packages, such as `libssl-dev` or `openssl-devel`.
 
 ### Turning a source build into a package
 
-Installing with plain `make install` leaves files with no record in any package database, so you cannot cleanly remove, upgrade or inventory them. If you are going to install the build on more than one machine, make a real package:
+Plain `make install` leaves files with no record in any package database. You cannot cleanly remove, upgrade or inventory them afterwards. If you plan to install the build on more than one machine, make a real package instead.
 
-- On Debian family, **`checkinstall`** wraps `make install`, tracks the files it installs, and produces a `.deb` you install and remove with `dpkg`:
-  ```bash
-  sudo checkinstall make install
-  ```
-- On RPM family, create a build tree with `rpmdev-setuptree` (from `rpmdevtools`) and write a `.spec` file that describes the build; then `rpmbuild -ba name.spec` produces the package. This is more work; follow a tutorial for your release, and consider `mock` (clean-chroot builds) for repeatable results.
-- On a build server, use **`DESTDIR`**: `make install DESTDIR=/tmp/stage` installs into a staging directory without touching the live system, and you pack that directory (with `tar`, `fpm` or your packaging tool). This is the foundation of every packaging workflow.
+On the Debian family, **`checkinstall`** wraps `make install`, tracks the files it installs, and produces a `.deb` that you then install and remove with `dpkg`.
 
-If you do install by hand into `/usr/local`, remember that operating system upgrades leave `/usr/local` alone. That is convenient, but it also means lots of unrecorded files accumulate and nobody remembers their origin. When it becomes unmanageable, package them.
+```bash
+sudo checkinstall make install
+```
 
-For large numbers of nodes, an even better answer is to put software in a **shared, versioned location** (a network filesystem mount with per-version directories) selected by *environment modules* (section 10), or to bake it into a container image (chapter 7).
+On the RPM family, create a build tree with `rpmdev-setuptree` from `rpmdevtools`. Then write a `.spec` file that describes the build, and `rpmbuild -ba name.spec` produces the package. This takes more work, so follow a tutorial for your release. Consider `mock`, which builds in a clean chroot, when you need repeatable results.
+
+On a build server, use **`DESTDIR`**. Running `make install DESTDIR=/tmp/stage` installs into a staging directory without touching the live system. You then pack that directory with `tar`, `fpm` or your packaging tool. This is the foundation of every packaging workflow.
+
+If you do install by hand into `/usr/local`, remember that operating system upgrades leave `/usr/local` alone. That is convenient, but it also means unrecorded files pile up, and nobody remembers where they came from. When that becomes unmanageable, package them.
+
+For large numbers of nodes, a better answer is usually one of two. You can put the software in a **shared, versioned location**, such as a network filesystem mount with per-version directories, and select it with *environment modules* (section 10). Or you can bake it into a container image (chapter 7).
 
 ### Applying a patch
 
-A **patch** (or diff) is a text file, produced by `diff -u`, that describes changes to source files. Developers also distribute fixes as patches. The header of each file section looks like:
+A **patch** is a text file, produced by `diff -u`, that describes changes to source files. Developers also distribute fixes this way. The header of each file section looks like this:
 
 ```text
 --- src/file.c.orig   2015-07-17 14:29:12 +0100
@@ -431,7 +442,7 @@ A **patch** (or diff) is a text file, produced by `diff -u`, that describes chan
 @@ -2,16 +2,12 @@
 ```
 
-Search the patch for lines starting with `---` to see which files it changes, and read the paths. The **working directory matters**: the path `src/file.c` means you must run `patch` from the directory that *contains* `src`, not from `src` itself.
+Search the patch for lines that start with `---` to see which files it changes, and read the paths. The **working directory matters**. The path `src/file.c` means you must run `patch` from the directory that *contains* `src`, not from `src` itself.
 
 ```bash
 patch -p0 < fix.patch        # paths are used as written
@@ -439,20 +450,19 @@ patch -p1 < fix.patch        # strip one leading path component (typical for pat
 patch -p1 --dry-run < fix.patch   # test without changing anything
 ```
 
-If a path in the patch begins with a directory such as `package-3.42/src/file.c` and your directory is named differently, `-p1` removes the first component so the rest matches. If `patch` asks "File to patch:", you are probably in the wrong directory or the source does not match the version the patch was made against; stop rather than guess, because a partly applied patch leaves source that will not build. With git you can also use `git apply --check` and `git apply`.
+If a path in the patch begins with a directory such as `package-3.42/src/file.c`, and your directory is named differently, `-p1` removes that first component so the rest matches. If `patch` asks "File to patch:", you are probably in the wrong directory, or the source does not match the version the patch was made against. Stop rather than guess. A partly applied patch leaves source that will not build. With git, you can also use `git apply --check` and `git apply`.
 
 ### Where to go next with builds
 
-Once the autotools routine is comfortable, three directions are worth knowing about: other build systems (**CMake**, **Meson**, **SCons**, and language-specific ones such as `cargo` or `go build`), each with its own configure-then-build-then-install shape; the **Linux kernel build**, which has its own configuration system (`make menuconfig`, `make modules_install`) and which you should only attempt while keeping the previous kernel bootable as a fallback (chapters 1.14 and 1.22); and **distribution source packages**, which carry the distribution's own patches and build recipes and let you rebuild or patch a packaged program the supported way (`debuild`/`dpkg-buildpackage` on Debian family, `rpmbuild` and `mock` on RPM family). Rebuilding a distribution source package, rather than compiling a tarball by hand, usually gives you a proper package at the end.
+Once the autotools routine feels comfortable, three directions are worth knowing. The first is other build systems, such as **CMake**, **Meson**, **SCons**, and language-specific ones such as `cargo` or `go build`. Each has its own configure-then-build-then-install shape. The second is the **Linux kernel build**. It has its own configuration system, with `make menuconfig` and `make modules_install`. Attempt it only while the previous kernel stays bootable as a fallback (chapters 1.14 and 1.22). The third is **distribution source packages**. They carry the distribution's own patches and build recipes, so you can rebuild or patch a packaged program the supported way. Use `debuild` or `dpkg-buildpackage` on the Debian family, and `rpmbuild` and `mock` on the RPM family. Rebuilding a distribution source package, instead of compiling a tarball by hand, usually gives you a proper package at the end.
 
 ### Troubleshooting builds
 
-First learn to read `make` output:
+Picture a build that stops with a wall of errors. First, learn to read `make` output. `make: *** [target] Error 1` is a real failure. A line with `Error 1 (ignored)` is a failure the author expected and tolerates, so you can ignore it.
 
-- `make: *** [target] Error 1` is a real failure. A line with `Error 1 (ignored)` is a failure the author expected and tolerates; ignore it.
-- GNU `make` calls itself recursively, and each level is labelled `make[N]`. When something fails deep inside, you see a cascade: the compiler error, then `make[3]: *** [file.o] Error 1`, then `make[2]`, `make[1]` and finally `make`. **The first error is the one that matters**; the cascade is only the unwinding. Scroll up to the first compiler message and the directory it names (`Leaving directory ...` tells you where).
+GNU `make` calls itself recursively, and each level is labelled `make[N]`. When something fails deep inside the build, you see a cascade. The compiler error comes first, then `make[3]: *** [file.o] Error 1`, then `make[2]`, `make[1]` and finally `make`. **The first error is the one that matters.** The rest of the cascade is only the unwinding. Scroll up to the first compiler message and the directory it names. The line `Leaving directory ...` tells you where you are.
 
-Common failures and what they mean:
+Common failures and what they mean are in the table below.
 
 | Message | Meaning and fix |
 |---|---|
@@ -463,11 +473,15 @@ Common failures and what they mean:
 | `make: prog: Command not found` | Build tool missing (`cc`, `gcc`, `ld`: install the toolchain). If you are sure it is installed, a badly written `Makefile` may assume `.` is in your `$PATH`; use `./prog` in the `Makefile`, or temporarily put `.` on your path. |
 | `Makefile:7: *** missing separator. Stop.` | A recipe line starts with spaces instead of a **tab**. |
 
+When a build fails, read the first error, not the last one. Fix that line, then rebuild from the top.
+
 ## 7. The build toolchain: compiler, linker, headers and `make`
 
-You do not need to write C to operate a cluster, but you will constantly read build logs, fix `Makefile` variables and chase library errors, so you need the model of how a program is built.
+You do not need to write C to run a cluster. You will still read build logs, edit `Makefile` variables and chase library errors. Each of those tasks goes faster once you have a clear picture of how a program gets built.
 
 ### From source to executable
+
+The diagram below follows one program from source text to a running process. Read it left to right.
 
 ```mermaid
 flowchart LR
@@ -483,13 +497,13 @@ flowchart LR
   LIB2 -.-> RUN
 ```
 
-The vocabulary:
+The source code is the human-written text, such as the .c and .cc files. A compiler translates it into object files, which end in .o. An object file holds binary code with loose ends. It refers to functions defined elsewhere, and it lacks the information the operating system needs to start it.
 
-- **Source code** is the human-written text (`.c`, `.cc`). A compiler translates it into **object files** (`.o`), binary code with loose ends: references to functions defined elsewhere and no information the operating system needs to start it.
-- The **linker** (`ld`) combines object files and libraries into an **executable** and resolves each reference. People rarely run `ld` directly: the compiler driver (`cc`, `gcc`, `g++`, `clang`) calls it for you. `cc` is the traditional name for the system's C compiler; on Linux it is usually GNU `gcc`, and `clang` (from the LLVM project) is the common alternative.
-- A **library** is a bundle of compiled components (essentially object files plus header files that declare them). There is a standard C library (`libc`) that is always linked in unless you say otherwise, a math library, and thousands of others.
+The linker, `ld`, combines object files and libraries into an executable, and it resolves each reference along the way. People rarely run `ld` directly. The compiler driver does it for them. The driver is `cc`, `gcc`, `g++` or `clang`. `cc` is the traditional name for the system's C compiler. On Linux it is usually GNU gcc, and clang, from the LLVM project, is the common alternative.
 
-A minimal two-file example to see the steps (my own, small enough to retype):
+A library is a bundle of compiled components. It is essentially object files plus the header files that declare them. A standard C library, called `libc`, is always linked in unless you say otherwise. Beyond that you will find a math library and thousands of others.
+
+A minimal two-file example shows all these steps. It is small enough to retype.
 
 ```bash
 mkdir -p ~/lab/build && cd ~/lab/build
@@ -512,28 +526,30 @@ cc -o hello main.o greet.o   # links them into 'hello'
 ./hello
 ```
 
-If you omit `-o`, the compiler writes an executable called `a.out`; always name your output. To see the intermediate stages: `cc -E main.c` (preprocessor only), `cc -S main.c` (assembly), `file main.o hello` (object vs executable).
+If you omit `-o`, the compiler writes an executable called `a.out`, so always name your output. To see the intermediate stages, run `cc -E main.c` for preprocessor output only, `cc -S main.c` for assembly, and `file main.o hello` to tell object files from executables.
 
 ### Linking against libraries
 
-Libraries matter at **link time**. If a program calls a function and you do not link the library that defines it, the linker stops with:
+Libraries matter at **link time**. Suppose a program calls a function, and you do not link the library that defines it. The linker then stops with a message like this one.
 
 ```text
 badobject.o: undefined reference to 'initscr'
 ```
 
-The important part is the function name. A web search for it (or `man initscr`) tells you which library provides it (here, curses). Note that "undefined reference" does **not** always mean a missing library: one of your own object files may be missing from the link command; it is usually easy to tell, because you will recognise your own functions.
+The important part of that message is the function name. A web search for it, or `man initscr`, tells you which library provides it. Here that library is curses. Note that "undefined reference" does not always mean a missing library. One of your own object files may have been left off the link command. That is usually easy to spot, because you recognise your own functions.
 
-To link, name the library with **`-l`** (the filename minus the `lib` prefix and the suffix) and, if it is not in a default directory, tell the linker where with **`-L`**:
+To link, name the library with `-l`. You give the filename minus the `lib` prefix and the suffix. If the library is not in a default directory, tell the linker where to look with `-L`.
 
 ```bash
 cc -o badobject badobject.o -lcurses                       # in a default directory
 cc -o badobject badobject.o -lcurses -L/usr/junk/lib -lcrud   # extra library in a custom directory
 ```
 
-The default library directories are `/lib`, `/usr/lib` and, on modern multiarch distributions, architecture-specific subdirectories such as `/usr/lib/x86_64-linux-gnu`. To find which library defines a function: `nm --defined-only libcurses.a | grep initscr` (static) or `nm -D --defined-only /usr/lib/.../libncurses.so.6 | grep initscr` (shared).
+The default library directories are `/lib`, `/usr/lib` and, on modern multiarch distributions, architecture-specific subdirectories such as `/usr/lib/x86_64-linux-gnu`. To find which library defines a function, run `nm` on the library. Use `nm --defined-only libcurses.a | grep initscr` for a static library, or `nm -D --defined-only /usr/lib/.../libncurses.so.6 | grep initscr` for a shared one.
 
 ### Static and shared libraries
+
+The table compares the two kinds. The difference matters most at run time and during updates.
 
 | | Static library (`libfoo.a`) | Shared library (`libfoo.so.N`) |
 |---|---|---|
@@ -542,19 +558,19 @@ The default library directories are `/lib`, `/usr/lib` and, on modern multiarch 
 | Updating the library | Requires **relinking every executable** | Fix the library once; programs pick it up (usually without recompiling) |
 | Cost | Larger binaries, more disk and RAM; a security fix means finding and rebuilding every user | Management complexity: the right version must be found at run time |
 
-Shared libraries are why a library security update from your package manager protects every program that uses it, and why the update tool sometimes asks you to reboot or restart services (so running processes drop the old library). They are also the source of the most common run-time failures, which section 8 covers.
+Shared libraries are why a library security update from your package manager protects every program that uses it. They are also why the update tool sometimes asks you to reboot or restart services. Running processes keep the old library until they drop it. Shared libraries are also the source of the most common run-time failures, which section 8 covers.
 
 ### Headers, the preprocessor and include paths
 
-**Header files** (`.h`) contain declarations (types and function signatures) for libraries. The compiler never looks for them itself: a separate program, the **C preprocessor** (`cpp`, or `cc -E`), runs first and rewrites the source. Preprocessor commands, **directives**, begin with `#`, and there are three kinds:
+Header files, which end in .h, contain declarations for libraries: types and function signatures. The compiler never goes looking for them itself. A separate program, the C preprocessor, runs first and rewrites the source. You can call it directly as `cpp`, or as `cc -E`.
 
-- `#include <stdio.h>` inserts a file. Angle brackets mean "search the system include directories"; double quotes (`#include "greet.h"`) mean "look next to this source file first". If you hit a problem with a double-quoted include, you probably have incomplete source.
-- `#define NAME value` defines a **macro**: every occurrence of `NAME` is replaced by `value`. You can also define one without touching source: `cc -DNAME=value`.
-- `#ifdef MACRO` / `#if cond` ... `#endif` includes or skips a block depending on a macro. This is how one code base supports different platforms or a debug mode.
+Preprocessor commands, called directives, begin with `#`. `#include <stdio.h>` inserts a file. Angle brackets mean "search the system include directories". Double quotes, as in `#include "greet.h"`, mean "look next to this source file first". If you hit a problem with a double-quoted include, the source is probably incomplete.
 
-The preprocessor knows nothing about C syntax; it only manipulates text. Many a confusing build error comes from a macro substituting something unexpected.
+`#define NAME value` defines a macro, and every occurrence of `NAME` is replaced by `value`. You can also define one without touching the source, with `cc -DNAME=value`. `#ifdef MACRO` and `#if cond`, closed by `#endif`, include or skip a block depending on a macro. This is how one code base supports different platforms or a debug mode.
 
-The default system include directory is `/usr/include` (plus architecture-specific subdirectories). If a header lives elsewhere, add `-I/path/to/include` to the compile command:
+The preprocessor knows nothing about C syntax. It only manipulates text, so many confusing build errors come from a macro that substitutes something unexpected.
+
+The default system include directory is `/usr/include`, plus architecture-specific subdirectories. Picture a build that works on one machine and fails on another, because the header sits in a different place. If a header lives elsewhere, add `-I/path/to/include` to the compile command.
 
 ```text
 badinclude.c:1:22: fatal error: notfound.h: No such file or directory
@@ -564,17 +580,15 @@ badinclude.c:1:22: fatal error: notfound.h: No such file or directory
 cc -c -I/usr/junk/include badinclude.c
 ```
 
-When the compiler cannot find a header, look for it with `locate`, `find`, or the package tools from section 5; there can be several with the same name in different places, so confirm you are using the right one.
+When the compiler cannot find a header, search for it with `locate`, `find`, or the package tools from section 5. Several headers can share a name in different places, so confirm you are using the right one.
 
 ### `make`
 
-Compiling a handful of files by hand does not scale, so Unix has **`make`**, which reads a file named `Makefile` (or `makefile`) and rebuilds only what is out of date. The model has three ideas:
+Compiling a handful of files by hand does not scale. Unix therefore has `make`, which reads a file named `Makefile` (or `makefile`) and rebuilds only what is out of date. The model has three ideas.
 
-- A **target** is something to produce: a file (`main.o`, `myprog`) or a label (`all`, `clean`).
-- A target has **dependencies**: other targets that must exist, and be at least as new, first.
-- A **rule** is the recipe, the shell commands that build the target from its dependencies.
+A **target** is something to produce. It can be a file, such as `main.o` or `myprog`, or a label, such as `all` or `clean`. A target has **dependencies**, which are other targets that must exist, and be at least as new, first. A **rule** is the recipe: the shell commands that build the target from its dependencies.
 
-Using the example files above, here is a sample Makefile:
+Using the example files above, here is a sample Makefile.
 
 ```make
 # Makefile  (the indented lines MUST start with a TAB character, not spaces)
@@ -589,16 +603,11 @@ clean:
 	rm -f $(OBJS) hello
 ```
 
-Points to notice:
+Notice a few things. `OBJS = ...` defines a macro, which you use as `$(OBJS)`. `CC` is predefined, with the default `cc`. The first target in the file, `all` here, is the default when you run `make` with no arguments. You wrote no rule for `main.o` or `greet.o`, because `make` has built-in rules that know how to get a .o file from a .c file, using `$(CC) -c` and the standard flag variables. The recipe lines must start with a tab. Spaces cause `*** missing separator. Stop.`
 
-- `OBJS = ...` defines a **macro** (variable), used as `$(OBJS)`. `CC` is predefined (default `cc`).
-- The **first target** in the file (`all` here) is the default when you run `make` with no arguments.
-- You wrote no rule for `main.o` or `greet.o`; `make` has **built-in rules** that know how to get a `.o` from a `.c` using `$(CC) -c` and the standard flag variables.
-- The recipe lines start with a tab. Spaces cause `*** missing separator. Stop.`
+`make` brings targets up to date and does the minimum. Run it twice, and the second run says `make: 'hello' is up to date` (or `Nothing to be done`). Now run `touch greet.c` and `make` again. It recompiles only `greet.o` and relinks `hello`, because `greet.o` became older than its source, and `hello` became older than `greet.o`. That chain reaction, driven purely by file timestamps, is the whole idea.
 
-`make` brings targets up to date and does the minimum: run it twice and the second says `make: 'hello' is up to date` (or `Nothing to be done`). Run `touch greet.c` and `make` again: it recompiles only `greet.o` and relinks `hello`, because `greet.o` became older than its source and `hello` older than `greet.o`. That chain reaction, driven purely by file timestamps, is the whole idea.
-
-**Commands you will use daily:**
+Commands you will use daily:
 
 ```bash
 make                     # build the default target
@@ -610,9 +619,9 @@ make CC=clang            # override a macro from the command line
 make CFLAGS="-O2 -g"    # likewise
 ```
 
-You do not even need a `Makefile` for tiny programs: `make blah` with a `blah.c` in the directory uses built-in rules to compile it. This is a handy trick with unfamiliar languages (Fortran, lex, yacc), because `make` may figure out the right commands, and even its failure message hints at the tool you need.
+You do not even need a Makefile for tiny programs. `make blah`, with a `blah.c` in the directory, uses built-in rules to compile it. This is a handy trick with unfamiliar languages such as Fortran, lex and yacc. `make` may work out the right commands, and even its failure message hints at the tool you need.
 
-**Standard macros** (set in the `Makefile`, an environment variable, or the command line):
+The standard macros below can be set in the Makefile, in an environment variable, or on the command line.
 
 | Macro | Meaning |
 |---|---|
@@ -623,9 +632,9 @@ You do not even need a `Makefile` for tiny programs: `make blah` with a `blah.c`
 | `LDFLAGS` | Linker options (`-L`, `-Wl,-rpath=...`) |
 | `LDLIBS` | Libraries to link (`-lm`, `-lcurses`), when you want to keep them separate from search paths |
 
-**Automatic variables** inside a rule: `$@` is the current target, `$<` the first dependency, `$*` the stem of the target name (for `blah.o`, `blah`). A pattern like `.c.o:` in older Makefiles defines how to produce a `.o` from a `.c`.
+Inside a rule, automatic variables stand in for parts of the target and its dependencies. `$@` is the current target. `$<` is the first dependency. `$*` is the stem of the target name, so for `blah.o` it is `blah`. A pattern such as `.c.o:` in older Makefiles defines how to produce a .o file from a .c file.
 
-**Conventional targets** found in nearly every project:
+Nearly every project has the same conventional targets. The table lists them.
 
 | Target | Purpose |
 |---|---|
@@ -636,7 +645,7 @@ You do not even need a `Makefile` for tiny programs: `make blah` with a `blah.c`
 | `test` / `check` | Run the test suite |
 | `depend` | Regenerate header dependencies (an older practice) |
 
-**Organisation tips (`HLW` Section 15.2.8).** Even though there are many different `Makefile` styles, most programmers adhere to a few general rules of thumb. In the first part of the `Makefile`, inside the macro definitions, libraries and includes are grouped according to package:
+**Organisation tips (HLW Section 15.2.8).** Many Makefile styles exist, but most programmers follow a few rules of thumb. In the first part of the Makefile, inside the macro definitions, group the libraries and includes by package.
 
 ```make
 MYPACKAGE_INCLUDES=-I/usr/local/include/mypackage
@@ -647,17 +656,19 @@ CFLAGS=$(CFLAGS) $(MYPACKAGE_INCLUDES) $(PNG_INCLUDES)
 LDFLAGS=$(LDFLAGS) $(MYPACKAGE_LIB) $(PNG_LIB)
 ```
 
-Object files are grouped according to executables. For example, if a package builds two executables called `boring` and `trite` that each have their own `.c` file and share `util.c`, you define `UTIL_OBJS=util.o`, `BORING_OBJS=$(UTIL_OBJS) boring.o`, `TRITE_OBJS=$(UTIL_OBJS) trite.o`, and `PROGS=boring trite`, and give `boring` and `trite` separate rules under `all: $(PROGS)`. Combining two executables into one rule is a trap: `trite` would depend on `boring.c`, `boring` would depend on `trite.c`, and `make` would rebuild both programs whenever either source file changed. If you need a special rule for an object file, place it just above the executable rule that uses it.
+Group the object files by executable as well. Suppose a package builds two executables, `boring` and `trite`. Each has its own .c file, and both share `util.c`. Define `UTIL_OBJS=util.o`, `BORING_OBJS=$(UTIL_OBJS) boring.o` and `TRITE_OBJS=$(UTIL_OBJS) trite.o`, then set `PROGS=boring trite`. Give `boring` and `trite` separate rules under `all: $(PROGS)`. Combining the two executables into one rule is a trap. `trite` would then depend on `boring.c`, and `boring` would depend on `trite.c`. `make` would rebuild both programs whenever either source file changed. If you need a special rule for an object file, place it just above the executable rule that uses it.
 
-GNU `make` has many extensions that other implementations (BSD, Solaris) lack; this is fine on Linux and is the reason portable projects layer autotools or CMake on top. For more depth, read the GNU `make` manual (`info make`).
+GNU `make` has many extensions that other implementations, such as BSD and Solaris, lack. That is fine on Linux, and it is the reason portable projects layer autotools or CMake on top. For more depth, read the GNU make manual with `info make`.
 
-**Lex and Yacc (`HLW` Section 15.3).** You may encounter Lex and Yacc when compiling programs that parse configuration files or commands. Lex is a tokenizer that transforms text into numbered tags with labels; the GNU/Linux version is named `flex`, and requires a `-ll` or `-lfl` linker flag. Yacc is a parser that reads tokens according to a grammar; the GNU parser is `bison` (run `bison -y` for Yacc compatibility, with the `-ly` linker flag).
+**Lex and Yacc (HLW Section 15.3).** You may meet Lex and Yacc when you compile programs that parse configuration files or commands. Lex is a tokenizer. It turns text into numbered tags with labels. The GNU version is named flex, and it needs a `-ll` or `-lfl` linker flag. Yacc is a parser. It reads tokens according to a grammar. The GNU parser is bison, and you run `bison -y` for Yacc compatibility, with the `-ly` linker flag.
+
+Before you change a Makefile, run `make -n` and read what it would do.
 
 ## 8. Shared libraries at run time
 
-A dynamically linked executable knows only the **names** of the libraries it needs. A small program, the **dynamic linker/loader** (`ld.so`, shown as `ld-linux-x86-64.so.2` on x86-64), runs first when you start the program, finds those libraries and maps them into the process.
+Picture an on-call engineer who starts a tool and sees `error while loading shared libraries`. Most of the time the cause is found at run time, not at build time. A dynamically linked executable knows only the names of the libraries it needs. When you start the program, a small dynamic linker/loader runs first. It is `ld.so`, shown as `ld-linux-x86-64.so.2` on x86-64. The loader finds those libraries and maps them into the process.
 
-List what a program needs with `ldd`:
+You can list what a program needs with `ldd`:
 
 ```bash
 ldd /bin/bash
@@ -667,40 +678,38 @@ ldd /bin/bash
 #   /lib64/ld-linux-x86-64.so.2 (0x00007f...)
 ```
 
-The name on the left of `=>` is what the executable asked for; the path on the right is where `ld.so` found it. A line reading `libfoo.so.1 => not found` is your problem. (On untrusted binaries, do not run `ldd`; some implementations execute the program. Use `readelf -d prog | grep NEEDED` instead.)
+The name on the left of the arrow is what the executable asked for. The path on the right is where the loader found it. A line that reads `libfoo.so.1 => not found` is your problem. Do not run `ldd` on untrusted binaries, because some implementations execute the program. Use `readelf -d prog | grep NEEDED` instead.
 
 ### The search order
 
-`ld.so` looks in this order (details in `ld.so(8)`):
+The loader searches in a fixed order, which `ld.so(8)` describes in detail. There are four steps.
 
-1. The executable's embedded **`RPATH`/`RUNPATH`**, if the program was linked with one.
-2. The **`LD_LIBRARY_PATH`** environment variable, if set. (For the classic `RPATH` the order is `RPATH`, then `LD_LIBRARY_PATH`; for `RUNPATH` it is `LD_LIBRARY_PATH` first. Check `ld.so(8)` for your system.)
-3. The **cache** `/etc/ld.so.cache`, a fast index of libraries found in the directories listed in `/etc/ld.so.conf` (which usually includes files from `/etc/ld.so.conf.d/`).
-4. The **default directories** `/lib` and `/usr/lib` (and their architecture variants), which are implicit.
+1. The executable's embedded RPATH or RUNPATH, if the program was linked with one.
+2. The LD_LIBRARY_PATH environment variable, if it is set. For the classic RPATH, the order is RPATH first and then LD_LIBRARY_PATH. For `RUNPATH`, LD_LIBRARY_PATH comes first. Check `ld.so(8)` for your system.
+3. The cache at /etc/ld.so.cache. That cache is a fast index of libraries found in the directories listed in /etc/ld.so.conf, which usually includes files from /etc/ld.so.conf.d/.
+4. The default directories /lib and /usr/lib, and their architecture variants, which are always implicit.
 
-The cache is rebuilt by **`sudo ldconfig`** (add `-v` for details). Whenever you add a library to a directory in the cache's path, or change `ld.so.conf`, run `ldconfig`, or the loader will not know. Useful: `ldconfig -p | grep libcuda` lists what the cache knows.
+The cache is rebuilt by `sudo ldconfig`. Add `-v` for details. Whenever you add a library to a directory in the cache's path, or change ld.so.conf, run `ldconfig`. Otherwise the loader will not know about the new library. To see what the cache knows, run `ldconfig -p | grep libcuda`.
 
-### Do not add directories carelessly to `/etc/ld.so.conf`
+### Do not add directories carelessly to ld.so.conf
 
-It is tempting to put every unusual library directory in `ld.so.conf`. Resist: you should know what is in the system cache, and a cache stuffed with odd directories causes conflicts and a disorganised system. The better ways to find a library in a nonstandard place are:
+It is tempting to put every unusual library directory into ld.so.conf. Resist that. You should know what is in the system cache, and a cache stuffed with odd directories causes conflicts and a disorganised system. The better ways to find a library in a nonstandard place are below.
 
-**Link with an `rpath`** (build time). Say `libweird.so.1` lives in `/opt/obscure/lib`:
+The first is to link with an rpath at build time. Suppose `libweird.so.1` lives in `/opt/obscure/lib`:
 
 ```bash
 cc -o myprog myprog.o -Wl,-rpath=/opt/obscure/lib -L/opt/obscure/lib -lweird
 ```
 
-`-Wl,-rpath=...` passes `-rpath` to the linker and embeds the directory into the executable. You still need `-L` for the link step. To change the `rpath` of a binary you cannot rebuild, use **`patchelf`** (`patchelf --set-rpath /opt/obscure/lib myprog`), but compile-time is better. Inspect with `readelf -d myprog | grep -E 'RPATH|RUNPATH'`. A relative form, `-Wl,-rpath='$ORIGIN/../lib'`, makes a relocatable tree whose libraries sit beside the program; this is how many vendors ship software that works wherever it is unpacked.
+The `-Wl,-rpath=...` part passes `-rpath` to the linker, which embeds the directory into the executable. You still need `-L` for the link step. To change the rpath of a binary you cannot rebuild, use `patchelf`, for example `patchelf --set-rpath /opt/obscure/lib myprog`. Compile-time is still the better choice. Inspect the result with `readelf -d myprog | grep -E 'RPATH|RUNPATH'`. A relative form, `-Wl,-rpath='$ORIGIN/../lib'`, makes a relocatable tree whose libraries sit beside the program. This is how many vendors ship software that works wherever it is unpacked.
 
-### The danger of `LD_LIBRARY_PATH`
+### The danger of LD_LIBRARY_PATH
 
-`LD_LIBRARY_PATH` is a colon-separated list of directories searched **before** the normal places. It is the number-one cause of shared-library trouble, because it is a cheap way to make a program run when you do not have the source and cannot use `patchelf`. You get what you pay for:
+LD_LIBRARY_PATH is a colon-separated list of directories that the loader searches before the normal places. It causes more shared-library trouble than anything else. It is tempting because it is a cheap way to make a program run when you do not have the source and cannot use patchelf. But you pay for that convenience in three ways.
 
-- **Performance.** The loader may scan each listed directory for every library of every program started with the variable set.
-- **Wrong libraries.** If you export it in your shell startup files, every program you run, including system tools, searches those directories first and can pick up an incompatible library. This produces baffling crashes and "symbol lookup error" messages far from the real cause.
-- **Invisible state.** Two users with different values see different behaviour from the same binary.
+The first cost is performance. The loader may scan each listed directory for every library of every program started with the variable set. The second cost is wrong libraries. If you export the variable in your shell startup files, every program you run, including system tools, searches those directories first. Any of them can pick up an incompatible library. The result is baffling crashes and "symbol lookup error" messages far from the real cause. The third cost is invisible state. Two users with different values see different behaviour from the same binary.
 
-So: **never set `LD_LIBRARY_PATH` in global shell startup files, and never compile software with it set.** If you must use it for one program, use a **wrapper script** that sets it only for that command:
+So never set LD_LIBRARY_PATH in global shell startup files, and never compile software with it set. If you must use it for one program, use a wrapper script that sets it only for that command.
 
 ```bash
 #!/bin/sh
@@ -709,11 +718,13 @@ export LD_LIBRARY_PATH
 exec /opt/crummy/bin/crummy.bin "$@"
 ```
 
-(The `exec` replaces the shell with the program; `"$@"` passes your arguments through preserving spaces. Quote it; the unquoted form from older scripts breaks on arguments with spaces.) Cluster **environment modules** (section 10) do something similar, on purpose and per job, which is the acceptable form of the same idea.
+The `exec` replaces the shell with the program. `"$@"` passes your arguments through and preserves spaces. Quote it. The unquoted form in older scripts breaks on arguments that contain spaces. Cluster environment modules, covered in section 10, do something similar. They do it on purpose and per job, which is the acceptable form of the same idea.
 
-A second problem appears with developers: a library's API changes slightly between minor versions and breaks installed software. The preventive solutions are to install each library version consistently under its own prefix and link with `rpath`, or to link obscure libraries statically.
+A second problem shows up with developers. A library's API can change slightly between minor versions and break software that was installed against the old one. The preventive fixes are to install each library version consistently under its own prefix and link with an rpath. Another option is to link obscure libraries statically.
 
 ### Quick diagnosis
+
+When a program will not start, run through these checks. Each one answers a different question.
 
 ```bash
 ldd ./prog | grep 'not found'          # which names are unresolved
@@ -724,50 +735,64 @@ LD_DEBUG=libs ./prog 2>&1 | head -50   # trace the loader's search (debugging on
 strace -e trace=openat ./prog 2>&1 | grep -E 'ENOENT|\.so'   # chapter 1.11
 ```
 
-Chapter 1.11 returns to ELF, the loader and `strace` in depth.
+Chapter 1.11 returns to ELF, the loader and `strace` in depth. Before you change any search path, find out which of these checks shows the missing library, because that tells you which fix applies.
 
 ## 9. Interpreters, shebang lines, scripting languages, and Java (`HLW` Sections 15.4–15.6)
 
-A script is an executable text file run by an interpreter. If the file is executable and its first line begins with `#!` (the **shebang**), the kernel runs the program named after `#!` with the rest of the file passed as input:
+Many of the tools on a cluster are scripts, not compiled programs. When one of them fails with a strange error about a path, the cause is often the interpreter line at the top. A script is an executable text file that an interpreter runs. If the file is executable and its first line begins with `#!`, which is called the **shebang**, the kernel runs the program named after `#!`. It passes the rest of the file to that program as input.
 
 ```bash
 #!/usr/bin/env python3
 print("hello")
 ```
 
-- `#!/usr/bin/python3` hard-codes a path. `#!/usr/bin/env python3` finds the first `python3` on your `$PATH`, which is better when interpreters live in different places or in virtual environments, at the cost of depending on `$PATH`.
-- The most common failure is `bash: ./myscript: /usr/bin/tail: bad interpreter: No such file or directory`. The path after `#!` does not exist on this system (for example `tail` is in `/bin`, not `/usr/bin`). Another common one is a script saved on Windows with CRLF line endings, so the interpreter name ends with an invisible `\r`; fix with `dos2unix` or `sed -i 's/\r$//'`.
-- Do not rely on more than one argument on the shebang line (such as `#!/usr/bin/tail -2`); different Unix kernels treat everything after the interpreter path as a single combined argument, spaces and all.
+The path after `#!` is taken literally. `#!/usr/bin/python3` hard-codes one location. `#!/usr/bin/env python3` finds the first `python3` on your `$PATH`. That is better when interpreters live in different places or inside virtual environments. The price is that the script now depends on `$PATH`.
+
+The most common failure looks like `bash: ./myscript: /usr/bin/tail: bad interpreter: No such file or directory`. It means the path after `#!` does not exist on this system. For example, `tail` may live in `/bin` rather than `/usr/bin`. Another common failure comes from a script saved on Windows with CRLF line endings. The interpreter name then ends with an invisible `\r`. Fix it with `dos2unix` or `sed -i 's/\r$//'`.
+
+Avoid relying on more than one argument on the shebang line, such as `#!/usr/bin/tail -2`. Different Unix kernels treat everything after the interpreter path as a single combined argument, spaces and all.
 
 ### Scripting languages and Java you will encounter on Linux systems
 
-- **Python (`python` / `python3`):** A scripting language with a strong following and powerful features for text processing, database access, networking, multithreading, data analysis, web applications, and AI/ML. David M. Beazley's *Python Distilled* (Addison-Wesley, 2021) is a classic concise reference, and Part 3 of this handbook covers Python for infrastructure in depth. Treat the system Python as part of the operating system: many distribution tools depend on it, so do not `pip install` into it as root. Use a virtual environment (`python3 -m venv .venv`, then `.venv/bin/pip install ...`), `uv`, or a container (chapter 7).
-- **Perl (`perl`):** One of the older third-party Unix scripting languages—the original "Swiss army chainsaw" of programming tools. Although Perl has lost ground to Python in recent years, it excels at text processing, conversion, and file manipulation, and many legacy system and InfiniBand tools are written in it. Classic references are *Learning Perl*, 7th edition, by Randal L. Schwartz, brian d foy, and Tom Phoenix (O'Reilly, 2016) and *Modern Perl*, 4th edition, by chromatic (Onyx Neon Press, 2016).
-- **Other scripting languages (`HLW` 15.4.3):** **PHP** (`http://www.php.net/`, hypertext-processing language for dynamic web scripts and standalone CLI scripts); **Ruby** (`http://www.ruby-lang.org/`, favored by object-oriented and web developers); **JavaScript** (ubiquitous in web browsers and used server-side via **Node.js**, executable `node`); **Emacs Lisp** (the Lisp dialect used by the Emacs text editor); **MATLAB** and **Octave** (commercial matrix/mathematical language and its free software counterpart); **R** (`http://www.r-project.org/`, statistical analysis language; see Norman Matloff's *The Art of R Programming*, No Starch Press, 2011); **Mathematica** (commercial mathematical language); **m4** (macro-processing language used inside GNU autotools); and **Tcl** (*Tool Command Language*, `http://www.tcl.tk/`, paired with the **Tk** GUI toolkit, **Expect** automation utility, and classic Tcl-based Environment Modules).
-- **Java (`.class`, `.jar`, JRE vs JDK, `HLW` 15.5):** Java is a compiled object-oriented language that compiles `.java` source files into `.class` bytecode files executed by a bytecode interpreter (the Java Virtual Machine, inside the **Java Runtime Environment, JRE**). Run a compiled class with `java file.class`, or an archived collection of classes (`.jar`) with `java -jar file.jar`. Some Java services require setting `JAVA_HOME` to the installation prefix or `CLASSPATH` (a colon-delimited list of class directories like `PATH`). To compile `.java` files into bytecode or bundle `.jar` archives, install the **Java Development Kit (JDK)** and run `javac file.java` and `jar` (which works like `tar`).
-- **Modern compiled systems languages and LLVM (`HLW` 15.6):** Compiled languages such as **Go** (`golang`) and **Rust** (`cargo`) dominate modern cloud-native and Kubernetes infrastructure, while the **LLVM** compiler infrastructure (`http://llvm.org/`) underpins `clang` and many GPU/ML compiler backends. For deeper study of compiler design, Brian Ward recommends *Compilers: Principles, Techniques, and Tools*, 2nd edition, by Alfred V. Aho et al. (Addison-Wesley, 2006) and *Modern Compiler Design*, 2nd edition, by Dick Grune et al. (Springer, 2012).
+The languages below are the ones you are likely to meet on a Linux system. Each one has a different job, so you only need to recognise them when you see them.
 
-A shared principle links packages, libraries, and interpreters: **every language has its own packaging ecosystem** (`pip`, `conda`, `npm`, `cargo`, `go install`) in addition to the distribution's, and mixing them without isolation is how nodes become unreproducible. For GPU Python stacks, which depend on CUDA-matched wheels or conda packages, isolation via a `venv`, conda environment, or container image is mandatory.
+Python (`python` or `python3`) is a scripting language with a strong following. It has powerful features for text processing, database access, networking, multithreading, data analysis, web applications and AI/ML. David M. Beazley's *Python Distilled* (Addison-Wesley, 2021) is a classic concise reference. Part 3 of this handbook covers Python for infrastructure in depth. Treat the system Python as part of the operating system. Many distribution tools depend on it, so do not `pip install` into it as root. Instead, you should use a virtual environment for your own packages, for example `python3 -m venv .venv` followed by `.venv/bin/pip install ...`. You can also use `uv`, or a container (chapter 7).
+
+Perl (`perl`) is one of the older third-party Unix scripting languages. It is the original "Swiss army chainsaw" of programming tools. Perl has lost ground to Python in recent years. It still excels at text processing, conversion and file manipulation, and many legacy system and InfiniBand tools are written in it. Classic references are *Learning Perl*, 7th edition, by Randal L. Schwartz, brian d foy and Tom Phoenix (O'Reilly, 2016), and *Modern Perl*, 4th edition, by chromatic (Onyx Neon Press, 2016).
+
+Other scripting languages come next (HLW 15.4.3). If you find one of these in a script, you will know what it is for. PHP (http://www.php.net/) is a hypertext-processing language for dynamic web scripts and standalone CLI scripts. Ruby (http://www.ruby-lang.org/) is favored by object-oriented and web developers. JavaScript is ubiquitous in web browsers, and it also runs on the server through Node.js, whose executable is `node`. Emacs Lisp is the Lisp dialect used by the Emacs text editor. MATLAB is a commercial matrix and mathematical language, and Octave is its free software counterpart. R (http://www.r-project.org/) is a statistical analysis language. See Norman Matloff's *The Art of R Programming* (No Starch Press, 2011). Mathematica is a commercial mathematical language. m4 is a macro-processing language used inside GNU autotools. Tcl (*Tool Command Language*, http://www.tcl.tk/) pairs with the Tk GUI toolkit, the Expect automation utility and the classic Tcl-based Environment Modules.
+
+Java (`.class`, `.jar`, JRE vs JDK, HLW 15.5) is a compiled object-oriented language. The compiler turns `.java` source files into `.class` bytecode files. A bytecode interpreter runs them. That interpreter is the Java Virtual Machine, and it lives inside the Java Runtime Environment, or JRE. Run a compiled class with `java file.class`. Run an archived collection of classes, called a `.jar`, with `java -jar file.jar`. Some Java services need `JAVA_HOME` set to the installation prefix, or `CLASSPATH` set. `CLASSPATH` is a colon-delimited list of class directories, much like `PATH`. To compile `.java` files or bundle `.jar` archives, install the Java Development Kit, or JDK. Then you use `javac file.java`, and `jar`, which works like `tar`. You will rarely need more than that.
+
+Modern compiled systems languages and LLVM come last (HLW 15.6). Go (`golang`) and Rust (`cargo`) dominate modern cloud-native and Kubernetes infrastructure. The LLVM compiler infrastructure, at http://llvm.org/, underpins `clang` and many GPU and ML compiler backends. For deeper study of compiler design, Brian Ward recommends *Compilers: Principles, Techniques, and Tools*, 2nd edition, by Alfred V. Aho and others (Addison-Wesley, 2006). He also recommends *Modern Compiler Design*, 2nd edition, by Dick Grune and others (Springer, 2012).
+
+A shared principle ties packages, libraries and interpreters together. Every language has its own packaging ecosystem, such as `pip`, `conda`, `npm`, `cargo` or `go install`, in addition to the distribution's own. Mixing those ecosystems without isolation is how nodes become unreproducible. For GPU Python stacks, which depend on CUDA-matched wheels or conda packages, isolation is mandatory. Use a venv, a conda environment or a container image.
+
+Before you install a language package on a node, decide which environment you want it in.
 
 ## 10. Software installation on a cluster
 
-A cluster is a different problem from one machine: the same software must be present, identical and quickly reachable on hundreds of nodes. This section follows the practical order in which a small cluster is built, which also explains what each service is for.
+A cluster is a different problem from one machine. The same software must be present, identical and quickly reachable on hundreds of nodes. This section follows the practical order in which a small cluster is built, and it explains what each service is for along the way.
 
 ### Drivers, InfiniBand and RAID
 
-- **Network drivers** for most Ethernet cards ship in the Linux kernel. Some vendors' cards need a separate driver; check the list of supported operating systems and the warranty terms before choosing one. Also check how the *switch* is managed: some management interfaces require a browser plug-in or Java applet that does not work on every OS version, which is a reason to prefer devices with a command-line or web interface that needs nothing special.
-- **InfiniBand** has an in-kernel stack ("inbox" drivers), but in most cases it is not worth using the bare inbox stack on an HPC or AI cluster because application performance may be lower than expected. For efficient operation of HPC applications, it is better to use the **OFED** (*OpenFabrics Enterprise Distribution*) package or the NVIDIA-supplied equivalent (MLNX_OFED / DOCA-OFED; confirm current names in the vendor documentation). It contains the drivers for most InfiniBand cards, the user-space libraries (`libibverbs` and friends), subnet-management and diagnostic utilities (`ibstat`, `ibv_devinfo`, the `perftest` suite), IP-over-InfiniBand (`IPoIB`) support, and sometimes bundled MPI builds. Rules of thumb:
-  - OFED is **strict about kernel and C library versions**. Prefer the vendor's prebuilt packages for your exact OS release, or run the installer, which compiles packages for the running system.
-  - **Back up the existing packages first.** The installer removes previously installed OFED packages before it builds; if the build fails you are left without InfiniBand.
-  - Some packages in the build output are mutually exclusive, so not all get installed. If your hardware vendor supplies its own stack for its equipment, try that first.
-  - MPI libraries bundled with OFED are built with preset options; for tuned production use, build your own with exactly the options you need.
-  - Remember `/etc/security/limits.conf` (or a file in `limits.d`): InfiniBand needs unlimited locked memory, e.g. `* soft memlock unlimited` and `* hard memlock unlimited` (chapter 1.8 explains limits, and under systemd the service-level equivalent is `LimitMEMLOCK=infinity`).
-  - If the network is used through **IPoIB** (IP over InfiniBand), a scheduler that generates the Ethernet node names will start jobs that talk over Ethernet, not InfiniBand. You then need a way to map node names to their IB addresses, for example separate hostnames such as `node01-ib`.
-- **RAID.** Hardware RAID protects against disk failure, not against a failed controller or motherboard or multiple disks lost in a power event. Keep backups regardless. Where you can choose, mirroring is the safest; adding striping (RAID 0) for speed is better done in the Linux software layer (chapter 1.13), where it costs little CPU and often recovers more gracefully.
+Suppose you are choosing network hardware for a new rack. Most Ethernet cards need no extra work, because their drivers ship in the Linux kernel. Some vendors' cards need a separate driver, though. Check the list of supported operating systems and the warranty terms before you choose one. Also check how the switch is managed. Some management interfaces require a browser plug-in or a Java applet that does not work on every OS version. Prefer a device with a command-line or web interface that needs nothing special.
+
+InfiniBand has an in-kernel stack, called the "inbox" drivers. In most cases it is not worth using that bare stack on an HPC or AI cluster, because application performance may come out lower than expected. For efficient HPC work, use the **OFED** package (*OpenFabrics Enterprise Distribution*), or the NVIDIA-supplied equivalent. Confirm the current names, MLNX_OFED or DOCA-OFED, in the vendor documentation. OFED contains the drivers for most InfiniBand cards. It also has the user-space libraries, such as `libibverbs` and friends, and the subnet-management and diagnostic utilities, such as `ibstat`, `ibv_devinfo` and the `perftest` suite. It adds IP-over-InfiniBand (`IPoIB`) support and sometimes bundles MPI builds. A few rules of thumb keep the installation safe.
+
+- OFED is strict about kernel and C library versions. Prefer the vendor's prebuilt packages for your exact OS release, or run the installer, which compiles packages for the running system.
+- Back up the existing packages first. The installer removes previously installed OFED packages before it builds, so if the build fails you are left without InfiniBand.
+- Some packages in the build output are mutually exclusive, so not all of them get installed. If your hardware vendor supplies its own stack for its equipment, try that first.
+- MPI libraries bundled with OFED are built with preset options. For tuned production use, build your own with exactly the options you need.
+- InfiniBand needs unlimited locked memory. Set it in `/etc/security/limits.conf`, or in a file in `limits.d`, with lines such as `* soft memlock unlimited` and `* hard memlock unlimited`. Chapter 1.8 explains limits. Under systemd, the service-level equivalent is `LimitMEMLOCK=infinity`.
+
+If the network is used through IPoIB (IP over InfiniBand), a scheduler that generates the Ethernet node names will start jobs that talk over Ethernet, not InfiniBand. You then need a way to map node names to their IB addresses. Separate hostnames such as `node01-ib` do that job.
+
+**RAID** deserves a clear picture too. Hardware RAID protects against disk failure. It does not protect against a failed controller, a failed motherboard, or several disks lost in one power event. Keep backups regardless. Where you can choose, mirroring is the safest layout. Adding striping with RAID 0 for speed is better done in the Linux software layer (chapter 1.13). There it costs little CPU, and it often recovers more gracefully.
 
 ### A sensible build order
 
-Building a cluster in an order that lets you test early prevents cloning mistakes into fifty nodes. A small cluster is typically built like this:
+Build the cluster in an order that lets you test early. Otherwise you will clone mistakes into fifty nodes. A small cluster is typically built in these steps.
 
 1. Install the **control (management) server**.
 2. Set up the **network file system** if you use one.
@@ -775,52 +800,57 @@ Building a cluster in an order that lets you test early prevents cloning mistake
 4. Install the **communication software** (OFED).
 5. Install the **second compute node**, forming a *mini-cluster* of one control and two compute nodes.
 6. Install **compilers and test packages**.
-7. **Test** the communication hardware (bandwidth and latency against the manufacturer's numbers).
+7. **Test** the communication hardware, checking bandwidth and latency against the manufacturer's numbers.
 8. Install the **job scheduler** (Slurm, chapter 6.7).
 9. Test **job completion** end to end.
-10. Only then **clone** the compute node (or build a network-boot image) and add the rest of the nodes.
+10. Only then **clone** the compute node, or build a network-boot image, and add the rest of the nodes.
 
-The principle: reach maximum readiness and test it fully *before* you replicate, so you do not clone a defect hundreds of times. Check network bandwidth and node performance against what the vendors claim. A mini-cluster will not reveal everything (response time as request rate grows, reliability of network services under load), but it finds most issues early. And when the cluster is ready to run jobs there is strong pressure to open it to users at once; resist until **monitoring and backups are in place**, otherwise there will be almost no time to build them later.
+The principle is simple. Reach maximum readiness and test it fully before you replicate, so you do not clone a defect hundreds of times. Check network bandwidth and node performance against what the vendors claim. A mini-cluster will not reveal everything. Response time as the request rate grows, and the reliability of network services under load, only show up at scale. A mini-cluster does find most issues early, though. When the cluster is ready to run jobs, there is strong pressure to open it to users at once. Resist that until **monitoring and backups are in place**. Otherwise you will have almost no time to build them later.
 
 ### The login node
 
-The login node is where users connect and where compute nodes send certain requests. It needs two network interfaces, **external** and **internal**; internal services must not be reachable from outside, so configure a **firewall** on the external interface. On small clusters it often doubles as the management node, but a separate management node is safer: you keep control when users do something destructive on the login node. If the cluster has a high-speed fabric, connect the management node to it too, which simplifies network management and statistics. If this node stores user data and exports it to the compute nodes, its disk subsystem must be fast and large; for big clusters use a dedicated file server or a distributed filesystem.
+The login node is where users connect, and where compute nodes send certain requests. It needs two network interfaces, **external** and **internal**. Internal services must not be reachable from outside, so configure a **firewall** on the external interface. On small clusters the login node often doubles as the management node. A separate management node is safer, though, because you keep control when users do something destructive on the login node. If the cluster has a high-speed fabric, connect the management node to it too. That simplifies network management and statistics. If this node stores user data and exports it to the compute nodes, its disk subsystem must be fast and large. For big clusters, use a dedicated file server or a distributed filesystem.
 
 ### NFS server and client
 
-Exporting a directory over NFS, on the server (package and service names differ between distributions):
+Here is how to export a directory over NFS on the server. Package and service names differ between distributions.
 
-1. Install the NFS server package and enable the service: `sudo systemctl enable --now nfs-server`.
-2. If the internal interface has a firewall, open the RPC/NFS services there.
-3. List the exports in `/etc/exports`, each with the directory, the clients allowed to mount it and the options, for example `/export  10.0.0.0/24(rw,sync,no_subtree_check)`.
-4. Re-read the configuration with `sudo exportfs -ra` (or `exportfs -av`, and `exportfs -v` to display it).
+1. Install the NFS server package and enable the service with `sudo systemctl enable --now nfs-server`.
+2. If the internal interface has a firewall, open the RPC and NFS services there.
+3. List the exports in `/etc/exports`. Each line gives the directory, the clients allowed to mount it and the options, for example `/export  10.0.0.0/24(rw,sync,no_subtree_check)`.
+4. Re-read the configuration with `sudo exportfs -ra`. Use `exportfs -av` to export everything, and `exportfs -v` to display the result.
 
-On each client, add one line to `/etc/fstab`:
+On each client, add one line to `/etc/fstab`.
 
 ```text
 myserver:/export  /export  nfs  defaults  0  0
 ```
 
-The six fields are: the source (server and exported directory), the mount point, the filesystem type, the mount options, the `dump` flag (0 means not included in backups) and the `fsck` pass number (0 means not checked at boot). Chapters 1.12 and 5 and the parallel-file-system chapters in Part 6 cover options such as `hard`, `vers=`, `nconnect` and tuning.
+The six fields are the source (the server and the exported directory), the mount point, the filesystem type, the mount options, the `dump` flag and the `fsck` pass number. A `dump` flag of 0 means the filesystem is not included in backups. A `fsck` pass of 0 means it is not checked at boot. Chapters 1.12 and 5, and the parallel-file-system chapters in Part 6, cover options such as `hard`, `vers=` and `nconnect`, along with tuning.
 
 ### Compilers and libraries on nodes
 
-Compilers are usually installed once, on the network filesystem, so compute nodes see them and the libraries the compiled programs need. Make the libraries visible to the dynamic linker in one of two ways: set `LD_LIBRARY_PATH` **per job through environment modules**, or list the directories in `ld.so.conf` and run `ldconfig`. In the second case, remember to update the file and rerun `ldconfig` on **every node** whenever the compiler version (and thus the library path) changes.
+Install compilers once, on the network filesystem. That way the compute nodes see both the compilers and the libraries the compiled programs need. You can make the libraries visible to the dynamic linker in one of two ways. The first is to set `LD_LIBRARY_PATH` per job through environment modules. The second is to list the directories in `ld.so.conf` and run `ldconfig`. In the second case, remember to update the file and rerun `ldconfig` on every node whenever the compiler version changes, because the library path changes with it.
 
-**Environment modules** (Environment Modules or Lmod) are the standard answer: `module load gcc/13 openmpi/5` edits `PATH`, `LD_LIBRARY_PATH`, `MANPATH` and similar variables for the current shell or job only, and `module purge` undoes it. Several versions of the same software can coexist on the shared filesystem and users pick one. This is also the clean answer to the earlier rule about not exporting `LD_LIBRARY_PATH` globally. Chapter 6.20 covers modules in depth.
+Environment modules, from Environment Modules or Lmod, are the standard answer. Suppose a user runs `module load gcc/13 openmpi/5`. That edits `PATH`, `LD_LIBRARY_PATH`, `MANPATH` and similar variables for the current shell or job only. Running `module purge` undoes it. Several versions of the same software can coexist on the shared filesystem, and users pick one. This is also the clean answer to the earlier rule about not exporting `LD_LIBRARY_PATH` globally. Chapter 6.20 covers modules in depth.
 
 ### The compute node
 
-A compute node exists to run user work. Design points:
+A compute node exists to run user work. Its design follows from that purpose, and the points below are the ones to decide first.
 
-- **Disk.** It can run diskless, but this increases load on a network that is already busy and consumes RAM. Network filesystems can bottleneck on programs that create many temporary files, even parallel filesystems. Keep a **local `/tmp`** as scratch space and encourage users to use it (container runtimes such as `enroot` also unpack images there by default).
-- **Layout** if the OS is local: a 50 to 100 GB partition for the system; a small **swap** (it is only a small reserve for RAM; a job that needs lots of swap spends its time waiting for pages); and **all the remaining space for `/tmp`**. With two disks, put swap on each and combine the `/tmp` partitions as software RAID-1 if you want resilience, or stripe them if you want speed and can afford to lose scratch.
-- **Network.** Provide fast fabric (InfiniBand or RoCE) for inter-process traffic and Ethernet for control. Heavy NFS traffic often justifies a **separate network for storage**.
-- **Fewer services.** Disable everything the node does not need: mail server, print server, desktop services, and cron-scheduled jobs that update the manual page index or the `locate` database. Every daemon steals CPU time and adds jitter to synchronous parallel jobs.
-- **Compilers** are not needed at run time but are needed when building the communications stack, so either do a full install on the node or reach the compilers through NFS.
-- Finally install the **scheduler's client** (for Slurm, `slurmd` and munge, chapter 6.7).
+The disk comes first. A compute node can run diskless, but that increases the load on a network that is already busy, and it consumes RAM. Network filesystems can bottleneck on programs that create many temporary files, even parallel filesystems. Keep a **local `/tmp`** as scratch space, and encourage users to use it. Container runtimes such as `enroot` also unpack images there by default.
+
+If the OS is local, the layout matters. Give the system a 50 to 100 GB partition. Make the swap small, because it is only a small reserve for RAM. A job that needs lots of swap spends its time waiting for pages. Put all the remaining space into `/tmp`. With two disks, put swap on each. Then combine the `/tmp` partitions as software RAID-1 if you want resilience, or stripe them if you want speed and can afford to lose scratch.
+
+The network needs two kinds of traffic. Provide a fast fabric, such as InfiniBand or RoCE, for inter-process traffic, and Ethernet for control. Heavy NFS traffic often justifies a **separate network for storage**.
+
+Keep the node lean. Disable everything it does not need, including the mail server, the print server, desktop services, and cron jobs that update the manual page index or the `locate` database. Every daemon steals CPU time, and it adds jitter to synchronous parallel jobs.
+
+Compilers are not needed at run time, but they are needed when you build the communications stack. So either do a full install on the node, or reach the compilers through NFS. Finally, install the scheduler's client. For Slurm, that means `slurmd` and munge (chapter 6.7).
 
 ### Getting an operating system onto many nodes
+
+Several methods put an operating system on many nodes, and the table compares them.
 
 | Method | How | Notes |
 |---|---|---|
@@ -830,24 +860,26 @@ A compute node exists to run user work. Design points:
 | **Diskless/network-root** (NFS-root or an image loaded into RAM) | Nodes boot from the network; one image to maintain | Reduces drift; costs RAM for RAM-based images |
 | **Image-based provisioning** (BCM, xCAT, Warewulf, MAAS and similar) | A tool manages images, node identity and updates | The modern default for clusters (chapter 6.x and the BCM part) |
 
-**Kickstart** (Red Hat family) works like this. An interactive install writes `/root/anaconda-ks.cfg`, a record of every choice you made (partitioning, network, package list). Edit that file, place it on a USB stick named `ks.cfg`, or serve it over the network, and any number of nodes can install unattended. For network installs the DHCP server points installing nodes to the file, for example in an ISC DHCP configuration:
+Kickstart is the answer-file method used on the Red Hat family. An interactive install writes `/root/anaconda-ks.cfg`, a record of every choice you made, such as partitioning, network and package list. Edit that file. Then place it on a USB stick named `ks.cfg`, or serve it over the network, and any number of nodes can install unattended. For network installs, the DHCP server points each installing node to the file. In an ISC DHCP configuration, that looks like this.
 
 ```text
 filename "/opt/ks.cfg";
 next-server server.cluster.myorg;
 ```
 
-If the returned filename ends in `/`, the client mounts that directory over NFS and looks for a file named `<IP-address>-kickstart`, so a node with address `10.0.0.2` reads `10.0.0.2-kickstart`; this lets different nodes get different installations. With no file or directory given, the client tries `/kickstart` on the NFS server. (Debian and Ubuntu have their equivalents: preseed and Ubuntu autoinstall/cloud-init.) *(Review note: the exact DHCP and installer parameters differ by release and by DHCP software; confirm against current documentation.)*
+If the returned filename ends in `/`, the client mounts that directory over NFS and looks for a file named `<IP-address>-kickstart`. A node with address `10.0.0.2` therefore reads `10.0.0.2-kickstart`, which lets different nodes get different installations. With no file or directory given, the client tries `/kickstart` on the NFS server. Debian and Ubuntu have their equivalents, which are preseed and Ubuntu autoinstall with cloud-init. *(Review note: the exact DHCP and installer parameters differ by release and by DHCP software; confirm against current documentation.)*
 
-**Cloning pitfalls.** If you copy a disk image with `dd if=/dev/sda of=/dev/sdb`, or with a tool such as Clonezilla, the clone may not boot unless you prepared the prototype first:
+**Cloning pitfalls.** Suppose you copy a disk image with `dd if=/dev/sda of=/dev/sdb`, or with a tool such as Clonezilla. The clone may not boot unless you prepared the prototype first. Three things usually break.
 
-- Many systems record disks by **factory identifiers** in the bootloader and mount configuration, for example `root=/dev/disk/by-id/ata-WDC_...-part1`. On a different disk that name is wrong. Replace such entries in `/boot/grub/grub.cfg` (generated, so change the source settings and regenerate) and in `/etc/fstab` with something portable such as `UUID=` for per-filesystem identity set at clone time, or with plain device names, before taking the image.
-- If the OS **binds network interface names to MAC addresses** (historically in `/etc/udev/rules.d/70-persistent-net.rules` or similar), clones will have the wrong names or no network. Correct or remove the binding. Also remove host-specific state such as SSH host keys and `/etc/machine-id` (regenerated at first boot) or you will have many machines with the same identity.
-- Watch the first boot of the clone carefully.
+First, many systems record disks by factory identifiers, in the bootloader and in the mount configuration. An example is `root=/dev/disk/by-id/ata-WDC_...-part1`. On a different disk, that name is wrong. Replace such entries in `/boot/grub/grub.cfg` and in `/etc/fstab` before you take the image. Change the source settings and regenerate the grub file, because grub.cfg is generated. Use something portable instead, such as `UUID=`, which identifies each filesystem and is set at clone time, or plain device names.
 
-**NFS-root** is safer and faster in this respect: build a minimal image, export it read-write to install and configure packages, set up DHCP, TFTP, PXE boot and an initial ramdisk (chapter 1.14), boot the node, install software, and then switch the export to **read-only**. Do not put the node's name in configuration files in the image (it must come from DHCP). Update software later by `chroot` into the image on the NFS server. During the first install, set up passwordless SSH for root, which rescues you when the home-directory partition is not mounted.
+Second, if the OS binds network interface names to MAC addresses, clones will get the wrong names or no network at all. Historically that binding lived in `/etc/udev/rules.d/70-persistent-net.rules` or a similar file. Correct it or remove it. Also remove host-specific state, such as SSH host keys and `/etc/machine-id`. The machine ID is regenerated at first boot. If you skip this step, you end up with many machines that share the same identity.
 
-**Final acceptance test** before you add the remaining nodes:
+Third, watch the first boot of the clone carefully.
+
+**NFS-root** is safer and faster in this respect. Build a minimal image. Export it read-write so you can install and configure packages. Set up DHCP, TFTP, PXE boot and an initial ramdisk (chapter 1.14). Boot the node and install the software. Then switch the export to **read-only**. Do not put the node's name in configuration files in the image, because the name must come from DHCP. Update the software later by running `chroot` into the image on the NFS server. During the first install, set up passwordless SSH for root. That rescues you when the home-directory partition is not mounted.
+
+**Final acceptance test.** Run this check before you add the remaining nodes.
 
 1. Passwordless remote commands work for the superuser.
 2. A regular user exists and has passwordless remote commands.
@@ -855,11 +887,11 @@ If the returned filename ends in `/`, the client mounts that directory over NFS 
 4. A test program from the communications package is submitted as a script.
 5. It starts, runs and writes its result into the working directory.
 
-If that whole chain works, connect the rest.
+If that whole chain works, you can connect the rest of the nodes.
 
 ## 11. AI-infrastructure patterns
 
-**The GPU stack is a chain of version constraints.** Kernel, driver, CUDA toolkit, user-space libraries (cuDNN, NCCL), container runtime and framework must match. A package manager is the tool that expresses and enforces these constraints, and holds them steady:
+**The GPU stack is a chain of version constraints.** The kernel, the driver, the CUDA toolkit, the user-space libraries (cuDNN, NCCL), the container runtime and the framework must all match. A package manager is the tool that expresses these constraints and holds them steady. The table shows how each layer is usually sourced and pinned.
 
 | Layer | Typical package source | Pin how |
 |---|---|---|
@@ -872,40 +904,48 @@ If that whole chain works, connect the rest.
 
 *(Review note: repository URLs, key-installation commands, and package names for NVIDIA software change over time; always use the instructions in NVIDIA's current installation guide rather than copying commands from an old page.)*
 
-**Be wary of installers that bypass the package manager.** A vendor `.run` file that copies files into `/usr` produces exactly the unrecorded state this chapter warns about. If you must use one, record what you did in your node build automation, and prefer the packaged route.
+Read each row as a decision you have to make. Choose the source, then choose how you will hold it steady.
 
-**Reproduce nodes from automation, not memory.** The goal is that any node can be rebuilt from a script (Ansible, chapter 4.x; cloud-init; BCM image) plus a pinned package set. Terraform builds machines; configuration management installs and configures packages on them; the package manager is the engine underneath. Ansible's `apt`, `dnf`, `package`, `yum_repository` and `apt_key`/`deb822_repository` modules express everything in sections 2 to 4 as idempotent tasks.
+**Be wary of installers that bypass the package manager.** A vendor .run file that copies files into `/usr` produces exactly the unrecorded state this chapter warns about. If you must use one, record what you did in your node build automation, and prefer the packaged route.
 
-**Containers move the problem, they do not remove it.** Inside a container image you still run `apt-get install` or `dnf install`, so the same rules apply: pin versions, install only what you need (`--no-install-recommends`), clean the package cache in the same layer (`rm -rf /var/lib/apt/lists/*`), and build from a base image whose digest you control. The NVIDIA driver, however, is **not** inside the image; the host's driver plus `nvidia-container-toolkit` provide it (chapter 7).
+**Reproduce nodes from automation, not memory.** The goal is that any node can be rebuilt from a script plus a pinned package set. The script can be Ansible (chapter 4.x), cloud-init, or a BCM image. Terraform builds machines. Configuration management installs and configures packages on them. The package manager is the engine underneath. Ansible's apt, dnf, package, `yum_repository` and `apt_key`/`deb822_repository` modules express everything in sections 2 to 4 as idempotent tasks.
 
-**Supply chain.** Anyone who can publish into a repository you trust can run code as root on your nodes. Mirror from the real source, verify signatures, restrict who can add repositories to nodes, and record which packages are installed (`dpkg -l`, `rpm -qa`) in your build logs so you can answer "which nodes ran the vulnerable version?" quickly.
+**Containers move the problem, they do not remove it.** Inside a container image you still run apt-get install or dnf install, so the same rules apply. Pin versions. Install only what you need, with `--no-install-recommends`. Clean the package cache in the same layer, for example with rm -rf /var/lib/apt/lists/*. Build from a base image whose digest you control. The NVIDIA driver, however, is **not** inside the image. The host's driver, plus nvidia-container-toolkit, provides it (chapter 7).
+
+**Supply chain.** Anyone who can publish into a repository you trust can run code as root on your nodes. Mirror from the real source, verify signatures, and restrict who can add repositories to nodes. Record which packages are installed, with `dpkg -l` or `rpm -qa`, in your build logs. Then you can answer "which nodes ran the vulnerable version?" quickly.
+
+Before you add any new source to a fleet, decide who is allowed to publish into it.
 
 ## How it fails
 
-1. **`apt update` errors: "404 Not Found", "NO_PUBKEY", "The repository ... does not have a Release file".** The repository moved, the release reached end of life, or the signing key is missing or rotated. Check the URL in the sources file, the `signed-by` key and the release codename; for end-of-life Ubuntu or CentOS releases the repository is moved to an archive server.
-2. **"E: Unable to locate package".** Forgot `apt update`; wrong release; the repository (for example `universe`) is not enabled.
-3. **Dependency conflict or "held broken packages".** A third-party repository offers a newer library than the distribution's, or a package is held. Read the list of what would change; do not force.
-4. **The driver disappears after a reboot.** An unattended kernel upgrade rebuilt nothing, or DKMS failed (no headers, driver too old for the kernel). Diagnose with `dkms status`, `journalctl -b -u nvidia-*`, `dmesg | grep -i nvidia`; prevention is section 4.
-5. **dpkg interrupted: "dpkg was interrupted, you must manually run `dpkg --configure -a`".** An install was killed (full disk, lost SSH). Run it; if the disk is full, free space first. Using `tmux` for long upgrades prevents a dropped session from killing the install (chapter 1.5).
-6. **`/var` or `/` is 100% full during an upgrade.** Can corrupt the package database. Check `df -h`, `df -i`; clean caches (`apt clean`, `dnf clean all`), and free space *before* retrying.
-7. **A "fixed" dependency problem with `--nodeps` or `--force`.** The package database now lies. Later upgrades fail strangely or silently break the forced package. Remove, reinstall properly.
-8. **"cannot open shared object file".** Library missing, not in the cache (run `ldconfig`), or not on the search path (use `rpath`, a module, or fix the install). Not `LD_LIBRARY_PATH` in `.bashrc`.
-9. **Two versions of a library, the wrong one loads.** A source build into `/usr/local/lib` shadows the packaged one, or a stale `LD_LIBRARY_PATH` redirects everything. Use `ldd`, `ldconfig -p` and `LD_DEBUG=libs` to see which file is used; remove the stray copy.
-10. **`./configure` fails on a missing library.** The runtime package is installed but the **development** package (`-dev`, `-devel`) is not. Install it and re-run; read `config.log` (backward search from the end) for the exact failing probe.
-11. **The program builds, but `make install` scatters files over `/usr/local` and later nobody knows where they came from.** Use `--prefix` with a dedicated directory, or `checkinstall`/`DESTDIR` packaging.
-12. **A `Makefile` fails with `missing separator`.** Spaces instead of tabs; your editor converted tabs to spaces.
-13. **Cloned node boots but has no network, or two nodes share an identity.** Persistent MAC-to-name rules, the same `machine-id`, or the same SSH host keys; prepare the image before cloning.
-14. **Upgrade overwrote or ignored an edited configuration file.** You answered the prompt incorrectly in an unattended run; find `.rpmnew`/`.dpkg-dist` files and merge by hand.
+When a node misbehaves, the symptom often points at one of the failures below. Each item names the message or behaviour you will see, then the usual cause and the first fix to try.
+
+1. **`apt update` errors such as "404 Not Found", "NO_PUBKEY" or "The repository ... does not have a Release file".** The repository moved, the release reached end of life, or the signing key is missing or has rotated. Check the URL in the sources file, the `signed-by` key and the release codename. For end-of-life Ubuntu or CentOS releases, the repository has moved to an archive server.
+2. **"E: Unable to locate package".** You forgot `apt update`, you have the wrong release, or the repository (for example `universe`) is not enabled.
+3. **Dependency conflict or "held broken packages".** A third-party repository offers a newer library than the distribution's, or a package is held. Read the list of what would change. Do not force it.
+4. **The driver disappears after a reboot.** An unattended kernel upgrade rebuilt nothing, or DKMS failed because there were no headers, or the driver was too old for the kernel. Diagnose it with `dkms status`, `journalctl -b -u nvidia-*` and `dmesg | grep -i nvidia`. Prevention is covered in section 4.
+5. **"dpkg was interrupted, you must manually run `dpkg --configure -a`".** An install was killed, for example by a full disk or a lost SSH session. Run the command. If the disk is full, free space first. Using `tmux` for long upgrades keeps a dropped session from killing the install (chapter 1.5).
+6. **`/var` or `/` is 100% full during an upgrade.** This can corrupt the package database. Check `df -h` and `df -i`, clean the caches with `apt clean` or `dnf clean all`, and free space before you retry.
+7. **A "fixed" dependency problem with `--nodeps` or `--force`.** The package database now lies. Later upgrades fail strangely, or they silently break the forced package. Remove the package and reinstall it properly.
+8. **"cannot open shared object file".** The library is missing, not in the cache (run `ldconfig`), or not on the search path. Fix it with an rpath, a module, or a corrected install. Do not reach for `LD_LIBRARY_PATH` in `.bashrc`.
+9. **Two versions of a library, and the wrong one loads.** A source build into `/usr/local/lib` shadows the packaged copy, or a stale `LD_LIBRARY_PATH` redirects everything. Use `ldd`, `ldconfig -p` and `LD_DEBUG=libs` to see which file is in use, then remove the stray copy.
+10. **`./configure` fails on a missing library.** The runtime package is installed, but the **development** package (`-dev`, `-devel`) is not. Install it and run the configure step again. Read `config.log`, searching backward from the end, for the exact failing probe.
+11. **The program builds, but `make install` scatters files over `/usr/local`, and later nobody knows where they came from.** Use `--prefix` with a dedicated directory, or use `checkinstall` or `DESTDIR` packaging.
+12. **A `Makefile` fails with `missing separator`.** Your recipe lines have spaces where they need tabs. Your editor probably converted the tabs to spaces.
+13. **A cloned node boots but has no network, or two nodes share an identity.** The cause is usually a persistent MAC-to-name rule, the same `machine-id`, or the same SSH host keys. Prepare the image before you clone it.
+14. **An upgrade overwrote or ignored an edited configuration file.** You probably answered the prompt incorrectly in an unattended run. Find the `.rpmnew` or `.dpkg-dist` files and merge them by hand.
+
+Work through the list from the top when the symptom is vague. Start with the failure whose message you recognise.
 
 ## Hands-on lab: packages, shared libraries, Makefiles, and VM drills
 
-First, run the self-checking Python lab (`code/part01/packages_toolchain_lab.py`) locally. It verifies `.rpmnew` vs `.rpmsave` config upgrade rules, `ld.so` search precedence (`DT_RPATH`, `LD_LIBRARY_PATH`, `DT_RUNPATH`, `/etc/ld.so.cache`), `make` timestamp rebuilds, `patch -p0`/`-p1` path stripping, and the 10-step mini-cluster build order and cloning readiness checks.
+Start with the self-checking Python lab, and run it locally before you touch a VM. It verifies `.rpmnew` versus `.rpmsave` config upgrade rules, `ld.so` search precedence (`DT_RPATH`, `LD_LIBRARY_PATH`, `DT_RUNPATH`, `/etc/ld.so.cache`), `make` timestamp rebuilds, `patch -p0`/`-p1` path stripping, and the 10-step mini-cluster build order and cloning readiness checks.
 
 ```bash
 python3 code/part01/packages_toolchain_lab.py
 ```
 
-Next, on a disposable GCP Ubuntu VM with `sudo` (all interactive VM commands below are `untested here`), work through these steps:
+Next, work through steps A to I on a disposable GCP Ubuntu VM with `sudo`. Every interactive VM command below is `untested here`, so confirm each one on your own VM before you rely on it.
 
 **A. Inspect the package database (Ubuntu).**
 
@@ -923,7 +963,7 @@ sudo apt remove -y tree                 # (untested here)
 sudo apt purge -y tree                  # (untested here)
 ```
 
-Write down what changed between `remove` and `purge` (look in `/var/lib/dpkg/info` and `dpkg -l tree`: `rc` versus gone).
+Write down what changed between `remove` and `purge`. Look in `/var/lib/dpkg/info`, and run `dpkg -l tree` to see whether the package shows `rc` (removed, configuration left behind) or is gone.
 
 **B. Verify integrity.**
 
@@ -1009,7 +1049,7 @@ touch greet.c && make                   # (untested here) only greet.o and hello
 make -n clean                           # (untested here)
 ```
 
-Break it on purpose: replace the tab before `$(CC)` with spaces and note the error.
+Break it on purpose. Replace the tab before `$(CC)` with spaces, and note the error you get.
 
 **H. A patch.**
 
@@ -1022,137 +1062,137 @@ patch -p0 --dry-run < fix.patch         # (untested here) (a.txt, as named in th
 patch -p0 < fix.patch && cat a.txt      # (untested here)
 ```
 
-**I. (Optional, Rocky/Alma) rpm and dnf.** Repeat A and B with `rpm -qa | wc -l`, `rpm -qf /usr/bin/ssh`, `rpm -ql openssh-clients | head`, `sudo dnf install -y tree`, `dnf history`, `rpm -V openssh-server`, `dnf provides '*/zlib.h'` (untested here).
+**I. (Optional, Rocky/Alma) rpm and dnf.** Repeat A and B with the RPM-family equivalents: `rpm -qa | wc -l`, `rpm -qf /usr/bin/ssh`, `rpm -ql openssh-clients | head`, `sudo dnf install -y tree`, `dnf history`, `rpm -V openssh-server`, and `dnf provides '*/zlib.h'` (untested here).
 
 ## Exercises
 
-1. **RPM and Debian Configuration Upgrade Resolution (`.rpmnew` vs `.rpmsave` vs `apt purge`):** An administrator modifies `/etc/ssh/sshd_config` on a Rocky Linux node, and a subsequent `dnf upgrade openssh-server` brings a modified upstream default config file. (a) What file is left active and what sidecar file is written when the spec marks the file `%config(noreplace)` versus `%config` (replace)? (b) On Ubuntu, what is the difference between `apt remove pkg` and `apt purge pkg`, and what do `ii` and `rc` mean in `dpkg -l`? Verify with `resolve_rpm_config_upgrade()` in `code/part01/packages_toolchain.py`.
-2. **Dynamic Linker (`ld.so`) Search Order and `RPATH` vs `LD_LIBRARY_PATH`:** An executable `myprog` needs `libweird.so.1` located in `/opt/obscure/lib`. (a) In what order does `ld.so` search `DT_RPATH`, `LD_LIBRARY_PATH`, `DT_RUNPATH`, `/etc/ld.so.cache`, and default directories (`/lib`, `/usr/lib`)? (b) Write the exact `cc` linker flags to embed `/opt/obscure/lib` into `myprog` at build time so `myprog` runs without setting `LD_LIBRARY_PATH`.
-3. **`Makefile` Timestamp-Driven Dependency Graph:** Given the rules `main.o: main.c greet.h`, `greet.o: greet.c greet.h`, and `hello: main.o greet.o` with initial timestamps `greet.h = 10`, `main.c = 10`, `greet.c = 10`, `main.o = 20`, `greet.o = 20`, and `hello = 30`: which targets are rebuilt when you run (a) `make` with no file changes, (b) `touch greet.c && make`, and (c) `touch greet.h && make`?
-4. **Source Builds (`./configure --prefix`), `config.log`, `pkg-config`, and `patch -pN`:** (a) Why should you always run `tar tzf` before extracting a source tarball and `make -n install` before `make install`? (b) If a patch header contains `--- package-3.42/src/file.c` and you are already inside your `src_tree/` directory (which contains `src/file.c`), what `patch -pN` flag strips `package-3.42/`?
-5. **10-Step Mini-Cluster Build Order and OFED Precautions (`SCL` Chapter 24):** (a) Why does `SCL` Chapter 24's 10-step build order install a second compute node (Step 5) and test MPI/OFED communication and Slurm job completion (Steps 6–9) *before* cloning the image across the remaining nodes (Step 10)? (b) What two precautions apply before running the OFED installer, and what `limits.conf` entries are required for InfiniBand RDMA?
-6. **Preparing a Prototype Node Before Disk Cloning (`dd` / Clonezilla):** Before cloning a prototype compute node's disk to 50 sibling nodes, state the three preparation changes required in `/boot/grub/grub.cfg` and `/etc/fstab`, network udev rules, and per-host identity files (`ssh_host_*_key`, `/etc/machine-id`).
+1. **RPM and Debian Configuration Upgrade Resolution (`.rpmnew` vs `.rpmsave` vs `apt purge`):** Suppose an administrator edits `/etc/ssh/sshd_config` on a Rocky Linux node. Later, `dnf upgrade openssh-server` brings a changed upstream default for that same file. First, which file stays active? Which sidecar file gets written, when the spec marks the file %config(noreplace) and when it marks it %config (replace)? Second, on Ubuntu, what is the difference between `apt remove pkg` and `apt purge pkg`, and what do ii and rc mean in dpkg -l? Verify your answers with `resolve_rpm_config_upgrade()` in `code/part01/packages_toolchain.py`.
+2. **Dynamic Linker (`ld.so`) Search Order and `RPATH` vs `LD_LIBRARY_PATH`:** An executable `myprog` needs `libweird.so.1`, which lives in `/opt/obscure/lib`. First, in what order does ld.so search `DT_RPATH`, LD_LIBRARY_PATH, `DT_RUNPATH`, `/etc/ld.so.cache`, and the default directories `/lib` and `/usr/lib`? Second, write the exact `cc` linker flags that embed `/opt/obscure/lib` into `myprog` at build time, so that `myprog` runs without setting `LD_LIBRARY_PATH`.
+3. **`Makefile` Timestamp-Driven Dependency Graph:** You have the rules `main.o: main.c greet.h`, `greet.o: greet.c greet.h`, and `hello: main.o greet.o`. The starting timestamps are `greet.h = 10`, `main.c = 10`, `greet.c = 10`, `main.o = 20`, `greet.o = 20`, and `hello = 30`. Which targets get rebuilt when you run make with no file changes, when you run touch greet.c and make, and when you run touch greet.h and make?
+4. **Source Builds (`./configure --prefix`), `config.log`, `pkg-config`, and `patch -pN`:** First, why should you always run tar tzf before extracting a source tarball, and make -n install before make install? Second, if a patch header contains `--- package-3.42/src/file.c`, and you are already inside your `src_tree/` directory (which contains `src/file.c`), which `patch -pN` flag strips `package-3.42/`?
+5. **10-Step Mini-Cluster Build Order and OFED Precautions (`SCL` Chapter 24):** First, why does the 10-step build order from SCL Chapter 24 install a second compute node (Step 5), and test MPI, OFED communication and Slurm job completion (Steps 6–9), before it clones the image across the remaining nodes (Step 10)? Second, what two precautions apply before you run the OFED installer, and which `limits.conf` entries does InfiniBand RDMA require?
+6. **Preparing a Prototype Node Before Disk Cloning (`dd` / Clonezilla):** Before you clone a prototype compute node's disk to 50 sibling nodes, state the three preparation changes required in `/boot/grub/grub.cfg` and `/etc/fstab`, the network udev rules, and the per-host identity files (`ssh_host_*_key`, `/etc/machine-id`).
 
 ## Checkpoint questions (20)
 
 <details>
 <summary>1. What does a package contain besides files, and what is the difference between `dpkg`/`rpm` and `apt`/`dnf`?</summary>
 
-Besides the payload file tree, a package contains metadata: name/version/architecture, dependency declarations, per-file cryptographic checksums, marked configuration file paths, maintainer scripts, and a digital signature. Low-level tools (`dpkg`, `rpm`) unpack a single local package file and update `/var/lib/dpkg` or `/var/lib/rpm` without fetching dependencies; high-level managers (`apt`, `dnf`) fetch repository indexes, verify signatures, solve the full dependency closure, and invoke `dpkg`/`rpm`.
+Picture a node where the package database and the files on disk disagree. A package holds more than its files. It also carries metadata: the name, version and architecture; the dependency declarations; a checksum for each file; the paths of the configuration files; the maintainer scripts; and a digital signature. The low-level tools, `dpkg` and `rpm`, unpack one local package file and update `/var/lib/dpkg` or `/var/lib/rpm`. They do not fetch dependencies. The high-level managers, `apt` and `dnf`, fetch the repository indexes, verify signatures and work out the full set of dependencies. Then they call `dpkg` or `rpm` to do the unpacking.
 </details>
 
 <details>
 <summary>2. Why is it dangerous to install packages when `/` or `/var` is 100% full or to use `--nodeps` / `--force`?</summary>
 
-Running out of space or inodes mid-transaction can abort `dpkg` or `rpm` while writing `/var/lib/dpkg` or `/var/lib/rpm`, corrupting the package database. Using `--nodeps` or `--force` installs files whose requirements or ownership conflict with the database, causing future upgrades to fail or overwrite files silently.
+Picture a root filesystem that fills up halfway through an upgrade. If you run out of space or inodes in the middle of a transaction, `dpkg` or `rpm` can stop while it writes `/var/lib/dpkg` or `/var/lib/rpm`. That corrupts the package database. Using `--nodeps` or `--force` installs files whose requirements or ownership conflict with the database. Later upgrades can then fail, or they can overwrite files without any warning.
 </details>
 
 <details>
 <summary>3. How do `rpm`/`dnf` and `dpkg`/`apt` handle modified configuration files during upgrades and removals?</summary>
 
-On RPM systems, if you modified a `%config(noreplace)` file and the package ships a new default, your file is kept and the new default is saved alongside it as `.rpmnew` (or your version is saved as `.rpmsave` if replaced). On Debian/Ubuntu, `dpkg` prompts (or honours `--force-confold` in automation), and `apt remove` leaves config files on disk (`rc` state in `dpkg -l`) whereas `apt purge` deletes them.
+On RPM systems, if you changed a `%config(noreplace)` file and the package ships a new default, your file is kept. The new default is saved next to it as `.rpmnew`. If your version is replaced instead, it is saved as `.rpmsave`. On Debian and Ubuntu, `dpkg` prompts you, or it honours `--force-confold` in automation. `apt remove` leaves the config files on disk, which shows up as the `rc` state in `dpkg -l`. `apt purge` deletes them.
 </details>
 
 <details>
 <summary>4. Give the both-family commands to (a) find which installed package owns `/usr/bin/ssh`, (b) verify package file checksums, and (c) find which uninstalled package provides `zlib.h`.</summary>
 
-(a) Owner of `/usr/bin/ssh`: `dpkg -S /usr/bin/ssh` (Debian/Ubuntu) and `rpm -qf /usr/bin/ssh` (RHEL/Rocky). (b) Verify checksums: `dpkg --verify pkg` or `sudo debsums -s` (Debian/Ubuntu) and `rpm -V pkg` or `rpm -Va` (RHEL/Rocky, where `S.5....T. c` flags size, digest, and mtime changes on a config file). (c) Uninstalled header provider: `apt-file search zlib.h` and `dnf provides '*/zlib.h'`.
+For (a), use `dpkg -S /usr/bin/ssh` on Debian and Ubuntu, or `rpm -qf /usr/bin/ssh` on RHEL and Rocky. For (b), use `dpkg --verify pkg` or `sudo debsums -s` on Debian and Ubuntu. On RHEL and Rocky, use `rpm -V pkg` or `rpm -Va`. In that output, `S.5....T. c` flags a change in size, digest and modification time on a config file. For (c), use `apt-file search zlib.h` or `dnf provides '*/zlib.h'`.
 </details>
 
 <details>
 <summary>5. What does a repository GPG signature protect against, and how does modern `apt` (`signed-by=`) improve on the deprecated `apt-key`?</summary>
 
-Repository signatures prove that package metadata and archives came from the repository owner and were not tampered with in transit or on a mirror. Modern `apt` stores each vendor's key in `/etc/apt/keyrings/*.gpg` and binds it to a single repository via `signed-by=` in `/etc/apt/sources.list.d/`, preventing a third-party key from signing packages for the base OS.
+A repository signature proves that the package metadata and archives came from the repository owner. It also shows that nothing was changed in transit or on a mirror. Modern `apt` stores each vendor's key in `/etc/apt/keyrings/*.gpg`. It binds that key to one repository with `signed-by=` in `/etc/apt/sources.list.d/`. That stops a third-party key from signing packages for the base OS. The deprecated `apt-key` used the old global keyring, which trusted every key for every repository.
 </details>
 
 <details>
 <summary>6. Why should automation scripts use `apt-get` with `DEBIAN_FRONTEND=noninteractive` instead of `apt`?</summary>
 
-`apt` is designed for interactive human use and its output format can change between releases, whereas `apt-get` guarantees a stable CLI contract for scripts. Setting `DEBIAN_FRONTEND=noninteractive` with `-y` prevents `debconf` prompts from hanging unattended runs.
+`apt` is built for people typing at a terminal, and its output format can change between releases. `apt-get` keeps a stable command-line contract, so scripts can rely on it. Set `DEBIAN_FRONTEND=noninteractive` and use `-y`, so that `debconf` prompts do not hang an unattended run.
 </details>
 
 <details>
 <summary>7. How can an unattended upgrade cause `nvidia-smi` to fail after the next reboot, and how do you prevent it?</summary>
 
-If `apt upgrade` or `dnf-automatic` installs a newer kernel (`6.x`) for which DKMS cannot build `nvidia.ko` (missing `linux-headers` or an incompatible driver version), the next reboot boots into the new kernel without a GPU driver. Prevent this by holding kernel and driver packages together (`sudo apt-mark hold` or `sudo dnf versionlock add`) and testing upgrades on a canary node.
+If `apt upgrade` or `dnf-automatic` installs a newer kernel, such as a `6.x` kernel, and DKMS cannot build `nvidia.ko` for it, the next reboot boots that kernel without a GPU driver. The build can fail because `linux-headers` are missing, or because the driver version is not compatible with the kernel. Prevent this by holding the kernel and driver packages together, with `sudo apt-mark hold` or `sudo dnf versionlock add`. Then test upgrades on a canary node first.
 </details>
 
 <details>
 <summary>8. List the six steps of building an autotools package from source into a private prefix.</summary>
 
-(1) Inspect and unpack (`tar tzf` to check for a top-level directory and ensure no absolute paths, then `tar xzf`); (2) read `README` and `INSTALL`; (3) configure (`./configure --prefix=$HOME/mycoreutils`); (4) build (`make -j"$(nproc)"`); (5) test (`make check`); and (6) dry-run then install (`make -n install` to verify nothing writes outside the prefix, followed by `make install`).
+The six steps are these. (1) Inspect and unpack. Run `tar tzf` to check for a top-level directory and for absolute paths, then run `tar xzf`. (2) Read `README` and `INSTALL`. (3) Configure with `./configure --prefix=$HOME/mycoreutils`. (4) Build with `make -j"$(nproc)"`. (5) Test with `make check`. (6) Dry-run, then install. Run `make -n install` to confirm that nothing writes outside the prefix, and then run `make install`.
 </details>
 
 <details>
 <summary>9. How do you find the root cause of a `./configure` failure in a huge `config.log` file, and why use `CPPFLAGS` for `-I` paths?</summary>
 
-Open `config.log` in `less`, press `G` to jump to the bottom (skipping past the giant environment dump at the very end), and search backward with `?for more details` or the failing check's name to see the exact compiler command and error message. Pass `-I/path/include` in `CPPFLAGS` rather than `CFLAGS` because `./configure` frequently invokes the C preprocessor (`cpp`) standalone without `CFLAGS`.
+Open `config.log` in `less`, and press `G` to jump to the bottom, past the large environment dump. Then search backward with `?for more details`, or with the name of the failing check. That shows the exact compiler command and error message. Pass `-I/path/include` in `CPPFLAGS`, not `CFLAGS`, because `./configure` often runs the C preprocessor, `cpp`, by itself, without `CFLAGS`.
 </details>
 
 <details>
 <summary>10. What does `pkg-config` do, and what are the two ways to make it find `/opt/openssl/lib/pkgconfig/openssl.pc`?</summary>
 
-`pkg-config` reads `.pc` metadata files (shipped in `-dev`/`-devel` packages) to print compiler flags (`--cflags`), linker flags (`--libs`), and versions (`--modversion`). When a `.pc` file sits outside the default `lib/pkgconfig` directory, either symlink/copy the `.pc` file into the central `pkgconfig` directory or add its directory to `PKG_CONFIG_PATH` for the build.
+`pkg-config` reads `.pc` metadata files, which ship in `-dev` and `-devel` packages. It prints compiler flags with `--cflags`, linker flags with `--libs`, and versions with `--modversion`. If a `.pc` file sits outside the default `lib/pkgconfig` directory, you have two fixes. Either symlink or copy the `.pc` file into the central `pkgconfig` directory, or add its directory to `PKG_CONFIG_PATH` for the build.
 </details>
 
 <details>
 <summary>11. Why is plain `sudo make install` into `/usr/local` hard to maintain across a fleet, and what are three better alternatives?</summary>
 
-Plain `make install` records nothing in `/var/lib/dpkg` or `/var/lib/rpm`, so files cannot be queried, verified, or cleanly removed. Better alternatives are: (1) wrap the install into a real `.deb`/`.rpm` (`checkinstall`, `rpmbuild`, or `make install DESTDIR=/tmp/stage` + `fpm`), (2) install into a versioned shared directory (`/opt/apps/foo/1.2`) managed by Environment Modules / Lmod, or (3) build a container image.
+Plain `make install` records nothing in `/var/lib/dpkg` or `/var/lib/rpm`. So the files cannot be queried, verified or removed cleanly. There are three better options. (1) Wrap the install into a real `.deb` or `.rpm`, using `checkinstall`, `rpmbuild`, or `make install DESTDIR=/tmp/stage` followed by `fpm`. (2) Install into a versioned shared directory, such as `/opt/apps/foo/1.2`, and manage it with Environment Modules or Lmod. (3) Build a container image.
 </details>
 
 <details>
 <summary>12. How do you apply a unified diff (`diff -u`) when its headers say `--- package-3.42/src/file.c`, and how do you test it safely first?</summary>
 
-From the top of your unpacked source directory (which contains `src/file.c`), pass `-p1` to strip the leading `package-3.42/` component, and test first with `--dry-run`: `patch -p1 --dry-run < fix.patch` followed by `patch -p1 < fix.patch`.
+Run the command from the top of your unpacked source directory, the one that contains `src/file.c`. Pass `-p1` to strip the leading `package-3.42/` component. Test first with `--dry-run`. Run `patch -p1 --dry-run < fix.patch`, and only then run `patch -p1 < fix.patch`.
 </details>
 
 <details>
 <summary>13. Distinguish the roles of the C preprocessor (`cpp`), compiler (`cc -c`), and linker (`ld`), and the flags `-I`, `-D`, `-L`, and `-l`.</summary>
 
-The preprocessor (`cpp` / `cc -E`) expands `#include` headers (searched via `-I/dir`) and `#define` macros (`-DNAME=val`). The compiler (`cc -c`) translates expanded C/C++ source into `.o` object files. The linker (`ld`, invoked by `cc -o`) combines `.o` files and resolves external symbols against libraries `-lname` (`libname.so` / `libname.a`) searched in `-L/dir`.
+The preprocessor, `cpp` or `cc -E`, expands `#include` headers, which it finds through `-I/dir`, and `#define` macros, which you can set with `-DNAME=val`. The compiler, `cc -c`, turns the expanded C or C++ source into `.o` object files. The linker, `ld`, runs through `cc -o`. It combines the `.o` files and resolves external symbols against libraries. It takes libraries named with `-lname`, which it looks for as `libname.so` or `libname.a`, in the directories given with `-L/dir`.
 </details>
 
 <details>
 <summary>14. Compare static libraries (`libfoo.a`) and shared libraries (`libfoo.so.N`).</summary>
 
-A static library copies needed object code directly into the executable at link time, producing a larger standalone binary that never breaks on missing runtime `.so` files but requires relinking every binary to pick up a security fix. A shared library records only the library name in the ELF binary and is mapped at runtime by `ld.so`, sharing a single copy in RAM and allowing one package upgrade to patch every dependent program.
+A static library copies the object code it needs into the executable at link time. The result is a larger standalone binary that never breaks because a runtime `.so` file is missing. The cost is that you must relink every binary to pick up a security fix. A shared library records only its name in the ELF binary. For example, one copy of a library serves every program that loads it. The loader, `ld.so`, maps it at run time. Many processes share one copy in RAM, so a single package upgrade patches every program that depends on it.
 </details>
 
 <details>
 <summary>15. In what order does `ld.so` search for shared libraries at runtime, and when must you run `sudo ldconfig`?</summary>
 
-`ld.so` searches: (1) the binary's embedded `DT_RPATH` (if `DT_RUNPATH` is absent), (2) `LD_LIBRARY_PATH`, (3) the binary's `DT_RUNPATH`, (4) `/etc/ld.so.cache` (built from `/etc/ld.so.conf` and `/etc/ld.so.conf.d/*.conf`), and (5) `/lib` and `/usr/lib` (and multiarch equivalents). Run `sudo ldconfig` whenever you add a library to a configured directory or edit `/etc/ld.so.conf.d/`.
+`ld.so` searches in this order. (1) The binary's embedded `DT_RPATH`, if `DT_RUNPATH` is absent. (2) `LD_LIBRARY_PATH`. (3) The binary's `DT_RUNPATH`. (4) `/etc/ld.so.cache`, which is built from `/etc/ld.so.conf` and `/etc/ld.so.conf.d/*.conf`. (5) `/lib` and `/usr/lib`, plus the multiarch equivalents. Run `sudo ldconfig` whenever you add a library to a configured directory or edit a file in `/etc/ld.so.conf.d/`.
 </details>
 
 <details>
 <summary>16. Why should `LD_LIBRARY_PATH` never be exported globally in `.bashrc`, and how do `-Wl,-rpath` and `$ORIGIN` solve the problem?</summary>
 
-Exporting `LD_LIBRARY_PATH` globally forces every process in your session (including system binaries) to scan those directories first, causing symbol lookup crashes and performance overhead. Linking with `-Wl,-rpath=/opt/obscure/lib` (or `-Wl,-rpath='$ORIGIN/../lib'` for relocatable directories) embeds the library path inside that specific executable's ELF header (`readelf -d prog | grep -E 'RPATH|RUNPATH'`).
+Exporting `LD_LIBRARY_PATH` globally forces every process in your session to scan those directories first, system binaries included. The result is symbol lookup crashes and extra overhead. Linking with `-Wl,-rpath=/opt/obscure/lib` embeds the path in that one executable's ELF header. The relocatable form, `-Wl,-rpath='$ORIGIN/../lib'`, does the same for a tree that moves. You can check the result with `readelf -d prog | grep -E 'RPATH|RUNPATH'`.
 </details>
 
 <details>
 <summary>17. How does `make` decide which targets to rebuild, what do `$@`, `$<`, and `$*` expand to, and why does `Makefile:7: *** missing separator` happen?</summary>
 
-`make` compares the modification timestamp (`mtime`) of each target against its dependencies and runs the recipe only if a target is missing or older than a dependency. Inside a recipe, `$@` is the target name, `$<` is the first prerequisite, and `$*` is the stem (`blah` for `blah.o`). `missing separator` occurs when a recipe line is indented with spaces instead of a literal TAB character.
+`make` compares the modification time, or mtime, of each target with its dependencies. It runs the recipe only when the target is missing, or when it is older than one of its dependencies. Inside a recipe, `$@` is the target name, `$<` is the first prerequisite, and `$*` is the stem, which is `blah` for `blah.o`. The `missing separator` error happens when a recipe line is indented with spaces instead of a literal TAB character.
 </details>
 
 <details>
 <summary>18. In a parallel `make -j8` build that fails with `make[3]`, `make[2]`, and `make[1]` errors, how do you find the actual problem?</summary>
 
-Recursive `make[N]` lines at the bottom are just the parent `make` processes unwinding after a child failed. Scroll upward above the first `make[3]: *** [file.o] Error 1` line (ignoring any `Error 1 (ignored)` lines) to read the first real compiler or linker diagnostic and the `Leaving directory` path.
+The recursive `make[N]` lines at the bottom are only the parent `make` processes unwinding after a child failed. Scroll up above the first `make[3]: *** [file.o] Error 1` line, and ignore any `Error 1 (ignored)` lines. Read the first real compiler or linker diagnostic, and the `Leaving directory` path that comes with it.
 </details>
 
 <details>
 <summary>19. Summarize the 10-step mini-cluster build order from `SCL` Chapter 24 and why you test a 2-compute-node mini-cluster before cloning.</summary>
 
-(1) Control server, (2) NFS, (3) first compute node, (4) OFED communication stack, (5) second compute node (forming a mini-cluster), (6) compilers/tests, (7) fabric bandwidth/latency verification against vendor specs, (8) Slurm scheduler, (9) end-to-end job test, and (10) cloning/scaling to the remaining nodes. Testing on the mini-cluster catches configuration and performance defects once rather than replicating them across hundreds of nodes.
+The 10 steps are these. (1) Control server. (2) NFS. (3) First compute node. (4) OFED communication stack. (5) Second compute node, forming a mini-cluster. (6) Compilers and tests. (7) Fabric bandwidth and latency, checked against vendor specs. (8) Slurm scheduler. (9) End-to-end job test. (10) Cloning and scaling to the remaining nodes. Testing the mini-cluster catches configuration and performance defects once. Otherwise you would copy those defects across hundreds of nodes.
 </details>
 
 <details>
 <summary>20. What three things must you clean up on a prototype node before cloning its disk with `dd` or Clonezilla, and what two precautions apply to OFED?</summary>
 
-Before cloning: (1) replace hardware-specific `/dev/disk/by-id/...` entries in GRUB and `/etc/fstab` with portable `UUID=` or device names, (2) remove MAC-bound network udev rules (`70-persistent-net.rules`), and (3) remove SSH host keys and `/etc/machine-id`. For OFED: back up existing OFED packages before running the installer (which removes old packages before building) and set `soft`/`hard memlock unlimited` in `/etc/security/limits.conf`.
+Before you clone, do three things. (1) Replace hardware-specific `/dev/disk/by-id/...` entries in GRUB and `/etc/fstab` with portable `UUID=` values or device names. (2) Remove the MAC-bound network udev rules in `70-persistent-net.rules`. (3) Remove the SSH host keys and `/etc/machine-id`. For OFED, back up the existing OFED packages first, because the installer removes them before it builds. Then set `soft` and `hard` `memlock unlimited` in `/etc/security/limits.conf`.
 </details>
 
 ## Sources and review notes
