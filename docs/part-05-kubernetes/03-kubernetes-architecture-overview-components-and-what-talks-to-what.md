@@ -72,6 +72,45 @@ Two rules explain most of the architecture:
 1. **The API server is the only component that reads and writes etcd.** Every other component (scheduler, controllers, kubelets, kube-proxy, operators, kubectl) talks to the API server. This gives one place for authentication, authorisation, admission, validation, defaulting, versioning and auditing.
 2. **Components do not call each other to say "do X".** They write desired state to the API (objects) and **watch** for changes relevant to them, then act to make reality match. The scheduler does not tell the kubelet to run a pod; it writes `spec.nodeName` into the Pod object; the kubelet, watching pods bound to its node, sees it and starts the containers. This decoupling is why Kubernetes tolerates component restarts and is extensible.
 
+### What "Kubernetes" covers in this book
+
+The word Kubernetes often works as an umbrella term, and that can blur what people mean. At the time of writing, the `kubernetes` GitHub organization held 69 repositories. The `kubernetes-sigs` organization held around 107 projects. Hundreds more Cloud Native Computing Foundation (CNCF) projects sit in the same landscape.
+
+In this part, "Kubernetes" means only the core project. The core lives in the `kubernetes/kubernetes` repository. It holds the key components found in most clusters. When those components run, the core project gives you these abilities:
+
+- Scheduling workloads across many hosts
+- Exposing a declarative, extensible API for interacting with the system
+- Providing the `kubectl` CLI so people can talk to the API server
+- Reconciling the current state of objects toward the desired state
+- Providing a basic service abstraction that routes requests to and from workloads
+- Exposing multiple interfaces for pluggable networking, storage, and more
+
+Together, these make Kubernetes a production-grade container orchestrator. Put simply, it runs and schedules containerized workloads on many hosts. Keep that main job in mind. The rest of this part builds on it.
+
+### Getting the core binaries
+
+Many teams consume the core components in different ways. Managed services such as Google Kubernetes Engine (GKE) usually have each component on the hosts already. Others download binaries from a repository or get signed versions from a vendor. Anyone can download a release from the `kubernetes/kubernetes` repository. After unpacking it, `cluster/get-kube-binaries.sh` detects your target architecture and downloads the server and client parts:
+
+```
+$ ./cluster/get-kube-binaries.sh
+Kubernetes release: v1.18.6
+Server: linux/amd64 (to override, set KUBERNETES_SERVER_ARCH)
+Client: linux/amd64 (autodetected)
+Will download kubernetes-server-linux-amd64.tar.gz from https://dl.k8s.io/v1.18.6
+Will download and extract kubernetes-client-linux-amd64.tar.gz
+Is this ok? [Y]/n
+```
+
+The server components usually land in `server/kubernetes-server-${ARCH}.tar.gz`. Inside, you find the key items that make up a cluster:
+
+- **API server**: The main point of contact for every component and user. Objects are read, added, deleted, and changed here. The API server hands state storage to a backend, most often etcd.
+- **kubelet**: The agent on each host. It reports the node's status to the API server and learns which workloads belong on its node. It talks to the host's container runtime, such as Docker, so those workloads start and stay healthy.
+- **Controller manager**: One binary that holds many controllers, each reconciling core objects. Declare three replicas in a Deployment, and a controller inside creates the Pods to match.
+- **Scheduler**: Decides where workloads run by picking what it judges to be the best node. It filters out nodes that cannot run the workload, then scores the rest.
+- **kube-proxy**: Implements Services. It gives workloads virtual IPs that route to backend Pods, using packet filtering on the host, such as `iptables` or `ipvs`.
+
+Many clusters run `kube-apiserver`, `kube-scheduler`, and `kube-controller-manager` as containers. In that case, the control plane may also run a container runtime, a kubelet, and kube-proxy. Deployment choices like these come up later in this part.
+
 ### Why Kubernetes Exists: Borg/Omega Heritage and Five Core Benefits (`KUR` Chapter 1)
 
 In *Kubernetes: Up and Running* Chapter 1 (*Introduction*), Brendan Burns, Joe Beda, Kelsey Hightower, and Lachlan Evenson trace Kubernetes's lineage back to Google's internal **Borg** and **Omega** cluster managers (open-sourced by Google in June 2014 and donated as the seed technology of the **Cloud Native Computing Foundation (`CNCF`)** in July 2015) and organize the platform's value around five core benefits:
@@ -277,6 +316,37 @@ Key design consequence: **running workloads do not depend on the control plane b
 | **Auth** | Webhook authn/authz, OIDC | Dex, Keycloak, cloud IAM |
 | **Observability** | Metrics endpoints, Events, audit webhooks, OpenTelemetry | Prometheus, Loki |
 | **Node** | NRI, node feature discovery, kubelet plugins | Topology manager, CPU manager |
+
+### Why some APIs are only a contract
+
+Kubernetes does more than run containers. Kube-proxy programs each host so that workloads get a virtual IP (VIP). Internal IP addresses then route to one or many underlying Pods. That goes beyond scheduling. The project could have defined a Service API and required a plug-in to implement it. Users would then have to choose among many plug-ins. Instead, the Service abstraction ships as core functionality.
+
+Many other APIs take the plug-in route. Ingress and NetworkPolicy are examples. Creating an Ingress object does not by itself make anything happen. The API exists, but the work is not core behavior. You must choose a technology that implements it. For Ingress, many teams run `ingress-nginx` in the cluster. It reads Ingress objects and writes NGINX configuration for instances that point at Pods. Project Contour implements the same Ingress API, but it programs Envoy, the proxy under Contour. The plug-in model gives teams a range of choices.
+
+### Interfaces: how plug-ins fit in
+
+An interface is a contract that says how something can be used. In software, a class or struct can implement an interface. In Kubernetes, you install plug-ins that satisfy these contracts. Networking is one example.
+
+The Container Runtime Interface (CRI) shows the idea well. Early Kubernetes supported only one runtime, Docker. Docker still runs in many clusters, but teams now also try containerd and CRI-O. The kubelet sends commands such as `CreateContainer` and expects the runtime to carry them out and reply.
+
+Many interface calls are remote procedure calls (RPCs). A request such as `CreateContainerRequest` is sent, and the caller expects a response such as `CreateContainerResponse`. For CRI, these calls go over gRPC. CRI-O was built from the ground up as an implementation of CRI, so the kubelet talks to it directly. containerd supports a plug-in that acts as a shim between the kubelet and its own interfaces. Either way, the runtime starts the container. The kubelet does not need to know how each possible runtime does that. That is what makes interfaces so useful when you build clusters.
+
+Over time, some features moved out of the core. These were "in-tree," inside the `kubernetes/kubernetes` code base. Cloud-provider integrations (CPIs) are an example. Most were built into kube-controller-manager and the kubelet. They handled tasks such as provisioning load balancers or exposing cloud metadata. Before the Container Storage Interface (CSI) existed, some also provisioned block storage for workloads. That is a lot to carry, and each provider had to rebuild it. Support moved into its own interface model, `kubernetes/cloud-provider`, which vendors can implement. This keeps the core code base smaller. It also lets providers handle upgrades and vulnerability patches outside the core cluster.
+
+Several interfaces enable customization today. These are the main ones:
+
+- **Container Networking Interface (CNI)**: Networking providers define how they work, from IP address management to packet routing.
+- **Container Storage Interface (CSI)**: Storage providers satisfy storage requests inside the cluster. It is common for technologies such as Ceph, vSAN, and EBS.
+- **Container Runtime Interface (CRI)**: Lets runtimes such as Docker, containerd, and CRI-O plug in. It also allows less common runtimes, such as Firecracker, which uses KVM to provision a minimal VM.
+- **Service Mesh Interface (SMI)**: One of the newer interfaces. It aims for consistency when defining traffic policy, telemetry, and management.
+- **Cloud Provider Interface (CPI)**: Lets providers such as VMware, AWS, and Azure write integration points for their cloud services.
+- **Open Container Initiative (OCI) Runtime Spec**: Standardizes image formats, so a compliant image runs in any OCI-compliant runtime. It is not tied to Kubernetes, but it helped drive the push for pluggable runtimes.
+
+### Kubernetes is one piece of the puzzle
+
+Kubernetes is a container orchestrator with a few extra features. It can be extended and customized through plug-ins to its interfaces. For many organizations, it can be a solid foundation for running applications. Still, take a step back. If you replaced your current application systems with Kubernetes, would that be enough? For many teams, it would not. The application platform has many more parts.
+
+Some organizations adopt a "Kubernetes strategy" and expect it to force modernization. That often causes pain. Kubernetes is a strong technology, but it should not be the focal point of your infrastructure or software plans. Many problems sit in application delivery, software development, or people and organization. Kubernetes is best seen as one piece of the puzzle that lets you deliver platforms for your applications. The application platform is covered in 5.22.
 
 ## 9. Add-ons required for a functioning cluster
 

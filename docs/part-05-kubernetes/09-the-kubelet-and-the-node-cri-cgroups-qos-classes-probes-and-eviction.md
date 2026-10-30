@@ -223,6 +223,63 @@ Operational rules:
 - Probe results appear in events (`Unhealthy: Readiness probe failed: ...`) and metrics (`prober_probe_total`).
 - **Readiness gates** (`readinessGates`) let external controllers add conditions that must be true (e.g., load balancer registration for cloud LBs).
 
+### Liveness probes, step by step
+
+A process check has a gap. A deadlocked application still has a running process, so a process check calls it healthy. A liveness probe closes that gap by running application logic, such as loading a web page, to confirm the app works. Liveness probes are defined per container, so each container in a Pod is checked separately. Example 5-2 adds a liveness probe to the `kuard` container. It sends an HTTP request to `/healthy` on port 8080:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kuard
+spec:
+  containers:
+    - image: gcr.io/kuar-demo/kuard-amd64:blue
+      name: kuard
+      livenessProbe:
+        httpGet:
+          path: /healthy
+          port: 8080
+        initialDelaySeconds: 5
+        timeoutSeconds: 1
+        periodSeconds: 10
+        failureThreshold: 3
+      ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+```
+
+The probe waits `initialDelaySeconds` (5 seconds) after all containers in the Pod are created before it first runs. It must answer within the 1-second `timeoutSeconds`. A status code from 200 up to, but not including, 400 counts as success. Kubernetes calls the probe every 10 seconds. When more than three consecutive probes fail, the container fails and restarts.
+
+To see this in action, apply the manifest and port-forward to the Pod:
+
+```
+$ kubectl apply -f kuard-pod-health.yaml
+$ kubectl port-forward kuard 8080:8080
+```
+
+Open http://localhost:8080 in a browser and click the "Liveness Probe" tab. It lists every probe this `kuard` instance has received. Click the "Fail" link, and `kuard` starts failing its health checks. Wait long enough and Kubernetes restarts the container, and the display starts over. Run `kubectl describe pods kuard` to see the restart in the "Events" section, which reads like this:
+
+```
+Killing container with id docker://2ac946...:pod "kuard_default(9ee84...)"
+container "kuard" is unhealthy, it will be killed and re-created.
+```
+
+A failed liveness check restarts the Pod by default. The real behavior depends on the Pod's `restartPolicy`. `Always` is the default. `OnFailure` restarts only on a liveness failure or a nonzero exit code. `Never` does not restart.
+
+### Readiness and startup probes
+
+Liveness asks whether an application is running properly. Readiness asks whether a container can serve user requests now. A container that fails liveness is restarted. A container that fails readiness is removed from service load balancers. Readiness probes are set up much like liveness probes. Using both keeps only healthy containers in service. The book covers Kubernetes Services in its Chapter 7.
+
+A startup probe is the book's answer to slow-starting containers, and the book calls it a recent addition. It runs before any other probe on the Pod. It keeps trying until it either times out, which restarts the Pod, or succeeds. After it succeeds, the liveness probe takes over. The startup probe lets you poll slowly while the container starts, then respond quickly once it is up.
+
+### Advanced probe settings and other handlers
+
+Probes have more options. You can set how long to wait after startup before probing, how many failures count as a real failure, and how many successes reset the failure count. Each option has a default when you leave it out. Set them yourself for applications that are flaky or take a long time to start.
+
+Besides HTTP checks, Kubernetes supports `tcpSocket` probes. A `tcpSocket` probe opens a TCP socket, and it succeeds if the connection works. That suits databases and other non-HTTP APIs. An `exec` probe runs a script or program inside the container. A zero exit code means success, and any other code means failure. `exec` probes suit custom checks that do not fit neatly into an HTTP call.
+
 ## 6. Node-pressure eviction
 
 The eviction manager monitors node signals from cAdvisor/cgroup stats at `evictionPressureTransitionPeriod` intervals and compares them with thresholds:

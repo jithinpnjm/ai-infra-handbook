@@ -48,6 +48,25 @@ Needs 5.3, 5.4, 5.9, 5.18 and Part 4 (automation, GitOps). After this chapter yo
 
 Decision factors: where GPUs physically are; who patches control planes; team skills; compliance; required Kubernetes features (DRA, alpha gates, custom admission); networking (InfiniBand/RoCE integration, 5.13); storage proximity (parallel FS); multi-tenancy needs; cost model (managed control plane fee vs staff); lock-in; time to value. A common pattern: **managed Kubernetes in the cloud for elastic/secondary capacity** plus **self-managed or provider-managed bare-metal clusters for the main training fleet**, unified by GitOps, a common platform layer (operators, Kueue, observability) and multi-cluster dispatch (5.35).
 
+### Matching the approach to your needs
+
+Each option trades engineering effort against production readiness. Plain Kubernetes clusters need the least engineering effort. That is especially true when a managed service such as EKS runs the control plane. These clusters are lower on production readiness, because most organizations need more work on top of Kubernetes. Still, a team that uses dedicated clusters for its workloads may be satisfied with plain Kubernetes.
+
+Established platforms sit at the other end. Cloud Foundry gives an end-to-end developer experience out of the box. Running software there means fitting its opinions. OpenShift is far more production-ready than plain Kubernetes for most teams. It also has more decisions to make during setup. Is that flexibility a benefit or a nuisance? That is a key question for you.
+
+A platform built on Kubernetes takes the most engineering effort, at least from the platform side. It can line up with your developer, infrastructure, and business needs. Kubernetes' extensibility makes that possible.
+
+Alignment with your requirements is a third axis. Building your own platform is almost always the most aligned option, or at least the most able to align. You can build almost anything. Rebuilding Heroku in-house on top of Kubernetes, with minor changes, is technically possible. The cost and reward still need weighing against the other two axes. Consider needs such as these for a next-generation platform:
+
+- Regulations require you to run most workloads on-premises.
+- You must support a bare-metal fleet along with a vSphere-enabled data center.
+- Developers want to package applications as containers.
+- You need self-service APIs that move you away from ticket-based infrastructure provisioning.
+- APIs must stay vendor-agnostic, because lock-in has cost millions in past migrations.
+- You are open to paying for enterprise support across the stack, but you will not license the whole stack per node, core, or application instance.
+
+Before you commit, be honest about your engineering maturity, your appetite for building and empowering teams, and the resources you have. Those answers show whether building an application platform is a sensible effort.
+
 ## 2. Cluster topology choices
 
 | Topology | Description | Pros | Cons |

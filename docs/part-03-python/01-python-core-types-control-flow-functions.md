@@ -942,6 +942,39 @@ Every statement in this example follows the rules from earlier in this section. 
 
 ## 8. Functions
 
+### Why use functions
+
+Suppose the same ten lines of code are pasted into five places in a script. Then you find a bug in those lines. You now have to find and fix all five copies, and you might miss one. A function removes that risk, because the logic lives in one place and every caller uses it.
+
+Functions are the simplest way to package logic you want to use more than once. Most of the code we have written so far runs right away, from top to bottom. A function lets us defer that code and run it as many times as we need. Because the operation lives in one copy, a later change means updating one copy, not many scattered ones.
+
+Functions also help you split a big system into smaller pieces. Think about making a pizza from scratch. You mix the dough, roll it out, add toppings and bake it. A pizza-making robot would need one function for each of those subtasks. Small pieces are easier to build and test on their own than one giant process.
+
+Functions can also become methods. In general, a function describes how to do something, not what it is done to. When a function is paired with an object, it gives that object its own behavior. Classes are largely packages of these functions, and you will see that in the classes material later in this part.
+
+### The function toolbox at a glance
+
+Python gives you a small set of statements and expressions for writing functions. The table below lists each one with a short example. You do not need to master them today, but it helps to know what each one is for.
+
+| Statement or expression | Example |
+|---|---|
+| Call expressions | `myfunc('hack', tool=python, *versions)` |
+| `def` | `def printer(message): print('Hello', message)` |
+| `return` | `def adder(a, b=1, *c): return a + b + c[0]` |
+| `lambda` | `funcs = [lambda x: x**2, lambda x: x**3]` |
+| `global` | `def changer(): global x; x = 'new'` |
+| `nonlocal` | `def changer(): nonlocal x; x = 'new'` |
+| `yield` | `yield i ** 2` inside a `def` that loops over `range(x)` |
+| Generator expressions | `(i ** 2 for i in range(x))` |
+| `async/await` | `async def consumer(a, b): await producer(b)` |
+| Decorators and annotations | `@tracer` above `def func(a: 'hack' = None) -> None` |
+
+The basic tools are `def`, `return` and `lambda`. `def` creates a function and assigns it to a name. `return` sends a result back to the caller. `lambda` creates a small function and hands it back as the result of an expression, without giving it a name.
+
+The advanced tools change how names and results behave. `global` lets a function assign a module-level name, which is otherwise local to the function. `nonlocal` lets a function assign a name from the function that encloses it, so it can keep state without a shared global name. `yield` sends a value back, remembers where it stopped, and resumes later.
+
+`async` and `await` pause a waiting function so other tasks can run. This matters when a function waits on slow input or output. We will treat these tools lightly here and return to them when we study generators and coroutines.
+
 ### Definition, calls and return
 
 ```python
@@ -954,6 +987,190 @@ gib(10**12, decimals=2)           # keyword-only argument
 ```
 
 A function is an **object** (first class): it can be assigned, stored in data structures, passed to and returned from other functions. `def` executes at definition time (creates the function object and binds the name). A function without `return` returns `None`; `return a, b` returns a tuple. A function should do one thing, have a clear name (verb phrase), and a docstring describing arguments, return value, side effects and exceptions.
+
+### def runs at runtime
+
+In many compiled languages, a function exists before the program starts. Python works differently. A `def` is a statement that runs when Python reaches it, and it creates the function object at that moment.
+
+Because `def` is a real statement, you can place it inside an `if`. This lets a program choose which version of a function to build:
+
+```python
+if test:
+    def func():        # Define func this way
+        ...
+else:
+    def func():        # Or else this way
+        ...
+func()                 # Call the version selected and built
+```
+
+One way to think about this is that `def` works much like `=`. It assigns a name at runtime. The body of the function does not run until the function is called.
+
+The function's name is only a label. What matters is the object it refers to:
+
+```python
+othername = func       # Assign function object
+othername()            # Call func again
+```
+
+Functions are objects, so you can also attach your own attributes to them. This can store information for later use:
+
+```python
+def func(): ...        # Create + assign function object
+func()                 # Call object via its name
+func.attr = value      # Attach attributes
+```
+
+Functions do not support every operation that other objects do. They still sit in the same category as every other object. You can pass them around and store them in other objects, which turns out to be very useful.
+
+### lambda makes an anonymous function
+
+Some functions are only one expression long. A full `def` feels heavy for them. The `lambda` expression gives you a small function in one line:
+
+```python
+name = lambda arg1, arg2,… argN: expression
+name(val1, val2,… valN)
+```
+
+The header of a `lambda` takes the same arguments as a `def`, but without parentheses. The code after the colon must be a single expression. That expression is the whole body and also the return value, so you never write `return` inside a `lambda`.
+
+A `lambda` does not assign itself to a name. It returns the new function as the result of the whole expression. That is why people call it anonymous, meaning unnamed. You can save the result in a variable if you want, or pass it straight to another piece of code.
+
+Why have a second way to make a function? A `lambda` can go where a `def` cannot, such as inside a call or in an object literal. A `def` handles larger jobs and can be referred to by name. A `lambda` is a small convenience for simple cases.
+
+Python now has expression forms for several statements. `lambda` stands in for `def`, `:=` for `=`, the `if`/`else` ternary for `if`, and a comprehension for `for`. A `lambda` is limited to one expression, but it can use any of these forms to build assignments, logic and loops.
+
+### A first example: times
+
+Writing a small function shows the basics from both sides. The definition creates the function. The call runs its body. Here is a function named `times` that returns the product of its two arguments. The `...` prompts are left out so you can paste it:
+
+```
+>>> def times(x, y):      # Create and assign function
+...     return x * y      # Body executed when called
+```
+
+When Python runs this `def`, it creates a function object and assigns it to the name `times`. For something this small, typing it into the REPL is enough. A `lambda` can do the same job when you assign it to a name:
+
+```
+>>> times = lambda x, y: x * y
+```
+
+Both forms make function objects that work the same way. Neither one runs the function on its own. You call it by adding parentheses after the name, with the arguments inside them:
+
+```
+>>> times(2, 4)           # Arguments in parentheses
+8
+```
+
+Arguments are passed by assignment. So `x` gets `2`, `y` gets `4`, and the body runs. The body runs fresh on every call. The `return` sends back the product, which the REPL prints here. To keep the result, assign it to a variable:
+
+```
+>>> x = times(3.14, 4)    # Save the result object
+>>> x
+12.56
+```
+
+Now call the same function with different kinds of objects:
+
+```
+>>> times('Py', 4)        # Functions are "typeless"
+'PyPyPyPy'
+```
+
+This time the function means something different. The `*` operator multiplies numbers, and it also repeats sequences. Because we do not limit the types of variables, arguments or return values, `times` can multiply two numbers or repeat a string. What the function does depends on what you pass in.
+
+### Polymorphism in Python
+
+The meaning of `x * y` in `times` depends on what `x` and `y` are. The same function multiplies two numbers, or repeats a string. Python leaves that choice to the objects. The `*` operator simply routes the work to the objects it is given. This idea is called polymorphism: an operation behaves differently depending on the objects it works on.
+
+Python uses this idea everywhere. Printing, indexing and `*` all change behavior with the object. As long as an object supports the expected interface, which is also called a protocol, a function can process it. Any two objects that support `*` will work with `times`. That includes classes you have not written yet.
+
+If an object does not support the operation, Python raises an exception on its own. You get this for free:
+
+```
+>>> times('not', 'quite')
+TypeError: can't multiply sequence by non-int of type 'str'
+```
+
+For this reason, adding your own error checks is often pointless. A type check would limit the function to only the types you tested for. The `type` built-in can test types, but doing so breaks the flexibility your code could have had. In Python, your code should care about the interface, not the specific data type.
+
+The trade-off is that you test more. Python finds some errors later than a statically typed compiled language would. In return, you write less code and get functions that are much more flexible.
+
+### A second example: intersecting sequences
+
+An earlier loop collected the items that two strings had in common. It worked only on the two variables it was written for. Copying that loop wherever it was needed is a poor fix. Each copy would need its own edits, and any change to the algorithm would mean changing every copy.
+
+The better fix is to put the loop inside a function. That gives four benefits:
+
+- You can run the function as many times as you like.
+- Callers pass in any two sequences, so the function works on any pair.
+- If the algorithm changes, you edit one place.
+- A module file lets any program on your machine import and reuse the function.
+
+Example 16-1 shows the function in a module file called `inter1.py`:
+
+```python
+def intersect(seq1, seq2):
+    res = []                 # Start empty
+    for x in seq1:           # Scan seq1
+        if x in seq2:        # Common item?
+            res.append(x)    # Add to end
+    return res
+```
+
+The change from the earlier loop is small. The original logic goes under a `def` header, and the objects it works on become parameters. Because the function computes a result, a `return` sends that result back to the caller.
+
+Before you call it, run the `def`. Here the function comes from a module, so we import it. You may need to work in the file's folder so the REPL can find it:
+
+```
+>>> from inter1 import intersect    # Get function from module
+>>> s1 = 'HACK'
+>>> s2 = 'CHOK'
+>>> intersect(s1, s2)               # Pass two strings
+['H', 'C', 'K']
+```
+
+The algorithm is simple. For every item in the first argument, if that item is also in the second argument, append it to the result. The output is a list of the characters the two strings share.
+
+The function is not perfect. It could be faster, because it uses naive nested loops. It is also not a true mathematical intersection, since the result can contain duplicates. Python's set objects already offer an intersection with `&`, so the function is not required at all. It is still a useful demo.
+
+The same collector-loop pattern fits in one list comprehension:
+
+```
+>>> [x for x in s1 if x in s2]
+['H', 'C', 'K']
+```
+
+The comprehension also works as the body of a `lambda`, even though the `def` version runs to five lines:
+
+```
+>>> intersect = lambda seq1, seq2: [x for x in seq1 if x in seq2]
+>>> intersect(s1, s2)
+['H', 'C', 'K']
+```
+
+This works as a demo, but a `lambda` adds little in a role this simple. Lambdas will prove more useful later in this part.
+
+Like `times`, `intersect` is polymorphic. It works on any types that support the interface it needs:
+
+```
+>>> x = intersect([1, 2, 3], (1, 4))    # Pass mixed types
+>>> x                                   # Saved result object
+[1]
+```
+
+Here the arguments are a list and a tuple, and the function still finds the common item. The first argument must support the `for` loop. The second must support the `in` membership test. That covers strings, lists, files, dictionaries, and any class you write that supports these operations.
+
+A note on files: the function always works when you intersect the lines from `file.readlines()`. Intersecting an open file directly can fail, because a file is single-pass. After you read it to the end, you must rewind it, for example with `file.seek(0)`, or open it again.
+
+If you pass in an object without the right interface, Python raises an exception:
+
+```
+>>> intersect([1, 2, 3], 1)
+TypeError: argument of type 'int' is not iterable
+```
+
+Numbers do not support the interface, so this is exactly what we want. A type test of our own would only repeat Python's check and limit the function's scope.
 
 ### Parameters
 
@@ -1023,6 +1240,20 @@ def add_node_safe(ip, nodes=None):     # idiom
 ```
 
 In a long-running Kubernetes operator, web service or Lambda container, this leaks state across requests and across tenants: one of the most common production Python bugs. The same applies to defaults like `{}` and `set()`, and to defaults computed at import time (`now=datetime.now()` is evaluated once). Linters (`ruff B006`) flag it.
+
+### Local variables
+
+Look at the names inside `intersect`. The variable `res` is a local variable. It is visible only to code inside the function, and it exists only while the call runs.
+
+Python treats every name assigned inside a function as local by default. In `intersect`, that covers all the names in the `def`:
+
+- `res` is assigned, so it is local.
+- `seq1` and `seq2` are arguments, and arguments are passed by assignment, so they are local too.
+- The `for` loop assigns each item to `x`, so `x` is local.
+
+All of these names appear when the call starts and disappear when it ends. The `return` sends back the result object, but the name `res` goes away. The `lambda` version works the same way for its arguments. Its compact form hides the loop variable, unless you export it with a nested `:=`.
+
+Because of this, a function's variables do not clash with names elsewhere in the program. They also do not remember values between calls. The object a function returns lives on, but other state needs a different technique. The scope rules below show how to keep state when you need it.
 
 ### Scope: LEGB
 
@@ -1370,7 +1601,7 @@ Using `os.environ["API_TOKEN"]` **fails fast at startup with a clear `KeyError`*
 ## Sources and review notes
 
 - **Sources read in full:**
-  - `learning-python-6th-edition` — Mark Lutz, *Learning Python*, 6th ed., **Parts I to IV** (specifically `Chapter 3. How You Run Programs`, `Chapter 10. Introducing Python Statements` (statement syntax, the indentation rules, the statement table, special cases and the interactive loop examples), `Chapter 5. Numbers and Expressions`, `Chapter 7. String Fundamentals`, `Chapter 11. Assignments, Expressions, and Prints`, and `Chapter 18. Arguments`: `-i` interactive flag, `import`/`reload` vs `exec(open(...).read())`, object identity/type/value, operator precedence hierarchy, floor division vs truncation, dynamic typing, `string.Template`, `str.maketrans`/`str.translate`, lists/dicts/tuples/files, `print()` call format and `sys.stdout` stream redirection, `if` and `match`, loops and `else`, iterations and comprehensions, documentation and benchmarking interludes, function basics, LEGB scopes, and formal parameter- and call-ordering rules).
+  - `learning-python-6th-edition` — Mark Lutz, *Learning Python*, 6th ed., **Parts I to IV** (specifically `Chapter 3. How You Run Programs`, `Chapter 10. Introducing Python Statements` (statement syntax, the indentation rules, the statement table, special cases and the interactive loop examples), `Chapter 5. Numbers and Expressions`, `Chapter 7. String Fundamentals`, `Chapter 11. Assignments, Expressions, and Prints`, `Chapter 16. Function Basics`, and `Chapter 18. Arguments`: `-i` interactive flag, `import`/`reload` vs `exec(open(...).read())`, object identity/type/value, operator precedence hierarchy, floor division vs truncation, dynamic typing, `string.Template`, `str.maketrans`/`str.translate`, lists/dicts/tuples/files, `print()` call format and `sys.stdout` stream redirection, `if` and `match`, loops and `else`, iterations and comprehensions, documentation and benchmarking interludes, function basics, LEGB scopes, and formal parameter- and call-ordering rules).
   - `fluent-python-2nd-edition` — Luciano Ramalho, *Fluent Python*, 2nd ed., **Chapter 6: Object References, Mutability, and Recycling**.
   - `network-programmability-and-automation-2nd-edition` — Christian Adell et al., *Network Programmability and Automation*, 2nd ed., **Chapter 6: Python**.
   - `nvidia-devops` (`volume-02/00-python-fundamentals-for-infrastructure-masterclass.md`) — migrated the variables and mutability trap, mutable default argument scenario, conditional defaults, generators for large logs, and `pathlib`/`subprocess` previews.

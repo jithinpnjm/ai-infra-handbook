@@ -143,6 +143,61 @@ selector:
     - { key: ver, operator: In, values: [1, 2] }
 ```
 
+### Why containers share a Pod
+
+Picture a web server that serves a folder of files, and a second process that keeps that folder in step with a Git repository. You could pack both programs into one container. The two have different needs, though. The web server answers user requests, so it must stay fast and available. The Git synchronizer works in the background and can wait.
+
+Now suppose the synchronizer has a memory leak. Without isolation, it could take memory the web server needs, which slows the server or crashes it. Two containers, each with its own limits, keep the web server safe. The two still belong together, since a web server on one machine and its Git sync on another would make no sense. Kubernetes therefore groups them into one atomic unit called a Pod. The name fits the whale theme of Docker, since a pod is a group of whales.
+
+Grouping several containers into one Pod looked odd when Kubernetes first added it. Other tools now use the pattern too. Several service mesh implementations, for example, add a second sidecar container to a Pod to inject network management into the application.
+
+A Pod is a collection of application containers and volumes that run in the same execution environment. Pods, not single containers, are the smallest deployable unit in a cluster. All containers in one Pod always land on the same machine. Each container runs in its own cgroup, but they share several Linux namespaces. That is why they share one IP address and port space, and one hostname.
+
+### Thinking with Pods
+
+A common question when teams adopt Kubernetes is "What should I put in a Pod?" It is tempting to put a WordPress container and a MySQL container in one Pod, since together they make a WordPress site. That is an anti-pattern. The two do not have to share a machine, because they talk over a network connection. They also scale differently. WordPress is mostly stateless, so you add WordPress Pods when frontend load grows. A MySQL database is much harder to scale out, so you give one MySQL Pod more resources instead. Putting both in one Pod forces one scaling plan onto both.
+
+The test to use is a single question: "Will these containers work correctly if they land on different machines?" If the answer is no, group them in one Pod. If the answer is yes, use separate Pods. The Git example works only because its two containers share a local filesystem, so they could not run on different machines.
+
+### Declarative configuration and Pod manifests
+
+A Pod manifest is a text file that describes the Kubernetes API object. Kubernetes favors declarative configuration. You write down the desired state of the world, submit the file, and Kubernetes takes the actions needed to make that state real. That is different from imperative configuration, where you run a series of steps, such as `apt-get install foo`, to change a system.
+
+Years of production use have shown that a written record of desired state is easier to manage. You can review it in code, and it documents the system for a distributed team. It is also the base of the self-healing behavior that keeps applications running without anyone acting.
+
+The API server accepts a Pod manifest and stores it in `etcd`. The scheduler looks for Pods that have no node yet, then places each one based on its resource requests and other constraints. It can put several Pods on one machine when resources allow. Copies of the same application on one machine share a single point of failure, though, so the scheduler spreads them across machines when it can. Once a Pod is scheduled, it does not move. It must be deleted and scheduled again.
+
+### Creating a Pod
+
+The quickest way to create a Pod is the imperative `kubectl run` command. The book uses it to start the `kuard` demo server:
+
+```
+$ kubectl run kuard --image=gcr.io/kuar-demo/kuard-amd64:blue
+```
+
+The book's printed command also carries `--generator=run-pod/v1`. Current `kubectl` releases removed that flag, and `kubectl run` now creates a bare Pod by default, so leave it out. If you copy older tutorials and see an error about `--generator`, that is why.
+
+Run `kubectl get pods` to watch its status. The container may show `Pending` at first, then `Running` once the Pod and its containers exist. Remove it with `kubectl delete pods/kuard` when you are done.
+
+For real work, write a manifest. YAML is the usual format because it is easy for people to edit and it supports comments. Treat a manifest like source code, since comments help new team members understand the Pod. A Pod manifest has a `metadata` section for the name and labels, a `spec` section for volumes, and a list of containers. Example 5-1 is a minimal manifest for the same `kuard` server:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kuard
+spec:
+  containers:
+    - image: gcr.io/kuar-demo/kuard-amd64:blue
+      name: kuard
+      ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+```
+
+Submit it with `kubectl apply -f kuard-pod.yaml`. The API server receives the manifest, the scheduler picks a healthy node, and the `kubelet` on that node watches over the Pod. Writing it out may feel like more work than a single command. The written record is still the better habit for large teams with many applications.
+
 ## 2. Pod spec anatomy
 
 ### Containers and init containers
@@ -163,9 +218,116 @@ selector:
 - **LimitRange** sets per-namespace defaults/min/max; **ResourceQuota** caps totals per namespace (including `requests.nvidia.com/gpu`) (5.22).
 - **Pod overhead** (RuntimeClass) and **in-place pod resize** (stable in recent releases for CPU/memory without restart) are additional features; check your version.
 
+### Resource requests and limits, with a worked example
+
+Most people adopt containers and Kubernetes for better packaging and reliable deploys. Utilization is another gain. Utilization is the amount of a resource actively in use, divided by the amount you bought. A one-core machine running an app that uses a tenth of a core sits at 10%. Kubernetes can push utilization above 50%, but only when you tell it what each app needs.
+
+Kubernetes has two settings for this. A resource request is the minimum an application needs. A resource limit is the most it may use. Kubernetes accepts many notations, from plain numbers such as `12345` to millicores such as `100m`. A lowercase `m` means milli, while an uppercase `M` means mega, so `400m` and `400M` differ by a factor of a thousand. Mixing them up is a common and costly error. The book also explains the binary units, such as `MiB` and `GiB`. Its sentence on this swaps the two families, so check the definitions yourself before you size anything.
+
+A request guarantees that the resource is there for the Pod. CPU and memory are the most common, though GPUs and other types also count. Requests belong to each container, not to the whole Pod. The Pod's total is the sum of all its containers' requests, because a web server and a data synchronizer need very different CPU. Example 5-3 asks for half a CPU and 128 MiB of memory:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kuard
+spec:
+  containers:
+    - image: gcr.io/kuar-demo/kuard-amd64:blue
+      name: kuard
+      resources:
+        requests:
+          cpu: "500m"
+          memory: "128Mi"
+      ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+```
+
+The scheduler uses requests to place Pods. It makes sure the sum of all requests on a node stays within the node's capacity. A request is a minimum, not a cap. Imagine a container that tries to use every core, with a request of 0.5 CPU, on a machine with 2 cores. Alone on the machine, it uses all 2.0 cores. A second identical Pod brings each one to 1.0 core, and a third brings each to about 0.66 core. A fourth brings each to the 0.5 it asked for, and the node is full. CPU requests are carried out with the `cpu-shares` feature of the Linux kernel.
+
+Memory works differently. Memory a process already holds cannot be taken back as easily. When a node runs out, the `kubelet` terminates containers that use more memory than they requested. Those containers restart automatically, but the node then has less memory to give them.
+
+A limit is a ceiling. Example 5-4 keeps the same request and adds a limit of 1.0 CPU and 256 MiB of memory:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kuard
+spec:
+  containers:
+    - image: gcr.io/kuar-demo/kuard-amd64:blue
+      name: kuard
+      resources:
+        requests:
+          cpu: "500m"
+          memory: "128Mi"
+        limits:
+          cpu: "1000m"
+          memory: "256Mi"
+      ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+```
+
+The kernel enforces limits. A container with a CPU limit of 0.5 cores gets only 0.5 cores, even when the CPU is otherwise idle. A container with a 256 MiB memory limit gets no more memory. A `malloc` call fails once its usage passes that limit.
+
 ### Volumes
 
 Types you will meet: `emptyDir` (per-pod scratch; `medium: Memory` for tmpfs; `sizeLimit`), `configMap`/`secret`/`downwardAPI`/`projected` (config and identity injection; projected ServiceAccount tokens with audience and expiry), `persistentVolumeClaim` (durable storage, 5.17), `hostPath` (node paths: avoid except for system agents; large security risk), `nfs`, CSI ephemeral volumes, `image` volumes (mount OCI artefacts, e.g., model weights, in newer releases), `ephemeral` (generic ephemeral PVC per pod). Mount options: `readOnly`, `subPath` (note: subPath mounts don't receive ConfigMap updates), `mountPropagation`, `subPathExpr`. `fsGroup` in the security context changes ownership of volumes (can be slow on huge volumes; use `fsGroupChangePolicy: OnRootMismatch`).
+
+### Persisting data and volume patterns
+
+A container's filesystem disappears when its Pod is deleted or the container restarts. That is often a good thing. Stale files from a stateless web app should not pile up. Some data, though, must survive, and Kubernetes models that with volumes. A manifest needs two additions. The `spec.volumes` list defines every volume the Pod may use. Each container's `volumeMounts` list says which volumes it mounts and where. Not every container must mount every volume, and two containers can mount the same volume at different paths.
+
+Example 5-5 defines one volume named `kuard-data` and mounts it at `/data` in the `kuard` container:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kuard
+spec:
+  volumes:
+    - name: "kuard-data"
+      hostPath:
+        path: "/var/lib/kuard"
+  containers:
+    - image: gcr.io/kuar-demo/kuard-amd64:blue
+      name: kuard
+      volumeMounts:
+        - mountPath: "/data"
+          name: "kuard-data"
+      ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+```
+
+The book lists four common patterns for using volumes in a Pod.
+
+**Communication and synchronization.** The Git example uses an `emptyDir` volume. It lasts as long as the Pod, but two containers can share it. That makes it the link between the Git sync container and the web server.
+
+**Cache.** Some apps keep data that speeds things up but that they can rebuild, such as prerendered image thumbnails. Rebuilding is possible, but serving the thumbnails then costs more. You want that cache to survive a restart caused by a failed health check, so `emptyDir` fits here too.
+
+**Persistent data.** Some data must outlive a Pod and move between nodes when a node fails. Kubernetes supports many remote storage types for this. They include NFS and iSCSI, cloud block storage such as Amazon Elastic Block Store, Azure File and Azure Disk, and Google's Persistent Disk. An NFS volume looks like this:
+
+```yaml
+...
+# Rest of pod definition above here
+volumes:
+  - name: "kuard-data"
+    nfs:
+      server: my.nfs.server.local
+      path: "/exports"
+```
+
+Persistent volumes are a deep topic. The book's Chapter 16 has a longer look at them, and this handbook covers durable storage in 5.17.
+
+**Mounting the host filesystem.** Some apps need the node's own files. A tool might need `/dev` to reach a device directly. `hostPath` mounts any location on the worker node into the container. Use it with care, because it gives the container access to the host.
 
 ### Environment and configuration
 
@@ -185,7 +347,63 @@ Pod termination: API sets `deletionTimestamp`; endpoints controller removes the 
 
 `nodeName` (bypass scheduler; avoid), `nodeSelector`, `affinity` (node, pod, anti-affinity: required vs preferred, topology keys), `tolerations`, `topologySpreadConstraints`, `priorityClassName`/`preemptionPolicy`, `schedulerName`, `runtimeClassName`, `resourceClaims` (DRA). See 5.18.
 
+### Putting it all together
+
+Many applications are stateful. Their data must survive, and its storage must follow the app to whichever machine it runs on. A persistent volume backed by network storage does that. You also want a healthy instance running at all times, so the container should be ready before clients reach it. Persistent volumes, readiness and liveness probes, and resource limits together let Kubernetes run stateful applications reliably. Example 5-6 combines them in one manifest:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kuard
+spec:
+  volumes:
+    - name: "kuard-data"
+      nfs:
+        server: my.nfs.server.local
+        path: "/exports"
+  containers:
+    - image: gcr.io/kuar-demo/kuard-amd64:blue
+      name: kuard
+      ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+      resources:
+        requests:
+          cpu: "500m"
+          memory: "128Mi"
+        limits:
+          cpu: "1000m"
+          memory: "256Mi"
+      volumeMounts:
+        - mountPath: "/data"
+          name: "kuard-data"
+      livenessProbe:
+        httpGet:
+          path: /healthy
+          port: 8080
+        initialDelaySeconds: 5
+        timeoutSeconds: 1
+        periodSeconds: 10
+        failureThreshold: 3
+      readinessProbe:
+        httpGet:
+          path: /ready
+          port: 8080
+        initialDelaySeconds: 30
+        timeoutSeconds: 1
+        periodSeconds: 10
+        failureThreshold: 3
+```
+
+The Pod definition grows as the chapter goes on. Each new capability you give the application adds a new section to it.
+
 ## 3. Workload controllers: choosing
+
+### Why a bare Pod is not enough
+
+A Pod that is scheduled to a node stays on that node. If the node fails, nothing reschedules the Pod. To run several copies, you would have to create and name each one by hand. Controllers automate that work. The book's Chapter 9 introduces ReplicaSets, which create multiple identical Pods and re-create them after a node failure. The table below compares the controllers this chapter covers.
 
 | Controller | Identity | Storage | Typical use | Notes |
 |---|---|---|---|---|
@@ -380,6 +598,39 @@ kubectl debug node/gpu-node-1 -it --image=ubuntu                              # 
 kubectl top pod trainer-0 --containers
 kubectl get events --field-selector involvedObject.name=trainer-0 --sort-by=.lastTimestamp
 ```
+
+### Listing and describing Pods
+
+`kubectl get pods` prints the Pod name, the count of ready containers such as `1/1`, the status, the restart count, and the age. A Pod that was just submitted may show `Pending`. That means it has been accepted but not scheduled yet. A serious error, such as a container image that does not exist, also appears in the status column. Add `-o wide` for a little more detail. Add `-o json` or `-o yaml` to see the whole object. Add `--v=10` when you need verbose logs of what `kubectl` is doing, though that output is hard to read.
+
+`kubectl describe` gives more than the one-line view. Kubernetes also keeps events about Pods in the event stream, and those events are not attached to the Pod object. The output starts with basic facts, such as the name, namespace, node, start time, status, and IP. Next come the containers, with their container ID, image, port, state, restart count, and mounts. The last part lists events, such as when the Pod was scheduled, when its image was pulled, and when a container was restarted after failed health checks. An events block looks like this:
+
+```
+Events:
+Seen From SubObjectPath Type Reason Message
+---- ---- ------------- -------- ------ -------
+50s default-scheduler Normal Scheduled Success...
+49s kubelet, node1 spec.containers{kuard} Normal Pulling pulling...
+47s kubelet, node1 spec.containers{kuard} Normal Pulled Success...
+47s kubelet, node1 spec.containers{kuard} Normal Created Created...
+47s kubelet, node1 spec.containers{kuard} Normal Started Started...
+```
+
+Run `kubectl describe pods kuard` to see this for your own Pod.
+
+### Logs, exec and copying files
+
+Sometimes `describe` is not enough, and you need to see what the application is doing. `kubectl logs kuard` downloads the current logs. Add `-f` to stream them. Add `--previous` to read logs from the previous instance of the container. That helps when a container keeps restarting because of a problem at startup.
+
+Logs are fine for occasional debugging. For production, a log aggregation service is the better choice. Fluentd with Elasticsearch is one open source option, and many cloud logging providers offer the same. These services keep logs longer and let you search and filter them. Many can also combine logs from many Pods into one view.
+
+When logs are not enough, run a command inside the container with `kubectl exec kuard -- date`. Add `-it` for an interactive shell, as in `kubectl exec -it kuard -- ash`. Copying files into a container is an anti-pattern, because you should treat a container's contents as immutable. Still, a copy can stop an outage faster than a new image build and rollout. If you do copy a file, build and roll out the image right away. Otherwise the local change is lost at the next scheduled rollout.
+
+### Deleting a Pod
+
+Delete a Pod by name with `kubectl delete pods/kuard`, or with the manifest it came from using `kubectl delete -f kuard-pod.yaml`. Deletion is not instant. The Pod enters `Terminating`, and every Pod has a termination grace period, 30 seconds by default. A Pod in `Terminating` takes no new requests, and the grace period lets it finish the requests it is handling.
+
+Warning: any data stored in the Pod's containers is deleted with it. If data must survive across Pod instances, use a persistent volume, as described earlier in this chapter.
 
 ### Phases and states
 

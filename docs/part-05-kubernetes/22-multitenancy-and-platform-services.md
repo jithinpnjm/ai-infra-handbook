@@ -169,6 +169,20 @@ Automation creates: namespaces with labels (`team`, `tier`, `cost-center`, PSA l
 
 Self-service interfaces: Git PR workflow (default), a **developer portal** (Backstage with Kubernetes, Argo, Kueue plugins; Port; internal CLI), notebook portals (JupyterHub/Kubeflow/Run:ai/ DGX Cloud UIs), a **job submission CLI/SDK** hiding YAML (`mlctl submit train.yaml --gpus 16`), templates (Helm charts/Kustomize bases/Cookiecutter) for jobs, services and pipelines with built-in best practices (resource requests, probes, checkpointing, labels).
 
+### Choosing how much to abstract
+
+Not every developer needs to see Kubernetes. How much you hide is a real decision. Some people say that if application developers know they use Kubernetes, you have failed. That idea fits a product where the orchestrator means nothing to the user. Picture a database system that runs its shards on Kubernetes, Bosh, or Mesos. Its users probably do not care which one.
+
+Turning that slogan into a team goal is risky, though. Every layer you add on top of Kubernetes brings choices about what the right abstraction looks like.
+
+Cloud Foundry shows the fully hidden end. With one `cf push`, an application is built, deployed, and serving production traffic. As Cloud Foundry runs more on Kubernetes, that change should be an implementation detail rather than a change in features.
+
+Some companies run more than one orchestrator. A Mesos footprint may sit beside a Kubernetes one. They then build an abstraction that picks where each workload lands, so developers do not have to choose. This also avoids lock-in. The cost is effort. You must build on two systems that work differently. Developers then learn a company-specific system instead of a shared one, and many resist learning systems that do not carry over between organizations. Another pitfall is an obsession with abstraction. If you hide everything, you cannot expose key Kubernetes features. Keeping up with the project becomes a cat-and-mouse game, and your abstraction can end up as complex as the system it hides.
+
+At the other end, a platform group can offer self-service clusters to development teams. That can work well. It puts Kubernetes maturity on the teams. They need to understand Deployments, ReplicaSets, Pods, Services, and Ingress. They must know how to set CPU in millicpus and how overcommit works. They must also make sure replicas land on different nodes. If they can do that, you avoid over-engineering a platform.
+
+Owning a cluster is less common, though. Even skilled teams rarely want to spend time on cluster lifecycle and upgrades. Expecting every team to become a Kubernetes expert while shipping software is often unrealistic. Abstraction is not all or nothing. Decide where to hide details and where to give developers more control.
+
 ### The `Team` custom resource operator pattern and the 4-stage spectrum of platform abstractions
 
 Beyond rendering tenant YAML in CI/CD pipelines, *Production Kubernetes* (Chapter 16) shows how mature platforms implement self-service tenant onboarding natively inside the cluster using a custom **`Team` operator**. When a platform engineer or portal submits a `Team` custom resource specifying the owner and resource quotas, the in-cluster controller continuously reconciles the tenant's `Namespace`, `RoleBinding`s, `ResourceQuota`, `LimitRange`, `NetworkPolicy`, and even Grafana dashboards or Alertmanager routes—automatically restoring any role or quota that someone accidentally deletes. In the book's example (untested here):
@@ -248,6 +262,73 @@ A "platform" is more than Kubernetes: these shared services turn raw GPUs into a
 | **Data governance** | Catalog, lineage, retention, PII controls | Dataset access approval workflows |
 | **Cost management** | OpenCost/Kubecost, GPU accounting | Showback dashboards, budgets, alerts |
 | **Support & docs** | Runbooks, FAQ, office hours, status page | Platform as a product |
+
+### What an application platform is
+
+An application platform is a viable place to run workloads. How you meet that goal depends on the organization. The outcomes you want vary across the business. Happy developers, lower operating costs, and quicker feedback on software are common examples. The platform sits where applications meet infrastructure, and developer experience is usually a central concern.
+
+Platforms come in many shapes. Some hide the layers below them, such as the IaaS or the orchestrator. Heroku is a good example. You can take a Java, PHP, or Go project and deploy it to production with one command. Metrics collection, data services, and continuous delivery run alongside your app. You also get the building blocks for highly available workloads that scale easily. Does Heroku use Kubernetes? Does it run its own data centers or sit on AWS? For a Heroku user, those details do not matter. Red Hat OpenShift follows a similar model. Kubernetes is an implementation detail there, and developers work with abstractions on top.
+
+Why not stop with these? Prebuilt platforms such as Cloud Foundry, OpenShift, and Heroku already solve many problems. Their main trade-off is that you must accept their view of the world. Giving up ownership of the underlying system takes a big load off your team. Still, if the platform handles service discovery or secret management in a way your organization cannot accept, you may lack the control to work around it. There is also vendor or opinion lock-in. Abstractions bring opinions about how apps are built, packaged, and deployed, so moving to another system may not be simple. For example, moving workloads between GKE and EKS is much easier than moving between EKS and Cloud Foundry.
+
+### Building on Kubernetes
+
+Kubernetes is one piece of the path to production. Does that mean it is missing things? The Unix idea of making each program do one thing well fits Kubernetes. Its best features are largely the ones it does not include. That matters after years of one-size-fits-all platforms that promise to solve everything. Kubernetes focuses on being a strong orchestrator, and it defines clear interfaces for building on top.
+
+Think of Kubernetes as a foundation. A good foundation is structurally sound, can be built on, and gives proper interfaces for the utilities that route into the home. A foundation alone is rarely a place to live. Applications need a home on top of it.
+
+Compare a pre-furnished apartment. It is ready to move into, much like a platform as a service such as Heroku. You can customize the inside, but many concerns are already solved. If the rent and the fixed rules suit you, you are set on day one.
+
+Building on Kubernetes is more like building a house. It costs planning, engineering, and maintenance. In return, you control every element of the result. The house can be shaped for its future tenants, your applications. The sections below cover the layers and decisions that make this possible.
+
+### Building blocks of an application platform
+
+Start at the bottom. Kubernetes expects to run on a technology layer, usually a data center or a cloud provider. That layer offers compute, storage, and networking. Once it exists, Kubernetes can be bootstrapped on top, and clusters can live on it within minutes. Bootstrapping methods come later in this part (see 5.4).
+
+Once clusters exist, questions arrive quickly. These are common examples:
+
+- How do I make sure traffic between workloads is fully encrypted?
+- How do I make sure egress traffic leaves through a gateway with a consistent source CIDR?
+- How do I provide self-service tracing and dashboards to applications?
+- How do I let developers onboard without becoming Kubernetes experts?
+
+The list can keep growing. Part of your job is deciding which needs belong in the platform and which belong in each application. Learn how people work today first. If the platform cannot meet an expected feature, think about the effect on development teams. Build with developers who are willing to onboard early, since their quick feedback guides good decisions. Reaching production is not the end. Platform teams should not expect a static environment that developers use for decades. Stay close to them to catch gaps that slow them down.
+
+Each layer has its own building blocks.
+
+**Container runtime.** The container runtime manages the life cycle of workloads on each host. Common choices are CRI-O, containerd, and Docker. The Container Runtime Interface (CRI) lets you pick among them. Specialized runtimes also exist for needs such as running a workload in a micro-VM.
+
+**Container networking.** Your networking choice covers IP address management (IPAM) for workloads and the routing protocols that let them communicate. Calico and Cilium are common picks. The Container Networking Interface (CNI) makes this pluggable. Once a networking plug-in is in the cluster, the kubelet can request IP addresses for the workloads it starts. Some plug-ins go further and build service abstractions on top of the Pod network.
+
+**Storage integration.** Storage integration covers what you do when on-host disk will not do. More organizations now run stateful workloads on Kubernetes. Those workloads need state that survives application failure or rescheduling. Systems such as vSAN, EBS, and Ceph can supply that storage. The Container Storage Interface (CSI) lets you choose the backend. As with CNI and CRI, you install a plug-in that understands the storage an application requests.
+
+**Service routing.** Service routing moves traffic to and from the workloads you run in Kubernetes. Kubernetes offers a Service API, but that is usually a stepping stone. Richer routing, such as layer 7 routing and traffic patterns, builds on container networking. Teams often add these features with an Ingress controller. Deeper still are service meshes, which bring service-to-service mTLS, observability, and application patterns such as circuit breaking.
+
+**Secret management.** Secret management covers distributing the sensitive data that workloads need. Kubernetes has a Secrets API. Out of the box, many clusters lack the secret protection some enterprises demand. This is mostly a defense-in-depth question. At a simple level, you encrypt data before it is stored, which is encryption at rest. At a more advanced level, you integrate a tool such as Vault or CyberArk.
+
+**Identity.** Identity covers authenticating humans and workloads. A common first request is to sign users in against LDAP or a cloud provider's IAM system. Workloads may also need identities. That supports zero-trust models, where impersonating a workload is much harder. An identity provider and mechanisms such as mTLS can verify a workload.
+
+**Authorization and admission control.** Authorization is the step after identity. When users or workloads call the API server, you decide whether to grant or deny access. Kubernetes offers RBAC with resource and verb controls. Your organization may need custom authorization logic as well. Admission control goes further. Validation can be as simple as checking a static list of rules, or it can call other systems to decide the answer.
+
+**Software supply chain.** The software supply chain covers the whole life cycle from source code to runtime. It includes continuous integration (CI) and continuous delivery (CD). Developers often meet the platform through their pipelines, so getting CI/CD working well with Kubernetes matters a great deal. Beyond pipelines, look at how artifacts are stored, how safe they are from vulnerabilities, and whether the images that run in your cluster are intact.
+
+**Observability.** Observability is the umbrella term for understanding what happens in your clusters, at the system and application layers. It has three main areas: logs, metrics, and tracing. Logging forwards data from workloads on the host to a backend, where logs can be aggregated and analyzed. Metrics capture state at a point in time, and are often scraped into an analysis system. Tracing shows how the services in your stack interact. Trace data is gathered and shown with a context or correlation ID, so you can follow one request.
+
+**Developer abstractions.** These are the tools and platform services that help developers succeed on your platform. As covered earlier, they sit on a spectrum. Some organizations hide Kubernetes completely from teams. Others expose many of its knobs and give developers wide flexibility. Most solutions also focus on onboarding, so developers can get access and secure control of an environment they can use.
+
+### Deciding what the platform should own
+
+Not every application concern belongs in the platform. Take mutual TLS (mTLS). Suppose every Java microservice bundles a library that handles it. That gives each workload an identity and encrypts its traffic. A platform team needs to understand that usage before deciding whether to offer the feature at the platform level. Many teams look at a service mesh for this.
+
+A service mesh has clear benefits. Java apps no longer need to bundle mTLS libraries. Non-Java apps can join the same encryption system. Application teams have less to solve. The costs are real, too. A mesh is another distributed system with its own operational complexity. Meshes often bring features far beyond identity and encryption. The mesh's identity API may also fail to integrate with the backend your existing applications use.
+
+Weigh these pros and cons before you commit. You do not need to solve every application concern in the platform, and you should not try. The rest of this part gives many recommendations. Judge each one against your business priorities.
+
+### Summary of application platforms
+
+"Application platform" is still a fuzzy term. The platforms discussed here bring a team experience far beyond workload orchestration. Kubernetes can be customized and extended to reach similar outcomes. Move beyond "How do I get a Kubernetes?" and ask about the developer workflow, its pain points, and what developers want. Platform and infrastructure teams that do this build better things. They are more likely to chart a real path to production and win real adoption.
+
+The goal is to meet infrastructure, security, and developer requirements. Developers are the customers. Do not hand them a powerful engine and expect each one to build a platform around it. Developers who want a drivable car will not accept an engine with no frame or wheels.
 
 ### Operating the platform as a product
 

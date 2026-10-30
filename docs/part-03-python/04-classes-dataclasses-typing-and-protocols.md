@@ -120,6 +120,279 @@ def nester():
 
 `__new__` (rarely overridden; used for singletons, immutables), `__init__`, `__del__` (avoid), `__enter__/__exit__` for deterministic cleanup. Equality and hashing by value need explicit methods (or dataclasses). `copy.copy(obj)` and `copy.deepcopy(obj)` customise via `__copy__`/`__deepcopy__`. Pickling (`pickle`, `__getstate__`) is unsafe for untrusted data and brittle across versions: serialise to JSON/YAML/protobuf instead.
 
+### Classes as factories for many objects
+
+Suppose one script tracks a dozen GPU nodes, and each node needs its own name and its own state. A module cannot do this on its own. Python imports one copy of a module, so every name inside it is shared. A class fixes that problem by acting as a factory. You define the shape once, then call it as many times as you need.
+
+Python's class model has two kinds of objects. A class object holds default behavior, and a `class` statement creates it. An instance object is what your program actually works with. You get one by calling the class like a function. Each call makes a new instance, and each instance is its own namespace that can still see the names on its class.
+
+Modules and classes differ in this way. Only one copy of each module lives in a program, and `reload` updates that single shared object. Each instance of a class can hold its own data, so several versions of the same kind of thing can exist at once. Closure factory functions from Learning Python Chapter 17 can keep per-call state too. A class makes that state explicit as attributes, not as hidden scope references.
+
+Here is a small class to see this in action:
+
+```python
+class FirstClass:                       # Define a class object
+    def setdata(self, value):           # Define the class's methods
+        self.data = value               # self is the instance
+    def display(self):
+        print(self.data)                # self.data: per instance
+```
+
+Nothing exists until Python reaches and runs this statement. Usually that happens when the module file is imported. Each `def` inside the class creates a function and stores it as an attribute of the class. Functions defined this way are called methods. The first argument, named `self` by convention, receives the instance that the call is made on.
+
+```
+>>> x = FirstClass()     # Make two instances
+>>> y = FirstClass()     # Each is a new namespace
+```
+
+The parentheses matter. Calling the class creates two instances, so you now have three linked namespaces: the class and its two instances. Both `x` and `y` are `FirstClass` objects, which means each one inherits the names attached to the class.
+
+### Instance attributes and inherited method lookup
+
+The next problem is sharing behavior while keeping data separate. Every instance should have the same `setdata` and `display` methods, but each should remember its own value. Python handles this with a lookup chain. When you ask an instance for a name it does not have, Python follows the link to its class.
+
+```
+>>> x.setdata('coding')     # Call methods: self is x
+>>> y.setdata(3.14159)      # Runs: FirstClass.setdata(y, 3.14159)
+```
+
+Neither `x` nor `y` has a `setdata` attribute of its own. Python checks the instance first, then follows the link to the class. Lookup happens each time you write a dot expression, and it only walks through linked objects. Assignments work differently. Inside `setdata`, `self.data` stores the value in the instance, not in the class.
+
+```
+>>> x.display()     # Runs: FirstClass.display(x)
+coding
+>>> y.display()     # self.data differs in each instance
+3.14159
+```
+
+The `display` name is the same in both instances because it comes from the class. The `data` value differs because each instance stores its own copy. Instance attributes are not declared ahead of time, and they carry no type. An attribute appears the first time you assign it. If you call `display` before `setdata`, Python raises an undefined name error, since `data` does not exist yet.
+
+Attributes can also change from outside the class. You can set `x.data` directly, and you can even add a brand new attribute to one instance:
+
+```
+>>> x.data = 'hacking'     # Can get/set attributes outside the class too
+>>> x.display()
+hacking
+>>> x.anothername = 'apps' # Can set new attributes here too!
+```
+
+This freedom has a cost. Adding data that the class cannot use usually does not make sense. Learning Python Chapters 30 and 39 show how attribute-access overloading can add privacy checks. Still, the open style saves syntax, and it suits simple data records well.
+
+### Subclasses customize by inheritance
+
+Sometimes you want a slightly different version of a class without editing the original. Python lets one class inherit from another. You list the superclass in parentheses in the new class header. The new class is the subclass, and it can redefine any name it wants to change.
+
+```python
+class SecondClass(FirstClass):          # Inherits setdata
+    def display(self):                  # Changes display
+        print(f'Current value = "{self.data}"')
+```
+
+The subclass defines `display` with a new format. Python searches from the instance up to the subclass, then to the superclass, and it stops at the first match. Because `SecondClass` defines `display` first, its version wins. The book calls this replacing an inherited name overloading.
+
+`SecondClass` still uses the `setdata` method from `FirstClass` without any change:
+
+```
+>>> z = SecondClass()
+>>> z.setdata('LP6e')     # Finds setdata in FirstClass
+>>> z.display()           # Finds overridden method in SecondClass
+Current value = "LP6e"
+```
+
+The change stays outside `FirstClass`. Older instances keep their old behavior, so `x.display()` still prints the earlier message. This is why subclassing supports reuse so well. You customize a component without touching its source. Python's full inheritance rules include diamond patterns and metaclasses, which Learning Python handles in Chapters 31 and 40. For everyday application code, the instance and class view is enough.
+
+### Classes live inside modules
+
+A class name has no special power. It is a variable that gets assigned when the `class` statement runs. You can reach it with any normal expression. If `FirstClass` lived in a module file, you could import it and use its name in a subclass header:
+
+```python
+from modulename import FirstClass       # Copy name into my scope
+
+class SecondClass(FirstClass):          # Use class name directly
+    def display(self): ...
+```
+
+You can also import the whole module and qualify the name:
+
+```python
+import modulename                       # Access the whole module
+
+class SecondClass(modulename.FirstClass):   # Qualify to reference
+    def display(self): ...
+```
+
+Class names follow the same rules as any other name in a module. A single module file can hold several classes, along with functions and variables. Each of those names becomes a separate attribute of the module. Here is a hypothetical file:
+
+```python
+# names.py
+var1 = 6                                # names.var1
+var2 = 3.12
+def func1(): ...                        # names.func1
+def func2(): ...
+class Cls1: ...                         # names.Cls1
+class Cls2: ...                         # names.Cls2
+```
+
+Sometimes a module and a class share a name. If `person.py` contains `class person`, you must go through the module to reach the class:
+
+```python
+import person                           # Import the module
+x = person.person()                     # Class within the module
+```
+
+Using `from person import person` also works, and then `x = person()` builds the object. Common Python style fixes the confusion from the start. Modules get lowercase names and classes get names that start with an uppercase letter, so `person.Person()` reads clearly. A module reflects a whole file, while a class is one statement inside a file.
+
+### Operator overloading
+
+Suppose you want your own object to respond to `+` or to `print`. Python lets a class intercept built-in operations. Operations such as addition, slicing, printing, and attribute access route to methods that the class provides. Modules cannot do this for expressions. They can only provide function calls.
+
+The hooks are special methods with names that start and end with double underscores, such as `__add__`. Python defines the fixed mapping from each operation to its method name. Python calls the method automatically when an instance appears in that operation. The return value of the method becomes the result of the expression. A class does not have to define every hook. If `__add__` is missing, a `+` expression raises an exception.
+
+The following class adds three hooks and one normal method:
+
+```python
+class ThirdClass(SecondClass):          # Inherit from SecondClass
+    def __init__(self, value):          # On "ThirdClass(value)"
+        self.data = value
+    def __add__(self, other):           # On "self + other"
+        return ThirdClass(self.data + other)
+    def __str__(self):                  # On "print(self)", "str()"
+        return f'[ThirdClass: {self.data}]'
+    def mul(self, other):               # In-place change: named
+        self.data *= other
+```
+
+`__init__` runs when the object is created, and it stores the value automatically. The inherited `display` method still works. For `+`, Python passes the left operand to `self` and the right operand to `other`. The method builds and returns a new `ThirdClass`, so the result keeps the same type:
+
+```
+>>> a = ThirdClass(3)     # __init__ called
+>>> a.display()           # Inherited method called
+Current value = "3"
+>>> b = a + 3             # __add__: makes a new instance
+>>> b.display()
+Current value = "6"
+```
+
+For `print`, Python passes the object to `__str__`, and the returned string becomes the printed text. A normal method such as `mul` works differently. It changes the instance in place:
+
+```
+>>> print(b)              # __str__: returns display string
+[ThirdClass: 6]
+>>> a.mul(3)              # mul: changes instance in place
+>>> print(a)
+[ThirdClass: 9]
+```
+
+Some hooks must return a value, such as `__str__`. Others are more flexible. The `__add__` method returns a new object, which matches how built-in numbers and strings behave. Overloaded operators should behave like built-in ones, so a `*` hook that changed its object in place would surprise readers. Learning Python Chapter 30 covers the in-place hooks, such as `__imul__` for `*=`.
+
+Operator overloading is an optional feature. Most application code never needs it. Unless a class must mimic a built-in interface, plain method names are clearer. An expression like `*` may suit a matrix, but a named method usually serves the callers better. Special names are inherited like any other names. The `__init__` method appears in nearly every class, and `__str__` appears often. You can usually learn which attributes an instance will have by reading its `__init__`.
+
+### Classes as records
+
+Programs often need to store facts about an entity, such as a person's name, age, and jobs. A tuple or a dictionary can hold these facts, but a class can hold them with less noise. Here is the dictionary version:
+
+```python
+rec = {}
+rec['name'] = 'Pat'                     # Dictionary-based record
+rec['age'] = 40.5
+rec['jobs'] = ['dev', 'mgr']
+print(rec['name'])
+```
+
+A class can do the same job with attributes instead of keys:
+
+```python
+class rec: pass                         # Empty namespace object
+rec.name = 'Pat'                        # Class-based record
+rec.age = 40.5
+rec.jobs = ['dev', 'mgr']
+print(rec.name)
+```
+
+The class version has less syntax. It uses an empty `class` statement to create a namespace, then fills it in with attributes. This works, but you need a new class for every distinct record. A better habit is to create instances of an empty class, one for each entity:
+
+```python
+class rec: pass
+pers1 = rec()                           # Instance-based records
+pers1.name = 'Bob'
+pers1.jobs = ['dev', 'mgr']
+pers1.age = 40.5
+
+pers2 = rec()
+pers2.name = 'Sue'
+pers2.jobs = ['dev', 'cto']
+print(pers1.name, pers2.name)           # Bob Sue
+```
+
+Each instance starts empty, then collects its own attributes. The two records do not even need the same set of names. Only `pers1` has an `age`. A class with a constructor and methods goes further. It keeps every record consistent and adds processing logic that a dictionary cannot hold:
+
+```python
+class Person:
+    def __init__(self, name, jobs, age=None):   # class = data + logic
+        self.name = name
+        self.jobs = jobs
+        self.age = age
+    def info(self):
+        return (self.name, self.jobs)
+
+rec1 = Person('Bob', ['dev', 'mgr'], 40.5)  # Construction calls
+rec2 = Person('Sue', ['dev', 'cto'])
+print(rec1.jobs, rec2.info())
+```
+
+The constructor sets `name`, `jobs`, and `age` on every instance. The `age` value can be left out, and the default `None` fills it in. Named tuples fit a similar role. They behave like classes with extra logic that maps attribute names to tuple positions. A dictionary holds the data, but it has no room for processing logic. A class packages both together.
+
+### Under the hood: namespaces are dictionaries
+
+Classes and instances are linked namespace objects, and Python usually stores each namespace as a dictionary. The `__dict__` attribute shows the namespace of an instance or a class, much as it does for a module. Here is the `rec` example from the previous section:
+
+```
+>>> list(key for key in rec.__dict__ if not key.startswith('__'))
+['name', 'age']
+>>> list(x.__dict__)
+['name']
+>>> list(y.__dict__)
+[]
+```
+
+The class holds `name` and `age`. The instance `x` has its own `name`, and the instance `y` is still empty. An attribute can be read with dictionary indexing or with dot notation, but only if the object holds it directly. Dot notation runs the inheritance search. Dictionary indexing checks one object only:
+
+```
+>>> x.name, x.__dict__['name']
+('Sue', 'Sue')
+>>> x.age                  # But attribute fetch checks classes too
+40
+>>> x.__dict__['age']      # Indexing dict does not do inheritance
+KeyError: 'age'
+>>> x.__dict__
+{'name': 'Sue'}
+>>> [attr for attr in dir(x) if attr[:2] != '__']
+['age', 'name']
+```
+
+The `dir` built-in collects inherited names as well. Two more attributes connect the class tree. Each instance has `__class__`, which points to the class that made it. Each class has `__bases__`, a tuple of its superclasses. A class with no explicit parent points to the implicit `object` root:
+
+```
+>>> x.__class__
+<class '__main__.rec'>
+>>> rec.__bases__
+(<class 'object'>,)
+```
+
+Because the namespaces are simple objects, a function can become a method later. Define a plain function that takes one object, then assign it to a class attribute:
+
+```
+>>> def uppername(obj):
+...     return obj.name.upper()     # Still needs a self argument (obj)
+>>> rec.method = uppername          # Now it's a class's method!
+>>> x.method()
+'SUE'
+>>> rec.method(x)                  # Can call through instance or class
+'SUE'
+```
+
+Normally a `class` statement and the methods inside it build these namespaces. The point is that Python simply looks up attributes in linked objects. Some classes define `__slots__` instead of `__dict__`, an advanced feature that Learning Python covers in Chapter 32.
+
 ## 2. Inheritance, composition and protocols
 
 ### Inheritance and `super()`

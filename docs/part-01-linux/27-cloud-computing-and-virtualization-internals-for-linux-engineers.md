@@ -59,6 +59,47 @@ After this chapter you can:
 
 Cloud providers offer virtualisation in the order they matured: hardware VMs first (EC2 in 2006), then OS-virtualised containers (managed container services, 2017 onwards), then lightweight microVMs (Firecracker, 2019). Clouds also provide their own services and APIs (autoscaling, load balancers, managed databases); these are provider-specific and covered by vendor documentation.
 
+### Why organisations move to the cloud
+
+Picture a small team with an idea for a new internet service. Without the cloud, the team must buy servers, find room for them, pay for power and cooling, and wait for the hardware to arrive. Cloud computing turns that order around. Capacity can arrive in minutes, and the team pays only for what it uses.
+
+The advantages fall into two groups. The first group is about how the technology behaves:
+
+- **Speed:** a company with large batch jobs gets results as fast as its programs can scale. Resources that once took months to buy and configure can arrive within minutes.
+- **On-demand self-service:** a consumer can provision server time or network storage automatically, without a person at the provider approving each request.
+- **Broad network access:** the services are reached over the network from phones, tablets, laptops and workstations.
+- **Resource pooling:** the provider pools resources for many consumers and reassigns storage, processing, memory and network bandwidth as demand changes.
+- **Measured service:** the system meters usage at a level that suits each service, so the right amount is delivered and little capacity sits idle.
+- **Rapid elasticity:** capacity is added or released, sometimes automatically, to scale out or in. To the consumer it often looks unlimited.
+
+The second group is about money and risk:
+
+- **No upfront investment:** pay-as-you-go pricing means a service can start without buying any infrastructure.
+- **Reduced operating cost:** resources are released when demand falls, so the provider does not have to size its capacity for the peak.
+- **Scalability:** the infrastructure can grow fast enough to handle a sudden rush of users, a pattern sometimes called surge computing.
+- **Easy access:** web-based services can be reached from any device with an internet connection.
+- **Lower business risk:** hardware failures move to the infrastructure provider, who often has better skills for handling them.
+
+### The challenges of cloud computing
+
+Moving work into someone else's data centre removes some burdens and adds new ones. Three challenges matter most to an engineer.
+
+The first is the **untrusted host**. Data stored off-premises face more security risks. The cloud sounds as if it lives somewhere in the sky, but the data sits in a real country and follows that country's rules. Most vendors give the customer little say over where data is stored. So encrypt the data with a key that the host does not hold. Otherwise a third party could read it without the customer knowing.
+
+The second is **replication**. Providers copy data across distant data centres so that a failure does not lose it, and they usually do this without being asked. Ask for the details of the replication scheme. Replicated data is not a guarantee of availability.
+
+The third is **slow transmission**. A centralised cloud struggles with latency-sensitive work and with the growing flood of data. Network bandwidth is finite and is not improving fast enough to carry all of it in real time. Fog and edge computing move processing closer to the data for this reason.
+
+### Cloud computing and the technologies behind it
+
+Cloud computing is not really a new technology. It joins several older ideas into one platform, and each idea contributes something different.
+
+- **Web services** package each piece of software as a self-described service. Users link several services to build a complex application.
+- **Grid computing** pools geographically spread machines. Users submit tasks to a grid portal, a broker picks resources, and results return to the user. Cloud goes further by using virtualisation at several levels to share and provision resources on the fly.
+- **Utility computing** gives each job a utility value, the money a user will pay for a measurable result such as run time or throughput. Providers aim to maximise profit while users compete on that value.
+- **Hardware virtualisation** is the foundation. It pools computing resources from clusters of servers and assigns virtual resources to applications on demand. A virtualised server is called a virtual machine (VM).
+- **Autonomic computing** aims at systems that manage themselves. Cloud shows some of this, such as automatic resource provisioning. Its main goal, though, is to lower the cost of resources, not to reduce the complexity of the system.
+
 ### Instance types
 
 Providers offer **families** (balanced general purpose, compute optimised, memory optimised, storage optimised, accelerated computing) in several **sizes** and **generations**, with fairly consistent price/performance across sizes so you pick the size that fits. Some providers also offer **custom machine types** (choose vCPU and memory). Because instances can be redeployed on a different type in minutes, **instance type becomes a tunable parameter**, which is a large change from buying hardware that you live with for years. Practical consequences: (1) benchmark candidate types with your workload; (2) record the CPU platform, because the same family may land on different silicon generations; (3) understand vCPU = hardware thread (usually), memory per vCPU ratios, network and disk performance tied to size, and limits that scale with size (egress bandwidth, IOPS).
@@ -90,6 +131,36 @@ An instance needs storage for the OS, software and scratch. **Ephemeral (instanc
 
 Because network storage and its network are shared, performance is less predictable than local disk; caches and provisioned performance help. For AI: datasets in object storage, staged to local NVMe or a parallel filesystem; checkpoints written to fast storage then copied asynchronously; avoid reading millions of small objects directly. Region co-location, egress fees and throughput limits per instance matter as much as raw speed.
 
+### Databases and data stores in the cloud
+
+Not all data fits neatly in a table. A cloud platform holds several kinds of data stores, and each one suits a different shape of data.
+
+**Relational databases** keep information in tables of rows and columns. Rows relate to each other through shared keys, and the systems that run them are called relational database management systems (RDBMS). They use SQL as the interface. Relational databases are easy to create, and a new data category can be added without changing existing applications. Their drawbacks are low performance and high storage use on large datasets. Variants include the object-oriented model and the dimensional model used in data warehouses.
+
+**NoSQL databases** (short for "not only SQL") store and retrieve data without the rules of an RDBMS. The label is recent, but the idea goes back to the late 1960s. NoSQL was built to solve scale and big-data performance problems that relational systems were not designed for. These databases are harder to configure and less mature. Which one fits depends on the problem.
+
+Several families fall under NoSQL:
+
+- **Key-value stores** are the simplest. Each value is stored with a key, and each key appears only once.
+- **Document-based stores** hold structured files, such as XML or CSV, and unstructured ones, such as PDF or Word documents. They use the structure inside each document to speed up queries.
+- **Column-oriented databases** store columns together rather than rows. They are the most common choice for big-data queries.
+- **Graph-oriented databases** store nodes and the edges between them. They suit data made of many connections.
+- **Multi-model databases** give one back end several data models. This follows the idea of polyglot persistence: use different tools for different problems.
+
+**NewSQL** aims to give relational systems the speed of NoSQL while keeping strong consistency and transactions. It suits applications with many short transactions on small amounts of data. Some organisations simply keep unstructured files in a directory, often because they lack the know-how to build a proper database.
+
+**Message brokers** sit between senders and receivers. A broker translates one messaging protocol into another. Data streams usually follow a publish and subscribe pattern, where the broker forwards each published message to all its subscribers. Senders and receivers never talk directly, which adds security and makes it easier to connect different systems. The cost is an extra hop that adds overhead, and the broker can become a single point of failure.
+
+**Centralised databases** serve one site and are accessed through a database management system (DBMS). A DBMS improves data sharing, enforces security policies, gives a single view of the organisation, and answers queries quickly. It also reduces data inconsistency, although it may not remove duplication entirely.
+
+**Decentralised databases** spread logically related databases across a network. Each site has its own processor and operating system, and a distributed DBMS hides the distribution from users. Such a system is more than a folder of files on several machines, because the data must be related and reachable through one common interface.
+
+**Cloud databases** are built on the data services of a cloud provider. The provider states measures such as availability, storage capacity and required throughput. It may not say what infrastructure lies underneath.
+
+**Data lakes** hold a large pool of raw structured and unstructured data. The data is not filtered the way a warehouse filters it. Its schema is not fixed when it is captured, and it can come from any source.
+
+**Object storage** dates from the early 1990s. It keeps huge amounts of unstructured data, such as pictures, files, songs and videos. Large consumer services use it for exactly this kind of content.
+
 ### Multitenancy
 
 Unix always shared resources among users; cloud shares them among *entire operating systems*. Each guest is isolated and cannot observe others (that would be an information leak), yet they share physical CPUs, caches, memory bandwidth, disks, NICs and fabrics. Hence **noisy neighbours**: another tenant's dump, backup or deliberate micro-benchmark saturates a shared resource. Mitigations are **resource controls** (performance isolation: per-tenant limits and priorities for CPU, memory, disk I/O, network) and the provider's placement policy; for tenants, mitigations are dedicated hosts/bare metal, larger instance sizes that own whole sockets, and monitoring (`%steal`, latency outliers). The observability you get depends on the virtualisation type (section 6).
@@ -97,6 +168,53 @@ Unix always shared resources among users; cloud shares them among *entire operat
 ### Orchestration (Kubernetes)
 
 Many organisations build private clouds on Kubernetes, and every major provider offers managed Kubernetes (GKE, EKS, AKS). The model: containers are deployed as **Pods** (co-located containers sharing a network namespace and often IPC/volumes); a **Service** gives a stable virtual IP and DNS name to a changing set of Pods; **Nodes** (machines) join a cluster through the API server; the scheduler places Pods using CPU/memory requests and limits, node labels, taints/tolerations and affinity; the Horizontal Pod Autoscaler scales replicas. Performance issues unique to Kubernetes: scheduling quality (placement relative to GPUs, NUMA, network topology), **container networking** (the CNI: Calico uses iptables/netfilter or eBPF, Cilium uses BPF and can replace kube-proxy; the number of Services affects kube-proxy rules), CPU limits and throttling (chapter 1.18), disk I/O contention (no I/O limit by default in older versions), and observability gaps. Part 5 and Part 7 cover Kubernetes and GPU scheduling in depth.
+
+### Service models: SaaS, PaaS and IaaS
+
+Every cloud buyer asks one question: which parts do I still have to run myself? The three service models answer it with different levels of control.
+
+**Software as a service (SaaS)** lets the consumer use the provider's applications through a thin client, such as a web browser, or through a program interface. The consumer does not manage the network, servers, operating systems or storage. It can change only limited, user-specific settings. Clients pay for access over time, on a pay-as-you-use basis, instead of buying software up front. The vendor handles support, patches and upgrades for every subscriber.
+
+SaaS has real limits. Data sits on the vendor's servers, which raises security questions. Hosting far away adds latency, so SaaS does not suit applications that need millisecond responses. Multi-tenant designs can limit customisation for large clients. Moving very large files to a new vendor is slow. Clients may also be forced onto new versions, which can bring training costs and more user errors.
+
+Each SaaS consumer chooses between two options. It can share the software with other consumers (multi-tenancy), which shares the total cost and creates economies of scale. Or it can be a single tenant, which gives more control and security but no shared savings.
+
+**Platform as a service (PaaS)** gives developers a platform and environment for building and delivering applications over the internet. The consumer controls its own applications and some hosting settings. It does not control the servers, operating systems, network or storage underneath. The provider manages the infrastructure, keeps services updated, and helps from the first idea through testing and deployment. A package can be a simple point-and-click framework or a set of infrastructure options for advanced developers.
+
+PaaS suits new applications for the web, mobile devices and PCs. Clients pay a subscription for what they use, and they avoid buying hardware or hiring people to run it. Non-experts can build apps through a browser, and teams in different places can work on one build. The provider also supplies security, backup and recovery.
+
+PaaS has three security limits. Information processing is risky because bulky data may be processed live on a shared server, where it can be intercepted, although stored data stays protected. Information interactivity is risky because data crosses PCs, networks and phones on its way to users. Data storage is hard to verify, because the data always lives on shared servers.
+
+**Infrastructure as a service (IaaS)** lets the consumer provision processing, storage, networks and other basic computing resources, then run any software it likes on them. Offerings include virtual server space, network connections, bandwidth, IP addresses and load balancers. The hardware comes from many servers and networks spread over several data centres, all maintained by the provider. The consumer manages its operating systems, storage and applications, and has some control over networking.
+
+IaaS brings several benefits. The consumer chooses its operating system, database and development environment. It can grow or shrink with demand instead of buying hardware. Websites gain redundancy from a large pool of servers. Virtual data centres can be built from interconnected virtual servers. Billing is by actual use, and the service can be reached from any location with an internet connection. If one whole data centre goes offline, the service can often keep running.
+
+Several factors slow down the adoption of IaaS:
+
+- Concerns about the security and confidentiality of data.
+- Lack of time and resources to analyse the offerings and the providers.
+- Uncertainty about whether providers will keep their promises.
+- Lack of confidence in a shared infrastructure.
+- Doubt that the provider can add capacity fast enough.
+- No internal strategy for IaaS.
+- Lack of people to design and implement solutions.
+- The relative immaturity of the technologies to be installed and managed.
+- Savings that are not large enough to matter.
+
+### Public, private, community and hybrid clouds
+
+Clouds come in four kinds. The difference is who owns them and who may use them.
+
+- **Private cloud:** the internal data centres of one organisation, not open to the public. A single organisation can serve several business units from it. The organisation, a third party or a mix can run it, on or off its premises.
+- **Community cloud:** built for a group of organisations with shared concerns, such as mission, security needs, policy or compliance. Members or a third party can run it.
+- **Public cloud:** open for use by the public and owned by a business, an academic body, a government or a mix. It sits on the provider's premises and is elastic, so it scales readily.
+- **Hybrid cloud:** two or more distinct clouds that keep their own identities. Standard or proprietary technology binds them so that data and applications can move between them.
+
+A hybrid model is usually a private cloud that taps a public cloud when it needs extra capacity. Sensitive data can stay in the private side, which helps when industry or financial rules apply. The hybrid model is also the most utility-oriented choice. Adding public capacity is much easier than growing a private cloud, so a hybrid setup can deliver strong computing power without a large budget.
+
+### Cloud architecture: front end and back end
+
+Cloud computing has two halves. The **front end** is what clients see. It can be a browser, an operating system, a tablet or a phone. The **back end** is the provider's side, made of servers and storage that together are called the cloud.
 
 ## 2. Three ways to virtualise
 

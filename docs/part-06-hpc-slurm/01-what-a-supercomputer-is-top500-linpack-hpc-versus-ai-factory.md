@@ -250,6 +250,76 @@ When an AI platform extends beyond a single data center, distributed computing s
 
 Where do **Slurm** and **Kubernetes** fit across these models? **Slurm** was built specifically for the HPC cluster model: a fixed pool of nodes executing queued, finite batch jobs with exclusive resource allocation, gang scheduling, and strict fair-share accounting. **Kubernetes** was built for the HA and cloud service model, maintaining continuously running desired state across pods and load-balanced services. It requires specialized batch operators like Kueue, Volcano, KAI Scheduler, or JobSet when adapted for tightly coupled GPU training.
 
+### Fog computing: moving intelligence onto the local network
+
+Picture a plant that sends every sensor reading to a distant cloud and then waits for the answer. Each round trip takes time, and the plant cannot act while it waits. Fog computing solves this by placing processing closer to the devices that produce the data.
+
+Fog computing, also called fog networking or fogging, is a decentralised structure that sits between data-producing devices, such as Internet of Things (IoT) devices, and the cloud. It extends the cloud architecture to the edge of the network, so the cloud is involved less. Bringing processing units nearer the end devices improves how computing power is used and shortens task execution and processing time. Fog pushes intelligence down to the local network. Edge devices and gateways handle the work, and data flows from the endpoints to a gateway for processing and back again.
+
+Fog computing offers these benefits:
+
+- Enhanced security and increased business agility.
+- Improved reliability and minimised latency.
+- Flexible mobility and better overall network performance, because the distance across the network is shorter.
+- Time-sensitive analysis at the network edge, instead of sending all IoT data to the cloud.
+- Fast response, measured in milliseconds.
+
+Fog has limits too. Its architecture depends on many links in a chain that carries data from physical assets into the digital world, and each link can fail. Its latency and bandwidth are still limited, and it still depends on the cloud.
+
+The fog model has three layers. The **cloud layer** holds data centres and servers with large storage and computing power. They manage and process the data that arrives from the fog layer. The **fog layer** holds fog nodes, which are network devices with enough processing and temporary storage. A fog node receives requests from devices and decides whether to process a request locally or send it to the cloud. The **terminal layer** holds the IoT and end-user devices that sense the physical world and send their data up to the fog layer.
+
+### Edge computing: processing at the device
+
+Edge computing places computing resources and storage at the edge of the network, close to the end user. It works together with the cloud, so it can be seen as a more localised version of fog and cloud computing. It grew out of peer-to-peer networking, distributed data, self-healing networks and remote cloud services. It runs on small form-factor hardware with flash storage arrays, and its processors offer better hardware security with low power use.
+
+Edge computing is built on the idea of cloudlets. A cloudlet is like a Wi-Fi hotspot that offers cloud services without Wi-Fi internet connectivity. The only rule on where it sits is that it must be at the edge of the network or near the user.
+
+Edge computing brings clear advantages:
+
+- It reduces latency between end devices and the cloud.
+- It uses the resources of both the cloud and the local devices, because each device both produces and consumes data.
+- It reduces network cost and transmission delay, and gives better control over sensitive data movements.
+- It helps augmented and virtual reality applications, which benefit from low response times.
+- It can keep data local, so the local data stays safe if the data centre is compromised.
+- It can hold data locally and send it to the cloud later, when enough bandwidth is free.
+- It reduces network traffic and the risk of a data bottleneck.
+
+Edge computing processes sensor data close to where it is produced, instead of carrying it to a central node. Devices at the edge triage their data locally, which cuts the traffic sent to the central repository. This also removes parts of the fog communication chain and reduces the number of possible failure points. An edge device can be any device with enough computing capacity, including switches, routers and sensors.
+
+For IoT, edge devices collect and process the data that sensors send. Without edge computing, that data would travel back and forth to the cloud, which slows responses and wastes efficiency. Because processing happens nearer the source, the data is handled faster, with lower latency, and less bandwidth is used.
+
+### Fusing data from many sensors
+
+Edge devices often collect readings from several sensors at once. Combining those readings into one picture is called data fusion. It sounds simple, but the readings rarely agree perfectly, so fusion has to handle several problems:
+
+- **Imprecision and uncertainty:** no measurement is perfect, so each reading carries some level of uncertainty.
+- **Spurious data and outliers:** data can be noisy or hard to read, and faulty or imprecise measurements can produce extreme values.
+- **Modality:** the data may mix visual, auditory and physical measurements.
+- **Conflict:** different sensors can report values that contradict each other, and these are hard to fuse.
+- **Operational timing:** different parts of the data can take different routes to the fusion point, so they arrive out of sequence.
+- **Dynamic versus static:** some values come from a phenomenon that does not change over time, while others change constantly.
+- **Dimensionality:** measurements can come in different dimensions, so they must be reduced to the needed dimensions, either at the sensor node or at the fusion centre.
+- **Correlation:** nearby sensors can share the same external noise. If those shared dependencies are ignored, the result can be inconsistent.
+- **Alignment and registration:** each sensor uses its own local frame, so the data must be placed in one standard frame before fusion.
+
+Two more terms matter here. Data association means finding meaningful relations between variables, often quite different ones, inside large databases. The processing framework decides whether fusion is centralised or decentralised. Decentralised fusion is usually preferred in wireless sensor networks, because it lowers the communication load and lets each sensor process its own data. Data quality has to be considered from collection through to fusion.
+
+### Cloud, fog and edge compared
+
+These three architectures look alike, but they differ in important ways. Each one meets a different set of needs. The table below shows the main differences.
+
+| Points of difference | Cloud computing | Fog computing | Edge computing |
+|---|---|---|---|
+| Location of data processing | Central cloud server | Within an IoT gateway or fog nodes located in the LAN network | Device itself |
+| Purpose | Long-term in-depth analysis | Quick analysis and real-time response | Quick analysis and real-time response |
+| Latency | High | Low | Very low |
+| Security | Less secure | High security | High security |
+| Geographical distribution | Centralised | Distributed | Distributed |
+
+The three are not interchangeable. Time-sensitive data is processed at the edge, while data that is not time-driven goes to the cloud. Fog uses a centralised system that works with industrial gateways and embedded computers on a LAN. Edge computing does much of its processing on embedded platforms that connect directly to sensors and controllers.
+
+Organisations that rely heavily on data are increasingly using cloud, fog and edge infrastructure together. Most enterprises are moving toward fog or edge designs to make better use of their end-user and industrial IoT devices. Integrating a cloud platform with on-site fog networks or edge devices often gives the best results.
+
 **Match your orchestrator and fault-tolerance design to the coupling of the workload**. Use gang scheduling and fast checkpoints for tightly coupled HPC and NCCL jobs, and stateless failover or task retries for HA and HTC pools.
 
 > **In one minute:**

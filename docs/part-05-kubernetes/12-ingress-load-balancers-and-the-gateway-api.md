@@ -96,6 +96,291 @@ In *Kubernetes: Up and Running* Chapter 8 (*HTTP Load Balancing with Ingress*) a
 3. **Default `IngressClass` and `defaultBackend` (`KUR` Chapter 8):** Marking an `IngressClass` with `ingressclass.kubernetes.io/is-default-class: "true"` makes it handle any Ingress that omits `spec.ingressClassName`; setting `spec.defaultBackend` handles requests that do not match any `rules` host/path.
 4. **Cloud Container-Native Load Balancing (`NK` Chapter 6):** On GKE (**Network Endpoint Groups `NEGs`**) and AWS EKS (**AWS Load Balancer Controller** with `alb.ingress.kubernetes.io/target-type: ip`), the cloud L7 load balancer watches Pod IPs directly and routes from the cloud edge straight to Pod IPs—bypassing `NodePort` and `kube-proxy` hops entirely and integrating natively with **Google Cloud Armor / Cloud CDN / IAP** or **AWS WAF**.
 
+### Why Ingress has no default controller
+
+Ingress is built differently from most Kubernetes objects. It is split into a common resource specification and a controller implementation. You can create and change Ingress objects like any other object, but by default no code runs to act on them. Someone has to install and manage an outside controller, or the distribution you use has to do it for you. That split is what makes the controller pluggable.
+
+The reason is practical. No single HTTP load balancer works everywhere. Teams run open source proxies, cloud load balancers such as ELB on AWS, and hardware appliances. The Ingress object also arrived before Kubernetes had its common extension features (see Chapter 17), so it will likely change to use them over time.
+
+### Installing Contour
+
+The examples in this chapter use a controller called Contour. Contour is built to configure Envoy, an open source (CNCF) load balancer that can be changed on the fly through an API. Contour translates Ingress objects into something Envoy can understand. The project started at Heptio with real customers and runs in production today, but it is now an independent open source project.
+
+You can install Contour with one line:
+```
+$ kubectl apply -f https://projectcontour.io/quickstart/contour.yaml
+```
+The user running this needs `cluster-admin` permissions. The line works for most configurations. It creates a namespace called `projectcontour` and a Deployment with two replicas. It also creates an external-facing Service of `type: LoadBalancer`, sets up permissions through a service account, and installs a CustomResourceDefinition for the extra features covered in "The Future of Ingress."
+
+Because this is a global install, you need wide admin rights on the cluster. When it finishes, look up the external address of Contour:
+```
+$ kubectl get -n projectcontour service envoy -o wide
+NAME CLUSTER-IP EXTERNAL-IP PORT(S) ...
+contour 10.106.53.14 a477...amazonaws.com 80:30274/TCP ...
+```
+Check the `EXTERNAL-IP` column. It holds an IP address on GCP and Azure, and a hostname on AWS. Other clouds may differ. If your cluster does not support `type: LoadBalancer`, change the Contour YAML to use `type: NodePort` and send traffic to the cluster machines another way.
+
+With `minikube`, the `EXTERNAL-IP` column probably stays empty. Open a second terminal and run `minikube tunnel`. It sets up network routes so that every Service of `type: LoadBalancer` gets its own unique IP address.
+
+### Pointing DNS names at the controller
+
+People reach websites by name, not by IP address. Many hostnames can share one external endpoint. The Ingress controller then sends each request to the right upstream service based on the hostname.
+
+This chapter assumes you have a domain called `example.com`. You need two DNS entries: `alpaca.example.com` and `bandicoot.example.com`. Create A records if you have an IP address for the external load balancer. Create CNAME records if you have a hostname instead.
+
+ExternalDNS can manage these records for you. It is a cluster add-on that keeps the IP addresses of Kubernetes Service resources in sync with an external DNS provider. It supports traditional domain registrars as well as public cloud providers.
+
+### Testing with a local hosts file
+
+If you don't have a domain, or you are using a local tool such as `minikube`, you can point the names at the controller in your hosts file. Editing this file needs admin or root rights. The file lives in a different place on each platform, and the change may need extra steps to take effect. On Windows, the file is usually at `C:\Windows\System32\drivers\etc\hosts`. On recent versions of macOS, run `sudo killall -HUP mDNSResponder` after you change it.
+
+Add a line like this one, with the external IP address of Contour:
+```
+<ip-address> alpaca.example.com bandicoot.example.com
+```
+If all you have is a hostname, as on AWS, `host -t a <address>` gives you an IP address. That address may change later. Don't forget to remove the line when you are done.
+
+### Creating three sample services
+
+Before you route anything, you need upstream services to route to. The book calls these backends. The next commands create three Deployments of the same `kuard` app, each with three replicas on port 8080. The images differ only by tag: `blue`, `green` and `purple`. Each Deployment also gets a Service.
+```
+$ kubectl create deployment be-default \
+--image=gcr.io/kuar-demo/kuard-amd64:blue \
+--replicas=3 \
+--port=8080
+$ kubectl expose deployment be-default
+$ kubectl create deployment alpaca \
+--image=gcr.io/kuar-demo/kuard-amd64:green \
+--replicas=3 \
+--port=8080
+$ kubectl expose deployment alpaca
+$ kubectl create deployment bandicoot \
+--image=gcr.io/kuar-demo/kuard-amd64:purple \
+--replicas=3 \
+--port=8080
+$ kubectl expose deployment bandicoot
+$ kubectl get services -o wide
+NAME CLUSTER-IP ... PORT(S) ... SELECTOR
+alpaca 10.115.245.13 ... 8080/TCP ... run=alpaca
+bandicoot 10.115.242.3 ... 8080/TCP ... run=bandicoot
+be-default 10.115.246.6 ... 8080/TCP ... run=be-default
+kubernetes 10.115.240.1 ... 443/TCP ... <none>
+```
+
+### Simplest Ingress: send everything to one service
+
+The simplest use of Ingress is to pass everything it sees to one upstream service. `kubectl` has only limited commands for Ingress, so start with a YAML file.
+
+Example 8-1. `simple-ingress.yaml`
+```
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+name: simple-ingress
+spec:
+defaultBackend:
+service:
+name: alpaca
+port:
+number: 8080
+```
+Create it with `kubectl apply`:
+```
+$ kubectl apply -f simple-ingress.yaml
+ingress.extensions/simple-ingress created
+```
+Check the result with `kubectl get` and `kubectl describe`:
+```
+$ kubectl get ingress
+NAME HOSTS ADDRESS PORTS AGE
+simple-ingress * 80 13m
+$ kubectl describe ingress simple-ingress
+Name: simple-ingress
+Namespace: default
+Address:
+Default backend: alpaca:8080
+(172.17.0.6:8080,172.17.0.7:8080,172.17.0.8:8080)
+Rules:
+Host Path Backends
+---- ---- --------
+* * alpaca:8080 (172.17.0.6:8080,172.17.0.7:8080,172.17.0.8:8080)
+Annotations:
+...
+Events: <none>
+```
+With this file, every HTTP request that reaches the controller goes to the `alpaca` service. You can reach it through any of the raw IPs or CNAMEs of the service, which in this case means either `alpaca.example.com` or `bandicoot.example.com`. On its own, this adds little over a plain Service of `type: LoadBalancer`. The next sections try more complex setups.
+
+### Routing by hostname
+
+Ingress gets useful when it routes on something in the request. The most common case is the HTTP `Host` header, which carries the DNS name from the original URL. Example 8-2 adds a second Ingress that sends traffic for `alpaca.example.com` to the `alpaca` service.
+
+Example 8-2. `host-ingress.yaml`
+```
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+name: host-ingress
+spec:
+defaultBackend:
+service:
+name: be-default
+port:
+number: 8080
+rules:
+- host: alpaca.example.com
+http:
+paths:
+- pathType: Prefix
+path: /
+backend:
+service:
+name: alpaca
+port:
+number: 8080
+```
+Create it with `kubectl apply`:
+```
+$ kubectl apply -f host-ingress.yaml
+ingress.extensions/host-ingress created
+```
+Check that it is set up correctly:
+```
+$ kubectl get ingress
+NAME HOSTS ADDRESS PORTS AGE
+host-ingress alpaca.example.com 80 54s
+simple-ingress * 80 13m
+$ kubectl describe ingress host-ingress
+Name: host-ingress
+Namespace: default
+Address:
+Default backend: be-default:8080 (<none>)
+Rules:
+Host Path Backends
+---- ---- --------
+alpaca.example.com
+/ alpaca:8080 (<none>)
+Annotations:
+...
+Events: <none>
+```
+Two things in this output look odd. First, there is a reference to `default-http-backend`. Some Ingress controllers use a convention: they send any request they can't handle elsewhere to a service called `default-http-backend` in the `kube-system` namespace. `kubectl` shows that convention to you. Second, no endpoints are listed for the `alpaca` backend. That is a `kubectl` bug, fixed in Kubernetes v1.14.
+
+You should now be able to reach the `alpaca` service at `http://alpaca.example.com`. If you reach the service by other methods, you get the default service instead.
+
+### Routing by path
+
+The next step is to route on the path as well as the hostname. You do this by adding a `path` to the `paths` entry. Example 8-3 sends everything for `bandicoot.example.com` to the `bandicoot` service. It also sends `bandicoot.example.com/a` to the `alpaca` service. You can use this to host several services on different paths of one domain.
+
+Example 8-3. `path-ingress.yaml`
+```
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+name: path-ingress
+spec:
+rules:
+- host: bandicoot.example.com
+http:
+paths:
+- pathType: Prefix
+path: "/"
+backend:
+service:
+name: bandicoot
+port:
+number: 8080
+- pathType: Prefix
+path: "/a/"
+backend:
+service:
+name: alpaca
+port:
+number: 8080
+```
+When several paths on the same host match, the longest prefix wins. In this example, traffic that starts with `/a/` goes to the `alpaca` service. All other traffic, which starts with `/`, goes to the `bandicoot` service.
+
+The proxy does not change the path as it forwards the request. A request to `bandicoot.example.com/a/` reaches the upstream server with the same path. The upstream service has to be ready to serve that subpath. The `kuard` app has special test code for this. It answers on the root path (`/`) and on a fixed set of subpaths: `/a/`, `/b/` and `/c/`.
+
+### Cleaning up the sample
+
+To remove the sample objects, run:
+```
+$ kubectl delete ingress host-ingress path-ingress simple-ingress
+$ kubectl delete service alpaca bandicoot be-default
+$ kubectl delete deployment alpaca bandicoot be-default
+```
+
+### Annotations and gotchas
+
+Ingress supports other advanced features too. How well each one works depends on the controller, and two controllers may implement the same feature in slightly different ways. Many of these features are set through annotations on the Ingress object. Annotations are easy to get wrong and hard to validate. They also apply to the whole Ingress object, so they can reach further than you intended. To narrow their scope, split one Ingress object into several. The controller reads them and merges them together.
+
+If you create more than one Ingress object, the controllers should read them all and merge them into one config. Duplicate or conflicting settings, however, have undefined behavior. Different controllers may handle the same conflict differently, and even one controller may behave differently depending on factors that are not obvious.
+
+### Ingress and namespaces
+
+Ingress interacts with namespaces in a few non-obvious ways. For security reasons, an Ingress object can point only to an upstream service in its own namespace. You therefore cannot use one Ingress object to send a subpath to a service in another namespace.
+
+Multiple Ingress objects in different namespaces can, however, define subpaths for the same host. The controller merges them into one final config. This means that Ingress has to be coordinated across the whole cluster. If one namespace is careless, its Ingress object can cause problems, or undefined behavior, in other namespaces.
+
+By default, the Ingress controller places no restriction on which namespaces may claim which hostnames and paths. Advanced users may try to enforce a policy with a custom admission controller. The evolutions of Ingress covered in "The Future of Ingress" also address this problem.
+
+### Path rewriting
+
+Some Ingress controllers can optionally rewrite the path. They change the path in the HTTP request as the request is proxied. This is usually set with an annotation on the Ingress object, and it applies to every request that object handles. With the NGINX Ingress controller, for example, you can set `nginx.ingress.kubernetes.io/rewrite-target: /`. Rewriting can make an upstream service work on a subpath, even when the service was not built for one.
+
+Several implementations go further and support regular expressions in the path. The NGINX controller, for instance, can capture parts of the path and reuse them when it rewrites. How that works, and which regular expression variant is used, depends on the implementation.
+
+Rewriting is not a silver bullet, though, and it often causes bugs. Many web apps link to themselves with absolute paths. An app served on `/subpath` may receive its requests on `/`, then send a user to `/app-path`. It is unclear whether that link is internal, in which case it should be `/subpath/app-path`, or a link to a different app. For that reason, avoid subpaths for complicated applications when you can.
+
+### Serving TLS
+
+Secure HTTPS is now the norm for websites. Ingress supports TLS, as do most Ingress controllers. First, you give Ingress a Secret that holds your certificate and private key. Example 8-4 shows the shape. You can also create the Secret from the command line with `kubectl create secret tls <secret-name> --cert <certificate-pem-file> --key <private-key-pem-file>`.
+
+Example 8-4. `tls-secret.yaml`
+```
+apiVersion: v1
+kind: Secret
+metadata:
+creationTimestamp: null
+name: tls-secret-name
+type: kubernetes.io/tls
+data:
+tls.crt: <base64 encoded certificate>
+tls.key: <base64 encoded private key>
+```
+After the certificate is uploaded, reference it from an Ingress object. The Ingress lists the certificates and the hostnames each one should serve. Example 8-5 shows this. If several Ingress objects name certificates for the same hostname, the behavior is undefined.
+
+Example 8-5. `tls-ingress.yaml`
+```
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+name: tls-ingress
+spec:
+tls:
+- hosts:
+- alpaca.example.com
+secretName: tls-secret-name
+rules:
+- host: alpaca.example.com
+http:
+paths:
+- backend:
+serviceName: alpaca
+servicePort: 8080
+```
+Uploading and managing TLS secrets by hand is hard, and certificates can cost a lot. Let's Encrypt helps here. It is a nonprofit that runs a free, API-driven Certificate Authority, so a cluster can fetch and install certificates automatically. This is tricky to set up, but it is very simple to use once it works. The missing piece is cert-manager, an open source project created by Jetstack, a UK startup, and since onboarded to the CNCF. The cert-manager.io website and GitHub repository explain how to install it.
+
+### Where Ingress is heading
+
+Ingress is a useful abstraction for configuring L7 load balancers, but it has not grown to cover every feature users want. Various implementations want to offer more. Many Ingress features are underdefined, so each implementation may expose them differently. That lowers the portability of configurations between implementations.
+
+Ingress is also easy to misconfigure. Multiple objects can combine into conflicts, and implementations resolve those conflicts differently. Merging objects across namespaces also breaks the idea of namespace isolation.
+
+Ingress came before the service mesh idea, exemplified by projects such as Istio and Linkerd, was well known. How Ingress and service meshes should fit together is still being worked out. Chapter 15 covers service meshes in more detail.
+
+The future of HTTP load balancing in Kubernetes looks like the Gateway API. The Kubernetes networking special interest group (SIG) is developing it to provide a more modern API for routing. It focuses on HTTP but also includes resources for Layer 4 (TCP) balancing. The Gateway APIs are still under development, so stick to the Ingress and Service resources that exist in Kubernetes today.
+
 ### Controllers
 
 | Controller | Proxy | Notes |
