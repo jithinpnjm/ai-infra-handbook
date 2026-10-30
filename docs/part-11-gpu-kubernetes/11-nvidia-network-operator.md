@@ -319,13 +319,13 @@ Summary: 25 passed, 0 failed out of 25 checks.
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. What is straggler amplification in distributed AI training, and why does it make packet loss far more expensive than in web microservices?`&lt;/strong>`</summary>
+<summary>**1. What is straggler amplification in distributed AI training, and why does it make packet loss far more expensive than in web microservices?**</summary>
 
 In synchronous collective operations such as AllReduce, AllGather, and ReduceScatter, every GPU in the job must wait at a barrier until the last rank finishes its transfer. If a single packet drop on one link forces one GPU to wait for a retransmission timeout, all other GPUs in the collective stall idle. That synchronization multiplies a single link delay across the entire cluster and sharply reduces Model Flops Utilization.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What are the four core RDMA queue and memory primitives used by ConnectX HCAs?`&lt;/strong>`</summary>
+<summary>**2. What are the four core RDMA queue and memory primitives used by ConnectX HCAs?**</summary>
 
 1. **Queue Pairs.** Communication endpoints consisting of a Send Queue and a Receive Queue.
 2. **Work Requests.** Hardware instructions posted by the application to the Send or Receive Queue, such as RDMA Write or Send.
@@ -334,7 +334,7 @@ In synchronous collective operations such as AllReduce, AllGather, and ReduceSca
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What are the five node-level components deployed and reconciled by the NVIDIA Network Operator?`&lt;/strong>`</summary>
+<summary>**3. What are the five node-level components deployed and reconciled by the NVIDIA Network Operator?**</summary>
 
 1. **MOFED or DOCA-OFED Driver DaemonSet (`ofedDriver`).** Compiles or loads `mlx5_core`, `ib_core`, and `ib_uverbs` into the host kernel.
 2. **NV Peer Memory DaemonSet (`nvPeerDriver`).** Loads `nvidia-peermem` to bridge `ib_core` and the NVIDIA GPU driver for GPUDirect RDMA.
@@ -344,20 +344,20 @@ In synchronous collective operations such as AllReduce, AllGather, and ReduceSca
 </details>
 
 <details>
-<summary>`&lt;strong>`4. In what order must Mellanox OFED and the NVIDIA GPU driver / nvidia-peermem be initialized on a host, and why?`&lt;/strong>`</summary>
+<summary>**4. In what order must Mellanox OFED and the NVIDIA GPU driver / nvidia-peermem be initialized on a host, and why?**</summary>
 
 Mellanox OFED must load first, followed by the NVIDIA GPU driver, and then `nvidia-peermem`. The peer-memory module links against kernel symbols exported by both `ib_core` from MOFED and `nvidia.ko` to register GPU BAR1 peer memory. If MOFED is not loaded first, peer-memory registration fails.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. Compare the packet framing headers of native InfiniBand versus RoCEv2 from outer header to inner checksum.`&lt;/strong>`</summary>
+<summary>**5. Compare the packet framing headers of native InfiniBand versus RoCEv2 from outer header to inner checksum.**</summary>
 
 - **InfiniBand.** Uses a Local Routing Header of 8 bytes, an optional Global Routing Header of 40 bytes across subnets, and a Base Transport Header of 12 bytes. After the payload, it appends an Invariant CRC of 4 bytes and a Variant CRC of 2 bytes. Total framing is 26 bytes without the Global Routing Header or 66 bytes with it.
 - **RoCEv2.** Uses an Ethernet L2 header with an optional VLAN tag, an IPv4 or IPv6 header, and a UDP header with destination port 4791. Inside UDP, it carries a Base Transport Header of 12 bytes, the payload, an Invariant CRC of 4 bytes, and an Ethernet FCS.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. What three Ethernet technologies are required to make RoCEv2 operate losslessly, and how do they interact?`&lt;/strong>`</summary>
+<summary>**6. What three Ethernet technologies are required to make RoCEv2 operate losslessly, and how do they interact?**</summary>
 
 1. **Priority Flow Control (IEEE 802.1Qbb).** Sends link-level pause frames upstream on a lossless priority class such as Priority 3 before a switch ingress buffer overflows.
 2. **Explicit Congestion Notification.** Marks packets in the IP header when switch queue depth crosses a minimum threshold of 150 KB before hitting the maximum threshold at 1500 KB.
@@ -365,7 +365,7 @@ Mellanox OFED must load first, followed by the NVIDIA GPU driver, and then `nvid
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How does ibstat output differ between a healthy 200Gbps InfiniBand HDR port and a healthy 400Gbps RoCEv2 Ethernet port?`&lt;/strong>`</summary>
+<summary>**7. How does ibstat output differ between a healthy 200Gbps InfiniBand HDR port and a healthy 400Gbps RoCEv2 Ethernet port?**</summary>
 
 Both ports must show an active logical state and a physical link-up state.
 - **InfiniBand port.** Shows an InfiniBand link layer at 200 Gbps HDR and non-zero `Base lid: 32` and `SM lid: 1` assigned by the centralized Subnet Manager.
@@ -373,49 +373,49 @@ Both ports must show an active logical state and a physical link-up state.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What does it mean if ibstat on an InfiniBand port shows Physical state: LinkUp, but State: Initializing?`&lt;/strong>`</summary>
+<summary>**8. What does it mean if ibstat on an InfiniBand port shows Physical state: LinkUp, but State: Initializing?**</summary>
 
 `Physical state: LinkUp` proves the optical transceiver and fiber cable have physical light and layer-1 lock. `State: Initializing` means the InfiniBand Subnet Manager has not yet discovered the port and assigned it a Local Identifier. Either the Subnet Manager daemon is down or fabric management traffic is blocked.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. When running ib_write_bw -d mlx5_0 -i 1 across two nodes, what line-rate bandwidth should you expect on 200Gbps HDR versus 400Gbps NDR?`&lt;/strong>`</summary>
+<summary>**9. When running ib_write_bw -d mlx5_0 -i 1 across two nodes, what line-rate bandwidth should you expect on 200Gbps HDR versus 400Gbps NDR?**</summary>
 
 A 200 Gbps HDR link has a raw line rate of 25 GB/s, so `ib_write_bw` reports around 23,500.2 MB/sec peak and 23,450.5 MB/sec average after protocol headers. A 400 Gbps NDR link has a raw line rate of 50 GB/s, achieving around 47 to 48 GB/s in `ib_write_bw`.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. What is a PFC deadlock in a RoCEv2 fabric, and what two mechanisms prevent or break it?`&lt;/strong>`</summary>
+<summary>**10. What is a PFC deadlock in a RoCEv2 fabric, and what two mechanisms prevent or break it?**</summary>
 
 A PFC deadlock occurs when cyclical buffer dependencies cause Switch A to pause Switch B, B to pause C, C to pause D, and D to pause A. All traffic halts with zero data packets transmitted while pause counters climb. Prevention requires a strictly loop-free Clos topology and enabling the PFC Watchdog on switches and NICs to drop packets paused longer than 50 ms.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. On an 8,000-GPU RoCEv2 cluster, NCCL AllReduce steps vary wildly between 10ms and 500ms while average link utilization is only 20%–40%. PFC pauses are high, but ECN marks are low. What is wrong and how do you fix it?`&lt;/strong>`</summary>
+<summary>**11. On an 8,000-GPU RoCEv2 cluster, NCCL AllReduce steps vary wildly between 10ms and 500ms while average link utilization is only 20%–40%. PFC pauses are high, but ECN marks are low. What is wrong and how do you fix it?**</summary>
 
 Synchronized AI incast microbursts are filling switch buffers in microseconds, and the switch ECN marking threshold (`minimum-absolute`) is set too high. Because buffers hit the PFC threshold before ECN can mark packets and trigger DCQCN rate reduction, traffic is abruptly halted by pause frames. Lowering the switch minimum ECN threshold engages smooth DCQCN throttling before PFC fires.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Why can running tcpdump -i eth2 udp port 4791 on a worker node host miss RoCEv2 packets, and what should you use instead?`&lt;/strong>`</summary>
+<summary>**12. Why can running tcpdump -i eth2 udp port 4791 on a worker node host miss RoCEv2 packets, and what should you use instead?**</summary>
 
 Because RDMA on ConnectX NICs is hardware kernel-bypassed, RoCEv2 packets on UDP port 4791 flow directly between the NIC ASIC and PCIe memory. They never pass through the Linux kernel network tap where `tcpdump` listens. Use the `ibdump` utility to read hardware sniffer queues on the ConnectX HCA, or use switch port mirroring.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. What causes an InfiniBand Subnet Manager (OpenSM / UFM) "Heavy Sweep" storm, and how do you isolate the faulty link?`&lt;/strong>`</summary>
+<summary>**13. What causes an InfiniBand Subnet Manager (OpenSM / UFM) "Heavy Sweep" storm, and how do you isolate the faulty link?**</summary>
 
 A Heavy Sweep storm occurs when a degraded optical cable or transceiver repeatedly flaps up and down, forcing the centralized Subnet Manager to recompute cluster routing tables continuously. Run `ibdiagnet -c 1000` and inspect `ibdiagnet2.pm` to find the port with a high symbol error counter, then disable that port until the cable is replaced.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. What are the prerequisites and port-configuration steps for deploying the NVIDIA NetQ Operator in Base Command Manager 11 (BCM 11)?`&lt;/strong>`</summary>
+<summary>**14. What are the prerequisites and port-configuration steps for deploying the NVIDIA NetQ Operator in Base Command Manager 11 (BCM 11)?**</summary>
 
 In BCM 11, NetQ 4.15+ requires 1 compute node exposed on NodePort 30029 or 3 compute nodes exposed via a Virtual IP such as `10.141.255.253`. Each node needs at least 250 GiB disk and 64 GiB RAM, with Kyverno disabled. Before running the setup wizard, shift BCM port 8081 on the head nodes via `cm-cmd-ports --http 8083 --https 8084 && systemctl restart cmd`.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What are the four storage tiers in an AI Factory (Volume 06 Chapter 3), and what is the HBM capacity and bandwidth progression from A100 to H100, H200, and B200?`&lt;/strong>`</summary>
+<summary>**15. What are the four storage tiers in an AI Factory (Volume 06 Chapter 3), and what is the HBM capacity and bandwidth progression from A100 to H100, H200, and B200?**</summary>
 
 - **Tier 0 (GPU HBM).** Scales from 40 or 80 GB at 1.5 to 2.0 TB/s on A100, to 80 GB at 3.35 TB/s on H100, to 141 GB at 4.8 TB/s on H200, and 192 GB at 8 TB/s on B200.
 - **Tier 1 (Host NVMe Cache).** Uses local PCIe NVMe drives such as 8 drives of 3.84 TB for 30.72 TB RAID 0 on DGX H100.
@@ -424,13 +424,13 @@ In BCM 11, NetQ 4.15+ requires 1 compute node exposed on NodePort 30029 or 3 com
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How does GPUDirect Storage (GDS) improve dataset read and checkpoint write performance, and what kernel module and validation tool does it use?`&lt;/strong>`</summary>
+<summary>**16. How does GPUDirect Storage (GDS) improve dataset read and checkpoint write performance, and what kernel module and validation tool does it use?**</summary>
 
 In standard POSIX I/O, storage data is copied from the NVMe drive or NIC into the CPU page cache in system RAM and then copied a second time over PCIe into GPU HBM. GPUDirect Storage uses the `nvidia-fs.ko` kernel module (217088 bytes) and `libcufile.so` (`/etc/cufile.json`) to perform direct PCIe Peer-to-Peer DMA between storage targets and GPU VRAM. Validate it with `lsmod | grep nvidia_fs` and `/usr/local/cuda/gds/tools/gdscheck -p`.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. In /etc/cufile.json, what do max_device_pinned_mem_size_kb: 33554432, poll_mode_max_size_kb: 4, and allow_compat_mode: false control?`&lt;/strong>`</summary>
+<summary>**17. In /etc/cufile.json, what do max_device_pinned_mem_size_kb: 33554432, poll_mode_max_size_kb: 4, and allow_compat_mode: false control?**</summary>
 
 - **`max_device_pinned_mem_size_kb: 33554432`.** Caps total GPU memory pinned for GDS DMA buffers at 33,554,432 KB, which equals 32 GiB.
 - **`poll_mode_max_size_kb: 4`.** Uses CPU polling when poll mode is enabled only for small I/O transfers up to 4 KB.
@@ -438,19 +438,19 @@ In standard POSIX I/O, storage data is copied from the NVMe drive or NIC into th
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Why must a Kubernetes Pod running 8 GPUs with WEKA CSI and GDS also mount an emptyDir with medium: Memory at /dev/shm (for example, sizeLimit: 400Gi)?`&lt;/strong>`</summary>
+<summary>**18. Why must a Kubernetes Pod running 8 GPUs with WEKA CSI and GDS also mount an emptyDir with medium: Memory at /dev/shm (for example, sizeLimit: 400Gi)?**</summary>
 
 By default, Kubernetes containers receive a 64 MiB `/dev/shm` tmpfs mount. Multi-process PyTorch DataLoader workers and NCCL intra-node shared-memory buffers allocate large segments in `/dev/shm`. They crash immediately with a bus error (`ENOSPC`) unless `/dev/shm` is backed by a large memory volume such as `sizeLimit: 400Gi`.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Why can kill -9 not terminate Python training processes stuck in Linux state D (rpc_wait_bit_killable for >120 seconds, load average 500+, 0% CPU)?`&lt;/strong>`</summary>
+<summary>**19. Why can kill -9 not terminate Python training processes stuck in Linux state D (rpc_wait_bit_killable for >120 seconds, load average 500+, 0% CPU)?**</summary>
 
 Linux process state `D` indicates uninterruptible sleep inside a kernel system call holding kernel locks while waiting for hardware or network storage I/O. Delivering `SIGKILL` while a DMA or RPC kernel structure is in flight would corrupt kernel memory. Consequently, the kernel ignores all signals until the I/O completes, times out, or the node is reset via `ipmitool chassis power reset`.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. On a 400 GB/s parallel filesystem, a Computer Vision training job achieves only 5 GB/s while the Metadata Server (MDS) hits 100% CPU and strace -c shows 85.12% of time in stat(). What is the root cause and architectural fix?`&lt;/strong>`</summary>
+<summary>**20. On a 400 GB/s parallel filesystem, a Computer Vision training job achieves only 5 GB/s while the Metadata Server (MDS) hits 100% CPU and strace -c shows 85.12% of time in stat(). What is the root cause and architectural fix?**</summary>
 
 The job is reading 14 million individual 20 KB PNG files directly over the network. It spends 85.12% of system call time in `stat()`, 10.05% in `openat()`, and 4.02% in `close()`, versus only 0.81% in `read()`. Packing 50,000 images into each 1 GB WebDataset tar shard yields 280 tar files, cuts MDS `stat()` calls by 50,000x, and restores streaming 2 MB sequential reads.
 </details>

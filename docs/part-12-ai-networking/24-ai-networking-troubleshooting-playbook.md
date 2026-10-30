@@ -734,121 +734,121 @@ Summary: 28 passed, 0 failed
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. Why should an engineer never clear switch or NIC counters (`perfquery -R`) or reboot a node as the first step during an AI fabric incident?`&lt;/strong>`</summary>
+<summary>**1. Why should an engineer never clear switch or NIC counters (`perfquery -R`) or reboot a node as the first step during an AI fabric incident?**</summary>
 
 Clearing counters or rebooting destroys accumulated forensic evidence such as `SymbolErrorCounter`, `PortXmitWait`, `fec_uncorrected_blocks`, `rx_pfc_prio3`, and kernel Xid precursor sequences. Always capture timestamped baseline and follow-up snapshots and compute counter deltas before changing system state.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What does `ibstat` showing `Physical state: LinkUp`, `State: Initializing`, and `Base lid: 0` prove about the InfiniBand stack?`&lt;/strong>`</summary>
+<summary>**2. What does `ibstat` showing `Physical state: LinkUp`, `State: Initializing`, and `Base lid: 0` prove about the InfiniBand stack?**</summary>
 
 `Physical state: LinkUp` proves that Layer 1 physical signaling and lane negotiation between the HCA and switch port succeeded. `State: Initializing` with `Base lid: 0` proves that the Subnet Manager at Gate 2 has not yet swept, assigned a LID, and transitioned the port to Active.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Why is `State: Active` in `ibstat` insufficient proof that an InfiniBand link is healthy?`&lt;/strong>`</summary>
+<summary>**3. Why is `State: Active` in `ibstat` insufficient proof that an InfiniBand link is healthy?**</summary>
 
 `State: Active` only confirms that physical link training and Subnet Manager admission completed. A port with a damaged lane can still report `State: Active` while negotiated down to half or quarter width. It can also accumulate symbol errors and transmit waits under load.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. In `ib_write_lat`, how can a path with normal average latency still cause severe collective slowdowns?`&lt;/strong>`</summary>
+<summary>**4. In `ib_write_lat`, how can a path with normal average latency still cause severe collective slowdowns?**</summary>
 
 Averages hide tail latency micro-stalls. When the 99.9th percentile jumps to nearly three times baseline while typical latency stays flat, synchronous collectives stall waiting for the slowest tail completion.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. How do `perfquery` counter deltas distinguish an InfiniBand physical cable fault from fabric congestion?`&lt;/strong>`</summary>
+<summary>**5. How do `perfquery` counter deltas distinguish an InfiniBand physical cable fault from fabric congestion?**</summary>
 
 If `PortXmitWait` rises sharply while `SymbolErrorCounter`, `LinkDownedCounter`, and `PortRcvErrors` remain at zero, the link is physically clean and experiencing congestion at Gate 6. If `SymbolErrorCounter` or `LinkDownedCounter` increments, the physical cable or transceiver at Gate 1 is defective and must be repaired first.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. On a RoCEv2 fabric, why can `fec_uncorrected_blocks` and `rx_crc_errors` cause `rx_ecn_marked_prio3` to rise on the same port?`&lt;/strong>`</summary>
+<summary>**6. On a RoCEv2 fabric, why can `fec_uncorrected_blocks` and `rx_crc_errors` cause `rx_ecn_marked_prio3` to rise on the same port?**</summary>
 
 When corrupted blocks exceed FEC capability, those Ethernet frames fail the CRC check and are dropped. The ConnectX RDMA transport layer retransmits the lost sequence bursts, which adds extra offered traffic and pushes switch queue occupancy above the ECN threshold.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Why does `ping` succeed with zero packet loss while `ib_write_bw` fails with `Failed to modify QP to RTR`?`&lt;/strong>`</summary>
+<summary>**7. Why does `ping` succeed with zero packet loss while `ib_write_bw` fails with `Failed to modify QP to RTR`?**</summary>
 
 `ping` sends small 64-byte ICMP packets through the Linux kernel TCP/IP stack. It never registers an RDMA Memory Region, transitions a Queue Pair to `RTR`, or validates RoCEv2 GID index 3. It also never uses lossless Priority 3 queues or tests 9000-byte jumbo frames across routed hops.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What happens when a benchmark or training rank on a multi-rail RoCEv2 node selects the wrong NIC device for its target subnet?`&lt;/strong>`</summary>
+<summary>**8. What happens when a benchmark or training rank on a multi-rail RoCEv2 node selects the wrong NIC device for its target subnet?**</summary>
 
 Physical link state and jumbo MTU remain clean, but Gate 3 diverges because traffic exits on a misaligned GID and subnet path. ECN marks rise, the NIC logs repeated `RETRY_EXC_ERR` completions, test duration stretches fourfold, and bandwidth drops by more than half.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Why must ECN marking thresholds sit below the PFC pause threshold, and what is the first action during a persistent PFC storm?`&lt;/strong>`</summary>
+<summary>**9. Why must ECN marking thresholds sit below the PFC pause threshold, and what is the first action during a persistent PFC storm?**</summary>
 
 ECN must mark packets early so receivers return CNP frames and DCQCN throttles sender rates before switch buffers fill to the PFC threshold. During a persistent PFC storm, never disable PFC. Instead, trace the paused priority downstream along the data path to the root congested egress port.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. If host-memory `ib_write_bw` achieves line rate on a 400G link, but `ib_write_bw --use_cuda=0` drops to one-eighth of line rate, which layer is broken?`&lt;/strong>`</summary>
+<summary>**10. If host-memory `ib_write_bw` achieves line rate on a 400G link, but `ib_write_bw --use_cuda=0` drops to one-eighth of line rate, which layer is broken?**</summary>
 
 Host RDMA passing at line rate proves that cables, optics, Subnet Manager routing, QoS, and NIC RDMA transport at Gates 1 through 4 are healthy. The fault is isolated to Gate 5 GPUDirect RDMA and PCIe locality. Check `nvidia-peermem` or `dma-buf`, disable PCIe ACS via `setpci`, verify Large BAR1, and confirm `PIX` or `PXB` NUMA locality.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How does the three-tier Xid classification separate Tier 1, Tier 2, and Tier 3 GPU faults?`&lt;/strong>`</summary>
+<summary>**11. How does the three-tier Xid classification separate Tier 1, Tier 2, and Tier 3 GPU faults?**</summary>
 
 Tier 1 codes like 45, 63, and 92 are informational or self-healing events where the job keeps running while operators track seven-day trends. Tier 2 codes like 13, 31, 32, 43, and 94 are process-recoverable faults where operators restart the job and watch for repeat occurrences. Tier 3 codes like 48, 61, 62, 64, 79, and 95 are unrecoverable GPU or bus failures requiring immediate node drain and hardware RMA.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. In `dmesg -T`, you see Xid 92 followed six seconds later by Xid 45 and five seconds later by Xid 79. How do you interpret this sequence?`&lt;/strong>`</summary>
+<summary>**12. In `dmesg -T`, you see Xid 92 followed six seconds later by Xid 45 and five seconds later by Xid 79. How do you interpret this sequence?**</summary>
 
 `dmesg` prints oldest entries first, so Xid 92 was the early hardware warning of accelerating single-bit ECC errors. Xid 45 was the driver cleaning up the context after Xid 92, and Xid 79 was the terminal Tier 3 failure where the GPU fell off the PCIe bus.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. `nvidia-smi topo -m` shows `PIX` instead of `NV12` between two GPUs. What check must you run before suspecting broken hardware, and how do you isolate which GPU failed?`&lt;/strong>`</summary>
+<summary>**13. `nvidia-smi topo -m` shows `PIX` instead of `NV12` between two GPUs. What check must you run before suspecting broken hardware, and how do you isolate which GPU failed?**</summary>
 
 First check whether MIG mode is enabled in `nvidia-smi -q`, because MIG mode intentionally disables NVLink peer-to-peer transfers between instances. Once MIG is confirmed disabled, run `dcgmi nvlink -e` on both GPUs. The GPU logging massive CRC and replay errors alongside Xid 74 owns the defective transceiver, whereas the peer with zero errors is a healthy victim.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. What causes CUDA `bandwidthTest` throughput on a PCIe Gen4 x16 GPU to drop by ninety percent, and how do you recover it without a host reboot?`&lt;/strong>`</summary>
+<summary>**14. What causes CUDA `bandwidthTest` throughput on a PCIe Gen4 x16 GPU to drop by ninety percent, and how do you recover it without a host reboot?**</summary>
 
 Electrical errors and PCIe replays cause the link state machine to down-train from Gen4 x16 to Gen3 x8, visible in `lspci -vvv`. Drain workloads on the GPU and trigger a non-disruptive sysfs PCIe device remove and bus rescan. Then verify that `LnkSta` returns to full speed and width.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. How do you distinguish a starved straggler rank, a Python code deadlock, and a true fabric stall using `NCCL_DEBUG=INFO` or `ncclras`?`&lt;/strong>`</summary>
+<summary>**15. How do you distinguish a starved straggler rank, a Python code deadlock, and a true fabric stall using `NCCL_DEBUG=INFO` or `ncclras`?**</summary>
 
 In a starved or straggler rank failure, most ranks reach operation count `N` and wait while one lagging rank sits at `N-1`. In a code-level deadlock, ranks freeze permanently at divergent operation counts because a conditional branch called mismatched collectives. In a true fabric stall, every rank reaches the exact same operation count and hangs simultaneously inside the network transfer.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Why does measuring per-rank iteration time after `dist.all_reduce` fail to identify a straggler GPU, and how should you instrument the loop instead?`&lt;/strong>`</summary>
+<summary>**16. Why does measuring per-rank iteration time after `dist.all_reduce` fail to identify a straggler GPU, and how should you instrument the loop instead?**</summary>
 
 Because `dist.all_reduce` is a synchronous barrier, fast GPUs wait inside the call for the slowest GPU, making post-barrier step times look identical. Always call `torch.cuda.synchronize()` and record each rank's elapsed compute time before entering `dist.all_reduce`.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. How many `nccl-tests` runs are needed to isolate one degraded node in a 64-node cluster using binary search versus linear scanning?`&lt;/strong>`</summary>
+<summary>**17. How many `nccl-tests` runs are needed to isolate one degraded node in a 64-node cluster using binary search versus linear scanning?**</summary>
 
 Binary-search bisection splits the candidate node pool in half at each step, isolating the single degraded node in six benchmark runs instead of 64. That logarithmic workflow saves 58 multi-node benchmark runs during an outage.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. How can `nvidia-smi` report 100% GPU utilization and 80 GB memory used while the GPU is idle 90% of the time and only 10 GB of tensors exist?`&lt;/strong>`</summary>
+<summary>**18. How can `nvidia-smi` report 100% GPU utilization and 80 GB memory used while the GPU is idle 90% of the time and only 10 GB of tensors exist?**</summary>
 
 `nvidia-smi` utilization only measures whether at least one kernel ran during a sampling interval. Slow CPU kernel launches keep utilization near 100% while Streaming Multiprocessors sit mostly idle. Similarly, `nvidia-smi` memory shows the reserved PyTorch caching allocator pool rather than active tensors reported by `torch.cuda.memory_allocated()`.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. A GPU's clock and power drop simultaneously at 80 degrees Celsius. Why can't those numbers alone separate thermal throttling from power capping, and what command decides it?`&lt;/strong>`</summary>
+<summary>**19. A GPU's clock and power drop simultaneously at 80 degrees Celsius. Why can't those numbers alone separate thermal throttling from power capping, and what command decides it?**</summary>
 
 Lower clock frequency reduces power consumption automatically regardless of why the clock dropped. The discriminating evidence is the throttle reason bitmask in `nvidia-smi -q -d PERFORMANCE`. It explicitly flags hardware or software thermal slowdown, software power capping, or hardware power brake brownouts.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. What is a profiler Heisenbug, and what are the actionable operational thresholds for temperature rise rate and single-bit ECC escalation?`&lt;/strong>`</summary>
+<summary>**20. What is a profiler Heisenbug, and what are the actionable operational thresholds for temperature rise rate and single-bit ECC escalation?**</summary>
 
 A profiler Heisenbug occurs when tool overhead alters workload timing, such as `nvidia-smi` polling or `nsys` tracing cutting throughput by ten to fifty percent. For hardware health, a temperature rise rate above 0.20 degrees Celsius per second during `gpu-burn` proves cooling degradation. A single-bit ECC rate above ten errors per hour requires stopping the job and draining the node.
 </details>

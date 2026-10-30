@@ -361,19 +361,19 @@ Summary: 25 passed, 0 failed (total 25)
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. How do SR-IOV Physical and Virtual Functions and the IOMMU allow a cloud VM to achieve bare-metal RDMA performance safely?`&lt;/strong>`</summary>
+<summary>**1. How do SR-IOV Physical and Virtual Functions and the IOMMU allow a cloud VM to achieve bare-metal RDMA performance safely?**</summary>
 
 SR-IOV partitions a physical ConnectX NIC or BlueField DPU in hardware into one Physical Function managed by the host and multiple lightweight Virtual Functions. Each Virtual Function maps directly into the guest VM through PCIe passthrough. The hardware IOMMU translates guest DMA addresses to host physical addresses at line rate while isolating memory boundaries so a VM performs GPUDirect RDMA without touching a software switch or another tenant's RAM.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What is the BCM Topograph service, what TCP port does it use by default, and what happens in `topology.conf` if a cloud GPU node is powered off when Topograph runs?`&lt;/strong>`</summary>
+<summary>**2. What is the BCM Topograph service, what TCP port does it use by default, and what happens in `topology.conf` if a cloud GPU node is powered off when Topograph runs?**</summary>
 
 Topograph is a BCM system service listening on HTTPS TCP port 49021 and configured via `/etc/topograph/topograph-config.yaml`. It queries cloud provider topology APIs to generate Slurm `topology.conf` files for the tree or block plugin. Cloud nodes must be running during topology generation; otherwise Topograph places any unreachable node under a fake switch in tree mode or a fake block in block mode.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. State the exact cloud-provider requirements for BCM Topograph on AWS, Oracle Cloud, and Google Cloud.`&lt;/strong>`</summary>
+<summary>**3. State the exact cloud-provider requirements for BCM Topograph on AWS, Oracle Cloud, and Google Cloud.**</summary>
 
 1. **AWS and DGX Cloud:** Nodes must be running on a supported topology flavor like `p5.48xlarge`, and the IAM identity requires `ec2:DescribeInstanceTopology` via `AmazonEC2ReadOnlyAccess`. Credentials can arrive through BCM cloud credential passing or an EC2 IMDS Instance Profile Role.
 2. **OCI:** Nodes must exist, and when BCM does not pass cloud credentials, dynamic group policies must grant `inspect` permissions on five resources: `compute-capacity-topologies`, `compute-bare-metal-hosts`, `compute-hpc-islands`, `compute-network-blocks`, and `compute-local-blocks`.
@@ -381,19 +381,19 @@ Topograph is a BCM system service listening on HTTPS TCP port 49021 and configur
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Why does upgrading from Topograph 3 to Topograph 4 in BCM 11.34 fail if you only install the `topograph4` package?`&lt;/strong>`</summary>
+<summary>**4. Why does upgrading from Topograph 3 to Topograph 4 in BCM 11.34 fail if you only install the `topograph4` package?**</summary>
 
 The `topograph` and `topograph4` packages conflict, and Topograph 4 requires two lockstep steps. First, remove `topograph`, install `topograph4` on all Topograph nodes and images, and run `systemctl daemon-reload` because the systemd unit changes. Second, set `version4` to true inside `cmsh` under `topographsettings`. Doing only one step causes the service to fail.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. On Nebius AI Cloud, which Terraform resource links multiple GPU instances onto the same InfiniBand fabric, and what happens if instances omit it?`&lt;/strong>`</summary>
+<summary>**5. On Nebius AI Cloud, which Terraform resource links multiple GPU instances onto the same InfiniBand fabric, and what happens if instances omit it?**</summary>
 
 Every multi-node GPU instance must reference the same `nebius_compute_v1_gpu_cluster` resource, which binds to a specific `infiniband_fabric`. If omitted or mismatched across instances, NCCL cannot form an InfiniBand RDMA ring and falls back to slower VPC Ethernet.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Contrast the GPU hardware and inter-node GPU network transport across Google Cloud G2, A2, A3, A3 Ultra, A4, and A4X machine families.`&lt;/strong>`</summary>
+<summary>**6. Contrast the GPU hardware and inter-node GPU network transport across Google Cloud G2, A2, A3, A3 Ultra, A4, and A4X machine families.**</summary>
 
 - **G2:** 1 to 8 NVIDIA L4 PCIe GPUs with a standard single gVNIC.
 - **A2:** 1 to 16 NVIDIA A100 SXM4 GPUs with standard gVNIC networking.
@@ -404,86 +404,86 @@ Every multi-node GPU instance must reference the same `nebius_compute_v1_gpu_clu
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Why must GCP GPU VMs set `on_host_maintenance = "TERMINATE"`, and why should GKE GPU node pools set `max_surge = 0` and `max_unavailable = 1`?`&lt;/strong>`</summary>
+<summary>**7. Why must GCP GPU VMs set `on_host_maintenance = "TERMINATE"`, and why should GKE GPU node pools set `max_surge = 0` and `max_unavailable = 1`?**</summary>
 
 - **Host maintenance termination:** Compute Engine VMs with attached GPUs cannot live-migrate across physical hosts during maintenance events.
 - **Zero-surge upgrades:** A surge upgrade tries to allocate an extra GPU node before draining an existing one. When GPU quota or a reservation has no spare capacity, the upgrade hangs indefinitely waiting for an extra GPU node.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What is GCP Dynamic Workload Scheduler, and how does it work with Kueue on GKE?`&lt;/strong>`</summary>
+<summary>**8. What is GCP Dynamic Workload Scheduler, and how does it work with Kueue on GKE?**</summary>
 
 Dynamic Workload Scheduler operates in Flex-Start mode for queued jobs or Calendar mode for reserved future windows. It integrates with the Kueue `ProvisioningRequest` API on GKE so a multi-node job requests and acquires all required GPU nodes atomically at once when capacity becomes available.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. What are the three cloud archetypes in this chapter?`&lt;/strong>`</summary>
+<summary>**9. What are the three cloud archetypes in this chapter?**</summary>
 
 Managed SuperPOD-as-a-Service on DGX Cloud, GPU-native neoclouds on CoreWeave and Nebius, and hyperscaler AI machine families on Google Cloud G2 through A4X. The grouping is the author's own synthesis.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why does a normal VM network path hurt multi-node training?`&lt;/strong>`</summary>
+<summary>**10. Why does a normal VM network path hurt multi-node training?**</summary>
 
 Every packet traverses the hypervisor software switch. At eight 400 Gbps links, software copying adds latency, saturates host CPU cores, and prevents GPUDirect RDMA.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What do PF and VF mean in SR-IOV?`&lt;/strong>`</summary>
+<summary>**11. What do PF and VF mean in SR-IOV?**</summary>
 
 The Physical Function is the primary PCIe device managed by the host or DPU control plane. Virtual Functions are lightweight hardware slices with dedicated queues handed directly to guest VMs for fast data movement.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What does the IOMMU do?`&lt;/strong>`</summary>
+<summary>**12. What does the IOMMU do?**</summary>
 
 It translates guest DMA addresses to host physical addresses in hardware and prevents one tenant VM from accessing another tenant's memory.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. What does Topograph do and on which port does it listen?`&lt;/strong>`</summary>
+<summary>**13. What does Topograph do and on which port does it listen?**</summary>
 
 It queries the cloud provider for physical switch topology and writes the Slurm `topology.conf` file for tree or block plugins. It listens on HTTPS port 49021.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. What happens when a cloud node is stopped while Topograph runs?`&lt;/strong>`</summary>
+<summary>**14. What happens when a cloud node is stopped while Topograph runs?**</summary>
 
 Its physical topology cannot be fetched, so Topograph places the node under a fake switch in tree mode or a fake block in block mode. Multi-node jobs may then get scheduled across distant switches.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What does Topograph need when it runs on a node other than the Slurm server?`&lt;/strong>`</summary>
+<summary>**15. What does Topograph need when it runs on a node other than the Slurm server?**</summary>
 
 The SSL certificates must reside on `/cm/shared` and `UPDATE_TOPOLOGY_TOKEN` must be added to the node profile.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What is the CoreWeave model in one sentence?`&lt;/strong>`</summary>
+<summary>**16. What is the CoreWeave model in one sentence?**</summary>
 
 Bare-metal GPU nodes join a managed Kubernetes cluster and expose GPU model, NVLink domain, and InfiniBand leaf or rail switch identity as node labels for topology-aware schedulers.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. Which Nebius resource must all nodes of one training job share?`&lt;/strong>`</summary>
+<summary>**17. Which Nebius resource must all nodes of one training job share?**</summary>
 
 They must share the same `nebius_compute_v1_gpu_cluster` resource on a single InfiniBand fabric. Without it, NCCL falls back to standard VPC Ethernet.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Why can GCP GPU VMs not use live migration?`&lt;/strong>`</summary>
+<summary>**18. Why can GCP GPU VMs not use live migration?**</summary>
 
 Physical GPU state cannot be migrated live during host maintenance, so you must set `on_host_maintenance = "TERMINATE"` and rely on checkpoints and job restarts.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What is the single-driver rule on GKE?`&lt;/strong>`</summary>
+<summary>**19. What is the single-driver rule on GKE?**</summary>
 
 Use either the GKE built-in driver installer or the NVIDIA GPU Operator driver container, but never enable both on the same node pool.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. How do you check that jumbo frames work end to end?`&lt;/strong>`</summary>
+<summary>**20. How do you check that jumbo frames work end to end?**</summary>
 
 Run `ping` with the don't-fragment flag and a jumbo payload size across the GPU network interfaces. A packet drop indicates that a link or VPC along the path still uses a smaller MTU.
 </details>

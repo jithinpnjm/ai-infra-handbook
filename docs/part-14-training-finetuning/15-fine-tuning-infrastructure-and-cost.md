@@ -719,7 +719,7 @@ Exercise Input Parameters Reference:
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. How do you decide whether a model failure should be fixed with RAG or with fine-tuning, and what did Ovadia et al. (2024) find when comparing both on MMLU and current events?`&lt;/strong>`</summary>
+<summary>**1. How do you decide whether a model failure should be fixed with RAG or with fine-tuning, and what did Ovadia et al. (2024) find when comparing both on MMLU and current events?**</summary>
 
 ```text
 Classify whether the failure is **information-based** or **behavior-based**, since fine-tuning is for form and RAG is for facts. If the model lacks private or post-cutoff facts, RAG outperforms fine-tuning, lifting Mistral-7B current-events accuracy from 0.481 base and 0.504 to 0.588 fine-tuned up to 0.875 with RAG. RAG also outperforms standalone fine-tuning across almost all MMLU categories. If the model has the facts but fails output syntax, schema, or tone, use fine-tuning. Combining RAG on top of a fine-tuned model improves MMLU performance 43 percent of the time.
@@ -727,7 +727,7 @@ Classify whether the failure is **information-based** or **behavior-based**, sin
 </details>
 
 <details>
-<summary>`&lt;strong>`2. A fine-tuning run costs $500 and embeds domain instructions that remove 2,000 prompt tokens from every inference request. At $2.00 per 1M input tokens, what is the break-even query volume?`&lt;/strong>`</summary>
+<summary>**2. A fine-tuning run costs $500 and embeds domain instructions that remove 2,000 prompt tokens from every inference request. At $2.00 per 1M input tokens, what is the break-even query volume?**</summary>
 
 ```text
 Saving 2,000 input tokens per request at 2.00 dollars per 1,000,000 tokens saves 0.004 dollars per query. Dividing the 500.00 dollar fine-tuning run cost by 0.004 dollars per query gives a break-even threshold of **125,000 queries**.
@@ -735,7 +735,7 @@ Saving 2,000 input tokens per request at 2.00 dollars per 1,000,000 tokens saves
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Why does full supervised fine-tuning in mixed-precision AdamW require 16 bytes of static VRAM per parameter (`112 GB` for 7B, `1,120 GB` for 70B), whereas an on-disk checkpoint requires 14 bytes per parameter?`&lt;/strong>`</summary>
+<summary>**3. Why does full supervised fine-tuning in mixed-precision AdamW require 16 bytes of static VRAM per parameter (`112 GB` for 7B, `1,120 GB` for 70B), whereas an on-disk checkpoint requires 14 bytes per parameter?**</summary>
 
 ```text
 During mixed-precision AdamW training, each parameter holds 2 bytes for BF16 weights, 2 bytes for BF16 gradients, 4 bytes for FP32 master weights, 4 bytes for FP32 first moment, and 4 bytes for FP32 second moment. That totals 16 bytes per parameter, or 112 GB for 7B and 1,120 GB for 70B. When saving a checkpoint to disk, the 2-byte transient gradients are omitted, leaving 14 bytes per parameter, or 98 GB for 7B and 980 GB for 70B.
@@ -743,7 +743,7 @@ During mixed-precision AdamW training, each parameter holds 2 bytes for BF16 wei
 </details>
 
 <details>
-<summary>`&lt;strong>`4. How does LoRA decompose weight updates, and how many trainable parameters and megabytes of adapter memory does it require on GPT-3 175B (`96` layers, `d=12,288`, `r=2` across 4 attention matrices)?`&lt;/strong>`</summary>
+<summary>**4. How does LoRA decompose weight updates, and how many trainable parameters and megabytes of adapter memory does it require on GPT-3 175B (`96` layers, `d=12,288`, `r=2` across 4 attention matrices)?**</summary>
 
 ```text
 LoRA freezes the pre-trained weight matrix and adds a low-rank update scaled by `alpha / r` using two small matrices of inner rank `r`. For GPT-3 175B with rank 2 across all four attention matrices, each layer has 196,608 trainable parameters. Across 96 layers, that totals **18,874,368 trainable parameters**, which is 18.87M or 0.01 percent of 175B. Storing those parameters in 16-bit precision requires **37.7 MB**, or 37.75 MB exact, compared to **350 GB** for the 16-bit base weights.
@@ -751,7 +751,7 @@ LoRA freezes the pre-trained weight matrix and adds a low-rank update scaled by 
 </details>
 
 <details>
-<summary>`&lt;strong>`5. In the K8GS Chapter 4 Llama-3 8B QLoRA configuration (`r=32, lora_alpha=64` across 8 target modules), how many parameters are trainable and what is the percentage reduction?`&lt;/strong>`</summary>
+<summary>**5. In the K8GS Chapter 4 Llama-3 8B QLoRA configuration (`r=32, lora_alpha=64` across 8 target modules), how many parameters are trainable and what is the percentage reduction?**</summary>
 
 ```text
 Out of 4,628,721,664 total model tensor elements in packed four-bit storage, only **88,121,344 parameters** require gradients. That represents **1.90 percent**, or roughly 2 percent of the total, reducing trainable parameters by **98 percent**, or 98.10 percent exact, with a LoRA scaling factor of 2.0.
@@ -759,7 +759,7 @@ Out of 4,628,721,664 total model tensor elements in packed four-bit storage, onl
 </details>
 
 <details>
-<summary>`&lt;strong>`6. What three systems techniques make up QLoRA, and how do its initialization VRAM, peak fine-tuning VRAM, and training speed compare to 16-bit LoRA on a 7B model?`&lt;/strong>`</summary>
+<summary>**6. What three systems techniques make up QLoRA, and how do its initialization VRAM, peak fine-tuning VRAM, and training speed compare to 16-bit LoRA on a 7B model?**</summary>
 
 ```text
 QLoRA combines four-bit NormalFloat quantile quantization for frozen base weights, Double Quantization to quantize scaling constants into 8-bit, and Paged Optimizers via `paged_adamw_8bit` that page optimizer states between GPU HBM and CPU RAM via CUDA Unified Memory during activation spikes. On a 7B model, QLoRA cuts initialization VRAM by **35 percent** from 14.0 GB to 9.1 GB. It cuts fine-tuning peak VRAM by **40 percent** from 15.6 GB to 9.3 GB, and up to 75 percent versus unoptimized baselines, at the cost of **30 percent slower training time** due to on-the-fly NF4-to-BF16 dequantization.
@@ -767,7 +767,7 @@ QLoRA combines four-bit NormalFloat quantile quantization for frozen base weight
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How much GPU memory do the Guanaco 4-bit QLoRA models (7B, 13B, 33B, 65B) require during fine-tuning, and why is the 65B result architecturally significant?`&lt;/strong>`</summary>
+<summary>**7. How much GPU memory do the Guanaco 4-bit QLoRA models (7B, 13B, 33B, 65B) require during fine-tuning, and why is the 65B result architecturally significant?**</summary>
 
 ```text
 From Dettmers et al., Guanaco four-bit QLoRA requires **6 GB for 7B** at Elo 879, **10 GB for 13B** at Elo 916, **21 GB for 33B** at Elo 992, and **41 GB for 65B** at Elo 1022, outperforming ChatGPT at Elo 966. Fitting 65B inside 41 GB allows a frontier-class model to be fine-tuned on a **single 48 GB PCIe GPU** like the L40S with zero multi-GPU communication overhead.
@@ -775,7 +775,7 @@ From Dettmers et al., Guanaco four-bit QLoRA requires **6 GB for 7B** at Elo 879
 </details>
 
 <details>
-<summary>`&lt;strong>`8. Compare the active models in HBM and static bytes per parameter across Full PPO, Full DPO, Full GRPO, and LoRA/QLoRA DPO (`ref_model=None`).`&lt;/strong>`</summary>
+<summary>**8. Compare the active models in HBM and static bytes per parameter across Full PPO, Full DPO, Full GRPO, and LoRA/QLoRA DPO (`ref_model=None`).**</summary>
 
 - **Full PPO:** Requires 36 bytes per parameter across four models: Trainable Actor, Trainable Critic, Frozen Reference, and Frozen Reward. That totals 252 GB static for 7B and 2,520 GB for 70B.
 - **Full DPO:** Requires 18 bytes per parameter by eliminating the Critic and Reward models via a closed-form KL-regularized cross-entropy loss. It holds only the Trainable Policy and Frozen Reference, totaling 126 GB for 7B and 1,260 GB for 70B.
@@ -784,7 +784,7 @@ From Dettmers et al., Guanaco four-bit QLoRA requires **6 GB for 7B** at Elo 879
 </details>
 
 <details>
-<summary>`&lt;strong>`9. How do the L4, L40S, A100 (40GB/80GB), H100 (PCIe/SXM5), H200, and B200 compare in price per dense BF16 TFLOP and memory bandwidth?`&lt;/strong>`</summary>
+<summary>**9. How do the L4, L40S, A100 (40GB/80GB), H100 (PCIe/SXM5), H200, and B200 compare in price per dense BF16 TFLOP and memory bandwidth?**</summary>
 
 ```text
 - **L40S:** 48 GB GDDR6 at 0.864 TB/s, costing 8,000 dollars for 362 TFLOPS, or **22 dollars per TFLOP** with no NVLink.
@@ -806,7 +806,7 @@ From Dettmers et al., Guanaco four-bit QLoRA requires **6 GB for 7B** at Elo 879
 </details>
 
 <details>
-<summary>`&lt;strong>`10. What is the exact PCIe vs NVLink SXM crossover point for fine-tuning, and what happens when a team buys 80x H100 PCIe cards in 2U servers for 70B FSDP fine-tuning?`&lt;/strong>`</summary>
+<summary>**10. What is the exact PCIe vs NVLink SXM crossover point for fine-tuning, and what happens when a team buys 80x H100 PCIe cards in 2U servers for 70B FSDP fine-tuning?**</summary>
 
 ```text
 The crossover occurs when a job can no longer fit inside a single 48 GB L40S or 80 GB H100 PCIe GPU and must shard parameters and gradients across four to eight or more GPUs via FSDP, ZeRO-3, or Tensor Parallelism. Buying 80 H100 PCIe cards across 20 2U servers saves roughly 30 percent on hardware CapEx, as an eight-GPU H100 PCIe node costs 215,000 dollars or 26,875 dollars per GPU versus 285,000 dollars or 35,625 dollars per GPU for H100 SXM5. However, PCIe Gen5 x16 provides only 64 GB/s compared to 900 GB/s on SXM NVSwitch, which is 14.06 times slower. During 70B FSDP training, the GPUs spend **90 percent of their time stalled** waiting on PCIe collective transfers, stretching the training run **5 times longer**.
@@ -814,7 +814,7 @@ The crossover occurs when a job can no longer fit inside a single 48 GB L40S or 
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How is effective batch size calculated when using gradient accumulation across multiple GPUs, and how does sequence packing (`packing=True`) reduce cloud fine-tuning cost?`&lt;/strong>`</summary>
+<summary>**11. How is effective batch size calculated when using gradient accumulation across multiple GPUs, and how does sequence packing (`packing=True`) reduce cloud fine-tuning cost?**</summary>
 
 ```text
 Effective batch size equals `per_device_train_batch_size` multiplied by `num_gpus` and `gradient_accumulation_steps`. For example, 4 times 2 times 4 equals 32 samples, and 2 times 1 times 8 equals 16 samples. Without packing, padding 200 to 300 token examples out to a 1,024-token maximum length wastes roughly 70 percent of compute on pad tokens. Sequence packing concatenates 3 to 4 short examples into each 1,024-token slot with attention masks separating samples, increasing real token throughput by 3 to 4 times and cutting GPU rental hours proportionally.
@@ -822,7 +822,7 @@ Effective batch size equals `per_device_train_batch_size` multiplied by `num_gpu
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Walk through the memory footprint, throughput, duration, and cost of the V22 Chapter 3 Llama-2 7B LoRA customer-service fine-tuning case study on a single H100 GPU.`&lt;/strong>`</summary>
+<summary>**12. Walk through the memory footprint, throughput, duration, and cost of the V22 Chapter 3 Llama-2 7B LoRA customer-service fine-tuning case study on a single H100 GPU.**</summary>
 
 ```text
 To fine-tune Llama-2 7B on 50,000 conversations totaling 500M tokens per epoch and 1.5B tokens across 3 epochs on a single 80 GB H100.
@@ -836,7 +836,7 @@ To fine-tune Llama-2 7B on 50,000 conversations totaling 500M tokens per epoch a
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How much parameter storage is saved when serving 100 customer LoRA adapters (`r=8`) over one shared `4096 x 4096` weight matrix compared to deploying 100 merged matrices?`&lt;/strong>`</summary>
+<summary>**13. How much parameter storage is saved when serving 100 customer LoRA adapters (`r=8`) over one shared `4096 x 4096` weight matrix compared to deploying 100 merged matrices?**</summary>
 
 ```text
 A single 4096 by 4096 weight matrix has 16,777,216 parameters, or 16.8M, and a rank-8 LoRA adapter has 65,536 parameters.
@@ -851,7 +851,7 @@ Dynamic multi-LoRA serving reduces parameter storage and VRAM by **71.91 times, 
 </details>
 
 <details>
-<summary>`&lt;strong>`14. How do Unsloth, Axolotl, Torchtune, LLaMA-Factory, and Hugging Face TRL differ in architecture and target use case?`&lt;/strong>`</summary>
+<summary>**14. How do Unsloth, Axolotl, Torchtune, LLaMA-Factory, and Hugging Face TRL differ in architecture and target use case?**</summary>
 
 - **TRL:** Hugging Face's core trainer library providing `SFTTrainer`, `DPOTrainer`, `GRPOTrainer`, and `PPOTrainer`, used directly in Python or inside Kubeflow `CustomTrainer`.
 ```text
@@ -863,7 +863,7 @@ Dynamic multi-LoRA serving reduces parameter storage and VRAM by **71.91 times, 
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What are the four main model merging methods (`Linear`, `SLERP`, `TIES`/`DARE`, and `Layer Stacking`), and how were `Goliath-120B` and `SOLAR-10.7B` constructed?`&lt;/strong>`</summary>
+<summary>**15. What are the four main model merging methods (`Linear`, `SLERP`, `TIES`/`DARE`, and `Layer Stacking`), and how were `Goliath-120B` and `SOLAR-10.7B` constructed?**</summary>
 
 1. **Linear combination and task arithmetic:** Computes a weighted average of weights or task vectors.
 2. **SLERP:** Applies spherical linear interpolation along the shortest arc between two model weight vectors on a hypersphere, using a factor of 0.5 for the midpoint.
@@ -874,13 +874,13 @@ Dynamic multi-LoRA serving reduces parameter storage and VRAM by **71.91 times, 
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How does Kubeflow Trainer v2 (`v2.1.0`) separate platform admin and data scientist workflows on Kubernetes, and how does code delivery differ between `TrainJob` and KubeRay `RayJob`?`&lt;/strong>`</summary>
+<summary>**16. How does Kubeflow Trainer v2 (`v2.1.0`) separate platform admin and data scientist workflows on Kubernetes, and how does code delivery differ between `TrainJob` and KubeRay `RayJob`?**</summary>
 
 Platform administrators create a `TrainingRuntime` or cluster-wide `ClusterTrainingRuntime` specifying `pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime`. Data scientists call `TrainerClient().train()` with `CustomTrainer`. Kubeflow Trainer serializes the Python function directly into the `TrainJob` custom resource and reconciles it into a Kubernetes `JobSet` without building or pushing a new container image. By contrast, KubeRay with `RayCluster` and `RayJob` requires packaging the script inside a container image or external volume mount. Also note that Ray Tune is for hyperparameter optimization like Kubeflow Katib, not LLM weight fine-tuning itself.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What cost discounts do AWS Reserved Instances, Spot Instances, Graviton, Trainium (`Trn1` / `Trn2`), and `gp3` EBS volumes provide, and how do you architect Spot fine-tuning jobs against eviction?`&lt;/strong>`</summary>
+<summary>**17. What cost discounts do AWS Reserved Instances, Spot Instances, Graviton, Trainium (`Trn1` / `Trn2`), and `gp3` EBS volumes provide, and how do you architect Spot fine-tuning jobs against eviction?**</summary>
 
 ```text
 - **Discounts:** Standard and Convertible RIs save **up to 72 percent** over 1 to 3 years. Spot Instances save **up to 90 percent**, with 70 percent typical. Graviton ARM CPUs give **up to 40 percent** better price-performance. Trainium Trn1 cuts training cost by **up to 50 percent**, while Trn2 delivers **4 times Trn1 performance and 30 to 40 percent better price-performance** than P5e. Finally, gp3 EBS volumes cost **20 percent less than gp2**.
@@ -889,7 +889,7 @@ Platform administrators create a `TrainingRuntime` or cluster-wide `ClusterTrain
 </details>
 
 <details>
-<summary>`&lt;strong>`18. How do NVIDIA MIG on H200 (`141 GB`) and GPU Time-Slicing on L4 (`24 GB`) eliminate GPU underutilization for small model fine-tuning, evaluation, and serving?`&lt;/strong>`</summary>
+<summary>**18. How do NVIDIA MIG on H200 (`141 GB`) and GPU Time-Slicing on L4 (`24 GB`) eliminate GPU underutilization for small model fine-tuning, evaluation, and serving?**</summary>
 
 ```text
 - **L4 Time-Slicing:** Deploying a single Llama-3.2-1B pod using 1.8 GB VRAM on a 24 GB L4 GPU leaves **92.5 percent, or roughly 92 percent**, of GPU memory unused. Creating 10 virtual replicas in `time-slicing-config` allows 5 concurrent pods using 9.0 GB total to share one physical L4 GPU.
@@ -900,7 +900,7 @@ Platform administrators create a `TrainingRuntime` or cluster-wide `ClusterTrain
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Why is Kubernetes GPU allocation (`nvidia.com/gpu`) a deceptive metric for cluster capacity planning, and what rule does the DCGM FinOps Reaper enforce?`&lt;/strong>`</summary>
+<summary>**19. Why is Kubernetes GPU allocation (`nvidia.com/gpu`) a deceptive metric for cluster capacity planning, and what rule does the DCGM FinOps Reaper enforce?**</summary>
 
 ```text
 Kubernetes `nvidia.com/gpu` tracks **reservation**, not compute activity. In real enterprise clusters, a cluster at 98 percent allocation often has only 12 to 40 percent actual SM utilization in `DCGM_FI_PROF_SM_ACTIVE` because developers leave interactive Jupyter notebooks idle over weekends. The **DCGM FinOps Reaper** queries Prometheus via `dcgm-exporter` on port 9400 and automatically terminates interactive pods where **`DCGM_FI_PROF_SM_ACTIVE` stays below 5 percent for 4 consecutive hours**, reclaiming over 60 percent of cluster capacity before approving multi-million-dollar GPU purchase orders.
@@ -908,7 +908,7 @@ Kubernetes `nvidia.com/gpu` tracks **reservation**, not compute activity. In rea
 </details>
 
 <details>
-<summary>`&lt;strong>`20. In the V23 Chapter 10 1,000-GPU training cluster design ($15M CapEx budget, 125 nodes x 8 GPUs), what hardware mix fits the budget, and why is 10:1 network oversubscription unacceptable for 1 GB gradients?`&lt;/strong>`</summary>
+<summary>**20. In the V23 Chapter 10 1,000-GPU training cluster design ($15M CapEx budget, 125 nodes x 8 GPUs), what hardware mix fits the budget, and why is 10:1 network oversubscription unacceptable for 1 GB gradients?**</summary>
 
 ```text
 - **Budget-compliant hardware mix totaling 12.7M dollars with 2.3M dollars headroom:** 600 L40S GPUs for 7.2M dollars plus 400 L4 GPUs for 1.0M dollars plus 100 Gbps InfiniBand network for 625K dollars plus 50 TB NVMe per node for 2.5M dollars plus servers and CPU for 375K dollars plus power and cooling for 1.0M dollars.

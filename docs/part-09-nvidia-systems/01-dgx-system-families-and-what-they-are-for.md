@@ -513,121 +513,121 @@ Summary: 38 passed, 0 failed (total 38)
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. Why does an H100 SXM5 generate tokens roughly 4x faster than an L40S during batch-1 LLM decode, even though both GPUs have high peak FP8 Tensor TFLOPS?`&lt;/strong>`</summary>
+<summary>**1. Why does an H100 SXM5 generate tokens roughly 4x faster than an L40S during batch-1 LLM decode, even though both GPUs have high peak FP8 Tensor TFLOPS?**</summary>
 
 Autoregressive LLM decode generates one token at a time sequentially and must read the entire model weight matrix from VRAM into the Streaming Multiprocessors for every single token produced. That low arithmetic intensity makes decode strictly memory-bandwidth-bound rather than compute-bound. An H100 SXM5 provides 3.35 TB/s of HBM3 memory bandwidth compared to 864 GB/s of GDDR6 bandwidth on an L40S, giving it roughly a fourfold bandwidth advantage.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Calculate the total inference VRAM required for a 70B parameter model in FP16 serving 64 concurrent users with an 8,192-token context window, and explain how quantizing to FP8 changes the hardware requirement.`&lt;/strong>`</summary>
+<summary>**2. Calculate the total inference VRAM required for a 70B parameter model in FP16 serving 64 concurrent users with an 8,192-token context window, and explain how quantizing to FP8 changes the hardware requirement.**</summary>
 
 In FP16, the weights require 140 GB and the KV cache for 64 users requires 85.90 GB, totaling 271.08 GB with the twenty percent runtime safety margin. That footprint requires at least four 80 GB GPUs or two 141 GB H200 GPUs. Quantizing both weights and KV cache to FP8 cuts the total with the safety buffer to 135.54 GB, which fits on two 80 GB H100 GPUs or a single 141 GB H200 GPU.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Why is the NVIDIA T4 a dangerous choice for modern BF16 or FP8 transformer workloads despite its convenient 70W low-profile PCIe form factor?`&lt;/strong>`</summary>
+<summary>**3. Why is the NVIDIA T4 a dangerous choice for modern BF16 or FP8 transformer workloads despite its convenient 70W low-profile PCIe form factor?**</summary>
 
 The T4 is based on the Turing architecture and lacks hardware support for both BF16 and FP8. Attempting to run modern BF16 or FP8 models on a T4 either fails or triggers software emulation, causing severe latency spikes. The NVIDIA L4 is the drop-in low-power replacement with native FP8 and BF16 support plus four AV1 media engines.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. What is the "PCIe tax," and how do Grace Superchips (GH200, GB200, GB300) eliminate it?`&lt;/strong>`</summary>
+<summary>**4. What is the "PCIe tax," and how do Grace Superchips (GH200, GB200, GB300) eliminate it?**</summary>
 
 In traditional x86 servers, the CPU and GPU communicate across a PCIe Gen5 x16 bus capped at 64 GB/s unidirectional and 128 GB/s bidirectional. Whenever workloads spill embeddings, KV caches, or optimizer states to host RAM, the GPU stalls waiting on PCIe transfers. Grace Superchips replace that PCIe link with NVLink-C2C running at 900 GB/s bidirectional with hardware cache coherence and a unified virtual address space across CPU LPDDR5X and GPU HBM.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. Contrast the two internal NVMe storage tiers inside a DGX H100. Why is storing your only copy of training checkpoints on `/raid` a critical operational error?`&lt;/strong>`</summary>
+<summary>**5. Contrast the two internal NVMe storage tiers inside a DGX H100. Why is storing your only copy of training checkpoints on `/raid` a critical operational error?**</summary>
 
 Tier 1 uses two 1.92 TB M.2 NVMe drives in Hardware RAID 1 for DGX OS, logs, and container runtimes. Tier 2 uses eight 3.84 TB U.2 NVMe drives in RAID 0 mounted at `/raid`, wired directly to the PCIe switches for high-speed local dataset caching and scratch I/O via GPUDirect Storage. Because `/raid` is a RAID 0 stripe with zero redundancy, if any one of the eight U.2 drives fails, the entire `/raid` volume is lost.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. What are the three physical network planes in a DGX system, and why does the East-West Compute Fabric use eight separate NICs in a Rail-Optimized topology?`&lt;/strong>`</summary>
+<summary>**6. What are the three physical network planes in a DGX system, and why does the East-West Compute Fabric use eight separate NICs in a Rail-Optimized topology?**</summary>
 
 The three planes are the East-West Compute Fabric, the North-South Storage and In-Band Management Fabric, and the Out-of-Band Management Network on a dedicated 1 GbE BMC port. Using one dedicated NIC per GPU behind the same PCIe switch enables GPUDirect RDMA via `nvidia-peermem` without crossing the CPU. Connecting each NIC to its corresponding rail leaf switch lets matching GPUs on different servers communicate in a single switch hop without traversing spine switches.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How does PSU redundancy work on a DGX H100, and what are the two official rack deployment patterns for an air-cooled DGX B200?`&lt;/strong>`</summary>
+<summary>**7. How does PSU redundancy work on a DGX H100, and what are the two official rack deployment patterns for an air-cooled DGX B200?**</summary>
 
 A DGX H100 uses six 3.3 kW PSUs in three-plus-three redundancy split across two power feeds. If an entire power feed fails, the remaining three PSUs keep the server running near full capacity at 9.9 kW. An air-cooled DGX B200 deploys either at two systems per rack drawing 28.6 kW and 4,290 CFM, or at four systems per 52U rack drawing 57.2 kW and 8,580 CFM.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. Why do DGX GB200 NVL72 and DGX GB300 NVL72 use a blind-mate rear copper NVLink backplane across 72 GPUs inside a single rack instead of optical cables across multiple racks?`&lt;/strong>`</summary>
+<summary>**8. Why do DGX GB200 NVL72 and DGX GB300 NVL72 use a blind-mate rear copper NVLink backplane across 72 GPUs inside a single rack instead of optical cables across multiple racks?**</summary>
 
 In an 8-GPU node, scaling beyond eight GPUs drops interconnect bandwidth from NVLink speeds down to network card speeds. By packing eighteen compute trays and nine NVLink switch trays into a single liquid-cooled rack linked over a passive rear copper backplane, NVL72 delivers 1.8 TB/s per GPU across all 72 GPUs. Passive copper avoids the multi-kilowatt power draw, cost, and transceiver failure rates of 72-GPU optical interconnects.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Why must you never flash a standalone BIOS, NIC, or GPU VBIOS update from a chip vendor onto a DGX node?`&lt;/strong>`</summary>
+<summary>**9. Why must you never flash a standalone BIOS, NIC, or GPU VBIOS update from a chip vendor onto a DGX node?**</summary>
 
 A DGX system's BMC, BIOS, motherboard CPLDs, PCIe Gen5 retimers, four NVSwitch ASICs, eight GPU VBIOSes, and ten NIC or DPU firmwares are regression-tested as a single lockstep matrix. Flashing one component out of band causes PCIe Gen5 link training failures or NVLink sub-link degradation. Always use the unified DGX Firmware Container with `show_version` and `update_fw all`.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. During node bring-up, `nvidia-smi` shows all 8 GPUs healthy and `ibstat` shows all 8 NDR ports Active, yet peer-to-peer and RDMA tests achieve only ~18 GB/s instead of ~45 GB/s per NIC. What two settings should you check first?`&lt;/strong>`</summary>
+<summary>**10. During node bring-up, `nvidia-smi` shows all 8 GPUs healthy and `ibstat` shows all 8 NDR ports Active, yet peer-to-peer and RDMA tests achieve only ~18 GB/s instead of ~45 GB/s per NIC. What two settings should you check first?**</summary>
 
 First, check PCIe Access Control Services by running `sudo lspci -vvv | grep -i ACSCtl`. If `SrcValid+` is enabled on the PCIe switches, every peer-to-peer DMA transfer between a GPU and its paired NIC is forced to detour through the CPU root complex. Second, check `lsmod | grep nvidia_peermem` to confirm the GPUDirect RDMA kernel module is loaded.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What is the "4× to 6× rule" for training memory, and why is it so much larger than the size of the model weights?`&lt;/strong>`</summary>
+<summary>**11. What is the "4× to 6× rule" for training memory, and why is it so much larger than the size of the model weights?**</summary>
 
 Training must keep far more state in memory than the raw model weights. It also holds FP32 master weights, the Adam optimizer's momentum and variance states, gradients, and activations saved for the backward pass. Together these states require roughly four to six times the raw weight footprint, so a 70B model with 140 GB of FP16 weights needs about 700 GB across the GPUs at a fivefold multiplier.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Which phase of LLM inference is compute-bound and which is memory-bandwidth-bound, and which latency number does each one set?`&lt;/strong>`</summary>
+<summary>**12. Which phase of LLM inference is compute-bound and which is memory-bandwidth-bound, and which latency number does each one set?**</summary>
 
 Prefill processes all input prompt tokens in parallel, so it is compute-bound and sets Time to First Token. Decode generates one output token at a time sequentially and must read all model weights for every token, so it is memory-bandwidth-bound and sets Inter-Token Latency.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. What is the 1.2× factor in the inference memory formula for?`&lt;/strong>`</summary>
+<summary>**13. What is the 1.2× factor in the inference memory formula for?**</summary>
 
 It provides a twenty percent runtime safety margin for CUDA context overhead, scratch buffers, and temporary activations. You apply it to the sum of the static model weights and the dynamic KV cache.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Why can a more expensive SXM server have a lower cost per million tokens than a cheaper PCIe server?`&lt;/strong>`</summary>
+<summary>**14. Why can a more expensive SXM server have a lower cost per million tokens than a cheaper PCIe server?**</summary>
 
 Cost per million tokens equals the hourly system cost divided by the tokens produced per hour. Because the SXM server has much higher HBM bandwidth and high-speed NVLink, it sustains many more tokens per second before breaching the decode latency target. That higher token throughput outweighs the higher hourly server price.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What is the "Whitebox Fallacy"? Give two of the four problems the chapter lists.`&lt;/strong>`</summary>
+<summary>**15. What is the "Whitebox Fallacy"? Give two of the four problems the chapter lists.**</summary>
 
 It is the belief that eight high-wattage GPUs bolted into a generic server chassis will perform like a co-designed DGX appliance. Common failures include unbalanced PCIe topologies that force GPU-to-NIC traffic across the CPU socket link, thermal throttling under synchronized load, mismatched firmware across dozens of controllers, and multi-vendor finger-pointing during hangs.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What does GPUDirect Storage change about the path from NVMe to the GPU, and which two components make it work?`&lt;/strong>`</summary>
+<summary>**16. What does GPUDirect Storage change about the path from NVMe to the GPU, and which two components make it work?**</summary>
 
 Without GPUDirect Storage, data travels from NVMe into a host RAM bounce buffer and then crosses PCIe a second time into GPU memory, burning CPU cycles and PCIe bandwidth. With GPUDirect Storage, data transfers directly between the local NVMe drive or storage NIC and GPU BAR1 memory. The `nvidia-fs` kernel module and the `cuFile` API enable this direct DMA path.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. Why does NIC 0 of every DGX node plug into the same leaf switch (Rail 0)?`&lt;/strong>`</summary>
+<summary>**17. Why does NIC 0 of every DGX node plug into the same leaf switch (Rail 0)?**</summary>
 
 Connecting NIC 0 of every node to Rail Switch 0 lets GPU 0 on any node reach GPU 0 on any other node in a single switch hop without crossing spine switches. This layout is known as a rail-optimized fat-tree topology. Traffic between different GPU indices first traverses the internal NVSwitch baseboard inside the node and then exits on the matching rail.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. What is the difference between `nvsm` and `dcgmi`?`&lt;/strong>`</summary>
+<summary>**18. What is the difference between `nvsm` and `dcgmi`?**</summary>
 
 The `nvsm` tool monitors the entire DGX chassis, including RAID arrays, NVMe drives, DIMMs, PCIe links, fans, and power supplies. The `dcgmi` tool focuses on GPUs and NVSwitches, exposing high-frequency telemetry and running active hardware stress diagnostics from Level 1 through Level 4.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. A DGX B200 has six PSUs. How many must be energized for it to run, and what does that mean for the way you wire two power sources?`&lt;/strong>`</summary>
+<summary>**19. A DGX B200 has six PSUs. How many must be energized for it to run, and what does that mean for the way you wire two power sources?**</summary>
 
 Five of the six power supplies must remain energized for a DGX B200 to run. Consequently, you cannot split the six cords three-and-three across two power feeds because losing one feed would leave only three PSUs active and shut down the node.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Why do air-cooled racks of DGX H100 usually hold only 2 to 4 nodes even though 5 would fit in 42U?`&lt;/strong>`</summary>
+<summary>**20. Why do air-cooled racks of DGX H100 usually hold only 2 to 4 nodes even though 5 would fit in 42U?**</summary>
 
 Rack capacity is limited by power delivery and heat rejection rather than vertical rack units. Each DGX H100 draws up to 10.2 kW and produces roughly 34,800 BTU/hr of heat, so racks are capped by the power and airflow that the facility can supply and cool.
 </details>

@@ -499,121 +499,121 @@ Summary: 30 passed, 0 failed (total 30)
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. Why does an 8U DGX H100/H200 physically separate the bottom GPU tray from the top CPU/motherboard tray, and how are the two trays managed out-of-band?`&lt;/strong>`</summary>
+<summary>**1. Why does an 8U DGX H100/H200 physically separate the bottom GPU tray from the top CPU/motherboard tray, and how are the two trays managed out-of-band?**</summary>
 
 Eight 700W SXM5 GPUs and four NVSwitch ASICs generate over 5.6 kW of concentrated heat. Decoupling the bottom HGX GPU tray from the top CPU, DDR5, and PCIe tray prevents GPU exhaust from baking the CPUs, DIMMs, and 400G optical transceivers. It also lets either tray slide out on rails for independent service. The top tray runs the primary Motherboard BMC at `/redfish/v1/Systems/DGX`. The bottom tray runs the GPU Tray Satellite BMC at `/redfish/v1/Systems/HGX_Baseboard_0`.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. How does the NVSwitch fabric on a DGX H100/H200 achieve 900 GB/s per GPU and 3.6 TB/s of bisection bandwidth?`&lt;/strong>`</summary>
+<summary>**2. How does the NVSwitch fabric on a DGX H100/H200 achieve 900 GB/s per GPU and 3.6 TB/s of bisection bandwidth?**</summary>
 
 Each of the eight SXM5 GPUs exposes 18 fourth-generation NVLink sub-links running at 50 GB/s bidirectional per sub-link. That provides 900 GB/s bidirectional bandwidth per GPU. All 144 NVLink sub-links across the eight GPUs wire into four third-generation NVSwitch ASICs on the HGX baseboard. Together they form an all-to-all crossbar with 3.6 TB/s of bisection bandwidth and 7.2 TB/s of aggregate bidirectional bandwidth.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What exact specifications change between a DGX H100 and a DGX H200, and what stays identical?`&lt;/strong>`</summary>
+<summary>**3. What exact specifications change between a DGX H100 and a DGX H200, and what stays identical?**</summary>
 
 Both systems share the same 8U chassis, 10.2 kW peak power, 700W per-GPU TDP, dual 56-core Xeon 8480C CPUs, and 2 TB DDR5 RAM. They also share four NVSwitches, eight ConnectX-7 400G NICs, and 989 TFLOPS BF16 Tensor compute per GPU. The DGX H200 upgrades each GPU from 80 GB of HBM3 at 3.35 TB/s to 141 GB of HBM3e at 4.8 TB/s. That raises total node GPU memory from 640 GB to 1,128 GB and aggregate HBM bandwidth from 26.8 TB/s to 38.4 TB/s.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. A 70B transformer training step on an H100 processes ~860 TFLOP of work per GPU in 2.0 seconds. What is the Model FLOPs Utilization (MFU), and why is MFU a better metric than `nvidia-smi` GPU utilization?`&lt;/strong>`</summary>
+<summary>**4. A 70B transformer training step on an H100 processes ~860 TFLOP of work per GPU in 2.0 seconds. What is the Model FLOPs Utilization (MFU), and why is MFU a better metric than `nvidia-smi` GPU utilization?**</summary>
 
 Dividing 860 TFLOP by 2.0 seconds yields 430 TFLOPS of achieved throughput per GPU. Dividing 430 TFLOPS by the 989 TFLOPS BF16 peak gives 43.48 percent MFU, which sits inside the healthy 40 to 60 percent target band. The `utilization.gpu` counter in `nvidia-smi` only measures whether any warp was active during the sample interval. MFU measures useful mathematical work completed relative to hardware peak.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. Why does a DGX H100/H200 ship with 2 TB (2,048 GiB) of DDR5 host RAM across 16 channels?`&lt;/strong>`</summary>
+<summary>**5. Why does a DGX H100/H200 ship with 2 TB (2,048 GiB) of DDR5 host RAM across 16 channels?**</summary>
 
 To keep eight Hopper GPUs fed without stalling on I/O, host RAM must hold memory-mapped dataset shards and `/dev/shm` buffers for PyTorch `DataLoader` workers. It also holds pinned DMA staging buffers and asynchronous checkpoints copied off GPU HBM. The 2,048 GB pool provides 3.2 times the 640 GB VRAM of a DGX H100 and 1.82 times the 1,128 GB VRAM of a DGX H200.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. How are GPUs, ConnectX-7 NICs, and U.2 NVMe drives grouped across the four PCIe Gen5 switches inside a DGX H100/H200?`&lt;/strong>`</summary>
+<summary>**6. How are GPUs, ConnectX-7 NICs, and U.2 NVMe drives grouped across the four PCIe Gen5 switches inside a DGX H100/H200?**</summary>
 
 Each of the four PCIe Gen5 switches couples two GPUs, two 400G ConnectX-7 NICs, and two U.2 NVMe drives into a local `PIX` peer-to-peer domain. Switches 0 and 1 sit on NUMA Node 0 serving GPUs 0 through 3. Switches 2 and 3 sit on NUMA Node 1 serving GPUs 4 through 7. This layout lets GPUDirect RDMA and GPUDirect Storage transfers turn directly inside the local PCIe switch without touching the Xeon CPUs.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Explain the difference between `PIX`, `NODE`, and `SYS` in `nvidia-smi topo -m` when looking at the cell between a GPU and an `mlx5_*` NIC.`&lt;/strong>`</summary>
+<summary>**7. Explain the difference between `PIX`, `NODE`, and `SYS` in `nvidia-smi topo -m` when looking at the cell between a GPU and an `mlx5_*` NIC.**</summary>
 
 The `PIX` symbol means the GPU and NIC share a single PCIe Gen5 switch, allowing peer-to-peer transfers at 64 GB/s without touching the CPU. The `NODE` symbol means the GPU and NIC sit on different PCIe switches attached to the same CPU socket. That forces packets through the CPU PCIe Root Complex. The `SYS` symbol means the devices sit on different CPU sockets, forcing every packet across the Intel UPI link and cutting RDMA bandwidth by roughly half.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. How many firmware components are tracked across a DGX H100 in BCM (`cmsh` `firmware status`), and how are they divided between the two `.fwpkg` bundles?`&lt;/strong>`</summary>
+<summary>**8. How many firmware components are tracked across a DGX H100 in BCM (`cmsh` `firmware status`), and how are they divided between the two `.fwpkg` bundles?**</summary>
 
 A DGX H100 tracks 46 firmware components across two tray packages. The motherboard tray bundle contains 16 components covering motherboard and midplane CPLDs, BIOS and BMC roots of trust, System BIOS, primary BMC, host PCIe retimers and switches, and six power supplies. The GPU tray bundle contains 30 `HGX_FW_*` components. Those cover the satellite BMC, seven security roots of trust, the tray FPGA, eight SXM GPU VBIOSes, four NVSwitch ASICs, eight PCIe retimers, and the baseboard PCIe switch.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Why does a regular reboot or `cmsh` `power reset` fail to activate newly flashed GPU-tray (`HGX_FW_*`) firmware on a DGX H100, and what action is required instead?`&lt;/strong>`</summary>
+<summary>**9. Why does a regular reboot or `cmsh` `power reset` fail to activate newly flashed GPU-tray (`HGX_FW_*`) firmware on a DGX H100, and what action is required instead?**</summary>
 
 A regular reboot or `power reset` performs a board-level DC power cycle, which leaves the standby rails of the six power supplies energized. Because the GPU Tray Satellite BMC, ERoT security chips, FPGA, and retimers run on standby power, they never re-initialize and remain in a pending state. You must perform a full AC power cycle by cutting all six AC power inputs at the rack PDUs. Once standby power drains completely, all 30 components activate.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why is `nvidia-smi` reporting 143771 MiB per GPU a useful way to tell an H200 from an H100?`&lt;/strong>`</summary>
+<summary>**10. Why is `nvidia-smi` reporting 143771 MiB per GPU a useful way to tell an H200 from an H100?**</summary>
 
 An H100 reports 81,920 MiB of HBM3 memory, whereas an H200 reports 143,771 MiB of HBM3e memory. Because the two GPUs share the same 8U chassis and power specs, checking `memory.total` in `nvidia-smi` immediately confirms whether a node contains H200 accelerators.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How many NVLink sub-links does each H100/H200 GPU have, and how many NVLink endpoints are wired into the NVSwitches in total?`&lt;/strong>`</summary>
+<summary>**11. How many NVLink sub-links does each H100/H200 GPU have, and how many NVLink endpoints are wired into the NVSwitches in total?**</summary>
 
 Each GPU exposes 18 fourth-generation NVLink sub-links. Across eight GPUs, that equals 144 NVLink sub-link endpoints wired into the four NVSwitch chips.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What does a `NV18` cell mean in `nvidia-smi topo -m`?`&lt;/strong>`</summary>
+<summary>**12. What does a `NV18` cell mean in `nvidia-smi topo -m`?**</summary>
 
 The `NV18` symbol means the two GPUs communicate across 18 bonded NVLink sub-links through the four NVSwitch ASICs. This path delivers 900 GB/s of bidirectional bandwidth per GPU and consumes zero PCIe or CPU bandwidth.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. What is the difference between `PIX`, `NODE` and `SYS` for a GPU-to-NIC path?`&lt;/strong>`</summary>
+<summary>**13. What is the difference between `PIX`, `NODE` and `SYS` for a GPU-to-NIC path?**</summary>
 
 A `PIX` path crosses a single PCIe switch and is the fastest route. A `NODE` path bounces through the PCIe root complex on the same CPU socket, which degrades performance. A `SYS` path crosses the Intel UPI link between the two CPU sockets, cutting multi-node collective bandwidth by roughly half.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Why should each training process be pinned to its own NUMA node?`&lt;/strong>`</summary>
+<summary>**14. Why should each training process be pinned to its own NUMA node?**</summary>
 
 Local ranks 0 through 3 drive GPUs, NICs, and NVMe drives attached to Socket 0, while local ranks 4 through 7 drive devices attached to Socket 1. If a worker process runs on the wrong CPU socket, its host memory copies and kernel launches cross the slow UPI link and create step-time jitter.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What are the two management controllers in a DGX H100, and which Redfish path belongs to each?`&lt;/strong>`</summary>
+<summary>**15. What are the two management controllers in a DGX H100, and which Redfish path belongs to each?**</summary>
 
 The primary Motherboard BMC in the top tray serves `/redfish/v1/Systems/DGX`. The GPU Tray Satellite BMC in the bottom tray serves `/redfish/v1/Systems/HGX_Baseboard_0` and communicates with the primary BMC over an internal bus.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How many firmware components does a DGX H100 track, and how are they split?`&lt;/strong>`</summary>
+<summary>**16. How many firmware components does a DGX H100 track, and how are they split?**</summary>
 
 It tracks 46 firmware components in total. Sixteen belong to the motherboard tray and 30 belong to the bottom HGX GPU tray.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. Why does the GPU-tray firmware need an AC power cycle and not just a reboot?`&lt;/strong>`</summary>
+<summary>**17. Why does the GPU-tray firmware need an AC power cycle and not just a reboot?**</summary>
 
 The satellite BMC, roots of trust, FPGA, and retimers stay powered by the standby rails of the six power supplies whenever AC cords remain plugged in. Only cutting all AC inputs drains those standby rails and forces a cold reload of the newly flashed firmware images.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. A training job crashes with a "Bus error" from a `DataLoader` worker while `free -h` shows hundreds of GB free. What is the likely cause and fix?`&lt;/strong>`</summary>
+<summary>**18. A training job crashes with a "Bus error" from a `DataLoader` worker while `free -h` shows hundreds of GB free. What is the likely cause and fix?**</summary>
 
 The container `/dev/shm` mount is still at its 64 MB default and ran out of space. Start the container with `--shm-size=256g` or `--ipc=host`, or mount a memory-backed `emptyDir` volume at `/dev/shm` in Kubernetes.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. A GPU's PCIe link shows `Gen3 x16` instead of `Gen5 x16`. What does this do and what do you do?`&lt;/strong>`</summary>
+<summary>**19. A GPU's PCIe link shows `Gen3 x16` instead of `Gen5 x16`. What does this do and what do you do?**</summary>
 
 Unidirectional bandwidth drops from 64 GB/s to a fraction of that rate, causing the degraded GPU to stall every synchronous collective step. Verify retimer firmware alignment, execute a full AC power cycle, and reseat or replace the GPU tray if the link still trains down.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Why does the 2 TB of host DDR5 matter in a GPU server?`&lt;/strong>`</summary>
+<summary>**20. Why does the 2 TB of host DDR5 matter in a GPU server?**</summary>
 
 It holds memory-mapped dataset shards, shared-memory queues for CPU `DataLoader` workers, pinned DMA buffers, and model checkpoints offloaded from GPU memory. Without ample host RAM, GPUs sit idle waiting on disk reads and checkpoint writes.
 </details>
@@ -625,7 +625,7 @@ It holds memory-mapped dataset shards, shared-memory queues for CPU `DataLoader`
 ### Sources read in full for this chapter
 
 1. **`nvidia-devops` Volume 05 Chapter 2 (`nvidia-zero-to-hero/volume-05/chapter-02-inside-a-dgx-system.md`, 1,176 words):**
-   - Modular 8U chassis trays, HGX H100 8-GPU baseboard, 18 NVLink 4.0 sub-links at 50 GB/s = 900 GB/s per GPU across 4 third-generation NVSwitches (3.6 TB/s bisection), dual Intel Xeon Platinum 8480C (112 cores) + 2 TB DDR5 across 16 channels, 4 PCIe Gen5 switches (`PCIeSwitch_0..1` and `PCIeRetimer_0..1`) pairing GPUs (`GPU0/GPU1`..), NICs (`mlx5_0..7`: `mlx5_0..1` / `mlx5_0/mlx5_1`, `mlx5_2..3` / `mlx5_2/mlx5_3`, `mlx5_4..5`, `mlx5_6..7` / `mlx5_4..7`, `mlx5_i`), and NVMe drives (`nvme0..7`: `nvme0..1`, `nvme2..3`, `nvme4..5`, `nvme6..7`, `nvme_i`), 8× ConnectX-7 400G + 2× dual-port BlueField-3/CX-7, 8× 3.84 TB U.2 RAID 0 + 2× 1.92 TB M.2 RAID 1, `nvidia-smi topo -m` (`NV18`, `PIX`, `NODE`, `SYS`, modeled in `classify_dgx_topology_hop` and `compute_host_ram_staging_ratio`), and the GPU 0 `&lt;->` `mlx5_6` (`SYS`) troubleshooting scenario.
+   - Modular 8U chassis trays, HGX H100 8-GPU baseboard, 18 NVLink 4.0 sub-links at 50 GB/s = 900 GB/s per GPU across 4 third-generation NVSwitches (3.6 TB/s bisection), dual Intel Xeon Platinum 8480C (112 cores) + 2 TB DDR5 across 16 channels, 4 PCIe Gen5 switches (`PCIeSwitch_0..1` and `PCIeRetimer_0..1`) pairing GPUs (`GPU0/GPU1`..), NICs (`mlx5_0..7`: `mlx5_0..1` / `mlx5_0/mlx5_1`, `mlx5_2..3` / `mlx5_2/mlx5_3`, `mlx5_4..5`, `mlx5_6..7` / `mlx5_4..7`, `mlx5_i`), and NVMe drives (`nvme0..7`: `nvme0..1`, `nvme2..3`, `nvme4..5`, `nvme6..7`, `nvme_i`), 8× ConnectX-7 400G + 2× dual-port BlueField-3/CX-7, 8× 3.84 TB U.2 RAID 0 + 2× 1.92 TB M.2 RAID 1, `nvidia-smi topo -m` (`NV18`, `PIX`, `NODE`, `SYS`, modeled in `classify_dgx_topology_hop` and `compute_host_ram_staging_ratio`), and the GPU 0 `<->` `mlx5_6` (`SYS`) troubleshooting scenario.
 2. **Chris Fregly, *AI Systems Performance Engineering* (`ai-systems-performance-engineering`), Chapter 2 (pp. 20–55):**
    - Hopper vs Blackwell SXM node architecture, NVLink/NVSwitch topology, and PCIe Gen5 vs NVLink bandwidth hierarchy.
 3. ***Distributed AI Systems* (`distributed-ai-systems`), Chapter 2 (GPU Hardware, Networking, and Parallelism Strategies, chunks 0–10):**

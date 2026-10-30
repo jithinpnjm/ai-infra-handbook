@@ -388,13 +388,13 @@ Summary: 25 passed, 0 failed out of 25 checks.
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. How many usable IPs exist in the 10.30.0.0/16 cluster CIDR and in each node's /24 podCIDR, and what is the default kubelet maxPods limit per node?`&lt;/strong>`</summary>
+<summary>**1. How many usable IPs exist in the 10.30.0.0/16 cluster CIDR and in each node's /24 podCIDR, and what is the default kubelet maxPods limit per node?**</summary>
 
 A `/16` cluster CIDR contains 65,536 total addresses and 65,534 usable Pod IPs, splitting into 256 node subnets. Each `/24` node CIDR provides 254 usable Pod IPs, which sits comfortably above the default kubelet limit of 110 Pods per node.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What are the four standard operations defined by the CNCF Container Networking Interface specification?`&lt;/strong>`</summary>
+<summary>**2. What are the four standard operations defined by the CNCF Container Networking Interface specification?**</summary>
 
 1. ADD attaches a network interface to a container's network namespace and assigns IP addresses and routes.
 2. DELETE removes the container's network interface and releases IPAM resources on termination.
@@ -403,93 +403,93 @@ A `/16` cluster CIDR contains 65,536 total addresses and 65,534 usable Pod IPs, 
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Why did kube-apiserver and etcd start normally on a freshly kubeadm-initialized node while coredns stayed 0/1 Pending with cni config uninitialized?`&lt;/strong>`</summary>
+<summary>**3. Why did kube-apiserver and etcd start normally on a freshly kubeadm-initialized node while coredns stayed 0/1 Pending with cni config uninitialized?**</summary>
 
 Static control-plane Pods such as the API server and etcd set `hostNetwork: true` and share the node's root network namespace, so they do not invoke CNI. The CoreDNS Pods use standard Pod networking and cannot start until a CNI plugin writes its configuration into `/etc/cni/net.d/` and binaries into `/opt/cni/bin/`.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. How does Cilium with KubeProxyReplacement: strict improve Kubernetes Service routing compared to kube-proxy in iptables mode?`&lt;/strong>`</summary>
+<summary>**4. How does Cilium with KubeProxyReplacement: strict improve Kubernetes Service routing compared to kube-proxy in iptables mode?**</summary>
 
 In iptables mode, kube-proxy evaluates chains sequentially in O(N) time, which degrades as Service counts grow into the thousands. Cilium attaches eBPF programs at kernel XDP and tc hooks to perform Service translation via O(1) hash-table map lookups.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. What is Calico's ipipMode: CrossSubnet setting in an IPPool custom resource?`&lt;/strong>`</summary>
+<summary>**5. What is Calico's ipipMode: CrossSubnet setting in an IPPool custom resource?**</summary>
 
 Setting `ipipMode: CrossSubnet` instructs Calico's BIRD and Felix daemons to route Pod packets natively without encapsulation whenever the source and destination nodes sit on the same L2 subnet. It applies IP-in-IP encapsulation only when packets must cross an L3 subnet router boundary.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Contrast North-South versus East-West network traffic in microservices versus distributed LLM training, and state the communication overhead threshold where standard Ethernet is no longer sufficient.`&lt;/strong>`</summary>
+<summary>**6. Contrast North-South versus East-West network traffic in microservices versus distributed LLM training, and state the communication overhead threshold where standard Ethernet is no longer sufficient.**</summary>
 
 Microservices are dominated by North-South external client traffic and light East-West RPC calls. Distributed LLM training generates massive synchronous East-West gradient and activation exchanges across all nodes. Standard TCP/IP Ethernet suffices for two to eight data-parallel nodes when communication stays below fifteen percent of step time. Once communication reaches twenty to twenty-five percent of step time, RDMA over InfiniBand or RoCEv2 is required.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Walk through the five data-movement hops of a traditional non-RDMA GPU-to-GPU network transfer versus GPUDirect RDMA.`&lt;/strong>`</summary>
+<summary>**7. Walk through the five data-movement hops of a traditional non-RDMA GPU-to-GPU network transfer versus GPUDirect RDMA.**</summary>
 
 - In the traditional path, the source GPU copies data over PCIe to a host RAM bounce buffer, and the source CPU directs the local NIC to DMA from host RAM. After crossing the network, the destination NIC DMAs into destination host RAM, and the destination CPU copies the buffer over PCIe into destination GPU HBM.
 - In GPUDirect RDMA, the GPU driver pins PCIe BAR1 memory and `nvidia-peermem` passes those physical addresses to the Mellanox driver. The source NIC performs a direct PCIe Peer-to-Peer DMA read from source GPU HBM and transmits RDMA packets over the fabric. The destination NIC then writes directly into destination GPU HBM, cutting latency by forty to sixty percent.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What is the role of the nvidia-peermem kernel module, and how do you check if it is loaded on a worker node?`&lt;/strong>`</summary>
+<summary>**8. What is the role of the nvidia-peermem kernel module, and how do you check if it is loaded on a worker node?**</summary>
 
 The `nvidia-peermem` module is the Linux kernel bridge that allows the Mellanox OFED RDMA subsystem to register and DMA directly into pinned NVIDIA GPU BAR1 memory. You can verify that it is loaded by running `lsmod | grep nvidia_peermem` on the host.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Explain the 8-GPU, 8-NIC Rail architecture in an HGX server.`&lt;/strong>`</summary>
+<summary>**9. Explain the 8-GPU, 8-NIC Rail architecture in an HGX server.**</summary>
 
 Each of the eight GPUs is paired one-to-one with a dedicated ConnectX NIC behind four local PCIe switches, with four GPU-NIC pairs on each CPU NUMA node. Across the cluster, all NIC 0 ports connect to Leaf Switch 0 on Rail 1, all NIC 1 ports connect to Leaf Switch 1 on Rail 2, and so on through Rail 8. Every GPU communicates over a non-blocking local PIX path without crossing a NUMA boundary.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why do distributed training Pods use Multus CNI to attach net1 alongside eth0 rather than replacing eth0 entirely?`&lt;/strong>`</summary>
+<summary>**10. Why do distributed training Pods use Multus CNI to attach net1 alongside eth0 rather than replacing eth0 entirely?**</summary>
 
 The primary `eth0` interface remains on the default cluster CNI to handle Kubernetes API communication, CoreDNS service discovery, Prometheus telemetry scraping, and object-storage access. Meanwhile, the secondary interfaces attach directly to the isolated high-speed InfiniBand or RoCEv2 fabric dedicated to NCCL collectives.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What problem does the Whereabouts IPAM plugin solve in a Multus NetworkAttachmentDefinition?`&lt;/strong>`</summary>
+<summary>**11. What problem does the Whereabouts IPAM plugin solve in a Multus NetworkAttachmentDefinition?**</summary>
 
 Standard host-local IPAM only tracks IP addresses on a single node, causing IP collisions across nodes on a shared L2 RDMA subnet. Running an external DHCP server on isolated RDMA VLANs adds operational fragility. Whereabouts coordinates cluster-wide IP allocation across all nodes using Kubernetes custom resources.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What is the difference between the RDMA Shared Device Plugin and the SR-IOV Network Device Plugin?`&lt;/strong>`</summary>
+<summary>**12. What is the difference between the RDMA Shared Device Plugin and the SR-IOV Network Device Plugin?**</summary>
 
 - The RDMA Shared Device Plugin allows multiple Pods to share a single physical ConnectX adapter and mounts `/dev/infiniband/` into the container, typically paired with Macvlan or IPoIB.
 - The SR-IOV Network Device Plugin partitions a physical NIC into hardware-isolated PCIe Virtual Functions. It gives each Pod exclusive Virtual Function ownership, hardware VLAN isolation, and per-VF NUMA hints for the kubelet Topology Manager.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. When a Pod has annotation k8s.v1.cni.cncf.io/networks: roce-sriov-network, roce-sriov-network and requests nvidia.com/hostdev: 2, what interfaces are created inside the Pod?`&lt;/strong>`</summary>
+<summary>**13. When a Pod has annotation k8s.v1.cni.cncf.io/networks: roce-sriov-network, roce-sriov-network and requests nvidia.com/hostdev: 2, what interfaces are created inside the Pod?**</summary>
 
 Because the network name is listed twice in the comma-separated annotation and `nvidia.com/hostdev: 2` allocates two SR-IOV Virtual Functions, Multus creates three interfaces. The Pod receives `eth0` on the primary CNI plus `net1` and `net2` as two separate SR-IOV RDMA interfaces.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Why must containers performing RDMA add the IPC_LOCK capability in securityContext.capabilities.add?`&lt;/strong>`</summary>
+<summary>**14. Why must containers performing RDMA add the IPC_LOCK capability in securityContext.capabilities.add?**</summary>
 
 RDMA network adapters require registering pinned, page-locked memory buffers so the operating system kernel never swaps or moves pages during direct DMA transfers. Adding `IPC_LOCK` permits the container process to lock memory pages beyond default unprivileged limits.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What happens if SriovNetworkNodePolicy is applied on a host where intel_iommu=on iommu=pt is missing from GRUB or VT-d / AMD-Vi is disabled in BIOS?`&lt;/strong>`</summary>
+<summary>**15. What happens if SriovNetworkNodePolicy is applied on a host where intel_iommu=on iommu=pt is missing from GRUB or VT-d / AMD-Vi is disabled in BIOS?**</summary>
 
 The Linux kernel refuses to instantiate the SR-IOV Virtual Functions, so zero Virtual Functions appear in `ip link` and kernel logs report IOMMU errors. As a result, the SR-IOV device plugin advertises zero allocatable Virtual Functions to the kubelet.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How does PCIe Access Control Services degrade GPUDirect RDMA performance, and how do you detect and fix it?`&lt;/strong>`</summary>
+<summary>**16. How does PCIe Access Control Services degrade GPUDirect RDMA performance, and how do you detect and fix it?**</summary>
 
 When PCIe Access Control Services is enabled on PCIe switches, it blocks direct Peer-to-Peer switching between a GPU and NIC on the same switch. Every packet is forced up to the CPU Root Complex instead. Engineers detect it via `lspci -vvv | grep -i acs` showing `ACSCtl: SrcValid+` alongside low benchmark bandwidth, and fix it by disabling ACS in the server BIOS.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What do NCCL_IB_TC=106, NCCL_IB_GID_INDEX=3, and NCCL_IB_QPS_PER_CONNECTION=4 configure on a RoCEv2 network?`&lt;/strong>`</summary>
+<summary>**17. What do NCCL_IB_TC=106, NCCL_IB_GID_INDEX=3, and NCCL_IB_QPS_PER_CONNECTION=4 configure on a RoCEv2 network?**</summary>
 
 - `NCCL_IB_TC=106` sets the IP DSCP or Traffic Class byte on RoCEv2 packets so network switches map RDMA traffic into the lossless Priority Flow Control queue.
 - `NCCL_IB_GID_INDEX=3` selects Global Identifier index 3 in `show_gids`, which corresponds to the RoCEv2 UDP over IPv4 GID table entry.
@@ -497,13 +497,13 @@ When PCIe Access Control Services is enabled on PCIe switches, it blocks direct 
 </details>
 
 <details>
-<summary>`&lt;strong>`18. When is NCCL_TOPO_FILE=/path/to/topology.xml needed, and how should you generate the starting XML file?`&lt;/strong>`</summary>
+<summary>**18. When is NCCL_TOPO_FILE=/path/to/topology.xml needed, and how should you generate the starting XML file?**</summary>
 
 In virtualized or SR-IOV VM environments where the hypervisor presents a flattened synthetic PCIe bus, NCCL auto-discovery may fail to see that a virtual GPU and virtual NIC share the same physical PCIe switch. You generate a valid baseline XML from a working node by running a job with `NCCL_TOPO_DUMP_FILE=/tmp/topo.xml` and inject it into Pods via a ConfigMap using `NCCL_TOPO_FILE`.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What are the three verification commands to prove a Pod's secondary RDMA network is working end-to-end?`&lt;/strong>`</summary>
+<summary>**19. What are the three verification commands to prove a Pod's secondary RDMA network is working end-to-end?**</summary>
 
 1. Run `kubectl exec -n <ns> <pod> -- ip addr show net1` to confirm Multus created the secondary interface and Whereabouts assigned an IP.
 2. Run `kubectl exec -n <ns> <pod> -- ls /dev/infiniband/` to confirm the device plugin mounted the InfiniBand or RoCE character devices.
@@ -511,7 +511,7 @@ In virtualized or SR-IOV VM environments where the hypervisor presents a flatten
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Compare MTU settings across standard Ethernet, InfiniBand IPoIB, and RoCEv2 SR-IOV.`&lt;/strong>`</summary>
+<summary>**20. Compare MTU settings across standard Ethernet, InfiniBand IPoIB, and RoCEv2 SR-IOV.**</summary>
 
 Standard Ethernet defaults to MTU 1500, and overlay networks reduce that payload further. InfiniBand IPoIB typically configures MTU 4,096, while high-performance RoCEv2 SR-IOV policies configure jumbo frames at MTU 9,000 to minimize packet header and interrupt overhead during large tensor transfers.
 </details>

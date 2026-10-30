@@ -557,39 +557,39 @@ Exercise Input Parameters Reference:
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. What does SHARP stand for, and what fundamental shift does it introduce in distributed collective communication?`&lt;/strong>`</summary>
+<summary>**1. What does SHARP stand for, and what fundamental shift does it introduce in distributed collective communication?**</summary>
 
 Scalable Hierarchical Aggregation and Reduction Protocol. Instead of treating network switches as passive packet forwarders while GPUs circulate and sum intermediate tensor shards, SHARP moves collective reduction arithmetic and broadcast replication directly into the switch ASIC Aggregation Nodes.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. In a Ring ReduceScatter of a tensor of size B across N GPUs, how many bytes does each GPU receive, and how does in-network reduction (NVLS or SHARP) change that volume?`&lt;/strong>`</summary>
+<summary>**2. In a Ring ReduceScatter of a tensor of size B across N GPUs, how many bytes does each GPU receive, and how does in-network reduction (NVLS or SHARP) change that volume?**</summary>
 
 In a Ring ReduceScatter, each GPU receives $B\frac\{N - 1\}\{N\}$ bytes across $N - 1$ sequential hops. With in-network reduction via NVLS or SHARP, the switch aggregates all $N$ contributions in hardware and returns only $\frac\{B\}\{N\}$ bytes to each GPU. This reduces per-endpoint receive traffic to $\frac\{1\}\{N - 1\}$ of the ring volume.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Since AllGather performs no arithmetic addition, how does NVLink SHARP (NVLS) accelerate AllGather, and what happens when you overlap an NVLS AllGather with an NVLS ReduceScatter?`&lt;/strong>`</summary>
+<summary>**3. Since AllGather performs no arithmetic addition, how does NVLink SHARP (NVLS) accelerate AllGather, and what happens when you overlap an NVLS AllGather with an NVLS ReduceScatter?**</summary>
 
 NVLS accelerates AllGather using hardware multicast inside the NVSwitch ASIC. Each GPU sends its $\frac\{B\}\{N\}$ shard once into the switch, and the switch replicates it to all $N - 1$ peers in one hop, cutting sender volume by $\frac\{1\}\{N - 1\}$. When you overlap a multicast AllGather of duration $T_\{\text\{AG\}}$ with an in-network ReduceScatter of duration $T_\{\text\{RS\}}$, the network performs both concurrently. This reduces phase wall time from $T_\{\text\{AG\}} + T_\{\text\{RS\}}$ to $\max(T_\{\text\{AG\}}, T_\{\text\{RS\}})$ and cuts phase time in half.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Compare the unidirectional per-node network traffic and step count of a host-driven Ring AllReduce versus an InfiniBand SHARP AllReduce across N = 32 nodes for a 1,024 MB tensor.`&lt;/strong>`</summary>
+<summary>**4. Compare the unidirectional per-node network traffic and step count of a host-driven Ring AllReduce versus an InfiniBand SHARP AllReduce across N = 32 nodes for a 1,024 MB tensor.**</summary>
 
 - **Host-driven Ring AllReduce:** Each node sends and receives $1,984.0\text\{ MB\}$ per direction across 62 sequential steps.
 - **InfiniBand SHARP AllReduce:** Each node sends $1,024.0\text\{ MB\}$ up into its leaf switch once and receives $1,024.0\text\{ MB\}$ of globally reduced data back down once across 10 tree steps.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. What is the architectural difference between InfiniBand SHARP (CollNet) and NVLink SHARP (NVLS)?`&lt;/strong>`</summary>
+<summary>**5. What is the architectural difference between InfiniBand SHARP (CollNet) and NVLink SHARP (NVLS)?**</summary>
 
 - **InfiniBand SHARP (`NCCL_COLLNET_ENABLE=1`):** Executes inter-node and inter-rack reductions inside Quantum-series InfiniBand switches. It requires the external NCCL RDMA SHARP plugin, compute-node `sharp_daemons`, and the fabric-wide `sharp_am` running with OpenSM or UFM.
 - **NVLink SHARP (`NCCL_NVLS_ENABLE=1`):** Executes intra-node or intra-rack reductions and hardware multicasts inside NVSwitch Gen 3 and Gen 4 ASICs over NVLink memory-mapped multicast addresses. On NVL72 racks, it is managed by NMX-M.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. What is the difference between NCCL's CollNetDirect and CollNetChain algorithms?`&lt;/strong>`</summary>
+<summary>**6. What is the difference between NCCL's CollNetDirect and CollNetChain algorithms?**</summary>
 
 Both are hierarchical CollNet algorithms that combine intra-node aggregation with inter-node InfiniBand SHARP tree reduction:
 - **CollNetDirect:** Designed for dense all-to-all local topologies such as NVSwitch nodes. All intra-node GPUs communicate directly with the designated rail leader GPUs in parallel.
@@ -597,7 +597,7 @@ Both are hierarchical CollNet algorithms that combine intra-node aggregation wit
 </details>
 
 <details>
-<summary>`&lt;strong>`7. What are the roles of OpenSM/UFM, sharp_am, sharp_daemons (sharp_d), and switch Aggregation Nodes (ANs) in an InfiniBand SHARP fabric?`&lt;/strong>`</summary>
+<summary>**7. What are the roles of OpenSM/UFM, sharp_am, sharp_daemons (sharp_d), and switch Aggregation Nodes (ANs) in an InfiniBand SHARP fabric?**</summary>
 
 1. **OpenSM / UFM:** Discovers the physical InfiniBand topology, assigns LIDs, programs switch LFT and MFT routing tables, and exports the topology to `sharp_am`.
 2. **sharp_am:** Computes physical SHARP spanning trees across Quantum switches, configures switch ANs via InfiniBand MADs, and manages per-job tree and buffer quotas.
@@ -606,7 +606,7 @@ Both are hierarchical CollNet algorithms that combine intra-node aggregation wit
 </details>
 
 <details>
-<summary>`&lt;strong>`8. How did floating-point data type support evolve across SHARPv1, SHARPv2, SHARPv3, SHARPv4, and NVSwitch NVLS Gen 4?`&lt;/strong>`</summary>
+<summary>**8. How did floating-point data type support evolve across SHARPv1, SHARPv2, SHARPv3, SHARPv4, and NVSwitch NVLS Gen 4?**</summary>
 
 - **SHARPv1:** Supported only INT32, INT64, FP32, and FP64 on 100G EDR Switch-IB 2 switches.
 - **SHARPv2:** Added FP16 and BF16 plus line-rate Streaming Aggregation on 200G HDR Quantum-1 switches.
@@ -616,7 +616,7 @@ Both are hierarchical CollNet algorithms that combine intra-node aggregation wit
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Why can a DGX GB300 SuperPOD scale up to 16 Scalable Units (9,216 GPUs) in a 2-layer InfiniBand fabric, and how many Q3400-RD leaf and spine switches does it use?`&lt;/strong>`</summary>
+<summary>**9. Why can a DGX GB300 SuperPOD scale up to 16 Scalable Units (9,216 GPUs) in a 2-layer InfiniBand fabric, and how many Q3400-RD leaf and spine switches does it use?**</summary>
 
 Because the Quantum-X800 Q3400-RD switch provides 144 ports at 800 Gbps. Each SU of 8 DGX GB300 NVL72 racks uses 8 leaf switches across 4 rails:
 - **2 SUs:** 16 leaf switches and 8 spine switches for 1,152 GPUs.
@@ -626,13 +626,13 @@ Because the Quantum-X800 Q3400-RD switch provides 144 ports at 800 Gbps. Each SU
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why does switching from Ring AllReduce to SHARP CollNet slightly change floating-point gradient values, yet SHARP remains deterministic across repeated runs?`&lt;/strong>`</summary>
+<summary>**10. Why does switching from Ring AllReduce to SHARP CollNet slightly change floating-point gradient values, yet SHARP remains deterministic across repeated runs?**</summary>
 
 IEEE-754 floating-point addition is non-associative due to rounding after each addition. Ring accumulates sequentially rotated by rank, whereas a SHARP Aggregation Node reduces operands in a fixed binary tree parenthesization indexed by switch port. Because the SHARP tree topology is fixed and the Root AN multicasts a single reduced tensor down to all ranks, every rank receives a bit-identical tensor. Repeated runs on the same tree are therefore bit-repeatable.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. Which NCCL environment variables enable InfiniBand SHARP, enable NVLink SHARP (NVLS), and disable SHARP for A/B testing?`&lt;/strong>`</summary>
+<summary>**11. Which NCCL environment variables enable InfiniBand SHARP, enable NVLink SHARP (NVLS), and disable SHARP for A/B testing?**</summary>
 
 - `NCCL_COLLNET_ENABLE=1`: Enables InfiniBand SHARP via CollNet (CollNetDirect and CollNetChain).
 - `NCCL_NVLS_ENABLE=1`: Enables NVSwitch NVLink SHARP (NVLS and NVLSTree).
@@ -640,7 +640,7 @@ IEEE-754 floating-point addition is non-associative due to rounding after each a
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How do persistent user buffers (ncclCommRegister) improve SHARP and NVLS performance, and what two invariants must hold across all ranks?`&lt;/strong>`</summary>
+<summary>**12. How do persistent user buffers (ncclCommRegister) improve SHARP and NVLS performance, and what two invariants must hold across all ranks?**</summary>
 
 Registering user buffers via `ncclCommRegister()` allows NCCL to perform zero-copy SHARP and NVLS collectives directly on the application's tensor memory. It avoids copying through internal `NCCL_BUFFSIZE` channel staging buffers and reduces GPU SM channel blocks from 16 down to 4. The two mandatory invariants are:
 1. If any rank in a communicator uses a registered buffer for a collective, all ranks must use registered buffers.
@@ -648,7 +648,7 @@ Registering user buffers via `ncclCommRegister()` allows NCCL to perform zero-co
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How do you enable or disable SHARP in OpenMPI / HPC-X when running MPI collectives via HCOLL?`&lt;/strong>`</summary>
+<summary>**13. How do you enable or disable SHARP in OpenMPI / HPC-X when running MPI collectives via HCOLL?**</summary>
 
 Enable HCOLL and SHARP with:
 `mpiexec -mca coll_hcoll_enable 1 -x HCOLL_MAIN_IB=mlx5_0:1 -x HCOLL_ENABLE_NBC=1 -x HCOLL_ENABLE_SHARP=1 ./myprog`
@@ -656,13 +656,13 @@ To disable HCOLL when troubleshooting, pass `mpiexec -mca coll_hcoll_enable 0` o
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Does NVIDIA Spectrum-X Ethernet support switch-resident SHARP reduction engines today?`&lt;/strong>`</summary>
+<summary>**14. Does NVIDIA Spectrum-X Ethernet support switch-resident SHARP reduction engines today?**</summary>
 
 No. In current production hardware such as the Spectrum-4 SN5600 and Spectrum-X800, Spectrum-X accelerates NCCL AllReduce via adaptive packet spraying, hardware telemetry, and congestion control over RoCEv2. It does not expose switch-resident arithmetic reduction engines analogous to InfiniBand SHARP.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. In the Ultra Ethernet Consortium (UEC) architecture, what are sFEPs, the INC Manager (IM), and Libfabric's fi_collective API?`&lt;/strong>`</summary>
+<summary>**15. In the Ultra Ethernet Consortium (UEC) architecture, what are sFEPs, the INC Manager (IM), and Libfabric's fi_collective API?**</summary>
 
 - **sFEPs:** UEC-capable Ethernet switches equipped with an In-Network Collectives silicon or microkernel engine and a local INC switch agent.
 - **INC Manager:** Centralized control plane that communicates with switch INC agents over the Out-of-Band network via gRPC to construct collective trees and elect Spine switches as tree roots.
@@ -670,31 +670,31 @@ No. In current production hardware such as the Spectrum-4 SN5600 and Spectrum-X8
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Why can very large collectives (hundreds of MBs or multiple GBs) or multi-job clusters silently fall back from SHARP to standard Ring/Tree?`&lt;/strong>`</summary>
+<summary>**16. Why can very large collectives (hundreds of MBs or multiple GBs) or multi-job clusters silently fall back from SHARP to standard Ring/Tree?**</summary>
 
 Quantum switches have a finite pool of 64 hardware SHARP trees on SHARPv3 and SHARPv4 and finite on-switch SRAM reduction buffer memory. If concurrent jobs or multiple per-job communicators exhaust the 64 trees, NCCL logs a warning and falls back to non-SHARP host-driven Ring or Tree aggregation. The same fallback occurs if an unbucketed collective exceeds the switch SHARP buffer allocation.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. On what cluster sizes does InfiniBand SHARP provide the largest speedup, and what speedup range does NVIDIA report?`&lt;/strong>`</summary>
+<summary>**17. On what cluster sizes does InfiniBand SHARP provide the largest speedup, and what speedup range does NVIDIA report?**</summary>
 
 On a small 2-node to 4-node cluster, inter-node latency is tiny and SHARP gains are modest. On large-scale clusters of 32 or more nodes where network hops and bisection bandwidth dominate collective time, InfiniBand SHARP cuts collective latency and traffic to deliver 2x to 5x AllReduce speedups.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Why is GPUDirect RDMA (nvidia-peermem or dma-buf) a mandatory prerequisite for InfiniBand SHARP in NCCL?`&lt;/strong>`</summary>
+<summary>**18. Why is GPUDirect RDMA (nvidia-peermem or dma-buf) a mandatory prerequisite for InfiniBand SHARP in NCCL?**</summary>
 
 Because the NCCL RDMA SHARP plugin streams tensor shards directly from GPU HBM through the ConnectX HCA into the Leaf Switch AN Queue Pair. It also receives reduced shards directly back into GPU HBM. Without GPUDirect RDMA via `nvidia-peermem` or `dma-buf`, SHARP cannot register GPU BAR1 memory regions on the CollNet Queue Pairs.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Inside a single DGX GB200 / GB300 NVL72 rack, how many compute trays, NVSwitch trays, NVSwitch chips, and NVLink 5 links per GPU form the NVLS domain?`&lt;/strong>`</summary>
+<summary>**19. Inside a single DGX GB200 / GB300 NVL72 rack, how many compute trays, NVSwitch trays, NVSwitch chips, and NVLink 5 links per GPU form the NVLS domain?**</summary>
 
 An NVL72 rack contains 18 compute trays and 9 NVLink switch trays, with 2 NVSwitch chips per switch tray for 18 NVSwitch chips total. Each GPU uses its 18 NVLink 5 links at 100 GB/s bidirectional each (1.8 TB/s per GPU) to connect 1 link to each of the 18 NVSwitch chips. This forms a 1-hop crossbar with 130 TB/s aggregate rack bisection bandwidth.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Which diagnostic commands verify that the InfiniBand subnet, UFM / OpenSM, and SHARP trees are healthy across the fabric?`&lt;/strong>`</summary>
+<summary>**20. Which diagnostic commands verify that the InfiniBand subnet, UFM / OpenSM, and SHARP trees are healthy across the fabric?**</summary>
 
 1. Run `ibstat`, `ibstatus`, and `ibv_devinfo -v` on compute nodes to verify `State: Active`, `Physical state: LinkUp`, and `SM lid`.
 2. Run `sminfo` and `systemctl status opensm ufm-enterprise sharp_am` on the management or UFM node.

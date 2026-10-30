@@ -431,121 +431,121 @@ Summary: 25 passed, 0 failed out of 25 checks.
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. List the six triage layers for a shared-GPU and KAI Scheduler incident in order from bottom to top.`&lt;/strong>`</summary>
+<summary>**1. List the six triage layers for a shared-GPU and KAI Scheduler incident in order from bottom to top.**</summary>
 
 The first layer checks physical device, host, and driver enumeration. The second layer verifies the active MIG mode or time-slicing shape on the host. Next, the third layer checks device-plugin discovery and node allocatable registration, while the fourth layer checks ResourceQuota, PodGroup, Queue, and MIG geometry policy. Finally, the fifth layer checks Binder reservation Pods and container CUDA initialization, and the sixth layer verifies service latency targets and DCGM telemetry freshness.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Before running any remediation command during a shared-GPU incident, what five read-only evidence files should you capture?`&lt;/strong>`</summary>
+<summary>**2. Before running any remediation command during a shared-GPU incident, what five read-only evidence files should you capture?**</summary>
 
 Capture the node description in `node-describe.txt`, the node's running Pods in `node-pods.txt`, and sorted cluster events in `events.txt`. Then record the node's capacity and allocatable JSON in `node-resources.txt`. Finally, save all ResourceQuotas and KAI scheduling objects in `resourcequotas.txt` or `kai-and-quotas.txt`.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Which seven microservices and six CRDs make up the NVIDIA KAI Scheduler operational footprint?`&lt;/strong>`</summary>
+<summary>**3. Which seven microservices and six CRDs make up the NVIDIA KAI Scheduler operational footprint?**</summary>
 
 The seven microservices are `operator`, `kai-scheduler`, `pod-grouper`, `binder`, `queue-controller`, `admission`, and `pod-group-controller`. The six Custom Resource Definitions are Config, SchedulingShard, Queue, PodGroup, BindRequest, and Topology.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. If a distributed training job submitted with schedulerName set to kai-scheduler stays Pending and no PodGroup exists for it, which KAI microservice do you inspect first?`&lt;/strong>`</summary>
+<summary>**4. If a distributed training job submitted with schedulerName set to kai-scheduler stays Pending and no PodGroup exists for it, which KAI microservice do you inspect first?**</summary>
 
 Inspect the PodGrouper microservice first by checking `kubectl logs -n kai-scheduler deploy/pod-grouper`. Verify that the workload carries the required `kai.scheduler/queue` label and that PodGrouper has RBAC permission to watch the parent workload custom resource.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. If a PodGroup is marked scheduled by kai-scheduler, but its fractional GPU pods remain Pending on the target node, which KAI CRD and microservice do you inspect?`&lt;/strong>`</summary>
+<summary>**5. If a PodGroup is marked scheduled by kai-scheduler, but its fractional GPU pods remain Pending on the target node, which KAI CRD and microservice do you inspect?**</summary>
 
 Inspect the BindRequest custom resource in the workload namespace and the logs of the Binder microservice in the `kai-scheduler` namespace. Also check the status of the integer `nvidia.com/gpu` reservation Pod that the Binder creates on the target worker node.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Why is a single GPU Utilization dashboard insufficient as an SLI and SLO contract for a shared GPU platform?`&lt;/strong>`</summary>
+<summary>**6. Why is a single GPU Utilization dashboard insufficient as an SLI and SLO contract for a shared GPU platform?**</summary>
 
 High utilization on a shared time-sliced GPU can mean tenants are suffering severe contention and tail-latency breaches. Conversely, low utilization on a reserved MIG slice can represent a completely healthy latency-sensitive endpoint holding burst capacity. Utilization alone never reveals queue wait time, allocation failures, or stale scrape pipelines.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. What are the three distinct operational views for shared GPUs, and who is the primary audience for each?`&lt;/strong>`</summary>
+<summary>**7. What are the three distinct operational views for shared GPUs, and who is the primary audience for each?**</summary>
 
 The platform health view serves site reliability and platform operations by tracking node readiness, device discovery, driver errors, and scrape freshness. The service delivery view serves tenant and service owners with scoped queue wait and request latency metrics. Meanwhile, the capacity and fairness view serves platform product and finance teams with allocation hours, pending reasons, and MIG fragmentation.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What are the six pillars of the Shared-GPU Telemetry Contract?`&lt;/strong>`</summary>
+<summary>**8. What are the six pillars of the Shared-GPU Telemetry Contract?**</summary>
 
 The first three pillars are coverage across every accepted GPU node, durable identity linking workload to node and GPU UUID without cross-tenant leaks, and documented metric semantics. The remaining three pillars are bounded label cardinality, sufficient retention history for incident reconstruction, and multi-tenant access controls matching cluster isolation boundaries.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. State the Prometheus SLI and SLO targets for a reserved MIG inference service and a best-effort time-sliced pool.`&lt;/strong>`</summary>
+<summary>**9. State the Prometheus SLI and SLO targets for a reserved MIG inference service and a best-effort time-sliced pool.**</summary>
 
 A reserved MIG inference service targets a request success rate above ninety-nine point five percent and ninety-ninth percentile latency below one hundred milliseconds. It triggers a breach alert above one hundred twenty milliseconds. A best-effort time-sliced pool targets ninety-fifth percentile queue wait time below thirty seconds and flags expected memory contention when physical memory utilization exceeds ninety percent.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why must you alert when dcgm_exporter_scrape_age_seconds exceeds 120 seconds, and how must dashboards represent a node with stale telemetry?`&lt;/strong>`</summary>
+<summary>**10. Why must you alert when dcgm_exporter_scrape_age_seconds exceeds 120 seconds, and how must dashboards represent a node with stale telemetry?**</summary>
 
 When the scrape age exceeds one hundred twenty seconds, hardware metrics are stale and no longer reflect current silicon state. Dashboards and responders must mark the node and GPU state as unknown rather than replacing missing series with zeroes or assuming the card is healthy.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. In the MIG absence playbook, what does it mean when Layer 1 and Layer 2 succeed on the host, but Layer 3 shows zero allocatable MIG resources on the Kubernetes Node?`&lt;/strong>`</summary>
+<summary>**11. In the MIG absence playbook, what does it mean when Layer 1 and Layer 2 succeed on the host, but Layer 3 shows zero allocatable MIG resources on the Kubernetes Node?**</summary>
 
 It proves that the physical GPU and host MIG partitions are healthy and isolates the failure to Layer 3 device-plugin registration. The safe fix is to inspect the device-plugin logs and restart only that node's device-plugin Pod. Wait thirty seconds for allocatable counts to repopulate without draining or repartitioning MIG on the host.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How do you distinguish MIG profile fragmentation from a general GPU capacity shortage?`&lt;/strong>`</summary>
+<summary>**12. How do you distinguish MIG profile fragmentation from a general GPU capacity shortage?**</summary>
 
 In capacity exhaustion, all compatible MIG instances and compute or memory slices are actively in use. In MIG fragmentation, worker nodes still have unused compute and memory slices. However, the remaining hardware slice geometry cannot legally combine to form the requested profile shape without draining and repartitioning.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How does the cluster behavior of a zero-capacity ResourceQuota differ from an Insufficient nvidia.com/gpu scheduler event?`&lt;/strong>`</summary>
+<summary>**13. How does the cluster behavior of a zero-capacity ResourceQuota differ from an Insufficient nvidia.com/gpu scheduler event?**</summary>
 
 A ResourceQuota denial happens synchronously at API admission. Therefore, `kubectl apply` fails immediately, no Pod object is created in storage, and node allocatable capacity is untouched. An insufficient resource event happens after API admission succeeds, so the Pod is created in the pending state and the scheduler emits a `FailedScheduling` event.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. When time-sliced workloads fail with memory pressure, what host-side threshold confirms contention, and what is the immediate safe containment action for a critical inference service?`&lt;/strong>`</summary>
+<summary>**14. When time-sliced workloads fail with memory pressure, what host-side threshold confirms contention, and what is the immediate safe containment action for a critical inference service?**</summary>
 
 Memory contention is confirmed when `nvidia-smi` shows GPU memory utilization above ninety-five percent, or above eighty to ninety percent alongside tail-latency spikes and host swap activity. The immediate safe containment action is to patch the sensitive service onto a dedicated or MIG node pool. Then compare tail latency after five minutes rather than raising the replica count on the shared node.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What are the five incident roles during a shared-GPU outage, and why must the Incident Commander never be the person running terminal commands?`&lt;/strong>`</summary>
+<summary>**15. What are the five incident roles during a shared-GPU outage, and why must the Incident Commander never be the person running terminal commands?**</summary>
 
 The five roles are the incident lead or Incident Commander, the platform responder or Subject Matter Expert, the workload owner, the capacity or service owner, and the communications owner. Separating the Incident Commander from the Subject Matter Expert gives the engineer inspecting kernel logs, GPU counters, and scheduler traces uninterrupted focus. Meanwhile, the commander manages cross-team decisions and status updates.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Walk through the five-step workflow of a controlled AI Game Day.`&lt;/strong>`</summary>
+<summary>**16. Walk through the five-step workflow of a controlled AI Game Day.**</summary>
 
 First define a falsifiable recovery hypothesis, and second restrict the blast radius to a staging mirror or canary pool. Third execute the specific fault injection, and fourth observe whether alerts fire and automated recovery holds the service level objective. Fifth, write a postmortem with tracked engineering tickets for every gap uncovered.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. How do you inject a simulated GPU double-bit ECC fault and an RDMA link blackhole during an AI Game Day, and why does host iptables fail to test RDMA blackholes?`&lt;/strong>`</summary>
+<summary>**17. How do you inject a simulated GPU double-bit ECC fault and an RDMA link blackhole during an AI Game Day, and why does host iptables fail to test RDMA blackholes?**</summary>
 
 Inject a simulated double-bit ECC fault on an isolated test GPU using `dcgmi test --inject` and verify that the device plugin marks the card unhealthy and evicts the Pod. Disable the physical or switch port using `ibportstate ... disable` during collective benchmarks to test an RDMA blackhole. Host `iptables` rules fail to block RDMA because RDMA verbs bypass the Linux kernel TCP/IP stack completely.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Why did powering off one of three Kubernetes master nodes cause a complete outage of all Triton inference pods on the worker nodes?`&lt;/strong>`</summary>
+<summary>**18. Why did powering off one of three Kubernetes master nodes cause a complete outage of all Triton inference pods on the worker nodes?**</summary>
 
 The worker-node device-plugin and GPU Operator DaemonSets had overly aggressive liveness probes tied to API server responsiveness. When one master powered off, the brief leader-election pause caused the device-plugin liveness probes to fail and restart the plugins. That restart unregistered `nvidia.com/gpu` on the worker nodes and caused local node agents to terminate all running Triton GPU Pods.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Why did Kubernetes PodDisruptionBudgets fail to prevent the worker-node kubelets from terminating those Triton pods during the device-plugin restart?`&lt;/strong>`</summary>
+<summary>**19. Why did Kubernetes PodDisruptionBudgets fail to prevent the worker-node kubelets from terminating those Triton pods during the device-plugin restart?**</summary>
 
 PodDisruptionBudgets only govern voluntary disruptions initiated through the Kubernetes Eviction API such as `kubectl drain`. They do not intercept node-local terminations triggered when a worker node's extended hardware resource disappears from the node agent.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. What seven items must be included in an actionable vendor or engineering Escalation Package to avoid the log-request loop?`&lt;/strong>`</summary>
+<summary>**20. What seven items must be included in an actionable vendor or engineering Escalation Package to avoid the log-request loop?**</summary>
 
 Include the business impact and timestamps, precise tenant-redacted reproduction steps, and the node name, GPU UUID, and active MIG or replica policy. Also attach exact software and driver versions across the stack and side-by-side evidence from the affected node and a healthy peer. Finally, include time-correlated scheduler and DCGM logs plus the chronological change and mitigation history.
 </details>

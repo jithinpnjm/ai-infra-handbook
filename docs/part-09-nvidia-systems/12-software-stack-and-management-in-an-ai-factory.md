@@ -394,7 +394,7 @@ Summary: 26 passed, 0 failed (total 26)
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. How do BCM, UFM Enterprise, NMX-M, and NVIDIA Mission Control divide management responsibilities inside a DGX SuperPOD?`&lt;/strong>`</summary>
+<summary>**1. How do BCM, UFM Enterprise, NMX-M, and NVIDIA Mission Control divide management responsibilities inside a DGX SuperPOD?**</summary>
 
 - Base Command Manager provisions bare-metal compute nodes from golden OS images, manages rack and chassis coordinates, flashes firmware via `cm-nvfwupd`, and executes node draining.
 - UFM Enterprise manages the scale-out Quantum InfiniBand compute fabric including SHARPv3, Adaptive Routing, SHIELD, and cable or switch telemetry.
@@ -403,7 +403,7 @@ Summary: 26 passed, 0 failed (total 26)
 </details>
 
 <details>
-<summary>`&lt;strong>`2. State the minimum host NVIDIA driver branch required for CUDA 11.x, CUDA 12.x, and CUDA 13.x containers, and explain what CUDA minor-version compatibility allows.`&lt;/strong>`</summary>
+<summary>**2. State the minimum host NVIDIA driver branch required for CUDA 11.x, CUDA 12.x, and CUDA 13.x containers, and explain what CUDA minor-version compatibility allows.**</summary>
 
 - CUDA 11.x requires host driver branch 450 or newer.
 - CUDA 12.x requires host driver branch 525 or newer.
@@ -412,7 +412,7 @@ Within a single CUDA major version, minor-version compatibility allows newer CUD
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Calculate the per-GPU model-state VRAM required for a 70B parameter model across 64 GPUs under vanilla DDP, ZeRO-1, ZeRO-2, and ZeRO-3.`&lt;/strong>`</summary>
+<summary>**3. Calculate the per-GPU model-state VRAM required for a 70B parameter model across 64 GPUs under vanilla DDP, ZeRO-1, ZeRO-2, and ZeRO-3.**</summary>
 
 ```text
 70B parameter model at 16 bytes/param = 1,120 GB total active AdamW state:
@@ -429,7 +429,7 @@ Only ZeRO Stage 3 or FSDP fits the 70B model state inside an 80 GB GPU across 64
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Why must you set CUDA_DEVICE_ORDER and PYTORCH_CUDA_ALLOC_CONF in multi-GPU training scripts, and why must CUDA_LAUNCH_BLOCKING stay at 0?`&lt;/strong>`</summary>
+<summary>**4. Why must you set CUDA_DEVICE_ORDER and PYTORCH_CUDA_ALLOC_CONF in multi-GPU training scripts, and why must CUDA_LAUNCH_BLOCKING stay at 0?**</summary>
 
 - Setting `CUDA_DEVICE_ORDER=PCI_BUS_ID` ensures CUDA device ordinals match the physical PCIe bus order seen by `nvidia-smi topo -m` and NIC-binding scripts instead of `FASTEST_FIRST`.
 - Setting `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` allows the PyTorch caching allocator to expand virtual memory segments on demand, preventing fragmentation-induced OOM errors.
@@ -437,25 +437,25 @@ Only ZeRO Stage 3 or FSDP fits the 70B model state inside an 80 GB GPU across 64
 </details>
 
 <details>
-<summary>`&lt;strong>`5. How do you transfer a GPU tensor from PyTorch to JAX without copying data through host CPU RAM?`&lt;/strong>`</summary>
+<summary>**5. How do you transfer a GPU tensor from PyTorch to JAX without copying data through host CPU RAM?**</summary>
 
 Use the zero-copy DLPack protocol via `torch.utils.dlpack.to_dlpack` and `jax.dlpack.from_dlpack` or the native `__dlpack__` protocol. That exchanges the underlying GPU HBM pointer directly in VRAM, whereas `.numpy()` forces a Device-to-Host copy.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Why does a plain Kubernetes Indexed Job deadlock when two multi-node training jobs contend for a cluster, and what four tools solve this?`&lt;/strong>`</summary>
+<summary>**6. Why does a plain Kubernetes Indexed Job deadlock when two multi-node training jobs contend for a cluster, and what four tools solve this?**</summary>
 
 A plain Kubernetes Job schedules pods one by one without gang scheduling for all-or-nothing placement. If Job A claims half the nodes and Job B claims the other half, both jobs start partial ranks. Those ranks hang waiting at the `torchrun` and NCCL rendezvous barrier until timeout. Production clusters use a gang-scheduling layer such as Kueue, Volcano, the Kubeflow Training Operator PyTorchJob, or NVIDIA Run:ai.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Why is DCGM_FI_DEV_GPU_UTIL misleading for detecting training stragglers, and which two DCGM profiling metrics should you track instead?`&lt;/strong>`</summary>
+<summary>**7. Why is DCGM_FI_DEV_GPU_UTIL misleading for detecting training stragglers, and which two DCGM profiling metrics should you track instead?**</summary>
 
 The `DCGM_FI_DEV_GPU_UTIL` metric only measures the percentage of time at least one warp is active on any SM. A GPU spinning in a single-warp NCCL wait loop reports 100% utilization while doing zero math. Track `DCGM_FI_PROF_SM_ACTIVE` for the fraction of SMs with active warps and `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE` for Tensor Core activity alongside application tokens per second.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. Walk through the three time-bounded phases of the GPU Failure Incident Response Playbook.`&lt;/strong>`</summary>
+<summary>**8. Walk through the three time-bounded phases of the GPU Failure Incident Response Playbook.**</summary>
 
 1. In Phase 1 within 5 minutes, confirm the GPU fault via Xid logs or `nvidia-smi` and check if training or inference is affected. Terminate the stalled synchronous training job so the remaining healthy GPUs do not sit blocked.
 2. In Phase 2 within 15 minutes, attempt a node or GPU reset and resume from the last checkpoint if healthy. If the fault persists, cordon and drain the faulty node, allocate a spare node, and resume training from the last checkpoint.
@@ -463,37 +463,37 @@ The `DCGM_FI_DEV_GPU_UTIL` metric only measures the percentage of time at least 
 </details>
 
 <details>
-<summary>`&lt;strong>`9. What are the five layers of the software stack in this chapter?`&lt;/strong>`</summary>
+<summary>**9. What are the five layers of the software stack in this chapter?**</summary>
 
 The five layers are provisioning, firmware, and fabric management; host driver and CUDA runtime alignment; distributed frameworks and memory sharding; gang-scheduled orchestration; and observability with incident response.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why do you configure NCCL_IB_SL and NCCL_IB_TC inside multi-node training containers?`&lt;/strong>`</summary>
+<summary>**10. Why do you configure NCCL_IB_SL and NCCL_IB_TC inside multi-node training containers?**</summary>
 
 The `NCCL_IB_SL` InfiniBand Service Level and `NCCL_IB_TC` Traffic Class or DSCP settings place NCCL collective traffic into the fabric's dedicated lossless QoS queue. In the production manifest, using service level 0 and traffic class 106 isolates latency-sensitive AllReduce traffic from storage or management traffic.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What does the host driver set, and what lives in the container?`&lt;/strong>`</summary>
+<summary>**11. What does the host driver set, and what lives in the container?**</summary>
 
 The host kernel driver talks to the GPU and sets the highest CUDA version the node supports. The container holds the CUDA runtime, cuBLAS, cuDNN, and NCCL libraries that PyTorch uses.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What is the Fleet Homogeneity Rule?`&lt;/strong>`</summary>
+<summary>**12. What is the Fleet Homogeneity Rule?**</summary>
 
 Every node in a job must run the same container image digest and the same host driver branch. Mixed drivers or NCCL versions in one communicator cause failures.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. Why must multi-GPU Kubernetes Pods mount an in-memory /dev/shm emptyDir instead of keeping default shared memory?`&lt;/strong>`</summary>
+<summary>**13. Why must multi-GPU Kubernetes Pods mount an in-memory /dev/shm emptyDir instead of keeping default shared memory?**</summary>
 
 Kubernetes defaults `/dev/shm` to 64 MB, which immediately causes NCCL shared-memory transport and PyTorch multi-worker DataLoader queues to fail with a bus error. Mounting an in-memory `emptyDir` with `medium: Memory` and a 64Gi limit gives intra-node IPC and data-loader workers sufficient shared RAM.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Name the five SLO-driven Prometheus and DCGM alert rules defined in Section 5.2 and state why each threshold is actionable.`&lt;/strong>`</summary>
+<summary>**14. Name the five SLO-driven Prometheus and DCGM alert rules defined in Section 5.2 and state why each threshold is actionable.**</summary>
 
 1. The `TrainingThroughputLow` rule fires when throughput drops more than 10% below baseline for 5 minutes, catching stragglers early.
 2. The `GPUTemperatureHigh` rule fires when `DCGM_FI_DEV_GPU_TEMP` exceeds 80°C for 1 minute, catching cooling issues before thermal clock throttling spreads.
@@ -503,37 +503,37 @@ Kubernetes defaults `/dev/shm` to 64 MB, which immediately causes NCCL shared-me
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What do RANK, LOCAL_RANK, and WORLD_SIZE mean?`&lt;/strong>`</summary>
+<summary>**15. What do RANK, LOCAL_RANK, and WORLD_SIZE mean?**</summary>
 
 The `WORLD_SIZE` variable is the total number of processes across the job. The `RANK` variable is the global process number. The `LOCAL_RANK` variable is the process number on the local server, which is used to select the local GPU.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Why is a global batch size multiplied by three numbers?`&lt;/strong>`</summary>
+<summary>**16. Why is a global batch size multiplied by three numbers?**</summary>
 
 Global batch size equals micro-batch per GPU multiplied by gradient-accumulation steps multiplied by world size. With values of 4, 8, and 64, the global batch size is 2,048 sequences per step.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What does ZeRO Stage 2 shard compared with Stage 1?`&lt;/strong>`</summary>
+<summary>**17. What does ZeRO Stage 2 shard compared with Stage 1?**</summary>
 
 Stage 1 shards the optimizer states across data-parallel ranks. Stage 2 also shards the gradients. Stage 3 also shards the model weights.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Why does the production Kubernetes training manifest request hostIPC and unlimited locked memory?`&lt;/strong>`</summary>
+<summary>**18. Why does the production Kubernetes training manifest request hostIPC and unlimited locked memory?**</summary>
 
 Setting `hostIPC: true` allows NCCL and GPUDirect shared-memory segments to operate cleanly across processes on the node. Setting `ulimit -l unlimited` via the `IPC_LOCK` capability allows the InfiniBand and RDMA Verbs driver `mlx5` and the CUDA runtime to pin large memory regions for zero-copy DMA transfers.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What does the Headless Service plus Indexed Job give you on Kubernetes?`&lt;/strong>`</summary>
+<summary>**19. What does the Headless Service plus Indexed Job give you on Kubernetes?**</summary>
 
 It gives predictable DNS names for each pod so rank 0 can be found, plus a `JOB_COMPLETION_INDEX` variable for the node rank. It does not give all-or-nothing placement, which requires a gang scheduler.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. When a GPU suffers an uncorrectable hardware fault during a 64-GPU training job, why is your very first action within 5 minutes to terminate the stalled job rather than immediately starting hardware diagnostics on the broken GPU?`&lt;/strong>`</summary>
+<summary>**20. When a GPU suffers an uncorrectable hardware fault during a 64-GPU training job, why is your very first action within 5 minutes to terminate the stalled job rather than immediately starting hardware diagnostics on the broken GPU?**</summary>
 
 The other 63 healthy GPUs are blocked at their NCCL collective barrier burning cluster capacity while doing zero useful work. Terminating the stalled job frees or prepares the healthy nodes immediately so the job can restart from the last checkpoint on a spare node within 15 minutes while the faulty node is cordoned for offline diagnostics and RMA.
 </details>

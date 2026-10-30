@@ -151,7 +151,7 @@ Design guidance: start with default-deny **ingress** everywhere (low risk), then
 flowchart TD
     Pkt["Packet Leaving Source Pod<br/>or Arriving at Dest Pod"] --> CT{"Existing Established Flow<br/>in conntrack / BPF CT Map?"}
     CT -->|Yes: Stateful Reply| AllowCT["ALLOW immediately"]
-    CT -->|No: New Connection (SYN)| ANP{"1. AdminNetworkPolicy<br/>(Cluster Guardrails)"}
+    CT -->|"No: New Connection (SYN)"| ANP{"1. AdminNetworkPolicy<br/>(Cluster Guardrails)"}
     ANP -->|Action: Allow / Deny| Verdict1["Enforce Admin Verdict"]
     ANP -->|Action: Pass / No Match| NP{"2. Namespace NetworkPolicy<br/>Is Pod Isolated for Direction?"}
     NP -->|Yes: Isolated| MatchNP{"Matches Union of<br/>Calico ipsets / Cilium Identities?"}

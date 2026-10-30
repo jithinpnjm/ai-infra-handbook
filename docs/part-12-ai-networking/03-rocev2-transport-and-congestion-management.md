@@ -531,25 +531,25 @@ Exercise Function Signatures & Expected Verification Targets (code/part12/rocev2
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. Why does RoCEv2 scale better than TCP-based storage or data transports across thousands of GPUs, and what networking challenge does its traffic pattern introduce?`&lt;/strong>`</summary>
+<summary>**1. Why does RoCEv2 scale better than TCP-based storage or data transports across thousands of GPUs, and what networking challenge does its traffic pattern introduce?**</summary>
 
 RoCEv2 encapsulates InfiniBand transport headers inside connectionless UDP and IP frames on UDP destination port 4791. It offloads transport segmentation and Direct Memory Access to the RDMA NIC, bypassing the host CPU and OS kernel completely. However, synchronized GPU collectives generate high-bandwidth elephant flows with low entropy. Those bursts cause incast congestion across Clos fabric links and degrade Job Completion Time.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. How is Job Completion Time defined in an AI training cluster, and what are the exact serial and parallel JCT values when 1 out of 10 tasks experiences a 1-second tail latency instead of 1 millisecond?`&lt;/strong>`</summary>
+<summary>**2. How is Job Completion Time defined in an AI training cluster, and what are the exact serial and parallel JCT values when 1 out of 10 tasks experiences a 1-second tail latency instead of 1 millisecond?**</summary>
 
 Job Completion Time equals job end time minus job start time, and parallel collectives are governed by the slowest straggler thread. When 9 tasks take 1 ms and 1 task takes 1 second, serial execution takes 1.010 seconds. Parallel execution takes 1.000 second, with the other 9 tasks waiting idle for 999 ms at the barrier.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Contrast the wire header stacks of native InfiniBand, RoCEv1, and RoCEv2, including the exact EtherType and UDP port numbers.`&lt;/strong>`</summary>
+<summary>**3. Contrast the wire header stacks of native InfiniBand, RoCEv1, and RoCEv2, including the exact EtherType and UDP port numbers.**</summary>
 
 Native InfiniBand frames carry an 8-byte Local Routing Header, an optional 40-byte Global Routing Header, and a 12-byte Base Transport Header. Those headers are followed by the payload, a 4-byte Invariant CRC, and a 2-byte Variant CRC. RoCEv1 replaces the Local Routing Header with an Ethernet II header using EtherType 0x8915 while keeping the 40-byte Global Routing Header, restricting it to Layer 2. RoCEv2 replaces the Global Routing Header with a 20-byte IPv4 or 40-byte IPv6 header and an 8-byte UDP header using destination port 4791.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. What fields are carried inside the 12-byte InfiniBand Base Transport Header, the 16-byte RETH, and the 4-byte AETH in RoCEv2 packets?`&lt;/strong>`</summary>
+<summary>**4. What fields are carried inside the 12-byte InfiniBand Base Transport Header, the 16-byte RETH, and the 4-byte AETH in RoCEv2 packets?**</summary>
 
 ```text
 RoCEv2 Inner RDMA Transport Headers (ADC Ch. 1 Figs 1-14..1-16):
@@ -561,97 +561,97 @@ RoCEv2 Inner RDMA Transport Headers (ADC Ch. 1 Figs 1-14..1-16):
 </details>
 
 <details>
-<summary>`&lt;strong>`5. Walk through the three phases of an RDMA Write session (13 steps) and an RDMA Read session (11 steps) over RoCEv2.`&lt;/strong>`</summary>
+<summary>**5. Walk through the three phases of an RDMA Write session (13 steps) and an RDMA Read session (11 steps) over RoCEv2.**</summary>
 
 Phase 1 is a three-step Connection Manager handshake where the client and server exchange Queue Pair Numbers. That exchange transitions the Queue Pair through `INIT`, `RTR`, and `RTS`. Phase 2 transfers data: RDMA Write uses six steps to exchange size, address, and memory region info before pushing data with ACKs. By contrast, RDMA Read uses four steps to send a single read request and stream data back. Phase 3 terminates the session with a four-step bidirectional disconnect handshake.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Why can a single RoCEv2 physical port expose multiple GID table entries, and why is hard-coding a numeric GID index dangerous in automation?`&lt;/strong>`</summary>
+<summary>**6. Why can a single RoCEv2 physical port expose multiple GID table entries, and why is hard-coding a numeric GID index dangerous in automation?**</summary>
 
 A port's GID table creates separate entries for each RoCE version, each IPv4 or IPv6 address, and each network device. Those devices include base interfaces, VLAN sub-interfaces, and SR-IOV Virtual Functions. Because the kernel assigns indices in the order interfaces are discovered at boot, index 2 on one host may be a RoCEv2 VLAN interface while index 2 on a peer is a RoCEv1 entry. Automation must query `show_gids` and match protocol version `v2`, device name, and IPv4 address semantically.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How do you distinguish the owner of an RDMA failure from Completion Queue status codes: IBV_WC_SUCCESS, IBV_WC_RETRY_EXC_ERR, IBV_WC_REM_ACCESS_ERR, and IBV_WC_LOC_LEN_ERR?`&lt;/strong>`</summary>
+<summary>**7. How do you distinguish the owner of an RDMA failure from Completion Queue status codes: IBV_WC_SUCCESS, IBV_WC_RETRY_EXC_ERR, IBV_WC_REM_ACCESS_ERR, and IBV_WC_LOC_LEN_ERR?**</summary>
 
 `IBV_WC_SUCCESS` is the only status proving an RDMA transfer completed end-to-end. `IBV_WC_RETRY_EXC_ERR` means the sender exhausted transport retries without receiving an ACK, pointing to fabric drops, a mismatched GID or MTU, or a bad optic. `IBV_WC_REM_ACCESS_ERR` indicates a remote Memory Region or RKey permission error. Finally, `IBV_WC_LOC_LEN_ERR` indicates a local application buffer length bug.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What do Base lid: 0 and SM lid: 0 mean in ibstat output on a 400G RoCEv2 port compared to a 200G HDR InfiniBand port?`&lt;/strong>`</summary>
+<summary>**8. What do Base lid: 0 and SM lid: 0 mean in ibstat output on a 400G RoCEv2 port compared to a 200G HDR InfiniBand port?**</summary>
 
 On native InfiniBand, a centralized Subnet Manager assigns non-zero Local Identifiers such as `Base lid: 32` and `SM lid: 1`. A zero LID on InfiniBand indicates a broken Subnet Manager path. On RoCEv2 Ethernet ports, `Base lid: 0` and `SM lid: 0` are completely normal when the port state is `Active` and `LinkUp`, because RoCEv2 routes via standard IP and GIDs.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Describe all six Clos congestion points identified in AI data center networks and explain which ones cannot be solved by fabric load balancing alone.`&lt;/strong>`</summary>
+<summary>**9. Describe all six Clos congestion points identified in AI data center networks and explain which ones cannot be solved by fabric load balancing alone.**</summary>
 
 The six congestion points are local leaf south-facing links, leaf-to-spine uplinks, spine-to-leaf downlinks, leaf-to-server egress downlinks, spine-to-super-spine uplinks, and super-spine-to-spine downlinks. Fabric load balancing cannot solve Point 1 because local leaf switching never reaches a spine. It also cannot solve Point 4 because multi-spine flows still converge onto a single destination server NIC link.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. How are the 8 bits of the IP DSCP/ToS field partitioned for QoS and ECN, and what do each of the four 2-bit ECN values signify?`&lt;/strong>`</summary>
+<summary>**10. How are the 8 bits of the IP DSCP/ToS field partitioned for QoS and ECN, and what do each of the four 2-bit ECN values signify?**</summary>
 
 The upper 6 bits carry the DSCP classification value such as DSCP 26 or DSCP 24 for Traffic Class 3, and the lower 2 bits carry the ECN state. Codepoint `00` means Non-ECT where switches drop packets on congestion. Codepoints `01` and `10` indicate ECN-capable transport, with `01` also marking outbound CNPs. Codepoint `11` means Congestion Experienced set by a congested transit switch.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What is the exact wire format of a RoCEv2 Congestion Notification Packet, who generates it, and why is a queue with only ECN enabled still considered a lossy queue?`&lt;/strong>`</summary>
+<summary>**11. What is the exact wire format of a RoCEv2 Congestion Notification Packet, who generates it, and why is a queue with only ECN enabled still considered a lossy queue?**</summary>
 
 When a destination RDMA NIC receives a data packet marked with `ECN = 11`, it generates a Congestion Notification Packet back to the sender on UDP port 4791. That CNP carries ECN bits set to `01`, InfiniBand BTH opcode 129, and the congested Queue Pair number. Because the marked packet must reach the receiver and the CNP must return to the sender before throttling starts, a rapid microburst can still overflow the switch buffer during that round-trip delay.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Detail the Layer 2 frame fields of an IEEE 802.1Qbb Priority Flow Control XOFF and XON frame for Traffic Class 3.`&lt;/strong>`</summary>
+<summary>**12. Detail the Layer 2 frame fields of an IEEE 802.1Qbb Priority Flow Control XOFF and XON frame for Traffic Class 3.**</summary>
 
 A PFC frame uses link-local multicast destination MAC `01:80:c2:00:00:01`, the switch port source MAC, EtherType `0x8808`, control opcode `0x0101`, and a 2-octet Class Enable Vector set to `0x0008` for Class 3. Its 16-octet time field sets the Class 3 pause timer to `65535` quanta for an `XOFF` pause frame. When buffer occupancy drops below the `XON` threshold, it sends an `XON` resume frame with the timer set to `0`.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. What are the two major operational problems with PFC in AI fabrics, and how do the three functional blocks of the PFC Watchdog mitigate a PFC storm?`&lt;/strong>`</summary>
+<summary>**13. What are the two major operational problems with PFC in AI fabrics, and how do the three functional blocks of the PFC Watchdog mitigate a PFC storm?**</summary>
 
 PFC causes Head-of-Line blocking by pausing all flows sharing Traffic Class 3 and can trigger cascading pause storms or cyclical buffer deadlocks across switches. The PFC Watchdog counters this with three blocks. Detection flags ports paused beyond a storm threshold such as 50 ms. Mitigation drops queued packets and incoming pause frames to stop upstream propagation, and Restoration resumes normal lossless operation once pause frames subside.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. How does DCQCN order the XON, ECN, and XOFF buffer thresholds, and what five steps occur inside a switch when it receives a PFC pause frame?`&lt;/strong>`</summary>
+<summary>**14. How does DCQCN order the XON, ECN, and XOFF buffer thresholds, and what five steps occur inside a switch when it receives a PFC pause frame?**</summary>
 
 DCQCN orders thresholds as `XON < ECN < XOFF < Max Buffer`, such as 64 KB for `XON`, 150 to 1500 KB for ECN marking, and 3000 KB for `XOFF`. That ordering lets ECN throttle flows before PFC pauses the link. When a switch receives a PFC frame on an egress port, it pauses that egress queue, builds up lossless buffer on its own ingress ports until they cross `XOFF`, and emits new PFC frames upstream.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Why does a single packet drop on a 400 Gbps RoCEv2 link with a 20.48 microsecond RTT cause a 250x retransmission amplification under Go-Back-N compared to Selective Repeat?`&lt;/strong>`</summary>
+<summary>**15. Why does a single packet drop on a 400 Gbps RoCEv2 link with a 20.48 microsecond RTT cause a 250x retransmission amplification under Go-Back-N compared to Selective Repeat?**</summary>
 
 At 400 Gbps over a 20.48 microsecond RTT, the bandwidth-delay product in flight is 1,024,000 bytes, or 250 packets of 4096 bytes. Under Go-Back-N, losing packet 1 causes the receiver to discard the 249 following out-of-sequence packets and forces the sender to retransmit all 250 packets. Selective Repeat instead buffers the 249 intact packets and retransmits only the single lost packet.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How does Source Flow Control (IEEE 802.1Qdw) work, and what two advantages does it hold over ECN and traditional PFC?`&lt;/strong>`</summary>
+<summary>**16. How does Source Flow Control (IEEE 802.1Qdw) work, and what two advantages does it hold over ECN and traditional PFC?**</summary>
 
 When a switch crosses its SFC threshold, it trims the packet payload, reverses the source and destination IP addresses, and sends a flow-specific SFC signal directly backward to the ingress leaf and sender. This eliminates the forward-plus-return round-trip delay of ECN. It also throttles only the congested flow rather than pausing the entire traffic class like PFC.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. Where is the Congestion Signaling (CSIG, draft-ravi-ippm-csig-01) tag located in a packet, and what three sections and four locator metadata fields does it carry?`&lt;/strong>`</summary>
+<summary>**17. Where is the Congestion Signaling (CSIG, draft-ravi-ippm-csig-01) tag located in a packet, and what three sections and four locator metadata fields does it carry?**</summary>
 
 The CSIG tag sits at Layer 2.5 between the Layer 2 Ethernet header and the Layer 3 IP header and is reflected back to the sender by the receiver. Its three sections are Signal Type (`min(ABW/C)`, `min(ABW)`, `max(PD)`), Signal Value, and Locator Metadata. The Locator Metadata records bottleneck capacity, stage, device ID, and uplink or downlink identification.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. In a slow-throughput investigation where out_of_buffer and rx_discards_phy are both 0, what NIC counters prove that RoCEv2 congestion control is actively throttling the workload?`&lt;/strong>`</summary>
+<summary>**18. In a slow-throughput investigation where out_of_buffer and rx_discards_phy are both 0, what NIC counters prove that RoCEv2 congestion control is actively throttling the workload?**</summary>
 
 Inspect per-second deltas from `mlnx_perf` and `ethtool -S` for `rx_prio3_congestion_events`, `rx_ecn_marked_prio3`, `rx_pfc_prio3`, and `tx_pfc_prio3`. Also check RDMA hardware counters `np_ecn_marked_roce_packets` and `rp_cnp_handled`. Zero physical drops simply means DCQCN and PFC prevented buffer overflow by throttling the sender's injection rate.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Why does running tcpdump on a ConnectX host network interface miss hardware-offloaded RoCEv2 data packets, and what two methods reliably capture UDP 4791 traffic and CNPs?`&lt;/strong>`</summary>
+<summary>**19. Why does running tcpdump on a ConnectX host network interface miss hardware-offloaded RoCEv2 data packets, and what two methods reliably capture UDP 4791 traffic and CNPs?**</summary>
 
 Hardware-offloaded RDMA transfers data and CNP frames directly between the NIC ASIC and PCIe memory, bypassing the Linux kernel `sk_buff` path where `tcpdump` listens. To inspect UDP port 4791 traffic and BTH opcodes, use NVIDIA's `ibdump` utility on the RDMA device or mirror the switch port via SPAN to an external analyzer.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. In the Lab 04 troubleshooting scenario, a process run with ib_write_bw -d mlx5_1 -i 1 achieved 156 Gb/s with 24 RETRY_EXC_ERR completions in 8.2s instead of 392 Gb/s in 2.1s. Why was tuning switch ECN/PFC the wrong action?`&lt;/strong>`</summary>
+<summary>**20. In the Lab 04 troubleshooting scenario, a process run with ib_write_bw -d mlx5_1 -i 1 achieved 156 Gb/s with 24 RETRY_EXC_ERR completions in 8.2s instead of 392 Gb/s in 2.1s. Why was tuning switch ECN/PFC the wrong action?**</summary>
 
 Walking the 5-layer evidence ladder showed that physical links and 9000-byte MTUs were clean. It isolated the first divergence at Layer 3, where `-d mlx5_1` forced traffic onto the secondary cross-socket NIC rail instead of `-d mlx5_0`. Fixing the command argument to `-d mlx5_0` immediately restored 392 Gb/s in 2.1 seconds with zero retries, proving the bug was process endpoint selection rather than switch congestion policy.
 </details>

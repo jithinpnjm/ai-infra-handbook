@@ -324,58 +324,58 @@ Summary: 25 passed, 0 failed out of 25 checks.
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. What is the difference between a Physical Function and a Virtual Function in PCIe Single-Root I/O Virtualization?`&lt;/strong>`</summary>
+<summary>**1. What is the difference between a Physical Function and a Virtual Function in PCIe Single-Root I/O Virtualization?**</summary>
 
 - **Physical Function.** The primary PCIe function managed by the host OS or hypervisor that owns global device configuration and firmware updates. It also controls the creation or destruction of Virtual Functions via `sriov_numvfs`.
 - **Virtual Function.** A lightweight, hardware-sliced PCIe function with its own unique PCIe Bus-Device-Function Requester ID, DMA channels, and hardware queues. Each Virtual Function passes directly into a container or guest VM for bare-metal I/O speed without hypervisor proxy overhead.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Why does Volume 23 Chapter 13 compare SR-IOV and MIG as philosophically the same thing for different pieces of silicon?`&lt;/strong>`</summary>
+<summary>**2. Why does Volume 23 Chapter 13 compare SR-IOV and MIG as philosophically the same thing for different pieces of silicon?**</summary>
 
 SR-IOV slices a physical network card at the PCIe silicon level into isolated Virtual Functions that bypass the software hypervisor. MIG slices a physical GPU at the silicon level into isolated GPU Instances with dedicated streaming multiprocessors, HBM memory channels, and L2 cache banks.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. How does an NVIDIA Ampere, Hopper, Ada, or Blackwell GPU use SR-IOV when running NVIDIA vGPU or MIG-backed VMs?`&lt;/strong>`</summary>
+<summary>**3. How does an NVIDIA Ampere, Hopper, Ada, or Blackwell GPU use SR-IOV when running NVIDIA vGPU or MIG-backed VMs?**</summary>
 
 Enabling GPU SR-IOV via `/usr/lib/nvidia/sriov-manage -e ALL` exposes hardware PCIe Virtual Functions on the GPU. Either time-sliced vGPUs or MIG-backed vGPUs map to those Virtual Functions. The hypervisor and NVIDIA Virtual GPU Manager then assign each Virtual Function directly to a guest VM.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. What four example SR-IOV or hardware-virtualized device drivers are named in Brendan Gregg's Systems Performance Chapter 11, and what is the difference between SR-IOV and MR-IOV?`&lt;/strong>`</summary>
+<summary>**4. What four example SR-IOV or hardware-virtualized device drivers are named in Brendan Gregg's Systems Performance Chapter 11, and what is the difference between SR-IOV and MR-IOV?**</summary>
 
 - **Example drivers.** The four drivers cited are `ixgbe` for Intel networks, `ena` for AWS Elastic Network Adapter, `hv_netvsc` for Microsoft Hyper-V network VSC, and `nvme` for NVMe storage.
 - **SR-IOV vs MR-IOV.** Single-Root I/O Virtualization exposes virtual functions across a single PCIe Root Complex inside one physical server. Multi-Root I/O Virtualization exposes virtual functions across multiple PCIe Root Complexes shared by multiple servers across a PCIe fabric.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. Why does SR-IOV make guest disk and network I/O invisible to host OS tools like iostat and sar, and how should operators observe SR-IOV I/O instead?`&lt;/strong>`</summary>
+<summary>**5. Why does SR-IOV make guest disk and network I/O invisible to host OS tools like iostat and sar, and how should operators observe SR-IOV I/O instead?**</summary>
 
 SR-IOV Virtual Functions allow the guest OS driver to communicate directly with the NIC or storage hardware via DMA, bypassing the host OS kernel stack and any hypervisor proxy. Operators must inspect hardware Performance Monitoring Counters, physical NIC port counters, or DCGM metrics. They can also run kernel tracing tools inside the dedicated kernel of the guest VM.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. In Systems Performance Chapter 11, why can Calico and kube-proxy incur CPU overhead at scale, and how does Cilium eliminate that overhead?`&lt;/strong>`</summary>
+<summary>**6. In Systems Performance Chapter 11, why can Calico and kube-proxy incur CPU overhead at scale, and how does Cilium eliminate that overhead?**</summary>
 
 When a Kubernetes cluster scales to thousands of Services, Calico in netfilter iptables mode and `kube-proxy` must evaluate long sequential rule lists, adding first-packet and per-packet CPU overhead. Cilium replaces both iptables and `kube-proxy` with in-kernel eBPF programs attached to XDP, traffic control qdisc, and cgroup hooks.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How does Linux implement the Kubernetes pod bandwidth annotations, and which cgroup limits RDMA resources?`&lt;/strong>`</summary>
+<summary>**7. How does Linux implement the Kubernetes pod bandwidth annotations, and which cgroup limits RDMA resources?**</summary>
 
 - **Bandwidth annotations.** Kubernetes implements `kubernetes.io/ingress-bandwidth` and `kubernetes.io/egress-bandwidth` by attaching a Linux Token Bucket Filter queueing discipline to the virtual network interface of the Pod. Linux also shapes traffic using the `net_prio` and `net_cls` cgroups.
 - **RDMA cgroup.** The Linux `rdma` cgroup controller limits RDMA and InfiniBand HCA resource usage per container.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. Why is SR-IOV alone insufficient to stop a malicious tenant from reading host memory, and what hardware control completes the boundary?`&lt;/strong>`</summary>
+<summary>**8. Why is SR-IOV alone insufficient to stop a malicious tenant from reading host memory, and what hardware control completes the boundary?**</summary>
 
 SR-IOV partitions the NIC into separate Virtual Functions, but each Virtual Function remains a PCIe bus master capable of issuing Direct Memory Access requests to any physical address unless restricted. You must enable the motherboard IOMMU with `intel_iommu=on` in the kernel boot parameters. The hardware IOMMU then checks every Virtual Function Requester ID against its DMA Remapping access table and blocks unauthorized host memory reads with a DMAR fault.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. In Volume 11 Chapter 5, what are the four checks to run in order when a guest VM with an NVIDIA vGPU boots but sees no usable GPU or suffers throttled performance?`&lt;/strong>`</summary>
+<summary>**9. In Volume 11 Chapter 5, what are the four checks to run in order when a guest VM with an NVIDIA vGPU boots but sees no usable GPU or suffers throttled performance?**</summary>
 
 1. **Check the Host.** Run `nvidia-smi vgpu` on the host to verify that the physical GPU is healthy, the Virtual GPU Manager is loaded, and the VM has an active vGPU assignment.
 2. **Check Guest PCIe Enumeration.** Run `lspci` inside the guest to confirm that the guest OS sees the virtual NVIDIA PCIe device.
@@ -384,13 +384,13 @@ SR-IOV partitions the NIC into separate Virtual Functions, but each Virtual Func
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why does a guest VM running NVIDIA vGPU see a different GPU UUID in nvidia-smi than the physical GPU UUID on the host?`&lt;/strong>`</summary>
+<summary>**10. Why does a guest VM running NVIDIA vGPU see a different GPU UUID in nvidia-smi than the physical GPU UUID on the host?**</summary>
 
 The guest OS does not see the physical GPU hardware directly. Instead, it sees the virtual GPU device presented by the NVIDIA Virtual GPU Manager, which carries its own distinct virtual device UUID and lifecycle.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. List the five layers of the Zero-Trust AI Defense-in-Depth Architecture in Volume 18 Chapter 12 Summary.`&lt;/strong>`</summary>
+<summary>**11. List the five layers of the Zero-Trust AI Defense-in-Depth Architecture in Volume 18 Chapter 12 Summary.**</summary>
 
 1. **Supply Chain Defense.** Trivy CVE scanning, Cosign image signatures, Admission Controller enforcement, and `.safetensors` model format.
 2. **Kubernetes Defense.** Least-privilege RBAC, locked-down operator namespaces, and Pod Security Admission set to Restricted.
@@ -400,31 +400,31 @@ The guest OS does not see the physical GPU hardware directly. Instead, it sees t
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Why must enterprise AI supply chains convert model weights from Python pickle files to .safetensors?`&lt;/strong>`</summary>
+<summary>**12. Why must enterprise AI supply chains convert model weights from Python pickle files to .safetensors?**</summary>
 
 Python's pickle format is an executable serialization format where loading a malicious file with `torch.load` can execute arbitrary attacker code inside the GPU container. The `.safetensors` format stores pure tensor buffers and metadata without executable code paths, eliminating model-deserialization remote code execution.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. What is the Shared Fate firewall problem on a GPU worker node, and how does an NVIDIA BlueField DPU solve it?`&lt;/strong>`</summary>
+<summary>**13. What is the Shared Fate firewall problem on a GPU worker node, and how does an NVIDIA BlueField DPU solve it?**</summary>
 
 When firewall and encryption rules run on the x86 host CPU kernel via iptables, they share the fate of the host OS. If an attacker escapes a container and gains host root, they can disable the firewall immediately. An NVIDIA BlueField DPU offloads firewall, zero-trust micro-segmentation, and encryption onto physically isolated ARM cores on the DPU card. A compromised x86 host OS cannot disable network enforcement on the DPU.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. How does NVIDIA Hopper Confidential Computing protect proprietary model weights against a compromised hypervisor or host administrator?`&lt;/strong>`</summary>
+<summary>**14. How does NVIDIA Hopper Confidential Computing protect proprietary model weights against a compromised hypervisor or host administrator?**</summary>
 
 NVIDIA Hopper GPU Confidential Computing mode pairs with a CPU Trusted Execution Environment such as AMD SEV-SNP or Intel TDX and remote attestation. Model weights and inference prompts stay encrypted in memory and across PCIe CPU-to-GPU transfers. Any host memory or VRAM dump reads only ciphertext.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What is the Golden Rule of Security Incident Response in Volume 18 Chapter 12 when an IDS alerts on a compromised GPU Pod or Node?`&lt;/strong>`</summary>
+<summary>**15. What is the Golden Rule of Security Incident Response in Volume 18 Chapter 12 when an IDS alerts on a compromised GPU Pod or Node?**</summary>
 
 The golden rule is to isolate rather than terminate. Never immediately run `kubectl delete pod` or reboot the server. Doing so wipes volatile system RAM and GPU VRAM, destroying the forensic footprint of the attacker and leaving the root vulnerability open for re-exploitation.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Walk through the three containment steps a Senior SRE executes immediately when a GPU node alerts for outbound crypto-mining.`&lt;/strong>`</summary>
+<summary>**16. Walk through the three containment steps a Senior SRE executes immediately when a GPU node alerts for outbound crypto-mining.**</summary>
 
 1. **Cordon the node.** Run `kubectl cordon` on the compromised node so Kubernetes schedules no new workloads onto the crime scene.
 2. **Network Quarantine.** Apply a `NetworkPolicy` or switch and DPU ACL dropping all inbound and outbound traffic to the pod or node. Allow connections only from the forensic management IP of the security team.
@@ -432,7 +432,7 @@ The golden rule is to isolate rather than terminate. Never immediately run `kube
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What three AI-specific forensic artifacts should responders inspect during a GPU cluster breach investigation?`&lt;/strong>`</summary>
+<summary>**17. What three AI-specific forensic artifacts should responders inspect during a GPU cluster breach investigation?**</summary>
 
 1. **Kubernetes API Audit Logs.** Determine which ServiceAccount or user identity deployed the malicious pod.
 2. **Container Image Digest.** Compare the running image hash on the node against the signed registry to see if the Admission Controller was bypassed.
@@ -440,7 +440,7 @@ The golden rule is to isolate rather than terminate. Never immediately run `kube
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Why does Volume 18 Chapter 12 state that you never clean a compromised server but destroy it instead, and what four eradication steps are required before the node can rejoin the cluster?`&lt;/strong>`</summary>
+<summary>**18. Why does Volume 18 Chapter 12 state that you never clean a compromised server but destroy it instead, and what four eradication steps are required before the node can rejoin the cluster?**</summary>
 
 If an attacker gained root on a GPU node, they may have installed kernel rootkits or flashed malicious firmware into the GPU or ConnectX NIC silicon. Before rejoining the cluster, you must complete four steps.
 1. **Re-image the bare-metal server OS.** Provision a clean OS via an automated PXE boot pipeline from an immutable image.
@@ -450,7 +450,7 @@ If an attacker gained root on a GPU node, they may have installed kernel rootkit
 </details>
 
 <details>
-<summary>`&lt;strong>`19. In the Volume 18 Chapter 12 Customer Scenario, trace the exact chain of events from the initial port 22 network scan to the cluster-wide ransomware outage one week later.`&lt;/strong>`</summary>
+<summary>**19. In the Volume 18 Chapter 12 Customer Scenario, trace the exact chain of events from the initial port 22 network scan to the cluster-wide ransomware outage one week later.**</summary>
 
 1. **Initial compromise.** An attacker exploited an unpatched vulnerability in the research notebook pod and began scanning internal port 22.
 2. **Destructive response.** The platform engineer ran `kubectl delete pod`, which stopped the scan but destroyed all volatile memory and process evidence.
@@ -459,7 +459,7 @@ If an attacker gained root on a GPU node, they may have installed kernel rootkit
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Name the 14 items in the Volume 18 Production Security Checklist.`&lt;/strong>`</summary>
+<summary>**20. Name the 14 items in the Volume 18 Production Security Checklist.**</summary>
 
 1. **Secure Boot.** Enable UEFI Secure Boot on all nodes with audited boot logs.
 2. **Driver signing.** Enforce kernel module signing and ensure GPU drivers are signed.

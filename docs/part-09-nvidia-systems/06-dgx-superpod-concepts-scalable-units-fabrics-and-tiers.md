@@ -439,26 +439,26 @@ Summary: 30 passed, 0 failed (total 30)
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. Why does a 1-SU DGX B200 SuperPOD contain 31 DGX B200 servers and a 4-SU DGX B200 SuperPOD contain 127 DGX B200 servers, even though a Scalable Unit is nominally 32 nodes?`&lt;/strong>`</summary>
+<summary>**1. Why does a 1-SU DGX B200 SuperPOD contain 31 DGX B200 servers and a 4-SU DGX B200 SuperPOD contain 127 DGX B200 servers, even though a Scalable Unit is nominally 32 nodes?**</summary>
 
 In the DGX B200 SuperPOD reference architecture, an NVIDIA Unified Fabric Manager appliance displaces one DGX B200 server in the first Scalable Unit. That leaves 31 nodes in one unit, 63 in two units, 95 in three units, and 127 in four units. Each node uses 8 compute cables and the UFM appliance uses 4 cables, giving 252 compute and UFM cables in one unit and 1,020 in four units.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Contrast a single Scalable Unit in a DGX B200 SuperPOD against a single Scalable Unit in a DGX GB300 SuperPOD in terms of unit count, GPU count, and power budget.`&lt;/strong>`</summary>
+<summary>**2. Contrast a single Scalable Unit in a DGX B200 SuperPOD against a single Scalable Unit in a DGX GB300 SuperPOD in terms of unit count, GPU count, and power budget.**</summary>
 
 - A node-based DGX B200 Scalable Unit holds up to 32 air-cooled 10U nodes, or 31 with UFM displacement, totaling 248 to 256 GPUs and drawing 458 kW per unit.
 - A rack-scale DGX GB300 Scalable Unit holds 8 hybrid liquid-cooled DGX GB300 NVL72 racks, or 144 compute trays and 576 B300 GPUs, requiring 1.2 MW of thermal design power per unit.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What is the Partial-SU Fabric Rule in a DGX SuperPOD, and why does it exist?`&lt;/strong>`</summary>
+<summary>**3. What is the Partial-SU Fabric Rule in a DGX SuperPOD, and why does it exist?**</summary>
 
 If budgetary or data center constraints require deploying fewer nodes or racks than a full Scalable Unit, you must still deploy the complete Scalable Unit network fabric. All leaf switches and all leaf-to-spine cables for a full unit are installed up front, leaving the switch ports for the missing nodes unused. This preserves symmetric routing and bisection bandwidth across the fabric and allows future nodes to be plugged in without re-cabling or re-architecting the spine-leaf topology.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Name the five logical network segments and the four physical switch fabrics that carry them in a DGX GB300 SuperPOD.`&lt;/strong>`</summary>
+<summary>**4. Name the five logical network segments and the four physical switch fabrics that carry them in a DGX GB300 SuperPOD.**</summary>
 
 - The five logical network segments are NVLink 5, the Compute Network, the Storage Network, the In-Band Management Network, and the Out-of-Band Management Network.
 - The first two physical fabrics are the Multi-Node NVLink Fabric using 9 NVLink switch trays per rack managed by NMX-M, and the Compute InfiniBand Fabric using Q3400-RD Quantum-X800 switches managed by UFM.
@@ -466,7 +466,7 @@ If budgetary or data center constraints require deploying fewer nodes or racks t
 </details>
 
 <details>
-<summary>`&lt;strong>`5. Contrast the three NCCL collective algorithms and state how PyTorch DDP hides the Communication Tax during backpropagation.`&lt;/strong>`</summary>
+<summary>**5. Contrast the three NCCL collective algorithms and state how PyTorch DDP hides the Communication Tax during backpropagation.**</summary>
 
 - Ring AllReduce runs in `2(N - 1)` steps and is bandwidth-optimal for large gradient buffers, but its latency scales linearly with rank count.
 - Pipelined Double Binary Tree has logarithmic depth and is selected automatically by NCCL at larger rank counts where ring latency grows too large.
@@ -475,7 +475,7 @@ If budgetary or data center constraints require deploying fewer nodes or racks t
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Contrast the Standard and Enhanced storage performance tiers in a DGX SuperPOD for 1 SU and 4 SUs, and explain how High-Performance Storage differs from User Storage.`&lt;/strong>`</summary>
+<summary>**6. Contrast the Standard and Enhanced storage performance tiers in a DGX SuperPOD for 1 SU and 4 SUs, and explain how High-Performance Storage differs from User Storage.**</summary>
 
 - The Standard Tier targets compute-dominated LLM jobs where datasets fit in local cache. It delivers 90 GB/s read and 45 GB/s write for 1 SU, or 360 GB/s read and 180 GB/s write for 4 SUs.
 - The Enhanced Tier targets I/O-intensive multimodal training and inference exceeding local cache. It delivers 280 GB/s read and 140 GB/s write for 1 SU, or 1,120 GB/s read and 560 GB/s write for 4 SUs.
@@ -483,86 +483,86 @@ If budgetary or data center constraints require deploying fewer nodes or racks t
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Derive the exact byte-per-parameter footprint of a mixed-precision AdamW checkpoint, calculate the total checkpoint size for a 70B model, and explain how two-stage sharded checkpointing avoids stalling the GPUs.`&lt;/strong>`</summary>
+<summary>**7. Derive the exact byte-per-parameter footprint of a mixed-precision AdamW checkpoint, calculate the total checkpoint size for a 70B model, and explain how two-stage sharded checkpointing avoids stalling the GPUs.**</summary>
 
 - Each parameter stores 2 bytes for BF16 weights, 4 bytes for FP32 master weights, 4 bytes for the FP32 Adam first moment, and 4 bytes for the FP32 Adam second moment. That totals 14 bytes per parameter, or 980 GB for a 70B model, while active training memory adds 2 bytes for BF16 gradients to reach 16 bytes per parameter.
 - Across 64 GPUs with ZeRO-3 or FSDP, each GPU writes its own 15.3 GB shard, or 122.5 GB per 8-GPU node, via `torch.distributed.checkpoint` to local `/raid` NVMe in about 8 seconds at 15 GB/s per node. Training resumes immediately while a background mover flushes shards to the shared file system and S3.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. Can you use fiber patch panels to extend InfiniBand cable runs or mount a customer's firewall appliance in an empty RU slot of a DGX SuperPOD rack?`&lt;/strong>`</summary>
+<summary>**8. Can you use fiber patch panels to extend InfiniBand cable runs or mount a customer's firewall appliance in an empty RU slot of a DGX SuperPOD rack?**</summary>
 
 No to both. InfiniBand cable length limits depend on end-to-end attenuation, and patch panels introduce optical loss and signal reflections that break link integrity. In addition, a DGX Scalable Unit rack and any spacing gap between racks used for cooling aggregation must never cohabitate with unrelated IT equipment.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. What is an AI factory and why is the SuperPOD called a "physical twin"?`&lt;/strong>`</summary>
+<summary>**9. What is an AI factory and why is the SuperPOD called a "physical twin"?**</summary>
 
 An AI factory turns raw data into trained models and intelligence tokens. A SuperPOD is built to match the clusters NVIDIA runs internally, so the software, firmware, and containers are tested at scale before they reach customer racks.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. What availability tier should the hosting data center meet?`&lt;/strong>`</summary>
+<summary>**10. What availability tier should the hosting data center meet?**</summary>
 
 The facility should meet Uptime Institute Tier 3, TIA-942-B Rated 3, or EN 50600 Class 3 standards. These standards provide concurrent maintainability and ensure no single point of failure exists in power and cooling.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How much downtime does a 99.95% availability target allow per month?`&lt;/strong>`</summary>
+<summary>**11. How much downtime does a 99.95% availability target allow per month?**</summary>
 
 A 99.95% availability target allows about 21.6 minutes of downtime per month, or 43.2 seconds per day.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What are the three SLA tiers in the chapter and their availability?`&lt;/strong>`</summary>
+<summary>**12. What are the three SLA tiers in the chapter and their availability?**</summary>
 
 The three tiers are Tier 1 best-effort at 90% to 95%, Tier 2 production high-availability at 99.0% to 99.5%, and Tier 3 mission-critical at 99.9% to 99.99% with automatic failover and active-active regions.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How big is a rack-scale scalable unit, and how far can a GB300 SuperPOD scale in two switch layers?`&lt;/strong>`</summary>
+<summary>**13. How big is a rack-scale scalable unit, and how far can a GB300 SuperPOD scale in two switch layers?**</summary>
 
 One rack-scale Scalable Unit contains 8 NVL72 racks, 144 compute trays, and 576 GPUs at 1.2 MW. The 144-port Q3400-RD switch lets the cluster scale to 16 Scalable Units, or 128 racks and 9,216 GPUs, with leaf and spine layers only.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. What cable limits does the chapter give for InfiniBand, and why no patch panels?`&lt;/strong>`</summary>
+<summary>**14. What cable limits does the chapter give for InfiniBand, and why no patch panels?**</summary>
 
 Passive copper DAC supports up to 3 m at 400G and 5 m at 100G, while active optical cable supports up to 30 m, keeping all runs under 90% of the maximum length. Patch panels add optical loss that breaks link training, and intermediary switches add extra hop latency.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Why must you not put other IT equipment in DGX racks or in the gaps between them?`&lt;/strong>`</summary>
+<summary>**15. Why must you not put other IT equipment in DGX racks or in the gaps between them?**</summary>
 
 A DGX Scalable Unit is thermally balanced as an integrated appliance. Adding unrelated gear changes the airflow profile and disrupts the room cooling plan.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What does the Standard storage tier suit, and what does the Enhanced tier suit?`&lt;/strong>`</summary>
+<summary>**16. What does the Standard storage tier suit, and what does the Enhanced tier suit?**</summary>
 
 The Standard tier at 90 GB/s read and 45 GB/s write per unit suits text LLM workloads where compute dominates. The Enhanced tier at 280 GB/s read and 140 GB/s write per unit suits multimodal training and frequent large checkpoints where I/O sits on the critical path.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. Why is text LLM training "checkpoint-write-bound" rather than read-bound?`&lt;/strong>`</summary>
+<summary>**17. Why is text LLM training "checkpoint-write-bound" rather than read-bound?**</summary>
 
 Token IDs are tiny, so continuous text reads require only a few hundred kilobytes per second across 64 GPUs. In contrast, an AdamW checkpoint requires 14 bytes per parameter, or 980 GB for a 70B model, written in sudden bursts.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Why use sharded checkpoints with `torch.distributed.checkpoint` instead of `torch.save` on rank 0?`&lt;/strong>`</summary>
+<summary>**18. Why use sharded checkpoints with `torch.distributed.checkpoint` instead of `torch.save` on rank 0?**</summary>
 
 Gathering 980 GB onto Rank 0 can exhaust host memory and serializes the write over a single node. With sharded checkpointing, every GPU writes its own shard in parallel to local NVMe, and a background task flushes the files to shared storage.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. When is RoCEv2 a reasonable choice over InfiniBand, according to the chapter's case study?`&lt;/strong>`</summary>
+<summary>**19. When is RoCEv2 a reasonable choice over InfiniBand, according to the chapter's case study?**</summary>
 
 At 64 GPUs or fewer with no growth plan, the upfront cost premium of InfiniBand is not paid back by compute-time savings alone. Once a cluster scales to 128 or 256 GPUs and beyond, InfiniBand's lossless credit flow control, adaptive routing, and SHARP become decisive.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. In AI factory token economics, why does cluster utilization matter far more than the local price of electricity?`&lt;/strong>`</summary>
+<summary>**20. In AI factory token economics, why does cluster utilization matter far more than the local price of electricity?**</summary>
 
 On the 40-GPU H100 inference cluster generating 60,000 tokens per second, electricity costs only $0.021 per million tokens, whereas amortized hardware and operations cost $0.26 per million tokens at 100% utilization. Dropping to 40% utilization pushes total cost from $0.28 to about $0.68 per million tokens, so keeping GPUs busy saves far more money than any electricity discount.
 </details>

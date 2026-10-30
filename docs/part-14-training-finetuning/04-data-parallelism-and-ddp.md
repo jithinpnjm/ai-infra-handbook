@@ -769,121 +769,121 @@ Exercise Input Parameters Reference:
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. Why does data parallelism scale training throughput (tokens/sec) without reducing the steady-state model memory footprint per GPU?`&lt;/strong>`</summary>
+<summary>**1. Why does data parallelism scale training throughput (tokens/sec) without reducing the steady-state model memory footprint per GPU?**</summary>
 
 In DDP, every GPU holds a full copy of the model weights, gradients, and optimizer states. For a 7B FP32 Adam model, that static state is 112 GB, or 140 GB without `gradient_as_bucket_view=True`. Only the input batch is partitioned across the N GPUs. Training time therefore drops by roughly 1/N, but per-GPU static model memory stays constant.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. For a 7B-parameter model with FP32 gradients (28.0 GB), how much parameter/gradient data does GPU 0 move in nn.DataParallel (DP) versus per-GPU in DDP across N = 4 GPUs?`&lt;/strong>`</summary>
+<summary>**2. For a 7B-parameter model with FP32 gradients (28.0 GB), how much parameter/gradient data does GPU 0 move in nn.DataParallel (DP) versus per-GPU in DDP across N = 4 GPUs?**</summary>
 
 In DP, GPU 0 broadcasts weights to 3 peers and gathers gradients from 3 peers every step: `2 * (4 - 1) * 28.0 GB = 168.0 GB`. In DDP, Ring AllReduce moves `2 * (3/4) * 28.0 GB = 42.0 GB` per GPU. That decentralized pattern cuts peak link load on GPU 0 by 4.0x.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Why must torch.cuda.set_device() use LOCAL_RANK rather than RANK?`&lt;/strong>`</summary>
+<summary>**3. Why must torch.cuda.set_device() use LOCAL_RANK rather than RANK?**</summary>
 
 `LOCAL_RANK` is the node-local device index on the current physical host, whereas `RANK` is the global process index across all nodes. On Node 1 of an eight-GPU-per-node job, global ranks are 8 through 15. Passing that global rank to `torch.cuda.set_device()` causes an `invalid device ordinal` crash.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. In what order does DDP's Reducer pack parameters into gradient buckets, and why?`&lt;/strong>`</summary>
+<summary>**4. In what order does DDP's Reducer pack parameters into gradient buckets, and why?**</summary>
 
 DDP packs parameters in reverse parameter order via `list(model.parameters())[::-1]`. It does this because `loss.backward()` computes gradients starting from the final layer back toward the input layer. Reverse ordering ensures that Bucket 0 fills and launches its asynchronous AllReduce as early as possible during backward execution.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. What is the default value of bucket_cap_mb in PyTorch DDP, and what is the tradeoff of making it much smaller or much larger?`&lt;/strong>`</summary>
+<summary>**5. What is the default value of bucket_cap_mb in PyTorch DDP, and what is the tradeoff of making it much smaller or much larger?**</summary>
 
 The default is 25 MB via `bucket_cap_mb=25`. Smaller buckets start the first AllReduce earlier, which helps on slow links or small models, but incur higher per-collective launch overhead. Larger buckets reduce collective launch count and improve bandwidth efficiency on fast NVLink fabrics, but delay when the first AllReduce can begin.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. How does gradient_as_bucket_view=True save GPU memory and bandwidth in DDP?`&lt;/strong>`</summary>
+<summary>**6. How does gradient_as_bucket_view=True save GPU memory and bandwidth in DDP?**</summary>
 
 Instead of allocating separate parameter gradient tensors and copying them into and out of the Reducer's contiguous bucket buffers, `gradient_as_bucket_view=True` makes each parameter gradient a zero-copy tensor view directly inside the bucket buffer. That flag saves 28.0 GB in FP32 or 14.0 GB in BF16 for a 7B model. It also removes two device-to-device memory copies per step.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How does TorchDynamo (torch.compile) preserve compute–communication overlap when compiling a DDP model?`&lt;/strong>`</summary>
+<summary>**7. How does TorchDynamo (torch.compile) preserve compute–communication overlap when compiling a DDP model?**</summary>
 
 TorchDynamo intentionally inserts graph breaks at DDP bucket boundaries, which can be inspected with `torch._dynamo.explain`. It compiles each bucket's backward computation into its own subgraph. DDP's Reducer can then launch AllReduce collectives between subgraphs and overlap communication with the next compiled subgraph.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What happens during DDP initialization and before each forward pass when broadcast_buffers=True?`&lt;/strong>`</summary>
+<summary>**8. What happens during DDP initialization and before each forward pass when broadcast_buffers=True?**</summary>
 
 During DDP initialization, `_sync_module_states()` broadcasts both parameters and buffers from rank 0 to all other ranks. Before each forward pass, if `broadcast_buffers=True`, DDP broadcasts module buffers such as BatchNorm running mean and variance from rank 0 to all ranks. That broadcast keeps non-trainable buffers consistent across workers.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Why does omitting sampler.set_epoch(epoch) degrade training quality without throwing an error?`&lt;/strong>`</summary>
+<summary>**9. Why does omitting sampler.set_epoch(epoch) degrade training quality without throwing an error?**</summary>
 
 `DistributedSampler` seeds its per-epoch shuffle generator using `self.seed + self.epoch`, where the epoch defaults to 0. If `sampler.set_epoch(epoch)` is never called, every epoch shuffles indices with the same seed. Every GPU then receives the exact same batch ordering on every epoch.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why must you never pass shuffle=True to DataLoader when using DistributedSampler?`&lt;/strong>`</summary>
+<summary>**10. Why must you never pass shuffle=True to DataLoader when using DistributedSampler?**</summary>
 
 `DistributedSampler` already manages deterministic global shuffling before slicing per-rank shards. Passing `shuffle=True` to the data loader along with a custom sampler is mutually exclusive and raises a `ValueError` in PyTorch.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How does DistributedSampler handle a dataset of size 1003 across 4 GPUs when drop_last=True versus drop_last=False?`&lt;/strong>`</summary>
+<summary>**11. How does DistributedSampler handle a dataset of size 1003 across 4 GPUs when drop_last=True versus drop_last=False?**</summary>
 
 With `drop_last=True`, it drops the last 3 samples so each of the 4 ranks receives 250 disjoint samples, for a total of 1000. With `drop_last=False`, it rounds up to 251 samples per rank, for a total of 1004. It pads the list with the first 1 index from the front of the permutation so all ranks execute an identical number of steps.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What does with model.no_sync(): do during K-step gradient accumulation, and why are the final weights mathematically identical?`&lt;/strong>`</summary>
+<summary>**12. What does with model.no_sync(): do during K-step gradient accumulation, and why are the final weights mathematically identical?**</summary>
 
 `with model.no_sync():` suppresses DDP's Reducer autograd hooks on the first K-1 micro-batches so gradients accumulate locally in GPU memory. It then runs a single AllReduce on the final micro-batch. Because summation and averaging are linear, the synchronized gradient is identical while cutting AllReduce traffic by a factor of K.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. When Rank 0 has 2 batches and Rank 1 has 3 batches in an epoch, how does with model.join(): prevent a deadlock?`&lt;/strong>`</summary>
+<summary>**13. When Rank 0 has 2 batches and Rank 1 has 3 batches in an epoch, how does with model.join(): prevent a deadlock?**</summary>
 
 When Rank 0 finishes its 2 batches and reaches the end of the `with model.join():` block, the Join hook keeps Rank 0 active. Rank 0 participates in shadow AllReduce collectives with zero gradients while Rank 1 completes its third batch.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Why does an unused parameter in a conditional forward pass hang DDP, and why is static_graph=True preferred over find_unused_parameters=True when the graph is fixed?`&lt;/strong>`</summary>
+<summary>**14. Why does an unused parameter in a conditional forward pass hang DDP, and why is static_graph=True preferred over find_unused_parameters=True when the graph is fixed?**</summary>
 
 An unused parameter's autograd hook never fires during the backward pass, so its Reducer bucket never reaches 100% readiness to launch AllReduce. Setting `find_unused_parameters=True` traverses the autograd graph on every single step to mark unreachable parameters ready, adding CPU overhead. Setting `static_graph=True` records the active parameter schedule once during warmup and reuses it with zero per-step traversal tax.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. How does FP16 mixed precision (GradScaler) interact with DDP's AllReduce during scaler.scale(loss).backward() and scaler.step(optimizer)?`&lt;/strong>`</summary>
+<summary>**15. How does FP16 mixed precision (GradScaler) interact with DDP's AllReduce during scaler.scale(loss).backward() and scaler.step(optimizer)?**</summary>
 
 `scaler.scale(loss).backward()` scales the loss on each rank before backprop, so DDP AllReduces the scaled gradients. Because every rank receives the exact same averaged scaled gradients after AllReduce, `scaler.step(optimizer)` unscales and detects overflow identically across all ranks. That keeps parameter updates and scale adjustments in lockstep.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. In nccl-tests (all_reduce_perf), what is the formula relating algbw and busbw, and which metric should be compared against the hardware link specification?`&lt;/strong>`</summary>
+<summary>**16. In nccl-tests (all_reduce_perf), what is the formula relating algbw and busbw, and which metric should be compared against the hardware link specification?**</summary>
 
 The formula is `busbw = algbw * 2 * (N - 1) / N`. Always compare bus bandwidth against the hardware spec sheet, such as 900 GB/s on H100 NVLink for `algbw = 514.29 GB/s` on 8 GPUs. Bus bandwidth accounts for the Ring AllReduce data-movement multiplier.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What are the three DAI Chapter 3 health bands for AllReduce communication time as a percentage of total step time?`&lt;/strong>`</summary>
+<summary>**17. What are the three DAI Chapter 3 health bands for AllReduce communication time as a percentage of total step time?**</summary>
 
 Under 20% indicates good overlap and healthy communication, such as 16.7% in the 24.0 ms MLPerf breakdown. Between 20% and 40% is acceptable. Over 40% indicates a communication bottleneck requiring overlap, bucket-size, or fabric remediation.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. How do you configure collective watchdog timeouts in modern PyTorch (2.2+), and why does export NCCL_TIMEOUT=... fail?`&lt;/strong>`</summary>
+<summary>**18. How do you configure collective watchdog timeouts in modern PyTorch (2.2+), and why does export NCCL_TIMEOUT=... fail?**</summary>
 
 PyTorch ignores `NCCL_TIMEOUT`. Configure the timeout via `dist.init_process_group(backend="nccl", timeout=timedelta(minutes=60))`, where the default is 30 minutes. Also export `TORCH_NCCL_ASYNC_ERROR_HANDLING=1` and `TORCH_NCCL_BLOCKING_WAIT=1` before initialization.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What four state components and two filesystem/synchronization practices are required for a reproducible, corruption-proof DDP checkpoint?`&lt;/strong>`</summary>
+<summary>**19. What four state components and two filesystem/synchronization practices are required for a reproducible, corruption-proof DDP checkpoint?**</summary>
 
 Save `model.module.state_dict()`, `optimizer.state_dict()`, learning-rate scheduler and gradient scaler and epoch state, and all RNG states. Write only from rank 0 using an atomic temporary file rename (`os.rename(path + ".tmp", path)`) followed immediately by `dist.barrier()`.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. What is the difference between fault-tolerant torchrun (--nnodes=2 --max_restarts=3) and elastic torchrun (--nnodes=2:4 --max_restarts=3)?`&lt;/strong>`</summary>
+<summary>**20. What is the difference between fault-tolerant torchrun (--nnodes=2 --max_restarts=3) and elastic torchrun (--nnodes=2:4 --max_restarts=3)?**</summary>
 
 Fault-tolerant mode keeps the world size fixed at 2 nodes. It automatically terminates, re-rendezvouses via `c10d`, and restarts all workers from the last checkpoint when a rank fails. Elastic mode with `--nnodes=2:4` allows the cluster to scale node count between 2 and 4 nodes across restarts, dynamically changing the world size and the global batch size.
 </details>

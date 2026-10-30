@@ -384,20 +384,20 @@ Summary: 25 passed, 0 failed (total 25)
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. What is the difference between host asynchrony and device concurrency in CUDA?`&lt;/strong>`</summary>
+<summary>**1. What is the difference between host asynchrony and device concurrency in CUDA?**</summary>
 
 - Host asynchrony means a CUDA API call returns control to the calling CPU thread before the GPU finishes executing the operation.
 - Device concurrency means two or more operations physically execute at the same time on the GPU's independent DMA Copy Engines and SM Compute Engines. Host asynchrony alone does not guarantee device concurrency.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What hardware engines allow a GPU to execute 3-way overlap, and how do you query how many asynchronous copy engines a GPU has?`&lt;/strong>`</summary>
+<summary>**2. What hardware engines allow a GPU to execute 3-way overlap, and how do you query how many asynchronous copy engines a GPU has?**</summary>
 
 The GPU uses its Streaming Multiprocessors for kernel computation alongside two independent hardware DMA Copy Engines, one for Host-to-Device and one for Device-to-Host. You query the copy engine count in C++ via `cudaDeviceProp::asyncEngineCount`.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Contrast the synchronization rules of the Legacy Default Stream, Per-Thread Default Streams, and explicit `cudaStreamNonBlocking` streams.`&lt;/strong>`</summary>
+<summary>**3. Contrast the synchronization rules of the Legacy Default Stream, Per-Thread Default Streams, and explicit `cudaStreamNonBlocking` streams.**</summary>
 
 - The Legacy Default Stream acts as a global barrier. Any operation issued to stream 0 waits for all prior work in all blocking streams and blocks them until stream 0 completes.
 - The Per-Thread Default Stream is enabled via `nvcc --default-stream per-thread` or the compile-time macro `CUDA_API_PER_THREAD_DEFAULT_STREAM`. It gives each host CPU thread an independent default stream that does not block other threads' streams.
@@ -405,13 +405,13 @@ The GPU uses its Streaming Multiprocessors for kernel computation alongside two 
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Why does calling `cudaMemcpyAsync` on standard `malloc()` or `std::vector` host memory fail to overlap with compute kernels in other streams?`&lt;/strong>`</summary>
+<summary>**4. Why does calling `cudaMemcpyAsync` on standard `malloc()` or `std::vector` host memory fail to overlap with compute kernels in other streams?**</summary>
 
 Standard host memory is pageable, meaning the Linux kernel can swap or remap its physical page frames at any time. Because a GPU DMA engine requires fixed physical addresses, the CUDA driver must first copy the pageable buffer on the CPU into a hidden internal pinned staging buffer before DMA can start. That CPU copy blocks the host thread and serializes the streams.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. In the Volume 03 Chapter 8 benchmark (`268,435,456` bytes), how fast was pageable H2D versus local-NUMA pinned H2D, and what happened when the pinned buffer was allocated on the remote NUMA node?`&lt;/strong>`</summary>
+<summary>**5. In the Volume 03 Chapter 8 benchmark (`268,435,456` bytes), how fast was pageable H2D versus local-NUMA pinned H2D, and what happened when the pinned buffer was allocated on the remote NUMA node?**</summary>
 
 ```text
 - Pageable H2D (256 MiB = 268,435,456 bytes): 74.318 ms (3.61 GB/s effective).
@@ -422,7 +422,7 @@ Standard host memory is pageable, meaning the Linux kernel can swap or remap its
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Compare `cudaHostAlloc` / `cudaMallocHost`, `cudaHostRegister`, and mapped zero-copy host memory (`cudaHostAllocMapped`).`&lt;/strong>`</summary>
+<summary>**6. Compare `cudaHostAlloc` / `cudaMallocHost`, `cudaHostRegister`, and mapped zero-copy host memory (`cudaHostAllocMapped`).**</summary>
 
 - `cudaHostAlloc` and `cudaMallocHost` allocate a new page-locked host buffer directly and release it with `cudaFreeHost`.
 - `cudaHostRegister` page-locks an existing host buffer in place and releases the lock with `cudaHostUnregister`.
@@ -430,13 +430,13 @@ Standard host memory is pageable, meaning the Linux kernel can swap or remap its
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Why is pinning `500 GB` of RAM on a `512 GB` Linux GPU server dangerous, and how should production services manage pinned memory instead?`&lt;/strong>`</summary>
+<summary>**7. Why is pinning `500 GB` of RAM on a `512 GB` Linux GPU server dangerous, and how should production services manage pinned memory instead?**</summary>
 
 Pinned memory is locked in physical RAM and cannot be swapped to disk by the Linux kernel. Locking 500 GB on a 512 GB host leaves only 12 GB of pageable RAM for the OS kernel, page cache, `kubelet`, and system daemons, triggering the Linux OOM Killer. Production services allocate a bounded pool of reusable pinned slot buffers aligned with their stream count.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. How do you verify from `nsys stats --report cuda_gpu_trace` whether two streams actually overlapped on the GPU?`&lt;/strong>`</summary>
+<summary>**8. How do you verify from `nsys stats --report cuda_gpu_trace` whether two streams actually overlapped on the GPU?**</summary>
 
 ```text
 - Serialized trace (V3 Ch 7):
@@ -448,31 +448,31 @@ Pinned memory is locked in physical RAM and cannot be swapped to disk by the Lin
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Why should you use `cudaEventRecord` + `cudaStreamWaitEvent` instead of `cudaStreamSynchronize` or `cudaDeviceSynchronize` when Stream B depends on data produced by Stream A?`&lt;/strong>`</summary>
+<summary>**9. Why should you use `cudaEventRecord` + `cudaStreamWaitEvent` instead of `cudaStreamSynchronize` or `cudaDeviceSynchronize` when Stream B depends on data produced by Stream A?**</summary>
 
 Calling `cudaDeviceSynchronize` blocks the host CPU and stalls all streams on the GPU. Calling `cudaStreamSynchronize` blocks the host CPU thread until the target stream drains. Recording an event with `cudaEventRecord` and calling `cudaStreamWaitEvent` enforces the dependency on the GPU hardware scheduler without blocking the host CPU thread or stalling unrelated streams.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why does `overlap_pipeline.cu` pass `cudaEventDisableTiming` when creating its per-slot completion events?`&lt;/strong>`</summary>
+<summary>**10. Why does `overlap_pipeline.cu` pass `cudaEventDisableTiming` when creating its per-slot completion events?**</summary>
 
 When a CUDA Event is used purely as a completion or dependency barrier and never passed to `cudaEventElapsedTime`, passing `cudaEventDisableTiming` instructs the driver not to record hardware timestamp counters. That flag lowers event-recording overhead inside hot loops.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What is `cudaLaunchHostFunc`, and why must a callback registered with `cudaLaunchHostFunc` never call `cudaMemcpy` or any other CUDA device API?`&lt;/strong>`</summary>
+<summary>**11. What is `cudaLaunchHostFunc`, and why must a callback registered with `cudaLaunchHostFunc` never call `cudaMemcpy` or any other CUDA device API?**</summary>
 
 The `cudaLaunchHostFunc` API enqueues a CPU callback function into a CUDA Stream. That function executes on a runtime-managed host thread as soon as all preceding work in that stream completes. Calling any CUDA device API inside that callback can cause a circular deadlock. The stream is blocked waiting for the callback to finish while the callback waits on the CUDA runtime.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Why do variable-length LLM batches and growing KV caches require `cudaMallocAsync` and `cudaFreeAsync` (`PYTORCH_ALLOC_CONF=backend:cudaMallocAsync`) in multi-stream pipelines?`&lt;/strong>`</summary>
+<summary>**12. Why do variable-length LLM batches and growing KV caches require `cudaMallocAsync` and `cudaFreeAsync` (`PYTORCH_ALLOC_CONF=backend:cudaMallocAsync`) in multi-stream pipelines?**</summary>
 
 When sequence length jumps from 512 to 1,024 tokens, the attention layer must allocate a larger temporary scratch buffer. Calling legacy synchronous `cudaMalloc` or `cudaFree` forces a device-wide synchronization that stalls all other active compute and DMA streams. The stream-ordered calls `cudaMallocAsync` and `cudaFreeAsync` enqueue the allocation inside the requesting stream only. The driver services the request from the per-device memory pool without stalling other streams.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. In `overlap_pipeline.cu`, state the exact problem size, chunk size, chunk count, per-slot buffer size, and total bytes transferred across H2D + D2H.`&lt;/strong>`</summary>
+<summary>**13. In `overlap_pipeline.cu`, state the exact problem size, chunk size, chunk count, per-slot buffer size, and total bytes transferred across H2D + D2H.**</summary>
 
 ```text
 - totalElements : 1 << 26 = 67,108,864 floats (256 MiB).
@@ -483,7 +483,7 @@ When sequence length jumps from 512 to 1,024 tokens, the attention layer must al
 </details>
 
 <details>
-<summary>`&lt;strong>`14. In Lab 03, what was the baseline runtime of `overlap_pipeline` across 2 streams, and what happened when `cudaDeviceSynchronize()` was added after the kernel launch?`&lt;/strong>`</summary>
+<summary>**14. In Lab 03, what was the baseline runtime of `overlap_pipeline` across 2 streams, and what happened when `cudaDeviceSynchronize()` was added after the kernel launch?**</summary>
 
 ```text
 - Baseline 2-stream overlapped runtime: 812.4 ms (~630.2 MiB/s, or ~630 MiB/s useful end-to-end throughput).
@@ -492,7 +492,7 @@ When sequence length jumps from 512 to 1,024 tokens, the attention layer must al
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Walk through the exact 7-step per-slot ownership sequence inside `overlap_pipeline.cu` when reusing `slot = chunk % streamCount`.`&lt;/strong>`</summary>
+<summary>**15. Walk through the exact 7-step per-slot ownership sequence inside `overlap_pipeline.cu` when reusing `slot = chunk % streamCount`.**</summary>
 
 ```text
 1. Wait    : cudaEventSynchronize(complete[slot]) to ensure chunk (chunk - 2) finished its D2H copy.
@@ -506,31 +506,31 @@ When sequence length jumps from 512 to 1,024 tokens, the attention layer must al
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Why did moving `Collect` after `Refill` in `overlap_pipeline.cu` cause validation to fail specifically at index `4,194,304`?`&lt;/strong>`</summary>
+<summary>**16. Why did moving `Collect` after `Refill` in `overlap_pipeline.cu` cause validation to fail specifically at index `4,194,304`?**</summary>
 
 Index 4,194,304 is the first element of the second chunk. The Volume 03 note explains the failure as the host overwriting the slot buffer with new data before the previous chunk's output was read out, leaving corrupted data at that offset. Note that in the C++ code shown, the input and output slot buffers are separate arrays, so the source note's exact failure index is illustrative of breaking the Wait-Collect-Refill ownership rule.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. Why did a multi-stream run in Volume 03 Chapter 7 pass validation on Run 1 (`812.4 ms`) and Run 3 (`809.1 ms`), but fail on Run 2 at index `4,194,305`?`&lt;/strong>`</summary>
+<summary>**17. Why did a multi-stream run in Volume 03 Chapter 7 pass validation on Run 1 (`812.4 ms`) and Run 3 (`809.1 ms`), but fail on Run 2 at index `4,194,305`?**</summary>
 
 In the note's illustrative example, passing on two runs and failing on one run at index 4,194,305 is the signature of an asynchronous buffer-ownership race. The host began refilling or reading a slot's pinned buffer for the next chunk a few microseconds before the GPU's DMA engine finished the previous chunk's transfer on that slot. That race occurred because event synchronization was omitted or recorded before the Device-to-Host copy.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. What happens if two concurrent streams launch kernels that together exceed an SM's registers, shared memory, or 64-warp residency limit, or if both saturate 100% of HBM bandwidth?`&lt;/strong>`</summary>
+<summary>**18. What happens if two concurrent streams launch kernels that together exceed an SM's registers, shared memory, or 64-warp residency limit, or if both saturate 100% of HBM bandwidth?**</summary>
 
 The hardware only co-schedules kernels from different streams onto the same SM if their combined register, shared-memory, and warp requirements fit within per-SM limits. Otherwise, the second kernel queues until blocks from the first kernel finish. If one kernel already saturates 100% of SM compute or HBM bandwidth, overlapping a second kernel simply shares the saturated resource at roughly 50% each. Total wall-clock time does not drop.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. How does PyTorch overlap `NCCL` gradient `AllReduce` communication with backward-pass computation under the hood?`&lt;/strong>`</summary>
+<summary>**19. How does PyTorch overlap `NCCL` gradient `AllReduce` communication with backward-pass computation under the hood?**</summary>
 
 PyTorch distributed training launches backward-pass math kernels on a compute stream, records a CUDA Event when a gradient bucket is ready, and calls `cudaStreamWaitEvent` on a separate high-priority `NCCL` communication stream. That event handshake lets the collective communication run concurrently with the backward-pass math of earlier layers.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. When combining intra-kernel warp specialization with inter-kernel CUDA streams, what does each level of pipelining hide?`&lt;/strong>`</summary>
+<summary>**20. When combining intra-kernel warp specialization with inter-kernel CUDA streams, what does each level of pipelining hide?**</summary>
 
 ```text
 - Intra-kernel pipelining (<cuda::pipeline>, double-buffered 24,576 B = 24 KB SMEM for 2 stages * 3 buffers *

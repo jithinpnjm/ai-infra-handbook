@@ -594,140 +594,140 @@ Exercise input parameters for code/part10/gpu_memory_hierarchy.py:
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. List the seven tiers of the Blackwell B200 memory hierarchy from fastest to slowest, with their scope, capacity, and approximate latency.`&lt;/strong>`</summary>
+<summary>**1. List the seven tiers of the Blackwell B200 memory hierarchy from fastest to slowest, with their scope, capacity, and approximate latency.**</summary>
 
 Registers are per-thread on-SM storage at about 1 cycle. Shared memory and L1 are per-block or per-cluster SRAM on the SM at about 20 to 30 cycles. Tensor Memory (TMEM) is per-SM dedicated SRAM on Blackwell at about 10 cycles. Constant cache is per-SM read-only cache at about 1 cycle on a broadcast. L2 cache is GPU-wide cache at about 200 cycles. Local memory is per-thread spill space backed by HBM, and HBM global memory is off-chip DRAM at about 800 cycles typical.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What is Tensor Memory (TMEM) on Blackwell (256 KB/SM), what is its approximate latency (~10 cycles), and how is data moved into and out of it if it is not pointer-addressable in C++?`&lt;/strong>`</summary>
+<summary>**2. What is Tensor Memory (TMEM) on Blackwell (256 KB/SM), what is its approximate latency (~10 cycles), and how is data moved into and out of it if it is not pointer-addressable in C++?**</summary>
 
 TMEM is dedicated SRAM per SM on Blackwell used by the fifth-generation Tensor Cores for accumulators and operands. It is not pointer-addressable in C++. Data moves in and out through TMA and `tcgen05.mma` or UMMA descriptors.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What are the five Points of Coherency (PoC) for GPU threads, from narrowest to widest scope?`&lt;/strong>`</summary>
+<summary>**3. What are the five Points of Coherency (PoC) for GPU threads, from narrowest to widest scope?**</summary>
 
 Thread level is the register file. Thread block level is L1 and shared memory on one SM synchronized with `__syncthreads()`. Cluster level is Distributed Shared Memory across SMs in a GPC synchronized with `cluster.sync()`. Device level is L2 and global HBM across all SMs. System level is coherent memory across GPUs and the host over NVLink, NVSwitch, NVLink-C2C, or PCIe.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`4. When `nvidia-smi dmon -s ucm` shows `sm = 18%` and `mem = 90%`, how do you use L1 and L2 hit rates in `ncu` (`l1tex__t_sector_hit_rate.pct` and `lts__t_sector_hit_rate.pct`) to distinguish a streaming/uncoalesced pattern from an L2-thrashing working set?`&lt;/strong>`</summary>
+<summary>**4. When `nvidia-smi dmon -s ucm` shows `sm = 18%` and `mem = 90%`, how do you use L1 and L2 hit rates in `ncu` (`l1tex__t_sector_hit_rate.pct` and `lts__t_sector_hit_rate.pct`) to distinguish a streaming/uncoalesced pattern from an L2-thrashing working set?**</summary>
 
 Low SM utilization with high memory utilization means the SMs are starving while the memory interface is saturated. Low L1 and low L2 hit rates with high HBM traffic point to a streaming or uncoalesced pattern bypassing both caches, which you fix with SoA layout, coalescing, or tiling. A high L2 hit rate with high HBM traffic means the working set slightly exceeds L2 capacity and is thrashing, which you fix by reducing precision, fusing kernels, or adjusting tile and batch sizes.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`5. Why is Local Memory slow despite its name, and what two code patterns cause `nvcc` to place data in Local Memory?`&lt;/strong>`</summary>
+<summary>**5. Why is Local Memory slow despite its name, and what two code patterns cause `nvcc` to place data in Local Memory?**</summary>
 
 The word local describes logical scope private to a thread, not physical location. Local memory lives in off-chip HBM and is reached through L1 and L2. The `nvcc` compiler uses it for register spills when live variables exceed the per-thread register cap or `__launch_bounds__`, and for local arrays indexed with a runtime variable such as `buf[i]`.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`6. If a kernel launches 256 blocks of 256 threads (65,536 threads) and spills 2 floats (8 bytes) per thread, how many bytes (1,048,576 B ≈ 1.05 MB) of extra memory traffic are generated per launch?`&lt;/strong>`</summary>
+<summary>**6. If a kernel launches 256 blocks of 256 threads (65,536 threads) and spills 2 floats (8 bytes) per thread, how many bytes (1,048,576 B ≈ 1.05 MB) of extra memory traffic are generated per launch?**</summary>
 
 Multiplying total threads by spilled bytes per thread and doubling for one spill store plus one spill load equals 1,048,576 bytes, or about 1.05 MB of extra cache and HBM traffic per launch. That traffic appears nowhere in the C++ source code.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How does 32 x 32 Shared-Memory Tiling change global memory sector reads (9,800 → 1,200), DRAM throughput (90% → 25%), arithmetic intensity (1.5 → 8.0 FLOPs/B), and GFLOPS (15 → 170) in Table 7-4 of *AI Systems Performance Engineering*?`&lt;/strong>`</summary>
+<summary>**7. How does 32 x 32 Shared-Memory Tiling change global memory sector reads (9,800 → 1,200), DRAM throughput (90% → 25%), arithmetic intensity (1.5 → 8.0 FLOPs/B), and GFLOPS (15 → 170) in Table 7-4 of *AI Systems Performance Engineering*?**</summary>
 
 Each tile element is fetched from HBM once per block instead of thirty-two times. As a result, global load sectors drop from 9,800 to 1,200, DRAM throughput drops from 90% to 25%, arithmetic intensity rises from 1.5 to 8.0 FLOPs/byte, and sustained throughput jumps from 15 to 170 GFLOPS. Shared-memory throughput and SM occupancy also rise substantially.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`8. Why does scaling a 2D Shared-Memory tile from 32 x 32 to 64 x 64 (with 1,024 threads and 22 registers/thread) cap SM residency at 2 blocks (2,048 threads)?`&lt;/strong>`</summary>
+<summary>**8. Why does scaling a 2D Shared-Memory tile from 32 x 32 to 64 x 64 (with 1,024 threads and 22 registers/thread) cap SM residency at 2 blocks (2,048 threads)?**</summary>
 
 A 1,024-thread block using 22 registers per thread consumes 22,528 registers per block. Two blocks fit inside the 65,536-register file, but two blocks of 1,024 threads already hit the SM's hard 2,048-thread ceiling, so only two blocks can reside on the SM.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`9. How many banks and what bank width (32 banks x 4 bytes) does Shared Memory use on Hopper and Blackwell, and why does reading down a column of `__shared__ float tile[32][32]` cause a 32-way bank conflict?`&lt;/strong>`</summary>
+<summary>**9. How many banks and what bank width (32 banks x 4 bytes) does Shared Memory use on Hopper and Blackwell, and why does reading down a column of `__shared__ float tile[32][32]` cause a 32-way bank conflict?**</summary>
 
 Shared memory has 32 banks that are each 4 bytes wide, so bank assignments repeat every 128 bytes. Reading down a column of `tile[32][32]`, thread `t` reads word `t * 32 + col`, which maps to bank `col` for every thread in the warp. All 32 threads hit the same bank at different addresses and serialize into 32 replays.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Under what condition can all 32 threads in a warp access the same Shared-Memory (or Constant-Cache) bank in 1 cycle with zero conflict?`&lt;/strong>`</summary>
+<summary>**10. Under what condition can all 32 threads in a warp access the same Shared-Memory (or Constant-Cache) bank in 1 cycle with zero conflict?**</summary>
 
 When all threads in the warp read the exact same address with stride zero, such as `tile[0][0]`, the hardware broadcasts that word to all lanes in a single cycle with no conflict. The constant cache also broadcasts in about one cycle when all lanes read the same address.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How does padding `__shared__ float tile[32][32]` to `tile[32][33]` eliminate bank conflicts, how much memory overhead does it add (~3.1% / 1 KB), and what zero-overhead alternative does CUTLASS use (XOR swizzling)?`&lt;/strong>`</summary>
+<summary>**11. How does padding `__shared__ float tile[32][32]` to `tile[32][33]` eliminate bank conflicts, how much memory overhead does it add (~3.1% / 1 KB), and what zero-overhead alternative does CUTLASS use (XOR swizzling)?**</summary>
 
 Padding changes the row stride from 32 to 33 words. Since 33 and 32 are coprime, thread `t` reading `tile[t][col]` hits bank `(t + col) % 32`, placing all 32 threads in distinct banks. The overhead is one extra float per row, and CUTLASS instead uses XOR swizzling (`col ^ row`) to permute banks with zero memory overhead.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How does `__shfl_down_sync` perform a 32-thread warp reduction in 5 steps without using Shared Memory or `__syncthreads()`?`&lt;/strong>`</summary>
+<summary>**12. How does `__shfl_down_sync` perform a 32-thread warp reduction in 5 steps without using Shared Memory or `__syncthreads()`?**</summary>
 
 Each butterfly step adds the value from the lane `offset` away using `__shfl_down_sync` across five halving offsets. Lanes read each other's registers directly, so lane zero ends up holding the sum of all threads in the warp with zero shared-memory bytes, zero barriers, and zero bank conflicts.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How many bytes are in a modern GPU cache line (128 B) and in each sector (32 B), and how many sectors does a 32-thread warp touch for: (a) an aligned contiguous 4B load (4), (b) a +4B misaligned contiguous load (5), (c) a stride = 2 load (8), and (d) a scattered load (32)?`&lt;/strong>`</summary>
+<summary>**13. How many bytes are in a modern GPU cache line (128 B) and in each sector (32 B), and how many sectors does a 32-thread warp touch for: (a) an aligned contiguous 4B load (4), (b) a +4B misaligned contiguous load (5), (c) a stride = 2 load (8), and (d) a scattered load (32)?**</summary>
 
 A cache line is 128 bytes subdivided into four 32-byte sectors. A warp reading four-byte floats touches 4 sectors when aligned and contiguous, 5 sectors when shifted by four bytes, 8 sectors at stride two, and up to 32 sectors when scattered.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Why does Structure of Arrays (SoA) achieve much higher Global Memory Load Efficiency than Array of Structures (AoS) when threads read a single field across records?`&lt;/strong>`</summary>
+<summary>**14. Why does Structure of Arrays (SoA) achieve much higher Global Memory Load Efficiency than Array of Structures (AoS) when threads read a single field across records?**</summary>
 
 With SoA each field has its own contiguous array, so adjacent threads read adjacent addresses and the warp fills whole cache lines. With AoS a single field is strided through memory, so the warp spans extra cache lines and fetches unneeded sectors.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What minimum pointer alignment does `cudaMalloc()` guarantee (256 bytes), and how many bytes per thread and per warp are moved by `float4` (16 B/thread = 512 B/warp) on Hopper versus 256-bit (32 B/thread = 1,024 B/warp) vector loads on Blackwell (CUDA 13+)?`&lt;/strong>`</summary>
+<summary>**15. What minimum pointer alignment does `cudaMalloc()` guarantee (256 bytes), and how many bytes per thread and per warp are moved by `float4` (16 B/thread = 512 B/warp) on Hopper versus 256-bit (32 B/thread = 1,024 B/warp) vector loads on Blackwell (CUDA 13+)?**</summary>
 
 The `cudaMalloc` allocator guarantees at least 256-byte base pointer alignment. A `float4` load moves 16 bytes per thread and 512 bytes per warp across four cache lines, cutting memory instructions fourfold. On Blackwell with CUDA 13+, a 256-bit load moves 32 bytes per thread and 1,024 bytes per warp across eight cache lines, cutting instructions eightfold.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What does qualifying a read-only input pointer with `const __restrict__` allow the CUDA compiler and hardware to do, and how did it affect DRAM vs L2 throughput in Table 7-6?`&lt;/strong>`</summary>
+<summary>**16. What does qualifying a read-only input pointer with `const __restrict__` allow the CUDA compiler and hardware to do, and how did it affect DRAM vs L2 throughput in Table 7-6?**</summary>
 
 Adding `const __restrict__` or calling `__ldg()` proves the pointer is read-only and not aliased, routing loads through the read-only data cache path instead of coherent loads that pollute L1 and L2. In Table 7-6 this cut DRAM traffic from 600 to 200 GB/s, served 1,800 GB/s from L2, and sped up the kernel from 2.5 ms to 1.0 ms.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`17. How do the Tensor Memory Accelerator (TMA) and `cuda::memcpy_async` (`cuda::pipeline`) hide ~800-cycle HBM latency, and why does offloading copies to TMA help the SM's 16 LD/ST units?`&lt;/strong>`</summary>
+<summary>**17. How do the Tensor Memory Accelerator (TMA) and `cuda::memcpy_async` (`cuda::pipeline`) hide ~800-cycle HBM latency, and why does offloading copies to TMA help the SM's 16 LD/ST units?**</summary>
 
 TMA is a dedicated DMA engine in the SM that copies multidimensional tiles between HBM and shared memory without using registers or load/store instruction slots. With two ping-pong shared buffers and `cuda::pipeline`, TMA streams the next tile in the background while warps compute on the current tile, hiding HBM latency and freeing the load/store units.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Calculate the weight memory footprint (26 GB) and the unbatched decode weight-read latency floor (7.76 ms/token) for a 13B FP16 model on an 80 GB H100 (3,350 GB/s).`&lt;/strong>`</summary>
+<summary>**18. Calculate the weight memory footprint (26 GB) and the unbatched decode weight-read latency floor (7.76 ms/token) for a 13B FP16 model on an 80 GB H100 (3,350 GB/s).**</summary>
 
 Multiplying 13B parameters by two bytes equals 26.0 GB of weights, leaving 54.0 GB free on an 80 GB H100. Decode at batch one reads all weights per token, so dividing 26.0 GB by 3,350 GB/s gives about 7.76 ms per token. Extra free VRAM does not lower that floor; only higher bandwidth, lower-precision weights, or continuous batching does.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Why are `cudaMallocAsync` and `cudaFreeAsync` (and PyTorch's `PYTORCH_ALLOC_CONF` caching allocator pool) strongly preferred over synchronous `cudaMalloc` and `cudaFree` inside loops?`&lt;/strong>`</summary>
+<summary>**19. Why are `cudaMallocAsync` and `cudaFreeAsync` (and PyTorch's `PYTORCH_ALLOC_CONF` caching allocator pool) strongly preferred over synchronous `cudaMalloc` and `cudaFree` inside loops?**</summary>
 
 Standard `cudaMalloc` and `cudaFree` are synchronous across the whole device and invoke OS `mmap` and `ioctl` calls, stalling execution when called in a loop. The `cudaMallocAsync` and `cudaFreeAsync` calls are stream-ordered and draw from a configurable memory pool. PyTorch's caching allocator pools memory the same way, and `PYTORCH_ALLOC_CONF=expandable_segments:True` reduces fragmentation OOMs.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`20. What are the five `cudaMemAdvise` / `cudaMemPrefetchAsync` / `cudaStreamAttachMemAsync` calls used to prevent on-demand page-fault stalls with Unified Memory (`cudaMallocManaged`), and how do you verify Resizable BAR (BAR1) on a Linux GPU host?`&lt;/strong>`</summary>
+<summary>**20. What are the five `cudaMemAdvise` / `cudaMemPrefetchAsync` / `cudaStreamAttachMemAsync` calls used to prevent on-demand page-fault stalls with Unified Memory (`cudaMallocManaged`), and how do you verify Resizable BAR (BAR1) on a Linux GPU host?**</summary>
 
 The five calls issued before kernel launch are `cudaMemAdvise` with `cudaMemAdviseSetPreferredLocation`, `cudaMemAdviseSetReadMostly`, and `cudaMemAdviseSetAccessedBy`, plus `cudaStreamAttachMemAsync` and `cudaMemPrefetchAsync`. To verify Resizable BAR, run `nvidia-smi -q -d MEMORY | grep -A 5 "BAR1"` and confirm BAR1 Total matches full VRAM rather than 256 MiB.
 

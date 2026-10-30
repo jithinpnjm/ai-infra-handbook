@@ -645,7 +645,7 @@ Summary: 26 passed, 0 failed
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. What are the four stages of the `torch.compile` pipeline in exact execution order?`&lt;/strong>`</summary>
+<summary>**1. What are the four stages of the `torch.compile` pipeline in exact execution order?**</summary>
 
 1. **TorchDynamo:** Intercepts CPython bytecode via the PEP 523 Frame Evaluation API, extracts tensor operations into an FX Graph, and generates runtime guards.
 2. **AOTAutograd:** Traces the forward FX Graph through functional autograd to capture a joint forward-and-backward FX graph. It also applies a min-cut activation checkpointing partitioner and fuses across the pass boundary.
@@ -654,13 +654,13 @@ Summary: 26 passed, 0 failed
 </details>
 
 <details>
-<summary>`&lt;strong>`2. How does TorchDynamo capture an FX Graph without requiring users to rewrite Python code, and what FX Graph does it produce for `def f(x, y): z = x.sin() + y; return z.sum()`?`&lt;/strong>`</summary>
+<summary>**2. How does TorchDynamo capture an FX Graph without requiring users to rewrite Python code, and what FX Graph does it produce for `def f(x, y): z = x.sin() + y; return z.sum()`?**</summary>
 
 TorchDynamo hooks into CPython's PEP 523 Frame Evaluation API to inspect Python opcodes dynamically at runtime. For `f(x, y)`, it produces an FX Graph with two `Placeholder` inputs followed by `torch.sin`, `torch.add`, `torch.sum`, and `return`.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What are the four compiler stances supported by `torch.compiler.set_stance()`, and when should each be used?`&lt;/strong>`</summary>
+<summary>**3. What are the four compiler stances supported by `torch.compiler.set_stance()`, and when should each be used?**</summary>
 
 1. **`"default"`:** Compiles supported regions and silently falls back to eager mode on graph breaks or after exhausting the recompile budget.
 2. **`"fail_on_recompile"`:** Raises a hard error on any graph break, unsupported op, or guard recompile. This stance is ideal for local debugging and CI performance-regression gates.
@@ -669,25 +669,25 @@ TorchDynamo hooks into CPython's PEP 523 Frame Evaluation API to inspect Python 
 </details>
 
 <details>
-<summary>`&lt;strong>`4. How does AOTAutograd optimize model training compared to PyTorch's eager autograd engine, and how much HBM traffic does it save on the 5-op BF16 elementwise block?`&lt;/strong>`</summary>
+<summary>**4. How does AOTAutograd optimize model training compared to PyTorch's eager autograd engine, and how much HBM traffic does it save on the 5-op BF16 elementwise block?**</summary>
 
 Instead of executing backward operations one by one via a dynamic tape, AOTAutograd captures a joint forward-and-backward FX graph ahead of time. It uses a min-cut partitioner to minimize saved activations, reuses intermediate buffers, and fuses across forward and backward passes. On the 5-op forward and 5-op backward BF16 block, it fuses 10 eager kernels (24 HBM passes = 1.6106 GB) into 2 compiled kernels (6 HBM passes = 0.4027 GB). That fusion cuts HBM traffic by 4.0x (75.0% bandwidth saved).
 </details>
 
 <details>
-<summary>`&lt;strong>`5. Why does PrimTorch IR reduce over 2,000 ATen operators to roughly 250 primitives, and how does it handle in-place mutations like `x.add_(y)`?`&lt;/strong>`</summary>
+<summary>**5. Why does PrimTorch IR reduce over 2,000 ATen operators to roughly 250 primitives, and how does it handle in-place mutations like `x.add_(y)`?**</summary>
 
 Reducing over 2,000 ATen ops to roughly 250 core primitives (an 8.0x or 87.5% reduction) gives compiler backends a small, stable operator surface to implement. PrimTorch functionalizes in-place mutations into a pure functional addition followed by an explicit `aten::copy_` write-back. That step eliminates aliasing and side effects so downstream passes can fuse aggressively.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. How does TorchInductor represent `z = x.permute(1, 0) + x[2, :]` in its intermediate representation, and does it invoke `nvcc` to compile GPU kernels?`&lt;/strong>`</summary>
+<summary>**6. How does TorchInductor represent `z = x.permute(1, 0) + x[2, :]` in its intermediate representation, and does it invoke `nvcc` to compile GPU kernels?**</summary>
 
 TorchInductor lowers operations to a Python define-by-run loop-level IR (`Pointwise`) over `ranges=[size0, size1]` using SymPy index expressions. It lowers this IR to OpenAI Triton and compiles Triton directly to NVIDIA PTX via LLVM NVPTX without invoking `nvcc`.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Compare the four `torch.compile` modes in terms of CUDA Graphs, kernel autotuning, and dynamic-shape compatibility.`&lt;/strong>`</summary>
+<summary>**7. Compare the four `torch.compile` modes in terms of CUDA Graphs, kernel autotuning, and dynamic-shape compatibility.**</summary>
 
 - **`"default"`:** No CUDA Graphs, heuristic tuning, fast compile time.
 - **`"reduce-overhead"`:** Enables CUDA Graphs to eliminate CPU launch overhead, heuristic tuning; requires static shapes.
@@ -696,14 +696,14 @@ TorchInductor lowers operations to a Python define-by-run loop-level IR (`Pointw
 </details>
 
 <details>
-<summary>`&lt;strong>`8. Does `torch.compile` automatically substitute NVIDIA Transformer Engine kernels, and what performance does FlexAttention achieve?`&lt;/strong>`</summary>
+<summary>**8. Does `torch.compile` automatically substitute NVIDIA Transformer Engine kernels, and what performance does FlexAttention achieve?**</summary>
 
 - **Transformer Engine:** No. The compiler does not automatically replace standard PyTorch layers with TE kernels. You must explicitly instantiate TE layers in your model, and the compiler will fuse around them.
 - **FlexAttention:** Compiled by TorchInductor into fused Triton kernels that reach 85 to 90 percent (85.0%–90.0%) of modern FlashAttention performance in both passes.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. How does `torch.compile` handle dynamic shapes under `dynamic=None` vs `mark_dynamic` vs `dynamic=True`, and what is the 10 to 20 percent padding rule of thumb?`&lt;/strong>`</summary>
+<summary>**9. How does `torch.compile` handle dynamic shapes under `dynamic=None` vs `mark_dynamic` vs `dynamic=True`, and what is the 10 to 20 percent padding rule of thumb?**</summary>
 
 - **`dynamic=None` (default):** Compiles step 1 with a static guard. On the first shape change, it triggers 1 extra recompile (2 compiles total) using SymPy symbolic shapes.
 - **`mark_dynamic`:** Marks only the specified dimension symbolic before step 1, achieving 1 compile with 0 extra recompiles.
@@ -712,7 +712,7 @@ TorchInductor lowers operations to a Python define-by-run loop-level IR (`Pointw
 </details>
 
 <details>
-<summary>`&lt;strong>`10. What does `explain(toy_example)` output, why do the two breaks happen, and how do `model_where` and `model_cond` reduce the graph count to 1?`&lt;/strong>`</summary>
+<summary>**10. What does `explain(toy_example)` output, why do the two breaks happen, and how do `model_where` and `model_cond` reduce the graph count to 1?**</summary>
 
 The explain call reports `Graph Count: 3`, `Graph Break Count: 2`, and `Op Count: 5`.
 - **Break 1 (`builtin: print`):** The print call writes to stdio. Fix it by guarding with `if not torch._dynamo.is_compiling():`.
@@ -720,13 +720,13 @@ The explain call reports `Graph Count: 3`, `Graph Break Count: 2`, and `Op Count
 </details>
 
 <details>
-<summary>`&lt;strong>`11. Why do DDP and FSDP intentionally cause graph breaks during compilation, and how should FSDP submodules be wrapped?`&lt;/strong>`</summary>
+<summary>**11. Why do DDP and FSDP intentionally cause graph breaks during compilation, and how should FSDP submodules be wrapped?**</summary>
 
 DDP and FSDP intentionally break the graph at collective communication boundaries. Those breaks allow NCCL communication of one bucket or shard to overlap asynchronously with computation of the next subgraph. For FSDP, pass `use_original_params=True` and wrap each Transformer block in its own FSDP submodule so AOTAutograd and TorchInductor fuse passes within each shard.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Name all 11 `TORCH_LOGS` options in Table 14-1 and state which ones diagnose missed CUDA Graphs, generated Triton source code, and guard failures.`&lt;/strong>`</summary>
+<summary>**12. Name all 11 `TORCH_LOGS` options in Table 14-1 and state which ones diagnose missed CUDA Graphs, generated Triton source code, and guard failures.**</summary>
 
 The 11 Table 14-1 flags are: `graph_breaks`, `dynamo`, `aot_graphs`, `inductor`, `graph_outputs`, `graph_code`, `dynamic`, `perf_hints`, `output_code`, `recompiles`, and `guards`.
 - **Missed CUDA Graphs:** `perf_hints`.
@@ -735,20 +735,20 @@ The 11 Table 14-1 flags are: `graph_breaks`, `dynamo`, `aot_graphs`, `inductor`,
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How do you isolate a numerical accuracy bug between eager mode and `torch.compile`, and how do you enforce bitwise determinism for cuBLAS matmuls?`&lt;/strong>`</summary>
+<summary>**13. How do you isolate a numerical accuracy bug between eager mode and `torch.compile`, and how do you enforce bitwise determinism for cuBLAS matmuls?**</summary>
 
 - **Isolating compiler bugs:** Export `TORCHDYNAMO_REPRO_AFTER="aot"` and `TORCHDYNAMO_REPRO_LEVEL=4` to run every post-AOTAutograd subgraph in both eager and compiled mode. The minifier runs automatically on the first numerical mismatch. Set `fallback_random = True` if PRNG ordering matters.
 - **Enforcing cuBLAS determinism:** Enable deterministic algorithms in PyTorch and export `CUBLAS_WORKSPACE_CONFIG=:4096:8` (32,768 KB = 32 MB) or `:16:8` (128 KB). That workspace prevents non-deterministic split-K reductions.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. How does OpenAI Triton's SPMD programming model differ from CUDA's SIMT model, and how does `BLOCK_SIZE` relate to `num_warps` in `vector_add_kernel`?`&lt;/strong>`</summary>
+<summary>**14. How does OpenAI Triton's SPMD programming model differ from CUDA's SIMT model, and how does `BLOCK_SIZE` relate to `num_warps` in `vector_add_kernel`?**</summary>
 
 In CUDA SIMT, a kernel describes a single thread. In Triton SPMD, each program instance maps to an entire CUDA thread block operating on vectors of size `BLOCK_SIZE`. The block size (1,024 elements) is decoupled from the thread count (`num_warps * 32`). With 4 warps (128 threads), `vector_add_kernel` on 10,000 elements launches 10 programs where each thread processes 8.0 elements. Push `num_warps` to 8 (256 threads) at block size 2,048 and 16 (512 threads) at block size 4,096.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. How do you register a custom Triton kernel with PyTorch so the compiler can inline and fuse it in `forward()` and differentiate it in `backward()` without graph breaks?`&lt;/strong>`</summary>
+<summary>**15. How do you register a custom Triton kernel with PyTorch so the compiler can inline and fuse it in `forward()` and differentiate it in `backward()` without graph breaks?**</summary>
 
 1. Decorate the Python wrapper with `@torch.library.triton_op("my_triton_lib::vector_add", mutates_args=())`.
 2. Launch the JIT kernel inside the wrapper via `wrap_triton`.
@@ -756,7 +756,7 @@ In CUDA SIMT, a kernel describes a single thread. In Triton SPMD, each program i
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What hardware instructions do `tl.make_tensor_descriptor` and `tl.dot` map to on NVIDIA Blackwell GPUs, and what are the exact descriptor alignment rules?`&lt;/strong>`</summary>
+<summary>**16. What hardware instructions do `tl.make_tensor_descriptor` and `tl.dot` map to on NVIDIA Blackwell GPUs, and what are the exact descriptor alignment rules?**</summary>
 
 - **Tensor descriptors:** Lower to hardware Tensor Memory Accelerator asynchronous transfers between HBM and shared memory.
 - **Matrix dot products:** Lower to Blackwell `tcgen05` UMMA Tensor Core instructions accumulating FP32 results in 256 KB per SM of Tensor Memory.
@@ -764,20 +764,20 @@ In CUDA SIMT, a kernel describes a single thread. In Triton SPMD, each program i
 </details>
 
 <details>
-<summary>`&lt;strong>`17. How does warp specialization work in Triton, and what rule prevents silent load/compute overlap collapse when `num_stages > 1`?`&lt;/strong>`</summary>
+<summary>**17. How does warp specialization work in Triton, and what rule prevents silent load/compute overlap collapse when `num_stages > 1`?**</summary>
 
 - **Warp specialization:** Setting `warp_specialize=True` in `tl.range` partitions warps into producer warps for TMA memory prefetch and consumer warps for Tensor Core compute.
 - **Overlap survival rule:** Keep the current tile references live across the loop body by prefetching the next tile, computing `tl.dot` on the current tile, and swapping references at the end. Overwriting or dropping the current tile early allows the compiler to reorder copies past compute, collapsing pipeline overlap.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. How does `matmul_kernel_persistent` structure its launch grid and tile loop, and when does it outperform standard 2D tiled GEMM?`&lt;/strong>`</summary>
+<summary>**18. How does `matmul_kernel_persistent` structure its launch grid and tile loop, and when does it outperform standard 2D tiled GEMM?**</summary>
 
 Instead of launching `MT * NT` separate thread blocks that exit after computing 1 output tile, `matmul_kernel_persistent` launches a 1D grid of `min(65536, MT * NT)` persistent programs. Each program starts at its program ID and steps by the total number of programs in a `while` loop across tiles. It outperforms non-persistent kernels when K exceeds 1,024. At 65,536 by 65,536, 262,144 tiles are capped at 65,536 programs or 4 tiles per program.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. In the Triton Proton benchmark for `[M=8192, N=8192, K=512]`, what are the exact timings (ms) and scores for `ROOT`, `cublas`, `torch`, `matmul_kernel`, and `matmul_kernel_persistent`?`&lt;/strong>`</summary>
+<summary>**19. In the Triton Proton benchmark for `[M=8192, N=8192, K=512]`, what are the exact timings (ms) and scores for `ROOT`, `cublas`, `torch`, `matmul_kernel`, and `matmul_kernel_persistent`?**</summary>
 
 - **ROOT:** 168.314 ms (16,331.291).
 - **cuBLAS:** 174.920 ms (3,928.623).
@@ -787,7 +787,7 @@ Instead of launching `MT * NT` separate thread blocks that exit after computing 
 </details>
 
 <details>
-<summary>`&lt;strong>`20. How do you activate the PyTorch XLA backend, which accelerators use it, and how does its dynamic-shape behavior differ from TorchInductor?`&lt;/strong>`</summary>
+<summary>**20. How do you activate the PyTorch XLA backend, which accelerators use it, and how does its dynamic-shape behavior differ from TorchInductor?**</summary>
 
 - **Activation and targets:** Passing `backend="openxla"` to `torch.compile` targets Google Cloud TPUs, Meta MTIA, and AWS Trainium or Inferentia via the AWS Neuron SDK.
 - **Difference from TorchInductor:** Whereas TorchInductor compiles subgraphs incrementally and handles dynamic shapes symbolically via SymPy, OpenXLA performs whole-program static ahead-of-time graph compilation cached per input shape signature. Encountering an unseen shape in OpenXLA triggers an expensive whole-graph recompilation, making fixed-size bucketing and padding mandatory.

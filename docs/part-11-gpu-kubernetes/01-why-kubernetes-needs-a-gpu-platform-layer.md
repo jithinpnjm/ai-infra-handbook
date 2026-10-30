@@ -384,121 +384,121 @@ Summary: 25 passed, 0 failed (total 25)
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. Why does a freshly joined Kubernetes worker node recognize its 32 CPU cores and 128 GB of RAM automatically while seeing 0 GPUs?`&lt;/strong>`</summary>
+<summary>**1. Why does a freshly joined Kubernetes worker node recognize its 32 CPU cores and 128 GB of RAM automatically while seeing 0 GPUs?**</summary>
 
 Kubelet natively discovers CPU and system memory from the Linux kernel through `/proc` and enforces limits through control groups. It has no built-in driver or discovery logic for vendor PCIe accelerators under PCI vendor 10de and class 0302. Exposing GPUs requires a host kernel driver (`nvidia.ko`), a container runtime hook via the NVIDIA Container Toolkit or CDI, and a Kubernetes Device Plugin.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Why can't a Docker or Kubernetes application container bundle the NVIDIA kernel driver (`nvidia.ko`) inside its own container image?`&lt;/strong>`</summary>
+<summary>**2. Why can't a Docker or Kubernetes application container bundle the NVIDIA kernel driver (`nvidia.ko`) inside its own container image?**</summary>
 
 Containers share the host machine Linux kernel. Because `nvidia.ko` is a kernel module that binds directly to the PCIe hardware and kernel memory subsystem, it must be loaded into the host kernel or compiled by a privileged driver container matching the exact host kernel headers. User-space libraries like `libcuda.so` and `/dev/nvidia*` device nodes are then mounted into application containers at startup.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What are the two paths in Figure 10.1.1 that must agree for a Kubernetes GPU Pod to run, and what are their two decision gates?`&lt;/strong>`</summary>
+<summary>**3. What are the two paths in Figure 10.1.1 that must agree for a Kubernetes GPU Pod to run, and what are their two decision gates?**</summary>
 
 The first path is the Control and Advertisement Path with Gate 1 (`Bound?`). Here the physical GPU and host driver allow the Device Plugin to register `nvidia.com/gpu` with kubelet so kube-scheduler can bind the Pod. The second path is the Runtime and Execution Path with Gate 2 (`CudaInit?`). Here kubelet calls `Allocate()` and containerd uses the NVIDIA Container Toolkit or CDI to inject `/dev/nvidia*` and driver libraries so CUDA initializes inside the container.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. If a GPU Pod is stuck in Pending vs. failing with `CreateContainerError` on a node where `nvidia-smi` works on the host, which path failed in each case?`&lt;/strong>`</summary>
+<summary>**4. If a GPU Pod is stuck in Pending vs. failing with `CreateContainerError` on a node where `nvidia-smi` works on the host, which path failed in each case?**</summary>
 
 A Pending Pod failed on the Control and Scheduling Path. Common causes include missing `nvidia.com/gpu` capacity, insufficient free GPUs in the target pool, untolerated taints, or unsatisfied nodeAffinity. A `CreateContainerError` on a bound Pod means control-plane allocation succeeded and the failure is strictly in the Runtime and Execution Path.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. How much performance overhead do properly configured Kubernetes containers add to GPU workloads compared to bare metal?`&lt;/strong>`</summary>
+<summary>**5. How much performance overhead do properly configured Kubernetes containers add to GPU workloads compared to bare metal?**</summary>
 
 Properly configured containers add less than 2% overhead compared to bare metal. Official MLPerf Inference v5.0 submissions running on Kubernetes and Red Hat OpenShift with the NVIDIA Container Toolkit achieve performance virtually identical to bare-metal servers.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Name the Kubernetes device plugins and extended resource names for NVIDIA, AMD, Intel, Google Cloud TPU, and AWS Trainium/Inferentia accelerators.`&lt;/strong>`</summary>
+<summary>**6. Name the Kubernetes device plugins and extended resource names for NVIDIA, AMD, Intel, Google Cloud TPU, and AWS Trainium/Inferentia accelerators.**</summary>
 
 NVIDIA GPUs use `nvidia-device-plugin` with `nvidia.com/gpu` or `nvidia.com/mig-<profile>`. AMD GPUs use `amd-device-plugin` with `amd.com/gpu`, and Intel GPUs use `intel-gpu-plugin` with `gpu.intel.com/i915` or `gpu.intel.com/xe`. Google Cloud TPUs use `google-cloud-tpu-device-plugin` with `google.com/tpu`, while AWS Trainium and Inferentia use `aws-neuron-device-plugin` with `aws.amazon.com/neuroncore` or `aws.amazon.com/neuron`.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. What PCI vendor IDs and device class code does Node Feature Discovery use to label GPUs on Kubernetes nodes?`&lt;/strong>`</summary>
+<summary>**7. What PCI vendor IDs and device class code does Node Feature Discovery use to label GPUs on Kubernetes nodes?**</summary>
 
 Node Feature Discovery labels 3D and GPU controllers under PCI device class 0302 and VGA controllers under class 0300. It identifies vendors using hex IDs: 10de for NVIDIA (`feature.node.kubernetes.io/pci-0302_10de.present: "true"`), 1002 for AMD, 8086 for Intel, and 1d0f for AWS VGA devices.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. Why is an integer request `nvidia.com/gpu: 1` insufficient for scheduling production LLM training and inference?`&lt;/strong>`</summary>
+<summary>**8. Why is an integer request `nvidia.com/gpu: 1` insufficient for scheduling production LLM training and inference?**</summary>
 
 A bare `nvidia.com/gpu: 1` request treats every GPU in the cluster as an interchangeable counter. It does not express the GPU model, VRAM capacity, CUDA compute capability, NVLink or NVSwitch interconnect domain, GPU-to-NIC NUMA locality, or MIG and time-slicing mode.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Walk through the 32-GPU pool fragmentation example in Volume 10 Chapter 1, and explain why 75% idle capacity can coexist with Pending jobs.`&lt;/strong>`</summary>
+<summary>**9. Walk through the 32-GPU pool fragmentation example in Volume 10 Chapter 1, and explain why 75% idle capacity can coexist with Pending jobs.**</summary>
 
 When a 32-GPU cluster taints 16 GPUs for training and 8 GPUs for distributed-inference, an unconstrained job requesting 4 GPUs can only schedule into the 8-GPU general pool. Once two 4-GPU jobs fill the general pool and leave 0 of 8 free, any subsequent unconstrained job stays Pending even though 24 of 32 GPUs (75.0%) sit idle in the other two pools.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. How much GPU memory is wasted when deploying one Llama-3.2-1B Pod on an NVIDIA L4 (`g6.2xlarge`), and how does time-slicing fix it?`&lt;/strong>`</summary>
+<summary>**10. How much GPU memory is wasted when deploying one Llama-3.2-1B Pod on an NVIDIA L4 (`g6.2xlarge`), and how does time-slicing fix it?**</summary>
 
 Llama-3.2-1B requires 1.8 GB of VRAM, so allocating an entire 24.0 GB NVIDIA L4 GPU exclusively to one Pod leaves 22.2 GB (92.5%) of VRAM unused. Configuring the NVIDIA Device Plugin with 10 time-sliced replicas exposes 10 virtual GPUs and allows 5 Llama-3.2-1B replica Pods using 9.0 GB total to share one physical L4 GPU concurrently.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How much VRAM does a 70B-parameter LLM require in FP32 versus 4-bit quantization, and why does 40 GB vs. 40 GiB matter in Kubernetes manifests?`&lt;/strong>`</summary>
+<summary>**11. How much VRAM does a 70B-parameter LLM require in FP32 versus 4-bit quantization, and why does 40 GB vs. 40 GiB matter in Kubernetes manifests?**</summary>
 
 At 4 bytes per parameter in FP32, a 70B model requires 280.0 GB of VRAM. At 0.5 bytes per parameter in 4-bit precision, it requires 35.0 GB and fits on a single 48 GB GPU. Because hardware vendors quote decimal GB while Kubernetes uses binary GiB, 40 GB equals 37.25 GiB and 80 GB equals 74.5 GiB, so requesting `40Gi` on a nominal 40 GB GPU will fail to match.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Why does testing every combination of kernels, drivers, images, and Kubernetes versions fail, and how do Node Profiles solve it?`&lt;/strong>`</summary>
+<summary>**12. Why does testing every combination of kernels, drivers, images, and Kubernetes versions fail, and how do Node Profiles solve it?**</summary>
 
 Testing 3 kernels across 2 driver branches and 4 workload image families produces 24 combinations, and testing across 2 Kubernetes versions doubles that to 48 combinations. Collapsing node software into 2 locked Node Profiles tested against 4 image families reduces qualification to 8 combinations, a 6.0x reduction.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. What are the six core operand families reconciled by the NVIDIA GPU Operator `ClusterPolicy`?`&lt;/strong>`</summary>
+<summary>**13. What are the six core operand families reconciled by the NVIDIA GPU Operator `ClusterPolicy`?**</summary>
 
 The six operand families are the NVIDIA Driver operand, the NVIDIA Container Toolkit operand, the NVIDIA Device Plugin, Node Feature Discovery and GPU Feature Discovery, the MIG Manager, and the Validators and DCGM Exporter. Together they automate driver loading, runtime configuration, resource registration, node labeling, hardware partitioning, and Prometheus telemetry.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Compare the Host-Managed, Operator-Managed, and Hybrid GPU stack ownership models, and state the golden rule for Hybrid deployments.`&lt;/strong>`</summary>
+<summary>**14. Compare the Host-Managed, Operator-Managed, and Hybrid GPU stack ownership models, and state the golden rule for Hybrid deployments.**</summary>
 
 In the Host-Managed model, the OS image team pre-installs drivers and runtime hooks while Kubernetes runs only the Device Plugin and DCGM. In the Operator-Managed model, the GPU Operator reconciles all six operands inside Kubernetes (`driver.enabled=true`). In the Hybrid model, the host OS image owns the signed kernel driver (`driver.enabled=false`) while the GPU Operator manages the Toolkit, Device Plugin, GFD, MIG Manager, and DCGM. The golden rule is that only one reconciler may own each layer.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Why did `gpu-node-22` report `STATUS = Ready` in `kubectl get nodes` while failing every GPU workload?`&lt;/strong>`</summary>
+<summary>**15. Why did `gpu-node-22` report `STATUS = Ready` in `kubectl get nodes` while failing every GPU workload?**</summary>
 
 Kubelet readiness checks only CPU, memory, disk, PID pressure, and container runtime responsiveness. It never checks `lsmod` or NVML health. On `gpu-node-22`, a kernel update broke Secure Boot module verification and caused `probe of 0000:07:00.0 failed with error -1`, leaving `lsmod` empty while kubelet continued reporting Ready.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What is the difference between `status.capacity["nvidia.com/gpu"]: "0"` and the `nvidia.com/gpu` key being completely absent from `status.capacity` on `gpu-node-11`?`&lt;/strong>`</summary>
+<summary>**16. What is the difference between `status.capacity["nvidia.com/gpu"]: "0"` and the `nvidia.com/gpu` key being completely absent from `status.capacity` on `gpu-node-11`?**</summary>
 
 When the `nvidia.com/gpu` key is completely absent from `status.capacity`, the NVIDIA Device Plugin never registered with kubelet at all. On `gpu-node-11`, `nvidia-device-plugin-daemonset` was stuck in `CrashLoopBackOff` with 14 restarts due to an underlying host NVML initialization failure.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. On `gpu-node-30`, `status.allocatable["nvidia.com/gpu"]` is 4, yet `resnet-train-0` fails with `CreateContainerError: /dev/nvidia0: no such device or address`. Which layer is broken?`&lt;/strong>`</summary>
+<summary>**17. On `gpu-node-30`, `status.allocatable["nvidia.com/gpu"]` is 4, yet `resnet-train-0` fails with `CreateContainerError: /dev/nvidia0: no such device or address`. Which layer is broken?**</summary>
 
 Layer 3, the Container Runtime, NVIDIA Container Toolkit, and CDI boundary, is broken. Because `Allocatable: 4` is present and the Pod bound to the node, the Device Plugin and kube-scheduler succeeded. The failure occurred when containerd invoked `nvidia-container-cli` to bind-mount `/dev/nvidia0` into the container sandbox.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Why does the 5-Gate Node Acceptance Protocol run both a minimal platform CUDA container in Gate 2 and a representative framework container in Gate 4?`&lt;/strong>`</summary>
+<summary>**18. Why does the 5-Gate Node Acceptance Protocol run both a minimal platform CUDA container in Gate 2 and a representative framework container in Gate 4?**</summary>
 
 Running both gates isolates platform bugs from application image bugs. If Gate 2 (`nvidia/cuda:12.8.1-base-ubi9` printing `CUDA_CHECK_OK`) passes while Gate 4 (`resnet-train-0`) fails with `no kernel image is available for execution on the device`, the platform team immediately knows Layers 1 through 5 are healthy and the fault lies in Layer 6, the application framework image build.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Why must a failed GPU platform upgrade roll back the entire Node Profile rather than reverting only the NVIDIA driver package?`&lt;/strong>`</summary>
+<summary>**19. Why must a failed GPU platform upgrade roll back the entire Node Profile rather than reverting only the NVIDIA driver package?**</summary>
 
 The kernel driver ABI and runtime behavior depend on the exact host kernel version and Container Toolkit or GPU Operator configuration. Reverting only the driver package while leaving a newly updated kernel and runtime configuration in place creates an untested combination that can fail in new ways. Rolling back the entire versioned Node Profile restores a state proven to work together.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. When a multi-GPU Pod requests two `nvidia.com/mig-2g.45gb` slices on a 132-SM GPU, how many SMs and how much VRAM does it receive, and why can't Kubernetes split those two slices across two nodes?`&lt;/strong>`</summary>
+<summary>**20. When a multi-GPU Pod requests two `nvidia.com/mig-2g.45gb` slices on a 132-SM GPU, how many SMs and how much VRAM does it receive, and why can't Kubernetes split those two slices across two nodes?**</summary>
 
 Each `2g.45gb` slice provides two-sevenths of the 132 SMs (about 38 SMs) and 45 GB of VRAM, so two slices allocate about 76 SMs and 90 GB of VRAM. Because a single Kubernetes Pod cannot span multiple worker nodes, kube-scheduler can only place the Pod on a single node that has at least two free `2g.45gb` slices.
 </details>

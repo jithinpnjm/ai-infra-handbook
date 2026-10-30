@@ -634,22 +634,22 @@ Exercise Input Parameters Reference:
 
 ## Checkpoint questions (20)
 
-<details><summary>`&lt;strong>`1. How do local PCIe Gen5 SSD latency, InfiniBand storage switch latency, and Ethernet storage switch latency compare?`&lt;/strong>`</summary>
+<details><summary>**1. How do local PCIe Gen5 SSD latency, InfiniBand storage switch latency, and Ethernet storage switch latency compare?**</summary>
 
 Local PCIe Gen5 SSD access is roughly 100 ns, native InfiniBand storage switch latency is roughly 300 ns, and Ethernet storage switch port-to-port latency is roughly 700 to 900 ns.
 </details>
 
-<details><summary>`&lt;strong>`2. What are the four AI storage network topology designs, and what leaf-to-spine oversubscription ratio is typical for dedicated storage fabrics?`&lt;/strong>`</summary>
+<details><summary>**2. What are the four AI storage network topology designs, and what leaf-to-spine oversubscription ratio is typical for dedicated storage fabrics?**</summary>
 
 The four topologies are Physical Fab A / Fab B separation, Logical Fab A / Fab B separation using EVPN-VXLAN RT5 or MAC-VRF, Collapsed Fab A / Fab B spine, and Hybrid on-prem plus multi-cloud fabric. A 1:3 leaf-to-spine oversubscription ratio is standard for dedicated storage fabrics.
 </details>
 
-<details><summary>`&lt;strong>`3. Why is NVMe-o-TCP preferred over NVMe-o-RDMA (RoCEv2) for inter-site storage replication across 40 km+ links?`&lt;/strong>`</summary>
+<details><summary>**3. Why is NVMe-o-TCP preferred over NVMe-o-RDMA (RoCEv2) for inter-site storage replication across 40 km+ links?**</summary>
 
 Maintaining a strictly lossless RoCEv2 fabric with DCQCN and PFC pause frames over 40 km+ long-distance links is operationally fragile due to long round-trip delay and buffer-headroom exhaustion. NVMe-o-TCP runs reliably over lossy IP core networks using standard TCP congestion and flow control paired with deep-buffer switches.
 </details>
 
-<details><summary>`&lt;strong>`4. Trace the complete NVMe-o-TCP session establishment, data transfer, and teardown sequence on TCP port 8009.`&lt;/strong>`</summary>
+<details><summary>**4. Trace the complete NVMe-o-TCP session establishment, data transfer, and teardown sequence on TCP port 8009.**</summary>
 
 1. Complete `TCP SYN -> SYN-ACK -> ACK` on port 8009 plus optional TLS handshake.
 2. Exchange `NVMe/TCP ICReq PDU -> ICResp PDU` for host and controller capabilities, digests, and data offset.
@@ -658,39 +658,39 @@ Maintaining a strictly lossless RoCEv2 fabric with DCQCN and PFC pause frames ov
 5. Execute graceful teardown via `H2CTermReq` or `C2HTermReq`.
 </details>
 
-<details><summary>`&lt;strong>`5. What are the six ordered fields of an NVMe-o-TCP PDU, and how does MTU 9000 improve PDU transport efficiency?`&lt;/strong>`</summary>
+<details><summary>**5. What are the six ordered fields of an NVMe-o-TCP PDU, and how does MTU 9000 improve PDU transport efficiency?**</summary>
 
 An NVMe-o-TCP PDU consists of `Common Header -> PDU-Specific Header -> Header Digest -> PDU Padding -> PDU Data -> Data Digest`. Configuring `MTU 9000` end-to-end across the storage fabric allows two or more NVMe-o-TCP PDUs to be packed into a single TCP segment.
 </details>
 
-<details><summary>`&lt;strong>`6. Trace the three-phase NVMe-o-RDMA (RoCEv2) session state machine and list the three RDMA_PRTYPE provider codes.`&lt;/strong>`</summary>
+<details><summary>**6. Trace the three-phase NVMe-o-RDMA (RoCEv2) session state machine and list the three RDMA_PRTYPE provider codes.**</summary>
 
 1. **Discovery:** Over TCP port 8009, the host sends `Get Log Page – Discovery Log Pages` and the target returns `RDMA_PRTYPE` 04 for RoCEv2, 02 for InfiniBand, or 05 for iWARP.
 2. **RDMA CM:** Over UDP port 4420, the endpoints exchange `RDMA_CM_REQUEST` -> `RDMA_CM_REPLY` -> `RDMA_CM_RTU` as the QPair enters RTS.
 3. **NVMe Connect & Data:** Over UDP port 4791, the session executes `NVMe RDMA Connect Capsule` and `NVMe IO Queue Create`. The controller then initiates `RDMA_READ` and `RDMA_WRITE` transfers over BTH and RETH.
 </details>
 
-<details><summary>`&lt;strong>`7. How does native InfiniBand storage handle addressing, inter-subnet routing, frame integrity, and per-hop lossless QoS?`&lt;/strong>`</summary>
+<details><summary>**7. How does native InfiniBand storage handle addressing, inter-subnet routing, frame integrity, and per-hop lossless QoS?**</summary>
 
 The InfiniBand Subnet Manager assigns each node a 16-bit LID in the Local Routing Header, supporting up to 48,000 nodes per subnet. Larger or multi-subnet fabrics route via the optional Global Routing Header. Frames carry `LRH -> GRH -> BTH -> ETH -> Payload -> ICRC + VCRC`, and lossless QoS is enforced across up to 16 Virtual Lanes using 64-byte CBFC credits in the LLH.
 </details>
 
-<details><summary>`&lt;strong>`8. What are the three UEC Specification v1.0 service profiles, and how does Libfabric map application requests into PDS and SES?`&lt;/strong>`</summary>
+<details><summary>**8. What are the three UEC Specification v1.0 service profiles, and how does Libfabric map application requests into PDS and SES?**</summary>
 
 The three profiles are AI Base, AI Full, and HPC. Applications invoke Libfabric (`fi_mr` and `fi_collective`), which translates semantic operations (`JobID`, `PIDonFEP`, `Resource Index`, `Buffer Offset`, `Message ID`) into the Semantic Sublayer. It maps packet delivery and reliability rules (`SPDCID`/`DPDCID`, `PSN`, delivery mode, `NSCC`/`RCCC`) into the Packet Delivery Sublayer.
 </details>
 
-<details><summary>`&lt;strong>`9. Compare UET-over-UDP and UET-over-IP encapsulations across protocol numbers, ports, entropy fields, and switch parsing limits.`&lt;/strong>`</summary>
+<details><summary>**9. Compare UET-over-UDP and UET-over-IP encapsulations across protocol numbers, ports, entropy fields, and switch parsing limits.**</summary>
 
 UET-over-UDP encapsulates UET inside IP Protocol 17 and UDP Dst Port 49150 and carries path-spraying entropy in the UDP Source Port. UET-over-IP omits UDP, uses IP Protocol 253, and places a dedicated Entropy field at the start of the PDS header. This keeps PDS and SES within the 128-byte switch ASIC parsing window.
 </details>
 
-<details><summary>`&lt;strong>`10. What is the rule governing UET CRC and the Transport Security Sublayer (TSS) on a UET packet?`&lt;/strong>`</summary>
+<details><summary>**10. What is the rule governing UET CRC and the Transport Security Sublayer (TSS) on a UET packet?**</summary>
 
 According to UEC Specification v1.0, a packet may use either the UET CRC or TSS, never both simultaneously. Furthermore, TSS is not compatible with UUD.
 </details>
 
-<details><summary>`&lt;strong>`11. Contrast the four UEC packet delivery modes (ROD, RUD, RUDI, UUD) and their primary AI/HPC workloads.`&lt;/strong>`</summary>
+<details><summary>**11. Contrast the four UEC packet delivery modes (ROD, RUD, RUDI, UUD) and their primary AI/HPC workloads.**</summary>
 
 - **ROD:** In-order delivery via receiver NIC reorder buffer for HPC, MPI, and serialized control.
 - **RUD:** Out-of-order Direct Data Placement with selective retry for AI model parallelism and bulk transfers.
@@ -698,47 +698,47 @@ According to UEC Specification v1.0, a packet may use either the UET CRC or TSS,
 - **UUD:** Best-effort with no PSNs, no ACKs/NACKs, and no TSS for telemetry and inference logs.
 </details>
 
-<details><summary>`&lt;strong>`12. How do NSCC and RCCC differ in UEC end-to-end congestion management, and what is the exact RCCC credit unit size?`&lt;/strong>`</summary>
+<details><summary>**12. How do NSCC and RCCC differ in UEC end-to-end congestion management, and what is the exact RCCC credit unit size?**</summary>
 
 NSCC is sender-driven, adjusting a congestion window (`cwnd`) and packet-spraying entropy based on RTT, ECN flags in NACKs, and `ACK_CC` telemetry. RCCC is target-driven: senders request credit via `Credit Target` (`req_cc_state`), and the receiver grants credits from its local Credit Pool via a 24-bit ACK field in units of 256 bytes.
 </details>
 
-<details><summary>`&lt;strong>`13. How does UEC link-level CBFC improve upon both IEEE PFC and InfiniBand CBFC?`&lt;/strong>`</summary>
+<details><summary>**13. How does UEC link-level CBFC improve upon both IEEE PFC and InfiniBand CBFC?**</summary>
 
 UEC CBFC expands capacity from 8 PFC priorities and 16 InfiniBand VLs to 32 Virtual Channels per port and negotiates capability via LLDP. It tracks Consumed and Freed credits per VC and transmits credit consumption updates out-of-band in the physical sublayer using PCS `CtlOS` `CP_Update` messages at line rate.
 </details>
 
-<details><summary>`&lt;strong>`14. How do UEC DSCP Packet Trimming and Link Layer Reliability (LLR) accelerate loss recovery?`&lt;/strong>`</summary>
+<details><summary>**14. How do UEC DSCP Packet Trimming and Link Layer Reliability (LLR) accelerate loss recovery?**</summary>
 
 With DSCP Packet Trimming, a congested switch cuts off the data payload of trim-eligible packets and forwards the header on a high-priority queue to the target FEP. The target immediately sends a targeted fast-retransmission request (`NACK`) without placing the trimmed header into GPU memory. With LLR, neighboring link partners assign each frame a `SEQ` number in the MAC preamble and store a copy in an ASIC replay buffer, retransmitting lost frames locally upon timeout or `NACK SEQ`.
 </details>
 
-<details><summary>`&lt;strong>`15. What are the components of UEC In-Network Collectives (INC), and how do they interact with xCCLs?`&lt;/strong>`</summary>
+<details><summary>**15. What are the components of UEC In-Network Collectives (INC), and how do they interact with xCCLs?**</summary>
 
 UEC INC comprises INC-capable switches (`sFEPs`) running switch INC agents, an out-of-band INC Manager communicating via gRPC, and the Libfabric `fi_collective` API. While user-space xCCLs coordinate GPU collectives on hosts, INC elects a root-of-tree spine switch to aggregate and distribute collective vectors inside the switch silicon.
 </details>
 
-<details><summary>`&lt;strong>`16. Why do scale-up pods replace PCIe with NVLink, SUE-T, or UALink, and what is the physical scale limit of a scale-up pod?`&lt;/strong>`</summary>
+<details><summary>**16. Why do scale-up pods replace PCIe with NVLink, SUE-T, or UALink, and what is the physical scale limit of a scale-up pod?**</summary>
 
 PCIe 5.0 and PCIe 6.0 cannot match the 100 to 300 ns latency and multi-Tbps per-xPU bandwidth needed for tightly coupled tensor parallelism and MoE all-to-all routing. Physical cabling under 4 meters and power constraints bound scale-up pods to 1 to 4 racks and up to 1,000 xPUs.
 </details>
 
-<details><summary>`&lt;strong>`17. In OCP SUE-T (ESUN), what is the difference between the 6-byte and 12-byte AFH Gen 2 headers, and what fields reside in the Reliability Header (RH)?`&lt;/strong>`</summary>
+<details><summary>**17. In OCP SUE-T (ESUN), what is the difference between the 6-byte and 12-byte AFH Gen 2 headers, and what fields reside in the Reliability Header (RH)?**</summary>
 
 The 6-byte compressed AFH Gen 2 header is used for single-hop scale-up pods, encoding Destination xPU, Traffic Class, and Source xPU inside the DMAC and SMAC. The 12-byte non-compressed AFH Gen 2 header is used for two-hop topologies. The RH carries `VER`, `OP`, 10-bit xPU ID, 16-bit `NPSN`, `VC`, `Partition` for tenant isolation, and 16-bit `APSN`.
 </details>
 
-<details><summary>`&lt;strong>`18. How do the FIFO and ARM AXI 4.0 on-die interfaces differ in SUE-T accelerators?`&lt;/strong>`</summary>
+<details><summary>**18. How do the FIFO and ARM AXI 4.0 on-die interfaces differ in SUE-T accelerators?**</summary>
 
 The FIFO interface streams raw PDUs using a 10-bit xPU ID and 2-bit VC ID without memory-transaction semantics. The ARM AXI 4.0 interface exposes five independent transaction channels mapped onto two virtual channels: `AR`, `AW`, and `W` requests on `VC0`, and `B` and `R` responses on `VC1`.
 </details>
 
-<details><summary>`&lt;strong>`19. Explain the UALink 1.0 station/lane hierarchy (6.4 Tbps) and how 64B TL flits pack into 640B DL flits and RS(544, 514) PCS codewords.`&lt;/strong>`</summary>
+<details><summary>**19. Explain the UALink 1.0 station/lane hierarchy (6.4 Tbps) and how 64B TL flits pack into 640B DL flits and RS(544, 514) PCS codewords.**</summary>
 
 Each UALink 1.0 xPU supports up to 8 stations by 4 lanes of 200 Gbps SerDes for 32 lanes and 6.4 Tbps. The Transaction Layer encodes commands and data into 64-byte TL flits. The Data Link layer packs 10 TL flits into one 640-byte DL flit (680-byte wire unit with 40B FEC), which aligns 1:1 into a single RS(544, 514) PCS codeword transmitted with 1-way or 2-way interleaving.
 </details>
 
-<details><summary>`&lt;strong>`20. Trace the UALink 1.0 GVA -> NPA -> SPA address translation pipeline and explain why UALink uses software PGAS coherence instead of hardware snoops.`&lt;/strong>`</summary>
+<details><summary>**20. Trace the UALink 1.0 GVA -> NPA -> SPA address translation pipeline and explain why UALink uses software PGAS coherence instead of hardware snoops.**</summary>
 
 A compute unit issues a request in Guest Virtual Address space. The source MMU and Address Handle translate GVA into a globally unique Network Physical Address carrying a 10-bit `DSTACCID` and `SRCACCID`. UALink Switches route the DL flit using the 10-bit ACC-ID, and the destination Link MMU translates the NPA into a local System Physical Address in HBM. UALink 1.0 uses software-managed PGAS coherence (`RMA_FENCE`, `RMA_SYNC`, `NOTIFY`) instead of hardware directory snoops so coherence can scale across 1,000 multi-vendor accelerators.
 </details>

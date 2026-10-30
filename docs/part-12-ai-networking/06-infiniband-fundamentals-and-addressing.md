@@ -784,12 +784,12 @@ Case D: ./rc_pingpong -d mlx5_0 -g 0 prints Failed to modify QP to RTR, while an
 
 ## Checkpoint questions (20)
 
-<details><summary>`&lt;strong>`1. Why does network tail latency and jitter matter more for distributed AI training than average throughput?`&lt;/strong>`</summary>
+<details><summary>**1. Why does network tail latency and jitter matter more for distributed AI training than average throughput?**</summary>
 
 Distributed AI collectives such as AllReduce, AllGather, and ReduceScatter synchronize all participating ranks at every step barrier. Because no rank can proceed until the slowest transfer finishes, a single delayed path or microsecond credit stall holds back the entire GPU group through synchronization amplification.
 </details>
 
-<details><summary>`&lt;strong>`2. What are the raw lane rates, line encodings, and effective 4x/12x bandwidths for SDR, DDR, QDR, FDR10, FDR, EDR, HDR, NDR, XDR, and GDR?`&lt;/strong>`</summary>
+<details><summary>**2. What are the raw lane rates, line encodings, and effective 4x/12x bandwidths for SDR, DDR, QDR, FDR10, FDR, EDR, HDR, NDR, XDR, and GDR?**</summary>
 
 ```text
 8b/10b (80.0% eff)   : SDR 2.5G raw -> 8G (4x), 24G (12x) | DDR 5.0G raw -> 16G (4x), 48G (12x) | QDR 10.0G raw -> 32G (4x), 96G (12x)
@@ -799,17 +799,17 @@ Distributed AI collectives such as AllReduce, AllGather, and ReduceScatter synch
 ```
 </details>
 
-<details><summary>`&lt;strong>`3. What is the difference between Physical state LinkUp and logical State Active in ibstat?`&lt;/strong>`</summary>
+<details><summary>**3. What is the difference between Physical state LinkUp and logical State Active in ibstat?**</summary>
 
 Physical state `LinkUp` means the physical lanes completed electrical or optical training across polling, configuration, and link up. Logical state `Active` means the Subnet Manager has discovered the port, assigned a Base LID, programmed switch forwarding tables, and enabled application data traffic across down, initialize, armed, and active. In the initialize state, only VL15 SMPs can pass.
 </details>
 
-<details><summary>`&lt;strong>`4. How do NodeGUID, PortGUID, and SystemImage GUID differ across HCAs and switches?`&lt;/strong>`</summary>
+<details><summary>**4. How do NodeGUID, PortGUID, and SystemImage GUID differ across HCAs and switches?**</summary>
 
 All three are sixty-four-bit manufacturer-assigned hardware identifiers. Every HCA has one NodeGUID, a distinct PortGUID for each physical port, and a SystemImage GUID per independent adapter firmware instance. An InfiniBand switch has one NodeGUID and uses the same PortGUID across all switch ports managed via virtual Port 0, while all elementary switch chips inside a modular director chassis share a single SystemImage GUID.
 </details>
 
-<details><summary>`&lt;strong>`5. How is the 16-bit LID space partitioned, and why is a single InfiniBand subnet limited to 49,151 unicast devices?`&lt;/strong>`</summary>
+<details><summary>**5. How is the 16-bit LID space partitioned, and why is a single InfiniBand subnet limited to 49,151 unicast devices?**</summary>
 
 ```text
 0x0000 (0)                  : Reserved
@@ -819,27 +819,27 @@ All three are sixty-four-bit manufacturer-assigned hardware identifiers. Every H
 ```
 </details>
 
-<details><summary>`&lt;strong>`6. How does LID Mask Control assign multiple LIDs to a single port, and what alignment rule applies to Base LID?`&lt;/strong>`</summary>
+<details><summary>**6. How does LID Mask Control assign multiple LIDs to a single port, and what alignment rule applies to Base LID?**</summary>
 
 With an LMC value from zero to seven, the lower LMC bits of Base LID must be zero. The port receives $2^\{\text`{LMC}`}$ consecutive LIDs from Base LID through $\text`{Base LID}` + 2^\{\text`{LMC}`} - 1$. For example, a Base LID of twelve with an LMC of two assigns four LIDs from twelve through fifteen, enabling multipath routing across parallel switch paths.
 </details>
 
-<details><summary>`&lt;strong>`7. How is a 128-bit GID structured, and what are the scopes of the link-local, site-local, and multicast prefixes?`&lt;/strong>`</summary>
+<details><summary>**7. How is a 128-bit GID structured, and what are the scopes of the link-local, site-local, and multicast prefixes?**</summary>
 
 A Global Identifier is formatted as a standard IPv6 address whose lower sixty-four bits hold the PortGUID and upper sixty-four bits hold the GID prefix. Prefix `0xFE80::/64` is the mandatory link-local scope that never crosses routers, `0xFEC0::/64` is the site-local scope routable across InfiniBand routers within a site, and `0xFF00::/8` is the multicast prefix.
 </details>
 
-<details><summary>`&lt;strong>`8. How does a directed-route Subnet Management Packet traverse switches before LIDs and forwarding tables exist?`&lt;/strong>`</summary>
+<details><summary>**8. How does a directed-route Subnet Management Packet traverse switches before LIDs and forwarding tables exist?**</summary>
 
 Sent on VL15 with the Permissive LID, an outbound SMP carries an initial path array of switch egress port numbers, a hop count, and a hop pointer. At each hop, the switch routes out the initial path port at the hop pointer, records the arrival port into the return path array, and increments the hop pointer. The target flips the direction bit to one, and switches route the reply back along the return path while decrementing the hop pointer to zero.
 </details>
 
-<details><summary>`&lt;strong>`9. How is a 16-bit Partition Key encoded, and why can full and limited members talk while two limited ports cannot communicate?`&lt;/strong>`</summary>
+<details><summary>**9. How is a 16-bit Partition Key encoded, and why can full and limited members talk while two limited ports cannot communicate?**</summary>
 
 Bits zero through fourteen hold the fifteen-bit Partition ID, and bit fifteen (`0x8000`) is the membership bit where one indicates a Full Member and zero indicates a Limited Member. Hardware requires matching Partition IDs and at least one Full Member. Therefore `0x8021` to `0x0021` is allowed, whereas `0x0021` to `0x0021` is silently dropped.
 </details>
 
-<details><summary>`&lt;strong>`10. What are the sections and byte lengths of a native InfiniBand data frame?`&lt;/strong>`</summary>
+<details><summary>**10. What are the sections and byte lengths of a native InfiniBand data frame?**</summary>
 
 ```text
 LRH  (8 B, mandatory) : VL, SL, D-LID, S-LID, packet length
@@ -851,12 +851,12 @@ ICRC (4 B) + VCRC (2 B): 26 B base framing overhead (42 B with RETH, 82 B with G
 ```
 </details>
 
-<details><summary>`&lt;strong>`11. How many Virtual Lanes does InfiniBand support, what is VL15, and how big is one Credit-Based Flow Control credit?`&lt;/strong>`</summary>
+<details><summary>**11. How many Virtual Lanes does InfiniBand support, what is VL15, and how big is one Credit-Based Flow Control credit?**</summary>
 
 InfiniBand supports sixteen Virtual Lanes from VL0 through VL15. VL0 through VL14 carry user, storage, and AI data traffic mapped from Service Levels, while VL15 is dedicated exclusively to Subnet Management Packets. Each CBFC credit represents sixty-four bytes of downstream per-VL receive buffer space.
 </details>
 
-<details><summary>`&lt;strong>`12. How many 64-byte CBFC credits are required to transmit a 4,122-byte intra-subnet InfiniBand packet on VL1?`&lt;/strong>`</summary>
+<details><summary>**12. How many 64-byte CBFC credits are required to transmit a 4,122-byte intra-subnet InfiniBand packet on VL1?**</summary>
 
 ```text
 Credits Required = ceil(4,122 / 64) = 65 credits (65 * 64 = 4,160 bytes reserved)
@@ -865,37 +865,37 @@ Credits Required = ceil(4,122 / 64) = 65 credits (65 * 64 = 4,160 bytes reserved
 ```
 </details>
 
-<details><summary>`&lt;strong>`13. Why is an IPoIB link-layer hardware address 20 bytes long, what are its three fields, and why does ifconfig fail on it?`&lt;/strong>`</summary>
+<details><summary>**13. Why is an IPoIB link-layer hardware address 20 bytes long, what are its three fields, and why does ifconfig fail on it?**</summary>
 
 An IPoIB hardware address is twenty bytes long because it concatenates one byte of capability flags, three bytes for the twenty-four-bit Queue Pair Number, and sixteen bytes for the Port GID. Legacy `ifconfig` assumes a fixed six-byte Ethernet MAC address and truncates the twenty-byte IPoIB address. Modern `ip addr` and `ip link` commands display all twenty bytes properly.
 </details>
 
-<details><summary>`&lt;strong>`14. How do IPoIB Datagram Mode and Connected Mode differ in transport type, maximum MTU, and cluster scalability?`&lt;/strong>`</summary>
+<details><summary>**14. How do IPoIB Datagram Mode and Connected Mode differ in transport type, maximum MTU, and cluster scalability?**</summary>
 
 Datagram mode uses Unreliable Datagram Queue Pairs, supports an MTU up to four kilobytes, and scales with $O(1)$ Queue Pair state because one UD QP communicates with all peers. Connected mode opens dedicated connected Queue Pairs per peer to support an MTU up to sixty-four kilobytes, trading $O(N^2)$ Queue Pair memory overhead for higher single-stream TCP throughput.
 </details>
 
-<details><summary>`&lt;strong>`15. What are the states in the RDMA Queue Pair state machine, and what causes Failed to modify QP to RTR?`&lt;/strong>`</summary>
+<details><summary>**15. What are the states in the RDMA Queue Pair state machine, and what causes Failed to modify QP to RTR?**</summary>
 
 The Queue Pair states progress through reset, init, ready to receive, ready to send, send queue drain, and error. The init-to-RTR transition binds remote path attributes including LID or GID, QPN, starting PSN, SL, and path MTU. Requesting a four-kilobyte path MTU when a peer port's `active_mtu` in `ibv_devinfo -v` is two kilobytes causes the kernel verbs provider to reject the RTR transition.
 </details>
 
-<details><summary>`&lt;strong>`16. In a Completion Queue poll showing wr_id 1042 SUCCESS, wr_id 1043 RETRY_EXC_ERR, and wr_id 1044..1046 WR_FLUSH_ERR, which entry is the root cause?`&lt;/strong>`</summary>
+<details><summary>**16. In a Completion Queue poll showing wr_id 1042 SUCCESS, wr_id 1043 RETRY_EXC_ERR, and wr_id 1044..1046 WR_FLUSH_ERR, which entry is the root cause?**</summary>
 
 Work Request `wr_id=1043` (`IBV_WC_RETRY_EXC_ERR`) is the root cause, showing that the HCA exhausted its transport retry limit waiting for an acknowledgment from the remote peer. Once that request fails, the Queue Pair transitions to the error state and automatically flushes every subsequent queued Work Request with `IBV_WC_WR_FLUSH_ERR`.
 </details>
 
-<details><summary>`&lt;strong>`17. What is the difference between smpquery and saquery, and what does a discrepancy between them prove?`&lt;/strong>`</summary>
+<details><summary>**17. What is the difference between smpquery and saquery, and what does a discrepancy between them prove?**</summary>
 
 `smpquery` sends a direct VL15 Subnet Management Packet to the target node and reads the live answer from the node's own HCA. `saquery` queries the Subnet Manager's cached Subnet Administration database. If `smpquery` succeeds while `saquery` fails or returns different node records, the Subnet Manager is stalled, unreachable, or holding stale sweep data.
 </details>
 
-<details><summary>`&lt;strong>`18. How do you distinguish a physical layer or cable error from lossless credit backpressure using perfquery and mlxlink?`&lt;/strong>`</summary>
+<details><summary>**18. How do you distinguish a physical layer or cable error from lossless credit backpressure using perfquery and mlxlink?**</summary>
 
 A physical or cable fault produces rising symbol error, link down, or link recovery counters in `perfquery`, alongside high raw BER or out-of-spec optical power in `mlxlink`. Lossless credit backpressure shows zero physical symbol errors while `perfquery` reports a large `PortXmitWait` delta, proving the port waited for downstream sixty-four-byte CBFC credits.
 </details>
 
-<details><summary>`&lt;strong>`19. In ibstat vs ibstatus, why does Port 1 show Base lid 913 and SM lid 43 in ibstat but 0x391 and 0x2b in ibstatus?`&lt;/strong>`</summary>
+<details><summary>**19. In ibstat vs ibstatus, why does Port 1 show Base lid 913 and SM lid 43 in ibstat but 0x391 and 0x2b in ibstatus?**</summary>
 
 ```text
 They are the exact same numbers printed in different bases:
@@ -904,7 +904,7 @@ Port 2 : Base lid 1361 (decimal in ibstat) == 0x551 (hex in ibstatus) | SM lid 6
 ```
 </details>
 
-<details><summary>`&lt;strong>`20. How does NVMe-o-RDMA discovery identify InfiniBand versus RoCEv2 and iWARP, and how does HPE Slingshot differ from InfiniBand?`&lt;/strong>`</summary>
+<details><summary>**20. How does NVMe-o-RDMA discovery identify InfiniBand versus RoCEv2 and iWARP, and how does HPE Slingshot differ from InfiniBand?**</summary>
 
 During NVMe-oF discovery over TCP port `8009`, the controller exchanges `RDMA_PRTYPE` values of `02` for InfiniBand, `04` for RoCEv2, and `05` for iWARP. HPE Slingshot is an HPC interconnect with a centralized Fabric Manager, dragonfly topologies, and Ethernet compatibility, accessed via the `libfabric` abstraction layer rather than raw InfiniBand verbs.
 </details>

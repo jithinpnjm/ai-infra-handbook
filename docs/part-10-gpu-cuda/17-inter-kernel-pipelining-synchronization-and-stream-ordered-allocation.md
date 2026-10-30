@@ -739,7 +739,7 @@ Summary: 25 passed, 0 failed (total 25)
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. How many dedicated DMA copy engines do modern NVIDIA GPUs provide alongside the SM compute pipeline, and how does 3-way stream overlap use them?`&lt;/strong>`</summary>
+<summary>**1. How many dedicated DMA copy engines do modern NVIDIA GPUs provide alongside the SM compute pipeline, and how does 3-way stream overlap use them?**</summary>
 
 ```text
 Modern GPUs provide at least two independent Direct Memory Access copy engines where `deviceProp.asyncEngineCount >= 2`, with one engine for host-to-device copies and one for device-to-host copies. In a three-way pipeline, Stream 0 runs the compute kernel for the current batch on the Streaming Multiprocessors while Stream 1 copies the next batch host-to-device on copy engine 0 and Stream 2 copies the previous batch device-to-host on copy engine 1.
@@ -747,37 +747,37 @@ Modern GPUs provide at least two independent Direct Memory Access copy engines w
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What happens to `cudaMemcpyAsync` when you pass a pageable (non-pinned) host pointer?`&lt;/strong>`</summary>
+<summary>**2. What happens to `cudaMemcpyAsync` when you pass a pageable (non-pinned) host pointer?**</summary>
 
 The CUDA runtime must first perform a synchronous host-side staging copy into an internal page-locked buffer. That staging copy blocks the calling CPU thread and serializes the transfer on the enqueuing stream, preventing overlap with kernel execution on that stream. Always use `cudaMallocHost` in C++ or `pin_memory=True` in PyTorch.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What happens when two concurrent streams launch kernels that each demand 100% of a saturated GPU resource, and what is the hard hardware limit on concurrent resident grids?`&lt;/strong>`</summary>
+<summary>**3. What happens when two concurrent streams launch kernels that each demand 100% of a saturated GPU resource, and what is the hard hardware limit on concurrent resident grids?**</summary>
 
 When compute throughput or memory bandwidth is already 100% saturated. Two concurrent operations contend for the same bottleneck and each runs at roughly 50% throughput, yielding no net speedup. Across the entire device, modern GPUs enforce a hard hardware limit of 128 concurrently executing kernel grids.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Why does legacy `cudaMalloc` / `cudaFree` break multi-stream pipelines, and how does `cudaMallocAsync` / `cudaFreeAsync` solve it?`&lt;/strong>`</summary>
+<summary>**4. Why does legacy `cudaMalloc` / `cudaFree` break multi-stream pipelines, and how does `cudaMallocAsync` / `cudaFreeAsync` solve it?**</summary>
 
 Legacy blocking allocation and deallocation calls are device-wide operations that force a global synchronization across every stream on the GPU. Calling `cudaMallocAsync` and `cudaFreeAsync` enqueues allocation. Deallocation requests as stream-ordered items inside a device memory pool, synchronizing only within the requesting stream while all other streams continue executing.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. How do you enable CUDA's stream-ordered allocator in PyTorch, and how does it differ from PyTorch's default caching allocator?`&lt;/strong>`</summary>
+<summary>**5. How do you enable CUDA's stream-ordered allocator in PyTorch, and how does it differ from PyTorch's default caching allocator?**</summary>
 
 Set `PYTORCH_ALLOC_CONF=backend:cudaMallocAsync`. PyTorch's default caching allocator is stream-aware on cache hits. Synchronizes the device only when a cache miss triggers an OS allocation. Whereas the stream-ordered backend delegates directly to CUDA's memory pool to reduce cross-stream fragmentation and improve buffer reuse.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. What does `cudaMemPoolSetAttribute(pool, cudaMemPoolAttrReleaseThreshold, &threshold)` control?`&lt;/strong>`</summary>
+<summary>**6. What does `cudaMemPoolSetAttribute(pool, cudaMemPoolAttrReleaseThreshold, &threshold)` control?**</summary>
 
 It sets the byte threshold of reserved physical memory that the device memory pool retains. Asynchronous free calls before releasing unused pages back to the operating system. Setting half of total global memory retains 96 GiB on a 192 GiB GPU, avoiding repeated expensive OS mapping round-trips during high-churn mini-batch loops.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Describe three LLM training/inference scenarios where `cudaMallocAsync` prevents global device stalls.`&lt;/strong>`</summary>
+<summary>**7. Describe three LLM training/inference scenarios where `cudaMallocAsync` prevents global device stalls.**</summary>
 
 1. Per-batch attention scratch workspaces that allocate a 16 MB temporary buffer per stream for softmax and attention intermediates, as shown in Figure 11-3.
 2. Variable-length sequence batches growing from 512 to 1,024 tokens and growing autoregressive decode KV caches that dynamically resize buffers in stream order.
@@ -787,26 +787,26 @@ It sets the byte threshold of reserved physical memory that the device memory po
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What are the two implicit synchronization rules of the legacy default stream (`stream 0` / `cudaStreamLegacy`)?`&lt;/strong>`</summary>
+<summary>**8. What are the two implicit synchronization rules of the legacy default stream (`stream 0` / `cudaStreamLegacy`)?**</summary>
 
 1. Implicit self-synchronization: operations issued to the legacy default stream execute strictly sequentially in FIFO order.
 2. Implicit cross-stream global barrier: any operation issued to the legacy default stream waits for all prior work in every blocking stream. The GPU to finish, and blocks any subsequent work in those streams until it finishes.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. How do Per-Thread Default Streams (`PTDS` / `cudaStreamPerThread`) work, and what are the two ways to enable them?`&lt;/strong>`</summary>
+<summary>**9. How do Per-Thread Default Streams (`PTDS` / `cudaStreamPerThread`) work, and what are the two ways to enable them?**</summary>
 
 With Per-Thread Default Streams enabled, each host CPU thread gets its own private default stream that does not wait on. Block other threads' default streams, as shown in Figure 11-4. Enable it by compiling with `nvcc --default-stream per-thread` or defining `CUDA_API_PER_THREAD_DEFAULT_STREAM=1` before including any CUDA headers.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why should you always create explicit streams with `cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking)`?`&lt;/strong>`</summary>
+<summary>**10. Why should you always create explicit streams with `cudaStreamCreateWithFlags(&s, cudaStreamNonBlocking)`?**</summary>
 
 Passing `cudaStreamNonBlocking` disables the implicit synchronization barrier between the new stream and the legacy default stream. That guarantees an accidental or third-party call on the legacy default stream will not stall your explicit stream.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. Contrast `cudaDeviceSynchronize()`, `cudaStreamSynchronize(s)`, and `cudaEventRecord(ev, s0)` + `cudaStreamWaitEvent(s1, ev, 0)`, and state when to pass `cudaEventDisableTiming`.`&lt;/strong>`</summary>
+<summary>**11. Contrast `cudaDeviceSynchronize()`, `cudaStreamSynchronize(s)`, and `cudaEventRecord(ev, s0)` + `cudaStreamWaitEvent(s1, ev, 0)`, and state when to pass `cudaEventDisableTiming`.**</summary>
 
 - Device synchronization blocks the CPU until all streams on the GPU finish.
 - Stream synchronization blocks the CPU until that single stream finishes, as shown in Figure 11-5.
@@ -814,13 +814,13 @@ Passing `cudaStreamNonBlocking` disables the implicit synchronization barrier be
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What is `cudaLaunchHostFunc`, and why must you never call `cudaMemcpy` or launch a kernel inside its callback?`&lt;/strong>`</summary>
+<summary>**12. What is `cudaLaunchHostFunc`, and why must you never call `cudaMemcpy` or launch a kernel inside its callback?**</summary>
 
 `cudaLaunchHostFunc` enqueues a CPU callback function to run automatically on a host thread once prior work in a CUDA Stream completes. Because the callback executes on an internal thread managed by the CUDA runtime. The GPU stream waits for the callback to finish, calling any device CUDA API inside the callback creates a circular wait and deadlocks.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How does `warp_specialized_two_pipelines` organize its Shared Memory (`24,576 B`) and its two `<cuda/pipeline>` objects (`pipe_lc` and `pipe_cs`)?`&lt;/strong>`</summary>
+<summary>**13. How does `warp_specialized_two_pipelines` organize its Shared Memory (`24,576 B`) and its two `<cuda/pipeline>` objects (`pipe_lc` and `pipe_cs`)?**</summary>
 
 ```text
 It launches 96 threads per block for 3 warps: loader warp 0, compute warp 1, and storer warp 2. Shared memory holds 2 stages by 3 buffers of 1,024 floats, totaling 24,576 bytes or 24 KiB of dynamic shared memory. Pipeline `pipe_lc` with depth 2 coordinates loader-to-compute handoffs, while `pipe_cs` with depth 2 coordinates compute-to-storer handoffs.
@@ -828,7 +828,7 @@ It launches 96 threads per block for 3 warps: loader warp 0, compute warp 1, and
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Why does `warp_specialized_two_pipelines` enforce `static_assert((TILE_SIZE % (32 * 4)) == 0)`?`&lt;/strong>`</summary>
+<summary>**14. Why does `warp_specialized_two_pipelines` enforce `static_assert((TILE_SIZE % (32 * 4)) == 0)`?**</summary>
 
 ```text
 Each warp has 32 lanes and each lane copies a 16-byte `float4` of 4 floats per asynchronous copy instruction, transferring 128 floats or 512 bytes across the 32-lane warp. Requiring the tile size of 1,024 to be a multiple of 128 ensures every unrolled warp copy iteration is 16-byte aligned without scalar tail loops.
@@ -836,7 +836,7 @@ Each warp has 32 lanes and each lane copies a 16-byte `float4` of 4 floats per a
 </details>
 
 <details>
-<summary>`&lt;strong>`15. In `launch_warp_specialized_cluster_pipeline_multistream`, why do cooperative cluster kernels serialize across streams on the SMs, and why does `NUM_STREAMS = 2` still improve throughput?`&lt;/strong>`</summary>
+<summary>**15. In `launch_warp_specialized_cluster_pipeline_multistream`, why do cooperative cluster kernels serialize across streams on the SMs, and why does `NUM_STREAMS = 2` still improve throughput?**</summary>
 
 ```text
 A full-device cluster launch of 528 blocks pins block slots across all Streaming Multiprocessors simultaneously, so Stream 1's kernel must wait until Stream 0's kernel finishes on the Streaming Multiprocessors. Using two streams still overlaps Stream 1's asynchronous allocations and host-to-device copies, plus Stream 0's device-to-host copies and asynchronous frees, behind active kernel execution so the next cluster kernel starts with zero staging delay.
@@ -844,13 +844,13 @@ A full-device cluster launch of 528 blocks pins block slots across all Streaming
 </details>
 
 <details>
-<summary>`&lt;strong>`16. In a 2-GPU pipeline-parallel Transformer (`Layers 0–3` on GPU 0, `Layers 4–7` on GPU 1), why doesn't `cudaMemcpyPeerAsync` slow down GPU 0's compute stream for Batch `N + 1`?`&lt;/strong>`</summary>
+<summary>**16. In a 2-GPU pipeline-parallel Transformer (`Layers 0–3` on GPU 0, `Layers 4–7` on GPU 1), why doesn't `cudaMemcpyPeerAsync` slow down GPU 0's compute stream for Batch `N + 1`?**</summary>
 
 `cudaMemcpyPeerAsync` executes entirely on GPU 0's dedicated Direct Memory Access copy engine and consumes 0 Streaming Multiprocessor cycles. That allows GPU 0's Streaming Multiprocessors on the compute stream to begin computing the next micro-batch immediately after recording the handoff event.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. How do `NCCL` and `NIXL` differ from `cudaMemcpyPeerAsync` in how they use SMs, DMA engines, and stream priorities?`&lt;/strong>`</summary>
+<summary>**17. How do `NCCL` and `NIXL` differ from `cudaMemcpyPeerAsync` in how they use SMs, DMA engines, and stream priorities?**</summary>
 
 ```text
 Peer asynchronous copies run purely on copy engines using 0 Streaming Multiprocessors. NCCL collectives such as the 4-GPU, 4-chunk ring AllReduce in Figure 11-8 run as low-occupancy device kernels on Streaming Multiprocessors inside a high-priority communication stream or offload reductions to NVIDIA SHARP. NIXL `nixlCommStream` pipelines chunked peer-to-peer and disaggregated transfers across NVLink, RDMA, and storage on high-priority streams so copy commands preempt lower-priority work.
@@ -858,13 +858,13 @@ Peer asynchronous copies run purely on copy engines using 0 Streaming Multiproce
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Why must you pass `cudaStreamCaptureModeGlobal` to `cudaStreamBeginCapture` when capturing a multi-stream iteration (`streamA` compute + `streamB` `ncclAllReduce`)?`&lt;/strong>`</summary>
+<summary>**18. Why must you pass `cudaStreamCaptureModeGlobal` to `cudaStreamBeginCapture` when capturing a multi-stream iteration (`streamA` compute + `streamB` `ncclAllReduce`)?**</summary>
 
 Passing `cudaStreamCaptureModeGlobal` instructs CUDA to record operations enqueued on all participating streams joined by event dependencies into the same graph capture session. That way, cudaGraphLaunch replays the complete multi-stream DAG.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Explain the three-part API mechanism of Programmatic Dependent Launch (`PDL`, Figure 11-9).`&lt;/strong>`</summary>
+<summary>**19. Explain the three-part API mechanism of Programmatic Dependent Launch (`PDL`, Figure 11-9).**</summary>
 
 1. The primary kernel calls `cudaTriggerProgrammaticLaunchCompletion()` as soon as all global memory writes needed by the secondary kernel are flushed. Allowing the secondary kernel to start while the primary kernel runs its epilogue.
 2. The secondary kernel calls `cudaGridDependencySynchronize()` to wait for the primary kernel's trigger and memory flush before reading shared data.
@@ -872,7 +872,7 @@ Passing `cudaStreamCaptureModeGlobal` instructs CUDA to record operations enqueu
 </details>
 
 <details>
-<summary>`&lt;strong>`20. How does `primary_gemm` → `secondary_gemm` (Figures 11-10 & 11-11) combine intra-kernel, inter-block, and inter-kernel overlap, and what Blackwell TMA feature can fuse small reductions during copies?`&lt;/strong>`</summary>
+<summary>**20. How does `primary_gemm` → `secondary_gemm` (Figures 11-10 & 11-11) combine intra-kernel, inter-block, and inter-kernel overlap, and what Blackwell TMA feature can fuse small reductions during copies?**</summary>
 
 1. Intra-kernel overlap uses producer warps to stage 128 by 128 tiles in 131,072 B of static shared memory asynchronously while consumer warps compute matrix multiplications.
 2. Inter-block overlap uses `__cluster_dims__(2, 1, 1)` to co-schedule two-block clusters on a GPC with hardware barrier synchronization and Tensor Memory Accelerator multicast. On Blackwell, descriptor-based Tensor Memory Accelerator reduce operations `cp.reduce.async.bulk.tensor` perform on-the-fly reductions during tiled copies to lower register pressure.

@@ -440,7 +440,7 @@ Summary: 25 passed, 0 failed out of 25 checks.
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. What four automated actions does the Kubeflow PyTorchJob controller perform when a user submits a PyTorchJob custom resource?`&lt;/strong>`</summary>
+<summary>**1. What four automated actions does the Kubeflow PyTorchJob controller perform when a user submits a PyTorchJob custom resource?**</summary>
 
 1. It distinguishes the single Master Pod at rank zero from the Worker Pods at ranks one through N minus one.
 2. It dynamically creates a Kubernetes Headless Service so all workers can resolve the Master Pod over CoreDNS.
@@ -449,33 +449,33 @@ Summary: 25 passed, 0 failed out of 25 checks.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. How does Kubeflow Trainer v2 separate responsibilities between the platform administrator and the data scientist?`&lt;/strong>`</summary>
+<summary>**2. How does Kubeflow Trainer v2 separate responsibilities between the platform administrator and the data scientist?**</summary>
 
 - The platform administrator creates and governs TrainingRuntime or ClusterTrainingRuntime templates that define the container image, framework label, multi-node policy, scheduler, and network settings.
 - The data scientist uses the Kubeflow Python SDK `TrainerClient` with `CustomTrainer` or `BuiltinTrainer` to submit a TrainJob referencing that runtime without writing Kubernetes YAML.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What Kubernetes custom resource does Kubeflow Trainer generate when it merges a TrainJob with a ClusterTrainingRuntime?`&lt;/strong>`</summary>
+<summary>**3. What Kubernetes custom resource does Kubeflow Trainer generate when it merges a TrainJob with a ClusterTrainingRuntime?**</summary>
 
 It generates a JobSet under API group `jobset.x-k8s.io/v1alpha2`. That JobSet manages the underlying group of Indexed Kubernetes Jobs as a single coordinated unit.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. How does code delivery in Kubeflow Trainer's CustomTrainer differ from code delivery in KubeRay's RayJob, and what is the trade-off?`&lt;/strong>`</summary>
+<summary>**4. How does code delivery in Kubeflow Trainer's CustomTrainer differ from code delivery in KubeRay's RayJob, and what is the trade-off?**</summary>
 
 When a user calls `client.train` with `CustomTrainer`, the Kubeflow SDK serializes the Python function and embeds it directly into the TrainJob custom resource. Data scientists can iterate and re-run code immediately without building a new container image, whereas RayJob requires packaging scripts into images or external mounts. The trade-off is that the custom trainer function must keep all `import` statements inside the function body. In addition, all required libraries must already exist in the ClusterTrainingRuntime image.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. What is the difference between a BuiltinTrainer and a CustomTrainer in Kubeflow Trainer?`&lt;/strong>`</summary>
+<summary>**5. What is the difference between a BuiltinTrainer and a CustomTrainer in Kubeflow Trainer?**</summary>
 
 - `BuiltinTrainer` uses a pre-packaged training loop such as TorchTune where the user passes only declarative configuration parameters for the model, dataset, and LoRA settings.
 - `CustomTrainer` allows the data scientist to supply an arbitrary Python training function using libraries such as Hugging Face TRL `SFTTrainer` or DeepSpeed.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. What are the three phases of the LLM creation pipeline, and where does model customization fit?`&lt;/strong>`</summary>
+<summary>**6. What are the three phases of the LLM creation pipeline, and where does model customization fit?**</summary>
 
 1. Pre-training trains on massive raw datasets across thousands of GPUs for weeks to produce a base foundation model.
 2. Alignment teaches the base model task-following and safety boundaries using curated data and reward mechanisms such as RLHF, DPO, GRPO, or InstructLab.
@@ -483,81 +483,81 @@ When a user calls `client.train` with `CustomTrainer`, the Kubeflow SDK serializ
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Compare Full Supervised Fine-Tuning and Parameter-Efficient Fine-Tuning with LoRA across dataset size, parameters modified, and inference serving memory.`&lt;/strong>`</summary>
+<summary>**7. Compare Full Supervised Fine-Tuning and Parameter-Efficient Fine-Tuning with LoRA across dataset size, parameters modified, and inference serving memory.**</summary>
 
 - Full Fine-Tuning requires over one hundred thousand labeled examples and updates all model weights. It produces a separate full-sized model artifact that requires ten times the base GPU memory to serve ten variants.
 - PEFT with LoRA requires only one hundred to one thousand labeled examples and freezes the base model. It trains low-rank adapter matrices covering less than one percent of parameters and composes many small adapters on one shared base model at inference time.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What are X-LoRA and QLoRA?`&lt;/strong>`</summary>
+<summary>**8. What are X-LoRA and QLoRA?**</summary>
 
 - X-LoRA is a specialization of Low-Rank Adaptation extended for Mixture-of-Experts model architectures.
 - QLoRA combines LoRA with 4-bit quantization of the frozen base model weights to reduce GPU memory requirements during fine-tuning.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. What does model.merge_and_unload() do, and when should you use it?`&lt;/strong>`</summary>
+<summary>**9. What does model.merge_and_unload() do, and when should you use it?**</summary>
 
 The `model.merge_and_unload()` method multiplies and adds the trained low-rank LoRA adapter weights directly into the frozen base model weights. It then removes the PEFT wrapper to produce a single standalone model checkpoint. Merging is useful for standalone evaluation and testing, whereas multi-tenant production serving keeps adapters unmerged so dozens of adapters can share one base model.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. What is the difference between Ray Tune or Kubeflow Katib and Kubeflow Trainer or SFTTrainer?`&lt;/strong>`</summary>
+<summary>**10. What is the difference between Ray Tune or Kubeflow Katib and Kubeflow Trainer or SFTTrainer?**</summary>
 
 Ray Tune and Kubeflow Katib are hyperparameter optimization frameworks that run algorithms such as Population Based Training or Bayesian search across many trials. Kubeflow Trainer and TRL `SFTTrainer`, by contrast, execute distributed LLM post-training and fine-tuning jobs.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What is a JobSet, and what limitations of a standard Kubernetes batch/v1 Job does it solve?`&lt;/strong>`</summary>
+<summary>**11. What is a JobSet, and what limitations of a standard Kubernetes batch/v1 Job does it solve?**</summary>
 
 A standard batch Job manages only a single homogeneous Pod template. JobSet groups multiple distinct Kubernetes Indexed Job templates under one parent object with automatic shared headless DNS service discovery and ordered startup dependencies. It also enforces a unified failure policy that restarts all child jobs together if any child job fails.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What is LeaderWorkerSet, and why is it used for multi-node LLM inference instead of PyTorchJob or Deployment?`&lt;/strong>`</summary>
+<summary>**12. What is LeaderWorkerSet, and why is it used for multi-node LLM inference instead of PyTorchJob or Deployment?**</summary>
 
 PyTorchJob is built for run-to-completion batch training, while a standard Deployment can scale only single-Pod replicas. LeaderWorkerSet is designed for long-running multi-node sharded LLM inference where a single copy of a large model spans multiple Pods across nodes. It manages independent replica groups of one Leader Pod and multiple Worker Pods with per-group gang scheduling and per-group atomic restarts.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. In a LeaderWorkerSet with 2 replicas and size 4, what happens if 1 Worker Pod in Group 0 crashes?`&lt;/strong>`</summary>
+<summary>**13. In a LeaderWorkerSet with 2 replicas and size 4, what happens if 1 Worker Pod in Group 0 crashes?**</summary>
 
 Because `RecreateGroupOnPodRestart` scopes failure recovery to the individual replica group, LeaderWorkerSet tears down and restarts all four Pods of Group 0 atomically. Group 1 remains completely online and continues serving inference traffic without interruption.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. How does the Kubeflow MPIJob Operator coordinate distributed execution across Launcher and Worker Pods?`&lt;/strong>`</summary>
+<summary>**14. How does the Kubeflow MPIJob Operator coordinate distributed execution across Launcher and Worker Pods?**</summary>
 
 The MPIJob Operator creates one Launcher Pod and multiple Worker Pods, generates an ephemeral SSH keypair mounted into all Pods, and builds an OpenMPI hostfile mounted into the Launcher. Once all Worker Pods are ready and running `sshd`, the controller executes `mpirun` inside the Launcher Pod over SSH.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. When an MPIJob sets slotsPerWorker to 8 across 2 Workers, why does the Launcher run mpirun -np 16, and how many GPUs should the Launcher Pod request?`&lt;/strong>`</summary>
+<summary>**15. When an MPIJob sets slotsPerWorker to 8 across 2 Workers, why does the Launcher run mpirun -np 16, and how many GPUs should the Launcher Pod request?**</summary>
 
 Two Worker Pods multiplied by eight slots per Worker equals sixteen total MPI ranks, allocating one rank per GPU. The Launcher Pod must request zero GPUs because it only invokes `mpirun` over SSH to spawn processes on the Worker Pods, and requesting GPUs on the Launcher would waste an entire GPU node.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What does runPolicy.cleanPodPolicy: Running do in a Kubeflow MPIJob?`&lt;/strong>`</summary>
+<summary>**16. What does runPolicy.cleanPodPolicy: Running do in a Kubeflow MPIJob?**</summary>
 
 In an MPIJob, Worker Pods run an infinite `sshd` daemon loop so the Launcher can connect to them over SSH. Setting `cleanPodPolicy: Running` instructs the MPIJob controller to terminate and clean up all running Worker Pods automatically as soon as the Launcher Pod finishes `mpirun` and exits with code zero.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. How does a DeepSpeed custom trainer initialize distributed communication and map batches to the local GPU?`&lt;/strong>`</summary>
+<summary>**17. How does a DeepSpeed custom trainer initialize distributed communication and map batches to the local GPU?**</summary>
 
 The trainer calls `deepspeed.init_distributed(dist_backend="nccl")`, reads `local_rank` from the function arguments, and wraps the dataset in a DataLoader using `DistributedSampler`. It then initializes the engine via `deepspeed.initialize` and moves each batch tensor to the local GPU using `.to(local_rank)`.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. What is yamlmagic, and how is it used in Kubeflow Notebooks?`&lt;/strong>`</summary>
+<summary>**18. What is yamlmagic, and how is it used in Kubeflow Notebooks?**</summary>
 
 The `yamlmagic` extension is loaded in Jupyter via `%load_ext yamlmagic` and provides the `%%yaml` cell magic. It parses a YAML block directly into a Python dictionary such as `training_config` that can be passed cleanly to `TrainerClient.train`.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Compare Ray (KubeRay), Kubeflow Training Operator / Trainer, and TorchX.`&lt;/strong>`</summary>
+<summary>**19. Compare Ray (KubeRay), Kubeflow Training Operator / Trainer, and TorchX.**</summary>
 
 - KubeRay provides high data-scientist ergonomics and a built-in dashboard for Ray Train, but adds RayCluster management overhead and requires packaging scripts into container images or external mounts.
 - Kubeflow Training Operator and Kubeflow Trainer provide a thin, low-overhead Kubernetes-native layer that scales to large clusters and integrates directly with JobSet, Kueue, and Volcano.
@@ -565,7 +565,7 @@ The `yamlmagic` extension is loaded in Jupyter via `%load_ext yamlmagic` and pro
 </details>
 
 <details>
-<summary>`&lt;strong>`20. What are Liger Kernel and FlashAttention, and why do they matter for Kubernetes training jobs?`&lt;/strong>`</summary>
+<summary>**20. What are Liger Kernel and FlashAttention, and why do they matter for Kubernetes training jobs?**</summary>
 
 FlashAttention provides hardware-aware IO-optimized attention. Liger Kernel provides Triton-optimized fused kernels for common LLM training operations such as RMSNorm, RoPE, SwiGLU, and CrossEntropy. Together they reduce GPU HBM memory footprint and increase per-GPU throughput inside the training container. That efficiency allows larger micro-batches or longer context lengths on the same GPU allocation.
 </details>

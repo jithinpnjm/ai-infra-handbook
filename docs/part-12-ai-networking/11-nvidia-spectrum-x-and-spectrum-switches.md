@@ -666,7 +666,7 @@ Exercise Function Names and Numeric Parameters Reference (code/part12/spectrum_x
 
 ## Checkpoint questions (20)
 
-<details><summary>`&lt;strong>`1. What is the switching capacity, SerDes architecture, and breakout port radix of the NVIDIA Spectrum-4 SN5600 and SN5600D switch?`&lt;/strong>`</summary>
+<details><summary>**1. What is the switching capacity, SerDes architecture, and breakout port radix of the NVIDIA Spectrum-4 SN5600 and SN5600D switch?**</summary>
 
 The Spectrum-4 ASIC provides 51.2 Tbps of bidirectional switching capacity built on 512 lanes of 100G PAM4 SerDes across sixty-four physical OSFP cages. It supports four breakout modes from 800GbE down to 100GbE.
 
@@ -677,7 +677,7 @@ Spectrum-4 SN5600 / SN5600D Specifications:
 ```
 </details>
 
-<details><summary>`&lt;strong>`2. How does Spectrum-4's monolithic fully shared buffer differ from a sliced switch buffer during an 8.0 MB AI microburst on a 64-port switch with 64.0 MB total buffer memory?`&lt;/strong>`</summary>
+<details><summary>**2. How does Spectrum-4's monolithic fully shared buffer differ from a sliced switch buffer during an 8.0 MB AI microburst on a 64-port switch with 64.0 MB total buffer memory?**</summary>
 
 In a sliced switch where memory is divided into rigid per-port slices, Port 1 exhausts its cap and drops seven megabytes. Those drops happen even when the rest of the memory sits idle across the other ports. In Spectrum-4's monolithic fully shared buffer, Port 1 dynamically borrows up to the shared threshold. It absorbs the entire microburst with zero bytes dropped while enforcing hardware microsecond fairness.
 
@@ -688,7 +688,7 @@ Sliced vs Monolithic Shared Buffer Math (64.0 MB Pool, 64 Ports, 8.0 MB Burst on
 ```
 </details>
 
-<details><summary>`&lt;strong>`3. What role does the NVIDIA SN2201 switch play in a DGX GB300 SuperPOD, and what are its hardware and BCM `sysinfo` specifications?`&lt;/strong>`</summary>
+<details><summary>**3. What role does the NVIDIA SN2201 switch play in a DGX GB300 SuperPOD, and what are its hardware and BCM `sysinfo` specifications?**</summary>
 
 The SN2201 is a 1U copper switch with high-speed uplinks that provides the physically isolated Out-of-Band management network. It connects compute tray BMCs, BlueField BMCs, NVLink switch controllers, and rack PDUs.
 
@@ -699,12 +699,12 @@ SN2201 OOB Switch Specifications (superpod-gb300-ra p. 13, 26; bcm11-admin pp. 1
 ```
 </details>
 
-<details><summary>`&lt;strong>`4. How are ConnectX-8 and BlueField-3 BF3240 adapters cabled on each DGX GB300 compute tray, and why are the two BF3240 ports not bonded together?`&lt;/strong>`</summary>
+<details><summary>**4. How are ConnectX-8 and BlueField-3 BF3240 adapters cabled on each DGX GB300 compute tray, and why are the two BF3240 ports not bonded together?**</summary>
 
 Each DGX GB300 compute tray integrates four ConnectX-8 NICs for the rail-aligned compute fabric and one dual-port BlueField-3 BF3240 connected to leaf switches. Port 0 is dedicated to the lossless RoCEv2 High-Performance Storage fabric. Port 1 is dedicated to the In-Band Management and NFS user storage network. Separating them ensures that unpredictable TCP bursts never contend with lossless RoCEv2 storage traffic.
 </details>
 
-<details><summary>`&lt;strong>`5. How do the SN5600D spine, compute leaf, storage leaf, and management leaf switches scale across 2, 4, 8, and 16 Scalable Units in a DGX GB300 SuperPOD?`&lt;/strong>`</summary>
+<details><summary>**5. How do the SN5600D spine, compute leaf, storage leaf, and management leaf switches scale across 2, 4, 8, and 16 Scalable Units in a DGX GB300 SuperPOD?**</summary>
 
 Compute leaves use a deliberate three-to-one blocking ratio, storage leaves use nonblocking links, and management leaves provide dedicated management and customer edge uplinks.
 
@@ -722,7 +722,7 @@ DGX GB300 SuperPOD SN5600D Scale-Out and Storage Tiers (superpod-gb300-ra Tables
 ```
 </details>
 
-<details><summary>`&lt;strong>`6. For a rack of 16 GPU nodes with 2x400 Gbps rails connected to a leaf switch with 8x400 Gbps uplinks, what are the normal and N-1 degraded oversubscription ratios?`&lt;/strong>`</summary>
+<details><summary>**6. For a rack of 16 GPU nodes with 2x400 Gbps rails connected to a leaf switch with 8x400 Gbps uplinks, what are the normal and N-1 degraded oversubscription ratios?**</summary>
 
 Worst-case downlink demand is four times the normal uplink capacity, and draining one uplink increases that oversubscription ratio further.
 
@@ -734,17 +734,17 @@ Normal vs N-1 Degraded Leaf Uplink Cut Math (V9 Ch. 10):
 ```
 </details>
 
-<details><summary>`&lt;strong>`7. How does the default operating mode of a BlueField-3 DPU SKU differ from a BlueField-3 SuperNIC SKU?`&lt;/strong>`</summary>
+<details><summary>**7. How does the default operating mode of a BlueField-3 DPU SKU differ from a BlueField-3 SuperNIC SKU?**</summary>
 
 A BlueField-3 DPU SKU such as the BF3240 defaults to DPU mode (`DPU_MODE_ECPF`). In that mode, the embedded Arm subsystem owns NIC resources and the embedded switch. That ownership isolates host administration behind a DPU-controlled policy domain. A BlueField-3 SuperNIC SKU defaults to NIC mode (`NIC_MODE_SUPERNIC`). It exposes the Spectrum-X RoCEv2 data path directly to the host OS without an intermediate Arm virtual-switch policy dependency.
 </details>
 
-<details><summary>`&lt;strong>`8. Why can a Spectrum leaf port (`swp14`) report `up` at full speed while the attached host network interface (`enp1s0f0np0`) remains `DOWN` or `DORMANT`?`&lt;/strong>`</summary>
+<details><summary>**8. Why can a Spectrum leaf port (`swp14`) report `up` at full speed while the attached host network interface (`enp1s0f0np0`) remains `DOWN` or `DORMANT`?**</summary>
 
 In BlueField DPU mode, `swp14 up` proves only Layer 3 on the external wire between the DPU and the leaf switch. If the Layer 2 Arm policy service (`openvswitch-policy-load.service`) fails during boot, the embedded switch never receives its forwarding rules. Consequently, the Layer 1 host interface `enp1s0f0np0` remains DOWN.
 </details>
 
-<details><summary>`&lt;strong>`9. Why cannot a 200GbE ConnectX adapter sustain line rate when `lspci -vv` shows `LnkCap: Speed 32GT/s, Width x16` and `LnkSta: Speed 16GT/s (downgraded), Width x8`?`&lt;/strong>`</summary>
+<details><summary>**9. Why cannot a 200GbE ConnectX adapter sustain line rate when `lspci -vv` shows `LnkCap: Speed 32GT/s, Width x16` and `LnkSta: Speed 16GT/s (downgraded), Width x8`?**</summary>
 
 Although the card and slot are capable of PCIe Gen5 x16, the link negotiated at PCIe Gen4 x8 for only one-quarter of its design bandwidth. Sustaining 200GbE line rate requires more bandwidth than a Gen4 x8 slot can provide. The host PCIe bus therefore caps throughput before packets ever reach the Spectrum switch.
 
@@ -755,7 +755,7 @@ PCIe Downgrade Math (V9 Ch. 8):
 ```
 </details>
 
-<details><summary>`&lt;strong>`10. On a dual-rail server where both `ens1f0` and `ens1f1` are ACTIVE, a 60-second `ethtool -S` sample shows `rx_bytes_phy` grew by 88.7 GB on `ens1f0` while `ens1f1` stayed at 412,992 B. What is the root cause and fix?`&lt;/strong>`</summary>
+<details><summary>**10. On a dual-rail server where both `ens1f0` and `ens1f1` are ACTIVE, a 60-second `ethtool -S` sample shows `rx_bytes_phy` grew by 88.7 GB on `ens1f0` while `ens1f1` stayed at 412,992 B. What is the root cause and fix?**</summary>
 
 Both local GPU processes selected the same RDMA device (`mlx5_0` on `ens1f0`), leaving `mlx5_1` on `ens1f1` idle. Fix the process-to-GPU-to-NIC affinity mapping, avoid generic host LACP bonding, and verify balanced `rx_bytes_phy` deltas over a sixty-second window.
 
@@ -766,7 +766,7 @@ Dual-Rail 60-Second Counter Delta (V9 Ch. 8 Scenario 1):
 ```
 </details>
 
-<details><summary>`&lt;strong>`11. In ADC Chapter 6, how does Static Load Balancing compute the outgoing ECMP link for `192.168.1.20 -> 192.168.2.10` (`UDP 1024 -> 4791`), and why does resilient hashing use 512 or 1,024 buckets?`&lt;/strong>`</summary>
+<details><summary>**11. In ADC Chapter 6, how does Static Load Balancing compute the outgoing ECMP link for `192.168.1.20 -> 192.168.2.10` (`UDP 1024 -> 4791`), and why does resilient hashing use 512 or 1,024 buckets?**</summary>
 
 The switch ASIC feeds the five-tuple hex string into a `CRC32` generator and takes the remainder modulo the number of active links. Resilient hashing maps the hash into a fixed indirection table so only buckets pointing to a failed link are reassigned when a link flaps.
 
@@ -777,7 +777,7 @@ CRC32 5-Tuple Hash and Modulo Selection (ADC Ch. 6):
 ```
 </details>
 
-<details><summary>`&lt;strong>`12. Given four flows of 50, 100, 50, and 100 Gbps arriving at a leaf with two 200 Gbps spine uplinks, compare link utilization under SLB versus DLB and Spectrum-X Adaptive Routing.`&lt;/strong>`</summary>
+<details><summary>**12. Given four flows of 50, 100, 50, and 100 Gbps arriving at a leaf with two 200 Gbps spine uplinks, compare link utilization under SLB versus DLB and Spectrum-X Adaptive Routing.**</summary>
 
 Under SLB, the two smaller flows hash to SpineA at fifty percent utilization while the two larger flows collide on SpineB at full utilization. Under DLB or Spectrum-X Adaptive Routing, real-time link load and queue depth balance seventy-five percent utilization across each spine. That balance raises cluster-wide effective bandwidth from roughly 60 percent to 95 percent.
 
@@ -788,12 +788,12 @@ SLB vs DLB / Spectrum-X Spine Balance (2 x 200 Gbps Spines, Flows = 50, 100, 50,
 ```
 </details>
 
-<details><summary>`&lt;strong>`13. How does Selective Dynamic Load Balancing decide which packets to spray per-packet versus per-flow?`&lt;/strong>`</summary>
+<details><summary>**13. How does Selective Dynamic Load Balancing decide which packets to spray per-packet versus per-flow?**</summary>
 
 Selective Dynamic Load Balancing uses an ingress TCAM ACL on the switch ASIC to match the RoCEv2 Base Transport Header opcode. Elephant flows using RDMA Write opcodes between DDP-capable ConnectX or BlueField-3 endpoints are assigned `PER_PACKET_SPRAY`. Non-matching control or legacy flows remain on `FLOWLET_OR_PER_FLOW` to preserve in-order arrival.
 </details>
 
-<details><summary>`&lt;strong>`14. How does BlueField-3 or ConnectX-7/8 hardware out-of-order Direct Data Placement handle the arriving PSN stream `(200, 202, 203, 201, 205, 204)`?`&lt;/strong>`</summary>
+<details><summary>**14. How does BlueField-3 or ConnectX-7/8 hardware out-of-order Direct Data Placement handle the arriving PSN stream `(200, 202, 203, 201, 205, 204)`?**</summary>
 
 Instead of dropping out-of-order packets and firing three PSN-gap NAKs, the SuperNIC computes each packet's destination GPU virtual address from the base VA and PSN offset. It DMAs every payload directly into GPU memory with zero retransmissions. It tracks completion in a hardware PSN bitmap and posts the CQE only after all six packets are present.
 
@@ -805,7 +805,7 @@ Hardware OOO DDP Address Offsets (base_va = 0x7F0000000000, MTU = 4,096 B):
 ```
 </details>
 
-<details><summary>`&lt;strong>`15. How does Spectrum-X hardware telemetry-driven congestion control improve upon classical binary ECN/DCQCN?`&lt;/strong>`</summary>
+<details><summary>**15. How does Spectrum-X hardware telemetry-driven congestion control improve upon classical binary ECN/DCQCN?**</summary>
 
 Classical DCQCN uses a single-bit ECN mark that forces the sender NIC to make a blind multiplicative rate cut and slowly probe back up. Spectrum-4 switches embed exact hardware queue depth and drain-rate telemetry into congestion feedback. BlueField-3 SuperNICs then calculate and set the exact fair-share drain rate in a single round-trip time.
 
@@ -816,17 +816,17 @@ Telemetry-Driven Rate Control vs Binary ECN (400.0 Gbps Port, 2 Flows, 160 KB Qu
 ```
 </details>
 
-<details><summary>`&lt;strong>`16. What does `show what-just-happened drop-reason all` reveal that standard interface discard counters cannot, and what did the 18,402 and 52,100 `Tail drop (queue full)` counts prove?`&lt;/strong>`</summary>
+<details><summary>**16. What does `show what-just-happened drop-reason all` reveal that standard interface discard counters cannot, and what did the 18,402 and 52,100 `Tail drop (queue full)` counts prove?**</summary>
 
 What Just Happened captures the offending packet's source IP, destination IP, and exact ASIC drop reason (`Tail drop (queue full)` versus `L2 table miss`, `Router ingress miss`, or `ACL deny`). Seeing high tail-drop counts toward `10.20.9.99` on the slow rack's leaf uplink while a healthy rack showed zero proved that the slow rack suffered from an oversubscribed egress queue.
 </details>
 
-<details><summary>`&lt;strong>`17. How do you find the origin of a multi-leaf PFC pause storm when `leaf03`, `leaf07`, and `leaf12` all show rising `rx_pfc_prio3` counters?`&lt;/strong>`</summary>
+<details><summary>**17. How do you find the origin of a multi-leaf PFC pause storm when `leaf03`, `leaf07`, and `leaf12` all show rising `rx_pfc_prio3` counters?**</summary>
 
 Query `rx_pfc_prio3` across all suspect leaves over the same time window. Because PFC pauses propagate backward hop by hop from the congested receiver toward the senders, the most-downstream switch with the highest count (`leaf03`) is the origin of the pause tree.
 </details>
 
-<details><summary>`&lt;strong>`18. Explain how a single switch port (`swp19`) configured with `Priority trust state: pcp` instead of `dscp` breaks a RoCEv2 (`tos 0xb8`) path without breaking `ping`.`&lt;/strong>`</summary>
+<details><summary>**18. Explain how a single switch port (`swp19`) configured with `Priority trust state: pcp` instead of `dscp` breaks a RoCEv2 (`tos 0xb8`) path without breaking `ping`.**</summary>
 
 The source host marks RoCEv2 packets with `tos 0xb8`, which corresponds to DSCP 46. Ingress leaf `swp4` (`trust dscp`) maps that DSCP value to lossless Priority 3. However, destination leaf `swp19` (`trust pcp`) ignores DSCP on untagged routed IP packets and dumps the traffic into lossy Priority 0. That misclassification strips PFC and ECN protection while `ping` continues to work.
 
@@ -838,12 +838,12 @@ Hop-by-Hop DSCP vs PCP Trust Drift (V9 Ch. 6):
 ```
 </details>
 
-<details><summary>`&lt;strong>`19. What are the three `nvconfigurationmode` options for managing Cumulus Linux switches in NVIDIA Base Command Manager (`cmsh`), and why must inter-switch links be marked as `uplinks`?`&lt;/strong>`</summary>
+<details><summary>**19. What are the three `nvconfigurationmode` options for managing Cumulus Linux switches in NVIDIA Base Command Manager (`cmsh`), and why must inter-switch links be marked as `uplinks`?**</summary>
 
 In `cmsh`, `nvconfigurationmode` can be set to `auto` for BCM-generated `nv set` rules, `manual` for direct administrator control, or `file` to provision `startup.yaml` via ZTP on boot. Inter-switch links must be declared via `set <switch> uplinks <ports>` so `CMDaemon` ignores transit MAC addresses on uplinks when mapping node ports via `showport` and `finddevicebyswitchport`.
 </details>
 
-<details><summary>`&lt;strong>`20. In V9 Lab 04, switching `ib_write_bw` from `-d mlx5_0` to `-d mlx5_1` caused throughput to drop from 392 Gbps to 156 Gbps with 24 `RETRY_EXC_ERR` completions. Which layer of the 5-layer evidence ladder diverged first, and why must you not tune switch ECN/PFC?`&lt;/strong>`</summary>
+<details><summary>**20. In V9 Lab 04, switching `ib_write_bw` from `-d mlx5_0` to `-d mlx5_1` caused throughput to drop from 392 Gbps to 156 Gbps with 24 `RETRY_EXC_ERR` completions. Which layer of the 5-layer evidence ladder diverged first, and why must you not tune switch ECN/PFC?**</summary>
 
 Layer 1 physical state and Layer 2 IP routing and MTU were clean. The first divergence occurred at Layer 3 because the client process selected the wrong local RDMA device and GID (`mlx5_1` instead of `mlx5_0`). Tuning switch ECN or PFC would corrupt a healthy fabric profile to mask a client-side device selection mistake; the fix is restoring `-d mlx5_0`.
 

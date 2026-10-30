@@ -675,7 +675,7 @@ Exercise Input Parameters & Expected Verification Targets (code/part13/gpudirect
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. What are the three main system penalties caused by the host CPU bounce buffer when streaming 10–100 GB/s of AI training data?`&lt;/strong>`</summary>
+<summary>**1. What are the three main system penalties caused by the host CPU bounce buffer when streaming 10–100 GB/s of AI training data?**</summary>
 
 1. **Doubled PCIe bus traffic:** Every byte crosses the PCIe bus twice, moving from storage or the NIC into host DRAM and then from host DRAM into GPU HBM.
 2. **High CPU utilization and L3 cache pollution:** The CPU runs copy_page. `__memcpy_avx2` across millions of 4 KiB pages, driving CPU load to 85 or 100 percent and starving data preprocessing and kernel launches.
@@ -683,7 +683,7 @@ Exercise Input Parameters & Expected Verification Targets (code/part13/gpudirect
 </details>
 
 <details>
-<summary>`&lt;strong>`2. List the five architectural prerequisites that must hold for GPUDirect Storage to deliver a meaningful production speedup.`&lt;/strong>`</summary>
+<summary>**2. List the five architectural prerequisites that must hold for GPUDirect Storage to deliver a meaningful production speedup.**</summary>
 
 1. The workload is I/O-bound or CPU-bound on memory copies rather than 95 percent compute-bound.
 2. The storage link exceeds 40 Gbps, ideally 100 to 800 Gbps or multi-drive NVMe, so CPU staging is the bottleneck.
@@ -693,19 +693,19 @@ Exercise Input Parameters & Expected Verification Targets (code/part13/gpudirect
 </details>
 
 <details>
-<summary>`&lt;strong>`3. How does GPUDirect Storage (GDS) complement GPUDirect RDMA inside the NVIDIA Magnum IO stack, and what is the CPU's role in both?`&lt;/strong>`</summary>
+<summary>**3. How does GPUDirect Storage (GDS) complement GPUDirect RDMA inside the NVIDIA Magnum IO stack, and what is the CPU's role in both?**</summary>
 
 GPUDirect RDMA removes the host DRAM bounce buffer for network-to-GPU transfers in NCCL, NVSHMEM, UCX, and NIXL over InfiniBand or RoCEv2. GPUDirect Storage removes the host DRAM bounce buffer for storage-to-GPU transfers across NVMe, NVMe-oF, and parallel filesystems using cuFile and nvidia-fs.ko. In both technologies, the CPU stays on the control plane to manage file descriptors, metadata, and queue submissions while stepping out of the data plane.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Is host pinned memory (`cudaMallocHost`) used on the storage-to-GPU data path when GPUDirect Storage is active?`&lt;/strong>`</summary>
+<summary>**4. Is host pinned memory (`cudaMallocHost`) used on the storage-to-GPU data path when GPUDirect Storage is active?**</summary>
 
 No. Host pinned memory is used in the traditional CPU-staged path tested by `gdsio -x 2` or PyTorch `pin_memory=True`. In native GPUDirect Storage tested by `gdsio -x 0`. `cuFileBufRegister()` pins GPU HBM inside the GPU BAR1 aperture, and nvidia-fs.ko transfers data directly between the storage controller or NIC and GPU memory.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. Name the 7 core cuFile API functions in exact lifecycle order from driver initialization to teardown.`&lt;/strong>`</summary>
+<summary>**5. Name the 7 core cuFile API functions in exact lifecycle order from driver initialization to teardown.**</summary>
 
 1. `cuFileDriverOpen()`
 2. `cuFileHandleRegister(&cf_handle, &cf_descr)` wrapping an O_DIRECT file descriptor
@@ -717,49 +717,49 @@ No. Host pinned memory is used in the traditional CPU-staged path tested by `gds
 </details>
 
 <details>
-<summary>`&lt;strong>`6. How do `cuFileReadAsync` and `cuFileWriteAsync` overlap storage I/O with GPU compute kernels?`&lt;/strong>`</summary>
+<summary>**6. How do `cuFileReadAsync` and `cuFileWriteAsync` overlap storage I/O with GPU compute kernels?**</summary>
 
 Both functions accept a `cudaStream_t` argument. Binding storage reads for the next batch or checkpoint writes to a non-blocking CUDA stream lets the DMA engine move data in hardware. The GPU Streaming Multiprocessors execute forward and backward compute kernels on the current batch.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How does NVIDIA's cuda-checkpoint (`CRIU`) utility differ from a GPUDirect Storage checkpoint write?`&lt;/strong>`</summary>
+<summary>**7. How does NVIDIA's cuda-checkpoint (`CRIU`) utility differ from a GPUDirect Storage checkpoint write?**</summary>
 
 The cuda-checkpoint utility is a process-level fault-tolerance and live-migration tool that calls `cuCheckpointProcessLock`, `cuCheckpointProcessCheckpoint`, `cuCheckpointProcessRestore`, and `cuCheckpointProcessUnlock`. During suspend, it drains GPU work and copies device memory into host DRAM via the CUDA driver so CRIU can snapshot the process. Unlike `cuFileWrite`, it does not DMA directly from GPU HBM to storage via GDS.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. Why cannot `nvidia-smi dmon -s t -d 1` PCIe throughput counters distinguish between GPUDirect Storage and the CPU bounce path?`&lt;/strong>`</summary>
+<summary>**8. Why cannot `nvidia-smi dmon -s t -d 1` PCIe throughput counters distinguish between GPUDirect Storage and the CPU bounce path?**</summary>
 
 Data enters GPU HBM across the GPU PCIe interface in both paths. Whether it comes from host DRAM in the bounce path or from the NIC or NVMe drive via a PCIe switch in the GDS path. To tell them apart, inspect `/proc/driver/nvidia-fs/stats`, which increments only on the GDS path, and `perf report`, where `__memcpy_avx2` appears only on the CPU bounce path.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. What happens when `"allow_compat_mode": true` is set in `/etc/cufile.json` and a file is opened without O_DIRECT or on an unsupported filesystem?`&lt;/strong>`</summary>
+<summary>**9. What happens when `"allow_compat_mode": true` is set in `/etc/cufile.json` and a file is opened without O_DIRECT or on an unsupported filesystem?**</summary>
 
 The libcufile.so library silently falls back to POSIX compatibility mode. Reading the file into a host DRAM bounce buffer via pread() or `pwrite()` and copying it to GPU HBM with `cudaMemcpyAsync`. The job finishes without raising an error, but `/proc/driver/nvidia-fs/stats` stays at zero and host CPU usage spikes.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. What are the exact alignment rules for O_DIRECT with cuFile on NVMe/NVMe-oF and Lustre?`&lt;/strong>`</summary>
+<summary>**10. What are the exact alignment rules for O_DIRECT with cuFile on NVMe/NVMe-oF and Lustre?**</summary>
 
 All three transfer coordinates, namely the file offset. The transfer length, and the GPU buffer address `d_ptr + dev_offset`, must be integer multiples of 4,096 bytes on NVMe and NVMe-oF filesystems. On Lustre Object Storage Targets configured for 8 KiB alignment, all three coordinates must be multiples of 8,192 bytes.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. Why is a user-space FUSE filesystem incapable of delivering a native GPUDirect Storage zero-copy path?`&lt;/strong>`</summary>
+<summary>**11. Why is a user-space FUSE filesystem incapable of delivering a native GPUDirect Storage zero-copy path?**</summary>
 
 GPUDirect Storage requires a kernel-mode filesystem client that supports O_DIRECT and registers block or RDMA callbacks with nvidia-fs.ko. A FUSE mount routes every file operation through `fuse.ko` into a user-space daemon in host DRAM, preventing direct peer-to-peer DMA between the storage device and GPU BAR1 memory.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What are the four architectural components of DeepSeek's Fire-Flyer File System (`3FS`), and what throughput did it achieve on a 68-node cluster compared to Ceph?`&lt;/strong>`</summary>
+<summary>**12. What are the four architectural components of DeepSeek's Fire-Flyer File System (`3FS`), and what throughput did it achieve on a 68-node cluster compared to Ceph?**</summary>
 
 The four components of 3FS are the Cluster Manager, Metadata Service, Storage Service, and Client, linked over RDMA with direct O_DIRECT NVMe reads and no page-cache staging. Across 68 nodes equipped with ten 16 TB NVMe drives. Dual 100 Gb/s NICs per node, 3FS reached 6.6 TB/s of foreground read throughput plus 1.4 TB/s of background traffic, beating Ceph at 1.1 TB/s by sixfold.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. What is the difference between `gdsio -x 0`, `gdsio -x 1`, `gdsio -x 2`, `gdsio -x 5`, and `gdsio -x 6`?`&lt;/strong>`</summary>
+<summary>**13. What is the difference between `gdsio -x 0`, `gdsio -x 1`, `gdsio -x 2`, `gdsio -x 5`, and `gdsio -x 6`?**</summary>
 
 - **Mode `-x 0`:** Direct storage-to-GPU transfer via synchronous `cuFileRead` and `cuFileWrite`.
 - **Mode `-x 1`:** Storage-to-host DRAM transfer only, with no GPU copy.
@@ -769,7 +769,7 @@ The four components of 3FS are the Cluster Manager, Metadata Service, Storage Se
 </details>
 
 <details>
-<summary>`&lt;strong>`14. State the exact throughput, average latency, and CPU utilization numbers from the gdsio benchmark (`-d 0 -w 4 -s 10G -i 1M -I 0`) comparing `-x 2` against `-x 0`, plus VAST Data's measured A100/H100 gains.`&lt;/strong>`</summary>
+<summary>**14. State the exact throughput, average latency, and CPU utilization numbers from the gdsio benchmark (`-d 0 -w 4 -s 10G -i 1M -I 0`) comparing `-x 2` against `-x 0`, plus VAST Data's measured A100/H100 gains.**</summary>
 
 - **Without GDS (`-x 2`):** 8.0 GB/s throughput, 1.25 ms average latency, and 85 percent host CPU utilization.
 - **With GDS (`-x 0`):** 9.6 GB/s throughput for a 20 percent gain, 1.00 ms average latency for a 20 percent drop. 25 percent host CPU utilization for a 4.08x improvement in GB/s per CPU percent.
@@ -777,31 +777,31 @@ The four components of 3FS are the Cluster Manager, Metadata Service, Storage Se
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Why does setting `"use_poll_mode": true` with `"poll_mode_max_size_kb": 4` in `/etc/cufile.json` have zero effect on a 1 MiB (`-i 1M`) gdsio or training read?`&lt;/strong>`</summary>
+<summary>**15. Why does setting `"use_poll_mode": true` with `"poll_mode_max_size_kb": 4` in `/etc/cufile.json` have zero effect on a 1 MiB (`-i 1M`) gdsio or training read?**</summary>
 
 The libcufile runtime only uses CPU completion polling for requests whose size is at or below `poll_mode_max_size_kb`, which defaults to 4 KiB. A 1 MiB read equals 1,024 KiB, so it exceeds the 4 KiB threshold and automatically uses interrupt-driven completion.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How do you trace cuFile activity in NVIDIA Nsight Systems, and what is the limitation regarding kernel-mode NVMe P2P counters?`&lt;/strong>`</summary>
+<summary>**16. How do you trace cuFile activity in NVIDIA Nsight Systems, and what is the limitation regarding kernel-mode NVMe P2P counters?**</summary>
 
 Run `nsys profile --trace=cuda,gds,nvtx,osrt` after setting `"nvtx": true` and `"cufile_stats": 3` in `/etc/cufile.json`. That trace captures user-space cuFile calls and static tracepoints on the timeline. Kernel-mode counters for NVMe peer-to-peer DMA completions are not exposed in Nsight Systems and must be checked via `/proc/driver/nvidia-fs/stats` and DCGM.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. Which compression formats and peak bandwidth are supported by the NVIDIA Blackwell on-die Hardware Decompression Engine, and why does it help GDS pipelines?`&lt;/strong>`</summary>
+<summary>**17. Which compression formats and peak bandwidth are supported by the NVIDIA Blackwell on-die Hardware Decompression Engine, and why does it help GDS pipelines?**</summary>
 
 The Blackwell Hardware Decompression Engine supports LZ4, Snappy, and Deflate at up to 800 GB/s in fixed-function silicon. Storing batches compressed on disk cuts storage transfer time by the compression ratio. The hardware engine unpacks a 4.0 GB batch in 5.0 ms inside GPU memory without using any GPU SM compute cycles.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. How do you distinguish a Python data-transform bottleneck from a Host-to-Device (`H2D`) copy bottleneck in PyTorch `DataLoader`?`&lt;/strong>`</summary>
+<summary>**18. How do you distinguish a Python data-transform bottleneck from a Host-to-Device (`H2D`) copy bottleneck in PyTorch `DataLoader`?**</summary>
 
 First set `num_workers=0` or time 100 batches with GPU kernels disabled to measure pure Python read and transform latency. Next check the CUDA copy lanes in Nsight Systems or time `.to("cuda", non_blocking=True)` with CUDA events to isolate Host-to-Device transfer time, and compare both against total `next(data_iterator)` idle wait.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What are the recommended Linux NVMe block-queue (`blk-mq`), read-ahead, Lustre striping, and NFS client mount settings for high-throughput AI data loading?`&lt;/strong>`</summary>
+<summary>**19. What are the recommended Linux NVMe block-queue (`blk-mq`), read-ahead, Lustre striping, and NFS client mount settings for high-throughput AI data loading?**</summary>
 
 - **Linux NVMe:** Set `/sys/block/nvme*/queue/scheduler` to `none`. `mq-deadline`, mount XFS or EXT4 with `noatime`, and raise `read_ahead_kb` from 128 KB to 4 MiB via `blockdev --setra 8192` for sequential reads.
 - **Lustre:** Stripe large files across four or eight OSTs with `lfs setstripe -c 4 -S 4M` so four 500 MB/s targets deliver 2.0 GB/s per file.
@@ -809,7 +809,7 @@ First set `num_workers=0` or time 100 batches with GPU kernels disabled to measu
 </details>
 
 <details>
-<summary>`&lt;strong>`20. How do NVIDIA DALI and NeMo Curator reduce CPU data-loading bottlenecks alongside GPUDirect Storage?`&lt;/strong>`</summary>
+<summary>**20. How do NVIDIA DALI and NeMo Curator reduce CPU data-loading bottlenecks alongside GPUDirect Storage?**</summary>
 
 NVIDIA DALI moves image and video decoding with `nvJPEG`. Augmentations onto the GPU inside a fused static graph, cutting host CPU load on an eight-core vision pipeline from 800 percent down to 200 percent. NVIDIA NeMo Curator runs offline deduplication, filtering, and tokenization across multi-GPU clusters, packing text into memory-mappable `.bin` and `.idx` shards so training only performs sequential binary reads.
 </details>

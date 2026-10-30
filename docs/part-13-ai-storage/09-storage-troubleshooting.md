@@ -574,121 +574,121 @@ Exercise 6 Input Data:
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. In the eight-layer AI storage troubleshooting decision tree, what is Gate 1, and what threshold separates compute or communication bottlenecks from storage I/O bottlenecks?`&lt;/strong>`</summary>
+<summary>**1. In the eight-layer AI storage troubleshooting decision tree, what is Gate 1, and what threshold separates compute or communication bottlenecks from storage I/O bottlenecks?**</summary>
 
 Gate 1 is GPU Streaming Multiprocessor utilization measured with `nvidia-smi dmon -s puctem`. If GPU SM utilization is 70 percent or higher, the job is compute-bound or NCCL-bound rather than storage-bound. If SM utilization sits below 70 percent or oscillates between idle and busy, move to Gate 2 and check `prefetch_queue.qsize()`.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. If GPU utilization is low (below 30 percent) but `prefetch_queue.qsize()` is full most of the time, which layers of the data path are suspect?`&lt;/strong>`</summary>
+<summary>**2. If GPU utilization is low (below 30 percent) but `prefetch_queue.qsize()` is full most of the time, which layers of the data path are suspect?**</summary>
 
 When the host batch queue is full yet the GPU is starving, the storage array and network are delivering data fast enough. The bottleneck sits downstream of storage fetch, either in slow DataLoader CPU collation or in CPU-to-GPU PCIe transfer overhead. Check for missing `pin_memory=True`, cross-socket NUMA placement, or inactive GPUDirect Storage.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. In the production incident walkthrough, why did `cProfile` showing 57.3 seconds of image decode and augmentation across 120,000 calls turn out not to be the root cause?`&lt;/strong>`</summary>
+<summary>**3. In the production incident walkthrough, why did `cProfile` showing 57.3 seconds of image decode and augmentation across 120,000 calls turn out not to be the root cause?**</summary>
 
 Because `prefetch_queue.qsize()` sat at zero 80 percent of the time while GPU SM utilization was stuck at 15 percent. If CPU decoding had been the real limiter after fast storage reads, raw file buffers would have queued up in host memory waiting on CPU threads. Instead, worker threads were blocked in kernel sleep waiting for network and filesystem RPCs before `Image.open` could even start.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. In that same incident, Lustre recorded 950,000 `open` calls in 1 minute (15.8K opens/sec) at 45 ms average latency. Why was `open` latency 22.5x above the 2 ms baseline when the MDS ceiling is 50,000 ops/sec?`&lt;/strong>`</summary>
+<summary>**4. In that same incident, Lustre recorded 950,000 `open` calls in 1 minute (15.8K opens/sec) at 45 ms average latency. Why was `open` latency 22.5x above the 2 ms baseline when the MDS ceiling is 50,000 ops/sec?**</summary>
 
 The `eth0` interface had a tiny 256-entry RX ring buffer and an oversubscribed switch fabric under five concurrent 128-GPU jobs. That bottleneck caused 1,240 receive errors and 856 dropped packets in 10 seconds. Every dropped metadata RPC triggered a TCP or LNet retransmission timeout that stretched a 2 ms MDS lookup into a 45 ms client stall.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. What two remediations resolved the 2-hour to 8-hour incident, and what metrics confirmed the fix?`&lt;/strong>`</summary>
+<summary>**5. What two remediations resolved the 2-hour to 8-hour incident, and what metrics confirmed the fix?**</summary>
 
 First, raising the NIC ring buffers with `ethtool -G eth0 rx 4096 tx 4096` cut local packet drops from 85.6 per second down to fewer than 5 per second. Second, reducing concurrent 128-GPU training jobs from 5 jobs (640 GPUs) to 3 jobs (384 GPUs) cleared the switch congestion. Retransmits fell from 300/sec to 0/sec, metadata latency dropped back to 2 ms, and GPU SM utilization rose from 15 percent to 88 percent.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. How does the batch-size halving and doubling experiment distinguish a communication-bound workload from a compute-bound workload when a 100 GB/s NIC shows 60 GB/s?`&lt;/strong>`</summary>
+<summary>**6. How does the batch-size halving and doubling experiment distinguish a communication-bound workload from a compute-bound workload when a 100 GB/s NIC shows 60 GB/s?**</summary>
 
 Gradient AllReduce byte volume depends only on model parameter count, not micro-batch size. When you halve the batch size, backward compute takes half as long. If NIC bandwidth stays pinned at 60 GB/s, the network caps throughput and the job is communication-bound. If NIC bandwidth drops to 40 GB/s, and doubling the batch size shrinks the AllReduce share from 50 percent to 33.33 percent, the job is compute-bound.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. What is the quantitative impact of switching NCCL from a topology-unaware PCIe path without overlap to a topology-aware NVLink path with compute-communication overlap?`&lt;/strong>`</summary>
+<summary>**7. What is the quantitative impact of switching NCCL from a topology-unaware PCIe path without overlap to a topology-aware NVLink path with compute-communication overlap?**</summary>
 
 According to *AI Systems Performance Engineering* Table 4-2, GPU SM busy utilization rises from 60 percent to 90 percent. Memory-stall warps drop substantially, and total iteration time falls by 30 percent, from 100 ms down to 70 ms.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. Which Nsight Systems CLI flags capture CUDA kernels, GPUDirect Storage transfers, NVTX ranges, and OS runtime syscalls in a single timeline?`&lt;/strong>`</summary>
+<summary>**8. Which Nsight Systems CLI flags capture CUDA kernels, GPUDirect Storage transfers, NVTX ranges, and OS runtime syscalls in a single timeline?**</summary>
 
 Run `nsys profile --trace=cuda,gds,nvtx,osrt -o report python train.py` (`untested here`). That command aligns NVTX markers like `"train_step"`, `"forward"`, `"backward"`, and `"optimizer_step"` with OS syscall stalls in `osrt`, direct DMA reads in `gds`, and GPU gaps in `cuda`.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Why should you use Perfetto and Holistic Trace Analysis instead of TensorBoard's PyTorch trace plugin or `chrome://tracing`?`&lt;/strong>`</summary>
+<summary>**9. Why should you use Perfetto and Holistic Trace Analysis instead of TensorBoard's PyTorch trace plugin or `chrome://tracing`?**</summary>
 
 Both TensorBoard's legacy PyTorch trace plugin and Chrome's built-in `chrome://tracing` viewer are deprecated. Perfetto provides a fast web UI and SQL query engine for inspecting Kineto JSON traces. Holistic Trace Analysis correlates traces across all ranks to separate single-node storage stragglers from multi-node NCCL waits.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. What are the expected healthy baseline numbers for a 25GbE storage link, single-client Lustre sequential read, metadata `open` rate, and per-operation metadata latency?`&lt;/strong>`</summary>
+<summary>**10. What are the expected healthy baseline numbers for a 25GbE storage link, single-client Lustre sequential read, metadata `open` rate, and per-operation metadata latency?**</summary>
 
 A healthy 25 Gbps link sustains 20 to 25 Gbps in `iperf3` with `MTU 9000` and a 4096-entry ring buffer. Single-client sequential read reaches 1.5 to 3.0 GB/s, and eight concurrent clients reach 3.0 to 5.0 GB/s aggregate. Metadata open rates below 50,000 ops/sec per MDS are healthy, whereas rates above 100,000 ops/sec are saturated. Per-operation metadata latency should sit between 2 and 5 ms rather than above 20 ms.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. In Volume 15 Lab 02, what are the four reference workload throughputs on a healthy local NVMe drive, and when should you cache models on local NVMe?`&lt;/strong>`</summary>
+<summary>**11. In Volume 15 Lab 02, what are the four reference workload throughputs on a healthy local NVMe drive, and when should you cache models on local NVMe?**</summary>
 
 Local NVMe reaches 3.5 GB/s on sequential model load, 2.8 GB/s on eight-job 64 KB batch streaming, 1.2 GB/s on 4 MB random reads, and 2.1 GB/s on sequential checkpoint writes. You should cache model weights and stage checkpoints on local NVMe whenever local NVMe throughput is more than 2x faster than shared storage.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How much critical-path training stall time does asynchronous local NVMe staging save on a 500 GB checkpoint if shared storage writes at 1.0 GB/s and NVMe staging writes 10x faster at 10.0 GB/s?`&lt;/strong>`</summary>
+<summary>**12. How much critical-path training stall time does asynchronous local NVMe staging save on a 500 GB checkpoint if shared storage writes at 1.0 GB/s and NVMe staging writes 10x faster at 10.0 GB/s?**</summary>
 
 Writing 500 GB synchronously to shared storage at 1.0 GB/s stalls every GPU for 500 seconds. Staging that 500 GB dump to local NVMe at 10.0 GB/s finishes the critical-path write in 50 seconds. That saves 450 seconds, or 9/10 (90.0 percent) of the GPU stall time while a background thread flushes the file to shared storage.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. What are the six prerequisites required for GPUDirect Storage to bypass the host CPU bounce buffer?`&lt;/strong>`</summary>
+<summary>**13. What are the six prerequisites required for GPUDirect Storage to bypass the host CPU bounce buffer?**</summary>
 
 First, the `nvidia_fs` kernel module must be loaded. Second, the NVIDIA GPU driver must be version 470 or newer. Third, the GPU and storage NIC or NVMe drive must share a PCIe switch or root complex (`PIX`, `PXB`, or verified `PHB`, never `SYS` or `NODE`). Fourth, the filesystem must use a kernel GDS client rather than user-space FUSE. Fifth, offsets and buffers must align to 4 KiB on NVMe-oF or 8 KiB on Lustre with transfer sizes of at least 1 MiB. Sixth, the application must call `cuFile` APIs such as `kvikio.CuFile`.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. In Lab 03 and `gdsio`, what throughput and latency numbers distinguish CPU bounce (`-x 2`) from direct GDS (`-x 0`), and what is the deployment threshold?`&lt;/strong>`</summary>
+<summary>**14. In Lab 03 and `gdsio`, what throughput and latency numbers distinguish CPU bounce (`-x 2`) from direct GDS (`-x 0`), and what is the deployment threshold?**</summary>
 
 In Lab 03, five 100 MiB Python CPU-bounce trials average 0.251 seconds, or 398 MB/s. In `gdsio`, the `-x 2` CPU bounce path reaches 8.0 GB/s at 1.25 ms latency and 85 percent host CPU load. The `-x 0` direct GDS path reaches 9.6 GB/s at 1.00 ms latency and 25 percent CPU load. That 20.0 percent throughput uplift and 20.0 percent latency drop meet the 20 percent threshold required to deploy GDS.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Which two runtime signals prove beyond doubt whether GDS is using direct DMA or silently falling back to POSIX compatibility mode?`&lt;/strong>`</summary>
+<summary>**15. Which two runtime signals prove beyond doubt whether GDS is using direct DMA or silently falling back to POSIX compatibility mode?**</summary>
 
 First, watch `/proc/driver/nvidia-fs/stats` during the read workload and verify that `Ops Read` and byte counters actively climb. Second, run `perf record -g` on the training process and confirm that `__memcpy_avx2` is absent at 0 percent. Silent POSIX compatibility fallback instead shows more than 20 percent of CPU samples inside `__memcpy_avx2`.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What is the 47-minute problem in AI storage, and how does repackaging into WebDataset `.tar` shards solve it?`&lt;/strong>`</summary>
+<summary>**16. What is the 47-minute problem in AI storage, and how does repackaging into WebDataset `.tar` shards solve it?**</summary>
 
 Opening a million individual 100 KB to 260 KB files at the start of every epoch saturates the parallel filesystem MDS above 50,000 to 100,000 opens per second. That metadata bottleneck wastes 47 minutes of idle GPU time per epoch while bulk data bandwidth sits unused. Repackaging those files into WebDataset `.tar`, TFRecord, or `.bin`/`.idx` shards holding 100 to 1,000 files each cuts `open` calls by 100x to 1,000x. Per-batch wait time drops from 620 ms to 31 ms, a 95 percent reduction.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. Why does setting `lfs setstripe -c 32` on a directory of small files degrade Lustre performance, and when should high stripe counts be used?`&lt;/strong>`</summary>
+<summary>**17. Why does setting `lfs setstripe -c 32` on a directory of small files degrade Lustre performance, and when should high stripe counts be used?**</summary>
 
 Setting `stripe_count = 32` on small files splits each tiny file across 32 OSTs. That layout multiplies MDS overhead and requires 32 separate OST RPCs and distributed locks for every read. Small and medium files should use a stripe count of 1 to 4, reserving stripe counts of 16 or higher strictly for multi-gigabyte shards and checkpoint files.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. How does Lustre OST fill imbalance (`OST 5..7` at 98 percent full vs `OST 0..4` at 30 percent full) cause training stalls and job failures even when the cluster is only 55 percent full overall?`&lt;/strong>`</summary>
+<summary>**18. How does Lustre OST fill imbalance (`OST 5..7` at 98 percent full vs `OST 0..4` at 30 percent full) cause training stalls and job failures even when the cluster is only 55 percent full overall?**</summary>
 
 When specific OSTs reach 95 to 98 percent full, their backing block allocators suffer severe fragmentation and high write latency. That slowdown throttles every striped file or checkpoint that touches those targets to the speed of the slowest OST. Once a target hits 100 percent, writes fail with `ENOSPC` or trigger client lock evictions even though other OSTs are 70 percent empty. Rebalance targets within 5 percent using `lfs_migrate`.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What `smartctl` and `iostat -xz` metrics indicate that a local NVMe scratch drive is thermal-throttling or failing in a RAID 0 array?`&lt;/strong>`</summary>
+<summary>**19. What `smartctl` and `iostat -xz` metrics indicate that a local NVMe scratch drive is thermal-throttling or failing in a RAID 0 array?**</summary>
 
 Thermal throttling appears when composite temperature reaches 70 C (warning) or 80 C and above (critical, such as 82 C). At the same time, `iostat -xz 1` shows 100 percent utilization and sequential read speed collapses from 3.5 GB/s down to 0.65 GB/s. Drive wear or failure appears when `Percentage Used` reaches 95 percent or higher, or when `Media and Data Integrity Errors` rises above zero, breaking an `mdadm` RAID 0 array.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Why must production NFS mounts on GPU clusters never use the `soft` mount option for checkpoints, and what causes `OSError: [Errno 116] Stale file handle` (`ESTALE`)?`&lt;/strong>`</summary>
+<summary>**20. Why must production NFS mounts on GPU clusters never use the `soft` mount option for checkpoints, and what causes `OSError: [Errno 116] Stale file handle` (`ESTALE`)?**</summary>
 
 Under transient network or server congestion, an NFS `soft` mount aborts in-flight RPCs after `timeo` and returns `EIO` to `write()`. That behavior silently truncates or corrupts `torch.save()` checkpoints. Always mount with `hard,rsize=1048576,wsize=1048576,noatime,actimeo=60,lookupcache=pos`. An `ESTALE` (`errno 116`) error happens when a file or directory inode on the NFS server is deleted and recreated while compute nodes still hold cached dentries.
 </details>

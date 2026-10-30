@@ -627,13 +627,13 @@ Summary: 25 passed, 0 failed
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. Why does running an LLM or vision pipeline in native PyTorch eager mode leave GPU Tensor Cores under-utilized in production?`&lt;/strong>`</summary>
+<summary>**1. Why does running an LLM or vision pipeline in native PyTorch eager mode leave GPU Tensor Cores under-utilized in production?**</summary>
 
 Eager mode dispatches each operator as a separate CUDA kernel from the host CPU and reads and writes every intermediate activation tensor back to High Bandwidth Memory. Kernel launch latencies and memory bandwidth round-trips stall the Streaming Multiprocessors. In the 70B production scenario, naive PyTorch caused GPU utilization to swing between 12 percent and 98 percent with a 115 ms Inter-Token Latency.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What are the five stages of the TensorRT compilation and runtime lifecycle?`&lt;/strong>`</summary>
+<summary>**2. What are the five stages of the TensorRT compilation and runtime lifecycle?**</summary>
 
 1. **Network parsing.** The parser converts an ONNX graph into an internal network definition.
 2. **Graph optimization.** Dead-code elimination, constant folding, vertical fusion, and horizontal fusion rewrite the graph.
@@ -643,109 +643,109 @@ Eager mode dispatches each operator as a separate CUDA kernel from the host CPU 
 </details>
 
 <details>
-<summary>`&lt;strong>`3. How does vertical Batch Normalization folding work mathematically during TensorRT graph compilation?`&lt;/strong>`</summary>
+<summary>**3. How does vertical Batch Normalization folding work mathematically during TensorRT graph compilation?**</summary>
 
 TensorRT folds Batch Normalization's running mean, variance, scale, and shift directly into the preceding layer's weight matrix and bias vector at compile time. Each output channel weight row is multiplied by `gamma / sqrt(sigma^2 + epsilon)`, and the bias is updated accordingly. This eliminates the separate BatchNorm kernel and its High Bandwidth Memory round-trip.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. How does horizontal fusion optimize Transformer Query, Key, and Value projections?`&lt;/strong>`</summary>
+<summary>**4. How does horizontal fusion optimize Transformer Query, Key, and Value projections?**</summary>
 
 Because the Query, Key, and Value projections all multiply the identical input hidden state, TensorRT horizontally concatenates the three weight matrices into a single combined matrix. This cuts three separate CUDA kernel launches down to one wider GEMM kernel and reads the input hidden state from memory only once.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. How does TensorRT's tactic profiler use the minimum, optimal, and maximum shapes in an optimization profile?`&lt;/strong>`</summary>
+<summary>**5. How does TensorRT's tactic profiler use the minimum, optimal, and maximum shapes in an optimization profile?**</summary>
 
 TensorRT validates runtime input dimensions against `kMIN` and `kMAX`, allocates internal activation and workspace buffers sized for `kMAX`, and empirically benchmarks CUDA kernel tactics specifically at `kOPT`. Setting `kOPT` to match median production traffic while bounding `kMAX` to realistic P99 shapes avoids both slow kernel selection and builder out-of-memory crashes.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Why did setting an unbounded 4096x4096 maximum shape at batch size 128 in FP32 crash an 80 GB A100 during engine compilation, and what fixed it?`&lt;/strong>`</summary>
+<summary>**6. Why did setting an unbounded 4096x4096 maximum shape at batch size 128 in FP32 crash an 80 GB A100 during engine compilation, and what fixed it?**</summary>
 
 A single FP32 activation tensor of that maximum shape requires 25,769,803,776 bytes, or 25.7 GB. Allocating several fused intermediate feature maps at that bound exceeded the 80 GB A100 memory capacity. Bounding the maximum shape to batch size 32 at 2048x2048 in FP16 and capping workspace at 4 GB finished the build in 4.2 minutes at 6.1 GB peak VRAM. It also cut median runtime latency from 48.0 ms to 11.3 ms.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. What happens if you set the builder workspace memory pool limit too low during compilation?`&lt;/strong>`</summary>
+<summary>**7. What happens if you set the builder workspace memory pool limit too low during compilation?**</summary>
 
 Many high-performance cuBLASLt, cuDNN, and CUTLASS split-K or tiled tactics require temporary scratch workspace to stage intermediate reductions. If the workspace limit on `MemoryPoolType::kWORKSPACE` is too small, the builder skips those fast tactics and falls back to slower memory-constrained kernels.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. Why is a compiled TensorRT `.engine` plan file not portable across different GPU architectures like A100 and H100?`&lt;/strong>`</summary>
+<summary>**8. Why is a compiled TensorRT `.engine` plan file not portable across different GPU architectures like A100 and H100?**</summary>
 
 TensorRT compiles native SASS machine assembly and auto-tunes warp tile sizes, shared-memory allocations, and Tensor Core instructions for the exact Streaming Multiprocessor microarchitecture, L2 cache size, and SM count of the build GPU. Loading an `sm_80` A100 binary on an `sm_90a` H100 GPU fails deserialization.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Why is `ICudaEngine` thread-safe while `IExecutionContext` is not, and how should a multi-threaded server manage them?`&lt;/strong>`</summary>
+<summary>**9. Why is `ICudaEngine` thread-safe while `IExecutionContext` is not, and how should a multi-threaded server manage them?**</summary>
 
 `ICudaEngine` holds immutable kernel bytecodes and constant weights, so one instance per GPU can be safely shared across all threads. `IExecutionContext` holds mutable per-inference state, including input and output tensor addresses (`setTensorAddress`) and scratch pointers. Concurrent calls on the same context corrupt pointers, so servers must allocate one `IExecutionContext` per worker thread or CUDA stream.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why does TensorRT use KL-divergence entropy calibration instead of absolute-maximum scaling for INT8 post-training quantization?`&lt;/strong>`</summary>
+<summary>**10. Why does TensorRT use KL-divergence entropy calibration instead of absolute-maximum scaling for INT8 post-training quantization?**</summary>
 
 Dividing by the absolute maximum stretches the 8-bit integer range to cover rare activation outliers, crushing the precision of the dense core distribution. `IInt8EntropyCalibrator2` collects 2,048-bin activation histograms and finds the clipping threshold that minimizes Kullback-Leibler divergence between the FP32 and quantized distributions.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How do Explicit Precision Q/DQ nodes and Implicit Calibration differ in TensorRT?`&lt;/strong>`</summary>
+<summary>**11. How do Explicit Precision Q/DQ nodes and Implicit Calibration differ in TensorRT?**</summary>
 
 Implicit calibration takes an FP32 network and lets TensorRT heuristically decide which layers run in INT8 using a calibrator cache. Explicit precision embeds Quantize and Dequantize nodes directly in the graph via ModelOpt or QAT. That gives engineers deterministic control over layer-by-layer precision while allowing TensorRT to fuse adjacent Quantize, GEMM, and Dequantize nodes into INT8 or FP8 kernels.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Why does Hopper and Blackwell FP8 quantization use E4M3 for weights and activations but E5M2 for gradients or dynamic-range-sensitive states?`&lt;/strong>`</summary>
+<summary>**12. Why does Hopper and Blackwell FP8 quantization use E4M3 for weights and activations but E5M2 for gradients or dynamic-range-sensitive states?**</summary>
 
 E4M3 uses 1 sign, 4 exponent, and 3 mantissa bits, dedicating an extra bit to the mantissa for higher numerical precision in forward matrix multiplications. E5M2 uses 1 sign, 5 exponent, and 2 mantissa bits, matching the 5-bit exponent range of IEEE FP16 to prevent underflow or overflow across wide dynamic ranges.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How does SmoothQuant solve the activation outlier problem in large language models?`&lt;/strong>`</summary>
+<summary>**13. How does SmoothQuant solve the activation outlier problem in large language models?**</summary>
 
 LLM activations often contain channel-specific outliers up to 100 times larger than normal channels, whereas weight channels are relatively uniform. SmoothQuant divides each activation channel by a per-channel smoothing scale and multiplies the corresponding weight channel by that same scale offline. That transformation produces balanced tensors that quantize cleanly to W8A8 INT8.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. When should you choose INT4 AWQ (W4A16) versus FP8 (W8A8) or Blackwell NVFP4 (W4A4)?`&lt;/strong>`</summary>
+<summary>**14. When should you choose INT4 AWQ (W4A16) versus FP8 (W8A8) or Blackwell NVFP4 (W4A4)?**</summary>
 
 Choose INT4 AWQ when GPU memory capacity is tight or when serving low-concurrency decode up to batch size 16, where HBM weight bandwidth is the bottleneck. Choose FP8 on Hopper or NVFP4 on Blackwell at higher concurrency of batch size 32 and above, where both weights and activations execute natively on 8-bit or 4-bit Tensor Cores without dequantization overhead.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. How does Blackwell's NVFP4 format maintain model accuracy at 4 bits per weight, and what hardware units accelerate it?`&lt;/strong>`</summary>
+<summary>**15. How does Blackwell's NVFP4 format maintain model accuracy at 4 bits per weight, and what hardware units accelerate it?**</summary>
 
 NVFP4 stores 0.5 bytes per parameter and uses two-level microscaling: an FP8 scale factor for every 16-element microblock combined with a per-tensor FP32 scale. Blackwell accelerates NVFP4 using fifth-generation Tensor Core PTX instructions (`tcgen05.mma`), a 256 KB per-SM Tensor Memory accumulator buffer, and the Tensor Memory Accelerator. That pipeline reaches 10 PFLOPS dense on B200 and 15 PFLOPS on B300.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How many AllReduce operations occur per Transformer layer in TensorRT-LLM Tensor Parallelism, and what is the byte volume formula?`&lt;/strong>`</summary>
+<summary>**16. How many AllReduce operations occur per Transformer layer in TensorRT-LLM Tensor Parallelism, and what is the byte volume formula?**</summary>
 
 Each Transformer layer executes **2 AllReduce-Sum operations**: one after the self-attention `RowParallelLinear` output projection, and one after the MLP `RowParallelLinear` down projection. The column-parallel QKV and Gate/Up projections require zero communication. Each AllReduce transfers `2 * ((TP - 1) / TP) * B * S * H * BytesPerElement` bytes per rank.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. How do FlashDecoding and XQA overcome low SM occupancy during single-token decode?`&lt;/strong>`</summary>
+<summary>**17. How do FlashDecoding and XQA overcome low SM occupancy during single-token decode?**</summary>
 
 During single-token decode, unsplit GQA attention on Llama-3-70B at 8-way Tensor Parallelism and batch size 4 launches only 4 thread blocks across an H100's 132 SMs, resulting in 3.03 percent occupancy. FlashDecoding splits the historical KV cache into 256-token chunks across SMs, launching 128 blocks at 8,192 tokens for 96.97 percent SM occupancy and up to an 8x speedup. Meanwhile, XQA packs all 8 grouped query heads per KV head into a single Tensor Core tile.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. How much KV cache memory does Llama-3-70B consume per token and per 4,096-token sequence in FP16 versus FP8?`&lt;/strong>`</summary>
+<summary>**18. How much KV cache memory does Llama-3-70B consume per token and per 4,096-token sequence in FP16 versus FP8?**</summary>
 
 With 80 layers, 8 KV heads, and head dimension 128, Llama-3-70B consumes 327,680 bytes, or 320.0 KB per token in FP16, which equals 1.31 GB per 4,096-token sequence. In FP8, it consumes 163,840 bytes, or 160.0 KB per token, which equals 0.65 GB per 4,096-token sequence—a 50 percent VRAM reduction.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Why did reducing `tokens_per_block` from 128 to 32 and lowering `kv_cache_free_gpu_memory_fraction` from 0.95 to 0.85 fix KV OOM crashes?`&lt;/strong>`</summary>
+<summary>**19. Why did reducing `tokens_per_block` from 128 to 32 and lowering `kv_cache_free_gpu_memory_fraction` from 0.95 to 0.85 fix KV OOM crashes?**</summary>
 
 At 128 tokens per block, a 129-token sequence allocates 2 blocks or 256 slots, wasting 127 slots for 49.61 percent internal fragmentation. Dropping to 32 tokens per block allocates 5 blocks or 160 slots, cutting waste to 31 slots or 19.38 percent. Lowering the free memory fraction from 0.95 to 0.85 reserves 15 percent of post-weight VRAM for prefill and FlashDecoding activation scratch space, scaling active sessions from 64 to 210.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Why must `decoupled: True` be set in Triton Inference Server's `config.pbtxt` when serving a `tensorrtllm` backend?`&lt;/strong>`</summary>
+<summary>**20. Why must `decoupled: True` be set in Triton Inference Server's `config.pbtxt` when serving a `tensorrtllm` backend?**</summary>
 
 Standard Triton request handling assumes a strict one-request-to-one-response transaction. Autoregressive LLM streaming emits one token response per decode iteration over Server-Sent Events or gRPC streams. Setting `decoupled: True` allows the C++ `GptManager` and `Executor` backend to flush generated tokens asynchronously as each iteration completes.
 </details>

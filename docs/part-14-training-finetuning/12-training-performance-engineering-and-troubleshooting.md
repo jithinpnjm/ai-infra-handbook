@@ -493,37 +493,37 @@ torchrun --nproc_per_node=4 train.py --resume-from ./checkpoints/epoch_3.pt
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. Why can a GPU show 99% to 100% utilization in `nvidia-smi` while achieving only 15% to 22% MFU?`&lt;/strong>`</summary>
+<summary>**1. Why can a GPU show 99% to 100% utilization in `nvidia-smi` while achieving only 15% to 22% MFU?**</summary>
 
 The utilization metric in `nvidia-smi` only measures the percentage of sampling intervals during which at least one CUDA kernel was active on any Streaming Multiprocessor. A GPU shows 100% utilization if it is executing thousands of tiny, unfused memory-bound kernels that leave the Tensor Cores mostly idle. It also shows 100% utilization when spinning inside a persistent NCCL collective wait kernel while waiting for a slow network link or straggler rank.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What is the formula for Model FLOPs Utilization (MFU) on a dense Transformer, and what MFU values indicate a healthy vs. broken LLM training run?`&lt;/strong>`</summary>
+<summary>**2. What is the formula for Model FLOPs Utilization (MFU) on a dense Transformer, and what MFU values indicate a healthy vs. broken LLM training run?**</summary>
 
 Using the six-N rule of thumb per token, achieved model FLOPs per second equals six times the non-embedding parameter count times tokens per second. MFU divides that achieved rate by the cluster's theoretical peak FLOPs per second. For LLM training, 40% to 50% MFU is considered excellent, whereas 15% to 20% MFU indicates a severe DataLoader, memory-bandwidth, or communication bottleneck.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Walk through the MFU calculation for a 70B model on 8 H100 SXM GPUs (989 TFLOPS dense BF16 each) at 3,200 tokens/sec versus 9,000 tokens/sec.`&lt;/strong>`</summary>
+<summary>**3. Walk through the MFU calculation for a 70B model on 8 H100 SXM GPUs (989 TFLOPS dense BF16 each) at 3,200 tokens/sec versus 9,000 tokens/sec.**</summary>
 
 Cluster peak throughput across 8 H100 SXM GPUs is 7,912 TFLOPS. At 3,200 tokens/sec before fixing the DataLoader, achieved throughput is 1,344 TFLOPS, yielding 16.99% MFU. After fixing the DataLoader so throughput reaches 9,000 tokens/sec, achieved compute rises to 3,780 TFLOPS. That raises MFU to 47.78%, a 2.8125x speedup.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. How does Hardware FLOPs Utilization (HFU) differ from MFU, and why is HFU higher when activation checkpointing is enabled?`&lt;/strong>`</summary>
+<summary>**4. How does Hardware FLOPs Utilization (HFU) differ from MFU, and why is HFU higher when activation checkpointing is enabled?**</summary>
 
 MFU counts only the mathematical operations required by the model's forward and backward definition. HFU counts the physical floating-point operations actually executed by the GPU hardware, including extra forward passes performed during activation recomputation. Under full activation checkpointing, hardware work rises from six-N to eight-N per token, so HFU equals eight-sixths of MFU. For the 70B run at 47.78% MFU, HFU reaches 63.70% at 5,040 TFLOPS.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. What is Goodput (and Meta's Effective Training Time Ratio), and how much money does a 64-GPU job waste over two weeks at 52% scaling efficiency?`&lt;/strong>`</summary>
+<summary>**5. What is Goodput (and Meta's Effective Training Time Ratio), and how much money does a 64-GPU job waste over two weeks at 52% scaling efficiency?**</summary>
 
 Goodput measures useful training work completed per unit of wall-clock time across the entire run. It discounts all time lost to data stalls, collective waits, checkpoint pauses, preemptions, and crash rollbacks. On a 64-GPU job at 52% scaling efficiency, you get 33.28 effective GPUs and waste 30.72 GPUs. Over a 336-hour two-week run, that wastes 10,321.92 GPU-hours, costing $41,287.68 to $51,609.60 at $4 to $5 per GPU-hour.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. In what order should a performance engineer investigate a slow distributed training job, and why?`&lt;/strong>`</summary>
+<summary>**6. In what order should a performance engineer investigate a slow distributed training job, and why?**</summary>
 
 Always work top-down from cheapest macro signals to micro profilers.
 1. **Level 1 (System metrics):** Check Prometheus, Grafana, DCGM, `nvidia-smi`, and `iostat` to rule out DataLoader starvation or thermal throttling in seconds.
@@ -532,85 +532,85 @@ Always work top-down from cheapest macro signals to micro profilers.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How do you distinguish a slow storage array from a slow Python DataLoader when GPUs sit at 30% utilization?`&lt;/strong>`</summary>
+<summary>**7. How do you distinguish a slow storage array from a slow Python DataLoader when GPUs sit at 30% utilization?**</summary>
 
 Low GPU utilization proves the GPUs are starved for data, not that the disk is slow. Run `iostat -x 1` to check physical disk utilization alongside Linux `perf report` and Nsight Systems. If disk utilization is low while a Python thread is pegged at 100% CPU inside `dataloader_iter_next` or augmentation code, the bottleneck is host preprocessing. Fix it by setting `num_workers=4` per GPU, `pin_memory=True`, `persistent_workers=True`, and GPU DALI augmentations.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. How do `torch.profiler` (Table 13-2) and Nsight Systems `nvtx_gpu_proj_sum` (Table 13-3) reconcile on the 138.0 ms 64-expert MoE step?`&lt;/strong>`</summary>
+<summary>**8. How do `torch.profiler` (Table 13-2) and Nsight Systems `nvtx_gpu_proj_sum` (Table 13-3) reconcile on the 138.0 ms 64-expert MoE step?**</summary>
 
 In `torch.profiler`, the top-10 CUDA operators sum to 138.00 ms across 320 kernel calls. GEMMs take 78.50 ms, MoE routing takes 30.80 ms, and the remaining six ops take 28.70 ms. In `nsys nvtx_gpu_proj_sum`, CUPTI projects those exact same kernels onto host NVTX ranges. Specifically, `forward` takes 60.5 ms, `backward` takes 58.3 ms, and `optimizer_step` takes 19.2 ms across all 64 per-expert `aten::add_` launches, summing to 138.0 ms.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. What Nsight Compute (`ncu`) metrics prove that a kernel is memory-bandwidth-bound versus compute-bound on the Roofline chart?`&lt;/strong>`</summary>
+<summary>**9. What Nsight Compute (`ncu`) metrics prove that a kernel is memory-bandwidth-bound versus compute-bound on the Roofline chart?**</summary>
 
 Query `sm__throughput.avg.pct_of_peak_sustained_elapsed` and Tensor Core pipe utilization in `ncu`. In Table 13-4, the baseline expert GEMM achieves 50% of peak FLOPS and 70% of peak HBM memory bandwidth at 60% occupancy, placing it on the sloped memory-bound Roofline. After fusing operations and tuning tile sizes, achieved FLOPS rises to 85% of peak while HBM bandwidth drops to 40% at 80% occupancy. That shift moves the kernel into the compute-bound regime.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why does `torch.compile(mode="max-autotune")` speed up a 64-expert MoE model by 30.24% (248.0 ms to 173.0 ms) compared to < 10% on a single-GEMM dense model?`&lt;/strong>`</summary>
+<summary>**10. Why does `torch.compile(mode="max-autotune")` speed up a 64-expert MoE model by 30.24% (248.0 ms to 173.0 ms) compared to < 10% on a single-GEMM dense model?**</summary>
 
 A 64-expert MoE step launches hundreds of small per-expert GEMMs, routing scatters and gathers, and elementwise operations, incurring heavy Python dispatch and HBM round-trip overhead. `torch.compile` fuses those elementwise subgraphs, autotunes Triton and cuBLAS templates, and replays CUDA Graph Trees, saving 75.0 ms for a 1.43x speedup. A single-GEMM dense model already spends most of its time inside one large Tensor Core cuBLAS kernel.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How does `PYTORCH_ALLOC_CONF` with `expandable_segments:True` save 168 MB (21.88%) on a 600 MB allocation, and why should shared CUDA Graph pools capture batch sizes in `[8, 4, 2, 1]` order?`&lt;/strong>`</summary>
+<summary>**11. How does `PYTORCH_ALLOC_CONF` with `expandable_segments:True` save 168 MB (21.88%) on a 600 MB allocation, and why should shared CUDA Graph pools capture batch sizes in `[8, 4, 2, 1]` order?**</summary>
 
 Under `roundup_power2_divisions`, the 512 to 1024 MB range is split into 2 buckets of 256 MB, rounding a 600 MB request up to 768 MB of reserved VRAM. Enabling `expandable_segments:True` maps virtual pages directly to 600 MB, saving 168 MB or 21.88%. For shared CUDA Graph pools, capturing in decreasing batch order `[8, 4, 2, 1]` allocates the maximum high-water-mark buffer on batch 8 first. Smaller batch graphs then reuse that buffer without extra allocations.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Why must you never call `init_process_group` or create NCCL subcommunicators inside the training step loop?`&lt;/strong>`</summary>
+<summary>**12. Why must you never call `init_process_group` or create NCCL subcommunicators inside the training step loop?**</summary>
 
 Initializing and destroying an NCCL communicator across ranks requires TCPStore rendezvous and ring or tree buffer allocation, costing 48.0 ms per iteration in Table 4-3. Around a 0.5 ms AllReduce, per-step initialization inflates iteration time from 0.5 ms to 48.5 ms, a 97.0x slowdown. Always create process groups and `new_group()` subcommunicators once before the training loop.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How do DDP and FSDP interact with `torch.compile` to preserve compute-communication overlap, and what gains do `SimpleFSDP` and `AsyncTP` achieve?`&lt;/strong>`</summary>
+<summary>**13. How do DDP and FSDP interact with `torch.compile` to preserve compute-communication overlap, and what gains do `SimpleFSDP` and `AsyncTP` achieve?**</summary>
 
 Both DDP at 25 MB bucket boundaries and block-wrapped FSDP insert intentional TorchDynamo graph breaks at collective boundaries. Each compiled block or bucket then overlaps its compute with the adjacent AllReduce, AllGather, or ReduceScatter. In TorchTitan, SimpleFSDP cuts peak memory by 28% and boosts throughput by 69% over eager FSDP2. Meanwhile, AsyncTP overlaps TP AllGathers with SM-wave matmuls to cut a 16.0 ms phase down to 12.6 ms.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. In a 64-node training job where Nsight Systems shows a 200 ms NCCL `Wait` state on 63 nodes during AllReduce, which node is the straggler and how do you fix it?`&lt;/strong>`</summary>
+<summary>**14. In a 64-node training job where Nsight Systems shows a 200 ms NCCL `Wait` state on 63 nodes during AllReduce, which node is the straggler and how do you fix it?**</summary>
 
 Because AllReduce is a synchronous barrier, the 63 nodes showing a 200 ms wait state are the fast nodes waiting at the barrier. The straggler is the single node, `node-14-straggler`, showing 0 ms of NCCL wait because its compute or PCIe transfer took 200 ms longer. Confirm hardware degradation on that node with `dmesg | grep -i "AER"` or pairwise `nccl-tests`. Then remove it from scheduling via `kubectl cordon node-14-straggler` or `scontrol`.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What causes MFU to stay steady at 45% for several hours and then gradually decline to 28% over the next day with no code or config changes?`&lt;/strong>`</summary>
+<summary>**15. What causes MFU to stay steady at 45% for several hours and then gradually decline to 28% over the next day with no code or config changes?**</summary>
 
 A gradual decline over hours points to dynamic hardware or environmental degradation rather than a static configuration error. The primary culprit is GPU thermal clock throttling. As rack or coolant temperatures rise above 83 to 85°C under sustained load, GPUs down-clock their Streaming Multiprocessors, lowering achieved TFLOPS while `nvidia-smi` utilization still reads 100%. Secondary culprits include a worsening ECC or NVLink straggler or synchronous checkpoint slowdown on a filling filesystem. Check `nvidia-smi -q -d TEMPERATURE,CLOCK` first.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. After a routine node reboot with no code changes, training throughput drops from 950 tokens/sec to 310 tokens/sec and `all_reduce_perf` drops from 800 GB/s to 90 GB/s (or 400 GB/s to 20 GB/s). What happened?`&lt;/strong>`</summary>
+<summary>**16. After a routine node reboot with no code changes, training throughput drops from 950 tokens/sec to 310 tokens/sec and `all_reduce_perf` drops from 800 GB/s to 90 GB/s (or 400 GB/s to 20 GB/s). What happened?**</summary>
 
 NCCL silently fell back from NVLink at 900 GB/s bidirectional per GPU to PCIe Gen4 x16 at roughly 32 GB/s per direction. That fallback happens when the `nvidia-fabricmanager` daemon fails to start after reboot, a physical NVLink bridge fails to train, or PCIe ACS is enabled in the BIOS. Verify by checking `nvidia-smi topo -m` for `PIX` instead of `NV#` and `systemctl status nvidia-fabricmanager`, then run `nvidia-smi -r` and restart Fabric Manager.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What causes a Mixture-of-Experts (MoE) job to run at 25% of expected throughput while every GPU sits uniformly at 40% to 50% utilization?`&lt;/strong>`</summary>
+<summary>**17. What causes a Mixture-of-Experts (MoE) job to run at 25% of expected throughput while every GPU sits uniformly at 40% to 50% utilization?**</summary>
 
 Uniformly low utilization across all ranks without a single hardware straggler is the signature of MoE AllToAll router collapse. Without a properly weighted load-balancing auxiliary loss, the gating network routes a disproportionate share of tokens to a few hot experts. The GPUs hosting those hot experts bottleneck computation and AllToAll communication while all other GPUs sit idle waiting for the synchronous collective to finish. Inspect `router_stats.pt` and restore the auxiliary load-balancing loss.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. According to Meta's 54-day Llama 3 405B pretraining reliability study (Table 4-4), what were the top root causes of unexpected job interruptions?`&lt;/strong>`</summary>
+<summary>**18. According to Meta's 54-day Llama 3 405B pretraining reliability study (Table 4-4), what were the top root causes of unexpected job interruptions?**</summary>
 
 Across 419 unexpected interruptions in 54 days, faulty GPUs caused 148 stops (30.1%) and GPU HBM3 memory caused 72 stops (17.2%). Those two categories alone caused 220 stops (47.3%), and all six GPU hardware categories combined caused 268 stops (64.0%). Software bugs caused 54 stops (12.9%), network switches and cables caused 35 stops (8.4%), unplanned host maintenance caused 32 stops (7.6%), and NCCL watchdog timeouts caused 7 stops (1.7%).
 </details>
 
 <details>
-<summary>`&lt;strong>`19. How does In-Network SHARP and NVLink SHARP (NVLS) reduce collective data volume, and what NCCL environment rule governs TCP socket threads?`&lt;/strong>`</summary>
+<summary>**19. How does In-Network SHARP and NVLink SHARP (NVLS) reduce collective data volume, and what NCCL environment rule governs TCP socket threads?**</summary>
 
 In a standard Ring ReduceScatter across N GPUs, each GPU receives `B * (N - 1) / N` bytes over `N - 1` hops. With SHARP in-network reduction, the switch aggregates data in the fabric and returns only `B / N` bytes to each GPU. That cuts per-endpoint receive traffic by a factor of `1 / (N - 1)` and yields 2x to 5x AllReduce speedups at scale. When tuning TCP socket transports, the product `NCCL_SOCKET_NTHREADS * NCCL_NSOCKS_PERTHREAD` must never exceed 64 connections per communicator.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Why must benchmarks include warmup iterations and statistical significance checks, and how does the PyTorch HUD CI gate avoid false alarms?`&lt;/strong>`</summary>
+<summary>**20. Why must benchmarks include warmup iterations and statistical significance checks, and how does the PyTorch HUD CI gate avoid false alarms?**</summary>
 
 Early iterations incur CUDA JIT compilation, caching allocator splits, and `torch.compile` or CUDA Graph capture overhead. Therefore, you must run 5 to 10 warmup steps for eager mode or 20 to 50 for compiled mode and synchronize with `torch.cuda.synchronize()` across at least 100 measured iterations. Accuracy comparisons require significance testing because a 0.5% drop at `p = 0.3` is noise whereas `p = 0.001` is a real bug. To avoid false alarms from transient noise, the PyTorch HUD CI gate requires a `>= 5%` throughput regression sustained across 3 consecutive runs.
 </details>

@@ -575,19 +575,19 @@ Exercise Input Parameters & Expected Verification Targets (code/part13/local_nvm
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. Why does the enterprise "stateless compute node, no local disks" rule break down for multi-epoch AI training and large-model checkpointing?`&lt;/strong>`</summary>
+<summary>**1. Why does the enterprise "stateless compute node, no local disks" rule break down for multi-epoch AI training and large-model checkpointing?**</summary>
 
 Multi-epoch training reads the exact same shards dozens to hundreds of times, and distributed checkpointing writes hundreds of gigabytes at once across every rank. Streaming hundreds of epochs, or writing a 500 GB checkpoint synchronously, saturates shared switch uplinks and the filesystem's metadata server. Caching shards on local PCIe NVMe drops the second and later epochs to near-zero network use, and local checkpoint staging cuts the stall from 417 seconds to about one second.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Under what four conditions should you bypass local NVMe dataset staging and stream directly from shared storage?`&lt;/strong>`</summary>
+<summary>**2. Under what four conditions should you bypass local NVMe dataset staging and stream directly from shared storage?**</summary>
 
 Skip local staging under any of four conditions. Shared storage already has headroom, under 50 to 60 percent link utilization with GPU utilization at 95 percent or higher. The dataset is too large to fit within 85 percent of local NVMe even after sharding. The job runs fewer epochs than the staging break-even point, as with a single-epoch pre-training run. Or nodes fail often and lack automated cache rehydration and Slurm Epilog cleanup.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. How are local NVMe drives partitioned across the two storage tiers on a DGX H100/H200 versus a DGX GB200/GB300 NVL72 compute tray?`&lt;/strong>`</summary>
+<summary>**3. How are local NVMe drives partitioned across the two storage tiers on a DGX H100/H200 versus a DGX GB200/GB300 NVL72 compute tray?**</summary>
 
 On a **DGX H100 or H200**, the first tier is two 1.92 TB M.2 drives in RAID 1 for 1.92 TB usable, holding the OS. The second tier is eight 3.84 TB U.2 drives in RAID 0 for 30.72 TB usable at about 50 GB per second read, mounted at `/raid`.
 
@@ -595,13 +595,13 @@ On a **DGX GB200 or GB300 NVL72** tray, the first tier is a single 1.92 TB M.2 d
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Why is `/raid` configured as RAID 0 rather than RAID 5 or RAID 6 on AI compute nodes?`&lt;/strong>`</summary>
+<summary>**4. Why is `/raid` configured as RAID 0 rather than RAID 5 or RAID 6 on AI compute nodes?**</summary>
 
 The `/raid` volume only ever holds ephemeral copies: cached shards whose golden source lives on shared storage, and checkpoints that get flushed to durable storage right away. RAID 0 gives it 100 percent usable capacity, or 30.72 TB on a DGX H100, and full bandwidth across every drive. None of RAID 5 or 6's parity overhead, read-modify-write latency, or GPUDirect Storage alignment problems get in the way.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. On an 8-drive `mdadm` RAID 0 array with a 512 KB chunk size and 4 KiB filesystem blocks, what are the full stripe width, XFS `sunit`, and XFS `swidth`?`&lt;/strong>`</summary>
+<summary>**5. On an 8-drive `mdadm` RAID 0 array with a 512 KB chunk size and 4 KiB filesystem blocks, what are the full stripe width, XFS `sunit`, and XFS `swidth`?**</summary>
 
 ```text
 Full stripe width = 8 x 512 KB = 4096 KB (4.0 MB)
@@ -611,13 +611,13 @@ XFS swidth        = 8 x 128 = 1024 blocks (formatted via: mkfs.xfs -f -d su=512k
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Why does a single 64 KB read achieve only 12.5% drive parallelism on an 8-drive, 512 KB-chunk RAID 0 array, and how do you reach 100% stripe utilization?`&lt;/strong>`</summary>
+<summary>**6. Why does a single 64 KB read achieve only 12.5% drive parallelism on an 8-drive, 512 KB-chunk RAID 0 array, and how do you reach 100% stripe utilization?**</summary>
 
 Each drive's chunk is 512 KB, so a 64 KB request fits entirely inside one drive's chunk, using only one of eight drives, or 12.5 percent of the array. Reaching 100 percent utilization takes an aligned read of at least 4.0 MB, spanning all eight drives. Enough concurrent requests in flight across eight or more data loader workers with a queue depth of 16 or higher also spread smaller reads across every drive at once.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How do you calculate the break-even epoch count for explicit dataset pre-staging?`&lt;/strong>`</summary>
+<summary>**7. How do you calculate the break-even epoch count for explicit dataset pre-staging?**</summary>
 
 Divide the upfront copy time by the time saved per epoch.
 
@@ -629,61 +629,61 @@ For a 500 GB dataset copied at 2.0 GB per second, the copy takes 250 seconds. Wh
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What causes a local NVMe cache hit rate to drop from 98.3% in Epoch 2 to 96.1% in Epoch 4, and how do you fix that degradation?`&lt;/strong>`</summary>
+<summary>**8. What causes a local NVMe cache hit rate to drop from 98.3% in Epoch 2 to 96.1% in Epoch 4, and how do you fix that degradation?**</summary>
 
 A 0.2 percent hit rate on the first epoch is a normal cold start, and hit rates above 97 percent on the second and third epochs show healthy warm caching. The drop to 96.1 percent on the fourth epoch means `/raid` has crossed 85 percent full and started evicting and garbage-collecting active shards mid-run. The fix is to keep `/raid` usage at or below 85 percent, shard the dataset across nodes with `DistributedSampler`, or switch from plain LFU eviction to deterministic shard pinning.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Why does synchronous writing of a 500 GB checkpoint to shared Lustre stall training for 417 seconds, and how does two-phase local NVMe staging achieve a 417x critical-path speedup?`&lt;/strong>`</summary>
+<summary>**9. Why does synchronous writing of a 500 GB checkpoint to shared Lustre stall training for 417 seconds, and how does two-phase local NVMe staging achieve a 417x critical-path speedup?**</summary>
 
 At 1.2 GB per second, writing 500 GB synchronously to Lustre blocks every GPU for about 417 seconds. Two-phase staging instead writes the checkpoint to local NVMe at 3.5 GB per second, taking about 143 seconds in the background. Meanwhile, the training loop only waits about one second for the memory handoff before resuming. A separate background thread then flushes the file from `/raid` to Lustre and deletes the local copy once that finishes.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why is filename-only cache lookup dangerous on `/raid`, and how does `manifest.json` prevent silent training corruption?`&lt;/strong>`</summary>
+<summary>**10. Why is filename-only cache lookup dangerous on `/raid`, and how does `manifest.json` prevent silent training corruption?**</summary>
 
 If an upstream pipeline updates a file on shared storage while a node's `/raid` cache still holds last week's copy under the same filename, training quietly mixes old and new data with no error raised. Storing each file's SHA-256 hash and byte size in a `manifest.json`, and checking that hash before trusting a cache hit, catches the staleness and forces a re-fetch.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. Which Linux `blk-mq` scheduler should be configured for AI NVMe workloads, and why should `bfq` or `cfq` be avoided?`&lt;/strong>`</summary>
+<summary>**11. Which Linux `blk-mq` scheduler should be configured for AI NVMe workloads, and why should `bfq` or `cfq` be avoided?**</summary>
 
 Use **`none`**, which sends requests straight to the hardware queues with no scheduling overhead, or **`mq-deadline`** when mixed read and write checkpoint traffic needs bounded write latency. Avoid `bfq` and the legacy `cfq` scheduler, both built around fairness heuristics and spinlocks for rotational hard drives, which only add overhead on NVMe.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How does `blockdev --setra 8192 /dev/md0` affect `read_ahead_kb`, and when should you raise versus lower read-ahead?`&lt;/strong>`</summary>
+<summary>**12. How does `blockdev --setra 8192 /dev/md0` affect `read_ahead_kb`, and when should you raise versus lower read-ahead?**</summary>
 
 The `blockdev --setra` command works in 512-byte sectors, so setting 8192 sectors sets `read_ahead_kb` to 4096 KB, matching a full 4 MB RAID 0 stripe instead of the 128 KB Linux default. Raise read-ahead to 4096 or 8192 KB for large sequential shard streaming. Keep it at 128 KB or lower for pure random `O_DIRECT` workloads like GPUDirect Storage or 3FS, which bypass the page cache anyway.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. Why must `/raid` always be mounted with the `noatime` option on AI training nodes?`&lt;/strong>`</summary>
+<summary>**13. Why must `/raid` always be mounted with the `noatime` option on AI training nodes?**</summary>
 
 Without `noatime`, the filesystem updates each file's last-access timestamp on disk every time it is read, which POSIX requires by default. Across millions of training reads, that turns an otherwise pure read-only workload into a mixed read-write one, wasting IOPS and adding unnecessary SSD wear.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. In Volume 15 Lab 02, what are the four benchmark workload profiles, and what NVMe-to-shared ratio justifies local caching?`&lt;/strong>`</summary>
+<summary>**14. In Volume 15 Lab 02, what are the four benchmark workload profiles, and what NVMe-to-shared ratio justifies local caching?**</summary>
 
 **Model Load**, a large sequential read, reaches about 3.5 GB per second on NVMe versus 1.5 to 3.0 GB per second on shared storage. **Batch Stream**, parallel medium-block reads, reaches about 2.8 GB per second on NVMe. **Random Read / Metadata Storm** reaches about 1.2 GB per second for 4 MB random reads, or over 50,000 operations per second for local metadata, versus just 1,000 to 5,000 on a shared metadata server. **Checkpoint Write** reaches 2.1 to 3.5 GB per second per writer on NVMe. A Model Load ratio above 2x justifies local caching and checkpoint staging.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What do `gdsio` transfer selectors `-x 2` and `-x 0` measure, and what improvement is typical when switching to GPUDirect Storage?`&lt;/strong>`</summary>
+<summary>**15. What do `gdsio` transfer selectors `-x 2` and `-x 0` measure, and what improvement is typical when switching to GPUDirect Storage?**</summary>
 
 Selector `-x 2` measures the traditional path through pinned host memory, reaching about 8.0 GB per second at 1.25 ms average latency. Selector `-x 0` measures GPUDirect Storage's direct DMA path from NVMe into GPU memory, reaching about 9.6 GB per second at 1.00 ms average latency. That switch delivers a 20 percent gain in both throughput and latency while also freeing the host CPU.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Why did DeepSeek's 3FS eliminate read page caching in favor of `O_DIRECT` RDMA reads across cluster NVMe drives?`&lt;/strong>`</summary>
+<summary>**16. Why did DeepSeek's 3FS eliminate read page caching in favor of `O_DIRECT` RDMA reads across cluster NVMe drives?**</summary>
 
 DeepSeek found that large-scale training and inference workloads perform huge numbers of random reads across terabytes of data, which thrashes the OS page cache and wastes CPU cycles on host memory copies. Bypassing the page cache with `O_DIRECT` and RDMA reads straight from each node's NVMe drives let 3FS sustain 6.6 TB per second across a 68-node cluster, peaking at 7.3 TB per second. It achieved that rate across nodes with ten 16 TB drives and dual 100 Gb/s links while serving 1.4 TB per second of background traffic, compared to about 1.1 TB per second on Ceph.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. How do you compute the TBW rating and expected lifespan of a 3.84 TB, 1.0 DWPD drive under a 2.5 TB/day workload with a WAF of 1.2?`&lt;/strong>`</summary>
+<summary>**17. How do you compute the TBW rating and expected lifespan of a 3.84 TB, 1.0 DWPD drive under a 2.5 TB/day workload with a WAF of 1.2?**</summary>
 
 ```text
 TBW      = 3.84 TB x 1.0 DWPD x 365 x 5 = 7,008.0 TB
@@ -693,19 +693,19 @@ Lifespan = 7,008.0 / (3.0 x 365) = 6.40 years
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Which four `nvme smart-log` metrics must be monitored on `/raid` drives, and what are their alert thresholds?`&lt;/strong>`</summary>
+<summary>**18. Which four `nvme smart-log` metrics must be monitored on `/raid` drives, and what are their alert thresholds?**</summary>
 
 Monitor **`percentage_used`** and alert at 90 percent or higher. Watch **`available_spare`**, warning at 15 percent and draining the node immediately at 10 percent or below. Check **`temperature`**, where normal operation is 35 to 55 degrees Celsius and 70 degrees Celsius or higher triggers 30 to 70 percent thermal throttling. Track **`media_errors`** and alert immediately on any value above zero, since RAID 0 has no parity to fall back on.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Why must per-job `/raid/job_$SLURM_JOB_ID` creation and teardown be enforced in Slurm Prolog and Epilog scripts rather than inside the user's training script?`&lt;/strong>`</summary>
+<summary>**19. Why must per-job `/raid/job_$SLURM_JOB_ID` creation and teardown be enforced in Slurm Prolog and Epilog scripts rather than inside the user's training script?**</summary>
 
 A `SIGKILL` from an out-of-memory event, a GPU hardware fault, node preemption, or a wall-clock timeout cannot be caught by user-space Python or bash cleanup code. Root-owned Slurm Epilog hooks run unconditionally after every job exit to delete the job's `/raid` directory, and Prolog hooks sweep stale orphans and enforce the 85 percent safe fill ceiling before admitting the next job.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. How do you isolate whether GPU data starvation comes from slow Python `DataLoader` transforms versus slow Host-to-Device transfers?`&lt;/strong>`</summary>
+<summary>**20. How do you isolate whether GPU data starvation comes from slow Python `DataLoader` transforms versus slow Host-to-Device transfers?**</summary>
 
 First benchmark the data loader alone with `num_workers=0` to measure pure Python read and decode time per batch. Then measure Host-to-Device transfer time separately. You can check the copy lane in Nsight Systems or wrap CUDA event timers around `.to(device, non_blocking=True)`. If Python transforms dominate, add workers, vectorize the code, offload to DALI, or pre-shard with NeMo Curator. If the transfer itself dominates, enable `pin_memory`, check NUMA locality, or switch to GPUDirect Storage.
 </details>

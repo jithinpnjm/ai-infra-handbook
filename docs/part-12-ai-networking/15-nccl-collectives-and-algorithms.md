@@ -651,102 +651,102 @@ NCCL_DEBUG=INFO NCCL_DEBUG_SUBSYS=INIT,TUNING torchrun --standalone --nproc_per_
 
 ## Checkpoint questions (20)
 
-<details><summary>`&lt;strong>`1. How does the three-question parallelism taxonomy distinguish Model Parallelism, State Sharding, and Data Parallelism, and which NCCL collectives does each use?`&lt;/strong>`</summary>
+<details><summary>**1. How does the three-question parallelism taxonomy distinguish Model Parallelism, State Sharding, and Data Parallelism, and which NCCL collectives does each use?**</summary>
 
 Ask three questions: does it split layer or sample computation, must a single sample cross devices, and does it require device-to-device collective communication? Model Parallelism answers Yes to all three. It uses AllReduce or AllGather plus ReduceScatter for TP and SP, Send and Recv for PP, and AllToAll for MoE EP. State Sharding and Data Parallelism answer No to the first two questions and Yes to the third, using AllGather and ReduceScatter for FSDP and AllReduce for DDP.
 </details>
 
-<details><summary>`&lt;strong>`2. Why is `AllReduce` mathematically equivalent to `ReduceScatter` followed by `AllGather`, and how does `FSDP` exploit this decomposition?`&lt;/strong>`</summary>
+<details><summary>**2. Why is `AllReduce` mathematically equivalent to `ReduceScatter` followed by `AllGather`, and how does `FSDP` exploit this decomposition?**</summary>
 
 ReduceScatter reduces $N$ rank inputs of size $S$ and leaves each rank with its reduced $S/N$ shard in $N - 1$ ring steps. AllGather then circulates those $N$ reduced shards in another $N - 1$ ring steps so every rank holds the full $S$-byte sum. FSDP separates these two halves by running ReduceScatter during backward to shard gradients. It defers AllGather until just before each layer's next forward or backward pass.
 </details>
 
-<details><summary>`&lt;strong>`3. Why is `NCCL`'s fused `AllReduce` faster than calling `Reduce` to rank `0` followed by `Broadcast` from rank `0`?`&lt;/strong>`</summary>
+<details><summary>**3. Why is `NCCL`'s fused `AllReduce` faster than calling `Reduce` to rank `0` followed by `Broadcast` from rank `0`?**</summary>
 
 An explicit Reduce plus Broadcast sequence funnels all $N$ tensors onto a single root rank, creating an incast and egress bottleneck at rank 0. It also requires $2(N-1)$ un-pipelined sequential steps. NCCL fuses AllReduce into a pipelined ReduceScatter plus AllGather ring or balanced Double Binary Tree, NVLS, or SHARP tree. All $N$ GPUs and links then transmit and receive in parallel.
 </details>
 
-<details><summary>`&lt;strong>`4. What are the `nccl-tests` `algbw`-to-`busbw` conversion formulas for `AllReduce`, `ReduceScatter`, `AllGather`, `AllToAll`, `Broadcast`, and `Reduce`?`&lt;/strong>`</summary>
+<details><summary>**4. What are the `nccl-tests` `algbw`-to-`busbw` conversion formulas for `AllReduce`, `ReduceScatter`, `AllGather`, `AllToAll`, `Broadcast`, and `Reduce`?**</summary>
 
 Given $\text`{algbw}` = S / t$, AllReduce uses $\text`{busbw}` = \text`{algbw}` \times \frac`{2(N - 1)}``{N}`$ (1.0x at $N=2$, 1.5x at $N=4$, 1.75x at $N=8$, 1.9722x at $N=72$). ReduceScatter, AllGather, and AllToAll use $\text`{busbw}` = \text`{algbw}` \times \frac`{N - 1}``{N}`$ (0.5x at $N=2$, 0.75x at $N=4$, 0.875x at $N=8$). Broadcast and Reduce use $\text`{busbw}` = \text`{algbw}` \times 1.0$.
 </details>
 
-<details><summary>`&lt;strong>`5. In `DAI` Ch 2's `allreduce_microbench.py` (`2` GPUs, `100 MiB` per GPU, `50` iterations in `0.248 s`), why do `algbw` and `busbw` both equal `40,322.58 MB/s` (`39.38 GB/s`)?`&lt;/strong>`</summary>
+<details><summary>**5. In `DAI` Ch 2's `allreduce_microbench.py` (`2` GPUs, `100 MiB` per GPU, `50` iterations in `0.248 s`), why do `algbw` and `busbw` both equal `40,322.58 MB/s` (`39.38 GB/s`)?**</summary>
 
 For $N = 2$ GPUs, the ring factor $\frac`{2(N - 1)}``{N}`$ equals 1.0. Thus `alg_bytes` ($100\text`{ MiB}` \times 2 \times 50 = 10,000\text`{ MiB}` = 9.765625\text`{ GiB}`$) equals `bus_bytes`. Dividing by 0.248 s yields 40,322.58 MB/s (39.38 GB/s) for both metrics, whereas at $N = 4$ GPUs bus bandwidth becomes 1.5x algorithm bandwidth.
 </details>
 
-<details><summary>`&lt;strong>`6. How is Model FLOPS Utilization (`MFU`) calculated for a `70B` transformer training on `H100` GPUs (`DAI` Ch 2)?`&lt;/strong>`</summary>
+<details><summary>**6. How is Model FLOPS Utilization (`MFU`) calculated for a `70B` transformer training on `H100` GPUs (`DAI` Ch 2)?**</summary>
 
 Using the dense transformer rule of `~6 * N_params` FLOPs per token across forward and backward passes, a 70B model executing 860 TFLOP per step in 2.0 seconds achieves $860 / 2.0 = 430\text`{ TFLOPS}`$. Dividing by the H100 dense BF16 peak of 989 TFLOPS yields $\text`{MFU}` = 430 / 989 \approx 43.48\%$ (roughly 43%). That sits cleanly within the 40% to 60% target band for well-tuned clusters.
 </details>
 
-<details><summary>`&lt;strong>`7. How does `NCCL`'s `Double Binary Tree` algorithm solve both the linear hop latency of `Ring` and the `50%` leaf underutilization of a simple binary tree?`&lt;/strong>`</summary>
+<details><summary>**7. How does `NCCL`'s `Double Binary Tree` algorithm solve both the linear hop latency of `Ring` and the `50%` leaf underutilization of a simple binary tree?**</summary>
 
 A Ring takes $2(N-1)$ sequential steps, which stalls small and medium messages at scale. A single binary tree cuts steps to $2\lceil\log_2 N\rceil$, but its $N/2$ leaf ranks only send during Reduce and only receive during Broadcast. NCCL builds two complementary binary trees over the same $N$ GPUs by swapping leaf and interior roles between even and odd ranks. Splitting the payload 50/50 lets every rank transmit and receive simultaneously in logarithmic steps.
 </details>
 
-<details><summary>`&lt;strong>`8. On a `72`-GPU `GB200 NVL72` rack, how many sequential steps does a single reduction pass take in a `Ring` versus a `Tree`, and why should `Tree` or `NVLSTree` be favored when congestion appears?`&lt;/strong>`</summary>
+<details><summary>**8. On a `72`-GPU `GB200 NVL72` rack, how many sequential steps does a single reduction pass take in a `Ring` versus a `Tree`, and why should `Tree` or `NVLSTree` be favored when congestion appears?**</summary>
 
 On 72 GPUs, a one-way Ring reduction pass traverses 71 sequential hops (142 steps for full AllReduce). A binary Tree requires only $\lfloor\log_2(72)\rfloor = 6$ to $\lceil\log_2(72)\rceil = 7$ steps (12 to 14 steps for full AllReduce). Using Tree or NVLSTree avoids routing all traffic along a single 71-hop loop and runs independent branch reductions in parallel across the NVSwitch fabric.
 </details>
 
-<details><summary>`&lt;strong>`9. How do `CollNetDirect`, `CollNetChain`, and `Parallel Aggregated Tree` (`PAT`) differ in `NCCL`?`&lt;/strong>`</summary>
+<details><summary>**9. How do `CollNetDirect`, `CollNetChain`, and `Parallel Aggregated Tree` (`PAT`) differ in `NCCL`?**</summary>
 
 CollNetDirect and CollNetChain are hierarchical two-level collectives that aggregate intra-node traffic and send leader traffic into InfiniBand SHARP switch trees. CollNetDirect uses dense direct peer exchange within the node, while CollNetChain orders local GPUs in a forward-reduce and reverse-broadcast chain. PAT is a pipelined hybrid of Ring and Tree that interleaves staggered tree ReduceScatter and AllGather chunks across multiple CUDA streams. It achieves $O(\log_2 N)$ startup latency with near-ring bandwidth saturation.
 </details>
 
-<details><summary>`&lt;strong>`10. Derive the exact `1 / (N - 1)` per-endpoint byte reduction provided by in-network `SHARP` and `NVLink SHARP` (`NVLS`) for `ReduceScatter` and `AllGather`.`&lt;/strong>`</summary>
+<details><summary>**10. Derive the exact `1 / (N - 1)` per-endpoint byte reduction provided by in-network `SHARP` and `NVLink SHARP` (`NVLS`) for `ReduceScatter` and `AllGather`.**</summary>
 
 In a standard $N$-GPU Ring, each GPU receives $B\frac`{N-1}``{N}`$ bytes during ReduceScatter and sends $B\frac`{N-1}``{N}`$ bytes during AllGather across $N - 1$ hops. With SHARP or NVLS switch reduction, the switch aggregates data in silicon and returns only $B / N$ bytes to each GPU in ReduceScatter. With NVLS hardware multicast, each GPU sends its $B / N$ shard once in AllGather. Dividing $B / N$ by $B(N - 1) / N$ gives $\frac`{1}``{N - 1}`$ (`1/7` on 8 GPUs, `1/71` on 72 GPUs), and overlapping NVLS AllGather with ReduceScatter cuts phase time by roughly `1/2`.
 </details>
 
-<details><summary>`&lt;strong>`11. Compare `NCCL`'s `LL`, `LL128`, and `Simple` protocols in terms of packet size, flag overhead, framing efficiency, and memory fencing.`&lt;/strong>`</summary>
+<details><summary>**11. Compare `NCCL`'s `LL`, `LL128`, and `Simple` protocols in terms of packet size, flag overhead, framing efficiency, and memory fencing.**</summary>
 
 LL writes an 8-byte atomic unit (4 B payload plus 4 B flag for 50.0% efficiency) and polls L2 cache with no memory fence for tiny messages up to 64 KiB. LL128 writes a 128-byte atomic unit (120 B payload plus 8 B flag for 93.75% efficiency) with fence-free polling for small-to-medium messages on NVLink and PCIe. Simple streams bulk DMA slices into `NCCL_BUFFSIZE` (4 MiB default, 100.0% framing efficiency) but requires a full `__threadfence_system()` per slice. That makes Simple optimal for large messages above 4 to 16 MiB.
 </details>
 
-<details><summary>`&lt;strong>`12. How does persistent user buffer registration (`ncclCommRegister` + `ncclMemAlloc`) achieve zero-copy collectives, and what two symmetry rules must hold?`&lt;/strong>`</summary>
+<details><summary>**12. How does persistent user buffer registration (`ncclCommRegister` + `ncclMemAlloc`) achieve zero-copy collectives, and what two symmetry rules must hold?**</summary>
 
 Registering persistent device buffers allocated via `ncclMemAlloc` with `ncclCommRegister` lets NCCL read and write user tensors directly without copying through internal `NCCL_BUFFSIZE` bounce buffers. That reduces active communication channels from 16 SM blocks down to 4, freeing 12 SMs for compute. Two rules must hold: if any rank registers its buffer, all ranks in the communicator must register buffers. In addition, for symmetric algorithms the byte offset from the buffer head must match across all ranks.
 </details>
 
-<details><summary>`&lt;strong>`13. Why does `PyTorch` `DistributedDataParallel` (`DDP`) outperform `nn.DataParallel` (`DP`) by `33.33%` (`30.0 ms` vs `45.0 ms` in `ASP` Ch 4), and how does `bucket_cap_mb` work?`&lt;/strong>`</summary>
+<details><summary>**13. Why does `PyTorch` `DistributedDataParallel` (`DDP`) outperform `nn.DataParallel` (`DP`) by `33.33%` (`30.0 ms` vs `45.0 ms` in `ASP` Ch 4), and how does `bucket_cap_mb` work?**</summary>
 
 `nn.DataParallel` is single-process and multi-threaded, so it suffers from Python GIL serialization, gathers all outputs and gradients synchronously onto GPU 0, and cannot overlap communication with backward compute (45.0 ms). DDP runs one process per GPU without GIL contention and groups gradients into 25 MiB buckets (`bucket_cap_mb = 25`). Autograd hooks launch asynchronous NCCL AllReduce calls on a background stream as soon as each bucket fills, cutting step time to 30.0 ms (33.33% faster).
 </details>
 
-<details><summary>`&lt;strong>`14. What is the performance penalty of accidentally using the `Gloo` backend instead of `NCCL` for a `400 MB` `AllReduce` on `800 Gb/s` InfiniBand?`&lt;/strong>`</summary>
+<details><summary>**14. What is the performance penalty of accidentally using the `Gloo` backend instead of `NCCL` for a `400 MB` `AllReduce` on `800 Gb/s` InfiniBand?**</summary>
 
 Gloo stages tensors through CPU memory and TCP sockets, taking 200.00 ms (2.0 GB/s) with 100% CPU utilization while GPUs sit idle. Switching to `backend="nccl"` with GPUDirect RDMA completes the same 400 MB AllReduce in 4.00 ms (100.0 GB/s). That is a 50x speedup running at the full 800 Gb/s line rate.
 </details>
 
-<details><summary>`&lt;strong>`15. Why must `init_process_group` / `ncclCommInitRank` never be called inside the training loop, and what is the rule for `NCCL_SOCKET_NTHREADS * NCCL_NSOCKS_PERTHREAD`?`&lt;/strong>`</summary>
+<details><summary>**15. Why must `init_process_group` / `ncclCommInitRank` never be called inside the training loop, and what is the rule for `NCCL_SOCKET_NTHREADS * NCCL_NSOCKS_PERTHREAD`?**</summary>
 
 Communicator initialization performs all-to-all handshakes, topology discovery, and buffer allocation. Calling it in the loop adds 48.0 ms per iteration on 2 GPUs compared to 0.5 ms for a small AllReduce (98.97% overhead). You should initialize once at startup and use `dist.new_group()` or `ncclGroupStart()` and `ncclGroupEnd()` for subgroups. For TCP socket transport, the product `NCCL_SOCKET_NTHREADS * NCCL_NSOCKS_PERTHREAD` must not exceed 64.
 </details>
 
-<details><summary>`&lt;strong>`16. Why should you pair per-NUMA process binding (`numactl`) with `NCCL_IGNORE_CPU_AFFINITY=1`?`&lt;/strong>`</summary>
+<details><summary>**16. Why should you pair per-NUMA process binding (`numactl`) with `NCCL_IGNORE_CPU_AFFINITY=1`?**</summary>
 
 When a launcher or `taskset` pins a GPU process to a narrow CPU core mask, NCCL's internal proxy and polling threads inherit that narrow mask. They can then collapse onto a single CPU core. Binding each rank to its GPU's local NUMA domain (GPUs 0-3 on NUMA 0, GPUs 4-7 on NUMA 1) and setting `NCCL_IGNORE_CPU_AFFINITY=1` allows NCCL to spread its worker threads across the available cores within that local NUMA node.
 </details>
 
-<details><summary>`&lt;strong>`17. How does `UCX`/`RDMA` GPU memory fragmentation manifest in `PyTorch`, and how do you detect it?`&lt;/strong>`</summary>
+<details><summary>**17. How does `UCX`/`RDMA` GPU memory fragmentation manifest in `PyTorch`, and how do you detect it?**</summary>
 
 PyTorch's caching allocator retains freed GPU blocks across iterations in `torch.cuda.memory_reserved()` rather than returning them to the OS or UCX RDMA registration pool. When allocating and freeing varying tensor sizes (40 MB and 200 MB after an initial 0.800 GB buffer), `memory_allocated()` drops to 0.000 GB. Meanwhile, `memory_reserved()` climbs from 0.800 GB to 1.040 GB and 1.240 GB, exhausting RDMA registration pins. Detect it by logging `memory_reserved()` against `memory_allocated()` and mitigate it with persistent pre-allocated buffers.
 </details>
 
-<details><summary>`&lt;strong>`18. In Meta's `54`-day `Llama 3 405B` pretraining study (`419` unexpected interruptions), what share of failures came from GPUs vs network switches/cables, NICs, and `NCCL` watchdog timeouts?`&lt;/strong>`</summary>
+<details><summary>**18. In Meta's `54`-day `Llama 3 405B` pretraining study (`419` unexpected interruptions), what share of failures came from GPUs vs network switches/cables, NICs, and `NCCL` watchdog timeouts?**</summary>
 
 Out of 419 unexpected interruptions, faulty GPUs caused 148 (30.1%), GPU HBM3 caused 72 (17.2%), and software bugs caused 54 (12.9%). Network switches and cables caused 35 (8.4%), unplanned host maintenance caused 32 (7.6%), GPU SRAM caused 19 (4.5%), GPU system processors caused 17 (4.1%), NICs caused 7 (1.7%), and NCCL watchdog timeouts caused 7 (1.7%). Because NCCL collectives are synchronous, even a single degraded cable or GPU stalls all ranks until `TORCH_NCCL_ASYNC_ERROR_HANDLING=1` aborts the job.
 </details>
 
-<details><summary>`&lt;strong>`19. How does `4`-wave scheduling (`18` GPUs/wave) prevent `NVSwitch` congestion during a `72`-GPU `AllToAll` on `GB200 NVL72`?`&lt;/strong>`</summary>
+<details><summary>**19. How does `4`-wave scheduling (`18` GPUs/wave) prevent `NVSwitch` congestion during a `72`-GPU `AllToAll` on `GB200 NVL72`?**</summary>
 
 Each Blackwell GPU in an NVL72 rack has 18 NVLink 5 links (roughly 100 GB/s each for 1.8 TB/s total). If all 72 GPUs execute an AllToAll simultaneously, each GPU receives from 71 peers at once and oversubscribes its 18 ports nearly fourfold. Splitting the collective into 4 staggered waves of 18 GPUs (`72 / 4 = 18`) ensures at most 18 GPUs transmit to any receiver at one instant, matching its 18-port capacity without switch queueing.
 </details>
 
-<details><summary>`&lt;strong>`20. Walk through the `NIXL` `0.5.x` C++ transfer lifecycle and its measured TTFT and throughput speedups in `NVIDIA Dynamo`.`&lt;/strong>`</summary>
+<details><summary>**20. Walk through the `NIXL` `0.5.x` C++ transfer lifecycle and its measured TTFT and throughput speedups in `NVIDIA Dynamo`.**</summary>
 
 First, create source and destination agents (`nixlAgent`) configured with the UCX backend. Second, build `nixl_desc_t` descriptors for `VRAM_SEG`, register them via `registerMem`, and strip metadata via `trim()`. Third, prepare and submit a non-blocking write via `prepXfer` and `postXfer`, poll `checkXfer(reqHandle)` until completion, and clean up via `releaseReqH` and `deregisterMem`. NIXL delivers a 14x TTFT speedup on x86 H100 KV offload, 2x faster TTFT on GH200 over x86 H100, and 30x higher throughput in NVIDIA Dynamo on a 680B LLM across a 72-GPU NVL72 rack.
 </details>

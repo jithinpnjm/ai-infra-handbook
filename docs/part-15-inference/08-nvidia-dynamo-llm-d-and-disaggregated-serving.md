@@ -741,31 +741,31 @@ Summary: 25 passed, 0 failed
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. Why does colocating prefill and decode on the same GPU cause head-of-line blocking and degrade TPOT?`&lt;/strong>`</summary>
+<summary>**1. Why does colocating prefill and decode on the same GPU cause head-of-line blocking and degrade TPOT?**</summary>
 
 Prefill is compute bound and processes all prompt tokens in parallel through large matrix multiplications, whereas decode is memory-bandwidth bound and generates one token per step. When a long prompt arrives on a colocated GPU, its heavy prefill GEMMs monopolize the Tensor Cores and stall ongoing decode iterations for hundreds of milliseconds, spiking inter-token latency for every active user.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. How is Goodput defined in LLM serving, and why did the colocated GPU in the DistServe benchmark achieve only 1.6 RPS of goodput despite reaching 3.0 RPS on TTFT?`&lt;/strong>`</summary>
+<summary>**2. How is Goodput defined in LLM serving, and why did the colocated GPU in the DistServe benchmark achieve only 1.6 RPS of goodput despite reaching 3.0 RPS on TTFT?**</summary>
 
 Goodput counts only the completed requests per second that simultaneously satisfy both the TTFT and TPOT Service Level Objectives. In the DistServe benchmark, `P90 TTFT <= 400 ms`, `P90 TPOT <= 40 ms`, the colocated GPU sustained 3.0 RPS under the TTFT target alone, but prefill-decode interference caused TPOT violations above 1.6 RPS. Thus, `min(3.0, 1.6) = 1.6 RPS/GPU`.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. How do you calculate the per-GPU goodput of the disaggregated 2P1D pool (`2` prefill GPUs at `5.6 RPS` each and `1` decode GPU at `10.0 RPS`), and what speedup does it achieve over the colocated baseline?`&lt;/strong>`</summary>
+<summary>**3. How do you calculate the per-GPU goodput of the disaggregated 2P1D pool (`2` prefill GPUs at `5.6 RPS` each and `1` decode GPU at `10.0 RPS`), and what speedup does it achieve over the colocated baseline?**</summary>
 
 Two prefill GPUs at 5.6 RPS each provide `2 * 5.6 = 11.2 RPS` of total prefill capacity, while the single decode GPU provides 10.0 RPS. The cluster goodput across all three GPUs is `min(11.2, 10.0) = 10.0 RPS`. Dividing by 3 GPUs gives `10.0 / 3 = 3.33 RPS/GPU`, reported as 3.3 RPS/GPU, which is a 2.08x improvement over the colocated 1.6 RPS/GPU baseline.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. What are the MLPerf Inference v5.0 (2025) p99 TTFT and TPOT latency targets for Llama-2-70B and Llama-3.1-405B?`&lt;/strong>`</summary>
+<summary>**4. What are the MLPerf Inference v5.0 (2025) p99 TTFT and TPOT latency targets for Llama-2-70B and Llama-3.1-405B?**</summary>
 
 MLPerf Inference v5.0 specifies a 99th-percentile SLO of 450 ms TTFT and 40 ms TPOT for Llama-2-70B, and 6,000 ms, 6 seconds, TTFT and 175 ms TPOT for Llama-3.1-405B.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. What are the four core architectural components of NVIDIA Dynamo, and what role does each play?`&lt;/strong>`</summary>
+<summary>**5. What are the four core architectural components of NVIDIA Dynamo, and what role does each play?**</summary>
 
 1. **Smart Router:** Routes requests based on prefix cache locality, queue depth, KV occupancy, and memory bandwidth, and decides whether to offload prefill remotely.
 2. **GPU Planner:** Monitors real-time TTFT/TPOT SLOs and queue depths to autoscale or flip workers between prefill and decode roles.
@@ -774,43 +774,43 @@ MLPerf Inference v5.0 specifies a 99th-percentile SLO of 450 ms TTFT and 40 ms T
 </details>
 
 <details>
-<summary>`&lt;strong>`6. How do `etcd` and NATS divide control-plane responsibilities inside an NVIDIA Dynamo cluster?`&lt;/strong>`</summary>
+<summary>**6. How do `etcd` and NATS divide control-plane responsibilities inside an NVIDIA Dynamo cluster?**</summary>
 
 Dynamo uses etcd for service discovery, worker health leases, and exchanging NIXL memory registration descriptors at startup. It uses NATS as the low-latency distributed message bus for publishing KV cache allocation/eviction events to the Smart Router and dispatching RemotePrefillRequest tasks through the global prefill queue.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Why does NVIDIA Dynamo use a decode-centric request ingress design where requests arrive at a decode worker first?`&lt;/strong>`</summary>
+<summary>**7. Why does NVIDIA Dynamo use a decode-centric request ingress design where requests arrive at a decode worker first?**</summary>
 
 Prefill workers are already compute saturated executing dense prompt matrix multiplications. Having decode workers handle client I/O, session state, KV block allocation. The should_offload_prefill() check keeps prefill workers focused purely on compute and allows the decode worker to immediately run prefill locally whenever the prompt is short or the prefill pool is full.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. How does `should_offload_prefill()` use `prompt_length`, `prefix_cached_length`, `prefill_queue_size`, and `decode_active_reqs` to make a conditional disaggregation decision?`&lt;/strong>`</summary>
+<summary>**8. How does `should_offload_prefill()` use `prompt_length`, `prefix_cached_length`, `prefill_queue_size`, and `decode_active_reqs` to make a conditional disaggregation decision?**</summary>
 
 It first computes `eff_len = max(0, prompt_length - prefix_cached_length)`. It offloads prefill to the remote prefill pool. `eff_len >= 256` and prefill_queue_size < 10, or if the local decode GPU is busy, `decode_active_reqs >= 8`, `eff_len >= 64`, and the prefill queue has room, < 10. Otherwise, it runs prefill locally on the decode GPU.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. In Dynamo's five-factor `latency_cost` equation, what are the weights for KV occupancy, active requests, exact cache match, memory bandwidth, and recent prefix use?`&lt;/strong>`</summary>
+<summary>**9. In Dynamo's five-factor `latency_cost` equation, what are the weights for KV occupancy, active requests, exact cache match, memory bandwidth, and recent prefix use?**</summary>
 
 The composite cost is 3.0 * occupancy_percent + 1.0 * active_reqs - 10.0 * int, cache_match_flag, + 0.5 * mem_bw_percent - 1.0 * int, recent_prefix_flag. Positive weights penalize high HBM occupancy, active request queues, and memory bus saturation, while negative weights, `-10.0` and `-1.0`, strongly favor workers with cached or warm prefixes.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. How does Dynamo GPU Planner adapt when a cluster shifts from document summarization to chain-of-thought reasoning, and how does `QoSController` protect SLOs under overload?`&lt;/strong>`</summary>
+<summary>**10. How does Dynamo GPU Planner adapt when a cluster shifts from document summarization to chain-of-thought reasoning, and how does `QoSController` protect SLOs under overload?**</summary>
 
 During summarization surges, long prompts, short outputs, the GPU Planner scales up or reallocates GPUs to the prefill pool, `queue_length >= 8` or `gpu_utilization >= 80%`. During reasoning surges, short prompts, long outputs, it shifts GPUs to the decode pool, `queue_length >= 16` or `kv_cache_usage >= 75%`. When `est_ttft = Q_p * t_p + Q_d * t_d` exceeds 500 ms, QoSController rejects low-priority requests early while preserving reserved capacity, 10% premium, 30% standard.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How does NIXL differ from NCCL in communication pattern, synchronization semantics, and supported memory tiers?`&lt;/strong>`</summary>
+<summary>**11. How does NIXL differ from NCCL in communication pattern, synchronization semantics, and supported memory tiers?**</summary>
 
 NCCL is designed for synchronous many-to-many group collectives, AllReduce, AllGather, across GPU HBM where all ranks hit a barrier together. NIXL is designed for asynchronous, nonblocking one-to-one or one-to-few point-to-point transfers. Heterogeneous tiers, GPU VRAM, CPU DRAM, local NVMe SSD via GDS, and remote object/file storage, without stalling compute streams.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What is the seven-step C++ API call sequence for executing a nonblocking GPU-to-GPU write with `nixlAgent` in NIXL 0.5.x?`&lt;/strong>`</summary>
+<summary>**12. What is the seven-step C++ API call sequence for executing a nonblocking GPU-to-GPU write with `nixlAgent` in NIXL 0.5.x?**</summary>
 
 1. Configure nixl_agent_config, `backends = {"UCX"}`, `thread_safe = true`, and construct nixlAgent, "srcAgent", cfg, and nixlAgent, "dstAgent", cfg.
 2. Build nixl_desc_t descriptors with VRAM_SEG.
@@ -822,49 +822,49 @@ NCCL is designed for synchronous many-to-many group collectives, AllReduce, AllG
 </details>
 
 <details>
-<summary>`&lt;strong>`13. Why does sending a 7,500-token KV cache as 16-token PagedAttention blocks take 20 ms over RDMA, and how does page collation reduce this to 8 ms?`&lt;/strong>`</summary>
+<summary>**13. Why does sending a 7,500-token KV cache as 16-token PagedAttention blocks take 20 ms over RDMA, and how does page collation reduce this to 8 ms?**</summary>
 
 With 16-token blocks, a 7,500-token prompt requires `ceil(7500 / 16) = 469`, ~470, separate RDMA writes, so per-transfer WQE creation and NIC doorbell overhead dominate link time, 20 ms. Collating pages into `>= 128`-token contiguous buffers reduces the transfer to 59 large RDMA writes, saturating link bandwidth and cutting transfer time to 8 ms, 2.5x faster.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. At 16 RPS with 1.5 GB of KV cache per request, what is the aggregate KV transfer bandwidth demand, and which interconnects can sustain it?`&lt;/strong>`</summary>
+<summary>**14. At 16 RPS with 1.5 GB of KV cache per request, what is the aggregate KV transfer bandwidth demand, and which interconnects can sustain it?**</summary>
 
 The aggregate transfer rate is `16 * 1.5 GB/s = 24.0 GB/s`, `~25 GB/s`. Intra-node NVLink 4, `900 GB/s`, NVLink 5, `1,800 GB/s`, 400G InfiniBand NDR / RoCEv2, `50 GB/s` per NIC. 800G ConnectX-8, `100 GB/s` per NIC, easily sustain 24 GB/s, whereas non-RDMA PCIe/TCP fallback, `~10 GB/s`, and standard 10–20 Gbps pod Ethernet saturate and stall the cluster.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What are the four tiers of Dynamo's Distributed KV Cache Manager, and what TTFT speedups were measured on x86+H100 and Grace Hopper GH200 systems?`&lt;/strong>`</summary>
+<summary>**15. What are the four tiers of Dynamo's Distributed KV Cache Manager, and what TTFT speedups were measured on x86+H100 and Grace Hopper GH200 systems?**</summary>
 
 The four tiers are:, 1, GPU HBM, 2, CPU / Superchip DRAM, LPDDR5X over 900 GB/s NVLink-C2C or x86 DDR5 over PCIe. 3, local NVMe SSDs via GPUDirect Storage, GDS, and, 4, remote shared/object storage, Lustre, 3FS, Redis, S3. Offloading KV cache to DRAM on x86+H100 achieved up to a 14x TTFT speedup over recomputing prefill. Grace Hopper GH200, `900 GB/s` NVLink-C2C, achieved an additional 2x TTFT speedup over x86+H100, 28x vs recompute.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How much KV cache capacity and throughput gain did LMCache achieve when offloading to CPU memory and NVMe SSDs under 5 concurrent long-context streams?`&lt;/strong>`</summary>
+<summary>**16. How much KV cache capacity and throughput gain did LMCache achieve when offloading to CPU memory and NVMe SSDs under 5 concurrent long-context streams?**</summary>
 
 Offloading to CPU DRAM expanded KV cache capacity by ~3x, and offloading to local NVMe SSDs expanded capacity by ~50x. Retrieving warm KV blocks from CPU memory took ~1.0 s versus 6.0–7.0 s for cold prefill recomputation. Under 5 concurrent long-context requests, LMCache delivered 16x higher throughput than vanilla vLLM, `75,200 tok/s` vs `4,700 tok/s`.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. Why is heterogeneous hardware pairing (such as B200 + B300, H100 + H200/L40S, or Splitwise 4xH100 + 4xA100) effective in disaggregated serving?`&lt;/strong>`</summary>
+<summary>**17. Why is heterogeneous hardware pairing (such as B200 + B300, H100 + H200/L40S, or Splitwise 4xH100 + 4xA100) effective in disaggregated serving?**</summary>
 
 Prefill is compute bound and benefits from high-FLOPS GPUs, B200, H100, Rubin CPX. Decode is memory-bandwidth and capacity bound and benefits from large, fast HBM, B300 with 180 GB HBM leaving ~122 GB KV pool. H200 with 141 GB at `4.8 TB/s`, or lower-cost A100/L40S. In Splitwise, pairing 4x H100, prefill, with 4x A100, decode, delivered 2.35x higher RPS at the same cost and power budget.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. What happens when the prefill pool and decode pool use different Tensor or Pipeline Parallelism degrees (`TP_p != TP_d`), and how does Dynamo resolve it?`&lt;/strong>`</summary>
+<summary>**18. What happens when the prefill pool and decode pool use different Tensor or Pipeline Parallelism degrees (`TP_p != TP_d`), and how does Dynamo resolve it?**</summary>
 
 When TP_p and TP_d differ, for example, `TP_p = 2, PP_p = 2` vs `TP_d = 4, PP_d = 1`, each prefill GPU holds a different slice of layers and KV heads than each decode GPU expects. Dynamo resolves this by running a fast on-the-fly KV layout transpose kernel, [TP_p] -> [TP_d], on the decode GPU immediately after the NIXL read completes.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. In Kubernetes `llm-d` and the Gateway API Inference Extension, how do `InferencePool`, `InferenceObjective` (`InferenceModel`), and the Endpoint Picker (`EPP`) interact with Envoy Proxy?`&lt;/strong>`</summary>
+<summary>**19. In Kubernetes `llm-d` and the Gateway API Inference Extension, how do `InferencePool`, `InferenceObjective` (`InferenceModel`), and the Endpoint Picker (`EPP`) interact with Envoy Proxy?**</summary>
 
 InferencePool, `inference.networking.k8s.io/v1`, selects the model-serving pods, port 8000, and references the Endpoint Picker service, port: 9002, failureMode: FailClose. InferenceObjective, `inference.networking.x-k8s.io/v1alpha2`, which replaced InferenceModel, defines request priorities, priority: 1 vs 2. When a request hits Envoy, Envoy invokes the EPP over gRPC ext_proc, :9002. The EPP picks the optimal pod based on waiting queue depth, KV cache usage, prefix hits, and loaded LoRA adapters.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. What are the three "well-lit paths" in `llm-d`, and how do North/South (`N/S`) and East/West (`E/W`) KV caching differ?`&lt;/strong>`</summary>
+<summary>**20. What are the three "well-lit paths" in `llm-d`, and how do North/South (`N/S`) and East/West (`E/W`) KV caching differ?**</summary>
 
 The three well-lit paths are:, 1, Intelligent Inference Scheduling, prefix- and load-aware routing via IGW/EPP. 2, Prefill/Decode Disaggregation, separate P/D pools with NIXL RDMA KV transfer, and, 3, Wide Expert-Parallelism, distributed MoE serving. North/South, `N/S`, caching offloads KV blocks vertically from GPU HBM to local CPU RAM and NVMe on the same node. East/West, `E/W`, caching shares KV blocks horizontally between peer vLLM instances over RDMA.
 </details>

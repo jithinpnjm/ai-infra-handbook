@@ -659,7 +659,7 @@ Exercise Input Parameters and Reference Specifications:
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. In what exact order does NCCL rank hardware interconnect path costs from fastest to slowest?`&lt;/strong>`</summary>
+<summary>**1. In what exact order does NCCL rank hardware interconnect path costs from fastest to slowest?**</summary>
 
 NCCL ranks path costs from fastest to slowest across seven levels:
 
@@ -669,85 +669,85 @@ LOC (X, self, cost 0) < NVL (NV4/NV12/NV18 NVLink/NVSwitch, cost 10) < C2C (NVLi
 </details>
 
 <details>
-<summary>`&lt;strong>`2. How long does a 500 MB (0.5 GB) GPU-to-GPU transfer take over a 900 GB/s NVLink path versus a 28 GB/s SYS path, and what is the slowdown factor?`&lt;/strong>`</summary>
+<summary>**2. How long does a 500 MB (0.5 GB) GPU-to-GPU transfer take over a 900 GB/s NVLink path versus a 28 GB/s SYS path, and what is the slowdown factor?**</summary>
 
 Over NVLink at 900 GB/s, transferring 0.5 GB takes 0.56 ms. Over a cross-socket SYS path at 28 GB/s, transferring 0.5 GB takes 17.86 ms, or roughly 18 ms, which is **32.14x slower** (`> 30x`).
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What is the difference between PIX, PXB, and PHB in nvidia-smi topo -m and NCCL path scoring?`&lt;/strong>`</summary>
+<summary>**3. What is the difference between PIX, PXB, and PHB in nvidia-smi topo -m and NCCL path scoring?**</summary>
 
 PIX traverses at most a single PCIe switch (`class="0x060400"`). PXB traverses multiple cascaded PCIe switches without reaching the CPU host bridge. PHB traverses the CPU PCIe Host Bridge or Root Complex within a single NUMA socket.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. How does PCIe Access Control Services (ACS) break GPUDirect P2P and GPUDirect RDMA, and how does it appear in nvidia-smi topo -m?`&lt;/strong>`</summary>
+<summary>**4. How does PCIe Access Control Services (ACS) break GPUDirect P2P and GPUDirect RDMA, and how does it appear in nvidia-smi topo -m?**</summary>
 
 When PCIe ACS is enabled in BIOS, PCIe switches cannot route peer-to-peer transactions directly between downstream ports. They must redirect every packet up to the CPU Root Complex and IOMMU. This causes `nvidia-smi topo -m` to report SYS or PHB instead of PIX, disabling GPUDirect RDMA and collapsing throughput.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. How do you capture NCCL's auto-detected hardware graph and inject a corrected topology in a virtualized or OEM HGX environment?`&lt;/strong>`</summary>
+<summary>**5. How do you capture NCCL's auto-detected hardware graph and inject a corrected topology in a virtualized or OEM HGX environment?**</summary>
 
 Set `NCCL_TOPO_DUMP_FILE=/tmp/topo.xml` on a working run to dump the discovered XML schema. Edit the PCIe switch hierarchy so each GPU and its local rail NIC sit under the same PCIe switch as PIX, and inject it at runtime via `NCCL_TOPO_FILE=/etc/nccl/topology.xml`.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. What is an NCCL channel, and how does the number of active channels affect GPU Streaming Multiprocessor (SM) compute resources?`&lt;/strong>`</summary>
+<summary>**6. What is an NCCL channel, and how does the number of active channels affect GPU Streaming Multiprocessor (SM) compute resources?**</summary>
 
 An NCCL channel is an independent parallel subring or subtree pipeline that executes collective communication across hardware links. Each active channel launches **1 CUDA thread block** on 1 GPU SM. For example, 16 channels on a 132-SM H100 occupy 16 SMs or 12.12% of the GPU. That allocation trades compute SMs for communication bandwidth during overlapped execution.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How does persistent zero-copy user buffer registration (ncclCommRegister with ncclMemAlloc) change channel and SM usage on NVSwitch systems?`&lt;/strong>`</summary>
+<summary>**7. How does persistent zero-copy user buffer registration (ncclCommRegister with ncclMemAlloc) change channel and SM usage on NVSwitch systems?**</summary>
 
 By allowing NVLS and NCCL engines to operate directly on registered user tensor memory without SM-staged copies, zero-copy registration cuts the required channel count. It drops the channel count from **16 channels down to 4 channels** (3.03% of 132 H100 SMs) and frees **12 SM thread blocks** per GPU for model computation.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What is the recommended starting value for NCCL_BUFFSIZE, and how do you calculate the per-communicator GPU HBM footprint of channel buffers?`&lt;/strong>`</summary>
+<summary>**8. What is the recommended starting value for NCCL_BUFFSIZE, and how do you calculate the per-communicator GPU HBM footprint of channel buffers?**</summary>
 
 The default and recommended starting value is **4 MB** (`4 MiB` = `4,194,304` bytes). Total channel buffer memory per communicator is $C_\{\text`{active}`} \times P_\{\text`{peers}`} \times \text`{NCCL\_BUFFSIZE}`$. For 16 channels with 2 peers per channel at 4 MiB, that footprint equals 128.0 MiB.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. What happens to intra-node collective performance if NCCL_P2P_DISABLE=1 is left enabled in production?`&lt;/strong>`</summary>
+<summary>**9. What happens to intra-node collective performance if NCCL_P2P_DISABLE=1 is left enabled in production?**</summary>
 
 Setting `NCCL_P2P_DISABLE=1` disables direct GPU-to-GPU peer transfers over NVLink and PCIe BAR1. All intra-node traffic is forced to fall back to SHM in `/dev/shm`. This increases latency from a few microseconds to tens of microseconds and drops bandwidth from hundreds of GB/s down to tens of GB/s.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why do multi-GPU containers in Docker or Kubernetes sometimes fail with "Call to posix_fallocate failed : No space left on device" during NCCL initialization?`&lt;/strong>`</summary>
+<summary>**10. Why do multi-GPU containers in Docker or Kubernetes sometimes fail with "Call to posix_fallocate failed : No space left on device" during NCCL initialization?**</summary>
 
 When NCCL uses the SHM transport, it allocates shared-memory staging buffers inside `/dev/shm`. Docker and Kubernetes default `/dev/shm` to 64 MiB, which is quickly exhausted. Fix this by passing `--shm-size=16g` in Docker or mounting a 16 to 64 GiB in-memory `emptyDir` volume at `/dev/shm` in Kubernetes.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What does NCCL_NET_GDR_LEVEL control, and what happens when the GPU-to-NIC path exceeds that level?`&lt;/strong>`</summary>
+<summary>**11. What does NCCL_NET_GDR_LEVEL control, and what happens when the GPU-to-NIC path exceeds that level?**</summary>
 
 The variable `NCCL_NET_GDR_LEVEL` sets the maximum topological distance between a GPU and an RDMA NIC at which NCCL permits GPUDirect RDMA, defaulting to PIX or PXB. If the GPU-to-NIC path is PHB or SYS, NCCL disables GPUDirect RDMA for that link and stages RDMA buffers through host CPU RAM.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How does PXN (controlled by NCCL_CROSS_NIC=2) avoid cross-socket SYS traffic on multi-rail NVSwitch servers?`&lt;/strong>`</summary>
+<summary>**12. How does PXN (controlled by NCCL_CROSS_NIC=2) avoid cross-socket SYS traffic on multi-rail NVSwitch servers?**</summary>
 
 Suppose a GPU on NUMA 0 needs to transmit through a NIC rail attached to NUMA 1. PXN routes the payload first over intra-node NVLink or NVSwitch at 900 to 1,800 GB/s to a proxy GPU on NUMA 1 that is PIX-local to the target NIC. That proxy GPU then performs GPUDirect RDMA over its local PCIe switch without ever crossing the CPU UPI link.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. What is the difference between standard GPUDirect RDMA and InfiniBand GPUDirect Async (IBGDA)?`&lt;/strong>`</summary>
+<summary>**13. What is the difference between standard GPUDirect RDMA and InfiniBand GPUDirect Async (IBGDA)?**</summary>
 
 Standard GPUDirect RDMA bypasses host RAM on the data path between the NIC and GPU BAR1. However, it still relies on a CPU proxy thread on the control path to post RDMA Work Requests and poll Completion Queues. With IBGDA, the control path moves onto the GPU as well, allowing GPU SMs to post work descriptors and ring the NIC doorbell directly.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Which environment variables control Multi-Node NVLink (MNNVL), NVSwitch SHARP (NVLS), and InfiniBand SHARP (CollNet)?`&lt;/strong>`</summary>
+<summary>**14. Which environment variables control Multi-Node NVLink (MNNVL), NVSwitch SHARP (NVLS), and InfiniBand SHARP (CollNet)?**</summary>
 
 The variable `NCCL_MNNVL_ENABLE=1` enables Multi-Node NVLink across GB200 and GB300 NVL72 rack domains. `NCCL_NVLS_ENABLE=1` controls NVLink SHARP in-switch reduction and multicast on NVSwitch. `NCCL_COLLNET_ENABLE=1` enables InfiniBand CollNet/SHARP switch reduction, and `NCCL_SHARP_DISABLE=1` explicitly disables SHARP for A/B testing or troubleshooting.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Given interfaces ["lo", "docker0", "eth0", "eth0.100", "eth1", "ib0"], what is the difference between NCCL_SOCKET_IFNAME=eth0, =eth0, ^docker,lo,eth, and ^=lo,docker0,eth0?`&lt;/strong>`</summary>
+<summary>**15. Given interfaces ["lo", "docker0", "eth0", "eth0.100", "eth1", "ib0"], what is the difference between NCCL_SOCKET_IFNAME=eth0, =eth0, ^docker,lo,eth, and ^=lo,docker0,eth0?**</summary>
 
 ```text
 - eth0 (prefix include):          matches ["eth0", "eth0.100"]
@@ -758,31 +758,31 @@ The variable `NCCL_MNNVL_ENABLE=1` enables Multi-Node NVLink across GB200 and GB
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What is the hard upper limit on NCCL_NSOCKS_PERTHREAD * NCCL_SOCKET_NTHREADS, and which transport do those variables affect?`&lt;/strong>`</summary>
+<summary>**16. What is the hard upper limit on NCCL_NSOCKS_PERTHREAD * NCCL_SOCKET_NTHREADS, and which transport do those variables affect?**</summary>
 
 Their product must not exceed **64** ($\text`{NCCL\_SOCKET\_NTHREADS}` \times \text`{NCCL\_NSOCKS\_PERTHREAD}` \le 64$). That ceiling is the built-in per-communicator TCP socket limit in NCCL. They tune **only** the NET/Socket TCP transport and do not tune NET/IB RDMA data paths.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. Why should you set NCCL_IGNORE_CPU_AFFINITY=1 when launching multi-GPU jobs with taskset, Slurm, or MPI?`&lt;/strong>`</summary>
+<summary>**17. Why should you set NCCL_IGNORE_CPU_AFFINITY=1 when launching multi-GPU jobs with taskset, Slurm, or MPI?**</summary>
 
 If a process inherits a narrow CPU affinity mask such as a single core, background NCCL proxy threads are forced onto that single core and contend with one another. Setting `NCCL_IGNORE_CPU_AFFINITY=1` while binding the process at the NUMA domain level lets NCCL spread its worker threads across all CPU cores in the local NUMA node.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Why does a routine node reboot sometimes drop 8-GPU AllReduce busbw from ~800 GB/s to ~90 GB/s without crashing the training job?`&lt;/strong>`</summary>
+<summary>**18. Why does a routine node reboot sometimes drop 8-GPU AllReduce busbw from ~800 GB/s to ~90 GB/s without crashing the training job?**</summary>
 
 If `nvidia-fabricmanager` fails to start after reboot or an NVLink link fails initialization, NCCL silently falls back from NVLink at 800 to 900 GB/s to PCIe at roughly 90 GB/s across pairs. It logs `NCCL INFO Using PCIe interface` instead of crashing the job.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Compare the four Kubernetes kubelet Topology Manager policies: none, best-effort, restricted, and single-numa-node.`&lt;/strong>`</summary>
+<summary>**19. Compare the four Kubernetes kubelet Topology Manager policies: none, best-effort, restricted, and single-numa-node.**</summary>
 
 The `none` policy ignores NUMA locality completely. The `best-effort` policy prefers NUMA alignment but admits split-NUMA pods when local capacity is full. The `restricted` policy rejects pods that cannot align to the minimum theoretical number of NUMA nodes. The `single-numa-node` policy strictly requires all CPUs, memory, GPUs, and SR-IOV NICs to reside on a single NUMA node. Otherwise, the kubelet rejects the pod with `TopologyAffinityError`.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. How does the NVIDIA Network Operator provide hardware-isolated GPUDirect RDMA in a multi-tenant Kubernetes cluster?`&lt;/strong>`</summary>
+<summary>**20. How does the NVIDIA Network Operator provide hardware-isolated GPUDirect RDMA in a multi-tenant Kubernetes cluster?**</summary>
 
 The NVIDIA Network Operator deploys the MOFED or DOCA driver, `nvidia-peermem`, Multus CNI, and the SR-IOV Network Operator. Using `SriovNetworkNodePolicy` and `SriovNetwork`, it passes dedicated PCIe Virtual Functions with hardware VLAN tags and NUMA topology hints directly into tenant pods.
 </details>

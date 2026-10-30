@@ -443,7 +443,7 @@ Summary: 25 passed, 0 failed (total 25)
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. How does multilevel microtiling improve upon single-level Shared Memory tiling?`&lt;/strong>`</summary>
+<summary>**1. How does multilevel microtiling improve upon single-level Shared Memory tiling?**</summary>
 
 Single-level tiling stages a macro-tile from HBM into Shared Memory, reducing global memory traffic. Multilevel microtiling adds a second tier by loading vectorized sub-tiles from Shared Memory into each thread's private registers or into Blackwell per-SM Tensor Memory for `tcgen05.mma`. Inner-loop outer products reuse operands at single-cycle register or Tensor Memory speeds while reducing Shared Memory bank pressure.
 
@@ -454,19 +454,19 @@ Multilevel: Registers (float4/half2) or 256 KB TMEM <- SMEM <- L2 <- HBM (ASP Ch
 </details>
 
 <details>
-<summary>`&lt;strong>`2. How do Thread Block Clusters and TMA multicast increase arithmetic intensity across multiple SMs, and what attribute unlocks 16-CTA clusters on Blackwell?`&lt;/strong>`</summary>
+<summary>**2. How do Thread Block Clusters and TMA multicast increase arithmetic intensity across multiple SMs, and what attribute unlocks 16-CTA clusters on Blackwell?**</summary>
 
 In a two-by-two Thread Block Cluster, TMA reads a shared matrix tile from HBM and L2 once. It multicasts that tile across the on-chip interconnect into the Distributed Shared Memory of all four SMs simultaneously. This cuts global HBM bytes moved by up to fourfold and multiplies arithmetic intensity by the same factor. Setting `cudaFuncAttributeNonPortableClusterSizeAllowed` unlocks non-portable clusters of up to sixteen CTAs on Blackwell for up to sixteenfold reuse.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Contrast vertical kernel fusion against horizontal kernel fusion, and state the main hardware resource risk of over-fusing a kernel.`&lt;/strong>`</summary>
+<summary>**3. Contrast vertical kernel fusion against horizontal kernel fusion, and state the main hardware resource risk of over-fusing a kernel.**</summary>
 
 Vertical fusion combines sequential producer-to-consumer operations into one kernel so intermediate values stay in registers or Shared Memory without HBM round-trips. Horizontal fusion combines independent parallel operations across data into a single launch. Excessive fusion increases live variables per thread and raises register pressure. If register usage lowers occupancy or spills to slow Local Memory in HBM, the extra spill traffic can erase the fusion gain.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Walk through the byte and FLOP arithmetic of unfused L2 row normalization versus fusedL2Norm, and explain why rsqrtf is used instead of division by sqrtf.`&lt;/strong>`</summary>
+<summary>**4. Walk through the byte and FLOP arithmetic of unfused L2 row normalization versus fusedL2Norm, and explain why rsqrtf is used instead of division by sqrtf.**</summary>
 
 The unfused three-kernel pipeline writes and re-reads intermediate buffers through HBM, moving thirty-six bytes per element for four operations. The `fusedL2Norm` kernel accumulates squares in registers with `fmaf`, reduces across the block in Shared Memory, and normalizes in a single pass moving twelve bytes per element. Calling `rsqrtf` computes the reciprocal square root on the Special Function Unit once per row per thread. The inner loop then executes a fast multiply instead of a slow floating-point division.
 
@@ -477,13 +477,13 @@ fusedL2Norm: 12 B/elem (3x less HBM traffic), 3 to 4 FLOPs / 12 B = 0.25 to 0.33
 </details>
 
 <details>
-<summary>`&lt;strong>`5. What is 2:4 structured sparsity on NVIDIA Sparse Tensor Cores, how many elements are zeroed in every 16-element chunk, and why is it primarily used for large-batch inference rather than training?`&lt;/strong>`</summary>
+<summary>**5. What is 2:4 structured sparsity on NVIDIA Sparse Tensor Cores, how many elements are zeroed in every 16-element chunk, and why is it primarily used for large-batch inference rather than training?**</summary>
 
 Hardware 2:4 structured sparsity requires that out of every four consecutive weights, at least two are zero. That rule zeroes eight elements per sixteen-element chunk for fifty percent sparsity. Sparse Tensor Cores skip the zero weights in hardware, delivering up to twice the GEMM throughput and roughly twice the arithmetic intensity. It is used primarily for post-training inference via `cuSPARSELt` or `to_sparse_semi_structured()` at large batch sizes such as 128 or 256. Training gradients change dynamically, and batch size one does not amortize sparse metadata index overhead.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. When does recomputing values on the fly beat caching them in global memory?`&lt;/strong>`</summary>
+<summary>**6. When does recomputing values on the fly beat caching them in global memory?**</summary>
 
 Recomputing values on the fly wins whenever a workload is memory-bandwidth bound or VRAM-capacity bound. Recomputing cheap math expressions or transformer activations inside registers takes only a few ALU cycles. Reading a stored intermediate tensor from HBM costs hundreds of cycles and consumes scarce memory bandwidth and capacity.
 
@@ -494,7 +494,7 @@ HBM global memory load: ~800 cycles (ASP Ch 9, p. 305)
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How do SDPBackend.FLASH_ATTENTION and NestedTensor raise arithmetic intensity in PyTorch?`&lt;/strong>`</summary>
+<summary>**7. How do SDPBackend.FLASH_ATTENTION and NestedTensor raise arithmetic intensity in PyTorch?**</summary>
 
 Selecting `SDPBackend.FLASH_ATTENTION` forces `scaled_dot_product_attention` to tile queries, keys, and values in on-chip SRAM using online softmax without materializing the quadratic attention matrix in HBM. Packing variable-length sequences into a jagged `NestedTensor` eliminates rectangular zero-padding so every byte fetched from HBM carries real token data.
 
@@ -504,19 +504,19 @@ Batch [128, 512, 256, 1024]: 1,920 real tokens vs 4,096 padded tokens -> 53.1% p
 </details>
 
 <details>
-<summary>`&lt;strong>`8. In stage_ab_tiles, why is dynamic shared memory sized at four times tile_elems times sizeof(float), and why must tile_elems be a multiple of 128?`&lt;/strong>`</summary>
+<summary>**8. In stage_ab_tiles, why is dynamic shared memory sized at four times tile_elems times sizeof(float), and why must tile_elems be a multiple of 128?**</summary>
 
 Allocating `4 * tile_elems * sizeof(float)` creates two ping-pong shared buffers for Matrix A and two for Matrix B. That allows `cuda::memcpy_async` to prefetch the next tile while Tensor Cores compute the current tile. Requiring `tile_elems` to be a multiple of 128 ensures that thirty-two threads per warp loading four floats per thread via `float4` equals 128 floats or 512 bytes. That guarantees 16-byte and 32-byte alignment for vectorized warp copies.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. How do you enable TF32 matmuls and BF16 Automatic Mixed Precision in PyTorch, and why does BF16 not typically need GradScaler when FP16 does?`&lt;/strong>`</summary>
+<summary>**9. How do you enable TF32 matmuls and BF16 Automatic Mixed Precision in PyTorch, and why does BF16 not typically need GradScaler when FP16 does?**</summary>
 
 Enable TF32 matrix multiplications with `torch.set_float32_matmul_precision('high')` and enable BF16 mixed precision with `with torch.amp.autocast("cuda", dtype=torch.bfloat16):`. FP16 has only a 5-bit exponent, so small gradients underflow to zero without dynamic loss scaling via `GradScaler`. BF16 has the exact same 8-bit exponent range as FP32, preventing gradient underflow natively.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Compare the dense FP32 peak of a Blackwell B200 against its dense NVFP4 peak and the B300 Ultra's dense NVFP4 peak. How does NVFP4 maintain model accuracy at 4 bits?`&lt;/strong>`</summary>
+<summary>**10. Compare the dense FP32 peak of a Blackwell B200 against its dense NVFP4 peak and the B300 Ultra's dense NVFP4 peak. How does NVFP4 maintain model accuracy at 4 bits?**</summary>
 
 A Blackwell B200 delivers 10 petaFLOPS of dense NVFP4 compute compared to 80 teraFLOPS of dense FP32. That is a 125-fold increase in throughput while cutting weight storage eightfold. The B300 Ultra raises dense NVFP4 throughput by another fifty percent to 15 petaFLOPS. NVFP4 preserves model accuracy using two-level micro-scaling managed by Transformer Engine and accumulated in higher precision inside Tensor Memory.
 
@@ -528,25 +528,25 @@ B300 Ultra NVFP4: 15 PFLOPS (+50% / 1.5x over B200, ASP Ch 9, p. 311)
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What is the DP4A instruction, how much weight memory traffic does INT8 save compared to FP32, and which PyTorch and CUDA libraries expose INT8 GEMMs?`&lt;/strong>`</summary>
+<summary>**11. What is the DP4A instruction, how much weight memory traffic does INT8 save compared to FP32, and which PyTorch and CUDA libraries expose INT8 GEMMs?**</summary>
 
 The `DP4A` instruction is a four-element SIMD integer dot-product instruction that executes four INT8 multiply-accumulate operations per instruction compared to one FP32 fused multiply-add. Because INT8 uses one byte per weight instead of four bytes, weight memory traffic drops by seventy-five percent. In PyTorch and CUDA, INT8 quantization is exposed through TorchAO, `cuBLASLt`, and CUTLASS.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How large is Blackwell's per-SM Tensor Memory, and why do a 256 by 512 FP16 tile and a 256 by 256 FP32 tile represent the exact per-SM TMEM ceiling?`&lt;/strong>`</summary>
+<summary>**12. How large is Blackwell's per-SM Tensor Memory, and why do a 256 by 512 FP16 tile and a 256 by 256 FP32 tile represent the exact per-SM TMEM ceiling?**</summary>
 
 Each Blackwell SM contains 256 KB of dedicated Tensor Memory SRAM, which equals 262,144 bytes. Both a 256 by 512 FP16 tile at two bytes per element and a 256 by 256 FP32 tile at four bytes per element equal exactly 262,144 bytes. Each tile fills one hundred percent of the per-SM Tensor Memory budget. By contrast, a 256 by 256 NVFP4 tile at half a byte per element uses only 32,768 bytes, or 12.5 percent of Tensor Memory.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How does the cp.async instruction differ from a traditional CUDA global-to-shared load?`&lt;/strong>`</summary>
+<summary>**13. How does the cp.async instruction differ from a traditional CUDA global-to-shared load?**</summary>
 
 A traditional `sA[ty][tx] = A[idx]` statement first loads data from HBM and L1 into a thread register via `ld.global` and then writes that register into Shared Memory via `st.shared`. That intermediate register transfer consumes register file capacity and stalls the warp on the register dependency. Hardware `cp.async` and bulk TMA `cp.async.bulk.tensor` instructions copy data directly from global memory into Shared Memory without passing through per-thread registers. That frees registers for math accumulators.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. In Table 9-1, how did a declarative CUTLASS GEMM template compare to a hand-tuned MMA kernel?`&lt;/strong>`</summary>
+<summary>**14. In Table 9-1, how did a declarative CUTLASS GEMM template compare to a hand-tuned MMA kernel?**</summary>
 
 Both the declarative CUTLASS GEMM template and the hand-tuned MMA kernel achieved ninety-eight percent Tensor Core utilization. The CUTLASS template used slightly more registers per thread and Shared Memory per block while saving weeks of manual assembly tuning per architecture.
 
@@ -557,7 +557,7 @@ CUTLASS GEMM:   98% Tensor Core util, ~60 regs/thread, ~4 KB SMEM/CTA, Low effor
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Write the inline PTX statement from Chapter 9 that prefetches 128 bytes into the L2 cache, and state its alignment requirement.`&lt;/strong>`</summary>
+<summary>**15. Write the inline PTX statement from Chapter 9 that prefetches 128 bytes into the L2 cache, and state its alignment requirement.**</summary>
 
 ```cpp
 asm volatile("cp.async.bulk.prefetch.L2.global [%0], %1;"
@@ -568,13 +568,13 @@ The target global address `in + idx + 32` must be 16-byte aligned and the prefet
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What is the difference between the PTX load cache modifiers .ca and .cg, and when should you use .cg?`&lt;/strong>`</summary>
+<summary>**16. What is the difference between the PTX load cache modifiers .ca and .cg, and when should you use .cg?**</summary>
 
 The `.ca` modifier caches the loaded line at all levels in both L1 and L2, which is the default behavior. The `.cg` cache-global modifier caches the loaded line in L2 only, bypassing L1 allocation. Engineers should use `.cg` for streaming reads that are used once per thread so they do not evict hot, frequently reused working-set lines from the SM's L1 cache.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. How do you read the physical Streaming Multiprocessor ID in CUDA C++, and what is it used for?`&lt;/strong>`</summary>
+<summary>**17. How do you read the physical Streaming Multiprocessor ID in CUDA C++, and what is it used for?**</summary>
 
 Standard CUDA C++ has no built-in variable for `%smid`, so kernels read it via inline PTX:
 
@@ -587,7 +587,7 @@ Reading `%smid` is used in persistent kernels, profiler diagnostics, and manual 
 </details>
 
 <details>
-<summary>`&lt;strong>`18. In Table 9-2, how did hand-tuned inline PTX compare to compiler-scheduled optimized CUDA C++?`&lt;/strong>`</summary>
+<summary>**18. In Table 9-2, how did hand-tuned inline PTX compare to compiler-scheduled optimized CUDA C++?**</summary>
 
 Combining `mad.wide.u32` address arithmetic, manual load scheduling, and `ld.global.cg` L1-bypass hints reduced memory warp stalls and sped up the kernel by seven percent over optimized C++.
 
@@ -598,13 +598,13 @@ Hand-Tuned Inline PTX: 20% memory stalls, 1.6 IPC, 1.00 ms (1.07x / ~7% faster, 
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Break down every modifier in DeepSeek's DeepEP inline PTX instruction ld.global.nc.l1::no_allocate.l2::256b and explain why DeepSeek used it on H800 GPUs.`&lt;/strong>`</summary>
+<summary>**19. Break down every modifier in DeepSeek's DeepEP inline PTX instruction ld.global.nc.l1::no_allocate.l2::256b and explain why DeepSeek used it on H800 GPUs.**</summary>
 
 The `ld.global.nc` prefix issues a non-coherent global memory load. The `l1::no_allocate` modifier prevents allocating cache lines in the L1 cache so streaming expert-parallel all-to-all communication buffers do not evict hot L1 data needed by active compute warps. Finally, the `l2::256b` modifier fetches data in 256-byte chunks directly into the L2 cache.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Why is relying on undocumented inline PTX instructions or raw SASS risky in production, and how did DeepSeek mitigate that risk in DeepEP?`&lt;/strong>`</summary>
+<summary>**20. Why is relying on undocumented inline PTX instructions or raw SASS risky in production, and how did DeepSeek mitigate that risk in DeepEP?**</summary>
 
 Undocumented PTX modifiers and architecture-specific SASS opcodes are not part of NVIDIA's forward-compatible public PTX contract. They are not guaranteed to stay stable across new CUDA toolkits or future GPU generations. DeepSeek mitigated this risk by wrapping the custom instruction behind the build-time flag `DISABLE_AGGRESSIVE_PTX_INSTRS=1`, which falls back to standard documented PTX when upgrading drivers or hardware.
 </details>

@@ -367,7 +367,7 @@ Summary: 25 passed, 0 failed out of 25 checks.
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. What three limitations of the classic Kubernetes Device Plugin framework motivated Dynamic Resource Allocation (DRA)?`&lt;/strong>`</summary>
+<summary>**1. What three limitations of the classic Kubernetes Device Plugin framework motivated Dynamic Resource Allocation (DRA)?**</summary>
 
 1. **Scalar integer counts only (`nvidia.com/gpu: 4`).** Device plugins cannot express structured attributes such as model, memory size, or MIG state in the resource request.
 2. **No cross-device or intra-node relational constraints at scheduling time.** The scheduler cannot see PCIe, NUMA, or NVLink relationships across GPUs and NICs from an integer count.
@@ -375,13 +375,13 @@ Summary: 25 passed, 0 failed out of 25 checks.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. In which Kubernetes version did Dynamic Resource Allocation (DRA, resource.k8s.io/v1) graduate to a core stable feature enabled by default, and what is the production status of the NVIDIA GPU DRA driver as of early 2026?`&lt;/strong>`</summary>
+<summary>**2. In which Kubernetes version did Dynamic Resource Allocation (DRA, resource.k8s.io/v1) graduate to a core stable feature enabled by default, and what is the production status of the NVIDIA GPU DRA driver as of early 2026?**</summary>
 
 Core DRA graduated to stable (`resource.k8s.io/v1`) and is enabled by default starting in Kubernetes 1.34. However, as of early 2026, the NVIDIA GPU DRA driver (`gpu.nvidia.com`) is a maturing technical preview component. Consequently, most production clusters continue to use traditional device plugins and label-based scheduling while piloting DRA.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What are the four primary Kubernetes objects in the DRA architecture, and what is the CSI storage analog of each?`&lt;/strong>`</summary>
+<summary>**3. What are the four primary Kubernetes objects in the DRA architecture, and what is the CSI storage analog of each?**</summary>
 
 1. **ResourceSlice.** Analogous to CSI node storage inventory; published by the node-local DRA plugin (`gpu.nvidia.com`) to advertise discovered devices and their attributes.
 2. **DeviceClass.** Analogous to StorageClass; cluster-scoped class (`gpu.nvidia.com` or `gpu.nvidia.com/a100`) defined by platform administrators.
@@ -390,25 +390,25 @@ Core DRA graduated to stable (`resource.k8s.io/v1`) and is enabled by default st
 </details>
 
 <details>
-<summary>`&lt;strong>`4. How did DRA evolve from the removed v1alpha2 "classic" design to Structured Parameters in v1beta1/v1beta2 and v1?`&lt;/strong>`</summary>
+<summary>**4. How did DRA evolve from the removed v1alpha2 "classic" design to Structured Parameters in v1beta1/v1beta2 and v1?**</summary>
 
 The early `v1alpha2` DRA design required external driver controller callbacks during scheduling, which added latency and complexity. Structured Parameters in `v1beta1`, `v1beta2`, and stable `resource.k8s.io/v1` require drivers to publish device attributes directly in ResourceSlice objects. That allows kube-scheduler to evaluate claims and CEL selectors entirely in memory.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. In Generative AI on Kubernetes Example 3-8, what do allocationMode: ExactCount, count: 1, minMemory: "40Gi", and migMode: "disabled" specify in a ResourceClaimTemplate?`&lt;/strong>`</summary>
+<summary>**5. In Generative AI on Kubernetes Example 3-8, what do allocationMode: ExactCount, count: 1, minMemory: "40Gi", and migMode: "disabled" specify in a ResourceClaimTemplate?**</summary>
 
 They instruct Kubernetes and the DRA driver to allocate exactly 1 GPU belonging to `deviceClassName: gpu.nvidia.com/a100` whose physical framebuffer memory is at least 40 GiB and whose Multi-Instance GPU mode is disabled. That guarantees a whole unpartitioned A100 rather than a MIG slice.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Why does Footnote 1 of Generative AI on Kubernetes Chapter 3 note that a 40 GB GPU has ~37.25 GiB and an 80 GB GPU has ~74.5 GiB?`&lt;/strong>`</summary>
+<summary>**6. Why does Footnote 1 of Generative AI on Kubernetes Chapter 3 note that a 40 GB GPU has ~37.25 GiB and an 80 GB GPU has ~74.5 GiB?**</summary>
 
 GPU hardware manufacturers advertise memory in decimal gigabytes (`10^9` bytes), whereas Kubernetes resource specifications use binary gibibytes (`2^30` bytes). Dividing 40 billion bytes by `2^30` yields 37.25 GiB, and dividing 80 billion bytes by `2^30` yields 74.5 GiB.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How do you troubleshoot a Pod using DRA that is stuck in Pending with an unallocated ResourceClaim?`&lt;/strong>`</summary>
+<summary>**7. How do you troubleshoot a Pod using DRA that is stuck in Pending with an unallocated ResourceClaim?**</summary>
 
 1. Run `kubectl describe pod <pod>` and `kubectl describe resourceclaim <claim>` to read the scheduler allocation failure message.
 2. Run `kubectl get resourceslices` to verify what devices and attributes the DRA driver published for each node.
@@ -416,25 +416,25 @@ GPU hardware manufacturers advertise memory in decimal gigabytes (`10^9` bytes),
 </details>
 
 <details>
-<summary>`&lt;strong>`8. How does metadata.resourceVersion implement Optimistic Concurrency Control (OCC) in kube-apiserver when two controllers update the same Pod simultaneously?`&lt;/strong>`</summary>
+<summary>**8. How does metadata.resourceVersion implement Optimistic Concurrency Control (OCC) in kube-apiserver when two controllers update the same Pod simultaneously?**</summary>
 
 Both controllers read the Pod at version 154329. When Controller A sends its `PUT` with 154329, the API server commits the change to etcd, advances the version to 154330, and returns `200 OK`. When Controller B sends its `PUT` still carrying 154329, the API server detects the mismatch and rejects the write with `409 Conflict`, forcing Controller B to re-read 154330 and retry.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Why do unfiltered cluster-wide LIST calls from a poorly written controller cause kube-apiserver latency spikes, and how do Informers avoid this?`&lt;/strong>`</summary>
+<summary>**9. Why do unfiltered cluster-wide LIST calls from a poorly written controller cause kube-apiserver latency spikes, and how do Informers avoid this?**</summary>
 
 Unfiltered `LIST` calls without a resource version or pagination force the API server to fetch and serialize gigabytes of JSON across all pods in the cluster on every poll. SharedInformers perform an initial `LIST` once and then maintain a lightweight streaming HTTP watch (`?watch=true&resourceVersion=154329`) backed by etcd key-prefix watches.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. What is the Kubelet's PLEG (Pod Lifecycle Event Generator), what is its health threshold, and why does CPU/I/O starvation cause a NodeNotReady loop?`&lt;/strong>`</summary>
+<summary>**10. What is the Kubelet's PLEG (Pod Lifecycle Event Generator), what is its health threshold, and why does CPU/I/O starvation cause a NodeNotReady loop?**</summary>
 
 PLEG is the kubelet subsystem that polls the container runtime every second to detect container state transitions. Its health threshold is `3m0s`, or 180 seconds. If un-isolated AI workloads starve host CPU or root disk I/O so PLEG cannot complete a relist within 3 minutes, kubelet marks the node `NotReady` and triggers mass Pod evictions.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What are the Linux oom_score_adj values assigned to the kubelet daemon, Guaranteed Pods, Burstable Pods, and BestEffort Pods, and what does exitCode: 137 mean?`&lt;/strong>`</summary>
+<summary>**11. What are the Linux oom_score_adj values assigned to the kubelet daemon, Guaranteed Pods, Burstable Pods, and BestEffort Pods, and what does exitCode: 137 mean?**</summary>
 
 - **kubelet daemon.** Assigned -999 to protect it from the OOM killer.
 - **Guaranteed Pods.** Assigned -997 for the highest workload protection when requests equal limits.
@@ -444,13 +444,13 @@ An `exitCode: 137` equals 128 plus 9, proving the process was terminated by sign
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What is a Pod Sandbox (pause container) in the Container Runtime Interface (CRI), and why must SystemdCgroup = true match between kubelet and containerd?`&lt;/strong>`</summary>
+<summary>**12. What is a Pod Sandbox (pause container) in the Container Runtime Interface (CRI), and why must SystemdCgroup = true match between kubelet and containerd?**</summary>
 
 When kubelet calls `RunPodSandbox`, containerd spawns a lightweight `registry.k8s.io/pause:3.9` container whose sole purpose is to hold open the shared Linux namespaces that application containers in the Pod join. Both the kubelet configuration and the containerd configuration must enable the systemd cgroup driver so two cgroup managers never fight over resource accounting.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. Walk through the three gRPC services of a CSI storage driver and the difference between ControllerPublishVolume, NodeStageVolume, and NodePublishVolume.`&lt;/strong>`</summary>
+<summary>**13. Walk through the three gRPC services of a CSI storage driver and the difference between ControllerPublishVolume, NodeStageVolume, and NodePublishVolume.**</summary>
 
 A CSI driver implements Identity, Controller, and Node gRPC services.
 1. **ControllerPublishVolume.** Runs in the control plane to attach and map the external storage LUN to the worker node.
@@ -459,13 +459,13 @@ A CSI driver implements Identity, Controller, and Node gRPC services.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Why is volumeBindingMode: WaitForFirstConsumer critical in a StorageClass used by GPU nodes?`&lt;/strong>`</summary>
+<summary>**14. Why is volumeBindingMode: WaitForFirstConsumer critical in a StorageClass used by GPU nodes?**</summary>
 
 Without `WaitForFirstConsumer`, a PersistentVolume is provisioned immediately when the PVC is created, potentially in an Availability Zone, rack, or node with zero free GPUs. Delayed binding waits until kube-scheduler selects the actual GPU node for the Pod, ensuring storage and compute align in the same topology.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What are the four core guarantees of a Kubernetes StatefulSet (such as milvus-datanode with 3 replicas and 500Gi volumeClaimTemplates)?`&lt;/strong>`</summary>
+<summary>**15. What are the four core guarantees of a Kubernetes StatefulSet (such as milvus-datanode with 3 replicas and 500Gi volumeClaimTemplates)?**</summary>
 
 1. **Stable, unique network identity.** Deterministic ordinal names (`milvus-datanode-0`, -1, -2) backed by a Headless Service.
 2. **Stable, persistent storage.** Each ordinal Pod reattaches to its own dedicated PVC across rescheduling.
@@ -474,13 +474,13 @@ Without `WaitForFirstConsumer`, a PersistentVolume is provisioned immediately wh
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How do you safely resolve a FailedAttachVolume Multi-Attach error on Kubernetes 1.28+ when a StatefulSet node crashes hard?`&lt;/strong>`</summary>
+<summary>**16. How do you safely resolve a FailedAttachVolume Multi-Attach error on Kubernetes 1.28+ when a StatefulSet node crashes hard?**</summary>
 
 First, verify via hardware BMC or IPMI that the crashed node is truly powered down or fenced so it cannot write to the volume. Then apply the `node.kubernetes.io/out-of-service:NoExecute` taint to the dead Node object. That taint instructs the Kubernetes control plane to force-detach the stuck volume attachment and attach the volume to the replacement node.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What is the exact nine-step sequence when a Pod is deleted on a worker node (Volume 03 Chapter 2 Section 9)?`&lt;/strong>`</summary>
+<summary>**17. What is the exact nine-step sequence when a Pod is deleted on a worker node (Volume 03 Chapter 2 Section 9)?**</summary>
 
 1. The API server sets `deletionTimestamp` on the Pod.
 2. The kubelet sees this in its Sync Loop and marks the Pod terminating.
@@ -494,19 +494,19 @@ First, verify via hardware BMC or IPMI that the crashed node is truly powered do
 </details>
 
 <details>
-<summary>`&lt;strong>`18. How does a Kyverno mutating policy automatically inject GPU tolerations, and why must ["kube-system", "kyverno"] be excluded from webhook namespaceSelectors?`&lt;/strong>`</summary>
+<summary>**18. How does a Kyverno mutating policy automatically inject GPU tolerations, and why must ["kube-system", "kyverno"] be excluded from webhook namespaceSelectors?**</summary>
 
 The Kyverno policy checks whether the container GPU limit is greater than zero and applies a strategic merge patch adding the `nvidia.com/gpu` NoSchedule toleration. Excluding `["kube-system", "kyverno"]` in the webhook namespace selector ensures that if Kyverno Pods crash, the API server does not deadlock trying to call the dead webhook to create replacement Kyverno Pods.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What is driver.gdrcopy.enabled: true in the GPU Operator ClusterPolicy (Volume 03 Chapter 3 Section 5.2), and how does it differ from GPUDirect RDMA?`&lt;/strong>`</summary>
+<summary>**19. What is driver.gdrcopy.enabled: true in the GPU Operator ClusterPolicy (Volume 03 Chapter 3 Section 5.2), and how does it differ from GPUDirect RDMA?**</summary>
 
 `driver.gdrcopy.enabled: true` deploys the `gdrcopy` kernel module (`gdrdrv`) and user-space library, which uses CPU-driven mapping of GPU BAR1 memory for ultra-low-latency small CPU-to-GPU memory copies. It is distinct from GPUDirect RDMA, which enables network adapters to DMA directly to and from GPU memory across PCIe without CPU involvement.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. What is the five-stage order of operations for upgrading a live AI Factory Kubernetes cluster, and how does a PodDisruptionBudget with minAvailable: 100% interact with it?`&lt;/strong>`</summary>
+<summary>**20. What is the five-stage order of operations for upgrading a live AI Factory Kubernetes cluster, and how does a PodDisruptionBudget with minAvailable: 100% interact with it?**</summary>
 
 1. **GitOps Sync Pause.** Pause automated sync in ArgoCD.
 2. **Control Plane Upgrade.** Upgrade the API server, etcd, scheduler, and controller manager.

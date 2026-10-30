@@ -581,121 +581,121 @@ Exercise Input Parameters & Expected Verification Targets (code/part13/data_load
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. In the 1.2M-file ImageNet benchmark, how does the 19.0 ms per-file cost break down between storage metadata syscalls and CPU preprocessing?`&lt;/strong>`</summary>
+<summary>**1. In the 1.2M-file ImageNet benchmark, how does the 19.0 ms per-file cost break down between storage metadata syscalls and CPU preprocessing?**</summary>
 
 Storage metadata and syscalls take 4.0 ms per file across `stat`, `open`, `read`, and `close`. CPU preprocessing takes 15.0 ms per file across PIL decode and augmentation, totaling 19.0 ms per file.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. For batch_size=256 across 1,200,000 files, why does an 8-worker DataLoader still waste 47 minutes per epoch on a 2 GB/s storage link?`&lt;/strong>`</summary>
+<summary>**2. For batch_size=256 across 1,200,000 files, why does an 8-worker DataLoader still waste 47 minutes per epoch on a 2 GB/s storage link?**</summary>
 
 A single serial worker takes 4,864 ms per batch, and eight parallel workers take 608 ms per batch. Streaming a 21.76 MB batch over a 2 GB/s link takes an ideal 10.88 ms, leaving 597 ms of overhead per batch. Across 4,688 batches, that overhead wastes 2,798.74 seconds, or nearly 47 minutes per epoch.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What `openat` rate did `strace` record during the ImageNet small-file stall, and why does that break a parallel filesystem Metadata Server?`&lt;/strong>`</summary>
+<summary>**3. What `openat` rate did `strace` record during the ImageNet small-file stall, and why does that break a parallel filesystem Metadata Server?**</summary>
 
 The trace recorded 267,500 `openat` calls in 2.140 seconds, which equals 125,000 opens/sec at 8 microseconds per call. That rate exceeds a typical parallel filesystem MDS capacity of 50,000 to 100,000 ops/sec by up to 2.5x from a single client workload.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. In the Volume 06 14M PNG incident, what percentage of syscall time was spent in `stat`, `openat`, `close`, and `read`?`&lt;/strong>`</summary>
+<summary>**4. In the Volume 06 14M PNG incident, what percentage of syscall time was spent in `stat`, `openat`, `close`, and `read`?**</summary>
 
 Out of 5.311 seconds traced by `strace -c`, 85.12 percent was spent in `stat` and 10.05 percent in `openat`. Another 4.02 percent went to `close`, while only 0.81 percent went to `read`. In total, 99.19 percent of kernel I/O time went to metadata overhead, throttling a 400 GB/s storage array down to 5 GB/s.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. How does warm-to-cold page and dentry cache decay affect file-open rate and throughput between sample 1000 and sample 50000?`&lt;/strong>`</summary>
+<summary>**5. How does warm-to-cold page and dentry cache decay affect file-open rate and throughput between sample 1000 and sample 50000?**</summary>
 
 At sample 1000 on a warm cache, the loader achieves 2,410 opens/sec and 189.1 MB/s. By sample 50000, once the working set exceeds cached RAM entries, performance drops to 820 opens/sec and 68.7 MB/s. That decay represents a 2.94x drop in open rate and a 2.75x drop in throughput.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. If each training batch waits 600 ms for the DataLoader while GPU forward and backward compute takes 100 ms, what is the GPU idle percentage?`&lt;/strong>`</summary>
+<summary>**6. If each training batch waits 600 ms for the DataLoader while GPU forward and backward compute takes 100 ms, what is the GPU idle percentage?**</summary>
 
 Total step time is 600 ms plus 100 ms, or 700 ms per step. The loader is six times slower than GPU compute, leaving the GPU active for 14.29 percent of the step and idle for 85.71 percent of wall-clock time.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How much do 10,000-file `.tar` shards and 1,000-file WebDataset shards reduce `open()` calls on a 1,200,000-file dataset, and what batch latencies do they achieve?`&lt;/strong>`</summary>
+<summary>**7. How much do 10,000-file `.tar` shards and 1,000-file WebDataset shards reduce `open()` calls on a 1,200,000-file dataset, and what batch latencies do they achieve?**</summary>
 
 Packing ten thousand files per tar shard reduces 1.2 million opens to 120 opens and cuts batch wait from 600 ms to 50 ms. Packing a thousand files per WebDataset shard reduces opens to 1,200 and cuts 256-GPU cluster batch stalls from 30,000 ms down to 20 ms, a 1,500x speedup.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What are the storage dimensions and chunk size of the HDF5 ImageNet dataset in Chapter 13.6, and what concurrency rule applies to `h5py` in PyTorch DataLoaders?`&lt;/strong>`</summary>
+<summary>**8. What are the storage dimensions and chunk size of the HDF5 ImageNet dataset in Chapter 13.6, and what concurrency rule applies to `h5py` in PyTorch DataLoaders?**</summary>
 
 The uncompressed `uint8` image array of 1.2 million images occupies 180.63 GB with 64-image chunks of 9.63 MB each, while the `int32` label array occupies 4.80 MB. Because `h5py` file handles are not fork-safe, you must open `h5py.File` lazily inside each worker's `__getitem__` or `worker_init_fn` rather than in `__init__`.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. By what factor do read syscalls drop when reading 1 GiB in 1 MiB sequential blocks instead of 4 KB random blocks, and how do you tune NVMe read-ahead on Linux?`&lt;/strong>`</summary>
+<summary>**9. By what factor do read syscalls drop when reading 1 GiB in 1 MiB sequential blocks instead of 4 KB random blocks, and how do you tune NVMe read-ahead on Linux?**</summary>
 
 Reading 1 GiB in 1 MiB blocks requires 1,024 syscalls compared to 262,144 syscalls for 4 KB blocks, a 256-fold reduction. You raise NVMe sequential read-ahead from the 128 KB default to 4,096 KB, a 32x increase, by running `sudo blockdev --setra 8192 /dev/nvme0n1`.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. When random reads cannot be avoided, why should you disable large OS read-ahead and use `pread()` or Linux `io_uring`?`&lt;/strong>`</summary>
+<summary>**10. When random reads cannot be avoided, why should you disable large OS read-ahead and use `pread()` or Linux `io_uring`?**</summary>
 
 On purely random reads, large OS read-ahead wastes storage bandwidth and pollutes the page cache by fetching adjacent blocks that will never be used. Issuing concurrent positional reads with `pread()` or batched asynchronous `io_uring` requests with pre-registered buffers and `O_DIRECT` minimizes syscall overhead and hides random NVMe latency.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How many batches does a PyTorch DataLoader keep queued per rank when `num_workers=8` and `prefetch_factor=4`, and how much `/dev/shm` memory does that require across an 8-GPU node?`&lt;/strong>`</summary>
+<summary>**11. How many batches does a PyTorch DataLoader keep queued per rank when `num_workers=8` and `prefetch_factor=4`, and how much `/dev/shm` memory does that require across an 8-GPU node?**</summary>
 
 Each rank queues `num_workers * prefetch_factor`, which equals 32 batches per rank. At 18.375 MiB per 32-image batch, 32 batches require 588.0 MiB per rank and 4,704.0 MiB, or 4.59375 GiB, across all eight GPUs on the node.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How do `pin_memory=True`, `persistent_workers=True`, and a separate CUDA `copy_stream` work together to hide Host-to-Device transfer latency?`&lt;/strong>`</summary>
+<summary>**12. How do `pin_memory=True`, `persistent_workers=True`, and a separate CUDA `copy_stream` work together to hide Host-to-Device transfer latency?**</summary>
 
 Setting `pin_memory=True` stages collated batches in page-locked host RAM. The GPU DMA engine can then run asynchronous `.to(device, non_blocking=True)` transfers on a dedicated `copy_stream` while the compute stream runs forward and backward kernels. Setting `persistent_workers=True` keeps worker processes and open shard handles alive across epochs so queues do not drain at epoch boundaries.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How do you experimentally isolate pure Python DataLoader transform overhead from Host-to-Device `memcpy` stalls?`&lt;/strong>`</summary>
+<summary>**13. How do you experimentally isolate pure Python DataLoader transform overhead from Host-to-Device `memcpy` stalls?**</summary>
 
 First, set `num_workers=0` and time the iterator pull with GPU compute disabled. That test measures synchronous Python `__getitem__` and `collate_fn` cost without worker scheduling. Second, measure Host-to-Device transfer time separately using `torch.cuda.Event` timers around `.to("cuda")` or by inspecting the copy stream lane in Nsight Systems.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. If profiling shows GPUs spend 30% of their time waiting on data I/O and tuning reduces that wait to 5%, what is the reduction in I/O wait and the step-rate speedup on an I/O-bound pipeline?`&lt;/strong>`</summary>
+<summary>**14. If profiling shows GPUs spend 30% of their time waiting on data I/O and tuning reduces that wait to 5%, what is the reduction in I/O wait and the step-rate speedup on an I/O-bound pipeline?**</summary>
 
 Reducing GPU I/O wait from 30 percent to 5 percent cuts I/O stall time sixfold and recovers 25 percentage points of active GPU compute utilization. On an I/O-bound pipeline where step rate is gated by data wait, cutting wait time sixfold increases training steps per second by up to 6.0x.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. At 200 MB/s of training data per GPU, how much aggregate read bandwidth do an 8-GPU node and a 72-GPU Grace Blackwell GB200/GB300 NVL72 rack require?`&lt;/strong>`</summary>
+<summary>**15. At 200 MB/s of training data per GPU, how much aggregate read bandwidth do an 8-GPU node and a 72-GPU Grace Blackwell GB200/GB300 NVL72 rack require?**</summary>
 
 An eight-GPU node requires 1.6 GB/s of sustained read bandwidth. A 72-GPU GB200 or GB300 NVL72 rack requires 14.4 GB/s, which sits inside a 14 to 20 GB/s practical envelope.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How much did NVIDIA DALI reduce host CPU utilization in the multimodal object-detection pipeline, and what hardware engines accelerate decoding and decompression on Blackwell?`&lt;/strong>`</summary>
+<summary>**16. How much did NVIDIA DALI reduce host CPU utilization in the multimodal object-detection pipeline, and what hardware engines accelerate decoding and decompression on Blackwell?**</summary>
 
 DALI reduced host CPU utilization from 800 percent across eight full cores down to 200 percent across two cores. That fourfold reduction saves 75.0 percent of host CPU capacity. It uses hardware `nvJPEG` and `NVDEC` media engines, the 900 GB/s bidirectional Grace-to-Blackwell NVLink-C2C link, and Blackwell's hardware Decompression Engine for LZ4, Snappy, and Deflate streams.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. Why does a fused GPU DALI graph at 8.0 ms per batch outperform a decode-only DALI pipeline that returns images to the CPU for augmentations at 67.5 ms per batch?`&lt;/strong>`</summary>
+<summary>**17. Why does a fused GPU DALI graph at 8.0 ms per batch outperform a decode-only DALI pipeline that returns images to the CPU for augmentations at 67.5 ms per batch?**</summary>
 
 Decoding on the GPU and copying uncompressed pixels back to the CPU for CPU augmentations before copying them back to the GPU wastes 24.0 ms on PCIe bounce copies and 38.0 ms on CPU transforms. Keeping resize, crop, and normalization fused on the GPU takes just 2.5 ms after decode, finishing the whole batch in 8.0 ms.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. How does NVIDIA NeMo Curator structure preprocessed LLM datasets for Megatron-LM and NeMo training, and how does `.bin` and `.idx` achieve O(1) document lookup?`&lt;/strong>`</summary>
+<summary>**18. How does NVIDIA NeMo Curator structure preprocessed LLM datasets for Megatron-LM and NeMo training, and how does `.bin` and `.idx` achieve O(1) document lookup?**</summary>
 
 NeMo Curator cleanses, deduplicates, and tokenizes raw text offline via `DocumentDataset` on sharded JSONL or Parquet files. It then compiles tokens into a contiguous `.bin` data file paired with a memory-mapped `.idx` index file. A worker looks up a document's byte offset and token length in `.idx` in constant time and slices the `.bin` memory map directly via pointer arithmetic.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. In Lab 04, what numeric thresholds in the diagnostic script flag a DATA LOADING bottleneck versus a CHECKPOINT WRITE bottleneck?`&lt;/strong>`</summary>
+<summary>**19. In Lab 04, what numeric thresholds in the diagnostic script flag a DATA LOADING bottleneck versus a CHECKPOINT WRITE bottleneck?**</summary>
 
 An average or per-batch wait time above 500 ms, or 0.5 seconds, flags a data-loading bottleneck. A checkpoint save duration above 10 seconds flags a checkpoint-write bottleneck, while any checkpoint save above 1 second indicates visible GPU idle time.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. How do you use the batch-size perturbation test to prove whether a 60 GB/s AllReduce on a 100 GB/s NIC is communication-bound or compute-bound?`&lt;/strong>`</summary>
+<summary>**20. How do you use the batch-size perturbation test to prove whether a 60 GB/s AllReduce on a 100 GB/s NIC is communication-bound or compute-bound?**</summary>
 
 Halve the batch size to cut backward compute in half while keeping gradient `AllReduce` byte volume constant. If achieved NIC bandwidth stays at 60 GB/s, the network is the bottleneck and the job is communication-bound. If NIC bandwidth drops to 40 GB/s, the GPUs were not finishing compute fast enough to keep the NIC fed and the job is compute-bound.
 </details>

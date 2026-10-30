@@ -735,32 +735,32 @@ if __name__ == "__main__":
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. What two quantitative hardware limits (memory and compute) make single-GPU training impossible for frontier models like Llama-3-70B and GPT-3 (175B)?`&lt;/strong>`</summary>
+<summary>**1. What two quantitative hardware limits (memory and compute) make single-GPU training impossible for frontier models like Llama-3-70B and GPT-3 (175B)?**</summary>
 
 1. **Memory limit:** Llama-3-70B requires 140 GB for FP16 weights alone and over 1.2 TB during training. GPT-3 requires 700 GB just for FP32 weights, which is 8.75x larger than an 80 GB H100. Even a 7B FP32 model requires 180 to 190 GB.
 2. **Compute limit:** One training step of GPT-3 requires roughly `1.46 * 10^18` FLOPs. That step takes 4,679 seconds (~78 minutes) on a single 312 TFLOPS A100 GPU. Scaling to 128 A100 GPUs cuts that step to ~37 seconds.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What is a rail-optimized network topology, and why does it use 8 independent leaf switch planes instead of a traditional Top-of-Rack switch?`&lt;/strong>`</summary>
+<summary>**2. What is a rail-optimized network topology, and why does it use 8 independent leaf switch planes instead of a traditional Top-of-Rack switch?**</summary>
 
 In an eight-GPU server with dedicated NIC-to-GPU pairing, a rail-optimized topology connects the first GPU on every node to the first leaf switch rail. It connects the second GPU to the second rail, continuing through the eighth rail. During hierarchical NCCL collectives or pipeline sends, GPUs reduce locally over NVLink first. They then communicate across nodes strictly with same-index peers over the matching rail. That layout eliminates cross-GPU switch contention and allows single-hop leaf switching.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What is the per-GPU and per-node cross-node bandwidth of an 8-GPU H100 node with 400 Gbps NDR InfiniBand NICs, and what is the bandwidth drop relative to intra-node NVLink 4?`&lt;/strong>`</summary>
+<summary>**3. What is the per-GPU and per-node cross-node bandwidth of an 8-GPU H100 node with 400 Gbps NDR InfiniBand NICs, and what is the bandwidth drop relative to intra-node NVLink 4?**</summary>
 
 Each 400 Gbps NDR InfiniBand NIC delivers 50.0 GB/s, giving 400.0 GB/s aggregate cross-node bandwidth across all eight GPUs in the node. Compared to 900.0 GB/s per GPU on intra-node NVLink, cross-node bandwidth is 18.0x lower per GPU. That ratio explains why misconfiguring Tensor Parallelism across nodes causes a 16.7x slowdown.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Why is RDMA (InfiniBand or RoCEv2) mandatory at 400 Gbps per GPU, and what happens in a RoCEv2 network if Priority Flow Control is disabled on a switch hop?`&lt;/strong>`</summary>
+<summary>**4. Why is RDMA (InfiniBand or RoCEv2) mandatory at 400 Gbps per GPU, and what happens in a RoCEv2 network if Priority Flow Control is disabled on a switch hop?**</summary>
 
 At 400 Gbps (50 GB/s) per GPU, processing packets through the OS kernel TCP/IP stack saturates the CPUs and starves the GPUs. GPUDirect RDMA bypasses the CPU and OS kernel to DMA directly between GPU HBM and NIC buffers over the local PCIe switch. RoCEv2 encapsulates RDMA over UDP/Ethernet and requires a lossless fabric via PFC. Without PFC, switch buffer congestion drops packets and triggers RDMA `Go-Back-N` retransmission. That retransmission storm collapses throughput by three to ten times.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. How do `slurmctld`, `slurmd`, `slurmdbd`, Partitions, and GRES (`gres.conf`) work together when scheduling a multi-node GPU job?`&lt;/strong>`</summary>
+<summary>**5. How do `slurmctld`, `slurmd`, `slurmdbd`, Partitions, and GRES (`gres.conf`) work together when scheduling a multi-node GPU job?**</summary>
 
 - **Controller daemon:** Manages the central queue, priority and fair-share scheduling, and node allocations.
 - **Compute node daemon:** Runs on each compute node, forks job steps, enforces `cgroup` limits, and reports node health.
@@ -769,13 +769,13 @@ At 400 Gbps (50 GB/s) per GPU, processing packets through the OS kernel TCP/IP s
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Why must you use `--ntasks-per-node=1` when launching `srun torchrun --nproc_per_node=8`, and what happens if you set `--ntasks-per-node=8` instead?`&lt;/strong>`</summary>
+<summary>**6. Why must you use `--ntasks-per-node=1` when launching `srun torchrun --nproc_per_node=8`, and what happens if you set `--ntasks-per-node=8` instead?**</summary>
 
 With one task per node, `srun` launches one `torchrun` supervisor per node. That supervisor then spawns eight GPU worker processes. Setting eight tasks per node while calling `torchrun` starts eight supervisors per node. That mistake spawns 64 processes per node and crashes with out-of-memory or port collision errors.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How do `SLURM_PROCID`, `SLURM_LOCALID`, `SLURM_NODEID`, `SLURM_NTASKS`, and `SLURM_JOB_NODELIST` map to PyTorch's `RANK`, `LOCAL_RANK`, `NODE_RANK`, `WORLD_SIZE`, and `MASTER_ADDR`?`&lt;/strong>`</summary>
+<summary>**7. How do `SLURM_PROCID`, `SLURM_LOCALID`, `SLURM_NODEID`, `SLURM_NTASKS`, and `SLURM_JOB_NODELIST` map to PyTorch's `RANK`, `LOCAL_RANK`, `NODE_RANK`, `WORLD_SIZE`, and `MASTER_ADDR`?**</summary>
 
 - **Master address:** Derived from the first hostname in `scontrol show hostnames "$SLURM_JOB_NODELIST"`.
 - **Node rank:** Equals `SLURM_NODEID`.
@@ -783,19 +783,19 @@ With one task per node, `srun` launches one `torchrun` supervisor per node. That
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What happens if `MASTER_ADDR` is set to `127.0.0.1` on a 2-node Slurm job, and why can this bug go unnoticed during testing?`&lt;/strong>`</summary>
+<summary>**8. What happens if `MASTER_ADDR` is set to `127.0.0.1` on a 2-node Slurm job, and why can this bug go unnoticed during testing?**</summary>
 
 If the master address is `127.0.0.1`, each node connects to its own loopback interface and forms an isolated single-node process group. The job runs without crashing, but gradients never synchronize across nodes. On a virtual multi-node Slurm test cluster where virtual nodes share one physical host, `127.0.0.1` accidentally works. The bug stays hidden until deployed on separate servers.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Why do HPC Slurm clusters use Enroot and Pyxis instead of standard Docker?`&lt;/strong>`</summary>
+<summary>**9. Why do HPC Slurm clusters use Enroot and Pyxis instead of standard Docker?**</summary>
 
 Standard Docker requires a privileged root daemon, which is a security risk on multi-tenant HPC nodes. Enroot unpacks OCI images into SquashFS filesystems and runs them in unprivileged user namespaces without a daemon. Pyxis is a Slurm SPANK plugin that hooks Enroot directly into `srun`. It automatically binds the job's allocated GPUs inside the container.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. How do you map a 3D/4D parallelism grid `(DP, PP, CP, TP)` onto a 32-GPU (4 x 8) cluster so that collectives match the physical network hierarchy?`&lt;/strong>`</summary>
+<summary>**10. How do you map a 3D/4D parallelism grid `(DP, PP, CP, TP)` onto a 32-GPU (4 x 8) cluster so that collectives match the physical network hierarchy?**</summary>
 
 Use `tp-cp-pp-dp` ordering with TP inner-most:
 - **TP = 8:** Maps to `[0..7]`, `[8..15]`, `[16..23]`, and `[24..31]`. Those groups stay 100 percent on intra-node NVLink.
@@ -803,37 +803,37 @@ Use `tp-cp-pp-dp` ordering with TP inner-most:
 </details>
 
 <details>
-<summary>`&lt;strong>`11. Why does NCCL switch from Ring (`NCCL_ALGO=Ring`) to Tree (`NCCL_ALGO=Tree`) as a cluster scales from 8 GPUs to 512+ GPUs?`&lt;/strong>`</summary>
+<summary>**11. Why does NCCL switch from Ring (`NCCL_ALGO=Ring`) to Tree (`NCCL_ALGO=Tree`) as a cluster scales from 8 GPUs to 512+ GPUs?**</summary>
 
 For 28 GB of FP32 gradients, an eight-GPU Ring over 900 GB/s NVLink moves 49.0 GB in ~54 ms. That ring needs only 8 hops (< 0.1 ms latency). Across 512 GPUs over 25 GB/s InfiniBand, moving 55.9 GB takes ~2.2 s. A flat Ring requires 512 sequential hops, accumulating per-hop jitter. A Double Binary Tree cuts hop depth logarithmically to 9 hops.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What causes the `NCCL INFO NET/IB : GPU 0 uses NIC 3` performance drop (40 GB/s vs 300 GB/s), and how do you fix it?`&lt;/strong>`</summary>
+<summary>**12. What causes the `NCCL INFO NET/IB : GPU 0 uses NIC 3` performance drop (40 GB/s vs 300 GB/s), and how do you fix it?**</summary>
 
 The first GPU and first NIC share the first PCIe switch (`PIX`). When that GPU uses a non-local NIC or a cross-socket NIC, GPUDirect RDMA must cross the CPU root complex or inter-socket link (`SYS`). That detour drops `nccl-tests` bandwidth from 300 GB/s to 40 GB/s (7.5x). Fix it by verifying `PIX` in `nvidia-smi topo -m` and disabling BIOS ACS. Also set `NCCL_NET_GDR_LEVEL=5`, `NCCL_CROSS_NIC=0`, and `--cpu-bind=numa`.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. In `nccl-tests` (`./build/all_reduce_perf -b 8 -e 128M -f 2 -g 8`), what is the formula relating `algbw` and `busbw`, and which one should you compare to hardware link specs?`&lt;/strong>`</summary>
+<summary>**13. In `nccl-tests` (`./build/all_reduce_perf -b 8 -e 128M -f 2 -g 8`), what is the formula relating `algbw` and `busbw`, and which one should you compare to hardware link specs?**</summary>
 
 For AllReduce across N GPUs, each GPU transfers `2 * (N - 1) / N * size` bytes. Therefore, `busbw = algbw * 2 * (N - 1) / N`. Always compare `busbw` at large message sizes (≥ 32 MB) against the hardware spec. Comparing `algbw` under-reports true link utilization by nearly half.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Why does a Megatron-LM 8B (8.03B) checkpoint consume 108 GB on disk, and how do you convert it for standalone PyTorch or vLLM inference?`&lt;/strong>`</summary>
+<summary>**14. Why does a Megatron-LM 8B (8.03B) checkpoint consume 108 GB on disk, and how do you convert it for standalone PyTorch or vLLM inference?**</summary>
 
 The 8.03B model requires 16.06 GB for BF16 weights and 64.24 GB for FP32 Adam states (80.30 GB theoretical). Sharding metadata and alignment padding add 27.70 GB across four 27.0 GB `.distcp` shards (108.0 GB total). Run `convert_megatron_checkpoint.py` or Megatron-Bridge to strip the optimizer state and export a 16.06 GB model file.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. How do `#SBATCH --signal=SIGUSR1@90` and `SIGTERM` differ in Slurm, and why must a production checkpointer trap both?`&lt;/strong>`</summary>
+<summary>**15. How do `#SBATCH --signal=SIGUSR1@90` and `SIGTERM` differ in Slurm, and why must a production checkpointer trap both?**</summary>
 
 The `--signal=SIGUSR1@90` directive sends `SIGUSR1` ninety seconds before the job's wall-clock time limit expires. Immediate cancelation or cluster preemption sends `SIGTERM`. Registering Python signal handlers for both signals allows the loop to finish the current step. It then writes a sharded checkpoint (4.32 s for 108 GB at 25 GB/s) and resubmits via `sbatch`.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Besides model weights, what other three components must a distributed checkpoint save and restore to guarantee bit-for-bit deterministic recovery?`&lt;/strong>`</summary>
+<summary>**16. Besides model weights, what other three components must a distributed checkpoint save and restore to guarantee bit-for-bit deterministic recovery?**</summary>
 
 A deterministic checkpoint gated behind a distributed barrier must save and restore all four components:
 1. **Model weights:** `model_state_dict`.
@@ -843,13 +843,13 @@ A deterministic checkpoint gated behind a distributed barrier must save and rest
 </details>
 
 <details>
-<summary>`&lt;strong>`17. How do you simulate a 2-node Slurm cluster on a single 8-GPU server for local testing?`&lt;/strong>`</summary>
+<summary>**17. How do you simulate a 2-node Slurm cluster on a single 8-GPU server for local testing?**</summary>
 
 Compile Slurm with `--enable-multiple-slurmd` and configure two virtual nodes in `slurm.conf` on ports 17016 and 17017 sharing the host's hostname. Map them in `gres.conf` to `/dev/nvidia6` and `/dev/nvidia7`. Start the controller and two node daemons, and resume any drained state with `scontrol`.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. How do Slurm job arrays (`--array=0-11`), interactive allocations (`salloc`), and job dependencies (`--dependency=afterok`) streamline training operations?`&lt;/strong>`</summary>
+<summary>**18. How do Slurm job arrays (`--array=0-11`), interactive allocations (`salloc`), and job dependencies (`--dependency=afterok`) streamline training operations?**</summary>
 
 - **Job arrays:** Launch twelve parallel hyperparameter jobs indexed by `SLURM_ARRAY_TASK_ID`.
 - **Interactive allocations:** Open an interactive multi-node shell for rapid debugging without re-queuing.
@@ -857,13 +857,13 @@ Compile Slurm with `--enable-multiple-slurmd` and configure two virtual nodes in
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What happens when a compute node suffers an uncorrectable ECC error (`Xid 48`/`63`) and drains mid-job, and how do you diagnose it?`&lt;/strong>`</summary>
+<summary>**19. What happens when a compute node suffers an uncorrectable ECC error (`Xid 48`/`63`) and drains mid-job, and how do you diagnose it?**</summary>
 
 The node daemon marks the server `drained`, and the GPU process on that node dies. Because NCCL collectives require all ranks, surviving ranks hang until the watchdog times out. Diagnose the failure via `scontrol show node`, `dmesg -T`, and `nvidia-smi -q -d ECC`.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. When profiling a multi-node Slurm job with `torch.profiler`, why must `prof.export_chrome_trace("trace.json")` be guarded by `if dist.get_rank() == 0:`?`&lt;/strong>`</summary>
+<summary>**20. When profiling a multi-node Slurm job with `torch.profiler`, why must `prof.export_chrome_trace("trace.json")` be guarded by `if dist.get_rank() == 0:`?**</summary>
 
 On a shared parallel filesystem like Lustre or NFS, concurrent writes to the same trace file path corrupt the JSON file and create an I/O storm. Guard trace export by the first rank or write rank-suffixed filenames to prevent corruption.
 </details>

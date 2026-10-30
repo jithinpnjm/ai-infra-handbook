@@ -9,7 +9,7 @@ sidebar_label: Start here
 
 One book from Linux and networking basics to senior-level AI infrastructure: HPC and Slurm, Kubernetes with GPUs, BCM and Redfish, NVIDIA reference architectures, AI networking, distributed training, inference, MLOps and operations.
 
-**386 chapters in 20 parts.** Chapters marked *scaffold* are not written yet; progress is tracked in `planning/STATUS.md`.
+Chapters marked *scaffold* are not written yet; progress is tracked in `planning/STATUS.md`.
 
 | Part | Chapters | Default tier |
 |---|---|---|

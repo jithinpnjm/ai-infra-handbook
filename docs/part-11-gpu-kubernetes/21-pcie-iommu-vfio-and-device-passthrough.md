@@ -355,121 +355,121 @@ Summary: 25 passed, 0 failed out of 25 checks.
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. Compare the unidirectional bandwidth of PCIe Gen4 x16, PCIe Gen5 x16, and an NVIDIA H100 GPU's internal HBM3 memory.`&lt;/strong>`</summary>
+<summary>**1. Compare the unidirectional bandwidth of PCIe Gen4 x16, PCIe Gen5 x16, and an NVIDIA H100 GPU's internal HBM3 memory.**</summary>
 
 PCIe Gen4 x16 delivers roughly 32 GB/s per direction, and PCIe Gen5 x16 doubles that to 64 GB/s per direction. By comparison, an NVIDIA H100 GPU provides 3,350 GB/s of internal HBM3 memory bandwidth. Internal HBM3 memory is therefore more than fifty times faster than PCIe Gen5 x16.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What is the architectural difference between wiring GPUs and NICs directly to the CPU Root Complex versus wiring them to a dedicated PCIe Switch?`&lt;/strong>`</summary>
+<summary>**2. What is the architectural difference between wiring GPUs and NICs directly to the CPU Root Complex versus wiring them to a dedicated PCIe Switch?**</summary>
 
 When devices wire directly to the CPU Root Complex, shown as PHB or NODE, transfers must pass through the CPU. This path consumes host CPU memory bandwidth and adds latency. When connected to the same Broadcom or PLX PCIe Switch, shown as PIX or PXB, Peer-to-Peer traffic routes directly through the switch without touching the host CPU.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. In nvidia-smi topo -m, what does SYS mean, and how do you prevent Kubernetes from scheduling a Pod onto a cross-NUMA SYS GPU-to-NIC path?`&lt;/strong>`</summary>
+<summary>**3. In nvidia-smi topo -m, what does SYS mean, and how do you prevent Kubernetes from scheduling a Pod onto a cross-NUMA SYS GPU-to-NIC path?**</summary>
 
 The SYS code means the GPU and the network card sit on different NUMA nodes across separate physical CPU sockets. All traffic must cross the inter-socket Intel UPI or AMD xGMI link, cutting throughput by roughly 50%. You prevent this by configuring `kubelet` with `--topology-manager-policy=single-numa-node` and `--cpu-manager-policy=static`.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. What is a PCIe Direct Memory Access attack, and how does the IOMMU prevent it?`&lt;/strong>`</summary>
+<summary>**4. What is a PCIe Direct Memory Access attack, and how does the IOMMU prevent it?**</summary>
 
 Direct Memory Access allows PCIe peripherals to read and write physical system RAM directly, bypassing the host CPU and kernel. Without IOMMU protection, a compromised device firmware or guest driver can read host passwords or keys from arbitrary RAM addresses. The Intel VT-d or AMD-Vi IOMMU checks every DMA request against a per-device DMA Remapping Access Table. It blocks any unauthorized physical memory access in silicon with a hardware DMAR fault.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. In the Volume 18 Chapter 7 penetration test, why was a tenant able to read the cloud provider's management memory even though SR-IOV was enabled on the ConnectX-6 NIC?`&lt;/strong>`</summary>
+<summary>**5. In the Volume 18 Chapter 7 penetration test, why was a tenant able to read the cloud provider's management memory even though SR-IOV was enabled on the ConnectX-6 NIC?**</summary>
 
 SR-IOV only partitions a physical network adapter into multiple Virtual Functions so several tenants can share hardware queues. SR-IOV does not restrict which host physical RAM addresses those Virtual Functions can read or write via DMA. Because the cloud provider had not enabled the IOMMU via `intel_iommu=on`, the tenant's custom VF driver read motherboard RAM freely.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. When is it acceptable to use iommu=pt pass-through mode, and when is strict IOMMU remapping mandatory?`&lt;/strong>`</summary>
+<summary>**6. When is it acceptable to use iommu=pt pass-through mode, and when is strict IOMMU remapping mandatory?**</summary>
 
 In a single-tenant, trusted bare-metal HPC cluster with no untrusted VMs, operators sometimes set `iommu=pt` on the host kernel. That flag bypasses IOTLB translation overhead for host DMA operations. In any multi-tenant cloud, bare-metal SR-IOV environment, or VM passthrough setup under KVM, KubeVirt, or Kata, strict IOMMU remapping is mandatory.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. What is a Linux IOMMU Group, and what is the VFIO viability rule when passing a GPU into a Virtual Machine?`&lt;/strong>`</summary>
+<summary>**7. What is a Linux IOMMU Group, and what is the VFIO viability rule when passing a GPU into a Virtual Machine?**</summary>
 
 An IOMMU Group under `/sys/kernel/iommu_groups/<N>/devices/` is the smallest set of PCIe devices isolated by the IOMMU hardware. Under Linux VFIO, an IOMMU group is viable for passthrough only if every non-bridge endpoint in that group is isolated. Both the GPU at `0000:4b:00.0` and its companion audio function at `0000:4b:00.1` must unbind from host drivers and bind to `vfio-pci` or `pci-stub`.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. In Brendan Gregg's Systems Performance Chapter 11, what two cloud efficiency gains were reported by Pinterest and Shopify from dynamic sizing and cloud migration?`&lt;/strong>`</summary>
+<summary>**8. In Brendan Gregg's Systems Performance Chapter 11, what two cloud efficiency gains were reported by Pinterest and Shopify from dynamic sizing and cloud migration?**</summary>
 
 In December 2012, Pinterest cut its off-hours cloud infrastructure cost from $54/hour to $20/hour by shutting down instances during low traffic. In 2018, Shopify reduced its average server idle time from 61% on fixed physical servers down to 19% on cloud instances.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Contrast Config A, Config B, and AWS Nitro in Systems Performance Section 11.2.`&lt;/strong>`</summary>
+<summary>**9. Contrast Config A, Config B, and AWS Nitro in Systems Performance Section 11.2.**</summary>
 
 Config A, represented by Xen, runs a bare-metal hypervisor while a privileged Domain-0 management domain proxies I/O in 10 steps without paravirtualization. Config B, represented by KVM and QEMU, uses the Linux `kvm` module alongside a `qemu-system-x86` process that completes I/O in 5 steps. AWS Nitro combines KVM processor virtualization with dedicated SR-IOV and hardware offload cards, eliminating the QEMU I/O proxy completely.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Compare Binary Translation, Paravirtualization, and Hardware-Assisted Virtualization for executing guest privileged instructions.`&lt;/strong>`</summary>
+<summary>**10. Compare Binary Translation, Paravirtualization, and Hardware-Assisted Virtualization for executing guest privileged instructions.**</summary>
 
 Binary translation runs the Virtual Machine Monitor in Ring 0 and moves the guest kernel to Ring 1, rewriting privileged instructions at runtime. Paravirtualization modifies the guest OS kernel to replace privileged operations with explicit hypercalls or batched multicalls to the hypervisor. Hardware-assisted virtualization using Intel VT-x or AMD-V runs the VMM below Ring 0 and traps via a VM-EXIT only on privileged operations.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How do Intel Extended Page Tables and AMD Nested Page Tables accelerate virtual machine memory access compared to Shadow Page Tables?`&lt;/strong>`</summary>
+<summary>**11. How do Intel Extended Page Tables and AMD Nested Page Tables accelerate virtual machine memory access compared to Shadow Page Tables?**</summary>
 
 Virtualization requires a two-stage memory translation from Guest Virtual to Guest Physical and then from Guest Physical to Host Physical. Shadow Page Tables forced the hypervisor to trap guest page-table edits in software and overwrite the CPU `CR3` register on context switches. Intel EPT and AMD NPT implement two-dimensional page tables in CPU hardware so the MMU page-walker resolves TLB misses directly in silicon.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. In Systems Performance Section 11.2.4, what do perf kvm stat live and kvmexits.bt measure on a KVM host, and why does high HLT time percentage indicate a healthy idle guest?`&lt;/strong>`</summary>
+<summary>**12. In Systems Performance Section 11.2.4, what do perf kvm stat live and kvmexits.bt measure on a KVM host, and why does high HLT time percentage indicate a healthy idle guest?**</summary>
 
 Both tools measure the frequency and duration of VM-EXIT traps between `tracepoint:kvm:kvm_exit` and `tracepoint:kvm:kvm_entry`. When a guest vCPU has no runnable threads, the guest kernel executes the privileged `HLT` instruction, invoking `kvm_vcpu_halt()` to sleep until the next interrupt. A low exit rate where `HLT` accounts for 99.63% of time across 466 samples shows the guest is sleeping normally.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. Why does enabling PCI passthrough or SR-IOV make guest disk and network I/O invisible to host OS tools like iostat?`&lt;/strong>`</summary>
+<summary>**13. Why does enabling PCI passthrough or SR-IOV make guest disk and network I/O invisible to host OS tools like iostat?**</summary>
 
 PCI passthrough via `vfio-pci` and SR-IOV allow the guest driver to issue DMA transfers directly to the physical PCIe card or Virtual Function. Because those transactions bypass the host kernel's block and network stacks and the QEMU proxy, host `iostat` counters never see the traffic.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Name the eight Linux namespaces in Table 11.1 and the twelve cgroup v1 controllers in Table 11.2 of Systems Performance Section 11.3.1.`&lt;/strong>`</summary>
+<summary>**14. Name the eight Linux namespaces in Table 11.1 and the twelve cgroup v1 controllers in Table 11.2 of Systems Performance Section 11.3.1.**</summary>
 
 The eight Linux namespaces listed by `lsns` in Table 11.1 are cgroup, ipc, mnt, net, pid, time, user, and uts. The twelve Linux cgroup v1 controllers in Table 11.2 are blkio, cpu, cpuacct, cpuset, devices, hugetlb, memory, net_cls, net_prio, perf_event, pids, and rdma.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Walk through the CFS CPU shares calculation in Systems Performance Section 11.3.3 for Container A and Container B, and explain the bait-and-switch bursting problem.`&lt;/strong>`</summary>
+<summary>**15. Walk through the CFS CPU shares calculation in Systems Performance Section 11.3.3 for Container A and Container B, and explain the bait-and-switch bursting problem.**</summary>
 
 On a host with 100 total shares, Container A with 10 shares gets 100% of system CPUs when running alone. When only Container A with 10 shares and Container B with 30 shares are busy, Container A gets 25% of system CPUs. When all 100 shares are busy, Container A drops to 10%, a tenfold slowdown that operators prevent with a 20% CFS bandwidth cap.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How do you diagnose whether a Linux container is CPU throttled by CFS bandwidth limits, cpusets, or CFS shares using Figure 11.13 of Systems Performance?`&lt;/strong>`</summary>
+<summary>**16. How do you diagnose whether a Linux container is CPU throttled by CFS bandwidth limits, cpusets, or CFS shares using Figure 11.13 of Systems Performance?**</summary>
 
 Check the five statistics in sequence. First, if `throttled_time` and `nr_throttled` in `cpu.stat` are climbing, the container is throttled by CFS bandwidth limits. Second, if `nonvoluntary_ctxt_switches` in `/proc/PID/status` is not climbing, the container is not CPU throttled. Third, if the host has idle CPU in `mpstat` while `cpuset` cores are 100% busy, the container is `cpuset` throttled. Otherwise, if the host has zero idle CPU while other tenants are active, the container is throttled by CFS shares.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. According to Table 11.6 of Systems Performance Section 11.3.4, which traditional Linux observability tools run inside a container unexpectedly display host-wide statistics?`&lt;/strong>`</summary>
+<summary>**17. According to Table 11.6 of Systems Performance Section 11.3.4, which traditional Linux observability tools run inside a container unexpectedly display host-wide statistics?**</summary>
 
 Inside a container, `uptime`, `mpstat`, `vmstat`, `free`, and `iostat` display host-wide load, CPUs, memory, and disk activity rather than container-specific usage. The summary header of `top` also mixes host and container statistics. Running `iostat -sxz 1` inside an idle container leaks host `nvme0n1` activity at 2,578 tps and 100% utilization while `blkio.throttle.io_serviced` stays at 804.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. How do you map a container process PID to its host PID and access its files or namespaces from the host?`&lt;/strong>`</summary>
+<summary>**18. How do you map a container process PID to its host PID and access its files or namespaces from the host?**</summary>
 
 Inspect `/proc/<HOST_PID>/status` for `NSpid: 4915 753` or scan all host processes using `awk '$1 == "NSpid:" && $3 == 753 { print $2 }' /proc/*/status`. Disambiguate multiple containers with guest PID 753 by checking the namespace inode symlink with `ls -lh /proc/4915/ns/pid` for `pid:[4026532216]`. You can then inspect the container filesystem at `/proc/4915/root/tmp` or enter its namespaces with `nsenter -t 4915 -m -p top`.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Compare the codebase size, boot time, and memory overhead of QEMU 4.2, AWS Firecracker, and Intel Clear Containers or Kata Containers.`&lt;/strong>`</summary>
+<summary>**19. Compare the codebase size, boot time, and memory overhead of QEMU 4.2, AWS Firecracker, and Intel Clear Containers or Kata Containers.**</summary>
 
 QEMU 4.2 is a full hardware VMM containing over 1.4 million lines of code. AWS Firecracker strips the VMM down to 50,000 lines of code, achieving roughly a 100 ms boot time and under 5 MB of memory overhead. Intel Clear Containers, which merged into Kata Containers in 2017, achieved a boot time under 45 ms and 48 to 50 MB of memory overhead.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. In Table 11.7 of Systems Performance Section 11.6, why does OS Virtualization favor host operators for observability while Hardware and Lightweight Virtualization favor end users?`&lt;/strong>`</summary>
+<summary>**20. In Table 11.7 of Systems Performance Section 11.6, why does OS Virtualization favor host operators for observability while Hardware and Lightweight Virtualization favor end users?**</summary>
 
 OS Containers share a single host kernel, allowing the host operator to inspect every container process, syscall, stack trace, and file directly from the host. At the same time, container tenants are blocked from running privileged kernel tracers like `perf`, Ftrace, BPF, or `dmesg`. Hardware VMs and Lightweight MicroVMs give each tenant a dedicated guest kernel where `perf`, Ftrace, and BPF tools work natively. However, the host operator sees only an opaque `qemu-system-x86` or `firecracker` process.
 </details>

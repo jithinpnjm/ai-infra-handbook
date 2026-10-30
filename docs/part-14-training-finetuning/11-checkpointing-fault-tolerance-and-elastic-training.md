@@ -569,19 +569,19 @@ rm -rf ./checkpoints/* ./checkpoints_control/*
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. Why are hardware failures considered a mathematical certainty rather than an edge case in large-scale LLM training?`&lt;/strong>`</summary>
+<summary>**1. Why are hardware failures considered a mathematical certainty rather than an edge case in large-scale LLM training?**</summary>
 
 Because distributed collectives couple all GPUs in series, any single GPU, NIC, cable, or PSU failure halts the job. Even at 99.9 percent daily reliability per GPU, a 1,024-GPU 30-day run has over a 99.9999 percent chance of failure. At 100,000 GPUs, the cluster suffers roughly 100 failures every day for a 14.4-minute MTBF.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What is the "Checkpoint Pause," and how much cluster time is wasted if a job pauses for 5 minutes every hour?`&lt;/strong>`</summary>
+<summary>**2. What is the "Checkpoint Pause," and how much cluster time is wasted if a job pauses for 5 minutes every hour?**</summary>
 
 The checkpoint pause is the wall-clock window during which GPUs sit at zero percent compute utilization waiting for state to be written to storage. Pausing for 5 minutes out of every 60-minute hour wastes 8.33 percent, or roughly 8 percent, of total cluster GPU time.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What five components must a modern LLM checkpoint contain to guarantee deterministic resumption?`&lt;/strong>`</summary>
+<summary>**3. What five components must a modern LLM checkpoint contain to guarantee deterministic resumption?**</summary>
 
 A deterministic checkpoint must store five components.
 1. **Model weights:** `model_state_dict`.
@@ -592,14 +592,14 @@ A deterministic checkpoint must store five components.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. What happens after checkpoint resume if you save `model_state_dict` but forget `optimizer_state_dict` or `rng_state`?`&lt;/strong>`</summary>
+<summary>**4. What happens after checkpoint resume if you save `model_state_dict` but forget `optimizer_state_dict` or `rng_state`?**</summary>
 
 - **Missing optimizer state:** Adam's momentum and variance buffers restart cold from zero on mid-training weights, causing an immediate loss spike upon resume.
 - **Missing RNG state:** Data shuffling and dropout masks differ from what the uninterrupted run would have generated, causing silent trajectory divergence without throwing an error.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. For a 70B model on 128 H100 GPUs (16 bytes/param), how does the write time of a naive rank-0 gather compare to a distributed sharded write on a 400 GB/s Lustre filesystem?`&lt;/strong>`</summary>
+<summary>**5. For a 70B model on 128 H100 GPUs (16 bytes/param), how does the write time of a naive rank-0 gather compare to a distributed sharded write on a 400 GB/s Lustre filesystem?**</summary>
 
 The total checkpoint payload is 1,120 GB, or 8.75 GB per GPU shard.
 - **Naive rank-0 gather:** Gathering 1,120 GB over the network at 25 GB/s takes 44.8 seconds, and writing to disk from one node at 5 GB/s takes 224.0 seconds. The total pause is 268.8 seconds, or 4.5 minutes.
@@ -607,37 +607,37 @@ The total checkpoint payload is 1,120 GB, or 8.75 GB per GPU shard.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Why does a 70B mixed-precision AdamW checkpoint measure ~980 GB under the 14-bytes/param convention vs 1,120 GB under the 16-bytes/param convention?`&lt;/strong>`</summary>
+<summary>**6. Why does a 70B mixed-precision AdamW checkpoint measure ~980 GB under the 14-bytes/param convention vs 1,120 GB under the 16-bytes/param convention?**</summary>
 
 During active training, mixed-precision AdamW holds 2-byte BF16 weights, 2-byte BF16 gradients, 4-byte FP32 master weights, and 8-byte FP32 Adam moments for 16 bytes per parameter, or 1,120 GB. Because gradients are recomputed on every backward pass and do not need to be saved in a checkpoint, omitting the 2-byte BF16 gradients leaves 14 bytes per parameter. For 70B parameters, that equals 980 GB total, or 15.3 GB per GPU across 64 GPUs.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How do Tier 1 (Local NVMe), Tier 2 (Lustre/NAS), and Tier 3 (S3 Object Storage) work together in a checkpointing pipeline?`&lt;/strong>`</summary>
+<summary>**7. How do Tier 1 (Local NVMe), Tier 2 (Lustre/NAS), and Tier 3 (S3 Object Storage) work together in a checkpointing pipeline?**</summary>
 
 Each node flushes its local shards of roughly 122 GB over PCIe to Tier 1 local NVMe SSDs in about 10 seconds so training resumes immediately. Background processes then stream those shards to Tier 2 shared Lustre or NAS storage for cluster-wide access. Finally, periodic checkpoints are uploaded to Tier 3 S3 object storage using parallel 1 GB multipart streams for long-term durability.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What is the Young-Daly formula for optimal checkpoint interval, and what interval does it prescribe for a 1,024-GPU cluster with an 8-hour MTBF and 180-second write time?`&lt;/strong>`</summary>
+<summary>**8. What is the Young-Daly formula for optimal checkpoint interval, and what interval does it prescribe for a 1,024-GPU cluster with an 8-hour MTBF and 180-second write time?**</summary>
 
 The Young-Daly formula subtracts the checkpoint write time from the square root of twice the cluster MTBF times the write time. Substituting an MTBF of 28,800 seconds and a write time of 180 seconds yields 3,220 minus 180, which equals 3,040 seconds or 50.7 minutes.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. For a 400B model on 2,048 GPUs with a 6-hour MTBF and 4-minute (240 s) checkpoint write, what is the Young-Daly interval, and why should you round it down in production?`&lt;/strong>`</summary>
+<summary>**9. For a 400B model on 2,048 GPUs with a 6-hour MTBF and 4-minute (240 s) checkpoint write, what is the Young-Daly interval, and why should you round it down in production?**</summary>
 
 With an MTBF of 21,600 seconds and a write time of 240 seconds, the formula gives 3,220 minus 240, which equals 2,980 seconds or 49.7 minutes. In production, engineers round this down to 30 to 40 minutes because real hardware failures cluster during thermal spikes or rack power events rather than following a memoryless exponential distribution.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. How does two-phase asynchronous checkpointing work, and what new failure mode does it introduce on the host CPU?`&lt;/strong>`</summary>
+<summary>**10. How does two-phase asynchronous checkpointing work, and what new failure mode does it introduce on the host CPU?**</summary>
 
 Phase 1 performs a fast Device-to-Host copy from GPU HBM into pinned host CPU RAM in under two seconds, after which GPUs immediately resume the next forward pass. Phase 2 flushes the host RAM buffer to Lustre or S3 in background CPU threads. The new failure mode is a host CPU Out-of-Memory kill if buffered shards exceed free system RAM or if a new save triggers before the previous flush completes.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What three optimizations in PyTorch Distributed Checkpoint (DCP) make asynchronous checkpointing roughly 6x faster?`&lt;/strong>`</summary>
+<summary>**11. What three optimizations in PyTorch Distributed Checkpoint (DCP) make asynchronous checkpointing roughly 6x faster?**</summary>
 
 PyTorch DCP achieves a 6x speedup through three optimizations.
 1. **Cached save plans:** Reusing tensor shape, dtype, and sharding metadata across checkpoints instead of recomputing them every step.
@@ -646,44 +646,44 @@ PyTorch DCP achieves a 6x speedup through three optimizations.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Why does a naive sharded checkpoint fail with `RuntimeError: Number of shards in checkpoint (64) does not match world size (48)` after a node drain, and how does PyTorch DCP solve it?`&lt;/strong>`</summary>
+<summary>**12. Why does a naive sharded checkpoint fail with `RuntimeError: Number of shards in checkpoint (64) does not match world size (48)` after a node drain, and how does PyTorch DCP solve it?**</summary>
 
 Naive per-rank checkpoints bind each file one-to-one to the world size that wrote it, leaving shards 48 through 63 without an owner when the job restarts on 48 GPUs. PyTorch DCP writes global tensor metadata alongside the shards. That metadata allows `dcp.load` to compute a new 48-way sharding plan of 23.33 GB per rank instead of 17.50 GB per rank and reshard on the fly.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. In FSDP2 with PyTorch DCP, why must you construct a template state dict via `get_model_state_dict` and `get_optimizer_state_dict` before calling `dcp.load`?`&lt;/strong>`</summary>
+<summary>**13. In FSDP2 with PyTorch DCP, why must you construct a template state dict via `get_model_state_dict` and `get_optimizer_state_dict` before calling `dcp.load`?**</summary>
 
 Unlike `torch.load`, `dcp.load` mutates an existing sharded state dictionary in place. Calling `get_model_state_dict` and `get_optimizer_state_dict` on the already-initialized and sharded model tells DCP the exact keys, global shapes, and local shard placements this rank needs. Each rank then reads only its required byte slices from disk without gathering on rank zero.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. How do you prevent a crash mid-write from leaving a corrupted, half-written checkpoint file that breaks automated job recovery?`&lt;/strong>`</summary>
+<summary>**14. How do you prevent a crash mid-write from leaving a corrupted, half-written checkpoint file that breaks automated job recovery?**</summary>
 
 Use atomic writes alongside checkpoint rotation. Write the checkpoint to a temporary `.tmp` file path, flush to disk, and invoke `os.rename` followed by `dist.barrier()`. Also retain the last two or three verified checkpoints before pruning older ones.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Why can't an in-process Python `try/except` loop recover a distributed training step when a single GPU rank crashes?`&lt;/strong>`</summary>
+<summary>**15. Why can't an in-process Python `try/except` loop recover a distributed training step when a single GPU rank crashes?**</summary>
 
 NCCL communicators require every participating rank to execute every collective in lockstep. When one rank dies with an ECC or bus error, the NCCL ring or tree state machine is broken and surviving ranks hang inside CUDA kernels until watchdog timeout. Recovery requires tearing down the process group, running a new rendezvous among healthy nodes, and loading the last checkpoint.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What is the difference between fault-tolerant mode (`--nnodes=4 --max_restarts=3`) and elastic mode (`--nnodes=2:4 --max_restarts=3`) in `torchrun`?`&lt;/strong>`</summary>
+<summary>**16. What is the difference between fault-tolerant mode (`--nnodes=4 --max_restarts=3`) and elastic mode (`--nnodes=2:4 --max_restarts=3`) in `torchrun`?**</summary>
 
 - **Fault-tolerant mode:** Restarts failed worker groups up to 3 times, but requires all 4 nodes and 32 GPUs to be present at rendezvous so the world size never changes.
 - **Elastic mode:** Reforms the process group immediately with any available node count between 2 and 4 nodes when a server fails or rejoins. Training continues at reduced capacity without waiting for hardware repair.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. When an elastic training job shrinks from 32 GPUs to 24 GPUs, why can loss spike immediately after the resize even if the checkpoint loaded correctly, and how do you prevent it?`&lt;/strong>`</summary>
+<summary>**17. When an elastic training job shrinks from 32 GPUs to 24 GPUs, why can loss spike immediately after the resize even if the checkpoint loaded correctly, and how do you prevent it?**</summary>
 
 Shrinking the world size from 32 to 24 reduces the effective global batch size by 25 percent, which increases gradient variance and alters the effective learning rate per token. Prevent this by scaling gradient accumulation steps inversely with the world size from 3 to 4 steps, or by adjusting the learning rate via the square-root or linear scaling rule.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. A checkpoint write that normally takes 90 seconds suddenly takes 12 minutes (8x slower) with no change to model size or GPU count. What are the top three causes to investigate?`&lt;/strong>`</summary>
+<summary>**18. A checkpoint write that normally takes 90 seconds suddenly takes 12 minutes (8x slower) with no change to model size or GPU count. What are the top three causes to investigate?**</summary>
 
 Investigate three storage and configuration causes.
 1. **Shared filesystem contention:** Concurrent tenants on Lustre or NAS pushed aggregate demand past the storage bandwidth ceiling, throttling the per-writer rate.
@@ -692,13 +692,13 @@ Investigate three storage and configuration causes.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. How does a heartbeat `FailureDetector` improve upon PyTorch's default 30-minute (`1,800 s`) NCCL collective timeout?`&lt;/strong>`</summary>
+<summary>**19. How does a heartbeat `FailureDetector` improve upon PyTorch's default 30-minute (`1,800 s`) NCCL collective timeout?**</summary>
 
 Waiting 30 minutes to detect a dead rank wastes 500 GPU-hours on a 1,000-GPU cluster. A lightweight heartbeat detector sending signals every 2 seconds and tripping after 4 missed heartbeats detects dead workers in 8 seconds. That is 225 times faster and triggers an immediate checkpoint or elastic restart.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. How do Slurm's `#SBATCH --signal=SIGUSR1@90` and `SIGTERM` work together with `--dependency=singleton` for automated preemption recovery?`&lt;/strong>`</summary>
+<summary>**20. How do Slurm's `#SBATCH --signal=SIGUSR1@90` and `SIGTERM` work together with `--dependency=singleton` for automated preemption recovery?**</summary>
 
 The `--signal=SIGUSR1@90` directive sends `SIGUSR1` 90 seconds before the job's wall-clock time limit, while `scancel` or immediate preemption sends `SIGTERM`. Trapping both signals lets the checkpointer finish the current step, write a 108 GB sharded checkpoint in 4.32 seconds at 25 GB/s, and queue a singleton resubmission that starts automatically once the current allocation exits.
 </details>

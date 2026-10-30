@@ -435,140 +435,140 @@ Exercise input parameters for code/part10/tensor_cores_precision.py:
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. What are the five execution pipelines inside an SM, and which specific instruction classes does each pipeline execute?`&lt;/strong>`</summary>
+<summary>**1. What are the five execution pipelines inside an SM, and which specific instruction classes does each pipeline execute?**</summary>
 
 CUDA Cores execute scalar and vector FP32 and INT32 math (`FADD`, `FMUL`, `FFMA`, `IADD3`), indexing, and reductions. Tensor Cores execute fused matrix multiply-accumulate tiles (`HMMA`, `QMMA`, `WGMMA`, `tcgen05.mma`). SFUs execute transcendentals (`MUFU.SIN`, `MUFU.COS`, `MUFU.EX2`, `MUFU.RCP`). Load/Store units execute `LDG`, `STG`, `LDS`, and `STS`. RT Cores execute BVH ray traversal and ray-triangle intersection on L4, L40S, and RTX parts.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Why is citing RT Core counts to justify an AI training or LLM serving server purchase a requirements error?`&lt;/strong>`</summary>
+<summary>**2. Why is citing RT Core counts to justify an AI training or LLM serving server purchase a requirements error?**</summary>
 
 RT Cores accelerate geometric ray intersections for rendering, digital twins, and ray-traced simulation. They do nothing for neural-network matrix multiplication, so their count says nothing about training or LLM serving performance.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`3. If `nvidia-smi` reports `utilization.gpu = 91%` and `utilization.memory = 18%`, what does it prove, what stays ambiguous, and which DCGM or `ncu` metric distinguishes the cases?`&lt;/strong>`</summary>
+<summary>**3. If `nvidia-smi` reports `utilization.gpu = 91%` and `utilization.memory = 18%`, what does it prove, what stays ambiguous, and which DCGM or `ncu` metric distinguishes the cases?**</summary>
 
 The low memory figure rules out an HBM bandwidth bottleneck, but high GPU-Util is ambiguous between a fast Tensor Core GEMM and a slow scalar CUDA Core loop from fallback or unfused glue kernels. The diagnostic tree has three outcomes: Tensor pipe idle, Tensor pipe active but starved on HBM, and Tensor pipe active with high throughput. The metric that separates them is `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE` or `sm__pipe_tensor_cycles_active` in `ncu`.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`4. State the exact bit breakdown (sign / exponent / mantissa) and byte storage size for FP32, TF32, FP16, and BF16.`&lt;/strong>`</summary>
+<summary>**4. State the exact bit breakdown (sign / exponent / mantissa) and byte storage size for FP32, TF32, FP16, and BF16.**</summary>
 
 FP32 uses 1 sign, 8 exponent, and 23 mantissa bits in four bytes. TF32 uses 1 sign, 8 exponent, and 10 mantissa bits for 19 active bits inside a four-byte word. FP16 uses 1 sign, 5 exponent, and 10 mantissa bits in two bytes. BF16 uses 1 sign, 8 exponent, and 7 mantissa bits in two bytes.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`5. Why does FP16 training require `GradScaler` loss scaling while BF16 training rarely or never requires it?`&lt;/strong>`</summary>
+<summary>**5. Why does FP16 training require `GradScaler` loss scaling while BF16 training rarely or never requires it?**</summary>
 
 FP16 has a narrow 5-bit exponent, so small gradients underflow to zero unless `GradScaler` scales the loss. BF16 keeps FP32's 8-bit exponent range, so gradients do not underflow and `GradScaler` is rarely or never needed.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`6. How do you enable TF32 Tensor Core execution for FP32 matrix multiplications in PyTorch, and how do you enable BF16 Automatic Mixed Precision?`&lt;/strong>`</summary>
+<summary>**6. How do you enable TF32 Tensor Core execution for FP32 matrix multiplications in PyTorch, and how do you enable BF16 Automatic Mixed Precision?**</summary>
 
 For TF32, call `torch.set_float32_matmul_precision('high')`, since the default `'highest'` stays on the slower path. For BF16 AMP, wrap the forward pass in `with torch.amp.autocast("cuda", dtype=torch.bfloat16):`. Note that `autocast` defaults to FP16 if `dtype` is omitted.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Under PyTorch `torch.amp.autocast`, which operations are cast to BF16/FP16 on Tensor Cores, which precision is used for matrix accumulation, and why are operations like LayerNorm and Softmax kept in FP32?`&lt;/strong>`</summary>
+<summary>**7. Under PyTorch `torch.amp.autocast`, which operations are cast to BF16/FP16 on Tensor Cores, which precision is used for matrix accumulation, and why are operations like LayerNorm and Softmax kept in FP32?**</summary>
 
 Large GEMMs and convolutions go to BF16 or FP16 Tensor Core kernels with FP32 accumulators. Numerically sensitive reductions such as LayerNorm, Softmax, and loss functions stay in FP32, because their sums and exponentials need the extra precision.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What are the two FP8 bit-layout variants (E4M3 and E5M2), and which one is preferred for weights/activations versus gradients?`&lt;/strong>`</summary>
+<summary>**8. What are the two FP8 bit-layout variants (E4M3 and E5M2), and which one is preferred for weights/activations versus gradients?**</summary>
 
 E4M3 uses 1 sign, 4 exponent, and 3 mantissa bits and is preferred for weights and forward activations. E5M2 uses 1 sign, 5 exponent, and 2 mantissa bits for a wider dynamic range and is preferred for gradients.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`9. How many values are carried in a single 128-byte HBM memory transaction for FP32 (32), FP16/BF16 (64), FP8/INT8 (128), and NVFP4 (256)?`&lt;/strong>`</summary>
+<summary>**9. How many values are carried in a single 128-byte HBM memory transaction for FP32 (32), FP16/BF16 (64), FP8/INT8 (128), and NVFP4 (256)?**</summary>
 
 A 128-byte transaction carries 32 FP32 values, 64 FP16 or BF16 values, 128 FP8 or INT8 values, and 256 NVFP4 values. FP64 carries 16 values.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Calculate the exact byte size (and decimal MB) of a `[4096, 4096]` weight matrix in FP32 (67.1 MB), FP16/BF16 (33.6 MB), FP8/INT8 (16.8 MB), and NVFP4 (8.4 MB).`&lt;/strong>`</summary>
+<summary>**10. Calculate the exact byte size (and decimal MB) of a `[4096, 4096]` weight matrix in FP32 (67.1 MB), FP16/BF16 (33.6 MB), FP8/INT8 (16.8 MB), and NVFP4 (8.4 MB).**</summary>
 
 Multiplying 4,096 by 4,096 gives 16,777,216 elements. At four bytes per element, FP32 is about 67.1 MB, while FP16 and BF16 halve that to about 33.6 MB. FP8 and INT8 take about 16.8 MB, and NVFP4 takes about 8.4 MB.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How does NVFP4 two-level micro-scaling work, and what is the dense NVFP4 peak throughput on Blackwell B200 (10 PFLOPS) and B300 Ultra (15 PFLOPS) compared to B200 dense FP32 (~80 TFLOPS)?`&lt;/strong>`</summary>
+<summary>**11. How does NVFP4 two-level micro-scaling work, and what is the dense NVFP4 peak throughput on Blackwell B200 (10 PFLOPS) and B300 Ultra (15 PFLOPS) compared to B200 dense FP32 (~80 TFLOPS)?**</summary>
 
 NVFP4 uses two scale levels: a fine-grained scale per microblock of weights plus a higher-level tensor scale, so outliers do not crush normal weights. Dense NVFP4 peaks at 10 PFLOPS on B200 and 15 PFLOPS on B300, versus about 80 TFLOPS dense FP32 on B200.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What does Blackwell's hardware decompression engine do when loading compressed weights from HBM?`&lt;/strong>`</summary>
+<summary>**12. What does Blackwell's hardware decompression engine do when loading compressed weights from HBM?**</summary>
 
 It reads compressed weights from HBM and decompresses them on the fly at load time before feeding the Tensor Cores, so less data crosses HBM.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`13. In NVIDIA's benchmark of a 1.8-trillion-parameter MoE model, how did per-GPU token throughput (3.4 vs 150 tokens/s/GPU) and first-token latency (>5 s vs ~50 ms) compare between H100 and GB200 NVL72?`&lt;/strong>`</summary>
+<summary>**13. In NVIDIA's benchmark of a 1.8-trillion-parameter MoE model, how did per-GPU token throughput (3.4 vs 150 tokens/s/GPU) and first-token latency (>5 s vs ~50 ms) compare between H100 and GB200 NVL72?**</summary>
 
 On H100 the MoE model served about 3.4 tokens/s per GPU with a first-token latency above 5,000 ms. On GB200 NVL72 with NVFP4, the second-generation Transformer Engine, and NVLink 5, it reached about 150 tokens/s per GPU with about 50 ms first-token latency.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`14. What is the difference between the DP4A instruction (4 INT8 MACs/instruction on CUDA cores) and Tensor Core INT8 MMA (`cuBLASLt` / CUTLASS / TorchAO)?`&lt;/strong>`</summary>
+<summary>**14. What is the difference between the DP4A instruction (4 INT8 MACs/instruction on CUDA cores) and Tensor Core INT8 MMA (`cuBLASLt` / CUTLASS / TorchAO)?**</summary>
 
 DP4A runs on CUDA cores and performs four INT8 multiply-accumulates per instruction. Tensor Core INT8 MMA through `cuBLASLt`, CUTLASS, or TorchAO multiplies whole INT8 matrix tiles in the Tensor Core pipeline, cutting weight traffic by 75% versus FP32.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`15. State the exact hardware rule for 2:4 structured sparsity (2 nonzeros per 4 elements / 8 per 16-element chunk), name the PyTorch conversion function (`to_sparse_semi_structured()`) and NVIDIA library (`cuSPARSELt`), and explain why `batch_size = 1` sees little speedup.`&lt;/strong>`</summary>
+<summary>**15. State the exact hardware rule for 2:4 structured sparsity (2 nonzeros per 4 elements / 8 per 16-element chunk), name the PyTorch conversion function (`to_sparse_semi_structured()`) and NVIDIA library (`cuSPARSELt`), and explain why `batch_size = 1` sees little speedup.**</summary>
 
 In every block of four consecutive weights at most two may be nonzero. Unstructured zeros get no hardware speedup. Convert tensors with `to_sparse_semi_structured()` backed by `cuSPARSELt`, and use larger token batches so metadata and launch costs are amortized.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Why is 2:4 structured sparsity applied primarily to inference rather than training?`&lt;/strong>`</summary>
+<summary>**16. Why is 2:4 structured sparsity applied primarily to inference rather than training?**</summary>
 
 Backpropagation gradients are dense and change sparsity patterns dynamically, so the fixed 2:4 pattern does not fit training. It is used after training: prune, calibrate, convert, and deploy for up to double throughput and half the weight traffic.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`17. How do TMA (HBM → SMEM), SMEM, and TMEM (256 KB/SM) (SMEM ↔ TMEM via `tcgen05.mma`) cooperate during a Blackwell Tensor Core GEMM, and how does accumulating in TMEM reduce register pressure?`&lt;/strong>`</summary>
+<summary>**17. How do TMA (HBM → SMEM), SMEM, and TMEM (256 KB/SM) (SMEM ↔ TMEM via `tcgen05.mma`) cooperate during a Blackwell Tensor Core GEMM, and how does accumulating in TMEM reduce register pressure?**</summary>
 
 TMA copies tiles from HBM into shared memory, with ping-pong buffers coordinated via `cuda::pipeline`. A descriptor-driven `tcgen05.mma` or UMMA move brings operands from SMEM into TMEM, where the fifth-generation Tensor Cores read operands and accumulate without consuming the general register file.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Show mathematically why a 256 x 512 FP16 tile (2 B) or a 256 x 256 FP32 tile (4 B) exactly maxes out a single SM's 256 KB (256 KiB) TMEM budget.`&lt;/strong>`</summary>
+<summary>**18. Show mathematically why a 256 x 512 FP16 tile (2 B) or a 256 x 256 FP32 tile (4 B) exactly maxes out a single SM's 256 KB (256 KiB) TMEM budget.**</summary>
 
 Both tile shapes multiply out to 262,144 bytes, or 256 KiB, which equals the entire per-SM TMEM budget. By contrast, a 256 by 256 NVFP4 tile at half a byte per element is only 32 KiB, occupying an eighth of TMEM.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`19. In Table 9-1 of *AI Systems Performance Engineering*, how does a CUTLASS GEMM template (`cutlass::arch::OpClassTensorOp`, `Sm100`) compare against a hand-tuned MMA kernel in Tensor Core utilization (98% vs 98%), register count (~60 vs ~52), and Shared Memory (~4 KB vs ~2 KB)?`&lt;/strong>`</summary>
+<summary>**19. In Table 9-1 of *AI Systems Performance Engineering*, how does a CUTLASS GEMM template (`cutlass::arch::OpClassTensorOp`, `Sm100`) compare against a hand-tuned MMA kernel in Tensor Core utilization (98% vs 98%), register count (~60 vs ~52), and Shared Memory (~4 KB vs ~2 KB)?**</summary>
 
 Both reach 98% Tensor Core utilization. The CUTLASS template uses slightly more registers and shared memory per block than the hand-tuned kernel, but both stay well within the SM budget and CUTLASS requires only a few lines of template code.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Why can changing a weight matrix's width from 4096 to 4097 in FP16 cause a dramatic drop in throughput, and what are the 16-byte element alignment multiples for TF32 (4), FP16/BF16 (8), FP8/INT8 (16), and NVFP4 (32)?`&lt;/strong>`</summary>
+<summary>**20. Why can changing a weight matrix's width from 4096 to 4097 in FP16 cause a dramatic drop in throughput, and what are the 16-byte element alignment multiples for TF32 (4), FP16/BF16 (8), FP8/INT8 (16), and NVFP4 (32)?**</summary>
 
 Tensor Cores load tiles aligned to sixteen-byte boundaries. Because 4097 is not a multiple of eight, `cuBLAS` or CUTLASS falls back to a slower unaligned path or pads at runtime. Required multiples of `M, N, K` are 4 for TF32, 8 for FP16 and BF16, 16 for FP8 and INT8, and 32 for NVFP4.
 

@@ -552,17 +552,17 @@ Summary: 30 passed, 0 failed out of 30 checks.
 
 ## Checkpoint questions (20)
 
-<details><summary>`&lt;strong>`1. Why do AI Ethernet fabrics avoid creating eight separate lossless QoS classes even though IEEE 802.1p and IEEE 802.1Qbb support Priorities 0..7?`&lt;/strong>`</summary>
+<details><summary>**1. Why do AI Ethernet fabrics avoid creating eight separate lossless QoS classes even though IEEE 802.1p and IEEE 802.1Qbb support Priorities 0..7?**</summary>
 
 Every lossless PFC-enabled priority requires a dedicated per-port buffer reservation and XOFF flight-time headroom. On a 262,144 B port buffer where each lossless class reserves 65,536 B, enabling PFC on 4 priorities consumes 100.0 percent of the buffer. That leaves 0 B for lossy TCP, storage, control, and CNP queues while multiplying configuration drift and head-of-line blocking risks.
 </details>
 
-<details><summary>`&lt;strong>`2. In `tcpdump -i eth0 -c1 -v`, an IP packet displays `tos 0xb8`. How do you decode the 6-bit DSCP value and 2-bit ECN codepoint, and which `mlnx_qos` bucket does it match?`&lt;/strong>`</summary>
+<details><summary>**2. In `tcpdump -i eth0 -c1 -v`, an IP packet displays `tos 0xb8`. How do you decode the 6-bit DSCP value and 2-bit ECN codepoint, and which `mlnx_qos` bucket does it match?**</summary>
 
 Hexadecimal `0xb8` equals 184 in decimal or `10111000` in binary. Right-shifting by 2 bits gives DSCP 46 for Expedited Forwarding, and masking the low 2 bits gives ECN 0 for Not-ECT. In `mlnx_qos`, DSCP 46 falls in the `40-47` bucket.
 </details>
 
-<details><summary>`&lt;strong>`3. What hexadecimal ToS byte values appear on the wire for a RoCEv2 data packet marked DSCP 26 with ECT(0), the same packet after a switch marks CE, and a CNP marked DSCP 48 with ECT(1)?`&lt;/strong>`</summary>
+<details><summary>**3. What hexadecimal ToS byte values appear on the wire for a RoCEv2 data packet marked DSCP 26 with ECT(0), the same packet after a switch marks CE, and a CNP marked DSCP 48 with ECT(1)?**</summary>
 
 ```text
 RoCEv2 DSCP 26 + ECT(0) (2): (26 << 2) | 2 = 104 + 2 = 106 = 0x6a (bucket 24-31)
@@ -571,7 +571,7 @@ RoCEv2 CNP DSCP 48 + ECT(1): (48 << 2) | 1 = 192 + 1 = 193 = 0xc1 (bucket 48-55)
 ```
 </details>
 
-<details><summary>`&lt;strong>`4. What are the five traffic classes in our standard AI Ethernet fabric QoS model, including their DSCP markings, 802.1p priorities, TSA scheduling modes, and ETS weights?`&lt;/strong>`</summary>
+<details><summary>**4. What are the five traffic classes in our standard AI Ethernet fabric QoS model, including their DSCP markings, 802.1p priorities, TSA scheduling modes, and ETS weights?**</summary>
 
 ```text
 1. TC0 (Best Effort, Priority 0):              DSCP 0 / 10, lossy, dwrr (TSA 2), 10%
@@ -582,7 +582,7 @@ RoCEv2 CNP DSCP 48 + ECT(1): (48 << 2) | 1 = 192 + 1 = 193 = 0xc1 (bucket 48-55)
 ```
 </details>
 
-<details><summary>`&lt;strong>`5. What are the four IEEE 802.1Qaz Transmission Selection Algorithm (TSA) identifiers?`&lt;/strong>`</summary>
+<details><summary>**5. What are the four IEEE 802.1Qaz Transmission Selection Algorithm (TSA) identifiers?**</summary>
 
 - **0:** Strict Priority (`strict` / LLQ).
 - **1:** Credit-Based Shaper (`cbs`).
@@ -590,7 +590,7 @@ RoCEv2 CNP DSCP 48 + ECT(1): (48 << 2) | 1 = 192 + 1 = 193 = 0xc1 (bucket 48-55)
 - **255:** Vendor-Specific.
 </details>
 
-<details><summary>`&lt;strong>`6. On a 400.0 Gbps link with TC6 (strict, 10.0 Gbps offered) and DWRR weights TC0 = 10%, TC2 = 10%, TC3 = 50%, TC4 = 30%, how much bandwidth does each class receive under full contention versus two-class contention?`&lt;/strong>`</summary>
+<details><summary>**6. On a 400.0 Gbps link with TC6 (strict, 10.0 Gbps offered) and DWRR weights TC0 = 10%, TC2 = 10%, TC3 = 50%, TC4 = 30%, how much bandwidth does each class receive under full contention versus two-class contention?**</summary>
 
 ```text
 All 5 classes contending:       TC6 = 10.0 Gbps; remaining 390.0 Gbps splits 10:10:50:30 -> TC0 = 39.0 Gbps, TC2 = 39.0 Gbps, TC3 = 195.0 Gbps, TC4 = 117.0 Gbps
@@ -598,17 +598,17 @@ Only TC3 (50%) & TC4 (30%) on:  Unused 20% redistributed in 50:30 = 5:3 ratio ->
 ```
 </details>
 
-<details><summary>`&lt;strong>`7. Why did cluster management (`tc: 0`, Priority 0) stall during training bursts when `mlnx_qos -i swp4` showed `tc: 1` (Priority 3, RoCE) set to `tsa: strict` and `tc: 0` set to `tsa: dwrr, weight: 5`?`&lt;/strong>`</summary>
+<details><summary>**7. Why did cluster management (`tc: 0`, Priority 0) stall during training bursts when `mlnx_qos -i swp4` showed `tc: 1` (Priority 3, RoCE) set to `tsa: strict` and `tc: 0` set to `tsa: dwrr, weight: 5`?**</summary>
 
 In strict-priority scheduling with no rate limit, the scheduler always services `tc: 1` before any DWRR queue. During a sustained 400.0 Gbps RoCE burst, `tc: 1` never empties, starving `tc: 0` at 0.0 Gbps regardless of its DWRR weight. Moving `tc: 1` to DWRR with weight 95 guarantees `tc: 0` with weight 5 at least 20.0 Gbps under contention.
 </details>
 
-<details><summary>`&lt;strong>`8. On a 1,024 Kbps WAN link with an LLQ cap of 512 Kbps, what happens when a 9th or 12th 64 Kbps VoIP call joins under congestion, and when can 10 calls pass with zero drops?`&lt;/strong>`</summary>
+<details><summary>**8. On a 1,024 Kbps WAN link with an LLQ cap of 512 Kbps, what happens when a 9th or 12th 64 Kbps VoIP call joins under congestion, and when can 10 calls pass with zero drops?**</summary>
 
 Under congestion, the LLQ policer treats the class as one aggregate stream. It drops 64 Kbps when 9 calls offer 576 Kbps and drops 256 Kbps when 12 calls offer 768 Kbps. Switching to a 16 Kbps codec lets 32 calls fit inside 512 Kbps with zero drops. If all other traffic stays at or below the remaining 384 Kbps when 10 calls offer 640 Kbps, the link is uncongested and all 640 Kbps passes without loss.
 </details>
 
-<details><summary>`&lt;strong>`9. Compare the wire serialization delay of a 9,000-byte jumbo frame and a 64-byte control/CNP frame at 100 Mbps versus 400 Gbps.`&lt;/strong>`</summary>
+<details><summary>**9. Compare the wire serialization delay of a 9,000-byte jumbo frame and a 64-byte control/CNP frame at 100 Mbps versus 400 Gbps.**</summary>
 
 ```text
 At 100 Mbps:  9,000 B = 0.72 ms | 1,500 B = 0.12 ms | 64 B = 0.00512 ms (.05 ms with framing overhead in textbook models, 14x ratio)
@@ -616,7 +616,7 @@ At 400 Gbps:  9,000 B = 180.0 ns | 64 B = 1.28 ns (140.625x shorter)
 ```
 </details>
 
-<details><summary>`&lt;strong>`10. What EtherType, destination MAC, IEEE OUI, and TLV subtypes does IEEE 802.1Qaz DCBX use over LLDP?`&lt;/strong>`</summary>
+<details><summary>**10. What EtherType, destination MAC, IEEE OUI, and TLV subtypes does IEEE 802.1Qaz DCBX use over LLDP?**</summary>
 
 ```text
 LLDP EtherType:       0x88CC | Destination MAC: 01:80:C2:00:00:0E | IEEE 802.1 OUI: 00:80:C2
@@ -624,12 +624,12 @@ Four DCBX Subtypes:   9 (ETS Configuration, asymmetric), 10 (ETS Recommendation,
 ```
 </details>
 
-<details><summary>`&lt;strong>`11. How do the Host Willing and Switch Willing bits interact in DCBX, and which two combinations are valid in production AI fabrics?`&lt;/strong>`</summary>
+<details><summary>**11. How do the Host Willing and Switch Willing bits interact in DCBX, and which two combinations are valid in production AI fabrics?**</summary>
 
 When Host Willing is 1 and Switch Willing is 0 (`SWITCH_PEER`), the host adapter adopts the authoritative switch port settings. When both are 0 (`BOTH_LOCAL_STATIC`), both sides are configured identically from a versioned source of truth and LLDP audits zero drift. Setting Host Willing to 0 with Switch Willing at 1 (`HOST_LOCAL`) or setting both to 1 (`CONFLICT_BOTH_WILLING`) is unsafe in production.
 </details>
 
-<details><summary>`&lt;strong>`12. On `swp12` (262,144 B total receive buffer, 65,536 B per lossless priority), compare the buffer split for 1, 2, and 4 lossless priorities.`&lt;/strong>`</summary>
+<details><summary>**12. On `swp12` (262,144 B total receive buffer, 65,536 B per lossless priority), compare the buffer split for 1, 2, and 4 lossless priorities.**</summary>
 
 ```text
 1 lossless priority (Priority 3):      65,536 B (25.0%) lossless (16,384 B headroom), 196,608 B (75.0%) lossy -> HEALTHY_BUFFER_CARVING
@@ -638,17 +638,17 @@ When Host Willing is 1 and Switch Willing is 0 (`SWITCH_PEER`), the host adapter
 ```
 </details>
 
-<details><summary>`&lt;strong>`13. Why does a Spectrum switch with a Fully Shared Buffer outperform a sliced-buffer switch during AI incast microbursts, and why can't a buffer solve sustained link oversubscription?`&lt;/strong>`</summary>
+<details><summary>**13. Why does a Spectrum switch with a Fully Shared Buffer outperform a sliced-buffer switch during AI incast microbursts, and why can't a buffer solve sustained link oversubscription?**</summary>
 
 A Fully Shared Buffer pools internal switch memory dynamically. An overloaded port can borrow burst space from idle ports rather than dropping packets as soon as a fixed per-port slice fills. However, a buffer only absorbs transient arrival-rate mismatches during microbursts. If offered load structurally exceeds egress capacity over milliseconds or seconds, the buffer inevitably fills and triggers ECN, PFC, or drops.
 </details>
 
-<details><summary>`&lt;strong>`14. Why did `ethtool -S swp19` show `rx_prio0_discard: 18420` and `rx_pfc_prio3: 0` even though PFC was enabled on Priority 3 on every switch?`&lt;/strong>`</summary>
+<details><summary>**14. Why did `ethtool -S swp19` show `rx_prio0_discard: 18420` and `rx_pfc_prio3: 0` even though PFC was enabled on Priority 3 on every switch?**</summary>
 
 Running `mlnx_qos -i swp19` revealed `Priority trust state: pcp` while `swp4` used `Priority trust state: dscp`. Because the routed RoCEv2 IP packets had no 802.1Q VLAN tag, `swp19` ignored DSCP 46 and classified every RoCEv2 frame into Priority 0. PFC was disabled on Priority 0, so 18,420 packets were discarded.
 </details>
 
-<details><summary>`&lt;strong>`15. How do InfiniBand Virtual Lanes and Credit-Based Flow Control differ from Ethernet DCB, and what are the typical switch and PCIe latencies?`&lt;/strong>`</summary>
+<details><summary>**15. How do InfiniBand Virtual Lanes and Credit-Based Flow Control differ from Ethernet DCB, and what are the typical switch and PCIe latencies?**</summary>
 
 ```text
 InfiniBand:   Up to 16 VLs (8-12 workload queues), 48,000 LIDs (16-bit), proactive link-level CBFC (64 B per credit in LLH), ~300 ns switch latency
@@ -657,27 +657,27 @@ Local PCIe:   PCIe Gen5 32 GT/s x16 delivers ~63 GB/s one-way with ~100 ns local
 ```
 </details>
 
-<details><summary>`&lt;strong>`16. Which AI storage protocols require a lossless Ethernet class (PFC + DCQCN) and which run over a lossy class (TC4)?`&lt;/strong>`</summary>
+<details><summary>**16. Which AI storage protocols require a lossless Ethernet class (PFC + DCQCN) and which run over a lossy class (TC4)?**</summary>
 
 NVMe-o-RDMA over RoCEv2 on UDP port 4791 requires a lossless queue with PFC, ECN, and DCQCN. NVMe-o-TCP on TCP port 8009 and Parallel NFS use TCP reliability and run over a lossy queue on TC4 with 30 percent ETS and TCP ECN.
 </details>
 
-<details><summary>`&lt;strong>`17. What are the six layers of a production AI fabric QoS validation plan?`&lt;/strong>`</summary>
+<details><summary>**17. What are the six layers of a production AI fabric QoS validation plan?**</summary>
 
 The six validation layers are Classification, Isolation, Service behavior, Feedback, Failure behavior, and Application plus host correlation. Together they verify hop-by-hop queue counters, management isolation under PFC, multi-class ETS shares, ECN-to-CNP sender throttling, failover persistence, and collective throughput.
 </details>
 
-<details><summary>`&lt;strong>`18. Why did a 200 GbE ConnectX adapter fail to reach line rate even though the switch fabric had zero ECN marks and zero PFC pauses?`&lt;/strong>`</summary>
+<details><summary>**18. Why did a 200 GbE ConnectX adapter fail to reach line rate even though the switch fabric had zero ECN marks and zero PFC pauses?**</summary>
 
 Inspecting `lspci -s 41:00.0 -vv` showed `LnkCap: Speed 32GT/s, Width x16` for PCIe Gen5 x16. However, the slot negotiated `LnkSta: Speed 16GT/s (downgraded), Width x8` for PCIe Gen4 x8, topping out around 16 GB/s. Sustaining 200 GbE requires 25 GB/s of PCIe bandwidth, so the host PCIe slot bottlenecked the adapter before packets ever reached the switch.
 </details>
 
-<details><summary>`&lt;strong>`19. On a server equipped with a BlueField DPU in ECPF mode, why did the host interface (`enp1s0f0np0`) remain DOWN/DORMANT while the leaf switch port (`swp14`) showed `up 100G full RoCE-compute`?`&lt;/strong>`</summary>
+<details><summary>**19. On a server equipped with a BlueField DPU in ECPF mode, why did the host interface (`enp1s0f0np0`) remain DOWN/DORMANT while the leaf switch port (`swp14`) showed `up 100G full RoCE-compute`?**</summary>
 
 A BlueField DPU introduces three independent layers: the external switch uplink `swp14`, the DPU Arm control plane and embedded switch, and the host-facing function `enp1s0f0np0`. During boot, `openvswitch-policy-load.service` on the BlueField Arm OS exited with `status=1/FAILURE` at `09:14:02 UTC`. That failure left the embedded switch without rules to bring up the host representor despite a healthy physical uplink.
 </details>
 
-<details><summary>`&lt;strong>`20. In NVIDIA Base Command Manager (`cmsh`), what is the default `onnetworkpriority` resolution ladder across interface types, and what is the precedence order for persistent `MLX_` `mlxconfig` extra values?`&lt;/strong>`</summary>
+<details><summary>**20. In NVIDIA Base Command Manager (`cmsh`), what is the default `onnetworkpriority` resolution ladder across interface types, and what is the precedence order for persistent `MLX_` `mlxconfig` extra values?**</summary>
 
 ```text
 onnetworkpriority ladder (0..4294967295): Bridge = 80, Bond = 70, Physical = 60, VLAN = 50, Alias = 40, Tunnel = 30, Netmap = 20, BMC = 10

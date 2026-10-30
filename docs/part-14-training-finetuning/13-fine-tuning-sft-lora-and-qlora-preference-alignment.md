@@ -741,85 +741,85 @@ Summary: 25 passed, 0 failed
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. What is the difference between an information-based failure and a behavior-based failure, and which adaptation technique (RAG vs fine-tuning) solves each?`&lt;/strong>`</summary>
+<summary>**1. What is the difference between an information-based failure and a behavior-based failure, and which adaptation technique (RAG vs fine-tuning) solves each?**</summary>
 
 Information-based failures occur when the model lacks private or recent facts after its knowledge cutoff, leading to factually wrong or outdated answers. **RAG** solves this by injecting external facts at query time, outperforming standalone fine-tuning by 28 to 36 percentage points on current-events question answering. Behavior-based failures occur when the model has the knowledge but fails to follow a required output schema, domain syntax, tone, or safety boundary. **Fine-tuning** via SFT and preference alignment solves this by adjusting model weights.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Why is prompt engineering described as a "mortgage" compared to the upfront capital cost of fine-tuning, and how does model lifespan affect the break-even calculation?`&lt;/strong>`</summary>
+<summary>**2. Why is prompt engineering described as a "mortgage" compared to the upfront capital cost of fine-tuning, and how does model lifespan affect the break-even calculation?**</summary>
 
 Fine-tuning charges a one-time upfront cost in training tokens or GPU hours. By contrast, a long few-shot prompt adds thousands of extra input tokens to every single inference request, increasing prefill compute, latency, and KV-cache memory on every call. Suppose the upfront fine-tuning cost takes 10.0 years of request volume to break even against per-request prompt token costs. If the base model will be replaced in 2.0 years, paying the upfront fine-tuning cost is uneconomical.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What happens when you add domain-specific tokens via `tokenizer.add_tokens()` and `model.resize_token_embeddings()`, and what must you configure in `LoraConfig` so those tokens actually learn?`&lt;/strong>`</summary>
+<summary>**3. What happens when you add domain-specific tokens via `tokenizer.add_tokens()` and `model.resize_token_embeddings()`, and what must you configure in `LoraConfig` so those tokens actually learn?**</summary>
 
 Adding domain tokens prevents the BPE tokenizer from splitting key domain entities into fragmented subwords, and `resize_token_embeddings()` appends new randomly initialized rows to the embedding and output projection tables. Because LoRA freezes all non-adapter weights by default, you must pass `modules_to_save=["embed_tokens", "lm_head"]` in `LoraConfig` so those newly added embedding rows receive gradient updates during fine-tuning.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. How many instruction samples are typically needed for general-purpose SFT versus task-specific SFT on a 70B model (`LIMA`) versus a 7B–8B model (`TwinLlama-3.1-8B`)?`&lt;/strong>`</summary>
+<summary>**4. How many instruction samples are typically needed for general-purpose SFT versus task-specific SFT on a 70B model (`LIMA`) versus a 7B–8B model (`TwinLlama-3.1-8B`)?**</summary>
 
 General-purpose post-training uses 1,000,000 to 10,000,000 samples. For a large 70B model that has already learned strong representations during pre-training, the LIMA study showed that 1,000 carefully curated examples suffice. Smaller 7B to 8B models require more examples—such as 3,335 domain pairs upsampled with 10,000 FineTome samples for 13,335 total—just to reliably learn the chat template and stop-token behavior.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. How do exact deduplication, MinHash fuzzy deduplication, semantic deduplication, and benchmark decontamination work together in an SFT data pipeline?`&lt;/strong>`</summary>
+<summary>**5. How do exact deduplication, MinHash fuzzy deduplication, semantic deduplication, and benchmark decontamination work together in an SFT data pipeline?**</summary>
 
 Exact deduplication normalizes text and removes identical strings via MD5 or SHA-256 hashes. MinHash fuzzy deduplication converts documents into n-gram shingles, computes compact minimum-hash signatures, and filters near-duplicates via Jaccard similarity. Semantic deduplication embeds samples with a transformer encoder and clusters them via K-means or DBSCAN to remove paraphrases. Data decontamination runs those same checks against all evaluation benchmarks and purges any overlapping training samples to prevent test-set leakage.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Why does omitting `EOS_TOKEN` or naively setting `tokenizer.pad_token = tokenizer.eos_token` cause a fine-tuned model to ramble endlessly at inference time?`&lt;/strong>`</summary>
+<summary>**6. Why does omitting `EOS_TOKEN` or naively setting `tokenizer.pad_token = tokenizer.eos_token` cause a fine-tuned model to ramble endlessly at inference time?**</summary>
 
 A language model only stops generating when it samples its end-of-sequence token. Suppose the stop token is omitted from formatted SFT responses, or the pad token is set equal to the EOS token and a naive data collator masks all occurrences of `pad_token_id` with `-100` in the training labels. In either case, the model never receives a positive gradient to emit the stop token at the end of an answer. At inference time, it continues generating until hitting `max_new_tokens`.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How does sequence packing (`packing=True`) improve SFT GPU utilization, and what must be done to the attention mask when packing multiple examples into one sequence?`&lt;/strong>`</summary>
+<summary>**7. How does sequence packing (`packing=True`) improve SFT GPU utilization, and what must be done to the attention mask when packing multiple examples into one sequence?**</summary>
 
 When short training examples of 210 to 280 tokens are padded out to a maximum sequence length of 1,024, over 75 percent of the batch tensor consists of wasted pad tokens, giving 23.93 percent utilization. Sequence packing concatenates multiple short examples into a single 1,024-token slot, raising utilization to 95.7 percent and cutting slots by 4.0x. It requires resetting position IDs at each example boundary and applying a **block-diagonal sample-isolated attention mask** so tokens in one example cannot attend to tokens in another example.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. Why does full fine-tuning of a 7B or 70B model require 56–112 GB and 560–1,120 GB of VRAM before activations, and why does intrinsic dimensionality allow PEFT to work?`&lt;/strong>`</summary>
+<summary>**8. Why does full fine-tuning of a 7B or 70B model require 56–112 GB and 560–1,120 GB of VRAM before activations, and why does intrinsic dimensionality allow PEFT to work?**</summary>
 
 In full fine-tuning, every parameter requires gradients and two Adam momentum and variance states. Under standard mixed precision, that consumes 16 bytes per parameter, which equals 112.0 GB for 7B and 1,120.0 GB for 70B. In pure 16-bit precision, it consumes 8 bytes per parameter, which equals 56.0 GB for 7B and 560.0 GB for 70B. Pre-trained LLMs have a very low **intrinsic dimension**, meaning downstream weight updates lie in a low-rank subspace and can be captured by updating less than 1 percent of parameters while keeping the base weights frozen.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. In LoRA (`W' = W_0 + (alpha / r) B A`), how are matrices `A` and `B` initialized, what is the role of `alpha / r`, and which Transformer modules should be targeted?`&lt;/strong>`</summary>
+<summary>**9. In LoRA (`W' = W_0 + (alpha / r) B A`), how are matrices `A` and `B` initialized, what is the role of `alpha / r`, and which Transformer modules should be targeted?**</summary>
 
 Matrix A is initialized with Gaussian noise scaled by the inverse square root of the rank, and matrix B is initialized to **zeros** so the low-rank update is zero at step 0. That initialization preserves exact base-model behavior at the start of training. The alpha-over-rank factor scales the adapter update so changing the rank does not require retuning the learning rate. Targeting **all 7 linear modules** (`q_proj`, `k_proj`, `v_proj`, `o_proj`, `gate_proj`, `up_proj`, `down_proj`) yields significantly better quality than targeting attention matrices alone.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. How does DoRA (Weight-Decomposed Low-Rank Adaptation) differ mathematically from standard LoRA?`&lt;/strong>`</summary>
+<summary>**10. How does DoRA (Weight-Decomposed Low-Rank Adaptation) differ mathematically from standard LoRA?**</summary>
 
 DoRA decomposes the pre-trained weight matrix into a trainable column-wise scalar **magnitude vector** and a **directional matrix**. The directional matrix adds the low-rank LoRA update to the base weights and divides each column by its L2 norm. Decoupling magnitude updates from low-rank directional updates allows DoRA to closely match full fine-tuning learning dynamics while adding only a single row vector per adapted layer.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How does QLoRA's 4-bit NormalFloat (`NF4`) format differ from uniform `INT4`, and in what precision are QLoRA forward and backward matrix multiplications actually executed?`&lt;/strong>`</summary>
+<summary>**11. How does QLoRA's 4-bit NormalFloat (`NF4`) format differ from uniform `INT4`, and in what precision are QLoRA forward and backward matrix multiplications actually executed?**</summary>
 
 Uniform INT4 spaces its 16 levels evenly, wasting resolution on the tails of bell-shaped weight distributions. NormalFloat4 places its 16 levels at the exact equal-area quantiles of a zero-mean normal distribution normalized between negative 1 and positive 1, with an exact 0.0 at index 7, for blocks of 64 weights. During forward and backward passes, NF4 weights are **dequantized on the fly into 16-bit BF16** (`bnb_4bit_compute_dtype=torch.bfloat16`) to perform Tensor Core matrix multiplications, which makes QLoRA roughly 30 percent slower than 16-bit LoRA.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What is Double Quantization in QLoRA, and how many bits per parameter and gigabytes on a 65B model does it save?`&lt;/strong>`</summary>
+<summary>**12. What is Double Quantization in QLoRA, and how many bits per parameter and gigabytes on a 65B model does it save?**</summary>
 
 Storing one 32-bit FP32 quantization scale per block of 64 weights adds 0.500 bits per parameter of overhead. Double Quantization quantizes those first-level scales into 8-bit FP8 in blocks of 256 with a single second-level FP32 scale, reducing overhead to 0.127 bits per parameter and bringing total storage to 4.127 bits per parameter. That saves **0.373 bits per parameter**, freeing **3.03 GB** of VRAM on a 65B model.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How do QLoRA's Paged Optimizers (`paged_adamw_8bit`) use NVIDIA CUDA Unified Memory, and when do they hurt training throughput?`&lt;/strong>`</summary>
+<summary>**13. How do QLoRA's Paged Optimizers (`paged_adamw_8bit`) use NVIDIA CUDA Unified Memory, and when do they hurt training throughput?**</summary>
 
 Paged optimizers allocate Adam momentum and variance states in CUDA Unified Memory pages. When a long sequence causes an activation memory spike that would otherwise trigger a CUDA out-of-memory error, the driver automatically evicts optimizer pages from GPU HBM to host CPU DRAM. It then pages them back to the GPU during `optimizer.step()`. However, if base memory is over-committed on every step, continuous PCIe page thrashing collapses GPU utilization and slows training by 3x to 5x.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. What are the three biases of LLM-as-a-Judge in preference dataset evaluation, and how do you mitigate each one?`&lt;/strong>`</summary>
+<summary>**14. What are the three biases of LLM-as-a-Judge in preference dataset evaluation, and how do you mitigate each one?**</summary>
 
 1. **Position bias** favors the first answer presented; mitigate it by randomly swapping the order of the two answers on every prompt.
 2. **Length and verbosity bias** favors longer, more formal responses; mitigate it with length-normalized scoring and concise few-shot calibration examples.
@@ -827,31 +827,31 @@ Paged optimizers allocate Adam momentum and variance states in CUDA Unified Memo
 </details>
 
 <details>
-<summary>`&lt;strong>`15. How is a Bradley-Terry Reward Model trained on preference triples `(x, y_w, y_l)`, and why is a KL-divergence penalty mandatory during RLHF / PPO policy optimization?`&lt;/strong>`</summary>
+<summary>**15. How is a Bradley-Terry Reward Model trained on preference triples `(x, y_w, y_l)`, and why is a KL-divergence penalty mandatory during RLHF / PPO policy optimization?**</summary>
 
 A reward model appends a scalar linear head to a Transformer backbone and minimizes the negative log-sigmoid of the score difference between the winning and losing completions. During PPO policy optimization, the KL divergence penalty anchors the trainable Actor to the frozen SFT reference policy. Without that penalty, the Actor rapidly exploits reward-model blind spots, known as **reward hacking**, and outputs degenerate high-scoring text.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Why does RLHF with PPO require four models in VRAM and spend 80% of step time in inference engines like vLLM or SGLang?`&lt;/strong>`</summary>
+<summary>**16. Why does RLHF with PPO require four models in VRAM and spend 80% of step time in inference engines like vLLM or SGLang?**</summary>
 
 PPO requires the trainable **Actor**, trainable **Critic** value network, frozen **Reference model**, and frozen **Reward model**, consuming 160.0 GB in 16-bit precision for an 8B model. Because PPO is an online RL algorithm that must generate full responses token by token before scoring them, OpenRLHF benchmarks show **80 percent of wall-clock step time is spent in autoregressive rollout generation**. Production pipelines therefore use disaggregated vLLM or SGLang workers with deterministic decoding.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. How does Direct Preference Optimization (`DPO`) eliminate the separate reward model and online rollouts, and how does `ref_model=None` save VRAM when using LoRA?`&lt;/strong>`</summary>
+<summary>**17. How does Direct Preference Optimization (`DPO`) eliminate the separate reward model and online rollouts, and how does `ref_model=None` save VRAM when using LoRA?**</summary>
 
 DPO uses the closed-form mapping between the optimal KL-constrained policy and the ground-truth reward to define an implicit reward from the log-probability ratio between the policy and reference models. It optimizes a direct binary cross-entropy loss on offline preference triples without online rollouts. When training with LoRA or QLoRA, setting `ref_model=None` reuses the single frozen base model with adapters toggled **off** as the reference policy and toggled **on** as the active policy. That trick cuts 8B model VRAM from 80.0 GB down to 16.64 GB in BF16.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. How does DeepSeek's Group Relative Policy Optimization (`GRPO`) eliminate the Critic network of PPO, and how are its advantages computed?`&lt;/strong>`</summary>
+<summary>**18. How does DeepSeek's Group Relative Policy Optimization (`GRPO`) eliminate the Critic network of PPO, and how are its advantages computed?**</summary>
 
 Instead of training a separate full-sized Critic value network to predict baseline returns, GRPO samples a group of completions per prompt from the policy and scores each output. It then computes the advantage of each output via group z-score normalization by subtracting the group mean reward and dividing by the group standard deviation. Eliminating the Critic cuts 8B full-parameter alignment VRAM from 160.0 GB to 96.0 GB.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. How do Linear Task Arithmetic, SLERP, TIES-Merging, DARE, and Layer Stacking (`SOLAR 10.7B`) differ when merging fine-tuned models?`&lt;/strong>`</summary>
+<summary>**19. How do Linear Task Arithmetic, SLERP, TIES-Merging, DARE, and Layer Stacking (`SOLAR 10.7B`) differ when merging fine-tuned models?**</summary>
 
 - **Task Arithmetic:** Linearly adds or subtracts task vectors computed by subtracting base weights from fine-tuned weights.
 - **SLERP:** Interpolates along the hypersphere geodesic to preserve vector norms.
@@ -861,7 +861,7 @@ Instead of training a separate full-sized Critic value network to predict baseli
 </details>
 
 <details>
-<summary>`&lt;strong>`20. When should you merge a LoRA adapter (`merge_and_unload()`) versus serving it dynamically with Multi-LoRA (`Punica` in vLLM), and how does Kubeflow Trainer orchestrate fine-tuning on Kubernetes?`&lt;/strong>`</summary>
+<summary>**20. When should you merge a LoRA adapter (`merge_and_unload()`) versus serving it dynamically with Multi-LoRA (`Punica` in vLLM), and how does Kubeflow Trainer orchestrate fine-tuning on Kubernetes?**</summary>
 
 Use `merge_and_unload()` when a single fine-tuned model serves high sustained traffic that saturates dedicated GPU replicas, because merging eliminates all adapter latency overhead. Use Multi-LoRA serving with the Punica kernel when serving dozens or hundreds of low-traffic per-tenant adapters on one shared base model, cutting 100-adapter storage on a 4,096 by 4,096 matrix from 1.68B to 23.3M parameters. On Kubernetes, Kubeflow Trainer separates platform templates (`ClusterTrainingRuntime`) from data science jobs (`TrainJob` submitted via `TrainerClient`), reconciling distributed jobs into gang-scheduled `JobSet` pods.
 </details>

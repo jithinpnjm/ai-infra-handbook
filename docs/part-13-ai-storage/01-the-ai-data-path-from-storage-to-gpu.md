@@ -596,13 +596,13 @@ Exercise Input Parameters & Expected Verification Targets (code/part13/ai_data_p
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. Why can a 38.4 GB/s Lustre array deliver only 4.3 GB/s and 24% GPU utilization to a 128-worker job requesting 19.2 GB/s?`&lt;/strong>`</summary>
+<summary>**1. Why can a 38.4 GB/s Lustre array deliver only 4.3 GB/s and 24% GPU utilization to a 128-worker job requesting 19.2 GB/s?**</summary>
 
 The dataset sits in eighteen million small 220 KB files. At 150 MB per second per worker, each worker opens about 680 files per second, or 87,040 opens per second across all 128 workers. That overloads the Metadata Server's 50,000 operations per second ceiling by 75 percent before the 48 storage targets can stream data.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What are the five AI storage lifecycle workload phases and their primary I/O profiles?`&lt;/strong>`</summary>
+<summary>**2. What are the five AI storage lifecycle workload phases and their primary I/O profiles?**</summary>
 
 ```text
 1. Ingest & ETL:                  4 MB (4,096 KB) bulk writes to Tier 3 object store (20% R / 80% W, 1K-50K ops/s)
@@ -614,19 +614,19 @@ The dataset sits in eighteen million small 220 KB files. At 150 MB per second pe
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What are the four storage tiers (Tier 0 to Tier 3) in an AI factory and their typical capacities on a DGX H100 cluster?`&lt;/strong>`</summary>
+<summary>**3. What are the four storage tiers (Tier 0 to Tier 3) in an AI factory and their typical capacities on a DGX H100 cluster?**</summary>
 
 Tier 0 is GPU HBM, holding 80 GB on an H100 at 3.35 TB per second, 141 GB on an H200, and 192 GB on a B200. Tier 1 is host local NVMe scratch, such as eight 3.84 TB drives in RAID 0 for 30.72 TB on a DGX H100. Tier 2 is the shared Parallel File System like Lustre, WEKA, BeeGFS, VAST, or 3FS. Tier 3 is the durable Object Store such as S3, GCS, MinIO, or Ceph.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. List the 8 layers of the AI storage-to-GPU data path in order from media to accelerator.`&lt;/strong>`</summary>
+<summary>**4. List the 8 layers of the AI storage-to-GPU data path in order from media to accelerator.**</summary>
 
 The eight layers in order are Storage Media, Storage Server CPU and Controller, Storage Network Fabric, and Client Filesystem Driver. Inside the compute node, the payload then crosses the Kernel OS Page Cache, Host CPU DRAM and NUMA, the PCIe Bus or Switch Fabric, and finally GPU HBM.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. How many memory copies and PCIe traversals occur in a traditional POSIX unpinned read versus a pinned read versus GPUDirect Storage (GDS)?`&lt;/strong>`</summary>
+<summary>**5. How many memory copies and PCIe traversals occur in a traditional POSIX unpinned read versus a pinned read versus GPUDirect Storage (GDS)?**</summary>
 
 ```text
 Per 10 GB Payload Read:
@@ -637,25 +637,25 @@ Per 10 GB Payload Read:
 </details>
 
 <details>
-<summary>`&lt;strong>`6. In NVIDIA's `gdsio` benchmark tool, what is the difference between `-x 2` and `-x 0`, and what typical uplift does GDS show?`&lt;/strong>`</summary>
+<summary>**6. In NVIDIA's `gdsio` benchmark tool, what is the difference between `-x 2` and `-x 0`, and what typical uplift does GDS show?**</summary>
 
 Selector `-x 2` benchmarks the CPU-mediated bounce path through pinned host memory, reaching 8.0 GB per second at 1.25 ms average latency on a four-worker 10 GB test. Selector `-x 0` benchmarks the direct GPUDirect Storage path, reaching 9.6 GB per second at 1.00 ms average latency. That is a 20 percent throughput gain and a 20 percent latency reduction, with 30 percent or higher gains observed on H100 over fast RDMA links.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Why can a FUSE-based user-space filesystem never use GPUDirect Storage?`&lt;/strong>`</summary>
+<summary>**7. Why can a FUSE-based user-space filesystem never use GPUDirect Storage?**</summary>
 
 GPUDirect Storage requires kernel-level filesystem integration with `O_DIRECT` DMA semantics so `nvidia-fs.ko` and `libcufile` can map GPU BAR1 memory pages directly to the NVMe or RDMA NIC driver. A FUSE filesystem instead bounces every I/O buffer through a user-space daemon in host DRAM.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What does `"allow_compat_mode": true` do in `/etc/cufile.json`, and why is it dangerous during cluster qualification?`&lt;/strong>`</summary>
+<summary>**8. What does `"allow_compat_mode": true` do in `/etc/cufile.json`, and why is it dangerous during cluster qualification?**</summary>
 
 It allows `libcufile` to silently fall back to standard POSIX host-memory reads whenever `nvidia-fs`, the filesystem mount, or the PCIe topology does not support GPUDirect Storage. During qualification, set `"allow_compat_mode": false` so any misconfiguration fails immediately instead of hiding a CPU bounce bottleneck.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. At a baseline of 200 MB/s per GPU, how much aggregate read bandwidth is required for an 8-GPU node, a 72-GPU GB200 NVL72 rack, and a 1,024-GPU cluster?`&lt;/strong>`</summary>
+<summary>**9. At a baseline of 200 MB/s per GPU, how much aggregate read bandwidth is required for an 8-GPU node, a 72-GPU GB200 NVL72 rack, and a 1,024-GPU cluster?**</summary>
 
 ```text
 - 8-GPU node:        8 x 200 MB/s = 1.6 GB/s
@@ -665,7 +665,7 @@ It allows `libcufile` to silently fall back to standard POSIX host-memory reads 
 </details>
 
 <details>
-<summary>`&lt;strong>`10. How much sustained write bandwidth and how many 800 MB/s Lustre OSTs are required to flush a 2 TB checkpoint in under 60 seconds?`&lt;/strong>`</summary>
+<summary>**10. How much sustained write bandwidth and how many 800 MB/s Lustre OSTs are required to flush a 2 TB checkpoint in under 60 seconds?**</summary>
 
 ```text
 Required Write Bandwidth = 2,000 GB / 60 s = 33.33 GB/s
@@ -674,49 +674,49 @@ Minimum Lustre OSTs      = ceil(33.33 GB/s / 0.8 GB/s per OST) = 42 OSTs
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How does DeepSeek's Fire-Flyer File System (3FS) handle the OS page cache, and what throughput did it achieve on a 68-node cluster?`&lt;/strong>`</summary>
+<summary>**11. How does DeepSeek's Fire-Flyer File System (3FS) handle the OS page cache, and what throughput did it achieve on a 68-node cluster?**</summary>
 
 Random training and KV-cache reads make traditional read caching ineffective. Therefore, 3FS eliminates OS page caching completely and uses `O_DIRECT` plus RDMA over InfiniBand or RoCEv2 straight to NVMe SSDs. Across a 68-node cluster with ten 16 TB NVMe drives and dual 100 Gb/s NICs per node, 3FS achieved 6.6 TB per second of read throughput. It also served 1.4 TB per second of background traffic, scaling to 7.3 TB per second on larger clusters.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What do `PIX`, `PXB`, `PHB`, `NODE`, and `SYS` mean in `nvidia-smi topo -m`, and which are acceptable for GDS?`&lt;/strong>`</summary>
+<summary>**12. What do `PIX`, `PXB`, `PHB`, `NODE`, and `SYS` mean in `nvidia-smi topo -m`, and which are acceptable for GDS?**</summary>
 
 Codes `PIX`, `PXB`, and `PHB` mean the GPU and NIC share a single PCIe switch, multiple PCIe switches, or the same CPU socket PCIe Host Bridge. All three stay inside the same NUMA domain and support fast GPUDirect Storage DMA. Code `NODE` crosses host bridges within a socket for roughly a 12 percent penalty. Code `SYS` crosses the inter-socket link, doubling DRAM latency and cutting bandwidth by 20 to 30 percent or more.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. When does the Linux OS Page Cache help AI training, and when does it cause thrashing?`&lt;/strong>`</summary>
+<summary>**13. When does the Linux OS Page Cache help AI training, and when does it cause thrashing?**</summary>
 
 When the dataset working set fits inside 85 percent of free host DRAM, such as a 120 GB dataset on 256 GB of RAM, the second and later epochs achieve a 95 percent page cache hit rate. Reads finish at microsecond latency. When a shuffled working set exceeds RAM, such as 4 TB on 512 GB of RAM, pages get evicted before reuse. Then `kswapd` burns CPU and I/O wait spikes to 15 percent or higher, which enabling `O_DIRECT` stops.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. How do you distinguish Python DataLoader transform latency from Host-to-Device (`H2D`) PCIe copy stalls in PyTorch?`&lt;/strong>`</summary>
+<summary>**14. How do you distinguish Python DataLoader transform latency from Host-to-Device (`H2D`) PCIe copy stalls in PyTorch?**</summary>
 
 Temporarily profile the data loader in isolation with `num_workers=0` and downstream GPU compute disabled to measure pure single-process Python read and decode time. Then wrap `.to('cuda', non_blocking=True)` with CUDA event timers. You can also inspect the copy stream lanes in Nsight Systems with `nsys profile --trace=cuda,nvtx,gds`.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What four parameters should be configured on a high-throughput PyTorch `DataLoader`, and what host OS limit must accompany `pin_memory=True`?`&lt;/strong>`</summary>
+<summary>**15. What four parameters should be configured on a high-throughput PyTorch `DataLoader`, and what host OS limit must accompany `pin_memory=True`?**</summary>
 
 Set `num_workers=8` scaled to CPU cores, `pin_memory=True`, and `persistent_workers=True` to avoid worker teardown and respawn across epochs. Also set `prefetch_factor=4` to queue batches ahead. On the host or container, set `ulimit -l unlimited` so page-locked memory allocations do not fail.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Why do multi-worker PyTorch training pods in Kubernetes crash with `Bus error (core dumped)` unless `/dev/shm` is explicitly configured?`&lt;/strong>`</summary>
+<summary>**16. Why do multi-worker PyTorch training pods in Kubernetes crash with `Bus error (core dumped)` unless `/dev/shm` is explicitly configured?**</summary>
 
 Kubernetes containers default `/dev/shm` to 64 MiB. Meanwhile, PyTorch data loader workers and NCCL allocate tens or hundreds of gigabytes of shared-memory tensors there. Pods must mount an `emptyDir` with `medium: Memory` and `sizeLimit: 400Gi` at `/dev/shm` on eight-GPU nodes.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. How does `cuda-checkpoint` (used with CRIU) differ from GPUDirect Storage and framework checkpoints (`torch.save`)?`&lt;/strong>`</summary>
+<summary>**17. How does `cuda-checkpoint` (used with CRIU) differ from GPUDirect Storage and framework checkpoints (`torch.save`)?**</summary>
 
 The `cuda-checkpoint` utility transparently snapshots and restores an entire running CUDA process for preemption or fault migration. It uses `cuCheckpointProcessLock`, `cuCheckpointProcessCheckpoint`, `cuCheckpointProcessRestore`, and `cuCheckpointProcessUnlock`. Unlike GPUDirect Storage, it does not DMA directly from GPU memory to disk. During suspend, the CUDA driver copies device memory into host DRAM first so CRIU can save the process image.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Compare `NVMe-oF/TCP`, `NVMe-oF/RDMA` (`RoCEv2`), and `InfiniBand` storage transports in terms of switch latency, port numbers, and lossless requirements.`&lt;/strong>`</summary>
+<summary>**18. Compare `NVMe-oF/TCP`, `NVMe-oF/RDMA` (`RoCEv2`), and `InfiniBand` storage transports in terms of switch latency, port numbers, and lossless requirements.**</summary>
 
 ```text
 - NVMe-oF/TCP:          TCP port 8009 (~800 ns Ethernet switch hop, runs on lossy IP fabrics with MTU 9000)
@@ -726,13 +726,13 @@ The `cuda-checkpoint` utility transparently snapshots and restores an entire run
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What is the difference between `PRP` (`PRP1`/`PRP2`), `SGL`, and `NSID` inside an NVMe or NVMe-oF command capsule?`&lt;/strong>`</summary>
+<summary>**19. What is the difference between `PRP` (`PRP1`/`PRP2`), `SGL`, and `NSID` inside an NVMe or NVMe-oF command capsule?**</summary>
 
 The `NSID`, or Namespace ID, identifies the logical storage volume on the target NVMe controller. By contrast, `PRP1` and `PRP2` are 64-bit Physical Region Page pointers, and `SGL` is a Scatter-Gather List descriptor. Both specify the host or GPU BAR1 memory buffer addresses for DMA placement inside the 64-byte NVMe read (`0x02`) or write (`0x01`) command.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. How do NVIDIA DALI, `nvJPEG`, and the Blackwell Hardware Decompression Engine shift the storage-to-GPU bottleneck?`&lt;/strong>`</summary>
+<summary>**20. How do NVIDIA DALI, `nvJPEG`, and the Blackwell Hardware Decompression Engine shift the storage-to-GPU bottleneck?**</summary>
 
 They allow datasets to stay compressed on disk in formats like JPEG, LZ4, Snappy, or Deflate. Smaller payloads then travel across the network and PCIe or NVLink-C2C, which runs at up to 900 GB per second bidirectional on GB200. DALI, `nvJPEG`, and the on-die Blackwell Decompression Engine unpack and augment data directly on the GPU. That avoids burning eight CPU cores or bouncing decoded pixels between host and device memory.
 </details>

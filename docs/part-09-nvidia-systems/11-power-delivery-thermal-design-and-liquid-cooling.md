@@ -375,7 +375,7 @@ Summary: 26 passed, 0 failed (total 26)
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. In a traditional air-cooled data center, what percentage of total electrical power goes to IT equipment, cooling systems, and power distribution/UPS? How is PUE defined, and how much can liquid cooling reduce cooling power?`&lt;/strong>`</summary>
+<summary>**1. In a traditional air-cooled data center, what percentage of total electrical power goes to IT equipment, cooling systems, and power distribution/UPS? How is PUE defined, and how much can liquid cooling reduce cooling power?**</summary>
 
 - **Power split:** IT equipment consumes 40 to 45 percent, cooling systems consume 35 to 40 percent, and power distribution, UPS losses, and lighting consume 15 to 25 percent.
 - **PUE definition:** PUE equals total facility power divided by IT equipment power. An ideal value is 1.0, and typical air-cooled halls reach 1.2 to 1.5.
@@ -383,7 +383,7 @@ Summary: 26 passed, 0 failed (total 26)
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Calculate the monthly kWh consumption and annual electricity cost at $0.12/kWh for an 8-node H100 cluster with 81.6 kW IT load at 1.35 PUE running 16h/day training, 4h/day idle, and 4h/day maintenance.`&lt;/strong>`</summary>
+<summary>**2. Calculate the monthly kWh consumption and annual electricity cost at $0.12/kWh for an 8-node H100 cluster with 81.6 kW IT load at 1.35 PUE running 16h/day training, 4h/day idle, and 4h/day maintenance.**</summary>
 
 ```text
 Monthly kWh and Annual Cost Calculation (8-Node H100 Cluster):
@@ -396,7 +396,7 @@ Monthly kWh and Annual Cost Calculation (8-Node H100 Cluster):
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Using the sensible-heat airflow equation, calculate the required airflow for an 81,600 W deployment with a 20°C air temperature rise.`&lt;/strong>`</summary>
+<summary>**3. Using the sensible-heat airflow equation, calculate the required airflow for an 81,600 W deployment with a 20°C air temperature rise.**</summary>
 
 ```text
 Sensible-Heat Airflow Calculation (81,600 W at 20°C Rise):
@@ -406,13 +406,13 @@ Sensible-Heat Airflow Calculation (81,600 W at 20°C Rise):
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Compare the maximum power consumption of a QSFP28, a QSFP56-DD, and an OSFP optical transceiver, and explain why Front-to-Back airflow is preferred on AI switches.`&lt;/strong>`</summary>
+<summary>**4. Compare the maximum power consumption of a QSFP28, a QSFP56-DD, and an OSFP optical transceiver, and explain why Front-to-Back airflow is preferred on AI switches.**</summary>
 
 A 100G QSFP28 draws up to 3.2 W, a 400G QSFP56-DD draws up to 12.0 W, and a 400G or 800G OSFP draws up to 15.0 W. An OSFP transceiver uses 4.69 times the power of a QSFP28, consuming 960 W across a 64-port switch in optics alone. Optical transceivers sit on the front panel of the switch and are highly sensitive to heat. Front-to-back airflow passes fresh cold intake air over the optics first before heating up across the switch ASIC and power supplies.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. Contrast the PSU redundancy architectures of a DGX H100, a DGX B200, and a DGX GB300 NVL72 rack.`&lt;/strong>`</summary>
+<summary>**5. Contrast the PSU redundancy architectures of a DGX H100, a DGX B200, and a DGX GB300 NVL72 rack.**</summary>
 
 - **DGX H100:** Uses six 3.3 kW internal power supplies in 3+3 redundancy across Feed A and Feed B. It survives the loss of an entire three-supply feed with the remaining three supplies delivering up to 9.9 kW for the 10.2 kW node.
 - **DGX B200:** Uses six internal power supplies in 5-of-6 redundancy for its 14.3 kW load. Losing more than one supply shuts the node down, so 3+3 interleaving is forbidden. Administrators must use non-interleaved dual-source feeds or six discrete sources.
@@ -420,7 +420,7 @@ A 100G QSFP28 draws up to 3.2 W, a 400G QSFP56-DD draws up to 12.0 W, and a 400G
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Compare Rear-Door Heat Exchangers, Direct-to-Chip Cold Plate Liquid Cooling, Single-Phase Immersion, Two-Phase Immersion, and Sprayed Liquid Cooling.`&lt;/strong>`</summary>
+<summary>**6. Compare Rear-Door Heat Exchangers, Direct-to-Chip Cold Plate Liquid Cooling, Single-Phase Immersion, Two-Phase Immersion, and Sprayed Liquid Cooling.**</summary>
 
 - **RDHx:** Mounts a water-cooled radiator door on the back of an air-cooled rack for 20 to 40 kW loads with no server changes. It is unsuitable for high-static-pressure DGX B200 racks.
 - **Direct-to-Chip Cold Plate:** Bolts copper cold plates directly to CPUs, GPUs, and NVSwitches and circulates coolant to a CDU. It is the production standard for 120 to 150 kW GB200 and GB300 NVL72 racks.
@@ -430,85 +430,85 @@ A 100G QSFP28 draws up to 3.2 W, a 400G QSFP56-DD draws up to 12.0 W, and a 400G
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Why must a Coolant Distribution Unit never supply chilled water at a temperature below the data hall's dew point?`&lt;/strong>`</summary>
+<summary>**7. Why must a Coolant Distribution Unit never supply chilled water at a temperature below the data hall's dew point?**</summary>
 
 If the liquid flowing through the rack manifolds and cold plates is colder than the ambient air dew point, moisture in the room air will condense into water droplets. Those droplets form on the outside of the pipes and cold plates, dripping onto live circuit boards and triggering leak alarms or short circuits.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What two nvidia-smi commands tell you the exact temperature threshold at which a GPU begins thermal slowdown and whether thermal or power-brake throttling is currently active?`&lt;/strong>`</summary>
+<summary>**8. What two nvidia-smi commands tell you the exact temperature threshold at which a GPU begins thermal slowdown and whether thermal or power-brake throttling is currently active?**</summary>
 
 First, `nvidia-smi -q -d TEMPERATURE` displays the current GPU and memory temperatures alongside the exact slowdown and shutdown thresholds. Second, `nvidia-smi -q -d PERFORMANCE` displays the active clock throttle reasons. Those reasons include software thermal slowdown, hardware thermal slowdown, and hardware power brake slowdown.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Why is committed megawatts, not the electricity bill, the binding limit in AI cluster growth?`&lt;/strong>`</summary>
+<summary>**9. Why is committed megawatts, not the electricity bill, the binding limit in AI cluster growth?**</summary>
 
 Running a second concurrent 64-GPU job doubles facility power demand from 110 kW to 220 kW. If the room utility feed is capped at 144 kW, you cannot start that second pod regardless of your operating budget. Facility power upgrades therefore must be planned roughly 12 months ahead of cluster expansion.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. What are the three walls in the CIO's 8-nodes-per-rack proposal?`&lt;/strong>`</summary>
+<summary>**10. What are the three walls in the CIO's 8-nodes-per-rack proposal?**</summary>
 
 The first wall is the power and weight limit at 81.6 kW and 2,960 lbs per rack. The second is the thermodynamic air-cooling wall, because room air conditioning cannot remove 85 kW of heat from one rack. The third is the data-path wall, because a standard SAN cannot feed 32 DGX nodes.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What is a normal PUE, and what does liquid cooling do to it?`&lt;/strong>`</summary>
+<summary>**11. What is a normal PUE, and what does liquid cooling do to it?**</summary>
 
 Air-cooled data halls typically reach a PUE of 1.2 to 1.5, with 1.35 used as a standard planning baseline. Direct liquid cooling cuts cooling-system power consumption by up to 70 percent and drives facility PUE toward 1.05 to 1.15.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How do you size a 3-phase circuit and why derate it to 80%?`&lt;/strong>`</summary>
+<summary>**12. How do you size a 3-phase circuit and why derate it to 80%?**</summary>
 
 Three-phase nameplate power equals the square root of 3 multiplied by voltage, current, and power factor. Electrical codes permit loading a branch circuit continuously to only 80 percent of its nameplate rating. Thus, a 208V 60A circuit provides 21.6 kW nameplate capacity and 17.3 kW continuous capacity.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. What does the sensible-heat formula tell you?`&lt;/strong>`</summary>
+<summary>**13. What does the sensible-heat formula tell you?**</summary>
 
 The formula multiplies 3.16 by the heat load in watts and divides by the air temperature rise in degrees Fahrenheit. It calculates the airflow volume in cubic feet per minute needed to carry away heat, such as 7,160 CFM for an 81.6 kW load at a 36 degree Fahrenheit rise.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Why do OSFP optics matter for rack power?`&lt;/strong>`</summary>
+<summary>**14. Why do OSFP optics matter for rack power?**</summary>
 
 Each OSFP optical transceiver consumes up to 15 W, which is 4.69 times the 3.2 W draw of a 100G QSFP28 module. A single 64-port switch therefore spends 960 W on optical transceivers alone.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Why choose front-to-back airflow on switches?`&lt;/strong>`</summary>
+<summary>**15. Why choose front-to-back airflow on switches?**</summary>
 
 Optical transceivers sit on the front panel of the switch, so front-to-back airflow passes cold intake air over the temperature-sensitive optics first. Back-to-front fans bathe the optics in pre-heated exhaust air, while bidirectional fans cost more and are aerodynamically less efficient.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What is the practical limit of air cooling?`&lt;/strong>`</summary>
+<summary>**16. What is the practical limit of air cooling?**</summary>
 
 Forced air cooling reaches its practical thermodynamic ceiling around 50 to 60 kW per rack. Above that density, facilities transition to liquid cooling because water holds roughly 3,500 times more heat per unit volume than air.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What does the RDHx do and why is it not suited to the DGX B200?`&lt;/strong>`</summary>
+<summary>**17. What does the RDHx do and why is it not suited to the DGX B200?**</summary>
 
 A rear-door heat exchanger mounts a water-cooled radiator coil on the rear door of an air-cooled rack, handling 20 to 40 kW racks without server modifications. However, the radiator coil adds static airflow impedance that is unsuitable for the 4,290 to 8,580 CFM airflow volume of a DGX B200 rack.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Why is the GB300 NVL72 hybrid cooled?`&lt;/strong>`</summary>
+<summary>**18. Why is the GB300 NVL72 hybrid cooled?**</summary>
 
 Direct-to-chip cold plates remove heat from the high-power Grace CPUs, Blackwell Ultra GPUs, and NVSwitches, while room air still cools lower-power components such as optical transceivers, NVMe drives, and power-shelf fans. The 85 percent liquid to 15 percent air numerical split in the Python model is the author's illustrative estimate.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What causes condensation in a liquid-cooled tray and how do you prevent it?`&lt;/strong>`</summary>
+<summary>**19. What causes condensation in a liquid-cooled tray and how do you prevent it?**</summary>
 
 Condensation occurs when the CDU supplies coolant colder than the ambient room dew point. Prevent it by keeping the coolant supply temperature at least 2 to 3 degrees Celsius above the maximum room dew point and maintaining active room dehumidification.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. What does nvidia-smi -pl do and when would you use it?`&lt;/strong>`</summary>
+<summary>**20. What does nvidia-smi -pl do and when would you use it?**</summary>
 
 The `nvidia-smi -pl` command sets a software power cap in watts on each GPU. Administrators use it during partial cooling maintenance or for workloads that are not compute-bound, trading a small clock frequency reduction for a lower rack thermal and electrical load.
 </details>

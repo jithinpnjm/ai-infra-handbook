@@ -649,7 +649,7 @@ Exercise problem parameters and datasets:
 
 ## Checkpoint questions (20)
 
-<details><summary>`&lt;strong>`1. Trace the 5 data-movement steps when GPU A on Node A sends a tensor to GPU B on Node B using standard RDMA without GPUDirect RDMA.`&lt;/strong>`</summary>
+<details><summary>**1. Trace the 5 data-movement steps when GPU A on Node A sends a tensor to GPU B on Node B using standard RDMA without GPUDirect RDMA.**</summary>
 
 ```text
 1. GPU A HBM -> Host RAM A (PCIe copy 1 on Node A, DRAM write)
@@ -660,22 +660,22 @@ Exercise problem parameters and datasets:
 ```
 </details>
 
-<details><summary>`&lt;strong>`2. How many PCIe bus traversals and host DRAM operations occur per node under GPUDirect RDMA compared to host bounce-buffer staging?`&lt;/strong>`</summary>
+<details><summary>**2. How many PCIe bus traversals and host DRAM operations occur per node under GPUDirect RDMA compared to host bounce-buffer staging?**</summary>
 
 Under GPUDirect RDMA, each node performs 1 PCIe switch traversal between GPU BAR1 and the NIC and 0 host DRAM operations. Under host bounce-buffer staging, each node performs 2 PCIe traversals and 2 host DRAM operations. That staging generates 20.0 GB of PCIe traffic and 20.0 GB of host DRAM traffic per 10.0 GB payload.
 </details>
 
-<details><summary>`&lt;strong>`3. What is the role of PCIe BAR1 in GPUDirect RDMA and GPUDirect Storage, and which BIOS setting is required to expose full GPU HBM?`&lt;/strong>`</summary>
+<details><summary>**3. What is the role of PCIe BAR1 in GPUDirect RDMA and GPUDirect Storage, and which BIOS setting is required to expose full GPU HBM?**</summary>
 
 BAR1 is the PCIe Memory-Mapped I/O aperture through which external PCIe masters such as RDMA NICs and NVMe drives read and write GPU HBM. The server BIOS must have Above 4G Decoding and Large BAR or Resizable BAR enabled. Those settings allow BAR1 to map 64 to 256 GiB of 64-bit address space instead of the legacy 256 MiB 32-bit limit.
 </details>
 
-<details><summary>`&lt;strong>`4. How does `nvidia-peermem.ko` enable GPUDirect RDMA, and what happens if `cudaFree()` is called on a registered GPU buffer?`&lt;/strong>`</summary>
+<details><summary>**4. How does `nvidia-peermem.ko` enable GPUDirect RDMA, and what happens if `cudaFree()` is called on a registered GPU buffer?**</summary>
 
 `nvidia-peermem.ko` registers a peer-memory client with MLNX_OFED or DOCA-OFED `ib_core`. It invokes `nvidia_p2p_get_pages()` to pin BAR1 physical pages and program the NIC's MKey. If `cudaFree()` is called while an MR is active, the GPU driver triggers an `invalidate_callback` into `nvidia-peermem` to invalidate the NIC key before unmapping the BAR1 pages.
 </details>
 
-<details><summary>`&lt;strong>`5. What are the three exact system requirements to use the upstream Linux `dma-buf` path for GPUDirect RDMA without `nvidia-peermem.ko`?`&lt;/strong>`</summary>
+<details><summary>**5. What are the three exact system requirements to use the upstream Linux `dma-buf` path for GPUDirect RDMA without `nvidia-peermem.ko`?**</summary>
 
 ```text
 1. Linux kernel >= 5.12
@@ -684,7 +684,7 @@ BAR1 is the PCIe Memory-Mapped I/O aperture through which external PCIe masters 
 ```
 </details>
 
-<details><summary>`&lt;strong>`6. List the six NCCL and `nvidia-smi topo -m` path distance codes in order from closest to farthest.`&lt;/strong>`</summary>
+<details><summary>**6. List the six NCCL and `nvidia-smi topo -m` path distance codes in order from closest to farthest.**</summary>
 
 ```text
 0: LOC  — Same device
@@ -696,17 +696,17 @@ BAR1 is the PCIe Memory-Mapped I/O aperture through which external PCIe masters 
 ```
 </details>
 
-<details><summary>`&lt;strong>`7. Why does NCCL disable GPUDirect RDMA reads (`NCCL_NET_GDR_READ=0`) by default on PHB paths even when `NCCL_NET_GDR_LEVEL=PHB` enables GDR writes?`&lt;/strong>`</summary>
+<details><summary>**7. Why does NCCL disable GPUDirect RDMA reads (`NCCL_NET_GDR_READ=0`) by default on PHB paths even when `NCCL_NET_GDR_LEVEL=PHB` enables GDR writes?**</summary>
 
 PCIe writes from the NIC into GPU BAR1 are posted one-way transactions. By contrast, PCIe reads from GPU BAR1 are non-posted split transactions consisting of a read request followed by completion data. Across a CPU Root Complex on a PHB path, P2P read completions suffer severe credit starvation and latency inside the CPU root ports, whereas writes still stream well.
 </details>
 
-<details><summary>`&lt;strong>`8. What is PCIe Access Control Services, and how does it sabotage GPUDirect RDMA on a physical PIX topology?`&lt;/strong>`</summary>
+<details><summary>**8. What is PCIe Access Control Services, and how does it sabotage GPUDirect RDMA on a physical PIX topology?**</summary>
 
 PCIe ACS is a virtualization security feature on PCIe switches. It forces peer-to-peer TLPs upstream to the CPU Root Complex and IOMMU for validation instead of switching them directly between downstream ports. This hairpins traffic across the root port and causes NCCL to treat the path as PHB or SYS, disabling GPUDirect RDMA.
 </details>
 
-<details><summary>`&lt;strong>`9. Which `lspci` and `setpci` commands audit and disable PCIe ACS P2P redirection at runtime?`&lt;/strong>`</summary>
+<details><summary>**9. Which `lspci` and `setpci` commands audit and disable PCIe ACS P2P redirection at runtime?**</summary>
 
 ```text
 - Audit : sudo lspci -vvv | grep -E "^[0-9a-f]{2}:|ACSCap|ACSCtl" (check for SrcValid+, ReqRedir+, CmpltRedir+, UpFwd+)
@@ -714,12 +714,12 @@ PCIe ACS is a virtualization security feature on PCIe switches. It forces peer-t
 ```
 </details>
 
-<details><summary>`&lt;strong>`10. Why do SR-IOV Virtual Functions require `intel_iommu=on iommu=pt` in GRUB on GPUDirect RDMA nodes?`&lt;/strong>`</summary>
+<details><summary>**10. Why do SR-IOV Virtual Functions require `intel_iommu=on iommu=pt` in GRUB on GPUDirect RDMA nodes?**</summary>
 
 SR-IOV requires the IOMMU to be enabled via `intel_iommu=on` to isolate and map Virtual Function device memory into Pods or VMs. Setting `iommu=pt` places the host IOMMU in passthrough mode. That mode avoids dynamic DMA translation overhead and allows bare-metal PCIe P2P transfers between GPUs and NICs.
 </details>
 
-<details><summary>`&lt;strong>`11. How is an 8-GPU DGX H100 or HGX rail-optimized node wired across PCIe switches, NUMA nodes, and leaf switches?`&lt;/strong>`</summary>
+<details><summary>**11. How is an 8-GPU DGX H100 or HGX rail-optimized node wired across PCIe switches, NUMA nodes, and leaf switches?**</summary>
 
 ```text
 - NUMA 0: GPU 0-1 + NIC 0-1 on PCIe Switch 0; GPU 2-3 + NIC 2-3 on PCIe Switch 1
@@ -728,7 +728,7 @@ SR-IOV requires the IOMMU to be enabled via `intel_iommu=on` to isolate and map 
 ```
 </details>
 
-<details><summary>`&lt;strong>`12. Compare NVMe-o-TCP and NVMe-o-RDMA across transport ports, handshake state machines, and fabric losslessness requirements.`&lt;/strong>`</summary>
+<details><summary>**12. Compare NVMe-o-TCP and NVMe-o-RDMA across transport ports, handshake state machines, and fabric losslessness requirements.**</summary>
 
 ```text
 - NVMe-o-TCP : Lossy IP/Ethernet (MTU 9000), TCP port 8009 (SYN/SYN-ACK/ACK -> IC Req/Resp PDU -> NVMe Connect -> CapsuleCmd / C2HData / CapsuleResp).
@@ -736,12 +736,12 @@ SR-IOV requires the IOMMU to be enabled via `intel_iommu=on` to isolate and map 
 ```
 </details>
 
-<details><summary>`&lt;strong>`13. In NVMe and NVMe-oF command capsules, what is the difference between NSID, PRP1 and PRP2, and SGL?`&lt;/strong>`</summary>
+<details><summary>**13. In NVMe and NVMe-oF command capsules, what is the difference between NSID, PRP1 and PRP2, and SGL?**</summary>
 
 NSID is the Namespace ID that identifies the logical storage volume on the NVMe target controller. PRP1 and PRP2 are 64-bit Physical Region Page pointers, and SGL is a Scatter-Gather List descriptor. Both specify the initiator memory buffer addresses where the DMA engine reads or writes the payload.
 </details>
 
-<details><summary>`&lt;strong>`14. Walk through the ordered `cuFile` API calls required to perform a zero-copy GPUDirect Storage read into GPU HBM.`&lt;/strong>`</summary>
+<details><summary>**14. Walk through the ordered `cuFile` API calls required to perform a zero-copy GPUDirect Storage read into GPU HBM.**</summary>
 
 ```text
 1. cuFileDriverOpen()
@@ -754,12 +754,12 @@ NSID is the Namespace ID that identifies the logical storage volume on the NVMe 
 ```
 </details>
 
-<details><summary>`&lt;strong>`15. Why cannot a user-space FUSE-mounted filesystem deliver a true GPUDirect Storage zero-copy data path?`&lt;/strong>`</summary>
+<details><summary>**15. Why cannot a user-space FUSE-mounted filesystem deliver a true GPUDirect Storage zero-copy data path?**</summary>
 
 GPUDirect Storage requires kernel-level filesystem integration with `O_DIRECT` semantics. That integration lets `nvidia-fs.ko` intercept block or RDMA DMA mapping in the kernel and substitute GPU BAR1 physical pages. FUSE bounces every I/O buffer through a user-space daemon in host DRAM, preventing direct P2P DMA into GPU HBM.
 </details>
 
-<details><summary>`&lt;strong>`16. What are the exact `gdsio` flags and measured throughput and latency numbers comparing CPU-mediated storage reads against GPUDirect Storage reads?`&lt;/strong>`</summary>
+<details><summary>**16. What are the exact `gdsio` flags and measured throughput and latency numbers comparing CPU-mediated storage reads against GPUDirect Storage reads?**</summary>
 
 ```text
 Command: /usr/local/cuda/gds/tools/gdsio -f /mnt/data/large_file -d 0 -w 4 -s 10G -i 1M -I 0
@@ -768,7 +768,7 @@ Command: /usr/local/cuda/gds/tools/gdsio -f /mnt/data/large_file -d 0 -w 4 -s 10
 ```
 </details>
 
-<details><summary>`&lt;strong>`17. What do `max_device_pinned_mem_size_kb`, `use_poll_mode`, `poll_mode_max_size_kb`, and `allow_compat_mode` control in `/etc/cufile.json`?`&lt;/strong>`</summary>
+<details><summary>**17. What do `max_device_pinned_mem_size_kb`, `use_poll_mode`, `poll_mode_max_size_kb`, and `allow_compat_mode` control in `/etc/cufile.json`?**</summary>
 
 ```text
 - max_device_pinned_mem_size_kb (33554432 = 32 GiB): Maximum GPU BAR1 memory pinned across cuFileBufRegister calls
@@ -777,17 +777,17 @@ Command: /usr/local/cuda/gds/tools/gdsio -f /mnt/data/large_file -d 0 -w 4 -s 10
 ```
 </details>
 
-<details><summary>`&lt;strong>`18. How does `cuda-checkpoint` with CRIU differ architecturally from GPUDirect Storage checkpoint writes?`&lt;/strong>`</summary>
+<details><summary>**18. How does `cuda-checkpoint` with CRIU differ architecturally from GPUDirect Storage checkpoint writes?**</summary>
 
 `cuda-checkpoint` is a process-level fault-tolerance mechanism. It drains CUDA work and copies GPU device memory into host DRAM during suspend so CRIU can snapshot the process. It does not DMA directly from GPU HBM to storage over GPUDirect Storage.
 </details>
 
-<details><summary>`&lt;strong>`19. How do you diagnose and fix the Small File Problem on a parallel file system when GPU utilization drops to 30% and storage bandwidth is only 5 GB/s?`&lt;/strong>`</summary>
+<details><summary>**19. How do you diagnose and fix the Small File Problem on a parallel file system when GPU utilization drops to 30% and storage bandwidth is only 5 GB/s?**</summary>
 
 Run `strace -c -p <dataloader_pid>` to observe that roughly 85.12% of syscall time is spent in `stat()` and under 1% in `read()` while the Metadata Server CPU is at 100%. Fix it by packing small 20 KB files into 1 GB WebDataset `.tar` shards of 50,000 files each. That packing reduces `stat()` calls by 50,000x, and TFRecord, Parquet, or Megatron `.bin` and `.idx` formats provide similar consolidation.
 </details>
 
-<details><summary>`&lt;strong>`20. What causes cascading D-state uninterruptible sleep hangs across training nodes, and why does `kill -9` fail to terminate the stuck `python3` processes?`&lt;/strong>`</summary>
+<details><summary>**20. What causes cascading D-state uninterruptible sleep hangs across training nodes, and why does `kill -9` fail to terminate the stuck `python3` processes?**</summary>
 
 Processes enter Linux state D when blocked inside a kernel syscall such as `rpc_wait_bit_killable` waiting on unresponsive storage or network hardware. A common trigger is a failed InfiniBand optical cable with a symbol error counter exceeding 1,000. Because the kernel holds in-flight I/O locks and masks all signals until hardware responds, `SIGKILL` is queued. The process remains stuck until the I/O completes or the node is hard-rebooted via `ipmitool chassis power reset`.
 </details>

@@ -379,26 +379,26 @@ Summary: 30 passed, 0 failed (total 30)
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. Why does interleaving two power feeds across a DGX B200 server cause a 100% rack outage if either PDU or UPS fails, whereas the same 3+3 wiring works on a DGX H100?`&lt;/strong>`</summary>
+<summary>**1. Why does interleaving two power feeds across a DGX B200 server cause a 100% rack outage if either PDU or UPS fails, whereas the same 3+3 wiring works on a DGX H100?**</summary>
 
 A DGX H100 uses six power supplies in equal three-plus-three redundancy, where half the supplies can carry the full node. In contrast, a 14.3 kW DGX B200 uses six PSUs in five-of-six redundancy. At least five of the six PSUs must remain energized for the system to operate, and losing more than one PSU shuts the server down immediately. If you wire three PSUs to PDU 1 and three PSUs to PDU 2, a failure of either PDU de-energizes three PSUs on every server in the rack and crashes 100% of the systems.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What are the two NVIDIA-recommended power provisioning models for DGX B200 racks when only 2 UPS sources are available versus when maximum High Availability is required?`&lt;/strong>`</summary>
+<summary>**2. What are the two NVIDIA-recommended power provisioning models for DGX B200 racks when only 2 UPS sources are available versus when maximum High Availability is required?**</summary>
 
 1. With two UPS sources in Model 1, or Dual Source Non-Interleaved, plug all six PSUs of System 1 into PDU 1 on UPS A. Then plug all six PSUs of System 2 into PDU 2 on UPS B so a single PDU or UPS failure impacts only 50% of the rack.
 2. For maximum High Availability in Model 5, or "6 to make 5", provision six discrete UPS power sources feeding six rack PDUs and plug one PSU from each server into each PDU. Losing any single PDU or UPS de-energizes only one PSU per node, leaving five of six PSUs energized with zero systems impacted.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Does NVIDIA recommend using Static Transfer Switches to achieve N+1 power with two UPS sources on DGX B200 racks?`&lt;/strong>`</summary>
+<summary>**3. Does NVIDIA recommend using Static Transfer Switches to achieve N+1 power with two UPS sources on DGX B200 racks?**</summary>
 
 No, Static Transfer Switches are not recommended. In-rack STS units are unsupported, an STS introduces a single point of failure, and NVIDIA has not tested or validated any STS product for compatibility with DGX B200 systems. Switchover events may cause hardware damage, adverse system behavior, or workload failures.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Calculate the maximum rack power capacity and stranded capacity for a rack provisioned with two 3-phase 415V 60A circuits at 80% breaker derating and a 0.95 power factor. How many DGX B200 nodes does it support, and what airflow is required?`&lt;/strong>`</summary>
+<summary>**4. Calculate the maximum rack power capacity and stranded capacity for a rack provisioned with two 3-phase 415V 60A circuits at 80% breaker derating and a 0.95 power factor. How many DGX B200 nodes does it support, and what airflow is required?**</summary>
 
 - Maximum rounded rack capacity is 66 kW from `65.55 kW` unrounded across the two three-phase circuits.
 - It supports 4 DGX B200 systems in a 52U rack, with a peak demand of 57.2 kW.
@@ -407,7 +407,7 @@ No, Static Transfer Switches are not recommended. In-rack STS units are unsuppor
 </details>
 
 <details>
-<summary>`&lt;strong>`5. How does the DGX B200 operating temperature range change with altitude from sea level to 10,000 feet, and how does acoustic noise change between 25°C and 30°C?`&lt;/strong>`</summary>
+<summary>**5. How does the DGX B200 operating temperature range change with altitude from sea level to 10,000 feet, and how does acoustic noise change between 25°C and 30°C?**</summary>
 
 - Maximum operating altitude is 3,048 m, or 10,000 ft.
 - Operating temperature is 5°C to 35°C up to 1,000 ft, 30°C up to 5,000 ft, and 25°C from 5,000 to 10,000 ft.
@@ -415,7 +415,7 @@ No, Static Transfer Switches are not recommended. In-rack STS units are unsuppor
 </details>
 
 <details>
-<summary>`&lt;strong>`6. State the air filtration rating, cleanroom classification, and maximum particulate count and excursion duration required for a DGX B200 data hall.`&lt;/strong>`</summary>
+<summary>**6. State the air filtration rating, cleanroom classification, and maximum particulate count and excursion duration required for a DGX B200 data hall.**</summary>
 
 - Air filtration requires a minimum of MERV 13, or equivalent EN779-2012 or ISO 16890 filters.
 - The rack area must meet ISO 14644-1 Class 8 cleanliness.
@@ -423,7 +423,7 @@ No, Static Transfer Switches are not recommended. In-rack STS units are unsuppor
 </details>
 
 <details>
-<summary>`&lt;strong>`7. What are the maximum standard cable lengths and `< 90%` design limits for 100G Passive DAC, 400G Passive DAC, and Active Optical Cables in a DGX B200 SuperPOD?`&lt;/strong>`</summary>
+<summary>**7. What are the maximum standard cable lengths and `< 90%` design limits for 100G Passive DAC, 400G Passive DAC, and Active Optical Cables in a DGX B200 SuperPOD?**</summary>
 
 - 100G Passive DAC has a 5 m maximum standard distance and a 4.5 m `< 90%` design limit.
 - 400G Passive DAC has a 3 m maximum standard distance and a 2.7 m `< 90%` design limit.
@@ -431,80 +431,80 @@ No, Static Transfer Switches are not recommended. In-rack STS units are unsuppor
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What are NVIDIA's minimum and recommended EIA-310 rack dimensions for DGX B200, and what features must the smart rack PDUs include?`&lt;/strong>`</summary>
+<summary>**8. What are NVIDIA's minimum and recommended EIA-310 rack dimensions for DGX B200, and what features must the smart rack PDUs include?**</summary>
 
 - Minimum cabinet size is 600 by 1,100 mm and 48U tall. Recommended cabinet size is 700 by 1,200 mm and 52U tall.
 - Smart rPDUs must include an integrated smart module with a network and REST API interface, temperature and humidity sensor probe ports, locking receptacles, and PDU-level metering. They must also provide remote per-receptacle outlet switching and optional Red and Blue exterior housing colors for circuit differentiation.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. How much airflow does one DGX B200 need and where does that number come from?`&lt;/strong>`</summary>
+<summary>**9. How much airflow does one DGX B200 need and where does that number come from?**</summary>
 
 One DGX B200 needs about 2,145 CFM at sea level, derived from 150 CFM per kW at 14.3 kW. Two nodes need 4,290 CFM and four nodes need 8,580 CFM.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why does a warmer inlet matter for noise and for staff?`&lt;/strong>`</summary>
+<summary>**10. Why does a warmer inlet matter for noise and for staff?**</summary>
 
 Acoustic power rises from 96 dB at 25°C to 101 dB at 30°C as chassis fans ramp up. Mandatory hearing protection is required for staff working in the data hall.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What is "stranded capacity" and how does a 415V 63A 100% circuit pair compare to a 380V 32A 80% pair?`&lt;/strong>`</summary>
+<summary>**11. What is "stranded capacity" and how does a 415V 63A 100% circuit pair compare to a 380V 32A 80% pair?**</summary>
 
 Stranded capacity is rack power you have provisioned at the circuit level but cannot use because another whole 14.3 kW node will not fit. The 415V 63A 100% pair strands 28.8 kW per rack, whereas the 380V 32A 80% pair strands only 3.4 kW per rack.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Why is a 4-node DGX B200 rack called extreme-density, and what cooling is not suited to it?`&lt;/strong>`</summary>
+<summary>**12. Why is a 4-node DGX B200 rack called extreme-density, and what cooling is not suited to it?**</summary>
 
 It draws 57.2 kW and requires 8,580 CFM of airflow in a single 52U cabinet. Rear-door heat exchangers and in-row coolers are not typically suitable because their coil impedance restricts high-velocity exhaust airflow.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. What is wrong with the "dual interleaved" wiring with 3 cords on each PDU?`&lt;/strong>`</summary>
+<summary>**13. What is wrong with the "dual interleaved" wiring with 3 cords on each PDU?**</summary>
 
 A DGX B200 requires at least 5 of 6 PSUs energized to stay up. If either PDU or UPS fails in a 3+3 interleaved rack, each server retains only 3 energized PSUs and shuts down immediately, taking down 100% of the rack.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. What is the recommended wiring when you only have two UPS sources?`&lt;/strong>`</summary>
+<summary>**14. What is the recommended wiring when you only have two UPS sources?**</summary>
 
 Use Model 1, where all six cords of Node 1 connect to PDU 1 on UPS A and all six cords of Node 2 connect to PDU 2 on UPS B. A single PDU or UPS failure affects only half the rack instead of the whole rack.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What is "6 to make 5" and what is its limit?`&lt;/strong>`</summary>
+<summary>**15. What is "6 to make 5" and what is its limit?**</summary>
 
 Six separate UPS sources feed six rack PDUs, and each server plugs one PSU cord into each of the six PDUs. Any single PDU or UPS loss leaves five of six PSUs energized so zero servers fail. However, fitting six PDUs in one cabinet typically limits the layout to two systems per rack.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What does the source deck say about static transfer switches?`&lt;/strong>`</summary>
+<summary>**16. What does the source deck say about static transfer switches?**</summary>
 
 In-rack STS units are unsupported, and NVIDIA has not tested or validated any STS product with the DGX B200. Switchover transients can cause workload failures or hardware damage.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What environment class and humidity limits apply to the DGX B200?`&lt;/strong>`</summary>
+<summary>**17. What environment class and humidity limits apply to the DGX B200?**</summary>
 
 Supply air must follow ASHRAE Class A1 capped at 30°C, with 18°C to 27°C recommended. Allowable humidity is 20% to 80% RH with a maximum dew point of 17°C, and a recommended maximum dew point of 15°C.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. What air quality is required?`&lt;/strong>`</summary>
+<summary>**18. What air quality is required?**</summary>
 
 The facility must use at least MERV 13 filtration and maintain ISO 14644-1 Class 8 cleanliness. Particulate counts at 0.5 micrometers or larger must stay at or below 3,520,000 particles per cubic meter, with no excursion lasting longer than 15 minutes.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Why do altitude and temperature interact?`&lt;/strong>`</summary>
+<summary>**19. Why do altitude and temperature interact?**</summary>
 
 Thinner air at higher altitude carries less heat away per cubic foot of airflow. Above 5,000 ft the maximum allowable inlet temperature drops from 30°C to 25°C, so the cold-aisle setpoint must be lowered accordingly.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. What features must a smart rack PDU have?`&lt;/strong>`</summary>
+<summary>**20. What features must a smart rack PDU have?**</summary>
 
 It must include a network management module with a REST API, ports for temperature and humidity probes, locking receptacles, and PDU-level metering. It also requires remote per-outlet switching for AC power cycles, along with optional Red and Blue housings to distinguish the two power circuits.
 </details>

@@ -827,7 +827,7 @@ Exercise Input Parameters:
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. What are the three classification questions that distinguish computation sharding, state sharding, and data parallelism?`&lt;/strong>`</summary>
+<summary>**1. What are the three classification questions that distinguish computation sharding, state sharding, and data parallelism?**</summary>
 
 1. **Does it split computation?**
 2. **Must a single sample cross devices?**
@@ -837,7 +837,7 @@ Computation sharding methods like TP, PP, SP, CP, and EP answer **Yes / Yes / Ye
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Why can't PyTorch FSDP2 (`fully_shard`) or ZeRO-3 replace Megatron Core on 100B+ models?`&lt;/strong>`</summary>
+<summary>**2. Why can't PyTorch FSDP2 (`fully_shard`) or ZeRO-3 replace Megatron Core on 100B+ models?**</summary>
 
 FSDP2 and ZeRO-3 only shard **storage at rest**. Before computing a layer, every GPU must AllGather the full layer weight matrix and multiply it on one GPU while firing cross-node AllGathers on every layer. Megatron TP splits the matrix multiplication itself so no single GPU ever holds or computes the full matrix.
 
@@ -849,13 +849,13 @@ Single-Layer Matrix Size vs. TP=8 Slice:
 </details>
 
 <details>
-<summary>`&lt;strong>`3. How do `ColumnParallelLinear` and `RowParallelLinear` work together in a Megatron MLP block to require only one AllReduce in the forward pass?`&lt;/strong>`</summary>
+<summary>**3. How do `ColumnParallelLinear` and `RowParallelLinear` work together in a Megatron MLP block to require only one AllReduce in the forward pass?**</summary>
 
 `ColumnParallelLinear` splits `W_1` by columns into `[H, 4H / TP]`. That produces feature-partitioned outputs `Y_i = X * W_{1,i}` on which GeLU executes element-wise with **zero communication**. `RowParallelLinear` splits `W_2` by rows into `[4H / TP, H]`, multiplying each local slice `GeLU(Y_i) * W_{2,i}` into a partial sum `Z_i` of shape `[B, S, H]`. Those partial sums are combined by **a single AllReduce** at the end of the block.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. How does Megatron partition Multi-Head Attention and Grouped-Query Attention across a Tensor Parallel group?`&lt;/strong>`</summary>
+<summary>**4. How does Megatron partition Multi-Head Attention and Grouped-Query Attention across a Tensor Parallel group?**</summary>
 
 The query, key, and value projections use `ColumnParallelLinear` to partition attention heads across GPUs. Attention softmax runs independently per head with zero communication, and the output projection uses `RowParallelLinear` followed by one AllReduce. Under GQA, `num_query_groups` must be divisible by TP.
 
@@ -867,13 +867,13 @@ Attention Head Partitioning:
 </details>
 
 <details>
-<summary>`&lt;strong>`5. How many AllReduce operations occur per Transformer layer per training step in standard Megatron TP, and why?`&lt;/strong>`</summary>
+<summary>**5. How many AllReduce operations occur per Transformer layer per training step in standard Megatron TP, and why?**</summary>
 
 Every Transformer layer executes **4 AllReduce operations per training step**. Two run in the forward pass via the `g` operator after the attention and MLP `RowParallelLinear` layers. Two run in the backward pass via the `f` operator before the attention and MLP `ColumnParallelLinear` layers. Across 120 layers, that equals 240 forward and 480 total AllReduces per step.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Quantify why setting TP = 32 across two 16-GPU nodes caused a 16.7x slowdown in Volume 13 Chapter 6.`&lt;/strong>`</summary>
+<summary>**6. Quantify why setting TP = 32 across two 16-GPU nodes caused a 16.7x slowdown in Volume 13 Chapter 6.**</summary>
 
 Stretching TP across nodes moved every 219 MB collective shard from intra-node NVLink to inter-node InfiniBand, making each AllReduce 36x slower. Constraining TP to 8 inside each node and using PP=4 across nodes restored throughput by 15x.
 
@@ -886,26 +886,26 @@ Cross-Node TP = 32 vs. Intra-Node TP = 8 + PP = 4:
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How does Sequence Parallelism (`--sequence-parallel`) reduce activation memory by `1 / TP` without increasing network communication volume?`&lt;/strong>`</summary>
+<summary>**7. How does Sequence Parallelism (`--sequence-parallel`) reduce activation memory by `1 / TP` without increasing network communication volume?**</summary>
 
 Sequence Parallelism replaces each `RowParallelLinear` AllReduce with a **ReduceScatter along the sequence dimension**. Before the next block, it runs an **AllGather along the sequence dimension**. Total collective traffic is identical at `2 * ((TP - 1)/TP) * M` bytes. Meanwhile, LayerNorm, Dropout, and residual connections operate on `[B, S / TP, H]`, cutting their stored activation memory by `1 / TP`.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What is Megatron's selective activation recomputation, and how does it improve upon full activation checkpointing?`&lt;/strong>`</summary>
+<summary>**8. What is Megatron's selective activation recomputation, and how does it improve upon full activation checkpointing?**</summary>
 
 Full activation checkpointing recomputes an entire Transformer layer at a 30 to 50 percent backward compute penalty. Selective recomputation discards and recomputes **only the operations that take massive memory but minimal FLOPs**, specifically attention `Q K^T`, softmax, and dropout. Expensive `ColumnParallel` and `RowParallel` GEMM outputs remain in memory, recovering 70 to 80 percent of the memory savings for a fraction of the compute cost.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Contrast Megatron Context Parallelism Ring Attention with DeepSpeed-Ulysses for 32K to 128K+ sequences.`&lt;/strong>`</summary>
+<summary>**9. Contrast Megatron Context Parallelism Ring Attention with DeepSpeed-Ulysses for 32K to 128K+ sequences.**</summary>
 
 - **Ring Attention (CP).** Keeps `[B, S / CP, H]` queries local and rotates key and value chunks around a ring in `CP - 1` point-to-point steps overlapped with FlashAttention. It requires blockwise online softmax accumulation (`lse`) and has no head-count limit.
 - **DeepSpeed-Ulysses.** Uses AllToAll before and after attention to transpose `[B, S / P, num_heads, head_dim]` into `[B, S, num_heads / P, head_dim]`. It executes standard full-sequence attention on local heads with zero partial softmax bookkeeping, bounded by `P <= num_attention_heads`.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. What is the pipeline bubble time-fraction formula for PP stages and `m` micro-batches, and what are the bubble percentages for PP = 4 and PP = 8?`&lt;/strong>`</summary>
+<summary>**10. What is the pipeline bubble time-fraction formula for PP stages and `m` micro-batches, and what are the bubble percentages for PP = 4 and PP = 8?**</summary>
 
 The time-fraction pipeline bubble is `(PP - 1) / (m + PP - 1)`. Increasing the number of micro-batches `m` amortizes the startup and drain bubbles across the step.
 
@@ -919,19 +919,19 @@ Pipeline Bubble Percentages:
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How does the 1F1B schedule improve upon GPipe, and how does Interleaved 1F1B further reduce the bubble?`&lt;/strong>`</summary>
+<summary>**11. How does the 1F1B schedule improve upon GPipe, and how does Interleaved 1F1B further reduce the bubble?**</summary>
 
 GPipe runs all `m` forward passes before any backward pass, forcing Stage 0 to store activations for all `m` micro-batches. The 1F1B schedule alternates 1 forward and 1 backward pass in steady state. That caps in-flight stored micro-batches at `PP`, which saves 16x activation memory when `PP = 16` and `m = 256`. Interleaved 1F1B assigns `v` non-contiguous virtual stages per GPU via `--num-layers-per-virtual-pipeline-stage`. It shrinks the bubble-to-useful ratio from `(PP - 1) / m` to `(PP - 1) / (m * v)` at the cost of `v` times more point-to-point transfers.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What causes the Ghost Straggler on Stage 0 and Stage `PP-1` of a balanced-layer-count pipeline, and how do you fix it?`&lt;/strong>`</summary>
+<summary>**12. What causes the Ghost Straggler on Stage 0 and Stage `PP-1` of a balanced-layer-count pipeline, and how do you fix it?**</summary>
 
 Even when every stage has 6 Transformer layers across 16 stages, Stage 0 also executes the 1.2 GB input vocabulary embedding table (`50,000 x 12,288 x 2B`). Stage 15 also executes the output projection and cross-entropy loss. That extra work makes Stages 0 and 15 about 40 percent slower than Stages 1 through 14. Fix it by placing fewer Transformer layers on Stage 0 and `PP-1`, sharding the vocabulary across TP, or enabling interleaved virtual stages.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How does Expert Parallelism route tokens in Mixtral 8x7B and DeepSeek-V3, and what is the role of the Capacity Factor?`&lt;/strong>`</summary>
+<summary>**13. How does Expert Parallelism route tokens in Mixtral 8x7B and DeepSeek-V3, and what is the role of the Capacity Factor?**</summary>
 
 A first AllToAll dispatches tokens to the GPUs hosting their router-selected experts. Local experts execute via `--moe-grouped-gemm`, and a second AllToAll combines the weighted outputs back. The Capacity Factor bounds memory and straggler delay by capping the maximum tokens processed per expert.
 
@@ -944,13 +944,13 @@ MoE Routing and Capacity Factor Summary:
 </details>
 
 <details>
-<summary>`&lt;strong>`14. How did DeepSeek-V3 overcome the 400 GB/s NVLink constraint of H800 GPUs compared to 900 GB/s on H100?`&lt;/strong>`</summary>
+<summary>**14. How did DeepSeek-V3 overcome the 400 GB/s NVLink constraint of H800 GPUs compared to 900 GB/s on H100?**</summary>
 
 DeepSeek co-designed five components. **DualPipe** provides bidirectional pipeline parallelism that overlaps forward and backward compute with AllToAll and point-to-point communication. **DeepEP** supplies low-latency NVLink and RDMA AllToAll kernels, and **EPLB** handles redundant expert load balancing. Finally, **FlashMLA** accelerates Multi-Head Latent Attention and **DeepGEMM** accelerates FP8 matrix multiplications.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What are the per-parameter memory formulas for Megatron's Distributed Optimizer (`--use-distributed-optimizer`) across `d` data-parallel ranks?`&lt;/strong>`</summary>
+<summary>**15. What are the per-parameter memory formulas for Megatron's Distributed Optimizer (`--use-distributed-optimizer`) across `d` data-parallel ranks?**</summary>
 
 The Distributed Optimizer shards the FP32 master weights, momentum, and variance across `d` Data Parallel ranks while keeping only the model parameters and gradients replicated per rank.
 
@@ -963,19 +963,19 @@ Distributed Optimizer Bytes per Parameter Across d DP Ranks:
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What is Megatron-FSDP (`--use-megatron-fsdp`), and why does it outperform standard PyTorch FSDP2 inside Megatron Core?`&lt;/strong>`</summary>
+<summary>**16. What is Megatron-FSDP (`--use-megatron-fsdp`), and why does it outperform standard PyTorch FSDP2 inside Megatron Core?**</summary>
 
 Megatron-FSDP (`--data-parallel-sharding-strategy optim_grads_params`) is NVIDIA's native TP, CP, and EP-aware ZeRO-3 sharding implementation. It uses TP-coordinated parameter bucketing, aggressive AllGather and ReduceScatter overlap, and **NCCL userbuffer registration (`ncclMemAlloc`)** to reduce GPU Streaming Multiprocessor consumption during collectives. As a result, it delivers 15 to 25 percent higher throughput and about 23 percent memory savings compared to PyTorch FSDP2.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. How does Megatron's FP8 training (`--fp8-format hybrid`) manage dynamic range on Hopper and Blackwell Tensor Cores?`&lt;/strong>`</summary>
+<summary>**17. How does Megatron's FP8 training (`--fp8-format hybrid`) manage dynamic range on Hopper and Blackwell Tensor Cores?**</summary>
 
 The **hybrid FP8 format** uses E4M3 with 4 exponent and 3 mantissa bits for forward weights and activations, and E5M2 with 5 exponent and 2 mantissa bits for backward gradients. Transformer Engine tracks a rolling window of maximum absolute values via `--fp8-amax-history-len 1024 --fp8-amax-compute-algo max` to compute per-tensor dynamic scaling factors. Meanwhile, `--fp8-param-gather` halves AllGather traffic by transmitting parameters in FP8.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Walk through the 3D parallelism math for GPT-3 175B with 96 layers on 1,024 H100 GPUs.`&lt;/strong>`</summary>
+<summary>**18. Walk through the 3D parallelism math for GPT-3 175B with 96 layers on 1,024 H100 GPUs.**</summary>
 
 We place TP=8 inside each 8-GPU NVLink node, PP=16 across nodes for 6 layers per stage, and DP=8 across the remaining ranks. Each GPU holds 1.37B parameters and runs 256 micro-batches per step with a 5.54 percent pipeline bubble.
 
@@ -989,13 +989,13 @@ GPT-3 175B on 1,024 H100 GPUs (128 Nodes x 8 GPUs/Node, global_batch = 2048, mic
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Why does Megatron set `CUDA_DEVICE_MAX_CONNECTIONS=1` when running Tensor Parallelism with communication overlap (`--tp-comm-overlap`)?`&lt;/strong>`</summary>
+<summary>**19. Why does Megatron set `CUDA_DEVICE_MAX_CONNECTIONS=1` when running Tensor Parallelism with communication overlap (`--tp-comm-overlap`)?**</summary>
 
 Setting `CUDA_DEVICE_MAX_CONNECTIONS=1` restricts CUDA to a single hardware work queue per context so that kernel launches across compute and communication streams execute in strict launch order. That prevents NCCL AllGather and ReduceScatter overlap kernels from being delayed behind later GEMM kernels on independent hardware queues.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. How does the NVIDIA GB200 and GB300 NVL72 rack architecture change the boundary between TP, EP, and PP?`&lt;/strong>`</summary>
+<summary>**20. How does the NVIDIA GB200 and GB300 NVL72 rack architecture change the boundary between TP, EP, and PP?**</summary>
 
 Traditional DGX and HGX servers have an 8-GPU NVSwitch domain at 900 GB/s NVLink 4 on H100, capping TP at 8. A **GB200 or GB300 NVL72 rack** connects 36 Grace CPUs and 72 Blackwell GPUs into a **single 72-GPU NVLink 5 domain** at 1.8 TB/s bidirectional per GPU and 130 TB/s rack-wide. That unified fabric allows larger TP and EP AllToAll groups to run at NVLink speed across the entire rack.
 

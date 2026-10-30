@@ -425,19 +425,19 @@ Summary: 25 passed, 0 failed out of 25 checks.
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. What is the relationship between the commercial NVIDIA Run:ai platform and the open-source NVIDIA KAI Scheduler?`&lt;/strong>`</summary>
+<summary>**1. What is the relationship between the commercial NVIDIA Run:ai platform and the open-source NVIDIA KAI Scheduler?**</summary>
 
 After acquiring Run:ai, NVIDIA open-sourced the core Kubernetes GPU scheduling engine as KAI Scheduler under Apache 2.0 in early 2025. The commercial NVIDIA Run:ai Platform builds an enterprise multi-cluster control plane, Department and Project governance, and corporate single sign-on above that engine. It also adds self-service workload templates and chargeback analytics.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Why does Volume 11 Chapter 7 state that Run:ai is not a GPU-sharing mechanism itself?`&lt;/strong>`</summary>
+<summary>**2. Why does Volume 11 Chapter 7 state that Run:ai is not a GPU-sharing mechanism itself?**</summary>
 
 Run:ai does not partition GPU silicon into MIG instances or create device-plugin time-sliced replicas. Instead, MIG, time-slicing, MPS, and vGPU are the underlying node and device sharing mechanisms. Run:ai sits above the device plugin as the workload orchestration, queueing, fairness, and quota layer. It decides which tenant workload receives which published GPU resource.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. List the seven layers of the Multi-Tenant Boundary and Threat Model in Volume 11 Chapter 8.`&lt;/strong>`</summary>
+<summary>**3. List the seven layers of the Multi-Tenant Boundary and Threat Model in Volume 11 Chapter 8.**</summary>
 
 1. Identity covers workload identity, RBAC, and short-lived tokens.
 2. Admission enforces signed images, restricted privilege, and no unauthorized host access.
@@ -449,14 +449,14 @@ Run:ai does not partition GPU silicon into MIG instances or create device-plugin
 </details>
 
 <details>
-<summary>`&lt;strong>`4. How do you verify inside a multi-tenant MIG cluster that Team A cannot see Team B's GPU processes and Team B cannot query Team A's metrics in Prometheus?`&lt;/strong>`</summary>
+<summary>**4. How do you verify inside a multi-tenant MIG cluster that Team A cannot see Team B's GPU processes and Team B cannot query Team A's metrics in Prometheus?**</summary>
 
 - For process isolation, exec into Team A's pod on its MIG instance and run `nvidia-smi --query-processes=pid,process_name,gpu_memory_usage --format=csv` so that only Team A's container process appears.
 - For telemetry isolation, query Prometheus using Team B's bearer token for `nvidia_smi_memory_used_mib` and filter for Team A's project name to verify that zero cross-tenant series are returned.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. What are the four administrative planes separated in Volume 11 Chapter 8, and why must a workload namespace never have authority over the Node or Management planes?`&lt;/strong>`</summary>
+<summary>**5. What are the four administrative planes separated in Volume 11 Chapter 8, and why must a workload namespace never have authority over the Node or Management planes?**</summary>
 
 1. The Workload plane covers Pods, VMs, service accounts, images, and dataset access.
 2. The Node plane covers the host OS, device plugin, container runtime, GPU driver, and physical MIG state.
@@ -466,7 +466,7 @@ If a tenant in the Workload plane can alter the Node or Management plane, they c
 </details>
 
 <details>
-<summary>`&lt;strong>`6. What are the six policy elements of a multi-tenant Fairness Contract in Volume 11 Chapter 8?`&lt;/strong>`</summary>
+<summary>**6. What are the six policy elements of a multi-tenant Fairness Contract in Volume 11 Chapter 8?**</summary>
 
 1. Entitlement defines the baseline quota per tenant or project measured in requested, allocated, and idle GPU-hours.
 2. Priority defines which service classes may preempt or borrow capacity.
@@ -477,7 +477,7 @@ If a tenant in the Workload plane can alter the Node or Management plane, they c
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How do fairness controls operate across the three time scales in Volume 11 Chapter 8?`&lt;/strong>`</summary>
+<summary>**7. How do fairness controls operate across the three time scales in Volume 11 Chapter 8?**</summary>
 
 - At admission time in real time, class eligibility, quota, and approvals stop unauthorized or unbounded workloads from starting.
 - At execution time during runtime, concurrency limits, protected MIG or dedicated pools, and priority preemption rules prevent noisy neighbors from degrading active SLO workloads.
@@ -485,7 +485,7 @@ If a tenant in the Workload plane can alter the Node or Management plane, they c
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What are the six sequential Tenant Onboarding Control Gates in Volume 11 Chapter 8?`&lt;/strong>`</summary>
+<summary>**8. What are the six sequential Tenant Onboarding Control Gates in Volume 11 Chapter 8?**</summary>
 
 1. Identity verifies scoped tenant roles and ServiceAccount bindings.
 2. Workload runs an approved container image and manifest admission test.
@@ -496,7 +496,7 @@ If a tenant in the Workload plane can alter the Node or Management plane, they c
 </details>
 
 <details>
-<summary>`&lt;strong>`9. In the Volume 23 Chapter 12 Research Infrastructure design, what is the bimodal job duration distribution across short, medium, and long jobs?`&lt;/strong>`</summary>
+<summary>**9. In the Volume 23 Chapter 12 Research Infrastructure design, what is the bimodal job duration distribution across short, medium, and long jobs?**</summary>
 
 Job durations span from a 5-minute minimum to a 2-hour median and a 72-hour maximum across three buckets.
 - Short jobs under 1 hour represent 60 percent of workloads and run as non-preemptible interactive notebooks and hyperparameter probes.
@@ -505,7 +505,7 @@ Job durations span from a 5-minute minimum to a 2-hour median and a 72-hour maxi
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Walk through the contribution-weighted quota and deficit-tracking calculation for Professor A and Professor B across Month 1 and Month 2.`&lt;/strong>`</summary>
+<summary>**10. Walk through the contribution-weighted quota and deficit-tracking calculation for Professor A and Professor B across Month 1 and Month 2.**</summary>
 
 Each $10K of hardware investment entitles a lab to 50 GPU-hours per month.
 
@@ -517,7 +517,7 @@ Total Month 1 usage: 600 + 100 = 700 GPU-hours out of 750 quota (93% utilization
 </details>
 
 <details>
-<summary>`&lt;strong>`11. Write the job priority scoring formula used by FairShareScheduler.score_job in Volume 23 Chapter 12, and explain why it adds +0.1 for jobs requesting fewer than 4 GPUs.`&lt;/strong>`</summary>
+<summary>**11. Write the job priority scoring formula used by FairShareScheduler.score_job in Volume 23 Chapter 12, and explain why it adds +0.1 for jobs requesting fewer than 4 GPUs.**</summary>
 
 ```text
 deficit = (current_usage - quota) / quota
@@ -528,7 +528,7 @@ Teams under quota have a negative deficit, which produces a positive priority sc
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Trace the exact preemption timeline at 0s, 30s, 45s, and 90s when a research training job is preempted.`&lt;/strong>`</summary>
+<summary>**12. Trace the exact preemption timeline at 0s, 30s, 45s, and 90s when a research training job is preempted.**</summary>
 
 - At 0 seconds, the scheduler sends `SIGTERM` to the container and the Python handler saves model, optimizer, epoch, and step state within 5 to 10 seconds.
 - At 30 seconds, `SIGKILL` forcibly terminates the process if it has not exited cleanly.
@@ -537,7 +537,7 @@ Teams under quota have a negative deficit, which produces a positive priority sc
 </details>
 
 <details>
-<summary>`&lt;strong>`13. Compare the three tiers of checkpoint storage in Volume 23 Chapter 12 Phase 5.`&lt;/strong>`</summary>
+<summary>**13. Compare the three tiers of checkpoint storage in Volume 23 Chapter 12 Phase 5.**</summary>
 
 - Tier 1 Local NVMe writes every 100 steps or hourly at zero additional hardware cost, recovering in under 5 minutes and serving as a fallback if NFS disconnects.
 - Tier 2 Shared NFS enforces a 1 TB quota per team and writes every 8 hours with 1 to 2 percent asynchronous overhead, surviving a full node hardware failure.
@@ -545,7 +545,7 @@ Teams under quota have a negative deficit, which produces a positive priority sc
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Calculate the 3-year CapEx, annual OpEx, and cost per GPU-hour for the 200-GPU L40S research cluster.`&lt;/strong>`</summary>
+<summary>**14. Calculate the 3-year CapEx, annual OpEx, and cost per GPU-hour for the 200-GPU L40S research cluster.**</summary>
 
 ```text
 CapEx ($2.7M): 25 nodes x 8 L40S x $12K = $2.4M hardware + $100K network + $200K NFS storage = $2.7M.
@@ -555,7 +555,7 @@ Cost per GPU-hour (~$0.86/GPU-hour): At 60% utilization (200 x 8,760 x 0.6 = 1,0
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What are the four administrative dashboard alert thresholds in Volume 23 Chapter 12 Phase 7 for a shared research cluster?`&lt;/strong>`</summary>
+<summary>**15. What are the four administrative dashboard alert thresholds in Volume 23 Chapter 12 Phase 7 for a shared research cluster?**</summary>
 
 1. Jain's Fairness Index dropping below 0.80 against a target above 0.85 triggers automatic deprioritization of over-quota teams.
 2. Cluster utilization staying below 50 percent for 1 week signals an opportunity to onboard additional workloads.
@@ -564,7 +564,7 @@ Cost per GPU-hour (~$0.86/GPU-hour): At 60% utilization (200 x 8,760 x 0.6 = 1,0
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How do you prevent a research team's 72-hour job from being preempted every 2 hours during daytime bursts?`&lt;/strong>`</summary>
+<summary>**16. How do you prevent a research team's 72-hour job from being preempted every 2 hours during daytime bursts?**</summary>
 
 1. Require a team to exceed twice its quota before allowing any long job over 8 hours to be preempted.
 2. Add age-based priority boosting so older running jobs accumulate higher priority over time.
@@ -572,14 +572,14 @@ Cost per GPU-hour (~$0.86/GPU-hour): At 60% utilization (200 x 8,760 x 0.6 = 1,0
 </details>
 
 <details>
-<summary>`&lt;strong>`17. In Volume 23 Chapter 13, how do Redfish/BMC and NVIDIA Base Command Manager work together to provision 1,000+ bare-metal DGX nodes?`&lt;/strong>`</summary>
+<summary>**17. In Volume 23 Chapter 13, how do Redfish/BMC and NVIDIA Base Command Manager work together to provision 1,000+ bare-metal DGX nodes?**</summary>
 
 1. Out-of-band Redfish REST APIs communicate with the dedicated Baseboard Management Controller on each motherboard to flash BIOS, configure RAID, and enable PXE boot.
 2. NVIDIA Base Command Manager acts as the central DHCP and TFTP provisioning head node that PXE-boots all nodes. It streams a bit-for-bit identical software image containing the Linux OS, NVIDIA drivers, `MLNX_OFED`, and cluster agents into node RAM.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. In Volume 23 Chapter 13, when should a Solutions Architect recommend Slurm, plain Kubernetes, or Kubernetes with Run:ai?`&lt;/strong>`</summary>
+<summary>**18. In Volume 23 Chapter 13, when should a Solutions Architect recommend Slurm, plain Kubernetes, or Kubernetes with Run:ai?**</summary>
 
 - Recommend Slurm for massive, tightly coupled distributed training runs across 512 or 768 GPUs that require millisecond gang scheduling and whole-job checkpoint restart.
 - Recommend plain Kubernetes for stateless web microservices and CPU APIs that do not require gang scheduling, hierarchical GPU fair-share queues, or fractional GPU memory bin-packing.
@@ -587,14 +587,14 @@ Cost per GPU-hour (~$0.86/GPU-hour): At 60% utilization (200 x 8,760 x 0.6 = 1,0
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Why does Volume 23 Chapter 13 Section 4 describe SR-IOV and MIG as philosophically the same thing for different pieces of silicon?`&lt;/strong>`</summary>
+<summary>**19. Why does Volume 23 Chapter 13 Section 4 describe SR-IOV and MIG as philosophically the same thing for different pieces of silicon?**</summary>
 
 - Single-Root I/O Virtualization partitions a physical ConnectX network adapter at the PCIe silicon level into isolated Virtual Functions that bypass the software hypervisor for line-rate RDMA and RoCE.
 - Multi-Instance GPU partitions a physical GPU at the silicon level into isolated GPU instances with dedicated streaming multiprocessors, HBM memory channels, and L2 cache banks. Together, MIG and SR-IOV give a tenant hardware-isolated compute and hardware-isolated networking.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Walk through the 6-layer architecture for the 4-DGX-SuperPOD customer design in Volume 23 Chapter 13 Section 5.`&lt;/strong>`</summary>
+<summary>**20. Walk through the 6-layer architecture for the 4-DGX-SuperPOD customer design in Volume 23 Chapter 13 Section 5.**</summary>
 
 1. Out-of-Band Management uses Redfish APIs talking to BMCs across all 128 DGX nodes to unify BIOS and firmware.
 2. Cluster Provisioning uses a highly available BCM head node PXE-booting all 128 nodes and 1,024 GPUs with a hardened OS, NVIDIA driver, and `MLNX_OFED` image.

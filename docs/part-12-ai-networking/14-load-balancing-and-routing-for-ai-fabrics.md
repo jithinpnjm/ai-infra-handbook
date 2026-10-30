@@ -709,102 +709,102 @@ ADC Ch 8 SRv6 uSID carrier: fc00:0a10:0005:0001:0000:: -> fc00:0a10:0001:0000:00
 
 ## Checkpoint questions (20)
 
-<details><summary>`&lt;strong>`1. In a three-stage Clos fabric, how does an ingress leaf switch install ECMP routes learned from multiple spines, and why do multiple destination prefixes share a single ASIC `nh-id`?`&lt;/strong>`</summary>
+<details><summary>**1. In a three-stage Clos fabric, how does an ingress leaf switch install ECMP routes learned from multiple spines, and why do multiple destination prefixes share a single ASIC `nh-id`?**</summary>
 
 When LeafB advertises GPU2's IP prefix to SpineA, SpineB, and SpineC, each spine rewrites the BGP next hop to itself. Each spine then advertises the prefix with identical attributes to LeafA. LeafA's control plane installs a single shared hardware ECMP group (`ASIC ECMP nh-id123 -> Unicast_nh1..3`) in the PFE. Sharing the same `nh-id` across all remote prefixes reachable through the same 32 or 64 spines conserves hardware next-hop table memory in the switch ASIC.
 </details>
 
-<details><summary>`&lt;strong>`2. Walk through the exact 5-tuple hexadecimal packing and CRC32 modulo result for `192.168.1.20 -> 192.168.2.10, UDP 17, 1024 -> 4791`.`&lt;/strong>`</summary>
+<details><summary>**2. Walk through the exact 5-tuple hexadecimal packing and CRC32 modulo result for `192.168.1.20 -> 192.168.2.10, UDP 17, 1024 -> 4791`.**</summary>
 
 The fields pack into 13 bytes as `192.168.1.20 = C0A80114`, `192.168.2.10 = C0A8020A`, `Proto 17 = 11`, `UDP 1024 = 0400`, and `UDP 4791 = 12B7`. Concatenating them forms `C0A80114 C0A8020A 11040012 B7`. The hardware CRC32 result is `0x8BDA7C2D` (`2,346,351,661` decimal). Raw modulo selects interface index 1 for 5 active links (`0x8BDA7C2D % 5 = 1`) and interface index 5 for 8 active links (`0x8BDA7C2D % 8 = 5`).
 </details>
 
-<details><summary>`&lt;strong>`3. How does resilient hashing with `512` or `1,024` buckets reduce flow churn compared to raw `hash_key mod N` when a link fails?`&lt;/strong>`</summary>
+<details><summary>**3. How does resilient hashing with `512` or `1,024` buckets reduce flow churn compared to raw `hash_key mod N` when a link fails?**</summary>
 
 Under raw `hash_key mod N`, changing the active link count from 5 to 4 alters the modulo divisor and remaps 75% of active flows. Resilient hashing maps `hash_key mod B` into a fixed table of 512 or 1,024 buckets. In our simplified 8-bucket example, `hash_key = 10` maps to `Bucket 2 -> interface_2`. When `interface_2` fails, the ASIC reassigns only Bucket 2 and Bucket 7 (25% of buckets) and leaves all other flows untouched.
 </details>
 
-<details><summary>`&lt;strong>`4. What is symmetric hashing in Static Load Balancing (SLB), and when is it required in a data center fabric?`&lt;/strong>`</summary>
+<details><summary>**4. What is symmetric hashing in Static Load Balancing (SLB), and when is it required in a data center fabric?**</summary>
 
 Symmetric hashing applies a sorting normalization or bitwise XOR operation over the source and destination IP pair and UDP port pair before computing CRC32 or CRC16. Both forward and reverse packets of a bidirectional flow then produce the exact same hash key and egress interface. It is required when steering flows through stateful firewalls or inline inspection appliances.
 </details>
 
-<details><summary>`&lt;strong>`5. Using the four-flow example (`50, 100, 50, 100 Gbps` over two `200 Gbps` uplinks), explain why `DLB` outperforms `SLB`.`&lt;/strong>`</summary>
+<details><summary>**5. Using the four-flow example (`50, 100, 50, 100 Gbps` over two `200 Gbps` uplinks), explain why `DLB` outperforms `SLB`.**</summary>
 
 SLB assigns an equal number of flows to each link without checking bandwidth. It can place the two 50 Gbps flows (100 Gbps or 50% utilization) on SpineA and the two 100 Gbps flows (200 Gbps or 100% utilization) on SpineB. DLB tracks real-time port bandwidth and queue depth via hardware link quality bands 0 to 7. It pairs one 50 Gbps flow and one 100 Gbps flow on each spine so both 200 Gbps uplinks run at 150 Gbps or 75% utilization.
 </details>
 
-<details><summary>`&lt;strong>`6. Compare `DLB` assigned-flow mode, flowlet mode (inactivity timer), and reactive path rebalancing.`&lt;/strong>`</summary>
+<details><summary>**6. Compare `DLB` assigned-flow mode, flowlet mode (inactivity timer), and reactive path rebalancing.**</summary>
 
 Assigned-flow mode pins a flow to its initial interface for its entire lifetime. That is unsuitable for long-lived AI Queue Pairs because link quality changes later. Flowlet mode monitors inter-packet gaps against a configured inactivity timer. When a GPU flow pauses longer than the timer between tasks, the next burst is reassigned to a higher-quality spine without reordering packets. Reactive path rebalancing migrates continuous elephant flows that never pause when their current link's quality degrades relative to other ECMP paths.
 </details>
 
-<details><summary>`&lt;strong>`7. Why can congestion still occur at the spine under local `DLB`, and how does `GLB` (`draft-wang-idr-next-next-hop-nodes`) prevent it?`&lt;/strong>`</summary>
+<details><summary>**7. Why can congestion still occur at the spine under local `DLB`, and how does `GLB` (`draft-wang-idr-next-next-hop-nodes`) prevent it?**</summary>
 
 Local DLB checks only the immediate leaf-to-spine uplink quality. When LeafA and LeafB both send elephant flows to LeafD via SpineA, they collide on the single downstream downlink `Link X` from SpineA to LeafD. GLB on Tomahawk 5 learns which spine interfaces reach LeafD via BGP NNHN (`Characteristic Code = 2`). It also exchanges hardware PFE link-quality heartbeats every 20 ms on BGP-peered links. LeafA combines local and remote quality into a simple or compound profile and steers around `Link X` via SpineB and `Link Y`.
 </details>
 
-<details><summary>`&lt;strong>`8. What happens when three `1,500-byte` datagrams (`A, B, C`) of a `100 Gbps` flow are sprayed per-packet across three `100 Gbps` spine paths, and how does `sDLB` handle this safely?`&lt;/strong>`</summary>
+<details><summary>**8. What happens when three `1,500-byte` datagrams (`A, B, C`) of a `100 Gbps` flow are sprayed per-packet across three `100 Gbps` spine paths, and how does `sDLB` handle this safely?**</summary>
 
 Because Spine1, Spine2, and Spine3 have different instantaneous queue depths, the three datagrams arrive at destination server `192.168.1.1` out of order. Datagram B arrives at `T1`, Datagram C at `T2`, and Datagram A at `T3`. Selective Packet Spraying uses ingress switch TCAM ACLs to match UDP port 4791 and RoCEv2 BTH RDMA Write opcodes (`0x06..0x0B`). It sprays only RDMA Write elephant flows that NVIDIA ConnectX-6, ConnectX-7, and BlueField DPUs can reorder in hardware while keeping Read and Send flows on per-flow ECMP.
 </details>
 
-<details><summary>`&lt;strong>`9. Compare `SLB`, `DLB`, `GLB`, and `TELB` across the seven rows of `ADC` Table 6-1.`&lt;/strong>`</summary>
+<details><summary>**9. Compare `SLB`, `DLB`, `GLB`, and `TELB` across the seven rows of `ADC` Table 6-1.**</summary>
 
 All four mechanisms can include RoCEv2 BTH header fields. SLB, DLB, and GLB load-balance based on packet characteristics, whereas TELB uses explicit path and color rules. DLB, GLB, and TELB include local link bandwidth, while only DLB and GLB use queue size information. Only GLB and TELB use remote link quality, and only TELB uses external fabric telemetry. Industry adoption is High for SLB, Medium for DLB, and Low for GLB and TELB.
 </details>
 
-<details><summary>`&lt;strong>`10. How does BGP unnumbered (`RFC 5549`) establish an `eBGP` session without IPv4 interface addresses, and what exact capability is carried in the BGP `OPEN` message (`Frame 22`)?`&lt;/strong>`</summary>
+<details><summary>**10. How does BGP unnumbered (`RFC 5549`) establish an `eBGP` session without IPv4 interface addresses, and what exact capability is carried in the BGP `OPEN` message (`Frame 22`)?**</summary>
 
 Switches derive unique IPv6 Link-Local Addresses (`fe80::e59:9cff:fef1:32` on `spine1` and `fe80::e59:9cff:fe22:5dd7` on `leaf1`). They discover each other via ICMPv6 NS, NA, RS, and RA messages, and open TCP port 179. In Frame 22 (`189 B` OPEN, `AS 65001`, `Hold Time 90 s`, `BGP ID 172.16.7.101`), they negotiate Extended Next Hop Encoding (`Capability Code = 5`, `Length = 6`) with `AFI = 1`, `SAFI = 1`, and `Next Hop AFI = 2`. That capability allows Frame 28 (`358 B` UPDATE, `MP_REACH_NLRI` `Type 14`) to advertise `172.16.7.181/32` over an IPv6 link-local next hop.
 </details>
 
-<details><summary>`&lt;strong>`11. What are the 16-bit and 32-bit private BGP ASN ranges, and why must all spines in a Clos stage share the same ASN (`65001`)?`&lt;/strong>`</summary>
+<details><summary>**11. What are the 16-bit and 32-bit private BGP ASN ranges, and why must all spines in a Clos stage share the same ASN (`65001`)?**</summary>
 
 The 16-bit private ASN range is `64512` to `65535`, and the 32-bit private ASN range is `4200000000` to `4294967294`. Assigning the same ASN (`65001`) to all spines while giving each leaf a unique ASN (`65101..65104`) activates BGP's default `AS_PATH` loop check between spines. A second spine immediately rejects any route bounced from a first spine down to a transit leaf and back up. This prevents valley tromboning during multi-link failures.
 </details>
 
-<details><summary>`&lt;strong>`12. What problems do BGP `ADD-PATH` and `AS-PATH` strip-and-replace solve in an AI data center fabric?`&lt;/strong>`</summary>
+<details><summary>**12. What problems do BGP `ADD-PATH` and `AS-PATH` strip-and-replace solve in an AI data center fabric?**</summary>
 
 Suppose `spine2` (`AS 65001`) or an iBGP Route Reflector receives multiple paths for external prefix `10.10.108.0/24` via `border-leaf1` (`NH1`) and `border-leaf2` (`NH2`) from `DC GW 65503`. ADD-PATH allows `spine2` to advertise both paths rather than only a single best path to `leaf2` (`AS 65102`). Ingress `AS-PATH` strip-and-replace normalizes routes arriving from a private WAN core (`server101`) or host BGP daemons. It replaces variable private ASNs with a uniform-length operator ASN sequence so ECMP treats all border paths equally.
 </details>
 
-<details><summary>`&lt;strong>`13. How do BGP Link Bandwidth Extended Community (`WCMP` / `WPS`) and Minimum BGP Peers per Prefix work (`ADC` Fig. 8-8)?`&lt;/strong>`</summary>
+<details><summary>**13. How do BGP Link Bandwidth Extended Community (`WCMP` / `WPS`) and Minimum BGP Peers per Prefix work (`ADC` Fig. 8-8)?**</summary>
 
 When `spine1..spine4` have unequal northbound bandwidths of 400G, 800G, 100G, and 400G, advertising the BGP Link Bandwidth Extended Community programs WCMP weights of 20%, 45%, 15%, and 20% on `leaf1..leaf4`. In a five-stage Clos, Weighted Packet Spraying dynamically lowers a spine's weight when a spine-to-super-spine link fails. Minimum BGP peers per prefix forces a spine to withdraw a prefix (`10.10.101.0/24`) if its active downlink peers drop from 4 to 3, keeping traffic on full-capacity spines.
 </details>
 
-<details><summary>`&lt;strong>`14. How does BGP Deterministic Path Forwarding (`BGP DPF`, `draft-wang-idr-dpf`) partition a Clos fabric into colored planes, and what are the four traffic-to-fabric color mapping methods?`&lt;/strong>`</summary>
+<details><summary>**14. How does BGP Deterministic Path Forwarding (`BGP DPF`, `draft-wang-idr-dpf`) partition a Clos fabric into colored planes, and what are the four traffic-to-fabric color mapping methods?**</summary>
 
 BGP DPF colors underlay eBGP sessions, such as black on `spine1` and gray on `spine2`. When egress `leaf4` originates an uncolored route (`10.10.1.4/32`), advertising it over a colored session prunes unmatched colors. Ingress `leaf1` then installs a deterministic black active path and a pre-installed gray backup path. Traffic maps to colors via Filter-Based Forwarding on ingress or UDP ports and BTH QPairs, on-box active probe agents, a central controller (`CPCE`), or EVPN-VXLAN `MAC-VRF` and `RT5` IP-VRF correlation.
 </details>
 
-<details><summary>`&lt;strong>`15. How does `RIFT` (`RFC 9692`) work, and how does DragonFly Sparse (`draft-przygienda-rift-dragonfly`) simplify canonical DragonFly cabling?`&lt;/strong>`</summary>
+<details><summary>**15. How does `RIFT` (`RFC 9692`) work, and how does DragonFly Sparse (`draft-przygienda-rift-dragonfly`) simplify canonical DragonFly cabling?**</summary>
 
 RIFT floods link-state topology northbound to spines while advertising only a default route southbound via distance-vector. It features automatic disaggregation on link failure, UDP hello and IPv6 ND peering, wide ECMP/UCMP, and K-store configuration metadata. While a canonical DragonFly requires internal and external meshes across 7 groups of 8 switches, DragonFly Sparse turns each group into a simple Leaf-Spine Clos. It then meshes only the T2 Top-of-Fabric spines and advertises horizontal global links in RIFT K-store attributes.
 </details>
 
-<details><summary>`&lt;strong>`16. What two enhancements make `IS-IS` suitable for dense AI backend fabrics (`draft-white-lsr-distoptflood` and `RFC 9350` / `RFC 9502` Flex Algo)?`&lt;/strong>`</summary>
+<details><summary>**16. What two enhancements make `IS-IS` suitable for dense AI backend fabrics (`draft-white-lsr-distoptflood` and `RFC 9350` / `RFC 9502` Flex Algo)?**</summary>
 
 First, Optimal Distributed Flooding (`draft-white-lsr-distoptflood`) elects a single designated spine (`spine2`) to flood new leaf prefix LSPs across dense 32- or 64-spine topologies up to 2,500 switches. Second, IS-IS Flex Algo (`RFC 9350` FAD and `RFC 9502` native IP Flex Algo) uses the IPv4 Algorithm Prefix Reachability TLV. It isolates Storage (`Flex Algo 128`), Inference (`Flex Algo 129`), and Training (`Flex Algo 130`) onto separate spines without SRv6 or MPLS encapsulation.
 </details>
 
-<details><summary>`&lt;strong>`17. Walk through the port and tenant math for a `512`-GPU non-oversubscribed rail (`ADC` Fig. 8-21) and its `H100 MIG` + `EVPN-VXLAN` multi-tenant mapping (`Fig. 8-24`).`&lt;/strong>`</summary>
+<details><summary>**17. Walk through the port and tenant math for a `512`-GPU non-oversubscribed rail (`ADC` Fig. 8-21) and its `H100 MIG` + `EVPN-VXLAN` multi-tenant mapping (`Fig. 8-24`).**</summary>
 
 Using 8 leaf switches and 8 spine switches of `64 × 800 Gbps` radix, each leaf dedicates `32 × 800 Gbps` ports to spines (`25.6 Tbps`) and breaks out `32 × 800 Gbps` ports into `64 × 400 Gbps` server ports (`25.6 Tbps`). Across 8 leaves, the rail connects 512 GPUs (`204.8 Tbps` 1:1 rail) split across 4 bare-metal tenants of 128 GPUs each. With NVIDIA H100 MIG (`7` GPU instances), each server link trunks 7 VLANs mapped 1:1 into 7 `MAC-VRF` instances and 7 EVPN Route Type 5 IP-VRFs on every leaf. VXLAN-GBP tags provide intra-subnet microsegmentation.
 </details>
 
-<details><summary>`&lt;strong>`18. How is BGP extended directly to the GPU server (`ADC` Figs. 8-25 and 8-26), and what 32-bit ASNs and prefixes are used?`&lt;/strong>`</summary>
+<details><summary>**18. How is BGP extended directly to the GPU server (`ADC` Figs. 8-25 and 8-26), and what 32-bit ASNs and prefixes are used?**</summary>
 
 By running FRR on the Linux GPU server, `server1..server4` (`AS 4200000001..4200000004`) peer directly via eBGP with `leaf1..leaf4` (`AS 4224967001..4224967004` below spines `AS 4294967100`) or via iBGP with a Route Reflector. Each server advertises an IP anycast service prefix (`192.168.10.10/32`) with next hops `NH1..NH4` and enforces host-level `IP-VRF` and `MAC-VRF` multi-tenancy.
 </details>
 
-<details><summary>`&lt;strong>`19. How does Segment Routing over IPv6 (`SRv6`, `RFC 8754` / `RFC 8986`) steer GPU flows, and how much header overhead does `16-bit` compressed `uSID` save?`&lt;/strong>`</summary>
+<details><summary>**19. How does Segment Routing over IPv6 (`SRv6`, `RFC 8754` / `RFC 8986`) steer GPU flows, and how much header overhead does `16-bit` compressed `uSID` save?**</summary>
 
 An ingress leaf encapsulates packets with an IPv6 Segment Routing Header (`RFC 8754`) carrying 128-bit SIDs (`Locator : Function : Argument`, `RFC 8986`). For example, it pushes `SID 5` for the transit spine and `SID 1` for the egress leaf. Because 4 uncompressed 128-bit SIDs plus the 8-byte SRH base add 72 bytes, Compressed SRv6 uSID encodes up to 6 16-bit micro-SIDs after a 32-bit locator directly inside the 128-bit IPv6 Destination Address (`fc00:0a10:0005:0001:0000::`). That encoding saves all 72 bytes of SRH overhead.
 </details>
 
-<details><summary>`&lt;strong>`20. How does NVIDIA Base Command Manager (`bcm11-admin`) manage Cumulus Linux switches via `NVUE` and `NetQ`?`&lt;/strong>`</summary>
+<details><summary>**20. How does NVIDIA Base Command Manager (`bcm11-admin`) manage Cumulus Linux switches via `NVUE` and `NetQ`?**</summary>
 
 In BCM 11 (`cmsh`), each Cumulus Linux switch (`SN5600` or `SN2201` OOB switch with `8,048,771,072` B RAM, `115,923,419,136` B NVMe, and uplinks `15 16`) is configured over the NVUE REST API on TCP port 8765. Operators set `nvconfigurationmode` to `auto`, `manual`, or `file`, which renders `/etc/nvue.d/startup.yaml` and `cm-startup.yaml`. Fleet-wide telemetry and BGP or QoS validation stream to NetQ over HTTPS port 443.
 </details>

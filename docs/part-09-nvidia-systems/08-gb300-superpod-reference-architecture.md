@@ -394,7 +394,7 @@ Summary: 28 passed, 0 failed (total 28)
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. How many racks, compute trays, Grace CPUs, B300 GPUs, and NVLink switch trays make up one DGX GB300 Scalable Unit (SU), and what is its Thermal Design Power (TDP)?`&lt;/strong>`</summary>
+<summary>**1. How many racks, compute trays, Grace CPUs, B300 GPUs, and NVLink switch trays make up one DGX GB300 Scalable Unit (SU), and what is its Thermal Design Power (TDP)?**</summary>
 
 One DGX GB300 Scalable Unit consists of eight DGX GB300 NVL72 racks and requires a Thermal Design Power of 1.2 Megawatts per SU.
 
@@ -410,13 +410,13 @@ One DGX GB300 Scalable Unit consists of eight DGX GB300 NVL72 racks and requires
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Prove why each Q3400-RD Quantum-X800 InfiniBand leaf switch in a GB300 SU has 72 compute downlinks and 72 spine uplinks.`&lt;/strong>`</summary>
+<summary>**2. Prove why each Q3400-RD Quantum-X800 InfiniBand leaf switch in a GB300 SU has 72 compute downlinks and 72 spine uplinks.**</summary>
 
 Across one SU of compute trays, each tray has four ConnectX-8 NICs across four rails. Each of the four rails is split across two leaf switches per rail for eight leaf switches per SU. Consequently, each Q3400-RD leaf switch terminates 72 compute downlinks and uses its remaining 72 ports as spine uplinks for 1:1 non-blocking operation.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Contrast the uplink port count and blocking ratio of the SN5600D Ethernet Compute Leaves, Storage Leaves, and Management Leaves in a GB300 SuperPOD.`&lt;/strong>`</summary>
+<summary>**3. Contrast the uplink port count and blocking ratio of the SN5600D Ethernet Compute Leaves, Storage Leaves, and Management Leaves in a GB300 SuperPOD.**</summary>
 
 - **Ethernet Compute Leaves.** Four switches per SU terminate 72 host ports and connect to the Ethernet spines via 24 uplinks, operating at a 1:3 blocking ratio.
 - **Ethernet Storage Leaves.** Storage leaves connect to the spines via 72 non-blocking links for a 1:1 non-blocking ratio.
@@ -424,13 +424,13 @@ Across one SU of compute trays, each tray has four ConnectX-8 NICs across four r
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Why does the DGX GB300 SuperPOD use two unbonded ports on the BlueField-3 BF3240 DPU instead of bonding them together, and what feature does NVIDIA plan to enable for future DPU high availability?`&lt;/strong>`</summary>
+<summary>**4. Why does the DGX GB300 SuperPOD use two unbonded ports on the BlueField-3 BF3240 DPU instead of bonding them together, and what feature does NVIDIA plan to enable for future DPU high availability?**</summary>
 
 Dedicating Port 1 at 400 Gbps exclusively to lossless RoCEv2 Storage and Port 2 at 200 Gbps or higher to In-Band Management keeps RoCEv2 storage traffic isolated from In-Band TCP bursts. It also avoids complex, error-prone per-host routing rules. To add high-availability failover across the ports in future releases, NVIDIA plans to enable Host-Based Networking on the BlueField-3 DPUs.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. What are the optical media, link count, VTEP and routing protocol, and BMS security zone requirements for Customer Edge Connectivity in a DGX GB300 SuperPOD?`&lt;/strong>`</summary>
+<summary>**5. What are the optical media, link count, VTEP and routing protocol, and BMS security zone requirements for Customer Edge Connectivity in a DGX GB300 SuperPOD?**</summary>
 
 - **Links and optics.** Provision at least two 100 GbE links using DR1 single-mode optics.
 - **Routing handover.** Terminate on a dedicated VTEP using eBGP peering to announce routes for In-Band, Out-of-Band, and the Building Management System.
@@ -438,21 +438,21 @@ Dedicating Port 1 at 400 Gbps exclusively to lossless RoCEv2 Storage and Port 2 
 </details>
 
 <details>
-<summary>`&lt;strong>`6. What are the two supported methods for connecting the SN2201 Out-of-Band management network to the customer's corporate network?`&lt;/strong>`</summary>
+<summary>**6. What are the two supported methods for connecting the SN2201 Out-of-Band management network to the customer's corporate network?**</summary>
 
 1. **Default Dedicated OOB Edge ToR.** The last pair of SN2201 OOB switches serves as the OOB edge ToR switches, providing a dedicated physical uplink to the customer's OOB network.
 2. **Alternative In-Band Spine Route Leaking.** If the customer does not provision a dedicated OOB uplink, the OOB spine switches connect to the SN5600D In-Band spine network and leak routes to the OOB interfaces toward the customer edge via eBGP.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How are the two components of NVIDIA Run:ai placed across Kubernetes clusters in a BCM-managed DGX GB300 SuperPOD?`&lt;/strong>`</summary>
+<summary>**7. How are the two components of NVIDIA Run:ai placed across Kubernetes clusters in a BCM-managed DGX GB300 SuperPOD?**</summary>
 
 - The Run:ai Control Plane backend resides on the user-space Kubernetes cluster for central multi-cluster orchestration.
 - The Run:ai Cluster components or operands are deployed directly onto the administrative Kubernetes infrastructure close to the compute resources.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What are the four core operational value pillars delivered by NVIDIA Mission Control on a DGX GB300 SuperPOD?`&lt;/strong>`</summary>
+<summary>**8. What are the four core operational value pillars delivered by NVIDIA Mission Control on a DGX GB300 SuperPOD?**</summary>
 
 1. Automated Failure Detection and Self-Recovery.
 2. Optimized Workload Migration and Resource Allocation.
@@ -461,73 +461,73 @@ Dedicating Port 1 at 400 Gbps exclusively to lossless RoCEv2 Storage and Port 2 
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Why does one GB300 SU have 576 compute NIC ports?`&lt;/strong>`</summary>
+<summary>**9. Why does one GB300 SU have 576 compute NIC ports?**</summary>
 
 One SU contains 144 compute trays, and each tray has four ConnectX-8 NICs, which gives 576 ports in total. That places 144 ports on each of the four rails.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why are there two leaf switches per rail?`&lt;/strong>`</summary>
+<summary>**10. Why are there two leaf switches per rail?**</summary>
 
 One Q3400-RD switch has 144 ports. To stay 1:1 non-blocking, it uses 72 ports down to compute trays and 72 ports up to the spine. A single rail needs 144 downlinks, so each rail requires two leaf switches.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What does 1:3 blocking on the Ethernet compute leaves mean?`&lt;/strong>`</summary>
+<summary>**11. What does 1:3 blocking on the Ethernet compute leaves mean?**</summary>
 
 Each compute leaf has 72 ports toward hosts and only 24 uplinks toward the spine. The uplinks are one third of the downlinks, so simultaneous line-rate traffic across all host ports is oversubscribed three to one.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Why are storage arrays attached to dedicated storage leaves?`&lt;/strong>`</summary>
+<summary>**12. Why are storage arrays attached to dedicated storage leaves?**</summary>
 
 Storage leaves are non-blocking with 72 links to the spine. Compute leaves are oversubscribed at a 1:3 ratio, so storage arrays attached to compute leaves would bottleneck at roughly one third of their rated bandwidth.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. What are the two ports on the BlueField-3 used for?`&lt;/strong>`</summary>
+<summary>**13. What are the two ports on the BlueField-3 used for?**</summary>
 
 Port 1 operates at 400G and carries RoCEv2 storage traffic. Port 2 operates at 200G or higher and carries in-band management and NFS user storage. The two ports are not bonded together.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. What future feature is planned for BlueField-3 high availability?`&lt;/strong>`</summary>
+<summary>**14. What future feature is planned for BlueField-3 high availability?**</summary>
 
 NVIDIA plans to enable Host-Based Networking on the BlueField-3 DPUs, which adds multi-path failover across the two ports.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What does the customer edge need?`&lt;/strong>`</summary>
+<summary>**15. What does the customer edge need?**</summary>
 
 It requires at least two 100 GbE links with DR1 single-mode optics, a dedicated VTEP, and eBGP peering that announces in-band, OOB, and BMS routes.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Why does the facility BMS traffic go through the customer-edge untrusted zone?`&lt;/strong>`</summary>
+<summary>**16. Why does the facility BMS traffic go through the customer-edge untrusted zone?**</summary>
 
 The reference architecture requires BMS telemetry to flow through the edge uplink interfaces as part of the untrusted zone. Bridging it directly into the internal OOB or storage network would give an unauthenticated facility controller direct reach to BMCs and storage.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What are the two options for OOB reach to the customer?`&lt;/strong>`</summary>
+<summary>**17. What are the two options for OOB reach to the customer?**</summary>
 
 The default option uses a dedicated OOB edge ToR pair of SN2201 switches. The alternative option omits the dedicated link and leaks OOB routes from the OOB switches through the SN5600D in-band spines over eBGP.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. What does Mission Control do when a tray fails?`&lt;/strong>`</summary>
+<summary>**18. What does Mission Control do when a tray fails?**</summary>
 
 It detects the failure with continuous health checks, isolates the degraded tray, moves the interrupted workload to healthy trays, and restarts failed ranks from the latest in-memory or local-NVMe checkpoint.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Which scale did NVIDIA test fully, and when should you contact NVIDIA?`&lt;/strong>`</summary>
+<summary>**19. Which scale did NVIDIA test fully, and when should you contact NVIDIA?**</summary>
 
 Deployments of one SU and two SUs are fully pre-tested turnkey systems. The reference architecture scales up to sixteen SUs, and you should contact an NVIDIA representative for deployments of four SUs or more.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Which companion documents does the chapter say are missing from the corpus?`&lt;/strong>`</summary>
+<summary>**20. Which companion documents does the chapter say are missing from the corpus?**</summary>
 
 The *DGX GB300 Data Center Design Guide*, the *Detailed Software Architecture for NVIDIA Mission Control*, and *Relevant Security Information* are separate documents not in the local corpus.
 </details>

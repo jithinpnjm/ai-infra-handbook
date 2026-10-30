@@ -354,21 +354,21 @@ Summary: 25 passed, 0 failed out of 25 checks.
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. In NVIDIA MIG architecture, what is the exact difference between a GPU Instance (GI) and a Compute Instance (CI) (Volume 11 Chapter 2)?`&lt;/strong>`</summary>
+<summary>**1. In NVIDIA MIG architecture, what is the exact difference between a GPU Instance (GI) and a Compute Instance (CI) (Volume 11 Chapter 2)?**</summary>
 
 - **GPU Instance:** The hardware resource partition created with `nvidia-smi mig -cgi` that physically isolates HBM memory capacity, memory controllers, L2 cache slices, memory-system crossbar paths, and copy engines.
 - **Compute Instance:** The compute partition created with `nvidia-smi mig -cci` inside a parent GPU Instance. It groups Streaming Multiprocessors and exposes a schedulable CUDA device to user workloads.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Which resources and failure domains are isolated by MIG, and which remain shared across all MIG instances on the same physical card (Volume 11 Chapter 2)?`&lt;/strong>`</summary>
+<summary>**2. Which resources and failure domains are isolated by MIG, and which remain shared across all MIG instances on the same physical card (Volume 11 Chapter 2)?**</summary>
 
 - **Isolated by MIG:** Profile-defined SMs, HBM memory capacity, memory controllers, L2 cache slices, memory-system crossbar paths, and contained CUDA context or memory faults.
 - **Still shared across the card and host:** The physical GPU board, PCIe bus, seven-hundred-watt power budget, thermal cooling loop, GPU firmware, host OS kernel, host NVIDIA driver, and Kubernetes network plane.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. List the six layers of the MIG Validation Chain in Volume 11 Chapter 2 and the command used at each layer.`&lt;/strong>`</summary>
+<summary>**3. List the six layers of the MIG Validation Chain in Volume 11 Chapter 2 and the command used at each layer.**</summary>
 
 ```text
 6-Layer MIG Validation Summary (Volume 11 Chapter 2):
@@ -382,26 +382,26 @@ Summary: 25 passed, 0 failed out of 25 checks.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. What are the six phases of the MIG Change Workflow Runbook and the ten items in the Operational Evidence Package (Volume 11 Chapter 2)?`&lt;/strong>`</summary>
+<summary>**4. What are the six phases of the MIG Change Workflow Runbook and the ten items in the Operational Evidence Package (Volume 11 Chapter 2)?**</summary>
 
 - **Six change phases:** Plan, Notify, Prepare, Apply, Validate, and Release.
 - **Ten evidence items:** Record the approved layout, node and GPU identity, component versions, pre-change allocation mapping, and before-and-after GI and CI inventory. Also save node labels, device-plugin events, smoke-test logs, service validation outcomes, and the final rollback state.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. In Volume 11 Chapter 3, what do the two numbers in an H100 MIG profile name like 2g.20gb represent, and why do seven 1g.10gb instances total 70 GB instead of 80 GB?`&lt;/strong>`</summary>
+<summary>**5. In Volume 11 Chapter 3, what do the two numbers in an H100 MIG profile name like 2g.20gb represent, and why do seven 1g.10gb instances total 70 GB instead of 80 GB?**</summary>
 
 In the profile string, the first token means two-sevenths of the H100 compute slices and the second token means twenty gigabytes of dedicated HBM3 memory. On an eighty-gigabyte H100, dividing the card into seven ten-gigabyte slices reserves about ten gigabytes for system and ECC overhead across the seven partitions.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. In Volume 11 Chapter 3, why did the Small Chat LLM (7 GB weights) fail on a 1g.10gb MIG profile under production load, and which profile was selected instead?`&lt;/strong>`</summary>
+<summary>**6. In Volume 11 Chapter 3, why did the Small Chat LLM (7 GB weights) fail on a 1g.10gb MIG profile under production load, and which profile was selected instead?**</summary>
 
 Although the seven-gigabyte model weights, eight-gigabyte cold start, and steady state fit under ten gigabytes, fifty concurrent sequences at two-thousand-token context pushed peak memory to `10.2 GB`. That exceeded the ten-gigabyte ceiling, so the workload was assigned a forty-gigabyte `3g.40gb` profile with `29.8 GB` of safe headroom.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Walk through the rejected layout versus the accepted layout and total node count for the 24-node H100 fleet in Volume 11 Chapter 3.`&lt;/strong>`</summary>
+<summary>**7. Walk through the rejected layout versus the accepted layout and total node count for the 24-node H100 fleet in Volume 11 Chapter 3.**</summary>
 
 ```text
 Volume 11 Chapter 3 H100 Fleet Calculation Summary:
@@ -417,26 +417,26 @@ Volume 11 Chapter 3 H100 Fleet Calculation Summary:
 </details>
 
 <details>
-<summary>`&lt;strong>`8. Why does the Volume 11 Chapter 3 fleet design achieve Chat LLM High Availability by placing replicas across separate H100 nodes rather than placing two Chat LLM instances on the same H100?`&lt;/strong>`</summary>
+<summary>**8. Why does the Volume 11 Chapter 3 fleet design achieve Chat LLM High Availability by placing replicas across separate H100 nodes rather than placing two Chat LLM instances on the same H100?**</summary>
 
 First, once four ten-gigabyte instances are placed on an H100, only three compute slices and forty gigabytes remain. A second forty-gigabyte instance cannot physically fit on that same GPU. Second, because all MIG instances on one card share a single board, power supply, and host kernel, placing replicas on separate physical nodes protects the service against node failure.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Why is "aggregate free GPU memory" a dangerous capacity metric on a MIG cluster (Volume 11 Chapter 3)?`&lt;/strong>`</summary>
+<summary>**9. Why is "aggregate free GPU memory" a dangerous capacity metric on a MIG cluster (Volume 11 Chapter 3)?**</summary>
 
 MIG placement is strictly geometric across the hardware partition tree. If a node has forty gigabytes of unallocated memory scattered across fragmented ten-gigabyte slots or across multiple GPUs, the driver still cannot create a single contiguous forty-gigabyte GPU Instance. Capacity must always be reported as allocatable compatible profile counts per node pool.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. How do migStrategy: single and migStrategy: mixed differ in Kubernetes (Volume 11 Chapter 2 & Generative AI on Kubernetes Chapter 3)?`&lt;/strong>`</summary>
+<summary>**10. How do migStrategy: single and migStrategy: mixed differ in Kubernetes (Volume 11 Chapter 2 & Generative AI on Kubernetes Chapter 3)?**</summary>
 
 - **Single strategy:** Every GPU on the node is partitioned into identical MIG instances, and the device plugin advertises them under the standard `nvidia.com/gpu` resource name.
 - **Mixed strategy:** A GPU can host heterogeneous MIG profiles simultaneously, and the device plugin advertises explicit profile-qualified resource names such as `nvidia.com/mig-1g.10gb` and `nvidia.com/mig-3g.40gb`.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. In Volume 4 Chapter 3 (Part 1.2), how is CUDA Multi-Process Service (MPS) configured on GPU 0, and how does it limit a client's compute thread share and pinned memory?`&lt;/strong>`</summary>
+<summary>**11. In Volume 4 Chapter 3 (Part 1.2), how is CUDA Multi-Process Service (MPS) configured on GPU 0, and how does it limit a client's compute thread share and pinned memory?**</summary>
 
 ```text
 CUDA MPS Configuration & Client Resource Caps (Volume 4 Chapter 3 Part 1.2):
@@ -448,13 +448,13 @@ CUDA MPS Configuration & Client Resource Caps (Volume 4 Chapter 3 Part 1.2):
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What causes the "Ghost OOM on MPS" in Volume 4 Chapter 3 Part 6 Scenario 1, where Container A crashes with CUDA OOM on a 40 GB A100 while nvidia-smi shows only 10 GB used?`&lt;/strong>`</summary>
+<summary>**12. What causes the "Ghost OOM on MPS" in Volume 4 Chapter 3 Part 6 Scenario 1, where Container A crashes with CUDA OOM on a 40 GB A100 while nvidia-smi shows only 10 GB used?**</summary>
 
 Either a per-client MPS memory limit via `CUDA_MPS_PINNED_DEVICE_MEM_LIMIT` capped Container A below ten gigabytes, or Container B experienced a transient memory spike. When Container B exhausted the shared forty-gigabyte pool and freed its memory before `nvidia-smi` was sampled, only ten gigabytes remained visible. Migrating to MIG replaces shared MPS memory with hardware-isolated HBM partitions.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. Name the seven DCGM metrics configured in the custom default-counters.csv in Volume 4 Chapter 3 Part 2.2, and state the port and capability required to run dcgm-exporter.`&lt;/strong>`</summary>
+<summary>**13. Name the seven DCGM metrics configured in the custom default-counters.csv in Volume 4 Chapter 3 Part 2.2, and state the port and capability required to run dcgm-exporter.**</summary>
 
 ```text
 Custom DCGM Exporter Profile & Runtime Flags (Volume 4 Chapter 3 Part 2.2):
@@ -465,7 +465,7 @@ Custom DCGM Exporter Profile & Runtime Flags (Volume 4 Chapter 3 Part 2.2):
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Contrast Single-Bit ECC Errors (SBE), Double-Bit ECC Errors (DBE / XID 48), and Contained ECC Errors (XID 94) in Volume 4 Chapter 3 Part 2.3.`&lt;/strong>`</summary>
+<summary>**14. Contrast Single-Bit ECC Errors (SBE), Double-Bit ECC Errors (DBE / XID 48), and Contained ECC Errors (XID 94) in Volume 4 Chapter 3 Part 2.3.**</summary>
 
 - **SBE:** Automatically corrected by ECC hardware; high rates indicate aging memory cells and trigger Ampere and Hopper row remapping.
 - **DBE:** Uncorrectable memory error (`XID 48`) that terminates the workload and requires node drain or GPU replacement if row remapping fails.
@@ -473,7 +473,7 @@ Custom DCGM Exporter Profile & Runtime Flags (Volume 4 Chapter 3 Part 2.2):
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Distinguish XID 13, XID 31, XID 43, XID 62, XID 74, and XID 79 in Volume 4 Chapter 3 Part 2.3.`&lt;/strong>`</summary>
+<summary>**15. Distinguish XID 13, XID 31, XID 43, XID 62, XID 74, and XID 79 in Volume 4 Chapter 3 Part 2.3.**</summary>
 
 ```text
 NVIDIA XID Fault Catalog Comparison (Volume 4 Chapter 3 Part 2.3):
@@ -487,7 +487,7 @@ NVIDIA XID Fault Catalog Comparison (Volume 4 Chapter 3 Part 2.3):
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Walk through the five-step Architect's Action Plan when Node 42 emits thousands of XID 31 errors per minute (Volume 4 Chapter 3 Part 6 Scenario 2).`&lt;/strong>`</summary>
+<summary>**16. Walk through the five-step Architect's Action Plan when Node 42 emits thousands of XID 31 errors per minute (Volume 4 Chapter 3 Part 6 Scenario 2).**</summary>
 
 1. **Verify blast radius:** Check if Node 42 is part of a multi-node MPI or NCCL job that is now stalled.
 2. **Analyze the error:** Recognize the page fault as a software GPU memory bug rather than bad hardware.
@@ -497,7 +497,7 @@ NVIDIA XID Fault Catalog Comparison (Volume 4 Chapter 3 Part 2.3):
 </details>
 
 <details>
-<summary>`&lt;strong>`17. Walk through the four-step GPU Node Drain Script in Volume 4 Chapter 3 Part 4.1 for upgrading a driver without rebooting.`&lt;/strong>`</summary>
+<summary>**17. Walk through the four-step GPU Node Drain Script in Volume 4 Chapter 3 Part 4.1 for upgrading a driver without rebooting.**</summary>
 
 1. **Cordon the node:** Run `kubectl cordon $NODE`.
 2. **Wait for zero GPU utilization:** Poll `dcgmi dmon -e 203 -c 1` every thirty seconds until the sum of GPU utilization across all GPUs on the node equals zero.
@@ -506,14 +506,14 @@ NVIDIA XID Fault Catalog Comparison (Volume 4 Chapter 3 Part 2.3):
 </details>
 
 <details>
-<summary>`&lt;strong>`18. What two Known-Good Validation (KGV) tests must a GPU node pass after a driver upgrade or RMA before rejoining the fleet (Volume 4 Chapter 3 Part 5)?`&lt;/strong>`</summary>
+<summary>**18. What two Known-Good Validation (KGV) tests must a GPU node pass after a driver upgrade or RMA before rejoining the fleet (Volume 4 Chapter 3 Part 5)?**</summary>
 
 1. **DCGM Level 3 Hardware Diagnostics:** Run `dcgmi diag -r 3` for the fifteen-minute memory, PCIe, power, and stress suite.
 2. **NCCL All-Reduce Bandwidth Verification:** Run `all_reduce_perf` across all eight GPUs from one gigabyte to eight gigabytes to verify intra-node NVLink and inter-node fabric bandwidth against the known-good baseline.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What five changes require re-running a workload's MIG profile sizing envelope (Volume 11 Chapter 3 Table "Release and upgrade effects")?`&lt;/strong>`</summary>
+<summary>**19. What five changes require re-running a workload's MIG profile sizing envelope (Volume 11 Chapter 3 Table "Release and upgrade effects")?**</summary>
 
 1. **Driver or GPU Operator update:** Revalidate discovery, scheduling, device visibility, and node drift.
 2. **Model or serving runtime update:** Revalidate cold, steady, and peak memory plus latency.
@@ -523,7 +523,7 @@ NVIDIA XID Fault Catalog Comparison (Volume 4 Chapter 3 Part 2.3):
 </details>
 
 <details>
-<summary>`&lt;strong>`20. In Volume 11 Chapter 2, what are the five steps to resolve Troubleshooting Scenario 1 ("MIG appears enabled on the host, but Kubernetes shows 0 allocatable slices")?`&lt;/strong>`</summary>
+<summary>**20. In Volume 11 Chapter 2, what are the five steps to resolve Troubleshooting Scenario 1 ("MIG appears enabled on the host, but Kubernetes shows 0 allocatable slices")?**</summary>
 
 1. Drain the node with `kubectl drain gpu-node-1 --ignore-daemonsets --delete-emptydir-data`.
 2. Verify the target host MIG instances match documentation via `nvidia-smi mig -lgi -i 0`.

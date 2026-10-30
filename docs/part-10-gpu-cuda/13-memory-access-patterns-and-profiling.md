@@ -439,121 +439,121 @@ Summary: 25 passed, 0 failed (total 25)
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. How many bytes are in a modern NVIDIA GPU global-memory cache line, how many sectors does it contain, and what is the optimal `Average Sectors per Request` in Nsight Compute for a coalesced scalar warp load?`&lt;/strong>`</summary>
+<summary>**1. How many bytes are in a modern NVIDIA GPU global-memory cache line, how many sectors does it contain, and what is the optimal `Average Sectors per Request` in Nsight Compute for a coalesced scalar warp load?**</summary>
 
 A global-memory cache line is 128 bytes and is divided into four 32-byte sectors. When all threads in a warp read contiguous, aligned 4-byte floats, the entire warp request maps to one cache line and four sectors per request.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What happens to sector and cache-line counts when a warp reads contiguous floats starting at an address that is not aligned to a cache line?`&lt;/strong>`</summary>
+<summary>**2. What happens to sector and cache-line counts when a warp reads contiguous floats starting at an address that is not aligned to a cache line?**</summary>
 
 The warp span crosses a cache-line boundary and straddles two cache lines. Hardware fetches five sectors totaling 160 bytes instead of four sectors totaling 128 bytes, or up to eight sectors depending on the start offset. This boundary crossing wastes memory bandwidth on unused bytes.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. In *AI Systems Performance Engineering* Chapter 7 Table 7-1, how did `uncoalescedCopy` compare to `coalescedCopy` across Nsight Compute metrics?`&lt;/strong>`</summary>
+<summary>**3. In *AI Systems Performance Engineering* Chapter 7 Table 7-1, how did `uncoalescedCopy` compare to `coalescedCopy` across Nsight Compute metrics?**</summary>
 
 Coalescing reduced Average Sectors per Request from eight to four and raised Global Memory Load Efficiency to nearly one hundred percent. It also increased DRAM throughput from a quarter of peak to ninety percent, lifted SM Active percentage, and cut kernel execution time by nearly fourfold. See Table 7-1 in Section 1.2 for the exact figures.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Why does an Array of Structures cause uncoalesced global memory access on a GPU, and how does a Structure of Arrays fix it?`&lt;/strong>`</summary>
+<summary>**4. Why does an Array of Structures cause uncoalesced global memory access on a GPU, and how does a Structure of Arrays fix it?**</summary>
 
 In an Array of Structures, adjacent threads reading the first field access memory addresses separated by the size of the entire structure. That stride pulls unused fields into the cache sectors. In a Structure of Arrays, adjacent threads reading the first coordinate array access contiguous 4-byte addresses with a stride of one, achieving full warp coalescing.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. Why does `torch.index_select` with a strided index perform poorly in PyTorch, and what PyTorch operation or compiler mode achieves coalesced and vectorized copies?`&lt;/strong>`</summary>
+<summary>**5. Why does `torch.index_select` with a strided index perform poorly in PyTorch, and what PyTorch operation or compiler mode achieves coalesced and vectorized copies?**</summary>
 
 Calling `torch.index_select` with a strided index launches a gather kernel where threads in a warp load addresses separated by multiple words. That strided pattern touches twice as many sectors per request at stride two. Operating on contiguous tensors via `inp.clone()` or compiling with `torch.compile` in `max-autotune` mode allows TorchInductor to emit coalesced, vectorized memory operations.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Contrast global memory coalescing with vectorized memory access as summarized in *AI Systems Performance Engineering* Chapter 7.`&lt;/strong>`</summary>
+<summary>**6. Contrast global memory coalescing with vectorized memory access as summarized in *AI Systems Performance Engineering* Chapter 7.**</summary>
 
 Coalescing is an inter-thread property that ensures the threads in a warp access contiguous addresses so hardware merges scalar reads into one cache-line transaction. It does not change the instruction count per thread. Vectorizing is an intra-thread technique that packs four floats (`float4`) or eight floats (`float8`) into a single wide load instruction per thread, cutting load instructions by fourfold or eightfold.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How many bytes per warp, cache lines, and sectors are moved by a single warp-wide `float4` load on Hopper versus a `float8` load on Blackwell, and what PTX instructions does `nvcc` emit?`&lt;/strong>`</summary>
+<summary>**7. How many bytes per warp, cache lines, and sectors are moved by a single warp-wide `float4` load on Hopper versus a `float8` load on Blackwell, and what PTX instructions does `nvcc` emit?**</summary>
 
 On Hopper, `float4` loads 16 bytes per thread via `ld.global.v4.f32`, moving 512 bytes per warp across four cache lines and 16 sectors. On Blackwell with CUDA 13, `alignas(32) float8` loads 32 bytes per thread via `ld.global.v8.f32`, moving 1,024 bytes per warp across eight cache lines and 32 sectors.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What minimum byte alignment does `cudaMalloc` guarantee on returned device pointers, and how can an element offset break `float4` or `float8` vectorization?`&lt;/strong>`</summary>
+<summary>**8. What minimum byte alignment does `cudaMalloc` guarantee on returned device pointers, and how can an element offset break `float4` or `float8` vectorization?**</summary>
 
 The `cudaMalloc` runtime call returns pointers aligned to at least 256 bytes, which satisfies both 16-byte `float4` and 32-byte `float8` alignment at offset zero. Adding an element offset that is not a multiple of four floats for `float4` or eight floats for `float8` breaks natural alignment and forfeits vectorized loads.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. In Table 7-2 of *AI Systems Performance Engineering* Chapter 7, how did `copyVector16B` using `float4` improve Nsight Compute metrics compared to `copyScalar`?`&lt;/strong>`</summary>
+<summary>**9. In Table 7-2 of *AI Systems Performance Engineering* Chapter 7, how did `copyVector16B` using `float4` improve Nsight Compute metrics compared to `copyScalar`?**</summary>
 
 Vectorized `float4` loads raised Global Memory Load Efficiency from 28 percent to 97 percent and dropped Average Sectors per Request to four. DRAM throughput rose to ninety percent of peak, and kernel runtime fell by three and a half times. See Table 7-2 in Section 2.2 for all numbers.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why does `tiledMatMul` with a square shared-memory tile require two `__syncthreads()` barriers inside its tile loop?`&lt;/strong>`</summary>
+<summary>**10. Why does `tiledMatMul` with a square shared-memory tile require two `__syncthreads()` barriers inside its tile loop?**</summary>
 
 The first `__syncthreads()` barrier after loading the shared tiles ensures all threads in the block have finished writing their element into shared memory before any thread reads the tile. The second `__syncthreads()` barrier after the compute loop ensures all threads have finished reading the current tile before faster threads advance to the next iteration and overwrite the shared arrays.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. In Table 7-4 of *AI Systems Performance Engineering* Chapter 7, why did DRAM throughput drop when shared-memory tiling was applied, and why was that drop desirable?`&lt;/strong>`</summary>
+<summary>**11. In Table 7-4 of *AI Systems Performance Engineering* Chapter 7, why did DRAM throughput drop when shared-memory tiling was applied, and why was that drop desirable?**</summary>
 
 In `naiveMatMul`, high DRAM throughput reflected wasteful redundant HBM reads at low arithmetic intensity and low compute throughput. Tiling reused each element 32 times in shared memory, cutting global load sectors by more than eightfold and dropping DRAM saturation while lifting arithmetic intensity, occupancy, and GFLOPS by more than elevenfold.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Walk through the register and shared-memory residency math for a 64 by 64 FP32 GEMM tile computed by a 1,024-thread block on a Blackwell SM when each thread uses 12 registers versus 22 registers.`&lt;/strong>`</summary>
+<summary>**12. Walk through the register and shared-memory residency math for a 64 by 64 FP32 GEMM tile computed by a 1,024-thread block on a Blackwell SM when each thread uses 12 registers versus 22 registers.**</summary>
 
 Each 64 by 64 FP32 tile takes 16 KB of shared memory, so both input tiles use 32 KB per block and fit easily inside usable shared memory. In both the 12-register and 22-register cases, per-block register consumption and the SM thread limit allow two resident blocks totaling 2,048 threads per SM. See the residency budget breakdown in Section 3.2 for the exact numbers.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How is on-chip shared memory organized into banks on modern NVIDIA GPUs, and when does a shared-memory bank conflict occur, including the single-address exception?`&lt;/strong>`</summary>
+<summary>**13. How is on-chip shared memory organized into banks on modern NVIDIA GPUs, and when does a shared-memory bank conflict occur, including the single-address exception?**</summary>
 
 Shared memory has 32 banks that are each four bytes wide, so successive words map to successive banks and wrap every 128 bytes. A bank conflict occurs when two or more threads in the same warp access different addresses in the same bank during the same cycle. Multiple threads reading the exact same address trigger a conflict-free hardware broadcast instead.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Why does reading down a column in `transposeNaive` on `tile[32][32]` cause a 32-way bank conflict, and how does `tile[32][33]` padding or XOR swizzling fix it?`&lt;/strong>`</summary>
+<summary>**14. Why does reading down a column in `transposeNaive` on `tile[32][32]` cause a 32-way bank conflict, and how does `tile[32][33]` padding or XOR swizzling fix it?**</summary>
 
 In `tile[32][32]`, each row is 32 floats wide, so adjacent lanes reading down a column step by 32 words and all threads hit the exact same bank. Padding the array to `tile[32][33]` changes the row stride to 33 floats so adjacent lanes map to 32 distinct banks with zero conflicts. XOR swizzling achieves the same spread by XOR-transforming the column index.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. In Table 7-5 of *AI Systems Performance Engineering* Chapter 7, what was the reported impact of padding `tile[32][32]` to `tile[32][33]` in Nsight Compute?`&lt;/strong>`</summary>
+<summary>**15. In Table 7-5 of *AI Systems Performance Engineering* Chapter 7, what was the reported impact of padding `tile[32][32]` to `tile[32][33]` in Nsight Compute?**</summary>
 
 Padding `tile[32][33]` reduced Shared-Memory Load Bank Conflicts from 4.8 million to zero and raised Shared-Memory Utilization to one hundred percent. It also dropped the memory warp stall fraction and cut kernel runtime by roughly threefold. See Table 7-5 in Section 3.3 for the full metric comparison.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How does a warp shuffle reduction (`__shfl_down_sync`) work, why does it avoid bank conflicts completely, and what is its scope limitation?`&lt;/strong>`</summary>
+<summary>**16. How does a warp shuffle reduction (`__shfl_down_sync`) work, why does it avoid bank conflicts completely, and what is its scope limitation?**</summary>
 
 Calling `__shfl_down_sync` with halving offsets lets each lane read the register value of a higher lane directly across the warp register file in five butterfly steps. Because all values stay in registers and never touch shared memory, no bank conflicts or `__syncthreads()` barriers occur. Its scope is strictly limited to the 32 lanes of a single warp.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. How does the L1 Read-Only Data Cache (`const __restrict__`) differ from the `__constant__` memory cache, and what speedup did `const __restrict__` achieve in Table 7-6?`&lt;/strong>`</summary>
+<summary>**17. How does the L1 Read-Only Data Cache (`const __restrict__`) differ from the `__constant__` memory cache, and what speedup did `const __restrict__` achieve in Table 7-6?**</summary>
 
 The 64 KB `__constant__` space has a small per-SM cache optimized for uniform single-address warp broadcasts. The L1 read-only cache serves scattered reads across larger immutable lookup tables when pointers are marked `const __restrict__`. In Table 7-6, adding `const __restrict__` cut off-chip DRAM throughput by threefold, raised L2 read throughput and load efficiency, and cut runtime from 2.5 ms to 1.0 ms.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. What is the Tensor Memory Accelerator on Hopper and Blackwell GPUs, and how does `cuda::memcpy_async` with `cuda::pipeline` hide the 800-cycle DRAM latency?`&lt;/strong>`</summary>
+<summary>**18. What is the Tensor Memory Accelerator on Hopper and Blackwell GPUs, and how does `cuda::memcpy_async` with `cuda::pipeline` hide the 800-cycle DRAM latency?**</summary>
 
 The Tensor Memory Accelerator (`cp.async.bulk.*`) is a dedicated hardware DMA unit that copies multi-dimensional tiles between global HBM and shared memory asynchronously without using SM registers. Using a two-stage `cuda::pipeline` with ping-pong shared buffers, the block prefetches the next tile asynchronously while warps compute on the current tile. This overlap hides the 800-cycle DRAM latency behind computation.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. In Table 7-7 of *AI Systems Performance Engineering* Chapter 7, how did TMA-accelerated double buffering change Nsight Compute metrics compared to a naive kernel without prefetching?`&lt;/strong>`</summary>
+<summary>**19. In Table 7-7 of *AI Systems Performance Engineering* Chapter 7, how did TMA-accelerated double buffering change Nsight Compute metrics compared to a naive kernel without prefetching?**</summary>
 
 TMA double buffering raised Global Memory Load Efficiency to 99 percent and dropped Average Sectors per Request to four. DRAM throughput rose to ninety percent, SM Active percentage climbed to one hundred percent, and kernel execution time dropped from 18 ms to 7 ms. See Table 7-7 in Section 4.3 for the complete table.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Which Nsight Compute metrics should you inspect first to distinguish uncoalesced global loads, shared-memory bank conflicts, and uncached read-only DRAM thrashing?`&lt;/strong>`</summary>
+<summary>**20. Which Nsight Compute metrics should you inspect first to distinguish uncoalesced global loads, shared-memory bank conflicts, and uncached read-only DRAM thrashing?**</summary>
 
 For uncoalesced global loads, check for low Global Memory Load Efficiency paired with Average Sectors per Request above four. For shared-memory bank conflicts, check `l1tex__data_bank_conflicts_pipe_lsu_mem_shared_op_ld.sum`, low shared-memory utilization, and high memory stall fractions. For uncached read-only DRAM thrashing, look for high off-chip DRAM read bandwidth paired with low L2 and read-only hit rates on immutable buffers lacking `const __restrict__`.
 </details>

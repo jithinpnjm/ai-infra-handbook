@@ -368,70 +368,70 @@ Summary: 25 passed, 0 failed out of 25 checks.
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. How does Kueue's architectural role differ from Volcano, NVIDIA KAI Scheduler, and Apache YuniKorn?`&lt;/strong>`</summary>
+<summary>**1. How does Kueue's architectural role differ from Volcano, NVIDIA KAI Scheduler, and Apache YuniKorn?**</summary>
 
 Kueue is a job-level admission controller that manages when a job is unsuspended based on ClusterQueue, LocalQueue, and Cohort quotas. It delegates actual Pod-to-Node binding to `kube-scheduler`, KAI Scheduler, or Volcano. Volcano, KAI Scheduler, and YuniKorn are full pod-group batch schedulers that directly bind Pods to Nodes.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What makes NVIDIA KAI Scheduler unique among the Kubernetes schedulers compared in Table 7-1 of Generative AI on Kubernetes?`&lt;/strong>`</summary>
+<summary>**2. What makes NVIDIA KAI Scheduler unique among the Kubernetes schedulers compared in Table 7-1 of Generative AI on Kubernetes?**</summary>
 
 KAI Scheduler is purpose-built for GPU optimization across its seven microservices. It combines hierarchical SubGroup gang and topology placement with native fractional GPU scheduling backed by `binder` reservation pods and dynamic MIG consolidation.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. When should a platform architect choose Apache YuniKorn, and how does YuniKorn implement gang scheduling?`&lt;/strong>`</summary>
+<summary>**3. When should a platform architect choose Apache YuniKorn, and how does YuniKorn implement gang scheduling?**</summary>
 
 Choose Apache YuniKorn when a Kubernetes cluster co-locates Apache Spark or Flink big-data pipelines alongside PyTorch and Kubeflow AI workloads under a unified hierarchical queue scheduler. YuniKorn implements gang scheduling via task groups and placeholder pods. It reserves all required resources on nodes with lightweight placeholder pods before swapping in the real application pods.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. How can a platform team combine Kueue and KAI Scheduler or Volcano in the same cluster?`&lt;/strong>`</summary>
+<summary>**4. How can a platform team combine Kueue and KAI Scheduler or Volcano in the same cluster?**</summary>
 
 Configure Kueue to manage job-level quota admission, Cohort fair-sharing, and ResourceFlavor selection via `suspend: true`. Set `schedulerName: kai-scheduler` or `volcano` in the workload's Pod template. Once Kueue admits and unsuspends the job, KAI Scheduler or Volcano executes fine-grained SubGroup topology placement and fractional or MIG GPU bin-packing.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. Why does submitting a 16-GPU distributed training job to vanilla Kubernetes when only 8 GPUs are free result in NCCL Timeout crashes?`&lt;/strong>`</summary>
+<summary>**5. Why does submitting a 16-GPU distributed training job to vanilla Kubernetes when only 8 GPUs are free result in NCCL Timeout crashes?**</summary>
 
 The default `kube-scheduler` lacks gang scheduling, so it immediately starts 8 pods while leaving 8 pods pending. The 8 running ranks initialize `torch.distributed` and NCCL and wait for the 8 missing ranks until the collective timer expires with an NCCL timeout, wasting the 8 allocated GPUs the entire time.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. What are the six stages of the Architecture Methodology Framework and the six critical paths to model in Volume 8 Chapter 1?`&lt;/strong>`</summary>
+<summary>**6. What are the six stages of the Architecture Methodology Framework and the six critical paths to model in Volume 8 Chapter 1?**</summary>
 
 - The six stages are Discover, Model, Compare, Recommend, Validate, and Adopt.
 - The six critical paths are the Data and Request Path, Control Path, Trust and Identity Path, Persistent State, Failure Domains, and Observability Path.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How does NVIDIA Enroot differ from Docker or containerd on a shared Slurm cluster, and why does it leave --net off by default?`&lt;/strong>`</summary>
+<summary>**7. How does NVIDIA Enroot differ from Docker or containerd on a shared Slurm cluster, and why does it leave --net off by default?**</summary>
 
 Enroot is a daemonless, unprivileged sandbox tool with no `setuid` binary that unpacks `.sqsh` images with a 3x to 5x import speedup and runs directly under the user's UID and Slurm's `cgroups v2` tree. It leaves `--net` off by default so multi-node NCCL jobs share the host network namespace and talk directly to bare-metal InfiniBand and Ethernet NICs with zero overlay latency.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What are the three configuration directories under /etc/enroot with their required file extensions and the two standard hooks that expose GPUs and InfiniBand?`&lt;/strong>`</summary>
+<summary>**8. What are the three configuration directories under /etc/enroot with their required file extensions and the two standard hooks that expose GPUs and InfiniBand?**</summary>
 
 - The three directories and required extensions are `environ.d/*.env`, `mounts.d/*.fstab`, and `hooks.d/*.sh`.
 - The two standard hardware hooks are `98-nvidia.sh`, which exposes GPUs via `libnvidia-container`, and `99-mellanox.sh`, which injects host `MLNX_OFED` libraries and selects InfiniBand HCAs.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. What two machine entries are required in Enroot's .credentials file to import images from NVIDIA NGC, and how do you avoid HTTP 429 rate limits on a 500-node Slurm job?`&lt;/strong>`</summary>
+<summary>**9. What two machine entries are required in Enroot's .credentials file to import images from NVIDIA NGC, and how do you avoid HTTP 429 rate limits on a 500-node Slurm job?**</summary>
 
 1. Both `nvcr.io` and `authn.nvidia.com` machine entries with `$oauthtoken` are required in `$ENROOT_CONFIG_PATH/.credentials`.
 2. To avoid HTTP 429 registry rate limits, run `enroot import` once on a login or build node to write `/shared/containers/pytorch.sqsh` on shared storage, and pass that file path to `srun --container-image`.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. What happens to the Pyxis Slurm plugin when you upgrade Slurm?`&lt;/strong>`</summary>
+<summary>**10. What happens to the Pyxis Slurm plugin when you upgrade Slurm?**</summary>
 
 Since Slurm 21.08, Pyxis must be compiled against the exact `spank.h` header of the deployed Slurm release. Otherwise `slurmd` refuses to load `pyxis.so`, so every Slurm upgrade playbook must rebuild and redeploy Pyxis across all compute nodes.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. Using the Cluster MTBF formula in Volume 10 Chapter 9, how often does a 512-node cluster experience a node fault if a single node has an illustrative 1,000-day MTBF?`&lt;/strong>`</summary>
+<summary>**11. Using the Cluster MTBF formula in Volume 10 Chapter 9, how often does a 512-node cluster experience a node fault if a single node has an illustrative 1,000-day MTBF?**</summary>
 
 ```text
 Cluster MTBF = Single Node MTBF / N = 1,000 days / 512 nodes = 1.95 days.
@@ -439,13 +439,13 @@ Cluster MTBF = Single Node MTBF / N = 1,000 days / 512 nodes = 1.95 days.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Why should a multi-node Slurm sbatch script set export NCCL_NET=IB instead of relying on NCCL_IB_DISABLE=0?`&lt;/strong>`</summary>
+<summary>**12. Why should a multi-node Slurm sbatch script set export NCCL_NET=IB instead of relying on NCCL_IB_DISABLE=0?**</summary>
 
 `NCCL_IB_DISABLE=0` is already the default and allows NCCL to silently fall back to slow kernel TCP sockets if InfiniBand initialization fails, turning the node into a massive silent straggler. Setting `export NCCL_NET=IB` forces the InfiniBand transport plugin so the job fails fast at startup if InfiniBand is unavailable.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. Compare the four DCGM diagnostic run levels in Volume 10 Chapter 9 Section 7.`&lt;/strong>`</summary>
+<summary>**13. Compare the four DCGM diagnostic run levels in Volume 10 Chapter 9 Section 7.**</summary>
 
 - Level 1 (`-r 1`) runs in seconds to check NVML libraries, device access, row remap, InfoROM, and Fabric Manager, making it safe for pre-job `Prolog` readiness.
 - Level 2 (`-r 2`) runs in about 2 minutes and adds memory and PCIe or NVLink bandwidth tests for investigating failed workloads.
@@ -454,13 +454,13 @@ Cluster MTBF = Single Node MTBF / N = 1,000 days / 512 nodes = 1.95 days.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Why does a 1,024-GPU training job with one slow straggler GPU still report 100% DCGM_FI_DEV_GPU_UTIL on all 1,024 GPUs, and how does the Prometheus GPUStragglerDetected rule catch it?`&lt;/strong>`</summary>
+<summary>**14. Why does a 1,024-GPU training job with one slow straggler GPU still report 100% DCGM_FI_DEV_GPU_UTIL on all 1,024 GPUs, and how does the Prometheus GPUStragglerDetected rule catch it?**</summary>
 
 When 1 GPU runs slow, the other 1,023 GPUs busy-wait inside the `ncclKernel_AllReduce` CUDA spinlock, which registers as 100 percent `DCGM_FI_DEV_GPU_UTIL`. The `GPUStragglerDetected` rule instead compares `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE` against the node average and alerts if a GPU lags by more than 0.15 for 5 minutes while GPU utilization exceeds 80 percent.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What seven pre-flight checks are executed by the production Slurm Prolog script in Volume 10 Chapter 9?`&lt;/strong>`</summary>
+<summary>**15. What seven pre-flight checks are executed by the production Slurm Prolog script in Volume 10 Chapter 9?**</summary>
 
 1. GPU enumeration verifies that all 8 GPUs respond within 5 seconds.
 2. Volatile uncorrectable ECC verifies that `ecc.errors.uncorrected.volatile.total` equals 0.
@@ -472,7 +472,7 @@ When 1 GPU runs slow, the other 1,023 GPUs busy-wait inside the `ncclKernel_AllR
 </details>
 
 <details>
-<summary>`&lt;strong>`16. According to the NVIDIA Xid Catalog table in Volume 10 Chapter 9 Section 9, what is the Immediate Action for Xid 13/31/94, Xid 44/63, Xid 48, Xid 64/95/109/119/120, Xid 74, and Xid 79?`&lt;/strong>`</summary>
+<summary>**16. According to the NVIDIA Xid Catalog table in Volume 10 Chapter 9 Section 9, what is the Immediate Action for Xid 13/31/94, Xid 44/63, Xid 48, Xid 64/95/109/119/120, Xid 74, and Xid 79?**</summary>
 
 - Xid 13, 31, and 94 map to `RESTART_APP` because they represent application or contained memory faults that should not drain the node.
 - Xid 44 and 63 map to `IGNORE`.
@@ -483,27 +483,27 @@ When 1 GPU runs slow, the other 1,023 GPUs busy-wait inside the `ncclKernel_AllR
 </details>
 
 <details>
-<summary>`&lt;strong>`17. In the NVIDIA DGX SuperPOD H100 reference architecture, what are the four network fabrics, and why does a 4-SU design show 128 nodes in one table and 127 nodes in the compute-fabric table?`&lt;/strong>`</summary>
+<summary>**17. In the NVIDIA DGX SuperPOD H100 reference architecture, what are the four network fabrics, and why does a 4-SU design show 128 nodes in one table and 127 nodes in the compute-fabric table?**</summary>
 
 - The four fabrics are Compute InfiniBand, Storage InfiniBand using MQM9700-NS2F switches at over 40 GB/s per node, In-Band Management Ethernet using SN4600C switches, and Out-of-Band Management Ethernet using SN2201 switches.
 - Each Scalable Unit is nominally 32 nodes for 128 nodes and 1,024 GPUs across 4 SUs, but in the full compute-fabric table 1 DGX node is removed for UFM connectivity, leaving 31 nodes in 1 SU and 127 nodes with 1,016 GPUs across 4 SUs.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. What is the maximum power specification of a single DGX H100 system, and how many DGX H100 systems fit into a 30 kW customer rack?`&lt;/strong>`</summary>
+<summary>**18. What is the maximum power specification of a single DGX H100 system, and how many DGX H100 systems fit into a 30 kW customer rack?**</summary>
 
 A single DGX H100 is rated at 10.2 kW maximum with six 3.3 kW power supplies, and the reference rack layout exceeds 40 kW. In a 30 kW customer rack, at most 2 DGX H100 systems totaling 20.4 kW fit before accounting for switch power.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. How does NVIDIA Base Command Manager 11 dynamically share hardware between Slurm and Kubernetes, and how does BCM implement head-node High Availability?`&lt;/strong>`</summary>
+<summary>**19. How does NVIDIA Base Command Manager 11 dynamically share hardware between Slurm and Kubernetes, and how does BCM implement head-node High Availability?**</summary>
 
 - For dynamic node repurposing, BCM 11 uses the BCM Auto Scaler (`cm-scale`), which inspects pending workloads in Slurm and Kubernetes and switches free nodes between engines using configuration overlays.
 - For head-node HA, `cmha-setup` uses BMC power-control fencing, a node quorum check, a dedicated heartbeat link, and shared NAS storage rather than Pacemaker or DRBD.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Walk through the evidence-driven hang triage procedure for a frozen 64-node training run where GPU utilization is 0%.`&lt;/strong>`</summary>
+<summary>**20. Walk through the evidence-driven hang triage procedure for a frozen 64-node training run where GPU utilization is 0%.**</summary>
 
 1. Confirm the Slurm allocation is intact and no participating node was drained.
 2. Confirm all ranks are alive and `ulimit -l` inside a step is `unlimited` so RDMA memory registration succeeds.

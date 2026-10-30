@@ -303,45 +303,45 @@ Summary: 25 passed, 0 failed out of 25 checks.
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. How is a BlueField DPU operationally different from a conventional ConnectX NIC?`&lt;/strong>`</summary>
+<summary>**1. How is a BlueField DPU operationally different from a conventional ConnectX NIC?**</summary>
 
 A conventional NIC belongs to the same trust and administration domain as the host OS. A BlueField DPU in its default ECPF mode is a separate managed computer sitting between the host and the fabric. It has its own embedded Arm CPUs, dedicated RAM, firmware, isolated Linux OS, credentials, and software lifecycle. That architecture creates three independently observable layers across the host, the DPU control plane, and the external uplink instead of two.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What is the documented default operating mode for BlueField DPU SKUs versus BlueField SuperNIC SKUs?`&lt;/strong>`</summary>
+<summary>**2. What is the documented default operating mode for BlueField DPU SKUs versus BlueField SuperNIC SKUs?**</summary>
 
 - **BlueField DPU SKUs:** Default to DPU mode, also called Embedded CPU Function Ownership or ECPF, where the embedded Arm subsystem owns the NIC resources and embedded switch.
 - **BlueField SuperNIC SKUs:** Default to NIC mode, where the host OS owns the adapter functions directly.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Distinguish the Arm-side control path from the embedded-switch fast path on a BlueField DPU.`&lt;/strong>`</summary>
+<summary>**3. Distinguish the Arm-side control path from the embedded-switch fast path on a BlueField DPU.**</summary>
 
 - **Arm-side control slow path:** Handles packets via representor interfaces when no matching hardware flow rule exists yet, running on the DPU embedded Arm CPU cores.
 - **Embedded-switch hardware fast path:** Once the Arm control plane programs a flow rule into the ConnectX embedded switch via DOCA Flow, subsequent matching packets forward in silicon at line rate.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Why can a healthy external DPU uplink coexist with a failed host network interface after a reboot?`&lt;/strong>`</summary>
+<summary>**4. Why can a healthy external DPU uplink coexist with a failed host network interface after a reboot?**</summary>
 
 Seeing `swp14` up on the leaf switch only proves Layer 3, the physical link between the DPU and the switch. If the Layer 2 Arm control-plane service `openvswitch-policy-load.service` fails during boot, the Layer 1 host interface `enp1s0f0np0` never receives forwarding rules and remains down.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. In Volume 9 Chapter 9 Scenario 2, why did node09 exhibit reachability anomalies while node07 and node08 worked normally, and what command revealed the root cause?`&lt;/strong>`</summary>
+<summary>**5. In Volume 9 Chapter 9 Scenario 2, why did node09 exhibit reachability anomalies while node07 and node08 worked normally, and what command revealed the root cause?**</summary>
 
 Running `ssh $h-bmc "cat /etc/dpu-image-version"` across `node07`, `node08`, and `node09` revealed that `node07` and `node08` were on `dpu-image-24.10-prod-3` while `node09` was on `dpu-image-24.07-prod-1`. Checking `journalctl -u dpu-agent` on `node09` showed that an image pull timed out and abandoned reconciliation after five retries.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. What is NVIDIA DOCA, and when should a platform team choose a packaged DOCA service over a custom DOCA application or a DOCA sample?`&lt;/strong>`</summary>
+<summary>**6. What is NVIDIA DOCA, and when should a platform team choose a packaged DOCA service over a custom DOCA application or a DOCA sample?**</summary>
 
 DOCA, or Data Center Infrastructure-on-a-Chip Architecture, is the software framework of SDK libraries, drivers, tools, samples, and containerized services for BlueField DPUs. Always prefer a supported packaged DOCA service when it matches the requirement because it includes a vendor-supported patching lifecycle. DOCA samples are for evaluation only, and custom DOCA applications require a dedicated engineering team to own testing, patching, and on-call support.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. List the six steps of the DPU Change and Recovery Sequence in Volume 9 Chapter 9.`&lt;/strong>`</summary>
+<summary>**7. List the six steps of the DPU Change and Recovery Sequence in Volume 9 Chapter 9.**</summary>
 
 - **Step 1:** Qualify a complete release set across the DPU firmware and image, DOCA components, host driver, switch NOS profile, and selected service.
 - **Step 2:** Capture baseline data-plane behavior, host, DPU, and fabric telemetry, and rollback artifacts.
@@ -352,7 +352,7 @@ DOCA, or Data Center Infrastructure-on-a-Chip Architecture, is the software fram
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What are the five observability layers and the minimum evidence required at each layer for a BlueField DPU platform?`&lt;/strong>`</summary>
+<summary>**8. What are the five observability layers and the minimum evidence required at each layer for a BlueField DPU platform?**</summary>
 
 - **Host:** Interface state via `ip -br link`, route and address tables, driver logs, and application symptoms.
 - **DPU control plane:** Image and firmware version, service health, policy revision, and authentication and lifecycle logs.
@@ -362,13 +362,13 @@ DOCA, or Data Center Infrastructure-on-a-Chip Architecture, is the software fram
 </details>
 
 <details>
-<summary>`&lt;strong>`9. What is the Shared Fate security vulnerability on traditional GPU servers, and how does a BlueField DPU eliminate it?`&lt;/strong>`</summary>
+<summary>**9. What is the Shared Fate security vulnerability on traditional GPU servers, and how does a BlueField DPU eliminate it?**</summary>
 
 Shared Fate occurs when security enforcement software such as `iptables` firewalls, intrusion detection, and encryption agents runs on the same x86 Host OS as user workloads. If an attacker gains host root, they simply run `systemctl stop iptables` to disable the firewall. A BlueField DPU physically moves the firewall and encryption engines onto the isolated Arm OS domain of the DPU, which the x86 host root user cannot disable.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. In the Volume 18 Chapter 8 Customer Scenario, trace how a single vulnerable Jupyter notebook led to an availability-zone outage on a bare-metal GPU cloud without DPUs.`&lt;/strong>`</summary>
+<summary>**10. In the Volume 18 Chapter 8 Customer Scenario, trace how a single vulnerable Jupyter notebook led to an availability-zone outage on a bare-metal GPU cloud without DPUs.**</summary>
 
 - **Step 1:** A customer exposed a vulnerable Jupyter notebook to the internet on a bare-metal GPU server.
 - **Step 2:** An attacker exploited the notebook to gain a root shell on the Ubuntu Host OS.
@@ -377,20 +377,20 @@ Shared Fate occurs when security enforcement software such as `iptables` firewal
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How does a BlueField DPU enforce micro-segmentation and deep packet inspection without consuming x86 Host CPU cycles?`&lt;/strong>`</summary>
+<summary>**11. How does a BlueField DPU enforce micro-segmentation and deep packet inspection without consuming x86 Host CPU cycles?**</summary>
 
 Every packet entering or leaving the x86 host must physically pass through the BlueField DPU. Using DOCA libraries such as DOCA Flow for hardware-accelerated packet steering, the DPU programs micro-segmentation rules directly into the hardware accelerators and embedded switch. That filters traffic on the card with zero x86 Host CPU overhead.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Why is offloading IPSec and TLS network encryption and storage Data-at-Rest encryption to a BlueField DPU critical for high-bandwidth AI clusters?`&lt;/strong>`</summary>
+<summary>**12. Why is offloading IPSec and TLS network encryption and storage Data-at-Rest encryption to a BlueField DPU critical for high-bandwidth AI clusters?**</summary>
 
 - **Performance:** Encrypting and decrypting high-speed network and storage traffic in software on the x86 Host CPU saturates CPU cores and starves GPUs of training data. The dedicated hardware cryptography engines on the DPU encrypt at line rate with zero x86 CPU penalty.
 - **Key Security:** Encryption keys are held inside DPU RAM rather than x86 Host RAM, preventing a compromised host OS from extracting the keys.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. What six security and reliability questions must an architecture review answer before deploying BlueField DPUs?`&lt;/strong>`</summary>
+<summary>**13. What six security and reliability questions must an architecture review answer before deploying BlueField DPUs?**</summary>
 
 - **Access control:** Who can log into, reimage, reset, or change the DPU mode.
 - **Credential governance:** Where are DPU credentials, certificates, and audit records managed.
@@ -401,37 +401,37 @@ Every packet entering or leaving the x86 host must physically pass through the B
 </details>
 
 <details>
-<summary>`&lt;strong>`14. When should a Solutions Architect recommend retaining a host or fabric-native design instead of adding a BlueField DPU?`&lt;/strong>`</summary>
+<summary>**14. When should a Solutions Architect recommend retaining a host or fabric-native design instead of adding a BlueField DPU?**</summary>
 
 Retain the host or fabric-native design when there is no measurable infrastructure requirement, such as a strict x86 host CPU offload budget or a zero-trust isolation mandate. You should also retain the simpler design when no identified platform team exists to own DPU image provisioning, three-layer monitoring, patching, and out-of-band recovery.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Why must a DPU rollback plan always include an out-of-band recovery path independent of the primary data network?`&lt;/strong>`</summary>
+<summary>**15. Why must a DPU rollback plan always include an out-of-band recovery path independent of the primary data network?**</summary>
 
 A failed DPU image update or broken embedded-switch policy push typically cuts off the primary data-plane network connectivity of the host. Without an independent out-of-band BMC or rshim management path to the BlueField Arm subsystem, operators cannot reach the DPU remotely to roll back the image.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How do BlueField DPUs reinforce the "Isolate, don't terminate" Forensic Containment Protocol in Volume 18 Chapter 12?`&lt;/strong>`</summary>
+<summary>**16. How do BlueField DPUs reinforce the "Isolate, don't terminate" Forensic Containment Protocol in Volume 18 Chapter 12?**</summary>
 
 When a GPU node is suspected of compromise, operators can enforce a Deny-All Quarantine policy directly on the BlueField DPU embedded switch of that node. That rule drops all inbound and outbound packets except the forensic workstation IP. Even if the attacker has full root control of the x86 Host OS, they are trapped in hardware while volatile RAM and VRAM remain intact for dumping.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. During Step 5 for Scorched-Earth Eradication of Volume 18 Chapter 12, what must be done to the GPU and network silicon on a breached node before it can rejoin the cluster?`&lt;/strong>`</summary>
+<summary>**17. During Step 5 for Scorched-Earth Eradication of Volume 18 Chapter 12, what must be done to the GPU and network silicon on a breached node before it can rejoin the cluster?**</summary>
 
 Operators must PXE re-image the bare-metal x86 Host OS and rotate all Secrets and keys. In addition, they must reflash the GPU and ConnectX NIC or BlueField DPU firmware and images using vendor-signed artifacts to ensure no persistent rootkit survives in silicon.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Where does the BlueField DPU sit in the Five-Layer Zero-Trust AI Defense-in-Depth Architecture of Volume 18 Summary?`&lt;/strong>`</summary>
+<summary>**18. Where does the BlueField DPU sit in the Five-Layer Zero-Trust AI Defense-in-Depth Architecture of Volume 18 Summary?**</summary>
 
 It sits at Layer 3 for Network Defense via NetworkPolicies and DPU Firewalls, positioned between Layer 2 for Kubernetes Defense and Layer 4 for Hardware Defense. That layer stops an attacker who gained a reverse shell inside a pod from scanning or moving laterally across the data center network.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What are the five core security principles defined in Volume 18 Index for operating an AI infrastructure platform?`&lt;/strong>`</summary>
+<summary>**19. What are the five core security principles defined in Volume 18 Index for operating an AI infrastructure platform?**</summary>
 
 - **Defense in depth:** Layer controls across supply chain, Kubernetes, network and DPU, hardware and IOMMU, and data and TEE boundaries.
 - **Trust verification:** Verify every boundary including Secure Boot, RBAC, network policy, GPU isolation, and DPU image version rather than assuming.
@@ -441,7 +441,7 @@ It sits at Layer 3 for Network Defense via NetworkPolicies and DPU Firewalls, po
 </details>
 
 <details>
-<summary>`&lt;strong>`20. What four items are in the Volume 9 Chapter 9 Lab Checklist for qualifying a BlueField DPU deployment?`&lt;/strong>`</summary>
+<summary>**20. What four items are in the Volume 9 Chapter 9 Lab Checklist for qualifying a BlueField DPU deployment?**</summary>
 
 - **Item 1:** Record the exact DPU SKU, operating mode, firmware and image version, host driver, DOCA service, and policy revision.
 - **Item 2:** Validate the host-to-DPU and DPU-to-fabric paths independently.

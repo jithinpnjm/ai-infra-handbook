@@ -721,140 +721,140 @@ kill $SERVER_PID
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. Why does horizontal CPU scaling work for I/O-bound web applications but fail for LLM inference and training?`&lt;/strong>`</summary>
+<summary>**1. Why does horizontal CPU scaling work for I/O-bound web applications but fail for LLM inference and training?**</summary>
 
 Web requests spend most of their time waiting on external input and output, so adding CPU servers scales concurrency cleanly. An LLM must stream all of its weights from memory for every generated token, requiring 140 GB per token for a 70B FP16 model. That workload hits the memory bandwidth wall on a single node and the interconnect wall across nodes. Adding standard CPU servers removes neither wall.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What are the four physical stages a prompt traverses on a heterogeneous CPU and GPU node?`&lt;/strong>`</summary>
+<summary>**2. What are the four physical stages a prompt traverses on a heterogeneous CPU and GPU node?**</summary>
 
 Stage 1 is CPU preprocessing, where the host tokenizes text and batches requests in system RAM. Stage 2 transfers token IDs and launch descriptors across PCIe or NVLink-C2C into GPU memory. Stage 3 executes parallel matrix math on GPU SMs and Tensor Cores while streaming weights from HBM. Stage 4 runs the autoregressive loop, repeating execution once per generated output token.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What approximate percentages of silicon area do a CPU and a GPU allocate to control logic, caches or registers, and compute ALUs?`&lt;/strong>`</summary>
+<summary>**3. What approximate percentages of silicon area do a CPU and a GPU allocate to control logic, caches or registers, and compute ALUs?**</summary>
 
 A latency-oriented CPU allocates roughly 35 percent of its die to control logic and branch prediction, 45 percent to caches, and 20 percent to compute ALUs. A throughput-oriented GPU allocates roughly 80 percent of its die to compute cores, 15 percent to registers and L1 shared memory, and 5 percent to control logic.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Why is a 100 MB CPU L3 cache helpful for a database server but ineffective when streaming a 140 GB LLM weight matrix?`&lt;/strong>`</summary>
+<summary>**4. Why is a 100 MB CPU L3 cache helpful for a database server but ineffective when streaming a 140 GB LLM weight matrix?**</summary>
 
 A database server repeatedly reads the same hot lookup tables and code paths, so a 100 MB L3 cache achieves a high hit rate. An LLM forward pass streams the entire 140 GB weight tensor through the processor once per generated token. That streaming pattern overwrites the 100 MB cache immediately and forces almost every read to wait on main memory.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`5. How does a GPU's zero-cost warp scheduling differ from a Linux CPU context switch?`&lt;/strong>`</summary>
+<summary>**5. How does a GPU's zero-cost warp scheduling differ from a Linux CPU context switch?**</summary>
 
 A Linux CPU context switch pauses the core, saves registers to system RAM, reloads the next thread's registers, and flushes pipeline state across thousands of clock cycles. A GPU keeps tens of thousands of threads resident in its on-chip register file simultaneously. When one warp stalls on an HBM read, the SM scheduler issues an instruction from another ready warp on the very next clock cycle.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`6. What is a SIMT warp on an NVIDIA GPU, how many threads does it contain, and why does a batch size of 31 or 33 waste hardware lanes?`&lt;/strong>`</summary>
+<summary>**6. What is a SIMT warp on an NVIDIA GPU, how many threads does it contain, and why does a batch size of 31 or 33 waste hardware lanes?**</summary>
 
 A warp is a fixed group of 32 threads that execute the exact same instruction on the same clock cycle across 32 data elements. A batch size of 31 allocates one 32-lane warp and masks off 1 lane. A batch size of 33 allocates two warps totaling 64 lanes and leaves 31 lanes idle.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`7. In OpenCL, AMD, and Intel terminology, what are the equivalents of an NVIDIA Streaming Multiprocessor, a CUDA Core, and a 32-thread Warp?`&lt;/strong>`</summary>
+<summary>**7. In OpenCL, AMD, and Intel terminology, what are the equivalents of an NVIDIA Streaming Multiprocessor, a CUDA Core, and a 32-thread Warp?**</summary>
 
 An NVIDIA Streaming Multiprocessor corresponds to a Compute Unit in OpenCL and AMD and a Subslice on Intel. A CUDA Core corresponds to a Processing Element in OpenCL and AMD and an Execution Unit on Intel. A 32-thread warp corresponds to a Subgroup in OpenCL, a 64-thread Wavefront on AMD, and a SIMD subgroup on Intel.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`8. Write the formula for theoretical peak scalar FLOP/s and state the FP32 and FP64 TFLOP/s of an NVIDIA V100 and an NVIDIA A100.`&lt;/strong>`</summary>
+<summary>**8. Write the formula for theoretical peak scalar FLOP/s and state the FP32 and FP64 TFLOP/s of an NVIDIA V100 and an NVIDIA A100.**</summary>
 
 Peak TFLOP/s equals 2 for Fused Multiply-Add multiplied by clock rate in MHz, compute units, and cores per unit, divided by one million. A V100 with 80 SMs at 1,530 MHz delivers 15.67 TFLOP/s in FP32 and 7.83 TFLOP/s in FP64. An A100 with 108 SMs at 1,410 MHz delivers 19.49 TFLOP/s in FP32 and 9.75 TFLOP/s in FP64.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Write the formula for theoretical peak GPU memory bandwidth and state the bandwidth of V100 HBM2. How does HBM achieve higher bandwidth than GDDR6 at lower clock rates?`&lt;/strong>`</summary>
+<summary>**9. Write the formula for theoretical peak GPU memory bandwidth and state the bandwidth of V100 HBM2. How does HBM achieve higher bandwidth than GDDR6 at lower clock rates?**</summary>
 
 Memory bandwidth in GB/s equals memory clock in GHz multiplied by bus width in bytes and the transaction multiplier. On a V100 with a 0.876 GHz clock, a 4,096-bit bus, and a multiplier of 2, bandwidth equals 897 GB/s. HBM stacks DRAM dies vertically on a silicon interposer with a 4,096-bit or 5,120-bit bus at modest clocks, whereas GDDR6 uses a narrower 256-bit or 384-bit bus at high clocks.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Write the formula for theoretical PCIe bandwidth, explain the encoding overhead difference, and state the x16 per-direction bandwidth for Gen3 to Gen6.`&lt;/strong>`</summary>
+<summary>**10. Write the formula for theoretical PCIe bandwidth, explain the encoding overhead difference, and state the x16 per-direction bandwidth for Gen3 to Gen6.**</summary>
 
 Unidirectional bandwidth in GB/s equals lane count multiplied by transfer rate in GT/s and the encoding efficiency factor, divided by 8 bits per byte. PCIe Gen1 and Gen2 use `8b/10b` encoding with 20 percent overhead, whereas Gen3 through Gen6 use `128b/130b` encoding with 1.54 percent overhead. Across 16 lanes per direction, Gen3 delivers 15.75 GB/s and Gen4 delivers 31.51 GB/s, while Gen5 and Gen6 deliver 63.01 GB/s and 126.03 GB/s.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`11. Why does pinned host memory achieve much higher and more consistent PCIe transfer bandwidth than pageable malloc memory?`&lt;/strong>`</summary>
+<summary>**11. Why does pinned host memory achieve much higher and more consistent PCIe transfer bandwidth than pageable malloc memory?**</summary>
 
 The GPU DMA engine requires fixed physical memory addresses that cannot be swapped out mid-transfer. When copying from pageable memory, the CUDA driver must first copy the array on the CPU into a temporary pinned staging buffer before starting DMA. Allocating pinned host memory via `cudaMallocHost` or `pin_memory=True` eliminates that extra CPU copy and reaches roughly 11.6 GB/s on PCIe Gen3 x16.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How many scalar CUDA core operations are required to multiply two 4x4 matrices and add a third, versus how many Tensor Core operations?`&lt;/strong>`</summary>
+<summary>**12. How many scalar CUDA core operations are required to multiply two 4x4 matrices and add a third, versus how many Tensor Core operations?**</summary>
 
 A scalar CUDA core executes one multiply-accumulate per cycle, so multiplying two 4x4 matrices requires 64 separate scalar operations. A Volta or later Tensor Core executes the entire 4x4 matrix multiply-accumulate in 1 operation.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`13. Name the key AI hardware innovation introduced by each NVIDIA generation: G80, Pascal, Volta, Ampere, Hopper, and Blackwell.`&lt;/strong>`</summary>
+<summary>**13. Name the key AI hardware innovation introduced by each NVIDIA generation: G80, Pascal, Volta, Ampere, Hopper, and Blackwell.**</summary>
 
 G80 introduced unified Streaming Multiprocessors and CUDA in 2006. Pascal added HBM2, Unified Memory, native FP16, and NVLink 1.0 in 2016, while Volta added first-generation Tensor Cores in 2017. Ampere introduced MIG hardware partitioning, TF32, and BF16 in 2020. Hopper added the FP8 Transformer Engine in 2022, and Blackwell introduced microscaled FP4, NVLink 5, and NVL72 racks in 2024.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`14. State the byte size per parameter for FP64, FP32, FP16/BF16, FP8/INT8, and FP4/INT4. Why is BF16 preferred over FP16 during training?`&lt;/strong>`</summary>
+<summary>**14. State the byte size per parameter for FP64, FP32, FP16/BF16, FP8/INT8, and FP4/INT4. Why is BF16 preferred over FP16 during training?**</summary>
 
 FP64 uses 8 bytes and FP32 uses 4 bytes. FP16 and BF16 use 2 bytes, FP8 and INT8 use 1 byte, and FP4 and INT4 use 0.5 bytes. BF16 is preferred over FP16 during training because BF16 preserves the 8-bit exponent dynamic range of FP32, preventing gradient underflow and overflow.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Contrast the Prefill and Decode phases of LLM inference across computation pattern, hardware bottleneck, and SLI metric.`&lt;/strong>`</summary>
+<summary>**15. Contrast the Prefill and Decode phases of LLM inference across computation pattern, hardware bottleneck, and SLI metric.**</summary>
 
 Prefill processes all input prompt tokens in parallel inside one large matrix-matrix multiplication, is compute-bound on Tensor Cores, and is measured by Time To First Token. Decode generates one token at a time sequentially by streaming all weights and the KV cache from HBM, is memory-bandwidth-bound, and is measured by Time Per Output Token.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What is the KV Cache, how much KV cache memory was wasted before PagedAttention, and what do Continuous Batching and PagedAttention do?`&lt;/strong>`</summary>
+<summary>**16. What is the KV Cache, how much KV cache memory was wasted before PagedAttention, and what do Continuous Batching and PagedAttention do?**</summary>
 
 The KV cache stores each active request's intermediate Key and Value vectors in HBM and grows with sequence length and concurrency. Contiguous pre-allocation wasted 60 to 80 percent of KV cache memory to fragmentation. Continuous Batching evicts finished sequences and inserts new requests on every decode step. PagedAttention splits the KV cache into fixed-size non-contiguous blocks mapped via a page table, raising throughput by 2x to 4x.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`17. Define Goodput and state the Goodput efficiency of an 8-GPU node that processes 100,000 tokens in 10 seconds when each GPU has a theoretical peak of 1,500 tokens/s.`&lt;/strong>`</summary>
+<summary>**17. Define Goodput and state the Goodput efficiency of an 8-GPU node that processes 100,000 tokens in 10 seconds when each GPU has a theoretical peak of 1,500 tokens/s.**</summary>
 
 Goodput is the rate of useful work completed end to end divided by the theoretical Speed of Light ceiling. Processing 100,000 tokens in 10 seconds achieves 10,000 tokens/s. Eight GPUs at 1,500 tokens/s each have a theoretical peak of 12,000 tokens/s, yielding a Goodput efficiency of 83.3 percent.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Using C = 6 x N x D, how many FLOPs are required to train a dense 100-trillion-parameter model on 29 trillion tokens, and how many B200 or B300 GPUs are needed just to hold its FP16 weights?`&lt;/strong>`</summary>
+<summary>**18. Using C = 6 x N x D, how many FLOPs are required to train a dense 100-trillion-parameter model on 29 trillion tokens, and how many B200 or B300 GPUs are needed just to hold its FP16 weights?**</summary>
 
 Multiplying 6 by 100 trillion parameters and 29 trillion tokens requires `1.74 x 10^28` FLOPs. Storing the raw FP16 weights requires 200 TB of HBM. That weight footprint alone requires roughly 1,110 to 1,112 B200 GPUs at 180 GB each, or 695 B300 GPUs at 288 GB each, before counting gradients, optimizer states, or activations.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`19. How did DeepSeek-V3 reduce active parameters per token and overcome the H800's 400 GB/s NVLink limit, and what are the six open-source repositories released in February 2025?`&lt;/strong>`</summary>
+<summary>**19. How did DeepSeek-V3 reduce active parameters per token and overcome the H800's 400 GB/s NVLink limit, and what are the six open-source repositories released in February 2025?**</summary>
 
 DeepSeek-V3 uses sparse Mixture-of-Experts routing where each token activates 1 shared expert and 8 routed experts out of 256, or 37B active parameters out of 680B total. Multi-Head Latent Attention, FP8 matrix math, and bidirectional pipeline overlap hide the 400 GB/s NVLink constraint. The six open-source repositories are `FlashMLA`, `DeepGEMM`, `DeepEP`, `EPLB`, `DualPipe`, and `3FS`.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`20. In the 8-step host inspection sequence, how do you distinguish missing GPU hardware, missing nvidia-smi tooling, and an unloaded or mismatched nvidia.ko driver?`&lt;/strong>`</summary>
+<summary>**20. In the 8-step host inspection sequence, how do you distinguish missing GPU hardware, missing nvidia-smi tooling, and an unloaded or mismatched nvidia.ko driver?**</summary>
 
 Run `lspci | grep -i nvidia` first. Empty output means no GPU is visible on the PCIe bus due to a CPU-only instance, bad seating, or missing passthrough. If devices appear on PCIe, run `which nvidia-smi` to check whether user-space driver packages are missing. If `nvidia-smi` exists but cannot communicate with the driver, `nvidia.ko` is unloaded or mismatched against `uname -r`, which you confirm via `dmesg`.
 

@@ -519,121 +519,121 @@ Exercise Input Parameters & Expected Verification Targets (code/part13/storage_c
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. On a 128-GPU A100 cluster drawing 4 kW/GPU at $0.10/kWh and leased at $3/GPU-hour, what is the hourly cluster burn rate, and how much money is wasted per day and per year if storage stalls GPUs 10% of the time?`&lt;/strong>`</summary>
+<summary>**1. On a 128-GPU A100 cluster drawing 4 kW/GPU at $0.10/kWh and leased at $3/GPU-hour, what is the hourly cluster burn rate, and how much money is wasted per day and per year if storage stalls GPUs 10% of the time?**</summary>
 
 Electricity costs roughly fifty-one dollars per hour and GPU leases cost $384/hour, totaling $435/hour. A ten percent storage stall leaves the cluster idle for 2.4 hours per day. That wastes $1,044/day or $381,060/year and pays back a hundred thousand dollar storage upgrade in 95.79 days.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What are the six dimensions of the AI storage capacity and performance planning framework?`&lt;/strong>`</summary>
+<summary>**2. What are the six dimensions of the AI storage capacity and performance planning framework?**</summary>
 
 The six dimensions are Usable Capacity with thirty percent headroom, Read Bandwidth for continuous ingestion and startup loads, and Write Bandwidth for checkpoint bursts. The remaining three are Metadata Rate with forty percent headroom, Burst Handling with fifty percent bandwidth headroom and a twenty-four-hour rebuild reserve, and Cost per Productive GPU-Hour.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Why must you reserve 30% capacity headroom on parallel filesystems instead of filling them to 95–100%?`&lt;/strong>`</summary>
+<summary>**3. Why must you reserve 30% capacity headroom on parallel filesystems instead of filling them to 95–100%?**</summary>
 
 Parallel filesystems such as Lustre, BeeGFS, and WekaFS suffer severe extent fragmentation, allocator lock contention, and target skew as occupancy approaches ninety percent. Reserving thirty percent capacity headroom keeps steady-state fill below seventy-seven percent, preventing multi-minute checkpoint write cliffs and out-of-space crashes.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. In the worked 1.3B-parameter model example, what is the exact usable capacity required including 30% headroom?`&lt;/strong>`</summary>
+<summary>**4. In the worked 1.3B-parameter model example, what is the exact usable capacity required including 30% headroom?**</summary>
 
 Adding the dataset, rolling checkpoints, archive checkpoints, model artifacts, and logs gives a 3,560 GB subtotal. Adding thirty percent capacity headroom of 1,068 GB yields 4,628 GB, or roughly five terabytes of usable capacity.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. How much sustained storage read bandwidth is needed at 200 MB/s per GPU for an 8-GPU server, a 64-GPU cluster, and a 72-GPU Grace Blackwell NVL72 rack?`&lt;/strong>`</summary>
+<summary>**5. How much sustained storage read bandwidth is needed at 200 MB/s per GPU for an 8-GPU server, a 64-GPU cluster, and a 72-GPU Grace Blackwell NVL72 rack?**</summary>
 
 At two hundred megabytes per second per GPU, an eight-GPU server requires 1.6 GB/s and a 64-GPU cluster requires 12.8 GB/s. A 72-GPU Grace Blackwell GB200 or GB300 NVL72 rack requires 14.4 GB/s, fitting inside the operational rack envelope.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Why does pre-tokenized text LLM pretraining require almost no steady-state read bandwidth compared to vision or multimodal training?`&lt;/strong>`</summary>
+<summary>**6. Why does pre-tokenized text LLM pretraining require almost no steady-state read bandwidth compared to vision or multimodal training?**</summary>
 
 At forty percent MFU on H100 GPUs, a 70B Llama-3 model processes roughly 940 tokens per second per GPU, or sixty thousand tokens per second across sixty-four GPUs. At two to four bytes per token ID, cluster-wide read throughput is under a quarter of a megabyte per second. Text LLM storage is therefore dominated by checkpoint write bursts rather than continuous ingestion.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Three concurrent training jobs each need to load a 100 GB model within a 30-second startup budget. Which storage systems pass: single-server NFS, 8-node BeeGFS, or 24-OST Lustre?`&lt;/strong>`</summary>
+<summary>**7. Three concurrent training jobs each need to load a 100 GB model within a 30-second startup budget. Which storage systems pass: single-server NFS, 8-node BeeGFS, or 24-OST Lustre?**</summary>
 
 Each job needs 3.33 GB/s, so three concurrent jobs require 10.0 GB/s of aggregate read throughput. Single-server NFS at 2.0 GB/s fails by fivefold, whereas eight-node BeeGFS at 12.0 GB/s and 24-OST Lustre at 19.2 GB/s both pass.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. For a 70B-parameter model trained with mixed-precision AdamW across 64 GPUs on 8 nodes, what is the exact checkpoint size, training memory state, per-GPU shard, and per-node shard?`&lt;/strong>`</summary>
+<summary>**8. For a 70B-parameter model trained with mixed-precision AdamW across 64 GPUs on 8 nodes, what is the exact checkpoint size, training memory state, per-GPU shard, and per-node shard?**</summary>
 
 At fourteen bytes per parameter, the persistent checkpoint size is 980 GB, while active training memory at sixteen bytes per parameter is 1,120 GB. Sharded across sixty-four GPUs with ZeRO-3 or FSDP, each GPU writes 15.3125 GB and each eight-GPU node writes 122.5 GB.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. How much training stall time is saved on a 500 GB checkpoint by switching from a 1 GB/s synchronous network write to a 20 GB/s local NVMe async staging write?`&lt;/strong>`</summary>
+<summary>**9. How much training stall time is saved on a 500 GB checkpoint by switching from a 1 GB/s synchronous network write to a 20 GB/s local NVMe async staging write?**</summary>
 
 A synchronous five-hundred-gigabyte write at 1 GB/s stalls all GPUs for 500 seconds. Staging to local NVMe at 20 GB/s finishes the critical-path pause in 25 seconds. That delivers a twentyfold stall reduction and saves 475 seconds per checkpoint while background threads drain the file to shared storage.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. A dataset has 1.2 million small images and trains at 100 batches/sec with 256 images/batch. What are the per-epoch metadata ops, peak opens/sec, required MDS capacity with 40% headroom, and the effect of WebDataset sharding?`&lt;/strong>`</summary>
+<summary>**10. A dataset has 1.2 million small images and trains at 100 batches/sec with 256 images/batch. What are the per-epoch metadata ops, peak opens/sec, required MDS capacity with 40% headroom, and the effect of WebDataset sharding?**</summary>
 
 Each epoch generates 4.8 million metadata operations and a peak rate of 25,600 file opens per second. That requires 35,840 ops/sec of MDS capacity with forty percent headroom. Repackaging into thousand-image WebDataset shards cuts metadata operations by three orders of magnitude to just 25.6 opens per second.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What is the 2.0x burst overbuild rule in AI storage network design?`&lt;/strong>`</summary>
+<summary>**11. What is the 2.0x burst overbuild rule in AI storage network design?**</summary>
 
 Because checkpoint write bursts overlap with ongoing training reads, you should overbuild sustained storage bandwidth by two times, equivalent to fifty percent headroom on peak demand. A 3 GB/s sustained workload requires 6 GB/s of provisioned bandwidth, and a 10 GB/s sustained workload requires 20 GB/s.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What are the per-SU and 4-SU read and write bandwidth specifications for NVIDIA DGX SuperPOD Standard Tier vs Enhanced Tier High-Performance Storage?`&lt;/strong>`</summary>
+<summary>**12. What are the per-SU and 4-SU read and write bandwidth specifications for NVIDIA DGX SuperPOD Standard Tier vs Enhanced Tier High-Performance Storage?**</summary>
 
 The Standard Tier specifies 90 GB/s read and 45 GB/s write per Scalable Unit, scaling to 360 GB/s read and 180 GB/s write for four Scalable Units. The Enhanced Tier specifies 280 GB/s read and 140 GB/s write per Scalable Unit, scaling to 1,120 GB/s read and 560 GB/s write for four Scalable Units.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How many racks, GPUs, compute trays, and terabytes of local RAID 0 NVMe scratch are in one DGX GB300 NVL72 SuperPOD Scalable Unit, and what is its maximum documented scale?`&lt;/strong>`</summary>
+<summary>**13. How many racks, GPUs, compute trays, and terabytes of local RAID 0 NVMe scratch are in one DGX GB300 NVL72 SuperPOD Scalable Unit, and what is its maximum documented scale?**</summary>
 
 One DGX GB300 Scalable Unit contains eight NVL72 racks holding 576 B300 GPUs across 144 compute trays at 1.2 MW TDP. With 15.36 TB of RAID 0 E1.S NVMe per tray, each rack provides 276.48 TB and each Scalable Unit provides 2,211.84 TB of local scratch. The architecture scales up to sixteen Scalable Units with 9,216 GPUs.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. How many DGX B200 systems and GPUs are in 1 SU and 4 SUs of a DGX B200 SuperPOD, and why does a 4-SU deployment have 127 systems instead of 128?`&lt;/strong>`</summary>
+<summary>**14. How many DGX B200 systems and GPUs are in 1 SU and 4 SUs of a DGX B200 SuperPOD, and why does a 4-SU deployment have 127 systems instead of 128?**</summary>
 
 One DGX B200 Scalable Unit holds up to thirty-two DGX B200 systems, or 256 GPUs at 458 kW. In a four-SU deployment, one server slot is displaced by the NVIDIA Unified Fabric Manager appliance, leaving 127 DGX B200 systems with 1,016 GPUs.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. How much raw flash capacity is required to deliver 1,000 TB of usable capacity under 3x replication, 2x replication, WekaFS 6+2, Lustre/ZFS 8+2, WekaFS 16+2, and VAST DASE 146+4?`&lt;/strong>`</summary>
+<summary>**15. How much raw flash capacity is required to deliver 1,000 TB of usable capacity under 3x replication, 2x replication, WekaFS 6+2, Lustre/ZFS 8+2, WekaFS 16+2, and VAST DASE 146+4?**</summary>
 
 Delivering a thousand terabytes usable requires 3,000.00 TB raw under three-way replication and 2,000.00 TB raw under two-way replication. Erasure coding reduces required raw flash to 1,333.33 TB for WekaFS 6+2, 1,250.00 TB for Lustre/ZFS 8+2, 1,125.00 TB for WekaFS 16+2, and 1,027.40 TB for VAST DASE 146+4.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What minimum sustained background rebuild bandwidth is required to reconstruct a failed 15.36 TB NVMe drive or a 61.44 TB storage sled within the 24-hour rebuild SLA?`&lt;/strong>`</summary>
+<summary>**16. What minimum sustained background rebuild bandwidth is required to reconstruct a failed 15.36 TB NVMe drive or a 61.44 TB storage sled within the 24-hour rebuild SLA?**</summary>
 
 Dividing drive capacity by the eighty-six thousand four hundred seconds in twenty-four hours gives 177.78 MB/s for a 15.36 TB NVMe drive. A 61.44 TB QLC drive or storage sled requires four times that rate, or 711.11 MB/s of background rebuild bandwidth.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What are the latency, throughput, and unit cost of the four AI storage tiers, and what is the annual cost of the 17.6 TB 1.3B-model tiering plan?`&lt;/strong>`</summary>
+<summary>**17. What are the latency, throughput, and unit cost of the four AI storage tiers, and what is the annual cost of the 17.6 TB 1.3B-model tiering plan?**</summary>
 
 Hot local NVMe delivers sub-millisecond latency at $5.00/GB-year, and Warm parallel filesystems deliver one to five milliseconds at $0.50/GB-year. Cold object storage delivers fifty to a hundred milliseconds at $0.02/GB-year, while Archive tape or Glacier takes hours at $0.001/GB-year. Placing the 1.3B-model footprint across those four tiers costs $1,860/year across 17.6 TB, or $8.81/TB-month blended.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. In the Volume 15 Cost-per-GPU-Hour comparison on 128 GPUs, how does investing in Balanced Storage save $18.9M/year compared to Minimal Storage?`&lt;/strong>`</summary>
+<summary>**18. In the Volume 15 Cost-per-GPU-Hour comparison on 128 GPUs, how does investing in Balanced Storage save $18.9M/year compared to Minimal Storage?**</summary>
 
 Minimal Storage causes a five percent data stall across 128 GPUs valued at $435/hour per stream, wasting $2,784/hour or $24.4M/year. Balanced Storage pairs a Lustre tier with NVMe cache to cut stalls to one percent. That reduces waste to $4.9M/year and total cost including storage to $5.5M/year for a net savings of $18.9M/year.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. In a 1,200-GPU H100 AI Factory with a $70.2M 3-year TCO, what is the amortized cost per GPU-year, and what percentage of CapEx and 3-year TCO is the $2.0M storage hardware?`&lt;/strong>`</summary>
+<summary>**19. In a 1,200-GPU H100 AI Factory with a $70.2M 3-year TCO, what is the amortized cost per GPU-year, and what percentage of CapEx and 3-year TCO is the $2.0M storage hardware?**</summary>
 
 Dividing the $70.2M total across three thousand six hundred GPU-years yields $19.5K per GPU-year. The $2.0M storage hardware represents 4.55 percent of hardware CapEx and just 2.85 percent of the three-year TCO. Including maintenance and power, a one-petabyte tier has a three-year TCO of $2,770,294.40, or $76.95/TB-month.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Why does using cloud Spot GPU instances place a strict minimum bandwidth requirement on your checkpoint storage tier?`&lt;/strong>`</summary>
+<summary>**20. Why does using cloud Spot GPU instances place a strict minimum bandwidth requirement on your checkpoint storage tier?**</summary>
 
 Renting an 8xH100 Spot instance at $21/hour instead of $60/hour on-demand saves 65.0 percent, but cloud providers issue only a two-minute preemption warning via instance metadata. Your checkpoint pipeline must serialize and flush sharded state to local NVMe or fast parallel storage within those two minutes, or the lost compute erases the Spot discount.
 </details>

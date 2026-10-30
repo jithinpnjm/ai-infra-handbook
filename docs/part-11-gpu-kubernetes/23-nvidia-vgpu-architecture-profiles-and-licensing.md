@@ -328,19 +328,19 @@ Summary: 25 passed, 0 failed out of 25 checks.
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. In Volume 11 Chapter 1, why was an NVIDIA H100 80GB HBM3 reporting 15%, 18%, and 14% average GPU utilization not actually free for time-slicing?`&lt;/strong>`</summary>
+<summary>**1. In Volume 11 Chapter 1, why was an NVIDIA H100 80GB HBM3 reporting 15%, 18%, and 14% average GPU utilization not actually free for time-slicing?**</summary>
 
 The LLM serving workload was already holding `72,000–72,100 MiB` out of `81,559 MiB`, which is `88.4%` of physical HBM3 memory. It also required burst headroom for a `p99 < 100 ms` SLO. Whenever a `1-in-20` request overlap occurred, SM utilization spiked to `85%` and saturated memory bandwidth.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. In Volume 11 Chapter 1 Troubleshooting Scenario 1, what happened to p99 latency, memory used, and peak SM utilization when a second tenant was admitted onto a GPU running a service with p99 = 42 ms, 48 GB memory, and 35% peak SM?`&lt;/strong>`</summary>
+<summary>**2. In Volume 11 Chapter 1 Troubleshooting Scenario 1, what happened to p99 latency, memory used, and peak SM utilization when a second tenant was admitted onto a GPU running a service with p99 = 42 ms, 48 GB memory, and 35% peak SM?**</summary>
 
 Admitting the second tenant caused `p99` latency to jump from `42 ms` to `180 ms`, which is `4.29x` worse. Memory usage climbed from `48 GB` to `76 GB` while peak SM activity jumped from `35%` to `92%`. Both workloads queued for the same DRAM memory-bandwidth paths.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. How does nvidia-smi --query-processes=gpu_uuid,pid,process_name --format=csv output differ across Time-Slicing, MIG, and vGPU (Volume 11 Chapter 1 Scenario 2)?`&lt;/strong>`</summary>
+<summary>**3. How does nvidia-smi --query-processes=gpu_uuid,pid,process_name --format=csv output differ across Time-Slicing, MIG, and vGPU (Volume 11 Chapter 1 Scenario 2)?**</summary>
 
 - **Time-Slicing:** Both tenant processes (`PID 12345` and `PID 12346`) appear on the exact same physical `GPU-12345678-abcd-ef00` UUID.
 - **MIG:** Processes appear on distinct hardware-partitioned `GI:CI` instances (`GPU-12345678-abcd-ef00:1:0` vs `GPU-12345678-abcd-ef00:2:0`).
@@ -348,21 +348,21 @@ Admitting the second tenant caused `p99` latency to jump from `42 ms` to `180 ms
 </details>
 
 <details>
-<summary>`&lt;strong>`4. What are the six fields of the Workload Intake Contract and the four Service Tiers defined in Volume 11 Chapter 1?`&lt;/strong>`</summary>
+<summary>**4. What are the six fields of the Workload Intake Contract and the four Service Tiers defined in Volume 11 Chapter 1?**</summary>
 
 - **Six intake fields:** Workload class, Memory envelope high-water mark, Performance objective, Tenant trust, Recovery behavior, and Placement scope.
 - **Four service tiers:** Discovery covers measurement only with no SLO, and Best effort covers shared access that may queue or evict. Bounded service covers validated profile concurrency envelopes with admission control, and Reserved covers protected capacity with approved failover.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. Describe the two-path architecture of NVIDIA vGPU in Volume 11 Chapter 5 Figure 11.5.1.`&lt;/strong>`</summary>
+<summary>**5. Describe the two-path architecture of NVIDIA vGPU in Volume 11 Chapter 5 Figure 11.5.1.**</summary>
 
 1. **Performance-critical fast path:** The Guest NVIDIA vGPU Driver submits compute and graphics commands directly to the physical GPU or MIG instance hardware via the assigned virtual function aperture.
 2. **Paravirtualized management path:** Lifecycle and management operations pass through a paravirtualized interface from the guest driver to the host NVIDIA Virtual GPU Manager. Meanwhile, the guest driver checks out its entitlement lease from the NVIDIA License System.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. What is the difference between nvidia-smi vgpu, nvidia-smi vgpu -s, nvidia-smi vgpu -c, and nvidia-smi vgpu -q on a vGPU hypervisor host (Volume 11 Chapter 5)?`&lt;/strong>`</summary>
+<summary>**6. What is the difference between nvidia-smi vgpu, nvidia-smi vgpu -s, nvidia-smi vgpu -c, and nvidia-smi vgpu -q on a vGPU hypervisor host (Volume 11 Chapter 5)?**</summary>
 
 - `nvidia-smi vgpu`: Lists currently active vGPU instances and their assigned VMs.
 - `nvidia-smi vgpu -s`: Lists all vGPU profile types supported by the physical GPU.
@@ -371,32 +371,32 @@ Admitting the second tenant caused `p99` latency to jump from `42 ms` to `180 ms
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Where is NVIDIA vGPU license state reported, and what happens if a guest VM boots without acquiring a valid license from the NVIDIA License System (NLS) (Volume 11 Chapter 5)?`&lt;/strong>`</summary>
+<summary>**7. Where is NVIDIA vGPU license state reported, and what happens if a guest VM boots without acquiring a valid license from the NVIDIA License System (NLS) (Volume 11 Chapter 5)?**</summary>
 
 License state is reported inside the guest VM via `nvidia-smi -q` under `"vGPU Software Licensed Product"` because the guest vGPU driver checks out the lease from NLS. If the guest cannot acquire a valid license, the VM still boots and sees the vGPU device. However, CUDA and graphics capability is throttled or restricted after the initial grace period expires.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. How does framebuffer memory allocation in NVIDIA vGPU differ from Kubernetes device-plugin time-slicing (Volume 11 Chapter 5)?`&lt;/strong>`</summary>
+<summary>**8. How does framebuffer memory allocation in NVIDIA vGPU differ from Kubernetes device-plugin time-slicing (Volume 11 Chapter 5)?**</summary>
 
 In Kubernetes device-plugin time-slicing, all replicas share the physical GPU's entire HBM pool with zero memory reservation, so eight pods can OOM-kill each other. In NVIDIA vGPU, each vGPU instance such as `NVIDIA GRID A100-20Q` with `2000MiB / 20000MiB` retains its dedicated framebuffer allocation from creation until destruction.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Contrast Time-Sliced vGPU and MIG-Backed vGPU in Volume 11 Chapter 5 Figure 11.5.2.`&lt;/strong>`</summary>
+<summary>**9. Contrast Time-Sliced vGPU and MIG-Backed vGPU in Volume 11 Chapter 5 Figure 11.5.2.**</summary>
 
 - **Time-Sliced vGPU:** Multiple vGPUs have dedicated framebuffer slices on a single GPU instance while sharing the GPU's SMs and memory paths via the Virtual GPU Manager scheduler.
 - **MIG-Backed vGPU:** The physical GPU is partitioned into hardware MIG GPU Instances with dedicated SMs, L2 cache banks, and memory controllers. Then vGPUs are created on top of those hardware MIG instances.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. List the seven states of the vGPU Device Lifecycle in Volume 11 Chapter 5 Figure 11.5.3 in order.`&lt;/strong>`</summary>
+<summary>**10. List the seven states of the vGPU Device Lifecycle in Volume 11 Chapter 5 Figure 11.5.3 in order.**</summary>
 
 The seven ordered states are `Eligible`, `Attached`, `Enumerated`, `DriverReady`, `Entitled`, `ApplicationReady`, and `Drained`. They progress from host slot eligibility and VM attachment to guest `lspci` detection and compatible driver loading. Finally, the guest completes NLS lease acquisition, workload smoke test validation, and planned maintenance evacuation.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What are the five operational layers in the Volume 11 Chapter 5 responsibility table, and what unsafe shortcut must each layer avoid?`&lt;/strong>`</summary>
+<summary>**11. What are the five operational layers in the Volume 11 Chapter 5 responsibility table, and what unsafe shortcut must each layer avoid?**</summary>
 
 1. **Physical host:** Do not reinstall a guest VM driver before verifying the physical GPU and Host Virtual GPU Manager are healthy.
 2. **Hypervisor:** Do not assume VM power-on proves the vGPU device is attached in `virsh dumpxml`.
@@ -406,7 +406,7 @@ The seven ordered states are `Eligible`, `Attached`, `Enumerated`, `DriverReady`
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What are the six observability signals for vGPU operations and their escalation owners in Volume 11 Chapter 5?`&lt;/strong>`</summary>
+<summary>**12. What are the six observability signals for vGPU operations and their escalation owners in Volume 11 Chapter 5?**</summary>
 
 1. **Eligible profile slots:** Escalate to the virtualization platform team.
 2. **Host GPU health:** Escalate to the infrastructure operations team.
@@ -417,7 +417,7 @@ The seven ordered states are `Eligible`, `Attached`, `Enumerated`, `DriverReady`
 </details>
 
 <details>
-<summary>`&lt;strong>`13. Walk through the eight steps of the vGPU Maintenance Runbook in Volume 11 Chapter 5.`&lt;/strong>`</summary>
+<summary>**13. Walk through the eight steps of the vGPU Maintenance Runbook in Volume 11 Chapter 5.**</summary>
 
 1. Confirm host, profiles, dependent VMs, and business service classes in scope.
 2. Verify maintenance reserve and destination compatibility before draining.
@@ -430,7 +430,7 @@ The seven ordered states are `Eligible`, `Attached`, `Enumerated`, `DriverReady`
 </details>
 
 <details>
-<summary>`&lt;strong>`14. In Volume 11 Lab 01 (Configure and Validate MIG), what six MIG profiles are listed by nvidia-smi mig -lgip -i 0 on an NVIDIA H100 80GB HBM3?`&lt;/strong>`</summary>
+<summary>**14. In Volume 11 Lab 01 (Configure and Validate MIG), what six MIG profiles are listed by nvidia-smi mig -lgip -i 0 on an NVIDIA H100 80GB HBM3?**</summary>
 
 ```text
 H100 80GB HBM3 MIG Profile Catalog (nvidia-smi mig -lgip -i 0):
@@ -444,39 +444,39 @@ H100 80GB HBM3 MIG Profile Catalog (nvidia-smi mig -lgip -i 0):
 </details>
 
 <details>
-<summary>`&lt;strong>`15. In Volume 11 Lab 01, how does the mig-validation Pod schedule onto a cordoned node, and what is the mandatory command ordering when tearing down MIG instances during rollback?`&lt;/strong>`</summary>
+<summary>**15. In Volume 11 Lab 01, how does the mig-validation Pod schedule onto a cordoned node, and what is the mandatory command ordering when tearing down MIG instances during rollback?**</summary>
 
 - The `mig-validation` Pod pairs an exact `nodeSelector` on `kubernetes.io/hostname` with a narrow toleration for `key: node.kubernetes.io/unschedulable`. That ensures only the lab validation pod can land on the cordoned node and print `MIG_VALIDATION_COMPLETE`.
 - During rollback, you must delete Compute Instances first with `sudo nvidia-smi mig -dci -i "$GPU_INDEX"` and GPU Instances second with `sudo nvidia-smi mig -dgi -i "$GPU_INDEX"`.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. In Volume 11 Lab 02 (Configure Kubernetes GPU Time-Slicing), what fields are set in time-slicing-lab-config, and how is it activated via ClusterPolicy?`&lt;/strong>`</summary>
+<summary>**16. In Volume 11 Lab 02 (Configure Kubernetes GPU Time-Slicing), what fields are set in time-slicing-lab-config, and how is it activated via ClusterPolicy?**</summary>
 
 The ConfigMap sets `version: v1`, `sharing.timeSlicing.renameByDefault: false`, `failRequestsGreaterThanOne: true`, and `resources: [{name: nvidia.com/gpu, replicas: 4}]` under data key `any`. It is activated by merge-patching `ClusterPolicy` with `kubectl patch clusterpolicy "$CLUSTERPOLICY_NAME" --type merge --patch '{"spec":{"devicePlugin":{"config":{"name":"time-slicing-lab-config","default":"any"}}}}'`. After about `30 seconds`, the device-plugin pod restarts and node allocatable updates from `1` to `4`.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. In Volume 11 Lab 02 Section 17, why must you restore the prior ClusterPolicy configuration and confirm baseline kubelet allocatable BEFORE deleting the time-slicing-lab-config ConfigMap?`&lt;/strong>`</summary>
+<summary>**17. In Volume 11 Lab 02 Section 17, why must you restore the prior ClusterPolicy configuration and confirm baseline kubelet allocatable BEFORE deleting the time-slicing-lab-config ConfigMap?**</summary>
 
 While `ClusterPolicy.spec.devicePlugin.config.name` still references `time-slicing-lab-config`, the `nvidia-device-plugin` pod depends on that ConfigMap. Deleting the ConfigMap first leaves the device plugin pointing to a non-existent object and can drop GPU resources from the node.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. In Volume 11 Lab 03 (Compare Sharing Performance and Isolation), what four elements are held constant across the whole-GPU, MIG, and time-slicing trials, and what completion markers do the runtime and neighbor probes emit?`&lt;/strong>`</summary>
+<summary>**18. In Volume 11 Lab 03 (Compare Sharing Performance and Isolation), what four elements are held constant across the whole-GPU, MIG, and time-slicing trials, and what completion markers do the runtime and neighbor probes emit?**</summary>
 
 - **Held constant:** Workload image, artifact, input, precision, and duration are fixed alongside node GPU model, driver, topology, and thermal state. Load arrival pattern, concurrency, and evidence metric collection windows also remain identical across all three runs.
 - **Completion markers:** The primary trial Job emits `SHARING_RUNTIME_PROBE_COMPLETE` and the concurrent time-sliced neighbor Job emits `SHARING_NEIGHBOR_PROBE_COMPLETE`.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What are the nine areas of the Production Checklist in Volume 11 Chapter 12 Summary?`&lt;/strong>`</summary>
+<summary>**19. What are the nine areas of the Production Checklist in Volume 11 Chapter 12 Summary?**</summary>
 
 The nine production checklist areas are Catalog, Compatibility, Lifecycle, Scheduling, Isolation, Observability, Capacity, Chargeback, and Operations. Together with the `9`-step decision sequence in `volume-11/chapter-12-volume-11-summary.md`, they govern multi-tenant GPU service delivery.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. In Volume 11 Chapter 12 Summary, how should a Senior Architect respond when an executive demands "90 percent GPU utilization across every service"?`&lt;/strong>`</summary>
+<summary>**20. In Volume 11 Chapter 12 Summary, how should a Senior Architect respond when an executive demands "90 percent GPU utilization across every service"?**</summary>
 
 Clarify the business outcome first and separate raw device activity from allocatable and sellable capacity. A latency-sensitive inference tier requires deliberate burst headroom because `15%` average utilization can hide `85%` burst peaks and `88.4%` memory occupancy. Conversely, a best-effort batch or notebook tier can tolerate high utilization and queueing, so propose service-class-specific SLIs, SLOs, and reserve policies.
 </details>

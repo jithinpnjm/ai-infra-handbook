@@ -363,121 +363,121 @@ Summary: 25 passed, 0 failed out of 25 checks.
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. What are the five control-plane microservices that make up the NVIDIA KAI Scheduler architecture?`&lt;/strong>`</summary>
+<summary>**1. What are the five control-plane microservices that make up the NVIDIA KAI Scheduler architecture?**</summary>
 
 The five microservices are the admission-webhook, pod-grouper, queue-controller, kai-scheduler, and binder. Together they validate incoming workloads, synthesize PodGroup gang units, reconcile hierarchical Queue quotas, solve batch scheduling sessions in memory, and bind fractional or full GPU allocations onto nodes.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Why does KAI Scheduler use a dedicated pod-grouper microservice instead of requiring users to write PodGroup YAML manifests manually?`&lt;/strong>`</summary>
+<summary>**2. Why does KAI Scheduler use a dedicated pod-grouper microservice instead of requiring users to write PodGroup YAML manifests manually?**</summary>
 
 Data scientists submit higher-level workload objects such as PyTorchJob, TrainJob, JobSet, LeaderWorkerSet, MPIJob, RayJob, or plain Pods. The pod-grouper controller inspects each workload's replica structure, computes `minMember`, attaches ownerReferences, and creates the PodGroup automatically so users get zero-touch gang scheduling.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. How does pod-grouper calculate minMember and total GPU demand differently for a PyTorchJob versus an MPIJob?`&lt;/strong>`</summary>
+<summary>**3. How does pod-grouper calculate minMember and total GPU demand differently for a PyTorchJob versus an MPIJob?**</summary>
 
 For a PyTorchJob with 1 Master and 3 Workers requesting 8 GPUs each, both Master and Worker Pods run GPU training ranks. That yields `minMember: 4` and 32 GPUs total. For an MPIJob with 1 Launcher requesting 0 GPUs and 2 Workers requesting 8 GPUs each, the Launcher only runs `mpirun` over SSH while the Workers hold GPUs. That yields `minMember: 3` and 16 GPUs total.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. What is the relationship between a Project and a Queue in KAI Scheduler?`&lt;/strong>`</summary>
+<summary>**4. What is the relationship between a Project and a Queue in KAI Scheduler?**</summary>
 
 A Project in `kai.run.ai/v1` is the high-level tenant abstraction with fields like `gpuQuota: 8` from the book example. The queue-controller reconciles each Project into an underlying Queue custom resource in `scheduling.run.ai/v2`. That Queue links to a parent department queue and tracks `quota`, `limit`, `overQuotaWeight`, and live usage across GPU, CPU, and memory.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. Why does kai-scheduler emit a BindRequest custom resource to the binder microservice instead of binding Pods synchronously inside the scheduling loop?`&lt;/strong>`</summary>
+<summary>**5. Why does kai-scheduler emit a BindRequest custom resource to the binder microservice instead of binding Pods synchronously inside the scheduling loop?**</summary>
 
 Emitting a BindRequest isolates slow Kubernetes API network calls from the in-memory scheduling loop so sessions remain fast. It also allows the binder controller to coordinate fractional GPU reservation pods in namespace `kai-resource-reservation` before binding the user container to the node.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Walk through the six stages of a single KAI Scheduler session cycle.`&lt;/strong>`</summary>
+<summary>**6. Walk through the six stages of a single KAI Scheduler session cycle.**</summary>
 
 First, the scheduler takes an in-memory cluster snapshot of nodes, GPUs, Queues, and PodGroups. Second, it orders Queues by fair-share deficit and PodGroups by PriorityClass and age. Third, the Reclaim action recovers borrowed GPUs across queues. Fourth, the Preempt action evicts lower-priority jobs within the same queue. Fifth, the Allocate and Backfill action places gangs and fractional jobs using topology and bin-packing scores. Sixth, the Consolidate action defragments fractional shares and emits BindRequests.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. What is the difference between the Reclaim action and the Preempt action inside a KAI Scheduler session?`&lt;/strong>`</summary>
+<summary>**7. What is the difference between the Reclaim action and the Preempt action inside a KAI Scheduler session?**</summary>
 
 Reclaim operates across different Queues by evicting over-quota borrowed workloads from Queue A when under-quota Queue B submits pending work. Preempt operates within the same Queue by evicting lower-priority PodGroups when a higher-priority PodGroup arrives in that queue.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What does the Consolidate action do in KAI Scheduler, and why is it essential when mixing fractional and full-GPU jobs?`&lt;/strong>`</summary>
+<summary>**8. What does the Consolidate action do in KAI Scheduler, and why is it essential when mixing fractional and full-GPU jobs?**</summary>
 
 As fractional jobs start and finish, 0.25-GPU and 0.5-GPU allocations can scatter across four separate physical GPUs. That fragmentation blocks a 1.0-GPU training job even though 3.0 GPUs of total capacity are free. The Consolidate action repacks those four 0.25-GPU pods onto a single physical GPU, freeing three contiguous whole GPUs for training.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. In the Volume 24 Project 7 capstone, what are the three job types, their counts, GPU requests, and PriorityClass values?`&lt;/strong>`</summary>
+<summary>**9. In the Volume 24 Project 7 capstone, what are the three job types, their counts, GPU requests, and PriorityClass values?**</summary>
 
 Type B Inference comprises 6 jobs requesting 0.5 GPU each at PriorityClass `inference-critical` with value 1000 and a p99 latency SLO under 10 ms. Type A Training comprises 10 jobs requesting 1.0 GPU each at PriorityClass `training-high-priority` with value 100. Type C Research comprises 4 jobs requesting 0.25 GPU each at PriorityClass `research-best-effort` with value 0.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. In Volume 24 Project 7, why can at most 4 of the 10 Type A Training jobs run simultaneously even when 5 GPUs are free after placing Inference?`&lt;/strong>`</summary>
+<summary>**10. In Volume 24 Project 7, why can at most 4 of the 10 Type A Training jobs run simultaneously even when 5 GPUs are free after placing Inference?**</summary>
 
 The cluster fairness policy caps any single job type at 60% of the 8-GPU cluster, which equals 4.8 GPUs maximum. Because each Type A Training job requests 1.0 whole GPU, 4 jobs consume 4.0 GPUs or 50.0% of the cluster, whereas a fifth job would require 5.0 GPUs or 62.5%, exceeding the 4.8-GPU limit.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How does the remaining 1.0 GPU get utilized during Wave 1 of Volume 24 Project 7 after 6 Inference jobs and 4 Training jobs are placed?`&lt;/strong>`</summary>
+<summary>**11. How does the remaining 1.0 GPU get utilized during Wave 1 of Volume 24 Project 7 after 6 Inference jobs and 4 Training jobs are placed?**</summary>
 
 After 6 Inference jobs consume 3.0 GPUs and 4 Training jobs consume 4.0 GPUs, 1.0 physical GPU remains free. All 4 Type C Research jobs requesting 0.25 GPU each are backfilled onto that eighth physical GPU, bringing Wave 1 allocation to 8.0 of 8.0 GPUs or 100.0% utilization across 14 BindRequests with zero starvation.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Why does the standard Kubernetes API server reject fractional nvidia.com/gpu requests on a regular Pod, and how do KAI Scheduler and the GPU Operator work around this?`&lt;/strong>`</summary>
+<summary>**12. Why does the standard Kubernetes API server reject fractional nvidia.com/gpu requests on a regular Pod, and how do KAI Scheduler and the GPU Operator work around this?**</summary>
 
 Kubernetes extended resources in `Pod.spec.resources` only accept whole integers. The NVIDIA Device Plugin works around this by advertising integer time-sliced replicas or MIG profile resources. KAI Scheduler accepts `gpu-fraction` and `gpu-memory` annotations, and it uses the binder controller plus reservation pods to manage the underlying integer GPU claim on kubelet.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. What happens in Volume 24 Project 7 if Type B Inference pods share a physical GPU via time-slicing with a heavy training loop?`&lt;/strong>`</summary>
+<summary>**13. What happens in Volume 24 Project 7 if Type B Inference pods share a physical GPU via time-slicing with a heavy training loop?**</summary>
 
 Time-slicing switches GPU contexts without hardware compute or memory bandwidth isolation. Contention from the training loop pushes Inference tail latency from under 10 ms up to 25 ms, violating the SLO. Co-locating only compatible inference shares or partitioning the card into hardware-isolated MIG slices prevents this degradation.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. In Volume 24 Project 7, how can a standard Kubernetes ResourceQuota cap GPU usage for a specific PriorityClass?`&lt;/strong>`</summary>
+<summary>**14. In Volume 24 Project 7, how can a standard Kubernetes ResourceQuota cap GPU usage for a specific PriorityClass?**</summary>
 
 Administrators add a `scopeSelector` block to the ResourceQuota spec with `scopeName: PriorityClass`, `operator: In`, and `values: ["training-high-priority"]`. That selector restricts the total GPU requests consumed by pods matching that priority class within the namespace.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What happens when a user submits a Pod with a KAI project annotation if the mutating admission webhook is disabled and the user forgets schedulerName: kai-scheduler?`&lt;/strong>`</summary>
+<summary>**15. What happens when a user submits a Pod with a KAI project annotation if the mutating admission webhook is disabled and the user forgets schedulerName: kai-scheduler?**</summary>
 
 Kubernetes defaults `Pod.spec.schedulerName` to `default-scheduler`. The default kube-scheduler ignores the KAI project annotation, ignores PodGroup gang constraints, and schedules pods one by one without enforcing Queue quotas.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How do you verify from the CLI that pod-grouper has grouped a 4-Pod PyTorchJob correctly?`&lt;/strong>`</summary>
+<summary>**16. How do you verify from the CLI that pod-grouper has grouped a 4-Pod PyTorchJob correctly?**</summary>
 
 Run `kubectl get podgroups -n <namespace>` and `kubectl describe podgroup pg-<job-name> -n <namespace>`. Confirm that `spec.minMember` equals 4, `spec.queue` matches the target queue, `ownerReferences` points to the PyTorchJob, and `status.phase` progresses from Pending to Running.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What is the role of the Topology CRD in KAI Scheduler?`&lt;/strong>`</summary>
+<summary>**17. What is the role of the Topology CRD in KAI Scheduler?**</summary>
 
 The Topology custom resource in `kai.scheduler/v1alpha1` defines the cluster's hierarchical hardware domains such as node-level NVSwitch islands, rack domains, and InfiniBand leaf switches via node labels. KAI Scheduler combines the Topology resource with pod placement annotations to co-locate distributed gangs inside the fastest available interconnect domain.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Why does Volume 11 Chapter 7 warn against requesting two different MIG resource types in the same container?`&lt;/strong>`</summary>
+<summary>**18. Why does Volume 11 Chapter 7 warn against requesting two different MIG resource types in the same container?**</summary>
 
 When `migStrategy: mixed` is active in the NVIDIA device plugin, requesting multiple different MIG profile types inside a single container produces undefined device assignment behavior. A container may request multiple instances of the same MIG profile, and admission webhooks should reject mixed-profile requests per container.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. In Volume 11 Chapter 8, how do you verify from inside Team A's container on a MIG instance that Team B's GPU processes are not visible?`&lt;/strong>`</summary>
+<summary>**19. In Volume 11 Chapter 8, how do you verify from inside Team A's container on a MIG instance that Team B's GPU processes are not visible?**</summary>
 
 Run `nvidia-smi --query-processes=pid,process_name,gpu_memory_usage --format=csv` inside Team A's container. On a properly isolated MIG slice with an isolated PID namespace, only Team A's processes appear; seeing Team B's processes indicates the pod landed on a time-sliced whole GPU or `hostPID: true` was misconfigured.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. What five service signals does Volume 11 Chapter 7 track to distinguish admission pressure, runtime failures, and shared-GPU overcommitment?`&lt;/strong>`</summary>
+<summary>**20. What five service signals does Volume 11 Chapter 7 track to distinguish admission pressure, runtime failures, and shared-GPU overcommitment?**</summary>
 
 First, rising pending time indicates insufficient eligible capacity or tight quotas. Second, rising allocation failures point to device plugin or runtime errors. Third, rising logical allocation alongside physical GPU saturation shows the shared time-sliced pool is overcommitted. Fourth, protected workloads landing in best-effort pools signal broken admission or taint rules. Fifth, successful placement paired with failing latency SLOs proves the chosen sharing class is too weak for the workload.
 </details>

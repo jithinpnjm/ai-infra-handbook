@@ -832,25 +832,25 @@ Summary: 25 passed, 0 failed (total 25)
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. What are the two main intra-kernel pipelining variants in Table 10-1, and when should you choose each?`&lt;/strong>`</summary>
+<summary>**1. What are the two main intra-kernel pipelining variants in Table 10-1, and when should you choose each?**</summary>
 
 In a double-buffered or triple-buffered pipeline, all threads in the block cooperate uniformly to overlap tile loads and compute across loop iterations. This approach is best for uniform loop-based tiling such as GEMM where simpler code hides most DRAM latency. In a warp-specialized pipeline, dedicated warps are assigned to loader, compute, and storer roles across separate hardware engines. That design is best for persistent kernels, FlashAttention-3, and compute-heavy multi-stage pipelines.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Name the four core producer-consumer methods of `<cuda/pipeline>` and state what each one does.`&lt;/strong>`</summary>
+<summary>**2. Name the four core producer-consumer methods of `<cuda/pipeline>` and state what each one does.**</summary>
 
 Calling `pipe.producer_acquire()` reserves the next stage slot in the pipeline ring buffer for writing. Calling `pipe.producer_commit()` batch-commits all asynchronous copies issued in the current stage so consumers can track their arrival. Calling `pipe.consumer_wait()` stalls only the waiting consumer threads until the committed operations for that stage complete. Finally, `pipe.consumer_release()` frees the stage buffer for reuse on a subsequent tile iteration.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. When should you increase `<cuda/pipeline>` depth from two stages to three stages?`&lt;/strong>`</summary>
+<summary>**3. When should you increase `<cuda/pipeline>` depth from two stages to three stages?**</summary>
 
 Use two stages to overlap one asynchronous load with one compute stage. Add a third stage on modern GPUs like Blackwell when compute throughput outweighs memory latency. Two prefetches remain in flight while the third slot is computed, provided the six shared-memory buffers do not reduce SM occupancy.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. By how much does gemm_tiled_pipeline improve kernel execution time and SM Active percentage over naive tiling in Table 10-2?`&lt;/strong>`</summary>
+<summary>**4. By how much does gemm_tiled_pipeline improve kernel execution time and SM Active percentage over naive tiling in Table 10-2?**</summary>
 
 In Table 10-2, `gemm_tiled_pipeline` cuts kernel execution time in half and lifts SM active efficiency by overlapping `cuda::memcpy_async` tile prefetches with `computeTile` dot products without calling `__syncthreads()`.
 
@@ -861,19 +861,19 @@ gemm_tiled_pipeline:   20.5 ms (~2x / 2.01x faster), 92% SM Active (+24%, Table 
 </details>
 
 <details>
-<summary>`&lt;strong>`5. How does warp specialization exploit an SM's multiple warp schedulers differently from single-warp double buffering?`&lt;/strong>`</summary>
+<summary>**5. How does warp specialization exploit an SM's multiple warp schedulers differently from single-warp double buffering?**</summary>
 
 A single warp is bound to one warp scheduler, which can issue only one instruction stream per cycle. When warps are specialized into loader, compute, and storer roles across the SM's four independent warp schedulers, each scheduler drives a different hardware unit. Scheduler 0 issues a memory load, Scheduler 1 issues a Tensor Core MMA, and Scheduler 2 issues a global store in the exact same clock cycle. This turns out-of-phase L2 bandwidth and Tensor Core utilization into in-phase concurrent execution.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. How does CUTLASS's gemm_tma_warpspecialized_pingpong architecture prevent Tensor Cores from idling during post-MMA epilogues?`&lt;/strong>`</summary>
+<summary>**6. How does CUTLASS's gemm_tma_warpspecialized_pingpong architecture prevent Tensor Cores from idling during post-MMA epilogues?**</summary>
 
 It dedicates one warp group as the asynchronous TMA memory loader and pairs two consumer warp groups that ping-pong between Tensor Core MMA compute and post-MMA epilogue global stores. While Consumer Group A executes its epilogue cleanup—accumulating, scaling, writing to global memory, and advancing pointers—Consumer Group B immediately runs the next MMA on the Tensor Cores.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Why does warp_specialized_pipeline_kernel choose a tile size of 112, and how much dynamic shared memory does it consume against Blackwell's per-block limit?`&lt;/strong>`</summary>
+<summary>**7. Why does warp_specialized_pipeline_kernel choose a tile size of 112, and how much dynamic shared memory does it consume against Blackwell's per-block limit?**</summary>
 
 The three-role kernel holds three square FP32 tiles in dynamic Shared Memory. At tile size 112, the footprint fits comfortably inside Blackwell's per-block dynamic Shared Memory limit configured via `cudaDevAttrMaxSharedMemoryPerBlockOptin` and `cudaFuncAttributeMaxDynamicSharedMemorySize`.
 
@@ -883,13 +883,13 @@ TILE_SIZE = 112: 3 * 112 * 112 * 4 B = 150,528 B (147.0 KiB, 66.22% of 227,328 B
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What is the collective ordering rule for a unified block-scoped cuda::make_pipeline(cta, &pipe_state) when implementing warp specialization?`&lt;/strong>`</summary>
+<summary>**8. What is the collective ordering rule for a unified block-scoped cuda::make_pipeline(cta, &pipe_state) when implementing warp specialization?**</summary>
 
 In a unified CTA-scoped pipeline, `pipe.producer_acquire()`, `pipe.producer_commit()`, `pipe.consumer_wait()`, and `pipe.consumer_release()` are collective across all participating threads in the block. They must execute in a consistent sequence outside divergent `warp_id` branches with `cta.sync()` between role phases. To call pipeline primitives inside divergent warp branches, engineers must instantiate a partitioned pipeline with explicit producer and consumer thread partitions.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Compare double_buffered_pipeline and warp_specialized_pipeline in Table 10-3 across runtime, warp efficiency, L2 throughput, instruction count, and warp scalability.`&lt;/strong>`</summary>
+<summary>**9. Compare double_buffered_pipeline and warp_specialized_pipeline in Table 10-3 across runtime, warp efficiency, L2 throughput, instruction count, and warp scalability.**</summary>
 
 Moving from uniform double buffering to single-block warp specialization reduces execution time, raises warp efficiency and L2 throughput, lowers dynamic instructions, and extends warp scalability to the hardware limit.
 
@@ -900,13 +900,13 @@ warp_specialized_pipeline: 18.4 ms (+10.2%), 96% eff (+4%), 165 GB/s L2 (+6.45%)
 </details>
 
 <details>
-<summary>`&lt;strong>`10. How do torch.compile, F.scaled_dot_product_attention, and FlashAttention-3 use warp specialization under the hood, and what fraction of peak FP16 FLOPS does FlashAttention-3 achieve?`&lt;/strong>`</summary>
+<summary>**10. How do torch.compile, F.scaled_dot_product_attention, and FlashAttention-3 use warp specialization under the hood, and what fraction of peak FP16 FLOPS does FlashAttention-3 achieve?**</summary>
 
 Calling `F.scaled_dot_product_attention` or `torch.compile` via TorchInductor, Triton, and FlashAttention-3 fuses attention into a single kernel. Producer warps prefetch key and value tiles via TMA while consumer warps overlap GEMM and online softmax on Tensor Cores. In practice, FlashAttention-3 reaches roughly seventy-five percent (`~75%`) of peak FP16 FLOPS.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. Walk through the launch-overhead and occupancy math for 1,000 tiny tasks on a 132-SM GPU using persistentKernel.`&lt;/strong>`</summary>
+<summary>**11. Walk through the launch-overhead and occupancy math for 1,000 tiny tasks on a 132-SM GPU using persistentKernel.**</summary>
 
 Launching 1,000 separate kernels adds 20.0 ms of launch overhead on top of 100 ms of work and leaves the GPU at roughly thirty-five percent average utilization. Launching one `persistentKernel` grid of 132 blocks of 256 threads pays the 0.02 ms launch cost once. It keeps one hundred percent of the 132 SMs active even though per-SM thread occupancy is only 12.5 percent.
 
@@ -917,13 +917,13 @@ Launching 1,000 separate kernels adds 20.0 ms of launch overhead on top of 100 m
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What is an inference megakernel, and what latency reduction has it demonstrated compared to vLLM and SGLang per-layer launches?`&lt;/strong>`</summary>
+<summary>**12. What is an inference megakernel, and what latency reduction has it demonstrated compared to vLLM and SGLang per-layer launches?**</summary>
 
 An inference megakernel fuses an entire multi-layer sequence of LLM operations—including projections, attention, normalizations, and cross-GPU communication—into a single persistent kernel driven by an on-device task queue. In Chapter 10 benchmarks, megakernels reduce decode latency by `1.2x` to `6.7x` compared to traditional per-layer kernel launches in vLLM and SGLang.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How do you size a grid for cudaLaunchCooperativeKernel so grid.sync() does not fail at launch?`&lt;/strong>`</summary>
+<summary>**13. How do you size a grid for cudaLaunchCooperativeKernel so grid.sync() does not fail at launch?**</summary>
 
 Query `cudaOccupancyMaxActiveBlocksPerMultiprocessor` and multiply the active blocks per SM by `prop.multiProcessorCount` to obtain `maxCoopGrid`. Then clamp `gridSize` to `maxCoopGrid` and use a grid-stride loop inside the kernel so all blocks co-reside simultaneously.
 
@@ -933,31 +933,31 @@ Example on 132-SM GPU at 4 blocks/SM: maxCoopGrid = 4 * 132 = 528 blocks
 </details>
 
 <details>
-<summary>`&lt;strong>`14. How are Thread Block Clusters scheduled onto GPU Processing Clusters, and how does Blackwell handle its dual-die architecture?`&lt;/strong>`</summary>
+<summary>**14. How are Thread Block Clusters scheduled onto GPU Processing Clusters, and how does Blackwell handle its dual-die architecture?**</summary>
 
 The GPU hardware guarantees that all CTAs in a Thread Block Cluster are coscheduled simultaneously onto SMs within the same GPC. On dual-die Blackwell GPUs, each die has a GPC partition linked by the `10 TB/s` coherent High-Bandwidth Interface and shared coherent L2 cache. Together they form a combined logical GPC handled transparently by the hardware.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What is Thread Block Swizzling, and why does it produce double-digit performance gains on tiled GEMMs?`&lt;/strong>`</summary>
+<summary>**15. What is Thread Block Swizzling, and why does it produce double-digit performance gains on tiled GEMMs?**</summary>
 
 Instead of dispatching CTAs in strict row-major or column-major order where early blocks evict shared matrix tiles before later blocks need them, Thread Block Swizzling reorders CTA tile coordinates into two-dimensional swizzled groups. CTAs executing in the same scheduling wave reuse the same A and B tiles out of the L2 cache, cutting L2 misses and HBM bandwidth pressure.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Contrast Distributed Shared Memory with hardware Scratch Memory inside a Thread Block Cluster.`&lt;/strong>`</summary>
+<summary>**16. Contrast Distributed Shared Memory with hardware Scratch Memory inside a Thread Block Cluster.**</summary>
 
 Distributed Shared Memory is the programmer-visible distributed `__shared__` memory space stitched across all CTAs in a cluster via `cluster.map_shared_rank()`, routed over the dedicated SM-to-SM network bypassing DRAM and L2. Scratch Memory is a separate, kernel-invisible on-chip SRAM region managed automatically by the GPU. It tracks `cluster.sync()` barrier counters, group progress, and DSMEM access flags, spilling metadata to L1 and L2 backed local memory if exceeded.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. How should warps align their accesses when reading or writing remote DSMEM via cluster.map_shared_rank()?`&lt;/strong>`</summary>
+<summary>**17. How should warps align their accesses when reading or writing remote DSMEM via cluster.map_shared_rank()?**</summary>
 
 Organize remote DSMEM accesses just like coalesced global-memory accesses. Each warp in a CTA should read or write contiguous, 32-byte-aligned sectors in a unique address range so the SM-to-SM DSMEM router transfers data without bank conflicts or serialization.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. What is a Thread Block Pair, and what speedups does Table 10-4 report for a 2-CTA DSMEM workload?`&lt;/strong>`</summary>
+<summary>**18. What is a Thread Block Pair, and what speedups does Table 10-4 report for a 2-CTA DSMEM workload?**</summary>
 
 A Thread Block Pair coschedules two CTAs on adjacent SMs in a GPC to split a large tile, exposed in CUTLASS as a 2-SM Unified MMA. Table 10-4 reports substantial improvements in global load transactions, L2 hit rate, DRAM bandwidth per CTA, and overall kernel runtime.
 
@@ -968,13 +968,13 @@ Table 10-4 gains: 2x -> 1x global loads (-50%), 50% -> 85% L2 hit rate (+35%), 3
 </details>
 
 <details>
-<summary>`&lt;strong>`19. When should you use TMA multicast versus DSMEM sharing via map_shared_rank()?`&lt;/strong>`</summary>
+<summary>**19. When should you use TMA multicast versus DSMEM sharing via map_shared_rank()?**</summary>
 
 Use TMA multicast to `shared::cluster` when per-block tile reuse is high or cluster size is large (`8–16` CTAs). TMA broadcasts the tile once into every CTA's local Shared Memory for fast repeated local reads. Use DSMEM `map_shared_rank()` after `cluster.sync()` when Shared Memory is tight or cluster size is small (`2–4` CTAs) and each follower block reads its portion of the leader's tile only once.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Why does warp_specialized_cluster_pipeline beat single-block warp_specialized_pipeline in Table 10-5 even when both reach the same 64 warps per SM ceiling?`&lt;/strong>`</summary>
+<summary>**20. Why does warp_specialized_cluster_pipeline beat single-block warp_specialized_pipeline in Table 10-5 even when both reach the same 64 warps per SM ceiling?**</summary>
 
 In single-block warp specialization, each block independently fetches its own copy of input tiles and issues duplicate global loads. In `warp_specialized_cluster_pipeline`, the leader block loads each 128 by 128 tile once per cluster and shares it across all cluster CTAs via DSMEM after `cluster.sync()`. That eliminates duplicate global reads and improves runtime, efficiency, L2 throughput, and instruction count.
 

@@ -259,13 +259,13 @@ At the start of generation, the schema requires the exact characters `{"name": "
 
 ```mermaid
 flowchart LR
-    S0["FSM State 0<br/>Start of Object"] ==>|"Jump-Forward Splice (5 tokens)<br/>'{\"name\": \"' (0 Decode Steps)"| S1["FSM State 1<br/>Sample String Value"]
-    S1 -->|"LLM Decode (2 steps)<br/>'John Smith\"'"| S2["FSM State 2<br/>After name field"]
-    S2 ==>|"Jump-Forward Splice (5 tokens)<br/>', \"age\": ' (0 Decode Steps)"| S3["FSM State 3<br/>Sample Integer Value"]
+    S0["FSM State 0<br/>Start of Object"] ==>|"Jump-Forward Splice (5 tokens)<br/>#39;{#quot;name#quot;: #quot;#39; (0 Decode Steps)"| S1["FSM State 1<br/>Sample String Value"]
+    S1 -->|"LLM Decode (2 steps)<br/>#39;John Smith#quot;#39;"| S2["FSM State 2<br/>After name field"]
+    S2 ==>|"Jump-Forward Splice (5 tokens)<br/>#39;, #quot;age#quot;: #39; (0 Decode Steps)"| S3["FSM State 3<br/>Sample Integer Value"]
     S3 -->|"LLM Decode (1 step)<br/>'35'"| S4["FSM State 4<br/>After age field"]
-    S4 ==>|"Jump-Forward Splice (6 tokens)<br/>', \"occupation\": \"' (0 Decode Steps)"| S5["FSM State 5<br/>Sample String Value"]
+    S4 ==>|"Jump-Forward Splice (6 tokens)<br/>#39;, #quot;occupation#quot;: #quot;#39; (0 Decode Steps)"| S5["FSM State 5<br/>Sample String Value"]
     S5 -->|"LLM Decode (2 steps)<br/>'software engineer'"| S6["FSM State 6<br/>End of Value"]
-    S6 ==>|"Jump-Forward Splice (2 tokens)<br/>'\"}' (0 Decode Steps)"| S7["FSM Accept State<br/>23 Tokens (Only 5 Sampled)"]
+    S6 ==>|"Jump-Forward Splice (2 tokens)<br/>#39;#quot;}#39; (0 Decode Steps)"| S7["FSM Accept State<br/>23 Tokens (Only 5 Sampled)"]
 ```
 
 With Jump-Forward Decoding, SGLang inspects the compressed finite-state machine graph. Whenever the current state has a single deterministic character path leading to the next branching value state, SGLang skips the autoregressive decode loop entirely. It converts the deterministic string into token IDs, appends those tokens directly to the sequence buffer, and processes them in parallel as a fast prefill extension on the next sampled step.
@@ -647,97 +647,97 @@ Summary: 25 passed, 0 failed
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. How does SGLang's primary optimization philosophy differ from vLLM's PagedAttention focus?`&lt;/strong>`</summary>
+<summary>**1. How does SGLang's primary optimization philosophy differ from vLLM's PagedAttention focus?**</summary>
 
 vLLM primarily optimizes intra-request execution efficiency by paging each individual request's Key-Value cache into fixed 16- or 32-token blocks. That paging cuts memory fragmentation from 60 to 80 percent down to under 4 percent. SGLang supports Tensor, Pipeline, and Expert Parallelism like vLLM, but elevates cross-request optimization to a first-class primitive via RadixAttention prefix trees, XGrammar structured decoding, a zero-overhead CPU scheduler, and cache-aware request routing.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Why must you pass `--ipc=host` and `--shm-size 32g` when launching the `lmsysorg/sglang:latest-runtime` Docker container?`&lt;/strong>`</summary>
+<summary>**2. Why must you pass `--ipc=host` and `--shm-size 32g` when launching the `lmsysorg/sglang:latest-runtime` Docker container?**</summary>
 
 The 16 GB `lmsysorg/sglang:latest-runtime` image uses host shared memory (`--ipc=host`) for fast inter-process communication during PyTorch Tensor Parallel inference. It also requires a 32 GB shared memory segment (`--shm-size 32g`) to hold SGLang's Key-Value cache management tables and RadixAttention metadata.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. How does SGLang's two-level memory pool (as of SGLang v0.5) organize Key-Value cache storage under RadixAttention?`&lt;/strong>`</summary>
+<summary>**3. How does SGLang's two-level memory pool (as of SGLang v0.5) organize Key-Value cache storage under RadixAttention?**</summary>
 
 Level 1 maps each active request and Radix Tree node to its logical token Key-Value index slots. Level 2 stores the physical Key-Value tensors in GPU memory organized with shape `[num_layers, max_tokens, num_heads, head_dim]`. The CPU Radix Tree sits above both pools to track and share cached prefixes across requests.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. How does RadixAttention prefix matching differ mathematically from vLLM's block-hash Automatic Prefix Caching (APC) on a 500-token system prompt with `block_size = 16`?`&lt;/strong>`</summary>
+<summary>**4. How does RadixAttention prefix matching differ mathematically from vLLM's block-hash Automatic Prefix Caching (APC) on a 500-token system prompt with `block_size = 16`?**</summary>
 
 vLLM's Automatic Prefix Caching hashes fixed blocks of 16 tokens. A 500-token prefix matches 31 blocks covering 496 tokens and misses the trailing 4 sub-block tokens on every request. SGLang's RadixAttention stores variable-length token subsequences in a compressed prefix tree. It matches all 500 tokens exactly and saves 49,500 of 55,000 prefill tokens, a 90.0 percent reduction across 100 requests with 50-token queries.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. How does Leaf-First Least Recently Used (LRU) eviction work in RadixAttention when GPU VRAM fills up?`&lt;/strong>`</summary>
+<summary>**5. How does Leaf-First Least Recently Used (LRU) eviction work in RadixAttention when GPU VRAM fills up?**</summary>
 
 Active conversation nodes hold a positive reference count and cannot be evicted, nor can internal parent nodes that still have active children. When memory pressure occurs, SGLang collects unreferenced leaf nodes with reference count zero and evicts the leaf with the oldest access timestamp first. It then recursively prunes newly exposed unreferenced leaves while keeping shared system prompts pinned.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. How does SGLang's batch scheduler use the Radix Tree when forming the next execution batch?`&lt;/strong>`</summary>
+<summary>**6. How does SGLang's batch scheduler use the Radix Tree when forming the next execution batch?**</summary>
 
 SGLang's scheduler does not dispatch waiting requests in blind First-Come-First-Served order. Instead, it queries the Radix Tree for each queued request and computes its longest matching prefix length. It then prioritizes requests with longer shared prefixes so they execute together while their cached Key-Value blocks are still warm.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Why does RAG document chunk ordering matter for RadixAttention, and how should prompts be structured?`&lt;/strong>`</summary>
+<summary>**7. Why does RAG document chunk ordering matter for RadixAttention, and how should prompts be structured?**</summary>
 
 Prefix matching scans strictly from token 0 forward. A single mismatched character or reordered chunk stops the prefix match for the rest of the prompt. Always place static `<system>` instructions first, followed by deterministically formatted `<context>` chunks sorted in canonical order, and place dynamic `<user>` queries last.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What is the multi-tenant prefix-cache timing side-channel, and how do you prevent it?`&lt;/strong>`</summary>
+<summary>**8. What is the multi-tenant prefix-cache timing side-channel, and how do you prevent it?**</summary>
 
 Suppose two customers share the same model endpoint without tenant isolation. Customer A can probe whether Customer B has processed a specific confidential document by sending that document as a prefix and checking whether Time to First Token reflects a fast cache hit. Injecting a tenant ID tag immediately between `<system>` and `<context>` lets all tenants share the system prompt node while isolating private document contexts into separate Radix Tree branches.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. What causes RadixAttention cache thrashing, and how do you remediate it?`&lt;/strong>`</summary>
+<summary>**9. What causes RadixAttention cache thrashing, and how do you remediate it?**</summary>
 
 Suppose a workload consists of 100 percent unique, non-overlapping prompts and `mem_fraction_static` is tight at 0.85. SGLang continuously inserts and immediately evicts thousands of one-off leaf nodes, spiking P90 TTFT by up to 400 percent. Fix it by raising `--mem-fraction-static 0.92` with `--schedule-conservativeness 1.0`, or pass `--disable-radix-cache` on zero-overlap batch endpoints.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. How does XGrammar achieve near-zero-overhead structured decoding across a 128K-token vocabulary?`&lt;/strong>`</summary>
+<summary>**10. How does XGrammar achieve near-zero-overhead structured decoding across a 128K-token vocabulary?**</summary>
 
 XGrammar does not check all 128,256 vocabulary tokens against grammar rules on the CPU at every decode step. Instead, it precompiles context-free rules into compressed finite-state machines with precomputed valid-token bitmasks. It uses pushdown automata with tree-based stack management for context-sensitive rules, and applies the bitmask directly inside the GPU logit and softmax kernel with roughly 1.25 percent overhead.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What is Jump-Forward Decoding, and how many decode steps does it skip on the 23-token `Person` JSON schema?`&lt;/strong>`</summary>
+<summary>**11. What is Jump-Forward Decoding, and how many decode steps does it skip on the 23-token `Person` JSON schema?**</summary>
 
 When a compressed finite-state machine state has only a single deterministic string transition, Jump-Forward Decoding bypasses autoregressive decode forward passes. It splices those multi-token strings directly into the sequence buffer. On the 23-token `Person` JSON output, it jumps 18 deterministic tokens across 4 splices and samples only 5 value tokens, skipping 78.26 percent of decode steps.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Which attention kernel backends does SGLang use on non-Hopper GPUs (`A100`, `A40`) versus NVIDIA Hopper GPUs (`H100`, `H200`, `H20`)?`&lt;/strong>`</summary>
+<summary>**12. Which attention kernel backends does SGLang use on non-Hopper GPUs (`A100`, `A40`) versus NVIDIA Hopper GPUs (`H100`, `H200`, `H20`)?**</summary>
 
 SGLang uses **FlashInfer** for non-Hopper architectures like A100 and A40 to accelerate paged prefill, decode, and cascade prefix attention. On Hopper GPUs like H100, H200, and H20, it pairs FlashInfer with **FlashAttention-3**, alongside **FlashMLA** for DeepSeek Multi-Head Latent Attention decoding.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How does SGLang's Zero-Overhead Scheduler eliminate the 50%+ CPU scheduling bottleneck of serial schedulers?`&lt;/strong>`</summary>
+<summary>**13. How does SGLang's Zero-Overhead Scheduler eliminate the 50%+ CPU scheduling bottleneck of serial schedulers?**</summary>
 
 It splits host work into a Scheduler CPU and a Launch CPU and uses **token placeholders**. While the GPU executes Batch N, the CPU simultaneously post-processes Batch N-1 and pre-schedules Batch N+1. A background thread replaces the placeholder IDs with Batch N's actual generated tokens as soon as Batch N completes, yielding up to 2x steady-state throughput.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. How does `s.fork(N)` in the SGLang frontend DSL optimize parallel generation and best-of-N sampling?`&lt;/strong>`</summary>
+<summary>**14. How does `s.fork(N)` in the SGLang frontend DSL optimize parallel generation and best-of-N sampling?**</summary>
 
 Calling `s.fork(4)` branches the conversation into 4 parallel sequences that all reference the same shared prompt node in the Radix Tree. Instead of storing 2,800 Key-Value tokens across four separate 700-token sequences, the engine stores 1,300 tokens, saving 53.57 percent of Key-Value memory and skipping redundant prompt prefill.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What does router-based scaling in the SGLang Model Gateway eliminate, and what does it NOT eliminate?`&lt;/strong>`</summary>
+<summary>**15. What does router-based scaling in the SGLang Model Gateway eliminate, and what does it NOT eliminate?**</summary>
 
 Router-based scaling eliminates **inter-request synchronization between workers**. Each worker holds a full model or intra-node TP group and processes requests independently without cross-worker coordination. It does **not** eliminate intra-layer collectives like AllReduce for TP, point-to-point handoffs for PP, or AllToAll for EP inside a multi-GPU worker.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How do the four SGLang Model Gateway routing policies (`cache_aware`, `round_robin`, `shortest_queue`, `power_of_two_choices`) work?`&lt;/strong>`</summary>
+<summary>**16. How do the four SGLang Model Gateway routing policies (`cache_aware`, `round_robin`, `shortest_queue`, `power_of_two_choices`) work?**</summary>
 
 - `cache_aware`: Maintains an approximate Radix Tree per worker and routes to the worker with the best prefix match unless load skew exceeds the configured balance thresholds.
 - `round_robin`: Cycles evenly across workers when prompts have no prefix overlap.
@@ -746,25 +746,25 @@ Router-based scaling eliminates **inter-request synchronization between workers*
 </details>
 
 <details>
-<summary>`&lt;strong>`17. How does SGLang handle worker health checking, circuit breaking, and session migration when a worker fails?`&lt;/strong>`</summary>
+<summary>**17. How does SGLang handle worker health checking, circuit breaking, and session migration when a worker fails?**</summary>
 
 The router probes each worker's `/health` endpoint periodically. After **5 consecutive failures**, the worker's circuit breaker opens and traffic routes to healthy workers. Active `session_id` conversations pinned to the failed worker are remapped to a healthy worker. The first request after migration incurs a full cold prefill to rebuild the Key-Value cache, and subsequent turns hit the new worker's warm cache.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Why does SGLang disaggregate prefill and decode workers, and how do `Mooncake` and `NIXL` transfer the Key-Value cache?`&lt;/strong>`</summary>
+<summary>**18. Why does SGLang disaggregate prefill and decode workers, and how do `Mooncake` and `NIXL` transfer the Key-Value cache?**</summary>
 
 Prefill is compute-bound at 85 percent compute and 40 percent memory bandwidth, while decode is memory-bandwidth-bound at 25 percent compute and 90 percent memory bandwidth. In PD disaggregation, the router dispatches prompts to prefill workers (`--disaggregation-mode prefill`). Those workers transfer Key-Value cache blocks directly worker-to-worker to decode workers (`--disaggregation-mode decode`) via **Mooncake** GPUDirect RDMA or **NIXL** UCX, bypassing the router on the data plane.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What problem does Data-Parallel Attention (`--enable-dp-attention`) solve for MLA and MQA models, and what throughput gain does it achieve?`&lt;/strong>`</summary>
+<summary>**19. What problem does Data-Parallel Attention (`--enable-dp-attention`) solve for MLA and MQA models, and what throughput gain does it achieve?**</summary>
 
 Suppose a model has fewer Key-Value heads than the Tensor Parallel size, such as 1 Key-Value head with 8-way TP. Standard Tensor Parallelism replicates the entire Key-Value cache across all 8 GPUs, causing 8x memory waste. Data-Parallel Attention runs the attention layer data-parallel across the 8 GPUs without Key-Value duplication, executes an AllGather before the TP-sharded MLP, and slices the output back. This design yields up to **1.9x higher decoding throughput**.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. How do Two-Batch Overlap (`--enable-two-batch-overlap`) and Single-Batch Overlap (`--enable-single-batch-overlap`) accelerate Mixture-of-Experts (`MoE`) inference in SGLang?`&lt;/strong>`</summary>
+<summary>**20. How do Two-Batch Overlap (`--enable-two-batch-overlap`) and Single-Batch Overlap (`--enable-single-batch-overlap`) accelerate Mixture-of-Experts (`MoE`) inference in SGLang?**</summary>
 
 In MoE models using Expert Parallelism, AllToAll token routing across GPUs can dominate step time. Two-Batch Overlap splits the batch into two micro-batches and overlaps one micro-batch's AllToAll communication with the other micro-batch's attention computation. Single-Batch Overlap overlaps communication and computation within a single batch across multiple CUDA streams.
 </details>

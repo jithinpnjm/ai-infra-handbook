@@ -159,9 +159,9 @@ output "for_directive_index_if_strip" {
 flowchart TD
     Need["What are you repeating or gating in HCL?"] --> Res{"Multiple Resources<br/>or Modules?"}
     Res -->|Yes: Interchangeable N or 0/1 toggle| Count["count = N (or cond ? 1 : 0)<br/>Address: type.name[0]<br/>Outputs: one(type.name[*].id)"]
-    Res -->|Yes: Distinct keyed items| ForEach["for_each = map or toset(list)<br/>Address: type.name[\"key\"]<br/>Outputs: values(type.name)[*].id"]
+    Res -->|Yes: Distinct keyed items| ForEach["for_each = map or toset(list)<br/>Address: type.name[#quot;key#quot;]<br/>Outputs: values(type.name)[*].id"]
     Need --> Block{"Repeated Nested<br/>Blocks inside a Resource?"}
-    Block -->|Yes| Dyn["dynamic \"block_name\" {<br/>  for_each = ...<br/>  content { ... }<br/>}"]
+    Block -->|Yes| Dyn["dynamic #quot;block_name#quot; {<br/>  for_each = ...<br/>  content { ... }<br/>}"]
     Need --> Val{"Transforming Lists/Maps<br/>or Rendering Strings?"}
     Val -->|List / Map value| ForExpr["[for x in xs : ...] /<br/>{for k, v in m : k => v if cond}"]
     Val -->|Inside string / heredoc| StrDir["%{~ for i, x in xs ~}...%{ endfor ~}"]

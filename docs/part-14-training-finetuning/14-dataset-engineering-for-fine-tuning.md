@@ -632,13 +632,13 @@ Summary: 25 passed, 0 failed
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. How does data-centric AI differ from model-centric AI, and how did OpenAI's data engineering team scale between GPT-3 and GPT-4?`&lt;/strong>`</summary>
+<summary>**1. How does data-centric AI differ from model-centric AI, and how did OpenAI's data engineering team scale between GPT-3 and GPT-4?**</summary>
 
 Model-centric AI holds the dataset fixed and modifies the neural network architecture or training algorithm. Data-centric AI holds the model architecture fixed and improves performance by curating, cleaning, deduplicating, and synthesizing better training data. DataComp benchmarked this approach across 38 downstream tasks on 412M to 7B models. In the GPT-3 paper, only 2 contributors were credited for data collection, filtering, and deduplication. By GPT-4, 80 contributors were credited for data processes, with 11 senior researchers dedicated to the ChatML format alone.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What are the six characteristics of high-quality fine-tuning data defined in AI Engineering Chapter 8?`&lt;/strong>`</summary>
+<summary>**2. What are the six characteristics of high-quality fine-tuning data defined in AI Engineering Chapter 8?**</summary>
 
 1. **Relevant:** Matches the target domain and era of the application.
 2. **Aligned with task requirements:** Matches whether the task needs factual precision, creativity, or score justifications.
@@ -649,37 +649,37 @@ Model-centric AI holds the dataset fixed and modifies the neural network archite
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What did the LIMA (65B) and Yi (10K) studies prove about fine-tuning data quality versus quantity, and what is LIMA's limitation?`&lt;/strong>`</summary>
+<summary>**3. What did the LIMA (65B) and Yi (10K) studies prove about fine-tuning data quality versus quantity, and what is LIMA's limitation?**</summary>
 
 The LIMA study showed that fine-tuning a 65B-parameter Llama model on just 1,000 carefully curated demonstrations produced responses preferred or equal to GPT-4 in 43% of human evaluations. Similarly, the Yi team showed that 10,000 crafted instructions beat hundreds of thousands of noisy ones. However, models trained on only 1,000 examples lack production robustness on edge cases. Smaller 7B to 8B models require 100,000 to 1,000,000 examples to reliably master chat templates and broad domains.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Why does Llama 3 use 42.0% combined math and coding data during pre-training and 36.08% during SFT, but only 12.82% during preference alignment?`&lt;/strong>`</summary>
+<summary>**4. Why does Llama 3 use 42.0% combined math and coding data during pre-training and 36.08% during SFT, but only 12.82% during preference alignment?**</summary>
 
 During pre-training and supervised fine-tuning, structured code and math tokens teach formal reasoning and step-by-step logic. Those skills transfer to unstructured natural language tasks, especially when annealed at low learning rates. During preference alignment, 81.99% of the mix is general English conversation so the model aligns with the real-world distribution of everyday human preferences.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. How do the Kaplan (2020) and Chinchilla (2022) scaling laws differ on allocating a fixed compute budget C between model parameters N and dataset tokens D?`&lt;/strong>`</summary>
+<summary>**5. How do the Kaplan (2020) and Chinchilla (2022) scaling laws differ on allocating a fixed compute budget C between model parameters N and dataset tokens D?**</summary>
 
 Kaplan et al. found optimal exponents of 0.27 for dataset size and 0.73 for model size. That ratio prioritized scaling model parameters nearly three times faster than training tokens. Hoffmann et al. showed with Chinchilla that large models like GPT-3 were undertrained and that model parameters and training tokens should scale in equal proportion with 0.50 exponents. That insight motivated training Llama 2 on 2 trillion tokens and Llama 3 on 16 trillion tokens.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. According to OpenAI's SNLI experiments and Chung et al.'s task-scaling study, how do base model size and task count affect fine-tuning data requirements?`&lt;/strong>`</summary>
+<summary>**6. According to OpenAI's SNLI experiments and Chung et al.'s task-scaling study, how do base model size and task count affect fine-tuning data requirements?**</summary>
 
 In OpenAI's SNLI experiments, with only 100 training examples, larger base models significantly outperform smaller models after fine-tuning. At 550,000 examples, however, all 5 model sizes converge to similar accuracy. Small datasets should therefore use LoRA or QLoRA on strong base models, whereas massive datasets can use full fine-tuning on smaller models. Chung et al. showed steep accuracy gains as fine-tuning task diversity increased from 9 to 282 tasks, with incremental gains continuing up to 1,836 tasks.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. What did Anthropic's repetition study (Hernandez et al., 2022) reveal about duplicate data in language model training?`&lt;/strong>`</summary>
+<summary>**7. What did Anthropic's repetition study (Hernandez et al., 2022) reveal about duplicate data in language model training?**</summary>
 
 Anthropic demonstrated that repeating just 0.1% of the training dataset 100 times caused an 800M-parameter language model's performance to degrade to that of a 400M-parameter model. That duplication wasted half of the model's parameter capacity even though the remaining 90% of the training tokens were completely unique.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. How do Exact Deduplication, MinHash + LSH Fuzzy Deduplication, and Semantic Deduplication differ in what they catch and how they scale?`&lt;/strong>`</summary>
+<summary>**8. How do Exact Deduplication, MinHash + LSH Fuzzy Deduplication, and Semantic Deduplication differ in what they catch and how they scale?**</summary>
 
 - **Exact deduplication:** Hashes normalized text with MD5 or SHA-256 in linear time to remove byte-identical documents or paragraphs, but misses any edit.
 - **MinHash + LSH fuzzy deduplication:** Converts documents into $k$-gram shingle sets and computes minimum hash permutations to estimate Jaccard similarity. It buckets signatures across bands and rows to catch near-duplicates at a 0.8 threshold in sub-quadratic time.
@@ -687,49 +687,49 @@ Anthropic demonstrated that repeating just 0.1% of the training dataset 100 time
 </details>
 
 <details>
-<summary>`&lt;strong>`9. How do you perform automated benchmark decontamination during dataset engineering?`&lt;/strong>`</summary>
+<summary>**9. How do you perform automated benchmark decontamination during dataset engineering?**</summary>
 
 Append all evaluation and test benchmark prompts to the instruction dataset index during the deduplication stage. Run exact hash matching, MinHash $n$-gram overlap, and embedding cosine similarity across the combined pool. Flag the benchmark source metadata so that any collision removes the overlapping sample strictly from the training split. The evaluation benchmark itself remains intact.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. What quantitative impact did stripping HTML and Markdown tags have at Databricks, and what are the nine core cleaning rules in LLMOps Chapter 4?`&lt;/strong>`</summary>
+<summary>**10. What quantitative impact did stripping HTML and Markdown tags have at Databricks, and what are the nine core cleaning rules in LLMOps Chapter 4?**</summary>
 
 Databricks found that stripping extraneous HTML and Markdown tokens improved model accuracy by 20% while reducing input token lengths by 60%. The nine core cleaning rules cover dropping incomplete sentences, redacting PII, deleting violent or harmful content, stripping abnormal symbols, and removing HTML, CSS, and JavaScript clutter. They also include deleting lines with template curly braces, cutting overly short sentences, removing web navigation bars, and filtering unwanted blocklist keywords.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How does NVIDIA NeMo Curator accelerate dataset preparation, and why does it compile data into `.bin` and `.idx` files?`&lt;/strong>`</summary>
+<summary>**11. How does NVIDIA NeMo Curator accelerate dataset preparation, and why does it compile data into `.bin` and `.idx` files?**</summary>
 
 NVIDIA NeMo Curator distributes offline text cleansing, heuristic filtering, GPU-accelerated MinHash LSH deduplication, PII redaction, and tokenization across multi-GPU clusters using RAPIDS cuDF and Dask. It reads sharded JSONL or Parquet via `DocumentDataset` and compiles the output into contiguous memory-mappable `.bin` token files paired with `.idx` byte-offset index files. This offline compilation eliminates online string parsing and small-file metadata bottlenecks that otherwise waste up to 50% of GPU training time.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How do you isolate Python DataLoader overhead from PCIe Host-to-Device copy stalls, and how much speedup comes from cutting I/O wait from 30% to 5%?`&lt;/strong>`</summary>
+<summary>**12. How do you isolate Python DataLoader overhead from PCIe Host-to-Device copy stalls, and how much speedup comes from cutting I/O wait from 30% to 5%?**</summary>
 
 Profile pure Python dataset iteration with `num_workers=0` and GPU compute disabled. Then separately measure `.to("cuda", non_blocking=True)` transfer duration on a dedicated CUDA stream using `torch.cuda.Event` markers or Nsight Systems (`nsys --trace=gds`). Cutting GPU I/O wait time from 30% down to 5% yields a 6.0x proportional improvement in I/O-bound step progression.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How do encoder-only quality classifiers (`fineweb-edu-classifier`) and multi-objective reward models (`ArmoRM-Llama3-8B-v0.1`) complement LLM-as-a-Judge?`&lt;/strong>`</summary>
+<summary>**13. How do encoder-only quality classifiers (`fineweb-edu-classifier`) and multi-objective reward models (`ArmoRM-Llama3-8B-v0.1`) complement LLM-as-a-Judge?**</summary>
 
 The `fineweb-edu-classifier` attaches a classification head onto `Snowflake/snowflake-arctic-embed-m` and trains for 20 epochs on 450,000 Llama-3-70B-scored samples. That lightweight architecture filters millions of documents rapidly at low compute cost. Meanwhile, `ArmoRM-Llama3-8B-v0.1` adds regression and gating layers onto Llama-3-8B to output multi-dimensional scores across helpfulness, correctness, coherence, complexity, and verbosity without generating text tokens.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. How did the Llama 3.1 team synthesize and verify 2.7 million coding examples for supervised fine-tuning?`&lt;/strong>`</summary>
+<summary>**14. How did the Llama 3.1 team synthesize and verify 2.7 million coding examples for supervised fine-tuning?**</summary>
 
 They combined three programmatic verification loops. First, AI problem generation was paired with chain-of-thought code solutions verified by parsers, linters, and AI-generated unit tests. Roughly 20% of initially failing solutions self-corrected from execution feedback. Second, they translated code across programming languages and filtered with unit tests. Third, they generated code explanations and documentation verified via back-translation back into executable code.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What are the three major biases of LLM-as-a-Judge, and how did NVIDIA's Nemotron-4 pipeline eliminate first-position bias?`&lt;/strong>`</summary>
+<summary>**15. What are the three major biases of LLM-as-a-Judge, and how did NVIDIA's Nemotron-4 pipeline eliminate first-position bias?**</summary>
 
 The three biases are position bias favoring the first option, length bias favoring longer verbose outputs, and family bias favoring outputs from the same model family. On Nemotron-4 340B-Instruct, 98% of alignment data was synthesized from Mixtral-8x7B-Instruct-v0.1. NVIDIA queried the judge twice for every pair, once in forward order and once in swapped order. They retained a preference triplet only when both passes selected the identical underlying response.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How do Evol-Instruct (`AutoEvol`), UltraFeedback, and Reverse Instruction differ in how they synthesize fine-tuning data?`&lt;/strong>`</summary>
+<summary>**16. How do Evol-Instruct (`AutoEvol`), UltraFeedback, and Reverse Instruction differ in how they synthesize fine-tuning data?**</summary>
 
 - **Evol-Instruct:** Rewrites existing instructions either in-depth or in-breadth. In-depth evolving adds constraints, deepens specificity, or increases reasoning steps within 10 to 20 added words. In-breadth evolving generates new long-tail instructions.
 - **UltraFeedback:** Samples responses from a diverse pool of models for each instruction. It then uses GPT-4 critiques and scores across truthfulness, honesty, and helpfulness to build preference pairs.
@@ -737,25 +737,25 @@ The three biases are position bias favoring the first option, length bias favori
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What are superficial imitation and model collapse when training on synthetic data, and how do you prevent them?`&lt;/strong>`</summary>
+<summary>**17. What are superficial imitation and model collapse when training on synthetic data, and how do you prevent them?**</summary>
 
 Superficial imitation occurs when a small student model learns to mimic the style and formatting of a stronger teacher's complex answers without having the base knowledge to solve them. That gap increases hallucinations on unseen tasks. Model collapse occurs when models are trained recursively on unverified synthetic generations across multiple iterations, causing rare tail events to vanish. Prevent both by mixing verified synthetic data with real human data, verifying outputs via execution or judges, and strengthening the base model via continual pre-training.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Why must you use Jinja chat templates (`apply_chat_template`) with explicit EOS tokens and `-100` prompt loss masking during SFT?`&lt;/strong>`</summary>
+<summary>**18. Why must you use Jinja chat templates (`apply_chat_template`) with explicit EOS tokens and `-100` prompt loss masking during SFT?**</summary>
 
 Every newline, space, and special header changes BPE tokenization, so manual string formatting introduces subtle bugs. Omitting the terminal EOS token prevents the model from learning when to stop generating, causing infinite rambling at inference. Masking system and user prompt tokens with `labels = -100` ensures cross-entropy loss gradients only train the model to generate assistant responses rather than memorizing user prompts.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. How much token waste does sequence packing eliminate on short SFT samples, and what bug happens if you pack without `cu_seqlens`?`&lt;/strong>`</summary>
+<summary>**19. How much token waste does sequence packing eliminate on short SFT samples, and what bug happens if you pack without `cu_seqlens`?**</summary>
 
 On 12 samples totaling 3,000 real tokens at a 1,024 maximum sequence length, naive padding allocates 12,288 tokens and wastes 9,288 pad tokens (75.59% waste and 24.41% utilization). Sequence packing packs them into 3 bins of 3,072 allocated tokens, reaching 97.66% utilization and a 4.0x batch slot reduction. If packed without resetting `position_ids` and passing cumulative sequence lengths `cu_seqlens` to `flash_attn_varlen_func`, causal attention leaks across document boundaries. Later samples then attend to earlier unrelated samples.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. How do Polling, Change Data Capture (CDC), and Event-Driven Streaming compare for maintaining dynamic LLM datasets?`&lt;/strong>`</summary>
+<summary>**20. How do Polling, Change Data Capture (CDC), and Event-Driven Streaming compare for maintaining dynamic LLM datasets?**</summary>
 
 - **Polling:** Periodically queries snapshots of the entire data source. It is simple to implement, but wastes bandwidth when nothing changes and introduces staleness equal to the polling interval.
 - **Change Data Capture (CDC):** Reads database transaction logs or modification timestamps to re-chunk and re-embed only modified documents, eliminating redundant full scans.

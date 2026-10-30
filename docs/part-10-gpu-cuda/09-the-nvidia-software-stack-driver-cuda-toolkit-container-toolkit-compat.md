@@ -508,7 +508,7 @@ Summary: 30 passed, 0 failed (total 30)
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. Name the seven layers of the NVIDIA GPU software stack from a high-level Python application down to the physical GPU hardware.`&lt;/strong>`</summary>
+<summary>**1. Name the seven layers of the NVIDIA GPU software stack from a high-level Python application down to the physical GPU hardware.**</summary>
 
 1. AI frameworks and compilers such as PyTorch, TorchDynamo, TorchInductor, JAX, and TensorFlow.
 2. Domain and Python CUDA libraries such as cuBLAS, cuDNN, NCCL, CUTLASS, Triton, Warp, cuTile, and cuPyNumeric.
@@ -520,20 +520,20 @@ Summary: 30 passed, 0 failed (total 30)
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What is the difference between `libcudart.so` (CUDA Runtime API) and `libcuda.so.1` (CUDA Driver API / User-Mode Driver), and where does each reside in a containerized setup?`&lt;/strong>`</summary>
+<summary>**2. What is the difference between `libcudart.so` (CUDA Runtime API) and `libcuda.so.1` (CUDA Driver API / User-Mode Driver), and where does each reside in a containerized setup?**</summary>
 
 - `libcudart.so` is the high-level CUDA Runtime library that manages contexts implicitly and lives inside the container image under `/usr/local/cuda-X.Y/lib64/`.
 - `libcuda.so.1` is the low-level CUDA Driver API and User-Mode Driver that talks directly to the kernel driver. It lives on the host OS at `/usr/lib/x86_64-linux-gnu/libcuda.so.1`. The NVIDIA Container Toolkit or CDI bind-mounts it into the container unless overridden by `/usr/local/cuda/compat`.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Why does `import torch` (and even `torch.cuda.is_available() == True`) NOT prove that a container can execute code on a GPU?`&lt;/strong>`</summary>
+<summary>**3. Why does `import torch` (and even `torch.cuda.is_available() == True`) NOT prove that a container can execute code on a GPU?**</summary>
 
 CUDA Runtime initialization is lazy. Importing PyTorch does not touch the GPU, and checking availability only verifies device enumeration via `cudaGetDeviceCount()`. Context creation, memory allocation, and loading native SASS or JIT-compiling PTX wait until the first operation that executes on the device. Examples include allocating a tensor on CUDA or running `cuda-validate`.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Name the four NVIDIA Linux kernel modules (`KMD`) covered in this chapter and state the exact role of each.`&lt;/strong>`</summary>
+<summary>**4. Name the four NVIDIA Linux kernel modules (`KMD`) covered in this chapter and state the exact role of each.**</summary>
 
 1. `nvidia.ko` is the core kernel driver managing PCIe initialization, GPU contexts, VRAM allocation, command submission, interrupts, and Xid logging.
 2. `nvidia-uvm.ko` manages Unified Virtual Memory, handling GPU page faults and migrating memory pages between CPU and GPU.
@@ -542,7 +542,7 @@ CUDA Runtime initialization is lazy. Importing PyTorch does not touch the GPU, a
 </details>
 
 <details>
-<summary>`&lt;strong>`5. Which `/dev/nvidia*` character devices must exist for a standard CUDA and Unified Memory workload to run, and what are their major/minor device numbers?`&lt;/strong>`</summary>
+<summary>**5. Which `/dev/nvidia*` character devices must exist for a standard CUDA and Unified Memory workload to run, and what are their major/minor device numbers?**</summary>
 
 - `/dev/nvidia0` has major 195 and minor 0 for GPU 0, with subsequent GPUs incrementing the minor number.
 - `/dev/nvidiactl` has major 195 and minor 255 as the master control device opened by every CUDA process.
@@ -551,14 +551,14 @@ CUDA Runtime initialization is lazy. Importing PyTorch does not touch the GPU, a
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Contrast `PTX` (`compute_XX`) and `SASS` / `CUBIN` (`sm_XX`) inside a CUDA fatbinary (`fatbin`).`&lt;/strong>`</summary>
+<summary>**6. Contrast `PTX` (`compute_XX`) and `SASS` / `CUBIN` (`sm_XX`) inside a CUDA fatbinary (`fatbin`).**</summary>
 
 - SASS (`code=sm_XX`) is architecture-specific native GPU machine code packaged in a CUBIN by `ptxas`. It runs immediately with zero compilation delay, but it is not forward-compatible with newer GPU generations.
 - PTX (`code=compute_XX`) is a virtual intermediate assembly language. It is forward-compatible because the installed driver can JIT-compile PTX into native SASS for newer GPUs at load time, at the cost of first-load compilation latency and host CPU RAM.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. State the compute capability targets (`sm_XX`) for `V100`, `T4`, `A100`, `A10`/`A40`, `L4`/`L40S`, `H100`/`H200`, and `B200`.`&lt;/strong>`</summary>
+<summary>**7. State the compute capability targets (`sm_XX`) for `V100`, `T4`, `A100`, `A10`/`A40`, `L4`/`L40S`, `H100`/`H200`, and `B200`.**</summary>
 
 | GPU model | Compute capability target |
 |---|---|
@@ -572,7 +572,7 @@ CUDA Runtime initialization is lazy. Importing PyTorch does not touch the GPU, a
 </details>
 
 <details>
-<summary>`&lt;strong>`8. How do you prove with `cuobjdump` that a binary crashed with `cudaErrorNoKernelImageForDevice` on an `H100` (`sm_90`) because of a build-matrix gap rather than a driver bug?`&lt;/strong>`</summary>
+<summary>**8. How do you prove with `cuobjdump` that a binary crashed with `cudaErrorNoKernelImageForDevice` on an `H100` (`sm_90`) because of a build-matrix gap rather than a driver bug?**</summary>
 
 1. Query `nvidia-smi` for the GPU name and compute capability to confirm the H100 reports compute capability 9.0.
 2. Run `cuobjdump --list-elf` on the binary, which shows only older targets such as `sm_80` and `sm_86` and no `sm_90`.
@@ -580,37 +580,37 @@ CUDA Runtime initialization is lazy. Importing PyTorch does not touch the GPU, a
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Why did scaling 10 inference pods on a node upgraded from `T4` (`sm_75`) to `L40S` (`sm_89`) cause a 15-minute startup stall and a `50 GB` host CPU RAM crash?`&lt;/strong>`</summary>
+<summary>**9. Why did scaling 10 inference pods on a node upgraded from `T4` (`sm_75`) to `L40S` (`sm_89`) cause a 15-minute startup stall and a `50 GB` host CPU RAM crash?**</summary>
 
 The container binaries contained native SASS only for Turing plus a PTX fallback. On the Ada Lovelace L40S, the driver rejected the Turing SASS and launched ten concurrent PTX JIT compilations, each taking 15 minutes and consuming 5 GB of host RAM for 50 GB total. Adding Ada target `8.9` to `TORCH_CUDA_ARCH_LIST` eliminates the runtime JIT compilation.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Where does the NVIDIA driver cache JIT-compiled PTX binaries, and why can Kubernetes pods suffer the `2,340.6 ms` cold-start penalty on every pod restart?`&lt;/strong>`</summary>
+<summary>**10. Where does the NVIDIA driver cache JIT-compiled PTX binaries, and why can Kubernetes pods suffer the `2,340.6 ms` cold-start penalty on every pod restart?**</summary>
 
 The driver caches JIT-compiled SASS in `~/.nv/ComputeCache` unless caching is disabled via `CUDA_CACHE_DISABLE=1`. If a Kubernetes pod uses an ephemeral container root filesystem or a read-only home directory, the cache is lost on every pod restart. Every new replica must then re-run PTX JIT compilation on its first live request.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. If a host node's driver is upgraded to `535.154.05`, do data scientists need to rebuild legacy Docker containers that contain `CUDA Toolkit 11.4`? Why or why not?`&lt;/strong>`</summary>
+<summary>**11. If a host node's driver is upgraded to `535.154.05`, do data scientists need to rebuild legacy Docker containers that contain `CUDA Toolkit 11.4`? Why or why not?**</summary>
 
 No. By driver backward compatibility, a newer host driver natively supports API calls from older CUDA Toolkit runtimes inside the container. A conflict only occurs when a container carries a newer CUDA Toolkit than the host driver supports.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How does CUDA Forward Compatibility (`/usr/local/cuda/compat`) allow a newer CUDA Toolkit container to run on an older enterprise host kernel driver?`&lt;/strong>`</summary>
+<summary>**12. How does CUDA Forward Compatibility (`/usr/local/cuda/compat`) allow a newer CUDA Toolkit container to run on an older enterprise host kernel driver?**</summary>
 
 The container packages a newer user-mode driver and JIT compiler inside `/usr/local/cuda/compat/` and prepends that directory to `LD_LIBRARY_PATH`. The dynamic linker loads the compatibility `libcuda.so` before the older host-mounted driver library. That compatibility library bridges the newer CUDA Runtime to the older host kernel module across supported driver branches.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. What causes `NVRM: API mismatch: the client has the version 535.104.05, but this kernel module has the version 525.105.17`, and how do you fix it?`&lt;/strong>`</summary>
+<summary>**13. What causes `NVRM: API mismatch: the client has the version 535.104.05, but this kernel module has the version 525.105.17`, and how do you fix it?**</summary>
 
 User-space tools were upgraded to the newer version, but the older kernel module is still loaded in kernel RAM because a running process held `/dev/nvidia*` open during the upgrade. Fix it by killing processes found via `lsof /dev/nvidia*` and unloading and reloading the kernel modules, or by draining and rebooting the node.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Trace the four generations of NVIDIA container GPU injection from `nvidia-docker` v1 to `CDI`.`&lt;/strong>`</summary>
+<summary>**14. Trace the four generations of NVIDIA container GPU injection from `nvidia-docker` v1 to `CDI`.**</summary>
 
 1. Generation 1 (`nvidia-docker`) was a wrapper CLI around Docker.
 2. Generation 2 (`nvidia-docker2`) introduced a custom container runtime wrapper around `runc`.
@@ -619,19 +619,19 @@ User-space tools were upgraded to the newer version, but the older kernel module
 </details>
 
 <details>
-<summary>`&lt;strong>`15. On a BCM 11 Kubernetes cluster that was set up with the GPU Operator selected, who installs the container toolkit and who installs the driver?`&lt;/strong>`</summary>
+<summary>**15. On a BCM 11 Kubernetes cluster that was set up with the GPU Operator selected, who installs the container toolkit and who installs the driver?**</summary>
 
 By default the GPU Operator manages the toolkit and hooks it in through CDI plugins, while the setup wizard skips installing the BCM container toolkit package. The driver comes from the host unless the operator driver container option is enabled, and on DGX OS images the driver is always host-provisioned. If the operator is older or CDI is disabled, `containerd` runtime-class drop-ins are used for device injection.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Why does `nvidia-smi` run inside a container often show an empty `Processes:` list even when a Python training script inside that container is actively using 40 GB of VRAM?`&lt;/strong>`</summary>
+<summary>**16. Why does `nvidia-smi` run inside a container often show an empty `Processes:` list even when a Python training script inside that container is actively using 40 GB of VRAM?**</summary>
 
 The host kernel driver tracks GPU allocations by host PID, whereas the container runs in an isolated PID namespace where that process is PID 1. Because the host PID directory does not exist inside the container's `/proc` filesystem, `nvidia-smi` inside the container cannot resolve the process entry.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What happens if a base image or CI template accidentally leaves `NVIDIA_VISIBLE_DEVICES=none` or `CUDA_VISIBLE_DEVICES=""` in the container environment?`&lt;/strong>`</summary>
+<summary>**17. What happens if a base image or CI template accidentally leaves `NVIDIA_VISIBLE_DEVICES=none` or `CUDA_VISIBLE_DEVICES=""` in the container environment?**</summary>
 
 - `NVIDIA_VISIBLE_DEVICES=none` instructs the NVIDIA Container Toolkit not to inject any GPUs into the container.
 - `CUDA_VISIBLE_DEVICES=""` masks all GPUs from the CUDA Runtime so device enumeration returns zero devices even if `/dev/nvidia*` nodes are present.
@@ -639,19 +639,19 @@ The host kernel driver tracks GPU allocations by host PID, whereas the container
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Why should large Kubernetes clusters set `driver.usePrecompiled: true` when deploying containerized NVIDIA drivers via the GPU Operator?`&lt;/strong>`</summary>
+<summary>**18. Why should large Kubernetes clusters set `driver.usePrecompiled: true` when deploying containerized NVIDIA drivers via the GPU Operator?**</summary>
 
 Without precompiled drivers enabled, every node's driver pod must match the running kernel headers and compile the kernel module from source using `gcc` on every boot or kernel patch. That compilation fails with `Init:CrashLoopBackOff` whenever kernel headers mismatch, and it causes hundreds of nodes to saturate CPU and network compiling drivers simultaneously.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. During an automated driver upgrade, why does `rmmod nvidia` fail with `Error: Module nvidia is in use`, and what command reveals the culprit?`&lt;/strong>`</summary>
+<summary>**19. During an automated driver upgrade, why does `rmmod nvidia` fail with `Error: Module nvidia is in use`, and what command reveals the culprit?**</summary>
 
 Either dependent kernel modules (`nvidia_uvm`, `nvidia_drm`, `nvidia_modeset`, `nvidia_peermem`) are still loaded, or a user-space process still holds an open file descriptor to `/dev/nvidia*`. Run `lsof /dev/nvidia*` to find and terminate the process, then unload dependent modules before unloading `nvidia`.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Contrast the three GPU sharing strategies—`Time-Slicing`, `MPS` (Multi-Process Service), and `MIG` (Multi-Instance GPU)—in terms of compute concurrency, memory isolation, and fault isolation.`&lt;/strong>`</summary>
+<summary>**20. Contrast the three GPU sharing strategies—`Time-Slicing`, `MPS` (Multi-Process Service), and `MIG` (Multi-Instance GPU)—in terms of compute concurrency, memory isolation, and fault isolation.**</summary>
 
 - Time-Slicing switches contexts temporally across pods and works on all GPUs, but provides no memory isolation and no fault isolation.
 - MPS funnels multiple processes into a shared GPU context for spatial SM concurrency, but provides no hardware fault isolation if one client triggers a fatal GPU fault.

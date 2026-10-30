@@ -676,7 +676,7 @@ Exercise Function Names and Numeric Parameters Reference (code/part12/optics_cab
 
 ## Checkpoint questions (20)
 
-<details><summary>`&lt;strong>`1. How did per-GPU scale-up NVLink bandwidth progress across Volta, Ampere, Hopper, and Blackwell, and how is a DGX GB300 NVL72 rack cabled internally and externally?`&lt;/strong>`</summary>
+<details><summary>**1. How did per-GPU scale-up NVLink bandwidth progress across Volta, Ampere, Hopper, and Blackwell, and how is a DGX GB300 NVL72 rack cabled internally and externally?**</summary>
 
 Per-GPU NVLink bandwidth doubled across generations from Volta through Blackwell. Inside a DGX GB300 NVL72 rack, eighteen compute trays and nine switch trays unite all GPUs over blind-mate NVLink 5 cartridges. On the cold aisle, each tray's front panel exposes four ConnectX-8 ports and one BlueField-3 adapter.
 
@@ -689,7 +689,7 @@ NVLink Progression and DGX GB300 NVL72 Cabling Summary:
 ```
 </details>
 
-<details><summary>`&lt;strong>`2. According to the Dell'Oro market adoption studies, how do AI cluster optical port speeds shift from 100G to 3.2T between 2020 and 2029?`&lt;/strong>`</summary>
+<details><summary>**2. According to the Dell'Oro market adoption studies, how do AI cluster optical port speeds shift from 100G to 3.2T between 2020 and 2029?**</summary>
 
 Port shipments shifted from 100 Gbps majority share in 2020 to 400 Gbps in 2023 and 2024. They then move to 800 Gbps dominance in 2025, 1.6 Tbps crossover in 2026 and 2027, and a combined 1.6 Tbps plus 3.2 Tbps majority by 2029.
 
@@ -703,7 +703,7 @@ Dell'Oro Optical Transceiver Market Share Milestones (ADC Ch. 4 Figs 4-2 & 4-2.1
 ```
 </details>
 
-<details><summary>`&lt;strong>`3. State the per-lane raw bit rate, line coding method, and 4x / 12x effective communication bandwidths for SDR, DDR, QDR, FDR, EDR, HDR, NDR, XDR, and GDR.`&lt;/strong>`</summary>
+<details><summary>**3. State the per-lane raw bit rate, line coding method, and 4x / 12x effective communication bandwidths for SDR, DDR, QDR, FDR, EDR, HDR, NDR, XDR, and GDR.**</summary>
 
 Each InfiniBand generation increases per-lane baud rate or modulation efficiency while upgrading line coding from 8b/10b to 64b/66b and 256b/257b.
 
@@ -722,7 +722,7 @@ InfiniBand Generation Rates and Effective Bandwidths (Supercomputers Ch. 5 Table
 ```
 </details>
 
-<details><summary>`&lt;strong>`4. In `iblinkinfo`, Port 3 displays `4X 400 Gbps Active/LinkUp` while Port 4 displays `2X 400 Gbps Active/LinkUp`. Why do they deliver different throughput despite identical 400 Gbps rate strings, and what is the exact penalty on a 2 MiB RDMA write when a port down-negotiates to 200 Gbps?`&lt;/strong>`</summary>
+<details><summary>**4. In `iblinkinfo`, Port 3 displays `4X 400 Gbps Active/LinkUp` while Port 4 displays `2X 400 Gbps Active/LinkUp`. Why do they deliver different throughput despite identical 400 Gbps rate strings, and what is the exact penalty on a 2 MiB RDMA write when a port down-negotiates to 200 Gbps?**</summary>
 
 The rate string reports the speed capability for a full four-lane link, whereas effective bandwidth scales with the ratio of active lanes to designed lanes. Port 4 at two-lane width has lost half of its physical lanes and delivers half capacity. That loss doubles the serialization time of a two-megabyte RDMA write.
 
@@ -733,7 +733,7 @@ Width Collapse and Rate Down-Negotiation Math (V8 Ch. 8):
 ```
 </details>
 
-<details><summary>`&lt;strong>`5. How can a host PCIe slot cap a 400 Gbps NDR or 800 Gbps XDR link upgrade even when `ibstat` and `iblinkinfo` report full 4X rate and width?`&lt;/strong>`</summary>
+<details><summary>**5. How can a host PCIe slot cap a 400 Gbps NDR or 800 Gbps XDR link upgrade even when `ibstat` and `iblinkinfo` report full 4X rate and width?**</summary>
 
 End-to-end throughput cannot exceed the narrowest segment between host memory and the fabric wire. Seating an NDR adapter in a PCIe Gen4 x8 slot clamps host injection below wire rate. Sustaining 400 Gbps requires PCIe Gen5 x16, and sustaining a single-port XDR adapter requires PCIe Gen6 x16 or dual Gen5 x16 interfaces.
 
@@ -745,7 +745,7 @@ Host PCIe Slot Ceilings vs Fabric Link Rates:
 ```
 </details>
 
-<details><summary>`&lt;strong>`6. Trace the packet path between an external cable and a switch PFE ASIC, and state the SerDes demultiplexing ratios for 400 Gbps, 800 Gbps, and 1.6 Tbps optics.`&lt;/strong>`</summary>
+<details><summary>**6. Trace the packet path between an external cable and a switch PFE ASIC, and state the SerDes demultiplexing ratios for 400 Gbps, 800 Gbps, and 1.6 Tbps optics.**</summary>
 
 On ingress, optical or electrical lanes enter the transceiver Demultiplexer. They then pass through the Digital Signal Processor for demodulation, equalization, and FEC decoding before crossing into the PFE ASIC SerDes. Egress reverses that sequence from the PFE ASIC SerDes through the DSP and Multiplexer out to the cable.
 
@@ -757,7 +757,7 @@ PFE ASIC SerDes Demultiplexing Mappings (ADC Ch. 4 Figs 4-3 to 4-5):
 ```
 </details>
 
-<details><summary>`&lt;strong>`7. Compare NRZ, PAM4, and PAM8 modulation, and explain why PAM4 requires FEC, CDR, and FFE/DFE inside the DSP.`&lt;/strong>`</summary>
+<details><summary>**7. Compare NRZ, PAM4, and PAM8 modulation, and explain why PAM4 requires FEC, CDR, and FFE/DFE inside the DSP.**</summary>
 
 PAM4 doubles the bits per symbol over NRZ by encoding four amplitude levels instead of two. PAM8 encodes three bits per symbol across eight levels. Because PAM4 stacks three vertical eye openings into the same voltage swing, each eye is one-third the height of NRZ. The DSP must therefore apply FFE and DFE equalization to open the eye, CDR to sample the symbol center, and FEC to correct bit errors.
 
@@ -770,7 +770,7 @@ Modulation Levels, Eye Openings, and SNR Penalties (ADC Ch. 4):
 ```
 </details>
 
-<details><summary>`&lt;strong>`8. Compare Multi-Mode Fiber and Single-Mode Fiber in terms of core diameter, wavelength, light source, dispersion, and maximum reach.`&lt;/strong>`</summary>
+<details><summary>**8. Compare Multi-Mode Fiber and Single-Mode Fiber in terms of core diameter, wavelength, light source, dispersion, and maximum reach.**</summary>
 
 Multi-Mode Fiber uses a wide glass core driven by low-cost VCSELs or LEDs. Modal dispersion restricts its high-speed reach to short intra-hall runs. Single-Mode Fiber uses a narrow core driven by a solid-state laser. Eliminating modal dispersion allows single-mode links to span from five hundred meters up to long-haul metro distances.
 
@@ -782,7 +782,7 @@ MMF (OM1-OM5) vs SMF Specifications (ADC Ch. 4):
 ```
 </details>
 
-<details><summary>`&lt;strong>`9. State the full name, maximum reach, and fiber or media mode for each of the seven transceiver types: VR, SR, DR, FR, LR, ZR, and CR.`&lt;/strong>`</summary>
+<details><summary>**9. State the full name, maximum reach, and fiber or media mode for each of the seven transceiver types: VR, SR, DR, FR, LR, ZR, and CR.**</summary>
 
 The seven IEEE and industry reach classes map directly to copper, multi-mode fiber, parallel single-mode fiber, WDM single-mode fiber, and coherent DWDM links.
 
@@ -798,12 +798,12 @@ Transceiver Reach Class Reference (ADC Ch. 4 Table 4-1):
 ```
 </details>
 
-<details><summary>`&lt;strong>`10. How do DGX A100 and DGX H100 servers connect to leaf switches in a Rail-Optimized Design, and how does ToR versus MoR/EoR placement change cable lengths?`&lt;/strong>`</summary>
+<details><summary>**10. How do DGX A100 and DGX H100 servers connect to leaf switches in a Rail-Optimized Design, and how does ToR versus MoR/EoR placement change cable lengths?**</summary>
 
 A DGX A100 uses eight scale-out ports connected to eight rail leaf switches. A DGX H100 uses four OSFP cages that either connect directly to four 800 Gbps switches or break out into eight 400 Gbps rail leaf switches. Top-of-Rack switch placement requires varying cable lengths across racks. Middle-of-Row or End-of-Row placement centralizes network switches so all eight rail cables from a compute rack share similar lengths.
 </details>
 
-<details><summary>`&lt;strong>`11. Contrast LC and MPO connectors, including the exact active and dark fiber assignments for QSFP-DD-DR4 and QSFP-DD-SR8.`&lt;/strong>`</summary>
+<details><summary>**11. Contrast LC and MPO connectors, including the exact active and dark fiber assignments for QSFP-DD-DR4 and QSFP-DD-SR8.**</summary>
 
 Lucent Connectors use two duplex fibers for WDM single-mode FR4 and LR4 transceivers. Multi-fiber Push On connectors carry parallel fiber arrays for DR4, SR8, and breakout harnesses.
 
@@ -816,7 +816,7 @@ LC vs MPO Fiber Assignments (ADC Ch. 4):
 ```
 </details>
 
-<details><summary>`&lt;strong>`12. Compare Passive DAC, Active DAC, AEC, and AOC cable assemblies.`&lt;/strong>`</summary>
+<details><summary>**12. Compare Passive DAC, Active DAC, AEC, and AOC cable assemblies.**</summary>
 
 Passive DAC uses unpowered copper twinax for short in-rack runs, and Active DAC adds simple amplifiers. Active Electrical Cables integrate full retimer chips for thinner copper runs, while Active Optical Cables bond fiber permanently to optical transceivers.
 
@@ -829,7 +829,7 @@ Cable Assembly Comparison:
 ```
 </details>
 
-<details><summary>`&lt;strong>`13. What is the NVIDIA SuperPOD 90 percent cable length rule, what are the maximum allowed routed lengths for 3 m DAC, 5 m DAC, 30 m AOC, and 50 m AOC, and why are patch panels prohibited on InfiniBand fabrics?`&lt;/strong>`</summary>
+<details><summary>**13. What is the NVIDIA SuperPOD 90 percent cable length rule, what are the maximum allowed routed lengths for 3 m DAC, 5 m DAC, 30 m AOC, and 50 m AOC, and why are patch panels prohibited on InfiniBand fabrics?**</summary>
 
 All planned InfiniBand cable runs including vertical routing and bend-radius slack must remain under 90 percent of the maximum specification for that media type. Patch panels are prohibited because connector insertion loss and reflections degrade high-baud-rate PAM4 eye margins.
 
@@ -842,7 +842,7 @@ SuperPOD < 90% Derated Cable Limits (superpod-b200-dc pp. 20-23):
 ```
 </details>
 
-<details><summary>`&lt;strong>`14. Compare QSFP28, QSFP56, QSFP-DD, OSFP, and CFP8 form factors, and explain the four QSFP-DD mechanical types.`&lt;/strong>`</summary>
+<details><summary>**14. Compare QSFP28, QSFP56, QSFP-DD, OSFP, and CFP8 form factors, and explain the four QSFP-DD mechanical types.**</summary>
 
 QSFP28 and QSFP56 provide four lanes for 100 Gbps and 200 Gbps. QSFP-DD and OSFP provide eight lanes for 400 Gbps, 800 Gbps, and 1.6 Tbps at thirty-six ports per rack unit.
 
@@ -859,7 +859,7 @@ Form Factor & QSFP-DD Mechanical Types (ADC Ch. 4 Tables 4-2 & 4-3):
 ```
 </details>
 
-<details><summary>`&lt;strong>`15. What share of a pluggable transceiver's BOM cost and power does the DSP represent, and how do LRO, LPO, and CPO compare on a 64-port 800 Gbps switch?`&lt;/strong>`</summary>
+<details><summary>**15. What share of a pluggable transceiver's BOM cost and power does the DSP represent, and how do LRO, LPO, and CPO compare on a 64-port 800 Gbps switch?**</summary>
 
 The onboard DSP accounts for 20 to 40 percent of a pluggable transceiver's BOM cost and roughly half of its power draw. Removing the receive DSP in LRO saves a quarter of the power, and removing both DSPs in LPO saves half of the power. Integrating optics onto the switch ASIC substrate in CPO saves nearly seventy percent.
 
@@ -872,7 +872,7 @@ The onboard DSP accounts for 20 to 40 percent of a pluggable transceiver's BOM c
 ```
 </details>
 
-<details><summary>`&lt;strong>`16. How do you use `mlxlink -d <dev> -c` and `mlxlink -d <dev> -m` to diagnose a degraded optical transceiver?`&lt;/strong>`</summary>
+<details><summary>**16. How do you use `mlxlink -d <dev> -c` and `mlxlink -d <dev> -m` to diagnose a degraded optical transceiver?**</summary>
 
 Use `mlxlink -c` to inspect `Effective Physical BER`, `Raw Physical Errors Per Lane`, and link down or error recovery counters. Use `mlxlink -m` to read per-lane optical receive power, laser bias current, module temperature, supply voltage, and CDR lock state.
 
@@ -884,7 +884,7 @@ Healthy mlxlink Baseline vs Degraded Thresholds (Supercomputers Ch. 5):
 ```
 </details>
 
-<details><summary>`&lt;strong>`17. What is the maximum number of end ports and switches supported in a single InfiniBand subnet, and how does `ibstatus` report a 4x FDR link?`&lt;/strong>`</summary>
+<details><summary>**17. What is the maximum number of end ports and switches supported in a single InfiniBand subnet, and how does `ibstatus` report a 4x FDR link?**</summary>
 
 A single InfiniBand subnet supports up to 49,151 end ports and switches within the unicast LID range. A four-lane FDR port reports `Rate: 56` in `ibstat` and `rate: 56 Gb/sec (4X FDR)` in `ibstatus` even though 64b/66b coding yields 54.4 Gbps of effective data throughput.
 
@@ -895,7 +895,7 @@ Subnet Limit and FDR Rate Reporting (Supercomputers Ch. 5):
 ```
 </details>
 
-<details><summary>`&lt;strong>`18. How do the DGX B200 and DGX GB300 SuperPODs scale in switch and cable counts?`&lt;/strong>`</summary>
+<details><summary>**18. How do the DGX B200 and DGX GB300 SuperPODs scale in switch and cable counts?**</summary>
 
 The DGX B200 SuperPOD scales from one to four Scalable Units using NDR switches and cables. The DGX GB300 SuperPOD scales from two to sixteen Scalable Units using Quantum-X800 switches.
 
@@ -909,7 +909,7 @@ SuperPOD Switch and Cable Scaling (superpod-b200-dc p. 19, superpod-gb300-ra pp.
 ```
 </details>
 
-<details><summary>`&lt;strong>`19. Using the 512-GPU nonblocking fabric sizing rule, what is the minimum leaf switch radix required for a 1:1 nonblocking leaf?`&lt;/strong>`</summary>
+<details><summary>**19. Using the 512-GPU nonblocking fabric sizing rule, what is the minimum leaf switch radix required for a 1:1 nonblocking leaf?**</summary>
 
 When sixteen downlink ports per leaf inject four hundred gigabits per second each, a nonblocking leaf requires sixteen matching uplink ports. That balance yields a minimum leaf switch radix of thirty-two ports.
 
@@ -920,7 +920,7 @@ Nonblocking Leaf Radix Math (V8 Ch. 12):
 ```
 </details>
 
-<details><summary>`&lt;strong>`20. Outline the 10-step production upgrade plan for migrating an AI cluster from HDR to NDR or XDR.`&lt;/strong>`</summary>
+<details><summary>**20. Outline the 10-step production upgrade plan for migrating an AI cluster from HDR to NDR or XDR.**</summary>
 
 A production link upgrade proceeds through ten gated steps. First, baseline application and microbenchmark metrics, verify compatibility matrices, model host and topology bottlenecks, and stage a pilot path. Next, verify negotiated rate, width, and BER counters, run NUMA-pinned host and GPU RDMA benchmarks, and test concurrent collectives. Finally, validate failure and rollback paths, update the expected-state inventory and alerts, and expand in controlled phases.
 </details>

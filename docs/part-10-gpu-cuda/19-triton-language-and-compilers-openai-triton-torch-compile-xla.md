@@ -554,7 +554,7 @@ Summary: 25 passed, 0 failed (total 25)
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. What are the four stages of the `torch.compile` pipeline, and what is each stage's responsibility?`&lt;/strong>`</summary>
+<summary>**1. What are the four stages of the `torch.compile` pipeline, and what is each stage's responsibility?**</summary>
 
 1. TorchDynamo intercepts Python bytecode via CPython's PEP 523 Frame Evaluation API to capture tensor operations into an FX Graph and insert runtime guards.
 2. AOTAutograd traces both forward and backward passes ahead of time into a single joint forward-and-backward FX Graph for cross-pass fusion and buffer reuse.
@@ -563,7 +563,7 @@ Summary: 25 passed, 0 failed (total 25)
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What are the four compiler stances supported by `torch.compiler.set_stance()`, and when should you use `"fail_on_recompile"`?`&lt;/strong>`</summary>
+<summary>**2. What are the four compiler stances supported by `torch.compiler.set_stance()`, and when should you use `"fail_on_recompile"`?**</summary>
 
 - The default stance compiles what it can and falls back to eager mode on unsupported operations.
 - The `"fail_on_recompile"` stance raises an exception whenever a graph break or recompilation occurs, making it ideal in development and continuous integration to prevent accidental graph breaks from merging.
@@ -572,19 +572,19 @@ Summary: 25 passed, 0 failed (total 25)
 </details>
 
 <details>
-<summary>`&lt;strong>`3. How does PrimTorch IR handle an in-place mutation like `x.add_(y)`, and why is this critical for TorchInductor?`&lt;/strong>`</summary>
+<summary>**3. How does PrimTorch IR handle an in-place mutation like `x.add_(y)`, and why is this critical for TorchInductor?**</summary>
 
 PrimTorch IR functionalizes in-place mutations into a pure out-of-place addition node followed by an explicit storage copy node at the graph boundary. Eliminating hidden in-place mutations and aliasing allows TorchInductor's fusion and memory-planning passes to reorder and fuse operations safely across a functional dataflow graph.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Does TorchInductor invoke `nvcc` when compiling generated Triton kernels for NVIDIA GPUs?`&lt;/strong>`</summary>
+<summary>**4. Does TorchInductor invoke `nvcc` when compiling generated Triton kernels for NVIDIA GPUs?**</summary>
 
 No. TorchInductor lowers its loop-level IR into OpenAI Triton code, and the Triton JIT compiler lowers that code through LLVM NVPTX directly into NVIDIA PTX without invoking nvcc. The NVIDIA driver then compiles the PTX assembly into device SASS binary code.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. How do `torch.compile` modes `"default"`, `"reduce-overhead"`, `"max-autotune"`, `"max-autotune-no-cudagraphs"`, and AOTInductor differ?`&lt;/strong>`</summary>
+<summary>**5. How do `torch.compile` modes `"default"`, `"reduce-overhead"`, `"max-autotune"`, `"max-autotune-no-cudagraphs"`, and AOTInductor differ?**</summary>
 
 - The default mode provides fast compilation with standard fusion heuristics.
 - The reduce-overhead mode wraps static-shape compiled regions in CUDA Graphs to eliminate launch overhead.
@@ -594,31 +594,31 @@ No. TorchInductor lowers its loop-level IR into OpenAI Triton code, and the Trit
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Does `torch.compile` automatically replace PyTorch layers with NVIDIA Transformer Engine kernels, and what performance does PyTorch FlexAttention reach?`&lt;/strong>`</summary>
+<summary>**6. Does `torch.compile` automatically replace PyTorch layers with NVIDIA Transformer Engine kernels, and what performance does PyTorch FlexAttention reach?**</summary>
 
 No. Calling the PyTorch compiler does not automatically substitute NVIDIA Transformer Engine kernels into a plain PyTorch model. You must instantiate `transformer_engine.pytorch.layers` explicitly, and the compiler will fuse operations around them. Meanwhile, PyTorch's FlexAttention compiles custom Python attention masks into fused Triton kernels that reach roughly eighty-five to ninety percent of modern FlashAttention performance in both forward and backward passes.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How does `torch.compile` handle dynamic shapes with SymPy, why should you prefer `torch._dynamo.mark_dynamic` over `dynamic=True`, and what is the padding rule of thumb?`&lt;/strong>`</summary>
+<summary>**7. How does `torch.compile` handle dynamic shapes with SymPy, why should you prefer `torch._dynamo.mark_dynamic` over `dynamic=True`, and what is the padding rule of thumb?**</summary>
 
 TorchInductor represents varying dimensions symbolically using SymPy and emits range guards that generalize across sequence lengths. Passing `dynamic=True` forces all dimensions symbolic and disables CUDA Graphs, whereas `mark_dynamic` localizes dynamism to specific axes. When sequence lengths vary by only ten to twenty percent, padding to fixed bucket sizes with static shapes and CUDA Graphs generally outperforms dynamic shapes.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What does `torch._dynamo.explain(toy_example)` output for `print("woo")` and `if b.sum() < 0: b = -b`, and how do `torch.where` and `torch.cond` fix it?`&lt;/strong>`</summary>
+<summary>**8. What does `torch._dynamo.explain(toy_example)` output for `print("woo")` and `if b.sum() < 0: b = -b`, and how do `torch.where` and `torch.cond` fix it?**</summary>
 
 Calling `dynamo.explain` on `toy_example` reports three subgraphs, two graph breaks, and five operations, citing the builtin print call and a data-dependent jump on a tensor variable. Guarding print statements with `torch._dynamo.is_compiling` and replacing the Python conditional with either `torch.where` or `torch.cond` reduces the function to one continuous graph with zero breaks.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Why are graph breaks expected and desirable at communication boundaries when using `torch.compile` with DDP and FSDP (`use_original_params=True`)?`&lt;/strong>`</summary>
+<summary>**9. Why are graph breaks expected and desirable at communication boundaries when using `torch.compile` with DDP and FSDP (`use_original_params=True`)?**</summary>
 
 DDP and FSDP configured with `use_original_params=True` per Transformer block intentionally insert graph breaks at collective communication boundaries. These intentional splits allow the runtime to launch asynchronous NCCL collectives between compiled subgraphs, overlapping communication of one bucket or shard with computation of the next.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Which `TORCH_LOGS` flags and environment variables inspect missed CUDA Graphs, generated Triton code, compilation trace trees, and post-AOT numerical bugs?`&lt;/strong>`</summary>
+<summary>**10. Which `TORCH_LOGS` flags and environment variables inspect missed CUDA Graphs, generated Triton code, compilation trace trees, and post-AOT numerical bugs?**</summary>
 
 - Setting `TORCH_LOGS="perf_hints"` logs missed optimizations such as why CUDA Graphs were skipped.
 - Setting `TORCH_LOGS="output_code"` and `TORCH_COMPILE_DEBUG=1` prints and dumps generated FX, Python wrapper, Triton, and PTX code.
@@ -627,62 +627,62 @@ DDP and FSDP configured with `use_original_params=True` per Transformer block in
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How do you enforce bitwise-deterministic cuBLAS matrix multiplications and eager-identical random numbers under `torch.compile`?`&lt;/strong>`</summary>
+<summary>**11. How do you enforce bitwise-deterministic cuBLAS matrix multiplications and eager-identical random numbers under `torch.compile`?**</summary>
 
 Export `CUBLAS_WORKSPACE_CONFIG=:4096:8` or `:16:8` before launching Python and call `torch.use_deterministic_algorithms(True)` so cuBLAS avoids non-deterministic split-K reductions. Set `fallback_random=True` in the Inductor configuration when fused kernels must match eager-mode random number sequences exactly.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How does OpenAI Triton's SPMD programming model differ from CUDA's SIMT model, and what is the relationship between `BLOCK_SIZE` and `num_warps`?`&lt;/strong>`</summary>
+<summary>**12. How does OpenAI Triton's SPMD programming model differ from CUDA's SIMT model, and what is the relationship between `BLOCK_SIZE` and `num_warps`?**</summary>
 
 CUDA SIMT programs individual scalar threads via `threadIdx.x`, whereas Triton SPMD programs an entire thread block operating on blocked vectors via `tl.arange`. Here `BLOCK_SIZE` defines how many data elements one program instance processes, while `num_warps` multiplied by thirty-two defines how many CUDA threads execute that block. You should scale `num_warps` from four up to eight or sixteen as the block size grows to two thousand forty-eight or four thousand ninety-six.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How do you register a custom `@triton.jit` kernel so `torch.compile` can fuse and inline it without causing a graph break?`&lt;/strong>`</summary>
+<summary>**13. How do you register a custom `@triton.jit` kernel so `torch.compile` can fuse and inline it without causing a graph break?**</summary>
 
 Decorate a Python wrapper function with `@torch.library.triton_op` and launch the kernel inside using `wrap_triton`. For training workloads, register a backward pass via `register_autograd` so AOTAutograd can trace through the custom operator.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. How does `@triton.autotune` work, and why must you warm it up with representative production shapes?`&lt;/strong>`</summary>
+<summary>**14. How does `@triton.autotune` work, and why must you warm it up with representative production shapes?**</summary>
 
 The `@triton.autotune` decorator benchmarks all candidate `triton.Config` objects on the first call for each unique shape key signature and caches the fastest configuration. If you warm it up on tiny toy shapes, Triton caches tile and warp choices suited only for tiny matrices. Warming up on representative production shapes populates the cache for real traffic before live requests arrive.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What are the two ways to enable warp specialization in OpenAI Triton?`&lt;/strong>`</summary>
+<summary>**15. What are the two ways to enable warp specialization in OpenAI Triton?**</summary>
 
 1. In loop code, pass `warp_specialize=True` with multiple stages to `tl.range`.
 2. In autotune configurations, set `num_consumer_groups=2` and `num_buffers_warp_spec=3` inside `triton.Config`.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How does Triton allocate and stage tiles in Shared Memory and TMEM on Blackwell, and what two layout rules must `tl.make_tensor_descriptor` satisfy?`&lt;/strong>`</summary>
+<summary>**16. How does Triton allocate and stage tiles in Shared Memory and TMEM on Blackwell, and what two layout rules must `tl.make_tensor_descriptor` satisfy?**</summary>
 
 Triton does not expose a manual shared-memory allocator. Instead, `tl.make_tensor_descriptor` combined with pipelined `tl.range` lowers loads and stores to hardware TMA bulk tensor copies into Shared Memory, while `tl.dot` lowers to Blackwell UMMA accumulating in Tensor Memory. Descriptor rules require leading strides to be multiples of sixteen bytes and the innermost dimension to be contiguous.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. Why must a pipelined Triton loop (`num_stages > 1`) follow the `prefetch-next -> compute-current -> swap` pattern?`&lt;/strong>`</summary>
+<summary>**17. Why must a pipelined Triton loop (`num_stages > 1`) follow the `prefetch-next -> compute-current -> swap` pattern?**</summary>
 
 If you overwrite or drop the reference to the current tile variables before `tl.dot` consumes them, the compiler is free to reorder, sink, or hoist the next iteration's asynchronous copies past current compute uses. Keeping the current and next tile variables separate until after `tl.dot` preserves true load-compute overlap.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. How does `matmul_kernel_persistent` structure its grid and loop differently from `tiled_gemm_kernel`, and when does it win?`&lt;/strong>`</summary>
+<summary>**18. How does `matmul_kernel_persistent` structure its grid and loop differently from `tiled_gemm_kernel`, and when does it win?**</summary>
 
 Standard `tiled_gemm_kernel` launches a two-dimensional grid where each thread block computes one output tile and exits. By contrast, `matmul_kernel_persistent` launches a bounded one-dimensional grid capped at sixty-five thousand five hundred thirty-six programs where each persistent thread block steps across multiple output tiles. This persistent structure reuses on-chip state and outperforms standard launches especially when the inner reduction dimension exceeds one thousand twenty-four.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What is the Triton Proton profiler, and what did its benchmark report across `cublas`, `torch`, `matmul_kernel`, and `matmul_kernel_persistent`?`&lt;/strong>`</summary>
+<summary>**19. What is the Triton Proton profiler, and what did its benchmark report across `cublas`, `torch`, `matmul_kernel`, and `matmul_kernel_persistent`?**</summary>
 
 Proton instruments Triton code with NVTX ranges and hierarchical timing tables via `proton.start` and `proton.scope`. On the `[M=8192, N=8192, K=512]` benchmark, `matmul_kernel_persistent` achieved the fastest runtime and highest throughput score, beating standard tiled Triton, PyTorch matmul, and cuBLAS by roughly nine percent.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Which hardware platforms use the PyTorch XLA (`backend="openxla"`) compiler, and why does XLA require static shape bucketing for inference?`&lt;/strong>`</summary>
+<summary>**20. Which hardware platforms use the PyTorch XLA (`backend="openxla"`) compiler, and why does XLA require static shape bucketing for inference?**</summary>
 
 PyTorch XLA targets Google Cloud TPUs, Meta MTIA, and AWS Trainium and Inferentia via the AWS Neuron SDK. Unlike TorchInductor's symbolic SymPy shapes, XLA compiles whole static program graphs ahead of time and triggers an expensive whole-graph recompilation whenever a new input shape signature arrives. Fixed-size input bucketing and padding ensure that live inference requests always hit pre-compiled static graphs.
 </details>

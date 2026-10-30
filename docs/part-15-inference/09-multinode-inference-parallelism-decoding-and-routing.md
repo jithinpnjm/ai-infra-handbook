@@ -638,25 +638,25 @@ Summary: 25 passed, 0 failed
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`Why does Tensor Parallelism require two synchronous AllReduce operations per Transformer layer, and how many AllReduces per second does an eighty-layer model execute?`&lt;/strong>`</summary>
+<summary>**Why does Tensor Parallelism require two synchronous AllReduce operations per Transformer layer, and how many AllReduces per second does an eighty-layer model execute?**</summary>
 
 Each Transformer block contains two Row-Parallel linear layers: the attention output projection and the MLP down projection. Each Row-Parallel layer produces partial sums across ranks that must be summed via an AllReduce before the residual connection and layer norm. Across eighty layers, generating one token requires 160 AllReduces. At fifty tokens per second, that equals 8,000 AllReduce collectives every second.
 </details>
 
 <details>
-<summary>`&lt;strong>`How many sequential ring transfer steps does a single AllReduce execute across N GPUs, and what happens to Inter-Token Latency if Tensor Parallelism crosses nodes over Ethernet?`&lt;/strong>`</summary>
+<summary>**How many sequential ring transfer steps does a single AllReduce execute across N GPUs, and what happens to Inter-Token Latency if Tensor Parallelism crosses nodes over Ethernet?**</summary>
 
 A ring AllReduce executes twice *N* minus one sequential steps, split evenly between ReduceScatter and AllGather. That equals 14 steps per collective across eight GPUs, or 2,240 steps per token, and 30 steps per collective across sixteen GPUs, or 4,800 steps per token. Over PCIe or Ethernet, 160 synchronous AllReduces add 50 to 200 milliseconds of communication stall per token or trigger a 30-second NCCL watchdog timeout.
 </details>
 
 <details>
-<summary>`&lt;strong>`How does combining intra-node Tensor Parallelism with inter-node Pipeline Parallelism reduce the activation byte volume transferred across the inter-node network?`&lt;/strong>`</summary>
+<summary>**How does combining intra-node Tensor Parallelism with inter-node Pipeline Parallelism reduce the activation byte volume transferred across the inter-node network?**</summary>
 
 Pipeline Parallelism communicates only once at each stage boundary across *P* minus one point-to-point hops per pass. When each node runs Tensor Parallelism internally, each GPU sends only its local activation shard of size `batch_size * seq_len * (hidden_size / TP)` to its same-rail peer on the next stage. For a hidden dimension of 8,192 and four-way Tensor Parallelism, each GPU sends 2,048 elements, or 4,096 bytes in BF16, per token.
 </details>
 
 <details>
-<summary>`&lt;strong>`What is the difference between H100 PCIe, H100 NVL, H100 SXM, and H200 SXM for multi-GPU inference?`&lt;/strong>`</summary>
+<summary>**What is the difference between H100 PCIe, H100 NVL, H100 SXM, and H200 SXM for multi-GPU inference?**</summary>
 
 - **H100 PCIe:** Provides 128 GB/s PCIe bandwidth without NVSwitch; suitable only for single-GPU Data Parallelism or Pipeline Parallelism.
 - **H100 NVL:** Provides 94 GB HBM3 at 3.9 TB/s with a 600 GB/s two-GPU NVLink bridge; supports two-way Tensor Parallelism within a pair, while four GPUs still cross PCIe between pairs.
@@ -665,55 +665,55 @@ Pipeline Parallelism communicates only once at each stage boundary across *P* mi
 </details>
 
 <details>
-<summary>`&lt;strong>`When should you enable Context Parallelism (Sequence / Helix Parallelism) during inference, and which latency metric does it improve?`&lt;/strong>`</summary>
+<summary>**When should you enable Context Parallelism (Sequence / Helix Parallelism) during inference, and which latency metric does it improve?**</summary>
 
 Enable Context Parallelism for ultra-long prompts of one hundred thousand to one million tokens that exceed single-GPU KV cache capacity or prefill latency budgets. It partitions the input sequence and KV cache across GPUs using ring or blocked attention. That cuts **Time to First Token** roughly in half per GPU doubling, achieving up to an 81 percent reduction in Time to First Token and 3.31x prefill throughput on million-token contexts.
 </details>
 
 <details>
-<summary>`&lt;strong>`How many total and active parameters does DeepSeek-R1 have, and how does vLLM compute the Expert Parallel size and experts per GPU when `--enable-expert-parallel` is set?`&lt;/strong>`</summary>
+<summary>**How many total and active parameters does DeepSeek-R1 have, and how does vLLM compute the Expert Parallel size and experts per GPU when `--enable-expert-parallel` is set?**</summary>
 
 DeepSeek-V3 and DeepSeek-R1 have 671B total parameters and activate 37B parameters per token, or 5.51 percent of the model. Each token uses one shared expert and eight of 256 routed experts, giving nine active experts per token and a 3.125 percent routed activation density. In vLLM, `EP_SIZE = TP_SIZE * DP_SIZE`, and each GPU holds 32 complete routed experts when deployed across eight GPUs.
 </details>
 
 <details>
-<summary>`&lt;strong>`Why is Data-Parallel Attention (`--enable-dp-attention`) preferred over Tensor Parallelism with Expert Parallelism for serving DeepSeek-R1 at high concurrency?`&lt;/strong>`</summary>
+<summary>**Why is Data-Parallel Attention (`--enable-dp-attention`) preferred over Tensor Parallelism with Expert Parallelism for serving DeepSeek-R1 at high concurrency?**</summary>
 
 DeepSeek-R1 uses Multi-Head Latent Attention, which compresses Key-Value heads into a single shared latent vector. Standard Tensor Parallelism cannot shard a single KV head and therefore duplicates the entire KV cache eightfold across an eight-GPU node. Data-Parallel Attention partitions requests across GPUs with zero KV cache duplication and uses AllToAll (`DeepEP`) to route tokens to experts, increasing decode throughput by up to 1.9x.
 </details>
 
 <details>
-<summary>`&lt;strong>`What are the interconnect and memory specifications of an NVIDIA GB200 NVL72 rack, and why does it transform Wide Expert Parallelism?`&lt;/strong>`</summary>
+<summary>**What are the interconnect and memory specifications of an NVIDIA GB200 NVL72 rack, and why does it transform Wide Expert Parallelism?**</summary>
 
 A GB200 NVL72 rack integrates 36 Grace CPUs and 72 Blackwell GPUs connected via NVSwitch 4 at 1.8 TB/s bidirectional NVLink 5 bandwidth per GPU. That provides 130 TB/s aggregate bandwidth across the rack and 13,824 GB of HBM3e memory, or 30 TB including Grace CPU RAM. Because all 72 GPUs share a single sub-microsecond NVLink domain, wide Expert Parallel AllToAll shuffles execute at intra-node speeds without touching slower inter-node NICs.
 </details>
 
 <details>
-<summary>`&lt;strong>`How does wave scheduling reduce NVSwitch congestion during a rack-scale Mixture-of-Experts `AllToAll` exchange?`&lt;/strong>`</summary>
+<summary>**How does wave scheduling reduce NVSwitch congestion during a rack-scale Mixture-of-Experts `AllToAll` exchange?**</summary>
 
 A monolithic AllToAll across 72 GPUs launches 5,112 simultaneous point-to-point messages, causing switch buffer microbursts. Splitting the exchange into four staggered waves of 18 GPUs reduces the simultaneous intra-wave message count to 306, a 16.71x reduction in instantaneous burst traffic. It also allows communication of the current wave to overlap with expert computation of the previous wave.
 </details>
 
 <details>
-<summary>`&lt;strong>`How do Mixture-of-Experts capacity factor, expert collocation, and DeepSeek EPLB prevent a single hot expert from stalling the cluster?`&lt;/strong>`</summary>
+<summary>**How do Mixture-of-Experts capacity factor, expert collocation, and DeepSeek EPLB prevent a single hot expert from stalling the cluster?**</summary>
 
 If one GPU hits 99 percent utilization while peers sit at 60 percent, every GPU stalls at the synchronous AllToAll barrier. Setting a capacity factor of 1.2 caps each expert at twenty percent above mean load—38 tokens for a 32-token average—and spills excess tokens to fallback experts. Expert collocation places frequently co-activated experts on the same GPU, while DeepSeek EPLB clones persistently hot experts onto redundant GPU slots.
 </details>
 
 <details>
-<summary>`&lt;strong>`How does speculative decoding verify draft tokens without changing the target model's output probability distribution?`&lt;/strong>`</summary>
+<summary>**How does speculative decoding verify draft tokens without changing the target model's output probability distribution?**</summary>
 
 The target model evaluates all *K* drafted tokens in a single parallel forward pass and accepts each token with probability `min(1, p_target(x_i) / q_draft(x_i))`. At the first rejected token, all remaining draft tokens are discarded and a replacement token is sampled from the adjusted residual distribution. That rejection sampling rule mathematically recovers the exact target distribution with zero accuracy loss.
 </details>
 
 <details>
-<summary>`&lt;strong>`What is the formula for expected tokens per verification pass and net speedup in speculative decoding, and why must the draft model be at least four times faster?`&lt;/strong>`</summary>
+<summary>**What is the formula for expected tokens per verification pass and net speedup in speculative decoding, and why must the draft model be at least four times faster?**</summary>
 
 For uniform acceptance rate *alpha* and draft depth *K*, expected tokens per pass equals `(1 - alpha^(K+1)) / (1 - alpha)`, and net speedup equals `E[tokens] / (1 + K * c_draft)`. For four draft tokens at 0.8 acceptance rate and 0.10 draft cost ratio, expected output is 3.3616 tokens and net speedup is 2.40x. When the draft model is too slow at a 0.35 cost ratio and 0.6 acceptance rate, cycle cost reaches 2.40 units against 2.3056 expected tokens, causing a 0.96x slowdown.
 </details>
 
 <details>
-<summary>`&lt;strong>`How do Medusa, EAGLE, DeepSeek Multi-Token Prediction, and N-gram Lookahead differ architecturally?`&lt;/strong>`</summary>
+<summary>**How do Medusa, EAGLE, DeepSeek Multi-Token Prediction, and N-gram Lookahead differ architecturally?**</summary>
 
 - **Medusa:** Attaches independent parallel heads to the top hidden state and verifies candidates with a tree attention mask for a 2.2x to 3.6x speedup.
 - **EAGLE family:** Uses an autoregressive feature-level head in EAGLE for a 3.5x speedup, a dynamic draft tree in EAGLE-2 for 20 to 40 percent higher speed, or multi-layer feature fusion in EAGLE-3 for up to a 6.5x peak speedup and 1.96x on Qwen3-32B.
@@ -722,43 +722,43 @@ For uniform acceptance rate *alpha* and draft depth *K*, expected tokens per pas
 </details>
 
 <details>
-<summary>`&lt;strong>`Why does speculative decoding lose effectiveness or reduce throughput at high request concurrency?`&lt;/strong>`</summary>
+<summary>**Why does speculative decoding lose effectiveness or reduce throughput at high request concurrency?**</summary>
 
 Speculative decoding trades extra compute FLOPs by verifying *K* plus one tokens per sequence to save HBM weight reads during memory-bound low-batch decoding. At high concurrency of 16 or more requests, standard continuous batching already saturates GPU Tensor Cores past the Roofline knee. Multiplying active tokens by *K* plus one therefore creates a compute bottleneck and increases Time to First Token.
 </details>
 
 <details>
-<summary>`&lt;strong>`How does XGrammar accelerate constrained JSON decoding compared to naive token-level grammar filtering?`&lt;/strong>`</summary>
+<summary>**How does XGrammar accelerate constrained JSON decoding compared to naive token-level grammar filtering?**</summary>
 
 Naive constrained decoding evaluates valid next tokens across a 128,000-token vocabulary in Python on the CPU at every decode step, adding milliseconds of latency. XGrammar precompiles JSON schemas and context-free grammars into compressed finite-state machines and precomputes valid token bitmasks. It overlaps mask generation on the CPU and applies the mask directly inside the GPU softmax kernel, keeping overhead in the low single-digit percent range.
 </details>
 
 <details>
-<summary>`&lt;strong>`Why is Kubernetes `LeaderWorkerSet` used instead of a standard `Deployment` or `StatefulSet` for multi-node LLM inference?`&lt;/strong>`</summary>
+<summary>**Why is Kubernetes `LeaderWorkerSet` used instead of a standard `Deployment` or `StatefulSet` for multi-node LLM inference?**</summary>
 
 A multi-node sharded LLM requires one leader pod and *N* minus one worker pods scheduled together as an atomic unit. `LeaderWorkerSet` provides dual leader and worker pod templates, per-group headless DNS discovery via `LWS_LEADER_ADDRESS`, gang-scheduling integration with Kueue, KAI, and Volcano, and `RecreateGroupOnPodRestart` so the entire shard group restarts atomically if any node fails.
 </details>
 
 <details>
-<summary>`&lt;strong>`What does `NCCL_NET_GDR_LEVEL=5` do during multi-node Pipeline or Expert Parallelism, and how much latency does it save?`&lt;/strong>`</summary>
+<summary>**What does `NCCL_NET_GDR_LEVEL=5` do during multi-node Pipeline or Expert Parallelism, and how much latency does it save?**</summary>
 
 Setting `NCCL_NET_GDR_LEVEL=5` enables full GPUDirect RDMA across PCIe bridges so the InfiniBand NDR or RoCEv2 NIC transfers tensors directly between GPU HBM and the network wire. That path bypasses host CPU RAM copies and kernel context switches, cutting inter-node point-to-point latency by **4x to 6x** down to 1.5 to 3.0 microseconds.
 </details>
 
 <details>
-<summary>`&lt;strong>`How does bounded-load prefix-aware routing avoid both the round-robin efficiency drop and the prefix-hotspot skew?`&lt;/strong>`</summary>
+<summary>**How does bounded-load prefix-aware routing avoid both the round-robin efficiency drop and the prefix-hotspot skew?**</summary>
 
 Round-robin ignores prompt length and KV cache locality, causing a 73 percent utilization spread across nodes and delivering only 110 tokens/s out of 240 tokens/s across four nodes. Pure prefix hashing achieves over 85 percent cache hits and cuts Time to First Token by up to 90 percent, but sent 3,600 requests to the first node versus 1,100 to the second node. Bounded-load prefix routing sends requests to the prefix-owner replica only while its KV cache usage stays below 85 percent and its queue stays within 1.5x of the cluster minimum, spilling excess load to a secondary replica.
 </details>
 
 <details>
-<summary>`&lt;strong>`What causes first-stage KV cache starvation in a Pipeline Parallel cluster, and how do you resolve it?`&lt;/strong>`</summary>
+<summary>**What causes first-stage KV cache starvation in a Pipeline Parallel cluster, and how do you resolve it?**</summary>
 
 When long 8,192-token prompts with short 64-token outputs arrive without chunked prefill, the first stage allocates and holds massive prefill KV blocks while the second stage processes lightweight decode steps. That causes queue delays above 4,500 ms. Resolve it by enabling `--enable-chunked-prefill` or switching to independent Data Parallel replicas, which balances KV cache usage at 72 percent and 74 percent.
 </details>
 
 <details>
-<summary>`&lt;strong>`How do NIXL, LMCache, and Kubernetes `llm-d` work together in a disaggregated prefill-decode cluster?`&lt;/strong>`</summary>
+<summary>**How do NIXL, LMCache, and Kubernetes `llm-d` work together in a disaggregated prefill-decode cluster?**</summary>
 
 In a disaggregated cluster, DistServe achieves up to 7.4x higher goodput and 12.6x tighter SLOs. On Kubernetes, `llm-d` routes incoming prompts to prefill pods and uses a Variant Autoscaler to adjust prefill versus decode replica counts dynamically. Once prefill completes, LMCache and NIXL transfer the KV cache zero-copy over NVLink or GPUDirect RDMA to the decode pod with under one percent latency overhead.
 </details>

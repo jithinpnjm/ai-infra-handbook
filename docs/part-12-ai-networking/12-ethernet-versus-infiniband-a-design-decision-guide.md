@@ -606,42 +606,42 @@ Exercise input parameters and expected reference values:
 
 ## Checkpoint questions (20)
 
-<details><summary>`&lt;strong>`1. How do the primary network objectives and dataset scales of AI training data centers differ from AI inference data centers?`&lt;/strong>`</summary>
+<details><summary>**1. How do the primary network objectives and dataset scales of AI training data centers differ from AI inference data centers?**</summary>
 
 AI training data centers process petabytes to exabytes of data over hours to weeks or months. They require non-blocking East-West fabrics that minimize Job Completion Time across synchronized collectives. AI inference data centers process live queries and RAG lookups in milliseconds to seconds, prioritizing low Time to First Token, frontend-to-backend switching, edge security, and EVPN-VXLAN multi-tenancy.
 </details>
 
-<details><summary>`&lt;strong>`2. Why does Standard RoCEv2 suffer from low packet entropy at both Layer 3 and Layer 4 in AI training clusters?`&lt;/strong>`</summary>
+<details><summary>**2. Why does Standard RoCEv2 suffer from low packet entropy at both Layer 3 and Layer 4 in AI training clusters?**</summary>
 
 At Layer 3, rail-aligned GPU communications use a small, repetitive set of source and destination IP addresses. At Layer 4, every RoCEv2 frame uses the fixed UDP destination port 4791 to identify the encapsulated InfiniBand Base Transport Header. Static QP-derived UDP source ports do not change during a session, causing five-tuple static ECMP to hash multiple elephant flows onto the same uplink.
 </details>
 
-<details><summary>`&lt;strong>`3. What are simultaneous and sequential flowlets in an AI fabric, and how do DLB, GLB, and sDLB improve upon Static Load Balancing?`&lt;/strong>`</summary>
+<details><summary>**3. What are simultaneous and sequential flowlets in an AI fabric, and how do DLB, GLB, and sDLB improve upon Static Load Balancing?**</summary>
 
 Simultaneous flowlets are concurrent flows between the same GPU pair whose entropy differs only inside the Base Transport Header. Sequential flowlets are back-to-back job flows between the same GPU pair that a switch mistakes for a single flow. DLB steers flows and flowlets using local link bandwidth and queue occupancy. GLB incorporates next-to-next-hop downstream spine link quality, and sDLB matches RDMA Write opcodes to spray elephant flows per packet across all paths.
 </details>
 
-<details><summary>`&lt;strong>`4. How do ECN and PFC interact inside the DCQCN control loop, and what counter signature separates healthy congestion control from a stressed queue?`&lt;/strong>`</summary>
+<details><summary>**4. How do ECN and PFC interact inside the DCQCN control loop, and what counter signature separates healthy congestion control from a stressed queue?**</summary>
 
 ECN is proactive and end-to-end: when a switch queue crosses its marking threshold, it sets the IP ECN bits to `11`. The receiver reflects a CNP (`01`) to the sender NIC, and the sender cuts its injection rate (`np_cnp_handled`). PFC is reactive and hop-local, pausing an entire priority lane only when buffer occupancy crosses `Xoff`. Rising `rx_ecn_marked_prio3` (`+312`) with `np_cnp_handled` (`+298`) and `rx_pfc_prio3 = 0` proves the proactive loop is working. Climbing `rx_pfc_prio3` (`118,344`) proves the queue filled faster than ECN could slow senders.
 </details>
 
-<details><summary>`&lt;strong>`5. In `mlnx_qos`, why is there a gap between the `Xoff` threshold and the `Xon` threshold on a priority 3 buffer?`&lt;/strong>`</summary>
+<details><summary>**5. In `mlnx_qos`, why is there a gap between the `Xoff` threshold and the `Xon` threshold on a priority 3 buffer?**</summary>
 
 On a `65,536-byte` buffer, the `16,384 bytes` (`25%`) above `Xoff` (`49,152 bytes`, `75%`) is in-flight headroom. It is reserved to absorb frames already in transit on the cable after the PFC pause frame is transmitted. The `16,384-byte` (`25%`) gap between `Xoff` and `Xon` (`32,768 bytes`, `50%`) is hysteresis, preventing the port from oscillating rapidly between paused and unpaused states.
 </details>
 
-<details><summary>`&lt;strong>`6. How does InfiniBand's link-layer flow control differ from IEEE 802.1Qbb PFC and UEC's link-layer CBFC?`&lt;/strong>`</summary>
+<details><summary>**6. How does InfiniBand's link-layer flow control differ from IEEE 802.1Qbb PFC and UEC's link-layer CBFC?**</summary>
 
 InfiniBand uses mandatory hardware Credit-Based Flow Control across 16 Virtual Lanes, exchanging 64-byte receive buffer credits in the Link Layer Header before transmission. Standard Ethernet PFC reactively pauses up to 8 priorities. Ultra Ethernet defines an optional link-layer CBFC that scales to 32 Virtual Channels and exchanges credit counts (`CP_Update`) out-of-band inside modified `64B/66B` PCS Control Ordered Sets (`CtlOS`).
 </details>
 
-<details><summary>`&lt;strong>`7. What are the two packet encapsulation formats defined by Ultra Ethernet Transport, and why is 128-byte switch parsing depth important?`&lt;/strong>`</summary>
+<details><summary>**7. What are the two packet encapsulation formats defined by Ultra Ethernet Transport, and why is 128-byte switch parsing depth important?**</summary>
 
 Ultra Ethernet supports UDP encapsulation on destination port `49150` with dynamic source port mutation on congestion NACKs. It also supports Native IP encapsulation using IP Protocol `253`, which removes the UDP header and places an explicit Entropy field inside the PDS header. Because modern switch silicon parses up to `128 bytes` deep, UET headers place the PDS Entropy and SES fields (`JobID`, `PIDonFEP`, `Resource Index`) within that `128-byte` window.
 </details>
 
-<details><summary>`&lt;strong>`8. Compare the four UET packet delivery modes (`ROD`, `RUD`, `RUDI`, and `UUD`) and their target workloads.`&lt;/strong>`</summary>
+<details><summary>**8. Compare the four UET packet delivery modes (`ROD`, `RUD`, `RUDI`, and `UUD`) and their target workloads.**</summary>
 
 - **ROD (Reliable Ordered Delivery):** In-order reliable delivery using receiver reorder buffers for HPC, MPI, and serialized control flows.
 - **RUD (Reliable Unordered Delivery):** Selective-retry reliable delivery with out-of-order Direct Data Placement into GPU memory for bulk AI model-parallel transfers.
@@ -649,62 +649,62 @@ Ultra Ethernet supports UDP encapsulation on destination port `49150` with dynam
 - **UUD (Unreliable Unordered Delivery):** Best-effort fire-and-forget with no sequence numbers, acknowledgments, or encryption for telemetry and inference logs.
 </details>
 
-<details><summary>`&lt;strong>`9. How do NSCC, RCCC, and Switch Packet Trimming work together in the UEC v1.0 congestion architecture?`&lt;/strong>`</summary>
+<details><summary>**9. How do NSCC, RCCC, and Switch Packet Trimming work together in the UEC v1.0 congestion architecture?**</summary>
 
 NSCC is a sender-driven congestion window regulated by RTT and ECN feedback in `ACK_CC` and NACK packets. RCCC is a receiver-driven credit scheme where targets grant explicit credits in units of `256 bytes` inside a 24-bit `ACK_CC` field based on available receive pool space. Packet Trimming cuts the payload off congested frames on trimmable traffic classes and forwards the compact header on a high-priority queue to trigger selective retransmission.
 </details>
 
-<details><summary>`&lt;strong>`10. How do UEC In-Network Collectives compare to NVIDIA InfiniBand SHARP and host-side xCCL libraries?`&lt;/strong>`</summary>
+<details><summary>**10. How do UEC In-Network Collectives compare to NVIDIA InfiniBand SHARP and host-side xCCL libraries?**</summary>
 
 Host xCCL libraries execute collective reductions on host and GPU resources with the network acting as a passive transport. Both InfiniBand SHARP and UEC INC offload collective tree aggregation into switch silicon. UEC INC coordinates switch `sFEP` agents via an out-of-band gRPC INC Manager and Libfabric `fi_collective`, cutting leaf-to-spine data movement and bounding tail latency.
 </details>
 
-<details><summary>`&lt;strong>`11. How do you switch an NVIDIA ConnectX VPI adapter between InfiniBand and Ethernet modes, and how does BCM `cmsh` resolve conflicting `MLX_` settings?`&lt;/strong>`</summary>
+<details><summary>**11. How do you switch an NVIDIA ConnectX VPI adapter between InfiniBand and Ethernet modes, and how does BCM `cmsh` resolve conflicting `MLX_` settings?**</summary>
 
 Use `mlxconfig -d <pci-bdf> set LINK_TYPE_P1=1` for InfiniBand or `LINK_TYPE_P1=2` for Ethernet, followed by a cold reboot. In NVIDIA Base Command Manager `cmsh`, persistent `MLX_` settings follow the strict precedence `category.extra_values < node.extra_values < interface.extra_values`, verified via `cmsh -c "device; mlxconfig <node> --desired"`.
 </details>
 
-<details><summary>`&lt;strong>`12. Why can a ConnectX-7 port reporting `LinkUp` at 200 Gbps or 400 Gbps still be capped at 16 GB/s on the host?`&lt;/strong>`</summary>
+<details><summary>**12. Why can a ConnectX-7 port reporting `LinkUp` at 200 Gbps or 400 Gbps still be capped at 16 GB/s on the host?**</summary>
 
 Inspect `lspci -vv` on the host adapter. It may show `LnkCap: Speed 32GT/s, Width x16` (`PCIe Gen5 x16`, `~64 GB/s`) alongside `LnkSta: Speed 16GT/s (downgraded), Width x8` (`PCIe Gen4 x8` due to riser wiring or bifurcation). In that state, the local PCIe slot caps DMA throughput at `~16 GB/s`, well below the `25 GB/s` required for 200GbE or `50 GB/s` required for 400G, without incrementing any switch error counters.
 </details>
 
-<details><summary>`&lt;strong>`13. How does a BlueField-3 DPU in `ECPF` mode differ operationally from `SuperNIC` mode during boot and incident response?`&lt;/strong>`</summary>
+<details><summary>**13. How does a BlueField-3 DPU in `ECPF` mode differ operationally from `SuperNIC` mode during boot and incident response?**</summary>
 
 In `ECPF` mode, the embedded Arm OS owns the NIC and `eSwitch`, creating three independent layers: external switch uplink (`swp14`), Arm policy service (`openvswitch-policy-load.service`), and host representor (`enp1s0f0np0`). If the Arm policy service fails at boot, `swp14` stays up while the host stays `DOWN / DORMANT`. In `SuperNIC` (`NIC`) mode, the host controls the RoCE data path directly without an intermediate Arm virtual-switch dependency.
 </details>
 
-<details><summary>`&lt;strong>`14. Compare local PCIe Gen5 SSDs, InfiniBand storage, Ethernet NVMe-o-RDMA, and NVMe-o-TCP across switch latency, ports, and GPUDirect Storage support.`&lt;/strong>`</summary>
+<details><summary>**14. Compare local PCIe Gen5 SSDs, InfiniBand storage, Ethernet NVMe-o-RDMA, and NVMe-o-TCP across switch latency, ports, and GPUDirect Storage support.**</summary>
 
 Local PCIe Gen5 SSDs have `~100 ns` latency. Networked storage switches add `~300 ns` per hop on InfiniBand and `~800 ns` per hop on Ethernet (`700–900 ns` over 1 to 3 hops). Both native IB (`RDMA_PRTYPE = 02`) and RoCEv2 NVMe-o-RDMA (`RDMA_PRTYPE = 04`, `TCP 8009` discovery to `UDP 4420` CM to `UDP 4791` BTH, `~66%` lower write latency) require a lossless fabric and support GPUDirect Storage. NVMe-o-TCP (`TCP 8009` capsules) runs on lossy IP networks including `>= 40 km` WAN links, but does not support GPUDirect Storage.
 </details>
 
-<details><summary>`&lt;strong>`15. Walk through the exact 3-year TCO and GPU-hour cost derivation for a 128-GPU DGX H100 SXM5 cluster.`&lt;/strong>`</summary>
+<details><summary>**15. Walk through the exact 3-year TCO and GPU-hour cost derivation for a 128-GPU DGX H100 SXM5 cluster.**</summary>
 
 Sixteen nodes at `$285,000`/node (`$35,625`/GPU) cost `$4.56M`, plus `$400K` fabric, `$200K` racks and cooling, and `$100K` install for `$5.26M` CapEx. Annual OpEx (`$171.6K` power at `163 kW` and `$0.12/kWh` + `$400K` for 2 FTEs + `$52.6K` support + `$20K` software) is `$644K`/year. Total 3-year TCO is `$7.19M`, which divided by `128 * 8,760 * 3` GPU-hours yields `$2.14` per GPU-hour (`$22` per TFLOP-year at `107,603 TFLOPS` sustained).
 </details>
 
-<details><summary>`&lt;strong>`16. Why does the 64-GPU H100 AllReduce overhead calculation yield $1,835 per run and $132,120 over 3 years, and what does that prove about buying InfiniBand at 64 GPUs?`&lt;/strong>`</summary>
+<details><summary>**16. Why does the 64-GPU H100 AllReduce overhead calculation yield $1,835 per run and $132,120 over 3 years, and what does that prove about buying InfiniBand at 64 GPUs?**</summary>
 
 Saving `$7,000`/unit (`$15K` IB vs `$8K` 400GbE) across 64 GPUs saves `$448,000` upfront. An `8%` AllReduce penalty (`10 ms` ETH vs `2 ms` IB on a `100 ms` step) adds `13.4` hours to a `168`-hour Llama-70B run (`181.4` hours total). At `$2.14`/GPU-hour across 64 GPUs, that costs `$1,835`/run, or `$44,040`/year at 24 runs/year and `$132,120` over 3 years (`244.14` runs or `10.17` years to break even). Thus, pure collective compute math does not justify InfiniBand at a permanently fixed 64-GPU scale; InfiniBand is justified when scaling past 128 to 256 GPUs.
 </details>
 
-<details><summary>`&lt;strong>`17. What are the normal and N-1 degraded oversubscription ratios of a 16-node dual-rail rack with eight 400 Gbps leaf-to-spine uplinks?`&lt;/strong>`</summary>
+<details><summary>**17. What are the normal and N-1 degraded oversubscription ratios of a 16-node dual-rail rack with eight 400 Gbps leaf-to-spine uplinks?**</summary>
 
 Worst-case downlink injection demand is `16 * 800 Gbps = 12,800 Gbps`. With all 8 uplinks active (`3,200 Gbps`), the normal oversubscription ratio is `4.00:1`. With 1 uplink drained for maintenance (`7 * 400 = 2,800 Gbps`), the degraded oversubscription ratio is `4.57:1`.
 </details>
 
-<details><summary>`&lt;strong>`18. How do you diagnose a switch port where `rx_prio0_discard` climbs while `rx_pfc_prio3` remains zero, even though the host marks packets with `tos 0xb8`?`&lt;/strong>`</summary>
+<details><summary>**18. How do you diagnose a switch port where `rx_prio0_discard` climbs while `rx_pfc_prio3` remains zero, even though the host marks packets with `tos 0xb8`?**</summary>
 
 `tos 0xb8` shifts right by 2 bits (`0xb8 >> 2 = 46`) to DSCP 46. If `mlnx_qos` on the destination leaf port (`swp19`) is misconfigured with `Priority trust state: pcp` instead of `dscp`, the switch ignores the IP DSCP field on untagged routed packets. Those frames fall into default priority 0 and tail-drop (`rx_prio0_discard: 18,420`) without ever entering the PFC-protected priority 3 queue.
 </details>
 
-<details><summary>`&lt;strong>`19. During an incident, `rx_pfc_prio3` is 210,500 on `leaf03`, 198,200 on `leaf07`, and 41,100 on `leaf12`. How do you identify the root bottleneck?`&lt;/strong>`</summary>
+<details><summary>**19. During an incident, `rx_pfc_prio3` is 210,500 on `leaf03`, 198,200 on `leaf07`, and 41,100 on `leaf12`. How do you identify the root bottleneck?**</summary>
 
 PFC pause frames propagate upstream in the direction opposite to data flow. When walking the pause tree across leaves in the same time window, find the switch furthest downstream toward the receiver with the highest pause count (`leaf03` at `210,500`). That switch is the origin of the congestion tree, whereas smaller counts further upstream (`leaf07` at `198,200` and `leaf12` at `41,100`) are secondary propagation symptoms.
 </details>
 
-<details><summary>`&lt;strong>`20. What is the difference between NVIDIA UFM, NetQ, NVUE, and NVIDIA Air when operating InfiniBand versus Ethernet AI fabrics?`&lt;/strong>`</summary>
+<details><summary>**20. What is the difference between NVIDIA UFM, NetQ, NVUE, and NVIDIA Air when operating InfiniBand versus Ethernet AI fabrics?**</summary>
 
 - **UFM (Unified Fabric Manager):** Centralized InfiniBand subnet management, telemetry, adaptive routing, and SHARP orchestration platform.
 - **NetQ:** Fleet-wide Ethernet fabric validation and telemetry platform that continuously audits BGP and ECMP membership, QoS drift, and interface counters.

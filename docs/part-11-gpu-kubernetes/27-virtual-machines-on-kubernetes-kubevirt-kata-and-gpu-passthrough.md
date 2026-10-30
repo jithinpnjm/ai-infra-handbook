@@ -315,21 +315,21 @@ Summary: 25 passed, 0 failed out of 25 checks.
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. What are the three specifications defined by the Open Container Initiative, and what are the four lifecycle stages of a container in the OCI Runtime Specification?`&lt;/strong>`</summary>
+<summary>**1. What are the three specifications defined by the Open Container Initiative, and what are the four lifecycle stages of a container in the OCI Runtime Specification?**</summary>
 
 - **Three OCI specifications:** The OCI Runtime Specification implemented by `runc`, the OCI Image Specification, and the OCI Distribution Specification.
 - **Four OCI container lifecycle stages:** The container moves sequentially through creating, created, running, and stopped.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What two gRPC services make up the Kubernetes Container Runtime Interface, and what five CRI methods does kubelet call in order to start a Pod?`&lt;/strong>`</summary>
+<summary>**2. What two gRPC services make up the Kubernetes Container Runtime Interface, and what five CRI methods does kubelet call in order to start a Pod?**</summary>
 
 - **Two CRI gRPC services:** RuntimeService for Pod and container lifecycle operations, and ImageService for listing, pulling, and removing images.
 - **Five CRI startup methods in order:** The kubelet invokes `RunPodSandbox`, `ImageStatus`, `PullImage` when the image is missing locally, `CreateContainer`, and `StartContainer`.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Contrast the Unix domain socket paths, process monitors, and containerd namespaces of Docker dockershim, containerd, and CRI-O.`&lt;/strong>`</summary>
+<summary>**3. Contrast the Unix domain socket paths, process monitors, and containerd namespaces of Docker dockershim, containerd, and CRI-O.**</summary>
 
 - **containerd:** Listens on `/run/containerd/containerd.sock`, spawns a containerd shim per Pod, and stores Kubernetes containers in the `k8s.io` namespace.
 - **Docker dockershim:** Used `/var/run/dockershim.sock`, encoded Pod metadata into container names, and stored containers in the containerd `moby` namespace.
@@ -337,20 +337,20 @@ Summary: 25 passed, 0 failed out of 25 checks.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. How does Kata Containers integrate with Kubernetes and containerd when Kata does not implement the CRI directly?`&lt;/strong>`</summary>
+<summary>**4. How does Kata Containers integrate with Kubernetes and containerd when Kata does not implement the CRI directly?**</summary>
 
 Kata Containers implements the containerd v2 runtime shim API via `containerd-shim-kata-v2`. The `kubelet` speaks standard CRI gRPC to containerd. When a Pod specifies `runtimeClassName: kata-containers`, containerd invokes the Kata shim to boot a lightweight guest-kernel VM for that Pod.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. What is the architectural difference between Kata Containers and KubeVirt on Kubernetes?`&lt;/strong>`</summary>
+<summary>**5. What is the architectural difference between Kata Containers and KubeVirt on Kubernetes?**</summary>
 
 - **Kata Containers** is a CRI runtime shim selected via RuntimeClass that wraps a standard OCI Pod inside a lightweight Linux MicroVM. It does not change the Kubernetes Pod or Deployment API.
 - **KubeVirt** is a full Virtual Machine management add-on that introduces VirtualMachine and VirtualMachineInstance custom resources. It runs persistent Linux or Windows guest OS images with full disk, network, and live-migration lifecycles.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. How do the four KubeVirt components work together to boot a GPU VirtualMachine on a Kubernetes node?`&lt;/strong>`</summary>
+<summary>**6. How do the four KubeVirt components work together to boot a GPU VirtualMachine on a Kubernetes node?**</summary>
 
 - **virt-api:** Validates and serves the KubeVirt VirtualMachine and VirtualMachineInstance custom resources.
 - **virt-controller:** Watches VirtualMachineInstance objects and creates a corresponding `virt-launcher` Pod requesting the required CPU, RAM, and GPU extended resources.
@@ -359,7 +359,7 @@ Kata Containers implements the containerd v2 runtime shim API via `containerd-sh
 </details>
 
 <details>
-<summary>`&lt;strong>`7. What happens on a worker node when you enable sandboxed workloads in the NVIDIA GPU Operator ClusterPolicy and label the node for VM passthrough?`&lt;/strong>`</summary>
+<summary>**7. What happens on a worker node when you enable sandboxed workloads in the NVIDIA GPU Operator ClusterPolicy and label the node for VM passthrough?**</summary>
 
 The GPU Operator stops the standard container driver DaemonSet on that node and deploys two VM operands instead.
 - **nvidia-vfio-manager:** Unbinds the physical GPUs and their IOMMU group siblings from host drivers and binds them to `vfio-pci`.
@@ -367,13 +367,13 @@ The GPU Operator stops the standard container driver DaemonSet on that node and 
 </details>
 
 <details>
-<summary>`&lt;strong>`8. How does a node labeled for VM vGPU differ from VM passthrough under the NVIDIA GPU Operator?`&lt;/strong>`</summary>
+<summary>**8. How does a node labeled for VM vGPU differ from VM passthrough under the NVIDIA GPU Operator?**</summary>
 
 Under `vm-vgpu`, the GPU Operator deploys `nvidia-vgpu-manager` and the vGPU device plugin to slice each physical GPU into multiple vGPU profiles. Multiple KubeVirt VMs can then share one physical GPU. Under `vm-passthrough`, the operator binds the entire physical GPU to `vfio-pci` for whole-GPU assignment to a single VM.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. In Volume 18 Chapter 6, compare Time-Slicing, MIG, and vGPU or VM Virtualization across memory isolation and host-kernel risk.`&lt;/strong>`</summary>
+<summary>**9. In Volume 18 Chapter 6, compare Time-Slicing, MIG, and vGPU or VM Virtualization across memory isolation and host-kernel risk.**</summary>
 
 - **Time-Slicing:** Provides zero hardware memory or compute isolation because all containers share one VRAM pool and L2 cache.
 - **MIG:** Provides hardware-isolated crossbar ports, L2 cache banks, memory controllers, and DRAM address buses per instance. All MIG containers still share the same Host OS kernel.
@@ -381,19 +381,19 @@ Under `vm-vgpu`, the GPU Operator deploys `nvidia-vgpu-manager` and the vGPU dev
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why does Volume 18 Chapter 6 Section 2 state that MIG is secure against GPU-level attacks, but still vulnerable to OS-level container escapes?`&lt;/strong>`</summary>
+<summary>**10. Why does Volume 18 Chapter 6 Section 2 state that MIG is secure against GPU-level attacks, but still vulnerable to OS-level container escapes?**</summary>
 
 All MIG partitions on a bare-metal container host are managed by the same shared Linux host kernel. If a malicious tenant exploits a Linux kernel vulnerability inside their container to gain host root privileges, they can execute `nvidia-smi mig` on the host. That allows them to destroy or reconfigure sibling MIG partitions and inspect host memory.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. In the Volume 18 Chapter 6 Customer Scenario, why was running HIPAA medical research in a separate Kubernetes Namespace on a time-sliced HGX H100 cluster a severe compliance violation, and how did the architect fix it?`&lt;/strong>`</summary>
+<summary>**11. In the Volume 18 Chapter 6 Customer Scenario, why was running HIPAA medical research in a separate Kubernetes Namespace on a time-sliced HGX H100 cluster a severe compliance violation, and how did the architect fix it?**</summary>
 
 Kubernetes Namespaces only isolate Kubernetes API objects in etcd and provide zero hardware isolation on the shared GPU VRAM pool under software time-slicing. The architect quarantined a dedicated HGX H100 server, disabled time-slicing, and formatted the H100 GPUs with hardware MIG. They also applied Kubernetes Node Taints so student coursework pods could never schedule onto the HIPAA medical nodes.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Define Data at Rest, Data in Transit, and Data in Use encryption in Volume 18 Chapter 9, and explain why traditional cloud VMs fail to protect Data in Use.`&lt;/strong>`</summary>
+<summary>**12. Define Data at Rest, Data in Transit, and Data in Use encryption in Volume 18 Chapter 9, and explain why traditional cloud VMs fail to protect Data in Use.**</summary>
 
 - **Data at Rest:** Encrypts files stored on disk or SSD using AES-256.
 - **Data in Transit:** Encrypts packets moving across the network using TLS or IPSec.
@@ -403,20 +403,20 @@ In a traditional cloud VM, weights and prompts must be decrypted into plaintext 
 </details>
 
 <details>
-<summary>`&lt;strong>`13. What two hardware components must be paired to create a Confidential AI Virtual Machine, and can an NVIDIA H100 GPU provide Confidential Computing without a CPU TEE?`&lt;/strong>`</summary>
+<summary>**13. What two hardware components must be paired to create a Confidential AI Virtual Machine, and can an NVIDIA H100 GPU provide Confidential Computing without a CPU TEE?**</summary>
 
 You must pair a CPU Trusted Execution Environment, specifically AMD SEV-SNP or Intel TDX, with an NVIDIA Hopper H100 GPU in Confidential Computing mode. As Volume 18 Chapter 9 Section 1 states explicitly, the GPU alone does not make a VM confidential. The CPU side requires an AMD SEV-SNP or Intel TDX TEE to encrypt system RAM.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. How does NVIDIA Hopper H100 Confidential Computing protect GPU VRAM and CPU-to-GPU PCIe transfers against a compromised host hypervisor or PCIe logic analyzer?`&lt;/strong>`</summary>
+<summary>**14. How does NVIDIA Hopper H100 Confidential Computing protect GPU VRAM and CPU-to-GPU PCIe transfers against a compromised host hypervisor or PCIe logic analyzer?**</summary>
 
 - **Protected GPU Memory:** Places H100 VRAM inside a hardware-protected region that the host OS and hypervisor are blocked from reading.
 - **Encrypted PCIe Bounce Buffers:** Encrypts all data transferred between the Confidential VM CPU TEE and the H100 GPU over the PCIe bus through encrypted bounce buffers. Cryptographic keys are negotiated directly between the CPU TEE and the GPU hardware Root of Trust.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Walk through the five steps of the Cryptographic Remote Attestation Protocol in Volume 18 Chapter 9 Section 2.`&lt;/strong>`</summary>
+<summary>**15. Walk through the five steps of the Cryptographic Remote Attestation Protocol in Volume 18 Chapter 9 Section 2.**</summary>
 
 - **Step 1:** The Confidential VM boots and requests a cryptographic quote from the CPU TEE and the NVIDIA GPU hardware.
 - **Step 2:** The hardware generates a cryptographic document containing exact firmware hashes, boot state measurements, and proof that the Secure Enclave is active.
@@ -426,31 +426,31 @@ You must pair a CPU Trusted Execution Environment, specifically AMD SEV-SNP or I
 </details>
 
 <details>
-<summary>`&lt;strong>`16. In the Volume 18 Chapter 9 Customer Scenario, why did the military compliance officer reject encrypting only the cloud VM hard drives for a classified drone-footage AI model, and what architecture satisfied the requirement?`&lt;/strong>`</summary>
+<summary>**16. In the Volume 18 Chapter 9 Customer Scenario, why did the military compliance officer reject encrypting only the cloud VM hard drives for a classified drone-footage AI model, and what architecture satisfied the requirement?**</summary>
 
 Hard drive encryption only protects Data at Rest. Once the model loads into RAM and VRAM as Data in Use, a rogue cloud administrator with hypervisor root access can dump the VM memory. The approved architecture deployed a Confidential VM on AMD SEV-SNP or Intel TDX paired with NVIDIA Hopper H100 Confidential Computing. It also required Remote Attestation from the enterprise on-premises KMS before releasing model decryption keys.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. In Production Kubernetes Chapter 3, what arguments were passed to qemu-system-x86_64 when launching a Pod with Kata Containers?`&lt;/strong>`</summary>
+<summary>**17. In Production Kubernetes Chapter 3, what arguments were passed to qemu-system-x86_64 when launching a Pod with Kata Containers?**</summary>
 
 The host process table showed `/snap/kata-containers/690/usr/bin/qemu-system-x86_64 -name sandbox-c136a9... -uuid aaae32b3-... -machine pc,accel=kvm,kernel_irqchip -cpu host -m 2048M,slots=10,maxmem=65005M`. Those flags configure hardware KVM acceleration, host CPU passthrough, and initial memory with hotplug slots.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. How does an OCI Image Index enable multiplatform container images in Production Kubernetes Chapter 3?`&lt;/strong>`</summary>
+<summary>**18. How does an OCI Image Index enable multiplatform container images in Production Kubernetes Chapter 3?**</summary>
 
 An OCI Image Index is a top-level manifest containing a `manifests[]` array. Each entry points to a platform-specific image manifest digest annotated with its CPU architecture and operating system. That index allows containerd to automatically select the manifest matching the worker node CPU architecture during image pulls.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What is Virtual Kubelet in Production Kubernetes Chapter 3, and how does it differ from a CRI container runtime like containerd or Kata Containers?`&lt;/strong>`</summary>
+<summary>**19. What is Virtual Kubelet in Production Kubernetes Chapter 3, and how does it differ from a CRI container runtime like containerd or Kata Containers?**</summary>
 
 Virtual Kubelet is not a node-level CRI runtime. It is a software component that registers with the Kubernetes API server masquerading as a virtual Node. It translates Pod creations into API calls to external serverless backends such as AWS Fargate, Azure Container Instances, or HashiCorp Nomad.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. When should an AI platform architect choose Standard Containers with MIG, Kata Containers with VFIO or MIG, KubeVirt with vGPU or VFIO, or Confidential VMs?`&lt;/strong>`</summary>
+<summary>**20. When should an AI platform architect choose Standard Containers with MIG, Kata Containers with VFIO or MIG, KubeVirt with vGPU or VFIO, or Confidential VMs?**</summary>
 
 - **Standard Containers with MIG:** Best for internal enterprise multi-tenancy where tenants are not attempting host-kernel escapes and host administrators are trusted.
 - **Kata Containers with VFIO or MIG:** Best for cloud-native teams wanting standard Pod workflows with a dedicated guest Linux kernel per Pod to block host-kernel escapes.

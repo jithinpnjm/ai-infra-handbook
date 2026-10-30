@@ -395,7 +395,7 @@ Summary: 25 passed, 0 failed out of 25 checks.
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. What are the four ordered placement questions that Volume 10 Chapter 8 defines for every GPU workload class?`&lt;/strong>`</summary>
+<summary>**1. What are the four ordered placement questions that Volume 10 Chapter 8 defines for every GPU workload class?**</summary>
 
 - **Capacity:** How many GPU units and which extended resource name are required.
 - **Eligibility:** Which validated node pool or service class may run the workload.
@@ -404,20 +404,20 @@ Summary: 25 passed, 0 failed out of 25 checks.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. In Figure 10.8.1, what is the operational difference between a failure at FilterOK=No and a failure at AllocOK=No?`&lt;/strong>`</summary>
+<summary>**2. In Figure 10.8.1, what is the operational difference between a failure at FilterOK=No and a failure at AllocOK=No?**</summary>
 
 - **FilterOK=No:** Occurs inside the central scheduler before the Pod is bound to any node. The Pod stays Pending with a `FailedScheduling` event listing the exact predicate that rejected each node.
 - **AllocOK=No:** Occurs on the worker node inside the kubelet after the scheduler has already bound the Pod. It surfaces as `TopologyAffinityError` or a container creation error when Topology Manager admission or Device Plugin allocation fails.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. How much latency does crossing a NUMA boundary add to host memory access in AI Systems Performance Engineering Chapter 3, and how much training throughput can CPU/NUMA pinning recover?`&lt;/strong>`</summary>
+<summary>**3. How much latency does crossing a NUMA boundary add to host memory access in AI Systems Performance Engineering Chapter 3, and how much training throughput can CPU/NUMA pinning recover?**</summary>
 
 In the benchmark cited in Chapter 3, local NUMA memory access latency is roughly 80 ns whereas remote cross-socket access jumps to roughly 139 ns. That is an increase of 59 ns, or roughly 75% (73.75% exact). Eliminating cross-NUMA traffic and OS core migrations via CPU and NUMA pinning yields 5% to 10% training throughput improvements.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Compare the per-GPU or per-slot bandwidth of H100 HBM3, Blackwell NVLink 5.0 (and GB200 NVL72), Hopper NVLink 4.0, PCIe Gen5 x16, and PCIe Gen4 x16.`&lt;/strong>`</summary>
+<summary>**4. Compare the per-GPU or per-slot bandwidth of H100 HBM3, Blackwell NVLink 5.0 (and GB200 NVL72), Hopper NVLink 4.0, PCIe Gen5 x16, and PCIe Gen4 x16.**</summary>
 
 - **H100 HBM3:** Delivers 3,350 GB/s of internal memory bandwidth.
 - **NVLink 5.0 (Blackwell):** Delivers 1.8 TB/s (1,800 GB/s) bidirectional per GPU across 18 links at 100 GB/s each. A dual-chip NVSwitch 4.0 tray provides 144 ports and 14.4 TB/s, and GB200 NVL72 connects 72 GPUs at 130 TB/s total GPU bandwidth.
@@ -426,7 +426,7 @@ In the benchmark cited in Chapter 3, local NUMA memory access latency is roughly
 </details>
 
 <details>
-<summary>`&lt;strong>`5. What do the codes X, NV12, PIX, PXB, PHB, NODE, and SYS mean in nvidia-smi topo -m output?`&lt;/strong>`</summary>
+<summary>**5. What do the codes X, NV12, PIX, PXB, PHB, NODE, and SYS mean in nvidia-smi topo -m output?**</summary>
 
 - **X:** Self, indicating the same physical GPU.
 - **NV12, NV4, NV18:** Connected via 12, 4, or 18 bonded NVLink links.
@@ -438,13 +438,13 @@ In the benchmark cited in Chapter 3, local NUMA memory access latency is roughly
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Why is a PIX path between GPU 0 and NIC 0 vastly superior to a NODE or SYS path for multi-node training?`&lt;/strong>`</summary>
+<summary>**6. Why is a PIX path between GPU 0 and NIC 0 vastly superior to a NODE or SYS path for multi-node training?**</summary>
 
 Under a PIX path, GPU 0 and NIC 0 share a dedicated PCIe switch chip. That allows GPUDirect RDMA Peer-to-Peer DMA packets to flow directly between GPU HBM and the network card without touching the CPU root complex. Under a NODE or SYS path, every byte must traverse the CPU root complex and potentially cross the inter-socket link, cutting network throughput by up to 50%.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. What three conditions must be true for a Kubernetes Pod to receive exclusive pinned CPU cores from the kubelet CPU Manager?`&lt;/strong>`</summary>
+<summary>**7. What three conditions must be true for a Kubernetes Pod to receive exclusive pinned CPU cores from the kubelet CPU Manager?**</summary>
 
 - The kubelet must be configured with `cpuManagerPolicy: static`.
 - The Pod must qualify for the Guaranteed QoS class, meaning every container specifies `resources.requests` equal to `resources.limits` for both CPU and memory.
@@ -452,7 +452,7 @@ Under a PIX path, GPU 0 and NIC 0 share a dedicated PCIe switch chip. That allow
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What is the difference between the four kubelet Topology Manager policies: none, best-effort, restricted, and single-numa-node?`&lt;/strong>`</summary>
+<summary>**8. What is the difference between the four kubelet Topology Manager policies: none, best-effort, restricted, and single-numa-node?**</summary>
 
 - **none:** Performs no NUMA alignment across resources.
 - **best-effort:** Attempts NUMA alignment from Hint Providers, but still admits the Pod if alignment fails, causing non-deterministic cross-NUMA slowdowns.
@@ -461,68 +461,68 @@ Under a PIX path, GPU 0 and NIC 0 share a dedicated PCIe switch chip. That allow
 </details>
 
 <details>
-<summary>`&lt;strong>`9. On a 128-core, 8-GPU dual-socket server (64 cores and 4 GPUs per NUMA node) running single-numa-node, why do 16-core, 1-GPU Triton Pods fail with TopologyAffinityError before all 8 GPUs are used, and how do you fix it?`&lt;/strong>`</summary>
+<summary>**9. On a 128-core, 8-GPU dual-socket server (64 cores and 4 GPUs per NUMA node) running single-numa-node, why do 16-core, 1-GPU Triton Pods fail with TopologyAffinityError before all 8 GPUs are used, and how do you fix it?**</summary>
 
 The first four Pods consume all 64 cores and 4 GPUs on socket 0, leaving zero cores on socket 0. On socket 1, OS and system daemons consume a couple of CPU cores, leaving only 14 free cores when the last 16-core Pod is evaluated. Because 14 is less than 16, `single-numa-node` refuses to pull cores across sockets and rejects the Pod with `TopologyAffinityError`. Right-sizing each Pod to 12 CPU cores consumes 48 cores per socket, leaving 16 cores per socket for the OS and allowing all 8 Pods to run.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why does PyTorch's DataLoader pin_memory=True speed up host-to-device (H2D) tensor transfers by 2–3x, and what Linux limit must be raised in containers to support it?`&lt;/strong>`</summary>
+<summary>**10. Why does PyTorch's DataLoader pin_memory=True speed up host-to-device (H2D) tensor transfers by 2–3x, and what Linux limit must be raised in containers to support it?**</summary>
 
 Setting `pin_memory=True` allocates page-locked host RAM so the GPU DMA engine can copy batches directly over PCIe with `non_blocking=True`. That avoids staging data through pageable OS bounce buffers and achieves 2 to 3x higher H2D transfer bandwidth. Because Linux restricts how much memory a process can lock via `ulimit -l`, containers must set memlock to `unlimited`.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. Why does AI Systems Performance Engineering Chapter 3 recommend enabling Transparent Hugepages (THP, 2 MB pages) for GPU training, but disabling THP (transparent_hugepage=never or madvise) for latency-sensitive LLM inference?`&lt;/strong>`</summary>
+<summary>**11. Why does AI Systems Performance Engineering Chapter 3 recommend enabling Transparent Hugepages (THP, 2 MB pages) for GPU training, but disabling THP (transparent_hugepage=never or madvise) for latency-sensitive LLM inference?**</summary>
 
 For training workloads, backing large memory allocations with 2 MB or 1 GB hugepages instead of 4 KB pages reduces TLB misses and page-fault overhead. That improves training throughput by roughly 3% to 5%. However, the Linux kernel background THP compaction and defragmentation thread can introduce unpredictable latency pauses that harm tail latency in online LLM inference.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Why must PyTorch DataLoader workers re-apply CPU and NUMA memory affinity inside worker_init_fn rather than relying on parent inheritance, and what API must never be called inside worker_init_fn?`&lt;/strong>`</summary>
+<summary>**12. Why must PyTorch DataLoader workers re-apply CPU and NUMA memory affinity inside worker_init_fn rather than relying on parent inheritance, and what API must never be called inside worker_init_fn?**</summary>
 
 Across Python spawn and exec boundaries, parent `numactl` CPU and memory policies are not reliably inherited by child DataLoader processes. Re-applying `psutil.Process(os.getpid()).cpu_affinity(cpus)` and `libnuma` binding inside `worker_init_fn` guarantees locality. You must never call `torch.cuda` functions inside `worker_init_fn` to avoid initializing duplicate CUDA contexts inside CPU data-loader workers.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How do CPU C-states (such as C6) and the Linux CPU frequency governor cause GPU execution bubbles, and how do you prevent them?`&lt;/strong>`</summary>
+<summary>**13. How do CPU C-states (such as C6) and the Linux CPU frequency governor cause GPU execution bubbles, and how do you prevent them?**</summary>
 
 When a CPU core briefly idles while the GPU computes a batch, power-saving governors downclock the core or place it into deep ACPI sleep states like C6. Waking the core back to active state C0 to dispatch the next CUDA kernel adds microsecond delays that create idle gaps between GPU kernels. Setting `cpupower frequency-set -g performance` and disabling deep C-states in BIOS keeps cores awake at maximum frequency.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. How do jemalloc and tcmalloc environment variables reduce CPU data-preparation jitter on GPU servers?`&lt;/strong>`</summary>
+<summary>**14. How do jemalloc and tcmalloc environment variables reduce CPU data-preparation jitter on GPU servers?**</summary>
 
 - **jemalloc:** Setting `MALLOC_CONF="narenas:8,dirty_decay_ms:10000,muzzy_decay_ms:10000,background_thread:true"` shards allocations across per-CPU arenas and delays returning freed pages to the OS.
 - **tcmalloc:** Setting `TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES` to 512 MiB and `TCMALLOC_RELEASE_RATE=16` enlarges per-thread caches so data-loader threads avoid global locks and kernel syscalls.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Why should training datasets and checkpoint directories always be bind-mounted into GPU containers rather than read/written inside the container's root filesystem?`&lt;/strong>`</summary>
+<summary>**15. Why should training datasets and checkpoint directories always be bind-mounted into GPU containers rather than read/written inside the container's root filesystem?**</summary>
 
 Container root filesystems use union overlay filesystems with Copy-on-Write semantics, which add metadata lookup and file-copy overhead on reads and writes. Bind-mounting host NVMe or network storage bypasses OverlayFS completely. Using `O_DIRECT` or `io_uring` for checkpoints and calling `posix_fadvise` with `POSIX_FADV_DONTNEED` also prevents page-cache stalls.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What does nvidia-persistenced do, and how much cold-start latency does it eliminate when a GPU job starts?`&lt;/strong>`</summary>
+<summary>**16. What does nvidia-persistenced do, and how much cold-start latency does it eliminate when a GPU job starts?**</summary>
 
 The `nvidia-persistenced` daemon keeps the NVIDIA driver state and hardware context loaded even when no process has `/dev/nvidia*` open. That eliminates the 1 to 2 second driver re-initialization delay on job start and preserves active MIG slice configurations between jobs.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. On a Blackwell B200 GPU (132 SMs), why does a Pod requesting nvidia.com/mig-2g.45gb: "2" (~76 SMs) stay Pending when two different nodes each have one free 2g.45gb slice?`&lt;/strong>`</summary>
+<summary>**17. On a Blackwell B200 GPU (132 SMs), why does a Pod requesting nvidia.com/mig-2g.45gb: "2" (~76 SMs) stay Pending when two different nodes each have one free 2g.45gb slice?**</summary>
 
 A Kubernetes Pod cannot span multiple worker nodes. Even though the cluster has 2 free `2g.45gb` slices in total, the scheduler can only place the Pod on a single node that has at least 2 free `nvidia.com/mig-2g.45gb` slices locally.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Why does AI Systems Performance Engineering Chapter 3 warn against using MIG for multi-GPU distributed training or MoE expert-parallel inference?`&lt;/strong>`</summary>
+<summary>**18. Why does AI Systems Performance Engineering Chapter 3 warn against using MIG for multi-GPU distributed training or MoE expert-parallel inference?**</summary>
 
 Under current MIG driver architecture including R570-era guidance, cross-GPU MIG peer-to-peer transfers, cross-instance CUDA IPC, and NCCL collective communications across MIG instances are unsupported. That limitation forces inter-instance traffic through slower host and network paths.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. In Volume 10 Chapter 8, kubectl describe pod train-worker-2 shows 0/12 nodes are available: 4 Insufficient nvidia.com/gpu, 6 node(s) had untolerated taint pool=inference-only, 2 node(s) didn't match Pod's node affinity/selector. How do you interpret all three numbers?`&lt;/strong>`</summary>
+<summary>**19. In Volume 10 Chapter 8, kubectl describe pod train-worker-2 shows 0/12 nodes are available: 4 Insufficient nvidia.com/gpu, 6 node(s) had untolerated taint pool=inference-only, 2 node(s) didn't match Pod's node affinity/selector. How do you interpret all three numbers?**</summary>
 
 - **4 Insufficient nvidia.com/gpu:** Four nodes in the training pool are legitimately full due to a capacity shortage.
 - **6 untolerated taint:** Six nodes belong to the protected online-inference pool and properly repelled this training Pod as designed.
@@ -530,7 +530,7 @@ Under current MIG driver architecture including R570-era guidance, cross-GPU MIG
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Why can adding strict topology-aware scheduling constraints lower total cluster GPU utilization, and how does a service-class catalog manage that trade-off?`&lt;/strong>`</summary>
+<summary>**20. Why can adding strict topology-aware scheduling constraints lower total cluster GPU utilization, and how does a service-class catalog manage that trade-off?**</summary>
 
 Every hard placement constraint such as taints, required node affinity, `single-numa-node`, or gang admission shrinks the set of eligible sockets and nodes. That can leave healthy GPUs stranded when workloads do not divide evenly into socket boundaries. A service-class catalog restricts strict topology rules to distributed training and online inference, while routing interactive development and batch inference to flexible pools.
 </details>

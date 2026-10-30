@@ -413,7 +413,7 @@ Summary: 28 passed, 0 failed (total 28)
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. How does the onboarding and architectural focus shift as a customer moves from a Single DGX Node to a BasePOD and then to a SuperPOD?`&lt;/strong>`</summary>
+<summary>**1. How does the onboarding and architectural focus shift as a customer moves from a Single DGX Node to a BasePOD and then to a SuperPOD?**</summary>
 
 - **Single DGX Node:** Focuses on single-node utilization with DGX OS, NGC containers, Jupyter, and GPU partitioning via MIG or MPS. All GPU-to-GPU traffic stays on the internal NVSwitch baseboard.
 - **DGX BasePOD:** Introduces distributed computing across a single-tier leaf-only compute switch fabric, centralized all-flash storage, and three-fabric separation across compute, storage, and management. It uses Base Command Manager golden-image provisioning and Slurm or Kubernetes operators.
@@ -421,7 +421,7 @@ Summary: 28 passed, 0 failed (total 28)
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Contrast MIG, MPS, and Time-Slicing. Why is MIG mandatory when sharing a GPU across multiple untrusted tenants or classified workloads?`&lt;/strong>`</summary>
+<summary>**2. Contrast MIG, MPS, and Time-Slicing. Why is MIG mandatory when sharing a GPU across multiple untrusted tenants or classified workloads?**</summary>
 
 - **Time-Slicing:** Context-switches processes temporally on shared physical memory and L2 cache, resulting in high latency jitter and zero memory protection.
 - **MPS:** Runs multiple kernels from a single trusted tenant concurrently on shared streaming multiprocessors. However, it still shares memory and L2 cache with zero fault isolation, so one crashing kernel kills all MPS clients on that GPU.
@@ -429,13 +429,13 @@ Summary: 28 passed, 0 failed (total 28)
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Why can a 16-node rail-optimized pod operate with 8 leaf switches and zero spine switches? What is the hop count between same-rail GPUs across nodes?`&lt;/strong>`</summary>
+<summary>**3. Why can a 16-node rail-optimized pod operate with 8 leaf switches and zero spine switches? What is the hop count between same-rail GPUs across nodes?**</summary>
 
 Each of the 16 nodes has 8 compute network cards. When network card `k` of all 16 nodes plugs into rail leaf switch `k`, those connections use only 16 ports on each 64-port QM9700 leaf switch. Every node therefore lands its rail `k` interface on the exact same physical switch. Same-rail GPUs across all 16 nodes communicate in a single switch hop with zero spine switches required, while cross-rail communication uses the internal NVSwitch inside each node.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Summarize the rack count, power budget, and CAPEX breakdown of the reference 16-node H100 training pod.`&lt;/strong>`</summary>
+<summary>**4. Summarize the rack count, power budget, and CAPEX breakdown of the reference 16-node H100 training pod.**</summary>
 
 ```text
 16-Node (128-GPU H100 SXM5) Reference Pod Summary (V21 Ch 13):
@@ -446,7 +446,7 @@ Each of the 16 nodes has 8 compute network cards. When network card `k` of all 1
 </details>
 
 <details>
-<summary>`&lt;strong>`5. Calculate how many days it takes to refresh a 70B-parameter LLM on 100 billion new tokens using the 16-node H100 pod at an assumed 40% MFU.`&lt;/strong>`</summary>
+<summary>**5. Calculate how many days it takes to refresh a 70B-parameter LLM on 100 billion new tokens using the 16-node H100 pod at an assumed 40% MFU.**</summary>
 
 ```text
 70B Model 100B-Token Refresh Duration (V21 Lab 01):
@@ -457,91 +457,91 @@ Each of the 16 nodes has 8 compute network cards. When network card `k` of all 1
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Name all six stages of the AI Factory Commissioning and Acceptance Framework in order, and state why Stage 5 requires a 24-to-72-hour continuous burn-in.`&lt;/strong>`</summary>
+<summary>**6. Name all six stages of the AI Factory Commissioning and Acceptance Framework in order, and state why Stage 5 requires a 24-to-72-hour continuous burn-in.**</summary>
 
 The six stages are Physical Acceptance, Server Acceptance, Network Acceptance, Storage Acceptance, Cluster Acceptance, and Operational Acceptance. Stage 1 checks power headroom, inlet temperatures, cabling, optics, and BMC reachability. Stage 2 checks firmware drift, GPU counts, topology matrices, and link states. Stage 3 validates LLDP neighbors, per-rail line-rate bandwidth, latency, and pause-free collectives. Stage 4 verifies concurrent sequential throughput, small-file IOPS, metadata rates, and timed checkpoints. Stage 5 runs Linpack, `nccl-tests`, ClusterKit, a continuous burn-in, and a customer proxy job. Stage 6 tests live alerts, CMDB records, live rollback drills, node draining, and external runbooks. A 24-to-72-hour burn-in is mandatory in Stage 5 because thermal throttling, marginal power supplies, and intermittent PCIe bus drops frequently pass a five-minute test and only fail after hours of sustained heat soak.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. During Stage 3 Network Acceptance on a 16-node pod, Rail 5 shows 15% lower bandwidth than the other 7 rails across every node in the cluster. Why shouldn't you start by replacing optical cables on the 16 nodes?`&lt;/strong>`</summary>
+<summary>**7. During Stage 3 Network Acceptance on a 16-node pod, Rail 5 shows 15% lower bandwidth than the other 7 rails across every node in the cluster. Why shouldn't you start by replacing optical cables on the 16 nodes?**</summary>
 
 Sixteen independent optical cables do not simultaneously degrade by the exact same 15 percent margin on the same rail index. A whole-rail bandwidth drop points directly to the shared Rail 5 leaf switch. Typical root causes include an oversubscribed uplink group, a quality-of-service or buffer misconfiguration, or a degraded spine link on that switch.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What is the safe procedure for updating OFED or GPU drivers on a 16-node BasePOD managed by Base Command Manager, and why is createramdisk required?`&lt;/strong>`</summary>
+<summary>**8. What is the safe procedure for updating OFED or GPU drivers on a 16-node BasePOD managed by Base Command Manager, and why is createramdisk required?**</summary>
 
 First, clone the active software image in `cmsh` so the working image remains untouched. Second, enter the cloned image via `cm-chroot-sw-img` and install the updated driver packages. Third, run `createramdisk` on the new image in `cmsh` so the initial ramdisk includes the new kernel modules for network boot. Fourth, assign the new image to one canary test node, reboot it, and validate `ibstat` and `nccl-tests`. Fifth, roll out the image to the compute node category via graceful scheduler drain and reboot, retaining instant rollback to the old image.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. What is the BasePOD range in this chapter, and what is marked as the author's inference?`&lt;/strong>`</summary>
+<summary>**9. What is the BasePOD range in this chapter, and what is marked as the author's inference?**</summary>
 
 The chapter defines the BasePOD and leaf-only pod range as 2 to 16 DGX nodes, corresponding to 16 to 128 GPUs. The author marks the combined 2-to-16 node boundary as an inference that unifies the 2-to-8 node onboarding range and the 8-to-16 node leaf-only pod topology from the source materials.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why can a leaf-only pod have no spine?`&lt;/strong>`</summary>
+<summary>**10. Why can a leaf-only pod have no spine?**</summary>
 
 With up to 16 nodes, network card `k` of every node lands on rail leaf switch `k` and uses only 16 of its 64 ports. Same-rail GPUs are a single hop apart across the leaf switch, and cross-rail traffic travels over the high-speed NVSwitch fabric inside each node.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What are the pros and cons of a leaf-only pod?`&lt;/strong>`</summary>
+<summary>**11. What are the pros and cons of a leaf-only pod?**</summary>
 
 The advantages are the lowest possible switching latency, zero spine switch or spine-to-leaf optic cost, and simple cabling. The disadvantages are that losing one rail switch disables that rail across every node, and expanding past the leaf port count requires adding a spine tier.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How many MIG instances can one GPU have, and what do they isolate?`&lt;/strong>`</summary>
+<summary>**12. How many MIG instances can one GPU have, and what do they isolate?**</summary>
 
 A single GPU supports up to 7 hardware slices on A100, H100, H200, and B200 architectures. Each slice isolates its own streaming multiprocessors, L2 cache slice, memory controllers, and high-bandwidth memory address space so a fault in one slice never affects neighbors.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. When is MPS appropriate?`&lt;/strong>`</summary>
+<summary>**13. When is MPS appropriate?**</summary>
 
 Multi-Process Service is appropriate when a single trusted tenant runs several small kernels that cannot fill the GPU compute cores alone. It provides spatial sharing of streaming multiprocessors to boost occupancy, but it offers no hardware memory protection or fault isolation.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Why is time-slicing unsuitable for untrusted tenants?`&lt;/strong>`</summary>
+<summary>**14. Why is time-slicing unsuitable for untrusted tenants?**</summary>
 
 Time-slicing forces processes to share physical memory and L2 cache with no hardware memory boundary. One process running out of memory or triggering a fatal exception can starve or disrupt every other workload sharing the GPU.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What is the training-time formula and the 70B example?`&lt;/strong>`</summary>
+<summary>**15. What is the training-time formula and the 70B example?**</summary>
 
 Total training compute equals 6 multiplied by parameter count and token count. For a 70B parameter model trained on 100B tokens, this requires 4.2e22 FLOPs, which takes 9.6 days across 128 H100 GPUs at 40 percent MFU.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How was the inference pool sized in the $20M case?`&lt;/strong>`</summary>
+<summary>**16. How was the inference pool sized in the $20M case?**</summary>
 
 Serving 500 queries per second at 15.2 queries per second per two-GPU replica requires 33 active replicas, or 66 GPUs. Adding one full spare node for high availability brings the pool to 9 nodes, 72 GPUs, 36 replicas, and 547.2 queries per second of capacity.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What is the Year-1 total for the 27-node startup design?`&lt;/strong>`</summary>
+<summary>**17. What is the Year-1 total for the 27-node startup design?**</summary>
 
 The 27-node multi-pool design requires 8.9 million dollars in capital expenditure plus 0.82 million dollars in Year-1 operating expenditure. The combined 9.7 million dollar spend fits comfortably inside the 20 million dollar budget.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. What does Stage 1 (physical acceptance) check?`&lt;/strong>`</summary>
+<summary>**18. What does Stage 1 (physical acceptance) check?**</summary>
 
 Stage 1 verifies more than 20 percent breaker headroom, rack inlet temperatures below 27 degrees Celsius under load, labeled and in-spec cables, zero optical power warnings, and working BMC and Redfish power control on every node.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What do Stages 2 and 3 check?`&lt;/strong>`</summary>
+<summary>**19. What do Stages 2 and 3 check?**</summary>
 
 Stage 2 verifies zero firmware drift, correct GPU counts, zero hardware errors, matching `nvidia-smi topo -m` matrices, and active NVLink and InfiniBand links. Stage 3 verifies that LLDP matches the cabling plan, every rail achieves at least 90 percent of line rate, latency stays in the low single-digit microseconds, and collectives trigger zero pause storms.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Why is a 24–72 hour burn-in needed, and what is Stage 6?`&lt;/strong>`</summary>
+<summary>**20. Why is a 24–72 hour burn-in needed, and what is Stage 6?**</summary>
 
 Infant-mortality hardware faults such as marginal socket contact or thermal drift often appear only after many hours of sustained heat soak. Stage 6 is operational acceptance, which requires a live alert injection test, CMDB reconciliation, a live executed rollback drill, node drain and rejoin testing, external runbooks, and a test support ticket.
 </details>

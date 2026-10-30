@@ -377,121 +377,121 @@ Summary: 25 passed, 0 failed (total 25)
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. When nvidia-smi reports 0 MiB total memory on GPU 0 and 81,920 MiB on GPU 1 of the same node, what does the peer comparison immediately rule out, and what is the primary root cause?`&lt;/strong>`</summary>
+<summary>**1. When nvidia-smi reports 0 MiB total memory on GPU 0 and 81,920 MiB on GPU 1 of the same node, what does the peer comparison immediately rule out, and what is the primary root cause?**</summary>
 
 Because GPU 1 on the same host reports its full 81,920 MiB capacity, a node-wide kernel driver installation failure is ruled out immediately. The primary root cause on GPU 0 is MIG mode enabled with zero GPU Instances created. When `nvidia-smi mig -lgi` returns empty, no memory can be allocated on the parent device.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. How do you identify and clear a zombie CUDA context that holds 71,234 MiB of GPU memory with no visible OS process?`&lt;/strong>`</summary>
+<summary>**2. How do you identify and clear a zombie CUDA context that holds 71,234 MiB of GPU memory with no visible OS process?**</summary>
 
 Query compute applications with `nvidia-smi` to find the PID holding 71,234 MiB, and check `ps` to confirm the OS process exited without releasing its GPU context. Reclaim the memory with `sudo fuser -k /dev/nvidia0` or `sudo nvidia-smi --gpu-reset -i 0`.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Why does a routine kernel patch cause nvidia-smi to fail across an entire maintenance batch, and how do you fix it without another reboot?`&lt;/strong>`</summary>
+<summary>**3. Why does a routine kernel patch cause nvidia-smi to fail across an entire maintenance batch, and how do you fix it without another reboot?**</summary>
 
 The patching pipeline updated the Linux kernel package and rebooted before DKMS rebuilt `nvidia.ko` against the new kernel headers. Checking `dkms status` shows the module registered only for the previous kernel. Running `dkms autoinstall` builds and loads the module for the running kernel immediately without requiring a second reboot.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Why can Kubernetes GPU pods work normally on a node while Slurm container jobs report no devices found?`&lt;/strong>`</summary>
+<summary>**4. Why can Kubernetes GPU pods work normally on a node while Slurm container jobs report no devices found?**</summary>
 
 Kubernetes uses the NVIDIA Container Toolkit or CDI path, whereas Slurm Pyxis and Enroot rely on `/etc/enroot/hooks.d/*nvidia*` to bind-mount driver libraries and device nodes into the rootless container. If that hook file is missing after a node image update, GPU visibility variables are unset inside Enroot containers.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. Why can't temperature, clock, and power readings distinguish thermal throttling from power limiting on their own?`&lt;/strong>`</summary>
+<summary>**5. Why can't temperature, clock, and power readings distinguish thermal throttling from power limiting on their own?**</summary>
 
 Lowering clock frequency automatically reduces dynamic power draw regardless of why the clock dropped. To prove whether heat or power triggered the reduction, inspect the hardware throttle reason bitmask via `nvidia-smi -i 0 -q -d PERFORMANCE` and `DCGM_FI_DEV_CLOCK_THROTTLE_REASONS`.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Why does fan speed query return N/A on H100 SXM5, H100 PCIe, and L40S GPUs, and how do you inspect their cooling fans?`&lt;/strong>`</summary>
+<summary>**6. Why does fan speed query return N/A on H100 SXM5, H100 PCIe, and L40S GPUs, and how do you inspect their cooling fans?**</summary>
 
 Data-center HGX and DGX SXM modules and passively cooled server PCIe cards do not have GPU-mounted fans. Their airflow is provided by server chassis fans controlled by the Baseboard Management Controller. Query chassis fan RPMs via IPMI or Redfish using `ipmitool sdr type Fan` to spot a stuck 0 RPM fan.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Contrast a healthy GPU temperature rise rate under load against a stuck-fan rise rate, and state the Prometheus alert rule from the Lab 04 fan postmortem.`&lt;/strong>`</summary>
+<summary>**7. Contrast a healthy GPU temperature rise rate under load against a stuck-fan rise rate, and state the Prometheus alert rule from the Lab 04 fan postmortem.**</summary>
 
 A healthy GPU rises at roughly 0.05°C/sec and plateaus below 80°C. A GPU with a failed fan or degraded thermal interface rises at 0.20 to 0.30°C/sec over 60 seconds, or 0.93°C/sec during a 30-second burn test. Alert proactively when `deriv(gpu_temp[1m]) > 0.15` holds for 10 minutes.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. How do you size PSU capacity for four 300 W A100 GPUs, and what auxiliary voltage reading confirms a PSU brownout sag?`&lt;/strong>`</summary>
+<summary>**8. How do you size PSU capacity for four 300 W A100 GPUs, and what auxiliary voltage reading confirms a PSU brownout sag?**</summary>
 
 Include 30% PSU headroom so four 300 W GPUs require at least 1,560 W of PSU capacity, and cap total node GPU power at 80% of PSU capacity. On the 12V auxiliary rail, a sensor reading below 11.4 V such as 10.8 V confirms voltage sag under peak Tensor Core load.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. When GPU clocks oscillate between 1,980 MHz and 800 MHz at a cool 65°C with zero active throttle reasons, what is happening and how do you fix it?`&lt;/strong>`</summary>
+<summary>**9. When GPU clocks oscillate between 1,980 MHz and 800 MHz at a cool 65°C with zero active throttle reasons, what is happening and how do you fix it?**</summary>
 
 Short idle gaps between bursty data loader batches allow firmware DVFS to downshift from state P0 into lower power states P2 or P3. Enable persistence mode, set the host CPU governor to `performance`, and lock graphics clocks with `sudo nvidia-smi -i 0 -lgc 1800`.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. What throughput and lspci fields indicate PCIe Gen4 x16 down-training, and how do you retrain the link without rebooting?`&lt;/strong>`</summary>
+<summary>**10. What throughput and lspci fields indicate PCIe Gen4 x16 down-training, and how do you retrain the link without rebooting?**</summary>
 
 Healthy PCIe Gen4 x16 delivers 20 to 26 GB/s in `bandwidthTest`, with a weekly gate of 17.6 GB/s. Measuring 2.3 GB/s with 127 PCIe replays while `lspci -vvv` shows Gen3 x8 in `LnkSta` confirms link degradation. Remove the PCIe device node and trigger a sysfs bus rescan to retrain the link without rebooting.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How do you use NCCL debug logs or RAS in NCCL 2.24+ to distinguish a starved straggler rank from an application-level collective deadlock?`&lt;/strong>`</summary>
+<summary>**11. How do you use NCCL debug logs or RAS in NCCL 2.24+ to distinguish a starved straggler rank from an application-level collective deadlock?**</summary>
 
 In a starved straggler scenario, most ranks converge on the latest operation count such as 4821 while one rank lags behind at 4820. In an application code deadlock from a divergent conditional branch, ranks freeze permanently at different, non-converging operation counts because different ranks called different sequences of collectives.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. In the Volume 20 Chapter 3 NCCL timeout incident, why was Rank 3 stuck at operation 4820 with 2% GPU utilization, and what was the underlying storage cause?`&lt;/strong>`</summary>
+<summary>**12. In the Volume 20 Chapter 3 NCCL timeout incident, why was Rank 3 stuck at operation 4820 with 2% GPU utilization, and what was the underlying storage cause?**</summary>
 
 Rank 3's GPU was healthy with zero Xids and 78.3 W power draw, but it starved waiting 47.31 seconds for the data loader. Its local `/data` volume was 96% full due to uneven dataset sharding. Specifically, Rank 3's shard was 187 GB versus 41 GB on Rank 0, or 4.56x larger.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. Why must per-rank iteration timers be placed before dist.all_reduce, and how do you localize a slow GPU using nccl-tests?`&lt;/strong>`</summary>
+<summary>**13. Why must per-rank iteration timers be placed before dist.all_reduce, and how do you localize a slow GPU using nccl-tests?**</summary>
 
 Because `dist.all_reduce` synchronizes all ranks, post-collective timers include the time fast ranks spent waiting for the straggler, making every rank look equally slow. Synchronizing and timing before the collective exposes the 10.02x straggler ratio on GPU 2. Because `all_reduce_perf` prints one summary row per size, run 2-GPU subsets and check `nvidia-smi nvlink --status` to spot degraded or failed links.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. In the Volume 20 Lab 04 Exercise 2 ECC storm postmortem, at what timestamp and error rate should automated monitoring have stopped the job before accuracy dropped from 92% to 85%?`&lt;/strong>`</summary>
+<summary>**14. In the Volume 20 Lab 04 Exercise 2 ECC storm postmortem, at what timestamp and error rate should automated monitoring have stopped the job before accuracy dropped from 92% to 85%?**</summary>
 
 Monitoring should have stopped the job at 15:30, when 50 errors accumulated in 30 minutes for a rate of 100 errors per hour. That threshold fired 45 minutes before validation accuracy dropped from 92% to 85% at 16:15. The automated policy logs fewer than 1 error per hour as normal, schedules maintenance at 1 to 10 per hour, and immediately drains the GPU above 10 per hour.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. When a GPU simultaneously exhibits ECC/Xid errors, thermal throttling, and NCCL hangs, in what priority order must you evaluate the evidence and why?`&lt;/strong>`</summary>
+<summary>**15. When a GPU simultaneously exhibits ECC/Xid errors, thermal throttling, and NCCL hangs, in what priority order must you evaluate the evidence and why?**</summary>
 
 First, evaluate Data Integrity across uncorrectable ECC and Tier 3 Xids, because memory corruption invalidates outputs and mandates an immediate node drain regardless of other findings. Second, evaluate Hardware Performance Cause using the throttle bitmask and temperature, which explains why one rank slowed down physically. Third, evaluate Downstream Symptom in NCCL operation lag, which is the consequence of the slow or dead rank.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Walk through the 7-stage synchronous iteration breakdown in Volume 20 Chapter 12 (750.00 ms total), and explain why optimizing GPU kernels would be wasted effort on that workload.`&lt;/strong>`</summary>
+<summary>**16. Walk through the 7-stage synchronous iteration breakdown in Volume 20 Chapter 12 (750.00 ms total), and explain why optimizing GPU kernels would be wasted effort on that workload.**</summary>
 
 In the 750.00 ms iteration, CPU data loading takes 450.00 ms or 60.0%, and network all-reduce takes 150.00 ms or 20.0%. All four GPU compute stages combined take only 108.00 ms or 14.4%, plus 10.00 ms for PCIe copy. Even a 2x faster GPU kernel would save less than 8% of step time while 60% sits in CPU data loading.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. How can nvidia-smi report 100% GPU utilization while actual throughput is only 200 samples/sec instead of 1,000 samples/sec?`&lt;/strong>`</summary>
+<summary>**17. How can nvidia-smi report 100% GPU utilization while actual throughput is only 200 samples/sec instead of 1,000 samples/sec?**</summary>
 
 Both `nvidia-smi` and PyTorch utilization queries report the percentage of sampling intervals during which any context was active on the GPU. That metric stays near 100% even when the GPU is idle 90% of the time waiting between slow CPU kernel launches at 50 kernels/sec instead of 1,000+ kernels/sec. Capturing CUDA Graphs eliminates the CPU launch gap.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. What is a Profiler Heisenbug, what overheads did nvidia-smi polling and nsys introduce in the Chapter 12 benchmark, and how do you order tools by overhead?`&lt;/strong>`</summary>
+<summary>**18. What is a Profiler Heisenbug, what overheads did nvidia-smi polling and nsys introduce in the Chapter 12 benchmark, and how do you order tools by overhead?**</summary>
 
 A Profiler Heisenbug occurs when measurement overhead alters application behavior, dropping throughput from 500 samples/sec unprofiled to 450 samples/sec (-10%) with a 1-second `nvidia-smi` loop and 250 samples/sec (-50%) under `nsys`. Order tools from lowest to highest overhead: Python `time.perf_counter()`, DCGM, `nvidia-smi` polling, Nsight Systems, and heavyweight CPU instrumentation.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. How do stale green Grafana dashboards and masked fleet averages deceive operators into thinking a broken GPU fleet is healthy?`&lt;/strong>`</summary>
+<summary>**19. How do stale green Grafana dashboards and masked fleet averages deceive operators into thinking a broken GPU fleet is healthy?**</summary>
 
 In a stale green panel, when Prometheus stops scraping a dead target, Grafana continues rendering the last scraped value inside the panel window. That behavior looks like a steady green plateau unless you alert on sample age and target up status. In a masked fleet average, a panel plotting average GPU utilization across the fleet silently drops any node whose exporter is down. You must alert on the count of down targets so dead nodes are not hidden.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. How do a broken Slurm NHC virtualenv and an SELinux device block silently disable GPU health monitoring?`&lt;/strong>`</summary>
+<summary>**20. How do a broken Slurm NHC virtualenv and an SELinux device block silently disable GPU health monitoring?**</summary>
 
 In the false-green Slurm NHC case, a package update breaks a Python import inside the healthcheck virtualenv. A catch-all wrapper then exits 0 on exceptions and marks nodes with active Xid faults as healthy. In the SELinux block case, an OS hardening baseline lacks an SELinux type mapping for a GPU device node. Enforcing mode silently denies exporter reads without logging an application error, requiring `ausearch -m avc -ts recent` and `audit2why` to diagnose.
 </details>

@@ -596,43 +596,43 @@ In senior AI infrastructure and solutions architecture interviews, candidates ar
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. How does Engineering AI Systems (Ch. 3) distinguish Symbolic AI, Classical Data-Driven ML, and Foundation Models, and when is Symbolic AI still preferred?`&lt;/strong>`</summary>
+<summary>**1. How does Engineering AI Systems (Ch. 3) distinguish Symbolic AI, Classical Data-Driven ML, and Foundation Models, and when is Symbolic AI still preferred?**</summary>
 
 Symbolic AI uses explicit predefined rules in an if-else knowledge base. It is preferred when the domain is well understood, the scope fits within a few hundred rules, and strict regulatory auditability is mandatory. Classical data-driven ML trains statistical algorithms such as KNN, logistic regression, decision trees, random forests, and SVMs on structured features. Foundation models are massive neural networks pretrained via self-supervised learning on unlabeled corpora and adapted via supervised fine-tuning.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What are the five key differences between ML in research and ML in production (DMLS Ch. 1, Table 1-1)?`&lt;/strong>`</summary>
+<summary>**2. What are the five key differences between ML in research and ML in production (DMLS Ch. 1, Table 1-1)?**</summary>
 
 First, research optimizes single-objective state-of-the-art benchmark accuracy. Production instead balances conflicting stakeholder requirements including revenue, sub-100-millisecond latency, stability, and margin. Second, research prioritizes high training throughput, whereas production prioritizes low inference tail latency at the 90th and 99th percentiles. Third, research datasets are clean and static, whereas production data is noisy, privacy-sensitive, and constantly shifting. Fourth and fifth, fairness and interpretability are often optional in research leaderboards, yet mandatory in production to prevent discrimination and pass audits.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Why can batching online queries increase both latency and throughput simultaneously, and why must SLAs use percentiles instead of average latency (DMLS Ch. 1)?`&lt;/strong>`</summary>
+<summary>**3. Why can batching online queries increase both latency and throughput simultaneously, and why must SLAs use percentiles instead of average latency (DMLS Ch. 1)?**</summary>
 
 Processing 1 query in 10 ms yields 100 queries per second. Grouping 50 queries into a 20 ms batch increases per-query latency to 20 ms plus queue wait time while boosting throughput 25-fold to 2,500 queries per second. Arithmetic average latency hides severe tail outliers because a single 3,000 ms request among nine 100 ms requests skews the mean to 390.0 ms. By contrast, the median p50 of 100.0 ms and p90 of 3,000.0 ms cleanly separate typical performance from tail stalls.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Why should a multi-objective system decouple objectives into separate models rather than training one model on a combined weighted loss (DMLS Ch. 2)?`&lt;/strong>`</summary>
+<summary>**4. Why should a multi-objective system decouple objectives into separate models rather than training one model on a combined weighted loss (DMLS Ch. 2)?**</summary>
 
 Combining losses at training time requires retraining the entire model from scratch whenever product managers adjust the business weights. Training separate quality and engagement models lets engineers combine their predicted scores at serving time. That decoupling allows instant weight tuning without retraining and lets each model be updated on its own maintenance schedule.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. Why is framing next-app recommendation as regression or scalar scoring superior to framing it as N-class classification (DMLS Ch. 2)?`&lt;/strong>`</summary>
+<summary>**5. Why is framing next-app recommendation as regression or scalar scoring superior to framing it as N-class classification (DMLS Ch. 2)?**</summary>
 
 In N-class classification, the output softmax layer has a fixed dimension N. Adding a single new app therefore requires changing the network architecture and retraining the model. In regression or scalar scoring framing, the model takes user, context, and candidate app features as input and outputs a single probability. That design allows newly added apps to be scored zero-shot without retraining.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Prove why a dense Transformer training step requires 2PD FLOPs for the forward pass, 4PD FLOPs for the backward pass, 6PD total standard FLOPs, and 8PD FLOPs with full activation checkpointing.`&lt;/strong>`</summary>
+<summary>**6. Prove why a dense Transformer training step requires 2PD FLOPs for the forward pass, 4PD FLOPs for the backward pass, 6PD total standard FLOPs, and 8PD FLOPs with full activation checkpointing.**</summary>
 
 Each parameter in a linear layer performs one multiply and one add—2 FLOPs—per token across P parameters and D tokens. The forward pass therefore costs 2PD FLOPs. During backpropagation, each layer computes two matrix multiplications of that same size: 2PD FLOPs for input activation gradients and 2PD FLOPs for weight gradients. Summing those gives 4PD backward FLOPs and 6PD standard training FLOPs. Full activation checkpointing discards forward activations and recomputes them via one extra 2PD forward pass during backward, raising total compute by 33.33 percent to 8PD FLOPs.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How long does a single GPT-3 (175B) training step take on 1 NVIDIA A100 versus 128 A100 GPUs (V13 Ch. 01)?`&lt;/strong>`</summary>
+<summary>**7. How long does a single GPT-3 (175B) training step take on 1 NVIDIA A100 versus 128 A100 GPUs (V13 Ch. 01)?**</summary>
 
 ```text
 GPT-3 175B Single Step Timing (batch = 2048, seq = 2048 -> 4,194,304 tokens, 1.46 x 10^18 FLOPs):
@@ -642,7 +642,7 @@ GPT-3 175B Single Step Timing (batch = 2048, seq = 2048 -> 4,194,304 tokens, 1.4
 </details>
 
 <details>
-<summary>`&lt;strong>`8. Compare the static memory per parameter and 7B-model static footprint for vanilla FP32 SGD, momentum FP32 SGD, and mixed-precision AdamW.`&lt;/strong>`</summary>
+<summary>**8. Compare the static memory per parameter and 7B-model static footprint for vanilla FP32 SGD, momentum FP32 SGD, and mixed-precision AdamW.**</summary>
 
 ```text
 Static Memory per Parameter and 7B Footprint:
@@ -653,7 +653,7 @@ Static Memory per Parameter and 7B Footprint:
 </details>
 
 <details>
-<summary>`&lt;strong>`9. In the V13 Ch. 02 7B Transformer step timeline, what are the exact memory totals during forward, uncheckpointed backward, checkpointed backward, optimizer step, and AMP?`&lt;/strong>`</summary>
+<summary>**9. In the V13 Ch. 02 7B Transformer step timeline, what are the exact memory totals during forward, uncheckpointed backward, checkpointed backward, optimizer step, and AMP?**</summary>
 
 ```text
 V13 Ch. 02 7B Transformer Step Memory Totals (32 layers, batch = 4, seq = 2048):
@@ -666,7 +666,7 @@ V13 Ch. 02 7B Transformer Step Memory Totals (32 layers, batch = 4, seq = 2048):
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Write the formulas for linear warmup and cosine annealing decay, and evaluate lr(t) at steps 1,000 and 51,000.`&lt;/strong>`</summary>
+<summary>**10. Write the formulas for linear warmup and cosine annealing decay, and evaluate lr(t) at steps 1,000 and 51,000.**</summary>
 
 ```text
 Linear Warmup (0 <= t <= W = 2,000) and Cosine Decay (W < t <= T = 100,000, lr_peak = 3.0e-4, lr_min = 3.0e-5):
@@ -678,7 +678,7 @@ Linear Warmup (0 <= t <= W = 2,000) and Cosine Decay (W < t <= T = 100,000, lr_p
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How do you scale a base learning rate of 1e-4 at batch size 32 when scaling data parallelism across 64 GPUs at 128 sequences per GPU (V21 Ch. 07)?`&lt;/strong>`</summary>
+<summary>**11. How do you scale a base learning rate of 1e-4 at batch size 32 when scaling data parallelism across 64 GPUs at 128 sequences per GPU (V21 Ch. 07)?**</summary>
 
 ```text
 Square-Root Learning Rate Scaling Heuristic (V21 Ch. 07):
@@ -688,19 +688,19 @@ Square-Root Learning Rate Scaling Heuristic (V21 Ch. 07):
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What is the Critical Batch Size, and what happens to step count and total compute cost when global batch size equals 1x versus 8x the critical batch size (DMLS Ch. 6)?`&lt;/strong>`</summary>
+<summary>**12. What is the Critical Batch Size, and what happens to step count and total compute cost when global batch size equals 1x versus 8x the critical batch size (DMLS Ch. 6)?**</summary>
 
 The critical batch size is the batch size where stochastic gradient noise equals true gradient signal, governed by the gradient noise scale. At 1x the critical batch size, training requires 2.0x the minimum steps and 2.0x the minimum compute, giving 50.0 percent parallel scaling efficiency. At 8x the critical batch size, required steps drop to only 1.125x the minimum while total compute balloons to 9.0x the minimum. That jump drops parallel scaling efficiency down to 11.11 percent.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. Contrast Synchronous SGD and Asynchronous SGD in data-parallel training, and explain why Tensor Parallelism must stay inside a single node.`&lt;/strong>`</summary>
+<summary>**13. Contrast Synchronous SGD and Asynchronous SGD in data-parallel training, and explain why Tensor Parallelism must stay inside a single node.**</summary>
 
 Synchronous SGD waits at an All-Reduce barrier for all workers every step, preserving exact mini-batch math but suffering from straggler slowdowns. Asynchronous SGD updates weights immediately without waiting, avoiding stragglers at the cost of stale gradients. Tensor Parallelism shards weight matrices inside every Transformer layer and executes two All-Reduce collectives per layer per step. Because of that per-layer synchronization, Tensor Parallelism must stay within a single node's 900 GB/s NVLink domain rather than crossing 50 GB/s InfiniBand links.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. What is the pipeline parallelism bubble formula, and what is the bubble fraction for 4 stages with 4 versus 16 micro-batches?`&lt;/strong>`</summary>
+<summary>**14. What is the pipeline parallelism bubble formula, and what is the bubble fraction for 4 stages with 4 versus 16 micro-batches?**</summary>
 
 ```text
 Pipeline Bubble Fraction = (p - 1) / (m + p - 1)
@@ -710,7 +710,7 @@ Pipeline Bubble Fraction = (p - 1) / (m + p - 1)
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Define cross-entropy loss and perplexity, and compute both for the 4-class politics example (DMLS Ch. 2).`&lt;/strong>`</summary>
+<summary>**15. Define cross-entropy loss and perplexity, and compute both for the 4-class politics example (DMLS Ch. 2).**</summary>
 
 ```text
 Cross-Entropy and Perplexity (p = [0, 0, 0, 1], q = [0.45, 0.2, 0.02, 0.33]):
@@ -720,13 +720,13 @@ Cross-Entropy and Perplexity (p = [0, 0, 0, 1], q = [0.45, 0.2, 0.02, 0.33]):
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Why does a majority-vote ensemble of 3 uncorrelated classifiers with 70 percent accuracy each achieve 78.4 percent accuracy, and how do Bagging, Boosting, and Stacking differ?`&lt;/strong>`</summary>
+<summary>**16. Why does a majority-vote ensemble of 3 uncorrelated classifiers with 70 percent accuracy each achieve 78.4 percent accuracy, and how do Bagging, Boosting, and Stacking differ?**</summary>
 
 With three uncorrelated 70 percent classifiers, all three are correct 34.3 percent of the time and exactly two are correct 44.1 percent of the time. Majority vote therefore succeeds 78.4 percent of the time, whereas 100 percent correlated classifiers would remain at 70.0 percent. Bagging trains parallel models on bootstrap samples to reduce variance, Boosting trains sequential models on reweighted errors to reduce bias, and Stacking trains a meta-learner on base predictions.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. On a binary classification task with 90 percent NEGATIVE and 10 percent POSITIVE labels (DMLS Ch. 6, Table 6-2), what are the F1 and Accuracy of uniform random guessing, label-distribution random guessing, and the zero-rule baseline?`&lt;/strong>`</summary>
+<summary>**17. On a binary classification task with 90 percent NEGATIVE and 10 percent POSITIVE labels (DMLS Ch. 6, Table 6-2), what are the F1 and Accuracy of uniform random guessing, label-distribution random guessing, and the zero-rule baseline?**</summary>
 
 ```text
 DMLS Ch. 6 Table 6-2 Baselines (90% NEGATIVE / 10% POSITIVE):
@@ -737,19 +737,19 @@ DMLS Ch. 6 Table 6-2 Baselines (90% NEGATIVE / 10% POSITIVE):
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Explain how Simpson's paradox and slice-based evaluation can cause an inferior or biased model to win on aggregate metrics.`&lt;/strong>`</summary>
+<summary>**18. Explain how Simpson's paradox and slice-based evaluation can cause an inferior or biased model to win on aggregate metrics.**</summary>
 
 In slice-based evaluation with 90 percent majority and 10 percent minority data, Model A can score 96.2 percent overall while dropping to 80 percent on the minority slice. Model B scores 95.0 percent across both groups and is therefore fairer despite its lower aggregate score. Under Simpson's paradox, Model A can beat Model B in Group A and in Group B simultaneously. Yet Model A still loses when combined across all 350 samples because it was evaluated predominantly on the harder subgroup.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What are the three core debugging practices recommended in DMLS Ch. 6, and why is data versioning fundamentally harder than code versioning?`&lt;/strong>`</summary>
+<summary>**19. What are the three core debugging practices recommended in DMLS Ch. 6, and why is data versioning fundamentally harder than code versioning?**</summary>
 
 The three debugging practices are starting with a simple architecture, overfitting a single batch to near-zero loss, and locking all random seeds. Data versioning is harder than Git code versioning because multi-terabyte datasets cannot be duplicated locally and binary records cannot be line-diffed. Furthermore, merging two dataset versions does not produce a merged trained model, and GDPR erasure requires deleting user records from historical snapshots.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Calculate the total 6PD FLOPs, achieved TFLOPS per GPU, cluster token throughput, and wall-clock training days for a 70B model trained on 2T tokens across 512 H100 GPUs at 45 percent MFU.`&lt;/strong>`</summary>
+<summary>**20. Calculate the total 6PD FLOPs, achieved TFLOPS per GPU, cluster token throughput, and wall-clock training days for a 70B model trained on 2T tokens across 512 H100 GPUs at 45 percent MFU.**</summary>
 
 ```text
 70B Model on 2T Tokens Across 512 H100 GPUs (989 TFLOPS peak) at 45% MFU:

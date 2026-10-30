@@ -710,102 +710,102 @@ The six exercises below use the functions in `code/part12/infiniband_diagnostics
 
 ## Checkpoint questions (20)
 
-<details><summary>`&lt;strong>`1. Why is a green "port Active" dashboard insufficient for operating an AI InfiniBand fabric?`&lt;/strong>`</summary>
+<details><summary>**1. Why is a green "port Active" dashboard insufficient for operating an AI InfiniBand fabric?**</summary>
 
 An active port state only proves that physical lane training and initial Subnet Manager admission succeeded. A port can remain active while negotiated down to single-lane width or accumulating accelerating symbol errors. It can also suffer a twenty-to-one static routing imbalance or stall on downstream credit backpressure.
 </details>
 
-<details><summary>`&lt;strong>`2. What is the difference between state, cumulative counters, and rates/deltas in InfiniBand telemetry?`&lt;/strong>`</summary>
+<details><summary>**2. What is the difference between state, cumulative counters, and rates/deltas in InfiniBand telemetry?**</summary>
 
 State describes the instantaneous configuration of a port, such as link state, speed, width, and assigned LID. Cumulative counters accumulate hardware events monotonically since the last reset or reboot. Rates and deltas measure the change across a defined time window to prove whether errors or stalls are actively occurring and accelerating right now.
 </details>
 
-<details><summary>`&lt;strong>`3. Contrast the counter evidence on switch port 9 with switch port 12 in Section 1.2.`&lt;/strong>`</summary>
+<details><summary>**3. Contrast the counter evidence on switch port 9 with switch port 12 in Section 1.2.**</summary>
 
 On port nine, the five-minute delta during active traffic is zero, proving the `12,034` total is historical scar tissue that needs no cable replacement. On port twelve, the three-day delta jumps from `+886` (`295.33` errors/day) to `+40,310` (`13,436.67` errors/day), representing a `45.5x` acceleration alongside eleven link-down events. That acceleration proves active physical degradation requiring immediate port isolation and cable replacement.
 </details>
 
-<details><summary>`&lt;strong>`4. Why must monitoring systems anchor InfiniBand metrics on 64-bit GUIDs rather than 16-bit LIDs, and what are the four 16-bit LID ranges?`&lt;/strong>`</summary>
+<details><summary>**4. Why must monitoring systems anchor InfiniBand metrics on 64-bit GUIDs rather than 16-bit LIDs, and what are the four 16-bit LID ranges?**</summary>
 
 Hardware NodeGUID and PortGUID values are burned in permanently, whereas 16-bit Local IDs are dynamic forwarding addresses that can change after Subnet Manager sweeps or failovers. The 16-bit LID space is divided into four ranges: reserved 0x0000, unicast 0x0001 to 0xBFFF, multicast 0xC000 to 0xFFFE, and permissive 0xFFFF for directed-route management packets on Virtual Lane 15.
 </details>
 
-<details><summary>`&lt;strong>`5. How do `ibstat` and `ibstatus` differ when reporting Base lid, SM lid, and link speed on the dual-port MT4113 FDR HCA?`&lt;/strong>`</summary>
+<details><summary>**5. How do `ibstat` and `ibstatus` differ when reporting Base lid, SM lid, and link speed on the dual-port MT4113 FDR HCA?**</summary>
 
 The `ibstat` utility prints Base lid and SM lid in decimal (`913` and `43` on Port 1; `1361` and `698` on Port 2) and prints the rate as a bare integer. By contrast, `ibstatus` prints the same LIDs in hexadecimal (`0x391` and `0x2b` on Port 1; `0x551` and `0x2ba` on Port 2). It also includes the default GID and prints the explicit width and mode string for four-lane FDR.
 </details>
 
-<details><summary>`&lt;strong>`6. What is the difference between `ibhosts`, `ibswitches`, `ibnodes`, `ibnetdiscover`, and `iblinkinfo`?`&lt;/strong>`</summary>
+<details><summary>**6. What is the difference between `ibhosts`, `ibswitches`, `ibnodes`, `ibnetdiscover`, and `iblinkinfo`?**</summary>
 
 The `ibhosts` command lists all Channel Adapter host nodes in the subnet, while `ibswitches` lists all switch ASICs and `ibnodes` combines both lists. The `ibnetdiscover` utility crawls the entire subnet over Virtual Lane 15 to output the full port-to-port topology graph. Finally, `iblinkinfo` prints one status line per switch port showing negotiated link state, speed, lane width, and connected peer identity.
 </details>
 
-<details><summary>`&lt;strong>`7. How do `ibping` and `ibsysstat` work, and why does `ibping` fail if you treat it like ICMP ping?`&lt;/strong>`</summary>
+<details><summary>**7. How do `ibping` and `ibsysstat` work, and why does `ibping` fail if you treat it like ICMP ping?**</summary>
 
 Both `ibping` and `ibsysstat` exchange user-space General Services Interface management datagrams rather than kernel ICMP packets. Operators must start a server daemon on the target node using `ibping -S` or `ibsysstat -S` before running the client command from another host.
 </details>
 
-<details><summary>`&lt;strong>`8. What is the difference between `smpquery` and `saquery` on LID 914, and what does a mismatch between them prove?`&lt;/strong>`</summary>
+<details><summary>**8. What is the difference between `smpquery` and `saquery` on LID 914, and what does a mismatch between them prove?**</summary>
 
 Running `smpquery` sends a direct Virtual Lane 15 Subnet Management Packet to LID 914 and reads the live description directly from the target adapter. Running `saquery` queries the Subnet Manager's cached Subnet Administration database for the stored node record. If `smpquery` succeeds while `saquery` fails or returns a different host record, the Subnet Manager database is down, wedged, or stale.
 </details>
 
-<details><summary>`&lt;strong>`9. How do you distinguish the six primary error, discard, and wait counters in `perfquery`?`&lt;/strong>`</summary>
+<details><summary>**9. How do you distinguish the six primary error, discard, and wait counters in `perfquery`?**</summary>
 
 SymbolErrorCounter counts physical lane coding violations, LinkErrorRecoveryCounter counts hardware link retraining events, and LinkDownedCounter counts failed recoveries that dropped the link and triggered an OpenSM Trap 128. PortRcvErrors counts corrupted incoming frames, whereas PortXmitDiscards counts outbound packets dropped due to invalid routing, partition violations, or switch Head-of-Queue lifetime timeouts. PortXmitWait counts clock ticks spent waiting for downstream 64-byte flow-control credits and indicates pure lossless congestion when physical error deltas are zero.
 </details>
 
-<details><summary>`&lt;strong>`10. Why must you multiply `perfquery` transmit and receive data deltas by 4, and why should you pass `-x` on 400G and 800G links?`&lt;/strong>`</summary>
+<details><summary>**10. Why must you multiply `perfquery` transmit and receive data deltas by 4, and why should you pass `-x` on 400G and 800G links?**</summary>
 
 Per the InfiniBand specification, PortXmitData and PortRcvData count 4-octet (32-bit) words rather than bytes, so multiplying the word delta by four yields total bytes. Passing `-x` selects 64-bit extended counters. Without `-x`, standard 32-bit data counters saturate at 16 GiB, which takes less than `0.35` seconds on a 400 Gbps NDR link.
 </details>
 
-<details><summary>`&lt;strong>`11. In `mlxlink`, what is the difference between Raw Physical BER and Effective Physical BER, and what are the healthy DDM ranges in Section 3.2?`&lt;/strong>`</summary>
+<details><summary>**11. In `mlxlink`, what is the difference between Raw Physical BER and Effective Physical BER, and what are the healthy DDM ranges in Section 3.2?**</summary>
 
 Raw Physical BER measures the pre-FEC bit error rate across the physical SERDES lanes, whereas Effective Physical BER measures post-FEC residual errors delivered to the link layer. In the 850 nm VCSEL module from Section 3.2, the healthy telemetry readings are temperature 38 C, voltage 3255.2 mV, bias current 6.750 mA, and Rx and Tx optical power at 0 dBm. All five readings sit comfortably inside their hardware alarm brackets.
 </details>
 
-<details><summary>`&lt;strong>`12. What stages does `ibdiagnet` execute across a subnet, and which output files does it generate?`&lt;/strong>`</summary>
+<details><summary>**12. What stages does `ibdiagnet` execute across a subnet, and which output files does it generate?**</summary>
 
 The `ibdiagnet` suite runs topology discovery, duplicate GUID checks, link speed and width verification, Subnet Manager audits, a timed Performance Manager counter delta sweep, BER threshold tests, routing and credit-loop checks, and SHARP tree validation. It writes structured output files in `/var/tmp/ibdiagnet2/`. Those files include the main log, CSV database, link list, Performance Manager report, Subnet Manager report, forwarding database dump, and Mellanox counter file.
 </details>
 
-<details><summary>`&lt;strong>`13. How do `ibportstate` and `mlxconfig` differ from the other 25 diagnostic utilities, and how do you safely isolate a flapping switch port?`&lt;/strong>`</summary>
+<details><summary>**13. How do `ibportstate` and `mlxconfig` differ from the other 25 diagnostic utilities, and how do you safely isolate a flapping switch port?**</summary>
 
 Unlike the twenty-five read-only inspection tools, `ibportstate` and `mlxconfig` mutate live port states or non-volatile adapter firmware settings. After capturing a read-only evidence bundle, an operator isolates a flapping switch port by running `ibportstate` with the `disable` action. That step stops the port from generating Trap 128 heavy sweeps until the cable is replaced.
 </details>
 
-<details><summary>`&lt;strong>`14. Compare NVIDIA UFM Telemetry, UFM Enterprise, and UFM Cyber-AI.`&lt;/strong>`</summary>
+<details><summary>**14. Compare NVIDIA UFM Telemetry, UFM Enterprise, and UFM Cyber-AI.**</summary>
 
 UFM Telemetry is the high-frequency streaming collector that polls hardware counters, congestion metrics, optical DDM sensors, and BER for export to Prometheus or Grafana. UFM Enterprise is the complete control-plane and management platform hosting OpenSM, the SHARP Aggregation Manager, topology-aware congestion maps, unhealthy port policies, and the REST API. UFM Cyber-AI is the machine-learning analytics engine that learns cluster baselines, predicts impending cable failures from multi-day drift, and correlates job slowdowns with fabric anomalies.
 </details>
 
-<details><summary>`&lt;strong>`15. How does UFM Enterprise High Availability handle OpenSM election, and why is configuration checksum parity mandatory?`&lt;/strong>`</summary>
+<details><summary>**15. How does UFM Enterprise High Availability handle OpenSM election, and why is configuration checksum parity mandatory?**</summary>
 
 UFM Enterprise High Availability runs across two redundant appliances using DRBD replicated storage and a floating Virtual IP. OpenSM elects the instance with the highest priority from 0 to 15 and breaks equal-priority ties by choosing the lowest numerical 64-bit Port GUID. Both appliances must maintain identical checksums for `opensm.conf` and `partitions.conf` so an HA takeover never changes the active routing engine or drops tenant partitions.
 </details>
 
-<details><summary>`&lt;strong>`16. How are UFM appliances and cables sized in the DGX B200 and DGX GB300 SuperPOD reference architectures?`&lt;/strong>`</summary>
+<details><summary>**16. How are UFM appliances and cables sized in the DGX B200 and DGX GB300 SuperPOD reference architectures?**</summary>
 
 In a DGX B200 SuperPOD (`458 kW` per SU), one UFM appliance in the first Scalable Unit displaces one compute node. That layout yields 31, 63, 95, and 127 compute nodes (248, 504, 760, and 1,016 GPUs) across 1 to 4 SUs with up to 1,020 node cables and 1,024 ISLs. In a DGX GB300 SuperPOD, 144-port 800 Gbps Q3400-RD switches scale a two-layer fat-tree across 2, 4, 8, and 16 SUs (1,152 to 9,216 GPUs) with 16 to 128 leaves and 8 to 72 spines.
 </details>
 
-<details><summary>`&lt;strong>`17. How does NVIDIA Base Command Manager integrate InfiniBand and fabric topology with Slurm?`&lt;/strong>`</summary>
+<details><summary>**17. How does NVIDIA Base Command Manager integrate InfiniBand and fabric topology with Slurm?**</summary>
 
 Base Command Manager provisions IP over InfiniBand on `ibnet` and manages OpenSM through the `subnetmanager` role in `cmsh`. Its `topograph` daemon listens on HTTPS port 49021, exports 26 Prometheus measurables, and generates the Slurm `topology.conf` file so Slurm can schedule topology-aware jobs.
 </details>
 
-<details><summary>`&lt;strong>`18. State the 7 gates of the bottom-up InfiniBand troubleshooting workflow in exact order.`&lt;/strong>`</summary>
+<details><summary>**18. State the 7 gates of the bottom-up InfiniBand troubleshooting workflow in exact order.**</summary>
 
 The seven gates in bottom-up order are Gate 1 Inventory and Recent Change, Gate 2 Physical and Link State, Gate 3 Subnet Management Control Plane, Gate 4 Routing and Partitioning, Gate 5 Host-Memory RDMA, Gate 6 GPUDirect RDMA and PCIe/NUMA Locality, and Gate 7 Collective and Application Layer.
 </details>
 
-<details><summary>`&lt;strong>`19. Why does the `ib_write_lat` trace in Section 5.2 fail Gate 5 even though its typical latency is within 2% of baseline?`&lt;/strong>`</summary>
+<details><summary>**19. Why does the `ib_write_lat` trace in Section 5.2 fail Gate 5 even though its typical latency is within 2% of baseline?**</summary>
 
 Although the typical latency is 1.02x baseline (`1.58 µs` vs `1.55 µs`) and looks healthy, the 99% percentile is 1.70x baseline (`2.90 µs` vs `1.71 µs`) and the 99.9% percentile is 2.91x baseline (`5.77 µs` vs `1.98 µs`). Because synchronized collectives wait for the slowest rank at every barrier, tail latency stalls in host-memory RDMA prove a transport or fabric issue below GPUDirect and NCCL.
 </details>
 
-<details><summary>`&lt;strong>`20. How do you inject a safe, reversible process-scoped fault to validate the troubleshooting runbook on a shared cluster without touching switch ports?`&lt;/strong>`</summary>
+<details><summary>**20. How do you inject a safe, reversible process-scoped fault to validate the troubleshooting runbook on a shared cluster without touching switch ports?**</summary>
 
 Bind the `ib_write_bw` or `ib_write_lat` benchmark process to a remote CPU and memory NUMA node using `numactl --cpunodebind=1 --membind=1` when `mlx5_0` is attached to NUMA node 0. Gates 1 through 4 remain completely healthy, isolating the regression at Gate 6, and restoring `--cpunodebind=0 --membind=0` immediately returns performance to baseline.
 </details>

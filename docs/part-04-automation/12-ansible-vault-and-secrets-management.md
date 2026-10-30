@@ -209,7 +209,7 @@ A common production blend: Ansible Vault (or SOPS) holds only the **bootstrap** 
 ```mermaid
 flowchart LR
     Git["Git Repo: vars.yml + encrypted vault.yml<br/>($ANSIBLE_VAULT;1.2;AES256;prod) or SOPS"] --> Controller["Ansible Control Node / CI Runner<br/>(--vault-id prod@vault-client.py or OIDC)"]
-    Vault["External Secret Manager<br/>(HashiCorp Vault / Cloud Secret Manager)<br/>Dynamic Leases, SSH CA, BMC Passwords"] -->|lookup('hashi_vault', ...)<br/>on control node| Controller
+    Vault["External Secret Manager<br/>(HashiCorp Vault / Cloud Secret Manager)<br/>Dynamic Leases, SSH CA, BMC Passwords"] -->|"lookup hashi_vault<br/>on control node"| Controller
     Controller -->|"no_log: true, diff: false<br/>EnvironmentFile mode 0600"| Target["Target GPU / DB Host"]
 ```
 

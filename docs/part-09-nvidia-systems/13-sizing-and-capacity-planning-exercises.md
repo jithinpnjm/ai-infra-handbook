@@ -459,27 +459,27 @@ Exercise parameter table:
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. What is the difference between a Constraint and a Trade-off, and what is the Unfalsifiable-PoC Test?`&lt;/strong>`</summary>
+<summary>**1. What is the difference between a Constraint and a Trade-off, and what is the Unfalsifiable-PoC Test?**</summary>
 
 - A Constraint is a hard boundary you cannot change, such as a 150 kW room power limit or EU data residency law. A Trade-off is a deliberate architectural choice to sacrifice one property, such as GPU utilization, to gain another, such as strict physical tenant isolation.
 - Under the Unfalsifiable-PoC Test, if you cannot specify a numeric measurement in advance that would cause the Proof of Concept to be declared a FAIL, it is a demo rather than a PoC.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Why does a FinOps Reaper Bot query DCGM_FI_PROF_SM_ACTIVE instead of Kubernetes pod status or GPU allocation, and what threshold does it use?`&lt;/strong>`</summary>
+<summary>**2. Why does a FinOps Reaper Bot query DCGM_FI_PROF_SM_ACTIVE instead of Kubernetes pod status or GPU allocation, and what threshold does it use?**</summary>
 
 To Kubernetes, an idle Jupyter notebook pod that locked `nvidia.com/gpu: 1` three weeks ago is running and fully allocated. Only hardware telemetry from `dcgm-exporter` via `DCGM_FI_PROF_SM_ACTIVE` reveals whether the GPU silicon is actually executing math. If a pod holds a GPU with `DCGM_FI_PROF_SM_ACTIVE` below 5% continuously for 4 hours or more, the FinOps Reaper evicts the pod and notifies the user on Slack.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Give one example of an Economy of Scale and one example of a Diseconomy of Scale in LLM inference forecasting.`&lt;/strong>`</summary>
+<summary>**3. Give one example of an Economy of Scale and one example of a Diseconomy of Scale in LLM inference forecasting.**</summary>
 
 - Dynamic Batching provides an Economy of Scale. Doubling user QPS from 10 to 20 QPS rarely doubles GPU count because continuous batching groups the additional requests into existing weight reads, raising GPU utilization from 40% to 55%.
 - Context Window Expansion creates a Diseconomy of Scale. Expanding input prompts from single-page PDFs to hundred-page PDFs causes KV-cache VRAM to grow linearly with sequence length, triggering OOM crashes and requiring far more GPUs even at zero user growth.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. How many 8-GPU nodes are required to schedule five jobs requesting [8, 4, 4, 8, 4] GPUs with bin-packing versus without bin-packing, and what is the resulting node allocation percentage?`&lt;/strong>`</summary>
+<summary>**4. How many 8-GPU nodes are required to schedule five jobs requesting [8, 4, 4, 8, 4] GPUs with bin-packing versus without bin-packing, and what is the resulting node allocation percentage?**</summary>
 
 ```text
 Bin-packing result for [8, 4, 4, 8, 4] GPUs (28 GPUs total):
@@ -491,7 +491,7 @@ Packing the two four-GPU jobs onto the same server saves one full eight-GPU node
 </details>
 
 <details>
-<summary>`&lt;strong>`5. Calculate the total active GPU-years and amortized cost per GPU-year for a 3-year deployment that starts with 464 GPUs in Year 1, adds 60 GPUs in Year 2, and adds 100 GPUs in Year 3.`&lt;/strong>`</summary>
+<summary>**5. Calculate the total active GPU-years and amortized cost per GPU-year for a 3-year deployment that starts with 464 GPUs in Year 1, adds 60 GPUs in Year 2, and adds 100 GPUs in Year 3.**</summary>
 
 ```text
 3-Year Staged Refresh Amortization:
@@ -505,7 +505,7 @@ Weighting each hardware tranche by its years in service gives an amortized cost 
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Walk through the daily cost and Cost per Million Tokens of the 408-GPU inference fleet serving 2,000 QPS, and explain what happens at 40% average load.`&lt;/strong>`</summary>
+<summary>**6. Walk through the daily cost and Cost per Million Tokens of the 408-GPU inference fleet serving 2,000 QPS, and explain what happens at 40% average load.**</summary>
 
 ```text
 408-GPU Fleet Daily Cost & Token Economics:
@@ -519,7 +519,7 @@ Because hardware amortization and FTE salaries are fixed daily costs, a drop in 
 </details>
 
 <details>
-<summary>`&lt;strong>`7. In the 36-month Lab 04 capacity-planning exercise, in which month does demand breach the 150 kW facility power ceiling, and how do you solve it?`&lt;/strong>`</summary>
+<summary>**7. In the 36-month Lab 04 capacity-planning exercise, in which month does demand breach the 150 kW facility power ceiling, and how do you solve it?**</summary>
 
 ```text
 Lab 04 Monthly GPU Demand Trajectory:
@@ -531,79 +531,79 @@ To solve the power wall within a single data hall, cap on-premises purchases at 
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What is the Hybrid 70% Reorder Trigger Rule for managing 3-to-9-month GPU hardware procurement lead times?`&lt;/strong>`</summary>
+<summary>**8. What is the Hybrid 70% Reorder Trigger Rule for managing 3-to-9-month GPU hardware procurement lead times?**</summary>
 
 Instead of buying 100% of year-end capacity upfront or buying strictly just-in-time, deploy an initial buffer to cover near-term growth. Then place the next purchase order as soon as forecasted demand at Today plus Supplier Lead Time reaches 70% of installed capacity.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. What are the six stages of the architecture method and the six paths to model?`&lt;/strong>`</summary>
+<summary>**9. What are the six stages of the architecture method and the six paths to model?**</summary>
 
 The six stages are Discover, Model, Compare, Recommend, Validate, and Adopt. The six paths are data and request, control, trust and identity, persistent state, failure domains, and observability.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. What is the difference between a requirement, an assumption, a constraint, a trade-off, and a failure domain?`&lt;/strong>`</summary>
+<summary>**10. What is the difference between a requirement, an assumption, a constraint, a trade-off, and a failure domain?**</summary>
 
 A requirement is a measurable outcome. An assumption is an untested belief. A constraint is a hard limit. A trade-off gives up one property to gain another. A failure domain is the set of parts that fail together.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What makes a PoC falsifiable?`&lt;/strong>`</summary>
+<summary>**11. What makes a PoC falsifiable?**</summary>
 
 You write, before the test, a numeric result that would make the experiment a failure. Otherwise it is a demo.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Why measure P95 or P99 latency in a PoC and not the average?`&lt;/strong>`</summary>
+<summary>**12. Why measure P95 or P99 latency in a PoC and not the average?**</summary>
 
 Averages hide tail spikes, such as stalls from KV-cache swapping, that users directly feel. Always test with tail latency under bursty load.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. Why refuse a two-week PoC of everything?`&lt;/strong>`</summary>
+<summary>**13. Why refuse a two-week PoC of everything?**</summary>
 
 Running many shallow tests proves very little. Pick one or two top risks and give each its own pass and fail gate.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. What is the Empty Hotel problem?`&lt;/strong>`</summary>
+<summary>**14. What is the Empty Hotel problem?**</summary>
 
 Kubernetes shows GPUs as allocated, like hotel rooms booked, even when the physical GPUs do little work. Always measure real SM activity before buying more hardware.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What are the numbers for the FinOps reaper and the chargeback rule?`&lt;/strong>`</summary>
+<summary>**15. What are the numbers for the FinOps reaper and the chargeback rule?**</summary>
 
 Evict a pod whose SM activity stays under 5% for at least 4 hours. For chargeback, show allocated and utilized GPU-hours and revoke quota from namespaces below 20% SM activity.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What does effective capacity mean and what is the worked example?`&lt;/strong>`</summary>
+<summary>**16. What does effective capacity mean and what is the worked example?**</summary>
 
 Effective capacity equals nominal capacity multiplied by expected utilization multiplied by availability. At 100,000 tokens per second nominal capacity with 40% utilization and 80% availability, effective capacity is 32,000 tokens per second.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What is the three-tier capacity model?`&lt;/strong>`</summary>
+<summary>**17. What is the three-tier capacity model?**</summary>
 
 Use baseline on-premises or reserved capacity for steady load, on-demand cloud capacity for peaks, and spot or preemptible capacity for batch work that can restart from checkpoints.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. What must a training job do to survive Spot eviction?`&lt;/strong>`</summary>
+<summary>**18. What must a training job do to survive Spot eviction?**</summary>
 
 Save sharded checkpoints about every 15 minutes, poll the metadata service for the 2-minute eviction notice, and write a final checkpoint when the notice arrives.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Why can lead times make just-in-time buying dangerous?`&lt;/strong>`</summary>
+<summary>**19. Why can lead times make just-in-time buying dangerous?**</summary>
 
 Enterprise GPU orders take 3 to 9 months to arrive. Order when forecast demand at today plus lead time reaches 70% of installed capacity.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. What is the point of the saturating S-curve in the 36-month exercise?`&lt;/strong>`</summary>
+<summary>**20. What is the point of the saturating S-curve in the 36-month exercise?**</summary>
 
 Unlimited monthly compounding for 36 months asks for over 11,000 GPUs. Real growth levels off at a market or facility limit, so the forecast model needs a carrying-capacity ceiling.
 </details>

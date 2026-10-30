@@ -648,73 +648,73 @@ Summary: 25 passed, 0 failed
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. Why do prefill and decode exhibit opposite hardware utilization profiles on the GPU Roofline model, and what are their typical compute vs memory bandwidth utilization percentages?`&lt;/strong>`</summary>
+<summary>**1. Why do prefill and decode exhibit opposite hardware utilization profiles on the GPU Roofline model, and what are their typical compute vs memory bandwidth utilization percentages?**</summary>
 
 Prefill processes hundreds or thousands of input tokens in parallel using dense matrix-matrix multiplications. That parallelism amortizes weight reads from HBM across all prompt tokens and achieves roughly **85 percent compute utilization** and **40 percent memory bandwidth utilization**. Decode generates one token per active sequence per step using skinny matrix-vector multiplications while reading all model weights and historical KV caches. That pattern results in roughly **25 percent compute utilization** and **90 percent memory bandwidth utilization**.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. In the Volume 12 production voice-assistant incident on 4x H100 GPUs (TP=4), what happened when an unchunked 12,288-token prompt arrived alongside 45 active decode streams, and how did chunked prefill change the numbers?`&lt;/strong>`</summary>
+<summary>**2. In the Volume 12 production voice-assistant incident on 4x H100 GPUs (TP=4), what happened when an unchunked 12,288-token prompt arrived alongside 45 active decode streams, and how did chunked prefill change the numbers?**</summary>
 
 The unchunked 12,288-token prefill monopolized all Streaming Multiprocessors for **320.0 ms** and froze all 45 active decode streams. Tail **p99 ITL spiked from 18.0 ms to 340.0 ms**, an 18.89x jump that breached the 30.0 ms real-time voice SLA. Enabling chunked prefill with `max_num_batched_tokens = 2048` bounded per-step token execution and reduced p99 ITL to **21.4 ms**.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Why does chunked prefill alone not eliminate the need for prefill-decode disaggregation?`&lt;/strong>`</summary>
+<summary>**3. Why does chunked prefill alone not eliminate the need for prefill-decode disaggregation?**</summary>
 
 Even with chunked prefill, co-batching a 512-token prefill chunk with a 15 ms decode batch stretches every hybrid step to **28 ms**. That slowdown delays all active decode streams for the entire duration of prompt ingestion. Furthermore, setting `max_num_batched_tokens` too small triggers hundreds of scheduler context switches per second, degrading both p99 ITL and TTFT. Prefill activations also compete with decode KV caches for HBM capacity and bandwidth, and colocation locks both phases into identical hardware and Tensor Parallelism settings.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Walk through the exact DistServe 2P1D Goodput calculation under a P90 TTFT ≤ 400 ms and P90 TPOT ≤ 40 ms SLO. Why is the colocated system limited to 1.6 RPS/GPU while the 2P1D cluster achieves 3.33 RPS/GPU (~3.3 RPS/GPU)?`&lt;/strong>`</summary>
+<summary>**4. Walk through the exact DistServe 2P1D Goodput calculation under a P90 TTFT ≤ 400 ms and P90 TPOT ≤ 40 ms SLO. Why is the colocated system limited to 1.6 RPS/GPU while the 2P1D cluster achieves 3.33 RPS/GPU (~3.3 RPS/GPU)?**</summary>
 
 On a single colocated GPU, the engine sustains 3.0 RPS within the TTFT bound alone, but cross-phase interference causes TPOT to breach its bound above 1.6 RPS. Thus, colocated Goodput is **1.6 RPS/GPU**. In the disaggregated 2P1D cluster with two prefill GPUs and one decode GPU, the two prefill GPUs achieve 5.6 RPS each for 11.2 RPS total, while the decode GPU achieves 10.0 RPS. Dividing the 10.0 RPS cluster Goodput across three GPUs yields **3.33 RPS/GPU** (`~3.3 RPS/GPU`), a **2.08x per-GPU Goodput improvement**.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. What are the MLPerf Inference v5.0 (2025) p99 TTFT and TPOT Service Level Objectives for Llama-2-70B and Llama-3.1-405B?`&lt;/strong>`</summary>
+<summary>**5. What are the MLPerf Inference v5.0 (2025) p99 TTFT and TPOT Service Level Objectives for Llama-2-70B and Llama-3.1-405B?**</summary>
 
 For **Llama-2-70B**, MLPerf Inference v5.0 targets a p99 TTFT of **450 ms** and a p99 TPOT of **40 ms**. For **Llama-3.1-405B**, it targets a p99 TTFT of **6,000 ms (6.0 seconds)** and a p99 TPOT of **175 ms**. Interactive consumer chat services often target under 200 to 300 ms p99 TTFT.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. How does NVIDIA Dynamo's decode-centric request ingress differ from the router-centric architecture used in DistServe and SGLang?`&lt;/strong>`</summary>
+<summary>**6. How does NVIDIA Dynamo's decode-centric request ingress differ from the router-centric architecture used in DistServe and SGLang?**</summary>
 
 In DistServe and SGLang, an ingress router receives the client request, dispatches the prompt to a prefill worker on the control plane, and notifies a decode worker. The prefill worker then transfers KV blocks directly to the decode worker over the RDMA data plane, bypassing the router. In NVIDIA Dynamo's decode-centric design, requests land on the decode worker first. That placement keeps compute-bound prefill workers free from client I/O and session state. When `should_offload_prefill()` returns `True`, the decode worker allocates target KV blocks and attaches pre-registered NIXL descriptor IDs. It then pushes a `RemotePrefillRequest` onto a global prefill queue. A prefill worker pulls the task and writes the KV cache directly into the decode GPU's HBM via `NIXL_WRITE`.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How does `should_offload_prefill()` decide whether to execute prefill locally on the decode worker or offload it to the remote prefill pool?`&lt;/strong>`</summary>
+<summary>**7. How does `should_offload_prefill()` decide whether to execute prefill locally on the decode worker or offload it to the remote prefill pool?**</summary>
 
 It computes the effective uncached prompt length `eff_len = max(0, prompt_length - prefix_cached_length)` and checks whether the global prefill queue has capacity (`prefill_queue_size < 10`). It offloads to the remote prefill pool if `eff_len >= 256` and the prefill queue is below its limit. It also offloads if the local decode worker has at least 8 active requests and `eff_len >= 64`. Otherwise, for short prompts, high prefix cache hits, or a saturated prefill queue, it executes prefill locally on the decode worker.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. Write the five-factor Smart Router `latency_cost` formula from ASP Chapter 17 and explain why a busy worker with a prefix cache hit beats an idle worker without a cache hit.`&lt;/strong>`</summary>
+<summary>**8. Write the five-factor Smart Router `latency_cost` formula from ASP Chapter 17 and explain why a busy worker with a prefix cache hit beats an idle worker without a cache hit.**</summary>
 
 The formula is `latency_cost = 3.0 * occupancy_percent + 1.0 * active_reqs - 10.0 * int(cache_match_flag) + 0.5 * mem_bw_percent - 1.0 * int(recent_prefix_flag)`, where lower cost is preferred. The `cache_match_flag` term carries a `-10.0` weight and `recent_prefix_flag` carries `-1.0`. As a result, a busy worker with a warm prefix match achieves a negative composite score of **-2.95**. That score easily beats an idle uncached worker that scores **+2.70**.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. What is the first-principles formula for sizing the prefill-to-decode worker ratio `N_P : N_D`, and what ratios correspond to RAG, enterprise chat, and Chain-of-Thought reasoning?`&lt;/strong>`</summary>
+<summary>**9. What is the first-principles formula for sizing the prefill-to-decode worker ratio `N_P : N_D`, and what ratios correspond to RAG, enterprise chat, and Chain-of-Thought reasoning?**</summary>
 
 Given arrival rate `lambda`, effective uncached input tokens `L_in`, output tokens `L_out`, prefill throughput `T_P`, and decode throughput `T_D`, the worker counts are `N_P = ceil(lambda * L_in / T_P)` and `N_D = ceil(lambda * L_out / T_D)`. Their ratio is `N_P / N_D = (L_in / L_out) * (T_D / T_P)`. Prefill-heavy RAG requires a **2:1 to 3:1** ratio. Balanced enterprise chat requires a **1:2 (4:8)** ratio, and decode-heavy Chain-of-Thought reasoning requires a **1:3 to 1:4** ratio.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why do disaggregated clusters configure asymmetric parallelism for prefill vs decode, and how is the resulting KV cache layout mismatch resolved?`&lt;/strong>`</summary>
+<summary>**10. Why do disaggregated clusters configure asymmetric parallelism for prefill vs decode, and how is the resulting KV cache layout mismatch resolved?**</summary>
 
 During prefill, high Tensor and Pipeline Parallelism parallelize dense matrix multiplications across thousands of prompt tokens to minimize TTFT. During single-token decode, high TP incurs two synchronous AllReduce barriers per layer, while multi-stage PP introduces sequential pipeline bubbles. When prefill and decode use different TP or PP degrees, the decode worker runs a fast on-the-fly **KV layout transpose kernel** in HBM. That kernel runs immediately after the NIXL read and rearranges prefill shards into decode layout.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How does SGLang's Data-Parallel Attention (`--enable-dp-attention`) improve decode throughput on MLA or low-KV-head models?`&lt;/strong>`</summary>
+<summary>**11. How does SGLang's Data-Parallel Attention (`--enable-dp-attention`) improve decode throughput on MLA or low-KV-head models?**</summary>
 
 Under eight-way Tensor Parallelism, if a model has fewer KV heads than the TP degree, the KV cache must be duplicated across all eight GPUs. That duplication wastes 8x memory on MQA or MLA models. Data-Parallel Attention processes independent request batches across GPUs during the attention phase without duplicating the KV cache. It then runs an AllGather before the Tensor-Parallel MLP layer, delivering up to **1.9x higher decode throughput**.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Calculate the per-token and 4,096-token KV cache sizes in FP16 and FP8 for Llama-13B (`L=40, d_head=128`) across MHA (`H_kv=40`), GQA-8 (`H_kv=8`), and MQA-1 (`H_kv=1`).`&lt;/strong>`</summary>
+<summary>**12. Calculate the per-token and 4,096-token KV cache sizes in FP16 and FP8 for Llama-13B (`L=40, d_head=128`) across MHA (`H_kv=40`), GQA-8 (`H_kv=8`), and MQA-1 (`H_kv=1`).**</summary>
 
 Using `bytes_per_token = 2 * L * H_kv * d_head * P`:
 - **MHA.** `819,200 B/tok` (`0.819 MB/tok`), or **3.36 GB in FP16** and **1.68 GB in FP8** at 4,096 tokens.
@@ -723,44 +723,44 @@ Using `bytes_per_token = 2 * L * H_kv * d_head * P`:
 </details>
 
 <details>
-<summary>`&lt;strong>`13. Compare the 4,096-token KV cache transfer payload of Llama-3-70B (`L=80, H_kv=8, d_head=128`) against DeepSeek-V3/R1 (`L=61, d_c=512, d_r=64`, MLA) in FP16 and FP8.`&lt;/strong>`</summary>
+<summary>**13. Compare the 4,096-token KV cache transfer payload of Llama-3-70B (`L=80, H_kv=8, d_head=128`) against DeepSeek-V3/R1 (`L=61, d_c=512, d_r=64`, MLA) in FP16 and FP8.**</summary>
 
 - **Llama-3-70B GQA-8.** Consumes `327,680 B/tok` (`320.0 KiB/tok` in FP16, `160.0 KiB/tok` in FP8). At 4,096 tokens, it requires **1.342 GB (`1.25 GiB` / `~1.31 GB`) in FP16** and **0.671 GB (`0.625 GiB` / `~0.65 GB`) in FP8**, which is `8.0x` smaller than 64-head MHA.
 - **DeepSeek-V3/R1 MLA.** Consumes `70,272 B/tok` in FP16 and `35,136 B/tok` in FP8. At 4,096 tokens, it requires **0.288 GB in FP16** and **0.144 GB in FP8**, which is **4.66x smaller** than 70B GQA-8 and **37.3x smaller** than 70B MHA.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. For an 8B model with 10,240 input tokens (~1.342 to 1.5 GB KV cache per request) running at 16 RPS, what aggregate KV transfer bandwidth is required, and which interconnects can sustain it?`&lt;/strong>`</summary>
+<summary>**14. For an 8B model with 10,240 input tokens (~1.342 to 1.5 GB KV cache per request) running at 16 RPS, what aggregate KV transfer bandwidth is required, and which interconnects can sustain it?**</summary>
 
 At 16 RPS, the cluster must transfer **21.47 GB/s** (`24.0 to 25.0 GB/s` at 1.5 GB per request). Intra-node **NVLink 4 (900 GB/s)** and inter-node **InfiniBand NDR / RoCEv2 (50 GB/s per 400G NIC, 100 GB/s on 800G ConnectX-8)** easily sustain that rate. By contrast, a **non-RDMA PCIe / host TCP path (`~10 GB/s`)** saturates below 7 RPS and throttles the cluster.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Why does sending a 7,500-token KV cache as 16-token PagedAttention pages take 20 ms over RDMA, and how does LMCache reduce that transfer time to 8 ms?`&lt;/strong>`</summary>
+<summary>**15. Why does sending a 7,500-token KV cache as 16-token PagedAttention pages take 20 ms over RDMA, and how does LMCache reduce that transfer time to 8 ms?**</summary>
 
 At 16 tokens per block, a 7,500-token prompt is split across **469 (`~470`)** tiny non-contiguous buffers. Sending them individually requires 469 separate RDMA Work Queue Elements and doorbell writes that underutilize link bandwidth. Collating those pages into contiguous **128-token slabs** reduces the transfer to **59** large RDMA writes, cutting transfer time from **20.0 ms to 8.0 ms (a 2.5x speedup)**.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How does layer-by-layer pipelined NIXL transfer reduce the exposed network latency of a 4,096-token Llama-3-70B KV cache handoff on a 50 GB/s NDR InfiniBand link to less than 1 percent of TTFT?`&lt;/strong>`</summary>
+<summary>**16. How does layer-by-layer pipelined NIXL transfer reduce the exposed network latency of a 4,096-token Llama-3-70B KV cache handoff on a 50 GB/s NDR InfiniBand link to less than 1 percent of TTFT?**</summary>
 
 Unpipelined, transferring 1.342 GB over a single 50 GB/s NDR NIC takes **26.84 ms**. Because KV cache is layer-local, the prefill worker posts a nonblocking `NIXL_WRITE` for each layer as soon as that layer finishes computing. That nonblocking write overlaps network transit with the next layer's compute pass. Across 80 layers, 79 layer transfers are hidden behind the 180 ms prefill compute pass. Only the final layer's **0.34 ms** transfer remains exposed, adding just `0.19%` (`< 1%`) to TTFT.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What are the core API calls in a NIXL 0.5.x nonblocking GPU-to-GPU transfer lifecycle, and how do NCCL and NIXL complement each other?`&lt;/strong>`</summary>
+<summary>**17. What are the core API calls in a NIXL 0.5.x nonblocking GPU-to-GPU transfer lifecycle, and how do NCCL and NIXL complement each other?**</summary>
 
 In NIXL 0.5.x, endpoints create `nixlAgent` instances, register VRAM descriptors (`VRAM_SEG`) with `registerMem()`, and strip metadata with `trim()`. They then prepare and submit nonblocking transfers with `prepXfer(NIXL_WRITE, ...)` and `postXfer()`. Next, they poll completion via `checkXfer()` while overlapping compute, and clean up via `releaseReqH()` and `deregisterMem()`. **NCCL** handles synchronous many-to-many intra-stage collectives such as AllReduce and AllToAll. **NIXL** handles asynchronous point-to-point inter-stage KV cache and storage transfers across NVLink, InfiniBand/RoCE RDMA, and GPUDirect Storage.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Why is pairing H100 GPUs for prefill with H200 GPUs for decode (or B200 for prefill with B300 for decode) more cost-effective than a homogeneous cluster?`&lt;/strong>`</summary>
+<summary>**18. Why is pairing H100 GPUs for prefill with H200 GPUs for decode (or B200 for prefill with B300 for decode) more cost-effective than a homogeneous cluster?**</summary>
 
 The **H100 SXM5** and **H200 SXM** have identical Tensor Core compute. Thus, the cheaper H100 executes compute-bound prefill at the exact same speed, while the H200 provides **1.76x more HBM (141 GB vs 80 GB)** and **1.43x higher HBM bandwidth (4.8 TB/s vs 3.35 TB/s)** for memory-bound decode. Similarly, pairing **B200 (180 GB HBM3e)** for prefill with **B300 (288 GB HBM3e)** for decode provides **1.60x total HBM**. That pairing expands post-70B-weight decode KV capacity from 110 GB to **218 GB (1.98x)**.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What quantitative throughput and cost improvements were demonstrated by Splitwise, HexGen-2, and Arrow?`&lt;/strong>`</summary>
+<summary>**19. What quantitative throughput and cost improvements were demonstrated by Splitwise, HexGen-2, and Arrow?**</summary>
 
 - **Splitwise.** Pairing 4x H100 for prefill and 4x A100 for decode achieved **2.35x higher RPS** at the same cost and power budget as an 8-GPU homogeneous baseline. It also achieved **1.4x higher throughput at 20 percent lower cost**, or matched baseline throughput using **6 GPUs instead of 8 (25 percent hardware savings)**.
 - **HexGen-2.** Achieved up to **2.0x peak (1.3x average) higher serving throughput** at iso-price, or matched baseline throughput at **30 percent lower cost** on Llama-2-70B.
@@ -768,7 +768,7 @@ The **H100 SXM5** and **H200 SXM** have identical Tensor Core compute. Thus, the
 </details>
 
 <details>
-<summary>`&lt;strong>`20. How do Mooncake's early rejection policy and NVIDIA Dynamo's `QoSController` protect cluster Goodput during traffic surges?`&lt;/strong>`</summary>
+<summary>**20. How do Mooncake's early rejection policy and NVIDIA Dynamo's `QoSController` protect cluster Goodput during traffic surges?**</summary>
 
 Instead of queuing excess requests until every user misses their TTFT or TPOT SLA, `QoSController` continuously estimates queue delay (`est_ttft = Q_prefill * t_prefill + Q_decode * t_decode`). When `est_ttft` exceeds `ttft_slo_ms` (`500 ms`), the controller immediately rejects low-priority requests with HTTP 429 or 503. Alternatively, it forces them to prefill locally on decode workers while preserving reserved cluster capacity of 10 percent for premium and 30 percent for standard traffic.
 </details>

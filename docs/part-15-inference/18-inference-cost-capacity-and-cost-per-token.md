@@ -698,7 +698,7 @@ Use the parameters in the table below to complete the four quantitative design e
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. Why does inference account for up to 90% of lifetime AI infrastructure cost, and what condition must a model provider satisfy to recover training cost?`&lt;/strong>`</summary>
+<summary>**1. Why does inference account for up to 90% of lifetime AI infrastructure cost, and what condition must a model provider satisfy to recover training cost?**</summary>
 
 Training is a one-time upfront capital investment. By contrast, inference scales continuously with every user query, multi-turn chat, and multi-step agent loop. A model provider recovers its training investment only when cumulative revenue across all inference calls exceeds total training cost.
 
@@ -709,7 +709,7 @@ Provider Recovery Condition: Total Training Cost T <= price_per_call (p) * total
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What is the exact formula converting hourly hardware cost and token throughput into cost per 1M tokens?`&lt;/strong>`</summary>
+<summary>**2. What is the exact formula converting hourly hardware cost and token throughput into cost per 1M tokens?**</summary>
 
 Divide the total hourly hardware and operational cost by the millions of tokens generated per hour at your realized utilization. Because one hour contains three thousand six hundred seconds, multiplying throughput in tokens per second by 0.0036 gives millions of tokens per hour.
 
@@ -720,7 +720,7 @@ Cost_per_1M_Tokens = Hourly_Cost_USD / (0.0036 * TPS_peak * u)
 </details>
 
 <details>
-<summary>`&lt;strong>`3. On a GPU costing $2.00/hr that decodes 100 output tokens/s and prefills 100 requests/min (500 input tokens and 200 output tokens per request), what are the prefill, decode, and total costs for 1,000 requests?`&lt;/strong>`</summary>
+<summary>**3. On a GPU costing $2.00/hr that decodes 100 output tokens/s and prefills 100 requests/min (500 input tokens and 200 output tokens per request), what are the prefill, decode, and total costs for 1,000 requests?**</summary>
 
 Calculate the output decode cost from the hourly token generation rate and add the prefill cost from the hourly request ingestion rate. Summing both phases gives the total serving cost per thousand requests.
 
@@ -732,13 +732,13 @@ Total Cost per 1,000 Requests: $1.11 + $0.33 = $1.44 ($0.00144 per request; 8.33
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Why do commercial LLM APIs and internal TCO models price output tokens 3x to 8x higher than input tokens?`&lt;/strong>`</summary>
+<summary>**4. Why do commercial LLM APIs and internal TCO models price output tokens 3x to 8x higher than input tokens?**</summary>
 
 Input tokens are processed in parallel during the compute-bound prefill phase using dense matrix-matrix multiplications at high arithmetic intensity. Output tokens are generated one by one during the memory-bandwidth-bound decode phase. During decode, the GPU must read all model weights from HBM for every single generated token at an arithmetic intensity near one FLOP per byte.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. In the 3-year TCO breakdown of a 40-GPU H100 cluster (60,000 tokens/s aggregate, 37.8 kW with 1.35 PUE), how much does electricity cost per 1M tokens compared to amortized hardware and OpEx at 100% and 40% utilization?`&lt;/strong>`</summary>
+<summary>**5. In the 3-year TCO breakdown of a 40-GPU H100 cluster (60,000 tokens/s aggregate, 37.8 kW with 1.35 PUE), how much does electricity cost per 1M tokens compared to amortized hardware and OpEx at 100% and 40% utilization?**</summary>
 
 Electricity represents a tiny fraction of unit cost, whereas amortized hardware CapEx and staffing OpEx dominate. When average cluster utilization drops to forty percent across the diurnal cycle, the fixed hardware and operational cost per million tokens scales up by two and a half times.
 
@@ -749,7 +749,7 @@ Hardware + OpEx Share ($500K/yr over 1.892T tok/yr): $0.26/1M at 100% util ($0.2
 </details>
 
 <details>
-<summary>`&lt;strong>`6. What is Goodput in LLM serving, and how does a 30% SLO compliance rate change your effective cost per 1M tokens?`&lt;/strong>`</summary>
+<summary>**6. What is Goodput in LLM serving, and how does a 30% SLO compliance rate change your effective cost per 1M tokens?**</summary>
 
 Goodput is the rate of completed requests or tokens per second that simultaneously satisfy both your Time to First Token and Inter-Token Latency Service Level Objectives. Dividing raw cost per million tokens by the SLO compliance fraction gives the Goodput-adjusted cost per million compliant tokens.
 
@@ -760,7 +760,7 @@ Goodput_Cost_per_1M = $1.00 / 0.30 = $3.33 per 1M compliant tokens (3.33x cost i
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Why does closed-loop benchmarking hide production tail-latency collapse, and what happens when real 4,096-token RAG prompts hit an unchunked engine under open-loop Poisson arrivals?`&lt;/strong>`</summary>
+<summary>**7. Why does closed-loop benchmarking hide production tail-latency collapse, and what happens when real 4,096-token RAG prompts hit an unchunked engine under open-loop Poisson arrivals?**</summary>
 
 Closed-loop benchmarks wait for each request to complete before sending the next, artificially capping queue depth at the client thread count. Under open-loop Poisson arrivals with long RAG prompts, compute-heavy prefill GEMMs block active decode batches for hundreds of milliseconds until Chunked Prefill interleaves prompt chunks with decode iterations.
 
@@ -772,7 +772,7 @@ With Chunked Prefill (--max-num-batched-tokens 512..2048): Restores 290.0 ms P95
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What is the per-token and 4,096-token KV cache footprint of Llama-3-70B in BF16, and how much memory does Grouped-Query Attention save compared to Multi-Head Attention?`&lt;/strong>`</summary>
+<summary>**8. What is the per-token and 4,096-token KV cache footprint of Llama-3-70B in BF16, and how much memory does Grouped-Query Attention save compared to Multi-Head Attention?**</summary>
 
 Multiply two matrices for Key and Value by the layer count, Key-Value head count, head dimension, and element byte size. Because Grouped-Query Attention shares each Key-Value head across eight Query heads on Llama-3-70B, it shrinks the KV cache footprint by seven-eighths compared to Multi-Head Attention.
 
@@ -783,7 +783,7 @@ At S = 4,096 tokens: 1.25 GiB (1.342 GB decimal). At S = 128,000 tokens: 39.06 G
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Why does doubling Tensor Parallelism from 4x H100 (TP=4) to 8x H100 (TP=8) on Llama-3-70B increase maximum concurrent sequences by 3.06x (from 218 to 668 at S=2,048) instead of 2.0x?`&lt;/strong>`</summary>
+<summary>**9. Why does doubling Tensor Parallelism from 4x H100 (TP=4) to 8x H100 (TP=8) on Llama-3-70B increase maximum concurrent sequences by 3.06x (from 218 to 668 at S=2,048) instead of 2.0x?**</summary>
 
 When total GPU memory doubles across the wider Tensor Parallel group, the static BF16 model weights remain fixed across the group rather than doubling. Subtracting that fixed weight footprint leaves more than three times as much free HBM for the dynamic PagedAttention KV cache pool.
 
@@ -794,7 +794,7 @@ When total GPU memory doubles across the wider Tensor Parallel group, the static
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why is an L40S (48 GB, $3.75/hr) 2.13x more cost-efficient per concurrent sequence than an A10 (24 GB, $2.00/hr) when serving Llama-2-7B in FP16 at 4,096 context length?`&lt;/strong>`</summary>
+<summary>**10. Why is an L40S (48 GB, $3.75/hr) 2.13x more cost-efficient per concurrent sequence than an A10 (24 GB, $2.00/hr) when serving Llama-2-7B in FP16 at 4,096 context length?**</summary>
 
 On the smaller GPU, static model weights consume most of the VRAM and leave very little room for KV cache blocks. Doubling total VRAM on the L40S more than triples the available KV cache pool, quadrupling batch concurrency for less than twice the hourly instance price.
 
@@ -806,7 +806,7 @@ L40S 48 GB ($3.75/hr): 34.0 GB left -> 16 practical sequences ($0.234/hr per slo
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How do you size a 3-region active-active H100 fleet for 2,000 QPS peak of Llama-3-70B (150 output tokens, 36 tokens/s per sequence, batch 64 per 2-GPU replica) with N+1 regional failover?`&lt;/strong>`</summary>
+<summary>**11. How do you size a 3-region active-active H100 fleet for 2,000 QPS peak of Llama-3-70B (150 output tokens, 36 tokens/s per sequence, batch 64 per 2-GPU replica) with N+1 regional failover?**</summary>
 
 Apply Little's Law to find the sustainable query throughput of a single two-GPU replica. Then size each of the three active-active regions so that any two surviving regions can carry the entire global peak load during a regional outage.
 
@@ -818,7 +818,7 @@ Total 3-Region Fleet: 51 nodes = 408 H100 GPUs (or 53 nodes = 424 GPUs when EU-W
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How does the Three-Tier FinOps Capacity Model combine Reserved, On-Demand, and Spot instances across diurnal traffic curves?`&lt;/strong>`</summary>
+<summary>**12. How does the Three-Tier FinOps Capacity Model combine Reserved, On-Demand, and Spot instances across diurnal traffic curves?**</summary>
 
 Tier 1 locks in discounted Reserved Instances or bare-metal hardware for the steady 24/7 diurnal traffic floor. Tier 2 autoscales daytime diurnal peaks using elastic cloud On-Demand instances. Tier 3 schedules asynchronous batch workloads, evaluations, and checkpointed training onto discounted Spot instances or Batch APIs.
 
@@ -830,7 +830,7 @@ Spot Instances (65% discount on p5.48xlarge): $21/hr per 8-GPU node = $2.63/GPU/
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How does an automated DCGM FinOps Reaper detect and reclaim zombie GPU pods that appear 100% allocated in Kubernetes?`&lt;/strong>`</summary>
+<summary>**13. How does an automated DCGM FinOps Reaper detect and reclaim zombie GPU pods that appear 100% allocated in Kubernetes?**</summary>
 
 Kubernetes only tracks logical resource requests, so an idle notebook looks fully allocated even when executing zero CUDA kernels. The FinOps Reaper queries Prometheus for physical DCGM Streaming Multiprocessor activity tagged by namespace. It automatically evicts pods that sit idle over a multi-hour window while consolidating small staging workloads onto hardware MIG slices.
 
@@ -841,7 +841,7 @@ Reaper Rule: Evict pod if DCGM_FI_PROF_SM_ACTIVE < 5% for 4 hours; partition sha
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Why does a single L40S GPU (TP=1) outperform 2-GPU and 4-GPU Tensor Parallelism on an AWS g6e.12xlarge instance, whereas TP=4 on a p4d.24xlarge A100 instance cuts TTFT in half?`&lt;/strong>`</summary>
+<summary>**14. Why does a single L40S GPU (TP=1) outperform 2-GPU and 4-GPU Tensor Parallelism on an AWS g6e.12xlarge instance, whereas TP=4 on a p4d.24xlarge A100 instance cuts TTFT in half?**</summary>
 
 Tensor Parallelism executes two synchronous AllReduce collectives per Transformer layer on every generated token. On PCIe-only servers lacking NVLink, inter-GPU synchronization latency over the PCIe root complex exceeds the parallel compute speedup. On NVSwitch-backed SXM servers, high-speed NVLink completes those collectives in microseconds and cuts prefill latency in half.
 
@@ -852,7 +852,7 @@ p4d.24xlarge (A100 over 600 GB/s NVLink): Scaling TP=1 -> TP=4 cuts mean TTFT by
 </details>
 
 <details>
-<summary>`&lt;strong>`15. When a model fits on a single GPU within latency SLOs, why should you scale horizontally with Data Parallel replicas (DP) instead of Tensor Parallelism (TP)?`&lt;/strong>`</summary>
+<summary>**15. When a model fits on a single GPU within latency SLOs, why should you scale horizontally with Data Parallel replicas (DP) instead of Tensor Parallelism (TP)?**</summary>
 
 Data Parallel replicas execute completely independently with zero inter-GPU collective communication and maintain separate schedulers and KV caches. Whenever a model fits on a single GPU and meets latency targets, horizontal Data Parallelism delivers more than double the total cluster throughput of a multi-GPU Tensor Parallel group.
 
@@ -863,7 +863,7 @@ Qwen3-14B-AWQ on 4x A100 (p4d.24xlarge, HLS Ch. 9):
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Why does the NVIDIA H200 SXM deliver superior cost-per-token economics over the H100 SXM5 for memory-bound LLM decoding?`&lt;/strong>`</summary>
+<summary>**16. Why does the NVIDIA H200 SXM deliver superior cost-per-token economics over the H100 SXM5 for memory-bound LLM decoding?**</summary>
 
 Both Hopper GPUs share identical Tensor Core TFLOPS and nearly identical cloud hourly pricing. However, the H200 upgrades the memory subsystem to larger and faster HBM3e stacks. That upgrade expands the KV cache pool for much higher batch concurrency while accelerating every memory-bound decode step.
 
@@ -874,7 +874,7 @@ H200 SXM:  141 GB HBM3e (+76.25% VRAM), 4.80 TB/s (+43.28% BW), $40,000 CapEx, ~
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What are the core architectural specifications of the GB200 NVL72 rack, and how does it change the economics of serving 680B+ MoE models?`&lt;/strong>`</summary>
+<summary>**17. What are the core architectural specifications of the GB200 NVL72 rack, and how does it change the economics of serving 680B+ MoE models?**</summary>
 
 A liquid-cooled GB200 NVL72 rack unifies thirty-six Grace CPUs and seventy-two Blackwell B200 GPUs across eighteen compute trays and nine NVSwitch trays over a passive copper backplane. That rack-scale NVLink domain allows massive Mixture-of-Experts models to shard experts across all seventy-two GPUs without crossing slow network NICs.
 
@@ -885,7 +885,7 @@ GB200 NVL72 Specs: 36 Grace CPUs + 72 B200 GPUs (180–192 GB, 8.0 TB/s each), 1
 </details>
 
 <details>
-<summary>`&lt;strong>`18. What is the measured impact of 4-bit AWQ quantization and automatic prefix caching on Qwen3-14B serving throughput and cost per token on an L40S GPU?`&lt;/strong>`</summary>
+<summary>**18. What is the measured impact of 4-bit AWQ quantization and automatic prefix caching on Qwen3-14B serving throughput and cost per token on an L40S GPU?**</summary>
 
 Compressing weights from sixteen-bit floating point to four-bit AWQ shrinks the weight footprint by nearly two-thirds and transfers the freed memory directly into the PagedAttention KV cache pool. Similarly, enabling automatic prefix caching reuses KV blocks across shared system prompts, multiplying effective token throughput and slashing cost per token.
 
@@ -897,7 +897,7 @@ Qwen3-14B on 1x L40S (46,068 MiB, HLS Ch. 9):
 </details>
 
 <details>
-<summary>`&lt;strong>`19. How does prefill-decode disaggregation in a 2P1D configuration double per-GPU Goodput compared to colocated serving?`&lt;/strong>`</summary>
+<summary>**19. How does prefill-decode disaggregation in a 2P1D configuration double per-GPU Goodput compared to colocated serving?**</summary>
 
 Colocating compute-bound prefill and bandwidth-bound decode on the same GPU forces a single batching and parallelism policy that bottlenecks on per-token decode latency. Separating prefill and decode onto dedicated worker pools linked via NIXL GPUDirect RDMA eliminates cross-phase interference and more than doubles SLO-compliant Goodput per GPU.
 
@@ -909,7 +909,7 @@ Disaggregated 2P1D (2 prefill GPUs at 5.6 RPS = 11.2 RPS; 1 decode GPU at 10.0 R
 </details>
 
 <details>
-<summary>`&lt;strong>`20. How do you calculate the break-even utilization and daily token volume between a self-hosted 2x H100 replica ($12.40/hr, 2,100 tokens/s peak) and a $4.00/1M managed API?`&lt;/strong>`</summary>
+<summary>**20. How do you calculate the break-even utilization and daily token volume between a self-hosted 2x H100 replica ($12.40/hr, 2,100 tokens/s peak) and a $4.00/1M managed API?**</summary>
 
 First calculate the self-hosted cost per million tokens at one hundred percent utilization. Then divide that full-utilization cost by the managed API price per million tokens to find the exact break-even utilization ratio and corresponding daily token volume.
 

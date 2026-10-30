@@ -558,13 +558,13 @@ Summary: 25 passed, 0 failed (total 25)
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. Why did pre-CUDA GPGPU programming require disguising math problems as 3D graphics, and what three costs did CUDA remove in 2006?`&lt;/strong>`</summary>
+<summary>**1. Why did pre-CUDA GPGPU programming require disguising math problems as 3D graphics, and what three costs did CUDA remove in 2006?**</summary>
 
 Before CUDA, developers had to encode numerical arrays as textures and algorithms as shader stages, so every project paid a translation tax. The Volume 03 note names three costs that CUDA removed. First, data and algorithms had to be expressed in graphics terms. Second, there were no direct buffers you allocate and copy yourself. Third, there was no numerical debugger because evidence came only from rendering instrumentation. CUDA gave compute its own abstractions of threads, blocks, grids, explicit linear memory, and compute-native error reporting.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. State the execution location, caller location, and return-type rule for `__host__`, `__device__`, and `__global__` functions in CUDA C++.`&lt;/strong>`</summary>
+<summary>**2. State the execution location, caller location, and return-type rule for `__host__`, `__device__`, and `__global__` functions in CUDA C++.**</summary>
 
 - `__host__` is the default specifier. It executes on the CPU, is callable from the CPU, and supports any C++ return type.
 - `__device__` executes on the GPU, is callable only from GPU device or kernel functions, and supports any C++ return type.
@@ -572,13 +572,13 @@ Before CUDA, developers had to encode numerical arrays as textures and algorithm
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What happens if a developer allocates an array on the CPU with standard `malloc()` and passes that pointer directly into a `__global__` kernel?`&lt;/strong>`</summary>
+<summary>**3. What happens if a developer allocates an array on the CPU with standard `malloc()` and passes that pointer directly into a `__global__` kernel?**</summary>
 
 Because the CPU and GPU have separate physical memory spaces, GPU threads dereferencing a raw host pointer trigger an asynchronous illegal memory access fault. The output buffer stays untouched unless device memory is allocated with `cudaMalloc` and copied to the device, or Unified Memory is used.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Write the standard 1D global thread index formula and calculate the global index for `blockIdx.x = 3`, `blockDim.x = 256`, and `threadIdx.x = 5`.`&lt;/strong>`</summary>
+<summary>**4. Write the standard 1D global thread index formula and calculate the global index for `blockIdx.x = 3`, `blockDim.x = 256`, and `threadIdx.x = 5`.**</summary>
 
 ```cpp
 int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -588,7 +588,7 @@ int idx = blockIdx.x * blockDim.x + threadIdx.x;
 </details>
 
 <details>
-<summary>`&lt;strong>`5. For an array of `N = 1,000,003` elements and `threadsPerBlock = 256`, contrast what happens when you calculate `blocks` with integer truncation versus ceiling division.`&lt;/strong>`</summary>
+<summary>**5. For an array of `N = 1,000,003` elements and `threadsPerBlock = 256`, contrast what happens when you calculate `blocks` with integer truncation versus ceiling division.**</summary>
 
 ```text
 - Integer truncation (1,000,003 / 256 = 3,906 blocks):
@@ -601,13 +601,13 @@ int idx = blockIdx.x * blockDim.x + threadIdx.x;
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Why can removing the `if (idx < count)` bounds check from `vector_add.cu` sometimes crash with `illegal memory access` and other times report `validation: PASS`?`&lt;/strong>`</summary>
+<summary>**6. Why can removing the `if (idx < count)` bounds check from `vector_add.cu` sometimes crash with `illegal memory access` and other times report `validation: PASS`?**</summary>
 
 The 189 extra threads in the final block write to indices past the end of the output buffer. If that address crosses an unmapped GPU page boundary, the hardware raises an illegal memory access error. If the allocator left unused heap padding after the buffer, the out-of-bounds writes land in padding. The CPU check of valid elements still prints pass while silently corrupting adjacent device memory.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. State the hardware limits on a modern NVIDIA GPU such as Blackwell B200 for warp size, max threads per block, max warps per block, max resident warps per SM, max resident threads per SM, and max active blocks per SM.`&lt;/strong>`</summary>
+<summary>**7. State the hardware limits on a modern NVIDIA GPU such as Blackwell B200 for warp size, max threads per block, max warps per block, max resident warps per SM, max resident threads per SM, and max active blocks per SM.**</summary>
 
 ```text
 - Warp size: 32 threads.
@@ -618,7 +618,7 @@ The 189 extra threads in the final block write to indices past the end of the ou
 </details>
 
 <details>
-<summary>`&lt;strong>`8. State the maximum 3D grid dimensions and maximum concurrent grids supported on a modern NVIDIA GPU, and explain what happens when you launch `./vector_add 1000003 100000`.`&lt;/strong>`</summary>
+<summary>**8. State the maximum 3D grid dimensions and maximum concurrent grids supported on a modern NVIDIA GPU, and explain what happens when you launch `./vector_add 1000003 100000`.**</summary>
 
 ```text
 - Max grid dimensions: X = 2,147,483,647 (2^31 - 1), Y = 65,535, Z = 65,535, with up to 128 concurrent grids.
@@ -628,7 +628,7 @@ The 189 extra threads in the final block write to indices past the end of the ou
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Why did launching a 4K image filter with `<<<dim3(3840, 2160), dim3(1, 1)>>>` waste 97% of the GPU's compute lanes, and how does `dim3(16, 16)` fix it?`&lt;/strong>`</summary>
+<summary>**9. Why did launching a 4K image filter with `<<<dim3(3840, 2160), dim3(1, 1)>>>` waste 97% of the GPU's compute lanes, and how does `dim3(16, 16)` fix it?**</summary>
 
 ```text
 - 1-thread blocks: Each dim3(1, 1) block consumes a full 32-lane warp slot while leaving 31 of 32 lanes
@@ -639,13 +639,13 @@ The 189 extra threads in the final block write to indices past the end of the ou
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why did upgrading a kernel launched as `<<<64, 256>>>` from an A10 to an H100 produce almost no speedup, and how does a grid-stride loop solve this?`&lt;/strong>`</summary>
+<summary>**10. Why did upgrading a kernel launched as `<<<64, 256>>>` from an A10 to an H100 produce almost no speedup, and how does a grid-stride loop solve this?**</summary>
 
 Thread blocks cannot be split across SMs. A fixed grid of 64 blocks nearly fills an A10 with 72 SMs, but on an H100 with 132 SMs it occupies at most 64 SMs and leaves the remaining 68 SMs completely idle. A grid-stride loop lets you launch enough blocks to saturate any GPU while each thread steps across the array by the total grid stride.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. Why did measuring a kernel with `std::chrono::steady_clock::now()` immediately before and after the launch report `0.014 ms` when the kernel actually took `4.812 ms`?`&lt;/strong>`</summary>
+<summary>**11. Why did measuring a kernel with `std::chrono::steady_clock::now()` immediately before and after the launch report `0.014 ms` when the kernel actually took `4.812 ms`?**</summary>
 
 ```text
 - Host timer without synchronization: Measures only the 0.014 ms needed to enqueue the asynchronous launch
@@ -656,7 +656,7 @@ Thread blocks cannot be split across SMs. A fixed grid of 64 blocks nearly fills
 </details>
 
 <details>
-<summary>`&lt;strong>`12. In Lab 02, how did the `copy in` and `copy out` times compare to the `kernel` time, and why did `.to('cuda')` make normalizing 1 billion numbers slower than the CPU?`&lt;/strong>`</summary>
+<summary>**12. In Lab 02, how did the `copy in` and `copy out` times compare to the `kernel` time, and why did `.to('cuda')` make normalizing 1 billion numbers slower than the CPU?**</summary>
 
 ```text
 - Lab 02 stage timings: copy in (0.847 ms) + copy out (0.412 ms) = 1.259 ms total PCIe transfer vs
@@ -667,7 +667,7 @@ Thread blocks cannot be split across SMs. A fixed grid of 64 blocks nearly fills
 </details>
 
 <details>
-<summary>`&lt;strong>`13. In the Volume 03 Chapter 5 Nsight Systems profile across 4,000 requests, what percentage of total CUDA API time was spent in `cudaMalloc` and `cudaFree`, and how do `cudaMallocAsync` and `cudaFreeAsync` eliminate it?`&lt;/strong>`</summary>
+<summary>**13. In the Volume 03 Chapter 5 Nsight Systems profile across 4,000 requests, what percentage of total CUDA API time was spent in `cudaMalloc` and `cudaFree`, and how do `cudaMallocAsync` and `cudaFreeAsync` eliminate it?**</summary>
 
 ```text
 - Synchronous API overhead: cudaMalloc (71.2%) + cudaFree (6.4%) = 77.6% of total CUDA API time across
@@ -678,19 +678,19 @@ Thread blocks cannot be split across SMs. A fixed grid of 64 blocks nearly fills
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Why can `cudaMalloc` fail with `cudaErrorMemoryAllocation` for a `4 GB` tensor even when `nvidia-smi` reports `9,727 MiB` of free VRAM?`&lt;/strong>`</summary>
+<summary>**14. Why can `cudaMalloc` fail with `cudaErrorMemoryAllocation` for a `4 GB` tensor even when `nvidia-smi` reports `9,727 MiB` of free VRAM?**</summary>
 
 The `nvidia-smi` tool reports device-wide free memory, not the largest span the allocator can hand out. If the framework's caching allocator holds those 9,727 MiB as many small non-contiguous reserved blocks, a single 4 GB request can still fail. The source note points to PyTorch's memory summary tool as the next diagnostic step to inspect reserved versus active blocks.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What is the difference between Unified Virtual Addressing and Unified Memory, and how does `cudaMemPrefetchAsync` change the `812.4 ms` cold first-touch penalty?`&lt;/strong>`</summary>
+<summary>**15. What is the difference between Unified Virtual Addressing and Unified Memory, and how does `cudaMemPrefetchAsync` change the `812.4 ms` cold first-touch penalty?**</summary>
 
 Unified Virtual Addressing places host and device pointers in a single virtual address space. Unified Memory adds automatic page-fault demand migration across CPU and GPU memories. Without prefetching, Iteration 1 faults and migrates pages on demand across PCIe in 812.4 ms versus 41.2 ms warm. Calling `cudaMemPrefetchAsync` bulk-migrates the working set in 38.9 ms ahead of the kernel so Iteration 1 runs at warm speed.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What happens to a Unified Memory workload on a `40 GB` GPU when its active working set grows from `36 GB` to `44 GB`, and why does a single `std::cout << data[0]` on the CPU take `96.7 ms` after a `4.1 ms` kernel?`&lt;/strong>`</summary>
+<summary>**16. What happens to a Unified Memory workload on a `40 GB` GPU when its active working set grows from `36 GB` to `44 GB`, and why does a single `std::cout << data[0]` on the CPU take `96.7 ms` after a `4.1 ms` kernel?**</summary>
 
 ```text
 - Oversubscription cliff on 40 GB GPU:
@@ -703,25 +703,25 @@ Unified Virtual Addressing places host and device pointers in a single virtual a
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What is the exact scope of `__syncthreads()`, and why did putting a `while(true)` loop inside Block 100 to wait for Block 1 deadlock on a production A100?`&lt;/strong>`</summary>
+<summary>**17. What is the exact scope of `__syncthreads()`, and why did putting a `while(true)` loop inside Block 100 to wait for Block 1 deadlock on a production A100?**</summary>
 
 The `__syncthreads()` primitive synchronizes threads within a single Thread Block only. Standard CUDA provides no grid-wide barrier across independent blocks because blocks can be scheduled in any order. If spinning blocks such as Block 100 fill all available SM slots, Block 1 can never enter an SM to set the flag, causing a permanent hardware deadlock. Always split cross-block dependencies into two sequential kernel launches.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Why does a reduction kernel that increments a global sum without synchronization produce three different results across three runs, and why should you reduce in Shared Memory before calling `atomicAdd`?`&lt;/strong>`</summary>
+<summary>**18. Why does a reduction kernel that increments a global sum without synchronization produce three different results across three runs, and why should you reduce in Shared Memory before calling `atomicAdd`?**</summary>
 
 Concurrent read-modify-write updates from thousands of threads create a data race whose result depends on non-deterministic warp scheduling. Replacing the unlocked addition with global `atomicAdd` restores correctness at the L2 cache, but serializes all threads contending on that single address. Reducing within each block's fast Shared Memory and issuing only one `atomicAdd` per block cuts global atomic updates by a factor of the block size.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Why can an out-of-bounds memory access inside `kernel_a` be reported as an error on a `cudaMemcpy` call three lines later, and how do you isolate the true culprit?`&lt;/strong>`</summary>
+<summary>**19. Why can an out-of-bounds memory access inside `kernel_a` be reported as an error on a `cudaMemcpy` call three lines later, and how do you isolate the true culprit?**</summary>
 
 Kernel execution is asynchronous. When the first kernel faults on the GPU, the hardware sets a sticky error flag while the CPU continues queueing the next kernel. The error is returned to the CPU only at the next synchronizing API call, which is `cudaMemcpy`. Isolate the culprit by temporarily inserting `cudaDeviceSynchronize()` or running with `compute-sanitizer` immediately after each kernel launch.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. What is Tensor Memory on a Blackwell B200 GPU, and how does it interact with Shared Memory and the Tensor Memory Accelerator?`&lt;/strong>`</summary>
+<summary>**20. What is Tensor Memory on a Blackwell B200 GPU, and how does it interact with Shared Memory and the Tensor Memory Accelerator?**</summary>
 
 ```text
 - Tensor Memory (TMEM, ASP Ch 6 Table 6-5 & Figure 6-11):

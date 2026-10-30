@@ -472,7 +472,7 @@ Summary: 25 passed, 0 failed (total 25)
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. What are the four layers of the Profiling Evidence Ladder, and what medical or engineering analogy describes each?`&lt;/strong>`</summary>
+<summary>**1. What are the four layers of the Profiling Evidence Ladder, and what medical or engineering analogy describes each?**</summary>
 
 1. DCGM and Prometheus with `nvidia-smi` act as the Thermometer. They provide always-on, near-zero-overhead macro telemetry over days or weeks.
 2. Nsight Systems acts as the Traffic Camera or X-Ray. It captures a node-wide system timeline showing CPU threads, OS I/O, PCIe and NVLink DMA, and GPU streams.
@@ -481,49 +481,49 @@ Summary: 25 passed, 0 failed (total 25)
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Why did Nsight Systems (`nsys`) fail to explain why a custom sparse Triton kernel was four times slower on an H100 in the Volume 17 Chapter 2 case study, and which tool solved it?`&lt;/strong>`</summary>
+<summary>**2. Why did Nsight Systems (`nsys`) fail to explain why a custom sparse Triton kernel was four times slower on an H100 in the Volume 17 Chapter 2 case study, and which tool solved it?**</summary>
 
 Nsight Systems is a system-level timeline profiler. It showed the kernel as one massive slow blue block on the GPU row, but it cannot look inside the streaming multiprocessor execution to see why the silicon stalled. Switching to Nsight Compute revealed the micro-architectural root causes. Those causes included register spilling to slow global VRAM and poor L1 cache hit rates from uncoalesced access patterns.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What role do NVTX markers (`torch.cuda.nvtx.range_push/pop` and `torch.profiler.record_function`) play across `torch.profiler`, `nsys`, HTA, and `ncu`?`&lt;/strong>`</summary>
+<summary>**3. What role do NVTX markers (`torch.cuda.nvtx.range_push/pop` and `torch.profiler.record_function`) play across `torch.profiler`, `nsys`, HTA, and `ncu`?**</summary>
 
 NVTX markers annotate named time intervals on the host thread with near-zero overhead when no profiler is attached. Profilers ingest NVTX events via CUPTI and project them onto asynchronous GPU streams. That projection ensures the exact same phase boundaries align across PyTorch Profiler, Nsight Systems, HTA, Perfetto, and Nsight Compute.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Which tools replaced the deprecated TensorBoard PyTorch profiler plugin and Chrome's legacy `chrome://tracing` viewer as of 2025?`&lt;/strong>`</summary>
+<summary>**4. Which tools replaced the deprecated TensorBoard PyTorch profiler plugin and Chrome's legacy `chrome://tracing` viewer as of 2025?**</summary>
 
 Use Perfetto and its SQL query engine for interactive single-node trace timeline viewing. Use Meta's open-source Holistic Trace Analysis for multi-GPU and multi-node distributed Kineto trace aggregation, straggler detection, and overlap analysis.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. In Table 13-2's 64-expert MoE profile, why is `aten::matmul` called 128 times while `aten::linear` and `aten::add_` are called 64 times, and how much time do `dispatch` and `combine` consume?`&lt;/strong>`</summary>
+<summary>**5. In Table 13-2's 64-expert MoE profile, why is `aten::matmul` called 128 times while `aten::linear` and `aten::add_` are called 64 times, and how much time do `dispatch` and `combine` consume?**</summary>
 
 Each of the sixty-four experts executes `aten::matmul` once in the forward pass and once in the backward pass for one hundred twenty-eight calls total. Meanwhile, `aten::linear` and `aten::add_` execute once per expert for sixty-four calls each. The custom MoE token-routing kernels `dispatch` and `combine` execute twice each and consume thirty point eight milliseconds combined, or more than a fifth of the entire training step.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. How does `nsys stats --report=nvtx_gpu_proj_sum` compute the GPU time of an NVTX range in Table 13-3, and why does `train_step` have zero Self GPU time?`&lt;/strong>`</summary>
+<summary>**6. How does `nsys stats --report=nvtx_gpu_proj_sum` compute the GPU time of an NVTX range in Table 13-3, and why does `train_step` have zero Self GPU time?**</summary>
 
 Nsight Systems uses CUPTI to record host NVTX push and pop timestamps and projects all asynchronous GPU kernels launched within that window onto the range. It then sums their GPU start-to-end durations across the forward, backward, and optimizer child ranges. Because `train_step` is an outer wrapper around those three child ranges, one hundred percent of its GPU time is attributed to Child GPU time and zero to Self GPU time.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. In Table 13-4, how did the expert `matmul` kernel's Nsight Compute (`ncu`) metrics shift from Baseline to Optimized, and what kernel module parameter enables non-root SM counter access?`&lt;/strong>`</summary>
+<summary>**7. In Table 13-4, how did the expert `matmul` kernel's Nsight Compute (`ncu`) metrics shift from Baseline to Optimized, and what kernel module parameter enables non-root SM counter access?**</summary>
 
 In Table 13-4, the Baseline kernel achieved fifty percent of peak FLOPS and seventy percent of peak memory bandwidth, making it memory-bound. After fusion and arithmetic-intensity optimizations, the Optimized kernel reached eighty-five percent of peak FLOPS, forty percent of peak memory bandwidth, and eighty percent achieved occupancy. That shift moved the kernel into the compute-bound regime near the hardware Roofline. Non-root users require `NVreg_RestrictProfilingToAdminUsers=0` to read SM hardware counters in Nsight Compute.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. In the Grace-Blackwell `perf stat` profile, why did the example IPC indicate host-side inefficiency, and what can Linux `perf` sample via NVIDIA PMUs?`&lt;/strong>`</summary>
+<summary>**8. In the Grace-Blackwell `perf stat` profile, why did the example IPC indicate host-side inefficiency, and what can Linux `perf` sample via NVIDIA PMUs?**</summary>
 
 Each ARM Neoverse V2 core on the Grace CPU has a theoretical maximum of eight instructions per cycle. Measuring an example IPC under two therefore indicates significant host memory, I/O, or interpreter stalls. With NVIDIA PMU drivers installed, `perf stat` can sample device-level link and fabric counters such as `nvidia_nvlink_c2c0_pmu_0/cycles/`, whereas SM-level counters require CUPTI and Nsight Compute.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. List the five CPU call-stack hotspots reported by `perf report --stdio -n -g -i perf.data` and the primary optimization for each.`&lt;/strong>`</summary>
+<summary>**9. List the five CPU call-stack hotspots reported by `perf report --stdio -n -g -i perf.data` and the primary optimization for each.**</summary>
 
 1. The `py::forward` hotspot is fixed by enabling `torch.compile` to eliminate Python interpreter dispatch.
 2. The `aten::matmul` hotspot is fixed by fusing and compiling GEMM dispatch or using grouped GEMM kernels.
@@ -533,13 +533,13 @@ Each ARM Neoverse V2 core on the Grace CPU has a theoretical maximum of eight in
 </details>
 
 <details>
-<summary>`&lt;strong>`10. By how much did `torch.compile` speed up the 64-expert MoE training iteration, why do MoEs gain more than single-GEMM dense models, and how do you persist compiled kernels across nodes?`&lt;/strong>`</summary>
+<summary>**10. By how much did `torch.compile` speed up the 64-expert MoE training iteration, why do MoEs gain more than single-GEMM dense models, and how do you persist compiled kernels across nodes?**</summary>
 
 Enabling the PyTorch compiler cut MoE iteration time from two hundred forty-eight milliseconds down to one hundred seventy-three milliseconds, a thirty percent reduction. It achieved that speedup by fusing dozens of small expert routing, activation, and normalization kernels. Dense models dominated by a single large GEMM typically see less than ten percent gain because they have much less launch and memory-traffic overhead. You can persist compiled artifacts across runs and nodes using PyTorch Mega-Cache (`TORCHINDUCTOR_CACHE_DIR`) and `nested_compile_region` for repeated Transformer blocks.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. Distinguish PyTorch's four attention optimization mechanisms in Chapter 13: `SDPA`, `FlexAttention`, `FlexDecoding`, and `context_parallel()`.`&lt;/strong>`</summary>
+<summary>**11. Distinguish PyTorch's four attention optimization mechanisms in Chapter 13: `SDPA`, `FlexAttention`, `FlexDecoding`, and `context_parallel()`.**</summary>
 
 - Standard `SDPA` automatically dispatches the fastest standard backend among FlashAttention, memory-efficient, or math kernels.
 - FlexAttention generates fused Triton attention kernels for custom score modifications and block-sparse or sliding-window masks in prefill and training.
@@ -548,19 +548,19 @@ Enabling the PyTorch compiler cut MoE iteration time from two hundred forty-eigh
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What is `torchao`, and how does it interact with `torch.compile`?`&lt;/strong>`</summary>
+<summary>**12. What is `torchao`, and how does it interact with `torch.compile`?**</summary>
 
 PyTorch Architecture Optimization (`torchao`) is PyTorch's unified package for post-training quantization, quantization-aware training, pruning, and 2:4 or block sparsity. It integrates directly with `torch.compile` so TorchInductor emits fused, quantized, and sparse hardware kernels without custom C++ wrappers.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How do CUDA Graph Trees work in PyTorch, and how does the FireworksAI decreasing-batch shared memory pool reduce VRAM usage?`&lt;/strong>`</summary>
+<summary>**13. How do CUDA Graph Trees work in PyTorch, and how does the FireworksAI decreasing-batch shared memory pool reduce VRAM usage?**</summary>
 
 CUDA Graph Trees maintain a tree of per-shape static graph captures sharing a common memory pool. In the FireworksAI pattern, passing a shared pool handle to `torch.cuda.graph` and compiling batch variants in decreasing order ensures the largest batch variant allocates the peak PagedAttention buffer first. All smaller batch variants then reuse that same memory region without extra VRAM allocation.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Explain each field in `PYTORCH_ALLOC_CONF`, and state what a 600 MB request rounds up to.`&lt;/strong>`</summary>
+<summary>**14. Explain each field in `PYTORCH_ALLOC_CONF`, and state what a 600 MB request rounds up to.**</summary>
 
 - Setting `max_split_size_mb:256` keeps free blocks up to two hundred fifty-six megabytes intact instead of splitting them into fragments.
 - Setting `roundup_power2_divisions` splits each power-of-two size range into fixed sub-buckets. Because the five hundred twelve to one thousand twenty-four megabyte range is divided into two sub-buckets of two hundred fifty-six megabytes each, a six hundred megabyte request rounds up to seven hundred sixty-eight megabytes.
@@ -568,26 +568,26 @@ CUDA Graph Trees maintain a tree of per-shape static graph captures sharing a co
 </details>
 
 <details>
-<summary>`&lt;strong>`15. How does `SuperOffload` optimize CPU-GPU offloading on Grace-Blackwell superchips, and what is `GraceAdam`?`&lt;/strong>`</summary>
+<summary>**15. How does `SuperOffload` optimize CPU-GPU offloading on Grace-Blackwell superchips, and what is `GraceAdam`?**</summary>
 
 The `SuperOffload` framework exploits coherent NVLink-C2C bandwidth using Speculation-Then-Validation to run speculative CPU optimizer updates concurrently with GPU backpropagation. It combines that pipeline with heterogeneous CPU/GPU optimizer partitioning, GPU-side type casts, and `GraceAdam`. Here `GraceAdam` is an Adam optimizer vectorized for the Grace CPU's ARM Scalable Vector Extension using its thirty-two vector registers and sixteen predicate registers.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How do `CUDAPluggableAllocator` and `torch.cuda.memory.MemPool` accelerate NCCL all-reduce on Blackwell NVLink 5 and SHARP fabrics?`&lt;/strong>`</summary>
+<summary>**16. How do `CUDAPluggableAllocator` and `torch.cuda.memory.MemPool` accelerate NCCL all-reduce on Blackwell NVLink 5 and SHARP fabrics?**</summary>
 
 Binding NCCL's native memory allocator into a PyTorch `MemPool` and registering it via `register_mem_pool` allocates collective buffers on large page-aligned regions. Those regions are directly accessible by NVSwitch copy engines on Blackwell NVLink 5, GPUDirect RDMA, and NVIDIA SHARP in-network aggregation, freeing SM warps from communication copies.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What are `NCCL-UCX` and PyTorch Symmetric Memory, and why is Symmetric Memory critical for capturing MoE `all-to-all` in a CUDA Graph?`&lt;/strong>`</summary>
+<summary>**17. What are `NCCL-UCX` and PyTorch Symmetric Memory, and why is Symmetric Memory critical for capturing MoE `all-to-all` in a CUDA Graph?**</summary>
 
 - Enabling `NCCL_NET=UCX` with `UCX_TLS` routes cross-node and cross-rack collectives over InfiniBand or RoCE RDMA with hardware offloads.
 - PyTorch Symmetric Memory exposes a Partitioned Global Address Space across GPUs so kernels execute one-sided puts and gets (`all_to_all_v`, `one_shot_all_reduce`) directly on-device without host CPU synchronization. That device-initiated design allows MoE `all-to-all` token shuffles to be captured inside a CUDA Graph.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Compare FSDP sharding strategies (`FULL_SHARD`, `HYBRID_SHARD`, `SHARD_GRAD_OP`), and state the memory and throughput gains of `SimpleFSDP` in `TorchTitan`.`&lt;/strong>`</summary>
+<summary>**18. Compare FSDP sharding strategies (`FULL_SHARD`, `HYBRID_SHARD`, `SHARD_GRAD_OP`), and state the memory and throughput gains of `SimpleFSDP` in `TorchTitan`.**</summary>
 
 - `FULL_SHARD` (ZeRO-3) shards parameters, gradients, and optimizer states across all ranks for the lowest per-GPU memory footprint.
 - `HYBRID_SHARD` shards states within each node and replicates across nodes to reduce cross-node traffic.
@@ -596,13 +596,13 @@ In TorchTitan, `SimpleFSDP` built on DTensor, the PyTorch compiler, and selectiv
 </details>
 
 <details>
-<summary>`&lt;strong>`19. How are `TorchBench` and the PyTorch HUD (`pytorch/test-infra`) configured to detect performance regressions in CI without false alarms?`&lt;/strong>`</summary>
+<summary>**19. How are `TorchBench` and the PyTorch HUD (`pytorch/test-infra`) configured to detect performance regressions in CI without false alarms?**</summary>
 
 Continuous integration jobs run deterministic TorchBench workloads on consistent hardware while checking `torch.allclose` and peak memory allocation. To filter out single-run noise, the pipeline flags a failure only when throughput drops by five percent or more sustained across three consecutive runs.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Walk through the MLPerf Logging (`:::MLL`) step-time breakdown in Table 13-6, and explain what the breakdown tells you to optimize next.`&lt;/strong>`</summary>
+<summary>**20. Walk through the MLPerf Logging (`:::MLL`) step-time breakdown in Table 13-6, and explain what the breakdown tells you to optimize next.**</summary>
 
 In Table 13-6's twenty-four millisecond training step, forward and backward passes total nineteen point five milliseconds, or just over eighty-one percent of the step. Meanwhile, `allreduce_ms` takes four milliseconds, or one-sixth of the step, and `other_ms` takes half a millisecond. Data loading and host dispatch are already well-hidden, while one-sixth of every step is spent waiting on gradient synchronization. The next engineering priority is therefore hiding or compressing `all-reduce` communication via bucket overlap, delayed all-reduce slack, `AsyncTP`, or SHARP.
 </details>

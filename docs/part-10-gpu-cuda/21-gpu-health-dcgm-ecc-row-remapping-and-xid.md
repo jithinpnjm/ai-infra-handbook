@@ -414,121 +414,121 @@ Summary: 25 passed, 0 failed (total 25)
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. How does DCGM's embedded host engine differ from the standalone nv-hostengine, and why shouldn't you run two independent host engines polling the same GPUs?`&lt;/strong>`</summary>
+<summary>**1. How does DCGM's embedded host engine differ from the standalone nv-hostengine, and why shouldn't you run two independent host engines polling the same GPUs?**</summary>
 
 In embedded mode, which is the default for the exporter on port 9400, `libdcgm` runs inside the exporter process. In standalone mode, `nvidia-dcgm.service` runs `/usr/bin/nv-hostengine` on default remote port 5555 to serve CLI and remote clients. Running both independently without `--remote-hostengine-info` duplicates driver polling for the same fields.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. How does DCGM multiplex field watches across multiple clients, and what are the exporter's default collection interval and Xid window size?`&lt;/strong>`</summary>
+<summary>**2. How does DCGM multiplex field watches across multiple clients, and what are the exporter's default collection interval and Xid window size?**</summary>
 
 DCGM collects one shared stream per entity-field pair at the shortest requested interval. When two clients ask for GPU 0 power at 5-second and 1-second intervals, DCGM collects at 1 second and serves both from the shared cache. By default, the exporter uses a 30,000 ms collection interval and a 300,000 ms `--xid-count-window-size` so short Xid or throttle events between scrapes are not missed.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What happens in DCGM 4.5+ with driver 590+ when a GPU detaches at runtime, and how do you prevent a missing GPU from going unnoticed?`&lt;/strong>`</summary>
+<summary>**3. What happens in DCGM 4.5+ with driver 590+ when a GPU detaches at runtime, and how do you prevent a missing GPU from going unnoticed?**</summary>
 
 When a GPU detaches, DCGM removes it from active groups, drops its watches, and stops reporting health incidents for that GPU. That behavior makes a detached GPU look quiet. Pair DCGM alerts with a GPU count check on `DCGM_FI_DEV_GPU_UTIL` and run `dcgmi discovery --list --all` to spot inactive GPUs marked with last-known status.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Summarize the four diagnostic levels of dcgmi diag and state when each is used.`&lt;/strong>`</summary>
+<summary>**4. Summarize the four diagnostic levels of dcgmi diag and state when each is used.**</summary>
 
 Level 1 runs in seconds as a non-invasive software and deployment check for daily readiness probes. Level 2 runs in roughly 2 minutes for deployment plus basic hardware and memory integration checks. Level 3 runs in roughly 15 minutes as an invasive hardware and stress suite covering memory, PCIe, power, and thermals. Level 3 is the mandatory Known-Good Validation gate before returning a repaired or Tier 3 Xid GPU to production, while Level 4 is an extended burn-in test for new cluster acceptance.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. Contrast Single-Bit (SBE) and Double-Bit (DBE) ECC memory errors, and explain the difference between Volatile and Aggregate ECC counters.`&lt;/strong>`</summary>
+<summary>**5. Contrast Single-Bit (SBE) and Double-Bit (DBE) ECC memory errors, and explain the difference between Volatile and Aggregate ECC counters.**</summary>
 
 An SBE is a correctable 1-bit flip that hardware detects and fixes on the fly without crashing the job. A DBE is an uncorrectable 2-bit flip that cannot be reconstructed by ECC math, raising Tier 3 Xid 48 and halting execution. Volatile counters reset on GPU reset or reboot, whereas Aggregate counters persist across reboots in the GPU's non-volatile infoROM.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. If a GPU's weekly SBE delta climbs from 3 to 8 (+167%), why must you correlate aggregate SBEs with GPU temperature before ordering an RMA?`&lt;/strong>`</summary>
+<summary>**6. If a GPU's weekly SBE delta climbs from 3 to 8 (+167%), why must you correlate aggregate SBEs with GPU temperature before ordering an RMA?**</summary>
 
 Elevated temperature physically increases DRAM and HBM capacitor bit-flip rates. A strong positive correlation of 0.81 proves the rising SBE rate is environmentally driven by heat. Fixing cooling or lowering power via `nvidia-smi -pl` restores the SBE delta to 1 or 2 per day without replacing hardware, whereas an uncorrelated climb at 0.09 indicates progressive silicon degradation requiring a preventive RMA.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How does the Ampere, Hopper, and Blackwell Hardware Row Remapper differ from legacy Page Retirement, and how do you read its 640-bank histogram?`&lt;/strong>`</summary>
+<summary>**7. How does the Ampere, Hopper, and Blackwell Hardware Row Remapper differ from legacy Page Retirement, and how do you read its 640-bank histogram?**</summary>
 
 Legacy Page Retirement blacklists memory pages in software, slightly shrinking usable memory capacity. The Hardware Row Remapper remaps a degraded HBM row to a spare row inside the same HBM bank in hardware via Xid 63 without reducing usable capacity. Summing the five availability buckets gives 640 total banks, where 630 banks in the Max bucket still have full spare capacity and no remapping failure has occurred.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What is the operational difference between Xid 63 and Xid 64?`&lt;/strong>`</summary>
+<summary>**8. What is the operational difference between Xid 63 and Xid 64?**</summary>
 
 Xid 63 is a Tier 1 informational event logged when the GPU records a routine page retirement or row remap after a correctable ECC event. Xid 64 is a Tier 3 fatal hardware failure logged when the row remapper or page retirement mechanism fails or exhausts spare rows. When Xid 64 fires and `DCGM_FI_DEV_ROW_REMAP_FAILURE` equals 1, drain the node immediately and RMA the GPU.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. List the Xid codes in Tier 1, Tier 2, and Tier 3 of the Volume 20 Chapter 2 triage framework, and state the response rule for each tier.`&lt;/strong>`</summary>
+<summary>**9. List the Xid codes in Tier 1, Tier 2, and Tier 3 of the Volume 20 Chapter 2 triage framework, and state the response rule for each tier.**</summary>
 
 Tier 1 covers informational and self-healing events where the GPU keeps running; log and track weekly rate trends and schedule preventive maintenance if the rate triples week-over-week. Tier 2 covers process-recoverable faults; restart the affected pod, and escalate to the highest tier if the same GPU repeats the same code across unrelated applications. Tier 3 covers unrecoverable GPU hardware failures; page on-call, cordon and drain the node immediately, flag running job outputs, and run diagnostics or RMA.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why does Xid 45 appear in dmesg, and how did the Xid 92 to 45 to 79 cascade unfold in Volume 20 Chapter 2?`&lt;/strong>`</summary>
+<summary>**10. Why does Xid 45 appear in dmesg, and how did the Xid 92 to 45 to 79 cascade unfold in Volume 20 Chapter 2?**</summary>
 
 Xid 45 is logged when the driver tears down a context after an earlier fault, so it is always a downstream symptom and never the root cause. In the Volume 20 Chapter 2 incident, Xid 92 fired first after six hours of accelerating SBEs. Six seconds later Xid 45 logged the preemptive context cleanup, and five seconds after that Xid 79 reported that the GPU had fallen off the bus.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. Contrast Xid 79, Xid 94, and Xid 95.`&lt;/strong>`</summary>
+<summary>**11. Contrast Xid 79, Xid 94, and Xid 95.**</summary>
 
 Xid 79 is a Tier 3 fault where the GPU fell off the PCIe bus and no longer appears in `lspci`. Xid 94 is a Tier 2 contained uncorrectable ECC error where hardware isolated the fault to a single application, so only that application must be restarted while the GPU stays on the bus. Xid 95 is a Tier 3 uncontained ECC error where hardware could not isolate the blast radius, requiring immediate node drain and output invalidation just like Xid 48.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What is the difference between Xid 62 and Xid 119 or 120?`&lt;/strong>`</summary>
+<summary>**12. What is the difference between Xid 62 and Xid 119 or 120?**</summary>
 
 Xid 62 is an internal PMU microcontroller halt that requires a GPU reset and support escalation. In contrast, GPU System Processor firmware errors are reported as Xid 119 and Xid 120.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How do you triage an Xid 31 storm on a production node?`&lt;/strong>`</summary>
+<summary>**13. How do you triage an Xid 31 storm on a production node?**</summary>
 
 First, check if the node is part of a multi-node MPI or NCCL job that is now stalled. Second, recognize Xid 31 as a GPU memory page fault caused by an application out-of-bounds pointer bug. Third, extract the offending host PID from `dmesg` and map it to the Kubernetes pod or Slurm job. Fourth, terminate the offending pod and have the developer run `compute-sanitizer --tool=memcheck` to locate the faulting source line.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. When nvidia-smi reports 0 MiB total memory on an 81,920 MiB A100, what are the top two configuration root causes before suspecting hardware?`&lt;/strong>`</summary>
+<summary>**14. When nvidia-smi reports 0 MiB total memory on an 81,920 MiB A100, what are the top two configuration root causes before suspecting hardware?**</summary>
 
 The most common cause is the MIG zero-instance trap, where MIG mode is enabled on the GPU but zero GPU Instances have been created, leaving zero allocatable memory on the parent device. The second cause is a driver and library mismatch where user-space `libnvidia-ml.so` does not match the host kernel module `nvidia.ko`.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What causes the "Ghost OOM on MPS" where Container A crashes with CUDA out of memory while nvidia-smi shows only 10 GB of 40 GB used?`&lt;/strong>`</summary>
+<summary>**15. What causes the "Ghost OOM on MPS" where Container A crashes with CUDA out of memory while nvidia-smi shows only 10 GB of 40 GB used?**</summary>
 
 Under MPS, all clients share a single GPU context. A per-client memory cap set via `CUDA_MPS_PINNED_DEVICE_MEM_LIMIT` can reject Container A's allocation at 10 GB even when 30 GB of physical HBM is free. Migrating to MIG provides hardware-enforced memory controller partitioning.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How do you recover a GPU after Xid 79 without rebooting the host, and what gate must pass before uncordoning?`&lt;/strong>`</summary>
+<summary>**16. How do you recover a GPU after Xid 79 without rebooting the host, and what gate must pass before uncordoning?**</summary>
 
 After cordoning and draining the node, remove the PCIe device node and trigger a bus rescan via sysfs. Verify the GPU re-enumerates in `lspci -vvv` at full Gen4 or Gen5 x16 link speed and width rather than down-training. Finally, reload the driver if needed and require `dcgmi diag -r 3` to pass all stages before uncordoning.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. In Volume 20 Chapter 4, how do asymmetric NVLink error counters isolate which of two GPUs caused an Xid 74 link-down?`&lt;/strong>`</summary>
+<summary>**17. In Volume 20 Chapter 4, how do asymmetric NVLink error counters isolate which of two GPUs caused an Xid 74 link-down?**</summary>
 
 Inspecting `dcgmi nvlink -e` on both ends of the failed link between GPU 2 and GPU 3 showed 184,213 CRC errors and 92,104 replay errors on GPU 2 versus 0 errors on GPU 3. Because GPU 3 accumulated zero errors before going down, GPU 3 is healthy and the physical fault is isolated to GPU 2's NVLink transceiver or baseboard trace.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. What is the exact 4-step command sequence to safely drain a GPU node and unload NVIDIA kernel modules for a live driver upgrade?`&lt;/strong>`</summary>
+<summary>**18. What is the exact 4-step command sequence to safely drain a GPU node and unload NVIDIA kernel modules for a live driver upgrade?**</summary>
 
 First, cordon the node with `kubectl cordon`. Second, poll `dcgmi dmon -e 203 -c 1` until aggregate GPU utilization across all GPUs on the node equals 0%. Third, stop `nvidia-dcgm-exporter` and `nvidia-dcgm` to release open device descriptors. Fourth, run `rmmod nvidia_uvm nvidia_drm nvidia_modeset nvidia`.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Why is GPU Utilization > 80% a bad cluster SLI, and what five SLIs and SLOs does Volume 16 Chapter 9 recommend instead?`&lt;/strong>`</summary>
+<summary>**19. Why is GPU Utilization > 80% a bad cluster SLI, and what five SLIs and SLOs does Volume 16 Chapter 9 recommend instead?**</summary>
 
 Utilization is a hardware counter rather than a business outcome; a GPU stuck in a spin-loop or heavy memory stall reports 80% to 100% utilization while completing zero work. Volume 16 Chapter 9 recommends five SLIs: GPU Availability at 99.0%, All GPUs Healthy at 98.0%, Job Completion Rate at 99.5%, sustained Training Throughput at p50 of 2,000 samples/sec and p99 of 1,900 samples/sec, and bounded All-Reduce collective latency.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Walk through the monthly error-budget calculation for a 99.0% GPU availability SLO, and state what happens when downtime reaches 6.0 hours.`&lt;/strong>`</summary>
+<summary>**20. Walk through the monthly error-budget calculation for a 99.0% GPU availability SLO, and state what happens when downtime reaches 6.0 hours.**</summary>
 
 Over a 730-hour month, a 99.0% availability SLO provides 7.3 hours per month of error budget. After 1.5 hours for a firmware upgrade, 2.0 hours for a GPU failure, 2.0 hours for network maintenance, and 0.5 hours for a thermal incident, 6.0 hours are used. Only 1.3 hours remain, which triggers an immediate freeze on non-emergency deployments and upgrades until the next month.
 </details>

@@ -787,19 +787,19 @@ Exercise Input Parameters Reference:
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. Why cannot a single 80 GB H100 GPU hold GPT-3 (175B) or Llama-3 (70B) for training, even before loading a single batch of data?`&lt;/strong>`</summary>
+<summary>**1. Why cannot a single 80 GB H100 GPU hold GPT-3 (175B) or Llama-3 (70B) for training, even before loading a single batch of data?**</summary>
 
 Stored in FP32, GPT-3 175B weights alone require 700 GB, exceeding an 80 GB H100 by 8.75x. A 70B model in FP32 requires 280 GB, which also exceeds a 141 GB H200 and a 192 GB B200. Even in mixed-precision BF16 and FP32 AdamW, Llama-3-70B requires 140 GB for weights and 140 GB for gradients. Adding 840 GB for FP32 master weights and moments brings static state to 1,120 GB before activations.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. How long would a single forward pass of GPT-3 (175B) at batch size 2048 and sequence length 2048 take on 1 A100 GPU (312 TFLOPS) versus 128 A100 GPUs?`&lt;/strong>`</summary>
+<summary>**2. How long would a single forward pass of GPT-3 (175B) at batch size 2048 and sequence length 2048 take on 1 A100 GPU (312 TFLOPS) versus 128 A100 GPUs?**</summary>
 
 The pass requires `2 x 175 x 10^9 x 2048 x 2048 ~= 1.46 x 10^18` FLOPs, or `1.468 x 10^18` exact. At 312 TFLOPS, a single A100 takes 4,679 seconds, or roughly 78 minutes per pass. Across 128 A100 GPUs, the same step drops to 37 seconds, or 36.56 seconds exact.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What are the five distinct consumers of GPU VRAM during a training step?`&lt;/strong>`</summary>
+<summary>**3. What are the five distinct consumers of GPU VRAM during a training step?**</summary>
 
 1. Model weights stored in BF16, FP16, or FP32.
 2. Gradients matching the trainable parameter dimensions.
@@ -809,37 +809,37 @@ The pass requires `2 x 175 x 10^9 x 2048 x 2048 ~= 1.46 x 10^18` FLOPs, or `1.46
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Why is BF16 preferred over FP16 for training large language models, and what roles do FP8 E4M3, FP8 E5M2, MXFP8, and NVFP4 play?`&lt;/strong>`</summary>
+<summary>**4. Why is BF16 preferred over FP16 for training large language models, and what roles do FP8 E4M3, FP8 E5M2, MXFP8, and NVFP4 play?**</summary>
 
 BF16 preserves the eight-bit exponent range of FP32 and avoids the gradient underflow that requires `GradScaler` in FP16. In FP8 training, FP8 E4M3 provides higher mantissa precision for forward weights and activations. Meanwhile, FP8 E5M2 provides a wider exponent range for backward gradients. Blackwell GPUs add microscaling block formats with MXFP8 using a 32-value block scale and NVFP4 using a 16-value block scale.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. How do the optimizer state memory multipliers compare across SGD, Adafactor, SGD+Momentum/RMSProp/Lion, Adam/AdamW/LAMB, and AMSGrad?`&lt;/strong>`</summary>
+<summary>**5. How do the optimizer state memory multipliers compare across SGD, Adafactor, SGD+Momentum/RMSProp/Lion, Adam/AdamW/LAMB, and AMSGrad?**</summary>
 
 Relative to parameter count Psi, SGD without momentum uses 0x state tensors because the learning rate is a scalar. Adafactor uses roughly 0.5x via factorized row and column second moments. SGD with Momentum, Nesterov, Adagrad, RMSProp, and Lion use 1x state tensor per parameter. Adam, AdamW, LAMB, Nadam, SparseAdam, and AdaBelief use 2x state tensors per parameter for first and second moments. AMSGrad uses 3x state tensors per parameter by adding the historical maximum second moment.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Why do both pure FP32 Adam and mixed-precision (BF16 + FP32 master weights) AdamW require 16*Psi bytes of static training memory, while a mixed-precision checkpoint on disk requires 14*Psi bytes?`&lt;/strong>`</summary>
+<summary>**6. Why do both pure FP32 Adam and mixed-precision (BF16 + FP32 master weights) AdamW require 16*Psi bytes of static training memory, while a mixed-precision checkpoint on disk requires 14*Psi bytes?**</summary>
 
 In pure FP32 Adam, weights, gradients, momentum, and variance each take 4*Psi bytes, totaling 16*Psi bytes, or 112 GB for a 7B model. In mixed-precision AdamW, storing weights and gradients in BF16 saves 4*Psi bytes. That saving is offset by the 4*Psi byte FP32 master weight copy needed for numerical precision during small updates. When writing a checkpoint to disk, the 2*Psi byte gradients are omitted. That leaves 14*Psi bytes, or 98 GB for 7B and 980 GB for 70B.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Which activation functions allow PyTorch autograd to store only the post-activation output h, and which require storing the pre-activation input z?`&lt;/strong>`</summary>
+<summary>**7. Which activation functions allow PyTorch autograd to store only the post-activation output h, and which require storing the pre-activation input z?**</summary>
 
 Sigmoid, Tanh, and Softplus have derivatives that can be computed directly from the post-activation output h, so PyTorch discards z. ReLU, Leaky ReLU, ELU, GELU, Swish, SiLU, Mish, and gated linear units like SwiGLU, GeGLU, and ReGLU have derivatives that explicitly depend on the pre-activation input z or its sign mask. PyTorch must therefore store z during the forward pass.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What is the formula for per-layer transformer activation memory in mixed precision, and how much memory do FlashAttention and full activation checkpointing save on a 7B model (L=32, b=4, s=2048, h=4096, a=32)?`&lt;/strong>`</summary>
+<summary>**8. What is the formula for per-layer transformer activation memory in mixed precision, and how much memory do FlashAttention and full activation checkpointing save on a 7B model (L=32, b=4, s=2048, h=4096, a=32)?**</summary>
 
 Per layer, standard activation memory is `A_layer = s * b * h * (34 + 5 * a * s / h)` bytes. Here `34 * s * b * h` is 1.1409 GB of linear and MLP activations and `5 * a * b * s^2` is 2.6844 GB of attention matrices. Standard total across all layers is 122.4066 GB. FlashAttention or SDPA removes the attention matrix term, cutting activations to 36.5072 GB for 70.18% savings. Full activation checkpointing stores only layer boundaries plus one active layer, dropping activations to 3.2883 GB for 97.31% savings.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Walk through the memory numbers at each stage of the training loop for the DAI Ch. 1 7B pure-BF16 Adam baseline (14 GB weights, 14 GB grads, 28 GB optimizer states, 12 GB activations).`&lt;/strong>`</summary>
+<summary>**9. Walk through the memory numbers at each stage of the training loop for the DAI Ch. 1 7B pure-BF16 Adam baseline (14 GB weights, 14 GB grads, 28 GB optimizer states, 12 GB activations).**</summary>
 
 1. Before forward at `zero_grad`, HBM holds 14 GB weights and 28 GB optimizer states for 42 GB. Fixed static memory is 56 GB once gradients are counted.
 2. After the forward pass, HBM holds weights, optimizer states, and 12 GB activations, totaling 54 GB.
@@ -848,67 +848,67 @@ Per layer, standard activation memory is `A_layer = s * b * h * (34 + 5 * a * s 
 </details>
 
 <details>
-<summary>`&lt;strong>`10. In the V13 Ch. 2 7B model benchmark, how do FP32 without checkpointing, FP32 with activation checkpointing, and AMP compare in memory usage and training speed?`&lt;/strong>`</summary>
+<summary>**10. In the V13 Ch. 2 7B model benchmark, how do FP32 without checkpointing, FP32 with activation checkpointing, and AMP compare in memory usage and training speed?**</summary>
 
 FP32 forward pass uses 28 GB weights and 42 GB activations, totaling 70 GB or 87.5% of an 80 GB H100. FP32 backward without checkpointing adds 28 GB gradients to reach 98 GB, causing an out-of-memory crash. FP32 backward with activation checkpointing reduces active activations to 4 to 10 GB and fits backward in 60 to 66 GB at 30% to 50% slower backward compute. However, it still crashes at 112 GB during the FP32 Adam step. AMP in FP16 or BF16 uses 51 GB total, dropping measured VRAM from 78.5 GB to 48.2 GB. It also raises speed from 1,000 to 1,280 tokens/sec, a 28.0% gain.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How does gradient accumulation affect global batch size, peak activation memory, and static model memory?`&lt;/strong>`</summary>
+<summary>**11. How does gradient accumulation affect global batch size, peak activation memory, and static model memory?**</summary>
 
 With micro-batch size `b_micro`, K accumulation steps, and DP data-parallel ranks, the global batch size is `b_micro * K * DP` samples. Peak activation memory scales only with `b_micro` and shrinks by a factor of K, such as dropping from 89.13 GB to 11.14 GB for K = 8. Static model memory of 16*Psi bytes remains completely unchanged.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How does PYTORCH_ALLOC_CONF=max_split_size_mb:256,roundup_power2_divisions:[256:1,512:2,1024:4,>:8],backend:cudaMallocAsync prevent memory fragmentation, and what size does it allocate for a 600 MB request?`&lt;/strong>`</summary>
+<summary>**12. How does PYTORCH_ALLOC_CONF=max_split_size_mb:256,roundup_power2_divisions:[256:1,512:2,1024:4,>:8],backend:cudaMallocAsync prevent memory fragmentation, and what size does it allocate for a 600 MB request?**</summary>
 
 The `max_split_size_mb:256` flag keeps free blocks up to 256 MB intact, and `backend:cudaMallocAsync` uses stream-ordered asynchronous allocation. Meanwhile, `roundup_power2_divisions` rounds variable-sized requests into fixed sub-buckets so blocks are reused without splitting. In the 512 to 1024 MB range with two divisions, the span is split into 256 MB steps. A 600 MB request therefore rounds up to 768 MB with 168 MB or 21.88% internal padding.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. Why does the backward pass require 4*Psi FLOPs per token compared to 2*Psi FLOPs per token for the forward pass, and how do MFU and HFU relate when full activation checkpointing is enabled?`&lt;/strong>`</summary>
+<summary>**13. Why does the backward pass require 4*Psi FLOPs per token compared to 2*Psi FLOPs per token for the forward pass, and how do MFU and HFU relate when full activation checkpointing is enabled?**</summary>
 
 In the forward pass, each linear layer computes one matrix multiplication of 2*Psi FLOPs per token. During backpropagation, each layer must compute two matrix multiplications for input gradients and weight gradients. That requires 4*Psi FLOPs per token and brings standard model work to 6*Psi FLOPs per token. Full activation checkpointing adds one extra forward recomputation pass of 2*Psi FLOPs per token for 8*Psi hardware FLOPs per token, so `HFU = (8 / 6) * MFU = 1.3333 * MFU`.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. For Llama-3-70B trained on H100 GPUs (989 TFLOPS peak BF16) at 940 tokens/sec/GPU with full activation checkpointing, what are the achieved model TFLOPS, MFU, hardware TFLOPS, and HFU?`&lt;/strong>`</summary>
+<summary>**14. For Llama-3-70B trained on H100 GPUs (989 TFLOPS peak BF16) at 940 tokens/sec/GPU with full activation checkpointing, what are the achieved model TFLOPS, MFU, hardware TFLOPS, and HFU?**</summary>
 
 Model FLOPs per token at 6*Psi is 420 GFLOPs, yielding `420 GFLOPs x 940 tok/s = 394.80 TFLOPS` and `394.80 / 989 = 39.92%` MFU. Hardware FLOPs per token at 8*Psi is 560 GFLOPs, yielding `560 GFLOPs x 940 tok/s = 526.40 TFLOPS` and `526.40 / 989 = 53.23%` HFU.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. In the AISPE Ch. 13 MLPerf 24.0 ms training step breakdown, what percentage of the iteration is spent in forward compute, backward compute, AllReduce communication, and other overhead?`&lt;/strong>`</summary>
+<summary>**15. In the AISPE Ch. 13 MLPerf 24.0 ms training step breakdown, what percentage of the iteration is spent in forward compute, backward compute, AllReduce communication, and other overhead?**</summary>
 
 Forward pass takes 10.5 ms, or 43.8%. Backward pass takes 9.0 ms, or 37.5%, bringing total compute to 19.5 ms or 81.3%. AllReduce gradient synchronization takes 4.0 ms, or 16.7%. Other overhead takes 0.5 ms, or 2.1%.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How do the eight PyTorch/NCCL collective operations map to DDP, FSDP (ZeRO-3), and Mixture-of-Experts (MoE) Expert Parallelism?`&lt;/strong>`</summary>
+<summary>**16. How do the eight PyTorch/NCCL collective operations map to DDP, FSDP (ZeRO-3), and Mixture-of-Experts (MoE) Expert Parallelism?**</summary>
 
 DDP uses Broadcast at initialization to sync weights from rank 0. During `loss.backward()`, it uses bucketed AllReduce across 25 MB default buckets to average gradients. FSDP and ZeRO-3 decompose AllReduce into AllGather and ReduceScatter. AllGather reconstructs unsharded parameters before each block, and ReduceScatter reduces and shards gradients during backward. MoE Expert Parallelism uses AlltoAll on the NCCL backend to route tokens dynamically to their assigned expert GPUs and back. Reduce, Gather, and Scatter handle centralized rank 0 logging, prediction collection, and shard distribution.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. Compare the Ring AllReduce and Tree AllReduce cost for a 28 GB FP32 gradient tensor (7B model) at 8 GPUs (single-node NVLink, 900 GB/s) versus 512 GPUs (64 nodes over InfiniBand, 25 GB/s).`&lt;/strong>`</summary>
+<summary>**17. Compare the Ring AllReduce and Tree AllReduce cost for a 28 GB FP32 gradient tensor (7B model) at 8 GPUs (single-node NVLink, 900 GB/s) versus 512 GPUs (64 nodes over InfiniBand, 25 GB/s).**</summary>
 
 On 8 GPUs over NVLink at 900 GB/s, Ring AllReduce moves `2 x (7/8) x 28 GB = 49.0 GB` per GPU in 54.44 ms, or roughly 54 ms. Hop latency across 8 GPUs is negligible under 0.1 ms. On 512 GPUs over InfiniBand at 25 GB/s, Ring AllReduce moves `2 x (511/512) x 28 GB ~= 55.9 GB` per GPU in roughly 2.2 seconds, but incurs 512 sequential ring hops. Switching to a Double Binary Tree cuts the hop count from 512 to 9 hops.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. How does DDP overlap gradient communication with backward computation, and how does FSDP with torch.compile achieve the same overlap?`&lt;/strong>`</summary>
+<summary>**18. How does DDP overlap gradient communication with backward computation, and how does FSDP with torch.compile achieve the same overlap?**</summary>
 
 DDP packs parameters in reverse layer order into 25 MB buckets via `bucket_cap_mb`. It launches an asynchronous AllReduce on each bucket as soon as its gradients finish during `loss.backward()`. TorchDynamo inserts graph breaks at bucket boundaries to preserve this overlap. In FSDP, wrapping at transformer-block granularity with `transformer_auto_wrap_policy`, `use_orig_params=True`, and `BackwardPrefetch.BACKWARD_PRE` compiles each block into a fused graph. That setup overlaps the next block's AllGather and ReduceScatter with current compute.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What is the difference between algbw and busbw in nccl-tests (all_reduce_perf), and what causes an 8-GPU H100 node to drop from ~800 GB/s to ~90 GB/s after a reboot?`&lt;/strong>`</summary>
+<summary>**19. What is the difference between algbw and busbw in nccl-tests (all_reduce_perf), and what causes an 8-GPU H100 node to drop from ~800 GB/s to ~90 GB/s after a reboot?**</summary>
 
 The `algbw` metric is simply message size divided by time. By contrast, `busbw = algbw * 2 * (N - 1) / N` normalizes for the ring multiplier so it can be compared directly against hardware link specs such as 900 GB/s bidirectional NVLink 4. A drop from 800 GB/s to 90 GB/s and from 950 to 310 tokens/sec after a reboot indicates that NCCL silently fell back from NVLink to PCIe. That fallback happens when `nvidia-fabricmanager` is stopped, BIOS ACS is enabled, or `NCCL_P2P_DISABLE=1` is set.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Besides model weights (model.state_dict()), what three state components must a distributed training checkpoint save and restore to guarantee a reproducible, spike-free resume?`&lt;/strong>`</summary>
+<summary>**20. Besides model weights (model.state_dict()), what three state components must a distributed training checkpoint save and restore to guarantee a reproducible, spike-free resume?**</summary>
 
 1. Optimizer state via `optimizer.state_dict()`, including Adam momentum, variance, and FP32 master weights. Omitting them restarts Adam cold and causes a severe loss spike.
 2. Learning-rate scheduler state via `scheduler.state_dict()` to preserve the warmup and decay step counter.

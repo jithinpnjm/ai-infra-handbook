@@ -679,19 +679,19 @@ Exercise Input Parameters and Captured Evidence Reference:
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. Why does standard Linux TCP/IP networking bottleneck a 100 Gbps–400 Gbps GPU cluster even when the NIC hardware is rated for line rate?`&lt;/strong>`</summary>
+<summary>**1. Why does standard Linux TCP/IP networking bottleneck a 100 Gbps–400 Gbps GPU cluster even when the NIC hardware is rated for line rate?**</summary>
 
 Every TCP/IP socket send and receive requires a user-to-kernel system call, CPU privilege context switch, and buffer copy between user space and kernel socket buffers. The CPU must also execute software TCP header and checksum processing on transmit and handle hardware interrupts on receive. At 100 to 400 Gbps, millions of packets per second saturate host CPU cores at 100 percent kernel system time. That overhead caps a 100 Gbps ConnectX-5 cluster around 30 Gbps and adds tens of microseconds of tail-latency jitter.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Does RDMA eliminate the operating system kernel completely? Explain the difference between the RDMA control path and data path.`&lt;/strong>`</summary>
+<summary>**2. Does RDMA eliminate the operating system kernel completely? Explain the difference between the RDMA control path and data path.**</summary>
 
 No. RDMA removes the operating system kernel from the per-message data path, not from the system. The control path still uses the Linux kernel via `/dev/infiniband/uverbsN` to open the device context, allocate Protection Domains, pin virtual pages in physical RAM, and transition Queue Pairs through RESET, INIT, RTR, and RTS. Once connected, the data path uses user-space memory-mapped doorbells and hardware DMA. Packets then flow without system calls, context switches, or kernel buffer copies.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. In AI Data Center Network Design Chapter 1, how does a single slow thread affect Job Completion Time across 100 parallel GPU tasks versus 10 serial tasks?`&lt;/strong>`</summary>
+<summary>**3. In AI Data Center Network Design Chapter 1, how does a single slow thread affect Job Completion Time across 100 parallel GPU tasks versus 10 serial tasks?**</summary>
 
 Job Completion Time is governed by the slowest worker when tasks synchronize at a barrier. The comparison between serial and parallel execution is shown below:
 
@@ -703,7 +703,7 @@ Serial vs Parallel Job Completion Time (ADC Ch 1, Figs 1-4 to 1-6):
 </details>
 
 <details>
-<summary>`&lt;strong>`4. What are the five node-local RDMA architectural layers from the application down to the physical wire?`&lt;/strong>`</summary>
+<summary>**4. What are the five node-local RDMA architectural layers from the application down to the physical wire?**</summary>
 
 1. **Application or Collective Library:** Generates work requests in NCCL, MPI, or UCX.
 2. **Verbs API:** Exposes standardized queue, memory, and completion verbs via `libibverbs`.
@@ -713,7 +713,7 @@ Serial vs Parallel Job Completion Time (ADC Ch 1, Figs 1-4 to 1-6):
 </details>
 
 <details>
-<summary>`&lt;strong>`5. Compare InfiniBand, RoCEv1, RoCEv2, and iWARP in terms of network and transport encapsulation and routing scope.`&lt;/strong>`</summary>
+<summary>**5. Compare InfiniBand, RoCEv1, RoCEv2, and iWARP in terms of network and transport encapsulation and routing scope.**</summary>
 
 ```text
 RDMA Transport Protocol Comparison:
@@ -725,7 +725,7 @@ RDMA Transport Protocol Comparison:
 </details>
 
 <details>
-<summary>`&lt;strong>`6. In the annotated mlx5_0 capability output, what do the six primary hardware limits tell an infrastructure architect?`&lt;/strong>`</summary>
+<summary>**6. In the annotated mlx5_0 capability output, what do the six primary hardware limits tell an infrastructure architect?**</summary>
 
 ```text
 Annotated ibv_devinfo -v -d mlx5_0 Capability Limits:
@@ -739,19 +739,19 @@ Annotated ibv_devinfo -v -d mlx5_0 Capability Limits:
 </details>
 
 <details>
-<summary>`&lt;strong>`7. What is a Protection Domain, and what happens if Queue Pair A in PD A references a Memory Region registered in PD B?`&lt;/strong>`</summary>
+<summary>**7. What is a Protection Domain, and what happens if Queue Pair A in PD A references a Memory Region registered in PD B?**</summary>
 
 A Protection Domain is the hardware security and isolation container that groups compatible Queue Pairs and Memory Regions. Suppose Queue Pair A in Protection Domain A posts a Work Request whose Scatter-Gather Entry references a local key belonging to a Memory Region in Protection Domain B. The local HCA blocks the DMA before touching the wire. The adapter transitions Queue Pair A to the ERR state and posts a completion entry with status `IBV_WC_LOC_PROT_ERR`.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What four actions occur when an application calls ibv_reg_mr, and why is ulimit -l a frequent source of container startup failures?`&lt;/strong>`</summary>
+<summary>**8. What four actions occur when an application calls ibv_reg_mr, and why is ulimit -l a frequent source of container startup failures?**</summary>
 
 Calling `ibv_reg_mr` first pins the virtual memory pages in physical RAM so the Linux kernel cannot swap or move them during DMA. Second, it checks the pinned byte count against the process `RLIMIT_MEMLOCK` quota. Third, it programs the virtual-to-physical page translations into the HCA Memory Translation Table, and fourth, it returns the 32-bit local key and remote key. Unconfigured Linux hosts and containers default `ulimit -l` to 64 KiB. Registering any larger buffer such as 128 KiB fails with `ENOMEM` unless soft and hard `memlock` limits are set to `unlimited`.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Calculate the number of pinned pages and 8-byte MTT table footprint for a 1 GiB Memory Region using 4 KiB pages versus 2 MiB hugepages. Why does this affect tail latency?`&lt;/strong>`</summary>
+<summary>**9. Calculate the number of pinned pages and 8-byte MTT table footprint for a 1 GiB Memory Region using 4 KiB pages versus 2 MiB hugepages. Why does this affect tail latency?**</summary>
 
 ```text
 1 GiB (1,073,741,824 B) Memory Region MTT Footprint Comparison:
@@ -763,25 +763,25 @@ When large buffers are registered with 4 KiB pages, hundreds of thousands of MTT
 </details>
 
 <details>
-<summary>`&lt;strong>`10. What is the difference between a Work Request, a Work Queue Element, and a Scatter-Gather Entry?`&lt;/strong>`</summary>
+<summary>**10. What is the difference between a Work Request, a Work Queue Element, and a Scatter-Gather Entry?**</summary>
 
 A Work Request is the user-space C structure passed to `ibv_post_send` or `ibv_post_recv`. The user-space provider driver translates the Work Request into a hardware-formatted Work Queue Element descriptor inside the Queue Pair ring buffer and rings the HCA doorbell. Inside the Work Request, each Scatter-Gather Entry describes one contiguous registered memory segment by address, length, and local key. That structure allows a single request to gather or scatter up to 30 discontiguous buffers in one hardware DMA operation.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. Contrast two-sided Send and Receive operations with one-sided RDMA Write and RDMA Read operations. What does a local RDMA Write completion prove and not prove?`&lt;/strong>`</summary>
+<summary>**11. Contrast two-sided Send and Receive operations with one-sided RDMA Write and RDMA Read operations. What does a local RDMA Write completion prove and not prove?**</summary>
 
 Two-sided Send and Receive operations use channel semantics. The remote application must pre-post a Receive Work Request to its Receive Queue before the packet arrives, and the remote CPU receives a completion entry. One-sided RDMA Write and Read operations use memory semantics. The initiator specifies the remote virtual address and remote key in the 16-byte RETH header, and the remote HCA performs DMA directly with zero remote CPU involvement. On a Reliable Connected Queue Pair, the initiator local completion entry proves the data was placed into remote memory by the remote HCA. However, it does not prove the remote application noticed the data unless notified via `RDMA_WRITE_WITH_IMM`, a follow-up Send, or a polled memory flag.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Why do high-performance RDMA applications use unsignaled Work Requests, and what happens if they never post a signaled Work Request?`&lt;/strong>`</summary>
+<summary>**12. Why do high-performance RDMA applications use unsignaled Work Requests, and what happens if they never post a signaled Work Request?**</summary>
 
 Generating and DMA-writing a 64-byte Completion Queue Entry and polling it in user space for every single Work Request adds PCIe and CPU overhead. By marking only every 16th or 32nd request with `IBV_SEND_SIGNALED`, the application relies on FIFO Send Queue ordering. When the completion for request 32 arrives, requests 1 through 31 are guaranteed complete. If an application posts unsignaled requests without ever posting a signaled request, no completions are generated to reclaim Send Queue slots. The Send Queue then overflows after `max_qp_wr` posts.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. Compare the four RDMA transport service types across connection model, reliability, supported verbs, and Queue Pair scaling.`&lt;/strong>`</summary>
+<summary>**13. Compare the four RDMA transport service types across connection model, reliability, supported verbs, and Queue Pair scaling.**</summary>
 
 - **RC (Reliable Connected):** Connects 1-to-1 with a dedicated peer Queue Pair using hardware ACK, NAK, and retry. It supports Send, Receive, RDMA Write, RDMA Read, and Atomics, and scales quadratically across a full mesh.
 - **UC (Unreliable Connected):** Connects 1-to-1 without ACK or retry. It supports Send, Receive, and RDMA Write only, and also scales quadratically.
@@ -790,7 +790,7 @@ Generating and DMA-writing a 64-byte Completion Queue Entry and polling it in us
 </details>
 
 <details>
-<summary>`&lt;strong>`14. In a 128-node cluster with 8 GPUs per node, how many Queue Pairs are required per rank, per node, and cluster-wide for a full-mesh RC design?`&lt;/strong>`</summary>
+<summary>**14. In a 128-node cluster with 8 GPUs per node, how many Queue Pairs are required per rank, per node, and cluster-wide for a full-mesh RC design?**</summary>
 
 ```text
 Full-Mesh RC Queue Pair Scaling (128 nodes x 8 GPUs/node):
@@ -802,7 +802,7 @@ Full-Mesh RC Queue Pair Scaling (128 nodes x 8 GPUs/node):
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Walk through the six states of the Queue Pair state machine and the mandatory attributes for INIT to RTR and RTR to RTS.`&lt;/strong>`</summary>
+<summary>**15. Walk through the six states of the Queue Pair state machine and the mandatory attributes for INIT to RTR and RTR to RTS.**</summary>
 
 - **RESET:** Initial state after `ibv_create_qp`.
 - **RESET to INIT:** Requires `port_num`, `pkey_index`, and `qp_access_flags`, and allows pre-posting Receive Work Requests.
@@ -813,19 +813,19 @@ Full-Mesh RC Queue Pair Scaling (128 nodes x 8 GPUs/node):
 </details>
 
 <details>
-<summary>`&lt;strong>`16. A polling loop returns success on request 1042, retry exceeded on request 1043, and flush errors on requests 1044 through 1046. Which request is the root cause, and why did 1044 through 1046 fail?`&lt;/strong>`</summary>
+<summary>**16. A polling loop returns success on request 1042, retry exceeded on request 1043, and flush errors on requests 1044 through 1046. Which request is the root cause, and why did 1044 through 1046 fail?**</summary>
 
 Request `wr_id=1043` (`IBV_WC_RETRY_EXC_ERR`, `vendor_err=0x81`) is the sole root cause. The local HCA exhausted its hardware retry counter waiting for an ACK from the remote peer. That failure transitioned the Queue Pair into the ERR state, causing the HCA to automatically drain all subsequent queued requests (`wr_id=1044..1046`) into the Completion Queue with `IBV_WC_WR_FLUSH_ERR`.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. Compare busy polling and event-driven completion. Why can 100 percent CPU utilization on one core be normal in an RDMA job?`&lt;/strong>`</summary>
+<summary>**17. Compare busy polling and event-driven completion. Why can 100 percent CPU utilization on one core be normal in an RDMA job?**</summary>
 
 Busy polling via `ibv_poll_cq` spins in user space checking the Completion Queue ring buffer. It achieves sub-microsecond completion detection and minimal tail-latency jitter at the cost of 100 percent utilization on the polling CPU core. Event-driven completion sleeps until a hardware interrupt wakes the thread, saving CPU during idle periods but adding interrupt and scheduler wake-up latency. Therefore, 100 percent CPU on a dedicated polling thread is an intentional low-latency design choice rather than a broken TCP fallback. Keep that polling thread pinned to the local NUMA node of the HCA.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Decode the fields and byte sizes of BTH, RETH, AETH, and ICRC in an RDMA READ Request, Response Middle, and RC Acknowledge.`&lt;/strong>`</summary>
+<summary>**18. Decode the fields and byte sizes of BTH, RETH, AETH, and ICRC in an RDMA READ Request, Response Middle, and RC Acknowledge.**</summary>
 
 ```text
 Wire-Level RDMA Packet Header Breakdown (ADC Ch 1, Figs 1-14 to 1-16):
@@ -840,13 +840,13 @@ Wire-Level RDMA Packet Header Breakdown (ADC Ch 1, Figs 1-14 to 1-16):
 </details>
 
 <details>
-<summary>`&lt;strong>`19. How do ECN, Congestion Notification Packets, Priority Flow Control, and DCQCN interact to keep RoCEv2 Queue Pairs from hitting retry timeouts?`&lt;/strong>`</summary>
+<summary>**19. How do ECN, Congestion Notification Packets, Priority Flow Control, and DCQCN interact to keep RoCEv2 Queue Pairs from hitting retry timeouts?**</summary>
 
 In DCQCN, switch buffer thresholds are ordered as `XON < ECN < XOFF`. First, when a switch egress queue crosses the ECN threshold, the switch sets the 2-bit IP ECN field to `11` and forwards the packet. Second, the destination NIC sees `ECN = 11` and generates a RoCEv2 Congestion Notification Packet over UDP port 4791 with BTH opcode 129 (`0x81`) and `ECN = 01` back to the sender. That packet throttles the offending Queue Pair injection rate. Third, if a microburst still pushes the buffer past the XOFF threshold, the switch transmits a Layer 2 PFC pause frame upstream to halt transmission before any packet is dropped. Transmission resumes when the queue drains below XON, while a PFC Watchdog guards against circular pause storms.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. How do Supercomputers for Linux SysAdmins Chapter 5 and BCM 11 distinguish GUIDs, LIDs, GIDs, Directed-Route SMPs, and IPoIB link-layer addresses?`&lt;/strong>`</summary>
+<summary>**20. How do Supercomputers for Linux SysAdmins Chapter 5 and BCM 11 distinguish GUIDs, LIDs, GIDs, Directed-Route SMPs, and IPoIB link-layer addresses?**</summary>
 
 ```text
 InfiniBand Addressing Hierarchy and IPoIB Modes (SCL Ch 5, BCM 11 Admin Manual):

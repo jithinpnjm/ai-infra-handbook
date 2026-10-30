@@ -360,121 +360,121 @@ Summary: 25 passed, 0 failed out of 25 checks.
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. How does KAI Scheduler allow users to request fractional GPUs when the Kubernetes API server only accepts integers for nvidia.com/gpu?`&lt;/strong>`</summary>
+<summary>**1. How does KAI Scheduler allow users to request fractional GPUs when the Kubernetes API server only accepts integers for nvidia.com/gpu?**</summary>
 
 Workloads declare fractional requirements through Pod annotations such as `gpu-fraction` or `gpu-memory`. They omit integer GPU limits from the user container specification. When KAI Scheduler assigns fractional Pods to a physical GPU, the Binder microservice spawns a lightweight integer reservation Pod on that node. That reservation Pod claims one `nvidia.com/gpu` token from the node agent, and the Binder injects the allocated GPU UUID into the fractional user Pods.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Why is KAI Scheduler dynamic fractional bin-packing more flexible than static device-plugin time-slicing?`&lt;/strong>`</summary>
+<summary>**2. Why is KAI Scheduler dynamic fractional bin-packing more flexible than static device-plugin time-slicing?**</summary>
 
 Static device-plugin time-slicing divides every GPU on the node into a fixed number of uniform, memory-blind tokens. KAI Scheduler dynamically tracks both compute fraction and memory per physical GPU. It can pack heterogeneous shares onto one card while keeping the remaining cards on the same node as unshared whole GPUs. It also rejects any Pod whose memory claim would overflow the card.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What happened across one, two, four, and eight concurrent PyTorch notebooks on an 80 GB A100 GPU under time-slicing?`&lt;/strong>`</summary>
+<summary>**3. What happened across one, two, four, and eight concurrent PyTorch notebooks on an 80 GB A100 GPU under time-slicing?**</summary>
 
 One notebook used twelve gigabytes of VRAM with eight-millisecond tail latency. Two notebooks used twenty-four gigabytes with twenty-five-millisecond tail latency. Four notebooks used forty-eight gigabytes with one-hundred-twenty-millisecond tail latency, which represents the maximum safe envelope. Eight notebooks demanded ninety-six gigabytes, overflowed the eighty-gigabyte card, hit five-hundred-millisecond tail latency, and triggered out-of-memory kills.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Why does requesting two time-sliced replicas on a time-sliced node NOT give a Pod twice the guaranteed compute or memory of one replica?`&lt;/strong>`</summary>
+<summary>**4. Why does requesting two time-sliced replicas on a time-sliced node NOT give a Pod twice the guaranteed compute or memory of one replica?**</summary>
 
 A time-sliced replica is merely a scheduler admission token for shared access to a physical GPU. It does not partition Streaming Multiprocessors or reserve HBM memory. Requesting two tokens on a shared node can even assign shares across two different physical GPUs that are still contended by other neighbors.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. How do you prevent a production inference Deployment from accidentally scheduling onto a best-effort time-sliced GPU pool?`&lt;/strong>`</summary>
+<summary>**5. How do you prevent a production inference Deployment from accidentally scheduling onto a best-effort time-sliced GPU pool?**</summary>
 
 Configure `renameByDefault: true` in the device-plugin ConfigMap so time-sliced GPUs are advertised as `nvidia.com/gpu.shared` rather than `nvidia.com/gpu`. Then create a ResourceQuota in production namespaces setting `nvidia.com/gpu.shared` to zero. The API server will reject any manifest requesting shared best-effort GPUs in production immediately.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. What is the known DCGM Exporter observability limitation when Kubernetes device-plugin time-slicing is enabled?`&lt;/strong>`</summary>
+<summary>**6. What is the known DCGM Exporter observability limitation when Kubernetes device-plugin time-slicing is enabled?**</summary>
 
 Under device-plugin time-slicing, the DCGM exporter cannot attribute GPU utilization or memory counters to individual containers. That limitation occurs because all containers mount the same underlying physical device node. Operators must correlate scheduler allocation records, application metrics, and host-side process queries.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. List the five primary MIG profiles on an 80 GB H100 GPU with their compute slice fractions, memory sizes, and proportional BF16 TFLOPS.`&lt;/strong>`</summary>
+<summary>**7. List the five primary MIG profiles on an 80 GB H100 GPU with their compute slice fractions, memory sizes, and proportional BF16 TFLOPS.**</summary>
 
 The `7g.80gb` profile uses all seven slices for eighty gigabytes and nine hundred eighty-nine TFLOPS. The `4g.40gb` profile uses four slices for forty gigabytes and five hundred sixty-five TFLOPS. Meanwhile, `3g.40gb` uses three slices for forty gigabytes and four hundred twenty-four TFLOPS. Finally, `2g.20gb` uses two slices for twenty gigabytes and two hundred eighty-three TFLOPS, while `1g.10gb` uses one slice for ten gigabytes and one hundred forty-one TFLOPS.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. How do you partition one 80 GB H100 GPU across the Batch CNN, Online Embedding, and 1.3B LLM Training workloads, and how much capacity remains free?`&lt;/strong>`</summary>
+<summary>**8. How do you partition one 80 GB H100 GPU across the Batch CNN, Online Embedding, and 1.3B LLM Training workloads, and how much capacity remains free?**</summary>
 
 Assign `2g.20gb` to the small LLM training job, `1g.10gb` to the batch CNN service, and a second `1g.10gb` instance to the online embedding service. This layout consumes four of seven compute slices and forty of eighty gigabytes of memory. That leaves three compute slices and forty gigabytes free for a fourth tenant.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Why is the H100 in the three-workload benchmark memory-partition-constrained rather than compute-constrained?`&lt;/strong>`</summary>
+<summary>**9. Why is the H100 in the three-workload benchmark memory-partition-constrained rather than compute-constrained?**</summary>
 
 The three workloads combined require only about three TFLOPS of sustained compute. In contrast, the H100 provides more than three hundred times that compute capacity. Even the smallest one-slice profile provides more than fifty times the compute needed by the vision model, so partition sizing is driven by memory footprint and hardware latency isolation.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. What are the exact nvidia-smi commands to enable MIG on GPU 0, query valid profile IDs, create partitions, and list active GPU Instances?`&lt;/strong>`</summary>
+<summary>**10. What are the exact nvidia-smi commands to enable MIG on GPU 0, query valid profile IDs, create partitions, and list active GPU Instances?**</summary>
 
 Run `sudo nvidia-smi -i 0 -mig 1` to enable MIG mode on the first GPU and `sudo nvidia-smi mig -lgip` to list supported GPU Instance Profiles. Next, run `sudo nvidia-smi mig -i 0 -cgi 14,19,19 -C` to create the GPU and Compute Instances. Finally, run `sudo nvidia-smi mig -lgi` to verify the active instances.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. Why must you use nsys profile --trace=cuda instead of nvprof when diagnosing priority inversion or kernel stalls on an H100 or A100 MIG slice?`&lt;/strong>`</summary>
+<summary>**11. Why must you use nsys profile --trace=cuda instead of nvprof when diagnosing priority inversion or kernel stalls on an H100 or A100 MIG slice?**</summary>
 
 Legacy `nvprof` does not support NVIDIA Ampere, Hopper, or Blackwell architectures. On modern GPUs and MIG instances, engineers must use Nsight Systems for timeline and kernel ordering traces. They should use Nsight Compute for per-kernel Streaming Multiprocessor stall analysis.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What is the difference between a GPU Instance and a Compute Instance inside NVIDIA MIG?`&lt;/strong>`</summary>
+<summary>**12. What is the difference between a GPU Instance and a Compute Instance inside NVIDIA MIG?**</summary>
 
 A GPU Instance hardware-partitions both memory-system resources and a pool of Streaming Multiprocessors into an isolated hardware fault domain. Those memory resources include HBM memory controllers, L2 cache banks, and copy engines. A Compute Instance subdivides the Streaming Multiprocessors inside a parent GPU Instance into smaller compute slices that still share the parent instance's memory space.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. Walk through the four-branch decision tree for selecting a GPU sharing model.`&lt;/strong>`</summary>
+<summary>**13. Walk through the four-branch decision tree for selecting a GPU sharing model.**</summary>
 
 First check whether a virtual machine guest kernel boundary is required, which selects NVIDIA vGPU. Second, check whether full card memory or multi-GPU NVLink is required for a Dedicated GPU. Third, check whether strict hardware isolation and tail-latency guarantees are required for Hardware MIG. Otherwise, use KAI Fractional GPUs or Time-Slicing for trusted best-effort workloads.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. How do you quickly determine during an incident whether a worker node is running MIG, Time-Slicing, or vGPU?`&lt;/strong>`</summary>
+<summary>**14. How do you quickly determine during an incident whether a worker node is running MIG, Time-Slicing, or vGPU?**</summary>
 
 If querying `mig.mode.current` returns `Enabled` and `nvidia-smi mig -lgi` lists instances, MIG is active. Suppose MIG mode is disabled, the node advertises a high allocatable GPU count, and `--query-processes` lists multiple container processes on the same GPU UUID. In that case, Time-Slicing or fractional sharing is active, whereas vGPU runs inside a virtual machine backed by the host vGPU manager service.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What is the difference between Allocation Efficiency and Delivered Efficiency?`&lt;/strong>`</summary>
+<summary>**15. What is the difference between Allocation Efficiency and Delivered Efficiency?**</summary>
 
 Allocation efficiency is the percentage of logical GPU tokens or slices that appear assigned to Pods in Kubernetes. Delivered efficiency measures useful application work completed within its documented latency and throughput service level objective. When over-packed time-sliced Pods thrash on memory or context switches, delivered efficiency collapses.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Why should a platform team offer fewer MIG profile shapes in its service catalog than the hardware technically supports?`&lt;/strong>`</summary>
+<summary>**16. Why should a platform team offer fewer MIG profile shapes in its service catalog than the hardware technically supports?**</summary>
 
 Every additional MIG profile shape multiplies capacity forecasting, quota definitions, admission rules, and profile geometry fragmentation. When too many shapes mix on the same nodes, free slices sit stranded on awkward alignment boundaries. Those slices cannot combine to form larger profiles without draining and repartitioning the host.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. How can KAI Scheduler combine MIG and Time-Slicing or Fractional Sharing on the same GPU, and what label suffix does GFD apply when both are enabled?`&lt;/strong>`</summary>
+<summary>**17. How can KAI Scheduler combine MIG and Time-Slicing or Fractional Sharing on the same GPU, and what label suffix does GFD apply when both are enabled?**</summary>
 
 A physical GPU can first be partitioned into hardware-isolated MIG instances to enforce hard memory walls between separate teams. Each MIG slice can then be time-sliced or fractionally shared by Pods within the same team. When both mechanisms are enabled, GPU Feature Discovery appends `-SHARED` to the MIG product label on the node.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. How does CUDA Multi-Process Service differ from Kubernetes time-slicing and MIG?`&lt;/strong>`</summary>
+<summary>**18. How does CUDA Multi-Process Service differ from Kubernetes time-slicing and MIG?**</summary>
 
 Time-slicing switches independent CUDA contexts sequentially in time quanta. In contrast, CUDA MPS funnels multiple client processes through a single server context so kernels execute concurrently side by side on the Streaming Multiprocessors. However, both time-slicing and MPS share a single physical memory space and fault domain, whereas MIG partitions compute, memory, and fault boundaries in silicon.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What four stakeholders must participate in the Operational Decision Workshop before approving a new shared GPU service class?`&lt;/strong>`</summary>
+<summary>**19. What four stakeholders must participate in the Operational Decision Workshop before approving a new shared GPU service class?**</summary>
 
 The workshop requires the application owner to provide measured memory and latency targets. Meanwhile, the platform owner defines the hardware, driver, and node drain rules. The security owner verifies the tenant blast-radius boundary, and the finance or service owner defines the showback or chargeback unit and entitlement rules.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. When migrating a workload from a dedicated whole GPU to a shared class, why must the migration be treated like an application release?`&lt;/strong>`</summary>
+<summary>**20. When migrating a workload from a dedicated whole GPU to a shared class, why must the migration be treated like an application release?**</summary>
 
 Moving from a dedicated card to time-slicing can introduce tail-latency jitter. Conversely, moving from time-slicing to a fixed MIG slice enforces a hard memory ceiling that can trigger an unexpected out-of-memory crash if peak usage was never profiled. Platform teams must canary-test the target sharing class with identical model weights, batch size, and concurrency before cutting over production traffic.
 </details>

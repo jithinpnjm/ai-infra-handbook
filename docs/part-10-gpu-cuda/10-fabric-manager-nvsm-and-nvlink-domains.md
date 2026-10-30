@@ -435,13 +435,13 @@ Summary: 25 passed, 0 failed (total 25)
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. Why does an 8-GPU HGX baseboard require `nvidia-fabricmanager.service` to use NVLink, whereas a 2-GPU PCIe NVLink bridge pair does not?`&lt;/strong>`</summary>
+<summary>**1. Why does an 8-GPU HGX baseboard require `nvidia-fabricmanager.service` to use NVLink, whereas a 2-GPU PCIe NVLink bridge pair does not?**</summary>
 
 A two-GPU PCIe bridge wires two GPUs directly together point-to-point and is initialized by the GPU kernel driver. An eight-GPU HGX baseboard routes all 18 NVLink lanes from each GPU into four on-board NVSwitch crossbar ASICs. Those switch ASICs require Fabric Manager to discover switches, train ports, and program unicast and NVLS SHARP routing tables before any GPU-to-GPU transfer can cross the switch fabric.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Contrast the NVLink domain size, NVSwitch ASIC count, aggregate bandwidth, and fabric control plane across an 8-GPU `HGX H100`, an 8-GPU `HGX B200`, and a 72-GPU `GB200`/`GB300 NVL72` rack.`&lt;/strong>`</summary>
+<summary>**2. Contrast the NVLink domain size, NVSwitch ASIC count, aggregate bandwidth, and fabric control plane across an 8-GPU `HGX H100`, an 8-GPU `HGX B200`, and a 72-GPU `GB200`/`GB300 NVL72` rack.**</summary>
 
 | Platform | GPUs & NVSwitches | Per-GPU & aggregate BW | Control plane |
 |---|---|---|---|
@@ -451,38 +451,38 @@ A two-GPU PCIe bridge wires two GPUs directly together point-to-point and is ini
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What happens to `nvidia-smi topo -m` and `nccl-tests` on an 8-GPU HGX node if `nvidia-fabricmanager.service` fails to start after a reboot?`&lt;/strong>`</summary>
+<summary>**3. What happens to `nvidia-smi topo -m` and `nccl-tests` on an 8-GPU HGX node if `nvidia-fabricmanager.service` fails to start after a reboot?**</summary>
 
 `nvidia-smi` still shows all eight GPUs healthy, but the NVSwitch fabric remains uninitialized. The topology matrix reports host PCIe or NUMA paths instead of NVLink 18, and NCCL silently falls back to PCIe, dropping collective bus bandwidth from roughly 800 GB/s down to 90 GB/s.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Why must `systemctl edit containerd.service` and `kubelet.service` include both `After=nvidia-fabricmanager.service` and `Wants=nvidia-fabricmanager.service`?`&lt;/strong>`</summary>
+<summary>**4. Why must `systemctl edit containerd.service` and `kubelet.service` include both `After=nvidia-fabricmanager.service` and `Wants=nvidia-fabricmanager.service`?**</summary>
 
 In systemd, `Wants=` or `Requires=` declares a dependency but does not enforce startup ordering. Because Fabric Manager takes roughly 15 seconds to initialize NVSwitches while `containerd` and `kubelet` start faster, omitting `After=nvidia-fabricmanager.service` allows `kubelet` to schedule GPU pods before the NVLink mesh is ready.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. What does `Xid 74` mean in `dmesg`, and why does distinguishing a GPU fault from an NVSwitch fault change the RMA procedure on an HGX server?`&lt;/strong>`</summary>
+<summary>**5. What does `Xid 74` mean in `dmesg`, and why does distinguishing a GPU fault from an NVSwitch fault change the RMA procedure on an HGX server?**</summary>
 
 Xid 74 is an NVLink error on the high-speed fabric. On an HGX baseboard, each SXM GPU is an individually bolted Field-Replaceable Unit, whereas the four NVSwitch ASICs are soldered directly onto the HGX PCB. If NVLink error counters, NVSM alerts, and DCGM diagnostics show a failed NVSwitch ASIC, replacing the SXM GPU will not fix the node. The entire HGX baseboard must be replaced via the OEM.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Contrast Out-of-Band (`BMC` / `Redfish`) management against In-Band (`NVSM`, `nvsm`) management on a DGX system, and explain why you should never flash VBIOS across 100 nodes over an in-band SSH loop.`&lt;/strong>`</summary>
+<summary>**6. Contrast Out-of-Band (`BMC` / `Redfish`) management against In-Band (`NVSM`, `nvsm`) management on a DGX system, and explain why you should never flash VBIOS across 100 nodes over an in-band SSH loop.**</summary>
 
 - In-band management runs inside the host Linux OS over standard network interfaces. If the kernel panics or the network blips during an SSH firmware flash, the session severs mid-write and can brick the hardware.
 - Out-of-band management runs on an independent, always-on ASPEED microcontroller wired to an isolated 1 GbE OOB management network. It completes firmware flashes and power resets safely even if the host OS crashes.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Name the six subcommands of the `nvsm` wrapper in BCM `cmsh` (`device` mode), state where `nvsm health` stores its archive, and state how long a standard dump takes.`&lt;/strong>`</summary>
+<summary>**7. Name the six subcommands of the `nvsm` wrapper in BCM `cmsh` (`device` mode), state where `nvsm health` stores its archive, and state how long a standard dump takes.**</summary>
 
 The six subcommands are `alerts`, `health`, `info`, `status`, `stop`, and `versions`. By default, `nvsm health` writes a compressed archive under `/cm/shared/nvsm/` and takes about 15 minutes, whereas the quick flag finishes faster using more CPU and RAM.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What five platform types (`-t`) and five log collector groups (`-g`) does the BCM `nvdebug` tool support, and where does it store collected archives?`&lt;/strong>`</summary>
+<summary>**8. What five platform types (`-t`) and five log collector groups (`-g`) does the BCM `nvdebug` tool support, and where does it store collected archives?**</summary>
 
 - The five platform types are `DGX`, `arm64`, `x86_64`, `NVSwitch`, and `HGX-HMC`.
 - The five log collector groups are `HealthCheck`, `Host`, `IPMI`, `Redfish`, and `SSH`.
@@ -490,19 +490,19 @@ The six subcommands are `alerts`, `health`, `info`, `status`, `stop`, and `versi
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Why is `iperf3` useless for validating a 400G InfiniBand or RoCEv2 AI network, and what tool should you run instead?`&lt;/strong>`</summary>
+<summary>**9. Why is `iperf3` useless for validating a 400G InfiniBand or RoCEv2 AI network, and what tool should you run instead?**</summary>
 
 `iperf3` sends traffic through the Linux kernel TCP/IP stack, which saturates host CPU cores with context switches, buffer copies, and software interrupts well below 400 Gbps. Always use RDMA-native `perftest` (`ib_write_bw` and `ib_write_lat`), which bypasses the kernel and tests raw RDMA Verbs at roughly 390 Gbps on 400G NDR.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. In `ibstat mlx5_0`, what does it mean when `Physical state: LinkUp` is paired with `State: Initializing` instead of `State: Active`?`&lt;/strong>`</summary>
+<summary>**10. In `ibstat mlx5_0`, what does it mean when `Physical state: LinkUp` is paired with `State: Initializing` instead of `State: Active`?**</summary>
 
 `Physical state: LinkUp` proves the fiber optic cable and transceivers have electrical and optical link lock. `State: Initializing` means the InfiniBand Subnet Manager has not yet assigned an LID and activated the logical port, pointing to a Subnet Manager outage rather than a bad cable.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What is the "Host Bounce Buffer," and what four platform conditions are required for `GPUDirect RDMA` to eliminate it?`&lt;/strong>`</summary>
+<summary>**11. What is the "Host Bounce Buffer," and what four platform conditions are required for `GPUDirect RDMA` to eliminate it?**</summary>
 
 Without GPUDirect RDMA, incoming RDMA packets land in host CPU system RAM and must be copied a second time over PCIe into GPU HBM. Eliminating the Host Bounce Buffer requires four conditions:
 1. `nvidia-peermem.ko` loaded in the host kernel.
@@ -512,13 +512,13 @@ Without GPUDirect RDMA, incoming RDMA packets land in host CPU system RAM and mu
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How does `GPUDirect Storage` (`GDS`) differ from `GPUDirect RDMA`, and why did the Volume 07 Chapter 6 customer see only `10 GB/s` from a `200 GB/s` WEKA array?`&lt;/strong>`</summary>
+<summary>**12. How does `GPUDirect Storage` (`GDS`) differ from `GPUDirect RDMA`, and why did the Volume 07 Chapter 6 customer see only `10 GB/s` from a `200 GB/s` WEKA array?**</summary>
 
 GPUDirect RDMA moves data directly between local GPU HBM and remote GPU HBM over the network. GPUDirect Storage uses `libcufile` and `nvidia-fs.ko` to DMA data directly between local NVMe or remote NVMe-oF storage and GPU HBM. The customer saw only 10 GB/s because standard Python file reads invoke the Linux POSIX VFS and stage frames through the host CPU Page Cache. Switching to NVIDIA DALI with GDS unlocks the direct DMA path.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. Compare `ConnectX-6`, `ConnectX-7`, and `ConnectX-8` in terms of port speed, byte throughput, PCIe generation, and optical transceiver form factor.`&lt;/strong>`</summary>
+<summary>**13. Compare `ConnectX-6`, `ConnectX-7`, and `ConnectX-8` in terms of port speed, byte throughput, PCIe generation, and optical transceiver form factor.**</summary>
 
 | Adapter | Port speed & byte rate | PCIe interface & ceiling | Optics & GPU era |
 |---|---|---|---|
@@ -528,7 +528,7 @@ GPUDirect RDMA moves data directly between local GPU HBM and remote GPU HBM over
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Compare the four Kubernetes Topology Manager policies (`none`, `best-effort`, `restricted`, `single-numa-node`) and state the pod QoS prerequisites for Topology Manager to act.`&lt;/strong>`</summary>
+<summary>**14. Compare the four Kubernetes Topology Manager policies (`none`, `best-effort`, `restricted`, `single-numa-node`) and state the pod QoS prerequisites for Topology Manager to act.**</summary>
 
 Topology Manager requires pods in the Guaranteed QoS class with integer CPU requests.
 - `none` is the default and ignores NUMA locality.
@@ -538,20 +538,20 @@ Topology Manager requires pods in the Guaranteed QoS class with integer CPU requ
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Why did the 5th/8th Triton pod requesting `16` CPUs and `1` GPU fail with `TopologyAffinityError` on a 128-core, 8-GPU dual-socket server, and how did reducing the request to `12` CPUs fix it?`&lt;/strong>`</summary>
+<summary>**15. Why did the 5th/8th Triton pod requesting `16` CPUs and `1` GPU fail with `TopologyAffinityError` on a 128-core, 8-GPU dual-socket server, and how did reducing the request to `12` CPUs fix it?**</summary>
 
 Each NUMA node has 64 CPU cores and 4 GPUs, and four pods filled NUMA 0. On NUMA 1, OS and DaemonSet processes used 2 cores, leaving 62 free cores. After three pods took 48 cores on NUMA 1, only 14 free cores remained for the last GPU, triggering a topology affinity error. Lowering the pod request to 12 cores allowed all eight pods to schedule within single-NUMA boundaries.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Contrast `AllReduce` vs `AllGather` and `Ring` vs `Tree` topologies in `NCCL`.`&lt;/strong>`</summary>
+<summary>**16. Contrast `AllReduce` vs `AllGather` and `Ring` vs `Tree` topologies in `NCCL`.**</summary>
 
 - AllGather gathers shards from all ranks so every GPU receives a copy of the concatenated tensor, whereas AllReduce mathematically reduces the tensors and distributes the final result to every GPU.
 - Ring passes chunks around a single logical loop with linear hop count, whereas Tree aggregates hierarchically with logarithmic hop depth for large clusters.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What does `NCCL_DEBUG=INFO` print when `NCCL` successfully uses InfiniBand RDMA versus when it falls back to host TCP sockets, and what does `NCCL_TOPO_FILE` do?`&lt;/strong>`</summary>
+<summary>**17. What does `NCCL_DEBUG=INFO` print when `NCCL` successfully uses InfiniBand RDMA versus when it falls back to host TCP sockets, and what does `NCCL_TOPO_FILE` do?**</summary>
 
 - `NET/IB` with GPUDirect RDMA enabled confirms NCCL is using InfiniBand or RoCE RDMA directly to GPU HBM.
 - `NET/Socket` indicates NCCL failed to initialize RDMA and fell back to Linux kernel TCP/IP sockets.
@@ -559,7 +559,7 @@ Each NUMA node has 64 CPU cores and 4 GPUs, and four pods filled NUMA 0. On NUMA
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Walk through the 3-step benchmark hierarchy (`nvbandwidth` → `ib_write_bw` → `nccl-tests`) and state what each step proves.`&lt;/strong>`</summary>
+<summary>**18. Walk through the 3-step benchmark hierarchy (`nvbandwidth` → `ib_write_bw` → `nccl-tests`) and state what each step proves.**</summary>
 
 1. `nvbandwidth` proves intra-node PCIe Gen5 x16 and NVLink health inside a single server.
 2. `ib_write_bw` proves physical cables, optical transceivers, and switch ports deliver line-rate host RDMA with zero rising error counters.
@@ -567,13 +567,13 @@ Each NUMA node has 64 CPU cores and 4 GPUs, and four pods filled NUMA 0. On NUMA
 </details>
 
 <details>
-<summary>`&lt;strong>`19. If `nvbandwidth`, `ib_write_bw`, and `nccl-tests` all pass at full line rate, why can a distributed PyTorch training job still run 40% slower than expected on the network, and what parameter fixes it?`&lt;/strong>`</summary>
+<summary>**19. If `nvbandwidth`, `ib_write_bw`, and `nccl-tests` all pass at full line rate, why can a distributed PyTorch training job still run 40% slower than expected on the network, and what parameter fixes it?**</summary>
 
 `nccl-tests` benchmarks large multi-megabyte or gigabyte buffers, whereas a neural network with many small layers can trigger thousands of tiny 256 KB latency-bound AllReduce calls during backpropagation. Increasing PyTorch DistributedDataParallel `bucket_cap_mb` from the 25 MB default to 50 MB coalesces small gradients into large, bandwidth-efficient buckets before calling NCCL.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Why must a dedicated AI training cluster reject both `2:1` spine oversubscription and sharing compute InfiniBand switches with parallel file system storage traffic?`&lt;/strong>`</summary>
+<summary>**20. Why must a dedicated AI training cluster reject both `2:1` spine oversubscription and sharing compute InfiniBand switches with parallel file system storage traffic?**</summary>
 
 - Unlike random web traffic, all GPUs in a synchronous training job hit AllReduce at the exact same microsecond at 400 Gbps per port, immediately saturating a 2:1 oversubscribed leaf-to-spine uplink.
 - Bulk storage bursts such as 100 GB checkpoint writes fill switch buffers and introduce head-of-line queueing jitter to small AllReduce packets. Because collectives are synchronous, jitter on a single GPU stalls the entire cluster.

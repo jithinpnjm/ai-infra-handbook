@@ -591,7 +591,7 @@ When a NIM deployment fails to start or violates latency targets, Volume 14 Lab 
 | **5. Air-Gapped Firewall or Proxy TLS Failure** | `NIMCache` job or pod hangs on `Attempting model download from NGC...` or logs `x509: certificate signed by unknown authority` | Cluster `NetworkPolicy` blocks egress to `nvcr.io` / `api.ngc.nvidia.com`, or corporate proxy intercepts TLS without CA cert | `kubectl exec <pod> -- nslookup nvcr.io` and `curl -v https://nvcr.io/v2/` | Mirror verified digests (`sha256:...`) to internal Harbor (`harbor-internal.company.com`) and pre-populate `/model_cache` via `download-to-cache` in the DMZ. |
 | **6. Reactive GPU-Utilization Autoscaling Thrash** | HPA scales out too late during traffic bursts; `queue_depth` exceeds `25` and client requests time out | HPA configured on GPU SM utilization (`70%`) instead of request queue depth, combined with uncached pod boot delay | `kubectl get hpa` and `curl -s http://localhost:8000/v1/metrics \| grep requests_waiting` | Scale on `num_requests_waiting > 10` (or `requests_waiting_total > 20`) paired with `p95 > 200 ms` and a warm `NIMCache` PVC (`45 s` boot). |
 
-Always inspect kubectl logs `&lt;pod>` for Readiness check passed and verify `/model_cache` disk space before escalating a NIM readiness failure.
+Always inspect kubectl logs `<pod>` for Readiness check passed and verify `/model_cache` disk space before escalating a NIM readiness failure.
 
 ---
 

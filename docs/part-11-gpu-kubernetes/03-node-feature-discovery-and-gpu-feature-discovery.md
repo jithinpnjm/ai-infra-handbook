@@ -469,13 +469,13 @@ Summary: 26 passed, 0 failed out of 26 checks.
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. Why does a Kubernetes GPU platform need both Node Feature Discovery (NFD) and GPU Feature Discovery (GFD) in addition to the NVIDIA Device Plugin?`&lt;/strong>`</summary>
+<summary>**1. Why does a Kubernetes GPU platform need both Node Feature Discovery (NFD) and GPU Feature Discovery (GFD) in addition to the NVIDIA Device Plugin?**</summary>
 
 The NVIDIA Device Plugin only advertises an integer count of healthy resources such as `nvidia.com/gpu: 8` and does not expose hardware attributes to the scheduler. NFD runs on every node to detect OS, CPU, and raw PCIe bus facts such as `feature.node.kubernetes.io/pci-0302_10de.present=true` and `pci-10de.present=true` before a GPU driver is installed. Once the GPU Operator loads the driver, GFD queries NVML to publish GPU-specific labels including `nvidia.com/gpu.product`, `gpu.memory`, `gpu.compute.major`, `mig.strategy`, and `gpu.replicas`.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. In the NFD label feature.node.kubernetes.io/pci-0302_10de.present: "true", what do 0302 and 10de mean, and how do they differ from pci-0300_1d0f.present: "true"?`&lt;/strong>`</summary>
+<summary>**2. In the NFD label feature.node.kubernetes.io/pci-0302_10de.present: "true", what do 0302 and 10de mean, and how do they differ from pci-0300_1d0f.present: "true"?**</summary>
 
 In the NFD class and vendor naming convention, each code maps to a specific PCIe device category and hardware manufacturer.
 - The code `0302` is the PCI device class for a 3D controller, and `10de` is the PCI vendor ID for NVIDIA. By comparison, `1002` identifies AMD and `8086` identifies Intel.
@@ -483,7 +483,7 @@ In the NFD class and vendor naming convention, each code maps to a specific PCIe
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What are the three tiers of node labels defined in Volume 10 Chapter 5, and who is the authoritative writer and consumer of each tier?`&lt;/strong>`</summary>
+<summary>**3. What are the three tiers of node labels defined in Volume 10 Chapter 5, and who is the authoritative writer and consumer of each tier?**</summary>
 
 1. **Discovered fact:** Labels like `nvidia.com/gpu.product` and `feature.node.kubernetes.io/pci-10de.present` are written by NFD and GFD and consumed by platform automation and diagnostics.
 2. **Lifecycle assertion:** Labels like `gpu-validation=passed` are written by a platform validation controller after driver, runtime, plugin, and workload checks succeed, and consumed by admission control.
@@ -491,99 +491,99 @@ In the NFD class and vendor naming convention, each code maps to a specific PCIe
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Why is the GFD label nvidia.com/gpu.product=NVIDIA-H100-80GB-HBM3 not sufficient proof that a node is ready to run production GPU workloads?`&lt;/strong>`</summary>
+<summary>**4. Why is the GFD label nvidia.com/gpu.product=NVIDIA-H100-80GB-HBM3 not sufficient proof that a node is ready to run production GPU workloads?**</summary>
 
 That label is a point-in-time hardware inventory observation written when GFD last executed its discovery probe. It does not prove that the host kernel driver is currently healthy or that the container runtime can inject `/dev/nvidia*` devices. It also does not verify that the device plugin is actively registered or that a validation container (`GPU_NODE_VALIDATED`) succeeded after the latest maintenance event.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. How does GFD change nvidia.com/gpu.product, nvidia.com/gpu.count, and nvidia.com/gpu.replicas when time-slicing is enabled with replicas: 8 on a node with 10 physical A100-SXM4-40GB GPUs?`&lt;/strong>`</summary>
+<summary>**5. How does GFD change nvidia.com/gpu.product, nvidia.com/gpu.count, and nvidia.com/gpu.replicas when time-slicing is enabled with replicas: 8 on a node with 10 physical A100-SXM4-40GB GPUs?**</summary>
 
 GFD appends the `-SHARED` suffix to the product label so it reads `nvidia.com/gpu.product: A100-SXM4-40GB-SHARED`. It also sets `nvidia.com/gpu.replicas: "8"` and multiplies `nvidia.com/gpu.count` to `"80"` across the ten physical GPUs.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. How can a workload manifest ensure it receives an exclusive physical GPU and avoids landing on a time-sliced node?`&lt;/strong>`</summary>
+<summary>**6. How can a workload manifest ensure it receives an exclusive physical GPU and avoids landing on a time-sliced node?**</summary>
 
 A workload can select a `nvidia.com/gpu.product` value or platform service class that does not carry the `-SHARED` suffix. Alternatively, the platform team can configure the device plugin with `renameByDefault: true` so time-sliced GPUs are advertised as `nvidia.com/gpu.shared` while exclusive GPUs remain `nvidia.com/gpu`.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How do GFD labels differ between single MIG strategy and mixed MIG strategy on an A100 node?`&lt;/strong>`</summary>
+<summary>**7. How do GFD labels differ between single MIG strategy and mixed MIG strategy on an A100 node?**</summary>
 
 - In **single MIG strategy** (`nvidia.com/mig.strategy: single`), all GPUs on the node are partitioned identically, such as two A100s split into fourteen `1g.5gb` slices. All slices are advertised as `nvidia.com/gpu`, `nvidia.com/gpu.count` reports `"14"`, and `nvidia.com/gpu.product` becomes `A100-SXM4-40GB-MIG-1g.5gb`.
 - In **mixed MIG strategy** (`nvidia.com/mig.strategy: mixed`), slices are advertised under profile-specific resource names such as `nvidia.com/mig-1g.5gb` and `nvidia.com/mig-4g.20gb`, and GFD publishes per-profile count labels such as `nvidia.com/mig-1g.5gb.count: "2"`.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What does nvidia.com/mig.capable=true on gpu-node-03 prove, and what does it NOT prove?`&lt;/strong>`</summary>
+<summary>**8. What does nvidia.com/mig.capable=true on gpu-node-03 prove, and what does it NOT prove?**</summary>
 
 The label `nvidia.com/mig.capable=true` proves only that the physical GPU architecture, such as Ampere A100 or Hopper H100, supports Multi-Instance GPU partitioning. It does not prove that MIG mode is currently enabled on the node or that a specific partition resource like `nvidia.com/mig-1g.10gb` is allocatable.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Why can using nodeSelector with nvidia.com/gpu.memory: "40960" cause unexpected Pending Pods even when 40 GB A100 or 80 GB H100 nodes are idle?`&lt;/strong>`</summary>
+<summary>**9. Why can using nodeSelector with nvidia.com/gpu.memory: "40960" cause unexpected Pending Pods even when 40 GB A100 or 80 GB H100 nodes are idle?**</summary>
 
 Kubernetes `nodeSelector` performs exact string matching on label values. On a forty-gigabyte A100, GFD often reports usable framebuffer memory as `"40537"` MiB rather than `"40960"` MiB, while an eighty-gigabyte node reports `"81920"` MiB. An exact string match on `"40960"` rejects both nodes, whereas `nodeAffinity` with `operator: Gt` and `values: ["40000"]` matches both cleanly.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. In Generative AI on Kubernetes Example 3-4, how does kube-scheduler combine requiredDuringSchedulingIgnoredDuringExecution (gpu.memory Gt 40000) with preferredDuringSchedulingIgnoredDuringExecution (gpu.family In [hopper], weight: 1)?`&lt;/strong>`</summary>
+<summary>**10. In Generative AI on Kubernetes Example 3-4, how does kube-scheduler combine requiredDuringSchedulingIgnoredDuringExecution (gpu.memory Gt 40000) with preferredDuringSchedulingIgnoredDuringExecution (gpu.family In [hopper], weight: 1)?**</summary>
 
 During the Filter phase, the scheduler eliminates any node whose `nvidia.com/gpu.memory` label is forty thousand MiB or less, which removes `16 GB` T4 nodes while keeping `40537` MiB A100 and `81920` MiB H100 nodes. During the Score phase, it adds `weight: 1` to surviving nodes where `nvidia.com/gpu.family` is `"hopper"`. The Pod lands on an H100 node if one is free and falls back to an A100 node if all H100s are busy.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. Why do taints and tolerations alone not steer a GPU Pod onto a GPU node?`&lt;/strong>`</summary>
+<summary>**11. Why do taints and tolerations alone not steer a GPU Pod onto a GPU node?**</summary>
 
 A taint such as `nvidia.com/gpu=true:NoSchedule` repels Pods that lack a matching toleration, and a toleration removes that repulsion so the Pod may be considered on the tainted node. However, a toleration does not exclude untainted CPU nodes. To guarantee placement on a GPU node, the Pod must also request `nvidia.com/gpu` or specify a node selector or affinity rule.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. In an 80-node fleet (30 NVIDIA-A100-80GB, 30 NVIDIA-H100-80GB-HBM3, 20 NVIDIA-A100-40GB) acquired over 18 months, what happens when the 20 oldest nodes are retired if workloads use SKU-level nodeSelector versus a platform service class?`&lt;/strong>`</summary>
+<summary>**12. In an 80-node fleet (30 NVIDIA-A100-80GB, 30 NVIDIA-H100-80GB-HBM3, 20 NVIDIA-A100-40GB) acquired over 18 months, what happens when the 20 oldest nodes are retired if workloads use SKU-level nodeSelector versus a platform service class?**</summary>
 
 If workloads hard-select `nvidia.com/gpu.product=NVIDIA-A100-40GB`, retiring those twenty nodes breaks every manifest targeting that SKU until application teams edit and redeploy their YAML. If workloads target `gpu.platform.example/class=inference-general`, retiring the twenty nodes and adding replacement hardware requires updating one platform controller mapping and zero application manifests.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How do you prove from nfd-worker logs whether node labels on gpu-node-19 are fresh or stale after a 09:15 MIG maintenance window?`&lt;/strong>`</summary>
+<summary>**13. How do you prove from nfd-worker logs whether node labels on gpu-node-19 are fresh or stale after a 09:15 MIG maintenance window?**</summary>
 
 Inspect the probe timestamp in `kubectl logs -n node-feature-discovery nfd-worker-gpu-node-19-p8k1`. In the Volume 10 incident, the log showed `I0812 08:40:11.002331 ... labeling node "gpu-node-19"` with `0 label(s) changed since last run`. Because the last probe at `08:40:11` occurred before the `09:15` maintenance change, the node labels in the Kubernetes API are proven stale.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Why is stale discovery metadata dangerous even when every daemon on the node reports Running?`&lt;/strong>`</summary>
+<summary>**14. Why is stale discovery metadata dangerous even when every daemon on the node reports Running?**</summary>
 
 When discovery daemons have not re-run after a driver, GPU, or MIG change, the Kubernetes API server still holds valid-looking labels from the prior state. The scheduler trusts those stale labels and places Pods onto nodes whose actual hardware configuration no longer matches the workload requirements, producing a silent misplacement.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. When kubectl describe pod training-job-0 shows 0/40 nodes are available: 40 node(s) didn't match Pod's node affinity/selector: key "gpu.platform.example/class" value "training-topology" not found, is the cluster out of GPUs?`&lt;/strong>`</summary>
+<summary>**15. When kubectl describe pod training-job-0 shows 0/40 nodes are available: 40 node(s) didn't match Pod's node affinity/selector: key "gpu.platform.example/class" value "training-topology" not found, is the cluster out of GPUs?**</summary>
 
 No, the cluster is not out of GPUs. When all forty nodes fail the node affinity or selector predicate, the scheduler rejected every node during label filtering before evaluating GPU capacity. Either the `training-topology` service class was never applied to the twenty-five qualified nodes or discovery validation stripped the label.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Why is per-node label asymmetry (such as gpu-node-19 having nvidia.com/mig.strategy=single while peer gpu-node-13 has only nvidia.com/mig.capable=true) often masked until a rescheduling event occurs?`&lt;/strong>`</summary>
+<summary>**16. Why is per-node label asymmetry (such as gpu-node-19 having nvidia.com/mig.strategy=single while peer gpu-node-13 has only nvidia.com/mig.capable=true) often masked until a rescheduling event occurs?**</summary>
 
 As long as `gpu-node-19` has free capacity, Pods requiring `nvidia.com/mig.strategy=single` schedule cleanly onto `gpu-node-19` and succeed. The missing label on `gpu-node-13` remains hidden until `gpu-node-19` fills up or drains, or until a Pod that omits the strategy selector lands on `gpu-node-13` and hits an unexpected partitioning state.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. Why must RBAC and admission control treat node capability labels as privileged security boundaries?`&lt;/strong>`</summary>
+<summary>**17. Why must RBAC and admission control treat node capability labels as privileged security boundaries?**</summary>
 
 Node labels govern workload placement, tenant isolation, hardware licensing, and compliance pools. If a tenant or compromised workload can mutate Node labels, it can steer unauthorized Pods onto dedicated GPU pools or falsify `gpu-validation=passed`.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. What is the difference between nvidia.com/cuda.driver-version.full and nvidia.com/cuda.runtime.version.full in GFD labels?`&lt;/strong>`</summary>
+<summary>**18. What is the difference between nvidia.com/cuda.driver-version.full and nvidia.com/cuda.runtime.version.full in GFD labels?**</summary>
 
 - The label `nvidia.com/cuda.driver-version.full` reports the exact version of the host NVIDIA kernel driver installed on the worker node, such as `525.105.17` or `550.90.07`.
 - The label `nvidia.com/cuda.runtime.version.full` reports the maximum CUDA Runtime version natively supported by that host driver, such as `12.2` or `12.4`, without requiring `/usr/local/cuda/compat` forward compatibility.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What do nvidia.com/gpu.compute.major and nvidia.com/gpu.compute.minor represent, and why would a vLLM deployment select on compute.major: "8" or higher?`&lt;/strong>`</summary>
+<summary>**19. What do nvidia.com/gpu.compute.major and nvidia.com/gpu.compute.minor represent, and why would a vLLM deployment select on compute.major: "8" or higher?**</summary>
 
 They represent the CUDA Compute Capability of the GPU architecture. Selecting `compute.major` of eight or higher ensures that workloads using Ampere or Hopper instructions such as hardware BF16 tensor cores or FlashAttention-2 kernels are never scheduled onto older Volta or Turing GPUs.
 
@@ -596,7 +596,7 @@ They represent the CUDA Compute Capability of the GPU architecture. Selecting `c
 </details>
 
 <details>
-<summary>`&lt;strong>`20. What five operational practices does Volume 10 Chapter 5 recommend to prevent discovery drift from becoming a production outage?`&lt;/strong>`</summary>
+<summary>**20. What five operational practices does Volume 10 Chapter 5 recommend to prevent discovery drift from becoming a production outage?**</summary>
 
 1. Alert whenever NFD or GFD workers are absent, restarting in `CrashLoopBackOff`, or failing to update their Node object.
 2. Continuously audit and diff expected node-pool membership against actual node labels using `--show-labels`.

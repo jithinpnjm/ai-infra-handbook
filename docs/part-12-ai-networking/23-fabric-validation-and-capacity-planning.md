@@ -572,37 +572,37 @@ Exercise Input Parameters and Reference Evidence:
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. Why is `&lt;code>`ping`&lt;/code>` insufficient for AI fabric acceptance, and what five properties of GPU communication does it fail to test?`&lt;/strong>`</summary>
+<summary>**1. Why is `ping` insufficient for AI fabric acceptance, and what five properties of GPU communication does it fail to test?**</summary>
 
 `ping` only verifies that the host CPU can send a small ICMP packet over the default kernel IP route. It fails to test RDMA Verbs hardware offload bypassing the CPU, RoCEv2 UDP encapsulation, and lossless QoS queue classification with ECN or PFC feedback. It also fails to test GPUDirect RDMA BAR1 DMA locality and multi-node collective concurrency across shared leaf-to-spine cuts.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. In the five-stage acceptance ladder, why must a cluster be rejected if Stage L4 passes but Stage L1 or Stage L2 was skipped or failed?`&lt;/strong>`</summary>
+<summary>**2. In the five-stage acceptance ladder, why must a cluster be rejected if Stage L4 passes but Stage L1 or Stage L2 was skipped or failed?**</summary>
 
 A short collective run on an empty cluster can mask a marginal optical transceiver, a cross-wired rail port, or misconfigured QoS queues. Those defects only collapse under sustained thermal drift or multi-job contention. Every stage from L1 through L5 tests a distinct failure boundary and requires its own retained raw evidence.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What quantitative optical DOM, BER, and FEC thresholds gate Stage L1 physical link acceptance on 400G and 800G links?`&lt;/strong>`</summary>
+<summary>**3. What quantitative optical DOM, BER, and FEC thresholds gate Stage L1 physical link acceptance on 400G and 800G links?**</summary>
 
 Every port must negotiate full design rate and lane width with optical Rx power at least `-6.0 dBm`. Tx power at least `-4.0 dBm`, lane skew under `2.0 dB`, and module temperature at most `70.0 °C`. In addition, pre-FEC BER must stay at most `1e-5`, post-FEC BER at most `1e-15`, and both `fec_uncorrected_blocks` and `SymbolErrorCounter` deltas must equal zero.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. What do `&lt;code>`ibv_devinfo -v -d mlx5_0`&lt;/code>` and `&lt;code>`ibstat`&lt;/code>` report for a healthy ConnectX-7 NDR400 port, and why must inventory anchor on GUID rather than LID?`&lt;/strong>`</summary>
+<summary>**4. What do `ibv_devinfo -v -d mlx5_0` and `ibstat` report for a healthy ConnectX-7 NDR400 port, and why must inventory anchor on GUID rather than LID?**</summary>
 
 `ibv_devinfo` reports part ID `MT4129`, firmware `28.39.2048`, node GUID, and Queue Pair limits. Meanwhile, `ibstat` reports `State: Active`, `Physical state: LinkUp`, `Rate: 400`, `Base lid: 12`, `SM lid: 1`, and the immutable `Port GUID`. Inventory must key on `Port GUID` because `Base lid` can change whenever OpenSM re-sweeps the subnet.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. What host commands verify RoCEv2 interface-to-RDMA mapping, path MTU, and GPU-NIC locality before running `&lt;code>`ib_write_bw`&lt;/code>`?`&lt;/strong>`</summary>
+<summary>**5. What host commands verify RoCEv2 interface-to-RDMA mapping, path MTU, and GPU-NIC locality before running `ib_write_bw`?**</summary>
 
 Operators run `ip -br link show`, `ip -br addr show`, `rdma link show`, `ip route get`, `ethtool`, `nvidia-smi topo -m`, and `ethtool -S`. Together these commands confirm `ACTIVE` and `LINK_UP` state. A jumbo MTU, full link speed, local `PIX` PCIe switch affinity between each GPU and its rail NIC, and zero uncorrected FEC errors.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. What counter deltas occur during a 60-second bounded two-sender RoCEv2 contention test, and what do they prove?`&lt;/strong>`</summary>
+<summary>**6. What counter deltas occur during a 60-second bounded two-sender RoCEv2 contention test, and what do they prove?**</summary>
 
 Over the bounded two-sender contention window, `rx_prio3_packets` and `tx_prio3_packets` increment by tens of millions of packets while `rx_ecn_marked_prio3` and `rx_pfc_prio3` rise cleanly. Both senders throttle smoothly with zero packet drops, proving DSCP to Priority 3 mapping and closed-loop DCQCN and PFC congestion control.
 
@@ -616,19 +616,19 @@ Over the bounded two-sender contention window, `rx_prio3_packets` and `tx_prio3_
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Why does switching `&lt;code>`ib_write_bw`&lt;/code>` from `&lt;code>`mlx5_0`&lt;/code>` to a misaligned `&lt;code>`mlx5_1`&lt;/code>` port drop bandwidth from 392 Gb/s to 156 Gb/s with 24 `&lt;code>`RETRY_EXC_ERR`&lt;/code>` completions?`&lt;/strong>`</summary>
+<summary>**7. Why does switching `ib_write_bw` from `mlx5_0` to a misaligned `mlx5_1` port drop bandwidth from 392 Gb/s to 156 Gb/s with 24 `RETRY_EXC_ERR` completions?**</summary>
 
 Both interfaces are healthy at Layers 1 and 2, so the fault lies at Layer 3 endpoint and NUMA selection. Binding to `mlx5_1` forces traffic out the secondary rail interface and GID across sockets. That misalignment triggers ECN marks and RDMA transport retries that vanish as soon as the process is bound back to `mlx5_0`.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. How does Stage L3 catch fabric defects that Stage L2 single-pair testing misses?`&lt;/strong>`</summary>
+<summary>**8. How does Stage L3 catch fabric defects that Stage L2 single-pair testing misses?**</summary>
 
 A single-pair Stage L2 test only loads one link at a time. Stage L3 runs an all-node ring sweep across every rail followed by a simultaneous cross-spine half-bisection test. That concurrent load saturates the leaf-to-spine cut and exposes uplink oversubscription or static routing polarization.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. What four categories of cabling discrepancies does `&lt;code>`validate_cable_matrix_diff()`&lt;/code>` detect when comparing live discovery output against the Point-to-Point BOM?`&lt;/strong>`</summary>
+<summary>**9. What four categories of cabling discrepancies does `validate_cable_matrix_diff()` detect when comparing live discovery output against the Point-to-Point BOM?**</summary>
 
 - `MISSING_LINK`: The expected host port is absent or down.
 - `RAIL_SWITCH_MISMATCH`: A Rail `k` NIC is plugged into a leaf switch belonging to a different rail.
@@ -637,7 +637,7 @@ A single-pair Stage L2 test only loads one link at a time. Stage L3 runs an all-
 </details>
 
 <details>
-<summary>`&lt;strong>`10. How does NVIDIA Base Command Manager Topograph discover cluster topology and update Slurm, and what are its service parameters?`&lt;/strong>`</summary>
+<summary>**10. How does NVIDIA Base Command Manager Topograph discover cluster topology and update Slurm, and what are its service parameters?**</summary>
 
 Topograph listens on HTTPS port 49021 and exports Prometheus measurables while querying InfiniBand, Ethernet, or cloud topology APIs. It writes `/cm/shared/apps/slurm/etc/<cluster>/topology.conf` for tree or block plugins and triggers `scontrol reconfigure`.
 
@@ -650,14 +650,14 @@ BCM 11 Topograph Service Parameters (bcm11-admin §7.5):
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What are the two mandatory steps to upgrade from Topograph 3.x to Topograph 4 in BCM 11.34+, and what happens if only one is performed?`&lt;/strong>`</summary>
+<summary>**11. What are the two mandatory steps to upgrade from Topograph 3.x to Topograph 4 in BCM 11.34+, and what happens if only one is performed?**</summary>
 
 - Remove the `topograph` package, install `topograph4` on all Topograph nodes, and run `systemctl daemon-reload`.
 - Enable `set -e version4 true` under `topographsettings` in `cmsh` and commit the change; performing only one of these two steps causes the service to fail.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How many switches, cables, and standalone optical transceivers are required for a 1,024-GPU and a 2,048-GPU 2-tier 1:1 Clos fabric using 64-port switches?`&lt;/strong>`</summary>
+<summary>**12. How many switches, cables, and standalone optical transceivers are required for a 1,024-GPU and a 2,048-GPU 2-tier 1:1 Clos fabric using 64-port switches?**</summary>
 
 ```text
 2-Tier 1:1 Clos BOM (R = 64 ports, 5% Spares):
@@ -667,7 +667,7 @@ BCM 11 Topograph Service Parameters (bcm11-admin §7.5):
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How does the BOM change when scaling to 4,096 GPUs on 64-port switches in a 3-tier Clos at 1:1 versus 2:1 spine-to-super-spine oversubscription?`&lt;/strong>`</summary>
+<summary>**13. How does the BOM change when scaling to 4,096 GPUs on 64-port switches in a 3-tier Clos at 1:1 versus 2:1 spine-to-super-spine oversubscription?**</summary>
 
 ```text
 3-Tier Clos BOM for 4,096 GPUs (512 nodes, R = 64 ports, 5% Spares):
@@ -677,7 +677,7 @@ BCM 11 Topograph Service Parameters (bcm11-admin §7.5):
 </details>
 
 <details>
-<summary>`&lt;strong>`14. For a DGX B200 SuperPOD, what are the switch and cable counts for 1 to 4 SUs, and what are the distance limits for Passive DAC and AOC cables?`&lt;/strong>`</summary>
+<summary>**14. For a DGX B200 SuperPOD, what are the switch and cable counts for 1 to 4 SUs, and what are the distance limits for Passive DAC and AOC cables?**</summary>
 
 Passive DAC reaches 5 m at 100G and 3 m at 400G. AOC reaches 30 m, and all cable runs must stay under ninety percent of maximum media distance. The switch and cable counts across 1 to 4 Scalable Units are.
 
@@ -691,7 +691,7 @@ DGX B200 SuperPOD BOM (superpod-b200-dc):
 </details>
 
 <details>
-<summary>`&lt;strong>`15. How does the DGX GB300 SuperPOD scale to 9,216 GPUs in a 2-layer compute fabric, and what are its switch counts across 2, 4, 8, and 16 SUs?`&lt;/strong>`</summary>
+<summary>**15. How does the DGX GB300 SuperPOD scale to 9,216 GPUs in a 2-layer compute fabric, and what are its switch counts across 2, 4, 8, and 16 SUs?**</summary>
 
 Each 576-GPU DGX GB300 Scalable Unit uses 144-port 800G `Q3400-RD` InfiniBand switches and 64-port 800G `SN5600D` Ethernet switches.
 
@@ -705,7 +705,7 @@ DGX GB300 SuperPOD Multi-Fabric Switch Counts (superpod-gb300-ra Tables 3 & 4):
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What are the Standard and Enhanced aggregate storage read/write throughput requirements for a 1-SU and a 4-SU DGX GB300 SuperPOD?`&lt;/strong>`</summary>
+<summary>**16. What are the Standard and Enhanced aggregate storage read/write throughput requirements for a 1-SU and a 4-SU DGX GB300 SuperPOD?**</summary>
 
 ```text
 DGX GB300 Storage Throughput Requirements (superpod-gb300-ra Table 5):
@@ -715,25 +715,25 @@ DGX GB300 Storage Throughput Requirements (superpod-gb300-ra Table 5):
 </details>
 
 <details>
-<summary>`&lt;strong>`17. A 16-node rack with 2 x 400G rails per node connects to a leaf with 8 x 400G uplinks. What are the normal and N-1 oversubscription ratios?`&lt;/strong>`</summary>
+<summary>**17. A 16-node rack with 2 x 400G rails per node connects to a leaf with 8 x 400G uplinks. What are the normal and N-1 oversubscription ratios?**</summary>
 
 Worst-case downlink demand is 12,800 Gb/s against 3,200 Gb/s of normal uplink capacity, yielding a 4.00:1 normal oversubscription ratio. With one uplink drained for N-1 maintenance, uplink capacity drops to 2,800 Gb/s, yielding a 4.57:1 degraded oversubscription ratio.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. What happens to inference p99 latency when training shares the same default Virtual Lane, and how much does SL/VL separation recover?`&lt;/strong>`</summary>
+<summary>**18. What happens to inference p99 latency when training shares the same default Virtual Lane, and how much does SL/VL separation recover?**</summary>
 
 Isolated inference p99 latency is 1.8 ms, which spikes to 14.2 ms when sharing a default Virtual Lane with training bursts. Mapping training and inference onto separate Service Levels. Virtual Lanes recovers inference p99 latency to 3.1 ms, leaving only a 1.3 ms gap from shared physical wire contention.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Why do InfiniBand P_Key partitions fail to provide tenant performance isolation on their own?`&lt;/strong>`</summary>
+<summary>**19. Why do InfiniBand P_Key partitions fail to provide tenant performance isolation on their own?**</summary>
 
 InfiniBand `P_Key` partitions enforce logical packet membership boundaries rather than bandwidth guarantees. Two tenants in separate `P_Key` partitions still contend for the same physical spine uplinks. Switch buffer credits unless paired with topology-aware scheduling, per-tenant Service Level QoS, or physical plane separation.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. What five fields belong in a production cluster acceptance record, and what are the five steps of the canary release promotion process?`&lt;/strong>`</summary>
+<summary>**20. What five fields belong in a production cluster acceptance record, and what are the five steps of the canary release promotion process?**</summary>
 
 An acceptance record captures design identity, release identity, workload specification, baseline measurements, and the signed acceptance decision with rollback artifacts. The five-step canary workflow diffs inventory. Config against design, runs Stages L1 through L4. Runs Stage L5 concurrent load with an N-1 drain, compares tail latency and counter deltas against the baseline, and promotes after owner sign-off.
 </details>

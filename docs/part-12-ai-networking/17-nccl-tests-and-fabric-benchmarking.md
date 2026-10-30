@@ -686,37 +686,37 @@ Exercise Input Parameters and Captured Evidence Reference:
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. Why must you run `&lt;code>`nvbandwidth`&lt;/code>` and `&lt;code>`ib_write_bw`&lt;/code>` before running `&lt;code>`nccl-tests`&lt;/code>` when troubleshooting a slow cluster?`&lt;/strong>`</summary>
+<summary>**1. Why must you run `nvbandwidth` and `ib_write_bw` before running `nccl-tests` when troubleshooting a slow cluster?**</summary>
 
 The `nccl-tests` binaries exercise the entire stack simultaneously, including GPU HBM, PCIe switches, peer memory, NICs, cables, switch ASICs, and NCCL algorithms. If `all_reduce_perf` is slow and you skipped Tier 1 and Tier 2, you cannot isolate the fault layer. You cannot tell whether the root cause is a downtrained PCIe Gen5 x8 link, a dirty optical cable, a missing `nvidia_peermem` module, or a software TCP socket fallback.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What bandwidth should `&lt;code>`nvbandwidth -t device_to_host_memcpy_ce`&lt;/code>` report on a healthy PCIe Gen5 x16 server, and what does a reading of `&lt;code>`25–30 GB/s`&lt;/code>` indicate?`&lt;/strong>`</summary>
+<summary>**2. What bandwidth should `nvbandwidth -t device_to_host_memcpy_ce` report on a healthy PCIe Gen5 x16 server, and what does a reading of `25–30 GB/s` indicate?**</summary>
 
 A healthy PCIe Gen5 x16 link has 64 GB/s raw theoretical bandwidth and delivers roughly 50 to 60 GB/s in `device_to_host_memcpy_ce`. A reading of 25 to 30 GB/s indicates that the GPU or riser has downtrained its PCIe link width from x16 to x8 or speed from Gen5 to Gen4. You confirm this by checking `LnkSta` in `lspci -vv`.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Why is `&lt;code>`iperf3`&lt;/code>` unsuitable for benchmarking a 400G InfiniBand or RoCEv2 fabric?`&lt;/strong>`</summary>
+<summary>**3. Why is `iperf3` unsuitable for benchmarking a 400G InfiniBand or RoCEv2 fabric?**</summary>
 
 The `iperf3` tool sends data through the Linux kernel TCP/IP stack. That path incurs socket buffer copies, context switches, and CPU interrupt overhead, bottlenecking on the host CPU well below 400 Gbps. The `perftest` binaries post Verbs work requests directly to the HCA hardware and bypass the OS kernel.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. In `&lt;code>`nvidia-smi topo -m`&lt;/code>` on an 8-GPU DGX H100 node, what is the difference between `&lt;code>`PIX`&lt;/code>`, `&lt;code>`SYS`&lt;/code>`, and `&lt;code>`NV18`&lt;/code>`?`&lt;/strong>`</summary>
+<summary>**4. In `nvidia-smi topo -m` on an 8-GPU DGX H100 node, what is the difference between `PIX`, `SYS`, and `NV18`?**</summary>
 
 PIX means the GPU and NIC communicate across at most a single PCIe bridge on the same NUMA node. That local path is the required pairing for full-speed GPUDirect RDMA. SYS means traffic between the GPU and NIC must cross the inter-socket CPU link between NUMA nodes 0 and 1. NV18 means the two GPUs are connected via 18 bonded fourth-generation NVLinks through the intra-node NVSwitch fabric at 900 GB/s bidirectional per GPU.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. In `&lt;code>`ibstat`&lt;/code>`, what does it mean when a port shows `&lt;code>`Physical state: LinkUp`&lt;/code>` but `&lt;code>`State: Initializing`&lt;/code>`?`&lt;/strong>`</summary>
+<summary>**5. In `ibstat`, what does it mean when a port shows `Physical state: LinkUp` but `State: Initializing`?**</summary>
 
 A physical state of LinkUp proves the optical transceiver, laser, and physical cable have established a layer-1 lock with the switch port. A logical state of Initializing instead of Active means the InfiniBand Subnet Manager has not yet assigned an LID or programmed forwarding tables.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. What is the exact formula for `&lt;code>`algbw`&lt;/code>` and `&lt;code>`busbw`&lt;/code>` in `&lt;code>`nccl-tests`&lt;/code>` for AllReduce, ReduceScatter, AllGather, AllToAll, and Broadcast across $n$ ranks?`&lt;/strong>`</summary>
+<summary>**6. What is the exact formula for `algbw` and `busbw` in `nccl-tests` for AllReduce, ReduceScatter, AllGather, AllToAll, and Broadcast across $n$ ranks?**</summary>
 
 ```text
 nccl-tests algbw and busbw formulas across n ranks (tensor size S bytes, time t seconds):
@@ -728,7 +728,7 @@ nccl-tests algbw and busbw formulas across n ranks (tensor size S bytes, time t 
 </details>
 
 <details>
-<summary>`&lt;strong>`7. On an 8-GPU `&lt;code>`all_reduce_perf`&lt;/code>` run, a `&lt;code>`67,108,864`&lt;/code>`-byte (`&lt;code>`64 MiB`&lt;/code>`) collective completes in `&lt;code>`1,653.1 µs`&lt;/code>`. What are `&lt;code>`algbw`&lt;/code>` and `&lt;code>`busbw`&lt;/code>`?`&lt;/strong>`</summary>
+<summary>**7. On an 8-GPU `all_reduce_perf` run, a `67,108,864`-byte (`64 MiB`) collective completes in `1,653.1 µs`. What are `algbw` and `busbw`?**</summary>
 
 ```text
 64 MiB (67,108,864 B) AllReduce on n = 8 GPUs in t = 1,653.1 us:
@@ -739,43 +739,43 @@ nccl-tests algbw and busbw formulas across n ranks (tensor size S bytes, time t 
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What do the `&lt;code>`-b`&lt;/code>`, `&lt;code>`-e`&lt;/code>`, `&lt;code>`-f`&lt;/code>`, `&lt;code>`-g`&lt;/code>`, `&lt;code>`-w`&lt;/code>`, `&lt;code>`-n`&lt;/code>`, and `&lt;code>`-c`&lt;/code>` flags control in `&lt;code>`all_reduce_perf`&lt;/code>`?`&lt;/strong>`</summary>
+<summary>**8. What do the `-b`, `-e`, `-f`, `-g`, `-w`, `-n`, and `-c` flags control in `all_reduce_perf`?**</summary>
 
 The `-b` flag sets the minimum starting message size in bytes, and `-e` sets the maximum ending message size. The `-f` flag sets the multiplicative step factor between sizes, while `-g` sets the number of GPUs per process or thread. Finally, `-w` sets untimed warmup iterations, `-n` sets timed measurement iterations, and `-c` enables data-integrity verification in the `#wrong` column.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. What does a non-zero value in the `&lt;code>`#wrong`&lt;/code>` column of `&lt;code>`nccl-tests`&lt;/code>` mean, and how should you respond?`&lt;/strong>`</summary>
+<summary>**9. What does a non-zero value in the `#wrong` column of `nccl-tests` mean, and how should you respond?**</summary>
 
 The `#wrong` column counts the number of elements whose reduced numerical output failed validation against the expected reduction result when verification is enabled. Any non-zero count indicates silent data corruption from faulty GPU HBM or SRAM, bad PCIe or RDMA transfers, or broken buffer registration. Treat it as a critical correctness failure before evaluating any bandwidth numbers.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Host-memory `&lt;code>`ib_write_bw`&lt;/code>` between two nodes measures `&lt;code>`390 Gbps`&lt;/code>`, but `&lt;code>`ib_write_bw --use_cuda=0`&lt;/code>` and multi-node `&lt;code>`all_reduce_perf`&lt;/code>` are 4x slower. What is broken?`&lt;/strong>`</summary>
+<summary>**10. Host-memory `ib_write_bw` between two nodes measures `390 Gbps`, but `ib_write_bw --use_cuda=0` and multi-node `all_reduce_perf` are 4x slower. What is broken?**</summary>
 
 Because host-memory RDMA at 390 Gbps uses the exact same physical NIC, cable, and switch ports as `--use_cuda=0`, the physical InfiniBand or RoCE fabric is healthy. The bottleneck is in the local GPU-to-NIC GPUDirect RDMA path. Either `nvidia_peermem` is not loaded or PCIe Access Control Services is enabled on the PCIe switch. Otherwise, the test paired a GPU and NIC across different NUMA sockets as SYS instead of PIX.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How many benchmark runs are required to isolate a single slow straggler node among `&lt;code>`64`&lt;/code>` nodes using binary-search bisection versus linear testing?`&lt;/strong>`</summary>
+<summary>**11. How many benchmark runs are required to isolate a single slow straggler node among `64` nodes using binary-search bisection versus linear testing?**</summary>
 
 Binary-search bisection halves the suspect candidate pool at each step. It requires $\lceil \log_2 64 \rceil = 6$ split steps, or 7 total runs including the initial 64-node test. That approach saves 58 runs compared to 64 sequential single-node exclusion tests.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What is the difference between `&lt;code>`NCCL_RUN_DIAGNOSTICS=1`&lt;/code>` and `&lt;code>`ncclras`&lt;/code>`, and which NCCL versions introduced them?`&lt;/strong>`</summary>
+<summary>**12. What is the difference between `NCCL_RUN_DIAGNOSTICS=1` and `ncclras`, and which NCCL versions introduced them?**</summary>
 
 The variable `NCCL_RUN_DIAGNOSTICS=1`, introduced in NCCL 2.31, runs active hardware and P2P verification checks during communicator initialization before the workload starts. The `ncclras` utility, introduced in NCCL 2.24 and listening on port 28028, queries the live peer keep-alive daemon during a running or hung job. It reports `MISMATCH` for lagging collective operation counts per rank or `INCOMPLETE` for unresponsive or dead ranks.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. Why does measuring iteration time immediately after `&lt;code>`dist.all_reduce`&lt;/code>` fail to identify a compute or dataloader straggler?`&lt;/strong>`</summary>
+<summary>**13. Why does measuring iteration time immediately after `dist.all_reduce` fail to identify a compute or dataloader straggler?**</summary>
 
 The `dist.all_reduce` call is a synchronous collective barrier across all participating ranks. Fast ranks that finish their forward and backward passes in 125 ms block inside the collective waiting for a slow rank that takes 1,250 ms. That barrier causes every rank to report roughly 1,250 ms afterwards. You must call `torch.cuda.synchronize()` and record timestamps *before* entering the collective.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. A distributed training job on `&lt;code>`64`&lt;/code>` GPUs has `&lt;code>`52%`&lt;/code>` scaling efficiency over a 2-week (`&lt;code>`336`&lt;/code>`-hour) run at `$4.50`/GPU-hour. How many GPUs and dollars are wasted?`&lt;/strong>`</summary>
+<summary>**14. A distributed training job on `64` GPUs has `52%` scaling efficiency over a 2-week (`336`-hour) run at `$4.50`/GPU-hour. How many GPUs and dollars are wasted?**</summary>
 
 ```text
 64-GPU Fleet Waste Calculation (52% scaling efficiency, 336 hours @ $4.50/GPU-hr):
@@ -787,37 +787,37 @@ The `dist.all_reduce` call is a synchronous collective barrier across all partic
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What is the formula for scaling efficiency, and what does an `&lt;code>`81.25%`&lt;/code>` scaling efficiency at `&lt;code>`8`&lt;/code>` GPUs mean?`&lt;/strong>`</summary>
+<summary>**15. What is the formula for scaling efficiency, and what does an `81.25%` scaling efficiency at `8` GPUs mean?**</summary>
 
 Scaling efficiency equals $\text\{Throughput\}_N / (N \times \text\{Throughput\}_1)$. An 81.25% scaling efficiency at 8 GPUs means the 8-GPU job achieves $8 \times 0.8125 = 6.5\times$ the throughput of a single GPU instead of 8.0x. The remaining 18.75% of ideal linear throughput is lost to communication and synchronization overhead.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. According to Amdahl's Law, what is the maximum theoretical speedup on `&lt;code>`64`&lt;/code>` GPUs and on infinite GPUs if `&lt;code>`10%`&lt;/code>` of a training step is strictly serial?`&lt;/strong>`</summary>
+<summary>**16. According to Amdahl's Law, what is the maximum theoretical speedup on `64` GPUs and on infinite GPUs if `10%` of a training step is strictly serial?**</summary>
 
 With serial fraction $s = 0.10$, the maximum speedup on $N = 64$ GPUs is $\frac\{1\}\{0.10 + 0.90/64\} = 8.77\times$. As $N \to \infty$, the speedup is bounded by $\frac\{1\}\{0.10\} = 10.0\times$ regardless of how many GPUs are added.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. Why can a GPU show `&lt;code>`99%–100%`&lt;/code>` utilization in `&lt;code>`nvidia-smi`&lt;/code>` while achieving only `&lt;code>`17%–22%`&lt;/code>` Model FLOPs Utilization (`&lt;code>`MFU`&lt;/code>`)?`&lt;/strong>`</summary>
+<summary>**17. Why can a GPU show `99%–100%` utilization in `nvidia-smi` while achieving only `17%–22%` Model FLOPs Utilization (`MFU`)?**</summary>
 
 The `nvidia-smi` GPU utilization metric only reports the percentage of sampling intervals during which *at least one* CUDA kernel was active on the device. A GPU spinning inside an `ncclKernel_AllReduce` wait loop or executing thousands of small, memory-bound kernels still registers 100% `nvidia-smi` utilization. Meanwhile, its Tensor Cores sit mostly idle. Verify true compute efficiency via MFU and Nsight Compute (`ncu --metrics sm__throughput.avg.pct_of_peak_sustained_elapsed`).
 </details>
 
 <details>
-<summary>`&lt;strong>`18. How do `&lt;code>`TTFT`&lt;/code>` and `&lt;code>`ITL`&lt;/code>` (`&lt;code>`TPOT`&lt;/code>`) combine to determine end-to-end LLM inference latency (`&lt;code>`e2e_latency`&lt;/code>`), and which dominates for short versus long outputs?`&lt;/strong>`</summary>
+<summary>**18. How do `TTFT` and `ITL` (`TPOT`) combine to determine end-to-end LLM inference latency (`e2e_latency`), and which dominates for short versus long outputs?**</summary>
 
 End-to-end latency equals $\text\{TTFT\} + (\text\{output\_tokens\} - 1) \times \text\{ITL\}$. For short outputs of 10 to 20 tokens, TTFT covers prompt tokenization and compute-bound prefill and represents a large share of total latency. For long outputs of 100 or more tokens, memory-bandwidth-bound autoregressive decode accounts for 90% to 98% of total request latency.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Why is reporting only average latency dangerous for inference SLAs, and what do `&lt;code>`P50`&lt;/code>`, `&lt;code>`P95`&lt;/code>`, and `&lt;code>`P99`&lt;/code>` represent?`&lt;/strong>`</summary>
+<summary>**19. Why is reporting only average latency dangerous for inference SLAs, and what do `P50`, `P95`, and `P99` represent?**</summary>
 
 Average latency masks high-latency outliers. A system with an 80 ms average where 5% of requests take 500 ms has a P99 of 500 ms, violating a 200 ms P99 SLA by 2.5x. The P50 median represents typical request behavior, P95 is the standard operational SLA target, and P99 captures worst-case tail latency experienced by 1% of requests.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. When comparing model accuracy between a single-GPU baseline and a distributed training or quantized inference run, how do you distinguish random variance from a real regression?`&lt;/strong>`</summary>
+<summary>**20. When comparing model accuracy between a single-GPU baseline and a distributed training or quantized inference run, how do you distinguish random variance from a real regression?**</summary>
 
 Evaluate both models on the same held-out benchmark across multiple seeds or samples and run a statistical significance test. A small accuracy delta of 0.5% with a high $p$-value of $p = 0.3$ is consistent with random noise. The same 0.5% drop with $p = 0.001$ proves a statistically significant numerical or synchronization regression.
 </details>

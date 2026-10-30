@@ -363,33 +363,33 @@ Summary: 25 passed, 0 failed out of 25 checks.
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. In Volume 11 Chapter 4, what is the fundamental difference between a logical GPU replica under time-slicing and a hardware MIG instance?`&lt;/strong>`</summary>
+<summary>**1. In Volume 11 Chapter 4, what is the fundamental difference between a logical GPU replica under time-slicing and a hardware MIG instance?**</summary>
 
 A MIG instance is a hardware-partitioned slice of GPU Streaming Multiprocessors, HBM capacity, L2 cache, and memory controllers. A time-sliced replica is purely a scheduler admission token for shared access to the entire physical GPU. It provides zero reserved memory, zero guaranteed SM share, and zero fault isolation.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. On a 16 GB T4 GPU configured with replicas: 10, why don't Linux memory cgroups prevent Pod 1 from consuming all 16 GB of VRAM and crashing Pods 2 through 10?`&lt;/strong>`</summary>
+<summary>**2. On a 16 GB T4 GPU configured with replicas: 10, why don't Linux memory cgroups prevent Pod 1 from consuming all 16 GB of VRAM and crashing Pods 2 through 10?**</summary>
 
 Standard Linux memory cgroups only track and limit host system RAM managed by the Linux kernel memory management unit. They do not govern allocations inside the physical GPU HBM pool when ten Pods mount the same `/dev/nvidia0` device node.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What do renameByDefault: true and failRequestsGreaterThanOne: true do in the NVIDIA device-plugin time-slicing ConfigMap?`&lt;/strong>`</summary>
+<summary>**3. What do renameByDefault: true and failRequestsGreaterThanOne: true do in the NVIDIA device-plugin time-slicing ConfigMap?**</summary>
 
 - Setting `renameByDefault: true` advertises time-sliced tokens as `nvidia.com/gpu.shared` instead of `nvidia.com/gpu`, making best-effort shared semantics explicit in Pod manifests and ResourceQuotas.
 - Setting `failRequestsGreaterThanOne: true` rejects any Pod that requests more than one shared token, preventing users from falsely assuming that requesting two tokens gives twice the guaranteed compute or memory.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. How does CUDA Multi-Process Service differ architecturally from standard GPU time-slicing?`&lt;/strong>`</summary>
+<summary>**4. How does CUDA Multi-Process Service differ architecturally from standard GPU time-slicing?**</summary>
 
 - Time-slicing multiplexes separate per-process CUDA contexts temporally via round-robin context switching. It pauses one process while another runs, which adds context-switch latency and leaves SMs underutilized when individual kernels are small.
 - CUDA MPS runs a proxy daemon with the GPU in exclusive process mode and funnels multiple client processes into a single shared GPU context. Their kernels then execute concurrently side by side on the SMs.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. What environment variables and commands configure CUDA MPS on GPU 0 and cap each client to 20% of active threads?`&lt;/strong>`</summary>
+<summary>**5. What environment variables and commands configure CUDA MPS on GPU 0 and cap each client to 20% of active threads?**</summary>
 
 1. Export `CUDA_VISIBLE_DEVICES=0`, `CUDA_MPS_PIPE_DIRECTORY=/tmp/nvidia-mps`, and `CUDA_MPS_LOG_DIRECTORY=/tmp/nvidia-log`.
 2. Run `sudo nvidia-smi -i 0 -c EXCLUSIVE_PROCESS` so only the MPS server accesses the GPU directly.
@@ -398,7 +398,7 @@ Standard Linux memory cgroups only track and limit host system RAM managed by th
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Explain the three possible causes of the Ghost OOM on MPS where Container A crashes with CUDA OOM on a 40 GB A100 while nvidia-smi shows only 10 GB used.`&lt;/strong>`</summary>
+<summary>**6. Explain the three possible causes of the Ghost OOM on MPS where Container A crashes with CUDA OOM on a 40 GB A100 while nvidia-smi shows only 10 GB used.**</summary>
 
 1. A per-client MPS memory ceiling via `CUDA_MPS_PINNED_DEVICE_MEM_LIMIT` or `set_default_device_pinned_mem_limit` was configured below what Container A needed during a burst.
 2. The ten-gigabyte `nvidia-smi` reading was sampled after Container A crashed and released its GPU memory.
@@ -406,7 +406,7 @@ Standard Linux memory cgroups only track and limit host system RAM managed by th
 </details>
 
 <details>
-<summary>`&lt;strong>`7. List the five test phases for measuring a safe time-slicing replica ratio in Volume 11 Chapter 4.`&lt;/strong>`</summary>
+<summary>**7. List the five test phases for measuring a safe time-slicing replica ratio in Volume 11 Chapter 4.**</summary>
 
 1. Single tenant: establish normal baseline latency and memory high-water mark.
 2. Concurrent active: add neighbors to measure interference while keeping all protected SLOs within limit.
@@ -416,7 +416,7 @@ Standard Linux memory cgroups only track and limit host system RAM managed by th
 </details>
 
 <details>
-<summary>`&lt;strong>`8. Summarize the observed SM utilization, combined memory, and p99 kernel launch latency across 1, 2, 4, and 8 concurrent PyTorch notebooks on an 80 GB A100.`&lt;/strong>`</summary>
+<summary>**8. Summarize the observed SM utilization, combined memory, and p99 kernel launch latency across 1, 2, 4, and 8 concurrent PyTorch notebooks on an 80 GB A100.**</summary>
 
 The Volume 11 Chapter 4 benchmark sampled one 80 GB A100 over five minutes using `nvidia-smi dmon -s puctem -n 300`.
 ```text
@@ -428,7 +428,7 @@ The Volume 11 Chapter 4 benchmark sampled one 80 GB A100 over five minutes using
 </details>
 
 <details>
-<summary>`&lt;strong>`9. What are the six operational controls listed in Volume 11 Chapter 4 for protecting a shared time-sliced pool?`&lt;/strong>`</summary>
+<summary>**9. What are the six operational controls listed in Volume 11 Chapter 4 for protecting a shared time-sliced pool?**</summary>
 
 1. Separate shared node pool and explicit resource name using `nvidia.com/gpu.shared`.
 2. Namespace quota and admission control to limit a single tenant's allocation burst.
@@ -439,7 +439,7 @@ The Volume 11 Chapter 4 benchmark sampled one 80 GB A100 over five minutes using
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Walk through the six steps of the Safe Rollout Sequence for time-slicing in Volume 11 Chapter 4.`&lt;/strong>`</summary>
+<summary>**10. Walk through the six steps of the Safe Rollout Sequence for time-slicing in Volume 11 Chapter 4.**</summary>
 
 1. Select a noncritical node pool and label it as shared before configuring replicas.
 2. Capture a baseline with the same workloads running one at a time and concurrently.
@@ -450,20 +450,20 @@ The Volume 11 Chapter 4 benchmark sampled one 80 GB A100 over five minutes using
 </details>
 
 <details>
-<summary>`&lt;strong>`11. In Volume 11 Chapter 4 Troubleshooting Scenario 3, how do you diagnose and remediate a critical service that degraded to p99 over 300 ms after landing on a time-sliced pool?`&lt;/strong>`</summary>
+<summary>**11. In Volume 11 Chapter 4 Troubleshooting Scenario 3, how do you diagnose and remediate a critical service that degraded to p99 over 300 ms after landing on a time-sliced pool?**</summary>
 
 - Diagnosis: inspect the Pod resource requests, run `kubectl exec <pod> -- nvidia-smi` to reveal multiple containers sharing the same GPU, and check the service `/metrics` endpoint confirming p99 latency above 300 ms.
 - Remediation and prevention: evacuate the deployment to a protected dedicated pool, verify latency recovers below 100 ms, and apply a ResourceQuota in the production namespace setting `nvidia.com/gpu.shared: "0"` and `nvidia.com/gpu: "unlimited"`.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What is the documented DCGM Exporter limitation when Kubernetes device-plugin time-slicing is enabled, and how do responders work around it?`&lt;/strong>`</summary>
+<summary>**12. What is the documented DCGM Exporter limitation when Kubernetes device-plugin time-slicing is enabled, and how do responders work around it?**</summary>
 
 When device-plugin time-slicing is enabled, `dcgm-exporter` cannot associate GPU-level metrics with individual containers. Responders must correlate scheduler allocation history, Pod lifecycle events, application request latency metrics, and host-level `nvidia-smi --query-processes` or `nvidia-smi pmon -c 1` snapshots over the incident window.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. For each of the five Kubernetes primitives in Volume 11 Chapter 4, state what it contributes and what it cannot do for shared GPUs.`&lt;/strong>`</summary>
+<summary>**13. For each of the five Kubernetes primitives in Volume 11 Chapter 4, state what it contributes and what it cannot do for shared GPUs.**</summary>
 
 - Resource requests and limits reserve a logical allocation token, but they do not divide physical GPU memory.
 - Node selectors and affinity target the intended node pool, but they do not validate workload memory or latency behavior.
@@ -473,7 +473,7 @@ When device-plugin time-slicing is enabled, `dcgm-exporter` cannot associate GPU
 </details>
 
 <details>
-<summary>`&lt;strong>`14. What are the five validation checks required after an Operator, device-plugin, driver, or node-image upgrade on a time-sliced pool?`&lt;/strong>`</summary>
+<summary>**14. What are the five validation checks required after an Operator, device-plugin, driver, or node-image upgrade on a time-sliced pool?**</summary>
 
 1. Node allocatable resource names and counts to detect changed sharing semantics.
 2. Labels and selectors to confirm pool separation remains intact.
@@ -483,7 +483,7 @@ When device-plugin time-slicing is enabled, `dcgm-exporter` cannot associate GPU
 </details>
 
 <details>
-<summary>`&lt;strong>`15. List the eight time-correlated items in the Contention Evidence Package in Volume 11 Chapter 4.`&lt;/strong>`</summary>
+<summary>**15. List the eight time-correlated items in the Contention Evidence Package in Volume 11 Chapter 4.**</summary>
 
 1. Workload version and request rate.
 2. Latency percentiles p50, p95, and p99 alongside queue depth.
@@ -496,7 +496,7 @@ When device-plugin time-slicing is enabled, `dcgm-exporter` cannot associate GPU
 </details>
 
 <details>
-<summary>`&lt;strong>`16. List the ten fields of the Shared-Pool Operating Policy Template in Volume 11 Chapter 4.`&lt;/strong>`</summary>
+<summary>**16. List the ten fields of the Shared-Pool Operating Policy Template in Volume 11 Chapter 4.**</summary>
 
 1. Shared-pool purpose in one sentence.
 2. Eligible workloads and excluded workloads.
@@ -511,19 +511,19 @@ When device-plugin time-slicing is enabled, `dcgm-exporter` cannot associate GPU
 </details>
 
 <details>
-<summary>`&lt;strong>`17. In Generative AI on Kubernetes Chapter 3, how do you apply a time-slicing profile only to specific nodes rather than the entire cluster?`&lt;/strong>`</summary>
+<summary>**17. In Generative AI on Kubernetes Chapter 3, how do you apply a time-slicing profile only to specific nodes rather than the entire cluster?**</summary>
 
 Create the time-slicing ConfigMap in the GPU Operator namespace and reference it in the ClusterPolicy without setting a global default profile. Then label only the target nodes with `kubectl label node <node-name> nvidia.com/device-plugin.config=all`.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. How can a platform team combine MIG and Time-Slicing on the same GPU, and what label suffix does GFD advertise?`&lt;/strong>`</summary>
+<summary>**18. How can a platform team combine MIG and Time-Slicing on the same GPU, and what label suffix does GFD advertise?**</summary>
 
 First partition the physical GPU into hardware-isolated MIG instances to enforce hard HBM walls between departments. Then enable Time-Slicing on the MIG resource names so trusted Pods from the same team can share a single MIG slice. GPU Feature Discovery appends `-SHARED` to the product label, producing values such as `...-MIG-3g.20gb-SHARED`.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What five questions must a platform architect ask a service owner before admitting their workload to a time-sliced pool?`&lt;/strong>`</summary>
+<summary>**19. What five questions must a platform architect ask a service owner before admitting their workload to a time-sliced pool?**</summary>
 
 1. Can requests queue or be rejected safely?
 2. What is the maximum acceptable latency during peer activity?
@@ -533,7 +533,7 @@ First partition the physical GPU into hardware-isolated MIG instances to enforce
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Compare a time-sliced OOM incident with a MIG-profile OOM incident.`&lt;/strong>`</summary>
+<summary>**20. Compare a time-sliced OOM incident with a MIG-profile OOM incident.**</summary>
 
 In a MIG-profile OOM incident, the hardware memory controller enforces a strict partition boundary. Only the Pod inside that specific GPU instance hits a CUDA out-of-memory error, while sibling tenants on other MIG slices continue running without impact. In a time-sliced OOM incident, all Pods share one unprotected HBM pool, so one runaway Pod can cause unrelated neighbor Pods on the same physical GPU to fail allocations and crash simultaneously.
 </details>

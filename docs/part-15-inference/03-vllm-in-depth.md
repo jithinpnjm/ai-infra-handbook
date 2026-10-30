@@ -733,121 +733,121 @@ docker run -d --name vllm_constrained \
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. Why is the prefill phase compute-bound while the autoregressive decode phase is memory-bandwidth bound, and how does the KV cache change decode time complexity?`&lt;/strong>`</summary>
+<summary>**1. Why is the prefill phase compute-bound while the autoregressive decode phase is memory-bandwidth bound, and how does the KV cache change decode time complexity?**</summary>
 
 Prefill processes all prompt tokens in parallel via dense matrix-matrix multiplications with high arithmetic intensity on Tensor Cores. Decode generates one token at a time via matrix-vector multiplications, requiring the GPU to stream all model weights and past KV tensors from HBM for every token. Without a KV cache, decoding tokens recomputes all past keys and values at quadratic cost per step and cubic cost overall. Caching Keys and Values reduces decode attention to linear cost per step and quadratic cost across the full sequence.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What is the exact per-token and per-sequence KV cache footprint of Llama-3-70B in BF16, and how much memory does Grouped-Query Attention (GQA) save over Multi-Head Attention (MHA)?`&lt;/strong>`</summary>
+<summary>**2. What is the exact per-token and per-sequence KV cache footprint of Llama-3-70B in BF16, and how much memory does Grouped-Query Attention (GQA) save over Multi-Head Attention (MHA)?**</summary>
 
 With 80 layers, 8 KV heads for 64 query heads, a 128 head dimension, and 2-byte BF16 precision, Llama-3-70B consumes 327,680 bytes or 320 KiB per token. That equals 1.25 GiB per sequence at 4,096 tokens and 39.06 GiB at 128,000 tokens. Under 64-head Multi-Head Attention, each token requires 2.50 MiB binary or 2.56 MB decimal, reaching 312.5 GiB at 128,000 tokens. Thus 8:1 Grouped-Query Attention reduces KV cache memory by 87.5 percent.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What are the three sources of memory waste in contiguous KV cache allocation, and what fraction of GPU VRAM do they waste in production?`&lt;/strong>`</summary>
+<summary>**3. What are the three sources of memory waste in contiguous KV cache allocation, and what fraction of GPU VRAM do they waste in production?**</summary>
 
 Contiguous allocation suffers from three forms of waste. First, reservation waste pre-allocates memory for future tokens that have not been generated yet. Second, internal fragmentation leaves unused slots when a request finishes before reaching the maximum sequence length, such as over 87 percent waste when 500 tokens are generated inside a 4,096-token slab. Third, external fragmentation creates unusable non-contiguous gaps between variable-length allocations. Together, they waste 60 to 80 percent of GPU VRAM.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. How does PagedAttention eliminate external fragmentation and bound internal fragmentation below 4%?`&lt;/strong>`</summary>
+<summary>**4. How does PagedAttention eliminate external fragmentation and bound internal fragmentation below 4%?**</summary>
 
 PagedAttention divides the KV cache pool into uniform physical blocks of 16 or 32 tokens. It maps each sequence's logical blocks to arbitrary physical blocks via a per-request Block Table. Because all physical blocks have the exact same size and require no physical contiguity, external fragmentation is 0 percent. Because blocks are allocated on demand one at a time, unused slots exist only in the final block. That bounds internal fragmentation below the block size divided by the actual sequence length, which stays under 4 percent in production.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. How does PagedAttention eliminate padding FLOPs during batched decode attention?`&lt;/strong>`</summary>
+<summary>**5. How does PagedAttention eliminate padding FLOPs during batched decode attention?**</summary>
 
 In contiguous batching, sequences of lengths 4, 7, and 3 must be right-padded to the batch maximum of 7. That padding forces the attention kernel to compute 21 positions and wastes 33 percent of attention FLOPs on dummy tokens before masking. PagedAttention iterates strictly over the blocks listed in each sequence's Block Table and visits only the 14 real tokens, resulting in 0 percent padding FLOPs.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. How does Copy-on-Write (CoW) work in vLLM during parallel sampling (`n > 1`) and beam search?`&lt;/strong>`</summary>
+<summary>**6. How does Copy-on-Write (CoW) work in vLLM during parallel sampling (`n > 1`) and beam search?**</summary>
 
 When a request forks multiple candidate branches, vLLM copies only the lightweight Block Table so all branches point to the same parent physical blocks. It increments each shared block's reference count without duplicating full prefix blocks. When a child branch appends a new token to an incomplete tail block whose reference count exceeds 1, `BlockSpaceManager` decrements the shared block's reference count. It then allocates one new physical block, copies the existing tokens of that tail block, and appends the new token.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How does vLLM's Automatic Prefix Caching (APC) differ architecturally from SGLang's RadixAttention?`&lt;/strong>`</summary>
+<summary>**7. How does vLLM's Automatic Prefix Caching (APC) differ architecturally from SGLang's RadixAttention?**</summary>
 
 vLLM Automatic Prefix Caching stores full physical KV blocks of 16 or 32 tokens in a global hash table indexed by cumulative SHA-256 hashes of the token IDs. It matches strictly at discrete block boundaries and evicts zero-reference blocks via a flat LRU queue. SGLang RadixAttention maintains an explicit compressed prefix trie where edges point to GPU KV tensors. It matches arbitrary token sub-sequences and evicts leaf nodes via recursive tree LRU while keeping shared parent nodes pinned.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. Why must multi-tenant prompts place `<id> {tenant_id}` between `<system>` and `<context>` when prefix caching is enabled?`&lt;/strong>`</summary>
+<summary>**8. Why must multi-tenant prompts place `<id> {tenant_id}` between `<system>` and `<context>` when prefix caching is enabled?**</summary>
 
 If two tenants share a vLLM instance and upload overlapping confidential documents right after `<system>`, prefix cache hits would allow Tenant A to infer Tenant B's private documents via low-latency timing side channels. Injecting `<id> {tenant_id}` immediately after `<system>` allows all tenants to share the global system prompt KV blocks while cryptographically isolating every downstream `<context>` block hash per tenant.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. In the RAG vs Long-Context CAG comparison (`HLS` Ch. 7), how do uncached prefill tokens, TTFT, and per-request token costs compare?`&lt;/strong>`</summary>
+<summary>**9. In the RAG vs Long-Context CAG comparison (`HLS` Ch. 7), how do uncached prefill tokens, TTFT, and per-request token costs compare?**</summary>
 
 With a 500-token system prompt and a 500-token user query, RAG caches 500 tokens and runs prefill on 5,500 uncached tokens. Long-Context Cache-Augmented Generation caches 100,500 tokens and runs prefill on only 500 uncached user tokens. Because CAG processes roughly one-tenth the uncached tokens, it cuts a 5.0-second RAG TTFT down to 0.5 seconds. Under GPT-5 pricing of 1.25 dollars per million regular tokens and 0.125 dollars per million cached tokens, RAG costs 0.007 dollars per request while CAG costs 0.013 dollars per request.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. How does vLLM's token-budget `Scheduler` combine continuous batching and chunked prefill?`&lt;/strong>`</summary>
+<summary>**10. How does vLLM's token-budget `Scheduler` combine continuous batching and chunked prefill?**</summary>
 
 At every step, the `Scheduler` prioritizes running requests before waiting requests and calculates the remaining tokens needed for each sequence. If a sequence's uncomputed prompt exceeds `long_prefill_token_threshold` such as 512 tokens, the scheduler slices the prefill to that chunk size. It caps the sum of active decode tokens and prefill chunk tokens across the batch to `--max-num-batched-tokens` such as 2,048, keeping p99 Inter-Token Latency at 21.4 ms instead of 340 ms.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. When GPU KV blocks run out, why is `Recompute` mathematically faster than PCIe `Swap` for sequences under 8,192 tokens?`&lt;/strong>`</summary>
+<summary>**11. When GPU KV blocks run out, why is `Recompute` mathematically faster than PCIe `Swap` for sequences under 8,192 tokens?**</summary>
 
 Swapping a KV cache out and back across a 64 GB/s PCIe bus costs 62.5 ms one-way or 125 ms round-trip for every 4 GB of state. Recomputing prefill on the GPU uses the accelerator's Tensor Cores, which deliver 989 TFLOPS on an H100. Because GPU compute throughput far outstrips PCIe transfer bandwidth, recomputation is much faster than PCIe swapping for sequences under 8,192 tokens.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How do `LLMEngine`, `EngineCore`, `Scheduler`, `SchedulerOutput`, `MultiProcessExecutor`, `GPUWorker`, and `GPUModelRunner` interact during a generation step?`&lt;/strong>`</summary>
+<summary>**12. How do `LLMEngine`, `EngineCore`, `Scheduler`, `SchedulerOutput`, `MultiProcessExecutor`, `GPUWorker`, and `GPUModelRunner` interact during a generation step?**</summary>
 
 `LLMEngine` tokenizes inputs into request objects and drives `EngineCore`. `EngineCore` calls `Scheduler` to build a `SchedulerOutput` work order containing scheduled token counts and block table assignments. `MultiProcessExecutor` broadcasts the work order via `rpc_broadcast_mq` to each `GPUWorker`. Each worker invokes `GPUModelRunner` to flatten ragged inputs, execute the forward pass or replay a CUDA Graph, and return sampled tokens via `worker_response_mq`.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. What bottleneck did vLLM V1 solve by splitting execution into Process 0 and Process 1?`&lt;/strong>`</summary>
+<summary>**13. What bottleneck did vLLM V1 solve by splitting execution into Process 0 and Process 1?**</summary>
 
 In vLLM V0, HTTP handling, tokenization, heavy multimodal vision patch preprocessing, and detokenization ran in the same Python process as the scheduler and GPU kernel launcher. CPU image decoding and Python Global Interpreter Lock contention stalled kernel launches and left GPUs idle. vLLM V1 isolates API serving, tokenization, vision preprocessing, and streaming output in Process 0 while dedicating Process 1 exclusively to `EngineCore`, `Scheduler`, and GPU kernel launching over asynchronous IPC.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Why does Tensor Parallelism require intra-node NVLink, and why would you enable `TP=2` on H200 GPUs even if a 140B model fits on a single 141 GB GPU?`&lt;/strong>`</summary>
+<summary>**14. Why does Tensor Parallelism require intra-node NVLink, and why would you enable `TP=2` on H200 GPUs even if a 140B model fits on a single 141 GB GPU?**</summary>
 
 Tensor Parallelism chains column-parallel and row-parallel projections, requiring two synchronous AllReduce operations per layer or 160 AllReduces per token on an 80-layer model. Over PCIe or Ethernet, communication consumes 60 to 90 percent of runtime, whereas intra-node NVLink at 900 GB/s completes each collective in microseconds. On a 141 GB H200, loading a 140B model on one GPU leaves only about 20 GB for the KV cache. Using 2-way Tensor Parallelism places 70B of weights per GPU and frees 70 GB per GPU for KV cache concurrency while doubling effective memory bandwidth.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. How does `--enable-expert-parallel` change MoE weight distribution and collective communication when paired with `TP` vs `DP`?`&lt;/strong>`</summary>
+<summary>**15. How does `--enable-expert-parallel` change MoE weight distribution and collective communication when paired with `TP` vs `DP`?**</summary>
 
 Without Expert Parallelism, every GPU holds a Tensor Parallel slice of every expert. With `--enable-expert-parallel` when the product of Tensor Parallel and Data Parallel sizes exceeds 1, each GPU stores complete experts, such as 32 complete experts per GPU for DeepSeek-R1 on 8 GPUs. Pairing Expert Parallelism with Tensor Parallelism uses AllReduce for low-latency serving. Pairing Expert Parallelism with Data Parallelism partitions the KV cache by request via DP Attention and routes tokens via All-to-All collectives for high-throughput serving when expert activation density exceeds 3 percent.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How do Punica and S-LoRA kernels enable Multi-LoRA serving on a single GPU, and when should you merge a LoRA adapter instead?`&lt;/strong>`</summary>
+<summary>**16. How do Punica and S-LoRA kernels enable Multi-LoRA serving on a single GPU, and when should you merge a LoRA adapter instead?**</summary>
 
 Multi-LoRA serving keeps one frozen base model and multiple active low-rank adapters in GPU memory. Punica and S-LoRA segmented gather-scatter GEMM kernels compute the shared base matrix multiplication across the entire continuous batch in one dense pass and add each request's specific low-rank adapter update in parallel. That allows one GPU to serve many adapters instead of dedicating one GPU per adapter. If a single adapter's traffic grows large enough to saturate multiple dedicated GPU replicas, merge its weights into the base model to eliminate adapter kernel overhead.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. How do W4A16 (GPTQ/AWQ), W8A8 (FP8 E4M3), and FP4 (MXFP4/NVFP4) quantization trade off memory footprint, prefill compute, and decode bandwidth in vLLM?`&lt;/strong>`</summary>
+<summary>**17. How do W4A16 (GPTQ/AWQ), W8A8 (FP8 E4M3), and FP4 (MXFP4/NVFP4) quantization trade off memory footprint, prefill compute, and decode bandwidth in vLLM?**</summary>
 
 W4A16 cuts weight size by 75 percent and uses mixed-precision Marlin or Machete kernels for a 300 percent low-batch decode gain, but it still computes in 16-bit precision so high-batch prefill TTFT lags. W8A8 FP8 cuts weight size by 50 percent and doubles Tensor Core FLOPS to 3,958 TFLOPS on H100, delivering a 150 percent low-batch gain and superior high-batch throughput. FP4 at 0.5 bytes per parameter on Blackwell B200 shrinks the 117B `gpt-oss-120b` model to 58.5 GB for a single 80 GB GPU. It also shrinks the 21B `gpt-oss-20b` model to 10.5 GB for a 16 GB edge GPU.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. How do TGI, SGLang, LMDeploy (`TurboMind`), TensorRT-LLM, and llama.cpp compare to vLLM?`&lt;/strong>`</summary>
+<summary>**18. How do TGI, SGLang, LMDeploy (`TurboMind`), TensorRT-LLM, and llama.cpp compare to vLLM?**</summary>
 
 vLLM offers the broadest model support, PagedAttention with hash-based prefix caching, V1 dual-process scheduling, and Multi-LoRA serving at 15 to 25 ms ITL. Hugging Face TGI pairs a Rust `Axum` router for connection safety with zero-copy `safetensors` memory mapping. SGLang uses a RadixAttention prefix tree and `XGrammar` state graphs for multi-turn agents and structured JSON at 12 to 22 ms ITL. LMDeploy uses a pure C++ `TurboMind` core with under 5 microseconds of CPU overhead and fused W4A16 kernels for 8 to 14 ms ITL. TensorRT-LLM maximizes tokens per dollar on NVIDIA GPUs, while llama.cpp runs quantized `GGUF` models on CPUs and edge devices.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Which five Prometheus metrics must be monitored on every production vLLM deployment, and what are their alert thresholds?`&lt;/strong>`</summary>
+<summary>**19. Which five Prometheus metrics must be monitored on every production vLLM deployment, and what are their alert thresholds?**</summary>
 
 First, monitor `vllm:gpu_cache_usage_perc` and keep it below 0.85 nominally while alerting above 0.95 for 2 minutes. Second, monitor `vllm:cpu_cache_usage_perc` and keep it at 0.00 with `--swap-space 0`. Third, alert whenever `rate(vllm:num_preemptions_total[2m]) > 0` for 30 seconds. Fourth, keep `vllm:num_requests_waiting` below 10 for normal workloads or below 5 for strict TTFT targets. Fifth, track `vllm:num_requests_running` against `C_max` and `--max-num-seqs`.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. How do you achieve deterministic output in vLLM for RLHF rollout generation or reproducible debugging?`&lt;/strong>`</summary>
+<summary>**20. How do you achieve deterministic output in vLLM for RLHF rollout generation or reproducible debugging?**</summary>
 
 Setting `"temperature": 0` enables greedy token selection, but dynamic continuous batching and asynchronous multiprocessing can still introduce minor floating-point variations across different batch sizes. For strict bit-for-bit reproducibility, set `temperature=0` together with `VLLM_ENABLE_V1_MULTIPROCESSING=0` and enable batch-invariant execution settings.
 </details>

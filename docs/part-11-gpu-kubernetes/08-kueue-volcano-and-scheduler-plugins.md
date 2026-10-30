@@ -426,121 +426,121 @@ Exercise Input Parameters:
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. What are the two cycles of the Kubernetes Scheduling Framework, and why is the Scheduling Cycle serialized while the Binding Cycle is concurrent?`&lt;/strong>`</summary>
+<summary>**1. What are the two cycles of the Kubernetes Scheduling Framework, and why is the Scheduling Cycle serialized while the Binding Cycle is concurrent?**</summary>
 
 The Scheduling Cycle runs QueueSort, PreFilter, Filter, PostFilter, PreScore, Score, Reserve, and Permit serially for one Pod at a time. That serialization prevents two Pods from claiming the same GPU in the scheduler cache simultaneously. Once resources are tentatively marked in Reserve and approved in Permit, the Binding Cycle runs PreBind, Bind, and PostBind asynchronously in parallel goroutines so API server network latency does not block the scheduling loop.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. How do the Reserve, Permit, and Unreserve extension points work together in the Coscheduling PodGroup plugin?`&lt;/strong>`</summary>
+<summary>**2. How do the Reserve, Permit, and Unreserve extension points work together in the Coscheduling PodGroup plugin?**</summary>
 
 As each Pod in a PodGroup with `minMember: 4` passes Filter and Score, Reserve tentatively holds its chosen GPUs in memory. Permit then returns `Wait` and parks the Pod in `WaitOnPermit` for up to 300 seconds. If the 4th Pod arrives within 300 seconds, Permit approves all 4 Pods simultaneously to Bind. If 300 seconds expire with fewer than 4 Pods, Permit rejects the group and invokes `Unreserve` on every held Pod to free their GPUs immediately.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What is the difference between a Kubernetes PriorityClass and a Kueue WorkloadPriorityClass?`&lt;/strong>`</summary>
+<summary>**3. What is the difference between a Kubernetes PriorityClass and a Kueue WorkloadPriorityClass?**</summary>
 
 A Kubernetes PriorityClass such as `critical-inference` with value 1000000 operates at the Pod scheduling and kubelet layer. It governs QueueSort, PostFilter node-level Pod preemption, and node-pressure eviction order. A Kueue WorkloadPriorityClass such as `production-priority` with value 10000 operates at the job admission layer to order queued Workloads and trigger quota preemption without modifying Pod-level node eviction priority.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Walk through the seven steps of the Kueue job admission lifecycle from job submission to Pod creation.`&lt;/strong>`</summary>
+<summary>**4. Walk through the seven steps of the Kueue job admission lifecycle from job submission to Pod creation.**</summary>
 
 First, a data scientist submits a job with the `kueue.x-k8s.io/queue-name: team-queue` label. Second, Kueue's mutating webhook sets `spec.suspend: true` so zero Pods are created. Third, Kueue creates a shadow Workload object in the namespace. Fourth, the LocalQueue routes the Workload to the ClusterQueue. Fifth, the ClusterQueue evaluates quota and ResourceFlavor availability. Sixth, when quota is reserved, Kueue injects the selected ResourceFlavor `nodeLabels` into the Pod templates and sets `spec.suspend: false`. Seventh, the job controller creates the Pods and the underlying scheduler binds them to nodes.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. Why does standard Kubernetes ResourceQuota lead to poor GPU utilization in multi-tenant clusters, and how do Kueue Cohorts solve it?`&lt;/strong>`</summary>
+<summary>**5. Why does standard Kubernetes ResourceQuota lead to poor GPU utilization in multi-tenant clusters, and how do Kueue Cohorts solve it?**</summary>
 
 Standard ResourceQuota enforces a hard static ceiling per namespace. If Team A is capped at 10 GPUs and needs 28 GPUs while Team B and Team C sit idle with 16 GPUs each, ResourceQuota blocks Team A and leaves 32 GPUs unused. Kueue Cohorts allow Team A with `nominalQuota: 10` and `borrowingLimit: 22` to borrow up to 22 idle GPUs dynamically. Team A then relinquishes those borrowed GPUs automatically via `reclaimWithinCohort: Any` the instant Team B or Team C submits work.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. In Generative AI on Kubernetes Example 7-7, what is the difference between MayStopSearch and TryNextFlavor?`&lt;/strong>`</summary>
+<summary>**6. In Generative AI on Kubernetes Example 7-7, what is the difference between MayStopSearch and TryNextFlavor?**</summary>
 
 Suppose the first listed ResourceFlavor (`gpu-nvlink-infiniband`, nominal quota 16) has exhausted its nominal quota (`16/16` used) but can borrow from the cohort. Meanwhile, the second flavor (`gpu-standard-ethernet`, nominal quota 32) has free nominal quota. Under the default `MayStopSearch`, Kueue borrows quota in the first flavor and stops searching. Under `TryNextFlavor`, Kueue checks the next flavor first so the workload uses non-preemptible nominal quota in the fallback flavor before borrowing.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How does Kueue steer a PyTorchJob onto H100 nodes with NVLink and InfiniBand without the data scientist writing nodeSelector rules in their PyTorchJob YAML?`&lt;/strong>`</summary>
+<summary>**7. How does Kueue steer a PyTorchJob onto H100 nodes with NVLink and InfiniBand without the data scientist writing nodeSelector rules in their PyTorchJob YAML?**</summary>
 
 The platform administrator defines the hardware labels `gpu-interconnect: nvlink`, `network-fabric: infiniband`, and `gpu-type: nvidia-h100` inside the `gpu-nvlink-infiniband` ResourceFlavor. The data scientist simply labels their PyTorchJob with `kueue.x-k8s.io/queue-name: team-queue`. When Kueue admits the Workload into that flavor, Kueue automatically injects those `nodeLabels` as `nodeSelector` terms into the job's PodSet templates.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What is the difference between Kueue's reclaimWithinCohort: Any and withinClusterQueue: LowerPriority preemption settings?`&lt;/strong>`</summary>
+<summary>**8. What is the difference between Kueue's reclaimWithinCohort: Any and withinClusterQueue: LowerPriority preemption settings?**</summary>
 
 Setting `reclaimWithinCohort: Any` allows a ClusterQueue such as Team B whose guaranteed `nominalQuota` is currently lent out in the cohort to preempt the borrower's workloads regardless of priority. That guarantees Team B can always reclaim its baseline capacity. Setting `withinClusterQueue: LowerPriority` allows a newly submitted high-priority workload (`value: 10000`) to preempt a lower-priority workload running inside the same ClusterQueue.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. What does Kueue's BestEffortFIFO queueingStrategy do when the head job in a ClusterQueue cannot fit in current free quota?`&lt;/strong>`</summary>
+<summary>**9. What does Kueue's BestEffortFIFO queueingStrategy do when the head job in a ClusterQueue cannot fit in current free quota?**</summary>
 
 Unlike `StrictFIFO`, which blocks every job behind the head job even when smaller jobs could fit in the remaining quota, `BestEffortFIFO` attempts to admit jobs in FIFO order without hard head-of-line blocking. If an older large job cannot fit right now, Kueue keeps that job queued and admits smaller jobs behind it that fit into available quota.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. In Kueue, what is the difference between checking kubectl get pytorchjob and kubectl get workloads?`&lt;/strong>`</summary>
+<summary>**10. In Kueue, what is the difference between checking kubectl get pytorchjob and kubectl get workloads?**</summary>
 
 Running `kubectl get pytorchjob` only shows the framework job object, which remains in the Suspended state until admission. Running `kubectl get workloads` inspects Kueue's own admission resource. It shows the exact Admitted condition, the `QuotaReserved` or `InsufficientQuota` reason, the selected ClusterQueue, and the per-PodSet ResourceFlavor assignments for head and worker roles.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How does Volcano's architecture differ from Kueue's architecture?`&lt;/strong>`</summary>
+<summary>**11. How does Volcano's architecture differ from Kueue's architecture?**</summary>
 
 Kueue is a lightweight Kubernetes SIG-Scheduling controller that acts strictly as a job-level admission and queue manager, delegating Pod-to-Node scheduling to kube-scheduler or another scheduler. Volcano is a monolithic CNCF batch scheduling system that replaces kube-scheduler (`schedulerName: volcano`). Volcano integrates its own Job, PodGroup, and Queue CRDs, gang scheduling, DRF sharing, backfill, and topology scoring in one binary.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. In a Volcano Job, what do minAvailable: 8 and the PodEvicted -> RestartJob policy accomplish?`&lt;/strong>`</summary>
+<summary>**12. In a Volcano Job, what do minAvailable: 8 and the PodEvicted -> RestartJob policy accomplish?**</summary>
 
 Setting `minAvailable: 8` instructs `volcano-scheduler` not to bind any Pods of the job unless at least 8 Pods can be placed simultaneously. Setting `event: PodEvicted` to `action: RestartJob` instructs the Volcano controller to tear down all remaining Pods if any Pod in the running gang is evicted. Volcano then restarts the entire 8-Pod gang cleanly rather than leaving 7 Pods hung in a broken NCCL ring.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. Why do many production AI platforms layer Kueue on top of Volcano or NVIDIA KAI Scheduler instead of using only one tool?`&lt;/strong>`</summary>
+<summary>**13. Why do many production AI platforms layer Kueue on top of Volcano or NVIDIA KAI Scheduler instead of using only one tool?**</summary>
 
 Layering combines the best capabilities of both control-plane tiers. Kueue provides cloud-native multi-tenant ClusterQueue and LocalQueue governance, Cohort borrowing, and ResourceFlavor tier routing while keeping unadmitted jobs suspended with zero Pending Pods in etcd. Once Kueue unsuspends a job, Volcano or NVIDIA KAI Scheduler executes low-level atomic gang binding and NVLink or InfiniBand topology placement.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Why is ClusterQueue quota admission alone not always proof that 64 physical GPUs are ready on nodes, and what Kueue feature closes that gap?`&lt;/strong>`</summary>
+<summary>**14. Why is ClusterQueue quota admission alone not always proof that 64 physical GPUs are ready on nodes, and what Kueue feature closes that gap?**</summary>
 
 Quota accounting in `cluster-queue-h100` tracks the sum of admitted requests against `nominalQuota: 128`. If 2 nodes with 16 GPUs are currently cordoned or NotReady, quota accounting may still show 64 GPUs free even though physical nodes cannot schedule all 8 Pods. Enabling `waitForPodsReady` in Kueue ensures that if an admitted job's Pods fail to reach Ready within a timeout, Kueue suspends and requeues the workload so it does not block the queue indefinitely.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Why is a 4-node etcd cluster discouraged compared to a 3-node or 5-node etcd cluster?`&lt;/strong>`</summary>
+<summary>**15. Why is a 4-node etcd cluster discouraged compared to a 3-node or 5-node etcd cluster?**</summary>
 
 Raft consensus requires a strict majority quorum of `(N // 2) + 1` nodes. Both a 3-node cluster with quorum 2 and a 4-node cluster with quorum 3 tolerate only 1 node failure, whereas a 5-node cluster with quorum 3 tolerates 2 node failures. A 4-node cluster adds network replication overhead and raises the quorum requirement from 2 to 3 without increasing fault tolerance at all.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. In a 3-node etcd cluster where 1 node has permanently failed, why must you run etcdctl member remove before adding the replacement node?`&lt;/strong>`</summary>
+<summary>**16. In a 3-node etcd cluster where 1 node has permanently failed, why must you run etcdctl member remove before adding the replacement node?**</summary>
 
 While 1 of 3 nodes is dead, the 2 remaining nodes still satisfy the required quorum of 2. If you add a new 4th member before removing the dead 3rd member, cluster size becomes 4 and raises the required quorum to 3 while only 3 nodes are alive. If either existing node experiences a brief network blip during snapshot transfer, live nodes drop to 2, losing quorum and crashing the entire Kubernetes control plane.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What happens if a multi-AZ 3-node etcd cluster with two nodes in AZ-A and one node in AZ-B suffers a network partition between the two availability zones?`&lt;/strong>`</summary>
+<summary>**17. What happens if a multi-AZ 3-node etcd cluster with two nodes in AZ-A and one node in AZ-B suffers a network partition between the two availability zones?**</summary>
 
 AZ-A holds 2 of the 3 nodes, so it retains majority quorum (`2 >= 2`), keeps or elects a Raft leader, and continues serving all Kubernetes API reads and writes normally. AZ-B holds only 1 node (`1 < 2`), loses quorum immediately, and rejects all writes and linearizable reads until the network partition heals.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Which four Prometheus metrics does Volume 03 Section 10 highlight for monitoring kube-apiserver, etcd, and kube-scheduler health under AI batch load?`&lt;/strong>`</summary>
+<summary>**18. Which four Prometheus metrics does Volume 03 Section 10 highlight for monitoring kube-apiserver, etcd, and kube-scheduler health under AI batch load?**</summary>
 
 Platform teams monitor `apiserver_request_total` for request volume, `apiserver_request_duration_seconds` for API latency, `etcd_disk_wal_fsync_duration_seconds` for Write-Ahead Log disk fsync latency, and `scheduler_scheduling_algorithm_duration_seconds` for scheduling cycle latency. Spikes in etcd WAL fsync latency above a few milliseconds cause Raft leader losses and scheduler binding timeouts.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. In the API Priority and Fairness PriorityLevelConfiguration, what do nominalConcurrencyShares: 50, queues: 100, handSize: 5, and queueLengthLimit: 200 configure?`&lt;/strong>`</summary>
+<summary>**19. In the API Priority and Fairness PriorityLevelConfiguration, what do nominalConcurrencyShares: 50, queues: 100, handSize: 5, and queueLengthLimit: 200 configure?**</summary>
 
 Setting 50 nominal concurrency shares defines the relative share of concurrent kube-apiserver execution seats allocated to `ai-workload-level`. Setting 100 queues and a queue length limit of 200 creates 100 queues holding up to 200 waiting requests each for a total buffer of 20,000 requests. Setting `handSize: 5` uses shuffle sharding to hash each user stream into 5 of the 100 queues so a single runaway tenant can saturate at most 5% of the queues.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. When Kubeflow Trainer's TrainJob API is used with Kueue or KAI Scheduler, where are schedulerName, network annotations, and NCCL environment variables configured versus the queue-name label?`&lt;/strong>`</summary>
+<summary>**20. When Kubeflow Trainer's TrainJob API is used with Kueue or KAI Scheduler, where are schedulerName, network annotations, and NCCL environment variables configured versus the queue-name label?**</summary>
 
 The data scientist applies the `kueue.x-k8s.io/queue-name` label directly to the TrainJob metadata. Meanwhile, the platform administrator configures low-level Pod infrastructure settings inside the ClusterTrainingRuntime or TrainingRuntime template that generates the underlying JobSet Pods. Those template settings include `schedulerName`, Multus network annotations, and `NCCL_*` environment variables.
 </details>

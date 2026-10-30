@@ -655,12 +655,12 @@ Exercise problem parameters and datasets:
 
 ## Checkpoint questions (20)
 
-<details><summary>`&lt;strong>`1. Why does an NCCL collective timeout almost always get logged first by a healthy rank rather than the broken rank?`&lt;/strong>`</summary>
+<details><summary>**1. Why does an NCCL collective timeout almost always get logged first by a healthy rank rather than the broken rank?**</summary>
 
 Synchronous collectives such as AllReduce, ReduceScatter, AllGather, and Broadcast act as barriers. Healthy ranks finish their local compute on schedule, enter the collective call first, and start their ProcessGroupNCCL watchdog timers first. While the broken, starved, or dead rank lags behind or never arrives, the healthy ranks' timers expire first and raise the watchdog timeout exception.
 </details>
 
-<details><summary>`&lt;strong>`2. What are the four layers of the MPI, NCCL, and fabric joint debugging ladder, and why must you traverse them in order?`&lt;/strong>`</summary>
+<details><summary>**2. What are the four layers of the MPI, NCCL, and fabric joint debugging ladder, and why must you traverse them in order?**</summary>
 
 1. **Layer 1 — Launch and OS/Container Limits:** Verify every rank process started under `pids.max` with `ulimit -l` set to unlimited and `/dev/shm` at least 16 GiB.
 2. **Layer 2 — Rendezvous and Bootstrap:** Verify Slurm's PMI plugin via `srun --mpi=pmix`, `NCCL_SOCKET_IFNAME=^docker,lo`, and ephemeral ports 50000 to 51000.
@@ -669,7 +669,7 @@ Synchronous collectives such as AllReduce, ReduceScatter, AllGather, and Broadca
 Traversing in order prevents wasting hours debugging switches when a missing process, container bridge, or starved dataloader at Layers 1 through 3 caused the hang.
 </details>
 
-<details><summary>`&lt;strong>`3. List all seven `ncclResult_t` error codes from 0 to 6, their C enum names, and the exact subsystem each indicates.`&lt;/strong>`</summary>
+<details><summary>**3. List all seven `ncclResult_t` error codes from 0 to 6, their C enum names, and the exact subsystem each indicates.**</summary>
 
 ```text
 0: ncclSuccess            ("no error")                                         -> Operation succeeded
@@ -682,17 +682,17 @@ Traversing in order prevents wasting hours debugging switches when a missing pro
 ```
 </details>
 
-<details><summary>`&lt;strong>`4. Why does the Docker and Kubernetes default `/dev/shm` size of 64 MiB trigger `ncclSystemError` Error 28, and how much `/dev/shm` does an 8-GPU node require?`&lt;/strong>`</summary>
+<details><summary>**4. Why does the Docker and Kubernetes default `/dev/shm` size of 64 MiB trigger `ncclSystemError` Error 28, and how much `/dev/shm` does an 8-GPU node require?**</summary>
 
 For 8 local GPUs, 16 channels, a 4 MiB buffer size, 2 MiB control overhead per rank, and 2 communicators, NCCL allocates 1,056.0 MiB in `/dev/shm/nccl-*`. That exceeds the 64.0 MiB default by 16.5x, causing ENOSPC Error 28 and `ncclSystemError` code 2. Mount `--shm-size=16g` in Docker or an in-memory `emptyDir` with a 16Gi limit in Kubernetes.
 </details>
 
-<details><summary>`&lt;strong>`5. What log message appears when Linux `memlock` (`ulimit -l`) is too low on an InfiniBand or RoCEv2 node, and how do you fix it?`&lt;/strong>`</summary>
+<details><summary>**5. What log message appears when Linux `memlock` (`ulimit -l`) is too low on an InfiniBand or RoCEv2 node, and how do you fix it?**</summary>
 
 NCCL logs `NCCL WARN Call to ibv_create_qp failed` or `Call to ibv_reg_mr failed` because the RDMA driver cannot pin enough physical pages. Set soft and hard memlock to unlimited in `/etc/security/limits.conf` and `LimitMEMLOCK=infinity` in `slurmd.service` and container specs, then verify with `ulimit -l` inside a running job step.
 </details>
 
-<details><summary>`&lt;strong>`6. Explain the prefix, exact-match, and exclusion syntax of `NCCL_SOCKET_IFNAME`.`&lt;/strong>`</summary>
+<details><summary>**6. Explain the prefix, exact-match, and exclusion syntax of `NCCL_SOCKET_IFNAME`.**</summary>
 
 ```text
 NCCL_SOCKET_IFNAME matching rules:
@@ -702,12 +702,12 @@ NCCL_SOCKET_IFNAME matching rules:
 ```
 </details>
 
-<details><summary>`&lt;strong>`7. Does NCCL have an `NCCL_TIMEOUT` or `NCCL_WATCHDOG_DUMP` variable? How do `TORCH_NCCL_ASYNC_ERROR_HANDLING=1`, `TORCH_NCCL_ENABLE_MONITORING=1`, and `TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC` work?`&lt;/strong>`</summary>
+<details><summary>**7. Does NCCL have an `NCCL_TIMEOUT` or `NCCL_WATCHDOG_DUMP` variable? How do `TORCH_NCCL_ASYNC_ERROR_HANDLING=1`, `TORCH_NCCL_ENABLE_MONITORING=1`, and `TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC` work?**</summary>
 
 No, NCCL has neither variable because collective timeouts belong to the framework via `dist.init_process_group`. In PyTorch's ProcessGroupNCCL, `TORCH_NCCL_ASYNC_ERROR_HANDLING=1` aborts the communicator asynchronously on error. Meanwhile, `TORCH_NCCL_ENABLE_MONITORING=1` and `TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC` run an independent heartbeat thread that kills wedged processes if the CUDA driver hangs during abort.
 </details>
 
-<details><summary>`&lt;strong>`8. How does PyTorch's Flight Recorder (`TORCH_FR_BUFFER_SIZE`) distinguish a missing or starved rank from a code-level collective desynchronization and a true fabric stall?`&lt;/strong>`</summary>
+<details><summary>**8. How does PyTorch's Flight Recorder (`TORCH_FR_BUFFER_SIZE`) distinguish a missing or starved rank from a code-level collective desynchronization and a true fabric stall?**</summary>
 
 ```text
 Comparing {seq_id, op_type, tensor_bytes, state} across all W ranks at target seq_id k:
@@ -717,17 +717,17 @@ Comparing {seq_id, op_type, tensor_bytes, state} across all W ranks at target se
 ```
 </details>
 
-<details><summary>`&lt;strong>`9. How does NCCL 2.24+ RAS (`ncclras`) work on a live hung job, and why should you query port 28028 twice?`&lt;/strong>`</summary>
+<details><summary>**9. How does NCCL 2.24+ RAS (`ncclras`) work on a live hung job, and why should you query port 28028 twice?**</summary>
 
 NCCL 2.24+ runs an internal RAS keep-alive mesh listening on port 28028, queried via `ncclras -v` or netcat. A MISMATCH row lists how many ranks have launched up to each operation count and names the lagging ranks, while an INCOMPLETE row names dead or unresponsive ranks. Query twice a few seconds apart because fast collectives in a running job can briefly outpace a single snapshot; frozen counts confirm a true hang.
 </details>
 
-<details><summary>`&lt;strong>`10. What does `NCCL_RUN_DIAGNOSTICS=1` in NCCL 2.31+ do, and what does `NCCL DIAG [INFO] p2p: only 52/56 GPU-to-GPU peer accesses passed verification` tell you?`&lt;/strong>`</summary>
+<details><summary>**10. What does `NCCL_RUN_DIAGNOSTICS=1` in NCCL 2.31+ do, and what does `NCCL DIAG [INFO] p2p: only 52/56 GPU-to-GPU peer accesses passed verification` tell you?**</summary>
 
 `NCCL_RUN_DIAGNOSTICS=1` runs built-in hardware and P2P or fabric verification tests during communicator initialization before any user workload executes, printing OK or INFO lines from rank 0. A 52/56 P2P verification INFO line proves that 4 intra-node peer paths are degraded at the hardware, driver, or topology level before model training even begins.
 </details>
 
-<details><summary>`&lt;strong>`11. What are the five function callbacks and the activation-mask structure of the `NCCL_PROFILER_PLUGIN` API?`&lt;/strong>`</summary>
+<details><summary>**11. What are the five function callbacks and the activation-mask structure of the `NCCL_PROFILER_PLUGIN` API?**</summary>
 
 ```text
 NCCL_PROFILER_PLUGIN C interface:
@@ -736,7 +736,7 @@ NCCL_PROFILER_PLUGIN C interface:
 ```
 </details>
 
-<details><summary>`&lt;strong>`12. How many unexpected interruptions occurred during the 54-day Llama 3 405B run on 16,384 H100 GPUs, and what were the top five root-cause categories?`&lt;/strong>`</summary>
+<details><summary>**12. How many unexpected interruptions occurred during the 54-day Llama 3 405B run on 16,384 H100 GPUs, and what were the top five root-cause categories?**</summary>
 
 ```text
 Total interruptions over 54 days (1,296 hours): 419 (MTBI = 3.09 hours)
@@ -751,12 +751,12 @@ Combined switch/cable (35) + NIC (7) + NCCL watchdog (7): 49 (11.7%)
 ```
 </details>
 
-<details><summary>`&lt;strong>`13. Quantify the cost of calling `init_process_group` and `destroy_process_group` on every training iteration.`&lt;/strong>`</summary>
+<details><summary>**13. Quantify the cost of calling `init_process_group` and `destroy_process_group` on every training iteration.**</summary>
 
 Calling `init_process_group` and `destroy_process_group` inside the loop costs 48.0 ms per iteration while a 1-element AllReduce costs 0.5 ms, totaling 48.5 ms per step. Initializing the communicator once outside the loop eliminates the 48.0 ms penalty and cuts iteration time from 48.5 ms to 0.5 ms, a 98.97% reduction.
 </details>
 
-<details><summary>`&lt;strong>`14. Summarize the six multinode communication pitfalls and their quantitative signatures.`&lt;/strong>`</summary>
+<details><summary>**14. Summarize the six multinode communication pitfalls and their quantitative signatures.**</summary>
 
 ```text
 1. CPU-bound Gloo vs NCCL (400.0 MB AllReduce on 800G IB): Gloo = 200.00 ms (2.0 GB/s) vs NCCL = 4.00 ms (100.0 GB/s), 50x slower.
@@ -768,7 +768,7 @@ Calling `init_process_group` and `destroy_process_group` inside the loop costs 4
 ```
 </details>
 
-<details><summary>`&lt;strong>`15. How does the three-tier Xid classification group GPU error codes, and why must Tier 1 codes still be tracked over time?`&lt;/strong>`</summary>
+<details><summary>**15. How does the three-tier Xid classification group GPU error codes, and why must Tier 1 codes still be tracked over time?**</summary>
 
 ```text
 - Tier 1 (Informational / Self-Healing): 45, 63, 92 -> Job continues; monitor 7-30 day rate trend.
@@ -779,17 +779,17 @@ Calling `init_process_group` and `destroy_process_group` inside the loop costs 4
 Tier 1 codes must be tracked because an accelerating single-bit ECC rate on Xid 92 followed by context cleanup on Xid 45 often precedes a catastrophic PCIe bus drop on Xid 79 by seconds or hours.
 </details>
 
-<details><summary>`&lt;strong>`16. On a node where `nvidia-smi topo -m` shows `PIX` between GPU 2 and GPU 3 instead of `NV12`, how do you prove whether MIG or hardware is the cause, and which GPU is physically broken?`&lt;/strong>`</summary>
+<details><summary>**16. On a node where `nvidia-smi topo -m` shows `PIX` between GPU 2 and GPU 3 instead of `NV12`, how do you prove whether MIG or hardware is the cause, and which GPU is physically broken?**</summary>
 
 First check `nvidia-smi -i 2 -q`, because MIG disables P2P NVLink by design. If MIG is disabled, run `dcgmi nvlink -e` on both GPU 2 and GPU 3 and check `dmesg` for Xid 74. When GPU 2 Link 2 shows 184,213 CRC errors, 92,104 replay errors, and 12 recovery errors while GPU 3 Link 2 shows 0 errors, GPU 2's transceiver is the physical fault and GPU 3 is healthy.
 </details>
 
-<details><summary>`&lt;strong>`17. Why can `nvidia-smi` clock and power readings not distinguish thermal throttling from power capping by themselves, and what command decides it?`&lt;/strong>`</summary>
+<details><summary>**17. Why can `nvidia-smi` clock and power readings not distinguish thermal throttling from power capping by themselves, and what command decides it?**</summary>
 
 Any clock reduction from 1,980 MHz to 1,833 MHz lowers dynamic power draw ($P \propto C V^2 f$), so falling wattage from 300 W to 250 W accompanies both thermal throttling and power capping. The deciding evidence is the clock throttle reason bitmask from `nvidia-smi -i 0 -q -d PERFORMANCE` paired with `nvidia-smi -i 0 --query-gpu=power.limit,power.default_limit --format=csv,noheader`.
 </details>
 
-<details><summary>`&lt;strong>`18. When Rank 3 lags at `opCount 4820` while Ranks 0 through 2 wait at `opCount 4821`, what four checks prove that uneven data sharding—not NCCL—caused the timeout?`&lt;/strong>`</summary>
+<details><summary>**18. When Rank 3 lags at `opCount 4820` while Ranks 0 through 2 wait at `opCount 4821`, what four checks prove that uneven data sharding—not NCCL—caused the timeout?**</summary>
 
 ```text
 1. Host process & kernel check: ps aux | grep python and dmesg | grep -i xid (alive, 0 Xids)
@@ -799,7 +799,7 @@ Any clock reduction from 1,980 MHz to 1,833 MHz lowers dynamic power draw ($P \p
 ```
 </details>
 
-<details><summary>`&lt;strong>`19. What are the documented Cumulus Linux 5.12 lossless RoCEv2 QoS defaults, and why should you leave `NCCL_IB_GID_INDEX` unset (`AUTO`) on modern NCCL?`&lt;/strong>`</summary>
+<details><summary>**19. What are the documented Cumulus Linux 5.12 lossless RoCEv2 QoS defaults, and why should you leave `NCCL_IB_GID_INDEX` unset (`AUTO`) on modern NCCL?**</summary>
 
 ```text
 Cumulus Linux 5.12 lossless RoCEv2 defaults (nv show qos roce, UDP port 4791):
@@ -811,7 +811,7 @@ Cumulus Linux 5.12 lossless RoCEv2 defaults (nv show qos roce, UDP port 4791):
 Since NCCL 2.21+ and the AUTO default in 2.32u1+, NCCL selects the RoCEv2 GID dynamically. Hard-coding `NCCL_IB_GID_INDEX=3` breaks multi-node jobs whenever GID table numbering differs across hosts or containers.
 </details>
 
-<details><summary>`&lt;strong>`20. How can `nvidia-smi` report 100% GPU utilization while true throughput is only 20% of baseline, and how do you avoid a profiler Heisenbug when diagnosing it?`&lt;/strong>`</summary>
+<details><summary>**20. How can `nvidia-smi` report 100% GPU utilization while true throughput is only 20% of baseline, and how do you avoid a profiler Heisenbug when diagnosing it?**</summary>
 
 The GPU utilization metric in `nvidia-smi` only measures the percentage of time at least one kernel was resident on the GPU. It reads 100% during spin-wait kernels or when the CPU launches tiny kernels slowly at 50 kernels/sec instead of 1,000+ kernels/sec. Use layer-by-layer synchronized `time.perf_counter()` timing or DCGM `SM_ACTIVE` counters first. Full `nsys profile` tracing adds 50% overhead and `nvidia-smi` polling loops add 10% overhead, which can mask or induce a Heisenbug.
 </details>

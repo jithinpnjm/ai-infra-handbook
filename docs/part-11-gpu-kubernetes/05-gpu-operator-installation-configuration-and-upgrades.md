@@ -380,13 +380,13 @@ Summary: 25 passed, 0 failed out of 25 checks.
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. Why is helm install reporting STATUS: deployed not proof that the GPU Operator installation succeeded?`&lt;/strong>`</summary>
+<summary>**1. Why is helm install reporting STATUS: deployed not proof that the GPU Operator installation succeeded?**</summary>
 
 A deployed status only means the Kubernetes API server accepted the Helm release manifests and top-level Deployment objects became ready. It does not prove that child DaemonSets reconciled across all worker nodes. In the 6-node canary install, Helm reported deployed while the ClusterPolicy was notReady because the driver DaemonSet was in CrashLoopBackOff on `gpu-node-04`.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What are the six ownership decisions that must be settled before deploying the GPU Operator in production?`&lt;/strong>`</summary>
+<summary>**2. What are the six ownership decisions that must be settled before deploying the GPU Operator in production?**</summary>
 
 - **Driver ownership:** Choosing between a curated OS image, host automation, or the operator-managed driver container.
 - **Runtime ownership:** Choosing between base image configuration or the operator toolkit DaemonSet patching containerd, CRI-O, and CDI.
@@ -397,13 +397,13 @@ A deployed status only means the Kubernetes API server accepted the Helm release
 </details>
 
 <details>
-<summary>`&lt;strong>`3. On gpu-node-04, nvidia-driver-daemonset-7q2kd logs modprobe: ERROR: could not insert 'nvidia': Key was rejected by service and mount: /run/nvidia/driver/usr/src/nvidia-535.129.03: No such file or directory. What is the root cause?`&lt;/strong>`</summary>
+<summary>**3. On gpu-node-04, nvidia-driver-daemonset-7q2kd logs modprobe: ERROR: could not insert 'nvidia': Key was rejected by service and mount: /run/nvidia/driver/usr/src/nvidia-535.129.03: No such file or directory. What is the root cause?**</summary>
 
 Node `gpu-node-04` has UEFI Secure Boot enabled, and the public key used to sign the `nvidia-535.129.03` kernel module is not enrolled in its Machine Owner Key database. The other 5 canary nodes succeeded because their Secure Boot and MOK databases matched the driver image.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. What are the seven criteria in the Volume 10 Chapter 10 production acceptance contract for a GPU node pool?`&lt;/strong>`</summary>
+<summary>**4. What are the seven criteria in the Volume 10 Chapter 10 production acceptance contract for a GPU node pool?**</summary>
 
 - Expected GPUs are detected on the host and the driver is healthy.
 - The configured container runtime path creates a GPU container and initializes CUDA.
@@ -415,32 +415,32 @@ Node `gpu-node-04` has UEFI Secure Boot enabled, and the public key used to sign
 </details>
 
 <details>
-<summary>`&lt;strong>`5. Why does Criterion 6 require matching the GPU UUID (GPU-3a91...) between the validation Pod log and the DCGM_FI_DEV_GPU_UTIL metric series on port 9400?`&lt;/strong>`</summary>
+<summary>**5. Why does Criterion 6 require matching the GPU UUID (GPU-3a91...) between the validation Pod log and the DCGM_FI_DEV_GPU_UTIL metric series on port 9400?**</summary>
 
 Checking only that the exporter Pod is running can miss two severe failures. First, the exporter can return zero metric series after losing its driver socket connection. Second, on multi-GPU or MIG-partitioned nodes, matching the UUID proves that the scraped metric belongs to the exact physical device allocated to the validation Pod.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. On gpu-node-07, labels show nvidia.com/gpu.present=true, nvidia.com/gpu.count=8, and nvidia.com/gpu.deploy.device-plugin=true, yet status.allocatable["nvidia.com/gpu"] is empty. What have you ruled out, and where is the fault?`&lt;/strong>`</summary>
+<summary>**6. On gpu-node-07, labels show nvidia.com/gpu.present=true, nvidia.com/gpu.count=8, and nvidia.com/gpu.deploy.device-plugin=true, yet status.allocatable["nvidia.com/gpu"] is empty. What have you ruled out, and where is the fault?**</summary>
 
 You have ruled out NFD and GFD hardware detection as well as GPU Operator node-selector targeting. Both agree that `gpu-node-07` has 8 GPUs and should run the device plugin. The fault is downstream inside the device plugin NVML initialization or its gRPC registration with the kubelet.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How do you distinguish a Pod start failure from a CUDA initialization failure when a validation Pod fails on gpu-node-07?`&lt;/strong>`</summary>
+<summary>**7. How do you distinguish a Pod start failure from a CUDA initialization failure when a validation Pod fails on gpu-node-07?**</summary>
 
 - **Pod start failure:** Describing the Pod shows an OCI runtime create failure where `/run/nvidia/driver/dev/nvidia0` is missing, meaning the container never reached its entrypoint due to a runtime or toolkit mount mismatch.
 - **CUDA initialization failure:** The container starts and reaches the Running state or exits with application logs printing a CUDA error from inside user space.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. Why can curl -s gpu-node-07:9400/metrics | grep -c DCGM_FI_DEV_GPU_UTIL return 0 even when nvidia-dcgm-exporter-9fvqk is 1/1 Running and CUDA workloads succeed?`&lt;/strong>`</summary>
+<summary>**8. Why can curl -s gpu-node-07:9400/metrics | grep -c DCGM_FI_DEV_GPU_UTIL return 0 even when nvidia-dcgm-exporter-9fvqk is 1/1 Running and CUDA workloads succeed?**</summary>
 
 The telemetry exporter runs as an independent daemon path. If the driver container restarted or recreated its host socket, the already-running exporter container can lose connectivity to NVML and DCGM while its container process stays running.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. What six surfaces make up the compatibility set during a GPU platform upgrade?`&lt;/strong>`</summary>
+<summary>**9. What six surfaces make up the compatibility set during a GPU platform upgrade?**</summary>
 
 - Kernel or node OS image.
 - NVIDIA driver including `nvidia.ko` and `libcuda.so.1`.
@@ -451,7 +451,7 @@ The telemetry exporter runs as an independent daemon path. If the driver contain
 </details>
 
 <details>
-<summary>`&lt;strong>`10. For a 120-node fleet (8 GPUs/node = 960 GPUs) acquired across 4 hardware batches of 30 nodes each, how does Volume 10 Chapter 11 size the canary and subsequent rollout waves?`&lt;/strong>`</summary>
+<summary>**10. For a 120-node fleet (8 GPUs/node = 960 GPUs) acquired across 4 hardware batches of 30 nodes each, how does Volume 10 Chapter 11 size the canary and subsequent rollout waves?**</summary>
 
 - **Canary:** Select 2 nodes per hardware batch for 8 nodes and 64 GPUs total, representing roughly 7% of the fleet so every hardware batch has at least 2 nodes.
 - **Wave 1:** Roll out to 10% of the fleet, which equals 12 nodes and 96 GPUs while leaving 90% of capacity untouched.
@@ -459,19 +459,19 @@ The telemetry exporter runs as an independent daemon path. If the driver contain
 </details>
 
 <details>
-<summary>`&lt;strong>`11. In that 120-node (960-GPU) fleet, why would a driver upgrade pass the 8-node canary and 12-node Wave 1, then fail on the 24-node Wave 2, and what is the blast radius in GPUs?`&lt;/strong>`</summary>
+<summary>**11. In that 120-node (960-GPU) fleet, why would a driver upgrade pass the 8-node canary and 12-node Wave 1, then fail on the 24-node Wave 2, and what is the blast radius in GPUs?**</summary>
 
 Passing the canary and Wave 1 proves the driver is not universally broken. Failing on Wave 2 points to a node-population difference such as a specific BIOS setting or hardware revision concentrated in those nodes. Halting at Wave 2 bounds the blast radius to 192 GPUs out of 960 total GPUs, which is 20.0% of fleet capacity.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. After upgrading an 8-node batch, nvidia-device-plugin-daemonset reports 8/8 READY, and gpu-node-12 shows allocatable: 8, but gpu-node-11 shows allocatable: 0. Why did the DaemonSet status not catch this?`&lt;/strong>`</summary>
+<summary>**12. After upgrading an 8-node batch, nvidia-device-plugin-daemonset reports 8/8 READY, and gpu-node-12 shows allocatable: 8, but gpu-node-11 shows allocatable: 0. Why did the DaemonSet status not catch this?**</summary>
 
 DaemonSet readiness only checks that the device plugin container process is running and passing its basic probe. It does not verify that the kubelet accepted the gRPC registration or that the node status reports non-zero allocatable GPUs on every individual host.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. What four baseline files must be captured into gpu-upgrade-evidence/ before running helm upgrade in Lab 04 Step 10?`&lt;/strong>`</summary>
+<summary>**13. What four baseline files must be captured into gpu-upgrade-evidence/ before running helm upgrade in Lab 04 Step 10?**</summary>
 
 - `helm-history-before.txt` captured from `helm history gpu-operator -n gpu-operator`.
 - `values-before.yaml` captured from `helm get values gpu-operator -n gpu-operator -a`.
@@ -480,31 +480,31 @@ DaemonSet readiness only checks that the device plugin container process is runn
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Why does Lab 04 Step 11 drain the canary node with --ignore-daemonsets --delete-emptydir-data --grace-period=120 --timeout=20m, and what happens if a PodDisruptionBudget blocks the drain?`&lt;/strong>`</summary>
+<summary>**14. Why does Lab 04 Step 11 drain the canary node with --ignore-daemonsets --delete-emptydir-data --grace-period=120 --timeout=20m, and what happens if a PodDisruptionBudget blocks the drain?**</summary>
 
 The `--ignore-daemonsets` flag ensures Kubernetes evicts tenant workloads like `ml-training/resnet-worker-3` while leaving node-critical DaemonSets in place so the upgrade can proceed. If a PodDisruptionBudget or un-checkpointed training job blocks the drain, the operator must stop and coordinate with the workload owner rather than passing `--force` casually.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Why can helm rollback gpu-operator 1 print Rollback was a success while kubectl get node "$CANARY_NODE" still reports allocatable: 0?`&lt;/strong>`</summary>
+<summary>**15. Why can helm rollback gpu-operator 1 print Rollback was a success while kubectl get node "$CANARY_NODE" still reports allocatable: 0?**</summary>
 
 Running `helm rollback` only reverts Kubernetes control-plane resources back to revision 1. It does not automatically unload a kernel module loaded by revision 2 or revert a host OS image change, leaving host state and control-plane state out of sync.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What is the Recheck gate in Lab 04 Figure 4, and what must you do if Recheck fails after helm rollback?`&lt;/strong>`</summary>
+<summary>**16. What is the Recheck gate in Lab 04 Figure 4, and what must you do if Recheck fails after helm rollback?**</summary>
 
 The Recheck gate requires verifying that allocatable GPUs returned to the baseline of 8 and that the validation Pod passes after `helm rollback` completes. If Recheck fails with zero allocatable GPUs, you must keep the canary node cordoned, execute the host-level driver or node-image recovery runbook, and escalate as an incident.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. Why are new Xid errors in journalctl / dmesg during a canary test a mandatory rollback gate even if the validation Pod exits Succeeded?`&lt;/strong>`</summary>
+<summary>**17. Why are new Xid errors in journalctl / dmesg during a canary test a mandatory rollback gate even if the validation Pod exits Succeeded?**</summary>
 
 A short-lived smoke test can exit zero before an intermittent driver or firmware fault manifests under sustained load. Any new Xid or kernel NVRM error during the canary window proves the new compatibility set introduced hardware or driver instability.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. What is the correct six-step dependency order for troubleshooting any post-upgrade GPU failure (Volume 10 Chapters 11 and 12)?`&lt;/strong>`</summary>
+<summary>**18. What is the correct six-step dependency order for troubleshooting any post-upgrade GPU failure (Volume 10 Chapters 11 and 12)?**</summary>
 
 - Hardware inventory, node boot state, kernel version, and host driver health via `nvidia-smi` and `dmesg`.
 - Container runtime device-injection path via `crictl inspect`, CDI `/var/run/cdi`, and fresh Pod sandbox creation.
@@ -515,13 +515,13 @@ A short-lived smoke test can exit zero before an intermittent driver or firmware
 </details>
 
 <details>
-<summary>`&lt;strong>`19. On an NVIDIA Base Command Manager 11 (BCM 11) cluster, how must the GPU Operator be uninstalled regardless of whether it was installed via cm-kubernetes-setup or Helm?`&lt;/strong>`</summary>
+<summary>**19. On an NVIDIA Base Command Manager 11 (BCM 11) cluster, how must the GPU Operator be uninstalled regardless of whether it was installed via cm-kubernetes-setup or Helm?**</summary>
 
 Whether the GPU Operator was installed via the `cm-kubernetes-setup` wizard or directly via Helm, it must always be removed with `helm uninstall -n gpu-operator gpu-operator`. Removal is complete only after `kubectl get pods -n gpu-operator` returns `No resources found in gpu-operator namespace`.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. What twelve items belong in an actionable escalation evidence package for NVIDIA or platform support (Volume 10 Chapter 11)?`&lt;/strong>`</summary>
+<summary>**20. What twelve items belong in an actionable escalation evidence package for NVIDIA or platform support (Volume 10 Chapter 11)?**</summary>
 
 - Scope, business impact, and timestamped change timeline.
 - Kubernetes and GPU Operator versions from `helm history` plus pinned release values (`values-before.yaml` and `target-values.yaml`).

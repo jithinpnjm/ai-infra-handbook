@@ -601,121 +601,121 @@ Exercise Input Parameters & Expected Verification Targets (code/part13/beegfs_we
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. How much aggregate storage read bandwidth is required to keep an 8-GPU node and a 72-GPU Grace Blackwell NVL72 rack saturated at 200 MB/s per GPU?`&lt;/strong>`</summary>
+<summary>**1. How much aggregate storage read bandwidth is required to keep an 8-GPU node and a 72-GPU Grace Blackwell NVL72 rack saturated at 200 MB/s per GPU?**</summary>
 
 At 200 MB/s per GPU, an eight-GPU server requires 1.6 GB/s of sustained read throughput. A 72-GPU GB200 or GB300 NVL72 rack requires 14.4 GB/s, which sits inside the 14 to 20 GB/s operational envelope.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What are the four core services in a BeeGFS cluster, and which ones sit on the active I/O data path?`&lt;/strong>`</summary>
+<summary>**2. What are the four core services in a BeeGFS cluster, and which ones sit on the active I/O data path?**</summary>
 
 The four services are `beegfs-mgmtd` for cluster registry management, `beegfs-meta` for directory inodes and stripe layouts, `beegfs-storage` for NVMe and XFS storage targets, and `beegfs-client` for the kernel mount on GPU nodes. Only `beegfs-client` and `beegfs-storage` sit on the active bulk data path once a file is opened.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What are the healthy operational thresholds for a BeeGFS Metadata Service and Storage Target?`&lt;/strong>`</summary>
+<summary>**3. What are the healthy operational thresholds for a BeeGFS Metadata Service and Storage Target?**</summary>
 
 A `beegfs-meta` server should stay below 50,000 ops/sec and keep average latency under 5 ms. A `beegfs-storage` node delivers 500 MB/s to 2 GB/s. All storage targets across the cluster should stay balanced within a plus or minus 5 percent fill band, and operators should investigate any spread above 10 percent.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. In BeeGFS, how is a logical file byte offset mapped to a storage target given chunk size C and target count N?`&lt;/strong>`</summary>
+<summary>**4. In BeeGFS, how is a logical file byte offset mapped to a storage target given chunk size C and target count N?**</summary>
 
 BeeGFS uses round-robin striping where `chunk_index = floor(B / C)`, `stripe_row = floor(chunk_index / N)`, `target_slot = chunk_index mod N`, and `intra_chunk_offset = B mod C`. With a 1 MiB chunk size across eight targets, byte offset 10 MiB plus 512 B lands in chunk 10, row 1, target slot 2, at byte offset 512 inside that chunk.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. A 500 GB checkpoint is written to a BeeGFS cluster with 800 MB/s per target. How long does the write stall training with 2, 8, or 12 targets?`&lt;/strong>`</summary>
+<summary>**5. A 500 GB checkpoint is written to a BeeGFS cluster with 800 MB/s per target. How long does the write stall training with 2, 8, or 12 targets?**</summary>
 
 With two targets, aggregate bandwidth is 1.6 GB/s and the write stalls for 312.5 seconds. With eight targets, theoretical bandwidth reaches 6.4 GB/s for a 78.125-second write, or 100 seconds at 5.0 GB/s sustained. With twelve targets, theoretical bandwidth reaches 9.6 GB/s and cuts the write to 52.08 seconds.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Why doesn't running `beegfs-ctl --setpattern --numtargets=12 /beegfs/checkpoints/` speed up reads of checkpoints that were already written in that directory?`&lt;/strong>`</summary>
+<summary>**6. Why doesn't running `beegfs-ctl --setpattern --numtargets=12 /beegfs/checkpoints/` speed up reads of checkpoints that were already written in that directory?**</summary>
 
 BeeGFS records a file's stripe width and chunk size inside its inode at the moment the file is created. Changing `--setpattern` on a directory only applies to newly created files. Existing files must be rewritten or migrated with `beegfs-ctl --migrate`.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Why does a 256-GPU cluster opening raw JPEG files saturate BeeGFS metadata, and why is scaling out MDS nodes alone insufficient?`&lt;/strong>`</summary>
+<summary>**7. Why does a 256-GPU cluster opening raw JPEG files saturate BeeGFS metadata, and why is scaling out MDS nodes alone insufficient?**</summary>
 
 When 256 GPUs issue 800 metadata calls per second each, the resulting 204,800 ops/sec storm is four times higher than one metadata server's 50,000 ops/sec safe limit. Even with four or five metadata servers, placing millions of files in a single flat directory hashes every lookup to the one server owning that directory inode. Repackaging into WebDataset or TFRecord shards cuts metadata calls a hundredfold to 2,048 ops/sec.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. Which `/etc/beegfs/beegfs-client.conf` parameters are most critical for AI GPU clusters?`&lt;/strong>`</summary>
+<summary>**8. Which `/etc/beegfs/beegfs-client.conf` parameters are most critical for AI GPU clusters?**</summary>
 
 Set `connUseRDMA = true` to enable InfiniBand or RoCEv2 RDMA instead of TCP, and set `tunePrefetchType = buffered` for sequential shard read-ahead. Enable `tuneUseGDTLSConnPool = true` to pool connections. Set `connMaxInactiveTime = 900000` so connections do not drop during long GPU compute steps.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. How does WekaFS eliminate the Metadata Server bottleneck present in both Lustre and BeeGFS?`&lt;/strong>`</summary>
+<summary>**9. How does WekaFS eliminate the Metadata Server bottleneck present in both Lustre and BeeGFS?**</summary>
 
 WekaFS has no dedicated metadata servers. It slices both file data and virtual metadata into 4 KB chunks and distributes them across every NVMe storage node in the cluster. Every node therefore serves `open`, `stat`, and `unlink` operations in parallel.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why does the native WekaFS client pin dedicated CPU cores on GPU servers, and how does it compare to mounting WekaFS via NFS?`&lt;/strong>`</summary>
+<summary>**10. Why does the native WekaFS client pin dedicated CPU cores on GPU servers, and how does it compare to mounting WekaFS via NFS?**</summary>
 
 The native WekaFS client pins one to four polling CPU cores, or 3.125 percent of a 128-core host, to drive a lockless RDMA engine without OS interrupt latency or NFS state-machine overhead. That design unlocks full GPUDirect Storage bandwidth and millions of small-file IOPS. Mounting via legacy NFS works without pinned cores but sacrifices GPUDirect Storage and high IOPS.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How does WekaFS unify local NVMe flash and cloud S3 object storage for PyTorch workloads?`&lt;/strong>`</summary>
+<summary>**11. How does WekaFS unify local NVMe flash and cloud S3 object storage for PyTorch workloads?**</summary>
 
 WekaFS exposes a single POSIX mount point where hot working sets sit on Tier 1 NVMe flash over RDMA and cold data extents tier transparently to Tier 2 S3 object storage over HTTPS. PyTorch scripts open `.pt`, `.ckpt`, and `.bin` files normally while metadata headers stay on Tier 1 flash for instant directory lookups.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. In VAST Data's Disaggregated Shared-Everything architecture, what is the difference between CNodes and DNodes?`&lt;/strong>`</summary>
+<summary>**12. In VAST Data's Disaggregated Shared-Everything architecture, what is the difference between CNodes and DNodes?**</summary>
 
 CNodes are stateless protocol containers serving NFS-over-RDMA, S3, and SMB with zero persistent state and zero east-west inter-node lock traffic. DNodes are high-availability NVMe-oF enclosures holding Storage Class Memory for global metadata and write coalescing alongside high-density QLC NAND flash for bulk capacity.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How does VAST Data achieve 97.33% net capacity efficiency on QLC flash without suffering random-write wear-out?`&lt;/strong>`</summary>
+<summary>**13. How does VAST Data achieve 97.33% net capacity efficiency on QLC flash without suffering random-write wear-out?**</summary>
 
 All incoming random writes and metadata updates land first in high-endurance Storage Class Memory, where CNodes coalesce them into large sequential erase-block stripes. Those stripes are then written to QLC flash using wide 146+4 locally decodable erasure codes. That wide stripe incurs only 2.67 percent parity overhead for 97.33 percent net efficiency.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. In NVIDIA's `gdsio` benchmark tool, what do `-x 2` and `-x 0` measure, and what throughput and latency numbers demonstrate a healthy GDS uplift?`&lt;/strong>`</summary>
+<summary>**14. In NVIDIA's `gdsio` benchmark tool, what do `-x 2` and `-x 0` measure, and what throughput and latency numbers demonstrate a healthy GDS uplift?**</summary>
 
 Flag `-x 2` measures the CPU bounce-buffer path through host DRAM at 8.0 GB/s and 1.25 ms average latency. Flag `-x 0` measures the direct GPUDirect Storage DMA path into GPU HBM at 9.6 GB/s and 1.00 ms latency. That switch delivers a 20 percent throughput gain and 20 percent latency reduction on A100 and over 30 percent on H100.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What are the four components of DeepSeek's Fire-Flyer File System, and what throughput did it achieve across 68 storage nodes compared to Ceph?`&lt;/strong>`</summary>
+<summary>**15. What are the four components of DeepSeek's Fire-Flyer File System, and what throughput did it achieve across 68 storage nodes compared to Ceph?**</summary>
 
 The four RDMA-connected services are Cluster Manager, Metadata Service, Storage Service, and Client. Across 68 storage nodes with 680 NVMe SSDs and dual 100 Gb/s NICs per node, 3FS sustained 6.6 TB/s of aggregate read throughput plus 1.4 TB/s of background traffic. It peaked at 7.3 TB/s and outperformed Ceph's 1.1 TB/s by more than sixfold.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Why cannot a standard user-space FUSE filesystem use kernel GPUDirect Storage, and how does DeepSeek 3FS work around this?`&lt;/strong>`</summary>
+<summary>**16. Why cannot a standard user-space FUSE filesystem use kernel GPUDirect Storage, and how does DeepSeek 3FS work around this?**</summary>
 
 Kernel GPUDirect Storage requires a kernel filesystem driver integrated with `nvidia-fs` for `O_DIRECT` DMA registration, which standard user-space FUSE lacks. DeepSeek 3FS bypasses the OS page cache with `O_DIRECT` paired with Linux `io_uring` pre-registered buffers and native user-space RDMA reads straight into GPU-accessible memory.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. Why does training directly on 2,000,000 small 260 KB objects in S3 stall GPUs for 83.33 hours?`&lt;/strong>`</summary>
+<summary>**17. Why does training directly on 2,000,000 small 260 KB objects in S3 stall GPUs for 83.33 hours?**</summary>
 
 Each S3 GET request incurs roughly 150 ms of TCP, TLS, and API lookup latency, which dwarfs the transfer time of a 260 KB payload. Issuing two million requests serially wastes 300,000 seconds, or 83.33 hours, waiting on HTTP round-trips.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. What are the per-prefix request limits in S3, and how does prefix sharding across 16 prefixes prevent 503 Slow Down errors?`&lt;/strong>`</summary>
+<summary>**18. What are the per-prefix request limits in S3, and how does prefix sharding across 16 prefixes prevent 503 Slow Down errors?**</summary>
 
 A single S3 prefix supports 5,500 GET or HEAD requests per second and 3,500 PUT, COPY, POST, or DELETE requests per second. Sharding keys evenly across 16 hex prefixes multiplies aggregate capacity sixteenfold to 88,000 GET/s and 56,000 PUT/s.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. With a 500 GB dataset split into 50 x 10 GB shards in S3 and 8 download workers at 150 MB/s each, what is the expected startup time to the first training batch?`&lt;/strong>`</summary>
+<summary>**19. With a 500 GB dataset split into 50 x 10 GB shards in S3 and 8 download workers at 150 MB/s each, what is the expected startup time to the first training batch?**</summary>
 
 Eight workers at 150 MB/s deliver 1.2 GB/s of aggregate download bandwidth. Prefetching the first two shards, or 20 GB, takes 16.67 seconds of data transfer plus 10.2 seconds of S3 API and TLS overhead. That brings total time to first batch to 26.87 seconds.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. In a multi-epoch S3-to-NVMe staging pipeline, what causes cache hit rate to rise from 0.1% in Epoch 1 to 98.2% in Epoch 2 and then dip to 97.5% in Epoch 3?`&lt;/strong>`</summary>
+<summary>**20. In a multi-epoch S3-to-NVMe staging pipeline, what causes cache hit rate to rise from 0.1% in Epoch 1 to 98.2% in Epoch 2 and then dip to 97.5% in Epoch 3?**</summary>
 
 The first epoch starts with a cold local NVMe cache at a 0.1 percent hit rate and 45.3 minutes of download wait. By the second epoch, the shards are cached on local NVMe, raising the hit rate to 98.2 percent and cutting wait time to 2.1 minutes. In the third epoch, cache fill crosses 85 percent to reach 88 percent, which triggers LRU eviction of earlier shards and nudges wait time up to 3.5 minutes.
 </details>

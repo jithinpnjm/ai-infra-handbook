@@ -399,7 +399,7 @@ Summary: 30 passed, 0 failed (total 30)
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. How are the 18 compute trays, 9 NVLink switch trays, and 8 power shelves physically arranged from bottom to top in a 48U NVL72 rack, and why do the switch trays sit in the middle?`&lt;/strong>`</summary>
+<summary>**1. How are the 18 compute trays, 9 NVLink switch trays, and 8 power shelves physically arranged from bottom to top in a 48U NVL72 rack, and why do the switch trays sit in the middle?**</summary>
 
 | RU Range | Zone | Hardware |
 |---|---|---|
@@ -413,7 +413,7 @@ Placing the 9 NVLink switch trays in the vertical center of the rack minimizes t
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Prove mathematically why any GPU in an NVL72 rack can reach any other GPU in a single NVSwitch hop at 1.8 TB/s per GPU.`&lt;/strong>`</summary>
+<summary>**2. Prove mathematically why any GPU in an NVL72 rack can reach any other GPU in a single NVSwitch hop at 1.8 TB/s per GPU.**</summary>
 
 ```text
 72 GPUs × 18 NVLink 5 ports/GPU @ 100 GB/s bidirectional = 1,800 GB/s (1.8 TB/s) per GPU
@@ -426,7 +426,7 @@ Because every NVSwitch ASIC connects to all 72 GPUs directly, any GPU reaches an
 </details>
 
 <details>
-<summary>`&lt;strong>`3. List all front-panel and rear-panel components of a single 1U DGX GB300 Compute Tray.`&lt;/strong>`</summary>
+<summary>**3. List all front-panel and rear-panel components of a single 1U DGX GB300 Compute Tray.**</summary>
 
 | Location | Components |
 |---|---|
@@ -436,13 +436,13 @@ Because every NVSwitch ASIC connects to all 72 GPUs directly, any GPU reaches an
 </details>
 
 <details>
-<summary>`&lt;strong>`4. How much power does a single DGX GB300 Power Shelf deliver, how many PSUs are inside each shelf, and what two special features are built into the GB300 power shelf?`&lt;/strong>`</summary>
+<summary>**4. How much power does a single DGX GB300 Power Shelf deliver, how many PSUs are inside each shelf, and what two special features are built into the GB300 power shelf?**</summary>
 
 Each DGX GB300 Power Shelf contains six 5.5 kW PSUs with N redundancy, delivering up to 33 kW per shelf or 264 kW across 8 shelves. Compared to earlier shelves, the GB300 power shelf adds larger internal energy storage to smooth peak GPU load transients on the data center utility supply. It also includes rear RJ45 ports for hardware power brakes alongside a front RJ45 BMC port for out-of-band management.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. Contrast the total HBM3e capacity, total Grace LPDDR5X capacity, and East-West InfiniBand NIC speed between a GB200 NVL72 rack and a DGX GB300 NVL72 rack.`&lt;/strong>`</summary>
+<summary>**5. Contrast the total HBM3e capacity, total Grace LPDDR5X capacity, and East-West InfiniBand NIC speed between a GB200 NVL72 rack and a DGX GB300 NVL72 rack.**</summary>
 
 | Metric | GB200 NVL72 | DGX GB300 NVL72 |
 |---|---|---|
@@ -452,7 +452,7 @@ Each DGX GB300 Power Shelf contains six 5.5 kW PSUs with N redundancy, deliverin
 </details>
 
 <details>
-<summary>`&lt;strong>`6. What are NVLS, PAT, and NMX-M in an NVL72 rack?`&lt;/strong>`</summary>
+<summary>**6. What are NVLS, PAT, and NMX-M in an NVL72 rack?**</summary>
 
 - **NVLS (NVLink SHARP):** Hardware reduction engines built into the 18 NVSwitch ASICs that perform floating-point collective reductions and multicast replication inside the switch silicon, offloading GPU SMs.
 - **PAT (Parallel Aggregated Tree):** The collective reduction algorithm in NCCL optimized specifically for high-radix NVLink Switch topologies like NVL72.
@@ -460,13 +460,13 @@ Each DGX GB300 Power Shelf contains six 5.5 kW PSUs with N redundancy, deliverin
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Why does BCM 11.34.0 require configuring `accesssettings` username and password on NVLink switch trays before flashing firmware, whereas compute trays do not require that extra step?`&lt;/strong>`</summary>
+<summary>**7. Why does BCM 11.34.0 require configuring `accesssettings` username and password on NVLink switch trays before flashing firmware, whereas compute trays do not require that extra step?**</summary>
 
 Compute trays using `firmwaremanagemode` `gb200` or `gb300` execute firmware commands via Redfish over their BMC settings. NVLink switch trays using `firmwaremanagemode` `gb200sw` or `gb300sw` execute firmware commands over the NVOS REST API on the switch tray COMe processor. That API requires explicit NVOS credentials in `cmsh` under `device -> accesssettings`.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. How many `.fwpkg` firmware files must be flashed on a GB200 or GB300 compute tray versus an NVLink switch tray in BCM, and what happens if an administrator flashes only one package on a tray?`&lt;/strong>`</summary>
+<summary>**8. How many `.fwpkg` firmware files must be flashed on a GB200 or GB300 compute tray versus an NVLink switch tray in BCM, and what happens if an administrator flashes only one package on a tray?**</summary>
 
 | Tray Type | Staging Directory | Packages & Components |
 |---|---|---|
@@ -477,73 +477,73 @@ Each package requires its own `firmware flash` command. Flashing only a subset l
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Why does NVL72 use passive copper inside one rack instead of optical links between racks?`&lt;/strong>`</summary>
+<summary>**9. Why does NVL72 use passive copper inside one rack instead of optical links between racks?**</summary>
 
 Optical transceivers for 72 GPUs at 1.8 TB/s would use roughly 20 kW of extra power per rack and add more parts that can fail. Inside one rack, the distances are short enough for passive copper.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. What does one NVLink switch tray contain, and what ports are on its front?`&lt;/strong>`</summary>
+<summary>**10. What does one NVLink switch tray contain, and what ports are on its front?**</summary>
 
 It contains two 5th-generation NVSwitch chips. The front panel has two RJ45 COMe ports for the NVOS switch operating system and one RJ45 BMC port.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What is inside one compute tray?`&lt;/strong>`</summary>
+<summary>**11. What is inside one compute tray?**</summary>
 
 One compute tray holds two Superchips with 2 Grace CPUs and 4 Blackwell GPUs under one OS. It also includes four ConnectX NICs, one BlueField-3 DPU, four 3.84 TB E1.S drives in RAID 0, and one 1.92 TB M.2 OS drive.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How much power can one DGX power shelf deliver, and what is special about the GB300 shelf?`&lt;/strong>`</summary>
+<summary>**12. How much power can one DGX power shelf deliver, and what is special about the GB300 shelf?**</summary>
 
 One shelf delivers 33 kW from six 5.5 kW PSUs. The GB300 shelf has larger internal energy storage to smooth fast GPU load swings and rear RJ45 ports for hardware power brakes.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How many NVLink ports does one GPU have and how are they wired to the switch chips?`&lt;/strong>`</summary>
+<summary>**13. How many NVLink ports does one GPU have and how are they wired to the switch chips?**</summary>
 
 Each GPU has 18 ports at 100 GB/s each. Port 1 of all 72 GPUs goes to NVSwitch chip 1, port 2 goes to chip 2, and so on, so each chip terminates 72 ports.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. What is NVLink SHARP?`&lt;/strong>`</summary>
+<summary>**14. What is NVLink SHARP?**</summary>
 
 The NVSwitch chips perform the arithmetic of a reduction such as part of `AllReduce` inside the switch silicon and send the result back. This cuts network traffic and frees GPU cores.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What is NMX-M?`&lt;/strong>`</summary>
+<summary>**15. What is NMX-M?**</summary>
 
 NMX-M is the management and telemetry tool for the NVLink switch trays and NVLink partitions, much like UFM manages the InfiniBand fabric.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What is the benchmark behind 3.4 versus 150 tokens per second per GPU, and what should you remember about it?`&lt;/strong>`</summary>
+<summary>**16. What is the benchmark behind 3.4 versus 150 tokens per second per GPU, and what should you remember about it?**</summary>
 
 It is a 1.8-trillion-parameter MoE model running on H100 nodes over InfiniBand versus one NVL72 rack, as reported in *AI Systems Performance Engineering*. The book calls the gain "roughly 30×". The 44.12× figure in this chapter is the author's own division, so treat it as an arithmetic ratio of the two stated numbers.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What changes between GB200 and GB300 NVL72, and what stays the same?`&lt;/strong>`</summary>
+<summary>**17. What changes between GB200 and GB300 NVL72, and what stays the same?**</summary>
 
 Both systems share the same trays, switch fabric, and NVLink 5 backplane. GB300 raises HBM per GPU from about 180–192 GB to 288 GB, increases FP4 compute by about 1.5×, and doubles network speed per NIC from 400G to 800G at about 150 kW of rack power.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. How many `.fwpkg` files must you flash on a compute tray and on a switch tray, and why does it matter?`&lt;/strong>`</summary>
+<summary>**18. How many `.fwpkg` files must you flash on a compute tray and on a switch tray, and why does it matter?**</summary>
 
 You must flash two on a compute tray and three on a switch tray. Flashing only some of them leaves the tray partly updated and inconsistent.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Which management protocol does BCM use for compute trays and which for switch trays?`&lt;/strong>`</summary>
+<summary>**19. Which management protocol does BCM use for compute trays and which for switch trays?**</summary>
 
 Compute trays use Redfish through their BMC. Switch trays use the NVOS REST API and need a username and password set in `accesssettings`.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Why must you check floor load before delivery of an NVL72 rack?`&lt;/strong>`</summary>
+<summary>**20. Why must you check floor load before delivery of an NVL72 rack?**</summary>
 
 A loaded rack weighs about 3,000 lbs (1.3–1.4 metric tons) on one footprint. Tiles can crack or deflect, so check structural ratings and use rated rigging.
 </details>

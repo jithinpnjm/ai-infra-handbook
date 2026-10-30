@@ -626,19 +626,19 @@ Exercise Input Parameters:
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. Why are NVTX markers essential when using multiple profilers across the PyTorch stack (Table 13-1)?`&lt;/strong>`</summary>
+<summary>**1. Why are NVTX markers essential when using multiple profilers across the PyTorch stack (Table 13-1)?**</summary>
 
 NVTX markers (`torch.profiler.record_function("train_step")` and `torch.cuda.nvtx.range_push("forward")` / `range_pop()`) inject low-overhead named time ranges on the host. Those ranges are ingested and aligned by the PyTorch profiler, Nsight Systems, Nsight Compute, Holistic Trace Analysis, and Perfetto. That enables exact cross-tool correlation of forward, backward, and optimizer step phases.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Which visualization tools replaced the deprecated PyTorch TensorBoard profiler plugin and legacy chrome://tracing viewer?`&lt;/strong>`</summary>
+<summary>**2. Which visualization tools replaced the deprecated PyTorch TensorBoard profiler plugin and legacy chrome://tracing viewer?**</summary>
 
 As of 2025, the PyTorch TensorBoard profiler plugin and legacy `chrome://tracing` are deprecated. Use **Perfetto** with its web UI and SQL query engine for single-trace timeline inspection. Use Meta's **Holistic Trace Analysis (HTA)** built on a Perfetto backend for multi-GPU and multi-node trace aggregation.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. In Table 13-2 (138.00 ms MoE step), which operations dominate GPU execution time and why are there 128 calls to `aten::matmul`?`&lt;/strong>`</summary>
+<summary>**3. In Table 13-2 (138.00 ms MoE step), which operations dominate GPU execution time and why are there 128 calls to `aten::matmul`?**</summary>
 
 Matrix multiplications and token routing dominate the step. There are 128 `aten::matmul` calls because the model has 64 experts and each expert executes a matrix multiplication in both the forward and backward passes (`64 x 2 = 128`).
 
@@ -650,7 +650,7 @@ Table 13-2 Dominant Operations (138.00 ms MoE Step):
 </details>
 
 <details>
-<summary>`&lt;strong>`4. How does Nsight Systems' `nvtx_gpu_proj_sum` report (Table 13-3) reconcile with Table 13-2, and why does `optimizer_step` show only 1 instance?`&lt;/strong>`</summary>
+<summary>**4. How does Nsight Systems' `nvtx_gpu_proj_sum` report (Table 13-3) reconcile with Table 13-2, and why does `optimizer_step` show only 1 instance?**</summary>
 
 `nsys stats --report=nvtx_gpu_proj_sum` uses CUPTI to project asynchronous GPU kernel execution intervals onto host-defined NVTX push and pop ranges, matching Table 13-2's 138.00 ms total. The optimizer step shows 1 instance because a single host NVTX push and pop pair brackets all 64 per-expert `aten::add_` kernel launches.
 
@@ -664,7 +664,7 @@ Table 13-3 NVTX GPU Projection Breakdown:
 </details>
 
 <details>
-<summary>`&lt;strong>`5. In Table 13-4 (`ncu` Roofline analysis), how do the metrics change between the Baseline and Optimized expert `matmul` kernel?`&lt;/strong>`</summary>
+<summary>**5. In Table 13-4 (`ncu` Roofline analysis), how do the metrics change between the Baseline and Optimized expert `matmul` kernel?**</summary>
 
 Precision reduction with BF16 and TF32, kernel fusion, and increased arithmetic intensity shift the kernel from stalling on HBM memory transfers to saturating the compute Roofline.
 
@@ -676,7 +676,7 @@ Table 13-4 Nsight Compute (ncu) Roofline Shift:
 </details>
 
 <details>
-<summary>`&lt;strong>`6. What does `perf stat` reveal on the ARM Neoverse V2 Grace CPU during MoE training, and what are the 5 hotspots in `perf report`?`&lt;/strong>`</summary>
+<summary>**6. What does `perf stat` reveal on the ARM Neoverse V2 Grace CPU during MoE training, and what are the 5 hotspots in `perf report`?**</summary>
 
 `perf stat` shows that the Grace CPU achieves only 1.58 instructions per cycle out of its 8.0 theoretical maximum. Meanwhile, `perf report` attributes nearly 90 percent of CPU samples to five interpreter, dispatcher, data-loading, collective, and I/O functions.
 
@@ -691,7 +691,7 @@ Grace-Blackwell Linux perf stat and perf report (-F 2000 --call-graph dwarf):
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Which hardware counters can Linux `perf` sample on Grace-Blackwell (`nvidia_pmu`), and which counters still require CUPTI or Nsight Compute?`&lt;/strong>`</summary>
+<summary>**7. Which hardware counters can Linux `perf` sample on Grace-Blackwell (`nvidia_pmu`), and which counters still require CUPTI or Nsight Compute?**</summary>
 
 Linux `perf` can sample device-level interconnect and fabric PMUs exposed under `/sys/bus/event_source/devices/nvidia_nvlink_c2c*`. However, SM-level kernel counters like Tensor pipeline utilization, warp stall reasons, and HBM bandwidth are not exposed to `perf`. They require CUPTI or Nsight Compute with `NVreg_RestrictProfilingToAdminUsers=0`.
 
@@ -703,7 +703,7 @@ Grace-Blackwell NVLink-C2C PMU perf stat Output:
 </details>
 
 <details>
-<summary>`&lt;strong>`8. How much faster is `torch.compile` on the MoE training step, and why must GPU timing use `torch.cuda.Event(enable_timing=True)` instead of `time.time()`?`&lt;/strong>`</summary>
+<summary>**8. How much faster is `torch.compile` on the MoE training step, and why must GPU timing use `torch.cuda.Event(enable_timing=True)` instead of `time.time()`?**</summary>
 
 `torch.compile` fuses small routing and activation prologue and epilogue kernels in TorchInductor to cut MoE step time by 30.24 percent. Timing GPU code with Python's `time.time()` either measures only asynchronous host launch overhead when unsynchronized or forces expensive global CPU-GPU stalls. Using `torch.cuda.Event(enable_timing=True)` records hardware timestamps directly on the GPU stream.
 
@@ -714,7 +714,7 @@ MoE torch.compile Speedup:
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Compare the four `torch.compile` modes in Table 13-5 (`default`, `reduce-overhead`, `max-autotune`, `max-autotune-no-cudagraphs`).`&lt;/strong>`</summary>
+<summary>**9. Compare the four `torch.compile` modes in Table 13-5 (`default`, `reduce-overhead`, `max-autotune`, `max-autotune-no-cudagraphs`).**</summary>
 
 - **Default mode.** Low to Medium compile time, no extra memory, balanced fusion.
 - **Reduce-overhead mode.** Medium compile time, extra workspace memory, uses CUDA Graph Trees to eliminate launch overhead on small batches and skips graphs on dynamic shapes.
@@ -723,31 +723,31 @@ MoE torch.compile Speedup:
 </details>
 
 <details>
-<summary>`&lt;strong>`10. How do Regional Compilation (`nested_compile_region`) and PyTorch Mega-Cache (`save_cache_artifacts`) reduce compilation overhead?`&lt;/strong>`</summary>
+<summary>**10. How do Regional Compilation (`nested_compile_region`) and PyTorch Mega-Cache (`save_cache_artifacts`) reduce compilation overhead?**</summary>
 
 Calling `torch.compiler.nested_compile_region()` marks a repeated module such as a TransformerBlock. TorchDynamo and TorchInductor compile it once and reuse the compiled code across all layers, slashing cold-start compile time. Using `torch.compiler.save_cache_artifacts()` and `load_cache_artifacts()` along with `TORCHINDUCTOR_CACHE_DIR` persists compiled kernels to shared storage. Subsequent runs and multi-node workers reload precompiled artifacts without recompiling.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. When should you use `scaled_dot_product_attention`, `FlexAttention`, `FlexDecoding`, `context_parallel()`, and `torchao`?`&lt;/strong>`</summary>
+<summary>**11. When should you use `scaled_dot_product_attention`, `FlexAttention`, `FlexDecoding`, `context_parallel()`, and `torchao`?**</summary>
 
 Use SDPA for standard causal or dense attention backed by FlashAttention. Use FlexAttention when custom score or mask modifications like sliding windows, document masks, or soft-capping need compiled FlashAttention-speed kernels. Use FlexDecoding for autoregressive KV-cache decoding, and use `context_parallel()` to shard long sequences across ranks during attention. Finally, use `torchao` for compiler-integrated FP8, INT8, and INT4 quantization and 2:4 or block sparsity.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How do CUDA streams and `torch.cuda.Event(enable_timing=False)` overlap H2D transfers with compute without stalling the GPU?`&lt;/strong>`</summary>
+<summary>**12. How do CUDA streams and `torch.cuda.Event(enable_timing=False)` overlap H2D transfers with compute without stalling the GPU?**</summary>
 
 A dedicated transfer stream enqueues asynchronous pinned-memory copies via `.to(device, non_blocking=True)` for batch `i + 1`. It then records `transfer_done.record(stream=transfer_stream)` while the compute stream executes batch `i`. Calling `compute_stream.wait_event(transfer_done)` enforces a lightweight GPU-side stream dependency. That avoids blocking the host CPU thread or stalling other streams like `torch.cuda.synchronize()` does.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. What are the strict requirements for capturing a `torch.cuda.CUDAGraph`, and how does the FireworksAI `[8, 4, 2, 1]` shared pool pattern save VRAM?`&lt;/strong>`</summary>
+<summary>**13. What are the strict requirements for capturing a `torch.cuda.CUDAGraph`, and how does the FireworksAI `[8, 4, 2, 1]` shared pool pattern save VRAM?**</summary>
 
 All buffers including inputs, outputs, intermediates, and optimizer states must be preallocated at their maximum dimensions, such as worst-case batch 96 versus normal 64. Warm up on a dedicated non-default capture stream, and call `capture_stream.synchronize()` before and after `with torch.cuda.graph(g, stream=capture_stream):`. FireworksAI passes a single shared pool across batch-size graphs and captures them in **decreasing batch order from 8 down to 4, 2, and 1**. Batch size 8 allocates the maximum buffer once, and batch sizes 4, 2, and 1 reuse that exact memory without extra allocations.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. How does `PYTORCH_ALLOC_CONF` work under both `roundup_power2_divisions` and `expandable_segments:True`?`&lt;/strong>`</summary>
+<summary>**14. How does `PYTORCH_ALLOC_CONF` work under both `roundup_power2_divisions` and `expandable_segments:True`?**</summary>
 
 Under `roundup_power2_divisions`, the 512 MB to 1024 MB interval is split into sub-buckets that round a 600 MB request up to 768 MB for block reuse. Switching to `expandable_segments:True` stitches virtual memory pages to match the 600 MB request without rounding up.
 
@@ -762,7 +762,7 @@ PYTORCH_ALLOC_CONF Memory Math:
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What are the four architectural innovations in SuperOffload and GraceAdam on Grace-Blackwell superchips?`&lt;/strong>`</summary>
+<summary>**15. What are the four architectural innovations in SuperOffload and GraceAdam on Grace-Blackwell superchips?**</summary>
 
 Over coherent NVLink-C2C, SuperOffload introduces:
 1. **Speculation-Then-Validation (STV)** to run speculative CPU optimizer updates concurrently with GPU backpropagation.
@@ -772,31 +772,31 @@ Over coherent NVLink-C2C, SuperOffload introduces:
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How do `CUDAPluggableAllocator` / `MemPool` (`ncclMemAlloc`), `NCCL-UCX`, and PyTorch Symmetric Memory accelerate multi-GPU communication?`&lt;/strong>`</summary>
+<summary>**16. How do `CUDAPluggableAllocator` / `MemPool` (`ncclMemAlloc`), `NCCL-UCX`, and PyTorch Symmetric Memory accelerate multi-GPU communication?**</summary>
 
 Registering NCCL's `backend.mem_allocator` (`ncclMemAlloc` and `ncclMemFree`) in `torch.cuda.memory.MemPool` aligns collective buffers for zero-copy reductions. It supports NVSwitch, GPUDirect RDMA, and in-network SHARP across 1.8 TB/s bidirectional and 900 GB/s unidirectional Blackwell NVLink 5 links. Across racks, `NCCL_NET=UCX`, `NCCL_PLUGIN_P2P=ucx`, and `UCX_TLS=rc,self,gdr_copy,cuda_copy` enable RDMA P2P. PyTorch Symmetric Memory exposes a cross-GPU PGAS for one-sided `triton.nvshmem.put()/get()` and `all_to_all_v`, removing host handshakes so MoE AllToAll shuffles can be captured inside CUDA Graphs.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. Why are graph breaks expected when combining `torch.compile` with DDP (`25 MB` buckets) and FSDP (`transformer_auto_wrap_policy`)?`&lt;/strong>`</summary>
+<summary>**17. Why are graph breaks expected when combining `torch.compile` with DDP (`25 MB` buckets) and FSDP (`transformer_auto_wrap_policy`)?**</summary>
 
 TorchDynamo intentionally breaks the graph at each DDP bucket (25 MB default) or FSDP TransformerBlock boundary (`min_num_params=int(1e8)`, `use_orig_params=True`). Each segment's compute is fused while AllReduce, AllGather, and ReduceScatter collectives execute between compiled subgraphs. That overlaps communication with the next block's or bucket's computation.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. What are TorchTitan, AsyncTP, AutoParallel, and SimpleFSDP, and what quantitative gains does SimpleFSDP achieve?`&lt;/strong>`</summary>
+<summary>**18. What are TorchTitan, AsyncTP, AutoParallel, and SimpleFSDP, and what quantitative gains does SimpleFSDP achieve?**</summary>
 
 TorchTitan is PyTorch's composable large-scale training suite built on DTensor. AsyncTP uses dual streams and SM-wave scheduling to overlap TP collectives with matmuls. AutoParallel automatically selects hybrid FSDP, TP, and PP sharding plans using DTensor cost heuristics. SimpleFSDP reimplements FSDP in a compiler-traceable DTensor graph with selective activation checkpointing. It **reduces memory usage by up to 28 percent** and **improves training throughput by up to 69 percent** versus eager FSDP2.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. How does PyTorch HUD and TorchBench CI prevent performance bit rot without false alarms?`&lt;/strong>`</summary>
+<summary>**19. How does PyTorch HUD and TorchBench CI prevent performance bit rot without false alarms?**</summary>
 
 A TorchBench CI workflow (`torchbench run --model moe --iters 10 --batch-size 4 --json results.json`) runs on dedicated hardware runners. It checks throughput, `max_memory_allocated()`, data-loading latency, and `torch.allclose` numerical accuracy against `baseline.json`. To filter transient runner variance, PyTorch HUD (`pytorch/test-infra`) requires a **regression of at least 5 percent sustained across 3 consecutive runs** before failing the build.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. In the 24.0 ms MLPerf Logging (`:::MLL`) training step (Table 13-6), what are the exact component times and percentages, and what optimization does the breakdown point to?`&lt;/strong>`</summary>
+<summary>**20. In the 24.0 ms MLPerf Logging (`:::MLL`) training step (Table 13-6), what are the exact component times and percentages, and what optimization does the breakdown point to?**</summary>
 
 Gradient synchronization consumes one-sixth of every step while host overhead is only 2.1 percent. Therefore, optimization effort should target overlapping or compressing the 4.0 ms AllReduce via bucket tuning, AsyncTP, SHARP, or delayed all-reduce slack rather than tuning the host data loader.
 

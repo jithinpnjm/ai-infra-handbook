@@ -361,13 +361,13 @@ Summary: 27 passed, 0 failed (total 27)
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. How can a DGX GB300 SuperPOD have five logical network segments but only four physical switch fabrics? Which two segments share a physical switch fabric, and how are they kept isolated at the compute tray?`&lt;/strong>`</summary>
+<summary>**1. How can a DGX GB300 SuperPOD have five logical network segments but only four physical switch fabrics? Which two segments share a physical switch fabric, and how are they kept isolated at the compute tray?**</summary>
 
 The Storage Network and the In-Band Management Network share the Storage and In-Band Ethernet Fabric built on Spectrum-4 SN5600D spine and compute leaf switches. At each compute tray, they are kept strictly isolated on separate, unbonded physical ports of the dual-port BlueField-3 BF3240 DPU. Port 1 operates at 400 Gbps and is dedicated exclusively to lossless RoCEv2 Storage, while Port 2 operates at 200 Gbps or higher and is dedicated to In-Band Management and NFS User Storage.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Contrast Rail-Optimized Design, Rail-Only Design, and Rail-Unified Design for connecting multi-GPU servers to leaf switches.`&lt;/strong>`</summary>
+<summary>**2. Contrast Rail-Optimized Design, Rail-Only Design, and Rail-Unified Design for connecting multi-GPU servers to leaf switches.**</summary>
 
 - **Rail-Optimized Design.** Connects NIC `k` of every server to Leaf Switch `k` on Rail `k`, with spine switches connecting all rails. Same-index GPUs across servers communicate in a single switch hop, while cross-rail traffic either uses the internal NVSwitch first or traverses the spine in two hops.
 - **Rail-Only Design.** Wires NIC `k` to Leaf Switch `k` like ROD, but omits inter-rail spine connections, forcing all cross-rail traffic to route through the internal server NVSwitch.
@@ -375,7 +375,7 @@ The Storage Network and the In-Band Management Network share the Storage and In-
 </details>
 
 <details>
-<summary>`&lt;strong>`3. In an eight-compute-rack Rail-Optimized row, compare Top-of-Rack, Middle-of-Row, and End-of-Row leaf switch placement in terms of maximum cable span and compute-rack power and cooling.`&lt;/strong>`</summary>
+<summary>**3. In an eight-compute-rack Rail-Optimized row, compare Top-of-Rack, Middle-of-Row, and End-of-Row leaf switch placement in terms of maximum cable span and compute-rack power and cooling.**</summary>
 
 - **Top-of-Rack.** Uses less total rack space, adds switch power and heat to the compute racks, and requires cables spanning up to eight racks.
 - **Middle-of-Row.** Places leaf switches in dedicated racks in the center of the row, removing switch power and cooling from compute racks and achieving the shortest maximum cable span of six racks.
@@ -383,7 +383,7 @@ The Storage Network and the In-Band Management Network share the Storage and In-
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Why does a three-stage Clos fabric built with 64-port switches max out at 2,048 GPUs, whereas 144-port Q3400-RD switches scale a two-tier Clos to 9,216 GPUs? How do you scale 64-port switches beyond 2,048 GPUs?`&lt;/strong>`</summary>
+<summary>**4. Why does a three-stage Clos fabric built with 64-port switches max out at 2,048 GPUs, whereas 144-port Q3400-RD switches scale a two-tier Clos to 9,216 GPUs? How do you scale 64-port switches beyond 2,048 GPUs?**</summary>
 
 In a 1:1 non-blocking two-tier Clos, each leaf switch dedicates half its ports to compute downlinks and half to spine uplinks. To scale 64-port switches beyond 2,048 GPUs, you add a Super-Spine layer in a five-stage Clos, use high-radix 256-port chassis spines, or adopt a Dragonfly topology.
 
@@ -395,7 +395,7 @@ In a 1:1 non-blocking two-tier Clos, each leaf switch dedicates half its ports t
 </details>
 
 <details>
-<summary>`&lt;strong>`5. What UDP destination port does RoCEv2 use, why do AI RoCEv2 elephant flows suffer from low entropy under Static Load Balancing, and how do DLB, GLB, and sDLB solve it?`&lt;/strong>`</summary>
+<summary>**5. What UDP destination port does RoCEv2 use, why do AI RoCEv2 elephant flows suffer from low entropy under Static Load Balancing, and how do DLB, GLB, and sDLB solve it?**</summary>
 
 - **UDP Port.** RoCEv2 encapsulates the InfiniBand Base Transport Header inside UDP destination port 4791.
 - **Low-entropy problem.** Because a small number of one-to-one high-bandwidth elephant flows share identical outer IP and UDP headers, static five-tuple ECMP hashing hashes multiple elephant flows onto the same link.
@@ -403,92 +403,92 @@ In a 1:1 non-blocking two-tier Clos, each leaf switch dedicates half its ports t
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Walk through the exact five-step sequence of ECN and PFC inside DCQCN when congestion occurs on a RoCEv2 switch link.`&lt;/strong>`</summary>
+<summary>**6. Walk through the exact five-step sequence of ECN and PFC inside DCQCN when congestion occurs on a RoCEv2 switch link.**</summary>
 
 - **ECN end-to-end rate control.** Packets flow from the source GPU server through leaf and spine switches in the first two steps. In step three, a congested switch queue crosses its threshold and marks the packet's IP ECN bits as `11` for Congestion Experienced. In step four, the destination server sees the ECN mark and sends a Congestion Notification Packet with IP ECN `01` back to the source server. In step five, the source NIC reduces its transmission rate for that flow.
 - **PFC link-by-link pause.** If a queue still fills toward overflow, the congested switch sends a PFC Pause Frame on that specific queue number to the immediately upstream switch or node. The upstream hop pauses that queue and propagates pause quanta toward the source, halting transmission before packet loss can occur.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. What is a Scheduled Fabric, and how does Virtual Output Queueing eliminate head-of-line blocking?`&lt;/strong>`</summary>
+<summary>**7. What is a Scheduled Fabric, and how does Virtual Output Queueing eliminate head-of-line blocking?**</summary>
 
 A Scheduled Fabric treats leaf switches like chassis line cards and spine switches like a cell backplane. Ingress leaves chop packets into fixed 64-, 128-, or 256-byte cells, spray them across all spine links, and reassemble them at the egress leaf. Using Virtual Output Queueing, each ingress port maintains a separate virtual buffer queue for every destination egress port. Congestion on one egress port therefore never blocks traffic destined for other idle egress ports.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. Which management interfaces on a DGX GB300 NVL72 rack connect to the SN2201 Out-of-Band network, and how are SN2201 switches aggregated across Scalable Units?`&lt;/strong>`</summary>
+<summary>**8. Which management interfaces on a DGX GB300 NVL72 rack connect to the SN2201 Out-of-Band network, and how are SN2201 switches aggregated across Scalable Units?**</summary>
 
 The SN2201 copper OOB fabric connects all compute-tray BMCs, BlueField-3 DPU BMCs, and NVLink switch tray BMCs and COMe NVOS ports. It also connects DGX power shelf BMCs and rear power-brake ports, smart rPDUs, and InfiniBand, Ethernet, or storage management ports. Across the SuperPOD, each SU's SN2201 switches are rolled up as a dedicated VXLAN into a pair of OOB aggregation spine switches.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. What is the job of each of the four fabrics in one line each?`&lt;/strong>`</summary>
+<summary>**9. What is the job of each of the four fabrics in one line each?**</summary>
 
 The NVLink fabric handles GPU-to-GPU traffic inside a rack. Compute InfiniBand handles GPU collectives between racks. Storage and in-band Ethernet carries storage I/O and cluster services. Out-of-band Ethernet connects BMCs, switches, and PDUs.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Which tool manages which fabric?`&lt;/strong>`</summary>
+<summary>**10. Which tool manages which fabric?**</summary>
 
 NMX-M manages the NVLink switches, UFM Enterprise manages the compute InfiniBand fabric, and Base Command Manager alongside Mission Control runs the in-band and OOB services.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What does Rail-Only design drop compared with Rail-Optimized?`&lt;/strong>`</summary>
+<summary>**11. What does Rail-Only design drop compared with Rail-Optimized?**</summary>
 
 It removes the spine links between different rails, so cross-rail traffic must go through the NVSwitch inside the server. That choice saves switch cost and keeps faults isolated inside one rail.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Why is Rail-Unified design risky?`&lt;/strong>`</summary>
+<summary>**12. Why is Rail-Unified design risky?**</summary>
 
 All NICs of a server go to one or two local leaves. If that leaf switch fails, the whole server loses connectivity to the cluster.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. What are the numbers for a five-stage Clos with 64-port switches?`&lt;/strong>`</summary>
+<summary>**13. What are the numbers for a five-stage Clos with 64-port switches?**</summary>
 
 One block consists of four rows or 1,024 GPUs. With 32 super-spines, two blocks are 1:1 non-blocking, four blocks are 2:1, eight blocks are 4:1, and fourteen blocks are 7:1 oversubscribed, as listed in the Section 2.3 scaling table.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. How does a Scheduled Fabric forward packets across spines?`&lt;/strong>`</summary>
+<summary>**14. How does a Scheduled Fabric forward packets across spines?**</summary>
 
 The leaf switches behave like line cards and the spines act like a cell backplane. Packets are cut into fixed-size cells, sprayed over all spine links, and rebuilt at the egress leaf while virtual output queues stop one busy output from blocking others.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What is Dragonfly in this chapter?`&lt;/strong>`</summary>
+<summary>**15. What is Dragonfly in this chapter?**</summary>
 
 Dragonfly is a topology that links blocks or groups directly to each other in a full inter-group mesh. It reduces hops and optical cable cost compared with a five-stage super-spine, and relies on adaptive routing.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Why does RoCEv2 give low entropy to a hash?`&lt;/strong>`</summary>
+<summary>**16. Why does RoCEv2 give low entropy to a hash?**</summary>
 
 Every packet uses UDP destination port 4791 and flows are often one-to-one between two IP addresses. A five-tuple hash sees almost the same header for many big flows and may place them onto one link.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What is the difference between DLB, GLB, and sDLB?`&lt;/strong>`</summary>
+<summary>**17. What is the difference between DLB, GLB, and sDLB?**</summary>
 
 DLB picks links by local link and queue load. GLB also uses next-to-next-hop information from the spine. Selective DLB looks at the RoCEv2 Base Transport Header opcodes and sprays big flows packet by packet.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. How does DCQCN use ECN and PFC together?`&lt;/strong>`</summary>
+<summary>**18. How does DCQCN use ECN and PFC together?**</summary>
 
 ECN marks packets as congested with bits `11`, the receiver sends a CNP back, and the sender slows down. PFC acts as the safety net where a pause frame stops the upstream queue before the buffer overflows.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. How do you avoid a PFC pause storm?`&lt;/strong>`</summary>
+<summary>**19. How do you avoid a PFC pause storm?**</summary>
 
 Make sure ECN and CNP work end to end so senders slow down before PFC fires. Also set a PFC watchdog timer on the switches to drain a stuck lossless queue.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Why must both the BMC and the COMe ports of an NVLink switch tray be cabled to the OOB switch?`&lt;/strong>`</summary>
+<summary>**20. Why must both the BMC and the COMe ports of an NVLink switch tray be cabled to the OOB switch?**</summary>
 
 The BMC port provides hardware telemetry. The two COMe ports run NVOS, which NMX-M and BCM use for switch management and firmware updates. With only the BMC port cabled, the tray answers ping but cannot be managed.
 </details>

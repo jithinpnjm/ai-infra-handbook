@@ -713,13 +713,13 @@ Exercise Input Parameters and Target Scenarios:
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. Why does a 7B parameter model trained with mixed-precision AdamW fail to fit on a single 80 GB H100 GPU under DDP?`&lt;/strong>`</summary>
+<summary>**1. Why does a 7B parameter model trained with mixed-precision AdamW fail to fit on a single 80 GB H100 GPU under DDP?**</summary>
 
 Even without counting activations or 32-bit master weights, a 7B model requires 14 GB of 16-bit parameters and 14 GB of 16-bit gradients. It also requires 56 GB of 32-bit AdamW momentum and variance states. Those tensors total 84.0 GB, or 112.0 GB when including the 28.0 GB 32-bit master weight copy under the sixteen-byte rule. Both footprints exceed an 80 GB GPU before a single activation is allocated.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What is the per-GPU steady-state memory requirement for a 70B model across DDP, Stage 1, Stage 2, and Stage 3 on 8 and 16 GPUs?`&lt;/strong>`</summary>
+<summary>**2. What is the per-GPU steady-state memory requirement for a 70B model across DDP, Stage 1, Stage 2, and Stage 3 on 8 and 16 GPUs?**</summary>
 
 ```text
 70B Model Steady-State Memory Breakdown (840.0 GB base under 12 * Psi):
@@ -732,67 +732,67 @@ Even without counting activations or 32-bit master weights, a 7B model requires 
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Does FSDP shard model activations across GPUs? Why or why not?`&lt;/strong>`</summary>
+<summary>**3. Does FSDP shard model activations across GPUs? Why or why not?**</summary>
 
 No. FSDP is still data parallelism at its core, so each GPU processes its own distinct micro-batch through every layer of the model. Each rank must therefore store the full activations for its local micro-batch. Reducing activation memory requires activation checkpointing, smaller micro-batches with gradient accumulation, or Tensor and Sequence Parallelism.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Which collective operations does FSDP full sharding execute during a training step, and why does its communication volume equal 3 Psi versus 2 Psi for DDP?`&lt;/strong>`</summary>
+<summary>**4. Which collective operations does FSDP full sharding execute during a training step, and why does its communication volume equal 3 Psi versus 2 Psi for DDP?**</summary>
 
 For each wrapped layer, FSDP full sharding executes one AllGather in the forward pass to reconstruct full layer weights and then frees them. In the backward pass, it executes a second AllGather to re-materialize weights for gradient computation. It then runs one ReduceScatter to sum and shard gradients across ranks. Those three collectives transfer `3 * ((N - 1) / N) * M` bytes per step, which is 1.5 times DDP's single backward AllReduce of `2 * ((N - 1) / N) * M` bytes.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. How does `reshard_after_forward=False` in FSDP2 change memory and communication?`&lt;/strong>`</summary>
+<summary>**5. How does `reshard_after_forward=False` in FSDP2 change memory and communication?**</summary>
 
 Setting `reshard_after_forward=False` keeps parameters unsharded in HBM after each layer's forward pass instead of freeing them. This increases peak memory to match ZeRO-2, but eliminates the backward-pass AllGather. That change cuts collective communication volume by 33 percent from 3 Psi down to 2 Psi. Passing an integer such as `reshard_after_forward=2` reshards across a two-GPU subgroup in the style of ZeRO++ hierarchical parameter sharding.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. What is the architectural difference between FSDP1 FlatParameter and FSDP2 fully_shard DTensor?`&lt;/strong>`</summary>
+<summary>**6. What is the architectural difference between FSDP1 FlatParameter and FSDP2 fully_shard DTensor?**</summary>
 
 FSDP1 concatenates all parameters inside a wrapped module into a single one-dimensional `FlatParameter` across roughly 14,000 lines of code before slicing across ranks. FSDP2 (`fully_shard`, PyTorch RFC `#114299`, roughly 3,000 lines of code) modifies modules in place and shards each parameter tensor independently along dimension zero as a `DTensor(Shard(0))`. A `(4096, 1024)` weight matrix on four GPUs becomes four `(1024, 1024)` shards. That design enables mixed data types, frozen weights, native DCP checkpoints, and clean compiler tracing.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Why are some production models like Wan2.2 still using FSDP1?`&lt;/strong>`</summary>
+<summary>**7. Why are some production models like Wan2.2 still using FSDP1?**</summary>
 
 Wan2.2 (`27B` total and `14B` active MoE parameters) uses FSDP1 for three practical ecosystem reasons. First, DeepSpeed Ulysses sequence-parallel `AllToAll` attention hooks were hardened against FSDP1's `distributed_c10d` group interface. Second, dynamic MoE expert offloading and swapping across diffusion timesteps rely on FSDP1's `ModuleWrapPolicy`. Third, frozen `UMT5-XXL` text encoder wrappers in Hugging Face were built around FSDP1's `ShardedGradScaler` and auto-wrap policies.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What happens if you wrap a 70B model as a single root FSDP unit instead of wrapping each of its 80 TransformerBlock layers?`&lt;/strong>`</summary>
+<summary>**8. What happens if you wrap a 70B model as a single root FSDP unit instead of wrapping each of its 80 TransformerBlock layers?**</summary>
 
 Wrapping only the root module forces FSDP to AllGather all 140.0 GB of weights at once at the start of `forward()`. That spikes state memory on sixteen GPUs to 192.5 GB and causes an immediate out-of-memory crash. Wrapping each of the 80 `TransformerBlock` layers individually means AllGather materializes only 1.75 GB per block, or 3.5 GB with one prefetched block, keeping peak state memory at 56.0 GB.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. When sharding a model hierarchically with `fully_shard()` in FSDP2, in what order must modules be sharded, and how must shared parameters be handled?`&lt;/strong>`</summary>
+<summary>**9. When sharding a model hierarchically with `fully_shard()` in FSDP2, in what order must modules be sharded, and how must shared parameters be handled?**</summary>
 
 Child modules must be sharded bottom-up before the root module. First loop over child blocks and call `fully_shard(block)`, and then call `fully_shard(model)` last. If two layers share the same parameter tensor, such as tied input token embeddings and output head weights, both layers must reside inside the same FSDP group so sharding preserves parameter identity.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. How do you verify in code that an FSDP2 model's parameters are actually sharded across GPUs?`&lt;/strong>`</summary>
+<summary>**10. How do you verify in code that an FSDP2 model's parameters are actually sharded across GPUs?**</summary>
 
 Because FSDP2 parameters are DTensors, `param.shape` reports the logical global shape. To inspect the physical shard stored on each GPU, check `param.to_local().shape` and `torch.cuda.memory_allocated()`. The local shape should equal one-Nth of dimension zero, such as `(1024, 1024)` for a `(4096, 1024)` weight on four GPUs.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What does `limit_all_gathers=True` do in FSDP, and what failure occurs if it is disabled?`&lt;/strong>`</summary>
+<summary>**11. What does `limit_all_gathers=True` do in FSDP, and what failure occurs if it is disabled?**</summary>
 
 Setting `limit_all_gathers=True` rate-limits the host CPU thread so it cannot enqueue asynchronous AllGather allocations far ahead of the GPU compute stream. It caps in-flight unsharded buffers at two units: the active block plus one prefetched block. Without it, the CPU can queue ten to fifteen unfreed AllGather buffers totaling 28.0 GB on a 70B model, pushing state memory to 80.5 GB and causing an out-of-memory crash.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How does Hybrid Sharded Data Parallel use a 2D DeviceMesh to accelerate multi-node training?`&lt;/strong>`</summary>
+<summary>**12. How does Hybrid Sharded Data Parallel use a 2D DeviceMesh to accelerate multi-node training?**</summary>
 
 With `init_device_mesh("cuda", (4, 8))` across four nodes of eight GPUs, HSDP shards parameters, gradients, and optimizer states eight-way along dimension one inside each node. That keeps all 367.5 GB of per-step AllGather and ReduceScatter traffic inside the 900 GB/s intra-node NVLink domain. Across dimension zero, HSDP replicates shards across the four nodes and runs an inter-node AllReduce on only the 17.5 GB gradient shards. That layout cuts cross-node InfiniBand traffic by 15.5 times from 406.875 GB down to 26.25 GB.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How do you estimate Transformer activation memory, and what is the footprint for a 7B model?`&lt;/strong>`</summary>
+<summary>**13. How do you estimate Transformer activation memory, and what is the footprint for a 7B model?**</summary>
 
 ```text
 Transformer Activation Memory (L = 32, B = 8, S = 2048, H = 4096, 2 bytes FP16, k = 12):
@@ -802,43 +802,43 @@ Transformer Activation Memory (L = 32, B = 8, S = 2048, H = 4096, 2 bytes FP16, 
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Why does `CPUOffload` cause a 4x slowdown on standard PCIe servers, and how does Grace-Blackwell SuperOffload change this?`&lt;/strong>`</summary>
+<summary>**14. Why does `CPUOffload` cause a 4x slowdown on standard PCIe servers, and how does Grace-Blackwell SuperOffload change this?**</summary>
 
 Standard PCIe Gen4 x16 provides only 32 GB/s compared to 3 TB/s on GPU HBM3, which is roughly one hundred times slower. Streaming weights and gradients over PCIe starves the GPU Streaming Multiprocessors, leaving them idle 82 percent of the time at 18 percent utilization. Step time slows from 12.3 seconds to 48.7 seconds. On Grace-Blackwell (`GB200` and `GB300`), SuperOffload uses 900 GB/s coherent NVLink-C2C, Speculation-Then-Validation, and `GraceAdam` vectorized across 32 vector and 16 predicate ARM SVE registers.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Why does saving an FSDP checkpoint with default `model.state_dict()` crash with Rank-0 OOM at step 100, and how does DCP prevent it?`&lt;/strong>`</summary>
+<summary>**15. Why does saving an FSDP checkpoint with default `model.state_dict()` crash with Rank-0 OOM at step 100, and how does DCP prevent it?**</summary>
 
 Default `FULL_STATE_DICT` gathers all shards of the model onto rank zero, requiring 280.0 GB of FP32 weights for a 70B model and exceeding rank zero's 80 GB HBM. PyTorch Distributed Checkpoint (`torch.distributed.checkpoint`) with `StateDictOptions(full_state_dict=False, cpu_offload=True)` writes each rank's local DTensor shard directly to disk in parallel. That writes just 8.75 GB of FP16 weights per rank on sixteen GPUs and supports elastic resharding across world sizes.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Why must `dcp.load()` be given a state-dict template constructed from the already-sharded model and optimizer on each rank?`&lt;/strong>`</summary>
+<summary>**16. Why must `dcp.load()` be given a state-dict template constructed from the already-sharded model and optimizer on each rank?**</summary>
 
 Unlike `torch.load()`, `dcp.load(state_dict, checkpoint_id=...)` mutates `state_dict` in place. Calling `get_model_state_dict` and `get_optimizer_state_dict` on the initialized, sharded model builds the exact DTensor key, shape, and shard-offset template. That template tells DCP which byte slices each rank should read from storage before applying them with `set_model_state_dict` and `set_optimizer_state_dict`.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. How do you initialize a 70B model under FSDP2 without ever materializing the full 140 GB model on CPU RAM or a single GPU?`&lt;/strong>`</summary>
+<summary>**17. How do you initialize a 70B model under FSDP2 without ever materializing the full 140 GB model on CPU RAM or a single GPU?**</summary>
 
 Instantiate the model inside `with torch.device("meta"):` so it allocates zero physical memory. Next, apply `fully_shard` to every child block and the root model, and allocate only the local shards on the target GPU via `model.to_empty(device=device)`. Finally, initialize weights in place with `model.reset_parameters()` using identical RNG seeds across all ranks.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. How should FSDP1 and FSDP2 be combined with `torch.compile`, and what gains did TorchTitan's SimpleFSDP demonstrate?`&lt;/strong>`</summary>
+<summary>**18. How should FSDP1 and FSDP2 be combined with `torch.compile`, and what gains did TorchTitan's SimpleFSDP demonstrate?**</summary>
 
 In FSDP1, wrap at the `TransformerBlock` level with `use_orig_params=True` so `TorchDynamo` inserts clean graph breaks at block communication boundaries. In FSDP2, call `fully_shard()` on child blocks and the root model first, and then call `model = torch.compile(model)`. In TorchTitan benchmarks, DTensor-based SimpleFSDP with `torch.compile` reduced memory by up to 28 percent and increased throughput by up to 69 percent over eager FSDP2.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Why did NCCL switch from Ring to Tree in Volume 13 Chapter 8's 512-GPU collective example, and why is multi-node FSDP sensitive to ACS and NVLink topology?`&lt;/strong>`</summary>
+<summary>**19. Why did NCCL switch from Ring to Tree in Volume 13 Chapter 8's 512-GPU collective example, and why is multi-node FSDP sensitive to ACS and NVLink topology?**</summary>
 
 On eight GPUs over 900 GB/s NVLink, a ring AllReduce moves 49.0 GB in roughly 54 milliseconds with under 0.1 milliseconds of hop latency across eight hops. On 512 GPUs over 25 GB/s InfiniBand, moving 55.9 GB takes roughly 2.2 seconds and 512 sequential ring hops accumulate severe scheduling latency. A double binary tree cuts the hop count to 9 hops. If PCIe Access Control Services (`ACS`) is enabled in the BIOS or NVLink bridges fail and show `PIX` or `SYS` in `nvidia-smi topo -m`, intra-node AllGather bandwidth collapses from 400 to 900 GB/s down to 20 to 32 GB/s over PCIe.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. In production FSDP monitoring, what step-time and AllGather latency ratios indicate healthy execution versus a communication or straggler bottleneck?`&lt;/strong>`</summary>
+<summary>**20. In production FSDP monitoring, what step-time and AllGather latency ratios indicate healthy execution versus a communication or straggler bottleneck?**</summary>
 
 ```text
 Production FSDP Telemetry Thresholds (Volume 13 Ch. 4):

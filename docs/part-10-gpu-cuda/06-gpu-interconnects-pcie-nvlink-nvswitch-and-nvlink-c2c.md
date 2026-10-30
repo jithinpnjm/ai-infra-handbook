@@ -425,7 +425,7 @@ Summary: 25 passed, 0 failed (total 25)
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. State the unidirectional and bidirectional bandwidth of PCIe Gen4 x16, PCIe Gen5 x16, and PCIe Gen6 x16, and compare PCIe Gen5 x16 to H100 HBM3 bandwidth.`&lt;/strong>`</summary>
+<summary>**1. State the unidirectional and bidirectional bandwidth of PCIe Gen4 x16, PCIe Gen5 x16, and PCIe Gen6 x16, and compare PCIe Gen5 x16 to H100 HBM3 bandwidth.**</summary>
 
 ```text
 PCIe Gen4 x16 (16 GT/s) :  ~32 GB/s unidirectional /  ~64 GB/s bidirectional
@@ -437,21 +437,21 @@ H100 SXM5 HBM3          : 3,350 GB/s (>52x faster than a 64 GB/s PCIe Gen5 x16 s
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What is the architectural difference between wiring GPUs and NICs directly to the CPU's PCIe Root Complex versus wiring them behind a dedicated PCIe Switch?`&lt;/strong>`</summary>
+<summary>**2. What is the architectural difference between wiring GPUs and NICs directly to the CPU's PCIe Root Complex versus wiring them behind a dedicated PCIe Switch?**</summary>
 
 When devices wire directly to the CPU Root Complex, labeled PHB or NODE, every GPU-to-NIC transfer must travel up into the CPU, cross internal CPU bridges, and travel back down to the NIC. That adds latency and consumes CPU I/O bandwidth. When a GPU and NIC share a dedicated PLX or Broadcom PCIe Switch, labeled PIX, the switch routes Peer-to-Peer DMA packets directly between the GPU and NIC via GPUDirect RDMA. Traffic bypasses the CPU completely.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What do 10 and 21 mean in the node distances matrix of `numactl --hardware`, and what happens when a GPU on NUMA 1 transmits through a NIC on NUMA 0?`&lt;/strong>`</summary>
+<summary>**3. What do 10 and 21 mean in the node distances matrix of `numactl --hardware`, and what happens when a GPU on NUMA 1 transmits through a NIC on NUMA 0?**</summary>
 
 In the Linux System Locality Information Table, 10 is the baseline relative cost of accessing memory on the local NUMA socket. A value of 21 means cross-socket access over Intel UPI or AMD xGMI costs 2.1x as much latency. When a GPU on NUMA 1 uses a NIC on NUMA 0 across a SYS path, every packet must climb CPU 1's PCIe Root Complex, cross the saturated socket interconnect, and descend CPU 0's Root Complex.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Rank the seven path labels in `nvidia-smi topo -m` from strongest to weakest and define each one.`&lt;/strong>`</summary>
+<summary>**4. Rank the seven path labels in `nvidia-smi topo -m` from strongest to weakest and define each one.**</summary>
 
 ```text
 1. X    : Self (same device)
@@ -466,7 +466,7 @@ In the Linux System Locality Information Table, 10 is the baseline relative cost
 </details>
 
 <details>
-<summary>`&lt;strong>`5. Walk through the worked calculation comparing a 500 MB gradient transfer over a 900 GB/s NVLink path versus a 28 GB/s SYS PCIe Gen4 path.`&lt;/strong>`</summary>
+<summary>**5. Walk through the worked calculation comparing a 500 MB gradient transfer over a 900 GB/s NVLink path versus a 28 GB/s SYS PCIe Gen4 path.**</summary>
 
 ```text
 Over 900 GB/s NVLink (NV18)    : 0.5 GB / 900 GB/s = 0.000556 s ≈ 0.56 ms
@@ -477,7 +477,7 @@ Slowdown Factor                : 17.86 ms / 0.56 ms             ≈ 32.1x (>30x 
 </details>
 
 <details>
-<summary>`&lt;strong>`6. State the per-GPU bidirectional bandwidth across all five generations of NVLink and name a representative GPU for each.`&lt;/strong>`</summary>
+<summary>**6. State the per-GPU bidirectional bandwidth across all five generations of NVLink and name a representative GPU for each.**</summary>
 
 ```text
 NVLink 1.0 (Pascal P100)          :   160 GB/s ( 4 links *  40 GB/s)
@@ -490,91 +490,91 @@ NVLink 5.0 (Blackwell B200 / B300): 1,800 GB/s (18 links * 100 GB/s = 1.8 TB/s)
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Why did a 4-GPU Tensor Parallel 70B LLM deployment on four NVIDIA L40S PCIe GPUs suffer severe inference latency despite strong FP8 Tensor Core throughput?`&lt;/strong>`</summary>
+<summary>**7. Why did a 4-GPU Tensor Parallel 70B LLM deployment on four NVIDIA L40S PCIe GPUs suffer severe inference latency despite strong FP8 Tensor Core throughput?**</summary>
 
 The L40S physically lacks NVLink connectors and cannot attach to an NVLink Bridge or NVSwitch. Tensor Parallelism executes an AllReduce across all four GPUs on every transformer layer, forcing every synchronization step across the slow PCIe bus while the Tensor Cores stall waiting for activations.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`8. Contrast how an 8-GPU HGX H100 or B200 baseboard and a 72-GPU GB200 or GB300 NVL72 rack use NVSwitch ASICs to achieve a single-hop non-blocking crossbar.`&lt;/strong>`</summary>
+<summary>**8. Contrast how an 8-GPU HGX H100 or B200 baseboard and a 72-GPU GB200 or GB300 NVL72 rack use NVSwitch ASICs to achieve a single-hop non-blocking crossbar.**</summary>
 
 An eight-GPU HGX baseboard solders four NVSwitch ASICs onto the server PCB so each SXM GPU distributes its 18 NVLink lanes across the four switches. A 72-GPU NVL72 rack disaggregates nine 1U NVLink switch trays holding two NVSwitch ASICs each, totaling 18 NVSwitch ASICs across the rack. Every Blackwell GPU connects its 18 NVLink 5 links one-to-one across those 18 switch ASICs over the rear copper backplane for a single-hop crossbar with 129.6 TB/s bisection bandwidth.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`9. What is NVLink SHARP (NVLS), and how does it differ from InfiniBand SHARP (CollNet)?`&lt;/strong>`</summary>
+<summary>**9. What is NVLink SHARP (NVLS), and how does it differ from InfiniBand SHARP (CollNet)?**</summary>
 
 NVLink SHARP uses dedicated hardware reduction engines built directly into the NVSwitch ASICs inside an eight-GPU HGX node or 72-GPU NVL72 rack to sum gradients and multicast results in switch silicon. That reduces NVLink traffic and frees GPU SMs from running reduction math. InfiniBand SHARP, or CollNet, offloads multi-node reductions into scale-out Quantum InfiniBand network switches across racks.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`10. What is NV-HBI on a Blackwell B200 or B300 GPU, and why did NVIDIA introduce it?`&lt;/strong>`</summary>
+<summary>**10. What is NV-HBI on a Blackwell B200 or B300 GPU, and why did NVIDIA introduce it?**</summary>
 
 A single monolithic die is limited by the lithography reticle size to about 104 billion transistors. Blackwell therefore uses a dual-die multichip module that bonds two GPU dies across a 10 TB/s on-package interconnect called NV-HBI. NV-HBI is fully hardware cache-coherent, so the two dies appear to CUDA and the OS as one unified GPU with 208 billion transistors, 192 GB raw or 180 GB usable HBM3e, and 126 MB of L2 cache.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How fast is NVLink-C2C on a Grace Hopper or Grace Blackwell Superchip, what is Extended GPU Memory (EGM), and why must you still stage hot data into HBM?`&lt;/strong>`</summary>
+<summary>**11. How fast is NVLink-C2C on a Grace Hopper or Grace Blackwell Superchip, what is Extended GPU Memory (EGM), and why must you still stage hot data into HBM?**</summary>
 
 NVLink-C2C provides 900 GB/s bidirectional, or 450 GB/s per direction, of hardware cache-coherent bandwidth between the Grace ARM CPU and the GPUs. Through Unified CPU-GPU Memory and Extended GPU Memory, a GPU can directly read and write CPU LPDDR5X without explicit copies. However, LPDDR5X over C2C still has roughly ten times lower bandwidth and higher latency than on-package HBM3e. Hot weights and KV caches must stay in HBM while cold layers or overflow tables are prefetched asynchronously.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Are GPU L1 and L2 caches globally hardware cache-coherent across multiple GPUs over NVLink? How do multi-GPU programs maintain memory consistency?`&lt;/strong>`</summary>
+<summary>**12. Are GPU L1 and L2 caches globally hardware cache-coherent across multiple GPUs over NVLink? How do multi-GPU programs maintain memory consistency?**</summary>
 
 No. Only the CPU-to-GPU path over NVLink-C2C and the on-package NV-HBI link inside one Blackwell GPU are hardware cache-coherent. Across different GPUs over NVLink and NVSwitch, there is a global address space for P2P and NVSHMEM loads and stores, but GPU caches are not globally hardware cache-coherent. Software libraries such as NCCL and NVSHMEM must issue explicit synchronization barriers and memory fences.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How does `lspci -vv` expose a silent PCIe lane-width downgrade on a GPU that looks healthy in `nvidia-smi`, and how much bandwidth is lost when x16 retrains to x4?`&lt;/strong>`</summary>
+<summary>**13. How does `lspci -vv` expose a silent PCIe lane-width downgrade on a GPU that looks healthy in `nvidia-smi`, and how much bandwidth is lost when x16 retrains to x4?**</summary>
 
 You compare `LnkCap` against `LnkSta` in `lspci -vv`. A healthy Gen5 slot shows `LnkCap: Speed 32GT/s, Width x16` and `LnkSta: Speed 32GT/s (ok), Width x16 (ok)` for 64 GB/s per direction. A downgraded slot reports `LnkSta: Speed 32GT/s (ok), Width x4 (downgraded)`, which cuts available PCIe bandwidth fourfold down to 16 GB/s per direction.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Why does `nvidia-smi topo -p2p r` report CNS and `./simpleP2P` refuse to run between GPU 0 and GPU 1 even when `nvidia-smi topo -m` shows NV18?`&lt;/strong>`</summary>
+<summary>**14. Why does `nvidia-smi topo -p2p r` report CNS and `./simpleP2P` refuse to run between GPU 0 and GPU 1 even when `nvidia-smi topo -m` shows NV18?**</summary>
 
 Multi-Instance GPU mode is enabled (`mig.mode.current = Enabled`) on at least one of the GPUs. MIG hardware-partitions a GPU into isolated instances and disables CUDA Peer-to-Peer memory access across that GPU regardless of physical NVLink connectivity.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`15. If `nvidia-smi topo -m` shows NV18 everywhere on an 8-GPU node, why can a single GPU pair still run at only 312 GB/s instead of ~800+ GB/s in `p2pBandwidthLatencyTest`, and how do you prove the root cause?`&lt;/strong>`</summary>
+<summary>**15. If `nvidia-smi topo -m` shows NV18 everywhere on an 8-GPU node, why can a single GPU pair still run at only 312 GB/s instead of ~800+ GB/s in `p2pBandwidthLatencyTest`, and how do you prove the root cause?**</summary>
 
 The `nvidia-smi topo -m` command only shows static topology discovery. A physical NVLink sub-link can drop to `0.000 GB/s` in `nvidia-smi nvlink --status`. Alternatively, it can suffer heavy retransmissions from physical signal errors shown as Replay Errors and CRC Errors in `nvidia-smi nvlink --errorcounters -i 3`. Those errors throttle effective throughput across that pair until the faulty hardware is replaced.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Why should production scripts and schedulers never rely solely on logical GPU index to identify devices?`&lt;/strong>`</summary>
+<summary>**16. Why should production scripts and schedulers never rely solely on logical GPU index to identify devices?**</summary>
 
 Logical GPU indices depend on OS and driver enumeration order and `CUDA_VISIBLE_DEVICES` remapping, and can shift after a reboot, BIOS update, or PCIe slot change. Always record and cross-reference the immutable GPU UUID and physical PCI bus address `pci.bus_id` alongside `CUDA_DEVICE_ORDER=PCI_BUS_ID`.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What does a value of -1 in `/sys/bus/pci/devices/<BDF>/numa_node` mean, and how should a placement audit handle it?`&lt;/strong>`</summary>
+<summary>**17. What does a value of -1 in `/sys/bus/pci/devices/<BDF>/numa_node` mean, and how should a placement audit handle it?**</summary>
 
 A value of -1 means the Linux kernel and ACPI tables do not expose a specific NUMA node association for that PCIe device. That is common on chipset-attached NVMe controllers or certain BIOS configurations. You must record it as `unknown` and verify the physical root complex in `lspci -Dtv` rather than silently defaulting -1 to NUMA 0.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`18. How do you configure Kubernetes on a multi-socket GPU node so the kubelet refuses to admit a distributed training pod whose GPU, CPU cores, and NIC span across different NUMA sockets?`&lt;/strong>`</summary>
+<summary>**18. How do you configure Kubernetes on a multi-socket GPU node so the kubelet refuses to admit a distributed training pod whose GPU, CPU cores, and NIC span across different NUMA sockets?**</summary>
 
 Configure the kubelet with `cpuManagerPolicy: static` and `topologyManagerPolicy: single-numa-node` using container or pod scope. The kubelet collects NUMA topology hints from the CPU manager, `nvidia-device-plugin`, and `sriov-network-device-plugin`. It only admits the pod if all requested resources reside on a single NUMA node, rejecting unaligned pods with a `Topology Affinity Error`.
 
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Contrast the topology placement requirements of `single_gpu_inference`, `multi_gpu_training`, and `distributed_training`.`&lt;/strong>`</summary>
+<summary>**19. Contrast the topology placement requirements of `single_gpu_inference`, `multi_gpu_training`, and `distributed_training`.**</summary>
 
 - `single_gpu_inference` requires local NUMA CPU and host memory binding (`require_same_numa_cpu: true`), prefers a local NIC, and does not require a multi-GPU NVLink peer group.
 - `multi_gpu_training` inside a single node requires the strongest available GPU peer group (`NV#`), P2P enabled (`OK`), balanced GPU count, and local NUMA CPU and memory binding.
@@ -583,7 +583,7 @@ Configure the kubelet with `cpuManagerPolicy: static` and `topologyManagerPolicy
 </details>
 
 <details>
-<summary>`&lt;strong>`20. What role do GPUDirect RDMA (`nvidia-peermem`), BlueField-3 DPUs, and Co-Packaged Optics (CPO) play when traffic leaves an NVSwitch domain for another rack or storage cluster?`&lt;/strong>`</summary>
+<summary>**20. What role do GPUDirect RDMA (`nvidia-peermem`), BlueField-3 DPUs, and Co-Packaged Optics (CPO) play when traffic leaves an NVSwitch domain for another rack or storage cluster?**</summary>
 
 - GPUDirect RDMA via `nvidia-peermem` allows ConnectX NICs and BlueField-3 DPUs to register GPU HBM. It performs zero-copy RDMA transfers directly between the network wire and GPU memory over a PCIe switch or Grace C2C without staging through host RAM.
 - BlueField-3 DPUs offload and isolate storage (`NVMe-oF`), security, and control-plane processing from the host CPU.

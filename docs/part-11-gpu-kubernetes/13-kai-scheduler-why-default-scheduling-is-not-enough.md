@@ -375,121 +375,121 @@ Summary: 25 passed, 0 failed out of 25 checks.
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. What is the NVIDIA KAI Scheduler, and where did it originate?`&lt;/strong>`</summary>
+<summary>**1. What is the NVIDIA KAI Scheduler, and where did it originate?**</summary>
 
 The NVIDIA KAI Scheduler is the open-source version of the GPU-optimized Kubernetes scheduling engine originally built by Run:ai before its acquisition by NVIDIA. Workloads select it with `schedulerName: kai-scheduler` and `kai.run.ai/v1` or `scheduling.run.ai/v2` resources. It replaces default kube-scheduler to unify gang scheduling, hierarchical quotas with fair-share borrowing, fractional GPU sharing, and NVLink or InfiniBand topology placement.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. In Volume 23 Chapter 7, a 32-GPU cluster serves research, data-eng, and interns. Why does giving each team dedicated nodes or rigid quotas yield only 60% utilization versus 85% with dynamic shared quotas?`&lt;/strong>`</summary>
+<summary>**2. In Volume 23 Chapter 7, a 32-GPU cluster serves research, data-eng, and interns. Why does giving each team dedicated nodes or rigid quotas yield only 60% utilization versus 85% with dynamic shared quotas?**</summary>
 
 When 16 GPUs for research, 12 GPUs for data-eng, and 4 GPUs for interns are locked behind hard namespace boundaries, unused GPUs in one team's pool cannot be used by waiting jobs in another namespace. Allowing teams to borrow idle GPUs dynamically and preempting lower-priority borrowed GPUs when the owner returns lifts average cluster utilization from 60% to 85%.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What is the bimodal workload distribution of a typical multi-tenant research GPU cluster in Volume 23 Chapter 12?`&lt;/strong>`</summary>
+<summary>**3. What is the bimodal workload distribution of a typical multi-tenant research GPU cluster in Volume 23 Chapter 12?**</summary>
 
 Across 50 research teams sharing 200 GPUs on 25 nodes, workloads split into three duration tiers. Roughly 60% are short interactive jobs under 1 hour and often 5 minutes. Another 30% are medium fine-tuning or sweep jobs lasting 1 to 8 hours with a 2-hour median. The remaining 10% are long multi-node training runs lasting over 24 hours up to 72 hours or 3 months.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. How does a weighted fair-share scheduler compute a team's deficit and job priority score in Volume 23 Chapter 12?`&lt;/strong>`</summary>
+<summary>**4. How does a weighted fair-share scheduler compute a team's deficit and job priority score in Volume 23 Chapter 12?**</summary>
 
 The scheduler computes the normalized usage deficit relative to the team's quota using `deficit = (current_usage - quota) / quota` and scores the job with `priority = -deficit + (0.1 if job.gpu_count < 4 else 0.0)`. Teams below their quota have a negative deficit ratio, which yields a positive priority boost to the front of the queue. Teams over their quota have a positive deficit ratio, which pushes their next jobs behind under-quota peers.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. In the Professor A and Professor B scenario, Professor A uses 600 of 500 GPU-hours and Professor B uses 100 of 250 GPU-hours in Month 1. What is the cluster utilization, and what are their balances entering Month 2?`&lt;/strong>`</summary>
+<summary>**5. In the Professor A and Professor B scenario, Professor A uses 600 of 500 GPU-hours and Professor B uses 100 of 250 GPU-hours in Month 1. What is the cluster utilization, and what are their balances entering Month 2?**</summary>
 
 Total consumption is 700 GPU-hours out of the combined 750 GPU-hour quota, achieving 93.33% or roughly 93% cluster utilization. Entering Month 2, Professor A carries a -100 GPU-hour deficit balance that lowers priority, while Professor B carries a +150 GPU-hour surplus credit that boosts priority.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. In Generative AI on Kubernetes Example 7-5, what two fields bind a Kubeflow PyTorchJob to KAI Scheduler and its quota Project?`&lt;/strong>`</summary>
+<summary>**6. In Generative AI on Kubernetes Example 7-5, what two fields bind a Kubeflow PyTorchJob to KAI Scheduler and its quota Project?**</summary>
 
 First, the metadata annotation `kai.run.ai/project: ml-team-a` binds the job to the Project custom resource with an 8-GPU quota, or `kai.scheduler/queue` binds it to a Queue on newer releases. Second, the pod spec field `schedulerName: kai-scheduler` delegates pod scheduling and gang placement to the KAI Scheduler.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How does KAI Scheduler's approach to gang scheduling differ from the standalone Coscheduling PodGroup plugin?`&lt;/strong>`</summary>
+<summary>**7. How does KAI Scheduler's approach to gang scheduling differ from the standalone Coscheduling PodGroup plugin?**</summary>
 
 The standalone Coscheduling plugin requires users or external controllers to create low-level PodGroup objects and has no built-in quota or GPU topology engine. KAI Scheduler integrates gang scheduling directly with PyTorchJob, TrainJob, JobSet, and LeaderWorkerSet workloads while evaluating Project fair-share quotas and NVSwitch topology in the same pass.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. How does KAI Scheduler optimize GPU topology placement without requiring users to write manual nodeSelector or nodeAffinity rules?`&lt;/strong>`</summary>
+<summary>**8. How does KAI Scheduler optimize GPU topology placement without requiring users to write manual nodeSelector or nodeAffinity rules?**</summary>
 
 KAI Scheduler reads hardware interconnect labels published by the NVIDIA GPU Operator and GPU Feature Discovery. When a distributed job requests 8 GPUs, the scheduler automatically prefers co-locating all 8 GPUs on a single NVSwitch server at 900 GB/s rather than scattering them across multiple nodes over InfiniBand or Ethernet.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Why can KAI Scheduler consolidate interactive Jupyter notebooks and small inference models more densely than the default kube-scheduler?`&lt;/strong>`</summary>
+<summary>**9. Why can KAI Scheduler consolidate interactive Jupyter notebooks and small inference models more densely than the default kube-scheduler?**</summary>
 
 The default kube-scheduler only understands whole-integer GPU requests like `nvidia.com/gpu: 1`. KAI Scheduler supports fractional GPU requests and dynamic time-slicing, allowing multiple lightweight pods to share a single physical GPU while enforcing memory and compute limits.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Walk through the exact 90-second timeline of a graceful preemption event in Volume 23 Chapter 12.`&lt;/strong>`</summary>
+<summary>**10. Walk through the exact 90-second timeline of a graceful preemption event in Volume 23 Chapter 12.**</summary>
 
 At 0 seconds, kubelet sends `SIGTERM` to the preempted pod under a 30-second grace period. Between 0 and 30 seconds, the Python signal handler writes model weights, optimizer state, epoch, and step to persistent storage in 5 to 10 seconds and exits 0 before the 30-second `SIGKILL` deadline. At 45 seconds, the higher-priority job starts on the freed GPUs, and at 90 seconds the preempted job resumes on another node with zero lost steps.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What are the three job duration preemption rules defined in Volume 23 Chapter 12 Phase 4?`&lt;/strong>`</summary>
+<summary>**11. What are the three job duration preemption rules defined in Volume 23 Chapter 12 Phase 4?**</summary>
 
 Short jobs under 1 hour are non-preemptible so interactive notebooks are not disrupted, and are only canceled if more than 10 jobs wait in the queue. Medium jobs between 1 and 8 hours are preemptible with a 30-second `SIGTERM` notice to save a checkpoint. Long jobs over 8 hours are preemptible only when the owning team is more than 2x over its quota.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What are the four monitoring metrics and three alert thresholds recommended in Volume 23 Chapter 7 for a multi-tenant GPU cluster?`&lt;/strong>`</summary>
+<summary>**12. What are the four monitoring metrics and three alert thresholds recommended in Volume 23 Chapter 7 for a multi-tenant GPU cluster?**</summary>
 
 Platform teams track `gpu_usage_per_namespace`, `gpu_allocation_percent`, `preemption_count_per_day`, and `pod_pending_seconds_p99`. Alerts fire when a namespace exceeds its hard quota limit, when `preemption_count_per_day` exceeds 5 per day indicating thrashing, or when `pod_pending_seconds_p99` exceeds 5 minutes indicating a scheduling bottleneck.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How does the three-tier checkpointing strategy in Volume 23 Chapter 12 balance write overhead against recovery time and durability?`&lt;/strong>`</summary>
+<summary>**13. How does the three-tier checkpointing strategy in Volume 23 Chapter 12 balance write overhead against recovery time and durability?**</summary>
 
 Tier 1 writes to local NVMe every 100 steps or hourly with zero network overhead for under 5-minute recovery from process crashes. Tier 2 writes asynchronously to shared NFS every 8 hours and on `SIGTERM` with 1% to 2% overhead to survive full node failures. Tier 3 archives daily to cold storage or tape to protect 72-hour runs from primary storage loss.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. A team complains that their long training job is preempted every 2 hours. What four solutions can a platform architect apply?`&lt;/strong>`</summary>
+<summary>**14. A team complains that their long training job is preempted every 2 hours. What four solutions can a platform architect apply?**</summary>
 
 First, increase the team's guaranteed nominal quota so the job does not rely on borrowed GPUs. Second, reduce cluster oversubscription and borrowing ceilings. Third, enable age-based priority promotion or the 2x over-quota preemption rule for jobs running longer than 8 hours. Fourth, provide reserved off-peak windows such as 3 AM to 7 AM for uninterrupted execution.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. When should a platform architect layer Kueue on top of KAI Scheduler rather than running KAI Scheduler standalone?`&lt;/strong>`</summary>
+<summary>**15. When should a platform architect layer Kueue on top of KAI Scheduler rather than running KAI Scheduler standalone?**</summary>
 
 Run KAI Scheduler standalone when all cluster workloads are GPU-centric and governed through KAI Queues or Projects. Layer Kueue above KAI Scheduler when the organization standardizes on Kubernetes ClusterQueue, LocalQueue, and ResourceFlavor APIs across multi-cluster or mixed CPU, TPU, and GPU fleets while delegating node-level gang and NVLink placement to KAI Scheduler.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What are the two deployment modes of the commercial Run:ai platform on NVIDIA Base Command Manager 11, and what are the two variants of self-hosted mode?`&lt;/strong>`</summary>
+<summary>**16. What are the two deployment modes of the commercial Run:ai platform on NVIDIA Base Command Manager 11, and what are the two variants of self-hosted mode?**</summary>
 
 Run:ai on BCM 11 supports SaaS mode at version 2.22.15, where the control plane runs in the Run:ai cloud over outbound HTTPS, and Self-Hosted mode at versions 2.23.x and v2.25.x, where both control and data planes run inside the BCM cluster. Self-Hosted mode operates in either Connected mode, which allows downloads and blocks uploads, or fully offline Air-Gapped mode.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. How did the Run:ai installation workflow change in NVIDIA Base Command Manager 11.33?`&lt;/strong>`</summary>
+<summary>**17. How did the Run:ai installation workflow change in NVIDIA Base Command Manager 11.33?**</summary>
 
 Before BCM 11.33, Run:ai was deployed inside the monolithic `cm-kubernetes-setup` wizard. Starting in BCM 11.33, administrators first run `cm-kubernetes-setup` to deploy Kubernetes and prerequisite operators, and then run `cm-runai-setup` separately using `/root/cm-runai-setup.conf` secured with `chmod 600`.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. What four validation checks does the BCM Run:ai setup wizard execute during the questions phase, and why is the IP routability check skipped when MetalLB is used?`&lt;/strong>`</summary>
+<summary>**18. What four validation checks does the BCM Run:ai setup wizard execute during the questions phase, and why is the IP routability check skipped when MetalLB is used?**</summary>
 
 The wizard checks control-plane FQDN DNS resolution, verifies the certificate chain with `openssl verify`, confirms the FQDN appears in the certificate Subject Alternative Name list, and checks IP routability since BCM 11.25.08. The IP routability check is skipped when MetalLB is used because MetalLB does not bind the virtual IP until after the LoadBalancer service is deployed.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What is the difference between minimal config and config when saving /root/cm-runai-setup.conf in BCM 11.33+?`&lt;/strong>`</summary>
+<summary>**19. What is the difference between minimal config and config when saving /root/cm-runai-setup.conf in BCM 11.33+?**</summary>
 
 Choosing `minimal config` writes only the configuration keys that differ from upstream application defaults. Choosing full `config` writes both the modified settings and all current upstream default parameters explicitly into `/root/cm-runai-setup.conf`.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. How do you verify or uninstall the Run:ai operator in a BCM Kubernetes cluster?`&lt;/strong>`</summary>
+<summary>**20. How do you verify or uninstall the Run:ai operator in a BCM Kubernetes cluster?**</summary>
 
 To verify the installation, run `helm list -n runai`, `helm history -n runai runai-cluster`, and `kubectl get all -n runai` to confirm `cluster-installer` and `runai-cluster` are running and `cluster-installer-service` listens on port 8080/TCP. To uninstall the operator, run `helm uninstall cluster-installer -n runai`.
 </details>

@@ -350,31 +350,31 @@ Summary: 25 passed, 0 failed out of 25 checks.
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. Why is gang scheduling without topology awareness insufficient for distributed LLM training?`&lt;/strong>`</summary>
+<summary>**1. Why is gang scheduling without topology awareness insufficient for distributed LLM training?**</summary>
 
 Gang scheduling only guarantees that all Pods of a job start at the same time. Without topology awareness, the scheduler can scatter those Pods across separate nodes or racks connected by slow Ethernet or multi-hop spine links. Co-locating the gang on a single NVSwitch node or a single InfiniBand leaf switch avoids that network bottleneck and prevents step time from increasing by an order of magnitude.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Compare the network bandwidth and latency sensitivities of Data Parallelism (DDP), Tensor Parallelism (TP), Fully Sharded Data Parallelism (FSDP), and Pipeline Parallelism (PP).`&lt;/strong>`</summary>
+<summary>**2. Compare the network bandwidth and latency sensitivities of Data Parallelism (DDP), Tensor Parallelism (TP), Fully Sharded Data Parallelism (FSDP), and Pipeline Parallelism (PP).**</summary>
 
 Tensor Parallelism has the highest sensitivity because it executes synchronous collectives on activations inside every layer, requiring intra-node NVLink or NVSwitch. FSDP has very high sensitivity because it performs just-in-time parameter gather and gradient scatter collectives on every layer, requiring intra-node NVSwitch plus inter-node InfiniBand or RoCEv2 GPUDirect RDMA. Data Parallelism is bandwidth-sensitive once per step during gradient synchronization, while Pipeline Parallelism has the lowest bandwidth demand and sends point-to-point activations only at stage boundaries.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. How does KAI Scheduler's topology awareness differ from Kueue's ResourceFlavor approach and the Coscheduling plugin?`&lt;/strong>`</summary>
+<summary>**3. How does KAI Scheduler's topology awareness differ from Kueue's ResourceFlavor approach and the Coscheduling plugin?**</summary>
 
 The Coscheduling PodGroup plugin has no native topology awareness and relies on manual node labels and pod affinity rules. Kueue selects hardware tiers at job admission time via ResourceFlavor objects, delegating pod placement to the underlying scheduler. NVIDIA KAI Scheduler integrates native GPU topology optimization directly into its gang-scheduling session loop, reading NVLink, NVSwitch, MIG, and InfiniBand domains to co-locate gangs automatically.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. In KAI Scheduler, what is the trade-off between setting a topology constraint as required (kai.scheduler/topology-required-placement) versus preferred (kai.scheduler/topology-preferred-placement)?`&lt;/strong>`</summary>
+<summary>**4. In KAI Scheduler, what is the trade-off between setting a topology constraint as required (kai.scheduler/topology-required-placement) versus preferred (kai.scheduler/topology-preferred-placement)?**</summary>
 
 Setting a constraint as required guarantees the gang never runs on a degraded interconnect path by holding the entire PodGroup in the queue even if scattered GPUs are free. This protects collective step time and prevents cross-switch congestion at the cost of longer queue wait times when the cluster is fragmented. Setting a constraint as preferred places the gang inside the tightest domain when available, but allows falling back to a wider domain so the job starts sooner.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. On the 4-GPU H100 server in Volume 02 Lab 04, what are the two natural hardware topology groups, and what three Linux/NVIDIA data sources confirm them?`&lt;/strong>`</summary>
+<summary>**5. On the 4-GPU H100 server in Volume 02 Lab 04, what are the two natural hardware topology groups, and what three Linux/NVIDIA data sources confirm them?**</summary>
 
 The two natural hardware groups on the server are:
 
@@ -387,19 +387,19 @@ The three independent confirming sources are `nvidia-smi topo -m`, the Linux sys
 </details>
 
 <details>
-<summary>`&lt;strong>`6. In Volume 02 Lab 04, what happens if a 2-GPU + 1-NIC distributed training job is placed on (GPU 1, GPU 2, NIC 1) instead of (GPU 0, GPU 1, NIC 0)?`&lt;/strong>`</summary>
+<summary>**6. In Volume 02 Lab 04, what happens if a 2-GPU + 1-NIC distributed training job is placed on (GPU 1, GPU 2, NIC 1) instead of (GPU 0, GPU 1, NIC 0)?**</summary>
 
 The first GPU sits on NUMA 0 while the second GPU and the selected NIC sit on NUMA 1. Because there is no NVLink bridge between those two GPUs, every peer GPU transfer and every cross-socket RDMA transfer must cross the inter-socket link at NUMA distance 21 instead of local distance 10.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Why is checking nvidia-smi topo -m once at node commissioning not sufficient to guarantee that an NV4 GPU pair remains healthy in production?`&lt;/strong>`</summary>
+<summary>**7. Why is checking nvidia-smi topo -m once at node commissioning not sufficient to guarantee that an NV4 GPU pair remains healthy in production?**</summary>
 
 The topology matrix command shows only the logical link class. Running `nvidia-smi nvlink --status` can reveal that one of the four NVLink lanes has degraded to zero bandwidth while the other three lanes run normally. That single failed lane cuts peer bandwidth by 25 percent even though the pair still appears healthy in the static topology matrix.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What are the three workload placement profiles defined in Step 7 and Step 8 of Volume 02 Lab 04?`&lt;/strong>`</summary>
+<summary>**8. What are the three workload placement profiles defined in Step 7 and Step 8 of Volume 02 Lab 04?**</summary>
 
 The three workload placement profiles are:
 
@@ -411,73 +411,73 @@ The three workload placement profiles are:
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Why should topology inventories and placement policies track GPU UUIDs and PCI bus addresses rather than only logical GPU indices (0, 1, 2, 3)?`&lt;/strong>`</summary>
+<summary>**9. Why should topology inventories and placement policies track GPU UUIDs and PCI bus addresses rather than only logical GPU indices (0, 1, 2, 3)?**</summary>
 
 Logical indices can change after a BIOS update, PCIe riser replacement, or kernel re-enumeration. A GPU's hardware UUID is immutable, and its PCI BDF address maps directly to Linux sysfs NUMA and PCIe root-complex topology.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. In Volume 24 Project 10, a stakeholder asks for 100 trillion tokens/year of training throughput on a 50B-parameter LLM with a $5M all-in budget. Walk through the per-GPU throughput math that proves a 4.4x shortfall.`&lt;/strong>`</summary>
+<summary>**10. In Volume 24 Project 10, a stakeholder asks for 100 trillion tokens/year of training throughput on a 50B-parameter LLM with a $5M all-in budget. Walk through the per-GPU throughput math that proves a 4.4x shortfall.**</summary>
 
 A 50-billion-parameter model requires 100 GFLOP per token, and one H100 achieving 1,000 TFLOPS sustained processes 36 million tokens per hour. A 5-million-dollar budget buys 90 H100 GPUs at 4.875 million dollars in hardware CapEx, or 80 GPUs when three-year OpEx is included. At 80 percent availability, 90 H100s produce 3.24 billion tokens per hour or 22.7 trillion tokens per year. That leaves a 4.4x shortfall below the 100-trillion target, which would require about 396 H100 GPUs.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. In Volume 24 Project 10 Step 2, compare Option B (25 nodes x 4 GPUs/node) and Option C (12 nodes x 8 GPUs/node) for a ~100-GPU cluster.`&lt;/strong>`</summary>
+<summary>**11. In Volume 24 Project 10 Step 2, compare Option B (25 nodes x 4 GPUs/node) and Option C (12 nodes x 8 GPUs/node) for a ~100-GPU cluster.**</summary>
 
 In Option B with 25 four-GPU nodes, intra-node collective communication takes about 2 milliseconds over NVLink, while inter-node communication across 25 nodes over InfiniBand HDR takes 20 to 40 milliseconds. In Option C with 12 eight-GPU nodes, consolidating onto eight-GPU NVSwitch servers reduces binary-tree inter-node communication hops to 3.6 hops. It also cuts switch port count and congestion in half and keeps eight-GPU tensor-parallel groups inside one node.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. In Volume 24 Project 10 Step 4, how do compute time and ring AllReduce time combine to meet the under-300ms step-time requirement for the 50B model (batch 256)?`&lt;/strong>`</summary>
+<summary>**12. In Volume 24 Project 10 Step 4, how do compute time and ring AllReduce time combine to meet the under-300ms step-time requirement for the 50B model (batch 256)?**</summary>
 
 Per step, forward and backward compute at 1,000 TFLOPS takes 100 milliseconds, and optimized multi-node ring collective communication of 900 GB gradients takes about 50 milliseconds. The total step time is 150 milliseconds, which stays well below the 300-millisecond target.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How does Volume 24 Project 10 Phase 3 size and stage a 600 GB checkpoint (200 GB weights + 400 GB optimizer state) every 100 steps (~30 seconds) without stalling training?`&lt;/strong>`</summary>
+<summary>**13. How does Volume 24 Project 10 Phase 3 size and stage a 600 GB checkpoint (200 GB weights + 400 GB optimizer state) every 100 steps (~30 seconds) without stalling training?**</summary>
 
 Each node writes the 600 GB checkpoint synchronously to its 1 TB local NVMe drive in about 1 second so training resumes immediately. A background process then asynchronously uploads the checkpoint to remote S3 storage, taking about 50 minutes for a full dump over 200 Mbps or 15 minutes with incremental diffs.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. How can a scheduler or runtime smooth out a single slow link or straggler path across repeated collective operations according to AI Systems Performance Engineering Chapter 19?`&lt;/strong>`</summary>
+<summary>**14. How can a scheduler or runtime smooth out a single slow link or straggler path across repeated collective operations according to AI Systems Performance Engineering Chapter 19?**</summary>
 
 Use alternating rings or periodically re-initialize and permute the communicator rank order via `ncclCommInitRank` across collectives. Permuting rank order ensures that no single physical link or GPU sits on the critical bottleneck path for every consecutive collective.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. When an 8-GPU node's power draw spikes to 15 kW under peak synchronous FP8 load—exceeding a 10 kW rack power budget—what immediate operational control can you apply?`&lt;/strong>`</summary>
+<summary>**15. When an 8-GPU node's power draw spikes to 15 kW under peak synchronous FP8 load—exceeding a 10 kW rack power budget—what immediate operational control can you apply?**</summary>
 
 Monitor node power via `ipmitool dcmi power reading` or Redfish and DCGM telemetry. Apply an 85 percent GPU power cap with `nvidia-smi -pl` via GPU Operator policy, or reduce the micro-batch size to keep node power within the rack breaker envelope.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How do you check negotiated PCIe link speed and width for a specific GPU (e.g., 0000:31:00.0) on a Linux worker node?`&lt;/strong>`</summary>
+<summary>**16. How do you check negotiated PCIe link speed and width for a specific GPU (e.g., 0000:31:00.0) on a Linux worker node?**</summary>
 
 Run `sudo lspci -s "0000:31:00.0" -vv | grep -E 'LnkCap:|LnkSta:'` on the worker node. Verify that the negotiated link status speed and width match the link capability when the GPU is in the active performance state.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What does a value of -1 in /sys/bus/pci/devices/PCI_BDF/numa_node mean on a Linux GPU server, and how does it affect topology-aware scheduling?`&lt;/strong>`</summary>
+<summary>**17. What does a value of -1 in /sys/bus/pci/devices/PCI_BDF/numa_node mean on a Linux GPU server, and how does it affect topology-aware scheduling?**</summary>
 
 A sysfs `numa_node` value of negative one means the server's ACPI BIOS tables or hypervisor did not expose a specific NUMA node association to the Linux kernel. Until fixed in BIOS or overridden via a topology map, `numactl` and `kubelet` Topology Manager cannot distinguish socket locality for that PCIe device.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. In Volume 24 Project 10, if achieved cluster throughput drops from 22.7T tokens/year down to 15T tokens/year and inter-node AllReduce rises from 50ms to 80ms, what two diagnostic tools do you run first?`&lt;/strong>`</summary>
+<summary>**18. In Volume 24 Project 10, if achieved cluster throughput drops from 22.7T tokens/year down to 15T tokens/year and inter-node AllReduce rises from 50ms to 80ms, what two diagnostic tools do you run first?**</summary>
 
 First, inspect `perfquery` counters and NCCL debug traces to check InfiniBand port congestion and verify whether NCCL selected Ring or Tree collectives. Second, run `ibnetdiscover` and `ibstat` to confirm that all InfiniBand links negotiated full 200 Gbps HDR speed and that no degraded cables forced traffic onto multi-hop paths.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. How does KAI Scheduler's Consolidate action interact with topology-aware gang scheduling when a cluster is partially loaded with 1-GPU and 2-GPU jobs?`&lt;/strong>`</summary>
+<summary>**19. How does KAI Scheduler's Consolidate action interact with topology-aware gang scheduling when a cluster is partially loaded with 1-GPU and 2-GPU jobs?**</summary>
 
 When single-GPU and two-GPU jobs are spread across nodes, no single server has 8 free GPUs to satisfy a single-node NVSwitch PodGroup. KAI Scheduler's Consolidate and bin-packing action packs smaller jobs onto partially filled nodes so whole eight-GPU NVSwitch nodes remain contiguous for incoming eight-GPU gangs.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. When layering Kueue above KAI Scheduler for a multi-node training job, which component selects the InfiniBand hardware tier and which component co-locates the gang onto the same InfiniBand leaf switch?`&lt;/strong>`</summary>
+<summary>**20. When layering Kueue above KAI Scheduler for a multi-node training job, which component selects the InfiniBand hardware tier and which component co-locates the gang onto the same InfiniBand leaf switch?**</summary>
 
 Kueue selects the hardware tier at admission time by matching the job's ClusterQueue against the InfiniBand ResourceFlavor and injecting tier node labels. Once Kueue unsuspends the job, KAI Scheduler executes atomic gang placement and uses its Topology tree to pack the gang's pods onto the minimum number of NVSwitch nodes under a single InfiniBand leaf switch.
 </details>

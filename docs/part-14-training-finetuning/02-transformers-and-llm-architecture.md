@@ -664,13 +664,13 @@ In senior infrastructure and solutions architecture interviews, candidates must 
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. How do Foundation Models differ from narrow ML models in training objective, scale, and operational cost structure?`&lt;/strong>`</summary>
+<summary>**1. How do Foundation Models differ from narrow ML models in training objective, scale, and operational cost structure?**</summary>
 
 Narrow ML models are trained from scratch via supervised learning on task-specific labeled datasets with thousands to roughly 100 million parameters. They also have low operational hosting costs on modest CPUs or single GPUs. Foundation models are pre-trained via self-supervision on massive unlabeled corpora with billions to trillions of parameters. They are adapted via prompting, RAG, LoRA, or distillation, incurring much higher cloud API or multi-GPU operational costs.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What is the language distribution of Common Crawl (Lai et al., 2023), and how does tokenization efficiency on the MASSIVE dataset directly impact non-English inference latency and API cost?`&lt;/strong>`</summary>
+<summary>**2. What is the language distribution of Common Crawl (Lai et al., 2023), and how does tokenization efficiency on the MASSIVE dataset directly impact non-English inference latency and API cost?**</summary>
 
 ```text
 Common Crawl Skew & MASSIVE Tokenization Tax (AIE Ch. 2 Tables 2-1 & 2-2):
@@ -682,19 +682,19 @@ Common Crawl Skew & MASSIVE Tokenization Tax (AIE Ch. 2 Tables 2-1 & 2-2):
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What two architectural bottlenecks of RNN / LSTM seq2seq models did the 2017 Transformer eliminate?`&lt;/strong>`</summary>
+<summary>**3. What two architectural bottlenecks of RNN / LSTM seq2seq models did the 2017 Transformer eliminate?**</summary>
 
 First, the Transformer eliminated the fixed-state information bottleneck where vanilla seq2seq compressed an entire input sequence into a single final hidden vector. Self-attention instead allows the decoder to attend directly to any input token. Second, it eliminated the sequential input processing bottleneck where token t had to wait for token t-1. Dispensing with recurrence allows all input tokens to be processed in parallel during training and prompt prefill.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. When should you choose an Encoder-only (BERT), Decoder-only (GPT/Llama/Qwen), or Encoder-Decoder (T5) Transformer?`&lt;/strong>`</summary>
+<summary>**4. When should you choose an Encoder-only (BERT), Decoder-only (GPT/Llama/Qwen), or Encoder-Decoder (T5) Transformer?**</summary>
 
 Choose an Encoder-only model with bidirectional self-attention for classification, natural language understanding, and dense RAG embeddings. Choose a Decoder-only model with causal masked self-attention for autoregressive text generation and streaming chat. Choose an Encoder-Decoder model for conditional sequence-to-sequence tasks like translation and summarization. It pairs a bidirectional encoder with a cross-attention causal decoder.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. What are the exact parameter formulas for a Transformer layer's Attention module and SwiGLU MLP module, and what do they sum to in Llama 2-7B?`&lt;/strong>`</summary>
+<summary>**5. What are the exact parameter formulas for a Transformer layer's Attention module and SwiGLU MLP module, and what do they sum to in Llama 2-7B?**</summary>
 
 ```text
 Transformer Layer Parameter Formulas & Llama 2-7B Totals (d_model = 4,096, d_ff = 11,008, 32 heads, d_head = 128):
@@ -706,19 +706,19 @@ Transformer Layer Parameter Formulas & Llama 2-7B Totals (d_model = 4,096, d_ff 
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Why does extending context length from 4K (Llama 2) to 128K (Llama 3) add zero parameters to the model?`&lt;/strong>`</summary>
+<summary>**6. Why does extending context length from 4K (Llama 2) to 128K (Llama 3) add zero parameters to the model?**</summary>
 
 Modern LLMs replace fixed learned positional embedding tables with Rotary Position Embeddings. RoPE encodes relative token positions by rotating Query and Key head vectors in 2D frequency planes inside the attention operator. Scaling the RoPE base frequency extends the supported context window from 4,096 to 128,000 tokens without changing the dimensions of any learned weight matrix.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How do RWKV, Mamba (Selective State Spaces), and Jamba (Lieber et al., 2024) address the Transformer's quadratic long-context bottleneck?`&lt;/strong>`</summary>
+<summary>**7. How do RWKV, Mamba (Selective State Spaces), and Jamba (Lieber et al., 2024) address the Transformer's quadratic long-context bottleneck?**</summary>
 
 RWKV reformulates recurrent networks for parallelizable training and constant-memory inference. Selective State Space Models like Mamba scale linearly with sequence length up to 1 million tokens and match Transformers twice their size at 3B parameters. Jamba interleaves Transformer, Mamba, and Mixture-of-Experts layers into a 52B total, 12B active parameter model. That hybrid design supports a 256K-token context inside a single 80 GB GPU.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. At what sequence length do quadratic attention core FLOPs overtake linear projection FLOPs in Llama 2-7B?`&lt;/strong>`</summary>
+<summary>**8. At what sequence length do quadratic attention core FLOPs overtake linear projection FLOPs in Llama 2-7B?**</summary>
 
 ```text
 Llama 2-7B Quadratic vs Linear FLOPs Crossover (d_model = 4,096, d_ff = 11,008):
@@ -729,7 +729,7 @@ Llama 2-7B Quadratic vs Linear FLOPs Crossover (d_model = 4,096, d_ff = 11,008):
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Does chunked prefill reduce total self-attention QK dot products? How does latency-aware scheduling reduce critical-path QK ops by 42 percent?`&lt;/strong>`</summary>
+<summary>**9. Does chunked prefill reduce total self-attention QK dot products? How does latency-aware scheduling reduce critical-path QK ops by 42 percent?**</summary>
 
 ```text
 Causal QK Dot Products T(N) = N(N + 1) / 2 (AISPE Ch. 16):
@@ -740,7 +740,7 @@ Causal QK Dot Products T(N) = N(N + 1) / 2 (AISPE Ch. 16):
 </details>
 
 <details>
-<summary>`&lt;strong>`10. What is the exact formula for KV cache memory per token, and what are the 4,096-token KV cache sizes for a 13B model under MHA, GQA-8, MQA, and MLA?`&lt;/strong>`</summary>
+<summary>**10. What is the exact formula for KV cache memory per token, and what are the 4,096-token KV cache sizes for a 13B model under MHA, GQA-8, MQA, and MLA?**</summary>
 
 ```text
 KV Cache Formula: kv_bytes_per_token = 2 * n_layers * n_kv_heads * d_head * bytes_per_element
@@ -753,7 +753,7 @@ KV Cache Formula: kv_bytes_per_token = 2 * n_layers * n_kv_heads * d_head * byte
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How much FP16 KV cache does a 70B model generate for a single 250,000-token conversation, and how do disaggregated KV pools handle it?`&lt;/strong>`</summary>
+<summary>**11. How much FP16 KV cache does a 70B model generate for a single 250,000-token conversation, and how do disaggregated KV pools handle it?**</summary>
 
 ```text
 70B Model (80 layers, 32 KV heads, d_head = 128) at 250,000 Tokens (AISPE Ch. 18):
@@ -765,13 +765,13 @@ KV Cache Formula: kv_bytes_per_token = 2 * n_layers * n_kv_heads * d_head * byte
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How do FlashAttention, FlashAttention-3, FlashMLA, and ThunderMLA optimize GPU memory hierarchy and warp execution?`&lt;/strong>`</summary>
+<summary>**12. How do FlashAttention, FlashAttention-3, FlashMLA, and ThunderMLA optimize GPU memory hierarchy and warp execution?**</summary>
 
 FlashAttention tiles Queries, Keys, and Values inside on-chip SRAM with online softmax rescaling. Because the quadratic attention matrix never touches HBM, FlashAttention achieves a 2x to 4x speedup. FlashAttention-3 adds warp-specialized producer-consumer pipelines to overlap Tensor Memory Accelerator loads, Tensor Core GEMMs, and softmax. That overlap reaches roughly 75 percent of peak FP16 FLOPs. FlashMLA fuses compressed latent decoding on H800 GPUs. Stanford's ThunderMLA megakernel dynamically packs variable-length decode streams for 20 to 35 percent faster decode throughput.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. How do Mixtral 8x7B and DeepSeek-V3 compare in total versus active parameters, and why did DeepSeek-V3 cost less than 6 million dollars to train on restricted H800 GPUs?`&lt;/strong>`</summary>
+<summary>**13. How do Mixtral 8x7B and DeepSeek-V3 compare in total versus active parameters, and why did DeepSeek-V3 cost less than 6 million dollars to train on restricted H800 GPUs?**</summary>
 
 ```text
 Mixtral 8x7B vs DeepSeek-V3 / R1 Active-vs-Total Parameters (AIE Ch. 2, AISPE Ch. 1):
@@ -783,13 +783,13 @@ Mixtral 8x7B vs DeepSeek-V3 / R1 Active-vs-Total Parameters (AIE Ch. 2, AISPE Ch
 </details>
 
 <details>
-<summary>`&lt;strong>`14. What is the Chinchilla compute-optimal scaling law, and why did Meta train Llama 3-8B on 15 trillion tokens?`&lt;/strong>`</summary>
+<summary>**14. What is the Chinchilla compute-optimal scaling law, and why did Meta train Llama 3-8B on 15 trillion tokens?**</summary>
 
 After training 400 models from 70M to over 16B parameters on 5B to 500B tokens, Chinchilla established that optimal training tokens equal roughly 20 times the parameter count under C = 6ND. That rule prescribes 60B tokens for a 3B model and 1.4T tokens for Chinchilla-70B. Meta trained Llama 3-8B on 15 trillion tokens—1,875 tokens per parameter, or 93.75x the Chinchilla ratio—because Chinchilla ignores inference serving volume. Spending extra pretraining FLOPs once produces a compact 8B model that is vastly cheaper to serve across billions of queries.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. How many days and dollars does it take to train GPT-3 175B on 256 H100s at 70 percent utilization, and what hardware is required for a 100-trillion-parameter model?`&lt;/strong>`</summary>
+<summary>**15. How many days and dollars does it take to train GPT-3 175B on 256 H100s at 70 percent utilization, and what hardware is required for a 100-trillion-parameter model?**</summary>
 
 ```text
 GPT-3 175B Cluster Cost & 100T Dense Model Sizing (AIE Ch. 2, AISPE Ch. 1):
@@ -801,7 +801,7 @@ GPT-3 175B Cluster Cost & 100T Dense Model Sizing (AIE Ch. 2, AISPE Ch. 1):
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How do SFT, RLHF (Bradley-Terry RM + PPO), and DPO fit into post-training, and what are their annotation economics?`&lt;/strong>`</summary>
+<summary>**16. How do SFT, RLHF (Bradley-Terry RM + PPO), and DPO fit into post-training, and what are their annotation economics?**</summary>
 
 ```text
 Post-Training Compute & Annotation Economics (InstructGPT & Llama 2/3, AIE Ch. 2):
@@ -813,7 +813,7 @@ Post-Training Compute & Annotation Economics (InstructGPT & Llama 2/3, AIE Ch. 2
 </details>
 
 <details>
-<summary>`&lt;strong>`17. Given logits [1, 2], how does lowering temperature from 1.0 to 0.5 to 0 change token probabilities, and how does top-p differ from top-k?`&lt;/strong>`</summary>
+<summary>**17. Given logits [1, 2], how does lowering temperature from 1.0 to 0.5 to 0 change token probabilities, and how does top-p differ from top-k?**</summary>
 
 ```text
 Temperature Scaling on Logits [1, 2] & Top-k vs Top-p (AIE Ch. 2):
@@ -824,7 +824,7 @@ Temperature Scaling on Logits [1, 2] & Top-k vs Top-p (AIE Ch. 2):
 </details>
 
 <details>
-<summary>`&lt;strong>`18. How is sequence average logprob computed for ["I", "love", "food"] with probabilities [0.2, 0.1, 0.3], and how much effective model scale does a test-time verifier add?`&lt;/strong>`</summary>
+<summary>**18. How is sequence average logprob computed for ["I", "love", "food"] with probabilities [0.2, 0.1, 0.3], and how much effective model scale does a test-time verifier add?**</summary>
 
 ```text
 Sequence Logprob & Verifier Scaling (AIE Ch. 2):
@@ -834,13 +834,13 @@ Sequence Logprob & Verifier Scaling (AIE Ch. 2):
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What are the two scientific hypotheses for why LLMs hallucinate (confabulate), and how do teams enforce structured outputs in production?`&lt;/strong>`</summary>
+<summary>**19. What are the two scientific hypotheses for why LLMs hallucinate (confabulate), and how do teams enforce structured outputs in production?**</summary>
 
 The first hypothesis is self-delusion or snowballing hallucinations. Under self-delusion, the autoregressive model treats its own previously generated tokens as factual observations and compounds an initial error. The second is mismatched internal knowledge, where SFT forces the model to imitate labeler answers absent from its pretraining weights. Teams enforce structured outputs via prompting, grammar-constrained logit masking, fine-tuning, or defensive YAML post-processing. At LinkedIn, defensive YAML parsing raised valid outputs from 90 percent to 99.99 percent.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Compare Prompt Engineering, RAG, PEFT/LoRA, Distillation, and Guardrails, and explain how Fraunhofer's FhGenie guarantees data privacy.`&lt;/strong>`</summary>
+<summary>**20. Compare Prompt Engineering, RAG, PEFT/LoRA, Distillation, and Guardrails, and explain how Fraunhofer's FhGenie guarantees data privacy.**</summary>
 
 Prompt Engineering and RAG customize model inputs without changing weights. RAG uniquely enforces per-user document ACLs by filtering vector-database retrieval per query. PEFT and LoRA freeze base weights and train lightweight adapters with 10,000x fewer trainable parameters and 3x less compute. Distillation compresses a large teacher into a fast student, while Guardrails enforce safety and GDPR policies across inputs, RAG, tools, and outputs. Fraunhofer's FhGenie deployment for roughly 30,000 staff guarantees data privacy by keeping all cloud components stateless. Conversation history stays strictly inside the user's browser.
 </details>

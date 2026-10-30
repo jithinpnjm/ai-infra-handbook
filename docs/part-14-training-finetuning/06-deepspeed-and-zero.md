@@ -676,7 +676,7 @@ Summary: 25 passed, 0 failed
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. What are the exact per-GPU static memory formulas for ZeRO Stage 0, Stage 1, Stage 2, and Stage 3 under the 16-byte mixed-precision AdamW convention?`&lt;/strong>`</summary>
+<summary>**1. What are the exact per-GPU static memory formulas for ZeRO Stage 0, Stage 1, Stage 2, and Stage 3 under the 16-byte mixed-precision AdamW convention?**</summary>
 
 ```text
 Stage 0 (DDP):                                      16 * Psi
@@ -687,7 +687,7 @@ Stage 3 (shard weights, gradients, and optimizer):  (16 * Psi) / N_d
 </details>
 
 <details>
-<summary>`&lt;strong>`2. For a 70B model under the 16-byte convention on 8 GPUs, how much static memory does each GPU require in DDP, ZeRO-1, ZeRO-2, and ZeRO-3?`&lt;/strong>`</summary>
+<summary>**2. For a 70B model under the 16-byte convention on 8 GPUs, how much static memory does each GPU require in DDP, ZeRO-1, ZeRO-2, and ZeRO-3?**</summary>
 
 ```text
 DDP (Stage 0): 140 GB weights + 140 GB grads + 840 GB Adam = 1,120.0 GB (1.0x)
@@ -698,7 +698,7 @@ ZeRO-3:        1,120 / 8                                   =   140.0 GB (8.0x re
 </details>
 
 <details>
-<summary>`&lt;strong>`3. For Volume 13 Chapter 5's 10B pure-FP32 model on 8 80 GB GPUs, which ZeRO stage is the production sweet spot and why?`&lt;/strong>`</summary>
+<summary>**3. For Volume 13 Chapter 5's 10B pure-FP32 model on 8 80 GB GPUs, which ZeRO stage is the production sweet spot and why?**</summary>
 
 ```text
 DDP:          160.0 GB (exceeds 80 GB GPU)
@@ -709,19 +709,19 @@ ZeRO Stage 3: 160 / 8            = 20.0 GB (8.0x reduction, but adds 50% more co
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Why do ZeRO Stage 1 and Stage 2 have the same asymptotic communication volume as DDP, whereas ZeRO Stage 3 requires 50 percent more?`&lt;/strong>`</summary>
+<summary>**4. Why do ZeRO Stage 1 and Stage 2 have the same asymptotic communication volume as DDP, whereas ZeRO Stage 3 requires 50 percent more?**</summary>
 
 In Stage 1 and Stage 2, weights remain replicated on all GPUs, so forward and backward passes need no parameter AllGather. Gradients are summed and sharded via one ReduceScatter. Updated weights are then broadcast after the optimizer step via one AllGather, totaling `2 * M` (`2 * Psi`). That volume is identical to DDP's AllReduce. In Stage 3, weights are sharded and discarded after each layer. That requires one forward AllGather, one backward AllGather, and one backward ReduceScatter for a total of `3 * M` (`3 * Psi`).
 </details>
 
 <details>
-<summary>`&lt;strong>`5. How does `deepspeed.initialize()` handle optimizer creation differently from PyTorch DDP?`&lt;/strong>`</summary>
+<summary>**5. How does `deepspeed.initialize()` handle optimizer creation differently from PyTorch DDP?**</summary>
 
 DeepSpeed builds and wraps the sharded optimizer directly from the optimizer section of the DeepSpeed config passed to `deepspeed.initialize()`. Any external PyTorch optimizer created separately is ignored, and the training loop must invoke `model_engine.backward(loss)` and `model_engine.step()`.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. What happens when a 70B model runs on 8 80 GB A100 GPUs with ZeRO-3 and CPU Offload over PCIe Gen4?`&lt;/strong>`</summary>
+<summary>**6. What happens when a 70B model runs on 8 80 GB A100 GPUs with ZeRO-3 and CPU Offload over PCIe Gen4?**</summary>
 
 ```text
 Without offload: 840 GB / 8 = 105.0 GB/GPU (exceeds 80 GB by 25.0 GB)
@@ -732,13 +732,13 @@ With ZeRO-3 + CPU offload over PCIe Gen4 (32 GB/s vs 2-3 TB/s HBM):
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How does ZeRO-Infinity extend ZeRO-Offload, and what Linux system prerequisites are required for NVMe offloading?`&lt;/strong>`</summary>
+<summary>**7. How does ZeRO-Infinity extend ZeRO-Offload, and what Linux system prerequisites are required for NVMe offloading?**</summary>
 
 ZeRO-Infinity adds a third memory tier on local NVMe SSDs (`5–7 GB/s` sequential read on PCIe Gen4). It requires a mounted filesystem directory in `nvme_path` with two to four times the model size in free space. It also requires the `libaio-dev` or `libaio-devel` library for asynchronous I/O (`block_size: 1048576`, `queue_depth: 16`, `thread_count: 2`) and raising open file limits via `ulimit -n 65535`.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What `iostat -dx 1` metrics indicate NVMe thrashing in ZeRO-Infinity, and what is the fix?`&lt;/strong>`</summary>
+<summary>**8. What `iostat -dx 1` metrics indicate NVMe thrashing in ZeRO-Infinity, and what is the fix?**</summary>
 
 ```text
 NVMe Thrashing Signature (70B on ZeRO-Infinity):
@@ -749,13 +749,13 @@ NVMe Thrashing Signature (70B on ZeRO-Infinity):
 </details>
 
 <details>
-<summary>`&lt;strong>`9. How does Grace-Blackwell SuperOffload overcome the PCIe bottleneck of classical ZeRO-Offload?`&lt;/strong>`</summary>
+<summary>**9. How does Grace-Blackwell SuperOffload overcome the PCIe bottleneck of classical ZeRO-Offload?**</summary>
 
 SuperOffload uses cache-coherent NVLink-C2C at 900 GB/s, which is 28.125 times faster than 32 GB/s PCIe Gen4. It pairs NVLink-C2C with Speculation-Then-Validation to overlap CPU optimizer updates with GPU backpropagation before NaN/Inf validation completes. Finally, it uses heterogeneous optimizer partitioning with GraceAdam vectorized on ARM SVE across thirty-two vector and sixteen predicate registers to sustain 82 percent GPU utilization.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. What are the three components of ZeRO++, and how much cross-node communication do they save?`&lt;/strong>`</summary>
+<summary>**10. What are the three components of ZeRO++, and how much cross-node communication do they save?**</summary>
 
 ```text
 1. qwZ (zero_quantized_weights):   INT8 weight AllGather (1.0 * M -> 0.5 * M)
@@ -766,19 +766,19 @@ Combined ZeRO++ Cross-Node Volume: 3.0 * M -> 0.75 * M (4.0x reduction)
 </details>
 
 <details>
-<summary>`&lt;strong>`11. Why does enabling ZeRO++ with BF16 enabled fail at runtime?`&lt;/strong>`</summary>
+<summary>**11. Why does enabling ZeRO++ with BF16 enabled fail at runtime?**</summary>
 
 DeepSpeed's `CUDAQuantizer` kernel for ZeRO++ dequantizes INT8 communication buffers directly to FP16 (`torch.float16`), not BF16. You must enable FP16 in the DeepSpeed config when running `qwZ` or `qgZ`.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How does DeepSpeed-Ulysses parallelize long-context attention compared to Ring Attention?`&lt;/strong>`</summary>
+<summary>**12. How does DeepSpeed-Ulysses parallelize long-context attention compared to Ring Attention?**</summary>
 
 Before attention, each of the P GPUs holds a local sequence chunk of shape `(B, S / P, H, d)`. DeepSpeed-Ulysses runs an AllToAll (`all_to_all_seq_to_head`) to transpose the tensor to `(B, S, H / P, d)` so each GPU holds the full sequence for a subset of attention heads. It then computes standard FlashAttention locally and runs a second AllToAll (`all_to_all_head_to_seq`) to restore `(B, S / P, H, d)`. On intra-node NVLink, Ulysses achieves `1 / P` communication volume and lower complexity than Ring Attention.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. In a DeepSpeed JSON config, what do `reduce_bucket_size`, `stage3_prefetch_bucket_size`, `stage3_param_persistence_threshold`, and `stage3_max_live_parameters` control?`&lt;/strong>`</summary>
+<summary>**13. In a DeepSpeed JSON config, what do `reduce_bucket_size`, `stage3_prefetch_bucket_size`, `stage3_param_persistence_threshold`, and `stage3_max_live_parameters` control?**</summary>
 
 ```text
 reduce_bucket_size (5e8 = 1.0 GB FP16):          Gradient elements batched per ReduceScatter
@@ -789,13 +789,13 @@ stage3_max_live_parameters (1e9 = 2.0 GB FP16):  Max unsharded parameter element
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Why can't FSDP2 or ZeRO-3 replace Megatron-LM's Tensor Parallelism when a single layer has a 16K by 16K or 12,288 by 49,152 weight matrix?`&lt;/strong>`</summary>
+<summary>**14. Why can't FSDP2 or ZeRO-3 replace Megatron-LM's Tensor Parallelism when a single layer has a 16K by 16K or 12,288 by 49,152 weight matrix?**</summary>
 
 ZeRO-3 and FSDP2 only shard storage at rest. During compute, one GPU must still gather the full layer matrix and multiply it locally. Megatron's Tensor Parallelism (`ColumnParallelLinear` and `RowParallelLinear`) splits the wide matrix across eight GPUs into smaller slices and computes the matrix multiplication in parallel with a single AllReduce per block.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. How does Megatron's Distributed Optimizer reduce per-GPU memory, and what are the exact bytes-per-parameter formulas?`&lt;/strong>`</summary>
+<summary>**15. How does Megatron's Distributed Optimizer reduce per-GPU memory, and what are the exact bytes-per-parameter formulas?**</summary>
 
 ```text
 fp16 params, fp16 grads: 20 B/param -> 4 + 16 / d B/param (6.0 B/param at d = 8, 3.33x reduction)
@@ -805,31 +805,31 @@ fp32 params, fp32 grads: 16 B/param -> 8 +  8 / d B/param (9.0 B/param at d = 8,
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What performance advantages does Megatron-FSDP achieve over PyTorch FSDP2, and why?`&lt;/strong>`</summary>
+<summary>**16. What performance advantages does Megatron-FSDP achieve over PyTorch FSDP2, and why?**</summary>
 
 In NVIDIA's benchmarks, `--use-megatron-fsdp` delivers 15 to 25 percent higher throughput and roughly 23 percent memory savings over PyTorch FSDP2. It achieves this by co-optimizing parameter bucketing and communication overlap around Megatron's parallel groups and using NCCL `userbuffer` registration to free GPU SMs from communication work.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. How does Hopper and Blackwell FP8 hybrid training accelerate sharded training?`&lt;/strong>`</summary>
+<summary>**17. How does Hopper and Blackwell FP8 hybrid training accelerate sharded training?**</summary>
 
 `--fp8-format hybrid` uses E4M3 in the forward pass and E5M2 in the backward pass with dynamic scaling tracked over `--fp8-amax-history-len 1024`. That setup delivers 1.5 to 2x GEMM speedups over BF16 while `--fp8-param-gather` gathers sharded weights in one-byte FP8 to cut AllGather communication volume in half.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. In a 64-GPU hybrid training setup for a 70B model with TP = 4 and PP = 2, how are the 64 GPUs partitioned and why is TP kept inside a node while PP spans nodes?`&lt;/strong>`</summary>
+<summary>**18. In a 64-GPU hybrid training setup for a 70B model with TP = 4 and PP = 2, how are the 64 GPUs partitioned and why is TP kept inside a node while PP spans nodes?**</summary>
 
 Each model replica uses four-way TP times two-way PP, which equals eight GPUs and leaves eight data-parallel replicas across sixty-four GPUs. TP requires an AllReduce inside every attention and MLP layer, so it stays inside a single node's high-bandwidth NVLink domain. PP sends only point-to-point boundary activations across InfiniBand, and ZeRO or FSDP shards optimizer states across the data-parallel group.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. How do you diagnose a ZeRO-3 training hang where Rank 7 stalls in AllGather, and how do you configure collective timeouts in PyTorch?`&lt;/strong>`</summary>
+<summary>**19. How do you diagnose a ZeRO-3 training hang where Rank 7 stalls in AllGather, and how do you configure collective timeouts in PyTorch?**</summary>
 
 Enable `export NCCL_DEBUG=INFO` and inspect `node7` via `nvidia-smi`, `iftop -n`, `ibstat`, `ibdiagnet`, and `iostat`. In PyTorch, pass `timeout=datetime.timedelta(seconds=1200)` to `dist.init_process_group("nccl", timeout=...)` and set `TORCH_NCCL_ASYNC_ERROR_HANDLING=1` because there is no `NCCL_TIMEOUT` environment variable.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. In production ZeRO monitoring, what thresholds for communication percentage of step time and per-rank step time variance distinguish a healthy job from a bottlenecked job?`&lt;/strong>`</summary>
+<summary>**20. In production ZeRO monitoring, what thresholds for communication percentage of step time and per-rank step time variance distinguish a healthy job from a bottlenecked job?**</summary>
 
 ```text
 Communication % of step time: 15-30% healthy | > 50% red flag (network/collective bottleneck)

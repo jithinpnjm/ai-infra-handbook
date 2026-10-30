@@ -517,37 +517,37 @@ Exercise 6 candidates: (a) 4x H100 SXM (320 GB), (b) 8x L40S PCIe (384 GB), (c) 
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. Why does an NVIDIA RTX 4090 gaming GPU have higher raw FP32 compute TFLOPS than an A100 data center GPU, and why does that number mislead procurement teams?`&lt;/strong>`</summary>
+<summary>**1. Why does an NVIDIA RTX 4090 gaming GPU have higher raw FP32 compute TFLOPS than an A100 data center GPU, and why does that number mislead procurement teams?**</summary>
 
 The RTX 4090 clocks its dual-issue FP32 scalar cores aggressively for gaming, reaching 82.6 TFLOPS of scalar FP32 math. Enterprise AI workloads depend instead on Tensor Core matrix throughput, HBM bandwidth, NVLink speed, and ECC memory integrity. The A100 delivers 312 TFLOPS of BF16/FP16 Tensor Core math with sparsity, 2.0 TB/s of HBM2e bandwidth versus 1.0 TB/s GDDR6X, hardware ECC, and a 600 GB/s NVLink fabric.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. What is the specific legal clause in NVIDIA's GeForce Software EULA that impacts enterprise data center deployments?`&lt;/strong>`</summary>
+<summary>**2. What is the specific legal clause in NVIDIA's GeForce Software EULA that impacts enterprise data center deployments?**</summary>
 
 The GeForce Software End User License Agreement states: *"No Datacenter Deployment. The SOFTWARE is not licensed for datacenter deployment, except that blockchain processing in a datacenter is permitted."* Running consumer GeForce drivers in a commercial data center to serve APIs or train models breaches this license.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Why is Error-Correcting Code memory mandatory for distributed deep learning training, but omitted from consumer gaming cards?`&lt;/strong>`</summary>
+<summary>**3. Why is Error-Correcting Code memory mandatory for distributed deep learning training, but omitted from consumer gaming cards?**</summary>
 
 Consumer gaming tolerates single-event cosmic-ray bit flips because a flipped bit only discolors one pixel for a few milliseconds. During multi-week deep learning training, a single bit flip in a 16-bit gradient propagates through backpropagation and turns the loss into `NaN`, ruining the checkpoint and wasting thousands of GPU hours.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. How does the physical cooling design of consumer GeForce cards conflict with standard enterprise server chassis aerodynamics?`&lt;/strong>`</summary>
+<summary>**4. How does the physical cooling design of consumer GeForce cards conflict with standard enterprise server chassis aerodynamics?**</summary>
 
 GeForce cards use active axial fans that pull air from the side and blow hot exhaust radially in all directions. Enterprise 1U, 2U, and 4U servers rely on strictly linear front-to-back airflow that forces cold-aisle air through passive fin stacks into the hot aisle. Active consumer fans disrupt this path, causing hot air recirculation and thermal throttling.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. What primary software and hardware bottleneck did the Volta V100 architecture solve in 2017?`&lt;/strong>`</summary>
+<summary>**5. What primary software and hardware bottleneck did the Volta V100 architecture solve in 2017?**</summary>
 
 Volta solved the bottleneck of scalar CUDA cores taking too many cycles to compute matrix multiplications. It introduced the first-generation Tensor Core, which executes a 4x4 FP16 matrix multiply-accumulate across a warp of 32 threads in a single clock cycle.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. What three major architectural innovations did Ampere A100 introduce in 2020?`&lt;/strong>`</summary>
+<summary>**6. What three major architectural innovations did Ampere A100 introduce in 2020?**</summary>
 
 1. Multi-Instance GPU hardware partitioning splits one A100 into up to 7 isolated instances with dedicated SMs, memory controllers, and L2 cache.
 2. TensorFloat-32 and Bfloat16 formats prevent gradient underflow while running matrix math at Tensor Core speeds without manual casting.
@@ -555,73 +555,73 @@ Volta solved the bottleneck of scalar CUDA cores taking too many cycles to compu
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How does the Hopper H100 Transformer Engine maintain model accuracy while using FP8 precision?`&lt;/strong>`</summary>
+<summary>**7. How does the Hopper H100 Transformer Engine maintain model accuracy while using FP8 precision?**</summary>
 
 Because FP8 has a narrow dynamic range, the Transformer Engine monitors tensor maximum values and statistical distributions in hardware during runtime. It automatically updates scaling factors and switches layers between FP8 and 16-bit precision to prevent overflow or underflow.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. Why is the Hopper H200 vastly superior to the H100 for LLM inference despite using the exact same compute silicon?`&lt;/strong>`</summary>
+<summary>**8. Why is the Hopper H200 vastly superior to the H100 for LLM inference despite using the exact same compute silicon?**</summary>
 
 LLM inference decoding is bound by memory bandwidth and KV cache capacity. The H200 replaces 80 GB of HBM3 at 3.35 TB/s with 141 GB of HBM3e at 4.8 TB/s inside the same 700W envelope, more than doubling concurrent user KV cache capacity on a single server.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. What physical manufacturing limit forced the Blackwell B200 to adopt a dual-die multichip module architecture?`&lt;/strong>`</summary>
+<summary>**9. What physical manufacturing limit forced the Blackwell B200 to adopt a dual-die multichip module architecture?**</summary>
 
 Semiconductor lithography reached the optical reticle limit of roughly 858 mm² from general knowledge, which caps the maximum size of a single monolithic die. To reach 208 billion transistors, NVIDIA placed two full-reticle dies side by side and bonded them with a 10 TB/s `NV-HBI` interconnect.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. What is the peak FP4 Tensor Core compute rating of a single 72-GPU Blackwell GB200 NVL72 rack?`&lt;/strong>`</summary>
+<summary>**10. What is the peak FP4 Tensor Core compute rating of a single 72-GPU Blackwell GB200 NVL72 rack?**</summary>
 
 A single liquid-cooled GB200 NVL72 rack delivers 1.4 exaFLOPS of FP4 inference compute across its 72 NVLink-connected Blackwell GPUs.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. Why is an NVIDIA PCIe H100 physically slower than an SXM5 H100, even though they use the same Hopper silicon die?`&lt;/strong>`</summary>
+<summary>**11. Why is an NVIDIA PCIe H100 physically slower than an SXM5 H100, even though they use the same Hopper silicon die?**</summary>
 
 The PCIe card form factor and server airflow limit power dissipation to 350 Watts, forcing NVIDIA to lower clock speeds and pair the die with 2.0 TB/s HBM2e memory. The SXM5 module supports 700 Watts, enabling full clock speeds and faster 3.35 TB/s HBM3 memory.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What critical hardware component exists on an 8-GPU HGX baseboard that is completely absent from a standard PCIe motherboard?`&lt;/strong>`</summary>
+<summary>**12. What critical hardware component exists on an 8-GPU HGX baseboard that is completely absent from a standard PCIe motherboard?**</summary>
 
 Four NVSwitch ASICs are soldered onto the HGX baseboard. They provide a non-blocking, all-to-all NVLink crossbar across all 8 GPUs at 900 GB/s on Hopper and 1,800 GB/s on Blackwell without touching the CPU or PCIe bus.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. What is the maximum GPU-to-GPU interconnect bandwidth available on PCIe H100 cards, and how is it connected?`&lt;/strong>`</summary>
+<summary>**13. What is the maximum GPU-to-GPU interconnect bandwidth available on PCIe H100 cards, and how is it connected?**</summary>
 
 It reaches 600 GB/s bidirectional, but only between adjacent two-card pairs linked by a physical NVLink Bridge clip attached to the top edge of the cards. It cannot form an eight-GPU all-to-all mesh.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Why is the NVIDIA L4 the premier accelerator for edge retail and computer vision pipelines?`&lt;/strong>`</summary>
+<summary>**14. Why is the NVIDIA L4 the premier accelerator for edge retail and computer vision pipelines?**</summary>
 
 The L4 draws only 72 Watts from the motherboard PCIe slot without extra power cables and fits in standard 1U or 2U servers. It integrates four NVDEC decoders and two NVENC encoders to transcode dozens of video streams in hardware while running FP8 object detection.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Why is the NVIDIA L40S an outstanding GPU for single-GPU LLM inference, but a terrible GPU for distributed multi-GPU training?`&lt;/strong>`</summary>
+<summary>**15. Why is the NVIDIA L40S an outstanding GPU for single-GPU LLM inference, but a terrible GPU for distributed multi-GPU training?**</summary>
 
 The L40S provides 733 TFLOPS of FP8 compute and 48 GB of GDDR6 memory in a 350W PCIe card, making it cost-effective for single-GPU serving of 8B models. However, it has no NVLink, so multi-GPU tensor parallelism bottlenecks on the 32 to 64 GB/s PCIe bus.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What is the architecture of an NVIDIA Grace CPU, and what type of memory does it use?`&lt;/strong>`</summary>
+<summary>**16. What is the architecture of an NVIDIA Grace CPU, and what type of memory does it use?**</summary>
 
 The Grace CPU contains 72 ARM Neoverse V2 cores with SVE2 vector instructions and pairs them with up to 480 GB of server LPDDR5X memory delivering up to 500 GB/s of bandwidth.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. How does the NVLink-C2C interconnect on a Grace Hopper GH200 Superchip benefit large recommendation systems?`&lt;/strong>`</summary>
+<summary>**17. How does the NVLink-C2C interconnect on a Grace Hopper GH200 Superchip benefit large recommendation systems?**</summary>
 
 `NVLink-C2C` connects the Grace CPU and Hopper GPU at 900 GB/s bidirectionally with hardware cache coherency. Large 300 GB to 480 GB embedding tables can live in CPU LPDDR5X RAM as Extended GPU Memory, allowing the GPU to read vectors at up to 500 GB/s without PCIe staging.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. Name the Five Mandatory Pass/Fail Gate Criteria in the GPU Selection Methodology.`&lt;/strong>`</summary>
+<summary>**18. Name the Five Mandatory Pass/Fail Gate Criteria in the GPU Selection Methodology.**</summary>
 
 1. Gate G1 checks software stack support and driver EULA compliance.
 2. Gate G2 checks usable memory capacity headroom.
@@ -631,13 +631,13 @@ The Grace CPU contains 72 ARM Neoverse V2 cores with SVE2 vector instructions an
 </details>
 
 <details>
-<summary>`&lt;strong>`19. Why should an evaluation never average pass/fail gate criteria into the weighted scorecard?`&lt;/strong>`</summary>
+<summary>**19. Why should an evaluation never average pass/fail gate criteria into the weighted scorecard?**</summary>
 
 A platform that fails a mandatory gate cannot legally or physically run the workload. Averaging gates into the scorecard would allow a cheap acquisition price to mathematically mask a fatal flaw like missing VRAM or EULA violations.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. How much VRAM is required to serve a 70B parameter model in FP16 with 64 concurrent users at an 8,192 context window?`&lt;/strong>`</summary>
+<summary>**20. How much VRAM is required to serve a 70B parameter model in FP16 with 64 concurrent users at an 8,192 context window?**</summary>
 
 Model weights take 140.0 GB, and the KV cache takes about 1.34 GB per user or 85.9 GB across 64 users. Multiplying the 225.9 GB sum by the 1.2x overhead factor yields 271.08 GB of required VRAM, which fits on four 80 GB H100 GPUs or two 141 GB H200 GPUs.
 </details>

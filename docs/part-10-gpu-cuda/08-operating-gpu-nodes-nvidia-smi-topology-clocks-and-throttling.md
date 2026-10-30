@@ -513,13 +513,13 @@ Exercise 7 parameters: dmesg oldest first: Xid 92, then Xid 45 (6 seconds later)
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. Why is checking standard Linux tools like `top` or `htop` insufficient for diagnosing performance issues on an AI server?`&lt;/strong>`</summary>
+<summary>**1. Why is checking standard Linux tools like `top` or `htop` insufficient for diagnosing performance issues on an AI server?**</summary>
 
 To the host Linux kernel, a GPU is an opaque PCIe peripheral. Linux does not schedule GPU warps, track HBM allocations, or read die temperatures. A host whose CPU sits at 5% utilization can have GPUs that are thermally throttling at 85°C, hitting uncorrectable ECC faults, or spinning at a deadlocked barrier.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Define the three pillars of GPU observability and identify which tool belongs to each pillar.`&lt;/strong>`</summary>
+<summary>**2. Define the three pillars of GPU observability and identify which tool belongs to each pillar.**</summary>
 
 1. Metrics aggregate numbers over time, such as utilization, clocks, temperature, and power in DCGM, Prometheus, and `nvidia-smi`.
 2. Logs record discrete state-change events, such as driver reloads, ECC faults, and Xid codes in `dmesg` and `journalctl`.
@@ -527,109 +527,109 @@ To the host Linux kernel, a GPU is an opaque PCIe peripheral. Linux does not sch
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What is the technical definition of GPU Utilization in `nvidia-smi` (`DCGM_FI_DEV_GPU_UTIL`)?`&lt;/strong>`</summary>
+<summary>**3. What is the technical definition of GPU Utilization in `nvidia-smi` (`DCGM_FI_DEV_GPU_UTIL`)?**</summary>
 
 It measures the percentage of time during the sampling window in which at least one Streaming Multiprocessor had at least one warp actively resident.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. Why can a GPU reporting 100% utilization in `nvidia-smi` be doing zero useful mathematical work?`&lt;/strong>`</summary>
+<summary>**4. Why can a GPU reporting 100% utilization in `nvidia-smi` be doing zero useful mathematical work?**</summary>
 
 Even if a single thread in one warp spins in a wait loop on one SM while the other SMs sit idle, `nvidia-smi` sees an active warp. It then reports 100% utilization while Tensor Cores do no math.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. In the Volume 16 Chapter 3 production scenario, why did GPU 1 process 13x fewer samples than GPU 0 despite both reporting 85% SM utilization?`&lt;/strong>`</summary>
+<summary>**5. In the Volume 16 Chapter 3 production scenario, why did GPU 1 process 13x fewer samples than GPU 0 despite both reporting 85% SM utilization?**</summary>
 
 GPU 0 was executing a healthy memory-bound kernel with 82% memory bandwidth utilization. GPU 1 had only 12% memory bandwidth utilization because it was stuck spinning inside a synchronization barrier wait loop.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Explain the difference between `torch.cuda.memory_allocated()` and `torch.cuda.memory_reserved()`.`&lt;/strong>`</summary>
+<summary>**6. Explain the difference between `torch.cuda.memory_allocated()` and `torch.cuda.memory_reserved()`.**</summary>
 
 `memory_allocated()` reports the bytes actively holding live PyTorch tensors. `memory_reserved()` reports the total VRAM pool claimed from the CUDA driver by the PyTorch caching allocator. That reserved pool is the higher number shown in `nvidia-smi` and includes empty reusable blocks.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. Why is setting an alert on `nvidia-smi memory.used > 85%` considered a bad operational practice?`&lt;/strong>`</summary>
+<summary>**7. Why is setting an alert on `nvidia-smi memory.used > 85%` considered a bad operational practice?**</summary>
 
 Frameworks like PyTorch intentionally reserve 75% to 95% of VRAM into a user-space cache pool to avoid slow runtime `cudaMalloc` calls. High reserved memory is normal and does not mean an out-of-memory crash is near.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What is the Clock Speed Lie, and how do you detect it?`&lt;/strong>`</summary>
+<summary>**8. What is the Clock Speed Lie, and how do you detect it?**</summary>
 
 A GPU reports 100% utilization while step times rise because thermal or power throttling lowered SM clocks. In the Volume 16 example, clocks dropped from 1410 MHz to 1200 MHz. Detect it by graphing `clocks.current.sm` alongside utilization.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. What happens inside the operating system when Persistence Mode is disabled on an NVIDIA GPU node?`&lt;/strong>`</summary>
+<summary>**9. What happens inside the operating system when Persistence Mode is disabled on an NVIDIA GPU node?**</summary>
 
 Whenever no CUDA process is running, the kernel unloads the `/dev/nvidia*` device nodes. The next job must wait for the kernel to re-enumerate PCIe, reload driver modules, and reinitialize firmware, adding a startup stall to every run.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. What are the three Xid tiers, and what do you do for each?`&lt;/strong>`</summary>
+<summary>**10. What are the three Xid tiers, and what do you do for each?**</summary>
 
 Tier 1 covers Xid 45, 63, and 92, which are informational or self-healing events that you log and trend. Tier 2 covers Xid 13, 31, 32, 43, and 94, where you restart the application and only suspect hardware if the same GPU repeats the code across unrelated jobs. Tier 3 covers Xid 48, 61, 62, 64, 79, and 95, which require cordoning and draining the GPU immediately (`nvidia-devops` V20 Ch 2).
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What does throttle reason bitmask `0x0000000000000020` indicate, and what is its operational severity?`&lt;/strong>`</summary>
+<summary>**11. What does throttle reason bitmask `0x0000000000000020` indicate, and what is its operational severity?**</summary>
 
 It indicates `SW_THERMAL_SLOWDOWN`, meaning the GPU core reached its 82°C to 85°C thermal limit and the driver lowered SM clocks to protect the silicon. Its operational severity is severe.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. What does throttle reason bitmask `0x0000000000000080` (`HW_POWER_BRAKE_SLOWDOWN`) indicate?`&lt;/strong>`</summary>
+<summary>**12. What does throttle reason bitmask `0x0000000000000080` (`HW_POWER_BRAKE_SLOWDOWN`) indicate?**</summary>
 
 An external hardware power brake is active, triggered by a PSU fault, a facility emergency signal, or a rack power brake cable. GPU clocks are forced down immediately, and the bit value comes from NVML's header rather than the book corpus.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. What temperature range is considered normal operating condition for modern NVIDIA data center GPUs under sustained load?`&lt;/strong>`</summary>
+<summary>**13. What temperature range is considered normal operating condition for modern NVIDIA data center GPUs under sustained load?**</summary>
 
 Operating between 60°C and 75°C is normal under sustained load. Data center GPUs are rated for continuous operation up to 80°C to 85°C, where thermal slowdown begins around 82°C to 85°C.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. How does system cooling capacity (`W/°C`) affect GPU thermal headroom?`&lt;/strong>`</summary>
+<summary>**14. How does system cooling capacity (`W/°C`) affect GPU thermal headroom?**</summary>
 
 Cooling capacity sets how many Watts of heat raise the GPU temperature by one degree Celsius. With a `3 W/°C` cooling capacity, dissipating an extra 30 Watts raises the GPU temperature by 10°C.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Why do performance engineers lock GPU clocks with `nvidia-smi -lgc` during inference benchmarking?`&lt;/strong>`</summary>
+<summary>**15. Why do performance engineers lock GPU clocks with `nvidia-smi -lgc` during inference benchmarking?**</summary>
 
 Dynamic Voltage and Frequency Scaling shifts clock rates between memory-bound decode stalls and compute-bound prefill bursts, adding jitter to P99 latency measurements. Locking clocks at a fixed frequency makes benchmark results reproducible.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What is the difference between `nvidia-smi dmon` and `nvidia-smi pmon`?`&lt;/strong>`</summary>
+<summary>**16. What is the difference between `nvidia-smi dmon` and `nvidia-smi pmon`?**</summary>
 
 `dmon` streams device-wide counters like power, SM utilization, memory bandwidth, clocks, and temperature at 1 to 10 Hz. `pmon` streams per-process counters broken down by Linux PID.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What does an uncorrectable volatile ECC memory error count greater than zero require an operator to do?`&lt;/strong>`</summary>
+<summary>**17. What does an uncorrectable volatile ECC memory error count greater than zero require an operator to do?**</summary>
 
 An uncorrectable ECC count above zero means multi-bit memory corruption occurred in HBM. Operators must cordon the node in the scheduler, drain running jobs, and run hardware diagnostics for an RMA replacement.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. How does setting `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` mitigate Out-Of-Memory errors?`&lt;/strong>`</summary>
+<summary>**18. How does setting `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` mitigate Out-Of-Memory errors?**</summary>
 
 It tells the PyTorch caching allocator to stitch virtual memory pages into expandable segments. That virtual stitching prevents allocation failures when free physical VRAM is split into non-contiguous fragments.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. A job is slow and `nvidia-smi` shows 100% utilization. In what order do you check the cause?`&lt;/strong>`</summary>
+<summary>**19. A job is slow and `nvidia-smi` shows 100% utilization. In what order do you check the cause?**</summary>
 
 Check active throttle reasons via `nvidia-smi -q -d PERFORMANCE` first to rule out thermal slowdown, software power caps, hardware power brakes, or leftover `-lgc` clock locks. If no throttle reason is active, check DCGM `TENSOR_ACTIVE` next. Values above 50% point to network or data-loader stalls, while values below 10% point to software overhead (`nvidia-devops` V20 Ch 6, 9, 10; V19 Ch 4).
 </details>
 
 <details>
-<summary>`&lt;strong>`20. How do you distinguish whether an 85% utilized GPU is compute-bound, memory-bound, or stalled?`&lt;/strong>`</summary>
+<summary>**20. How do you distinguish whether an 85% utilized GPU is compute-bound, memory-bound, or stalled?**</summary>
 
 Compare SM utilization against memory bandwidth utilization and sample throughput. Compute-bound runs show high throughput with moderate memory bandwidth, and memory-bound runs show high throughput with memory bandwidth above 50%. Stalled runs show near-zero throughput with memory bandwidth below 5%.
 </details>

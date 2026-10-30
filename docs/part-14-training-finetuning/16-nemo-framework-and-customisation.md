@@ -597,121 +597,121 @@ Summary: 25 passed, 0 failed
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. How do NVIDIA NeMo Framework and NVIDIA NIM divide responsibilities across the enterprise AI lifecycle?`&lt;/strong>`</summary>
+<summary>**1. How do NVIDIA NeMo Framework and NVIDIA NIM divide responsibilities across the enterprise AI lifecycle?**</summary>
 
 NeMo Framework is the training and customization factory that handles dataset curation, distributed multi-GPU pre-training and fine-tuning, preference alignment, and evaluation. NVIDIA NIM is the production inference microservice that packages finished, validated weights with TensorRT-LLM or vLLM and Triton Inference Server behind an OpenAI-compatible API.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Why is pinning `revision: "main"` on a Hugging Face base model or `:latest` on a training container an enterprise anti-pattern?`&lt;/strong>`</summary>
+<summary>**2. Why is pinning `revision: "main"` on a Hugging Face base model or `:latest` on a training container an enterprise anti-pattern?**</summary>
 
 Mutable tags can change silently between runs, making it impossible to audit, reproduce, or roll back a production model. Enterprise lineage requires pinning the exact base model Git commit or SHA-256 digest, the dataset `sha256sum`, the `nvcr.io/nvidia/nemo:24.07` container digest, and the training config commit in `training_metadata.yaml`.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. What are the realistic compute, memory, and persistent storage requirements for domain fine-tuning `llama2-7b-hf` on 500,000 examples?`&lt;/strong>`</summary>
+<summary>**3. What are the realistic compute, memory, and persistent storage requirements for domain fine-tuning `llama2-7b-hf` on 500,000 examples?**</summary>
 
 A production run uses eight A100 GPUs connected via NVLink for one week, totaling 640 budgeted GPU-hours or 1,344 calendar GPU-hours. It uses batch size 8 per GPU, 4 gradient accumulation steps, and BF16 FSDP. It requires 14 GB for weights, 40 GB per GPU for HBM activations, 50 GB for saved checkpoints, and at least 100 GB of persistent storage.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. How does NeMo 2.0 improve upon legacy Hydra YAML configuration files?`&lt;/strong>`</summary>
+<summary>**4. How does NeMo 2.0 improve upon legacy Hydra YAML configuration files?**</summary>
 
 NeMo 2.0 replaces fragile, untyped Hydra YAML trees with type-safe Python recipes wrapped in `nemo_run.Config` and `nemo_run.Partial`. Engineers can inspect, validate, and override model, parallelism, and PEFT settings in Python. They can then launch the exact same recipe on local GPUs, Slurm with Pyxis and Enroot, or Kubernetes.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. In Megatron-Core Tensor Parallelism, why is the first MLP linear layer split column-wise and the second split row-wise?`&lt;/strong>`</summary>
+<summary>**5. In Megatron-Core Tensor Parallelism, why is the first MLP linear layer split column-wise and the second split row-wise?**</summary>
 
 Splitting the first matrix column-wise via `ColumnParallelLinear` partitions the intermediate activation across GPUs so each rank can apply the GeLU or SwiGLU nonlinearity independently without communication. Splitting the second matrix row-wise via `RowParallelLinear` accepts those partitioned activations directly and requires only a single AllReduce at the end of the block. That design cuts TP communication per MLP block in half.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Why does a 175B-parameter model on 1,024 H100 GPUs use 3D parallelism instead of pure ZeRO-3 or FSDP sharding?`&lt;/strong>`</summary>
+<summary>**6. Why does a 175B-parameter model on 1,024 H100 GPUs use 3D parallelism instead of pure ZeRO-3 or FSDP sharding?**</summary>
 
 Sharding 2,800 GB of mixed-precision Adam state across 1,024 GPUs leaves only 2.73 GB per GPU. However, pure ZeRO-3 must execute cross-node AllGather collectives across 128 nodes on every layer's forward and backward pass. Using 8-way TP, 16-way PP, and 8-way DP keeps TP inside each node's NVLink domain. Each GPU holds 1.37B parameters and 21.875 GB of state with only lightweight P2P pipeline sends across InfiniBand.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. What is the 1F1B pipeline bubble formula, and what is the bubble percentage for 16 pipeline stages and 256 micro-batches?`&lt;/strong>`</summary>
+<summary>**7. What is the 1F1B pipeline bubble formula, and what is the bubble percentage for 16 pipeline stages and 256 micro-batches?**</summary>
 
 With global batch size 2,048 across 8 DP replicas at micro-batch size 1, each DP replica processes 256 micro-batches. Dividing `PP - 1` by `M + PP - 1` gives 15 over 271, which is 5.54 percent. By contrast, dropping to 40 micro-batches raises the bubble to 27.3 percent.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. How do Sequence Parallelism and selective activation recomputation reduce HBM activation pressure in NeMo?`&lt;/strong>`</summary>
+<summary>**8. How do Sequence Parallelism and selective activation recomputation reduce HBM activation pressure in NeMo?**</summary>
 
 Sequence Parallelism partitions LayerNorm and Dropout activations along the sequence dimension across the TP group with zero extra communication volume. Selective activation recomputation discards and recomputes only memory-heavy, compute-cheap attention softmax and dropout intermediates. That combination recovers 70 to 80 percent of activation memory savings for a fraction of full recomputation's backward slowdown.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. What causes the Ghost Straggler on the first and last pipeline stages of a 96-layer model with 16 stages, and how do you resolve it?`&lt;/strong>`</summary>
+<summary>**9. What causes the Ghost Straggler on the first and last pipeline stages of a 96-layer model with 16 stages, and how do you resolve it?**</summary>
 
 Even when all 16 stages hold 6 Transformer layers, the first stage also executes the 1.23 GB vocabulary embedding lookup and the last stage executes the final language-model head projection GEMM. That extra work makes those two endpoint stages run 40 percent slower per micro-batch. Resolve it by assigning 5 Transformer layers to the first and last stages or enabling interleaved virtual pipeline stages via `--num-layers-per-virtual-pipeline-stage`.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why does training Megatron-LM or NeMo directly on raw JSONL files over NFS trap MFU at 18 percent, and how does NeMo Curator fix it?`&lt;/strong>`</summary>
+<summary>**10. Why does training Megatron-LM or NeMo directly on raw JSONL files over NFS trap MFU at 18 percent, and how does NeMo Curator fix it?**</summary>
 
 Reading millions of small JSONL records over NFS saturates host CPUs with string parsing and on-the-fly tokenization, wasting up to 50 percent of GPU time. NeMo Curator preprocesses, deduplicates, and tokenizes data offline across multi-node GPUs. It compiles memory-mappable `.bin` data and `.idx` index files so training ranks map token sequences with constant-time offset lookups.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. How much training speedup is achieved when DataLoader tuning cuts storage I/O wait from 30 percent to 5 percent, and how much CPU load does NVIDIA DALI save?`&lt;/strong>`</summary>
+<summary>**11. How much training speedup is achieved when DataLoader tuning cuts storage I/O wait from 30 percent to 5 percent, and how much CPU load does NVIDIA DALI save?**</summary>
 
 Cutting GPU I/O wait time from 30 percent to 5 percent increases overall training steps per second by 6x. Offloading multimodal image and video decoding to GPU hardware via NVIDIA DALI reduces host CPU utilization 4x, dropping from 800 percent down to 200 percent.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How do Full SFT and PEFT LoRA compare in required dataset size, fraction of parameters modified, and NIM serving efficiency?`&lt;/strong>`</summary>
+<summary>**12. How do Full SFT and PEFT LoRA compare in required dataset size, fraction of parameters modified, and NIM serving efficiency?**</summary>
 
 Full SFT typically requires 100,000 or more labeled examples, updates 100 percent of model weights, and produces a separate full model requiring dedicated NIM GPU memory. PEFT LoRA requires only 100 to 1,000 labeled examples and tunes less than 1 percent of parameters, such as 0.2089 percent or 33.55 MB for rank 16 on an 8.03B model. It also allows dozens of domain adapters to share a single base model in NIM at runtime.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. Why did a 1,024-GPU training job stall for 45 minutes every 1,000 steps when saving a checkpoint, and how does NeMo 2.0 prevent this?`&lt;/strong>`</summary>
+<summary>**13. Why did a 1,024-GPU training job stall for 45 minutes every 1,000 steps when saving a checkpoint, and how does NeMo 2.0 prevent this?**</summary>
 
 Writing a monolithic `.nemo` or single-file checkpoint from 1,024 GPUs simultaneously overwhelms the parallel filesystem metadata server, causing a 6,000x stall compared to a 450-millisecond step. NeMo 2.0 writes sharded `.distcp` checkpoints in parallel across Lustre OSTs using `lfs setstripe -c -1` and asynchronous background threads.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. Why does an 8.03B Megatron or NeMo checkpoint occupy 108 GB on disk when theoretical state is 80.30 GB?`&lt;/strong>`</summary>
+<summary>**14. Why does an 8.03B Megatron or NeMo checkpoint occupy 108 GB on disk when theoretical state is 80.30 GB?**</summary>
 
 The 8.03B model has 16.06 GB of BF16 weights and 64.24 GB of FP32 Adam states, which equals 80.30 GB theoretical. Shard alignment and metadata overhead add 27.70 GB across four 27.0 GB `.distcp` shards, totaling 108.0 GB alongside `common.pt` and `metadata.json`.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What happens during Lab 03 failure injection when a training job is killed at `checkpoint-3000` or pointed at `checkpoint-corrupted`?`&lt;/strong>`</summary>
+<summary>**15. What happens during Lab 03 failure injection when a training job is killed at `checkpoint-3000` or pointed at `checkpoint-corrupted`?**</summary>
 
 When resumed from a valid `checkpoint-3000`, the job continues from step 3,000 with continuous loss without re-processing the first 300,000 samples. When pointed at `checkpoint-corrupted`, checksum and header validation must fail immediately with a clear corruption error rather than silently restarting training from zero.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Which metrics does NeMo Evaluator check in Lab 03 before promoting the customized Llama-2-7B checkpoint to NIM packaging?`&lt;/strong>`</summary>
+<summary>**16. Which metrics does NeMo Evaluator check in Lab 03 before promoting the customized Llama-2-7B checkpoint to NIM packaging?**</summary>
 
 On the test set, fine-tuning reduces training loss from 2.15 to 1.87 for a 12.8 percent improvement, with 1.92 evaluation loss. It lowers perplexity from 18.7 to 15.2 for an 18.7 percent improvement. It also raises ROUGE-1 from 0.31 to 0.35, raises BLEU from 0.24 to 0.28, and lifts domain accuracy from 92 percent to 94.5 percent.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What are the five programmable rail stages in NVIDIA NeMo Guardrails, and what language defines them?`&lt;/strong>`</summary>
+<summary>**17. What are the five programmable rail stages in NVIDIA NeMo Guardrails, and what language defines them?**</summary>
 
 NeMo Guardrails uses **Colang** to define five stages. **Input rails** handle PII redaction and injection blocking. **Dialog rails** handle intent routing and topic control. **Retrieval rails** validate RAG chunks. **Execution rails** enforce tool and database allowlists. **Output rails** enforce secret redaction, fact-checking, and confidence thresholds.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. How much latency does a full synchronous NeMo Guardrails stack add, and how do you optimize it for production SLOs?`&lt;/strong>`</summary>
+<summary>**18. How much latency does a full synchronous NeMo Guardrails stack add, and how do you optimize it for production SLOs?**</summary>
 
 Adding input validation, intent classification, RAG retrieval, output fact-checking, and audit logging increases latency from 45 ms to 250 ms, which is 5.56x slower. To stay under tight SLOs, keep lightweight regex and embedding rails synchronous and move heavy LLM-as-a-Judge evaluations to an asynchronous 1 to 10 percent sampling pipeline.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What does `dcgmi dmon -c 10` output of 95 percent down to 8 percent GPU utilization indicate, and what is the diagnostic order?`&lt;/strong>`</summary>
+<summary>**19. What does `dcgmi dmon -c 10` output of 95 percent down to 8 percent GPU utilization indicate, and what is the diagnostic order?**</summary>
 
 Oscillating utilization between 95 percent and 8 percent shows the GPU is periodically starving while waiting for the next batch. Diagnose in fastest-to-slowest order. First run `dcgmi dmon -c 10`, second run an isolated DataLoader benchmark where less than 0.5 batches per second confirms slow data loading, third run `nccl_tests.all_reduce`, and fourth run `torch.profiler`.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. How does the NVIDIA AI Enterprise support boundary divide incident ownership during a NeMo or NIM production failure?`&lt;/strong>`</summary>
+<summary>**20. How does the NVIDIA AI Enterprise support boundary divide incident ownership during a NeMo or NIM production failure?**</summary>
 
 Under the NVAIE 24.07 qualified matrix, NVIDIA supports GPU driver, CUDA, cuDNN, Container Toolkit, NeMo Framework, and NIM bugs with a 4-hour P1 SLA when deployed with pinned digests. The customer and platform team remain responsible for business application logic, dataset quality, Kubernetes control plane upgrades, network policies, and storage provisioning.
 </details>

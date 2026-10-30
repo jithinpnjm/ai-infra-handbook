@@ -347,25 +347,25 @@ Summary: 25 passed, 0 failed out of 25 checks.
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. What are the three per-resource quota fields on a KAI Scheduler Queue (scheduling.run.ai/v2), and what does each control?`&lt;/strong>`</summary>
+<summary>**1. What are the three per-resource quota fields on a KAI Scheduler Queue (scheduling.run.ai/v2), and what does each control?**</summary>
 
 The `quota` field sets the guaranteed baseline resource quantity that the queue can always reclaim when it has pending workloads. The `overQuotaWeight` field sets the proportional weight determining what share of spare cluster resources this queue receives when bursting above its nominal quota. The `limit` field sets the hard ceiling on total nominal plus borrowed resources the queue may consume simultaneously, where a negative one value allows unlimited borrowing up to cluster capacity.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. On a 32-GPU cluster, Team A (quota: 8, overQuotaWeight: 2) and Team B (quota: 8, overQuotaWeight: 1) both demand 24 GPUs, while Team C (quota: 16) only uses 4 GPUs. How many total and borrowed GPUs does KAI Scheduler allocate to Team A and Team B?`&lt;/strong>`</summary>
+<summary>**2. On a 32-GPU cluster, Team A (quota: 8, overQuotaWeight: 2) and Team B (quota: 8, overQuotaWeight: 1) both demand 24 GPUs, while Team C (quota: 16) only uses 4 GPUs. How many total and borrowed GPUs does KAI Scheduler allocate to Team A and Team B?**</summary>
 
 Team C uses 4 of its 16 nominal GPUs, leaving 12 spare GPUs in the cluster pool. KAI Scheduler divides those 12 spare GPUs between Team A and Team B in a two-to-one ratio according to their borrowing weights. Team A receives 16 GPUs total, consisting of 8 nominal plus 8 borrowed GPUs. Team B receives 12 GPUs total, consisting of 8 nominal plus 4 borrowed GPUs, while Team C keeps its 4 active GPUs.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. How does a two-level Department -> Project queue hierarchy in KAI Scheduler prioritize borrowing compared to a flat list of namespaces?`&lt;/strong>`</summary>
+<summary>**3. How does a two-level Department -> Project queue hierarchy in KAI Scheduler prioritize borrowing compared to a flat list of namespaces?**</summary>
 
 When a project queue under the natural language processing department has idle GPUs, KAI Scheduler offers those unused GPUs first to sibling project queues under the same parent department before lending them out to external departments. Conversely, when that project submits new work, KAI Scheduler reclaims borrowed GPUs from external departments first before preempting sibling teams inside the same parent department.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. In Volume 24 Project 12, how are the 32 GPUs divided across the 5 research groups (A–E) based on researcher headcount (5, 4, 3, 2, 1 = 15 researchers)?`&lt;/strong>`</summary>
+<summary>**4. In Volume 24 Project 12, how are the 32 GPUs divided across the 5 research groups (A–E) based on researcher headcount (5, 4, 3, 2, 1 = 15 researchers)?**</summary>
 
 The 32 GPUs are divided in proportion to each group's share:
 
@@ -379,61 +379,61 @@ The 32 GPUs are divided in proportion to each group's share:
 </details>
 
 <details>
-<summary>`&lt;strong>`5. What are the three levels of Hierarchical Fair Queuing (HFQ) defined in Volume 24 Project 12?`&lt;/strong>`</summary>
+<summary>**5. What are the three levels of Hierarchical Fair Queuing (HFQ) defined in Volume 24 Project 12?**</summary>
 
 Level 1 enforces inter-group proportional GPU-hour shares across groups A through E. Level 2 enforces intra-group job fairness using round-robin preference among jobs submitted by different researchers within the same group. Level 3 performs opportunistic backfill, filling any idle GPUs with waiting jobs from any group and preempting backfilled jobs only when needed to satisfy Level 1 guarantees.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Why does the 768.0 GPU-hour fair-share table in Volume 24 Project 12 equal only 7.1% utilization on a 32-GPU cluster over 2 weeks, and what does that prove about Level 3 Backfill?`&lt;/strong>`</summary>
+<summary>**6. Why does the 768.0 GPU-hour fair-share table in Volume 24 Project 12 equal only 7.1% utilization on a 32-GPU cluster over 2 weeks, and what does that prove about Level 3 Backfill?**</summary>
 
 Over 14 days, 32 GPUs provide 10,752 total GPU-hours. Dividing 768.0 by 10,752 equals only 7.1 percent utilization, and even the full weekly submission cadence across all five groups consumes only about 2,100 GPU-hours or 19.5 percent. This proves that strict quota caps without Level 3 Backfill to fill the remaining idle GPU-hours can never achieve the 90 percent cluster utilization target.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. In Volume 24 Project 12, how are the Normal Queue and Priority Queue priced, and what are the weekly costs for Group A (2 jobs x 8 GPUs x 48h) and Group E (50 jobs x 1 GPU x 10min) in the Normal Queue?`&lt;/strong>`</summary>
+<summary>**7. In Volume 24 Project 12, how are the Normal Queue and Priority Queue priced, and what are the weekly costs for Group A (2 jobs x 8 GPUs x 48h) and Group E (50 jobs x 1 GPU x 10min) in the Normal Queue?**</summary>
 
 The Normal Queue costs `$0.20` per GPU-hour, while the Priority Queue costs `$0.40` per GPU-hour (`2x` rate) for immediate scheduling. In the Normal Queue, Group A pays `$153.60/week` and Group E pays `$1.67/week`.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What are the five capacity layers defined in Volume 11 Chapter 9, and why is Allocatable Inventory not the same as Sellable Capacity?`&lt;/strong>`</summary>
+<summary>**8. What are the five capacity layers defined in Volume 11 Chapter 9, and why is Allocatable Inventory not the same as Sellable Capacity?**</summary>
 
 The five layers are Physical Inventory, Configured Inventory, Allocatable Inventory, Service Capacity, and Sellable Capacity. Selling one hundred percent of the Allocatable Inventory as tenant quota leaves zero buffer for node failures, maintenance drains, rolling upgrades, or MIG geometry fragmentation. Sellable Capacity subtracts headroom reserves and fragmentation from Service Capacity so tenant guarantees remain intact during maintenance and hardware faults.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. State the Volume 11 Chapter 9 capacity planning formula N = ceil((D + F) / (A * (1 - H))) and define each variable.`&lt;/strong>`</summary>
+<summary>**9. State the Volume 11 Chapter 9 capacity planning formula N = ceil((D + F) / (A * (1 - H))) and define each variable.**</summary>
 
 In the capacity formula `N = ceil((D + F) / (A * (1 - H)))`, the variable `N` is the required number of standardized worker nodes rounded up to the next whole node. The variable `D` is the required concurrent demand allocations for the service class, and `F` is the expected allocation loss from MIG geometry fragmentation or placement constraints. The variable `A` is the number of usable allocations per standardized node, and `H` is the planned non-sellable headroom fraction.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. What are the five named operational reserves that make up the headroom fraction H in Volume 11 Chapter 9?`&lt;/strong>`</summary>
+<summary>**10. What are the five named operational reserves that make up the headroom fraction H in Volume 11 Chapter 9?**</summary>
 
 The five reserves are the Node-failure reserve, the Maintenance reserve, the Rollout reserve, the Demand-variance reserve, and the Fragmentation reserve. Together, they protect tenant quotas against single-node outages, planned driver or MIG drains, staged canary upgrades, burst forecast errors, and unplaceable MIG slice geometries.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. Why did the platform team in Volume 11 Chapter 9 run out of MIG capacity two weeks after seeing 48% average fleet utilization?`&lt;/strong>`</summary>
+<summary>**11. Why did the platform team in Volume 11 Chapter 9 run out of MIG capacity two weeks after seeing 48% average fleet utilization?**</summary>
 
 The 48 percent utilization chart averaged compute activity across incompatible MIG profile layouts and counted nodes reserved for maintenance as usable supply. It also ignored the latency headroom required by online inference services, masking the fact that no free three-slice MIG partitions were actually placeable.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. Why must shared-GPU chargeback bill by the Allocation Contract (e.g., 50% for MIG 3g.40gb or 10% for a 1/10 time-slice) rather than raw GPU compute utilization?`&lt;/strong>`</summary>
+<summary>**12. Why must shared-GPU chargeback bill by the Allocation Contract (e.g., 50% for MIG 3g.40gb or 10% for a 1/10 time-slice) rather than raw GPU compute utilization?**</summary>
 
 When a tenant reserves a `MIG 3g.40gb` partition, roughly half of the 80GB GPU's memory and compute is hardware-locked and unavailable to any other tenant even if compute utilization sits at zero percent. Billing by the allocation contract aligns financial cost with the true capacity opportunity cost imposed on the cluster.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. What is the difference between Showback and Chargeback in Volume 11 Chapter 9, and why should platforms deploy Showback first?`&lt;/strong>`</summary>
+<summary>**13. What is the difference between Showback and Chargeback in Volume 11 Chapter 9, and why should platforms deploy Showback first?**</summary>
 
 Showback reports each team's GPU consumption, idle reservation hours, and hypothetical cost without issuing an internal financial bill, whereas Chargeback debits the team's cost center directly. Deploying Showback first exposes broken namespace-to-cost-center mappings, educates users on idle reservation costs, and establishes a dispute-resolution process before budgets are billed.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. What are the six observable fairness policy elements in Volume 11 Chapter 8?`&lt;/strong>`</summary>
+<summary>**14. What are the six observable fairness policy elements in Volume 11 Chapter 8?**</summary>
 
 The six policy elements and their observable metrics are:
 
@@ -448,37 +448,37 @@ The six policy elements and their observable metrics are:
 </details>
 
 <details>
-<summary>`&lt;strong>`15. What are the three time scales of fairness controls in Volume 11 Chapter 8, and what fails if any one of them is missing?`&lt;/strong>`</summary>
+<summary>**15. What are the three time scales of fairness controls in Volume 11 Chapter 8, and what fails if any one of them is missing?**</summary>
 
 Admission-time controls enforce class eligibility, quota, and approvals; without them, unauthorized or unbounded jobs start. Execution-time controls enforce concurrency limits, protected pools, and priority preemption; without them, noisy neighbors degrade running service levels. Lifecycle-time controls across weeks and months handle reservation reviews, showback, and demand forecasting; without them, idle claims and profile fragmentation harden into permanent hoarding.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. How do you distinguish useful idle reserved GPU capacity from wasteful hoarding in Volume 11 Chapter 9?`&lt;/strong>`</summary>
+<summary>**16. How do you distinguish useful idle reserved GPU capacity from wasteful hoarding in Volume 11 Chapter 9?**</summary>
 
 An idle reserved GPU is valid when it serves as a documented latency burst buffer, a maintenance or failover spare, or a pre-approved window for an imminent critical launch. It becomes wasteful hoarding when the reservation is unexplained and repeatedly blocks queued work from other teams.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What seven steps does Volume 11 Chapter 9 prescribe to test a capacity model before a planned maintenance window?`&lt;/strong>`</summary>
+<summary>**17. What seven steps does Volume 11 Chapter 9 prescribe to test a capacity model before a planned maintenance window?**</summary>
 
 First, identify the nodes, layouts, and service classes the maintenance window removes. Second, list active reservations and workloads that cannot be interrupted without an approved recovery path. Third, confirm compatible inventory in the remaining pools, including MIG profile shape and topology. Fourth, reserve a healthy comparison pool for canary and rollback validation. Fifth, simulate the scheduler outcome or rehearse in a representative non-production pool. Sixth, define the pause condition based on queue growth, unavailable profile count, or SLO risk. Seventh, reconcile the actual post-maintenance result against the capacity model.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. In Volume 24 Project 12, what Slurm sacctmgr commands configure the normal and priority QOS tiers?`&lt;/strong>`</summary>
+<summary>**18. In Volume 24 Project 12, what Slurm sacctmgr commands configure the normal and priority QOS tiers?**</summary>
 
 Run `sacctmgr add qos normal priority=100 maxgpus=40 maxjobsperuser=10 timeout=259200` for the 72-hour normal tier. Run `sacctmgr add qos priority priority=200 maxgpus=32 maxjobsperuser=5 timeout=86400` for the 24-hour priority tier.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What eight fields belong in a Capacity Decision Record (Volume 11 Chapter 9) when changing a node pool's sharing layout or quota policy?`&lt;/strong>`</summary>
+<summary>**19. What eight fields belong in a Capacity Decision Record (Volume 11 Chapter 9) when changing a node pool's sharing layout or quota policy?**</summary>
 
 A Capacity Decision Record contains Service change, Demand evidence, Compatibility, Capacity model, Tenant impact, Alternatives, Acceptance checks, and Review date. Recording these eight fields ensures that layout and quota changes remain auditable across budget cycles.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. How does Kueue's ClusterQueue cohort borrowing (nominalQuota + borrowingLimit) compare to KAI Scheduler's Queue (quota + overQuotaWeight + limit)?`&lt;/strong>`</summary>
+<summary>**20. How does Kueue's ClusterQueue cohort borrowing (nominalQuota + borrowingLimit) compare to KAI Scheduler's Queue (quota + overQuotaWeight + limit)?**</summary>
 
 Kueue groups peer ClusterQueues into a cohort with `nominalQuota` and `borrowingLimit` at the Job admission layer. KAI Scheduler embeds `quota`, `overQuotaWeight`, and `limit` directly inside a Department-to-Project Queue tree inside the scheduler itself. It continuously recomputes weighted fair shares and executes Reclaim, Preempt, fractional GPU packing, and NVLink topology placement in a single session loop.
 </details>

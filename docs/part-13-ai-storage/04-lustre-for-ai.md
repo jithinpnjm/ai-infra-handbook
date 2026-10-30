@@ -622,7 +622,7 @@ Exercise Input Parameters Reference:
 ## Checkpoint questions (20)
 
 <details>
-<summary>`&lt;strong>`1. In an NVIDIA DGX SuperPOD, how are High-Performance Storage and User Storage separated, and what are the 1-SU and 4-SU HPS bandwidth targets?`&lt;/strong>`</summary>
+<summary>**1. In an NVIDIA DGX SuperPOD, how are High-Performance Storage and User Storage separated, and what are the 1-SU and 4-SU HPS bandwidth targets?**</summary>
 
 High-Performance Storage such as Lustre runs over a dedicated 400 Gbps RoCEv2 or InfiniBand storage fabric port per compute tray. This port is physically and logically separated from the 200 Gbps bonded in-band management network. That management network carries User Storage over NFSv3 for `/home`, logs, and Base Command Manager high-availability state.
 
@@ -634,37 +634,37 @@ SuperPOD GB300 High-Performance Storage (HPS) Bandwidth Targets:
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Why does increasing `stripe_count` from 1 to 24 fail to speed up metadata-bound workloads?`&lt;/strong>`</summary>
+<summary>**2. Why does increasing `stripe_count` from 1 to 24 fail to speed up metadata-bound workloads?**</summary>
 
 Striping only distributes file data chunks across OSTs. Every namespace operation such as `open`, `close`, `stat`, `getattr`, `readdir`, and `unlink` still traverses the MDS and MDT. Worse, wide striping on small files forces the MDS and client to manage up to 24 child OST object references per file. That extra state increases `getattr` and `unlink` overhead.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. How does Lustre's `raid0` layout map byte offset `b` to an OST slot, and why is "a 2-stripe 1 GiB file is split into two contiguous 500 MB halves" wrong?`&lt;/strong>`</summary>
+<summary>**3. How does Lustre's `raid0` layout map byte offset `b` to an OST slot, and why is "a 2-stripe 1 GiB file is split into two contiguous 500 MB halves" wrong?**</summary>
 
 Lustre slices a file into fixed `stripe_size` chunks of size $S$ and assigns chunk `floor(b / S)` round-robin to slot `floor(b / S) mod C`. For a 1 GiB file with a 1 MiB stripe size and a stripe count of 2, even-numbered 1 MiB chunks go to OST slot 0 and odd-numbered 1 MiB chunks go to OST slot 1. Each OST holds 512 MiB interleaved every 1 MiB.
 </details>
 
 <details>
-<summary>`&lt;strong>`4. If a file is striped across 8 OSTs with a 1 MiB stripe size, how many OSTs are used by a 512 KiB read at offset 0 versus a 16 MiB sequential read with a 2 MiB stripe size?`&lt;/strong>`</summary>
+<summary>**4. If a file is striped across 8 OSTs with a 1 MiB stripe size, how many OSTs are used by a 512 KiB read at offset 0 versus a 16 MiB sequential read with a 2 MiB stripe size?**</summary>
 
 The 512 KiB read at offset 0 lies entirely within chunk 0. It touches only 1 OST on slot 0 and gains zero stripe parallelism. The 16 MiB sequential read with a 2 MiB stripe size spans 8 consecutive 2 MiB chunks, hitting all 8 OSTs in parallel at 2 MiB per OST.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. What is a Progressive File Layout, and how does it handle files of different sizes in the same directory?`&lt;/strong>`</summary>
+<summary>**5. What is a Progressive File Layout, and how does it handle files of different sizes in the same directory?**</summary>
 
 Progressive File Layout divides a file into sequential offset ranges defined with `-E`, each with its own `stripe_count` and `stripe_size`. Components beyond a file's current end-of-file are not instantiated until the file grows past the boundary. Small files allocate a single stripe while multi-gigabyte shards or checkpoints automatically expand across 4, 16, or all OSTs with `-c -1`.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. What is Data-on-MDT, and what happens when a 260 KiB file is written to a directory with `lfs setstripe -E 1M -L mdt -E 64M -c 1 -S 1M ...`?`&lt;/strong>`</summary>
+<summary>**6. What is Data-on-MDT, and what happens when a 260 KiB file is written to a directory with `lfs setstripe -E 1M -L mdt -E 64M -c 1 -S 1M ...`?**</summary>
 
 Data-on-MDT, configured with `-L mdt`, stores the first component of a file up to 1 MiB directly on the NVMe MDT alongside the inode. A 260 KiB file fits completely inside the first 1 MiB range. As a result, 100% of its payload stays on the MDT and 0 OST objects are allocated. This allows `open` and `read` calls to avoid OST RPCs completely.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How do you distinguish healthy vs saturated metadata in `lctl get_param llite.*.stats`?`&lt;/strong>`</summary>
+<summary>**7. How do you distinguish healthy vs saturated metadata in `lctl get_param llite.*.stats`?**</summary>
 
 Inspect the `open`, `close`, and `getattr` sample counts and latencies in microseconds. Healthy metadata stays under 50,000 aggregate operations per second across the MDS with average `open` latency below 5 ms. Saturated metadata exhibits high sample rates and average `open` latency spiking to 45.2 ms or 120 ms during epoch-start storms.
 
@@ -676,37 +676,37 @@ llite.*.stats Comparison (1-Minute Window):
 </details>
 
 <details>
-<summary>`&lt;strong>`8. What is the difference between DNE Phase 1 (`lfs mkdir -i`) and DNE Phase 2 (`lfs setdirstripe -c`) when a dataset has 200,000 files in a single directory across 4 MDTs?`&lt;/strong>`</summary>
+<summary>**8. What is the difference between DNE Phase 1 (`lfs mkdir -i`) and DNE Phase 2 (`lfs setdirstripe -c`) when a dataset has 200,000 files in a single directory across 4 MDTs?**</summary>
 
 DNE Phase 1 pins a whole directory subtree to a single MDT index with `-i`. If all 200,000 files live in 1 directory, only 1 MDT serves them at 50,000 ops/sec in 4.0 seconds while the other 3 MDTs sit idle. DNE Phase 2 uses `lfs setdirstripe -c 4` or `lfs mkdir -c 4` to hash filenames within that single directory across all 4 MDTs, achieving 200,000 ops/sec in 1.0 second.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. Why is repackaging 10 million 260 KB files into 100 WebDataset shards superior to tuning MDS threads alone?`&lt;/strong>`</summary>
+<summary>**9. Why is repackaging 10 million 260 KB files into 100 WebDataset shards superior to tuning MDS threads alone?**</summary>
 
 Tuning MDS threads or adding MDTs improves metadata IOPS by a factor of 2 to 4. Repackaging 10,000,000 files totaling 2.6 TB into 100 shards of 26 GB each reduces `open` calls per epoch from 10,000,000 to 100. That 100,000x reduction eliminates the metadata bottleneck completely and turns small random reads into sequential OST streaming.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. Why should Python virtual environments never be executed directly from `/lustre` on a 1,000-GPU job launch?`&lt;/strong>`</summary>
+<summary>**10. Why should Python virtual environments never be executed directly from `/lustre` on a 1,000-GPU job launch?**</summary>
 
 When 1,000 Python processes run `import torch, transformers`, Python searches every directory on `sys.path`. That walk issues thousands of `stat` and `open` calls per rank, hitting the MDS with millions of simultaneous metadata RPCs. Package environments inside read-only SquashFS container images with Enroot, Pyxis, or Apptainer staged on node-local NVMe.
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What LNet Lustre Network Drivers and TCP port are used for IP vs RDMA fabrics, and why does `<protocol><index>` numbering matter?`&lt;/strong>`</summary>
+<summary>**11. What LNet Lustre Network Drivers and TCP port are used for IP vs RDMA fabrics, and why does `<protocol><index>` numbering matter?**</summary>
 
 The `ksocklnd` driver (`@tcp0`) runs over TCP/IP using TCP port 988, while `ko2iblnd` (`@o2ib0`) runs native RDMA Verbs over InfiniBand or RoCEv2. Each protocol and index combination such as `@o2ib0` versus `@o2ib1` is an isolated LNet subnet. Nodes on `@o2ib0` cannot communicate directly with `@o2ib1` without an LNet router.
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How does LNet Multi-Rail (`lnetctl`) prevent a single GPU training node from running 5x slower than its peers?`&lt;/strong>`</summary>
+<summary>**12. How does LNet Multi-Rail (`lnetctl`) prevent a single GPU training node from running 5x slower than its peers?**</summary>
 
 LNet Multi-Rail binds multiple local 400 Gbps RDMA NICs across NUMA sockets and steers I/O to the rail on the same NUMA node and PCIe switch as the requesting CPU or GPU. This local steering avoids cross-socket interconnect hairpins. It also tracks per-NID health scores from 1000 down to 0 to fail over automatically if one rail drops packets.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. State the Lustre client OSC Bandwidth-Delay Product formula and compute the single-OST BDP limit for default vs tuned settings at 500 us vs 4,000 us RTT.`&lt;/strong>`</summary>
+<summary>**13. State the Lustre client OSC Bandwidth-Delay Product formula and compute the single-OST BDP limit for default vs tuned settings at 500 us vs 4,000 us RTT.**</summary>
 
 ```text
 BDP_OST = (max_rpcs_in_flight * max_pages_per_rpc * 4096 bytes) / RTT
@@ -719,25 +719,25 @@ BDP_OST = (max_rpcs_in_flight * max_pages_per_rpc * 4096 bytes) / RTT
 </details>
 
 <details>
-<summary>`&lt;strong>`14. How does GPUDirect Storage interact with Lustre, why can't FUSE filesystems use GDS, and what do `gdsio` flags `-x 2` vs `-x 0` measure?`&lt;/strong>`</summary>
+<summary>**14. How does GPUDirect Storage interact with Lustre, why can't FUSE filesystems use GDS, and what do `gdsio` flags `-x 2` vs `-x 0` measure?**</summary>
 
 GPUDirect Storage requires a kernel-level filesystem client (`lustre.ko` with `nvidia-fs.ko`) using `O_DIRECT` page-cache bypass. That allows the RDMA NIC to DMA OST data directly into GPU BAR1 or NVLink-C2C memory. FUSE filesystems bounce buffers through userspace and lack kernel `O_DIRECT` DMA hooks. In `gdsio`, `-x 2` benchmarks the CPU-mediated pinned host memory path at 8.0 GB/s and 1.25 ms latency. Flag `-x 0` benchmarks the direct GDS path at 9.6 GB/s and 1.00 ms latency, delivering +20% throughput and -20% latency.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Why must production AI Lustre clients be mounted with `-o flock,lazystatfs,noatime`?`&lt;/strong>`</summary>
+<summary>**15. Why must production AI Lustre clients be mounted with `-o flock,lazystatfs,noatime`?**</summary>
 
 The `flock` option enables cluster-wide coherent POSIX `flock()` locking. Without it, `flock()` returns `ENOSYS` and crashes PyTorch `FileStore` and Hugging Face dataset locks, whereas `localflock` only locks locally on one node. The `lazystatfs` option prevents `df`, `statfs()`, and Kubernetes kubelet probes from hanging when a single OST is slow or offline. Finally, `noatime` eliminates redundant MDT access-time writes on training reads.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. Why do unaligned N-to-1 concurrent writes to a wide-striped Lustre checkpoint file perform poorly, and how does N-to-N sharded checkpointing solve it?`&lt;/strong>`</summary>
+<summary>**16. Why do unaligned N-to-1 concurrent writes to a wide-striped Lustre checkpoint file perform poorly, and how does N-to-N sharded checkpointing solve it?**</summary>
 
 When multiple ranks write unaligned byte ranges inside the same 4 MiB stripe extent of a single shared file, the OST's Lustre Distributed Lock Manager must repeatedly revoke and re-grant Protected Write extent locks between clients. This lock ping-pong cuts throughput by 4x from 12.0 GB/s down to 3.0 GB/s. With N-to-N sharded checkpoints in PyTorch DCP, each rank writes its own separate shard file with a stripe count of 1 to 4 and `-i -1`. That design guarantees zero cross-rank lock contention while spreading files across all OSTs.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. What are the two OSS RAM sizing formulas from *Supercomputers for Linux SysAdmins*, and what do they yield for an OSS with 6 OSTs serving 120 clients?`&lt;/strong>`</summary>
+<summary>**17. What are the two OSS RAM sizing formulas from *Supercomputers for Linux SysAdmins*, and what do they yield for an OSS with 6 OSTs serving 120 clients?**</summary>
 
 ```text
 OSS RAM Sizing Formulas (6 OSTs, 120 clients -> N_threads = 120 / 6 = 20 threads/OST):
@@ -747,19 +747,19 @@ OSS RAM Sizing Formulas (6 OSTs, 120 clients -> N_threads = 120 / 6 = 20 threads
 </details>
 
 <details>
-<summary>`&lt;strong>`18. What does `lfs df -h` show when a cluster has OST fill skew, why is a single 98%-full OST dangerous, and how do you fix it online?`&lt;/strong>`</summary>
+<summary>**18. What does `lfs df -h` show when a cluster has OST fill skew, why is a single 98%-full OST dangerous, and how do you fix it online?**</summary>
 
 Running `lfs df -h` shows per-MDT and per-OST byte usage, where healthy clusters keep all OSTs within 5% of each other around the 49% mean. If OST 0 reaches 98% while OST 1 through OST 5 sit at 60%, any file striped across OST 0 blocks or fails with `ENOSPC`. Fix it online by finding files on OST 0 and migrating them across balanced OSTs with `lfs find /lustre/dataset --ost <OST0_UUID> -type f -print0 | lfs migrate -0 -c 6`.
 </details>
 
 <details>
-<summary>`&lt;strong>`19. What is the exact four-step sequence to deactivate and retire a failing OST without losing data?`&lt;/strong>`</summary>
+<summary>**19. What is the exact four-step sequence to deactivate and retire a failing OST without losing data?**</summary>
 
 First, run `lctl dl` on the client or MGS to identify the numeric device index `N` of the failing OST. Second, run `lctl --device N deactivate` so the MDS stops allocating new objects on that OST. Third, locate existing files on the retiring OST with `lfs find --ost` and evacuate their extents to healthy OSTs using `lfs_migrate` or `lfs migrate`. Fourth, if offline repair is required, unmount clients first, then OSTs, then MDTs and the MGS. Then mount the target locally as `ldiskfs` and run Lustre-patched `e2fsck`.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. You run `lfs setstripe -c 16 /lustre/checkpoints` after noticing slow `stripe_count = 1` checkpoints, but re-reading yesterday's 500 GB checkpoint is still capped at 800 MB/s. Why, and how do you fix it?`&lt;/strong>`</summary>
+<summary>**20. You run `lfs setstripe -c 16 /lustre/checkpoints` after noticing slow `stripe_count = 1` checkpoints, but re-reading yesterday's 500 GB checkpoint is still capped at 800 MB/s. Why, and how do you fix it?**</summary>
 
 Running `lfs setstripe` on a directory only sets the default layout template for newly created files. Existing files retain the LOV layout (`stripe_count = 1`) assigned when they were created. To re-stripe yesterday's checkpoint across 16 OSTs, run `lfs migrate -c 16 -S 4M /lustre/checkpoints/ckpt-yesterday.pt`.
 </details>

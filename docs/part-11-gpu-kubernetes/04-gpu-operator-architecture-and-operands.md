@@ -427,19 +427,19 @@ Summary: 25 passed, 0 failed out of 25 checks.
 ## Checkpoint questions
 
 <details>
-<summary>`&lt;strong>`1. Why is a Kubernetes Operator controller better than a one-time host configuration script for managing GPU worker nodes?`&lt;/strong>`</summary>
+<summary>**1. Why is a Kubernetes Operator controller better than a one-time host configuration script for managing GPU worker nodes?**</summary>
 
 A one-time script performs a point-in-time mutation and has no ongoing relationship with the node. If a GPU is replaced, the kernel is patched, or a node is recreated by an autoscaler, the script's state silently drifts. The GPU Operator continuously watches the ClusterPolicy desired state and Node objects. It reconciles driver, toolkit, device-plugin, GFD, DCGM, and validator operands whenever nodes join, reboot, or recover.
 </details>
 
 <details>
-<summary>`&lt;strong>`2. Why can ClusterPolicy.status.state report ready while a GPU node in the cluster is unable to schedule GPU Pods?`&lt;/strong>`</summary>
+<summary>**2. Why can ClusterPolicy.status.state report ready while a GPU node in the cluster is unable to schedule GPU Pods?**</summary>
 
 The field `ClusterPolicy.status.state: ready` reflects the controller's reconciliation of desired Kubernetes objects, not live per-node operand health across every worker host. In the twenty-five-node example where the device plugin DaemonSet shows twenty-five desired and twenty-four ready, the ClusterPolicy remains ready while `nvidia-device-plugin-daemonset-h9x2q` is stuck in a crash loop with six restarts over fourteen minutes.
 </details>
 
 <details>
-<summary>`&lt;strong>`3. Which eight nvidia.com/gpu.deploy.* labels does the GPU Operator apply to nodes where NFD detects PCI vendor 10de?`&lt;/strong>`</summary>
+<summary>**3. Which eight nvidia.com/gpu.deploy.* labels does the GPU Operator apply to nodes where NFD detects PCI vendor 10de?**</summary>
 
 The controller writes eight node selector labels in the `nvidia.com/gpu.deploy.*` namespace.
 - `nvidia.com/gpu.deploy.driver` and `nvidia.com/gpu.deploy.container-toolkit`.
@@ -449,7 +449,7 @@ The controller writes eight node selector labels in the `nvidia.com/gpu.deploy.*
 </details>
 
 <details>
-<summary>`&lt;strong>`4. How do nvidia-container-toolkit-daemonset and nvidia-device-plugin-daemonset enforce startup ordering on a node if Kubernetes schedules all DaemonSet Pods concurrently?`&lt;/strong>`</summary>
+<summary>**4. How do nvidia-container-toolkit-daemonset and nvidia-device-plugin-daemonset enforce startup ordering on a node if Kubernetes schedules all DaemonSet Pods concurrently?**</summary>
 
 Each DaemonSet gates its main container behind a per-Pod init container.
 - The container toolkit DaemonSet Pod runs `driver-validation` as an init container before starting `nvidia-container-toolkit-ctr`, blocking until the host driver is loaded and healthy.
@@ -457,7 +457,7 @@ Each DaemonSet gates its main container behind a per-Pod init container.
 </details>
 
 <details>
-<summary>`&lt;strong>`5. What are the four init containers inside an nvidia-operator-validator Pod, and what does each verify?`&lt;/strong>`</summary>
+<summary>**5. What are the four init containers inside an nvidia-operator-validator Pod, and what does each verify?**</summary>
 
 1. **Driver validation:** `driver-validation` runs `chroot /run/nvidia/driver nvidia-smi` to verify that the host kernel driver and NVML respond.
 2. **Toolkit validation:** `toolkit-validation` runs `nvidia-smi` through the container toolkit integration to verify runtime device and library injection.
@@ -466,31 +466,31 @@ Each DaemonSet gates its main container behind a per-Pod init container.
 </details>
 
 <details>
-<summary>`&lt;strong>`6. Why do pod/nvidia-cuda-validator-9x2kq and pod/nvidia-device-plugin-validator-5crlc show READY 0/1 and STATUS Completed in a healthy gpu-operator namespace?`&lt;/strong>`</summary>
+<summary>**6. Why do pod/nvidia-cuda-validator-9x2kq and pod/nvidia-device-plugin-validator-5crlc show READY 0/1 and STATUS Completed in a healthy gpu-operator namespace?**</summary>
 
 They are one-shot validation Pods spawned by the third and fourth init containers of `nvidia-operator-validator`. They run their check and exit with status zero, whereas a validator Pod stuck at `0/1 Running` or `Pending` for several minutes indicates a hung or blocked validation step.
 </details>
 
 <details>
-<summary>`&lt;strong>`7. How does a privileged Driver Container load an NVIDIA kernel module into the host OS without SSH access?`&lt;/strong>`</summary>
+<summary>**7. How does a privileged Driver Container load an NVIDIA kernel module into the host OS without SSH access?**</summary>
 
 The driver DaemonSet Pod runs with privileged permissions and mounts the host's `/usr/src`, `/lib/modules`, `/run/nvidia`, and `/dev` directories. It detects the host kernel version via `uname -r` and either compiles `nvidia.ko` with `gcc` or downloads a precompiled module. It then inserts the module directly into the host kernel via `insmod` or `modprobe` before entering a sleep loop.
 </details>
 
 <details>
-<summary>`&lt;strong>`8. Why should driver.usePrecompiled: true be enabled for large (for example, 500-node) GPU clusters?`&lt;/strong>`</summary>
+<summary>**8. Why should driver.usePrecompiled: true be enabled for large (for example, 500-node) GPU clusters?**</summary>
 
 Without `usePrecompiled: true`, every node booting or upgrading its driver container simultaneously downloads kernel headers over the network and compiles the kernel module from source with `gcc`. That creates massive network and CPU storms and slow node boot times. Precompiled driver containers ship pre-built kernel modules matched to the OS and kernel release.
 </details>
 
 <details>
-<summary>`&lt;strong>`9. What happens when a Driver Container terminates during an upgrade, and why does rmmod nvidia sometimes fail?`&lt;/strong>`</summary>
+<summary>**9. What happens when a Driver Container terminates during an upgrade, and why does rmmod nvidia sometimes fail?**</summary>
 
 During termination, the driver container runs `rmmod nvidia_uvm` and `rmmod nvidia` to unload the old kernel module from the host kernel. If any un-evicted container or host monitoring daemon still holds an open file descriptor to `/dev/nvidia*`, the kernel refuses to unload the module with `Error: Module nvidia is in use`. The upgrade stalls on that node until the offending PID is found with `lsof /dev/nvidia*` and terminated.
 </details>
 
 <details>
-<summary>`&lt;strong>`10. What are the three deployment ownership models for the GPU driver and container runtime, and why must you never allow dual ownership of a layer?`&lt;/strong>`</summary>
+<summary>**10. What are the three deployment ownership models for the GPU driver and container runtime, and why must you never allow dual ownership of a layer?**</summary>
 
 1. **Operator-managed driver and runtime:** Both `driver.enabled: true` and `toolkit.enabled: true` are managed by the GPU Operator.
 2. **Host-managed driver, operator-managed runtime:** Setting `driver.enabled: false` and `toolkit.enabled: true` is the default in NVIDIA BCM 11 and on DGX OS images.
@@ -498,7 +498,7 @@ During termination, the driver container runs `rmmod nvidia_uvm` and `rmmod nvid
 </details>
 
 <details>
-<summary>`&lt;strong>`11. What are the five sequential GPU node readiness gates defined in Volume 10 Chapter 7?`&lt;/strong>`</summary>
+<summary>**11. What are the five sequential GPU node readiness gates defined in Volume 10 Chapter 7?**</summary>
 
 1. **Infrastructure gate:** Correct OS image, kernel policy, network, registry access, and node-pool controls are in place.
 2. **Driver gate:** The GPU is visible on PCIe and `nvidia-smi` exits zero against the driver interface.
@@ -508,45 +508,45 @@ During termination, the driver container runs `rmmod nvidia_uvm` and `rmmod nvid
 </details>
 
 <details>
-<summary>`&lt;strong>`12. How do you distinguish a Driver Gate failure from a Runtime Gate failure using nvidia-smi error messages?`&lt;/strong>`</summary>
+<summary>**12. How do you distinguish a Driver Gate failure from a Runtime Gate failure using nvidia-smi error messages?**</summary>
 
 - Running `kubectl exec -n gpu-operator nvidia-driver-daemonset-9xq2z -- nvidia-smi` and receiving a driver/library version mismatch or module insertion error proves a Driver Gate failure on the host.
 - When `nvidia-smi` succeeds inside the driver container on an H100 node, but `kubectl exec -it cuda-validation-pod -- nvidia-smi` inside a workload Pod returns `Failed to initialize NVML: Unknown Error`, that proves a Runtime Gate injection failure.
 </details>
 
 <details>
-<summary>`&lt;strong>`13. In a 60-node GPU cluster where 35 nodes run a newer kernel (6.5.0-1015-aws), what is the blast radius of an incompatible driver update with one global ClusterPolicy versus a 3-node canary pool?`&lt;/strong>`</summary>
+<summary>**13. In a 60-node GPU cluster where 35 nodes run a newer kernel (6.5.0-1015-aws), what is the blast radius of an incompatible driver update with one global ClusterPolicy versus a 3-node canary pool?**</summary>
 
 With a single unpooled ClusterPolicy, the DaemonSet controller updates all matching nodes and degrades `35 / 60 = 58.33%` of the cluster's GPU capacity. With a three-node canary pool, the failure is contained to `3 / 60 = 5.0%` of capacity while fifty-seven production nodes remain untouched.
 </details>
 
 <details>
-<summary>`&lt;strong>`14. A 40-node (8 GPUs/node) cluster needs a driver DaemonSet upgrade (6 minutes per node batch) while preserving 28 GPUs of inference headroom. Why is maxUnavailable: 4 unsafe, and what happens with maxUnavailable: 2?`&lt;/strong>`</summary>
+<summary>**14. A 40-node (8 GPUs/node) cluster needs a driver DaemonSet upgrade (6 minutes per node batch) while preserving 28 GPUs of inference headroom. Why is maxUnavailable: 4 unsafe, and what happens with maxUnavailable: 2?**</summary>
 
 - With `maxUnavailable: 4`, taking four nodes offline removes thirty-two GPUs concurrently across ten batches in sixty minutes, exceeding the twenty-eight-GPU headroom budget by four GPUs.
 - With `maxUnavailable: 2`, taking two nodes offline removes sixteen GPUs concurrently across twenty batches in one hundred twenty minutes, staying twelve GPUs inside the twenty-eight-GPU headroom budget.
 </details>
 
 <details>
-<summary>`&lt;strong>`15. Why can every GPU Operator Pod on gpu-node-22 show 1/1 Running while the node still advertises zero allocatable GPUs?`&lt;/strong>`</summary>
+<summary>**15. Why can every GPU Operator Pod on gpu-node-22 show 1/1 Running while the node still advertises zero allocatable GPUs?**</summary>
 
 A running Pod status only indicates that the container process is alive. In the `gpu-node-22` incident and on `gpu-node-014` where capacity of eight dropped to zero allocatable GPUs, the driver Pod stayed running after a failed kernel module load. Meanwhile, the device plugin Pod logged `Unable to load NVML: could not communicate with driver` and never registered GPUs with the kubelet.
 </details>
 
 <details>
-<summary>`&lt;strong>`16. What does the validator error CUDA error: no kernel image is available for execution on the device in nvidia-cuda-validator-9x2kq indicate?`&lt;/strong>`</summary>
+<summary>**16. What does the validator error CUDA error: no kernel image is available for execution on the device in nvidia-cuda-validator-9x2kq indicate?**</summary>
 
 It indicates a compute-capability or binary compatibility mismatch. The CUDA sample or workload binary was compiled for a GPU architecture that does not match the GPU hardware or driver present on the node.
 </details>
 
 <details>
-<summary>`&lt;strong>`17. Why is NVIDIA Network Operator a separate operator (NicClusterPolicy) rather than part of the NVIDIA GPU Operator?`&lt;/strong>`</summary>
+<summary>**17. Why is NVIDIA Network Operator a separate operator (NicClusterPolicy) rather than part of the NVIDIA GPU Operator?**</summary>
 
 RDMA-capable NICs such as ConnectX InfiniBand and RoCE adapters require their own host driver stack, their own Kubernetes device plugins, and secondary CNI network attachments via Multus CNI. The GPU Operator manages GPU drivers and GPU extended resources, whereas the Network Operator manages MOFED, SR-IOV VFs, secondary networks, and RDMA resource advertisement.
 </details>
 
 <details>
-<summary>`&lt;strong>`18. What is the three-step command sequence to verify that NVIDIA Network Operator has exposed a working RDMA device to a Pod (nccl-worker-2 on gpu-node-04)?`&lt;/strong>`</summary>
+<summary>**18. What is the three-step command sequence to verify that NVIDIA Network Operator has exposed a working RDMA device to a Pod (nccl-worker-2 on gpu-node-04)?**</summary>
 
 1. Run `kubectl describe node gpu-node-04 | grep -A2 Allocatable | grep -i rdma` to verify that eight shared RDMA devices are allocatable on the node.
 2. Run `kubectl describe pod nccl-worker-2 | grep -i rdma` to verify that one shared RDMA device was allocated to the Pod.
@@ -554,13 +554,13 @@ RDMA-capable NICs such as ConnectX InfiniBand and RoCE adapters require their ow
 </details>
 
 <details>
-<summary>`&lt;strong>`19. On an NVIDIA Base Command Manager 11 (BCM 11) cluster, where does containerd store its NVIDIA CRI drop-in config and binary, and how is it passed to the GPU Operator Helm chart?`&lt;/strong>`</summary>
+<summary>**19. On an NVIDIA Base Command Manager 11 (BCM 11) cluster, where does containerd store its NVIDIA CRI drop-in config and binary, and how is it passed to the GPU Operator Helm chart?**</summary>
 
 In BCM 11, containerd stores its drop-in config at `/cm/local/apps/containerd/var/etc/conf.d/nvidia-cri.toml` and its binary at `/cm/local/apps/containerd/current/bin/containerd`. Administrators pass these paths to Helm using `toolkit.env` overrides for `CONTAINERD_CONFIG` and `RUNTIME_EXECUTABLE_PATH`.
 </details>
 
 <details>
-<summary>`&lt;strong>`20. Why should you never delete all GPU Operator operand Pods at once when troubleshooting a node failure?`&lt;/strong>`</summary>
+<summary>**20. Why should you never delete all GPU Operator operand Pods at once when troubleshooting a node failure?**</summary>
 
 Deleting all operands simultaneously wipes out the log and init-container ordering evidence showing which boundary failed first across driver, toolkit, and plugin validation. Deleting driver DaemonSet Pods across healthy nodes also triggers disruptive kernel module unloads on active workloads.
 </details>
