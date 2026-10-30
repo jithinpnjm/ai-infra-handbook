@@ -182,6 +182,16 @@ A PriorityLevelConfiguration only matters once a FlowSchema routes requests to i
 
 ## 7. etcd internals
 
+### Deployment models for etcd
+
+etcd is the database for every object in a cluster. It is a distributed store that uses a consensus algorithm to keep a copy of cluster state on several machines. Consensus depends on reliable network connections between the etcd nodes, and those nodes have strict latency needs. Two architectural choices shape the deployment: whether etcd runs on dedicated machines or shares them with the control plane, and whether it runs in a container or directly on the host.
+
+**Network considerations.** The default etcd settings are designed for the latency inside a single datacenter. If you spread etcd across several datacenters, test the average round-trip time between members. Tune the heartbeat interval and the election timeout if you need to. Do not spread etcd clusters across different regions. The book strongly discourages it. If you use several datacenters for better availability, keep them close together within one region.
+
+**Dedicated versus colocated.** Start with cluster size, meaning the number of worker nodes you run per cluster. If etcd performance suffers, your ability to control the cluster's resources suffers too. Workloads that do not depend on the Kubernetes API keep running during etcd trouble. Even so, the control plane must stay healthy. A car that keeps rolling with a broken steering wheel gives little comfort. If larger clusters place heavy read and write demand on etcd, dedicate machines to it. That removes resource contention with the other control plane components. A cluster is "large" depending on the size of its control plane machines, but anything above 50 worker nodes deserves the question. For clusters with over 200 workers, plan for dedicated etcd from the start. For smaller clusters, colocated etcd saves management overhead and infrastructure cost. Kubeadm supports that model and handles its concerns.
+
+**Containerized versus on host.** For colocated etcd, run it in a container. Kubeadm supports and tests that setup, so it is your best option. With dedicated machines, you have two options. You can install etcd on the host, which lets you bake it into machine images and removes the need for a container runtime on those hosts. Or you can run etcd in a container, with a container runtime and kubelet on the machines and a static manifest to start etcd. That follows the same patterns and install methods as the other control plane components. Repeated patterns help in complex systems, so this choice comes down largely to preference.
+
 ### Data model and Raft
 
 etcd is a replicated, linearizable key-value store. Cluster members use **Raft**: one **leader** accepts writes, appends them to its log (**WAL**), replicates to followers, and commits once a majority has persisted them (an `fsync` per commit), then applies to the state machine (bbolt B+tree). Reads can be linearizable (via the leader / read index, default for Kubernetes "quorum" reads) or serializable (local, possibly stale). Heartbeats and election timeouts (default 100 ms/1000 ms) require low network latency; a leader that cannot keep up triggers elections, visible as API latency spikes.

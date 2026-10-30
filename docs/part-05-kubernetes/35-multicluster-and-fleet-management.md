@@ -104,6 +104,20 @@ Your design will change as the application grows. Build with that change in mind
 
 Multicluster deployment adds complexity, but real-world requirements and user expectations make that complexity necessary for most applications. Designing for many clusters from the start makes an application more reliable. It also lowers the chance of a costly refactor as the application grows. Managing configuration and deploying it to each cluster is one of the most important pieces, and the GitOps material below covers it.
 
+### Cluster federation and management clusters
+
+Cluster federation means managing all the clusters under your control from one central place. Once you enjoy Kubernetes, you will want more of it, and without some discipline that habit gets messy. Federation strategies help an enterprise manage its software dependencies so they do not grow into costly, destructive tangles.
+
+A useful approach is to federate regionally first, then globally. That lessens the blast radius of a failure in a federation cluster, and it reduces the computational load on those clusters. When you first begin, you may not have the global presence or infrastructure volume to justify a multilevel federation. Keep the layered design in mind as a principle in case it becomes a requirement later.
+
+A management cluster is a Kubernetes cluster that manages other clusters. As usage grows and the number of clusters climbs, organizations need software to keep operations smooth. They often run that software on Kubernetes-based platforms too. Cluster API is a popular project for this job. It bundles operators that rely on custom resources, such as `Cluster` and `Machine`, to describe other clusters and their parts. A common pattern deploys the Cluster API components to a management cluster, which then deploys and manages the infrastructure for the workload clusters.
+
+This layout has flaws. It is usually prudent to strictly separate your production tier from the other tiers, so many organizations run a management cluster dedicated to production. That adds more management overhead. Cluster autoscaling is another problem. The Cluster Autoscaler normally runs in the cluster it scales, watching for conditions that call for scaling. But the controller that provisions and decommissions worker nodes lives in the management cluster. That creates an external dependency on the management cluster for any workload cluster that uses the Cluster Autoscaler. What happens if the management cluster is unavailable during a busy period, when your cluster needs to scale out to meet demand?
+
+One fix is to run the Cluster API components inside the workload cluster, in a self-contained way. The `Cluster` and `Machine` resources live there too. You can still use the management cluster to create and delete clusters. The workload cluster becomes largely autonomous for routine work, such as autoscaling, and it is free of the external dependency for those operations. This pattern has another advantage. Any controller or workload in the cluster that needs metadata from Cluster API resources can read them through the local API. It does not need the management cluster's API. For example, a Namespace controller might change its behavior based on whether its cluster is a development or production cluster. The `Cluster` resource that represents the cluster already holds that information.
+
+Management clusters also often host shared or regional services that other clusters use. Those are not really management functions. The management cluster is simply a logical place to run them. CI/CD systems and container registries are examples.
+
 ## 2. Layers of fleet management
 
 ```mermaid
@@ -225,6 +239,12 @@ If you use version control and tags instead, the parameters for each region sit 
 
 ## 5. Placing workloads across clusters
 
+### Federated software deployment
+
+Managing remote clusters raises a second question: how do you deploy software to them? Managing the clusters themselves is one job. Organizing where end-user workloads go is another, and it is the reason you have all these clusters. You may have critical, high-value workloads that must run in several regions for availability. Or you may need to place workloads based on each cluster's characteristics. Deciding that is hard, and there is no broad consensus on a good solution.
+
+The Kubernetes community has tried to tackle this in a broadly applicable way for some time. The most recent effort is KubeFed. It also addresses cluster configuration, but its focus is the definition of workloads that are destined for multiple clusters. A useful design idea that emerged is the ability to federate any API type used in Kubernetes. For example, you can use federated versions of the Namespace and Deployment types to declare how resources should be applied across clusters. That is powerful. You can create a `FederatedDeployment` in one management cluster, and it appears as `Deployment` objects in other clusters. More advances in this area are expected. For now, the most common approach in the field is CI/CD tooling configured to target different clusters when workloads are deployed.
+
 ### Kueue MultiKueue (read from the Kueue docs and API types)
 
 MultiKueue lets one **manager cluster** dispatch Kueue-managed jobs to **worker clusters**. It is documented as beta (since Kueue v0.9) and enabled by default via the `MultiKueue` feature gate.
@@ -318,6 +338,10 @@ You also choose whether load balancing happens at the TCP or the HTTP level. TCP
 - **Fleet SLOs**: control-plane availability, scheduling latency, GPU utilisation, job success rate, queue time.
 - **Alert routing** must identify the cluster and owner. Watch for alert storms when a fleet-wide dependency fails.
 - Monitor the **management plane itself**: GitOps sync status, MultiKueue cluster `Active` conditions, CAPI health.
+
+### Federating metrics
+
+When you manage many clusters, a hard problem is gathering metrics from all that infrastructure into one central location. Measurements that show the health of clusters and workloads at a glance matter a great deal for federation. Many organizations gather and store metrics with Prometheus, a well-established open source project. Even if you do not use it, its federation model is worth studying, so you can copy it with your own tools where possible. It supports regional federation. Federated Prometheus servers scrape a subset of metrics from lower-level Prometheus servers, so it accommodates whatever federation strategy you use. The book returns to this topic in its Chapter 9.
 
 ## 9. Upgrades and change management
 

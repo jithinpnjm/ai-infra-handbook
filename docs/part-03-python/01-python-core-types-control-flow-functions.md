@@ -89,9 +89,366 @@ if __name__ == "__main__":
 
 Exit codes matter for infrastructure: `0` success, non-zero failure; CI systems, systemd, cron and Kubernetes jobs all key off them. `raise SystemExit(code)` and `sys.exit(code)` are equivalent. Uncaught exceptions exit with status 1 and print a traceback to standard error.
 
+### Starting the REPL
+
+Sometimes you just want to see what Python does, right now, without saving a file. The interactive prompt is built for that. People call it the REPL, which stands for read, evaluate, print, loop. Python reads what you type, runs it, prints the result, and then waits for more.
+
+The simplest way to start it is to type a Python command at your system prompt, with no arguments. The command name depends on your platform. This book uses `python3` in its platform-neutral examples, because it works on macOS, Linux and Android. On Windows, use `py` instead, or `py -3` to be sure you get Python 3. `python3` also runs on Windows, but Appendix A ties it to a limited Store install today, so `py` is the safer choice there.
+
+```
+$ py
+Python 3.12.3 (…etc…, Apr 9 2024, 14:05:25) [MSC v.1938 64 bit (AMD64)] on win32
+Type "help", "copyright", "credits" or "license" for more information.
+>>> ^Z
+$ python3
+Python 3.12.2 (…etc…, Feb 6 2024, 17:02:06) [Clang 13.0.0…)] on darwin
+Type "help", "copyright", "credits" or "license" for more information.
+>>> ^D
+$ python
+Python 3.11.4 (…etc…, Jul 2 2023, 11:17:00) [Clang 14.0.7…)] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> ^D
+```
+
+To leave the session, press `Ctrl+Z` and then Enter on Windows. On Unix-like systems, which include macOS, Linux and Android, press `Ctrl+D` instead. The `$` in these listings is only a generic system prompt. It will look different on your machine, and you never type it yourself.
+
+The system prompt can be Command Prompt or PowerShell on Windows, Terminal on macOS and Linux, Termux on Android, or a dedicated terminal screen in an app such as Pydroid 3. You do not always need to type a command, though. A Start-menu entry on Windows opens a similar REPL. So does the IDLE GUI on any PC, along with some app screens on Android and iOS and some web interfaces.
+
+Once you see the `>>>` prompt, you are in an interactive session. Type any statement or expression and press Enter to run it right away. Behind the scenes, CPython compiles each line to bytecode in memory, and the PVM runs it. You do not need a separate compile and link step. The output appears just below your input:
+
+```
+$ python3
+>>> print('Hello world!')
+Hello world!
+>>> print(2 ** 8)
+256
+```
+
+`print` is a built-in function that sends whatever you pass it to the place where you are working. Because it is a function call, the parentheses are required.
+
+Multiline statements, such as `for` loops, show `...` as a prompt for their continuation lines in some REPLs. They run once you enter all of their lines and press Enter on a blank line. Blank lines are ignored in code files, but a REPL needs one to know the statement is finished. The standard REPL also runs one statement at a time, so do not paste a large block of code into it.
+
+The REPL prints the value of any expression you type, so you do not need `print` there:
+
+```
+>>> language = 'Python'
+>>> language
+'Python'
+>>> 2 ** 8
+256
+```
+
+The first line assigns a value to the name `language` with `=`. The last two lines are expressions, and the REPL shows their results on its own.
+
+### Learning and testing at the prompt
+
+Suppose you read a program and find an expression you do not recognize, such as `'Hack!' * 8`. You could spend ten minutes searching for an answer. Or you could run it and see. The prompt gives you feedback in seconds.
+
+```
+$ python3
+>>> 'Hack!' * 8 # Learning by trying
+'Hack!Hack!Hack!Hack!Hack!Hack!Hack!Hack!'
+```
+
+The result shows that `*` repeats a string. For numbers, the same symbol multiplies. Think of it as joining a string to itself again and again. Strings get a full treatment later in this chapter and in the book's Chapter 4.
+
+Trying code this way is rarely risky. Plain Python code is almost always safe to run. Real damage, such as deleting files or running shell commands, takes deliberate effort, because you must import modules that can do those things.
+
+Mistakes are fine at the prompt, too:
+
+```
+>>> X # Making mistakes is OK
+Traceback (most recent call last):
+File "<stdin>", line 1, in <module>
+NameError: name 'X' is not defined
+```
+
+Python does not let you use a name before it has a value. You never declare variables, but you must assign them before you read them. So you set a counter to zero before you add to it, and you set a list to empty before you extend it. Missing imports produce a helpful hint as well:
+
+```
+>>> sys.ps1 # Requires "import sys"
+Traceback (most recent call last):
+File "<stdin>", line 1, in <module>
+NameError: name 'sys' is not defined. Did you forget to import 'sys'?
+```
+
+You must import a module such as `sys` before you use it. Notice that the error does not crash Python or your computer. You get the reason and the line that caused it, and you can keep going.
+
+The prompt is also a place to test code you wrote in files. You can import your module files and call their tools by typing calls on the fly. This example checks `os.getcwd`, a function from the standard library that reports the folder you are working in. The path shown is from a macOS host:
+
+```
+>>> import os
+>>> os.getcwd() # Testing on the fly
+'/Users/me/code'
+```
+
+More generally, the prompt is where you test parts of a program, wherever they came from. Partly because of its interactive nature, Python supports an exploratory style of programming. Many programmers still write tests in their files too. For many, though, the prompt remains the first line of testing.
+
+### Prompts and comments: what not to type
+
+Beginners often type a prompt by accident, and this is a very common first error. Do not type the `$` from a system console line. Type only the text that follows it.
+
+The same goes for `>>>` and `...` in interpreter listings. Python's REPL displays those prompts for you, and your screen may not show them at all. Do not type them yourself.
+
+Lines that start with `#` are comments. You can usually skip them. The exception is a `#!` line at the top of a script, which has its own meaning and is covered in Appendix A. Commands typed after a prompt are meant to run right away. They are not usually saved in the source files you will create.
+
+### Other REPLs
+
+Not every interactive session looks like this one. IPython is a separately installed, enhanced session. It numbers its commands and does not use `>>>`. Jupyter notebooks run the IPython REPL in a web browser instead of a system console. PyPy uses `>>>>` as its prompt, and the IDLE GUI shows `>>>` in its Shell window. The prompt can even be changed. It is stored as `sys.ps1`, and you can set it in a startup file.
+
+When you are starting out, stick with the traditional REPL. IPython and Jupyter have learning curves of their own, and Jupyter aims at scientific work, which is only one of many Python roles. If you adopt other tools later, adapt to their small differences as you go.
+
+Note: the standard CPython REPL is scheduled to improve in version 3.13, which was not yet released when the book was written. The plan includes color prompts, automatic indentation, multiline editing and paste, and colorized exceptions borrowed from other tools. The future is not yet fixed, so check what your version does.
+
+Tip: setting the environment variable `PYTHON_COLORS` to `0` turns off the new REPL colors if they distract you.
+
+### Where to keep your code
+
+Before you write files, pick a place for them. Run your examples from a dedicated code folder, which is simply a directory on your device. This keeps your work together and avoids stepping on other files. The book runs its code from a folder nested inside the user account, or home, folder on each device. Your code folder can live anywhere and have any name you like.
+
+Inside it, make one subfolder for each chapter. Per-chapter folders avoid clutter and filename clashes. They also let imports in examples work without advanced settings, which you will learn later. The book's console commands run in a per-chapter subfolder of a code folder. That folder name is usually left out, because it does not matter to the code.
+
+If you use the book's examples package, the setup is done for you. Unzipping it creates a code folder named `LP6E`. Its `Chapter03` subfolder holds this chapter's code. Start REPLs and run scripts from the subfolder for the chapter you are studying. Data files that scripts create show up there too, unless a script uses an explicit folder path.
+
+If you build your own structure, copy the same idea. On a PC, use the file explorer, or run `mkdir folder` on the command line, which works on Windows and Unix. On Android, you can use a file explorer or `mkdir` in Termux. Pick a folder that your Python app can reach.
+
+Then change into the right folder each time. In a console, `cd folder` does the job. IDLE may move to a file's folder when you open or run it. As a fallback, `os.getcwd()` shows the current directory, and `os.chdir('path')` changes it. Import `os` first.
+
+### Program files and your first script
+
+Interactive code disappears as soon as Python runs it. You cannot reuse it without retyping it, and copying it out of a session means stripping away prompts and output. To keep code, save it in a file. Such a file is called a module. A module is a plain text file of Python statements. You can run it again and again, in several ways, and Python always runs it from top to bottom.
+
+Terms vary by role. Many people call a module file a program, meaning stored statements that run again and again. A module that you run directly is often called a script, which is an informal name for a top-level program file. Some people reserve module for a file that gets imported, and script for the main file of a program. This book generally follows that stricter sense.
+
+Open a text editor. Any editor works, including vi, Notepad, a phone app, or IDLE. Type the following into a new file named `script1.py` in your code folder. This is the book's first script (untested here):
+
+```python
+# A first Python script
+import sys # Load a library module
+print(sys.platform)
+print(2 ** 100) # Raise 2 to a power
+x = 'Hack!'
+print(x * 8) # String repetition
+```
+
+The script imports `sys`, a module of extra tools from Python's standard library, and asks it for the platform name. It then runs three `print` calls. It also stores a string in a variable named `x`. You do not need to understand every line yet. The next chapter covers these operations.
+
+The value of `sys.platform` is a string that names the kind of computer you use. You must import `sys` before you can read it. Notice also that a file never shows output on its own, unlike the REPL. You must say `print` in every file that should display something. Forgetting it is a very common first mistake.
+
+Comments after `#` are notes for people. Python ignores them, so you can copy the code without them. The book formats its comments in a distinct way for clarity, but in your own file they are plain text.
+
+Name the file with a `.py` suffix. A plain name such as `script1` would still run from the top level, but Python needs the suffix to import the file later. Many editors and file explorers also use the suffix to detect Python files. Without it, you may lose syntax coloring, automatic indentation, and tap-to-run.
+
+### Running a script from the command line
+
+Once the file is saved, ask Python to run it. Type the command at the system shell, with the file name as the first argument:
+
+```
+$ python3 script1.py
+darwin
+1267650600228229401496703205376
+Hack!Hack!Hack!Hack!Hack!Hack!Hack!Hack!
+```
+
+The command name can vary. On Windows, you usually type `py` instead. Enter the command in Command Prompt, Terminal, or Termux, whichever your platform offers. Run it in the folder where you saved the script, and type it at the system prompt, not at `>>>`. If Python is not on your `PATH`, you may need the full directory path to Python. Most installs set `PATH` for you, so this rarely comes up.
+
+If everything works, you see three lines. They show the platform name, 2 raised to the power 100, and the string repeated eight times. If you see an error instead, check that your file matches the example exactly. Debugging help appears later in this chapter.
+
+### Command-line variations
+
+A command line runs through a system shell, such as Bash on Unix. So you can use the shell's own syntax as well. For example, you can send the printed output to a file with `>`:
+
+```
+$ python3 script1.py > saveit.txt
+```
+
+Now the three lines go into `saveit.txt` instead of the screen. This is called stream redirection. It works for output (`>`) and input (`<`) on Windows and Unix-like systems. It is handy for testing, because another program can watch your output. Redirection belongs to the shell, though, not to Python, so it works only on command lines.
+
+On Windows, you can type just the name of the script, such as `script1.py`. Windows uses file associations to choose Python for a `.py` file. The command runs through Python's `py` launcher. Command Prompt shows its output in its own window, but PowerShell may not. In PowerShell, use `py` to see unredirected output.
+
+If the script lives in another folder, give its full path. Here is an example run in PowerShell on Windows:
+
+```
+PS C:\Users\me\code> cd D:\temp\savecode # Go to a different folder
+PS D:\temp\savecode> py C:\Users\me\code\script1.py # Run a script elsewhere
+win32
+1267650600228229401496703205376
+Hack!Hack!Hack!Hack!Hack!Hack!Hack!Hack!
+```
+
+If `PATH` does not include Python, and neither Python nor the script sits in your current folder, use full paths for both. This example on macOS also redirects output to a file outside the current folder:
+
+```
+$ /usr/local/bin/python3 /Users/me/code/script1.py > /Users/me/data/saveit.py
+```
+
+That is a lot to type, and it is unusual. Keep your commands short by putting Python on `PATH` and changing into your script and data folders with `cd`. Most installs take care of `PATH`, so you mostly need to think about your script and data folders.
+
+### Clicking or tapping file icons
+
+Clicking is the easiest way to run a script for many people, but it has limits. On most PCs, you can run a Python file by clicking or tapping its name or icon in the file explorer. On Windows, File Explorer does this automatically after the install, thanks to filename associations. On macOS, clicks run the file in Finder if you chose to open it with the Python Launcher, which the install includes. Dragging the file onto the Python Launcher app works the same way.
+
+Linux is less simple. The file usually needs executable permission and a `#!` first line that names Python. On a phone, tapping a file in an Android file explorer, or in Files on iOS, may open it in a Python app. That works only for some combinations of explorer and app. The app may also lack access to every file your program needs.
+
+Clicks on Windows and Linux have a catch. The console window closes when a script ends. If your script only prints and exits, you see the text for an instant. A closing call to `input()` pauses the program so you can read the output. That pause does not help with error messages, though. Use another run method when you need to see errors.
+
+### The IDLE GUI
+
+Command lines suit some people, but others want a window with menus. IDLE is a graphical environment for Python. It is a free, standard part of the Python system. People often call it an integrated development environment, or IDE, because it brings several development tasks into one view.
+
+IDLE lets you edit, run, browse and debug programs from the same window. It is written in Python with the `tkinter` GUI toolkit, so it runs the same way on Windows, macOS and Linux. For many beginners, it is easier than typing commands and less error-prone than clicking icons. The cost is some control. That cost matters more once your programs grow.
+
+IDLE comes with the python.org installers for Windows and macOS. On Linux, install it from your distribution's repositories. Start it from the Start menu on Windows, from Launchpad or Finder on macOS, or from a command line on Linux. Where it is supported, you can also right-click a file to open it.
+
+To run a script, open it with `File` → `Open`, or start a new one with `File` → `New File`. Then choose `Run` → `Run Module` in the edit window. The output appears in the Shell window, which is also a normal REPL with command recall. The `Run` → `Run…` `Customized` option passes command-line arguments to a script. IDLE is not a full system shell, so that option stays limited.
+
+IDLE does more than run code. It offers tab completion, pop-up help for functions, and lists of object attributes as you type. It includes an object browser and a GUI debugger. To use the debugger, turn it on in the `Debug` menu and set breakpoints by right-clicking in edit windows. For simple errors, right-click the error text in the Shell window to jump to the failing line.
+
+IDLE is itself a Python script in the standard library. So you can often start it from any folder with `python3 -m idlelib.idle`. On Windows, use `py` instead. The `-m` flag finds a module through the normal import search and runs it as a top-level script. Part V covers that search and the dotted package names used here.
+
+For more tips, see Appendix A, IDLE's own Help menu, and the platform notes in Python's standard manuals. The best way to learn IDLE is to try it. It can ease a beginner's start, but its extra layer can get in the way as your needs outgrow it.
+
+### Other IDEs
+
+IDLE is free, portable and always installed with Python, so it is a good first IDE. Other IDEs are more powerful and robust, though. PyCharm, PyDev, Wing, VSCode, Spyder and PyScripter all offer an edit-and-run window. Some add advanced tools, such as code refactoring and source-control integration. They have steep learning curves, so most beginners should wait. File them away for later, when you have mastered the language.
+
+### Smartphone apps, WebAssembly, notebooks and compilers
+
+If you run examples on an Android or iOS device, you will use an app. Termux on Android has a traditional command line, so it supports the REPL and file commands. In other apps, you launch code with taps on the app's interface instead of a command line. Details vary by app, so check Appendix A and your app's docs.
+
+Python can also run in a web browser through WebAssembly, a portable bytecode format that browsers can run. It works much as the PVM runs its own bytecode. Tools such as the Emscripten LLVM-based compiler turn the Python interpreter's source into this format. The W3C standardizes WebAssembly, and all major desktop and mobile browsers support it.
+
+Compiling CPython to Wasm is not easy, so the Pyodide project did that work for you. Pyodide is a port of CPython with JavaScript access to the browser's DOM and web APIs. You load it from a server in an HTML page, and many programs then run with no local install. The downsides are speed and usefulness. Downloading an interpreter takes time, and Pyodide has a fixed set of tools. Browser scripts also run in a sandbox with limited access to the host. For general software development, other options are more useful. Watch two related projects: MicroPython for Wasm, which is smaller and supports a constrained subset of Python, and py2wasm, a Python-to-Wasm compiler announced as the book was written.
+
+Jupyter is a set of tools for running Python in a web browser, with a focus on scientific work. Its classic form needs a server that you install and launch separately. Another form runs locally in the browser with WebAssembly and Pyodide. Both forms use notebooks, which are pages with code cells that run on a button click. They also offer the IPython REPL and visualization with Python's numeric tools. Jupyter is popular in many STEM roles. It is not aimed at general-purpose software, though, so look at other resources if notebooks are part of your future.
+
+Ahead-of-time compilers, such as Nuitka and Shed Skin, turn Python programs into machine code. As Chapter 2 noted, they work much as C and C++ compilers do. You run the compiler on your file first, and then run the result like any other executable. These systems can boost speed, but they add development steps that slow you down. They also cut into what makes Python appealing. Beginners should learn the language with REPLs, IDEs and command lines first.
+
+### Importing modules and module attributes
+
+Earlier in this chapter, the phrase "importing modules" came up without a full explanation. Here is enough to get started. Any file whose name ends in `.py` is a module. No special code or syntax is needed. Other files reach a module's contents through an import, which loads the file and gives access to what it defines. Those defined items are called attributes.
+
+Most larger programs are several module files that import one another. One file is the main, or top-level, file, often called the script. It starts the whole program. Everything below it is modules importing modules. You will study this architecture in depth in Part V.
+
+An import also runs the file. The import executes the module's code as a final step. So importing a file is another way to launch it. Here is how the attributes work. Create a one-line file named `myfile.py` in your working directory:
+
+```python
+title = 'Learning Python, 6th Edition'
+```
+
+This is about as simple as a module gets, but it shows the idea. When the file is imported, its code runs and creates the attribute `title`. You can reach that attribute in two ways. The first loads the module as a whole and qualifies the name with a dot (untested here):
+
+```
+$ python3 # Start Python REPL
+>>> import myfile # Run file, load module as a whole
+>>> myfile.title # Use its attribute names: '.' to qualify
+'Learning Python, 6th Edition'
+```
+
+The dot syntax, `object.attribute`, is one of the most common operations in Python code. The second way copies the name out of the module with `from`:
+
+```
+$ python3 # Restart Python REPL
+>>> from myfile import title # Run file, copy its names
+>>> title # Use name directly: no need to qualify
+'Learning Python, 6th Edition'
+```
+
+The `from` statement copies the name into your code, so you can use `title` without a prefix. `import` leaves the name inside the module, so you write `myfile.title`.
+
+A module can define more than one name. This file, `threenames.py`, defines three attributes and also uses them itself (untested here):
+
+```python
+a = 'PC' # Define three attributes
+b = 'Phone' # Exported to other files
+c = 'Tablet'
+print(a, b, c) # Also used as variables in this file
+```
+
+Run directly, the file prints `PC Phone Tablet`. When another file imports it for the first time, the same code runs there too. An `import` gives a module with attributes, while `from` gives copies of the names:
+
+```
+$ python3
+>>> import threenames # Grab the whole module: it runs here
+PC Phone Tablet
+>>> threenames.b, threenames.c # Access its attributes: qualify to use
+('Phone', 'Tablet')
+>>> from threenames import b, c # Copy multiple names out: use directly
+>>> b, c
+('Phone', 'Tablet')
+```
+
+The results appear in parentheses because they are tuples. Tuples are a kind of object that a comma creates, and the book covers them later.
+
+A module is mostly a package of variable names, called a namespace. The names inside it are attributes. Namespaces keep names from colliding across files. Each module file is a self-contained namespace, so files must import other files to use their names.
+
+Imports run a file only once per process by default. After the first import, later imports do nothing, even if you edit and save the file in another window. Imports are costly, so Python skips the repeat. To run the file again in the same session, use `reload` from the `importlib` standard library module. Older Python versions had this in the `imp` module, and before that it was a built-in function. The `reload` function needs a module that was already imported successfully:
+
+```
+>>> from importlib import reload
+>>> reload(script1)
+darwin
+1267650600228229401496703205376
+Hack!Hack!Hack!Hack!Hack!Hack!Hack!Hack!
+<module 'script1' from '/Users/me/Code/script1.py'>
+```
+
+`reload` needs parentheses because it is a function, while `import` is a statement. The last line is the return value, a module object, which is why it appears. Reloads have quirks. For example, `reload` updates importers that use `import`, but not those that use `from`. For running code, command lines and IDEs are usually better choices.
+
+Imports look for modules in the current directory, plus any folders listed in the `PYTHONPATH` environment variable. For most early work, keeping your files in the current directory is enough.
+
+### Command-line launchers and other launch options
+
+Python code can also run other Python code through standard library tools that start command lines. The `os` module's `system` call runs a command as if you typed it in a console. The `0` at the end means the command worked:
+
+```
+$ python3
+>>> import os
+>>> os.system('python3 script1.py')
+darwin
+1267650600228229401496703205376
+Hack!Hack!Hack!Hack!Hack!Hack!Hack!Hack!
+0
+```
+
+The `os.popen` call does something similar, but returns a file object. You can read the spawned command's output from it as a string. The `subprocess.run` call launches programs from the command line with much more control over the details. The book uses `popen` in Chapter 21. These tools are beyond this getting-started chapter, so check Python's library manuals when you need them.
+
+Be careful with all of these, along with `exec`. They will run any command line you give them, including one that erases your files. Limit them to Python commands until you are sure the other commands are safe.
+
+Python code can also be run in other ways. Programs written in C, C++, Java and other languages can embed Python and run Python code. Text editors that are not full IDEs can run the code you are editing. Excel spreadsheets can calculate cells coded in Python. Web servers can start scripts in response to browser actions. Users can also launch standalone executables, which Chapter 2 covered. The list keeps growing, and launch techniques change as quickly as everything else in computing.
+
+Put together, a script can be run with system command lines, file icon clicks, imports and reloads, the `exec` built-in, the `os` module's tools, or an IDE's run command such as IDLE's `Run` → `Run Module`. Some platforms have specialized launch methods, such as drag and drop on macOS, app buttons on phones, and web notebooks. Some text editors have their own run commands. Some programs ship as standalone executables. Embedded Python is run by a program written in another language. Code can also run in browsers through WebAssembly.
+
+### Debugging your first programs
+
+Every programmer makes mistakes. Python gives you several ways to find them, starting with the simplest. First, read the error message. It names the file and line where the problem happened, and it may offer a "Did you…?" hint. For your own code, fixing the tagged line is often enough.
+
+When that is not enough, these strategies help:
+
+- **Insert `print` statements.** Most Python programmers debug this way. Add a simple "I am here" message, or show a variable's value, and run again. If your program has no console, as some GUIs and apps do, look for the printed text in an automatic log file.
+- **Insert calls to the `logging` module.** The `logging` module gives more formal messages with better control over the output. It takes some planning, so it suits larger programs more than quick scripts. Python's library manual explains its usage.
+- **Use a GUI debugger.** For large systems you did not write, or to trace code in detail, most Python GUIs offer point-and-click debugging. IDLE has a debugger too. It is used less often, since adding `print` is often quicker.
+- **Use the `pdb` command-line debugger.** `pdb` is a source code debugger in the standard library. You step line by line, display variables, set and clear breakpoints, and continue to a breakpoint or an error. Launch it with `pdb.run('code')` or with `python3 -m pdb file.py`. After an error, `pdb.pm()` gives postmortem details. Chapter 36 revisits `pdb`.
+- **Use the `-i` command-line argument.** Run `python3 -i script.py`, and Python opens the `>>>` prompt when the script exits. That happens whether the script ends normally or hits an error. You can then print the final values of variables, or import and run `pdb`.
+- **Catch and handle errors in code.** Errors are exceptions in Python. You can catch, process and recover from them in your own code. Part VII explains how.
+
+The best takeaway is that Python reports errors as a normal part of running code. It does not pass them silently or crash the whole system. Mistakes are never fun. Still, Python's debugging support makes them far less painful than they once were.
+
+### Choosing how to run code
+
+Beginners often ask which option is best. If you are just starting, try both basic command lines and the IDLE GUI. Unless you work in phone apps or web notebooks, which have their own interfaces, these two cover most needs. Command lines are simple and powerful. IDLE hides some underlying details, and it behaves the same on every PC.
+
+If you already program, you may prefer your favorite text editor in one window and a system console in another, where you launch edited programs with Python command lines. Choosing a development environment is personal, and this book cannot give universal rules for it. In the end, the environment you like best is the right one for you.
+
 ### Python versions, `python` vs `python3`, and installation
 
 Use the distribution's `python3` for system scripts, but for applications use an isolated, pinned interpreter in a virtual environment (chapter 3.2). Never `pip install` into the system Python; distributions manage it. Check `python3 -m site` and `pip --version` to know which interpreter you are really using.
+
+Installing Python is not required for every part of this book. You do need a Python to work through the examples and the end-of-part exercises, though, and running code makes the concepts concrete. The book uses Python 3.12, so a version close to that is best. You may not be able to choose a version in some contexts, and that is fine.
+
+Most people install Python in one of a few ways. Windows and macOS users download a self-installing executable and run it. Say Yes or Next at each prompt. PC users get the installer from the downloads page of python.org. Linux users may already have a usable Python. If not, install one from their distribution's repositories. WSL on Windows counts as Linux here. Android and iOS users install an app that runs Python locally, and smartphone users get that app from an app store. Some Unix users compile Python from its full source code instead.
+
+Before you install, check whether Python is already on your device. On Windows, look in the Start menu. On most platforms, run a Python command line as Appendix A and the earlier section on starting the REPL describe. Some tools, such as Jupyter notebooks, have install steps of their own.
 
 ## 2. Objects, names and references
 
@@ -1475,6 +1832,7 @@ Next, on any machine with Python 3.11+ (all interactive shell steps below are `u
 4. **Strings vs. Bytes, f-Strings, `string.Template`, and `str.maketrans` / `str.translate` (`LP` Chapter 7):** (a) Explain the difference between `str` and `bytes` and why `s += part` in a loop is an anti-pattern; (b) using `sanitize_and_render_host_template()`, show how `str.maketrans(':-', '__', ' ()')` and `str.translate()` normalize labels in one pass and how `string.Template` (`substitute` vs `safe_substitute`) differs from f-strings.
 5. **Collections Complexity, Aliasing Traps, `print()` Stream Redirection, `match`, and `for ... else` (`LP` Chapters 8–13):** (a) Compare `list`, `tuple`, `dict`, and `set` lookup/append costs, explain the `[[0] * 3] * 3` and `dict.fromkeys(keys, [])` aliasing bugs, and compare per-call `print(..., file=log)` with reassigning `sys.stdout`; (b) write a retry loop using `for attempt in range(1, 6): ... else:` and explain when the `else:` block runs.
 6. **Formal Parameter/Call Ordering Rules, the Mutable Default Trap, and `LEGB` Closures (`LP` Chapters 16–19):** (a) State the 4-section parameter order `(pos_only, /, normal, *args, kw_only, **kwargs)` in `def` headers and the 3 call-site unpacking rules; (b) using `add_node_safe()` and `make_nonlocal_counter()`, explain why `def add_node(ip, nodes=[]):` leaks state across calls in a long-running service, how **LEGB** resolves names, and how to fix late-binding `[lambda: i for i in range(3)]`.
+7. **Launching Files and Module Imports (`LP` Chapter 3):** (a) Save `print('Hello module world!')` as `module1.py`, then run it from IDLE, by a command line such as `python3 module1.py`, and by one other launch method from the chapter. Which felt easiest? (b) Start a REPL, `import module1` from the folder that holds it, then move the file to another folder and import it again from the original folder. What happens? Hint: a bytecode file for `module1` sits in a `__pycache__` subfolder under an oddly named file, and imports search the current directory plus the folders listed in `PYTHONPATH`. (c) Copy `module1.py` to `script1.py`, add a `#!` first line, give the file executable permission, and run it directly without typing `python3`. What must that first line contain? On Windows, also try typing only the file name in Command Prompt.
 
 ## Checkpoint questions (20)
 

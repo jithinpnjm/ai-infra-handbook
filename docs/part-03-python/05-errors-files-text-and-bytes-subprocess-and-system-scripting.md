@@ -334,6 +334,156 @@ Backtracking undoes the work done before it jumps back. Python exceptions do not
 
 You can still build backtracking yourself. Use exceptions together with logic that unwinds your assignments. Generators in *Learning Python* Chapter 20 do not backtrack fully either. They save their state and resume when `next()` asks for the next value. For more on true backtracking, look at books on AI or at the Prolog and Icon languages.
 
+### Nested try statements
+
+Real programs often put one `try` inside another. A `try` can also sit in a function that another `try` calls. Both cases follow one rule, and it helps to know that rule before you read a traceback.
+
+Python keeps a stack of the `try` statements that are active while the program runs. When an exception is raised, Python returns to the most recently entered `try` that has a matching `except`. That handler runs, and the program resumes after that `try`. Only this first match gets the chance to handle the exception. Once it is caught, the exception is done, so outer handlers do not run unless the handler raises it again.
+
+Example 36-1 shows this with three functions. `action3` adds a number and a list, which raises a `TypeError`. `action2` catches the error, prints a message, and re-raises it with a bare `raise`. `action1` then catches the error a second time.
+
+```python
+def action3():
+    print(1 + [])                  # Generate TypeError
+
+def action2():
+    try:                           # Most recent matching try
+        action3()
+    except TypeError:
+        print('Inner try')         # Match kills the exception
+        raise                      # Unless manually reraised
+
+def action1():
+    try:
+        action2()
+    except TypeError:
+        print('Outer try')         # Run only if action2 reraises
+
+if __name__ == '__main__':
+    action1()
+```
+
+When `action3` fails, two `try` statements are active: the older one in `action1` and the newer one in `action2`. Python runs only the newer one, because it is the most recent match. The outer handler runs only because `action2` re-raised the error.
+
+```
+$ python3 nested_exc_normal.py
+Inner try
+Outer try
+```
+
+Exception groups follow the same routing, with one difference. A group does not stop until every item in it has been matched. Each `except*` clause takes the items it matches and lets the rest move on. Example 36-2 shows three nested functions with three kinds of error in one group.
+
+```python
+def action3():
+    raise ExceptionGroup('Nest*', [IndexError(1), TypeError(2), SyntaxError(3)])
+
+def action2():
+    try:
+        action3()
+    except* IndexError:            # Consume matches, rest propagate
+        print('Got IE')
+
+def action1():
+    try:
+        action2()
+    except* TypeError:             # Consume matches, rest propagate
+        print('Got TE')
+
+if __name__ == '__main__':
+    action1()
+```
+
+Each `try` consumes what it matches. The `SyntaxError` is never matched, so the top-level handler prints it last.
+
+```
+$ python3 nested_exc_group.py
+Got IE
+Got TE
++ Exception Group Traceback (most recent call last):
+…etc…
+| ExceptionGroup: Nest* (1 sub-exception)
++-+---------------- 1 ----------------
+| SyntaxError: 3
++------------------------------------
+```
+
+Where an exception lands depends on the path the program took to get there. To know where it will go, you need to know where the program has been. Routing for nested handlers is a matter of runtime control flow, not only of how the statements are written.
+
+`try` statements that contain only `finally` clauses behave differently. When an exception occurs, each `finally` block runs in turn as the error moves up the stack. A `finally` block does not stop the error. It only runs cleanup code on the way out. If no `except` catches the error along the way, it reaches the default handler at the top.
+
+Example 36-3 shows an `except` and a `finally` working together on each pass through a loop. The `raise1` function raises an error, `noraise` does nothing, and `raise2` raises a different error.
+
+```python
+def raise1(): raise IndexError
+def noraise(): return
+def raise2(): raise SyntaxError
+
+for func in (raise1, noraise, raise2):
+    print(f'<{func.__name__}>')
+    try:
+        func()
+    except IndexError:
+        print('caught IndexError')
+    finally:
+        print('finally run')
+    print('...')
+```
+
+The `finally` block runs on every pass. The `except` block runs only for `IndexError`. This single `try` gives the same result as a nested pair of `try` statements, so you can choose the form that reads better.
+
+```
+$ python3 except-finally.py
+<raise1>
+caught IndexError
+finally run
+...
+<noraise>
+finally run
+...
+<raise2>
+finally run
+Traceback (most recent call last):
+…etc…
+SyntaxError: None
+```
+
+You can also nest `try` statements in the source text itself. The nesting then lines up with the way the code is written. This is the same stack as before, just written in one place. Here the error comes from `action3` in the module `nested_exc_normal`.
+
+```python
+from nested_exc_normal import action3
+
+try:
+    try:
+        action3()
+    except TypeError:              # Most-recent matching try
+        print('Inner try')
+        raise
+except TypeError:                  # Here, only if nested handler reraises
+    print('Outer try')
+```
+
+The output matches Example 36-1. The same goes for nested `finally` blocks. Both of them run when the error passes through, whether the nesting is in the source or spread across functions.
+
+```python
+try:
+    try:
+        action3()
+    finally:
+        print('Inner try')
+finally:
+    print('Outer try')
+```
+
+```
+Inner try
+Outer try
+Traceback (most recent call last):
+…etc…
+TypeError: unsupported operand type(s) for +: 'int' and 'list'
+```
+
+Syntactic nesting mostly makes the roles of `except` and `finally` easier to see. In a larger program, the runtime nesting from function calls is the more common case.
+
 ### Why exceptions save code
 
 In languages without exceptions, you check every result. Here is a C-style sketch of a function that runs several steps.
@@ -369,9 +519,370 @@ if __name__ == '__main__':
 
 The *Learning Python* version uses a bare `except:`. This handbook prefers `except Exception:`, because a bare `except:` also catches Ctrl-C and `sys.exit()`. Control jumps straight to the handler when an error happens. You do not guard every line, and the normal path does not run extra checks. Python also finds many errors on its own, so your code often does not look for them at all.
 
+### Exception idioms
+
+Exceptions do more than report errors. Several common patterns use them as a control-flow tool. Each one is a small, structured way to jump somewhere else in the program.
+
+### Breaking out of several loops
+
+Python's `break` exits only the closest loop. When you need to leave three nested loops at once, a `raise` can do it. In this role, `raise` works like a `go to`, and the `except` clause with its exception name takes the place of a label. You can jump only out of code wrapped in a `try`. That limit is useful, because a truly arbitrary `go to` makes code hard to follow.
+
+Example 36-4 shows the pattern. The `raise` inside the `for` loop leaves all three loops in one step.
+
+```python
+class Exitloop(Exception): pass
+
+try:
+    while True:
+        while True:
+            for i in range(10):
+                if i > 3: raise Exitloop    # break exits just one level
+                print('loop3: %s' % i)      # raise can exit many
+            print('loop2')
+        print('loop1')
+except Exitloop:
+    print('continuing')                     # Or just pass, to move on
+print(f'{i=}')                              # Loop variable not undone
+```
+
+```
+$ python3 breaker.py
+loop3: 0
+loop3: 1
+loop3: 2
+loop3: 3
+continuing
+i=4
+```
+
+If you change the `raise` to a `break`, you get an infinite loop. The `break` leaves only the innermost `for` loop, and the program then lands back in the second-level `while` loop. Try that change yourself, but keep Ctrl+C ready to stop it.
+
+The variable `i` keeps its value after the `try` ends. Assignments made inside a `try` are not undone in general. Local variables in functions that a `raise` exits are discarded, because they leave the call stack.
+
+### Exceptions that are signals, not errors
+
+In Python, every error is an exception, but not every exception is an error. A file's read methods return an empty string at the end of a file. The built-in `input` function reads one line from `sys.stdin` on each call. At end-of-file, it raises `EOFError` instead.
+
+An empty string from `input` means an empty line, not the end of the input. The `EOFError` is only a signal here. Unless end-of-file should stop the whole script, you wrap `input` in a `try` inside a loop.
+
+```python
+while True:
+    try:
+        line = input()             # Read line from stdin
+    except EOFError:
+        break                      # Exit loop at end-of-file
+    else:
+        ...process next line here...
+```
+
+Other built-in exceptions also act as signals. Calling `sys.exit()` raises `SystemExit`. Pressing Ctrl+C raises `KeyboardInterrupt`. Some built-in exceptions represent warnings instead of errors, and some of these flag deprecated language features. The standard library manual describes the built-in exceptions, and the `warnings` module documents the ones raised as warnings.
+
+### Raising to signal a result
+
+User-defined exceptions can signal normal conditions, not only errors. A search routine can raise an exception when it finds a match, instead of returning a status flag that the caller must read. The `try`/`except`/`else` statement then does the work of an `if`/`else` test on the return value.
+
+```python
+class Found(Exception): pass
+
+def searcher():
+    if …success…:
+        raise Found()              # Raise exceptions instead of returning flags
+    else:
+        return
+
+try:
+    searcher()
+except Found:                      # Exception if item was found
+    …success…
+else:                              # else returned: not found
+    …failure…
+```
+
+This pattern also helps when a function cannot return a special value to mean failure. A sentinel is a special return value, such as `None`, that stands for "no result." If every object can be a valid return value, no sentinel is safe. An exception can carry the failure without using the return value at all.
+
+```python
+class Failure(Exception): pass
+
+def searcher():
+    if …success…:
+        return founditem
+    else:
+        raise Failure()
+
+try:
+    item = searcher()
+except Failure:
+    …not found…
+else:
+    …use item here…
+```
+
+Because Python is dynamically typed and polymorphic to the core, exceptions are generally preferred over sentinel return values for these cases.
+
+### Closing files and server connections
+
+Exception tools also make sure resources are released, whether or not an error happens. Some servers need a connection closed before a session ends. Output files may need a `close` to flush their buffers to disk. Input files hold file descriptors until they are closed. CPython closes open files when it garbage-collects them, but that timing is not always predictable or reliable.
+
+The most general way to guarantee cleanup for one block of code is `try`/`finally`.
+
+```python
+myfile = open('somefile', 'w')
+try:
+    ...process myfile...
+finally:
+    myfile.close()
+```
+
+Some objects are easier to handle with a context manager. A `with` statement closes or cleans up the resource for you.
+
+```python
+with open('somefile', 'w') as myfile:
+    ...process myfile...
+```
+
+Compare the two forms in the termination-handler section above, and draw your own conclusion.
+
+### Outer try for debugging
+
+You can also replace Python's default top-level error handling with your own. Wrap the whole program, or one call into it, in an outer `try`. An empty `except` then catches any uncaught exception, and the program does not end with the default error message.
+
+To learn what happened, read the result of `sys.exc_info()`. It returns a tuple, and its first two items are the exception's class and the instance that was raised.
+
+```python
+try:
+    ...run program...
+except:                            # All uncaught exceptions come here
+    import sys
+    print('uncaught!', sys.exc_info()[0], sys.exc_info()[1])
+```
+
+Developers use this structure to keep a program running after an error. It is also useful for testing. If you put it inside a loop, you can run more tests without restarting the program.
+
+### Running in-process tests
+
+A test driver can combine these patterns. It imports other code and runs the tests inside the same process. The sketch below sends the results to a log file.
+
+```python
+import sys
+log = open('testlog', 'a')
+from testapi import moreTests, runNextTest, testName
+
+def testdriver():
+    while moreTests():
+        try:
+            runNextTest()
+        except:
+            print('FAILED', testName(), sys.exc_info()[:2], file=log)
+        else:
+            print('PASSED', testName(), file=log)
+
+testdriver()
+```
+
+The `try` keeps the driver going after one test fails. Without it, an uncaught exception in any test would end the driver. The empty `except` catches any error from a test case and records it with `sys.exc_info`. The `else` runs only when the test succeeds.
+
+This boilerplate fits code that tests imported functions, modules, and classes. Testing external programs needs a different approach. You check status codes or output from tools such as `os.system` and `os.popen`. Those tools do not usually raise exceptions for errors in external programs, and the test cases may run in parallel with the driver.
+
+The testing tools in the development section below, `doctest` and PyUnit, go further. Both compare expected output with actual results.
+
+### sys.exc_info, sys.exception, and tracebacks
+
+The `sys.exc_info` result gives a handler a generic way to see the exception it is handling. This is most useful with an empty `except`, which catches everything. You can then check what was raised.
+
+```python
+try:
+    ...
+except:
+    # sys.exc_info()[0:2] are the exception class and instance
+```
+
+If no exception is being handled, the call returns a tuple of three `None` values. Otherwise, it returns `(type, value, traceback)`:
+
+- `type` is the class of the exception being handled.
+- `value` is the instance that was raised.
+- `traceback` is a traceback object. It records the call stack where the exception first happened, and the `traceback` module uses it to build error messages.
+
+When you catch a category superclass, `sys.exc_info` can also tell you the specific type. You can get the same type from the instance itself, through `__class__` or `type`. So `sys.exc_info` is rarely needed outside an empty `except`.
+
+```python
+try:
+    ...
+except General as instance:
+    # instance.__class__ or type(instance) is the exception class
+    # but instance.method() does the right thing for this instance
+```
+
+Catching `Exception` here catches everything except exit events. It works like an empty `except` but is less extreme, and it still gives you the instance. Calling the instance's methods is often better than checking its type.
+
+Python 3.11 added `sys.exception`. It returns the exception instance that is being handled, the same object that the `as` variable receives. It matches the second item of `sys.exc_info()`, which is `sys.exc_info()[1]`. The two calls below print the same information.
+
+```python
+except ...:
+    print('uncaught!', sys.exc_info()[0], sys.exc_info()[1])
+except ...:
+    print('uncaught!', type(sys.exception()), sys.exception())
+```
+
+There are three ways to get the same information inside a `try`. The example below prints each one in a tuple, so the output shows the same `repr` form.
+
+```python
+>>> class E(Exception): pass
+...
+>>> try:
+...     raise E('info')
+... except E as X:
+...     print((type(X), X))
+...     print(sys.exc_info()[:2])
+...     print((type(sys.exception()), sys.exception()))
+...
+(<class '__main__.E'>, E('info'))
+(<class '__main__.E'>, E('info'))
+(<class '__main__.E'>, E('info'))
+```
+
+With `sys.exception`, the class comes from the instance through `__class__` or `type`. The traceback is usually in the instance's `__traceback__` attribute. The new call is a small convenience, because it skips the index or slice you need from `sys.exc_info`.
+
+Python's documentation now labels `sys.exc_info` as "old-style." The book does not agree with that label. Both calls work, and you may use either one. The book recommends tools that are traditional, common, and widely understood.
+
+The `traceback` module uses the traceback object to build the standard error text by hand. You can send that text to a file. Example 36-5 is a short script named `badly.py`.
+
+```python
+import traceback
+
+def inverse(x):
+    return 1 / x
+
+try:
+    inverse(0)
+except Exception:
+    traceback.print_exc(file=open('badly.txt', 'w'))
+print('Bye')
+```
+
+The script prints `Bye` to the screen, and the error text goes to `badly.txt`. This is useful when a program must catch an error and still keep a full record of it.
+
+```
+$ python3 badly.py
+Bye
+$ cat badly.txt
+Traceback (most recent call last):
+File "/…/LP6E/Chapter36/badly.py", line 7, in <module>
+inverse(0)
+File "/…/LP6E/Chapter36/badly.py", line 4, in inverse
+return 1 / x
+~~^~~
+ZeroDivisionError: division by zero
+```
+
+On Windows, `type` plays the role that `cat` plays here. The `traceback` module has more options for customizing this output. For more on traceback objects, see a Python reference.
+
+### Exception design tips and gotchas
+
+Most exception mistakes come from design choices, not from syntax. Exceptions are easy to use in Python. The hard part is choosing how specific each `except` should be, and how much code to put inside each `try`.
+
+**What to wrap.** You could wrap every statement in its own `try`, but that would be silly, because those `try` statements would then need wrapping too. The book suggests a few rules of thumb:
+
+- Operations that often fail should be wrapped. File opens and socket calls that touch system state are good examples.
+- Some failures should stop the program. In a simple script, a failure that blocks the rest of the work may be better left to kill the program. Python usually prints a useful message instead of crashing hard, which is often the best outcome.
+- Cleanup that must run whether or not an error happens should use `try`/`finally`, unless a context manager is available through `with`.
+- Wrapping one call to a function in a single `try` often means less code than wrapping each step inside the function. All exceptions raised in the function then travel up to that one `try`.
+
+The kind of program also matters. Servers, test runners, and GUIs generally must catch and recover from exceptions. A simple one-shot script often skips exception handling, because any failure means it must stop anyway.
+
+**Catching too much.** An empty `except` clause catches every exception. That is easy to write, and sometimes it is what you want. It can also catch an error that another `try` elsewhere expects:
+
+```python
+def func():
+    try:
+        ...                        # IndexError is raised in here
+    except:
+        ...                        # But everything comes here and dies!
+
+try:
+    func()
+except IndexError:                 # Exception should be processed here
+    ...
+```
+
+A broad handler can also catch critical events you never meant to touch. Memory errors, program typos, iteration stops, keyboard interrupts, and system exits all raise exceptions in Python. Unless you are writing a debugger or a similar tool, your code should usually let these pass.
+
+A call to `sys.exit(statuscode)` ends a script early. It raises the built-in `SystemExit` exception, so `try`/`finally` handlers run on the way out. An empty `except` can block that exit without you noticing. Example 36-6 shows the problem.
+
+```python
+import sys
+
+def bye():
+    sys.exit(62)                   # Crucial error: abort now!
+
+try:
+    bye()
+except:
+    print('Got it')                # Oops--we ignored the exit
+print('Continuing...')
+```
+
+```
+$ python3 exiter.py
+Got it
+Continuing...
+```
+
+The script keeps going after the call to shut it down. You may not expect every kind of exception an operation can raise. The built-in `Exception` superclass helps, because `SystemExit` is not a subclass of it.
+
+```python
+try:
+    bye()
+except Exception:                  # Won't catch exits, but _will_ catch many others
+    ...
+```
+
+`Exception` is still a broad net. It catches nearly every built-in exception except the exit events. It can take exceptions meant for other parts of the program. It also catches programming errors, which should usually pass through. An empty `except` or `Exception` can effectively turn off Python's error reporting. That makes mistakes hard to notice.
+
+Consider this example.
+
+```python
+mydictionary = {...}
+...
+try:
+    x = myditctionary[key]         # Oops: misspelled name
+except:
+    x = None                       # Assume we got KeyError – only - here
+...continue here with x...
+```
+
+The coder assumes that a dictionary lookup can fail in only one way, with a missing key. The name `myditctionary` is misspelled, so Python raises a `NameError` instead. The handler catches that error and silently fills in `None`, which hides the bug. Catching `Exception` here would do exactly the same thing.
+
+If that code runs far from where `x` is used, finding the bug becomes a long debugging task.
+
+As a rule of thumb, be as specific as you can in your handlers. Empty `except` clauses and `Exception` catchers are convenient, but they are easy to get wrong. In this example, listing `KeyError` avoids catching unrelated events. In a simple script, a catch-all may be worth the risk. In general, broad handlers cause trouble.
+
+A few related tools are worth knowing. The `atexit` standard-library module lets a program run code at shutdown. Its `sys.excepthook` can change what the top-level exception handler does. The `os._exit` call ends a program the way `sys.exit` does, but it stops immediately. It skips cleanup, including `atexit` handlers, and no `try` can intercept it. The book notes it is mostly used in spawned child processes, a topic beyond its scope.
+
+**Catching too little.** Being too specific can cause trouble too. When you list specific exceptions, you catch only those. If a system later raises a new exception, you may need to find and update every list that should catch it.
+
+```python
+try:
+    ...
+except (MyExcept1, MyExcept2):     # Breaks if you add a MyExcept3 later
+    ...
+```
+
+Class-based categories avoid that maintenance trap. If you catch a common superclass, new subclasses need no change to the `except` clause.
+
+```python
+try:
+    ...
+except CommonCategoryName:         # OK if you add a MyExcept3 subclass later
+    ...
+```
+
+Design goes a long way here. Be neither too general nor too specific in your handlers. Choose the granularity of each `try` wisely. In a large system, your exception policy should be part of the overall design.
+
 ### Summary of exception tools
 
 Exceptions are a control-flow tool. Python raises them, or your own code does. If nothing catches one, the default handler prints the error and stops the program. A `try` statement catches and recovers, and its `finally` block runs cleanup either way. `raise` and `assert` trigger exceptions on demand, and `with` handles termination work for objects that support it.
+
+This part of *Learning Python* ended with a survey of design concepts, common exception use cases, and a short tour of development tools. Along with the rest of the core material, it covers the subset of Python most programmers use. Keep the design rules in mind: be specific in handlers, let unexpected errors reach one top-level handler, and remember that a bare `except:` also catches `SystemExit`.
 
 ### Error-handling strategy for tools and services
 
@@ -722,6 +1233,32 @@ cleanup()
 
 `socket` (TCP/UDP clients/servers, `getaddrinfo`, timeouts: `sock.settimeout(5)`; connect checks `socket.create_connection((host, port), timeout=3)`), `ipaddress` (parse, networks, subnets, containment), `ssl`, `urllib.request` (dependency-free HTTP) or `requests`/`httpx` (chapter 3.7), `select`/`selectors`, `datetime`, `uuid`, `secrets` (tokens), `hashlib`, `hmac`, `getpass`, `crypt`-like password hashing via `bcrypt`/`argon2-cffi`.
 
+### Development tools for larger projects
+
+The examples in *Learning Python* are small on purpose, so you can learn the basics. This section is the end of the core language. You have now seen the built-in types, statements, exceptions, functions, modules, and classes. Most of the remaining work is learning the tools around the language. Those tools change often, so this is only a short tour.
+
+Python's tools form layers. Built-in types such as strings, lists, and dictionaries let you write simple programs quickly. For bigger tasks, you write your own functions, modules, and classes. Other extensions can be written in an external language such as C, C++, or Java. You can stop at the layer your task needs.
+
+**Documentation.** `help` and PyDoc give you documentation for modules and objects. PyDoc works with docstrings and ships with Python.
+
+**Error checking.** Python is dynamic, so some errors appear only when the code runs. Even syntax errors appear only when a file is run or imported. You trade a compile phase for a testing phase. Python's error messages and exception model make bugs quicker to find than in some other languages. Unlike C, Python does not crash completely on errors. Third-party tools such as PyChecker, Pylint, and Pyflakes catch common mistakes before a run. They are similar to the lint program used in C. Trying one early can teach you to spot common Python mistakes.
+
+**Testing.** Earlier, the `__name__ == '__main__'` trick added self-tests to a file. For more serious testing, Python provides two tools. PyUnit, called `unittest` in the library manual, is a class-based framework for test cases and expected results. It follows the JUnit style from Java. `doctest` is simpler. You paste a log of an interactive session into a docstring. `doctest` reads the docstring, pulls out the tests and results, and reruns them.
+
+**IDEs.** IDEs such as PyCharm and IDLE give you a graphical place to edit, run, debug, and browse code. Some advanced IDEs add source control, refactoring, and project tools. Jupyter notebooks can also count as a kind of IDE.
+
+**Profilers.** Python's dynamic nature means speed habits from other languages often do not carry over. To find a real bottleneck, add timing code with the `time` or `timeit` modules, or run the code under the `profile` module. The usual order is to write clear code first, profile it to find the slow parts, and then time alternative versions of those parts. The `cProfile` module is a faster version of `profile`. The `pstats` module analyzes its results.
+
+**Debuggers.** Most IDEs support graphical debugging. The standard library also includes `pdb`, a command-line debugger that works much like `gdb` or `dbx`. It is useful when no GUI is available or when you want more control. In practice, many programmers read error messages or add `print` calls and run again. Practical habits often win.
+
+**Shipping.** Tools can package Python programs as standalone executables that do not need Python on the host. Programs can also ship as source (`.py`) or bytecode (`.pyc`) files. A `.zip` file can act like a package folder. If you release an open source tool, look into `pip` for distribution.
+
+**Optimization.** Once speed matters, you have several options. PyPy can give an automatic speed boost. Shed Skin and Cython offer other routes to faster code. The `-O` flag optimizes bytecode, but it gives only a small speedup. It is mostly used to remove debugging code and `assert` statements. Moving a hot part of the program into C is a last resort, and Python's manuals cover C extensions. Newer Python releases often run faster, but check that the upgrade speeds up your own code.
+
+**Installation management.** The `venv` module creates virtual environments. Each one has its own set of packages, lives in its own directory, and is turned on and off with console commands. When one is active, `pip` installs packages into it, and the search paths point to it.
+
+**Other hints for larger projects.** Several core topics become more useful in bigger projects. These include module packages, exception classes, pseudoprivate class attributes, docstrings, module data hiding, and the design guidelines for objects, statements, functions, modules, classes, and exceptions. For more tools, browse the PyPI website, `python.org`, and the wider web.
+
 ## 8. A template for robust operational scripts
 
 ```python
@@ -858,6 +1395,11 @@ Next, on any machine with Python 3.11+ (all interactive shell steps below are `u
 4. **Unicode Text vs. Bytes, Encodings (`'AÄBèC'`), Normalization (`NFC`/`casefold`/`shave_marks_latin`), and Binary `struct` (`LP` Ch. 37 & `FP` Ch. 4):** Using `inspect_unicode_and_struct()` and `shave_marks_latin()` in `code/part03/python_errors_files_subprocess.py`, explain: (a) why `'AÄBèC'` is 5 characters, 7 UTF-8 bytes, and 5 Latin-1 bytes, and how `struct.pack('>i4sh', 7, b'code', 8)` works; (b) why `'caf\u00e9' != 'cafe\u0301'` until normalized with `unicodedata.normalize('NFC', s)`, how `shave_marks_latin` strips Latin accents while preserving Greek, how `errors="surrogateescape"` round-trips undecodable filenames, and why `r'\d+'` vs `rb'\d+'` differ on non-ASCII digits.
 5. **Serialization Formats (`json`, `yaml.safe_load`, `tomllib`, `csv`) and Structured Logging:** (a) Explain why `yaml.safe_load` and `tarfile` `filter="data"` are mandatory on untrusted inputs, why CSV files require `newline=""` and sometimes `encoding="utf-8-sig"`, and why timestamps should use `datetime.now(timezone.utc)` while durations use `time.monotonic()`; (b) explain why `logging` handlers belong in the application entry point (`sys.stderr`, `%s` lazy formatting) while libraries attach `NullHandler()`.
 6. **Safe Subprocess Execution (`subprocess.run`, `Popen`), Pipe Deadlocks, Process Groups (`killpg`), and Signals (`SIGTERM`):** (a) Explain why `subprocess.run(["kubectl", ...], capture_output=True, text=True, check=True, timeout=30)` with an argument list prevents shell injection compared to `shell=True`, how a child filling `stderr` while the parent reads `stdout` deadlocks, and how `start_new_session=True` + `os.killpg` terminates an entire subprocess tree on timeout; (b) explain how `drain_nodes` uses `threading.Event` inside a `SIGTERM`/`SIGINT` handler to finish in-flight work cleanly and return conventional exit codes (`0`, `1`, `2`, `130`).
+7. **`try`/`except` and Built-in Exception Names:** Write a function called `oops` that explicitly raises an `IndexError` when called. Then write a second function that calls `oops` inside a `try`/`except` to catch the error. What happens if you change `oops` to raise a `KeyError` instead? Where do the names `KeyError` and `IndexError` come from? (Hint: unqualified names generally come from one of four scopes.)
+8. **Custom Exception Objects:** Change `oops` so it raises an exception you define yourself, called `MyError`, using your own class. Extend the `try` in the catcher to handle this exception and its instance, along with `IndexError`, and print the instance you catch.
+9. **Error Handling with `safe`:** Write `safe(func, *pargs, **kargs)`. It runs any function with any number of positional and keyword arguments, using the `*` header and call syntax. It catches any exception raised while the function runs, and prints it with `sys.exc_info`. Put `safe` in a module named `exctools.py`, then pass it `oops` interactively. What kind of messages do you get? Expand `safe` to print a full stack trace by calling `traceback.print_exc`. The `safe` function could also be a decorator, which the book covers in the next part.
+
+Quiz for the book's cover: the mouse on the cover is really a wood rat (*Neotoma*). The publisher chose it in the 1990s because it is common food for a python. A wood rat must learn about the python to avoid being eaten. The animal also collects shiny objects, which fits Python's growing list of language features. So enjoy the shiny objects, but do not get eaten by the constricting reptiles along the way.
 
 ## Checkpoint questions (20)
 

@@ -359,6 +359,8 @@ A special type of peak load in a supercomputer is the **power-on procedure**. In
 
 ### Command-line fleet management and the "panacea" console trap
 
+Fortunately, many complicated jobs on a cluster can be accomplished with a few standard commands chained together. Most of the time, that works without much extra work, and no one special tool is needed. The real effort goes into mastering each command at first, which takes time. After that, the command line works like a toolbox you can combine in many ways.
+
 Because the scale of even a small compute cluster differs dramatically from a dozen servers, graphical administration tools are unrealistic. How do you find out which servers failed to detect their full amount of RAM the last time they were powered on? Running a graphical system monitor on a hundred nodes and clicking the system tab on each would take all day. Instead, you run a single command across all nodes using a parallel shell tool such as `pdsh` or `clush`:
 
 ```bash

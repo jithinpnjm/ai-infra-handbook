@@ -22,39 +22,36 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Almost every GPU you rent is attached to a virtual machine, and many on-premises AI platforms run VMs too: Kubernetes nodes on a hypervisor, GPU passthrough VMs for tenant isolation, KubeVirt to run VMs inside Kubernetes, Kata Containers for stronger pod isolation, development and test clusters on KVM, image-build farms, CI for drivers and kernels. The people who design, debug and cost these systems need to know what a hypervisor does to CPU, memory, I/O and GPUs: why a VM can be as fast as bare metal for compute and still slow for networking; why vCPU pinning and huge pages matter; why `%steal` appears; why a GPU needs an IOMMU to be passed through; why some features (NVLink fabric management, MIG, P2P) behave differently in guests.
+Almost every GPU you rent is attached to a virtual machine, and many on-premises AI platforms run VMs too. You will meet Kubernetes nodes on a hypervisor, GPU passthrough VMs for tenant isolation, KubeVirt for running VMs inside Kubernetes, Kata Containers for stronger pod isolation, development and test clusters on KVM, image-build farms, and CI for drivers and kernels. The people who design, debug and cost these systems need to know what a hypervisor does to CPU, memory, I/O and GPUs. A VM can be as fast as bare metal for compute and still be slow for networking. Why? That is what this chapter explains, along with why vCPU pinning and huge pages matter, why `%steal` appears, why a GPU needs an `IOMMU` before it can be passed through, and why features such as NVLink fabric management, MIG and P2P behave differently in guests.
 
-You may never *operate* a hypervisor (cloud providers do), but you will be asked to explain, size and troubleshoot virtualised GPU environments, and to run VMs yourself to test cluster software, images and kernels. KVM + QEMU + libvirt is the standard open-source stack and the one that most large clouds (including Google Compute Engine) use.
+You may never operate a hypervisor yourself, because cloud providers do that for you. You will still be asked to explain, size and troubleshoot virtualised GPU environments, and to run VMs yourself to test cluster software, images and kernels. KVM, `QEMU` and libvirt form the standard open-source stack. Most large clouds use it, Google Compute Engine among them.
 
-This chapter covers the machinery (VT-x/AMD-V, VM exits, EPT/NPT, IOMMU, virtio, vhost, VFIO, SR-IOV), the software stack (KVM kernel module, QEMU, libvirt, `virsh`, `virt-install`, cloud-init), storage and network configuration, performance tuning and observation from host and guest, GPU passthrough and sharing, security, and a hands-on lab. Cloud architecture (instance families, multitenancy, capacity, orchestration, comparisons) is chapter 1.27; containers and namespaces are chapters 1.19 and 1.20.
+This chapter covers the machinery first: VT-x and AMD-V, VM exits, EPT and NPT, `IOMMU`, virtio, vhost, `VFIO` and SR-IOV. Then it covers the software stack: the KVM kernel module, `QEMU`, libvirt, `virsh`, `virt-install` and cloud-init. After that come storage and network configuration, performance tuning and observation from both host and guest, GPU passthrough and sharing, security, and a hands-on lab. Cloud architecture, including instance families, multitenancy, capacity, orchestration and comparisons, is in chapter 1.27. Containers and namespaces are in chapters 1.19 and 1.20.
 
 ## Prerequisites and outcomes
 
-You should know processes, memory and NUMA (1.17), CPU scheduling and cgroups (1.18), namespaces and containers (1.19), kernel modules (1.22), performance methods (1.23), and tracing (1.24).
+Before you start, you should be comfortable with processes, memory and NUMA (1.17), CPU scheduling and cgroups (1.18), namespaces and containers (1.19), kernel modules (1.22), performance methods (1.23), and tracing (1.24).
 
-After this chapter you can:
+When you finish this chapter, you should be able to do the following.
 
-- Explain system virtual machines, emulators versus hardware-assisted virtualisation, hypervisor types and the two practical configurations (native hypervisor and kernel-module hypervisor).
-- Explain CPU virtualisation (privilege rings, trap-and-emulate, binary translation, paravirtualisation, VT-x/AMD-V, VM entry/exit), memory virtualisation (two-dimensional page walks, EPT/NPT, shadow page tables), and I/O virtualisation (emulation, virtio, vhost, passthrough, SR-IOV, IOMMU).
-- Describe how KVM, QEMU and libvirt fit together; create, inspect, modify and destroy VMs with `virt-install`, `virsh` and domain XML; use cloud-init images and storage pools; configure NAT, bridged and macvtap networking.
-- Choose disk formats and cache modes; configure virtio-blk/scsi/net, multiqueue and vhost.
-- Tune a VM for performance: CPU model, pinning, NUMA, huge pages, iothreads, halt polling; and reason about overhead sources (VM exits, EPT violations, double caching, ballooning, steal).
-- Observe VM behaviour from host and guest (`top`, `pidstat -t`, `perf kvm stat`, `kvm:kvm_exit`, `kvmexits.bt`, `%steal`, guest tools).
-- Explain GPU passthrough with VFIO (IOMMU groups, driver binding, kernel parameters, BAR sizing, NUMA alignment), vGPU/MIG-backed VMs and the limits for NVLink/NVSwitch systems; list the security features (sVirt, seccomp, SELinux/AppArmor, confidential computing).
-- Troubleshoot common problems: no KVM, nested virt off, networking, disk full from qcow2, stolen time, passthrough failures.
+- Explain system virtual machines, the difference between emulators and hardware-assisted virtualisation, and the two practical hypervisor configurations: the native hypervisor and the kernel-module hypervisor.
+- Explain CPU virtualisation, including privilege rings, trap-and-emulate, binary translation, paravirtualisation, VT-x and AMD-V, and VM entry and exit. Explain memory virtualisation, including two-dimensional page walks, EPT and NPT, and shadow page tables. Explain I/O virtualisation, including emulation, virtio, vhost, passthrough, SR-IOV and the `IOMMU`.
+- Describe how KVM, `QEMU` and libvirt fit together. Create, inspect, modify and destroy VMs with `virt-install`, `virsh` and domain XML. Use cloud-init images and storage pools, and configure NAT, bridged and macvtap networking.
+- Choose disk formats and cache modes, and configure virtio-blk, virtio-scsi and virtio-net, with multiqueue and vhost.
+- Tune a VM for performance by choosing the CPU model, pinning, NUMA placement, huge pages, iothreads and halt polling. Reason about the overhead sources: VM exits, EPT violations, double caching, ballooning and steal.
+- Observe a VM from the host and from the guest, using `top`, `pidstat -t`, `perf kvm stat`, `kvm:kvm_exit`, `kvmexits.bt`, `%steal` and the guest tools.
+- Explain GPU passthrough with `VFIO`, covering `IOMMU` groups, driver binding, kernel parameters, BAR sizing and NUMA alignment. Explain vGPU and MIG-backed VMs, and the limits for NVLink and NVSwitch systems. List the security features, including sVirt, seccomp, SELinux or AppArmor, and confidential computing.
+- Troubleshoot the common failures: no KVM, nested virtualisation switched off, networking faults, a disk that fills up from a qcow2 image, stolen time, and passthrough failures.
 
 ## 1. Virtual machines in one page
 
-A **system virtual machine** emulates a whole computer (CPU, memory, interrupt controller, timers, disks, NICs) so that an unmodified operating system with its own kernel runs inside. The program that creates and runs it is the **hypervisor**, also called the **virtual machine monitor (VMM)**. The OS inside is the **guest**; whatever runs the hypervisor is the **host**. (A *process* virtual machine such as the JVM is a different thing.)
+Suppose you want a second operating system, with its own kernel, running on a machine you already have. A **system virtual machine** does that. It emulates a whole computer, including the CPU, memory, interrupt controller, timers, disks and network cards, so that an unmodified operating system can run inside it. The program that creates and runs the machine is the **hypervisor**, also called the **virtual machine monitor (VMM)**. The operating system inside is the **guest**, and whatever runs the hypervisor is the **host**. A *process* virtual machine, such as the JVM, is a different thing.
 
-Two ways to build one:
-
-- **Emulator**: software interprets every guest instruction (QEMU in TCG mode, old game-console emulators). Flexible (a different CPU architecture can be emulated) but slow.
-- **Hardware-assisted virtualisation**: guest instructions run directly on the physical CPU; the hypervisor only intervenes when the guest does something privileged or touches virtual devices. Near-native CPU performance. This is what KVM does and what clouds use.
+There are two ways to build a system VM. An emulator interprets every guest instruction in software. `QEMU` in TCG mode works this way, and so do old game-console emulators. That approach is flexible, because a different CPU architecture can be emulated, but it is slow. Hardware-assisted virtualisation takes the other route. Guest instructions run directly on the physical CPU, and the hypervisor steps in only when the guest does something privileged or touches a virtual device. CPU performance is then close to native. KVM works this way, and clouds use it.
 
 ### Hypervisor types and configurations
 
-The classical **Type 1** (bare-metal/native: runs directly on hardware, e.g. Xen, VMware ESXi, Hyper-V) versus **Type 2** (runs inside a host OS, e.g. VirtualBox, early QEMU) is blurred by kernel modules. Gregg's practical split:
+The classical **Type 1** hypervisor runs directly on the hardware, bare metal or native. Xen, VMware ESXi and Hyper-V are examples. A **Type 2** hypervisor runs inside a host operating system, as VirtualBox and early `QEMU` do. Kernel modules have blurred that line. Gregg's practical split describes two configurations, shown in the diagram below.
 
 ```mermaid
 flowchart TB
@@ -74,22 +71,24 @@ flowchart TB
   end
 ```
 
-In **KVM**, each VM is an ordinary Linux process (`qemu-system-x86_64`); each virtual CPU is an ordinary thread of that process (named `CPU 0/KVM`, `CPU 1/KVM`); the host's own scheduler, memory manager, cgroups, NUMA policy, `perf` and `tracepoints` all apply. That is KVM's strength: everything you know about Linux processes (chapters 1.8, 1.17, 1.18) applies to VMs. Amazon's **Nitro** goes further: KVM-derived with hardware offload of network, storage and management, so there is no QEMU I/O proxy on the data path and performance is near bare metal.
+In KVM, each VM is an ordinary Linux process, `qemu-system-x86_64`. Each virtual CPU is an ordinary thread of that process, named `CPU 0/KVM`, `CPU 1/KVM` and so on. The host's own scheduler, memory manager, cgroups, NUMA policy, `perf` and tracepoints all apply to it. This is KVM's strength. What you already know about Linux processes applies to VMs too, and chapters 1.8, 1.17 and 1.18 cover that material. Amazon's Nitro goes further. It is KVM-derived, with network, storage and management work offloaded to hardware. There is no `QEMU` I/O proxy on the data path, so performance is near bare metal.
 
 ### Why VMs, and why not
 
-Uses: testing and disposable environments, application compatibility (other OS), servers and cloud services, strong multi-tenant isolation (separate kernels), snapshots/migration, running legacy workloads. Drawbacks (which motivate containers, chapter 1.19): installation/configuration effort (automate with Ansible, images, cloud-init), slow boot, full OS to patch and secure in each VM, dependency conflicts at the OS level, cost of one VM per service, extra memory (guest kernel, QEMU, double caching).
+VMs earn their place in several situations. They suit testing and disposable environments, applications that need another operating system, servers and cloud services, strong multi-tenant isolation with separate kernels, snapshots and migration, and legacy workloads. They also have drawbacks, and those drawbacks are what motivate containers in chapter 1.19. Each VM needs installation and configuration work, which you can automate with Ansible, images and cloud-init. Each VM boots slowly and carries a full operating system that you must patch and secure. Dependency conflicts can still appear at the OS level, and one VM per service becomes expensive. Each VM also needs extra memory for its guest kernel, for `QEMU` and for double caching.
+
+For any single service, decide whether a separate kernel is worth the extra memory and boot time, or whether a container will do.
 
 ## 2. How the hardware helps
 
 ### CPU virtualisation
 
-Classic x86 had privilege rings (0 = kernel, 3 = user). A guest kernel expects ring 0, but only the hypervisor may use it. Early solutions:
+Classic x86 CPUs had privilege rings, numbered 0 for the kernel and 3 for user programs. A guest kernel expects to run in ring 0, but only the hypervisor is allowed to use ring 0. Four approaches grew out of that conflict, and you should know them in order.
 
-1. **Trap-and-emulate**: run the guest in user mode; privileged instructions fault, the hypervisor traps and emulates them. x86 had instructions that behaved differently without trapping, so it was not directly possible.
-2. **Binary translation** (VMware, 1998): rewrite problematic guest kernel code on the fly; run the VMM in ring 0 and the guest kernel in ring 1. Works, with overhead.
-3. **Paravirtualisation (PV)**: the guest kernel is modified to call the hypervisor directly via **hypercalls** instead of executing privileged operations (Xen). Efficient, but needs guest support.
-4. **Hardware assist (Intel VT-x, AMD-V/SVM, 2005 to 2006)**: a new CPU mode for the hypervisor ("VMX root") and one for the guest ("non-root") in which the guest kernel runs at ring 0 unprivileged for the host. A control structure (**VMCS** on Intel, **VMCB** on AMD) describes guest state and which events cause exits. When the guest does something the hypervisor wants to intercept (certain instructions like `CPUID`, `HLT`, I/O port access, MSR access, interrupts, EPT faults) the CPU performs a **VM exit**, saves guest state, and runs the hypervisor; after handling it, **VM entry** resumes the guest.
+1. **Trap-and-emulate.** Run the guest in user mode. Privileged instructions then fault, and the hypervisor traps them and emulates the result. The catch is that x86 had instructions that behaved differently without trapping, so this approach was not directly possible.
+2. **Binary translation.** VMware used this from 1998. The hypervisor rewrites problematic guest kernel code on the fly, runs the VMM in ring 0 and runs the guest kernel in ring 1. It works, but it carries overhead.
+3. **Paravirtualisation (PV).** The guest kernel is changed to call the hypervisor directly through **hypercalls**, instead of running privileged operations itself. Xen does this. It is efficient, but the guest must support it.
+4. **Hardware assist.** Intel VT-x and AMD-V, introduced between 2005 and 2006, add a CPU mode for the hypervisor, called VMX root, and a mode for the guest, called non-root. The guest kernel runs in ring 0, but that ring 0 is unprivileged from the host's point of view. A control structure, the **`VMCS`** on Intel and the **`VMCB`** on AMD, describes the guest state and which events cause exits. When the guest does something the hypervisor wants to intercept, such as executing `CPUID` or `HLT`, doing port or MSR access, receiving an interrupt, or raising an EPT fault, the CPU performs a **VM exit**. It saves the guest state and runs the hypervisor. After the hypervisor handles the event, a **VM entry** resumes the guest.
 
 ```mermaid
 sequenceDiagram
@@ -108,37 +107,45 @@ sequenceDiagram
   end
 ```
 
-**VM exits are the overhead of virtualisation**: the time spent outside the guest handling exits, and the rate of exits. Exits handled entirely in the kernel are cheap; exits that must return to QEMU in user space cost much more (context switches). Common exit reasons: `HLT` (idle vCPU), `MSR_WRITE` (e.g., timer programming), `EXTERNAL_INTERRUPT`, `PENDING_INTERRUPT`, `IO_INSTRUCTION`/`MMIO` (device access), `EPT_VIOLATION`/`EPT_MISCONFIG` (memory), `CPUID`, `PREEMPTION_TIMER`. Reduce exits with paravirtual devices (virtio), posted interrupts and APIC virtualisation (APICv/AVIC), hardware-assisted timers, halt polling, and passthrough.
+**VM exits are where virtualisation costs time.** Two things matter: how long the CPU spends outside the guest handling exits, and how often exits happen. An exit that the kernel handles on its own is cheap. An exit that must go back to `QEMU` in user space costs much more, because of the context switches. The common exit reasons are `HLT` (an idle vCPU), `MSR_WRITE` (for example, timer programming), `EXTERNAL_INTERRUPT`, `PENDING_INTERRUPT`, `IO_INSTRUCTION` or `MMIO` (device access), `EPT_VIOLATION` or `EPT_MISCONFIG` (memory), `CPUID`, and `PREEMPTION_TIMER`. You can reduce exits with paravirtual devices (virtio), posted interrupts, APIC virtualisation with APICv or AVIC, hardware-assisted timers, halt polling and passthrough.
 
-KVM exposes its API as `/dev/kvm` and ioctls (`KVM_CREATE_VM`, `KVM_CREATE_VCPU`, `KVM_SET_USER_MEMORY_REGION`, `KVM_RUN`): a user-space VMM such as QEMU, Firecracker, Cloud Hypervisor or crosvm opens it, defines guest memory (a region of its own address space), then runs each vCPU thread in a `KVM_RUN` loop that returns to user space only when it must emulate something. Check the host: `lscpu | grep -i virtualization`, `grep -E 'vmx|svm' /proc/cpuinfo`, `ls -l /dev/kvm`, `lsmod | grep kvm` (`kvm_intel` or `kvm_amd`), `kvm-ok` (Ubuntu `cpu-checker`), `virt-host-validate`. If virtualisation is disabled in firmware, enable VT-x/AMD-V (and VT-d/AMD-Vi) in BIOS.
+KVM exposes its API through `/dev/kvm` and a set of ioctls, including `KVM_CREATE_VM`, `KVM_CREATE_VCPU`, `KVM_SET_USER_MEMORY_REGION` and `KVM_RUN`. A user-space VMM opens that device. `QEMU` is one example, and Firecracker, Cloud Hypervisor and crosvm are others. The VMM defines guest memory as a region of its own address space. It then runs each vCPU thread in a `KVM_RUN` loop, which returns to user space only when the VMM must emulate something.
+
+Run these checks on the host first. `lscpu | grep -i virtualization` and `grep -E 'vmx|svm' /proc/cpuinfo` show whether the CPU supports hardware virtualisation. `ls -l /dev/kvm` and `lsmod | grep kvm` should show the device and the `kvm_intel` or `kvm_amd` module. On Ubuntu, `kvm-ok` comes from the `cpu-checker` package, and `virt-host-validate` runs a broader set of checks. If the output says virtualisation is disabled in firmware, turn on VT-x or AMD-V in the BIOS, along with VT-d or AMD-Vi.
 
 ### Memory virtualisation
 
-A guest has three address types: guest virtual, guest physical, host physical. Translation needs two stages: guest virtual → guest physical (guest page tables) → host physical (hypervisor).
+A guest has three kinds of address: guest virtual, guest physical and host physical. A memory access needs two translation stages. The guest page tables map guest virtual addresses to guest physical ones, and the hypervisor maps guest physical addresses to host physical ones.
 
-- **Shadow page tables** (older): the hypervisor intercepts guest page-table changes and maintains combined guest-virtual→host-physical tables, loaded into CR3. Many exits.
-- **Nested paging: EPT (Intel) / NPT (AMD)**: hardware walks both sets of tables (a **two-dimensional page walk**), caching results in the TLB. Fewer exits but a TLB miss costs more memory references (up to 24 for 4-level paging in both dimensions). Hence **huge pages** (2 MiB/1 GiB) in the guest *and* host matter a great deal: they shorten both walks and improve TLB reach (chapter 1.17).
-- Guest memory is just host process memory (anonymous or hugetlbfs-backed). It can be swapped by the host, shared (KSM, same-page merging), overcommitted, ballooned (`virtio-balloon` returns pages to the host), NUMA-bound, or locked (required for device passthrough, since DMA targets fixed physical pages).
-- **Double caching**: host page cache plus guest page cache for the same disk data; avoid with `cache=none`/direct I/O for virtual disks.
+- **Shadow page tables** are the older approach. The hypervisor intercepts every change the guest makes to its page tables, and it keeps combined guest-virtual to host-physical tables, which load into CR3. That approach produces many exits.
+- **Nested paging** uses EPT on Intel and NPT on AMD. The hardware walks both sets of tables, which is called a **two-dimensional page walk**, and it caches the results in the TLB. This means fewer exits. A TLB miss, however, costs more memory references: up to 24 for 4-level paging in both dimensions. That is why **huge pages** matter so much. Using 2 MiB or 1 GiB pages in the guest *and* the host shortens both walks and improves TLB reach, as chapter 1.17 explains.
+- Guest memory is simply host process memory, either anonymous or backed by hugetlbfs. That gives the host several controls. It can swap guest memory, share pages through KSM (same-page merging), overcommit it, balloon it with `virtio-balloon`, which returns pages to the host, bind it to a NUMA node, or lock it. Locking is required for device passthrough, because DMA targets fixed physical pages.
+- **Double caching** happens when the host page cache and the guest page cache both hold the same disk data. You avoid it with `cache=none`, which uses direct I/O for virtual disks.
 
-### I/O virtualisation and the IOMMU
+Here is the arithmetic behind the huge-page advice. With 4-level paging in both dimensions, the worst case is 24 memory reads for one TLB miss. With 1 GiB huge pages in both guest and host, the lab counts 8 reads. The gap is the reason to plan huge pages before you size a memory-heavy guest.
 
-Ways to give a guest a device:
+### I/O virtualisation and the `IOMMU`
+
+There are several ways to give a guest access to a device. The table compares them. Read it from left to right: the faster methods usually need more from the driver or the hardware, and passthrough ties a device to a single VM.
 
 | Method | How | Performance | Flexibility |
 |---|---|---|---|
-| **Full emulation** | QEMU emulates real hardware (e1000 NIC, IDE/AHCI disk) | Slow: many exits per I/O | Works with any guest OS |
+| **Full emulation** | `QEMU` emulates real hardware (e1000 NIC, IDE/AHCI disk) | Slow: many exits per I/O | Works with any guest OS |
 | **Paravirtual (virtio)** | Guest uses a `virtio` driver; shared-memory rings (virtqueues) between guest and host; fewer exits | Good (near line rate with tuning) | Needs virtio drivers (in Linux; Windows needs drivers) |
-| **vhost / vhost-user** | The virtio back end runs in the host kernel (`vhost-net`) or in a separate user-space process (`vhost-user`, DPDK/SPDK/OVS-DPDK), bypassing QEMU on the data path | Better throughput/lower CPU | More plumbing |
-| **PCI passthrough (VFIO)** | A whole physical PCIe device is assigned to one guest; guest driver talks to hardware; the **IOMMU** translates and isolates DMA | Native (GPU, NIC, NVMe) | Device exclusive to one VM; complicates migration |
+| **vhost / vhost-user** | The virtio back end runs in the host kernel (`vhost-net`) or in a separate user-space process (`vhost-user`, DPDK/SPDK/OVS-DPDK), bypassing `QEMU` on the data path | Better throughput/lower CPU | More plumbing |
+| **PCI passthrough (`VFIO`)** | A whole physical PCIe device is assigned to one guest; guest driver talks to hardware; the **`IOMMU`** translates and isolates DMA | Native (GPU, NIC, NVMe) | Device exclusive to one VM; complicates migration |
 | **SR-IOV** | A physical function (PF) exposes virtual functions (VFs); each VF is passed through to a guest | Near-native, shareable | Needs device and driver support; VF count limits; live migration hard |
 | **mediated devices / vGPU / MIG** | A vendor driver multiplexes a device into slices | Near-native with QoS | Vendor licence/driver |
 
-The **IOMMU** (Intel VT-d, AMD-Vi, Arm SMMU) does for device DMA what the MMU does for CPU accesses: it translates device-visible addresses and restricts each device to the memory the hypervisor allows, which is what makes passthrough *safe* (a malicious guest driver cannot DMA into host memory). Linux exposes it through **VFIO** (`/dev/vfio/*`), grouping devices that cannot be isolated from each other into **IOMMU groups**. Interrupts are virtualised too (posted interrupts, APICv/AVIC) to avoid exits per interrupt.
+The `IOMMU`, which is Intel VT-d, AMD-Vi or Arm SMMU depending on the hardware, does for device DMA what the MMU does for CPU accesses. It translates the addresses a device sees, and it limits each device to the memory the hypervisor allows. That limit is what makes passthrough safe, because a malicious guest driver cannot DMA into host memory. Linux exposes this through `VFIO`, under `/dev/vfio/*`. Devices that cannot be isolated from each other are grouped into **`IOMMU` groups**. Interrupts are virtualised too, using posted interrupts and APICv or AVIC, so that each interrupt does not cause an exit.
 
-**Terms to recognise**: `virtio-blk`, `virtio-scsi`, `virtio-net`, `virtio-balloon`, `virtio-fs`, `virtio-vsock`, `vhost-net`, `vfio-pci`, `OVMF` (UEFI firmware for guests), `q35` (modern chipset with PCIe) versus `i440fx` (legacy), `QMP` (QEMU Machine Protocol), `qemu-guest-agent`, `qcow2`, `cloud-init`.
+When you read VM configurations, you will see names such as `virtio-blk`, `virtio-scsi`, `virtio-net`, `virtio-balloon`, `virtio-fs`, `virtio-vsock`, `vhost-net`, `vfio-pci` and `qemu-guest-agent`. `OVMF` is the UEFI firmware for guests. `q35` is the modern chipset with PCIe, and `i440fx` is the legacy one. `QMP` is the `QEMU` Machine Protocol. You will also see `qcow2` and `cloud-init` in almost every VM setup.
 
-## 3. The stack: KVM, QEMU, libvirt
+Keep the `IOMMU` in mind whenever you plan a GPU or a NIC for a guest, because passthrough without it is not safe.
+
+## 3. The stack: KVM, `QEMU`, libvirt
+
+Read the diagram from the top down. Admins and orchestrators sit at the top. libvirt holds the configuration in the middle. `QEMU` runs each machine, and the KVM kernel module does the hardware work underneath.
 
 ```mermaid
 flowchart TB
@@ -149,11 +156,15 @@ flowchart TB
   Q -.-> V["vhost-net / vhost-user / VFIO / SPDK"]
 ```
 
-- **KVM** (Kernel-based Virtual Machine): the Linux kernel modules (`kvm`, `kvm_intel` or `kvm_amd`) that turn Linux into a hypervisor for hardware-assisted guests. Developed by Qumranet (acquired by Red Hat in 2008); used by Google Compute Engine and many private clouds.
-- **QEMU** (Quick Emulator): the user-space program that creates the machine: it allocates guest RAM, runs one thread per vCPU (calling `KVM_RUN`), emulates devices (chipset, PCI bus, disk and network controllers, VGA/serial, USB), loads firmware (SeaBIOS or OVMF/UEFI), implements virtio back ends, handles migration, snapshots and the monitor (HMP/QMP). It can also act as a pure emulator (TCG) for other architectures, or as `qemu-img`/`qemu-nbd` tools for disk images. Machine types: `q35` (PCIe, modern) and legacy `i440fx` (and `microvm`, `virt` on Arm).
-- **libvirt**: a management API and daemon that gives a uniform interface (domain XML, `virsh`) over KVM/QEMU (and Xen, LXC, VirtualBox, etc.), manages storage pools, virtual networks, security labelling (SELinux sVirt, AppArmor), cgroup placement, lifecycle (start/stop/save/restore), snapshots and migration. Systemd integration: VMs appear under `machine.slice` with cgroups, so CPU/memory/I/O limits (chapter 1.18) apply directly.
+**KVM** (Kernel-based Virtual Machine) is the set of Linux kernel modules, `kvm` plus `kvm_intel` or `kvm_amd`, that turn Linux into a hypervisor for hardware-assisted guests. Qumranet developed it, and Red Hat acquired Qumranet in 2008. Google Compute Engine and many private clouds use KVM today.
 
-### Command-line QEMU (to see what libvirt generates)
+**`QEMU`** (Quick Emulator) is the user-space program that creates the machine. It allocates guest RAM, runs one thread per vCPU that calls `KVM_RUN`, and emulates devices such as the chipset, the PCI bus, disk and network controllers, VGA, serial ports and USB. It loads firmware, either SeaBIOS or `OVMF` for UEFI. It implements the virtio back ends and handles migration, snapshots and the monitor, which speaks HMP or QMP. `QEMU` can also run as a pure emulator (TCG) for other architectures, and its `qemu-img` and `qemu-nbd` tools handle disk images. The machine types include `q35`, which is modern and uses PCIe, and the legacy `i440fx`. There are also `microvm`, and `virt` on Arm.
+
+**libvirt** is a management API and daemon. It gives you one interface, made of domain XML and `virsh`, over KVM and `QEMU`, and also over Xen, LXC, VirtualBox and others. It manages storage pools, virtual networks, security labels (SELinux sVirt or AppArmor), cgroup placement, the lifecycle (start, stop, save and restore), snapshots and migration. Under systemd, VMs appear under `machine.slice` with their own cgroups. The CPU, memory and I/O limits from chapter 1.18 therefore apply directly.
+
+### Command-line `QEMU` (to see what libvirt generates)
+
+Before you rely on libvirt, it helps to see the raw `QEMU` command it builds. The block below creates a disk and starts a VM with KVM acceleration.
 
 ```bash
 qemu-img create -f qcow2 disk.qcow2 40G
@@ -164,7 +175,11 @@ qemu-system-x86_64 -enable-kvm -machine q35,accel=kvm -cpu host -smp 4 -m 8G \
 # libvirt shows the real command: ps -ww -o args -C qemu-system-x86_64 ; or: virsh domxml-to-native qemu-argv --domain vm1
 ```
 
+The last comment line shows how to see the command libvirt actually runs.
+
 ### Installing and checking (Ubuntu/Debian)
+
+On Ubuntu or Debian, install the packages, add your user to the `libvirt` and `kvm` groups, and then check the host.
 
 ```bash
 sudo apt install qemu-kvm libvirt-daemon-system libvirt-clients virtinst bridge-utils cloud-image-utils libguestfs-tools ovmf cpu-checker
@@ -174,9 +189,11 @@ systemctl status libvirtd                     # or virtqemud on newer split-daem
 virsh uri ; virsh -c qemu:///system list --all   # system instance (root-owned VMs) vs qemu:///session (per-user)
 ```
 
+Log out and back in after the group change, or the new group will not apply. The `virsh uri` line tells you which instance you are talking to. `qemu:///system` holds the root-owned VMs, and `qemu:///session` holds the per-user ones.
+
 ### Creating a VM with a cloud image and cloud-init
 
-Cloud images are small preinstalled disk images configured at first boot by **cloud-init** (user data and meta data from a seed ISO or datasource).
+Cloud images are small, preinstalled disk images. You do not run an installer with them. Instead, cloud-init configures the instance at first boot, using user data and meta data from a seed ISO or another datasource. The commands below build a VM this way.
 
 ```bash
 mkdir -p ~/vms && cd ~/vms
@@ -201,7 +218,11 @@ sudo virt-install --name vm1 --memory 8192 --vcpus 4 --cpu host-passthrough \
 virsh list ; virsh domifaddr vm1 ; ssh ubuntu@<ip>
 ```
 
-Day-to-day `virsh`:
+The overlay is a thin copy-on-write file that sits on top of the base image, so you can make a new VM in seconds. Once the VM is up, `virsh domifaddr` tells you its address for the SSH login.
+
+### Day-to-day virsh
+
+Most of your daily work is a handful of `virsh` commands. The block below groups them by task.
 
 ```bash
 virsh list --all ; virsh start|shutdown|reboot|destroy|suspend|resume vm1     # destroy = power off (not delete)
@@ -215,7 +236,11 @@ virsh migrate --live --persistent vm1 qemu+ssh://dest/system                    
 virsh net-list --all ; virsh net-dumpxml default ; virsh pool-list --all ; virsh vol-list default
 ```
 
+Pay attention to the comments. `destroy` powers a VM off without deleting it. The `--config` changes to `setvcpus` and `setmem` are saved to the definition, so they take effect after a restart. The `undefine` command with `--remove-all-storage` deletes the VM and its disks, so use it carefully.
+
 ### Domain XML: the parts that matter
+
+The domain XML is the source of truth for a VM. The fragment below shows the settings that matter for performance. Each comment explains what its setting does.
 
 ```xml
 <domain type='kvm'>
@@ -246,7 +271,13 @@ virsh net-list --all ; virsh net-dumpxml default ; virsh pool-list --all ; virsh
 </domain>
 ```
 
+Pinning, huge pages and locked memory are the settings to look at first for a performance guest. Locked memory is also required for device passthrough.
+
+Use libvirt and `virsh` for every change, so the domain XML stays the single record of what the VM is.
+
 ## 4. Storage
+
+Storage decides how fast a guest's disk is, and how much of the host's disk the guest quietly uses. The table lists the options you will meet.
 
 | Choice | Notes |
 |---|---|
@@ -255,17 +286,23 @@ virsh net-list --all ; virsh net-dumpxml default ; virsh pool-list --all ; virsh
 | **Bus/controller** | `virtio-blk` (simple, fast), `virtio-scsi` (many disks, discard, hotplug, SCSI features), `nvme` emulation, passthrough NVMe (best, exclusive); avoid `ide`/`sata` emulation except for compatibility |
 | **Cache mode** | `none` (O_DIRECT, bypass host page cache, recommended with virtio and when the guest caches), `writethrough`, `writeback` (fast but data loss risk on host crash without flush), `unsafe` (testing only), `directsync` |
 | **AIO** | `io=native` (with `cache=none`) or `io=io_uring`; `threads` otherwise |
-| **IOThreads** | Dedicated threads for disk I/O so QEMU's main loop and vCPU threads are not blocked |
+| **IOThreads** | Dedicated threads for disk I/O so `QEMU`'s main loop and vCPU threads are not blocked |
 | **Discard/TRIM** | `discard=unmap` plus `fstrim` in the guest returns space to thin images |
 | **Snapshots** | Internal (in qcow2) versus external (overlay files); long chains hurt performance, commit/flatten regularly; they are not backups |
 
-Tools: `qemu-img info|create|convert|resize|check|commit|rebase`, `qemu-nbd`, `guestfish`/`virt-customize`/`virt-sysprep` (libguestfs: inspect/modify images, remove machine-specific state), `virt-resize`, `losetup`. For AI scratch data prefer passthrough NVMe or a raw LVM volume with `cache=none`, and measure with `fio` inside the guest and on the host (chapter 1.25).
+Most rows involve a trade-off, such as speed against data safety. The cache mode is the row you should read most carefully, because `writeback` is fast but risks data loss after a host crash without a flush.
+
+Several tools work on these images. `qemu-img info|create|convert|resize|check|commit|rebase` handles the format work, and `qemu-nbd` is the companion tool. `guestfish`, `virt-customize` and `virt-sysprep` come from libguestfs. They inspect and modify images, and they can remove machine-specific state. `virt-resize` and `losetup` round out the set. For AI scratch data, passthrough NVMe or a raw LVM volume with `cache=none` is the choice to prefer. Measure both options with `fio` inside the guest and on the host, as chapter 1.25 describes.
+
+Measure passthrough NVMe against a raw LVM volume before you commit to either one for scratch space.
 
 ## 5. Networking
 
+Networking decides who can reach a VM, and how fast its packets move. The table lists the common modes.
+
 | Mode | How | Use |
 |---|---|---|
-| **User-mode (SLIRP)** | QEMU user networking with NAT and port forwarding | Quick tests, rootless; slow |
+| **User-mode (SLIRP)** | `QEMU` user networking with NAT and port forwarding | Quick tests, rootless; slow |
 | **libvirt NAT network (`default`)** | `virbr0` bridge + dnsmasq (DHCP/DNS) + iptables/nftables NAT; guests get 192.168.122.0/24 | Dev/test; guests not reachable from outside without forwarding |
 | **Linux bridge** | Guests' tap devices attach to a host bridge (`br0`) enslaving the physical NIC; guests are on the physical L2 network | Servers that must be reachable; the NIC itself must not hold the IP |
 | **macvtap** | Virtual interface directly on a physical NIC (modes: bridge, vepa, private, passthru) | Simple, but host-to-guest traffic over the same NIC may not work in some modes |
@@ -273,28 +310,36 @@ Tools: `qemu-img info|create|convert|resize|check|commit|rebase`, `qemu-nbd`, `g
 | **SR-IOV VF / NIC passthrough** | Pass a VF or PF into the guest | Near-native throughput/latency (including RDMA) |
 | **vhost-user + DPDK** | User-space data plane | High packet rates |
 
-NIC model `virtio-net` with `vhost` (in-kernel back end) and `queues=N` (multiqueue; set `ethtool -L` in the guest) is the standard fast path; check offloads (`ethtool -k`), MTU consistency across guest, tap, bridge and physical network (jumbo frames must be end to end), and the host's `net.bridge.bridge-nf-call-*` settings. libvirt commands: `virsh net-define|net-start|net-autostart`, `virsh attach-interface`. Namespaces and veth (1.19) are the container analogue; a Linux bridge plus tap is the VM analogue.
+Choose the mode by asking who needs to reach the guest. You want the NAT network for dev and test work, because guests are not reachable from outside without forwarding. A Linux bridge puts the guest on the physical network, so the host's NIC carries no IP address of its own. You can see that choice in the table.
+
+The standard fast path is `virtio-net` with `vhost`, which is the in-kernel back end, and `queues=N` for multiqueue. Set the queues with `ethtool -L` in the guest. Then check the offloads with `ethtool -k`. The MTU must match across the guest, the tap device, the bridge and the physical network, because jumbo frames work only when they are enabled end to end. Also check the host's `net.bridge.bridge-nf-call-*` settings. libvirt has its own commands, `virsh net-define|net-start|net-autostart` and `virsh attach-interface`. Namespaces and veth pairs from chapter 1.19 are the container version of this setup. A Linux bridge plus a tap device is the VM version.
+
+You should decide the network mode first, because it determines whether anyone outside the host can reach the guest.
 
 ## 6. Performance: what costs what, and how to tune
 
-**Sources of overhead** (from Gregg's analysis): CPU: guest exits (rate and time), interrupt and timer virtualisation; memory: two-level page walks, additional kernel and QEMU memory per VM, double caching; I/O: historically the largest (every device access an exit), mitigated by virtio, vhost, SR-IOV/passthrough and hardware offload (Nitro); contention: stolen time and cache pollution from other tenants, CPU interrupts from neighbours' I/O. CPU-bound user-space code runs at essentially native speed; what suffers is exit-heavy workloads (lots of small I/O, timers, privileged operations), memory-intensive workloads with poor TLB behaviour, and anything bounded by unfaithful emulation.
+Gregg's analysis groups the sources of overhead into three areas. CPU overhead comes from guest exits, both how often they happen and how long they take, and from interrupt and timer virtualisation. Memory overhead comes from two-level page walks, from the extra kernel and `QEMU` memory each VM needs, and from double caching. I/O overhead has historically been the largest. Every device access caused an exit. Virtio, vhost, SR-IOV or passthrough, and hardware offload such as Nitro reduce that cost. Contention adds more, through stolen time, cache pollution from other tenants, and interrupts caused by neighbours' I/O.
 
-**Checklist for a performance VM** (tune the host, then libvirt):
+CPU-bound user-space code runs at close to native speed. The workloads that suffer are the exit-heavy ones, such as lots of small I/O, timers and privileged operations. Memory-heavy work with poor TLB behaviour suffers too, and so does anything limited by unfaithful emulation.
 
-1. **Host**: BIOS (VT-x, VT-d, performance power profile, SMT policy, NUMA on), `intel_iommu=on iommu=pt` (or `amd_iommu=on`), governor `performance`, C-states limited, THP policy decided, `isolcpus`/`nohz_full`/`irqaffinity` for dedicated CPUs, NUMA topology known (`lscpu`, `numactl -H`, `virsh nodeinfo`, `virsh capabilities`).
-2. **CPU**: `host-passthrough` CPU model (exposes features like AVX-512/AMX); correct topology (`sockets/cores/threads`); **pin vCPUs** to dedicated host CPUs (`vcpupin`) on one NUMA node, pin emulator and iothreads to separate CPUs (`emulatorpin`, `iothreadpin`); do not oversubscribe vCPUs on pinned VMs; expose SMT siblings consistently; consider `kvm halt_poll_ns` and `<cpu><feature policy='require' name='invtsc'/>` or `kvm-clock` timing considerations; disable ballooning and KSM for latency-sensitive guests.
-3. **Memory**: **huge pages** (`<hugepages/>`, preallocate with `vm.nr_hugepages` or `hugepagesz=1G hugepages=N`), `<locked/>` for passthrough, `numatune strict` to the same node as the CPUs and devices, guest NUMA topology matching for large VMs.
-4. **Disk**: virtio-scsi/blk with iothreads, `cache=none`, raw or preallocated qcow2, or passthrough NVMe.
-5. **Network**: `virtio-net` + `vhost` + multiqueue, correct MTU, RSS/IRQ affinity in the guest and on the host, or SR-IOV.
-6. **Guest**: virtio drivers, `qemu-guest-agent`, current kernel, `tuned-adm profile virtual-guest`/`throughput-performance`, THP/huge pages inside, clocksource `kvm-clock` or `tsc`, NUMA-aware application placement.
+Tune the host first, then libvirt. The checklist below follows that order, and you can work through it one item at a time.
 
-For GPU workloads, treat the VM like a bare-metal node in its tuning (chapter 1.28) and verify that the topology the guest sees (`nvidia-smi topo -m`, `lscpu`, `numactl -H`) matches the physical one; wrong topology exposure (all GPUs on one virtual PCIe root, NIC on a different node from the GPU) silently breaks NCCL/GPUDirect performance.
+1. **Host.** Set the BIOS to enable VT-x, VT-d, a performance power profile, a deliberate SMT policy and NUMA. Boot with `intel_iommu=on iommu=pt`, or with `amd_iommu=on`. Use the `performance` governor, limit C-states, and decide your THP policy. For dedicated CPUs, use `isolcpus`, `nohz_full` and `irqaffinity`. Know the NUMA topology with `lscpu`, `numactl -H`, `virsh nodeinfo` and `virsh capabilities`.
+2. **CPU.** Use the `host-passthrough` CPU model, which exposes features such as AVX-512 and AMX. Set a correct topology with `sockets/cores/threads`. Pin vCPUs to dedicated host CPUs with `vcpupin`, all on one NUMA node. Pin the emulator and iothreads to separate CPUs with `emulatorpin` and `iothreadpin`. Do not oversubscribe vCPUs on pinned VMs, and expose SMT siblings consistently. Look at `kvm halt_poll_ns`, and at timing, through `<cpu><feature policy='require' name='invtsc'/>` or `kvm-clock`. Disable ballooning and KSM for latency-sensitive guests.
+3. **Memory.** Use huge pages (`<hugepages/>`), preallocated with `vm.nr_hugepages` or `hugepagesz=1G hugepages=N`. Use `<locked/>` for passthrough. Set `numatune` to `strict`, on the same node as the CPUs and devices. For large VMs, match the guest NUMA topology to the host.
+4. **Disk.** Use virtio-scsi or virtio-blk with iothreads and `cache=none`. Choose a raw image, a preallocated qcow2 image, or passthrough NVMe.
+5. **Network.** Use `virtio-net` with `vhost` and multiqueue, and a correct MTU. Match RSS and IRQ affinity in the guest and on the host. Or use SR-IOV.
+6. **Guest.** Install virtio drivers, `qemu-guest-agent` and a current kernel. Apply `tuned-adm profile virtual-guest` or `throughput-performance`. Set THP and huge pages inside the guest, use `kvm-clock` or `tsc` as the clocksource, and place NUMA-aware applications deliberately.
+
+For GPU workloads, tune the VM as you would a bare-metal node, as chapter 1.28 describes. Then check that the guest sees the same topology as the physical machine, using `nvidia-smi topo -m`, `lscpu` and `numactl -H`. A wrong topology silently breaks NCCL and GPUDirect performance. Examples are all GPUs on one virtual PCIe root, or a NIC on a different NUMA node from its GPU.
+
+Start with the host, because the guest settings depend on what the host exposes. If you tune the guest first, you will chase settings that the host then overrides.
 
 ## 7. Observing VMs
 
-**From the host** (KVM): every VM is a process, so `top`/`ps`/`pidstat` see it. `pidstat -tp <qemu-pid> 1` shows per-thread usage: threads named `CPU n/KVM` are vCPUs; `%guest` is time spent running guest code; `%system`/`%usr` in vCPU threads is host/QEMU work (exits, emulation). Map a QEMU PID to a VM name from the command line (`ps -wwfp PID`, the `-name` argument) or `virsh list` with `virsh dumpxml | grep pid`/`/run/libvirt/qemu/*.pid`. Per-VM usage: `virsh domstats`, `virt-top`, `systemd-cgtop` (VMs live under `machine.slice`), cgroup files (`cpu.stat` throttling if you set limits).
+**From the host**, every VM is a process, so `top`, `ps` and `pidstat` can all see it. Run `pidstat -tp <qemu-pid> 1` to get per-thread usage. Threads named `CPU n/KVM` are vCPUs. `%guest` is the time spent running guest code. `%system` and `%usr` inside a vCPU thread are host or `QEMU` work, such as exits and emulation. To map a `QEMU` PID to a VM name, read the `-name` argument with `ps -wwfp PID`, or use `virsh list` together with `virsh dumpxml | grep pid` or the `/run/libvirt/qemu/*.pid` files. For per-VM usage, use `virsh domstats`, `virt-top` and `systemd-cgtop`, since VMs live under `machine.slice`. Cgroup files help too. For example, `cpu.stat` shows throttling if you set limits.
 
-**VM exits** are the virtualisation overhead metric:
+**VM exits** are the best single measure of virtualisation overhead. The commands below record them and count them.
 
 ```bash
 sudo perf kvm stat record -a -- sleep 10 ; sudo perf kvm stat report            # exit reasons with counts and time; or: perf kvm stat live
@@ -303,47 +348,59 @@ sudo bpftrace -l 't:kvm:*' ; sudo bpftrace -lv t:kvm:kvm_exit                   
 # exit-reason histogram by duration: use a kvm_exit -> kvm_entry bpftrace script (e.g. kvmexits.bt) or perf script on kvm tracepoints
 ```
 
-Interpretation (from Gregg's example): a mostly-idle guest shows mainly `HLT` exits whose long durations dominate "time" but cost nothing (the vCPU is idle); `MSR_WRITE` (timer programming) and `EXTERNAL_INTERRUPT` are frequent but cheap; many `IO_INSTRUCTION`/`MMIO` exits mean heavy emulated device I/O; `EPT_VIOLATION` histograms show memory faulting; high exit *rates* with large exit *time* means the VM is paying heavily. Exits that return to user space (QEMU) cost more than exits handled in the kernel. For deeper views, kprobes on KVM exit handlers (`handle_halt`, etc.), and sampling the guest CR3 register to see whether one guest process or many are running.
+Here is how to read the results, using Gregg's example. A mostly idle guest shows mainly `HLT` exits. Their durations look large, but they cost nothing, because the vCPU is idle. `MSR_WRITE` exits for timer programming, and `EXTERNAL_INTERRUPT` exits, are frequent but cheap. Many `IO_INSTRUCTION` or `MMIO` exits mean heavy emulated device I/O. A histogram of `EPT_VIOLATION` exits shows memory faulting. When the exit rate is high and the exit time is large, the VM is paying a heavy price. Exits that return to user space in `QEMU` cost more than exits the kernel handles on its own. For deeper views, attach kprobes to KVM exit handlers, such as `handle_halt`. You can also sample the guest CR3 register to see whether one guest process or many are running.
 
-**From inside the guest**: it has its own kernel, so everything works (BPF, perf software events, flame graphs) but physical resources are virtual: `lscpu` shows vCPUs (check topology), `mpstat -P ALL` shows only vCPUs, `vmstat`'s `st` column and `mpstat`'s `%steal` show CPU time the hypervisor gave to others or throttled: sustained steal means noisy neighbours, CPU over-commit or limits; `iostat`/`biosnoop` show virtual device latency (a limit or contention appears as latency outliers; characterise I/O size/pattern to see whether outliers correlate with size, queueing behind flushes, or are random—the latter suggests physical contention); PMCs may be unavailable; `dmesg | grep -i balloon` reveals ballooning; check the clocksource and `kvm-clock`. Strategy: the host operator checks physical-resource USE, per-VM resource-control limits (are VMs at their caps?), and exit statistics; guests analyse their virtual resources, inferring contention from latency; deep root cause usually needs access to both sides.
+**From inside the guest**, everything works as usual, including BPF, perf software events and flame graphs. The resources are virtual, though. `lscpu` shows vCPUs, so check the topology there. `mpstat -P ALL` shows only vCPUs. The `st` column in `vmstat`, and the `%steal` column in `mpstat`, show CPU time that the hypervisor gave to other tasks or throttled. Sustained steal means noisy neighbours, CPU overcommit or limits. `iostat` and `biosnoop` show virtual device latency. A limit or contention appears as latency outliers. Characterise the I/O size and pattern to see whether the outliers match the size, queue behind flushes, or show no pattern. Random outliers suggest physical contention. Hardware performance counters (PMCs) may be unavailable. Run `dmesg | grep -i balloon` to reveal ballooning, and check the clocksource and `kvm-clock`.
+
+The host operator checks physical-resource USE, per-VM resource-control limits and exit statistics. Guests analyse their virtual resources and infer contention from latency. A deep root cause usually needs access to both sides. Start on whichever side you control, and use the exit counts to decide whether the host or the guest is the problem.
 
 ## 8. GPUs and other devices in VMs
 
-### PCI passthrough with VFIO
+### PCI passthrough with `VFIO`
 
-Passing a GPU to a guest gives native performance for compute because the guest's NVIDIA driver talks directly to the device, with the IOMMU isolating DMA. Requirements and steps (Linux/KVM):
+Passing a GPU to a guest gives native compute performance. The guest's NVIDIA driver talks directly to the device, and the `IOMMU` isolates its DMA. These are the requirements and steps on Linux with KVM.
 
-1. **Firmware/BIOS**: enable VT-d/AMD-Vi (IOMMU); on some boards enable SR-IOV, Above-4G decoding, and Resizable BAR options needed for large GPUs.
-2. **Kernel parameters**: `intel_iommu=on` (or `amd_iommu=on`) and typically `iommu=pt`; for stricter isolation omit `pt` on the guest-only devices; check `dmesg | grep -i -e DMAR -e IOMMU`, `ls /sys/kernel/iommu_groups/`.
-3. **IOMMU groups**: devices that share a group must be passed together (ACS capability of switches/root ports determines grouping); list with `for g in /sys/kernel/iommu_groups/*; do echo "IOMMU Group ${g##*/}:"; for d in $g/devices/*; do lspci -nns ${d##*/}; done; done`. A GPU that shares a group with unrelated devices cannot be cleanly assigned (the ACS override patch exists but weakens isolation: avoid in multi-tenant clouds).
-4. **Bind to `vfio-pci`** instead of the host driver: `echo 10de 2330 > /sys/bus/pci/drivers/vfio-pci/new_id` or kernel parameter `vfio-pci.ids=10de:2330` (also load early, blacklist `nouveau`/`nvidia` for those devices), or libvirt `managed='yes'` which detaches the device from its host driver and binds it to `vfio-pci` at VM start. Verify: `lspci -nnk -s <bdf>` shows `Kernel driver in use: vfio-pci`.
-5. **Guest definition**: `<hostdev>` entries (libvirt) or `-device vfio-pci,host=3b:00.0`; use `q35` + OVMF; give the VM enough **locked huge-page memory** (device DMA needs pinned memory; the entire guest RAM is typically locked); align vCPUs, memory and the passed devices on the same NUMA node; expose a CPU model and topology that the NVIDIA driver and NCCL understand.
-6. **In the guest**: install the NVIDIA driver (the same kernel module story as chapter 1.22), CUDA, DCGM; `nvidia-smi` should see the device. Bridge to multi-GPU: pass **all GPUs of a PCIe switch domain** and their NICs together (for GPUDirect RDMA the NIC and GPU must share an upstream PCIe switch/root complex in the guest topology, with ATS/ACS settings that permit peer-to-peer; flag: verify vendor guidance).
+1. **Firmware.** Enable VT-d or AMD-Vi, which is the `IOMMU`, in the BIOS. On some boards you also need SR-IOV, Above-4G decoding and Resizable BAR, which large GPUs use.
+2. **Kernel parameters.** Add `intel_iommu=on` or `amd_iommu=on`, and usually `iommu=pt`. For stricter isolation, omit `pt` on the devices that only guests use. Check the result with `dmesg | grep -i -e DMAR -e IOMMU` and `ls /sys/kernel/iommu_groups/`.
+3. **`IOMMU` groups.** Devices that share a group must be passed through together, and the ACS capability of switches and root ports decides the grouping. List the groups with `for g in /sys/kernel/iommu_groups/*; do echo "IOMMU Group ${g##*/}:"; for d in $g/devices/*; do lspci -nns ${d##*/}; done; done`. A GPU that shares a group with unrelated devices cannot be assigned cleanly. An ACS override patch exists, but it weakens isolation, so avoid it in multi-tenant clouds.
+4. **Bind to vfio-pci.** Give the device to `vfio-pci` instead of the host driver. You can use `echo 10de 2330 > /sys/bus/pci/drivers/vfio-pci/new_id`, or the kernel parameter `vfio-pci.ids=10de:2330`. Load the module early, and blacklist `nouveau` and `nvidia` for those devices. Or let libvirt do it. With `managed='yes'`, libvirt detaches the device from its host driver and binds it to `vfio-pci` when the VM starts. To verify, run `lspci -nnk -s <bdf>`, which should show `Kernel driver in use: vfio-pci`.
+5. **Guest definition.** Add `<hostdev>` entries in libvirt, or `-device vfio-pci,host=3b:00.0` on the `QEMU` command line. Use `q35` with `OVMF`. Give the VM enough locked huge-page memory, because device DMA needs pinned memory, and the whole guest RAM is typically locked. Align the vCPUs, the memory and the passed devices on the same NUMA node. Expose a CPU model and topology that the NVIDIA driver and NCCL understand.
+6. **In the guest.** Install the NVIDIA driver, which follows the same kernel module story as chapter 1.22, along with CUDA and DCGM. `nvidia-smi` should see the device. For multi-GPU work, pass all the GPUs of a PCIe switch domain together with their NICs. For GPUDirect RDMA, the NIC and the GPU must share an upstream PCIe switch or root complex in the guest topology. The ATS and ACS settings must also permit peer-to-peer. Check the vendor guidance for the flags involved.
 
-Practical gotchas: the GPU's `Reset` ability (some GPUs/functions cannot be reset cleanly between guests: FLR support, `vendor-reset`); audio and USB functions of consumer GPUs in the same group; huge BARs requiring 64-bit MMIO windows in the guest firmware (`OVMF` configuration: `-fw_cfg name=opt/ovmf/X-PciMmio64Mb,string=262144`); consumer-GPU driver restrictions in VMs; error 43/`NVRM: GPU has fallen off the bus` after guest crash (host needs a reset or reboot); hotplug not supported for many GPUs; live migration with passthrough is generally unsupported (some vendors implement it for specific devices).
+Watch for these practical problems. Some GPUs and functions cannot be reset cleanly between guests, which depends on FLR support, and `vendor-reset` may help. The audio and USB functions of consumer GPUs often share the same group. Huge BARs need 64-bit MMIO windows in the guest firmware, which you configure in `OVMF` with `-fw_cfg name=opt/ovmf/X-PciMmio64Mb,string=262144`. Consumer GPU drivers may restrict use inside VMs. After a guest crash you may see error 43 or `NVRM: GPU has fallen off the bus`, and the host then needs a reset or a reboot. Many GPUs do not support hotplug. Live migration with passthrough is generally unsupported, though some vendors support it for specific devices.
 
 ### NVLink/NVSwitch systems
 
-HGX/DGX-class servers link GPUs through NVLink and NVSwitch managed by the **Fabric Manager**. In a virtualised environment there are modes: passing *all* GPUs and the NVSwitches to a single "service VM" or to one tenant VM (which runs Fabric Manager), or the host running Fabric Manager in a **shared NVSwitch multitenancy** (partitioned) mode so that partitions of GPUs are assigned to different VMs with isolated NVLink fabrics. The details (modes, supported platforms, driver and Fabric Manager versions) are vendor-specific and change by generation: flag, verify with NVIDIA's "Fabric Manager User Guide" and the cloud provider's documentation. MIG-partitioned GPUs can be assigned per MIG instance in some virtualisation setups; vGPU (NVIDIA virtual GPU software with mediated devices) time-slices or partitions GPUs with a licence server (check the licensing and supported hypervisors). P2P and GPUDirect between VMs are restricted; NCCL inside a tenant VM works on whatever NVLink/PCIe topology is exposed.
+HGX and DGX-class servers link their GPUs with NVLink and NVSwitch. The Fabric Manager configures that fabric. In a virtualised setup you have a few modes. You can pass all the GPUs and the NVSwitches to one service VM, or to one tenant VM that runs Fabric Manager. Or the host can run Fabric Manager in shared NVSwitch multitenancy mode, which partitions the GPUs so that each VM gets an isolated NVLink fabric. The details depend on the vendor and the GPU generation, so verify them against NVIDIA's Fabric Manager User Guide and your cloud provider's documentation. MIG-partitioned GPUs can be assigned per MIG instance in some setups. vGPU, NVIDIA's virtual GPU software with mediated devices, time-slices or partitions a GPU, and it needs a licence server. Check the licensing and the supported hypervisors. P2P and GPUDirect between VMs are restricted. NCCL inside a tenant VM works on whatever NVLink or PCIe topology the VM is given.
 
 ### Other devices
 
-NICs: SR-IOV VFs for Ethernet/IB (with RDMA) are the standard path to give guests near-native networking (`echo N > /sys/class/net/<pf>/device/sriov_numvfs`, then pass the VFs). NVMe: whole-device passthrough or SPDK vhost-user. `virtio-fs` shares host directories with low overhead; 9p is slower.
+NICs can use SR-IOV VFs for Ethernet or InfiniBand, with RDMA. That is the standard path to near-native networking in a guest. Create the VFs with `echo N > /sys/class/net/<pf>/device/sriov_numvfs`, and then pass the VFs through. For NVMe, use whole-device passthrough or SPDK vhost-user. `virtio-fs` shares host directories with low overhead, while 9p is slower.
+
+If you plan GPUDirect RDMA, plan the NIC and the GPU as a pair from the start, because the topology decides whether it works.
 
 ## 9. Security and isolation
 
-- **Hardware boundary**: each VM has its own kernel and address space; the attack surface is the hypervisor/VMM and virtual devices (QEMU has had many device-emulation CVEs): minimise devices, avoid unused emulated hardware, keep QEMU and the kernel patched, and use microVM monitors (Firecracker, Cloud Hypervisor) for untrusted workloads.
-- **Confinement of the QEMU process** (libvirt does this by default): per-VM unprivileged user (`libvirt-qemu`/`qemu`), SELinux **sVirt** labels (each VM and its disks get unique MCS categories) or AppArmor profiles, seccomp sandbox for QEMU (`-sandbox on`), cgroups (devices, CPU, memory), namespaces.
-- **IOMMU** protects against malicious DMA; keep it on (remember `iommu=pt` trade-offs).
-- **Side channels** (Spectre/Meltdown/L1TF/MDS): mitigations (`mitigations=`, core scheduling, disabling SMT on shared hosts) cost performance and are a cloud-provider decision; dedicated hosts avoid sharing.
-- **Confidential computing**: AMD SEV/SEV-ES/SEV-SNP and Intel TDX encrypt guest memory against the host; NVIDIA H100 and later support confidential GPU modes together with a confidential VM (flag: check current support matrices and the performance cost).
-- **Management plane**: libvirt over TLS/SSH only; protect `/var/lib/libvirt`, image stores, and cloud-init user data (secrets in user data are readable by the guest).
+- **Hardware boundary.** Each VM has its own kernel and address space. The attack surface is the hypervisor (the VMM) and the virtual devices, and `QEMU` has had many device-emulation CVEs. Minimise the devices, avoid unused emulated hardware, and keep `QEMU` and the kernel patched. For untrusted workloads, use a microVM monitor such as Firecracker or Cloud Hypervisor.
+- **Confining the `QEMU` process.** libvirt does this by default. Each VM runs as an unprivileged user, such as `libvirt-qemu` or `qemu`. SELinux sVirt labels or AppArmor profiles apply, and a seccomp sandbox (`-sandbox on`) filters system calls. Cgroups limit devices, CPU and memory, and namespaces add further separation. sVirt gives each VM and its disks unique MCS categories.
+- **The `IOMMU`** protects against malicious DMA. Keep it on, and remember the trade-offs of `iommu=pt`.
+- **Side channels** such as Spectre, Meltdown, L1TF and MDS have mitigations, including `mitigations=`, core scheduling and disabling SMT on shared hosts. These cost performance, and the choice belongs to the cloud provider. Dedicated hosts avoid sharing altogether.
+- **Confidential computing.** AMD SEV, SEV-ES and SEV-SNP, and Intel TDX, encrypt guest memory against the host. NVIDIA H100 and later GPUs support confidential GPU modes together with a confidential VM. Check the current support matrices and the performance cost before you rely on them.
+- **The management plane.** Run libvirt only over TLS or SSH. Protect `/var/lib/libvirt`, the image stores and cloud-init user data. Secrets in user data are readable by the guest.
+
+Decide which workloads may share a host before you choose how much isolation to rely on.
 
 ## 10. Nested virtualisation and the lab venue
 
-To practise KVM on a cloud VM you need **nested virtualisation**: the cloud VM (L1) must expose VMX/SVM to its guests (L2). On Google Cloud, create the instance with nested virtualisation enabled (for example `gcloud compute instances create ... --enable-nested-virtualization` on supported Intel CPU platforms with an image that has VMX enabled; flag: confirm the current flags, CPU platform and OS-policy requirements); check inside with `grep -c vmx /proc/cpuinfo`. Performance is lower than on bare metal (each L2 exit traverses L1 and L0), and GPU passthrough cannot be tested nested. For realistic GPU passthrough work use a bare-metal GPU instance or an on-premises machine.
+Practising KVM on a cloud VM needs **nested virtualisation**. The cloud VM, called L1, must expose VMX or SVM to its own guests, which are called L2. On Google Cloud, create the instance with nested virtualisation enabled. For example, `gcloud compute instances create ... --enable-nested-virtualization` works on supported Intel CPU platforms, with an image that has VMX enabled. Confirm the current flags, the CPU platform and the OS policy requirements, because they change. Inside the VM, check with `grep -c vmx /proc/cpuinfo`.
+
+Nested performance is lower than on bare metal, because each exit from L2 passes through both L1 and L0. GPU passthrough cannot be tested in a nested setup. For realistic passthrough work, use a bare-metal GPU instance or an on-premises machine.
+
+If you need GPU passthrough results, plan for a bare-metal machine from the start.
 
 ## 11. Troubleshooting
+
+When a VM misbehaves, start from the symptom in the table. Each row names a likely cause and the command that confirms it.
 
 | Symptom | Cause | Check / fix |
 |---|---|---|
@@ -353,188 +410,194 @@ To practise KVM on a cloud VM you need **nested virtualisation**: the cloud VM (
 | Guest has no network | Wrong network, bridge or firewall, DHCP, MTU, cloud-init network config | `virsh domiflist`, `brctl show`/`bridge link`, `nft list ruleset`, `tcpdump -i virbr0` |
 | `virsh` permission denied | Not in `libvirt` group; wrong URI | `virsh -c qemu:///system` |
 | Disk image grows until host full | Thin qcow2 without discard; snapshots | `qemu-img info`; `fstrim`; monitor pool free space; preallocate |
-| Cannot start VM with passthrough | Device bound to host driver, IOMMU group not isolated, memory not lockable, ACS | `lspci -nnk`, `dmesg`, `ulimit -l` for qemu, `/sys/kernel/iommu_groups` |
-| Guest GPU driver "fallen off the bus" | Reset failure after previous guest, power/BAR issues | Reboot host, check FLR; firmware/OVMF MMIO window |
-| Live migration fails | CPU model mismatch, passthrough devices, storage not shared, different QEMU versions | Use a baseline CPU model; compatible machine types |
+| Cannot start VM with passthrough | Device bound to host driver, `IOMMU` group not isolated, memory not lockable, ACS | `lspci -nnk`, `dmesg`, `ulimit -l` for qemu, `/sys/kernel/iommu_groups` |
+| Guest GPU driver "fallen off the bus" | Reset failure after previous guest, power/BAR issues | Reboot host, check FLR; firmware/`OVMF` MMIO window |
+| Live migration fails | CPU model mismatch, passthrough devices, storage not shared, different `QEMU` versions | Use a baseline CPU model; compatible machine types |
 | Time drifts in the guest | Clocksource, no guest agent, suspend/resume | `chronyd`, `kvm-clock`, `qemu-guest-agent`, `virsh domtime` |
+
+Most of these rows come down to one of three things: KVM is not available, a resource is shared more heavily than you planned, or the VM is not connected the way you configured it. When you see a symptom, find its row before you change anything. Start with the first row when a VM will not start at all, because nothing else works until KVM is available.
 
 ## 12. Hands-on lab: build, tune, and observe a VM
 
-First, run the self-checking Python lab (`code/part01/kvm_qemu_libvirt_lab.py`) locally. It verifies 2D nested paging (`EPT`/`NPT`) page-walk memory reads (`24` reads for 4-level x 4-level vs `8` with `1 GiB` huge pages), KVM VM-exit classification (`HLT` idle vs in-kernel `MSR_WRITE` vs user-space QEMU `IO_INSTRUCTION`/`MMIO`), IOMMU group sibling and host-conflict validation for VFIO passthrough, and GPU VM libvirt domain auditing.
+Start with the self-checking Python lab, which runs on your own machine. It verifies the 2D nested paging (EPT or NPT) page-walk memory reads: 24 reads for 4-level by 4-level paging, against 8 with 1 GiB huge pages. It classifies KVM VM exits, separating idle `HLT` exits, in-kernel `MSR_WRITE` exits and user-space `QEMU` `IO_INSTRUCTION` or `MMIO` exits. It also validates `IOMMU` group siblings and host conflicts for `VFIO` passthrough, and it audits GPU VM libvirt domains.
 
 ```bash
 python3 code/part01/kvm_qemu_libvirt_lab.py
 ```
 
-Next, on a disposable Linux host with KVM enabled (nested virtualization acceptable for steps 1–10; bare-metal GPU host required for Step 11; all interactive VM commands below are `untested here`), work through these steps:
+Next, use a disposable Linux host with KVM enabled. Nested virtualisation is fine for steps 1–10. Step 11 needs a bare-metal GPU host. Every interactive VM command below is `untested here`, so treat the results as something to confirm on your own machine.
 
-1. **Preflight**: `lscpu | grep -i virt`, `grep -E -c 'vmx|svm' /proc/cpuinfo`, `kvm-ok`, `virt-host-validate`, `ls /dev/kvm`. Record CPU model, NUMA nodes, hugepage settings, IOMMU status.
-2. **Install** the stack; start libvirtd; inspect `virsh net-list --all` and the `virbr0` bridge (`ip addr`, `nft list ruleset | grep -i masq`).
-3. **QEMU by hand**: boot a tiny Linux image with the command in section 3, once with `-enable-kvm` and once with `-accel tcg`; compare boot time and `sysbench cpu`.
-4. **libvirt VM from a cloud image** (section 3): create the qcow2 overlay, seed ISO and `virt-install`; log in via SSH; install `qemu-guest-agent`; look at `virsh dumpxml` and the actual QEMU command line (`ps -ww`).
-5. **Observe**: in the host run `pidstat -tp <qemu pid> 1` while running `stress-ng --cpu 2` in the guest; map vCPU threads; run `perf kvm stat report`, `perf stat -e kvm:kvm_exit`, and count exits at idle versus under I/O (`fio` in the guest); note `HLT` and `MSR_WRITE` dominance at idle.
-6. **CPU tuning**: pin vCPUs and the emulator thread; compare a latency-sensitive benchmark (cyclictest-like loop or `sysbench`) pinned versus unpinned while the host is loaded; observe `%steal` in the guest.
-7. **Memory tuning**: allocate huge pages on the host and enable `<memoryBacking><hugepages/>`; compare a memory-bound benchmark (STREAM, random access) with and without; check `/proc/meminfo` `HugePages_*` on the host.
-8. **Disk and network**: compare `cache=none` versus `writeback`, `virtio-blk` versus emulated `sata` with `fio`; compare `virtio-net` with and without `vhost` and multiqueue using `iperf3` from another host; check offloads with `ethtool -k`.
-9. **Snapshots and images**: create an external snapshot, make changes, revert; use `qemu-img info --backing-chain`; resize a disk and grow the filesystem in the guest; use `virt-sysprep` to generalise an image.
-10. **Live migration** (two hosts with shared storage or `--copy-storage-all`): migrate a running VM while pinging it; measure downtime.
-11. **Passthrough (bare-metal GPU host only)**: enable IOMMU parameters, inspect IOMMU groups, bind a GPU to `vfio-pci`, define a `<hostdev>`, boot an Ubuntu guest with OVMF and locked huge pages, install the NVIDIA driver in the guest, run `nvidia-smi`, a CUDA sample and an `nccl-tests` all-reduce; compare host-side bare-metal results (chapter 1.25 method) and `nvidia-smi topo -m` inside the guest.
-12. **Clean up**: `virsh destroy`, `virsh undefine --remove-all-storage --nvram`; delete overlays; restore host driver bindings.
+1. Start with a preflight check. Run `lscpu | grep -i virt`, `grep -E -c 'vmx|svm' /proc/cpuinfo`, `kvm-ok`, `virt-host-validate` and `ls /dev/kvm`. Record the CPU model, the NUMA nodes, the hugepage settings and the `IOMMU` status.
+2. Install the stack and start libvirtd. Then inspect `virsh net-list --all` and the `virbr0` bridge, using `ip addr` and `nft list ruleset | grep -i masq`.
+3. Boot a tiny Linux image with the command from section 3. Run it once with `-enable-kvm` and once with `-accel tcg`. Compare the boot times and the `sysbench cpu` results.
+4. Build a libvirt VM from a cloud image, following section 3. Create the qcow2 overlay and the seed ISO, then run `virt-install`. Log in over SSH and install `qemu-guest-agent`. Look at `virsh dumpxml` and at the `QEMU` command line that is actually running, using `ps -ww`.
+5. Observe the VM. On the host, run `pidstat -tp <qemu pid> 1` while you run `stress-ng --cpu 2` in the guest, and map the vCPU threads. Run `perf kvm stat report` and `perf stat -e kvm:kvm_exit`. Count the exits at idle, then again under I/O, using `fio` in the guest. Note whether `HLT` and `MSR_WRITE` dominate at idle.
+6. Tune the CPU. Pin the vCPUs and the emulator thread. Then compare a latency-sensitive benchmark, such as a cyclictest-like loop or `sysbench`, pinned and unpinned while the host is loaded. Watch `%steal` in the guest during the run.
+7. Tune the memory. Allocate huge pages on the host and enable `<memoryBacking><hugepages/>`. Compare a memory-bound benchmark, such as STREAM or random access, with and without huge pages. Check `HugePages_*` in `/proc/meminfo` on the host.
+8. Compare the disk and network options. Use `fio` to compare `cache=none` with `writeback`, and `virtio-blk` with emulated `sata`. Use `iperf3` from another host to compare `virtio-net` with and without `vhost` and multiqueue. Check the offloads with `ethtool -k`.
+9. Practise snapshots and images. Create an external snapshot, make some changes, and revert. Use `qemu-img info --backing-chain` to see the chain. Resize a disk, then grow the filesystem in the guest. Finally, run `virt-sysprep` to generalise an image.
+10. Try live migration between two hosts, using shared storage or `--copy-storage-all`. Migrate a running VM while you ping it, and measure the downtime.
+11. Test passthrough on a bare-metal GPU host only. Enable the `IOMMU` parameters and inspect the `IOMMU` groups. Bind a GPU to `vfio-pci` and define a `<hostdev>`. Boot an Ubuntu guest with `OVMF` and locked huge pages. Install the NVIDIA driver in the guest, then run `nvidia-smi`, a CUDA sample and an `nccl-tests` all-reduce. Compare the results with bare-metal numbers from the method in chapter 1.25, and run `nvidia-smi topo -m` inside the guest.
+12. Clean up. Run `virsh destroy`, then `virsh undefine --remove-all-storage --nvram`. Delete the overlays and restore the host driver bindings.
 
 ## 13. Common mistakes
 
-- Running without KVM acceleration and concluding "VMs are slow".
-- `host-model`/emulated CPU or unpinned vCPUs for latency-sensitive or GPU workloads; ignoring NUMA.
-- Using emulated devices (IDE, e1000) instead of virtio; `cache=writeback` on important data without understanding flushes.
-- Thin qcow2 images without monitoring free space; long snapshot chains.
-- Over-committing vCPUs and memory on production GPU hosts; ballooning with pinned or passthrough guests.
-- Passing a GPU without its NIC/switch domain and then expecting GPUDirect RDMA.
-- Assuming guest topology equals host topology; not validating with `nvidia-smi topo -m`.
+Most of these mistakes come from treating a VM as if it were bare metal. Watch for them as you plan and tune, and check your own setup against this list before you ship it.
+
+- Running without KVM acceleration, then concluding that VMs are slow.
+- Using `host-model` or an emulated CPU, or leaving vCPUs unpinned, for latency-sensitive or GPU workloads, and ignoring NUMA.
+- Using emulated devices such as IDE or e1000 instead of virtio, or setting `cache=writeback` on important data without understanding flushes.
+- Running thin qcow2 images without watching free space, or keeping long snapshot chains.
+- Overcommitting vCPUs and memory on production GPU hosts, or ballooning guests that use pinning or passthrough.
+- Passing a GPU without its NIC or switch domain, then expecting GPUDirect RDMA to work.
+- Assuming the guest topology equals the host topology, and not checking it with `nvidia-smi topo -m`.
 - Treating nested virtualisation results as representative of bare metal.
-- Disabling the IOMMU or using ACS override on multi-tenant hosts.
-- Forgetting that cloud-init user data can contain secrets visible to the guest.
+- Disabling the `IOMMU`, or using an ACS override, on multi-tenant hosts.
+- Forgetting that cloud-init user data can contain secrets that the guest can see.
 
 ## 14. Interview angles
 
+Each question below tests one idea from this chapter.
+
 - "Explain how a hypervisor virtualises the CPU, memory and I/O, and where the overhead comes from."
 - "What is a VM exit? How do you measure virtualisation overhead on KVM?"
-- "KVM versus QEMU versus libvirt: who does what?"
-- "How does GPU passthrough work? What is an IOMMU group? Why lock memory?"
-- "Why might NCCL performance drop inside a VM, and how would you check?" (topology, NIC/GPU PCIe locality, ACS/ATS, NUMA, CPU pinning, huge pages.)
-- "VFIO versus SR-IOV versus virtio versus vGPU/MIG: when each?"
+- "KVM versus `QEMU` versus libvirt: who does what?"
+- "How does GPU passthrough work? What is an `IOMMU` group? Why lock memory?"
+- "Why might NCCL performance drop inside a VM, and how would you check?" Look at the topology, NIC and GPU PCIe locality, ACS and ATS, NUMA, CPU pinning and huge pages.
+- "`VFIO` versus SR-IOV versus virtio versus vGPU/MIG: when each?"
 - "How do you give a VM near-bare-metal performance?"
 - "What does `%steal` mean, and what do you do about it?"
 - "Containers versus VMs versus microVMs for multi-tenant GPU clouds."
 
 ## Exercises
 
-1. **Emulators vs. Hardware-Assisted Virtualization, Config A vs. Config B, and VM Exits:** (a) Contrast software emulation (`QEMU` TCG) with hardware-assisted virtualization (`KVM` + `VT-x`/`AMD-V`), and contrast Gregg's Config A (native hypervisor + `dom0`) with Config B (kernel-module hypervisor `KVM` where each VM is a `qemu-system-x86_64` process and each vCPU is a `CPU n/KVM` thread); (b) using `classify_kvm_exit_reason()` in `code/part01/kvm_qemu_libvirt.py`, classify `HLT`, `MSR_WRITE`, and `IO_INSTRUCTION` by whether they represent idle sleep or active overhead and whether they are handled in the host kernel or user-space QEMU.
-2. **Nested Paging (`EPT`/`NPT`), 2D Page Walks, and Huge Pages:** Explain the three address spaces in a VM (Guest Virtual, Guest Physical, Host Physical) and why hardware nested paging (`EPT`/`NPT`) replaced shadow page tables. Using `compute_2d_page_walk_max_reads()`, calculate the worst-case number of memory reads on a TLB miss for 4-level guest + 4-level host page tables (`24` reads) versus when both guest and host use `1 GiB` huge pages (`8` reads).
-3. **The I/O Virtualization Spectrum (`virtio`, `vhost`, `SR-IOV`, `VFIO`) and the `IOMMU`:** Compare full device emulation, `virtio` (`virtqueues`), `vhost-net` / `vhost-user`, `SR-IOV` (`PF`/`VF`s), and `VFIO` PCIe passthrough across performance and sharing flexibility, and explain why passthrough is unsafe without an **IOMMU** (`VT-d`/`AMD-Vi`).
-4. **VM Storage (`raw` vs. `qcow2`, `cache=none`) and Networking (`virbr0` NAT vs. Bridge vs. SR-IOV):** (a) Why should `virtio-blk`/`virtio-scsi` disks use `cache='none'` (`O_DIRECT`) and dedicated `iothreads`, and how does a thin `qcow2` copy-on-write backing file (`qemu-img create -f qcow2 -F qcow2 -b base.img vm1.qcow2`) work? (b) Contrast QEMU user-mode (`SLIRP`), libvirt `default` NAT (`virbr0` `192.168.122.0/24`), a host L2 bridge (`br0`), and `SR-IOV` VFs.
-5. **Observing VMs from Host and Guest (`pidstat -tp`, `perf kvm stat`, and `%steal`):** (a) On a KVM host, how do you interpret `%guest`, `%system`, and `%usr` in `pidstat -tp <qemu-pid> 1`, and why does `perf kvm stat report` show high total time in `HLT` exits on an idle guest? (b) Inside the guest, what does sustained `%steal` (`st` in `vmstat`/`mpstat`) indicate, and how do you diagnose whether virtual disk latency outliers come from guest I/O patterns or host noisy neighbors?
-6. **VFIO GPU Passthrough, IOMMU Groups, OVMF 64-Bit BARs, and Guest Topology:** (a) Evaluate `validate_iommu_group_passthrough()` when a GPU (`0000:3b:00.0`) shares an IOMMU group with its audio function (`0000:3b:00.1`) or with a host-critical device; (b) audit an untuned VM (`qemu64`, `i440fx`, `cache='writeback'`, no hugepages/locked memory/pinning) using `audit_gpu_vm_domain_config()`, and explain why `OVMF` `X-PciMmio64Mb=262144` and accurate guest PCIe/NUMA topology (`nvidia-smi topo -m`) are critical for multi-GPU NCCL and GPUDirect RDMA in VMs.
+1. Compare emulation with hardware-assisted virtualisation, and Config A with Config B. (a) Contrast software emulation (`QEMU` TCG) with hardware-assisted virtualisation (KVM plus VT-x or AMD-V). Then contrast Gregg's Config A (native hypervisor plus dom0) with Config B (the kernel-module hypervisor KVM, where each VM is a `qemu-system-x86_64` process and each vCPU is a `CPU n/KVM` thread). (b) Use `classify_kvm_exit_reason()` in `code/part01/kvm_qemu_libvirt.py` to classify `HLT`, `MSR_WRITE` and `IO_INSTRUCTION`. For each one, decide whether it represents idle sleep or active overhead, and whether the host kernel or user-space `QEMU` handles it.
+2. Work through nested paging, 2D page walks and huge pages. Explain the three address spaces in a VM (Guest Virtual, Guest Physical and Host Physical), and explain why hardware nested paging (EPT or NPT) replaced shadow page tables. Then use `compute_2d_page_walk_max_reads()` to calculate the worst-case number of memory reads on a TLB miss. Compare 4-level guest and 4-level host page tables, which give 24 reads, with the case where both guest and host use 1 GiB huge pages, which gives 8 reads.
+3. Compare the I/O virtualisation spectrum and the `IOMMU`. Compare full device emulation, virtio (virtqueues), vhost-net or vhost-user, SR-IOV (PFs and VFs) and `VFIO` PCIe passthrough, looking at performance and sharing flexibility. Then explain why passthrough is unsafe without an `IOMMU` (VT-d or AMD-Vi).
+4. Work through VM storage and networking. (a) Explain why virtio-blk and virtio-scsi disks should use `cache='none'` (`O_DIRECT`, set as `cache=none`) and dedicated iothreads. Then explain how a thin qcow2 copy-on-write backing file works, using `qemu-img create -f qcow2 -F qcow2 -b base.img vm1.qcow2`. (b) Contrast `QEMU` user-mode networking (SLIRP), the libvirt `default` NAT network (`virbr0` `192.168.122.0/24`), a host L2 bridge (`br0`) and SR-IOV VFs.
+5. Observe a VM from the host and from the guest. (a) On a KVM host, how do you read `%guest`, `%system` and `%usr` in `pidstat -tp <qemu-pid> 1`? Why does `perf kvm stat report` show high total time in `HLT` exits on an idle guest? (b) Inside the guest, what does sustained `%steal` (`st` in `vmstat` or `mpstat`) tell you? How would you tell whether virtual disk latency outliers come from guest I/O patterns or from host noisy neighbours?
+6. Check GPU passthrough and guest topology. (a) Evaluate `validate_iommu_group_passthrough()` when a GPU (`0000:3b:00.0`) shares an `IOMMU` group with its audio function (`0000:3b:00.1`), or with a host-critical device. (b) Audit an untuned VM that uses `qemu64`, `i440fx` and `cache='writeback'`, and has no huge pages, locked memory or pinning, using `audit_gpu_vm_domain_config()`. Then explain why `OVMF` `X-PciMmio64Mb=262144` and an accurate guest PCIe and NUMA topology (`nvidia-smi topo -m`) are critical for multi-GPU NCCL and GPUDirect RDMA in VMs.
 
 ## Checkpoint questions (20)
 
 <details>
 <summary>1. What is the difference between a system VM and a process VM, and between a pure emulator and hardware-assisted virtualization?</summary>
 
-A **system VM** (`KVM`/`QEMU`) emulates a complete hardware machine running its own guest operating system kernel; a **process VM** (`JVM`, Python interpreter) runs a single user-space program. A pure **emulator** (`QEMU` TCG) translates every guest CPU instruction in software, whereas **hardware-assisted virtualization** (`VT-x`/`AMD-V`) executes guest instructions directly on the physical CPU and traps into the hypervisor only on privileged operations.
+A system VM, such as one built with KVM and `QEMU`, emulates a complete hardware machine that runs its own guest operating system kernel. A process VM, such as the JVM or a Python interpreter, runs a single user-space program. A pure emulator, `QEMU` TCG, translates every guest CPU instruction in software. Hardware-assisted virtualization, using VT-x or AMD-V, runs guest instructions directly on the physical CPU, and it traps into the hypervisor only for privileged operations.
 </details>
 
 <details>
 <summary>2. Contrast Gregg's Config A (native hypervisor) and Config B (kernel-module hypervisor) architectures.</summary>
 
-In **Config A** (`Xen`), the hypervisor boots directly on bare metal and schedules physical CPUs, while a privileged management VM (`dom0`) runs management tools and I/O proxies. In **Config B** (`KVM`), the Linux host kernel itself becomes the hypervisor via `kvm.ko` (`kvm_intel.ko` / `kvm_amd.ko`): each VM is a regular Linux `qemu-system-x86_64` process, and each vCPU is a standard Linux thread (`CPU n/KVM`) scheduled by the Linux scheduler and controlled by host `cgroups` and `numactl`.
+In Config A, a hypervisor such as Xen boots directly on bare metal and schedules the physical CPUs. A privileged management VM, called dom0, runs the management tools and the I/O proxies. In Config B, the Linux host kernel itself becomes the hypervisor through the `kvm.ko` module, with `kvm_intel.ko` or `kvm_amd.ko`. Each VM is a regular `qemu-system-x86_64` process, and each vCPU is a standard Linux thread named `CPU n/KVM`. For example, a vCPU competes for CPU time like any other Linux thread. The Linux scheduler runs those threads, and host cgroups and `numactl` control them.
 </details>
 
 <details>
 <summary>3. Trace the four historical approaches to x86 CPU virtualization: trap-and-emulate, binary translation, paravirtualization, and `VT-x` / `AMD-V`.</summary>
 
-(1) Classic **trap-and-emulate** failed on early x86 because 17 sensitive instructions behaved differently outside ring 0 without trapping; (2) **Binary translation** (VMware, 1998) rewrote sensitive guest kernel instructions dynamically at runtime; (3) **Paravirtualization** (Xen PV) modified the guest kernel source code to invoke hypervisor **hypercalls** directly; and (4) **Hardware assist** (`Intel VT-x` / `AMD-V`, 2005–2006) added VMX root and non-root modes plus a hardware control structure (`VMCS` / `VMCB`) so unmodified guest kernels run in non-root ring 0 and trigger a hardware **VM exit** only on configured events.
+The first approach, trap-and-emulate, failed on early x86, because 17 sensitive instructions behaved differently outside ring 0 without trapping. Binary translation, which VMware used from 1998, rewrote the sensitive guest kernel instructions on the fly at runtime. Paravirtualization, as in Xen PV, changed the guest kernel source so that it calls the hypervisor through hypercalls. Hardware assist, which Intel VT-x and AMD-V brought in between 2005 and 2006, added VMX root and non-root modes and a control structure, the `VMCS` or `VMCB`. Unmodified guest kernels now run in non-root ring 0, and a hardware VM exit happens only on configured events.
 </details>
 
 <details>
 <summary>4. What is a VM exit, what are the most common exit reasons, and why do some exits cost much more than others?</summary>
 
-A **VM exit** occurs when the physical CPU leaves guest non-root mode and transfers control to the hypervisor to handle an intercepted event (`HLT`, `MSR_WRITE`, `EXTERNAL_INTERRUPT`, `IO_INSTRUCTION`/`MMIO`, `EPT_VIOLATION`, `CPUID`). Exits handled entirely inside the host kernel (`kvm.ko` fast path, such as `MSR_WRITE` or APIC timers) take microseconds or less; exits that must return from the `KVM_RUN` `ioctl` to user-space `QEMU` to emulate legacy device registers (`IO_INSTRUCTION`/`MMIO`) pay two extra context switches and cost far more.
+A VM exit happens when the physical CPU leaves non-root guest mode and hands control to the hypervisor, to handle an intercepted event. Common events include `HLT`, `MSR_WRITE`, `EXTERNAL_INTERRUPT`, `IO_INSTRUCTION` or `MMIO`, `EPT_VIOLATION` and `CPUID`. Exits that the host kernel handles entirely, on the `kvm.ko` fast path, take microseconds or less. Examples are `MSR_WRITE` and APIC timers. An exit that must return from the `KVM_RUN` ioctl to user-space `QEMU`, to emulate legacy device registers such as `IO_INSTRUCTION` or `MMIO`, pays two extra context switches, so it costs far more.
 </details>
 
 <details>
 <summary>5. How do KVM, QEMU, and `libvirt` divide responsibilities when running a virtual machine?</summary>
 
-**KVM** (`/dev/kvm`, `kvm.ko` + `kvm_intel.ko`/`kvm_amd.ko`) is the kernel module that manages hardware CPU virtualization (`VMCS`, VM entry/exit, nested EPT page tables, and virtual interrupts). **QEMU** (`qemu-system-x86_64`) is the user-space process that allocates guest RAM, spawns one pthread per vCPU (calling `ioctl(KVM_RUN)`), emulates virtual devices/chipsets (`q35`, `OVMF`), and implements `virtio` back ends and live migration. **`libvirt`** (`libvirtd`/`virtqemud`, `virsh`, domain XML) is the management daemon that configures QEMU processes, storage pools, networks, `machine.slice` cgroups, and SELinux `sVirt` confinement.
+KVM is the kernel module that manages hardware CPU virtualization. It handles the `VMCS`, VM entry and exit, nested EPT page tables and virtual interrupts. It is exposed as `/dev/kvm`, and it is built from `kvm.ko` with `kvm_intel.ko` or `kvm_amd.ko`. `QEMU` is the user-space process, `qemu-system-x86_64`. It allocates guest RAM, starts one pthread per vCPU that calls `ioctl(KVM_RUN)`, emulates virtual devices and chipsets such as `q35` and `OVMF`, and implements the virtio back ends and live migration. libvirt is the management daemon, `libvirtd` or `virtqemud`, which you drive with `virsh` and domain XML. It configures the `QEMU` processes, storage pools, networks, `machine.slice` cgroups and SELinux sVirt confinement.
 </details>
 
 <details>
 <summary>6. Explain Nested Paging (`EPT` / `NPT`), why a TLB miss can require up to `24` memory reads, and why huge pages matter twice in VMs.</summary>
 
-With hardware nested paging (**Intel EPT** / **AMD NPT**), the guest manages Guest Virtual -> Guest Physical (`GVA -> GPA`) page tables while the hypervisor manages Guest Physical -> Host Physical (`GPA -> HPA`) EPT tables. On a TLB miss, the CPU MMU must translate the guest page-table pointers at every level through the 4-level EPT tree (`4 * (4 + 1) + 4 = 24` memory accesses vs `4` on bare metal). Enabling `2 MiB` or `1 GiB` **huge pages** in both the host (`<hugepages/>`) and the guest collapses both dimensions of the page walk and expands TLB reach.
+With hardware nested paging, which is Intel EPT or AMD NPT, the guest manages its own guest-virtual to guest-physical page tables. The hypervisor manages the guest-physical to host-physical EPT tables. On a TLB miss, the MMU must translate the guest page-table pointers at every level through the 4-level EPT tree. That works out to `4 * (4 + 1) + 4 = 24` memory accesses, compared with 4 on bare metal. Using 2 MiB or 1 GiB huge pages in both host and guest shortens both dimensions of the page walk and widens TLB reach. The host side is set with `<hugepages/>`.
 </details>
 
 <details>
 <summary>7. Compare `virtio`, `vhost-net` / `vhost-user`, `SR-IOV`, and `VFIO` PCIe passthrough.</summary>
 
-**`virtio`** is a paravirtual driver standard where the guest and host exchange I/O descriptors over shared-memory ring buffers (`virtqueues`) instead of emulating hardware registers. **`vhost-net`** moves the `virtio` back end into a host kernel thread (`vhost-user` moves it to a user-space DPDK/SPDK process), bypassing the QEMU process on the data path. **`SR-IOV`** partitions one physical PCIe device (`PF`) in hardware into multiple Virtual Functions (`VF`s) passed directly to different VMs. **`VFIO`** assigns an entire physical PCIe device exclusively to one VM.
+virtio is a paravirtual driver standard. The guest and host exchange I/O descriptors over shared-memory ring buffers, called virtqueues, instead of emulating hardware registers. vhost-net moves the virtio back end into a host kernel thread. vhost-user moves it into a user-space DPDK or SPDK process, which bypasses `QEMU` on the data path. SR-IOV partitions one physical PCIe device, the PF, in hardware into several Virtual Functions, or VFs, and each VF can go to a different VM. `VFIO` assigns an entire physical PCIe device exclusively to one VM.
 </details>
 
 <details>
 <summary>8. What does the hardware `IOMMU` (`Intel VT-d` / `AMD-Vi`) do, and what is an `IOMMU group`?</summary>
 
-The **IOMMU** translates Guest Physical Addresses (`GPA`) to Host Physical Addresses (`HPA`) for device **DMA** transfers and blocks devices from reading or writing host memory outside their assigned VM's pages. An **IOMMU group** (`/sys/kernel/iommu_groups/*`) is the smallest set of PCIe devices that the hardware can isolate from all other devices (determined by PCIe bridge Access Control Services, `ACS`); all devices in an IOMMU group must be passed through to a guest together as a unit.
+The `IOMMU`, which is Intel VT-d or AMD-Vi, translates Guest Physical Addresses (`GPA`) to Host Physical Addresses (`HPA`) for device DMA. It also blocks devices from reading or writing host memory outside their VM's pages. An `IOMMU` group is the smallest set of PCIe devices that the hardware can isolate from the rest. The grouping depends on PCIe bridge Access Control Services, or ACS. All devices in an `IOMMU` group must be passed to a guest together, as one unit. The groups appear under `/sys/kernel/iommu_groups/*`.
 </details>
 
 <details>
 <summary>9. Compare `raw` and `qcow2` disk formats, and explain why `cache='none'` is recommended for `virtio` disks.</summary>
 
-`raw` is a flat byte-for-byte image or block device with zero format overhead. `qcow2` supports thin provisioning, copy-on-write backing chains (`-b base.img` for fast cloud-image clones), snapshots, and compression at a small metadata cost (mitigated by `preallocation=metadata`/`falloc`). Setting `cache='none'` opens the image on the host with `O_DIRECT`, preventing **double caching** (caching the same file blocks in both the host page cache and the guest page cache).
+A `raw` image is a flat, byte-for-byte image or block device with zero format overhead. A `qcow2` image supports thin provisioning, copy-on-write backing chains, which `-b base.img` creates for fast cloud-image clones, along with snapshots and compression. It costs a little metadata, which `preallocation=metadata` or `falloc` can reduce. Setting `cache='none'` opens the image on the host with `O_DIRECT`. That prevents double caching, where the same file blocks sit in both the host page cache and the guest page cache. When you choose a format, remember that `raw` is the simplest option.
 </details>
 
 <details>
 <summary>10. How do `cloud-init` and a `qcow2` backing file let you provision a new KVM VM in seconds?</summary>
 
-Instead of running an OS installer ISO, you create a thin copy-on-write overlay (`qemu-img create -f qcow2 -F qcow2 -b ubuntu-cloudimg.img vm1.qcow2 40G`) in milliseconds and attach a tiny `cloud-localds` `seed.iso` containing `user-data` (hostname, SSH keys, packages) and `meta-data`; on first boot, `cloud-init` inside the guest configures the instance automatically.
+Instead of running an installer, you create a thin copy-on-write overlay with `qemu-img create -f qcow2 -F qcow2 -b ubuntu-cloudimg.img vm1.qcow2 40G`. That takes milliseconds. Then you attach a tiny `cloud-localds` `seed.iso` that holds `user-data` and `meta-data`. The `user-data` file carries the hostname, SSH keys and packages. On first boot, cloud-init inside the guest configures the instance automatically.
 </details>
 
 <details>
 <summary>11. Contrast libvirt's `default` NAT network (`virbr0`), a host L2 Linux bridge (`br0`), `macvtap`, and `SR-IOV`.</summary>
 
-`default` NAT attaches guest `tap` devices to `virbr0` (`192.168.122.0/24`) with `dnsmasq` and `iptables`/`nftables` masquerading (outbound access works; inbound requires port forwarding). A **host L2 bridge** (`br0`) enslaves the physical NIC so guests sit directly on the LAN subnet. **`macvtap`** attaches virtual MAC interfaces directly to the physical NIC. **`SR-IOV`** passes a hardware NIC Virtual Function directly into the guest via `VFIO`, bypassing the host software network stack completely (and supporting RDMA).
+libvirt's `default` NAT network attaches guest tap devices to `virbr0`, which uses `192.168.122.0/24`. It relies on dnsmasq and iptables or nftables masquerading. Outbound access works, but inbound access needs port forwarding. A host L2 bridge, `br0`, enslaves the physical NIC, so guests sit directly on the LAN subnet. macvtap attaches virtual MAC interfaces directly to the physical NIC. SR-IOV passes a hardware NIC Virtual Function into the guest through `VFIO`. That bypasses the host software network stack, and it supports RDMA.
 </details>
 
 <details>
 <summary>12. List the six key libvirt domain XML tuning settings for a high-performance compute or GPU VM.</summary>
 
-(1) `<cpu mode='host-passthrough'>` (exposing native CPU instructions like AVX-512/AMX and topology), (2) `<vcpupin>`, `<emulatorpin>`, and `<iothreadpin>` pinning vCPUs 1:1 to physical cores on the target NUMA node, (3) `<memoryBacking><hugepages/><locked/></memoryBacking>`, (4) `<numatune><memory mode='strict' nodeset='0'/></numatune>`, (5) `virtio-blk`/`virtio-scsi` disks with `cache='none' io='native' iothread='1'` (or NVMe passthrough), and (6) `virtio-net` with `<driver name='vhost' queues='N'/>` (or SR-IOV/VFIO NIC passthrough).
+There are six settings, and if you tune a GPU guest you should start with them. First, `<cpu mode='host-passthrough'>` exposes the native CPU instructions, such as AVX-512 and AMX, along with the topology. Second, `<vcpupin>`, `<emulatorpin>` and `<iothreadpin>` pin vCPUs one to one onto physical cores on the target NUMA node. Third, `<memoryBacking><hugepages/><locked/></memoryBacking>` sets huge pages and locked memory. Fourth, `<numatune><memory mode='strict' nodeset='0'/></numatune>` restricts memory to a single node. Fifth, virtio-blk or virtio-scsi disks use `cache='none' io='native' iothread='1'`, or NVMe passthrough. Sixth, virtio-net uses `<driver name='vhost' queues='N'/>`, or SR-IOV or `VFIO` NIC passthrough.
 </details>
 
 <details>
 <summary>13. How do you observe a KVM guest's CPU usage and VM exits from the host using `pidstat` and `perf kvm`?</summary>
 
-Run `pidstat -tp <qemu-pid> 1` to inspect each `CPU n/KVM` thread: `%guest` is the percentage of time spent executing inside the guest, while `%system` and `%usr` show host kernel and QEMU overhead. Run `sudo perf kvm stat report` (after `perf kvm stat record -a -- sleep 10`) or `bpftrace` on `t:kvm:kvm_exit` and `t:kvm:kvm_entry` to break down exit counts and time by reason (`HLT`, `MSR_WRITE`, `IO_INSTRUCTION`, `EPT_VIOLATION`).
+Run `pidstat -tp <qemu-pid> 1` to see each `CPU n/KVM` thread. `%guest` is the share of time spent running guest code, while `%system` and `%usr` show host kernel and `QEMU` overhead. Run `sudo perf kvm stat report`, after `perf kvm stat record -a -- sleep 10`, to break down exit counts and time by reason, such as `HLT`, `MSR_WRITE`, `IO_INSTRUCTION` or `EPT_VIOLATION`. You can also use `bpftrace` on `t:kvm:kvm_exit` and `t:kvm:kvm_entry`.
 </details>
 
 <details>
 <summary>14. Why do `HLT` exits often dominate total exit time in `perf kvm stat report` on an idle or lightly loaded VM?</summary>
 
-When a guest vCPU has no runnable threads, the guest kernel executes the `HLT` instruction to sleep until the next interrupt. KVM intercepts `HLT` and puts the vCPU thread to sleep in the host until an interrupt arrives; the elapsed sleep duration between `kvm_exit (HLT)` and `kvm_entry` is idle waiting time, not CPU overhead.
+When a guest vCPU has nothing to run, the guest kernel executes `HLT` to sleep until the next interrupt. KVM intercepts `HLT` and puts the vCPU thread to sleep on the host until an interrupt arrives. The elapsed time between `kvm_exit (HLT)` and `kvm_entry` is idle waiting, not CPU overhead. That is why `HLT` looks large in the totals even though it costs very little. You should not read a large `HLT` figure as a fault.
 </details>
 
 <details>
 <summary>15. Inside a VM, what does `%steal` (`st` in `vmstat` / `mpstat`) measure, and what causes it to rise?</summary>
 
-`%steal` measures the percentage of time a virtual CPU had runnable tasks ready to execute, but the host hypervisor scheduled another VM/process on the physical core or throttled the VM's cgroup (`cpu.max`). Sustained `%steal` proves host CPU over-commitment, noisy neighbors, or cgroup quota throttling.
+If you see sustained steal, look at the host before you blame the guest. `%steal` measures the share of time a virtual CPU had runnable tasks ready to run, but the host hypervisor ran another VM or process on the physical core, or throttled the VM's cgroup (`cpu.max`). Sustained steal points to host CPU overcommitment, noisy neighbours or cgroup quota throttling.
 </details>
 
 <details>
 <summary>16. Walk through the six steps required to pass a physical GPU (`0000:3b:00.0`) through to a KVM guest via `VFIO`.</summary>
 
-(1) Enable `VT-d` / `AMD-Vi`, Above-4G Decoding, and Resizable BAR in BIOS; (2) boot the host with `intel_iommu=on iommu=pt` (or `amd_iommu=on`); (3) verify `/sys/kernel/iommu_groups/*` to ensure the GPU's IOMMU group is isolated from host devices; (4) bind all PCI functions in that group to `vfio-pci` (`vfio-pci.ids=10de:2330` or libvirt `managed='yes'`) and blacklist `nouveau`/`nvidia` on the host; (5) configure the guest with machine `q35`, `OVMF` UEFI firmware (`X-PciMmio64Mb=262144`), `<hugepages/><locked/>` memory, NUMA-aligned `<vcpupin>`, and `<hostdev>`; and (6) install the NVIDIA driver inside the guest.
+First, enable VT-d or AMD-Vi, Above-4G Decoding and Resizable BAR in the BIOS. Second, boot the host with `intel_iommu=on iommu=pt`, or with `amd_iommu=on`. Third, check `/sys/kernel/iommu_groups/*` to confirm that the GPU's `IOMMU` group is isolated from host devices. Fourth, bind every PCI function in that group to `vfio-pci`, using `vfio-pci.ids=10de:2330` or libvirt `managed='yes'`, and blacklist `nouveau` and `nvidia` on the host. Fifth, configure the guest with `q35`, `OVMF` firmware with `X-PciMmio64Mb=262144`, `<hugepages/><locked/>` memory, NUMA-aligned `<vcpupin>` and a `<hostdev>` entry. Sixth, install the NVIDIA driver inside the guest.
 </details>
 
 <details>
 <summary>17. Why must a VM with VFIO passthrough devices have its guest memory locked (`<locked/>` and sufficient `RLIMIT_MEMLOCK`)?</summary>
 
-Passed-through PCIe devices (GPUs, RDMA NICs, NVMe drives) perform DMA directly to Host Physical Addresses programmed into the hardware IOMMU. If the host kernel swapped or migrated a guest physical page, DMA would corrupt memory or fault in the IOMMU; therefore `VFIO` pins (`mlock`s) all guest RAM in host physical memory for the life of the VM.
+Passed-through PCIe devices, such as GPUs, RDMA NICs and NVMe drives, DMA directly to host physical addresses that the hardware `IOMMU` is programmed with. If the host swapped out or moved a guest physical page, that DMA would corrupt memory or fault in the `IOMMU`. So `VFIO` pins, or `mlock`s, all guest RAM in host physical memory for the life of the VM. That is why the VM needs `<locked/>` and a high enough `RLIMIT_MEMLOCK`. If you are debugging a passthrough failure, check the locked memory first.
 </details>
 
 <details>
 <summary>18. Why can multi-GPU `NCCL` or `GPUDirect RDMA` perform poorly inside a VM even when every GPU and NIC is passed through via `VFIO`?</summary>
 
-If the VM's domain XML exposes a flat or inaccurate virtual PCIe/NUMA topology (for example, placing all passed-through GPUs and NICs on a single synthetic PCIe root complex or wrong virtual NUMA nodes, or omitting PCIe ACS/ATS peer-to-peer hints), the guest's `nvidia-smi topo -m` and `NCCL` cannot detect which NIC shares a physical PCIe switch (`PIX`) with which GPU, disabling GPUDirect RDMA or routing traffic across sockets.
+If the domain XML shows a flat or inaccurate virtual PCIe or NUMA topology, the guest cannot tell which NIC shares a physical PCIe switch (`PIX`) with which GPU. For example, all the GPUs and NICs may sit on one synthetic PCIe root complex, or on the wrong virtual NUMA nodes. Missing ACS or ATS peer-to-peer hints cause the same problem. Then the guest's `nvidia-smi topo -m` and `NCCL` cannot see that relationship. That disables GPUDirect RDMA or routes traffic across sockets, even though `VFIO` passed every device through correctly.
 </details>
 
 <details>
 <summary>19. How does `nvidia-fabricmanager` work on virtualized NVSwitch servers (HGX/DGX)?</summary>
 
-On NVSwitch systems, the NVLink fabric must be configured by `nvidia-fabricmanager`. Either all 8 GPUs and the NVSwitch devices are passed through together to a single full-node tenant VM (which runs `nvidia-fabricmanager` itself), or the hypervisor/service VM runs `nvidia-fabricmanager` in **shared NVSwitch multitenancy** mode to partition GPUs into isolated NVLink domains per tenant VM.
+On NVSwitch systems, `nvidia-fabricmanager` must configure the NVLink fabric. You can pass all 8 GPUs and the NVSwitch devices together to one full-node tenant VM, which runs `nvidia-fabricmanager` itself. Alternatively, the hypervisor or a service VM runs `nvidia-fabricmanager` in shared NVSwitch multitenancy mode. That partitions the GPUs into isolated NVLink domains, one for each tenant VM.
 </details>
 
 <details>
 <summary>20. How does `libvirt` confine QEMU processes on the host (`sVirt`), and what do AMD `SEV-SNP` / Intel `TDX` and NVIDIA Confidential Computing add?</summary>
 
-`libvirt` runs each QEMU process as an unprivileged user inside a dedicated `machine.slice` cgroup with `seccomp` filtering and SELinux **`sVirt`** (assigning a unique MCS label `s0:cX,cY` to each QEMU process and its disk images so a compromised QEMU process cannot read another VM's disks). **Confidential Computing** (`AMD SEV-SNP`, `Intel TDX`, plus `NVIDIA H100/B200 Confidential GPU` modes) encrypts VM memory and PCIe/GPU bounces in hardware so even a compromised host kernel or hypervisor cannot read tenant weights or data.
+libvirt runs each `QEMU` process as an unprivileged user, inside its own `machine.slice` cgroup, with seccomp filtering. SELinux sVirt gives each `QEMU` process and its disk images a unique MCS label, such as `s0:cX,cY`, so a compromised `QEMU` process cannot read another VM's disks. Confidential computing adds a further layer. AMD SEV-SNP, Intel TDX and NVIDIA's H100 and B200 confidential GPU modes encrypt VM memory and the PCIe and GPU bounces in hardware. Even a compromised host kernel or hypervisor then cannot read tenant weights or data.
 </details>
 
 ## Sources and review notes
@@ -543,5 +606,7 @@ On NVSwitch systems, the NVLink fabric must be configured by `nvidia-fabricmanag
   - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 17: Virtualization** (section 17.1 virtual machines, hypervisors, hardware in a VM, CPU modes, uses, and drawbacks; container sections are covered in Chapters 1.19 and 1.20).
   - `systems-performance-2nd-edition` — Brendan Gregg, *Systems Performance: Enterprise and the Cloud*, 2nd ed., **Chapter 11: Cloud Computing** (section 11.2 hardware virtualization: Config A native hypervisor Xen vs Config B kernel-module hypervisor KVM, binary translation 1998, paravirtualization hypercalls, hardware assist `VT-x`/`AMD-V`, VM entry/exit, shadow page tables vs `EPT`/`NPT` 2D page walks, I/O emulation vs `virtio` vs `vhost` vs `VFIO` vs `SR-IOV`, AWS Nitro, and observability with `xentop`, `pidstat -tp`, `perf kvm stat`, `kvmexits.bt`, and guest `%steal`; cloud instance/capacity/multitenancy sections are covered in Chapter 1.27).
 - **Run here:** `python3 code/part01/kvm_qemu_libvirt_lab.py` (16 passed, 0 failed).
-- **Explicitly labelled inferences:** The `virt-install` + `cloud-init` workflow, high-performance libvirt domain XML (`q35`, `OVMF` `X-PciMmio64Mb=262144`, `host-passthrough`, `vcpupin`, `<hugepages/><locked/>`), `kvm:kvm_exit/kvm_entry` tracepoints, and the 6-step `VFIO` GPU passthrough and NVSwitch Fabric Manager notes connect KVM/QEMU internals to Part 5 (`KubeVirt`/`Kata`) and Part 7 GPU virtualization (no `nvidia-devops` file is directly mapped to `1.26`; `SP` sections 11.1 and 11.3 to 11.6 are covered in Chapter 1.27; cross-referenced with Chapters 1.8, 1.17, 1.18, 1.19, 1.20, 1.22, 1.23, 1.24, 1.25, 1.27, and 1.28, plus original study items 21, 23, 25, 27, 28, 29, and 30).
-- **Not verified on live hardware:** All interactive VM, `qemu-system-x86_64`, `qemu-img`, `virt-install`, `virsh`, `perf kvm`, and `vfio-pci` commands are marked (untested here) and must be executed on a disposable test host.
+- **Labelled inferences:** The `virt-install` and cloud-init workflow, the high-performance libvirt domain XML (`q35`, `OVMF` `X-PciMmio64Mb=262144`, `host-passthrough`, `vcpupin`, `<hugepages/><locked/>`), the `kvm:kvm_exit/kvm_entry` tracepoints, and the 6-step `VFIO` GPU passthrough and NVSwitch Fabric Manager notes are explicitly marked as inferences. They connect KVM and `QEMU` internals to Part 5 (`KubeVirt` and Kata) and Part 7 GPU virtualization. No nvidia-devops file maps directly to chapter 1.26. The Systems Performance sections 11.1 and 11.3 to 11.6 are covered in chapter 1.27. The chapter is cross-referenced with chapters 1.8, 1.17, 1.18, 1.19, 1.20, 1.22, 1.23, 1.24, 1.25, 1.27 and 1.28, plus original study items 21, 23, 25, 27, 28, 29 and 30.
+- **Not verified on live hardware:** All interactive VM, `qemu-system-x86_64`, `qemu-img`, `virt-install`, `virsh`, `perf kvm` and `vfio-pci` commands are marked `untested here` and must be run on a disposable test host before you rely on them.
+
+If you want the original context for any claim, read the source named at the top of this section before you repeat it.

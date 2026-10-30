@@ -63,6 +63,50 @@ Decide up front (they are hard to change later):
 | | 30000-32767 | NodePort Services |
 | All nodes | CNI-specific | VXLAN UDP 4789/8472, BGP TCP 179, Wireguard UDP 51820, etc. |
 
+### Bare metal versus virtualized
+
+Many people exploring Kubernetes ask whether a virtual machine layer is needed at all. Containers do much the same job, so why stack two layers of virtualization? The answer is not necessarily. Kubernetes works well on bare metal and on virtualized hosts. Choose the medium by the problems each technology solves and by your team's maturity with it.
+
+Virtualization changed how infrastructure gets provisioned. Older teams PXE booted hosts, managed server configuration by hand and attached storage to servers one piece at a time. Modern virtual environments put all of that behind APIs. You can create, change and delete resources without knowing what the hardware looks like. Virtual machines also let you clone machines, run several operating systems on one server, size resources to each application and change settings without disrupting the server. Upgrading one host does not touch the others on the same hardware.
+
+Virtualization has trade-offs. Running further from the metal adds overhead, and the virtualization stack itself adds more. Latency-sensitive applications, such as trading, may prefer bare metal. Telcos running 5G networks at the edge may want to work directly against the hardware.
+
+Kubernetes pushes the point of interaction higher still. An operator sees the machines as a sea of compute. Workloads declare what they need, and the scheduler places them. The underlying computers still matter, though. Clusters integrate with infrastructure at several points. Many use CSI drivers to reach storage providers. Infrastructure management projects can request new hosts and join them to the cluster. Most often, organizations rely on Cloud Provider Integrations (CPIs), which do extra work such as provisioning load balancers outside the cluster to route traffic in.
+
+Leaving virtualization behind means losing conveniences that Kubernetes does not solve by itself. Still, projects and integration points for bare metal keep improving. Major cloud providers now offer bare metal options, and bare metal IaaS services are gaining share. Success on bare metal still brings its own challenges:
+
+- **Significantly larger nodes:** Larger nodes usually run more Pods. With thousands of Pods per node, operations get harder. Draining a node for an in-place upgrade can trigger 1000+ rescheduling events.
+- **Dynamic scaling:** Getting new nodes up quickly as workload or traffic changes.
+- **Image provisioning:** Baking and distributing machine images quickly, so cluster nodes stay as immutable as possible.
+- **Lack of load balancer API:** You must route ingress traffic from outside the cluster to the Pod network inside it.
+- **Less sophisticated storage integration:** Getting network-attached storage to Pods takes more work.
+- **Multitenant security concerns:** With hypervisors, security-sensitive containers can run on dedicated hypervisors. You can slice a physical server any arbitrary way and make scheduling decisions from there.
+
+These challenges can be solved. The lack of load balancer integration can be handled with projects such as kube-vip or MetalLB. Storage can come from integrating with a Ceph cluster. Still, containers are not a new kind of virtualization. In most implementations, they use Linux kernel primitives to make processes feel isolated from others on the same host. Choosing among cloud virtual machines, on-premises virtualization and bare metal comes down to two things: what your workloads need, and what your team already knows how to run. If you are weighing Kubernetes as a stand-in for a virtualization stack, first pin down what Kubernetes actually fixes for you. Learning to run Kubernetes is already a big effort. Changing how you manage infrastructure underneath it adds engineering effort and risk.
+
+### Compute infrastructure
+
+A Kubernetes cluster needs machines, and managing pools of them is the core job. Early on, choose the machine types. How many cores? How much memory? How much local storage? What grade of network interface? Do you need specialized devices such as GPUs? The software you plan to run drives these answers. If your workloads fit a general-purpose machine's compute-to-memory ratio and their demand is steady, the job is simple. Diverse software makes it harder. These machine types are worth considering:
+
+- **etcd machines (optional):** Only needed if you run a dedicated etcd cluster for your Kubernetes clusters. These machines should prioritize disk read and write performance, so never use old spinning disk hard drives. Give etcd its own storage disk, so it does not compete with the OS or other programs. Consider network proximity too, to reduce latency between etcd machines.
+- **Control plane nodes (required):** These machines run only control plane components. Use general-purpose machines, sized and numbered for the expected cluster size and your failure tolerance. A larger cluster means the API server has more clients and more traffic. You can add compute to each machine or add more machines. The scheduler and controller-manager each have only one active leader at a time, so adding replicas does not raise their capacity. If they starve, scale them vertically with more compute per machine. If you colocate etcd on these machines, the same etcd considerations apply.
+- **Worker nodes (required):** General-purpose machines that host everything that is not control plane.
+- **Memory-optimized nodes (optional):** For workloads whose memory profile does not suit general-purpose nodes. Take AWS general-purpose `M5` instances with a CPU-to-memory ratio of `1CPU:4GiB`. A workload that consumes `1CPU:8GiB` leaves CPU unused when its resources are reserved at that ratio. `R5` instances, at `1CPU:8GiB`, overcome that inefficiency.
+- **Compute-optimized nodes (optional):** For workloads that fit a compute-optimized shape, such as the `C5` instance type at `1CPU:2GiB`. Adding a node pool with these types improves efficiency.
+- **Specialized hardware nodes (optional):** GPUs are the most common request. If machine learning workloads need specialized hardware, add a node pool and target those nodes for those workloads.
+
+### Networking infrastructure
+
+Networking is easy to brush off as an implementation detail, but it can change your deployment model. Design for these elements.
+
+**Routability.** You almost never want cluster nodes exposed to the public internet. The convenience of reaching them from anywhere rarely justifies the threat. A well-secured bastion host or jump box that allows SSH is a low-cost way in. Deeper questions come up on the private network. Storage arrays, internal container registries, CI/CD systems, internal DNS and private NTP servers all need connectivity. Your cluster usually still needs public resources, such as public container registries, even if the path runs through an outbound proxy.
+
+If outbound internet access is out of the question, open source container images and system packages must reach the cluster some other way. Lean toward simple, consistent and effective systems. Lean away from mindless mandates and human approval for infrastructure that cluster deployments depend on.
+
+**Redundancy.** Use availability zones (AZs) to help keep uptime high. An AZ is a datacenter with its own power source and backup, and its own connection to the public internet. Two subnets in a datacenter sharing one power supply do not make two AZs. Two distinct datacenters close together, with a low-latency, high-bandwidth link between them, do. Two AZs is good. Three is better. More than that depends on how big a disaster you need to prepare for. Datacenters do go down. Simultaneous outages across a region are possible but rare. Decide where redundancy matters most, for your workloads or for the cluster control plane. Running etcd across AZs is acceptable, but revisit the network considerations if you do. Spreading control plane nodes across AZs gives the cluster a backup for its own management. If your workloads do not lean on the control plane, and they should not, a control plane failure leaves them running. What it blocks is change, because you cannot easily alter software that is already running. Treat it as a serious incident, but understand that it differs from an outage that customers can see.
+
+**Load balancing.** You need a load balancer in front of the Kubernetes API servers. If you can provision one programmatically, you can create and configure it as part of control plane deployment. Think through the access policies for the API and the firewalls the load balancer sits behind. You almost certainly will not expose it to the public internet. Remote access to the control plane is usually done through a VPN into the cluster's local network. Publicly exposed workloads need a separate load balancer connected to the cluster ingress. One load balancer for ingress serves most incoming requests. Adding one per workload adds little value. With a dedicated etcd cluster, skip the load balancer between the API servers and etcd. The API's built-in etcd client manages those connections itself.
+
 ## 2. Prepare every node
 
 Run on all nodes (as root or with sudo). Names and versions below are examples; verify against current docs.
@@ -142,6 +186,30 @@ sudo systemctl enable --now kubelet              # it will crash-loop until kube
 ```
 
 (Use the repository minor version you intend to run; the URL embeds it. The old `apt.kubernetes.io` repos are deprecated.)
+
+### What to install on each machine
+
+Start with the obvious. You need an operating system. Pick a Linux distribution that the community commonly runs Kubernetes on and tests against. That is the safe choice. RHEL, CentOS and Ubuntu are easy picks. If you have enterprise support for another distribution, or you are passionate about one, that works too, as long as you invest time in testing it. A distribution designed for containers, such as Flatcar Container Linux, earns extra points.
+
+Next, you need a container runtime, such as `docker` or `containerd`. When you run containers, you must have one.
+
+Then comes the `kubelet`. It is the interface between Kubernetes and the containers it orchestrates, and it is installed on each machine. Kubernetes itself runs in containers, but the kubelet is one component that runs as a regular binary on the host. Some people have tried running the kubelet in a container. That only complicates things, so avoid it. Put the kubelet on the host, and run everything else in containers. Your mental model stays clear, and the practical steps still hold up.
+
+So far you have a Linux OS, a container runtime and an interface between Kubernetes and that runtime. The kubelet can start containers, but without a control plane it does not know which Pods to run. This is where `kubeadm` and static Pods come in. Other tools can bootstrap the control plane too. Kubeadm, however, is widely adopted and runs in many enterprise production systems. It is a command-line program that, in part, writes the static Pod manifests needed to bring Kubernetes up. The kubelet can watch a directory on the host and run any Pod manifest it finds there. Kubeadm configures the kubelet and deposits the manifests. That bootstraps the core control plane components: etcd, `kube-apiserver`, `kube-scheduler` and `kube-controller-manager`.
+
+After that, the kubelet takes further instructions from Pod manifests submitted to the Kubernetes API. Kubeadm also generates bootstrap tokens, which let you join other nodes to the new cluster securely.
+
+Last, you need a bootstrap utility. The Cluster API project uses custom resources and controllers for this. A command-line program installed on the host also works well. Its main job is to call `kubeadm` and manage runtime configuration. When the machine boots, arguments tell the utility how to bootstrap Kubernetes. In AWS, for example, you can use user data to run the utility with arguments that set which flags go to the `kubeadm` command or what goes into a `kubeadm` config file. At a minimum, its runtime config must say whether to create a new cluster with `kubeadm init` or join an existing one with `kubeadm join`. It also needs a secure place to store the bootstrap token when initializing, or to fetch it when joining. Those tokens make sure only approved machines join your cluster, so handle them with care. To learn which runtime configs you need, run through a manual install with `kubeadm`, using the official docs. As you go, you will see what your environment requires.
+
+### Containerized control plane components
+
+The static manifests used to start a cluster should include the essential control plane components: etcd, `kube-apiserver`, `kube-scheduler` and `kube-controller-manager`. Custom Pod manifests are allowed, but keep that list short. Include only Pods that must run before the API is up, or before the cluster joins a federated system. Anything that can wait for the API should be installed through it. Pods created from static manifests can be managed only by editing those manifests on the machine's disk. That is much less accessible and much harder to automate.
+
+With `kubeadm`, which is strongly recommended, the static manifests for the control plane, etcd included, are created when a control plane node is initialized with `kubeadm init`. Pass any flags you need for these components through a `kubeadm` config file. The bootstrap utility can write a templated `kubeadm` config file for you.
+
+Avoid customizing the static Pod manifests directly with your bootstrap utility. If you really need to, you can split manifest creation and cluster initialization into separate kubeadm steps, which gives you a chance to inject customization. Do that only when the change matters and cannot be expressed in the kubeadm config. A simpler bootstrap of the control plane is more robust, faster, and far less likely to break with Kubernetes version upgrades.
+
+Kubeadm also generates self-signed TLS assets that secure connections between control plane components. Leave those alone. If your security requirements demand your corporate CA as the source of trust, you can use it. In that case, you must be able to automate getting the intermediate authority. If your cluster bootstrapping systems are secure, the self-signed CA stays trustworthy. It is valid only for the control plane of a single cluster.
 
 ## 3. Initialise the first control-plane node
 
@@ -476,6 +544,18 @@ kubectl patch storageclass local-path -p '{"metadata":{"annotations":{"storagecl
 
 Commit manifests/values to Git and reconcile with GitOps (4.26) rather than applying by hand.
 
+### How add-ons get installed
+
+Once kubeadm finishes, the cluster is still not a production platform. Add-ons turn a raw Kubernetes cluster into a production-ready, developer-friendly platform. Plan add-ons as part of the deployment model. Installing them is usually the final phase of a cluster deployment. Manage and version them together with the cluster, and treat Kubernetes plus its add-ons as one package that is tested and released together. Components depend on each other's versions and configuration, so the set moves as a unit.
+
+Kubeadm installs the "required" add-ons needed to pass the Kubernetes conformance tests. Those include cluster DNS and kube-proxy, which implements Kubernetes Service resources. Many more critical components must be applied after kubeadm finishes. The most obvious is a container network interface (CNI) plug-in, since a cluster is not much use without a Pod network. Expect a long list of components, usually DaemonSets, Deployments or StatefulSets, that add the features your platform needs. If the cluster is registered into a federated system, that registration usually comes first, because the installation definitions often live in a management cluster. Installing add-ons is then a series of calls to the cluster's API server that create the resources each component needs. Those calls can come from inside or outside the cluster.
+
+One approach uses a continuous delivery pipeline built on an existing tool such as Jenkins. The "continuous" part matters less here, because the trigger is a new target for installation, not a software update. The pipeline usually has the installation capabilities you need. All you add is a call to run the pipeline when a new cluster is created, along with the variables for a proper installation.
+
+A more Kubernetes-native approach uses an operator. It extends the API with one or more custom resources that define the add-on components and their versions. It also includes controller logic that installs the add-ons from the spec in those resources. This gives you a clear, central source of truth for a cluster's add-ons. It also lets you manage their ongoing life cycle in code. The drawback is the complexity of building and maintaining that software. Take on that complexity only if you will use it for day-2 upgrades and ongoing management. If you stop at day-1 installation, you pay a large software engineering cost for little ongoing benefit. Operators offer the most value in ongoing operations, because their watch on desired state keeps working after the cluster is built.
+
+The two approaches often work together. You might use a CD pipeline to install the operator and the add-on custom resources, then let the operator take over. The operator may also need to fetch manifests, perhaps from a code repository that holds templated Kubernetes manifests for the add-ons. Using an operator this way reduces external dependencies and improves reliability. You cannot remove external dependencies altogether, though. Use an operator for add-ons only when your engineers know the operator pattern well and have experience with it. Otherwise, stick with the tools your team knows, and grow the team's experience over time.
+
 ## 11. Troubleshooting kubeadm clusters
 
 | Symptom | Likely cause | Commands |
@@ -522,6 +602,16 @@ Hand-built is for learning. For repeatable clusters: (1) bake the preparation st
   when: ansible_swaptotal_mb > 0
 - ansible.posix.mount: { name: swap, fstype: swap, state: absent }
 ```
+
+### Machine images versus configuration management
+
+When a machine comes up, it needs an operating system, certain packages and configuration. Something must also determine variable values, apply them and start the Kubernetes containerized components. Two broad strategies are common: configuration management tools and machine images.
+
+Configuration management tools such as Ansible, Chef, Puppet and Salt became popular when software was installed on virtual machines and run directly on the host. They automate the configuration of many remote machines. You describe how a machine must look, and the tool applies that description. These tools establish machine consistency well. Recipes or playbooks live in version control, and that is a positive solution. Where they fall short for Kubernetes is the speed and reliability of bringing nodes online. If joining a new worker runs package installs that pull assets over the network, the join takes significantly longer. Configuration can also fail. Temporarily unavailable package repositories, or missing or incorrect variables, can stop a node from joining. On a resource-constrained autoscaled cluster, that can prolong an availability problem.
+
+Machine images are the better choice. Install every required package into the image ahead of time, and the software is ready to run as soon as the machine boots. No package install depends on the network or an available package repository. Machine images make the node join more reliable and shorten the time before the node can accept traffic. You can often still use the configuration tools your team knows to build the images. For example, with Packer from HashiCorp, you can use Ansible to build an Amazon Machine Image that is ready to apply to your instances whenever you need them. An error in an Ansible playbook that builds an image is a small setback. The same error during a worker's join could cause a serious production incident.
+
+You should still keep build assets in version control. Installs stay declarative and clear to anyone who inspects the repository. When upgrades or security patches arrive, update the assets, commit them, and ideally let a pipeline run the build automatically once the change merges. Some decisions involve hard trade-offs, and some are obvious. For most teams, prebuilt machine images are the obvious choice.
 
 ## 13. Lab checklist
 
@@ -740,7 +830,7 @@ Because 2 of 3 `etcd` members (`cp1` and `cp3`) are still alive, the cluster ret
 
 - **Sources read in full:**
   - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 3: Deploying a Kubernetes Cluster** (cluster setup, `kubectl version`, `get/describe nodes`, `kube-system` components), **Chapter 4: Common kubectl Commands** (read in full: namespaces, contexts `set-context`/`use-context`, `kubectl get/describe`, `kubectl apply` and `view-last-applied`/`edit-last-applied`/`set-last-applied`, `kubectl delete`, labels, `logs`/`exec`/`attach`/`cp`/`port-forward`, `kubectl top`, and `kubectl completion bash`), and **Appendix A: Building a Raspberry Pi Kubernetes Cluster** (bare-metal cluster assembly).
-  - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 1: Path to Production** (read in full: core Kubernetes components, CRI/CNI/CSI/CPI plug-in interfaces, in-tree vs out-of-tree providers, and building an application platform on Kubernetes) and **Chapter 2: Deployment Models** (read in full: Managed Services vs Prebuilt Installers vs Roll Your Own, bare-metal vs virtualization trade-offs, HA control plane and etcd topologies, Dev/Testing/Staging/Prod cluster tiers, and Packer + Ansible machine image automation).
+  - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 1: Path to Production** and **Chapter 2: Deployment Models** (read in full: Chapter 2 bare-metal versus virtualized infrastructure, compute and networking planning, containerized control plane components, and add-on installation; core Kubernetes components, CRI/CNI/CSI/CPI plug-in interfaces, in-tree vs out-of-tree providers, and building an application platform on Kubernetes) and **Chapter 2: Deployment Models** (read in full: Managed Services vs Prebuilt Installers vs Roll Your Own, bare-metal vs virtualization trade-offs, HA control plane and etcd topologies, Dev/Testing/Staging/Prod cluster tiers, and Packer + Ansible machine image automation).
 - **Run here:** `python3 code/part05/kubeadm_bootstrap_validator_lab.py` (2 passed, 0 failed).
 - **Explicitly labelled inferences:** The `validate_node_preflight_and_cidrs` (`SystemdCgroup=true`) and `verify_kubeadm_join_credentials` models in `code/part05/kubeadm_bootstrap_validator.py` and the `kubeadm-config.yaml` (`v1beta3` / `v1beta4`), Calico `Installation`, `kube-vip`, and Ansible node-prep snippets are the author's constructions synthesizing `KUR` Chapters 3–4, `PK` Chapters 1–2, and upstream `kubeadm` documentation (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, and 35).
 - **Not verified on live hardware:** Live `kubeadm init`, `kubeadm join`, Calico/Cilium, `kube-vip`, and NVIDIA device plugin executions (`v1.30.4`, `10.0.0.11..100`, `10.244.0.0/16`, `10.96.0.0/12`, `524288`, `8192`, `262144`, `v3.28.0`, `blockSize: 26`, `v0.8.0`, `0.16.2`, `v0.0.28`, `127.0.0.53`, `24 h` token, `2 h` upload-certs, `1 year` leaf certs, `10 years` CA) are marked (`untested here`) where not executed by `kubeadm_bootstrap_validator_lab.py`.

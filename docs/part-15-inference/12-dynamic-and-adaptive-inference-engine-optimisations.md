@@ -46,6 +46,10 @@ Dynamic and Adaptive Optimization Reference Gains (ASP Chapters 9, 12, 13, 15, 1
 - Test-time compute prefix sharing: PagedAttention/RadixAttention copy-on-write forks on Best-of-16 (4,096 prompt + 512 generated tokens) cut KV token slots from 73,728 to 12,288 (83.33% saved).
 ```
 
+Large language models are big, and the traffic they receive is never steady. A setup that runs well at noon can struggle at midnight, when prompts get longer and the mix of requests changes. Settings chosen on day one were tuned for one picture of the workload, and that picture rarely lasts. A single fixed approach is no longer enough.
+
+This chapter covers engines that adjust themselves while they run. They can change how the model is split across GPUs, how many bits each number uses, how kernels are scheduled, and how memory is handled. The main topics are dynamic parallelism switching, precision scaling, real-time cache management, and reinforcement learning (RL) tuning. Every idea starts from one goal: keep the GPUs busy without breaking latency targets.
+
 **An inference engine must continuously observe its own telemetry and adapt in real time.** It should dynamically adjust its graphs, kernels, draft depth, layer execution, routing, and test-time compute budgets. Before you tune any single knob in isolation, design a feedback loop that matches each runtime adaptation to live batch size, sequence length, model confidence, and fabric load.
 
 ## Prerequisites and outcomes
@@ -137,9 +141,261 @@ CUDA Graph Pool Sizing and Dynamic Allocator Mechanics (ASP Chapters 12, 13, 19)
 
 When the time-series predictor forecasts a 9:00 AM traffic spike, a background scheduler runs synthetic warm-up requests across every expected batch bucket using low-priority CUDA streams. Low-priority streams yield hardware resources immediately if live user traffic arrives. On Grace Blackwell superchips, prewarming also stages unified CPU-GPU memory pages via `cudaMemPrefetchAsync` before the first request lands.
 
+Prewarming only helps when the forecast is right. A wrong forecast warms graphs that never get used, so track prediction hit rates and confirm the warm-up pays off. Retrain the forecasting models often, because traffic patterns shift as new user groups arrive. Unplanned events can also change the curve, such as a local holiday that moves usage.
+
+Here is a concrete case. An inference service sees traffic spike every day at 9 A.M. because of time zones. A cron-like job or scheduler can run a few warm-up requests shortly before 9 A.M. Those requests load the model into GPU caches, compile the kernels, and capture CUDA Graphs for the expected batch sizes. Start early enough for resources to finish provisioning.
+
+PyTorch captures a graph inside a `torch.cuda.graph()` context. A replay submits the whole captured workload with one `cudaGraphLaunch`, which skips the Python-to-CUDA dispatch. Graphs are static, so variable shapes are awkward. Serving batches often come in fixed sizes such as 1, 2, 4, 8, and 16, so a pool of captured graphs fits well. A batch of 16 is common at peak, so the server can keep a graph for that size ready.
+
+Each graph in the pool holds its own workspace memory. Watch memory use and evict rarely used graphs when memory gets tight. Graph patching, covered in Chapter 12, can adjust small size differences without a full pool. In practice, though, a pool usually performs better.
+
+Prewarming should also cover scale-out. When a burst of long-prompt requests is scheduled, scale out the prefill workers and run a representative forward pass to warm the CUDA Graphs and KV cache. On the decode side, a speculative draft model can be loaded and warmed along with its KV cache. Fixed-token decode loops can be unrolled too.
+
+CUDA also caches compiled kernels. The path runs from C++ to PTX to SASS, and the first run of a kernel pays a just-in-time (JIT) compile cost. Warm-up removes that cost before users arrive.
+
+Coordinate warm-up with the cluster autoscaler. New GPU instances can run a few warm-up API calls before they join the live pool. That validates the engine, caches JIT output, allocates memory pools, and prepares graphs. Hit as many paths as you can, including every batch size and graph variant. Compare first-request latency during a surge with and without warm-up, so you can tune the timing.
+
+Run prewarm work when GPUs are underutilized. CUDA stream priorities let you place prewarm streams below the live inference stream, so warm-up yields when real traffic arrives. An idle GPU is otherwise wasted, so warm-up there costs little. On Grace Blackwell systems, the CPU and GPU share unified, coherent memory. The CPU can start filling memory the GPU will read, which avoids explicit copies later. Prewarming makes latency more predictable, because expensive compilation and transfers move to times when they are cheap.
+
 Long-running inference servers also suffer from HBM fragmentation when variable-length prompts alternate with small decode steps. PyTorch's default Best-Fit with Coalescing caching allocator reserves large chunks of HBM. Wide gaps between `torch.cuda.memory_reserved()` and `torch.cuda.memory_allocated()` indicate severe fragmentation. An adaptive engine separates long-lived model weights from short-lived 64 KB per-token activation slabs and tunes `max_split_size_mb`. Whenever fragmentation triggers an out-of-memory exception, the engine switches to CUDA's stream-ordered allocator via `PYTORCH_ALLOC_CONF=backend:cudaMallocAsync` in a fresh worker process.
 
+The default allocator in PyTorch is a caching allocator that uses best-fit with coalescing (BFC). It grabs large chunks of GPU memory and splits them to serve requests. That reuses free space and avoids frequent calls to the slow, synchronous `cudaMalloc` and `cudaFree`. It suits most workloads. A server that alternates large and small allocations can still fragment memory. Plenty of memory may be free, but not in one contiguous piece, so a large tensor fails with an OOM.
+
+Allocators differ in how they split memory. A buddy allocator splits blocks into power-of-two sizes. A slab allocator works on top of the buddy system and handles small, fixed-size objects. It preallocates slabs, which are groups of objects of one type, and keeps a free list in each slab. The buddy allocator handles coarse page allocation, and the slab allocator handles fine-grained reuse.
+
+`cudaMallocAsync` takes a different path. It keeps stream-ordered pools, recycles memory when references are released, and merges freed blocks because it knows the order of the frees. It behaves somewhat like a slab allocator combined with a buddy system, and the CUDA driver manages it for you. That makes it a strong default to leave on, if you prefer.
+
+Watch fragmentation before you act on it. `torch.cuda.memory_summary()` reports allocator state. The memory profiler in `torch.profiler`, enabled with `profile_memory=True`, shows which operations allocate the most. Nsight Systems tracks CUDA memory events and Unified Memory page faults on a timeline, and Nsight Compute reports memory workload. Log `torch.cuda.memory_reserved()` and `torch.cuda.memory_allocated()`. Reserved is what the allocator holds. Allocated is what tensors use. A wide gap that keeps growing means memory is reserved but idle.
+
+The split size is set with `PYTORCH_ALLOC_CONF=max_split_size_mb:<value>`. Raise it when large allocations are expected, so they are not chopped into pieces. Lower it when many small requests arrive, so large blocks get reused. A split size that is too small floods the allocator with tiny blocks and extra metadata. One that is too large leaves big holes that stay unused when only part of a block is freed.
+
+Purging the cache returns unused memory to the GPU. Restarting the worker resets the allocator completely. Both are intrusive, and some teams use them on long-running processes with heavy fragmentation. Do them in maintenance windows, or as a rolling restart across a fleet. If you need them often, the underlying cause needs fixing.
+
+Switching allocators at runtime takes care. PyTorch's CUDA caching allocator is created the first time `torch` is imported or the first CUDA context is touched. Reloading a Python module does not unload C++ extensions or tear down the allocator, so changing `PYTORCH_ALLOC_CONF` in the same process does not work. A workaround is to catch the OOM, free memory in the parent, and start a fresh child process with the variable set before `torch` loads. The book's sketch does that with `backend:cudaMallocAsync`:
+
+```
+# dynamic_memory_allocator.py
+# Retry generation in fresh process with cudaMallocAsync if first attempt OOMs.
+# This is the only reliable way to change the CUDA allocator at runtime.
+import os
+import sys
+import gc
+import pickle
+import tempfile
+import subprocess
+import importlib
+from typing import Callable, Any
+
+def _resolve_factory(factory_path: str) -> Callable[[], Any]:
+    """
+    Resolves a factory string like "my_package.my_mod:build_model" to a callable.
+    The callable must return ready-to-use model with .generate(request) method.
+    """
+    module_name, func_name = factory_path.split(":", 1)
+    module = importlib.import_module(module_name)  # safe to import, no torch yet
+    return getattr(module, func_name)
+
+def generate_with_allocator_retry(
+    model_factory_path: str,
+    request_object: Any,
+    *,
+    allocator_conf: str = "backend:cudaMallocAsync"
+) -> Any:
+    """
+    Attempts model.generate(request_object) in the current process.
+    On torch.cuda.OutOfMemoryError, retries in a fresh subprocess with
+    PYTORCH_ALLOC_CONF set to allocator_conf. request_object and the
+    returned value must be picklable.
+    """
+    # Import torch only inside function; avoid importing at module import time.
+    import torch
+
+    model_factory = _resolve_factory(model_factory_path)
+    model = model_factory()  # user-supplied function builds model, moves to GPU
+
+    try:
+        # First attempt uses whatever allocator current process started with.
+        return model.generate(request_object)
+    except torch.cuda.OutOfMemoryError:
+        # Free as much as possible in the parent before spawning the child.
+        # Avoids compounding pressure when two processes momentarily overlap.
+        try:
+            del model
+        finally:
+            gc.collect()
+            torch.cuda.empty_cache()
+
+        # Serialize request to temp file and ask fresh interpreter to do work.
+        with tempfile.TemporaryDirectory() as td:
+            req_path = os.path.join(td, "request.pkl")
+            out_path = os.path.join(td, "output.pkl")
+            with open(req_path, "wb") as f:
+                pickle.dump(request_object, f)
+
+            # In the child, we want torch to see allocator config at import.
+            env = os.environ.copy()
+            env["PYTORCH_ALLOC_CONF"] = allocator_conf
+
+            # Re-run this module as a helper child. The child will import torch
+            # only after PYTORCH_ALLOC_CONF is set in its environment.
+            cmd = [
+                sys.executable,
+                __file__,
+                "--child",
+                "--factory", model_factory_path,
+                "--request", req_path,
+                "--output", out_path,
+            ]
+            completed = subprocess.run(cmd, env=env, capture_output=True, text=True)
+            if completed.returncode != 0:
+                # Bubble up child stderr to aid debugging
+                raise RuntimeError(
+                    f"Retry failed with exit code {completed.returncode}\n"
+                    f"stdout:\n{completed.stdout}\n\nstderr:\n{completed.stderr}"
+                )
+            with open(out_path, "rb") as f:
+                return pickle.load(f)
+
+def _child_main(factory_path: str, request_path: str, output_path: str) -> None:
+    """
+    Child entrypoint: assumes PYTORCH_ALLOC_CONF is already present in env.
+    Imports torch only now, builds the model, runs generate, and pickles result.
+    """
+    # Import torch after env var set by the parent's subprocess.run(env=...).
+    import torch
+
+    model_factory = _resolve_factory(factory_path)
+    model = model_factory()  # build the model inside the child process
+    with open(request_path, "rb") as f:
+        request_object = pickle.load(f)
+    result = model.generate(request_object)
+    with open(output_path, "wb") as f:
+        pickle.dump(result, f)
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--child", action="store_true")
+    parser.add_argument("--factory", type=str, default="")
+    parser.add_argument("--request", type=str, default="")
+    parser.add_argument("--output", type=str, default="")
+    args = parser.parse_args()
+    if args.child:
+        _child_main(args.factory, args.request, args.output)
+    else:
+        print("This module is intended to be imported.")
+```
+
+The model is built inside the child through a factory string, so no CUDA code loads before the variable takes effect. The parent empties its cache first, so two processes do not press on memory at the same time. The request and the result travel through pickle files in a temporary directory.
+
+In a C++ engine, you can build a pure slab allocator for chosen sizes. Per-token activation tensors often have one fixed size, such as a `[layers, hidden_dim]` buffer at 64 KB. A slab for that size avoids fragmentation, and it usually stays with the pool until the whole slab is freed. Modern engines reuse buffers like this for each generated token instead of freeing and reallocating every time.
+
+Allocation choices can differ across the system. The default caching allocator can handle large static weights, which are freed rarely during inference. A custom allocator can handle short-lived per-token buffers. Separate long-lived allocations from short-lived ones in your code, so each can go to the right pool. Plan an OOM fallback too. Many production systems offload to CPU on OOM instead of failing the request. The engine might free the cache, move some layers to the CPU, or compress the cache.
+
 Before you enable CUDA Graphs in production, capture your decode buckets in decreasing batch-size order inside a shared memory pool and warm every bucket on low-priority streams before opening the replica to live ingress traffic.
+
+### 1.4 Adaptive Batching, Chunked Prefill, and Prefill-Decode Scheduling
+
+Batching raises throughput, but a big batch makes each request wait. A long prefill can also block short decode steps behind it. Adaptive batching changes how requests are grouped as load changes. At peak load, use larger batches, such as 8 or 16, because throughput matters most. In quiet periods, use smaller batches so requests finish sooner. A simple rule is to allow larger batches when GPU utilization is above 80%, and to use batch size 1 when it is below 20%. A learned policy can replace the rule later.
+
+Prefill and decode have very different shapes. Prefill processes a whole prompt in one large, compute-heavy pass. Decode produces one token per request, and it is memory-bound. Because the two run for such different times, the book recommends treating them as separate workloads, with their own batches and their own threads or worker pools. Decode gains from larger batches, since that raises its arithmetic intensity. Engines such as vLLM already build separate batches for prefill and decode workers.
+
+Pipeline parallelism suffers from the same mismatch. If one microbatch runs a long prefill while another decodes one token, their durations differ and pipeline bubbles appear. The fix is chunked prefill. Slice a big prefill into small chunks, and slot decode steps between them. Figure 19-7 shows how decode-maximal batches fill the gaps across four requests. The SARATHI paper reports roughly 1.3 to 1.9 times more throughput than naive scheduling with this approach.
+
+Take a 10,000-token prefill. Without chunking, one pass blocks the whole pipeline, and decode requests wait until it finishes. Split it into five 2,000-token chunks, and decode batches can run between them. That closes the bubbles and smooths utilization. A common rule of thumb is to size each chunk to take about 50 to 100 ms. That leaves frequent openings for decode. Depending on the model and GPU, a chunk may be a few thousand tokens.
+
+vLLM's scheduler supports chunked prefill and decode-maximal batching. It monitors token queues and decides whether to run another prefill chunk or a decode batch. The sketch below does the same thing, using GPU utilization as its signal:
+
+```
+# Example adaptive scheduler for chunked prefill/decode
+import cupy as cp
+import torch
+
+# Hardware constraints
+SHMEM_LIMIT = 256 * 1024
+BLOCK_THREADS = 256
+TARGET_UTIL = 0.85
+OCC_THRESHOLD = 0.5
+
+# Cache for occupancy results and tile lookup
+_occ_cache = {}
+_tile_table = {}  # e.g., {L: optimal_T}
+
+# 1) Precompute tile_table offline; here we lazy-initialize on first use
+def get_optimal_tile(L):
+    if L in _tile_table:
+        return _tile_table[L]
+    # compute block size by querying for an occupancy-based suggestion
+    min_grid, max_grid, block_size = ...  # left out for brevity
+    T = min(block_size, L)
+    T = max(32, (T // 32) * 32)
+    _tile_table[L] = T
+    return T
+
+# 2) Cached occupancy query
+def get_occupancy(threads, shared_bytes):
+    key = (threads, shared_bytes)
+    if key in _occ_cache:
+        return _occ_cache[key]
+    max_blocks = cp.cuda.runtime.cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+        attention_kernel_ptr, threads, shared_bytes
+    )
+    props = torch.cuda.get_device_properties(0)
+    warps_per_block = threads // props.warp_size
+    max_warps = props.max_threads_per_multi_processor // props.warp_size
+    occ = (max_blocks * warps_per_block) / max_warps
+    _occ_cache[key] = occ
+    return occ
+
+def scheduler_loop():
+    stream = cp.cuda.Stream(non_blocking=True)
+    while True:
+        pending = get_pending_requests()
+        util = gpu_utilization()
+        if util < TARGET_UTIL and any(r.phase == 'prefill' for r in pending):
+            req = select_heaviest_prefill(pending)
+            L = req.remaining_length()
+            T = get_optimal_tile(L)
+            shared_bytes = 3 * T * T * 4
+            occ = get_occupancy(BLOCK_THREADS, shared_bytes)
+            if occ < OCC_THRESHOLD:
+                T = max(32, T // 2)
+                shared_bytes = 3 * T * T * 4
+            chunk = req.next_prefill_chunk(T)
+            # Launch with CuPy RawKernel on our stream
+            attention_kernel((...grid...), (BLOCK_THREADS,),
+                             (chunk, ...), shared_mem=shared_bytes,
+                             stream=stream)
+            # Record an event to know when done
+            event = cp.cuda.Event()
+            event.record(stream)
+        elif any(r.phase == 'decode' for r in pending):
+            batch = form_decode_batch(pending, max_batch=16)
+            # Trace the adaptive logic
+            logger.info(f"T={T}, occ={occ:.2f}, util={util:.2f}")
+            launch_decode_kernel(batch, stream=stream)
+            event = cp.cuda.Event()
+            event.record(stream)
+        else:
+            # Poll the last event rather than sleep
+            if not event.query():
+                cp.cuda.get_current_stream().synchronize()  # or pass
+            continue
+```
+
+The scheduler sizes each prefill chunk to use shared memory well. It computes a tile width `T` so the query, key, and value buffers fit the per-SM dynamic shared-memory limit. Then it asks how many blocks fit on each SM. If occupancy falls below 50%, `T` is halved, so more blocks can share an SM. When GPU utilization is below 85% and prefill is waiting, the scheduler takes the largest pending prefill and cuts it into chunks of `T` tokens. The helper `next_prefill_chunk` can shrink or grow the chunk from live metrics, shrinking when occupancy is low and growing when DRAM traffic is high.
+
+Between chunks, the scheduler bundles ready decode requests into one launch with `form_decode_batch`. Short replies then do not wait behind a long prompt. The scheduler always picks the action that keeps SM slots full and wastes the least time. That is a utilization-maximization policy, a bit like an OS scheduler aiming for full CPU use. Log the chosen `T`, the occupancy, and the utilization. Then you can confirm the policy really holds utilization high.
+
+Keep prefill and decode as separate queues with their own SLAs. Clear the latency-sensitive decode work first, using dedicated time slices or CUDA streams, and use the leftover cycles for big prefill jobs. A budget of 1 to 5 ms per decode is one option. Many engines also use a producer-consumer pattern. One thread prepares decode inputs while another prepares prefills, and both feed a single execution stream in an efficient order.
+
+Multinode clusters can split these roles. Send prefill requests to one set of nodes and decode requests to another. Prefill nodes can use GPUs with high FLOPS and modest memory bandwidth, since prefill is compute-bound. Decode nodes can use GPUs with high memory bandwidth and fewer FLOPS. The catch is that mixed hardware can make load balancing harder. If the prefill-to-decode ratio shifts, decode workers with fewer FLOPS may become the bottleneck. Homogeneous nodes are simpler, so specialize only when the ratio is predictable.
+
+Context-aware request routing ties this together. Route by real-time factors such as KV cache hits, queue depth, and load. Then you can split prefill and decode across resources. Throughput stays high on long prompts, and short-prompt replies stay fast.
+
+For batching details, batch decode calls together whenever you can. For prefill, avoid mixing very short and very long prompts. Group requests into length buckets, such as the nearest 512-token bucket, so each batch wastes little compute on padding. Many engines run a token-level scheduler that forms batches at each generation step. It waits a few milliseconds to gather ready tokens, caps batch size to fit memory and occupancy, and uses round-robin or maximum-delay rules to keep long and short prompts fair. Confirm that your engine has this turned on.
+
+Adaptive batching and prefill-decode disaggregation can lift utilization and throughput without much latency cost. A busy GPU wastes less time, so tasks finish sooner overall.
 
 ---
 
@@ -165,6 +421,10 @@ PyTorch Compiler Modes and MoE Benchmark (ASP Chapters 13, 14, 19):
 - Artifact Mega-Cache: Persist compiled binaries across fleet restarts via TORCHINDUCTOR_CACHE_DIR and torch.compiler.save_cache_artifacts().
 ```
 
+The `torch.compile` call takes a mode, and the mode sets how far the compiler goes. The `default` mode fuses pointwise and reduction kernels but does not capture CUDA Graphs. The `reduce-overhead` mode wraps compiled pieces in CUDA Graphs, which suits small-batch decode. The `max-autotune` mode profiles Triton tile configs, cuBLASLt heuristics, and CUTLASS templates, along with CUDA Graphs. It has the longest warmup and the highest steady-state speed. The `max-autotune-no-cudagraphs` mode keeps the autotuning but skips graph capture, which helps when tensor shapes change a lot.
+
+Compilation and CUDA Graphs fix different problems. Graphs remove CPU launch overhead, but they leave each GPU kernel as it is. The compiler removes the extra trips to HBM between operations. A fast engine often uses both.
+
 On a sixty-four-expert Mixture-of-Experts model where routing and small operators create heavy launch and memory overhead, enabling `torch.compile` cuts step time from 248.0 ms to 173.0 ms, a 1.43x speedup. To prevent cold-start compilation storms when Kubernetes scales out new pods, mount a shared directory across nodes using `TORCHINDUCTOR_CACHE_DIR`. You can then serialize compiled artifacts with `torch.compiler.save_cache_artifacts()`.
 
 ### 2.2 Custom OpenAI Triton Fused Kernels for RMSNorm, RoPE, SwiGLU, and AllReduce
@@ -186,6 +446,32 @@ Modern inference engines apply that exact fusion principle to four core Transfor
 | **Total per Decode Step (80 Layers)** | **720 elemental launches** | **240 fused launches** | **Up to 2.0x–3.0x lower HBM traffic** | **4.32 ms vs 1.44 ms (3.0x faster)** | **Fused SRAM + CUDA Graph capture** |
 
 ### 2.3 Runtime Kernel Autotuning, Occupancy-Aware Shared Memory, and Hot-Swapping
+
+A model has many kernels, and each has settings a library usually picks once. Block size, tile shape, and loop unrolling all matter. In an online service, input sizes change from request to request. A choice that suits a 200-token prompt can be wrong for a 4,000-token one. Kernel autotuning picks, or even compiles, the best variant for the work in front of it.
+
+Attention shows this clearly. Standard attention reads its inputs from global memory, which is fine for short sequences. FlashAttention and its variants tile the work and reuse data in shared memory, which wins on long sequences. For very short inputs, the setup cost of tiling can outweigh its benefit. A dynamic engine can switch by sequence length `L`:
+
+```
+// Note: example threshold shown here
+if (seq_len < 256) {
+// global-memory version, best for small L
+attn_kernel = standard_attention_kernel;
+} else {
+// tiled loads, best for large L
+attn_kernel = tiled_attention_kernel;
+}
+output = attn_kernel(Q, K, V, mask);
+```
+
+The book notes that a benchmark on your own hardware may put the breakeven near `L = 128`. Measure that point rather than trusting a number. CUTLASS and OpenAI Triton both include autotuners that benchmark tile choices such as `(TILE_Q, TILE_K)` at startup, or even while serving.
+
+Feed-forward layers are two large matrix multiplies with an activation between them. cuBLAS and cuBLASLt can try several GEMM algorithms and keep the fastest. The search usually runs only the first time a given matrix shape appears. A server that sees batch sizes of 1 and 16 may need a different winner for each. The engine can microbenchmark candidates when a new batch size shows up, then reuse the result for later calls.
+
+Some runtimes go further. They use Triton to generate several tile variants, such as 128 × 128 or 64 × 256, and time each one on the real hardware. Programmatic dependent launch (PDL) can also shrink launch gaps where it is available. Profile after you enable it, since the gain is not guaranteed.
+
+Nsight Systems shows the CUDA timeline, including `memcpy` and NVLink activity, so you can compare kernel variants side by side. Nsight Compute reports memory workload, which ties cache and memory behavior to each kernel. It can reveal problems such as L2 cache misses. Hardware under load can surprise you, so empirical tuning beats pure theory. Still, start from sensible values.
+
+Tile size also changes occupancy. A bigger tile reuses data more and cuts launch overhead. It also uses more registers and shared memory, which can cut how many thread blocks run at once. A good autotuner weighs that trade-off for you.
 
 Even a fused kernel cannot use a single static tile size across every request length. In self-attention, a large shared-memory tile of 256 by 128 maximizes data reuse for long prompts by loading Key and Value blocks once from HBM. However, its 128 KB shared-memory footprint restricts the Streaming Multiprocessor to 60% occupancy. For short sequences under 256 tokens, a smaller tile of 64 by 64 or a standard global-memory attention kernel avoids tiling setup overhead and reaches 85% SM occupancy.
 
@@ -229,7 +515,92 @@ def hot_swap_compiled_attention(model: torch.nn.Module) -> None:
 
 When a kernel requires large tiles of 128 or 256, the engine calls `cudaFuncSetAttribute` with `cudaFuncAttributePreferredSharedMemoryCarveout`. That hint shifts the unified L1 and shared-memory pool from a 50% split to 75% shared memory and 25% L1 cache. If a faster kernel implementation such as FlashAttention-3 or a newly compiled TorchInductor graph becomes available, the server drains in-flight requests at an iteration barrier. It then hot-swaps the module's forward function pointer in place without reloading multi-hundred-gigabyte model weights.
 
+The runtime loop works like a database query optimizer that picks a query plan. Here the plan is the kernel. The engine measures batch size and sequence length, lists candidate kernels, benchmarks them briefly, caches the winner, and runs it. Over time it builds a library of tuned paths for short and long prompts and for small and large batches.
+
+Tuning has a cost, so the engine hides it. It can benchmark a candidate on a separate stream while the default kernel keeps serving. It can also tune during quiet periods. At model load, run a warm-up set that includes extremes, such as the maximum sequence length and the maximum batch. That way the hard cases are tuned before live traffic arrives.
+
+Keep watching layer times after startup. If one layer becomes the bottleneck because the inputs changed, revisit its kernel choice. Some frameworks use multiarmed bandit algorithms. These keep exploring alternative kernels and shift to whichever one is winning as conditions change.
+
+Tile choice also depends on shared memory and occupancy, which is how many thread blocks an SM can keep active. Treat the tile width `T` as the number of tokens each thread block handles at once. A tiled attention block needs roughly `T²` floats of shared memory for its query, key, and value chunks, since self-attention is quadratic.
+
+A large tile such as `T = 256` loads each key and value block once and reuses it for many queries. That cuts global-memory traffic. But only a few blocks fit on an SM at that size. The book's example: one block per SM at `T = 256` against four blocks at `T = 128` can mean roughly 30% occupancy at the larger tile. A small tile such as `T = 64` fits more blocks and hides latency better. It reloads the same key and value data more often, though.
+
+The best `T` depends on the sequence length `L`, the shared memory per block, and the SM count. You can benchmark candidates such as 64, 128, and 256 offline. Or compute `T` right before launch:
+
+```
+int T = choose_tile(L, gpu_shared_mem_per_block, num_sms);
+// calculate shared memory in bytes based on the tile size
+// (multiplying by 3 for Q, K, and V)
+size_t shared_mem_bytes = 3 * T * T * sizeof(float);
+numBlocks = ...
+MyAttentionKernel<<<numBlocks, threadsPerBlock, shared_mem_bytes>>>(...);
+```
+
+Inside the kernel, the buffer is declared with `extern __shared__`:
+
+```
+// holds 3 tiles of T×T floats for Q, K, and V
+extern __shared__ float smem[];
+// Q tile: smem[0 ... T*T-1]
+float* tile_q = smem;
+// K tile: smem[T*T ... 2*T*T-1]
+float* tile_k = smem + T*T;
+// V tile: smem[2*T*T ... 3*T*T-1]
+float* tile_v = smem + 2*T*T;
+```
+
+Because the size arrives at launch, one kernel binary can run many tile sizes. If occupancy is too low, shrink `T`. If DRAM traffic is thrashing, grow it. The engine can read its own achieved occupancy through the CUDA Occupancy API or DCGM, then adjust `T` on the next iteration.
+
+Registers count too. Unrolled loops speed up one thread but use more of the register file, which can leave fewer warps to schedule. A runtime that sees register limits can switch to a build that uses fewer registers, at the cost of extra instructions.
+
+Profiling shows the trade-off. Nsight Systems and Nsight Compute report achieved occupancy and efficiency per kernel, and DCGM reports SM occupancy for the whole system. Suppose an attention kernel at sequence length 2,048 reaches only 30% occupancy because each block uses a lot of shared memory. The system could split the attention work into two passes to free that memory. That helps only when memory latency is the real limit. For a memory-bound kernel that is not using its ALUs, more shared memory can help even if occupancy drops.
+
+Design kernels so tile and block sizes can change at runtime. CUTLASS provides runtime-tunable variants for this reason. Watch SM utilization too. Under 50% active warps points to idle warps and low occupancy. Over 70% memory stall cycles points to tiles that are too small, which means too much traffic. Either case calls for an adjustment.
+
+Many serving stacks keep a small table that maps sequence-length ranges to launch settings, stored in a JSON or config file. For example, length 512 might use 128 threads and 16 KB of shared memory, while length 4,096 uses 256 threads and 64 KB. That applies autotuning to resource allocation. It is easy to update when models or hardware change.
+
+NVIDIA GPUs share one on-chip pool between L1 cache and shared memory, and the carveout sets the split. A kernel can ask for more shared memory with `cudaFuncSetAttribute` and `cudaFuncAttributePreferredSharedMemoryCarveout`. Moving from a 50% split to 75% shared memory, with 25% L1, suits a large-tile kernel. The carveout is per kernel and is only a hint. Check its effect with profiling.
+
 Before you write custom CUDA C++ from scratch, compile your model with `torch.compile`, fuse residual RMSNorm, RoPE, and SwiGLU in OpenAI Triton, and drive tile sizes from live SM occupancy telemetry.
+
+### 2.4 Runtime Kernel Patching and Hot-Swappable Implementations
+
+New kernels appear all the time, including FlashAttention variants, megakernels, and hardware-specific tweaks. Runtime kernel patching puts a faster kernel into a running server without a full redeploy or a model reload. The goal is to swap a slower function for a faster one while traffic keeps flowing.
+
+Take a server that uses the default PyTorch scaled dot product attention (SDPA) kernel. Suppose a newer kernel such as FlashAttention-3 gives a 20% boost on long sequences in some cases. Normally you would install the library and restart. With runtime patching, you redirect calls to the new kernel while the server keeps running. For a 24/7 service, avoiding a restart matters a lot. In Python, a simple monkey patch can do it:
+
+```
+import new_flash_attn_lib
+# Monkey-patch the model's attention forward to use the new library
+old_attn_forward = model.transformer.self_attn.forward
+def new_attn_forward(self, *args, **kwargs):
+    return new_flash_attn_lib.forward(*args, **kwargs)
+model.transformer.self_attn.forward = (
+    new_attn_forward.__get__(
+        model.transformer.self_attn,
+        type(model.transformer.self_attn)))
+```
+
+This binds the new forward to the attention instance, so later calls go through the new code. The replacement must be drop-in compatible. Test it until its outputs match within a sensible numerical tolerance, so you avoid quality regressions.
+
+Another route is JIT patching. A compiler such as PyTorch Inductor or OpenAI Triton builds a faster version at runtime, and you plug it in:
+
+```
+compiled_forward = torch.compile(model.transformer.self_attn.forward, backend="inductor")
+model.transformer.self_attn.forward = compiled_forward
+```
+
+Done after model setup, this is hot patching. It swaps function pointers and avoids a reload. On the CUDA side, the driver API can load a custom PTX module into a live context without resetting the device. NVIDIA Runtime Compilation (NVRTC) can compile PTX from strings at runtime. If the function signatures match, the system updates the pointers. This is harder to build than a Python patch, but a high-performance engine may not run on Python at all.
+
+Thread safety matters. Drain the incoming request queue, or use a barrier, so no thread is inside the function you are replacing. This is the same care an OS takes when it loads a kernel module. Clean module boundaries help. Separate the attention and MLP kernels so you can swap one without touching the other. A monolithic model is harder to patch, though it may run faster, as megakernels can.
+
+Numerical equivalence is the rule. Optimized kernels are usually built to match the old result at the same precision, such as FP16. Patching also helps with quick fixes. If a known sequence of operations triggers a bug, you can patch in a fix right away instead of waiting for a release. Suppose an FP8 kernel misbehaves on unusual inputs. Detect those inputs, route them to a safer kernel, and log each switch.
+
+Roll out new kernels in phases. Send a small share of traffic to the new kernel through shadow testing or a canary. Compare latency and throughput with the old kernel. When the new one performs as expected and its output matches, release it to everyone. A feature flag such as `attention_impl = "fast"` or `"safe"` makes rollback a one-line change. The code must read the flag on every call, or the flag stays frozen and loses its purpose.
+
+Measure the new kernel on live traffic too. If it is not faster there, roll it back. Real hardware, untested batch sizes, and new load patterns can erase a lab win. An autotuner can close the loop by promoting a faster implementation to default once it beats the current one by a set margin. You can also load several implementations and let an RL agent pick one per request type. Keep the cost in mind, though. Each extra implementation takes code space and GPU memory.
+
+Popular engines such as vLLM, SGLang, NVIDIA TensorRT-LLM, and NVIDIA Dynamo already offer a good amount of this. TensorRT-LLM, for example, can load optimized kernels through runtime plugins. Runtime patching is about flexibility. Today's best kernel may not be tomorrow's, and a runtime that can swap quickly keeps up.
 
 ---
 
@@ -304,6 +675,101 @@ To prevent both failure modes, adaptive inference engines track an exponential m
 
 Never deploy speculative decoding with a hard-coded draft length in multi-tenant production; always couple draft depth to an online acceptance-rate EMA and a maximum batch-size cutoff.
 
+### 3.4 Speculative KV Prefetching for Faster TTFT
+
+Time to first token (TTFT) measures how quickly the system produces the first output token. A large share of that wait goes to setting up the KV cache, which stores past keys and values for every layer. If that cache sits in CPU memory or on an SSD, the first decode step can stall while the data is copied back to the GPU.
+
+KV prefetching moves data ahead of time. Once the prompt arrives, the server starts copying the pages it will need. By the time prefill finishes, the first output token already has its data in place. Speculative prefetching goes a step further. It guesses what the next token will need, which matters when several paths are possible, such as multiple replicas or MoE routes.
+
+SpeCache is one example. It compresses the KV cache to 16-bit and moves it off the GPU one layer at a time. After the first token, the model computes a speculative next token and prefetches the matching reduced-precision KV pairs. Each later step decodes two tokens in parallel, the real one and the speculative one. Before each step, the top-k most relevant 16-bit KV pairs for the speculative path are fetched. The book reports TTFT gains from this overlap. Adopt it only after you check your access patterns and storage tiers.
+
+Offloading follows the same idea in general. A KV cache can be very large, because models have many layers, contexts keep growing, and reasoning chains run long. Modern systems swap it across GPU memory, CPU memory, and SSD. Fetching it synchronously, right when it is needed, adds latency. A better design keeps only the current layer's KV on the GPU. It prefetches the next layer while the current one computes, and it writes the previous layer back to the CPU at the same time. The GPU rarely waits. The book still notes a throughput penalty of about 5% to 10% from the extra transfers.
+
+Hugging Face Transformers provides this as `OffloadedCache`. You turn it on with `cache_implementation="offloaded"` in `generate`. Use `"offloaded_static"` when you want static shapes with `torch.compile` and CUDA Graphs:
+
+```
+# Dynamic, variable-length serving and sliding layers
+# (recommended default)
+out = model.generate(..., cache_implementation="offloaded")
+# Static shapes + torch.compile and CUDA Graphs
+# (highest throughput with fixed shapes, use with torch.compile)
+# out = model.generate(..., cache_implementation="offloaded_static")
+```
+
+Under the hood, the cache stays one layer ahead. While layer 1 computes, it starts an asynchronous copy of layer 2's KV from CPU to GPU. When the pass reaches layer 2, the data is already local, so the stall that a synchronous copy would cause never happens.
+
+Speculative prefetching reaches beyond that one-layer lookahead. Picture several model replicas, or an MoE model where a token can go to one of several experts. By the end of prefill, ideally every layer's cache is either on the GPU or on its way there. That keeps the model from waiting on transfers once decoding starts. Track TTFT with NVTX markers. Spikes of idle time right after decode begins usually mean a missed prefetch.
+
+To build this in your own stack, use a separate CUDA stream for the copy, as covered in Chapter 11. An event tells the compute stream when the data is ready. The compute stream waits only at the point where the data is needed:
+
+```
+// kv_prefetch_overlap.cu
+#include <cstdio>
+#include <cuda_runtime.h>
+
+// Example sizes
+static constexpr size_t KV_BYTES = /* set to your chunk size */ 8ull << 20;  // 8 MiB
+
+__global__ void forward_kernel(/* ... */) {
+    // compute logits for current token ...
+}
+
+__global__ void consume_prefetched_kv(/* use prefetch_dest */) {
+    // consumes KV in prefetch_dest ...
+}
+
+int main() {
+    // Allocate destination buffer on this GPU
+    void* prefetch_dest = nullptr;
+    cudaMalloc(&prefetch_dest, KV_BYTES);
+
+    // Example: staging source on host. MUST be pinned for real overlap.
+    void* kv_src_host = nullptr;
+    cudaMallocHost(&kv_src_host, KV_BYTES);  // pinned (page-locked)
+    // Fill kv_src_host with data for the first iteration...
+
+    cudaStream_t compute_stream, prefetch_stream;
+    cudaStreamCreateWithFlags(&compute_stream, cudaStreamNonBlocking);
+    cudaStreamCreateWithFlags(&prefetch_stream, cudaStreamNonBlocking);
+
+    cudaEvent_t kv_ready;
+    cudaEventCreateWithFlags(&kv_ready, cudaEventDisableTiming);
+
+    bool done = false;
+    while (!done) {
+        // 1) Launch compute for current token
+        forward_kernel<<<1, 1, 0, compute_stream>>>();
+
+        // 2) Asynchronously prefetch next KV chunk
+        // If your source is another GPU, use cudaMemcpyPeerAsync
+        // and enable peer access.
+        cudaMemcpyAsync(prefetch_dest, kv_src_host, KV_BYTES,
+                        cudaMemcpyHostToDevice, prefetch_stream);
+        cudaEventRecord(kv_ready, prefetch_stream);
+
+        // 3) Ensure consumer on compute_stream waits just-in-time
+        cudaStreamWaitEvent(compute_stream, kv_ready, 0);
+
+        // 4) Launch work that consumes the prefetched KV
+        consume_prefetched_kv<<<1, 1, 0, compute_stream>>>();
+
+        // 5) ...advance state, update kv_src_host for next iteration, set `done`
+        done = true;  // demo
+    }
+
+    cudaEventDestroy(kv_ready);
+    cudaStreamDestroy(prefetch_stream);
+    cudaStreamDestroy(compute_stream);
+    cudaFree(prefetch_dest);
+    cudaFreeHost(kv_src_host);
+    return 0;
+}
+```
+
+Here, `cudaMemcpyAsync` runs on `prefetch_stream` while the forward pass uses `compute_stream`. That lets the driver overlap the transfer with compute. The synchronization happens only when the prefetched KV is needed, through the `kv_ready` event. The host buffer must be pinned, or the copy can serialize and lose the overlap. If the source is another GPU, use `cudaMemcpyPeerAsync` with peer access enabled. On Unified Memory systems such as Grace Blackwell or Vera Rubin, `cudaMemPrefetchAsync` can stage pages ahead of time. CUDA Graphs can capture the sequence when it repeats.
+
+Separate streams keep the pipeline full. While one token computes, the next token's KV is already in flight, which hides the transfer latency. Modern engines do this automatically through paged KV caching. Treat weight and KV movement as part of the pipeline. Always keep the next piece of data in flight while the current one computes.
+
 ---
 
 ## 4. Early Exit, Layer Skipping, Mixture of Depths, and Dynamic Precision Scaling
@@ -334,6 +800,18 @@ Modern Hopper and Blackwell GPUs provide hardware Tensor Cores for 16-bit, 8-bit
 | INT4 Weights + FP8 Activations (W4A8) | ~0.25x (25%) | ~1.8x (Mixed compute and memory) | ~0.5% drop | Memory-bandwidth-bound decode at moderate concurrency |
 | INT4 Weights + FP4 Activations (W4A4) | ~0.20x (20%) | ~3.5x (Peak 4.0x theoretical) | ~1.0% drop | High-confidence continuations and extreme memory pressure |
 
+Lower precision buys speed, but only when the model can afford it. Blackwell brings FP8 and FP4 Tensor Core math, which can speed up work a lot with little quality loss. The risk sits in the wrong places. A few sensitive layers, or a hard token, can break if you push them too low. So the engine needs a signal that says when precision can drop.
+
+One signal is logit sharpness, which is how confident the model is. If one token has an extreme peak, small rounding errors seldom change the winner. The engine can then use FP4 for the next few steps. A flatter distribution means more uncertainty, so the engine should stay in FP8 or FP16. The book measures this with Shannon entropy of the softmax over the vocabulary. Low entropy means a sharper prediction. A threshold tuned on a held-out validation set decides when precision can drop. Another simple rule is to use the lowest precision that keeps accuracy, and move up when the maximum softmax probability falls.
+
+Memory pressure is a second signal. With a very long context or many parallel requests, the engine can store attention keys and values in INT4 instead of INT8. That cuts their footprint by 50%. Check that quantization error does not compound across many decoding steps, and recheck output quality now and then. When the KV cache reaches 90% of memory, new entries can drop from INT8 to INT4, or old entries can be compressed. Attention keeps reading the cache without a stop.
+
+Combining 4-bit weights with 8-bit activations saves memory. Compute-limited kernels with FP8 activations can reach up to 2× throughput on high-bandwidth GPUs, and mixed or memory-bound work can reach 1.5×. FP4 activations push memory savings further, but the error can build up, so tune layer by layer.
+
+PyTorch's `torch.autocast` covers only FP16 and BF16 as of this writing, not FP8 or FP4. PyTorch has FP8 dtypes such as `torch.float8_e4m3` and `torch.float8_e5m2`, but autocast does not manage them. For FP8 and FP4, use NVIDIA's Transformer Engine (TE). On Blackwell, MXFP8 is the recommended default for FP8 paths. NVFP4 fits the KV cache and light layers, after careful regression testing. For latency-critical decode, prefer BF16 over FP16 when you use autocast. Validate numerics per layer on your own workload. The quality numbers in the table above depend on the model and kernel, so measure them on your data.
+
+Precision can also change per layer. Linear layers might default to FP8, while a runtime hook raises or lowers a layer's precision. FP4 suits light layers such as output projections, where a small error is tolerable. Early layers that read raw input often benefit from FP8 or FP16. The next step is per-token control. The engine runs the current token at a default precision, checks confidence, and picks the precision for the next token. Confident steps run low, and uncertain steps run high.
+
 In *AI Systems Performance Engineering* Chapter 19, `decode_with_dynamic_precision` adjusts numerical precision at the token level without stalling the GPU on per-step host synchronizations.
 1. **On-device confidence EMA.** At every decode step, the GPU computes the top-2 logit margin and updates an on-device exponential moving average with smoothing factor 0.2.
 2. **Interval host re-evaluation.** Synchronizing a float scalar to the host on every token would stall the GPU pipeline on every step. Instead, the host inspects the smoothed confidence only once every 8 steps.
@@ -341,7 +819,314 @@ In *AI Systems Performance Engineering* Chapter 19, `decode_with_dynamic_precisi
 
 Similarly, when long reasoning chains push GPU memory utilization toward exhaustion, `generate_with_dynamic_quantized_cache` switches the Hugging Face `QuantizedCache` using the HQQ backend (`q_group_size=64` and `residual_length=128`) from 8-bit down to 4-bit across 32-token generation chunks. That transition triggers whenever the smoothed `torch.cuda.mem_get_info()` used ratio reaches 0.90, following an initial 80% high-watermark alert for 8-bit compression.
 
+The book's pattern is a decode loop that switches precision on the fly. The code below still runs when Transformer Engine is missing. In that case it falls back to AMP only:
+
+```python
+import contextlib
+import torch
+
+# ----------------------------
+# Safe Transformer Engine (TE) FP8 autocast import
+# ----------------------------
+try:
+    # TE is only effective if your model actually uses TE-enabled layers
+    # (e.g., Linear, LayerNorm wrappers).
+    from transformer_engine.pytorch import fp8_autocast as _te_fp8_autocast  # type: ignore
+    _TE_AVAILABLE = True
+except Exception:
+    _TE_AVAILABLE = False
+
+    # No-op stand-in so the code runs without TE installed.
+    # It never changes numerical behavior.
+    class _NullCtx(contextlib.ContextDecorator):
+        def __init__(self, **_): pass
+        def __enter__(self): return self
+        def __exit__(self, *exc): return False
+
+    def _te_fp8_autocast(**_):
+        return _NullCtx()
+
+# ----------------------------
+# Helper: choose the precision context *for this step* safely
+# ----------------------------
+def _precision_context_cuda(use_fp8: bool, prefer_bfloat16: bool, enable_fp8: bool):
+    """
+    Enter exactly one precision context. If FP8 isn't enabled or TE is
+    missing/unused, fall back to AMP (BF16/FP16).
+    """
+    if use_fp8 and enable_fp8 and _TE_AVAILABLE:
+        # Note: fp8_autocast affects only TE-enabled modules. Non-TE modules
+        # run at their native dtypes.
+        return _te_fp8_autocast(enabled=True)
+    amp_dtype = torch.bfloat16 if prefer_bfloat16 else torch.float16
+    return torch.autocast(device_type="cuda", dtype=amp_dtype)
+
+def _precision_context(device: torch.device, use_fp8: bool,
+                       prefer_bfloat16: bool, enable_fp8: bool):
+    if device.type == "cuda":
+        return _precision_context_cuda(use_fp8, prefer_bfloat16, enable_fp8)
+    return contextlib.nullcontext()
+
+# ----------------------------
+# Main decode loop with smoothed, hysteretic precision switching
+# ----------------------------
+@torch.no_grad()
+def decode_with_dynamic_precision(
+    model,
+    tokens: torch.Tensor,
+    max_steps: int,
+    *,
+    device: torch.device = torch.device("cuda"),
+    prefer_bfloat16: bool = True,       # B200: prefer BF16 over FP16 for AMP
+    enable_fp8: bool = True,            # Allow FP8 when TE present
+    enter_fp8_threshold: float = 6.0,   # hysteresis upper bound (logit margin average)
+    exit_fp8_threshold: float = 3.0,    # hysteresis lower bound (avoid flapping)
+    reeval_interval: int = 8,           # compute/inspect confidence every N steps
+    topk_dim: int = -1,                 # last dimension holds vocabulary logits
+    eos_id: int | None = None,
+):
+    """
+    Autoregressive decode that switches between AMP (BF16/FP16) and FP8 (TE)
+    without a per-step host sync. Runs AMP only when TE is not installed.
+    """
+    assert exit_fp8_threshold <= enter_fp8_threshold, "Hysteresis requires exit <= enter threshold"
+    model.eval()
+    tokens = tokens.to(device, non_blocking=True)
+
+    use_fp8: bool = False                 # start in AMP
+    ema_conf: torch.Tensor | None = None  # stays on device; host consults only at intervals
+    alpha = 0.2                           # EMA smoothing factor for confidence
+
+    def _update_confidence_ema(logits: torch.Tensor) -> torch.Tensor:
+        nonlocal ema_conf
+        # logits: [B, vocab] or [B, T, vocab]. Use the last time-step if 3D.
+        last = logits if logits.dim() == 2 else logits[:, -1, :]
+        top2 = torch.topk(last, k=2, dim=topk_dim).values   # [B, 2]
+        margin = (top2[:, 0] - top2[:, 1]).mean()           # scalar tensor on device
+        ema_conf = (1 - alpha) * (ema_conf if ema_conf is not None else margin) + alpha * margin
+        return ema_conf                                      # device scalar
+
+    for step in range(max_steps):
+        # 1) Precision context (exactly one). No nesting, no leakage across iterations.
+        with _precision_context(device, use_fp8, prefer_bfloat16, enable_fp8):
+            try:
+                logits = model(input_ids=tokens)
+                if hasattr(logits, "logits"):
+                    logits = logits.logits
+            except TypeError:
+                logits = model(tokens)
+
+        # 2) Pick next token from the *last* position
+        last_step_logits = logits if logits.dim() == 2 else logits[:, -1, :]
+        next_token = torch.argmax(last_step_logits, dim=-1, keepdim=True)  # [B, 1]
+        tokens = torch.cat([tokens, next_token], dim=1)
+
+        # 3) Update on-device EMA every step (no host sync yet)
+        conf_dev = _update_confidence_ema(logits)
+
+        # 4) Re-evaluate precision on the host, one sync every N steps
+        if (step + 1) % reeval_interval == 0:
+            conf_value = float(conf_dev)
+            if not use_fp8 and enable_fp8 and _TE_AVAILABLE and (conf_value > enter_fp8_threshold):
+                use_fp8 = True
+            elif use_fp8 and (conf_value < exit_fp8_threshold):
+                use_fp8 = False
+
+        # 5) EOS handling
+        if eos_id is not None and (tokens[:, -1] == eos_id).all():
+            break
+    return tokens
+```
+
+The precision context is entered once per step, so contexts never nest or leak between iterations. PyTorch autocast handles BF16 or FP16. TE handles FP8 for modules that use TE layers. The thresholds 6.0 and 3.0 are examples. Calibrate them on a validation set with representative prompts, so faster precision does not hurt accuracy.
+
+The loop reads the confidence signal on the GPU every step, but it asks the host only every 8 steps. Each host check forces one synchronization, so checking on every token would stall the pipeline. The two thresholds form a hysteresis band. The engine moves to FP8 only above 6.0, and it returns to higher precision only below 3.0. That stops it from flapping between two adjacent tokens. The result is an elastic regime. Low-entropy stretches, such as punctuation or boilerplate, run in FP8. Uncertain stretches move back to higher precision.
+
 Always guard dynamic precision and KV cache compression switches with EMA smoothing, interval re-evaluation, and hysteresis bands so the engine never thrashes between modes on adjacent tokens.
+
+### 4.3 Real-Time KV Cache Compression and Policy Switching
+
+The KV cache grows with every token. Over a long chat, a long document, or a long reasoning chain, it can take more GPU memory than anything else. Compressing it is a natural fix. Real-time compression runs on the fly during inference, and a policy decides how much compression to apply at each moment.
+
+The simplest policy lowers precision. Many frameworks keep the cache in FP16 or BF16, since the model's activations are 16-bit. Keys and values can often drop to 8-bit or even 4-bit with little quality loss, especially for the most recent tokens. Hugging Face's `QuantizedCache` supports INT8 and INT4, and one setting turns it on: `cache_implementation="quantized"`. The cost is a little extra work to quantize and dequantize. In most cases, quality holds. If you also offload the cache to the CPU, pin the host buffers so transfers keep their speed.
+
+Figure 19-4 compares several KV cache algorithms, including dense caching with no compression. Compression is one choice among them. Policies can also change over time. One policy keeps the last 128 tokens in full precision and stores older tokens in 4-bit. Recent context usually matters most for the next token, so it stays sharp, while older history takes less space. Models also tend to favor recent context, so reading older compressed tokens often costs little. A policy can widen the full-precision window for very long prompts, or compress harder when GPU memory is tight.
+
+Memory pressure can drive the policy too. One rule compresses the whole cache to 8-bit once GPU memory passes 80%. A multitier version uses 8-bit under mild pressure and 4-bit under extreme pressure. In production, a high-watermark trigger at 80% that switches to 8-bit has been effective at preventing OOM crashes. Values that are small and have low variance can be quantized more aggressively, so the value range is also a useful signal.
+
+A truly real-time switch keeps more than one copy of the cache, such as FP16 and INT8 at once. When memory use crosses the threshold, attention starts reading the INT8 copy with its scale factors, and the FP16 copy is freed. That needs careful synchronization. Double buffering and background compression threads help. A CPU thread can quantize blocks with vectorized INT8 operations, then copy each finished block to the GPU. Make the switch at a safe point, such as the end of an iteration, and hide requantization in a background stream.
+
+Other compression methods exist. Lossless methods use entropy coding and clustering, but they are complex and often too slow in real time, even on a GPU. Chunk-wise ZFP, a floating-point compressor, and generic CPU compression are other options. For production LLM KV paths, though, quantization is still the common choice, since it balances speed against a 2–4× memory reduction. Lossless methods such as ZFP are mostly tested in offline and research settings for now, because their throughput lags quantized cache.
+
+Quantizing the cache works best with per-head, group-wise scaling rather than per-token scaling. Hugging Face's `QuantizedCache` calibrates the value range per attention head. It implements per-channel, group-wise quantization with a configurable group size. It also keeps a residual window of the newest tokens in their original precision. The method is a form of min-max quantization: scale by the largest absolute value in a tensor.
+
+The Half-Quadratic Quantization (HQQ) backend is a useful choice. It needs no calibration step and works on the fly. It supports 2-, 3-, 4-, and 8-bit formats, and it models outliers and heavy-tailed errors with a robust optimization. It ships a PyTorch path and a custom CUDA kernel for fast inference.
+
+Transformers cannot change the bit width of a cache that already exists. Instead, generate in small chunks. At each chunk boundary, build a new cache configuration. If memory is tight, the next chunk starts at 4-bit. This works like falling back to an offloaded cache after an OOM. The example below does exactly that, starting with an INT8 HQQ cache:
+
+```
+# dynamic_quantized_cache.py
+# Dynamic KV cache policy using Hugging Face Transformers' QuantizedCache (2025).
+# Starts with int8 HQQ and drops to int4 when device memory is tight.
+# Requires: transformers >= 4.55, hqq (for HQQ backend).
+#
+# This uses only public APIs:
+# - cache_implementation="quantized"
+# - cache_config as a dict
+#
+# References:
+# - KV cache strategies docs (QuantizedCache, HQQ/Quanto backends)
+from __future__ import annotations
+from typing import Dict, Optional
+import logging
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+def make_cache_config(
+    *,
+    backend: str,
+    nbits: int,
+    device: torch.device,
+    compute_dtype: torch.dtype = torch.float16,
+    q_group_size: int = 64,
+    residual_length: int = 128,
+    axis_key: int = 1,
+    axis_value: int = 1,
+) -> Dict:
+    """
+    Build a cache_config dictionary accepted by Transformers' quantized cache.
+    HQQ supports nbits in {2, 4, 8}; Quanto supports {2, 4}.
+    axis_key/axis_value=1 are recommended for HQQ.
+    """
+    return {
+        "backend": backend,                    # "HQQ" or "quanto"
+        "nbits": int(nbits),
+        "axis_key": axis_key,
+        "axis_value": axis_value,
+        "q_group_size": int(q_group_size),     # group size along head_dim
+        "residual_length": int(residual_length),  # recent tokens (orig precision)
+        "compute_dtype": compute_dtype,        # dequantization compute dtype
+    }
+
+def _gpu_used_ratio() -> float:
+    """
+    Return fraction of device memory used as 1 - free/total.
+    Uses CUDA driver info, which reflects true device state,
+    not just the PyTorch allocator's reserved bytes.
+    """
+    free, total = torch.cuda.mem_get_info()
+    return 1.0 - (free / total)
+
+@torch.no_grad()
+def generate_with_dynamic_quantized_cache(
+    model: AutoModelForCausalLM,
+    tokenizer: AutoTokenizer,
+    prompt: str,
+    *,
+    max_new_tokens: int = 256,
+    chunk_tokens: int = 32,
+    memory_threshold: float = 0.90,   # switch policy if used_ratio >= threshold
+    backend: str = "hqq",             # "hqq" or "quanto"
+    start_bits: int = 8,              # initial cache bit-width
+    fallback_bits: int = 4,           # lower bit-width on pressure
+    residual_length: int = 128,
+) -> str:
+    """
+    Generate text in chunks while allowing mid-run policy changes.
+    The policy applies to each chunk by choosing cache_config for that chunk.
+    If memory is tight, we switch from int8 to int4 in subsequent chunks.
+    """
+    backend = backend.lower()
+    assert backend in {"hqq", "quanto"}, "backend must be 'hqq' or 'quanto'"
+    if backend == "quanto":
+        assert start_bits in {2, 4} and fallback_bits in {2, 4}, "Quanto supports only 2 or 4 bits"
+    if backend == "hqq":
+        assert start_bits in {2, 4, 8} and fallback_bits in {2, 4, 8}, "HQQ supports 2, 4, or 8 bits"
+
+    device = model.device
+    inputs = tokenizer(prompt, return_tensors="pt").to(device)
+    generated_ids = inputs["input_ids"]   # [batch=1, seq_len]
+    tokens_remaining = int(max_new_tokens)
+    current_bits = int(start_bits)
+
+    # Use EOS if available to terminate early.
+    eos_id: Optional[int] = tokenizer.eos_token_id
+
+    while tokens_remaining > 0:
+        # Decide policy for this chunk based on current memory pressure.
+        if torch.cuda.is_available():
+            # Smooth the signal to avoid oscillation
+            # when multiple processes are active.
+            if 'used_ratio' in locals():
+                used_ratio = 0.8 * used_ratio + 0.2 * _gpu_used_ratio()
+            else:
+                used_ratio = _gpu_used_ratio()
+            if used_ratio >= memory_threshold:
+                current_bits = min(current_bits, fallback_bits)  # drop bits
+                logging.info(f"Current bits {current_bits}")
+
+        cache_cfg = make_cache_config(
+            backend=backend,
+            nbits=current_bits,
+            device=device,
+            compute_dtype=torch.bfloat16,
+            q_group_size=64,
+            residual_length=residual_length,
+            axis_key=1,
+            axis_value=1,
+        )
+
+        # Generate a small chunk with the chosen cache policy.
+        this_chunk = min(chunk_tokens, tokens_remaining)
+        out = model.generate(
+            input_ids=generated_ids,
+            max_new_tokens=this_chunk,
+            do_sample=False,                  # deterministic for clarity; adjust as needed
+            use_cache=True,
+            cache_implementation="quantized", # select QuantizedCache
+            cache_config=cache_cfg,           # pass backend + settings
+            pad_token_id=eos_id,
+            return_dict_in_generate=False,    # we only need the tokens here
+        )
+
+        # 'out' is [1, old_len + this_chunk]; slice out newly generated suffix
+        new_tokens = out[:, generated_ids.shape[1]:]
+        generated_ids = out
+        tokens_remaining -= new_tokens.shape[1]
+
+        # Early termination if the model emitted EOS.
+        if eos_id is not None and int(new_tokens[0, -1].item()) == eos_id:
+            break
+
+    return tokenizer.decode(generated_ids[0], skip_special_tokens=True)
+
+if __name__ == "__main__":
+    # Example usage. Replace with a model that supports your hardware.
+    ckpt = "meta-llama/Llama-3.1-8B-Instruct"
+    tok = AutoTokenizer.from_pretrained(ckpt)
+    mdl = AutoModelForCausalLM.from_pretrained(ckpt, torch_dtype=torch.float16).to("cuda")
+    text = generate_with_dynamic_quantized_cache(
+        mdl,
+        tok,
+        "Explain attention key-value caches in one paragraph.",
+        max_new_tokens=120,
+        chunk_tokens=32,
+        memory_threshold=0.90,
+        backend="hqq",      # or "quanto" if you installed Quanto
+        start_bits=8,
+        fallback_bits=4,
+        residual_length=128,
+    )
+    print(text)
+```
+
+The example starts with an INT8 HQQ cache and switches to INT4 when free GPU memory drops below the threshold. It reads free and total memory from `torch.cuda.mem_get_info()`, which reflects true device state rather than the allocator's reserved bytes. It also smooths the signal, so one spike does not flip the policy. Log each switch, so you can match compression events with any quality problems later.
+
+The policy can also loosen. If a long conversation ends and a short question follows, compression could stop, or caches could return to higher precision. The gain may be small, so it is not always worth the work. Avoid rapid toggling, though. Add hysteresis and a cooldown, and keep a high compression level until memory falls well below its trigger. Policies can also depend on request metadata. For example, premium users can get full quality while free-tier users get heavier compression.
+
+Eviction is another policy. Some architectures, especially those with sliding-window attention, can drop or downsample very old tokens. Figure 19-5 shows the intuition: the most useful tokens are the most recent ones. Beyond some length, such as 2,048 tokens, a system might decide that older tokens are unlikely to matter, based on heuristics or a smaller model. It can drop them or fold them into a short summary. That takes more model work and more support, but it is a real form of dynamic context management.
+
+Use the quantized cache features your engine provides where you can. They handle scale factors, attention kernels, and allocator monitoring. At minimum, log memory use. When it nears a limit, check whether a compression policy would avoid an OOM without hurting latency. Test output quality in your own domain. Many generative tasks tolerate 4-bit, but check for errors and unexpected outputs before you rely on it.
 
 ---
 
@@ -370,6 +1155,32 @@ Rack-Scale Interconnect and Congestion-Aware Scheduling Numbers (ASP Chapter 19)
 - NCCL Ring vs Tree on 72 GPUs: Ring AllReduce requires 71 (= 72 - 1) sequential hops; forcing NCCL_ALGO=Tree reduces latency to 6 (~log2(72)) steps.
 - Collective Wave Scheduling: A monolithic 72-GPU all-to-all fires 72 * 71 = 5,112 simultaneous messages (71 senders flooding GPU 0's 18 NVLink ports). Splitting into 4 waves of 18 GPUs (GPUs 1–18, 19–36, 37–54, 55–71) matches the 18-port ingress capacity and caps concurrent heavy transfers at 2–4 (instead of 12).
 ```
+
+Put numbers on that example. The 1,440 GB total is 180 GB per GPU times eight. A four-way TP pool uses four GPUs and leaves the other four idle. For a single very long request, a two-stage pipeline gives stage 1 GPUs 0–3 and stage 2 GPUs 4–7. Each stage then holds about 720 GB of HBM.
+
+The routing choice can be a small decision function. It reads runtime numbers, such as sequence length, memory use, and concurrency, and returns the pool for the request:
+
+```
+def choose_worker_pool(seq_len, gpu_mem_util, concurrent_reqs):
+    # For long contexts or high memory pressure,
+    # use hybrid pipeline + tensor parallelism
+    # (example thresholds shown here)
+    if seq_len > 4096 or gpu_mem_util > 0.8:
+        return "tp_pp_hybrid"
+    # For many simultaneous small requests, stick with tensor parallelism
+    if concurrent_reqs > 4:
+        return "tensor_parallel"
+    # Fallback to tensor-parallel for typical workloads
+    return "tensor_parallel"
+```
+
+The thresholds here are examples. Your router keeps one replica set for tensor parallelism only, and another for tensor plus pipeline. Long, memory-heavy jobs go to the second set. Short calls stay on the first, which skips pipeline overhead.
+
+Three terms help here. Tensor parallelism (TP) splits each matrix across GPUs. That speeds up matrix multiplies but adds all-reduce traffic. Pipeline parallelism (PP) assigns whole layers to different GPUs. That fixes memory limits but adds pipeline bubbles, the idle gaps while stages fill and drain. Expert parallelism places each expert of a mixture-of-experts model on a GPU, and the router sends each token to its top-k experts. Data parallelism copies the full model to every GPU and load-balances requests. It needs no GPU-to-GPU sync for a single request, which suits many small requests. It fails when the model does not fit on one GPU.
+
+Why not reshard on the fly? Resharding would wreck GPU caches, and moving massive weights would strain memory and network links. So the engine prebuilds the pools and routes requests among them. Figure 19-2 shows two hybrid pools across eight GPUs, one with TP = 4 and one with TP = 2.
+
+Use hardware telemetry for these choices, such as GPU memory use, compute use, and NVLink or NVSwitch traffic. If pipeline bubbles leave GPUs idle while memory has room, collapse to fewer stages. If a stage hits a memory or compute limit, add stages or raise the tensor-parallel degree. The aim is a balance of tensor and pipeline splits that keeps every GPU busy, within memory limits and latency targets.
 
 Inside a Grace Blackwell NVL72 rack, adaptive engines pair `choose_worker_pool` with topology-aware communication scheduling. Using `nvmlDeviceGetNvLinkUtilizationCounter` and NVTAGS, the scheduler places heavily communicating layers on adjacent NVSwitch ports. It also sets `NCCL_ALGO=Tree` to cut all-reduce steps from seventy-one down to six and staggers all-to-all exchanges into four waves of eighteen GPUs. Across racks, it enables `NCCL_CROSS_NIC` over multi-rail InfiniBand links and speculatively prefetches MoE expert assignments to cut cross-node bandwidth by up to thirty percent.
 
@@ -422,6 +1233,10 @@ In an NVL72 rack, 72 GPUs sit in one NVLink and NVSwitch domain. Each GPU has 18
 
 Each port carries 100 GB/s bidirectional, which is 50 GB/s per direction. Those are hard limits. When many GPUs send to one GPU, they all share that one GPU's ingress, and queues build up. The same happens in NVSwitch when every GPU exchanges data at the same moment. Once traffic leaves the rack over InfiniBand or Ethernet, each hop costs 5 to 10 µs for NDR, compared with under 1 µs for an NVSwitch hop.
 
+NVLink provides high-speed point-to-point links between GPUs, and between GPUs and the Grace CPU in Grace Blackwell modules. NVSwitch acts as an on-rack switch that connects all GPUs in an all-to-all topology. Each port carries 100 GB/s in both directions, or 50 GB/s each way. Those are hard limits. When many GPUs send to one GPU, they all share that GPU's ingress, and queues build up. The same happens inside NVSwitch when every GPU exchanges data at once, since the switch has a total throughput limit.
+
+A single GPU can theoretically push 1.8 TB/s in each direction. When several peers aim at it at the same time, though, they split that ingress. Leaving the rack is slower again. An InfiniBand NDR hop adds 5 to 10 µs, while an NVSwitch hop costs under 1 µs. Topology matters for that reason. GPUs on the same tray usually have faster, more direct paths than GPUs in other trays or on other nodes.
+
 **The practical rule:** never assume the topology. Ask for it with the CUDA topology APIs and NCCL's topology hints, query NVML and DCGM for per-port NVLink counters, and use Fabric Manager or NVSwitch tools for switch-level mapping.
 
 #### Seeing congestion before you fix it
@@ -436,6 +1251,8 @@ Suppose layer 0 on GPU 0 feeds layer 2 on GPU 2, but those GPUs sit at opposite 
 
 Treat it as a graph problem. The nodes are processes, the edge weights are data volume, and you look for the minimum cut. If two processes exchange tens of GB per second, put them on the same node. A well-chosen move can turn one 50 GB/s cross-node transfer into two 25 GB/s transfers inside nodes, cutting that communication latency by 50%. Moving a layer also moves its weights, which can be many GB, so remap between large batches or when the mapping will stay stable for a while.
 
+Remapping happens at startup and between inferences. Some systems run profiling passes early on to choose a placement. Processes that exchange tens of GB per second belong on the same node when possible. Processes that are compute-bound, or that barely talk to each other, can sit farther apart. This is a placement problem: map the graph of model layers onto GPUs so that communication costs the least. Remapping can also be iterative. Suppose the busiest link after one pass joins processes 3 and 4 across two nodes. The scheduler might swap one of them with a process on the same node, so they can talk locally.
+
 #### Choosing the NCCL algorithm
 
 A ring all-reduce passes data around a closed loop. It keeps every link busy, but latency grows with GPU count: on 72 GPUs the data makes 71 hops. A tree all-reduce organises GPUs as a logical binary tree, with chains inside a node and a pipelined dual-binary tree across nodes. It finishes in about log₂(72), roughly 6 steps. The tree may not saturate every link every moment, but no single link becomes a chokepoint.
@@ -448,6 +1265,8 @@ Two further tricks help. First, rotate the ring: if the same GPU pairs always ca
 
 Beyond one rack, GPUs talk through NICs and switches. GPUDirect RDMA lets a GPU read and write a remote GPU's memory without the host CPU, but the network is still slower than NVLink, so it becomes the limit unless you schedule it.
 
+GPUDirect RDMA, covered in Chapter 4, lets a GPU send to and receive from a remote GPU's memory without the host CPU in the path. Even so, the network has less bandwidth and more latency than NVLink, so it becomes the limit unless the scheduler manages the traffic. Modern InfiniBand fabrics use adaptive routing, which moves congested flows onto less busy paths. A higher-level scheduler can help by choosing the route for a transfer, or by splitting transfers into smaller chunks so the network can balance them.
+
 Use several NICs, called multirail. Two NICs per node give nearly twice the throughput of one, with a little overhead. NCCL splits rings and trees across NICs, and `NCCL_CROSS_NIC` controls whether a collective may use different NICs on different nodes. Enable it for large collectives on topologies designed for multirail. Also enforce NIC affinity: bind each GPU to the NIC on the same PCIe root complex or CPU complex, for example GPUs 0–3 to NIC 0 and GPUs 4–7 to NIC 1, using a static topology description for NCCL. If one NIC is saturated, move one GPU's traffic to another port for the next round.
 
 For the heaviest MoE clusters, replicate popular experts on several nodes to cut cross-node queries, or reduce hierarchically: aggregate inside each node first, then exchange a summary. NVIDIA SHARP can offload aggregation to the switch, and with network adaptive routing it removes bottlenecks. Treat the network as a schedulable resource, like GPUs and memory, and make the scheduler aware of the full fabric, for example fat-tree or dragonfly.
@@ -456,11 +1275,15 @@ For the heaviest MoE clusters, replicate popular experts on several nodes to cut
 
 In an MoE model each token goes to a few experts living on different GPUs, so traffic is all-to-all. With static placement, a popular expert makes its GPU a hotspot, and experts that work on the same tokens may sit at opposite ends of the fabric, say GPU 0 and GPU 71.
 
+In a naive setup, a few popular experts draw most of the traffic, and the GPUs that host them run hot. The scheduler can collect statistics on how often experts talk to each other and to the gating network. It then remaps experts to GPUs so the highest-traffic links shrink. A popular expert might move to a less busy GPU, or be duplicated so its load splits. This is heavy work, because moving an expert moves its weights. Schedule it for maintenance windows, and use logged routing metrics to choose the placement.
+
 The fix is to rearrange the experts. Put frequently co-used experts, for example experts 5 and 19, on the same GPU or node. Spread out or duplicate the very popular expert 7. Group experts that are used together on the same NVSwitch or server, a technique called expert bucketing. Treat it as graph partitioning with a minimum cut over token traffic. Moving an expert moves potentially GB of weights, so do it from logged routing statistics during scheduled maintenance windows. In short: spread the popular experts and colocate the chatty ones. This rearranges the workload to fit the network, not the other way round.
 
 #### Reacting while traffic is running
 
 Static settings are not enough for bursty traffic, so the best systems adapt continuously from telemetry.
+
+Congestion-aware scheduling works like dynamic packet routing in a network. Figure 19-13 shows the idea: steer around a jam as it forms. A scheduler that watches congestion feedback can throttle, reroute, or reorder work. Say one NVLink link is maxed out by a large pipeline activation transfer, and another high-priority transfer also needs that link. The scheduler can hold the second transfer for a few milliseconds. A brief queue is better than an overloaded link. Each tactic below turns that idea into a concrete action.
 
 - **Temporal load balancing:** if a link is saturated by a huge pipeline activation transfer, delay a second transfer by a few milliseconds. Brief queuing beats overload. If a big transfer is idle because its source GPU is computing, use the gap for low-priority data.
 - **Software adaptive routing:** with several NVSwitch planes or NIC rails, pick the less busy path for the next transfer, for example by keeping several NCCL communicators mapped to different paths. NVSwitch also offers virtual channels and hardware quality of service, so nonurgent traffic can use a lower-priority channel.
@@ -477,6 +1300,8 @@ Take a parameter-server pattern, where GPU 0 collects results from all 71 others
 
 Also limit concurrency. Roughly 2 to 4 simultaneous large expert-gather or broadcast transfers is the sweet spot. For 12 collectives, run 4 at a time and then the next 4. The serialised plan usually finishes sooner because it avoids congestion. Treating the fabric as a shared, scheduled resource keeps tail latency low, which is what serving users cares about.
 
+In short, congestion-aware, topology-aware scheduling is about matching the communication pattern to the hardware layout. Watch link usage in real time and adapt. Place tasks carefully, configure collectives well, route multinode traffic, rearrange MoE experts, and coordinate transfers finely. Treat the network as a schedulable resource, like GPUs and memory. Handled well, the NVLink and NVSwitch fabric behaves like one tightly coupled accelerator.
+
 #### Experimental ideas worth knowing
 
 The book labels these experimental and not widely available. Treat them as things to watch, not defaults.
@@ -489,6 +1314,8 @@ The book labels these experimental and not widely available. Treat them as thing
 | Dynamic token pruning (LazyLLM) | Compute KV only for important tokens, pruning stopwords and filler in prefill and decode | 20% to 30% lower end-to-end latency on long contexts |
 | Edge-oriented MoE memory budgeting | Keep a subset of low-bit experts in GPU memory and swap others from flash by usage | Keeps expert activation high with lower memory |
 | Dynamic quantisation and activation-range adjustment | Recompute observer ranges every N tokens from sliding-window statistics; FP8 for low-variance "cool" layers, FP16 for high-variance "hot" layers | Compute and memory savings without noticeable accuracy loss |
+
+A few of these ideas need work before you can use them. Early exit requires auxiliary classifiers at intermediate layers, so the model must be built or trained for it. DASH needs a gating network at each layer, which means a modified model. Speculative MoE routing wastes work when a guess is wrong, and it saves bandwidth only when guesses are good. Edge MoE budgeting keeps a subset of low-bit experts in GPU memory and swaps others in from flash according to usage. Dynamic quantization recomputes observer ranges every N tokens from sliding-window statistics. Low-variance "cool" layers can use FP8, while high-variance "hot" layers stay at FP16 because they need a wider range.
 
 For FP8, the book suggests a hybrid recipe: E4M3 for the forward pass and E5M2 for gradients, with delayed scaling in Transformer Engine. Keep `amax_compute_algo="max"` unless convergence analysis says otherwise.
 
@@ -548,6 +1375,62 @@ RL-Based Runtime Autotuner Reward and Safety Kill Switch (ASP Chapter 19):
 
 Start with deterministic heuristics for batching, precision, and routing, and wrap any online RL tuner in action-damping cooldowns and an automatic 50% tail-latency kill switch.
 
+### 6.3 Reinforcement Learning Agents for Runtime Tuning
+
+Many decisions in this chapter trade speed against accuracy, or throughput against latency. You can keep adding rules for each case, or let a reinforcement learning (RL) agent learn the trade-offs. The setup has four parts. The agent is the learner. The environment is the running server. The policy is what the agent chooses. The reward is the feedback that says whether a choice was good.
+
+Each RL step can be one inference request. The agent's actions might include:
+- Choose the parallelism mode: single, TP, PP, or hybrid.
+- Choose precision: full FP8, or a mix of FP8 and FP4.
+- Adjust the batch size or the batch-waiting time.
+- Enable or disable cache compression.
+- Enable or disable speculative decoding.
+- Select a smaller or a larger draft model for speculative decoding.
+- Enable or disable speculative KV prefetching.
+
+The state might include GPU utilization, memory utilization, average latency, and queue length. Normalize these inputs before training, such as dividing queue length by a maximum value, so the agent does not have to learn the scale itself. Training can happen offline, using logged data and a simulator. The book points to Hugging Face's TRL libraries for this work.
+
+A simple reward subtracts a latency penalty from throughput: `reward = throughput - λ * max(0, latency - SLA)`. Here `λ` is the penalty weight. A larger `λ` keeps the agent inside the SLA. A smaller one accepts some overshoot for more tokens per second. Pick it so the penalty for a typical overshoot roughly equals the gain you would trade for it. If a 10 ms delay is acceptable to gain 100 tokens per second, set `λ` so that 10 ms × `λ` ≈ 100, which gives `λ = 10.0`.
+
+A hard penalty is coarser. It subtracts a fixed amount whenever the SLA is missed:
+
+```
+reward = tokens_per_second - 1000 * (1 if latency > SLA else 0)
+```
+
+The soft penalty grows with the overshoot, which gives smoother gradients and a steadier policy. Here is a worked example. At 850 tokens per second, with latency at 110 ms, an SLA of 100 ms, and `λ = 10.0`, the soft reward is 850 − 10 × 10 = 750. The hard binary penalty of 1,000 gives −150 for the same case.
+
+The tuner runs beside the inference service, in a loop like this pseudocode:
+
+```
+# Pseudo structure for an RL-driven tuner
+# This loop runs in separate thread/process alongside main inference service.
+# e.g., {gpu_util:0.7, mem_util:0.9, avg_latency:120ms, req_queue:5}
+state = get_system_state()
+# e.g., 0 -> high precision, 1 -> low precision
+action = rl_agent.select_action(state)
+# Map action to actual parameter changes
+if action == 0:
+    precision_policy = "FP8"
+else:
+    precision_policy = "FP4"
+apply_precision_policy(precision_policy)
+# ... After the next token or set of tokens ...
+new_state = get_system_state()
+reward = compute_reward(old_state, new_state)
+rl_agent.update(state, action, reward, new_state)
+```
+
+Balancing throughput and latency is a multi-objective problem. A weighted sum is the usual way to combine the goals into one. Modeling the problem as a partially observable decision process, or doing Pareto front analysis, lets the agent learn its own trade-off instead. Proximal policy optimization (PPO) is a common choice for this tuning. It learns steadily in continuous action spaces and changes the policy gradually, which avoids large swings. Grid search struggles with many interacting knobs, so RL is worth trying once the basics are stable.
+
+Damping adds another guard. An action stays in effect for a minimum time or a minimum number of requests, so the agent does not thrash on every request. You can override damping for critical SLO violations, but do that sparingly.
+
+RL agents can make unsafe or poor moves while they learn. Limit the action space to safe ranges. Start from a good default policy built from your heuristics, and let the agent tune around it. You can also train online in shadow mode, where the agent occasionally tries a variant while the best known policy serves traffic. Shape the reward so that hard violations earn a heavy negative value, such as latency past a hard limit or an OOM. Hard-code forbidden actions too, even if the reward seems to favor them.
+
+Log every state, action, and reward. Structured logs, counters, and telemetry dashboards make it easier to debug an agent that starts behaving erratically. Keep a kill switch as well. If p95 latency rises more than 50% after the agent turns on, the system disables the agent, falls back to a static setup, and alerts the on-call engineer.
+
+RL-based online tuning is not yet mainstream in serving engines, but it is emerging. Start with simple heuristics for batching, precision, and routing. Add an RL agent once the basics are stable, as an incremental gain. The agent may find combinations that rules miss. It might learn that long prompts do best with pipeline parallelism and FP4 compression, while short prompts do best with pure tensor parallelism in FP8. Over time, inference servers may tune themselves this way.
+
 ---
 
 ## 7. Commands, Configurations, and Production Failure Modes
@@ -588,6 +1471,16 @@ Notice that `--speculative-config` sets `speculative_disable_by_batch_size` to 3
 | **3. Speculative Decoding Throughput Collapse** | Enabling speculative decoding with K=6 speeds up single-user chat by 2.2x but degrades cluster throughput by 30%–45% during peak traffic or creative prompts. | Static K=6 runs during low acceptance (0.30 -> 0.71x slowdown) or when batch size B ≥ 32 pushes verification tokens into the compute-bound regime. | Configure `speculative_disable_by_batch_size` at 32 or 16 and enable dynamic draft-length adaptation driven by live acceptance EMA. |
 | **4. Precision or KV Cache Thrashing Oscillation** | Inter-token latency exhibits rhythmic 40 ms jitter every few tokens; logs show hundreds of FP8 to BF16 or INT8 to INT4 switches per second. | Single-threshold controller without EMA smoothing or hysteresis bands reacts to per-token logit noise and synchronizes the host CPU on every step. | Use on-device EMA (0.2), inspect on host only every 8 steps, and enforce hysteresis (`enter_fp8_threshold=6.0`, `exit_fp8_threshold=3.0`). |
 | **5. Model Cascade Sequential Tail-Latency Blowup** | Average cost drops, but p99 end-to-end latency jumps from 500 ms to 1,050 ms during complex traffic bursts. | Router misclassifies hard prompts to the small model (> 35% fallback rate), forcing sequential execution of both models on tail requests. | Retrain the ModernBERT router classifier, lower small-model routing threshold for reasoning keywords, or race small and large models in parallel for strict SLAs. |
+
+### 7.3 Profiling-Driven Optimization
+
+Measure before and after every change. NVML, Nsight Systems, Nsight Compute, NVTX markers, and Prometheus metrics show bottlenecks while the server runs. The engine can use the same signals to decide when to apply a graph or kernel change. Some teams also scan telemetry for anomalies, which can point to optimization chances that a fixed dashboard misses.
+
+### 7.4 Putting It Together
+
+A successful inference service handles many users, large inputs, long reasoning chains, and strict latency SLAs, while still supporting very large models. It does this cost-effectively, because it needs less hardware for the same throughput. The network fabric is part of the design, not an afterthought. With good scheduling, NVLink and NVSwitch behave like a tightly coupled accelerator. The strongest setups combine these tools. An RL policy can choose when to switch parallelism or precision, and prewarming keeps the batching scheduler primed.
+
+You do not have to build all of this at once. Start with the easiest wins, such as caching and batching, then add the rest. The goal is a runtime that reconfigures itself as the workload changes. That is how a massive LLM becomes a well-tuned, scalable production service.
 
 Every dynamic optimization introduces a control loop; always pair each adaptive policy with a hard cutoff and a fallback guardrail so a shifting workload cannot push the controller into an unstable regime.
 

@@ -67,6 +67,46 @@ Alignment with your requirements is a third axis. Building your own platform is 
 
 Before you commit, be honest about your engineering maturity, your appetite for building and empowering teams, and the resources you have. Those answers show whether building an application platform is a sensible effort.
 
+### Managed service or roll your own
+
+Before you design anything, decide whether you should run the whole Kubernetes stack yourself. A managed service takes most of the deployment work off your plate. The provider runs the control plane, and you attach worker nodes whenever you need them. You still want reliable, declarative ways to provision those clusters, but you can skip most of the bring-up details. If you already rely on a cloud provider for compute, identity and monitoring, the managed route gives you a head start.
+
+The savings come with a price. You give up some flexibility and freedom. The biggest risk is vendor lock-in. If you design around one provider's services, and that provider raises prices or lets quality slip, you may have few ways out. Spreading across several providers helps a little. Each one still exposes Kubernetes features in its own way, and those differences become awkward to manage.
+
+Rolling your own gives you every knob. You choose the Kubernetes version, you can reach every flag on the control plane components, and you can work directly with the machines and the static Pod manifests written to disk. That power can hurt you if you do not learn the tool well. Developers care about the features of the platform, not about who runs the infrastructure underneath it. If you control those features, you can deliver a consistent experience across providers.
+
+Lean toward a managed service if:
+
+- Understanding Kubernetes sounds too arduous for your team right now.
+- Running a distributed system that your business depends on sounds dangerous.
+- The limits set by the vendor seem manageable.
+- You trust the vendor to respond to your needs and act as a good business partner.
+
+Lean toward rolling your own if:
+
+- Vendor-imposed restrictions make you uneasy.
+- You have little faith in the large cloud providers.
+- You are excited by the platform you can build around Kubernetes.
+- You want to give your developers a great experience with this container orchestrator.
+
+If you choose a managed service, you can skip most of the rest of this chapter. Add-ons and triggering mechanisms still apply to you.
+
+### Prebuilt installer or custom automation
+
+Whichever path you choose, automation is the guiding principle. Removing human toil cuts cost and improves stability. Engineers who run routine, tedious steps by hand are not spending that time on new work. People also make mistakes, and one wrong step can break a cluster. Spending engineering time up front to automate deployments pays back in saved toil and less troubleshooting later.
+
+If you run your own clusters, you must choose between a prebuilt installer and custom automation built from the ground up. The choice is similar to managed service versus roll your own. More control means more engineering effort.
+
+Prebuilt installers are plentiful. The CNCF website lists 180 Kubernetes Certified Service Providers. Some cost money and come with field engineers and support staff you can call. Others need research and experimentation before they work for you. The paid installers can take you from zero to Kubernetes with the push of a button. If your needs fit the installer's options and your budget allows it, this is a strong fit. When this was written, prebuilt installers were the most common approach in the field.
+
+Some custom automation is still needed even with a prebuilt installer. It usually means integrating with your team's existing systems. Building a custom installer is a different job. Homegrown automation makes sense only when all of these are true:
+
+- You have more than just one or two engineers to devote to the effort.
+- You have engineers on staff with deep Kubernetes experience.
+- You have specialized requirements that no managed service or prebuilt installer satisfies well.
+
+Start from your platform requirements. Those should come mostly from your app development teams, especially the earliest adopters. Do not build a platform in a vacuum. Give dev teams early prerelease versions to test, and keep a tight feedback loop for fixing bugs and adding features. Adoption of your platform depends on that loop.
+
 ## 2. Cluster topology choices
 
 | Topology | Description | Pros | Cons |
@@ -79,6 +119,51 @@ Before you commit, be honest about your engineering maturity, your appetite for 
 | Multi-cluster fleet | Many clusters under common management (CAPI, Argo, Karmada, MultiKueue, Rancher) | Scale beyond 5k nodes, isolate failure domains, regional | Complex networking/identity/observability |
 
 Guidance for AI platforms: separate **production inference** from **training/research** (different SLOs and security) when stakes warrant; keep training in as large a pool as possible to allow big jobs and fair sharing; use namespaces + quotas + Kueue for tenancy inside; keep a small **management cluster** (Cluster API, Argo CD hub, observability backend) separate from workload clusters; plan for **blue/green clusters** as the safest big-upgrade and migration strategy where capacity allows.
+
+### Cluster tiers
+
+Teams need a clear path for a change to travel from an idea to production. Calling every cluster an "environment" gets confusing, so this book uses the word tier for clusters. A tier is defined by its purpose, its SLOs and SLAs, and where it sits on the path to production. Tiers vary between organizations, but four show up often. Use the same deployment and life cycle systems in all four. Heavy use in the lower tiers shows those systems work before they touch a critical production cluster.
+
+- **Testing:** Single-tenant, ephemeral clusters, often with a time-to-live (TTL) that destroys them after a set time, usually less than a week. Platform engineers spin them up to test a component or feature. They have no SLO or SLA, and they usually run the latest platform version, or perhaps a pre-alpha release.
+- **Development:** Permanent clusters with no TTL. They are multitenant where that makes sense, and they have all the features of production. They run the first round of integration tests and check compatibility with alpha versions. They carry an SLO without a formal agreement. Availability should be near production level during business hours, because outages slow developers down. The applications on them have no SLO or SLA. They run the officially released alpha and/or beta platform version.
+- **Staging:** Permanent clusters, commonly shared by several tenants, used for final integration testing and sign-off before live production. Project managers, product owners and executives use them, and sometimes customers who need prerelease software. They have an SLO similar to development. They gain a formal SLA when external stakeholders or paying customers use them. They run the officially released beta version if the platform team keeps strict backward compatibility. If it cannot, staging should run the same stable release as production.
+- **Production:** The money-makers. These clusters serve customer-facing, revenue-producing applications and websites. Only approved, production-ready, stable software runs here, on the fully tested and approved stable platform release. Detailed SLOs are defined and tracked, and legally binding SLAs often apply.
+
+### Node pools or separate clusters
+
+A node pool groups nodes of one type inside a single cluster. The grouping can follow a unique characteristic of the machines or the role they play. Before you create pools, weigh them against separate clusters. Pools keep the cluster count down, but they add work. Workloads need node selectors to land in the right pool. Taints keep other workloads off nodes where they do not belong. Scaling gets harder too, because the system must watch each pool and scale it on its own. Separate clusters move that complexity into cluster management and federation, and you need more of them.
+
+Table 2-1 summarizes these pros and cons of using node pools.
+
+| Pros | Cons |
+|---|---|
+| Reduced number of clusters under management | Node selectors for workloads will often be needed |
+| Smaller number of target clusters for workloads | Node taints will need to be applied and managed |
+| | More complicated cluster scaling operations |
+
+A **characteristic-based** node pool holds nodes that have a component or attribute some workloads require. A GPU is the classic example. The network interface type and the ratio of memory to CPU also count. Those characteristics suit different workloads, so when they share one cluster, you group the nodes into pools to control where Pods land.
+
+A **role-based** node pool serves a function and is kept apart from resource contention. Its nodes may look like the rest. A common example is a pool dedicated to the ingress layer. That insulates other workloads from ingress traffic, which matters because resource requests and limits do not yet cover network usage. It also simplifies the networking model, since you know exactly which nodes face outside traffic. Role-based pools rarely move into separate clusters, because their machines play a real part in that cluster's job.
+
+Create pools only for a good reason. Do not split nodes into pools indiscriminately, because a Kubernetes cluster is complex enough already. You will probably need multicluster management whether or not you use pools. Many enterprises end up with a large number of distinct clusters. If you are tempted by characteristic-based pools, investing in multicluster management may pay off more, because you can then use separate clusters for each machine type you need.
+
+### Cluster sizing
+
+Cluster size shapes both the deployment model and the infrastructure plan. People often ask how many worker nodes a production cluster should have. That question differs from asking how many worker nodes your workloads need. If you run one production cluster for everything, the two answers match. Few teams ever get there. Kubernetes lets you treat clusters like cattle, not pets, and most enterprises that use it own a whole herd.
+
+Larger clusters offer these benefits:
+
+- **Better resource utilization:** Each cluster carries control plane overhead, including etcd and the API server. Platform services such as ingress controller proxies add more. A larger cluster repeats those services less often.
+- **Fewer cluster deployments:** If you run your own bare metal, you cannot spin clusters up and down on demand the way you can with a cloud provider. When you deploy rarely, the deployment can be less automated. Full automation may cost more engineering effort than it saves.
+- **Simpler cluster and workload management:** Fewer production clusters need less streamlined tools to allocate, federate and manage them. Federated management across many clusters is complex. Large enterprises have built bespoke systems for it, with limited success so far.
+
+Smaller clusters offer these benefits:
+
+- **Smaller blast radius:** A cluster failure touches fewer workloads.
+- **Tenancy flexibility:** Kubernetes has the mechanisms to build a multitenant platform. Sometimes a new cluster for one tenant saves more engineering effort. For example, one tenant may need a cluster-wide resource such as Custom Resource Definitions, while another needs strict isolation for security or compliance. Dedicated clusters suit that case, especially when those workloads need a lot of compute.
+- **Less tuning for scale:** Clusters that grow into several hundred workers often hit control plane bottlenecks. Troubleshooting and tuning take real effort, and smaller clusters cut that effort considerably.
+- **Upgrade options:** Smaller clusters make it easier to replace a cluster in order to upgrade it. Replacement has its own challenges, covered in the upgrades chapter (5.20). Small clusters make that strategy more attractive.
+- **Node pool alternative:** If you need GPUs or memory-optimized nodes, and you can run many small clusters, dedicated clusters for those needs are simple. That avoids managing several node pools inside one cluster.
 
 ### Dedicated versus colocated etcd and node pool sizing ratios
 
@@ -205,6 +290,24 @@ Classify changes (standard/pre-approved, normal, emergency); use progressive del
 
 A subtle failure mode in a pure hub-and-spoke Cluster API layout appears when a workload cluster runs the **Cluster Autoscaler**: the autoscaler runs inside the workload cluster watching for unschedulable pods, but if the `Cluster` and `MachineDeployment` objects live only in an external management cluster, the workload cluster depends on the management cluster's availability just to scale out during peak load. As *Production Kubernetes* (Chapter 2) notes, you can remove this external runtime dependency by running the Cluster API controllers and the workload cluster's own `Cluster` and `Machine` resources inside the workload cluster itself in a self-contained (pivoted/autonomous) manner. A central management cluster can still initiate cluster creation and deletion, while day-to-day autoscaling and local controller lookups against the `Cluster` custom resource happen entirely against the local API server.
 
+### Infrastructure automation with tools and operators
+
+Infrastructure management tools such as Terraform and CloudFormation (for AWS) let you declare the state you want for compute and networking. You write that state in text files, and the tool works to make reality match it. These tools are easy for engineers to adopt. They simplify fairly complex provisioning, and they fit a prescribed set of infrastructure that you stamp out again and again. Repeatable results support immutable infrastructure, where you replace machines instead of changing them.
+
+These tools lose value when requirements become complex, dynamic and dependent on conditions. Designing Kubernetes deployment across several cloud providers is one example. Data formats such as JSON and configuration languages handle conditionals and loops poorly. General-purpose programming languages handle them well. Teams do run these tools in production, but over time they often build technical debt that is very hard to pay down. Strongly consider Kubernetes operators for this job.
+
+Operators use custom resources and custom-built controllers. When you create an instance of a resource, the controller for that kind learns about it through the API server's watch mechanism. It then reads the desired state in the spec and works to fulfill it. Extending the Kubernetes API with resource kinds that represent infrastructure, and writing operators to manage them, is a powerful pattern. The book covers operators in more depth in its Chapter 11.
+
+Cluster API is exactly this idea. It is a collection of Kubernetes operators that manage the infrastructure for clusters. Look at that project before you start a similar one. If it does not meet your requirements, your team can help add features or support for the infrastructure providers you need. Kubernetes gives you strong automation for software deployments, and operators extend that to infrastructure. You can succeed with infrastructure management tools too, but you will get less flexibility and more workarounds, because configuration languages are limited compared with full programming languages.
+
+### Triggering mechanisms
+
+Whatever model you choose, something must fire the automation that installs, scales and upgrades clusters. That trigger matters. Managed services, prebuilt installers and custom automation all need one. Installers usually come with a CLI that starts an install. Using that CLI alone leaves you without a single source of truth or a cluster inventory. Without a list of your clusters, managing them gets hard.
+
+GitOps is a popular answer. The source of truth is a code repository that holds the configuration for every cluster. Committing configuration for a new cluster triggers its provisioning. Changing an existing configuration triggers an update, such as scaling worker nodes or upgrading Kubernetes and the cluster add-ons.
+
+A more Kubernetes-native approach represents clusters and their dependencies as custom resources. Operators then respond to that declared state by provisioning clusters. Cluster API follows this pattern. The source of truth becomes the Kubernetes resources stored in etcd on the management cluster. Multiple management clusters, for different regions or tiers, are common. You can combine the two approaches. Keep cluster manifests in source control, and let a pipeline submit them to the right management cluster. That gives you the best of both worlds.
+
 ## 9. Lab
 
 First, run the self-checking Python lab (`code/part05/day2_node_lifecycle_sim_lab.py`) locally. It verifies the GPU node validation gate (`dcgmi_diag`, `nccl_allreduce`, `ib_write_bw`) and `kubectl drain` eviction simulator (`evaluate_node_validation_and_drain`) and the `PK` Chapter 2 `etcd` topology advisor (`50` / `200` worker thresholds) and GPU fleet allocation-vs-utilization analyzer (`analyze_gpu_fleet_and_etcd_sizing`).
@@ -251,6 +354,10 @@ Next, on a multi-node `kind` or `kubeadm` cluster (all interactive shell steps b
 - "What do you monitor in a GPU Kubernetes platform? What do you page on?"
 - "What is Cluster API and when is it useful?"
 - "How do you handle a node with a failing GPU automatically?"
+
+## Summary
+
+Before you build a deployment model, look hard at the managed services and existing installers you could use, free or licensed. Keep automation as the guiding principle for every system you build. Work through the architecture and topology questions, especially uncommon requirements. Map the infrastructure dependencies and fold them into your deployment process. Decide how you will manage the machines that make up your clusters, and understand the containerized components that form the control plane. Build consistent patterns for installing add-ons. Version your platform, and set up day-2 management and upgrade paths before production workloads arrive.
 
 ## Exercises
 

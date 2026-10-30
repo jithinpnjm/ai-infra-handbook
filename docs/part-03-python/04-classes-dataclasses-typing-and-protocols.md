@@ -178,6 +178,58 @@ hacking
 
 This freedom has a cost. Adding data that the class cannot use usually does not make sense. Learning Python Chapters 30 and 39 show how attribute-access overloading can add privacy checks. Still, the open style saves syntax, and it suits simple data records well.
 
+### Attribute search climbs a class tree
+
+Every dot expression starts a search through a tree of linked objects. Suppose the tree holds two instances, `I1` and `I2`, a class `C1` that both were made from, and two superclasses, `C2` and `C3`, above `C1`. Each object carries its own names. When you ask for `I2.w`, Python checks `I2`, then `C1`, then `C2`, then `C3`. It stops at the first `w` it finds. If no object in the tree has the name, Python raises an error.
+
+In this tree, only `C3` defines `w`. So `I2.w` resolves to `C3.w`, and `I2` inherits `w` from `C3`. Other lookups take shorter paths. Both instances find `x` in `C1` and stop there, because `C1` sits lower in the tree and redefines `x`. A name stored on the instance itself, such as `I2.name`, is found without climbing at all.
+
+Classes higher in a tree are superclasses, and classes lower down are subclasses. The two words describe both a position and a role. A superclass provides behavior that all of its subclasses share. Because lookups start at the bottom, a redefinition lower in the tree replaces the version above it. That replacement is how a class customizes what it inherits.
+
+Python makes this literal. The classes and instances are real linked objects, and Python climbs those links each time you write `object.attribute`. A class acts as a factory for instances and holds shared behavior. An instance holds data that differs from one object to the next. In that sense, instances are like records, and classes are the programs that process them.
+
+Method calls follow the same tree with one extra step. When `I2.w` is a function and you write `I2.w()`, Python turns the call into `C3.w(I2)`. The instance becomes the first argument, which the method receives as `self`. Every method call therefore has a subject object. Calling `pat.giveRaise()` first finds `giveRaise` by inheritance, then passes `pat` to it. Writing `Employee.giveRaise(pat)` performs both steps by hand. This is the default case, and Python also has static and class methods, which are covered later.
+
+### Where an assignment stores an attribute
+
+Attributes appear the first time you assign them. The place where the assignment runs decides which object gets the name. Assignments at the top level of a `class` body attach names to the class, so every instance and subclass shares them. Assignments through `self` inside a method attach names to the instance that is being processed.
+
+Here, `setname` is defined inside the class. A `def` in a class assigns a name to the class, so every instance inherits `setname`. Inside the method, `self` is whichever instance made the call, so each instance stores its own name:
+
+```python
+class C2: ... # Make superclass objects
+class C3: ...
+class C1(C2, C3): # Make and link class C1
+    def setname(self, who): # Assign name: C1.setname
+        self.name = who # Self is either I1 or I2
+I1 = C1() # Make two instances
+I2 = C1()
+I1.setname('sue') # Sets I1.name to 'sue'
+I2.setname('bob') # Sets I2.name to 'bob'
+print(I1.name) # Prints 'sue'
+```
+
+Every object in a class tree is a namespace, so you can read or set any attribute by its full path. `C1.setname` is as valid as `I1.setname`, as long as the names `C1` and `I1` are in scope.
+
+### The constructor: `__init__`
+
+Calling `setname` after you create an instance is easy to forget. Reading `I1.name` before that call raises an undefined name error. A constructor solves this by filling in the attribute when the object is built.
+
+Python calls a method named `__init__` each time it creates an instance from a class. The new instance arrives in `self`, and any values in the class call's parentheses go to the arguments after `self`:
+
+```python
+class C2: ... # Make superclass objects
+class C3: ...
+class C1(C2, C3):
+    def __init__(self, who): # Set name when constructed
+        self.name = who # Self is either I1 or I2
+I1 = C1('sue') # Sets I1.name to 'sue'
+I2 = C1('bob') # Sets I2.name to 'bob'
+print(I1.name) # Prints 'sue'
+```
+
+Special names like `__init__` start and end with double underscores, so they stand apart from your own names. Python runs them automatically when a matching operation appears, and inheritance passes them down to subclasses. If a class omits one, the matching operation is not supported. If a class has no `__init__`, a class call still returns an instance, but Python does not initialize it.
+
 ### Subclasses customize by inheritance
 
 Sometimes you want a slightly different version of a class without editing the original. Python lets one class inherit from another. You list the superclass in parentheses in the new class header. The new class is the subclass, and it can redefine any name it wants to change.
@@ -200,6 +252,81 @@ Current value = "LP6e"
 ```
 
 The change stays outside `FirstClass`. Older instances keep their old behavior, so `x.display()` still prints the earlier message. This is why subclassing supports reuse so well. You customize a component without touching its source. Python's full inheritance rules include diamond patterns and metaclasses, which Learning Python handles in Chapters 31 and 40. For everyday application code, the instance and class view is enough.
+
+### Polymorphism and programming by customization
+
+Suppose you build an employee database. Most employees follow the same rules for salary, raises, promotions, and retirement. Engineers compute their pay in a different way. You do not want to copy the shared rules for every job type.
+
+Start with a general superclass that holds the default behavior. The bodies are placeholders here:
+
+```python
+class Employee: # General superclass
+    def computeSalary(self): … # Common or default behaviors
+    def giveRaise(self): …
+    def promote(self): …
+    def retire(self): …
+```
+
+Then write a subclass that changes only the method that differs:
+
+```python
+class Engineer(Employee): # Specialized subclass
+    def computeSalary(self): … # Something custom here
+```
+
+Because `computeSalary` in `Engineer` sits lower in the tree, it overrides the version in `Employee`. The other methods pass through unchanged. You then make instances of the class that matches each real employee:
+
+```python
+sue = Employee() # Default behavior
+bob = Employee() # Default behavior
+pat = Engineer() # Custom salary calculator
+```
+
+You can make an instance from any class in the tree, not only from the bottom. The class you call decides where the search begins, and so which version of each method runs.
+
+Put the three objects in one list and loop over them:
+
+```python
+company = [sue, bob, pat] # A composite object
+for emp in company:
+    print(emp.computeSalary()) # Run this emp's version: default or custom
+```
+
+Each `computeSalary` call runs the version that belongs to that object's class. The loop never checks what each object is. This is polymorphism: the meaning of an operation depends on the object it runs on. Code should care about what an object does, not what it is.
+
+Polymorphism also hides differences in interfaces. Consider a function that copies data from a reader to a writer. It only needs objects with `read` and `write` methods, and it does not care how those methods work:
+
+```python
+def processor(reader, converter, writer):
+    while True:
+        data = reader.read()
+        if not data: break
+        data = converter(data)
+        writer.write(data)
+```
+
+Then pass in subclasses that implement `read` and `write` for each data source:
+
+```python
+class Reader:
+    def other(self): … # Default behavior and tools
+class FileReader(Reader):
+    def read(self): … # Read from a local file
+class SocketReader(Reader):
+    def read(self): … # Read from a network socket
+…and others…
+processor(FileReader(…), converter, FileWriter(…))
+processor(SocketReader(…), converter, FileWriter(…))
+processor(FtpReader(…), converter, JsonWriter(…))
+```
+
+Each source keeps its `read` and `write` code in one place. You can change that code without affecting the callers, and the same `processor` function works for files, sockets, and any future source.
+
+After you work this way, a new program often comes together from existing parts. Most of the job is mixing superclasses that already do the required work. An `Employee` or `Reader` class written for one program can serve another program with no changes, so you get its code for free.
+
+Whole collections of superclasses, called frameworks, cover common jobs such as database access, testing, and GUI toolkits. With a framework, you often write one subclass that fills in a few expected methods. The framework's classes higher in the tree do most of the work. This style means combining and specializing code that is already tested.
+
+Getting there takes time. Object-oriented work also needs careful design to get the full reuse benefit. Programmers catalog common structures as design patterns, which help with those design choices. The Python syntax itself is simple, so it should not be the hard part.
 
 ### Classes live inside modules
 
@@ -286,6 +413,8 @@ For `print`, Python passes the object to `__str__`, and the returned string beco
 Some hooks must return a value, such as `__str__`. Others are more flexible. The `__add__` method returns a new object, which matches how built-in numbers and strings behave. Overloaded operators should behave like built-in ones, so a `*` hook that changed its object in place would surprise readers. Learning Python Chapter 30 covers the in-place hooks, such as `__imul__` for `*=`.
 
 Operator overloading is an optional feature. Most application code never needs it. Unless a class must mimic a built-in interface, plain method names are clearer. An expression like `*` may suit a matrix, but a named method usually serves the callers better. Special names are inherited like any other names. The `__init__` method appears in nearly every class, and `__str__` appears often. You can usually learn which attributes an instance will have by reading its `__init__`.
+
+A custom set intersection shows the choice. You can write it as a plain method named `intersect` and call it by name. You can also write it as `__and__`, and Python calls that method when it sees `&`. The operator form lets your objects act like built-in types, so code that expects a built-in can use them. Plain names are still clearer unless your objects truly behave like built-ins.
 
 ### Classes as records
 
@@ -440,6 +569,10 @@ D.__mro__      # (D, B, C, A, object)
 - **Liskov substitution principle**: subclasses must honour the base class contract (accept at least what the base accepts, return no less than promised, not raise new surprising exceptions).
 
 ### Composition over inheritance
+
+Inheritance and composition answer different questions. Inheritance describes what something is. A pizza-making robot is a kind of robot, so it inherits the usual robot properties. Those shared properties are written once and reused by every kind of robot. Composition describes what something has. The same robot is a team of parts, such as arms to roll dough and motors to move it to the oven. Each part can be its own class.
+
+A GUI shows both ideas. A window is built from widgets such as buttons and labels, and drawing the window draws those widgets too. That is composition. A custom button with its own font is a specialized version of a general button, which is inheritance.
 
 "Has-a" beats "is-a" for most infrastructure code: inheritance couples subclasses to parent implementation and creates deep, fragile hierarchies. Prefer holding collaborators as attributes and delegating:
 

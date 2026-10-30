@@ -290,6 +290,214 @@ Plugin.registry          # {'gpu': GpuCheck, 'netcheck': NetCheck}
 
 This is how plugin systems, model/operator registries (for example registering custom ops or Airflow-like operators), and ORM-like base classes self-register. A **class decorator** is the other light option (`@register` on a class, or `@dataclass`): it receives the finished class and returns it (possibly modified).
 
+### Helper functions, decorators and metaclasses
+
+Sometimes a class needs an extra method, but nobody knows which classes need it until the program runs. The choice might come from a user interface or from an editable configuration file. Plain inheritance cannot help in that case, because inheritance only works when the shared method is known while the classes are written. When the method is known in advance, a superclass does the job:
+
+```
+class Extras:
+def extra(self, args): # Normal inheritance: too static
+…
+class Client1(Extras): … # Clients inherit extra methods
+class Client2(Extras): …
+X = Client1() # Make an instance
+X.extra() # Run the extra methods
+```
+
+When the choice happens at runtime, each class could check the condition itself. That works, but it puts the whole burden on every class author, who has to remember to do the check at all:
+
+```
+def extra(self, arg): …
+class Client1: … # Client augments: too distributed
+if required():
+Client1.extra = extra
+class Client2: …
+if required():
+Client2.extra = extra # Add the extra method – maybe
+X = Client1()
+X.extra()
+```
+
+A cleaner option is a **helper function**, also called a manager function. The helper receives a class right after it is created, and it holds all of the decision logic in one place:
+
+```
+def extra(self, arg): …
+def extras(Class): # Helper function: too manual
+if required():
+Class.extra = extra
+class Client1: …
+extras(Client1)
+class Client2: …
+extras(Client2)
+X = Client1()
+X.extra()
+```
+
+The helper still depends on each class author calling it. A **metaclass** removes that step. You declare the metaclass once, and Python runs the logic at the end of every `class` statement that uses it:
+
+```
+def extra(self, arg): …
+class Extras(type):
+def __init__(Class, classname, superclasses, attributedict):
+if required():
+Class.extra = extra
+class Client1(metaclass=Extras): … # Metaclass declaration only
+class Client2(metaclass=Extras): … # Client class is instance of meta
+X = Client1() # X is instance of client class
+X.extra()
+```
+
+Because Python calls the metaclass automatically, it can augment, register, wrap, or otherwise manage each class. The client classes need only declare their metaclass. Every class that does so gets the augmentation, both now and later if the metaclass changes.
+
+Like decorators, metaclasses are optional in principle. They give you a more uniform and explicit structure. They also make it less likely that an application programmer forgets to augment a class the way an API requires. Finally, they avoid repeated code by keeping the customization in a single location. Be honest about the limit, though. A client can forget to name its metaclass just as easily as it could forget to call a helper. The explicit declaration just makes that mistake less likely.
+
+### Metaclasses versus class decorators
+
+Metaclasses and class decorators overlap in both use and benefit. Suppose the helper returns the augmented class instead of changing it in place. That gives the manager freedom to return any object that implements the class's expected interface:
+
+```
+def extra(self, arg): …
+def extras(Class):
+if required():
+Class.extra = extra
+return Class # Return the augmented class
+class Client1: …
+Client1 = extras(Client1) # Rebind to augmented class
+class Client2: …
+Client2 = extras(Client2)
+X = Client1()
+X.extra()
+```
+
+That looks like a class decorator, and it is one. A decorator rebinds a class name to the result of a function. So a decorator can change a class before any instance is created:
+
+```
+def extra(self, arg): …
+def extras(Class): # From helper to decorator
+if required():
+Class.extra = extra
+return Class
+@extras
+class Client1: … # Client1 = extras(Client1)
+@extras
+class Client2: … # Rebinds class independent of instances
+X = Client1() # Makes instance of augmented class
+X.extra() # X is instance of original Client1
+```
+
+The decorator automates the manual rebinding in the previous example. Instances are still made from the original class, so instance creation is not intercepted at all in this example.
+
+For adding methods at class creation, the choice between the two is arbitrary. The two tools differ in how they work. Decorators technically correspond to the metaclass call that makes and initializes a new class. Metaclasses have extra hooks, such as the methods that classes inherit, which decorators do not have directly. Metaclasses also manage the class itself, so using them only to manage instances adds an extra step. Decorators fit instance management better, and they overlap with metaclasses most strongly when managing classes.
+
+### Decorating every method automatically
+
+Metaclasses and decorators can also change individual methods. Suppose we have a `tracer` function decorator that prints a message on each call:
+
+```
+import time
+def tracer(func): # Use function, not class with __call__
+calls = 0 # Else self is decorator instance only
+def onCall(*args, **kwargs):
+nonlocal calls
+calls += 1
+print(f'call {calls} to {func.__name__}')
+return func(*args, **kwargs)
+return onCall
+```
+
+Applying `@tracer` by hand means adding a decorator line above every method we want to trace, and removing those lines later. That gets tedious for a whole class. It may not even be possible in dynamic code that depends on runtime settings. A metaclass can add the decorator to every method automatically. Because the metaclass controls the decoration, it can also apply runtime checks. The decorator is passed in as an argument, so it can differ from class to class:
+
+```
+"Apply any decorator to all methods of a class, with a metaclass"
+from types import FunctionType
+from decorators import tracer, timer
+def decorateAll(decorator):
+class MetaDecorate(type):
+def __new__(meta, classname, supers, classdict):
+for attr, attrval in classdict.items():
+if type(attrval) is FunctionType:
+classdict[attr] = decorator(attrval)
+return type.__new__(meta, classname, supers, classdict)
+return MetaDecorate
+class Person(metaclass=decorateAll(tracer)): # Use a metaclass
+def __init__(self, name, pay): # Pass any function decorator
+self.name = name
+self.pay = pay
+def giveRaise(self, percent):
+self.pay *= (1.0 + percent)
+def lastName(self):
+return self.name.split()[-1]
+def tester(aPerson):
+sue = aPerson('Sue Jones', 100_000)
+bob = aPerson('Bob Smith', 50_000)
+print(f'{sue.name=}, {bob.name=}')
+sue.giveRaise(.10)
+print(f'{sue.pay=:,.2f}')
+print('Last names:', sue.lastName(), bob.lastName())
+if __name__ == '__main__': tester(Person)
+```
+
+Running this file traces every method, because the metaclass decorated each one at class creation:
+
+```
+$ python3 decoall_meta.py
+call 1 to __init__
+call 2 to __init__
+sue.name='Sue Jones', bob.name='Bob Smith'
+call 1 to giveRaise
+sue.pay=110,000.00
+call 1 to lastName
+call 2 to lastName
+Last names: Jones Smith
+```
+
+To apply a different decorator, change only the decorator name in the `class` header line. These three header lines use the tracer and the timer:
+
+```
+class Person(metaclass=decorateAll(tracer)): # Apply tracer
+class Person(metaclass=decorateAll(timer())): # Apply timer, defaults
+class Person(metaclass=decorateAll(timer(label='**'))): # Decorator arguments
+```
+
+Class decorators can do the same job. The next example uses a class decorator that applies a function decorator to each method of the class it decorates:
+
+```
+"Apply any decorator to all methods of a class, with a decorator"
+from types import FunctionType
+from decoall_meta import tester
+from decorators import tracer, timer
+def decorateAll(decorator):
+def DecoDecorate(aClass):
+for attr, attrval in aClass.__dict__.items():
+if type(attrval) is FunctionType:
+setattr(aClass, attr, decorator(attrval)) # Not __dict__
+return aClass
+return DecoDecorate
+@decorateAll(tracer) # Use class deco, pass any func deco
+class Person: # Applies func decorator to methods
+def __init__(self, name, pay): # Person = decorateAll(..)(Person)
+self.name = name # Person = DecoDecorate(Person)
+self.pay = pay
+def giveRaise(self, percent):
+self.pay *= (1.0 + percent)
+def lastName(self):
+return self.name.split()[-1]
+if __name__ == '__main__': tester(Person)
+```
+
+Its output matches the metaclass version. The class decorator returns the augmented class rather than a proxy wrapper, so an instance of `Person` is still an instance of `Person`. That matters when code tests types. The methods are no longer the original functions, because they are rebound to decorators. That is rarely a problem in practice, and the metaclass version behaves the same way.
+
+Edit the `@` line to change the decorator or its arguments. These four lines show the options:
+
+```
+@decorateAll(tracer) # Apply tracer
+@decorateAll(timer()) # Apply timer, defaults
+@decorateAll(timer(label='**')) # Decorator arguments
+@decorateAll(timer(label='**', trace=0)) # More decorator arguments
+```
+
+So far, metaclasses look almost the same as decorators. They have one more trick, though. A metaclass can add methods that its classes inherit, and decorators have no direct counterpart for that. Those methods come with a limit, and understanding the limit requires a closer look at how Python searches for attributes.
+
 ### Metaclasses and the two-tree inheritance model (`FP` Chapter 24 & `LP` Chapter 40)
 
 A **metaclass** is the class of a class (`type` by default: `str.__class__ is type`, and `type.__class__ is type`). Subclass `type` to customise class creation: validate or rewrite the namespace, inject methods (as in `LP` Chapter 40's `Metaclass` applying `@tracer` to every method in a class dictionary, `MetaOne`/`MetaTwo`, and `FP` Chapter 24's `MetaBunch` and `CheckedMeta`), enforce interfaces, register classes, or provide declarative syntax (Django models, SQLAlchemy declarative, `enum.Enum`, `abc.ABCMeta`, pydantic v1 `ModelMetaclass`).
@@ -314,6 +522,898 @@ class FieldsMeta(type):
 ```
 
 Guidance: prefer, in order, (1) plain functions/composition, (2) decorators, (3) descriptors, (4) `__init_subclass__` and class decorators, (5) metaclasses only when you must control class *creation* itself (custom namespaces via `__prepare__`, intercepting `__call__`, combining with `ABCMeta`). Metaclass conflicts arise when combining two different metaclasses (`TypeError: metaclass conflict`), they are inherited implicitly (surprising), and they complicate debugging and type checking. If your reviewers cannot explain it in a minute, it is too clever.
+
+### Classes are instances of type
+
+To understand metaclasses, you first need a clearer picture of Python's object model. Every value has a type. Built-in lists are instances of the `list` class, and that class is itself made from `type`:
+
+```
+>>> type([]), type(type([])) # List instance is created from list class
+(<class 'list'>, <class 'type'>) # List class is created from type class
+>>> type(list), type(type) # Same, but with type names
+(<class 'type'>, <class 'type'>) # Type of type is type: top of hierarchy
+```
+
+User-defined classes work the same way. Their nonclass instances are made from the class, and the class is made from the built-in `type`:
+
+```
+>>> class Hack: pass # User-defined classes work the same
+>>> I = Hack() # Made from class, which is made from type
+>>> type(I), type(type(I))
+(<class '__main__.Hack'>, <class 'type'>)
+```
+
+The `__class__` attribute shows what each object was made from:
+
+```
+>>> [].__class__, list.__class__ # Instances and classes are both "instances"
+(<class 'list'>, <class 'type'>) # type(X) is normally same as X.__class__
+>>> I.__class__, Hack.__class__
+(<class '__main__.Hack'>, <class 'type'>)
+```
+
+Most programmers never think about this, because classes are created from `type` by default. It matters for metaclasses, though.
+
+### Metaclasses are subclasses of type
+
+Why does it matter that classes are instances of `type`? That relationship is the hook that lets us write metaclasses. We can create classes from a subclass of `type`, and we can customize that subclass with normal object-oriented techniques and class syntax. Those `type` subclasses are called metaclasses.
+
+This type relationship is not the same as normal inheritance. A class can also have superclasses, and it and its instances inherit attributes from them as usual. Superclasses appear in the parentheses of the `class` statement and in the class's `__bases__` tuple. The type a class is created from is a different relationship. Classes can get behavior from their type that normal inheritance search never shows. Metaclasses therefore define a second, secondary inheritance tree. Only classes use that tree, and Python falls back on it when the normal superclass search fails.
+
+### How a class statement calls type
+
+To route a class's creation to a metaclass, we need to know what a `class` statement does. Python first runs the nested block to collect the class's attributes. Names assigned at the top level of that block become attributes of the class object. Most are methods made by nested `def` statements, but they can be any data shared by all instances.
+
+At the end of the `class` statement, Python calls the `type` object to create the class:
+
+```
+class = type(classname, superclasses, attributedict)
+```
+
+The `type` object defines a `__call__` operator method. When `type` is called, it runs two other methods in turn:
+
+```
+type.__new__(typeclass, classname, superclasses, attributedict)
+type.__init__(class, classname, superclasses, attributedict)
+```
+
+The `__new__` method creates and returns the new class object. Then `__init__` initializes that object. These two methods are the hooks that metaclass subclasses use to customize classes at creation time.
+
+Take this class:
+
+```
+class Super: … # Inherited names here
+class Hack(Super): # Inherits from Super
+data = 1 # Class data attribute
+def meth(self, arg): # Class method attribute
+return self.data + arg
+```
+
+Python builds two attributes, `data` and `meth`. Then it calls `type` at the end of the statement. Names such as `__module__` are added from the code's context:
+
+```
+Hack = type('Hack', (Super,), {'data': 1, 'meth': meth, '__module__': '__main__'})
+```
+
+You can call `type` yourself to create a class on the fly. This example uses a lambda for the method and an empty superclass tuple. Python adds the `object` superclass automatically to topmost classes, as Chapter 32 showed:
+
+```
+>>> c = type('Hack', (), {'data': 1, 'meth': (lambda x, y: x.data + y)})
+>>> i = c()
+>>> c, i
+(<class '__main__.Hack'>, <__main__.Hack object at 0x108077c20>)
+>>> i.data, i.meth(2)
+(1, 3)
+```
+
+A class built this way matches one built by a `class` statement:
+
+```
+>>> c.__bases__
+(<class 'object'>,)
+>>> i.__class__.__mro__
+(<class '__main__.Hack'>, <class 'object'>)
+>>> [a for a in dir(i) if not a.startswith('__')]
+['data', 'meth']
+>>> [(a, v) for (a, v) in c.__dict__.items() if not a.startswith('__')]
+[('data', 1), ('meth', <function <lambda> at 0x1082179c0>)]
+```
+
+Because Python makes this `type` call automatically, it is a natural hook for augmenting classes. The trick is to replace the default `type` with a custom subclass that intercepts the call.
+
+### Declaring a metaclass
+
+Classes use `type` by default. To use a custom metaclass, list it as a keyword argument in the `class` header:
+
+```
+class Hack(metaclass=Meta): # Use Meta instead of type default
+```
+
+Without that declaration, Python calls `type`. With it, the call at the end of the `class` statement goes to `Meta`:
+
+```
+class = Meta(classname, superclasses, attributedict)
+```
+
+The `metaclass` keyword sets an instance relationship. That relationship gives inheritance only through the secondary metaclass tree. Normal superclasses can still be listed, and they take precedence because they sit in the primary tree. Here `Hack` inherits from `Super` normally and is also created by the metaclass `Meta`:
+
+```
+class Hack(Super, metaclass=Meta): # Normal supers OK: listed first
+```
+
+Superclasses must come before the `metaclass` keyword, following the rules for keyword arguments in function calls.
+
+### Metaclass method protocol
+
+When a metaclass is declared, the call at the end of the `class` statement goes to the metaclass:
+
+```
+class = Meta(classname, superclasses, attributedict)
+```
+
+A metaclass is a subclass of `type`, so the inherited `__call__` method hands creation and initialization to the metaclass when it defines its own versions of those methods. The metaclass call may then trigger these methods:
+
+```
+class = Meta.__new__(Meta, classname, superclasses, attributedict)
+Meta.__init__(class, classname, superclasses, attributedict)
+```
+
+Here is the earlier class again, with a metaclass declared:
+
+```
+class Hack(Super, metaclass=Meta): # Inherits from Super, instance of Meta
+data = 1 # Class data attribute
+def meth(self, arg): # Class method attribute
+return self.data + arg
+```
+
+At the end of this statement, Python runs this call internally:
+
+```
+Hack = Meta('Hack', (Super,), {'data': 1, 'meth': meth, '__module__': '__main__'})
+```
+
+If the metaclass defines `__new__` or `__init__`, the inherited `type.__call__` invokes them during this call. The metaclass can therefore run its own methods as part of building the class.
+
+### Coding a basic metaclass
+
+Metaclasses are written with ordinary `class` statements. By definition, they are classes that inherit from `type`, and they usually follow the interface that `type` expects. Python calls them automatically at the end of a `class` statement.
+
+The simplest useful metaclass subclasses `type` and overrides `__new__`. The override calls the default `type.__new__` to create the class object:
+
+```
+class Meta(type):
+def __new__(meta, classname, supers, classdict):
+# Run by inherited type.__call__
+return type.__new__(meta, classname, supers, classdict)
+```
+
+This metaclass does nothing useful, and we could let `type` build the class instead. It shows the hook, though. The metaclass runs at the end of the `class` statement, before any instance exists. So code in `__new__` or `__init__` can manage every class made from the metaclass.
+
+The next example adds prints to trace the process. It is the same idea in more tangible form:
+
+```
+class MetaOne(type):
+def __new__(meta, classname, supers, classdict):
+print('In MetaOne.new:', meta, classname, supers, classdict, sep='\n...')
+return type.__new__(meta, classname, supers, classdict)
+class Super:
+pass
+print('Making class')
+class Hack(Super, metaclass=MetaOne): # Inherits from Super, instance of MetaOne
+data = 1 # Class data attribute
+def meth(self, arg): # Class method attribute
+return self.data + arg
+print('Making instance')
+X = Hack()
+print('Attrs:', X.data, X.meth(2))
+```
+
+Run it, and notice that the metaclass fires before any instance is made. Metaclasses process classes, and classes process nonclass instances:
+
+```
+$ python3 metaclass1.py
+Making class
+In MetaOne.new:
+...<class '__main__.MetaOne'>
+...Hack
+...(<class '__main__.Super'>,)
+...{'__module__': '__main__', 'data': 1, 'meth': <function Hack.meth at 0x…>}
+Making instance
+Attrs: 1 3
+```
+
+Presentation note: this chapter's examples often truncate hex addresses and leave out some built-in `__X__` names in namespace dictionaries. They do this for brevity, and because built-in attributes change over time. Run the examples yourself for the full, if transient, detail.
+
+### Customizing construction and initialization
+
+A metaclass can also use the `__init__` hook that the `type` object's `__call__` runs. In general, `__new__` creates and returns the class object. `__init__` then initializes the class object that was passed in. Both methods work in classes that are not metaclasses, but `__new__` is rare there. A metaclass can use either or both hooks:
+
+```
+class MetaTwo(type):
+def __new__(meta, classname, supers, classdict):
+print()
+print('In MetaTwo.new:', meta, classname, supers, classdict, sep='\n...')
+return type.__new__(meta, classname, supers, classdict)
+def __init__(Class, classname, supers, classdict):
+print()
+print('In MetaTwo.init:', Class, classname, supers, classdict, sep='\n...')
+print('...init class object:', list(Class.__dict__.keys()))
+class Super:
+pass
+print('Making class')
+class Hack(Super, metaclass=MetaTwo): # Inherits from Super, instance of MetaTwo
+data = 1 # Class data attribute
+def meth(self, arg): # Class method attribute
+return self.data + arg
+print('\nMaking instance')
+X = Hack()
+print('Attrs:', X.data, X.meth(2))
+```
+
+Here `__init__` runs after `__new__`, and both run at the end of the `class` statement. An `__init__` written inside `Hack` is different. It runs later, when a nonclass instance is created, and the metaclass's `__init__` does not affect it:
+
+```
+$ python3 metaclass2.py
+Making class
+In MetaTwo.new:
+...<class '__main__.MetaTwo'>
+...Hack
+...(<class '__main__.Super'>,)
+...{'__module__': '__main__', 'data': 1, 'meth': <function Hack.meth at 0x…>}
+In MetaTwo.init:
+...<class '__main__.Hack'>
+...Hack
+...(<class '__main__.Super'>,)
+...{'__module__': '__main__', 'data': 1, 'meth': <function Hack.meth at 0x…>}
+...init class object: ['__module__', 'data', 'meth', '__doc__']
+Making instance
+Attrs: 1 3
+```
+
+### Other ways to code a metaclass
+
+Overriding `__new__` and `__init__` in a `type` subclass is the most common route. Other schemes also work. They do not fit the metaclass-method idea as neatly, but they still support creation-time work.
+
+A metaclass does not have to be a class at all. The `class` statement just calls a callable at the end of its processing. So any callable can serve as a metaclass, as long as it accepts the arguments and returns a compatible object. A simple factory function can do the job:
+
+```
+# A simple function can serve as a metaclass too
+def MetaFunc(classname, supers, classdict):
+print('In MetaFunc:', classname, supers, classdict, sep='\n...')
+return type(classname, supers, classdict)
+class Super:
+pass
+print('Making class')
+class Hack(Super, metaclass=MetaFunc): # Run simple function at end
+data = 1 # Function returns class
+def meth(self, arg):
+return self.data + arg
+print('Making instance')
+X = Hack()
+print('Attrs:', X.data, X.meth(2))
+```
+
+Output:
+
+```
+$ python3 metaclass3.py
+Making class
+In MetaFunc:
+...Hack
+...(<class '__main__.Super'>,)
+...{'__module__': '__main__', 'data': 1, 'meth': <function Hack.meth at 0x…>}
+Making instance
+Attrs: 1 3
+```
+
+Technically, such a function can return anything. Whatever it returns gets assigned to the class name, even if it is not a `type` instance. Other results may not support later instance creation. This blurs the line between metaclasses and class decorators, because both rebind names at the end.
+
+A normal class instance can also serve as a metaclass. Its `__call__` method catches the metaclass call through operator overloading. The `__call__` method calls the helpers that mimic `type`. Give those helpers names other than `__new__` and `__init__`. Otherwise, they run when the `MetaObj` instance is created, not when it is later called as a metaclass:
+
+```
+# A normal class instance can serve as a metaclass too
+class MetaObj:
+def __call__(self, classname, supers, classdict):
+print('In MetaObj.call:', classname, supers, classdict, sep='\n...')
+Class = self.__New__(classname, supers, classdict)
+self.__Init__(Class, classname, supers, classdict)
+return Class
+def __New__(self, classname, supers, classdict):
+print('In MetaObj.new: ', classname, supers, classdict, sep='\n...')
+return type(classname, supers, classdict)
+def __Init__(self, Class, classname, supers, classdict):
+print('In MetaObj.init:', classname, supers, classdict, sep='\n...')
+print('...init class object:', list(Class.__dict__.keys()))
+class Super:
+pass
+print('Making class')
+class Hack(Super, metaclass=MetaObj()): # MetaObj() is normal class instance
+data = 1 # Called at end of statement
+def meth(self, arg):
+return self.data + arg
+print('Making instance')
+X = Hack()
+print('Attrs:', X.data, X.meth(2))
+```
+
+The three methods are dispatched through the instance's `__call__`. The process does not depend on `type` dispatch rules. Output:
+
+```
+$ python3 metaclass4.py
+Making class
+In MetaObj.call:
+...Hack
+...(<class '__main__.Super'>,)
+...{'__module__': '__main__', 'data': 1, 'meth': <function Hack.meth at 0x…>}
+In MetaObj.new:
+...Hack
+...(<class '__main__.Super'>,)
+...{'__module__': '__main__', 'data': 1, 'meth': <function Hack.meth at 0x…>}
+In MetaObj.init:
+...Hack
+...(<class '__main__.Super'>,)
+...{'__module__': '__main__', 'data': 1, 'meth': <function Hack.meth at 0x…>}
+...init class object: ['__module__', 'data', 'meth', '__doc__']
+Making instance
+Attrs: 1 3
+```
+
+Normal superclass inheritance can supply the call interceptor too. The superclass plays the role `type` plays in the other examples. The next variant shows that the dispatch model works the same way. It is atypical code, but it makes the mechanism visible:
+
+```
+# Instances inherit from classes and their supers normally
+class SuperMetaObj:
+def __call__(self, classname, supers, classdict):
+print('In SuperMetaObj.call:', classname, supers, classdict, sep='\n...')
+Class = self.__New__(classname, supers, classdict)
+self.__Init__(Class, classname, supers, classdict)
+return Class
+class SubMetaObj(SuperMetaObj):
+def __New__(self, classname, supers, classdict):
+print('In SubMetaObj.new: ', classname, supers, classdict, sep='\n...')
+return type(classname, supers, classdict)
+def __Init__(self, Class, classname, supers, classdict):
+print('In SubMetaObj.init:', classname, supers, classdict, sep='\n...')
+print('...init class object:', list(Class.__dict__.keys()))
+class Super:
+pass
+print('Making class')
+class Hack(Super, metaclass=SubMetaObj()): # Invoke Sub instance via Super.__call__
+…rest of file same as Example 40-4…
+```
+
+The output is largely the same as before. The trace now shows normal inheritance at work. Its last lines are `Making instance` and `Attrs: 1 3`.
+
+Most metaclasses still achieve their goals by overriding `__new__` and `__init__` from `type`. That is usually simpler than the other schemes. Whatever the coding, the metaclass role overlaps with class decorators, as the earlier sections showed.
+
+### Instances never get metaclass attributes
+
+Metaclass attributes are visible to classes but not to the nonclass instances those classes make. A metaclass declaration sets up an instance relationship, and that relationship is not the same as superclass inheritance. Behavior defined in a metaclass applies to the classes made from it. It does not apply to those classes' own instances.
+
+This example has a metaclass with a `__new__` that prints a trace. Two classes use it, and the second inherits the metaclass link from its superclass:
+
+```
+class Meta(type):
+def __new__(meta, classname, supers, classdict): # Redefine type method
+print('In Meta.new:', classname)
+return type.__new__(meta, classname, supers, classdict)
+def meth3(self):
+return 'three!'
+class Super(metaclass=Meta): # Metaclass inherited by subs too
+def meth2(self): # Meta run twice for two classes
+return 'two!'
+class Sub(Super): # Superclass: inheritance versus instance
+def meth1(self): # Classes inherit from superclasses
+return 'one!' # But not from metaclasses for instance access
+```
+
+Once the module loads, the metaclass has handled both classes. Instances of `Sub` get names from their class and superclasses, but not from the metaclass:
+
+```
+>>> from metainstance import * # Runs class statements: metaclass run twice!
+In Meta.new: Super
+In Meta.new: Sub
+>>> X = Sub() # Nonclass instance of user-defined class
+>>> X.meth1() # Inherited from Sub
+'one!'
+>>> X.meth2() # Inherited from Super
+'two!'
+>>> X.meth3() # Not inherited from metaclass!
+AttributeError: 'Sub' object has no attribute 'meth3'. Did you mean: 'meth1'?
+```
+
+Classes behave differently. A class inherits names from its superclasses, and it also acquires names from its metaclass. In this example, the link to that metaclass comes from `Super` through `Sub`:
+
+```
+>>> Sub.meth1(X) # Own method
+'one!'
+>>> Sub.meth2(X) # Inherited from Super
+'two!'
+>>> Sub.meth3() # Acquired from metaclass
+'three!'
+>>> Sub.meth3(X) # Not a normal instance method!
+TypeError: Meta.meth3() takes 1 positional argument but 2 were given
+```
+
+The last call fails because the name `meth3` resolves to a metaclass method. The source of a name and the object you fetch it through both matter. Methods from a metaclass are bound to the class. Methods from normal classes are plain functions when fetched through the class, and bound to the instance when fetched through the instance:
+
+```
+>>> Sub.meth3
+<bound method Meta.meth3 of <class 'metainstance.Sub'>>
+>>> Sub.meth2
+<function Super.meth2 at 0x1085f7d80>
+>>> X.meth2
+<bound method Super.meth2 of <metainstance.Sub object at 0x108456420>>
+```
+
+The last two cases should look familiar from the bound-method coverage in Chapter 31. The first case resembles the class methods of Chapter 32, but it is new here.
+
+### Classes get metaclass attributes as a fallback
+
+Watch what happens when a class is an instance of a metaclass. The class acquires the metaclass attribute, but its own instance does not inherit it. Metaclass acquisition is separate from the normal inheritance that nonclass instances use:
+
+```
+>>> class M(type): attr = 1
+>>> class C(metaclass=M): pass # C is meta instance and acquires meta attr
+>>> I = C() # I inherits from class but not meta!
+>>> C.attr
+1
+>>> I.attr
+AttributeError: 'C' object has no attribute 'attr'
+>>> 'attr' in C.__dict__, 'attr' in M.__dict__
+(False, True)
+```
+
+Now make the attribute live in a superclass. The name is then visible to later instances, because their inheritance search covers the `__dict__` of each class in the superclass tree:
+
+```
+>>> class S: attr = 1
+>>> class C(S): pass # C is type instance and inherits from supers
+>>> I = C() # I inherits from class and supers
+>>> C.attr
+1
+>>> I.attr
+1
+>>> 'attr' in C.__dict__, 'attr' in S.__dict__
+(False, True)
+```
+
+This is why metaclasses often work by filling in a new class's namespace dictionary. Instances see names in their class, but they do not see names in its metaclass. If the same name exists in both places, the superclass version wins:
+
+```
+>>> class M(type): attr = 1
+>>> class S: attr = 2
+>>> class C(S, metaclass=M): pass # Supers have precedence over metas
+>>> I = C() # Classes search supers before metas
+>>> C.attr, I.attr # Instances search only supers
+(2, 2)
+>>> 'attr' in C.__dict__, 'attr' in S.__dict__, 'attr' in M.__dict__
+(False, True, True)
+```
+
+Distance does not change this. A superclass always beats a metaclass, because the primary tree is searched before the secondary tree:
+
+```
+>>> class M(type): attr = 1
+>>> class S2: attr = 2
+>>> class S1(S2): pass
+>>> class C(S1, metaclass=M): pass # Super two levels above meta: still wins
+>>> I = C()
+>>> C.attr, I.attr
+(2, 2)
+```
+
+Classes get metaclass attributes through their `__class__` link. Nonclass instances get class attributes the same way. This makes sense, because classes are also instances of metaclasses. The difference is that instance inheritance does not follow a class's `__class__`. It stays within the `__dict__` of each class in the superclass tree, following `__bases__`:
+
+```
+>>> I.__class__ # Followed by inheritance: instance's class
+<class '__main__.C'>
+>>> C.__bases__ # Followed by inheritance: class's supers
+(<class '__main__.S1'>,)
+>>> C.__class__ # Followed by instance acquisition: metaclass
+<class '__main__.M'>
+```
+
+Python checks the `__dict__` of each class on the class's MRO first. Only after that does it check the metaclass. The second step runs for fetches on classes, not on nonclass instances:
+
+```
+>>> [x.__name__ for x in C.__mro__] # See Chapter 32 for all things MRO
+['C', 'S1', 'S2', 'object']
+>>> [x.__name__ for x in M.__mro__] # Primary/secondary trees: class/meta
+['M', 'type', 'object']
+```
+
+These two MROs are flattened versions of the primary and secondary trees. Nonclass-instance inheritance searches only the first one. Class inheritance searches both when needed.
+
+### Metaclass declarations are inherited
+
+A `metaclass=M` declaration is inherited by the normal subclasses of that class, much as superclass links are. So the metaclass runs when each class that inherits the declaration is constructed.
+
+The next example ties these rules together. It shows how the two trees combine when a metaclass has its own superclass:
+
+```
+>>> class M2(type): attr4 = 4 # Metaclass inheritance tree
+>>> class M1(M2): attr3 = 3 # Gets __bases__, __class__, __mro__
+>>> class S: attr2 = 2 # Superclass inheritance tree
+>>> class C(S, metaclass=M1): attr1 = 1 # Gets __bases__, __class__, __mro__
+>>> I = C() # I gets __class__ but not others
+>>> I.attr1, I.attr2 # Instance inherits from super tree
+(1, 2)
+>>> C.attr1, C.attr2, C.attr3, C.attr4 # Class gets names from both trees!
+(1, 2, 3, 4)
+>>> M1.attr3, M1.attr4 # Metaclass inherits names too!
+(3, 4)
+>>> I.attr3
+AttributeError: 'C' object has no attribute 'attr3'. Did you mean: 'attr1'?
+```
+
+The failure at the end is the key point. Classes and metaclasses use the same links to build the MROs that inheritance scans. But instances do not inherit their class's metaclass names. They can still request them explicitly:
+
+```
+>>> I.__class__ # Links used at instance with no __bases__
+<class '__main__.C'>
+>>> C.__bases__
+(<class '__main__.S'>,)
+>>> C.__class__ # Links used at class after its __bases__
+<class '__main__.M1'>
+>>> M1.__bases__ # Link also used in metaclass inheritance
+(<class '__main__.M2'>,)
+>>> I.__class__.attr4 # Route inheritance to the class's meta tree
+4
+>>> I.attr4 # Though class's __class__ not followed normally
+AttributeError: 'C' object has no attribute 'attr4'. Did you mean: 'attr1'?
+```
+
+Both trees have flattened MROs, and inheritance uses the instance links:
+
+```
+>>> M1.__class__ # Metaclasses are classes too
+<class 'type'>
+>>> [x.__name__ for x in C.__mro__] # __bases__ tree from I.__class__
+['C', 'S', 'object']
+>>> [x.__name__ for x in M1.__mro__] # __bases__ tree from C.__class__
+['M1', 'M2', 'type', 'object']
+```
+
+In effect, a nonclass instance has no `__bases__` to search. It follows `__class__` to a class, then searches that class's bases. A class follows its bases first, then one `__class__` link to a metaclass, then that metaclass's bases.
+
+### The attribute lookup algorithm
+
+Metaclass acquisition is part of a larger rule. Python's attribute lookup runs two similar searches, and both use MROs built from `__bases__` links.
+
+Here is the simple version. To look up a name on a nonclass instance `I`, Python searches:
+
+1. The `__dict__` of `I` itself.
+2. The `__dict__` of every class on the `__mro__` found at `I.__class__`, from left to right.
+
+To look up a name on a class `C`, Python searches:
+
+1. The `__dict__` of every class on the `__mro__` found at `C`, from left to right.
+2. The `__dict__` of every metaclass on the `__mro__` found at `C.__class__`, from left to right.
+
+The MRO pseudocode from Chapter 32 states the same rules in shorter form:
+
+```
+[I.__dict__] + [x.__dict__ for x in I.__class__.__mro__]
+[x.__dict__ for x in C.__mro__] + [x.__dict__ for x in C.__class__.__mro__]
+```
+
+The first line covers a nonclass instance. The second covers a class, which searches its own tree and then the metaclass tree. Most programmers need only the first rule. The second rule adds one step for metaclasses, and that step works like the others. It is one more source in the procedure, not a new idea.
+
+The simple version has exceptions. The most important is the descriptor special case. Data descriptors, which define `__set__` to intercept assignment, take precedence over other sources. This rule keeps special names such as `__class__` and `__dict__` from being redefined by an instance dictionary:
+
+```
+>>> class C: pass # Inheritance special case...
+>>> I = C() # Class data descriptors have precedence
+>>> I.__class__, I.__dict__
+(<class '__main__.C'>, {})
+>>> I.__dict__['book'] = 'lp6e' # Dynamic data in the instance
+>>> I.__dict__['__class__'] = 'hack' # Assign keys, not attributes
+>>> I.__dict__['__dict__'] = {}
+>>> I.book # I.name comes from I.__dict__ as usual
+'lp6e' # But I.__class__ and I.__dict__ do not!
+>>> I.__class__, I.__dict__
+(<class '__main__.C'>, {'book': 'lp6e', '__class__': 'hack', '__dict__': {}})
+```
+
+This rule runs before the two basic rules. Most application code can ignore it, unless you write data descriptors yourself. Those follow the same special case:
+
+```
+>>> class D:
+def __get__(self, instance, owner): print('D.__get__')
+def __set__(self, instance, value): print('D.__set__')
+>>> class C: d = D() # Data-descriptor attribute
+>>> I = C()
+>>> I.d # Inherited data descriptor access
+D.__get__
+>>> I.d = 1
+D.__set__
+>>> I.__dict__['d'] = 'hack' # Define same name in instance namespace dict
+>>> I.d # But doesn't hide data descriptor in class!
+D.__get__
+```
+
+If the descriptor has no `__set__`, the instance's name hides the class name, as normal inheritance would predict:
+
+```
+>>> class D:
+def __get__(self, instance, owner): print('D.__get__')
+>>> class C: d = D()
+>>> I = C()
+>>> I.d # Inherited nondata descriptor access
+D.__get__
+>>> I.__dict__['d'] = 'hack' # Hides class names per normal inheritance rules
+>>> I.d
+'hack'
+```
+
+When Python finds a descriptor by inheritance, it runs the descriptor's `__get__` rather than returning the descriptor object. The special status of data descriptors changes which name wins, so the fuller procedure is needed.
+
+The fuller version runs in steps. For a nonclass instance `I`, Python first searches the `__dict__` of every class on the `__mro__` at `I.__class__`. If it finds a data descriptor there, it calls that descriptor's `__get__` and stops. Otherwise it returns a value from the `__dict__` of `I`. If neither applies, it calls a nondata descriptor or returns the value it found in the class.
+
+For a class `C`, Python first searches the `__dict__` of every metaclass on the `__mro__` at `C.__class__`. If it finds a data descriptor there, it calls that descriptor's `__get__` and stops. Otherwise it calls any descriptor, or returns a value from a class on `C`'s own `__mro__`. If neither applies, it calls a nondata descriptor or returns the value it found.
+
+Two notes apply. Python runs at most one MRO search for an instance, or two for a class, for each name lookup. The first appearance of a name in a given MRO wins, whatever its kind. The implied `object` superclass sits at the end of every MRO. The methods `__getattr__` and `__getattribute__` add more rules, and Chapter 38 covers them.
+
+Attribute assignment follows related rules. Assignment still invokes `__setattr__` when it is present. A data descriptor with `__set__` is also found on the class through the MRO, and it takes precedence over the normal storage model. For an instance, assignment checks the instance's superclass tree, calls `__set__` if it finds a descriptor, and otherwise stores the value in the instance. For a class, assignment runs the same check on the metaclass tree and stores the value in the class.
+
+Two more cases are exempt from these rules. First, the `super` built-in does not use normal inheritance. Its proxy objects scan a limited tail of an MRO, starting just after the class that contains the `super` call. Full inheritance applies to the `super` object itself only when that scan fails. Chapter 32 covers `super`. It is handy in simple cases, but it complicates inheritance in others.
+
+Second, built-in operations skip ahead. Implicit method fetches for operators do not start at the object. The next example uses `str`, the built-in, and `__str__`, the name you would call explicitly. A built-in starts one level higher than an explicit name does:
+
+```
+>>> class C: # Inheritance special case...
+attr = 1 # Built-ins skip a step
+def __str__(self): return('class')
+>>> I = C()
+>>> I.__str__(), str(I) # Both from class if not in instance
+('class', 'class')
+>>> I.__str__ = lambda: 'instance'
+>>> I.__str__(), str(I) # Explicit=>instance, built-in=>class!
+('instance', 'class')
+>>> I.attr # Asymmetric with normal or explicit names
+1
+>>> I.attr = 2; I.attr
+2
+```
+
+The same holds for classes. An explicit name starts at the class, but a built-in starts at the class's class. That is its metaclass, which defaults to `type`:
+
+```
+>>> class D(type):
+def __str__(self): return('D class')
+>>> class C(D):
+pass
+>>> C.__str__(C), str(C) # Explicit=>super, built-in=>metaclass!
+('D class', "<class '__main__.C'>")
+>>> class C(D):
+def __str__(self): return('C class')
+>>> C.__str__(C), str(C) # Explicit=>class, built-in=>metaclass!
+('C class', "<class '__main__.C'>")
+>>> class C(metaclass=D):
+def __str__(self): return('C class')
+>>> C.__str__(C), str(C) # Built-in=>user-defined metaclass
+('C class', 'D class')
+```
+
+Tracing a name can be hard. Every class in both trees also inherits from `object`, including the default `type` metaclass. An explicit call gets `__str__` from `object` before the metaclass. The `str` built-in skips ahead to the metaclass:
+
+```
+>>> class C(metaclass=D):
+pass
+>>> C.__str__(C), str(C) # Explicit=>object, built-in=>metaclass
+("<class '__main__.C'>", 'D class')
+>>> C.__str__
+<slot wrapper '__str__' of 'object' objects>
+>>> for k in (C, C.__class__, type):
+print([x.__name__ for x in k.__mro__])
+['C', 'object']
+['D', 'type', 'object']
+['type', 'object']
+```
+
+Attribute inheritance in Python is complicated. Most code never needs every twist. Still, uncertainty is hard to fit with good engineering. Keep your own code simple, so it does not depend on these dark corners.
+
+The full story lives in CPython's source files. `object.c` covers normal instances, and `typeobject.c` covers classes. Those files are the final source of truth. Reading them is rarely needed to use Python, but it helps when the rules get strange.
+
+### Metaclass methods
+
+Metaclass methods are the last piece. Inheritance has the limit we just saw, and that limit shapes how these methods behave. A method defined in a metaclass is inherited by, and processes, the classes made from that metaclass. It is not inherited by the nonclass instances those classes make.
+
+This example defines a metaclass method `z` and a class `C` that uses it:
+
+```
+>>> class M(type):
+def z(cls): print('M.z', cls) # A metaclass: instances=classes
+def y(cls): print('M.y', cls) # y is overridden by instance C
+>>> class C(metaclass=M):
+def y(self): print('C.y', self) # A simple class: nonclass instances
+def x(self): print('C.x', self) # Namespace dict holds x and y
+```
+
+Methods fetched from the class are plain functions, as usual. Methods fetched from a metaclass are bound to the class they were fetched from:
+
+```
+>>> C.x
+<function C.x at 0x10eaf4b80>
+>>> C.y # x and y defined in class itself
+<function C.y at 0x10eaf4ae0>
+>>> C.z # z acquired from metaclass
+<bound method M.z of <class '__main__.C'>>
+>>> C.z() # Metaclass method call: gets class
+M.z <class '__main__.C'>
+```
+
+Methods fetched through a nonclass instance are bound to the instance, unless `classmethod` or `staticmethod` is used. Here the instance does not see the metaclass names at all:
+
+```
+>>> I = C()
+>>> I.x() # Instance method calls: get inst
+C.x <__main__.C object at 0x10e9d1400>
+>>> I.y()
+C.y <__main__.C object at 0x10e9d1400>
+>>> I.z() # Instance doesn't see meta names
+AttributeError: 'C' object has no attribute 'z'
+>>> I.x
+<bound method C.x of <__main__.C object at 0x10e9d1400>>
+```
+
+Metaclass methods differ from normal methods in two ways. They are inherited only by classes, and they are bound to a class automatically.
+
+Metaclass methods also resemble class methods, though they differ in visibility. Both manage class-level data. A metaclass method is available only through the class. It does not need a `classmethod` declaration to be bound to the class. You can think of metaclass methods as implicit class methods with limited visibility:
+
+```
+>>> class M(type):
+def a(cls): # Metaclass method: gets class
+cls.x = cls.y + cls.z
+>>> class C(metaclass=M):
+y, z = 11, 22
+@classmethod # Class method: gets class
+def b(cls):
+return cls.x
+>>> C.a() # Call metaclass method; visible to class only
+>>> C.x # Creates class data on C, accessible to normal instances
+33
+>>> I = C()
+>>> I.x, I.y, I.z
+(33, 11, 22)
+>>> I.b() # Class method: sends class, not instance; visible to instance
+33
+>>> I.a() # Metaclass methods: accessible through class only
+AttributeError: 'C' object has no attribute 'a'
+```
+
+These are two very different ways to create class methods. The asymmetry is worth thinking about.
+
+Python 3.6 added another hook, `__init_subclass__`. It runs whenever the containing class is subclassed, and it receives the new subclass object as its one argument. It is less general than class decorators or metaclasses. It runs only for the class's own subclasses, and only when they are created. Like metaclass methods, it is converted to a class method implicitly.
+
+Metaclasses can also use operator overloading. A `__getitem__` method on a metaclass processes the classes that are its instances, not the classes' own instances:
+
+```
+>>> class M(type):
+def __getitem__(cls, i): # Meta method for processing classes:
+return cls.data[i] # Built-ins skip class, use meta
+# Explicit names search class + meta
+>>> class C(metaclass=M): # Data descriptors in meta used first
+data = 'hack'
+>>> C[0] # Metaclass instance names: visible to class only
+'h'
+>>> C.__getitem__
+<bound method M.__getitem__ of <class '__main__.C'>>
+>>> I = C()
+>>> I.data, C.data # Normal inheritance names: visible to instance and class
+('hack', 'hack')
+>>> I[0]
+TypeError: 'C' object is not subscriptable
+```
+
+If the metaclass and the class both overload the same operator, the metaclass version applies to the class. The class version applies to its nonclass instances:
+
+```
+>>> class C(metaclass=M):
+data = 'hack'
+def __getitem__(self, i):
+return self.data[i]
+>>> I = C()
+>>> I.data = 'code'
+>>> C[0], I[0] # C's [] from metaclass, I's [] from class
+('h', 'c')
+```
+
+Metaclass methods and instance methods are two ways to build objects in Python. The usual way uses a class and its nonclass instances. This ordinary class has shared class data, a constructor, a regular method, and operator overloading:
+
+```
+>>> class Employee: # A "normal" class
+rate = 50 # With shared class data
+def __init__(self, name, hours): # Plus instance data and methods
+self.name = name
+self.hours = hours
+def pay(self):
+print(f' {self.name} ${self.rate * self.hours:,.2f}')
+def __iadd__(self, hours):
+self.hours += hours
+return self
+```
+
+Making instances works as usual, and each call to the class makes a new object:
+
+```
+>>> pat = Employee('Pat', 2_000) # A "normal" nonclass instance
+>>> pat.pay() # Methods inherited from class
+Pat $100,000.00
+>>> pat += 1_000 # Updates instance data
+>>> pat.pay()
+Pat $150,000.00
+>>> pat2 = Employee('Pat2', 1_000) # Another "normal" instance
+>>> pat2.pay()
+Pat2 $50,000.00
+>>> pat2
+<__main__.Employee object at 0x10cf5c680>
+```
+
+A metaclass can supply the same kinds of things: data, regular methods, and operator overloading. There is no per-instance constructor, though. Methods receive a class rather than an instance, and that behavior reaches only subclasses and classes in the secondary "type" tree:
+
+```
+>>> class MetaEmployee(type): # A metaclass class
+rate = 50 # With metaclass data and methods
+def pay(cls):
+print(f' {cls.name} ${cls.rate * cls.hours:,.2f}')
+def __iadd__(cls, hours):
+cls.hours += hours
+return cls
+```
+
+Each new "instance" is a new class in this style, with its own class data:
+
+```
+>>> class pat(metaclass=MetaEmployee): # A metaclass instance: class
+name = 'Pat' # With class data per instance
+hours = 2_000
+>>> pat.pay() # Methods inherited from metaclass
+Pat $100,000.00
+>>> pat += 1_000 # Updates class data
+>>> pat.pay()
+Pat $150,000.00
+```
+
+The result is a class that holds both data and behavior, as an information record. Its nonclass instances do not get the metaclass behavior:
+
+```
+>>> pat2 = pat() # A "normal" instance of class pat
+>>> pat2.pay() # Metaclass behavior not available
+AttributeError: 'pat' object has no attribute 'pay'
+```
+
+Every additional "instance" needs its own class:
+
+```
+>>> class pat2(metaclass=MetaEmployee): # Metaclass instances are classes
+name = 'Pat2'
+hours = 1_000
+>>> pat2.pay() # With all metaclass data+methods
+Pat2 $50,000.00
+```
+
+Calling the metaclass with no arguments does not work, because it makes a class rather than an instance. Calling it with the full `type` arguments does work, since that is the same as running a `class` statement:
+
+```
+>>> pat2 = MetaEmployee('pat2', (), dict(name='Pat2', hours=1_000))
+>>> pat2.pay()
+Pat2 $50,000.00
+>>> pat2
+<class '__main__.pat2'>
+```
+
+In short, metaclasses let you build classes that work much like the nonclass instances used throughout this book. Many metaclass features add complexity for rare, narrow roles. That is worth remembering before you reach for one.
+
+### Metaclass summary and review
+
+A metaclass is a class used to create a class. Classes are instances of `type` by default. Metaclasses are usually subclasses of `type`, which customize how classes are made. They can override `__new__` and `__init__` to change the class creation call at the end of a `class` statement. They can also define data and methods for their instance classes. Those methods are inherited only by classes, not by nonclass instances. A metaclass can also be a simple function, as long as it returns an object for the new class.
+
+Declare a metaclass with a keyword argument in the `class` header: `class C(metaclass=M)`. Normal superclasses can be listed before the `metaclass` keyword. Python searches those superclasses before the metaclass when a class looks up a name.
+
+Decorators and metaclasses can both manage classes, because both run at the end of a `class` statement. A decorator rebinds a class name to a callable's result. A metaclass routes class creation through a callable. For managing classes, a decorator simply augments and returns the class object. A metaclass augments a class either before or after creating it. Metaclasses can also give their instance classes methods that decorators cannot provide directly.
 
 ### Abstract base classes, protocols and the data model hooks
 

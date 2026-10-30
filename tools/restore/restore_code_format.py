@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Re-wrap in backticks commands/options/paths/identifiers that lost code format. Usage: restore_code_format.py OLD NEW"""
 import re, sys
+PRODUCT={'NVLink','RoCE','InfiniBand','STREAM','MLPerf','SPEC','TTFT','TPOT','NVSwitch','DCGM','NCCL','MIG','GPUDirect'}
 o, n = open(sys.argv[1], encoding='utf8').read(), open(sys.argv[2], encoding='utf8').read()
 strip = lambda s: re.sub(r'```.*?```', '', s, flags=re.S)
 cs = lambda s: set(re.findall(r'`([^`\n]{3,40})`', strip(s)))
-dem = [x for x in cs(o)-cs(n) if re.match(r'^(-{1,2}[\w-]+|/[\w./-]+|[A-Z][A-Za-z]+(?:[A-Z]\w+)+|\w+_\w+)$', x) and x in re.sub(r'`[^`\n]*`','',strip(n))]
+dem = [x for x in cs(o)-cs(n) if re.match(r'^(-{1,2}[\w-]+|/[\w./-]+|[A-Z][A-Za-z]+(?:[A-Z]\w+)+|\w+_\w+)$', x) and x not in PRODUCT and x in re.sub(r'`[^`\n]*`','',strip(n))]
 parts = re.split(r'(```.*?```|`[^`\n]*`)', n, flags=re.S)
 cnt = 0
 for i in range(0, len(parts), 2):

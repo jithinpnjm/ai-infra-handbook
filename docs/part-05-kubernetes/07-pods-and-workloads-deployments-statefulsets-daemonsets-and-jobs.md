@@ -133,6 +133,17 @@ kubectl label deployments alpaca-test "canary=true"    # add or update (--overwr
 kubectl label deployments alpaca-test "canary-"        # remove the 'canary' label with a trailing dash
 ```
 
+Table 6-1 gives some valid label keys and values that follow these rules.
+
+| Key | Value |
+|---|---|
+| `acme.com/app-version` | `1.0.0` |
+| `appVersion` | `1.0.0` |
+| `app.version` | `1.0.0` |
+| `kubernetes.io/cluster-service` | `true` |
+
+When a domain name appears in a label or annotation key, it should match the entity it names. A project might define one set of labels for deployment stages, such as staging, canary, and production. A cloud provider might define annotations that switch on features for its own service.
+
 In API objects such as `Deployment` and `Job`, a selector like `app=alpaca,ver in (1, 2)` is written using `matchLabels` and `matchExpressions` (evaluated as a logical AND):
 
 ```yaml
@@ -142,6 +153,227 @@ selector:
   matchExpressions:
     - { key: ver, operator: In, values: [1, 2] }
 ```
+
+### Why labels exist
+
+Labels exist because of two lessons from running large applications. The first lesson is that production rarely stays a single instance. A team often starts with one copy of a program. As the app matures, that one copy multiplies into a set of objects. Kubernetes therefore uses labels to work with sets of objects, not single ones.
+
+The second lesson is that a fixed hierarchy will eventually fall short. A team may decide that every app is made of several services. Later, one service may be shared by several apps, and the tidy tree no longer fits. Labels stay flexible enough for this, because you can attach any grouping you need and change it later. For background on how Google approaches production systems, the book points to *Site Reliability Engineering* by Betsy Beyer et al. (O'Reilly).
+
+### Applying and changing labels
+
+Labels are easiest to see in an example. Suppose you run two apps, `alpaca` and `bandicoot`. Each app has two environments and two versions. Give every Deployment a `ver`, `app`, and `env` label, so you can slice the set in different ways later. A Deployment is a way to create an array of Pods.
+
+Start with the `alpaca-prod` Deployment. Its labels are set when it is created:
+
+```
+$ kubectl run alpaca-prod \
+--image=gcr.io/kuar-demo/kuard-amd64:blue \
+--replicas=2 \
+--labels="ver=1,app=alpaca,env=prod"
+```
+
+Next, create the `alpaca-test` Deployment with its own label values:
+
+```
+$ kubectl run alpaca-test \
+--image=gcr.io/kuar-demo/kuard-amd64:green \
+--replicas=1 \
+--labels="ver=2,app=alpaca,env=test"
+```
+
+Finally, create two Deployments for `bandicoot`. Here the environments are named `prod` and `staging`:
+
+```
+$ kubectl run bandicoot-prod \
+--image=gcr.io/kuar-demo/kuard-amd64:green \
+--replicas=2 \
+--labels="ver=2,app=bandicoot,env=prod"
+$ kubectl run bandicoot-staging \
+--image=gcr.io/kuar-demo/kuard-amd64:green \
+--replicas=1 \
+--labels="ver=2,app=bandicoot,env=staging"
+```
+
+You should now have four Deployments: `alpaca-prod`, `alpaca-test`, `bandicoot-prod`, and `bandicoot-staging`. This command shows their labels:
+
+```
+$ kubectl get deployments --show-labels
+NAME ... LABELS
+alpaca-prod ... app=alpaca,env=prod,ver=1
+alpaca-test ... app=alpaca,env=test,ver=2
+bandicoot-prod ... app=bandicoot,env=prod,ver=2
+bandicoot-staging ... app=bandicoot,env=staging,ver=2
+```
+
+The book also draws these labels as a Venn diagram (Figure 6-1).
+
+You can add or change labels after an object exists. This command adds a `canary` label to `alpaca-test`:
+
+```
+$ kubectl label deployments alpaca-test "canary=true"
+```
+
+**Warning.** This command changes only the label on the Deployment itself. It does not change the ReplicaSets or Pods that the Deployment creates. To change those, edit the template embedded in the Deployment, which Chapter 10 of the book covers.
+
+The `-L` option to `kubectl get` shows one label's value as a column:
+
+```
+$ kubectl get deployments -L canary
+NAME DESIRED CURRENT ... CANARY
+alpaca-prod 2 2 ... <none>
+alpaca-test 1 1 ... true
+bandicoot-prod 2 2 ... <none>
+bandicoot-staging 1 1 ... <none>
+```
+
+To remove a label, add a dash after its key:
+
+```
+$ kubectl label deployments alpaca-test "canary-"
+```
+
+### Selecting objects with labels
+
+Label selectors filter Kubernetes objects by their labels. A selector is a simple Boolean expression. People use selectors through tools such as `kubectl`, and objects use them too. Each Deployment creates Pods with the labels in the template embedded in the Deployment, and `kubectl run` configures that template.
+
+Running `kubectl get pods --show-labels` should list every Pod in the cluster. The book expects six `kuard` Pods across its three environments:
+
+```
+$ kubectl get pods --show-labels
+NAME ... LABELS
+alpaca-prod-3408831585-4nzfb ... app=alpaca,env=prod,ver=1,...
+alpaca-prod-3408831585-kga0a ... app=alpaca,env=prod,ver=1,...
+alpaca-test-1004512375-3r1m5 ... app=alpaca,env=test,ver=2,...
+bandicoot-prod-373860099-0t1gp ... app=bandicoot,env=prod,ver=2,...
+bandicoot-prod-373860099-k2wcf ... app=bandicoot,env=prod,ver=2,...
+bandicoot-staging-1839769971-3ndv ... app=bandicoot,env=staging,ver=2,...
+```
+
+You may see a label you have not seen before, `pod-template-hash`. The Deployment applies it to track which Pods came from which template version. That lets the Deployment manage updates cleanly, which Chapter 10 of the book covers.
+
+To list only Pods whose `ver` label is `2`, use the `--selector` flag:
+
+```
+$ kubectl get pods --selector="ver=2"
+NAME READY STATUS RESTARTS AGE
+alpaca-test-1004512375-3r1m5 1/1 Running 0 3m
+bandicoot-prod-373860099-0t1gp 1/1 Running 0 3m
+bandicoot-prod-373860099-k2wcf 1/1 Running 0 3m
+bandicoot-staging-1839769971-3ndv5 1/1 Running 0 3m
+```
+
+Separate two selectors with a comma to require both. This is a logical AND:
+
+```
+$ kubectl get pods --selector="app=bandicoot,ver=2"
+NAME READY STATUS RESTARTS AGE
+bandicoot-prod-373860099-0t1gp 1/1 Running 0 4m
+bandicoot-prod-373860099-k2wcf 1/1 Running 0 4m
+bandicoot-staging-1839769971-3ndv5 1/1 Running 0 4m
+```
+
+You can also ask whether a label is one of a set of values. This command asks for every Pod where `app` is `alpaca` or `bandicoot`, which matches all six Pods:
+
+```
+$ kubectl get pods --selector="app in (alpaca,bandicoot)"
+NAME READY STATUS RESTARTS AGE
+alpaca-prod-3408831585-4nzfb 1/1 Running 0 6m
+alpaca-prod-3408831585-kga0a 1/1 Running 0 6m
+alpaca-test-1004512375-3r1m5 1/1 Running 0 6m
+bandicoot-prod-373860099-0t1gp 1/1 Running 0 6m
+bandicoot-prod-373860099-k2wcf 1/1 Running 0 6m
+bandicoot-staging-1839769971-3ndv5 1/1 Running 0 6m
+```
+
+Finally, you can ask whether a label is set at all. This asks for Deployments with a `canary` label, whatever its value:
+
+```
+$ kubectl get deployments --selector="canary"
+NAME DESIRED CURRENT UP-TO-DATE AVAILABLE AGE
+alpaca-test 1 1 1 1 7m
+```
+
+Each of these has a negative version. Table 6-2 lists the operators.
+
+| Operator | Description |
+|---|---|
+| `key=value` | `key` is set to `value` |
+| `key!=value` | `key` is not set to `value` |
+| `key in (value1, value2)` | `key` is one of `value1` or `value2` |
+| `key notin (value1, value2)` | `key` is not one of `value1` or `value2` |
+| `key` | `key` is set |
+| `!key` | `key` is not set |
+
+For example, this asks for Deployments where `canary` is not set:
+
+```
+$ kubectl get deployments --selector='!canary'
+```
+
+You can combine positive and negative selectors:
+
+```
+$ kubectl get pods -l 'ver=2,!canary'
+```
+
+Kubernetes keeps two forms of selectors in API objects, because it does not break API compatibility. Most objects accept the newer form, which supports the full set of operators. The older form, used by ReplicationControllers and Services, only supports `=`. The selector `app=alpaca,ver=1` looks like this in the older form:
+
+```yaml
+selector:
+  app: alpaca
+  ver: 1
+```
+
+In the newer form, a `!=` test is written as a `NotIn` expression with a single value.
+
+### Labels in the Kubernetes architecture
+
+Labels also link related objects. Kubernetes is deliberately decoupled. It has no fixed hierarchy, and each component works on its own. Objects that need to relate to one another do so through labels and label selectors.
+
+A ReplicaSet finds the Pods it manages with a selector. A Service load balancer finds the Pods that should receive traffic with a selector. A Pod can use a node selector to choose the nodes it may run on. To restrict network traffic, you combine Network Policy with specific labels that mark which Pods may talk to each other.
+
+Labels are the glue that holds a Kubernetes application together. Your application will likely start with a few simple labels and queries. Expect the set to grow in size and sophistication over time.
+
+### Annotations
+
+Annotations look like labels, since both are key/value pairs. The difference is their purpose. Annotations store metadata for tools and libraries, and you do not use them to query or filter Pods. A program that drives Kubernetes through the API can store opaque data on an object this way. Tools can use that data themselves, or pass configuration between external systems.
+
+Labels identify and group objects. Annotations record where an object came from, how to use it, or what policy applies to it. The line between the two is blurry, so the choice is partly a matter of taste. When in doubt, add the information as an annotation. Promote it to a label if you later want to use it in a selector.
+
+Annotations are used to:
+
+- Record the reason for the latest update to an object.
+- Pass a specialized scheduling policy to a specialized scheduler.
+- Record the last tool to update a resource and how it was updated, so other tools can detect changes and merge smartly.
+- Attach build, release, or image details that do not fit in labels, such as a Git hash, a timestamp, or a pull request number.
+- Let a Deployment track the ReplicaSets it manages during rollouts.
+- Add data that improves a UI, such as a link to an icon.
+- Prototype alpha functionality, by encoding its parameters in an annotation instead of a new API field.
+
+Rolling deployments are the main case in Kubernetes. Annotations track the rollout status and keep the information needed to roll back to a previous state.
+
+Annotation keys use the same format as label keys. Because tools use them to talk to each other, the prefix part of the key matters more. Examples include `deployment.kubernetes.io/revision` and `kubernetes.io/change-cause`.
+
+An annotation value is a free-form string. That gives you room to store anything, but the server does not check it. People often store a JSON document as a string in an annotation. The Kubernetes server has no idea what format the value should follow, so the data may not be valid. That makes errors harder to track down.
+
+Every Kubernetes object has a `metadata` section, and annotations sit there:
+
+```yaml
+...
+metadata:
+  annotations:
+    example.com/icon-url: "https://example.com/icon.png"
+...
+```
+
+**Warning.** Annotations make loose coupling easy, which is powerful. Use them with restraint, or your objects fill up with an untyped mess of data.
+
+Avoid using the Kubernetes API server as a general-purpose database. Annotations suit small pieces of data that closely belong to one resource. If data has no obvious object to attach to, store it in a database built for that purpose.
+
+### Cleaning up the label examples
+
+Delete all the Deployments from this section with `kubectl delete deployments --all`. To be more selective, add the `--selector` flag to choose which Deployments to delete.
 
 ### Why containers share a Pod
 
