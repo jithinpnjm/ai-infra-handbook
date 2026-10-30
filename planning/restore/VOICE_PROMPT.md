@@ -25,6 +25,14 @@ HARD RULES LEARNED FROM THE FIRST CHAPTER
 - A checkpoint answer must keep its sentence count when the question asks for a fixed number ("in three sentences"). Do not tack extra sentences onto answers.
 - The finished reference chapter is docs/part-01-linux/01-the-linux-big-picture-kernel-userspace-distributions.md. Read its "Why this matters" and "Job 2/Job 3" sections to hear the target tone.
 
+LESSONS FROM REVIEWING FINISHED CHAPTERS (obey these)
+- Code formatting must be consistent: every command, flag (-n, --delete), config option (PermitRootLogin, ControlPersist), file name (authorized_keys, known_hosts) and path is in backticks EVERYWHERE, in prose, tables, failure sections and checkpoint answers. Do not leave the same name plain in one place and backticked in another.
+- Do not end sections with a templated "Before you X, check Y." line unless the chapter really needs it; closing guidance must be specific and different each time.
+- Never leave source abbreviations such as HLW, SCL or ASP in the text. Spell the book out ("How Linux Works, chapter 2") or drop it.
+- Do NOT copy the Exercises, Hands-on lab or Sources sections unchanged. Rewrite exercise prompts and lab introductions in the same human voice (keep every task, number, command and code block); only the Sources list may stay as it is.
+- Reduce heavy "label: colon" bold headings inside exercises ("OpenSSH StrictModes Permission Validation:") into a plain sentence that says what the reader will do.
+- Where a section has a number-based argument, tell it as a worked example with the arithmetic shown (the model book's strongest habit).
+
 PROCESS
 a. `python3 tools/restore/sections.py split {target} {work}` (already done if {work}/old exists). Run `python3 tools/restore/sections.py status {work}`.
 b. For each section file {work}/old/NN.md: Read it, then Write the rewritten section to {work}/new/NN.md. Then run `python3 tools/restore/voice_gate.py {work}/old/NN.md {work}/new/NN.md`. Fix every FAIL (content loss must be zero: restore any missing term or number first). Tiny sections may fail the readability or cue lines because they are short; do your best and move on after two tries. Sections with no prose (pure tables or code) may be copied unchanged.

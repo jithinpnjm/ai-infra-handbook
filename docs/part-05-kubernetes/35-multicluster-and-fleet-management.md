@@ -162,6 +162,27 @@ Design rules:
 - Pin versions (chart, image digest) and promote through environments.
 - Fleet-wide changes need a **kill switch**: pause the ApplicationSet or revert the Git change; practise it.
 
+### Each region is a stage
+
+One deployment is not enough for users spread across the world. A Kubernetes cluster is normally meant to live in a single region and hold one complete copy of the application. So a worldwide application is several clusters, and each one has its own configuration. Building the full worldwide system, including hard parts such as data replication, is a large topic of its own. The part you can settle early is how to arrange the configuration files.
+
+A region's configuration is the same kind of thing as a stage in the life cycle. So adding regions works like adding stages. A simple list might be Development, Staging, Canary and Production. A worldwide list might be Development, Staging, Canary, EastUS, WestUS, Europe and Asia.
+
+In a directory layout, each region gets its own folder with its own parameters:
+
+```
+frontend/
+staging/
+templates -> ../v3/
+parameters.yaml
+eastus/
+templates -> ../v1/
+parameters.yaml
+...
+```
+
+If you use version control and tags instead, the parameters for each region sit at the root. You add a new tag for each region, and the file contents at that tag are used to deploy to that region.
+
 ## 5. Placing workloads across clusters
 
 ### Kueue MultiKueue (read from the Kueue docs and API types)
@@ -258,6 +279,24 @@ Fleet upgrades are the main recurring cost.
 4. **Automated rollback** where cheap (Git revert, node pool blue/green), plus a rehearsed manual path where not.
 5. **Maintenance windows and PDBs** so upgrades drain nodes without killing long training jobs; coordinate with the scheduler (cordon first, wait for jobs, 5.32).
 6. Track fleet **version inventory** and age; alert on clusters near end of support.
+
+### Rolling out a release across regions
+
+It is tempting to think that cloud or datacenter outages cause most downtime. In practice, most outages come from a new version of software rolling out. So the key to high availability is limiting the **blast radius** of any change. Roll the change out region by region, and check each region before you move to the next.
+
+A regional rollout is a workflow, not one declarative update. Start by updating staging to the latest version. Then move through every region until the release is everywhere. Tools such as GitHub Actions can automate this workflow. They offer a declarative syntax, and the workflow itself lives in source control.
+
+The gap between regions depends on the **mean time to smoke**. This is the average time after a release reaches a region for a problem, if one exists, to show itself. Each problem is different and can take a different time to appear, so you wait for the average. Managing software at scale is about probability, not certainty. Waiting two to three times the mean time to smoke is a reasonable place to start. The right number varies a lot by application.
+
+The order of regions matters too. Start with a low-traffic region, so early problems touch few customers. Early problems are often the most severe, because they show up quickly. Next, roll out to one high-traffic region, to check the release at real scale. After it works in both, you may be confident enough to roll out everywhere. If regions behave differently, test slowly across more geographies before a wider push.
+
+Follow the release schedule completely for every release, big or small. Many outages were caused by people speeding up a release to fix something else, or because they believed the change was safe.
+
+### Dashboards for version drift
+
+Different regions can run different versions. A release may fail, be aborted, or cause trouble in one region only. If you do not track this, the fleet can become a snowflake of versions. Customers will also ask whether their bug fix is live yet.
+
+Dashboards answer that question at a glance. They show which version runs in which region. Alerts should fire when too many versions are deployed at once. A good rule is to keep no more than three active versions: one being tested, one rolling out, and one being replaced by the rollout. Any more than that is asking for trouble.
 
 ## 10. Failure-domain design
 
@@ -491,6 +530,7 @@ The **Crown-Jewel Credentials** are the credentials held by the **Central Manage
 
 - **Sources read in full:**
   - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 21: Multicluster Application Deployments** (read in full: why go multicluster, "fixing foundational problems in your infrastructure is 10 times harder when you have 10 clusters", GeoDNS TTL caching and uneven ISP resolution drawbacks vs Anycast Cloud Load Balancing, TCP vs HTTP load balancing, the Replicated Silo pattern and minimum-3-replica efficiency floor, and Sharded vs Read-Replica vs globally consistent `Cloud Spanner` state designs).
+  - `kubernetes-up-and-running-3rd-edition` — *Kubernetes: Up and Running*, 3rd ed., **Chapter 22: Organizing Your Application** (read in full: one configuration per region as a deployment stage, blast radius and region-by-region rollout, mean time to smoke, and version dashboards with a three-version limit). Used for "Each region is a stage", "Rolling out a release across regions", and "Dashboards for version drift".
   - Kubernetes SIGs `Kueue` repository (shallow clone at commit `1ec0d28`, 2026-10-23): `MultiKueue` documentation and API types (`MultiKueueCluster`, `MultiKueueConfig`, `AllAtOnce` vs `Incremental` vs `External` dispatchers, `/etc/multikueue/kubeconfigs/` path validation).
   - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 2: Deployment Models** (multi-cluster deployment topologies and blast-radius trade-offs).
   - `bcm11-containerization` — *NVIDIA Base Command Manager 11 Containerization Manual*, **Chapter 8: Kubernetes Cluster API** (Cluster API management and workload cluster lifecycle).

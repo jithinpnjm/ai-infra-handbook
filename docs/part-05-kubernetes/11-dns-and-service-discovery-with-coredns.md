@@ -62,6 +62,28 @@ dig +short pod-0.my-headless.ns.svc.cluster.local
 cat /etc/resolv.conf
 ```
 
+### Reading a Service name
+
+A name like `alpaca-prod` looks short, but Kubernetes builds a longer name behind it. The kuard demo app has a DNS Query section on its status page. Query the A record for `alpaca-prod` there. The answer looks something like this:
+
+```
+;; opcode: QUERY, status: NOERROR, id: 12071
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0
+;; QUESTION SECTION:
+;alpaca-prod.default.svc.cluster.local. IN A
+;; ANSWER SECTION:
+alpaca-prod.default.svc.cluster.local. 30 IN A 10.115.245.13
+```
+
+The answer gives the Service's cluster IP, 10.115.245.13. The full DNS name is `alpaca-prod.default.svc.cluster.local.` Each part has a job:
+
+- `alpaca-prod` is the name of the Service.
+- `default` is the namespace the Service lives in.
+- `svc` says this is a Service. It leaves room for Kubernetes to expose other types of objects as DNS names later.
+- `cluster.local.` is the base domain for the cluster. It is the default, and most clusters show it. Administrators can change it so that names stay unique across several clusters.
+
+Inside your own namespace, you can use just the service name, `alpaca-prod`. To reach a Service in another namespace, use `alpaca-prod.default`. You can also use the fully qualified name, `alpaca-prod.default.svc.cluster.local.` Try each of these in the DNS Query section of kuard.
+
 ## 2. Resolver behaviour inside pods
 
 The kubelet writes the pod's `/etc/resolv.conf` according to `dnsPolicy`:

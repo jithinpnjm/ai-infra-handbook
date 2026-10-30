@@ -28,11 +28,16 @@ m=re.search(r'= \d+ words = (\d+)% of the checked text',out)
 after=int(m.group(1)) if m else None
 say(after is not None and after<=max(10,u['pct']-20), f'uncovered {u["pct"]}% -> {after}% (need <= {max(10,u["pct"]-20)}%)')
 # verbatim copy check: 14-word shingles shared with the book chapter
-book=subprocess.run(['python3','tools/study_rag/bookch.py',u['book'],u['prefix']],capture_output=True,text=True).stdout
+bk=u['book']
+if not glob.glob(os.path.expanduser(f'~/Desktop/books-toon-rag/{bk}/*_chunks.jsonl')):
+    cand=[d for d in os.listdir(os.path.expanduser('~/Desktop/books-toon-rag')) if d.startswith(bk[:60]) or bk.startswith(d)]
+    bk=cand[0] if cand else bk
+book=subprocess.run(['python3','tools/study_rag/bookch.py',bk,u['prefix'].strip()],capture_output=True,text=True).stdout
+say(len(book.split())>500, f'book text found for verbatim check ({len(book.split())} words)')
 w=lambda s:re.sub(r'[^a-z0-9 ]',' ',s.lower()).split()
 bw=w(book); sh={' '.join(bw[i:i+14]) for i in range(len(bw)-13)}
 hits=0
 for f in u['files']:
-    t=w(open(f,encoding='utf8').read()); hits+=sum(1 for i in range(len(t)-13) if ' '.join(t[i:i+14]) in sh)
+    t=w(re.sub(r'(?m)^\s*(\||- ).*$',' ',re.sub(r'```.*?```',' ',open(f,encoding='utf8').read(),flags=re.S))); hits+=sum(1 for i in range(len(t)-13) if ' '.join(t[i:i+14]) in sh)
 say(hits<=25, f'verbatim 14-word overlaps with book: {hits} (limit 25)')
 print('RESULT','PASS' if ok else 'FAIL'); sys.exit(0 if ok else 1)

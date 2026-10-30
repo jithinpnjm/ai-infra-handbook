@@ -91,6 +91,23 @@ gcloud container clusters create "$CLUSTER" \
 
 Flags verified present in `gcloud container clusters create --help` (584.0.0): `--release-channel`, `--workload-pool` (Workload Identity), `--enable-dataplane-v2` (Cilium-based dataplane, 5.14/5.15), `--enable-ip-alias`, `--enable-managed-prometheus`, and `--monitoring` whose component list includes `DCGM` and `JOBSET` (the help states DCGM requires Google Managed Prometheus). Add `--enable-multi-networking` if you will attach additional NICs to Pods (section 8), `--enable-private-nodes` for private clusters, and review `--enable-shielded-nodes` defaults.
 
+### The minimal GKE path from the book
+
+Before you add GPUs, start with the plain version. Google Kubernetes Engine (GKE) is Google's hosted Kubernetes service. You need a Google Cloud Platform account with billing enabled and the `gcloud` tool installed. Set a default zone first, so later commands know where to go:
+
+```
+$ gcloud config set compute/zone us-west1-a
+```
+
+Then create a cluster with three nodes. The book notes that this takes a few minutes. Once it is ready, fetch the credentials that `kubectl` uses to reach it:
+
+```
+$ gcloud container clusters create kuar-cluster --num-nodes=3
+$ gcloud container clusters get-credentials kuar-cluster
+```
+
+If something goes wrong, the Google Cloud Platform documentation has the complete steps. The GPU node pools in the sections below build on a cluster like this one.
+
 Use Workload Identity rather than node service account keys for any Pod that talks to GCS, Artifact Registry or other Google APIs (5.21 on security).
 
 ## 4. Creating a GPU node pool
@@ -518,6 +535,7 @@ As verified in `gcloud container clusters create --help`, the `DCGM` monitoring 
 ## Sources and review notes
 
 - **Sources read in full / verified locally:**
+  - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 3: Deploying a Kubernetes Cluster** (GKE default zone, cluster create and get-credentials commands).
   - Google Cloud SDK `584.0.0` (`gcloud container clusters create --help` and `gcloud container node-pools create --help`): verified offline for flag names and accepted values (`--release-channel`, `--workload-pool`, `--enable-dataplane-v2`, `--enable-ip-alias`, `--enable-managed-prometheus`, `--monitoring SYSTEM,DCGM,JOBSET`, `--accelerator` `gpu-driver-version=default|latest|disabled`, `gpu-partition-size`, `gpu-sharing-strategy`, `max-shared-clients-per-gpu`, `--placement-type COMPACT`, `--reservation-affinity`, `--spot`, `--flex-start`, `--max-run-duration`, `--additional-node-network`, `--accelerator-network-profile=auto`, `--enable-gvnic`, `--enable-image-streaming`).
   - `generative-ai-on-kubernetes` — Roland Huss, Courtney Pacheco & Bryanoster, *Generative AI on Kubernetes* (`GAK`), **Chapter 3: Kubernetes and GPUs** (read in full: decimal `40 GB`/`80 GB` vs binary `37.25 GiB`/`74.5 GiB`, NFD and GFD labels `nvidia.com/gpu.product`, `nvidia.com/gpu.memory`, `nvidia.com/gpu.compute.major`, `nvidia.com/mig.strategy` `single` vs `mixed` exposing `14` slices on 2x A100, time-slicing `renameByDefault: true`, and Dynamic Resource Allocation `DRA` `ResourceClaimTemplate` `Examples 3-8 & 3-9`).
   - `scalable-kubernetes-infrastructure-for-ai-platforms` (`SKI`) & `kubernetes-for-generative-ai-solutions` (`K8GS`): cloud GPU node pool and scaling patterns.

@@ -54,6 +54,38 @@ Differences from push CI/CD (4.1, 4.2): credentials stay in the cluster (the CI 
 
 **Two repositories pattern**: an **application repository** (source, Dockerfile, tests, chart) built by CI; a **config repository** (environments, Helm values, Kustomize overlays, Application definitions) watched by the controller. CI's last step updates the image tag/digest in the config repo through a pull request (or an image-update automation) so deployment is a reviewed config change, not a CI side effect.
 
+### Filesystem as the source of truth
+
+Most people first meet Kubernetes by typing commands. You run `kubectl run` to start a Pod, or `kubectl edit` to change one in place. The YAML file starts to look like a note you write on the way to the real goal, which is a running cluster. For a production application, that order is backwards.
+
+Turn it around. The truth lives in the files on disk, and the objects in the cluster are a reflection of those files. The data in `etcd` is then just the current copy of what the files say.
+
+This view lets you treat the cluster as immutable infrastructure. Teams already use that idea for containers, and the same reasons apply to the cluster itself. A cluster built by hand from random YAML downloaded off the internet is a snowflake. It is as fragile as a virtual machine built from imperative bash scripts. Files in source control also let several people work on the cluster state together, and they make conflicts easy to see and settle.
+
+The first principle of a good layout is simple: every application deployed to Kubernetes is first described in files on a filesystem. The live API objects are a projection of those files into a particular cluster.
+
+### Code review for every change
+
+Code review for application source code is now routine. Several people read a change before it is committed, and the code gets better. Configuration deserves the same care. The book's authors say most service outages are self-inflicted, through an unexpected side effect, a typo or a simple mistake. Having at least two people look at any configuration change makes those errors much less likely.
+
+The second principle follows from this. The layout must make it easy to review every change that goes into the files that describe your cluster.
+
+### Feature gates: code lands off by default
+
+Once application code and deployment files are both in source control, a common question follows. Should they share one repository? Small projects can. Larger projects often split them, because the builder and the deployer see the work from different sides, even when they are the same people.
+
+That raises the next question. How do you bring a new feature from source control into production? The answer is a feature gate, a flag that turns a feature on or off. New code sits behind the gate, and looks something like this:
+
+```
+if (featureFlags.myFlag) {
+// Feature implementation goes here
+}
+```
+
+The gate has three useful effects. The team can merge to the production branch long before the feature is ready. Work stays close to `HEAD`, so you avoid the painful merge conflicts of a long-lived branch. Turning the feature on is a configuration change, so it is clear what changed in production. Rolling it back is just as simple.
+
+Using a flag also keeps debugging simple. Disabling a feature does not need a binary rollback to an older version of the code. A binary rollback would also remove the bug fixes and improvements that the newer version brings. The third principle of application layout is this. Code lands in source control, off by default, behind a flag, and is turned on only by a code-reviewed change to configuration.
+
 ## 2. Argo CD
 
 ### Architecture and objects
@@ -249,6 +281,154 @@ Design points:
 - **One writer per object**: Terraform bootstraps the controller (4.25); after that Git owns the cluster state; avoid mixed ownership.
 - **Access**: platform team owns `infrastructure/` and `clusters/`; teams own their `apps/<team>` paths via CODEOWNERS (4.1); branch protection and required checks gate merges; Argo/Flux read with read-only deploy keys.
 - **Monorepo vs polyrepo**: a config monorepo simplifies atomic cross-component changes and fleet views; large organisations split by domain (platform, per-team repos) with a registry of repos (ApplicationSet SCM generator / Flux multi-tenancy).
+
+### Filesystem layout for one cluster
+
+Once you have a few services, the question is where each file goes. The layout is worth getting right early. Moving files around later is a costly refactor, and it is one that teams often never get around to. Start by organizing the application by its semantic component or layer, such as a frontend or a batch work queue. A single team may own all of them today. The split still prepares you for the day when different teams own different pieces.
+
+For a frontend that uses two services, the tree might look like this:
+
+```
+frontend/
+service-1/
+service-2/
+```
+
+Each directory holds the YAML files that describe the current state of that component. Put the service name and the object type in each file name, so the file tells you what it is.
+
+```
+frontend/
+frontend-deployment.yaml
+frontend-service.yaml
+...
+service-1/
+service-1-deployment.yaml
+...
+```
+
+The `...` marks the other files for that service, such as its ingress or its ConfigMap.
+
+Kubernetes lets you put several objects in one YAML file, but that is usually a bad habit. Group objects in one file only when they are conceptually identical. Think of it like designing a class. If the objects do not form one concept, they belong in separate files.
+
+### Keeping several releases side by side
+
+You will often need to look back at what the application looked like before. You also need to shape the next configuration while a stable release keeps running. So it helps to store more than one revision of your configuration. There are two ways to do this with the file and version control systems described above. You can use tags and branches, or you can use directories. Both give you the same release control, so the choice comes down to taste.
+
+#### Versioning with branches and tags
+
+With tags and branches, the directory tree does not change. When you are ready for a release, you place a source-control tag on it, such as `git tag v1.0`. The tag marks the configuration for that version. Meanwhile, `HEAD` keeps moving forward.
+
+A fix to a released version takes a few more steps, but it follows the normal source-control flow. Commit the change to `HEAD` first. Then create a branch named `v1` at the `v1.0` tag. Cherry-pick the change onto that branch with `git cherry-pick <edit>`. Finally, tag the branch as `v1.1` to mark a new point release.
+
+A common mistake is to cherry-pick the fix only into the latest release. Put it into every active release. You may need to roll back to an older version, and the fix will still be needed there.
+
+#### Versioning with directories
+
+The other option uses the filesystem. Each versioned deployment lives in its own directory:
+
+```
+frontend/
+v1/
+frontend-deployment.yaml
+...
+current/
+frontend-deployment.yaml
+...
+service-1/
+v1/
+...
+v2/
+...
+current/
+...
+...
+```
+
+The `...` stands for the rest of the files in each folder, which follow the same pattern.
+
+Every deployment still runs from `HEAD`, not from a fixed revision or tag. You add new configuration to the `current` directory. When you create a new release, you copy `current` into a new directory for that release.
+
+A bug fix to a release is a little different. The pull request must change the YAML file in every relevant release directory. That is more work than a single cherry-pick, but it has one benefit. One change request shows that all the affected versions get the same fix, so no version is missed.
+
+### Stages between HEAD and release
+
+Shipping software is not one step. A change moves through several stages before it reaches users:
+
+- `HEAD`: the bleeding edge, with the latest changes.
+- Development: largely stable, but not ready to deploy. Developers use it to build features.
+- Staging: the start of testing. It should change only when a problem is found.
+- Canary: the first real release to users. It catches problems that only real traffic shows, and it lets some users try what comes next.
+- Release: the current production release.
+
+The right way to model development is with a source-control tag. Development moves fast and stays only slightly behind `HEAD`, so a tag fits it well. Add a `development` tag, then use an automated process to move it forward. On a regular schedule, run automated integration tests against `HEAD`. If they pass, move the `development` tag up to `HEAD`. Developers can then track close to the latest changes, knowing the config has passed at least a basic smoke test.
+
+Do not make a new set of configurations for every stage. Every combination of version and stage would be a mess that is hard to reason about. Map each stage to a revision instead. With the filesystem, use symbolic links to point a stage name at a version:
+
+```
+frontend/
+canary/ -> v2/
+release/ -> v1/
+v1/
+frontend-deployment.yaml
+...
+```
+
+With version control, the same map is just an extra tag on the same revision as the right version. Two processes run side by side. One cuts new release versions. The other qualifies a release version for a stage. Each one moves forward on its own schedule.
+
+### Parameterized environments with Helm
+
+Once you have many environments and stages, keeping them all identical becomes impossible. Yet they should stay as similar as possible. When staging differs from production, load tests run in staging tell you less about production. Parameterized environments solve this. Most of the configuration lives in one shared template. A small parameters file adds only what differs for each environment.
+
+Almost every templating language works this way. It has a template file with most of the configuration, and a parameters file that combines with the template to make the final result. Parameters can also have default values when none is given. The patterns here use Helm, a package manager for Kubernetes, but they apply to any templating language. Choosing one is a matter of team style.
+
+Helm templates use "mustache" syntax:
+
+```
+metadata:
+  name: {{ .Release.Name }}-deployment
+```
+
+The `Release.Name` value is substituted with the name of the release. To pass that value in, use a `values.yaml` file:
+
+```
+Release:
+  Name: my-release
+```
+
+After substitution, the result is:
+
+```
+metadata:
+  name: my-release-deployment
+```
+
+Now apply this to the filesystem layout. Think of each deployment stage as a combination of two things: a parameters file, and a pointer to one specific version. In a directory layout, it looks like this:
+
+```
+frontend/
+staging/
+templates -> ../v2
+staging-parameters.yaml
+production/
+templates -> ../v1
+production-parameters.yaml
+v1/
+...
+v2/
+...
+```
+
+With version control, the layout is similar. The parameters for each stage sit at the root of the configuration tree:
+
+```
+frontend/
+staging-parameters.yaml
+templates/
+frontend-deployment.yaml
+...
+```
+
+Keep the parameters file small. Then the differences between environments are easy to see at a glance.
 
 ## 5. Bootstrapping a GPU platform: ordering
 
@@ -536,6 +716,7 @@ Never point all 20 clusters at a single unringed `HEAD` path with `automated` sy
 
 - **Sources read in full:**
   - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 11: Building Platform Services** (read in full: eliminating human toil with platform services, Kubernetes extension points, CustomResourceDefinitions `CRDs` and Operators introduced by Brandon Phillips in 2016, App-Specific Operators vs Platform/Tenancy Operators, building the `AcmeNamespace` operator in Go with **Kubebuilder** `controller-runtime`, `Reconcile` loop idempotency, `status.phase` `CreationInProgress` -> `Created`, `ownerReferences` garbage collection via `ctrl.SetControllerReference`, **Operator Framework / Operator SDK** for Go/Ansible/Helm, and **Metacontroller**).
+  - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 22: Organizing Your Application** (read in full: the filesystem as source of truth, code review of every change, feature gates, filesystem layout, versioning with tags/branches or directories, stages from `HEAD` to release, parameterized environments with Helm, worldwide deployment and dashboards). Used for the sections "Filesystem as the source of truth", "Code review for every change", "Feature gates", and the repository-layout subsections of Section 4.
   - `nvidia-devops` (`volume-10/11-cicd-for-infrastructure-and-cluster-configuration.md` and `volume-10/17-git-for-infrastructure-and-operations.md`): Kubernetes GitOps with Argo CD and Flux, ordering of Node Feature Discovery and GPU Operator, and pull-based vs push-based delivery.
 - **Run here:** `python3 code/part04/gitops_sync_waves_lab.py` (3 passed, 0 failed).
 - **Explicitly labelled inferences:** The `plan_argocd_sync_waves`, `expand_applicationset_matrix`, and `evaluate_gitops_reconciliation` models in `code/part04/gitops_sync_waves.py`, the 6-wave GPU platform bootstrap diagram, and the Argo CD `Application`/`ApplicationSet` and Flux `GitRepository`/`Kustomization`/`HelmRelease` manifests are the author's constructions synthesizing `PK` Chapter 11 and `volume-10` (plus original study items 21, 22, 23, 24, 25, 26, 27, 28, 29, and 30).

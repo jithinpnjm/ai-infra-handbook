@@ -348,6 +348,262 @@ Chapter 3.5 treats files, paths, text/bytes, `subprocess`, `shutil`, `tempfile`,
 
 Python uses **indentation** (4 spaces, never tabs mixed with spaces) to delimit blocks; a colon introduces a block. Statements end at the newline; continuation with brackets or a backslash. Comments start with `#`. `pass` is a no-op placeholder. Compound statements nest. Use a formatter (`black` or `ruff format`) and linter (`ruff`, `flake8`) so style is never debated (chapter 3.9).
 
+### Statement syntax compared with C-like languages
+
+If you learned to code in C, Java or JavaScript, your fingers already know how to write an `if` statement. Python asks for a little less typing and uses a different layout. Knowing which habits to drop saves you from quiet surprises later. Here is the same test written both ways.
+
+```
+if (x > y) {
+x = 1;
+y = 2;
+}
+```
+
+```python
+if x > y:
+    x = 1
+    y = 2
+```
+
+The Python version is less cluttered. It has fewer syntax parts, and that is by design. Python is a scripting language, and one of its goals is to make your life easier by asking for less typing. Less typing also leaves less room for mistakes.
+
+#### What Python adds: the colon
+
+Python adds one new piece to the C-like pattern: the colon. A compound statement is a statement that holds other statements inside it. Every compound statement follows the same shape. You write a header line, end it with a colon, and indent the nested block underneath.
+
+The colon is required. Forgetting it is probably the most common mistake new Python programmers make, and you will likely forget it at least once. Python stops with an error message, and most Python-friendly editors make the mistake easy to spot.
+
+```
+>>> if x
+if x
+^
+SyntaxError: expected ':'
+```
+
+After a while, typing the colon becomes a habit you do without thinking. That habit can leak into your C-like code, and the compiler there will complain about it.
+
+#### What Python removes
+
+C-like languages make you write three things that Python does not need. The first is parentheses around the test in an `if`. In C-like code you write `if (x < y)`. In Python you write `if x < y`, and it works the same way. Python accepts extra parentheses, since any expression can sit inside them. The Python way is to leave them out, because they only add typing.
+
+The second is the semicolon. In Python, the end of a line ends the statement on that line, so `x = 1` needs no terminator. You may keep semicolons if you want, because they also separate statements on one line. The Pythonic habit is to drop them. In this role they are useless noise.
+
+The third is the braces. You do not type `begin` and `end`, `then` and `endif`, or `{` and `}` around a nested block. You indent all the statements in one block the same distance to the right. Python reads that physical indentation to find where a block starts and stops.
+
+```python
+if x > y:
+    x = 1
+    y = 2
+```
+
+Python does not care whether you indent with spaces or tabs, or how far you indent. One nested block can be indented differently from another. The only rule is that every statement in one block must line up. If they do not, Python stops with an error, and your code will not run until you fix the indentation.
+
+```
+>>> if True:
+... a = 1
+... b = 2
+b = 2
+^
+IndentationError: unindent does not match any outer indentation level
+```
+
+#### Why indentation is part of the syntax
+
+Many programmers from C-like languages find the indentation rule strange at first. Python makes it part of the syntax on purpose. It pushes you to line up code in columns that match its logic. Code like that is easier to read, change and reuse, by you and by others.
+
+Old C++ programs show the problem without this rule. Imagine a `while` loop that the first programmer indented four spaces. The next programmer indented it further right, and the one after that indented it less. Over the years the visual shape of the code stopped matching its logic, and the braces at the end hid the mismatch.
+
+C has a classic trap of the same kind. In this code the `else` pairs with the inner `if`, even though it looks like it belongs to the outer one.
+
+```
+if (x)
+if (y)
+statement1;
+else
+statement2;
+```
+
+Python avoids this trap. The `else` lines up with the `if` it belongs to, and that is the one that runs.
+
+```python
+if x:
+    if y:
+        statement1
+else:
+    statement2
+```
+
+In a sense, Python is WYSIWYG: what you see is what you get. The way the code looks is the way it runs, no matter who wrote it. Some companies enforce consistent indentation in C even though C does not require it. Their tools check indentation when code is checked in, and an inconsistent check-in can trigger an automated email to the author and perhaps to the manager.
+
+Most programmer-friendly editors understand Python indentation. In IDLE, lines are indented for you inside a nested block, and Backspace removes one level. You can set how far IDLE indents. Four spaces is common, but the choice is yours, unless your company has set a standard. Indent further right for deeper blocks, and less to close a block.
+
+Do not mix tabs and spaces in the same block. Use one or the other. Python raises an error for inconsistent use of tabs and spaces. Mixing them in any language is risky, because another person's editor may show a tab at a different width. In the end, if you indent consistently and drop the braces, your code follows Python's rules.
+
+#### Special cases
+
+Two rules cover most Python code. The end of a line ends its statement. Nested statements are grouped by their indentation. Python also has a few special rules that add flexibility. They are not required, and you should use them sparingly.
+
+You can put several statements on one line by separating them with semicolons. This is the only place in Python where semicolons are required.
+
+```python
+a = 1; b = 2; print(a + b) # Three statements on one line
+```
+
+Only simple statements can share a line this way, such as assignments and calls to `print` or other functions. Compound statements like `if` and `while` must stay on lines of their own.
+
+The reverse also works. Put part of a statement inside parentheses, square brackets or curly braces, and the statement can span several lines. Python keeps reading until it reaches the closing part of the pair.
+
+```python
+mylist = [1111, # Continuation lines
+2222, # Any code in (), [], {}
+3333]
+```
+
+Curly braces let dictionaries, sets and comprehensions span lines. Parentheses handle tuples, function calls and expressions. The indentation of continuation lines does not matter, though lining them up helps readers. Comments work in continuation lines too, and every nested bracket must close before the run ends.
+
+Parentheses are the catch-all tool. Any expression can be wrapped in them, so you can drop to the next line inside them. This works inside compound statements too.
+
+```python
+X = (A + B +
+C + D)
+
+if (A == 1 and
+B == 2 and
+C == 3):
+    print('hack' * 3)
+```
+
+An older rule lets a statement continue when the line ends in a backslash.
+
+```python
+X = A + B + \
+C + D # An error-prone older alternative
+```
+
+Programmers now discourage this. Backslashes are hard to notice and maintain. Nothing, not even a space or a comment, may follow the backslash. If you forget it, the next line can silently run as its own statement. In this example, `C + D` would run by itself. In Python, use brackets instead of backslashes.
+
+The body of a compound statement can also sit on the header line, after the colon.
+
+```python
+if x > y: print(x)
+```
+
+This lets you write single-line `if`, `while` and `for` statements. Like the semicolon rule, it works only when the body holds simple statements. Larger statements, and the `else` part of an `if`, still need lines of their own. Several simple statements separated by semicolons also work, but people frown on it.
+
+Even though these rules are optional, keep most statements on their own lines and indent nested blocks as a habit. Your code will be easier to read and change. Some profiling and coverage tools also cannot tell squeezed statements apart. The one-line `if` that breaks out of a loop is a common exception, and you will see it in the next example. Otherwise, keep things simple.
+
+#### Statements at a glance
+
+Python has a set of statements. Each one has its own purpose and its own syntax. Many share common patterns, and some roles overlap. The table below is a quick lookup. You do not need to memorize it.
+
+| Statement | Role | Example |
+|---|---|---|
+| Assignment | Creating references | `a, b = 'python', 3.12`; `a = (b := next()) + more` |
+| Calls and other expressions | Running functions | `log.write('app crash')` |
+| `print` | Printing objects | `print(hack, code, file=log)` |
+| `if/elif/else` | Selecting actions | Multi-line, see below |
+| `match/case` | Multiway selections | Multi-line, see below |
+| `for/else` | Iteration | Multi-line, see below |
+| `while/else` | General loops | Multi-line, see below |
+| `pass` | Empty placeholder | Multi-line, see below |
+| `break` | Loop exit | Multi-line, see below |
+| `continue` | Loop continue | Multi-line, see below |
+| `def` | Functions and methods | Multi-line, see below |
+| `return` | Functions results | Multi-line, see below |
+| `yield` | Generator functions | Multi-line, see below |
+| `global` | Namespaces | Multi-line, see below |
+| `nonlocal` | Namespaces | Multi-line, see below |
+| `async` | Coroutine designator | Multi-line, see below |
+| `await` | Coroutine transfer | `await asyncio.sleep(1)` |
+| `import` | Module access | `import sys` |
+| `from` | Attribute access | `from sys import stdin as f` |
+| `class` | Building objects | Multi-line, see below |
+| `try/except/finally` | Catching exceptions, termination actions | Multi-line, see below |
+| `raise` | Triggering exceptions | `raise EndSearch(location)` |
+| `assert` | Debugging checks | `assert X > Y, 'X too small'` |
+| `with` | Context managers | Multi-line, see below |
+| `del` | Deleting references | `del data[k]`, `del data[i:j]`, `del obj.attr`, `del variable` |
+| `type` | Type hinting alias | `type vector = list[float]` |
+
+The multi-line examples from the table are shown here.
+
+```python
+# if/elif/else
+if 'python' in text:
+    read(text)
+
+# match/case
+match edition:
+    case 6:
+        print(2024)
+
+# for/else
+for x in myiterable:
+    print(x)
+
+# while/else
+while x := file.readline():
+    print(x)
+
+# pass
+if 'python' not in text:
+    pass
+
+# break
+while True:
+    if exittest(): break
+
+# continue
+while True:
+    if skiptest(): continue
+
+# def
+def f(a, b, c=2, *more):
+    print(a + b + c)
+
+# return
+def f(a, b, c=2, *more):
+    return a + b + c
+
+# yield
+def gen(n):
+    for i in n: yield i*2
+
+# global
+x = 1
+def function():
+    global x; x = 2
+
+# nonlocal
+def outer():
+    x = 1
+    def inner():
+        nonlocal x; x = 2
+
+# async
+async def consumer(a, b):
+    await producer()
+
+# class
+class Subclass(Superclass):
+    classAttr = []
+    def method(self): pass
+
+# try/except/finally
+try:
+    action()
+except:
+    print('action error')
+
+# with
+with open('data') as file:
+    process(file)
+```
+
+The table leaves out a few fine points. Assignment has many forms, and the next section covers them. The `:=` operator is an expression, not a statement. `print` is really a built-in function, not a statement. People usually call it on a line by itself, so it is grouped here anyway.
+
+`yield` and `await` are expressions too. Scripts may assign or use their results. They are reserved words, unlike `print`. Most words in statements and expressions are reserved, so `and`, `in`, `if`, `for` and `while` cannot be variable names. Newer statements use soft reserved words, such as `match`, `case` and `type`. These are reserved only inside the statements they belong to. `async` and `await` are not soft words.
+
 ### Assignment forms
 
 ```python
@@ -471,6 +727,218 @@ by_name = {n.name: n for n in nodes}
 unique_racks = {n.rack for n in nodes}
 lazy = (line for line in f if "ERROR" in line)         # generator expression: lazy
 ```
+
+### Example: an interactive loop
+
+Here is a realistic problem. A user types lines into a console window, and your program answers each line until the user types `stop`. You might be sending input to a database, or reading numbers for a calculation. Either way you need a read, evaluate, print loop, much like Python's own REPL. The usual starting point looks like this.
+
+```python
+while True:
+    reply = input('Enter text:')
+    if reply == 'stop': break
+    print(reply.upper())
+```
+
+The code uses a few ideas you have already seen and some new ones. The `while` loop is Python's most general loop. It has the word `while`, a test, and a nested block that repeats while the test is true. The test here is `True`, which is always true, so the loop runs forever unless something stops it.
+
+The `input` built-in function reads a line from the keyboard. It shows its optional string as a prompt and returns what the user typed, as a string.
+
+The one-line `if` uses the special rule for nested blocks. Its body sits after the colon on the header line. The `break` statement jumps out of the loop right away, and the program continues after the loop. Without it, this `while` would never end.
+
+A session with this script looks like this.
+
+```
+Enter text:python
+PYTHON
+Enter text:312
+312
+Enter text:stop
+```
+
+Python 3.8 added the `:=` named-assignment expression, which the book covers later. It assigns a name and also returns the value. With it, the loop header can fetch, assign and test in one line. It needs nested parentheses here and is less obvious than the traditional form, so use it with care.
+
+```python
+while (reply := input('Enter text:')) != 'stop':
+    print(reply.upper())
+```
+
+Suppose you now want to square a number instead of changing its case. Maybe you are writing an age program that teases its users. Trying to power a string fails.
+
+```
+>>> reply = '40'
+>>> reply ** 2
+TypeError: unsupported operand type(s) for ** or pow(): 'str' and 'int'
+```
+
+Input from a user always arrives as a string. Python will not convert types inside an expression unless all the operands are numeric. So you convert the text yourself first.
+
+```
+>>> int(reply) ** 2
+1600
+```
+
+Now the loop can do the math. Save this in a file and run it. The REPL needs a blank line after the `while`, and it runs one statement at a time, so the final `print` would not make sense there.
+
+```python
+while True:
+    reply = input('Enter text:')
+    if reply == 'stop': break
+    print(int(reply) ** 2)
+print('Bye')
+```
+
+```
+Enter text:2
+4
+Enter text:40
+1600
+Enter text:stop
+Bye
+```
+
+The last `print` is not indented under the loop, so it is not part of the loop body. It runs once, after the loop exits.
+
+Now try bad input.
+
+```
+Enter text:xxx
+ValueError: invalid literal for int() with base 10: 'xxx'
+```
+
+The `int` function raises an exception here, which is Python's way of flagging an error. To guard against it, check the string first with the `isdigit` method of string objects.
+
+```
+>>> S = '40'
+>>> T = 'xxx'
+>>> S.isdigit(), T.isdigit()
+(True, False)
+```
+
+This also gives you an excuse to nest statements more deeply. A full `if` statement can handle the bad input.
+
+```python
+while True:
+    reply = input('Enter text:')
+    if reply == 'stop':
+        break
+    elif not reply.isdigit():
+        print('Bad!' * 8)
+    else:
+        print(int(reply) ** 2)
+print('Bye')
+```
+
+The `if` statement is a light tool for logic in scripts. Its full form starts with the word `if`, a test and a block. It can add one or more `elif` tests, which mean "else if", each with its own block. It can end with an optional `else` block as a default. Python runs the first block whose test is true, working from the top down. If none are true, it runs the `else` block.
+
+The `if`, `elif` and `else` parts line up, so they belong to one statement. The whole `if` is indented under the `while`, so it is part of the loop. Nesting like this feels natural after some practice.
+
+```
+Enter text:5
+25
+Enter text:xxx
+Bad!Bad!Bad!Bad!Bad!Bad!Bad!Bad!
+Enter text:10
+100
+Enter text:stop
+Bye
+```
+
+The script now catches bad input before it fails. The error message is crude, and you would improve it before handing the code to a quality-assurance team. But `stop` still exits, and valid numbers are still squared.
+
+The `try` statement is the most general way to handle errors in Python. You will study it in depth later. As a preview, here is the same logic written with `try`.
+
+```python
+while True:
+    reply = input('Enter text:')
+    if reply == 'stop': break
+    try:
+        num = int(reply)
+    except:
+        print('Bad!' * 8)
+    else:
+        print(num ** 2)
+print('Bye')
+```
+
+This version works the same way. Instead of checking for errors first, the code assumes the conversion will work. It wraps the conversion in a handler for the case when it does not. In short, you do not detect the error. You respond when one happens.
+
+A `try` statement follows the same pattern as `if` and `while`. It has the word `try` and the main block. Then comes an `except` part with the handler code, and an `else` part that runs when no exception occurs. Python runs the `try` part first, then either the `except` part or the `else` part. The `else` here belongs to the `try`, because its indentation lines up with `try`. The `if` is a one-liner that ends at the `break`, so the `else` cannot apply to it.
+
+Because `try` can catch any error, it cuts down the checking code you have to write. If `print` cannot fail, the loop gets shorter.
+
+```python
+while True:
+    reply = input('Enter text:')
+    if reply == 'stop': break
+    try:
+        print(int(reply) ** 2)
+    except:
+        print('Bad!' * 8)
+print('Bye')
+```
+
+If you want floating-point numbers too, `try` is much easier than manual checks. Call `float` and catch its exceptions.
+
+```python
+while True:
+    reply = input('Enter text:')
+    if reply == 'stop': break
+    try:
+        print(float(reply) ** 2)
+    except:
+        print('Bad!' * 8)
+print('Bye')
+```
+
+Strings have no `isfloat` method. The exception approach spares you from writing an up-front check for every possible float format. Floats come in many faces, so that check would be a hard job. With this version you can enter a wider range of numbers, and errors and exits still work as before.
+
+```
+Enter text:50
+2500.0
+Enter text:40.5
+1640.25
+Enter text:1.23E-100
+1.5129e-200
+Enter text:hack
+Bad!Bad!Bad!Bad!Bad!Bad!Bad!Bad!
+Enter text:stop
+Bye
+```
+
+Note: `eval` would also work in place of `float` here. It runs any expression, so an input of `2 ** 100` would be legal. That power carries the same security risks as before. If you cannot trust the source of a string, use narrow tools like `int` and `float`. The built-in `exec` is similar to `eval`, but it runs a statement and returns no result. Its `compile` call turns a code string into a bytecode object for speed. Run `help` on any of these for details.
+
+Nesting can go deeper. This version branches again, and prints `low` for valid numbers below 20.
+
+```python
+while True:
+    reply = input('Enter text:')
+    if reply == 'stop':
+        break
+    elif not reply.isdigit():
+        print('Bad!' * 8)
+    else:
+        num = int(reply)
+        if num < 20:
+            print('low')
+        else:
+            print(num ** 2)
+print('Bye')
+```
+
+This adds an `if` inside the `else` of another `if`, and that sits inside the loop. When code is conditional or repeated, you indent it further to the right. The net effect is like the earlier versions, with `low` for small numbers.
+
+```
+Enter text:19
+low
+Enter text:20
+400
+Enter text:hack
+Bad!Bad!Bad!Bad!Bad!Bad!Bad!Bad!
+Enter text:stop
+Bye
+```
+
+Every statement in this example follows the rules from earlier in this section. Keep one statement per line, indent each block the same amount, and use the special cases only when they help.
 
 ## 8. Functions
 
@@ -902,7 +1370,7 @@ Using `os.environ["API_TOKEN"]` **fails fast at startup with a clear `KeyError`*
 ## Sources and review notes
 
 - **Sources read in full:**
-  - `learning-python-6th-edition` — Mark Lutz, *Learning Python*, 6th ed., **Parts I to IV** (specifically `Chapter 3. How You Run Programs`, `Chapter 5. Numbers and Expressions`, `Chapter 7. String Fundamentals`, `Chapter 11. Assignments, Expressions, and Prints`, and `Chapter 18. Arguments`: `-i` interactive flag, `import`/`reload` vs `exec(open(...).read())`, object identity/type/value, operator precedence hierarchy, floor division vs truncation, dynamic typing, `string.Template`, `str.maketrans`/`str.translate`, lists/dicts/tuples/files, `print()` call format and `sys.stdout` stream redirection, `if` and `match`, loops and `else`, iterations and comprehensions, documentation and benchmarking interludes, function basics, LEGB scopes, and formal parameter- and call-ordering rules).
+  - `learning-python-6th-edition` — Mark Lutz, *Learning Python*, 6th ed., **Parts I to IV** (specifically `Chapter 3. How You Run Programs`, `Chapter 10. Introducing Python Statements` (statement syntax, the indentation rules, the statement table, special cases and the interactive loop examples), `Chapter 5. Numbers and Expressions`, `Chapter 7. String Fundamentals`, `Chapter 11. Assignments, Expressions, and Prints`, and `Chapter 18. Arguments`: `-i` interactive flag, `import`/`reload` vs `exec(open(...).read())`, object identity/type/value, operator precedence hierarchy, floor division vs truncation, dynamic typing, `string.Template`, `str.maketrans`/`str.translate`, lists/dicts/tuples/files, `print()` call format and `sys.stdout` stream redirection, `if` and `match`, loops and `else`, iterations and comprehensions, documentation and benchmarking interludes, function basics, LEGB scopes, and formal parameter- and call-ordering rules).
   - `fluent-python-2nd-edition` — Luciano Ramalho, *Fluent Python*, 2nd ed., **Chapter 6: Object References, Mutability, and Recycling**.
   - `network-programmability-and-automation-2nd-edition` — Christian Adell et al., *Network Programmability and Automation*, 2nd ed., **Chapter 6: Python**.
   - `nvidia-devops` (`volume-02/00-python-fundamentals-for-infrastructure-masterclass.md`) — migrated the variables and mutability trap, mutable default argument scenario, conditional defaults, generators for large logs, and `pathlib`/`subprocess` previews.

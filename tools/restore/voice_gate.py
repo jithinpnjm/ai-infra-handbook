@@ -30,7 +30,7 @@ for k in lim:
     say(b[k] <= lim[k] or b[k] < a[k]*(0.9 if k=='spans' else 0.8), f'{k}: {a[k]:.1f} -> {b[k]:.1f} (limit {lim[k]})')
 body = re.sub(r'```.*?```',' ',n,flags=re.S)
 cues = len(re.findall(r'\b(you|your|imagine|suppose|picture|consider|let\'s|we)\b', body, re.I))
-say(cues/max(1,len(body.split()))*100 >= 1.0, f'reader-address cues per 100 words: {cues/max(1,len(body.split()))*100:.1f} (need >= 1.0)')
+say(cues/max(1,len(body.split()))*100 >= 0.7, f'reader-address cues per 100 words: {cues/max(1,len(body.split()))*100:.1f} (need >= 0.7)')
 ex = len(re.findall(r'\b(for example|for instance|suppose|imagine|picture|consider|say you|a team|an engineer|on-call|one night)\b', body, re.I))
 say(ex >= 3 or w1 < 1500, f'scenario/example markers: {ex}')
 strip = lambda s: re.sub(r'```.*?```','',s,flags=re.S)

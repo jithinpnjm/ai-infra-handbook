@@ -295,6 +295,111 @@ pf = portforward(
 
 For higher-level platform abstractions built on top of CRDs and operators (such as the `Team` self-service onboarding CRD and Pinterest's `PinterestService` workload CRD from *Production Kubernetes*, Chapter 16), see Chapter 5.22 (§4).
 
+### But what about `kubectl x`?
+
+Most people learn Kubernetes through `kubectl`. So they expect every `kubectl` command to match one API call. That guess is only partly right. Simple commands like `kubectl get pods` map straight to the API. The more sophisticated features are many API calls wrapped in complex logic inside `kubectl` itself.
+
+The line between client and server has moved over time. Many features started as client-side code in `kubectl`. Rollouts now live on the server, in the Deployment resource. In the same way, `kubectl apply` moved to the server as server-side apply.
+
+Some logic still lives in the client, and every client library has to rebuild it. How closely a library matches `kubectl` varies by language. The Java client is a thick client. It copies much of what `kubectl` does.
+
+When you cannot find a feature in your library, try a trick. Add `--v=10` to your `kubectl` command, as in `kubectl get pods --v=10`. That turns on verbose logging, with every HTTP request and response sent to the API server. You can use that output to see what `kubectl` is doing. If you need more, the `kubectl` source code is in the Kubernetes repository.
+
+### OpenAPI and generated client libraries
+
+Think about writing a client by hand. The Kubernetes API has many resources, in many API groups, and each one has many operations. Every language would need its own copy of all of it. That would be a huge and dull job.
+
+So the clients are generated. A code generator reads a data specification of the API and writes the client for one language. You can think of it as a compiler that runs in reverse. The API is described in OpenAPI, the most common format for RESTful APIs. The OpenAPI specification on GitHub is over four megabytes.
+
+The official Python, Java, and .NET clients all come from the same core generation logic, which is also on GitHub. You will rarely generate them yourself. Still, knowing the process helps when something breaks. Generated code gets overwritten the next time the API is generated, so you never fix it by hand. A mistake in the specification gets fixed in the specification. A mistake in the generated output gets fixed in the code generator.
+
+This may look complicated. It is the only way a small group of authors can keep up with an API this large. Each client project also has a compatibility matrix. It shows which client versions work with which Kubernetes API versions.
+
+### Authenticating to the Kubernetes API
+
+The API server would be unsafe if anyone in the world could read or change what it manages. So the first step is to identify yourself. The API server is an HTTP server at its core, so it uses standard HTTP authentication. The first versions of Kubernetes used a user name and password. That approach is deprecated now.
+
+When you use `kubectl`, you rarely think about this. The client libraries make it easy too. Still, knowing how it works helps when a connection fails. Clients get their login details in one of two ways. They read a kubeconfig file, or they take them from the Pod they run in.
+
+Code outside a cluster needs a kubeconfig file. By default, the client looks in `${HOME}/.kube/config`. If the `KUBECONFIG` variable is set, it takes priority over that home location. The file holds everything needed to reach the API server. In Python, you call `config.load_kube_config()`. In Java, you call `Config.defaultClient()` and then `Configuration.setDefaultApiClient(client)`. In .NET, you call `KubernetesClientConfiguration.BuildDefaultConfig()`.
+
+Some cloud providers get the token from an outside program. That program often comes with the provider's command-line tools. Your code must be able to run that program too, or it cannot get a token.
+
+Code running inside a Pod works differently. The Pod has a service account, and Kubernetes places its token and certificate authority into the Pod as a volume. The API server is always reachable at a fixed DNS name, generally `kubernetes`. Since all the data is already in the Pod, no kubeconfig is needed. In Python, you call `config.load_incluster_config()`. In Java, you call `ClientBuilder.cluster().build()`. In .NET, you call `KubernetesClientConfiguration.InClusterConfig()`.
+
+The default service account has very few permissions. So code in a Pod often cannot do much at first. If you see authorization errors, give the Pod a service account made for your code. That account should have the roles it needs in the cluster.
+
+### Namespaced and cluster-level resources
+
+Before you call the API, you need to know where a resource lives. Namespaced resources exist inside a namespace. A Pod or a Deployment might live in `kube-system`. Cluster-level resources exist only once in the whole cluster. A Namespace is the obvious example. CustomResourceDefinitions and ClusterRoleBindings are others.
+
+This difference shows up in the function names. To list Pods in the `default` namespace in Python, you write `api.list_namespaced_pods('default')`. To list Namespaces, you write `api.list_namespaces()`. Once you see the pattern, the names become easy to guess.
+
+### API groups
+
+Kubernetes sorts its resources into API groups. kubectl users rarely notice this. You can see it in the `apiVersion` field of a YAML file. When you program against the API, the grouping matters. Each group often has its own client class.
+
+For example, a Deployment lives in the `apps/v1` group. To work with Deployments, you create an `AppsV1Api` object. That object knows how to work with every resource in the `apps/v1` group and version. In Java, that is `new AppsV1Api()`.
+
+### Listing and creating Pods
+
+Start by creating a client object. Then use it to list the Pods in the `default` namespace. In Python, you create `client.CoreV1Api()` and call `list_namespaced_pod('default')`. In Java, the same call is `listNamespacedPod("default")`, and it returns a `V1PodList`. In .NET, it is `ListNamespacedPod("default")`.
+
+Once you can list, read, and delete objects, the next task is creating them. The create call is easy to find, such as `create_namespaced_pod` in Python. Defining the new Pod is the harder part. In Python, you build a `client.V1Container` and place it inside a `client.V1Pod`. The Pod's name goes in a `client.V1ObjectMeta`. Java uses a `V1PodBuilder` with chained `withNewMetadata()` and `withNewSpec()` calls. .NET sets the `Metadata` and `Spec` properties of a new `V1Pod`.
+
+### Creating, replacing, and patching objects
+
+You will see three verbs for changing a resource: `create`, `replace`, and `patch`. They look alike, but each works differently.
+
+| Verb | What it does | Watch out for |
+|---|---|---|
+| Create | Makes a new resource | Fails if the resource already exists |
+| Replace | Replaces an existing resource completely, without reading the old one | You must send a complete resource |
+| Patch | Changes only the parts you name, and leaves the rest alone | You send a special Patch resource, not the whole object |
+
+Patching is not always simple. In many cases, replacing is easier. Still, with large resources, patching can save network bandwidth and API server work. It also helps when several actors change different parts of one resource. They do not fight over write conflicts.
+
+To patch, you build a Patch object that describes the change. Kubernetes supports three patch formats. They are JSON Patch, JSON Merge Patch, and strategic merge patch. The first two are RFC standards used in other places. The third is a format Kubernetes developed itself. Each has pros and cons. This section uses JSON Patch, because it is the simplest to read.
+
+Here is the idea for raising a Deployment to three replicas. In Python, you set `deployment.spec.replicas = 3` and then call `patch_namespaced_deployment`. In Java, the JSON Patch body is `[{"op":"replace","path":"/spec/replicas","value":3}]`, and `PatchUtils.patch` sends it. The .NET sample uses the same JSON Patch body. In each sample, the Deployment ends up with three replicas.
+
+### Watching for changes instead of polling
+
+Kubernetes resources are declarative. They describe the desired state of the system. A program has to watch that desired state and act when it changes. So watching is one of the most common jobs when you program against the API.
+
+The simplest way is polling. Polling calls the list function at a fixed interval, such as every 60 seconds. It then goes through every resource it cares about. Polling is easy to write, but it has real costs. A change can wait until the next poll, so it arrives late. Polling also loads the API server, because it keeps returning resources that have not changed. Many simple clients start with polling, and too many of them can overload the server.
+
+Kubernetes also offers watch semantics, which are event-based. With a watch, you tell the API server what you care about. Then the server sends a notice whenever that changes. In practice, the client makes a GET request that hangs open. The TCP connection stays open for the length of the watch. The server writes to that stream each time something changes, and it never closes the stream.
+
+This turns a `while` loop that polls into a set of callbacks. In Java, you wrap `listNamespacedPodCall` in `Watch.createWatch`. Then you loop over each item and print its type and name. You close the watch in a `finally` block. Each change reaches your code without a polling delay. The server also does less work, because it does not resend unchanged resources.
+
+### Interacting with Pods
+
+The API also lets your code work directly with the apps running in a Pod. `kubectl` has commands for this: `logs`, `exec`, and `port-forward`. Your own code can do the same things.
+
+These three calls do not follow the usual REST pattern. They need custom logic in each client library. So they differ more from one client to the next. There is no shortcut here. You have to learn how each language does it.
+
+**Reading and streaming logs**
+
+When you get Pod logs, you choose one of two modes. You can read a snapshot of the logs as they are right now. Or you can stream them, so new lines arrive as they are written. Streaming is the same as `kubectl logs -f`. It keeps a connection open to the API server. Without it, you get only the current contents.
+
+In Python, you call `read_namespaced_pod_log` with a `name` and a `namespace`. In Java, `PodLogs` has a `streamNamespacedPodLog` method. In .NET, `ReadNamespacedPodLogWithHttpMessagesAsync` takes `follow: true` to stream.
+
+**Running a command in a Pod**
+
+Another common task is running a command inside a Pod and reading its output. `kubectl exec` does this from the command line. Under the hood, the API opens a WebSocket connection to the server. A WebSocket lets several streams share one HTTP connection. Here the streams are `stdin`, `stdout`, and `stderr`. The client libraries handle the WebSocket details for you.
+
+To run `ls /foo` in a Pod, Python wraps `connect_get_namespaced_pod_exec` in `stream` and passes `command=cmd`. Java uses an `Exec` object and its `exec` method. .NET calls `WebSocketNamespacedPodExecAsync` and reads the output through a `StreamDemuxer`.
+
+**Port forwarding**
+
+You can also forward network connections from a Pod to your local machine. As with `exec`, the forwarded traffic goes over a WebSocket. What you do with that socket is up to your code. You could send one request and read back a string of bytes. Or you could build a full proxy server, the way `kubectl port-forward` does.
+
+Whatever you plan to do with the connection, the setup is the same. In Python, you call `portforward` with `connect_get_namespaced_pod_portforward`, the Pod name, the namespace, and `ports='8080'`. Java uses a `PortForward` object and its `forward` method. .NET calls `WebSocketNamespacedPodPortForwardAsync` with the `v4.channel.k8s.io` protocol.
+
+Each of these examples connects port 8080 in the Pod to port 8080 in your program. The code gets back the byte streams for that channel. You use those streams to send and receive messages.
+
+
 ## 4. Packaging, distribution and lifecycle
 
 - **Packaging**: container image for the manager; Kustomize/Helm chart for deployment; **CRDs** shipped separately (Helm `crds/` directory installs but never upgrades; many projects ship CRDs as a separate chart or `kubectl apply --server-side` step, or rely on the operator to apply its own CRDs); RBAC (ClusterRole/Role generated from `+kubebuilder:rbac` markers); webhooks (cert-manager-issued certs, `caBundle` injection); ServiceMonitor, PodDisruptionBudget, NetworkPolicy, PriorityClass for the manager.

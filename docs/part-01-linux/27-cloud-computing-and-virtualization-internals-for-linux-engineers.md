@@ -207,6 +207,18 @@ GPU capacity is gated by **quota** (per project, region and GPU type), by **avai
 
 Place compute where the data is; avoid cross-region reads; stage datasets to local NVMe or a parallel filesystem; use object storage for checkpoints with parallel multipart uploads; watch per-instance throughput caps and request-rate limits (prefix sharding for object stores). Local SSD on GPU instances is ephemeral: treat as cache. Because a plain cloud NFS volume is rarely sufficient for coupled HPC or AI checkpointing and providers often do not publish realistic shared-storage numbers for your I/O pattern, the SCL book recommends renting cheap instances attached to the target cloud file system and running a simulated checkpoint benchmark before committing: for example, if your application writes temporary or checkpoint data every `5 minutes` with a size roughly equal to compute-node memory, simulate that exact periodic burst pattern and measure how long each save and reload takes.
 
+### Building an HPC cluster in the cloud
+
+Say you need an HPC cluster now, and you cannot build one right now. Cloud HPC can fill that gap, but the checks differ from buying hardware. Start with cost. Estimate the bill carefully, because an on-premises cluster can be cheaper over the long run. The cloud is still a good playground for testing tools before production use.
+
+Check the network before you rent anything. Find out which network type the instances use, and what each instance includes. A low-latency network often limits how many instances you can connect. Place all nodes in one performance subnet, through a capacity reservation or a domain, or the overall performance can be times lower. The placement rules for GPU fabrics are covered under Networking and placement above.
+
+Test the shared file system the same way. A plain NFS volume is rarely enough for a cluster. If the provider cannot give clean performance numbers, rent cheap instances that use the file system and run I/O tests shaped like your real work. For example, if your application writes a checkpoint every five minutes, about the size of one compute node's memory, simulate that pattern. Time each save and each reload before you commit.
+
+Some providers offer a Slurm-based cluster as an option. If it covers your needs, use it. If not, build the cluster yourself: Terraform for the first bring-up, Ansible or another tool for the software, and a custom image when you can make one. Cluster managers such as BCM can help run it. Test that automation on cheap instances before the real build.
+
+Use the cloud API to terminate and recreate instances, or to power subsets of nodes on or off. The API may report power consumption, network counters, and node health. If it does not, collect those numbers on the nodes themselves.
+
 ### Observability in the cloud
 
 You will usually have: cloud monitoring (GPU metrics through the provider agent or DCGM, plus cloud API metrics such as power consumption, network counters, and node health where exposed), logs, serial console, hypervisor-level health events (maintenance, host errors, live migration notices; GCE exposes a metadata-server maintenance event), and no access to the host. Use the cloud API to automate replacing failed instances, powering subsets of nodes on or off, and filing health tickets, and collect direct in-guest metrics where the provider API is silent. Know the **metadata server** (`http://metadata.google.internal/computeMetadata/v1/` with header `Metadata-Flavor: Google` on GCP; similar IMDS endpoints on other clouds) for instance attributes, scheduling/preemption notices and service-account tokens (treat tokens as secrets; restrict pod access in Kubernetes).

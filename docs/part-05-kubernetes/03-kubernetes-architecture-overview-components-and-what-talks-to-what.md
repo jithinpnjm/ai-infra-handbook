@@ -107,6 +107,18 @@ Separates cloud-provider logic: node controller (cloud metadata, deleting nodes 
 
 `metrics-server` (resource metrics API), custom-metrics adapters (Prometheus Adapter, KEDA), service catalog successors, and your own API servers register via `APIService` objects and appear under the main API surface. CRDs are the lighter mechanism for most extensions (5.29).
 
+### Checking the control plane with `componentstatuses`
+
+Before you trust a new cluster, ask whether its core parts are healthy. The `componentstatuses` command gives a quick answer.
+
+```
+$ kubectl get componentstatuses
+```
+
+In the book's example, the `scheduler`, the `controller-manager`, and `etcd-0` all report `Healthy`. Each row is one part of the control plane. The `controller-manager` runs the controllers that keep behavior right, such as making sure all replicas of a service are available and healthy. The `scheduler` places Pods onto nodes. The `etcd` server stores all of the API objects.
+
+Your output may look a little different as Kubernetes changes over time. That is normal, so don't panic if your lines do not match the book exactly.
+
 ## 3. Node components
 
 - **kubelet**: the node agent. Registers the node, sends heartbeats (Lease objects in `kube-node-lease` every ~10 s; node status updates), watches pods bound to its node (and its static pod manifests directory), drives the runtime via CRI, mounts volumes (with CSI node plugins), runs probes, manages cgroups/QoS, enforces eviction under pressure, reports pod and node status, and serves an authenticated API on port 10250 (`exec`, `logs`, metrics `/metrics/cadvisor`). The kubelet is the only component that is usually **not** a pod itself (a systemd service), because it must start pods.
@@ -124,6 +136,50 @@ In *Kubernetes: Up and Running* Chapter 3 (*Deploying a Kubernetes Cluster*), Bu
    - **`Allocatable`**: The slice of resources actually available to schedule Pods (`Allocatable = Capacity - kube-reserved - system-reserved - eviction-threshold`, modeled in `compute_node_allocatable()` in `code/part05/k8s_architecture_flow.py`). Reserving CPU and memory for `kube-reserved` (`kubelet`, `containerd`) and `system-reserved` (`sshd`, `systemd`, kernel daemons) prevents noisy user pods from starving the node agent and triggering a `NotReady` outage.
    - **Node `Conditions`**: `Ready` (`True` when healthy; transitions to `Unknown` after ~40s of missed heartbeats), `MemoryPressure`, `DiskPressure`, `PIDPressure`, and `NetworkUnavailable`.
 3. **Core `kube-system` components (`kubectl get pods --namespace=kube-system`):** Control-plane static pods (`kube-apiserver-<node>`, `etcd-<node>`, `kube-controller-manager-<node>`, `kube-scheduler-<node>`), cluster DNS (**`coredns`** / `kube-dns` Deployment + `kube-dns` Service resolving `<svc>.<ns>.svc.cluster.local`), and the **`kube-proxy` DaemonSet** (1 pod per node).
+
+### Reading one node with `kubectl describe nodes`
+
+A node can look fine in a simple list and still behave oddly. The `describe` command shows what one node is doing. The book uses a node named `kube1` as its example:
+
+```
+$ kubectl describe nodes kube1
+```
+
+Read the output from top to bottom. The labels come first and give the basics. In the book's example, `kube1` runs Linux on an ARM processor.
+
+Next is the `Conditions` block, which answers one question: is this node healthy? Every pressure check reads `False`, and `Ready` reads `True`. The book reads that as a node with enough disk and memory, reporting healthy to the Kubernetes master. The network reason, `FlannelIsUp`, names the network plugin the node is using.
+
+Then the `Capacity` block shows what the machine offers. The book's node reports `cpu: 4`, `memory: 882636Ki`, and `pods: 110`. Its `Allocatable` block matches the same values, and the `alpha.kubernetes.io/nvidia-gpu` count is `0`.
+
+The system section lists the software on the node. It covers the container runtime, the kubelet, kube-proxy, the Linux kernel, and the Pod address range. The book's node runs `containerd://1.4.12`, with `Kubelet Version` and `Kube-Proxy Version` both at `v1.22.4`.
+
+The last section lists the Pods running on the node. The book shows three, including `kube-dns`, which asks for `260m` of CPU and `140Mi` of memory. Each Pod gets two numbers for each resource: a request and a limit. A request is guaranteed to be present on the node. A limit is the most the Pod can consume. When the limit is higher than the request, the extra is supplied on a best-effort basis and is not guaranteed. Chapter 5 of the book covers this in detail.
+
+Read the `Allocated resources` totals the same way. They can go over 100 percent, which the book calls overcommitted.
+
+### kube-proxy and DNS in practice
+
+Two cluster services make Services usable. The Kubernetes proxy routes traffic to load-balanced Services, so it has to run on every node. Many clusters run it as a DaemonSet, which Chapter 11 of the book covers. Check it with:
+
+```
+$ kubectl get daemonSets --namespace=kube-system kube-proxy
+```
+
+In the book's output, the DESIRED, CURRENT, READY, UP-TO-DATE, and AVAILABLE columns all read `5`. Your cluster may name the DaemonSet differently, or may not use one at all. The `kube-proxy` container should still run on every node.
+
+The DNS server gives names and discovery to the Services in the cluster. It runs as a replicated service, so a large cluster can run more than one copy. A Kubernetes Deployment manages those copies, and the name may be `coredns` or another variant:
+
+```
+$ kubectl get deployments --namespace=kube-system core-dns
+```
+
+The book's output shows one copy desired and one available. A Service load-balances across the DNS copies:
+
+```
+$ kubectl get services --namespace=kube-system core-dns
+```
+
+The book's DNS Service has the cluster address `10.96.0.10`. Any container in the cluster has that address written into its `/etc/resolv.conf` file. If you open a shell in a running container, you can check that file yourself.
 
 ## 4. Ports and trust
 
@@ -292,6 +348,10 @@ sudo ETCDCTL_API=3 etcdctl --endpoints=https://127.0.0.1:2379 \
   endpoint status -w table
 sudo ETCDCTL_API=3 etcdctl ... get /registry/namespaces/default                  # raw (protobuf) object
 ```
+
+### Seeing the cluster in a UI
+
+A command line is not the only way to look at a cluster. Most cloud providers add a visual view of the cluster to their console, so check there first. If your provider does not offer one, or you want a GUI inside the cluster, the book points to a community-supported dashboard. Install it by following that project's documentation. Editor extensions, such as those for Visual Studio Code, can also show the state of your cluster at a glance.
 
 ## 13. Lab
 

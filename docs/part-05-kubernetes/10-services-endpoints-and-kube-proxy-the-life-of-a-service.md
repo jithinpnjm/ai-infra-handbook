@@ -59,6 +59,58 @@ spec:
   trafficDistribution: PreferClose # topology-aware preference (newer releases)
 ```
 
+### Why a Service is needed
+
+Kubernetes is a very dynamic system. It places Pods on nodes, keeps them running, and moves them when needed. It can also change the number of Pods based on load, through Horizontal Pod Autoscaling. That makes it easy to run a lot of things, but it makes those things hard to find. Most traditional network infrastructure was never built for this much change.
+
+The general name for this class of problem is service discovery. A service discovery tool answers one question: which processes listen at which addresses, for which service? A good system answers quickly and reliably. It also updates clients soon after a change, and it can hold a richer description of a service, such as several ports.
+
+The Domain Name System (DNS) is the traditional service discovery system on the internet. It is built for names that stay put, with wide caching. That suits the internet well, but a Kubernetes cluster changes too fast for it.
+
+Old DNS habits cause real trouble here. Many systems, Java by default, resolve a name one time and then keep the answer. A client holding a stale answer keeps calling an IP that no longer serves the app. A short TTL (time-to-live) and a careful client help, but a lag before the client sees a change remains.
+
+DNS also has limits on how much one answer can hold. Trouble begins once a single name carries more than 20 to 30 address (A) records. Service (SRV) records fix some of that, but they are hard to use. Clients usually take the first IP and count on the server to shuffle the list. That is no replacement for real load balancing.
+
+That is why Kubernetes starts with a Service object. A Service is a named label selector, and it does more than that, as the next sections show.
+
+### Creating two services
+
+Let's make two small apps, `alpaca-prod` and `bandicoot-prod`, and put a Service in front of each. The `kubectl expose` command creates a Service from an existing deployment. Start with the commands:
+
+```
+$ kubectl create deployment alpaca-prod \
+--image=gcr.io/kuar-demo/kuard-amd64:blue \
+--port=8080
+$ kubectl scale deployment alpaca-prod --replicas 3
+$ kubectl expose deployment alpaca-prod
+$ kubectl create deployment bandicoot-prod \
+--image=gcr.io/kuar-demo/kuard-amd64:green \
+--port=8080
+$ kubectl scale deployment bandicoot-prod --replicas 2
+kubectl expose deployment bandicoot-prod
+$ kubectl get services -o wide
+NAME CLUSTER-IP ... PORT(S) ... SELECTOR
+alpaca-prod 10.115.245.13 ... 8080/TCP ... app=alpaca
+bandicoot-prod 10.115.242.3 ... 8080/TCP ... app=bandicoot
+kubernetes 10.115.240.1 ... 443/TCP ... <none>
+```
+
+After running these commands, there are three Services. Two are new: `alpaca-prod` and `bandicoot-prod`. The third, `kubernetes`, is created for you so that apps inside the cluster can find and talk to the Kubernetes API.
+
+Look at the `SELECTOR` column. The `alpaca-prod` Service only gives a name to a selector, and it says which ports to use. The `kubectl expose` command copies both the label selector and the port (8080 here) from the deployment.
+
+The Service also gets a new kind of address, a cluster IP. It is a virtual IP that the system load balances across every Pod the selector matches.
+
+To try it, open a port-forward to one of the `alpaca` Pods. Keep it running in its own terminal window:
+
+```
+$ ALPACA_POD=$(kubectl get pods -l app=alpaca \
+-o jsonpath='{.items[0].metadata.name}')
+$ kubectl port-forward $ALPACA_POD 48858:8080
+```
+
+Then open http://localhost:48858 in your browser. You should see the `alpaca` Pod answering through the forwarded port.
+
 ### Types
 
 | Type | What it creates | Notes |
@@ -81,6 +133,63 @@ Services get `my-svc.my-ns.svc.cluster.local` A/AAAA records (ClusterIP), SRV re
 As Josh Rosso et al. explain in *Production Kubernetes* Chapter 6 (*Service Routing*) and Brendan Burns et al. show in *Kubernetes: Up and Running* Chapter 7 (*Service Discovery*), Kubernetes also injects **Docker-Links-style environment variables** (`NGINX_SERVICE_HOST=10.110.34.183`, `NGINX_SERVICE_PORT=80`) into every Pod at container start time for Services that already exist in the same namespace. However, relying on Service environment variables has two major operational pitfalls:
 1. **Strict creation-order dependency (`PK` Chapter 6):** A Pod only receives `<SVC>_SERVICE_HOST` environment variables for Services that **existed BEFORE the Pod was created**—if the Pod starts before its `Service` is created, those environment variables are missing until the Pod is restarted (whereas CoreDNS resolves the Service immediately as soon as it is created).
 2. **Startup and memory bloat in large namespaces:** In a namespace with 2,000 Services, `kubelet` injects 10,000+ environment variables into every container, which can exceed the Linux kernel `execve` `MAX_ARG_STRLEN` environment size limit and cause containers to fail startup. Set **`enableServiceLinks: false`** in Pod specs and always use **CoreDNS** for service discovery. Also remember `NK` Chapter 5's YAML pitfall when setting Service annotations (such as internal load-balancer annotations): **Kubernetes annotation values must always be quoted strings (`"true"`, not bare YAML boolean `true`)**.
+
+### Readiness checks
+
+Often an app is not ready to take requests the moment it starts. Initialization can take under a second or several minutes. The Service can track which Pods are ready, using a readiness check. Let's add one to the `alpaca-prod` deployment.
+
+The `kubectl edit` command fetches the current deployment and opens it in an editor. When you save and quit, it writes the object back to Kubernetes. It is a quick way to edit an object without saving a YAML file first.
+
+```
+$ kubectl edit deployment/alpaca-prod
+```
+
+Add the following section:
+
+```
+spec:
+...
+template:
+...
+spec:
+containers:
+...
+name: alpaca-prod
+readinessProbe:
+httpGet:
+path: /ready
+port: 8080
+periodSeconds: 2
+initialDelaySeconds: 0
+failureThreshold: 3
+successThreshold: 1
+```
+
+This check sends an HTTP `GET` to `/ready` on port 8080. It starts as soon as the Pod comes up, and it runs every two seconds. If three checks in a row fail, the Pod is not ready. If only one check succeeds, the Pod is ready again.
+
+Only ready Pods are sent traffic.
+
+Updating the deployment deletes and re-creates the `alpaca` Pods, so restart the port-forward:
+
+```
+$ ALPACA_POD=$(kubectl get pods -l app=alpaca-prod \
+-o jsonpath='{.items[0].metadata.name}')
+$ kubectl port-forward $ALPACA_POD 48858:8080
+```
+
+Point your browser to http://localhost:48858 and expand the Readiness Probe section. The page updates each time the system runs a readiness check.
+
+In another terminal, watch the endpoints for `alpaca-prod`. Endpoints are a lower-level view of where a Service sends traffic, and section 2 covers them. The `--watch` option keeps `kubectl` running and prints each change. It is an easy way to see how an object changes over time:
+
+```
+$ kubectl get endpoints alpaca-prod --watch
+```
+
+Now return to your browser and click `Fail` on the readiness check. The server starts returning errors in the 500 range. After three of these, the server is removed from the endpoints for the Service. Click `Succeed`, and after a single good check, the endpoint is added back.
+
+This is a useful signal. An overloaded or sick server can tell the system that it no longer wants traffic. It also gives you graceful shutdown. The server stops asking for traffic, waits until open connections close, and then exits cleanly.
+
+Press `Ctrl-C` to stop both the `port-forward` and the `watch` commands.
 
 ## 2. EndpointSlices
 
@@ -110,6 +219,87 @@ Consequences:
 - **Readiness controls traffic**: unready pods are removed from endpoints; a pod stuck NotReady gets no traffic. Slow readiness at scale (thousands of pods starting) causes endpoint churn.
 - **Propagation delay** between "pod ready" and "all nodes route to it" is typically 1 to 5 seconds (controller → API → kube-proxy sync, plus its batch interval); the reverse (removing a terminating pod) is a source of errors during rollouts (fix: preStop sleep, graceful shutdown, 5.7).
 - Services without ready endpoints: connections fail (iptables mode `REJECT` with ICMP port unreachable / connection refused; IPVS: no real server); `kubectl get endpointslices` empty shows selector mismatch or no ready pods.
+
+### Watching endpoints
+
+Some apps, and the system itself, want to use a Service without a cluster IP. For that, Kubernetes creates a buddy Endpoints object for every Service. It holds the IP addresses behind that Service:
+
+```
+$ kubectl describe endpoints alpaca-prod
+Name: alpaca-prod
+Namespace: default
+Labels: app=alpaca
+Subsets:
+Addresses: 10.112.1.54,10.112.2.84,10.112.2.85
+NotReadyAddresses: <none>
+Ports:
+Name Port Protocol
+---- ---- --------
+<unset> 8080 TCP
+No events.
+```
+
+The output lists the ready addresses under `Addresses`. Any unready addresses appear under `NotReadyAddresses`. An advanced app can ask the Kubernetes API for these endpoints and call them directly. The API can also watch an object and notify the client as soon as it changes. That lets a client react right away when the IPs behind a Service change.
+
+Try it. Start this command in a terminal and leave it running. It prints the current state, then waits:
+
+```
+$ kubectl get endpoints alpaca-prod --watch
+NAME ENDPOINTS AGE
+alpaca-prod 10.112.1.54:8080,10.112.2.84:8080,10.112.2.85:8080 1m
+```
+
+In a second terminal, delete and re-create the deployment behind `alpaca-prod`:
+
+```
+$ kubectl delete deployment alpaca-prod
+$ kubectl create deployment alpaca-prod \
+--image=gcr.io/kuar-demo/kuard-amd64:blue \
+--port=8080
+$ kubectl scale deployment alpaca-prod --replicas=3
+```
+
+Look back at the watched output. As the Pods are deleted and re-created, each line shows the newest set of IP addresses for the Service. Your output looks something like this:
+
+```
+NAME ENDPOINTS AGE
+alpaca-prod 10.112.1.54:8080,10.112.2.84:8080,10.112.2.85:8080 1m
+alpaca-prod 10.112.1.54:8080,10.112.2.84:8080 1m
+alpaca-prod <none> 1m
+alpaca-prod 10.112.2.90:8080 1m
+alpaca-prod 10.112.1.57:8080,10.112.2.90:8080 1m
+alpaca-prod 10.112.0.28:8080,10.112.1.57:8080,10.112.2.90:8080 1m
+```
+
+The Endpoints object is a good fit for new code built to run on Kubernetes from the start. Most projects are not in that position. Most existing systems expect plain IP addresses that do not change very often.
+
+### Manual service discovery
+
+Kubernetes Services sit on top of label selectors over Pods. That means you can do rough service discovery with the Kubernetes API without a Service object at all.
+
+With `kubectl`, you can see the IP that is assigned to each Pod in the example deployments:
+
+```
+$ kubectl get pods -o wide --show-labels
+NAME ... IP ... LABELS
+alpaca-prod-12334-87f8h ... 10.112.1.54 ... app=alpaca
+alpaca-prod-12334-jssmh ... 10.112.2.84 ... app=alpaca
+alpaca-prod-12334-tjp56 ... 10.112.2.85 ... app=alpaca
+bandicoot-prod-5678-sbxzl ... 10.112.1.55 ... app=bandicoot
+bandicoot-prod-5678-x0dh8 ... 10.112.2.86 ... app=bandicoot
+```
+
+That works, but a cluster can have a ton of Pods. You will want to filter by the labels the deployment applied. Here is the `alpaca` app only:
+
+```
+$ kubectl get pods -o wide --selector=app=alpaca
+NAME ... IP ...
+alpaca-prod-3408831585-bpzdz ... 10.112.1.54 ...
+alpaca-prod-3408831585-kncwt ... 10.112.2.84 ...
+alpaca-prod-3408831585-l9fsq ... 10.112.2.85 ...
+```
+
+You now have the basics of service discovery. You can use labels to pick the set of Pods you care about, get them, and read their IP addresses. But keeping the right labels in sync is tricky. That is why the Service object was created.
 
 ## 3. kube-proxy
 
@@ -180,11 +370,69 @@ flowchart LR
 | Debuggability | Familiar (iptables-save) | ipvsadm, ipset | nft | Hubble, cilium CLI |
 | Dependencies | iptables | ip_vs, ipset | nft kernel support | Kernel BPF features |
 
+### Cluster IP environment variables
+
+Most users should find cluster IPs through DNS. An older mechanism still shows up in some setups, though. Kubernetes injects a set of environment variables into Pods as they start.
+
+To see it, port-forward to the `bandicoot` app:
+
+```
+$ BANDICOOT_POD=$(kubectl get pods -l app=bandicoot \
+-o jsonpath='{.items[0].metadata.name}')
+$ kubectl port-forward $BANDICOOT_POD 48858:8080
+```
+
+Browse to http://localhost:48858 and expand the Server Env section. It lists the variables for the `alpaca` Service in a table like this:
+
+| Key | Value |
+|---|---|
+| `ALPACA_PROD_PORT` | `tcp://10.115.245.13:8080` |
+| `ALPACA_PROD_PORT_8080_TCP` | `tcp://10.115.245.13:8080` |
+| `ALPACA_PROD_PORT_8080_TCP_ADDR` | `10.115.245.13` |
+| `ALPACA_PROD_PORT_8080_TCP_PORT` | `8080` |
+| `ALPACA_PROD_PORT_8080_TCP_PROTO` | `tcp` |
+| `ALPACA_PROD_SERVICE_HOST` | `10.115.245.13` |
+| `ALPACA_PROD_SERVICE_PORT` | `8080` |
+
+Two of these matter most: `ALPACA_PROD_SERVICE_HOST` and `ALPACA_PROD_SERVICE_PORT`. The rest are there only for the older Docker link variables, which are now deprecated.
+
+This approach has a catch. Resources must be created in a set order: the Service has to exist before the Pods that read its variables. That gets complicated when several Services make up one application. Many users also find environment variables strange to work with. For these reasons, DNS is probably the better option.
+
 ## 4. NodePort, LoadBalancer and traffic policies
 
 ### NodePort path
 
 External client → `<nodeIP>:30080` on any node → `KUBE-NODEPORTS` → Service chains → DNAT to a pod (possibly on another node) and, in `Cluster` policy, **SNAT** (masquerade to the node's IP) so replies return via the node that received the connection. Costs: extra hop, source IP lost (pods see the node IP), potential imbalance.
+
+### Trying a NodePort
+
+Pod IPs are often reachable only from inside the cluster. At some point, you have to let new traffic in. Let's try a NodePort on `alpaca-prod`.
+
+Change `spec.type` to `NodePort` with `kubectl edit service alpaca-prod`. You can also do this when you create the Service, by adding `--type=NodePort` to `kubectl expose`. The system assigns a new port:
+
+```
+$ kubectl describe service alpaca-prod
+Name: alpaca-prod
+Namespace: default
+Labels: app=alpaca
+Annotations: <none>
+Selector: app=alpaca
+Type: NodePort
+IP: 10.115.245.13
+Port: <unset> 8080/TCP
+NodePort: <unset> 32711/TCP
+Endpoints: 10.112.1.66:8080,10.112.2.104:8080,10.112.2.105:8080
+Session Affinity: None
+No events.
+```
+
+Here the system assigned port 32711. Now you can hit any cluster node on that port to reach the Service. If you are on the same network, connect directly. If the cluster runs in the cloud, tunnel over SSH:
+
+```
+$ ssh <node> -L 8080:localhost:32711
+```
+
+Point your browser to http://localhost:8080 and you are connected to the Service. Each request is sent to one of the Pods at random. Reload the page a few times, and you land on different Pods. When you are done, exit the SSH session.
 
 ### `externalTrafficPolicy`
 
@@ -203,6 +451,39 @@ Cloud (AWS NLB/ALB, GCP LB, Azure LB): cloud-controller-manager creates LBs and 
 
 Bare metal/GPU clouds: **MetalLB** (L2 ARP/NDP announcements or BGP), **kube-vip**, **Cilium LB IPAM + BGP control plane**, **Calico BGP**, hardware LBs. For inference gateways prefer L7 ingress/Gateway API (5.12) in front of Services; keep L4 LBs for raw TCP (SSH bastions, databases, gRPC with specific needs).
 
+### Trying a LoadBalancer
+
+Change `spec.type` to `LoadBalancer` with `kubectl edit service alpaca-prod`. This builds on NodePort. It also asks the cloud to create a load balancer that points at your nodes.
+
+**Warning:** a `LoadBalancer` Service is exposed to the public internet. Before you create one, make sure it is safe for everyone in the world to reach. Chapters 9 and 20 of the book give guidance on securing an application.
+
+Run `kubectl get services` right away, and the `EXTERNAL-IP` column for `alpaca-prod` shows `<pending>`. Wait a bit, and the cloud assigns a public address. You can see the work Kubernetes asked for in the console of your cloud account.
+
+```
+$ kubectl describe service alpaca-prod
+Name: alpaca-prod
+Namespace: default
+Labels: app=alpaca
+Selector: app=alpaca
+Type: LoadBalancer
+IP: 10.115.245.13
+LoadBalancer Ingress: 104.196.248.204
+Port: <unset> 8080/TCP
+NodePort: <unset> 32711/TCP
+Endpoints: 10.112.1.66:8080,10.112.2.104:8080,10.112.2.105:8080
+Session Affinity: None
+Events:
+FirstSeen ... Reason Message
+--------- ... ------ -------
+3m ... Type NodePort -> LoadBalancer
+3m ... CreatingLoadBalancer Creating load balancer
+2m ... CreatedLoadBalancer Created load balancer
+```
+
+Here the Service has the address 104.196.248.204. Open a browser and try it. The events show the change from NodePort to LoadBalancer, then the load balancer being created.
+
+This example comes from a cluster on Google Cloud, run through GKE. How a load balancer is set up depends on the cloud. Some clouds, such as AWS with Elastic Load Balancing (ELB), give a hostname instead of an IP address. Creating a cloud load balancer can take a few minutes on most providers.
+
 ### Session affinity and long-lived connections
 
 - `sessionAffinity: ClientIP` pins a client IP to a backend for `timeoutSeconds` (default 10800): uses `recent` module (iptables) or IPVS persistence; breaks behind NAT where many clients share an IP.
@@ -211,6 +492,41 @@ Bare metal/GPU clouds: **MetalLB** (L2 ARP/NDP announcements or BGP), **kube-vip
 ### Source IP and hairpin
 
 Pod-to-own-Service traffic ("hairpin") requires `KUBE-MARK-MASQ` for same-endpoint selection, and bridge `hairpin_mode` or promiscuous setups for bridge CNIs. Pod-to-Service traffic normally keeps the client pod IP as source (no SNAT) inside the cluster for iptables/IPVS modes; traffic leaving the cluster is SNAT'd by the CNI/NAT gateway.
+
+### Connecting with other environments
+
+Real applications often need to work across environments. A cloud cluster may need to reach systems deployed on-premise, and newer cloud native apps may need to talk to legacy ones. This is still an area of Kubernetes that is being explored and developed.
+
+### Connecting to resources outside of a cluster
+
+When you connect Kubernetes to a legacy resource outside the cluster, use a selector-less Service. You give it a manually assigned IP address outside the cluster. Kubernetes DNS then works as expected, and the network traffic flows to the external resource. To make one, remove the `spec.selector` field and leave `metadata` and `ports` unchanged.
+
+Because the Service has no selector, no endpoints are added for it. You add them yourself. The endpoint is usually a fixed IP address, such as your database server's, so you add it once. If that IP address ever changes, update the endpoint resource to match:
+
+```
+apiVersion: v1
+kind: Endpoints
+metadata:
+# This name must match the name of your service
+name: my-database-server
+subsets:
+- addresses:
+# Replace this IP with the real IP of your server
+- ip: 1.2.3.4
+ports:
+# Replace this port with the port(s) you want to expose
+- port: 1433
+```
+
+### Connecting external resources to services inside a cluster
+
+Connecting an external resource to a Kubernetes Service is trickier. If your cloud supports it, an internal load balancer is the simplest choice, as described above. It sits in your private network and passes traffic from a fixed IP address into the cluster. Traditional DNS can then publish that address to the external resource.
+
+If an internal load balancer is not available, use a NodePort Service. It exposes the Service on the IP addresses of the cluster nodes. You can then program a physical load balancer to send traffic to those nodes, or use DNS-based load balancing to spread traffic across them.
+
+If neither option works, more complex choices remain. You can run the full `kube-proxy` on an external machine and point it at the DNS server inside the cluster. That setup is much harder to get right, and it should really be used only in on-premise environments. Open source projects such as HashiCorp's Consul can also manage connectivity between resources inside and outside the cluster.
+
+**Warning:** these options need deep knowledge of both networking and Kubernetes. Treat them as a last resort.
 
 ## 5. conntrack: the hidden state
 

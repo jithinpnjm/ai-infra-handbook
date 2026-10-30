@@ -41,6 +41,30 @@ After this chapter you can:
 
 ## 1. Exceptions
 
+### Why exceptions exist
+
+Imagine a pizza-making robot, a culinary automaton that runs a plan written as a Python program. It takes an order, prepares the dough, adds the toppings, and bakes the pie. Now suppose something goes very wrong in the "bake the pie" step. Perhaps the oven is broken, or the robot miscalculates its reach and spontaneously combusts. There is no point in finishing the plan, so the robot should jump to code that handles the problem right away.
+
+Exceptions let a program do exactly that. When something goes wrong, Python jumps to an exception handler in one step. Everything started since the handler was entered gets abandoned. The handler then decides how to respond, for example by calling the fire department.
+
+Think of an exception as a structured `goto`. A `try` statement leaves a marker and runs some code. Later, an exception sends Python back to that marker, and any functions called after it are dropped. The program then resumes at the marker.
+
+The big payoff is simpler code. You do not check a status code after every operation and every function call. You catch errors only in the places where you can actually recover from them.
+
+### Exception roles
+
+Exceptions do more than report errors. They show up in five common roles.
+
+**Error handling.** Python raises an exception whenever it finds an error while the program runs. You can catch it and recover, or you can ignore it. If you ignore it, Python stops the program and prints an error message. A `try` statement lets your program keep going after the error.
+
+**Event notification.** An exception can also signal a normal but important condition. A search routine might raise an exception when nothing is found. That is better than returning an integer result code, because a code might also be a real answer.
+
+**Special-case handling.** Some conditions are so rare that handling them in many places clutters the code. You can handle them once, in a handler higher up the program. An `assert` can also check that conditions hold while you develop.
+
+**Termination actions.** The `finally` clause guarantees that closing work runs, whether or not an error happened. The `with` statement gives the same guarantee for objects that support it.
+
+**Unusual control flows.** Python has no `go to` statement and no built-in backtracking. Exceptions can still fill some of these roles. A `raise` can jump out of several nested loops, which a `break` cannot do.
+
 ### Mechanics
 
 An **exception** is an object representing an error or unusual condition; raising it unwinds the call stack until a matching handler is found; if none exists the program prints a traceback and exits with status 1.
@@ -119,6 +143,235 @@ def load_config(path):
 - **Warnings** (`warnings.warn("x is deprecated", DeprecationWarning, stacklevel=2)`), controlled by `-W` flags and filters; tests can turn them into errors.
 - **Exception groups (3.11, `LP` Chapter 35)**: `ExceptionGroup("batch failed", [IndexError(), TypeError(1), TypeError(2)])` and **`except*`** (`except* IndexError as E:` followed by `except* TypeError as E:`) can execute **multiple** handler clauses for a single `try` statement, binding `E` to a sub-`ExceptionGroup` containing all matching exceptions (`E.exceptions`), while any unmatched exceptions propagate upward in a remaining `ExceptionGroup` (used by `asyncio.TaskGroup`, chapter 3.6; note that `except*` cannot be mixed with plain `except` in the same `try`, and cannot contain `return`, `break`, or `continue`).
 - **Context managers (`LookingGlass` and `@contextmanager looking_glass`, `FP` Chapter 18 & `LP` Chapter 34)**: `with expr1 as v1, expr2 as v2:` (or parenthesized multi-line `with (open('lines1.txt') as input, open('uppers.txt', 'w') as output):` in Python 3.10+) guarantees deterministic teardown (`decimal.localcontext()`, `threading.Lock()`, files). In *Fluent Python* Chapter 18 (`Examples 18-1` to `18-8`, modeled in `code/part03/python_errors_files_subprocess.py`), `LookingGlass.__enter__(self)` monkey-patches `sys.stdout.write` to reverse printed strings and returns `'JABBERWOCKY'` (bound to the `as what` variable), while `__exit__(self, exc_type, exc_value, traceback)` restores `sys.stdout.write` and, if `exc_type is ZeroDivisionError`, logs a divide-by-zero message and returns `True` to suppress the exception. When writing the equivalent `@contextlib.contextmanager def looking_glass():` generator, **you must wrap the `yield` in a `try ... finally:` block** (`try: yield 'JABBERWOCKY' except ZeroDivisionError: ... finally: sys.stdout.write = original_write`), because an unhandled exception inside the `with` body is thrown into the generator at the `yield` point via `gen.throw(exc)`. And when a function needs to enter a dynamic or variable number of context managers (such as opening an arbitrary list of files without nested `with` blocks), use **`contextlib.ExitStack`** (`with ExitStack() as stack: files = [stack.enter_context(open(f)) for f in filenames]`), which unwinds all registered callbacks and context managers in LIFO order on exit.
+
+### Default exception handler
+
+Here is a small function that picks one item out of an object by index.
+
+```python
+def fetcher(obj, index):
+    return obj[index]
+
+food = 'pizza'
+fetcher(food, 4)    # like food[4], the last item: 'a'
+fetcher(food, 5)    # off the end of the string
+```
+
+With a legal index, the function returns a character. Index 5 falls off the end of `pizza`. Python detects the bad index and raises the built-in `IndexError`. Our code does not catch it, so the exception travels up to the top of the program. There, Python's default handler prints a message and a traceback.
+
+```
+Traceback (most recent call last):
+File "<stdin>", line 1, in <module>
+File "<stdin>", line 2, in fetcher
+IndexError: string index out of range
+```
+
+A traceback lists the lines and functions that were active when the error happened. The text can change a little by release, and by interactive shell, so do not depend on its exact wording in your code. In a console, the filename may show as `<stdin>`. In IDLE's shell, it shows as `<pyshell...>` and the source lines appear too. Line numbers mean little when there is no file behind the code.
+
+Outside the REPL, the default handler also stops the program right after it prints. That is fine for simple scripts, because errors are often fatal. The best you can do is read the message and fix the cause.
+
+### Catching exceptions
+
+Some programs must stay up after an internal error. A server that quits on the first bad index is not much use. So you wrap the risky call in a `try` statement and catch the exception yourself.
+
+```python
+try:
+    fetcher(food, 5)
+except IndexError:          # handle the error here
+    print('got exception')
+```
+
+Python jumps to the block under `except` when an exception is raised while the `try` block runs. The result is a handler that wraps a nested block of code. When you type top-level `try` examples into a REPL, leave out the `...` continuation prompts. The `except` and `finally` lines must line up with their `try`.
+
+In a real function, the handler also lets the program carry on:
+
+```python
+def catcher():
+    try:
+        fetcher(food, 5)
+    except IndexError:
+        print('got exception')
+    print('continuing')
+
+catcher()
+```
+
+This prints `got exception` and then `continuing`. The program resumes after the whole `try` statement, so you never see the default message. There is no way to go back to the line that failed. You would have to run that code again. Functions that were exited because of the error lose their variables, and they cannot be resumed. The `try` is both the catch point and the resume point.
+
+Python also does not undo work done before the error. Changes to mutable objects and to global names stay in place.
+
+```python
+L, S = [], 'text'
+
+def modder():
+    L.append('added')           # change a mutable object
+    global S; S = 'changed'     # change a global name
+    fetcher(food, 5)            # raise an exception
+
+try:
+    modder()
+except IndexError:
+    print('got exception')
+
+L, S    # (['added'], 'changed')
+```
+
+That is fine once you know about it. The `try` can also use `except*` clauses to handle several exceptions at once. That is a convoluted extension with a narrow scope. You can safely study it after you master the basics.
+
+### Raising exceptions
+
+Your own code can also find a bad state. When it does, it should signal the problem the same way Python does. The `raise` statement does that.
+
+```python
+try:
+    raise IndexError            # trigger the exception ourselves
+except IndexError:
+    print('got exception')
+```
+
+This prints `got exception`. User-triggered exceptions are caught the same way as the ones Python raises. If nothing catches them, they reach the default handler and stop the program:
+
+```
+Traceback (most recent call last):
+File "<stdin>", line 1, in <module>
+IndexError
+```
+
+The `assert` statement is a conditional `raise`. It fires only when its test is false, and it is mostly for debugging and sanity checks during development. In this example, the test `1 < 0` is false, so Python raises `AssertionError` with the message `Not in this universe!`.
+
+```python
+assert 1 < 0, 'Not in this universe!'
+```
+
+A `raise` can also use a `from` clause to chain exceptions. This is not common, but it can add context where that context helps.
+
+### User-defined exceptions
+
+Built-in names such as `IndexError` do not describe every problem. A failed pizza needs its own name. You make one by writing a class that inherits from a built-in exception, usually `Exception`.
+
+```python
+class Combust(Exception): pass      # user-defined exception
+
+def makePizza():
+    raise Combust()                 # raise an instance
+
+try:
+    makePizza()
+except Combust:                     # catch the class name
+    print('got exception')
+```
+
+This prints `got exception`. Exception classes let scripts build categories. They can inherit behavior, hold state, and define methods. An `as` clause on `except` gives you access to the exception object itself.
+
+An exception class can also control the message it shows when nothing catches it:
+
+```python
+class Combust(Exception):
+    def __str__(self):
+        return 'Call the fire department!...'
+
+raise Combust()
+```
+
+Because nothing catches this one, the default handler prints the usual traceback. The last line shows the class name, followed by the text your `__str__` method returned.
+
+### Termination actions with `finally`
+
+Termination actions are the steps that must run no matter how a block ends. Closing a file is the usual example. The `finally` option guarantees that required closing-time operations run, with or without exceptions in your program. Plain code after a call is a weak fix, because it never runs when the call raises an error.
+
+```python
+fetcher(food, 4)
+print('after fetch')
+```
+
+If `fetcher` raises an exception, the `print` is skipped. A `try` with a `finally` clause fixes that. The `finally` block runs on the way out, whether or not an error happened.
+
+```python
+try:
+    fetcher(food, 4)
+finally:
+    print('after fetch')
+```
+
+When nothing goes wrong, the `finally` block runs and the program continues after the `try`. Now look at the error case inside a function:
+
+```python
+def after():
+    try:
+        fetcher(food, 5)
+    finally:
+        print('after fetch')
+    print('after try?')
+```
+
+Calling `after()` prints `after fetch` first, then the traceback. You never see `after try?`, because control does not return after the `try` when an exception occurs. Python runs the `finally` block, then passes the exception up to a handler above it. In this case, that handler is the default one.
+
+If the index is legal, both lines run:
+
+```python
+def after():
+    try:
+        fetcher(food, 4)
+    finally:
+        print('after fetch')
+    print('after try?')
+```
+
+This prints `after fetch` and then `after try?`. Use `except` to recover from errors, such as ones raised by a third-party library. Use `try` with `finally` to make sure files close and server connections end. You can mix `except` and `finally` in one `try`. The `finally` block still runs either way.
+
+The `with` statement offers a shorter form for some object types. It runs the object's setup and cleanup methods, so termination work happens even if the block raises an exception.
+
+```python
+with open('pizzarobot.txt', 'w') as file:     # always close the file on exit
+    file.write('Catch fire!\n')
+```
+
+This form needs fewer lines, but it works only with object types that support it. `try`/`finally` is more general. It is often simpler than writing a class when `with` is not supported. The `with` statement can also run startup actions, and it accepts your own context managers.
+
+### Exceptions and backtracking
+
+Backtracking undoes the work done before it jumps back. Python exceptions do not do that. Local variables in the functions called inside a `try` are discarded. Changes to globals and to objects stay in place.
+
+You can still build backtracking yourself. Use exceptions together with logic that unwinds your assignments. Generators in *Learning Python* Chapter 20 do not backtrack fully either. They save their state and resume when `next()` asks for the next value. For more on true backtracking, look at books on AI or at the Prolog and Icon languages.
+
+### Why exceptions save code
+
+In languages without exceptions, you check every result. Here is a C-style sketch of a function that runs several steps.
+
+```c
+int run_job(void) {
+    if (doFirstThing() == ERROR)
+        return ERROR;
+    if (doNextThing() == ERROR)
+        return ERROR;
+    ...
+    return doLastThing();
+}
+```
+
+Robust C code often has as much error-checking as real work. Python does not need that much care. You wrap a large part of the program in a handler, and you write only the steps that do the work.
+
+```python
+def do_stuff():
+    do_first_thing()    # no error checks here,
+    do_next_thing()     # so we do not need to detect errors
+    ...
+    do_last_thing()
+
+if __name__ == '__main__':
+    try:
+        do_stuff()      # the one place where we check results
+    except Exception:
+        bad_ending()
+    else:
+        good_ending()
+```
+
+The *Learning Python* version uses a bare `except:`. This handbook prefers `except Exception:`, because a bare `except:` also catches Ctrl-C and `sys.exit()`. Control jumps straight to the handler when an error happens. You do not guard every line, and the normal path does not run extra checks. Python also finds many errors on its own, so your code often does not look for them at all.
+
+### Summary of exception tools
+
+Exceptions are a control-flow tool. Python raises them, or your own code does. If nothing catches one, the default handler prints the error and stops the program. A `try` statement catches and recovers, and its `finally` block runs cleanup either way. `raise` and `assert` trigger exceptions on demand, and `with` handles termination work for objects that support it.
 
 ### Error-handling strategy for tools and services
 

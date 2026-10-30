@@ -377,6 +377,24 @@ When you compare a classic Slurm HPC cluster with a Kubernetes GPU cluster in Pa
 > - In small clusters (`10–100` nodes), run service roles as isolated VMs on a redundant head pair rather than on compute nodes.
 > - Kubernetes Control Plane, Worker Node, NodePool, and JobSet map directly onto HPC's head node, compute node, partition, and batch job.
 
+### Running the cluster anatomy in the cloud
+
+Say you need to run a large simulation next month, but you have no cluster and no room to build one. You can try to get access to an existing HPC cluster, or build your own in the cloud. Some providers sell special HPC instances, which are virtual machines with almost direct access to a fast network and to accelerators. Even so, performance stays below real hardware. Depending on the provider, the drop can be 5-15%, and whether that is acceptable is your call.
+
+Cost comes first. Estimate the bill carefully before you commit, because building and running an on-premises cluster can turn out cheaper over the long run. The cloud still makes a good playground, though. You can test technologies and software there before you put them into production.
+
+Check the network before you rent. Find out which network type the instances use, and what each instance includes. A high-performance, low-latency network often limits how many instances you can connect. Keep all nodes in one performance subnet, such as a capacity reservation or a domain. Otherwise, the overall performance can be times lower.
+
+Shared storage matters just as much. A plain NFS volume is usually not what a cluster needs. If the provider cannot give clear performance numbers, rent a few cheap instances with that file system and run I/O tests. Copy your real pattern. For example, suppose your application saves temporary data every five minutes, and each save is about the size of a compute node's memory. Simulate that save and reload, then time both.
+
+Some providers offer a Slurm-based cluster as a ready option. For simple needs, that can be enough. If the option is missing, or you need features it does not include, build the cluster yourself. Start with Terraform for the initial setup. Then install the software with Ansible or another tool, ideally from a custom image that new nodes boot from. Cluster managers such as BCM can help with this. Test the whole process on cheap instances first.
+
+Use the cloud API for the routine work. You can terminate an instance and bring up a new one, or power a subset of nodes on or off. The API may also expose power consumption, network counters, and node health. Collect whatever the API does not give you directly on the nodes.
+
+The planning checklist in section 5 still applies in the cloud, though some answers shift a little. User management might connect to your corporate login system, or it might stay independent. Node checks and service tickets can often be automated through the provider API.
+
+Many HPC applications run on cloud HPC services today, and in some cases that is the cheapest route. The book names Amazon, Oracle, Google, CoreWeave, Lambda, and HyperStack as examples. Do not underestimate the management overhead, or the narrower choice of hardware. Check network and storage options, traffic charges, charges for nodes that are turned off, and other hidden costs. Run a test, and assess the risks and performance first.
+
 ## 8. Lab: size a 32-node GPU cluster and validate its runbook
 
 First, run the self-checking Python lab (`code/part06/cluster_anatomy_lab.py`) locally. It verifies the 3D torus maximum hop formula `[N/2]+[M/2]+[K/2]` (`torus_3d_max_hops`) and the BIOS HyperThreading versus scheduler physical core declaration model (`scheduler_declared_cores`). It also checks the 32-node GPU cluster port and power budget planner (`plan_cluster_power_and_ports`) and the 8-column maintenance runbook validator (`validate_runbook_schema`):
