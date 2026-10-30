@@ -22,25 +22,33 @@ lab_venue: "Mac"
 
 ## Why this matters for AI infrastructure
 
-"Pythonic" is not decoration; it is how the language and its libraries expect you to behave, and the reason frameworks (pandas, PyTorch, FastAPI, Kubernetes clients) feel consistent. The **data model** (special methods such as `__len__`, `__getitem__`, `__iter__`, `__enter__`) is what makes your own objects work with `len()`, `for`, `with`, `sorted` and slicing. **Comprehensions and generators** are how infrastructure scripts stream gigabytes of logs, paginate cloud APIs, and transform metrics without exhausting memory. Getting them right turns a 40-line loop with a bug into a three-line pipeline you can test. This chapter covers the data model, the sequence/mapping/set types in depth, comprehensions, the iterator protocol, generators and coroutine-style generators, `itertools`/`functools`/`operator`, text vs bytes, object references, and design patterns with first-class functions.
+Picture a script that has to stream several gigabytes of logs before it can tell you anything. If it loads the whole file at once, it can run out of memory.
+
+"Pythonic" is not decoration. It is how the language and its libraries expect you to behave, and that is why frameworks such as pandas, PyTorch, FastAPI and the Kubernetes clients feel consistent. The data model is the set of special methods, such as `__len__`, `__getitem__`, `__iter__` and `__enter__`, that decide how your own objects work with `len()`, `for`, `with`, `sorted` and slicing.
+
+Comprehensions and generators are the tools that let you stream those logs, paginate cloud APIs and transform metrics without exhausting memory. Getting them right changes the size of your code. A 40-line loop with a bug can often become a three-line pipeline that you can test.
+
+This chapter covers the data model and the sequence, mapping and set types in depth. It then moves on to comprehensions, the iterator protocol, and generators and coroutine-style generators. Last, it covers `itertools`, `functools` and `operator`, text versus bytes, object references, and design patterns that use first-class functions.
 
 ## Prerequisites and outcomes
 
-You should know the core language (chapter 3.1) and modules (3.2).
+Before you start, you should be comfortable with the core language from chapter 3.1 and with modules from chapter 3.2.
 
-After this chapter you can:
+When you finish this chapter, you should be able to do the following.
 
-- Explain the data model: special (dunder) methods, how built-ins and syntax dispatch to them, and implement a small class that behaves like a sequence, mapping, context manager, or numeric type.
-- Choose and use sequence types (list, tuple, deque, array, memoryview), slicing and unpacking, sorting and key functions, bisect; mapping and set types (dict, defaultdict, Counter, OrderedDict, ChainMap, MappingProxyType, set operations), and understand hash and equality contracts.
-- Write list/dict/set comprehensions and generator expressions, know when not to, and handle scoping rules and the walrus operator in comprehensions.
-- Explain iterables, iterators and the iterator protocol; write generator functions, `yield from`, generator pipelines, infinite generators, and send/throw/close semantics; use `itertools` recipes.
-- Handle text vs bytes, encodings and normalisation; understand references, aliasing, weak references, and object lifecycle.
-- Use first-class functions for patterns (strategy, command, registry, callbacks) instead of class hierarchies.
+- Explain the data model. Describe how special (dunder) methods are called by built-ins and syntax, and implement a small class that behaves like a sequence, mapping, context manager or numeric type.
+- Choose and use sequence types (list, tuple, deque, array, memoryview), with slicing, unpacking, sorting, key functions and bisect. Use mapping and set types (dict, defaultdict, Counter, OrderedDict, ChainMap, MappingProxyType and set operations), and understand the hash and equality contracts.
+- Write list, dict and set comprehensions and generator expressions, know when not to use them, and handle scoping rules and the walrus operator inside comprehensions.
+- Explain iterables, iterators and the iterator protocol. Write generator functions, `yield from`, generator pipelines and infinite generators, understand send, throw and close, and use `itertools` recipes.
+- Handle text versus bytes, encodings and normalisation, and understand references, aliasing, weak references and object lifecycle.
+- Use first-class functions for patterns such as strategy, command, registry and callbacks, instead of class hierarchies.
 - Process large inputs in constant memory and paginate APIs lazily.
 
 ## 1. The Python data model
 
-The data model defines how objects interact with the language. When you write `len(x)`, `x[i]`, `for a in x`, `x + y`, `with x:` or `print(x)`, Python calls **special methods** on the object's type: `type(x).__len__(x)`, `__getitem__`, `__iter__`, `__add__`, `__enter__`/`__exit__`, `__str__`. Implementing them lets your classes participate in built-in behaviour. You should rarely call dunder methods directly (call `len(x)`, not `x.__len__()`), and you should not invent new ones.
+Suppose you write a small class and then find that `len()` and `for` do not work with it. The data model is the rulebook that decides this. When you write `len(x)`, `x[i]`, `for a in x`, `x + y`, `with x:` or `print(x)`, Python calls special methods on the object's type. These include `type(x).__len__(x)`, `__getitem__`, `__iter__`, `__add__`, `__enter__`/`__exit__` and `__str__`. Their names start and end with double underscores, which is why people call them dunder methods.
+
+Implementing these methods lets your classes take part in built-in behaviour. You should rarely call them directly, so write `len(x)` rather than `x.__len__()`. You should also never invent new ones.
 
 ```python
 from collections import abc
@@ -75,6 +83,8 @@ class Vector:
         yield self.x; yield self.y
 ```
 
+The table below groups the special methods by the behaviour they add. Find the row that matches what your class needs, then implement only those methods. Notice that most rows are triggered by ordinary syntax rather than by a direct call.
+
 ### Categories of special methods
 
 | Purpose | Methods | Triggered by |
@@ -91,11 +101,19 @@ class Vector:
 | Lifecycle | `__new__`, `__init__`, `__del__`, `__init_subclass__`, `__class_getitem__` | construction, destruction, subclassing |
 | Async | `__aiter__`, `__anext__`, `__aenter__`, `__aexit__`, `__await__` | `async for`, `async with`, `await` (chapter 3.6) |
 
-Design rules: return `NotImplemented` (not raise) for unsupported operand types so Python can try the other operand; keep `__eq__` and `__hash__` consistent (equal objects must hash equal; mutable objects should not be hashable); make `__repr__` always useful (include the identifying fields); prefer composition and the abstract collection base classes (`collections.abc.Sequence`, `Mapping`, `MutableMapping`) which supply many methods once you implement a few.
+Four design rules keep these methods safe. Return `NotImplemented` instead of raising an error for operand types you do not support, so Python can try the other operand. Keep `__eq__` and `__hash__` consistent, because equal objects must hash equal, and mutable objects should not be hashable. Make `__repr__` always useful by including the fields that identify the object. Finally, prefer composition and the abstract collection base classes, such as `collections.abc.Sequence`, `Mapping` and `MutableMapping`. They supply many methods once you implement a few.
 
 ### A sequence by protocol: `FrenchDeck`, `spades_high`, and `Fleet`
 
-In *Fluent Python* Chapter 1 (`Example 1-1`), Luciano Ramalho shows how implementing just two dunder methods—`__len__` and `__getitem__`—turns a 12-line class into a full-fledged Python sequence (`collections.abc.Sequence`). By defining `Card = collections.namedtuple('Card', ['rank', 'suit'])` and `class FrenchDeck` with `ranks = [str(n) for n in range(2, 11)] + list('JQKA')` and `suits = 'spades diamonds clubs hearts'.split()`, a `deck = FrenchDeck()` instance immediately supports `len(deck)` (`52`—note that for built-in CPython types like `list` or `str`, `len(x)` reads the C struct's `ob_size` field in `PyVarObject` directly in $O(1)$ time rather than calling a method), indexing (`deck[0] == Card(rank='2', suit='spades')`, `deck[-1] == Card(rank='A', suit='hearts')`), random selection (`from random import choice; choice(deck)`), slicing (`deck[:3]` and `deck[12::13]` to pick all four Aces by starting at index 12 and stepping by 13), forward and reverse iteration (`for card in deck:` and `for card in reversed(deck):`), sequential `in` membership scans (`Card('Q', 'hearts') in deck` is `True`, `Card('7', 'beasts') in deck` is `False`), and custom sorting via `suit_values = dict(spades=3, hearts=2, diamonds=1, clubs=0)` and `def spades_high(card): rank_value = FrenchDeck.ranks.index(card.rank); return rank_value * len(suit_values) + suit_values[card.suit]` (which ranks the `2` of clubs at `0` and the Ace of spades at `51` via `sorted(deck, key=spades_high)`). Note that an immutable `FrenchDeck` cannot be shuffled in place with `random.shuffle(deck)` unless it also implements `__setitem__`. Similarly, for infrastructure host inventories:
+*Fluent Python* Chapter 1 (`Example 1-1`) shows how Luciano Ramalho turns a 12-line class into a full Python sequence. The class only has to implement `__len__` and `__getitem__`, and it then becomes a `collections.abc.Sequence`. You start with `Card = collections.namedtuple('Card', ['rank', 'suit'])` and `class FrenchDeck` with `ranks = [str(n) for n in range(2, 11)] + list('JQKA')` and `suits = 'spades diamonds clubs hearts'.split()`.
+
+Once that is in place, a `deck = FrenchDeck()` instance supports `len(deck)`, which returns `52`. For built-in CPython types such as `list` or `str`, `len(x)` reads the `ob_size` field in the C struct `PyVarObject` directly, in $O(1)$ time, rather than calling a method. Indexing works too: `deck[0] == Card(rank='2', suit='spades')` and `deck[-1] == Card(rank='A', suit='hearts')`. Random selection works with `from random import choice; choice(deck)`.
+
+Slicing works as well. `deck[:3]` returns the first three cards, and `deck[12::13]` picks all four Aces by starting at index 12 and stepping by 13. Forward and reverse iteration work with `for card in deck:` and `for card in reversed(deck):`. Membership is a sequential scan, so `Card('Q', 'hearts') in deck` is `True`, while `Card('7', 'beasts') in deck` is `False`.
+
+Custom sorting follows the same pattern. The book uses `suit_values = dict(spades=3, hearts=2, diamonds=1, clubs=0)` and `def spades_high(card): rank_value = FrenchDeck.ranks.index(card.rank); return rank_value * len(suit_values) + suit_values[card.suit]`. The function ranks the `2` of clubs at `0` and the Ace of spades at `51`, so `sorted(deck, key=spades_high)` orders the deck by that rule. An immutable `FrenchDeck` cannot be shuffled in place with `random.shuffle(deck)` unless it also implements `__setitem__`.
+
+Host inventories follow the same idea. The `Fleet` class below needs only `__len__` and `__getitem__`.
 
 ```python
 class Fleet(abc.Sequence):
@@ -111,7 +129,7 @@ f = Fleet(["gpu01", "gpu02", "gpu03"])
 len(f), f[0], f[-1], f[1:], "gpu02" in f, list(reversed(f)), f.index("gpu03")
 ```
 
-Only `__len__` and `__getitem__` were needed. This is the essence of **duck typing with protocols** (part of the `collections.abc.Collection` hierarchy, which unifies `Iterable` (`__iter__`), `Sized` (`__len__`), and `Container` (`__contains__`), specialized by `Sequence`, `Mapping`, and `Set`): anything with the right methods plugs in.
+Only `__len__` and `__getitem__` were needed. This is the essence of duck typing with protocols. The `collections.abc.Collection` hierarchy unifies `Iterable` (which needs `__iter__`), `Sized` (which needs `__len__`) and `Container` (which needs `__contains__`). `Sequence`, `Mapping` and `Set` specialise those. Anything with the right methods plugs in.
 
 ### Context managers
 
@@ -135,13 +153,17 @@ def drained(node):
 with drained("gpu07") as n: upgrade(n)
 ```
 
-`contextlib` also provides `suppress`, `closing`, `redirect_stdout`, `ExitStack` (manage a dynamic number of resources), `nullcontext`, `contextlib.chdir` (3.11), and `asynccontextmanager`. Use `with` for files, locks, sockets, temporary directories, DB transactions, timers, and any acquire/release pair.
+The `contextlib` module also provides `suppress`, `closing`, `redirect_stdout`, `ExitStack` (which manages a dynamic number of resources), `nullcontext`, `contextlib.chdir` (3.11) and `asynccontextmanager`. Use `with` for files, locks, sockets, temporary directories, database transactions, timers and any other acquire-and-release pair.
 
 ## 2. Sequences
 
+Most of the data in a script sits in sequences, so the choice of sequence type affects both memory and speed. This section starts with the two families of sequences, then shows the everyday tools for slicing, unpacking and sorting.
+
 ### The sequence family
 
-Container sequences hold references to objects (list, tuple, `collections.deque`); flat sequences hold values of one type contiguously (`str`, `bytes`, `bytearray`, `memoryview`, `array.array`). Mutable: list, deque, bytearray, array; immutable: tuple, str, bytes.
+Container sequences hold references to objects. The list, the tuple and `collections.deque` are container sequences. Flat sequences hold values of one type, stored side by side in memory. The `str`, `bytes`, `bytearray`, `memoryview` and `array.array` types are flat. The list, deque, bytearray and array types are mutable, which means you can change them in place. The tuple, str and bytes types are immutable.
+
+The next block shows slicing, unpacking and sorting, which you will use in almost every script.
 
 ```python
 # slicing: seq[start:stop:step]; half-open; negative indices; slice objects are first class
@@ -166,7 +188,9 @@ import bisect; i = bisect.bisect_left(sorted_list, x); bisect.insort(sorted_list
 heapq.nlargest(5, items, key=...)      # top-k without full sort
 ```
 
-Notes: `sort()` sorts in place and returns `None`; `sorted()` returns a new list. Python's sort (Timsort) is stable and O(n log n) with O(n) best case on partially ordered data. Use `key=` instead of `cmp`. **Tuple comparison** is lexicographic. **`list.insert(0, x)` and `list.pop(0)` are O(n)**: use `collections.deque` (`appendleft`, `popleft`, `maxlen=N` ring buffers, ideal for recent-N windows of metrics or log lines).
+Two details matter here. The `sort()` method sorts in place and returns `None`, while `sorted()` returns a new list. Python's sort, Timsort, is stable and runs in O(n log n) time, with an O(n) best case on data that is already partly ordered. Use `key=` rather than a comparison function, and remember that tuple comparison is lexicographic, so the first field decides the order.
+
+Watch out for `list.insert(0, x)` and `list.pop(0)`. Both are O(n), because every remaining item has to move. Use `collections.deque` instead. It supports `appendleft`, `popleft` and a `maxlen=N` ring buffer, which is ideal for keeping the most recent N metrics or log lines.
 
 ```python
 from collections import deque
@@ -177,20 +201,32 @@ temps = array("f", [71.0, 72.5])      # compact numeric storage (4 bytes each) v
 mv = memoryview(bytearray(1024)); chunk = mv[100:200]     # zero-copy views over binary buffers (sockets, mmap, NumPy)
 ```
 
-**Augmented assignment** on mutable sequences mutates in place (`a += [1]` calls `__iadd__`, which acts like `list.extend` on the shared list), whereas on immutable sequences like tuples or strings it falls back to `__add__` and rebinds the variable to a brand-new object (so repeated `+=` on tuples or strings copies the entire sequence each time). In *Fluent Python* Chapter 2 (`Examples 2-17` and `2-18`), the puzzle `t = (1, 2, [30, 40]); t[2] += [50, 60]` (or `t = ([1], 2); t[0] += [3]`) both raises `TypeError: 'tuple' object does not support item assignment` **and** leaves `t` mutated as `(1, 2, [30, 40, 50, 60])`. Inspecting `dis.dis('s[a] += b')` shows why: Python first executes `BINARY_SUBSCR` to push `s[a]` (the mutable list) onto the stack, calls `INPLACE_ADD` (`__iadd__`, which succeeds in extending the list in place), and then executes `STORE_SUBSCR` (`s[a] = result`), which fails because `s` is an immutable `tuple`. Lesson: avoid putting mutable items inside tuples, and bear in mind that `+=` is not an atomic operation.
+The `array` type stores each float in 4 bytes, while a list stores a separate float object of about 32 bytes for each value. The `memoryview` gives you a window into a binary buffer without copying it, which matters for sockets and NumPy data.
 
-Also from *Fluent Python* Chapter 2:
-- **Listcomps vs `map`/`filter` and Cartesian products (`Examples 2-1` to `2-6`):** For `symbols = '$¢£¥€¤'`, `[ord(s) for s in symbols if ord(s) > 127]` (`[162, 163, 165, 8364, 164]`) is clearer than `list(filter(lambda c: c > 127, map(ord, symbols)))`, while generator expressions initialize tuples and arrays without allocating an intermediate list (`tuple(ord(s) for s in symbols)` and `array.array('I', (ord(s) for s in symbols))`). Cartesian products over `colors = ['black', 'white']` and `sizes = ['S', 'M', 'L']` (`[(color, size) for color in colors for size in sizes]`, or lazily `(f'{c} {s}' for c in colors for s in sizes)`) replace nested loops.
-- **Tuples as records, nested unpacking (`metro_areas`), and named `slice` objects (`Examples 2-7` to `2-13`):** Beyond serving as immutable lists, tuples act as unnamed records where field position carries meaning (`lax_coordinates = (33.9425, -118.408056)`, `divmod(20, 8) == (2, 4)`). To test whether a tuple `o` is recursively immutable (hashable), you can run `def fixed(o): try: hash(o) except TypeError: return False; return True` (`fixed((10, 'alpha', (1, 2)))` is `True`; `fixed((10, 'alpha', [1, 2]))` is `False`). In `metro_areas = [('Tokyo', 'JP', 36.933, (35.689722, 139.691667)), ('Delhi NCR', 'IN', 21.935, (28.613889, 77.208889)), ('Mexico City', 'MX', 20.142, (19.433333, -99.133333)), ('New York-Newark', 'US', 20.104, (40.808611, -74.020386)), ('São Paulo', 'BR', 19.649, (-23.547778, -46.635833))]`, nested tuple unpacking `for name, _, _, (lat, lon) in metro_areas:` (or structural pattern matching `case [str(name), _, _, (float(lat), float(lon))] if lon <= 0:`) extracts nested coordinates directly, just as a Scheme-subset `lis.py` evaluator matches `case ['quote', x]:`, `case ['if', test, consequence, alternative]:`, and `case ['lambda', [*parms], *body] if body:`. For flat-file parsing (`invoice`), naming slices (`SKU = slice(0, 6); DESCRIPTION = slice(6, 40); UNIT_PRICE = slice(40, 52)` with `'bicycle'[::3] == 'bye'`, `'bicycle'[::-1] == 'elcycib'`, and multidimensional `...` `Ellipsis` in NumPy `floats-10M-lines.txt`) keeps index math readable. **Named tuples** (`collections.namedtuple`, `typing.NamedTuple`) give tuple semantics with named fields (chapter 3.4 compares them to dataclasses).
+Augmented assignment, such as `+=`, behaves differently on mutable and immutable sequences. On a mutable sequence, `a += [1]` calls `__iadd__`, which acts like `list.extend` on the shared list, so the change is visible to every name that points at that list. On an immutable sequence such as a tuple or a string, Python falls back to `__add__` and rebinds the variable to a brand-new object. That means repeated `+=` on tuples or strings copies the whole sequence each time.
+
+*Fluent Python* Chapter 2 (`Examples 2-17` and `2-18`) turns this into a puzzle. The statement `t = (1, 2, [30, 40]); t[2] += [50, 60]` raises `TypeError: 'tuple' object does not support item assignment`, and it still leaves `t` changed to `(1, 2, [30, 40, 50, 60])`. The same happens with `t = ([1], 2); t[0] += [3]`. Running `dis.dis('s[a] += b')` shows why. Python first runs `BINARY_SUBSCR` to push the list `s[a]` onto the stack. It then calls `INPLACE_ADD`, which succeeds and extends the list. Finally it runs `STORE_SUBSCR` to assign `s[a] = result`, and that step fails because `s` is a tuple. The lesson is to avoid putting mutable items inside tuples, and to remember that `+=` is not an atomic operation.
+
+*Fluent Python* Chapter 2 also covers several more everyday patterns. For `symbols = '$¢£¥€¤'` (`Examples 2-1` to `2-6`), the list comprehension `[ord(s) for s in symbols if ord(s) > 127]` returns `[162, 163, 165, 8364, 164]`. It is clearer than `list(filter(lambda c: c > 127, map(ord, symbols)))`. Generator expressions can fill a tuple or an array without building a list first, as in `tuple(ord(s) for s in symbols)` and `array.array('I', (ord(s) for s in symbols))`. Cartesian products over `colors = ['black', 'white']` and `sizes = ['S', 'M', 'L']` replace nested loops with `[(color, size) for color in colors for size in sizes]`, or with the lazy form `(f'{c} {s}' for c in colors for s in sizes)`.
+
+Tuples also work as unnamed records, where the position of each field carries the meaning. Examples include `lax_coordinates = (33.9425, -118.408056)` and `divmod(20, 8) == (2, 4)`. To check whether a tuple is recursively immutable, run `def fixed(o): try: hash(o) except TypeError: return False; return True`. The call `fixed((10, 'alpha', (1, 2)))` returns `True`, while `fixed((10, 'alpha', [1, 2]))` returns `False`.
+
+The `metro_areas` list (`Examples 2-7` to `2-13`) shows how nested unpacking reads. It holds tuples such as `('Tokyo', 'JP', 36.933, (35.689722, 139.691667))`, along with `('Delhi NCR', 'IN', 21.935, (28.613889, 77.208889))`, `('Mexico City', 'MX', 20.142, (19.433333, -99.133333))`, `('New York-Newark', 'US', 20.104, (40.808611, -74.020386))` and `('São Paulo', 'BR', 19.649, (-23.547778, -46.635833))`. The loop `for name, _, _, (lat, lon) in metro_areas:` pulls the coordinates out directly. Structural pattern matching does the same job with `case [str(name), _, _, (float(lat), float(lon))] if lon <= 0:`. The book also matches a Scheme-subset `lis.py` evaluator with `case ['quote', x]:`, `case ['if', test, consequence, alternative]:` and `case ['lambda', [*parms], *body] if body:`.
+
+For flat-file parsing, named slices keep the index math readable. The book defines `SKU = slice(0, 6); DESCRIPTION = slice(6, 40); UNIT_PRICE = slice(40, 52)` for an invoice. It also shows that `'bicycle'[::3] == 'bye'` and `'bicycle'[::-1] == 'elcycib'`. For multidimensional data, NumPy accepts the `...` (`Ellipsis`) index, as in the `floats-10M-lines.txt` example. Named tuples, from `collections.namedtuple` and `typing.NamedTuple`, give you tuple behaviour with named fields. Chapter 3.4 compares them with dataclasses.
 
 ### Memory and performance notes
 
-- Lists store pointers (8 bytes each on 64-bit) to separate objects: a list of one million floats costs about 32 MB plus the objects; use NumPy arrays or `array` for numeric bulk data (chapter 3.10).
-- Prefer comprehensions and built-ins (`sum`, `max`, `any`, `all`, `join`) over manual loops for speed and clarity.
-- `x in list` is linear; convert to a `set` for repeated membership tests.
-- `copy.copy`, slicing and `list()` make shallow copies.
+- A list stores pointers, which take 8 bytes each on a 64-bit system, to separate objects. A list of one million floats therefore costs about 32 MB before you count the objects. For large numeric data, use NumPy arrays or `array` instead (chapter 3.10).
+- Prefer comprehensions and built-ins such as `sum`, `max`, `any`, `all` and `join` over manual loops. They are faster and easier to read.
+- A test like `x in list` scans the list in linear time. Convert the data to a `set` when you test membership many times.
+- `copy.copy`, slicing and `list()` each make a shallow copy.
+
+If your code tests membership in a large list, convert it to a set before the loop.
 
 ## 3. Mappings and sets
+
+Dictionaries and sets answer the question "have I seen this before?" in almost constant time. They also hold the per-host and per-rack data that most infrastructure scripts build. The snippet below shows the everyday operations.
 
 ```python
 d = {"gpu01": 8, "gpu02": 8}
@@ -200,16 +236,25 @@ for k in list(d):                       # iterate over a copy of keys if you del
     if d[k] == 0: del d[k]
 ```
 
-- **Hashing contract**: keys must be hashable (hash never changes, `a == b` implies `hash(a) == hash(b)`). Dict and set lookups are O(1) on average because of hashing; many collisions degrade to O(n).
-- **Ordering and compact/key-sharing layout**: dicts preserve insertion order (adopted from PyPy's compact dict layout in CPython 3.6 and made an official language guarantee in Python 3.7, alongside PEP 412 key-sharing instance `__dict__` dictionaries that cut OOP memory by 10% to 20%); `OrderedDict` adds `move_to_end` (useful for LRU caches) and order-sensitive equality. In *Fluent Python* Chapter 3 (`Example 3-1`), dict comprehensions transform `dial_codes = [(880, 'Bangladesh'), (55, 'Brazil'), (86, 'China'), (91, 'India'), (62, 'Indonesia'), (81, 'Japan'), (234, 'Nigeria'), (92, 'Pakistan'), (7, 'Russia'), (1, 'United States')]` into `country_dial = {country: code for code, country in dial_codes}` and `{code: country.upper() for country, code in sorted(country_dial.items()) if code < 70}`, while `match` destructures semi-structured JSON records (`case {'type': 'book', 'api': 2, 'authors': [*names]}:` or `case {'type': 'book', 'api': 1, 'author': name}:` in `get_creators(record)`).
-- **`setdefault` vs `defaultdict(factory)` vs `__missing__` (`StrKeyDict0` and `collections.UserDict`):** When indexing word locations `(line_no, column_no)` with `WORD_RE = re.compile(r'\w+')` (`Examples 3-4` to `3-8`), writing `occurrences = index.get(word, []); occurrences.append(location); index[word] = occurrences` performs **two** hash lookups per word, whereas `index.setdefault(word, []).append(location)` or `index = collections.defaultdict(list); index[word].append(location)` performs only **one** lookup. Under the hood, if `d[key]` misses, `dict.__getitem__` calls **`__missing__(self, key)`** (note that `__missing__` is called **only** by `d[k]`, not by `d.get(k)` or `k in d` unless overridden). In *Fluent Python*'s `StrKeyDict0(dict)`, implementing `def __missing__(self, key): if isinstance(key, str): raise KeyError(key); return self[str(key)]` (where the `isinstance(key, str)` guard prevents infinite recursion if `str(key)` is absent) alongside `get` and `def __contains__(self, key): return key in self.keys() or str(key) in self.keys()` lets integer and string keys look up seamlessly (`d[2] == d['2'] == 'two'`). When writing a custom mapping that also normalizes keys on insertion (`__setitem__`), subclass **`collections.UserDict`** (which stores the underlying `dict` in `self.data` and extends `abc.MutableMapping`) rather than `dict` directly so built-in C methods do not bypass your overrides.
-- **`Counter` and `shelve.Shelf`**: `Counter` is a multiset (`ct = collections.Counter('abracadabra'); ct.update('aaaaazzz'); ct.most_common(3)`) supporting `+`, `-`, `&` (min), and `|` (max); `shelve.open` provides persistent DBM-backed `MutableMapping` storage for string keys.
-- **`ChainMap`**: layered lookups without copying: configuration precedence (`ChainMap(cli_args, os.environ, file_cfg, defaults)` or Python's own scope lookup `pylookup = ChainMap(locals(), globals(), vars(builtins))`; mutations like `chain['c'] = -1` modify only the **first** mapping `d1`).
-- **`types.MappingProxyType(d)`** read-only dynamic view over `d` (preventing callers from mutating hardware pin maps while still reflecting updates made to `d`); `dict.keys()` (`dict_keys`) and `dict.items()` (`dict_items`) are zero-copy live views supporting set operations (`&`, `|`, `-`, `^`).
-- **Sets**: `{1, 2}`, `set(iterable)` (note `{}` is an empty `dict`; always write `set()` for an empty set), `|` (`union`), `&` (`intersection`), `-` (`difference`), `^` (`symmetric_difference`), `<=` (`issubset`), `<`, `>=` (`issuperset`), `>`, `isdisjoint`; elements must be hashable; `frozenset` for hashable sets. Great for diffing desired vs actual state, deduplication (note: unordered; for ordered dedupe use `dict.fromkeys(items)`).
-- **Equality of different containers**: `{1: "a"} == {1: "a"}` True regardless of order; lists compare order-sensitively; `1 == 1.0 == True` and they hash equal, so `{1, 1.0, True}` has one element.
-- **Nested defaults**: `defaultdict(lambda: defaultdict(list))` for two-level grouping; for deeply nested configuration prefer typed models (chapter 3.4).
-- **Merging**: `a | b`, `{**a, **b}`, `ChainMap`; deep merges require recursion.
+Keys must be hashable. Their hash value never changes, and if `a == b` then `hash(a) == hash(b)` must also hold. Thanks to hashing, dict and set lookups take O(1) time on average. If many keys collide, though, lookups degrade toward O(n).
+
+Dicts keep insertion order. CPython 3.6 adopted the compact dict layout from PyPy, and Python 3.7 made that order an official guarantee. The same period brought PEP 412 key-sharing instance `__dict__` dictionaries, which cut object-oriented memory use by 10% to 20%. `OrderedDict` still exists, and it adds `move_to_end`, which is useful for LRU caches, along with order-sensitive equality.
+
+*Fluent Python* Chapter 3 (`Example 3-1`) shows dict comprehensions at work. They turn `dial_codes = [(880, 'Bangladesh'), (55, 'Brazil'), (86, 'China'), (91, 'India'), (62, 'Indonesia'), (81, 'Japan'), (234, 'Nigeria'), (92, 'Pakistan'), (7, 'Russia'), (1, 'United States')]` into `country_dial = {country: code for code, country in dial_codes}`. A second comprehension, `{code: country.upper() for country, code in sorted(country_dial.items()) if code < 70}`, filters that result. The same chapter uses `match` to destructure semi-structured JSON records, with patterns such as `case {'type': 'book', 'api': 2, 'authors': [*names]}:` and `case {'type': 'book', 'api': 1, 'author': name}:` inside `get_creators(record)`.
+
+Missing keys need care, and there are three common ways to handle them. Suppose you index word locations, written as `(line_no, column_no)`, using `WORD_RE = re.compile(r'\w+')`. Writing `occurrences = index.get(word, []); occurrences.append(location); index[word] = occurrences` performs two hash lookups per word. The version `index.setdefault(word, []).append(location)` performs one, and so does `index = collections.defaultdict(list); index[word].append(location)`.
+
+When `d[key]` misses, `dict.__getitem__` calls `__missing__(self, key)`. The method runs only for `d[k]`, not for `d.get(k)` or `k in d`, unless you override those too. *Fluent Python*'s `StrKeyDict0(dict)` uses `def __missing__(self, key): if isinstance(key, str): raise KeyError(key); return self[str(key)]`. The `isinstance` guard stops infinite recursion when `str(key)` is also absent. Together with `get` and `def __contains__(self, key): return key in self.keys() or str(key) in self.keys()`, it lets integer and string keys find each other, so `d[2] == d['2'] == 'two'`. If you write a custom mapping that normalises keys in `__setitem__`, subclass `collections.UserDict` rather than `dict`. `UserDict` stores the underlying dict in `self.data` and extends `abc.MutableMapping`, so built-in C methods cannot bypass your overrides.
+
+`Counter` is a multiset. For example, `ct = collections.Counter('abracadabra'); ct.update('aaaaazzz'); ct.most_common(3)` counts letters. It supports `+`, `-`, `&` (minimum) and `|` (maximum). `shelve.open` gives you a `shelve.Shelf`, which is persistent, DBM-backed `MutableMapping` storage for string keys.
+
+`ChainMap` gives you layered lookups without copying. It fits configuration precedence, as in `ChainMap(cli_args, os.environ, file_cfg, defaults)`. Python's own scope lookup uses the same idea: `pylookup = ChainMap(locals(), globals(), vars(builtins))`. A write such as `chain['c'] = -1` changes only the first mapping, `d1`.
+
+`types.MappingProxyType(d)` gives you a read-only view of `d` that still reflects later updates to `d`. This stops callers from changing a hardware pin map while the owner keeps it current. `dict.keys()` (`dict_keys`) and `dict.items()` (`dict_items`) are live views that cost no copying, and they support set operations such as `&`, `|`, `-` and `^`.
+
+Sets are written `{1, 2}` or built with `set(iterable)`. Note that `{}` is an empty dict, so always write `set()` for an empty set. Sets support `|` (union), `&` (intersection), `-` (difference), `^` (`symmetric_difference`), `<=` (subset), `<`, `>=` (superset), `>` and `isdisjoint`. Elements must be hashable, and `frozenset` is the hashable version of a set. Sets are useful for comparing desired state with actual state, and for removing duplicates. They are unordered, so if you need order, use `dict.fromkeys(items)` instead.
+
+Equal containers compare in different ways. Dicts compare equal regardless of key order, while lists compare order-sensitively. The values `1 == 1.0 == True` are equal and hash the same, so `{1, 1.0, True}` has one element. For two-level grouping, use `defaultdict(lambda: defaultdict(list))`, and for deeply nested configuration, prefer typed models from chapter 3.4. To merge mappings, use `a | b`, `{**a, **b}` or `ChainMap`. A deep merge needs recursion.
 
 ```python
 from collections import defaultdict, Counter, ChainMap
@@ -220,61 +265,83 @@ cfg = ChainMap({"retries": 5}, {"retries": 3, "timeout": 10})        # first map
 cfg["timeout"], cfg["retries"]
 ```
 
+The snippet groups nodes by rack, counts error codes and layers two configuration mappings. Use `ChainMap` when the first mapping should win.
+
 ## 4. Text versus bytes
 
-(Expanded in chapter 3.5; the essentials here.)
+Chapter 3.5 covers this topic in more depth. The essentials are below.
 
-- **`str`** is Unicode text (sequence of code points); **`bytes`** is binary data. Convert only at the boundaries: decode bytes to text on input (`data.decode("utf-8")`), encode text to bytes on output (`s.encode("utf-8")`).
-- **Encodings**: UTF-8 is the default for new work; ASCII subset; Latin-1 maps bytes 1:1 to code points 0 to 255 (useful to carry arbitrary bytes through text APIs); `errors="replace"|"ignore"|"surrogateescape"|"backslashreplace"|"strict"` control failures. `locale.getpreferredencoding()` varies by environment (containers with `LANG=C` surprise people); always pass `encoding="utf-8"` to `open()`.
-- **Unicode pitfalls**: the same visible text can have different code point sequences (`é` as one code point or `e` + combining accent): normalise with `unicodedata.normalize("NFC", s)` before comparing; `str.casefold()` for caseless matching; `len()` counts code points, not bytes or visual characters (graphemes); sorting is by code point (use `locale.strxfrm` or ICU for human order).
-- **Bytes API**: `bytes` indexing returns ints; `b"abc"[0] == 97`; `bytes.hex()`, `bytes.fromhex`, `int.from_bytes`, `struct.pack/unpack` for binary protocols, `base64`, `hashlib` (bytes in, bytes out).
-- Subprocess output, socket reads and file reads in binary mode are bytes; JSON/YAML/regex operate on text.
+A `str` is Unicode text, which is a sequence of code points. `bytes` is binary data. Convert only at the boundaries of your program. Decode bytes to text when input arrives, with `data.decode("utf-8")`, and encode text to bytes when output leaves, with `s.encode("utf-8")`.
+
+UTF-8 is the default for new work. ASCII is a subset of it. Latin-1 maps bytes one to one onto code points 0 to 255, which helps when you need to carry arbitrary bytes through text APIs. The `errors` argument decides what happens on failure. You can choose `"replace"`, `"ignore"`, `"surrogateescape"`, `"backslashreplace"` or `"strict"`. The result of `locale.getpreferredencoding()` changes with the environment, and containers that set `LANG=C` often surprise people. Always pass `encoding="utf-8"` to `open()`.
+
+Unicode has its own traps. The same visible text can use different code point sequences, for example `é` as one code point or as `e` plus a combining accent. Normalise both strings with `unicodedata.normalize("NFC", s)` before you compare them. Use `str.casefold()` for caseless matching. `len()` counts code points, not bytes or visual characters, which are called graphemes. Sorting follows code point order, so use `locale.strxfrm` or ICU when you need order that people expect.
+
+Indexing bytes returns integers, so `b"abc"[0] == 97`. The bytes API includes `bytes.hex()`, `bytes.fromhex`, `int.from_bytes`, `struct.pack/unpack` for binary protocols, along with `base64` and `hashlib`. Bytes go in and bytes come out with the hashing functions.
+
+Subprocess output, socket reads and file reads in binary mode all return bytes. JSON, YAML and regular expressions work on text, so decode the bytes first.
 
 ## 5. Object references, mutability and recycling
 
-- **Variables are labels, not boxes (`FP` Chapter 6)**: in `x = Gizmo()`, the right-hand side executes first to construct the `Gizmo` object, and then the label `x` is bound to it (so `y = Gizmo() * 10` prints the new `Gizmo id` before raising `TypeError` on `* 10`). Aliasing (`charles = {'name': 'Charles L. Dodgson', 'born': 1832}; lewis = charles`) binds two labels to the same object (`lewis is charles` is `True`), whereas an impostor dict `alex = {'name': 'Charles L. Dodgson', 'born': 1832, 'balance': 950}` has equal value (`alex == charles`) but distinct identity (`alex is not charles`).
-- **Shallow vs. deep copy (`Bus`) and cyclic references**: in *Fluent Python* (`Examples 6-8` to `6-10`), given `bus1 = Bus(['Alice', 'Bill', 'Claire', 'David'])`, `bus2 = copy.copy(bus1)`, and `bus3 = copy.deepcopy(bus1)`, dropping `'Bill'` from `bus1` (`bus1.drop('Bill')`) also removes `'Bill'` from `bus2.passengers` because `copy.copy` shares the inner `passengers` list, whereas `bus3.passengers` retains all four passengers; `copy.deepcopy` also handles cyclic references (`a = [10, 20]; b = [a, 30]; a.append(b)`) by tracking already-copied object IDs in a `memo` dictionary.
-- **Parameter passing ("call by sharing") and the `HauntedBus` / `TwilightBus` traps (`Examples 6-12` to `6-15`)**: function arguments are passed by object reference (the parameter becomes an alias of the caller's object). This creates two classic bugs:
-  1. **`HauntedBus` (mutable default argument `def __init__(self, passengers=[]):`)**: `bus2 = HauntedBus()` and `bus3 = HauntedBus()` share the single default list stored in `HauntedBus.__init__.__defaults__[0]`, so `bus2.pick('Carrie')` makes `'Carrie'` unexpectedly appear in `bus3.passengers`. Always default to `passengers=None` and initialize `self.passengers = []` when `None`.
-  2. **`TwilightBus` (aliasing a caller's mutable argument `self.passengers = passengers`)**: when `basketball_team = ['Sue', 'Tina', 'Maya', 'Diana', 'Pat']` is passed to `bus = TwilightBus(basketball_team)`, calling `bus.drop('Tina')` and `bus.drop('Pat')` calls `self.passengers.remove(...)` directly on the caller's list, making `'Tina'` and `'Pat'` vanish from `basketball_team`. Fix it by making a defensive copy in `__init__`: `self.passengers = list(passengers)` (which also accepts any iterable, such as a tuple or set).
-- **Identity, equality, interning, small-int caching** (chapter 3.1); `del s1` deletes the **name (reference) `s1`**, not the object itself; the object is garbage-collected only when its last reference is removed or rebound. In `Example 6-16`, registering `ender = weakref.finalize(s1, bye)` on `s1 = s2 = {1, 2, 3}` leaves `ender.alive == True` after `del s1`, and triggers `bye()` (`...like tears in the rain.`, setting `ender.alive == False`) only when `s2 = 'spam'` rebinds the final reference.
-- **Weak references**: `weakref.ref(obj)`, `WeakValueDictionary`, `WeakKeyDictionary`, `WeakSet` allow caches and registries that do not keep objects alive.
-- **Copy semantics in APIs**: functions should not mutate arguments unless documented; return new objects for pure functions; use tuples/frozen dataclasses for values.
-- **`__del__`** is unreliable for cleanup; use context managers, `try/finally`, or `weakref.finalize`.
-- **Garbage collector**: `gc.collect()`, `gc.get_stats()`, `gc.freeze()` before forking workers (reduces copy-on-write memory growth in preforking servers, relevant to inference and data-loader workers).
+Suppose a helper removes a passenger from one bus object, and the same name vanishes from a copy you made earlier. That surprise comes from how Python handles references, so this section explains how names and objects relate.
+
+In *Fluent Python* Chapter 6, the key idea is that variables are labels, not boxes. In `x = Gizmo()`, Python first runs the right-hand side to build the `Gizmo` object, and only then binds the label `x` to it. So `y = Gizmo() * 10` prints the new `Gizmo id` before it raises `TypeError` on `* 10`. Aliasing binds two labels to one object. After `charles = {'name': 'Charles L. Dodgson', 'born': 1832}; lewis = charles`, `lewis is charles` is `True`. A second dict, `alex = {'name': 'Charles L. Dodgson', 'born': 1832, 'balance': 950}`, has equal value (`alex == charles`) but a different identity (`alex is not charles`).
+
+Copying shows the same point. Given `bus1 = Bus(['Alice', 'Bill', 'Claire', 'David'])` (`Examples 6-8` to `6-10`), `bus2 = copy.copy(bus1)` and `bus3 = copy.deepcopy(bus1)`, the call `bus1.drop('Bill')` also removes `'Bill'` from `bus2.passengers`. A shallow copy shares the inner `passengers` list. The deep copy in `bus3.passengers` keeps all four passengers. `copy.deepcopy` also handles cycles. For `a = [10, 20]; b = [a, 30]; a.append(b)`, it records each copied object's ID in a `memo` dictionary, so it does not loop forever.
+
+Function arguments are passed by object reference, a model often called call by sharing (`Examples 6-12` to `6-15`). The parameter becomes an alias of the caller's object, and this creates two classic bugs.
+
+1. The `HauntedBus` bug uses a mutable default argument, `def __init__(self, passengers=[]):`. Two buses created with `bus2 = HauntedBus()` and `bus3 = HauntedBus()` share the one default list stored in `HauntedBus.__init__.__defaults__[0]`. So `bus2.pick('Carrie')` makes `'Carrie'` appear in `bus3.passengers`. Default to `passengers=None`, and set `self.passengers = []` when the argument is `None`.
+2. The `TwilightBus` bug aliases the caller's list with `self.passengers = passengers`. Suppose `basketball_team = ['Sue', 'Tina', 'Maya', 'Diana', 'Pat']` is passed to `bus = TwilightBus(basketball_team)`. Then `bus.drop('Tina')` and `bus.drop('Pat')` call `remove` on the caller's own list, and both names vanish from `basketball_team`. The fix is a defensive copy in `__init__`, written as `self.passengers = list(passengers)`. This also accepts any iterable, such as a tuple or a set.
+
+Identity, equality, interning and small-integer caching were covered in chapter 3.1. The `del` statement is worth a second look. `del s1` deletes the name `s1`, not the object. The object is garbage-collected only after its last reference goes away. In `Example 6-16`, the call `ender = weakref.finalize(s1, bye)` is registered on `s1 = s2 = {1, 2, 3}`. After `del s1`, `ender.alive` is still `True`. The callback `bye()` runs only when `s2 = 'spam'` rebinds the final reference. It prints `...like tears in the rain.` and sets `ender.alive` to `False`.
+
+Weak references let you keep a cache or registry without keeping its objects alive. The tools are `weakref.ref(obj)`, `WeakValueDictionary`, `WeakKeyDictionary` and `WeakSet`. In API design, functions should not change their arguments unless the documentation says so. A pure function should return new objects, and values are best kept in tuples or frozen dataclasses.
+
+Do not rely on `__del__` for cleanup, because it is unreliable. Use a context manager, a `try/finally` block or `weakref.finalize` instead. The garbage collector also has tools of its own. `gc.collect()` and `gc.get_stats()` show what it is doing, and `gc.freeze()` before forking workers reduces copy-on-write memory growth in preforking servers. That matters for inference and data-loader workers.
 
 ## 6. Functions as objects, closures, decorators and design patterns
 
-Functions are first-class objects (instances of `function`, one of Python's nine callable flavors alongside built-in functions/methods, user-defined methods, classes, class instances implementing `__call__`, generators, native coroutines, and asynchronous generators), with attributes (`__name__`, `__doc__`, `__defaults__`, `__kwdefaults__`, `__code__`, `__annotations__`, `__closure__`), callable, passable (`map(factorial, range(11))`, `sorted(fruits, key=len)`, `sorted(fruits, key=reverse)`), and returnable (`FP` Chapter 7).
+In Python, a function is an object. It has attributes such as `__name__`, `__doc__`, `__defaults__`, `__kwdefaults__`, `__code__`, `__annotations__` and `__closure__`. You can call it, pass it to another function and return it from one. Python has nine callable flavours. Besides functions, they include built-in functions and methods, user-defined methods, classes, class instances that implement `__call__`, generators, native coroutines and asynchronous generators. Because functions are objects, you can pass them to `map(factorial, range(11))`, `sorted(fruits, key=len)` and `sorted(fruits, key=reverse)`, as *Fluent Python* Chapter 7 shows.
 
 ```python
 def apply(fn, items): return [fn(i) for i in items]
 callable(apply); apply.__name__; apply.__defaults__
 ```
 
+Many small patterns become simpler once functions can be passed around. The sections below start with callable objects and the `operator` tools, then move on to closures and decorators, and finish with the Strategy pattern.
+
 ### Callable objects (`BingoCage`), `operator` (`itemgetter`, `attrgetter`, `methodcaller`), and `functools.partial`
 
-- **User-defined callable types (`__call__`, `FP` Chapter 7 `Example 7-8`):** Implementing `__call__` on a class (such as `class BingoCage:` whose `__init__` copies and `random.shuffle`s items into `self._items`, `pick(self)` pops an item, and `def __call__(self): return self.pick()`) creates stateful function-like instances where `bingo = BingoCage(range(3)); bingo()` works identically to `bingo.pick()` and `callable(bingo)` is `True`.
-- **Keyword-only arguments in `tag(name, *content, class_=None, **attrs)` (`Example 7-9`):** Placing `class_=None` after `*content` (or after a bare `*`) forces callers to pass `class_='sidebar'` by keyword while `**attrs` captures arbitrary HTML attributes (`tag('p', 'hello', 'world', class_='sidebar', id=33)`).
-- **`operator` module (`Examples 7-13` to `7-15`):** `operator.itemgetter(1)` (or `itemgetter(1, 0)` returning a tuple of items) and `operator.attrgetter('name', 'coord.lat')` (which navigates nested attributes on `Metropolis = namedtuple('Metropolis', 'name cc pop coord')` and `LatLon = namedtuple('LatLon', 'lat lon')`) build fast C-level key/extraction functions without `lambda`, while `operator.methodcaller('replace', ' ', '-')` invokes a method by name with bound arguments.
-- **`functools.partial` (`Example 7-18`):** `picture = functools.partial(tag, 'img', class_='pic-frame')` freezes positional and keyword arguments (`picture.func`, `picture.args`, `picture.keywords`) to adapt a general function to a callback signature.
+A class that implements `__call__` behaves like a function that keeps state. In *Fluent Python* Chapter 7 (`Example 7-8`), `BingoCage` copies its items into `self._items` and shuffles them with `random.shuffle`. Its `pick(self)` method pops one item, and `def __call__(self): return self.pick()` makes the instance callable. After `bingo = BingoCage(range(3))`, the call `bingo()` works the same way as `bingo.pick()`, and `callable(bingo)` is `True`.
+
+Keyword-only arguments give callers clearer code. In `tag(name, *content, class_=None, **attrs)` (`Example 7-9`), the `class_=None` parameter comes after `*content`, so callers must pass `class_='sidebar'` by keyword. The `**attrs` parameter collects any other HTML attributes, as in `tag('p', 'hello', 'world', class_='sidebar', id=33)`.
+
+The `operator` module (`Examples 7-13` to `7-15`) gives you fast key and extraction functions without writing `lambda`. The `operator.itemgetter(1)` call extracts one item, and `itemgetter(1, 0)` returns a tuple of items. The `operator.attrgetter('name', 'coord.lat')` call follows nested attributes on `Metropolis = namedtuple('Metropolis', 'name cc pop coord')` and `LatLon = namedtuple('LatLon', 'lat lon')`. The `operator.methodcaller('replace', ' ', '-')` call invokes a method by name with fixed arguments.
+
+`functools.partial` (`Example 7-18`) fixes some arguments of a general function. The line `picture = functools.partial(tag, 'img', class_='pic-frame')` builds a callable that already knows the tag name and the class. You can inspect the frozen values through `picture.func`, `picture.args` and `picture.keywords`. This is a simple way to fit a general function to a callback signature.
 
 ### Closures (`make_averager`), decorators at import time, `@cache`, and `@singledispatch` (`FP` Chapter 9)
 
-- **When Python executes decorators (`registration.py`, `Example 9-2`):** Function decorators (`@register`, or stacked `@alpha` above `@beta`, which equals `alpha(beta(f))`) run **immediately at module import time** (when `def` executes), whereas the decorated function itself only runs when explicitly called at runtime.
-- **Variable scope bytecode (`dis.dis`) and closures (`Averager` vs `make_averager`, `Examples 9-5` to `9-14`):** If a function body assigns to `b = 9` anywhere inside `def f2(a): print(a); print(b); b = 9`, CPython compiles `b` as a local variable (`LOAD_FAST` instead of `LOAD_GLOBAL`), raising `UnboundLocalError` before `b = 9` is reached. A **closure** is a function that retains bindings to **free variables** defined in an enclosing function scope even after the outer function has returned. In `make_averager()`, storing `series = []` in the outer scope lets the inner `averager(new_value)` call `series.append(new_value)` (stored in `avg.__closure__[0].cell_contents` with `avg.__code__.co_freevars == ('series',)`). Better yet (`Example 9-14`), storing only running scalars `count = 0; total = 0` and declaring `nonlocal count, total` inside `averager(new_value)` updates the average in $O(1)$ memory instead of growing a `series` list forever.
-- **Timing decorators (`@clock`), `@functools.cache` / `@lru_cache`, and `@singledispatch` (`Examples 9-15` to `9-27`):** A decorator that wraps `func` with `functools.wraps(func)` preserves `__name__` and `__doc__` (and parameterized decorators like `@clock('{name}: {elapsed}s')` use a 3-level function nesting `clock(fmt) -> decorate(func) -> clocked(*_args)` or a class implementing `__call__`). Applying `@functools.cache` (or `@lru_cache(maxsize=128, typed=False)`) memoizes recursive functions like `fibonacci(n)` from exponential calls down to $O(n)$ calls. And `@functools.singledispatch` turns a base function (`@singledispatch def htmlize(obj: object) -> str:`) into a generic function whose type-specialized handlers (`@htmlize.register def _(text: str) -> str:`, `@htmlize.register def _(seq: abc.Sequence) -> str:`, `@htmlize.register def _(n: numbers.Integral) -> str:`) dispatch on the first argument's runtime type (preferring ABCs like `abc.Sequence` or `numbers.Integral` over concrete `list` or `int`).
+Function decorators run at import time. The decorator call happens when the `def` statement executes, while the decorated function itself runs only when you call it later. The file `registration.py` (`Example 9-2`) shows this. A stack such as `@alpha` above `@beta` is the same as `alpha(beta(f))`.
+
+Variable scope has a trap, and you can see it in the bytecode with `dis.dis`. In `def f2(a): print(a); print(b); b = 9`, CPython sees the assignment to `b` and treats `b` as a local variable. It compiles the reads as `LOAD_FAST` instead of `LOAD_GLOBAL`, so the first `print(b)` raises `UnboundLocalError`. A closure is a function that keeps access to free variables from an enclosing function, even after the outer function has returned. The `Averager` and `make_averager` examples (`Examples 9-5` to `9-14`) compare the two approaches.
+
+In `make_averager()`, the outer scope stores `series = []`. The inner `averager(new_value)` calls `series.append(new_value)`, so the list is kept in `avg.__closure__[0].cell_contents`, and `avg.__code__.co_freevars == ('series',)`. The better version, `Example 9-14`, stores only the running values `count = 0; total = 0`. It declares `nonlocal count, total` inside `averager(new_value)`, so the memory use stays O(1) instead of growing with every value in a `series` list.
+
+Decorators such as `@clock` show how wrapping works. A decorator that wraps `func` with `functools.wraps(func)` keeps `__name__` and `__doc__`. A parameterised decorator, such as `@clock('{name}: {elapsed}s')`, needs three levels of nesting: `clock(fmt)`, then `decorate(func)`, then `clocked(*_args)`. You can also write it as a class that implements `__call__`. The `@functools.cache` decorator, and `@lru_cache(maxsize=128, typed=False)`, memoise recursive functions such as `fibonacci(n)`. That turns an exponential number of calls into O(n) calls. The `@functools.singledispatch` decorator (`Examples 9-15` to `9-27`) turns a base function into a generic one. You write `@singledispatch def htmlize(obj: object) -> str:` and then add handlers with `@htmlize.register def _(text: str) -> str:`, `@htmlize.register def _(seq: abc.Sequence) -> str:` and `@htmlize.register def _(n: numbers.Integral) -> str:`. Python picks a handler by the type of the first argument, and it prefers abstract base classes such as `abc.Sequence` or `numbers.Integral` over concrete types such as `list` or `int`.
 
 ### Refactoring the Strategy pattern with first-class functions (`FP` Chapter 10)
 
-In his landmark 1996 presentation *Design Patterns in Dynamic Languages*, Peter Norvig observed that 16 of the 23 Gang-of-Four patterns become "invisible or simpler" in languages with first-class functions. In *Fluent Python* Chapter 10 (`Examples 10-1` to `10-9`), Ramalho demonstrates this by refactoring an ecommerce `Order` discount engine (`Customer(name, fidelity)`, `LineItem(product, quantity, price)`, and `Order(customer, cart, promotion)`):
-- **Classic OOP Strategy (`Example 10-1`):** Defines an abstract base class `Promotion(ABC)` with `@abstractmethod def discount(self, order: Order) -> Decimal:` and three stateless concrete subclasses—`FidelityPromo` (`5%` discount when `order.customer.fidelity >= 1000`), `BulkItemPromo` (`10%` discount on each `LineItem` with `item.quantity >= 20`), and `LargeOrderPromo` (`7%` discount when `len({item.product for item in order.cart}) >= 10`). Because concrete strategy instances hold zero instance attributes (`self` is unused), instantiating classes (`Order(ann, cart, FidelityPromo())`) is pure ceremony.
-- **Function-oriented Strategy & `@promotion` decorator registry (`Examples 10-3` to `10-9`):** Replacing the `Promotion` class hierarchy with plain functions `fidelity_promo(order: Order) -> Decimal`, `bulk_item_promo(order: Order) -> Decimal`, and `large_order_promo(order: Order) -> Decimal` (passed directly as `Order(ann, cart, fidelity_promo)`) eliminates the ABC and subclasses completely. Moreover, a meta-strategy `def best_promo(order: Order) -> Decimal: return max(promo(order) for promo in promos)` picks the highest discount automatically (`Order(ann, cart, best_promo)`). Instead of fragile `globals()` scanning (`[globals()[name] for name in globals() if name.endswith('_promo') and name != 'best_promo']`, `Example 10-7`) or `inspect.getmembers(promotions, inspect.isfunction)` (`Example 10-8`), decorating each strategy with `@promotion` (`def promotion(promo: Promotion) -> Promotion: promos.append(promo); return promo`, `Example 10-9`) explicitly registers every strategy function on import. The same principle simplifies the **Command pattern**: instead of a `Command` subclass with an `.execute()` method (or a `MacroCommand` holding a list of commands), pass a callable function, closure, or `MacroCommand` implementing `def __call__(self): for cmd in self.commands: cmd()`.
+In his 1996 presentation *Design Patterns in Dynamic Languages*, Peter Norvig observed that 16 of the 23 Gang-of-Four patterns become "invisible or simpler" in languages with first-class functions. *Fluent Python* Chapter 10 (`Examples 10-1` to `10-9`) shows this with an ecommerce `Order` discount engine. The engine uses `Customer(name, fidelity)`, `LineItem(product, quantity, price)` and `Order(customer, cart, promotion)`.
 
-Other patterns that replace class hierarchies:
+The classic object-oriented version comes first. `Example 10-1` defines an abstract base class `Promotion(ABC)` with `@abstractmethod def discount(self, order: Order) -> Decimal:`. It then adds three concrete subclasses. `FidelityPromo` gives a `5%` discount when `order.customer.fidelity >= 1000`. `BulkItemPromo` gives a `10%` discount on each `LineItem` with `item.quantity >= 20`. `LargeOrderPromo` gives a `7%` discount when `len({item.product for item in order.cart}) >= 10`. These classes hold no instance state, because `self` is never used. Creating them just to pass them in, as in `Order(ann, cart, FidelityPromo())`, is pure ceremony.
 
-- **Strategy**: pass the function (`sort(key=...)`, `retry(fn)`), or a dict of functions: `ACTIONS = {"start": start, "stop": stop}; ACTIONS[cmd](*args)`.
-- **Registry via decorator**: 
+The function-oriented version removes the classes. Plain functions `fidelity_promo(order: Order) -> Decimal`, `bulk_item_promo(order: Order) -> Decimal` and `large_order_promo(order: Order) -> Decimal` can be passed straight into `Order(ann, cart, fidelity_promo)`. A meta-strategy, `def best_promo(order: Order) -> Decimal: return max(promo(order) for promo in promos)`, chooses the largest discount, so you call it with `Order(ann, cart, best_promo)`. To build the list `promos`, you could scan `globals()`, as in `[globals()[name] for name in globals() if name.endswith('_promo') and name != 'best_promo']` (`Example 10-7`), or call `inspect.getmembers(promotions, inspect.isfunction)` (`Example 10-8`). Both approaches are fragile. A better choice is a `@promotion` decorator (`Example 10-9`), which registers each strategy as soon as the module imports. Its body is `def promotion(promo: Promotion) -> Promotion: promos.append(promo); return promo`.
+
+The same idea simplifies the Command pattern. You do not need a `Command` subclass with an `.execute()` method, or a `MacroCommand` that holds a list of commands. A plain function or closure does the job. A `MacroCommand` can also implement `def __call__(self): for cmd in self.commands: cmd()`.
+
+Several other patterns also become smaller. Strategy can be a function you pass in, such as `sort(key=...)` or `retry(fn)`, or a dictionary of functions, such as `ACTIONS = {"start": start, "stop": stop}; ACTIONS[cmd](*args)`. A registry can be built with a decorator, as in the next block.
 
 ```python
 HANDLERS = {}
@@ -289,16 +356,15 @@ def on_node_down(ev): ...
 HANDLERS[ev["type"]](ev)
 ```
 
-- **Command objects**: `functools.partial(deploy, app="api", env="prod")` creates a pre-bound callable you can queue or schedule.
-- **Callbacks and hooks**: pass functions to libraries (signal handlers, `atexit.register`, progress callbacks).
-- **Callable objects** (`__call__`) hold state (a rate limiter instance) while behaving like functions.
-- **`functools`**: `lru_cache(maxsize=...)`/`cache` memoise pure functions (arguments must be hashable; watch memory and staleness for functions depending on external state); `cached_property`; `singledispatch` (overload by first argument type); `total_ordering`; `reduce`; `wraps` (preserve metadata in decorators; chapter 3.11).
-- **`operator`** module: `itemgetter`, `attrgetter`, `methodcaller`, `add`, `mul` replace trivial lambdas.
-- **Higher-order built-ins**: `map`, `filter`, `sorted(key=)`, `min/max(key=)`, `any/all`, `sum`.
+Command objects can be made with `functools.partial(deploy, app="api", env="prod")`, which gives you a pre-bound callable that you can queue or schedule. Callbacks and hooks are functions you pass to libraries, such as signal handlers, `atexit.register` and progress callbacks. Callable objects that implement `__call__` can hold state, such as a rate limiter, while still behaving like functions.
+
+The `functools` module offers more. `lru_cache(maxsize=...)` and `cache` memoise pure functions. Their arguments must be hashable, and you should watch memory and staleness when a function depends on external state. The module also has `cached_property`, `singledispatch` (which overloads on the first argument's type), `total_ordering`, `reduce`, and `wraps`, which preserves metadata in decorators (chapter 3.11). The `operator` module provides `itemgetter`, `attrgetter`, `methodcaller`, `add` and `mul`, which replace trivial lambdas. Higher-order built-ins such as `map`, `filter`, `sorted(key=)`, `min` and `max` with `key=`, `any/all` and `sum` also take functions.
+
+Pass a plain function when there is no state to keep, and reach for a closure or a `__call__` class when there is.
 
 ## 7. Comprehensions
 
-Comprehensions build collections declaratively from iterables, in one expression, usually faster and more readable than the equivalent loop.
+A comprehension builds a collection in one expression. It reads more like a description of the result than a loop does, and it is usually faster than the equivalent loop. The block below shows the common forms.
 
 ```python
 squares   = [n * n for n in range(10)]
@@ -314,9 +380,9 @@ lazy      = (len(line) for line in lines)                                 # gene
 total     = sum(n.gpus for n in nodes)                                    # generator expression as sole argument: no extra parentheses
 ```
 
-Rules and gotchas:
+Notice where the conditional goes. A filter `if` sits after the `for`, while a conditional expression that picks a value sits before it. Nested `for` clauses read from left to right, just like nested `for` statements.
 
-- **Scope**: in all comprehension forms (list, set, dict, and generator expressions), the `for` loop variable lives in the comprehension's own nested scope and does not leak into or overwrite names in the enclosing scope (unlike a regular `for` loop statement). However, a named assignment expression (`:=`) inside a comprehension **does** leak out and binds its target variable in the **enclosing scope** (and `yield` inside a comprehension is forbidden):
+Comprehensions have a few rules that catch people out. The `for` variable in a list, set, dict or generator comprehension lives in the comprehension's own scope. It does not leak out or overwrite a name in the enclosing scope, which is different from a regular `for` statement. An assignment expression written with `:=`, however, does leak out. It binds its target in the enclosing scope. A `yield` inside a comprehension is forbidden.
 
 ```python
 # In the book's examples (untested here):
@@ -329,13 +395,17 @@ S = 'hack'
 # temp == 'k' in the enclosing scope, whereas i raises NameError: name 'i' is not defined
 ```
 
-- **Walrus** avoids recomputation: `[y for x in data if (y := expensive(x)) is not None]`.
-- **Readability limit**: more than two `for`/`if` clauses, or side effects, belong in a loop. Do not use comprehensions for side effects (`[print(x) for x in xs]` builds a useless list).
-- **Memory**: list comprehensions materialise everything; use generator expressions to feed `sum`, `any`, `all`, `max`, `sorted`, `",".join`, `set(...)`, `tuple(...)` when you don't need the list.
-- **Filtering and mapping combined** is where they shine; `map`/`filter` with named functions are fine when the function exists already.
-- **Performance**: comprehensions avoid repeated attribute lookups (`list.append`) and are typically 20 to 50% faster than equivalent loops; but algorithmic choices (set vs list) matter far more.
-- **Pitfalls**: modifying the source while comprehending; building lists of lists with shared references (use the comprehension form `[[0]*c for _ in range(r)]`); catching exceptions inside (not possible: wrap in a function).
-- **Matrix comprehensions and when not to use comprehensions (`LP` Chapter 20):** Given 3x3 nested list matrices `M = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]` and `N = [[2, 2, 2], [3, 3, 3], [4, 4, 4]]`, list comprehensions extract columns (`[row[1] for row in M] == [2, 5, 8]`), main and anti-diagonals (`[M[i][i] for i in range(len(M))] == [1, 5, 9]` and `[M[i][len(M)-1-i] for i in range(len(M))] == [3, 5, 7]`), flat vs nested scalar transforms (`[col + 10 for row in M for col in row]` where `for` clauses indent right vs `[[col + 10 for col in row] for row in M]` where left-nested brackets create a new row list per outer iteration), and pairwise matrix multiplication (`[[col1 * col2 for (col1, col2) in zip(row1, row2)] for (row1, row2) in zip(M, N)]` == `[[2, 4, 6], [12, 15, 18], [28, 32, 36]]`). However, follow the **KISS principle**: if you have to translate a deeply nested comprehension into statement loops to understand what it does, write the explicit `for` statements instead.
+The first comprehension leaves the outer `X` at 99. The second one leaks `temp` out with the final value `'k'`, but `i` stays local and raises `NameError` when you look it up.
+
+The walrus operator also helps you avoid repeated work. In `[y for x in data if (y := expensive(x)) is not None]`, the call to `expensive` runs once per item, and the result is reused. Keep a comprehension readable, though. If it has more than two `for` or `if` clauses, or it has side effects, use a loop instead. Never use a comprehension for side effects, because `[print(x) for x in xs]` builds a useless list.
+
+Memory matters too. A list comprehension builds every item at once. When `sum`, `any`, `all`, `max`, `sorted`, `",".join`, `set(...)` or `tuple(...)` only needs to read the items, pass a generator expression instead. Comprehensions shine when you filter and map at the same time. You can use `map` or `filter` with a named function when that function already exists.
+
+Comprehensions avoid repeated attribute lookups such as `list.append`, and they are usually 20 to 50% faster than the equivalent loops. Still, your choice of algorithm matters far more, such as using a set instead of a list for lookups. Watch for three pitfalls. Do not modify the source while you comprehend it. Do not build lists of lists with shared references; use `[[0]*c for _ in range(r)]` instead. Finally, you cannot catch exceptions inside a comprehension, so wrap the risky code in a function.
+
+*Learning Python* Chapter 20 uses 3x3 nested lists to show matrix comprehensions. Take `M = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]` and `N = [[2, 2, 2], [3, 3, 3], [4, 4, 4]]`. A list comprehension can extract a column, as in `[row[1] for row in M] == [2, 5, 8]`. It can also pull out the main diagonal, `[M[i][i] for i in range(len(M))] == [1, 5, 9]`, and the anti-diagonal, `[M[i][len(M)-1-i] for i in range(len(M))] == [3, 5, 7]`. The order of the `for` clauses matters. `[col + 10 for row in M for col in row]` gives a flat list, while `[[col + 10 for col in row] for row in M]` creates a new row list for each outer iteration. Pairwise multiplication uses `zip`: `[[col1 * col2 for (col1, col2) in zip(row1, row2)] for (row1, row2) in zip(M, N)]` returns `[[2, 4, 6], [12, 15, 18], [28, 32, 36]]`. Still, the KISS principle applies. If you must rewrite a deeply nested comprehension as statement loops to understand it, write the explicit `for` statements from the start.
+
+The next example parses `key=value` pairs from an environment-style file. It skips comments and blank lines in a single expression.
 
 ```python
 # Parse "key=value" pairs from an environment-style file, ignoring comments and blanks
@@ -347,7 +417,11 @@ env = {
 }
 ```
 
+If a comprehension needs a second look to understand, split it into a loop.
+
 ## 8. Iterables, iterators and generators
+
+A script that reads a large log file cannot afford to load it all at once. Iterators and generators let it handle one item at a time, so the memory use stays flat. This section explains how that works, starting with the protocol that a `for` loop depends on.
 
 ### The iterator protocol: multiple-pass iterables vs single-pass iterators
 
@@ -357,12 +431,15 @@ flowchart LR
     Iterator -->|"next(it)"| Consumer["for loop / unpacking / sum / list / any / all"]
 ```
 
-- An **iterable** has `__iter__()` returning a **fresh iterator** on each call (or falls back to `__getitem__(0, 1, ...)` starting at `0` until `IndexError`). Built-in sequences (`L = [1, 2, 3, 4]`, `R = range(5)`) are multiple-pass iterables (`iter(R) is R` is `False`; `I1, I2 = iter(L), iter(L)` maintain independent positions).
-- An **iterator** has `__next__()` (returns the next item or raises `StopIteration`) and `__iter__()` returning **`self`** (`iter(G) is G` is `True`). Iterators—including generator objects, `enumerate`, `zip`, `map`, `filter`, `os.walk('..')`, and open files (`open('data.txt')`, which should be iterated directly line-by-line rather than calling `.readlines()`)—are **single-pass** and stateful: if `I1 = iter(G)` and `I2 = iter(G)` are created on the same generator `G = (c * 4 for c in 'hack')`, both `I1` and `I2` point to the exact same position (`next(I1) -> 'hhhh'`, `next(I1) -> 'aaaa'`, `next(I2) -> 'cccc'`), and once exhausted, iterating again yields nothing until you construct a new generator (`LP` Chapters 14 & 20).
-- In *Fluent Python* Chapter 17 (`Examples 17-1` to `17-7`), Ramalho contrasts three implementations of `Sentence(text)` extracting words with `RE_WORD = re.compile(r'\w+')`: (1) `__getitem__` over `self.words = RE_WORD.findall(text)` (works by sequence fallback), (2) the classic GoF Iterator pattern returning a separate `SentenceIterator(self.words)` class with `self.index` and `__next__` (verbose boilerplate; never make the iterable class itself an iterator by putting `__next__` on `Sentence`), and (3) a lazy Pythonic `__iter__` generator `for match in RE_WORD.finditer(self.text): yield match.group()` (or generator expression `(match.group() for match in RE_WORD.finditer(self.text))`) that yields matches on demand without building a list.
-- `for x in obj:` is `it = iter(obj)` then `while True: x = next(it)` until `StopIteration`. Unpacking (`a, *b = open('data.txt')`), `list()`, `sum()`, `any()`, `all()`, `max()`, `min()`, `in`, `zip`, `enumerate`, and comprehensions all consume iterables the same way.
-- `iter(callable, sentinel)` builds an iterator from a zero-argument callable until it returns the sentinel: `for block in iter(lambda: f.read(65536), b""):` reads a binary file in chunks.
-- **Reuse bug**: iterating a generator or `map`/`filter`/`zip` object twice yields nothing the second time. Convert to a list/tuple if you need two passes, or wrap the generator in an iterable class (`Countdown` or `ArithmeticProgression(begin, step, end)` in `FP` Chapter 17 `Example 17-11`) whose `__iter__` returns a fresh generator each time; use `itertools.tee` carefully (it buffers unconsumed items in memory).
+An iterable has an `__iter__()` method that returns a fresh iterator each time you call it. If a class has no `__iter__()`, Python can fall back to `__getitem__(0, 1, ...)`, which starts at `0` and continues until it raises `IndexError`. Built-in sequences such as `L = [1, 2, 3, 4]` and `R = range(5)` are multiple-pass iterables. Each call to `iter(R)` gives you a new object, since `iter(R) is R` is `False`. `I1, I2 = iter(L), iter(L)` gives you two iterators with independent positions.
+
+An iterator has a `__next__()` method, which returns the next item or raises `StopIteration`. Its `__iter__()` method returns `self`, so `iter(G) is G` is `True`. Generator objects, `enumerate`, `zip`, `map`, `filter`, `os.walk('..')` and open files are iterators. You should iterate an open file directly, line by line, rather than calling `.readlines()`. Iterators are single-pass and stateful. Suppose `I1 = iter(G)` and `I2 = iter(G)` come from the same generator `G = (c * 4 for c in 'hack')`. Both names point at the same position, so `next(I1)` returns `'hhhh'`, the next `next(I1)` returns `'aaaa'`, and `next(I2)` returns `'cccc'`. Once the iterator is exhausted, a new loop over it yields nothing until you build a new generator. *Learning Python* Chapters 14 and 20 cover this behaviour.
+
+*Fluent Python* Chapter 17 (`Examples 17-1` to `17-7`) shows three ways to write `Sentence(text)`, which extracts words with `RE_WORD = re.compile(r'\w+')`. The first uses `__getitem__` over `self.words = RE_WORD.findall(text)`, which works through sequence fallback. The second is the classic Gang-of-Four Iterator pattern, with a separate `SentenceIterator(self.words)` class that holds `self.index` and a `__next__` method. It is verbose, and you should never give the iterable class itself a `__next__` method. The third is a lazy `__iter__` generator, `for match in RE_WORD.finditer(self.text): yield match.group()`, which you can also write as the generator expression `(match.group() for match in RE_WORD.finditer(self.text))`. It yields matches on demand and never builds a list.
+
+A `for` loop is simple underneath. `for x in obj:` calls `it = iter(obj)` and then loops with `x = next(it)` until `StopIteration`. Unpacking, `list()`, `sum()`, `any()`, `all()`, `max()`, `min()`, `in`, `zip`, `enumerate` and comprehensions all consume iterables in the same way. The two-argument form `iter(callable, sentinel)` keeps calling a function until it returns the sentinel. For example, `for block in iter(lambda: f.read(65536), b""):` reads a binary file in 65536-byte chunks.
+
+Reusing an iterator is a common bug. If you loop over a generator, or a `map`, `filter` or `zip` object, a second loop yields nothing. If you need two passes, convert the object to a list or tuple first. You can also wrap the generator in an iterable class, such as `Countdown` or `ArithmeticProgression(begin, step, end)` (`FP` Chapter 17, `Example 17-11`). Its `__iter__` returns a fresh generator each time. `itertools.tee` is another option, but use it with care, because it buffers the items it has not yet handed out in memory.
 
 ```python
 class Countdown:
@@ -376,17 +453,21 @@ class Countdown:
 list(Countdown(3)), list(Countdown(3))
 ```
 
+Because `Countdown` builds a new generator on each call, both lists in the last line contain the full countdown.
+
 ### Generator functions, `scramble` vs `permute` (`factorial(N)` explosion), and `myzip` / `mymapPad`
 
-A function containing `yield` (`def gensquares(n): for i in range(n): yield i ** 2` or `def ups(line): for sub in line.split(','): yield sub.upper()`) returns a **generator iterator** when called; its body runs lazily, suspending at each `yield` and resuming on the next `next()`, preserving its local scope and instruction pointer. When the function returns, `StopIteration` is raised.
+A function that contains `yield` returns a generator iterator when you call it. Examples are `def gensquares(n): for i in range(n): yield i ** 2` and `def ups(line): for sub in line.split(','): yield sub.upper()`. The body does not run at call time. It runs lazily, pauses at each `yield`, and resumes on the next `next()` call. Its local scope and instruction pointer are kept while it is paused. When the function returns, Python raises `StopIteration`.
 
-In *Learning Python* Chapter 20 (`Examples 20-1` to `20-6`), Lutz demonstrates three foundational generator case studies (modeled and tested in `code/part03/python_idiomatic_data_model.py`):
-1. **Sequence rotations (`scramble.py`, $N$ results):** `def scramble1(seq): for i in range(len(seq)): yield seq[i:] + seq[:i]` (or generator expression `scramble2 = lambda seq: (seq[i:] + seq[:i] for i in range(len(seq)))`, or walrus rotation `F = lambda seq: (seq := (seq[1:] + seq[:1]) for i in range(len(seq)))`) yields the $N = 4$ cyclic rotations of `'hack'` (`['hack', 'ackh', 'ckha', 'khac']`) one at a time.
-2. **Recursive sequence permutations (`permute.py`, `factorial(N)` explosion):** `permute1(seq)` builds a list of all `factorial(N)` permutations in memory, whereas `permute2(seq)` uses recursive `yield seq[i:i+1] + x` to yield each permutation on demand. For `'hack'` ($N = 4$), both produce `factorial(4) == 24` permutations (`permute1('hack') == list(permute2('hack'))`). At $N = 10$ (`math.factorial(10) == 3,628,800`), `permute1(list(range(10)))` pauses for ~17 seconds to allocate 3.6 million lists while `p2 = permute2(seq); next(p2)` returns the first permutation instantaneously. At $N = 20$ (`2,432,902,008,176,640,000`) or $N = 50$ (`math.factorial(50) == 30414093201713378043612608166064768844377641568960512000000000000`), `permute1` is physically impossible, whereas `random.shuffle(seq); p = permute2(seq); next(p)` yields randomized permutations immediately in $O(N)$ memory.
-3. **Emulating `map`, `zip`, and padding `map` (`mymap`, `myzip`, `mymapPad`):**
-   - `def mymap_func(func, *seqs): for args in zip(*seqs): yield func(*args)` (or `(func(*args) for args in zip(*seqs))`) projects `func` lazily across multiple iterables.
-   - `def myzip(*seqs): seqs = [list(S) for S in seqs]; while all(seqs): yield tuple(S.pop(0) for S in seqs)` (or index-based `(tuple(S[i] for S in seqs) for i in range(min(len(S) for S in seqs)))`) truncates at the shortest iterable (`list(myzip('abc', 'xyz123')) == [('a', 'x'), ('b', 'y'), ('c', 'z')]`).
-   - `def mymapPad(*seqs, pad=None): seqs = [list(S) for S in seqs]; while any(seqs): yield tuple((S.pop(0) if S else pad) for S in seqs)` pads shorter iterables with `pad` until all are exhausted (`list(mymapPad('abc', 'xyz123', pad=99)) == [('a', 'x'), ('b', 'y'), ('c', 'z'), (99, '1'), (99, '2'), (99, '3')]`).
+*Learning Python* Chapter 20 (`Examples 20-1` to `20-6`) gives three generator case studies. The book's code is in `code/part03/python_idiomatic_data_model.py`.
+
+The first case is sequence rotation, from `scramble.py`. The function `def scramble1(seq): for i in range(len(seq)): yield seq[i:] + seq[:i]` yields the N cyclic rotations one at a time. The generator-expression form is `scramble2 = lambda seq: (seq[i:] + seq[:i] for i in range(len(seq)))`, and the walrus form is `F = lambda seq: (seq := (seq[1:] + seq[:1]) for i in range(len(seq)))`. For `'hack'`, where N = 4, the output is `['hack', 'ackh', 'ckha', 'khac']`.
+
+The second case, from `permute.py`, is permutations, and it shows why memory matters. `permute1(seq)` builds a list of all `factorial(N)` permutations before it returns anything. `permute2(seq)` uses a recursive `yield seq[i:i+1] + x` to produce each permutation on demand. For `'hack'`, where N = 4, both give `factorial(4) == 24` permutations, and `permute1('hack') == list(permute2('hack'))`. At N = 10, `math.factorial(10) == 3,628,800`. The call `permute1(list(range(10)))` pauses for about 17 seconds while it allocates 3.6 million lists. The call `p2 = permute2(seq); next(p2)` returns the first permutation almost immediately. At N = 20, the count is `2,432,902,008,176,640,000`, and `permute1` is physically impossible. At N = 50, `math.factorial(50) == 30414093201713378043612608166064768844377641568960512000000000000`. Even there, `random.shuffle(seq); p = permute2(seq); next(p)` gives you a randomised permutation at once, in O(N) memory.
+
+The third case rebuilds the built-in tools. The function `def mymap_func(func, *seqs): for args in zip(*seqs): yield func(*args)` applies `func` lazily across several iterables. Its one-line form is `(func(*args) for args in zip(*seqs))`. The function `def myzip(*seqs): seqs = [list(S) for S in seqs]; while all(seqs): yield tuple(S.pop(0) for S in seqs)` stops at the shortest iterable. The index-based version is `(tuple(S[i] for S in seqs) for i in range(min(len(S) for S in seqs)))`. Calling `list(myzip('abc', 'xyz123')) == [('a', 'x'), ('b', 'y'), ('c', 'z')]` shows the truncation. The function `def mymapPad(*seqs, pad=None): seqs = [list(S) for S in seqs]; while any(seqs): yield tuple((S.pop(0) if S else pad) for S in seqs)` keeps going until every iterable runs out, filling the gaps with `pad`. With `pad=99`, `list(mymapPad('abc', 'xyz123', pad=99)) == [('a', 'x'), ('b', 'y'), ('c', 'z'), (99, '1'), (99, '2'), (99, '3')]`.
+
+The next block shows two more generators. `fib` is infinite, which is safe because you consume it lazily. `read_chunks` reads a binary file in chunks, and `tail_lines` follows a file the way `tail -f` does.
 
 ```python
 def fib():
@@ -413,18 +494,17 @@ def tail_lines(path):
             yield line.rstrip("\n")
 ```
 
-Properties:
+Generators are lazy and memory-efficient. They hold only their current state, so they suit large files, database cursors, API pagination, directory walks and streaming transforms. Ramalho's `isis2json.py` uses pluggable generators, `iter_iso_records` and `iter_mst_records`, to stream CDS/ISIS bibliographic records into CouchDB or MongoDB in constant RAM. A generator's `with` blocks and `try/finally` clauses clean up when the generator is exhausted, when you call `gen.close()` (which raises `GeneratorExit` inside it), or when it is garbage-collected. Consume the generator fully, or close it yourself, whenever it holds a resource.
 
-- Generators are **lazy and memory-efficient**: only the current state is held; they are ideal for large files, database cursors (such as Ramalho's `isis2json.py` pluggable generators `iter_iso_records` and `iter_mst_records` streaming CDS/ISIS bibliographic records into CouchDB/MongoDB in constant RAM), API pagination, directory walks, and streaming transformations.
-- A generator's `with` blocks and `try/finally` clean up when the generator is exhausted, closed (`gen.close()` raises `GeneratorExit` inside), or garbage collected: always consume fully or close explicitly when holding resources.
-- **`yield from subgen` (subgenerator delegation and `tree.py`, `LP` Ch. 20 & `FP` Ch. 17):** `yield from` delegates iteration directly to a sub-iterable (`def both(N): yield from range(N); yield from map(lambda x: x ** 2, range(N))`, or chained `def a(n): yield from b(n)` -> `def b(n): yield from c(n)`), recursively walks class hierarchies (`def tree(cls, level=0): yield cls.__name__, level; for sub_cls in cls.__subclasses__(): yield from tree(sub_cls, level+1)` on `BaseException`), pipes `send()` and `throw()` straight through to the subgenerator while the delegating generator is suspended, and captures the subgenerator's `return` value (`result = yield from averager_coro()`, where returning `Result(count, average)` attaches the value to `StopIteration.value`).
-- **Classic coroutines (`send()`, `throw()`, `close()`):** In `def gen(): for i in range(10): X = yield i` (or `averager_coro()` in `code/part03/python_idiomatic_data_model.py`, typed as `collections.abc.Generator[YieldType, SendType, ReturnType]`), you must first **prime** the generator with `next(G)` (or `G.send(None)`) to advance execution to the first `yield`; subsequent `G.send(77)` calls supply the value of the `yield` expression and advance to the next `yield`, while `next(G)` sends `None`. Modern asynchronous I/O uses native `async def` / `await` coroutines (chapter 3.6).
-- **Generator expressions** `(f(x) for x in xs)` are anonymous one-shot generators; parentheses are optional when passed as the sole argument to a function (`sum(x ** 2 for x in range(3))`), but required when additional arguments follow (`sorted((x ** 2 for x in range(3)), reverse=True)`).
-- **Exceptions inside generators** propagate to the consumer; `StopIteration` raised inside a generator is converted to `RuntimeError` (PEP 479): use `return`.
+`yield from` hands iteration to a sub-iterable. The statement `def both(N): yield from range(N); yield from map(lambda x: x ** 2, range(N))` shows the simplest use. A chain such as `def a(n): yield from b(n)` followed by `def b(n): yield from c(n)` passes items through each level. The book's `tree.py` example walks a class hierarchy with `def tree(cls, level=0): yield cls.__name__, level; for sub_cls in cls.__subclasses__(): yield from tree(sub_cls, level+1)`. Applied to `BaseException`, it lists every subclass with its depth. `yield from` also forwards `send()` and `throw()` into the sub-generator while the outer one is paused. It evaluates to the sub-generator's return value, so `result = yield from averager_coro()` captures the value that `averager_coro` returns. That value is `Result(count, average)`, and Python attaches it to `StopIteration.value`.
+
+Classic coroutines use `send()`, `throw()` and `close()`. Take `def gen(): for i in range(10): X = yield i`, or the `averager_coro()` function in `code/part03/python_idiomatic_data_model.py`. Its type is written as `collections.abc.Generator[YieldType, SendType, ReturnType]`. You must first prime the generator with `next(G)` or `G.send(None)`, which runs it to the first `yield`. After that, `G.send(77)` makes the paused `yield` return `77` and runs to the next `yield`. A plain `next(G)` sends `None`. Modern asynchronous I/O uses native `async def` and `await` coroutines instead (chapter 3.6).
+
+A generator expression, such as `(f(x) for x in xs)`, is an anonymous one-shot generator. You can leave out its parentheses when it is the only argument, as in `sum(x ** 2 for x in range(3))`. You must keep them when more arguments follow, as in `sorted((x ** 2 for x in range(3)), reverse=True)`. An exception raised inside a generator travels to the consumer. A `StopIteration` raised inside a generator is converted to `RuntimeError` under PEP 479, so use `return` to stop early.
 
 ### Pipelines
 
-Chain generators so each stage processes one item at a time; the whole pipeline runs in constant memory and is easy to test per stage:
+A pipeline chains generators together so that each stage handles one item at a time. The whole chain runs in constant memory, and you can test each stage on its own. The example below counts the top IP addresses behind 5xx errors in a set of compressed nginx logs.
 
 ```python
 import gzip, re, json
@@ -445,7 +525,9 @@ def errors(records): return (r for r in records if r["status"].startswith("5"))
 top = Counter(r["ip"] for r in errors(parse(lines(files("/var/log/nginx"))))).most_common(10)
 ```
 
-Paginating an API lazily:
+Each stage pulls one item from the stage before it, so only one line is in memory at any moment. Because each stage is its own function, you can test one stage without running the others.
+
+Paginated APIs follow the same pattern. The function below fetches one page at a time and yields each item as it arrives. The generator expression at the end filters the results without building a list.
 
 ```python
 def list_instances(client, project):
@@ -458,7 +540,7 @@ def list_instances(client, project):
 running = (i for i in list_instances(c, "p") if i["status"] == "RUNNING")
 ```
 
-Batching:
+Some APIs accept only a limited number of items per call, so you need to group items into batches. The `batched` helper below does that. On Python 3.12 and later, `itertools.batched` gives you the same result as tuples.
 
 ```python
 from itertools import islice
@@ -470,7 +552,11 @@ def batched(iterable, n):
 for ids in batched(all_instance_ids, 100): client.bulk_delete(ids)       # API limits of 100 per call
 ```
 
+Here the bulk delete runs in batches of 100, which matches the API limit of 100 per call.
+
 ### `itertools`, `functools`, `operator`
+
+The table below lists the most useful tools. Use it to find a helper before you write a loop by hand.
 
 | Tool | Purpose |
 |---|---|
@@ -488,6 +574,8 @@ for ids in batched(all_instance_ids, 100): client.bulk_delete(ids)       # API l
 | `batched(xs, n)` (3.12) | Chunks |
 | `functools.reduce`, `partial`, `lru_cache` | Folding, partial application, memoisation |
 
+The next block shows three of these tools at work. `groupby` only groups neighbouring items, so the nodes must be sorted by rack first. `pairwise` gives the change between adjacent samples, and `product` builds a grid of benchmark settings.
+
 ```python
 from itertools import groupby, accumulate, pairwise, product, chain
 rows = sorted(nodes, key=lambda n: n["rack"])
@@ -496,26 +584,29 @@ rates = [b - a for a, b in pairwise(counter_samples)]                # per-inter
 matrix = list(product(["bf16", "fp8"], [1, 8, 64], [128, 2048]))      # benchmark parameter grid
 ```
 
+Sort by the same key before you call `groupby`, because it only groups consecutive items.
+
 ## 9. Idioms for clarity and correctness
 
-- **EAFP vs LBYL**: "easier to ask forgiveness than permission": `try: value = d[key] except KeyError: ...` often beats `if key in d:` (and is race-free for files: `try: open(...)`, not `if os.path.exists`). Use LBYL where the check is cheap and failure rare.
-- **Truthiness**: `if items:`; but use `is None` when None is distinct.
-- **Enumerate, zip, reversed, sorted** instead of index arithmetic; `for i, x in enumerate(xs, 1)`.
-- **Unpacking**: `a, b = b, a`; `head, *tail = xs`; ignore with `_`.
-- **`with`** for resources; **`pathlib`** for paths.
-- **`str.join`** for concatenation; **f-strings** for formatting; `!r` in log messages.
-- **`any()` / `all()`** over generator expressions short-circuit.
-- **`dict.get`/`setdefault`/`defaultdict`/`Counter`** instead of manual key checks.
-- **`next(iter_, default)`** to get the first match: `first_up = next((n for n in nodes if n.up), None)`.
-- **`sorted(set(xs))`, `dict.fromkeys`** for dedupe.
-- **`enumerate` over `range(len())`**, **`min/max(key=)`**.
-- **`isinstance(x, (list, tuple))`** with ABCs (`collections.abc.Mapping`) rather than exact type checks; accept the most general useful type (a `Sequence`/`Iterable`) and return a concrete one.
-- **Avoid**: bare `except:`, mutable defaults, `from x import *`, `global` state, `eval`/`exec` on external input, `type(x) == T`, building SQL/shell by formatting, shadowing built-ins, overusing lambdas, deeply nested comprehensions, premature optimisation.
-- **Zen of Python** (`import this`): explicit is better than implicit; readability counts; errors should never pass silently; flat is better than nested.
+Idioms are the small habits that make Python code short and safe. The first one to learn is asking forgiveness instead of permission.
+
+Python prefers EAFP, which stands for "easier to ask forgiveness than permission." Writing `try: value = d[key] except KeyError: ...` often beats checking `if key in d:` first. For files, `try: open(...)` is also race-free, while `if os.path.exists` can be out of date by the time you open the file. Use LBYL, "look before you leap," only when the check is cheap and failure is rare.
+
+Test truthiness with `if items:`, but use `is None` when `None` is a value you must tell apart from other empty values. Use `enumerate`, `zip`, `reversed` and `sorted` instead of index arithmetic, so write `for i, x in enumerate(xs, 1)` for a one-based index. Unpacking handles swaps and head-and-tail splits, as in `a, b = b, a` and `head, *tail = xs`, and you can ignore a value by naming it `_`. For removing duplicates, use `sorted(set(xs))` or `dict.fromkeys`.
+
+Use `with` for resources, `pathlib` for paths, `str.join` for concatenation and f-strings for formatting. Use `!r` in log messages to show the `repr` of a value. The functions `any()` and `all()` stop as soon as the answer is known when you feed them a generator expression. Prefer `dict.get`, `setdefault`, `defaultdict` and `Counter` over manual key checks.
+
+When you check types, use `isinstance` with abstract base classes, such as `collections.abc.Mapping`, rather than exact type checks. Accept the most general useful type, such as a `Sequence` or an `Iterable`, and return a concrete one.
+
+Avoid a few habits that cause trouble later. Do not write a bare `except:`, use mutable defaults or run `from x import *`. Never run `eval` or `exec` on external input, and never build SQL or shell commands by formatting strings. Avoid shadowing built-ins, overusing lambdas and premature optimisation. The Zen of Python, which you can print with `import this`, puts it plainly: errors should never pass silently, and flat is better than nested.
+
+Use the built-in helpers before you write a loop by hand, and keep the code flat.
 
 ## 10. Infrastructure examples
 
 ### LRU cache of expensive lookups
+
+A log processor may look up the same address many times. A bounded cache keeps recent answers and drops the oldest one when it fills.
 
 ```python
 from functools import lru_cache
@@ -532,6 +623,8 @@ reverse_dns.cache_info(); reverse_dns.cache_clear()
 
 ### Sliding-window rate / anomaly detector
 
+A fixed-size `deque` keeps only the last N values. The detector flags a sample that sits far from the window's mean.
+
 ```python
 from collections import deque
 from statistics import mean, pstdev
@@ -547,6 +640,8 @@ class Window:
 
 ### Merging layered configuration
 
+A service can read settings from the command line, from environment variables and from a file. `ChainMap` searches them in the order you give them, so the first match wins.
+
 ```python
 from collections import ChainMap
 import os, json
@@ -557,6 +652,8 @@ def load_config(cli: dict) -> ChainMap:
 ```
 
 ### A resource pool as a context manager
+
+A pool keeps a fixed number of expensive connections ready. You borrow one with a `with` block.
 
 ```python
 from contextlib import contextmanager
@@ -570,42 +667,48 @@ class Pool:
         finally: self._q.put(c)
 ```
 
+The `finally` clause returns the connection to the queue even when the body raises an error.
+
 ## 11. Lab
 
-First, run the self-checking Python lab (`code/part03/python_idiomatic_data_model_lab.py`) locally. It verifies `FrenchDeck` (`__len__`, `__getitem__`, slicing, and `spades_high`, `FP` Ch. 1), the `t = (1, 2, [30, 40]); t[2] += [50, 60]` tuple in-place addition puzzle (`FP` Ch. 2), `StrKeyDict0` (`__missing__`, `get`, `__contains__`, `FP` Ch. 3), `make_averager` closures with `nonlocal` (`FP` Ch. 9), first-class function `Order` Strategy patterns and the `@promotion` decorator registry (`FP` Ch. 10), `scramble1` vs `permute1`/`permute2` and `myzip_gen`/`mymap_pad_gen` (`LP` Ch. 20), and `yield from averager_coro()` coroutine delegation (`FP` Ch. 17).
+Start by running the self-checking lab on your own machine. It verifies `FrenchDeck` (`__len__`, `__getitem__`, slicing and `spades_high`, *Fluent Python* Chapter 1), the tuple puzzle `t = (1, 2, [30, 40]); t[2] += [50, 60]` (Chapter 2), `StrKeyDict0` (`__missing__`, `get`, `__contains__`, Chapter 3), `make_averager` closures with `nonlocal` (Chapter 9), the `Order` strategy patterns and the `@promotion` decorator registry (Chapter 10), `scramble1` against `permute1` and `permute2`, `myzip_gen` and `mymap_pad_gen` (*Learning Python* Chapter 20), and `yield from averager_coro()` coroutine delegation (*Fluent Python* Chapter 17).
 
 ```bash
 python3 code/part03/python_idiomatic_data_model_lab.py
 ```
 
-Next, on any machine with Python 3.11+ (all interactive shell steps below are `untested here`), work through these exercises:
+After that, work through the exercises on any machine with Python 3.11 or newer. The interactive steps were not run here, so they are untested.
 
-1. **Data model**: implement `Vector`, then `Fleet` (a `Sequence`), then `Config` (a `MutableMapping` with dotted-key access and layering), verifying `len`, iteration, `in`, slicing, `repr`, equality, hashing, sorting, and `sorted(set(...))` behaviour. Use `collections.abc` to see which methods you got for free. Write tests with plain `assert`.
-2. **Special-method puzzles**: show `NotImplemented` vs raising; `__eq__` without `__hash__` makes instances unhashable; `__radd__`; `__bool__` vs `__len__`; the `t[0] += [3]` puzzle; explain each result.
-3. **Comprehensions**: rewrite five loops as comprehensions, then rewrite two over-nested ones back into functions; benchmark loop vs list comprehension vs generator expression for sum with `timeit` and memory with `tracemalloc`.
-4. **Iterators and generators**: implement `Countdown` as iterator class and generator function; demonstrate single-pass behaviour; write `read_chunks`, `tail_lines`, `batched`, `window(iterable, n)`; implement `yield from` delegation; use `send()` to build a running-average coroutine; show `close()` triggering `finally`.
-5. **Pipelines**: generate 5 million synthetic log lines to gzip files; implement the pipeline above; compare memory (`/usr/bin/time -v`) against a `readlines()` version; add a `dedupe` stage using a bounded set or Bloom-filter-like structure.
-6. **itertools**: use `groupby`, `accumulate`, `pairwise`, `product`, `chain.from_iterable`, `islice`; build a benchmark parameter sweep generator and a round-robin backend selector with `cycle`.
-7. **Text vs bytes**: round-trip strings with different encodings; reproduce a `UnicodeDecodeError` and fix it with `errors="replace"` and `surrogateescape`; normalise composed/decomposed Unicode; compute byte vs code point lengths.
-8. **Memoisation and weak refs**: implement an `lru_cache` function with expensive IO simulated; measure; demonstrate staleness bug; replace with TTL cache; show a `WeakValueDictionary` cache.
-9. **Patterns**: implement a command dispatcher using a registry decorator; a retry decorator is deferred to 3.11; implement `partial`-based pre-bound commands.
-10. **Review**: take a script of your own (or a provided one) and refactor it to idiomatic form; list each change and the principle behind it.
-11. **Clean up.**
+1. Implement `Vector`, then `Fleet` as a `Sequence`, then `Config` as a `MutableMapping` with dotted-key access and layering. Check `len`, iteration, `in`, slicing, `repr`, equality, hashing and sorting, and check `sorted(set(...))`. Use `collections.abc` to see which methods you received for free. Write the tests with plain `assert`.
+2. Work through the special-method puzzles. Show what `NotImplemented` does compared with raising an error. Show that defining `__eq__` without `__hash__` makes instances unhashable, and show how `__radd__` works. Compare `__bool__` with `__len__`, run the `t[0] += [3]` puzzle, and explain each result.
+3. Rewrite five loops as comprehensions, then rewrite two over-nested comprehensions back into functions. Benchmark a loop, a list comprehension and a generator expression that compute a sum, using `timeit` for speed and `tracemalloc` for memory.
+4. Implement `Countdown` once as an iterator class and once as a generator function. Show the single-pass behaviour. Write `read_chunks`, `tail_lines`, `batched` and `window(iterable, n)`, then implement `yield from` delegation. Use `send()` to build a running-average coroutine, and show that `close()` triggers the `finally` block.
+5. Generate 5 million synthetic log lines into gzip files, and implement the pipeline shown in this chapter. Measure its memory with `/usr/bin/time -v`, and compare it with a version that calls `readlines()`. Add a `dedupe` stage that uses a bounded set or a Bloom-filter-like structure.
+6. Use `groupby`, `accumulate`, `pairwise`, `product`, `chain.from_iterable` and `islice`. Build a benchmark parameter sweep generator and a round-robin backend selector with `cycle`.
+7. Round-trip strings through different encodings. Reproduce a `UnicodeDecodeError`, then fix it with `errors="replace"` and with `surrogateescape`. Normalise composed and decomposed Unicode, and compute byte lengths and code point lengths.
+8. Implement a memoised function with `lru_cache`, simulate expensive I/O, and measure it. Demonstrate the staleness bug, then replace the cache with a TTL cache. Show a `WeakValueDictionary` cache as well.
+9. Build a command dispatcher that uses a registry decorator. The retry decorator is deferred to 3.11. Implement pre-bound commands with `partial`.
+10. Take a script of your own, or one provided to you, and refactor it into idiomatic form. List each change and the principle behind it.
+11. Clean up.
 
 ## 12. Common mistakes
 
-- Reaching for index loops (`range(len(x))`) instead of iteration helpers.
-- Consuming an iterator twice; returning a generator when callers expect a list (and vice versa) without documenting it.
-- Modifying a collection during iteration; mutating arguments unexpectedly.
-- Defining `__eq__` but not `__hash__` (or hashing mutable objects).
-- Treating `str` as bytes (or the reverse); relying on the default locale encoding.
-- Overusing comprehensions for side effects or deeply nested logic; unreadable one-liners.
-- Using `list` for queues (`pop(0)`) or `in` on big lists.
-- Unbounded caches (`lru_cache(maxsize=None)`) in long-running services.
-- Holding file handles open in a half-consumed generator.
-- `except Exception: pass` inside generator pipelines, hiding data loss.
+These mistakes show up again and again in Python code that handles data and services.
+
+- Reaching for index loops such as `range(len(x))` instead of iteration helpers.
+- Consuming an iterator twice, or returning a generator where callers expect a list, or the reverse, without documenting it.
+- Modifying a collection while you iterate over it, or changing arguments without meaning to.
+- Defining `__eq__` but not `__hash__`, or hashing mutable objects.
+- Treating `str` as bytes, or the reverse, and relying on the default locale encoding.
+- Using comprehensions for side effects, or nesting them so deeply that nobody can read them.
+- Using a list as a queue with `pop(0)`, or using `in` on large lists.
+- Creating unbounded caches with `lru_cache(maxsize=None)` in long-running services.
+- Leaving a file handle open inside a generator that you stopped halfway through.
+- Writing `except Exception: pass` inside a generator pipeline, which hides data loss.
 
 ## 13. Interview angles
+
+Interviewers use these questions to test how well you understand the mechanisms behind the syntax.
 
 - "What is the Python data model? Implement a class that works with `len`, indexing and `for`."
 - "Iterable vs iterator vs generator?"
@@ -621,159 +724,161 @@ Next, on any machine with Python 3.11+ (all interactive shell steps below are `u
 
 ## Exercises
 
-1. **The Python Data Model: `FrenchDeck`, `spades_high`, `Vector`, and Context Managers (`FP` Chapter 1):** (a) Using `FrenchDeck` and `spades_high` in `code/part03/python_idiomatic_data_model.py`, explain how implementing only `__len__` and `__getitem__` unlocks `len()`, slicing (`deck[12::13]`), `in`, `reversed()`, `random.choice()`, and `sorted(deck, key=spades_high)`, and why `len(x)` is a built-in function reading `ob_size` rather than a method; (b) explain the contract between `__eq__` and `__hash__`, why binary dunders return `NotImplemented` on unknown types, and what returning `True` vs `False` from `__exit__` does in a context manager.
-2. **Sequences, Slicing, `deque`/`array`/`memoryview`, and the `t[2] += [50, 60]` Bytecode Puzzle (`FP` Chapter 2):** (a) Contrast container sequences (`list`, `tuple`, `deque`) with flat sequences (`str`, `bytes`, `array.array`, `memoryview`), and explain when to use `deque(maxlen=N)` and `bisect`; (b) using `demonstrate_tuple_inplace_add_puzzle()`, trace the bytecode (`BINARY_SUBSCR`, `INPLACE_ADD`, `STORE_SUBSCR`) of `t = (1, 2, [30, 40]); t[2] += [50, 60]` to explain why it both raises `TypeError` and mutates `t[2]` in place.
-3. **Mappings, Sets, `__missing__` (`StrKeyDict0`), `ChainMap`, and `MappingProxyType` (`FP` Chapter 3):** (a) Compare `d.get(k, [])`, `d.setdefault(k, []).append(v)`, and `defaultdict(list)` when indexing word occurrences, and explain how CPython's compact dict layout preserves insertion order; (b) using `StrKeyDict0` in `code/part03/python_idiomatic_data_model.py`, explain why `__missing__` needs `if isinstance(key, str): raise KeyError(key)` and why `__contains__` must inspect `self.keys()` rather than `key in self`.
-4. **Object References, `HauntedBus` vs. `TwilightBus`, `weakref.finalize`, First-Class Functions, and the Strategy Pattern (`FP` Chapters 6, 7, 9, 10):** (a) Contrast the `HauntedBus` bug (`def __init__(self, passengers=[]):`) with the `TwilightBus` bug (`self.passengers = passengers` aliasing the caller's list), and explain how `del` differs from object destruction (`weakref.finalize`); (b) using `make_averager()`, `Order`, `@promotion`, and `best_promo()` in `code/part03/python_idiomatic_data_model.py`, explain how `nonlocal` closures and first-class function registries replace stateful and stateless OOP Strategy classes.
-5. **Comprehensions, Matrix Operations, and Variable Scope vs. `:=` Leakage (`LP` Chapters 14 & 20):** (a) Given 3x3 matrices `M` and `N`, write list comprehensions to extract column 1, the main diagonal, add 10 to every element while preserving shape, and multiply `M` and `N` pairwise using `zip`; (b) explain why `[X for X in range(5)]` leaves an outer `X = 99` unchanged whereas `[(temp := S[i]) + temp.upper() for i in range(len(S))]` leaks `temp` into the enclosing scope.
-6. **Iterables vs. Single-Pass Iterators, `scramble` vs. `permute` (`factorial(N)`), `myzip`/`mymapPad`, and `yield from` Coroutines (`LP` Ch. 20 & `FP` Ch. 17):** (a) Contrast multiple-pass iterables (`list`, `Countdown`, `Sentence`) with single-pass iterators (`iter(G) is G`), and compare `scramble1('hack')` ($N=4$) against `permute1`/`permute2` (`factorial(4)=24`, `factorial(10)=3,628,800`, `factorial(50)`) and `myzip_gen` vs `mymap_pad_gen`; (b) using `averager_coro()` and `delegate_averager()`, explain how `yield from` delegates `send()` calls and captures the subgenerator's `return Result(count, average)` value.
+1. If you start with `FrenchDeck` and `spades_high` in `code/part03/python_idiomatic_data_model.py`. Explain how implementing only `__len__` and `__getitem__` unlocks `len()`, slicing (`deck[12::13]`), `in`, `reversed()`, `random.choice()` and `sorted(deck, key=spades_high)`. Then explain why `len(x)` is a built-in function that reads `ob_size`, rather than a method. Next, explain the contract between `__eq__` and `__hash__`, why binary dunders return `NotImplemented` for unknown types, and what returning `True` or `False` from `__exit__` does in a context manager. (*Fluent Python* Chapter 1)
+2. Contrast container sequences (`list`, `tuple`, `deque`) with flat sequences (`str`, `bytes`, `array.array`, `memoryview`). Explain when to use `deque(maxlen=N)` and `bisect`. Then use `demonstrate_tuple_inplace_add_puzzle()` to trace the bytecode of `t = (1, 2, [30, 40]); t[2] += [50, 60]`, through `BINARY_SUBSCR`, `INPLACE_ADD` and `STORE_SUBSCR`. Explain why it both raises `TypeError` and mutates `t[2]` in place. (*Fluent Python* Chapter 2)
+3. If you compare `d.get(k, [])`, `d.setdefault(k, []).append(v)` and `defaultdict(list)` when you index word occurrences. Explain how CPython's compact dict layout preserves insertion order. Then, using `StrKeyDict0` in `code/part03/python_idiomatic_data_model.py`, explain why `__missing__` needs `if isinstance(key, str): raise KeyError(key)`, and why `__contains__` must inspect `self.keys()` rather than using `key in self`. (*Fluent Python* Chapter 3)
+4. Contrast the `HauntedBus` bug (`def __init__(self, passengers=[]):`) with the `TwilightBus` bug, where `self.passengers = passengers` aliases the caller's list. Explain how `del` differs from object destruction, using `weakref.finalize`. Then, using `make_averager()`, `Order`, `@promotion` and `best_promo()` in `code/part03/python_idiomatic_data_model.py`, explain how `nonlocal` closures and first-class function registries replace stateful and stateless OOP Strategy classes. Also explain how `ChainMap` layers configuration and how `MappingProxyType` exposes a read-only view. (*Fluent Python* Chapters 6, 7, 9 and 10)
+5. Given the 3x3 matrices `M` and `N`, write list comprehensions that extract column 1, extract the main diagonal, add 10 to every element while keeping the shape, and multiply `M` and `N` pairwise using `zip`. Then explain why `[X for X in range(5)]` leaves an outer `X = 99` unchanged, while `[(temp := S[i]) + temp.upper() for i in range(len(S))]` leaks `temp` into the enclosing scope. (*Learning Python* Chapters 14 and 20)
+6. Contrast multiple-pass iterables (`list`, `Countdown`, `Sentence`) with single-pass iterators, where `iter(G) is G`. Compare `scramble1('hack')` (N = 4) with `permute1` and `permute2` (`factorial(4)=24`, `factorial(10)=3,628,800`, `factorial(50)`), and compare `myzip_gen` with `mymap_pad_gen` (`mymapPad`). Then, using `averager_coro()` and `delegate_averager()`, explain how `yield from` passes `send()` calls through and captures the sub-generator's `return Result(count, average)` value. (*Learning Python* Chapter 20 and *Fluent Python* Chapter 17)
 
 ## Checkpoint questions (20)
 
 <details>
 <summary>1. What is the Python data model, why do you call `len(x)` instead of `x.__len__()`, and how does `FrenchDeck` work with only `__len__` and `__getitem__` (`FP` Chapter 1)?</summary>
 
-The **Python data model** is the set of special (**dunder**) methods (`__len__`, `__getitem__`, `__iter__`, `__repr__`, `__add__`, `__enter__`/`__exit__`) that the interpreter invokes implicitly to support language syntax and built-in functions. You call **`len(x)`** rather than `x.__len__()` because for built-in types (`list`, `str`, `dict`), CPython reads the `ob_size` field from the C `PyVarObject` struct directly in $O(1)$ time, and for user classes it dispatches cleanly to `type(x).__len__(x)`. By implementing just `__len__` and `__getitem__` (delegating to `self._cards[position]`), `FrenchDeck` automatically supports `len(deck)` (`52`), indexing, slicing (`deck[12::13]`), iteration, `reversed()`, `in`, `random.choice()`, and `sorted(deck, key=spades_high)`.
+The **Python data model** is the set of special (**dunder**) methods, such as `__len__`, `__getitem__`, `__iter__`, `__repr__`, `__add__` and `__enter__`/`__exit__`. The interpreter calls them implicitly to support syntax and built-in functions. You call **`len(x)`** rather than `x.__len__()` because, for built-in types such as `list`, `str` and `dict`, CPython reads the `ob_size` field from the C `PyVarObject` struct directly, in $O(1)$ time. For user classes, it dispatches to `type(x).__len__(x)`. Because `FrenchDeck` implements just `__len__` and `__getitem__`, delegating to `self._cards[position]`, it supports `len(deck)` (`52`), indexing, slicing (`deck[12::13]`), iteration, `reversed()`, `in`, `random.choice()` and `sorted(deck, key=spades_high)`.
 </details>
 
 <details>
 <summary>2. Contrast `__repr__` and `__str__`, explain why binary operator dunders return `NotImplemented`, and state the `__eq__` / `__hash__` contract.</summary>
 
-- **`__repr__` vs `__str__`:** `__repr__` returns an unambiguous developer/debugging representation (ideally valid Python like `Vector(3.0, 4.0)`) and serves as the fallback if `__str__` is not defined; `__str__` returns a human-readable display string for `print()` and `str()`.
-- **`NotImplemented`:** When `__add__(self, other)` or `__eq__(self, other)` receives an unsupported operand type, returning the singleton **`NotImplemented`** (instead of raising `TypeError`) lets Python try the reflected method (`other.__radd__(self)`) before raising `TypeError`.
-- **`__eq__` and `__hash__`:** Objects that compare equal (`a == b`) **must** have identical hashes (`hash(a) == hash(b)`). Defining `__eq__` without `__hash__` sets `__hash__ = None` (making instances unhashable); mutable objects should never implement `__hash__`.
+- **`__repr__` vs `__str__`:** `__repr__` returns an unambiguous representation for developers and debugging, ideally valid Python such as `Vector(3.0, 4.0)`. It is also the fallback when `__str__` is not defined. `__str__` returns a display string for people, which `print()` and `str()` use.
+- **`NotImplemented`:** When `__add__(self, other)` or `__eq__(self, other)` gets an operand type it does not support, it returns the singleton **`NotImplemented`** instead of raising `TypeError`. That lets Python try the reflected method, `other.__radd__(self)`, before it raises `TypeError`.
+- **`__eq__` and `__hash__`:** Objects that compare equal, `a == b`, **must** have the same hash, `hash(a) == hash(b)`. If you define `__eq__` without `__hash__`, Python sets `__hash__ = None`, which makes the instances unhashable. Mutable objects should never implement `__hash__`.
 </details>
 
 <details>
 <summary>3. How does the context manager protocol (`__enter__` / `__exit__` and `@contextmanager`) handle exceptions?</summary>
 
-Entering `with expr as var:` calls `mgr.__enter__()` and binds its return value to `var`; exiting the block calls **`mgr.__exit__(exc_type, exc_val, exc_tb)`** no matter how the block exits. If `__exit__` returns **`True`**, any exception raised inside the `with` block is **suppressed**; if it returns **`False` or `None`**, the exception propagates normally. With `@contextlib.contextmanager`, code before `yield` is `__enter__` and code after `yield` (which must be wrapped in `try ... finally:`) is `__exit__`.
+When Python enters `with expr as var:`, it calls `mgr.__enter__()` and binds the return value to `var`. When the block exits, it calls **`mgr.__exit__(exc_type, exc_val, exc_tb)`**, however the block ended. If `__exit__` returns **`True`**, any exception raised inside the block is **suppressed**. If it returns **`False` or `None`**, the exception propagates as usual. With `@contextlib.contextmanager`, the code before `yield` plays the role of `__enter__`. The code after `yield` plays the role of `__exit__`, and it must sit inside a `try ... finally:` block.
 </details>
 
 <details>
 <summary>4. Contrast container vs. flat sequences, `list` vs. `deque(maxlen=N)` vs. `array.array` vs. `memoryview`, and explain the `t = (1, 2, [30, 40]); t[2] += [50, 60]` puzzle (`FP` Chapter 2).</summary>
 
-- **Container sequences** (`list`, `tuple`, `collections.deque`) hold pointers to arbitrary objects; **flat sequences** (`str`, `bytes`, `bytearray`, `array.array`, `memoryview`) store raw values of a single primitive type contiguously in memory (`array('f', ...)` uses 4 bytes per float vs ~32 bytes per float object in a list; `memoryview` slices binary buffers with zero copying; `deque(maxlen=N)` provides $O(1)$ `appendleft`/`popleft` and an automatic ring buffer, whereas `list.pop(0)` is $O(n)$).
-- **The `t[2] += [50, 60]` puzzle:** Bytecode evaluation first fetches `t[2]` (the mutable list `[30, 40]`), executes `INPLACE_ADD` (`list.__iadd__`, mutating the list in place to `[30, 40, 50, 60]`), and then executes `STORE_SUBSCR` (`t[2] = result`), which raises `TypeError: 'tuple' object does not support item assignment`—leaving `t` both failed and mutated.
+- **Container sequences** (`list`, `tuple`, `collections.deque`) hold pointers to arbitrary objects. **Flat sequences** (`str`, `bytes`, `bytearray`, `array.array`, `memoryview`) store raw values of one primitive type side by side in memory. For example, `array('f', ...)` uses 4 bytes per float, while a float object in a list takes about 32 bytes. A `memoryview` slices a binary buffer without copying it. `deque(maxlen=N)` gives you O(1) `appendleft` and `popleft`, and it works as a ring buffer. By contrast, `list.pop(0)` is O(n).
+- **The `t[2] += [50, 60]` puzzle:** Python first fetches `t[2]`, which is the mutable list `[30, 40]`. It then runs `INPLACE_ADD`, which calls `list.__iadd__` and changes the list in place to `[30, 40, 50, 60]`. Finally it runs `STORE_SUBSCR`, which tries `t[2] = result`. That raises `TypeError: 'tuple' object does not support item assignment`. So the statement fails, and `t` has still been changed.
 </details>
 
 <details>
 <summary>5. How does Python's `sort()` / `sorted()` work (`Timsort`), and how do `operator.itemgetter`, `operator.attrgetter`, and `bisect` complement it?</summary>
 
-Python's **Timsort** is an adaptive, **stable** $O(n \log n)$ hybrid merge/insertion sort ($O(n)$ best case on nearly sorted data) that preserves the relative order of items with equal keys—allowing multi-pass sorting or single-pass tuple-key sorting (`key=lambda n: (n.rack, -n.gpus, n.name)`). `list.sort()` sorts in place and returns `None`; `sorted(iterable)` returns a new list. `operator.itemgetter('rack', 'name')` and `operator.attrgetter('name', 'coord.lat')` extract dict keys or nested object attributes at C speed without `lambda`, while `bisect.bisect_left` and `bisect.insort` search and maintain sorted sequences in $O(\log n)$ search time.
+Python's **Timsort** is an adaptive, **stable** hybrid of merge and insertion sort. It runs in $O(n \log n)$ time, with an $O(n)$ best case on nearly sorted data. Stability means items with equal keys keep their original order, which lets you sort on several keys in passes, or sort once on a tuple key such as `key=lambda n: (n.rack, -n.gpus, n.name)`. `list.sort()` sorts in place and returns `None`, while `sorted(iterable)` returns a new list. `operator.itemgetter('rack', 'name')` and `operator.attrgetter('name', 'coord.lat')` pull out dict keys or nested attributes at C speed, without a `lambda`. `bisect.bisect_left` and `bisect.insort` search and maintain a sorted sequence in $O(\log n)$ search time.
 </details>
 
 <details>
 <summary>6. How do `dict.setdefault`, `collections.defaultdict`, and `__missing__` (`StrKeyDict0` and `collections.UserDict`) handle missing keys (`FP` Chapter 3)?</summary>
 
-- `d.setdefault(k, []).append(v)` inserts `[]` if `k` is absent and appends `v` in a **single** key lookup (unlike `d.get(k, [])` + `d[k] = ...`, which does two lookups).
-- `collections.defaultdict(list)` stores a `default_factory` invoked automatically by `__getitem__` whenever `d[k]` misses.
-- **`__missing__(self, key)`**: invoked by `dict.__getitem__` on a missing key (`d[k]`, not `d.get(k)`). In `StrKeyDict0`, `if isinstance(key, str): raise KeyError(key); return self[str(key)]` converts non-string keys on lookup without infinite recursion, while `key in self.keys() or str(key) in self.keys()` avoids recursive `in` checks. Subclass `collections.UserDict` rather than `dict` when customizing `__setitem__` or other mapping methods.
+- `d.setdefault(k, []).append(v)` inserts `[]` when `k` is missing and appends `v`, all in a **single** key lookup. By contrast, `d.get(k, [])` followed by `d[k] = ...` takes two lookups.
+- `collections.defaultdict(list)` stores a `default_factory`, which `__getitem__` calls automatically whenever `d[k]` misses.
+- **`__missing__(self, key)`** is called by `dict.__getitem__` when a key is missing. It runs for `d[k]`, but not for `d.get(k)`. In `StrKeyDict0`, `if isinstance(key, str): raise KeyError(key); return self[str(key)]` converts non-string keys during lookup without infinite recursion. Using `key in self.keys() or str(key) in self.keys()` avoids a recursive `in` check. When you customise `__setitem__` or other mapping methods, subclass `collections.UserDict` rather than `dict`.
 </details>
 
 <details>
 <summary>7. When should you use `Counter`, `ChainMap`, `MappingProxyType`, `set` operations, and `dict.fromkeys` (`FP` Chapter 3)?</summary>
 
-- **`Counter`**: multiset counting hashable items (`most_common(k)`, `+`, `-`, `&`, `|`).
-- **`ChainMap(cli, env, file_cfg, defaults)`**: searches multiple mappings in order without copying; writes mutate only the first mapping.
-- **`types.MappingProxyType(d)`**: returns a dynamic, read-only view of `d`.
-- **`set` / `frozenset` and `dict` views (`dict_keys`, `dict_items`)**: support $O(1)$ membership and set algebra (`&` intersection, `|` union, `-` difference, `^` symmetric difference, `<=` subset, `isdisjoint`) to reconcile desired vs. actual cluster state. To deduplicate an iterable **while preserving insertion order**, use **`list(dict.fromkeys(items))`**.
+- **`Counter`** counts hashable items in a multiset. Use `most_common(k)`, `+`, `-`, `&` and `|`.
+- **`ChainMap(cli, env, file_cfg, defaults)`** searches several mappings in order without copying. Writes change only the first mapping.
+- **`types.MappingProxyType(d)`** gives you a dynamic, read-only view of `d`.
+- **`set` and `frozenset`, and `dict` views (`dict_keys`, `dict_items`),** support O(1) membership and set algebra. Use `&` for intersection, `|` for union, `-` for difference, `^` for symmetric difference, `<=` for subset and `isdisjoint`. You can use them to reconcile desired and actual cluster state. To remove duplicates while keeping insertion order, use **`list(dict.fromkeys(items))`**.
 </details>
 
 <details>
 <summary>8. How do you handle `str` vs. `bytes` at I/O boundaries, Unicode normalization (`NFC`), and locale traps (`FP` Chapter 4)?</summary>
 
-Apply the **Unicode sandwich**: decode `bytes` to `str` (`data.decode('utf-8', errors='replace')`) as early as possible on input, process exclusively `str` code points inside your program, and encode `str` to `bytes` (`text.encode('utf-8')`) as late as possible on output. Always pass `encoding='utf-8'` explicitly to `open()` and `Path.read_text()` so containers with `LANG=C` do not default to ASCII; normalize visually identical strings (`'é'` precomposed vs `'e' + '\u0301'` decomposed) with **`unicodedata.normalize('NFC', s)`** and use `s.casefold()` for caseless comparisons.
+Follow the **Unicode sandwich**. Decode bytes to `str` as early as you can on input, for example with `data.decode('utf-8', errors='replace')`. Process only `str` code points inside your program. Encode `str` to bytes as late as you can on output, for example with `text.encode('utf-8')`. Always pass `encoding='utf-8'` to `open()` and `Path.read_text()`, so that containers with `LANG=C` do not default to ASCII. Normalise visually identical strings, such as `'é'` precomposed and `'e' + '\u0301'` decomposed, with **`unicodedata.normalize('NFC', s)`**. For caseless comparison, use `s.casefold()`.
 </details>
 
 <details>
 <summary>9. Contrast the `HauntedBus` and `TwilightBus` mutability bugs, and explain how `del`, `weakref.finalize`, and `gc.freeze()` work (`FP` Chapter 6).</summary>
 
-- **`HauntedBus` (`def __init__(self, passengers=[]):`)**: mutates a default list shared on `__init__.__defaults__`, leaking passengers across instances that omit the argument.
-- **`TwilightBus` (`self.passengers = passengers`)**: aliases the caller's list directly instead of copying it (`self.passengers = list(passengers)`), so `.drop()` mutates the caller's `basketball_team` list in place.
-- **`del` and `weakref`:** `del s1` deletes the **label `s1`**, not the object; `weakref.finalize(obj, callback)` and `WeakValueDictionary` observe or cache objects without incrementing their reference count. Calling **`gc.freeze()`** before `os.fork()` in pre-forking servers moves existing objects to the permanent generation so GC reference-count updates do not trigger copy-on-write page faults across worker processes.
+- **`HauntedBus` (`def __init__(self, passengers=[]):`)** changes a default list that is shared through `__init__.__defaults__`, so passengers leak between instances that omit the argument.
+- **`TwilightBus` (`self.passengers = passengers`)** aliases the caller's list instead of copying it. The fix is `self.passengers = list(passengers)`. Without it, `.drop()` changes the caller's `basketball_team` list in place.
+- **`del` and `weakref`:** `del s1` removes the **name `s1`**, not the object. `weakref.finalize(obj, callback)` and `WeakValueDictionary` observe or cache an object without raising its reference count. Calling **`gc.freeze()`** before `os.fork()` in a pre-forking server moves existing objects into the permanent generation. This stops garbage-collector reference-count updates from triggering copy-on-write page faults in every worker.
 </details>
 
 <details>
 <summary>10. How do closures (`make_averager`), decorators at import time, `@functools.lru_cache`, and `@functools.singledispatch` work (`FP` Chapters 7 & 9)?</summary>
 
-- **Decorators run at import time** when `def` is evaluated; `@wraps(func)` preserves metadata.
-- **Closures (`make_averager`)**: bind free variables (`avg.__code__.co_freevars`, stored in `avg.__closure__` cells) from an enclosing function scope; using `nonlocal count, total` maintains a running average in $O(1)$ memory.
-- **`@lru_cache(maxsize=4096)` / `@cache`**: memoizes pure functions with hashable arguments (never use an unbounded `maxsize=None` cache on request data with unbounded cardinality in a long-running service).
-- **`@singledispatch`**: registers type-specific implementations (`@htmlize.register`) dispatched on the first argument's type (registering against ABCs like `abc.Sequence` and `numbers.Integral`).
+- **Decorators run at import time**, when the `def` is evaluated. `@wraps(func)` preserves the metadata.
+- **Closures (`make_averager`)** keep free variables, which you can inspect through `avg.__code__.co_freevars` and `avg.__closure__` cells, from an enclosing function scope. With `nonlocal count, total`, a running average uses O(1) memory.
+- **`@lru_cache(maxsize=4096)` and `@cache`** memoise pure functions whose arguments are hashable. Never use an unbounded `maxsize=None` cache for request data with unbounded variety in a long-running service.
+- **`@singledispatch`** registers type-specific implementations, such as `@htmlize.register`. It chooses one based on the type of the first argument, and it can register against abstract base classes such as `abc.Sequence` and `numbers.Integral`.
 </details>
 
 <details>
 <summary>11. How do first-class functions and the `@promotion` registry simplify the Gang-of-Four Strategy and Command patterns (`FP` Chapter 10)?</summary>
 
-When concrete strategies (`FidelityPromo`, `BulkItemPromo`, `LargeOrderPromo`) have no internal state, replacing the abstract base class and subclasses with plain functions (`fidelity_promo`, `bulk_item_promo`, `large_order_promo`) passed directly to `Order(customer, cart, fidelity_promo)` removes all class boilerplate. Decorating each function with **`@promotion`** (`promos.append(promo_fn)`) populates the strategy registry automatically on import so `best_promo(order)` can evaluate `max(promo(order) for promo in promos)` in one line.
+Concrete strategies such as `FidelityPromo`, `BulkItemPromo` and `LargeOrderPromo` hold no state. Plain functions, `fidelity_promo`, `bulk_item_promo` and `large_order_promo`, can replace the abstract base class and its subclasses. You pass them directly, as in `Order(customer, cart, fidelity_promo)`, which removes all of the class boilerplate. Decorating each function with **`@promotion`**, which calls `promos.append(promo_fn)`, fills the strategy registry when the module imports. Then `best_promo(order)` can compute `max(promo(order) for promo in promos)` in one line.
 </details>
 
 <details>
 <summary>12. How does variable scoping work inside comprehensions versus the walrus operator (`:=`), and where do filter `if` vs. conditional `if/else` clauses go (`LP` Chapter 20)?</summary>
 
-- **Clause placement:** A filter `if` goes **after** `for` (`[x for x in xs if x > 0]`), whereas a conditional expression `a if cond else b` is the accumulation expression and goes **before** `for` (`["even" if x % 2 == 0 else "odd" for x in xs]`).
-- **Scope vs `:=` leakage:** In all comprehensions (`[]`, `{}`, `()`), the `for` target variable (`X` or `i`) is local to the comprehension's own scope and **does not leak** into or overwrite variables in the enclosing scope (`X = 99; [X for X in range(5)]` leaves `X == 99`). However, a walrus assignment expression **`temp := expr`** inside a comprehension **binds `temp` in the enclosing scope** (`temp == 'k'`).
+- **Clause placement:** A filter `if` goes **after** the `for`, as in `[x for x in xs if x > 0]`. A conditional expression, `a if cond else b`, produces the value and goes **before** the `for`, as in `["even" if x % 2 == 0 else "odd" for x in xs]`.
+- **Scope and `:=` leakage:** In every comprehension, whether it uses `[]`, `{}` or `()`, the `for` variable, such as `X` or `i`, stays local. It does not leak into the enclosing scope, so `X = 99; [X for X in range(5)]` leaves `X == 99`. A walrus assignment inside a comprehension, such as `temp := expr`, **does** bind `temp` in the enclosing scope, so `temp == 'k'` afterwards.
 </details>
 
 <details>
 <summary>13. How do nested list comprehensions map to nested `for` statements and matrix operations (`LP` Chapter 20)?</summary>
 
-- Multiple `for` clauses inside a single comprehension (`[x + y for x in [0, 1, 2] for y in [100, 200, 300]]` or `[col + 10 for row in M for col in row]`) execute **left-to-right like nested `for` loops** producing a **flat** list.
-- Nesting a comprehension on the **left** (`[[col + 10 for col in row] for row in M]` or pairwise matrix multiplication `[[col1 * col2 for (col1, col2) in zip(row1, row2)] for (row1, row2) in zip(M, N)]`) makes the **rightmost `for row in M` the outer loop**, constructing a new inner list for each row to preserve the 2D matrix shape.
+- A comprehension with several `for` clauses, such as `[x + y for x in [0, 1, 2] for y in [100, 200, 300]]` or `[col + 10 for row in M for col in row]`, runs left to right, like nested `for` loops, and produces a **flat** list.
+- A comprehension nested on the **left**, such as `[[col + 10 for col in row] for row in M]` or the pairwise multiplication `[[col1 * col2 for (col1, col2) in zip(row1, row2)] for (row1, row2) in zip(M, N)]`, makes the rightmost `for row in M` the outer loop. It builds a new inner list for each row, so the 2D shape is kept.
 </details>
 
 <details>
 <summary>14. What is the exact difference between an Iterable and an Iterator, and why is `iter(G) is G` `True` for generators (`LP` Chapters 14 & 20, `FP` Chapter 17)?</summary>
 
-- An **Iterable** (`list`, `tuple`, `range`, `Sentence`, `Countdown`) implements `__iter__()` to return a **new, independent iterator** on every call (`iter(R) is R` is `False`), supporting multiple concurrent and repeated passes.
-- An **Iterator** (including every generator returned by a generator function or generator expression, `zip`, `enumerate`, `map`, `filter`, and `open()` file objects) implements both `__next__()` (returning the next item or raising `StopIteration`) and `__iter__()` returning **`self`** (`iter(G) is G` is `True`). Because an iterator is its own iterator, it supports **only a single pass**: creating `I1 = iter(G)` and `I2 = iter(G)` aliases the exact same cursor, and a second `for` loop over an exhausted iterator yields zero items.
+- An **Iterable**, such as a `list`, `tuple`, `range`, `Sentence` or `Countdown`, implements `__iter__()` to return a **new, independent iterator** each time. That is why `iter(R) is R` is `False`, and why it supports several passes.
+- An **Iterator** implements both `__next__()`, which returns the next item or raises `StopIteration`, and `__iter__()`, which returns **`self`**. That makes `iter(G) is G` `True`. Generators from a generator function or generator expression are iterators, and so are `zip`, `enumerate`, `map`, `filter` and `open()` file objects. Because an iterator is its own iterator, it allows only one pass. If `I1 = iter(G)` and `I2 = iter(G)` both point at the same generator, they share one cursor. A second `for` loop over an exhausted iterator yields zero items.
 </details>
 
 <details>
 <summary>15. Compare `scramble1(seq)` ($N$ rotations) with `permute1(seq)` and `permute2(seq)` (`factorial(N)` permutations) in `LP` Chapter 20.</summary>
 
-- `scramble1(seq)` yields $N$ cyclic rotations (`seq[i:] + seq[:i]` for `i in range(len(seq))`, giving `4` items for `'hack'`).
-- `permute1(seq)` and `permute2(seq)` recursively compute all **`factorial(N)` permutations** (`24` for `'hack'`). Because `factorial(N)` grows factorially (`factorial(10) = 3,628,800`, `factorial(20)` $\approx 2.43 \times 10^{18}$, `factorial(50)` $\approx 3.04 \times 10^{64}$), `permute1` (which builds the entire result list in RAM before returning) pauses for 17 seconds at $N=10$ and hangs/OOMs at $N=20$, whereas the recursive generator **`permute2(seq)`** yields each permutation immediately on `next()` in $O(N)$ memory.
+- `scramble1(seq)` yields the N cyclic rotations, `seq[i:] + seq[:i]` for each `i` in `range(len(seq))`. For `'hack'`, that gives 4 items.
+- `permute1(seq)` and `permute2(seq)` each produce all `factorial(N)` permutations, which is 24 for `'hack'`. The count grows fast. `factorial(10) = 3,628,800`, `factorial(20)` is about $2.43 \times 10^{18}$, and `factorial(50)` is about $3.04 \times 10^{64}$. `permute1` builds the whole result list in memory before it returns. At N = 10 it takes about 17 seconds, and at N = 20 it runs out of memory. By contrast, `permute2(seq)` is a generator that yields each permutation as soon as `next()` asks for it, in O(N) memory.
 </details>
 
 <details>
 <summary>16. How do you implement generator versions of `mymap`, `myzip`, and `mymapPad` (`LP` Chapter 20)?</summary>
 
-- **`mymap`**: `def mymap(func, *seqs): for args in zip(*seqs): yield func(*args)` (or `(func(*args) for args in zip(*seqs))`).
-- **`myzip` (truncating)**: `seqs = [list(S) for S in seqs]; while all(seqs): yield tuple(S.pop(0) for S in seqs)` (or `(tuple(S[i] for S in seqs) for i in range(min(len(S) for S in seqs)))`).
-- **`mymapPad` (padding like `itertools.zip_longest`)**: `seqs = [list(S) for S in seqs]; while any(seqs): yield tuple((S.pop(0) if S else pad) for S in seqs)`.
+- **`mymap`:** `def mymap(func, *seqs): for args in zip(*seqs): yield func(*args)`, or `(func(*args) for args in zip(*seqs))`.
+- **`myzip` (truncating):** `seqs = [list(S) for S in seqs]; while all(seqs): yield tuple(S.pop(0) for S in seqs)`, or `(tuple(S[i] for S in seqs) for i in range(min(len(S) for S in seqs)))`.
+- **`mymapPad` (padding, like `itertools.zip_longest`):** `seqs = [list(S) for S in seqs]; while any(seqs): yield tuple((S.pop(0) if S else pad) for S in seqs)`.
 </details>
 
 <details>
 <summary>17. What does `yield from subgen` do, and how do `send()`, `throw()`, `close()`, and subgenerator `return` values work (`LP` Ch. 20 & `FP` Ch. 17)?</summary>
 
-- **`yield from subgen`** delegates iteration to `subgen` (replacing `for x in subgen: yield x`), recursively chains generators (such as `tree(cls)` walking `cls.__subclasses__()`), forwards caller `.send(val)` and `.throw(exc)` calls directly into `subgen`, and evaluates to `subgen`'s **`return` value** (`result = yield from averager_coro()`, captured from `StopIteration.value`).
-- **`.send(val)` / `.throw(exc)` / `.close()`:** After priming a coroutine to its first `yield` with `next(g)` (or `g.send(None)`), `g.send(val)` makes the suspended `yield` expression evaluate to `val`; `g.close()` raises **`GeneratorExit`** at the paused `yield` so `with` and `finally:` blocks clean up open files or sockets.
+- **`yield from subgen`** hands iteration to `subgen`, which replaces `for x in subgen: yield x`. Generators can chain this way, as in the `tree(cls)` example that walks `cls.__subclasses__()`. Calls to `.send(val)` and `.throw(exc)` pass straight into `subgen`. The expression evaluates to `subgen`'s **`return` value**, so `result = yield from averager_coro()` captures it from `StopIteration.value`.
+- **`.send(val)`, `.throw(exc)` and `.close()`:** Before you send values, you must prime the coroutine by running it to its first `yield` with `next(g)` or `g.send(None)`. After that, `g.send(val)` makes the paused `yield` evaluate to `val`. `g.close()` raises **`GeneratorExit`** at the paused `yield`, so `with` blocks and `finally:` clauses can close open files or sockets.
 </details>
 
 <details>
 <summary>18. How do you stream a 200 GB directory of compressed logs or paginate a cloud API in constant memory?</summary>
 
-Build a **chained generator pipeline**: (1) `files(root)` yields matching paths via `Path(root).rglob("*.log.gz")`, (2) `lines(paths)` opens each file with `gzip.open` inside a `with` block and `yield from f`s one line at a time, (3) `parse(lines)` yields regex match dicts, and (4) `Counter(r["ip"] for r in errors(parse(lines(files(...))))).most_common(10)` aggregates counts while holding only a single line in RAM at any instant. For paginated APIs, loop `while True: resp = client.list(page_token=token); yield from resp["items"]; token = resp.get("nextPageToken"); if not token: break`.
+Build a **chained generator pipeline**. (1) `files(root)` yields matching paths using `Path(root).rglob("*.log.gz")`. (2) `lines(paths)` opens each file with `gzip.open` inside a `with` block, and it `yield from`s the file one line at a time. (3) `parse(lines)` yields regular-expression match dicts. (4) `Counter(r["ip"] for r in errors(parse(lines(files(...))))).most_common(10)` counts the results, holding only one line in RAM at any moment. For a paginated API, loop with `while True: resp = client.list(page_token=token); yield from resp["items"]; token = resp.get("nextPageToken"); if not token: break`.
 </details>
 
 <details>
 <summary>19. What is the critical requirement when using `itertools.groupby(data, key=...)`, and what do `islice`, `pairwise`, `batched`, and `accumulate` do?</summary>
 
-**`itertools.groupby(iterable, key=...)` only groups *consecutive* items sharing the same key**—just like Unix `uniq`—so you **must sort the input by the same `key` function first** (`rows = sorted(nodes, key=key_fn); groupby(rows, key=key_fn)`).
-- `islice(it, start, stop, step)` slices any iterator lazily without materializing a list.
-- `pairwise(xs)` (Python 3.10+) yields overlapping adjacent pairs `(x0, x1), (x1, x2)` for counter rate deltas.
-- `batched(xs, n)` (Python 3.12+) groups an iterable into chunks of up to `n` items for bulk API calls.
-- `accumulate(xs, func)` yields running reductions (cumulative sums, running `min`/`max`).
+**`itertools.groupby(iterable, key=...)` groups only *consecutive* items that share a key.** This works like Unix `uniq`. You **must sort the input by the same `key` function first**, as in `rows = sorted(nodes, key=key_fn); groupby(rows, key=key_fn)`.
+
+- `islice(it, start, stop, step)` slices any iterator lazily, without building a list.
+- `pairwise(xs)`, from Python 3.10, yields overlapping adjacent pairs, `(x0, x1), (x1, x2)`, which suits counter rate deltas.
+- `batched(xs, n)`, from Python 3.12, groups an iterable into chunks of up to `n` items for bulk API calls.
+- `accumulate(xs, func)` yields running reductions, such as cumulative sums or running `min` and `max`.
 </details>
 
 <details>
 <summary>20. Contrast `EAFP` and `LBYL`, and explain why `try: open(...)` is preferred over `if os.path.exists(...): open(...)` in systems scripts.</summary>
 
-- **`LBYL` (*Look Before You Leap*)** checks preconditions before acting (`if key in d: return d[key]` or `if os.path.exists(p): open(p)`).
-- **`EAFP` (*Easier to Ask Forgiveness than Permission*)** performs the operation directly inside a `try` block and catches the specific exception (`try: return d[key] except KeyError: ...`).
-In Python, `EAFP` avoids redundant dictionary lookups on the happy path and eliminates **TOCTOU (*Time-of-Check to Time-of-Use*) race conditions** on the filesystem where another process deletes or replaces the file between `os.path.exists(p)` and `open(p)`.
+- **`LBYL` (*Look Before You Leap*)** checks preconditions before it acts, as in `if key in d: return d[key]` or `if os.path.exists(p): open(p)`.
+- **`EAFP` (*Easier to Ask Forgiveness than Permission*)** does the operation directly inside a `try` block and catches the specific exception, as in `try: return d[key] except KeyError: ...`.
+
+In Python, `EAFP` avoids the extra lookups on the normal path. It also avoids **TOCTOU (*Time-of-Check to Time-of-Use*) race conditions**. Those happen when another process deletes or replaces the file between `os.path.exists(p)` and `open(p)`.
 </details>
 
 ## Sources and review notes

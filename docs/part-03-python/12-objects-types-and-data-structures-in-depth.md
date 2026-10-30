@@ -1107,6 +1107,1914 @@ Python's core types are more flexible than what lower-level languages offer. Lis
 
 This chapter skipped many details to give you a first tour. Do not worry if not everything made sense yet. The next chapters go deeper, with a second pass over each core type.
 
+## Numeric literals and number types
+
+Numbers are not one single type in Python. They are a family of related types, and each one has its own way of being written in code. Most of the time you only need integers and floating-point numbers. The other types wait for the moment a task calls for them.
+
+A fairly complete list of Python's numeric toolbox includes these items:
+
+- Integer and floating-point objects
+- Complex number objects
+- Decimal fixed-precision objects
+- Fraction rational number objects
+- Set objects and operations
+- Boolean and bitwise operations
+- Built-in modules, such as `math`, `cmath`, `random` and `statistics`
+- Third-party add-ons, including vectors, visualization, plotting and extended precision
+
+Integer and floating-point objects get the most use, so we start with them. The sections after this one cover the rest.
+
+### Writing numbers as literals
+
+A literal is a number written directly in your code. The table below shows the forms Python accepts, and the constructor calls for the advanced types.
+
+| Literal | Interpretation |
+| --- | --- |
+| `1234`, `-24`, `0`, `9_999_999_999_999` | Integers (unlimited size) |
+| `1.23`, `1.`, `3.14e-10`, `4E210`, `4.0e+210` | Floating-point numbers |
+| `0o177`, `0x9ff`, `0b101010` | Octal, hex, and binary literals |
+| `3+4j`, `3.0+4.0j`, `3J` | Complex number literals |
+| `set('hack')`, `{1, 2, 3, 4}` | Sets: constructors and literals |
+| `Decimal('1.0')`, `Fraction(1, 3)` | Decimal and fraction extension types |
+| `bool(X)`, `True`, `False` | Boolean type and constants |
+
+Integers are written as strings of decimal digits. Their size is limited only by the memory on your computer. You can compute 2 raised to the power 1,000,000, but printing a number that large takes time, and Python does not convert it to a string by default.
+
+Floating-point numbers have a decimal point, an optional signed exponent introduced by `e` or `E`, or both. If you write a number with a decimal point or an exponent, Python makes it a floating-point object. Mixing a float with an integer also gives a floating-point result, because the integer is converted up first.
+
+### Hex, octal and binary literals
+
+Integers can be written in decimal (base 10), hexadecimal (base 16), octal (base 8) or binary (base 2). The last three are common in some programming fields. A hex literal starts with `0x` or `0X`, followed by digits from `0` to `9` and `A` to `F`. Hex digits can be lowercase or uppercase.
+
+An octal literal starts with `0o` or `0O`, followed by digits from `0` to `7`. A binary literal starts with `0b` or `0B`, followed by `0` or `1`. All of these produce ordinary integer objects, so they are only different ways to spell the same values.
+
+The built-in calls `hex(I)`, `oct(I)` and `bin(I)` turn an integer into its text form in those bases. The call `int(str, base)` does the reverse for a string that is only known at runtime.
+
+### Complex numbers
+
+Complex literals are written as `realpart+imaginarypart`. The imaginary part ends with a `j` or `J`. The real part is optional, so a value like `3J` is valid on its own.
+
+Python stores a complex number as a pair of floating-point numbers. Every numeric operation performs complex math when it gets a complex value. You can also create one with the `complex(real, imag)` built-in call.
+
+Complex numbers are used less often than the other types. They matter most in engineering and science code.
+
+### Built-in numeric tools
+
+Besides literals and constructor calls, Python gives you three kinds of tools for working with numbers. Expression operators, such as `+`, `-`, `*`, `/`, `>>`, `**`, `&` and `%`, do most of the work. Built-in functions, such as `pow`, `abs`, `round`, `int`, `hex` and `bin`, handle common jobs without an import.
+
+Utility modules, such as `random`, `math` and `statistics`, cover the rest. Numbers also have a few type-specific methods. Floating-point numbers have an `as_integer_ratio` method and an `is_integer` method. Integers have a `bit_length` method that reports how many bits the value needs.
+
+### Coding other numeric types
+
+Some of the advanced types come from imported modules. Decimals and fractions are built by calling functions from the `decimal` and `fractions` modules. Sets have their own literal syntax, using braces. Booleans are a special kind of integer.
+
+Expressions remain the most important tool for most number types. The next section covers them.
+
+## Expression operators and precedence
+
+An expression is a combination of numbers, or other objects, and operators. Python computes a value from it when the code runs. You write expressions with the usual mathematical symbols. To add two numbers `X` and `Y`, you write `X + Y`, and the result is another number object.
+
+Python has more operators than the four you learned in school. The table below lists all of them, from the lowest precedence to the highest. Some are numeric, and some are not. The `is` operator, for example, tests whether two names point to the same object in memory.
+
+Table: Python expression operators, by increasing precedence (binding)
+
+| Operators | Description |
+| --- | --- |
+| `yield x`, `yield from x` | Generator function `send` protocol |
+| `x := y` | Assignment expression |
+| `lambda args: expression` | Anonymous function generation |
+| `x if y else z` | Ternary selection (`x` is evaluated only if `y` is true) |
+| `x or y` | Logical OR (`y` is evaluated only if `x` is false) |
+| `x and y` | Logical AND (`y` is evaluated only if `x` is true) |
+| `not x` | Logical negation |
+| `x in y`, `x not in y` | Membership (iterables) |
+| `x is y`, `x is not y` | Object identity tests |
+| `x < y`, `x <= y`, `x > y`, `x >= y` | Magnitude comparison, set subset and superset |
+| `x == y`, `x != y` | Value equality operators |
+| `x \| y` | Bitwise OR, set union, dictionary merge |
+| `x ^ y` | Bitwise XOR, set symmetric difference |
+| `x & y` | Bitwise AND, set intersection |
+| `x << y`, `x >> y` | Shift `x` left or right by `y` bits |
+| `x + y` | Addition, concatenation |
+| `x - y` | Subtraction, set difference |
+| `x * y` | Multiplication, repetition |
+| `x % y` | Remainder, format |
+| `x / y`, `x // y` | Division: true and floor |
+| `x @ y` | Matrix multiplication (unused by Python) |
+| `-x`, `+x`, `~x` | Negation, identity, bitwise NOT (inversion) |
+| `x ** y` | Power (exponentiation) |
+| `await x` | Await expression (async functions) |
+| `x[i]`, `x[i:j:k]`, `x(...)`, `x.attr` | Indexing, slicing, call, attribute reference |
+| `(...)`, `[...]`, `{...}` | Tuple, expression, generator expression; list, list comprehension; dictionary, set, dictionary and set comprehensions |
+
+Some rows need a closer look. Parentheses are required for `yield` when it is not alone on the right side of an assignment. The same is true for `:=` in some contexts. Comparison operators compare all parts of collections, and they can be chained as a shorthand.
+
+The `@` operator is meant for matrix multiplication, but Python does not implement it for numbers. Unless you code an implementation in a class or use a library that provides one, it does nothing. The `yield`, `lambda` and `await` operators belong to larger topics. You can safely ignore them for now.
+
+Note: Python's no-op symbols
+
+The `@` character introduces function decorators in Python, which you will meet later. It is not an expression operator in practice, even though the table lists it that way. Together with `Ellipsis` (`...`) and type hinting, it is defined but not used by Python itself.
+
+### Precedence decides the order
+
+Most languages work the same way. You combine operators into longer expressions, and Python needs rules to decide which part runs first. Those rules are called operator precedence. Operators lower in the table bind more tightly, so they run first in a mixed expression.
+
+Operators in the same row group from left to right. Exponentiation is the exception, and it groups from right to left. Comparisons chain from left to right.
+
+For example, in `X + Y * Z`, Python multiplies `Y` by `Z` first. Then it adds `X`, because `*` binds more tightly than `+`.
+
+### Parentheses override precedence
+
+You can avoid thinking about precedence by grouping parts of an expression with parentheses. Python always evaluates the parentheses first. You can force either order with the code below.
+
+```
+(X + Y) * Z
+X + (Y * Z)
+```
+
+In the first line, `+` runs first because of the parentheses. In the second line, `*` runs first, just as it would without any parentheses. Adding parentheses to a large expression is a good habit. It forces the order you want, and it helps the next reader.
+
+### Mixed types are converted up
+
+Expressions can also mix numeric types. You can add an integer to a float, for example, with `40 + 3.14`. Python first converts the simpler operand up to the more complex type. Then it does the math on two values of the same type.
+
+Python ranks integers as simpler than floating-point numbers, and floating-point numbers as simpler than complex numbers. So an integer mixed with a float becomes a float, and the result is a float.
+
+```
+>>> 40 + 3.14 # Integer to float, float math/result
+43.14
+```
+
+If one operand is complex, the other operand is converted to complex too. Conversions also happen in equality and magnitude comparisons. So `3 == 3.0` is true, but `3 > 3.0` is not.
+
+You can force a conversion with the built-in functions. The `int` function truncates a float, and the `float` function converts an integer to a float.
+
+```
+>>> int(3.1415) # Truncates float to integer
+3
+>>> float(3) # Converts integer to float
+3.0
+```
+
+Most of the time you will not need to do this. Python's automatic conversion gives the result you want.
+
+Automatic conversion applies only to numeric objects mixed in an expression. Python does not convert across other type boundaries. Adding a string of digits to an integer raises an error unless you convert one of them yourself. Equality tests still work on mixed types, since a string is never equal to an integer. Magnitude comparisons do not work across those types.
+
+### Operator overloading preview
+
+All Python operators can be overloaded. That means classes you write, and C extension types, can give an operator a meaning for the objects they create. Later you will see objects that support `x+y` addition, or `x[i]` indexing.
+
+Python also overloads some operators on its own. The `+` operator adds numbers, but it concatenates sequences such as strings and lists. It can mean anything at all when it is applied to objects you define with classes.
+
+This idea is called polymorphism. The meaning of an operation depends on the type of the objects it works on. It becomes more obvious when you study functions.
+
+## Numbers in action: variables and expressions
+
+The best way to understand numbers is to try them. Start the interactive prompt, which you met in Chapter 3, and type the examples as you read. You do not need to type the comments, which begin with `#`.
+
+### Variables and basic expressions
+
+A variable is a name that refers to a value. You create it by assigning a value to it. In Python, a few rules apply. A variable is created the first time it is assigned. It is replaced by its value when it appears in an expression. It must be assigned before it is used. It does not need to be declared ahead of time.
+
+```
+$ python3 # Fire up a REPL
+>>> a = 3 # Name created: no need to declare ahead of time
+>>> b = 4
+```
+
+With `a` and `b` set, you can use them in expressions. Python echoes each result back immediately. Two expressions separated by a comma produce a tuple, and the tuple is shown in parentheses.
+
+```
+>>> a + 1, a - 1 # Addition (3 + 1), subtraction (3 - 1)
+(4, 2)
+>>> b * 3, b / 2 # Multiplication (4 * 3), division (4 / 2)
+(12, 2.0)
+>>> a % 2, b ** 2 # Modulus (remainder), power (4 ** 2)
+(1, 16)
+>>> 2 + 4.0, 2.0 ** b # Mixed-type conversions
+(6.0, 16.0)
+```
+
+If you use a variable that was never assigned, Python reports an error. It does not fill in a default value.
+
+```
+>>> c * 2
+NameError: name 'c' is not defined
+```
+
+This means you must give counters a starting value of zero before you add to them. You must set lists to an empty list before you append to them.
+
+### Grouping and conversions in practice
+
+Two slightly larger expressions show how grouping works. In the first, there are no parentheses, so the rules of precedence decide the order. The `/` operator is lower in the table than `+`, so it binds more tightly and runs first. In the second, parentheses force the addition to run first.
+
+```
+>>> b / 2 + a # Same as ((4 / 2) + 3)
+5.0
+>>> b / (2 + a) # Same as (4 / (2 + 3))
+0.8
+```
+
+All the numbers in these examples are integers. The `/` operator always gives a floating-point result, so the result of the whole expression is a float. You can force a float by writing `2.0` instead of `2`, but you do not have to.
+
+The `//` operator is floor division. It discards the decimal digits of the result. Because the result type follows the operand types, a float input gives back a truncated float.
+
+```
+>>> a, b # Same, original values
+(3, 4)
+>>> b // 2 + a # Floor division: integer
+5
+>>> b // (2 + a) # Truncates fraction (for positives)
+0
+>>> b // 2.0 + a # Auto-conversions: floating-point
+5.0
+>>> b // (2.0 + a)
+0.0
+```
+
+### Display formats and str versus repr
+
+Once you work with numbers for a while, some results look odd. Python shows `3.3000000000000003` for `1.1 + 2.2`, and `print` shows the same long value. This comes from the limits of floating-point hardware. Some values cannot be stored exactly in a fixed number of bits.
+
+Python's display logic tries to show fewer digits, but it cannot always do that. Your computer's floating-point hardware is doing its best, and neither the hardware nor Python is in error. You can always force a shorter display with string formatting.
+
+```
+>>> num = 1.1 + 2.2
+>>> num # Auto-echoes (and prints)
+3.3000000000000003
+>>> '%e' % num # String-formatting expression
+'3.300000e+00'
+>>> '%.1f' % num # Alternative floating-point format
+'3.3'
+>>> f'{num:e}', f'{num:.1f}' # F-strings (see also format method)
+('3.300000e+00', '3.3')
+```
+
+Each of these formatting tools returns a string, which is usually meant for display or a report. You will study string formatting in full in the chapter on strings.
+
+The default output of an interactive echo and of `print` correspond to two built-in functions. The echo uses `repr`, and `print` uses `str`.
+
+```
+>>> repr('hack') # Used by echoes: as-code form
+"'hack'"
+>>> str('hack') # Used by print: user-friendly form
+'hack'
+```
+
+Both functions turn any object into a string. `repr` produces text that looks like code. `str` produces a friendlier form, when the object has one. Some objects have both forms, and `repr` often shows extra detail.
+
+The name `str` also names the string type. Called with an encoding name, it can decode a byte string into a Unicode string. This is an alternative to the `bytes.decode` method.
+
+## Comparisons and floating-point equality
+
+Numbers can be compared, like every Python object. Comparisons work the way you would expect. They compare the sizes of the two operands and return `True` or `False`. You usually test that result in an `if` statement.
+
+```
+>>> 1 < 2 # Less than (magnitude)
+True
+>>> 2.0 >= 1 # Greater than or equal: mixed-type 1 converted to 1.0
+True
+>>> 2.0 == 2.0 # Equal value
+True
+>>> 2.0 != 2.0 # Not equal value
+False
+```
+
+In the second test, Python compares the values as floats, because float is the more complex type.
+
+### Chained comparisons
+
+Python lets you chain comparisons. A chained comparison is shorthand for a larger Boolean expression. The expression `A < B < C` tests whether `B` falls between `A` and `C`. It is equivalent to `A < B and B < C`, but it is easier to read.
+
+```
+>>> X = 2
+>>> Y = 4
+>>> Z = 6
+```
+
+The two expressions below have identical effects. The chained one is shorter to type. It may also run a little faster, because Python evaluates `Y` only once. That matters when `Y` is a call to a slow function.
+
+```
+>>> X < Y < Z # Chained comparisons: range tests
+True
+>>> X < Y and Y < Z
+True
+```
+
+The same equivalence holds for false results. A chain can be any length.
+
+```
+>>> X < Y > Z
+False
+>>> X < Y and Y > Z
+False
+>>> 1 < 2 < 3.0 < 4
+True
+>>> 1 > 2 > 3.0 > 4
+False
+```
+
+You can chain other comparisons, but the results can look odd. Read them the way Python does. In the first line below, the result is `False` because `1` is not equal to `2`. Python does not compare that `False` to `3`.
+
+```
+>>> 1 == 2 < 3 # Same as: (1 == 2) and (2 < 3), but not: False < 3!
+False
+>>> True is False is True # Same as: (True is False) and (False is True)
+False
+```
+
+### Floating-point equality
+
+Chaining aside, numeric comparisons compare magnitudes. Floating-point numbers can surprise you, though. They may need conversions or other adjustments before they compare the way you want.
+
+```
+>>> 1.1 + 2.2 == 3.3 # Shouldn't this be True?
+False
+>>> 1.1 + 2.2 # Close to 3.3, but not exactly: limited precision
+3.3000000000000003
+```
+
+Floating-point numbers cannot represent some values exactly, because they have a limited number of bits. This is a basic issue in numeric programming, and it is not unique to Python. To allow for it, you can truncate, round or use floors before you compare.
+
+Since Python 3.5, you can also call `isclose` from the `math` module. It returns `True` when two values are within a tolerance of each other.
+
+```
+>>> int(1.1 + 2.2) == int(3.3) # OK if convert: see also floor, trunc ahead
+True
+>>> round(1.1 + 2.2, 1) == round(3.3, 1)
+True
+>>> import math # Import modules to call their functions
+>>> math.isclose(1.1 + 2.2, 3.3) # Within default-but-passable tolerances
+True
+```
+
+Decimals and fractions can also solve these limits, and they are covered later in this chapter.
+
+## Division, truncation and integer precision
+
+Python has two division operators, along with a related one. Here is the full set.
+
+- `X / Y` is true division. It always keeps the remainder in a floating-point result, no matter the types.
+- `X // Y` is floor division. It always rounds the fraction down to the floor, no matter the types. Its result type depends on the operand types.
+- `X % Y` is modulus. It returns the remainder of a division. Its result type varies with the operand types. On strings, `%` also does formatting.
+
+```
+>>> 10 / 4 # True div: keeps remainder always
+2.5
+>>> 10 / 4.0 # Same for floats
+2.5
+>>> 10 // 4 # Floor div: drops remainder always
+2
+>>> 10 // 4.0 # Same for floats, but type varies
+2.0
+```
+
+The type of a `//` result follows its operands. If either one is a float, the result is a float. Otherwise, it is an integer. To make sure you get an integer, wrap the expression in `int`.
+
+```
+>>> int(10 // 4.0)
+2
+```
+
+The modulus operator returns the remainder with a type that matches the operands. This helps when you need to know what is left over after a `//`. The `divmod` built-in gives both parts at once.
+
+```
+>>> 10 % 3, 10 % 3.0 # Remainder of division: (3 * 3) + 1
+(1, 1.0)
+>>> divmod(10, 3) # Both parts of division in a tuple
+(3, 1)
+```
+
+### Floor is not always truncation
+
+People often call `//` truncating division. A more accurate name is floor division. It rounds the result down to the closest whole number below the true answer. For negative results, that is different from truncation.
+
+Python's `math` module shows the difference. You must import it before you use it.
+
+```
+>>> import math
+>>> math.floor(2.5) # Closest number below value
+2
+>>> math.floor(-2.5) # But not truncation for negative!
+-3
+>>> math.trunc(2.5) # Truncate fractional part (toward zero)
+2
+>>> math.trunc(-2.5) # And is truncation for negative
+-2
+```
+
+For positive results, truncation and floor give the same answer. For negative results, the division operators round down to the floor. The examples below use plain ASCII hyphens, because Python requires them for minus signs.
+
+```
+>>> 5 / 2, 5 / -2 # True division keeps remainders
+(2.5, -2.5)
+>>> 5 // 2, 5 // -2 # Truncates to floor: rounds to first lower integer
+(2, -3)
+>>> 5 / 2.0, 5 / -2.0 # Ditto for floats
+(2.5, -2.5)
+>>> 5 // 2.0, 5 // -2.0 # Though result is float too
+(2.0, -3.0)
+```
+
+If you want truncation toward zero for any sign, pass a true division result through `math.trunc`. The `int` built-in does the same, and it needs no import. The `round` built-in is related, but it works in a different way.
+
+```
+>>> import math
+>>> 5 / -2 # Keep remainder
+-2.5
+>>> 5 // -2 # Floor below result
+-3
+>>> math.trunc(5 / -2) # Truncate instead of floor (same as int())
+-2
+```
+
+Truncation matters in some programs. You will see a prime-number `while` loop later, and it depends on the truncating behavior of `//`.
+
+### Integer precision has no limit
+
+Python integers have no fixed size. A number can grow until it fills the available memory. This is useful for money totals, large counts and math that would overflow in other languages.
+
+```
+>>> 999999999999999999999999999999 + 1
+1000000000000000000000000000000
+```
+
+Python does extra work to support this precision. For very large numbers, integer math is usually slower than normal. If you need the precision, the built-in support is usually worth the cost.
+
+```
+>>> 2 ** 269
+948568795032094272909893509191171341133987714380927500611236528192824358010355712
+>>> x = 2 ** 1000000
+>>> x
+ValueError: Exceeds the limit (4300 digits) for integer string conversion;
+use sys.set_int_max_str_digits() to increase the limit
+```
+
+## Complex, hex, octal and binary numbers
+
+### Complex math in practice
+
+Complex numbers are a distinct core type. Their real and imaginary parts are floating-point numbers. You write the imaginary part with a `j` or `J` suffix. You can also add a real part with a `+`. For example, the complex number with real part `2` and imaginary part `-3` is written `2 + -3j`.
+
+```
+>>> 1j * 1J
+(-1+0j)
+>>> 2 + 1j * 3
+(2+3j)
+>>> (2 + 1j) * 3
+(6+3j)
+```
+
+Complex numbers have `real` and `imag` attributes, which give their parts. They support the usual math. The standard `cmath` module provides complex versions of the tools in `math`. Complex numbers are rare in most programs, so the details live in Python's language reference.
+
+### Other bases
+
+Python integers can be written in hex, octal and binary, along with the decimal form you have been using. Some programmers find these forms easier when a value's bytes and bits matter. Other-base literals are only a different spelling. An integer's value in memory is the same, no matter which base you used to write it.
+
+```
+>>> 0x01, 0x10, 0xFF # Hex literals: base 16, digits 0-9/A-F
+(1, 16, 255)
+>>> 0o1, 0o20, 0o377 # Octal literals: base 8, digits 0-7
+(1, 16, 255)
+>>> 0b1, 0b10000, 0b11111111 # Binary literals: base 2, digits 0-1
+(1, 16, 255)
+```
+
+The hex value `0xFF`, the octal value `0o377` and the binary value `0b11111111` all equal decimal `255`. Each `F` digit means `15` in decimal and `1111` in binary. Each position is a power of 16 in hex.
+
+```
+>>> 0xFF, (15 * (16 ** 1)) + (15 * (16 ** 0)) # How hex/binary map to decimal
+(255, 255)
+>>> 0x2F, (2 * (16 ** 1)) + (15 * (16 ** 0))
+(47, 47)
+>>> 0xF, 0b1111, (1*(2**3) + 1*(2**2) + 1*(2**1) + 1*(2**0))
+(15, 15, 15)
+```
+
+Python prints integers in decimal by default. Built-in functions turn an integer into a digit string in another base. The `oct` function gives octal, `hex` gives hexadecimal and `bin` gives binary. All three return strings.
+
+```
+>>> oct(64), hex(64), bin(64) # Numbers=>digit strings
+('0o100', '0x40', '0b1000000')
+```
+
+To go the other way, the `int` built-in turns a string of digits into an integer. An optional second argument gives the base. This is useful for numbers that come from a file as text.
+
+```
+>>> 64, 0o100, 0x40, 0b1000000 # Digits=>numbers in scripts and strings
+(64, 64, 64, 64)
+>>> int('64'), int('100', 8), int('40', 16), int('1000000', 2)
+(64, 64, 64, 64)
+>>> int('0x40', 16), int('0b1000000', 2) # Literal forms supported too
+(64, 64)
+```
+
+The `eval` function also converts digit strings to numbers. It treats the string as Python code, so it usually runs more slowly. It also assumes the string comes from a trusted source. A clever user could submit a string that deletes files on your machine. Use `eval` sparingly, and only with trusted input.
+
+```
+>>> eval('64'), eval('0o100'), eval('0x40'), eval('0b1000000')
+(64, 64, 64, 64)
+```
+
+You can also turn integers into base-specific strings with any of Python's three string-formatting tools. The `o` code formats octal, `b` formats binary and `x` formats hex. The `#X` form adds a base prefix and uses uppercase letters.
+
+```
+>>> '%o, %x, %#X' % (64, 255, 255) # Numbers=>digits formatting*3
+'100, ff, 0XFF'
+>>> '{:o}, {:b}, {:x}, {:#X}'.format(64, 64, 255, 255)
+'100, 1000000, ff, 0XFF'
+>>> f'{64:o}, {64:b}, {255:x}, {255:#X}' # The newest latest-and-greatest
+'100, 1000000, ff, 0XFF'
+```
+
+You can avoid repeating the inputs in these tools. Picking one formatting tool is usually the better choice, because repeating features across tools adds confusion.
+
+```
+>>> '%(i)o, %(j)x, %(j)#X' % dict(i=64, j=255)
+'100, ff, 0XFF'
+>>> '{0:o}, {0:b}, {1:x}, {1:#X}'.format(64, 255)
+'100, 1000000, ff, 0XFF'
+>>> f'{(i:=64):o}, {i:b}, {(i:=255):x}, {i:#X}'
+'100, 1000000, ff, 0XFF'
+```
+
+Other-base literals and converters handle very large integers too. The example below makes a large integer from hex, then shows it in decimal, octal and binary.
+
+```
+>>> X = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+>>> X
+5192296858534827628530496329220095
+>>> oct(X)
+'0o17777777777777777777777777777777777777'
+>>> bin(X)
+'0b111111111111111111111111111111111111111111111111111111111 ...and so on... 11111'
+```
+
+## Bitwise operations and underscore separators
+
+### Bit operations
+
+Python supports most of the numeric operators found in the C language. Some of them treat an integer as a string of binary bits. They are useful when your code handles network packets, serial ports or packed binary data. Such data often comes from a C program, or it must be read by one.
+
+Bit logic is a large topic, so this chapter covers only the basics. Shifts and Boolean operations work on the bits of an integer.
+
+```
+>>> x = 1 # 1 decimal is 0001 in bits
+>>> x << 2 # Shift left 2 bits: 0100
+4
+>>> x | 3 # Bitwise OR (either bit=1): 0001 | 0011
+3
+>>> x & 3 # Bitwise AND (both bits=1): 0001 & 0011
+1
+```
+
+The first expression shifts a binary `1`, which is `0001`, left by two slots. The result is `0100`, which is `4`. The OR combines bits, so `0001 | 0011` gives `0011`. The AND keeps only the common bits, so `0001 & 0011` gives `0001`. This kind of bit masking lets one integer hold several flags.
+
+Binary and hex literals make these bit patterns easier to see.
+
+```
+>>> X = 0b0001 # Binary literals
+>>> X << 2 # Shift left
+4
+>>> bin(X << 2) # Binary digits string
+'0b100'
+>>> bin(X | 0b0011) # Bitwise OR: either
+'0b11'
+>>> bin(X & 0b11) # Bitwise AND: both
+'0b1'
+```
+
+Values that start as hex literals work the same way. The XOR operator, written `^`, gives a bit when exactly one of the two operands has it set.
+
+```
+>>> X = 0xFF # Hex literals
+>>> bin(X)
+'0b11111111'
+>>> X ^ 0b10101010 # Bitwise XOR: either but not both
+85
+>>> bin(X ^ 0b10101010)
+'0b1010101'
+>>> int('01010101', 2) # Digits=>number: string to int per base
+85
+>>> hex(85) # Number=>digits: Hex digit string
+'0x55'
+```
+
+Integers also have a `bit_length` method. It reports how many bits the value needs in binary. You could get the same answer by subtracting 2 from the length of the `bin` string. That approach is less efficient, because it builds a temporary string first.
+
+```
+>>> X = 99
+>>> bin(X), X.bit_length(), len(bin(X)) - 2
+('0b1100011', 7, 7)
+>>> bin(256), (256).bit_length(), len(bin(256)) - 2
+('0b100000000', 9, 9)
+```
+
+Bit twiddling is less important in a high-level language than in a low-level one. If you find yourself flipping bits in Python, stop and check which language you are really coding. Lists and dictionaries can hold information in a much clearer form than bit strings.
+
+### Underscores in numeric literals
+
+Since Python 3.6, numeric literals can contain underscores. The underscores group digits so long numbers are easier to read. They work for every base and for the decimal digits of floats. Python removes them after it reads your code, so they do not change the value.
+
+```
+>>> 9999999999999 == 9_999_999_999_999 # Decimal: thousands
+True
+>>> 0xFFFFFFFF == 0xFF_FF_FF_FF # Hex: 8-bit bytes
+True
+>>> 0o777777777777 == 0o777_777_777_777 # Octal: 9 bits each
+True
+>>> 0b1111111111111111 == 0b1111_1111_1111_1111 # Binary: 4-bit nibbles
+True
+>>> 3.141592653589793 == 3.141_592_653_589_793 # Float: decimal digits
+True
+>>> 123456789.123456789 == 123_456_789.123_456_789 # Float: both sides
+True
+```
+
+This feature is only a cosmetic one. Numbers lose their underscores once Python reads them. The string formatting you will study later can add separators back for display. The original value does not keep them.
+
+```
+>>> x = 9_999_998 # Your number with "_"s for digit groupings
+>>> x # But dropped when read: not in displays
+9999998
+>>> x + 1 # Ditto for derived computation results
+9999999
+>>> f'{x:,} and {x:_}' # Formatting adds separators, but just for show
+'9,999,998 and 9_999_998'
+```
+
+Python checks only a few things about underscores. It rejects them at the start, at the end, and when two appear in a row. Otherwise they are digit spacers, and you can place them anywhere.
+
+```
+>>> 99_9 # No position-error checking provided
+999
+>>> 1_23_456_7890 # Hmm…
+1234567890
+>>> _9
+NameError: name '_9' is not defined. Did you mean: '_'?
+>>> 9_
+SyntaxError: invalid decimal literal
+>>> 9_9__9
+SyntaxError: invalid decimal literal
+>>> 9_9_9 # Syntax oddities checked, semantics not
+999
+>>> hex(0xf_ff_fff_f_f) # And Python won't retain your "_"s
+'0xffffffff'
+```
+
+Commas are different. They cannot be used in numeric literals. A comma makes a tuple, so a number written with commas does not give you the number you meant.
+
+```
+>>> 12_345_678 # Underscores are ignored
+12345678
+>>> 12,345,678 # But commas mean a tuple!
+(12, 345, 678)
+```
+
+Most Python programs compute their numbers, rather than hardcode them. So underscores in literals are not common. Input is a better use. String-to-number converters accept underscores too.
+
+```
+>>> int('1_234_567') # Works in text read from data files too
+1234567
+>>> eval('1_234_567') # But does raw-data readability matter?
+1234567
+>>> float('1_2_34.567_8_90')
+1234.56789
+```
+
+Scripts could strip underscores on their own, so this feature is not essential. Use it when it makes sense for your code.
+
+## Math, random and statistics tools
+
+Python has built-in functions and standard-library modules for numbers. The `pow` and `abs` built-ins compute powers and absolute values. The `math` module holds most of the tools from the C language's math library.
+
+```
+>>> import math
+>>> math.pi, math.e # Common constants
+(3.141592653589793, 2.718281828459045)
+>>> math.sin(2 * math.pi / 180) # Sine, tangent, cosine
+0.03489949670250097
+>>> math.sqrt(144), math.sqrt(2) # Square root
+(12.0, 1.4142135623730951)
+>>> pow(2, 4), 2 ** 4, 2.0 ** 4.0 # Exponentiation (power)
+(16, 16, 16.0)
+>>> abs(-62.0), sum((1, 2, 3, 4)) # Absolute value, summation
+(62.0, 10)
+>>> min(3, 1, 2, 4), max(3, 1, 2, 4) # Minimum, maximum
+(1, 4)
+```
+
+The `sum` function works on any iterable of numbers. The `min` and `max` functions accept a collection, or separate arguments.
+
+### Dropping decimal digits
+
+There are several ways to drop the decimal digits of a float. Some of them are richer than the ones you saw earlier. The results are integers, or strings when you format them for display.
+
+```
+>>> math.floor(2.567), math.floor(-2.567) # Floor: next-lower integer
+(2, -3)
+>>> math.trunc(2.567), math.trunc(-2.567) # Truncate: drop digits
+(2, -2)
+>>> int(2.567), int(-2.567) # Truncate: alternative
+(2, -2)
+>>> round(2.567), round(2.567, 2), round(2567, -3) # Round to digits (+/-)
+(3, 2.57, 3000)
+>>> '%.1f' % 2.567, '{0:.2f}'.format(2.567) # Format display (Chapter 7)
+('2.6', '2.57')
+```
+
+The `round` built-in rounds and drops digits, but it still produces a number in memory. String formatting produces a string, not a number. The difference matters when you decide what the value is for.
+
+```
+>>> (1 / 3.0), round(1 / 3.0, 2), f'{(1 / 3.0):.2f}'
+(0.3333333333333333, 0.33, '0.33')
+```
+
+### Three ways to find a square root
+
+Python gives you three ways to compute a square root. You can call a function in the `math` module, use an expression, or call a built-in function.
+
+```
+>>> import math
+>>> math.sqrt(144) # Module
+12.0
+>>> 144 ** .5 # Expression
+12.0
+>>> pow(144, .5) # Built-in
+12.0
+```
+
+Modules such as `math` must be imported. Built-in functions such as `abs` and `round` are always available. Modules are external components, while built-in functions live in a namespace that Python searches automatically. For now, when you hear the word "module," think "import."
+
+### Statistics and random
+
+The `statistics` and `random` modules must be imported too. The `statistics` module offers the operations you would find on a calculator. The `random` module picks random numbers and random items.
+
+```
+>>> import statistics
+>>> statistics.mean([1, 2, 4, 5, 7]) # Average, median
+3.8
+>>> statistics.median([1, 2, 4, 5, 7]) # And a whole lot more: see its docs
+4
+>>> import random
+>>> random.random()
+0.5566014960423105
+>>> random.random() # Random floats, integers, choices, shuffles
+0.051308506597373515
+>>> random.randint(1, 10)
+5
+>>> random.randint(1, 10)
+9
+```
+
+The `random` module can pick an item from a sequence, and it can shuffle a list in place.
+
+```
+>>> random.choice(['Pizza', 'Tacos', 'Tikka', 'Lasagna'])
+'Tikka'
+>>> random.choice(['Pizza', 'Tacos', 'Tikka', 'Lasagna'])
+'Lasagna'
+>>> suits = ['hearts', 'clubs', 'diamonds', 'spades']
+>>> random.shuffle(suits)
+>>> suits
+['spades', 'hearts', 'diamonds', 'clubs']
+>>> random.shuffle(suits)
+>>> suits
+['clubs', 'diamonds', 'hearts', 'spades']
+```
+
+The `random` module is handy for shuffling cards in a game, picking images at random in a slideshow, or running statistical simulations. The Python library manual has the full list of its tools.
+
+## Decimals, fractions and exact numbers
+
+Core floating-point numbers are not exact. Python offers two more numeric types that address this. A decimal keeps a fixed number of decimal digits. A fraction keeps a numerator and a denominator. Both come from the standard library, and both cost some speed.
+
+### Decimal objects
+
+A decimal is a floating-point value with a fixed, configurable number of decimal digits. It is built by calling the `Decimal` constructor from the `decimal` module. You can choose how the extra digits are rounded or cut off. Decimals suit money, where a fixed number of cents matters.
+
+Floating-point math is not exact, because of the limited space used to store values. The following should give zero, but it does not.
+
+```
+>>> 0.1 + 0.1 + 0.1 - 0.3 # Almost zero, but not quite
+5.551115123125783e-17
+```
+
+Printing the result does not help, because the hardware itself is limited. With decimals, the result can be exact.
+
+```
+>>> from decimal import Decimal
+>>> Decimal('0.1') + Decimal('0.1') + Decimal('0.1') - Decimal('0.3')
+Decimal('0.0')
+```
+
+Pass a string to the `Decimal` constructor to set its digits. You can convert a float to a string with `str` first. When decimals with different digit counts meet in an expression, Python converts up to the largest count.
+
+```
+>>> Decimal('0.1') + Decimal('0.10') + Decimal('0.1000') - Decimal('0.30')
+Decimal('0.0000')
+```
+
+You can also create a decimal from a float. The `Decimal.from_float` method does this, and so does passing a float directly. The conversion is exact, but it can give a long default number of digits.
+
+```
+>>> Decimal(0.1) + Decimal(0.1) + Decimal(0.1) - Decimal(0.3)
+Decimal('2.775557561565156540423631668E-17')
+```
+
+### Setting decimal precision
+
+The `decimal` module has a context object. It sets the precision, which is the number of decimal digits. It also sets the rounding mode, such as rounding down or up to a ceiling. The precision applies to every decimal created after you set it.
+
+```
+>>> import decimal
+>>> decimal.Decimal(1) / decimal.Decimal(7) # Default precision
+Decimal('0.1428571428571428571428571429')
+>>> decimal.getcontext().prec = 4 # Fixed precision
+>>> decimal.Decimal(1) / decimal.Decimal(7)
+Decimal('0.1429')
+>>> Decimal(0.1) + Decimal(0.1) + Decimal(0.1) - Decimal(0.3) # Closer to 0...
+Decimal('1.110E-17')
+```
+
+The significance of a decimal comes from the digits you input. The precision applies during math operations. This makes decimals a basis for some money calculations. They can also replace manual rounding and string formatting in some cases.
+
+Decimals are rarely needed in everyday scripts. The Python help function and the standard library manual cover them in detail.
+
+### Fraction objects
+
+The `fractions` module provides a rational number type called `Fraction`. It keeps a numerator and a denominator. That lets it avoid many of the inaccuracies of floating-point math. Fractions also map less directly to hardware, so they can be slower.
+
+You make a fraction by importing `Fraction` and passing in a numerator and a denominator. Python simplifies the fraction by dividing both parts by their greatest common divisor.
+
+```
+>>> from fractions import Fraction
+>>> x = Fraction(1, 3) # Numerator, denominator
+>>> y = Fraction(4, 6) # Simplified to 2, 3 by gcd
+>>> x
+Fraction(1, 3)
+>>> y
+Fraction(2, 3)
+>>> print(y)
+2/3
+```
+
+Fractions work in expressions. Their results are exact, with a numerator and a denominator.
+
+```
+>>> x + y
+Fraction(1, 1)
+>>> x - y # Results are exact: numerator, denominator
+Fraction(-1, 3)
+>>> x * y
+Fraction(2, 9)
+```
+
+Fractions can also be made from strings of decimal digits, the same way decimals can.
+
+```
+>>> Fraction('.25')
+Fraction(1, 4)
+>>> Fraction('1.25')
+Fraction(5, 4)
+>>> Fraction('.25') + Fraction('1.25')
+Fraction(3, 2)
+```
+
+### Accuracy in fractions and decimals
+
+Fraction math differs from floating-point math. Floating-point values are limited by the hardware. The examples below show floats giving inexact answers. Their displays may show fewer digits in recent Python versions, but the values in memory are still not exact.
+
+```
+>>> a = 1 / 3 # Only as accurate as floating-point hardware
+>>> b = 4 / 6 # Can lose precision over many calculations
+>>> a
+0.3333333333333333
+>>> b
+0.6666666666666666
+>>> a + b
+1.0
+>>> a - b
+-0.3333333333333333
+>>> a * b
+0.2222222222222222
+```
+
+Floating-point limits show up most with values that cannot be stored exactly. Fractions and decimals both give exact results, at the cost of speed and extra code. The zero example below works with both of them.
+
+```
+>>> 0.1 + 0.1 + 0.1 - 0.3 # This should be zero (close, but not exact)
+5.551115123125783e-17
+>>> from fractions import Fraction
+>>> Fraction(1, 10) + Fraction(1, 10) + Fraction(1, 10) - Fraction(3, 10)
+Fraction(0, 1)
+>>> from decimal import Decimal
+>>> Decimal('0.1') + Decimal('0.1') + Decimal('0.1') - Decimal('0.3')
+Decimal('0.0')
+```
+
+Fractions and decimals are more intuitive in other ways too. A fraction keeps a rational form. A decimal limits its precision.
+
+```
+>>> 1 / 3 # Normal floating-point
+0.3333333333333333
+>>> Fraction(1, 3) # Numeric accuracy, two ways
+Fraction(1, 3)
+>>> import decimal
+>>> decimal.getcontext().prec = 2
+>>> Decimal(1) / Decimal(3)
+Decimal('0.33')
+```
+
+Fractions also simplify their results automatically. Floats do not.
+
+```
+>>> (1 / 3) + (6 / 12)
+0.8333333333333333
+>>> Fraction(1, 3) + Fraction(6, 12)
+Fraction(5, 6)
+>>> decimal.Decimal(1 / 3) + decimal.Decimal(6 / 12)
+Decimal('0.83')
+```
+
+Floats have an `as_integer_ratio` method that gives a numerator and a denominator. Fractions have a `from_float` method. The `float` function also accepts a fraction. Fractions are a lesser-used tool, so the Python documentation is the place to learn more.
+
+## Set operations in depth
+
+Sets are built-in objects that hold unique, unordered items. They support operations from mathematical set theory. A set can grow and shrink, and it can hold many types of objects. Sets sit between collections and math, but they lean toward math enough to belong here.
+
+An item appears only once in a set, no matter how often you add it. That property makes sets useful with numbers and databases. Sets are unordered, and they do not map keys to values. So they are neither sequences nor mappings. They form a category of their own.
+
+### Creating sets
+
+There are two ways to make a set. You can call `set` with an existing sequence or iterable, or you can write a literal with braces. The literal form uses the same braces as dictionaries, but it lists items without keys.
+
+Calling `set` is also how you make an empty set. The text `{}` makes an empty dictionary, not a set.
+
+```
+>>> x = set('abcde') # Make a set by calling its type/function
+>>> y = {99, 'b', 'y', 'd', 1.2} # Make a set by literal
+>>> x
+{'d', 'c', 'e', 'a', 'b'} # Order is scrambled, displays literal
+>>> y
+{1.2, 99, 'y', 'd', 'b'}
+```
+
+Sets do not keep insertion order, unlike dictionary keys. Sequence operations such as indexing do not work on sets. Empty sets need a call. The `*` in a literal unpacks items. Both the call and the `*` accept any iterable, and duplicates are dropped.
+
+```
+>>> z = set() # Make empty set: {} is empty dictionary
+>>> z
+set()
+>>> z = set([1.2, 'a', 3, 1.2, 'a']) # Any sequence works, duplicates dropped
+>>> z
+{'a', 1.2, 3}
+>>> {1, *'abc', *[1, 2, 3]} # Literal star unpacking (Python 3.5+)
+{1, 2, 3, 'c', 'b', 'a'}
+```
+
+### Set expressions and methods
+
+Once you have sets, operators run set operations. To use these on sequences like strings or lists, first make a set from their items.
+
+```
+>>> x = set('abcd')
+>>> y = set('bdxy')
+>>> x - y # Difference: in x, not in y
+{'a', 'c'}
+>>> x | y # Union: in either
+{'y', 'd', 'x', 'c', 'a', 'b'}
+>>> x & y # Intersection: in both
+{'d', 'b'}
+>>> x ^ y # Symmetric difference: not in both
+{'y', 'x', 'c', 'a'}
+>>> x < y, x > y # Superset, subset tests
+(False, False)
+```
+
+The `in` operator is the exception. It works on every collection type, so you do not need to make a set first.
+
+```
+>>> 'd' in x # Membership (sets)
+True
+>>> 'd' in 'code', 2 in [1, 2, 3] # But works on other types too
+(True, True)
+```
+
+Sets also have methods that match these operations. The `add` method inserts one item. The `update` method is an in-place union. The `remove` method deletes an item by its value. You can run `dir` on any set to list all of its methods.
+
+```
+>>> z = x.intersection(y) # Same as x & y
+>>> z
+{'d', 'b'}
+>>> z.add('HACK') # Insert one item
+>>> z
+{'HACK', 'd', 'b'}
+>>> z.update(set(['X', 'Y'])) # Merge: in-place union
+>>> z
+{'X', 'HACK', 'd', 'b', 'Y'}
+>>> z.remove('b') # Delete one item
+>>> z
+{'X', 'HACK', 'd', 'Y'}
+```
+
+The set methods accept any iterable. The set operators need two sets. The methods may run faster for that reason, though speed guesses are risky in Python.
+
+```
+>>> S = set([1, 2, 3])
+>>> S | set([3, 4]) # Expressions require both to be sets
+{1, 2, 3, 4}
+>>> S | [3, 4]
+TypeError: unsupported operand type(s) for |: 'set' and 'list'
+>>> S.union([3, 4]) # But their methods allow any iterable
+{1, 2, 3, 4}
+>>> S.intersection((1, 3, 5))
+{1, 3}
+>>> S.issubset(range(-5, 5)) # Subset of range -5...4 series generator
+True
+>>> S = set([1, 2, 3])
+>>> S.intersection_update((1, 2, 5))
+>>> S
+{1, 2}
+>>>
+>>> S |= {1, 2, 4}
+>>> S
+{1, 2, 4}
+```
+
+Sets are iterable. You can use them with `len`, `for` loops and list comprehensions. Because they are unordered, sets do not support indexing, slicing or concatenation.
+
+```
+>>> for item in set('abc'): # See Chapter 4 for "for"
+print(item * 3)
+aaa
+ccc
+bbb
+>>> {'a', 'b', 'c'} + {'d'}
+TypeError: unsupported operand type(s) for +: 'set' and 'set'
+```
+
+Sets can also be changed in place with extra methods and with assignment operators such as `&=` and `|=`. Python's built-in sets use efficient algorithms, so they are faster than a hand-built version made from lists or dictionaries.
+
+### Sets hold only immutable items
+
+Sets have one constraint. Their items must be immutable. Python calls this hashable. Lists and dictionaries cannot be placed in a set. Tuples can, if their items are immutable too. Tuples are compared by their full value when they are used in a set.
+
+```
+>>> S = {1.23}
+>>> S.add([1, 2, 3]) # Only immutable objects work in a set
+TypeError: unhashable type: 'list'
+>>> S.add({'a':1})
+TypeError: unhashable type: 'dict'
+>>> S.add((1, 2, 3))
+>>> S # No list or dict; tuple, str, numbers OK
+{1.23, (1, 2, 3)}
+>>> S | {(4, 5, 6), (1, 2, 3)} # Union: same as S.union(...)
+{1.23, (4, 5, 6), (1, 2, 3)}
+>>> (1, 2, 3) in S # Membership: by complete values
+True
+>>> (1, 4, 3) in S
+False
+```
+
+Tuples in a set can stand for dates, records or IP addresses. Sets can also hold modules and type objects. A set is itself mutable, so you cannot nest one set inside another. The `frozenset` built-in works like `set`, but it creates an immutable set. A frozen set can be stored inside other sets.
+
+```
+>>> S.add(frozenset('app'))
+>>> S
+{1.23, (1, 2, 3), frozenset({'a', 'p'})}
+```
+
+### Set comprehensions
+
+You can also build a set with a comprehension. A comprehension runs a loop, and it collects the result of an expression on each pass. Comprehensions use curly braces for sets. A loop variable gives the current value to the expression.
+
+```
+>>> {x ** 2 for x in [1, 2, 3, 4]} # Make a new set with a comprehension
+{16, 1, 4, 9}
+```
+
+This reads as "give me a new set containing X squared, for every X in a list." Comprehensions can loop over other objects too, such as strings. The first example below also shows a comprehension that builds a set from an iterable.
+
+```
+>>> {x for x in 'py3X'} # Same as: set('py3x')
+{'p', 'X', '3', 'y'}
+>>> {c * 4 for c in 'py3X'} # Set of collected expression results
+{'yyyy', '3333', 'XXXX', 'pppp'}
+>>> {c * 4 for c in 'py3X' + 'py2X'} # Expressions work on both sides
+{'yyyy', '3333', 'XXXX', '2222', 'pppp'}
+>>> S = {c * 4 for c in 'py3X'} # All set ops work on results
+>>> S | {'zzzz', 'XXXX'}
+{'yyyy', '3333', 'XXXX', 'pppp', 'zzzz'}
+>>> S & {'zzzz', 'XXXX'}
+{'XXXX'}
+```
+
+Comprehensions support more syntax, such as nested loops and `if` tests. The rest of the story comes later, when you have studied larger statements.
+
+### Why use sets
+
+Because items are stored only once, a set can remove duplicates from a collection. The cost is the original order, since sets have none. Convert the collection to a set, then convert it back to a list.
+
+```
+>>> L = [1, 2, 1, 3, 2, 4, 5]
+>>> set(L)
+{1, 2, 3, 4, 5}
+>>> L = list(set(L)) # Removing duplicates
+>>> L
+[1, 2, 3, 4, 5]
+>>> list(set(['yy', 'cc', 'aa', 'xx', 'dd', 'aa'])) # But order may change
+['xx', 'cc', 'yy', 'aa', 'dd']
+```
+
+Sets can also find differences between lists and strings. Convert both to sets, then subtract. The result may come back in a different order than the originals.
+
+```
+>>> set([1, 3, 5, 7]) - set([1, 2, 4, 5, 6]) # Find list differences
+{3, 7}
+>>> set('abcdefg') - set('abdghij') # Find string differences
+{'c', 'e', 'f'}
+>>> set('code') - set(['t', 'o', 'e']) # Find differences, mixed
+{'c', 'd'}
+```
+
+Sets also give an order-neutral equality test. Two sets are equal when each contains every element of the other. Sorting with `sorted` before a test gives the same result, but sorting costs more work. This helps when two programs should produce the same output in different orders.
+
+```
+>>> L1, L2 = [1, 3, 5, 2, 4], [2, 5, 3, 4, 1]
+>>> L1 == L2 # Order matters in sequences
+False
+>>> set(L1) == set(L2) # Order-neutral equality
+True
+>>> sorted(L1) == sorted(L2) # Similar but results ordered
+True
+>>> 'code' == 'edoc', set('code') == set('edoc'), sorted('code') == sorted('edoc')
+(False, True, True)
+```
+
+Sets are also useful for tracking which items you have visited in a graph or other cyclic structure. A list works too, but each search scans the whole list. A set answers membership faster. A dictionary with visited items as keys works the same way, and a set is often easier to read.
+
+Sets are convenient for database results too. The intersection of two sets gives the items common to both. The union gives all items from either set. The example below uses people in a hypothetical company.
+
+```
+>>> engineers = {'pat', 'ann', 'bob', 'sue'}
+>>> managers = {'sue', 'tom'}
+>>> 'pat' in engineers # Is pat an engineer?
+True
+>>> engineers & managers # Who is both engineer and manager?
+{'sue'}
+>>> engineers | managers # All people in either category
+{'ann', 'sue', 'pat', 'tom', 'bob'}
+>>> engineers - managers # Engineers who are not managers
+{'pat', 'ann', 'bob'}
+>>> managers - engineers # Managers who are not engineers
+{'tom'}
+>>> engineers > managers # Are all managers engineers? (superset)
+False
+>>> {'sue', 'bob'} < engineers # Are both engineers? (subset)
+True
+>>> (managers | engineers) > managers # All people is a superset of managers
+True
+>>> managers ^ engineers # Who is in one group but not both?
+{'ann', 'pat', 'tom', 'bob'}
+```
+
+## Booleans and numeric extensions
+
+### Boolean objects
+
+The Boolean type, `bool`, is a little numeric. Its two values, `True` and `False`, are customized versions of the integers `1` and `0`. They print themselves as words, which makes truth values easier to see in your code. An infinite loop reads better as `while True:` than as `while 1:`. A flag is clearer when you start it as `flag = False`.
+
+`True` and `False` are instances of `bool`. The `bool` type is a subclass of the built-in integer type, `int`. `bool` changes the `str` and `repr` output for its two values. Every logical test gives `True` or `False` as its result.
+
+For most purposes, you can treat `True` and `False` as predefined variables set to `1` and `0`. Because `True` is the integer `1` with a different display, `True + 4` gives the integer `5`.
+
+```
+>>> type(True) # True is a bool
+<class 'bool'>
+>>> isinstance(True, int) # As well as an int
+True
+>>> True == 1 # Same value
+True
+>>> True is 1 # But a different object: see the next chapter!
+False
+>>> True or False # Same as: 1 or 0
+True
+>>> True + 4 # (Hmmm)
+5
+```
+
+You will probably never write an expression like the last one in real code. Booleans come back in the sections on truth tests and Boolean operators.
+
+### Numeric extensions
+
+Python's core numeric objects cover most applications. For more focused needs, a large set of third-party open source extensions exists. A common stack for advanced numeric work includes NumPy, SciPy, pandas and matplotlib, along with Jupyter. Other tools cover subdomains such as statistics, astronomy and AI.
+
+Research groups, financial firms and aerospace teams use this toolkit. It performs tasks that were once written in C++ or Fortran. Many people in the field see Python plus these extensions as a free and flexible alternative to MATLAB.
+
+Numeric programming is one way to use Python, and it fills whole books by itself. Web development is similarly large. This book focuses on the Python language that every domain uses. Once you know Python, add-ons are easy to find.
+
+## Dynamic typing and references
+
+Most examples so far have skipped one question. How does Python know what `a` is when you never declared it? The answer is Python's dynamic typing model, and it is the source of much of the language's flexibility. If you come from C, C++ or Java, this can feel strange at first. The model is simpler than it looks once you separate names from objects.
+
+### Variables are created by assignment
+
+A variable, also called a name, is created the first time your code assigns it a value. Later assignments change the value that the name refers to. Python does detect some names before your code runs, such as local names inside a function. For everyday work, though, think of the first assignment as the moment the variable comes to life.
+
+A variable never carries type information of its own. The type belongs to the object the variable refers to. A variable is generic, and at any moment it simply refers to one object. When a name appears in an expression, Python replaces it with the object it refers to at that moment.
+
+Every variable must be assigned before you use it. Referencing a name that has never been assigned is an error. So you never declare names ahead of time, but you must give a name a value before you update it. A counter has to start at zero before you can add to it.
+
+When you run `a = 3`, Python does three things, at least in concept. It creates an object to represent the value `3`. It creates the variable `a` if that name does not exist yet. Then it links `a` to the new object. Every assignment in Python follows this same pattern.
+
+Variables and objects live in different parts of memory, and links connect them. A variable always links to an object, never to another variable. A larger object can link to other objects, such as a list linking to the items it holds. These links from variables to objects are called references.
+
+In concrete terms, a variable is a named entry in a system table with room for a link. An object is a block of allocated memory big enough to hold its value. A reference is a pointer that Python follows automatically whenever you use a variable.
+
+Each time an expression produces a new value, Python conceptually creates a new object for it. For speed, CPython caches and reuses some unchangeable objects, such as small integers and strings. So each `0` is not really new memory. From a logical point of view, though, every result behaves as a distinct object in its own piece of memory.
+
+Objects carry more than their value. Each object has two standard header fields. One is a type designator that marks the object's type. The other is a reference counter, which decides when the object's space can be reclaimed.
+
+### References and C pointers
+
+If you know C, Python references will look familiar. CPython implements them as pointers internally, and they often play similar roles. This is especially true for objects that can change in place, which you will meet shortly.
+
+Python follows references automatically, so you cannot do much with a reference itself. The built-in `id` returns a unique ID for an object. That ID is not guaranteed to be the object's address in memory, so check Python's documentation for the details. Because you cannot handle raw pointers, a whole family of well-known C bugs cannot happen.
+
+It helps to think of Python references as C `void*` pointers that are followed automatically whenever they are used. That picture is close enough for most purposes.
+
+### Types live with objects, not variables
+
+Watch what happens when one variable is assigned several times:
+
+```
+>>> a = 3 # It's an integer
+>>> a = 'hack' # Now it's a string
+>>> a = 1.23 # Now it's a floating point
+```
+
+This is not typical Python code, but it works. The variable `a` starts as an integer, becomes a string, and then becomes a float. Programmers from C often read this as the type of `a` changing. That is not what happens.
+
+Names have no types. Only objects do. In this example, we changed which object `a` refers to, not the type of the name. All we can ever say about a variable is that it refers to a particular object at a particular moment.
+
+Objects know their own types. Each object has a header field that tags it with its type. The integer `3` holds the value 3 and points to the `int` type. The string `'hack'` points to `str`, and `1.23` points to `float`.
+
+In typical code, a variable refers to one kind of object. Python does not require this, though. That freedom is why good Python code often works on many types without any changes.
+
+### Objects are garbage-collected
+
+What happens to an object when its variable is reassigned? Consider this sequence, which sets `x` to a different object each time:
+
+```
+>>> x = 99
+>>> x = 'Python' # Reclaim 99 now (unless referenced elsewhere)
+>>> x = 3.1415 # Reclaim 'Python' now (ditto)
+>>> x = [1, 2, 3] # Reclaim 3.1415 now (ditto)
+```
+
+Once a name stops referring to an object, and no other name or object refers to it, Python reclaims its space. This automatic reclaiming of memory is called garbage collection. It saves you from managing memory by hand.
+
+Python keeps a counter in every object that tracks how many references point to it. When that counter drops to zero, the object's memory is reclaimed at that moment. The space returns to the free pool for future objects. In the example, assigning `'Python'` lets Python reclaim `99`, as long as nothing else uses it.
+
+The main benefit is that you can use objects freely. You never need to allocate or free space in your script. Lower-level languages such as C and C++ need a lot of bookkeeping code for this job, and Python removes it.
+
+### More on garbage collection
+
+Python's garbage collection relies mainly on reference counters. It also has a component that finds and reclaims objects in cyclic references. A cycle happens when an object refers to itself, or to another object that refers back to it. For example, `L.append(L)` places a list inside itself and creates a cycle. Attributes of objects made from user-defined classes can form cycles too.
+
+Cycles are relatively rare. Their reference counts never drop to zero, so Python handles them in a special way. The cycle detector is enabled by default. You can disable it if you are sure your code creates no cycles. The `gc` module in Python's library documentation describes it in detail.
+
+The main takeaway is that memory management is done for you, and it works well even with cycles.
+
+This garbage-collection behavior describes the standard implementation, CPython. It is not part of the language definition. Other implementations, such as Jython, IronPython and PyPy, may use different schemes. The net effect is similar, though unused space may be reclaimed less immediately.
+
+### Shared references
+
+Now introduce a second variable:
+
+```
+>>> a = 3
+>>> b = a
+```
+
+The second statement creates `b`. Python replaces `a` with the object it refers to, which is `3`, and makes `b` refer to that same object. Both names now point to one object. This situation is called a shared reference. The names are not linked to each other directly. Both simply point to the same object.
+
+Next, add one more statement:
+
+```
+>>> a = 3
+>>> b = a
+>>> a = 'hack'
+```
+
+Python creates a new string object and points `a` at it. It does not change `b`, which still refers to `3`. The same thing happens if you assign `b` instead. An assignment changes only the name it targets.
+
+This holds even when no type changes:
+
+```
+>>> a = 3
+>>> b = a
+>>> a = a + 2
+```
+
+Python makes `a` and `b` share the object `3`. The last statement points `a` at a different object, the integer `5`, and `b` keeps `3`. Integers are immutable, so nothing can ever overwrite the value of the object `3`. You can only make new integer objects.
+
+Think of Python variables as pointers to objects, not as labels on memory that can be edited. Setting a variable to a new value does not alter the old object. It points the variable at another object. So an assignment can affect only the single variable being assigned. Mutable objects change this picture, as the next section shows.
+
+### Shared references and in-place changes
+
+Some operations change an object in place. Only mutable types support this, including lists, dictionaries and sets. Assigning to a position in a list changes the list object itself. It does not create a brand-new list. Every name that shares that list sees the change.
+
+Here is the list version:
+
+```
+>>> L1 = [2, 3, 4] # A mutable object
+>>> L2 = L1 # Make a reference to the same object
+>>> L1[0] = 24 # An in-place change
+>>> L1 # L1 is different
+[24, 3, 4]
+>>> L2 # But so is L2!
+[24, 3, 4]
+```
+
+Notice that the change happened at the list level, not at the name level. We did not change `L1` itself. We changed a part of the object `L1` refers to. Because `L2` refers to that same object, the change shows up there too.
+
+This behavior is the default, and it is usually what you want. If you do not want it, ask Python for a copy. Slicing from start to finish is a common way to copy a list:
+
+```
+>>> L1 = [2, 3, 4]
+>>> L2 = L1[:] # Make a copy of L1 (or list(L1), L1.copy(), etc.)
+>>> L1[0] = 24
+>>> L1
+[24, 3, 4]
+>>> L2 # L2 is not changed this time: different objects
+[2, 3, 4]
+```
+
+Here, the change made through `L1` does not show up in `L2`, because `L2` refers to a copy. The two variables point to different objects in different pieces of memory.
+
+Slicing does not work on dictionaries and sets, because they are not sequences. To copy one of those, call its `copy` method, or pass the original object to `dict` or `set`. The standard-library `copy` module can copy any object type. It also copies nested structures, such as a dictionary that holds lists:
+
+```
+import copy
+X = copy.copy(Y) # Make top-level "shallow" copy of any object Y
+X = copy.deepcopy(Y) # Make deep copy of any object Y: copy all nested parts
+```
+
+Keep this in mind for any mutable object. Lists, dictionaries, sets and some objects made with classes can change in place wherever they travel in your code. If that is not what you want, copy the objects you need.
+
+### Shared references and equality
+
+Garbage collection can be more conceptual than literal for some types. Consider these statements:
+
+```
+>>> x = 99
+>>> x = 'Python' # Reclaim 99 now?
+```
+
+Python caches and reuses small integers and small strings. So the object `99` probably stays in a system table, ready for the next time your code needs a `99`. Most other objects are reclaimed right away once nothing refers to them. The cache matters to your code only if you use the `is` operator or other unusual tools.
+
+Python has two ways to check equality, and a shared reference shows why. Create one first:
+
+```
+>>> L = [1, 2, 3]
+>>> M = L # Make M and L reference the same object
+>>> L == M # Same values
+True
+>>> L is M # Same objects
+True
+```
+
+The `==` operator tests whether the two objects have the same values. It is the method almost always used for equality checks in Python. The `is` operator tests object identity. It returns `True` only when both names point to the exact same object. That makes it a much stronger test, and most programs rarely need it. The main exceptions are single-instance objects such as `None`, `True` and `False`.
+
+The `is` operator compares the pointers behind the references. It returns `False` when the names point to equivalent but different objects, as with two separate literal expressions:
+
+```
+>>> L = [1, 2, 3]
+>>> M = [1, 2, 3] # Make M and L reference different objects
+>>> L == M # Same values
+True
+>>> L is M # Different objects
+False
+```
+
+Immutable objects behave differently. Consider an integer:
+
+```
+>>> X = 99
+>>> Y = 99 # Should be two different objects
+>>> X == Y
+True
+>>> X is Y # Same object anyhow: caching at work!
+True
+```
+
+You might expect `X` and `Y` to be equal but not identical, since they came from two literal expressions. Because Python caches some integers and strings, though, `is` reports that they are one shared object.
+
+For a deeper look, the `id` built-in gives an object's identity. The `getrefcount` function in the standard `sys` module returns an object's reference count. As of Python 3.12, that count is less useful than it once was. Objects considered immortal, meaning cached for reuse, report a very high count:
+
+```
+>>> import sys
+>>> sys.getrefcount(99) # 99 is immortal (cached)
+4294967295
+>>> sys.getrefcount(2 ** 1000) # But this is not
+1
+>>> id(99) == id(99) # Same ID/same object (address?)
+True
+```
+
+Caching is irrelevant to your code unless you run an `is` check. You cannot change immutable numbers or strings in place. So it does not matter how many names refer to the same cached object. Every reference always sees the same value. Caching is one of many ways Python speeds up execution.
+
+### Dynamic typing is everywhere
+
+You do not need to draw circles and arrows to use Python. When you are starting out, though, tracing reference structures can help you understand unusual cases. If a mutable object changes unexpectedly as it moves through your program, you may be seeing shared references at work.
+
+Dynamic typing works the same way in assignment statements, function arguments, `for` loop variables, module imports and class attributes. There is one assignment model in Python. Once you understand it, you can apply it everywhere.
+
+At the most practical level, dynamic typing means less code to write. It is also the root of polymorphism, which you met earlier in this chapter. Because the language does not constrain types, code stays concise and flexible. When used well, this produces code that adapts as your systems evolve.
+
+## Type hinting: optional and unused
+
+You may see Python code with type declarations for variable names. They can look out of place in a dynamically typed language:
+
+```
+>>> a: int
+>>> b: int = 0
+>>> c: list[int] = [1, 2, 3]
+```
+
+This is type hinting. Its syntax is a colon and an object type, placed between a variable and an optional assignment. The type can be a name or an expression. For example, `list[int]` means a list of integers. The standard `typing` module provides names such as `Iterable`, `Union` and `Any` for richer types. Python 3.12 added a `type` statement for defining type aliases. Simple assignments that came before it still work for the same job:
+
+```
+>>> type Data = list[float]
+>>> Data = list[float]
+```
+
+Type hints are optional and unused. Python does not require them, does not use them, and does not plan to. They exist for third-party tools such as type checkers. They also serve as a kind of documentation, an alternative to code comments. Plain `#` comments and documentation strings can say the same things more simply.
+
+Even when you use hints, they do not constrain your code's types. The hint for `a` does not create the name `a`, because only an assignment does that. The hints for `b` and `c` are never enforced:
+
+```
+>>> a
+NameError: name 'a' is not defined
+>>> b = 'hack'
+>>> c = 'code'
+>>> b, c
+('hack', 'code')
+```
+
+Type hints can also appear in function and method definitions. They document the types of parameters and results. This reuses an older feature called function annotations. The following function hints that it takes an integer and a list of strings, and that it returns a float:
+
+```
+>>> def func(a: int, b: list[str]) -> float:
+...     return 'anything' + a + b
+```
+
+These hints are stored in the `__annotations__` dictionary of the function object. They are still unused. When the function runs, anything goes. Strings work fine for both the inputs and the output, despite the rigid-looking hints:
+
+```
+>>> func('You', 'Want')
+'anythingYouWant'
+```
+
+External tools such as mypy can use type hints to check for mismatches. Some tools may also use them to improve performance. These tools are optional, uncommon, and separate from the Python language. Programs still need runtime testing in any language. Optimized Python implementations do not use type hints today, and some cannot, as with PyPy.
+
+Type hinting also clashes with the core idea of dynamic typing. A dynamically typed language with type declarations can confuse newcomers more than it helps them. Beginners should avoid type hinting until they are comfortable with dynamic typing. This section does not go further into hints. If you choose to learn more, read Python's documentation.
+
+Type hinting does not make Python statically typed. Python still uses only dynamic typing. Remember that when you read code written by programmers from other languages.
+
+## Weak references
+
+You may occasionally hear the term "weak reference" in the Python world. It is not a judgment about inferiority. A weak reference is an advanced tool connected to the reference model you have just studied. It is hard to understand without that model, just like the `is` operator.
+
+The `weakref` standard-library module implements weak references. A weak reference points to an object but does not keep it alive by itself. If the last remaining references to an object are all weak, Python can reclaim the object. The weak references are then notified that the object no longer exists, and they can respond as needed.
+
+Weak references are useful for nonessential caches of large objects that are mainly used elsewhere. If the cache used normal references, those references alone would keep the objects in memory indefinitely. With weak references, an object's space can be reclaimed once it is no longer needed for its main job. The cache learns about the object's removal on its next fetch, or through a callback.
+
+Not every object type can be weakly referenced. Support can be added for some types with object-oriented techniques covered later in the book. Treat weak references as a special-case extension of the reference model. For details, read Python's library documentation for `weakref`.
+
+## String literals in depth
+
+Python gives you several ways to write a string in code. Most of them use quotes. A few use backslashes to write characters that are hard to type. This section walks through each form, so you can read most string code you meet.
+
+### Single and double quotes
+
+Single and double quotes mean the same thing. Both forms return the same type of object, so you can pick either one. The quotes must be straight, though. An editor that swaps in curly quotes will break the code, so check for that when an error looks strange.
+
+Most Python programmers prefer single quotes because they are easier to read. Python displays strings with single quotes too, unless the text itself contains one.
+
+Because the two kinds are interchangeable, you can place one inside the other without a backslash:
+
+```
+>>> 'python"s', "python's"
+('python"s', "python's")
+```
+
+Adjacent string literals join into one string when Python reads the code. A comma between them changes the result, and you get a tuple instead:
+
+```
+>>> title = "Learning " 'Python' " 6E"
+>>> title
+'Learning Python 6E'
+```
+
+Wrapping adjacent literals in parentheses lets them span several lines. That helps with long text that you cannot place inside triple quotes.
+
+### Escape sequences
+
+A backslash starts an escape sequence. An escape lets you put a character into a string that is hard to type or cannot be seen, such as a newline or a tab. Python replaces the backslash and the characters after it with one character.
+
+```
+>>> s = 'a\nb\tc'
+>>> s
+'a\nb\tc'
+>>> print(s)
+a
+b	c
+>>> len(s)
+5
+```
+
+This string holds five characters: `a`, a newline, `b`, a tab and `c`. The REPL echo shows the escapes, while `print` shows what they stand for. Use `len` when you need the true character count.
+
+Length is not a byte count, though. With plain ASCII text, it is tempting to read `len` as bytes, and that habit can mislead you. A string object stores extra bookkeeping, so it takes more memory than its text alone. A code point also does not always map to one byte, either in memory or in a file. Under UTF-16, for example, ASCII characters take more than one byte in a file. Think in characters, not bytes.
+
+The table below lists the escapes Python recognizes.
+
+| Escape | Meaning |
+| --- | --- |
+| `\\` | Backslash (stores one `\`) |
+| `\'` | Single quote (stores `'`) |
+| `\"` | Double quote (stores `"`) |
+| `\n` | Newline (a.k.a. linefeed) |
+| `\r` | Carriage return (e.g., in Windows `\r\n`) |
+| `\t` | Horizontal tab |
+| `\v` | Vertical tab |
+| `\a` | Bell (where supported) |
+| `\b` | Backspace |
+| `\f` | Formfeed |
+| `\xhh` | Hexadecimal code-point or byte value (exactly 2 hex digits) |
+| `\ooo` | Octal code-point or byte value (up to 3 digits, 377 ceiling) |
+| `\0` | Null: octal binary 0 character (doesn't end string) |
+| `\uhhhh` | Unicode character code point, 16-bit value (exactly 4 hex digits) |
+| `\Uhhhhhhhh` | Unicode character code point, 32-bit value (exactly 8 hex digits) |
+| `\N{name}` | Character with ID `name` in Unicode database |
+| backslash, then newline | Ignored (precedes a continuation line) |
+| `\` plus any other character | Retained verbatim, but a warning in 3.12, an error in the future |
+
+Some of these escapes come with rules to remember:
+
+- `\x`, `\u` and `\U` need exactly two, four and eight hex digits. Use digits `0` to `9` and `A` to `F`, in either case.
+- `\o` takes one to three octal digits, from `0` to `7`. Python 3.12 warns when the value is over `\377`, because a value too big for a byte causes trouble in byte strings.
+- `\u` and `\U` work only in text strings. `\x` and `\o` work in both text and bytes. In bytes they give a byte value, and in text they give a code point.
+- Letter escapes such as `\n` stand for code points in text, and for their ASCII values in bytes.
+
+Escapes can also give a character by its numeric value. Here is a five-character string with two zero characters in it:
+
+```
+>>> s = 'a\0b\0c'
+>>> s
+'a\x00b\x00c'
+>>> len(s)
+5
+```
+
+The character at code point zero is called NULL. In Python it does not end a string, the way a null byte does in C. Python stores the length along with the text, so no character ends a string.
+
+```
+>>> s = '\001\002\x03'
+>>> s
+'\x01\x02\x03'
+>>> len(s)
+3
+```
+
+Python shows nonprintable characters as `\xNN` hex escapes, however you wrote them. You can mix plain characters, numeric escapes and symbolic escapes in one string:
+
+```
+>>> S = 'H\tA\nC\x00K'
+>>> S
+'H\tA\nC\x00K'
+>>> len(S)
+7
+>>> print(S)
+H	A
+CK
+```
+
+This matters for binary data. A script stores file contents as strings, so binary values of any kind are fine there. When you open a file in binary mode, Python returns the raw bytes as `bytes`. That type is a string variant, and it supports most of the same tools.
+
+Two escape cases can cause trouble. First, a numeric octal escape with a value too large for a byte gives a warning in Python 3.12. Python will eventually treat it as an error, even though in text it stands for a code point:
+
+```
+>>> '\400'
+<stdin>:1: SyntaxWarning: invalid octal escape sequence '\400'
+'Ā'
+```
+
+The second case is a backslash before a character that is not a valid escape. Python keeps the backslash in that case. Python 3.12 warns about it, and a future version will reject it:
+
+```
+>>> x = 'C:\py\code'
+<stdin>:1: SyntaxWarning: invalid escape sequence '\p'
+>>> x # Keeps \ literally (and displays it as \\)
+'C:\\py\\code'
+>>> len(x) # But not for long: don't rely on this anymore!
+10
+```
+
+Code that depends on this rule is easy to get wrong. Double the backslash, or use a raw string instead, as the next subsection shows.
+
+### Raw strings
+
+Backslash escapes cause trouble with Windows paths. Newcomers often write a path like this:
+
+```
+myfile = open('C:\new\text.dat', 'w')
+```
+
+The author expects a file called `text.dat` in the folder `C:\new`. Instead, `\n` becomes a newline and `\t` becomes a tab. The call tries to open a file with a strange name, and it usually fails.
+
+A raw string fixes this. Put the letter `r` just before the opening quote. The letter can be uppercase or lowercase, though lowercase is more common. Python then keeps every backslash exactly as you wrote it:
+
+```
+myfile = open(r'C:\new\text.dat', 'w') # Works: disable \ escapes
+```
+
+You can also double each backslash, because two backslashes stand for one. This version works too:
+
+```
+myfile = open('C:\\new\\text.dat', 'w') # Also works: \\ means \
+```
+
+The REPL shows a string as code, so it doubles the backslashes when it echoes one. The `print` function shows the plain text. The `len` function counts one character per backslash:
+
+```
+>>> path = r'C:\new\text.dat' # Raw string: keep \s
+>>> path # Show as Python code
+'C:\\new\\text.dat'
+>>> print(path) # User-friendly format
+C:\new\text.dat
+>>> len(path) # String length: \s
+15
+```
+
+Forward slashes also work on Windows and Unix. A path like `'C:/new/text.dat'` opens a Windows file. Raw strings still help when you want native backslashes or need to protect a backslash from being read as an escape. They also work with triple-quoted strings, and they are common in regular expression patterns.
+
+Raw strings have one limit. A raw string cannot end with an odd number of backslashes, because the last one would escape the closing quote. If you need a string that ends in one backslash, you have three options. You can write two backslashes and slice off the last one, add a backslash with `+`, or use a normal string with doubled backslashes. All three make the same two-character result.
+
+### Triple quotes and multiline text
+
+Triple quotes start a block string. Begin with three quotes of either kind, type any number of lines, and close with the same three quotes. The string ends only when Python sees the matching triple quotes. Single and double quotes inside the block do not need escapes.
+
+```
+>>> quip = """Python strings
+... sure have
+... a lot of options"""
+>>> quip
+'Python strings\n sure have\na lot of options'
+>>> print(quip)
+Python strings
+sure have
+a lot of options
+```
+
+Some interactive prompts show three dots on continuation lines, and others do not. Do not type the dots yourself. Python keeps each line break as a `\n` character, and it keeps the leading spaces you typed.
+
+Be careful with comments inside a triple-quoted block. Python keeps all the text, including anything you meant as a comment. Use parentheses and adjacent literals when you need comments:
+
+```
+>>> menu = """
+... Open # Comments here added to string!
+... Save # Ditto
+... """
+>>> menu
+'\nOpen # Comments here added to string!\nSave # Ditto\n'
+>>> menu = (
+... 'Open\n' # Comments here ignored
+... 'Save\n' # But newlines not automatic
+... )
+>>> menu
+'Open\nSave\n'
+```
+
+Triple quotes are useful for multiline text inside a script, such as an error message or a block of HTML, XML, JSON or YAML. You can embed the block directly, without a separate file or a chain of newline characters.
+
+Documentation strings, called docstrings, are often triple-quoted too. A docstring sits at a specific point in a file and acts as documentation. If it contains backslashes, write it as a raw triple-quoted string, such as `r'''`, to avoid escape warnings.
+
+Triple quotes also offer a quick way to disable lines while you develop. Wrap the lines in three quotes above and below them:
+
+```
+X = 1
+"""
+import os # Disable this code temporarily
+print(os.getcwd())
+"""
+Y = 2
+```
+
+Python may build a string from the disabled lines, but the cost is usually small. This is not what the literal was designed for, yet it is a common practice. For large sections of code, it is easier than adding a hash mark to every line. In Python, practicality often beats aesthetics.
+
+## Slicing and indexing in depth
+
+Strings are sequences, so you can fetch their items by position. Indexing returns one character. Slicing returns a section. Try each example in a REPL, because the rules are simple once you see them run.
+
+### Picturing offsets
+
+Think of each character as a cell in a row. Positive offsets count from the left, starting at 0. Negative offsets count from the right, starting at -1. An index points at one cell. A slice's right bound marks the first cell that is not included.
+
+```
+>>> S = 'code'
+>>> S[0], S[-2]
+('c', 'd')
+>>> S[1:3], S[1:], S[:-1]
+('od', 'ode', 'cod')
+```
+
+`S[0]` fetches the first character. `S[-2]` fetches the second character from the end, the same as `S[len(S)-2]`. Slicing returns a whole section, so it can pull out columns, drop prefixes or suffixes, and more.
+
+### Indexing and slicing cheat sheet
+
+Indexing with `S[I]` fetches one component:
+
+- The first item is at offset 0.
+- Negative offsets count backward from the end.
+- An offset outside the string is an error.
+
+Slicing with `S[I:J]` extracts a contiguous section:
+
+- The upper bound is not included.
+- Missing bounds default to 0 and to the length of the string.
+- Bounds outside the string are adjusted to fit inside it.
+- `S[:]` makes a top-level copy of the whole string.
+
+Extended slicing with `S[I:J:K]` takes a step, which defaults to `1`. The step lets you skip items or reverse their order, as shown below.
+
+A copy can matter for objects you can change. For strings, a copy is rarely useful. For lists, `S[:]` avoids the side effects that shared references can cause.
+
+### Out-of-bounds offsets
+
+Indexing past the end of a string is an error. Slicing past the end is forgiving, because Python trims the bounds to fit. This helps when a program does not know the exact size of its data.
+
+```
+>>> S = 'code'
+>>> S[99]
+IndexError: string index out of range
+>>> S[1:99]
+'ode'
+```
+
+### Extended slicing and steps
+
+A slice can take a third number, the step. It is added to each offset. The form `S[I:J:K]` means take the items from offset `I` up to, but not including, offset `J`, moving by `K`. When you leave out the step, it defaults to 1.
+
+```
+>>> S = 'abcdefghijklmnop'
+>>> S[1:10:2] # Skipping items
+'bdfhj'
+>>> S[::2]
+'acegikmo'
+```
+
+A negative step runs in reverse. The easiest case is `S[::-1]`, which reverses the whole string:
+
+```
+>>> S = 'hello'
+>>> S[::-1] # Reversing items
+'olleh'
+```
+
+With a negative step, the first two bounds swap their usual roles. The slice `S[5:1:-1]` collects offsets 5, 4, 3 and 2, in that order:
+
+```
+>>> S = 'abcedfg'
+>>> S[5:1:-1] # Bounds roles differ
+'fdec'
+```
+
+### Slice objects
+
+Slicing syntax builds a slice object behind the scenes. You can create one yourself with the `slice` built-in, and the results match:
+
+```
+>>> 'code'[1:3] # Slicing syntax
+'od'
+>>> 'code'[slice(1, 3)] # Slice objects with index syntax + object
+'od'
+>>> 'code'[::-1]
+'edoc'
+>>> 'code'[slice(None, None, -1)]
+'edoc'
+```
+
+### Slices in real scripts
+
+Scripts use slices all the time. The `sys.argv` list holds the words typed on the command line, starting with the program name:
+
+```
+# File echo.py
+import sys
+print(sys.argv)
+```
+
+```
+$ python3 echo.py -a -b -c
+['echo.py', '-a', '-b', '-c']
+```
+
+Usually you want only the arguments after the program name. The slice `sys.argv[1:]` returns `['-a', '-b', '-c']`, and your code can work with that list directly.
+
+Slices also clean up lines read from a file. If every line ends with a newline character, `line[:-1]` removes it. Calling `rstrip` is often the safer choice. It leaves a line alone when there is no newline at the end, which happens with some text editors. A slice works only when you are sure the line ends properly.
+
+## Converting strings and numbers
+
+Python does not guess what you mean. Adding a number and a string raises an error, even when the string holds only digits. The `+` operator could mean addition or concatenation, so Python refuses to choose for you.
+
+```
+>>> '62' + 1
+TypeError: can only concatenate str (not "int") to str
+```
+
+When your script reads a number as text, convert it first. The `int` function turns text into an integer. The `str` function turns a value into its printed form:
+
+```
+>>> int('62'), str(62)
+(62, '62')
+```
+
+Convert one operand before the operator runs, and the mix works:
+
+```
+>>> S = '62'
+>>> I = 1
+>>> int(S) + I # Force addition
+63
+>>> S + str(I) # Force concatenation
+'621'
+```
+
+Floating-point numbers use the same approach with the `float` function:
+
+```
+>>> float('1.5') + 2.8
+4.3
+>>> '1.5' + str(2.8)
+'1.52.8'
+```
+
+The `eval` built-in runs a string as Python expression code, so it can convert text to any kind of object. The `int` and `float` functions convert only to numbers. Their narrow job makes them usually faster, and safer, since they never run expression code.
+
+### Converting characters and code points
+
+The `ord` built-in takes a one-character string and returns its integer code. The `chr` built-in does the reverse:
+
+```
+>>> ord('h') # Character => ID (code point)
+104
+>>> chr(104) # ID => character (string)
+'h'
+>>> for c in 'hack': # All code points in a string
+... print(c, ord(c))
+...
+h 104
+a 97
+c 99
+k 107
+```
+
+These tools support simple math on characters. To move to the next character, convert it to an integer, add one, and convert back:
+
+```
+>>> S = '5'
+>>> S = chr(ord(S) + 1)
+>>> S
+'6'
+>>> S = chr(ord(S) + 1)
+>>> S
+'7'
+```
+
+For single characters, `ord` can also replace `int` when you convert a digit. Subtracting the code of `'0'` gives the digit's value. This only works when the character codes are in the order your code expects:
+
+```
+>>> int('5')
+5
+>>> ord('5') - ord('0')
+5
+```
+
+### Comparing strings
+
+Python compares two strings from left to right, one character at a time. It compares code point values, the same numbers that `ord` returns. The comparison stops at the first mismatch. If one string is the start of the other, the longer string is larger:
+
+```
+>>> 'hack' == 'hack', 'hact' > 'hack', 'hacker' > 'hack'
+(True, True, True)
+```
+
+Here `t` has a higher code point than `k`, so `hact` sorts after `hack`. The word `hacker` also sorts after `hack`, because it is longer and starts with the same letters. Byte strings compare byte by byte in the same way, and lists compare their items.
+
 ## Checkpoint questions
 
 1. Name four of Python's core object types.
@@ -1157,7 +3065,81 @@ Python raises an `IndexError` with the message "list assignment index out of ran
 
 </details>
 
+7. What is the value of `2 * (3 + 4)`, and why?
+
+<details><summary>Answer</summary>
+
+The value is `14`. The parentheses force the addition to run before the multiplication, so `2 * 7` gives `14`.
+
+</details>
+
+8. What is the value of `2 * 3 + 4`, and why?
+
+<details><summary>Answer</summary>
+
+The value is `10`. Multiplication has higher precedence than addition, so `2 * 3` runs first, and `6 + 4` gives `10`.
+
+</details>
+
+9. What is the type of the result of `1 + 2.0 + 3`, and why?
+
+<details><summary>Answer</summary>
+
+The result is a float. The integers are converted up to floating point, the most complex type in the expression, and floating-point math gives the answer.
+
+</details>
+
+10. How can you truncate and round a floating-point number?
+
+<details><summary>Answer</summary>
+
+Use `int(N)` or `math.trunc(N)` to truncate, and `round(N, digits)` to round. You can also compute the floor with `math.floor(N)`.
+
+</details>
+
+11. How would you display an integer in octal, hexadecimal or binary notation?
+
+<details><summary>Answer</summary>
+
+Use the `oct`, `hex` and `bin` built-in functions. Each returns the digit string for the integer in its base.
+
+</details>
+
+12. How might you convert an octal, hexadecimal or binary string to a plain integer?
+
+<details><summary>Answer</summary>
+
+Use `int(S, base)` with `8`, `16` or `2` as the base. The `eval` function can do the same job, but it is slower and can have security risks.
+
+</details>
+
+13. In the statements `A = 'code'`, `B = A`, `B = 'Python'`, does the value of `A` change?
+
+<details><summary>Answer</summary>
+
+No. `A` still shows `'code'`. Assigning `B` only points `B` at a new string. Strings are immutable, so nothing overwrites `'code'` in place.
+
+</details>
+
+14. In the statements `A = ['code']`, `B = A`, `B[0] = 'Python'`, does the value of `A` change?
+
+<details><summary>Answer</summary>
+
+Yes. `A` now shows `['Python']`. The change happens inside the list object that both names share, so `A` sees it.
+
+</details>
+
+15. In the statements `A = ['code']`, `B = A[:]`, `B[0] = 'Python'`, does the value of `A` change?
+
+<details><summary>Answer</summary>
+
+No. The slice makes a copy of the list before it is assigned to `B`. Changing `B` leaves `A` as `['code']`.
+
+</details>
+
 ## Sources and review notes
 
 - Source: *Learning Python*, 6th edition (`learning-python-6th-edition`). Chapters used are listed in each section.
 - Source: `learning-python-6th-edition`, chapter 4, "Introducing Python Objects."
+- Source: `learning-python-6th-edition`, chapter 5, "Numbers and Expressions."
+- Source: `learning-python-6th-edition`, chapter 6, "The Dynamic Typing Interlude."

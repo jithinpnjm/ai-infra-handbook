@@ -1151,6 +1151,1612 @@ This chapter covered assignments, expressions, and print operations. Each of the
 
 The next chapter covers the `if` statement, which is Python's main selection tool. It also looks at Boolean expressions and the `match` statement.
 
+## if statements
+
+The `if` statement selects the actions a program performs. Along with the `if` expression, it is Python's main selection tool. Much of a program's logic lives in `if` statements. It is also the first compound statement we study in depth. Like every compound statement, it can contain other statements, including other `if` statements.
+
+Python lets you combine statements in two ways. They can run one after another, in sequence. They can also be nested, so that they run only under certain conditions. Selections and loops both work this way.
+
+### General format
+
+The `if` statement looks like the `if` in most procedural languages. It starts with an `if` test. It can then have one or more optional `elif` tests, which mean "else if." It can end with an optional `else` block. Each test and the `else` has its own block of nested statements, indented under a header line.
+
+When the statement runs, Python runs the block under the first test that is true. If every test is false, it runs the `else` block instead. The general form looks like this:
+
+```
+if test1:          # Main if test
+    statements1    # Associated block
+elif test2:        # Optional elif test(s)
+    statements2    # Associated block
+else:              # Optional else default
+    statements3    # Associated block
+```
+
+### Basic examples
+
+Only the first `if` test and its statements are required. Every other part is optional. Here is the simplest form, typed at the interactive prompt.
+
+```
+>>> if 1:
+...     print('true')
+...
+true
+```
+
+In many interactive interfaces, the prompt changes to `...` on continuation lines. In IDLE, you simply drop to an indented line instead. Press Backspace to move back. A blank line, made by pressing Enter twice, ends the statement and runs it.
+
+The number `1` is Boolean true, so this test always succeeds. To handle a false result, add an `else`. Its block runs when the `if` test is not true.
+
+```
+>>> if not 1:
+...     print('true')
+... else:
+...     print('false')
+...
+false
+```
+
+The next example uses every optional part. It names the roots of today's mobile operating systems. The list is not complete, and it will go out of date as new systems appear.
+
+```
+if os in ['iOS', 'iPhoneOS']:
+    print('macOS')
+elif mode == 'mobile' and os != 'Windows':
+    print('Linux')
+else:
+    print('unknown?')
+```
+
+```
+>>> os, mode = 'Windows', 'mobile'
+>>> …insert the code above here…
+unknown?
+```
+
+The whole statement runs from the `if` line through the block under `else`. Python runs the statements under the first true test. If all tests are false, it runs the `else` part. Both the `elif` and `else` parts can be left out. Each section can hold more than one statement. The words `if`, `elif`, and `else` line up at the same indentation, which shows they belong together.
+
+The `and` operator in that example is true only when both of its sides are true. The next sections explain logical tests in more detail.
+
+You can nest an `if` inside another `if` to make choices that depend on earlier ones. This example first checks that the mode is `mobile`. Only then does it check the system name. The outer and inner tests act as an implied `and`.
+
+```
+if mode == 'mobile':
+    if os == 'Android':
+        print('Linux')
+    elif os != 'Windows':
+        print('macOS')
+```
+
+```
+>>> os, mode = 'Android', 'mobile'
+>>> …insert the code above here…
+Linux
+```
+
+## Multiple-choice selections
+
+Until Python 3.10, the language had no multiple-choice statement like the `switch` in some other languages. Python 3.10 added `match`, which covers the same goal and more. Even so, multiple-choice logic can be written with a series of `if`/`elif` tests. It can also be written by indexing a dictionary or searching a list.
+
+Dictionaries and lists can be built while the program runs. That makes them more flexible than fixed `if` or `match` logic. The following example picks an operating system's release year from its name. The years are roughly right, not exact.
+
+```
+>>> choice = 'Windows'
+>>> print({'macos': 2001, # A dictionary-based 'switch'
+       'Linux': 1991,      # Use get() for a default (covered next)
+       'Windows': 1985}[choice])
+1985
+```
+
+Indexing on the key `choice` branches to one of several values. It works much like a `switch` in other languages. It can take a moment to see this clearly the first time. An almost equivalent `if` statement looks like this.
+
+```
+if choice == 'macos':
+    print(2001)
+elif choice == 'Linux':
+    print(1991)
+elif choice == 'Windows':
+    print(1985)
+else:
+    print('Bad choice')
+```
+
+```
+>>> …insert the code above here…
+1985
+```
+
+The `if` version is more readable. Its weakness is that it cannot handle choices that are unknown until the program runs, unless you build the code as a string and run it with the `eval` or `exec` tools. A dictionary handles such dynamic data more easily. In more dynamic programs, data structures give you more flexibility.
+
+### Handling switch defaults
+
+The `else` clause handles the default case, when no key matches. Earlier, you saw that dictionary defaults can be coded with `in` tests, `get` method calls, or exception catching with `try`. All three techniques work for dictionary-based multiple choice too. Here is `get` with a default. The `dict` call builds the same dictionary more compactly.
+
+```
+>>> branch = dict(macos=2001, Linux=1991, Windows=1985)
+>>> print(branch.get('Windows', 'Bad choice'))
+1985
+>>> print(branch.get('Solaris', 'Bad choice'))
+Bad choice
+```
+
+An `in` membership test in an `if` statement gives the same default effect.
+
+```
+>>> choice = 'AmigaOS'
+>>> if choice in branch:
+...     print(branch[choice])
+... else:
+...     print('Bad choice')
+...
+Bad choice
+```
+
+The `try` statement is a general way to handle dictionary defaults. It catches the error that a missing key would raise. For more on exceptions, see the earlier material on `try`.
+
+```
+>>> choice = 'GEM'
+>>> try:
+...     print(branch[choice])
+... except KeyError:
+...     print('Bad choice')
+...
+Bad choice
+```
+
+### Handling larger actions
+
+Dictionaries link keys to values. The blocks under an `if` can hold much larger actions. Later, you will learn that dictionaries can also hold functions. Those functions represent complex actions, and they make a general "jump table." A dictionary value can be a function name or an inline `lambda`. Adding parentheses runs the action.
+
+The sample below is abstract. It is revisited after function definitions are covered.
+
+```
+def action(): ...
+def default(): ...
+branch = {'Android': lambda: ...,  # A table of callable function objects
+          'iOS': action,           # Via inline lambdas, or def elsewhere
+          'Symbian OS': lambda: ...}
+choice = 'Android'
+branch.get(choice, default)()      # Fetch and run associated action
+```
+
+Dictionary-based branching is useful when your data is dynamic. Most programmers will still find an `if` statement the straightforward way to do this job. As a rule of thumb, when in doubt, favor simplicity and readability. That is the "Pythonic" way.
+
+The `match` statement may now handle basic multiple-choice selections better. But it does not do general logic the way `if` does. It cannot use dynamic data like a dictionary lookup. It also adds a good deal of complexity for other roles. The next section covers it.
+
+## match statements
+
+For most of its history, Python had no multiple-choice statement. The tools described above were enough, and they still appear in plenty of Python code written today. Other languages, however, keep copying features from one another. Their own distinctions blur as a result, often for no better reason than familiarity. The `match` statement, new in Python 3.10, is one such feature.
+
+At its basic level, `match` adds a multiple-choice statement to Python. It works much like a `switch` in other languages. In some contexts, it can replace `if`/`elif`/`else` chains and dictionary indexing. In its full form, `match` implements structural pattern matching. That feature quickly becomes complex. Many programmers never asked for it, and it is hard to justify, especially for newcomers.
+
+This section focuses on the basic roles of `match`. It touches on the advanced pattern features only briefly. For the full story, Python's own documentation is the place to go.
+
+### Basic match usage
+
+The basic usage of `match` is straightforward. The following snippets mimic traffic lights in some countries. To run them, first assign `state` to one of the values named in the comments.
+
+```
+# state = 'go' or 'stop' or other
+if state == 'go':
+    print('green')
+elif state == 'stop':        # if-based multiple choice
+    print('red')
+else:
+    print('yellow')
+
+colors = dict(go='green', stop='red')    # Dictionary-based multiple choice
+print(colors.get(state, 'yellow'))
+```
+
+The equivalent `match` statement gives explicit syntax for the same logic. It takes more lines and more indentation.
+
+```
+match state:
+    case 'go':
+        print('green')        # match-based multiple choice: 3.10+
+    case 'stop':
+        print('red')
+    case _:
+        print('yellow')
+```
+
+The `match` statement first evaluates the expression in its header, here `state`. It then compares the result with each `case` value below it, from top to bottom. When the first match is found, the block under that `case` runs, and the whole `match` ends. If no `case` matches, the `_` case runs as a fallback default. The `_` case must come last. If there is no `_` case, the statement exits silently.
+
+A `case` block can hold several statements, and it can contain nested statements. A `match` can also sit inside other statements. A `case` header can list several values separated by `|`, which means "or." It can name a variable with `as` to hold the matched value. A bare name works as a catch-all, much like `_`, but it stores the value.
+
+```
+# state = 'go' or 'proceed' or 'start', or 'stop' or 'halt', or any other
+match state:
+    case 'go' | 'proceed' | 'start':    # Match any one of these 3
+        print('green')                  # First left-to-right match wins
+        print('means go')
+    case 'stop' | 'halt' as what:       # Match any, and assign it to what
+        print('red')                    # what outlives match if assigned
+        print('means', what)
+    case other:                         # Set other to state, and match
+        print('catchall', other)        # other outlives match if assigned
+```
+
+Variables assigned in a `case` header, such as `what` and `other`, keep their values after the `match` ends. Code that follows the `match` can use them. That works as long as the code is in the same scope, which roughly means the same module or function.
+
+### Match versus if
+
+This live example maps statements to categories. It also assigns variables for later use. The `for` loop here is explained in more detail later.
+
+```
+>>> for stmt in ['if', 'while', 'try']:
+...     match stmt:
+...         case 'if' | 'match':
+...             print('logic')
+...         case 'for' | 'while' as which:
+...             print('loop')
+...         case other:
+...             print('tbd')
+...
+logic
+loop
+tbd
+>>> which, other
+('while', 'try')
+```
+
+The equivalent `if` version must assign the variables explicitly. It needs less indentation, but this example is artificial. An `if` can handle more complex logic than `match` can. It is not only a multiple-choice tool.
+
+```
+>>> for stmt in ['if', 'while', 'try']:
+...     if stmt in ['if', 'match']:
+...         print('logic')
+...     elif stmt in ['for', 'while']:
+...         which = stmt
+...         print('loop')
+...     else:
+...         other = stmt
+...         print('tbd')
+...
+…same results…
+```
+
+You will see basic `match` statements again in later chapters. Although `match` cannot code general logic like `if`, it makes multiple-choice selection explicit. Its extension to structural pattern matching is harder to justify. Read on, and decide for yourself.
+
+### Advanced match usage
+
+Beyond its basic level, `match` becomes too complex to cover fully here. It goes well beyond multiple-choice logic. It defines a small language of its own for pulling components out of structured objects. In brief, a `case` value can be any of these patterns:
+
+- Literal patterns: a literal `X` matches the same value, by equality or identity.
+- Wildcard patterns: `_` matches anything, but the value is not assigned to `_`.
+- Capture patterns: the variable `X` matches anything, and is assigned the value.
+- Or patterns: `X | Y | Z` matches `X`, `Y`, or `Z`, and stops at the first match.
+- As patterns: `X as Y` matches pattern `X`, and assigns the matched value to `Y`.
+- Additional patterns that match sequences, mappings, attributes, and instances by their structure.
+
+Example 12-1 is an artificial, if dense, example. It shows literal, sequence, and mapping patterns. Its `[…]` and `(…)` patterns both match any sequence, and they are interchangeable. Its `{…}` pattern matches a mapping. A single `*` or `**` name collects the unmatched parts of a sequence or mapping. This is similar to the extended unpacking you saw earlier. But `**` is unique to patterns, and not every part of a pattern must be a variable. Assignments to starred names happen as a side effect of the match test.
+
+Example 12-1. matchdemo.py
+
+```
+# state = 1 or
+# [1, 2, 3] or [0, 2, 3] or (1, 2, 3) or (0, 2, 3) or
+# dict(a=1, b=2, c=3) or dict(a=0, b=2, c=3) or other
+match state:
+    case 1 | 2 | 3 as what:                   # Match integer literals, what = 1
+        print('or', what)
+    case [1, 2, what]:                        # Match sequence (1), what = 3
+        print('list', what)
+    case [0, *what]:                          # Match sequence (0), what = [2, 3]
+        print('list', what)
+    case {'a': 1, 'b': 2, 'c': what}:         # Match mapping, what = 3
+        print('dict', what)
+    case {'a': 0, **what}:                    # Match mapping, what = {'b': 2, 'c': 3}
+        print('dict', what)
+    case (1, 2, what):                        # Match sequence: same as [1, 2, what]
+        print('tuple', what)
+    case (0, *what):                          # Match sequence: same as [0, *what]
+        print('tuple', what)
+    case _ as what:                           # Match all other, what = other
+        print('other', what)
+```
+
+The `[…]`, `{…}`, and `(…)` patterns in these `case` headers are not ordinary object literals. They are special syntax forms that contain nested patterns. Many of those nested patterns happen to be literal patterns here. Nested patterns can also be captures, possibly after one `*` or `**`. They can use `|` ors or `_` wildcards. The header `[*a, 2 | 3, _]` is a valid sequence pattern, though it has little to do with list literals.
+
+Attribute and instance patterns depend on classes, which you will meet later. They check attribute values and membership in an inheritance tree. Some of their parts are nested patterns too. Here is a preview. You can return to it after you have read the material on classes.
+
+```
+class Emp:
+    def __init__(self, name): self.name = name
+
+pat = Emp('Pat')      # pat.name becomes 'Pat': see the classes material
+# state = 'Pat' or pat
+match state:
+    case pat.name as what:         # Match object's attribute, what = 'Pat'
+        print('attr', what)
+    case Emp(name=what):           # Match an Emp instance, what = 'Pat'
+        print('instance', what)
+```
+
+Parentheses can group any pattern, as they do in ordinary expressions. Nested structures match recursively, much like sequence assignment. Each `case` header can also end with an optional guard. A guard is an `if` test that follows the optional `as` name. It must be true for the `case` to be selected and its block to run.
+
+```
+state = ((1, 2), 3)
+guard1 = True    # a=1, b=3 if True; a=(1, 2) if False
+match state:
+    case ((a, 2), b) if guard1:     # Match+run only if guard1 is True
+        print(f'case1 {a=} {b=}')
+    case (a, 3) as what:            # Reached only if guard1 is False
+        print(f'case2 {a=} {what=}')
+    case [a, (3 | 4)] as what if guard1:
+        print(f'case3 {a=} {what=}')
+```
+
+All of this is a lot of machinery for mostly simple jobs. So this handbook stops short of the full pattern language. For the advanced roles of `match`, including every detail of its special patterns, consult Python's online documentation.
+
+It is worth pausing on one fact first. Python ran successfully for about three decades without a `match` statement. Adding a complex subsystem to replace a small amount of code may be harder to justify than it looks. Many readers will weigh that trade-off for themselves.
+
+`match` can still be useful in simpler roles. You still have to choose among `if`, dictionary lookups, and `match` when you code multiple-choice logic. Avoid doing something only because another language does it. You are writing Python now, and the choice is yours.
+
+## Python syntax revisited
+
+The basic syntax model was introduced earlier. Now that `if` and `match` are larger statements, this section reviews the rules and adds detail. Python's syntax is simple and statement-based. These are its main points.
+
+**Statements run one after another.** Python normally runs statements in a file or nested block from first to last. Statements such as `if`, loops, and exceptions make the interpreter jump around. The path through a program is called the control flow. Statements that affect it are often called control-flow statements.
+
+**Block and statement boundaries are automatic.** Python has no braces or begin/end words around blocks. It uses the indentation of statements under a header to group them. Python statements also do not need semicolons. The end of a line usually ends the statement. Special cases let a statement span lines or share a line with another.
+
+**Compound statements are a header, a colon, and indented statements.** Every compound statement follows this pattern. The header line ends with a colon, and the nested statements are usually indented under it. The indented statements form a block, sometimes called a suite. In an `if`, the `elif` and `else` parts are also headers, each with a block of its own. As a special case, a simple block can sit on the header line.
+
+**Blank lines, spaces, and comments are usually ignored.** Blank lines are optional in files. At the interactive prompt, though, a blank line ends a compound statement. Spaces inside statements are almost always ignored, except in string literals and in indentation. A comment starts with `#`, outside a string, and runs to the end of the line.
+
+**Docstrings are ignored by Python but kept for tools.** A documentation string, or docstring, is a string at the top of a file or some statements. Unlike a `#` comment, a docstring is retained at runtime. Python does not act on its content, but tools can display it.
+
+### Block delimiters: indentation rules
+
+Python detects block boundaries from indentation. That is the empty space to the left of your code. This section repeats the rules with a few more details.
+
+All statements indented the same distance belong to the same block. They line up vertically, like a column. A block ends at a less-indented line, at the end of the file, or at a blank line in the REPL. A more deeply nested block is indented further to the right.
+
+For example, this code has three blocks. The top-level code is not indented at all. The block inside the outer `if` is indented four spaces. The `print` under the nested `if` is indented eight spaces.
+
+```
+x = 1
+if x:
+    y = 2
+    if y:
+        print('block2')
+    print('block1')
+print('block0')
+```
+
+*Figure 12-1. Nested blocks of code denoted by their indentation*
+
+Top-level code must start in column 1. Nested blocks can start in any column. Indentation can use any number of spaces or tabs, as long as every statement in one block uses the same amount. Python does not care how you indent, only that you are consistent. Four spaces or one tab per level are common, but there is no single rule.
+
+Indenting code is natural in practice. Errors of indentation are easy to spot, because the lines look wrong. The example with the `'Hack'` string shows three typical mistakes. The first line is indented when it should not be. One line is indented unexpectedly after an `if` block. And a line is indented inconsistently with the rest of its block. Python reports each of these as an error.
+
+The corrected version looks like this. Even in a small example, proper indentation makes the intent clear.
+
+```
+x = 'Hack'
+if 'tho' in 'python':
+    print(x * 8)                 # Prints 8 Hack
+x += 'More!'
+if x.endswith('re!'):
+    x *= 2
+print(x)                         # Prints HackMore!HackMore!
+```
+
+Whitespace matters in only one major place: the indentation at the left of your code. Elsewhere, you can add spaces or leave them out. Indentation is part of Python's syntax, not a style suggestion. All statements in a single block must have the same indentation. Otherwise, Python reports a syntax error. Because blocks need no explicit start and end markers, some syntactic clutter from other languages is unnecessary.
+
+Indentation also enforces consistency, which supports readability. The indentation of each line shows what it belongs to. That makes code easier to maintain and to reuse. Indentation is easier than it may sound. Consistently indented code always follows the rules. Most editors, IDLE included, indent automatically as you type.
+
+### Avoid mixing tabs and spaces
+
+You can use spaces or tabs to indent. It is usually a bad idea to mix them within one block, so pick one. Technically, a tab moves the current column to the next multiple of 8. Code can therefore work with a consistent mix of tabs and spaces. Even so, mixing them makes code hard to read and change. A tab can look very different in another programmer's editor.
+
+Python reports an error when a script mixes tabs and spaces inconsistently within a block. That means the meaning would depend on how many spaces a tab equals. So avoid it. Use consistent indentation, not a mix.
+
+### Statement delimiters: lines and continuations
+
+A statement normally ends at the end of the line it appears on. A statement that is too long for one line has a few options.
+
+- Open pairs: a statement can continue onto the next line inside `()`, `{}`, or `[]`. Parenthesized expressions and dictionary and list literals can span any number of lines. The statement ends on the line with the closing `)`, `}`, or `]`. Continuation lines can start at any indentation, but aligning them vertically reads best.
+- Backslashes: if a statement ends a line with a backslash (`\`) that is not inside a string or comment, the statement continues on the next line. A backslash is best used as a fallback. Forgetting one can cause a syntax error, or make the next line run on its own. Parentheses usually do the same job, so backslashes are rare.
+- Semicolons: you can separate noncompound statements with a semicolon to place several on one line. Compound statements cannot share a line this way.
+- Multiline strings: triple-quoted strings span lines by design. Adjacent string literals are concatenated. With the open-pair rule, wrapping them in parentheses lets them span lines.
+
+### Special syntax cases in action
+
+An open pair lets a list span several lines.
+
+```
+L = ['app',
+     'script',
+     'program']    # Open pairs may span lines
+```
+
+The same rule covers list comprehensions in `[]`. It also covers anything in `()`, such as tuples, expressions, function arguments and headers, and generator expressions. It covers anything in `{}`, such as dictionary and set literals and comprehensions. Some of these come in later chapters. The rule still covers most multiline constructs you will write.
+
+Backslash continuations also work, though they are not common practice.
+
+```
+if a == b and c == d and \
+   d == e and f == g:
+    print('old school')    # Backslashes allow continuations...
+```
+
+Because any expression can go in parentheses, the open-pair form is usually the better choice.
+
+```
+if (a == b and c == d and
+    d == e and e == f):
+    print('new school')    # But parentheses usually do too, and are obvious
+```
+
+Backslashes are discouraged, because they are easy to miss and easy to leave out. In the following example, `x` is assigned `10`, as intended. If the backslash is dropped, `x` is assigned `6` instead, and Python reports no error. The `+4` line is a valid expression statement by itself. In a real program, this could cause a very hard-to-find bug.
+
+```
+x = 1 + 2 + 3 \
++4    # Omitting the \ makes this very different!
+```
+
+Python also lets you put more than one simple statement on a line, separated by semicolons. Some people use this to save space. Most of your code reads better with one statement per line.
+
+```
+x = 1; y = 2; print(x)    # More than one simple statement
+```
+
+Triple-quoted strings span lines. Adjacent string literals join as if a `+` were placed between them. With the open-pair rule, wrapping them in parentheses lets them span lines. The first assignment below puts newline characters at the line breaks. The other two join the pieces into one string. In the first form, any `#` text is part of the string, not a comment. In the second form, `#` starts a comment that is ignored. Each f-string piece needs its own `f` prefix, even on continuation lines.
+
+```
+S = """
+aaaa
+bbbb
+cccc"""
+S = ('aaaa'
+     'bbbb'    # Comments here are ignored, add \n if needed
+     'cccc')
+S = (f'{'a' * 4}'    # Also makes 'aaaabbbbcccc'
+     f'{'b' * 4}'    # Use f'' on each f-string part
+     r'cccc')        # And ditto for r'' raw-string parts
+```
+
+The first assignment makes `S` equal to `'\naaaa\nbbbb\ncccc'`. The other two make `S` equal to `'aaaabbbbcccc'`. Each `r` prefix marks a raw string, and each `f` prefix marks an f-string.
+
+Python also lets you move a compound statement's body up to the header line, if the body holds only simple statements. You will see this mostly in simple `if` statements with one test and one action.
+
+```
+if 1: print('hello')    # Simple statement on header line
+```
+
+You can combine these special cases to write code that is hard to read. That is not recommended. As a rule of thumb, put each statement on a line of its own, and indent all but the simplest blocks. Six months from now, you will be glad you did.
+
+## Truth values revisited
+
+Comparisons, equality, and truth values were introduced earlier. The `if` is the first statement that relies on them heavily, so this section adds detail. Python's Boolean operators differ a little from those in some other languages. In Python:
+
+- Every object has an inherent Boolean true or false value.
+- Any nonzero number or nonempty object is true.
+- Zero, empty objects, and the special object `None` are false.
+- Comparisons and equality tests apply recursively to data structures.
+- Comparisons and equality tests return `True` or `False`, which are custom versions of `1` and `0`.
+- The Boolean `and` and `or` operators return a true or false operand object.
+- Boolean operators stop evaluating, or short-circuit, as soon as the result is known.
+
+The `if` statement acts on truth values. Boolean operators combine the results of other tests into richer truth values. There are three Boolean expression operators.
+
+| Expression | True when | Returns |
+| --- | --- | --- |
+| `X and Y` | both `X` and `Y` are true | either `X` or `Y` |
+| `X or Y` | either `X` or `Y` is true | either `X` or `Y` |
+| `not X` | `X` is false | either `True` or `False` |
+
+Here, `X` and `Y` can be any truth value, or any expression that returns one, such as an `==` equality test or an `in` membership check. Python spells these operators as words. C uses `&&`, `||`, and `!` instead. Do not confuse them with `&`, `|`, and `^`, which work on numbers, sets, and dictionaries.
+
+The most unusual part is that `and` and `or` return an object, not a plain `True` or `False`. Here is an example.
+
+```
+>>> 2 < 3, 3 < 2    # Less than: return True or False (1 or 0)
+(True, False)
+```
+
+Magnitude comparisons return `True` or `False`. Those are just custom versions of `1` and `0`. The `and` and `or` operators always return one of their operands, either the left object or the right one. In an `if`, their results behave as you expect. You just do not get back a simple `True` or `False`.
+
+For `or`, Python checks the operands from left to right. It returns the first true one and stops there. This is called short-circuit evaluation, because the result is known early and the rest is skipped.
+
+```
+>>> 2 or 3, 3 or 2    # Return left operand if true
+(2, 3)                # Else, return right operand (true or false)
+>>> [] or 3
+3
+>>> [] or {}
+{}
+```
+
+In the first line, both operands are true, so Python stops and returns the left one. In the other two lines, the left operand is empty, so Python returns the right one. That right operand may be true or false, but it decides the result of the `or`.
+
+The `and` operator also short-circuits. Python checks from left to right. If the left operand is false, Python stops, because a false left side settles the result.
+
+```
+>>> 2 and 3, 3 and 2    # Return left operand if false
+(3, 2)                  # Else, return right operand (true or false)
+>>> [] and {}
+[]
+>>> 3 and []
+[]
+```
+
+In the first line, both operands are true, so Python returns the right one. In the second line, the left operand is `[]`, which is false. Python returns it without running the right side. In the last line, the left side is true, so Python returns the right side, which is an empty list.
+
+The end result matches other languages. When you test the value in an `if` or `while`, you get the logic you expect from `or` and `and`. The difference is that Python returns either the left or the right object, not a simple integer flag. A later section shows how this behavior is useful.
+
+## The if/else ternary expression
+
+A common use of Boolean operators is writing an expression that works like an `if` statement. Consider this code, which sets `A` to `Y` or `Z`, based on the truth of `X`.
+
+```
+if X:
+    A = Y
+else:
+    A = Z
+```
+
+Sometimes these items are so simple that four lines feel like too many. Other times you want the choice inside a larger expression. For these cases, Python offers a three-part, or "ternary," expression. It says the same thing in one line. It is also a comfortable form for programmers who know C.
+
+```
+A = Y if X else Z
+```
+
+This expression has the same effect as the four-line `if` statement. In a similar way, `:=` is an expression form of assignment. The ternary expression is an expression form of `if`. It has narrower rules. You cannot place full statements in its parts. You can, however, use it anywhere Python allows an expression.
+
+Like the statement, the ternary expression runs `Y` only when `X` is true, and runs `Z` only when `X` is false. It short-circuits, like the Boolean operators, so only one of the two parts runs. Here are two examples.
+
+```
+>>> tone = 'formal'
+>>> a = 'code' if tone == 'formal' else 'hack'
+>>> a
+'code'
+>>> tone = 'informal'
+>>> a = 'code' if tone == 'formal' else 'hack'
+>>> a
+'hack'
+```
+
+The same effect can often come from a careful combination of `and` and `or`. Those operators return one of their operands, as described earlier. The ternary expression and the Boolean expression below behave the same way.
+
+```
+A = Y if X else Z          # Ternary if/else
+A = ((X and Y) or Z)       # and+or equivalent
+```
+
+This works, but only if `Y` is guaranteed to be true. When it is, the `and` runs first. It returns `Y` if `X` is true. If `X` is false, the `and` skips `Y` and returns the false `X`. Then the `or` returns `Z`. The result is "if `X` then `Y` else `Z`," the same meaning in a different order.
+
+The `and`/`or` form takes a moment of careful thought to understand. That is a reason to avoid it. Use the `if`/`else` expression when you need this structure. Use a full `if` statement when the parts are nontrivial.
+
+A related trick uses `bool`. The `bool` function turns any `X` into `True` or `False`, which work as the index 1 or 0 into a list. That lets you pick one of two values.
+
+```
+A = [Z, Y][bool(X)]
+```
+
+The `bool` is not needed when `X` already gives a truth value. It is needed when `X` is an object such as a string.
+
+```
+>>> ['hack', 'code'][tone == 'formal']
+'hack'
+>>> ['hack', 'code'][bool('formal')]
+'code'
+```
+
+This trick is not the same as the ternary expression. Python does not short-circuit here. It always evaluates both `Z` and `Y`, whatever `X` is. The `if`/`else` expression is simpler and easier to read. Like any nestable tool, the ternary expression can produce code that is hard to read. If you struggle to pack logic into one, stop and think about how hard it will be to unpack later. Your teammates will thank you.
+
+## Why you will care: Booleans
+
+One common use of Python's Boolean operators is selecting from a set of objects with `or`.
+
+```
+X = A or B or C or None
+```
+
+This assigns `X` to the first nonempty, or true, object among `A`, `B`, and `C`. If all of them are empty, `X` becomes `None`. The `or` operator returns one of its two operands, so you can chain fixed candidates together to pick the first nonempty one. A simpler form designates a default.
+
+```
+X = A or default
+```
+
+Here, `X` is `A` when `A` is true, which means nonzero or nonempty. Otherwise, `X` is `default`.
+
+Short-circuiting can also stop actions from running. An expression on the right of a Boolean operator may call functions that do important work or have side effects. Those calls do not happen when the short-circuit rule applies.
+
+```
+if f1() or f2(): ...
+```
+
+If `f1` returns a true or nonempty value, Python never runs `f2`. To make sure both functions run, call them before the `or`.
+
+```
+tmp1, tmp2 = f1(), f2()
+if tmp1 or tmp2: ...
+```
+
+The expression `((A and B) or C)` can emulate an `if` statement, though only almost. The ternary expression section explains the details.
+
+Earlier chapters met other Boolean uses. Every object is inherently true or false. So it is easier to test an object directly, as in `if X:`, than to compare it to an empty value, as in `if X != '':`. For a string, the two tests are equivalent. `True` and `False` are the same as `1` and `0`. They are useful for initializing variables (`X = False`), for loop tests (`while True:`), and for showing results at the interactive prompt.
+
+When you define classes later, you can set an object's Boolean nature with either `__bool__` or `__len__`. Python tries `__len__` if `__bool__` is missing. A length of zero makes the object false, because an empty object is false.
+
+Other tools also select true values. The `filter` call and list comprehensions can pick out true values when the candidates are not known until the program runs. They evaluate all values and return every true one. The `any` and `all` built-ins test whether any or all items are true. They short-circuit like `and`, `or`, and `if`/`else`, but they do not select an item.
+
+```
+>>> L = [1, 0, 2, 0, 'hack', '', 'py', []]
+>>> list(filter(bool, L))    # Get true values
+[1, 2, 'hack', 'py']
+>>> [x for x in L if x]      # Comprehensions
+[1, 2, 'hack', 'py']
+>>> any(L), all(L)           # Aggregate truth
+(True, False)
+```
+
+The `bool` function returns the truth value of its argument, as if the argument were tested in an `if`. Later chapters cover these tools in more depth.
+
+## while loops
+
+Loops repeat an action until some condition changes. Python has two main loop statements. The `while` statement is the most general one. It can handle repetitive work of all kinds. The `for` statement is more specialized. It steps through the items of any iterable object with very little code.
+
+The `while` statement repeats its block as long as a test at the top stays true. The word "loop" comes from control looping back to the top each time. When the test becomes false, control moves to the statement after the loop. If the test is false at the start, the body never runs and the loop is skipped.
+
+### General format
+
+A `while` statement has a header with a test, an indented body, and an optional `else` part. The `else` runs only when control leaves the loop without hitting a `break`. Python checks the test at the top and runs the body. It keeps doing this until the test returns a false value.
+
+```
+while test:               # Loop test
+    statements            # Repeated loop body
+else:                     # Optional else
+    statements            # Run if didn't exit loop body with break
+```
+
+### Examples
+
+The first example prints a message forever. `True` is a custom version of the integer `1`, and it always means true. Because the test never changes, the body keeps running. Python is not stuck for good, but you may need Ctrl+C to stop it. This kind of loop is called an infinite loop.
+
+```
+while True:
+    print('Type Ctrl+C to stop me!')
+```
+
+The next example removes the first character of a string on each pass. It stops when the string is empty, which is false. Testing an object directly like this is common. It is shorter than writing `while x != '':`. The `end=' '` argument keeps all the output on one line, as the print operations section above explains.
+
+```
+x = 'code'
+while x:                  # While x is not empty
+    print(x, end=' ')     # Print next character
+    x = x[1:]             # Strip first character off x
+```
+
+The output is `code ode de e`.
+
+The next loop counts from `a` up to, but not including, `b`. Loops like this often generate index values. A `for` loop with `range` is an easier way to do the same job, as you will see below.
+
+```
+a = 0
+b = 10
+while a < b:              # One way to code counter loops
+    print(a, end=' ')
+    a += 1                # Or, a = a + 1
+```
+
+The output is `0 1 2 3 4 5 6 7 8 9`.
+
+Python has no "do until" loop statement. You can simulate one with a test and a `break` at the bottom of the body. The body then always runs at least once.
+
+```
+while True:
+    # loop body here: always runs at least once
+    if test: break        # Test for loop exit at the bottom
+```
+
+The `break` statement is what makes this structure work. The next section covers it.
+
+## break, continue, pass, and the loop else
+
+Some statements only do something inside a loop. `break` and `continue` are two of them. The loop `else` clause is tied to `break`, so the two work together. `pass` is a placeholder that is not tied to loops at all. It belongs in the same group of one-word statements.
+
+| Statement | What it does |
+|---|---|
+| `break` | Jumps out of the closest enclosing loop, past the entire loop statement |
+| `continue` | Jumps to the top of the closest enclosing loop, to the loop's header line |
+| `pass` | Does nothing at all. It is an empty statement placeholder |
+| Loop `else` block | Runs if and only if the loop exits normally, without hitting a `break` |
+
+### General loop format
+
+With `break` and `continue` included, the `while` loop looks like this. Both can appear anywhere in the body. They usually sit inside an `if` test that reacts to some condition.
+
+```
+while test:
+    statements
+    if test: break        # Exit loop now, skip else if present
+    if test: continue     # Go to test at top of loop now
+else:
+    statements            # Run on exit if didn't hit a 'break'
+```
+
+### pass
+
+The `pass` statement does nothing. You use it when the syntax needs a statement, but you have nothing useful to say yet. It is often the body of a compound statement. An infinite loop that does nothing is one example.
+
+```
+while True: pass          # Type Ctrl+C to stop me!
+```
+
+Python gets stuck in this loop, because the body is an empty statement. In a way, `pass` is to statements what `None` is to objects. It is an explicit nothing. Here the body sits on the same line as the header, after the colon. That works only when the body is not a compound statement.
+
+This program does nothing forever. It is not very useful, unless you want to warm up a laptop on a cold day. You will see `pass` in better places later. It can ignore exceptions caught by `try` statements. It can define empty classes that act like structs or records in other languages. It is also a way to stub out a function body for now.
+
+```
+def func1():
+    pass                  # Add real code here later
+
+def func2():
+    pass
+```
+
+We cannot leave the body empty without a syntax error, so we write `pass` instead.
+
+Python has a similar, more obscure option. An ellipsis, written as `...`, can appear anywhere an expression can. It is three plain dots, not the single Unicode ellipsis character. An ellipsis does nothing by itself. So it can stand in for `pass`, especially for code you plan to fill in later.
+
+```
+def func1():
+    ...                   # Alternative to pass
+
+func1()                   # Does nothing if called
+```
+
+This works because any expression can appear as a statement, and `...` is an expression. An ellipsis can also sit on the header line by itself. It can start a name when no specific type is needed, which makes it an alternative to `None`.
+
+```
+def func1(): ...          # Works on same line too
+```
+
+```
+>>> tbd = ...             # Alternative to both pass and None
+>>> tbd                   # Ellipsis is a real (if oddball!) thing
+Ellipsis
+```
+
+The ellipsis goes well beyond its original role in slicing extensions, where Python itself does not use it. Time will tell whether it can rival `pass` and `None` in these roles.
+
+### continue
+
+The `continue` statement jumps right back to the top of a loop. It is often used to avoid nesting. The next example uses `continue` to skip odd numbers. Only the even values from 8 down to 0 get printed. Zero counts as false in a test. The `%` operator gives the remainder of a division.
+
+The loop counts down to 0 and skips every number that is not a multiple of 2. The output is `8 6 4 2 0`.
+
+```
+x = 10
+while x:
+    x -= 1                # Or, x = x - 1
+    if x % 2 != 0: continue    # Odd? -- skip print
+    print(x, end=' ')
+```
+
+Because `continue` jumps to the top, the `print` does not need an `if` around it. The `print` runs only when the `continue` is not reached.
+
+Some readers see a resemblance to a "go to" statement from other languages. Python has no `go to`, but `continue` still moves control around. Many of the warnings about `go to` apply to it. Use `continue` sparingly, especially while you are learning. Here the same loop reads more clearly, with the `print` nested under the `if`.
+
+```
+x = 10
+while x:
+    x -= 1
+    if x % 2 == 0:        # Even? -- print
+        print(x, end=' ')
+```
+
+Exceptions can also act like a controlled "go to" later on. They can even break out of several nested loops at once, which `break` alone cannot do.
+
+### break
+
+The `break` statement exits a loop right away. When loops are nested, it exits only the closest enclosing loop. Code after `break` does not run when it is reached. So `break` can sometimes avoid nesting, much like `continue`. The next loop is a simple interactive one. It asks for a favorite language and stops when the user types `stop`.
+
+```
+num = 1
+while True:
+    tool = input(f'{num}) What\'s your favorite language? ')
+    if tool == 'stop': break
+    print('Bravo!' if tool == 'Python' else 'Try again...')
+    num += 1
+```
+
+A session with this loop looks like this.
+
+```
+1) What's your favorite language? Java
+Try again...
+2) What's your favorite language? Python
+Bravo!
+3) What's your favorite language? stop
+```
+
+Because `break` ends the `while` immediately, there is no reason to nest the code below it in an `else`.
+
+You can shorten this loop with the `:=` expression from the named assignment section above. The result is concise. It loses its role as a `break` demo, though. It may also look hard to read, so judge for yourself.
+
+```
+num = 1
+while (tool := input(f'{num}) What\'s your favorite language? ')) != 'stop':
+    print('Bravo!' if tool == 'Python' else 'Try again...')
+    num += 1
+```
+
+Nesting `:=` inside another `:=`, as in the next example, is a different matter. This version is too wide to print on one line here. Unless you can defend it in front of your code reviewers, just say no.
+
+```
+num = 0
+while (tool := input(f'{(num := num + 1)}) What\'s your favorite language? ')) != 'stop':
+    print('Bravo!' if tool == 'Python' else 'Try again...')
+```
+
+A preview: `input` also raises an exception at end-of-file. That happens when a user presses Ctrl+Z on Windows or Ctrl+D on Unix. Wrapping `input` in a `try` statement lets a program handle that case too.
+
+### Loop else
+
+When you combine `break` with the loop `else` clause, you often avoid the search flags used in other languages. The `break` skips the `else` on the way out of the loop. This abstract outline shows the pattern.
+
+```text
+while continuing:
+    if found:
+        found code
+        break
+    else advance
+else:
+    not-found code
+```
+
+The next example checks whether a positive integer `num` is prime. A prime has no factors other than 1 and itself. The loop searches for factors greater than 1. Assign `num` before you paste this code into a live session.
+
+```
+x = num // 2              # For some num > 1, start at half
+while x > 1:
+    if num % x == 0:      # Remainder 0? Factor found
+        print(num, 'has factor', x)
+        break             # Exit now and skip else
+    x -= 1
+else:                     # Normal exit, when x reaches 1
+    print(num, 'is prime')
+```
+
+Rather than setting a flag, this code inserts a `break` where a factor is found. The loop `else` can then assume it runs only when no factor is found. If the loop never hits the `break`, the number is prime. Trace through the code to see how this works.
+
+The `else` also runs when the loop body never executes. In a `while` loop, that happens when the header test is false at the start. So this example still prints "is prime" when `x` starts at 1 or less, such as when `num` is 2.
+
+A note on accuracy: this example finds primes only informally. The strict mathematical definition says numbers below 2 are not prime. This code classifies 1 and 0 as prime, though. It also fails for negative numbers, and it accepts floating-point numbers whose decimal digits are all zero. The code uses `//` instead of `/`, so the first division truncates the remainder. Wrapping it in a function is a good next step for reuse.
+
+Why does the loop `else` exist? It is unique to Python, so it confuses many newcomers. Some people write it with no `break`. Others never learn it exists. In general, it gives explicit syntax for a common pattern. It catches the other way out of a loop, without setting and checking flags.
+
+Suppose you search a list for a value, and you need to know afterward whether it was found. This sketch is abstract, and it leaves parts out. `x` stands for any sequence. `match` is a tester function you would define yourself.
+
+```
+found = False
+while x and not found:
+    if match(x[0]):       # Value at front?
+        print('Found')
+        found = True
+    else:
+        x = x[1:]         # Slice off front and repeat
+if not found:
+    print('Not found')
+```
+
+This code sets, then tests, a `found` flag. It is valid, and it works. But this is exactly the structure the loop `else` clause handles. Here is the `else` version.
+
+```
+while x:                  # Exit when x empty
+    if match(x[0]):
+        print('Found')
+        break             # Exit, go around else
+    x = x[1:]
+else:
+    print('Not found')    # Only here if exhausted x
+```
+
+This version is more concise. The flag is gone. The `else` lines up vertically with `while`. The `break` exits the loop and goes around the `else`. So the `else` becomes a structured way to catch the search-failure case.
+
+You could replace the `else` with a test for an empty `x` after the loop, such as `if not x:`. In this example that works. But the `else` is explicit syntax for the pattern, and an empty test may not fit every case. The loop `else` is even more useful with `for`, because you do not control how sequence iteration ends.
+
+## for loops
+
+The `for` loop is a generic iterator. It steps through the items of any ordered sequence or other iterable object. That includes strings, lists, tuples, sets, dictionaries, and other built-in iterables. It also works with new objects you define with classes. You have already used `for` with sequences. This section looks at it more formally.
+
+### General format
+
+The `for` header names an assignment target and the object to step through. The header is followed by an indented block of statements that repeat.
+
+```
+for target in object:     # Assign object items to target
+    statements            # Repeated loop body: use target
+else:                     # Optional else
+    statements            # Run if didn't exit loop body with break
+```
+
+Python assigns the items of the iterable to `target` one by one. It runs the loop body once for each item. The body usually uses the target like a cursor that steps along the sequence.
+
+The target can be any assignment target. It is often a simple name. That name is a possibly new variable in the scope where the `for` statement is coded. You can even change it inside the body. Python still sets it to the next item when control returns to the top. After the loop, the name refers to the last item visited. That is the last item in the sequence, unless `break` ended the loop early.
+
+The `for` loop's `else` works exactly as it does in a `while` loop. It runs if the loop finishes without a `break`, which means every item was visited. `break` and `continue` behave the same here. The complete format looks like this.
+
+```
+for target in object:     # Assign object items to target
+    statements
+    if test: break        # Exit loop now, skip else
+    if test: continue     # Go to top of loop now
+else:
+    statements            # Run on exit if didn't hit a 'break'
+```
+
+### Examples
+
+The next examples type a few `for` loops in the REPL, so you can see them in practice.
+
+A `for` loop can step across any kind of sequence. The first example assigns `x` to each of three list items, from left to right. The `print` runs once per item. Inside the body, `x` refers to the current item.
+
+```
+for x in ['app', 'script', 'program']:
+    print(x, end=' ')
+```
+
+The output is `app script program`.
+
+The next two examples add and multiply the items of a list. Later you will see tools that apply `+` and `*` to list items automatically. A `for` loop is often just as easy.
+
+```
+>>> sum = 0
+>>> for x in [1, 2, 3, 4]:
+...     sum = sum + x
+>>> sum
+10
+>>> prod = 1
+>>> for item in [1, 2, 3, 4]: prod *= item
+>>> prod
+24
+```
+
+Any sequence works in a `for`, since it is a generic tool. Strings and tuples work too.
+
+```
+>>> S = 'Python'
+>>> T = ('web', 'num', 'app')
+>>> for x in S: print(x, end=' ')     # Iterate over a string
+P y t h o n
+>>> for x in T: print(x, end=' ')     # Iterate over a tuple
+web num app
+```
+
+Some objects that are not sequences also work in a `for`, including files. The iterable behavior behind this gets a full treatment later.
+
+#### Tuple assignment in for loops
+
+If you iterate through a sequence of tuples, the loop target can be a tuple of targets. This is the tuple-unpacking assignment from the assignments section above, at work. The `for` loop assigns each item to the target, and assignment works the same everywhere.
+
+```
+>>> T = [(1, 2), (3, 4), (5, 6)]
+>>> for (a, b) in T:                  # Tuple assignment at work
+...     print(a, b)
+1 2
+3 4
+5 6
+```
+
+The first time through, the loop acts like `(a,b) = (1,2)`. The second time it acts like `(a,b) = (3,4)`, and so on. The net effect is to unpack the current tuple on each pass. A list works as a target too, because tuple and list assignment are both sequence assignment. The parentheses around a tuple are optional. So `for [a, b] in T:` and `for a, b in T:` have the same effect.
+
+This list-of-tuples format is common. It pairs well with `zip`, which you will meet below. It also shows up with SQL databases in Python. Query results come back as sequences of sequences. The outer list is the table, the nested tuples are its rows, and tuple assignment extracts the columns.
+
+Tuples in `for` loops also help with dictionaries. The `items` method gives you keys and values together. You do not need to loop over the keys and index each one to fetch its value.
+
+```
+>>> D = {'a': 1, 'b': 2}
+>>> for key in D:
+...     print(key, '=>', D[key])      # Use dict keys iterator and index
+a => 1
+b => 2
+>>> list(D.items())
+[('a', 1), ('b', 2)]
+>>> for (key, value) in D.items():
+...     print(key, '=>', value)       # Iterate over both keys and values
+a => 1
+b => 2
+```
+
+Tuple assignment in a `for` is not a special case. Any assignment target works after the word `for`. You can always assign manually inside the loop to unpack the values.
+
+```
+>>> T
+[(1, 2), (3, 4), (5, 6)]
+>>> for both in T:
+...     a, b = both                   # Manual assignment equivalent
+...     print(a, b)
+1 2
+3 4
+5 6
+```
+
+The tuple form in the header saves a step when you iterate through sequences of sequences. Nested structures unpack the same way.
+
+```
+>>> ((a, b), c) = ((1, 2), 3)         # Nested sequences work too
+>>> a, b, c
+(1, 2, 3)
+>>> for ((a, b), c) in [((1, 2), 3), ((4, 5), 6)]: print(a, b, c)
+1 2 3
+4 5 6
+```
+
+This is not a special case either. The loop runs the same kind of assignment on each pass. Any nested sequence can be unpacked this way, because sequence assignment is generic.
+
+```
+>>> for ((a, b), c) in [([1, 2], 3), ['XY', 6]]: print(a, b, c)
+1 2 3
+X Y 6
+```
+
+#### Starred targets in for loops
+
+The loop variable can be any assignment target. So the starred names of extended unpacking also work here. They can pull out items and sections of sequences inside sequences. This works because the same syntax works in assignment statements.
+
+Tuple assignment runs on each pass, just like a simple assignment statement.
+
+```
+>>> a, b, c = (1, 2, 3)
+>>> a, b, c
+(1, 2, 3)
+>>> for (a, b, c) in [(1, 2, 3), (4, 5, 6)]:
+...     print(a, b, c)
+1 2 3
+4 5 6
+```
+
+A starred target collects several items into a list. The same syntax then pulls parts out of nested sequences.
+
+```
+>>> a, *b, c = (1, 2, 3, 4)
+>>> a, b, c
+(1, [2, 3], 4)
+>>> for (a, *b, c) in [(1, 2, 3, 4), (5, 6, 7, 8)]:
+...     print(a, b, c)
+1 [2, 3] 4
+5 [6, 7] 8
+```
+
+In practice, you might use this to pick several columns from rows of data. Slicing can do the same job. The difference is the type of the result. A slice returns the sequence type you sliced. A starred target always receives a list.
+
+```
+>>> for all in [(1, 2, 3, 4), (5, 6, 7, 8)]:    # Manual slicing version
+...     a, b, c = all[0], all[1:-1], all[-1]
+...     print(a, b, c)
+1 (2, 3) 4
+5 (6, 7) 8
+```
+
+Every starred-target form works in a `for`, as it does in `=` assignment. That includes nested sequences, indexes, and slices. Code this intricate is rare, though.
+
+```
+>>> L, M = [1, 2], [3, 4]
+>>> pairs = [[(5, 6), (7, 8), (9, 10)]] * 2
+>>> for [(a, *X), (b, *L[0]), (c, *M[:0])] in pairs:
+...     print(f'<{a=} {X=}> <{b=} {L=}> <{c=} {M=}>')
+<a=5 X=[6]> <b=7 L=[[8], 2]> <c=9 M=[10, 3, 4]>
+<a=5 X=[6]> <b=7 L=[[8], 2]> <c=9 M=[10, 10, 3, 4]>
+```
+
+#### Nested for loops
+
+The next loops are a bit more involved. The first shows nested `for` loops. The inner loop runs for every iteration of the outer loop. The `+` in the inner loop combines the current items from both loops.
+
+```
+>>> for x in 'abc':                          # For each item in one string
+...     for y in '123':                      # And for each item in another string
+...         print(x + y, end=' ')           # Concatenate current items from both
+a1 a2 a3 b1 b2 b3 c1 c2 c3
+```
+
+The next example adds a third level of nesting and a loop `else`. Given a list of objects, `items`, and a list of keys, `tests`, it searches for each key and reports the result.
+
+```
+>>> items = ['aaa', 111, (4, 5), 2.01]       # A list of objects
+>>> tests = [(4, 5), 3.14]                   # Keys to search for
+>>>
+>>> for key in tests:                        # For all keys
+...     for item in items:                   # For all items
+...         if item == key:                  # Check for match
+...             print(key, 'was found')
+...             break
+...     else:
+...         print(key, 'not found!')
+(4, 5) was found
+3.14 not found!
+```
+
+The `break` runs when a match is found. So if the inner loop's `else` runs, the search failed. Two loops run at the same time here. The outer loop scans the keys, and the inner loop scans the items for each key. The inner `else` lines up with the inner `for` header, so it belongs to that loop. It does not belong to the `if` or the outer loop.
+
+The `in` operator can simplify this. It scans an object for a match, so it replaces the inner loop.
+
+```
+>>> for key in tests:                        # For all keys
+...     if key in items:                     # Let Python check for a match
+...         print(key, 'was found')
+...     else:
+...         print(key, 'not found!')
+(4, 5) was found
+3.14 not found!
+```
+
+In general, let Python do as much of the work as it can. That helps both brevity and performance.
+
+The final example builds a list as it goes, for later use. It collects the common items in two sequences. This is nearly an intersection, unless the sequences contain duplicate values. After the loop, `res` refers to a list of every item found in both `seq1` and `seq2`.
+
+```
+>>> seq1 = 'trippy'
+>>> seq2 = 'python'
+>>>
+>>> res = []                                 # Start empty
+>>> for x in seq1:                           # Scan first sequence
+...     if x in seq2:                        # Common item?
+...         res.append(x)                    # Add to result end
+>>> res
+['t', 'p', 'p', 'y']
+```
+
+This code works only on the two specific variables, `seq1` and `seq2`. It would be better as a tool you can use again and again. That idea leads to functions, which come later.
+
+Python also has sets. The `&` operator on sets gives a real intersection. The catch is that order is lost, duplicates vanish, and you need extra conversions to line things up.
+
+```
+>>> list(set(seq1) & set(seq2))              # Real intersection with sets
+['p', 'y', 't']
+```
+
+The loop above is also a classic list comprehension pattern. It collects a results list with an iteration and an optional filter test. A comprehension can express that more concisely.
+
+```
+>>> [x for x in seq1 if x in seq2]           # Let Python collect results
+['t', 'p', 'p', 'y']
+```
+
+Comprehensions get a full treatment later in this handbook.
+
+## Loop coding techniques
+
+The `for` loop covers most counter-style loops. It is simpler to write and often quicker to run than a `while`. So reach for `for` first whenever you need to step through a sequence or another iterable. Python programmers should avoid counting by hand when they can. Its iteration tools handle much of the bookkeeping that lower-level languages like C leave to you.
+
+Some jobs need more specialized iteration. You might visit every second or third item, or change a list along the way. You might walk two sequences in parallel, or need the indexes too. You can always handle these with a `while` loop and manual indexing. Python also provides built-ins that let a `for` loop handle them.
+
+- The built-in `range` function produces a series of successively higher integers. You can use them as indexes in a `for`.
+- The built-in `zip` function returns a series of parallel-item tuples. You can use them to traverse multiple sequences in a `for`.
+- The built-in `enumerate` function generates both the values and the indexes of items. You do not need to count manually.
+
+Because `for` loops often run faster than counter-based `while` loops, use these tools whenever you can. Each one below has a common role. Some loop-coding alternatives are better than others.
+
+### Counter loops with range
+
+The `range` function is a general tool. You can call it anywhere you need a series of integers, not only for indexes. It generates items on demand. So you wrap it in `list` to display all of its results at once in the REPL. Its results support some sequence operations, but not all.
+
+```
+>>> list(range(5)), list(range(2, 5)), list(range(0, 10, 2))
+([0, 1, 2, 3, 4], [2, 3, 4], [0, 2, 4, 6, 8])
+>>> range(5)[2], range(5)[1:3], list(range(5)) + [6, 7]
+(2, range(1, 3), [0, 1, 2, 3, 4, 6, 7])
+>>> range(5) + [6, 7]
+TypeError: unsupported operand type(s) for +: 'range' and 'list'
+```
+
+With one argument, `range` generates integers from zero up to, but not including, that value. With two arguments, the first is the lower bound. An optional third argument sets a step, which defaults to +1. A range can also be negative or count downward.
+
+```
+>>> list(range(-5, 5))
+[-5, -4, -3, -2, -1, 0, 1, 2, 3, 4]
+>>> list(range(5, -5, -1))
+[5, 4, 3, 2, 1, 0, -1, -2, -3, -4]
+```
+
+Python 2 had an optimized built-in named `xrange`. It did not build a full result list in memory. Python 3 later replaced it with the on-demand behavior of `range`. The Python 3 docs then classified `range` as a sequence type, which can be confusing. The upshot is that today's `range` uses little space, because it produces numbers only when asked.
+
+A `range` is handy for repeating an action a set number of times. To print three lines, use `range` to generate the right number of integers.
+
+```
+>>> for i in range(3):
+...     print(i, 'Pythons')
+0 Pythons
+1 Pythons
+2 Pythons
+```
+
+A `for` loop pulls results from `range` automatically, so you do not need a `list` wrapper. In fact, you should not add one. Producing results one at a time takes far less memory than building them all up front.
+
+### Sequence scans with while, range, and for
+
+The `range` function can step through a sequence indirectly. It is often not the best approach for that job. The easiest and fastest way to visit every item is a simple `for`. Python handles most of the details in quick internal code.
+
+```
+>>> X = 'hack'
+>>> for item in X: print(item, end=' ')      # Automatic iteration with for
+h a c k
+```
+
+The `for` loop manages the iteration on its own. If you need to take over the indexing yourself, a `while` loop does it.
+
+```
+>>> i = 0
+>>> while i < len(X):                        # Manual iteration with while
+...     print(X[i], end=' ')
+...     i += 1
+h a c k
+>>> i = -1
+>>> while (i := i + 1) < len(X):             # Manual, but with := operator
+...     print(X[i], end=' ')
+h a c k
+```
+
+You can also index by hand with a `for`, using `range` to produce indexes. It takes several steps. You ask for the `range` of the subject's `len`. That gives you offsets, not the items at those offsets.
+
+```
+>>> X
+'hack'
+>>> len(X)                                   # Length of string
+4
+>>> list(range(len(X)))                      # All legal offsets into X
+[0, 1, 2, 3]
+>>>
+>>> for i in range(len(X)): print(X[i], end=' ')    # Manual range/len iteration
+h a c k
+```
+
+Because this loop walks offsets, not items, it must index back into `X` to fetch each item. If that feels like overkill, it is. This example has no real need for it.
+
+The `range` and `len` combination has its uses. It is still rarely the best option. It can run slower, and it needs more code. Unless you have a special indexing need, use the simple `for` form.
+
+```
+>>> for item in X: print(item, end=' ')      # Use auto iteration if you can
+```
+
+As a rule of thumb, prefer `for` over `while` when you can. Keep `range` calls in `for` loops for the rare cases where nothing else fits. The simple form usually wins. Rules of thumb have exceptions, and the next section shows one.
+
+### Sequence shufflers with range and len
+
+The `range` and `len` pattern is not ideal for simple scans. It does allow more specialized traversals, though. Some algorithms reorder sequences. They generate alternatives in searches, or test the effect of different value orders. These jobs need offsets to pull a sequence apart and put it back together. In the code below, `range` gives a repeat count in the first loop and a position for slicing in the second.
+
+```
+>>> S = 'hack'
+>>> for i in range(len(S)):                  # For repeat counts 0..3
+...     S = S[1:] + S[:1]                    # Move front item to end
+...     print(S, end=' ')
+ackh ckha khac hack
+>>> S
+'hack'
+>>> for i in range(len(S)):                  # For positions 0..3
+...     X = S[i:] + S[:i]                    # Rear part + front part
+...     print(X, end=' ')
+hack ackh ckha khac
+```
+
+Trace these one iteration at a time if they seem confusing. The second loop creates the same results as the first, in a different order. It does not change the original variable as it goes. Both loops slice to get the parts they concatenate. So they work on any sequence type. Shuffling a list gives you reordered lists.
+
+```
+>>> L = [1, 2, 3, 4]
+>>> for i in range(len(L)):
+...     X = L[i:] + L[:i]                    # Works on any sequence type
+...     print(X, end=' ')
+[1, 2, 3, 4] [2, 3, 4, 1] [3, 4, 1, 2] [4, 1, 2, 3]
+```
+
+The results of `range` itself do not work here. They are not true sequences.
+
+```
+>>> L = range(4)
+>>> …same code as prior example…
+TypeError: unsupported operand type(s) for +: 'range' and 'range'
+```
+
+You will use code like this to test functions with different argument orders. The same idea extends to generators and full permutations. It is a widely useful tool.
+
+### Skipping items with range and slices
+
+The previous section showed one valid use of the `range` and `len` combination. You can also use it to skip items as you go.
+
+```
+>>> S = 'abcdefghijk'
+>>> list(range(0, len(S), 2))
+[0, 2, 4, 6, 8, 10]
+>>> for i in range(0, len(S), 2): print(S[i], end=' ')
+a c e g i k
+```
+
+This visits every second item in `S`, walking the offsets that `range` generates. For every third item, set the third argument to `3`. With `range`, you can skip items and still keep the simplicity of the `for` statement.
+
+In most cases, though, this is not the best practice in Python today. If you mean to skip items, the extended three-limit form of the slice expression is simpler. To visit every second character in `S`, slice with a stride of 2.
+
+```
+>>> S = 'abcdefghijk'
+>>> for c in S[::2]: print(c, end=' ')
+a c e g i k
+```
+
+The result is the same, and the slice is much easier to write and read. The one advantage of `range` here is space. Slicing makes a copy of the string, while `range` does not. For very large strings, that can save significant memory. Whether your program needs to care depends on what it does.
+
+### Changing lists with range and comprehensions
+
+Another place where you may use `range` with `len` is a loop that changes a list while it traverses the list. Suppose you need to add 1 to every item, such as when you update ages at year end. A simple `for` loop may not do what you expect.
+
+```
+>>> L = [10, 20, 30, 40, 50]
+>>> for x in L:
+...     x += 1                               # Changes x, not L!
+>>> L                                        # L's objects unchanged
+[10, 20, 30, 40, 50]
+>>> x                                        # x is not a cursor into L
+51
+```
+
+This does not work as hoped. The loop variable `x` changes, while the list `L` stays put. The explanation takes a little thought. On each pass, `x` refers to the next integer pulled out of the list. Adding to `x` with `+=` sets `x` to a different object. The list still holds the original value. The new value lives in separate memory, not in the list.
+
+To change the list as you march across it, use indexes. Then you can assign an updated value to each position. `range` and `len` produce the indexes for you.
+
+```
+>>> L = [10, 20, 30, 40, 50]
+>>> for i in range(len(L)):                  # Add one to each item in L
+...     L[i] += 1                            # Or L[i] = L[i] + 1
+>>> L
+[11, 21, 31, 41, 51]
+```
+
+The list changes as the loop proceeds. A simple `for x in L` cannot do this, because it iterates through actual items, not their positions. What about the equivalent `while` loop? It needs more work from you. It may also run more slowly, depending on your Python and your device.
+
+```
+>>> i = 0
+>>> while i < len(L):                        # And similar with := assignment
+...     L[i] += 1
+...     i += 1
+>>> L
+[12, 22, 32, 42, 52]
+```
+
+The `range` solution may not be ideal either. A list comprehension likely runs faster today, and it does similar work. It does not change the original list in place, though. You could assign its new list back to `L`, but that would not update other references to the original list.
+
+```
+>>> [x + 1 for x in L]
+[13, 23, 33, 43, 53]
+```
+
+Comprehensions get a full treatment later in this handbook.
+
+### Parallel traversals with zip
+
+The `range` function lets a `for` walk sequences without covering all of them. The built-in `zip` function lets a `for` visit multiple sequences in parallel. The sequences are not visited at the same moment. They are walked during the same loop. `zip` takes one or more sequences or other iterables. It returns tuples that pair up the items at the same positions.
+
+Suppose you have two lists of data that pair up by position.
+
+```
+>>> L1 = [1, 2, 3, 4]
+>>> L2 = [5, 6, 7, 8]
+```
+
+`zip` is also an iterable, so you must wrap it in `list` to collect and display all of its results at once.
+
+```
+>>> zip(L1, L2)                              # An iterable that generates pairs
+<zip object at 0x026523C8>
+>>> list(zip(L1, L2))                        # list() required to see all results
+[(1, 5), (2, 6), (3, 7), (4, 8)]
+```
+
+Paired with `for`, `zip` supports parallel iteration.
+
+```
+>>> for (x, y) in zip(L1, L2):
+...     print(f'{x} + {y} => {x + y}')
+1 + 5 => 6
+2 + 6 => 8
+3 + 7 => 10
+4 + 8 => 12
+```
+
+The loop steps over the pairs that `zip` pulls from the two lists. It uses tuple assignment to unpack each pair. The first time through, it acts like `(x, y) = (1, 5)`, and so on. So the loop scans both `L1` and `L2` at once.
+
+A `while` loop with manual indexing gives the same output. It needs noticeably more code. So it likely runs slower than the `for` and `zip` version.
+
+```
+>>> i = -1
+>>> while (i := i + 1) < len(L1):
+...     print(f'{L1[i]} + {L2[i]} => {L1[i] + L2[i]}')
+```
+
+Memory is no better with `while`. `zip` makes just one pair per loop, so it does not consume memory needlessly. The bigger difference is that this `while` version is not truly equivalent to `zip`. The next section explains why.
+
+### More on zip: size and truncation
+
+The `zip` function is more general than the last example suggests. It accepts any iterable object, including `range` results and input files.
+
+```
+>>> list(zip(range(4), 'hack'))
+[(0, 'h'), (1, 'a'), (2, 'c'), (3, 'k')]
+```
+
+`zip` is not limited to pairs, either. It accepts any number of arguments, of any size. This example builds a list of three-item tuples from three arguments. It takes items column by column.
+
+```
+>>> T1, T2, T3 = (1, 2, 3), (4, 5, 6), (7, 8, 9)
+>>> T3
+(7, 8, 9)
+>>> list(zip(T1, T2, T3))                    # 3 args of 3 vals => 3 3-item tuples
+[(1, 4, 7), (2, 5, 8), (3, 6, 9)]
+```
+
+Formally, for N arguments that each contain M items, `zip` gives an M-long series of N-item tuples.
+
+```
+>>> list(zip(T1, T2))                        # 2 args of 3 vals => 3 2-item tuples
+[(1, 4), (2, 5), (3, 6)]
+```
+
+When argument lengths differ, `zip` truncates the results at the length of the shortest sequence. The next example zips two strings to pick out characters in parallel. The result has only as many tuples as the shortest string has items.
+
+```
+>>> S1 = 'abc'
+>>> S2 = 'xyz123'
+>>>
+>>> list(zip(S1, S2))                        # Truncates at len(shortest)
+[('a', 'x'), ('b', 'y'), ('c', 'z')]
+```
+
+Formally, the count is the minimum of the arguments' lengths. To pad the results instead of truncating them, you must write loop code that pads them yourself. A later section shows how, once more iteration concepts are in place.
+
+### More zip roles: dictionaries
+
+Parallel traversals with `zip` also help build dictionaries. You can make a dictionary by calling `dict`, by assigning keys over time, or with a literal.
+
+```
+>>> D1 = {'app': 1, 'script': 3, 'program': 5}     # Or dict(key=value,…)
+>>> D1
+{'app': 1, 'script': 3, 'program': 5}
+```
+
+What if your program gets keys and values only at run time? A user, a file, or another dynamic source might supply them.
+
+```
+>>> keys = ['app', 'script', 'program']
+>>> vals = [1, 3, 5]
+```
+
+One way to build a dictionary from these is to `zip` the lists. Then step through them in parallel with a `for` loop.
+
+```
+>>> list(zip(keys, vals))
+[('app', 1), ('script', 3), ('program', 5)]
+>>> D2 = {}
+>>> for (k, v) in zip(keys, vals): D2[k] = v
+>>> D2
+{'app': 1, 'script': 3, 'program': 5}
+```
+
+You can skip the `for` loop in this case. Pass the zipped keys and values to the built-in `dict` constructor.
+
+```
+>>> D3 = dict(zip(keys, vals))
+>>> D3
+{'app': 1, 'script': 3, 'program': 5}
+```
+
+The name `dict` is really a type name. Calling it constructs a dictionary, and here it also converts the pairs into one. Dictionary comprehensions are another option for zipped key and value pairs. They are an alternative to both the `for` statement and `dict`.
+
+```
+>>> {k: v for (k, v) in zip(keys, vals)}
+{'app': 1, 'script': 3, 'program': 5}
+```
+
+### Offsets and items with enumerate
+
+The `range` function gives offsets, not the items at those offsets. Sometimes you need both. You need the item to use, plus its offset as you go. You can code this with a `for` loop that keeps a counter of the current offset.
+
+```
+>>> S = 'hack'
+>>> offset = 0
+>>> for item in S:
+...     print(item, 'appears at offset', offset)
+...     offset += 1
+h appears at offset 0
+a appears at offset 1
+c appears at offset 2
+k appears at offset 3
+```
+
+This works, but Python has a built-in named `enumerate` that does the job for you. It gives a loop a counter for free. You keep the simplicity of automatic iteration.
+
+```
+>>> S = 'hack'
+>>> for (offset, item) in enumerate(S):
+...     print(item, 'appears at offset', offset)
+h appears at offset 0
+a appears at offset 1
+c appears at offset 2
+k appears at offset 3
+```
+
+The result of `enumerate` is an iterable. It supports the iteration protocol, which is covered later. In short, it has a method that the `next` built-in calls. Each call returns an `(index, value)` tuple. The `for` loop steps through these tuples and unpacks them, just as it did with `zip`.
+
+```
+>>> E = enumerate(S)
+>>> E
+<enumerate object at 0x10ebd7880>
+>>> next(E)
+(0, 'h')
+>>> next(E)
+(1, 'a')
+>>> next(E)
+(2, 'c')
+```
+
+You rarely see this machinery, because every iteration context runs the protocol automatically. That includes list comprehensions.
+
+```
+>>> [c * i for (i, c) in enumerate(S)]
+['', 'a', 'cc', 'kkk']
+>>> for (ix, line) in enumerate(open('data.txt')):
+...     print(f'{ix}) {line.rstrip()}')
+0) Testing file IO
+1) Learning Python, 6E
+2) Python 3.12
+```
+
+To fully understand `enumerate` and comprehensions, you need the deeper look that comes later.
+
+## Why you will care: file scanners
+
+Loops show up wherever a job has to run again and again. Text files hold many characters and lines, so they suit loops well. When a file is small enough for memory, the file object's `read` method can pull the whole thing in at once.
+
+```
+file = open('data.txt')       # Read contents into a string all at once
+print(file.read())
+```
+
+For more granular access, scan by characters. The second option below does not load the whole file. It also uses the `:=` named assignment from earlier.
+
+```
+for char in open('data.txt').read():
+    print(char, end='')
+file = open('data.txt')
+while char := file.read(1):   # Read by character, empty means end-of-file
+    print(char, end='')       # Don't add a \n after each character
+```
+
+To read by lines or blocks instead, use `while` loops like these. Binary data is often read by blocks in binary mode, `'rb'`. Text should use text mode, so character bytes are not split.
+
+```
+file = open('data.txt')
+while line := file.readline():     # Read line by line
+    print(line.rstrip())           # Line already has a \n newline
+file = open('data.txt')
+while chunk := file.read(10):      # Read block by block: up to 10 characters
+    print(chunk, end='')           # Keep but don't add newlines
+```
+
+To read text files by line, though, the `for` loop is usually easiest to write. It may also run fastest.
+
+```
+for line in open('data.txt').readlines():
+    print(line.rstrip())
+for line in open('data.txt'):      # Use iterators: best for text input (maybe)
+    print(line.rstrip())
+```
+
+The first version calls the file `readlines` method. It loads the whole file into a list of line strings. The second relies on file iterators, which read one line on each pass. The second version is generally best for text. It is simple, and it works for very large files, because it never loads the entire file into memory. Speed can vary by Python release, so time your code if it matters.
+
+The `readlines` call still has uses. To reverse a file's lines, for example, the file's contents must fit in memory. The `reversed` built-in works on sequences. It does not accept iterables that generate values. `sorted` does accept them. So it can order all the lines in a file without loading the whole file.
+
+```
+for line in reversed(open('data.txt').readlines()):
+    print(line.rstrip())
+for line in sorted(open('data.txt')):
+    print(line.rstrip())
+```
+
+Python's documentation covers the file calls used here. It also covers `os.popen`. By default, that returns a file object connected to a shell command's output, and that file object supports the same kind of loops.
+
 ## Checkpoint questions
 
 <details>
@@ -1189,7 +2795,69 @@ Sequence assignment normally needs exactly as many targets as items, so two targ
 Named assignment expressions accept only a simple name on the left. A subscript such as `python[0]` is a data structure component, and named assignment does not allow it. The expression `(python := 3.12) + 0.01` assigns the name and returns the value for the addition.
 </details>
 
+<details>
+<summary>7. How might you code a multiple-choice branch in Python?</summary>
+
+An `if` statement with several `elif` clauses is often the most straightforward way. It is not always the most concise or flexible. Dictionary indexing can get the same result, especially when the dictionary holds functions written with `def` or `lambda`. Since Python 3.10, the `match` statement gives explicit syntax for multiple-choice selection. It works well for basic roles. It cannot handle logic as general as an `if` statement can.
+</details>
+
+<details>
+<summary>8. How can you code an `if`/`else` statement as an expression?</summary>
+
+The expression `Y if X else Z` returns `Y` when `X` is true, and `Z` otherwise. It does the same job as a four-line `if` statement. It works well in limited contexts, but it cannot hold actions as rich as a full `if` statement, and it can produce code that is hard to read. The `and`/`or` combination, `((X and Y) or Z)`, works too. It is more obscure, and it requires that `Y` be true.
+</details>
+
+<details>
+<summary>9. How can you make a single statement span many lines?</summary>
+
+Wrap part of the statement in an open pair, `()`, `[]`, or `{}`. The statement continues until Python reaches the closing half of the pair. Lines after the first can start at any indentation level. Backslash continuations also work, but they are broadly discouraged.
+</details>
+
+<details>
+<summary>10. What do the words `True` and `False` mean?</summary>
+
+`True` and `False` are custom versions of the integers `1` and `0`. They stand for Boolean true and false values. You can use them in truth tests and variable initialization. Python prints them for expression results at the interactive prompt. They are a more readable alternative to `1` and `0` in these roles.
+</details>
+
+<details>
+<summary>11. What does "short-circuiting" mean, and where does it crop up?</summary>
+
+Short-circuiting happens when Python stops evaluating an expression early, because the result is already known. It comes up in `and` and `or` expressions. Those run their right side only if the left side does not settle the result. It also comes up in the `if`/`else` ternary expression, which runs only its true part or its false part, depending on the test.
+</details>
+
+<details>
+<summary>12. What are the main functional differences between `while` and `for` loops?</summary>
+
+The `while` loop is a general looping statement. It repeats as long as a test stays true. The `for` loop is built to step automatically through the items of a sequence or other iterable. A `while` loop can imitate a counter-based `for`, but that takes more code and may run more slowly.
+</details>
+
+<details>
+<summary>13. What is the difference between `break` and `continue`?</summary>
+
+The `break` statement exits the loop immediately, so control moves to the code below the whole loop statement. The `continue` statement jumps back to the top of the loop. In a `while` loop, control then goes to the test. In a `for` loop, control moves on to fetch the next item.
+</details>
+
+<details>
+<summary>14. When is a loop's `else` clause executed?</summary>
+
+The `else` clause runs once as the loop exits, but only if the loop ends normally. That happens when a `while` test turns false, or when a `for` loop runs out of items. If a `break` ends the loop, the `else` is skipped.
+</details>
+
+<details>
+<summary>15. How can you code a counter-based loop in Python?</summary>
+
+You can keep a counter by hand in a `while` loop, or use a `for` loop with `range` to generate successive integer offsets. Neither is the preferred style when you only need to visit each item in a sequence. Use a simple `for` loop without `range` or a counter whenever possible. It is easier to write and usually quicker to run.
+</details>
+
+<details>
+<summary>16. What can a `range` be used for in a `for` loop?</summary>
+
+A `range` can repeat an action a fixed number of times, scan by offsets instead of items, and skip successive items as you go. It can also let you change a list while you step across it. None of these roles strictly requires `range`. Scanning items directly, three-limit slices, and list comprehensions are often better choices today.
+</details>
+
 ## Sources and review notes
 
 - Source: *Learning Python*, 6th edition (`learning-python-6th-edition`). Chapters used are listed in each section.
 - Chapter used: Chapter 11, "Assignments, Expressions, and Prints" (`learning-python-6th-edition`).
+- Chapter used: Chapter 12, "if and match Selections" (`learning-python-6th-edition`).
+- Chapter used: Chapter 13, "while and for Loops" (`learning-python-6th-edition`).

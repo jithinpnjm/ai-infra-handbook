@@ -22,25 +22,31 @@ lab_venue: "Mac"
 
 ## Why this matters for AI infrastructure
 
-Infrastructure scripts grow into software: a Redfish client with a session and retry policy, a Slurm wrapper with typed job records, a provider interface hiding GCP, AWS and on-prem differences, a configuration model validated from YAML, an exporter holding metric state. Object-oriented design, data classes, and type hints are how that growth stays maintainable: they make state explicit, interfaces enforceable and errors catchable before production. Modern Python also leans on typing at runtime (pydantic models validate API input, FastAPI builds documentation from annotations, dataclasses generate boilerplate), so understanding the machinery matters. This chapter covers classes and the object model, inheritance and composition, data class builders (`namedtuple`, `NamedTuple`, `dataclass`, `attrs`, pydantic), type hints and static checking (`mypy`, `pyright`), protocols and ABCs, generics, operator overloading, and design guidance for infrastructure code.
+Picture a small script that grows over a few months. First it gains a Redfish client with a session and a retry policy. Then it gains a Slurm wrapper with typed job records, a provider interface that hides GCP, AWS and on-prem differences, a configuration model validated from YAML, and an exporter that holds metric state. At that point it is no longer a script. It is software, and it needs the same care.
+
+Object-oriented design, data classes and type hints are what keep that software maintainable. They make state explicit. They make interfaces enforceable. They catch errors before the code reaches production. Modern Python also relies on types at runtime. pydantic models validate API input, FastAPI builds documentation from annotations, and dataclasses generate boilerplate, so you need to understand how that machinery works.
+
+This chapter covers classes and the object model, inheritance and composition, and the data class builders `namedtuple`, `NamedTuple`, `dataclass`, attrs and pydantic. It then moves on to type hints and static checking with mypy and pyright, protocols and ABCs, generics, operator overloading, and design guidance for infrastructure code.
 
 ## Prerequisites and outcomes
 
-You should know functions and the data model (chapters 3.1 and 3.3).
+Before you start, you should know functions and the data model from chapters 3.1 and 3.3.
 
-After this chapter you can:
+By the end of this chapter, you will be able to:
 
-- Write classes with instance and class attributes, methods, `@classmethod`, `@staticmethod`, `@property`, `__slots__`, and explain attribute lookup and bound methods.
-- Use inheritance (single and multiple), `super()`, the MRO (C3), mixins, and know when to prefer composition; design abstract interfaces with `abc.ABC` and `typing.Protocol`.
-- Build data classes with `namedtuple`/`NamedTuple`, `@dataclass` (fields, defaults, `field(default_factory=...)`, `frozen`, `slots`, `kw_only`, `__post_init__`, ordering), `attrs`, and pydantic; choose among them.
-- Add type hints to functions, variables and classes; use `Optional`/`|`, `list[str]`, `dict[str, int]`, `Callable`, `TypedDict`, `Literal`, `Final`, `Annotated`, `TypeVar`, generics, `ParamSpec`, `overload`, `Self`; run mypy/pyright in CI and configure strictness.
-- Implement operator overloading and rich comparisons properly (`total_ordering`, NotImplemented).
-- Validate configuration and API data with pydantic; manage secrets and settings.
-- Apply design principles: composition over inheritance, dependency injection, small interfaces, immutability, explicit errors.
+- Write classes with instance and class attributes, methods, `@classmethod`, `@staticmethod`, `@property` and `__slots__`, and explain attribute lookup and bound methods.
+- Use single and multiple inheritance, `super()`, the MRO (C3) and mixins, and know when composition is the better choice. Design abstract interfaces with `abc.ABC` and `typing.Protocol`.
+- Build data classes with `namedtuple`, `NamedTuple`, `@dataclass` (fields, defaults, `field(default_factory=...)`, `frozen`, `slots`, `kw_only`, `__post_init__` and ordering), `attrs` and pydantic, and choose among them.
+- Add type hints to functions, variables and classes. Use `Optional` and `|`, `list[str]`, `dict[str, int]`, `Callable`, `TypedDict`, `Literal`, `Final`, `Annotated`, `TypeVar`, generics, `ParamSpec`, `overload` and `Self`. Run mypy and pyright in CI and configure how strict they are.
+- Implement operator overloading and rich comparisons correctly, using `total_ordering` and `NotImplemented`.
+- Validate configuration and API data with pydantic, and manage secrets and settings.
+- Apply design principles such as composition over inheritance, dependency injection, small interfaces, immutability and explicit errors.
 
 ## 1. Classes and objects
 
 ### Class definition and instances
+
+Most infrastructure tools start by modeling one real thing, such as a compute node. A class is the place where you describe that thing once. The example below shows the parts a class can hold, and each part has its own job.
 
 ```python
 class Node:
@@ -79,12 +85,15 @@ class Node:
         return name.isidentifier() or "-" in name
 ```
 
-Key facts:
+The `class` keyword is an executable statement. When Python runs it, it creates a class object, which is an instance of `type`. Calling the class then creates an instance. `__new__` allocates the new object, and `__init__` initializes it.
 
-- `class` is an **executable statement** creating a class object (an instance of `type`). Calling the class creates an instance: `__new__` allocates, `__init__` initialises.
-- `self` is just the conventional name for the instance; methods are functions stored on the class that become **bound methods** when accessed through an instance (`node.drain` is a bound method object carrying `node`).
-- **Attribute lookup (`object.attr`) and inheritance search**: every `object.attr` expression triggers a bottom-up search of a tree of linked namespace objects—looking first in the **instance** object (`self`, via `self.__dict__`), then in its **class** (`self.__class__`), and then in all higher **superclasses** in the class tree from bottom to top and left to right (linearised as `self.__class__.__mro__`), returning the first `attr` found (with data descriptors such as `@property` or `__slots__` on the class taking precedence over the instance `__dict__`, and `__getattr__` called as a fallback if nothing is found). Because lower definitions in the tree are found first, subclasses override superclass attributes simply by redefining them. Assignment (`obj.attr = v`), by contrast, does not climb the inheritance tree: it writes directly to the target object's namespace (`obj.__dict__`, or invokes a data descriptor setter). Class attributes are shared; assigning via an instance **shadows** rather than modifying them (`node.cluster = "x"` creates an instance attribute on `node`).
-- **Classes are not enclosing (`E`) scopes in LEGB**: while a `class` body executes in its own local namespace dictionary (which becomes the class's attribute dictionary), a `class` statement **never acts as an enclosing (`E`) scope** for `def` methods or nested classes inside it under the `LEGB` rule (lookup is `LEGB`, not `LCEGB`). Unqualified names inside a method skip the enclosing `class` and resolve in enclosing `def` functions, the module global (`G`) scope, or built-ins (`B`). Methods must always qualify class attributes via `self.attr` (inheritance search) or `ClassName.attr`:
+The name `self` is only a convention for the instance. Methods are ordinary functions stored on the class. When you reach one through an instance, Python turns it into a bound method. So `node.drain` is a bound method object that carries `node` along with it.
+
+Four ideas explain the rest of this code. The first is how Python finds an attribute. Every dot expression, such as `object.attr`, starts a search. Python looks first in the instance, through `self.__dict__`. Next it looks in the class, through `self.__class__`. Then it looks in every superclass above that class, from the bottom of the tree upward and from left to right, in the order given by `self.__class__.__mro__`. It returns the first `attr` it finds. A data descriptor, such as a `@property` or a `__slots__` entry on the class, takes precedence over the instance dictionary. If the search finds nothing, Python calls `__getattr__` as a fallback.
+
+Because lower definitions are found first, a subclass overrides a superclass attribute just by defining it again. Assignment works differently. When you write `obj.attr = v`, Python does not climb the tree. It writes directly into the target object's namespace, or it calls a data descriptor's setter. Class attributes are shared, but assigning through an instance shadows them instead of changing them. For example, `node.cluster = "x"` creates an instance attribute on `node`, and `Node.cluster` stays the same.
+
+The second idea concerns scope. A `class` body runs in its own local namespace, and that namespace becomes the class's attribute dictionary. However, a class is not an enclosing scope for the methods inside it. Under the LEGB rule (Local, Enclosing, Global, Built-in), an unqualified name inside a method skips the class entirely. It resolves in enclosing `def` functions, the module's global scope or the built-ins. Methods must therefore reach class attributes through `self.attr` or `ClassName.attr`. Here is the book's `classscope3.py` example, which is untested here:
 
 ```python
 # In the book's classscope3.py example (untested here):
@@ -98,35 +107,46 @@ def nester():
             print(self.X)        # prints 3 (via inheritance on self -> C.X)
 ```
 
-- **Mutable class attributes** (a list or dict at class level) are shared by all instances: a common bug source. Create per-instance mutable state in `__init__`.
-- **Privacy and pseudoprivate name mangling (`__X`, `_Class__name`, `_Class__x`, `LP` Chapter 31 `pseudoprivate.py`)** is by convention: `_name` signals an internal attribute, whereas a double leading underscore `__X` (`__name`) inside a `class` body is **name-mangled** at compile time to `_ClassName__X` (`_Class__name` / `_Class__x`) so two classes in a hierarchy (`class C1: def meth1(self): self.__X = 88` and `class C2: def metha(self): self.__X = 99` combined in `class C3(C1, C2): pass`) can store their own internal attributes on the same `self.__dict__` (`{'_C1__X': 88, '_C2__X': 99}`) without accidentally overwriting each other. It prevents accidental collisions in deep hierarchies, not deliberate access (`I._C1__X` is still readable, just as Java `private` fields can be read via `setAccessible(True)` reflection). Python trusts programmers; document the public API.
-- **Bound vs. unbound method objects (`LP` Chapter 31):** In `class Hack: def doit(self, message): print(message)`, fetching `meth = inst.doit` on an instance returns a **bound method object** that packages both the instance (`meth.__self__ is inst`) and the underlying function (`meth.__func__ is Hack.doit`), so `meth('bonjour')` can be stored in a callback list or passed around like a simple function with `self` already bound. Fetching `Hack.doit` on the class returns the plain function, requiring `Hack.doit(inst, 'privit')`.
-- **The Zen of namespaces (`manynames.py` and `docstr.py`, `LP` Chapter 29):** Where you assign a name determines which namespace it lives in: `X = 11` at the top of a module is module-global (`manynames.X`), `X = 22` inside a function `g()` is local to that call, `X = 33` inside `class C:` is a class attribute (`C.X`, inherited by `I.X`), and `self.X = 55` inside `def m(self):` creates an instance attribute in `I.__dict__['X']` (while `I.__class__` links the instance to `C` and `C.__bases__` holds the tuple of direct superclasses). Docstrings (`__doc__` in `docstr.py`) attach at every layer (`module.__doc__`, `func.__doc__`, `Klass.__doc__`, and `Klass.method.__doc__`) and are rendered together by `help(module)`.
-- **A Pythonic object (`Vector2d` and `ShortVector2d`, `FP` Chapter 11):** In *Fluent Python*'s `Vector2d(3, 4)` (`Examples 11-1` to `11-19`, modeled in `code/part03/python_classes_typing_protocols.py`), a well-crafted domain object combines:
-  1. `__iter__` (`return (i for i in (self.x, self.y))`) so tuple unpacking `x, y = v1` and `tuple(self)` work automatically.
-  2. `__repr__` (`"{}({!r}, {!r})".format(type(self).__name__, *self)`) so `eval(repr(v1)) == v1` works and subclasses inherit the right class name without hardcoding `'Vector2d'`.
-  3. `__bytes__` (`bytes([ord(self.typecode)]) + bytes(array(self.typecode, self))`) and the `@classmethod` alternative constructor `frombytes(cls, octets)` (`typecode = chr(octets[0]); memv = memoryview(octets[1:]).cast(typecode); return cls(*memv)`).
-  4. Custom `__format__(self, fmt_spec='')` extending the Format Specification Mini-Language with a `'p'` suffix for polar coordinates `<r, theta>` (`format(Vector2d(1, 1), '0.5fp') == '<1.41421, 0.78540>'`).
-  5. Hashable immutability: turning `x` and `y` into read-only `@property` getters backed by `self.__x` and `self.__y` and implementing `def __hash__(self): return hash((self.x, self.y))`, plus `__match_args__ = ('x', 'y')` for positional `match` patterns (`case Vector2d(0, 0):`) and `__slots__ = ('__x', '__y')` (which shrinks 10 million `Vector2d` instances in `mem_test.py` from 1.62 GiB to 655 MiB). Because `typecode = 'd'` (8-byte IEEE 754 float) is a class attribute read via `self.typecode`, you can customize an individual instance (`v1.typecode = 'f'`) or subclass `class ShortVector2d(Vector2d): typecode = 'f'` (4-byte float) cleanly.
-- **`@property`** exposes methods as attributes: start with plain attributes and add properties later without changing callers. Use for validation, derived values, lazy computation (`functools.cached_property`), and read-only fields.
-- **`__slots__` and its inheritance rules**: assigning a sequence of attribute name strings to `__slots__` reserves fixed per-instance storage managed by class-level descriptors instead of allocating a per-instance `__dict__` (and `__weakref__`), saving memory when millions of instances exist. However, `__slots__` has strict inheritance rules:
-  - **Every class in the hierarchy must define `__slots__`:** if a subclass defines `__slots__` but a superclass does not (or a superclass defines `__slots__` and a subclass does not), the class without `__slots__` still creates an instance `__dict__` on every instance, negating the memory savings (in the book's example, `class C: pass; class D(C): __slots__ = ['a']` still gives `D()` an instance `__dict__`). Subclasses that add no new attributes must still declare `__slots__ = ()`.
-  - **Do not repeat slot names in subclasses:** instances inherit the union of all `__slots__` along the MRO; repeating a superclass slot name in a subclass hides the superclass slot descriptor and wastes space.
-  - **No class-level defaults of the same name and single non-empty base:** because each slot name is a class-level descriptor on the class, assigning a class attribute with the same name (`class C: __slots__ = ['a']; a = 99`) raises `ValueError: 'a' in __slots__ conflicts with class variable`. In multiple inheritance, at most one base class may have a non-empty `__slots__` (mixing two classes with non-empty `__slots__` raises `TypeError: multiple bases have instance lay-out conflict`; mixins should use `__slots__ = ()`).
-  - **Generic attribute inspection:** because slotted instances lack `__dict__` (unless `'__dict__'` is explicitly included in `__slots__`) and `obj.__slots__` shows only the lowest class's list rather than the union across superclasses, generic tools should use `dir(obj)` and `getattr(obj, name)` rather than indexing `obj.__dict__`.
-- **`__init__` must not do heavy IO** (network calls, file reads) when avoidable: prefer explicit factory classmethods or lazy connection, so objects are cheap to construct and test.
+In `method1`, `print(X)` prints 2 because the method finds `X` in `nester`'s scope. The class attribute with the value 3 is invisible to that lookup. `print(self.X)` prints 3, because the lookup goes through `self` and the inheritance search reaches `C.X`.
+
+The third idea is the mutable class attribute. A list or dict defined at class level is shared by every instance, so changing it through one instance changes it for all of them. This is a common source of bugs. Create per-instance mutable state in `__init__` instead.
+
+The fourth idea is name mangling, which is Python's way of avoiding accidental collisions between subclasses. Mangled names take the form `_Class__name` and `_Class__x`. A single leading underscore, as in `_name`, is only a convention that marks an attribute as internal. A double leading underscore, as in `__X`, does more. Inside a `class` body, the compiler rewrites `__X` to `_ClassName__X`. This is the Learning Python Chapter 31 example, `pseudoprivate.py`. The class `C1` sets `self.__X = 88` in `meth1`, and the class `C2` sets `self.__X = 99` in `metha`. When `class C3(C1, C2): pass` combines them, the object's dictionary holds `{'_C1__X': 88, '_C2__X': 99}`. Both values survive because the names differ. Mangling prevents collisions in deep hierarchies, but it does not prevent deliberate access. `I._C1__X` is still readable, much as Java `private` fields can be read through `setAccessible(True)` reflection. Python trusts programmers, so you document the public API and leave the rest to convention.
+
+Bound methods come from the same model. Take `class Hack: def doit(self, message): print(message)`. Fetching `meth = inst.doit` returns a bound method object. That object holds the instance, which `meth.__self__ is inst` confirms, and the function, which `meth.__func__ is Hack.doit` confirms. So `meth('bonjour')` works like a plain function with `self` already filled in. You can store it in a callback list or pass it around. Fetching `Hack.doit` through the class returns the plain function instead. You then have to pass the instance yourself, as in `Hack.doit(inst, 'privit')`.
+
+Where you assign a name decides which namespace holds it. This is the Learning Python Chapter 29 example, with `manynames.py` and `docstr.py`. `X = 11` at the top of a module creates a module global, `manynames.X`. `X = 22` inside a function `g()` is local to that call. `X = 33` inside `class C:` becomes a class attribute, `C.X`, which `I.X` inherits. `self.X = 55` inside `def m(self):` creates an instance attribute in `I.__dict__['X']`. The instance links to its class through `I.__class__`, and `C.__bases__` holds the direct superclasses. Docstrings attach at every layer, as `module.__doc__`, `func.__doc__`, `Klass.__doc__` and `Klass.method.__doc__`, and `help(module)` shows them together.
+
+A well-built domain object combines several features. The Fluent Python Chapter 11 example, `Vector2d(3, 4)` (`Examples 11-1` to `11-19`), is modeled in `code/part03/python_classes_typing_protocols.py`. It shows five habits worth copying:
+
+1. `__iter__` returns `(i for i in (self.x, self.y))`, so tuple unpacking such as `x, y = v1` and `tuple(self)` work automatically.
+2. `__repr__` uses `"{}({!r}, {!r})".format(type(self).__name__, *self)`. That makes `eval(repr(v1)) == v1` hold, and subclasses inherit the right class name without hardcoding `'Vector2d'`.
+3. `__bytes__` returns `bytes([ord(self.typecode)]) + bytes(array(self.typecode, self))`. The `@classmethod` alternative constructor `frombytes(cls, octets)` reverses it with `typecode = chr(octets[0]); memv = memoryview(octets[1:]).cast(typecode); return cls(*memv)`.
+4. A custom `__format__(self, fmt_spec='')` extends the Format Specification Mini-Language with a `'p'` suffix for polar coordinates `<r, theta>`. So `format(Vector2d(1, 1), '0.5fp') == '<1.41421, 0.78540>'`.
+5. The object is hashable and immutable. Read-only `@property` getters are backed by `self.__x` and `self.__y`, and `def __hash__(self): return hash((self.x, self.y))` supplies the hash. `__match_args__ = ('x', 'y')` allows positional `match` patterns such as `case Vector2d(0, 0):`. The `__slots__ = ('__x', '__y')` declaration shrinks 10 million `Vector2d` instances in `mem_test.py` from 1.62 GiB to 655 MiB. Because `typecode = 'd'` (an 8-byte IEEE 754 float) is a class attribute read through `self.typecode`, you can change one instance with `v1.typecode = 'f'`, or subclass with `class ShortVector2d(Vector2d): typecode = 'f'` (a 4-byte float).
+
+A `@property` makes a method look like an attribute. Start with plain attributes, and add a property later without changing the callers. Properties suit validation, derived values, lazy computation through `functools.cached_property`, and read-only fields.
+
+`__slots__` is the feature that saves memory when millions of instances exist. Assigning a sequence of attribute names to `__slots__` reserves fixed storage for each instance. Class-level descriptors manage that storage, so no per-instance `__dict__` is allocated, and no `__weakref__` either. The saving comes with strict inheritance rules, and breaking them quietly brings the memory cost back:
+
+1. Every class in the hierarchy must define `__slots__`. If a subclass defines it but its superclass does not, the superclass still creates an instance `__dict__` on every object. In the book's example, `class C: pass; class D(C): __slots__ = ['a']` still gives `D()` an instance `__dict__`. A subclass that adds no new attributes must still declare `__slots__ = ()`.
+2. Do not repeat slot names in subclasses. Instances inherit the union of all `__slots__` along the MRO. Repeating a superclass slot name hides the superclass slot descriptor and wastes space.
+3. A slot name cannot also have a class-level default of the same name. `class C: __slots__ = ['a']; a = 99` raises `ValueError: 'a' in __slots__ conflicts with class variable`. Under multiple inheritance, at most one base may have a non-empty `__slots__`. Mixing two such classes raises `TypeError: multiple bases have instance lay-out conflict`, so mixins should use `__slots__ = ()`.
+4. Slotted instances have no `__dict__`, unless `'__dict__'` is listed in `__slots__`. Also, `obj.__slots__` shows only the lowest class's list, not the union across superclasses. Generic tools should therefore use `dir(obj)` and `getattr(obj, name)` instead of indexing `obj.__dict__`.
+
+Keep `__init__` cheap. Avoid heavy IO there, such as network calls or file reads, when you can. Use an explicit factory classmethod or a lazy connection instead. Objects that are cheap to construct are also easier to test.
 
 ### Object lifecycle and identity
 
-`__new__` (rarely overridden; used for singletons, immutables), `__init__`, `__del__` (avoid), `__enter__/__exit__` for deterministic cleanup. Equality and hashing by value need explicit methods (or dataclasses). `copy.copy(obj)` and `copy.deepcopy(obj)` customise via `__copy__`/`__deepcopy__`. Pickling (`pickle`, `__getstate__`) is unsafe for untrusted data and brittle across versions: serialise to JSON/YAML/protobuf instead.
+`__new__` is rarely overridden, though it is used for singletons and immutable types. `__init__` sets up each instance. Avoid `__del__`. For deterministic cleanup, use `__enter__/__exit__`. Equality and hashing by value need explicit methods, or you can get them from dataclasses. `copy.copy(obj)` and `copy.deepcopy(obj)` can be customized through `__copy__` and `__deepcopy__`. Be careful with pickling. The `pickle` module, along with `__getstate__`, is unsafe for untrusted data and breaks easily across versions. Serialize to JSON, YAML or protobuf instead.
 
 ### Classes as factories for many objects
 
-Suppose one script tracks a dozen GPU nodes, and each node needs its own name and its own state. A module cannot do this on its own. Python imports one copy of a module, so every name inside it is shared. A class fixes that problem by acting as a factory. You define the shape once, then call it as many times as you need.
+Suppose one script tracks a dozen GPU nodes, and each node needs its own name and its own state. A module cannot do this alone. Python imports one copy of a module, so every name inside it is shared. A class solves that problem by acting as a factory. You define the shape once, then call it as many times as you need.
 
 Python's class model has two kinds of objects. A class object holds default behavior, and a `class` statement creates it. An instance object is what your program actually works with. You get one by calling the class like a function. Each call makes a new instance, and each instance is its own namespace that can still see the names on its class.
 
-Modules and classes differ in this way. Only one copy of each module lives in a program, and `reload` updates that single shared object. Each instance of a class can hold its own data, so several versions of the same kind of thing can exist at once. Closure factory functions from Learning Python Chapter 17 can keep per-call state too. A class makes that state explicit as attributes, not as hidden scope references.
+Modules and classes differ here. Only one copy of each module lives in a program, and `reload` updates that single shared object. Each instance of a class holds its own data, so several versions of the same kind of thing can exist at once. Closure factory functions from Learning Python Chapter 17 can keep per-call state too. A class makes that state explicit, as attributes instead of hidden scope references.
 
 Here is a small class to see this in action:
 
@@ -145,7 +165,7 @@ Nothing exists until Python reaches and runs this statement. Usually that happen
 >>> y = FirstClass()     # Each is a new namespace
 ```
 
-The parentheses matter. Calling the class creates two instances, so you now have three linked namespaces: the class and its two instances. Both `x` and `y` are `FirstClass` objects, which means each one inherits the names attached to the class.
+The parentheses matter. Calling the class creates two instances, so you now have three linked namespaces: the class and its two instances. Both `x` and `y` are `FirstClass` objects, so each one inherits the names attached to the class.
 
 ### Instance attributes and inherited method lookup
 
@@ -156,7 +176,7 @@ The next problem is sharing behavior while keeping data separate. Every instance
 >>> y.setdata(3.14159)      # Runs: FirstClass.setdata(y, 3.14159)
 ```
 
-Neither `x` nor `y` has a `setdata` attribute of its own. Python checks the instance first, then follows the link to the class. Lookup happens each time you write a dot expression, and it only walks through linked objects. Assignments work differently. Inside `setdata`, `self.data` stores the value in the instance, not in the class.
+Neither `x` nor `y` has a `setdata` attribute of its own. Python checks the instance first, then follows the link to the class. The lookup happens each time you write a dot expression, and it only walks through linked objects. Assignments behave differently. Inside `setdata`, `self.data` stores the value in the instance, not in the class.
 
 ```
 >>> x.display()     # Runs: FirstClass.display(x)
@@ -180,9 +200,9 @@ This freedom has a cost. Adding data that the class cannot use usually does not 
 
 ### Attribute search climbs a class tree
 
-Every dot expression starts a search through a tree of linked objects. Suppose the tree holds two instances, `I1` and `I2`, a class `C1` that both were made from, and two superclasses, `C2` and `C3`, above `C1`. Each object carries its own names. When you ask for `I2.w`, Python checks `I2`, then `C1`, then `C2`, then `C3`. It stops at the first `w` it finds. If no object in the tree has the name, Python raises an error.
+Every dot expression starts a search through a tree of linked objects. Picture a tree with two instances, `I1` and `I2`, a class `C1` that both were made from, and two superclasses, `C2` and `C3`, above `C1`. Each object carries its own names. When you ask for `I2.w`, Python checks `I2`, then `C1`, then `C2`, then `C3`. It stops at the first `w` it finds. If no object in the tree has the name, Python raises an error.
 
-In this tree, only `C3` defines `w`. So `I2.w` resolves to `C3.w`, and `I2` inherits `w` from `C3`. Other lookups take shorter paths. Both instances find `x` in `C1` and stop there, because `C1` sits lower in the tree and redefines `x`. A name stored on the instance itself, such as `I2.name`, is found without climbing at all.
+In this tree, only `C3` defines `w`. So `I2.w` resolves to `C3.w`, and `I2` inherits `w` from `C3`. Other lookups take shorter paths. Both instances find `x` in `C1` and stop there, because `C1` sits lower in the tree and redefines `x`. A name stored on the instance itself, such as `I2.name`, is found without any climbing.
 
 Classes higher in a tree are superclasses, and classes lower down are subclasses. The two words describe both a position and a role. A superclass provides behavior that all of its subclasses share. Because lookups start at the bottom, a redefinition lower in the tree replaces the version above it. That replacement is how a class customizes what it inherits.
 
@@ -192,9 +212,9 @@ Method calls follow the same tree with one extra step. When `I2.w` is a function
 
 ### Where an assignment stores an attribute
 
-Attributes appear the first time you assign them. The place where the assignment runs decides which object gets the name. Assignments at the top level of a `class` body attach names to the class, so every instance and subclass shares them. Assignments through `self` inside a method attach names to the instance that is being processed.
+Attributes appear the first time you assign them. The place where the assignment runs decides which object gets the name. Assignments at the top level of a `class` body attach names to the class, so every instance and subclass shares them. Assignments through `self` inside a method attach names to the instance being processed.
 
-Here, `setname` is defined inside the class. A `def` in a class assigns a name to the class, so every instance inherits `setname`. Inside the method, `self` is whichever instance made the call, so each instance stores its own name:
+In the next example, `setname` is defined inside the class. A `def` in a class assigns a name to the class, so every instance inherits `setname`. Inside the method, `self` is whichever instance made the call, so each instance stores its own name:
 
 ```python
 class C2: ... # Make superclass objects
@@ -213,7 +233,7 @@ Every object in a class tree is a namespace, so you can read or set any attribut
 
 ### The constructor: `__init__`
 
-Calling `setname` after you create an instance is easy to forget. Reading `I1.name` before that call raises an undefined name error. A constructor solves this by filling in the attribute when the object is built.
+Calling `setname` after you create an instance is easy to forget. If you read `I1.name` before that call, Python raises an undefined name error. A constructor solves this by filling in the attribute when the object is built.
 
 Python calls a method named `__init__` each time it creates an instance from a class. The new instance arrives in `self`, and any values in the class call's parentheses go to the arguments after `self`:
 
@@ -228,7 +248,7 @@ I2 = C1('bob') # Sets I2.name to 'bob'
 print(I1.name) # Prints 'sue'
 ```
 
-Special names like `__init__` start and end with double underscores, so they stand apart from your own names. Python runs them automatically when a matching operation appears, and inheritance passes them down to subclasses. If a class omits one, the matching operation is not supported. If a class has no `__init__`, a class call still returns an instance, but Python does not initialize it.
+Special names such as `__init__` start and end with double underscores, so they stand apart from your own names. Python runs them automatically when a matching operation appears, and inheritance passes them down to subclasses. If a class omits one, the matching operation is not supported. If a class has no `__init__`, a class call still returns an instance, but Python does not initialize it.
 
 ### Subclasses customize by inheritance
 
@@ -240,7 +260,7 @@ class SecondClass(FirstClass):          # Inherits setdata
         print(f'Current value = "{self.data}"')
 ```
 
-The subclass defines `display` with a new format. Python searches from the instance up to the subclass, then to the superclass, and it stops at the first match. Because `SecondClass` defines `display` first, its version wins. The book calls this replacing an inherited name overloading.
+The subclass defines `display` with a new format. Python searches from the instance up to the subclass, then to the superclass, and it stops at the first match. Because `SecondClass` defines `display` first, its version wins. The book calls replacing an inherited name overloading.
 
 `SecondClass` still uses the `setdata` method from `FirstClass` without any change:
 
@@ -251,11 +271,11 @@ The subclass defines `display` with a new format. Python searches from the insta
 Current value = "LP6e"
 ```
 
-The change stays outside `FirstClass`. Older instances keep their old behavior, so `x.display()` still prints the earlier message. This is why subclassing supports reuse so well. You customize a component without touching its source. Python's full inheritance rules include diamond patterns and metaclasses, which Learning Python handles in Chapters 31 and 40. For everyday application code, the instance and class view is enough.
+The change stays outside `FirstClass`. Older instances keep their old behavior, so `x.display()` still prints the earlier message. This is why subclassing supports reuse so well. You customize a component without touching its source. Python's full inheritance rules include diamond patterns and metaclasses, which Learning Python covers in Chapters 31 and 40. For everyday application code, the instance and class view is enough.
 
 ### Polymorphism and programming by customization
 
-Suppose you build an employee database. Most employees follow the same rules for salary, raises, promotions, and retirement. Engineers compute their pay in a different way. You do not want to copy the shared rules for every job type.
+Suppose you build an employee database. Most employees follow the same rules for salary, raises, promotions and retirement. Engineers compute their pay differently. You do not want to copy the shared rules for every job type.
 
 Start with a general superclass that holds the default behavior. The bodies are placeholders here:
 
@@ -305,7 +325,7 @@ def processor(reader, converter, writer):
         writer.write(data)
 ```
 
-Then pass in subclasses that implement `read` and `write` for each data source:
+You then pass in subclasses that implement `read` and `write` for each data source:
 
 ```python
 class Reader:
@@ -320,11 +340,11 @@ processor(SocketReader(…), converter, FileWriter(…))
 processor(FtpReader(…), converter, JsonWriter(…))
 ```
 
-Each source keeps its `read` and `write` code in one place. You can change that code without affecting the callers, and the same `processor` function works for files, sockets, and any future source.
+Each source keeps its `read` and `write` code in one place. You can change that code without affecting the callers, and the same `processor` function works for files, sockets and any future source.
 
 After you work this way, a new program often comes together from existing parts. Most of the job is mixing superclasses that already do the required work. An `Employee` or `Reader` class written for one program can serve another program with no changes, so you get its code for free.
 
-Whole collections of superclasses, called frameworks, cover common jobs such as database access, testing, and GUI toolkits. With a framework, you often write one subclass that fills in a few expected methods. The framework's classes higher in the tree do most of the work. This style means combining and specializing code that is already tested.
+Whole collections of superclasses, called frameworks, cover common jobs such as database access, testing and GUI toolkits. With a framework, you often write one subclass that fills in a few expected methods. The framework's classes higher in the tree do most of the work. This style means combining and specializing code that is already tested.
 
 Getting there takes time. Object-oriented work also needs careful design to get the full reuse benefit. Programmers catalog common structures as design patterns, which help with those design choices. The Python syntax itself is simple, so it should not be the hard part.
 
@@ -367,13 +387,13 @@ import person                           # Import the module
 x = person.person()                     # Class within the module
 ```
 
-Using `from person import person` also works, and then `x = person()` builds the object. Common Python style fixes the confusion from the start. Modules get lowercase names and classes get names that start with an uppercase letter, so `person.Person()` reads clearly. A module reflects a whole file, while a class is one statement inside a file.
+Using `from person import person` also works, and then `x = person()` builds the object. Common Python style avoids the confusion from the start. Modules get lowercase names and classes get names that start with an uppercase letter, so `person.Person()` reads clearly. A module reflects a whole file, while a class is one statement inside a file.
 
 ### Operator overloading
 
-Suppose you want your own object to respond to `+` or to `print`. Python lets a class intercept built-in operations. Operations such as addition, slicing, printing, and attribute access route to methods that the class provides. Modules cannot do this for expressions. They can only provide function calls.
+Suppose you want your own object to respond to `+` or to `print`. Python lets a class intercept built-in operations. Operations such as addition, slicing, printing and attribute access route to methods that the class provides. Modules cannot do this for expressions. They can only provide function calls.
 
-The hooks are special methods with names that start and end with double underscores, such as `__add__`. Python defines the fixed mapping from each operation to its method name. Python calls the method automatically when an instance appears in that operation. The return value of the method becomes the result of the expression. A class does not have to define every hook. If `__add__` is missing, a `+` expression raises an exception.
+The hooks are special methods whose names start and end with double underscores, such as `__add__`. Python defines the fixed mapping from each operation to its method name. It calls the method automatically when an instance appears in that operation, and the return value becomes the result of the expression. A class does not have to define every hook. If `__add__` is missing, a `+` expression raises an exception.
 
 The following class adds three hooks and one normal method:
 
@@ -412,13 +432,13 @@ For `print`, Python passes the object to `__str__`, and the returned string beco
 
 Some hooks must return a value, such as `__str__`. Others are more flexible. The `__add__` method returns a new object, which matches how built-in numbers and strings behave. Overloaded operators should behave like built-in ones, so a `*` hook that changed its object in place would surprise readers. Learning Python Chapter 30 covers the in-place hooks, such as `__imul__` for `*=`.
 
-Operator overloading is an optional feature. Most application code never needs it. Unless a class must mimic a built-in interface, plain method names are clearer. An expression like `*` may suit a matrix, but a named method usually serves the callers better. Special names are inherited like any other names. The `__init__` method appears in nearly every class, and `__str__` appears often. You can usually learn which attributes an instance will have by reading its `__init__`.
+Operator overloading is optional. Most application code never needs it. Unless a class must mimic a built-in interface, plain method names are clearer. An expression like `*` may suit a matrix, but a named method usually serves the callers better. Special names are inherited like any other names. The `__init__` method appears in nearly every class, and `__str__` appears often. You can usually learn which attributes an instance will have by reading its `__init__`.
 
 A custom set intersection shows the choice. You can write it as a plain method named `intersect` and call it by name. You can also write it as `__and__`, and Python calls that method when it sees `&`. The operator form lets your objects act like built-in types, so code that expects a built-in can use them. Plain names are still clearer unless your objects truly behave like built-ins.
 
 ### Classes as records
 
-Programs often need to store facts about an entity, such as a person's name, age, and jobs. A tuple or a dictionary can hold these facts, but a class can hold them with less noise. Here is the dictionary version:
+Programs often need to store facts about an entity, such as a person's name, age and jobs. A tuple or a dictionary can hold these facts, but a class can hold them with less noise. Here is the dictionary version:
 
 ```python
 rec = {}
@@ -469,7 +489,7 @@ rec2 = Person('Sue', ['dev', 'cto'])
 print(rec1.jobs, rec2.info())
 ```
 
-The constructor sets `name`, `jobs`, and `age` on every instance. The `age` value can be left out, and the default `None` fills it in. Named tuples fit a similar role. They behave like classes with extra logic that maps attribute names to tuple positions. A dictionary holds the data, but it has no room for processing logic. A class packages both together.
+The constructor sets `name`, `jobs` and `age` on every instance. The `age` value can be left out, and the default `None` fills it in. Named tuples fill a similar role. They behave like classes with extra logic that maps attribute names to tuple positions. A dictionary holds the data but has no room for processing logic. A class packages both together.
 
 ### Under the hood: namespaces are dictionaries
 
@@ -484,7 +504,7 @@ Classes and instances are linked namespace objects, and Python usually stores ea
 []
 ```
 
-The class holds `name` and `age`. The instance `x` has its own `name`, and the instance `y` is still empty. An attribute can be read with dictionary indexing or with dot notation, but only if the object holds it directly. Dot notation runs the inheritance search. Dictionary indexing checks one object only:
+The class holds `name` and `age`. The instance `x` has its own `name`, and the instance `y` is still empty. You can read an attribute with dictionary indexing or with dot notation, but indexing only sees what the object holds directly. Dot notation runs the inheritance search:
 
 ```
 >>> x.name, x.__dict__['name']
@@ -520,11 +540,13 @@ Because the namespaces are simple objects, a function can become a method later.
 'SUE'
 ```
 
-Normally a `class` statement and the methods inside it build these namespaces. The point is that Python simply looks up attributes in linked objects. Some classes define `__slots__` instead of `__dict__`, an advanced feature that Learning Python covers in Chapter 32.
+Normally a `class` statement and the methods inside it build these namespaces. The point is that Python looks up attributes in linked objects. Some classes define `__slots__` instead of `__dict__`, an advanced feature that Learning Python covers in Chapter 32.
 
 ## 2. Inheritance, composition and protocols
 
 ### Inheritance and `super()`
+
+Suppose a `GpuNode` must do everything a generic `Resource` does, plus report its GPU count. You do not want to copy the generic code. Inheritance lets the subclass reuse the parent's `__init__` and `describe` and extend them.
 
 ```python
 class Resource:
@@ -540,11 +562,13 @@ class GpuNode(Resource):
         return super().describe() + f" gpus={self.gpus}"
 ```
 
-- `super()` returns a proxy that delegates to the **next class in the instance's MRO** (`self.__class__.__mro__` past the class containing the `super()` call), not necessarily the direct parent; this is what makes cooperative multiple inheritance work, provided the class hierarchy satisfies three cooperative `super()` call-chain rules:
-  1. **Universal deployment:** every class in the MRO that implements the method before the anchor must call `super().method()`. The first class that omits `super()` stops the chain (in the book's example, if `class C(B, A)` calls `super().act()` and `B.act` does not call `super().act()`, `A.act` is never reached).
-  2. **Call-chain anchors:** the MRO chain must end at an anchor class that defines the method without calling `super()` again. For `__init__`, the built-in root `object` provides an anchor (`object.__init__(self)`), but for custom methods such as `act(self)`, calling `super().act()` in the last class before `object` raises `AttributeError: 'super' object has no attribute 'act'` unless a common base/anchor class (such as `class X: def act(self): ...`) precedes `object` on the MRO.
-  3. **Compatible argument signatures:** because a class's next neighbor on `self.__class__.__mro__` depends on the subclass's inheritance graph, all cooperative implementations of a method across the tree must accept compatible signatures (or consume their own keyword arguments and forward `**kwargs`), and `object.__init__()` at the end of an `__init__` chain accepts no extra arguments beyond `self` (`TypeError: object.__init__() takes exactly one argument`).
-- **Method Resolution Order**: Python linearises the class hierarchy using the **C3 algorithm**: children before parents, parents in the declared order, and each class appears once; `Class.__mro__` or `Class.mro()` shows it. In diamond inheritance, the shared base is reached once, after all its subclasses.
+The `super()` call returns a proxy. The proxy hands work to the next class in the instance's MRO, which is `self.__class__.__mro__` after the class that contains the call. That next class is not always the direct parent. This is what makes cooperative multiple inheritance work. It only works when the hierarchy follows three rules.
+
+1. Universal deployment: every class in the MRO that implements the method before the anchor must call `super().method()`. The first class that omits `super()` stops the chain. In the book's example, if `class C(B, A)` calls `super().act()` and `B.act` does not call `super().act()`, then `A.act` is never reached.
+2. Call-chain anchors: the chain must end at an anchor class that defines the method without calling `super()` again. For `__init__`, the built-in root `object` serves as the anchor, through `object.__init__(self)`. For a custom method such as `act(self)`, calling `super().act()` in the last class before `object` raises `AttributeError: 'super' object has no attribute 'act'`. A common base class with its own `act` method, such as `class X: def act(self): ...`, must sit before `object` on the MRO to prevent that.
+3. Compatible argument signatures: a class's next neighbor on `self.__class__.__mro__` depends on the subclass's inheritance graph, so every cooperative implementation must accept compatible signatures. Each one can also consume its own keyword arguments and forward `**kwargs`. The `object.__init__()` at the end of an `__init__` chain accepts no arguments beyond `self`, so passing one raises `TypeError: object.__init__() takes exactly one argument`.
+
+Python linearizes the class hierarchy with the C3 algorithm. The rule is that children come before parents, parents keep the order you declared them in, and each class appears only once. You can see the result in `Class.__mro__` or `Class.mro()`. In a diamond, the shared base is reached once, after all of its subclasses.
 
 ```python
 class A: 
@@ -559,22 +583,23 @@ D().f()        # 'D>B>C>A'
 D.__mro__      # (D, B, C, A, object)
 ```
 
-- **Mixins and class interface techniques (`LP` Chapters 28, 29, 31 & `FP` Chapter 14)**:
-  - In `LP` Chapter 29 (`Example 29-1 specialize.py`), Lutz classifies four ways a subclass can interface with a superclass `Super`: (1) `Inheritor(Super)` inherits methods verbatim (`pass`), (2) `Replacer(Super)` overrides `method(self)` completely, (3) `Extender(Super)` overrides `method(self)` and calls back to `Super.method(self)` (as `Manager.giveRaise(self, percent, bonus=.10)` calls `Person.giveRaise(self, percent + bonus)` in `LP` Chapter 28's `person_14.py`—which can then be persisted by key in a `shelve.open('persondb')` DBM database via `makedb.py` and `updatedb.py`), and (4) `Provider(Super)` implements the abstract `action(self)` hook expected by `Super.delegate(self)` (the Template Method pattern).
-  - **Mixins (`...Mixin`, `AttrDisplay`, `ListInstance`, `ListInherited`, `ListTree`, `UpperCaseMixin`, `ThreadingMixIn`):** Small classes (conventionally named `...Mixin`) adding a single orthogonal capability via multiple inheritance. In `LP` Chapters 28–31, `AttrDisplay` (`classtools.py`), `ListInstance` (inspecting `self.__dict__`), `ListInherited` (inspecting `dir(self)`), and `ListTree` (climbing `self.__class__` and `__bases__` like `classtree.py`) mix a generic `__repr__`/`__str__` display into any application class (`class Person(AttrDisplay):`). In `FP` Chapter 14 (`Example 14-8`), `UpperCaseMixin` uppercases string keys via `super().__setitem__(_upper(key), item)` and must be listed **first** (`class UpperDict(UpperCaseMixin, collections.UserDict): pass`) so its methods intercept calls before `UserDict` on the MRO (and note that subclassing built-in C types like `dict` or `list` directly in `DoppelDict` / `AnswerDict` is hazardous because C methods ignore Python overrides—always subclass `collections.UserDict`, `UserList`, or `UserString`).
-- **Composition and delegation (`Department`, `PizzaShop`, `streams.py`, `Set` wrapper, `LP` Chapters 28, 31, 32)**:
-  - While inheritance models `"is-a"` relationships (`PizzaRobot(Chef)` -> `Chef(Employee)` -> `Employee` in `employees.py`), **composition** models `"has-a"` relationships where a composite controller directs embedded components: `Department` (`Example 28-12`) aggregates `Person` and `Manager` objects to give group raises, `PizzaShop` (`Example 31-2 pizzashop.py`) embeds `Server('Pat')`, `PizzaRobot('Bob')`, and `Oven()` to process `scene.order('Sue')`, and `Processor(reader, writer)` (`Example 31-3 streams.py` and `Uppercase(Processor)` in `converters.py`) reads from any file/socket stream, transforms via `converter(data)`, and writes to any output stream.
-  - **Delegation (`__getattr__` proxy):** Wraps an embedded object (such as `Manager` embedding `self.person = Person(name, 'mgr', pay)` or `Set` wrapping a list in `setwrapper.py`) and forwards attribute fetches via `def __getattr__(self, attr): return getattr(self.person, attr)` (noting that in Python 3, special dunder operators like `__str__` or `__add__` look up on the class directly and bypass instance `__getattr__`).
-- **`isinstance(x, Base)`** and **`issubclass`** respect inheritance; `type(x) is T` checks exact types (rarely wanted).
-- **Liskov substitution principle**: subclasses must honour the base class contract (accept at least what the base accepts, return no less than promised, not raise new surprising exceptions).
+Lutz's Learning Python Chapter 29 (`Example 29-1 specialize.py`) names four ways a subclass can interface with a superclass called `Super`. In the first, `Inheritor(Super)` inherits the methods unchanged, using `pass`. In the second, `Replacer(Super)` overrides `method(self)` completely. In the third, `Extender(Super)` overrides `method(self)` and calls back into `Super.method(self)`. Learning Python Chapter 28 shows this with `Manager.giveRaise(self, percent, bonus=.10)`, which calls `Person.giveRaise(self, percent + bonus)` in `person_14.py`. That example can also be stored by key in a `shelve.open('persondb')` DBM database through `makedb.py` and `updatedb.py`. In the fourth, `Provider(Super)` implements the abstract `action(self)` hook that `Super.delegate(self)` expects. This is the Template Method pattern.
+
+A mixin is a small class, usually named `...Mixin`, that adds one independent capability through multiple inheritance. In Learning Python Chapters 28 to 31, `AttrDisplay` in `classtools.py`, `ListInstance`, `ListInherited` and `ListTree` mix a generic `__repr__` or `__str__` display into any application class, as in `class Person(AttrDisplay):`. `ListInstance` inspects `self.__dict__`. `ListInherited` inspects `dir(self)`. `ListTree` climbs `self.__class__` and `__bases__`, as in `classtree.py`. Fluent Python Chapter 14 shows `UpperCaseMixin` in `Example 14-8`. It uppercases string keys with `super().__setitem__(_upper(key), item)`. It must be listed first, as in `class UpperDict(UpperCaseMixin, collections.UserDict): pass`, so that its methods intercept calls before `UserDict` on the MRO. Subclassing a built-in C type such as `dict` or `list` directly is risky, because C methods ignore Python overrides. Subclass `collections.UserDict`, `UserList` or `UserString` instead. Fluent Python's `DoppelDict` and `AnswerDict` examples show why. Fluent Python Chapter 14 also covers `ThreadingMixIn`.
+
+Composition and delegation appear in Learning Python Chapters 28, 31 and 32. Inheritance models "is-a" relationships. A `PizzaRobot` is a `Chef`, and a `Chef` is an `Employee`, as in `employees.py`. Composition models "has-a" relationships instead. A composite controller directs the parts it contains. `Department` in `Example 28-12` gathers `Person` and `Manager` objects to give group raises. `PizzaShop` in `Example 31-2 pizzashop.py` contains `Server('Pat')`, `PizzaRobot('Bob')` and `Oven()`, which it uses to process `scene.order('Sue')`. `Processor(reader, writer)` in `Example 31-3 streams.py` reads from any file or socket stream, transforms the data with `converter(data)` and writes to any output stream. `Uppercase(Processor)` in `converters.py` is one such converter.
+
+Delegation is a close cousin of composition. A wrapper object holds an embedded object and forwards requests to it. `Manager` embeds `self.person = Person(name, 'mgr', pay)`, and `Set` wraps a list in `setwrapper.py`. The wrapper forwards attribute fetches with `def __getattr__(self, attr): return getattr(self.person, attr)`. In Python 3, special operators such as `__str__` or `__add__` are looked up on the class directly, so they bypass instance-level `__getattr__`.
+
+Use `isinstance(x, Base)` and `issubclass` when you want the check to respect inheritance. `type(x) is T` checks the exact type, which you rarely want. The Liskov substitution principle says a subclass must honor the contract of its base class. It should accept at least what the base accepts, return no less than the base promises, and avoid raising new, surprising exceptions.
 
 ### Composition over inheritance
 
-Inheritance and composition answer different questions. Inheritance describes what something is. A pizza-making robot is a kind of robot, so it inherits the usual robot properties. Those shared properties are written once and reused by every kind of robot. Composition describes what something has. The same robot is a team of parts, such as arms to roll dough and motors to move it to the oven. Each part can be its own class.
+Inheritance and composition answer different questions. Inheritance describes what something is. A pizza-making robot is a kind of robot, so it inherits the usual robot properties. Those shared properties are written once and reused by every kind of robot. Composition describes what something has. The same robot is also a team of parts, such as arms to roll dough and motors to move it to the oven. Each part can be its own class.
 
 A GUI shows both ideas. A window is built from widgets such as buttons and labels, and drawing the window draws those widgets too. That is composition. A custom button with its own font is a specialized version of a general button, which is inheritance.
 
-"Has-a" beats "is-a" for most infrastructure code: inheritance couples subclasses to parent implementation and creates deep, fragile hierarchies. Prefer holding collaborators as attributes and delegating:
+For most infrastructure code, "has-a" beats "is-a". Inheritance couples subclasses to the parent's implementation and creates deep, fragile hierarchies. Instead, hold collaborators as attributes and delegate work to them:
 
 ```python
 class RedfishClient:
@@ -583,9 +608,11 @@ class RedfishClient:
     def get_power(self, host): return self._retry(lambda: self._session.get(f"https://{host}/redfish/v1/Chassis/1/Power"))
 ```
 
-Benefits: dependencies are explicit and swappable (pass a fake session in tests), classes stay small, behaviours combine freely. **Dependency injection** is simply passing collaborators in rather than constructing them inside (no framework needed).
+The benefits are concrete. Dependencies are explicit and easy to swap, so you can pass a fake session in tests. Classes stay small, and behaviors combine freely. This pattern is called **dependency injection**. It simply means passing collaborators in rather than constructing them inside the class, and it needs no framework.
 
 ### Abstract base classes
+
+An abstract base class, or ABC, is a contract that subclasses must satisfy. Here, `Provider` lists the methods every cloud or on-prem provider must implement:
 
 ```python
 from abc import ABC, abstractmethod
@@ -604,11 +631,13 @@ class Provider(ABC):
 class Gcp(Provider): ...         # must implement all abstract methods or instantiation raises TypeError
 ```
 
-ABCs enforce that subclasses implement required methods at instantiation time, and provide **virtual subclassing** (`Provider.register(Third)`); `collections.abc` supplies container ABCs (`Iterable`, `Sequence`, `Mapping`, `Callable`) for `isinstance` checks (what Alex Martelli calls **goose typing** in *Fluent Python* Chapter 13). In `FP` Chapter 13 (`Examples 13-7` to `13-14`), Ramalho's `Tombola(ABC)` defines two `@abstractmethod`s—`.load(iterable)` and `.pick()` (raising `LookupError`, the parent of `IndexError` and `KeyError`, when empty)—and two concrete methods built on them (`.loaded()` and `.inspect()`), implemented by `BingoCage(Tombola)`, `LottoBlower(Tombola)`, and virtual subclass `@Tombola.register class TomboList(list):` (verified in `TomboList.__mro__` vs `Tombola._abc_registry`). And for structural ABCs like `collections.abc.Sized` whose `__subclasshook__` checks whether `"__len__"` is in the class's `__mro__` dictionaries, any class implementing `def __len__(self): return 23` (`class Struggle:`) satisfies `isinstance(Struggle(), abc.Sized)` and `issubclass(Struggle, abc.Sized)` automatically without inheritance or `.register()` (`FP` Chapter 13 also contrasts duck typing, goose typing, static nominal typing, and **static duck typing** via `typing.Protocol`, as well as runtime **monkey patching** such as `FrenchDeck.__setitem__ = set_card` to enable `random.shuffle(deck)`). Use an ABC when you want shared concrete behaviour plus enforced abstract methods and runtime checks.
+The ABC enforces its contract at instantiation time. A subclass that misses an abstract method cannot be created, and Python raises `TypeError`. The class also provides `ensure_vm`, a concrete template method built on the abstract ones. ABCs support virtual subclassing through `Provider.register(Third)`. The `collections.abc` module supplies container ABCs such as `Iterable`, `Sequence`, `Mapping` and `Callable` for `isinstance` checks. Alex Martelli calls this style goose typing in Fluent Python Chapter 13.
+
+Fluent Python Chapter 13, `Examples 13-7` to `13-14`, shows the full pattern. Ramalho's `Tombola(ABC)` defines two `@abstractmethod`s, `.load(iterable)` and `.pick()`. The `.pick()` method raises `LookupError` when the container is empty, and `LookupError` is the parent of `IndexError` and `KeyError`. The class also has two concrete methods built on them, `.loaded()` and `.inspect()`. `BingoCage(Tombola)` and `LottoBlower(Tombola)` implement the abstract methods. `@Tombola.register class TomboList(list):` is a virtual subclass, which you can verify by comparing `TomboList.__mro__` with `Tombola._abc_registry`. Structural ABCs work without any registration. `collections.abc.Sized` checks its `__subclasshook__` for a `"__len__"` entry in the class's `__mro__` dictionaries. So `class Struggle:` with `def __len__(self): return 23` satisfies `isinstance(Struggle(), abc.Sized)` and `issubclass(Struggle, abc.Sized)` automatically, without inheritance or `.register()`. Fluent Python Chapter 13 also contrasts duck typing, goose typing, static nominal typing and static duck typing through `typing.Protocol`. It shows runtime monkey patching too, such as `FrenchDeck.__setitem__ = set_card`, which enables `random.shuffle(deck)`. Use an ABC when you want shared concrete behavior, enforced abstract methods and runtime checks.
 
 ```mermaid
 flowchart TD
-    Typing["Python Interface & Type Checking Models (FP Ch. 13)"] --> Duck["1. Duck Typing (Runtime)<br/>Call methods directly (len, __getitem__)"]
+    Typing["Python Interface & Type Checking Models (Fluent Python Chapter 13)"] --> Duck["1. Duck Typing (Runtime)<br/>Call methods directly (len, __getitem__)"]
     Typing --> Goose["2. Goose Typing (Runtime ABCs)<br/>abc.ABC, @abstractmethod, isinstance(x, Sequence)"]
     Typing --> Nominal["3. Static Nominal Typing (mypy/pyright)<br/>Explicit class/ABC inheritance & annotations"]
     Typing --> StaticDuck["4. Static Duck Typing (typing.Protocol)<br/>Structural conformance without inheritance"]
@@ -616,7 +645,7 @@ flowchart TD
 
 ### Protocols (structural typing)
 
-A `typing.Protocol` describes an interface by the methods an object has, with no inheritance required: "if it quacks like a duck." Static checkers verify conformance; `@runtime_checkable` allows `isinstance` checks (method presence only).
+A `typing.Protocol` describes an interface by the methods an object has, with no inheritance required. This is the "if it quacks like a duck" idea. Static checkers verify that an object conforms. `@runtime_checkable` allows `isinstance` checks, but those check only that the methods exist.
 
 ```python
 from typing import Protocol, runtime_checkable
@@ -632,11 +661,11 @@ def flush_to(sink: Sink, data: bytes) -> int:        # accepts files, sockets, B
     return sink.write(data)
 ```
 
-Choose: **Protocol** for interfaces at boundaries where implementers are third-party or unrelated (loose coupling, test fakes); **ABC** when you control the hierarchy and want runtime enforcement and shared code.
+Choose a Protocol for interfaces at boundaries, where the implementers are third-party or unrelated to you. That keeps coupling loose and makes test fakes easy. Choose an ABC when you control the hierarchy and want runtime enforcement with shared code.
 
 ## 3. Data class builders
 
-Plain classes need boilerplate (`__init__`, `__repr__`, `__eq__`). Data class builders generate it.
+Plain classes need a lot of boilerplate, such as `__init__`, `__repr__` and `__eq__`. You write the same lines again for every record. Data class builders generate that boilerplate for you. The table compares the builders, so you can pick one for the job at hand.
 
 | Builder | Mutable? | Typing | Validation | Notes |
 |---|---|---|---|---|
@@ -646,6 +675,8 @@ Plain classes need boilerplate (`__init__`, `__repr__`, `__eq__`). Data class bu
 | `attrs` (`@define`) | Yes/frozen | Optional | Validators/converters | Third party; predates dataclasses; richer |
 | `pydantic.BaseModel` | Yes/frozen | Enforced at runtime (coercion/validation) | Strong, with errors | Parsing external data, settings, FastAPI |
 | `TypedDict` | A dict | Static only | None | Typing JSON-like dicts; no runtime class |
+
+The `@dataclass` decorator is the one you will see most often in the standard library. The example below uses it with several options, and each option changes behavior in a visible way.
 
 ```python
 from dataclasses import dataclass, field, asdict, replace
@@ -675,18 +706,23 @@ asdict(n)                                # to dict (recursive), for JSON
 sorted([n2, n])                          # order=True generates comparisons from field order
 ```
 
-Options: `frozen=True` (immutable, hashable with `eq`), `order=True`, `slots=True` (3.10+), `kw_only=True`, `eq=True`, `unsafe_hash`, `repr=False`; field options `field(default_factory, repr=False, compare=False, init=False, metadata={...})`; `InitVar` for init-only parameters; `dataclasses.fields(obj)` for introspection. Inheritance works, but field ordering rules (non-default after default) can bite; `kw_only` helps.
+In this example, `frozen=True` makes the node immutable, so `replace` is the way to get a modified copy. `order=True` lets `sorted` compare nodes by their fields in order. The `Cluster` class shows the right way to write a mutable default, which is `field(default_factory=list)`.
 
-In *Fluent Python* Chapter 5 (`Examples 5-4` to `5-21`), Ramalho highlights several essential details across the three standard data class builders:
-- **`collections.namedtuple` (`City = namedtuple('City', 'name country population coordinates')`):** Instances use the exact same memory as a plain `tuple` because field names live on the class (`City._fields`), while `_make(iterable)` constructs an instance from a sequence, `_asdict()` returns a `dict` for JSON serialization, and `defaults=(...)` sets rightmost default values.
-- **How type annotations behave in plain classes vs `typing.NamedTuple` vs `@dataclass` (`DemoPlainClass`, `DemoNTClass`, `DemoDataClass`):** In a plain class `class DemoPlainClass: a: int; b: float = 1.1; c = 'spam'`, `a` exists **only** in `DemoPlainClass.__annotations__` (`DemoPlainClass.a` raises `AttributeError`). In `class DemoNTClass(typing.NamedTuple): a: int; b: float = 1.1; c = 'spam'`, `a` and `b` become read-only tuple descriptor fields (`nt.a`, `nt.b`). In `@dataclass class DemoDataClass: a: int; b: float = 1.1; c = 'spam'`, `a` and `b` become mutable instance attributes initialized by the generated `__init__(self, a: int, b: float = 1.1) -> None` (and notice that unannotated `c = 'spam'` remains a plain class attribute).
-- **`ClassVar` and `__post_init__` in `ClubMember` and `HackerClubMember` (`Example 5-16`):** When `HackerClubMember(ClubMember)` tracks a class-wide set of handles `all_handles: ClassVar[set[str]] = set()`, annotating it with `typing.ClassVar` tells `@dataclass` **not** to turn `all_handles` into an instance field (while satisfying `mypy`), and `__post_init__(self)` populates `self.handle = self.name.split()[0]` if empty, checks `if self.handle in cls.all_handles: raise ValueError(...)`, and registers `cls.all_handles.add(self.handle)`. Similarly, Dublin Core `Resource` (`Example 5-19`) uses `ResourceType(Enum)` and a custom multi-line `__repr__` iterating `for f in fields(cls):`. All three builders automatically generate `__match_args__` so positional structural pattern matching (`case City(continent='Asia', name=_, country=cc):`) works out of the box (unlike the 9 blessed built-in types `bytes`, `dict`, `float`, `frozenset`, `int`, `list`, `set`, `str`, `tuple` that match a single positional argument directly). Also keep Martin Fowler's refactoring advice in mind: a **Data Class** with zero behavior can be a code smell if logic that belongs on the class is scattered across callers.
+The decorator accepts several options. `frozen=True` makes instances immutable and hashable together with `eq`. `order=True`, `slots=True` (Python 3.10 and later), `kw_only=True`, `eq=True`, `unsafe_hash` and `repr=False` change how the generated class behaves. Field options include `field(default_factory, repr=False, compare=False, init=False, metadata={...})`. `InitVar` marks parameters that are used only during initialization, and `dataclasses.fields(obj)` lets you introspect a class. Inheritance works, but the rule that a non-default field cannot follow a default one can bite you. The `kw_only` option helps with that.
 
-**Pitfalls:** annotations are not enforced (`GpuNode(name=5)` succeeds); validate in `__post_init__` or use pydantic at boundaries. `frozen` dataclasses are shallowly immutable (a list inside can still be mutated; use tuples/frozenset). Dataclass equality compares all fields (use `compare=False` for volatile ones).
+Fluent Python Chapter 5 (`Examples 5-4` to `5-21`) highlights several details across the three standard builders. The first is `collections.namedtuple`, which you create with `City = namedtuple('City', 'name country population coordinates')`. Its instances use the same memory as a plain `tuple`, because the field names live on the class in `City._fields`. The `_make(iterable)` method builds an instance from a sequence. `_asdict()` returns a `dict` for JSON serialization. The `defaults=(...)` option sets default values for the rightmost fields.
+
+The second detail is how annotations behave in three kinds of class. In a plain class, `class DemoPlainClass: a: int; b: float = 1.1; c = 'spam'`, the name `a` exists only in `DemoPlainClass.__annotations__`, so `DemoPlainClass.a` raises `AttributeError`. In `class DemoNTClass(typing.NamedTuple): a: int; b: float = 1.1; c = 'spam'`, `a` and `b` become read-only tuple fields, such as `nt.a` and `nt.b`. In `@dataclass class DemoDataClass: a: int; b: float = 1.1; c = 'spam'`, `a` and `b` become mutable instance attributes. The generated `__init__(self, a: int, b: float = 1.1) -> None` sets them. In all three, the unannotated `c = 'spam'` stays a plain class attribute.
+
+The third detail concerns `ClassVar` and `__post_init__`, which Fluent Python shows in `ClubMember` and `HackerClubMember` (`Example 5-16`). `HackerClubMember(ClubMember)` tracks a set of handles shared by the whole class, `all_handles: ClassVar[set[str]] = set()`. The `typing.ClassVar` annotation tells `@dataclass` not to turn `all_handles` into an instance field, and `mypy` accepts it. `__post_init__(self)` fills in `self.handle = self.name.split()[0]` when it is empty. It then raises `ValueError(...)` if the handle is already in `cls.all_handles`, and otherwise adds the handle to that set. The Dublin Core `Resource` in `Example 5-19` uses a `ResourceType(Enum)` and a custom multi-line `__repr__` that loops over `for f in fields(cls):`.
+
+All three builders generate `__match_args__` automatically. That lets positional structural pattern matching work, as in `case City(continent='Asia', name=_, country=cc):`. The 9 built-in types `bytes`, `dict`, `float`, `frozenset`, `int`, `list`, `set`, `str` and `tuple` behave differently. They match a single positional argument directly. Martin Fowler's refactoring advice is worth keeping in mind here. A **Data Class** with no behavior can be a code smell when logic that belongs on the class is scattered across its callers.
+
+Dataclasses have three pitfalls. Annotations are not enforced, so `GpuNode(name=5)` succeeds. Validate in `__post_init__`, or use pydantic at the boundaries of your code. A frozen dataclass is only shallowly immutable, because a list inside it can still change, so use tuples or frozensets for its contents. Equality compares every field by default, so use `compare=False` for fields that change often.
 
 ### Pydantic
 
-Pydantic models validate and coerce input at runtime and are the standard for parsing external data (YAML/JSON configs, API requests, environment variables).
+Pydantic models validate and coerce input at runtime. They are the standard tool for parsing external data, such as YAML or JSON configs, API requests and environment variables. Here is a model for a node specification, plus a settings class that reads from the environment:
 
 ```python
 from pydantic import BaseModel, Field, field_validator, ValidationError, SecretStr
@@ -721,11 +757,15 @@ class Settings(BaseSettings):
     timeout: float = 10.0
 ```
 
-Notes: pydantic v2 (Rust core) is fast; v1 has a different API; models can be nested, generic, discriminated unions (`Field(discriminator="type")`), computed fields; FastAPI uses them for request/response schemas (chapter 3.7). Validate **at the boundary** (config load, API ingress), then pass trusted, typed objects internally (parse, don't validate repeatedly).
+The `extra` setting is the one to notice. With `"forbid"`, a typo in a config file is rejected at once instead of being silently ignored. The `"8"` string in the example becomes the integer 8, because Pydantic coerces it to match the `int` annotation. Errors arrive as a structured list, which `e.errors()` returns, so you can report exactly which field is wrong. A `SecretStr` hides its value in the output until you call `.get_secret_value()` on purpose.
+
+Pydantic v2 uses a Rust core, which makes it fast. Version 1 has a different API. Models can be nested, generic, discriminated unions (`Field(discriminator="type")`) and computed fields. FastAPI uses them for request and response schemas, which chapter 3.7 covers. Validate once at the boundary, when the config loads or the API request arrives. Then pass trusted, typed objects through the rest of the code, so you parse once and do not keep re-validating.
 
 ## 4. Type hints and static checking
 
-Type hints (PEP 484 and successors) annotate intent. **CPython ignores them at runtime** (stored in `__annotations__`); tools enforce them: `mypy`, `pyright`/Pylance, `pyre`, `pytype`, and IDEs. Libraries like pydantic and FastAPI read them at runtime.
+Type hints, defined in PEP 484 and its successors, record what you intend a value to be. CPython ignores them at runtime and stores them in `__annotations__`. Tools do the enforcing. mypy, pyright (through Pylance), pyre, pytype and many IDEs read the hints and report mismatches before your code runs. Libraries such as pydantic and FastAPI also read them at runtime, so the hints do real work in those cases.
+
+The next block shows the common forms. Read the annotations as a list of promises the code makes to its readers and to the checker.
 
 ```python
 from collections.abc import Iterable, Iterator, Mapping, Sequence, Callable
@@ -744,24 +784,31 @@ class Event(TypedDict, total=False):                                      # shap
 JsonScalar: TypeAlias = str | int | float | bool | None
 ```
 
-Essentials:
+Several ideas in this block recur across the rest of the section. The sections below take them one at a time.
 
-- **Parameters accept general types, return specific types (`FP` Chapter 8)**: follow Postel's Law—take `Iterable`/`Sequence`/`Mapping` (`def name2hex(name: str, color_map: Mapping[str, int]) -> str:`, which accepts `dict`, `defaultdict`, `ChainMap`, or `UserDict`), and return concrete `list`/`dict` (`def columnize(sequence: Sequence[str], num_columns: int = 0) -> list[tuple[str, ...]]:`). Don't annotate a read-only parameter with `dict` or `list` when `Mapping` or `Sequence`/`Iterable` will do.
-- **Gradual typing, `show_count`, and duck vs nominal typing (`Birds`, `FP` Chapter 8 `Examples 8-1` to `8-6`):** PEP 484 introduces a **gradual type system**: unannotated functions are ignored by default, types are optional at runtime, and static checkers (`mypy`) catch bugs before tests run (such as `show_count(count: int, singular: str, plural: Optional[str] = None) -> str` catching `show_count(2, 'child', 'children')` when `plural` was missing, or `alert_bird(birdie: Bird)` flagging `birdie.quack()` because `quack` is defined on `Duck(Bird)`, not `Bird`). Distinguish fixed-length record tuples (`tuple[str, float, str]`) from variable-length homogeneous tuples (`tuple[int, ...]`).
-- **`Optional[X]` is `X | None`**: the checker forces you to handle `None`. Narrowing: `if x is not None:`; `isinstance`; `assert x`; early returns.
-- **`Any` vs `object`**: `Any` is simultaneously a subtype-of and supertype-of every type, which **disables type checking** (and is contagious when returned by functions like `json.loads()` unless constrained with a variable annotation `whatever: BookDict = json.loads(data)` and checked with `--disallow-any-expr` or validated at runtime with Pydantic); **`object`**, by contrast, accepts any value but only permits operations supported by all objects (`==`, `isinstance`) until narrowed. Use `typing.cast(Type, val)` or `# type: ignore[code]` sparingly.
-- **Generics, bounded `TypeVar`, and `@overload` (`FP` Chapters 8 & 15)**: `TypeVar("T")` for functions preserving types (`def sample(population: Sequence[T], size: int) -> list[T]:`); bounded `LT = TypeVar("LT", bound=SupportsLessThan)` for `def top(series: Iterable[LT], length: int) -> list[LT]:` (`Example 8-18`) where `class SupportsLessThan(Protocol): def __lt__(self, other: Any) -> bool: ...`; restricted `NumberT = TypeVar("NumberT", float, Decimal, Fraction)` for `mode()`; generic classes `class LottoBlower(Tombola, Generic[T]):` (`Example 15-15`, instantiated as `LottoBlower[int](range(1, 11))`) or Python 3.12 syntax `class Stack[T]:`; `ParamSpec`/`Concatenate` for decorators preserving signatures (chapter 3.11); `Self` for fluent methods/classmethods returning the same class.
-- **`@overload` (`FP` Chapter 15 `Examples 15-1` to `15-4`)**: expresses signatures where the return type depends on argument types or defaults (such as `sum`, `max` with or without `key=` and `default=`, or `mymax`), followed by a single unannotated implementation function.
-- **Callable** types and variance: `Callable[[int, str], bool]` is **contravariant in argument types** and **covariant in return type** (`Callable[[float], None]` is a subtype of `Callable[[int], None]` because a callback that can handle any `float` can safely handle an `int`, whereas `Callable[[int], None]` is not a subtype of `Callable[[float], None]`). For keyword or variadic callables, define a `Protocol` with `def __call__(self, ...):`.
-- **Variance (`Invariant`, `Covariant`, `Contravariant`, `FP` Chapter 15 `Examples 15-18` to `15-20`)**:
-  - **Invariant (default, `T = TypeVar('T')`):** `list[Dog]` is **not** a subtype of `list[Animal]` (and `BeverageDispenser[OrangeJuice]` is rejected where `BeverageDispenser[Juice]` is expected if `T` is invariant) because a caller could append a `Cat` into a mutable `list[Animal]`.
-  - **Covariant (`T_co = TypeVar('T_co', covariant=True)`):** Read-only containers/producers like `Sequence[T_co]`, `Iterator[T_co]`, and `BeverageDispenser[T_co]` vary in the **same direction** as `T` (`BeverageDispenser[OrangeJuice]` **is** a subtype of `BeverageDispenser[Juice]`).
-  - **Contravariant (`T_contra = TypeVar('T_contra', contravariant=True)`):** Write-only sinks/consumers like `TrashCan[T_contra]` vary in the **opposite direction** (`TrashCan[Refuse]` **is** a subtype of `TrashCan[Biodegradable]` because a general refuse can safely accepts biodegradable trash).
-- **`TypedDict` (`BookDict`, `FP` Chapter 15 `Examples 15-5` to `15-11`)**: `class BookDict(TypedDict): isbn: str; title: str; authors: list[str]; pagecount: int` provides static type checking for dictionary keys and value types, but performs **zero runtime validation** (`from_json` returning arbitrary JSON will pass at runtime unless validated by Pydantic).
-- **`TYPE_CHECKING` and `typing.get_type_hints()`**: `if TYPE_CHECKING:` blocks hold imports used only in annotations (`reveal_type(x)` prints Mypy's inferred type during checking); with `from __future__ import annotations` (PEP 563 / PEP 649), annotations are stored lazily, and runtime tools inspect them with `typing.get_type_hints(func)` or `inspect.signature(func)`.
-- **`Annotated[int, Field(ge=0)]`** attaches metadata used by pydantic/FastAPI.
-- **`typing.Protocol`, `TypedDict`, `NamedTuple`, `dataclass_transform`** support framework authors.
-- **Gradual typing**: annotate public APIs first; enable strictness progressively (`mypy --strict`, per-module overrides, `pyright` basic vs strict); keep the type-check job in CI (chapter 3.9) and treat new errors as build failures.
+Parameters should accept general types, and return values should be specific. Follow Postel's Law: accept `Iterable`, `Sequence` or `Mapping` parameters, and return concrete `list` or `dict` values. Fluent Python Chapter 8 gives `def name2hex(name: str, color_map: Mapping[str, int]) -> str:`, which accepts a `dict`, a `defaultdict`, a `ChainMap` or a `UserDict`. It also gives `def columnize(sequence: Sequence[str], num_columns: int = 0) -> list[tuple[str, ...]]:`. Do not annotate a read-only parameter as `dict` or `list` when `Mapping` or `Sequence` or `Iterable` will do.
+
+PEP 484 introduces a gradual type system. Unannotated functions are ignored by default, types are optional at runtime, and static checkers such as mypy catch bugs before the tests run. Fluent Python Chapter 8, `Examples 8-1` to `8-6`, shows this with `show_count(count: int, singular: str, plural: Optional[str] = None) -> str`. The checker catches a call such as `show_count(2, 'child', 'children')` when the plural argument is missing. It also flags `alert_bird(birdie: Bird)` when the code calls `birdie.quack()`, because `quack` is defined on `Duck(Bird)` and not on `Bird`. Keep fixed-length record tuples such as `tuple[str, float, str]` separate from variable-length tuples of one type, such as `tuple[int, ...]`.
+
+`Optional[X]` is the same as `X | None`. The checker forces you to handle `None`. You narrow the type with `if x is not None:`, with `isinstance`, with `assert x`, or with an early return.
+
+`Any` and `object` are easy to confuse. `Any` is both a subtype and a supertype of every type. That turns off type checking, and the effect spreads when a function returns `Any`, as `json.loads()` does. You can constrain it with a variable annotation such as `whatever: BookDict = json.loads(data)`, check it with `--disallow-any-expr`, or validate it at runtime with Pydantic. `object` accepts any value, but the checker allows only the operations every object supports, such as `==` and `isinstance`, until you narrow the type. Use `typing.cast(Type, val)` or `# type: ignore[code]` sparingly, because each one switches off checking for that line.
+
+Generics let a function keep the type it receives. `TypeVar("T")` works for functions such as `def sample(population: Sequence[T], size: int) -> list[T]:`. A bounded `LT = TypeVar("LT", bound=SupportsLessThan)` restricts `T` to types that support `<`. Fluent Python Chapter 8, `Example 8-18`, applies it in `def top(series: Iterable[LT], length: int) -> list[LT]:`, where `class SupportsLessThan(Protocol): def __lt__(self, other: Any) -> bool: ...` defines the requirement. A restricted `NumberT = TypeVar("NumberT", float, Decimal, Fraction)` limits `mode()` to those three types. Generic classes look like `class LottoBlower(Tombola, Generic[T]):`, which Fluent Python shows in `Example 15-15` and which you instantiate as `LottoBlower[int](range(1, 11))`. Python 3.12 adds the shorter syntax `class Stack[T]:`. `ParamSpec` and `Concatenate` type decorators that keep their signatures, as chapter 3.11 covers. `Self` types fluent methods and classmethods that return their own class.
+
+`@overload` handles signatures where the return type depends on the arguments or the defaults. Fluent Python Chapter 15, `Examples 15-1` to `15-4`, uses it for `sum` and `max`, with or without `key=` and `default=`, and for `mymax`. You write several overloaded signatures, followed by one unannotated implementation.
+
+Callable types follow variance rules. `Callable[[int, str], bool]` is contravariant in its argument types and covariant in its return type. So `Callable[[float], None]` is a subtype of `Callable[[int], None]`. A callback that can handle any `float` can safely handle an `int`. The reverse does not hold. For callables with keyword or variadic arguments, define a `Protocol` with a `def __call__(self, ...):` method.
+
+Variance describes how a generic type's subtypes relate to its parameter's subtypes. Fluent Python Chapter 15, `Examples 15-18` to `15-20`, explains three cases. An invariant type, such as `T = TypeVar('T')`, does not allow `list[Dog]` to be used as `list[Animal]`, because a caller could append a `Cat` to a mutable `list[Animal]`. A covariant type, such as `T_co = TypeVar('T_co', covariant=True)`, applies to read-only producers such as `Sequence[T_co]`, `Iterator[T_co]` and `BeverageDispenser[T_co]`. These types vary in the same direction as `T`, so `BeverageDispenser[OrangeJuice]` is a subtype of `BeverageDispenser[Juice]`. A contravariant type, such as `T_contra = TypeVar('T_contra', contravariant=True)`, applies to write-only consumers such as `TrashCan[T_contra]`. These vary in the opposite direction, so `TrashCan[Refuse]` is a subtype of `TrashCan[Biodegradable]`, because a general refuse bin can safely accept biodegradable trash.
+
+A `TypedDict` gives static type checking to dictionary keys and value types. The Fluent Python Chapter 15 example, `Examples 15-5` to `15-11`, defines `class BookDict(TypedDict): isbn: str; title: str; authors: list[str]; pagecount: int`. It performs zero runtime validation, so a `from_json` function that returns arbitrary JSON passes at runtime unless you validate it with Pydantic.
+
+`if TYPE_CHECKING:` blocks hold imports that are needed only for annotations. `reveal_type(x)` prints the type that mypy infers during checking. With `from __future__ import annotations` (PEP 563 and PEP 649), annotations are stored lazily. Runtime tools read them with `typing.get_type_hints(func)` or `inspect.signature(func)`.
+
+`Annotated[int, Field(ge=0)]` attaches metadata that pydantic and FastAPI use. `typing.Protocol`, `TypedDict`, `NamedTuple` and `dataclass_transform` support framework authors who build their own tools.
+
+For gradual typing, start by annotating the public APIs. Then turn on stricter checking step by step, with `mypy --strict`, per-module overrides, or the basic and strict modes in pyright. Keep the type-check job in CI, as chapter 3.9 describes, and treat new errors as build failures.
 
 ```toml
 # pyproject.toml
@@ -778,11 +825,11 @@ ignore_missing_imports = true
 mypy src/ ; pyright ; python -m mypy --install-types ; stubgen -p thirdparty   # stubs for untyped libraries (types-requests, types-PyYAML packages)
 ```
 
-Typing for infrastructure code is high value at **boundaries** (API clients, config models, plugin interfaces) and in code with many `None`/Optional cases; it catches wrong argument order, missing awaits, and forgotten error paths.
+Typing pays off most at boundaries, such as API clients, config models and plugin interfaces. It also helps in code with many `None` or Optional cases. The checker catches wrong argument order, missing awaits and forgotten error paths, so turn it on early for infrastructure code.
 
 ## 5. Operator overloading and comparison
 
-Overload operators only when the meaning is natural (vectors, sizes, versions, durations), return new objects (value semantics), return `NotImplemented` for unknown operand types, and keep `__eq__`/`__hash__`/ordering consistent.
+Overload an operator only when its meaning is natural, such as for vectors, sizes, versions or durations. If you let `+` mean something surprising, your readers will struggle to follow the code. Follow a few rules, and you will avoid most of the trouble. Return new objects so the value semantics stay clear. Return `NotImplemented` for operand types you do not understand. Keep `__eq__`, `__hash__` and the ordering methods consistent with each other.
 
 ```python
 from functools import total_ordering
@@ -803,37 +850,46 @@ class Bytes(int):                    # subclass a builtin for a domain type
             n /= 1024
 ```
 
-For real version handling use `packaging.version.Version`; for IP addresses `ipaddress`; for durations `datetime.timedelta`.
+The `Version` class defines `__eq__` and `__lt__`, and `@total_ordering` generates the remaining comparisons. `Bytes` subclasses `int` to get a domain type that prints in human units. If you need real version handling, use `packaging.version.Version`. For IP addresses, use `ipaddress`. For durations, use `datetime.timedelta`.
 
-### Sequence special methods (`Vector` Takes #1–#5, `FP` Chapter 12) and operator overloading (`FP` Chapter 16 & `LP` Chapter 30)
+### Sequence special methods (`Vector` Takes #1–#5, Fluent Python Chapter 12) and operator overloading (Fluent Python Chapter 16 and Learning Python Chapter 30)
 
-In *Fluent Python* Chapters 12 and 16 (and *Learning Python* Chapter 30, modeled in `code/part03/python_classes_typing_protocols.py`), an N-dimensional `Vector` class backed by `array('d', components)` demonstrates production-grade sequence and operator overloading:
-1. **Abbreviated `__repr__` with `reprlib.repr` (`Vector` Take #1):** For large vectors (`Vector(range(1000))`), `reprlib.repr(self._components)` truncates the output to 30 characters (`Vector([0.0, 1.0, 2.0, 3.0, 4.0, ...])`) so logs and interactive sessions never dump megabytes of text.
-2. **Slice-aware `__getitem__` and `operator.index` (`Vector` Take #2, and `LP` Chapter 30 `StepperIndex` / `SkipObject`):** A sequence's `__getitem__(self, key)` checks `if isinstance(key, slice): return type(self)(self._components[key])` so slicing a `Vector` returns a new `Vector` (not a raw `array`), and otherwise calls **`operator.index(key)`** (which invokes `key.__index__()` to accept integers and integer-like types while raising `TypeError` on floats or tuples; note `slice.indices(length)` normalizes start/stop/step bounds). In `LP` Chapter 30, Lutz also contrasts `__getitem__` fallback iteration (`StepperIndex`) with single-scan (`Squares` with `__iter__` returning `self`) vs. **multi-scan** iterables (`SkipObject('abcdef')` in `skipper.py` / `skipper_yield.py`, whose `__iter__` returns a new iterator/generator on each call so nested loops `[x + y for x in skipper for y in skipper]` produce all `9` pairs `'aa'`..`'ee'`).
-3. **Dynamic read-only attributes `x, y, z, t` (`__getattr__` and `__setattr__`, `Vector` Take #3):** Defining `__match_args__ = ('x', 'y', 'z', 't')` and `def __getattr__(self, name):` lets callers read `v.x, v.y, v.z, v.t` dynamically from `self._components[0..3]`. However, if a caller accidentally assigns `v.x = 10` without `__setattr__` protection, Python would create an instance attribute `v.__dict__['x'] = 10` that shadows `__getattr__` while leaving `v[0]` unchanged. Overriding `__setattr__` to raise `AttributeError` on any single-letter lowercase attribute (`'a'` to `'z'`) prevents inconsistent shadowing (in `LP` Chapter 30 `accesscontrol.py` / `private0.py`, `__setattr__` delegates allowed writes via `self.__dict__[attr] = val` or `super().__setattr__(attr, val)` to avoid infinite recursion).
-4. **Hashing via `functools.reduce` and `operator.xor` (`Vector` Take #4):** Combining component hashes with `hashes = (hash(x) for x in self); return functools.reduce(operator.xor, hashes, 0)` (with initializer `0` for empty vectors) and streaming equality `len(self) == len(other) and all(a == b for a, b in zip(self, other))` works in $O(1)$ extra memory for vectors of any dimension (and formatting in hyperspherical coordinates `'h'` in Take #5).
-5. **Unary (`__neg__`, `__pos__`), infix `+` (`__add__` / `__radd__`), scalar `*` (`__mul__` / `__rmul__`), matrix/dot product `@` (`__matmul__` / `__rmatmul__`), membership (`__contains__`), and in-place `+=` (`__iadd__`) (`FP` Chapter 16 & `LP` Chapter 30 `Commuter1..5`):**
-   - **Dispatch flow (`a + b`):** Python calls `type(a).__add__(a, b)`. If `a` does not implement `__add__` or returns **`NotImplemented`** (and `type(a) is not type(b)`), Python calls the reflected **`type(b).__radd__(b, a)`**; if that also returns `NotImplemented`, Python raises `TypeError` (or for `==` / `!=`, falls back to comparing object `id()`s).
-   - In `Vector.__add__`, wrapping `pairs = itertools.zip_longest(self, other, fillvalue=0.0); return Vector(a + b for a, b in pairs)` inside `try ... except TypeError: return NotImplemented` and aliasing `__radd__ = __add__` allows `Vector([3, 4, 5]) + (10, 20)` and `(10, 20) + Vector([3, 4, 5])` (`Vector([13.0, 24.0, 5.0])`) while cleanly rejecting `Vector([3, 4, 5]) + 1`. In `LP` Chapter 30's `Commuter5(88) + Commuter5(99)` (`commuter.py`), testing `if isinstance(other, Commuter5): other = other.val` inside `__add__` avoids nested `Commuter5(Commuter5(187))` wrapping when two instances are added together.
-   - In `Vector.__matmul__` (`@`, PEP 465), checking `isinstance(other, abc.Sized) and isinstance(other, abc.Iterable)` computes the dot product `sum(a * b for a, b in zip(self, other))` (`Vector([1, 2, 3]) @ Vector([4, 5, 6]) == 32.0`).
-   - **In-place operators (`__iadd__` in `AddableBingoCage`):** If a class does not implement `__iadd__`, `v1 += v2` falls back to `v1 = v1 + v2` (allocating a new instance and changing `id(v1)`). On a mutable class (`AddableBingoCage`), implementing `def __iadd__(self, other): ... return self` mutates the receiver in place and **must return `self`**. (Also note two unary operator subtleties from `FP` Chapter 16: `Decimal('1') / Decimal('3')` under a changed precision `ctx.prec = 28` can make `one_third != +one_third`, and `ct = Counter('abracadabra'); ct['r'] = -3; +ct` filters out zero and negative counts.)
+Fluent Python Chapters 12 and 16, and Learning Python Chapter 30, use an N-dimensional `Vector` class backed by `array('d', components)`. The class shows how a production-grade sequence should behave. The code is modeled in `code/part03/python_classes_typing_protocols.py`. Each numbered item below adds one capability, so you can read them in order.
+
+1. A short `__repr__` with `reprlib.repr`. For a large vector such as `Vector(range(1000))`, `reprlib.repr(self._components)` truncates the output to 30 characters, like `Vector([0.0, 1.0, 2.0, 3.0, 4.0, ...])`. Logs and interactive sessions never dump megabytes of text.
+2. Slice-aware `__getitem__` with `operator.index`, from Take #2 and from Learning Python Chapter 30's `StepperIndex` and `SkipObject`. A sequence's `__getitem__(self, key)` checks `if isinstance(key, slice): return type(self)(self._components[key])`, so slicing a `Vector` returns a new `Vector` rather than a raw `array`. Otherwise it calls `operator.index(key)`. That calls `key.__index__()`, which accepts integers and integer-like types, and raises `TypeError` for floats or tuples. The `slice.indices(length)` call normalizes the start, stop and step bounds. Learning Python Chapter 30 also contrasts fallback iteration through `__getitem__`, as in `StepperIndex`, with single-scan iterables and multi-scan iterables. `Squares` uses `__iter__` that returns `self`, so it can be scanned only once. `SkipObject('abcdef')`, in `skipper.py` and `skipper_yield.py`, returns a new iterator or generator from each `__iter__` call. That lets nested loops such as `[x + y for x in skipper for y in skipper]` produce all `9` pairs, from `'aa'` to `'ee'`.
+3. Dynamic read-only attributes `x`, `y`, `z` and `t`, from Take #3. Defining `__match_args__ = ('x', 'y', 'z', 't')` and `def __getattr__(self, name):` lets callers read `v.x`, `v.y`, `v.z` and `v.t` from `self._components[0..3]`. Without protection, though, an accidental assignment such as `v.x = 10` creates `v.__dict__['x'] = 10`. That instance attribute then shadows `__getattr__`, while `v[0]` stays unchanged, so the object becomes inconsistent. Overriding `__setattr__` to raise `AttributeError` for any single lowercase letter from `'a'` to `'z'` prevents this. In Learning Python Chapter 30's `accesscontrol.py` and `private0.py`, allowed writes go through `self.__dict__[attr] = val` or `super().__setattr__(attr, val)`, which avoids infinite recursion.
+4. Hashing with `functools.reduce` and `operator.xor`, from Take #4. The code combines component hashes with `hashes = (hash(x) for x in self); return functools.reduce(operator.xor, hashes, 0)`. The initializer `0` covers empty vectors. Streaming equality, `len(self) == len(other) and all(a == b for a, b in zip(self, other))`, also works in $O(1)$ extra memory for vectors of any dimension. Take #5 adds formatting in hyperspherical coordinates with the `'h'` format.
+5. Unary operators, infix and scalar operators, the matrix product, membership and in-place addition. These cover `__neg__`, `__pos__`, `__add__`, `__radd__`, `__mul__`, `__rmul__`, `__matmul__`, `__rmatmul__`, `__contains__` and `__iadd__`. Fluent Python Chapter 16 and Learning Python Chapter 30, `Commuter1` to `Commuter5`, cover them.
+
+Dispatch works in a specific order, and it is worth knowing. For `a + b`, Python calls `type(a).__add__(a, b)`. If `a` has no `__add__`, or the method returns **`NotImplemented`** (and `type(a) is not type(b)`), Python calls the reflected method `type(b).__radd__(b, a)`. If that also returns `NotImplemented`, Python raises `TypeError`. For `==` and `!=`, Python falls back to comparing the objects' `id()` values instead.
+
+In `Vector.__add__`, the code wraps `pairs = itertools.zip_longest(self, other, fillvalue=0.0); return Vector(a + b for a, b in pairs)` in `try ... except TypeError: return NotImplemented`. It then aliases `__radd__ = __add__`. That allows `Vector([3, 4, 5]) + (10, 20)` and `(10, 20) + Vector([3, 4, 5])`, which both give `Vector([13.0, 24.0, 5.0])`. It rejects `Vector([3, 4, 5]) + 1` cleanly. In Learning Python Chapter 30, `Commuter5(88) + Commuter5(99)`, from `commuter.py`, tests `if isinstance(other, Commuter5): other = other.val` inside `__add__`. That avoids nesting, such as `Commuter5(Commuter5(187))`, when two instances are added.
+
+In `Vector.__matmul__` (`@`, PEP 465), the code checks `isinstance(other, abc.Sized) and isinstance(other, abc.Iterable)`. It then computes the dot product `sum(a * b for a, b in zip(self, other))`, so `Vector([1, 2, 3]) @ Vector([4, 5, 6]) == 32.0`.
+
+In-place operators behave differently. If a class does not implement `__iadd__`, then `v1 += v2` falls back to `v1 = v1 + v2`. That allocates a new instance and changes `id(v1)`. On a mutable class such as `AddableBingoCage`, `def __iadd__(self, other): ... return self` changes the receiver in place, and it must return `self`. Fluent Python Chapter 16 also covers two unary subtleties. With `Decimal('1') / Decimal('3')` under a changed precision, `ctx.prec = 28` can make `one_third != +one_third`. With `ct = Counter('abracadabra'); ct['r'] = -3; +ct`, the unary plus filters out zero and negative counts.
 
 ## 6. Design guidance for infrastructure code
 
-1. **Use functions until state or polymorphism appears.** A module of functions is often the best design. Use a class when you have state that travels together (a session and its credentials), an interface with multiple implementations, or a lifecycle (open/close).
-2. **Separate IO from logic.** Pure functions that transform data (parse, decide, format) are easy to test; thin IO shells call them. This is the "functional core, imperative shell" pattern and makes tools testable without clusters (chapter 3.9).
-3. **Make illegal states unrepresentable**: use enums/Literals for states, frozen dataclasses for values, validation at construction.
-4. **Small, explicit interfaces**: depend on a Protocol with two methods rather than a concrete client with fifty; inject it.
-5. **Immutability by default** for configuration and value objects.
-6. **Errors as part of the API**: define a small exception hierarchy (`class MyOpsError(Exception)`; `class NodeNotFound(MyOpsError)`), raise specific errors, document them; don't return `None`/magic values to signal failure when an exception is clearer (chapter 3.5).
-7. **Avoid deep inheritance**; keep to one or two levels; prefer composition and mixins sparingly.
-8. **Enums** for fixed choices: `class State(enum.StrEnum): READY = "ready"; DOWN = "down"` (3.11 `StrEnum`), `enum.auto()`, `Flag` for bit flags; they serialise cleanly and prevent typos.
-9. **Logging and repr**: give every domain object a useful `__repr__`; log with `%r`.
-10. **Avoid global mutable singletons**; pass objects explicitly or use a clearly scoped context (a `Settings` instance).
-11. **Document behaviour with docstrings and types**, and keep public APIs stable (deprecate with `warnings.warn(..., DeprecationWarning)`).
-12. **SOLID in practice**: single responsibility (a class changes for one reason), open/closed via registries/plugins, Liskov via contracts, interface segregation via Protocols, dependency inversion via injection.
+The guidance below is a set of habits for infrastructure code. Each one is short, so you can check your own design against the list.
+
+1. Use functions until state or polymorphism appears. A module of functions is often the best design. Use a class when you have state that travels together, such as a session and its credentials, an interface with multiple implementations, or a lifecycle such as open and close.
+2. Separate IO from logic. Pure functions that parse, decide and format data are easy to test, and thin IO shells call them. This is the "functional core, imperative shell" pattern. It makes tools testable without clusters, as chapter 3.9 shows.
+3. Make illegal states unrepresentable. Use enums or Literals for states, frozen dataclasses for values, and validation at construction time.
+4. Keep interfaces small and explicit. Depend on a Protocol with two methods rather than a concrete client with fifty methods, and inject it.
+5. Keep configuration and value objects immutable by default.
+6. Treat errors as part of the API. Define a small exception hierarchy, such as `class MyOpsError(Exception)` with `class NodeNotFound(MyOpsError)` beneath it. Raise specific errors and document them. Do not return `None` or magic values to signal failure when an exception is clearer. Chapter 3.5 covers errors.
+7. Avoid deep inheritance. Keep it to one or two levels, and use composition and mixins sparingly.
+8. Use enums for fixed choices, such as `class State(enum.StrEnum): READY = "ready"; DOWN = "down"` (the Python 3.11 `StrEnum`). `enum.auto()` assigns values for you, and `Flag` handles bit flags. Enums serialize cleanly and prevent typos.
+9. Give every domain object a useful `__repr__`, and log with `%r`.
+10. Avoid global mutable singletons. Pass objects explicitly, or use a clearly scoped context, such as a `Settings` instance.
+11. Document behavior with docstrings and types. Keep public APIs stable, and deprecate them with `warnings.warn(..., DeprecationWarning)`.
+12. Apply SOLID in practice. Each class should have one responsibility, so it changes for one reason. Open-closed design uses registries or plugins. Liskov substitution comes from contracts, interface segregation from Protocols, and dependency inversion from injection.
 
 ### Example: a typed provider layer
+
+The example below pulls these habits together. It uses an enum for the state, a frozen dataclass for the instance, a Protocol for the cloud client, and a fake that needs no inheritance:
 
 ```python
 from dataclasses import dataclass
@@ -872,219 +928,232 @@ def test_ensure_running():
     assert ensure_running(fake, "p", {"a", "b"}) == ["a"] and fake.started == ["1"]
 ```
 
+The test builds two instances, one stopped and one running. Only the stopped instance named `a` needs to start, so `ensure_running` returns `["a"]`. Because `FakeCompute` satisfies the Protocol, the test runs without touching a cloud API.
+
 ## 7. Lab
 
-First, run the self-checking Python lab (`code/part03/python_classes_typing_protocols_lab.py`) locally. It verifies `ThirdClass`, `Person`, `Manager`, and `AttrDisplay` (`LP` Ch. 27–28), `specialize.py` (`Inheritor`/`Replacer`/`Extender`/`Provider`), `SkipObject` multi-scan iteration, `Commuter5` commutative addition, and `_C1__X`/`_C2__X` name mangling (`LP` Ch. 29–31), `Vector2d` (`__bytes__`, `frombytes`, polar `'0.5fp'`, `__slots__`, `FP` Ch. 11), N-dimensional `Vector` (`__getitem__` slicing, dynamic `x, y, z, t`, `zip_longest` `+`, scalar `*`, `@` dot product, `FP` Ch. 12 & 16), `HackerClubMember` (`ClassVar` and `__post_init__`, `FP` Ch. 5), and `LottoBlower[int]`, `SupportsLessThan` `top()`, and `UpperDict` (`FP` Ch. 8, 13, 14, 15).
+Start with the self-checking Python lab, `code/part03/python_classes_typing_protocols_lab.py`. Run it on your own machine. It checks many of the topics in this chapter. It verifies `ThirdClass`, `Person`, `Manager` and `AttrDisplay` from Learning Python Chapters 27 and 28. It then checks `specialize.py`, with its `Inheritor`, `Replacer`, `Extender` and `Provider` classes. The lab also covers the `SkipObject` multi-scan iteration, the `Commuter5` commutative addition, and the `_C1__X` and `_C2__X` name mangling from Learning Python Chapters 29 to 31. Fluent Python Chapter 11 supplies `Vector2d`, with its `__bytes__`, `frombytes`, the polar `'0.5fp'` format and `__slots__`. The N-dimensional `Vector` covers slicing through `__getitem__`, the dynamic `x, y, z, t` attributes, `+` through `zip_longest`, scalar `*` and the `@` dot product, from Fluent Python Chapters 12 and 16. The lab also tests `HackerClubMember` with `ClassVar` and `__post_init__` from Fluent Python Chapter 5. Last, it covers `LottoBlower[int]`, the `top()` function that uses `SupportsLessThan`, and `UpperDict`, from Fluent Python Chapters 8, 13, 14 and 15.
 
 ```bash
 python3 code/part03/python_classes_typing_protocols_lab.py
 ```
 
-Next, on any machine with Python 3.11+ (all interactive shell steps below are `untested here`), work through these exercises:
+Next, move to any machine with Python 3.11 or later. Every interactive shell step below is `untested here`, so treat each one as a first run and note what you see. Work through the ten exercises in order, and keep notes on your results as you go.
 
-1. **Class basics**: build `Node` with properties, class/static methods and `__slots__`; show instance vs class attribute shadowing; reproduce the shared mutable class attribute bug and fix it; view bound methods, `__dict__`, `vars()`, `dir()`.
-2. **Inheritance and MRO**: implement the diamond (A, B, C, D) with cooperative `super()`; print `__mro__`; break it by omitting a `super()` call and explain; build a mixin (`TaggableMixin`) and a composition-based alternative; compare.
-3. **ABC vs Protocol**: define `Provider` as an ABC (instantiation error for missing methods) and `Compute` as a Protocol; implement a fake satisfying the Protocol without inheritance; run mypy to see conformance errors; use `@runtime_checkable`.
-4. **Data classes**: model the cluster with `namedtuple`, `NamedTuple`, `dataclass` (frozen, slots, order), and `pydantic`; compare memory (`sys.getsizeof`/`tracemalloc`), speed of creation (`timeit`), and behaviour with bad input; show the mutable default error; use `replace` and `asdict`.
-5. **Pydantic**: load a YAML cluster definition into nested models with `extra="forbid"`; produce clear error messages for typos and wrong types; generate a JSON schema; use `BaseSettings` with environment variables and `SecretStr`.
-6. **Typing**: annotate a small module (API client, parser, scheduler); run `mypy --strict` and fix errors; introduce `Optional` bugs and see them caught; write generic `first[T]` and a `Protocol` with `__call__`; use `TypedDict` for a JSON payload; add `py.typed` marker to a package.
-7. **Operator overloading**: implement `Version` with `total_ordering`, a `Size` class (add, compare, format) and `Money` using `Decimal`; test mixed-type behaviour and `NotImplemented`.
-8. **Refactor**: take a script with global state and dict-shaped data; refactor into a functional core (pure functions on dataclasses) and an IO shell; write tests with fakes.
-9. **Enums**: replace string constants with `StrEnum` and `Flag`; serialise to JSON; show invalid-value errors.
-10. **Clean up.**
+1. Class basics. Build `Node` with properties, class and static methods, and `__slots__`. Show how an instance attribute shadows a class attribute. Reproduce the shared mutable class attribute bug, then fix it. Look at bound methods, `__dict__`, `vars()` and `dir()`.
+2. Inheritance and the MRO. Implement the diamond of classes A, B, C and D with cooperative `super()`, and print `__mro__`. Then break the chain by leaving out one `super()` call, and explain what changes. Build a mixin called `TaggableMixin`, build a composition-based alternative, and compare the two.
+3. ABC versus Protocol. Define `Provider` as an ABC, and confirm that a missing method causes an instantiation error. Define `Compute` as a Protocol. Implement a fake that satisfies the Protocol without inheriting from it. Run mypy to see the conformance errors, and use `@runtime_checkable`.
+4. Data classes. Model the cluster with `namedtuple`, `NamedTuple`, `dataclass` (frozen, slots, order) and pydantic. Compare memory with `sys.getsizeof` or `tracemalloc`, compare creation speed with `timeit`, and see how each one behaves with bad input. Show the mutable default error. Then use `replace` and `asdict`.
+5. Pydantic. Load a YAML cluster definition into nested models with `extra="forbid"`. Produce clear error messages for typos and wrong types. Generate a JSON schema. Use `BaseSettings` with environment variables and `SecretStr`.
+6. Typing. Annotate a small module, such as an API client, a parser or a scheduler. Run `mypy --strict` and fix the errors. Introduce an `Optional` bug and watch the checker catch it. Write a generic `first[T]` and a Protocol with `__call__`. Use `TypedDict` for a JSON payload, and add a `py.typed` marker to a package.
+7. Operator overloading. Implement `Version` with `total_ordering`, a `Size` class that supports addition, comparison and formatting, and a `Money` class that uses `Decimal`. Test mixed-type behavior and `NotImplemented`.
+8. Refactor. Take a script that holds global state and dict-shaped data. Split it into a functional core of pure functions on dataclasses and an IO shell. Write tests that use fakes.
+9. Enums. Replace string constants with `StrEnum` and `Flag`, serialize the values to JSON, and look at the errors you get for invalid values.
+10. Clean up.
 
 ## 8. Common mistakes
 
-- Mutable class attributes and mutable default arguments; forgetting `default_factory` in dataclasses.
-- Deep inheritance hierarchies; calling `super().__init__` inconsistently (breaking cooperative inheritance); overriding methods with different signatures.
-- Using classes as namespaces for functions (use modules) or singletons (use module-level objects).
-- Assuming type hints enforce anything at runtime; sprinkling `Any`; unchecked `# type: ignore`.
-- Validating the same data repeatedly (or never) instead of at the boundary.
-- Exposing mutable internals (returning the internal list) instead of copies/tuples.
-- Overloading operators with surprising semantics; defining `__eq__` without `__hash__`.
-- Doing IO in `__init__`; catching exceptions in constructors and leaving half-initialised objects.
-- Pickling untrusted data; relying on `__del__`.
-- Storing secrets in `repr`-visible attributes (use `SecretStr`).
+The mistakes below are the ones this chapter warns about. When you review your own code, look for each of them.
+
+- Mutable class attributes and mutable default arguments. A common slip is to forget `default_factory` in a dataclass.
+- Deep inheritance hierarchies. Calling `super().__init__` inconsistently breaks cooperative inheritance, and overriding methods with different signatures causes trouble too.
+- Using classes as namespaces for functions, where a module is the right tool, or as singletons, where module-level objects are simpler.
+- Assuming type hints enforce anything at runtime. Sprinkling `Any` and leaving unchecked `# type: ignore` comments both hide real errors.
+- Validating the same data over and over, or never validating it. Validate at the boundary instead.
+- Exposing mutable internals, such as returning the internal list. Return copies or tuples.
+- Overloading operators with surprising semantics, or defining `__eq__` without `__hash__`.
+- Doing IO in `__init__`, or catching exceptions in constructors and leaving half-initialized objects behind.
+- Pickling untrusted data, or relying on `__del__`.
+- Storing secrets in attributes that `repr` shows. Use `SecretStr` for them.
 
 ## 9. Interview angles
 
+These questions are a useful way to check what you know about the topics in this chapter.
+
 - "What is the difference between a class attribute and an instance attribute? What bug can class-level lists cause?"
-- "Explain MRO and `super()`. What is C3 linearisation? Resolve this diamond."
-- "Composition vs inheritance: examples where you chose each."
-- "ABC vs Protocol?"
-- "Dataclass vs namedtuple vs pydantic vs plain class?"
+- "Explain MRO and `super()`. What is C3 linearization? Resolve this diamond."
+- "Composition versus inheritance: give examples where you chose each."
+- "ABC versus Protocol?"
+- "Dataclass versus namedtuple versus pydantic versus a plain class?"
 - "Do type hints affect runtime? How do you enforce them in CI?"
-- "How would you design a multi-cloud provisioning tool in Python?" (Interface, factory, injected clients, typed models, errors, tests.)
-- "What does `@property` give you? `@classmethod` vs `@staticmethod`?"
+- "How would you design a multi-cloud provisioning tool in Python?" A good answer covers an interface, a factory, injected clients, typed models, errors and tests.
+- "What does `@property` give you? How does `@classmethod` differ from `@staticmethod`?"
 - "What is `__slots__` and when would you use it?"
 - "How do you make a class hashable and sortable correctly?"
 
 ## Exercises
 
-1. **Classes, Attribute Inheritance Search, `classscope3.py` (`LEGB`), Bound Methods, `__slots__`, and `Vector2d` (`LP` Ch. 26–32 & `FP` Ch. 11):** (a) Trace how `object.attr` climbs `self.__dict__` -> `self.__class__` -> `self.__class__.__mro__` whereas `class` bodies are skipped by `LEGB` inside methods (`classscope3.py`), and state the four `__slots__` inheritance rules; (b) using `Vector2d` and `PseudoprivateC3` in `code/part03/python_classes_typing_protocols.py`, explain how `__bytes__`, `@classmethod frombytes`, polar `__format__` (`'0.5fp'`), `@property`, and `__X` name mangling (`_C1__X`, `_C2__X`) work.
-2. **Inheritance (`Inheritor`/`Replacer`/`Extender`/`Provider`), Cooperative `super()` & C3 MRO, Mixins (`AttrDisplay`, `UpperCaseMixin`), and Composition (`LP` Ch. 28, 29, 31 & `FP` Ch. 14):** (a) State the three cooperative `super()` call-chain rules (universal deployment, call-chain anchors, compatible signatures) and trace `D.__mro__` in a diamond `(D, B, C, A, object)`; (b) using `Manager`, `AttrDisplay`, and `UpperDict` in `code/part03/python_classes_typing_protocols.py`, explain why `UpperCaseMixin` must precede `collections.UserDict` in `class UpperDict(UpperCaseMixin, collections.UserDict):` and when to prefer composition (`PizzaShop`, `Department`, `RedfishClient`) over inheritance.
-3. **Four Approaches to Interfaces: Duck Typing, Goose Typing (`Tombola` ABC), Static Nominal Typing, and Static Duck Typing (`typing.Protocol`, `FP` Ch. 13):** Using `Tombola`, `LottoBlower`, `SupportsLessThan`, and `top()` in `code/part03/python_classes_typing_protocols.py`, compare `abc.ABC` (`@abstractmethod`, virtual subclasses via `.register()`, and `__subclasshook__` on `abc.Sized`) with `typing.Protocol` (`@runtime_checkable` structural typing without inheritance).
-4. **Data Class Builders (`namedtuple`, `NamedTuple`, `@dataclass`, `HackerClubMember`, and Pydantic, `FP` Ch. 5):** (a) Contrast how type annotations `a: int; b: float = 1.1; c = 'spam'` behave in a plain class (`DemoPlainClass`), `typing.NamedTuple` (`DemoNTClass`), and `@dataclass` (`DemoDataClass`); (b) using `HackerClubMember` in `code/part03/python_classes_typing_protocols.py`, explain why mutable defaults require `field(default_factory=list)`, why class attributes require `ClassVar[set[str]]`, how `__post_init__` validates state, and when to use Pydantic (`BaseModel`, `extra="forbid"`, `SecretStr`) instead.
-5. **Type Hints, Generics (`LottoBlower[T]`), Variance (`Invariant`, `Covariant`, `Contravariant`), `@overload`, and `TypedDict` (`FP` Ch. 8 & 15):** (a) Explain why function parameters should accept general ABCs/Protocols (`Mapping`, `Sequence`, `Iterable`) while returning concrete types (`list`, `dict`), and contrast `Any` with `object`; (b) explain why `list[T]` is invariant, `Sequence[T_co]` (`BeverageDispenser[T_co]`) is covariant, `TrashCan[T_contra]` is contravariant, and `Callable[[Arg], Ret]` is contravariant in `Arg` and covariant in `Ret`.
-6. **Sequence Special Methods and Operator Overloading (`Vector`, `SkipObject`, `Commuter5`, `Version`, `FP` Ch. 12 & 16, `LP` Ch. 30):** Using `Vector`, `SkipObject`, and `Commuter5` in `code/part03/python_classes_typing_protocols.py`, explain: (a) how `Vector.__getitem__` handles slices vs `operator.index(key)`, how `__getattr__` and `__setattr__` expose read-only `v.x, v.y, v.z, v.t` without shadowing bugs, and how `SkipObject` supports nested multi-scan loops; and (b) how `__add__`/`__radd__`, `__mul__`/`__rmul__`, `@` (`__matmul__`), `__iadd__`, and `@total_ordering` dispatch and why returning `NotImplemented` is mandatory on unknown operand types.
+1. Start with attribute lookup, the `classscope3.py` example of `LEGB`, bound methods and `__slots__`, using `Vector2d` from Learning Python Chapters 26 to 32 and Fluent Python Chapter 11. You can check each part of this answer against the code in the book. First, trace how `object.attr` climbs from `self.__dict__` to `self.__class__` and then through `self.__class__.__mro__`. Explain why `class` bodies are skipped by `LEGB` inside methods, as `classscope3.py` shows. Then state the four `__slots__` inheritance rules. Second, use `Vector2d` and `PseudoprivateC3` in `code/part03/python_classes_typing_protocols.py`. Explain how `__bytes__`, the `@classmethod` `frombytes`, the polar `__format__` (`'0.5fp'`), `@property` and `__X` name mangling (`_C1__X`, `_C2__X`) work.
+2. Work on inheritance, and you can use these as a checklist. Cover the four subclass patterns `Inheritor`, `Replacer`, `Extender` and `Provider`, cooperative `super()` with the C3 MRO, mixins such as `AttrDisplay` and `UpperCaseMixin`, and composition. Use Learning Python Chapters 28, 29 and 31 with Fluent Python Chapter 14. If you work through these in order, each one builds on the last. First, state the three cooperative `super()` call-chain rules: universal deployment, call-chain anchors and compatible signatures. Then trace `D.__mro__` in the diamond `(D, B, C, A, object)`. Second, use `Manager`, `AttrDisplay` and `UpperDict` in `code/part03/python_classes_typing_protocols.py`. Explain why `UpperCaseMixin` must come before `collections.UserDict` in `class UpperDict(UpperCaseMixin, collections.UserDict):`. Then explain when composition, as in `PizzaShop`, `Department` or `RedfishClient`, is the better choice over inheritance.
+3. Compare four approaches to interfaces: duck typing, goose typing, static nominal typing and static duck typing. Use Fluent Python Chapter 13 and the `Tombola` example. Using `Tombola`, `LottoBlower`, `SupportsLessThan` and `top()` in `code/part03/python_classes_typing_protocols.py`, compare `abc.ABC` with `@abstractmethod`, virtual subclasses through `.register()`, and `__subclasshook__` on `abc.Sized`. Then compare that with `typing.Protocol`, which gives structural typing through `@runtime_checkable` without inheritance.
+4. Work with data class builders. Cover `namedtuple`, `NamedTuple`, `@dataclass`, `HackerClubMember` and pydantic, using Fluent Python Chapter 5. First, contrast how the annotations `a: int; b: float = 1.1; c = 'spam'` behave in a plain class (`DemoPlainClass`), in `typing.NamedTuple` (`DemoNTClass`) and in `@dataclass` (`DemoDataClass`). Second, use `HackerClubMember` in `code/part03/python_classes_typing_protocols.py`. Explain why mutable defaults need `field(default_factory=list)`, why class attributes need `ClassVar[set[str]]`, and how `__post_init__` validates state. Then explain when to use Pydantic instead, with `BaseModel`, `extra="forbid"` and `SecretStr`.
+5. Cover type hints, generics, variance, `@overload` and `TypedDict`, using Fluent Python Chapters 8 and 15. First, explain why function parameters should accept general ABCs and Protocols, such as `Mapping`, `Sequence` and `Iterable`, while returning concrete types such as `list` and `dict`. Contrast `Any` with `object`. Second, explain why `list[T]` is invariant. Explain why `Sequence[T_co]`, as in `BeverageDispenser[T_co]`, is covariant, and why `TrashCan[T_contra]` is contravariant. Finally, explain why `Callable[[Arg], Ret]` is contravariant in `Arg` and covariant in `Ret`.
+6. Work on sequence special methods and operator overloading, using `Vector`, `SkipObject`, `Commuter5` and `Version`. Fluent Python Chapters 12 and 16 and Learning Python Chapter 30 cover them, and you will need all three to answer fully. Use `Vector`, `SkipObject` and `Commuter5` in `code/part03/python_classes_typing_protocols.py`. First, explain how `Vector.__getitem__` handles slices compared with `operator.index(key)`. Explain how `__getattr__` and `__setattr__` expose read-only `v.x`, `v.y`, `v.z` and `v.t` without shadowing bugs, and how `SkipObject` supports nested multi-scan loops. Second, explain how `__add__` and `__radd__`, `__mul__` and `__rmul__`, `@` (`__matmul__`), `__iadd__` and `@total_ordering` dispatch. Explain why returning `NotImplemented` is mandatory for unknown operand types.
 
 ## Checkpoint questions (20)
 
 <details>
-<summary>1. How does `object.attr` inheritance search work, why is `class` NOT an enclosing (`E`) scope in `LEGB` (`classscope3.py`), and how do bound methods work (`LP` Chapters 26, 29, 31)?</summary>
+<summary>1. How does `object.attr` inheritance search work, why is `class` NOT an enclosing (`E`) scope in `LEGB` (`classscope3.py`), and how do bound methods work (Learning Python Chapters 26, 29, 31)?</summary>
 
-- **`object.attr` search:** Climbs `self.__dict__` -> `self.__class__.__dict__` -> superclasses in `self.__class__.__mro__` order from bottom to top, left to right (with data descriptors like `@property` or `__slots__` on the class taking precedence over `self.__dict__`); attribute assignment (`obj.attr = val`) writes directly to `obj.__dict__` (shadowing class attributes if `obj` is an instance).
-- **`class` is not in `LEGB` (`classscope3.py`):** Unqualified names inside a method (`print(X)`) search **L**ocal, **E**nclosing `def` functions (`nester`'s `X = 2`), module **G**lobal (`X = 1`), and **B**uilt-in—skipping the enclosing `class C` (`X = 3`) completely. Methods must qualify class attributes as `self.X` or `C.X`.
-- **Bound methods:** Accessing `inst.doit` returns a bound method object packaging `inst` (`__self__`) and `Class.doit` (`__func__`), callable directly as `meth(arg)` without passing `self`.
+When you write `object.attr`, Python first checks `self.__dict__`, then `self.__class__.__dict__`, then each superclass in `self.__class__.__mro__` order, from bottom to top and left to right. Data descriptors such as `@property` or `__slots__` on the class take precedence over `self.__dict__`. Attribute assignment, `obj.attr = val`, writes straight to `obj.__dict__`, which shadows any class attribute of the same name.
+
+A `class` body is skipped by `LEGB`. Inside a method, `print(X)` looks in the **L**ocal scope, then the **E**nclosing `def` functions (here `nester`'s `X = 2`), then the module **G**lobal scope (`X = 1`), and finally the **B**uilt-ins. It never checks the enclosing `class C` with `X = 3`. A method must write `self.X` or `C.X` to reach that attribute.
+
+When you access `inst.doit`, you get a bound method object. It holds `inst` as `__self__` and the function `Class.doit` as `__func__`. You can call it directly as `meth(arg)`, without passing `self`.
 </details>
 
 <details>
-<summary>2. What is the difference between a class attribute and an instance attribute, and what happens when a class attribute is a mutable list (`LP` Chapters 29 & 32)?</summary>
+<summary>2. What is the difference between a class attribute and an instance attribute, and what happens when a class attribute is a mutable list (Learning Python Chapters 29 and 32)?</summary>
 
-A **class attribute** (`cluster = "ai-prod"`) is stored once on the class dictionary (`Node.__dict__`) and shared by all instances; an **instance attribute** (`self.name = name`) is stored in each instance's `self.__dict__`. Rebinding `node.cluster = "x"` creates a shadowing key in `node.__dict__` without changing `Node.cluster`. However, if a class attribute is a **mutable object** (`shared = []`), mutating it in place via `x.shared.append('hack')` mutates the single shared list across every instance (`y.shared` sees `['hack']`). Always initialize per-instance mutable collections inside `__init__` (`self.perobj = []`).
+A class attribute, such as `cluster = "ai-prod"`, is stored once in the class dictionary, `Node.__dict__`, and every instance shares it. An instance attribute, such as `self.name = name`, lives in each instance's own `self.__dict__`. If you assign `node.cluster = "x"`, Python creates a new key in `node.__dict__` and leaves `Node.cluster` unchanged.
+
+A mutable class attribute behaves differently. Suppose `shared = []` is defined on the class. Calling `x.shared.append('hack')` changes the one list that all instances share, so `y.shared` also shows `['hack']`. To avoid this, create per-instance collections inside `__init__`, such as `self.perobj = []`.
 </details>
 
 <details>
-<summary>3. Contrast `@property`, `@classmethod`, and `@staticmethod`, and show how `Vector2d.frombytes` uses `@classmethod` (`FP` Chapter 11 & `LP` Chapter 32).</summary>
+<summary>3. Contrast `@property`, `@classmethod`, and `@staticmethod`, and show how `Vector2d.frombytes` uses `@classmethod` (Fluent Python Chapter 11 and Learning Python Chapter 32).</summary>
 
-- **`@property`**: turns a getter method into a computed/read-only attribute (`node.state`, `v.x`) with optional `@state.setter` validation—letting a class start with simple public attributes and add validation later without breaking callers.
-- **`@classmethod`**: receives the class `cls` as its first argument (`def from_dict(cls, d):` or `def frombytes(cls, octets): return cls(*memv)`), allowing alternative constructors to instantiate the exact subclass (`ShortVector2d.frombytes(...)` returns a `ShortVector2d`) or track per-class instance counters.
-- **`@staticmethod`**: receives neither `self` nor `cls`; behaves like a plain function namespaced inside the class.
+- **`@property`** turns a getter into a computed, read-only attribute, such as `node.state` or `v.x`. You can add an `@state.setter` later to validate assignments. A class can therefore start with plain public attributes and add validation without breaking its callers.
+- **`@classmethod`** receives the class as `cls`, as in `def from_dict(cls, d):` or `def frombytes(cls, octets): return cls(*memv)`. Alternative constructors can then build the exact subclass. `ShortVector2d.frombytes(...)` returns a `ShortVector2d`. A classmethod can also keep a per-class instance counter.
+- **`@staticmethod`** receives neither `self` nor `cls`. It works like a plain function that is namespaced inside the class.
 </details>
 
 <details>
-<summary>4. What does `__slots__` do, how much memory does it save on `Vector2d`, and what are its four inheritance rules (`LP` Chapter 32 & `FP` Chapter 11)?</summary>
+<summary>4. What does `__slots__` do, how much memory does it save on `Vector2d`, and what are its four inheritance rules (Learning Python Chapter 32 and Fluent Python Chapter 11)?</summary>
 
-Defining `__slots__ = ('__x', '__y')` replaces each instance's dynamic `__dict__` hash table with a compact fixed array of references managed by class descriptors (shrinking 10 million `Vector2d` instances from 1.62 GiB to 655 MiB). Its four inheritance rules are:
-1. **Every class in the hierarchy must define `__slots__`** (use `__slots__ = ()` in subclasses that add no new fields); if any class omits `__slots__`, instances still get a `__dict__`.
-2. **Never repeat superclass slot names** in a subclass.
-3. **Slot names cannot have class-level default values** (`ValueError`), and at most one base class in multiple inheritance may define non-empty `__slots__` (`TypeError: multiple bases have instance lay-out conflict`).
-4. Slotted instances have **no `__dict__`** (and no weakref support unless `'__weakref__'` is in `__slots__`), so generic introspection tools must use `dir(obj)` and `getattr(obj, name)`.
+Defining `__slots__ = ('__x', '__y')` replaces each instance's dynamic `__dict__` hash table with a compact, fixed array of references. Class descriptors manage that array. With this change, 10 million `Vector2d` instances shrink from 1.62 GiB to 655 MiB. The four inheritance rules are these:
+
+1. Every class in the hierarchy must define `__slots__`. Subclasses that add no new fields use `__slots__ = ()`. If any class leaves it out, its instances still get a `__dict__`.
+2. Never repeat a superclass slot name in a subclass.
+3. A slot name cannot also have a class-level default, which raises `ValueError`. With multiple inheritance, at most one base class may define a non-empty `__slots__`. Otherwise you get `TypeError: multiple bases have instance lay-out conflict`.
+4. Slotted instances have no `__dict__`, and no weakref support unless `'__weakref__'` is listed in `__slots__`. Generic introspection tools must therefore use `dir(obj)` and `getattr(obj, name)`.
 </details>
 
 <details>
-<summary>5. How does pseudoprivate name mangling (`__X`) work (`LP` Chapter 31 `pseudoprivate.py`), and why is it used?</summary>
+<summary>5. How does pseudoprivate name mangling (`__X`) work (Learning Python Chapter 31 `pseudoprivate.py`), and why is it used?</summary>
 
-Inside a `class` statement, any identifier starting with **two leading underscores and no more than one trailing underscore** (`self.__X` or `def __method(self):`) is automatically rewritten by the compiler to **`_ClassName__X`** (for example, `_C1__X` in `C1` and `_C2__X` in `C2`). When `class C3(C1, C2)` inherits from both classes (or in `Vector2d` with `self.__x`), `I.__dict__` stores `{'_C1__X': 88, '_C2__X': 99}` so the two classes' internal attributes never collide on `self`. It is a safety mechanism against accidental subclass collisions, not security against deliberate access.
+Inside a `class` statement, an identifier with two leading underscores and at most one trailing underscore, such as `self.__X` or `def __method(self):`, is rewritten by the compiler to `_ClassName__X`. For example, `C1` stores `_C1__X` and `C2` stores `_C2__X`. When `class C3(C1, C2)` inherits from both, the object's dictionary holds `{'_C1__X': 88, '_C2__X': 99}`, so the two values never collide. The same applies to `self.__x` in `Vector2d`. Mangling guards against accidental collisions between subclasses. It is not a security mechanism, since a deliberate access still works.
 </details>
 
 <details>
-<summary>6. How does C3 Method Resolution Order (`__mro__`) linearize diamond hierarchies, and what are the three rules for cooperative `super()` (`LP` Chapters 31 & 32, `FP` Chapter 14)?</summary>
+<summary>6. How does C3 Method Resolution Order (`__mro__`) linearize diamond hierarchies, and what are the three rules for cooperative `super()` (Learning Python Chapters 31 and 32, Fluent Python Chapter 14)?</summary>
 
-Python's **C3 algorithm** linearizes the inheritance graph into `Class.__mro__` so that: (1) subclasses always precede superclasses, (2) multiple base classes stay in the left-to-right order listed in the `class` header, and (3) common ancestors in a diamond (`class D(B, C)` where `B(A)` and `C(A)`) appear only once at their last visitation (`(D, B, C, A, object)`).
-Calling `super().method()` delegates to the **next class after the current class in `self.__class__.__mro__`**, which requires:
-1. **Universal deployment:** every class along the chain must call `super().method()`.
-2. **A call-chain anchor:** the final class before `object` must define `method()` without calling `super().method()` (for `__init__`, `object.__init__` is the built-in anchor).
-3. **Compatible argument signatures** across all classes in the chain.
+Python's C3 algorithm builds the `Class.__mro__` order from the inheritance graph. It follows three ideas. Subclasses always come before their superclasses. Multiple bases keep the left-to-right order given in the `class` header. A common ancestor in a diamond, such as `class D(B, C)` where `B(A)` and `C(A)`, appears only once, at its last visit. For that diamond, the order is `(D, B, C, A, object)`.
+
+Calling `super().method()` delegates to the next class after the current one in `self.__class__.__mro__`. That works only if three rules hold. First, every class along the chain calls `super().method()`. Second, the last class before `object` defines `method()` without calling `super()`. For `__init__`, `object.__init__` already serves as that anchor. Third, every class in the chain accepts compatible arguments.
 </details>
 
 <details>
-<summary>7. What are the four subclass interface patterns in `LP` Chapter 29's `specialize.py`, and how do Mixin classes (`AttrDisplay`, `UpperCaseMixin`) work?</summary>
+<summary>7. What are the four subclass interface patterns in Learning Python Chapter 29's `specialize.py`, and how do Mixin classes (`AttrDisplay`, `UpperCaseMixin`) work?</summary>
 
-In `specialize.py`: (1) **`Inheritor`** inherits `Super.method` verbatim, (2) **`Replacer`** overrides `method` completely, (3) **`Extender`** overrides `method` and calls back to `Super.method` to augment behavior (like `Manager.giveRaise`), and (4) **`Provider`** implements the abstract `action()` method called by `Super.delegate()`.
-A **Mixin** (`AttrDisplay`, `ListInstance`, `UpperCaseMixin`) is a small class designed to contribute one orthogonal capability via multiple inheritance rather than stand alone; it must be listed **before** the base class (`class UpperDict(UpperCaseMixin, collections.UserDict):`) so its methods come first in `__mro__` and forward via `super()`.
+In `specialize.py`, there are four patterns. `Inheritor` inherits `Super.method` unchanged. `Replacer` overrides `method` completely. `Extender` overrides `method` and calls back into `Super.method` to add to its behavior, as `Manager.giveRaise` does. `Provider` implements the abstract `action()` method that `Super.delegate()` calls.
+
+A mixin, such as `AttrDisplay`, `ListInstance` or `UpperCaseMixin`, is a small class that adds one independent capability through multiple inheritance. It is not meant to stand on its own. It must be listed before the base class, as in `class UpperDict(UpperCaseMixin, collections.UserDict):`. That placement puts its methods first in `__mro__`, and it forwards work onward with `super()`.
 </details>
 
 <details>
-<summary>8. Why should infrastructure code favor Composition and Dependency Injection over deep Inheritance (`LP` Chapters 28 & 31, `FP` Chapter 14)?</summary>
+<summary>8. Why should infrastructure code favor Composition and Dependency Injection over deep Inheritance (Learning Python Chapters 28 and 31, Fluent Python Chapter 14)?</summary>
 
-Inheritance (`"is-a"`) tightly couples subclasses to parent implementation details across a fragile hierarchy. **Composition (`"has-a"`)** holds collaborators as attributes (`RedfishClient(session, retry_policy, logger)`, `PizzaShop` embedding `Chef`, `Server`, and `Oven`, or `Processor(reader, writer)` in `streams.py`) and delegates work to them. **Dependency injection** simply passes those collaborators into `__init__` so tests can inject an in-memory `FakeCompute` or fake HTTP session with zero monkey-patching or network I/O.
+Inheritance, which models an "is-a" relationship, ties each subclass tightly to the implementation details of its parent. Across a deep hierarchy, that makes the code fragile. Composition, which models a "has-a" relationship, holds collaborators as attributes and delegates work to them. Examples include `RedfishClient(session, retry_policy, logger)`, `PizzaShop` containing `Chef`, `Server` and `Oven`, and `Processor(reader, writer)` in `streams.py`. Dependency injection passes those collaborators into `__init__`. Tests can then inject an in-memory `FakeCompute` or a fake HTTP session, with no monkey-patching and no network I/O.
 </details>
 
 <details>
-<summary>9. Compare the four interface/typing approaches in Python (`FP` Chapter 13): Duck Typing, Goose Typing (`abc.ABC`), Static Nominal Typing, and Static Duck Typing (`typing.Protocol`).</summary>
+<summary>9. Compare the four interface/typing approaches in Python (Fluent Python Chapter 13): Duck Typing, Goose Typing (`abc.ABC`), Static Nominal Typing, and Static Duck Typing (`typing.Protocol`).</summary>
 
-1. **Duck typing (runtime):** Call methods (`obj.write(data)`) directly without type checks.
-2. **Goose typing (`abc.ABC`, runtime):** Inherit from an ABC (`Tombola`, `Provider(ABC)` with `@abstractmethod`) or register a virtual subclass (`Tombola.register(TomboList)`), enforcing abstract methods at instantiation time and checking `isinstance(x, collections.abc.Sequence)` at runtime.
-3. **Static nominal typing (`mypy` / `pyright`):** Check explicit class/ABC inheritance hierarchies via type annotations before runtime.
-4. **Static duck typing (`typing.Protocol`, PEP 544):** Define a structural interface (`class Sink(Protocol): def write(self, data: bytes) -> int: ...` or `@runtime_checkable class SupportsLessThan(Protocol):`); any class with matching methods satisfies the `Protocol` statically (and at runtime if `@runtime_checkable`) **without inheriting from it**.
+1. **Duck typing (runtime):** You call methods, such as `obj.write(data)`, directly, without type checks.
+2. **Goose typing (`abc.ABC`, runtime):** You inherit from an ABC, such as `Tombola` or `Provider(ABC)` with `@abstractmethod`. Or you register a virtual subclass, as `Tombola.register(TomboList)` does. Python then enforces the abstract methods when you create an instance, and `isinstance(x, collections.abc.Sequence)` checks work at runtime.
+3. **Static nominal typing (`mypy` and `pyright`):** The checker verifies explicit class and ABC inheritance through type annotations, before the code runs.
+4. **Static duck typing (`typing.Protocol`, PEP 544):** You define a structural interface, such as `class Sink(Protocol): def write(self, data: bytes) -> int: ...`, or `@runtime_checkable class SupportsLessThan(Protocol):`. Any class with matching methods satisfies the Protocol statically, and at runtime if it is `@runtime_checkable`. It does not need to inherit from the Protocol.
 </details>
 
 <details>
-<summary>10. Compare `namedtuple`, `typing.NamedTuple`, `@dataclass`, `TypedDict`, and `pydantic.BaseModel` (`FP` Chapter 5).</summary>
+<summary>10. Compare `namedtuple`, `typing.NamedTuple`, `@dataclass`, `TypedDict`, and `pydantic.BaseModel` (Fluent Python Chapter 5).</summary>
 
-- **`collections.namedtuple` / `typing.NamedTuple`**: immutable tuple subclasses (same compact memory as a `tuple`, unpackable, hashable, `_asdict()`, `_fields`); `NamedTuple` adds type annotations and class syntax.
-- **`@dataclass`**: code generator producing `__init__`, `__repr__`, `__eq__` (plus optional `order=True`, `frozen=True`, `slots=True`, `kw_only=True`, `replace()`, `asdict()`), using `field(default_factory=list)` for mutable defaults, `ClassVar` for class attributes (`HackerClubMember.all_handles`), and `__post_init__` for custom validation. Does **not** enforce type hints at runtime.
-- **`TypedDict`**: static-only type hints for plain `dict` structures (`BookDict`); zero runtime overhead or validation.
-- **`pydantic.BaseModel`**: enforces and coerces types **at runtime**, supports `extra="forbid"`, `@field_validator`, `SecretStr`, `BaseSettings` (env vars), and JSON Schema generation.
+- **`collections.namedtuple` and `typing.NamedTuple`** create immutable tuple subclasses. They use the same compact memory as a `tuple`, and they can be unpacked and hashed. They also provide `_asdict()` and `_fields`. `NamedTuple` adds type annotations and class syntax.
+- **`@dataclass`** generates `__init__`, `__repr__` and `__eq__`. You can add `order=True`, `frozen=True`, `slots=True`, `kw_only=True`, `replace()` and `asdict()`. Mutable defaults use `field(default_factory=list)`, class-level values use `ClassVar`, as in `HackerClubMember.all_handles`, and custom checks go in `__post_init__`. It does not enforce type hints at runtime.
+- **`TypedDict`** gives static type hints to plain `dict` structures, as `BookDict` does. It adds no runtime overhead and performs no validation.
+- **`pydantic.BaseModel`** enforces and coerces types at runtime. It supports `extra="forbid"`, `@field_validator`, `SecretStr`, `BaseSettings` for environment variables, and JSON Schema generation.
 </details>
 
 <details>
-<summary>11. How do type annotations `a: int; b: float = 1.1; c = 'spam'` behave differently in a plain class, `typing.NamedTuple`, and `@dataclass` (`FP` Chapter 5)?</summary>
+<summary>11. How do type annotations `a: int; b: float = 1.1; c = 'spam'` behave differently in a plain class, `typing.NamedTuple`, and `@dataclass` (Fluent Python Chapter 5)?</summary>
 
-- **Plain class (`DemoPlainClass`):** `a` is recorded in `__annotations__` only and **does not exist as a class attribute** (`DemoPlainClass.a` raises `AttributeError`), while `b = 1.1` and `c = 'spam'` are plain class attributes.
-- **`typing.NamedTuple` (`DemoNTClass`):** `a` and `b` become read-only tuple element descriptors (`_tuplegetter`), with `b` defaulting to `1.1`, while unannotated `c = 'spam'` remains a plain class attribute.
-- **`@dataclass` (`DemoDataClass`):** `a` and `b` become instance attributes set by `__init__(self, a: int, b: float = 1.1)` (`DemoDataClass.a` is not a class attribute, `DemoDataClass.b` holds the default `1.1`), while unannotated `c = 'spam'` remains a plain class attribute.
+- **Plain class (`DemoPlainClass`):** `a` is recorded only in `__annotations__`. It does not exist as a class attribute, so `DemoPlainClass.a` raises `AttributeError`. The assignments `b = 1.1` and `c = 'spam'` are ordinary class attributes.
+- **`typing.NamedTuple` (`DemoNTClass`):** `a` and `b` become read-only tuple element descriptors, called `_tuplegetter`. `b` defaults to `1.1`. The unannotated `c = 'spam'` stays a plain class attribute.
+- **`@dataclass` (`DemoDataClass`):** `a` and `b` become instance attributes set by `__init__(self, a: int, b: float = 1.1)`. `DemoDataClass.a` is not a class attribute, while `DemoDataClass.b` holds the default `1.1`. The unannotated `c = 'spam'` stays a plain class attribute.
 </details>
 
 <details>
 <summary>12. How do Pydantic `BaseModel`, `model_config = {"extra": "forbid", "frozen": True}`, `@field_validator`, `SecretStr`, and `BaseSettings` protect infrastructure boundaries?</summary>
 
-At external boundaries (YAML/JSON config files, REST APIs, environment variables), Pydantic parses untrusted dicts via `NodeSpec.model_validate(data)` into guaranteed-valid objects:
-- **`extra="forbid"`** rejects unknown keys immediately, catching misspelled YAML fields (`timout: 30`) that would otherwise be silently ignored.
-- **`Field(ge=1, le=16, pattern=...)` and `@field_validator`** enforce domain invariants at construction time, raising a structured `ValidationError` (`e.errors()`).
-- **`SecretStr`** masks credentials as `'**********'` in `repr()`, `str()`, and logs until `.get_secret_value()` is called explicitly.
-- **`BaseSettings`** loads and validates configuration from environment variables (`env_prefix="MYOPS_"`) and `.env` files.
+At external boundaries, such as YAML or JSON config files, REST APIs and environment variables, Pydantic parses untrusted dicts. `NodeSpec.model_validate(data)` turns them into objects that are known to be valid.
+
+- **`extra="forbid"`** rejects unknown keys at once. A misspelled YAML field, such as `timout: 30`, would otherwise be ignored without warning.
+- **`Field(ge=1, le=16, pattern=...)` with `@field_validator`** enforces the rules for each field when the object is built. Failures raise a structured `ValidationError`, which you can inspect with `e.errors()`.
+- **`SecretStr`** masks credentials as `'**********'` in `repr()`, `str()` and logs. The real value appears only after you call `.get_secret_value()` on purpose.
+- **`BaseSettings`** loads and validates settings from environment variables with `env_prefix="MYOPS_"` and from `.env` files.
 </details>
 
 <details>
-<summary>13. Why should function annotations accept `Mapping` or `Sequence`/`Iterable` for parameters while returning concrete `list` or `dict` (`FP` Chapter 8)?</summary>
+<summary>13. Why should function annotations accept `Mapping` or `Sequence`/`Iterable` for parameters while returning concrete `list` or `dict` (Fluent Python Chapter 8)?</summary>
 
-Annotating a parameter as `color_map: Mapping[str, int]` or `items: Iterable[str]` (or `Sequence[str]` when `len()`/indexing is needed) lets callers pass a `dict`, `defaultdict`, `ChainMap`, `UserDict`, `tuple`, `set`, or generator without unnecessary conversions. Annotating the return value as a concrete type (`-> list[str]` or `-> dict[str, int]`) gives callers the full concrete API without forcing them to guess what concrete container was returned.
+When a parameter is annotated as `color_map: Mapping[str, int]`, or as `items: Iterable[str]`, or as `Sequence[str]` when the code needs `len()` or indexing, callers can pass a `dict`, `defaultdict`, `ChainMap`, `UserDict`, `tuple`, `set` or generator. They do not need to convert anything first. A concrete return type, such as `-> list[str]` or `-> dict[str, int]`, gives callers the full API of that container. They do not have to guess which concrete container they received.
 </details>
 
 <details>
-<summary>14. What is the difference between `Any` and `object` in Python type hints (`FP` Chapters 8 & 15)?</summary>
+<summary>14. What is the difference between `Any` and `object` in Python type hints (Fluent Python Chapters 8 and 15)?</summary>
 
-- **`Any`** is the gradual-typing escape hatch that is simultaneously a subtype of and supertype of **every** type: assigning an `Any` value (such as the return value of `json.loads()`) to any variable or calling any method `x.foo()` on `Any` **bypasses static type checking completely**.
-- **`object`** is the root of the nominal class hierarchy: every type is a subtype of `object` (so a parameter `x: object` accepts any value), but the type checker **rejects any operation on `x`** that is not defined on `object` itself (such as `x + 1` or `x.upper()`) until you narrow `x`'s type with `isinstance(x, ...)`.
+- **`Any`** is the gradual-typing escape hatch. It is both a subtype and a supertype of **every** type. If you assign an `Any` value, such as the result of `json.loads()`, to a variable, or call any method on it, such as `x.foo()`, the type checker stops checking that code completely.
+- **`object`** is the root of the class hierarchy. Every type is a subtype of `object`, so a parameter annotated `x: object` accepts any value. The checker rejects any operation that `object` itself does not define, such as `x + 1` or `x.upper()`. That stays true until you narrow the type with `isinstance(x, ...)`.
 </details>
 
 <details>
-<summary>15. Explain Invariance (`list[T]`), Covariance (`Sequence[T_co]`), and Contravariance (`TrashCan[T_contra]`, `Callable`) with concrete examples (`FP` Chapter 15).</summary>
+<summary>15. Explain Invariance (`list[T]`), Covariance (`Sequence[T_co]`), and Contravariance (`TrashCan[T_contra]`, `Callable`) with concrete examples (Fluent Python Chapter 15).</summary>
 
-Given a subtype hierarchy `OrangeJuice <: Juice <: Beverage` (or `Biodegradable <: Refuse`):
-- **Invariant (`TypeVar('T')`, mutable containers like `list[T]`):** Neither `list[OrangeJuice]` nor `list[Beverage]` is a subtype of `list[Juice]`, because a function taking `list[Juice]` could append CranberryJuice into a `list[OrangeJuice]`.
-- **Covariant (`TypeVar('T_co', covariant=True)`, read-only producers like `Sequence[T_co]`, `Iterator[T_co]`, `BeverageDispenser[T_co]`):** Subtyping goes in the **same direction** (`Sequence[OrangeJuice]` is a subtype of `Sequence[Juice]`).
-- **Contravariant (`TypeVar('T_contra', contravariant=True)`, write-only consumers like `TrashCan[T_contra]`):** Subtyping goes in the **opposite direction** (`TrashCan[Refuse]` is a subtype of `TrashCan[Biodegradable]` because a general refuse bin can safely accept biodegradable waste).
-- **`Callable[[ParamType], ReturnType]`** is **contravariant** in `ParamType` and **covariant** in `ReturnType` (`Callable[[float], int]` is a subtype of `Callable[[int], float]`).
+Take the subtype chain `OrangeJuice <: Juice <: Beverage`, or `Biodegradable <: Refuse`, as the starting point.
+
+- **Invariant (`TypeVar('T')`, mutable containers such as `list[T]`):** Neither `list[OrangeJuice]` nor `list[Beverage]` is a subtype of `list[Juice]`. A function that takes `list[Juice]` could append CranberryJuice to a `list[OrangeJuice]`.
+- **Covariant (`TypeVar('T_co', covariant=True)`, read-only producers such as `Sequence[T_co]`, `Iterator[T_co]` and `BeverageDispenser[T_co]`):** Subtyping runs in the **same direction**. `Sequence[OrangeJuice]` is a subtype of `Sequence[Juice]`.
+- **Contravariant (`TypeVar('T_contra', contravariant=True)`, write-only consumers such as `TrashCan[T_contra]`):** Subtyping runs in the **opposite direction**. `TrashCan[Refuse]` is a subtype of `TrashCan[Biodegradable]`, because a general refuse bin can safely accept biodegradable waste.
+- **`Callable[[ParamType], ReturnType]`** is **contravariant** in `ParamType` and **covariant** in `ReturnType`. So `Callable[[float], int]` is a subtype of `Callable[[int], float]`.
 </details>
 
 <details>
-<summary>16. How do bounded `TypeVar` (`LT = TypeVar("LT", bound=SupportsLessThan)`), `@overload`, `TYPE_CHECKING`, and `from __future__ import annotations` work (`FP` Chapters 8 & 15)?</summary>
+<summary>16. How do bounded `TypeVar` (`LT = TypeVar("LT", bound=SupportsLessThan)`), `@overload`, `TYPE_CHECKING`, and `from __future__ import annotations` work (Fluent Python Chapters 8 and 15)?</summary>
 
-- **Bounded `TypeVar`:** `LT = TypeVar("LT", bound=SupportsLessThan)` in `def top(series: Iterable[LT], length: int) -> list[LT]:` requires the input elements to support `<` (`sorted()`) and guarantees the returned list holds that exact element subtype.
-- **`@overload`:** Declares multiple type-level signatures for a single function (e.g., returning `T` when `default` is omitted vs `T | U` when `default: U` is passed), followed by the single runtime implementation.
-- **`if TYPE_CHECKING:`** is `False` at runtime and `True` during static analysis, preventing circular imports and import-time overhead for annotation-only types; `from __future__ import annotations` defers evaluation of annotations into strings so forward references (`-> Node`) work without quotes.
+- **Bounded `TypeVar`:** In `def top(series: Iterable[LT], length: int) -> list[LT]:`, the bound `LT = TypeVar("LT", bound=SupportsLessThan)` requires each element to support `<`, as `sorted()` does. The returned list is guaranteed to hold that same element type.
+- **`@overload`:** You declare several type-level signatures for one function. For example, the return type is `T` when `default` is omitted, and `T | U` when `default: U` is passed. The single runtime implementation follows them.
+- **`if TYPE_CHECKING:`** is `False` at runtime and `True` during static analysis. It prevents circular imports and import-time cost for types used only in annotations. `from __future__ import annotations` stores annotations as strings, so forward references such as `-> Node` work without quotes.
 </details>
 
 <details>
-<summary>17. In *Fluent Python*'s N-dimensional `Vector` (`FP` Chapter 12), how do slice-aware `__getitem__`, `operator.index`, dynamic `__getattr__`/`__setattr__`, and XOR `__hash__` work?</summary>
+<summary>17. In *Fluent Python*'s N-dimensional `Vector` (Fluent Python Chapter 12), how do slice-aware `__getitem__`, `operator.index`, dynamic `__getattr__`/`__setattr__`, and XOR `__hash__` work?</summary>
 
-- **Slice-aware `__getitem__`:** If `isinstance(key, slice)`, it constructs a new `Vector` via `type(self)(self._components[key])`; otherwise it converts `key` via **`operator.index(key)`** (which calls `__index__()` and rejects floats/tuples) and returns the float element.
-- **Dynamic `x, y, z, t` (`__getattr__` + `__setattr__`):** `__getattr__` looks up `name` in `__match_args__ = ('x', 'y', 'z', 't')` and returns `self._components[pos]`; **`__setattr__` blocks single-letter lowercase assignments (`'a'..'z'`)** with `AttributeError` so assigning `v.x = 10` cannot silently create a shadowing instance attribute in `v.__dict__`.
-- **XOR `__hash__`:** `functools.reduce(operator.xor, (hash(x) for x in self), 0)` folds all element hashes in $O(1)$ space.
+- **Slice-aware `__getitem__`:** If `isinstance(key, slice)` is true, the method builds a new `Vector` with `type(self)(self._components[key])`. Otherwise it converts `key` with **`operator.index(key)`**, which calls `__index__()` and rejects floats and tuples. It then returns the float element.
+- **Dynamic `x`, `y`, `z`, `t` (`__getattr__` and `__setattr__`):** `__getattr__` looks up `name` in `__match_args__ = ('x', 'y', 'z', 't')` and returns `self._components[pos]`. **`__setattr__` blocks assignments to single lowercase letters, from `'a'` to `'z'`,** and raises `AttributeError`. So `v.x = 10` cannot quietly create a shadowing instance attribute in `v.__dict__`.
+- **XOR `__hash__`:** `functools.reduce(operator.xor, (hash(x) for x in self), 0)` combines all the element hashes in $O(1)$ extra space.
 </details>
 
 <details>
-<summary>18. Trace Python's dispatch algorithm for `a + b` (`__add__` and `__radd__`), `@` (`__matmul__`), in-place `+=` (`__iadd__`), and `@functools.total_ordering` (`FP` Chapter 16 & `LP` Chapter 30).</summary>
+<summary>18. Trace Python's dispatch algorithm for `a + b` (`__add__` and `__radd__`), `@` (`__matmul__`), in-place `+=` (`__iadd__`), and `@functools.total_ordering` (Fluent Python Chapter 16 and Learning Python Chapter 30).</summary>
 
-- **Infix `a + b` (and `a @ b`):** Python calls `type(a).__add__(a, b)`. If that method is missing or returns **`NotImplemented`** (and `type(a)` differs from `type(b)`), Python calls **`type(b).__radd__(b, a)`**. If both return `NotImplemented`, Python raises `TypeError` (or for `==` and `not-equal`, falls back to `id(a) == id(b)`).
-- **In-place `a += b` (`__iadd__`):** If `a` defines `__iadd__`, Python calls `a.__iadd__(b)` which mutates `a` in place and **must return `self`**; if `__iadd__` is not defined, `a += b` falls back to `a = a + b` (rebinding `a` to a new object).
-- **`@functools.total_ordering`:** Given `__eq__` and one ordering method (`__lt__`), the decorator generates `__le__`, `__gt__`, and `__ge__` automatically.
+- **Infix `a + b` and `a @ b`:** Python calls `type(a).__add__(a, b)`. If that method is missing, or returns **`NotImplemented`** while `type(a)` differs from `type(b)`, Python calls `type(b).__radd__(b, a)`. If both return `NotImplemented`, Python raises `TypeError`. For `==` and `!=`, Python instead falls back to comparing `id(a)` with `id(b)`.
+- **In-place `a += b` (`__iadd__`):** If `a` defines `__iadd__`, Python calls `a.__iadd__(b)`. That method changes `a` in place and **must return `self`**. If `__iadd__` is not defined, `a += b` falls back to `a = a + b`, which rebinds `a` to a new object.
+- **`@functools.total_ordering`:** Given `__eq__` and one ordering method, such as `__lt__`, the decorator generates `__le__`, `__gt__` and `__ge__` for you.
 </details>
 
 <details>
-<summary>19. Why does `SkipObject('abcdef')` (`LP` Chapter 30) support nested `for` loops whereas a single-class iterator (`def __iter__(self): return self`) fails on nested loops?</summary>
+<summary>19. Why does `SkipObject('abcdef')` (Learning Python Chapter 30) support nested `for` loops whereas a single-class iterator (`def __iter__(self): return self`) fails on nested loops?</summary>
 
-When a class returns `self` from `__iter__` and stores iteration cursor state (`self.offset`) on the instance itself, it has only **one** cursor—so an outer loop `for x in obj:` and an inner loop `for y in obj:` advance the exact same `self.offset` and exhaust it in a single pass. `SkipObject.__iter__` returns a **fresh iterator** (either a separate `SkipIterator(self.wrapped)` instance or a generator function `while offset < len(self.wrapped): yield ...`) on every `iter(skipper)` call, giving each nested loop its own independent `offset` (`9` pairs `'aa'`..`'ee'`).
+A class that returns `self` from `__iter__` and keeps its cursor, `self.offset`, on the instance has only one cursor. An outer loop and an inner loop over the same object advance the same `self.offset`, so the first pass exhausts it. `SkipObject.__iter__` avoids this by returning a fresh iterator on each `iter(skipper)` call. That iterator is either a new `SkipIterator(self.wrapped)` or a generator, as in `while offset < len(self.wrapped): yield ...`. Each loop then has its own `offset`, which is why all 9 pairs from `'aa'` to `'ee'` come out.
 </details>
 
 <details>
 <summary>20. Explain the "Functional Core, Imperative Shell" design pattern and how `StrEnum`, Protocols, and frozen dataclasses work together in infrastructure code.</summary>
 
-- **Functional Core, Imperative Shell:** Model cluster state as immutable value objects (`@dataclass(frozen=True, slots=True) class Instance` and `class State(StrEnum): PENDING = "pending"; RUNNING = "running"; STOPPED = "stopped"`), keep decision logic in pure functions or methods with no network/disk I/O, and isolate side effects behind small **`typing.Protocol`** interfaces (`class Compute(Protocol):`).
-- In unit tests, you pass a 5-line in-memory `FakeCompute` satisfying the `Protocol` without inheritance, testing every reconciliation branch deterministically in milliseconds without touching cloud APIs.
+Model cluster state as immutable value objects. An example is `@dataclass(frozen=True, slots=True) class Instance` together with `class State(StrEnum): PENDING = "pending"; RUNNING = "running"; STOPPED = "stopped"`. Keep the decision logic in pure functions or methods that do no network or disk I/O. Put the side effects behind small `typing.Protocol` interfaces, such as `class Compute(Protocol):`.
+
+In unit tests, you pass a five-line in-memory `FakeCompute` that satisfies the Protocol without inheriting from it. That lets you test every reconciliation branch quickly and deterministically, without touching cloud APIs.
 </details>
 
 ## Sources and review notes

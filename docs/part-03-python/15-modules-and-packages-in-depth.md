@@ -820,6 +820,1845 @@ Some development tools, such as Jupyter notebooks, offer an auto-reload mode. It
 
 The `reload` function has moved over time. It began as a built-in function, then moved to the `imp` module, and now lives in `importlib`. It may move again. Check the current standard-library documentation when you use it.
 
+## Package imports
+
+So far, each import has loaded a single file. A package is a folder of module files, and it can hold nested folders too. Package imports let you load those files with the statements you already know. The import story gets richer here. This section covers four topics: package imports, packages themselves, package-relative imports, and namespace packages.
+
+A package import turns a folder on your computer into a Python namespace. Its attributes match the module files and subfolders inside. Package imports also resolve cases where several installed programs contain files with the same name.
+
+Packages are an advanced topic. Many readers can leave them until they gain experience with file-based modules. Still, packages avoid same-name conflicts. Many standard-library and third-party tools use them, so a basic understanding helps most Python learners.
+
+### Dotted paths in imports
+
+To load an item inside a package folder, list the folder names in a path, separated by periods. You can use that dotted path wherever you would name a simple file. This works in an `import` statement:
+
+```
+import dir1.dir2.mod
+```
+
+The same goes for a `from` statement:
+
+```
+from dir1.dir2.mod import var
+```
+
+It also applies to modules that are already imported, in `reload` calls:
+
+```
+from importlib import reload
+reload(dir1.dir2.mod)
+```
+
+The dotted path must match a path through the folder hierarchy. In this example, `dir1` holds a subfolder `dir2`, and `dir2` holds a module file `mod.py`. The file might also be a bytecode file, a C extension module, or another item with the base name `mod`. The container folder `dir0` must be on the module search path, just as it would be for a simple module file:
+
+```
+dir0/dir1/dir2/mod.py # Or mod.pyc, mod.so, etc.
+dir0\dir1\dir2\mod.py # Ditto, on Windows
+```
+
+Python treats the dotted path as nested objects. After `import dir1.dir2.mod`, the expression `dir1.dir2.mod` passes through three module objects. The syntax is the same on every platform. It also explains a common error. If you leave off the `.py` extension in an import, Python treats the name as a package import and complains that the file is not a package.
+
+### Packages and the module search path
+
+Package paths use only variable names separated by periods. You cannot use platform-specific path syntax in an import statement. Forms such as `C:\dir1`, `/Users/me/dir1`, or `../dir1` are not valid there. These lines fail with a syntax error:
+
+```
+import C:\Users\me\mycode\dir1\dir2\mod # Error: illegal syntax (Windows)
+import /Users/me/mycode/dir1/dir2/mod # Ditto, on Unix
+```
+
+Put the platform-specific part in the search path instead. Add the folder that holds your packages to `PYTHONPATH`, to a `.pth` file, or to `sys.path` in code. Then your script can use variable names and periods only:
+
+```
+import dir1.dir2.mod # OK: variables and periods
+```
+
+Entries on the search path supply the platform-specific prefix. The import statement supplies the rest of the path in a neutral form. The container folder does not need to be added if it is already on the path. The search path includes the home directory, the standard-library folders, and the `site-packages` root. Still, the search path must include every folder that holds a leftmost name in your package imports.
+
+## Creating packages
+
+To build a package, bundle module files and nested folders into a package folder. The folder can also hold an `__init__.py` file, which runs on the first import. It can hold a `__main__.py` file too, which runs when the whole folder runs as a bundle. The next sections build these pieces one at a time.
+
+### Basic package structure
+
+In its simplest form, a package is a folder of normal module files. It can also contain subfolders of the same kind. This example uses indentation to show the nesting:
+
+```
+dir0/ # Container listed on module search path
+  dir1/ # Package root folder dir1
+    mod.py # Module file dir1.mod in package
+    dir2/ # Nested package folder dir1.dir2
+      mod.py # Module dir1.dir2.mod in package
+```
+
+You can create these folders in a file explorer. On most platforms, these commands work too. On Windows, use backslashes:
+
+```
+$ mkdir dir1
+$ mkdir dir1/dir2 # Use backward slashes on Windows
+```
+
+Package folder names follow the same rules as simple module names. Python turns them into variables when they are imported. Use letters, digits, and underscores, and avoid reserved words. Each module's top-level code runs on first import and creates names as usual.
+
+Next, add the nested module files below. The first one is `dir1/mod.py`:
+
+```
+var = 'hack'
+print('Loading dir1.mod')
+```
+
+The second one is `dir1/dir2/mod.py`:
+
+```
+var = 'code'
+print('Loading dir1.dir2.mod')
+```
+
+### Using the basic package
+
+To use the package, load its modules the same way you would load a simple `.py` file. You can do this in a REPL or in another script. Use dots to name the path below the `dir0` folder on the search path. In a REPL, the current directory plays that role:
+
+```
+$ python3
+>>> import dir1.mod # Package paths in import
+Loading dir1.mod
+>>> dir1.mod.var # Module code run on import
+'hack'
+>>> import dir1.dir2.mod # A further-nested path
+Loading dir1.dir2.mod
+>>> dir1.dir2.mod.var # Repeat path to get item at end
+'code'
+```
+
+As with top-level modules, a nested module's code runs only on its first import:
+
+```
+>>> import dir1.mod # No-op if already imported
+>>> import dir1.dir2.mod
+```
+
+You generally must import a nested module before you use its attributes. Folders that become module objects do not go back to the filesystem on attribute fetches. So importing only the root folder is not enough:
+
+```
+$ python3
+>>> import dir1 # Gets dir1, nothing below it
+>>> dir1.dir2.mod.var
+AttributeError: module 'dir1' has no attribute 'dir2'
+$ python3
+>>> import dir1.dir2
+>>> dir1.dir2.mod.var
+AttributeError: module 'dir1.dir2' has no attribute 'mod'
+$ python3
+>>> import dir1.dir2.mod # List full path to target
+Loading dir1.dir2.mod
+>>> dir1.dir2.mod.var
+'code'
+```
+
+The `from` statement works the same way. It is really `import` with an extra copy of names. You still need to list the folder path in full to reach its contents. Paths in import statements are read literally, not taken from variable values:
+
+```
+$ python3
+>>> from dir1.mod import var # Package paths in from
+Loading dir1.mod
+>>> var # Don't repeat path to item
+'hack'
+>>> from dir1.dir2.mod import var
+Loading dir1.dir2.mod
+>>> var
+'code'
+>>> from dir1 import dir2 # Paths taken literally
+>>> from dir2 import mod # Not from variable values
+ModuleNotFoundError: No module named 'dir2'
+```
+
+One advantage of `from` is that you type the package path only once. With `import`, you usually repeat the full path each time you use an item. A `from` statement keeps the path in one place. That helps if the package's folder layout changes later, as software tends to do:
+
+```
+>>> import dir1.dir2.mod # import requires paths
+>>> dir1.dir2.mod.var
+'code'
+>>> from dir1.dir2.mod import var # from can shorten paths
+>>> var
+'code'
+>>> from dir1.dir2 import mod # And avoids repeating them
+>>> mod.var
+'code'
+>>> import dir1.dir2.mod as mod # Though "as" can too
+>>> mod.var
+'code'
+```
+
+The `as` form of `import` can shorten a path the same way `from` does. A plain reassignment can also shorten it, and `as` is a tidy way to write that.
+
+### Package __init__.py files
+
+If a package folder needs setup code when it is imported, put that code in a file named `__init__.py` inside the folder. Python calls this file on the package's first import, whether that happens in a program run or in an interactive session. The structure now looks like this:
+
+```
+dir0/
+  dir1/
+    __init__.py # Run on first import of dir1
+    mod.py
+    dir2/
+      __init__.py # Run on first import of dir1.dir2
+      mod.py
+```
+
+The new `dir1/__init__.py` file contains:
+
+```
+var = 'Python'
+print('Running dir1.__init__.py')
+```
+
+The new `dir1/dir2/__init__.py` file contains:
+
+```
+var = 3.12
+print('Running dir1.dir2.__init__.py')
+```
+
+These files are optional in each folder of a package. They run on the first import through a folder, so they give a natural hook for package-specific setup. Their assignments also fill the namespace of the folder's module object. Names in these files become attributes of the package, as names in a regular file do:
+
+```
+$ python3
+>>> import dir1.dir2.mod # Runs all __init__.py files
+Running dir1.__init__.py
+Running dir1.dir2.__init__.py
+Loading dir1.dir2.mod
+>>> dir1.var # Name in __init__.py's namespace
+'Python'
+>>> dir1.dir2.var
+3.12
+>>> dir1.dir2.mod.var # Name in nested mod.py namespace
+'code'
+```
+
+The `reload` function also works with package paths, once they are imported. Continuing the same session:
+
+```
+>>> from importlib import reload
+>>> reload(dir1)
+Running dir1.__init__.py
+<module 'dir1' from '/…/LP6E/Chapter24/dir1/__init__.py'>
+>>> reload(dir1.dir2)
+Running dir1.dir2.__init__.py
+<module 'dir1.dir2' from '/…/LP6E/Chapter24/dir1/dir2/__init__.py'>
+>>> reload(dir1.dir2.mod)
+Loading dir1.dir2.mod
+<module 'dir1.dir2.mod' from '/…/LP6E/Chapter24/dir1/dir2/mod.py'>
+```
+
+The initialization prints show that each call reloads only the single module at the end of the path. Reloading a whole package path needs a small helper. That helper loads each item on the path, one at a time, starting from a package root.
+
+Packages with `__init__.py` files are called regular packages. Packages without them are called namespace packages. The single-folder demo above was a namespace package until `__init__.py` made it regular. Regular packages take precedence during the module search. Otherwise, the difference is mostly a leftover from history, and it rarely matters. Namespace packages are covered later in this section.
+
+### Package __main__.py files
+
+To let users run a package as though it were a program or script, add a `__main__.py` file to each folder that should support this mode. Python runs that file automatically whenever its folder is launched like a program. The structure now looks like this:
+
+```
+dir0/
+  dir1/
+    __main__.py # Run whenever dir1 bundle is run
+    __init__.py
+    mod.py
+    dir2/
+      __main__.py # Run whenever dir1.dir2 bundle is run
+      __init__.py
+      mod.py
+```
+
+The `dir1/__main__.py` file contains:
+
+```
+print('Executing dir1.__main__.py')
+```
+
+The `dir1/dir2/__main__.py` file contains:
+
+```
+print('Executing dir1.dir2.__main__.py')
+```
+
+When present, `__main__.py` runs for several launch options. One is a direct console command line that names the package folder. That folder does not need to be on the module search path in this mode:
+
+```
+$ python3 dir1 # Runs __main__.py (not __init__.py)
+Executing dir1.__main__.py
+$ python3 dir1/dir2
+Executing dir1.dir2.__main__.py
+$ python3 dir1/dir2/mod.py # Runs nested mod.py
+Loading dir1.dir2.mod
+```
+
+The `-m` mode also runs `__main__.py`. As you saw earlier, `-m` looks up a module on the search path and runs it as the main program. Unlike direct command lines, `-m` starts the full package import machinery. It runs any `__init__.py` files along the path. The package must be on the search path for this mode:
+
+```
+$ python3 -m dir1 # Runs both __init__.py and __main__.py
+Running dir1.__init__.py
+Executing dir1.__main__.py
+$ python3 -m dir1.dir2 # And package must be on search path
+Running dir1.__init__.py
+Running dir1.dir2.__init__.py
+Executing dir1.dir2.__main__.py
+$ python3 -m dir1.dir2.mod # Runs mod.py, and parents' __init__.py
+Running dir1.__init__.py
+Running dir1.dir2.__init__.py
+Loading dir1.dir2.mod
+```
+
+A `__main__.py` file works like an app bundle on macOS or a smartphone. The bundle is really a folder, but you can run it as one item. Authors often use `__main__.py` to give a package a command-line interface. Other programs can import the package to use its tools. Users can also launch the whole package as a standalone program. The file can also host test code for the package.
+
+A `__main__.py` file also runs when it sits in a ZIP file on the search path. Python treats ZIP files like a normal folder during a module search. Python's documentation covers this option in more detail.
+
+One subtlety applies here. Same-package imports inside `__main__.py` may need the package-relative `from .` syntax covered below. That syntax works when the file runs with `-m`, but it fails for direct command-line launches. So choose the launch mode you need to support. Code that must support both package and program use can solve this with full-path imports.
+
+## Why packages?
+
+Packages are optional. Early in a coding journey they may seem like overkill, and you can write useful programs without them. Still, they are worth knowing. They help make names unique in large programs and in libraries that others use. Placing your code in a package folder makes it unlikely that its file names clash with other software on the same machine.
+
+This is the same namespace separation that file-based modules and local function scopes provide. Packages extend it to the filesystem. A reference to your package is qualified by the package folder's name, so same-name collisions are less likely.
+
+Packages can also make imports more descriptive. They make it easier to track down where a variable lives. They can simplify your search path settings. Package imports are strictly required in one case. That case is resolving ambiguity when several installed programs have same-named files. This is mostly an installation issue. It can also come up in everyday work, because developers often pick simple, similar names for module files.
+
+### A tale of two systems
+
+Suppose a programmer writes a program with a common file, `utilities.py`, and a top-level file, `main.py`, that users launch. Every file in the program says `import utilities` to load the shared code. When the program is installed, its files unpack into one folder called `system1`:
+
+```
+system1/
+  utilities.py # Common utility functions, classes
+  main.py # Launch this to start the program
+  other.py # Import utilities to load my tools
+```
+
+A second programmer writes a different program. It also has files named `utilities.py` and `main.py`, and it uses `import utilities` in the same way. Its files unpack into a new folder called `system2`, so they do not overwrite the first system's files:
+
+```
+system2/
+  utilities.py # Common utilities
+  main.py # Launch this to run
+  other.py # Imports utilities
+```
+
+Both systems can coexist and run on the same computer. You do not need to configure the search path to use them. Python always searches the home directory first, which holds the top-level file. So imports in each system see that system's own files. Running `system1/main.py` searches `system1` first. Running `system2/main.py` searches `system2` first. Search path settings matter only when an import crosses a directory boundary.
+
+Now suppose you want to use the code in one of the two `utilities.py` files from a third folder of your own:
+
+```
+import utilities
+utilities.func('hack')
+```
+
+The problem starts here. You must add a directory that holds a `utilities.py` to the search path. But which directory goes first, `system1` or `system2`? The search path is a linear list. Python scans it from left to right. It finds one `utilities.py`, from the leftmost directory that has one. The other file stays out of reach.
+
+You could change `sys.path` in your script before each import, but that is extra work and invites mistakes. Changing `PYTHONPATH` before each run is tedious. It also cannot let one file use both versions. By default, you are stuck.
+
+Packages fix this problem. Instead of installing each program in its own folder listed on the search path, install each one as a subfolder of a common root:
+
+```
+root/
+  system1/
+    utilities.py
+    main.py
+    other.py
+  system2/
+    utilities.py
+    main.py
+    other.py
+  mycode/ # Here or elsewhere
+    myfile.py # Your new code here
+```
+
+Add only the common root to your search path. If your imports are relative to this root, you can import either utility file with a package import. The enclosing folder name makes the path unique. You can even import both utility files in the same module, if you repeat the full path each time:
+
+```
+import system1.utilities # Import from one package
+import system2.utilities # Import from another
+system1.utilities.function('hack') # And use names from either
+system2.utilities.function('code') # Or both!
+```
+
+The folder names make the module references unique. You need `import` instead of `from` only when you must reach the same attribute name through two or more paths. If each function had a different name, `from` statements would avoid repeating the full package path. The `as` form can also give each one a unique synonym.
+
+The `mycode` folder does not have to sit under the root. It only needs to hold the packages you import from. Because you never know when your own modules will be useful elsewhere, placing them under the common root may prevent similar name collisions later.
+
+Path setup stays simple when you unpack every Python system under one common root. You add that root only once. Both original systems keep working unchanged. Their home directories are searched first, so the new root is irrelevant to their code. They can keep saying `import utilities` when run as programs. If they are also used as packages, they may need `from .` package-relative imports, and `main.py` could become `__main__.py`.
+
+Even if you never create packages, you will probably use standard-library and third-party tools that do. A sample of standard-library packages looks like this:
+
+```
+from email.message import Message # Email parsing/construction
+from tkinter.filedialog import askopenfilename # Portable GUI toolkit
+from http.server import CGIHTTPRequestHandler # Web-server utilities (till Python 3.15?)
+```
+
+Bundling code in a package keeps such tools self-contained and avoids name conflicts. Whether you do the same for your own code is up to you.
+
+## The roles of __init__.py files
+
+The `__init__.py` files in the opening demo were simple. These files can hold arbitrary Python code, just like normal module files. Their special name makes Python run them automatically the first time a program imports the directory. That makes them a hook for setup steps the package needs. They can also be completely empty, and they sometimes have other roles.
+
+The `__init__.py` file serves four roles. It is a hook for package initialization. It creates a module namespace for a directory. It declares a directory as a regular Python package. It also controls what a `from *` statement does for folders in package imports.
+
+### Package initialization
+
+The first time a program imports through a directory, Python runs all the code in that directory's `__init__.py` file. So these files are a natural place to set up the state that other package files need. A package might create required data files, open connections to a database, or do similar work. These files are not meant to be run directly. That job belongs to `__main__.py`. Python runs `__init__.py` automatically when the package is first imported for use elsewhere.
+
+### Module namespace initialization
+
+Directory paths become real nested object paths after an import. In the earlier demo, `dir1.dir2` works and returns a module object. Its namespace holds all the names assigned by `dir2`'s `__init__.py` file. A folder has no module file of its own, so these assignments give it a place to define names.
+
+### Package indicator for search
+
+`__init__.py` files also declare that a directory is a Python package. This role keeps folders with common names from hiding real modules further along the search path. Without it, Python could settle on a folder unrelated to your code. The only reason would be that the folder appears earlier in the search list.
+
+Namespace package rules now cover part of this job. They scan ahead on the search path for later items before settling on a plain folder. Even so, a package with `__init__.py` still gets higher priority than a same-name folder elsewhere on the path.
+
+### The `from *` statement behavior
+
+An advanced feature lets you control `from *` with a list of name strings called `__all__`. You place that list at the top level of an `__init__.py` file. In a package's `__init__.py`, `__all__` names the nested submodules that should be imported automatically when `from *` is used on the package folder itself.
+
+If `__all__` is not set, `from *` does not load submodules nested in the package folder. It loads only the names assigned in the package's `__init__.py` file. That includes any submodules this file imports explicitly. For example, `from submodule import X` in a package's `__init__.py` makes `X` available in that package's namespace, even without `__all__`.
+
+The `__all__` list also declares `from *` exports for simple file-based modules, not only packages. You will see an example of `__all__` later in this section.
+
+**Note:** Package `__init__.py` files are not the same as the `__init__` method of a class. A package's `__init__.py` is a file of code that runs when imports first step through its folder. A class's `__init__` method runs each time an instance is created. Both have initialization roles, and both are optional. Otherwise they differ, despite the shared name.
+
+## Package-relative imports
+
+So far, package imports have loaded package files from outside the package. Files inside a package can use the same full-path syntax to import each other, and often should. They can also use a relative syntax. That syntax imports relative to the package itself. It makes sure the imports load the package's own files.
+
+### Relative and absolute imports
+
+Files used as part of a package can use special syntax like this. It works only in package files, and only in `from` statements, not in `import`:
+
+```
+from . import module # Import a module in this package (only)
+from .module import name # Import a name from a module in this package
+from .. import module # Import a module sibling of the parent folder
+from ..module import name # Import a name from a parent-sibling module
+```
+
+The `import` statement would not fit this form. It binds modules to simple names, not to paths. In a `from` statement, though, the source can begin with dots. An import like this is called relative. It finds an item relative to the folder of the enclosing package.
+
+The name comes from relative filename paths. Those paths point to a file from the current working directory. Here, a single dot means the enclosing package folder. Two dots mean its parent folder. Each extra dot goes one level higher, though that is rare. The effect names an item relative to the importing file's package, not a content file relative to the working directory.
+
+A relative import looks only inside the named package. It does not consult the folders on `sys.path`. It also skips the check for built-in and frozen modules. Relative syntax works only when a file is used as part of a package. It fails in any other use. That has both good and bad effects, as the next sections show.
+
+Files that are part of a package can still write imports without dots:
+
+```
+import module # Import a module from a folder in sys.path
+from module import name # Import a name from the same
+```
+
+An import without leading dots is called absolute. It names an item in a folder listed on `sys.path`. This is normal Python import behavior. The word is a little misleading. These imports are really relative to an entry on the module search path. The terminology has stuck anyway.
+
+Absolute imports within a package do not check the package itself. They skip it and go straight to the folders on `sys.path`. That path may include the package folder anyway, through the working directory, the home folder of the top-level script, or `PYTHONPATH`. On their own, though, absolute imports do not look inside the package.
+
+### Relative-import rationales and trade-offs
+
+So why use the dots? Relative imports let a package make sure its imports load its own modules. Because they search only the package itself, they will not load a same-named but unrelated module from elsewhere on the host. This makes the package more self-contained. Without relative imports, a stray module of that name could break the package's code. With them, the package depends less on search path settings it cannot predict or control.
+
+The downside is that this model is all or nothing. You basically must choose a mode for your files: package or program. Relative imports see the package itself, but they cannot be used in nonpackage mode. Absolute imports work in nonpackage mode, but they cannot see the package itself. That combination seems like a catch-22 that limits your code.
+
+If you are writing a library of tools, this may not matter. You can use relative imports throughout the package, and add a `__main__.py` file so it can run as a program with the `-m` switch. If you are writing a traditional folder of code that you want to use in any way, your options look limited.
+
+One easy solution is to skip relative imports altogether. Use full, explicit, absolute package-import paths everywhere in your code. Each path names the item from the package's root folder onward:
+
+```
+import package.module # Import a module in this package
+from package import module # Same as: from . import module
+from package.module import name # Same as: from .module import name
+```
+
+This works only if the package's root folder sits in a folder listed on `sys.path`. That is the normal case, because clients could not import the package's code any other way. This approach does not directly support `..` parent-sibling imports. Those seem rare. Just one standard-library tool relies on them today.
+
+Because of this, code folders gain flexibility. Direct command lines and the `-m` switch both can run package files as programs. The following section shows how.
+
+### Package-relative imports in action
+
+To demonstrate these points, return to the simple package from the start of this section. Its `__main__.py` runs automatically when the folder runs as a bundle. It also plays the role of any top-level file launched as a script. Its last known state is below, so you do not have to scroll back:
+
+```
+# prior dir1/mod.py
+var = 'hack'
+print('Loading dir1.mod')
+# prior dir1/__main__.py
+print('Executing dir1.__main__.py')
+```
+
+#### The normal-import warm-up
+
+This `__main__.py` worked as expected. Things get harder if a file run as a top-level script imports another module from its own package folder. Here is a rewrite of `dir1/__main__.py` that does that:
+
+```
+import mod
+print('Executing dir1.__main__.py:', mod.var.upper())
+```
+
+Written this way, the file runs with a direct command line, both as a folder and as a script. It does not run with the `-m` switch, which brings the package machinery online. Notice the `__init__.py` output in the `-m` mode:
+
+```
+$ python3 dir1 # Launch with a direct command line
+Loading dir1.mod
+Executing dir1.__main__.py: HACK
+$ python3 dir1/__main__.py # As folder bundle or explicit file
+Loading dir1.mod
+Executing dir1.__main__.py: HACK
+$ python3 -m dir1 # Launch with Python -m module switch
+Running dir1.__init__.py
+ModuleNotFoundError: No module named 'mod'
+$ python3 -m dir1.__main__ # As package root or explicit module
+Running dir1.__init__.py
+ModuleNotFoundError: No module named 'mod'
+```
+
+The first two commands work because `__main__.py` runs as a normal, nonpackage program. It finds its sibling through the home entry on `sys.path`, which is the top-level file's own folder. The last two commands fail. They use the file as part of a package. So `import mod` is read as an absolute import, which skips the enclosing package. That is why they fail.
+
+#### The relative-import adventure
+
+A first reaction might be to add a relative import to satisfy the package system:
+
+```
+from . import mod
+print('Executing dir1.__main__.py:', mod.var.upper())
+```
+
+This fixes `-m` usage, but it breaks direct command lines:
+
+```
+$ python3 -m dir1
+Running dir1.__init__.py
+Loading dir1.mod
+Executing dir1.__main__.py: HACK
+$ python3 -m dir1.__main__
+Running dir1.__init__.py
+Loading dir1.mod
+Executing dir1.__main__.py: HACK
+$ python3 dir1
+ImportError: attempted relative import with no known parent package
+$ python3 dir1/__main__.py
+ImportError: attempted relative import with no known parent package
+```
+
+The first two commands work because `-m` runs package behavior. That enables the relative `.` import syntax, which searches the package and finds the module. The last two commands fail. Python does not allow relative imports in nonpackage mode. That dooms these runs from the start, whatever the search path says. So it seems we must choose a package role or a nonpackage role for our code.
+
+#### The absolute-import solution
+
+An easy way out is to use normal package imports that spell out the absolute path from the package root. As noted, these paths are still relative to `sys.path`:
+
+```
+import dir1.mod
+print('Executing dir1.__main__.py:', dir1.mod.var.upper())
+```
+
+The package root, `dir1`, normally sits on `sys.path`. Outside code can reach that package only through this root. Callers must begin their imports at `dir1`.
+
+For this demo, add the package root to the search path explicitly, using `.` for the current directory. In real use, this might be an absolute path, or the site-packages root of installed packages. The top-level file's home folder in direct-command mode sits one level below the package root. Both direct-command and `-m` modes need access to the package root, so set it here:
+
+```
+$ export PYTHONPATH=. # Or similar outside Unix: see the search path section
+$ python3 dir1
+Running dir1.__init__.py
+Loading dir1.mod
+Executing dir1.__main__.py: HACK
+$ python3 dir1/__main__.py
+Running dir1.__init__.py
+Loading dir1.mod
+Executing dir1.__main__.py: HACK
+$ python3 -m dir1 # Both usage modes work, sans "." imports
+Running dir1.__init__.py
+Loading dir1.mod
+Executing dir1.__main__.py: HACK
+$ python3 -m dir1.__main__
+Running dir1.__init__.py
+Loading dir1.mod
+Executing dir1.__main__.py: HACK
+```
+
+Now both direct command lines and the `-m` switch work. The code is not limited to one launch mode. This is dual-mode code. It can be used as both a program and a package.
+
+If you would rather not repeat import paths at each use, both launch modes still work with other forms of `__main__.py`. Test them yourself to confirm, since they follow ordinary import rules:
+
+```
+import dir1.mod as mod
+print('Executing dir1.__main__.py:', mod.var.upper())
+```
+
+```
+from dir1 import mod
+print('Executing dir1.__main__.py:', mod.var.upper())
+```
+
+```
+from dir1.mod import var
+print('Executing dir1.__main__.py:', var.upper())
+```
+
+You can also use `from *` in this scheme, if you add an `__all__` list to the package root's `__init__.py` file. The usual cautions about `from *` given earlier in this chapter still apply:
+
+```
+# dir1/__init__.py
+__all__ = ['mod']
+# dir1/__main__.py
+from dir1 import *
+print('Executing dir1.__main__.py:', mod.var.upper())
+```
+
+If you are sure your code will only ever run as part of a package, you can use relative imports in all of its files to reach same-package modules. The absolute-path solution fits files meant to launch as top-level scripts. Other files that are only imported can use package-relative imports.
+
+Relative imports have one clear advantage. A same-named module earlier on `sys.path` cannot accidentally override a crucial module in the package. But they limit a file to package-only roles. If package files must support both launches and imports, relative imports are not the best option.
+
+This section skips some details for space. First, `-m` mode also checks the working directory for absolute imports. So the `PYTHONPATH` setting in the demo is optional for that mode. Second, some sources say relative-import failures in scripts come from the name `'__main__'`. Files run with `-m` have the same name too. They also follow other protocols that are too obscure to cover here. Because package-relative imports change over time and mostly serve programmers who build large libraries, Python's documentation is the best guide for the finer points.
+
+Namespace packages do not add new syntax. They allow a module to span folders. The next section covers them.
+
+## Namespace packages
+
+Namespace packages are the last package topic. They are packages that may be built from one or more folders, located in different parts of the module search path.
+
+Packages split across folders are probably rare in practice. But the import search changes that made them possible also allow packages without `__init__.py` files. Since this revised algorithm is now the import search itself, namespace packages are a side topic. They are still worth understanding.
+
+To see where namespace packages fit, a short history helps.
+
+### Python import models
+
+Python has four import schemes. They are listed below from the original to the newest. The examples are representative, not complete. The `from` statement also allows a `*` wildcard, and `reload` can reload any module passed to it. Those are add-on topics.
+
+Basic modules came first. They import files and their contents, relative to the `sys.path` module search path:
+
+```
+import module
+from module import name
+```
+
+Basic packages came next. They import from folder paths relative to `sys.path`. Each package sits in a single folder that has an `__init__.py` file:
+
+```
+import folder.folder.module
+from folder.module import name
+```
+
+Package-relative imports are the third model. They handle imports within the same package, as covered in the prior section. Relative and absolute lookup rules apply to imports with and without leading dots:
+
+```
+from . import module
+from .module import name
+```
+
+Namespace packages are the newest model. They are still relative to `sys.path`. But they allow packages to span multiple directories, and they remove the requirement that a package must define an `__init__.py` file:
+
+```
+import anyfolder.anyfolder.module
+from anyfolder import name
+```
+
+The first two models are self-contained. The third tightens the search order and extends the syntax for same-package imports. The fourth changes some of the notions and requirements of the prior package model. Python now formally defines two flavors of packages. The first is the original model, now known as regular packages. The second is the alternative model, known as namespace packages.
+
+The two package models are not mutually exclusive. They can be used together in the same program. The namespace model works as a fallback. It only takes effect when no simple module or regular package with that name is found on the search path. Despite the showy title, namespace packages are really a change to import search, as the following sections explain.
+
+### Namespace-package rationales
+
+A namespace package is not fundamentally different from a regular package. It is simply another way to create one. At the top level, a namespace package is still relative to `sys.path`. The leftmost component of its dotted path must be found in an entry on the normal module search path.
+
+Physically, though, regular and namespace packages differ. A regular package has an `__init__.py` file that runs automatically, and it lives in a single directory. A namespace package cannot contain an `__init__.py` file. It may span several directories, collected at import time. Because the presence of `__init__.py` identifies the package type, none of the directories in a namespace package can have that file. The content nested in all of them still forms one composite package.
+
+The reason for namespace packages comes from package installation. That may seem obscure unless you handle such tasks. In short, several `__init__.py` files can collide when package parts are merged. Removing that file avoids the collision. Namespace packages also support packages split across multiple directories, located in multiple `sys.path` entries. That improves install flexibility. It also replaces several incompatible solutions that had appeared to meet the same goal.
+
+For most Python users, the biggest benefit is simpler. Namespace packages no longer require `__init__.py` initialization files. So any directory of code can be used as an importable package. Next, the details of the import search.
+
+### The module search algorithm
+
+To understand how namespace packages change import search, look at how an import operation works. Python resolves an import by checking a group of candidate folders in turn. For the first part of a dotted name, the candidates are all the directories on `sys.path`. For components nested in a package import, or named in a relative import, the candidates are just the package itself. A package folder has one instance of a given name. A search path may have many.
+
+For each directory among the candidates, Python tests for matches to the name, in this order:
+
+1. If `directory/name/__init__.py` exists, Python imports and returns a regular package.
+2. If `directory/name.py`, `name.pyc`, or another module extension exists, Python imports and returns a simple module.
+3. If `directory/name` exists and is a folder, Python records it and continues the scan with the next candidate directory.
+4. If none of the above matches, Python continues the scan with the next candidate directory.
+5. If the candidate scan finishes without a regular package or module from steps 1 or 2, and step 3 recorded at least one directory, Python creates and returns a namespace package. Otherwise, it reports an error.
+
+The namespace package is created right away. It is not deferred until a lower-level import happens. It is a module object with no `__file__` attribute. Its `__path__` attribute is set to an iterable of the directory path strings that step 3 recorded during the candidate scan.
+
+Later and deeper accesses use this `__path__` as their set of candidates. Each recorded entry is searched whenever a further-nested item is requested. A regular package searches only its one directory. Viewed another way, the `__path__` of a namespace package plays the same role for lower components that `sys.path` plays at the top. It becomes the parent search path for accessing lower items, using the same four-step procedure.
+
+The net result is that a namespace package is a virtual concatenation of directories found on one or more search candidates. Once it is created, it works like a regular package in every functional way. That includes the package-relative import syntax.
+
+Any single directory without an `__init__.py` file, nested in a search-path folder, is classified as a namespace package by step 3. So any such directory qualifies as a package. The only operational difference from a regular package folder is search precedence. Same-named folders with an `__init__.py` file, and simple modules anywhere on the search path, are chosen first by steps 1 and 2.
+
+So adding an `__init__.py` file, even an empty one, ensures your package is selected instead of a same-named folder later on the search path. It may also speed up imports, since the scan ends at step 1. That benefit happens once, though. Whether to include the file depends on your goals, and on the other roles of `__init__.py` covered earlier.
+
+### Namespace packages in action
+
+The opening demo of this section already made single-folder namespace packages. Its folders had no `__init__.py` files yet. Any folder nested in a search-path folder counts as a package, unless a same-named regular package or simple module elsewhere on the path hides it.
+
+To see the folder-concatenation effect, work through a quick demo. Make two modules in a nested layout. Two folders named `sub` sit in different parent folders, `part1` and `part2`. Indentation shows the nesting:
+
+```
+ns/
+  part1/
+    sub/
+      mod1.py
+  part2/
+    sub/
+      mod2.py
+```
+
+There are no `__init__.py` files here. As noted earlier, namespace packages cannot use them. That is their main difference from regular single-folder packages. You can create these folders with commands like the following. On Windows, switch `/` to `\` and omit the `-p`:
+
+```
+$ mkdir -p ns/part1/sub # Two subdirs of same name in different dirs
+$ mkdir -p ns/part2/sub # And similar on Windows
+```
+
+The two module files print a line on import, as a trace. The first one, `ns/part1/sub/mod1.py`, contains:
+
+```
+print('Loading ns/part1/sub/mod1')
+```
+
+The second one, `ns/part2/sub/mod2.py`, contains:
+
+```
+print('Loading ns/part2/sub/mod2')
+```
+
+Now add both `part1` and `part2` to the module search path. Then `sub` becomes a namespace package that spans both folders. Its two module files are available under one name, even though they live in separate physical directories. This Unix command uses paths relative to the working directory. In practice, you would more likely list two full, absolute paths. On Windows, use `set` instead of `export`:
+
+```
+$ export PYTHONPATH=ns/part1:ns/part2
+```
+
+When imported directly, the namespace package is the virtual concatenation of its folders. Its nested parts can be reached through its single composite name, with normal imports. The paths below are shortened with `…`, and line breaks were added for fit:
+
+```
+$ python3
+>>> import sub
+>>> sub # Namespace packages: nested search paths
+<module 'sub' (namespace) from
+['/…/LP6E/Chapter24/ns/part1/sub', '/…/LP6E/Chapter24/ns/part2/sub']>
+>>> from sub import mod1
+Loading ns/part1/sub/mod1
+>>> import sub.mod2 # Content from two different directories
+Loading ns/part2/sub/mod2
+>>> mod1
+<module 'sub.mod1' from '/…/LP6E/Chapter24/ns/part1/sub/mod1.py'>
+>>> sub.mod2
+<module 'sub.mod2' from '/…/LP6E/Chapter24/ns/part2/sub/mod2.py'>
+```
+
+This split-folder package also works if you import through the namespace package name right away. The namespace package forms when it is first reached, so the timing of path additions does not matter:
+
+```
+$ python3
+>>> import sub.mod1
+Loading ns/part1/sub/mod1
+>>> import sub.mod2 # One package spanning two directories
+Loading ns/part2/sub/mod2
+>>> sub.mod1
+<module 'sub.mod1' from '/…/LP6E/Chapter24/ns/part1/sub/mod1.py'>
+>>> sub.mod2
+<module 'sub.mod2' from '/…/LP6E/Chapter24/ns/part2/sub/mod2.py'>
+>>> sub
+<module 'sub' (namespace) from
+['/…/LP6E/Chapter24/ns/part1/sub', '/…/LP6E/Chapter24/ns/part2/sub']>
+>>> sub.__path__
+_NamespacePath(
+['/…/LP6E/Chapter24/ns/part1/sub', '/…/LP6E/Chapter24/ns/part2/sub'])
+```
+
+Relative imports also work in namespace packages, if you add one. Here is the modified `ns/part1/sub/mod1.py`:
+
+```
+from . import mod2
+print('Loading ns/part1/sub/mod1')
+```
+
+The added relative import references a file in the package, even though that file lives in a different folder:
+
+```
+$ python3
+>>> import sub.mod1 # Relative import of mod2 in another dir
+Loading ns/part2/sub/mod2
+Loading ns/part1/sub/mod1
+>>> import sub.mod2 # Already imported by mod1.py: not rerun
+>>> sub.mod2
+<module 'sub.mod2' from '/…/LP6E/Chapter24/ns/part2/sub/mod2.py'>
+```
+
+Namespace packages work like ordinary single-folder packages in every way, except that their storage is split. By the same logic, a folder without `__init__.py` is simply a namespace package with one folder. It has no initialization logic to run.
+
+Namespace packages are a useful tool. Still, most Python learners do better by first mastering packages that map to real folders. Packages spread across a host's folders can come later. Python's documentation covers namespace packages in more depth.
+
+## Module design concepts
+
+Modules involve design trade-offs, just as functions do. You decide which functions belong in which module, and how modules communicate. These choices become clearer as systems grow. Four ideas help from the start.
+
+You are always inside a module in Python. There is no place to write code outside one. Even code typed at the interactive prompt, also called the REPL, runs in a built-in module named `__main__`. The prompt differs in two ways. Code runs and is discarded at once, and expression results print automatically.
+
+Keep coupling low. A good module works like a closed box. It should depend as little as possible on global variables defined in other modules. The only things it should share with the outside world are the tools it imports and the tools it defines.
+
+Raise cohesion. Functions work best with one job, and modules do too. When every part of a module serves one general purpose, those parts are less likely to need outside names. A focused module is also easier to reuse.
+
+Leave other modules' variables alone. Reading globals from another module is fine, because that is how clients use services. Changing another module's globals is usually a design problem. Pass results through function arguments and return values instead. Otherwise a global's value depends on the order of assignments in remote files, and the modules become hard to understand.
+
+Here is the environment in which modules operate. Modules hold variables, functions and classes. They import other modules to use the tools those modules define. Functions and classes have local variables of their own. Functions can nest, but every piece of code is ultimately contained by a module at the top.
+
+## Data hiding in modules
+
+A module exports every name assigned at its top level. Python has no syntax for declaring which names are private. Nothing stops a client from changing a name inside a module, either. Data hiding is therefore a convention, not a rule. Some purists argue that this rules out encapsulation. In Python, encapsulation is more about packaging than restriction. Classes follow the same idea in the next part.
+
+### Hiding names from `from *`
+
+Prefix a name with a single underscore, such as `_X`, to keep it out of a `from *` import. This limits namespace pollution. A `from *` copies every name it can, so the importer may get more than it wanted. That can include names that overwrite its own. An underscore does not make a name private, though. `import` and a normal `from` still reach it.
+
+Example 25-1 shows the idea in `unders.py`:
+
+```
+a, b, _c, _d = 1, 2, 3, 4 # Control from * exports, take 1
+```
+
+A session follows. The `from *` form loads `a` and `b`, but not `_c`. The other import forms reach all four names:
+
+```
+$ python3
+>>> from unders import * # Load non _X names only on from *
+>>> a, b
+(1, 2)
+>>> _c
+NameError: name '_c' is not defined. Did you mean: '_'?
+>>> from unders import _c # But other importers get every name
+>>> _c
+3
+>>> import unders
+>>> unders._d
+4
+```
+
+You can also list the names to copy in a variable called `__all__`. Assign it a list of name strings at the top level of the module. Python checks for `__all__` first. When it exists, `from *` copies exactly the names listed, even ones with underscores. When it is missing, `from *` copies every name without a leading underscore. In effect, `__all__` says what to copy, while `_X` says what to skip.
+
+Example 25-2 uses both tools in `alls.py`:
+
+```
+__all__ = ['a', '_c'] # Control from * exports, take 2
+a, b, _c, _d = 1, 2, 3, 4 # __all__ has precedence over _X
+```
+
+Again, `from *` gets only the names in `__all__`. Other importers still get every name:
+
+```
+$ python3
+>>> from alls import * # Load __all__ names - only
+>>> a, _c # Even if they have underscores
+(1, 3)
+>>> b
+NameError: name 'b' is not defined
+>>> from alls import a, b, _c, _d # But other importers get every name
+>>> a, b, _c, _d
+(1, 2, 3, 4)
+>>> import alls
+>>> alls.a, alls.b, alls._c, alls._d
+(1, 2, 3, 4)
+```
+
+As with the `_X` convention, `__all__` affects only the `from *` form. It is not a privacy declaration. Module writers can use either technique to build modules that behave well under `from *`. The package `__init__.py` section above uses `__all__` in a related way. There, the list declares nested submodules to load for a `from *` on their container. Packages extend the idea to the contents of a folder.
+
+### Managing attribute access with `__getattr__` and `__dir__`
+
+Python 3.7 added two special functions that can sit at a module's top level. If a module defines `__getattr__`, Python runs it when a requested attribute is not found. If a module defines `__dir__`, that function replaces the normal list fetched by the `dir` built-in. Together they can enforce access rules or build dynamic interfaces.
+
+Their names match same-named methods in classes. They also replace an older, obscure trick. That trick swapped a module's entry in `sys.modules` for a class instance with the same methods. These functions make the idea simpler. They make the most sense after you study classes, which come next.
+
+Example 25-3 shows the basics in `gamod.py`:
+
+```
+var = 2 # Real attribute returned directly
+def __getattr__(name): # Undefined attr fetches routed here
+    print(f'(virtual {name})', end=' ')
+    match name:
+        case 'test':
+            return name * var
+        case 'hack' | 'code':
+            return name.upper()
+        case _:
+            raise AttributeError(f'{name} is undefined')
+def __dir__():
+    return ['var', 'test', 'hack', 'code']
+```
+
+When imported, real attributes work normally, subject to the `_X` and `__all__` rules for `from *`. A missing name goes to `__getattr__`, which can manage the request. It can also raise an exception to flag an invalid request. Exceptions get full coverage later in this course:
+
+```
+>>> import gamod
+>>> gamod.var # Real: __getattr__ not called
+2
+>>> gamod.test # Virtual: computed when fetched
+(virtual test) 'testtest'
+>>> gamod.hack
+(virtual hack) 'HACK'
+>>> gamod.nonesuch
+AttributeError: nonesuch is undefined
+>>> dir(gamod)
+['code', 'hack', 'test', 'var']
+```
+
+The `from` statement calls `__getattr__` too. A `from *` needs the names to appear in `__all__`. You can mostly ignore the stray `__path__` fetch, but `__getattr__` must accept it:
+
+```
+>>> from gamod import code
+(virtual __path__) (virtual code)
+>>> code
+'CODE'
+>>> from gamod import *
+(virtual __path__) (virtual __all__)
+>>> var
+2
+>>> hack
+NameError: name 'hack' is not defined
+```
+
+Importantly, `__getattr__` does not run for global lookups inside the module itself. Undefined names in the file stay undefined. The hook serves attribute fetches from other modules. It also ignores assignments. For example, this line added to the file fails, and the REPL line that follows creates a real attribute:
+
+```
+print(test) # File: does NOT call __getattr__ (raises NameError)
+gamod.hack = 'real' # REPL: does NOT call __getattr__ (makes attribute)
+```
+
+After the second line, `hack` bypasses `__getattr__` for good. Keep that in mind when you test a module interactively.
+
+This all works as advertised. It is a tool-builder's hook, though, and legitimate uses are narrow. It also mixes modules with classes. Learners do not yet know where these functions come from. This is a common theme in Python. Additions often assume you already know Python well.
+
+A later proposal to add a class-style `__setattr__` for module attribute assignment was rejected by the Python steering committee. Only `__getattr__` and `__dir__` got through. Weigh the complexity of this extension against its real uses.
+
+## Enabling language changes with `__future__`
+
+Python changes often roll out in stages. Some arrive as optional extensions that stay off by default. Version 3.0 was a glaring exception to that gentle pace. Python 2.X still received support for 12 more years after 3.X came out.
+
+To enable an optional extension in an older Python, use this import form:
+
+```
+from __future__ import featurename
+```
+
+In a script, this statement must come first among the executable statements. A docstring or comment may come before it. It changes how Python compiles that one module. At the interactive prompt, the feature stays on for the rest of the session.
+
+The prior edition of this book used `__future__` for several 2.X-era features. These included 3.X true division, 3.X `print` calls, and 3.X absolute imports for packages. Earlier editions used the same form to introduce generator functions, which needed `yield` before it was on by default.
+
+This edition goes forward with the present. Older Pythons can still use `__future__` to enable a later change, such as the 3.7 behavior where `StopIteration` bubbles out of generators:
+
+```
+from __future__ import generator_stop
+```
+
+The Python library manual lists every feature name you can import this way. Those names are never removed, so leaving a `__future__` import in place is safe. Even code run by a Python where the feature is standard can keep the line.
+
+## The `__name__` usage-mode variable
+
+You can import a file as a module, or run it as a standalone script. Python sets a built-in attribute named `__name__` for each module:
+
+- If the file runs as a top-level script, `__name__` is the string `'__main__'`.
+- If the file is imported, `__name__` is the module's name as clients know it.
+
+A module can test its own `__name__` to see how it is being used. Example 25-4 shows the trick in `dualmode.py`:
+
+```
+def title():
+    print('Learning Python, 6E')
+if __name__ == '__main__': # Only when run
+    title() # Not when imported
+```
+
+Imported, the module only defines a function that clients can call:
+
+```
+$ python3
+>>> import dualmode
+>>> dualmode.title()
+Learning Python, 6E
+```
+
+Run as a program, the bottom code calls the function automatically:
+
+```
+$ python3 dualmode.py
+Learning Python, 6E
+```
+
+In effect, `__name__` acts as a usage-mode flag. The same code works as an importable library and as a top-level script. You will see this hook in many Python files, both for testing and for dual use.
+
+### Self-test code
+
+The most common use is self-test code. Wrap the tests for a module's exports in a `__name__` check at the bottom of the file. Clients can import the file normally. You can still test its logic by running it from the shell or another launch method.
+
+This is probably the simplest unit-testing protocol in Python. It beats retyping your tests at the interactive prompt each time. The standard-library `unittest` and `doctest` modules offer more advanced testing tools, which you can explore later.
+
+The `__name__` test also suits files that work as both command-line utilities and tool libraries. Suppose you write a file-finder script. Package its logic in functions. Then add a `__name__` test that calls those functions when the file runs standalone. The script's code can then be reused in other programs.
+
+Note: do not confuse the `__main__` check with the `__main__.py` file from the package section above. That file runs an entire package folder as a program. The `__name__` check gives one file two roles. Python often reuses the same names for different purposes, and this is one case.
+
+### Example: unit tests with `__name__`
+
+Earlier examples had self-test code that printed output on every import. Take the `minmax` function that returns the smallest or largest value from a set of arguments. Its original version looks like this:
+
+```
+def minmax(test, *args):
+    res = args[0]
+    for arg in args[1:]:
+        if test(arg, res):
+            res = arg
+    return res
+def lessthan(x, y): return x < y
+def grtrthan(x, y): return x > y
+print(minmax(lessthan, 4, 2, 1, 5, 6, 3)) # Self-test code
+print(minmax(grtrthan, 4, 2, 1, 5, 6, 3))
+```
+
+The self-test calls are handy. The problem is that their output appears whenever another file imports this module as a tool. Wrap the self-test calls in a `__name__` check, so they run only for a top-level script. Example 25-5 shows the improved module:
+
+```
+print('I am:', __name__)
+def minmax(test, *args):
+    res = args[0]
+    for arg in args[1:]:
+        if test(arg, res):
+            res = arg
+    return res
+def lessthan(x, y): return x < y
+def grtrthan(x, y): return x > y
+if __name__ == '__main__':
+    print(minmax(lessthan, 4, 2, 1, 5, 6, 3)) # Self-test code
+    print(minmax(grtrthan, 4, 2, 1, 5, 6, 3))
+```
+
+The first line prints `__name__` to trace its value. You would not do that in a real library module. Python sets this variable as soon as it starts loading a file. Run as a top-level script, the name is `__main__`, so the self-test code starts on its own:
+
+```
+$ python3 minmax.py
+I am: __main__
+1
+6
+```
+
+Import the file, and the name is not `__main__`. You must call the function yourself:
+
+```
+$ python3
+>>> import minmax
+I am: minmax
+>>> minmax.minmax(minmax.lessthan, *'hack')
+'a'
+```
+
+Either way, the code serves two roles. It works as a library of tools or as an executable program. It is a buy-one-get-one-free arrangement.
+
+You will also see programs route program-mode runs into a function named `main`:
+
+```
+def main():
+...
+if __name__ == '__main__':
+main()
+```
+
+This works, but it adds extra code. Python gives no special meaning to a function named `main`, unlike some other languages that may have inspired this pattern.
+
+## The `as` extension for `import` and `from`
+
+The `as` clause is a small convenience for both `import` and `from`. It renames a name that your script imports. This extends the name-collision idea from earlier in this course. An `import` with `as` looks like this:
+
+```
+import modulename as name # And use name, not modulename
+```
+
+That line is equal to three statements. The module gets a new name in the importer's scope only. Other files still know it by its original name. The original name is dropped from the importer's scope:
+
+```
+import modulename # Run a normal import
+name = modulename # Rename the module - here
+del modulename # Discard the original name - here
+```
+
+After an `import` with `as`, you must use the name after `as` to reach the module. The longer form works because modules are first-class objects. You can pass them around like functions.
+
+The `as` clause also works with `from`. It assigns a name imported from a file to a different name in the importer's scope. You get only the new name:
+
+```
+from modulename import attrname as name # And use name, not attrname
+```
+
+That is the same as these three statements:
+
+```
+from modulename import attrname
+name = attrname
+del attrname
+```
+
+Programmers use `as` for two main jobs. One is a shorter synonym for a long name. The other is avoiding a clash when a normal import would overwrite a name you already use:
+
+```
+import reallylongmodulename as name # Use shorter nickname
+name.func() # Rename to make shorter
+from module1 import utility as util1 # Can have only one "utility"
+from module2 import utility as util2 # Rename to make unique
+util1(); util2()
+```
+
+The `as` clause also gives a short name to a long directory path. That helps when you use the package imports from the package section:
+
+```
+import dir1.dir2.mod as mod # Only list full path once
+mod.func() # Only one change if path changes
+from dir1.dir2.mod import func as modfunc # Rename to make unique if needed
+modfunc() # Allow func to be something else
+```
+
+Finally, `as` hedges against library changes. If a new release renames a module your code uses heavily, rename it back on import. Your code keeps working while you update it at your own pace:
+
+```
+import newname as oldname
+from library import newname as oldname
+...and keep happily using oldname until you have time to update all your code...
+```
+
+That said, software changes are rarely just name changes.
+
+## Module introspection
+
+Modules expose most of their useful properties as built-in attributes. That makes it easy to write programs that manage other programs. Tools like this are called metaprograms, because their subject is other programs. The field is called introspection, since programs can see and process object internals. It is an advanced feature, but it helps you build programming tools.
+
+To fetch a module's attribute value, you can qualify the name. You can also index the module's attribute dictionary through the built-in `__dict__` attribute. Python's `vars` built-in is another way to reach `__dict__`. The `sys.modules` dictionary records all loaded modules by their import-name string. The `getattr` built-in fetches an attribute from a string name at runtime.
+
+All of these expressions reach the same object, the attribute `name` in module `M`, after importing `M` and `sys`:
+
+```
+M.name # Qualify object by attribute
+M.__dict__['name'] # Index namespace dictionary manually
+vars(M)['name'] # Namespace dictionary alternative
+sys.modules['M'].name # Index loaded-modules table manually
+getattr(M, 'name') # Call built-in fetch function
+sys.modules['M'].__dict__['name'] # Module and attribute name strings
+```
+
+A demo with `minmax` uses chained comparisons. Each side reaches the same function:
+
+```
+>>> import minmax, sys
+>>> (minmax.lessthan
+is minmax.__dict__['lessthan'] is vars(minmax)['lessthan']
+is sys.modules['minmax'].lessthan is getattr(minmax, 'lessthan')
+is sys.modules['minmax'].__dict__['lessthan'])
+True
+```
+
+The first form is the easiest to read and type. The others support generic access, which matters for tools.
+
+### Example: listing modules with `__dict__`
+
+Python's internals make it possible to build programs about programs. Example 25-6 uses these ideas in `mydir.py`. The module offers a customized and expanded version of the built-in `dir` function. Its `listing` function takes a module object. It prints a formatted view of the module's namespace, sorted by attribute name.
+
+```
+"""
+mydir.py: a module that lists the namespaces of other modules.
+Import this module's listing and pass an imported module, or
+run this file as a script to perform its self-test code.
+"""
+sepchr = '-'
+seplen = 60
+def listing(module, verbose=True, unders=True):
+    """
+    List module: just attributes if verbose=False,
+    hide built-in __X__ attributes if unders=False.
+    """
+    sepline = sepchr * seplen
+    if verbose:
+        print(sepline)
+        print(f'name: {module.__name__}\nfile: {module.__file__}')
+        print(sepline)
+    # Scan namespace keys
+    for (count, attr) in enumerate(sorted(module.__dict__)):
+        prefix = f'{count + 1:02d}) {attr}'
+        if attr.startswith('__'):
+            if unders:
+                print(prefix, '<built-in name>') # Skip __file__, etc.
+        else:
+            print(prefix, getattr(module, attr)) # Or module.__dict__[attr]
+    if verbose:
+        print(sepline)
+        print(f'{module.__name__} has {count + 1} names')
+        print(sepline)
+if __name__ == '__main__':
+    import mydir
+    listing(mydir) # Self-test code: list myself
+```
+
+The docstrings matter here. Because this is a general tool, its docstrings give help text through `help` and the PyDoc browser. Those tools use the same introspection methods. The bottom of the file imports and lists itself. Run it as a script to see the output:
+
+```
+$ python3 mydir.py
+------------------------------------------------------------
+name: mydir
+file: /Users/me/…/LP6E/Chapter25/mydir.py
+------------------------------------------------------------
+01) __builtins__ <built-in name>
+02) __cached__ <built-in name>
+03) __doc__ <built-in name>
+04) __file__ <built-in name>
+05) __loader__ <built-in name>
+06) __name__ <built-in name>
+07) __package__ <built-in name>
+08) __spec__ <built-in name>
+09) listing <function listing at 0x1077758a0>
+10) sepchr -
+11) seplen 60
+------------------------------------------------------------
+mydir has 11 names
+------------------------------------------------------------
+```
+
+To list other modules, pass them to the function as objects. The function works with any object that has `__name__`, `__file__` and `__dict__` attributes. Here it lists itself, then the `tkinter` GUI module from the standard library:
+
+```
+>>> from mydir import listing
+>>> import mydir, tkinter
+>>> listing(mydir, unders=False, verbose=False)
+09) listing <function listing at 0x10800fba0>
+10) sepchr -
+11) seplen 60
+>>> listing(tkinter, unders=False)
+------------------------------------------------------------
+name: tkinter
+file: /…/lib/python3.12/tkinter/__init__.py
+------------------------------------------------------------
+01) ACTIVE active
+02) ALL all
+03) ANCHOR anchor
+04) ARC arc
+...more names omitted...
+166) re <module 're' from '/…/lib/python3.12/re/__init__.py'>
+167) sys <module 'sys' (built-in)>
+168) types <module 'types' from '/…/lib/python3.12/types.py'>
+169) wantobjects 1
+------------------------------------------------------------
+tkinter has 169 names
+------------------------------------------------------------
+```
+
+You will meet `getattr` and its relatives again later. The main point is that `mydir` is a program that browses other programs. Because Python exposes its internals, you can process objects in a generic way.
+
+Note: you can preload tools such as `mydir.listing`, or a reloader you write, into the REPL. Import them in a file named by the `PYTHONSTARTUP` environment variable. Code in that startup file runs in the interactive namespace, so common imports save typing.
+
+## Importing modules by name string
+
+Often a program gets a module name as a string at runtime. The string might come from a user's menu choice, or from parsing an XML document. You cannot pass such a string to an `import` statement directly. Python expects a variable name that it reads literally, not an evaluated string or expression:
+
+```
+>>> import 'string'
+SyntaxError: invalid syntax
+```
+
+Assigning the string to a variable does not help either:
+
+```
+>>> x = 'string'
+>>> import x
+ModuleNotFoundError: No module named 'x'
+```
+
+Here Python tries to import a file named `x.py`, not the `string` module. In an `import` statement, the name both identifies the file and becomes the variable that holds the module.
+
+### Running code strings
+
+To load a module from a string built at runtime, use a tool that runs code. The most general approach builds an `import` statement as a string and passes it to the `exec` built-in function:
+
+```
+>>> modname = 'string'
+>>> exec('import ' + modname) # Run a string of code
+>>> string # Imported in this namespace
+<module 'string' from '/…/lib/python3.12/string.py'>
+```
+
+You have seen `exec` and its expression cousin `eval` before. The `exec` function compiles a string of code and hands it to the interpreter. The bytecode compiler is available at runtime, so programs can build and run other programs. By default, `exec` runs the code in the current scope, as if you had pasted it there. You can pass namespace dictionaries to control the scope. `exec` also carries security risks. Those risks matter less when you build the code string yourself.
+
+### Direct calls: two options
+
+The main drawback of `exec` is that it compiles the `import` statement each time it runs. Compiling can be slow. The `compile` built-in can precompile a string that runs many times. In most cases, though, the `__import__` built-in is simpler and often faster. It imports from a name string and returns the module object. Assign the result to a name to keep it:
+
+```
+>>> modname = 'string'
+>>> string = __import__(modname)
+>>> string
+<module 'string' from '/…/lib/python3.12/string.py'>
+```
+
+Imports work by invoking `__import__`, so this loads the named module normally.
+
+The standard-library `importlib.import_module` call does the same job. Python's documentation describes it as a simpler wrapper around `__import__` for everyday use:
+
+```
+>>> import importlib
+>>> modname = 'string'
+>>> string = importlib.import_module(modname)
+>>> string
+<module 'string' from '/…/lib/python3.12/string.py'>
+```
+
+Both calls work the same way in their basic roles. Read the Python manuals for their advanced arguments. Python's docs seem to prefer the `importlib` call for name strings. Either call works, and the import system changes often.
+
+Both calls also work with package paths. They differ in what they return. `__import__` returns the leftmost component of a package path. `importlib.import_module` returns the last one. This is their most important difference:
+
+```
+>>> import importlib
+>>> __import__('email.message')
+<module 'email' from '/…/lib/python3.12/email/__init__.py'>
+>>> importlib.import_module('email.message')
+<module 'email.message' from '/…/lib/python3.12/email/message.py'>
+```
+
+The `importlib` call also handles a package-relative import string with leading dots. You must pass the package path that the import resolves from as a second string. Package imports come from the package section above.
+
+## Transitive module reloads
+
+This section builds a larger tool that combines several topics from this chapter. A reload picks up code changes without a restart. Earlier, you saw that a reload updates only the module you pass in. It does not reload the modules that module imports.
+
+Suppose you reload module `A`, and `A` imports `B` and `C`. The reload applies only to `A`, not to `B` and `C`. The import statements inside `A` run again. They fetch the already loaded `B` and `C` objects, so they do nothing new. In abstract code, `A.py` looks like this:
+
+```
+# A.py
+import B # Not reloaded when A is!
+import C # Just imports of already loaded modules: no-ops
+$ python3
+>>> …import and use A…
+>>> from importlib import reload
+>>> reload(A)
+```
+
+By default, you cannot depend on reloads to update every module in a program. You must call `reload` on each subcomponent. Large systems make this slow to test interactively. You can add `reload` calls in parent modules such as `A`, but that makes the code more complex.
+
+### A recursive reloader
+
+A better approach is a general tool that reloads transitively. It scans a module's `__dict__` attributes and checks each value's `type`. When it finds a nested module, it reloads that module too. The tool calls itself recursively to walk import chains of any depth. The pieces come from earlier topics. The `__dict__` attribute holds a module's namespace. Recursion comes from the functions section. The `type` call checks an object's kind.
+
+The module `reloadall.py` in Example 25-7 defines `reload_all`. It reloads a module, every module it imports, and so on down each chain. It keeps a dictionary of reloaded modules. Recursion walks the import chains. The standard library's `types` module predefines type results for built-in types such as modules. The `visited` dictionary avoids repeats when imports are recursive or redundant. Module objects can serve as dictionary keys. A set would work too.
+
+```
+"""
+reloadall.py: transitively reload nested modules.
+Call reload_all with one or more imported modules as arguments.
+These modules, and all the modules they import, are reloaded.
+"""
+import types
+from importlib import reload
+def status(module):
+    print('reloading', module.__name__)
+def tryreload(module):
+    try:
+        reload(module) # Imports might fail
+    except:
+        print('FAILED:', module)
+def transitive_reload(module, visited):
+    if not module in visited: # Trap cycles, duplicates
+        status(module) # Reload this module
+        tryreload(module) # And visit children
+        visited[module] = True
+        for attrobj in module.__dict__.values(): # For all attrs in mod
+            if type(attrobj) == types.ModuleType: # Recur if nested module
+                transitive_reload(attrobj, visited)
+def reload_all(*args):
+    visited = {} # Main entry point
+    for arg in args: # For all passed in
+        if type(arg) == types.ModuleType:
+            transitive_reload(arg, visited)
+def tester(reloader, modname): # Self-test: cmd or passed
+    import importlib, sys # Imports for tests only
+    if len(sys.argv) > 1: # Command-line argument?
+        modname = sys.argv[1]
+    module = importlib.import_module(modname) # Import by name string
+    reloader(module) # Test passed-in reloader
+if __name__ == '__main__':
+    tester(reload_all, 'reloadall') # Test: reload self or arg
+```
+
+The module uses several tools you have seen. The `__name__` test runs self-test code only for a top-level script. The `tester` function reads `sys.argv` for command-line arguments. It uses `importlib` to import a module by name string.
+
+The `tryreload` function wraps `reload` in a `try` statement. Reloads can fail for many reasons, so defensive code is wise with system interfaces. For example, a `monitoring` module added to `sys` in Python 3.12 cannot be reloaded. Without the `try`, that module would crash the reloader. The `try` statement was previewed earlier and is covered in full later in the course.
+
+### Testing recursive reloads
+
+To use the module normally, import `reload_all` and pass in an already loaded module object. That works just like the built-in `reload`. Pass a module from a top-level `import`. Modules that you reach only through `from` do not apply. The `sys.modules` lookups work too.
+
+To test it standalone, run the file. Its `tester` function runs a reloader on a module imported by name string. The name comes from a command-line argument if one is present. Otherwise it uses the default name. With no arguments, the module reloads itself and the standard `types` module:
+
+```
+$ python3 reloadall.py
+reloading reloadall
+reloading types
+```
+
+With a command-line argument, the tester reloads the named module. The next run reloads a benchmark module kept in another folder of example code, which must be on `PYTHONPATH`. Copying files is poor practice, and running from that other folder does not help, because this script's folder is home. Pass a module name, not a filename. The script imports the module through the search path, so the `.py` extension is omitted:
+
+```
+$ pwd # In Chapter 25's code folder
+/Users/me/…/LP6E/Chapter25
+$ export PYTHONPATH=../Chapter21 # Extend path: your shell may vary
+$ python3 reloadall.py pybench # Import+reload Chapter 21 module
+reloading pybench
+reloading sys
+reloading sys.monitoring
+FAILED: <module 'sys.monitoring'>
+reloading os
+reloading abc
+reloading stat
+reloading posixpath
+reloading genericpath
+reloading time
+reloading timeit
+reloading gc
+reloading itertools
+```
+
+The reloader is most useful in the REPL. It works like `reload`, but it adds recursive reloads for each module passed in. Here it reloads standard-library modules:
+
+```
+$ python3
+>>> from reloadall import reload_all # Reload stdlib modules in REPL mode
+>>> import os, tkinter
+>>> reload_all(os)
+reloading os
+reloading abc
+reloading sys
+reloading sys.monitoring
+FAILED: <module 'sys.monitoring'>
+reloading stat
+reloading posixpath
+reloading genericpath
+>>> reload_all(tkinter)
+reloading tkinter
+reloading collections
+reloading collections.abc
+…etc…
+reloading _sre
+reloading functools
+reloading copyreg
+```
+
+The reloader also works on packages, in either mode. Here it reloads the standard library's `email` package:
+
+```
+$ python3 reloadall.py email.message # Import+reload a stdlib package
+reloading email.message
+reloading binascii
+reloading re
+…etc…
+$ python3
+>>> from reloadall import reload_all # Same, but in REPL mode
+>>> import email.message
+>>> reload_all(email.message)
+reloading email.message
+reloading binascii
+reloading re
+…etc…
+```
+
+The next example runs the reloader on the `dir1.dir2.mod` path from the basic package section. Every item on the path is reloaded from the package root. The `sys.path` change gives the REPL access to another chapter's code folder, much like `PYTHONPATH`:
+
+```
+>>> import sys
+>>> sys.path.append('../Chapter24') # Extend the search path manually
+>>> import dir1.dir2.mod # A package in Chapter 24's folder
+Running dir1.__init__.py
+Running dir1.dir2.__init__.py
+Loading dir1.dir2.mod
+>>> reload_all(dir1) # Reloads all on path: mods in mods
+reloading dir1
+Running dir1.__init__.py
+reloading dir1.dir2
+Running dir1.dir2.__init__.py
+reloading dir1.dir2.mod
+Loading dir1.dir2.mod
+```
+
+A simple session shows the difference between a normal reload and a transitive one. Three files import each other in a chain:
+
+```
+# File ra.py
+import rb
+X = 1
+# File rb.py
+import rc
+Y = 2
+# File rc.py
+Z = 3
+$ python3
+>>> import ra
+>>> ra.X, ra.rb.Y, ra.rb.rc.Z # Three-level import chain
+(1, 2, 3)
+```
+
+Now change all three files' values without stopping Python, save them, and reload in the REPL:
+
+```
+>>> from importlib import reload
+>>> reload(ra) # Built-in reload is top-level only
+<module 'ra' from '/…/LP6E/Chapter25/ra.py>
+>>> ra.X, ra.rb.Y, ra.rb.rc.Z
+(111, 2, 3)
+>>> from reloadall import reload_all
+>>> reload_all(ra) # Normal usage mode
+reloading ra
+reloading rb
+reloading rc
+>>> ra.X, ra.rb.Y, ra.rb.rc.Z # Reloads all nested modules too
+(111, 222, 333)
+```
+
+The built-in `reload` changed only `ra`. The transitive reloader updated the nested modules too. Study the reloader's code and its results to see how it works.
+
+### Alternative codings
+
+Some readers prefer recursion, and the next module shows a recursive alternative. Example 25-8 in `reloadall2.py` uses a set instead of a dictionary to detect repeats and cycles. It is slightly more direct because it drops the top-level loop. It also shows recursive coding in general. This module extends the original and replaces only the parts that vary. It imports `tester` from the original and passes in its own `reload_all`. That makes sure this reloader runs in standalone mode.
+
+```
+"""
+reloadall2.py: transitively reload nested modules.
+Alternative coding: recursive, refactored.
+"""
+import types
+from reloadall import status, tryreload, tester
+def transitive_reload(objects, visited):
+    for obj in objects:
+        if type(obj) == types.ModuleType and obj not in visited:
+            status(obj)
+            tryreload(obj) # Reload this, recur to attrs
+            visited.add(obj)
+            transitive_reload(obj.__dict__.values(), visited)
+def reload_all(*args):
+    transitive_reload(args, set())
+if __name__ == '__main__':
+    tester(reload_all, 'reloadall2') # Test: reload myself or arg
+```
+
+The functions section covered recursive functions. An explicit stack or queue can replace recursion, which sometimes suits a context better. Example 25-9 in `reloadall3.py` is a nonrecursive transitive reloader. It uses a stack instead of recursion, and a set to skip repeats and cycles. For each module, it pushes all attribute values onto the end of the `objects` stack. Those values are filtered later. The loop repeats until no candidates remain. A generator expression could filter out nonmodules in the `extend` call, but that would be more complex.
+
+```
+"""
+reloadall3.py: transitively reload nested modules.
+Alternative coding: nonrecursive, explicit stack.
+"""
+import types
+from reloadall import status, tryreload, tester
+def transitive_reload(objects, visited):
+    while objects:
+        next = objects.pop() # Delete next item at end
+        if (type(next) == types.ModuleType # Is it a module object?
+            and next not in visited): # Not already reloaded?
+            status(next) # Reload this, push attrs
+            tryreload(next)
+            visited.add(next)
+            objects.extend(next.__dict__.values())
+def reload_all(*args):
+    transitive_reload(list(args), set())
+if __name__ == '__main__':
+    tester(reload_all, 'reloadall3') # Test: reload myself or arg
+```
+
+This version pops and pushes items at the end of its list, so it is stack-based. The order of pushes and dictionary values sets the order of reloads. It visits submodules in namespace dictionaries from right to left. The recursive versions go left to right. You could reverse `values` to match. Reload order does not matter here.
+
+### Testing reload variants
+
+To prove the two alternatives match the original, test all three. Each module shares a common `tester` function. Run each with no arguments to reload itself, or with a module name to reload that module:
+
+```
+$ python3 reloadall.py
+reloading reloadall
+reloading types
+$ python3 reloadall2.py
+reloading reloadall2
+reloading types
+$ python3 reloadall3.py
+reloading reloadall3
+reloading types
+```
+
+Each run tests a different reloader, though the output looks alike. Each test passes the `reload_all` from its own file to the shared tester. Here the variants reload the `tkinter` GUI module and every module it reaches. The third variant's order differs:
+
+```
+$ python3 reloadall.py tkinter
+reloading tkinter
+reloading collections
+reloading collections.abc
+…etc…
+$ python3 reloadall2.py tkinter
+reloading tkinter
+reloading collections
+reloading collections.abc
+…etc…
+$ python3 reloadall3.py tkinter
+reloading tkinter
+reloading re
+reloading copyreg
+…etc…
+```
+
+You can test interactively too. Import the reloaders and call either the main entry point with a module object, or the tester with a reloader and a module name string:
+
+```
+$ python3
+>>> import reloadall, reloadall2, reloadall3
+>>> import tkinter
+>>> reloadall.reload_all(tkinter) # Normal use case
+reloading tkinter
+reloading collections
+reloading collections.abc
+…etc…
+>>> reloadall.tester(reloadall2.reload_all, 'tkinter') # Testing utility
+reloading tkinter
+reloading collections
+reloading collections.abc
+…etc…
+>>> reloadall.tester(reloadall3.reload_all, 'reloadall3') # Mimic self-test code
+reloading reloadall3
+reloading types
+```
+
+The third reloader's order can vary. Reload order depends on namespace dictionary ordering. Dictionaries keep keys in insertion order. The stack version also depends on the order that items enter its stack. To check that all three reload the same modules in any order, compare their messages as sets or sorted lists. This session runs the scripts with `os.popen`:
+
+```
+>>> import os
+>>> res1 = os.popen('python3 reloadall.py tkinter').readlines()
+>>> res2 = os.popen('python3 reloadall2.py tkinter').readlines()
+>>> res3 = os.popen('python3 reloadall3.py tkinter').readlines()
+>>> res1[:3]
+['reloading tkinter\n', 'reloading collections\n', 'reloading collections.abc\n']
+>>> res3[:3]
+['reloading tkinter\n', 'reloading re\n', 'reloading copyreg\n']
+>>> res1 == res2, res2 == res3
+(True, False)
+>>> set(res2) == set(res3) # Order-neutral equality
+True
+>>> sorted(res2) == sorted(res3) # Ditto
+True
+```
+
+Run these scripts, study them, and experiment. They are the kind of importable tools you might keep in your own code library. The class tree listers in a later chapter use a similar testing technique.
+
+### Caveats of transitive reloads
+
+All the transitive reloaders depend on how `reload` works. A reload updates the module object in place. Every reference to that module sees the new version, so a transitive reload works. A `from` importer copies names out, though. Those copies do not update after a reload, transitive or not. Modules imported only through `from` also miss out. They never appear in an importer's namespace, so the scan cannot find them. Fixing that may require source-code analysis or import customization.
+
+This is another reason to prefer `import` over `from`. The next section covers the common gotchas for this topic.
+
+## Module gotchas
+
+This section covers the boundary cases that trip up Python learners. Some repeat earlier points. A few are so obscure that good examples are hard to find. Most show something important about the language.
+
+### Module name clashes
+
+If two modules share a name, you may be able to import only one. By default, Python picks the one in the leftmost directory on `sys.path`. Your top-level script's folder is always first, so a module there wins automatically. Across directories, the linear search path means same-named files can clash.
+
+The fix is to avoid same-named files. If you truly need both, use the package imports from the package section. Put each file in a subdirectory, so the package directory names make each reference unique. As long as the enclosing package names differ, you can reach either or both modules.
+
+A similar problem happens when your own module shares a name with a standard-library module you need. Your local module in the home directory, or in another early folder on the path, can hide the library module. Avoid reusing standard-library names. Or store your modules in a package and use package-relative imports. In that model, normal imports skip the package folder and reach the library's version. Special dotted imports can still select the local one.
+
+### Statement order matters in top-level code
+
+When Python first imports a module, or later reloads it, it runs the statements one by one from top to bottom. That has some subtle effects on forward references:
+
+- Top-level code, which is not nested in a function, runs as soon as Python reaches it during an import. It cannot reference names assigned lower in the file.
+- Code inside a function body does not run until the function is called. Names inside a function resolve only when the function runs. They can usually refer to names anywhere in the file.
+
+Forward references matter mainly for top-level code that runs right away. Functions can reference names at any point. This file shows the dos and don'ts:
+
+```
+func1() # Error: func1 not yet assigned
+def func1():
+    print(func2()) # OK: func2 looked up later
+func1() # Error: func2 not yet assigned
+def func2():
+    return "Hello"
+func1() # OK: func1 and func2 assigned
+```
+
+When this file is imported or run as a program, Python runs it from top to bottom. The first call to `func1` fails, because its `def` has not run yet. The call to `func2` inside `func1` works once `func2`'s `def` has run. At the second top-level call, it has not. The last call works because both functions are assigned.
+
+Mixing `def` statements with immediate code is hard to read, and it depends on statement order. As a rule of thumb, put your `def` statements at the top of the file. Put top-level code at the bottom. Then every function is defined before the code that uses it.
+
+### `from` copies names but does not link
+
+The `from` statement assigns names in the importer's scope. It copies names rather than aliasing them. That matters most for names that live in different files. Consider the simple module `nested.py` in Example 25-10:
+
+```
+X = 99
+def printer(): print(X)
+```
+
+If another module, or the REPL, imports these names with `from`, it gets copies. Changing a name in the importer resets only the local copy. The name in `nested.py` does not change:
+
+```
+>>> from nested import X, printer # Copy names out
+>>> X = 88 # Changes my X only!
+>>> printer() # nested1's X is still 99
+99
+```
+
+If you use `import` instead and assign to a qualified name, you change the module's loaded image. The attribute qualifier points at the name in the module object, not in the importer:
+
+```
+>>> import nested # Get module as a whole
+>>> nested.X = 88 # Change nested1's X
+>>> nested.printer()
+88
+```
+
+The takeaway: changing a name obtained with `from` affects no other module. Changing a mutable object shared through a `from` copy can affect other modules, though. Only the name rebinding stays local.
+
+### `from *` can obscure the meaning of variables
+
+The `from *` form does not list the names it imports. It can silently overwrite names already in your scope. It also hides where a variable came from. This gets worse when `from *` is used on more than one module:
+
+```
+>>> from module1 import * # May overwrite names silently
+>>> from module2 import * # No way to tell what we get
+>>> from module3 import * # No way to see name origins
+>>> func() # Huh?
+```
+
+With three modules, you cannot tell what `func` means without searching all three files. Those files may live in other directories.
+
+The fix is simple. List the names you want in most `from` statements. Use at most one `from *` per file. Then any undefined name must come from the one module named in that `from *`. You can avoid the problem entirely by using `import` everywhere. That advice is too strict. `from` is handy when used wisely. Collecting names into one well-known module for convenience is acceptable.
+
+### `reload` may not affect `from` imports
+
+`from` copies names when it runs. It keeps no link back to the source module. An imported name simply refers to the object that the source name referenced at that time. So reloading the source module does nothing for clients that imported the name with `from`:
+
+```
+from module import X # X may not reflect any module reloads
+…
+from importlib import reload
+reload(module) # Changes module, but not my names
+X # Still references old object!
+```
+
+Use `import` and name qualification to fix this. A qualified name always goes back to the module. After a reload, it finds the new bindings that the reload updated in place:
+
+```
+import module # Get module, not names
+…
+from importlib import reload
+reload(module) # Changes module in place
+module.X # Get current X: reflects module reloads
+```
+
+This is why the transitive reloader above does not update names fetched with `from`, only those fetched with `import`. If you plan to reload, use `import`.
+
+### `reload`, `from`, and interactive testing
+
+The problem is more subtle than it looks. Earlier in this course, you saw that launching programs through imports and reloads is often a bad idea. The complexity grows when `from` joins in. Beginners often hit these issues while testing in an interactive session. Imagine you open a module in a text editor. You then load it with `from` in a session to test it:
+
+```
+from module import function
+function(1, 2, 3)
+```
+
+You find a bug and edit the file. Then you try to reload the module that way:
+
+```
+from importlib import reload
+reload(module)
+```
+
+That fails. The `from` statement bound only the name `function`, not `module`. To reload, you must first bind the module name with an `import` at least once:
+
+```
+from importlib import reload
+import module
+reload(module)
+function(1, 2, 3)
+```
+
+This still does not work. `reload` updates the module object in place. But names copied out earlier, such as `function`, still point to the old objects. `function` is still the original version. To use the new function, refer to `module.function` after the reload. Or rerun the `from`:
+
+```
+from importlib import reload
+import module
+reload(module)
+from module import function # Or give up and use module.function()!
+function(1, 2, 3)
+```
+
+The new function finally runs. Getting there takes a lot of work, though. You must remember to reload after imports, and to rerun your `from` statements after reloads. In Python 3, you must also import `reload` itself. That is complex enough to trip up experts now and then.
+
+The short story: do not expect `reload` and `from` to work together. Avoid combining them. Use `reload` with `import`. Or launch your programs another way. Options include IDLE's menu commands, clicking a file icon, the system command line, the `exec` built-in, or other methods from the early chapters.
+
+### Recursive `from` imports may not work
+
+This is the most bizarre gotcha, and luckily an obscure one. Imports run a file's statements from top to bottom. Be careful when modules import each other. People call this a recursive import, but the recursion does not really happen. A circular import is a better name. Such imports do not loop forever. A module's statements may not all have run when it imports another module, though. So some of its names may not exist yet.
+
+If you use `import` to fetch the whole module, this usually does not matter. You access its names later, and by then the module is complete. If you use `from` to fetch specific names, only names already assigned at that point are available during a recursive import.
+
+Consider `recur1` and `recur2` in Examples 25-11 and 25-12:
+
+```
+X = 1
+import recur2 # Run recur2 now if it doesn't exist
+Y = 2
+```
+
+```
+from recur1 import X # OK: X already assigned
+from recur1 import Y # Error: Y not yet assigned
+```
+
+Module `recur1` assigns `X`, then imports `recur2`, then assigns `Y`. The `recur2` module can fetch `recur1` as a whole with `import`. The module is already in the `sys.modules` table, so the import works and does not loop. But `recur2` uses `from`. It can see only `X`. The name `Y` is assigned below the import, so it does not exist yet:
+
+```
+$ python3
+>>> import recur1
+ImportError: cannot import name 'Y' from partially initialized module 'recur1'
+(most likely due to a circular import) (/…/LP6E/Chapter25/recur1.py)
+```
+
+Python avoids rerunning `recur1`'s statements during the recursive import. Otherwise the imports would loop forever. But `recur1`'s namespace is incomplete when `recur2` imports it.
+
+The solution: avoid `from` in recursive imports. Python will not get stuck in a cycle with `from`, but your program will depend on the order of statements. There are two ways out of this gotcha:
+
+- Eliminate import cycles with careful design. Maximize cohesion and minimize coupling, as described at the start of this chapter.
+- If you cannot break the cycles, delay name access. Use `import` with attribute qualification instead of `from` with direct names. Or place your `from` statements inside functions, or near the bottom of the file.
+
+### Recap of advanced module topics
+
+This chapter covered data hiding, the `__future__` module, the `__name__` usage-mode variable, transitive reloads, and importing by name string. It also covered module design and common mistakes. Those mistakes are worth knowing so you can avoid them. Classes come next. They live in modules and are namespaces too. They add one more step to attribute lookup, called inheritance search.
+
+## Practice exercises
+
+These exercises build on this chapter. Try them in a scratch folder.
+
+1. **Import basics.** Write a module called `mymod.py` that counts lines and characters in a file, much like part of the Unix `wc` command. It should export three top-level names:
+   - A `countLines(name)` function that reads the file named by `name` and counts its lines. Hint: `file.readlines` does most of the work, and `len` finishes the job. A `for` loop over the file works better for very large files.
+   - A `countChars(name)` function that counts characters in the file. Hint: `file.read` returns one string, which you can measure.
+   - A `test(name)` function that calls both counting functions on a given filename. The filename might be passed in, hardcoded, typed by a user with `input`, or read from `sys.argv`. For now, assume a passed-in argument.
+
+   Each function should take a filename string. If your functions run more than two or three lines each, you are working too hard. Use the hints.
+
+2. **Test interactively.** Import `mymod` and use attribute references to reach its exports. Does `PYTHONPATH` need the folder that holds `mymod.py`? Run the module on itself with `test('mymod.py')`. The `test` function opens the file twice. To improve that, pass an open file object to both counters. Hint: `file.seek(0)` rewinds a file.
+
+3. **`from` and `from *`.** Test `mymod` interactively. Use `from` to load its exports by name first. Then use `from *` to fetch everything.
+
+4. **`__main__`.** Add a line to `mymod` that calls `test` only when the module runs as a script. Test the value of `__name__` for `'__main__'`. Run the module from the command line, then import it and test its functions interactively. Does it work in both modes?
+
+5. **Nested imports.** Write a second module, `myclient.py`, that imports `mymod` and tests its functions. Run `myclient` from the command line. If `myclient` uses `from` to fetch from `mymod`, can you reach `mymod`'s functions at the top level of `myclient`? What if it uses `import`? Try both versions. Then import `myclient` and inspect its `__dict__`.
+
+6. **Package imports.** Create a subdirectory called `mypkg` inside a folder on your import search path. Move or copy `mymod.py` into it. Import it with a package import of the form `import mypkg.mymod`, then call its functions. Try fetching the counter functions with `from` too. This works on all platforms, which is part of why Python uses `.` as a path separator. If the package folder sits in your working directory, the home directory finds it, and you need no path settings. An `__init__.py` file is optional here. Add one with basic `print` calls to see whether it runs on each import or reload. Then copy `mymod.py` to the folder's `__main__.py` and run the folder. Does that make sense here? Can you still run the nested `mymod.py` itself?
+
+7. **Reloads.** Repeat the reload experiment with `changer.py` from the reload example earlier in this chapter. Change the function's message or behavior several times without stopping the REPL. You can edit `changer` in another window. Or suspend the interpreter and edit in the same window. On Unix, `Ctrl+Z` suspends a process, and `fg` resumes it.
+
+8. **Circular imports.** Earlier, importing `recur1` raised an error. Restart Python and import `recur2` interactively. The error does not occur. Why does importing `recur2` work, but not `recur1`? Hint: Python records a new module before it runs the module's code. Later imports fetch the module first, whether or not it is complete. Next, run `recur1` as a top-level script with `python3 recur1.py`. Do you get the same error as before? Why? Hint: a script is not imported, so this case matches importing `recur2` first. What happens when you run `recur2` as a script? Circular imports are uncommon in practice. Understanding why they cause trouble, though, teaches you a lot about import semantics.
+
 ## Checkpoint questions
 
 1. **How does a module source file become a module object?** When the module is imported, its source file becomes a module object automatically. Python runs the source one statement at a time. Each name assigned along the way becomes an attribute of the module object.
@@ -833,9 +2672,23 @@ The `reload` function has moved over time. It began as a built-in function, then
 8. **What makes `reload` different from another `import`?** `reload` reruns the module's code and updates the existing module object in place. A plain `import` only fetches the object that is already loaded.
 9. **Why is the `from *` form risky in more than one file?** It merges every top-level name into the importer's scope. You then cannot tell which module a name came from without searching the files.
 10. **How do you use two same-named functions from different modules?** Use `import` for both modules, then call each function through its module name, such as `M.func()` and `N.func()`. You can also use `from ... import ... as` to rename each one.
+11. **What is the purpose of an `__init__.py` file in a package directory?** It declares and initializes a regular package. Python runs its code the first time a program imports through the folder. Its assigned variables become attributes of the folder's module object. The file is optional, but it gives the folder search precedence over same-named folders that lack it.
+12. **How can you avoid repeating a package's full path each time you use its contents?** Use `from` to copy names out of the package directly. Or pair `as` with `import` to give the path a shorter alias. Either way, the full path appears just once.
+13. **Which directories require `__init__.py` files?** None strictly. Earlier Python versions required them. Namespace packages made them optional. They still have valid roles, such as raising a folder's search precedence.
+14. **When must you use `import` instead of `from` with packages?** Only when you need the same name from more than one path. With `import`, the path keeps each reference unique. A `from` statement allows just one version of a given name, unless you rename it with `as`.
+15. **What is the difference between `from pkg import name` and `from . import name`?** The first is an absolute import. It skips the enclosing package and searches the folders on `sys.path`. The second is a relative import. It looks up `name` only within the package that contains the statement.
+16. **What is a namespace package?** It is one or more folders that have no `__init__.py` file. When an import search finds no simple module or regular package first, Python builds a namespace package. It is the virtual concatenation of all found folders with the requested name. Further nested parts are looked up in all of its folders.
+
+17. **What is significant about top-level module variables whose names begin with a single underscore?** They are not copied out when a client uses `from *`. The `import` and normal `from` forms can still reach them. The `__all__` list works in the opposite direction, naming the only names that `from *` copies.
+18. **What does it mean when a module's `__name__` is `'__main__'`?** The file runs as a top-level script, not as an import. It works as a program rather than a library, so its dual-mode code runs.
+19. **How can you step through all the attributes of a module with a loop?** Loop over the module's `__dict__` attribute. Attribute values can also be fetched by string name, using indexing or the `getattr` built-in.
+20. **If a user types the name of a module at a prompt, how can your code import it?** Build an import statement as a string and run it with `exec`. Or pass the string to the `__import__` built-in or to `importlib.import_module`.
+21. **Can you import from the past in Python?** No. The `__future__` module only enables features that are coming. You can install an older Python, but the latest Python is generally the best choice.
 
 ## Sources and review notes
 
 - Source: *Learning Python*, 6th edition (`learning-python-6th-edition`). Chapters used are listed in each section.
 - Chapter used: 22, *Modules: The Big Picture* (book folder `learning-python-6th-edition`, chapter prefix "22. ").
 - Chapter used: 23, *Module Coding Basics* (book folder `learning-python-6th-edition`, chapter prefix "23. ").
+- Chapter used: 24, *Module Packages* (book folder `learning-python-6th-edition`, chapter prefix "24. ").
+- Chapter used: 25, *Module Odds and Ends* (book folder `learning-python-6th-edition`, chapter prefix "25. ").

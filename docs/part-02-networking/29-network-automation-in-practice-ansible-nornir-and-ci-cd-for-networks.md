@@ -22,25 +22,27 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Chapter 2.28 gave you the building blocks: data, models, templates, APIs. This chapter assembles them into working systems: which tool to use for which job (Ansible, Nornir, Terraform, vendor controllers), how to structure playbooks and inventories for a fabric of hundreds of switches and thousands of GPU servers, how to put network changes through the same review-test-deploy discipline as software (continuous integration and delivery), and how the whole automation architecture fits together (source of truth, automation engine, observability, orchestration, user interfaces). It also covers virtualised network functions and on-box automation, which show up in service-provider and telco-style AI edge deployments. The end state is a network that is declared in Git, validated in emulation, rolled out in stages and continuously verified against telemetry, which is the only practical way to run an AI fabric of meaningful size.
+Chapter 2.28 gave you the building blocks: data, models, templates and APIs. This chapter puts them together into working systems. Consider a fabric of hundreds of switches and thousands of GPU servers. You need to know which tool fits which job, whether that is Ansible, Nornir, Terraform or a vendor controller. You also need playbooks and inventories that stay manageable at that size. Network changes should go through the same review, test and deploy discipline as software, which is continuous integration and delivery. The whole architecture has to fit together too: a source of truth, an automation engine, observability, orchestration and user interfaces. The chapter also covers virtualised network functions and on-box automation, which appear in service-provider and telco-style AI edge deployments. The end state is a network declared in Git, validated in emulation, rolled out in stages and checked continuously against telemetry. For an AI fabric of meaningful size, that is the only practical way to run it.
 
 ## Prerequisites and outcomes
 
-You should know the contents of chapter 2.28, basic Ansible and Terraform ideas (Part 4 treats them in depth), and Git.
+Before you start, you should know the material in chapter 2.28. You should also have basic Ansible and Terraform ideas, which Part 4 covers in depth, and a working knowledge of Git.
 
-After this chapter you can:
+By the end of this chapter, you should be able to do the following.
 
-- Compare Ansible, Nornir, Terraform and vendor/controller automation along the key axes: configuration management vs provisioning, agent vs agentless, declarative vs imperative, push vs pull vs event-driven, mutable vs immutable, state management, extensibility.
-- Build Ansible inventories, group/host variables, vault secrets, playbooks and roles for network devices and Linux switches; use check mode, diff, limits, batches (`serial`), idempotent modules and templates; gather facts and run compliance checks.
-- Write Nornir inventories and tasks (Netmiko/NAPALM/Scrapli/Jinja2), filter and run threaded tasks, and integrate with a source of truth.
-- Describe how Terraform manages network resources (cloud VPCs, firewalls, routers, interconnects, some device providers), state, plan/apply, drift, and where it fits relative to Ansible.
-- Design a CI pipeline for networks: peer review, linting and unit tests, build/render, emulation tests, deployment validation, staged rollout (in-place, rolling, canary, blue/green), with rollback.
-- Explain the network automation architecture: infrastructure, user interactions (GUI, ITSM, dashboards, ChatOps), source of truth (data quality, modelling, persistence, population, distributed SoT), automation engine (configuration backup, rendering, compliance, deployment; operations such as OS upgrades), telemetry and observability, orchestration.
+- Compare Ansible, Nornir, Terraform and vendor/controller automation along the key axes. The axes are configuration management vs provisioning, agent vs agentless, declarative vs imperative, push vs pull vs event-driven, mutable vs immutable, state management, and extensibility.
+- Build Ansible inventories, group and host variables, vault secrets, playbooks and roles for network devices and Linux switches. Use check mode, diff, limits, batches (`serial`), idempotent modules and templates, then gather facts and run compliance checks.
+- Write Nornir inventories and tasks (Netmiko/NAPALM/Scrapli/Jinja2), filter and run threaded tasks, and integrate them with a source of truth.
+- Describe how Terraform manages network resources (cloud VPCs, firewalls, routers, interconnects, some device providers), state, plan and apply, and drift, and where it fits relative to Ansible.
+- Design a CI pipeline for networks: peer review, linting and unit tests, build and render, emulation tests, deployment validation, and staged rollout (in-place, rolling, canary, blue/green), with rollback.
+- Explain the network automation architecture: infrastructure, user interactions (GUI, ITSM, dashboards, ChatOps), source of truth (data quality, modelling, persistence, population, distributed SoT), automation engine (configuration backup, rendering, compliance, deployment, operations such as OS upgrades), telemetry and observability, and orchestration.
 - Explain on-box automation, network controllers, VNFs and service chaining, intent-based networking, and the complexity trade-offs of automation.
 
 ## 1. Choosing automation tools
 
 ### The tool landscape
+
+Before you pick a tool, you need to know which job it does. The table below lists the main options. Each one solves a different part of the same problem: a switch needs a new configuration, a cloud network needs a new subnet, or a whole fabric has to stay in a known state.
 
 | Tool | Nature | Typical use |
 |---|---|---|
@@ -53,28 +55,33 @@ After this chapter you can:
 | **Batfish, pyATS/Genie, Suzieq, Hier-config** | Config analysis, test frameworks, observability | Pre-deployment verification, state tests |
 | **Git + CI (GitHub Actions, GitLab CI, Jenkins)** | Process engine | Review, test, deploy |
 
+Read the table by asking which part of the work each tool owns. Ansible and Nornir push configuration to devices that already exist. Terraform provisions cloud networking and some controller resources. Git and CI are the process that all of them run inside.
+
 ### Axes for comparing them
 
-- **Configuration management vs infrastructure provisioning**: config management converges *existing* machines to a desired configuration (Ansible, Nornir); provisioning creates and destroys *resources* (Terraform); both appear in network work (configure a switch vs create a VPC).
-- **Agent-based vs agentless**: network devices rarely run agents, so agentless (SSH, NETCONF, REST, gNMI) tools dominate; server tools (Puppet, Chef) need agents.
-- **Centralised vs decentralised**: a control node pushing changes (Ansible, Nornir, Terraform) vs devices pulling their own (ZTP, on-box agents, GitOps pull).
-- **Custom vs standards-based protocol**: prefer tools that speak standard device protocols (SSH, NETCONF, gNMI) and standard data formats.
-- **DSL vs general-purpose language**: Ansible YAML is quick to start and hard to make complex (loops/conditions in YAML); Python (Nornir) scales to complex logic and tests, at the price of coding skill.
-- **Declarative vs imperative**: say *what* the end state is (Terraform, modules with desired state) or *how* to get there (scripts). Declarative needs trustworthy diffing; imperative needs careful idempotence.
-- **Extensibility**: modules/collections/plugins vs libraries.
-- **Push vs pull vs event-driven**: push on demand or schedule; pull by agents; event-driven (webhooks, syslog, telemetry triggers) for remediation.
-- **Mutable vs immutable**: change devices in place (typical for networks) vs replace them with new images/instances (immutable infrastructure; common for servers, cloud, containers; increasingly for white-box switches via re-imaging).
-- **State management**: Terraform keeps explicit state (resource addresses to real IDs); Ansible and Nornir are stateless and discover state each run, which avoids state drift problems but cannot detect resources they don't know about.
+Start with the two axes that clear up most of the confusion. Configuration management converges existing machines to a desired configuration, which is what Ansible and Nornir do. Provisioning creates and destroys resources, which is Terraform's job. Both show up in network work, whether you are configuring a switch or creating a VPC. Network devices rarely run agents, so agentless tools that speak SSH, NETCONF, REST or gNMI dominate. Server tools such as Puppet and Chef need agents.
 
-Pragmatic guidance: use **Terraform** for cloud and controller-managed resources, **Ansible** for broad configuration workflows and mixed server/switch environments, **Nornir/Python** where logic, speed or testing demands code, **vendor controllers** for their own fabrics, and **Git + CI** as the process spine around all of them.
+Next, decide who starts the change. A central control node pushes changes out with Ansible, Nornir or Terraform. Devices can instead pull their own configuration, through ZTP, on-box agents or a GitOps pull. Prefer tools that speak standard device protocols and use standard data formats over a custom protocol. The language matters too. Ansible YAML is quick to start but hard to stretch, because loops and conditions written in YAML get awkward. Python, the language Nornir uses, scales to complex logic and tests, but it asks more coding skill of you.
+
+The remaining axes describe how a tool behaves over time. Declarative tools, such as Terraform, say what the end state should be. Imperative tools, such as scripts, say how to get there. Declarative tools depend on trustworthy diffing. Imperative tools depend on careful idempotence, which means a second run changes nothing. Compare modules, collections and plugins with plain libraries when you judge extensibility. Push runs on demand or on a schedule, pull is done by agents, and event-driven runs react to webhooks, syslog or telemetry triggers, often to fix a problem automatically.
+
+Networks usually change devices in place, which is the mutable approach. Immutable infrastructure replaces a node with a new image or instance instead. That is common for servers, cloud and containers, and increasingly for white-box switches that are re-imaged. Finally, state management separates the tools. Terraform keeps an explicit state file that maps resource addresses to real IDs. Ansible and Nornir are stateless and discover what exists on each run. That avoids state drift problems, but they cannot detect resources they do not know about.
+
+Use Terraform for cloud and controller-managed resources, and Ansible for broad configuration workflows across mixed server and switch environments. Reach for Nornir and Python where logic, speed or testing demands code. Vendor controllers manage their own fabrics, and Git with CI forms the process spine around all of them. Pick the tool that fits each job, then let Git and CI tie the work together.
 
 ## 2. Ansible for networks
 
 ### How it works
 
-Ansible runs on a **control node**, reads an **inventory**, and executes **playbooks** of **tasks** that call **modules** against **hosts**. For Linux servers Ansible connects via SSH, copies a small module, executes it on the target, and removes it. For most network devices there is no Python on the device, so network modules run **on the control node** and talk to the device through a **connection plugin**: `ansible.netcommon.network_cli` (SSH CLI), `ansible.netcommon.netconf`, `ansible.netcommon.httpapi` (REST/eAPI/RESTCONF), `ansible.netcommon.grpc`; set `ansible_connection` and `ansible_network_os` (e.g. `arista.eos.eos`, `cisco.ios.ios`, `junipernetworks.junos.junos`, `cisco.nxos.nxos`). Linux-based switches (Cumulus, SONiC) can use the normal SSH connection or the `nvidia.nvue`/`dellemc.enterprise_sonic` collections. Install: `pip install ansible-core` plus collections via `ansible-galaxy collection install arista.eos cisco.ios ansible.netcommon ansible.utils` (pin versions in `requirements.yml`).
+Suppose you need the same change on every leaf switch in a fabric. Ansible can make that change from one machine, called the control node. It reads an inventory of hosts and runs playbooks. A playbook is made of tasks, and each task calls a module against the hosts.
+
+With Linux servers, Ansible connects over SSH, copies a small module to the target, runs it there and removes it. Most network devices have no Python to run that module. So network modules run on the control node instead, and they reach the device through a connection plugin. You select the plugin with `ansible_connection`. The choices are `ansible.netcommon.network_cli` for the SSH command line, `ansible.netcommon.netconf`, `ansible.netcommon.httpapi` for REST, eAPI or RESTCONF, and `ansible.netcommon.grpc`. You also set `ansible_network_os`, for example to `arista.eos.eos`, `cisco.ios.ios`, `junipernetworks.junos.junos` or `cisco.nxos.nxos`.
+
+Linux-based switches, such as Cumulus and SONiC, can use a normal SSH connection or the `nvidia.nvue` or `dellemc.enterprise_sonic` collections. To install the tools, run `pip install ansible-core`. Then install the collections with `ansible-galaxy collection install arista.eos cisco.ios ansible.netcommon ansible.utils`, and pin the versions in `requirements.yml`.
 
 ### Inventory
+
+An inventory tells Ansible which hosts exist and how they are grouped. The example below puts spines and leaves into groups. Both groups then sit under an `eos` group, which sets the connection and the operating system once for all of them.
 
 ```yaml
 # inventory/hosts.yml
@@ -91,11 +98,15 @@ all:
       vars: { ansible_network_os: arista.eos.eos, ansible_connection: ansible.netcommon.network_cli, ansible_become: true, ansible_become_method: enable }
 ```
 
-Variable scopes and precedence (low to high, simplified): role defaults < inventory group vars (`all` < parent group < child group) < inventory host vars < playbook vars < `vars_files` < role vars < task vars < extra vars (`-e`). Keep per-group variables in `group_vars/<group>.yml` and per-host in `host_vars/<host>.yml`; put design constants in `group_vars/all`. **Dynamic inventory** plugins pull hosts from NetBox, cloud APIs or Nautobot (`netbox.netbox.nb_inventory`), so Git holds playbooks and the source of truth holds devices.
+Variables follow a precedence order. In simplified form, from lowest to highest, it runs through role defaults, then inventory group variables (`all`, then the parent group, then the child group), then inventory host variables, playbook variables, `vars_files`, role variables, task variables, and finally extra variables passed with `-e`. Keep per-group variables in `group_vars/<group>.yml` and per-host variables in `host_vars/<host>.yml`. Put design constants in `group_vars/all`.
 
-**Secrets**: `ansible-vault encrypt_string 'secret' --name ansible_password` or encrypted vars files (`ansible-vault create group_vars/all/vault.yml`); in CI, supply the vault password from a CI secret or use an external lookup (HashiCorp Vault, cloud secret managers). Never commit plaintext credentials; prefer SSH keys / certificates and short-lived credentials.
+Dynamic inventory plugins go a step further. They pull hosts from NetBox, cloud APIs or Nautobot, for example with `netbox.netbox.nb_inventory`. Git then holds the playbooks, and the source of truth holds the devices.
+
+Secrets need their own handling. Encrypt a single value with `ansible-vault encrypt_string 'secret' --name ansible_password`, or keep several values in an encrypted file made with `ansible-vault create group_vars/all/vault.yml`. In CI, supply the vault password from a CI secret, or look the secret up at run time from HashiCorp Vault or a cloud secret manager. Never commit plaintext credentials. Prefer SSH keys or certificates, and short-lived credentials wherever you can.
 
 ### Playbooks, modules and idempotency
+
+The playbook below ties these pieces together. It configures leaf switches in batches, collects facts, renders a configuration from a template, pushes only the difference, and then waits for BGP sessions to come up.
 
 ```yaml
 # playbooks/leaf_config.yml
@@ -138,28 +149,39 @@ Variable scopes and precedence (low to high, simplified): role defaults < invent
       arista.eos.eos_config: { save_when: modified }
 ```
 
-Key ideas:
+Idempotency is the central idea here. A task describes a desired state, so running it twice leaves the system unchanged the second time, which shows up as `changed=0`. Resource modules such as `*_interfaces`, `*_bgp_global` and `*_vlans` take a `state` of `merged`, `replaced`, `overridden`, `deleted`, `gathered`, `rendered` or `parsed`, and give you structured, idempotent control. The generic `*_config` modules diff text lines instead. The `*_command` modules only run commands, so they are not idempotent.
 
-- **Idempotency**: a task describes desired state; running it twice leaves the system unchanged the second time (`changed=0`). Resource modules (`*_interfaces`, `*_bgp_global`, `*_vlans` with `state: merged|replaced|overridden|deleted|gathered|rendered|parsed`) give structured, idempotent control; the generic `*_config` modules diff text lines; `*_command` modules only run commands (not idempotent).
-- **Check mode and diff**: `ansible-playbook leaf_config.yml --check --diff` previews changes (support varies by module/platform); always run it in CI before the real run.
-- **Limit and tags**: `--limit leaf1,leaf2`, `--limit 'leaf:!leaf4'`, `--tags qos`, `--start-at-task`; verbosity `-v` to `-vvvv` shows connection and module details.
-- **Conditionals/loops**: `when: ansible_network_os == 'arista.eos.eos'`, `loop: "{{ interfaces }}"`, `loop_control`, `register`, `failed_when`, `changed_when`, `block/rescue/always` for rollback logic (restore from backup in `rescue`).
-- **Roles** package tasks/templates/vars/handlers (`roles/leaf_base`, `roles/bgp_underlay`, `roles/qos_roce`), reusable across fabrics; `ansible-galaxy` for sharing; `meta/main.yml` dependencies.
-- **Facts and reports**: `*_facts` modules return model, serial, OS version, hostname, interfaces, config; `ansible.utils.cli_parse` (TextFSM, ttp, pyats) turns `show` output into data; `ansible.utils.validate` checks data against JSON Schema/YANG; use `template` with Jinja to generate HTML/Markdown reports; `ansible.netcommon.cli_config`/`cli_command` are platform-agnostic.
-- **Compliance**: gather running config, `ansible.utils.fact_diff` or `ansible.utils.cli_parse` and `assert` against policy; or use `*_config diff_against: intended` to report drift without changing anything (`--check`).
-- **Performance**: `forks` (default 5, raise to 50+), `strategy: free`, persistent connections (`ansible_command_timeout`, `ansible_persistent_connect_timeout`), `pipelining`, avoid `gather_facts` where unnecessary, mitogen (for servers).
-- **Event-driven Ansible (EDA)**: rulebooks react to events (webhooks, Kafka, alertmanager, syslog) and run playbooks: remediation loops.
-- **Tower/AWX (Ansible Automation Platform)**: RBAC, credentials, job templates, schedules, workflows, logging and API for teams.
+Preview a run before you make it. `ansible-playbook leaf_config.yml --check --diff` shows the changes, although how well this works depends on the module and the platform. Always run it in CI before the real run.
 
-Testing: `ansible-lint`, `yamllint`, `molecule` for roles (with containers or containerlab), `ansible-playbook --syntax-check`, and rendering templates against fixtures.
+To narrow a run, use `--limit leaf1,leaf2`, `--limit 'leaf:!leaf4'`, `--tags qos` or `--start-at-task`. Add `-v` up to `-vvvv` when you need connection and module detail.
+
+Inside a playbook, `when:` runs a task only where a condition holds, such as `when: ansible_network_os == 'arista.eos.eos'`. `loop:` repeats a task over a list, and `loop_control` tunes that loop. `register`, `failed_when` and `changed_when` let you capture a result and decide what counts as a failure or a change. For rollback, `block/rescue/always` can restore from a backup in the `rescue` section.
+
+Roles package tasks, templates, variables and handlers so you can reuse them across fabrics. Examples in this chapter are `roles/leaf_base`, `roles/bgp_underlay` and `roles/qos_roce`. Share roles with `ansible-galaxy`, and declare role dependencies in `meta/main.yml`.
+
+Facts and reports turn device output into data. The `*_facts` modules return the model, serial number, OS version, hostname, interfaces and configuration. `ansible.utils.cli_parse`, which uses TextFSM, ttp or pyats, turns `show` output into data. `ansible.utils.validate` checks that data against JSON Schema or YANG. A Jinja template can produce HTML or Markdown reports, and the `ansible.netcommon.cli_config` and `cli_command` modules work across platforms.
+
+Compliance works the same way. Gather the running configuration, compare it with `ansible.utils.fact_diff` or `ansible.utils.cli_parse`, and `assert` the result against your policy. Or use `*_config` with `diff_against: intended` to report drift without changing anything. Pair that with `--check`.
+
+Speed matters on large fabrics. `forks` sets how many hosts Ansible works on at once. The default is 5, and you can raise it to 50 or more. `strategy: free`, persistent connections (`ansible_command_timeout`, `ansible_persistent_connect_timeout`), `pipelining`, and skipping `gather_facts` where you do not need it all help. For servers, mitogen is another option.
+
+Event-driven Ansible (EDA) reacts to events instead of waiting for a person. Rulebooks listen for webhooks, Kafka, Alertmanager or syslog events, and run playbooks in response, which gives you remediation loops. Tower and AWX, part of the Ansible Automation Platform, add RBAC, credentials, job templates, schedules, workflows, logging and an API for teams.
+
+Test the playbook in layers. Run `ansible-lint`, `yamllint` and `ansible-playbook --syntax-check`. Use `molecule` for roles, with containers or containerlab, and render templates against fixtures as well.
+
+Run every playbook with `--check --diff` before the real run, and let CI do that on each change.
 
 ### Ansible for Linux GPU servers in the same pipeline
 
-The same inventory can drive host networking: `ansible.builtin.template` for Netplan/NetworkManager/systemd-networkd files, `ansible.posix.sysctl` for sysctls (chapter 2.24), `community.general.nmcli` for NetworkManager, `ansible.builtin.systemd`, and the `nvidia.mlnx_ofed`/vendor roles for NIC firmware and drivers. A single playbook can align fabric-side and host-side MTU, VLANs and routes, and verify end to end with `ping -M do`, `iperf3` and `nccl-tests`. (Part 4 covers Ansible in depth; Part 6 covers cluster provisioning.)
+The same inventory can also drive host networking. A template writes Netplan, NetworkManager or systemd-networkd files. `ansible.posix.sysctl` sets sysctls, which chapter 2.24 covers. `community.general.nmcli` manages NetworkManager, `ansible.builtin.systemd` handles services, and the `nvidia.mlnx_ofed` or vendor roles update NIC firmware and drivers. One playbook can keep MTU, VLANs and routes aligned on the fabric side and the host side. It then verifies the path end to end with `ping -M do`, `iperf3` and `nccl-tests`. Part 4 covers Ansible in depth, and Part 6 covers cluster provisioning.
+
+If one inventory drives both sides, one playbook can keep MTU, VLANs and routes aligned.
 
 ## 3. Nornir
 
-**Nornir** is a Python automation framework: you write regular Python, Nornir provides an **inventory** (hosts, groups, defaults with connection options and data), a **threaded runner**, and **tasks** (functions) whose results are collected as structured objects. It is faster and more testable than YAML playbooks for complex logic.
+Some automation jobs need real control flow: an early exit, a different action for each host, or a data transform that is hard to read in YAML. Nornir is a Python automation framework built for that kind of work. You write regular Python. Nornir supplies an inventory of hosts, groups and defaults, a threaded runner, and tasks. Each task is a function whose results come back as structured objects. For complex logic, this is faster and easier to test than YAML playbooks.
+
+Three files describe the hosts and their defaults, and one config file points Nornir at them. Keep the password out of these files and read it from the environment.
 
 ```yaml
 # inventory/hosts.yaml
@@ -175,6 +197,8 @@ password: "{{ env('NET_PASSWORD') }}"        # keep secrets out of files (use a 
 inventory: { plugin: SimpleInventory, options: { host_file: inventory/hosts.yaml, group_file: inventory/groups.yaml, defaults_file: inventory/defaults.yaml } }
 runner: { plugin: threaded, options: { num_workers: 20 } }
 ```
+
+The script below reads the inventory, renders a configuration for each leaf, and previews the deploy with a dry run. The verify step stays commented out until the diffs look right.
 
 ```python
 from nornir import InitNornir
@@ -205,11 +229,19 @@ print_result(leaves.run(task=deploy, dry_run=True))        # show diffs first
 # print_result(leaves.run(task=deploy, dry_run=False)); print_result(leaves.run(task=verify))
 ```
 
-Why Nornir: complete control flow in Python (early exit, per-host branching, complex data manipulation), type hints and unit tests with `pytest`, easy integration with NetBox/pynetbox, tracebacks instead of YAML errors, and speed through threads. Costs: you maintain code; fewer batteries than Ansible's module ecosystem (but plugins exist: `nornir_netmiko`, `nornir_scrapli`, `nornir_napalm`, `nornir_netconf`, `nornir_jinja2`, `nornir_utils`, `nornir_netbox`). Nornir and Ansible combine well (Ansible for common operations, Nornir for custom validators).
+Read the script from the top. `InitNornir` loads the config, and `nr.filter(role="leaf")` picks the leaves. The threaded runner executes each task across those hosts in parallel. `build` renders the template and stores the result on the host. `deploy` runs with `dry_run=True` first, so you see the diff before anything changes. `verify` then checks that every BGP peer is up.
+
+Nornir gives you full control flow in Python, including early exits, per-host branching and complex data handling. You get type hints and `pytest` unit tests, tracebacks instead of YAML errors, and speed from threads. It also integrates easily with NetBox through pynetbox. The costs are real, though. You maintain the code yourself, and the ecosystem has fewer built-in batteries than Ansible's module collection. Plugins do exist, including `nornir_netmiko`, `nornir_scrapli`, `nornir_napalm`, `nornir_netconf`, `nornir_jinja2`, `nornir_utils` and `nornir_netbox`. The two tools combine well. Use Ansible for common operations and Nornir for custom validators.
+
+If your job is mostly custom checks and branching, reach for Nornir. If it is mostly standard module calls, keep it in Ansible.
 
 ## 4. Terraform / OpenTofu for network resources
 
-**Terraform** is declarative: you describe resources in HCL; `terraform plan` computes the diff between the **state file** (what Terraform believes exists) and the desired configuration (and refreshed reality); `terraform apply` executes the plan. Providers translate resources into API calls: cloud networks (`google_compute_network`, `google_compute_subnetwork`, `google_compute_router`, `google_compute_router_nat`, `google_compute_firewall`, `google_compute_vpn_tunnel`, `google_compute_interconnect_attachment`, AWS `aws_vpc`, `aws_security_group`, `aws_ec2_transit_gateway`, Azure equivalents), DNS, load balancers, Kubernetes, and some on-prem controllers/devices (Cisco ACI/NDFC/IOS XE RESTCONF, Juniper Apstra/Mist, NetBox, F5, Palo Alto, Fortinet, Arista CloudVision, Infoblox).
+Picture a training network that someone changed by hand. Terraform keeps a record of what should exist, and it shows where reality has drifted. Terraform is declarative: you describe resources in HCL. `terraform plan` compares the state file, which records what Terraform believes exists, with your desired configuration and the refreshed reality. `terraform apply` then carries out the plan.
+
+Providers translate each resource into API calls. For cloud networks, that includes `google_compute_network`, `google_compute_subnetwork`, `google_compute_router`, `google_compute_router_nat`, `google_compute_firewall`, `google_compute_vpn_tunnel` and `google_compute_interconnect_attachment`. AWS resources include `aws_vpc`, `aws_security_group` and `aws_ec2_transit_gateway`, and Azure has equivalents. Providers also cover DNS, load balancers and Kubernetes. Some on-premises controllers and devices are covered too, such as Cisco ACI, NDFC and IOS XE RESTCONF, Juniper Apstra and Mist, NetBox, F5, Palo Alto, Fortinet, Arista CloudVision and Infoblox.
+
+The example below defines a network, a subnet and a firewall rule that allows internal traffic.
 
 ```hcl
 resource "google_compute_network" "ai" { name = "ai-fabric" auto_create_subnetworks = false mtu = 8896 }
@@ -229,15 +261,25 @@ resource "google_compute_firewall" "allow_internal" {
 }
 ```
 
-Practices: remote state with locking (GCS/S3 + locking), one state per blast-radius (network core vs workloads), modules for reuse, `terraform plan` output as a review artefact in pull requests, policy-as-code checks (OPA/Sentinel/Checkov/tfsec), drift detection (scheduled `plan`), `import` for existing resources, `lifecycle { prevent_destroy = true }` for critical network objects, secrets out of state where possible. Terraform vs Ansible: Terraform excels at **creating and destroying** API-addressable resources with dependency graphs and state; Ansible at **configuring** existing devices and hosts step by step; many teams use Terraform to build the VPC/VMs and Ansible to configure what runs inside (and Part 4 covers both in depth). Immutable approaches (replace a node with a fresh image rather than patch) fit cloud/server layers; switches generally remain mutable, though white-box switches can be re-imaged via ONIE/ZTP.
+The subnet points at the network through `google_compute_network.ai.id`. Terraform reads those references to build its dependency graph.
+
+Store remote state with locking, in GCS or in S3 with locking, so two runs cannot collide. Give each blast radius its own state. The blast radius is how much one change can break, so keep network core apart from workloads. Use modules for reuse, and treat `terraform plan` output as a review artefact in each pull request. Policy-as-code checks with OPA, Sentinel, Checkov or tfsec catch rule violations early. A scheduled `plan` detects drift, `import` brings existing resources under management, and `lifecycle { prevent_destroy = true }` protects critical network objects. Keep secrets out of state where you can.
+
+Terraform and Ansible do different jobs. Terraform excels at creating and destroying resources that an API can address, using dependency graphs and state. Ansible excels at configuring existing devices and hosts step by step. Many teams use Terraform to build the VPC and the VMs, then use Ansible to configure what runs inside them. Immutable approaches, where you replace a node with a fresh image instead of patching it, fit the cloud and server layers. Switches generally stay mutable, although white-box switches can be re-imaged through ONIE or ZTP.
+
+Before Terraform touches a production network, make sure someone has reviewed the plan and that the critical objects are protected from destroy.
 
 ## 5. Continuous integration and delivery for networks
 
 ### Principles
 
-CI/CD brings software practice to network changes: every change is a **commit** in Git, **reviewed** by a peer, **built and tested** automatically, and **deployed** by a pipeline rather than a person at a terminal. Benefits: reliability (tests catch mistakes before production), speed (small, frequent, low-risk changes), auditability, and the ability to respond to changing business needs. Prerequisites that matter more than tools: **simplicity** (standardised designs), **people and process** (review culture, ownership, change windows), and learning to code. *Continuous integration*: merge to the main branch frequently, and test every merge. *Continuous delivery*: the main branch is always deployable. *Continuous deployment*: successful pipelines deploy automatically (often to lower environments first, with approval gates for production in networks). **Test-driven development**: write the test (what should be true after the change) before the change.
+Continuous integration and delivery bring software habits to network changes. Every change becomes a commit in Git. A peer reviews it, automation builds and tests it, and a pipeline deploys it, instead of a person typing at a terminal. You gain reliability, because tests catch mistakes before they reach production. You gain speed, because changes stay small and frequent. You also gain an audit trail and the ability to respond to changing business needs. Tools matter less than three prerequisites: simple, standardised designs, a review culture with clear ownership and change windows, and the willingness to learn to code.
+
+Continuous integration means you merge to the main branch often and test every merge. Continuous delivery means the main branch is always deployable. Continuous deployment means successful pipelines deploy automatically, often to lower environments first, with approval gates in front of production. Test-driven development starts one step earlier. You write the test first, describing what should be true after the change.
 
 ### The five components of a network CI pipeline
+
+The diagram below shows how the five components hand work to one another.
 
 ```mermaid
 flowchart LR
@@ -248,13 +290,19 @@ flowchart LR
   D --> M["Monitor + rollback"]
 ```
 
-1. **Peer review**: pull requests on GitHub/GitLab/Gerrit/Bitbucket: required reviewers (CODEOWNERS), protected main branch, checks that must pass; commit messages link to tickets; small PRs; review the *rendered diff* of device configs as well as templates/data (the pipeline posts it as a comment).
-2. **Build automation**: triggers on each push/PR; steps: formatting and linting (`yamllint`, `jsonschema` validation of inventory, `ansible-lint`, `flake8/ruff`, `j2lint`, `shellcheck`), unit tests of templates and Python code (`pytest` with golden files), rendering all device configs into build artefacts, static analysis of configs (Batfish: reachability, ACL shadowing, route-policy bugs, ECMP, loops, MTU mismatches). Tools: Jenkins, GitLab CI, GitHub Actions, CircleCI, Buildkite, Argo Workflows.
-3. **Test/dev/staging environment**: emulate the network: Vagrant VMs, **containerlab** (containers/VMs from a YAML topology, chapter 2.27), EVE-NG/GNS3/Cisco CML, Terraform-created cloud labs, vendor virtual platforms (cEOS, SR Linux, SONiC-VS, Cumulus VX, vMX/cRPD, vIOS). Use the same templates and data (smaller topology) and the same pipeline; spin up and tear down per run; maintain image versions that match production.
-4. **Deployment validation and testing** after applying to the lab (and later to production): **operational state** (BGP neighbours established, expected prefix counts, ECMP width, LLDP neighbours match the plan, interface speeds/MTU/FEC, optics Rx power in range), **basic connectivity** (ping/traceroute between hosts, DNS, DHCP), **end-to-end performance** (iperf3 throughput thresholds, latency, packet loss, `ib_write_bw`/`nccl-tests` in AI fabrics), and negative tests (ACLs deny what they should). Frameworks: `pytest` + `pyATS`/`pytest-ansible`/`scrapli`, Suzieq (state snapshots and asserts), Batfish questions, custom scripts.
-5. **Deployment tools and strategies**: **in place** ("change everything at once": appropriate only for trivial, reversible, well-tested changes); **rolling** (batches, each verified before the next; the default for fabrics); **canary** (one device or failure domain first, soak, then expand); **blue/green** (stand up a parallel environment/plane and cut over; natural for multi-plane fabrics and cloud networks). Each strategy needs automated **health checks** and **rollback** (restore from backup/previous Git tag, `commit confirmed`).
+The first component is peer review. Changes travel through pull requests on GitHub, GitLab, Gerrit or Bitbucket. The pipeline enforces required reviewers from CODEOWNERS, a protected main branch, and checks that must pass. Commit messages link to tickets, and pull requests stay small. Review the rendered diff of device configurations as well as the templates and data, because the pipeline posts that diff as a comment.
+
+The second is build automation. It runs on every push or pull request. It formats and lints the code with yamllint, jsonschema validation of the inventory, ansible-lint, flake8/ruff, j2lint and shellcheck. It runs unit tests on templates and Python code with pytest and golden files. It renders every device configuration into build artefacts, then runs static analysis with Batfish. Batfish checks reachability, ACL shadowing, route-policy bugs, ECMP, loops and MTU mismatches. Tools for this stage include Jenkins, GitLab CI, GitHub Actions, CircleCI, Buildkite and Argo Workflows.
+
+The third is the test, dev and staging environment. Here you emulate the network. Options include Vagrant VMs, containerlab, which builds containers or VMs from a YAML topology (chapter 2.27), EVE-NG, GNS3, Cisco CML, Terraform-created cloud labs, and vendor virtual platforms such as cEOS, SR Linux, SONiC-VS, Cumulus VX, vMX or cRPD, and vIOS. Use the same templates and data on a smaller topology, and run the same pipeline. Spin the lab up and tear it down on each run, and keep image versions that match production.
+
+The fourth is deployment validation. It runs after the change lands in the lab, and again later in production. It checks operational state: BGP neighbours established, expected prefix counts, ECMP width, LLDP neighbours that match the plan, interface speeds, MTU and FEC, and optics Rx power within range. It checks basic connectivity with ping, traceroute, DNS and DHCP. It checks end-to-end performance with iperf3 throughput thresholds, latency, packet loss, and `ib_write_bw` or `nccl-tests` in AI fabrics. Negative tests confirm that ACLs deny what they should. Frameworks for this include pytest with pyATS, pytest-ansible or scrapli, Suzieq state snapshots and asserts, Batfish questions, and custom scripts.
+
+The fifth is the deployment strategy, which decides how the change reaches the fleet. In place changes everything at once, which suits only trivial, reversible, well-tested changes. Rolling works in batches, each verified before the next, and it is the default for fabrics. Canary sends the change to one device or failure domain first, soaks it, and then expands. Blue/green stands up a parallel environment or plane and cuts over to it, which is natural for multi-plane fabrics and cloud networks. Every strategy needs automated health checks and a rollback, such as a restore from backup, a previous Git tag, or `commit confirmed`.
 
 ### Example GitHub Actions workflow
+
+The workflow below runs lint and tests first, then an emulated lab, then a canary deploy that waits for approval. Each job starts only after the one before it.
 
 ```yaml
 name: network-ci
@@ -296,11 +344,13 @@ jobs:
       - run: python tests/validate.py --scope canary
 ```
 
-Notes: use short-lived credentials (OIDC to cloud, Vault) for production deploys; run production jobs on self-hosted runners inside the management network; record artefacts (rendered configs, diffs, test reports); fail closed; keep the pipeline fast (feedback in minutes).
+A few habits keep this pipeline safe. Use short-lived credentials, such as OIDC to the cloud or Vault, for production deploys. Run production jobs on self-hosted runners inside the management network. Record artefacts such as rendered configs, diffs and test reports. Fail closed, and keep the pipeline fast so feedback arrives in minutes.
+
+Start with the lint and unit test jobs, since they give the fastest feedback, and let the emulation and canary gates build on them.
 
 ## 6. Network automation architecture
 
-A durable architecture separates concerns into six components:
+A durable automation architecture separates its concerns into six components. The diagram shows how requests flow in and how telemetry flows back.
 
 ```mermaid
 flowchart TB
@@ -316,85 +366,108 @@ flowchart TB
 
 ### User interactions
 
-How people and systems interact: **data in** (requests: a new tenant, VLAN, port enablement, IP allocation) and **data out** (status, reports, alerts, documentation). Interfaces: web GUIs (portals), **ITSM** integration (ServiceNow/Jira ticket triggers a pipeline and reports back), **dashboards** (choose tools for data-source integrations and customisation: Grafana), **ChatOps** (Slack/Teams bots running read-only commands and approved changes with audit), and automatically generated **documentation and reporting** (diagrams, inventory, compliance; "documentation as code").
+Every automation system starts with people and other systems asking for things. Data flows in as requests, such as a new tenant, a VLAN, a port enablement or an IP allocation. Data flows out as status, reports, alerts and documentation. The interfaces include web GUIs or portals. ITSM integration, through ServiceNow or Jira, lets a ticket trigger a pipeline and report back. Dashboards need a tool that integrates with your data sources and can be customised, such as Grafana. ChatOps means bots in Slack or Teams that run read-only commands and approved changes, with an audit trail. Generated diagrams, inventory and compliance reports complete the picture. This is documentation as code.
 
 ### Source of truth (SoT)
 
-The SoT stores the data that automation needs: network **inventory** (devices: name, location, type, connection details, status; interfaces; cables), **DCIM** (racks, power, cable traces), **IPAM** (prefixes, VLANs, VRFs, addresses), network **properties** (ASNs, route-targets, DSCP plans), and **configuration templates/intent**. NetBox and Nautobot provide REST and GraphQL APIs (`pynetbox`), custom fields, webhooks, plugins (golden config, device onboarding); Git repositories of YAML are a simpler SoT for small teams. Design concerns:
+The source of truth stores the data that automation needs. It holds network inventory: device names, locations, types, connection details, status, interfaces and cables. It holds DCIM, meaning racks, power and cable traces. It holds IPAM, meaning prefixes, VLANs, VRFs and addresses. It also holds network properties such as ASNs, route targets and DSCP plans, plus configuration templates and intent. NetBox and Nautobot provide REST and GraphQL APIs, which `pynetbox` reaches from Python. They also offer custom fields, webhooks, and plugins for golden config and device onboarding. For a small team, a Git repository of YAML can serve as a simpler source of truth.
 
-- **Data quality dimensions**: completeness, consistency, validity (schema), usability, relevance, accuracy. Automation magnifies bad data, so enforce validation on write and reconcile with reality (discovery vs intent) continuously.
-- **Data modelling**: a structured approach to define the data you need: understand your network design; define the scope; choose some part of the configuration; sketch the data model; create the configuration templates; start using the model; iterate. Example: model "leaf" as role + ASN + loopback + uplink list, and derive the P2P /31s and BGP neighbours; templates for Cisco IOS and Juniper Junos then share one model.
-- **Persistence**: **version control** (Git) fits text/intent, offers history, review and diff, but is poor for relational/queryable data; **databases** (PostgreSQL behind NetBox) fit relationships and queries, constraints and APIs, but need backups and change history features. Many teams use both (DB as SoT for inventory, Git for templates and policy, with sync).
-- **Population**: **brownfield** (discover from the live network, parse configs, reconcile; messy) and **greenfield** (design-first, build from data); a hybrid with drift reports is common.
-- **Distributed SoT**: real organisations have several authoritative stores (IPAM here, CMDB there, cloud inventory elsewhere). Options: integrate with every data store at use time; consolidate into one SoT; or aggregate behind a facade/API/GraphQL layer. Define data ownership per field.
+Four design concerns decide whether the source of truth helps or hurts you.
+
+Data quality has six dimensions: completeness, consistency, validity (conformance to a schema), usability, relevance and accuracy. Automation magnifies bad data. Enforce validation on write, and keep reconciling the source of truth with reality by comparing discovery against intent.
+
+Data modelling is a structured way to decide which data you need. You understand the network design, define the scope, choose one part of the configuration, sketch the data model, create the templates, start using the model, and iterate. For example, you might model a leaf as a role, an ASN, a loopback and an uplink list. From that model you derive the P2P /31s and the BGP neighbours. Templates for Cisco IOS and Juniper Junos can then share one model.
+
+Persistence involves a trade-off. Git fits text and intent well, with history, review and diffs, but it is poor for relational, queryable data. Databases such as PostgreSQL behind NetBox handle relationships, constraints and APIs well, but they need backups and change history features. Many teams use both, with a database as the source of truth for inventory and Git for templates and policy, kept in sync.
+
+Population covers how the data gets in. Brownfield means discovering data from the live network, parsing configs and reconciling them. That work is messy. Greenfield means designing first and building from the data. A hybrid with drift reports is common.
+
+Large organisations rarely have one authoritative store. IPAM may live in one system, the CMDB in another, and cloud inventory in a third. You can integrate with every store at use time, consolidate them into one source of truth, or aggregate them behind a facade, an API or a GraphQL layer. Whichever you choose, define data ownership per field.
 
 ### Automation engine
 
-Connects the pieces. Choose by supported network interfaces, existing tooling, team skills, and integrations. Core capability, **configuration management** in four stages: **backup** (collect running configs/state to Git regularly and before changes: also `oxidized`/`rancid`), **rendering** (data + templates → intended config), **compliance** (compare running vs intended/policy; report or remediate), **deployment** (apply in a controlled way). Plus **operations** such as NOS upgrades: pre-validate free space and health, make a rollback copy, transfer the new image, activate and reboot, post-validate with ping/traceroute and protocol state, update inventory. Tools: Ansible/Nornir/Terraform/vendor engines.
+The automation engine connects the pieces. You choose it based on the network interfaces it supports, the tooling you already have, your team's skills and the integrations it offers. Its core job is configuration management, in four stages. Backup collects running configs and state into Git regularly and before every change. Tools such as oxidized and rancid do this too. Rendering combines data and templates into the intended config. Compliance compares running configs with the intended state or policy, then reports or remediates. Deployment applies the change in a controlled way.
+
+Operations such as NOS upgrades follow their own steps. You pre-validate free space and health, make a rollback copy, transfer the new image, activate it and reboot. Then you post-validate with ping, traceroute and protocol state, and update the inventory. Ansible, Nornir, Terraform and vendor engines are the usual tools for this work.
 
 ### Telemetry and observability
 
-Closed loop: automation both feeds and consumes telemetry. Characteristics of modern stacks: flexible data manipulation and enrichment (tags from the SoT), API-driven consumption with powerful query languages (PromQL, Flux, SQL), scale-out capacity, composable services. Inputs: streaming telemetry (gNMI), SNMP where needed, flow records (sFlow/IPFIX), syslog, traces, packet captures on demand, and synthetic probes. Typical pipeline: collectors (Telegraf, gNMIc, Fluent Bit, Vector) → time-series/log stores (Prometheus/VictoriaMetrics/Mimir, Loki/Elastic) → dashboards/alerts (Grafana, Alertmanager) → webhooks into the automation engine for remediation (event-driven). Chapter 2.31 covers monitoring in depth.
+Telemetry closes the loop, because automation both feeds it and consumes it. Modern stacks offer flexible data manipulation and enrichment, such as tags from the source of truth. They offer API-driven queries in languages such as PromQL, Flux or SQL, scale-out capacity, and composable services. Inputs include streaming telemetry over gNMI, SNMP where it is still needed, flow records (sFlow or IPFIX), syslog, traces, packet captures on demand, and synthetic probes. A typical pipeline runs collectors such as Telegraf, gNMIc, Fluent Bit or Vector. Those feed time-series or log stores such as Prometheus, VictoriaMetrics or Mimir, and Loki or Elastic. Grafana and Alertmanager then show dashboards and raise alerts. Webhooks send those alerts into the automation engine for event-driven remediation. Chapter 2.31 covers monitoring in depth.
 
 ### Orchestration
 
-Coordinates multi-step, multi-domain workflows: for example "onboard a new GPU tenant" touches IPAM (allocate prefix), the fabric (VRF/VNI/ACL), firewalls, DNS, identity, Kubernetes (namespace/NetworkPolicy), billing, and ticketing. Orchestrators (Temporal, Airflow, Argo Workflows, StackStorm, ServiceNow, Camunda, Terraform Cloud/Spacelift workflows) provide sequencing, retries, approvals, rollback and visibility. Keep orchestration *thin*: it calls the automation engine and SoT APIs rather than reimplementing device logic.
+Orchestration coordinates multi-step workflows across domains. Take onboarding a new GPU tenant. That work touches IPAM to allocate a prefix, the fabric for a VRF, VNI and ACL, firewalls, DNS, identity, Kubernetes for a namespace and NetworkPolicy, billing and ticketing. Orchestrators such as Temporal, Airflow, Argo Workflows, StackStorm, ServiceNow, Camunda, and Terraform Cloud or Spacelift workflows provide sequencing, retries, approvals, rollback and visibility. Keep orchestration thin. It should call the automation engine and the source of truth APIs rather than reimplement device logic.
 
 ## 7. On-box automation, controllers, VNFs, intent
 
 ### On-box automation
 
-Code runs **on the network device** itself: Cisco EEM and Guest Shell (Python), Junos event policies/op/commit scripts (SLAX/Python/PyEZ), Arista EOS event handlers/eAPI scripts and Python on box, NX-OS Python/Bash, Cumulus/SONiC (full Linux: systemd services/timers, Python, shell, Ansible local mode, Prometheus node exporters), SR Linux agents (NDK). Uses: local automated reaction (shut an interface on a condition, collect diagnostics at the moment of an alarm, auto-remediate), ZTP scripts, health telemetry, and offloading tasks that don't scale centrally. Trade-offs: logic is distributed across devices (harder to version and audit unless distributed from Git by pull), consumes device CPU/memory, and varies per vendor; keep on-box scripts small, signed/versioned, with a central inventory of what runs where.
+Sometimes the code should run on the network device itself. On-box automation means scripts, agents or services running on the switch's own CPU. Examples include Cisco EEM and Guest Shell, which run Python. Junos event policies and op and commit scripts use SLAX, Python or PyEZ. Arista EOS has event handlers and eAPI scripts, plus Python on box. NX-OS offers Python and Bash. Cumulus and SONiC are full Linux, with systemd services and timers, Python, shell, Ansible local mode and Prometheus node exporters. SR Linux runs agents through NDK.
+
+On-box code has real uses. It can react locally, for example by shutting an interface when a condition is met, or by collecting diagnostics at the moment of an alarm. It runs ZTP scripts, reports health telemetry, and takes on tasks that do not scale centrally. The trade-offs are real, though. Logic spreads across devices, which makes it harder to version and audit unless devices pull their scripts from Git. It consumes device CPU and memory, and it varies by vendor. Keep on-box scripts small, signed and versioned, and keep a central inventory of what runs where.
 
 ### Network controllers
 
-Controllers hold a network-wide view and offer a single API for intent and day-2 operations: DC fabric controllers (Cisco NDFC/ACI, Juniper Apstra, Arista CloudVision, Nokia EDA, NVIDIA Unified Fabric Manager for InfiniBand and NetQ for validation), campus/WAN SD-WAN controllers, Kubernetes network controllers (CNI), and cloud SDN. Pros: abstraction, built-in validation, lifecycle management; cons: vendor coupling, opaque behaviour, controller as a failure domain (design fail-static, chapter 2.28 section 7), cost. Automating "on top of" a controller (Terraform provider, REST API, Ansible collection) is often better than automating each switch.
+Controllers take a network-wide view and offer one API for intent and day-2 operations. Examples include DC fabric controllers such as Cisco NDFC or ACI, Juniper Apstra, Arista CloudVision, Nokia EDA, and NVIDIA Unified Fabric Manager for InfiniBand, with NetQ for validation. Campus and WAN SD-WAN controllers fall in this group, as do Kubernetes network controllers (CNI) and cloud SDN. The pros are abstraction, built-in validation and lifecycle management. The cons are vendor coupling, opaque behaviour, and the controller itself becoming a failure domain. You design against that with fail-static, covered in chapter 2.28, section 7, and you also pay the cost. Automating on top of a controller, through a Terraform provider, a REST API or an Ansible collection, is often better than automating each switch.
 
 ### Automation and complexity
 
-Automation reduces the *interaction surface* between humans and devices, but it **does not reduce complexity in general**; complexity moves into the toolchain, data models, templates and pipeline. Use the state/optimisation/surface lens: automation can add state (SoT, caches, pipeline artefacts), reduce optimisation (abstractions hide device-specific tuning), and reduce or move surfaces (fewer typing mistakes, more integration points). Plan for the new failure modes: bad data, template bugs at scale, pipeline outages, credential compromise of the automation system (a very high-value target: protect it like the network itself), and skill concentration. If you haven't found the trade-off, you haven't looked hard enough.
+Automation reduces the interaction surface between humans and devices. It does not reduce complexity in general. The complexity moves into the toolchain, the data models, the templates and the pipeline. Use the state, optimisation and surface lens to see where it went. Automation can add state, through the source of truth, caches and pipeline artefacts. It can reduce optimisation, because abstractions hide device-specific tuning. It can reduce or move interaction surfaces, which means fewer typing mistakes but more integration points. Plan for the new failure modes: bad data, template bugs at scale, pipeline outages, credential compromise of the automation system, and skill concentration. The automation system is a very high-value target, so protect it as carefully as the network itself. If you have not found the trade-off yet, you have not looked hard enough.
 
 ### Virtualised network functions (VNFs), service chaining, intent
 
-**Network functions virtualisation** runs functions that used to be appliances (routers, firewalls, load balancers, NAT, DPI, IDS/IPS, EPC/UPF, SD-WAN edges) as software on commodity servers (VMs or containers: VNFs and CNFs). Benefits: design flexibility (place functions where needed), **service chaining** (steer traffic through an ordered series of functions, via VLANs/overlays/SR/NSH/policy routing), **scale-out** (add instances instead of bigger boxes, with load balancing/ECMP in front), **faster time to service through automation** (spin up per-tenant firewalls in minutes), centralised policy management, and **intent-based networking** (declare desired outcomes: "tenant A's training pods reach storage with 200 Gb/s and no access to tenant B"; the system compiles intent to configuration, continuously verifies, and remediates). Costs and trade-offs: **throughput** of software datapaths (improve with DPDK, SR-IOV, kernel bypass, NIC offloads, XDP, DPUs, CPU pinning/NUMA/hugepages), **state** (stateful functions and failover/state sync), **optimisation** (generic hardware vs ASICs), **surface** (more layers: hypervisor, vSwitch, orchestrator), licensing and operations. In AI infrastructure, VNF ideas appear as DPU-hosted firewalls and load balancers (BlueField), per-tenant virtual routers at the cluster edge, and service-mesh and gateway functions; the performance-critical data plane (GPU collectives) remains hardware/RDMA.
+Network functions virtualisation runs functions that used to be appliances as software on commodity servers. Those functions include routers, firewalls, load balancers, NAT, DPI, IDS/IPS, EPC/UPF and SD-WAN edges. They run as VMs or containers, which are called VNFs and CNFs. The benefits are design flexibility, which lets you place functions where you need them, plus service chaining, scale-out, faster time to service, and centralised policy. Service chaining steers traffic through an ordered series of functions, using VLANs, overlays, SR, NSH or policy routing. Scale-out means adding instances instead of bigger boxes, with load balancing or ECMP in front. Automation shortens the time to service. You can spin up a per-tenant firewall in minutes.
+
+Intent-based networking goes a step further. You declare the outcome you want, such as tenant A's training pods reaching storage at 200 Gb/s with no access to tenant B. The system compiles that intent into configuration, verifies it continuously and remediates drift.
+
+Costs and trade-offs come in several forms. Software datapaths limit throughput, and you can improve it with DPDK, SR-IOV, kernel bypass, NIC offloads, XDP, DPUs, CPU pinning, NUMA and hugepages. Stateful functions need failover and state sync. Generic hardware gives up the optimisation that ASICs offer. There are also more layers to operate, from hypervisor to vSwitch to orchestrator, and licensing and operations add to the bill.
+
+In AI infrastructure, these ideas appear as DPU-hosted firewalls and load balancers on BlueField, per-tenant virtual routers at the cluster edge, and service mesh and gateway functions. The performance-critical data plane, the GPU collectives, stays in hardware and RDMA.
 
 ### From automation to "auto"
 
-The direction of travel is from *scripted automation* (humans trigger runs) to *closed-loop autonomy* (the system detects, decides and acts: self-healing, self-optimising, intent-driven). Prerequisites are exactly this chapter's themes: trustworthy data, tested changes, reliable telemetry, safe rollouts, guardrails, observability of the automation itself. Add AI assistants carefully: they can draft configs and explain traces, but outputs must pass the same validation pipeline, never apply directly to production, and never receive secrets or customer data without controls.
+The direction of travel runs from scripted automation, where humans trigger each run, to closed-loop autonomy, where the system detects, decides and acts. Self-healing, self-optimising and intent-driven systems all sit at that end. You reach it only with this chapter's foundations: trustworthy data, tested changes, reliable telemetry, safe rollouts, guardrails and observability of the automation itself. AI assistants can help here. They can draft configs and explain traces, but their output must pass the same validation pipeline. Never let them apply changes directly to production, and never give them secrets or customer data without controls.
+
+Let automation act without a person only after it has passed the same tests and rollouts as everything else.
 
 ## 8. Hands-on lab: an automation pipeline for the leaf-spine fabric
 
-First, run the self-checking Python lab (`code/part02/net_automation_cicd_tools_lab.py`) locally. It verifies Ansible `serial: "25%"` batch rollout and `max_fail_percentage: 0` fail-fast halting, idempotent configuration diffing and drift detection, and 5-stage network CI/CD pipeline gating.
+Start on your own machine with the self-checking Python lab. It confirms the Ansible `serial: "25%"` batch rollout and the `max_fail_percentage: 0` fail-fast halt. It also checks idempotent configuration diffing, drift detection, and the five-stage network CI/CD pipeline gating.
 
 ```bash
 python3 code/part02/net_automation_cicd_tools_lab.py
 ```
 
-Next, on a disposable Linux VM building on Chapter 2.27's containerlab fabric (all interactive VM commands below are `untested here`), work through these steps:
+The rest of the lab runs on a disposable Linux VM that builds on the containerlab fabric from chapter 2.27. Every interactive VM command below is `untested here`. Work through these ten steps in order.
 
-1. **Inventory and SoT**: create `inventory/` YAML (devices, roles, ASNs, loopbacks, links) validated by a JSON Schema; optionally load into NetBox (Docker compose) and use `nb_inventory` as the Ansible dynamic inventory.
-2. **Templates**: Jinja2 templates for FRR leaf/spine configs (or SONiC/Arista cEOS if available); unit tests with golden outputs in `tests/unit/`.
-3. **Ansible**: roles `base`, `underlay_bgp`, `evpn`; playbook with `serial`, check/diff mode, backups, `rescue` rollback, and post-validation (BGP/ECMP); use vault for credentials; run against containerlab nodes (`ansible_connection: community.docker.docker` for containers or SSH).
-4. **Nornir**: re-implement validation and a compliance report in Nornir; compare run time and ergonomics with Ansible; add a custom task checking MTU consistency across all links.
-5. **Terraform**: create the GCP VPC, subnets, firewall rules and a Cloud NAT for the lab VM (chapter 2.32 context) and attach outputs to the Ansible inventory; `plan` as a PR artefact; add a drift-detection scheduled workflow.
-6. **CI**: implement the GitHub Actions workflow above (self-hosted runner on the lab VM); require green checks; add a Batfish job (pybatfish) asserting no unreachable prefixes and symmetric ECMP.
-7. **Failure of the pipeline itself**: inject a bad template change (wrong ASN, MTU typo) and show it blocked at unit tests, at Batfish, at emulation validation, and at canary; show rollback.
-8. **Telemetry loop**: deploy gNMIc/Telegraf + Prometheus + Grafana (or FRR exporter); alert on BGP session down; use a webhook to trigger a diagnostic playbook that attaches `show` output to the alert.
-9. **ChatOps (optional)**: a minimal bot (Slack/Matrix webhook) that runs read-only validation and posts the result.
-10. **Retrospective**: write an architecture diagram (six components), list data owners, failure modes of the automation system, and the credential model.
+1. **Inventory and SoT**: create `inventory/` YAML for devices, roles, ASNs, loopbacks and links, and validate it with a JSON Schema. Optionally load it into NetBox with Docker compose, then use `nb_inventory` as the Ansible dynamic inventory.
+2. **Templates**: write Jinja2 templates for FRR leaf and spine configs, or for SONiC or Arista cEOS if you have them. Add unit tests with golden outputs in `tests/unit/`.
+3. **Ansible**: build the roles `base`, `underlay_bgp` and `evpn`. Write a playbook that uses `serial`, check and diff mode, backups, a `rescue` rollback, and post-validation of BGP and ECMP. Keep your credentials in vault, and run against the containerlab nodes, using `ansible_connection: community.docker.docker` for containers or SSH.
+4. **Nornir**: re-implement the validation and a compliance report in Nornir. Compare run time and ergonomics with Ansible, and add a custom task that checks MTU consistency across all links.
+5. **Terraform**: create the GCP VPC, subnets, firewall rules and a Cloud NAT for the lab VM, which fits the chapter 2.32 context. Attach the outputs to the Ansible inventory. Run `plan` as a pull request artefact, and add a scheduled drift-detection workflow.
+6. **CI**: implement the GitHub Actions workflow above on a self-hosted runner on the lab VM, and require green checks. Add a Batfish job with pybatfish that asserts no unreachable prefixes and symmetric ECMP.
+7. **Failure of the pipeline itself**: inject a bad template change, such as a wrong ASN or an MTU typo. Show that it is blocked at unit tests, at Batfish, at emulation validation and at canary, and then show the rollback.
+8. **Telemetry loop**: deploy gNMIc or Telegraf, Prometheus and Grafana, or an FRR exporter. Alert on a BGP session going down, and use a webhook to trigger a diagnostic playbook that attaches `show` output to the alert.
+9. **ChatOps (optional)**: if you want, build a minimal Slack or Matrix webhook bot that runs read-only validation and posts the result.
+10. **Retrospective**: write an architecture diagram with the six components, and list the data owners, the failure modes of the automation system, and the credential model.
+
+You should do steps 1 to 3 first, because every later step depends on a clean inventory and a working playbook.
 
 ## 9. Common mistakes
 
-- Choosing the tool before defining the data model, source of truth and process.
-- Pushing to all devices at once; no canary; no automatic rollback; no out-of-band access.
-- Treating Ansible `*_command` as idempotent; ignoring `changed`/diff semantics; huge shell/regex tasks.
-- Secrets in repositories or in rendered artefacts; over-privileged automation accounts; no audit trail.
-- Testing only syntax, not behaviour (no emulation, no state assertions).
-- A source of truth that drifts from the network (no reconciliation).
-- Letting the automation system become a single point of failure with no break-glass procedure.
-- Over-orchestrating: reimplementing device logic in a workflow engine.
+Most of these mistakes come from a skipped decision.
+
+Choosing a tool before you define the data model, source of truth and process is a common error. Pushing to every device at once, with no canary, no automatic rollback and no out-of-band access, leaves nothing safe to fall back on.
+
+Treating Ansible's `*_command` modules as idempotent is another, and so is ignoring `changed` and diff semantics. Secrets in repositories or rendered artefacts, over-privileged automation accounts and missing audit trails cause trouble too. Testing only the syntax misses most of the risk, so test behaviour with emulation and state assertions.
+
+A source of truth that drifts from the network misleads every tool that reads it. Give the automation system a break-glass procedure so it is not a single point of failure. Avoid over-orchestrating by keeping device logic out of the workflow engine.
+
+Settle the data model, the rollout strategy and the path back to a working state before you automate a fleet.
 
 ## 10. Interview angles
+
+Use these questions to test your understanding. Each one maps to a section of this chapter.
 
 - "Ansible vs Nornir vs Terraform for networks: when each?"
 - "How do you make a network change idempotent and safe? What happens if the playbook fails halfway?"
@@ -408,133 +481,149 @@ Next, on a disposable Linux VM building on Chapter 2.27's containerlab fabric (a
 
 ## Exercises
 
-1. **Choosing Network Automation Tools Across the 10 Design Axes (`NPA` Chapter 12):** Compare **Ansible**, **Nornir**, **Terraform / OpenTofu**, and **Vendor Controllers** (`Apstra`, `CloudVision`, `NVIDIA UFM`/`NetQ`) across the 10 axes in Section 1 (configuration management vs provisioning, agent vs agentless, DSL vs Python, declarative vs imperative, state management).
-2. **Ansible for Networks (`connection` Plugins, Variable Precedence, `serial` Batching, and Resource Modules):** (a) Explain why Ansible network modules execute on the **control node** rather than on the switch, and list the four `ansible.netcommon` connection plugins; (b) using `simulate_serial_batch_rollout()` and `compute_idempotent_config_diff()` in `code/part02/net_automation_cicd_tools.py`, trace how `serial: "25%"` and `max_fail_percentage: 0` protect an 8-leaf rollout when `leaf2` fails its BGP post-check.
-3. **Nornir Threaded Python Workflows vs. Ansible Playbooks:** Trace the Section 3 Nornir script (`InitNornir`, `nr.filter(role="leaf")`, `build`, `deploy(dry_run=True)`, and `verify` over `num_workers: 20`), and state when pure Python + Nornir is preferred over Ansible YAML.
-4. **The Five Components of a Network CI/CD Pipeline and Deployment Strategies (`NPA` Chapter 13):** Using `evaluate_network_ci_pipeline()`, trace a switch config change through the five CI/CD stages (*Peer review -> Build/lint/Batfish -> Containerlab emulation -> Operational/connectivity/performance validation -> Staged deployment*), and compare **in-place**, **rolling**, **canary**, and **blue/green** network deployment strategies.
-5. **The Six Components of Network Automation Architecture and Source-of-Truth (`SoT`) Design (`NPA` Chapter 14):** (a) Draw and explain the six components of the Network Automation Architecture (*User Interactions, Orchestration, Source of Truth, Automation Engine, Network Infrastructure, Telemetry & Observability*); (b) list the six dimensions of SoT data quality, compare Git vs relational databases (`NetBox`/`Nautobot`) for persistence, and list the four stages of configuration management plus the five steps of an automated NOS upgrade.
-6. **On-Box Automation, Controllers, `VNF`s / Service Chaining, and the Complexity Triangle (`CN` Chapters 26 & 27):** Contrast **on-box** scripts with **off-box** controllers, explain **Virtual Network Functions (`VNF`s / `CNF`s)** and **service chaining** (and how `DPDK`, `SR-IOV`, and **BlueField DPUs** overcome software datapath limits), and evaluate network automation using `CN` Chapter 26's **state / optimization / interaction-surface** trade-off model.
+You can work through these six exercises in order.
+
+1. Start with a comparison. Compare Ansible, Nornir, Terraform and OpenTofu, and vendor controllers such as Apstra, CloudVision and NVIDIA UFM with NetQ. Judge them on the 10 axes from section 1, which include configuration management versus provisioning, agent versus agentless, DSL versus Python, declarative versus imperative, and state management. The source for these axes is *Network Programmability and Automation*, chapter 12.
+
+2. Next, work through how Ansible behaves on the network side. First, explain why Ansible network modules run on the control node rather than on the switch, and list the four `ansible.netcommon` connection plugins. Then use `simulate_serial_batch_rollout()` and `compute_idempotent_config_diff()` in `code/part02/net_automation_cicd_tools.py` to trace how `serial: "25%"` and `max_fail_percentage: 0` protect an 8-leaf rollout when `leaf2` fails its BGP post-check.
+
+3. Then compare Nornir with Ansible playbooks. Trace the Section 3 Nornir script, following `InitNornir`, `nr.filter(role="leaf")`, `build`, `deploy(dry_run=True)` and `verify` running over `num_workers: 20`. Finish by stating when pure Python with Nornir is preferred over Ansible YAML.
+
+4. Next, follow a change through the pipeline. Using `evaluate_network_ci_pipeline()`, trace a switch configuration change through the five CI/CD stages, which run from peer review to staged deployment. The middle stages are build, lint and Batfish, containerlab emulation, and operational, connectivity and performance validation. Then compare in-place, rolling, canary and blue/green deployment, drawing on chapter 13 of *Network Programmability and Automation*.
+
+5. Then map the architecture. Draw the six components of the network automation architecture, which are user interactions, orchestration, source of truth, automation engine, network infrastructure, and telemetry and observability, and explain how they connect. List the six dimensions of SoT data quality. Compare Git with relational databases such as NetBox and Nautobot for persistence. Finally, list the four stages of configuration management and the five steps of an automated NOS upgrade. This material is in chapter 14 of *Network Programmability and Automation*.
+
+6. Finish with the device-side view. Contrast on-box scripts with off-box controllers, using chapters 26 and 27 of *Computer Networking Problems and Solutions*. Explain virtual network functions (VNFs and CNFs) and service chaining, and show how DPDK, SR-IOV and BlueField DPUs overcome software datapath limits. Then evaluate network automation with the state, optimization and interaction-surface trade-off model from chapter 26.
+
+Pick the exercise you find hardest to explain, and write that answer first. If you get stuck, reread the section the exercise names.
 
 ## Checkpoint questions (20)
 
 <details>
-<summary>1. What is the fundamental difference between Configuration Management (`Ansible`, `Nornir`) and Infrastructure Provisioning (`Terraform` / `OpenTofu`)?</summary>
+<summary>1. What is the fundamental difference between Configuration Management (Ansible, Nornir) and Infrastructure Provisioning (Terraform / OpenTofu)?</summary>
 
-**Infrastructure provisioning (`Terraform`)** creates, modifies, and destroys API-driven infrastructure **resources** (cloud VPCs, subnets, security groups, load balancers, controller objects) using an explicit **state file (`terraform.tfstate`)** that maps declared HCL blocks to real-world resource IDs and builds a dependency graph (`plan` / `apply`). **Configuration management (`Ansible`, `Nornir`)** is **stateless** and converges the internal configuration of **existing** switches and servers to a desired state on each run.
+**Infrastructure provisioning** creates, changes and destroys resources that an API controls, such as cloud VPCs, subnets, security groups, load balancers and controller objects. Terraform does this with an explicit state file, `terraform.tfstate`, which maps the HCL blocks you declare to real resource IDs. It builds a dependency graph and works in two steps, `plan` and `apply`. **Configuration management**, which Ansible and Nornir do, is stateless. On each run it converges the internal configuration of existing switches and servers to the desired state.
 </details>
 
 <details>
-<summary>2. How does Ansible execute tasks on a network switch differently from how it executes tasks on a Linux server (`NPA` Chapter 12)?</summary>
+<summary>2. How does Ansible execute tasks on a network switch differently from how it executes tasks on a Linux server (*Network Programmability and Automation*, chapter 12)?</summary>
 
-On a **Linux server**, Ansible connects over SSH, copies a temporary Python script into `/tmp` on the target host, executes it locally on the server's Python interpreter, and deletes it. Because traditional **network switches** do not provide an open shell or Python environment for foreign scripts, Ansible runs network modules **locally on the Ansible control node** and opens a persistent session to the switch using a **connection plugin**: **`ansible.netcommon.network_cli`** (SSH CLI), **`ansible.netcommon.netconf`** (NETCONF XML over SSH 830), **`ansible.netcommon.httpapi`** (RESTCONF / eAPI), or **`ansible.netcommon.grpc`** (`gNMI`). (On Linux-based switches like **Cumulus** and **SONiC**, you can also use standard SSH + Linux/NVUE modules.)
+On a Linux server, Ansible connects over SSH, copies a temporary Python script into `/tmp` on the target, runs it with the server's own Python interpreter, and deletes it. Traditional network switches do not give foreign scripts an open shell or Python, so Ansible runs the network modules locally on the control node. It then opens a persistent session to the switch through a connection plugin. The four choices are `ansible.netcommon.network_cli` for SSH CLI, `ansible.netcommon.netconf` for NETCONF XML over SSH 830, `ansible.netcommon.httpapi` for RESTCONF or eAPI, and `ansible.netcommon.grpc` for gNMI. On Linux-based switches such as Cumulus and SONiC, standard SSH and Linux or NVUE modules also work.
 </details>
 
 <details>
 <summary>3. State the order of Ansible variable precedence from lowest to highest among role defaults, group vars, host vars, playbook vars, and `-e` extra vars.</summary>
 
-From lowest priority (easiest to override) to highest priority (always wins):\n1. **Role `defaults/main.yml`**\n2. **Inventory `group_vars/all`**\n3. **Inventory parent `group_vars/<group>` -> child `group_vars/<subgroup>`**\n4. **Inventory `host_vars/<hostname>`**\n5. **Playbook `vars:` / `vars_files:`**\n6. **Role `vars/main.yml` and task `vars:`**\n7. **Command-line extra vars (`-e key=value`)** (highest precedence).
+Ansible applies variables from the lowest priority, which you can override most easily, to the highest, which always wins. The order is:
+1. Role `defaults/main.yml`
+2. Inventory `group_vars/all`
+3. Inventory parent `group_vars/<group>`, then child `group_vars/<subgroup>`
+4. Inventory `host_vars/<hostname>`
+5. Playbook `vars:` and `vars_files:`
+6. Role `vars/main.yml` and task `vars:`
+7. Command-line extra vars, `-e key=value`, which have the highest precedence
 </details>
 
 <details>
 <summary>4. Compare Ansible's `*_command`, `*_config`, and Network Resource Modules (`*_interfaces`, `*_bgp_global` with `state:`).</summary>
 
-- **`*_command` (`arista.eos.eos_command`)**: executes read-only `show` commands and returns output; **never idempotent for config changes**.\n- **`*_config` (`arista.eos.eos_config`)**: pushes raw CLI configuration lines or a rendered Jinja template (`replace: config|block|line`, `diff_against: running`) by diffing text indentation.\n- **Network Resource Modules (`arista.eos.eos_interfaces`, `eos_vlans`, `eos_bgp_global`)**: model a specific subsystem as structured YAML data and support explicit lifecycle states: **`merged`**, **`replaced`**, **`overridden`**, **`deleted`**, **`gathered`** (read live into facts), **`rendered`**, and **`parsed`**.
+`*_command` modules, such as `arista.eos.eos_command`, run read-only `show` commands and return the output. They are never idempotent for config changes. `*_config` modules, such as `arista.eos.eos_config`, push raw CLI lines or a rendered Jinja template. They use `replace: config`, `block` or `line` with `diff_against: running`, and they diff the text by indentation. Network Resource Modules, such as `arista.eos.eos_interfaces`, `eos_vlans` and `eos_bgp_global`, model a subsystem as structured YAML. Their lifecycle states are `merged`, `replaced`, `overridden`, `deleted`, `gathered` (which reads the live state into facts), `rendered` and `parsed`.
 </details>
 
 <details>
 <summary>5. How do `serial`, `max_fail_percentage`, `--check --diff`, `--limit`, and `block / rescue` make an Ansible network playbook safe for production?</summary>
 
-- **`--check --diff`**: dry-runs the playbook and prints the exact line-by-line configuration diff without modifying any switch.\n- **`--limit canary` (or `--limit 'leaf:!leaf4'`)**: restricts execution to a specific switch or subset.\n- **`serial: "25%"` + `max_fail_percentage: 0`**: rolls out the change in batches of 25% of switches at a time, running post-validation tasks (`until: ... Established`) at the end of each batch and **halting the entire playbook immediately** if any switch in the batch fails.\n- **`block:` / `rescue:`**: wraps the config push and post-check in a `block:` and automatically restores the pre-change backup config in the `rescue:` section if validation fails.
+`--check --diff` dry-runs the playbook and prints the exact line-by-line configuration diff without changing any switch. `--limit canary` or `--limit 'leaf:!leaf4'` restricts execution to one switch or a subset. `serial: "25%"` rolls the change out in batches of 25 percent of the switches, and post-validation tasks, such as an `until:` check for `Established`, run at the end of each batch. With `max_fail_percentage: 0`, the whole playbook halts immediately if any switch in a batch fails. `block:` and `rescue:` wrap the config push and the post-check, and `rescue:` restores the pre-change backup config if validation fails.
 </details>
 
 <details>
 <summary>6. How do you manage secrets in Ansible and CI pipelines without committing plaintext passwords to Git?</summary>
 
-Encrypt sensitive variables or files with **`ansible-vault`** (`ansible-vault encrypt group_vars/all/vault.yml` or `encrypt_string`) so they are stored ciphertext-only in Git, and pass the vault decryption key at runtime from a CI secret store; or fetch **short-lived dynamic credentials** at runtime from **HashiCorp Vault**, cloud KMS/Secret Manager, or SSH Certificate Authorities.
+Encrypt sensitive values with `ansible-vault`, using `ansible-vault encrypt group_vars/all/vault.yml` or `encrypt_string`. The stored file is ciphertext only, so Git never holds a plaintext password. Pass the vault decryption key at run time from a CI secret store. Alternatively, you can fetch short-lived dynamic credentials when the job runs, from HashiCorp Vault, a cloud KMS or Secret Manager, or an SSH Certificate Authority.
 </details>
 
 <details>
-<summary>7. What is `Nornir`, and when should an infrastructure team choose `Nornir` over `Ansible` (`NPA` Chapter 12)?</summary>
+<summary>7. What is Nornir, and when should an infrastructure team choose Nornir over Ansible (*Network Programmability and Automation*, chapter 12)?</summary>
 
-**`Nornir`** is a **100% pure-Python automation framework**: instead of writing logic in YAML DSL loops (`when:`, `loop:`, `set_fact:`), you write normal Python functions (`Task -> Result`) that Nornir executes concurrently across an inventory (`SimpleInventory` or `NetBoxInventory`) using a **threaded worker pool (`num_workers: 20`)**. Choose Nornir when you need **complex branching control flow, custom multi-step validation algorithms, fast parallel execution across hundreds of devices, IDE debugging/type-checking, and standard `pytest` unit tests**.
+Nornir is a 100% pure-Python automation framework. Instead of YAML loops such as `when:`, `loop:` and `set_fact:`, you write normal Python functions that take a task and return a result. Nornir runs them concurrently across an inventory, which can be `SimpleInventory` or `NetBoxInventory`, using a threaded worker pool with `num_workers: 20`. Choose Nornir when you need complex branching, custom multi-step validation, fast parallel runs across hundreds of devices, IDE debugging and type checking, and standard `pytest` unit tests.
 </details>
 
 <details>
-<summary>8. How do you manage `Terraform` state safely when multiple engineers automate cloud and data-center networks?</summary>
+<summary>8. How do you manage Terraform state safely when multiple engineers automate cloud and data-center networks?</summary>
 
-(1) Store state in a **remote backend with state locking** (e.g., GCS bucket or S3 + DynamoDB lock, or Terraform Cloud/TacOS) so two engineers or CI jobs can never run `apply` concurrently;\n(2) **Split state files by blast radius and lifecycle** (`core-network/` vs `cluster-a/` vs `firewall-rules/`) so a change to one cluster cannot touch core routers;\n(3) Require **`terraform plan` output** on every pull request with `lifecycle { prevent_destroy = true }` on production VPCs/interconnects; and\n(4) Run scheduled **`terraform plan -detailed-exitcode`** jobs to detect out-of-band configuration drift.
+Store state in a remote backend with locking, such as a GCS bucket, or S3 with DynamoDB, or Terraform Cloud or TacOS. That way you never have two engineers or CI jobs running `apply` at the same time. Split state files by blast radius and lifecycle, such as `core-network/`, `cluster-a/` and `firewall-rules/`, so a change to one cluster cannot touch the core routers. Require `terraform plan` output on every pull request, and set `lifecycle { prevent_destroy = true }` on production VPCs and interconnects. Finally, run scheduled `terraform plan -detailed-exitcode` jobs to detect out-of-band drift.
 </details>
 
 <details>
-<summary>9. List the five components of a Network Continuous Integration (`CI`) pipeline (`NPA` Chapter 13).</summary>
+<summary>9. List the five components of a network continuous integration (CI) pipeline (*Network Programmability and Automation*, chapter 13).</summary>
 
-(1) **Peer review**: pull/merge requests with required `CODEOWNERS` review of both code/data and the **rendered device config diff**;\n(2) **Build automation**: automated linting (`yamllint`, `ansible-lint`, `ruff`), **JSON Schema** validation, **Jinja2 golden-file unit tests** (`pytest`), config rendering, and offline static analysis (**`Batfish`**);\n(3) **Test / dev / staging environment**: spinning up an ephemeral virtual fabric (**`containerlab`**, SONiC-VS, cEOS, SR Linux) and applying the candidate change;\n(4) **Deployment validation**: automated assertions on **operational state** (BGP, ECMP, LLDP, MTU), **connectivity** (ping/traceroute), and **performance / negative ACL tests**; and\n(5) **Staged production deployment strategy** (canary -> rolling batches with automated rollback).
+Peer review comes first, through pull or merge requests with required CODEOWNERS reviewers, who check both the code and data and the rendered device config diff. Build automation follows, with linting (`yamllint`, `ansible-lint`, `ruff`), JSON Schema validation, Jinja2 golden-file unit tests with `pytest`, config rendering, and offline static analysis with Batfish. The third component is the test, dev and staging environment, where you spin up an ephemeral virtual fabric with containerlab, SONiC-VS, cEOS or SR Linux and apply the candidate change. Deployment validation comes fourth, with automated checks of operational state (BGP, ECMP, LLDP, MTU), connectivity (ping and traceroute), and performance and negative ACL tests. The last component is the staged production rollout, which moves from canary to rolling batches with automated rollback.
 </details>
 
 <details>
-<summary>10. What does `Batfish` (`pybatfish`) do in a network CI pipeline that `containerlab` does not (and vice versa)?</summary>
+<summary>10. What does Batfish (`pybatfish`) do in a network CI pipeline that containerlab does not (and vice versa)?</summary>
 
-**`Batfish`** is an **offline mathematical control-plane and data-plane modeler**: given only the rendered text configuration files of all switches/firewalls in `build/`, it builds a formal model of the RIBs, FIBs, ACLs, and route policies in seconds **without booting any VMs or containers**—proving whether any prefix is unreachable, whether an ACL rule is shadowed, whether BGP policies have loops, or whether ECMP is asymmetric across all possible failure states. **`containerlab`** boots the **actual vendor NOS binaries/containers** and exchanges live wire packets (`BFD`, `BGP Unnumbered RAs`, `EVPN`), catching NOS software bugs and runtime timing issues. Production pipelines run **both**: Batfish first (fast static proof), then containerlab (live NOS test).
+Batfish is an offline model of the control plane and the data plane. It takes the rendered text configs in `build/` and builds a formal model of the RIBs, FIBs, ACLs and route policies in seconds, without booting any VM or container. For example, it can prove whether a prefix is unreachable, whether an ACL rule is shadowed, whether BGP policies loop, or whether ECMP is asymmetric across failure states. containerlab does the opposite job. It boots the real vendor NOS binaries or containers and exchanges live packets, such as BFD, BGP Unnumbered RAs and EVPN, which catches NOS software bugs and runtime timing problems. Production pipelines run both: Batfish first for a fast static proof, then containerlab for the live NOS test.
 </details>
 
 <details>
-<summary>11. Compare the four network deployment strategies: In-Place, Rolling, Canary, and Blue/Green (`NPA` Chapter 13).</summary>
+<summary>11. Compare the four network deployment strategies: In-Place, Rolling, Canary, and Blue/Green (*Network Programmability and Automation*, chapter 13).</summary>
 
-- **In-Place ("big bang")**: push to all switches simultaneously—acceptable only in labs or for trivial non-forwarding changes (like adding an SNMP/syslog server).\n- **Rolling**: push in bounded batches (`serial: "25%"`, 1 spine or 1 rack leaf pair at a time), draining before and validating after each batch.\n- **Canary**: deploy to **one single device or non-critical rack first**, bake and monitor telemetry over a soak window, and only then roll out to the rest of the fleet.\n- **Blue/Green**: build or upgrade an entire parallel routing plane / multi-planar fabric (`Plane B`) while traffic runs on `Plane A`, validate `Plane B`, shift traffic over via routing policy/weights, and keep `Plane A` ready for instant cut-back.
+In-place, sometimes called the big bang, pushes to every switch at once. That is acceptable only in labs or for trivial, non-forwarding changes, such as adding an SNMP or syslog server. Rolling pushes in bounded batches, such as `serial: "25%"`, or one spine or one rack leaf pair at a time, draining before and validating after each batch. Canary deploys to one device or one non-critical rack first, bakes it and watches telemetry over a soak window, and only then rolls out to the rest. Blue/green builds or upgrades a whole parallel plane, `Plane B`, while traffic runs on `Plane A`. You validate `Plane B`, shift traffic to it with routing policy or weights, and keep `Plane A` ready for an instant cut-back.
 </details>
 
 <details>
-<summary>12. Name the six components of the Network Automation Architecture (`NPA` Chapter 14) and how they interact.</summary>
+<summary>12. Name the six components of the Network Automation Architecture (*Network Programmability and Automation*, chapter 14) and how they interact.</summary>
 
-(1) **User Interactions** (Web portals, ITSM ServiceNow/Jira tickets, Grafana dashboards, **ChatOps** bots, and auto-generated docs);\n(2) **Orchestration** (thin cross-domain workflow coordinator ordering steps across IPAM, fabric, firewall, and Kubernetes);\n(3) **Source of Truth (`SoT`)** (authoritative store of inventory, DCIM, IPAM, and intent: `NetBox`/`Nautobot` + Git);\n(4) **Automation Engine** (`Ansible`, `Nornir`, `Terraform` executing backup, rendering, compliance, deployment, and NOS upgrades);\n(5) **Network Infrastructure** (switches, routers, DPUs, GPU hosts, controllers); and\n(6) **Telemetry & Observability** (gNMI/Prometheus/Loki closing the loop back to the UI and event-driven automation engine).
+The six components are user interactions, orchestration, the source of truth, the automation engine, network infrastructure, and telemetry and observability. User interactions cover web portals, ITSM tickets from ServiceNow or Jira, Grafana dashboards, ChatOps bots and auto-generated docs. Orchestration is a thin coordinator that orders steps across IPAM, the fabric, the firewall and Kubernetes. The source of truth, NetBox or Nautobot together with Git, stores inventory, DCIM, IPAM and intent. The automation engine, built from Ansible, Nornir and Terraform, runs backup, rendering, compliance, deployment and NOS upgrades. Network infrastructure covers switches, routers, DPUs, GPU hosts and controllers. Telemetry, through gNMI, Prometheus and Loki, closes the loop back to the user interface and the event-driven automation engine.
 </details>
 
 <details>
-<summary>13. What data belongs in a Network Source of Truth (`SoT`), and what are the six dimensions of SoT Data Quality (`NPA` Chapter 14)?</summary>
+<summary>13. What data belongs in a Network Source of Truth (`SoT`), and what are the six dimensions of SoT Data Quality (*Network Programmability and Automation*, chapter 14)?</summary>
 
-An SoT stores: (1) **Device inventory** (hostnames, roles, sites, platforms, serials), (2) **DCIM** (racks, power, physical cable plan), (3) **IPAM** (VRFs, prefixes, VLANs, `/31` links, loopbacks), and (4) **Routing/Fabric intent** (ASNs, VNIs, QoS/DSCP plans). The six data-quality dimensions are **Completeness**, **Consistency**, **Validity** (conforming to schema), **Usability**, **Relevance**, and **Accuracy** (matching physical reality via continuous reconciliation).
+A source of truth stores device inventory (hostnames, roles, sites, platforms and serials), DCIM (racks, power and the physical cable plan), IPAM (VRFs, prefixes, VLANs, `/31` links and loopbacks), and routing and fabric intent (ASNs, VNIs and QoS/DSCP plans). When you judge the data, the six data-quality dimensions are completeness, consistency, validity (conforming to a schema), usability, relevance, and accuracy, which means matching physical reality through continuous reconciliation.
 </details>
 
 <details>
-<summary>14. Why do many production teams combine a Relational Database (`NetBox` / `Nautobot`) with `Git` for their Source of Truth?</summary>
+<summary>14. Why do many production teams combine a relational database (NetBox or Nautobot) with Git for their Source of Truth?</summary>
 
-A **relational database (`PostgreSQL` backing `NetBox` / `Nautobot`)** excels at modeling many-to-many relationships (which cable connects `gpu01:ens1f0` to `leaf1:swp1` in `rack-04`?), enforcing uniqueness/foreign-key constraints on IP/VLAN allocations, and serving GraphQL/REST queries (`nb_inventory`). **`Git`** excels at version-controlling **Jinja2 templates, YANG/JSON schemas, Ansible roles, Nornir code, and high-level policy YAML** with pull-request review, cryptographic commit history, and CI triggers.
+A relational database, PostgreSQL behind NetBox or Nautobot, handles many-to-many relationships well. For example, it can answer a question such as which cable connects `gpu01:ens1f0` to `leaf1:swp1` in `rack-04`. It enforces uniqueness and foreign-key constraints on IP and VLAN allocations, and it serves GraphQL and REST queries, as `nb_inventory` does. Git handles text well. It version-controls Jinja2 templates, YANG and JSON schemas, Ansible roles, Nornir code and high-level policy YAML, with pull-request review, a cryptographic commit history and CI triggers. That is why many teams use both.
 </details>
 
 <details>
-<summary>15. What are the four stages of Configuration Management and the five steps of an automated Switch NOS Upgrade in the Automation Engine (`NPA` Chapter 14)?</summary>
+<summary>15. What are the four stages of Configuration Management and the five steps of an automated Switch NOS Upgrade in the Automation Engine (*Network Programmability and Automation*, chapter 14)?</summary>
 
-The four Configuration Management stages are: **(1) Backup** (archive running config to Git/storage), **(2) Rendering** (SoT data + template -> intended config), **(3) Compliance** (diff running vs intended/policy), and **(4) Deployment** (push delta transactionally).\nThe five automated **NOS Upgrade** steps are: **(1) Pre-validate** (check flash disk space, dual power supplies, BGP/ECMP health, and **gracefully drain** the switch), **(2) Backup** config and state snapshot, **(3) Transfer & verify checksum** of the new NOS image, **(4) Activate image & reboot**, and **(5) Post-validate** (verify new OS version, interfaces, LLDP, BGP/ECMP, undrain, and update SoT).
+The four configuration management stages are backup, rendering, compliance and deployment. Backup archives the running config to Git or storage. Rendering combines SoT data with a template to produce the intended config. Compliance diffs the running config against the intended state or policy. Deployment pushes the delta transactionally. The five NOS upgrade steps are pre-validate, backup, transfer and verify, activate and reboot, and post-validate. Pre-validation checks flash disk space, dual power supplies and BGP and ECMP health, and gracefully drains the switch. Backup saves the config and a state snapshot. Transfer verifies the checksum of the new NOS image. Activation switches to the image and reboots. Post-validation confirms the new OS version, interfaces, LLDP, BGP and ECMP, undrains the switch, and updates the SoT.
 </details>
 
 <details>
-<summary>16. Compare On-Box Automation and Off-Box Automation (`CN` Chapter 26).</summary>
+<summary>16. Compare On-Box Automation and Off-Box Automation (*Computer Networking Problems and Solutions*, chapter 26).</summary>
 
-- **On-Box Automation**: scripts, agents, or systemd services running **directly on the switch CPU** (Cisco EEM/Guest Shell, Junos commit/event scripts, Arista EOS event handlers, SONiC/Cumulus Python/systemd daemons). Ideal for **Zero-Touch Provisioning (`ZTP`)**, sub-second local reaction to hardware faults, and local telemetry exporters—at the cost of distributing state across hundreds of switch CPUs.\n- **Off-Box Automation**: centralized engines (`Ansible`, `Nornir`, CI runners, controllers) pushing configs and validating state across the fleet from a single version-controlled repository.
+On-box automation runs scripts, agents or systemd services on the switch CPU, as with Cisco EEM and Guest Shell, Junos commit and event scripts, Arista EOS event handlers, or SONiC and Cumulus Python daemons. It suits zero-touch provisioning (ZTP), sub-second local reaction to hardware faults, and local telemetry exporters. The cost is that state spreads across hundreds of switch CPUs. Off-box automation uses central engines, such as Ansible, Nornir, CI runners and controllers, that push configs and validate state across the fleet from one version-controlled repository.
 </details>
 
 <details>
-<summary>17. Analyze Network Automation through the `CN` Chapter 26 \"State, Optimization, and Interaction Surfaces\" lens.</summary>
+<summary>17. Analyze Network Automation through the *Computer Networking Problems and Solutions* chapter 26 "State, Optimization, and Interaction Surfaces" lens.</summary>
 
-Every engineering change trades off **State**, **Optimization**, and **Interaction Surfaces**:\n- **Surfaces**: automation shrinks the error-prone *human-to-CLI* surface, but creates a new, high-consequence *human-to-SoT-to-pipeline-to-fleet* surface (making the automation server and Git repo a Tier-0 security asset that must be protected with MFA, RBAC, and signed commits);\n- **Optimization**: standardizing 500 switches onto 2 clean templates intentionally sacrifices one-off per-switch hand-optimizations in exchange for fleet uniformity and lower `MTBM`;\n- **State**: adding an SoT database or Terraform state file introduces a second copy of state that can **drift** from the live network unless continuously reconciled.
+Every change trades off state, optimisation and interaction surfaces. Automation shrinks the error-prone human-to-CLI surface. It also creates a new, high-consequence surface, running from a human through the SoT and the pipeline to the fleet. That makes the automation server and the Git repository a Tier-0 security asset, to be protected with MFA, RBAC and signed commits. Optimisation is traded too. Standardising 500 switches onto 2 clean templates gives up one-off hand tuning in exchange for fleet uniformity and a lower `MTBM`. State is the third cost. An SoT database or a Terraform state file is a second copy of state, and it can drift from the live network unless you reconcile it continuously.
 </details>
 
 <details>
-<summary>18. What are Virtualized Network Functions (`VNF`s / `CNF`s) and Service Chaining, and how do `DPDK`, `SR-IOV`, and `DPU`s overcome their performance bottlenecks (`CN` Chapter 27)?</summary>
+<summary>18. What are Virtualized Network Functions (VNFs and CNFs) and Service Chaining, and how do DPDK, SR-IOV, and DPUs overcome their performance bottlenecks (*Computer Networking Problems and Solutions*, chapter 27)?</summary>
 
-**VNFs** (VM-based) and **CNFs** (container-based) replace fixed hardware middleboxes (firewalls, load balancers, NAT gateways, IDS/IPS, SD-WAN edges) with software running on commodity servers, allowing operators to spin up functions on demand and steer traffic through an ordered sequence of functions (**Service Chaining** via EVPN/VXLAN, Segment Routing `SRv6`, or NSH). Because standard kernel network stacks bottleneck on interrupts and memory copies at `100G–400G`, high-speed VNFs use **`SR-IOV`**, **`DPDK`**, **`XDP`/`eBPF`**, or offload the entire virtual router/firewall/load-balancer pipeline onto **hardware `DPU`s (`NVIDIA BlueField`)**.
+VNFs run as VMs and CNFs run as containers. Both replace fixed hardware middleboxes, such as firewalls, load balancers, NAT gateways, IDS/IPS and SD-WAN edges, with software on commodity servers. Operators can spin up functions on demand and steer traffic through an ordered sequence of them, which is service chaining. Chaining runs over EVPN/VXLAN, Segment Routing SRv6, or NSH. Standard kernel network stacks bottleneck on interrupts and memory copies at 100G–400G. High-speed VNFs therefore use SR-IOV, DPDK, XDP or eBPF, or they offload the whole virtual router, firewall or load balancer pipeline to a hardware DPU, such as NVIDIA BlueField.
 </details>
 
 <details>
-<summary>19. What is Intent-Based Networking (`IBN`), and what are its four closed-loop stages?</summary>
+<summary>19. What is Intent-Based Networking (IBN), and what are its four closed-loop stages?</summary>
 
-In **Intent-Based Networking** (exemplified by Juniper Apstra, Arista CloudVision, Nokia EDA, and NVIDIA UFM/NetQ), operators declare **high-level business/architectural outcomes** (*"Build a 4-pod rail-optimized RoCEv2 Clos for Tenant A with 1:1 bisection bandwidth and isolated EVPN VRFs"*) rather than device-by-device CLI syntax. An IBN system executes four continuous stages:\n(1) **Translation & Validation**: compiles high-level intent into vendor-specific device configurations;\n(2) **Automated Activation**: deploys the configurations across the fabric;\n(3) **Continuous Assurance / Telemetry**: streams real-time state (`gNMI`, LLDP, BGP, queue counters) and compares it against the declared intent graph; and\n(4) **Closed-Loop Remediation / Alerting**: automatically flags or self-heals cable swaps, config drift, or degraded links.
+In intent-based networking, as in Juniper Apstra, Arista CloudVision, Nokia EDA, or NVIDIA UFM and NetQ, you declare an outcome, such as "Build a 4-pod rail-optimized RoCEv2 Clos for Tenant A with 1:1 bisection bandwidth and isolated EVPN VRFs." You do not write CLI syntax for each device. The system then runs four stages continuously. First, it translates and validates the intent into vendor-specific device configurations. Second, it activates those configurations across the fabric. Third, it assures the result, streaming live state over gNMI, LLDP, BGP and queue counters and comparing it with the intent graph. Fourth, it remediates in a closed loop, flagging or self-healing cable swaps, config drift and degraded links.
 </details>
 
 <details>
 <summary>20. How do you integrate Switch Fabric Automation and Linux GPU Host Networking into a single unified GitOps pipeline?</summary>
 
-Store the cluster's rack/rail wiring plan, VLANs, MTUs (`9000`), DSCP/PFC/ECN profiles (`DSCP 26 -> Prio 3`, `CNP 48 -> Prio 6`), and IP/ASN allocations in **one shared Source of Truth** (`NetBox` or `inventory/fabric.yml`). From that single SoT, the CI pipeline renders **both** the switch configurations (SONiC / Cumulus / EOS via Jinja2) **and** the GPU server host configurations (`Netplan`/`nmcli`, `/etc/iproute2/rt_tables` per-rail policy routing, `mlnx_qos`, `/etc/sysctl.d/99-ai-node-network.conf`), validates the switch topology in `containerlab`/`Batfish`, rolls out in lockstep per rack/rail, and runs an end-to-end verification job (`lldpcli` cabling check + `ping -M do -s 8972` + `ib_write_bw` + `nccl-tests`).
+Store the cluster's rack and rail wiring plan, VLANs, MTUs (`9000`), DSCP, PFC and ECN profiles such as `DSCP 26 -> Prio 3` and `CNP 48 -> Prio 6`, and the IP and ASN allocations in one shared source of truth, such as NetBox or `inventory/fabric.yml`. From that single source, the CI pipeline renders both the switch configs (SONiC, Cumulus or EOS, through Jinja2) and the GPU server host configs. The host side includes Netplan or nmcli files, `/etc/iproute2/rt_tables` for per-rail policy routing, `mlnx_qos`, and `/etc/sysctl.d/99-ai-node-network.conf`. The pipeline validates the switch topology in containerlab and Batfish, rolls out in lockstep per rack or rail, and runs an end-to-end verification job. That job uses `lldpcli` for the cabling check, `ping -M do -s 8972`, `ib_write_bw` and `nccl-tests`.
 </details>
 
 ## Sources and review notes

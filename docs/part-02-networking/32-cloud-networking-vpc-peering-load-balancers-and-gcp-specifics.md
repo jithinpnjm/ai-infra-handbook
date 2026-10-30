@@ -180,7 +180,7 @@ Internal IPs are assigned automatically or reserved. External IPs are ephemeral 
 
 MTU is the largest packet a link carries. The VPC default is `1460` bytes, and you can raise it to `8896` per network. Every VM, tunnel and peer must agree. The VPN MTU is lower: `1460` for classic, or `1500` on HA VPN? verify. Interconnect supports `1440`, `1460`, `1500` or `8896`, depending on the attachment. A mismatch is the classic cause of "small works, large hangs."
 
-Network service tiers come in two kinds. Premium keeps traffic on Google's backbone until it reaches the edge nearest the user, and it supports global load balancing. Standard is regional, and its traffic goes to the Internet by cold-potato routing. It costs less.
+Network service tiers come in two kinds. Premium keeps traffic on Google's backbone until it reaches the edge nearest the user, and it supports global load balancing. Standard is regional, and its traffic reaches the Internet by hot-potato routing: it leaves Google's network at the first opportunity. It costs less.
 
 Here is the setup as commands. Run them in order: the VPC first, then the subnet with its GKE ranges, then the firewall rules.
 

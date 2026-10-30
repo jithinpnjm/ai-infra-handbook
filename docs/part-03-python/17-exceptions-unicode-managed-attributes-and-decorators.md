@@ -1022,7 +1022,3327 @@ The `with` statement automates startup and termination work around a block of co
 
 The next chapter shows how exception objects are built. It explains how you can create new exceptions for your own programs with classes.
 
+## Exception objects
+
+So far, this part of the handbook has been somewhat vague about what an exception actually is. This section clears up the mystery by disclosing the facts behind exception objects, both built-in and user-defined. An exception is a class instance object. Python raises that object, passes it along, and matches it against the `except` clauses in `try` statements. To define your own exception, you write a class.
+
+That means you need some object-oriented programming. The effort pays off, though. Class-based exceptions give you three things. You get flexible categories, so adding a new subclass does not force changes to existing `try` statements. You get state and behavior, because attributes and methods live on the raised instance. You also get reuse by inheritance, so error displays can share one look.
+
+Every built-in exception is a class too. Python arranges them in one inheritance tree. Your own exceptions join that tree, and they inherit useful defaults from it.
+
+### Exception classes and superclass matching
+
+A raised exception matches an `except` clause when the clause names its class or any superclass of that class. In plain terms, an `except` catches the class it lists and all of that class's subclasses. Superclasses act as category names. Subclasses act as specific kinds of errors inside a category.
+
+Naming a general superclass therefore catches a whole category. Here is a small file called `categoric.py`:
+
+```python
+class General(Exception): pass
+class Specific1(General): pass
+class Specific2(General): pass
+def raiser0():
+    X = General() # Raise superclass instance
+    raise X
+def raiser1():
+    X = Specific1() # Raise subclass instance
+    raise X
+def raiser2():
+    X = Specific2() # Raise different subclass instance
+    raise X
+for func in (raiser0, raiser1, raiser2):
+    try:
+        func()
+    except General: # Match General or any subclass of it
+        import sys
+        print('caught:', sys.exc_info()[0])
+```
+
+The `try` statement catches and reports instances of all three classes. The `except` names their common superclass, so every member of the category matches:
+
+```text
+$ python3 categoric.py
+caught: <class '__main__.General'>
+caught: <class '__main__.Specific1'>
+caught: <class '__main__.Specific2'>
+```
+
+Three points are worth noticing in this code. The category classes are nearly empty. Their bodies hold only `pass`, because the category is the whole point. The top class also inherits from the built-in `Exception` class, and that is required. A class that does not inherit from a built-in exception class will not work in most exception contexts.
+
+`Exception` is the root for nonexit exceptions. `BaseException` is the root for all exceptions, and it may also serve as the parent. Inheriting from `Exception` is the usual choice, and it gives you helpful behavior that you will meet later.
+
+The second point is about raising. The code calls the classes to make instances for the `raise` statements, so the parentheses matter. If you list a class name without parentheses in a `raise`, Python calls it with no constructor arguments. You can create the instance before the `raise`, as this file does, or inside the `raise` statement.
+
+The third point is about the handler. `sys.exc_info` returns a tuple. Its first item is the class of the exception raised, and its second item is the instance. In a general `except` that catches a whole category, that call tells you exactly what happened. The next chapter covers `sys.exc_info` and the related tools, including tracebacks, in more detail.
+
+When an `except` catches an exception, the instance belongs to the listed class or to one of its subclasses. So the specific kind is always available. You can read it through `type(X)` or through the `__class__` attribute. The variant `categoric2.py` shows this with the `as` form:
+
+```python
+class General(Exception): pass
+class Specific1(General): pass
+class Specific2(General): pass
+def raiser0(): raise General()
+def raiser1(): raise Specific1()
+def raiser2(): raise Specific2()
+for func in (raiser0, raiser1, raiser2):
+    try:
+        func()
+    except General as X: # X is the raised instance
+        print('caught:', type(X)) # Same as sys.exc_info()[0], X.__class__
+```
+
+The `as` name gives you the instance directly. That makes `sys.exc_info` most useful in empty `except` clauses that have no other way to reach the instance or its class. Well-designed programs should rarely need to know which specific exception happened. Calling a method on the instance should run behavior that suits that exception.
+
+### Why exception hierarchies?
+
+A tuple of names works well for small code. It is one way to catch several exceptions at once, and it is easy to read. For large programs with many exceptions, though, catching a category is easier than listing every member. A class hierarchy also keeps working as the set grows.
+
+Suppose you write a numeric library for many people to use. You find two things that can go wrong, division by zero and numeric overflow. You document them as two standalone exceptions:
+
+```python
+# mathlib.py
+class Divzero(Exception): pass
+class Oflow(Exception): pass
+def func():
+    ...
+    raise Divzero()
+    ...and so on...
+```
+
+Users wrap calls in a `try` that catches both exceptions. Otherwise, your exceptions would stop their code:
+
+```python
+# client.py
+import mathlib
+try:
+    mathlib.func()
+except (mathlib.Divzero, mathlib.Oflow):
+    ...handle and recover...
+```
+
+Six months later, you add a new error for underflow. Every client that listed the names must now edit each `try` statement to include `mathlib.Uflow`. That is a maintenance problem for your users. If you use the library only in-house, you can make those edits yourself. If many people depend on it, that is not a polite upgrade.
+
+Some users might avoid this with an empty `except`. That catches every error, but it also catches memory exhaustion, Ctrl+C, system exits, and typos in the `try` block itself. Those should pass through. Catching the `Exception` superclass is better, but it can still hide program errors. Users really want to catch only the exceptions your library documents. Any other exception is probably a bug in the library.
+
+A class tree solves this. Put your exceptions under one common superclass that stands for the whole category:
+
+```python
+# mathlib.py
+class NumErr(Exception): pass
+class Divzero(NumErr): pass
+class Oflow(NumErr): pass
+def func():
+    ...
+    raise Divzero()
+    ...and so on...
+```
+
+Clients now name only the superclass to catch every library exception, both now and later:
+
+```python
+# client.py
+import mathlib
+try:
+    mathlib.func()
+except mathlib.NumErr:
+    ...handle and recover...
+```
+
+When you add an underflow error later, make it a new subclass of the same superclass:
+
+```python
+# mathlib.py
+...
+class Uflow(NumErr): pass
+```
+
+Client code that catches `NumErr` keeps working without change. As long as clients name the superclass and it stays in place, you can add, remove, or change the subclasses freely. Class hierarchies handle this maintenance problem better than a tuple of names does.
+
+### Built-in exception classes
+
+The built-in exceptions follow the same pattern. Every exception Python raises on its own is a predefined class. Names such as `SyntaxError` are really classes that live in the `builtins` module. Python groups them into a shallow hierarchy, with general categories above specific types.
+
+| Class | Role |
+| --- | --- |
+| `BaseException` | Topmost root. Provides default printing and state retention. Your classes should not inherit from it directly. |
+| `Exception` | Root of user-defined exceptions. Nearly all of your classes should inherit from it. |
+| `ArithmeticError` | Root of numeric errors. Its subclasses are `OverflowError`, `ZeroDivisionError`, and `FloatingPointError`. |
+| `LookupError` | Root of indexing errors for sequences and mappings. Its subclasses are `IndexError` and `KeyError`. |
+| `OSError` | Root of I/O and other system-function errors. It has attributes such as `errno`, `strerror`, and `filename`. |
+
+`Exception` is the superclass of every built-in exception except the system exit classes. Those are `SystemExit`, `KeyboardInterrupt`, and `GeneratorExit`. The set of built-in exceptions changes over time, so the Python documentation has the complete list.
+
+### Built-in exception categories
+
+The built-in tree lets you choose how specific a handler should be. `ArithmeticError` is the superclass of numeric errors such as `OverflowError` and `ZeroDivisionError`. Listing `ArithmeticError` in a `try` catches any numeric error. Listing `ZeroDivisionError` catches only that one kind.
+
+`Exception` works as a broad catchall for application-level exceptions. It behaves much like an empty `except`, but system exit exceptions pass through as they should:
+
+```python
+try:
+    ...
+except Exception: # Exits not caught here
+    ...handle all application exceptions...
+else:
+    ...handle no-exception case...
+```
+
+This technique is reliable, because Python requires all classes to derive from built-in exceptions. It still shares the pitfalls of the empty `except` from the previous section. It can catch exceptions meant for other code, and it can hide real programming errors. The next chapter returns to this as a gotcha.
+
+### Default printing and state
+
+Built-in exceptions also provide printing and state retention by default. In many cases, that is all a user-defined class needs. Unless you redefine the constructor, any arguments you pass are saved in the instance's `args` tuple. The same arguments appear when the instance is printed.
+
+An empty `args` tuple and display string are used when no arguments are passed. A single argument displays as itself, not as a tuple, and it serves as the message details. Here is how that looks at the interactive prompt:
+
+```text
+>>> raise IndexError # Same as IndexError(): no arguments
+Traceback (most recent call last):
+File "<stdin>", line 1, in <module>
+IndexError
+>>> raise IndexError('bad') # Constructor argument attached, printed
+Traceback (most recent call last):
+File "<stdin>", line 1, in <module>
+IndexError: bad
+>>> i = IndexError('bad', 'stuff') # Available in object attribute "args"
+>>> i.args
+('bad', 'stuff')
+>>> print(i) # Displays args when printed manually
+('bad', 'stuff')
+>>> i # Uses repr for echo, str for print
+IndexError('bad', 'stuff')
+```
+
+User-defined exceptions behave the same way, because they inherit these methods from their built-in superclass:
+
+```text
+>>> class E(Exception): pass
+>>> raise E
+Traceback (most recent call last):
+File "<stdin>", line 1, in <module>
+E
+>>> raise E('bad')
+Traceback (most recent call last):
+File "<stdin>", line 1, in <module>
+E: bad
+>>> i = E('bad', 'stuff')
+>>> i.args
+('bad', 'stuff')
+>>> print(i)
+('bad', 'stuff')
+>>> i
+E('bad', 'stuff')
+```
+
+A `try` statement gives you the instance, so you can read both the original arguments and the display text:
+
+```text
+>>> try:
+...     raise E('bad') # Displays + saves constructor args
+... except E as X:
+...     print(f'{X} - {X.args} - {X!r}')
+...
+bad - ('bad',) - E('bad')
+>>> try:
+...     raise E('bad', 'stuff') # Multiple args save/display a tuple
+... except E as X:
+...     print(f'{X} - {X.args} - {X!r}')
+...
+('bad', 'stuff') - ('bad', 'stuff') - E('bad', 'stuff')
+```
+
+An exception instance is not a string itself. It uses the `__str__` and `__repr__` methods to provide display text. To join it with real strings, convert it first, with `str(X)`, `'%s' % X`, or `f'{X}'`. If you need more control over display or stored state, you can redefine methods such as `__str__` and `__init__` in your subclasses.
+
+### Custom print displays
+
+By default, an instance shows the value you passed to its constructor when you catch and print it:
+
+```text
+>>> class MyBad(Exception): pass
+>>> try:
+...     raise MyBad('Sorry--my mistake!')
+... except MyBad as X:
+...     print(X)
+...
+Sorry--my mistake!
+```
+
+The same default text appears in an error message when the exception is not caught:
+
+```text
+>>> raise MyBad('Sorry--my mistake!')
+Traceback (most recent call last):
+File "<stdin>", line 1, in <module>
+MyBad: Sorry--my mistake!
+```
+
+For a custom display, define `__repr__` or `__str__` in your class. The string the method returns is shown when the exception is printed or reaches the default handler:
+
+```text
+>>> class MyBad(Exception):
+...     def __str__(self):
+...         return 'Stuff happens...'
+>>> try:
+...     raise MyBad()
+... except MyBad as X:
+...     print(X)
+...
+Stuff happens...
+>>> raise MyBad()
+Traceback (most recent call last):
+File "<stdin>", line 1, in <module>
+MyBad: Stuff happens...
+```
+
+The method can return a fixed string, as it does here. It can also process text and use state stored on the instance.
+
+You usually must redefine `__str__`, not `__repr__`. The built-in superclasses already have a `__str__` method. In some contexts, including error messages, `__str__` is preferred over `__repr__`. If you define only `__repr__`, the printed message still uses the built-in `__str__`:
+
+```text
+>>> class Oops(Exception):
+...     def __repr__(self): return 'Custom display not used'
+>>> raise Oops("Nobody's perfect")
+...
+Oops: Nobody's perfect
+```
+
+A custom `__str__` takes effect:
+
+```text
+>>> class Oops(Exception):
+...     def __str__(self): return 'Custom display used'
+>>> raise Oops("Nobody's perfect")
+...
+Oops: Custom display used
+```
+
+### Custom state and behavior
+
+Exception classes can store extra state as instance attributes. The built-in constructor saves its arguments in the `args` tuple, which is enough for many cases. For more specific needs, you can write your own constructor. A class can also define methods that handlers call to run exception-specific logic.
+
+### Providing exception details
+
+An exception may cross file boundaries. The `raise` can live in one module, and the `try` that catches it can live in another. Global variables are a poor place for extra details, because the `try` may not know which file holds them. Storing details on the exception itself gives the handler a reliable path to that data.
+
+Classes make this almost automatic. Python passes the raised instance along with the exception. The `as` name in an `except` clause gives your handler access to it. Here, a parser reports a formatting error with a line number and a file name:
+
+```text
+>>> class FormatError(Exception):
+...     def __init__(self, line, file): # Custom constructor
+...         self.line = line
+...         self.file = file
+>>> def parser(file): # Parse the file first
+...     raise FormatError(62, file=file) # When an error is found
+>>> try:
+...     parser('code.py')
+... except FormatError as X:
+...     print(f'Error at: {X.file} #{X.line}') # Custom state info
+...
+Error at: code.py #62
+```
+
+The default constructor can do a simpler version of the same job. It stores the values as positional arguments in `args`. Keyword arguments are not allowed with that default:
+
+```text
+>>> class FormatError(Exception): pass # Inherited constructor
+>>> def parser(file):
+...     raise FormatError(file, 62) # No keywords allowed!
+>>> try:
+...     parser('code.py')
+... except FormatError as X:
+...     print(f'Error at: {X.args[0]} #{X.args[1]}') # Generic state info
+...
+Error at: code.py #62
+```
+
+### Providing exception methods
+
+Classes can also add behavior to exception objects. An exception class can define its own methods, and handlers can call them. The file `parsely.py` adds a method that uses the stored state to log errors to a file:
+
+```python
+from time import asctime
+class FormatError(Exception):
+    logfile = 'parser-errors.txt'
+    def __init__(self, line, file):
+        self.line = line
+        self.file = file
+    def logerror(self):
+        with open(self.logfile, 'a') as log:
+            print(f'Error at: {self.file} #{self.line} [{asctime()}]', file=log)
+def parser(file):
+    # Parse a file here...
+    raise FormatError(line=62, file=file)
+if __name__ == '__main__':
+    try:
+        parser('code.py')
+    except FormatError as exc:
+        exc.logerror()
+```
+
+Each run appends one message to the log file. On Windows, use `type` instead of `cat` to see the file:
+
+```text
+$ python3 parsely.py
+$ python3 parsely.py
+$ cat parser-errors.txt
+Error at: code.py #62 [Sat Jul 13 12:22:19 2024]
+Error at: code.py #62 [Sat Jul 13 12:22:25 2024]
+```
+
+Methods such as `logerror` can be inherited from a superclass. The attributes `line` and `file` keep state for later method calls. A subclass can also change the behavior. The method below replaces the parent's `logerror` for its own instances:
+
+```python
+class CustomFormatError(FormatError):
+    def logerror(self):
+        ...something unique here...
+...
+raise CustomFormatError(...)
+...
+try:
+    ...
+except FormatError as exc:
+    exc.logerror() # Runs the raised class's version
+```
+
+Because these classes are ordinary classes, the object-oriented ideas from earlier parts of the handbook apply to exceptions as well.
+
+Two more notes apply here. The instance bound to `exc` is also the second item from `sys.exc_info()`. You can use that call when your `except` clause has no name but you still need the exception. The `logerror` method writes a custom message. It could instead produce Python's standard error message with a stack trace, using the `traceback` standard-library module.
+
+## Exception groups
+
+Python 3.11 added exception groups and the `except*` clause. Most learners can treat this as an optional topic. It is useful to know that the feature exists, even if you rarely write it.
+
+A normal `try` statement runs at most one matching handler, plus an optional `finally`:
+
+```text
+>>> try:
+...     raise IndexError()
+... except IndexError:
+...     print('Got IE')
+... except (SyntaxError, TypeError):
+...     print('Got SE')
+...
+Got IE
+```
+
+Python 3.11 can run several matching handlers in one `try`. You wrap the exceptions in an exception group and catch them with `except*` clauses:
+
+```text
+>>> try:
+...     raise ExceptionGroup('Many', [IndexError(), SyntaxError()])
+... except* IndexError:
+...     print('Got IE')
+... except* (SyntaxError, TypeError):
+...     print('Got SE')
+...
+Got IE
+Got SE
+```
+
+Each `except*` clause can process one exception, or one batch of them, from the group. Here the first clause handles `IndexError`, and the second handles `SyntaxError`. A tuple still means "any of these." The group is an exception object made by calling the built-in `ExceptionGroup` class. It takes a label for displays and a sequence of exceptions to match.
+
+Some syntax rules apply, and they are stricter than the rules for a plain `try`. An empty `except*` is not allowed. A basic `except` cannot be mixed with `except*`. An `else` and a `finally` can be used with it. A `break`, `continue`, or `return` cannot appear inside an `except*` clause, although a basic `except` allows them.
+
+The matching rules are also specific. Each `except*` clause runs at most once. It consumes all matching exceptions in the group. Each exception is handled by only one clause, the topmost clause that matches it. Any unmatched exceptions are raised again after the `try` finishes matching. The `as` name receives a group, and the `exceptions` attribute exposes its contents:
+
+```text
+>>> excs = ExceptionGroup('Many', [IndexError(), SyntaxError(), TypeError()])
+>>> try:
+...     raise excs
+... except* IndexError as E:
+...     print(f'Got IE: {E} => {E.exceptions}')
+... except* SyntaxError as E:
+...     print(f'Got SE: {E} => {E.exceptions}')
+...
+Got IE: Many (1 sub-exception) => (IndexError(),)
+Got SE: Many (1 sub-exception) => (SyntaxError(),)
+  + Exception Group Traceback (most recent call last):
+  | File "<stdin>", line 2, in <module>
+  | ExceptionGroup: Many (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | TypeError
+    +------------------------------------
+```
+
+When a group holds several exceptions of the same type, one matching `except*` consumes them all. You can then loop over them in ordinary code. Spaces around the `*` are allowed and ignored:
+
+```text
+>>> try:
+...     raise ExceptionGroup('Dups', [IndexError(), TypeError(1), TypeError(2)])
+... except *IndexError:
+...     print('Got IE')
+... except *TypeError as E:
+...     print(f'Got TE: {E} => {E.exceptions}')
+...
+Got IE
+Got TE: Dups (2 sub-exceptions) => (TypeError(1), TypeError(2))
+```
+
+Matching follows the same class rules as before. A clause matches its named class or any superclass. Because the first match wins and removes exceptions from the group, clause order matters. In the next example, the first clause takes `IndexError` through its `LookupError` superclass, along with both `TypeError` values:
+
+```text
+>>> try:
+...     raise ExceptionGroup('Dups', [IndexError(), TypeError(1), TypeError(2)])
+... except* (TypeError, LookupError) as E:
+...     print('Got1:', E)
+... except* IndexError as E:
+...     print('Got2:', E)
+...
+Got1: Dups (3 sub-exceptions)
+```
+
+Reversing the two clauses would handle `IndexError` separately.
+
+An `except*` can also match a single exception. Python wraps it in a group so the handler can use group-based code:
+
+```text
+>>> try:
+...     raise IndexError
+... except* IndexError as E:
+...     print(f'Got IE: {E} => {E.exceptions}')
+...
+Got IE: (1 sub-exception) => (IndexError(),)
+```
+
+A basic `except` can catch a whole group and process it by hand. An `except*` cannot catch a group, because that would be ambiguous:
+
+```text
+>>> try:
+...     raise ExceptionGroup('Lots', [IndexError(), SyntaxError()])
+... except ExceptionGroup as E:
+...     print(f'Got group: {E} => {E.exceptions}')
+...     for exc in E.exceptions:
+...         print('With exc:', type(exc))
+...
+Got group: Lots (2 sub-exceptions) => (IndexError(), SyntaxError())
+With exc: <class 'IndexError'>
+With exc: <class 'SyntaxError'>
+```
+
+A catchall works in both models. There is no real reason to use `except*` for a single exception, though:
+
+```text
+>>> try:
+...     raise ExceptionGroup('Dups', [IndexError()])
+... except* Exception as E:
+...     print(type(E.exceptions[0]))
+...
+<class 'IndexError'>
+>>> try:
+...     raise IndexError()
+... except Exception as E:
+...     print(type(E))
+...
+<class 'IndexError'>
+```
+
+The next chapter shows how groups pass through nested handlers. Groups propagate until they are empty, then they behave like single exceptions. Many programmers find the extra syntax hard to justify. Groups are rarely needed, and a normal exception object with normal iteration can often carry a batch of errors. Decide for yourself whether a project needs them.
+
+Exception groups are an obscure tool with narrow roles. The Python documentation covers this `try` extension in more detail. The special cases above also make `except*` feel like a separate statement form. Adding it to `try` makes that statement a mix of related but different jobs.
+
+## Exception objects summary
+
+Exceptions are implemented as class instance objects. Exception classes support hierarchies that ease maintenance. They let you attach data and behavior to exceptions as instance attributes and methods. They can also inherit tools from superclasses, as usual in object-oriented programming.
+
+A `try` statement that catches a superclass also catches every subclass below it. Superclasses act as exception category names, and subclasses act as more specific exception types within those categories. The built-in superclasses you must inherit from provide usable printing and state retention. You can override those defaults when you need to.
+
+Exception groups and `except*` let one `try` run several handlers. We questioned whether this extension's convolution of `try` statements is justified by its roles. Whether that extra complexity is justified is a question you must answer for your own code. It is a lot to ask of most Python users, so learn the basic exception classes first.
+
+## Unicode and byte strings
+
+Earlier in this part, the string story was kept simple on purpose, so you could get started quickly. This section widens it to full Unicode text and to binary data. Python handles both with its string types, and the difference matters as soon as your data leaves the simple ASCII world.
+
+How much of this you need depends on your work. If you handle non-ASCII text, such as internet content, internationalized applications, XML parsers, or some GUIs, Python's `str` type and its Unicode-aware text files support you directly. If you handle binary data, such as image or audio files, network transfers, or packed data shared with lower-level tools, you need the `bytes` type and a clear line between text and binary.
+
+If you need neither, you can keep using strings as before. Python still encodes and decodes your text with your platform's default, and you will rarely notice. You will notice when content or a machine uses a different default. Plain ASCII text is the easy case, because ASCII is a subset of many common encodings.
+
+### Character representations
+
+Most programmers picture a string as a series of characters. Underneath, each character is stored as an integer code. Unicode keeps that picture, but the way characters are stored in memory and files depends on which characters you use and how you record them.
+
+For many programmers in the US, ASCII shaped their first idea of text. ASCII defines codes 0 to 127, so each character fits in one 8-bit byte, even though only 7 bits are used. The character `a` maps to 97, which is `0x61` in hex. Three built-in functions show these values:
+
+```text
+$ python3 # Or py -3 on Windows
+>>> ord('a') # Character => code
+97
+>>> chr(97) # Code => character
+'a'
+>>> hex(97) # Byte value: fits 8 bits
+'0x61'
+>>> 0b0111_1111 # Limit of ASCII's 7-bit range
+127
+```
+
+The function `ord` returns a character's code, `chr` returns the character for a code, and `hex` shows the code as two hex digits. Each hex digit covers a 4-bit "nibble," so two digits fit in one byte. ASCII makes text simple because each character maps directly to one byte.
+
+ASCII has a limit, though. Accented characters and special symbols fall outside codes 0 to 127. Some older standards used all 256 values of one byte and assigned codes 128 to 255 to extra characters. Latin-1 is one of them, and it is widely used in Western Europe. Its code 196, which is byte value `0xc4`, is the accented character `Ä`:
+
+```text
+>>> chr(196) # Too big for ASCII
+'Ä'
+>>> ord('Ä') # Okay for Latin-1
+196
+>>> hex(ord('Ä')) # Byte value in Latin-1
+'0xc4'
+>>> bin(ord('Ä')) # Latin-1 uses all 8 bits
+'0b11000100'
+```
+
+Some alphabets and symbol sets define far more characters than one byte can hold. The character `☞` has the code 9758, which is `0x261e` in hex, and that is too big for one byte. Emoji follow the same rule and need more than two bytes of code space. Unicode provides codes for almost every natural language, plus many symbols and emoji:
+
+```text
+>>> ord('☞')
+9758
+>>> hex(ord('☞')) # Too big for one byte
+'0x261e'
+>>> [hex(ord(c)) for c in '\U0001f642\U0001f64a\U0001f44d'] # Emojis: > two bytes
+['0x1f642', '0x1f64a', '0x1f44d']
+```
+
+In Unicode terms, these integer codes are called code points. The code points for `a`, `Ä`, and the smiling emoji `\U0001f642` are 97, 196, and 128578. In hex, they are `0x61`, `0xc4`, and `0x1f642`. Unicode is sometimes called a wide-character model, because one character code may need several bytes.
+
+Inside computer memory, a wide character can span as many bytes as its code point needs. Once text leaves your program, storage and networks need a tighter format. Unicode defines standard ways to map code points to bytes and back. These mappings are called encodings, and they are the subject of the next part.
+
+Unicode's takeaway is simple. Its code points cover almost every character, and its encodings make text portable. Older schemes such as ASCII fit under the Unicode umbrella without change.
+
+### Character encodings
+
+Code points in memory are integers of any size. Storing and sending text imposes limits on time, space, and compatibility, so text needs an extra formatting step. That step is an encoding.
+
+Two terms describe the translation in both directions. Encoding turns a string of characters into raw bytes, using any encoding broad enough to hold those characters. Decoding turns raw bytes back into a string, using the same encoding that created the bytes. Encoding and decoding are the two halves of one round trip.
+
+Some encodings are trivial. ASCII and Latin-1 map each character to a single byte, so the work is almost nothing. You can see this with the `encode` method, which every Python text string has. The method returns the bytes that represent the string in a chosen encoding:
+
+```text
+>>> len('a'.encode('ASCII')) # ASCII 'a' encodes in 1 byte per ASCII
+1
+```
+
+Other encodings can use several bytes per character. UTF-8 is the most common, because it can represent every Unicode code point with a variable number of bytes. That makes it a de facto standard for text on the internet. In UTF-8, codes below 128 take one byte. Codes from 128 up to `0x7ff` (2047) take two bytes, and larger codes take three or four bytes.
+
+This design keeps simple ASCII text compact. It also avoids zero bytes, which can cause trouble for C libraries and network code. Here is the byte count for three kinds of character:
+
+```text
+>>> len('a'.encode('UTF-8')) # ASCII: encodes in 1 byte
+1
+>>> len('Ä'.encode('UTF-8')) # Non-ASCII: encodes in 2 bytes
+2
+>>> len('\U0001f642'.encode('UTF-8')) # Emoji: encodes in 4 bytes
+4
+```
+
+ASCII is a subset of Latin-1 and UTF-8. Both encodings store ASCII characters as the same single byte that ASCII uses. That means ASCII text is also valid Latin-1 text and valid UTF-8 text. The reverse does not hold, because Latin-1 or UTF-8 text with higher code points fails to encode as ASCII.
+
+The mapping is easy to see in Python. ASCII characters produce identical bytes in ASCII, UTF-8, and Latin-1. Non-ASCII characters need more bytes, and some encodings cannot represent them at all:
+
+```text
+>>> 'a'.encode('ASCII') # ASCII encodes to the same byte
+b'a'
+>>> 'a'.encode('UTF-8')
+b'a'
+>>> 'a'.encode('Latin-1')
+b'a'
+>>> 'Ä'.encode('UTF-8') # But non-ASCII requires more bytes
+b'\xc3\x84'
+>>> '\U0001f642'.encode('UTF-8') # And more inclusive encodings
+b'\xf0\x9f\x99\x82'
+>>> '\U0001f642'.encode('ASCII')
+UnicodeEncodeError: 'ascii' codec can't encode character '\U0001f642'...
+>>> '\U0001f642'.encode('Latin-1')
+UnicodeEncodeError: 'latin-1' codec can't encode character '\U0001f642'...
+```
+
+Other encodings take their own approach. UTF-16 uses two bytes per character, and UTF-32 uses four. UTF-16 adds a surrogate-pair scheme for codes that do not fit in two bytes. Some of these encodings also write a byte order mark (BOM) at the start of the encoded text. The BOM can show byte order and encoding type, and Python's text-mode files handle it for you.
+
+Every one of these encodings, including ASCII, Latin-1, and UTF-8, yields the same code points when decoded. The encoding only changes the bytes on disk or on the wire. When text is decoded, its code points may take one, two, or four bytes in memory, depending on the Python version and the content. Once encoded, the bytes follow the standard format for that encoding, no matter which language wrote them.
+
+An encoding is named by a string, such as `'utf-8'` or `'latin-1'`. Python ships with roughly 100 encodings. The `codecs` module in the Python Library Reference lists them, and `help(encodings)` shows many more. Some names are aliases, so `latin-1`, `iso_8859_1`, and `8859` all refer to Latin-1.
+
+### The three string types
+
+Python has three string-like types, and each has a clear job. `str` holds Unicode text as decoded code points. `bytes` holds binary data, including text that has already been encoded. `bytearray` is a mutable version of `bytes`.
+
+The `str` type is an immutable sequence of characters. Its content can be simple ASCII, where one character is one byte once encoded, or richer Unicode text, where one character may need several bytes. In memory, a `str` is just a list of code points. It has no notion of an encoding. Only when it moves to a file or network does Python encode it, using the platform default or a name you give.
+
+The `bytes` type is an immutable sequence of 8-bit integers. It holds raw bytes, which may be image data, packed records, or encoded text with an implied encoding. Most of the operations that `str` supports also work on `bytes`. This includes string methods, sequence operations, and the `re` pattern-matching module. Indexing a `bytes` gives back an integer, and slicing gives back another `bytes`.
+
+When a `bytes` value holds byte values in the ASCII range, Python prints those values as ASCII characters, not as integers. This is a convenience, but it can blur the line between text and binary data. Operations that assume characters, such as `isalpha`, treat the bytes as ASCII-encoded data.
+
+The `bytearray` type is a mutable variant of `bytes`. It supports the string methods and sequence operations of `bytes`, and it also has in-place change methods from lists, such as `append` and `extend`. Use it when you need to change binary data in place without building new copies.
+
+### Text and binary files
+
+File input and output is where encodings matter most. Text is only decoded integer codes while it sits in memory. Encodings come into play when text moves to or from an external source such as a file. Binary data may have nothing to do with encodings or text at all.
+
+Python makes a sharp, platform-independent split between text and binary files. Both are opened with the built-in `open` function, and the mode string decides which kind you get. A text-mode file decodes content when you read it and encodes content when you write it. It uses either the platform default or an `encoding` argument you pass. Text-mode files also handle newline translation and BOMs.
+
+A binary-mode file does none of that. Adding `b` to the mode string makes the file binary. Reads return the raw bytes as a `bytes` object, with no decoding and no newline mapping. Writes accept a `bytes` object, and binary-mode files also accept a `bytearray` object.
+
+The mode decides the object type. Choose `str` and text mode for content that is textual, such as program output, HTML, JSON, CSV, or XML. Choose `bytes` and binary mode for image or audio files, packed data from other programs, and device data streams. For example, the modes `rb`, `wb`, and `rb+` use `bytes`, while `r`, `w+`, and `rt` use `str`. The default mode is `rt`.
+
+### Literals and basic properties
+
+Most string objects come from one of three places: a call to `str` or `bytes`, a file opened with `open`, or a literal in your code. The usual `'…'` and `"…"` forms, and triple-quoted blocks, create a `str`. Adding a `b` or `B` in front creates a `bytes` instead. The `bytes` literal behaves like a raw string in one way, because you can combine the `b` and `r` prefixes to keep backslashes as typed.
+
+```text
+>>> B = b'code' # Make a bytes object: 8-bit bytes
+>>> S = 'hack' # Make a str object: Unicode characters
+>>> type(B), type(S)
+(<class 'bytes'>, <class 'str'>)
+>>> B # Sequence of ints, prints as ASCII characters
+b'code'
+>>> S # Sequence of code points, prints as text glyphs
+'hack'
+>>> B2 = B"""
+... xxxx
+... yyyy
+... """
+>>> B2
+b'\nxxxx\nyyyy\n'
+>>> b'A\nB\rC', br'A\nB\rC', rb'A\nB\rC' # Raw-string combos work too
+(b'A\nB\rC', b'A\\nB\\rC', b'A\\nB\\rC')
+```
+
+Once you have a string, the usual operations work. Their results depend on the type. Indexing a `bytes` gives an integer, while indexing a `str` gives a character. Both types are immutable, so neither supports item assignment:
+
+```text
+>>> B, S
+(b'code', 'hack')
+>>> B[0], S[0] # Indexing returns an int for bytes, str for str
+(99, 'h')
+>>> B[1:], S[1:] # Slicing makes another bytes or str
+(b'ode', 'ack')
+>>> list(B), list(S)
+([99, 111, 100, 101], ['h', 'a', 'c', 'k'])
+>>> B[0] = 'x' # Both are immutable
+TypeError: 'bytes' object does not support item assignment
+>>> S[0] = 'x'
+TypeError: 'str' object does not support item assignment
+```
+
+Python 3 also accepts the Python 2 `u'…'` literal, so older code still runs. In Python 3, that literal is just another spelling of a normal `str`. There is no good reason to write it in new code, but you may see it in older programs.
+
+### String type conversions
+
+The `str` and `bytes` types never mix on their own. They are not converted automatically in expressions or when passed to functions. An operator that expects one type rejects the other, and a function that expects `str` may reject `bytes`.
+
+```text
+>>> 'hack' + b'code'
+TypeError: can only concatenate str (not "bytes") to str
+```
+
+The reason is that a `bytes` value may be encoded text, with an encoding Python cannot know. It may also be binary data, such as an audio file, that has nothing to do with text. Python will not guess, so you must choose a type or convert on purpose. The conversion tools are these:
+
+- `S.encode(encoding?)` and `bytes(S, encoding)` encode a `str` object `S` into a new `bytes` object using `encoding`.
+- `B.decode(encoding?)` and `str(B, encoding)` decode a `bytes` object `B` into a new `str` object using `encoding`.
+
+The question mark means the encoding argument is optional for the method form. The method defaults are UTF-8, so `S.encode()` and `B.decode()` use UTF-8 when you leave the name out. The `open` function uses a different default, which comes from the `locale` module and can vary by platform.
+
+```text
+>>> S = 'hack'
+>>> S.encode() # str to bytes: encode text into raw bytes
+b'hack'
+>>> bytes(S, encoding='ascii') # str to bytes, alternative
+b'hack'
+>>> B = b'code'
+>>> B.decode() # bytes to str: decode raw bytes into text
+'code'
+>>> str(B, encoding='ascii') # bytes to str, alternative
+'code'
+```
+
+With conversions, you can combine the two types on purpose. Encode one side, or decode the other, and the types then match:
+
+```text
+>>> S, B
+('hack', b'code')
+>>> S.encode('ascii') + B # bytes + bytes (encoded)
+b'hackcode'
+>>> S + B.decode('ascii') # str + str (code points)
+'hackcode'
+```
+
+Two defaults deserve caution. The `encoding` argument to `bytes` is required, even though it is optional for `S.encode()` and `B.decode()`. The `str` constructor does not require it, but calling `str(B)` without an encoding returns the printed form of the bytes, not the decoded text. That is usually not what you want.
+
+```text
+>>> bytes(S)
+TypeError: string argument without an encoding
+>>> str(B) # str() works without encoding
+"b'code'" # But print string, not conversion!
+>>> len(str(B))
+7
+>>> len(str(B, encoding='ascii')) # Pass encoding to convert to str
+4
+```
+
+Your platform's default encodings are available through the `sys` and `locale` modules. They are less dependable than they look. On a Windows PC, the `open` default is `cp1252`, which is a superset of Latin-1 that adds characters such as curly quotes. On macOS and most Unix systems, the same `open` default is `utf-8`:
+
+```text
+$ py -3
+>>> import sys, locale
+>>> sys.platform # Underlying platform: Windows
+'win32'
+>>> sys.getdefaultencoding() # Methods default (but not for str()!)
+'utf-8'
+>>> locale.getpreferredencoding(False) # open() default: a Latin-1 superset
+'cp1252'
+```
+
+```text
+$ python3
+>>> import sys, locale
+>>> sys.platform # Underlying platform: macOS
+'darwin'
+>>> sys.getdefaultencoding() # The default for methods is same
+'utf-8'
+>>> locale.getpreferredencoding(False) # But this differs on Unix: be explicit!
+'utf-8'
+```
+
+Defaults can also depend on environment variables, command-line arguments, and host settings. Text from other sources may use any encoding at all. For that reason, do not rely on `open` defaults when portability matters. Always pass an explicit encoding to `open` when files must work across hosts.
+
+Encoding and decoding are more than type conversions. They produce different kinds of data. Encoding returns the bytes that represent text under a scheme, and decoding returns the text that those bytes represent. For plain ASCII the mapping looks trivial, but for richer text the difference is real.
+
+### Coding Unicode strings in Python
+
+Encoding and decoding become more useful with non-ASCII text. Some characters are hard to type on a keyboard. Python string literals provide two kinds of escape for those characters:
+
+- `\xNN` hex escapes, where two hex digits give a one-byte (8-bit) code.
+- `\uNNNN` and `\UNNNNNNNN` Unicode escapes. The lowercase `\u` form takes four hex digits for a two-byte (16-bit) code, and the uppercase `\U` form takes eight hex digits for a four-byte (32-bit) code.
+
+In a `str`, all three escapes give a code point, not the encoded bytes. In a `bytes` literal, only the hex escapes work, and they give raw byte values. Simple ASCII characters are one byte each in most encodings, which is why ASCII works as a binary-compatible subset.
+
+```text
+>>> ord('X') # Character 'X' has code-point value 88
+88
+>>> chr(88) # Code-point 88 stands for character 'X'
+'X'
+>>> S = 'XYZ' # str: code points display as their character glyphs
+>>> S
+'XYZ'
+>>> len(S) # 3 characters (not necessarily bytes) long
+3
+>>> S.encode('ascii') # Values 0…127 in 1 byte each (ASCII shown as chars)
+b'XYZ'
+>>> S.encode('latin-1') # Values 0…255 in 1 byte each
+b'XYZ'
+>>> S.encode('utf-8') # Values 0…127 in 1 byte, 128…2047 in 2, others 3~4
+b'XYZ'
+```
+
+UTF-16 and UTF-32 use two and four bytes for every character, even for plain ASCII. Their data is fast to process, but it takes more space and bandwidth. In the output below, ASCII bytes print as characters, and each result starts with a BOM header of two or four bytes:
+
+```text
+>>> S
+'XYZ'
+>>> S.encode('utf-16') # Always 2 or 4 bytes per character, with BOM header
+b'\xff\xfeX\x00Y\x00Z\x00'
+>>> S.encode('utf-32')
+b'\xff\xfe\x00\x00X\x00\x00\x00Y\x00\x00\x00Z\x00\x00\x00'
+```
+
+Non-ASCII characters use escapes in the same way. The hex literals `0xC4` and `0xE8` are code points for two accented characters outside ASCII. A `str` can hold them, because `str` supports all of Unicode:
+
+```text
+>>> chr(0xc4) # 0xC4 and 0xE8 are accented characters outside ASCII
+'Ä'
+>>> chr(0xe8)
+'è'
+>>> S = '\xc4\xe8' # Hex escapes: code-point values, not encoded bytes
+>>> S
+'Äè'
+>>> S = 'Äè' # Unicode escapes: 16-bits (2-bytes)
+>>> S
+'Äè'
+>>> len(S) # 2 characters long (not number of bytes!)
+2
+```
+
+Encoding that string shows the byte cost of each encoding. ASCII fails. Latin-1 uses one byte per character, and UTF-8 uses two:
+
+```text
+>>> S = 'Äè'
+>>> S.encode('ascii')
+UnicodeEncodeError: 'ascii' codec can't encode characters in position 0-1:
+ordinal not in range(128)
+>>> S.encode('latin-1') # 1 byte per character
+b'\xc4\xe8'
+>>> S.encode('utf-8') # 2 bytes per character
+b'\xc3\x84\xc3\xa8'
+>>> len(S.encode('latin-1')) # 2 bytes in latin-1, 4 in utf-8
+2
+>>> len(S.encode('utf-8'))
+4
+```
+
+The reverse trip works too. You can decode raw bytes to a `str`. You can read the bytes by hand and decode them, but the encoding you pass to `open` does the same decoding for you. That also avoids errors from reading part of a multibyte character when you read in chunks:
+
+```text
+>>> B = b'\xc4\xe8'
+>>> B
+b'\xc4\xe8'
+>>> len(B) # 2 raw bytes, 2 characters
+2
+>>> B.decode('latin-1') # Decode to latin-1 text
+'Äè'
+>>> B = b'\xc3\x84\xc3\xa8'
+>>> len(B) # 4 raw bytes
+4
+>>> B.decode('utf-8')
+'Äè'
+>>> len(B.decode('utf-8')) # 2 Unicode characters
+2
+```
+
+You can also build a `str` piece by piece with `chr`, though that gets tedious for long text. The `\u` and `\U` escapes are usually simpler:
+
+```text
+>>> S = 'AÄB\U000000e8C'
+>>> S # A, B, C, and 2 non-ASCII characters
+'AÄBèC'
+>>> len(S) # 5 characters long
+5
+>>> S.encode('latin-1')
+b'A\xc4B\xe8C'
+>>> len(S.encode('latin-1')) # 5 bytes in latin-1
+5
+>>> S.encode('utf-8')
+b'A\xc3\x84B\xc3\xa8C'
+>>> len(S.encode('utf-8')) # 7 bytes in utf-8
+7
+>>> S.encode('cp500') # Two other Western European encodings
+b'\xc1c\xc2T\xc3'
+>>> S.encode('cp850') # 5 bytes each
+b'A\x8eB\x8aC'
+>>> S = 'code' # ASCII text is the same in most
+>>> S.encode('latin-1')
+b'code'
+>>> S.encode('utf-8')
+b'code'
+>>> S.encode('cp500') # But not in cp500: IBM ebcdic
+b'\x83\x96\x84\x85'
+>>> S.encode('cp850')
+b'code'
+>>> S = 'A' + chr(0xC4) + 'B' + chr(0xE8) + 'C' # str the hard way
+>>> S
+'AÄBèC'
+```
+
+Python gives a warning when you use Unicode escapes in a `bytes` literal. In `bytes`, a `\u` sequence is taken literally, not as an escape. This follows from what `bytes` holds: encoded bytes, not code points. Even when a code point and an encoded byte share a value in some encoding, the two remain different things.
+
+```text
+>>> S = 'A\xC4B\xE8C' # str recognizes hex and Unicode escapes
+>>> S
+'AÄBèC'
+>>> S = 'AÄB\U000000E8C' # 4- and 8-digit Unicode escapes (str only)
+>>> S
+'AÄBèC'
+>>> B = b'A\xC4B\xE8C' # bytes recognizes hex escapes, but not Unicode
+>>> B
+b'A\xc4B\xe8C'
+>>> B = b'AÄB\U000000E8C' # Unicode escape sequences taken literally!
+<stdin>:1: SyntaxWarning: invalid escape sequence '\u'
+>>> B # bytes is encoded bytes, not code points
+b'A\\u00C4B\\U000000E8C'
+>>> B = b'A\xC4B\xE8C' # Use hex escapes for latin-1 bytes
+>>> B # Prints non-ASCII bytes as hex
+b'A\xc4B\xe8C'
+>>> print(B) # For both interactive and print()
+b'A\xc4B\xe8C'
+>>> B.decode('latin-1') # Decode to str to interpret as text
+'AÄBèC'
+```
+
+A `bytes` literal must hold ASCII characters, or use escapes for byte values above 127. A `str` literal can hold any character that the source file's encoding supports. Python reads source code as UTF-8 by default.
+
+```text
+>>> S = 'AÄBèC' # Chars from UTF-8 if no encoding declaration
+>>> S # Decoded to str when code is read by Py
+'AÄBèC'
+>>> B = b'AÄBèC'
+SyntaxError: bytes can only contain ASCII literal characters.
+>>> B = b'A\xC4B\xE8C' # Chars must be ASCII, or hex escapes
+>>> B # Non-ASCIIs are latin-1 encoded bytes
+b'A\xc4B\xe8C'
+>>> B.decode('latin-1')
+'AÄBèC'
+>>> S.encode() # Source code encoded per UTF-8 by default
+b'A\xc3\x84B\xc3\xa8C' # Methods use UTF-8 to encode, unless passed
+>>> S.encode('utf-8')
+b'A\xc3\x84B\xc3\xa8C'
+>>> B.decode() # Raw bytes do not correspond to utf-8
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0xc4 in position 1:…
+```
+
+Round trips between encodings keep the same code points. Here `cp500` is an IBM EBCDIC encoding. Encoding to it and decoding back returns the same text, and encoding that text to UTF-8 gives the original bytes again:
+
+```text
+>>> S = 'AÄBèC'
+>>> S.encode() # Method's default utf-8 encoding
+b'A\xc3\x84B\xc3\xa8C'
+>>> T = S.encode('cp500') # "Convert" to EBCDIC bytes
+>>> T
+b'\xc1c\xc2T\xc3'
+>>> U = T.decode('cp500') # Back to Unicode code points
+>>> U
+'AÄBèC'
+>>> U.encode() # Back to UTF-8 bytes, by default
+b'A\xc3\x84B\xc3\xa8C'
+```
+
+This pattern looks like a conversion between encodings. In practice, it creates different encoded forms of the same code points. Re-encoding text in a file works the same way: decode it, then encode it in the new encoding. The `open` function usually does this work for you.
+
+Notice that the `str` literal `'AÄBèC'` contains raw Unicode characters, not escapes. That is simpler, as long as your source file and your GUI support the characters.
+
+### Source-file encoding declarations
+
+Escapes work for an occasional character. Coding many accented characters as escapes is tedious. Python reads source files as UTF-8 by default, so you can type the characters directly in string literals and other text in your script.
+
+If you save your script in a different encoding, add a special comment near the top. The comment must be the first or second line. A `#!` line may come before it. The common form names the encoding:
+
+```text
+# -*- coding: latin-1 -*-
+```
+
+With that comment, Python reads the file's text in the named encoding, and it recognizes characters embedded in string literals. The example below shows the different ways to put non-ASCII text in Python code. Save it in Latin-1 for the comment to match:
+
+```python
+# -*- coding: Latin-1 -*-
+#----------------------------------------------------------------------------
+# Demo all the ways to code non-ASCII text in Python, plus source encodings.
+#
+# If this file is saved as Latin-1 text, it works as is. But changing the
+# coding line above to either ASCII or UTF-8 will then fail because the
+# Latin-1 0xc4 and 0xe8 saved in myStr1's value are not valid in either.
+#
+# A UTF-8 line works if this file is also saved as UTF-8 to make its myStr1
+# text match. Because UTF-8 is the default for source, the line above is
+# optional if the file is saved as UTF-8 or its text is all UTF-8 compatible
+# (e.g., ASCII, which is a subset of both the Latin-1 and UTF-8 encodings).
+#----------------------------------------------------------------------------
+myStr1 = 'AÄBèC' # Raw, per source encoding
+myStr2 = 'A\xc4B\xe8C' # Hex code-point escapes
+myStr3 = 'AÄB\U000000e8C' # Unicode short/long escapes
+myStr4 = 'A' + chr(0xC4) + 'B' + chr(0xE8) + 'C' # Concatenated code points
+import sys, locale
+print('Sys hosting platform: ', sys.platform)
+print('Sys default encoding: ', sys.getdefaultencoding())
+print('Open default encoding:', locale.getpreferredencoding(False))
+for aStr in (myStr1, myStr2, myStr3, myStr4):
+    print(f'{aStr}, strlen={len(aStr)}', end=', ') # Decoded text+length
+    bytes1 = aStr.encode() # Default UTF-8: 2 bytes for accents
+    bytes2 = aStr.encode('latin-1') # Explicit Latin-1: 1 byte per char
+    #bytes3 = aStr.encode('ascii') # ASCII fails: outside 0...127 range
+    print(f'byteslen1={len(bytes1)}, byteslen2={len(bytes2)}') # Encoded length
+```
+
+Running this file prints the four strings, their character lengths, and their byte lengths in two encodings that work. The first is the default UTF-8 of `encode`, and the second is an explicit Latin-1. The platform and default-encoding lines vary by host, but the rest of the output does not:
+
+```text
+$ python3 source-encoding-latin1.py
+Sys hosting platform: darwin
+Sys default encoding: utf-8
+Open default encoding: UTF-8
+AÄBèC, strlen=5, byteslen1=7, byteslen2=5
+AÄBèC, strlen=5, byteslen1=7, byteslen2=5
+AÄBèC, strlen=5, byteslen1=7, byteslen2=5
+AÄBèC, strlen=5, byteslen1=7, byteslen2=5
+```
+
+To convert the file to UTF-8, you can read it as Latin-1 and write it back as UTF-8. Then either edit the first line to name UTF-8 or delete that line, since UTF-8 is Python's default for source code. A `diff` shows the two versions differ only in the coding line and the rendered literal:
+
+```text
+$ diff source-encoding-latin1.py source-encoding-utf8.py
+1c1
+< # -*- coding: Latin-1 -*-
+---
+> # -*- coding: UTF-8 -*-
+13c13
+< myStr1 = 'A?B?C'
+---
+> myStr1 = 'AÄBèC'
+$ python3 source-encoding-utf8.py # Same output as Latin-1 version above
+```
+
+Most programmers use UTF-8 for source files, and that is the safe choice. Python's standard manual covers the less common options, such as Unicode property and character-name escapes.
+
+Source encoding applies to the whole file. Variable names follow stricter rules. Some non-ASCII letters and digits are allowed in names, but symbols and emoji are not. For example, `hÄck` is a valid name, but a name with a symbol is not. The `isidentifier` method of `str` tests a name. Even when a name is valid, non-ASCII names can be hard to type on some keyboards. For that reason, the Python standard library uses ASCII-only names.
+
+### Using byte strings
+
+The `bytes` type and its mutable partner `bytearray` handle binary data. They can hold encoded text too, but their scope is wider. Anything that can be stored as bytes works with them, and that covers all digital data.
+
+As noted earlier, `bytes` supports the sequence operations and most of the methods of `str`. Because you cannot mix `bytes` and `str` without explicit conversions, the usual rule is simple. Use `str` and text files for text, and use `bytes` and binary files for binary data.
+
+#### Methods
+
+Some methods exist on only one of the two types. `decode` and `hex` belong to `bytes`, while `casefold`, `encode`, `format`, and `isidentifier` belong to `str`. Most other methods are shared. You can compare the two lists with `dir`, using `set(X) - set(Y)` to find the items in `X` but not in `Y`:
+
+```text
+$ python3
+Python 3.12.2 (v3.12.2:6abddd9f6a, Feb 6 2024,…
+# Attributes unique to str
+>>> sorted(set(dir('abc')) - set(dir(b'abc')))
+['casefold', 'encode', 'format', 'format_map', 'isdecimal', 'isidentifier',
+'isnumeric', 'isprintable']
+# Attributes unique to bytes
+>>> sorted(set(dir(b'abc')) - set(dir('abc')))
+['__buffer__', '__bytes__', 'decode', 'fromhex', 'hex']
+```
+
+The `__mod__` and `__rmod__` methods implement the `%` operator, and both types have them. The `decode` method turns raw bytes into `str`, and `encode` turns `str` into raw bytes. Methods on `bytes` return new `bytes` objects, not `str` objects. Like `str`, `bytes` is immutable:
+
+```text
+>>> B = b'code' # b'…' bytes literal
+>>> B.find(b'od') # Search for substr offset
+1
+>>> B.replace(b'od', b'XY') # New bytes with replacement
+b'cXYe'
+>>> B
+b'code'
+>>> B[0] = 'x'
+TypeError: 'bytes' object does not support item assignment
+```
+
+#### Sequence operations
+
+Indexing, slicing, concatenation, and repetition work on both types, as they do on lists. Both are sequences, but their items differ. A `str` is a sequence of code points, and a `bytes` is a sequence of byte-size integers. Indexing a `bytes` returns an integer, while indexing a `str` returns a one-character `str`.
+
+```text
+>>> B = b'code' # bytes and str are both sequences
+>>> B # Bytes in the 0…127 range display as ASCII
+b'code'
+>>> B[0], B[-1] # Indexing: returns a byte's integer value
+(99, 101)
+>>> 'code'[0] # But indexing a str returns a 1-item str
+'c'
+>>> chr(B[0]) # Unicode character (code point) for byte's value
+'c'
+>>> list(B) # But it's really integer bytes
+[99, 111, 100, 101]
+>>> b'A\x42C\xFF\x63' # That happen to display as ASCII if in 0…127
+b'ABC\xffc'
+>>> chr(0x63), hex(B[0]) # And accept hex escapes for byte values
+('c', '0x63')
+>>> B[1:], B[:-1] # Slicing: bytes (that display 0…127 as ASCII)
+(b'ode', b'cod')
+>>> len(B) # Length: number bytes (not necessarily characters)
+4
+>>> B + b'lmn' # Concatenation: bytes
+b'codelmn'
+>>> B * 4 # Repetition: bytes
+b'codecodecodecode'
+```
+
+#### Formatting bytes
+
+One notable exception to the same-operations rule is formatting. The `%` operator works on `bytes` from Python 3.5 onward. The `format` method and f-strings do not work on `bytes`, which is an odd split for a language with several formatting styles:
+
+```text
+>>> b'a %s string' % b'fine' # Py 3.5+ formatting for bytes
+b'a fine string'
+>>> b'a %s string' % bytes([0xFF, 0xFE]) # Non-ASCII bytes work too
+b'a \xff\xfe string'
+>>> 'a {} string'.format('fine') # But format method only for str
+'a fine string'
+>>> b'a {} string'.format(b'fine')
+AttributeError: 'bytes' object has no attribute 'format'
+>>> kind = 'fine'
+>>> f'a {kind} string' # But f-strings only for str
+'a fine string'
+>>> bf'a {kind} string'
+SyntaxError: invalid syntax
+```
+
+Some reasons for this choice are sound. Raw bytes may hold text in any encoding, or no text at all. Plugging ASCII text into a UTF-16 string or an image makes little sense. Still, the `%` operator is an exception to a rule that the other formatting styles do not follow.
+
+Encoding a formatted string is a different operation. The result depends on the encoding you choose. Encoding fails when the encoding cannot hold every character:
+
+```text
+>>> kind = 'fine'
+>>> f'a {kind} string'.encode() # Encoding != bytes operations
+b'a fine string'
+>>> kind = 'AÄBèC' # And narrow encodings may fail
+>>> f'a {kind} string'.encode('ascii')
+UnicodeEncodeError: 'ascii' codec can't encode character '\xc4' in position 3:…
+```
+
+#### Other ways to make bytes
+
+A `bytes` object can come from the `b'…'` literal, from the `bytes` constructor with a `str` and an encoding name, from an iterable of integers, or from encoding a `str` with the default or a passed-in encoding. Decoding goes the other way and produces a `str`:
+
+```text
+>>> B = b'abc'
+>>> B
+b'abc'
+>>> B = bytes('abc', 'ascii')
+>>> B
+b'abc'
+>>> ord('a')
+97
+>>> B = bytes([97, 98, 99])
+>>> B
+b'abc'
+>>> B = 'code'.encode() # Or bytes()
+>>> B
+b'code'
+>>> S = B.decode() # Or str()
+>>> S
+'code'
+```
+
+#### Mixing string types
+
+The `replace` method needs two `bytes` arguments. Passing a `str` fails. Python expects specific string types in some calls and does not convert them for you:
+
+```text
+>>> B = b'code'
+>>> B.replace('od', 'XY')
+TypeError: a bytes-like object is required, not 'str'
+>>> B.replace(b'od', b'XY')
+b'cXYe'
+>>> B.replace(bytes('od'), bytes('XY'))
+TypeError: string argument without an encoding
+>>> B.replace(bytes('od', 'ascii'), bytes('XY', 'utf-8'))
+b'cXYe'
+```
+
+Expressions follow the same rule. Keep text and binary data separate. If you must mix them, convert one side first:
+
+```text
+>>> b'ab' + 'cd'
+TypeError: can't concat str to bytes
+>>> b'ab'.decode() + 'cd' # bytes to str
+'abcd'
+>>> b'ab' + 'cd'.encode() # str to bytes
+b'abcd'
+>>> b'ab' + bytes('cd', 'ascii') # str to bytes
+b'abcd'
+```
+
+Conversion is more than a change of type, since encoding and decoding produce different kinds of data. Binary-mode files also return `bytes` objects, so you will often meet `bytes` through files rather than through literals.
+
+### The bytearray object
+
+The `bytearray` type is a mutable sequence of integers from 0 to 255. It supports the same string methods and sequence operations as `bytes`. It also has the in-place change methods of lists.
+
+Call `bytearray` with a `bytes` value, not a `str`, to make one. Then you can change it cell by cell, but each cell must hold an integer:
+
+```text
+>>> B = b'code' # A str 'code' does not work: not bytes
+>>> C = bytearray(B)
+>>> C
+bytearray(b'code')
+>>> C[0], chr(C[0]) # ASCII code-point integer for 'c'
+(99, 'c')
+>>> C[0] = 'x'
+TypeError: 'str' object cannot be interpreted as an integer
+>>> C[0] = b'x'
+TypeError: 'bytes' object cannot be interpreted as an integer
+>>> C[0] = ord('x')
+>>> C
+bytearray(b'xode')
+>>> C[1] = b'Y'[0]
+>>> C
+bytearray(b'xYde')
+```
+
+The methods of `bytearray` overlap with those of `bytes` and `str`. It also has list-style methods such as `append`, `extend`, `insert`, `pop`, and `remove`:
+
+```text
+>>> sorted(set(dir(b'abc')) - set(dir(bytearray(b'abc'))))
+{'__bytes__', '__getnewargs__'}
+>>> sorted(set(dir(bytearray(b'abc'))) - set(dir(b'abc')))
+['__alloc__', '__delitem__', '__iadd__', '__imul__', '__release_buffer__',
+'__setitem__', 'append', 'clear', 'copy', 'extend', 'insert', 'pop', 'remove', 'reverse']
+>>> C
+bytearray(b'xYde')
+>>> C.append(b'LMN')
+TypeError: 'bytes' object cannot be interpreted as an integer
+>>> C.append(b'LMN'[0])
+>>> C
+bytearray(b'xYdeL')
+>>> C.append(ord('M'))
+>>> C
+bytearray(b'xYdeLM')
+>>> C.extend(b'NO')
+>>> C
+bytearray(b'xYdeLMNO')
+```
+
+It also supports the usual sequence operations and string methods:
+
+```text
+>>> C + b'!#'
+bytearray(b'xYdeLMNO!#')
+>>> C[0], chr(C[0])
+(120, 'x')
+>>> C[1:]
+bytearray(b'YdeLMNO')
+>>> len(C)
+8
+>>> C.replace('xY', 'co')
+TypeError: a bytes-like object is required, not 'str'
+>>> C.replace(b'xY', b'co')
+bytearray(b'codeLMNO')
+>>> C
+bytearray(b'xYamLMNO')
+>>> C * 4
+bytearray(b'xYdeLMNOxYdeLMNOxYdeLMNOxYdeLMNO')
+```
+
+You can make a `bytes` or `bytearray` from any sequence of integers or a generator, not just from text. An integer from 0 to 255 becomes one byte. Passing a single integer creates that many zero bytes, which is a surprise to many new users:
+
+```text
+>>> bytes([1, 2, 3, 4]), bytearray([1, 2, 3, 4])
+(b'\x01\x02\x03\x04', bytearray(b'\x01\x02\x03\x04'))
+>>> bytes([115]) # int => bytes
+b's'
+>>> bytes([115])[0] # bytes => int
+115
+>>> bytes([999]) # Too big for a byte
+ValueError: bytes must be in range(0, 256)
+>>> bytes(115) # Lots of zeroes!
+b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00…
+>>> bytes(range(97, 104)), bytes(c + 97 for c in range(7)) # Generators too
+(b'abcdefg', b'abcdefg')
+```
+
+The three types differ in role. Use `str` for decoded text, `bytes` for binary data (including encoded text), and `bytearray` for binary data that you change in place. The `bytearray` type avoids the time and space cost of making a new copy for every change.
+
+```text
+>>> B = b'code' # Bytes
+>>> list(B)
+[99, 111, 100, 101]
+>>> C = bytearray(b'code') # Changeable bytes
+>>> list(C)
+[99, 111, 100, 101]
+>>> S = 'code' # Unicode text
+>>> list(S)
+['c', 'o', 'd', 'e']
+```
+
+### Text-file basics
+
+The mode of a file decides how its content is read and which Python type you use. Text mode uses `str` objects. Binary mode uses `bytes` objects. The default mode is `rt`, which means text input, and `r` means the same thing.
+
+The first argument to `open` is the pathname, which can be absolute or relative to the current directory. The second argument is the mode, where `w` means write text. A `write` call returns the number of items it wrote. Those items are characters in text mode and bytes in binary mode.
+
+Here is a basic write and read of one line:
+
+```text
+>>> file = open('temp.txt', 'w') # Use default encoding on host, mode w=write
+>>> size = file.write('abc\n') # Returns number characters written
+>>> file.close() # Manual close to flush output buffer
+>>> file = open('temp.txt') # Default mode is "r" == "rt": text input
+>>> text = file.read()
+>>> text
+'abc\n'
+```
+
+The `close` call is optional in CPython, which closes files when they are garbage collected. Even so, closing is good practice. It flushes changes and keeps memory from growing. The example above uses the platform default encoding without naming one. That works for plain ASCII text.
+
+### Text and binary modes
+
+Here is the same content read in text mode and in binary mode. Text mode needs a `str` for writing. Binary mode with the `rb` mode returns `bytes`. The output below comes from Windows, where text mode turns `\n` into `\r\n` on disk:
+
+```text
+$ py -3 # Run on Windows (no \r on Unix)
+>>> open('temp.txt', 'w').write('abc\n') # Text-mode output, provide a str
+4
+>>> open('temp.txt', 'r').read() # Text-mode input, returns a str
+'abc\n'
+>>> open('temp.txt', 'rb').read() # Binary-mode input, returns a bytes
+b'abc\r\n'
+```
+
+Text-mode files map `\n` to and from the platform's newline separator. On Windows that separator is `\r\n`, and on Unix it is just `\n`. Binary mode skips both the newline mapping and the decoding, so it returns the file's raw content.
+
+Binary output works the same way, but it needs a `bytes` object. In this example, the newline stays `\n` even on Windows, because no mapping happens:
+
+```text
+>>> open('temp.bin', 'wb').write(b'abc\n') # Binary-mode output, send a bytes
+4
+>>> open('temp.bin', 'r').read() # Text-mode input, receive a str
+'abc\n'
+>>> open('temp.bin', 'rb').read() # Binary-mode input, bytes sans mapping
+b'abc\n'
+```
+
+Binary data can contain zero bytes. A zero byte is the null character in ASCII and in UTF-8. Text mode can still read it as part of a `str`:
+
+```text
+>>> open('temp.bin', 'wb').write(b'a\x00c') # Binary data included
+3
+>>> open('temp.bin', 'r').read() # Text-mode: str with NUL
+'a\x00c'
+>>> open('temp.bin', 'rb').read() # Binary mode: bytes
+b'a\x00c'
+```
+
+Binary files always return `bytes` when you read them. They accept either `bytes` or `bytearray` for writing. Most APIs that take `bytes` also take `bytearray`:
+
+```text
+>>> BA = bytearray(b'\x01\x02\x03')
+>>> open('temp.bin', 'wb').write(BA)
+3
+>>> open('temp.bin', 'r').read()
+'\x01\x02\x03'
+>>> open('temp.bin', 'rb').read()
+b'\x01\x02\x03'
+```
+
+Python will not mix the two kinds of data in a file. Writing a `bytes` value to a text file fails. Writing a `str` value to a binary file also fails. Python cannot guess how you want to read the contents, so it refuses to convert them. Use `str` for text and `bytes` for binary data:
+
+```text
+>>> open('temp.txt', 'w').write('abc\n') # Auto encodes str to bytes
+4
+>>> open('temp.txt', 'w').write(b'abc\n') # But bytes != decoded text
+TypeError: write() argument must be str, not bytes
+>>> open('temp.bin', 'wb').write(b'abc\n') # Writes raw bytes
+4
+>>> open('temp.bin', 'wb').write('abc\n') # But str != raw bytes
+TypeError: a bytes-like object is required, not 'str'
+```
+
+### Unicode-text files
+
+Text files can carry a specific encoding. Pass the name in the `encoding` argument of `open`. Then the file decodes text on reads and encodes text on writes. For a file named by the variable `pathname`, these two calls show the idea:
+
+- `open(pathname, 'r', encoding='utf8')` returns a file object that decodes UTF-8 when it reads.
+- `open(pathname, 'w', encoding='latin1')` returns a file object that encodes Latin-1 when it writes.
+
+The next example writes and reads a short string that has three non-ASCII characters. The file is written in UTF-8:
+
+```text
+>>> file = open('uni.txt', 'w', encoding='utf8') # Auto encodes to bytes
+>>> file.write(' 2 hÄck ')
+10
+>>> file.close()
+>>> text = open('uni.txt', 'r', encoding='utf8').read() # Auto decodes to str
+>>> text
+' 2 hÄck '
+>>> [ord(c) for c in text] # Character code points
+[128155, 32, 50, 32, 104, 196, 99, 107, 32, 128013]
+>>> raw = open('uni.txt', 'rb').read() # No decoding applied
+>>> raw
+b'\xf0\x9f\x92\x9b 2 h\xc3\x84ck \xf0\x9f\x90\x8d'
+```
+
+The encoding you pass must match the file's data. ASCII cannot hold the accented and emoji characters in this text, so ASCII fails both on reads and on writes:
+
+```text
+>>> open('uni.txt', 'r', encoding='ascii').read()
+UnicodeDecodeError: 'ascii' codec can't decode byte 0xf0 in position 0:…
+>>> open('ascii.txt', 'w', encoding='ascii').write(' 2 hÄck ')
+UnicodeEncodeError: 'ascii' codec can't encode character '\U0001f49b'…
+>>> hex(ord('\U0001f49b')) # ASCII will always break your heart?
+'0x1f49b'
+```
+
+UTF-16 handles the same text in full. The stored bytes differ from the UTF-8 bytes, but the code points that come back are the same:
+
+```text
+>>> file = open('uni2.txt', 'w', encoding='utf16') # UTF-16 works too
+>>> file.write(' 2 hÄck ')
+10
+>>> file.close()
+>>> text = open('uni2.txt', 'r', encoding='utf16').read() # Files encode+decode
+>>> text
+' 2 hÄck '
+>>> [ord(c) for c in text] # Same code points
+[128155, 32, 50, 32, 104, 196, 99, 107, 32, 128013]
+>>> open('uni2.txt', 'rb').read() # Different encoding
+b'\xff\xfe=\xd8\x9b\xdc \x002\x00 \x00h\x00\xc4\x00c\x00k\x00 \x00=\xd8\r\xdc'
+```
+
+Encodings cannot be mixed. Reading a UTF-16 file as UTF-8 fails, because the encoded bytes differ. Binary mode and error handlers can help with unknown encodings, but the encoding usually has to match the file:
+
+```text
+>>> open('uni.txt', 'r', encoding='utf16').read()
+UnicodeDecodeError: 'utf-16-le' codec can't decode byte 0x8d in position 16:…
+>>> open('uni2.txt', 'r', encoding='utf8').read()
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0xff in position 0:…
+```
+
+With no `encoding` argument, a text file uses the default for the host and platform. That default is from `locale`. The results can look right when the default and the file agree. Still, relying on the default makes your program depend on where its files were made. Use explicit encodings, especially for web servers that run as generic users with unreliable environment settings.
+
+For a real file, the workflow is usually simple. Open a file with an encoding, read it, change the text, and write it back. Reading a web page or an image is routine once you know the modes. An image uses binary mode with `rb`, and a page uses text mode with an explicit encoding:
+
+```text
+>>> text = open('Websites/about-lp5e.html', encoding='utf8').read()
+>>> text[:79]
+'<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.o'
+>>> image = open('Websites/lp5e-large.jpg', mode='rb').read()
+>>> image[:20]
+b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00'
+```
+
+Once content is loaded, all the `str` and `bytes` operations are available. Saving follows the same pattern. Use an encoding for text and binary mode for bytes:
+
+```text
+>>> text = text.replace('2013', '2024')
+>>> open('Websites/about-lp6e.html', mode='w', encoding='utf8').write(text)
+>>> image = some_sort_of_modding(image)
+>>> open('Websites/lp6e-large.jpg', mode='wb').write(image)
+```
+
+The `open` function takes more arguments. The `newline` argument changes newline mapping. The `errors` argument decides how encoding and decoding errors are handled, and `'surrogateescape'` keeps failing bytes so they can be restored on output. The `buffering` argument changes buffering. The defaults suit most programs, so check the Python standard library manual for these options.
+
+The `codecs` module also has its own `open`, which returns a file that decodes and encodes automatically. It was used for Python 2 compatibility. New code has no clear reason to use it, though legacy code may:
+
+```text
+>>> import codecs
+>>> f = codecs.open('uni.txt', 'r', encoding='utf8')
+>>> f.read()
+' 2 hÄck '
+```
+
+### Unicode and other string tools
+
+Many standard-library tools follow the same split between `str` and `bytes`. The following sample shows how some of them behave. The rest belong to application topics, and the Python Library Reference covers them in depth.
+
+The `re` pattern-matching module works with `str`, `bytes`, and `bytearray`. The result type follows the type of the string you pass in. The pattern and the text must match in type, and a `bytearray` cannot be a pattern because it is mutable:
+
+```text
+>>> import re
+>>> S = ' is the fastest way to !'
+>>> B = b'Python is the fastest way to pizza!'
+>>> re.match('(.*) the (.*) way (.*)', S).groups() # str + str => str
+(' is', 'fastest', 'to !')
+>>> re.match(b'(.*) the (.*) way (.*)', B).groups() # bytes + bytes => bytes
+(b'Python is', b'fastest', b'to pizza!')
+>>> re.match(b'(.*) the (.*) way (.*)', bytearray(B)).groups()
+(b'Python is', b'fastest', b'to pizza!')
+>>> re.match('(.*) the (.*) way (.*)', B).groups()
+TypeError: cannot use a string pattern on a bytes-like object
+>>> re.match(b'(.*) the (.*) way (.*)', S).groups()
+TypeError: cannot use a bytes pattern on a string-like object
+>>> re.match(bytearray(b'(.*) the (.*) way (.*)'), bytearray(B)).groups()
+TypeError: unhashable type: 'bytearray'
+```
+
+The `struct` module packs and unpacks binary data. It works with `bytes` and `bytearray` only, because it is meant for binary data and not for decoded text. A format string such as `'>i4sh'` gives the size and type of each item. The `>` prefix selects big-endian byte order:
+
+```text
+>>> import struct
+>>> B = struct.pack('>i4sh', 7, b'code', 8) # int , bytes(4s), int(h) => bytes
+>>> B
+b'\x00\x00\x00\x07code\x00\x08'
+>>> vals = struct.unpack('>i4sh', B) # Packed data is bytes, not str
+>>> vals
+(7, b'code', 8)
+>>> vals = struct.unpack('>i4sh', B.decode())
+TypeError: a bytes-like object is required, not 'str'
+```
+
+Packed data often goes to a binary file, so it survives between program runs. This is useful for saving application settings:
+
+```text
+>>> F = open('data.bin', 'wb') # Open binary output file
+>>> data = struct.pack('>i4sh', 7, b'code', 8) # Create packed binary data
+>>> data # bytes, not str
+b'\x00\x00\x00\x07code\x00\x08'
+>>> F.write(data) # Write to the file
+10
+>>> F.close() # Flush changes
+>>> F = open('data.bin', 'rb') # Open binary input file
+>>> data = F.read() # Read bytes
+>>> data
+b'\x00\x00\x00\x07code\x00\x08'
+>>> values = struct.unpack('>i4sh', data) # Extract packed binary data
+>>> values # Back to Python objects
+(7, b'code', 8)
+```
+
+The `pickle` module saves almost any Python object, not just the values that `struct` packs. Even so, `pickle` always produces a `bytes` object, whatever the protocol. The `dumps` call returns that pickled byte string:
+
+```text
+>>> import pickle # dumps() returns pickle string
+>>> pickle.dumps(['code', 4, '']) # Default protocol=binary
+b'\x80\x04\x95\x15\x00\x00\x00\x00 …etc… \x04\x8c\x04\xf0\x9f\x90\x8d\x94e.'
+>>> pickle.dumps(['code', 4, ''], protocol=0) # ASCII protocol 0, still bytes!
+b'(lp0\nVcode\np1\naI4\naV\\U0001f40d\np2\na.'
+```
+
+Because of that, files for pickled objects must be opened in binary mode. The `dump` call writes bytes to the open file, and text mode rejects bytes. Reading back in text mode can also fail, and on other hosts it may return garbage instead of an error:
+
+```text
+>>> pickle.dump(['code', 4, ''], open('temp.pkl', 'w')) # bytes+text mode fail
+TypeError: write() argument must be str, not bytes
+>>> pickle.dump(['code', 4, ''], open('temp.pkl', 'w'), protocol=0)
+TypeError: write() argument must be str, not bytes
+>>> pickle.dump(['code', 4, ''], open('temp.pkl', 'wb')) # Always binary mode
+>>> open('temp.pkl', 'r').read()
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0x80 in position 0:…
+```
+
+Pickle data is not text, so use binary mode for both writing and reading. Save with `dump` and load with `load`, both through files opened in `'wb'` and `'rb'`:
+
+```text
+>>> pickle.dump(['code', 4, ''], open('temp.pkl', 'wb')) # Save to file
+>>> pickle.load(open('temp.pkl', 'rb')) # Load from file
+['code', 4, '']
+>>> open('temp.pkl', 'rb').read()
+b'\x80\x04\x95\x15\x00\x00\x00\x00 …etc… \x04\x8c\x04\xf0\x9f\x90\x8d\x94e.'
+```
+
+The `json` module, from Chapter 9, is a related tool. It turns a tree of nested objects into text that you can save. Unlike `pickle`, it does not support arbitrary objects. It supports basic types and built-in containers, and its format is language-neutral, which makes it easier for other programs to read.
+
+The `json` module always produces a `str`, so files for saves and loads should use text mode. JSON files are often written in UTF-8 for portability, but any consistent encoding works:
+
+```text
+>>> import json
+>>> vals = ['code', {'app': ('', None, 1.23, 99)}]
+>>> json.dumps(vals)
+'["code", {"app": ["\\ud83d\\ude42", null, 1.23, 99]}]'
+>>> text = json.dumps(vals) # Save to/load from str
+>>> anew = json.loads(text)
+>>> anew
+['code', {'app': ['', None, 1.23, 99]}]
+>>> file = open('data.txt', 'w', encoding='utf8') # Save/load text-mode file
+>>> json.dump(vals, file)
+>>> file.close()
+>>> file = open('data.txt', 'r', encoding='utf8')
+>>> json.load(file)
+['code', {'app': ['', None, 1.23, 99]}]
+```
+
+File names have a Unicode story too. In short, `str` is the normal type for file pathnames in Python, and it is the recommended choice for portable code. Python's file tools translate `str` names to and from the encoding that the host and device use.
+
+Python's file tools also accept file names as `bytes`, which skips automatic filesystem encoding in some cases. This can help with fine control over file name encodings. It is rarely needed in ordinary programs, and the Python manuals say it matters mainly on some Unix systems with undecodable names.
+
+Here is a demo that makes files with both `str` and `bytes` names. The examples run in a subfolder, and the names include a non-ASCII character:
+
+```text
+>>> import sys, os, glob
+>>> sys.getfilesystemencoding() # Filesystem default: macOS and Win11
+'utf-8'
+>>> name1 = 'hÄck1' # str filenames
+>>> name2 = 'hÄck2'
+>>> name2.encode('utf8') # bytes equivalent for name2 str
+b'h\xc3\x84ck\xf0\x9f\x99\x822'
+>>> os.listdir() # Make files with str and bytes names
+[]
+>>> open(name1, mode='w', encoding='utf8').write('text1')
+5
+>>> open(b'h\xc3\x84ck\xf0\x9f\x99\x822', 'w', encoding='utf8').write('text2')
+5
+>>> os.listdir() # Both show up on the filesystem
+['hÄck1', 'hÄck2']
+>>> open('hÄck2').read() # And can be accessed either way
+'text2'
+>>> open('hÄck2'.encode('utf8')).read()
+'text2'
+```
+
+On macOS and on Windows since Python 3.6, Python encodes `bytes` names with UTF-8. Windows converts them further to UTF-16 for its API. Linux, and so Android, accepts any bytes as file names. Python still tries UTF-8 when it converts names to and from `str`, and it uses surrogate escapes for encoding errors.
+
+Using `bytes` names only works when the encoding matches what Python or the filesystem expects. The next example passes Latin-1 bytes. It fails on macOS and on Windows:
+
+```text
+>>> 'hÄck'.encode('latin-1'), 'hÄck'.encode('utf-8')
+(b'h\xc4ck', b'h\xc3\x84ck')
+>>> b'h\xc4ck'.decode('utf8')
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0xc4 in position 1:…
+>>> open(b'h\xc4ck', 'w')
+OSError: [Errno 92] Illegal byte sequence: b'h\xc4ck'
+# open(b'h\xc4ck'.decode('latin1'), 'w') # Works: convert to str
+# open(b'h\xc3\x84ck', 'w') # Works: use UTF-8 encoding
+```
+
+On Linux and Android the same call can work. Those systems decode the Latin-1 name with UTF-8 and keep the bad byte as a surrogate-escaped `str`. Even then, the result depends on the filesystem. On a removable exFAT drive, the Latin-1 name fails. So using arbitrary bytes in `open` depends on both the platform and the filesystem. Avoid it.
+
+The `os` module lists directories in the same form you pass in. A `str` path gives `str` names, and a `bytes` path gives `bytes` names. The names can then be used in other file tools:
+
+```text
+>>> os.listdir('.') # str gives strs, bytes gives bytes
+['hÄck1', 'hÄck2']
+>>> os.listdir(b'.')
+[b'h\xc3\x84ck\xf0\x9f\x99\x821', b'h\xc3\x84ck\xf0\x9f\x99\x822']
+>>> for name in os.listdir('.'):
+...     print(name, '=>', open(name).read())
+hÄck1 => text1
+hÄck2 => text2
+>>> for name in os.listdir(b'.'):
+...     print(name, '=>', open(name).read())
+b'h\xc3\x84ck\xf0\x9f\x99\x821' => text1
+b'h\xc3\x84ck\xf0\x9f\x99\x822' => text2
+```
+
+The `glob` module expands file name patterns in both forms. The `os.fsdecode` function decodes a name with the host's filesystem encoding:
+
+```text
+>>> glob.glob('h*ck*') # str gives str, bytes gives byte
+['hÄck1', 'hÄck2']
+>>> glob.glob(b'h*ck*')
+[b'h\xc3\x84ck\xf0\x9f\x99\x821', b'h\xc3\x84ck\xf0\x9f\x99\x822']
+>>> for name in glob.glob(b'h*ck*'):
+...     print(name.decode(sys.getfilesystemencoding()), os.fsdecode(name))
+hÄck1 hÄck1
+hÄck2 hÄck2
+```
+
+Tools that make and walk folders also accept both forms. The following demo ran on Windows, so the path separators and the order of the output may differ on your system:
+
+```text
+>>> os.mkdir('sub') # Make dirs with str or bytes
+>>> os.mkdir('subbytes'.encode('utf8')) # and walk them with both
+>>> os.mkdir('subbytes/subsub')
+>>> os.listdir()
+['hÄck1', 'hÄck2', 'sub', 'subbytes']
+>>> os.listdir('subbytes')
+['subsub']
+>>> for (dirhere, subshere, fileshere) in os.walk('.'):
+...     print(dirhere, '=>', subshere, fileshere)
+. => ['sub', 'subbytes'] ['hÄck1', 'hÄck2']
+.\sub => [] []
+.\subbytes => ['subsub'] []
+.\subbytes\subsub => [] []
+>>>
+>>> for (dirhere, subshere, fileshere) in os.walk(b'.'):
+...     print(dirhere, '=>', subshere, fileshere)
+```
+
+`bytes` names work, but `str` names are almost always the better choice. Python's tools already handle `str` paths with care, and `str` names avoid many portability problems in apps that run on several platforms and devices.
+
+### Unicode defaults and UTF-8 mode
+
+The default encoding is a weirdly tangled topic. Each part of Python uses its own default, so it helps to see them together.
+
+The default for source code and for the `encode` and `decode` methods is always UTF-8. The default for file names comes from `sys.getfilesystemencoding()`. The default for file content read through `open` comes from `locale.getpreferredencoding(False)`.
+
+The `sys.getdefaultencoding()` value cannot be changed, as of Python 3.2. The file-name default is usually UTF-8, including on Windows since Python 3.6. That default rarely matters if your names are always `str`.
+
+The default for `open` is the least consistent. It is not simply the result of `locale.getencoding()` on every platform. It is UTF-8 when UTF-8 mode is on, which Python 3.7 introduced. Otherwise, it is the result of `getencoding()`. On Windows that can be a code-page encoding such as `cp1252`. Unix systems usually use UTF-8, so a bare `open` is not portable for non-ASCII text.
+
+UTF-8 mode fixes this. Turn it on by setting the environment variable `PYTHONUTF8` to `1`, or by starting Python with `-X utf8`. The `getencoding()` function, added in Python 3.11, does not change with UTF-8 mode, but `open` and the older `getpreferredencoding(False)` do.
+
+The `locale` results can also depend on the platform, environment variables, and command-line switches. Android is always UTF-8. On Windows, Python 3.15 is planned to turn UTF-8 mode on by default, so code without explicit encodings will match other platforms.
+
+A few other environment variables change related behavior. `PYTHONIOENCODING` sets the encoding of the standard streams, such as `sys.stdout`, when they are redirected to a file. UTF-8 mode also affects redirected streams, unless `PYTHONIOENCODING` is set too. The other variables cover console streams on Windows, file names on Windows, and forcing Unix encodings to skip UTF-8.
+
+The practical advice is short. Use `str` for file names. Pass an explicit encoding to `open`, and do not rely on the defaults. The Python manuals have the full story when you need it.
+
+### Byte-order marks (BOM)
+
+Some encodings store a special marker at the start of a file. This marker is the byte-order mark, or BOM. It records the byte order of the data, which is its endianness, or it names the encoding in general. Text-mode files in Python skip the marker on input and write it on output when the encoding implies one.
+
+UTF-16 and UTF-32 always carry a BOM that names the encoding and the big- or little-endian layout. A UTF-8 file may have a BOM, but it is not required, and the BOM only says that the file is UTF-8. Python handles both cases with specific encoding names.
+
+- In UTF-16, the general name `utf-16` always processes the BOM. The name `utf-16-le` means little-endian and does not add or remove one.
+- In UTF-8, the name `utf-8-sig` skips a BOM on input and writes one on output. The general name `utf-8` does neither.
+
+To see this, save a short file in an editor and read it back in Python. On Windows, Notepad can save a file as plain ANSI text, which has no BOM. Its UTF-8 choice can add a three-byte BOM. Its UTF-16 choices add a two-byte BOM:
+
+```text
+$ py -3 # On Windows, post ANSI save in Notepad
+>>> import locale
+>>> locale.getpreferredencoding(False) # open default: ASCII&Latin-1 superset
+'cp1252'
+>>> open('code.txt', 'rb').read() # ASCII (and cp1252 and UTF-8) bytes
+b'code\r\nCODE\r\n'
+>>> open('code.txt', 'r').read() # Text mode also translates newlines
+'code\nCODE\n'
+>>> open('code.txt', 'r', encoding='utf-8').read()
+'code\nCODE\n'
+```
+
+After a save as UTF-8 with a BOM, the file starts with the three bytes of the BOM. The default encoding keeps the BOM as a character. The `utf-8-sig` name removes it:
+
+```text
+>>> open('code.txt', 'rb').read() # After resaved: UTF-8 with 3-byte BOM
+b'\xef\xbb\xbfcode\r\nCODE\r\n'
+>>> open('code.txt', 'r').read() # Default+utf8 keep BOM, utf-8-sig drops
+'ï»¿code\nCODE\n'
+>>> open('code.txt', 'r', encoding='utf-8').read()
+'﻿code\nCODE\n'
+>>> open('code.txt', 'r', encoding='utf-8-sig').read()
+'code\nCODE\n'
+```
+
+A UTF-16 big-endian file starts with a two-byte BOM. The name `utf-16` skips that BOM because the encoding implies it. The name `utf-16-be` decodes the big-endian data but keeps the BOM in the result:
+
+```text
+>>> open('code.txt', 'rb').read()
+b'\xfe\xff\x00c\x00o\x00d\x00e\x00\r\x00\n\x00C\x00O\x00D\x00E\x00\r\x00\n'
+>>> open('code.txt', 'r', encoding='utf-16').read()
+'code\nCODE\n'
+>>> open('code.txt', 'r', encoding='utf-16-be').read()
+'﻿code\nCODE\n'
+```
+
+Other combinations of save and open show more. Reading with the wrong encoding can print garbage characters, because the bytes do not match the encoding.
+
+Python can write these files too. Python adds a BOM automatically for `utf-16`. For UTF-8, `utf-8` writes no BOM, while `utf-8-sig` writes one. The same rule applies on input. The `utf-8-sig` name works on files with or without a BOM, so it is a safe choice when you do not know:
+
+```text
+>>> open('temp.txt', 'w', encoding='utf-8').write('code\nCODE\n')
+10
+>>> open('temp.txt', 'rb').read() # utf-8: no BOM
+b'code\r\nCODE\r\n'
+>>> open('temp.txt', 'w', encoding='utf-8-sig').write('code\nCODE\n')
+10
+>>> open('temp.txt', 'rb').read() # utf-8-sig: adds BOM
+b'\xef\xbb\xbfcode\r\nCODE\r\n'
+>>> open('temp.txt', 'r').read() # Default: bad BOM
+'ï»¿code\nCODE\n'
+>>> open('temp.txt', 'r', encoding='utf-8').read() # utf-8: keeps BOM
+'﻿code\nCODE\n'
+>>> open('temp.txt', 'r', encoding='utf-8-sig').read() # utf-8-sig: drops BOM
+'code\nCODE\n'
+```
+
+The `utf-16` name writes its BOM in the platform's native byte order and always strips the BOM on input. The `sys.byteorder` value tells you the native order on your host:
+
+```text
+>>> import sys
+>>> sys.byteorder # Windows host's default endianness
+'little'
+>>> open('temp.txt', 'w', encoding='utf-16').write('code\nCODE\n')
+10
+>>> open('temp.txt', 'rb').read()
+b'\xff\xfec\x00o\x00d\x00e\x00\r\x00\n\x00C\x00O\x00D\x00E\x00\r\x00\n\x00'
+>>> open('temp.txt', 'r', encoding='utf-16').read()
+'code\nCODE\n'
+```
+
+The names `utf-16-le` and `utf-16-be` set the byte order explicitly. You may need to write or skip the BOM yourself in some cases. The `utf-16-le` name does not write a BOM, and `utf-16` cannot read a file that lacks one:
+
+```text
+>>> open('temp.txt', 'r', encoding='utf-16-le').read()
+'﻿code\nCODE\n'
+>>> open('temp.txt', 'w', encoding='utf-16-be').write('﻿code\nCODE\n')
+11
+>>> open('temp.txt', 'rb').read()
+b'\xfe\xff\x00c\x00o\x00d\x00e\x00\r\x00\n\x00C\x00O\x00D\x00E\x00\r\x00\n'
+>>> open('temp.txt', 'r', encoding='utf-16').read()
+'code\nCODE\n'
+>>> open('temp.txt', 'r', encoding='utf-16-be').read()
+'﻿code\nCODE\n'
+```
+
+```text
+>>> open('temp.txt', 'w', encoding='utf-16-le').write('CODE')
+4
+>>> open('temp.txt', 'rb').read() # Okay if BOM not present or expected
+b'C\x00O\x00D\x00E\x00'
+>>> open('temp.txt', 'r', encoding='utf-16-le').read()
+'CODE'
+>>> open('temp.txt', 'r', encoding='utf-16').read()
+UnicodeError: UTF-16 stream does not start with BOM
+```
+
+Experiment with these encodings to build intuition. The Python library manuals have more detail on BOMs.
+
+### Unicode normalization
+
+Unicode has one more weakness. The standard does not give one code point to every character. Some characters have more than one valid form. This breaks equality tests, and it can cause trouble for text-processing programs.
+
+The character `ñ` is a good example. It can be one code point, `ñ`, which is an `n` with a tilde. It can also be two code points, `n` and `̃`, which are a plain `n` followed by a combining tilde. The first form is called NFC, or the composed form, because the letter and accent are combined. The second form is called NFD, or the decomposed form, because its parts are split.
+
+The Unicode standard says these two forms are the same character, and programs must treat them that way. Python shows both forms with escapes. Windows users may see different rendering in some terminals, especially for NFD:
+
+```text
+>>> L = 'ñ' # NFC form ('\xF1' works too)
+>>> M = 'ñ' # NFD form
+>>> L, M # The same character
+('ñ', 'ñ')
+```
+
+Other characters have both forms too. Examples include `Å`, `è`, and `é`, along with a few Greek letters. Each pair looks the same to a reader but has different code points:
+
+```text
+>>> 'Å', 'Å' # NFD (1 code point), NFC (2 code points)
+('Å', 'Å')
+>>> 'è', 'è' # But it's the same character for both
+('è', 'è')
+>>> 'é', 'é'
+('é', 'é')
+>>> 'ϔ', 'ϔ'
+('ϔ', 'ϔ')
+```
+
+The two forms differ in memory as code points. They also differ when encoded, because each encoding stores the code points differently. Decoding the encoded forms gives back the two different code-point sequences:
+
+```text
+>>> 'ñ'.encode('utf8'), 'ñ'.encode('utf8')
+(b'\xc3\xb1', b'n\xcc\x83')
+>>> b'\xc3\xb1'.decode('utf8'), b'n\xcc\x83'.decode('utf8')
+('ñ', 'ñ')
+```
+
+The result is that equality fails. The `==` operator compares code points, so the two forms of `ñ` look equal on screen but are not equal in Python:
+
+```text
+>>> L = 'ñ'
+>>> M = 'ñ'
+>>> L, M # The same character
+('ñ', 'ñ')
+>>> L == M # But equality says no!
+False
+>>> len(L), len(M) # Because their code points differ
+(1, 2)
+```
+
+Vendors favor different forms. macOS tends to prefer NFD, Windows and many others prefer NFC, and the choice can depend on the filesystem. Tools also differ in how well they accept the form they did not expect. The result is an interoperability problem.
+
+The fix is to convert text to a common form before comparing it. Python's `unicodedata` module has a `normalize` function for this:
+
+```python
+from unicodedata import normalize # Python stdlib tool
+L = 'ñ'
+M = 'ñ'
+print(L, M) # Same char, diff code points
+print(L == M) # Equality fails
+print(normalize('NFC', L) == normalize('NFC', M)) # Common-form equality works
+print(normalize('NFD', L) == normalize('NFD', M)) # Either suffices, if the same
+```
+
+Running the same normalization on both sides makes them equal, and either NFC or NFD works, as long as you use the same form on both sides. Programs that compare file names from different platforms should normalize first. Otherwise, two names that look the same to users will fail to match, and searches and file syncs can break. The same rule applies to text from web content and other outside sources.
+
+The full story has more detail. Canonical equivalence, which NFC and NFD share, is not the same as compatibility equivalence. Most programs do not need to care about that difference. The Unicode HOWTO in the Python manuals and the `casefold` string method are good next steps.
+
+## Unicode and byte strings summary
+
+Python has three string types. `str` holds Unicode text as code points. `bytes` holds binary data, including encoded text. `bytearray` is a mutable form of `bytes`. The types share most operations, but each has a clear role.
+
+Non-ASCII characters can be coded in a `str` with hex escapes, `\u` escapes, or `\U` escapes, and all of them name code points. In a `bytes`, only hex escapes apply, and they give raw byte values. Source files are read as UTF-8 by default, and a coding comment can name another encoding.
+
+Text-mode files encode and decode automatically, and they handle BOMs and newline translation. Binary-mode files transfer bytes unchanged. Pass an explicit encoding to `open` for text in a different encoding from your platform default. Use `bytes` for binary data, and use `str` for text.
+
+ASCII is a kind of Unicode text. Its values from 0 to 127 are the same in many encodings, including Latin-1 and UTF-8. The BOM is a marker at the start of some encoded text that names the encoding and byte order. Normalization converts code points into one common form so that equal-looking text compares equal.
+
+For ordinary ASCII scripts, `str` without special handling is usually enough. If you process non-ASCII text, pass encodings to `open`. If you handle binary files, work with `bytes`. If your code must run on many platforms or read content from unknown sources, use explicit encodings for every text file.
+
+## Managed attributes
+
+Most attributes are simple. A `person.name` fetch returns a stored value, and `person.name = value` stores a new one. The attribute usually lives in the object itself or in a class the object inherits from. That plain model handles most programs you will write.
+
+Sometimes requirements change after the code is written. Suppose a `name` attribute must now be validated or transformed whenever it is read or set. The obvious fix is to replace the attribute with get and set methods, as in this sketch. The `valid` and `transform` helpers here are placeholders, not real functions:
+
+```python
+class Person:
+    def getName(self):
+        if not valid():
+            raise TypeError('cannot fetch name')
+        else:
+            return self.name.transform()
+    def setName(self, value):
+        if not valid(value):
+            raise TypeError('cannot change name')
+        else:
+            self.name = transform(value)
+person = Person()
+person.getName()
+person.setName('value')
+```
+
+This fix has a cost. Every place that uses `name` in the program must change from attribute syntax to method calls. Clients also have to know which form to use. A method-based interface from the start keeps clients safe from later changes. Retrofitting one is harder.
+
+This comes up more often than it seems. A cell in a spreadsheet-style program may start as a plain number and later become a calculation. An object's interface should handle that change without breaking code that already uses it. Managed attributes make that possible.
+
+### Inserting code to run on attribute access
+
+Managed attributes let you run code automatically when an attribute is fetched, assigned or deleted. You can add that logic after a class already exists, and existing client code keeps its simple syntax. Managed attributes also support usage modes that go beyond plain storage, such as computed values.
+
+Python offers four accessor techniques for this job:
+
+- The `property` built-in, which routes access to one specific attribute to functions you provide.
+- The `__get__` and `__set__` descriptor methods, which handle one specific attribute and form the basis for properties and slots.
+- The `__getattr__` and `__setattr__` methods, which handle undefined attribute fetches and every attribute assignment.
+- The `__getattribute__` method, which handles every attribute fetch.
+
+You met some of these in chapters 30 and 32 of the book, and some only briefly. All four share goals, and you can often solve one problem with any of them. They differ in complexity and style, though, and you have to see them in action to judge. The first two apply to named attributes. The last two are general enough for proxy classes that route any attribute to a wrapped object.
+
+The chapter is an advanced topic. Most application programmers never need it, because they simply fetch and set attributes. Tool builders, however, use these techniques to design flexible APIs. Understanding the descriptor model also makes slots and properties easier to read when you meet them in code.
+
+## Properties
+
+A property routes get, set and delete operations on one attribute to methods you write. That lets you run code on attribute access, reject deletions, and document an attribute. Properties are created with the `property` built-in and assigned to class attributes, just like method functions. Subclasses and instances inherit them as they inherit other class attributes.
+
+### The basics of properties
+
+You create a property by assigning the result of a built-in call to a class attribute:
+
+```text
+attribute = property(fget, fset, fdel, doc)
+```
+
+None of the four arguments is required, and each defaults to `None`. A `None` for `fget`, `fset` or `fdel` means that operation is not supported. Trying it raises an `AttributeError` automatically. The `fget` function returns the computed value, while `fset` and `fdel` return nothing. Any of the three can raise an exception to reject an access.
+
+The `doc` argument sets a documentation string for the attribute. If you leave it out, the property copies the docstring from `fget`. Each function receives the instance as its first argument, so it can read and change that instance's data. You can pass any callable here, including a method.
+
+### A first example with properties
+
+The class in Example 38-1 uses a property to trace every access to an attribute named `name`. The real data is stored in `_name`, so it does not clash with the property name:
+
+```python
+class Person:
+    def __init__(self, name):
+        self._name = name
+    def getName(self):
+        print('fetch...')
+        return self._name
+    def setName(self, value):
+        print('change...')
+        self._name = value
+    def delName(self):
+        print('remove...')
+        del self._name
+    name = property(getName, setName, delName, 'name property docs')
+sue = Person('Sue Jones') # sue has a managed attribute
+print(sue.name) # Runs getName
+sue.name = 'Susan Jones' # Runs setName
+print(sue.name)
+del sue.name # Runs delName
+print('-'*20)
+bob = Person('Bob Smith') # bob inherits property too
+print(bob.name)
+print(Person.name.__doc__) # Or help(Person.name)
+```
+
+This property does little more than trace access, but it shows the protocol. Both instances inherit the property, just as they would any other attribute on their class. Each access to `name` is caught and handled by the methods you provide. Running the script prints this:
+
+```text
+$ python3 prop-person.py
+fetch...
+Sue Jones
+change...
+fetch...
+Susan Jones
+remove...
+--------------------
+fetch...
+Bob Smith
+name property docs
+```
+
+Properties are inherited like any class attribute. If you move the property into a base class named `Super` and let `Person` subclass it, the output stays the same. The subclass gets the property through inheritance, and the instance gets it from the subclass. Because the methods receive `self`, they can use instance state and other methods at any depth of subclassing.
+
+### Computed attributes with properties
+
+Properties often do more than trace access. They can compute a value each time it is fetched. Example 38-2 shows a property that returns the square of a stored value:
+
+```python
+class PropSquare:
+    def __init__(self, start):
+        self.value = start
+    def getX(self): # On attr fetch
+        return self.value ** 2
+    def setX(self, value): # On attr assign
+        self.value = value
+    X = property(getX, setX) # No delete or docs
+P = PropSquare(3) # Two instances of class with property
+Q = PropSquare(32) # Each has different state information
+print(P.X) # 3 ** 2
+P.X = 4
+print(P.X) # 4 ** 2
+print(Q.X) # 32 ** 2 (1024)
+```
+
+The attribute `X` looks like plain data, but each fetch runs code to compute the value. The instance stores the base value, and each fetch returns that value squared. Running the example prints `9`, `16` and `1024`.
+
+Each instance keeps its own base value, because the property methods receive `self`. That means the fetch always squares the subject instance's own data.
+
+### Coding properties with decorators
+
+The `@property` decorator is a shorter way to create a property. A decorator rebinds the function name to the result of the decorator call, so `@property` is equivalent to the manual assignment. You can write the manual form first to see what happens:
+
+```python
+class Person:
+    def name(self): ...
+    name = property(name) # Manual equivalent to @property
+```
+
+Property objects also have `getter`, `setter` and `deleter` methods. Each one attaches a matching accessor and returns a copy of the property. You can use them to decorate normal methods for the set and delete operations. The getter and documentation usually fill in automatically when the property is created. Example 38-3 shows the decorator form:
+
+```python
+class Person:
+    def __init__(self, name):
+        self._name = name
+    @property
+    def name(self): # name = property(name)
+        'name property docs'
+        print('fetch...')
+        return self._name
+    @name.setter
+    def name(self, value): # name = name.setter(name)
+        print('change...')
+        self._name = value
+    @name.deleter
+    def name(self): # name = name.deleter(name)
+        print('remove...')
+        del self._name
+sue = Person('Sue Jones') # sue has a managed attribute
+print(sue.name) # Runs name getter (def name 1)
+sue.name = 'Susan Jones' # Runs name setter (def name 2)
+print(sue.name)
+del sue.name # Runs name deleter (def name 3)
+print('-'*20)
+bob = Person('Bob Smith') # bob inherits property too
+print(bob.name)
+print(Person.name.__doc__) # Or help(Person.name)
+```
+
+This code behaves exactly like Example 38-1, and its output matches. The decorator form adds only three lines. Whether you prefer it is mostly a matter of taste.
+
+## Descriptors
+
+A descriptor is a class that intercepts attribute access for one specific attribute. A property is actually a simple kind of descriptor. The `property` built-in creates a descriptor that calls functions on each access. Descriptors are also the mechanism behind properties and slots.
+
+Descriptors can do more than properties. Because a descriptor is a normal class, it can keep its own state, take part in inheritance, use composition to hold other objects, and hold its own helper methods and documentation. Like a property, though, a descriptor still manages only one attribute.
+
+### The basics of descriptors
+
+You write a descriptor as a separate class. It defines special methods for the access types it handles: `__get__` for fetches, `__set__` for assignments and `__delete__` for deletions. You then assign an instance of that class to an attribute in another class:
+
+```python
+class Descriptor:
+    "docstring goes here"
+    def __get__(self, instance, owner): ... # Return attr value
+    def __set__(self, instance, value): ... # Return nothing (None)
+    def __delete__(self, instance): ... # Return nothing (None)
+```
+
+A class with any of these methods counts as a descriptor. When one of its instances is assigned to another class's attribute, Python calls the matching method on each access. If a method is missing, that kind of access is not supported.
+
+The `__set__` method is worth a closer look. Leaving it out does not make an attribute read-only. Python lets an instance assign that name and store its own copy, which hides the descriptor. To make a descriptor attribute read-only, you define `__set__` and raise an exception inside it.
+
+Descriptors with `__set__` are called data descriptors. They take precedence over names found through normal inheritance, so the descriptor always wins over an instance attribute with the same name. The built-in `__class__` attribute works this way. Chapter 40 of the book covers the full inheritance rules.
+
+### Descriptor method arguments
+
+All three descriptor methods receive the descriptor's own instance as `self`. They also receive the client instance that owns the attribute, named `instance` here. The `__get__` method gets one more argument, `owner`, which is the class that holds the descriptor.
+
+The `instance` argument is `None` when you fetch the attribute through the class instead of an instance. That lets the descriptor return itself for class-level access. This REPL session shows the arguments Python passes:
+
+```text
+>>> class Descriptor:
+...     def __get__(self, instance, owner):
+...         print(self, instance, owner, sep='\n')
+>>> class Subject:
+...     attr = Descriptor() # Descriptor instance is class attr
+>>> X = Subject()
+>>> X.attr
+<__main__.Descriptor object at 0x104bc9b20>
+<__main__.Subject object at 0x104b8a570>
+<class '__main__.Subject'>
+>>> Subject.attr
+<__main__.Descriptor object at 0x104bc9b20>
+None
+<class '__main__.Subject'>
+```
+
+When `X.attr` is fetched, Python acts as if it made this call. The `Subject.attr` lookup itself does not call `__get__` again:
+
+```text
+X.attr => Descriptor.__get__(Subject.attr, X, Subject)
+```
+
+The descriptor knows it is being accessed directly when its `instance` argument is `None`.
+
+### Read-only descriptors
+
+Omitting `__set__` is not enough to make a descriptor attribute read-only. The assignment still stores a value in the instance and hides the descriptor. This session shows the problem:
+
+```text
+>>> class D:
+...     def __get__(*args): print('get')
+>>> class C:
+...     a = D() # Attribute "a" is a descriptor instance
+>>> X = C()
+>>> X.a # Runs inherited descriptor __get__
+get
+>>> C.a
+get
+>>> X.a = 99 # Stored on X, hiding C.a!
+>>> X.a
+99
+>>> list(X.__dict__.keys())
+['a']
+>>> Y = C()
+>>> Y.a # Y still inherits descriptor
+get
+>>> C.a
+get
+```
+
+Instance assignment works this way for every attribute, and it lets an instance override a class default. To block it, define `__set__` and raise an exception. Python then sends the assignment to the descriptor instead of the instance:
+
+```text
+>>> class D:
+...     def __get__(*args): print('get')
+...     def __set__(*args): raise AttributeError('cannot set')
+>>> class C:
+...     a = D()
+>>> X = C()
+>>> X.a # Routed to C.a.__get__
+get
+>>> X.a = 99 # Routed to C.a.__set__
+AttributeError: cannot set
+```
+
+> Note: Do not confuse the descriptor `__delete__` method with `__del__`. The `__delete__` method runs when someone deletes the managed attribute on an instance of the owner class. The `__del__` method is a general destructor that runs when any instance is about to be garbage-collected. `__delete__` is closer to the `__delattr__` method covered below.
+
+### A first example with descriptors
+
+Example 38-4 rebuilds the earlier `name` example with a descriptor. Its methods use the `instance` argument to reach the name stored on the client object:
+
+```python
+class Name:
+    'name descriptor docs'
+    def __get__(self, instance, owner):
+        print('fetch...')
+        return instance._name
+    def __set__(self, instance, value):
+        print('change...')
+        instance._name = value
+    def __delete__(self, instance):
+        print('remove...')
+        del instance._name
+class Person:
+    def __init__(self, name):
+        self._name = name
+    name = Name() # Assign descriptor to attr
+sue = Person('Sue Jones') # sue has a managed attribute
+print(sue.name) # Runs Name.__get__
+sue.name = 'Susan Jones' # Runs Name.__set__
+print(sue.name)
+del sue.name # Runs Name.__delete__
+print('-'*20)
+bob = Person('Bob Smith') # bob inherits descriptor too
+print(bob.name)
+print(Name.__doc__) # Or help(Name)
+```
+
+The descriptor must be assigned to a class attribute. It does not work when assigned to an instance attribute with `self`. When `__get__` runs, Python passes three objects. The `self` is the `Name` instance. The `instance` is the `Person` object, and `owner` is the `Person` class.
+
+The output matches the property version exactly. Like the property, the descriptor is inherited by subclasses, and you can move it into a base class without changes. If the descriptor is useful only inside one class, you can nest it inside that class. The nested version works the same, but the docstring lives at a new path:
+
+```python
+class Person:
+    def __init__(self, name):
+        self._name = name
+    class Name: # Using a nested class
+        'name descriptor docs'
+        def __get__(self, instance, owner):
+            ...same...
+        def __set__(self, instance, value):
+            ...same...
+        def __delete__(self, instance):
+            ...same...
+    name = Name()
+```
+
+Nesting moves `Name` into the scope of `Person`, so it cannot clash with names outside the class. The test script must fetch the docstring with `print(Person.Name.__doc__)` instead of `print(Name.__doc__)`.
+
+### Computed attributes with descriptors
+
+Descriptors can compute values too. Example 38-5 reworks the squaring example with a descriptor. Each descriptor keeps its own base value:
+
+```python
+class DescSquare:
+    def __init__(self, start): # Each desc has own state
+        self.value = start
+    def __get__(self, instance, owner): # On attr fetch
+        return self.value ** 2
+    def __set__(self, instance, value): # On attr assign
+        self.value = value # No delete or docs
+class Client1:
+    X = DescSquare(3) # Assign descriptor instance to class attr
+class Client2:
+    X = DescSquare(32) # Another instance in another client class
+# Could also code two instances in same class
+c1 = Client1()
+c2 = Client2()
+print(c1.X) # 3 ** 2
+c1.X = 4
+print(c1.X) # 4 ** 2
+print(c2.X) # 32 ** 2 (1024)
+```
+
+The output matches the property version: `9`, `16` and `1024`. This time a descriptor object intercepts each access instead of a property.
+
+### Using state in descriptors
+
+The first two descriptor examples keep their data in different places. The name example stores data on the client instance. The squaring example stores data on the descriptor itself, in `self`. A descriptor can use either place, or both.
+
+Descriptor state is per-descriptor data. It can be internal to the descriptor, or it can span all instances. It can vary per attribute appearance, and it is often different for each client class. Instance state is per-client-object data, so it varies from one application object to the next.
+
+Choose carefully. Storing employee names in descriptor state would make every client instance share one copy. Storing descriptor internals in each instance would create many copies that vary. Descriptor state can also avoid name clashes, because the descriptor does not add anything to the instance namespace. Example 38-6 shows a descriptor that keeps its data on itself:
+
+```python
+class DescState: # Use descriptor state
+    def __init__(self, value):
+        self.value = value
+    def __get__(self, instance, owner): # On attr fetch
+        print('DescState get')
+        return self.value * 10
+    def __set__(self, instance, value): # On attr assign
+        print('DescState set')
+        self.value = value
+# Client class
+class CalcAttrs:
+    X = DescState(2) # Descriptor class attr
+    Y = 3 # Class attr
+    def __init__(self):
+        self.Z = 4 # Instance attr
+obj = CalcAttrs()
+print(obj.X, obj.Y, obj.Z) # X is computed, others are not
+obj.X = 5 # X assignment is intercepted
+CalcAttrs.Y = 6 # Y reassigned in class
+obj.Z = 7 # Z assigned in instance
+print(obj.X, obj.Y, obj.Z)
+obj2 = CalcAttrs() # But X uses shared data, like Y!
+print(obj2.X, obj2.Y, obj2.Z)
+```
+
+Only `X` is managed here. Reads and writes to `X` are intercepted, but `Y` and `Z` are not. Because `X` keeps its value on the descriptor, every client instance sees the same value:
+
+```text
+$ python3 desc-state-desc.py
+DescState get
+20 3 4
+DescState set
+DescState get
+50 6 7
+DescState get
+50 6 4
+```
+
+A descriptor can also store data on the client instance. That allows a value that varies per instance. Example 38-7 assumes the client sets an `_X` attribute on each instance, and the descriptor reads it:
+
+```python
+class InstState: # Using instance state
+    def __get__(self, instance, owner):
+        print('InstState get') # Assume set by client class
+        return instance._X * 10
+    def __set__(self, instance, value):
+        print('InstState set')
+        instance._X = value
+# Client class
+class CalcAttrs:
+    X = InstState() # Descriptor class attr
+    Y = 3 # Class attr
+    def __init__(self):
+        self._X = 2 # Instance attr
+        self.Z = 4 # Instance attr
+obj = CalcAttrs()
+print(obj.X, obj.Y, obj.Z) # X is computed, others are not
+obj.X = 5 # X assignment is intercepted
+CalcAttrs.Y = 6 # Y reassigned in class
+obj.Z = 7 # Z assigned in instance
+print(obj.X, obj.Y, obj.Z)
+obj2 = CalcAttrs() # But X differs now, like Z!
+print(obj2.X, obj2.Y, obj2.Z)
+```
+
+The name `_X` avoids a clash with the descriptor's own name. This time each instance keeps its own value:
+
+```text
+$ python3 desc-state-inst.py
+InstState get
+20 3 4
+InstState set
+InstState get
+50 6 7
+InstState get
+20 6 4
+```
+
+Both kinds of state have a role. Descriptors can keep data internal to themselves without adding it to the client's namespace, and that is a clear advantage over properties. This small class uses both sources. Its `self.data` belongs to the attribute, and `instance.data` varies per client:
+
+```text
+>>> class DescBoth:
+...     def __init__(self, data):
+...         self.data = data
+...     def __get__(self, instance, owner):
+...         return f'{self.data}, {instance.data}'
+...     def __set__(self, instance, value):
+...         instance.data = value
+>>> class Client:
+...     def __init__(self, data):
+...         self.data = data
+...     managed = DescBoth('hack')
+>>> I = Client('code')
+>>> I.managed # Show both data sources
+'hack, code'
+>>> I.managed = 'HACK' # Change instance data
+>>> I.managed
+'hack, HACK'
+```
+
+Properties and descriptors are virtual attributes. They do not appear in the instance's namespace dictionary, yet you can reach them with `getattr`. They do appear in `dir` results, because they live on the class. Whether to read them this way depends on the program, since they may run real computation:
+
+```text
+>>> I.__dict__
+{'data': 'HACK'}
+>>> [x for x in dir(I) if not x.startswith('__')]
+['data', 'managed']
+>>> getattr(I, 'data')
+'HACK'
+>>> getattr(I, 'managed')
+'hack, HACK'
+>>> for attr in (x for x in dir(I) if not x.startswith('__')):
+...     print(f'{attr} => {getattr(I, attr)}')
+data => HACK
+managed => hack, HACK
+```
+
+The generic `__getattr__` and `__getattribute__` methods do not have class-level names, so their virtual attributes do not show up in `dir` results. A class can provide a `__dir__` method to fix that, but it is optional and uncommon.
+
+### How properties and descriptors relate
+
+The `property` built-in is a convenient way to create a descriptor. Once you know both tools, you can write a property with a descriptor class. Example 38-8 does that:
+
+```python
+class Property:
+    def __init__(self, fget=None, fset=None, fdel=None, doc=None):
+        self.fget = fget
+        self.fset = fset
+        self.fdel = fdel # Save unbound methods
+        self.__doc__ = doc # or other callables
+    def __get__(self, instance, instancetype=None):
+        if instance is None:
+            return self
+        if self.fget is None:
+            raise AttributeError("can't get attribute")
+        return self.fget(instance) # Pass instance to self
+    # in property accessors
+    def __set__(self, instance, value):
+        if self.fset is None:
+            raise AttributeError("can't set attribute")
+        self.fset(instance, value)
+    def __delete__(self, instance):
+        if self.fdel is None:
+            raise AttributeError("can't delete attribute")
+        self.fdel(instance)
+class Person:
+    def getName(self):
+        print('getName...')
+    def setName(self, value):
+        print('setName...')
+    name = Property(getName, setName) # Use like property()
+x = Person()
+x.name
+x.name = 'Pat'
+del x.name
+```
+
+This `Property` class routes accesses through the descriptor protocol. It sends them to the methods saved in its state when the class instance is created. The fetch goes from `Person` to `Property.__get__` and then back to `getName`. Running it prints this:
+
+```text
+$ python3 prop-desc-equiv.py
+getName...
+setName...
+AttributeError: can't delete attribute
+```
+
+This class handles only basic property use. To support `@` decorator syntax for setters and deleters, you would add `setter` and `deleter` methods that save the decorated function and return the property. The built-in `property` already does this, so the book skips that extension.
+
+### Descriptors, slots and other tools
+
+Descriptors also power Python's `__slots__` feature. Instance dictionaries are avoided by creating class-level descriptors. Those descriptors map slot names to fixed storage in the instance. Unlike the explicit `property` call, slot descriptors are created automatically when a `__slots__` attribute appears in the class.
+
+Chapter 32 of the book explains slots, and it explains why they are rarely worth using outside unusual cases. Descriptors also serve other class tools, but the internals are beyond this chapter. Python's manuals and open source code cover them.
+
+## The `__getattr__` and `__getattribute__` methods
+
+The `__getattr__` and `__getattribute__` methods are operator-overloading methods, so they intercept attribute fetches in a more general way. They run automatically when an instance is used in an attribute fetch. Unlike properties and descriptors, they can catch any name. That makes them more flexible, but it can also add extra calls.
+
+Attribute fetch interception comes in two forms. The `__getattr__` method runs only for attributes that are undefined. That means the attribute is not stored on the instance or inherited from its classes. The `__getattribute__` method runs for every attribute. Because it catches everything, it must be used carefully to avoid loops.
+
+These two methods belong to a larger set. Python also has `__setattr__` for every assignment and `__delattr__` for every deletion. The four work together, so this chapter treats them as one topic. You met `__getattr__` and `__setattr__` in chapters 30 and 32 of the book, and `__getattribute__` only briefly.
+
+### The basics of these methods
+
+If a class defines or inherits one of these four methods, Python runs it when an instance takes part in the matching operation:
+
+```python
+def __getattr__(self, name): # On undefined attribute fetch [obj.name]
+def __getattribute__(self, name): # On all attribute fetch [obj.name]
+def __setattr__(self, name, value): # On all attribute assignment [obj.name=value]
+def __delattr__(self, name): # On all attribute deletion [del obj.name]
+```
+
+Here `self` is the instance, `name` is the attribute name as a string, and `value` is the object being assigned. The two fetch methods return a value. The other two return nothing. Each one can raise an exception to block an access.
+
+Using `__getattr__` for fetches and `__setattr__` for assignments catches every access in a small class like this one:
+
+```python
+class Catcher:
+    def __getattr__(self, name):
+        print('Get:', name)
+    def __setattr__(self, name, value):
+        print('Set:', name, value)
+X = Catcher()
+X.job # Prints "Get: job"
+X.pay # Prints "Get: pay"
+X.pay = 'bread' # Prints "Set: pay bread"
+```
+
+The `__getattribute__` method works the same here, but it can loop in general, as the next section explains:
+
+```python
+class Catcher: # On all attribute fetches
+    def __getattribute__(self, name): # Works same as getattr here
+        print('Get:', name) # But prone to loops in general
+    ...rest unchanged...
+```
+
+This structure can implement the delegation pattern from chapter 31 of the book. Because every attribute reaches the interception method, you can validate each one and pass it to an embedded object. This wrapper, a proxy class, traces each fetch made to the object it wraps:
+
+```python
+class Wrapper:
+    def __init__(self, object):
+        self.wrapped = object # Save object
+    def __getattr__(self, attrname):
+        print('Trace:', attrname) # Trace fetch
+        return getattr(self.wrapped, attrname) # Delegate fetch
+X = Wrapper([1, 2, 3])
+X.append(4) # Prints "Trace: append"
+print(X.wrapped) # Prints "[1, 2, 3, 4]"
+```
+
+Properties and descriptors have no equivalent for this. You would need an accessor for every attribute of every wrapped object. The generic methods can add calls on assignments, though. The case study at the end of this section shows that trade-off.
+
+### Avoiding loops in these methods
+
+These methods are straightforward, but they can recurse. The main risk is a fetch inside a method that calls the same method again. Because `__getattr__` runs only for undefined attributes, it can fetch other attributes without trouble. The `__getattribute__` and `__setattr__` methods run for every attribute, so their code must be careful.
+
+In a `__getattribute__` method, a fetch like the one below calls `__getattribute__` again. The loop continues until memory runs out:
+
+```python
+def __getattribute__(self, name):
+    x = self.other # LOOPS!
+```
+
+Any `self` attribute reference in the class triggers `__getattribute__`, not only the ones inside it. That is usually the goal, since the method exists to see every fetch. Inside the method itself, though, it almost always loops. To avoid it, send the fetch to a higher superclass. The `object` class is a superclass of every class, so it works well:
+
+```python
+def __getattribute__(self, name):
+    x = object.__getattribute__(self, 'other') # Force higher to avoid me
+```
+
+The same trap exists in `__setattr__`. Any assignment inside the method calls `__setattr__` again:
+
+```python
+def __setattr__(self, name, value):
+    self.other = value # Recurs (and might LOOP!)
+```
+
+You can avoid this by writing into the instance's `__dict__` directly, which skips the assignment hook:
+
+```python
+def __setattr__(self, name, value):
+    self.__dict__['other'] = value # Use attr dict to avoid me
+```
+
+You can also send assignments to a superclass. This works well when the wrapped class uses slots, properties or other virtual attributes that live on the class instead of the instance:
+
+```python
+def __setattr__(self, name, value):
+    object.__setattr__(self, 'other', value) # Force higher to avoid me
+```
+
+The `__dict__` trick does not help in `__getattribute__`. Fetching `__dict__` is itself an attribute fetch, so the method calls itself again and fails quickly:
+
+```python
+def __getattribute__(self, name):
+    x = self.__dict__['other'] # Loops!
+```
+
+The `__delattr__` method is less common, but it runs for every deletion, just as `__setattr__` runs for every assignment. Avoid loops there with the same tools: the `__dict__` or a superclass call.
+
+### A first example with generic methods
+
+The generic methods do not need much code. Example 38-9 repeats the `name` example using these methods. Because they catch so much, the code checks the name to know when to manage an attribute. Other names pass through normally:
+
+```python
+class Person:
+    def __init__(self, name): # On [Person()]
+        self._name = name # Triggers __setattr__!
+    def __getattr__(self, attr): # On [obj.undefined]
+        print('get: ' + attr)
+        if attr == 'name': # Intercept name: not stored
+            return self._name # Does not loop: real attr
+        else: # Others are errors
+            raise AttributeError(attr)
+    def __setattr__(self, attr, value): # On [obj.any = value]
+        print('set: ' + attr)
+        if attr == 'name':
+            attr = '_name' # Set internal name
+        self.__dict__[attr] = value # Avoid looping here
+    def __delattr__(self, attr): # On [del obj.any]
+        print('del: ' + attr)
+        if attr == 'name':
+            attr = '_name' # Avoid looping here too
+        del self.__dict__[attr] # but much less common
+sue = Person('Sue Jones') # sue has a managed attribute
+print(sue.name) # Runs __getattr__
+sue.name = 'Susan Jones' # Runs __setattr__
+print(sue.name)
+del sue.name # Runs __delattr__
+print('-'*20)
+bob = Person('Bob Smith') # bob's attrs work like sue's
+print(bob.name)
+#print(Person.name.__doc__) # No direct equivalent here!
+```
+
+Running it prints the same results, along with a trace of each generic call:
+
+```text
+$ python3 getattr-person.py
+set: _name
+get: name
+Sue Jones
+set: name
+get: name
+Susan Jones
+del: name
+--------------------
+set: _name
+get: name
+Bob Smith
+```
+
+The assignment in `__init__` also triggers `__setattr__`. That method sees every instance assignment, including the `_name` attribute. These methods also cannot hold documentation. A managed attribute here is just code inside the methods, not a separate object.
+
+Using `__getattribute__` gives the same result. Replace `__getattr__` in Example 38-9 with this method, which must route all other names to the superclass:
+
+```python
+# Replace just __getattr__ with this
+def __getattribute__(self, attr): # On [obj.any]
+    print('get: ' + attr)
+    if attr == 'name': # Intercept all names
+        attr = '_name' # Map to internal name
+    return object.__getattribute__(self, attr) # Avoid looping here
+```
+
+The output has an extra `get: __dict__` call for each assignment. The `__setattr__` method fetches `__dict__`, and that fetch goes through `__getattribute__` too:
+
+```text
+$ python3 getattribute-person.py
+set: _name
+get: __dict__
+get: name
+Sue Jones
+set: name
+get: __dict__
+get: name
+Susan Jones
+del: name
+get: __dict__
+--------------------
+set: _name
+get: __dict__
+get: name
+Bob Smith
+```
+
+This version is artificial for such a small case. The generic methods shine in delegation code, where each access is validated and routed to a wrapped object. For a single managed attribute, a property or descriptor may do as well and add no extra calls for unmanaged attributes.
+
+### Computed attributes with generic methods
+
+These methods can compute a value just as properties and descriptors do. Example 38-11 creates a virtual attribute `X` that is calculated on each fetch:
+
+```python
+class AttrSquare:
+    def __init__(self, start):
+        self.value = start # Triggers __setattr__!
+    def __getattr__(self, attr): # On undefined attr fetch
+        if attr == 'X':
+            return self.value ** 2 # value is not undefined
+        else:
+            raise AttributeError(attr)
+    def __setattr__(self, attr, value): # On all attr assignments
+        if attr == 'X':
+            attr = 'value'
+        self.__dict__[attr] = value
+A = AttrSquare(3) # 2 instances of class with overloading
+B = AttrSquare(32) # Each has different state information
+print(A.X) # 3 ** 2
+A.X = 4
+print(A.X) # 4 ** 2
+print(B.X) # 32 ** 2 (1024)
+```
+
+The output matches the property and descriptor versions. The mechanics, however, come from generic interception:
+
+```text
+$ python3 getattr-computed.py
+9
+16
+1024
+```
+
+Example 38-12 makes the same change with `__getattribute__`. It replaces the fetch method and changes assignments to call `object` methods rather than `__dict__` keys:
+
+```python
+class AttrSquare:
+    def __init__(self, start):
+        self.value = start # Triggers __setattr__!
+    def __getattribute__(self, attr): # On all attr fetches
+        if attr == 'X':
+            return self.value ** 2 # Triggers __getattribute__ again!
+        else:
+            return object.__getattribute__(self, attr)
+    def __setattr__(self, attr, value): # On all attr assignments
+        if attr == 'X':
+            attr = 'value'
+        object.__setattr__(self, attr, value)
+    ...self-test code same as Example 38-11...
+```
+
+The results are the same. Two things happen inside this class, though. The constructor's `self.value = start` triggers `__setattr__`. Also, `self.value` inside `__getattribute__` triggers `__getattribute__` again. That means each fetch of `X` runs the method twice. The `__getattr__` version avoids this because `value` is defined and skips the method.
+
+To avoid the second call, fetch `value` through the superclass as well:
+
+```python
+def __getattribute__(self, attr):
+    if attr == 'X':
+        return object.__getattribute__(self, 'value') ** 2
+```
+
+This still calls a superclass method, but it does not start an extra recursive call. If the flow is hard to follow, add `print` calls to each method and trace the order.
+
+### Comparing `__getattr__` and `__getattribute__`
+
+Example 38-13 shows the coding difference between the two methods. Both implement three attributes. `attr1` is a class attribute, `attr2` is an instance attribute, and `attr3` is a virtual attribute computed on fetch:
+
+```python
+class GetAttr:
+    attr1 = 1
+    def __init__(self):
+        self.attr2 = 2
+    def __getattr__(self, attr): # On undefined attrs only
+        print('get:', attr) # Not on attr1: inherited from class
+        if attr == 'attr3': # Not on attr2: stored on instance
+            return 3
+        else:
+            raise AttributeError(attr)
+X = GetAttr()
+print(X.attr1)
+print(X.attr2)
+print(X.attr3)
+print('-'*20)
+class GetAttribute:
+    attr1 = 1
+    def __init__(self):
+        self.attr2 = 2
+    def __getattribute__(self, attr): # On all attr fetches
+        print('get:', attr) # Use superclass to avoid looping here
+        if attr == 'attr3':
+            return 3
+        else:
+            return object.__getattribute__(self, attr)
+X = GetAttribute()
+print(X.attr1)
+print(X.attr2)
+print(X.attr3)
+```
+
+The `__getattr__` version intercepts only `attr3`, since the others are defined. The `__getattribute__` version intercepts every fetch. It must send the ones it does not manage to the superclass to avoid loops:
+
+```text
+$ python3 getattr-v-getattribute.py
+1
+2
+get: attr3
+3
+--------------------
+get: attr1
+1
+get: attr2
+2
+get: attr3
+3
+```
+
+The two methods can catch different sets of fetches. In practice, though, they often do the same job. If an attribute is not physically stored, both produce the same result.
+
+### Management techniques compared
+
+A computed attribute makes a useful comparison across all four techniques. Example 38-14 uses properties for `square` and `cube`. The base values begin with an underscore, so they do not clash with the property names:
+
+```python
+"Two dynamically computed attributes with properties"
+class Powers:
+    def __init__(self, square, cube):
+        self._square = square # _square is the base value
+        self._cube = cube # square is the property name
+    def getSquare(self):
+        return self._square ** 2
+    def setSquare(self, value):
+        self._square = value
+    square = property(getSquare, setSquare) # Or @property decorator
+    def getCube(self):
+        return self._cube ** 3
+    cube = property(getCube) # Likewise
+```
+
+Example 38-15 does the same with descriptors. Each descriptor is a full class. These descriptors keep base values in instance state, so they need leading underscores too. The book notes that storing base values in descriptor state would avoid the rename. That would not suit values that must vary per client instance:
+
+```python
+"Same, but with descriptors (per-instance state)"
+class DescSquare:
+    def __get__(self, instance, owner):
+        return instance._square ** 2
+    def __set__(self, instance, value):
+        instance._square = value
+class DescCube:
+    def __get__(self, instance, owner):
+        return instance._cube ** 3
+class Powers:
+    square = DescSquare()
+    cube = DescCube()
+    def __init__(self, square, cube):
+        self._square = square # "self.square = square" works too,
+        self._cube = cube # because it triggers desc __set__!
+```
+
+Example 38-16 uses `__getattr__`. Base values keep underscore names, so accesses to the managed names are undefined and reach the method. It also needs `__setattr__` to intercept assignments, and it must avoid looping there:
+
+```python
+"Same, but with generic __getattr__ undefined-attribute interception"
+class Powers:
+    def __init__(self, square, cube):
+        self._square = square
+        self._cube = cube
+    def __getattr__(self, name):
+        if name == 'square':
+            return self._square ** 2
+        elif name == 'cube':
+            return self._cube ** 3
+        else:
+            raise TypeError('unknown attr:' + name)
+    def __setattr__(self, name, value):
+        if name == 'square':
+            self.__dict__['_square'] = value # Or use object
+        else:
+            self.__dict__[name] = value
+```
+
+Example 38-17 uses `__getattribute__`. It catches every fetch, so it must route base-value fetches to a superclass. Fetching `self._square` directly also works, but it adds a second `__getattribute__` call:
+
+```python
+"Same, but with generic __getattribute__ all-attribute interception"
+class Powers:
+    def __init__(self, square, cube):
+        self._square = square
+        self._cube = cube
+    def __getattribute__(self, name):
+        if name == 'square':
+            return object.__getattribute__(self, '_square') ** 2
+        elif name == 'cube':
+            return object.__getattribute__(self, '_cube') ** 3
+        else:
+            return object.__getattribute__(self, name)
+    def __setattr__(self, name, value):
+        if name == 'square':
+            object.__setattr__(self, '_square', value) # Or use __dict__
+        else:
+            object.__setattr__(self, name , value)
+```
+
+All four modules produce the same result. This REPL session imports each module by name, then tests its attributes:
+
+```text
+>>> from importlib import import_module
+>>> mods = [f'all_four_{M}' for M in ('props', 'desc', 'getattr', 'getattribute')]
+>>> for modname in mods:
+...     module = import_module(modname) # Import by name string
+...     X = module.Powers(3, 4) # This module's class (print to see)
+...     print(X.square) # 3 ** 2 = 9
+...     print(X.cube) # 4 ** 3 = 64
+...     X.square = 5
+...     print(X.square) # 5 ** 2 = 25
+9
+64
+25
+...repeated four times...
+```
+
+### Intercepting built-in operation attributes
+
+The generic methods have a limit that matters for delegation. Attribute fetches for implicit operator-overloading methods never reach `__getattr__` or `__getattribute__`. Printing, `+` and indexing look up methods such as `__str__`, `__add__` and `__getitem__` in the class. They skip the instance and its interceptors.
+
+Explicit fetches differ. `X.__add__` does reach the interceptors, but `X + Y` does not. A wrapper that wants to delegate built-in operations must define those methods itself. That is more work when the wrapped object has many operators, but it is workable. Adding them manually, with tools, or through a shared superclass all work.
+
+Example 38-18 runs the same tests against both classes. It checks an ordinary attribute, a missing attribute and each built-in operation:
+
+```python
+class GetAttr:
+    cattr = 88 # Attrs stored on class and instance
+    def __init__(self): # These skip getattr, but not getattribute
+        self.iattr = 77
+    def __len__(self): # Redefine for len(): doesn't run getattr
+        print('__len__: 66')
+        return 66
+    def __getattr__(self, attr): # Provide __str__ if asked, else dummy func
+        print('getattr:', attr) # Never run for __str__: inherited from object
+        if attr == '__str__':
+            return lambda *args: '[Getattr str]'
+        else:
+            return lambda *args: None
+class GetAttribute:
+    cattr = 88 # Similar, but catch all attributes
+    def __init__(self): # Except implicit fetches for built-in ops
+        self.iattr = 77
+    def __len__(self): # Redefine for len(): doesn't run getattribute
+        print('__len__: 66') # But explicit fetches of inherited __str__ do
+        return 66
+    def __getattribute__(self, attr):
+        print('getattribute:', attr)
+        if attr == '__str__':
+            return lambda *args: '[GetAttribute str]'
+        else:
+            return lambda *args: None
+for Class in GetAttr, GetAttribute:
+    print('\n' + Class.__name__.ljust(50, '='))
+    X = Class()
+    # Defined attributes trigger getattribute but not getattr
+    X.cattr # Class attr (defined – skips getattr)
+    X.iattr # Instance attr (defined – skips getattr)
+    X.other # Missing attr
+    len(X) # __len__ defined explicitly: moot
+    # Built-in ops do not invoke either getattr or getattribute
+    # No defaults are inherited for these from object superclass
+    try: X[0] # Tries to invoke __getitem__
+    except: print('fail []')
+    try: X + 99 # Ditto, __add__
+    except: print('fail +')
+    try: X() # Ditto, __call__
+    except: print('fail ()')
+    # But explicit calls invoke both catchers
+    X.__getitem__(0)
+    X.__add__(99)
+    X.__call__()
+    # The implied object superclass defines a __str__ that precludes getattr
+    # But the absolute getattribute is not called for implicit fetches either
+    print(X.__str__()) # __str__: explicit call => only __getattr__ skipped
+    print(X) # __str__: implicit via built-in => both skipped
+```
+
+The output shows the difference. Neither method runs for the operators, though explicit calls to the same names reach both:
+
+```text
+$ python3 getattr-builtins.py
+GetAttr===========================================
+getattr: other
+__len__: 66
+fail []
+fail +
+fail ()
+getattr: __getitem__
+getattr: __add__
+getattr: __call__
+<__main__.GetAttr object at 0x10f76f020>
+<__main__.GetAttr object at 0x10f76f020>
+GetAttribute======================================
+getattribute: cattr
+getattribute: iattr
+getattribute: other
+__len__: 66
+fail []
+fail +
+fail ()
+getattribute: __getitem__
+getattribute: __add__
+getattribute: __call__
+getattribute: __str__
+[GetAttribute str]
+<__main__.GetAttribute object at 0x10f74c440>
+```
+
+Several points stand out. The `__getattr__` method never sees `__str__`, because `object` supplies a default for it. The `__getattribute__` method catches `__str__` only in the explicit call, since printing skips it. The `__call__` and `__add__` methods are caught by both schemes when fetched explicitly, but built-in operations bypass them. The `__len__` method works because the class defines it, and `len` finds it there.
+
+This affects delegation. A wrapper class that passes printing requests to the wrapped object has to define `__repr__`. The `object` class supplies a default `__repr__`, and built-in operations skip the generic methods, so the wrapper needs its own. Chapter 39 of the book shows fixes for delegating built-ins.
+
+### Attribute validation case study
+
+The closing example is a `CardHolder` class with four attributes. Three of them are managed, and each one validates or transforms its value. The `remain` attribute is read-only and computed on demand. All four versions produce the same output for the same tests, but each uses a different technique. The case is mainly for self-study, though it uses every idea from this section.
+
+#### Validating with properties
+
+Example 38-19 uses properties for three attributes. The attributes `name`, `age` and `acct` are managed, `addr` is a plain attribute, and `remain` is virtual. Properties are a good fit when code already uses attributes, since they add checks without changing callers.
+
+Inside `__init__`, the attribute assignments trigger the property setters too. When the constructor assigns `self.name`, the `setName` method transforms the value and stores it in `__name`. The double underscore is a name-mangling convention that keeps the stored value separate from the property. Properties have no state of their own, so the stored data must live under another name. This class has 39 lines, counting blank lines:
+
+```python
+class CardHolder:
+    acctlen = 8 # Class data
+    retireage = 62.5
+    def __init__(self, acct, name, age, addr):
+        self.acct = acct # Instance data
+        self.name = name # These trigger prop setters too!
+        self.age = age # __X mangled to have class name
+        self.addr = addr # addr is not managed
+        # remain has no data
+    def getName(self):
+        return self.__name
+    def setName(self, value):
+        value = value.lower().replace(' ', '_')
+        self.__name = value
+    name = property(getName, setName) # Or @ decorators for both
+    def getAge(self):
+        return self.__age
+    def setAge(self, value):
+        if value < 0 or value > 150:
+            raise ValueError('invalid age')
+        else:
+            self.__age = value
+    age = property(getAge, setAge)
+    def getAcct(self):
+        return self.__acct[:-3] + '***'
+    def setAcct(self, value):
+        value = value.replace('-', '')
+        if len(value) != self.acctlen:
+            raise TypeError('invalid acct number')
+        else:
+            self.__acct = value
+    acct = property(getAcct, setAcct)
+    def remainGet(self): # Could be a method, not attr
+        return self.retireage - self.age # Unless already using as attr
+    remain = property(remainGet)
+```
+
+The tester in Example 38-20 takes the module name as a command-line argument. It loads the class, creates two instances, and reads and changes their attributes. Operations expected to fail sit inside `try` statements. The same tester runs against all four versions:
+
+```python
+def loadclass():
+    import sys, importlib
+    modulename = sys.argv[1] # Module name in command line
+    module = importlib.import_module(modulename) # Import module by name string
+    print(f'[Using: {module.CardHolder}]') # No need for getattr() here
+    return module.CardHolder
+def printholder(who):
+    print(who.acct, who.name, who.age, who.remain, who.addr, sep=' / ')
+if __name__ == '__main__':
+    CardHolder = loadclass()
+    bob = CardHolder('1234-5678', 'Bob Smith', 40, '123 main st')
+    printholder(bob)
+    bob.name = 'Bob Q. Smith'
+    bob.age = 50
+    bob.acct = '23-45-67-89'
+    printholder(bob)
+    sue = CardHolder('5678-12-34', 'Sue Jones', 35, '124 main st')
+    printholder(sue)
+    try:
+        sue.age = 200
+    except: print('Bad age for Sue')
+    try:
+        sue.remain = 5
+    except: print("Can't set sue.remain")
+    try:
+        sue.acct = '1234567'
+    except: print('Bad acct for Sue')
+```
+
+The output shows the managed values. Account numbers are partly hidden, names are standardized, and `remain` is computed when fetched:
+
+```text
+$ python3 validate_tester.py validate_properties
+[Using: <class 'validate_properties.CardHolder'>]
+12345*** / bob_smith / 40 / 22.5 / 123 main st
+23456*** / bob_q._smith / 50 / 12.5 / 123 main st
+56781*** / sue_jones / 35 / 27.5 / 124 main st
+Bad age for Sue
+Can't set sue.remain
+Bad acct for Sue
+```
+
+#### Validating with descriptors
+
+The descriptor version manages the same attributes with classes. Properties are a focused form of descriptor, but descriptors can keep their own state. That flexibility can also cause trouble, as the next two versions show.
+
+In the first version, the constructor's assignments trigger each descriptor's `__set__`. Assigning `self.name` invokes `Name.__set__`, which transforms the value and stores it in the descriptor. The `remain` descriptor must reject assignments. Without that check, assigning `remain` on an instance would quietly create an instance attribute that hides the descriptor. This version has 45 lines of code:
+
+```python
+class CardHolder: # Using shared descriptor state
+    acctlen = 8 # Class data
+    retireage = 62.5
+    def __init__(self, acct, name, age, addr):
+        self.acct = acct # Instance data
+        self.name = name # These trigger __set__ calls too!
+        self.age = age # __X not needed: in descriptor
+        self.addr = addr # addr is not managed
+        # remain has no data
+    class Name:
+        def __get__(self, instance, owner): # Class names: CardHolder locals
+            return self.name
+        def __set__(self, instance, value):
+            value = value.lower().replace(' ', '_')
+            self.name = value
+    name = Name()
+    class Age:
+        def __get__(self, instance, owner):
+            return self.age # Use descriptor data
+        def __set__(self, instance, value):
+            if value < 0 or value > 150:
+                raise ValueError('invalid age')
+            else:
+                self.age = value
+    age = Age()
+    class Acct:
+        def __get__(self, instance, owner):
+            return self.acct[:-3] + '***'
+        def __set__(self, instance, value):
+            value = value.replace('-', '')
+            if len(value) != instance.acctlen: # Use instance class data
+                raise TypeError('invalid acct number')
+            else:
+                self.acct = value
+    acct = Acct()
+    class Remain:
+        def __get__(self, instance, owner):
+            return instance.retireage - instance.age # Triggers Age.__get__
+        def __set__(self, instance, value):
+            raise TypeError('cannot set remain') # Else set allowed here
+    remain = Remain()
+```
+
+When you run this version with the same tester, the output matches the property version, except for the class name in the first line:
+
+```text
+$ python3 validate_tester.py validate_descriptors1
+[Using: <class 'validate_descriptors1.CardHolder'>]
+…rest is same output as properties…
+```
+
+The second version fixes a real problem. In the first version, every instance shares one descriptor, so the stored values are shared too. Descriptor state is class-level data, and it cannot vary between instances. Example 38-22 shows the damage with two objects:
+
+```python
+from validate_tester import loadclass
+CardHolder = loadclass()
+bob = CardHolder('1234-5678', 'Bob Smith', 40, '123 main st')
+print('bob:', bob.name, bob.acct, bob.age, bob.addr)
+sue = CardHolder('5678-12-34', 'Sue Jones', 35, '124 main st')
+print('sue:', sue.name, sue.acct, sue.age, sue.addr) # addr differs: client data
+print('bob:', bob.name, bob.acct, bob.age, bob.addr) # name,acct,age overwritten?
+```
+
+Here `bob` changes into `sue` for every managed attribute, because the two instances share one descriptor:
+
+```text
+$ python3 validate_tester_plus.py validate_descriptors1
+[Using: <class 'validate_descriptors1.CardHolder'>]
+bob: bob_smith 12345*** 40 123 main st
+sue: sue_jones 56781*** 35 124 main st
+bob: sue_jones 56781*** 35 123 main st
+```
+
+Properties do not have this problem, since they hold no state. Descriptor state does have valid uses, such as data that spans all instances. This example used it on purpose to show the effect. In this case, though, the values belong to each client object. The fix is to store them on the instance, using the same `__X` naming as the property version.
+
+Example 38-23 makes that change. The line count stays at 45:
+
+```python
+class CardHolder: # Using per-client-instance state
+    acctlen = 8 # Class data
+    retireage = 62.5
+    def __init__(self, acct, name, age, addr):
+        self.acct = acct # Client instance data
+        self.name = name # These trigger __set__ calls too!
+        self.age = age # __X needed: in client instance
+        self.addr = addr # addr is not managed
+        # remain managed but has no data
+    class Name:
+        def __get__(self, instance, owner): # Class names: CardHolder locals
+            return instance.__name
+        def __set__(self, instance, value):
+            value = value.lower().replace(' ', '_')
+            instance.__name = value
+    name = Name() # class.name vs mangled attr
+    class Age:
+        def __get__(self, instance, owner):
+            return instance.__age # Use *instance* data
+        def __set__(self, instance, value):
+            if value < 0 or value > 150:
+                raise ValueError('invalid age')
+            else:
+                instance.__age = value
+    age = Age() # class.age vs mangled attr
+    class Acct:
+        def __get__(self, instance, owner):
+            return instance.__acct[:-3] + '***'
+        def __set__(self, instance, value):
+            value = value.replace('-', '')
+            if len(value) != instance.acctlen: # Use instance class data
+                raise TypeError('invalid acct number')
+            else:
+                instance.__acct = value
+    acct = Acct() # class.acct vs mangled name
+    class Remain:
+        def __get__(self, instance, owner):
+            return instance.retireage - instance.age # Triggers Age.__get__
+        def __set__(self, instance, value):
+            raise TypeError('cannot set remain') # Else set allowed here
+    remain = Remain()
+```
+
+Now each object keeps its own values, and `bob` stays `bob`:
+
+```text
+$ python3 validate_tester_plus.py validate_descriptors2
+[Using: <class 'validate_descriptors2.CardHolder'>]
+bob: bob_smith 12345*** 40 123 main st
+sue: sue_jones 56781*** 35 124 main st
+bob: bob_smith 12345*** 40 123 main st
+$ python3 validate_tester.py validate_descriptors2
+…same output as properties, except class name…
+```
+
+This version has one limit. It does not support fetches through the class, because the `instance` argument is `None` there. The mangled name in the error shows the problem:
+
+```text
+>>> from validate_descriptors1 import CardHolder
+>>> pat = CardHolder('1234-5678', 'Pat Smith', 40, '123 main st')
+>>> pat.name
+'pat_smith'
+>>> CardHolder.name
+'pat_smith'
+>>> from validate_descriptors2 import CardHolder
+>>> pat = CardHolder('1234-5678', 'Pat Smith', 40, '123 main st')
+>>> pat.name
+'pat_smith'
+>>> CardHolder.name
+AttributeError: 'NoneType' object has no attribute '_Name__name'
+```
+
+You could add code to raise a clearer error. The book suggests it is not worth it. This version keeps data on the client, so the descriptors need a client instance to mean anything, like an ordinary instance method. Choose state policies carefully, since they change how a descriptor behaves.
+
+#### Validating with `__getattr__`
+
+The `__getattr__` version checks the name in each undefined fetch. Attributes stored on the instance never reach the method. This approach is more general than properties or descriptors, but it needs extra work to act like them. The code must check names at runtime, which is a good job for a `match` statement. It also needs a `__setattr__` to validate assignments.
+
+Example 38-24 uses this approach. The constructor's assignments trigger `__setattr__`. Storing `name` on the instance means later fetches skip `__getattr__`. The `acct` value is stored as `_acct`, so fetches of `acct` do reach the method:
+
+```python
+class CardHolder:
+    acctlen = 8 # Class data
+    retireage = 62.5
+    def __init__(self, acct, name, age, addr):
+        self.acct = acct # Instance data
+        self.name = name # These trigger __setattr__ too
+        self.age = age # _acct not mangled: name tested
+        self.addr = addr # addr is not managed
+        # remain has no data
+    def __getattr__(self, name):
+        match name:
+            case 'acct': # On undefined attr fetches
+                return self._acct[:-3] + '***' # name, age, addr are defined
+            case 'remain':
+                return self.retireage - self.age # Doesn't trigger __getattr__
+            case _:
+                raise AttributeError(name)
+    def __setattr__(self, name, value):
+        match name:
+            case 'name': # On all attr assignments
+                value = value.lower().replace(' ', '_') # addr stored directly
+            case 'age': # acct mangled to _acct
+                if value < 0 or value > 150:
+                    raise ValueError('invalid age')
+            case 'acct':
+                name = '_acct'
+                value = value.replace('-', '')
+                if len(value) != self.acctlen:
+                    raise TypeError('invalid acct number')
+            case 'remain':
+                raise TypeError('cannot set remain')
+        self.__dict__[name] = value # Avoid looping (or object)
+```
+
+This class has 34 lines. The `match` statement adds two lines and some indentation. The version has one drawback. Assignments to unmanaged attributes, such as `addr`, now cost an extra call. Fetches of unmanaged attributes cost nothing, since they are defined. The book's view is that generic tools suit delegation, while properties and descriptors suit specific attributes. Running either tester gives the same output as before, with the class name changed:
+
+```text
+$ python3 validate_tester.py validate_getattr
+…same output as properties, except class name…
+$ python3 validate_tester_plus.py validate_getattr
+…same output as instance-state descriptors, except class name…
+```
+
+#### Validating with `__getattribute__`
+
+The final variant catches every fetch with `__getattribute__`. It tests names to find managed attributes, and it sends the rest to the superclass. It keeps the same `__setattr__` as the previous version, since Python has no matching `__setattribute__` method.
+
+Example 38-25 is that version. Because every fetch goes through `__getattribute__`, the names need no mangling, so `acct` is stored as `acct`. The method must send unmanaged fetches to the superclass to avoid loops and extra calls:
+
+```python
+class CardHolder:
+    acctlen = 8 # Class data
+    retireage = 62.5
+    def __init__(self, acct, name, age, addr):
+        self.acct = acct # Instance data
+        self.name = name # These trigger __setattr__ too
+        self.age = age # acct not mangled: name tested
+        self.addr = addr # addr is not managed
+        # remain has no data
+    def __getattribute__(self, name):
+        superget = object.__getattribute__ # Don't loop: level up
+        match name:
+            case 'acct': # On all attr fetches
+                return superget(self, 'acct')[:-3] + '***'
+            case 'remain':
+                return superget(self, 'retireage') - superget(self, 'age')
+            case _:
+                return superget(self, name) # name, age, addr: stored
+    def __setattr__(self, name, value):
+        match name:
+            case 'name': # On all attr assignments
+                value = value.lower().replace(' ', '_') # addr stored directly
+            case 'age':
+                if value < 0 or value > 150:
+                    raise ValueError('invalid age')
+            case 'acct':
+                value = value.replace('-', '')
+                if len(value) != self.acctlen:
+                    raise TypeError('invalid acct number')
+            case 'remain':
+                raise TypeError('cannot set remain')
+        self.__dict__[name] = value # Avoid loop, orig names
+```
+
+This version also has 34 lines. Its cost is higher than the `__getattr__` version, since it adds calls for both setting and fetching unmanaged attributes. If speed matters most, this version may be the slowest of the four. Both generic versions match the other two in output, and they run the same way under both testers. The book points out that the generic approach can serve other roles too.
+
+Be sure to run this code yourself. It shows more patterns for managed attributes.
+
+## Managed attributes summary
+
+Python gives you four ways to manage attribute access. The `__getattr__` and `__getattribute__` methods are operator-overloading hooks that can catch many attributes. Properties and descriptors manage one named attribute each. The `__getattr__` method runs only for undefined attributes. The `__getattribute__` method runs for every fetch, so it must avoid loops by calling `object` methods.
+
+Properties are a simple form of descriptor, and both attach code to specific attributes. Descriptors are classes, so they can keep their own state, inherit, and use composition. Properties and descriptors handle fetches, assignments and deletions by design. The generic methods handle fetches, but assignments need `__setattr__`. Properties and descriptors also avoid extra calls on unmanaged names and show up in `dir` results. The generic methods are better suited to delegation.
+
+Chapter 39 of the book covers decorators, which run when functions and classes are created instead of when attributes are accessed.
+
+## Checkpoint questions
+
+<details>
+<summary>Five questions to review unicode and byte strings</summary>
+
+1. What are the names and roles of Python's three string types?
+2. How can you code a non-ASCII character in a `str`, and what does each escape give?
+3. What is the main difference between text-mode and binary-mode files?
+4. How would you read a text file that uses an encoding other than your platform default?
+5. What do a BOM and Unicode normalization mean, and when do they matter?
+
+</details>
+
+<details>
+<summary>Five questions to review managed attributes</summary>
+
+1. How does a `property` differ from a descriptor, and what extra things can a descriptor do?
+2. Why does a descriptor need a `__set__` method to make an attribute read-only?
+3. What do the `self`, `instance` and `owner` arguments of a descriptor's `__get__` method give you?
+4. How do `__getattr__` and `__getattribute__` differ in which fetches they intercept?
+5. Why must an attribute interception method avoid fetching `self` attributes inside itself, and how do you avoid the loop?
+
+</details>
+
 ## Sources and review notes
 
 - Source: *Learning Python*, 6th edition (`learning-python-6th-edition`). Chapters used are listed in each section.
 - Source: *Learning Python*, 6th edition (`learning-python-6th-edition`), Chapter 34, "Exception Coding Details". Used for the `try`, `raise`, `assert` and `with` sections.
+- Source: *Learning Python*, 6th edition (`learning-python-6th-edition`), Chapter 35, "Exception Objects". Used for the exception objects, built-in exception classes, custom displays and state, and exception groups sections.
+- Source: *Learning Python*, 6th edition (`learning-python-6th-edition`), Chapter 37, "Unicode and Byte Strings". Used for the Unicode and byte strings, encodings, text and binary files, Unicode tools, defaults, BOM and normalization sections.
+- Source: *Learning Python*, 6th edition (`learning-python-6th-edition`), Chapter 38, "Managed Attributes". Used for the managed attributes, properties, descriptors, `__getattr__` and `__getattribute__`, and attribute validation sections.
