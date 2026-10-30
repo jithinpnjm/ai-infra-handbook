@@ -777,6 +777,235 @@ spec:
           resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { memory: 512Mi } }
 ```
 
+### DaemonSets: one Pod on every node
+
+Most Deployments and ReplicaSets exist to run a service with several replicas, so one failure does not take it down. Replication has another use, though. Sometimes you want exactly one Pod on every node in the cluster. That is the usual case when you need to place an agent or daemon on each machine. The Kubernetes object built for this job is the DaemonSet.
+
+A DaemonSet makes sure a copy of a Pod runs across a set of nodes. Teams use DaemonSets to deploy system daemons such as log collectors and monitoring agents. These daemons typically have to run on every node. DaemonSets and ReplicaSets share a lot of behavior. Both create Pods that are expected to run for a long time, and both keep the desired state and the observed state in agreement.
+
+Choosing between the two takes some care, because they look alike. A ReplicaSet fits an application that is fully decoupled from its node. You can run many copies on one node without special handling. A DaemonSet fits when a single copy of the application must run on all nodes, or on a subset of them.
+
+Avoid the habit of using scheduling rules to keep Pods apart. If you find yourself wanting one Pod per node, a DaemonSet is the correct resource. If you find yourself building a uniform service to serve user traffic, a ReplicaSet is probably the right resource.
+
+DaemonSets also help when you install software on nodes in a cloud cluster. Cloud services can delete and re-create virtual machines during an upgrade or a scaling event. That approach can cause trouble when central IT requires specific software on every machine. A DaemonSet keeps that software in place through upgrades and scale events. It can even mount the host filesystem and run scripts that install RPM or DEB packages on the host operating system. That lets a cloud native cluster still meet the requirements of an enterprise IT department.
+
+### DaemonSet scheduling and reconciliation
+
+By default, a DaemonSet creates a Pod on every node. A node selector narrows the eligible nodes to those with a matching set of labels. The DaemonSet fixes each Pod's node at creation time, by setting the `nodeName` field in the Pod spec. Because of that, the Kubernetes scheduler ignores the Pods that a DaemonSet creates.
+
+Like ReplicaSets, DaemonSets run under a reconciliation control loop. The loop compares the desired state, a Pod on every node, with the observed state. It asks whether a matching Pod is present on each particular node. For each node that has no such Pod, the DaemonSet controller creates one.
+
+When a new node joins the cluster, the DaemonSet controller notices the missing Pod. It then adds that Pod to the new node. You do not have to do anything for this to happen.
+
+**Note.** DaemonSets and ReplicaSets show the value of a decoupled design. You might expect a ReplicaSet to own its Pods, and a DaemonSet to own its Pods as sub-resources. That design would force every tool for Pods to be written twice. Kubernetes instead keeps Pods as top-level objects. So any tool you learned for inspecting Pods under a ReplicaSet, such as `kubectl logs <pod-name>`, works just as well on a Pod from a DaemonSet.
+
+### Creating a DaemonSet
+
+You create a DaemonSet by submitting its configuration to the Kubernetes API server. Example 11-1 is a DaemonSet that creates a `fluentd` logging agent on every node in the target cluster. Save it as `fluentd.yaml`:
+
+```yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluentd
+  labels:
+    app: fluentd
+spec:
+  selector:
+    matchLabels:
+      app: fluentd
+  template:
+    metadata:
+      labels:
+        app: fluentd
+    spec:
+      containers:
+        - name: fluentd
+          image: fluent/fluentd:v0.14.10
+          resources:
+            limits:
+              memory: 200Mi
+            requests:
+              cpu: 100m
+              memory: 200Mi
+          volumeMounts:
+            - name: varlog
+              mountPath: /var/log
+            - name: varlibdockercontainers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - name: varlog
+          hostPath:
+            path: /var/log
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers
+```
+
+Each DaemonSet needs a name that no other DaemonSet in the same namespace uses. It also needs a Pod template spec, which the controller uses to create Pods when needed. This is where DaemonSets part ways with ReplicaSets. Unlike a ReplicaSet, a DaemonSet creates Pods on every node by default, unless you use a node selector.
+
+Submit the file with `kubectl apply`:
+
+```
+$ kubectl apply -f fluentd.yaml
+daemonset.apps/fluentd created
+```
+
+Once the API server accepts the DaemonSet, query its state with `kubectl describe`:
+
+```
+$ kubectl describe daemonset fluentd
+Name: fluentd
+Selector: app=fluentd
+Node-Selector: <none>
+Labels: app=fluentd
+Annotations: deprecated.daemonset.template.generation: 1
+Desired Number of Nodes Scheduled: 3
+Current Number of Nodes Scheduled: 3
+Number of Nodes Scheduled with Up-to-date Pods: 3
+Number of Nodes Scheduled with Available Pods: 3
+Number of Nodes Misscheduled: 0
+Pods Status: 3 Running / 0 Waiting / 0 Succeeded / 0 Failed
+...
+```
+
+This output shows that a `fluentd` Pod reached all three nodes in the cluster. To confirm where each Pod landed, run `kubectl get pods` with the `-o wide` flag. The flag prints the node that each Pod was assigned to:
+
+```
+$ kubectl get pods -l app=fluentd -o wide
+NAME READY STATUS RESTARTS AGE IP NODE
+fluentd-1q6c6 1/1 Running 0 13m 10.240.0.101 k0-default...
+fluentd-mwi7h 1/1 Running 0 13m 10.240.0.80 k0-default...
+fluentd-zr6l7 1/1 Running 0 13m 10.240.0.44 k0-default...
+```
+
+With the `fluentd` DaemonSet in place, adding a new node to the cluster deploys a `fluentd` Pod to that node automatically:
+
+```
+$ kubectl get pods -l app=fluentd -o wide
+NAME READY STATUS RESTARTS AGE IP NODE
+fluentd-1q6c6 1/1 Running 0 13m 10.240.0.101 k0-default...
+fluentd-mwi7h 1/1 Running 0 13m 10.240.0.80 k0-default...
+fluentd-oipmq 1/1 Running 0 43s 10.240.0.96 k0-default...
+fluentd-zr6l7 1/1 Running 0 13m 10.240.0.44 k0-default...
+```
+
+This is exactly the behavior you want when you manage logging daemons and other cluster-wide services. You take no action for the new node. This is how the DaemonSet controller reconciles the observed state with the desired state.
+
+### Limiting a DaemonSet to specific nodes
+
+Most DaemonSets run a Pod on every node. Sometimes you want a Pod on only a subset of nodes. Suppose a workload needs a GPU, or fast storage that only some nodes have. Node labels can tag the specific nodes that meet those requirements.
+
+The first step is to add the labels you want to a subset of nodes. Use the `kubectl label` command for this. The following command adds the `ssd=true` label to a single node:
+
+```
+$ kubectl label nodes k0-default-pool-35609c18-z7tb ssd=true
+node/k0-default-pool-35609c18-z7tb labeled
+```
+
+Listing nodes without a label selector returns every node in the cluster:
+
+```
+$ kubectl get nodes
+NAME STATUS ROLES AGE VERSION
+k0-default-pool-35609c18-0xnl Ready agent 23m v1.21.1
+k0-default-pool-35609c18-pol3 Ready agent 1d v1.21.1
+k0-default-pool-35609c18-ydae Ready agent 1d v1.21.1
+k0-default-pool-35609c18-z7tb Ready agent 1d v1.21.1
+```
+
+A label selector filters that list. To show only the nodes whose `ssd` label is `true`, add the `--selector` flag:
+
+```
+$ kubectl get nodes --selector ssd=true
+NAME STATUS ROLES AGE VERSION
+k0-default-pool-35609c18-z7tb Ready agent 1d v1.21.1
+```
+
+Node selectors limit which nodes a Pod can run on. You define them in the Pod spec of a DaemonSet. Example 11-2 limits NGINX to nodes that have the `ssd=true` label:
+
+```yaml
+apiVersion: apps/v1
+kind: "DaemonSet"
+metadata:
+  labels:
+    app: nginx
+    ssd: "true"
+  name: nginx-fast-storage
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+      ssd: "true"
+  template:
+    metadata:
+      labels:
+        app: nginx
+        ssd: "true"
+    spec:
+      nodeSelector:
+        ssd: "true"
+      containers:
+        - name: nginx
+          image: nginx:1.10.0
+```
+
+Submit the `nginx-fast-storage` DaemonSet to the API server:
+
+```
+$ kubectl apply -f nginx-fast-storage.yaml
+daemonset.apps/nginx-fast-storage created
+```
+
+Only one node has the `ssd=true` label, so the `nginx-fast-storage` Pod runs only on that node:
+
+```
+$ kubectl get pods -l app=nginx -o wide
+NAME READY STATUS RESTARTS AGE IP NODE
+nginx-fast-storage-7b90t 1/1 Running 0 44s 10.240.0.48 ...
+```
+
+Add the `ssd=true` label to more nodes, and the `nginx-fast-storage` Pod deploys to those nodes too. The reverse also holds. If you remove a required label from a node, the DaemonSet controller removes the Pod from that node.
+
+**Warning.** Removing a label that a DaemonSet's node selector requires removes the Pod that the DaemonSet manages from that node. Check the selector before you relabel a node.
+
+### Updating a DaemonSet
+
+DaemonSets are a good way to deploy services across a whole cluster. Upgrades need more thought. Before Kubernetes 1.6, the only way to update the Pods of a DaemonSet was to change the DaemonSet, then delete each Pod by hand so it came back with the new configuration. Kubernetes 1.6 gave DaemonSets a rollout mechanism, much like the one Deployments use inside the cluster.
+
+A DaemonSet can roll out with the same `RollingUpdate` strategy that Deployments use. Set the strategy in the `spec.updateStrategy.type` field to `RollingUpdate`. After that, any change to `spec.template`, or to one of its subfields, starts a rolling update.
+
+As with Deployments, which Chapter 10 of the book covers, the rolling update moves gradually. It updates members of the DaemonSet until every Pod runs the new configuration. Two parameters control the pace:
+
+- `spec.minReadySeconds`: how long a Pod must be ready before the rollout upgrades the next Pod.
+- `spec.updateStrategy.rollingUpdate.maxUnavailable`: how many Pods the rollout may update at the same time.
+
+Set `spec.minReadySeconds` to a reasonably long value, such as 30–60 seconds. That gives you confidence that the Pod is truly healthy before the rollout continues.
+
+The right `maxUnavailable` depends on the application. A value of `1` is a safe, general-purpose choice. It is slow, though, because the rollout takes about the number of nodes multiplied by `spec.minReadySeconds`. A higher value speeds the rollout up, but it widens the blast radius of a failed rollout. Start with `1`, and raise it only if users or administrators complain that the rollout is too slow.
+
+Once a rolling update starts, use the `kubectl rollout` commands to see its status. For example, `kubectl rollout status daemonSets my-daemon-set` shows the current rollout status of a DaemonSet named `my-daemon-set`.
+
+### Deleting a DaemonSet
+
+Deleting a DaemonSet with `kubectl delete` is simple. Just supply the correct name, or point the command at the file you applied:
+
+```
+$ kubectl delete -f fluentd.yaml
+```
+
+**Warning.** Deleting a DaemonSet also deletes all the Pods that it manages. To make sure only the DaemonSet is deleted and not its Pods, set the `--cascade` flag to `false`.
+
+### DaemonSets and autoscaled clusters
+
+DaemonSets give you an easy abstraction for running a set of Pods on every node in a cluster. If the case calls for it, they can run on a subset of nodes chosen by labels. The DaemonSet has its own controller and scheduler, so key services such as monitoring agents stay running on the right nodes.
+
+Some applications only need a number of replicas, and you do not care where they run. Agents and monitoring tools are different. They must be present on every machine to work properly. They add capabilities to the cluster itself rather than serving traffic. A DaemonSet lets you declare that an agent runs on every machine, without placing it on each one by hand.
+
+That matters most in an autoscaled cluster, where nodes come and go without anyone acting. The DaemonSet adds the agents to each node as the autoscaler adds that node. Declare the agent once, and let the controller keep it on every node.
+
 ### Job patterns for batch and distributed work
 
 ```yaml

@@ -219,6 +219,159 @@ etcdctl $EP get /registry/namespaces/default       # protobuf-encoded value (bin
 
 Keys under `/registry/<resource>/...` (for namespaced: `/registry/pods/<ns>/<name>`), leases (node heartbeats, leader election), events (high churn, 1-hour TTL: often moved to a **separate etcd cluster** via `--etcd-servers-overrides=/events#https://...`), CRD custom resources (`/registry/<group>/<resource>/...`). Sizes: objects up to ~1.5 MiB limit (etcd request size limit); large ConfigMaps/Secrets and huge CRs (e.g., Argo Workflows with big status, huge Pod lists) hurt performance. Anti-patterns: storing blobs, logs or metrics in objects; very high-frequency status updates (every second per pod) across tens of thousands of objects; thousands of Events per second.
 
+### Encrypting Secrets in etcd
+
+Like most Kubernetes objects, Secrets are stored in etcd. By default, Kubernetes does not encrypt Secret data before it reaches etcd. That does not mean the data is exposed the moment someone touches the hardware. Encryption at rest on the disk still protects a removed drive. The weak point is access to the running host.
+
+Suppose an attacker signs in over `ssh` and gains root on the kube-apiserver node. The attacker can run a small wrapper around `etcdctl` that uses the cluster's own certificates. The script below assumes the certificate paths that kubeadm sets by default:
+
+```bash
+#!/bin/bash
+# Change this based on location of etcd nodes
+ENDPOINTS='192.168.3.43:2379'
+ETCDCTL_API=3 etcdctl \
+--endpoints=${ENDPOINTS} \
+--cacert="/etc/kubernetes/pki/etcd/ca.crt" \
+--cert="/etc/kubernetes/pki/apiserver-etcd-client.crt" \
+--key="/etc/kubernetes/pki/apiserver-etcd-client.key" \
+${@}
+```
+
+etcd stores Secret data under `/registry/secrets/${NAMESPACE}/${SECRET_NAME}`. Using this script to read a Secret named `login1` shows the values in plain text:
+
+```
+# ./etcdctl-script get /registry/secrets/default/login1
+/registry/secrets/default/login1
+k8s
+v1Secret
+login1default"*$6c991b48-036c-48f8-8be3-58175913915c2bB
+0kubectl.kubernetes.io/last-applied-configuration{"apiVersion":"v1","data":
+{"dbkey":"YmVhcmNhbm9lCg==","dbuser":"aGVwdGlvCg=="},"kind":"Secret",
+"metadata":{"annotations":{},"name":"login1","namespace":"default"},
+"type":"Opaque"}
+z
+dbkey
+bearcanoe
+dbuserheptio
+Opaque"
+```
+
+With that, the attacker has read the Secret `login1`.
+
+Plain storage can be acceptable in some setups. If etcd runs outside the API server, a hypervisor separates the two. An attacker would then need root on the etcd node, find the data, and read it. Or they would need root on the API server, find the etcd certificates, and impersonate the API server to read from etcd. Both paths assume other breaches came first. Frankly, an RBAC mistake or an application compromise is far more likely to expose a Secret first.
+
+Many platform operators still choose to go further. Kubernetes can encrypt Secret data at the Kubernetes layer before it rests in etcd, which adds depth to your defense. There are two models: static-key encryption and envelope encryption.
+
+**Static-key encryption.** The kube-apiserver can encrypt Secrets with a key you provide. It uses that key to encrypt every Secret object before persisting it to etcd. The key lives in an `EncryptionConfiguration`. If an attacker reads etcd, they see only encrypted data. Keys can be created with providers such as `secretbox`, `aescbc`, and `aesgcm`. Each provider has trade-offs, so work with your security team to choose. If you must meet FIPS requirements, weigh the choice carefully. The book's example uses `secretbox`, a fairly performant and secure option. Kubernetes issue #81127 discusses some of these considerations.
+
+To set up static-key encryption, generate a 32-byte key. The model is symmetric, so one key both encrypts and decrypts. How you generate keys varies from enterprise to enterprise. On a Linux host, `/dev/urandom` works if you are satisfied with its entropy:
+
+```bash
+head -c 32 /dev/urandom | base64
+```
+
+Add an `EncryptionConfiguration` with that key to every node that runs kube-apiserver. Deliver the file with configuration management such as Ansible, or with `KubeadmConfigSpec` when you use Cluster API. That way, keys can be added, deleted, and rotated. The example assumes the file lives at `/etc/kubernetes/pki/secrets/encryption-config.yaml`:
+
+```
+apiVersion: apiserver.config.k8s.io/v1
+kind: EncryptionConfiguration
+resources:
+- resources:
+- secrets
+providers:
+- secretbox:
+keys:
+- name: secret-key-1
+secret: u7mcOcHKbFh9eVluB18hbFIsVfwpvgbXv650QacDYXA==
+# identity is a required (default) provider
+- identity: {}
+```
+
+The providers list is ordered. Encryption always uses the first key, and decryption tries keys in the order listed. `identity` is the plain-text provider, and it belongs last. If it comes first, Secrets will not be encrypted.
+
+Every kube-apiserver must load this file. Add the flag to `/etc/kubernetes/manifests/kube-apiserver.yaml`:
+
+```
+--encryption-provider-config=/etc/kubernetes/pki/secrets/encryption-config.yaml
+```
+
+After the kube-apiserver restarts, Secrets are encrypted before they reach etcd. For static Pods, a change to the manifest triggers that restart. Once you move past experimentation, pre-provision hosts with this file and enable `encryption-provider` by default. With Cluster API, the EncryptionConfiguration ends up in user data, so make sure that user data is encrypted. With kubeadm, add the flag to the `apiServer` section of a `ClusterConfiguration`. Otherwise, make sure your server startup includes the flag.
+
+To validate the encryption, apply a new Secret named `login2` and read it back from etcd:
+
+```
+# ./etcdctl-script get /registry/secrets/default/login2
+/registry/secrets/default/login2
+k8s:enc:secretbox:v1:secret-key-1:
+```
+
+The rest of that output is unreadable binary data. The data is fully encrypted in etcd. The metadata names the provider (`secretbox`) and the key (`secret-key-1`) that did the encryption. Kubernetes needs that information because several providers and keys can be active at once. An object created before the key existed still shows up in plain text:
+
+```
+# ./etcdctl-script get /registry/secrets/default/login1
+/registry/secrets/default/login1
+k8s
+```
+
+This shows two important points. First, `login1` is not encrypted. Only new or altered Secrets use the active key. Second, when an unencrypted object passes back through the kube-apiserver, there is no provider or key mapping, so no decryption is attempted.
+
+Rotate encryption keys over a defined span. Suppose you rotate every three months. You add a new key at the top of the list:
+
+```
+- secretbox:
+keys:
+- name: secret-key-2
+secret: xgI5XTIRQHN/C6mlS43MuAWTSzuwkGSvIDmEcw6DDl8=
+- name: secret-key-1
+secret: u7mcOcHKbFh9eVluB18hbFIsVfwpvgbXv650QacDYXA=
+```
+
+Do not remove `secret-key-1`. It no longer encrypts new data, but it still decrypts existing Secrets. Because the new key is first, all new encryption uses it. Updated Secrets are re-encrypted with the new key over time. Until then, the old key stays in the list as a fallback. If you delete the old key too early, clients see this error:
+
+```
+Error from server (InternalError): Internal error occurred: unable to transform
+key "/registry/secrets/default/login1": no matching key was found for the
+provided Secretbox transformer
+```
+
+**Understand the new vectors.** Each step toward more defense changes how attacks work. Static-key encryption is clearly better than no encryption. However, the encryption key lives on the same host as the API server. Many deployments run etcd and kube-apiserver on one host. With root access there, an attacker could decrypt the data they read from etcd. Ideally, do not rely only on static-key encryption at rest. If that is unacceptable, consider an external secret store or a KMS plug-in, both covered next.
+
+**Envelope encryption.** Kubernetes 1.10 and later can integrate with a KMS for envelope encryption. This model uses two keys. The key encryption key (KEK) is stored externally in a KMS. The data encryption key (DEK) encrypts each Secret. The KEK encrypts the DEKs. Each Secret object gets its own DEK. Since the KEK encrypts the DEKs, they can be stored with the data, so kube-apiserver does not need to know many keys. This model has several benefits:
+
+- The KMS sits outside Kubernetes, which adds isolation.
+- Centralized KEKs make key rotation easier.
+- Separating the DEK and KEK means Secret data is never sent to or known by the KMS.
+- The KMS is concerned only with decrypting DEKs.
+- Encrypted DEKs are easy to store alongside their Secrets.
+
+KMS plug-ins run as a privileged container with a gRPC server that talks to a remote KMS. That container runs only on master nodes where kube-apiserver is present. As with static-key encryption, add an `EncryptionConfiguration` to the master nodes, this time with a `kms` provider:
+
+```
+apiVersion: apiserver.config.k8s.io/v1
+kind: EncryptionConfiguration
+resources:
+- resources:
+- secrets
+providers:
+- kms:
+name: myKmsPlugin
+endpoint: unix:///tmp/socketfile.sock
+cachesize: 100
+timeout: 3s
+# required, but not used for encryption
+- identity: {}
+```
+
+Save the file on each master node at `/etc/kubernetes/pki/secrets/encryption-config.yaml`, then update the kube-apiserver arguments:
+
+```
+--encryption-provider-config=/etc/kubernetes/pki/secrets/encryption-config.yaml
+```
+
+Changing that value should restart kube-apiserver. If it does not, a restart is required for the change to take effect.
+
+The design is viable, but KMS plug-in implementations are scarce, and the ones that exist are immature. The book notes these points as of when it was written. There were no tagged releases for the `aws-encryption-provider` or the `k8s-cloudkms-plugin`. Azure's `kubernetes-kms` plug-in had notable limits, such as no support for key rotation. The only cloud provider-agnostic option, `kubernetes-vault-kms-plugin`, was partially implemented and had been archived. Outside a managed service such as GKE, where Google supplies and supports the plug-in, usage may prove unstable.
+
 ### Performance factors and tuning
 
 - **Disk**: the dominant factor. WAL fsync latency (`etcd_disk_wal_fsync_duration_seconds`; p99 < 10 ms is a common target) and backend commit (`etcd_disk_backend_commit_duration_seconds`). Use dedicated NVMe/SSD, a separate device for the WAL if possible, no noisy neighbours, no network-attached slow disks, no swap.
@@ -513,6 +666,7 @@ Restoring an `etcd` snapshot (`etcdutl snapshot restore`) **rewinds the entire c
 
 - **Sources read in full:**
   - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapters 1 and 2** (control-plane components, deployment models, and `etcd`/`kube-apiserver` operational considerations).
+  - `production-kubernetes` — Josh Rosso, Rich Lander, Alexander Brand & John Harris, *Production Kubernetes*, **Chapter 7: Secret Management** (read in full: the etcd threat model, static-key and envelope encryption of Secret data, and key rotation).
   - `kubernetes-up-and-running-3rd-edition` — Brendan Burns, Joe Beda, Kelsey Hightower & Lachlan Evenson, *Kubernetes: Up and Running*, 3rd ed., **Chapter 17: Extending Kubernetes** (read in full: custom resources `LoadTest`, API extension patterns Just Data / Controllers / Compilers, OpenAPI validation, TLS CSR generation via `certificates.k8s.io`, `ValidatingWebhookConfiguration`, and `MutatingWebhookConfiguration` returning base64 `JSONPatch`).
   - `kubernetes-programming-with-go-programming-kubernetes-clients-and-operators-using-go-and-the-kuberne` — Stefan Schimanski & Michael Hausenblas, *Programming Kubernetes*, **Chapter 2: Kubernetes API Operations** (API groups, versions, kinds, resources, subresources, optimistic concurrency `resourceVersion`, and `kube-apiserver` request processing).
   - `nvidia-devops` (`volume-03/01-k8s-control-plane-scheduling-masterclass.md`): API machinery, `resourceVersion`, optimistic concurrency, watch mechanics, `etcd` quorum and failure scenarios, `etcdctl` cheatsheet, and API Priority and Fairness (`APF`).

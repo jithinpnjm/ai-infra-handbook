@@ -22,25 +22,29 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-DNS is the first dependency of nearly everything and the most common hidden cause of outages: "the cluster is slow" turns out to be a 5-second DNS timeout per call; "pods cannot reach the registry" is CoreDNS overloaded or `ndots:5` expanding every lookup into six queries; a multi-node job fails to start because node names do not resolve or resolve to the management NIC rather than the fabric NIC; a cloud endpoint's IP changes and a long-lived process keeps the stale one. DNS also underpins service discovery (Kubernetes services, headless services for StatefulSets, Slurm node names, NCCL/MPI hostfiles), certificate validation (names), and traffic steering (GeoDNS, weighted records, anycast resolvers).
+When you face a cluster that is slow for no obvious reason, check DNS first. It is often the cause. DNS is the first dependency of nearly everything, and it is one of the most common hidden causes of outages. "The cluster is slow" can turn out to be a 5-second DNS timeout on every call. "Pods cannot reach the registry" can mean CoreDNS is overloaded, or that `ndots:5` expands every lookup into six queries.
+
+A multi-node job may fail to start because its node names do not resolve, or resolve to the management NIC rather than the fabric NIC. A cloud endpoint may change its IP while a long-lived process keeps the old one. DNS also underpins service discovery, including Kubernetes services, headless services for StatefulSets, Slurm node names and NCCL/MPI hostfiles. It supports certificate validation, which relies on names, and traffic steering with GeoDNS, weighted records and anycast resolvers.
 
 ## Prerequisites and outcomes
 
-You should know UDP/TCP (2.6, 2.7) and IP addressing (2.4).
+Before you start, you should know UDP and TCP from chapters 2.6 and 2.7, and IP addressing from chapter 2.4.
 
-After this chapter you can:
+When you finish, you will be able to do the following:
 
-- Explain the DNS hierarchy, zones, delegation, authoritative versus recursive servers, and trace a full resolution (root, TLD, authoritative) including caching and TTLs.
-- Read and write the main record types (A, AAAA, CNAME, NS, SOA, MX, TXT, SRV, PTR, CAA, SVCB/HTTPS) and a zone file.
-- Use `dig`, `host`, `nslookup`, `getent`, `resolvectl` and know which one tests which resolution path.
-- Explain how a Linux host resolves names: `nsswitch.conf`, `/etc/hosts`, `/etc/resolv.conf`, systemd-resolved, stub resolvers, search domains and `ndots`.
-- Explain DNS over UDP/TCP, EDNS(0), truncation, DNSSEC, DoT/DoH, negative caching, and common failure modes.
-- Debug DNS in Kubernetes (CoreDNS, `ndots`, search path, NodeLocal DNSCache) and in HPC clusters (hostnames, reverse lookups, split horizon).
-- Design DNS for a GPU cluster (forward and reverse zones, per-NIC names, service discovery).
+- Explain the DNS hierarchy, zones, delegation, and the difference between authoritative and recursive servers. Trace a full resolution through the root, the TLD and the authoritative server, including caching and TTLs.
+- Read and write the main record types (`A`, `AAAA`, `CNAME`, `NS`, `SOA`, `MX`, `TXT`, `SRV`, `PTR`, `CAA`, `SVCB/HTTPS`) and a zone file.
+- Use `dig`, `host`, `nslookup`, `getent` and `resolvectl`, and know which one tests which resolution path.
+- Explain how a Linux host resolves names through `nsswitch.conf`, `/etc/hosts`, `/etc/resolv.conf`, systemd-resolved, stub resolvers, search domains and `ndots`.
+- Explain DNS over UDP and TCP, EDNS(0), truncation, DNSSEC, DoT and DoH, negative caching, and the common failure modes.
+- Debug DNS in Kubernetes (CoreDNS, `ndots`, the search path, NodeLocal DNSCache) and in HPC clusters (hostnames, reverse lookups, split horizon).
+- Design DNS for a GPU cluster, with forward and reverse zones, per-NIC names and service discovery.
 
 ## 1. The structure of DNS
 
-DNS maps **names to data** (mostly addresses) using a distributed, hierarchical, replicated database. The namespace is a tree: the root (`.`), top-level domains (`com`, `org`, `io`, country codes), then second-level domains (`example.com`), subdomains (`gpu01.dc1.example.com`). A **fully qualified domain name (FQDN)** ends with a dot (`gpu01.dc1.example.com.`), which marks it as absolute; without it, resolvers may append **search domains**.
+When a name does not resolve, you first need a picture of what DNS stores. DNS maps **names to data**, mostly addresses. It is a distributed, hierarchical, replicated database, and its namespace is a tree. At the top sits the root (`.`). Below it come top-level domains such as `com`, `org`, `io` and country codes, then second-level domains such as `example.com`, then subdomains such as `gpu01.dc1.example.com`.
+
+A **fully qualified domain name (FQDN)** ends with a dot, as in `gpu01.dc1.example.com.`. The trailing dot marks the name as absolute. Without it, a resolver may append **search domains** to the name.
 
 ```mermaid
 flowchart TD
@@ -52,12 +56,19 @@ flowchart TD
   DC1 --> H["gpu01.dc1.example.com\nA 10.20.0.45"]
 ```
 
-- A **zone** is an administrative portion of the tree served by a set of authoritative servers (`example.com` may contain subdomains inside the same zone or delegate them to other zones with NS records). A **domain** is a position in the tree; a zone is a unit of management.
-- **Delegation**: a parent zone holds NS records (and glue A/AAAA records when the name servers live inside the delegated zone) that point to the child zone's servers.
-- **Authoritative servers** hold the zone data and answer for it (flag `aa`); **recursive resolvers** (caching resolvers, "DNS servers" in `resolv.conf`) do the work of walking the tree on behalf of clients and cache the answers; **stub resolvers** (the libc/systemd-resolved code in each host) just ask a recursive resolver. Keep the roles separate: a server that is both authoritative and open-recursive is a security problem (reflection/amplification).
-- **Replication**: a primary (master) holds the editable zone; secondaries (slaves) copy it by **zone transfer** (AXFR full, IXFR incremental) triggered by NOTIFY and governed by the SOA serial number. Modern setups often use API-driven zone management with a provider (Route 53, Cloud DNS) instead.
+The rest of the section explains the terms that describe this tree. A **zone** is an administrative portion of the tree, served by a set of authoritative servers. `example.com` can hold its subdomains inside the same zone, or delegate them to other zones with NS records. A **domain** is a position in the tree, while a zone is a unit of management.
+
+**Delegation** runs through the parent zone. The parent holds NS records, plus glue `A` and `AAAA` records when the name servers sit inside the delegated zone. Those records point to the child zone's servers.
+
+**Authoritative servers** hold the zone data and answer for it, with the `aa` flag set. **Recursive resolvers** are the caching "DNS servers" listed in `resolv.conf`. They walk the tree for clients and cache the answers. **Stub resolvers**, the libc or systemd-resolved code on each host, simply ask a recursive resolver. Keep these roles separate. A server that is both authoritative and open-recursive is a security problem, because it allows reflection and amplification.
+
+**Replication** works through a primary, also called the master, which holds the editable zone. Secondaries, also called slaves, copy it by **zone transfer**. They use AXFR for a full copy or IXFR for an incremental one. A NOTIFY message triggers the copy, and the SOA serial number governs it. Modern setups often use API-driven zone management with a provider such as Route 53 or Cloud DNS instead.
+
+When you set up replication, decide early which server holds the editable copy of each zone, because every other copy depends on it.
 
 ## 2. How a lookup actually works
+
+Suppose a service calls a hostname and the answer is slow or wrong. To find the cause, you need to know which server walks the tree and how long each answer is kept. The diagram follows one lookup from the application to the authoritative server.
 
 ```mermaid
 sequenceDiagram
@@ -80,16 +91,25 @@ sequenceDiagram
   Stub-->>App: address
 ```
 
-Key facts:
+Read the diagram from the top. The stub asks once, and the recursive resolver does the rest of the work.
 
-- **Iterative vs recursive.** The stub sends one *recursive* query (RD bit); the recursive resolver performs *iterative* queries, following **referrals** down the tree, using its cache of NS records and answers (the root and TLD NS sets are almost always cached, so a typical lookup costs 0 to 1 upstream queries).
-- **TTL.** Every record has a time-to-live in seconds; caches may reuse it until it expires. Low TTLs enable fast failover and cost more queries; high TTLs reduce load and delay changes. Plan DNS changes by lowering TTL *before* the change (at least one old-TTL interval earlier).
-- **Negative caching**: NXDOMAIN and NODATA answers are cached for the SOA's `minimum`/negative TTL (RFC 2308). A name that was queried before creation can keep failing for minutes after you create it.
-- **Transport.** UDP port 53 by default; TCP port 53 for large answers (truncation `TC` bit), zone transfers, and DoT/DoH variants; **EDNS(0)** advertises larger UDP payloads (commonly 1232 bytes recommended to avoid fragmentation) and carries DNSSEC flags. Firewalls that block TCP/53 or fragments break big answers (e.g. DNSSEC, long TXT).
-- **Response codes**: `NOERROR` (with or without data), `NXDOMAIN` (name does not exist), `SERVFAIL` (resolver could not get an answer: upstream timeout, DNSSEC failure, lame delegation), `REFUSED` (policy), `FORMERR`.
-- **Anycast and latency.** Public resolvers and root servers are anycast; the nearest instance answers. Your latency to your resolver (typically cloud-provided at 169.254.169.254 or the VPC resolver) dominates user-visible DNS cost.
+**Iterative versus recursive.** The stub sends one *recursive* query, with the RD bit set. The recursive resolver then makes *iterative* queries of its own, following **referrals** down the tree. It relies on its cache of NS records and answers. The root and TLD NS sets are almost always cached, so a typical lookup costs 0 to 1 upstream queries.
+
+**TTL.** Every record has a time-to-live in seconds, and caches may reuse it until it expires. Low TTLs allow fast failover but cost more queries. High TTLs reduce load but delay changes. To plan a change, lower the TTL *before* you make it, at least one old-TTL interval earlier.
+
+**Negative caching.** NXDOMAIN and NODATA answers are cached for the negative TTL, which is the `minimum` field of the SOA record, as defined in RFC 2308. A name queried before it was created can keep failing for minutes after you create it.
+
+**Transport.** DNS uses UDP port 53 by default. It switches to TCP port 53 for large answers, which the `TC` (truncation) bit signals, for zone transfers, and for the DoT and DoH variants. **EDNS(0)** advertises larger UDP payloads, commonly 1232 bytes, to avoid fragmentation, and it carries DNSSEC flags. Firewalls that block TCP/53 or fragments break big answers, such as DNSSEC responses and long TXT records.
+
+**Response codes.** `NOERROR` means the query succeeded, with or without data. `NXDOMAIN` means the name does not exist. `SERVFAIL` means the resolver could not get an answer, for example because of an upstream timeout, a DNSSEC failure or a lame delegation. `REFUSED` means the server refused for policy reasons. `FORMERR` is the last code in this set.
+
+**Anycast and latency.** Public resolvers and root servers are anycast, so the nearest instance answers. Your latency to your own resolver, usually the cloud-provided resolver at 169.254.169.254 or the VPC resolver, dominates the DNS cost your users see.
+
+Check the latency to your own resolver first, because it usually decides how fast DNS feels.
 
 ## 3. Resource records
+
+Each record type answers a different question, so know which one you need before you edit a zone. The table lists the types you will meet most often.
 
 | Type | Purpose | Example |
 |---|---|---|
@@ -107,7 +127,7 @@ Key facts:
 | **DS / DNSKEY / RRSIG / NSEC(3)** | DNSSEC chain-of-trust material | section 8 |
 | **ALIAS/ANAME** | Provider-specific "CNAME at the apex" | Route 53 alias, Cloudflare flattening |
 
-A minimal zone file:
+A minimal zone file shows how these records sit together. Notice the per-NIC names, such as `gpu01-ib`, which give the fabric interface its own name.
 
 ```text
 $ORIGIN dc1.example.com.
@@ -129,11 +149,15 @@ login    IN CNAME gpu-login01
 _slurmctld._tcp IN SRV 0 0 6817 slurm-ctl
 ```
 
-**Round-robin DNS.** Multiple A records for the same name are returned in rotating order; clients typically try the first. It is crude load distribution without health checks. Production uses health-checked records (cloud DNS routing policies), anycast, or a load balancer instead (chapter 2.20).
+**Round-robin DNS** returns several A records for one name in rotating order, and clients usually try the first one. It is a crude way to spread load, because it has no health checks. Production setups use health-checked records from cloud DNS routing policies, anycast or a load balancer instead. See chapter 2.20 for the load balancer option.
 
-**Reverse DNS** maps an address to a name. It matters more than people expect: SSH and mail servers may do reverse lookups, MPI/Slurm/Kerberos/NFS sometimes require forward and reverse to agree (**forward-confirmed reverse DNS**), logs are friendlier with names, and timeouts in reverse lookups cause slow logins (`UseDNS` in sshd, `UseDNS no`). Reverse zones follow the octet-reversed form (`0.20.10.in-addr.arpa`); delegation is on prefix boundaries (/8, /16, /24; classless delegation for smaller via CNAME tricks).
+**Reverse DNS** maps an address back to a name, and it matters more than people expect. SSH and mail servers may do reverse lookups. MPI, Slurm, Kerberos and NFS sometimes require forward and reverse lookups to agree, which is called **forward-confirmed reverse DNS**. Logs are easier to read with names. Slow reverse lookups also cause slow logins, through the `UseDNS` setting in sshd, where `UseDNS no` turns it off. Reverse zones follow the octet-reversed form, such as `0.20.10.in-addr.arpa`. Delegation falls on prefix boundaries such as /8, /16 and /24. Smaller blocks need classless delegation, which is done with CNAME tricks.
+
+When you add a node, create its forward and reverse records together, because some services check that the two agree.
 
 ## 4. Tools: `dig` and friends
+
+When a name misbehaves, start with these commands. Each one asks a different layer, so their answers can disagree.
 
 ```bash
 dig www.example.com                      # A record via the resolver in /etc/resolv.conf; shows the full response
@@ -154,11 +178,17 @@ resolvectl query www.example.com         # systemd-resolved's view, per-link DNS
 resolvectl status                        # per-interface DNS servers and search domains
 ```
 
-Reading `dig` output: the **header** (`status: NOERROR`, flags `qr rd ra aa tc ad`, counts), the **question**, **answer** (name, TTL remaining, class IN, type, data), **authority** and **additional** sections, and the footer (query time, server, message size). Flags: `aa` authoritative answer, `ra` recursion available, `tc` truncated (retry over TCP), `ad` authenticated data (DNSSEC validated by the resolver). A **repeated query's TTL counts down** if served from a cache, which is a quick way to tell cached versus fresh.
+A `dig` answer has several parts. The **header** shows the status, such as `status: NOERROR`, the flags `qr rd ra aa tc ad`, and the counts. Next come the **question** and the **answer**, which gives the name, the remaining TTL, class IN, the type and the data. The **authority** and **additional** sections follow, and the footer shows the query time, the server and the message size.
 
-**Important distinction**: `dig` and `nslookup` talk DNS directly to the server you specify (or the first in `resolv.conf`) and **bypass `/etc/hosts`, nsswitch, the search path logic of libc, and NSS modules**; `getent hosts` and `ping`/`curl` go through the C library the way your application does. When "dig works but the application fails" (or vice versa), compare `dig` with `getent hosts`, and check `nsswitch.conf`, search domains, and which resolver the app uses (Go, Java and musl-based images have their own behaviour).
+The flags tell you the most. `aa` means an authoritative answer. `ra` means recursion is available. `tc` means the answer was truncated, so retry over TCP. `ad` means the resolver validated the data with DNSSEC. If a repeated query is served from a cache, its TTL counts down. That makes the TTL a quick way to tell a cached answer from a fresh one.
+
+**There is an important distinction here.** `dig` and `nslookup` talk DNS straight to the server you name, or to the first server in `resolv.conf`. They skip `/etc/hosts`, nsswitch, the search path logic of libc and the NSS modules. `getent hosts`, `ping` and `curl` go through the C library, just as your application does. When `dig` works but the application fails, or the other way round, compare `dig` with `getent hosts`. Then check `nsswitch.conf`, the search domains, and which resolver the application uses, because Go, Java and musl-based images each have their own behaviour.
+
+Run `getent hosts` on the failing machine before you blame the DNS server.
 
 ## 5. How a Linux host resolves names
+
+When a name lookup hangs on one host and not another, the cause is often the local path rather than the server. The diagram shows the path a `getaddrinfo()` call takes on a host.
 
 ```mermaid
 flowchart TD
@@ -171,21 +201,31 @@ flowchart TD
   RR --> I["Internet / authoritative"]
 ```
 
-- **`/etc/nsswitch.conf`**: order of sources for `hosts:` (`files` = `/etc/hosts`, `dns`, `myhostname`, `resolve` for systemd-resolved, `mdns4_minimal` multicast DNS for `.local`). Changing it affects every libc-based program.
-- **`/etc/hosts`**: static mappings, first match wins per line; use for loopback (`127.0.0.1 localhost`), the host's own name, and a few bootstrap entries; do not use it as a cluster-wide database (use DNS or configuration management). A classic Debian quirk: `127.0.1.1 hostname` makes the host resolve its own name to loopback, breaking MPI and Kerberos assumptions.
-- **`/etc/resolv.conf`**: `nameserver` (up to 3 used), `search` (domains appended to unqualified names), `domain`, and `options` (`ndots:N`, `timeout:`, `attempts:`, `rotate`, `edns0`). Often a symlink managed by systemd-resolved (`/run/systemd/resolve/stub-resolv.conf`), NetworkManager, `resolvconf` or cloud-init; hand edits are overwritten, so configure the manager instead (netplan `nameservers`, `nmcli`, `resolved.conf`).
-- **systemd-resolved** provides a local stub at 127.0.0.53 with a cache, per-interface DNS servers and routing domains (**split DNS**: send `corp.example.com` to the VPN's resolver and the rest to the default), LLMNR/mDNS, and DNSSEC/DoT support. `resolvectl status/query/statistics/flush-caches` inspect it; `/etc/systemd/resolved.conf` configures it.
-- **Search domains and `ndots`.** With `search dc1.example.com example.com` and `ndots:1` (glibc default), the name `gpu01` is tried as `gpu01.dc1.example.com`, then `gpu01.example.com`, then `gpu01.`; names with at least `ndots` dots are tried as absolute names *first*. A trailing dot (`gpu01.dc1.example.com.`) always means absolute and skips the search list. Each failed expansion costs a query and its latency.
-- **Timeouts**: the glibc default is 5 s per attempt, 2 attempts, per nameserver: one dead resolver at the front of the list yields 5 to 10 s stalls for every lookup. Mitigate with `options timeout:1 attempts:2 rotate`, or a local caching resolver (systemd-resolved, dnsmasq, unbound) which fails over quickly.
-- **Caching**: glibc does **not** cache (unless `nscd`/`nscd`-like or `systemd-resolved`); long-running programs may cache themselves (JVM caches positive lookups per `networkaddress.cache.ttl`, forever by default under a security manager; Go caches nothing but resolves per call; nginx resolves upstream names **only at startup** unless you use a variable plus `resolver`). Know your application's behaviour before relying on DNS failover.
+Each file in this path has its own job, and the order matters.
+
+`/etc/nsswitch.conf` sets the order of sources for `hosts:`. The sources include `files`, which means `/etc/hosts`, `dns`, `myhostname`, `resolve` for systemd-resolved, and `mdns4_minimal`, which is multicast DNS for `.local` names. Changing this file affects every libc-based program.
+
+`/etc/hosts` holds static mappings, and on each line the first match wins. Use it for the loopback entry `127.0.0.1 localhost`, the host's own name and a few bootstrap entries. Do not use it as a cluster-wide database; use DNS or configuration management instead. A classic Debian quirk makes it worse. The line `127.0.1.1 hostname` makes the host resolve its own name to loopback, which breaks MPI and Kerberos assumptions.
+
+`/etc/resolv.conf` holds `nameserver` lines, of which up to 3 are used. It also holds `search` domains for unqualified names, the `domain` line, and `options` such as `ndots:N`, `timeout:`, `attempts:`, `rotate` and `edns0`. The file is often a symlink managed by systemd-resolved (`/run/systemd/resolve/stub-resolv.conf`), NetworkManager, `resolvconf` or cloud-init. Hand edits are overwritten, so configure the manager instead, through netplan `nameservers`, `nmcli` or `resolved.conf`.
+
+systemd-resolved provides a local stub at 127.0.0.53, with a cache, per-interface DNS servers and routing domains. Routing domains give you **split DNS**: you can send `corp.example.com` to the VPN's resolver and everything else to the default. systemd-resolved also handles LLMNR and mDNS, and it supports DNSSEC and DoT. Inspect it with `resolvectl status/query/statistics/flush-caches`, and configure it in `/etc/systemd/resolved.conf`.
+
+Search domains and `ndots` work together. Suppose `search dc1.example.com example.com` and `ndots:1` are set, where `ndots:1` is the glibc default. The name `gpu01` is tried as `gpu01.dc1.example.com`, then as `gpu01.example.com`, and last as `gpu01.`. A name with at least `ndots` dots is tried as an absolute name *first*. A trailing dot, as in `gpu01.dc1.example.com.`, always means absolute and skips the search list. Every failed expansion costs a query and its latency.
+
+Timeouts can add the most delay. The glibc default is 5 s per attempt, with 2 attempts per nameserver. One dead resolver at the front of the list therefore stalls every lookup for 5 to 10 s. You can mitigate this with `options timeout:1 attempts:2 rotate`, or with a local caching resolver such as systemd-resolved, dnsmasq or unbound, which fails over quickly.
+
+Caching depends on the program. glibc does **not** cache, unless `nscd` or systemd-resolved does it for it. Long-running programs may cache on their own. The JVM caches positive lookups per `networkaddress.cache.ttl`, and forever by default under a security manager. Go caches nothing and resolves on each call. nginx resolves upstream names **only at startup**, unless you use a variable plus a `resolver`. Know your application's behaviour before you rely on DNS failover.
 
 ### Hostnames
 
-The system hostname is stored in `/etc/hostname` (set with `hostnamectl set-hostname`); the FQDN should resolve (`hostname -f`) to the host's primary address. Cloud images (GCP) set names via DHCP/metadata and an internal DNS zone (`<instance>.<zone>.c.<project>.internal`). Clusters should have predictable names (`gpu-rack03-node07`) because Slurm node definitions, MPI hostfiles, monitoring labels and certificates depend on them.
+The system hostname lives in `/etc/hostname`, and `hostnamectl set-hostname` sets it. The FQDN should resolve, which `hostname -f` shows, to the host's primary address. Cloud images on GCP set names through DHCP, the metadata server and an internal DNS zone, `<instance>.<zone>.c.<project>.internal`. Give clusters predictable names such as `gpu-rack03-node07`. Slurm node definitions, MPI hostfiles, monitoring labels and certificates all depend on those names.
+
+Check the order in `nsswitch.conf` first, because it decides which source answers every lookup on the host.
 
 ## 6. DNS in Kubernetes and containers
 
-Inside a pod, `/etc/resolv.conf` is generated by the kubelet:
+When a pod resolves names slowly, look at its resolver settings first. Inside a pod, the kubelet generates `/etc/resolv.conf`:
 
 ```text
 search my-ns.svc.cluster.local svc.cluster.local cluster.local dc1.example.com
@@ -193,33 +233,59 @@ nameserver 10.96.0.10
 options ndots:5
 ```
 
-- The nameserver is the **CoreDNS** service (`kube-dns`), which resolves `<service>.<namespace>.svc.cluster.local` to ClusterIPs (or pod IPs for **headless** services, used by StatefulSets and distributed training frameworks: `worker-0.trainer.ns.svc.cluster.local`), and forwards everything else to the node's upstream resolvers.
-- **`ndots:5`** means any name with fewer than five dots is first tried through every search domain: a lookup for `api.example.com` (2 dots) generates `api.example.com.my-ns.svc.cluster.local`, `...svc.cluster.local`, `...cluster.local`, `...dc1.example.com` (each NXDOMAIN) *before* the real query: 5 queries (times A and AAAA), which overloads CoreDNS and adds latency (plus conntrack/UDP races leading to the infamous 5-second delays on older kernels). Fixes: use FQDNs with a trailing dot in hot paths, set `dnsConfig.options: ndots: 1` or 2 per pod, deploy **NodeLocal DNSCache** (a per-node cache on a link-local IP, avoiding conntrack and cross-node hops), scale CoreDNS (autoscaler, more replicas), and tune the `cache` and `forward` plugins.
-- Debugging: `kubectl exec pod -- cat /etc/resolv.conf`; `kubectl run -it --rm dnsutils --image=registry.k8s.io/e2e-test-images/jessie-dnsutils -- sh` then `dig`/`nslookup`; `kubectl logs -n kube-system -l k8s-app=kube-dns`; check CoreDNS `Corefile` (`kubectl -n kube-system get cm coredns -o yaml`), its metrics (`coredns_dns_requests_total`, `coredns_dns_responses_total{rcode}`, latency histograms), and that the nodes' own resolvers work.
-- **Docker/Podman** containers copy or proxy the host's resolvers; custom networks have an embedded DNS at 127.0.0.11 that resolves container names.
-- **Alpine/musl** historically did not support search lists and TCP fallback the same way as glibc and had different `ndots`/parallel behaviour; behaviour differs by image and version, so test inside the actual image.
+The nameserver is the **CoreDNS** service, called `kube-dns`. It resolves `<service>.<namespace>.svc.cluster.local` to ClusterIPs. For **headless** services, which StatefulSets and distributed training frameworks use, it returns pod IPs instead, such as `worker-0.trainer.ns.svc.cluster.local`. It forwards everything else to the node's upstream resolvers.
+
+**`ndots:5`** means any name with fewer than five dots is first tried through every search domain. Take a lookup for `api.example.com`, which has 2 dots. It produces `api.example.com.my-ns.svc.cluster.local`, then `...svc.cluster.local`, then `...cluster.local`, then `...dc1.example.com`. Each of those returns NXDOMAIN, and they all come before the real query. That is 5 queries for each of `A` and `AAAA`. The extra load overloads CoreDNS and adds latency. Conntrack and UDP races can also cause the infamous 5-second delays on older kernels.
+
+There are several fixes you can make. Use FQDNs with a trailing dot in hot paths. Set `dnsConfig.options: ndots: 1` or `2` on each pod. Deploy NodeLocal DNSCache, a per-node cache on a link-local IP that avoids conntrack and cross-node hops. Scale CoreDNS with an autoscaler or more replicas, and tune its `cache` and `forward` plugins.
+
+To debug, you can begin by reading the pod's resolver file with `kubectl exec pod -- cat /etc/resolv.conf`. Next, start a helper pod with `kubectl run -it --rm dnsutils --image=registry.k8s.io/e2e-test-images/jessie-dnsutils -- sh`, and run `dig` or `nslookup` inside it. Read the CoreDNS logs with `kubectl logs -n kube-system -l k8s-app=kube-dns`. Check the `Corefile` with `kubectl -n kube-system get cm coredns -o yaml`. Its metrics show the load: `coredns_dns_requests_total`, `coredns_dns_responses_total{rcode}` and the latency histograms. Also confirm that the nodes' own resolvers work.
+
+Docker and Podman containers copy or proxy the host's resolvers. Custom networks have an embedded DNS at 127.0.0.11, which resolves container names.
+
+Alpine and musl have historically handled search lists and TCP fallback differently from glibc. Their `ndots` and parallel behaviour has also differed. Behaviour changes by image and version, so run your DNS tests inside the same image the pod uses.
 
 ## 7. DNS in HPC and AI clusters
 
-- Slurm resolves node names (NodeName/NodeAddr in `slurm.conf`) and, by default, requires forward lookups to match (`SlurmctldHost`, `NodeHostname`); use `NodeAddr` to bind jobs to a specific interface (e.g. the fabric network) and keep a consistent naming scheme with per-NIC names (`gpu01`, `gpu01-ib0`, `gpu01-mgmt`).
-- MPI/NCCL launchers resolve hostnames from a hostfile; if a name resolves to the management NIC while the data should use the fabric NIC, bootstrap traffic uses the wrong network; set `NCCL_SOCKET_IFNAME`/`NCCL_IB_HCA` explicitly rather than relying on names.
-- Reverse DNS for all node IPs (management and, where used, fabric); missing PTR records cause multi-second stalls in tools that do reverse lookups (`sshd` `UseDNS`, NFS exports with hostnames, Kerberos).
-- Split-horizon DNS: internal names resolve to private addresses internally and to public addresses externally (separate views/zones), common for cloud and VPN setups.
-- Use **configuration management** (Ansible, chapters Part 4) to generate `/etc/hosts` for tiny bootstrap sets and to render zone files or cloud DNS records from inventory so DNS never drifts from reality.
-- Cloud DNS integrations: GCP Cloud DNS (public/private zones, forwarding, peering, response policies) and the metadata-server resolver 169.254.169.254; AWS Route 53 Resolver; in Kubernetes **ExternalDNS** syncs service/ingress hostnames to a DNS provider.
+Suppose a launcher reads a hostfile, and one node name points at the management NIC instead of the fabric NIC. The bootstrap traffic then takes the wrong network. Names in a cluster decide which network a job uses, so get them right before you tune anything else.
+
+Slurm resolves node names from `NodeName` and `NodeAddr` in `slurm.conf`. By default it requires forward lookups to match, through `SlurmctldHost` and `NodeHostname`. Use `NodeAddr` to bind jobs to a specific interface, such as the fabric network. Keep one naming scheme with per-NIC names, such as `gpu01`, `gpu01-ib0` and `gpu01-mgmt`.
+
+MPI and NCCL launchers resolve hostnames from a hostfile. If a name resolves to the management NIC while the data should use the fabric NIC, the bootstrap traffic uses the wrong network. Set `NCCL_SOCKET_IFNAME` and `NCCL_IB_HCA` explicitly, rather than relying on names.
+
+Reverse DNS must exist for all node IPs, on the management network and, where used, on the fabric. Missing PTR records cause multi-second stalls in tools that do reverse lookups. Examples are `sshd` with `UseDNS`, NFS exports that use hostnames, and Kerberos.
+
+Split-horizon DNS returns internal names as private addresses inside the network, and as public addresses outside it. It uses separate views or zones, and it is common in cloud and VPN setups.
+
+Use configuration management, such as Ansible from the Part 4 chapters, to generate `/etc/hosts` for tiny bootstrap sets. The same tool can render zone files or cloud DNS records from inventory, so DNS never drifts from reality.
+
+Cloud DNS integrations differ by provider. GCP Cloud DNS offers public and private zones, forwarding, peering and response policies, and its metadata-server resolver is 169.254.169.254. AWS offers Route 53 Resolver. In Kubernetes, **ExternalDNS** syncs service and ingress hostnames to a DNS provider.
+
+Generate every record from one naming scheme, so the names in Slurm, MPI and DNS always agree.
 
 ## 8. Security: DNSSEC, DoT/DoH, and abuse
 
-- **DNSSEC** adds origin authentication and integrity: zones are signed (RRSIG over each RRset using the zone's DNSKEY), parents publish a **DS** record for the child's key, forming a chain of trust to the root's trust anchor. A validating resolver sets the `ad` flag on verified answers or returns SERVFAIL on failures. It does not encrypt, and operational mistakes (expired signatures, DS/key mismatches during rollover) cause outages for validating users: automate signing and rollovers.
-- **DoT/DoH** encrypt the stub-to-resolver hop (TCP/853 and HTTPS). Useful on untrusted networks; inside a data centre mostly unnecessary but supported by systemd-resolved (`DNSOverTLS=`).
-- **Abuse**: cache poisoning (mitigated by source-port and query-ID randomisation, DNSSEC), open resolvers for **amplification** DDoS (restrict recursion to your networks, rate-limit responses), DNS tunnelling for exfiltration (monitor volume, long labels, TXT), dangling CNAMEs enabling subdomain takeover, and DNS rebinding (resolvers can filter private answers). Use response policy zones (RPZ) or provider threat-blocking where appropriate.
-- Protect zone data: restrict AXFR to secondaries (TSIG-authenticated), separate authoritative and recursive roles, and keep software patched (BIND, Unbound, CoreDNS).
+Suppose a resolver accepts a forged answer, and traffic goes to the wrong server. DNSSEC protects against that, and it is the first thing this section covers.
+
+**DNSSEC** adds origin authentication and integrity. Zones are signed. Each RRset is covered by an RRSIG, made with the zone's DNSKEY. The parent publishes a DS record for the child's key, which forms a chain of trust up to the root's trust anchor. A validating resolver sets the `ad` flag on verified answers, and it returns SERVFAIL on failures. DNSSEC does not encrypt anything. Expired signatures, or DS and key mismatches during a rollover, cause outages for validating users, so automate signing and rollovers.
+
+**DoT and DoH** encrypt the hop between the stub and the resolver, over TCP/853 and HTTPS. They help on untrusted networks. Inside a data centre they are mostly unnecessary, although systemd-resolved supports them through `DNSOverTLS=`.
+
+**Abuse** takes several forms. Cache poisoning is mitigated by source-port and query-ID randomisation, and by DNSSEC. Open resolvers enable amplification DDoS, so restrict recursion to your own networks and rate-limit responses. DNS tunnelling can exfiltrate data, so monitor volume, long labels and TXT records. Dangling CNAMEs enable subdomain takeover. Resolvers can filter private answers against DNS rebinding. Use response policy zones (RPZ) or provider threat-blocking where they fit.
+
+Protect the zone data itself. Restrict AXFR to secondaries, and authenticate them with TSIG. Keep the authoritative and recursive roles on separate servers, and keep the software patched.
+
+Restrict who can use each resolver before you open it to a network.
 
 ## 9. Running your own DNS
 
-Typical choices: **BIND 9** (authoritative + recursive, views, DNSSEC, the reference), **Unbound** (validating recursive resolver, small and secure), **dnsmasq** (small DNS forwarder + DHCP for labs), **CoreDNS** (plugin-based, Kubernetes default), **PowerDNS** (authoritative with SQL backends and API), cloud-managed (Route 53, Cloud DNS). A recursive caching resolver per site/rack, with forwarders to the corporate or cloud resolvers, reduces latency and shields upstreams. Operate them like any service: redundancy (at least two, on different failure domains), monitoring (query rate, latency, SERVFAIL ratio, cache hit rate), logging policy (privacy), and a tested change process.
+A recursive caching resolver in each site or rack reduces latency and shields the upstream resolvers.
 
-Example `dnsmasq` for a lab/cluster:
+BIND 9 is the reference server, and it covers authoritative and recursive work, with views and DNSSEC. Unbound is a small, secure validating recursive resolver. dnsmasq is a small forwarder with DHCP, which suits labs. CoreDNS is plugin-based and is the Kubernetes default. PowerDNS is an authoritative server with SQL backends and an API. Cloud-managed options include Route 53 and Cloud DNS.
+
+Operate these servers like any service. Consider redundancy, with at least two on different failure domains. Monitor the query rate, latency, SERVFAIL ratio and cache hit rate. Set a privacy-friendly logging policy, and keep a tested change process.
+
+Here is an example dnsmasq setup for a lab cluster.
 
 ```text
 # /etc/dnsmasq.d/cluster.conf
@@ -233,7 +299,11 @@ host-record=gpu02.cluster.lab,10.20.0.46
 ptr-record=45.0.20.10.in-addr.arpa,gpu01.cluster.lab
 ```
 
+The file sets the domain, the local zone and an upstream server. It also gives two hosts their addresses, and it adds one reverse record for `gpu01`. Test a file like this first, if you can.
+
 ## 10. Diagnosing DNS problems
+
+A name that will not resolve can fail at any layer. The flowchart sorts the symptoms, and the routine below tests each layer in turn.
 
 ```mermaid
 flowchart TD
@@ -246,198 +316,218 @@ flowchart TD
   D -- "yes" --> L["Local path issue: nsswitch.conf order, /etc/hosts override, search/ndots expansion, systemd-resolved link config"]
 ```
 
-Practical routine:
+Work through the routine in order.
 
-1. `getent hosts NAME` vs `dig NAME` vs `resolvectl query NAME`: which agree?
-2. `dig +trace NAME` to test the authoritative chain independent of caches; `dig @auth-ns NAME` to test each authoritative server (inconsistent answers mean a broken secondary: compare SOA serials).
-3. `dig +tcp`, check EDNS size issues (`+bufsize=512` vs `1232`, `+ignore`), firewall allows UDP and TCP 53 and fragments.
-4. Check latency: `dig +stats`, `resolvectl statistics`, repeat to see cache effect; `tcpdump -ni any port 53` shows retries, timeouts, and search-domain expansion.
-5. Kubernetes: pod `resolv.conf`, CoreDNS logs/metrics, NodeLocal DNSCache, ndots.
-6. Time-related: expired DNSSEC signatures, TTL not yet expired, negative caching; `rndc flush`/`resolvectl flush-caches`/`unbound-control flush` only after you know why.
+1. Compare `getent hosts NAME`, `dig NAME` and `resolvectl query NAME`. Do they agree?
+2. Run `dig +trace NAME` to test the authoritative chain without the caches. Then run `dig @auth-ns NAME` against each authoritative server. Inconsistent answers mean a broken secondary, so compare the SOA serials.
+3. Check EDNS size issues with `dig +tcp`, with `+bufsize=512` against `1232`, and with `+ignore`. Confirm that the firewall allows UDP and TCP 53, and fragments.
+4. Measure latency with `dig +stats` and `resolvectl statistics`, then repeat the query to see the cache effect. `tcpdump -ni any port 53` shows retries, timeouts and search-domain expansion.
+5. In Kubernetes, check the pod `resolv.conf`, the CoreDNS logs and metrics, NodeLocal DNSCache, and `ndots`.
+6. Check the time-related causes: expired DNSSEC signatures, TTLs that have not yet expired, and negative caching. Use `rndc flush`, `resolvectl flush-caches` or `unbound-control flush` only after you know the cause.
+
+Start with step 1 every time, because it tells you which layer to test next.
 
 ## 11. Case study: "random 5-second delays" in a GPU inference cluster
 
-An inference service calling `https://models.internal.example.com` from pods occasionally stalled for exactly 5 s. `tcpdump` on the node showed two UDP queries (A and AAAA) sent from the same source port within microseconds; the AAAA query was lost in the node's conntrack because of a race on parallel same-5-tuple UDP flows through NAT (a known kernel behaviour fixed in newer kernels), and the stub retried after the default 5 s timeout. Remediation: `dnsConfig.options: [{name: single-request-reopen}]` (or `use-vc`) as a short-term fix; NodeLocal DNSCache to bypass conntrack for DNS; upgrade the kernel; reduce `ndots`; and add a dashboard on `coredns` latency and the node's `nf_conntrack` insert-failed counters. The lesson: DNS problems often appear as "exactly N seconds" delays: the number is a resolver timeout (5 s glibc) multiplied by retries; match the number to a timer to find the layer.
+An inference service in a GPU cluster calls `https://models.internal.example.com` from its pods. Now and then, a call stalls for exactly 5 s. A `tcpdump` on the node showed two UDP queries, `A` and `AAAA`, sent from the same source port within microseconds. The AAAA query was lost in the node's conntrack. The cause was a race on parallel same-5-tuple UDP flows through NAT, a known kernel behaviour that newer kernels fix. The stub then retried after its default 5 s timeout.
+
+Several fixes address this. As a short-term fix, add `dnsConfig.options: [{name: single-request-reopen}]`, or use `use-vc`. NodeLocal DNSCache bypasses conntrack for DNS. A kernel upgrade also helps. Reduce `ndots`, and add a dashboard on CoreDNS latency and the node's `nf_conntrack` insert-failed counters. If you see the same stall, check those counters first.
+
+The lesson is that DNS problems often show up as delays of exactly one fixed number of seconds. That number is a resolver timeout, here 5 s from glibc, multiplied by retries. Match the number to a timer, and you will find the layer that caused it.
 
 ## 12. Hands-on lab: DNS from both sides
 
-First, run the self-checking Python lab (`code/part02/dns_in_depth_lab.py`) locally. It verifies `resolv.conf` search-domain and `ndots` (`ndots=5` vs `ndots=2` vs trailing dot `.`) query expansion, IPv4 `in-addr.arpa` reverse-DNS name construction (`45.0.20.10.in-addr.arpa.`), glibc dead-nameserver failover delay (`5 s` / `10 s`), and RFC 1034 `CNAME` apex/coexistence rules.
+Start with the self-checking Python lab in `code/part02/dns_in_depth_lab.py`, which you can run on your own machine.
 
 ```bash
 python3 code/part02/dns_in_depth_lab.py
 ```
 
-Next, on a disposable Linux VM (all interactive VM commands below are `untested here`), work through these steps:
+The script checks four things. It verifies the search-domain and `ndots` expansion in `resolv.conf`, with `ndots=5`, `ndots=2` and a trailing dot `.`. It builds the IPv4 reverse name for `10.20.0.45` as `45.0.20.10.in-addr.arpa.`. It measures the glibc failover delay for a dead nameserver, `5 s` and `10 s`. It also applies the RFC 1034 rules for `CNAME` at the apex and for coexistence with other records.
 
-1. **Observe a full resolution**: `dig +trace www.example.com`; label each referral; then `dig www.example.com` twice and watch the TTL decrease (cache); `dig +norecurse` against your resolver.
-2. **Tool differences**: add a bogus entry to `/etc/hosts` for a real name; compare `dig`, `getent hosts`, `ping`, `curl`; change `nsswitch.conf` order temporarily (in a VM) and re-test.
-3. **Search domains/ndots**: set `search` and `ndots` options in a test `resolv.conf` (using `RES_OPTIONS` or a namespace with its own `/etc/netns/<ns>/resolv.conf`); watch the queries with `tcpdump port 53` for `curl http://short-name` and for an FQDN with and without a trailing dot.
-4. **Timeouts**: put a dead nameserver first; time `getent hosts`; use `options timeout:1 attempts:1`; compare with systemd-resolved.
-5. **Local authoritative server**: install BIND or dnsmasq in a namespace/VM; create the zone above; serve forward and reverse; test with `dig @server`; add a secondary and observe AXFR/NOTIFY and serial behaviour.
-6. **TTL and negative caching**: query a missing name, create it, query again before/after the negative TTL.
-7. **Truncation**: create a TXT record > 512 bytes; query with `+bufsize=512 +ignore` and `+tcp`; see the `tc` flag.
-8. **Kubernetes** (kind/minikube): inspect pod `resolv.conf`; measure query counts for an external name with ndots 5 vs 2; deploy NodeLocal DNSCache or compare using FQDN with trailing dot; read CoreDNS metrics.
-9. **systemd-resolved split DNS**: `resolvectl dns eth0 ...`, `resolvectl domain eth0 ~corp.example.com`, verify routing with `resolvectl query`.
-10. **DNSSEC**: `dig +dnssec +multi example.com DNSKEY`; query a deliberately broken signed domain (e.g. a public test domain you trust) with `+cd` and without to see SERVFAIL vs answer.
-11. **Clean up**.
+Next, on a disposable Linux VM, work through the steps below. All the interactive VM commands are `untested here`.
+
+1. Start by watching a full resolution. Run `dig +trace www.example.com` and label each referral. Then run `dig www.example.com` twice and watch the TTL decrease, which shows the cache at work. Finally, run `dig +norecurse` against your resolver.
+2. Compare the tools. Add a bogus entry to `/etc/hosts` for a real name, then compare `dig`, `getent hosts`, `ping` and `curl`. Change the `nsswitch.conf` order temporarily, inside the VM, and test again.
+3. Test the search domains and `ndots`. Set the `search` and `ndots` options in a test `resolv.conf`, using `RES_OPTIONS` or a namespace with its own `/etc/netns/<ns>/resolv.conf`. Watch the queries with `tcpdump port 53` for `curl http://short-name`, and for an FQDN with and without a trailing dot.
+4. Time the timeouts. Put a dead nameserver first, and time `getent hosts`. Then try `options timeout:1 attempts:1`, and compare the result with systemd-resolved.
+5. Run a local authoritative server. Install BIND or dnsmasq in a namespace or VM, and create the zone above. Serve forward and reverse records, and test with `dig @server`. Add a secondary, then observe AXFR, NOTIFY and serial behaviour.
+6. Check TTLs and negative caching. Query a missing name, create it, and query again before and after the negative TTL.
+7. Test truncation. Create a TXT record larger than 512 bytes, then query it with `+bufsize=512 +ignore` and with `+tcp`. Look for the `tc` flag.
+8. Work in Kubernetes with kind or minikube. Inspect a pod's `resolv.conf`, and measure the query counts for an external name with `ndots:5` and with `ndots:2`. Deploy NodeLocal DNSCache, or compare with an FQDN that has a trailing dot. Then read the CoreDNS metrics.
+9. Test systemd-resolved split DNS. Set the servers with `resolvectl dns eth0 ...`, route the domain with `resolvectl domain eth0 ~corp.example.com`, and verify the routing with `resolvectl query`.
+10. Check DNSSEC. Run `dig +dnssec +multi example.com DNSKEY`. Then query a deliberately broken signed domain, such as a public test domain you trust, once with `+cd` and once without it, to see SERVFAIL against an answer.
+11. Clean up when you finish.
 
 ## 13. Common mistakes
 
-- Testing only with `dig` (bypasses `/etc/hosts`, nsswitch, search path) and concluding DNS is fine.
-- Editing a managed `/etc/resolv.conf` by hand; running two managers fighting over it.
-- A dead first nameserver (multi-second delays on every lookup); too many search domains; ignoring `ndots` in Kubernetes.
-- Forgetting negative caching and long TTLs when changing records; not lowering TTL before migrations.
-- CNAME at the apex or alongside other records; trailing-dot mistakes in zone files (`ns1.example.com` without a dot becomes `ns1.example.com.example.com.`).
-- Forgetting to increment the SOA serial so secondaries never update.
-- Blocking TCP/53 or fragments; MTU and EDNS size issues causing intermittent failures for big answers.
-- Missing reverse records for nodes; hostnames resolving to loopback or the wrong NIC.
-- Caches in applications (JVM, nginx upstream) making DNS failover ineffective.
-- Running an open recursive resolver on the Internet.
+These mistakes come up again and again, so check for them before you blame the server.
+
+Testing only with `dig` bypasses `/etc/hosts`, nsswitch and the search path, so a clean `dig` does not prove that DNS is fine. Editing a managed `/etc/resolv.conf` by hand is another trap, and running two managers that fight over the file is worse.
+
+A dead first nameserver adds multi-second delays to every lookup. Too many search domains, and ignoring `ndots` in Kubernetes, add more queries on top of that.
+
+Forgetting negative caching and long TTLs can make a change look broken. Not lowering the TTL before a migration causes the same trouble. Forgetting to increment the SOA serial means secondaries never update.
+
+A CNAME at the apex, or alongside other records, is illegal. Trailing-dot mistakes are also common. A name like `ns1.example.com` without the dot becomes `ns1.example.com.example.com.`.
+
+Blocking TCP/53 or fragments causes intermittent failures for big answers, and so do MTU and EDNS size issues. Missing reverse records for nodes cause trouble too, and so do hostnames that resolve to loopback or to the wrong NIC.
+
+Application caches, such as the JVM or nginx upstreams, can make DNS failover ineffective. Running an open recursive resolver on the Internet is a mistake of its own.
+
+Before you call a record change finished, confirm that the SOA serial moved and that the secondaries picked it up.
 
 ## 14. Interview angles
 
-- "What happens when you type a URL in the browser? Focus on DNS." (Stub, recursive, root/TLD/auth, caching, TTL.)
+If you are preparing for an interview, these questions test whether you can follow a lookup from the stub resolver to the authoritative server.
+
+- "What happens when you type a URL in the browser? Focus on DNS." Cover the stub, the recursive resolver, the root, TLD and authoritative servers, caching and TTL.
 - "Difference between recursive and authoritative servers? Between a zone and a domain?"
-- "Why can't you put a CNAME at the zone apex?" (SOA/NS must coexist; CNAME excludes other records; use ALIAS/ANAME.)
-- "A Kubernetes pod resolves slowly. What are the usual causes?" (ndots, CoreDNS load, conntrack race, NodeLocal DNSCache.)
-- "`dig` works, but `curl` fails by name. Why?" (nsswitch/hosts/search/IPv6/proxy.)
-- "How do you migrate a service to a new IP with minimal downtime?" (Lower TTL ahead, switch, wait, restore TTL.)
-- "What does `SERVFAIL` mean? How do you find the cause?" (+trace, check DNSSEC, lame delegation.)
+- "Why can't you put a CNAME at the zone apex?" The SOA and NS records must coexist with it, and a CNAME excludes other records. ALIAS or ANAME can replace it.
+- "A Kubernetes pod resolves slowly. What are the usual causes?" Think about `ndots`, CoreDNS load, the conntrack race and NodeLocal DNSCache.
+- "`dig` works, but `curl` fails by name. Why?" Look at nsswitch, the hosts file, the search path, IPv6 and proxy settings.
+- "How do you migrate a service to a new IP with minimal downtime?" Lower the TTL ahead of time, switch the IP, wait, then restore the TTL.
+- "What does `SERVFAIL` mean? How do you find the cause?" Use `dig +trace`, check DNSSEC, and look for a lame delegation.
 - "Explain DNSSEC in two minutes."
 - "How would you design DNS for a 1,000-GPU cluster with several networks per node?"
 
 ## Exercises
 
-1. **DNS Hierarchy, Zone vs. Domain, Delegation + Glue, and Iterative vs. Recursive Lookup:** (a) Distinguish a DNS **domain** from a DNS **zone**, and explain why a parent zone must include **glue** `A`/`AAAA` records when delegating `example.com.` to `ns1.example.com.`; (b) trace the messages exchanged between an application, its local **stub resolver**, a **recursive resolver**, and the `.` (root), `.com` (TLD), and `example.com` **authoritative** servers on a cold cache.
-2. **Resource Records, the `CNAME` Apex Rule, and Reverse `PTR` Lookups:** (a) Using `validate_cname_placement()` in `code/part02/dns_in_depth.py`, explain why a `CNAME` record is illegal at the zone apex (`@`) and cannot coexist with `SOA`, `NS`, `MX`, or `TXT` records at the same owner name; (b) using `ipv4_to_in_addr_arpa()`, construct the reverse `PTR` owner name for `10.20.0.45`, and list four cluster services that stall or fail when reverse DNS is broken.
-3. **`dig` vs. `getent hosts` vs. `resolvectl` and the Linux Host Resolution Path:** Explain why `dig www.example.com` can return the right IP immediately while `curl https://www.example.com/` on the same host connects to the wrong IP or stalls for 5 seconds. Trace the exact files and daemons consulted by `getaddrinfo()`.
-4. **Search Domains, `ndots:5` Query Multiplication, and Trailing Dots:** Given `search my-ns.svc.cluster.local svc.cluster.local cluster.local dc1.example.com`, use `expand_dns_search_candidates()` to list the exact sequence of names queried for `api.example.com` when `ndots:5` (Kubernetes default) versus `ndots:2`, and when a trailing dot (`api.example.com.`) is used.
-5. **The 5-Second DNS Delay Case Study, Conntrack UDP Races, and `NodeLocal DNSCache`:** Walk through the root cause of the "random 5-second delays" in Section 11 (`A` and `AAAA` UDP queries from the same socket source port racing in `nf_conntrack` DNAT + glibc's `5 s` `timeout` from `compute_resolver_failover_delay_sec()`), and state four concrete mitigations (`NodeLocal DNSCache`, `single-request-reopen` / `use-vc`, `ndots`, kernel upgrade).
-6. **Designing Cluster DNS for 1,000 Multi-NIC GPU Nodes and Zero-Downtime Migrations:** (a) Design the forward and reverse naming convention for a GPU node with management (`10.20.0.45`), storage (`10.30.0.45`), and 8 InfiniBand/RoCE interfaces (`10.100.0..7.45`), explaining why Debian's `127.0.1.1 hostname` line in `/etc/hosts` breaks MPI and Slurm; (b) write the 4-step procedure to migrate a production endpoint IP with minimal downtime when its current `TTL` is `3600` seconds.
+1. Start with the hierarchy. First, explain the difference between a DNS domain and a DNS zone. Then explain why a parent zone must include glue `A` and `AAAA` records when it delegates `example.com.` to `ns1.example.com.`. Last, trace the messages exchanged between an application, its local stub resolver, a recursive resolver, and the `.` (root), `.com` (TLD) and `example.com` authoritative servers on a cold cache.
+2. Work through the record rules with the code in `code/part02/dns_in_depth.py`. Use `validate_cname_placement()` to explain why a `CNAME` is illegal at the zone apex, `@`, and why it cannot share an owner name with SOA, NS, MX or TXT records. Then use `ipv4_to_in_addr_arpa()` to build the reverse PTR owner name for `10.20.0.45`. Finally, name four cluster services that stall or fail when reverse DNS is broken.
+3. Explain why `dig www.example.com` can return the right IP at once, while `curl https://www.example.com/` on the same host connects to the wrong IP or stalls for 5 seconds. Then trace the exact files and daemons that `getaddrinfo()` consults.
+4. Take the search line `search my-ns.svc.cluster.local svc.cluster.local cluster.local dc1.example.com`. Use `expand_dns_search_candidates()` to list the exact names queried for `api.example.com` with `ndots:5`, the Kubernetes default, and then with `ndots:2`. Repeat the exercise for a trailing dot, `api.example.com.`.
+5. Walk through the root cause of the random 5-second delays in section 11. Cover the `A` and `AAAA` UDP queries from the same socket source port, which race in `nf_conntrack` DNAT, and glibc's 5 s timeout from `compute_resolver_failover_delay_sec()`. Then state four concrete mitigations you would apply: NodeLocal DNSCache, `single-request-reopen` or `use-vc`, `ndots`, and a kernel upgrade.
+6. Plan cluster DNS for 1,000 multi-NIC GPU nodes, and then plan a zero-downtime migration. The first part asks you to design the forward and reverse naming for a GPU node with a management address (`10.20.0.45`), a storage address (`10.30.0.45`) and 8 InfiniBand or RoCE interfaces (`10.100.0..7.45`). Explain why Debian's `127.0.1.1 hostname` line in `/etc/hosts` breaks MPI and Slurm. The second part asks you to write the 4-step procedure for moving a production endpoint's IP with minimal downtime, when its current TTL is `3600` seconds.
 
 ## Checkpoint questions (20)
 
 <details>
 <summary>1. What is the difference between a DNS domain and a DNS zone, and what is a Fully Qualified Domain Name (`FQDN`)?</summary>
 
-A **domain** is any complete subtree of the global DNS namespace (e.g., everything under `example.com`), whereas a **zone** is a specific administrative slice of that tree hosted on a set of authoritative nameservers (for example, `dc1.example.com` may be delegated into its own separate zone). An **FQDN** ends with a trailing dot (`gpu01.dc1.example.com.`), marking it as an absolute path to the DNS root (`.`) and preventing resolvers from appending `search` suffixes.
+A **domain** is any complete subtree of the DNS namespace, such as everything under `example.com`. A **zone** is a specific administrative slice of that tree, hosted on a set of authoritative nameservers. For example, `dc1.example.com` can be delegated into its own zone. When you write an **FQDN**, it ends with a trailing dot, as in `gpu01.dc1.example.com.`. That dot marks the name as absolute, starting from the DNS root (`.`), so resolvers do not append `search` suffixes.
 </details>
 
 <details>
 <summary>2. What are `NS` delegation records and \"glue\" records, and why are glue records necessary?</summary>
 
-A parent zone (such as `.com`) delegates authority for a child zone (`example.com.`) by publishing `NS` records pointing to the child's authoritative nameservers (`ns1.example.com.`). When a nameserver's own hostname sits **inside the zone it serves** (*in-bailiwick*), a resolver would face a circular dependency trying to resolve `ns1.example.com.`; **glue records** are the `A`/`AAAA` addresses for `ns1.example.com.` returned directly by the parent zone in the referral's Additional section.
+A parent zone, such as `.com`, delegates a child zone, such as `example.com.`, by publishing `NS` records. Those records point to the child's authoritative nameservers, such as `ns1.example.com.`. Suppose that nameserver's own name sits inside the zone it serves. This is called *in-bailiwick*. The resolver would then face a circular dependency, because it needs the address of `ns1.example.com.` before it can ask for `example.com.`. Glue records solve this. They are the `A` and `AAAA` addresses for `ns1.example.com.`, and the parent returns them directly in the Additional section of the referral.
 </details>
 
 <details>
 <summary>3. Contrast a Stub Resolver, a Recursive Resolver, and an Authoritative Nameserver.</summary>
 
-- **Stub resolver**: the lightweight client library inside each OS (`glibc` `getaddrinfo()` / `systemd-resolved` at `127.0.0.53`) that forwards recursive queries (`RD` bit set) to a configured nameserver.\n- **Recursive (caching) resolver**: the workhorse server (`Unbound`, `CoreDNS`, `BIND`, cloud VPC resolver) that walks the DNS tree iteratively from root -> TLD -> authoritative server on the client's behalf and caches answers for their `TTL`.\n- **Authoritative nameserver**: holds the ground-truth zone records and answers queries for its zones with the **`aa`** (*Authoritative Answer*) flag set.
+- **Stub resolver**: the lightweight client library in each OS, such as glibc `getaddrinfo()` or `systemd-resolved` at `127.0.0.53`. It forwards recursive queries, with the `RD` bit set, to a configured nameserver.
+- **Recursive (caching) resolver**: the workhorse server, such as Unbound, CoreDNS, BIND or the cloud VPC resolver. It walks the tree from root to TLD to authoritative server on the client's behalf, and it caches the answers for their `TTL`.
+- **Authoritative nameserver**: holds the ground-truth zone records. It answers for its zones with the `aa` (*Authoritative Answer*) flag set.
 </details>
 
 <details>
 <summary>4. How do positive `TTL` caching and negative caching (`RFC 2308`) work, and how do you migrate a service IP cleanly?</summary>
 
-Every resource record carries a **TTL** in seconds telling recursive resolvers how long they may serve the cached record. Under **RFC 2308 negative caching**, `NXDOMAIN` (name does not exist) and `NODATA` responses are also cached for the duration of the zone `SOA` record's **negative TTL (`minimum`)** field—so querying a hostname *before* creating its DNS record will cache the failure for minutes. Before migrating an IP, lower the record's TTL (e.g., from `3600 s` to `60 s`) **at least one full old-TTL (`3600 s`) in advance**, switch the IP, verify, and raise the TTL back.
+Every resource record has a **TTL**, in seconds, that tells recursive resolvers how long they may serve it from cache. With **negative caching** under RFC 2308, `NXDOMAIN` (the name does not exist) and `NODATA` responses are cached too. They are cached for the zone's `SOA` negative TTL, which is its `minimum` field. So if you query a hostname before you create its record, the failure can stay cached for minutes. To migrate an IP, lower the record's TTL first, for example from `3600 s` to `60 s`. Do this at least one full old TTL, `3600 s`, in advance. Then switch the IP, verify it, and raise the TTL back.
 </details>
 
 <details>
 <summary>5. Why does DNS use both UDP port 53 and TCP port 53, and what does `EDNS(0)` (`1232` bytes) do?</summary>
 
-Standard DNS queries use **UDP port 53** for single-RTT low overhead. Classic DNS capped UDP responses at **`512` bytes**; **`EDNS(0)`** (`RFC 6891`) lets the client advertise a larger UDP buffer (commonly **`1232` bytes** to stay safely below IPv6/tunnel fragmentation limits) and carries DNSSEC flags. If a response still exceeds the UDP limit, the server sets the **`TC` (*Truncated*) flag**, and the client automatically retries the query over **TCP port 53** (which is also used for `AXFR`/`IXFR` zone transfers). Blocking `TCP/53` in a firewall breaks large TXT, SRV, and DNSSEC responses.
+Standard DNS queries use **UDP port 53**, because you get one round trip with low overhead. Classic DNS capped UDP responses at `512` bytes. **EDNS(0)**, defined in RFC 6891, lets the client advertise a larger UDP buffer. The usual choice is `1232` bytes, which keeps the packet safely below IPv6 and tunnel fragmentation limits. EDNS(0) also carries DNSSEC flags. When a response still exceeds the UDP limit, the server sets the **`TC` (*Truncated*) flag**. The client then retries over **TCP port 53**, which zone transfers with `AXFR` and `IXFR` also use. Blocking TCP/53 in a firewall breaks large TXT, SRV and DNSSEC responses.
 </details>
 
 <details>
 <summary>6. Match the DNS response codes `NOERROR`, `NXDOMAIN`, `SERVFAIL`, and `REFUSED` to their meanings.</summary>
 
-- **`NOERROR`**: query succeeded (either returning matching records in the Answer section, or `0` answers = **NODATA** when the name exists for other record types).\n- **`NXDOMAIN`**: the queried domain name does not exist in the zone.\n- **`SERVFAIL`**: the recursive resolver failed to obtain a valid answer (all authoritative servers timed out, lame delegation, or **DNSSEC signature validation failed**).\n- **`REFUSED`**: the server refused the query by policy (e.g., querying a non-recursive authoritative server for an outside domain, or unauthorized `AXFR`).
+- **`NOERROR`**: the query succeeded. Either the Answer section holds matching records, or it has zero answers. Zero answers is NODATA, which means the name exists but has no records of that type.
+- **`NXDOMAIN`**: the queried name does not exist in the zone.
+- **`SERVFAIL`**: the recursive resolver could not get a valid answer. The causes are that all authoritative servers timed out, a lame delegation, or a failed DNSSEC signature check.
+- **`REFUSED`**: the server refused for policy reasons. For example, a non-recursive authoritative server gets a query for an outside domain, or an unauthorized `AXFR` request.
 </details>
 
 <details>
 <summary>7. Why is a `CNAME` record forbidden at the zone apex (`@`), and how do cloud DNS providers work around it?</summary>
 
-Per RFC 1034 / RFC 2181, a **`CNAME` record cannot coexist with any other record type at the same owner name** (except DNSSEC `RRSIG`/`NSEC`). Because the zone apex (`example.com.`) **must** contain `SOA` and `NS` records, placing a `CNAME` at `@` is illegal and breaks zone delegation/mail. Cloud providers work around this with synthetic records (**`ALIAS`**, **`ANAME`**, or **CNAME flattening**) or standardized **`SVCB` / `HTTPS`** records that resolve the target's `A`/`AAAA` addresses at the authoritative server.
+A **`CNAME` record cannot share its owner name with any other record type**, except DNSSEC `RRSIG` and `NSEC` records (RFC 1034 and RFC 2181). The zone apex, `example.com.`, must hold `SOA` and `NS` records. A CNAME at `@` is therefore illegal, and it breaks delegation and mail. Cloud providers work around this with synthetic records, which are called **`ALIAS`**, **`ANAME`** or CNAME flattening. Standardized **`SVCB` / `HTTPS`** records also work, because they resolve the target's `A` and `AAAA` addresses at the authoritative server.
 </details>
 
 <details>
 <summary>8. Explain the fields of an `SOA` record and an `SRV` record (`_slurmctld._tcp IN SRV 0 0 6817 slurm-ctl`).</summary>
 
-An **`SOA`** (*Start of Authority*) record contains: primary master NS, admin email (`@` written as `.`), **serial number** (e.g., `2026102301`, which **must be incremented** on every edit so secondaries know to transfer the updated zone via `AXFR`/`IXFR`), refresh timer, retry timer, expire timer, and negative-caching TTL. An **`SRV`** record (`_service._proto.name`) specifies `priority`, `weight`, **`port` (`6817`)**, and **`target` hostname (`slurm-ctl`)**, allowing clients like Slurm or `etcd` to discover both host and port via DNS.
+An **`SOA`** (*Start of Authority*) record holds the primary master NS, the admin email with `@` written as `.`, the serial number, and the refresh, retry and expire timers. It also holds the negative-caching TTL. The serial, such as `2026102301`, **must go up on every edit**. Secondaries compare it to decide whether to fetch the zone with `AXFR` or `IXFR`. An **`SRV`** record has the form `_service._proto.name`, and it holds `priority`, `weight`, the **`port` (`6817`)** and the **`target` hostname (`slurm-ctl`)**. Clients such as Slurm or `etcd` use it to find both the host and the port through DNS.
 </details>
 
 <details>
 <summary>9. How is IPv4 and IPv6 Reverse DNS structured (`in-addr.arpa` and `ip6.arpa`), and why does missing Reverse DNS cause slow SSH or job startup?</summary>
 
-Reverse DNS maps an IP address back to a canonical hostname using **`PTR`** records stored under the reversed-octet tree **`in-addr.arpa`** for IPv4 (`10.20.0.45` -> **`45.0.20.10.in-addr.arpa.`**) and nibble-reversed **`ip6.arpa`** for IPv6. Services that perform reverse or forward-confirmed reverse lookups on incoming connections (`sshd` when `UseDNS yes`, NFS hostname exports, Kerberos, Slurm/MPI) stall for 5–10 seconds waiting for `PTR` queries to time out if reverse zones are unconfigured.
+Reverse DNS maps an IP address back to a canonical hostname, using **`PTR`** records. For IPv4, the records sit under the octet-reversed **`in-addr.arpa`** tree. So `10.20.0.45` becomes **`45.0.20.10.in-addr.arpa.`**. For IPv6, the tree is **`ip6.arpa`**, with nibbles reversed. Services that do reverse or forward-confirmed reverse lookups on incoming connections stall when the reverse zones are missing. Examples are `sshd` with `UseDNS yes`, NFS hostname exports, Kerberos, and Slurm or MPI. Each one waits 5 to 10 seconds for PTR queries to time out.
 </details>
 
 <details>
 <summary>10. Why can `dig www.example.com` succeed while `curl https://www.example.com/` or `ping` fails to resolve on the same Linux machine?</summary>
 
-`dig` (and `nslookup` / `host`) speaks the DNS wire protocol directly to the nameserver in `/etc/resolv.conf`, **completely bypassing the C library (`getaddrinfo`), `/etc/nsswitch.conf`, `/etc/hosts`, `systemd-resolved` D-Bus APIs, and `search`/`ndots` rules**. Always test the actual application resolution path using **`getent hosts <name>`** (or `getent ahosts <name>`).
+`dig`, `nslookup` and `host` speak the DNS protocol directly to the nameserver in `/etc/resolv.conf`. That bypasses the C library (`getaddrinfo`) completely. It also skips `/etc/nsswitch.conf`, `/etc/hosts`, systemd-resolved's D-Bus APIs, and the `search` and `ndots` rules. To test what an application really sees, use `getent hosts <name>` or `getent ahosts <name>`.
 </details>
 
 <details>
 <summary>11. Trace how `/etc/nsswitch.conf`, `/etc/hosts`, `/etc/resolv.conf`, and `systemd-resolved` (`127.0.0.53`) work together on Ubuntu/RHEL.</summary>
 
-When an application calls `getaddrinfo()`, `glibc` reads the `hosts:` line in `/etc/nsswitch.conf` (`files mdns4_minimal [NOTFOUND=return] resolve [UNAVAIL=return] dns`). It checks `/etc/hosts` (`files`) first, then queries **`systemd-resolved`** (via NSS `resolve` or the local stub listener at **`127.0.0.53`** in `/etc/resolv.conf`), which checks its local cache and routes the query to the appropriate per-interface upstream DNS server (**split DNS**).
+When an application calls `getaddrinfo()`, glibc reads the `hosts:` line in `/etc/nsswitch.conf`, which might read `files mdns4_minimal [NOTFOUND=return] resolve [UNAVAIL=return] dns`. It checks `/etc/hosts` first, through `files`. Then it queries **systemd-resolved**. It can do this through the NSS `resolve` module, or through the local stub at `127.0.0.53` named in `/etc/resolv.conf`. systemd-resolved checks its cache, then sends the query to the right upstream DNS server for each interface. That routing is called **split DNS**.
 </details>
 
 <details>
 <summary>12. How do `search` domains and `ndots` in `/etc/resolv.conf` interact, and what happens if the first `nameserver` in `/etc/resolv.conf` is dead?</summary>
 
-If a queried name without a trailing dot contains **fewer than `ndots` dots**, the stub resolver appends each domain in `search` one by one before trying the bare name; if it has **`>= ndots` dots**, it tries the bare name first. Because `glibc`'s default timeout is **`5` seconds per attempt** (`options timeout:5 attempts:2`), a dead first `nameserver` in `/etc/resolv.conf` adds a **`5` to `10` second delay** to every uncached lookup before failing over to the second `nameserver` (mitigate with `options timeout:1 attempts:2 rotate` or a local caching stub).
+The stub resolver checks `ndots` against the name it was given. If a name without a trailing dot has fewer than `ndots` dots, the resolver appends each `search` domain before it tries the bare name. If the name has `ndots` dots or more, it tries the bare name first. glibc's default timeout is `5` seconds per attempt, which is `options timeout:5 attempts:2`. So a dead first `nameserver` adds a `5` to `10` second delay to every uncached lookup, until the resolver fails over to the second `nameserver`. You can reduce that with `options timeout:1 attempts:2 rotate`, or with a local caching stub.
 </details>
 
 <details>
 <summary>13. How do `glibc`, the JVM, Go, and `nginx` differ in how they cache DNS lookups in user space?</summary>
 
-- **`glibc`**: performs **zero caching** inside the process (every `getaddrinfo()` call asks the OS stub/files).
-- **JVM (Java)**: caches positive lookups internally per `networkaddress.cache.ttl` (historically caching forever under a SecurityManager if not configured).
-- **Go**: resolves per connection attempt without an internal cache.
-- **Open-source `nginx`**: resolves upstream hostnames in `proxy_pass http://backend;` **only once at startup/reload** unless configured with a `resolver` directive and a variable.
+- **`glibc`** does no caching inside the process. Each time you call `getaddrinfo()`, it asks the OS stub or the files.
+- **JVM (Java)** caches positive lookups per `networkaddress.cache.ttl`. Historically, it cached forever under a SecurityManager when that was not configured.
+- **Go** resolves on every connection attempt, with no internal cache.
+- **Open-source `nginx`** resolves upstream names in `proxy_pass http://backend;` only once, at startup or reload. The exception is a `resolver` directive used with a variable.
 </details>
 
 <details>
 <summary>14. Why does Kubernetes default Pod `/etc/resolv.conf` to `ndots:5`, and how does that overload CoreDNS?</summary>
 
-Kubernetes sets `ndots:5` so multi-segment in-cluster service names like `svc.namespace` or `pod.svc.namespace.svc` (`1` to `3` dots `< 5`) match the pod's `search` list (`<ns>.svc.cluster.local svc.cluster.local cluster.local`). The side effect is that every external lookup like `s3.us-west-2.amazonaws.com` (`3` dots `< 5`) generates **4 search-domain expansions x 2 (`A` + `AAAA`) = 8 `NXDOMAIN` queries** to CoreDNS before the real query is sent.
+Kubernetes sets `ndots:5` so that multi-segment in-cluster names, such as `svc.namespace` or `pod.svc.namespace.svc`, match the pod's search list, `<ns>.svc.cluster.local svc.cluster.local cluster.local`. Those names have 1 to 3 dots, which is fewer than 5. The side effect hits external names. When you query a name like `s3.us-west-2.amazonaws.com`, it has 3 dots, so it gets 4 search-domain expansions. Each expansion is queried for `A` and `AAAA`, which makes 8 NXDOMAIN queries to CoreDNS before the real query goes out.
 </details>
 
 <details>
 <summary>15. What is a Kubernetes Headless Service (`clusterIP: None`), and how do distributed PyTorch / StatefulSet jobs use it?</summary>
 
-A normal Kubernetes `Service` allocates a single virtual `ClusterIP` and load-balances connections across pods. A **Headless Service (`clusterIP: None`)** allocates no VIP; instead, CoreDNS returns the individual Pod IPs directly and creates a deterministic **`A`/`AAAA` record for each Pod**: **`<pod-name>.<service-name>.<namespace>.svc.cluster.local`** (e.g., `worker-0.pytorch-job.train.svc.cluster.local`), which `torchrun` and MPI use for rank-0 rendezvous and peer discovery.
+A normal Kubernetes `Service` gets one virtual `ClusterIP` and load-balances connections across pods. A **Headless Service**, with `clusterIP: None`, gets no virtual IP. CoreDNS returns each pod IP directly, and it creates a predictable `A` and `AAAA` record for each pod. The record name is **`<pod-name>.<service-name>.<namespace>.svc.cluster.local`**, such as `worker-0.pytorch-job.train.svc.cluster.local`. `torchrun` and MPI use these names for rank-0 rendezvous and peer discovery.
 </details>
 
 <details>
 <summary>16. Explain the Linux conntrack UDP race that caused \"random 5-second DNS delays\" in Kubernetes Pods and how `NodeLocal DNSCache` fixes it.</summary>
 
-When a Pod sent parallel `A` and `AAAA` UDP queries from the **same socket (same 5-tuple)** at the exact same microsecond to the `kube-dns` Service `ClusterIP` (`10.96.0.10`), both packets raced in `nf_conntrack` DNAT table insertion; the losing packet was dropped, forcing the stub resolver to wait **`5.0` seconds** before retrying. **`NodeLocal DNSCache`** runs a lightweight caching agent on every node bound to a link-local IP with `NOTRACK` iptables rules—serving cache hits locally in sub-millisecond time, bypassing `conntrack`/DNAT, and upgrading upstream misses to TCP.
+A Pod sent parallel `A` and `AAAA` UDP queries from the same socket, which means the same 5-tuple. Both went to the `kube-dns` Service ClusterIP, `10.96.0.10`, at the exact same microsecond. The two packets raced in the `nf_conntrack` DNAT table. The losing packet was dropped, so the stub resolver waited `5.0` seconds before it retried. **NodeLocal DNSCache** runs a caching agent on every node. The agent is bound to a link-local IP and uses `NOTRACK` iptables rules. Cache hits are served locally in sub-millisecond time. The agent bypasses `conntrack` and DNAT, and it upgrades upstream misses to TCP.
 </details>
 
 <details>
 <summary>17. Why is Debian/Ubuntu's `/etc/hosts` entry `127.0.1.1 <hostname>` a trap on HPC and GPU clusters?</summary>
 
-When a node resolves its own hostname via `getaddrinfo()` and gets `127.0.1.1` (loopback) instead of its real cluster/fabric IP, distributed launchers (`Slurm`, `OpenMPI`, `NCCL`, `Ray`, `Gloo`) advertise `127.0.1.1` to peer nodes—which then try to connect to *themselves* on loopback and fail. Always map the node's hostname to its real management IP and provide explicit per-network hostnames (`gpu01-mgmt`, `gpu01-ib0`).
+When a node resolves its own hostname to `127.0.1.1`, the loopback address, instead of its real cluster or fabric IP, the trouble starts. Distributed launchers such as Slurm, OpenMPI, NCCL, Ray and Gloo advertise `127.0.1.1` to peer nodes. Those peers then try to connect to themselves on loopback and fail. You should map the node's hostname to its real management IP, and give each network an explicit hostname, such as `gpu01-mgmt` and `gpu01-ib0`.
 </details>
 
 <details>
 <summary>18. How does `DNSSEC` verify record authenticity (`DNSKEY`, `RRSIG`, `DS`, `ad` flag), and why does a broken DNSSEC config return `SERVFAIL`?</summary>
 
-In **DNSSEC**, each zone signs its resource record sets (`RRset`s) with a private key, publishing the signature in an **`RRSIG`** record and the public key in a **`DNSKEY`** record; the parent zone publishes a cryptographic hash of the child's key in a **`DS` (*Delegation Signer*)** record, chaining trust up to the root (`.`). When a validating resolver verifies the chain, it sets the **`ad` (*Authenticated Data*)** flag; if a signature is expired or tampered with, the validating resolver refuses to return the unverified data and returns **`SERVFAIL`** (bypass validation during debugging with **`dig +cd`** *Checking Disabled*).
+In DNSSEC, each zone signs its RRsets with a private key. The signature is published in an **`RRSIG`** record, and the public key is in a **`DNSKEY`** record. The parent zone publishes a hash of the child's key in a **`DS` (*Delegation Signer*)** record, which chains trust up to the root (`.`). When the chain checks out, a validating resolver sets the **`ad` (*Authenticated Data*)** flag. If a signature has expired or was tampered with, the resolver refuses to return the data and returns **`SERVFAIL`**. To debug, you can bypass validation with **`dig +cd`** (*Checking Disabled*).
 </details>
 
 <details>
 <summary>19. Compare `DNSSEC` with `DoT` (*DNS over TLS*) and `DoH` (*DNS over HTTPS*).</summary>
 
-**`DNSSEC`** provides **origin authentication and data integrity** (proving records were not forged), but **does not encrypt** queries (anyone on the wire can read what name you asked for). **`DoT`** (`TCP port 853`) and **`DoH`** (`HTTPS port 443`, `RFC 8484`) **encrypt the transport channel** between the stub resolver and the recursive resolver for privacy against on-path eavesdroppers, but do not by themselves prove that the upstream zone data was signed unless combined with DNSSEC.
+**`DNSSEC`** gives origin authentication and data integrity. It proves that records were not forged, but it does not encrypt queries, so anyone on the wire can read the name you asked for. **`DoT`** (`TCP port 853`) and **`DoH`** (`HTTPS port 443`, `RFC 8484`) encrypt the channel between the stub resolver and the recursive resolver. That protects against on-path eavesdroppers. Neither one proves by itself that the upstream zone data was signed, unless you combine it with DNSSEC.
 </details>
 
 <details>
 <summary>20. How do you verify whether all authoritative nameservers for a zone are synchronized?</summary>
 
-First list the zone's authoritative nameservers with `dig +short example.com NS`, then query the **`SOA` record** directly from each authoritative server (`dig +norecurse @ns1.example.com example.com SOA` and `dig +norecurse @ns2.example.com example.com SOA`) and verify that their **SOA serial numbers** match.
+First list the zone's authoritative nameservers with `dig +short example.com NS`. Then query the **`SOA` record** straight from each one, with `dig +norecurse @ns1.example.com example.com SOA` and `dig +norecurse @ns2.example.com example.com SOA`. If their **SOA serial numbers** match, the servers are in sync.
 </details>
 
 ## Sources and review notes

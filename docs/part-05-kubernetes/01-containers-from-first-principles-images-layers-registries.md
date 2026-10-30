@@ -86,6 +86,20 @@ sudo nsenter -t $PID -m ls /                          # enter its mount namespac
 
 Consequences worth remembering: the container shares the **host kernel** (kernel version, sysctls like `net.core.*`, modules, `dmesg`, GPU kernel driver); container escapes are kernel/runtime vulnerabilities, not "hypervisor escapes"; resource limits are cgroup settings enforced by the kernel (memory limit exceeded means OOM kill of a process inside that cgroup); PID 1 inside a container has special signal and zombie-reaping semantics (use `--init`/`tini` for apps that fork); and "it works in the container" says little about kernel-dependent behaviour such as RDMA, huge pages, or NUMA, which depend on the host.
 
+### Why containers took off
+
+Cgroups and namespaces are the two main ingredients for building a container. Cgroups limit how many resources a process can use, such as CPU and memory. Namespaces control what a process can see, such as mounts, processes and network interfaces. Both have been in the Linux kernel since 2008, and namespaces are even older. So why did containers only become popular years later?
+
+The answer lies in the world around the software. Application developers moved to service-oriented architectures and started to embrace microservices. These brought maintainability, scalability and productivity. They also caused an explosion in the number of components in one application. A meaningful application could easily involve a dozen services, sometimes written in several languages. Developing and shipping that was complex, and it still is.
+
+Software had also become a business differentiator. The faster a team could ship new features, the more competitive its offerings. Reliable deployment became key to the business. Then the public cloud arrived as a hosting environment. Teams had to make sure an application behaved the same from a developer's laptop to a production server in someone else's datacenter.
+
+With these challenges in mind, the environment was ripe for innovation. Docker made containers accessible to the masses. It built an abstraction with an easy-to-use CLI, so developers no longer had to know the low-level kernel constructs. All they had to do was type `docker run` in their terminal.
+
+Containers improved many stages of the software life cycle. They let developers codify the application's environment, so missing or mismatched dependencies became rarer. They gave testing reproducible environments. They also made deployment easier. As long as a Docker Engine ran in production, an application could be deployed with minimum friction. Overall, containers helped teams ship software from zero to production in a more repeatable and efficient way.
+
+The new popularity also gave birth to an ecosystem full of tools, container runtimes and container image registries. That ecosystem was well received, but it raised a new question: how do you make sure all these container solutions are compatible with each other? Encapsulation and portability are among the main benefits of containers, so they must hold across tools. The industry answered by working together, under the Linux Foundation, on an open standard: the Open Container Initiative. Keep that question in mind, because the rest of this chapter is largely the answer to it.
+
 ## 2. Images: layers, content addressing and the OCI formats
 
 An **image** is a bundle of: (1) an ordered list of **filesystem layers** (compressed tar archives of changes), (2) a **config** JSON (environment, entrypoint, cmd, user, working directory, exposed ports, labels, history, the list of layer diff IDs), and (3) a **manifest** that references the config and layers by **digest**. A multi-platform tag points to an **index** (manifest list) that references one manifest per OS/architecture.
@@ -120,6 +134,109 @@ crane export nginx:1.27 - | tar -tvf - | head                            # flatt
 dive nginx:1.27                                                          # interactive layer explorer
 docker save nginx:1.27 -o nginx.tar && tar -tf nginx.tar                 # see blobs/ index.json manifest.json layout
 ```
+
+### Manifests, indexes and configs
+
+The image manifest describes the image. It points to the image configuration, lists the image layers, and can carry an optional map of annotations. Here is an example manifest from the OCI image specification:
+
+```
+{
+"schemaVersion": 2,
+"config": {
+"mediaType": "application/vnd.oci.image.config.v1+json",
+"size": 7023,
+"digest": "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f4..."
+},
+"layers": [
+{
+"mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+"size": 32654,
+"digest": "sha256:9834876dcfb05cb167a5c24953eba58c4ac89b1adf57f28f2f9d0..."
+},
+{
+"mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+"size": 16724,
+"digest": "sha256:3c3a4604a545cdc127456d94e421cd355bca5b528f4a9c1905b15..."
+},
+{
+"mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+"size": 73109,
+"digest": "sha256:ec4b8955958665577945c89419d1af06b5f7636b4ac3da7f12184..."
+}
+],
+"annotations": {
+"com.example.key1": "value1",
+"com.example.key2": "value2"
+}
+}
+```
+
+The image index is a top-level manifest that makes multiplatform images possible. It holds pointers to each platform-specific manifest. The example below points to two manifests, one for `ppc64le/linux` and one for `amd64/linux`.
+
+```
+{
+"schemaVersion": 2,
+"manifests": [
+{
+"mediaType": "application/vnd.oci.image.manifest.v1+json",
+"size": 7143,
+"digest": "sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab...",
+"platform": {
+"architecture": "ppc64le",
+"os": "linux"
+}
+},
+{
+"mediaType": "application/vnd.oci.image.manifest.v1+json",
+"size": 7682,
+"digest": "sha256:5b0bcabd1ed22e9fb1310cf6c2dec7cdef19f0ad69efa1f392e9...",
+"platform": {
+"architecture": "amd64",
+"os": "linux"
+}
+}
+],
+"annotations": {
+"com.example.key1": "value1",
+"com.example.key2": "value2"
+}
+}
+```
+
+Each OCI image manifest references a container image configuration. The configuration records how the app starts: its entry point, command, working directory and environment variables, among other things. The container runtime reads it when it creates a container from the image. The snippet below shows a configuration with some fields removed for brevity:
+
+```
+{
+"architecture": "amd64",
+"config": {
+...
+"ExposedPorts": {
+"53/tcp": {},
+"53/udp": {}
+},
+"Tty": false,
+"OpenStdin": false,
+"StdinOnce": false,
+"Env": [
+"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+],
+"Cmd": null,
+"Image": "sha256:7ccecf40b555e5ef2d8d3514257b69c2f4018c767e7a20dbaf4733...",
+"Volumes": null,
+"WorkingDir": "",
+"Entrypoint": [
+"/coredns"
+],
+"OnBuild": null,
+"Labels": null
+},
+"created": "2020-01-28T19:16:47.907002703Z",
+...
+```
+
+The spec also describes how layers are created and managed. A layer is essentially a TAR archive that holds files and directories. The spec gives each flavor its own media type: plain, gzipped and nondistributable. Every layer gets a digest, usually the SHA256 sum of its contents. The manifest refers to layers by these digests. The final filesystem is the result of applying each layer in the order the manifest lists them.
+
+The OCI image specification matters because it keeps images portable across tools and platforms. It enables image build tools such as kaniko and Buildah for userspace builds, Jib for Java-based containers, and Cloud Native Buildpacks for streamlined, automated builds. Overall, the specification means Kubernetes can run a container image no matter which tool built it.
 
 ### Layout on disk
 

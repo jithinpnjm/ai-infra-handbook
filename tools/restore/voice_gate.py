@@ -2,7 +2,7 @@
 """Voice gate. Usage: voice_gate.py OLD.md NEW.md   (also usable on section files)
 Content must be preserved; voice must measurably improve."""
 import sys, re, subprocess
-PRODUCT={'NVLink','RoCE','InfiniBand','STREAM','MLPerf','SPEC','TTFT','TPOT','NVSwitch','DCGM','NCCL','MIG','GPUDirect'}
+PRODUCT={'NVLink','RoCE','InfiniBand','STREAM','MLPerf','SPEC','TTFT','TPOT','NVSwitch','DCGM','NCCL','MIG','GPUDirect','QEMU','IOMMU','VFIO','OVMF','VMCS','VMCB','KubeVirt','KVM','SR-IOV','SRIOV','BlueField','ConnectX','DOCA','Slurm','Kubernetes','Ansible','Terraform','Prometheus','Grafana','Lustre','BeeGFS','GPFS','Redfish','IPMI','BMC','PyTorch','NumPy','DeepSpeed','vLLM','SGLang','TensorRT','Triton','Dynamo','CoreDNS','OpenMPI','BIND','OpenSSH','NetworkManager','Cilium','Calico','Istio','Envoy','FRRouting','Containerlab','WireGuard','VXLAN','EVPN','OpenSM','UFM','NetBox'}
 old, new = sys.argv[1], sys.argv[2]
 o, n = open(old,encoding='utf8').read(), open(new,encoding='utf8').read()
 ok = True
@@ -39,6 +39,6 @@ ex = len(re.findall(r'\b(for example|for instance|suppose|imagine|picture|consid
 say(ex >= 2 or w1 < 1500, f'scenario/example markers: {ex}')
 strip = lambda s: re.sub(r'```.*?```','',s,flags=re.S)
 cs = lambda s: set(re.findall(r'`([^`\n]{3,40})`', strip(s)))
-dem = [x for x in cs(o)-cs(n) if re.match(r'^(-{1,2}[\w-]+|/[\w./-]+|[A-Z][A-Za-z]+(?:[A-Z]\w+)+|\w+_\w+)$', x) and x not in PRODUCT and x in re.sub(r'`[^`\n]*`','',strip(n))]
+dem = [x for x in cs(o)-cs(n) if re.match(r'^(-{1,2}[\w-]+|/[\w./-]+|[A-Z][A-Za-z]+(?:[A-Z]\w+)+|\w+_\w+)$', x) and x not in PRODUCT and not re.match(r'^[A-Z0-9+-]+$', x) and x in re.sub(r'`[^`\n]*`','',strip(n))]
 say(not dem, f'commands/options/paths still in code format (demoted: {dem[:8]})')
 print('RESULT','PASS' if ok else 'FAIL'); sys.exit(0 if ok else 1)

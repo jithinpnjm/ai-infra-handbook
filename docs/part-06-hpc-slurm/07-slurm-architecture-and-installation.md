@@ -49,6 +49,38 @@ Slurm (originally the *Simple Linux Utility for Resource Management*) was create
 
 The key property to hold on to: Slurm is a **batch** system. Users describe what they need (nodes, GPUs, time) and submit; the request waits in a queue until the scheduler can give them exactly that, all at once. This is the opposite of Kubernetes' default model of "start these containers somewhere as soon as possible and keep them running," and it is why gang scheduling, which Kubernetes needs extra projects to approximate (Part 11), is the default behaviour here.
 
+### Why batch systems exist
+
+Picture a supercomputer that never sits idle. The most efficient pattern is continuous launching of tasks, each one occupying the whole compute field, and the moment one task ends the next one starts. In practice that mode is uncommon. It usually appears only on a machine built to solve one single task. Most sites run many kinds of work, and not every task can fill the machine. Some tasks only scale to certain sizes, and some need a process count such as a power of two.
+
+Even when a task could fill the whole machine, someone has to start the next one right after the last one finishes. Doing that by hand is tedious and easy to get wrong. That is why a machine shared by more than one user needs a batch system, also called a batch manager or resource manager. The phrase "batch processing" comes from old large machines. A single job there had several steps, and each step needed different resources such as disks, tapes, teletypes, and the processor. The batch manager planned the use of all of them as efficiently as possible.
+
+Modern supercomputers rarely describe a job that way. A job usually asks for one type of resource, such as processors or GPUs, and a count of them. Sometimes it also names attributes like memory size or the licenses it needs. The way jobs launch and get tracked has changed a lot, so older control systems often struggle with today's workloads.
+
+### How the pieces of a task management system fit together
+
+A task management system is a software package with at least three parts: the queue manager, the scheduler, and the agents on the compute nodes. The queue manager accepts a job into the queue. It also shows the state of queues and jobs, changes the state of nodes, queues and jobs, and launches and tracks each job while it runs.
+
+The agents on the compute nodes help start a job and watch it. If a job crashes or someone withdraws it, the agents must stop the processes it left running. That cleanup is what keeps a dead job from holding a node.
+
+The scheduler decides when a job starts and which resources it gets. Many systems let you replace the built-in scheduler with a third-party one. The first-come, first-served rule is simple, but it often leaves many processors idle while a large job waits. A better scheduler can use priorities, allowed time windows, and rules that the administrator sets.
+
+Choosing the scheduler matters for a second reason. A complex scheduler needs resources of its own, and with many nodes and many tasks it can take tens of minutes to produce a plan. That is rarely acceptable in production, so pick a scheduler that works well with your own mix of tasks. Some systems use an outside service such as MAUI with Torque. Many commercial and free options exist, including Moab, LSF, Torque, Slurm, SGE, Condor and OpenLava.
+
+### Partitions, batch scripts and the job's view of its resources
+
+The ideas that recur in every HPC resource manager are partitions (often called queues), job priorities, users, agents, and schedulers. Partitions matter because they divide the compute field. Users find it easier to name a partition than to write long lists of extra resources.
+
+Another key idea is the batch script. Almost every system runs a script rather than a single command line. Even when a system accepts one command, it wraps that command in a temporary script. The batch script runs on the first allocated node when the job starts, and it knows the full details of the resources it received.
+
+Many MPI implementations understand resource managers, so a command such as `mpirun` can run without you listing every node. The PMIx standard gives resource managers and parallel libraries such as MPI one shared interface. A parallel program can then start its processes through the resource manager's agents, which makes startup faster and easier to control.
+
+### Kubernetes and HPC work
+
+Can you use Kubernetes, Swarm, or a similar manager for this work? Sometimes you can, and it can be a good choice. Kubernetes was built to scale services. It is not designed for network topology, job priorities, or job queuing. Its usual flow is "submit it and forget it," which works when you have more resources than you ask for.
+
+HPC is usually different. Demand is much higher than supply, so you need to organize the queue carefully. You can make Kubernetes handle this with plugins, sidecars and operators, but ask whether the effort is worth it. There are still cases where it makes sense, so think twice before you choose it for your cluster.
+
 ### Dedicated test partition, scheduler overhead, and compute-node access control (`pam_listfile` and `pam_slurm_adopt`)
 
 In *Supercomputers for Linux SysAdmins* Chapter 13 (*Job Management Systems*), Zhumatiy notes that a task management system consists of at least three components: the **queue manager** itself, the **scheduler**, and the **agents on compute nodes**. While simple "first-come, first-served" queuing leaves many processors idle whenever small tasks wait behind a giant job, an overly complex scheduler logic across huge resource pools and task queues can take **tens of minutes** to compute a schedule—which is unacceptable in production. Some legacy systems such as `Torque` pair with an external scheduler service like **`MAUI`** (`http://www.adaptivecomputing.com`) or commercial **`Moab`**, alongside other batch managers like **`LSF`**, **`SGE`** (Grid Engine), **`Condor`**, and **`OpenLava`**. And why not simply use **Kubernetes** or **Swarm** for everything? As Zhumatiy puts it, Kubernetes is built for scaling long-running services where capacity exceeds demand ("submit to K8s and forget"), whereas in HPC the resource demand is much higher than available hardware and requires deep queue prioritization and network topology placement—*"why should you tune a tractor for the Formula-1 races, when you have special race cars?"*
@@ -56,9 +88,15 @@ In *Supercomputers for Linux SysAdmins* Chapter 13 (*Job Management Systems*), Z
 Two practical operational recommendations from Chapter 13 apply across all HPC batch managers:
 
 1. **Dedicated test partition for fast smoke tests:** In addition to production partitions (for example separating nodes with and without accelerators so users can pick a partition name instead of writing complex resource lists), create a small dedicated **test partition**. Set a strict time limit of `10–15 minutes` and cap the number of queued tasks per user at `3–5`. That policy guarantees that a user can run a quick multi-node test job with minimal data within `1–2 hours` to verify that their code and launch script work before submitting a long production run.
-2. **Preventing direct compute-node logins (`pam_listfile` and `pam_slurm_adopt`):** Resource managers allocate nodes to jobs, but unless you lock down SSH access on compute nodes, a user could bypass the queue by running `ssh` directly to a compute node or passing an explicit host list to `mpirun`. To prevent unscheduled access, configure PAM (Pluggable Authentication Modules) on compute nodes using one of two mechanisms:
+2. **Preventing direct compute-node logins (`pam_listfile` and `pam_slurm_adopt`):** Resource managers allocate nodes to jobs, but unless you lock down SSH access on compute nodes, a user could bypass the queue by running `ssh` directly to a compute node or passing an explicit host list to `mpirun`. To prevent unscheduled access, configure PAM (Pluggable Authentication Modules) on compute nodes using one of two mechanisms, which the book's author found to be the best way in practice:
    - Use a scheduler-integrated PAM module such as Slurm's **`pam_slurm_adopt`**, which allows a user to `ssh` into a compute node only if they currently own a running job on that node (and adopts their SSH session into the job's cgroup).
    - Or have the resource manager's **prolog** and **epilog** scripts dynamically add and remove the allocated user's name in a node-local allowlist file checked by the standard **`pam_listfile`** PAM module before and after the job runs.
+
+### Summary: the queue is part of the cluster
+
+The job management system is one of the most important parts of an HPC cluster. Choose it carefully, learn it well, and use it wisely. Its configuration directly shapes how efficiently the cluster works. Different scheduler settings can change how long jobs wait in the queue, and how long nodes sit idle, by several times.
+
+Statistics close the loop. Only with usage statistics can you see how efficiently the supercomputer runs, what real demand exists, and whether you need to expand or modernize. Keep collecting them as part of normal operations.
 
 ## 2. The daemons
 

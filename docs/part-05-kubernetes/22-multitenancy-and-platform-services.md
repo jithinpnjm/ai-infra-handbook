@@ -147,6 +147,25 @@ Dedicated pools per tenant or sensitivity level via taints/labels + admission (i
 
 ## 4. Self-service and onboarding
 
+Many platform teams begin by building a cluster and hoping developers will come. That approach carries real risk. It often misses the needs of development, security and networking teams, and the result is rework. Bring those groups along early, so the platform fits its purpose.
+
+In the early days, the platform team usually provisions and configures every cluster by hand. Manual work does not scale. It creates repetitive toil for the platform team, and it leaves developers waiting. Once a team reaches a basic level of maturity, self-service is the next step. A CI/CD tool such as Jenkins or GitLab can offer it, since both allow pipelines with custom inputs at run time.
+
+Tools such as `kubeadm` and Cluster API make cluster creation consistent. A pipeline can expose a few inputs, such as the cluster name and its size. It then calls those tools with sensible defaults and returns access to the requesting team. Automation can go as far as you want. Some pipelines create load balancers and DNS records from the requester's LDAP details, and they tag resources with cost centers. Sizing can be open to users but limited by team, environment or project.
+
+For multitenant setups, the pipeline creates Namespaces and their related objects instead of whole clusters. Each new application then gets soft isolation. Developers can choose which cluster or clusters receive their application. At a minimum, the pipeline should generate these pieces:
+
+- **Namespace**: the home for the application, which gives logical isolation for other components.
+- **RBAC**: makes sure only the authorized groups can reach resources in that Namespace.
+- **Network policies**: let the application talk to itself and to shared cluster services, but not to other applications, where that is required.
+- **Quotas**: limit how many resources one Namespace may use, which reduces the risk of a noisy neighbor.
+- **Limit ranges**: set sensible defaults for objects created in the Namespace.
+- **Pod Security Policies**: keep workloads on safe defaults, such as not running as the root user.
+
+Not every item is needed in every case. Together, though, they let platform teams onboard a new team without manual steps.
+
+As the organization grows, the same pipeline can move into the cluster as an operator. The `Team` resource shown later in this section lets a controller read an owner and some quotas. The controller then creates the Namespace, RBAC rules and quotas, and ties them together. Because it works through the Kubernetes API, it can also repair drift, such as a deleted role or a changed quota.
+
 Tenant onboarding as code (GitOps/Terraform, 4.25, 4.26):
 
 ```yaml
@@ -240,6 +259,175 @@ spec:
    When building custom workload CRDs, the book recommends keeping a **break-glass** window into the underlying native objects (`Pod`s, `PVC`s, events) so engineers can still use standard Kubernetes troubleshooting knowledge when an abstraction leaks.
 4. **Stage 4 — Making Kubernetes invisible (full PaaS / developer portals)**: developers push source code or a minimal build/deploy/release file without writing Kubernetes YAML at all, using platforms ported to or built atop Kubernetes such as Cloud Foundry, Google App Engine, Red Hat OpenShift, Spotify's `Backstage` developer portal, or HashiCorp `Waypoint` (which encapsulates `build` with `pack`, `deploy` to `kubernetes`, and `release` in a single HCL file).
 
+### Stage 1 in practice: raw kubectl and its limits
+
+Giving developers raw `kubectl` is the far-left end of the spectrum. Nothing sits between the developer and the Kubernetes API. Some organizations choose this because the platform team cannot offer more support. Others choose it because their developers already know Kubernetes and want to work on it directly. Some automation and guardrails may still run on the cluster.
+
+This path has real downsides, even for teams that know Kubernetes well:
+
+- **Access is manual.** Setting up authentication for several clusters is tiresome. Developers must keep switching contexts so they target the right cluster.
+- **Output is hard to read.** `kubectl` prints a table by default. The output can be changed and piped to tools such as `jq`, but developers must know those options first.
+- **Nothing is hidden.** Raw `kubectl` exposes every knob in Kubernetes. You need strict RBAC rules, plus admission control that vets every request reaching the API server.
+
+Several tools soften these problems. The `kubectl` plug-ins `kubens` and `kubectx` improve visibility into namespaces and contexts. Other plug-ins combine logs from several Pods, or give a terminal view of application health. They remove common pain points, but they still expose the API almost directly.
+
+Some plug-ins connect to external authentication systems. They hide kubeconfigs, certificates and tokens from the user. In noncritical environments, access may rely on key pairs. Those keys must be generated, managed and distributed. In more stable environments, access is usually tied to a Single Sign-On system. The authors of this book built command-line utilities for several clients. Those tools pull credentials from a central cluster registry, using the user's own login.
+
+You might also follow the route Airbnb took. In a QCon talk, Melanie Cebula described Airbnb's toolsets, built as standalone binaries and `kubectl` plug-ins. Those tools hook into image building, deployment and more.
+
+A last group gives developers a graphical view of the cluster. Octant and Lens are recent popular choices. Unlike the Kubernetes dashboard, which sits in the cluster, these tools run on a workstation and use a `kubeconfig` to reach the cluster. They are a good onramp for developers who are new to the platform. Improving the client side is often the first step toward simpler developer interactions.
+
+### Stage 2 in practice: templating with Helm and Kustomize
+
+A single application can need many Kubernetes objects. Take a simple WordPress site. It may need a `Deployment` for the application and a `StatefulSet` for MySQL. It also needs `Service`s for discovery, a `PersistentVolumeClaim` for its data, and `ConfigMap`s and `Secret`s for settings and admin credentials. That adds up to nearly ten objects for a very small app. Some of them need expert knowledge. A `StatefulSet`, for example, needs a special headless `Service` in front of it.
+
+The goal is to expose a small set of inputs and generate the rest behind the scenes. Developers then do not need to know every field of every object. Templating tools such as Helm and Kustomize make this possible. They still show the underlying objects, so they sit between raw `kubectl` and full abstraction.
+
+Helm has become popular over the past couple of years. It can do more than templating. The book's authors have found the templating use case more compelling than some of its lifecycle features. A template contains a placeholder, and a value from elsewhere fills it in. Here is part of a `Service` template from the WordPress chart:
+
+```
+ports:
+  - name: http
+    port: {{ .Values.service.port }}
+    targetPort: http
+```
+
+The value usually comes from a values file rather than from the template itself. A developer can also pass a value on the command line, but a values file is more common. Here is an example:
+
+```
+## Kubernetes configuration
+## For minikube, set this to NodePort, elsewhere use LoadBalancer or ClusterIP
+##
+service:
+  type: LoadBalancer
+  ## HTTP Port
+  ##
+  port: 80
+```
+
+A chart ships with a default `Values.yaml` that has sensible settings. A developer overrides only the settings they need. Helm also supports basic logic, so one change in the values file can modify large sections of the templates.
+
+The `type: LoadBalancer` setting is injected in several places. It also triggers more complex logic through conditionals and built-in functions:
+
+```
+spec:
+  type: {{ .Values.service.type }}
+  {{- if (or (eq .Values.service.type "LoadBalancer")
+    (eq .Values.service.type "NodePort")) }}
+  externalTrafficPolicy: {{ .Values.service.externalTrafficPolicy | quote }}
+  {{- end }}
+  {{- if (and (eq .Values.service.type "LoadBalancer")
+    .Values.service.loadBalancerSourceRanges) }}
+  loadBalancerSourceRanges:
+  {{- with .Values.service.loadBalancerSourceRanges }}
+    {{ toYaml . | indent 4 }}
+  {{- end }}
+  {{- end }}
+```
+
+Some people dislike inline logic like this. Still, the complexity belongs to the people who write the charts, not to the application teams. The whole YAML structure is driven by one `type` key, which is the only setting the developer edits. A values file can be passed at run time, so each cluster, team or environment can use its own.
+
+Helm still has drawbacks. The interface, `Values.yaml`, is plain YAML. A developer who wants to know what a change will do may have to read the templates. Good documentation helps with that.
+
+Some teams build a user interface over these inputs. The UI can suit its audience, and the workflow can live inside an existing deployment tool such as Jenkins or in a ticketing service. The output is still Kubernetes manifests applied to the cluster. These models can be complex to maintain, and their abstractions can leak over time.
+
+A recent example is the K8s Initializer from Ambassador Labs. In a browser, the user answers questions about the service and the target platform. The site then produces a downloadable package with every customization applied, ready to apply to a cluster.
+
+All templating approaches share strengths and weaknesses. They still produce native Kubernetes objects, so developers need some underlying knowledge. That is also an advantage. If an upstream chart or the Initializer misses something you need, you can change the output before applying it.
+
+Kustomize is a flexible tool. You can use it alone or as part of `kubectl`. It applies additions, deletions and modifications to fields in any Kubernetes YAML object. It is not a templating tool. It is most useful on manifests that Helm has already rendered, to change fields that Helm does not expose.
+
+Many organizations find that Helm piped into Kustomize is a sweet spot. Helm does the templating, and Kustomize patches what the chart does not cover. The result is powerful and fully flexible. It sits near the middle of the spectrum.
+
+### Stage 3 in practice: custom workload CRDs
+
+Stage 3 moves further right. The platform team defines a high-level custom resource, plus an operator that manages the native objects behind it. In late 2019, Pinterest described why it built this kind of model. Its native workload types, such as `Deployment`, `Job` and `DaemonSet`, were not enough for its own workloads. Usability was a big blocker. Service developers hit problems with missing or misconfigured `Ingress` settings. Batch users generated hundreds of nearly identical Job specs from templates, which made debugging a nightmare.
+
+Pinterest's team wrote about this in "Building a Kubernetes platform at Pinterest," with Lida Li, June Liu, Rodrigo Menezes, Suli Xu, Harry Zhang and Roberto Rodriguez Alcala.
+
+The `PinterestService` example above is a 25-line object. It creates the work of more than 350 lines of native YAML. This extends the templating idea from Stage 2. Only useful inputs are exposed, and they are shaped around the application instead of a loose `Values.yaml`. The platform team controls how the underlying resources are created and changed. A controller can run logic written in a general-purpose language, not Helm's built-in functions. The trade-off is that platform teams need programming skills. For more on platform services and operators, see Chapter 11 of the book.
+
+Operators can also call external APIs. Take one client with an internal DNS system. Every application had to register there before outside clients could reach it. Developers used a web portal to add the service location and the ports to forward. An operator can cut that manual work in two ways.
+
+The first way keeps native objects. The operator reads a special annotation on an `Ingress`, such as `company.ingress.required: true`. Using the application name, its Namespace or other metadata, the controller registers DNS records. Depending on the rules, it may also change the `host` field. Developers still write the `Ingress`, so this sits at the Stage 2 level of abstraction.
+
+```
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-app
+  annotations:
+    company.ingress.required: true
+spec:
+  rules:
+  - host: "my-app"
+    http:
+      paths:
+      - path: /
+        backend:
+          service:
+            name: my-app
+            port:
+              number: 8000
+```
+
+The second way uses a custom resource such as `PinterestService`. Every needed detail lives in that object. The operator creates the `Ingress` and configures the DNS system itself. No underlying detail leaks to the developer, and the platform keeps full flexibility in how it is built.
+
+### Stage 4 in practice: making Kubernetes invisible
+
+At the far right, developers do not even know they use Kubernetes. Their main interface is committing or pushing code. Their focus stays narrow and deep, away from platform details.
+
+SaaS providers such as Heroku, and tools like Cloud Foundry, made this push experience popular more than ten years ago. Once configured, the tooling provided a platform as a service. That platform included the parts an application needs to run, such as observability, routing and software catalogs. Developers pushed code to a source repository. Specialized components set resource limits, provisioned environments and wired the standard parts together.
+
+Docker and Kubernetes did not exist when those platforms were built. They were designed for virtual machines. Many are now being ported to Kubernetes or rewritten for it. Kubernetes gives these platforms strong foundations, API conventions and primitives to build on.
+
+Cloud Foundry is probably the most popular open source PaaS, and it now runs on Kubernetes. Other mature options include Google App Engine, some serverless technologies and parts of Red Hat OpenShift. Backstage, first created by Spotify, is now a CNCF Sandbox project. It helps you build portals with tailored abstractions for developers.
+
+HashiCorp, which builds Vault and Consul, announced Project Waypoint to separate end users from the deployment platform underneath. Mitchell Hashimoto put the idea plainly: developers just want to deploy. Waypoint covers the build, deploy and release stages. Developers still write a short file that describes their process. It is similar to a `Dockerfile`, but it spans all the stages and asks only for the essential inputs.
+
+```
+project = "example-nodejs"
+app "example-nodejs" {
+  labels = {
+    "service" = "example-nodejs",
+    "env" = "dev"
+  }
+  build {
+    use "pack" {}
+    registry {
+      use "docker" {
+        image = "example-nodejs"
+        tag = "1"
+        local = true
+      }
+    }
+  }
+  deploy {
+    use "kubernetes" {
+      probe_path = "/"
+    }
+  }
+  release {
+    use "kubernetes" {
+    }
+  }
+}
+```
+
+Waypoint still asks developers to write that file, so some complexity stays with them. Yet it removes a large number of decisions. Abstraction does not always remove all complexity, and people may still need to learn something new. The aim is a simpler interface at the right level, balancing speed and flexibility. Waypoint can even switch the underlying platform in its deploy and release stages, for example to Nomad. As Kubernetes and these platforms become more stable and boring, the new innovation will move to higher-level platforms.
+
+### Supporting differing levels of abstraction
+
+Before you choose an abstraction level, think about how you will document and support it. Helm, other templating tools and raw objects such as Pods, PVCs and ConfigMaps all draw on a large community. That helps when things break. A PVC can show a status condition that explains why storage could not bind. Helm can print an error about a misconfigured chart template. You can search for both online.
+
+Fully hidden objects are harder to support. Behind pipelines with no raw debugging access, or behind custom resources such as `PinterestService`, developers cannot tap the same community. This is more true when the tool is narrow and used only inside one company. Good documentation becomes essential. A window into the underlying objects is also valuable in break-glass situations.
+
+Break-glass access is the strongest pattern here. Developers get a high level of abstraction by default, which keeps daily friction low. When they need to, they can open a different level of abstraction, based on their skills or knowledge. The authors say this should be the ideal model for platform abstractions.
+
+Skills transfer matters too. Upstream Kubernetes skills are becoming common. People with those skills can troubleshoot your platform more easily if its internals are accessible. A more standard platform, or one with visible layers, can also attract talent. Some engineers avoid deep ties to one downstream distribution, because it can narrow their skills.
+
+Even custom resources and operators expose some core mechanics. Developers must write valid Kubernetes metadata, API versions and resource types. They also see YAML, unless a pipeline, wrapper or UI builds it for them. Plan for that in your documentation.
+
 ## 5. Platform services around the cluster
 
 A "platform" is more than Kubernetes: these shared services turn raw GPUs into a usable AI platform. Each has tenancy implications.
@@ -280,6 +468,10 @@ Think of Kubernetes as a foundation. A good foundation is structurally sound, ca
 Compare a pre-furnished apartment. It is ready to move into, much like a platform as a service such as Heroku. You can customize the inside, but many concerns are already solved. If the rent and the fixed rules suit you, you are set on day one.
 
 Building on Kubernetes is more like building a house. It costs planning, engineering, and maintenance. In return, you control every element of the result. The house can be shaped for its future tenants, your applications. The sections below cover the layers and decisions that make this possible.
+
+Some people criticize Kubernetes for adding a lot of complexity, for operations teams and for developers. That criticism lands on top of the shift to containers, which is hard enough alone. It also misses one of the main aims of the project. Joe Beda, one of its cofounders, has often said that Kubernetes is a platform for building platforms.
+
+Complexity will always exist somewhere. Kubernetes lets you hand much of it to platform developers, vendors and the open source community. Those groups can then build smooth development and deployment experiences on top. The complexity does not vanish. It just finds a better owner.
 
 ### Building blocks of an application platform
 

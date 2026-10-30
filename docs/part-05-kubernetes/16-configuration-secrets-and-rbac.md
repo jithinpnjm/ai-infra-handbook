@@ -124,6 +124,141 @@ spec:
       secret: { secretName: hf-token, defaultMode: 0400 }
 ```
 
+### Defense in depth for secrets
+
+Protecting secret data mostly comes down to how deep you are willing to go. Most teams make sensible choices that keep them "safe enough," then harden those choices over time. That approach carries risk and technical debt, and that is part of the job. A wrong judgment about "safe enough" can still lead to a bad headline, so it helps to know each layer.
+
+Defense can start at the physical layer. Google, for example, has described its datacenter security in whitepapers and videos. Its approach includes metal detectors, vehicle barriers, and several layers of building security. When drives are retired, staff zero out the data, then crush or shred the drives. This section does not go deep into physical security, but it shows how seriously providers treat the hardware under your cluster.
+
+Disk encryption is the next layer. Most cloud providers encrypt their physical disks at rest, using their own keys or keys you supply. That makes it very hard for anyone at the provider to read your data. On Linux, a common method for full block encryption is LUKS, which works with the dm-crypt subsystem available in the Linux kernel since version 2.6. Dedicated storage systems such as vSAN, Ceph, or Gluster each offer their own encryption at rest. On AWS, enable encryption for Elastic Block Storage, and turn on encryption by default as a best-practice setting. Google Cloud encrypts at rest by default, and you can configure it with Key Management Service (KMS) to supply your own keys.
+
+Whatever trust you place in your cloud provider or datacenter operators, encryption at rest should be your default. It also guards against mistakes. Virtual machine snapshots are easy to create, and each one is a file that can leak onto a network. If someone picks the wrong option in a UI or an API field, encrypted data stays useless without the private key.
+
+**Transport security.** Encryption at rest does not cover data moving across the network. A secret in flight is exposed the moment one hop skips TLS. Those hops include the human-to-system path through `kubectl` and the system-to-system path from the kubelet to the API server. Communication with the API server and etcd should always use TLS. Most installers already do this by default. You may only need to supply a Certificate Authority (CA) to generate the certificates, and you may not need to replace the default CA.
+
+**Application encryption.** Application encryption means your workload encrypts its own data with a key, at the user space level. Picture a dotfile full of credentials on a laptop. Disk encryption protects that file if someone pulls out the drive. If someone logs in as you, though, they can read the file. Encrypting the dotfile with a strong, password-protected `gpg` key closes that gap, because the attacker still sees only unreadable bits.
+
+The rest of this chapter assumes two things are already true in your cluster:
+
+- Encryption at rest is enabled in the filesystem or storage systems that Kubernetes uses.
+- TLS is enabled for all Kubernetes components and etcd.
+
+With those in place, we can look at how Kubernetes handles secrets itself. The etcd side of this is covered in 5.5.
+
+### The Secret API, RBAC verbs, and scope
+
+The Secret API is one of the most used APIs in Kubernetes. There are many ways to create Secret objects, but the API gives workloads one consistent way to read them. Secrets look a lot like ConfigMaps, and workloads consume them the same way, through environment variables or volumes. Here is a Secret with base64 data:
+
+```
+apiVersion: v1
+kind: Secret
+metadata:
+name: mysecret
+type: Opaque
+data:
+dbuser: aGVwdGlvCg==
+dbkey: YmVhcmNhbm9lCg==
+```
+
+The `data` field holds base64 encoded values, and every Kubernetes Secret stores its data this way. If you want to submit plain strings, use the `stringData` field instead:
+
+```
+apiVersion: v1
+kind: Secret
+metadata:
+name: mysecret
+type: Opaque
+stringData:
+dbuser: heptio
+dbkey: bearcanoe
+```
+
+The API server encodes `stringData` when it applies the object to etcd. Many people assume Kubernetes encodes Secrets as a security measure. It does not. Secret data can hold strange characters or binary data, and base64 makes sure it is stored correctly. Protection comes from RBAC instead, so the verbs matter:
+
+- `get`: retrieve the data of a known Secret by its name.
+- `list`: get a list of all Secrets and their data.
+- `watch`: watch for any Secret change or any change to Secret data.
+
+Small RBAC mistakes can expose a lot. Granting `list` exposes every Secret in a Namespace. A ClusterRoleBinding used by accident can expose the whole cluster. In many cases, users do not need any of these verbs at all. A user's RBAC does not decide which Secrets a workload can use. The kubelet handles that: as long as a Pod references a valid Secret, the kubelet makes it available through the method you choose.
+
+Secrets are Namespace scoped. Without copying a Secret into other Namespaces, a Pod can reference only Secrets in its own Namespace. That also means any Pod in a Namespace can reach any Secret there. Think carefully about how you share Namespaces among workloads. Admission control can add checks on top of this model, which is a topic for a later chapter.
+
+### Consumption models: environment variables, volumes, and the client API
+
+Workloads can consume a Secret in three ways. The right choice may depend on what the application expects, and each choice comes with trade-offs.
+
+**Environment variables.** A workload can inject Secret data into environment variables. The YAML names an environment variable and points to a key in a Secret. This helps workloads that already expect an environment variable, because the application code may not need to change. Here is a Pod that does this:
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+name: nginx
+spec:
+containers:
+- name: nginx
+image: nginx
+env:
+- name: USER
+valueFrom:
+secretKeyRef:
+name: mysecret
+key: dbuser
+- name: PASS
+valueFrom:
+secretKeyRef:
+name: mysecret
+key: dbkey
+```
+
+In that example, `USER` is the environment variable the application sees. `mysecret` is the name of the Secret object, and `dbuser` is the key inside it that gets injected into `USER`.
+
+The downside is that environment variables cannot hot reload. A change to a Secret does not reach the Pod until the Pod is re-created. That can happen through manual action or through a system event, such as a reschedule. Some people also consider environment variables less secure than volume mounts. That point is debatable, but the leak paths are real. Process and container runtime inspection can show environment variables in plain text. Some frameworks, libraries, or languages dump environment variables into logs in debug or crash modes. Weigh these risks before you use environment variables.
+
+**Volumes.** Secret objects can also reach a workload through volumes. The Pod spec defines a volume that references the Secret. The container then mounts that volume with a `volumeMount`:
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+name: nginx
+spec:
+containers:
+- name: nginx
+image: nginx
+volumeMounts:
+- name: creds
+readOnly: true
+mountPath: "/etc/credentials"
+volumes:
+- name: creds
+secret:
+secretName: mysecret
+```
+
+The `volumes` entry is the Pod-level volume, and its name must match the mount. The `volumeMounts` entry places that volume into the container filesystem at `mountPath`. With this Pod, the Secret data appears under `/etc/credentials`, and each key/value pair gets its own file:
+
+```
+root@nginx:/# cat /etc/credentials/db
+dbkey dbuser
+```
+
+The biggest benefit of volumes is dynamic updates. When the Secret changes, the kubelet reloads it, and the container filesystem shows the new value without a Pod restart. On Linux, the kubelet uses tmpfs, which keeps Secret data in memory only. You can confirm this on the Linux host through the mount table:
+
+```
+# grep 'secret/creds' secret/creds
+tmpfs
+/var/lib/kubelet/pods/
+e98df9fe-a970-416b-9ddf-bcaff15dff87/volumes/
+kubernetes.io~secret/creds tmpfs rw,relatime 0 0
+```
+
+If the `nginx` Pod leaves this host, the mount goes away with it. Secret data should stay small, so credentials and keys are the right fit. Do not use a Secret as a pseudo database. From the application's side, a simple watch on the directory or file, then re-injecting the values, is enough. The application does not need to talk to the API server, and teams have seen this pattern work well in many workloads.
+
+**Client API consumption.** The last model is not a core Kubernetes feature. The application talks to the kube-apiserver to fetch Secrets itself. Frameworks and libraries can make this easier. For Java, Spring Cloud Kubernetes connects Spring's PropertySource type to Kubernetes, so it can read Secrets and ConfigMaps.
+
+**Be careful with this approach.** The book generally discourages it. Even for ConfigMaps, it is less than ideal to have each application talk to the API server. We prefer applications that do not need to know where they run. An app that can run on a VM should also run on Kubernetes or another container service. Most languages already read environment variables and files, and the kubelet can deliver Secret data through those channels. Direct access adds another connection and another watch on the API server. Each workload then needs its own ServiceAccount with RBAC to read its Secrets. When the kubelet delivers Secrets, no ServiceAccount is needed, and the `default` ServiceAccount can and should be disabled altogether.
+
 ### Image pull secrets
 
 `kubectl create secret docker-registry regcred --docker-server=... --docker-username=... --docker-password=...` produces `kubernetes.io/dockerconfigjson`; attach through `imagePullSecrets` on pods or the ServiceAccount (`kubectl patch serviceaccount default -p '{"imagePullSecrets":[{"name":"regcred"}]}'`). Better: node-level credential providers (kubelet image credential provider plugins for ECR/GCR/ACR) or workload identity so no long-lived password exists.
@@ -140,6 +275,101 @@ Never commit plaintext Secrets. Options (4.12, 4.26):
 | **Sealed Secrets** (`SealedSecrets`, `kubeseal`) | Encrypt a Secret into a `SealedSecret` (`bitnami.com/v1alpha1`) with `kubeseal` using the cluster public key; controller decrypts to a Secret | Simple; cluster-bound key; rotate keys every 30 days |
 | **SOPS** (age/KMS) with Flux/Argo plugins | Encrypted YAML in Git, decrypted at apply | Reviewable diffs (keys visible) |
 | **CSI/Workload Identity** | Pods authenticate to cloud APIs with federated tokens, no secret at all | Best for cloud resources |
+
+### Sealed Secrets in depth
+
+Declarative workflows raise a hard question. Your manifests belong in Git, but the credentials and keys they use do not. Teams that want a pure GitOps model often keep secrets out of it entirely, which breaks the pattern. The other option is to seal the secret, so its committed form reveals nothing useful.
+
+Asymmetric cryptography makes sealing possible. An encryption key, usually public, locks the secret. A decryption key, usually private, unlocks it. A secret sealed with the public key stays protected as long as the private key stays safe. You still need a cipher you trust, a safe private key, and rotation policies for both keys and secret data.
+
+The Bitnami `sealed-secrets` project is a common open source choice. Its `sealed-secret-controller` runs in the cluster and generates the keys by default. Developers use the `kubeseal` command-line tool, which needs only the public key. To get started, deploy the controller:
+
+```bash
+kubectl apply -f
+https://github.com/bitnami-labs/sealed-secrets/releases/\
+download/v0.9.8/controller.yaml
+```
+
+You can bring your own certificates, but by default the controller creates them. The public and private keys sit in a Kubernetes Secret at `kube-system/sealed-secret-key`. Do not read that Secret directly. Clients should fetch the encryption key from the controller's endpoint instead, with this command:
+
+```bash
+kubeseal --fetch-cert
+```
+
+How you expose that endpoint is up to you. Once `kubeseal` has the public key, it can turn a Secret into a SealedSecret. You can start with an ordinary Secret:
+
+```
+apiVersion: v1
+kind: Secret
+metadata:
+name: mysecret
+type: Opaque
+data:
+dbuser: aGVwdGlvCg==
+dbkey: YmVhcmNhbm9lCg==
+```
+
+Run `kubeseal` against that file to produce encrypted JSON:
+
+```bash
+kubeseal mysecret.yaml
+```
+
+```
+{
+"kind": "SealedSecret",
+"apiVersion": "bitnami.com/v1alpha1",
+"metadata": {
+"name": "mysecret",
+"namespace": "default",
+"creationTimestamp": null
+},
+"spec": {
+"template": {
+"metadata": {
+"name": "mysecret",
+"namespace": "default",
+"creationTimestamp": null
+},
+"type": "Opaque"
+},
+"encryptedData": {
+"dbkey": "gCHJL+3bTRLw6vL4Gf......",
+"dbuser": "AgCHJL+3bT......"
+}
+},
+"status": {
+}
+}
+```
+
+This object can go anywhere in your repository. As long as the sealing key held by the controller stays uncompromised, the data stays safe. The controller turns the SealedSecret into a standard Secret, and that Secret records the SealedSecret as its owner:
+
+```
+ownerReferences:
+- apiVersion: bitnami.com/v1alpha1
+controller: true
+kind: SealedSecret
+name: mysecret
+uid: 49ce4ab0-3b48-4c8c-8450-d3c90aceb9ee
+```
+
+If you delete the SealedSecret, its corresponding Secret is garbage collected.
+
+**Key renewal.** If the sealing private key leaks, for example through an RBAC misconfiguration, treat every sealed secret as compromised. Renewal matters here, so understand its scope. By default, the controller renews the key every 30 days. The new key does not replace the old ones. It is added to the list of keys that can unseal data, and it is used for all new encryption. Existing SealedSecrets are not re-encrypted.
+
+If the key leaks, you should:
+
+- Immediately rotate your encryption key.
+- Rotate all existing secrets.
+
+Re-encrypting alone is not good enough. Someone could go into Git history, find an old encrypted file, and use the compromised key on it. Keep rotation strategies for passwords and renewal strategies for keys.
+
+**Namespace binding.** SealedSecrets uses the Namespace during encryption. That makes a SealedSecret belong to the Namespace where it was created, so it cannot simply be moved to another one. This default is the most secure choice, so leave it as is. The sealed-secrets documentation covers configurable access policies.
+
+**Multicluster models.** Sealed-secret models get harder across many clusters. Many topologies treat clusters as ephemeral. Unless you share private keys among all of them, each cluster needs its own keys. Developers also need a place to fetch the encryption key, and that point grows from one cluster to many. It is solvable, but it is worth planning for.
+
+**Know the scope.** A common misunderstanding is that SealedSecrets replaces encrypting etcd or running an enterprise secret store such as Vault. It does not. The approach lets you encrypt data and store it safely in Git. The private key and unencrypted secrets still end up in Kubernetes, so without steps beyond the Secret API defaults, they sit unencrypted at the application layer. Know the scope of every tool you choose.
 
 ### Rotation
 
@@ -170,6 +400,17 @@ spec:
           {{- end }}
 ```
 
+Injection is the approach we highly recommend when it is possible. It decouples the secret store from the application entirely. The trade-off is that the platform now has to offer secret injection as a service, which adds complexity.
+
+The webhook runs on every Pod CREATE or UPDATE event, but it changes only the Pods that carry the annotations. By default, Vault writes each secret in the format of a printed Go map, and all secrets go into `/vault/secrets`:
+
+```
+key: map[k:v],
+key: map[k:v]
+```
+
+Authentication and authorization are the hard part of this model. You can set Vault to authenticate Pods with their existing ServiceAccount tokens. Vault then validates the requester's identity through the TokenReview API. It must still decide whether that ServiceAccount is allowed to read the secret. Those policies and bindings live in Vault, and you must maintain them there.
+
 To let Pods authenticate to Vault using their Kubernetes ServiceAccount tokens (validated by Vault against the Kubernetes `TokenReview` API), you enable and configure the Kubernetes auth method inside Vault, write a policy, and bind a Vault role to the Pod's ServiceAccount name and Namespace, as in the book's example (untested here):
 
 ```bash
@@ -196,6 +437,82 @@ vault write auth/kubernetes/role/database \
   policies=team-a \
   ttl=20m
 ```
+
+### Secrets Store CSI driver and CyberArk
+
+CyberArk is another option many clients already use. It offers a Credential Provider and a Dynamic Access Provider (DAP). Like Vault, it supports `initContainers` that run alongside your application to talk to DAP.
+
+A newer approach is the `secrets-store-csi-driver`. At the time of writing, the book describes it as a Kubernetes subproject within `kubernetes-sigs`. It lets Pods use externally hosted secrets without a sidecar or an initContainer. Secret access starts to feel like a platform service rather than something each application integrates with. The driver runs a driver Pod as a DaemonSet on every host, much like a storage CSI driver.
+
+The driver relies on a provider to look up secrets in the external system. For Vault, that means installing the `vault-provider` binary on every host, in the location set by the driver's `provider-dir` mount. The binary may already exist on the host, or a DaemonSet-like process often installs it. This approach raises open questions. When a Pod does not request the secret itself, who handles identity? The driver or provider must work that out, because they make requests on the Pod's behalf.
+
+The main API is the `SecretProviderClass`. For Vault, it looks like this:
+
+```
+apiVersion: secrets-store.csi.x-k8s.io/v1alpha1
+kind: SecretProviderClass
+metadata:
+name: apitoken
+spec:
+provider: vault
+parameters:
+roleName: "teama"
+vaultAddress: "https://vault.secret-store:8000"
+objects: |
+array:
+- |
+objectPath: "/secret/team-a"
+objectName: "apitoken"
+objectVersion: ""
+```
+
+The `vaultAddress` points to the Vault service, named `vault`, in the `secret-store` Namespace. The `objectPath` is the path in Vault where the key/value object was written. The `objectName` is the actual object to look up in `team-a`. With the SecretProviderClass in place, a Pod references it like this:
+
+```
+kind: Pod
+apiVersion: v1
+metadata:
+name: busybox
+spec:
+containers:
+- image:
+name: busybox
+volumeMounts:
+- name: secrets-api
+mountPath: "/etc/secrets/apitoken"
+readOnly: true
+volumes:
+- name: secrets-api
+csi:
+driver: secrets-store.csi.k8s.com
+readOnly: true
+volumeAttributes:
+secretProviderClass: "apitoken"
+```
+
+When this Pod starts, the driver and provider try to retrieve the secret. If authentication and authorization to the external provider succeed, the secret appears in a volume mount, like any Kubernetes Secret. From the driver Pod on the node, you can read the logs to see the command sent to the provider:
+
+```
+level=info msg="provider command invoked: /etc/kubernetes/
+secrets-store-csi-providers/vault/provider-vault --attributes [REDACTED]
+--secrets [REDACTED] [--targetPath /var/lib/kubelet/pods/
+643d7d88-fa58-4f3f-a7eb-341c0adb5a88/volumes/kubernetes.io~csi/
+secrets-store-inline/mount --permission 420]"
+```
+
+This approach is worth keeping an eye on. Its user experience and its ability to abstract secret providers look promising. If the project stabilizes and providers mature, it could become common for teams building application platforms on Kubernetes.
+
+### Best practices for secrets
+
+Application consumption of secrets depends heavily on the language and frameworks in use. The variance is high, but these practices apply broadly.
+
+**Always audit secret interaction.** A Kubernetes cluster should run with auditing enabled. Audit events tell you which resources were touched, when, and by whom. For mutations, they also show what changed. Auditing secret events is critical when you react to access issues. The cluster audit documentation has the details.
+
+**Do not leak secrets.** Leaking a secret is never desirable, and in multitenant clusters it is easy to do by accident. A common mistake is logging a secret. Engineers building operators often deal with secrets for the systems they manage, and during development they may log those values to debug. Logs go to stdout and stderr, and many platforms forward them to a log analysis system. The secret can then travel in plain text through many environments. Manifests with test secrets can also slip into source control, so keep test values out of your repositories.
+
+**Prefer volumes over environment variables.** Most applications should read secrets from volumes. Environment variables leak more easily, for example through an `echo` command during testing, or when a framework dumps them at startup or during a crash. Volumes do not solve every leak, though. The key benefit for developers is that volumes update automatically when a secret changes, which supports hot-reloading of tokens. A change to an environment variable requires a Pod restart.
+
+**Keep secret store providers unknown to your application.** Applications can fetch secrets in many ways, from a call inside business logic to an environment variable set at startup. Separation of concerns says the application should not care whether Kubernetes, Vault, or another provider manages the secret. That keeps the app portable and reduces its complexity. To fetch from a provider, an app must know how to talk to it and must authenticate to it. Prefer environment variables or volumes, with volumes as the ideal. An app can watch the filesystem for changes, and it does not matter which store is behind the files. Framework libraries that talk to the API server directly, such as Spring's, are convenient. Still, weigh the points above before you use them.
 
 ## 3. Projected volumes and ServiceAccount tokens
 

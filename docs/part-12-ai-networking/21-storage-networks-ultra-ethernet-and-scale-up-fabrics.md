@@ -239,6 +239,38 @@ Native InfiniBand Storage Addressing, Integrity, and Flow Control Specs:
 
 ## 3. Ultra Ethernet Consortium (UEC Specification v1.0): Architecture, PDS/SES, Encapsulations, and Delivery Modes
 
+The Ultra Ethernet Specification v1.0 is a major step for Ethernet networks. The Ultra Ethernet Consortium (UEC) released it on June 11, 2025, under the Linux Foundation. It was built for HPC, AI, cloud infrastructure, and data-intensive enterprise environments. Its goal is to make Ethernet fit the demands of modern GPU clusters.
+
+Ethernet/IP fabrics have already proven themselves in AI data center clusters. Production deployments have reached 100,000-GPU server clusters. Thousands of 400 Gbps and 800 Gbps ports connect those servers together.
+
+InfiniBand used to be the usual choice for this kind of cluster. Tuned for lossless fabrics, 800 Gbps Ethernet became a more cost-competitive option. It offered the same performance, better scalability, and an open standard. Many vendors support both the switch side and the NIC side.
+
+Fine-tuned Ethernet with RoCEv2 and DCQCN still had some drawbacks. The biggest one is that operators had to retune it as AI workloads changed. The way server NICs announce end-to-end reordering can change. So can the handling of reordered packets, or how many sessions run in parallel based on buffer size.
+
+The network needs to understand what end hosts can do and adapt to them. For example, it can set buffers or pick a load-balancing method for one workload. It should then keep that choice steady for the whole job.
+
+AI models keep growing in parameters and tokens. Data center networks will need ports of 400 Gbps or more to synchronize GPU servers. For a training domain, the IP fabric should be ready for over a million GPU nodes. Reaching that scale takes more optimization, such as faster ramp time, delivery mode detection, and both link-level and end-to-end congestion control. UEC wants to standardize these at the industry level.
+
+Standards cannot stop at the switch. End-host NIC drivers need them too, which makes this a full-stack solution. The switch understands what the end host needs, and the end host understands real-time network conditions. For example, a UEC NIC can react to congestion by changing its source UDP port.
+
+The UEC decided to define a new transport, link, and software stack. The aim is more performance and a fabric that is easier to deploy in a plug-and-play way. The table below lists the main motivations for that redesign. It puts a strong focus on end-host NIC optimization.
+
+| Area | Motivation |
+|---|---|
+| Lossless fabric fine-tuning | If zero-touch DCQCN is missing, UEC offers a plug-and-play approach for lossless Ethernet. |
+| Ultra-large scale and performance | AI data center infrastructure is growing and already has 100,000+ GPUs. UEC wants fabrics and communication libraries that support more than a million nodes. Faster workloads mean shorter session negotiation. |
+| Full-stack AI fabric | Fabrics are not yet connected to upper-layer collective communication managers. In-Network Collectives (INC), defined in the UEC Software working group, bring collective communication into the specification. Transport and upper software layers stay synchronized. |
+
+Better LLM training also depends on the rest of the stack. Storage networks, management, benchmarking standards, and KPIs all need the same care. HPC is part of the target too, not only training.
+
+To sum up UEC's motivation, three goals stand out:
+
+- **Performance:** Traditional Ethernet can add unpredictable delay from packet collisions and routing that is not deterministic. UEC includes features that bound latency for critical workloads.
+- **Scalability:** Modern AI training clusters and supercomputers can have tens of thousands of nodes. Legacy protocols often struggle to keep performance at that size.
+- **Reliability and congestion control:** Congestion must be managed well when several high-bandwidth applications run at the same time.
+
+Keep these three goals in mind. Each feature in the rest of this chapter answers at least one of them.
+
 ### 3.1 UEC Working Groups, Service Profiles (AI Base, AI Full, HPC), and Core Terminology
 
 As Ethernet AI clusters scale toward a million endpoints, legacy RoCEv2 hits three walls. Static ECMP flow hashing creates tail-latency collisions, and a single dropped packet triggers a Go-Back-N retransmission of the entire window. Hop-by-hop PFC pause frames also risk spreading congestion across unrelated jobs. Released on June 11, 2025 by more than 70 member companies under the Linux Foundation, UEC Specification v1.0 replaces the InfiniBand Base Transport Header with a multipath-native Ethernet transport stack.
@@ -274,6 +306,41 @@ To read a UEC packet capture or configure a UET NIC, you must understand seven c
 6. **JobID, PIDonFEP, and Resource Index:** These three fields replace the legacy RoCEv2 BTH Queue Pair number. `JobID` identifies the distributed job across the cluster, `PIDonFEP` identifies the target OS process context, and `Resource Index` identifies the completion or receive queue.
 7. **Transport Security Sublayer:** Built-in UET encryption and authentication header using AES-GCM with a trailing Integrity Check Value. It provides end-to-end confidentiality, integrity, and anti-replay protection without external MACsec overhead.
 
+More than 70 vendors and institutions formed working groups, and each one focused on a single area of improvement. Their work was merged into one document for the first specification, released in June 2025 as a standard reference. You do not need every group's role to follow the technologies. Knowing which groups exist still helps, because it shows which features may appear in a later version. This chapter focuses on the Transport and Link Layer working groups and how they connect to the Software working group.
+
+The Link Layer working group looks at the connection between two end nodes. That can be two UEC switches, or a UEC switch and a server. The group studies how to improve congestion control and reliable transport on each link. The goal is faster job completion and less tail latency. Three functions stand out.
+
+- **Link Layer Reliability (LLR):** LLR reduces the latency cost of packet loss. Recovery happens on the link, so the end host does not have to handle every retry.
+- **Packet Rate Improvement (PRI):** PRI aims to raise the frame rate. It cuts per-frame overhead and keeps only the header fields that AI transmissions need.
+- **Credit-Based Flow Control (CBFC):** CBFC aims to replace the RoCEv2 PFC with a more efficient credit system on each link. InfiniBand already uses credit-based flow control for storage transport, and UEC applies the same credit idea to Ethernet.
+
+The Transport working group develops Ultra Ethernet Transport (UET), which is one of the most important pieces for end-to-end integration. UET uses a new data packet format. Instead of carrying an InfiniBand BTH inside a RoCEv2 UDP frame, it defines a new set of headers after the UDP header. The group also proposes packet trimming, Receiver Credit Congestion Control (RCCC), and Network Signal Congestion Control (NSCC). NSCC and RCCC both influence the entropy used for multipathing.
+
+UEC uses two levels of congestion control and signaling. One level runs end-to-end between servers. The other runs on the link, and some of its functions are optional. UET also brings authentication, encryption, and a UET security header into the packet itself. That replaces the separate MACsec functions used with encrypted RoCEv2.
+
+The Semantic Sublayer (SES) keeps the two endpoints in sync. It lets the software layer, Libfabric, track the state of each transaction. The Transport group also defines the basic packet delivery modes. Those modes set how two end hosts agree to communicate and whether packets must arrive in order.
+
+The Software working group defines In-Network Collectives (INC). It also defines how collective communication libraries (CCLs) use fabric resources efficiently. The group proposes an INC manager and an INC switch agent as new AI data center components. InfiniBand deployments already use similar components, and UEC took inspiration from them.
+
+UET borrows the strongest ideas from both worlds. From InfiniBand it takes credit mechanisms, CCL and INC support, and plug-and-play behavior. From Ethernet it takes a distributed model, where entries do not depend on a central state. IPv6 is a good example of that approach at massive scale. Plug-and-play address assignment with SLAAC, native to IPv6, is planned for UET fabrics too.
+
+The API is a major focus for the Software group. It is looking at Libfabric, an open-source API that lets applications state their needs for message and packet ordering. UET then picks the transport service that matches those needs. The group also defines the AI Base, AI Full, and HPC profiles.
+
+Other groups matter as well. The Compliance working group defines the tests that show a device meets UEC standards. Companies such as Spirent and Keysight help define how performance is measured and how KPIs are checked. The Management working group makes the new UET standard deployable in production networks.
+
+The Physical Layer working group is the most disruptive. It changes the lowest levels of the stack, so existing Ethernet gear may not be fully compatible. That work will likely take the longest to reach scale-out products. The Storage working group stays somewhat separate, and it becomes relevant once the Transport and Link Layer work reaches switches and NICs.
+
+Here is what each working group covers in the first specification.
+
+- **Physical Layer working group:** Creates specifications that improve the performance, latency, and management of the Ethernet physical layer, including the medium and the clients on that layer.
+- **Link Layer working group:** Improves the performance, latency, and management of the Ethernet link layer.
+- **Transport Layer working group:** Creates an AI and HPC transport with better throughput, latency, scalability, and management over Ethernet.
+- **Software working group:** Creates specifications and an open-source software API for AI and HPC use cases.
+- **Storage working group:** Works on compatibility with standard physical connections, link-level features, and packet encoding. It also covers transport services, security, and RDMA API compatibility with the Software group.
+- **Compliance working group:** Makes sure devices and services follow UEC standards, and defines the tests that validate them.
+- **Management working group:** Focuses on fabric manageability, including topology discovery, monitoring, and interoperability across vendors.
+- **Performance and Debug working group:** Defines performance benchmarks and adds debugging capabilities.
+
 ### 3.2 PDC Session Handshake, UDP-Based Encapsulation for UET (UDP Port 49150), and UET over IP (IP Protocol 253)
 
 Before data transfers begin on a Packet Delivery Context, initiator FEP A and target FEP B execute a lightweight three-step PDS handshake. This avoids slow out-of-band queue-pair exchanges. When Reliable Ordered Delivery is selected, all messages sharing `{JobID, source PIDonFEP, destination PIDonFEP, RI, Traffic Class}` are pinned to a single PDC.
@@ -284,6 +351,22 @@ PDC Session Establishment Handshake Sequence:
 2. Target FEP B -> Initiator FEP A: allocates local PDC (301) and replies with ACK = 101, SPDCID = 301, DPDCID = 201
 3. Initiator FEP A -> Target FEP B: records DPDCID = 301, clears SYN bit (pds.flags.syn = 0), and transmits subsequent data packets (PSN = 102, SPDCID = 201, DPDCID = 301)
 ```
+
+Two servers form a one-to-one relationship during session setup. The initiator and target start that relationship at the API and Libfabric levels. Libfabric turns the requirements into network and target memory parameters. SES and PDS then use those parameters. Each server's stack runs from the application down through Libfabric, SES, PDC, PDS, UDP, IP, and MAC.
+
+Session setup begins with endpoint discovery. Each FEP gets a fabric address, which is typically IPv4 or IPv6. Each FEP also gets relative addressing based on JobID and PIDonFEP for the PDC. The next phase exchanges supported profiles, such as AI Base or AI Full, along with transport capabilities and reordering support. The congestion management method for the PDC is negotiated in that same phase.
+
+A real capture makes the PDS fields concrete. A sample PDS packet was captured and decoded with the Spirent implementation of the UEC emulator. It was then opened in Wireshark. In this capture, `SYN` is set in the PDS, and the ROD request is advertised. The delivery mode was set indirectly, through the Libfabric settings at the software level.
+
+The frame reads from top to bottom. It starts with Ethernet II, then IPv4, then the UET transport. Inside the PDS, the Flags field shows CRC, RETX, ACK Request, and `SYN` set. The PSN is 13, and both PDC IDs are 0. The ACK arrives in frame 3253, and the payload closes with a CRC of fcfdfeff.
+
+The SES part of a second capture decodes the JobID, PIDonFEP, and Resource Index. That request is a `TAGGED_SEND`, an operation that uses match bits to choose a buffer. Job ID is 1, and the index is 15. The match bits are 0x0000000000000001, and the request length is 4096 bytes.
+
+A UDP-based capture shows the same ideas. Its PDS is a `RUD_REQ` with flags 0x48 and PSN 2607. Both source and destination PDC IDs are 2. Its SES is a `DEFERRABLE SEND` with Message ID 23. The PDC source and destination and the delivery mode stay the same during the transfer, and only the PSNs and ACKs change.
+
+The Message ID stays constant across a set of writes or sends. It helps track, match, and complete each operation. An ACK for an RUD request is shorter, and it refers only to the Message ID and Job ID.
+
+The IP-only capture shows the lighter format. Its PDS carries an `Entropy` value, and there is no UDP layer. The flags are 0x48 with CRC set, and `SYN` is not set. The SES is a WRITE RMA opcode 0x01 with Message ID 1, Job ID 1, and Index 15. Even without UDP, Job ID, PIDonFEP, and Resource Index still map to the GPU memory region defined by Libfabric.
 
 UEC Specification v1.0 defines two wire encapsulations for UET packets, which must be configured identically on both endpoints before PDC creation:
 
@@ -310,6 +393,14 @@ flowchart LR
 | **Switch ASIC Parsing & Compatibility** | Works transparently across all existing 400G/800G Ethernet switches using standard UDP ECMP/packet-spraying hashes. | Removes 8-byte UDP overhead so PDS + SES (`JobID`, `RI`) fit inside the **128-byte switch packet-parsing window**, but requires switches to permit **IP Protocol 253**. |
 | **Integrity (UET CRC) vs Security (TSS)** | Supports optional UET CRC (`0xfcfdfeff`) **or** optional TSS (AES-GCM header after UDP + trailing ICV). **Never enable both UET CRC and TSS simultaneously.** | Supports optional UET CRC **or** optional TSS immediately after the PDS Entropy field. When TSS encrypts PDS/SES, switches must hash on outer UDP Src Port or PDS Entropy. |
 
+UDP-based encapsulation can also add security. A Transport Security Sublayer (TSS) header sits right after UDP. The AES-GCM ICV is placed after the UET payload. Together they give end-to-end confidentiality, integrity, and anti-replay protection for AI workloads. A UET CRC is optional and can be used instead of TSS, but never both at once.
+
+Encryption changes how switches can balance traffic. Once TSS hides the SES fields, switches cannot read the Resource Index or JobID. So packet spraying or UDP source port load balancing must be used instead. The SES opcode says what kind of write or send is happening. In RoCEv2 that information sat in the BTH. Here, the Resource Index, JobID, PIDonFEP, and buffer offset tell the target where the data goes in memory.
+
+CRC means cyclic redundancy checking at the UET layer. It protects data integrity across the transport path, and NICs can use it. It helps most on lossy transport, where corruption can slip past hop-by-hop Ethernet checks. Whether it applies depends on the packet delivery mode of the PDC. For ROD, it can still check end-to-end integrity when packets arrive in order.
+
+IP-only encapsulation also allows a CRC or TSS, but the specification says not to use both. TSS sits immediately after the `Entropy` field in this format. Like UDP-based encapsulation, the PDS carries PSNs and ACK or NACK messages. If NSCC is used, the NACK carries entropy so the sender can adapt it. In this format the sender changes the `Entropy` field instead of the UDP source port.
+
 ### 3.3 The Four UEC Packet Delivery Modes (ROD, RUD, RUDI, UUD)
 
 In RoCEv2, spraying packets across multiple spine switches causes out-of-order arrivals at the target NIC. RoCEv2 misinterprets those out-of-order arrivals as packet loss and flushes the entire 64-packet window. Through Libfabric, UET lets applications pick one of four delivery modes per PDC. It uses selective retransmission so only the single missing PSN is resent:
@@ -329,9 +420,49 @@ Selective Retransmission vs RoCEv2 Go-Back-N Penalty:
 | **RUDI (Reliable Unordered Delivery Idempotent)** | Reliable unordered delivery for **idempotent** operations that can be safely retried or written multiple times to the same memory offset by one or multiple sources. | **Pros:** Allows proactive application-level retries without waiting for NACK round-trips; supports multi-writer updates.<br/>**Cons:** Requires idempotent memory semantics. | Mandatory in **AI Full** and **HPC** (HPC profile required for full semantic support). Used for RMA writes and **AI gradient updates**. |
 | **UUD (Unreliable Unordered Delivery)** | Best-effort fire-and-forget: **omits PSNs (`Clear PSN Offset`), ACKs, SACKs, NACKs, and retransmissions**. | **Pros:** Fastest session ramp time and lowest latency.<br/>**Cons:** No loss recovery, no integrity checking, **incompatible with TSS security**. | Optional in **AI Full** and **HPC**. Used for real-time telemetry and inference logging. |
 
+Why does the delivery mode matter for AI? RoCEv2 has many limits on which traffic can run in order and which can run unordered. The usable mode often depends on the NIC vendor and the operation type. Writing into the same memory space differs from writing into different spaces. Writing once also differs from writing the same sector many times. UEC lets an AI developer set these needs through Libfabric API calls.
+
+PyTorch has an interface to Open MPI, and Open MPI connects to Libfabric. Some settings can be made directly through the API. Libfabric turns them into PDS and SES settings, and UET carries them across the fabric. The packet delivery mode settings follow the same path, from the AI application down to the transport.
+
+MPI is a widely adopted API standard for parallel computing. It began in HPC, and it now plays a key role as a high-level interface for UEC. MPI connects to Libfabric and to AI frameworks such as PyTorch. Open MPI, when connected to Libfabric, also gives an interface to NCCL or RCCL for collective communication. Open MPI itself handles process coordination and CPU-side messaging.
+
+The NCCL or RCCL connection is not needed when native MPI collectives or Libfabric-managed collectives are used. MPICH, an MPI alternative to Open MPI, supports `MPI_Allreduce` and `MPI_Alltoall` as documented collective types. In most cases, reliable delivery is the choice. Its ACK step costs some speed, but it confirms every packet. A NACK can be used when lower PSNs are still missing and higher PSNs arrived fine.
+
+RUD, ROD, and RUDI are all reliable modes. Only the ordering choice changes between them. UUD is the unreliable and unordered option. Each profile has a delivery mode for each operation type, such as read, write, or send. One passage of the book says all profiles support RUD and ROD, and that only HPC supports RUDI. The profile table, however, lists RUDI as mandatory in AI Full. Check the exact profile rules in the UEC specification before you rely on either statement.
+
+### 3.4 Protocol Stack, Network Architectures, and Existing Ethernet
+
+The biggest early worry was that Ethernet and the physical layer would stop being compatible with IEEE standards. That would slow adoption of UEC and its transport and congestion features. UEC avoids the problem. It keeps standard Ethernet and changes only the layers after UDP, along with the end-to-end semantics. The first focus is the new UET packet format.
+
+From top to bottom, the stack holds applications, software APIs such as CCL, MPI, and OpenSHMEM, and the transport layer over UDP and IP. Below that sit a security layer, the IP layer, the Ethernet link layer, and the Ethernet PHY. The transport layer includes SES message semantics, PDS packet delivery with RUD and ROD options, and congestion management. The link layer adds LLDP negotiation, packet rate improvements, LLR, and CBFC.
+
+The UEC Ethernet physical layer is a longer-term option. Its main jobs are FEC statistics for predicting link quality and link fault signaling. It also uses modified 64B/66B PCS encoding to run out-of-band signaling inside the physical layer. The optional control ordered set (`CtlOS`) message supports CBFC and LLR on each segment.
+
+UET does not require a new network design. The IP Clos three-stage and five-stage designs keep their place, even for UEC scale-out clusters. The right design depends on the target scale and expected performance. For about 100,000 or 1 million GPUs, a five-stage or seven-stage architecture is needed, along with load-balancing mechanisms on the Ethernet/IP switches.
+
+The lossless fabric stays optional for UEC. NIC-level reliable delivery and end-to-end congestion control are meant to deliver good performance even when not every segment is lossless. That is why the first specification keeps link-layer optimization optional. Those optimizations can still raise scale and performance a lot.
+
+For latency-sensitive inference, the five-stage topology may not be used. A collapsed spine design or a three-stage IP fabric takes its place. Some UEC networks add INC and CCL features on leaf-spine topologies to save bandwidth and latency. That needs stronger spine devices and better management platforms, and the fabric may also need a controller such as an INC manager.
+
+Most UEC IP fabrics keep a high port radix from leaf to spine. Those switches must balance traffic based on the semantics negotiated at the SES layer. Early on, some feared the Ethernet header would change to reduce segment latency. Compression or field removal remains an option, but it is optional, like the link-layer features.
+
+Existing 400 Gbps and 800 Gbps switches with enough Ethernet/IP ports can therefore carry UEC, at least for the AI Base profile. UEC-ready switches are mostly Ethernet switches that parse deep enough to read some UEC fields for load balancing. With JobID or Resource Index in the packet, the source UDP port must join the load-balancing hash. RoCEv2's QPair-based balancing no longer works, because the BTH is gone.
+
+Most networks will keep leaf-spine-super spine designs with more 800 Gbps, 1.6 Tbps, and 3.2 Tbps ports. The book expects architectures to move toward DragonFly, DragonFly+, and Torus. It also expects a shift toward scale-up systems rather than scale-out. The change is mostly in switch software features, not in the design itself.
+
+The first UEC networks will likely share the fabric with existing RoCEv2 servers. The same ToR may serve UEC-ready servers and RoCEv2 GPU servers. RoCEv2 servers keep the lossless approach. UEC-ready servers can use best-effort delivery and rely on end-to-end control through RCCC or NSCC.
+
+Lossless mechanisms such as PFC-DSCP, LLR, and CBFC need careful planning, and one of the link-level options must be chosen for a shared link. For a native UEC fabric, link-layer control, reliable transport, and end-to-end control work well together. When two workload types must share a fabric, the lossless queue still uses RoCEv2. The rest of the congestion control happens at the server NIC.
+
+Path isolation can also help. The multi-tenancy options from the earlier IP routing discussion can carry new UEC workloads as a separate overlay. That keeps them isolated from existing AI/ML workloads.
+
 ---
 
 ## 4. UEC Congestion Management (NSCC, RCCC, CBFC), Packet Trimming, LLR, and In-Network Collectives (INC)
+
+Flexible delivery modes still need congestion management. The goal is for the initiator and target to react to congestion efficiently, which cuts retransmissions. Congestion management must not slow AI workloads for too long. It also must not slow workloads that did not cause the congestion. RoCEv2 AI workloads suffered from this, because PFC backpressure also hit servers outside the congestion.
+
+UEC has two main types of congestion management. The first is end-to-end, using either NSCC, managed at the originator, or RCCC, managed at the target. The second is segment or link-level control, using CBFC. Each PDC gets a congestion control context (`CCC_ID`) that is kept for the life of that PDC. The three UEC profiles must support NSCC on lossy networks. As of mid-2025, RCCC is optional for lossy IP fabrics.
 
 ### 4.1 Two-Tier Congestion Management: NSCC, RCCC (256B Credits), and Link-Level CBFC (32 VCs)
 
@@ -353,6 +484,28 @@ UEC End-to-End (NSCC / RCCC) and Link-Level (CBFC) Quantitative Parameters:
 2. **Receiver Credit Congestion Control:** An optional target-driven scheme built to prevent many-to-one receiver incast. Senders request credit via the `Credit Target` (`req_cc_state`) field in data packets. The target FEP arbitrates its local Credit Pool across active incoming sessions. It grants credits back in units of 256 bytes inside a 24-bit ACK field. If the receiver buffer pool is full, it withholds credits before packets ever enter the fabric.
 3. **Link-Level Credit-Based Flow Control:** Inspired by InfiniBand CBFC, UEC CBFC doubles capacity to 32 Virtual Channels per port. Lossless and best-effort channels can then coexist on one link. Neighboring switches and NICs discover CBFC support via LLDP and maintain Consumed Credit and Freed Credit counters per VC. Instead of consuming Layer-2 frame bandwidth for credit updates, the sender PCS sublayer sends out-of-band `CtlOS` `CP_Update` messages at line rate.
 
+The three mechanisms above act at different points on the path. Here is how each one behaves in more detail.
+
+NSCC keeps an explicit congestion window. The sender uses window-based control to estimate its packets in flight, meaning packets the target has not yet acknowledged. It may send while the window is larger than the bytes in flight. A packet counts as having left the network once an ACK or SACK confirms it. NACKs may carry the ECN flag.
+
+The feedback path works in reverse. The receiver sends NACKs, or sets and clears the ECN bit, and that feedback crosses the fabric back to the sender. The sender measures round-trip time (RTT) and uses it, with the feedback, to resize the window. Whenever NSCC is used, the ACK or SACK must carry congestion control flags. The `ACK_CC` reports the bytes received, the service time, and the out-of-order packet count.
+
+RCCC works from the receiver side and uses credit attribution instead of window math. A sender asks for more credit through the `Credit Target` field in its data packets. It may transmit whenever its local credit pool at the receiver has credit left. The receiver returns credit through credit control packets. Because the receiver shares credit information across all senders, their combined rate does not congest it.
+
+Picture two sender servers and one receiver server. Each sender sends credit requests through its intermediate switches. The receiver's credit pool answers with credit control messages, and those messages travel back to each sender to set its rate. The advantage is simple. The target knows exactly how many credits remain across its active sessions, and when none are left, none are handed out.
+
+In RCCC, the `req_cc_state` field tells the target how much data the sender wants to send. The 24-bit ACK congestion control field carries the credits, in units of 256 bytes.
+
+CBFC is an optional link-layer function. It gives lossless delivery by priority on a full-duplex Ethernet link. Like RCCC, it uses credits to track free buffer space at the receiver. The difference is scope, because CBFC works on one segment, such as the link between two switches in the same IP fabric. InfiniBand's CBFC inspired the UEC version, which doubles the virtual channels from 16 to 32 per port.
+
+CBFC has real advantages over standard PFC. It supports more lossless classes, allows better scheduling and load balancing, and is less sensitive to cable length and frame size. Explicit credit exchange reduces head-of-line blocking and PFC storms. It also allows more granular congestion management. The receiver creates credits from its available buffer, and the sender transmits only while it holds enough of them.
+
+Both sides track consumed credits. The receiver reports freed credits once traffic leaves its input buffer. Between two UEC switches, the sending side holds per-VC queues and a credit consumer, while the receiving side has its buffer and a credit generator. Packets flow hop by hop, and credits flow back the other way. The receiving switch returns credits based on its port buffer state, using dedicated buffers, a shared pool, or both.
+
+CBFC tracks consumed credits (`CC`) and freed credits (`CF`) with counters. The UEC specification lists them as counters to watch at each segment. Compared with end-to-end control, CBFC needs small link-layer changes so credit updates can run out of band. The sender's PCS sublayer sends `CtlOS` `CP_Update` messages at line rate. Switch1 does not send an explicit credit request. Instead, it reports consumed credits through the `CP_Update` message.
+
+In theory, PFC and CBFC can run on different VCs of the same link. Two threshold systems at once can get very complicated, so CBFC is the more effective approach compared with PFC/DSCP-driven control on lossless fabrics. Before any credit exchange, LLDP confirms that both ends of the segment support CBFC.
+
 ### 4.2 Fast Retransmission via DSCP Packet Trimming and Hop-by-Hop Link Layer Reliability (LLR)
 
 When microbursts overflow a switch buffer despite NSCC and RCCC, waiting milliseconds for a sender retransmission timeout stalls the collective. UEC eliminates retransmission timeouts by catching packet drops at the switch buffer and the physical link:
@@ -366,12 +519,53 @@ Hop-by-Hop Link Layer Reliability (LLR) Replay Sequence (Switch 1 <-> Switch 2):
 - Wire corruption or loss (SEQ = 2 or SEQ = 3): if SEQ = 2 times out, or if SEQ = 3 is lost and SEQ = 4 arrives out of order, Switch 2 immediately returns NACK SEQ = 3 -> Switch 1 retransmits the missing frame from its local ASIC replay buffer in hundreds of nanoseconds, hiding the optical bit error from end-to-end UET PDS
 ```
 
+The PSN sequence numbers already guarantee reliable transport end-to-end. The trouble is that, in a large fabric, drops force the original sender to retransmit. That delay can hold up the whole AI job. LLR helps by managing retransmission between neighboring nodes instead of between end hosts.
+
+The LLR capability is advertised between two switches, or between a host NIC and a switch. The LLR state machine runs only when both nodes agree. If only one side supports it, LLR is ignored, and normal end-to-end PSN and ACK/NACK/SACK reliability takes over. When LLR is active, the two levels of reliability work together, which gives double-level control. The result should be a better job completion time, especially where congestion risk is high.
+
+LLR must be built into the ASIC so it does not slow the end-to-end traffic. If the MAC client does not want LLR, or the frame is not eligible, it goes out as a standard Ethernet frame. An eligible frame gets a sequence number and a copy in a replay buffer, in case the link partner does not receive it. Here is how a lossy link recovers. Switch1 sends `SEQ` 1 and stores a copy with a timer running. Switch2 receives it and returns an ACK, so Switch1 clears its copy.
+
+Next, `SEQ` 2 is lost in transit. The timer expires, and Switch1 resends it. Then `SEQ` 3 is lost while `SEQ` 4 arrives first. Switch2 sees the gap and sends `NACK SEQ 3`, so Switch1 resends the missing frame. The sender never has to involve the end hosts for that repair.
+
+LLR is still optional. It complements RUD, ROD, and RUDI retransmissions with PSN-based recovery. Retransmission happens at the link level instead of at the server level, so for the PDC the LLR step can stay transparent. LLR suits latency-sensitive AI work, such as inference on GPU servers, where segment-level control may yield a positive outcome.
+
 ### 4.3 In-Network Collectives (INC) vs User-Space xCCL, Management, Interoperability, and Compliance
 
 Under the UEC Software Working Group, the Libfabric `fi_collective` API bridges PyTorch, OpenMPI, MPICH (`MPI_Allreduce`, `MPI_Alltoall`), and vendor xCCLs to switch-assisted In-Network Collectives:
 
 - **Switch-Assisted INC Execution:** An out-of-band INC Manager communicates via gRPC with INC Agents running inside `sFEPs`. For collective groups (`Collectives-gr1`, `Collectives-gr2`), leaf INC agents forward vectors to an elected root-of-tree spine switch (`Spine 1` or `Spine 2`). That root spine switch aggregates or replicates the collective flow once in hardware and distributes the result downstream.
 - **Management, Interoperability, and Certification:** UET exports per-flow telemetry tracking CBFC and RCCC credits, latency, jitter, and drops across Libfabric, MPI, NCCL, RCCL, and the INC Manager. For backward compatibility, UEC Specification v1.0 supports dual-mode link negotiation so brownfield IP fabrics can run lossless RoCEv2 alongside end-to-end UET. Link-level CBFC and LLR are reserved for greenfield deployments. The UEC compliance suite validates multi-vendor interoperability, line-rate performance, and TSS security across the AI Base, AI Full, and HPC profiles.
+
+INC refers to compute work done inside the network. A common example is aggregation for AllReduce, an idea first introduced in NVIDIA's SHARP framework. INC supports an xCCL with network-level optimizations, such as data transformation, filtering, and in-network routing decisions tuned to each collective. Grouping a collective's flows onto specific switches and servers improves GPU use and latency.
+
+Hierarchical aggregation at a switch, such as a spine, cuts data copies and data movement. Here is the practical view. PyTorch calls down into MPI, and MPI calls Libfabric. Libfabric sends the collective request both to the INC manager and to the network fabric. The INC manager reaches the switch agents over an out-of-band cloud using gRPC.
+
+Two collective groups, `Collectives-gr1` and `Collectives-gr2`, each hold their own leaf agents and root-of-tree spine agents. The sFEP, an Ethernet switch that runs UEC and INC, has the INC engine built into the silicon's microkernel. The INC manager (IM) handles control and coordination for these agents.
+
+Take one simple case. GPU-server1 needs to send the result of its local computation to GPU-server2 and GPU-server3. Instead of sending two copies, it sends one copy to the spine elected as the INC tree root. That root distributes the result to the rest of the switches in the group. Bandwidth is saved between leaf and spine, and latency is more even across the servers.
+
+The table compares INC with xCCLs.
+
+| Feature | INC | xCCLs |
+|---|---|---|
+| Layer | Fabric level (hardware) | Software library (user space) |
+| Primary execution | Inside network switches (sFEPs) | On host CPUs using standard protocols |
+| Integration | Needs Libfabric and INC switches | Integrates with MPI or AI frameworks, and the switch is transparent |
+| Offload capabilities | Yes (to the switches) | When paired with INC |
+| Performance | Lower latency, higher throughput, and optimized GPU utilization | Optimized GPU utilization |
+| Scalability | Very high in supported fabrics, depending on the type of collective set | Limited by server library software optimization |
+| Required infrastructure | INC-capable switches, INC manager, and Libfabric | Standard NICs and the MPI/CCL stack |
+| Implementation | UEC fabrics with INC switches and an INC manager | PyTorch DDP, TensorFlow, and MPI collectives |
+
+An INC deployment usually has three parts. It needs INC-capable switches with sFEPs and agents, an INC manager for control and coordination, and Libfabric software integration.
+
+Compliance requires observability APIs, formal test methods, and procedures to validate interoperability. Before the specification becomes a production standard, all the related tooling must exist. That includes telemetry for UEC-specific features, such as CBFC credits and RCCC credits. The profiles AI Base, AI Full, and HPC let teams fit deployments to different scales and uses.
+
+The compliance suite covers three areas:
+
+- Interoperability testing across multiple vendors and device types.
+- Line-rate performance benchmarks for latency, jitter, and throughput.
+- Security validation, including encryption and authentication methods.
 
 | Dimension | InfiniBand (IBTA) | RoCEv2 (DCQCN) | Ultra Ethernet (UET / UEC v1.0) |
 |---|---|---|---|
@@ -380,6 +574,32 @@ Under the UEC Software Working Group, the Libfabric `fi_collective` API bridges 
 | **Delivery & Loss Recovery** | Reliable Connected (RC) in-order; Go-Back-N / IB retry | RC in-order (Go-Back-N window flush on single loss) | Flexible **ROD / RUD / RUDI / UUD** with selective retry |
 | **Congestion & Flow Control** | Link-level 16 VLs + 64B CBFC credits | PFC (8 priorities) + ECN + DCQCN manual tuning | **NSCC (RTT/ECN), RCCC (256B credits), CBFC (32 VCs), Packet Trimming, LLR** |
 | **Security & In-Network Collectives** | Partition keys (`P_Key`); optional SHARP | External MACsec / IPsec; no native Ethernet INC | Built-in **TSS (AES-GCM)**; optional **INC (sFEP + IM + `fi_collective`)** |
+
+---
+
+### 4.4 Comparing UEC to InfiniBand and RoCEv2
+
+Ultra Ethernet v1.0 sets a new standard for scale-out data center and high-performance networking. It offers flexible reordering, high scalability, high bandwidth, deterministic communication, stronger security, and simpler management. Adoption depends on the cost and complexity of upgrading infrastructure. Interoperability with the wide range of existing Ethernet equipment matters just as much.
+
+The table compares InfiniBand, RoCEv2, and UET on the main requirements. UET aims for lower latency, higher throughput, and better scalability than earlier options. It adds determinism for time-sensitive flows through specified delivery intervals, which standard Ethernet does not have. Libfabric adds open, standards-based programmability, so teams can shape network behavior with open APIs and programmable hardware.
+
+| Requirement | InfiniBand | RoCEv2 | UET |
+|---|---|---|---|
+| Scale | under 100,000 | over 100,000 | about 1 million (target) |
+| Performances (JCT, BUS BW) | High | High; comparable to InfiniBand | High; same as or better than InfiniBand |
+| Multipathing | Yes | Yes | Yes |
+| Congestion control | Yes; credit/credit | DCQCN (ECN, PFC-DSCP), controller-based auto-tuning | NSCC (RTT/ECN), RCCC, packet trimming, CSIG, CBFC, auto-tunning built-in protocol |
+| Delivery modes | Reliable connect (RC); in-order, unreliable connect | RC; in-order, unreliable connect | Flexible delivery; RUD/RUDI/UUD |
+| Security | N/A | External security stack (for example, MAC-Sec) | Built-in the UEC protocol stack – using the TSS |
+| Encapsulation options | InfiniBand | UDP/BTH in IPv4 or IPv6 | UDP/SES and PDS in IPv4/IPv6 or IP and SES/PDS without UDP |
+| Network deployment readiness | Deployed in production networks | Deployed in production networks | Expected first pilot deployments in late 2026 |
+| NIC diversity | Low | High | Low |
+| UET-compatible fabric transport | No | Yes | Yes |
+| Interoperability | Bad | Good | Good |
+| Transport | InfiniBand | Ethernet/IP/UDP | Ethernet/IP/UDP |
+| INC/CCL | Yes (optional) | No | Yes (optional) |
+
+Not every UEC feature has to be turned on at once. Teams can enable a subset of features and still move past the go-back-to-N limits of RoCEv2. Keep the table in mind when you choose a transport for a new cluster. It shows where each option is strong and where it is still early.
 
 ---
 
@@ -774,5 +994,6 @@ Primary Book Sources and Verification Notes for Chapter 12.21:
 2. Verification and honest-scope note:
    - Companion simulation and 25 self-checks (code/part12/storage_uec_scaleup.py and code/part12/storage_uec_scaleup_lab.py) verified locally (25 passed, 0 failed)
    - Cluster nvme, tcpdump, fi_info, ibstat, and gdscheck commands marked (untested here)
+   - Naming note: the book calls the middle UEC profile AI Advanced in its working-group discussion and AI Full elsewhere. This chapter uses AI Full.
 ```
 
