@@ -17,7 +17,7 @@ for f in u['files']:
     m=re.search(r'technical terms lost: (\d+).*numbers lost: (\d+)',r)
     say(m and m.group(1)=='0' and m.group(2)=='0', f'{os.path.basename(f)[:40]} loss_check {m.groups() if m else r[:100]}')
     say(new.count('```')%2==0, 'code fences balanced')
-    say(new.count('<details>')==o.count('<details>') and new.count('<summary>')>=o.count('<summary>'), 'checkpoint questions kept')
+    say(new.count('<details>')>=o.count('<details>') and new.count('<summary>')>=o.count('<summary>'), 'checkpoint questions kept')
     say('&lt;strong>' not in new and '&lt;code>' not in new, 'no escaped html')
     say(new.startswith('---') and new.split('---',2)[1]==o.split('---',2)[1], 'front matter unchanged')
     say(len(new.split())>=len(o.split()), f'words {len(o.split())} -> {len(new.split())}')

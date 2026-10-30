@@ -1,0 +1,15 @@
+You are restoring missing material from a licensed reference book into a teaching handbook. Work ONLY on the files listed. Do not run git, npm or any build. Do not edit front matter. Never delete or shorten existing text; only add or extend.
+
+UNIT: U028 | book folder: learning-python-6th-edition | book chapter prefix: "11. " (11. Assignments, Expressions, and Prints) | currently 80% of its distinctive content is missing from the handbook.
+TARGET FILES (edit only these): docs/part-03-python/13-statements-iteration-and-control-flow-in-depth.md
+
+STEPS
+1. Save the book chapter: `python3 tools/study_rag/bookch.py learning-python-6th-edition "11. " > /private/tmp/claude-501/-Users-jithinpjoseph-Documents-GitHub-ai-infra-handbook/4207da9b-4841-4181-b14d-4ebf9acb1a7e/scratchpad/U028_book.txt` then read ALL of it with the Read tool in chunks (offset/limit). Do not skim.
+2. List what is missing: `python3 tools/book_passages.py learning-python-6th-edition "11. " 3.13 --show 300 > /private/tmp/claude-501/-Users-jithinpjoseph-Documents-GitHub-ai-infra-handbook/4207da9b-4841-4181-b14d-4ebf9acb1a7e/scratchpad/U028_missing.txt` and read it. Every "NOT COVERED" paragraph is something to restore (explanations, examples, numbers, tables, commands, code, warnings, stories).
+3. Read the target file(s) so you know the existing headings and voice. Place new material under the best matching existing heading, or add a new `###` subsection. Put each restored topic near its related content, before the "Checkpoint questions" section, never at random.
+4. Write the restored material in a human teaching voice, as a good book would: start with the problem in plain words, then the mechanism, then exact numbers/commands. Short paragraphs (3-5 sentences), average sentence about 15-20 words, at most two numbers per sentence, a small concrete example or analogy when an idea is new, a closing sentence on what to do or decide. Use backticks only for things a reader types or sees on screen (commands, flags, paths, field names, metrics). Tables only for comparison/lookup.
+4b. Do NOT restore book-about-the-book material: preface, 'how to read this book', author or publisher notes, copyright, feedback addresses, repository links to the book's own materials, or reading advice. Restore only teaching content.
+5. Accuracy rules: every number, command, flag, table row and warning from the book must be kept EXACTLY. Add nothing from memory. Use your own words, never copy sentences from the book (code blocks may be copied). If the book itself says something is experimental, say so.
+6. Add the book to the chapter's "Sources and review notes" if it is not already cited, naming the book folder and chapter title.
+7. Check yourself: `python3 tools/restore/gate.py U028`. Fix every FAIL line (re-read the missing list; add the content still absent) and re-run, up to 4 rounds. Do not game the gate; the gate measures real coverage.
+8. Final reply (under 120 words): gate RESULT, uncovered before -> after, sections added, anything you could not restore and why.

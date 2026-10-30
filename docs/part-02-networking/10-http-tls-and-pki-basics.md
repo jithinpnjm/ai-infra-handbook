@@ -22,24 +22,30 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Almost every control-plane and serving interaction in an AI platform is HTTP over TLS: model-serving endpoints (REST and gRPC over HTTP/2), the Kubernetes API server, container registries, artifact and dataset stores, MLflow and experiment trackers, NGC and Hugging Face downloads, webhooks, Prometheus scrapes, Redfish BMC APIs. Failures in this layer are some of the most common pages: an expired certificate takes down an inference endpoint at 3 a.m.; a kubelet cannot join because its client certificate rotated incorrectly; `x509: certificate signed by unknown authority` blocks image pulls behind a corporate proxy; HTTP/2 head-of-line blocking or keepalive timeouts degrade token streaming; an mTLS mesh rejects calls because of clock skew. This chapter gives the practical model: HTTP semantics and versions, the TLS handshake, certificates and public-key infrastructure, and the tools to inspect and debug all of it.
+Picture an inference endpoint that goes down at 3 a.m. because its certificate has expired. That is a common page, because nearly every control-plane and serving interaction in an AI platform runs as HTTP over TLS. Model-serving endpoints (REST and gRPC over HTTP/2), the Kubernetes API server, container registries, artifact and dataset stores, MLflow and experiment trackers, NGC and Hugging Face downloads, webhooks, Prometheus scrapes and Redfish BMC APIs all work this way.
+
+Other failures in this layer are just as familiar. A kubelet cannot join the cluster when its client certificate rotated incorrectly. Behind a corporate proxy, `x509: certificate signed by unknown authority` can block image pulls. HTTP/2 head-of-line blocking or keepalive timeouts can degrade token streaming. An mTLS mesh can reject calls because of clock skew.
+
+This chapter gives you the practical model for all of it. It covers HTTP semantics and versions, the TLS handshake, certificates and public-key infrastructure, and the tools you use to inspect and debug each part.
 
 ## Prerequisites and outcomes
 
-You should know TCP (2.6), DNS (2.8) and basic Linux tooling.
+Before you start, you should know TCP (2.6), DNS (2.8) and basic Linux tooling.
 
-After this chapter you can:
+After this chapter, you should be able to do the following.
 
-- Explain HTTP requests/responses, methods, status codes, headers, caching, connection reuse, and the differences among HTTP/1.1, HTTP/2 and HTTP/3.
-- Explain the security goals (confidentiality, integrity, authentication) and the crypto building blocks: symmetric encryption, key exchange, public-key signatures, hashes and MACs, and why TLS combines them.
-- Walk through the TLS 1.3 handshake (and contrast it with TLS 1.2), SNI, ALPN, session resumption, forward secrecy, and mutual TLS.
-- Explain certificates, chains of trust, root/intermediate CAs, trust stores, revocation (CRL, OCSP, short-lived certs), Certificate Transparency, ACME, and private CAs.
-- Use `curl`, `openssl s_client`, `openssl x509`, `openssl req` and `step`/`cfssl`/`certbot`/`cert-manager` to inspect, issue and debug certificates.
-- Diagnose expiry, chain, name-mismatch, protocol/cipher and clock problems, and design certificate management for a GPU/Kubernetes platform (cert-manager, mTLS, rotation).
+- Explain HTTP requests and responses, including methods, status codes, headers, caching and connection reuse. You should also be able to tell HTTP/1.1, HTTP/2 and HTTP/3 apart.
+- Explain the security goals of confidentiality, integrity and authentication, and the building blocks behind them: symmetric encryption, key exchange, public-key signatures, hashes and MACs. Say why TLS combines them.
+- Walk through the TLS 1.3 handshake, and contrast it with TLS 1.2. Cover SNI, ALPN, session resumption, forward secrecy and mutual TLS.
+- Explain certificates, chains of trust, root and intermediate CAs, trust stores, revocation (CRL, OCSP and short-lived certificates), Certificate Transparency, ACME and private CAs.
+- Use `curl`, `openssl s_client`, `openssl x509`, `openssl req`, and `step`, `cfssl`, `certbot` or `cert-manager` to inspect, issue and debug certificates.
+- Diagnose expiry, chain, name-mismatch, protocol, cipher and clock problems. Then design certificate management for a GPU and Kubernetes platform, covering cert-manager, mTLS and rotation.
+
+If TCP or DNS is unfamiliar, read chapters 2.6 and 2.8 before you continue.
 
 ## 1. HTTP in practice
 
-HTTP is an application-layer, request/response protocol: a client sends a **request** (method, target, headers, optional body); the server returns a **response** (status, headers, optional body). It is **stateless** by design; state is carried by cookies, tokens or application sessions.
+When your API call fails, the answer is often in the HTTP exchange itself. HTTP is a request and response protocol that works at the application layer. The client sends a request with a method, a target, headers and an optional body. The server returns a response with a status, headers and an optional body. HTTP is stateless by design, so state has to travel in cookies, tokens or application sessions.
 
 ```text
 GET /v1/models HTTP/1.1
@@ -53,6 +59,8 @@ Content-Length: 142
 Cache-Control: max-age=60
 ```
 
+The first line of each message matters most, so read it first when you debug. It holds the method and target in a request, and the status in a response. The table below lists the parts of a message. Methods matter most when you retry a call, because `GET`, `PUT` and `DELETE` are idempotent and `POST` is not.
+
 | Part | Notes |
 |---|---|
 | Methods | `GET` (read, safe, idempotent), `HEAD`, `POST` (create/process, not idempotent), `PUT` (replace, idempotent), `PATCH`, `DELETE` (idempotent), `OPTIONS` (CORS preflight, capabilities) |
@@ -60,19 +68,27 @@ Cache-Control: max-age=60
 | Headers | `Host`, `Content-Type/Length`, `Authorization`, `Cookie/Set-Cookie`, `Cache-Control`, `ETag`/`If-None-Match`, `Accept-*`, `User-Agent`, `X-Forwarded-For`/`Forwarded`, `Retry-After`, `Upgrade` (WebSocket) |
 | Bodies | JSON, form data, multipart, binary; streaming via chunked transfer encoding or SSE for token streams; large uploads via multipart or presigned URLs |
 
-**Reading status codes as signals.** 502/503/504 from a load balancer or ingress point to the upstream (not the client); 504 is an upstream *timeout* (often the model server is slow, or the proxy timeout is shorter than the inference time); 499 (nginx) means the client went away; 429 means rate limiting; 413 body too large for a proxy limit (common for big prompts/uploads); 401 vs 403 distinguishes unauthenticated from unauthorised.
+Status codes also point to where a failure happened. A 502, 503 or 504 from a load balancer or ingress points to the upstream, not to the client. A 504 is an upstream timeout. The model server may be slow, or the proxy timeout may be shorter than the inference time. A 499 from nginx means the client went away. A 429 means rate limiting. A 413 means the body is larger than a proxy limit, which is common with big prompts or uploads. A 401 means the caller is unauthenticated, while a 403 means the caller is unauthorised.
 
 ### Connections and versions
 
-- **HTTP/1.0** opened one TCP connection per request. **HTTP/1.1** added persistent connections (keep-alive), the `Host` header (virtual hosting), chunked encoding, and caching controls, but only one request in flight per connection (pipelining is not used in practice), so browsers open several connections (head-of-line blocking at the HTTP layer).
-- **HTTP/2** (RFC 9113) multiplexes many **streams** over one TCP connection in binary frames, compresses headers (HPACK), allows server push (largely abandoned) and flow control per stream; it requires TLS in browsers (via ALPN `h2`). gRPC runs on HTTP/2. Its weakness: a single lost TCP packet stalls *all* streams (TCP-level head-of-line blocking, chapter 2.6).
-- **HTTP/3** (RFC 9114) runs on QUIC over UDP: independent streams (no cross-stream blocking), faster handshakes, connection migration, TLS 1.3 built in. Discovered via `Alt-Svc` header or `HTTPS` DNS records. Useful at the edge/CDN; inside data centres HTTP/2 over TCP remains standard.
-- **Persistent connections and pooling**: reusing connections avoids the TCP and TLS handshake costs (1 RTT + 1 RTT, chapter 2.6). Clients must reuse sessions (HTTP clients' connection pools, `requests.Session`, gRPC channels); servers and middleboxes have **idle timeouts** (nginx `keepalive_timeout` 75 s, cloud LBs 60 to 350 s) that must be longer than the client's idle period or shorter than the client's pool lifetime so stale connections are not reused ("connection reset" on the first request after idle).
-- **WebSocket/SSE/streaming**: long-lived connections for token streaming and notifications need proxy settings (disable buffering, raise read timeouts) and heartbeats.
-- **Caching**: `Cache-Control`, `ETag`, `Last-Modified` and validators let clients/CDNs reuse responses; container registries and model hubs rely on content-addressed immutable URLs.
-- **Proxies**: forward proxies (`HTTP_PROXY`/`HTTPS_PROXY`, `CONNECT` tunnels for HTTPS), reverse proxies/ingress (nginx, Envoy, HAProxy, Traefik; chapter 2.20), API gateways and service meshes add TLS termination, routing, retries, rate limiting and observability.
+HTTP/1.0 opened one TCP connection per request. HTTP/1.1 added persistent connections, called keep-alive, along with the `Host` header for virtual hosting, chunked encoding and caching controls. It still handles only one request in flight per connection, because pipelining is not used in practice. So browsers open several connections, and head-of-line blocking still happens at the HTTP layer.
+
+HTTP/2 (RFC 9113) multiplexes many streams over one TCP connection, using binary frames. It compresses headers with HPACK, and it applies flow control to each stream. Server push exists, but it has largely been abandoned. Browsers require TLS for HTTP/2, negotiated through the ALPN value `h2`. gRPC runs on HTTP/2. Its weakness is that a single lost TCP packet stalls all streams. That is TCP-level head-of-line blocking, covered in chapter 2.6.
+
+HTTP/3 (RFC 9114) runs on QUIC over UDP. Its streams are independent, so a lost packet on one stream does not block the others. Handshakes are faster, connections can migrate, and TLS 1.3 is built in. Clients discover it through the `Alt-Svc` header or `HTTPS` DNS records. It is useful at the edge and in CDNs. Inside data centres, HTTP/2 over TCP remains the standard.
+
+Reusing a connection saves the TCP and TLS handshake costs, which are 1 RTT + 1 RTT (chapter 2.6). Your clients must therefore reuse sessions through connection pools, `requests.Session` or gRPC channels. Servers and middleboxes also have idle timeouts. Examples are nginx `keepalive_timeout` at 75 s, and cloud load balancers at 60 to 350 s. The timing has to line up, so that stale connections are not reused. The server's idle timeout must be longer than the client's idle period, or shorter than the client's pool lifetime. Here is the arithmetic with numbers from this chapter. A load balancer that closes idle connections after 60 s, paired with a client pool that keeps them for 120 s, hands the client connections that are already closed. The next request then fails with a connection reset.
+
+Long-lived connections, such as WebSocket, Server-Sent Events (SSE) and token streams, need care. Proxies must not buffer the stream, and their read timeouts must be raised. Heartbeats keep the connection alive between messages.
+
+Caching reuses responses. `Cache-Control`, `ETag`, `Last-Modified` and validators let clients and CDNs reuse what they already hold. Container registries and model hubs depend on content-addressed, immutable URLs.
+
+Proxies sit in the path. Forward proxies, set with `HTTP_PROXY` or `HTTPS_PROXY`, use `CONNECT` tunnels for HTTPS. Reverse proxies and ingress controllers (nginx, Envoy, HAProxy, Traefik) are discussed in chapter 2.20. API gateways and service meshes add TLS termination, routing, retries, rate limiting and observability.
 
 ### `curl` as a diagnostic tool
+
+`curl` shows each stage of a request, so you can see which stage is slow or failing. The commands below show headers, timing, a DNS bypass, a verification skip for testing, mTLS and proxies.
 
 ```bash
 curl -v https://api.example.com/v1/models                  # request/response headers, TLS handshake summary
@@ -85,11 +101,13 @@ curl -x http://proxy:3128 https://example.com               # via proxy
 curl --connect-timeout 3 --max-time 10 --retry 2 URL
 ```
 
-The `-w` timing breakdown localises latency: a long `time_namelookup` is DNS; a long gap between `time_connect` and `time_appconnect` is the TLS handshake; a long gap before `time_starttransfer` is server processing (for inference: model latency).
+The `-w` timing output shows where the time goes. A long `time_namelookup` points to DNS. A long gap between `time_connect` and `time_appconnect` is the TLS handshake. A long gap before `time_starttransfer` is server processing, and for inference that means model latency. Start with this breakdown, because it shows which stage holds the delay for your request.
 
 ## 2. Security goals and cryptographic building blocks
 
-Transport security addresses four problems: proving data has not been altered in transit (**integrity**), preventing others from reading it (**confidentiality**), proving who you are talking to (**authentication**), and protecting users' privacy from traffic analysis ("data exhaust"). The building blocks:
+Suppose an attacker controls the Wi-Fi network your client uses. Transport security is the set of protections that keeps your traffic safe on a network like that. It addresses four problems. It proves that data was not altered in transit. It stops others from reading the data. It proves who you are talking to. It also protects users' privacy from traffic analysis, sometimes called data exhaust.
+
+The building blocks are in the table below. Each one covers a different part of the job, and TLS combines them.
 
 | Primitive | Purpose | Examples |
 |---|---|---|
@@ -100,17 +118,25 @@ Transport security addresses four problems: proving data has not been altered in
 | **MAC / HMAC** | Authenticate a message with a shared key | HMAC-SHA256 (GCM and Poly1305 embed their own) |
 | **Key derivation** | Turn shared secrets into session keys | HKDF |
 
-Encryption is conceptually a substitution whose table depends on the key: plaintext + key → ciphertext (for example, a 128-bit key selects among `2^128` possible substitution tables); only the key holder reverses it. Symmetric keys are fast but must somehow be shared; public-key (asymmetric) schemes solve key distribution but are slow, so protocols use public-key methods to establish a symmetric session key and then switch to symmetric encryption for the data. **Forward secrecy** (ephemeral Diffie-Hellman) means session keys are not derivable from the server's long-term key, so recorded traffic cannot be decrypted later if the key leaks. Cryptographic hashes map arbitrary inputs to fixed-length digests while resisting collisions (remember the **birthday paradox** from `CN` Chapter 10: it takes only **23 people** in a room to have a >50% probability that two share a birthday, so an `n`-bit hash provides `2^(n/2)` collision resistance, motivating 256-bit and 384-bit SHA-2/SHA-3 hashes). A hash alone gives integrity only against accidental change; against an active attacker you need a MAC or signature.
+Encryption works like a substitution whose table depends on the key. Plaintext and a key go in, and ciphertext comes out. A 128-bit key, for example, selects one of `2^128` possible substitution tables. Only the key holder can reverse the process. Symmetric keys are fast, but they must somehow be shared. Public-key schemes solve the sharing problem, but they are slow. So protocols use public-key methods to agree on a session key, then switch to symmetric encryption for the data itself.
 
-**Man-in-the-middle (MitM).** An attacker who can redirect traffic (DNS spoofing, ARP spoofing, rogue Wi-Fi, BGP hijack, compromised proxy) can complete one encrypted session with the client and another with the server and read everything in between, if the client cannot tell the server's key is not the real one. Encryption alone is not enough: **authentication of the peer's key** is what defeats MitM, and that is the role of **hierarchical PKI** (certificates and the CA system in section 4, as opposed to decentralized **web of trust** PGP models where users vouch for friends' keys directly), or pre-shared/pinned keys (SSH known_hosts, WireGuard keys).
+Forward secrecy comes from ephemeral Diffie-Hellman. Session keys cannot be derived from the server's long-term key. So if that key leaks later, recorded traffic still cannot be decrypted.
 
-**Privacy beyond content.** Even encrypted traffic leaks metadata: who talks to whom, when, how much (traffic analysis), destination names (SNI, DNS). Mitigations include encrypted SNI/ECH, DoT/DoH, MAC-address randomisation on Wi-Fi clients (defeats location tracking across access points, though timing, sequence-number and capability fingerprints can partially re-identify devices), and onion routing, where a client builds nested encrypted hops so the entry node knows the source but not the destination and the exit node the reverse. In a data-centre context the practical privacy concern is mostly metadata exposure in multi-tenant networks and logs.
+Cryptographic hashes map any input to a fixed-length digest, and they resist collisions. The birthday paradox sets the strength you need. You may remember it from chapter 10 of Computer Networking Problems and Solutions. It takes only 23 people in a room for a probability above 50% that two of them share a birthday. So an `n`-bit hash gives `2^(n/2)` collision resistance. For a 256-bit hash, n/2 is 128, which gives `2^128`. That reasoning motivates the 256-bit and 384-bit SHA-2 and SHA-3 hashes. A hash alone gives integrity only against accidental change. Against an active attacker, you need a MAC or a signature.
+
+A man-in-the-middle (MitM) attack starts when an attacker can redirect traffic. Common routes include DNS spoofing, ARP spoofing, rogue Wi-Fi, a BGP hijack and a compromised proxy. The attacker can then hold one encrypted session with the client and another with the server. The attacker can read everything in between, if the client cannot tell that the server's key is not the real one. Encryption alone is therefore not enough. You need to authenticate the peer's key. Hierarchical PKI does this, through the certificates and CA system described in section 4. A decentralized web of trust, as in PGP, works differently, because users vouch for each other's keys directly. Pre-shared or pinned keys also work, as in SSH `known_hosts` and WireGuard keys.
+
+Even encrypted traffic leaks metadata. An observer can see who talks to whom, when, and how much, which is traffic analysis. Destination names leak as well, through SNI and DNS. Mitigations include encrypted SNI and ECH, along with DoT and DoH. MAC-address randomisation on Wi-Fi clients defeats location tracking across access points, though timing, sequence-number and capability fingerprints can partly re-identify devices. Onion routing builds nested encrypted hops. The entry node knows the source but not the destination, and the exit node knows the reverse.
+
+In a data-centre setting, treat metadata exposure in multi-tenant networks and logs as the practical privacy concern.
 
 ## 3. TLS
 
-TLS (Transport Layer Security; SSL is its obsolete predecessor) sits between the application and TCP (or inside QUIC), providing an authenticated, encrypted, integrity-protected byte stream. Components: the **handshake** protocol (negotiate parameters, authenticate, derive keys), the **record** protocol (fragment, authenticate-and-encrypt each record), and alerts. HTTPS is HTTP over TLS on port 443; other protocols use "STARTTLS" upgrades (SMTP, IMAP) or implicit TLS on a different port.
+TLS, short for Transport Layer Security, sits between the application and TCP, or inside QUIC. It gives you an authenticated, encrypted, integrity-protected byte stream. SSL is its obsolete predecessor. TLS has three parts: the handshake protocol, which negotiates parameters, authenticates the peer and derives keys; the record protocol, which fragments and protects each record; and alerts. HTTPS is HTTP over TLS on port 443. Other protocols use STARTTLS upgrades, as SMTP and IMAP do, or implicit TLS on a different port.
 
 ### The handshake (TLS 1.3)
+
+The diagram follows the TLS 1.3 handshake from the first client message to the first request.
 
 ```mermaid
 sequenceDiagram
@@ -125,19 +151,25 @@ sequenceDiagram
   C->>S: HTTP request
 ```
 
-Why this is better than TLS 1.2: **one round trip** instead of two (both sides send key shares immediately), **only forward-secret key exchange** (static-RSA key transport removed), **encrypted certificate** and handshake messages, a reduced set of strong AEAD cipher suites (AES-GCM, ChaCha20-Poly1305), no compression or renegotiation, and **0-RTT resumption** (early data, replayable, so only for idempotent requests). In TLS 1.2 the handshake had client hello/server hello/certificate/server key exchange/client key exchange/change cipher spec/finished messages; in older RSA key transport the client encrypted a random pre-master secret under the server's public key, so a later theft of the server key could decrypt recorded sessions, which is exactly what forward secrecy fixes. The change-cipher-spec and finished messages in the older description serve the same purposes (signal encryption starts, and authenticate the whole handshake transcript to detect tampering).
+Notice where encryption starts. After the `ServerHello`, both sides hold handshake keys, so everything else is encrypted.
 
-Key extensions:
+TLS 1.3 needs one round trip instead of two. Both sides send their key shares immediately. Only forward-secret key exchange is allowed, so static-RSA key transport is gone. The certificate and handshake messages are encrypted. The cipher suites come from a reduced set of strong AEAD options, such as AES-GCM and ChaCha20-Poly1305. Compression and renegotiation are removed. 0-RTT resumption allows early data, but that data can be replayed, so use it only for idempotent requests.
 
-- **SNI** (Server Name Indication): the client states the hostname in the ClientHello so one IP address can host many certificates (virtual hosting); load balancers route on it. (Encrypted ClientHello hides it.) Testing an IP directly without SNI often returns a default certificate: use `--resolve`/`-servername`.
-- **ALPN**: negotiates the application protocol inside the handshake (`h2`, `http/1.1`, `h3`).
-- **Session resumption**: session tickets / PSKs let a returning client skip the full handshake (lower latency and CPU).
-- **OCSP stapling**: the server attaches a signed recent revocation status to the handshake.
-- **Mutual TLS (mTLS)**: the server also requests and verifies a client certificate; used for service-to-service identity (service meshes, Kubernetes API/kubelet, etcd, Prometheus targets) so every workload proves its identity cryptographically.
+Count the round trips to see the difference. TCP setup takes 1 RTT, and TCP plus TLS 1.2 takes `3` RTTs. TLS 1.3 adds only 1 RTT, so TCP plus TLS 1.3 takes `2` RTTs.
 
-Operationally: TLS costs CPU only at handshake (public-key operations) and a little per byte (AES-NI makes it cheap); termination at load balancers/ingress concentrates handshakes; protocols versions: disable TLS 1.0/1.1 (and SSLv3), prefer 1.3 with 1.2 fallback; use modern cipher suites (Mozilla "intermediate" profile), HSTS for browsers, and re-check configurations with `testssl.sh` or `nmap --script ssl-enum-ciphers`.
+In TLS 1.2, the handshake had client hello, server hello, certificate, server key exchange, client key exchange, change cipher spec and finished messages. In older RSA key transport, the client encrypted a random pre-master secret under the server's public key. Stealing the server key later could then decrypt recorded sessions. Forward secrecy fixes exactly that. The change cipher spec and finished messages still do their jobs. One signals that encryption starts. The other authenticates the whole handshake transcript to detect tampering.
+
+Several extensions matter in practice. SNI (Server Name Indication) lets the client name the host in `ClientHello`. One IP address can then serve many certificates, which is virtual hosting, and load balancers route on that name. Encrypted ClientHello can hide it. If you test an IP address directly, without SNI, you often get a default certificate. Use `--resolve` with `curl`, or `-servername` with `openssl`, to send the right name.
+
+ALPN negotiates the application protocol inside the handshake, such as `h2`, `http/1.1` or `h3`. Session tickets or PSKs let a returning client skip the full handshake, which lowers latency and CPU use. With OCSP stapling, the server attaches a signed, recent revocation status to the handshake.
+
+Mutual TLS (mTLS) goes one step further. The server also requests and verifies a client certificate. Service meshes, the Kubernetes API and kubelet, etcd and Prometheus targets use it for service-to-service identity. That way, every workload proves its identity cryptographically.
+
+TLS costs CPU mainly at the handshake, where public-key operations run. Per byte, the cost is small, because AES-NI makes it cheap. Terminating at load balancers or ingress concentrates those handshakes in one place. Disable TLS 1.0, TLS 1.1 and SSLv3, and prefer TLS 1.3 with a TLS 1.2 fallback. Use modern cipher suites, such as the Mozilla "intermediate" profile, and enable HSTS for browsers. Re-check the configuration with `testssl.sh` or `nmap --script ssl-enum-ciphers`.
 
 ### Inspecting TLS with openssl
+
+The commands below show the handshake, the chain, the verify result and the certificate fields.
 
 ```bash
 openssl s_client -connect api.example.com:443 -servername api.example.com -showcerts </dev/null    # handshake, chain, verify result
@@ -150,9 +182,13 @@ openssl s_client -connect host:443 -servername host -status </dev/null | grep -A
 echo | openssl s_client -connect host:443 2>/dev/null | openssl x509 -noout -fingerprint -sha256
 ```
 
+Start with the first command against your own endpoint, and compare its output with the handshake diagram above.
+
 ## 4. Certificates and public-key infrastructure
 
-A **certificate** (X.509) binds a public key to an identity and is signed by a **certificate authority (CA)**. Important fields: subject, **issuer**, validity (notBefore/notAfter), public key, **Subject Alternative Names (SAN)** (the DNS names/IPs the certificate is valid for; browsers and modern libraries ignore the old CN), key usage / extended key usage (serverAuth, clientAuth), basic constraints (is this a CA?), authority/subject key identifiers, CRL/OCSP URLs, and the issuer's signature.
+A client that refuses to connect is often reacting to a certificate. To read the error, you need to know what a certificate contains. A **certificate** (X.509) binds a public key to an identity, and a certificate authority (CA) signs it. The important fields are the subject, the issuer, the validity dates (notBefore and notAfter), the public key, and the Subject Alternative Names (SAN). The SAN lists the DNS names or IPs the certificate is valid for. Browsers and modern libraries ignore the old CN field. The remaining fields are key usage and extended key usage (serverAuth, clientAuth), basic constraints (whether this is a CA), authority and subject key identifiers, CRL and OCSP URLs, and the issuer's signature.
+
+The diagram shows how trust flows down from a root.
 
 ```mermaid
 flowchart TD
@@ -162,20 +198,25 @@ flowchart TD
   T["Client trust store: OS / browser / /etc/ssl/certs / container image"] -. "contains" .-> R
 ```
 
-**Validation** by the client: build a chain from the leaf to a trusted root using the intermediates the server presents; check each signature, validity dates (against the client's clock), key usage and basic constraints, name match against SAN, and revocation status (if enabled). **Trust store** contents decide who is trusted: OS bundles (`/etc/ssl/certs/ca-certificates.crt`), Java `cacerts`, Python `certifi`, language-specific bundles, Kubernetes service-account CA, and container images (`update-ca-certificates`); "unknown authority" errors usually mean a private CA is missing from the relevant store or the server omitted its intermediate. **Servers must send the full chain except the root**; missing intermediates work in browsers (they fetch via AIA) but fail in curl/Java/Go.
+A client validates a certificate in several steps. It builds a chain from the leaf to a trusted root, using the intermediates the server presents. It checks each signature, the validity dates against its own clock, the key usage and basic constraints, the name against the SAN, and the revocation status if revocation checking is enabled.
+
+Who is trusted depends on the trust store. OS bundles live at `/etc/ssl/certs/ca-certificates.crt`. Others include Java `cacerts`, Python `certifi`, language-specific bundles, the Kubernetes service-account CA, and container images, which use `update-ca-certificates`. An "unknown authority" error usually means that a private CA is missing from the relevant store, or that the server left out its intermediate. Servers must send the full chain except the root. Missing intermediates work in browsers, which fetch them through Authority Information Access (AIA). The same gap makes curl, Java and Go fail.
 
 ### Certificate authorities
 
-- **Public CAs** (Let's Encrypt, DigiCert, Google Trust Services...) issue certificates for Internet-reachable names after validating control (**DV** domain validation via DNS or HTTP challenge; OV/EV add organisation checks). **ACME** (RFC 8555) automates issuance and renewal (certbot, acme.sh, Caddy, cert-manager); Let's Encrypt certificates last 90 days (the industry is moving to shorter lifetimes), so automation is mandatory.
-- **Private/internal CAs** for internal names, mTLS and cluster components: HashiCorp Vault PKI, step-ca (Smallstep), cfssl, EJBCA, cloud private CA services (GCP CA Service, AWS Private CA), Active Directory Certificate Services, Kubernetes' built-in cluster CA (kubeadm), and service-mesh CAs (Istio, Linkerd). Keep the **root offline**, issue from **intermediates**, use name constraints, short lifetimes and automated rotation; distribute the root to all trust stores via configuration management.
-- **Certificate Transparency (CT)**: public CAs log every issued certificate in append-only public logs; monitor them for unexpected issuance for your domains.
-- **CAA DNS records** restrict which CAs may issue for a domain.
+Public CAs, such as Let's Encrypt, DigiCert and Google Trust Services, issue certificates for names that the Internet can reach. They check control of the domain, using DV (domain validation) through a DNS or HTTP challenge. OV and EV certificates add organisation checks. ACME (RFC 8555) automates issuance and renewal. Tools include certbot, acme.sh, Caddy and cert-manager. Let's Encrypt certificates last 90 days, and the industry is moving toward even shorter lifetimes. Automation is therefore mandatory.
+
+Private or internal CAs cover internal names, mTLS and cluster components. Options include HashiCorp Vault PKI, step-ca from Smallstep, cfssl and EJBCA. Cloud services include GCP CA Service and AWS Private CA. Others include Active Directory Certificate Services, Kubernetes' built-in cluster CA from kubeadm, and the service-mesh CAs in Istio and Linkerd. Keep the root offline, and issue certificates from intermediates. Also use name constraints, short lifetimes and automated rotation. Distribute the root to all trust stores through configuration management.
+
+Certificate Transparency (CT) requires public CAs to log every issued certificate in append-only public logs. Monitor those logs for unexpected certificates issued for your domains. CAA DNS records restrict which CAs may issue certificates for a domain.
 
 ### Revocation and lifetimes
 
-Revocation is hard: **CRLs** (large lists), **OCSP** (online status checks, privacy and availability problems; **stapling** helps), and browser-pushed sets (CRLite). The modern answer is *short-lived certificates with automated renewal*, so that revocation matters less. Always monitor expiry (Prometheus `x509-certificate-exporter`/blackbox exporter `probe_ssl_earliest_cert_expiry`) and alert at 21, 7 and 3 days.
+Revocation is hard. CRLs are large lists, and OCSP offers online status checks, but it raises privacy and availability problems. Stapling helps with those. Browsers can also use pushed sets, such as CRLite. The modern answer is short-lived certificates with automated renewal, so revocation matters less. Always monitor expiry. Prometheus `x509-certificate-exporter` and the blackbox exporter's `probe_ssl_earliest_cert_expiry` both help. Alert at 21, 7 and 3 days. The first alert at 21 days leaves three weeks to renew.
 
 ### Generating certificates (labs and private CAs)
+
+The commands below build a private CA and a server certificate with a SAN. They are meant for labs. For real use, prefer step-ca or Vault, as the code comment notes.
 
 ```bash
 # Private CA + server cert with SAN (OpenSSL; for real use prefer step-ca/Vault)
@@ -194,21 +235,33 @@ sudo cp ca.pem /usr/local/share/ca-certificates/lab-root.crt && sudo update-ca-c
 # RHEL family: /etc/pki/ca-trust/source/anchors/ + update-ca-trust
 ```
 
-Private keys must be generated on the server (or in an HSM/TPM/KMS), never emailed, with mode 0600; CSRs (certificate signing requests) carry only the public key and the requested names. A client certificate for mTLS is identical but with `extendedKeyUsage=clientAuth`.
+Generate private keys on the server, or in an HSM, TPM or KMS, and never email them. Give them mode 0600. A CSR, or certificate signing request, carries only the public key and the requested names. A client certificate for mTLS is built the same way, but with `extendedKeyUsage=clientAuth`. Keep each private key on the machine that uses it.
 
 ## 5. TLS and PKI in Kubernetes and AI platforms
 
-- **Cluster PKI**: kubeadm creates a cluster CA, API server serving cert, kubelet client/serving certificates, etcd CA and peer certs (`/etc/kubernetes/pki`); most expire after 1 year and must be rotated (`kubeadm certs check-expiration`, `kubeadm certs renew all`); kubelet client certificates auto-rotate if enabled (`rotateCertificates`, CSR approval). Expiry of these certificates is a classic cluster outage; monitor it.
-- **cert-manager**: a controller that issues/renews certificates from `Issuer`/`ClusterIssuer` resources (ACME/Let's Encrypt via HTTP-01 or DNS-01, Vault, private CA, self-signed) into `Secret`s consumed by Ingress/Gateway or pods; `Certificate` objects declare names and renewal windows. DNS-01 is needed for wildcards and clusters not reachable from the Internet.
-- **Ingress/Gateway TLS termination** (nginx, Envoy, cloud LBs): choose between terminating at the edge (simple, plaintext inside), re-encrypting to backends, or passing TLS through (L4) so the backend terminates (needed for end-to-end mTLS).
-- **Service mesh mTLS** (Istio, Linkerd, Cilium service mesh): sidecars or per-node proxies automatically issue short-lived workload certificates (SPIFFE identities) and enforce mTLS/authorization policies; consider CPU overhead and latency for token streaming and large payloads.
-- **Inference endpoints**: terminate TLS at the gateway; keep HTTP/2 or gRPC connections warm; align idle timeouts; set generous read timeouts and disable response buffering for streaming; protect model APIs with authentication (API keys, JWT/OIDC) in addition to TLS.
-- **Registries and artifact stores**: private CAs must be installed on every node's container runtime (`/etc/containerd/certs.d/<registry>/hosts.toml` or `/etc/docker/certs.d/<registry>/ca.crt`) and in CI images; failures show as `x509: certificate signed by unknown authority` in `ctr`/`crictl`/kubelet events.
-- **Time**: certificate validity depends on the clock; install and monitor NTP/chrony (chapter 1.x) because skew produces "not yet valid"/"expired" errors cluster-wide and breaks Kerberos and token expiry.
-- **BMC/Redfish and switches** often ship self-signed certificates: replace them with CA-issued certificates where possible, or pin fingerprints in automation; avoid blanket `verify=False`.
-- **Secrets hygiene**: keys in Kubernetes Secrets are only base64-encoded; use encryption at rest, external secret stores (Vault, cloud KMS/Secret Manager), short lifetimes, and RBAC.
+On the cluster itself, kubeadm creates a cluster CA, the API server serving certificate, kubelet client and serving certificates, and an etcd CA with peer certificates. They live in `/etc/kubernetes/pki`. Most of them expire after 1 year and must be rotated. Check them with `kubeadm certs check-expiration`, and renew them with `kubeadm certs renew all`. Kubelet client certificates rotate automatically if `rotateCertificates` is enabled and CSRs are approved. Expiry of these certificates is a classic cluster outage, so monitor it.
+
+cert-manager is a controller that issues and renews certificates from `Issuer` or `ClusterIssuer` resources. It supports ACME with Let's Encrypt through HTTP-01 or DNS-01, Vault, a private CA and self-signed certificates. It stores the results in `Secret` objects, which Ingress, Gateway or pods consume. `Certificate` objects declare the names and renewal windows. DNS-01 is needed for wildcards and for clusters that the Internet cannot reach.
+
+Ingress and Gateway controllers, such as nginx, Envoy and cloud load balancers, can handle TLS in three ways. Terminating at the edge is simple, but the traffic is plaintext inside. You can re-encrypt to the backends. Or you can pass TLS through at layer 4, so the backend terminates it. Passthrough is needed for end-to-end mTLS.
+
+Service meshes such as Istio, Linkerd and Cilium enforce mTLS. Sidecars or per-node proxies issue short-lived workload certificates, using SPIFFE identities, and they enforce mTLS and authorization policies. Watch the CPU overhead and the latency, especially for token streaming and large payloads.
+
+For inference endpoints, terminate TLS at the gateway. Keep HTTP/2 or gRPC connections warm, and align idle timeouts with the rest of the path. Set generous read timeouts, and disable response buffering for streaming. Protect the model APIs with authentication, such as API keys or JWT and OIDC, in addition to TLS.
+
+Private CAs must be installed on every node's container runtime and in CI images. For containerd, that means `/etc/containerd/certs.d/<registry>/hosts.toml`. For Docker, it means `/etc/docker/certs.d/<registry>/ca.crt`. A missing CA shows up as `x509: certificate signed by unknown authority` in `ctr`, `crictl` and kubelet events.
+
+Certificate validity depends on the clock. Install and monitor NTP or chrony (chapter 1.x). Skew produces "not yet valid" or "expired" errors across the cluster. It also breaks Kerberos and token expiry.
+
+BMC, Redfish and switch certificates often ship self-signed. Replace them with CA-issued certificates where possible, or pin their fingerprints in automation. Avoid blanket `verify=False`.
+
+Keys in Kubernetes Secrets are only base64-encoded. Use encryption at rest, external secret stores such as Vault or cloud KMS and Secret Manager, short lifetimes, and RBAC.
+
+Check the expiry dates of the cluster certificates now, because cluster certificates are easy to forget for a year.
 
 ## 6. Troubleshooting TLS and HTTP
+
+A TLS or HTTP failure usually comes down to one short error message. The table below maps common messages to their likely causes and to the check that confirms each one. Use it as a lookup when you see one of these messages.
 
 | Symptom (typical message) | Likely cause | Check |
 |---|---|---|
@@ -224,184 +277,194 @@ Private keys must be generated on the server (or in an HSM/TPM/KMS), never email
 | Large uploads fail | Body size limits (`client_max_body_size`), timeouts, MTU/MSS (chapter 2.7) | proxy config, `413` |
 | HTTP/2 stalls | Single TCP loss affects all streams; GOAWAY on max-age; proxy buffering | `curl --http2 -v`, tcpdump, `nstat` |
 
-A systematic path: DNS (`dig`), TCP (`nc -zv`, `ss`), TLS (`openssl s_client -servername`), HTTP (`curl -v`), application. Compare against a known-good client and capture with `tcpdump` + Wireshark (TLS 1.3 handshake after ServerHello is encrypted; export `SSLKEYLOGFILE` to decrypt in Wireshark in labs).
+Several rows come down to a missing CA, a name missing from the SAN, or a clock that has drifted. When you cannot tell which layer fails, work up the stack. Use `dig` for DNS, `nc -zv` or `ss` for TCP, `openssl s_client -servername` for TLS, and `curl -v` for HTTP. Only then look at the application. Compare against a known-good client, and capture the traffic with `tcpdump` and Wireshark. The TLS 1.3 handshake is encrypted after the ServerHello, so export `SSLKEYLOGFILE` to decrypt it in Wireshark in labs.
+
+Work through the layers in order, rather than guessing at the application you run.
 
 ## 7. Hands-on lab: build a CA, serve HTTPS with mTLS, and break it on purpose
 
-First, run the self-checking Python lab (`code/part02/http_tls_pki_lab.py`) locally. It verifies RFC 6125 `SAN` wildcard matching (`*.lab.internal`), X.509 certificate chain/validity/SAN validation (`missing_intermediate`, `certificate_has_expired`, `unknown_authority`), connection setup RTTs (`TCP+TLS 1.2` `3` RTTs vs `TCP+TLS 1.3` `2` RTTs vs `QUIC` `1`/`0` RTTs), and HTTP status-code classification (`401`/`403`/`413`/`429`/`499`/`502`/`503`/`504`).
+Start with the self-checking Python lab in `code/part02/http_tls_pki_lab.py`, and run it on your own machine first. It checks RFC 6125 SAN wildcard matching, using `*.lab.internal`. It checks X.509 chain, validity and SAN validation, including `missing_intermediate`, `certificate_has_expired` and `unknown_authority`. It also checks connection setup RTTs: `TCP+TLS 1.2` takes `3` RTTs, `TCP+TLS 1.3` takes `2` RTTs, and `QUIC` takes `1` or `0` RTTs. Finally, it classifies HTTP status codes, including `401`, `403`, `413`, `429`, `499`, `502`, `503` and `504`.
 
 ```bash
 python3 code/part02/http_tls_pki_lab.py
 ```
 
-Next, on a disposable Linux VM with `openssl`, `curl`, and `nginx` or `Caddy` (all interactive VM commands below are `untested here`), work through these steps:
+Next, use a disposable Linux VM with `openssl`, `curl`, and `nginx` or `Caddy`. Every interactive VM command below is marked `untested here`. Work through these steps in order.
 
-1. **Observe**: `curl -v https://example.com`, the timing format string, `openssl s_client -showcerts`; identify the chain, SAN, validity, ALPN and negotiated TLS version; try `-tls1_2` and `-tls1_3`.
-2. **Private CA**: generate the CA and server certificate as above for `api.lab.internal`; add the name to `/etc/hosts`; serve with nginx (`ssl_certificate`, `ssl_certificate_key`, `ssl_protocols TLSv1.2 TLSv1.3`, `http2 on`) or `openssl s_server -www`.
-3. **Trust**: `curl https://api.lab.internal` fails (unknown authority); fix with `--cacert`, then by installing the CA system-wide; confirm with `openssl verify`.
-4. **Break it**: (a) remove the SAN entry (name mismatch); (b) issue a certificate valid for 1 day and advance the clock in a VM (or `faketime`) to expire it; (c) omit the intermediate (create a two-level CA) and compare curl vs browser behaviour; (d) connect by IP without SNI.
-5. **mTLS**: require client certs in nginx (`ssl_client_certificate`, `ssl_verify_client on`); issue a client certificate; test with and without; inspect the handshake in Wireshark (use `SSLKEYLOGFILE`).
-6. **Resumption and versions**: `openssl s_client -reconnect`, check `Reused` vs `New`; capture a full vs resumed handshake and compare sizes.
-7. **Timing**: use curl's timing variables with and without keep-alive (`curl URL URL` reuses a connection) to show handshake cost.
-8. **ACME/cert-manager (optional)**: obtain a certificate from Let's Encrypt staging with certbot or run cert-manager with a self-signed ClusterIssuer in kind and inspect the generated Secret.
-9. **Expiry monitoring**: run the blackbox exporter or a shell loop with `openssl x509 -checkend` and an alert threshold.
-10. **Clean up** keys and test CAs (never reuse a lab root outside the lab).
+1. Observe a live site. Run `curl -v https://example.com`, then the timing format string, then `openssl s_client -showcerts`. Identify the chain, SAN, validity, ALPN and negotiated TLS version. Try `-tls1_2` and `-tls1_3`.
+2. Build a private CA. Generate the CA and server certificate as shown above, for `api.lab.internal`. Add the name to `/etc/hosts`. Then serve it with nginx, setting `ssl_certificate`, `ssl_certificate_key`, `ssl_protocols TLSv1.2 TLSv1.3` and `http2 on`, or serve it with `openssl s_server -www`.
+3. Establish trust. Run `curl https://api.lab.internal`, which fails with an unknown authority error. Fix that with `--cacert`, then install the CA system-wide. Confirm the result with `openssl verify`.
+4. Break it on purpose. Remove the SAN entry to cause a name mismatch. Issue a certificate valid for 1 day, then advance the clock in a VM, or use `faketime`, to expire it. Omit the intermediate by creating a two-level CA, and compare curl with browser behaviour. Finally, you connect by IP without SNI.
+5. Test mTLS. Require client certificates in nginx with `ssl_client_certificate` and `ssl_verify_client on`. Issue a client certificate, then test with and without it. Inspect the handshake in Wireshark, using `SSLKEYLOGFILE`.
+6. Check resumption and versions. Run `openssl s_client -reconnect`, and check whether each connection shows `Reused` or `New`. Capture a full handshake and a resumed one, then compare their sizes.
+7. Measure timing. Use curl's timing variables with and without keep-alive. `curl URL URL` reuses a connection, which shows the handshake cost.
+8. Try ACME or cert-manager, which is optional. Get a certificate from the Let's Encrypt staging environment with certbot. Or run cert-manager with a self-signed ClusterIssuer in kind, and inspect the generated Secret.
+9. Monitor expiry. Run the blackbox exporter, or a shell loop with `openssl x509 -checkend` and an alert threshold.
+10. Clean up keys and test CAs as the last step, so you never reuse a lab root outside the lab.
 
 ## 8. Common mistakes
 
-- Disabling verification (`-k`, `verify=False`, `InsecureSkipVerify`) to "fix" errors and leaving it in production.
-- No expiry monitoring or automated renewal; cluster certificates forgotten for a year.
-- Servers that omit the intermediate certificate; certificates without SAN; wildcard certificates copied everywhere (large blast radius).
-- Private keys world-readable, committed to Git, or shared across environments.
-- Trusting a private root only on some nodes/images/runtimes.
-- TLS termination everywhere without a plan for mTLS, idle timeouts and buffering of streaming responses.
-- Ignoring clock synchronisation.
-- Treating "HTTPS" as proof of a trustworthy site or encryption as authentication.
-- Leaving old protocol versions and weak ciphers enabled for convenience.
+The first mistake is turning off verification. Teams add `-k`, `verify=False` or `InsecureSkipVerify` to make an error go away, then leave it in production. Another is treating HTTPS as proof of a trustworthy site, or treating encryption as authentication.
+
+Expiry is the next group. If you have no expiry monitoring or automated renewal, cluster certificates are forgotten for a year. Servers that omit the intermediate certificate break many clients, and certificates without a SAN fail name checks. Wildcard certificates copied everywhere have a large blast radius.
+
+Keys and trust come next. Private keys that are world-readable, committed to Git, or shared across environments are a serious risk. A private root trusted on only some nodes, images or runtimes causes errors that appear in some places and not others.
+
+Finally, protocol and operations choices matter. Terminating TLS everywhere without a plan for mTLS, idle timeouts and buffering of streaming responses causes trouble. So does ignoring clock synchronisation, or leaving old protocol versions and weak ciphers enabled for convenience.
+
+Use this list as a checklist for your own certificate setup.
 
 ## 9. Interview angles
 
-- "What happens in a TLS handshake? How is TLS 1.3 different from 1.2?"
-- "How does a client decide to trust a server certificate?" (Chain, trust store, SAN, validity, revocation.)
-- "What is the difference between a CA, an intermediate and a leaf; why keep the root offline?"
-- "What is SNI/ALPN/mTLS/forward secrecy?"
-- "A service works by IP but fails by name with TLS errors (or vice versa). Why?" (SAN, SNI, default cert.)
-- "Your cluster's API server certificate expired. What happens and how do you recover and prevent it?"
-- "How would you issue and rotate certificates for thousands of pods?" (cert-manager, mesh CA, SPIFFE, short lifetimes.)
-- "HTTP/1.1 vs HTTP/2 vs HTTP/3: what changes and what are the trade-offs?"
-- "Why do you get 504s from an inference endpoint on long generations?" (Proxy timeouts, streaming/buffering.)
+These questions come up when the topic is interviewed. Each one points back to a part of this chapter.
+
+- What happens in a TLS handshake, and how is TLS 1.3 different from 1.2?
+- How does a client decide to trust a server certificate? Think about the chain, the trust store, SAN, validity and revocation.
+- What is the difference between a CA, an intermediate and a leaf, and why keep the root offline?
+- What are SNI, ALPN, mTLS and forward secrecy?
+- A service works by IP but fails by name with TLS errors, or the other way round. Why? Think about SAN, SNI and the default certificate.
+- Your cluster's API server certificate expired. What happens, and how do you recover and prevent it?
+- How would you issue and rotate certificates for thousands of pods? Consider cert-manager, a mesh CA, SPIFFE and short lifetimes.
+- What changes between HTTP/1.1, HTTP/2 and HTTP/3, and what are the trade-offs?
+- Why do you get 504s from an inference endpoint on long generations? Think about proxy timeouts and streaming or buffering.
 
 ## Exercises
 
-1. **HTTP Semantics, Status Codes (`401`/`403`/`413`/`429`/`499`/`502`/`503`/`504`), and `HTTP/1.1` vs. `HTTP/2` vs. `HTTP/3`:** (a) Using `classify_http_status_code()` in `code/part02/http_tls_pki.py`, distinguish `401` vs `403`, `413` vs `429` vs `499`, and `502` vs `503` vs `504` on an LLM inference gateway; (b) using `compute_connection_setup_rtts()`, compare the cold-start RTTs before the first HTTP request byte for `HTTP/1.1` or `HTTP/2` over `TCP + TLS 1.2` (`3` RTTs), `TCP + TLS 1.3` (`2` RTTs), and `HTTP/3` over `QUIC` (`1` RTT / `0-RTT` resumption), and explain why connection keep-alive pools must align with load-balancer idle timeouts (`60–350 s`).
-2. **Cryptographic Building Blocks, Forward Secrecy, Web of Trust vs. Hierarchical PKI, and Data-Exhaust Privacy (`CN` Chapter 10):** (a) Explain why TLS combines asymmetric key exchange (`X25519` / `P-256` ECDHE), public-key signatures (`ECDSA` / `Ed25519` / `RSA`), and symmetric **AEAD** ciphers (`AES-GCM`, `ChaCha20-Poly1305`), and explain how **forward secrecy** protects recorded sessions if a server's private key is stolen later; (b) contrast a decentralized *Web of Trust* with a **Hierarchical CA PKI**, and explain what metadata ("data exhaust") TLS still leaks and how ECH, MAC randomization, and onion routing mitigate it.
-3. **The TLS 1.3 1-RTT Handshake, `SNI`, `ALPN`, and `0-RTT` Replay Risk:** Trace the messages of a TLS 1.3 handshake (`ClientHello` -> `ServerHello` -> encrypted `EncryptedExtensions`, `Certificate`, `CertificateVerify`, `Finished`), state five improvements TLS 1.3 makes over TLS 1.2, and explain why `0-RTT` early data must only be used for idempotent requests.
-4. **X.509 Certificate Validation, `SAN` Wildcards, Missing Intermediates, and Trust Stores:** (a) Using `match_san_dns_pattern()` and `validate_x509_leaf_certificate()`, determine whether a certificate with `SAN = DNS:*.lab.internal` matches `api.lab.internal`, `a.b.lab.internal`, or `lab.internal`; (b) why does omitting the **Intermediate CA** from the server's TLS configuration cause `curl`, Python, and Go clients to fail with `unable to get local issuer certificate` even though Chrome/Firefox succeed?
-5. **`curl` and `openssl s_client` / `x509` Diagnostics:** Write the exact commands to: (a) test backend `10.0.0.5:443` directly with `curl` while sending `SNI` and `Host: api.example.com` without modifying `/etc/hosts` or using `-k`; (b) inspect the full certificate chain presented by `api.example.com:443` with `openssl s_client`; and (c) fail in a monitoring script if `cert.pem` expires within `30` days (`2,592,000` seconds).
-6. **PKI in Kubernetes and AI Platforms (`kubeadm`, `cert-manager`, Containerd Private CAs, and mTLS):** Describe how to manage and monitor: (a) Kubernetes control-plane certificates in `/etc/kubernetes/pki` (`kubeadm certs check-expiration`), (b) automated Ingress and internal certificates with **`cert-manager`** (`HTTP-01` vs `DNS-01` ACME challenges), (c) private container registry CA trust in `containerd` (`/etc/containerd/certs.d/<registry>/hosts.toml`), and (d) service-to-service **mTLS** (`SPIFFE` identities and `chrony` clock-skew prevention).
+1. If you run an LLM inference gateway, start with status codes and protocol versions. Using `classify_http_status_code()` in `code/part02/http_tls_pki.py`, tell apart `401` from `403`, `413` from `429` from `499`, and `502` from `503` from `504`. Then use `compute_connection_setup_rtts()` to compare the cold-start RTTs before the first HTTP request byte. Cover HTTP/1.1 or HTTP/2 over `TCP + TLS 1.2` (`3` RTTs), over `TCP + TLS 1.3` (`2` RTTs), and HTTP/3 over `QUIC` (`1` RTT, or `0-RTT` resumption). Finally, explain why connection keep-alive pools must align with load-balancer idle timeouts (`60–350 s`).
+2. Work through cryptographic building blocks, forward secrecy, web of trust versus hierarchical PKI, and data-exhaust privacy, using chapter 10 of Computer Networking Problems and Solutions as the reference. First, explain why TLS combines asymmetric key exchange (`X25519` or `P-256` ECDHE), public-key signatures (`ECDSA`, `Ed25519` or `RSA`) and symmetric AEAD ciphers (`AES-GCM` or `ChaCha20-Poly1305`). Then explain how forward secrecy protects recorded sessions if a server's private key is stolen later. Next, contrast a decentralized Web of Trust with a hierarchical CA PKI. Finally, explain what metadata, or data exhaust, TLS still leaks, and how ECH, MAC randomization and onion routing mitigate it.
+3. Trace the messages of a TLS 1.3 handshake, from `ClientHello` through `ServerHello`, then the encrypted `EncryptedExtensions`, `Certificate`, `CertificateVerify` and `Finished`. Along the way, note where SNI and ALPN fit. Then state five improvements that TLS 1.3 makes over TLS 1.2. Finally, explain why `0-RTT` early data must only be used for idempotent requests.
+4. Using `match_san_dns_pattern()` and `validate_x509_leaf_certificate()`, decide whether a certificate with `SAN = DNS:*.lab.internal` matches `api.lab.internal`, `a.b.lab.internal` or `lab.internal`. Then explain why omitting the Intermediate CA from the server's TLS configuration makes `curl`, Python and Go fail with `unable to get local issuer certificate`, while Chrome and Firefox succeed.
+5. Write the exact commands for three tasks, and you can run each one from a shell. First, test the backend `10.0.0.5:443` directly with `curl`, sending SNI and `Host: api.example.com`, without editing `/etc/hosts` and without `-k`. Second, use `openssl s_client` to inspect the full certificate chain that `api.example.com:443` presents. Third, write a monitoring check that fails if `cert.pem` expires within `30` days (`2,592,000` seconds).
+6. Describe how you would manage and monitor PKI on Kubernetes and in AI platforms, covering four areas. First, the control-plane certificates in `/etc/kubernetes/pki`, checked with `kubeadm certs check-expiration`. Second, automated Ingress and internal certificates with cert-manager, comparing `HTTP-01` and `DNS-01` ACME challenges. Third, trust for a private container registry in containerd, through `/etc/containerd/certs.d/<registry>/hosts.toml`. Fourth, service-to-service mTLS, covering SPIFFE identities and preventing clock skew with `chrony`.
 
 ## Checkpoint questions (20)
 
 <details>
-<summary>1. Which HTTP methods are idempotent, and what is the difference between HTTP status codes `401` and `403`, and among `502`, `503`, and `504`?</summary>
+<summary>1. Which HTTP methods are idempotent, how do `401` and `403` differ, and how do `502`, `503` and `504` differ?</summary>
 
-`GET`, `HEAD`, `PUT`, `DELETE`, and `OPTIONS` are **idempotent** (repeating the identical request has the same intended state effect as sending it once), whereas `POST` is **not idempotent**. For status codes: **`401 Unauthorized`** means **unauthenticated** (missing or invalid credentials/token); **`403 Forbidden`** means **authenticated, but unauthorized** by access policy. At a reverse proxy or load balancer: **`502 Bad Gateway`** means the upstream server reset the connection or returned an invalid response; **`503 Service Unavailable`** means no healthy upstream endpoints are available in the pool; and **`504 Gateway Timeout`** means the upstream server (e.g., a slow LLM inference call) did not respond before the proxy's read timeout expired.
+`GET`, `HEAD`, `PUT`, `DELETE` and `OPTIONS` are idempotent. If you repeat an identical request, its intended effect on state is the same as sending it once. `POST` is not idempotent. For status codes, `401 Unauthorized` means the caller is unauthenticated, so the credentials or token are missing or invalid. `403 Forbidden` means the caller is authenticated but not allowed by the access policy. At a reverse proxy or load balancer, `502 Bad Gateway` means the upstream server reset the connection or sent an invalid response. `503 Service Unavailable` means no healthy upstream endpoint is in the pool. `504 Gateway Timeout` means the upstream server, such as a slow LLM inference call, did not respond before the proxy's read timeout expired.
 </details>
 
 <details>
 <summary>2. Compare `HTTP/1.1`, `HTTP/2` (`RFC 9113`), and `HTTP/3` (`RFC 9114`).</summary>
 
-- **`HTTP/1.1`**: text-based framing over TCP; supports `keep-alive` connection reuse, `Host:` virtual hosting, and chunked streaming, but allows only **one request in flight per TCP connection** in practice (HTTP-layer head-of-line blocking).\n- **`HTTP/2`**: binary framing over a single TCP + TLS connection (`ALPN: h2`, used by **gRPC**); multiplexes many concurrent request/response **streams** with `HPACK` header compression and per-stream flow control, but a single lost TCP packet stalls **all** streams on that connection (**TCP-level head-of-line blocking**).\n- **`HTTP/3`**: runs over **QUIC (UDP + built-in TLS 1.3)** (`ALPN: h3`), providing per-stream loss recovery without cross-stream head-of-line blocking and `1-RTT` / `0-RTT` connection setup.
+- `HTTP/1.1`: text-based framing over TCP. It supports keep-alive connection reuse, `Host:` virtual hosting and chunked streaming. In practice, though, it allows only one request in flight per TCP connection, which is HTTP-layer head-of-line blocking.
+- `HTTP/2`: binary framing over a single TCP and TLS connection (`ALPN: h2`), used by gRPC. It multiplexes many concurrent request and response streams, with `HPACK` header compression and per-stream flow control. A single lost TCP packet still stalls all streams on that connection, which is TCP-level head-of-line blocking.
+- `HTTP/3`: runs over QUIC, which uses UDP with built-in TLS 1.3 (`ALPN: h3`). Each stream recovers from loss on its own, so there is no cross-stream head-of-line blocking. Connection setup takes `1-RTT` or `0-RTT`.
 </details>
 
 <details>
 <summary>3. Why do long-lived HTTP/gRPC connection pools occasionally fail with `Connection reset by peer` on the first request after an idle gap, and how do you fix it?</summary>
 
-If a reverse proxy, cloud load balancer, or NAT gateway has an **idle timeout** (e.g., `60 s`) that is **shorter** than the client connection pool's idle keep-alive lifetime (e.g., `120 s`), the middlebox closes or drops the idle connection state while the client still thinks the socket in its pool is open; the client's next write triggers a `RST`. Always configure the server/LB `keepalive_timeout` **longer** than the client pool's max idle time (and enable TCP/HTTP2 keepalive pings).
+The cause is an idle timeout on a middlebox. A reverse proxy, cloud load balancer or NAT gateway may have an idle timeout, such as `60 s`, that is shorter than the client pool's keep-alive lifetime, such as `120 s`. The middlebox then closes or drops the idle connection, while the client still believes the socket in its pool is open. Then your client's next write triggers a `RST`. To fix it, you set the server or load balancer `keepalive_timeout` longer than the client pool's maximum idle time, and enable TCP or HTTP/2 keepalive pings.
 </details>
 
 <details>
-<summary>4. What four security properties does transport security address (`CN` Chapter 10), and why does TLS combine public-key and symmetric cryptography?</summary>
+<summary>4. What four security properties does transport security address in chapter 10 of Computer Networking Problems and Solutions, and why does TLS combine public-key and symmetric cryptography?</summary>
 
-(1) **Confidentiality** (preventing eavesdroppers from reading data), (2) **Integrity** (proving data was not altered in transit), (3) **Authentication** (proving the peer's identity to prevent Man-in-the-Middle attacks), and (4) **Privacy from traffic analysis** (limiting metadata / "data exhaust"). Public-key (asymmetric) algorithms solve key exchange and identity verification over an untrusted network but are computationally expensive; symmetric **AEAD** ciphers (`AES-GCM`, `ChaCha20-Poly1305`) are orders of magnitude faster (especially with CPU `AES-NI` instructions) and encrypt the bulk session data.
+Transport security addresses four properties. Confidentiality stops eavesdroppers from reading data. Integrity proves that data was not altered in transit. Authentication proves the peer's identity, which prevents man-in-the-middle attacks. Privacy from traffic analysis limits metadata, or data exhaust. Public-key algorithms solve key exchange and identity checks over an untrusted network, but they are expensive to compute. Symmetric AEAD ciphers, such as `AES-GCM` and `ChaCha20-Poly1305`, are orders of magnitude faster, especially with the `AES-NI` instructions on a CPU. They encrypt the bulk of the session data.
 </details>
 
 <details>
 <summary>5. What is Forward Secrecy (PFS), how is it achieved in TLS, and why was static-RSA key exchange removed in TLS 1.3?</summary>
 
-**Forward Secrecy** guarantees that even if a server's long-term private certificate key is stolen years later, an attacker who recorded past encrypted traffic **cannot decrypt those past sessions**. It is achieved by negotiating a fresh, per-session shared secret using **ephemeral Diffie-Hellman (`ECDHE`**, such as `X25519` or `P-256`) and destroying the ephemeral private keys as soon as the session ends. Legacy static-RSA key transport (where the client encrypted the pre-master secret directly with the server's long-term RSA public key) lacked forward secrecy and was removed completely in TLS 1.3.
+Forward secrecy guarantees that even if a server's long-term private key is stolen years later, an attacker who recorded past encrypted traffic still cannot decrypt those sessions. TLS achieves this by agreeing a fresh shared secret for each session, using ephemeral Diffie-Hellman (`ECDHE`) with curves such as `X25519` or `P-256`. The ephemeral private keys are destroyed as soon as the session ends. Static-RSA key transport lacked forward secrecy. In it, the client encrypted the pre-master secret directly with the server's long-term RSA public key. TLS 1.3 removed it completely.
 </details>
 
 <details>
 <summary>6. What is an AEAD cipher, and why is an unkeyed cryptographic hash (`SHA-256`) alone insufficient to authenticate a message?</summary>
 
-An **AEAD** (*Authenticated Encryption with Associated Data*) cipher—such as **`AES-128-GCM`**, **`AES-256-GCM`**, or **`ChaCha20-Poly1305`**—encrypts the payload and computes a keyed authentication tag in a single integrated operation, providing both confidentiality and integrity. An unkeyed hash (`SHA-256`) only detects accidental corruption; an active attacker who modifies a message in transit can trivially recompute a new valid `SHA-256` hash unless a keyed **MAC (`HMAC`)** or **digital signature** is used.
+An AEAD (Authenticated Encryption with Associated Data) cipher, such as `AES-128-GCM`, `AES-256-GCM` or `ChaCha20-Poly1305`, encrypts the payload and computes a keyed authentication tag in one operation. That gives both confidentiality and integrity. An unkeyed hash such as `SHA-256` only detects accidental corruption. An active attacker who changes a message in transit can trivially recompute a new valid `SHA-256` hash, unless the message also uses a keyed MAC (`HMAC`) or a digital signature.
 </details>
 
 <details>
 <summary>7. Trace the 1-RTT TLS 1.3 handshake (`RFC 8446`) and list five ways it improves upon TLS 1.2 (`RFC 5246`).</summary>
 
-In TLS 1.3, `ClientHello` immediately carries the client's supported cipher suites, `SNI`, `ALPN`, and its **ephemeral `key_share` (`X25519`)**; the server responds with `ServerHello` + its `key_share`, allowing both sides to derive handshake encryption keys in **1 RTT**. Five improvements over TLS 1.2: (1) **1 RTT** instead of 2 RTTs, (2) **mandatory Forward Secrecy (`ECDHE`)**, (3) **only modern AEAD ciphers** (removing CBC, RC4, 3DES, MD5, SHA-1, compression, and renegotiation), (4) **all handshake messages after `ServerHello` (including the server's `Certificate`) are encrypted**, and (5) optional **`0-RTT` resumption**.
+In TLS 1.3, `ClientHello` carries the supported cipher suites, SNI, ALPN and an ephemeral `key_share` using `X25519` right away. The server replies with `ServerHello` and its own `key_share`. Both sides can then derive handshake keys in 1 RTT. Here are five improvements over TLS 1.2. The first is 1 RTT instead of two. The second is mandatory forward secrecy with `ECDHE`. The third is that only modern AEAD ciphers remain, which removes CBC, RC4, 3DES, MD5, SHA-1, compression and renegotiation. The fourth is that every handshake message after `ServerHello`, including the server's `Certificate`, is encrypted. The fifth is optional `0-RTT` resumption.
 </details>
 
 <details>
 <summary>8. What is the security risk of TLS 1.3 `0-RTT` early data, and when is it safe to use?</summary>
 
-In `0-RTT` resumption, the client sends application data in its very first packet alongside `ClientHello` encrypted under a pre-shared resumption key (`PSK`). If a network middlebox or attacker replays that packet, the server could execute the request twice (**replay attack**); therefore `0-RTT` is safe **only for idempotent requests** (`GET`) with no state-mutating side effects.
+With `0-RTT` resumption, the client sends application data in its very first packet, alongside `ClientHello`. That data is encrypted under a pre-shared resumption key (`PSK`). If you allow a network middlebox or an attacker to replay that packet, the server could run the request twice. This is a replay attack. So `0-RTT` is safe only for idempotent requests, such as `GET`, that have no state-changing side effects.
 </details>
 
 <details>
-<summary>9. What do `SNI` (*Server Name Indication*) and `ALPN` (*Application-Layer Protocol Negotiation*) do in `ClientHello`?</summary>
+<summary>9. What do SNI (*Server Name Indication*) and ALPN (*Application-Layer Protocol Negotiation*) do in `ClientHello`?</summary>
 
-**`SNI`** sends the target DNS hostname (e.g., `api.example.com`) inside `ClientHello` so an ingress controller, load balancer, or server hosting multiple domains on a single IP knows which X.509 certificate to present (and where to route TLS passthrough traffic). **`ALPN`** negotiates the inner application protocol (`h2` for HTTP/2 vs `http/1.1`) during the TLS handshake without an extra round trip.
+SNI sends the target DNS hostname, such as `api.example.com`, inside `ClientHello`. An ingress controller, load balancer or server hosting several domains on one IP address uses it to choose the X.509 certificate to present. It also decides where TLS passthrough traffic goes. ALPN negotiates the inner application protocol during the TLS handshake, such as `h2` for HTTP/2 or `http/1.1`, without an extra round trip.
 </details>
 
 <details>
 <summary>10. What is Mutual TLS (`mTLS`), and how is it used in Kubernetes and service meshes?</summary>
 
-In standard TLS, only the server presents a certificate (`extendedKeyUsage = serverAuth`). In **Mutual TLS (`mTLS`)**, the server sends a `CertificateRequest` during the handshake and the **client also presents an X.509 certificate** (`extendedKeyUsage = clientAuth`) and signs the transcript (`CertificateVerify`). It is used by `kubelet` `<->` `kube-apiserver`, `etcd` peers, and service meshes (`Istio`, `Linkerd`, `Cilium` using short-lived **SPIFFE** workload identities) for cryptographic zero-trust service authentication.
+In standard TLS, only the server presents a certificate, with `extendedKeyUsage = serverAuth`. In mutual TLS, the server also sends a `CertificateRequest` during the handshake. The client then presents its own X.509 certificate, with `extendedKeyUsage = clientAuth`, and signs the transcript with `CertificateVerify`. Kubernetes uses this between the kubelet and the kube-apiserver, and between etcd peers. Service meshes such as Istio, Linkerd and Cilium use short-lived SPIFFE workload identities for zero-trust service authentication.
 </details>
 
 <details>
 <summary>11. Contrast the Root CA, Intermediate CA, and Leaf Certificate in a Hierarchical PKI, and explain why the Root CA must stay offline.</summary>
 
-- **Root CA**: self-signed trust anchor stored inside client **trust stores** (`/etc/ssl/certs/ca-certificates.crt`). Kept **completely offline** in an air-gapped HSM because compromising a Root CA compromises every system that trusts it and requires replacing trust stores across every device.
-- **Intermediate CA**: signed by the Root CA (`basicConstraints = critical, CA:TRUE`); stays online in Vault/step-ca/CA infrastructure to sign day-to-day leaf certificates and can be revoked if compromised.
-- **Leaf (end-entity) certificate**: signed by an Intermediate CA (`basicConstraints = CA:FALSE`), deployed on the server/client with its private key.
+- The root CA is a self-signed trust anchor stored in client trust stores, such as `/etc/ssl/certs/ca-certificates.crt`. It is kept completely offline in an air-gapped HSM. If a root CA is compromised, every system that trusts it is compromised too, and every trust store must be replaced.
+- An intermediate CA is signed by the root, with `basicConstraints = critical, CA:TRUE`. It stays online, in Vault, step-ca or CA infrastructure, to sign day-to-day leaf certificates. It can be revoked if it is compromised.
+- A leaf, or end-entity, certificate is signed by an intermediate CA, with `basicConstraints = CA:FALSE`. It is deployed on a server or client together with its private key.
 </details>
 
 <details>
 <summary>12. Why do modern TLS clients ignore the Subject `CN` (*Common Name*), and what are the RFC 6125 rules for `SAN` (*Subject Alternative Name*) wildcards?</summary>
 
-Per RFC 6125 and CA/Browser Forum baseline requirements, TLS clients validate the requested hostname or IP address **exclusively against the `Subject Alternative Name` (`SAN`: `DNS:...`, `IP:...`) extension**. A wildcard `SAN` such as **`*.lab.internal`** matches **only a single leftmost DNS label** (`api.lab.internal`), and **never** matches multiple labels (`a.b.lab.internal`) or the bare zone apex (`lab.internal`).
+Per RFC 6125 and the CA/Browser Forum baseline requirements, TLS clients check the hostname or IP address exclusively against the Subject Alternative Name (SAN) extension, which holds `DNS:...` and `IP:...` entries. The CN is not used for this. A wildcard SAN, for example `*.lab.internal`, matches only one leftmost DNS label, so it matches `api.lab.internal`. It never matches several labels, such as `a.b.lab.internal`, or the bare zone apex, `lab.internal`.
 </details>
 
 <details>
 <summary>13. Which certificates must a server send during the TLS handshake, and why does omitting the Intermediate CA break `curl` and Go while working in Chrome?</summary>
 
-The server must send its **leaf certificate followed by all required Intermediate CA certificates** (omitting the Root CA, which the client already has in its trust store). Desktop browsers work around a missing intermediate by downloading it on the fly from the leaf certificate's `Authority Information Access` (`AIA`) URL or browser cache, whereas CLI/API clients (`curl`, Go, Python, Java, `containerd`) do not perform `AIA` chasing and fail immediately with **`unable to get local issuer certificate`** / **`x509: certificate signed by unknown authority`**.
+The server must send its leaf certificate, followed by all the required intermediate CA certificates. The root CA is omitted, because the client already holds it in its trust store. Desktop browsers work around a missing intermediate. They download it from the Authority Information Access (AIA) URL in the leaf certificate, or they use their cache. CLI and API clients such as `curl`, Go, Python, Java and `containerd` do not chase AIA. They fail at once with `unable to get local issuer certificate` or `x509: certificate signed by unknown authority`.
 </details>
 
 <details>
 <summary>14. How does the `ACME` protocol (`RFC 8555`) automate certificate issuance, and when must you use `DNS-01` instead of `HTTP-01`?</summary>
 
-An ACME client (`cert-manager`, `certbot`, `Caddy`) generates a keypair and CSR, requests a certificate from the CA (such as Let's Encrypt, `90`-day lifetime), and proves domain control by completing an automated challenge. **`HTTP-01`** serves a token file at `http://<domain>/.well-known/acme-challenge/<token>` (requires port 80 reachable from the CA and cannot issue wildcards). **`DNS-01`** creates a signed `_acme-challenge.<domain>` `TXT` record via DNS API—required for **wildcard certificates (`*.example.com`)** and for **internal/private clusters** not exposed to the public Internet.
+An ACME client, such as cert-manager, certbot or Caddy, generates a keypair and a CSR. It then asks the CA, such as Let's Encrypt with its 90-day lifetime, for a certificate. To prove domain control, the client completes an automated challenge. `HTTP-01` serves a token file at `http://<domain>/.well-known/acme-challenge/<token>`. It needs port 80 reachable from the CA, and it cannot issue wildcards. `DNS-01` creates a signed `_acme-challenge.<domain>` `TXT` record through a DNS API. You must use it for wildcard certificates, such as `*.example.com`, and for internal or private clusters that are not exposed to the public Internet.
 </details>
 
 <details>
 <summary>15. Compare `CRL`s, `OCSP`, `OCSP Stapling`, and Short-Lived Certificates for handling certificate revocation.</summary>
 
-**`CRL`s** (*Certificate Revocation Lists*) grow large to download; live **`OCSP`** queries add handshake latency, leak which site the client is visiting to the CA, and fail open if the OCSP responder is down. **`OCSP Stapling`** has the **server** periodically fetch a signed timestamped OCSP response from the CA and attach ("staple") it directly inside the TLS handshake. Modern infrastructure increasingly favors **short-lived automated certificates** (days or hours via `cert-manager` / SPIFFE) so compromised credentials expire naturally without relying on revocation checks.
+CRLs (Certificate Revocation Lists) grow large to download. Live OCSP queries add handshake latency. They also reveal to the CA which site the client visits, and they fail open if the OCSP responder is down. For example, with OCSP stapling, the server periodically fetches a signed, timestamped OCSP response from the CA, and attaches it to the handshake. Modern infrastructure increasingly uses short-lived automated certificates, lasting days or hours, through cert-manager or SPIFFE. A compromised credential then expires on its own, without relying on revocation checks.
 </details>
 
 <details>
 <summary>16. How do you test a specific backend server IP (`10.0.0.5`) with `curl` while still sending the right `SNI` and verifying the `api.example.com` certificate?</summary>
 
-Run **`curl --resolve api.example.com:443:10.0.0.5 https://api.example.com/`**. Unlike `curl https://10.0.0.5/ -H 'Host: api.example.com'` (which omits the DNS name from TLS `SNI` and fails SAN verification unless `-k` is used), `--resolve` overrides only the IP lookup while keeping `SNI`, `SAN` verification, and the HTTP `Host:` header set to `api.example.com`.
+Run `curl --resolve api.example.com:443:10.0.0.5 https://api.example.com/`. If you compare that with `curl https://10.0.0.5/ -H 'Host: api.example.com'`. The second form omits the DNS name from the TLS SNI, so it fails SAN verification unless you add `-k`. `--resolve` overrides only the IP lookup. It keeps SNI, SAN verification and the HTTP `Host:` header set to `api.example.com`.
 </details>
 
 <details>
 <summary>17. How do you install a private Root CA on Ubuntu/Debian, RHEL/Rocky, and `containerd` for a private container registry?</summary>
 
-- **Ubuntu/Debian**: copy `ca.crt` to `/usr/local/share/ca-certificates/my-ca.crt` and run `sudo update-ca-certificates`.\n- **RHEL/Rocky**: copy `ca.crt` to `/etc/pki/ca-trust/source/anchors/` and run `sudo update-ca-trust`.\n- **`containerd`**: configure `/etc/containerd/certs.d/<registry-host>/hosts.toml` pointing `ca = "/path/to/ca.crt"` (and remember that distroless/minimal containers or Python `certifi` / Java `cacerts` bundles inside pods may need the CA mounted via a ConfigMap/Secret).
+- Ubuntu or Debian: copy `ca.crt` to `/usr/local/share/ca-certificates/my-ca.crt`, then run `sudo update-ca-certificates`.
+- RHEL or Rocky: copy `ca.crt` to `/etc/pki/ca-trust/source/anchors/`, then run `sudo update-ca-trust`.
+- `containerd`: configure `/etc/containerd/certs.d/<registry-host>/hosts.toml` with `ca = "/path/to/ca.crt"`. Minimal containers, such as distroless images, and Python `certifi` or Java `cacerts` bundles inside pods may need the CA mounted through a ConfigMap or Secret.
 </details>
 
 <details>
 <summary>18. Where do `kubeadm` Kubernetes cluster certificates live, when do they expire, and how do you check and renew them?</summary>
 
-`kubeadm` stores cluster CAs (`ca.crt`, `etcd/ca.crt`, `front-proxy-ca.crt`, valid for 10 years) and leaf component certificates (`apiserver.crt`, `apiserver-kubelet-client.crt`, `etcd/server.crt`, valid for **1 year**) in **`/etc/kubernetes/pki/`**. Check expiration dates with **`sudo kubeadm certs check-expiration`** and renew them with **`sudo kubeadm certs renew all`** (followed by restarting the control-plane static pods).
+`kubeadm` stores its cluster CAs, `ca.crt`, `etcd/ca.crt` and `front-proxy-ca.crt`, which are valid for 10 years. It also stores leaf component certificates, such as `apiserver.crt`, `apiserver-kubelet-client.crt` and `etcd/server.crt`, which are valid for **1 year**. All of them live in `/etc/kubernetes/pki/`. You check expiration dates with `sudo kubeadm certs check-expiration`. You renew them with `sudo kubeadm certs renew all`, then restart the control-plane static pods.
 </details>
 
 <details>
-<summary>19. Compare Edge TLS Termination, TLS Re-Encryption, and TLS Passthrough on a Kubernetes Ingress / Gateway (`PK` Chapter 6).</summary>
+<summary>19. Compare edge TLS termination, TLS re-encryption, and TLS passthrough on a Kubernetes Ingress or Gateway, according to chapter 6 of Production Kubernetes.</summary>
 
-- **Edge Termination**: the Ingress/Gateway decrypts TLS at the cluster edge and forwards plain HTTP to the Pod over the CNI network (simplest, offloads TLS from the app).\n- **Re-Encryption**: the Ingress terminates external TLS, inspects L7 HTTP headers for routing, and opens a new internal TLS/mTLS connection to the Pod.\n- **TLS Passthrough**: the Ingress/LB inspects only the unencrypted **`SNI` hostname** in `ClientHello` and forwards the raw TCP/TLS stream directly to the Pod, which terminates TLS itself (required when the backend itself must verify end-to-end client mTLS certificates).
+- Edge termination: the Ingress or Gateway decrypts TLS at the cluster edge, then forwards plain HTTP to the pod over the CNI network. It is the simplest option, and it takes the TLS work off the application.
+- Re-encryption: the Ingress terminates the external TLS, reads the L7 HTTP headers to route, and opens a new internal TLS or mTLS connection to the pod.
+- Passthrough: the Ingress or load balancer reads only the unencrypted SNI hostname in `ClientHello`. It forwards the raw TCP and TLS stream to the pod, which terminates TLS itself. You need this when the backend must verify end-to-end client mTLS certificates.
 </details>
 
 <details>
 <summary>20. What proxy settings must be tuned when serving streaming LLM token responses (`Server-Sent Events` / chunked HTTP or gRPC) behind an Ingress/reverse proxy?</summary>
 
-Disable response buffering (`proxy_buffering off;` in nginx or `X-Accel-Buffering: no`) so generated tokens are flushed to the client immediately rather than held until a buffer fills; raise upstream read/send timeouts (`proxy_read_timeout 600s;`) above the longest multi-minute reasoning generation so the proxy does not abort with **`504 Gateway Timeout`**; and enable HTTP/2 / gRPC keepalive pings.
+You turn off response buffering, so generated tokens reach the client at once instead of waiting for a buffer to fill. In nginx, set `proxy_buffering off;`, or send `X-Accel-Buffering: no`. Raise the upstream read and send timeouts above the longest multi-minute reasoning generation, for example with `proxy_read_timeout 600s;`. Otherwise the proxy aborts with `504 Gateway Timeout`. Last, turn on HTTP/2 or gRPC keepalive pings.
 </details>
 
 ## Sources and review notes

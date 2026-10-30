@@ -22,26 +22,37 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Much AI work runs in public clouds or hybrid between cloud and on-prem GPU clusters: training bursts on rented H100/H200/B200 nodes, inference endpoints in several regions, datasets in object storage, checkpoints replicated across sites, managed Kubernetes (GKE, EKS, AKS) hosting the serving layer, and private connectivity to corporate data centres. The network design decisions in the cloud are different from on-prem: you do not choose switches, but you do choose address plans, routing, firewalls, peering, NAT, load balancers, private access paths and connectivity to on-premises, and these decisions determine cost (egress charges can dominate), security, latency, availability and whether an 8-GPU node can actually use its high-bandwidth NICs for collectives. This chapter covers cloud computing concepts and the technical and business trade-offs a network engineer must understand, a compact AWS and Azure primer, GCP networking in depth (the user's lab platform), hybrid connectivity, Kubernetes networking in the cloud (GKE), and the specifics of building GPU clusters on cloud networks.
+Suppose a training run on rented H100 nodes is slower than planned, and the bill is higher than the team expected. Both problems can trace back to network decisions. Much AI work now runs in public clouds, or in a mix of cloud and on-prem GPU clusters.
+
+A typical setup looks like this. Training bursts run on rented H100/H200/B200 nodes, inference endpoints sit in several regions, and datasets live in object storage. Checkpoints are replicated across sites, managed Kubernetes (GKE, EKS, AKS) hosts the serving layer, and private links connect everything to corporate data centres.
+
+Network work in the cloud differs from on-prem. You do not choose switches. You do choose address plans, routing, firewalls, peering, NAT, load balancers, private access paths and connectivity to on-premises. Those choices set the cost, and egress charges can dominate that cost. They also set security, latency and availability, and they decide whether an 8-GPU node can actually use its high-bandwidth NICs for collectives.
+
+This chapter covers cloud computing concepts and the technical and business trade-offs a network engineer must understand. Next comes a compact AWS and Azure primer, then GCP networking in depth, since GCP is your lab platform. The chapter closes with hybrid connectivity, Kubernetes networking in the cloud (GKE), and the specifics of building GPU clusters on cloud networks.
 
 ## Prerequisites and outcomes
 
-You should know IP addressing (2.4), routing and BGP basics (2.5, 2.15), NAT and DNS (2.8, 2.9), load balancing (2.20), security basics (2.21) and container networking (2.25).
+This chapter builds on earlier networking work. Review IP addressing (chapter 2.4), routing and BGP basics (chapters 2.5 and 2.15), NAT and DNS (chapters 2.8 and 2.9), load balancing (chapter 2.20), security basics (chapter 2.21) and container networking (chapter 2.25) first. If a term is unfamiliar to you, go back to those chapters before you continue. You will use every one of them here.
 
-After this chapter you can:
+By the end of this chapter, you should be able to:
 
-- Explain IaaS/PaaS/SaaS/FaaS, public/private/hybrid/multicloud, and the cloud's API-driven consumption model.
-- Evaluate business drivers (CAPEX to OPEX, agility, elasticity) and trade-offs (infrastructure design still needed, expertise still needed, egress and connectivity costs, specialised hardware, feature creep, lock-in, process change).
-- Describe the main technical challenges: latency, populating remote storage, data gravity, choosing among paths to the cloud, securing data in transit, managing secure connections, multitenancy and RBAC, monitoring.
-- Map the AWS VPC building blocks (VPC, subnets, route tables, ENI, EIP, security groups, NACLs, IGW, NAT gateway, ELB, EKS networking) and Azure equivalents.
-- Design a GCP network: global VPC with regional subnets, custom mode, secondary ranges for GKE, routes, firewall rules and policies, Cloud Router/BGP, Cloud NAT, Cloud VPN and Interconnect, VPC peering, Shared VPC, Private Google Access, Private Service Connect, DNS, load balancer types, network tiers.
-- Explain GKE networking (VPC-native clusters, alias IPs, pod and service ranges, Dataplane V2/Cilium, network policy, Services and Ingress/Gateway, NodeLocal DNS) and its pitfalls.
-- Design networking for GPU clusters in the cloud: multi-NIC GPU VMs, cluster placement, MTU, GPUDirect over TCP/RDMA offerings, EFA and InfiniBand on other clouds, hybrid connectivity to on-prem, data transfer paths and egress cost control.
-- Operate and troubleshoot cloud networks: flow logs, connectivity tests, firewall logs, routes, quotas.
+- Explain IaaS/PaaS/SaaS/FaaS. Explain public/private/hybrid/multicloud deployment. Explain the cloud's API-driven consumption model.
+- Evaluate the business drivers. These are CAPEX to OPEX, agility and elasticity.
+- Weigh the trade-offs. These include infrastructure design, expertise, egress and connectivity costs, specialised hardware, feature creep, lock-in and process change.
+- Describe the main technical challenges. Cover latency, populating remote storage, data gravity, paths to the cloud, securing data in transit, secure connections, multitenancy and RBAC, and monitoring.
+- Map the AWS VPC building blocks to Azure. The blocks are VPC, subnets, route tables, ENI, EIP, security groups, NACLs, IGW, NAT gateway, ELB and EKS networking.
+- Design a GCP network. Use a global VPC with regional subnets and custom mode. Add secondary ranges for GKE, routes, firewall rules and policies. Add Cloud Router/BGP, Cloud NAT, Cloud VPN and Interconnect.
+- Add VPC peering, Shared VPC, Private Google Access and Private Service Connect. Finish with DNS, load balancer types and network tiers.
+- Explain GKE networking and its pitfalls. Cover VPC-native clusters, alias IPs, pod and service ranges, Dataplane V2/Cilium, network policy, Services, Ingress/Gateway and NodeLocal DNS.
+- Design networking for GPU clusters in the cloud. Cover multi-NIC GPU VMs, cluster placement, MTU and GPUDirect over TCP or RDMA offerings.
+- Cover EFA and InfiniBand on other clouds. Plan hybrid connectivity to on-prem, data transfer paths and egress cost control.
+- Operate and troubleshoot cloud networks. Use flow logs, connectivity tests, firewall logs, routes and quotas.
 
 ## 1. Cloud computing concepts
 
-**Cloud** here means virtualised infrastructure or services consumed through **self-service**: a portal or API requests resources, and software fulfils the request automatically. Service models:
+Picture a team that needs a few servers for one week. Instead of ordering hardware, the team asks a portal or an API for them, and software fulfils the request. In this chapter, **cloud** means virtualised infrastructure or services consumed through that kind of self-service.
+
+The service models differ in how much you manage yourself. The less the provider runs for you, the more of the stack you are responsible for.
 
 | Model | You manage | Examples |
 |---|---|---|
@@ -50,64 +61,95 @@ After this chapter you can:
 | **FaaS / serverless** | Functions only; scale to zero; pay per execution | Cloud Functions/Run, Lambda |
 | **SaaS** | Nothing but configuration/use | Workspace, Office365, Salesforce |
 
-The boundaries blur; do not fixate on labels. **Deployment models**: **public cloud** (infrastructure owned by a third party: AWS, Azure, GCP), **private cloud** (cloud software on your hardware: OpenStack, Kubernetes platforms, VMware), **hybrid** (workloads split across private and public with network interconnect), and **multicloud** (more than one public provider). **APIs** are central: cloud resources, including network resources, are created and changed through APIs, usually via infrastructure as code (Terraform, Pulumi, Deployment Manager, CloudFormation), so network engineers need programming and automation skills (chapters 2.28 and 2.29).
+The lines between these models blur, so do not fixate on the labels.
+
+Deployment models describe where the infrastructure lives. A public cloud is infrastructure owned by a third party, such as AWS, Azure or GCP. A private cloud runs cloud software on your own hardware, using OpenStack, Kubernetes platforms or VMware. A hybrid setup splits workloads across private and public clouds, joined by a network interconnect. Multicloud means using more than one public provider.
+
+APIs sit at the centre of all of this. Cloud resources, network resources included, are created and changed through APIs, usually with infrastructure as code such as Terraform, Pulumi, Deployment Manager or CloudFormation. That makes programming and automation part of the network engineer's job. This is where chapters 2.28 and 2.29 come in.
 
 ## 2. Business drivers and trade-offs
 
 ### Drivers
 
-- **CAPEX → OPEX**: instead of buying switches, servers and facilities (capital), you pay for consumption (operating). Perceived benefits include economies of scale of hyperscalers (bulk purchasing, white-box hardware, deep engineering teams) and reduced need for in-house operational skills for commodity layers.
-- **Time to market and agility**: infrastructure in minutes instead of weeks or months; elasticity to follow demand peaks (retail seasons, training runs) rather than permanently over-provisioning for peak, which wastes money in quiet periods and loses business when demand outstrips capacity.
+Renting infrastructure changes where the money goes. Instead of buying switches, servers and facilities, you pay for what you use. That moves spending from CAPEX to OPEX. The benefit is said to come from the economies of scale hyperscalers enjoy: bulk purchasing, white-box hardware and deep engineering teams. A second benefit is that you need fewer in-house operational skills for the commodity layers.
+
+Speed is the other driver. Infrastructure arrives in minutes instead of weeks or months. Elasticity lets you follow demand peaks, such as retail seasons or training runs, rather than permanently over-provisioning for the peak. Permanent over-provisioning wastes money in quiet periods. Under-provisioning loses business when demand outstrips capacity.
 
 ### Trade-offs
 
-**Operational**
+The trade-offs are where teams get surprised, so read this part carefully.
 
-- Moving to the cloud **does not remove the need for infrastructure design**: SLAs imply resiliency (multi-zone, multi-region), capacity sizing, security policy per flow, inter-cloud connections and data replication with routing and possibly address translation. Flipping a light switch needs no knowledge of the wiring behind it, until the lights stop working.
-- **Experts are still required when infrastructure fails**: complex failure modes (asymmetric routing in hybrid paths, peering transitivity, MTU mismatches over VPN) need deep networking skills.
-- **The cost of reaching the cloud** is real: circuits, QoS, landing zones, egress fees, cross-region transfer. Moving petabytes of training data is neither instant nor free.
-- **Specialised hardware may be unavailable or differently packaged**: cloud theory treats resources as generic; workloads relying on specific NICs, RDMA fabrics, large-buffer switches, or particular middleboxes must be adapted or use special instance types.
-- **Feature creep** increases failure risk: every enabled feature is code that interacts with other features; unused-but-available features are not harmless.
+Moving to the cloud does not remove the need for infrastructure design. SLAs still imply resiliency across zones and regions, capacity sizing, a security policy for each flow, inter-cloud connections, and data replication with routing and possibly address translation. Flipping a light switch needs no knowledge of the wiring behind it, until the lights stop working.
 
-**Business**
+Experts are still needed when things break. Complex failures, such as asymmetric routing in hybrid paths, peering transitivity problems or MTU mismatches over VPN, need deep networking skills.
 
-- Applications and operations built for traditional infrastructure often need **redesign** (statelessness, autoscaling, managed services, new CI/CD, observability); "lift and shift" copies the old architecture into rented hardware and keeps its costs without the benefits (a square peg in a round hole).
-- **Goal mismatch with the outsourcer**: your goal is to deliver your product; the provider's is to maximise your consumption at high margin. Providers add proprietary features that increase **vendor lock-in**; consider portability (Kubernetes, Terraform modules, open standards) and exit costs. This is nothing new in networking (vendors have always differentiated delivery models), but cloud deepens it.
-- **Cost surprises**: egress, inter-AZ traffic, NAT gateway processing, load balancer hours, idle GPU reservations, unattached IPs and logs.
+Reaching the cloud costs real money. Circuits, QoS, landing zones, egress fees and cross-region transfer all add up. Moving petabytes of training data is neither instant nor free.
+
+Specialised hardware may be unavailable, or packaged differently. Cloud theory treats resources as generic. Workloads that rely on specific NICs, RDMA fabrics, large-buffer switches or particular middleboxes must be adapted, or they must use special instance types.
+
+Feature creep adds failure risk. Every enabled feature is code that interacts with other features, so an unused feature is not harmless just because nobody calls it.
+
+On the business side, applications built for traditional infrastructure often need redesign. They may need statelessness, autoscaling, managed services, new CI/CD and observability. A lift and shift copies the old architecture onto rented hardware. You keep the old costs without the benefits, which is like forcing a square peg into a round hole.
+
+Your goal and the provider's goal differ. You want to deliver your product. The provider wants to maximise your consumption at a high margin, and it adds proprietary features that deepen vendor lock-in. Weigh portability through Kubernetes, Terraform modules and open standards, along with your exit costs. Vendors have always differentiated their delivery models in networking, and cloud deepens that problem.
+
+Cost surprises come from egress, inter-AZ traffic, NAT gateway processing, load balancer hours, idle GPU reservations, unattached IPs and logs. Watch these from the first day.
 
 ## 3. Technical challenges of cloud networking
 
-1. **Latency**: physics and path. Distance to the nearest region/zone and the path taken (public Internet vs private backbone) affect interactive and chatty workloads; collocate compute with data; use regional/global load balancing and CDNs for users; measure with probes (chapter 2.31).
-2. **Populating remote storage**: bulk transfer into the cloud (initial dataset ingest, replicas, checkpoints) is limited by link capacity, TCP window/BDP (long fat pipes, chapter 2.6), parallelism and egress charges; use parallel transfer tools (gsutil/rclone with many streams, Storage Transfer Service, Transfer Appliance for petabytes), compress/dedupe, schedule off-peak, and keep incremental syncs.
-3. **Data gravity**: data attracts applications; moving large datasets is costly and slow, so compute tends to move to the data, and the cloud holding the data wins future workloads. For AI, place training near the dataset's home region, replicate selectively, and avoid designs that repeatedly pull terabytes across regions or clouds.
-4. **Selecting among multiple paths to the public cloud**: Internet (cheap, variable, with VPN overlay), dedicated private connectivity (Direct Connect, Dedicated/Partner Interconnect, ExpressRoute), cloud exchange fabrics/colocation, SD-WAN; choose by bandwidth, latency, SLA, security, cost, and resilience (two diverse paths, BGP failover, SRLG awareness).
-5. **Security in the cloud**: *protecting data over public transport* (IPsec/WireGuard VPN, TLS, MACsec on dedicated links, HA VPN over Interconnect), *managing secure connections* (key lifecycle, certificates, tunnel monitoring), the **shared responsibility model** (provider secures the cloud; you secure what you put in it: identity, configuration, data), least-privilege IAM, private access paths so traffic to cloud services doesn't traverse the Internet, and firewalling at multiple layers.
-6. **The multitenant cloud**: you share physical hardware with other tenants; isolation is provided by virtualisation and overlays. Understand noisy-neighbour effects (network bandwidth caps per VM, burst limits), tenancy models (sole-tenant nodes), and **role-based access control (RBAC)** on cloud resources (who can change firewall rules, routes, peering), plus organisation policies and guard-rails.
-7. **Monitoring cloud networks**: you don't own the devices, so use provider telemetry (flow logs, firewall logs, connectivity tests, load balancer logs, VPN/Interconnect metrics) plus your own probes and host metrics; integrate into your monitoring platform (chapter 2.31).
+Seven challenges come up again and again in cloud networking. Each one changes how you design, so take them in turn.
+
+1. Latency comes down to physics and path. The distance to the nearest region or zone matters, and so does the route your traffic takes, whether it crosses the public Internet or the provider's private backbone. Both affect interactive and chatty workloads most. Collocate compute with data, use regional or global load balancing and CDNs for users, and measure with probes (chapter 2.31).
+
+2. Populating remote storage means moving bulk data into the cloud. The initial dataset, replicas and checkpoints are limited by link capacity, the TCP window and the bandwidth-delay product (BDP, covered in chapter 2.6 as long fat pipes), parallelism and egress charges. Parallel transfer tools help, such as `gsutil` or `rclone` with many streams, Storage Transfer Service, or Transfer Appliance for petabytes. Compress and deduplicate the data, schedule transfers off-peak, and keep later syncs incremental.
+
+3. Data gravity means data attracts applications. Large datasets are costly and slow to move, so compute tends to move to the data. The cloud that holds the data tends to win future workloads. For AI, place training near the dataset's home region, replicate selectively, and avoid designs that pull terabytes across regions or clouds again and again.
+
+4. Choosing among multiple paths to the public cloud is a trade. The Internet is cheap and variable, and it usually carries a VPN overlay. Dedicated private connectivity comes as Direct Connect, Dedicated or Partner Interconnect, or ExpressRoute. Cloud exchange fabrics, colocation and SD-WAN are further options. Choose by bandwidth, latency, SLA, security, cost and resilience. A good design uses two diverse paths with BGP failover and SRLG awareness, which means knowing which links share a single point of failure.
+
+5. Security in the cloud has several parts. Protecting data over public transport uses IPsec or WireGuard VPNs, TLS, MACsec on dedicated links, and HA VPN over Interconnect. Managing secure connections means handling the key lifecycle, certificates and tunnel monitoring. The shared responsibility model splits the work: the provider secures the cloud, and you secure what you put in it, which means identity, configuration and data. Add least-privilege IAM, private access paths so traffic to cloud services stays off the Internet, and firewalls at several layers.
+
+6. The multitenant cloud means you share physical hardware with other tenants. Virtualisation and overlays provide the isolation, but noisy neighbours still matter. Network bandwidth caps per VM and burst limits can slow you down. Tenancy models, including sole-tenant nodes, are another choice to review. Role-based access control (RBAC) on cloud resources decides who can change firewall rules, routes and peering. Organisation policies and guard-rails add a second layer on top.
+
+7. Monitoring cloud networks is harder because you do not own the devices. You rely on provider telemetry, such as flow logs, firewall logs, connectivity tests, load balancer logs, and VPN or Interconnect metrics. Add your own probes and host metrics, and send everything into your monitoring platform (chapter 2.31).
+
+Decide early which of these seven challenges your workload hits hardest, because that choice shapes the rest of the design.
 
 ## 4. AWS and Azure primer (for comparison)
 
-Even if your platform is GCP, interviews and multi-cloud work require knowing the equivalents.
+Even if your platform is GCP, interviews and multicloud work will ask about AWS and Azure. Learn the equivalents now, so you can read a design from either cloud.
 
 ### AWS
 
-- **Region/Availability Zone (AZ)**: regions are geographic; AZs are isolated data centres within a region. Subnets live in **one AZ**.
-- **VPC**: regional virtual network with an IPv4 CIDR (and optional IPv6); **subnets** (public if routed to an internet gateway, private otherwise).
-- **Route tables**: main and custom; each subnet associates with one; the **local route** (VPC CIDR) is always most specific; routes to IGW, NAT gateway, VPC peering, Transit Gateway, VPN, Direct Connect gateway; gateway route tables for edge association.
-- **Elastic Network Interface (ENI)**: attachment point with primary and secondary private IPs, optional EIP per private IP, security groups, MAC and a source/destination check flag (disable for NAT/routers). **Elastic IPs** for static public addresses (soft limits).
-- **Security groups** (stateful, allow-only, instance/ENI level, can reference other SGs) and **network ACLs** (stateless, subnet level, ordered allow/deny rules).
-- **NAT gateway** (managed, per AZ, for private subnets' outbound), **Internet gateway**, **egress-only IGW** (IPv6), **VPC endpoints** (Gateway endpoints for S3/DynamoDB; Interface endpoints/PrivateLink for services) to keep traffic private.
-- **Elastic Load Balancing**: Application (L7), Network (L4), Gateway (L3 appliances), Classic; listeners, rules, target groups, health checks; targets can be instances, IPs, Lambda, pods.
-- **Connectivity**: VPC peering (non-transitive), Transit Gateway (hub-and-spoke), Site-to-Site VPN, Direct Connect, Cloud WAN.
-- **EKS networking**: managed node groups, Fargate, the **AWS VPC CNI** assigns VPC IPs to pods via ENIs (limits per instance type; prefix delegation), security groups for pods, load balancer controller. **EFA** (Elastic Fabric Adapter) provides OS-bypass networking (SRD protocol) for HPC and NCCL over libfabric; placement groups (cluster) keep instances close.
+Start with the layout. A region is a geographic area. An Availability Zone (AZ) is an isolated data centre inside a region. A subnet lives in one AZ. A VPC is a regional virtual network with an IPv4 CIDR and an optional IPv6 range. Its subnets are public if they route to an internet gateway, and private otherwise.
+
+Route tables come in main and custom types, and each subnet associates with exactly one. The local route for the VPC CIDR is always the most specific. Other routes can point to an IGW, a NAT gateway, VPC peering, a Transit Gateway, a VPN or a Direct Connect gateway. Gateway route tables handle association at the edge.
+
+An Elastic Network Interface (ENI) is the attachment point for an instance. It holds primary and secondary private IPs, an optional EIP per private IP, security groups, a MAC address and a source/destination check flag. Turn that flag off for NAT and routers. Elastic IPs (EIPs) are static public addresses, subject to soft limits.
+
+Security groups are stateful and allow-only. They attach at the instance or ENI level, and they can reference other security groups. Network ACLs are stateless and work at the subnet level, with ordered allow and deny rules.
+
+A NAT gateway is managed and runs per AZ, handling outbound traffic for private subnets. An internet gateway (IGW) connects the VPC to the Internet. There is also an egress-only IGW for IPv6. VPC endpoints keep traffic private: gateway endpoints cover S3 and DynamoDB, and interface endpoints use PrivateLink for other services.
+
+Elastic Load Balancing offers Application (L7), Network (L4), Gateway (L3 appliances) and Classic load balancers. You build them from listeners, rules, target groups and health checks. Targets can be instances, IPs, Lambda functions or pods.
+
+For connectivity, you have VPC peering, which is non-transitive. You also have Transit Gateway for hub-and-spoke designs, Site-to-Site VPN, Direct Connect and Cloud WAN.
+
+EKS networking uses managed node groups or Fargate. The AWS VPC CNI gives pods VPC IPs through ENIs. The limits per instance type, and prefix delegation, shape how many pods a node can hold. Security groups for pods and the load balancer controller round out the picture. EFA (Elastic Fabric Adapter) provides OS-bypass networking through the SRD protocol, for HPC and for NCCL over libfabric. Cluster placement groups keep the instances close together.
 
 ### Azure
 
-**VNet** (regional) with subnets; **NSGs** (network security groups, stateful, allow/deny, priority), **UDRs** (user-defined routes) and system routes, **Azure Firewall**, **VNet peering** (global peering available), **Virtual WAN**, **VPN Gateway**, **ExpressRoute**, **Load Balancer / Application Gateway / Front Door**, **Private Link**, **AKS** with Azure CNI (pod IPs from VNet) or overlay. GPU HPC VMs (ND-series) offer InfiniBand with SR-IOV in the same scale-set/placement.
+Azure uses a VNet, which is regional, with subnets inside it. Network security groups (NSGs) are stateful, and they allow or deny by priority. User-defined routes (UDRs) sit alongside the system routes. Azure Firewall, VNet peering (global peering is available), Virtual WAN, VPN Gateway and ExpressRoute cover connectivity. Load Balancer, Application Gateway and Front Door handle traffic, and Private Link provides private access.
+
+AKS can use Azure CNI, which gives pods IPs from the VNet, or an overlay. GPU HPC VMs in the ND series offer InfiniBand with SR-IOV, placed in the same scale set or placement.
+
+When you move a design from one cloud to another, map each building block to its equivalent first.
 
 ## 5. GCP networking in depth
 
 ### Global resources and the VPC model
+
+Google Cloud differs from other providers in one important way. Many of its networking resources are global, so one design can span several regions without extra plumbing. The diagram below shows the shape. One global VPC spans two regions, and the on-premises data centre connects to it.
 
 ```mermaid
 flowchart TB
@@ -124,16 +166,23 @@ flowchart TB
   ONPREM["On-Premises Data Center"] -- "HA VPN / Dedicated Interconnect\n(eBGP + BFD)" --- NAT
 ```
 
-Google Cloud differs from other providers in making many networking resources **global**:
+A VPC network is a global resource. It is not tied to a region or a zone, and it lives in a project. The VPC contains regional subnets. Instances in different regions of the same VPC talk over Google's private backbone, using their internal IPs, with no peering needed. A project can hold several VPC networks, and Shared VPC and VPC Network Peering connect them.
 
-- A **VPC network** is a **global** resource (not tied to a region or zone) in a project. It contains **regional subnets**; instances in different regions of the same VPC communicate over Google's private backbone with their internal IPs, without peering. A **project** can hold multiple VPC networks; **Shared VPC** and **VPC Network Peering** connect them.
-- **Subnets** are regional, have a primary IPv4 range and optionally **secondary ranges** (used by GKE for pods and services), may be IPv4 or dual-stack, and can expand but not shrink. Subnet ranges can be any RFC 1918 (and some other) space, but overlapping ranges prevent peering and VPN routing.
-- **Auto mode** networks create one subnet per region from a predefined block; **custom mode** networks start empty and give you full control (use custom mode for production). The **default** network (auto mode, with permissive default firewall rules) overlaps other projects' defaults and prevents peering: delete or avoid it.
-- **Firewall rules** are VPC-level (global), stateful, apply to instances by **network tags** or **service accounts** (preferred), with priority (0 to 65535, lower first), direction, allow/deny, protocols/ports and source/destination ranges. Implied rules: allow all egress, deny all ingress (lowest priority). **Hierarchical firewall policies** (organisation/folder) and **network firewall policies** add centralised control and FQDN/geo/threat-intelligence/address-group objects; Cloud NGFW adds L7 inspection.
-- **Routes**: system-generated subnet routes and a default route to the internet gateway; **custom static routes** (next hop: instance, ILB, VPN tunnel, gateway), **dynamic routes** learned by **Cloud Router** over BGP (regional or global dynamic routing mode); policy-based routes; peering route exchange (custom routes optional).
-- **Internal IPs** are auto-assigned or reserved; **external IPs** ephemeral or static (regional/global). Most VMs should have **no external IP**.
-- **MTU**: the VPC default is 1460 bytes; configurable up to **8896** per network; ensure all VMs, tunnels and peers agree (VPN MTU is lower: 1460 for classic or 1500 on HA VPN? verify; Interconnect supports 1440/1460/1500/8896 depending on attachment). Mismatched MTU is a classic cause of "small works, large hangs".
-- **Network service tiers**: **Premium** (traffic stays on Google's backbone to the edge nearest the user; global load balancing) and **Standard** (regional, cold-potato traffic to the Internet; cheaper).
+Subnets are regional. Each has a primary IPv4 range, and it can have secondary ranges. GKE uses those secondary ranges for pods and services. A subnet can be IPv4 or dual-stack, and it can grow but never shrink. Subnet ranges can use any RFC 1918 space, and some other ranges too. Overlapping ranges, however, block peering and VPN routing.
+
+Auto mode networks create one subnet per region from a predefined block. Custom mode networks start empty, so you control every range. Use custom mode for production. The default network is auto mode with permissive default firewall rules. Its ranges overlap with other projects' defaults, which blocks peering, so delete it or avoid it.
+
+Firewall rules belong to the VPC, are global and are stateful. They target instances by network tags or, preferably, by service accounts. Each rule has a priority from `0` to `65535`, where lower numbers are checked first. It also has a direction, an allow or deny action, protocols and ports, and source or destination ranges. Two implied rules sit at the lowest priority: allow all egress, and deny all ingress. Hierarchical firewall policies set rules at the organisation or folder level. Network firewall policies add FQDN, geo, threat-intelligence and address-group objects. Cloud NGFW adds L7 inspection.
+
+Routes come from several sources. System-generated subnet routes exist, plus a default route to the internet gateway. You add custom static routes with next hops at an instance, an internal load balancer (ILB), a VPN tunnel or a gateway. Cloud Router learns dynamic routes over BGP, in regional or global dynamic routing mode. Policy-based routes and peering route exchange, with custom routes optional, complete the picture.
+
+Internal IPs are assigned automatically or reserved. External IPs are ephemeral or static, and they are regional or global. Most VMs should have no external IP.
+
+MTU is the largest packet a link carries. The VPC default is `1460` bytes, and you can raise it to `8896` per network. Every VM, tunnel and peer must agree. The VPN MTU is lower: `1460` for classic, or `1500` on HA VPN? verify. Interconnect supports `1440`, `1460`, `1500` or `8896`, depending on the attachment. A mismatch is the classic cause of "small works, large hangs."
+
+Network service tiers come in two kinds. Premium keeps traffic on Google's backbone until it reaches the edge nearest the user, and it supports global load balancing. Standard is regional, and its traffic goes to the Internet by cold-potato routing. It costs less.
+
+Here is the setup as commands. Run them in order: the VPC first, then the subnet with its GKE ranges, then the firewall rules.
 
 ```bash
 # Custom-mode VPC with regional subnets, secondary ranges for GKE, private Google access
@@ -145,10 +194,19 @@ gcloud compute firewall-rules create allow-iap-ssh --network=ai-vpc --allow=tcp:
 gcloud compute networks subnets list --network=ai-vpc ; gcloud compute routes list --filter="network:ai-vpc"
 ```
 
+The subnet command enables Private Google Access and flow logs in the same step, so you do not need a second pass for them.
+
 ### Outbound access: Cloud NAT and Private Google Access
 
-- **Cloud NAT** (regional, software-defined, attached to a Cloud Router) gives VMs without external IPs outbound Internet access; allocates ports per VM (minimum ports per VM, dynamic port allocation), supports static or auto-allocated external IPs, logging (translations and errors), endpoint-independent mapping. Port exhaustion appears as dropped connections and "OUT_OF_RESOURCES" log entries; mitigate with more IPs/ports, pooling, and Private Google Access / Private Service Connect for Google APIs.
-- **Private Google Access** lets VMs with only internal IPs reach Google APIs and services (Cloud Storage, BigQuery, Artifact Registry) via special routes (`restricted.googleapis.com`/`private.googleapis.com` VIPs; DNS config). **Private Service Connect** exposes services (Google APIs, partner or your own services) through an internal endpoint in your VPC with its own IP; **Private Services Access** connects to managed services via VPC peering (Cloud SQL, Filestore).
+A training VM with no external IP still sometimes needs the Internet, for example to pull a package. Cloud NAT and Private Google Access solve two different versions of that problem.
+
+Cloud NAT is a regional, software-defined service attached to a Cloud Router. It gives VMs without external IPs outbound Internet access. Each VM gets a minimum number of ports, through dynamic port allocation. You can use static or auto-allocated external IPs. Logging records translations and errors, and the mapping is endpoint-independent.
+
+Port exhaustion is the failure to watch for. It shows up as dropped connections and `OUT_OF_RESOURCES` log entries. Fix it with more IPs or ports, with pooling, and with Private Google Access or Private Service Connect for Google APIs.
+
+Private Google Access lets VMs with only internal IPs reach Google APIs and services, such as Cloud Storage, BigQuery and Artifact Registry. It works through special routes, the `restricted.googleapis.com` and `private.googleapis.com` VIPs, plus DNS configuration. Private Service Connect exposes a service, whether a Google API, a partner service or your own, through an internal endpoint in your VPC with its own IP. Private Services Access connects managed services such as Cloud SQL and Filestore through VPC peering.
+
+The NAT setup takes two steps: create a router, then attach the NAT to it.
 
 ```bash
 gcloud compute routers create nat-router --network=ai-vpc --region=us-central1
@@ -156,7 +214,11 @@ gcloud compute routers nats create nat-config --router=nat-router --region=us-ce
     --enable-dynamic-port-allocation --min-ports-per-vm=64 --enable-logging
 ```
 
+The `--enable-logging` flag is what gives you the NAT logs you will read in the lab.
+
 ### Connecting networks
+
+When one VPC is not enough, you connect networks. The right option depends on the bandwidth you need, how isolated the networks must be, and whether the traffic can cross the Internet.
 
 | Option | What it is | Notes |
 |---|---|---|
@@ -168,13 +230,17 @@ gcloud compute routers nats create nat-config --router=nat-router --region=us-ce
 | **Network Connectivity Center (NCC)** | Hub-and-spoke control plane: VPN/Interconnect/router appliance/VPC spokes with transitive connectivity, site-to-site data transfer | Route management across sites |
 | **Router appliances / SD-WAN** | Third-party NVAs peering with Cloud Router | Special needs |
 
-Hybrid routing basics: on-prem routers peer with Cloud Router using eBGP (private ASN on-prem, Google's 16550 for Partner/ASN for Cloud Router configurable 64512-65534/4200000000+); advertise on-prem prefixes to the cloud (learned as dynamic routes), and VPC subnets back (custom advertisements allowed); use MED/AS-path for primary/backup; use BFD for fast failover; ensure symmetric paths and stateful firewall placement; mind overlapping addresses between clouds and sites (plan one address plan, chapter 2.4).
+Peering is quick to set up and adds no extra gateways, but it does not carry traffic through a middle network. NCC is the option that solves that.
+
+Hybrid routing is where most of the detail sits. On-prem routers peer with Cloud Router using eBGP. The on-prem side uses a private ASN. Google's side uses ASN `16550` for Partner, and the Cloud Router ASN is configurable in the ranges `64512` to `65534` or `4200000000` and up. Advertise on-prem prefixes into the cloud, where they appear as dynamic routes, and advertise VPC subnets back, with custom advertisements allowed. Use MED or AS-path to set primary and backup paths, and use BFD for fast failover. Keep paths symmetric, and place stateful firewalls with care. Overlapping addresses between clouds and sites cause trouble, so plan one address plan (chapter 2.4).
 
 ### DNS
 
-Cloud DNS provides managed public and private zones, **forwarding zones** (to on-prem resolvers), **peering zones**, **response policies**, DNSSEC and inbound forwarding endpoints. Compute Engine VMs use the metadata server resolver (169.254.169.254) with internal names `VM.ZONE.c.PROJECT.internal` (zonal DNS) or global DNS; hybrid DNS is usually the first cloud networking pain point: define forwarding both directions and avoid loops (chapter 2.8).
+Hybrid DNS is usually the first cloud networking pain point you meet. Cloud DNS offers managed public and private zones, forwarding zones to on-prem resolvers, peering zones, response policies, DNSSEC and inbound forwarding endpoints. Compute Engine VMs use the metadata server resolver at `169.254.169.254`. Their internal names follow `VM.ZONE.c.PROJECT.internal` for zonal DNS, or they use global DNS. Define forwarding in both directions, and avoid loops (chapter 2.8).
 
 ### Load balancing
+
+Users reach your service through one address, and the load balancer picks a healthy backend. GCP offers several types, and each fits a different layer and scope.
 
 | Type | Layer | Scope | Typical use |
 |---|---|---|---|
@@ -185,12 +251,26 @@ Cloud DNS provides managed public and private zones, **forwarding zones** (to on
 | **Internal passthrough Network LB** | L4 pass-through | Regional | Internal TCP/UDP services, next hop for routes |
 | **Cross-region internal Application LB** | L7 | Multi-region internal | Internal multi-region apps |
 
-Features: health checks (and firewall rules allowing Google health-check ranges 35.191.0.0/16, 130.211.0.0/22), backend services and NEGs (zonal, serverless, internet, hybrid, and container-native pod NEGs for GKE), URL maps, session affinity, connection draining, outlier detection, traffic management (Envoy config), capacity scaling, logging. For AI inference: global ALB with serverless/pod NEGs for GKE services, GKE Gateway API with `gke-l7-global-external-managed`, long timeouts and streaming (backend service timeout 30 s default: raise for streaming), HTTP/2 end to end for gRPC, and Cloud Armor rate limiting (chapter 2.20).
+Every type shares the same building blocks. These are health checks, backend services and NEGs, URL maps, session affinity, connection draining, outlier detection, traffic management through Envoy config, capacity scaling, and logging. Health checks come from Google's probers, so your firewall rules must allow the ranges `35.191.0.0/16` and `130.211.0.0/22`. Backends can be zonal, serverless, internet, hybrid or container-native pod NEGs for GKE.
+
+For AI inference, a few settings matter most. Use a global ALB with serverless or pod NEGs for GKE services, and use the GKE Gateway API with `gke-l7-global-external-managed`. Raise the backend service timeout for streaming, since its default is 30 s. Use HTTP/2 end to end for gRPC, and add Cloud Armor rate limiting (chapter 2.20). For streaming inference, check the backend timeout before anything else.
 
 ### Observability and troubleshooting
 
-- **VPC Flow Logs** (sampled flow records per subnet), **Firewall Rules Logging** (hit counts and allow/deny), **Cloud NAT logs**, **Load Balancer logs**, **Packet Mirroring** (collector instances behind an internal LB for IDS/forensics), **Network Intelligence Center**: **Connectivity Tests** (static analysis of paths: reachability and the rule/route that blocks), **Network Topology**, **Performance Dashboard** (latency/packet loss between zones), **Firewall Insights**, **Network Analyzer**.
-- Typical checks: effective routes and firewall rules on the VM (`gcloud compute instances network-interfaces ...`, console's "Network analysis"), `gcloud compute networks subnets describe`, `gcloud compute routers get-status`, `gcloud compute vpn-tunnels describe`, `gcloud compute interconnects attachments describe`, IAM permissions (e.g. `compute.networkAdmin`, `compute.securityAdmin`), quotas (`gcloud compute project-info describe`), organisation policies.
+When a packet disappears on GCP, you cannot walk to a switch and read its port. You use logs and analysis tools instead.
+
+Several logs tell you what happened. VPC Flow Logs record sampled flow data per subnet. Firewall Rules Logging shows hit counts and allow or deny decisions. Cloud NAT logs and load balancer logs add their own views. Packet Mirroring copies traffic to collector instances behind an internal LB, for IDS and forensics. Network Intelligence Center adds Connectivity Tests, which analyse paths statically to find the rule or route that blocks them. It also offers Network Topology, a Performance Dashboard for latency and packet loss between zones, Firewall Insights and Network Analyzer.
+
+Use these commands to check each layer:
+
+- `gcloud compute instances network-interfaces ...` shows the effective routes and firewall rules on a VM. The console's "Network analysis" view does the same job.
+- `gcloud compute networks subnets describe` shows the subnet.
+- `gcloud compute routers get-status` shows the router state.
+- `gcloud compute vpn-tunnels describe` and `gcloud compute interconnects attachments describe` show the VPN and Interconnect side.
+- IAM permissions such as `compute.networkAdmin` and `compute.securityAdmin` decide who can make these changes.
+- `gcloud compute project-info describe` shows quotas, and organisation policies complete the picture.
+
+A connectivity test answers the question for you: will this packet get through, and if not, which rule stops it?
 
 ```bash
 gcloud network-management connectivity-tests create t1 --source-instance=projects/P/zones/us-central1-a/instances/vm-a \
@@ -199,224 +279,322 @@ gcloud network-management connectivity-tests describe t1          # shows reacha
 gcloud logging read 'resource.type="gce_subnetwork" AND logName:"vpc_flows"' --limit=5 --format=json
 ```
 
+Run the test again after each rule change, because the output names the blocking firewall or route. Turn on flow logs and firewall logging for the subnets you care about before an incident starts.
+
 ## 6. GKE and Kubernetes networking on GCP
 
-- **VPC-native clusters** (alias IPs) are the standard: nodes get IPs from the subnet's primary range; **pods** from a secondary range (each node gets a /24 by default from the pod range; maximum pods per node tuning); **services** (ClusterIPs) from another secondary range. Pod IPs are routable within the VPC and peered networks (no overlay, no NAT inside the VPC), integrate with VPC firewall rules and flow logs, and appear to on-prem if routes are advertised via Cloud Router (custom advertisement of the pod range). Plan ranges generously (pod range sizing limits cluster size and node count) and **non-overlapping** with on-prem.
-- **Dataplane V2** (Cilium/eBPF) enables built-in NetworkPolicy enforcement and logging, better observability (Hubble-like), and kube-proxy replacement. Otherwise Calico can enforce NetworkPolicy. Cluster **private** mode removes public IPs from nodes (private nodes) and optionally restricts the control plane endpoint (authorized networks, private endpoint); outbound access via Cloud NAT.
-- **Services and Ingress**: `ClusterIP`, `NodePort`, `LoadBalancer` (external/internal passthrough NLB) and **container-native load balancing** with NEGs (load balancer sends straight to pod IPs, avoiding the extra hop and kube-proxy double-NAT, with accurate health checks). **GKE Gateway** (Gateway API) and Ingress provision global or regional Application LBs; `BackendConfig`/`GCPBackendPolicy` set timeouts, affinity, Cloud Armor.
-- **DNS**: kube-dns or Cloud DNS for GKE; **NodeLocal DNSCache** to cut latency and conntrack issues (chapter 2.8).
-- **Multi-network pods (multi-NIC)**: GKE supports multiple networks per pod (`Network` and `GKENetworkParamSet` resources) so GPU pods can attach additional VPC interfaces (needed for high-bandwidth GPU networking); requires multi-network-capable node pools and the corresponding VM configuration.
-- **Egress and cost**: cross-zone pod traffic incurs inter-zone charges; topology-aware routing and zone-aware scheduling reduce them; egress to Internet via Cloud NAT is metered.
-- **Network policy defaults**: namespaces are open by default; use default-deny policies (chapter 2.21).
+The ranges you choose for a GKE cluster on day one decide how far the cluster can grow. Pod range sizing limits the cluster's size and node count, so plan generously.
+
+VPC-native clusters, which use alias IPs, are the standard. Nodes take IPs from the subnet's primary range. Pods take IPs from a secondary range, and each node gets a `/24` from that range by default, which you can tune with the maximum pods per node. Services (ClusterIPs) come from another secondary range. Pod IPs are routable inside the VPC and in peered networks. There is no overlay and no NAT inside the VPC, so pods work with VPC firewall rules and flow logs. Pods appear on-prem only if you advertise the pod range through Cloud Router with a custom advertisement. Keep the ranges non-overlapping with on-prem.
+
+Dataplane V2 (Cilium/eBPF) enforces NetworkPolicy and logs it. It also gives better observability, with Hubble-like views, and it can replace kube-proxy. Calico is the other option for NetworkPolicy enforcement. Private mode removes public IPs from the nodes, which become private nodes. It can also restrict the control plane endpoint, through authorised networks or a private endpoint. Outbound traffic then goes through Cloud NAT.
+
+Services come in several types. `ClusterIP`, `NodePort` and `LoadBalancer` are the common ones, and `LoadBalancer` uses an external or internal passthrough NLB. Container-native load balancing with NEGs sends traffic straight to pod IPs. That skips an extra hop and the kube-proxy double NAT, and it gives more accurate health checks. GKE Gateway (Gateway API) and Ingress provision global or regional Application LBs. `BackendConfig` and `GCPBackendPolicy` set timeouts, affinity and Cloud Armor.
+
+For DNS, GKE uses kube-dns or Cloud DNS. NodeLocal DNSCache reduces latency and conntrack issues (chapter 2.8).
+
+Multi-network pods let a pod attach to more than one VPC network, through the `Network` and `GKENetworkParamSet` resources. GPU pods need this to attach the extra VPC interfaces for high-bandwidth GPU networking. The node pools must support multiple networks, and the VM must be configured to match.
+
+Cost follows the traffic. Cross-zone pod traffic is charged between zones, and topology-aware routing and zone-aware scheduling reduce that charge. Egress to the Internet through Cloud NAT is metered.
+
+Namespaces are open by default, so close them with default-deny policies (chapter 2.21).
 
 ## 7. Networking for GPU clusters in the cloud
 
+When the GPUs in a job run collectives, the network path decides how fast the job finishes. A single default NIC can leave expensive hardware idle. This section shows how each provider builds that path.
+
 ### GCP GPU VM generations (verify current names and features)
 
-GCP offers A2 (A100), A3 (H100) and newer families (A3 Mega, A3 Ultra, A4 etc.), each with a different networking design:
+GCP offers A2 for the A100, A3 for the 8-GPU H100, and newer families such as A3 Mega, A3 Ultra and A4. Each has its own networking design.
 
-- **A3 (H100 8-GPU)**: multiple NICs including gVNIC, with **GPUDirect-TCPX** (a TCP-based GPUDirect path that lets NCCL move GPU memory to the NIC over Ethernet without staging in host memory, via a NCCL plugin and receive-data-path offloads) over dedicated VPC networks for the GPU NICs (commonly four additional VPCs/subnets, one per GPU NIC pair).
-- **A3 Mega**: higher bandwidth (up to ~1.8 Tbps) with **GPUDirect-TCPXO** (offload, requires an NCCL plugin and a "fastrak" receive-data-path manager sidecar) and compact placement policies.
-- **Newer generations** (for example A3 Ultra / A4) move to RDMA over Converged Ethernet (RoCE) with dedicated RDMA VPC networks and many 400G NICs per node; check the current documentation for the exact network profile (`RDMA` network profile), MTU requirements, and the required NCCL plugin/driver versions.
-- Common requirements across these: **multiple VPC networks** (a management/primary VPC plus one or more data VPCs), **MTU 8244 or the documented jumbo value** on the GPU NICs, firewall rules allowing all traffic between GPU NIC subnets, **compact placement policies** (collocated hosts, low latency), correct **NCCL environment** (`NCCL_SOCKET_IFNAME`, plugin variables), and drivers/images from the provider's HPC/DL images; managed offerings (GKE with GPU node pools using `gpudirect-tcpx/tcpxo/rdma` features, Slurm on GCP via Cluster Toolkit, Vertex AI) automate much of this.
+A3 uses multiple NICs, including gVNIC, and runs GPUDirect-TCPX. That is a TCP-based GPUDirect path. It lets NCCL move GPU memory to the NIC over Ethernet, without staging it in host memory. It works through an NCCL plugin and receive-data-path offloads. The GPU NICs sit on dedicated VPC networks, commonly four additional VPCs or subnets, one per GPU NIC pair.
 
-Always read the provider's current "create an AI-optimised cluster" guide; the exact flags change between generations.
+A3 Mega goes further, with up to about 1.8 Tbps. It uses GPUDirect-TCPXO, which adds offload. That needs an NCCL plugin and a `fastrak` receive-data-path manager sidecar. It also uses compact placement policies.
+
+Newer generations, such as A3 Ultra and A4, move to RDMA over Converged Ethernet (RoCE). They use dedicated RDMA VPC networks and many 400G NICs per node. Check the current documentation for three things: the exact network profile, which for these is the `RDMA` profile, the MTU requirements, and the NCCL plugin and driver versions you need.
+
+These generations share a set of requirements. They need multiple VPC networks: a management or primary VPC, plus one or more data VPCs. The GPU NICs need an MTU of `8244`, or the documented jumbo value. Firewall rules must allow all traffic between the GPU NIC subnets. Compact placement policies keep the hosts close together for low latency. Set the NCCL environment correctly, with `NCCL_SOCKET_IFNAME` and the plugin variables. Use drivers and images from the provider's HPC or DL images. Managed offerings do much of this for you: GKE with GPU node pools using the `gpudirect-tcpx/tcpxo/rdma` features, Slurm on GCP through Cluster Toolkit, and Vertex AI.
+
+Always read the provider's current guide for creating an AI-optimised cluster, because the exact flags change between generations.
 
 ### AWS, Azure, OCI equivalents
 
-- **AWS**: P4d/P5/P5e/P6 instances with **EFA** (up to 3.2 Tbps on P5) using SRD and libfabric (`aws-ofi-nccl` plugin), cluster placement groups, UltraClusters; Kubernetes via EKS with the EFA device plugin.
-- **Azure**: ND H100 v5 and similar with InfiniBand (NDR), SR-IOV, VMSS in one placement/IB domain; AKS node pools with IB.
-- **Oracle OCI**: bare-metal GPU instances on RDMA clusters (RoCE v2) with cluster networks.
-- Specialist clouds (CoreWeave, Nebius, Lambda): bare-metal Kubernetes with InfiniBand/Spectrum-X fabrics, often better price-performance for training; networking is exposed as VPCs plus the RDMA fabric.
+AWS uses P4d, P5, P5e and P6 instances with EFA. On P5, the bandwidth reaches 3.2 Tbps. EFA runs on SRD and libfabric, through the `aws-ofi-nccl` plugin. Cluster placement groups and UltraClusters keep the instances together. You run Kubernetes through EKS with the EFA device plugin.
+
+Azure's ND H100 v5 and similar VMs use InfiniBand (NDR) with SR-IOV. A VM scale set (VMSS) sits in one placement, or one IB domain. AKS node pools can use InfiniBand too.
+
+Oracle OCI offers bare-metal GPU instances on RDMA clusters that use RoCE v2, with cluster networks.
+
+Specialist clouds such as CoreWeave, Nebius and Lambda offer bare-metal Kubernetes with InfiniBand or Spectrum-X fabrics. They often give better price-performance for training. You get networking as VPCs plus the RDMA fabric.
 
 ### Design guidance
 
-1. **Address plan first**: non-overlapping CIDRs across clouds, regions, on-prem, GKE pod/service ranges; reserve growth.
-2. **Separate planes**: management/control VPC, data (storage) network, GPU data networks; apply least-privilege firewall rules per plane.
-3. **Private by default**: no external IPs; Cloud NAT for outbound; Private Google Access/PSC for APIs; IAP or bastion/OS Login for admin access; private GKE clusters.
-4. **Data location and egress**: keep datasets, checkpoints and training in the same region (and zone where latency matters); use regional buckets and the backbone; evaluate cross-region replication costs; use Interconnect for sustained hybrid transfer volumes (cheaper egress than Internet in many cases); cache or mirror public datasets/models into your own buckets/registries (Artifact Registry mirror) to avoid repeated egress and NAT port pressure.
-5. **MTU everywhere**: set VPC MTU consistently, validate with `ping -M do`, configure GKE/CNI pod MTU, check VPN/Interconnect MTU.
-6. **Placement and quotas**: compact placement for GPU jobs; request GPU/IP/forwarding-rule/route quotas early; watch NAT port allocation and subnet exhaustion.
-7. **Resilience**: multi-zone subnets and managed instance groups; two Interconnect attachments in different metros with BGP and BFD; regional/global load balancers; avoid single NAT/gateway chokepoints; test failover.
-8. **Security**: IAM least privilege for network admin roles; organisation policies (disable default network, restrict external IPs, enforce VPC SC for sensitive data services); firewall rules by service account; flow logs and firewall logging enabled and exported; Cloud Armor in front of public endpoints; DDoS protection.
-9. **Observability**: flow logs (sample rates), Connectivity Tests in CI after network changes, probes between zones/regions/on-prem, dashboards of NAT, VPN, Interconnect, LB metrics; integrate with chapter 2.31 stack.
-10. **Infrastructure as code**: Terraform modules for VPC, subnets, firewall policy, routers, NAT, VPN/Interconnect, DNS, GKE; policy-as-code checks; no console-only changes (chapter 2.29 and Part 4).
+Ten rules cover most of the choices. Start with the first one, because every later decision depends on the address plan.
+
+1. Make the address plan first. Use non-overlapping CIDRs across clouds, regions, on-prem, and GKE pod and service ranges, and reserve room for growth.
+2. Separate the planes. Keep management and control in their own VPC, the data (storage) network in another, and the GPU data networks apart from both. Apply least-privilege firewall rules to each plane.
+3. Keep everything private by default. Give VMs no external IPs, and use Cloud NAT for outbound traffic. Use Private Google Access or PSC for APIs. Admin access goes through IAP, a bastion or OS Login, and GKE clusters should be private.
+4. Keep data near compute. Keep datasets, checkpoints and training in the same region, and in the same zone where latency matters. Use regional buckets and the backbone, and evaluate the cost of cross-region replication. For sustained hybrid transfer volumes, consider Interconnect, which is cheaper than Internet egress in many cases. Cache or mirror public datasets and models in your own buckets or registries, such as an Artifact Registry mirror. That avoids repeated egress and NAT port pressure.
+5. Keep the MTU consistent. Set the VPC MTU the same everywhere, and check it with `ping -M do`. Configure the GKE or CNI pod MTU, and check the VPN and Interconnect MTUs.
+6. Plan placement and quotas. Use compact placement for GPU jobs. Request GPU, IP, forwarding-rule and route quotas early, and watch NAT port allocation and subnet exhaustion.
+7. Build for resilience. Use multi-zone subnets and managed instance groups. Run two Interconnect attachments in different metros, with BGP and BFD. Use regional or global load balancers, avoid single NAT or gateway chokepoints, and test failover.
+8. Lock down security. Give network admin roles least privilege, and enforce organisation policies. Disable the default network, restrict external IPs, and enforce VPC SC for sensitive data services. Write firewall rules by service account, and enable and export flow logs and firewall logging. Put Cloud Armor in front of public endpoints, and add DDoS protection.
+9. Make the network observable. Set flow-log sample rates, and run Connectivity Tests in CI after network changes. Run probes between zones, regions and on-prem, and build dashboards for NAT, VPN, Interconnect and LB metrics. Feed them into the chapter 2.31 stack.
+10. Manage it as code. Write Terraform modules for the VPC, subnets, firewall policy, routers, NAT, VPN or Interconnect, DNS and GKE. Add policy-as-code checks, and make no console-only changes (chapter 2.29 and Part 4).
 
 ## 8. Hands-on lab: a small GCP network and failure drills
 
-First, run the self-checking Python lab (`code/part02/cloud_vpc_gke_networking_lab.py`) locally (zero cloud cost). It verifies GKE VPC-native secondary range capacity planning (`/20` node subnet + `/14` pod range = `1,024` max nodes and `4,096` Services), VPC Network Peering non-transitivity and CIDR-overlap checks, and GCP Load Balancer health-check firewall range (`35.191.0.0/16`, `130.211.0.0/22`) validation.
+Start with the Python lab, which you can run for free. It runs on your own machine at zero cloud cost, and it checks the capacity arithmetic and the rules from this chapter. The lab covers three things. First, GKE VPC-native capacity: a `/20` node subnet plus a `/14` pod range gives `1,024` maximum nodes and `4,096` Services. Second, VPC Network Peering non-transitivity and CIDR overlap checks. Third, validation of the load balancer health-check firewall ranges, `35.191.0.0/16` and `130.211.0.0/22`.
 
 ```bash
 python3 code/part02/cloud_vpc_gke_networking_lab.py
 ```
 
-Next, in a dedicated GCP lab project with a budget alert (all interactive `gcloud` commands below are `untested here` and billable; delete all resources at the end), work through these steps:
+Next, move to a dedicated GCP lab project with a budget alert. Every interactive `gcloud` command below is `untested here`, and each one is billable. Delete all resources at the end. Work through these steps in order, and you will build the network before you break it.
 
-1. **Custom VPC and subnets**: create `lab-vpc` (custom mode, MTU 1460 and later 8896), two subnets in two regions with secondary ranges; delete the default network if present; review effective routes.
-2. **Firewall**: create rules for internal traffic, IAP SSH, health checks; test with VMs in each subnet (`ping`, `iperf3`); enable firewall logging and view logs; add a deny rule with higher priority and verify with Connectivity Tests.
-3. **Private VMs and NAT**: create VMs without external IPs; show outbound failure; add Cloud Router + Cloud NAT; test; exhaust ports with many connections to one destination (`ab`/`hey`) and read NAT logs; then use Private Google Access to reach Cloud Storage without NAT.
-4. **Peering**: create a second VPC (`lab-vpc-b`) with non-overlapping ranges, peer both ways, test reachability; show non-transitivity with a third VPC; add custom route exchange.
-5. **HA VPN (optional, billable)**: connect `lab-vpc` to a second VPC or a simulated on-prem (StrongSwan VM) using HA VPN and Cloud Router BGP; observe BGP routes, MTU effects, failover by shutting one tunnel.
-6. **Load balancing**: create a managed instance group with a simple HTTP service; front with an internal passthrough LB and a global external Application LB; test health checks (firewall for Google ranges), session affinity, failover by stopping a backend, and timeouts with a slow endpoint.
-7. **GKE (optional)**: create a small VPC-native private cluster with Cloud NAT; inspect pod CIDR allocation, create a Service of type LoadBalancer and a Gateway; apply default-deny NetworkPolicy; use NodeLocal DNSCache; test container-native LB.
-8. **Observability**: enable VPC flow logs on a subnet and query them in Logging/BigQuery; run Connectivity Tests before and after a rule change; build a simple dashboard of NAT allocation and LB latency.
-9. **Cost drill**: estimate egress for moving 50 TB cross-region and to the Internet; compare with Interconnect/transfer appliance options.
-10. **Terraform**: reproduce steps 1 to 4 as a Terraform module with `plan` output in a pull request.
-11. **Cleanup**: delete in dependency order (LBs, NAT/routers, VMs, peering, subnets, VPCs); verify no leftover static IPs or forwarding rules.
+1. Start by creating `lab-vpc` in custom mode, with MTU `1460` and later `8896`. Add two subnets in two regions with secondary ranges. Delete the default network if one is present, and then review the effective routes.
+2. Add firewall rules for internal traffic, IAP SSH and health checks. Test them with VMs in each subnet, using `ping` and `iperf3`. Enable firewall logging and read the entries. Then add a deny rule with higher priority, and confirm the result with Connectivity Tests.
+3. Create VMs with no external IPs, and show that outbound access fails. Add Cloud Router and Cloud NAT, then test again. To exhaust ports, open many connections to one destination with `ab` or `hey`, and read the NAT logs. Finish by using Private Google Access to reach Cloud Storage without NAT.
+4. Create a second VPC, `lab-vpc-b`, with non-overlapping ranges. Peer the two in both directions and test reachability. Then show non-transitivity with a third VPC, and add custom route exchange.
+5. Connect `lab-vpc` to a second VPC, or to a simulated on-prem network built from a StrongSwan VM, using HA VPN and Cloud Router BGP. This step is optional and billable. Watch the BGP routes and the MTU effects, then test failover by shutting down one tunnel.
+6. Build a managed instance group with a simple HTTP service. Put it behind an internal passthrough LB and a global external Application LB. Test the health checks, which need firewall rules for the Google ranges, and test session affinity. Stop one backend to test failover, and use a slow endpoint to test timeouts.
+7. Optionally, create a small VPC-native private cluster with Cloud NAT. Inspect the pod CIDR allocation, then create a Service of type `LoadBalancer` and a Gateway. Apply a default-deny NetworkPolicy, use NodeLocal DNSCache, and test container-native LB.
+8. Turn on VPC flow logs for a subnet, and query them in Logging or BigQuery. Run Connectivity Tests before and after a rule change. Build a simple dashboard of NAT allocation and LB latency.
+9. Estimate the egress cost of moving 50 TB cross-region and to the Internet. Compare that with the Interconnect and transfer appliance options.
+10. Turn steps 1 to 4 into a Terraform module, and include the `plan` output in a pull request.
+11. Clean up in dependency order: load balancers first, then NAT and routers, then VMs, peering, subnets and VPCs. Verify that no leftover static IPs or forwarding rules remain.
 
 ## 9. Common mistakes
 
-- Using the default network (overlapping ranges, permissive rules); overlapping CIDRs that block peering or VPN.
-- Assuming VPC peering is transitive; forgetting route/firewall changes on both sides.
-- External IPs on every VM; no NAT or private access strategy; NAT port exhaustion.
-- Forgetting health-check firewall rules for load balancers; short backend timeouts for streaming inference.
-- MTU mismatches across VPN/Interconnect/GKE; jumbo frames assumed end to end.
+The mistakes below come up often enough to be worth a checklist.
+
+- Using the default network brings overlapping ranges and permissive rules. Overlapping CIDRs can block peering or VPN.
+- You may assume VPC peering is transitive, which is a mistake. Forgetting route and firewall changes on both sides is another.
+- Giving every VM an external IP, or having no NAT or private access strategy, leads to NAT port exhaustion.
+- Forgetting the health-check firewall rules for load balancers is common. So is using short backend timeouts for streaming inference.
+- MTU mismatches across VPN, Interconnect or GKE are a classic trap. Assuming jumbo frames work end to end is another.
 - Ignoring egress and inter-zone costs in architecture decisions.
-- A single Interconnect/VPN with no redundancy; no BFD; asymmetric routing through stateful firewalls.
-- Undersized GKE pod ranges; no default-deny policies; unmonitored quotas.
-- Running GPU clusters on a single default VPC/NIC and wondering why NCCL is slow; missing placement policies and plugins.
+- Relying on a single Interconnect or VPN with no redundancy, no BFD, or asymmetric routing through stateful firewalls.
+- Undersized GKE pod ranges, no default-deny policies, or unmonitored quotas.
+- Running GPU clusters on a single default VPC or NIC, then wondering why NCCL is slow. Missing placement policies and plugins cause the same problem.
+
+Check your current design against this list before the next change goes out.
 
 ## 10. Interview angles
 
-- "Design the network for an AI platform spanning GCP and an on-prem data centre."
-- "Explain GCP's global VPC and how it differs from AWS's regional VPC."
-- "VPC peering vs Shared VPC vs Network Connectivity Center vs Private Service Connect."
-- "How do VMs without public IPs reach the Internet and Google APIs?"
-- "How would you connect on-prem to GCP with 99.99% availability?"
-- "What is data gravity and how does it affect where you train?"
-- "Pods can't reach an on-prem database: where do you look?" (routes advertisement, firewall, ranges, NAT, MTU.)
-- "How do GPU VMs get high-bandwidth networking in the cloud?" (multi-NIC, GPUDirect-TCPX/RDMA, EFA, placement.)
-- "What are the main cloud networking cost traps?"
+These questions test whether you can reason about a design, not just recite product names. Answer each one in two or three sentences before you look at the chapter again.
+
+- Design the network for an AI platform that spans GCP and an on-prem data centre.
+- Explain GCP's global VPC, and how it differs from AWS's regional VPC.
+- Compare VPC peering, Shared VPC, Network Connectivity Center and Private Service Connect.
+- How do VMs without public IPs reach the Internet and Google APIs?
+- How would you connect on-prem to GCP with 99.99% availability?
+- What is data gravity, and how does it affect where you train?
+- Pods cannot reach an on-prem database. Where do you look? Check route advertisement, firewall rules, address ranges, NAT and MTU.
+- How do GPU VMs get high-bandwidth networking in the cloud? Think about multi-NIC designs, GPUDirect-TCPX or RDMA, EFA and placement.
+- What are the main cloud networking cost traps?
 
 ## Exercises
 
-1. **Cloud Computing Models, Business/Operational Trade-Offs, and Technical Challenges (`CN` Chapter 28):** (a) Contrast `IaaS`, `PaaS`, `FaaS`, and `SaaS` across public, private, hybrid, and multicloud deployments; (b) explain the five operational trade-offs and two business trade-offs of public clouds, define **data gravity**, and explain why moving a 500 TB training dataset across clouds or regions repeatedly is an architectural anti-pattern.
-2. **Comparing AWS, Azure, and GCP VPC Architectures (`NK` Chapter 6):** Compare how **AWS** (`VPC`, per-AZ subnets, `ENI`s, stateful `Security Groups` vs stateless `NACL`s, `NAT Gateway`, `Transit Gateway`), **Azure** (`VNet`, `NSG`s, `UDR`s, `Virtual WAN`), and **GCP** (global `VPC`, regional subnets, service-account firewall rules, `Cloud Router`, `Cloud NAT`, `NCC`) structure virtual networks.
-3. **GCP Outbound Access, Peering Non-Transitivity, Shared VPC, and 99.99% Hybrid Interconnect:** (a) Using `evaluate_vpc_peering_reachability()` in `code/part02/cloud_vpc_gke_networking.py`, prove that if `VPC A` peers with `VPC B` and `VPC B` peers with `VPC C`, `VPC A` **cannot** reach `VPC C` through `B`, and compare **VPC Network Peering**, **Shared VPC**, **Network Connectivity Center (`NCC`)**, and **Private Service Connect (`PSC`)**; (b) design a **99.99% SLA** hybrid connection between an on-prem data center and GCP using **Dedicated/Partner Interconnect** (or **HA VPN**) and **Cloud Router (`eBGP` + `BFD`)**.
-4. **GCP Load Balancing, Health-Check Firewall Ranges, and Container-Native `NEG`s:** Using `check_gcp_lb_health_check_firewall()`, explain why every backend VM or GKE node must permit ingress from **`35.191.0.0/16` and `130.211.0.0/22`**, compare **Global External Application LB** (L7 Envoy + Cloud Armor) with **Regional Passthrough Network LB** (L4 Maglev DSR), and explain how **Container-Native Load Balancing (`NEG`s)** eliminates `kube-proxy` double-NAT hops.
-5. **GKE VPC-Native Alias IP Sizing and `Dataplane V2`:** Using `plan_gke_vpc_native_capacity("10.100.0.0/20", "10.104.0.0/14", "10.108.0.0/20", 24)`, calculate the maximum number of nodes (`1,024`) and Services (`4,096`) supported by the subnet's primary and secondary ranges, and explain what happens if a GKE Pod tries to reach an on-prem database when the Pod secondary range (`10.104.0.0/14`) is not advertised as a custom route on Cloud Router.
-6. **Cloud GPU Cluster Networking (`GPUDirect-TCPX` / `TCPXO` / `RDMA`, AWS `EFA`, and Azure InfiniBand):** Compare the multi-NIC GPU networking architectures of **GCP** (`A3` `GPUDirect-TCPX`, `A3 Mega` `GPUDirect-TCPXO` `~1.8 Tbps`, and `A3 Ultra`/`A4` `400G` RoCE RDMA across dedicated GPU VPCs with compact placement and `MTU 8244`/`8896`), **AWS** (`P5` **EFA** `3.2 Tbps` with `SRD` and `aws-ofi-nccl`), and **Azure** (`NDv5` NDR InfiniBand with SR-IOV).
+1. Start with the cloud computing models. Contrast IaaS, PaaS, FaaS and SaaS across public, private, hybrid and multicloud deployments, using chapter 28 of *Computer Networking Problems and Solutions*. Then explain the five operational trade-offs and the two business trade-offs of public clouds. Define data gravity, and explain why moving a 500 TB training dataset across clouds or regions again and again is an architectural anti-pattern.
+2. Compare how the three clouds structure their virtual networks, using chapter 6 of *Networking and Kubernetes*. Look at AWS (VPC, per-AZ subnets, ENIs, stateful security groups versus stateless NACLs, NAT gateway, Transit Gateway), Azure (VNet, NSGs, UDRs, Virtual WAN) and GCP (global VPC, regional subnets, service-account firewall rules, Cloud Router, Cloud NAT, NCC).
+3. Use `evaluate_vpc_peering_reachability()` in `code/part02/cloud_vpc_gke_networking.py` to prove that if VPC A peers with VPC B, and VPC B peers with VPC C, then VPC A cannot reach VPC C through B. Compare VPC Network Peering, Shared VPC, Network Connectivity Center (NCC) and Private Service Connect (PSC). Then design a 99.99% SLA hybrid connection between an on-prem data centre and GCP. Use Dedicated or Partner Interconnect (or HA VPN), with Cloud Router running eBGP and BFD.
+4. Using `check_gcp_lb_health_check_firewall()`, explain why every backend VM or GKE node must allow ingress from `35.191.0.0/16` and `130.211.0.0/22`. Compare the Global External Application LB (L7 Envoy with Cloud Armor) with the Regional Passthrough Network LB (L4 Maglev DSR). Then explain how Container-Native Load Balancing with NEGs removes the kube-proxy double-NAT hops.
+5. Use `plan_gke_vpc_native_capacity("10.100.0.0/20", "10.104.0.0/14", "10.108.0.0/20", 24)` to work out the maximum number of nodes (1,024) and Services (4,096) that the subnet's primary and secondary ranges support. Then explain what happens if a GKE Pod tries to reach an on-prem database, when the Pod secondary range (`10.104.0.0/14`) is not advertised as a custom route on Cloud Router.
+6. Compare the multi-NIC GPU networking designs of three clouds. On GCP, look at A3 with GPUDirect-TCPX, A3 Mega with GPUDirect-TCPXO at about 1.8 Tbps, and A3 Ultra or A4 with 400G RoCE RDMA across dedicated GPU VPCs, with compact placement and MTU 8244 or 8896. On AWS, look at P5 EFA at 3.2 Tbps with SRD and aws-ofi-nccl. On Azure, look at NDv5 NDR InfiniBand with SR-IOV.
+
+Start with exercise 5 if you want the arithmetic before the design questions. Write your answers as you go, so you can check them against the chapter.
 
 ## Checkpoint questions (20)
 
 <details>
-<summary>1. Compare `IaaS`, `PaaS`, `FaaS`, and `SaaS`, and explain the Cloud Shared Responsibility Model (`CN` Chapter 28).</summary>
+<summary>1. Compare IaaS, PaaS, FaaS and SaaS, and explain the Cloud Shared Responsibility Model (chapter 28 of *Computer Networking Problems and Solutions*).</summary>
 
-- **`IaaS`** (Compute Engine, EC2): provider manages physical data centers, switches, servers, and hypervisors; you manage the guest OS, runtime, applications, data, and virtual network configuration (`VPC`, firewall rules, routes, IAM).\n- **`PaaS`** (GKE control plane, Cloud SQL): provider manages the OS and service runtime.\n- **`FaaS` / Serverless** (Cloud Run/Functions, Lambda): provider runs event-driven functions scaling to zero.\n- **`SaaS`**: provider manages the complete application.\nUnder the **Shared Responsibility Model**, the cloud provider secures *the cloud itself* (physical security, hypervisor, underlay fabric), while **you are 100% responsible for securing what you configure in the cloud** (firewall rules, IAM/RBAC, encryption keys, private endpoints, and OS/container patching).
+IaaS, such as Compute Engine or EC2, means the provider manages the physical data centres, switches, servers and hypervisors. You manage the guest OS, the runtime, the applications, the data and the virtual network configuration: the VPC, firewall rules, routes and IAM.
+
+PaaS, such as the GKE control plane or Cloud SQL, means the provider manages the OS and the service runtime.
+
+FaaS, also called serverless, covers Cloud Run/Functions and Lambda. The provider runs event-driven functions that scale to zero.
+
+SaaS means the provider manages the complete application.
+
+Under the Shared Responsibility Model, the provider secures the cloud itself, including physical security, the hypervisor and the underlay fabric. You are 100% responsible for securing what you configure in the cloud. That covers firewall rules, IAM and RBAC, encryption keys, private endpoints, and OS and container patching.
 </details>
 
 <details>
-<summary>2. Why does \"Lift and Shift\" often disappoint financially and operationally, and what are the five operational trade-offs of cloud networking (`CN` Chapter 28)?</summary>
+<summary>2. Why does lift and shift often disappoint financially and operationally, and what are the five operational trade-offs of cloud networking (chapter 28 of *Computer Networking Problems and Solutions*)?</summary>
 
-**\"Lift and Shift\"** copies legacy stateful, monolithic architectures onto rented VMs without adopting autoscaling, ephemeral instances, or cloud-native storage—paying high OPEX rental premiums while keeping all the old operational pain. The five operational trade-offs (`CN` Ch. 28) are: (1) **infrastructure design is still required** (multi-AZ/region resilience, CIDR planning, security policy), (2) **deep networking experts are still required when complex hybrid/overlay faults occur**, (3) **reaching the cloud costs real money** (egress fees, Interconnect circuits, NAT processing), (4) **specialized hardware** (custom RDMA/switch features) is abstracted or restricted to specific SKUs, and (5) **feature creep** increases interaction surfaces.
+Lift and shift copies legacy, stateful, monolithic architectures onto rented VMs. It does not adopt autoscaling, ephemeral instances or cloud-native storage. You pay high OPEX rental premiums, and you keep all the old operational pain.
+
+The five operational trade-offs are these. First, infrastructure design is still required, for multi-AZ and multi-region resilience, CIDR planning and security policy. Second, deep networking experts are still needed when complex hybrid or overlay faults occur. Third, reaching the cloud costs real money, in egress fees, Interconnect circuits and NAT processing. Fourth, specialised hardware, such as custom RDMA or switch features, is either abstracted away or restricted to specific SKUs. Fifth, feature creep increases the number of interaction surfaces.
 </details>
 
 <details>
-<summary>3. Define \"Data Gravity\" and explain how it dictates AI training and checkpoint architecture in the cloud (`CN` Chapter 28).</summary>
+<summary>3. Define data gravity and explain how it dictates AI training and checkpoint architecture in the cloud (chapter 28 of *Computer Networking Problems and Solutions*).</summary>
 
-**Data gravity** is the principle that as datasets grow into hundreds of terabytes or petabytes, they become too slow (bounded by WAN bandwidth and TCP BDP) and too expensive (cloud **egress charges** of `$0.02–$0.12/GB`) to move across regions or clouds—so **compute must move to the data's home region**. In AI infrastructure, always place GPU training pools in the exact same cloud region (and zone) as your object-store dataset and checkpoint buckets, mirror container registries (`Artifact Registry`) and Hugging Face weights locally in-region, and replicate only final distilled checkpoints cross-region.
+Data gravity is the principle that datasets grow heavy. At hundreds of terabytes or petabytes, they are too slow to move, because WAN bandwidth and TCP BDP limit the speed. They are also too expensive, because cloud egress charges run `$0.02–$0.12/GB`. So compute must move to the data's home region.
+
+For AI, place GPU training pools in the same cloud region and zone as your object-store dataset and checkpoint buckets. Mirror container registries (`Artifact Registry`) and Hugging Face weights locally, in the same region. Replicate only the final, distilled checkpoints across regions.
 </details>
 
 <details>
-<summary>4. How does GCP's VPC scope differ from AWS's VPC and Azure's VNet (`NK` Chapter 6)?</summary>
+<summary>4. How does GCP's VPC scope differ from AWS's VPC and Azure's VNet (chapter 6 of *Networking and Kubernetes*)?</summary>
 
-In **AWS** and **Azure**, a `VPC` / `VNet` is **regional**, and each **subnet is zonal** (pinned to a single Availability Zone `AZ`, e.g., `us-east-1a`). In **Google Cloud (`GCP`)**, a **VPC network is a GLOBAL resource**, and **subnets are REGIONAL** (a single subnet `10.100.0.0/20` in `us-central1` automatically spans all zones `us-central1-a/b/c/f`). Two VMs in `us-central1` and `europe-west1` inside the same GCP VPC communicate directly using their private RFC 1918 IPs over Google's global private backbone without needing VPC peering or a transit gateway.
+In AWS and Azure, a VPC or VNet is regional, and each subnet is zonal. A subnet is pinned to a single Availability Zone (AZ), such as `us-east-1a`.
+
+In Google Cloud, a VPC network is a global resource, and subnets are regional. A single subnet, `10.100.0.0/20` in `us-central1`, spans every zone in the region automatically, `us-central1-a/b/c/f`.
+
+For example, two VMs, one in `us-central1` and one in `europe-west1`, inside the same GCP VPC can talk directly over their private RFC 1918 IPs. They use Google's global private backbone, so no VPC peering or transit gateway is needed.
 </details>
 
 <details>
-<summary>5. Why should you delete or never use the `default` auto-mode VPC network in production GCP projects?</summary>
+<summary>5. Why should you delete or never use the default auto-mode VPC network in production GCP projects?</summary>
 
-Every GCP project's `default` network is an **auto-mode** VPC that pre-creates one `/20` subnet in every region from the exact same hardcoded **`10.128.0.0/9`** block (and includes permissive default firewall rules like `default-allow-internal` and `default-allow-ssh` from `0.0.0.0/0`). Because every project's `default` network uses the **identical IPv4 ranges**, two `default` VPCs can **never be connected via VPC Peering or VPN** due to overlapping CIDRs. Always use **custom-mode VPCs** (`--subnet-mode=custom`) with a centrally planned, non-overlapping CIDR table.
+Every GCP project's default network is an auto-mode VPC. It creates one `/20` subnet in every region, all taken from the same hardcoded `10.128.0.0/9` block. It also includes permissive default firewall rules, such as `default-allow-internal` and `default-allow-ssh` from `0.0.0.0/0`.
+
+Because every project's default network uses identical IPv4 ranges, two default VPCs can never be connected through VPC Peering or VPN, due to overlapping CIDRs. Always use custom-mode VPCs, with `--subnet-mode=custom` and a centrally planned, non-overlapping CIDR table.
 </details>
 
 <details>
-<summary>6. How do AWS Security Groups + NACLs compare with GCP VPC Firewall Rules and Policies?</summary>
+<summary>6. How do AWS Security Groups and NACLs compare with GCP VPC firewall rules and policies?</summary>
 
-- **AWS**: combines **Security Groups** (stateful, **allow-only** rules attached to ENIs/instances) and **Network ACLs (`NACL`s)** (stateless, numbered allow/deny rules attached to subnets).\n- **GCP**: **VPC Firewall Rules** (and **Hierarchical / Network Firewall Policies**) are **global, stateful**, support **both `ALLOW` and `DENY`** actions with priorities `0..65535`, and target VMs either across the VPC, by **network tags**, or by cryptographically verified **IAM Service Accounts** (preferred). Every GCP VPC has two implied lowest-priority (`65535`) rules: **allow all egress (`0.0.0.0/0`)** and **deny all ingress (`0.0.0.0/0`)**.
+AWS combines Security Groups with Network ACLs (NACLs). Security Groups are stateful and allow-only, and they attach to ENIs or instances. NACLs are stateless numbered allow and deny rules, attached to subnets.
+
+GCP uses VPC firewall rules, plus hierarchical or network firewall policies. They are global and stateful. They support both `ALLOW` and `DENY` actions, with priorities from `0` to `65535`. They target VMs across the whole VPC, by network tags, or by IAM service accounts, which are cryptographically verified and preferred. Every GCP VPC has two implied rules at the lowest priority, `65535`. One allows all egress to `0.0.0.0/0`. The other denies all ingress from `0.0.0.0/0`.
 </details>
 
 <details>
-<summary>7. How do private GCP VMs (with no external IPs) get: (a) SSH access for administrators, (b) outbound Internet access, and (c) private access to Google APIs (`Cloud Storage`, `Artifact Registry`)?</summary>
+<summary>7. How do private GCP VMs with no external IPs get (a) SSH access for administrators, (b) outbound Internet access, and (c) private access to Google APIs such as Cloud Storage and Artifact Registry?</summary>
 
-(a) **Admin SSH without public IPs**: use **Identity-Aware Proxy (`IAP`) TCP Forwarding** (`gcloud compute ssh vm --tunnel-through-iap`), allowing TCP port `22` ingress **only from Google's IAP range `35.235.240.0/20`**.\n(b) **Outbound Internet access**: attach a regional **Cloud NAT** gateway to a **Cloud Router** (`--enable-dynamic-port-allocation`).\n(c) **Access to Google APIs without touching Cloud NAT or the Internet**: enable **Private Google Access (`--enable-private-ip-google-access`)** on the subnet (routing `private.googleapis.com` `199.36.153.8/30` or `restricted.googleapis.com` `199.36.153.4/30`) or create a **Private Service Connect (`PSC`)** internal endpoint IP inside your VPC.
+For admin SSH, use Identity-Aware Proxy (IAP) TCP Forwarding. Run `gcloud compute ssh vm --tunnel-through-iap`, and allow TCP port `22` ingress only from Google's IAP range, `35.235.240.0/20`.
+
+For outbound Internet access, attach a regional Cloud NAT gateway to a Cloud Router, with `--enable-dynamic-port-allocation`.
+
+For Google APIs, without touching Cloud NAT or the Internet, enable Private Google Access on the subnet with `--enable-private-ip-google-access`. It routes `private.googleapis.com` at `199.36.153.8/30`, or `restricted.googleapis.com` at `199.36.153.4/30`. Alternatively, create a Private Service Connect (PSC) internal endpoint IP inside your VPC.
 </details>
 
 <details>
-<summary>8. Compare `VPC Network Peering`, `Shared VPC`, `Network Connectivity Center` (`NCC`), and `Private Service Connect` (`PSC`).</summary>
+<summary>8. Compare VPC Network Peering, Shared VPC, Network Connectivity Center (NCC) and Private Service Connect (PSC).</summary>
 
-- **`VPC Network Peering`**: direct, non-transitive L3 peering between two non-overlapping VPCs (in the same or different projects/orgs).\n- **`Shared VPC`**: a central **Host Project** owns the VPC and shares specific subnets with multiple application **Service Projects**—allowing central network/security teams to manage one VPC while application teams deploy VMs/GKE clusters into shared subnets.\n- **`Network Connectivity Center (`NCC`)`**: a hub-and-spoke transit framework connecting VPC spokes, HA VPNs, and Interconnect VLAN attachments with **transitive routing**.\n- **`Private Service Connect (`PSC`)`**: projects a producer service (Google APIs, a partner SaaS, or a service in another VPC) as a single **internal `/32` endpoint IP** (or service attachment) inside the consumer VPC—working even when the producer and consumer VPCs have **overlapping IP ranges**.
+VPC Network Peering is direct, non-transitive Layer 3 peering between two non-overlapping VPCs, in the same or different projects or organisations.
+
+Shared VPC has a host project that owns the VPC and shares specific subnets with several service projects. A central network team can manage one VPC, while application teams deploy VMs and GKE clusters into the shared subnets.
+
+NCC is a hub-and-spoke transit framework. It connects VPC spokes, HA VPNs and Interconnect VLAN attachments, with transitive routing.
+
+PSC projects a producer service, such as a Google API, a partner SaaS or a service in another VPC, as one internal `/32` endpoint IP, or as a service attachment, inside the consumer VPC. It works even when the producer and consumer VPCs have overlapping IP ranges.
 </details>
 
 <details>
-<summary>9. Why is `VPC Network Peering` non-transitive, and what happens if `VPC A` peers with `VPC B` and `VPC B` peers with `VPC C`?</summary>
+<summary>9. Why is VPC Network Peering non-transitive, and what happens if VPC A peers with VPC B and VPC B peers with VPC C?</summary>
 
-By design, VPC Network Peering only exchanges routes between directly peered neighbors (`A <-> B` and `B <-> C`): **`VPC A` does NOT learn `VPC C`'s routes through `VPC B`**, and packets from `A` to `C` are dropped. To allow `A` and `C` to communicate, you must either create a direct `A <-> C` peering, use **Network Connectivity Center (`NCC`)** (or AWS Transit Gateway), or route through an explicit next-hop NVA/proxy in `B`.
+Peering only exchanges routes between directly peered neighbours. Here those are `A <-> B` and `B <-> C`. VPC A does not learn VPC C's routes through VPC B, so packets from A to C are dropped.
+
+To let A and C communicate, you can create a direct `A <-> C` peering. You can also use Network Connectivity Center (NCC) or AWS Transit Gateway, or route through an explicit next-hop NVA or proxy in B.
 </details>
 
 <details>
-<summary>10. Compare `Cloud VPN` (`HA VPN`), `Partner Interconnect`, and `Dedicated Interconnect`, and state what is required for a `99.99%` availability SLA.</summary>
+<summary>10. Compare Cloud VPN (HA VPN), Partner Interconnect and Dedicated Interconnect, and state what is required for a 99.99% availability SLA.</summary>
 
-- **`HA VPN`**: dual-tunnel IPsec VPN over the public Internet (`~3 Gb/s` per tunnel, scaled horizontally via ECMP across multiple tunnels) terminating on **Cloud Router (`eBGP`)**.\n- **`Partner Interconnect`**: `50 Mb/s` to `50 Gb/s` private layer-2/layer-3 circuit provisioned through a connectivity provider (Google ASN `16550`).\n- **`Dedicated Interconnect`**: `10 Gb/s` or `100 Gb/s` private optical cross-connects directly between your router and Google's router at a colocation facility (supports **MACsec** and **HA VPN over Interconnect**).\nTo achieve the **`99.99%` SLA** on Interconnect, you must provision **four redundant VLAN attachments across two separate metropolitan edge availability domains (2 metros × 2 zones)** with active `eBGP` + `BFD` on Cloud Routers.
+HA VPN is a dual-tunnel IPsec VPN over the public Internet. Each tunnel carries about `~3 Gb/s`, and you scale horizontally with ECMP across several tunnels. It terminates on Cloud Router using eBGP.
+
+Partner Interconnect is a private layer 2 or layer 3 circuit, from 50 Mb/s to 50 Gb/s, provisioned through a connectivity provider. Google's ASN is `16550`.
+
+Dedicated Interconnect is a private optical cross-connect of 10 Gb/s or 100 Gb/s. It runs directly between your router and Google's router at a colocation facility. It supports MACsec and HA VPN over Interconnect.
+
+To reach the 99.99% SLA on Interconnect, provision four redundant VLAN attachments across two separate metropolitan edge availability domains. That means two metros, with two zones each. Run active eBGP and BFD on the Cloud Routers.
 </details>
 
 <details>
-<summary>11. Summarize the GCP Load Balancer taxonomy and explain why backend health checks fail if `35.191.0.0/16` and `130.211.0.0/22` are blocked.</summary>
+<summary>11. Summarize the GCP load balancer taxonomy, and explain why backend health checks fail if `35.191.0.0/16` and `130.211.0.0/22` are blocked.</summary>
 
-GCP offers **Application Load Balancers (`ALB`s, L7 Envoy-based)** and **Network Load Balancers (`NLB`s, L4)** in **Proxy** or **Passthrough (Maglev DSR)** modes, scoped as **Global** (anycast VIP on Premium Tier) or **Regional** (External or Internal). Google's centralized health-check probers send TCP/HTTP/gRPC probes from two global source IP blocks: **`35.191.0.0/16` and `130.211.0.0/22`**. If your VPC firewall rules do not allow ingress from those two ranges to your backends, the load balancer marks 100% of backends **unhealthy** and returns `502`/`503`/timeout even when the pods/VMs are running fine.
+GCP offers Application Load Balancers (ALBs), which are L7 and Envoy-based, and Network Load Balancers (NLBs), which are L4. Each comes in Proxy or Passthrough (Maglev DSR) mode. Each is scoped as Global, using an anycast VIP on the Premium Tier, or as Regional, either External or Internal.
+
+Google's centralised health-check probers send TCP, HTTP or gRPC probes from two global source blocks: `35.191.0.0/16` and `130.211.0.0/22`. If your VPC firewall rules do not allow ingress from those two ranges to your backends, the load balancer marks 100% of backends unhealthy. It then returns `502`, `503` or timeouts, even when the pods or VMs run fine.
 </details>
 
 <details>
-<summary>12. Compare GCP's `Premium` Network Service Tier with the `Standard` Tier.</summary>
+<summary>12. Compare GCP's Premium Network Service Tier with the Standard Tier.</summary>
 
-- **`Premium Tier` (default)**: ingress client traffic enters **Google's private global fiber backbone at the Point of Presence (`PoP`) closest to the end user** (**cold-potato routing**) and rides Google's low-latency backbone to your region; required for **Global External Load Balancers** (single global anycast VIP across multi-region inference backends) and Cloud CDN.\n- **`Standard Tier`**: traffic traverses the public Internet (**hot-potato routing**) all the way to the GCP region where your VM resides; supports only regional load balancers at a lower per-GB egress price.
+Premium is the default tier. Ingress client traffic enters Google's private global fibre backbone at the point of presence (PoP) closest to the end user. That is cold-potato routing, and the traffic rides the backbone to your region. Premium is required for Global External Load Balancers, which give a single global anycast VIP across multi-region inference backends, and for Cloud CDN.
+
+Standard sends traffic over the public Internet all the way to the GCP region where the VM lives. That is hot-potato routing. It supports only regional load balancers, at a lower per-GB egress price.
 </details>
 
 <details>
-<summary>13. How does a `VPC-Native` (`Alias IP`) GKE cluster allocate IPs for Nodes, Pods, and Services, and how do secondary ranges cap cluster scale?</summary>
+<summary>13. How does a VPC-native (alias IP) GKE cluster allocate IPs for nodes, pods and services, and how do secondary ranges cap cluster scale?</summary>
 
-In a **VPC-Native GKE cluster**, each subnet has three CIDR ranges:\n(1) **Primary subnet range** (e.g., `10.100.0.0/20` = `4,092` usable IPs): allocates **Node VM IPs**;\n(2) **Pod secondary range** (e.g., `10.104.0.0/14`): GKE carves out a **`/24` alias IP range (`256` IPs, up to `110` pods) per Node** by default—so a `/14` Pod range supports at most **`2^(24 - 14) = 1,024` Nodes** (if you accidentally size the Pod range as a `/20`, your cluster is hard-capped at `16` Nodes);\n(3) **Service secondary range** (e.g., `10.108.0.0/20` = `4,096` IPs): allocates in-cluster `Service` `ClusterIP`s.\nBecause Pod IPs are native VPC **Alias IPs**, Pods route across the VPC without VXLAN encapsulation.
+In a VPC-native GKE cluster, each subnet has three CIDR ranges.
+
+The primary subnet range, such as `10.100.0.0/20`, gives `4,092` usable IPs, and it assigns the node VM IPs.
+
+The pod secondary range, such as `10.104.0.0/14`, gives each node a `/24` alias IP range by default. That is `256` IPs per node, for up to `110` pods. The arithmetic is `2^(24 - 14) = 1,024`, so a `/14` pod range supports at most 1,024 nodes. If you size the pod range as a `/20` by mistake, the cluster is hard-capped at `16` nodes.
+
+The service secondary range, such as `10.108.0.0/20`, gives `4,096` IPs for in-cluster Service ClusterIPs.
+
+Because pod IPs are native VPC alias IPs, pods route across the VPC without VXLAN encapsulation.
 </details>
 
 <details>
-<summary>14. Why can't Pods in a VPC-Native GKE cluster reach an on-premises database over Cloud Interconnect/VPN when the Node VMs themselves CAN reach it, and what is the fix?</summary>
+<summary>14. Why can't Pods in a VPC-native GKE cluster reach an on-premises database over Cloud Interconnect or VPN when the node VMs can, and what is the fix?</summary>
 
-By default, **Cloud Router** advertises a subnet's **primary IP range** (the Node VM IPs) over BGP to on-premises routers, or on-prem firewalls only allow the primary range—so when a Pod sends traffic using its **Pod Alias IP (from the secondary range `10.104.0.0/14`)** without SNAT, the packet reaches the on-prem database, which has **no return route back to `10.104.0.0/14`**. Fix it by configuring **Cloud Router Custom Route Advertisements** to advertise the **GKE Pod secondary CIDR** to on-prem (and permitting it in on-prem firewalls), or by configuring the **`ip-masq-agent`** to SNAT Pod traffic destined for on-prem to the Node's primary IP.
+By default, Cloud Router advertises a subnet's primary IP range over BGP to on-premises routers. That range holds the node VM IPs. On-prem firewalls may also allow only the primary range.
+
+For example, when a pod sends traffic from its alias IP in the secondary range, `10.104.0.0/14`, and the traffic is not SNAT-ed, the packet reaches the database. But the database has no return route back to `10.104.0.0/14`.
+
+The fix has two options. One is to configure Cloud Router custom route advertisement, so the GKE pod secondary CIDR is advertised to on-prem, and to permit it in the on-prem firewalls. The other is to configure the `ip-masq-agent`, so pod traffic bound for on-prem is SNAT-ed to the node's primary IP.
 </details>
 
 <details>
-<summary>15. What is GKE Container-Native Load Balancing (`NEG`s), and why is it superior to classic `NodePort` load balancing for AI inference?</summary>
+<summary>15. What is GKE Container-Native Load Balancing (NEGs), and why does it suit AI inference better than classic NodePort load balancing?</summary>
 
-Under classic `NodePort` load balancing, the cloud load balancer sends requests to random node IPs on `30000–32767`, and `kube-proxy` `DNAT`s and forwards the packet across a second network hop to whichever node actually runs the Pod (adding latency, losing the client IP via SNAT, and hiding per-pod health). With **Container-Native Load Balancing (`Network Endpoint Groups`, `NEG`s)**, the GKE controller registers the **actual Pod Alias IPs directly as endpoints in the Google Application/Passthrough Load Balancer**—so traffic routes in **1 hop directly from the Google LB to the Pod**, health checks probe the Pod directly, and L7 Envoy load balancing works per Pod.
+With classic NodePort load balancing, the cloud load balancer sends requests to random node IPs on ports `30000–32767`. Then kube-proxy rewrites the destination with DNAT and forwards the packet across a second network hop, to whichever node runs the pod. That adds latency, loses the client IP through SNAT, and hides per-pod health.
+
+With Container-Native Load Balancing, which uses Network Endpoint Groups (NEGs), the GKE controller registers the actual pod alias IPs as endpoints in the Google load balancer. Traffic goes in one hop, straight from the Google LB to the pod. Health checks probe the pod directly, and L7 Envoy load balancing works per pod.
 </details>
 
 <details>
-<summary>16. What is `GKE Dataplane V2`?</summary>
+<summary>16. What is GKE Dataplane V2?</summary>
 
-**GKE Dataplane V2** is Google Cloud's managed **`Cilium` (`eBPF`)** datapath for GKE: it replaces `kube-proxy` `iptables` with eBPF socket/map service load balancing, provides built-in high-performance **Kubernetes `NetworkPolicy` enforcement and logging** out of the box, and integrates eBPF flow visibility without overlay overhead.
+GKE Dataplane V2 is Google Cloud's managed Cilium (eBPF) datapath for GKE. It replaces kube-proxy iptables with eBPF socket and map service load balancing. It also gives built-in, high-performance Kubernetes NetworkPolicy enforcement and logging, out of the box. It adds eBPF flow visibility, with no overlay overhead.
 </details>
 
 <details>
-<summary>17. How do GCP GPU VMs (`A3`, `A3 Mega`, `A3 Ultra`, `A4`) provide high-bandwidth multi-NIC networking for `NCCL` collectives?</summary>
+<summary>17. How do GCP GPU VMs (A3, A3 Mega, A3 Ultra, A4) provide high-bandwidth multi-NIC networking for NCCL collectives?</summary>
 
-Instead of a single virtual NIC, 8-GPU GCP VMs attach **multiple Google Virtual NICs (`gVNIC`s) or RDMA NICs** across **separate dedicated VPC networks**:\n- **`nic0` (Management/Primary VPC)**: carries SSH, Kubernetes control plane, storage, and internet/API traffic;\n- **GPU Data NICs (4 or 8 additional VPC networks, `MTU 8244` or `8896`)**: paired 1:1 or 2:1 with the GPUs on their local PCIe switches, using **`GPUDirect-TCPX`** (`A3` H100), **`GPUDirect-TCPXO`** (`A3 Mega`, `~1.8 Tbps` with the `fastrak` receive-data-path sidecar and `NCCL` plugin), or **`RoCE v2 RDMA`** (`A3 Ultra` / `A4` with 8 × `400G` RDMA NICs), combined with **compact placement policies** so VMs sit on the same physical fabric pod.
+Instead of a single virtual NIC, an 8-GPU GCP VM attaches several Google Virtual NICs (gVNICs) or RDMA NICs, spread across separate dedicated VPC networks.
+
+The first NIC, `nic0`, sits on the management or primary VPC. It carries SSH, the Kubernetes control plane, storage, and internet and API traffic.
+
+The GPU data NICs run on four or eight additional VPC networks, with an MTU of `8244` or `8896`. Each NIC pairs one-to-one or two-to-one with the GPUs on its local PCIe switch. The transport depends on the generation. A3 (H100) uses GPUDirect-TCPX. A3 Mega uses GPUDirect-TCPXO, which reaches about 1.8 Tbps with the `fastrak` receive-data-path sidecar and an NCCL plugin. A3 Ultra and A4 use RoCE v2 RDMA, with 8 × 400G RDMA NICs.
+
+Compact placement policies keep the VMs on the same physical fabric pod.
 </details>
 
 <details>
-<summary>18. How does AWS's `EFA` (*Elastic Fabric Adapter*) on `P4d`/`P5` GPU instances differ from standard TCP and standard RoCEv2?</summary>
+<summary>18. How does AWS EFA (Elastic Fabric Adapter) on P4d and P5 GPU instances differ from standard TCP and standard RoCEv2?</summary>
 
-AWS **EFA** (`up to 3.2 Tbps` across 32 × 100G / 8 × 400G adapters on `P5`/`P5e`) provides **OS-bypass RDMA** using Amazon's custom transport protocol called **Scalable Reliable Datagram (`SRD`)** accessed via `libfabric` and the **`aws-ofi-nccl` plugin**. Unlike traditional single-path RoCEv2 (which relies on lossless `PFC` and suffers go-back-N stalls on packet drops or reordering), **SRD sprays packets of a single Queue Pair across many ECMP fabric paths in parallel**, handles out-of-order arrival and fast single-packet retransmission directly in the Nitro NIC hardware, and does not require `PFC`.
+AWS EFA provides OS-bypass RDMA on P5 and P5e. It reaches up to 3.2 Tbps across 32 × 100G or 8 × 400G adapters. It uses Amazon's own transport, Scalable Reliable Datagram (SRD), accessed through libfabric and the `aws-ofi-nccl` plugin.
+
+Traditional single-path RoCEv2 depends on lossless PFC. It stalls with go-back-N recovery when packets drop or arrive out of order. SRD sprays the packets of a single Queue Pair across many ECMP fabric paths in parallel. It handles out-of-order arrival and fast single-packet retransmission in the Nitro NIC hardware, and it does not need PFC.
 </details>
 
 <details>
-<summary>19. What does GCP Network Intelligence Center's `Connectivity Tests` (`gcloud network-management connectivity-tests`) do?</summary>
+<summary>19. What does GCP Network Intelligence Center's Connectivity Tests (`gcloud network-management connectivity-tests`) do?</summary>
 
-**Connectivity Tests** performs **automated static configuration analysis** of your GCP control plane (routes, VPC firewall rules, hierarchical policies, VPC peering, Cloud NAT, HA VPN, Interconnect, and GKE Alias IPs) **plus optional live data-plane probing** between any specified `(source IP/instance, destination IP/instance, protocol, port)`. It outputs a hop-by-hop trace proving whether a packet will be delivered or **pinpointing the exact firewall rule name, missing route, or peering boundary that drops it**—ideal to run in CI after `terraform apply`.
+Connectivity Tests runs an automated static analysis of your GCP control plane. It checks routes, VPC firewall rules, hierarchical policies, VPC peering, Cloud NAT, HA VPN, Interconnect and GKE alias IPs. It can also run live data-plane probing between a chosen source and destination, given an IP or instance, a protocol and a port.
+
+The output is a hop-by-hop trace. It proves whether a packet will be delivered. If not, it pinpoints the exact firewall rule name, missing route or peering boundary that drops it. That makes it a good fit for CI, run after `terraform apply`.
 </details>
 
 <details>
 <summary>20. List five cloud networking cost traps on AI platforms and how to avoid them.</summary>
 
-(1) **Internet Egress and Cross-Region Transfer fees**: colocate training compute in the dataset's region and mirror container images/weights into regional **Artifact Registry / GCS buckets**;\n(2) **Cross-Zone (`Inter-AZ`) Pod-to-Pod Traffic**: use **compact placement / single-zone GPU node pools** for tightly coupled training jobs, and enable **Topology-Aware Routing** (`service.kubernetes.io/topology-mode: Auto`) for inference services;\n(3) **Cloud NAT / AWS NAT Gateway per-GB processing charges**: enable **Private Google Access / VPC Gateway Endpoints (`S3`/`GCS`)** so terabytes of storage traffic bypass the NAT gateway completely (at `$0/GB`);\n(4) **Idle Load Balancers and unattached static External IPs**: clean up via Terraform;\n(5) **Unfiltered VPC Flow Logs at 100% sampling**: tune flow-log sampling rates (`0.1` to `0.5`) and filter expressions on high-rate subnets.
+1. Internet egress and cross-region transfer fees. Colocate training compute with the dataset's region, and mirror container images and weights into regional Artifact Registry or GCS buckets.
+2. Cross-zone (inter-AZ) pod-to-pod traffic. Use compact placement or single-zone GPU node pools for tightly coupled training jobs. Turn on topology-aware routing (`service.kubernetes.io/topology-mode: Auto`) for inference services.
+3. Cloud NAT and AWS NAT gateway per-GB processing charges. Turn on Private Google Access or VPC gateway endpoints for S3 and GCS, so terabytes of storage traffic skip the NAT gateway entirely, at `$0/GB`.
+4. Idle load balancers and unattached static external IPs. Clean them up with Terraform.
+5. Unfiltered VPC Flow Logs at 100% sampling. Tune the sampling rate, from `0.1` to `0.5`, and add filter expressions on high-rate subnets.
 </details>
 
 ## Sources and review notes

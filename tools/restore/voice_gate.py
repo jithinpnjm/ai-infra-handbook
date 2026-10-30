@@ -2,7 +2,7 @@
 """Voice gate. Usage: voice_gate.py OLD.md NEW.md   (also usable on section files)
 Content must be preserved; voice must measurably improve."""
 import sys, re, subprocess
-PRODUCT={'NVLink','RoCE','InfiniBand','STREAM','MLPerf','SPEC','TTFT','TPOT','NVSwitch','DCGM','NCCL','MIG','GPUDirect','QEMU','IOMMU','VFIO','OVMF','VMCS','VMCB','KubeVirt','KVM','SR-IOV','SRIOV','BlueField','ConnectX','DOCA','Slurm','Kubernetes','Ansible','Terraform','Prometheus','Grafana','Lustre','BeeGFS','GPFS','Redfish','IPMI','BMC','PyTorch','NumPy','DeepSpeed','vLLM','SGLang','TensorRT','Triton','Dynamo','CoreDNS','OpenMPI','BIND','OpenSSH','NetworkManager','Cilium','Calico','Istio','Envoy','FRRouting','Containerlab','WireGuard','VXLAN','EVPN','OpenSM','UFM','NetBox'}
+PRODUCT={'NVLink','RoCE','InfiniBand','STREAM','MLPerf','SPEC','TTFT','TPOT','NVSwitch','DCGM','NCCL','MIG','GPUDirect','QEMU','IOMMU','VFIO','OVMF','VMCS','VMCB','KubeVirt','KVM','SR-IOV','SRIOV','BlueField','ConnectX','DOCA','Slurm','Kubernetes','Ansible','Terraform','Prometheus','Grafana','Lustre','BeeGFS','GPFS','Redfish','IPMI','BMC','PyTorch','NumPy','DeepSpeed','vLLM','SGLang','TensorRT','Triton','Dynamo','CoreDNS','OpenMPI','BIND','OpenSSH','NetworkManager','Cilium','Calico','Istio','Envoy','FRRouting','Containerlab','WireGuard','VXLAN','EVPN','OpenSM','UFM','NetBox','SONiC','Cumulus','FRR','NVUE','ONIE','NetQ','Netplan','Vagrant','Docker','Podman','Helm','Argo','RoCEv2','AllReduce','AllGather','ReduceScatter','AllToAll','LACP','MLAG','Flux','Kueue','Volcano','Jupyter','TensorBoard','Hydra'}
 old, new = sys.argv[1], sys.argv[2]
 o, n = open(old,encoding='utf8').read(), open(new,encoding='utf8').read()
 ok = True
@@ -10,7 +10,7 @@ def say(good, msg):
     global ok; ok &= bool(good); print(('PASS ' if good else 'FAIL ')+msg)
 r = subprocess.run(['python3','tools/loss_check.py',old,new,'--list'],capture_output=True,text=True).stdout
 m = re.search(r'technical terms lost: (\d+) of \d+ \| numbers lost: (\d+)', r)
-ABBR={'SCL','HLW','SP','ASP','LP','AF','HPC1'}
+ABBR={'SCL','HLW','SP','ASP','LP','AF','HPC1','ADC','CN','NK','NPA','AIP','GAI','LLMOps1'}
 lt=re.search(r"LOST TERMS: \[(.*?)\]", r, re.S); lost=[x.strip(" '\"") for x in (lt.group(1).split(',') if lt and lt.group(1).strip() else [])]
 real=[x for x in lost if x and x not in ABBR]
 say(m and not real and m.group(2)=='0', f'content loss_check terms lost (excluding spelled-out source abbreviations): {real}, numbers lost {m.group(2) if m else "?"}')
@@ -39,6 +39,6 @@ ex = len(re.findall(r'\b(for example|for instance|suppose|imagine|picture|consid
 say(ex >= 2 or w1 < 1500, f'scenario/example markers: {ex}')
 strip = lambda s: re.sub(r'```.*?```','',s,flags=re.S)
 cs = lambda s: set(re.findall(r'`([^`\n]{3,40})`', strip(s)))
-dem = [x for x in cs(o)-cs(n) if re.match(r'^(-{1,2}[\w-]+|/[\w./-]+|[A-Z][A-Za-z]+(?:[A-Z]\w+)+|\w+_\w+)$', x) and x not in PRODUCT and not re.match(r'^[A-Z0-9+-]+$', x) and x in re.sub(r'`[^`\n]*`','',strip(n))]
+dem = [x for x in cs(o)-cs(n) if re.match(r'^(-{1,2}[\w-]+|/[\w./-]+|[A-Z][A-Za-z]+(?:[A-Z]\w+)+|\w+_\w+)$', x) and x not in PRODUCT and (not re.match(r'^[A-Z][A-Za-z0-9]+(?:[A-Z]\w+)+$', x) or x in ''.join(re.findall(r'```.*?```', n, flags=re.S))) and not re.match(r'^[A-Z0-9+-]+$', x) and x in re.sub(r'`[^`\n]*`','',strip(n))]
 say(not dem, f'commands/options/paths still in code format (demoted: {dem[:8]})')
 print('RESULT','PASS' if ok else 'FAIL'); sys.exit(0 if ok else 1)

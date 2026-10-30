@@ -22,33 +22,45 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Inference endpoints are only as good as the layer that spreads requests across GPUs. A generic round-robin load balancer in front of long-lived gRPC or Server-Sent-Event token streams can leave one GPU at 100% and nine idle; a proxy reload can sever hour-long generations; an HTTP/2 connection pinned to one backend turns a "balanced" cluster into a hot spot; a health check that only tests TCP routes traffic to a server whose GPU has an Xid error. Beyond inference, load balancing is everywhere in the platform: ECMP and anycast VIPs at the fabric edge, Kubernetes Services (kube-proxy/IPVS/eBPF), ingress and gateways, cloud load balancers, DNS-based steering, and service meshes. This chapter builds the general theory (what a load balancer is, layers, algorithms, state, failure handling), the practical tools (IPVS, HAProxy, nginx, Envoy, cloud LBs), and the AI-specific problems (streaming, pinning, load-aware and cache-aware routing).
+Suppose an inference endpoint is slow while most of its GPUs sit idle. The cause can sit in the load balancer, the layer that spreads requests across the GPUs. A generic round-robin balancer in front of long-lived gRPC or Server-Sent-Event token streams can leave one GPU at 100% and nine idle. Round robin deals requests in turn and ignores how long each one runs.
+
+Other failures look different but share the same root. A proxy reload can sever hour-long generations. An HTTP/2 connection pinned to one backend turns a balanced cluster into a hot spot. A health check that only tests TCP routes traffic to a server whose GPU has an Xid error.
+
+Load balancing is not only an inference problem. It shows up across the platform: ECMP and anycast VIPs at the fabric edge, Kubernetes Services built on kube-proxy, IPVS or eBPF, ingress and gateways, cloud load balancers, DNS-based steering and service meshes. Each of them decides where work goes. This chapter builds the general theory first: what a load balancer is, its layers, its algorithms, the state it keeps, and how it handles failure. It then covers the tools, IPVS, HAProxy, nginx, Envoy and cloud load balancers. Last come the AI-specific problems: streaming, pinning, and load-aware and cache-aware routing. Decide which layer you are working on first, because each layer sees a different unit of work.
 
 ## Prerequisites and outcomes
 
-You should know TCP/TLS/HTTP (2.6, 2.10), ECMP hashing (2.12), BGP (2.15, 2.16), NAT (2.9) and conntrack basics.
+Before you start, make sure the foundations from earlier chapters are in place. You should know TCP, TLS and HTTP (2.6, 2.10), ECMP hashing (2.12), BGP (2.15, 2.16), NAT (2.9) and the basics of conntrack.
 
-After this chapter you can:
+When you finish this chapter, you will be able to:
 
-- Classify load balancers by layer (DNS, L3/ECMP, L4, L7), topology (NAT/proxy, DSR, tunnel) and deployment (appliance, software, cloud-managed, in-cluster).
-- Explain the algorithms: round robin, weighted, least connections, least response time, hash and consistent hashing (ring, rendezvous, Maglev), power-of-two-choices, EWMA, and when each fits.
-- Explain ECMP and anycast as load balancing for VIPs, resilient hashing, and how L4 LBs scale out behind ECMP with connection consistency.
-- Configure HAProxy, nginx and Envoy for HTTP, TLS termination/passthrough, gRPC, health checks, retries, timeouts, draining; set up IPVS.
-- Diagnose problems: uneven load, connection pinning, hot backends, slow health detection, reload-induced stream loss, SNAT port exhaustion, sticky sessions, idle-timeout resets, client IP loss.
-- Design inference load balancing: streaming, long-lived connections, queue/token-aware routing, prefix-cache-aware routing, autoscaling and drain, multi-tenant fairness.
-- Choose between cloud load balancer types and Kubernetes patterns (Service, Ingress, Gateway API, mesh) at a high level (details in Part 5).
+- Classify a load balancer by layer (DNS, L3/ECMP, L4, L7), by topology (NAT/proxy, DSR, tunnel) and by deployment (appliance, software, cloud-managed, in-cluster).
+- Explain the algorithms: round robin, least connections, consistent hashing (ring, rendezvous, Maglev), power-of-two-choices and EWMA, and when each one fits.
+- Explain ECMP and anycast as load balancing for VIPs, including resilient hashing and how L4 balancers scale out behind ECMP while keeping connections consistent.
+- Configure HAProxy, nginx and Envoy for HTTP, TLS termination and passthrough, gRPC, health checks, retries, timeouts and draining, and set up IPVS.
+- Diagnose uneven load, connection pinning, hot backends, slow health detection, reload-induced stream loss, SNAT port exhaustion, sticky sessions, idle-timeout resets and client IP loss.
+- Design inference load balancing for streaming, long-lived connections, queue- and token-aware routing, prefix-cache-aware routing, autoscaling and drain, and multi-tenant fairness.
+- Choose between cloud load balancer types and Kubernetes patterns (Service, Ingress, Gateway API, mesh) at a high level. Part 5 has the details.
+
+Skip any outcome you already have, and focus on the ones your workloads need.
 
 ## 1. What a load balancer does
 
-A **load balancer (LB)** presents one stable address (a **virtual IP**, VIP, or a name) and distributes incoming work across a pool of **backends** (real servers), providing: **scale** (more capacity than one server), **availability** (health checks remove failed backends), **maintainability** (drain one backend, upgrade it, return it), and often **security and policy** (TLS termination, rate limiting, WAF, authentication). Every LB must answer five design questions:
+Suppose one server can no longer handle the traffic for a service, but clients should still use one address. A **load balancer (LB)** solves that. It presents one stable address, a virtual IP (VIP) or a name, and spreads incoming work across a pool of backends, which are the real servers.
 
-1. **Where is the decision made?** (client-side, DNS, the network (ECMP), a dedicated L4 device, an L7 proxy, the server.)
-2. **What identifies a unit of work?** (packet, flow/connection, HTTP request, gRPC stream, token-generation job.)
-3. **How is a backend chosen?** (algorithm and state.)
-4. **How does the reply return?** (through the LB (proxy/NAT) or directly (DSR).)
-5. **How are failures detected and handled?** (health checks, outlier detection, retries, draining.)
+A load balancer gives you three things. It adds scale, because the pool holds more capacity than one server. It adds availability, because health checks remove failed backends. It adds maintainability, because you can drain a backend, upgrade it and return it to the pool. Often it also adds security and policy, such as TLS termination, rate limiting, a WAF or authentication.
+
+Every load balancer must answer five design questions:
+
+1. Where is the decision made: on the client, in DNS, in the network with ECMP, on a dedicated L4 device, on an L7 proxy, or on the server?
+2. What identifies a unit of work: a packet, a flow or connection, an HTTP request, a gRPC stream, or a token-generation job?
+3. How is a backend chosen, by which algorithm and with what state?
+4. How does the reply return: through the LB as a proxy or NAT, or directly as DSR?
+5. How are failures detected and handled, through health checks, outlier detection, retries and draining?
 
 ### Layers and families
+
+The table groups the common families by the decision each one makes, with examples and the trade-offs to know.
 
 | Family | Decision on | Examples | Notes |
 |---|---|---|---|
@@ -59,7 +71,11 @@ A **load balancer (LB)** presents one stable address (a **virtual IP**, VIP, or 
 | **Client-side** | The client library | gRPC `round_robin`/`pick_first` with xDS, Finagle, Ribbon | No LB hop; needs service discovery and smart clients |
 | **In-cluster / mesh** | Per-pod sidecars or node proxies | kube-proxy, Cilium eBPF, Envoy sidecar, Linkerd | Service-to-service balancing |
 
+Lower layers decide faster but see less. An L4 balancer sees connections, so it cannot read a request inside one. An L7 balancer reads requests, which gives rich routing and retries, but it costs more CPU.
+
 ### Packet paths
+
+The two diagrams show where the reply goes. That path decides throughput and what the backend can see.
 
 ```mermaid
 flowchart LR
@@ -73,12 +89,19 @@ flowchart LR
   end
 ```
 
-- **Proxy mode (L4 or L7)**: the LB terminates the client connection and opens a separate one to the backend (a full proxy), so it can modify, buffer, retry and inspect; the backend sees the LB's address (so preserve the client IP via `X-Forwarded-For`, `Forwarded` header, or PROXY protocol). Stateful, costs CPU and memory, bounded by the LB's capacity.
-- **NAT mode**: the LB rewrites the destination IP (DNAT) to the backend and the source if needed (SNAT/masquerade); the replies must come back through the LB (backend's default gateway is the LB, or SNAT is used, hiding the client IP).
-- **DSR (Direct Server Return, "DR" in IPVS)**: the LB forwards the packet to the backend by rewriting only the destination MAC (same L2 segment) or by tunnelling (IPIP/GRE/GUE); the backend holds the VIP on a non-ARPing interface (`lo` with `arp_ignore=1`, `arp_announce=2`, chapter 2.3) and replies **directly** to the client with source = VIP. Replies (usually much larger than requests) skip the LB, giving huge throughput; the backend sees the real client IP. Limitations: L2 adjacency (or tunnels), no L7 features, health checking must be careful, and asymmetric flows complicate firewalls.
-- **Tunnel/encapsulation (e.g. Maglev, Katran)**: L4 LB encapsulates the original packet toward the backend (GRE/IPIP/GUE), and the backend decapsulates and replies directly (DSR).
+In proxy mode, at L4 or L7, the balancer terminates the client connection and opens a separate one to the backend. That lets it modify, buffer, retry and inspect traffic. The backend sees the balancer's address, so you must preserve the client IP with `X-Forwarded-For`, the `Forwarded` header or PROXY protocol. Proxy mode is stateful, costs CPU and memory, and is bounded by the balancer's capacity.
+
+In NAT mode, the balancer rewrites the destination IP (DNAT) to the backend, and the source too if needed (SNAT/masquerade). The replies must then come back through the balancer. Either the backend's default gateway is the balancer, or SNAT is used, which hides the client IP.
+
+Direct Server Return, called `DR` in IPVS, sends the reply straight to the client. The balancer forwards the packet by rewriting only the destination MAC on the same L2 segment, or by tunnelling it with IPIP, GRE or GUE. The backend holds the VIP on a non-ARPing interface, `lo` with `arp_ignore=1` and `arp_announce=2`, which chapter 2.3 covers. It replies with the VIP as its source. Replies are usually much larger than requests, so skipping the balancer gives huge throughput, and the backend sees the real client IP. The limits are real, though. You need L2 adjacency or tunnels, L7 features are unavailable, health checking needs care, and asymmetric flows complicate firewalls.
+
+Tunnel and encapsulation, as in Maglev or Katran, wrap the original packet in GRE, IPIP or GUE for the backend. The backend unwraps it and replies directly to the client, so this is DSR as well.
+
+Pick the packet path before anything else, because it decides whether replies pass through your balancer and what your backends can see.
 
 ## 2. Algorithms
+
+Picture two backends behind one address and a stream of requests of very different sizes. The balancer must choose a backend for each request, and the rule it uses decides how evenly the work spreads. The table compares the common rules, what each one looks at, and where each one breaks.
 
 | Algorithm | How it chooses | Good for | Pitfall |
 |---|---|---|---|
@@ -95,35 +118,55 @@ flowchart LR
 | **Priority/failover groups** | Use group 2 only if group 1 unhealthy | DR, spillover | Cold backups |
 | **Load-aware custom (GPU/queue/KV-cache)** | Use backend-reported metrics | LLM inference | Needs telemetry, careful staleness handling |
 
-Principles: (1) **choose the metric that represents work** (connections ≠ requests ≠ tokens ≠ GPU-seconds); (2) with multiple LB instances, local least-connections **herds**; P2C or randomised choice reduces synchronised stampedes; (3) **hash-based affinity** is for cache locality and state, but accept uneven load and plan for reshuffling (use consistent/resilient hashing); (4) **slow start** (ramp weight up for newly added or recovered backends) avoids flooding a cold server (JIT, caches, GPU warm-up).
+Every rule trades something away, so notice what you give up. Round robin is simple, but it ignores request cost and backend load. Least connections adapts better, yet a connection is not the same as work, and several balancer instances must share that count. For LLM inference, the table points toward load-aware routing, because connections say little about tokens or GPU time.
+
+Principles 1, 2, 3 and 4 follow from the table. First, choose the metric that represents work, since connections, requests, tokens and GPU-seconds are different things. Second, when several balancer instances each use local least connections, they herd onto the same backend. Power of two choices, or any randomised pick, breaks up those synchronised stampedes. Third, hash-based affinity serves cache locality and state, but it accepts uneven load, so plan for reshuffling with consistent or resilient hashing. Fourth, slow start ramps up the weight of a newly added or recovered backend. That avoids flooding a cold server while its JIT, caches and GPU warm up.
+
+Name the unit of work first, then pick the algorithm that counts it, so you know exactly what your balancer measures.
 
 ## 3. Health checks, failure handling and draining
 
-- **Active checks**: the LB probes backends periodically (TCP connect, HTTP `GET /healthz` expecting 200, gRPC health protocol `grpc.health.v1`, custom script). Parameters: interval, timeout, rise (successes to mark up), fall (failures to mark down). Detection time ≈ interval × fall; too aggressive causes flapping under load; too lax keeps sending traffic to dead nodes.
-- **Passive checks / outlier detection**: observe real traffic: eject a backend after N consecutive 5xx or connection failures for a period (Envoy outlier detection, HAProxy `observe layer7`, nginx `max_fails`); catches failures the probe misses and brownouts.
-- **What to check**: liveness (process up) versus **readiness** (can serve now: model loaded, GPU healthy, queue not full). For inference, `ready` should reflect model load state; extended checks might consult GPU health (DCGM, Xid errors) so that a failing GPU is removed (requires integration).
-- **Retries**: only for idempotent requests or failures before any bytes were sent; use retry budgets and per-try timeouts to avoid retry storms (amplification during outages); hedged requests carefully.
-- **Timeouts**: connect, request/stream idle, total; LLM streams need generous read timeouts and heartbeats; mismatch between client, LB, and server idle timeouts causes mysterious resets (chapter 2.10).
-- **Circuit breaking / overload protection**: cap concurrent connections/requests/pending queue per backend; shed load with 503 + `Retry-After` instead of queueing indefinitely.
-- **Connection draining**: when removing a backend (deploy, scale-in), stop new requests but let existing ones finish up to a deadline. Essential for long streams; coordinate with the orchestrator (Kubernetes `terminationGracePeriodSeconds`, `preStop` hook, readiness going false before shutdown).
-- **Graceful reload**: proxies like nginx/HAProxy keep old workers until old connections end; for long streams that means workers can live for hours; use dynamic config APIs (Envoy xDS, HAProxy runtime API, nginx Plus/resolver variables) to avoid reloads on endpoint changes.
+A backend can stop answering yet keep its address. Without a health check, the balancer keeps sending it traffic. Health checks come in two kinds.
+
+Active checks are probes the balancer sends on a schedule. It can open a TCP connection, call `GET /healthz` and expect a 200, use the gRPC health protocol `grpc.health.v1`, or run a custom script. Four parameters control them: the interval, the timeout, rise (the successes needed to mark a backend up) and fall (the failures needed to mark it down). Detection takes about the interval multiplied by fall. If you set the checks too aggressively, a loaded backend flaps. If you set them too lax, dead nodes keep receiving traffic.
+
+Passive checks watch real traffic instead of probing. The balancer ejects a backend after N consecutive 5xx responses or connection failures, for a period. Envoy calls this outlier detection, HAProxy uses `observe layer7`, and nginx uses `max_fails`. Passive checks catch the failures a probe misses, along with brownouts.
+
+A health check should separate liveness from readiness. Liveness asks whether the process is up. Readiness asks whether the backend can serve right now: the model is loaded, the GPU is healthy and the queue is not full. For inference, `ready` should reflect the model load state. An extended check can also consult GPU health through DCGM or Xid errors, so a failing GPU is removed, but that needs integration work.
+
+Retries help only with idempotent requests, or with failures that happen before any bytes were sent. Use retry budgets and per-try timeouts so retries do not amplify load during an outage. Use hedged requests carefully.
+
+Set timeouts for the connect step, for request or stream idle time, and for the total. LLM streams need generous read timeouts and heartbeats. When the client, the balancer and the server use mismatched idle timeouts, connections reset with no obvious cause, as chapter 2.10 explains.
+
+Circuit breaking protects a backend from overload. Cap the concurrent connections, requests and pending queue for each backend. When a cap is reached, shed the load with a 503 and `Retry-After` instead of queueing without limit.
+
+Draining matters when you remove a backend during a deploy or a scale-in. The balancer stops sending it new requests but lets existing ones finish until a deadline. That is essential for long streams. Coordinate with the orchestrator. In Kubernetes, `terminationGracePeriodSeconds`, a `preStop` hook, and readiness turning false before shutdown all play a part.
+
+Proxies such as nginx and HAProxy keep old workers alive until their connections end. For long streams, a worker can live for hours. Dynamic configuration APIs avoid that problem: Envoy xDS, the HAProxy runtime API, and nginx Plus or resolver variables let endpoints change without a reload.
+
+Set the drain deadline with your longest stream in mind, because a deadline shorter than a generation cuts that generation off.
 
 ## 4. ECMP, anycast and scaling out the L4 tier
 
-A single LB node is a throughput limit and a single point of failure. The standard scale-out is to put the L4 tier **behind ECMP**:
+Suppose a single L4 node serves a VIP. You get a throughput limit and a single point of failure. The standard fix is to put the L4 tier behind ECMP, which works in four steps.
 
-1. Each L4 LB node announces the **VIP** to the upstream router (or leaf) via BGP (FRR/BIRD/ExaBGP); the router sees N equal-cost next hops and spreads flows across them by 5-tuple hash.
-2. A node fails or is drained: its BGP session drops (BFD makes this sub-second) and the router removes it from the ECMP set; flows that hashed to it get remapped. With plain modulo hashing **all** flows may be rehashed (existing connections break); with **resilient/consistent hashing** in the router, only the flows of the failed node move.
-3. Surviving nodes receive flows they have no state for. To avoid breaking established connections, L4 LBs use **consistent hashing keyed on the 5-tuple** (Maglev-style) so any node computes the *same* backend for the same flow without synchronised state; or they share/replicate connection state. Google Maglev and Meta Katran work this way.
-4. The L4 node forwards to the backend by DSR/encapsulation or proxying.
+In step 1, each L4 node announces the VIP to the upstream router, or leaf, over BGP using FRR, BIRD or ExaBGP. The router now sees N equal-cost next hops, and it spreads flows across them by a 5-tuple hash.
 
-This is "anycast within a data centre": the same VIP from many nodes. The same mechanism serves DNS anycast and global anycast across data centres (nearest healthy site wins by BGP path). Caveats: BGP convergence time determines failover; flows can shift to a different site on a route change (long-lived TCP breaks); asymmetric routing and `rp_filter` (chapter 2.5); path MTU and ICMP (chapter 2.7); the hash must be stable across the tier; health coupling between the LB's backend health and the VIP announcement (withdraw the VIP if the node cannot serve).
+In step 2, a node fails or is drained. Its BGP session drops, and BFD makes that happen in under a second. The router removes the node from the ECMP set, so flows that hashed to it get remapped. With plain modulo hashing, all flows may be rehashed, and existing connections break. With resilient or consistent hashing in the router, only the flows of the failed node move.
 
-Also from AI-fabric context (chapter 2.12): ECMP hashing at fabric tiers is itself a form of load balancing for *flows*, with the same caveats: few elephant flows → imbalance; RoCE varies UDP source ports per QP for entropy; inner-header hashing for tunnels; adaptive routing to react to load.
+In step 3, surviving nodes receive flows they hold no state for. To avoid breaking established connections, L4 balancers use consistent hashing keyed on the 5-tuple, in the Maglev style. Any node then computes the same backend for the same flow, without synchronised state. Google Maglev and Meta Katran work this way. Alternatively, nodes can share or replicate connection state.
+
+In step 4, the L4 node forwards to the backend by DSR, by encapsulation, or by proxying.
+
+This is anycast within a data centre: the same VIP announced from many nodes. The same mechanism serves DNS anycast and global anycast across data centres, where BGP path selection picks the nearest healthy site. Several caveats apply. BGP convergence time sets how fast failover happens. A route change can move a flow to a different site, which breaks long-lived TCP. Asymmetric routing and `rp_filter` (chapter 2.5) need attention, as do path MTU and ICMP (chapter 2.7). The hash must stay stable across the whole tier. Finally, health and announcement must be coupled, so the VIP is withdrawn when a node cannot serve.
+
+The same ideas apply inside the AI fabric, as chapter 2.12 describes. ECMP hashing at fabric tiers balances flows, and it carries the same caveats. A few elephant flows cause imbalance. RoCE varies UDP source ports per QP for entropy. Tunnels need hashing on the inner header. Adaptive routing reacts to load.
+
+Decide your failover budget first, because BGP convergence sets how quickly a failed node's traffic moves.
 
 ## 5. L4 tools: IPVS and friends
 
-**Linux IPVS (LVS)** is a kernel L4 load balancer (netfilter-based, used by kube-proxy IPVS mode and keepalived):
+On plain Linux, you can use the kernel itself as an L4 balancer. Linux IPVS (LVS) is built on netfilter, and kube-proxy's IPVS mode and keepalived both use it.
 
 ```bash
 sudo modprobe ip_vs ip_vs_rr ip_vs_wlc ip_vs_sh
@@ -136,9 +179,15 @@ sudo ip addr add 10.0.0.100/32 dev lo
 sudo sysctl -w net.ipv4.conf.all.arp_ignore=1 net.ipv4.conf.all.arp_announce=2
 ```
 
-Schedulers: `rr`, `wrr`, `lc`, `wlc`, `sh` (source hash), `dh`, `mh` (Maglev hashing), `sed`, `nq`. **keepalived** adds VRRP (active/passive VIP failover) and health checks that add/remove IPVS real servers. Other L4 options: HAProxy/nginx in TCP mode, eBPF/XDP balancers (Katran, Cilium's kube-proxy replacement), cloud network LBs. NAT-mode IPVS depends on conntrack (state, `nf_conntrack_max`), DR mode does not.
+The `-g` flag selects direct routing, which is DSR. The `-m` flag would select NAT masquerading instead, and `-i` selects tunnelling. The last two lines prepare each real server. It holds the VIP on loopback and stops answering ARP for it.
+
+IPVS offers these schedulers: `rr`, `wrr`, `lc`, `wlc`, `sh` (source hash), `dh`, `mh` (Maglev hashing), `sed` and `nq`. keepalived adds VRRP for active/passive VIP failover, along with health checks that add or remove IPVS real servers. Other L4 options include HAProxy or nginx in TCP mode, eBPF and XDP balancers such as Katran and Cilium's kube-proxy replacement, and cloud network load balancers. NAT-mode IPVS depends on conntrack, which tracks state and is capped by `nf_conntrack_max`. DR mode does not.
+
+Pick the mode by asking whether replies skip the balancer, because that choice decides whether conntrack matters for you.
 
 ## 6. L7 tools: HAProxy, nginx, Envoy
+
+An L7 proxy reads every request, so its configuration decides how streams behave. Start with HAProxy, which routes gRPC and plain HTTP traffic from the same frontend.
 
 ### HAProxy (HTTP and TCP)
 
@@ -181,6 +230,8 @@ backend be_pg
 # runtime API: echo "set server be_infer/triton1 state drain" | socat stdio /var/run/haproxy.sock
 ```
 
+The `timeout tunnel 1h` line is the one to watch for streams, since it covers websocket and gRPC connections. The `be_infer` backend balances with `leastconn`, while `be_web` uses round robin and a cookie.
+
 ### nginx
 
 ```nginx
@@ -201,11 +252,11 @@ server {
 stream { upstream pg { server 10.1.2.11:5432; } server { listen 5432; proxy_pass pg; } }   # L4
 ```
 
-Notes: open-source nginx resolves upstream hostnames at config load, so new endpoints need a reload (or `resolver` + variables, or nginx Plus dynamic upstreams); reload starts new workers while old ones live until their connections end; `worker_shutdown_timeout` can cap them but cuts streams.
+Open-source nginx resolves upstream hostnames when the configuration loads, so new endpoints need a reload. You can avoid that with `resolver` and variables, or with dynamic upstreams in nginx Plus. A reload starts new workers, and the old ones live until their connections end. `worker_shutdown_timeout` can cap them, but it cuts streams short.
 
 ### Envoy
 
-Envoy is a modern L4/L7 proxy built around dynamic configuration (**xDS** APIs: listeners, routes, clusters, endpoints, secrets), first-class HTTP/2 and gRPC, rich observability (stats, access logs, tracing), and advanced load balancing and resilience.
+Envoy is a modern L4 and L7 proxy. Its design centres on dynamic configuration through the **xDS** APIs for listeners, routes, clusters, endpoints and secrets. It handles HTTP/2 and gRPC natively, and it offers rich observability through stats, access logs and tracing, plus advanced load balancing and resilience.
 
 ```yaml
 static_resources:
@@ -241,47 +292,81 @@ static_resources:
     load_assignment: { cluster_name: triton, endpoints: [{ lb_endpoints: [ { endpoint: { address: { socket_address: { address: triton-svc, port_value: 8001 } } } } ] }] }
 ```
 
-Features worth knowing: least-request with P2C, ring-hash and Maglev for affinity, **slow start** windows, **outlier detection**, **locality-weighted** load balancing, panic thresholds (when too many hosts are unhealthy, spread to all rather than overloading the few), retry budgets, hedging, rate limiting, **connection draining on listener updates**, the admin interface (`/clusters`, `/stats`), and use as the data plane for Istio, Contour, Envoy Gateway, Gloo, Ambassador and many cloud edges.
+Read the cluster block as the balancing policy. `lb_policy` picks the algorithm, and the health, outlier and circuit-breaker settings decide how failures are handled.
+
+Envoy has several features worth knowing. It offers least-request with P2C, ring-hash and Maglev for affinity, along with **slow start** windows for new hosts. **Outlier detection** ejects misbehaving hosts, and **locality-weighted** load balancing favours some hosts over others. Panic thresholds cover the case where too many hosts are unhealthy: traffic spreads to all of them rather than overloading the few that remain. You also get retry budgets, hedging, rate limiting and **connection draining on listener updates**. The admin interface (`/clusters`, `/stats`) shows the live state. Envoy is also the data plane for Istio, Contour, Envoy Gateway, Gloo, Ambassador and many cloud edges.
+
+Pick the proxy whose xDS and drain behaviour matches your streams, because a reload that cuts streams is the failure this section warns about.
 
 ## 7. TLS, client identity and L4/L7 interplay
 
-- **TLS termination at the LB** (decrypt, inspect/route at L7, re-encrypt or plaintext to backends) enables routing on headers and WAF; **passthrough** (L4 on SNI) keeps end-to-end encryption and mTLS but loses L7 features; **re-encryption** keeps encryption inside the data centre. Certificate management is covered in chapter 2.10.
-- **Preserving client IP**: L7: `X-Forwarded-For`/`Forwarded` (trust only from known proxies to avoid spoofing); L4: **PROXY protocol** (v1/v2) header prefixed by the LB so the backend can learn the original client address and TLS info; DSR and `externalTrafficPolicy: Local` in Kubernetes avoid SNAT; cloud LBs differ on whether they preserve source IP.
-- **HTTP/2 and gRPC multiplexing**: many requests share one connection. **At L4, balancing is per connection**: all streams of a client connection go to one backend (connection pinning). Fix with L7 proxies that balance per request/stream (nginx `grpc_pass`, Envoy, HAProxy with `proto h2`, ALB for gRPC), client-side balancing (`round_robin` across resolved addresses, xDS), or by capping connection age (`MAX_CONNECTION_AGE`) so clients periodically reconnect and rebalance.
-- **WebSockets/SSE**: long-lived; configure idle timeouts and heartbeats, disable response buffering.
-- **HTTP/3/QUIC**: UDP-based; L4 LBs must hash on QUIC connection IDs (not 5-tuple) to survive client IP/port changes; check support.
-- **Rate limiting and fairness**: per-client/token-bucket limits at the gateway, concurrency limits per tenant, priority queues, and 429 with `Retry-After`.
+Picture a request that arrives over TLS. Where the balancer decrypts it decides what the balancer can read, which shapes routing, WAF rules and mTLS. Three placements are available.
+
+With TLS termination at the LB, the balancer decrypts traffic, can inspect and route it at L7, and then re-encrypts it or sends plaintext to the backends. That enables routing on headers and a WAF. With passthrough, an L4 balancer routes on SNI and keeps encryption end to end, including mTLS, but it loses L7 features. With re-encryption, traffic stays encrypted inside the data centre. Certificate management is covered in chapter 2.10.
+
+Preserving the client IP depends on the layer. At L7, use `X-Forwarded-For` or `Forwarded`, and trust them only from known proxies to avoid spoofing. At L4, the PROXY protocol (v1 or v2) adds a header in front of the connection, so the backend can learn the original client address and TLS information. DSR and `externalTrafficPolicy: Local` in Kubernetes avoid SNAT. Cloud load balancers differ on preserving source IP.
+
+HTTP/2 and gRPC put many requests on one connection. At L4, balancing happens per connection, so all streams from one client connection go to one backend. That is connection pinning. You can fix it in three ways. Use an L7 proxy that balances per request or per stream, such as nginx `grpc_pass`, Envoy, HAProxy with `proto h2`, or ALB for gRPC. Balance on the client side with `round_robin` across resolved addresses, or with xDS. Or cap the connection age with `MAX_CONNECTION_AGE`, so clients reconnect and rebalance.
+
+WebSockets and SSE are long-lived. Configure idle timeouts and heartbeats, and disable response buffering.
+
+HTTP/3 and QUIC run over UDP. An L4 balancer must hash on QUIC connection IDs rather than the 5-tuple, so a connection survives a change in the client IP or port.
+
+Rate limiting and fairness belong at the gateway. Use per-client token-bucket limits, concurrency limits per tenant and priority queues. When a client goes over its limit, return 429 with `Retry-After`.
+
+Decide where TLS ends before anything else, because that choice sets what the balancer can route on.
 
 ## 8. Cloud and Kubernetes load balancing (overview)
 
-- **Cloud**: GCP offers external/internal **Application LBs** (L7 HTTP(S), global or regional, built on Envoy/GFE), **Network LBs** (L4 pass-through or proxy), and **internal TCP/UDP** LBs; AWS has ALB (L7), NLB (L4), GLB (L3 gateway for appliances), CLB (legacy); Azure has Application Gateway, Load Balancer, Front Door. Differences to check: source IP preservation, idle timeouts (often 60 s for HTTP LBs; 350 s for some L4), supported protocols (gRPC, WebSockets, HTTP/2 end to end), connection draining settings, health check semantics, quotas, cross-zone behaviour, and cost per GB. Chapter 2.32 covers GCP specifics.
-- **Kubernetes** (details in Part 5): a **Service** (ClusterIP/NodePort/LoadBalancer/Headless) gives a stable virtual IP; **kube-proxy** implements it with iptables rules (random probability chain), IPVS (real L4 scheduler) or eBPF replacement (Cilium); **EndpointSlices** list ready pods; readiness probes control membership; **Ingress** and **Gateway API** provide L7 HTTP routing and TLS via controllers (nginx, HAProxy, Envoy-based Contour/Emissary/Envoy Gateway, Traefik, cloud controllers); **service meshes** add per-pod proxies for mTLS, retries and L7 balancing between services; **MetalLB/kube-vip/Cilium** provide LoadBalancer VIPs on bare metal via ARP or BGP (ECMP). Remember: kube-proxy's iptables mode balances **connections** randomly, not load-aware, and long-lived gRPC connections need L7 or client-side balancing.
+Most teams do not build their own balancers from scratch. They rent one from a cloud provider or get one from Kubernetes. Both come with defaults you should check before you depend on them.
+
+On the cloud side, GCP offers external and internal Application LBs, which are L7 HTTP(S) balancers that are global or regional and built on Envoy and GFE. It also offers Network LBs, which are L4 pass-through or proxy, and internal TCP/UDP LBs. AWS has ALB (L7), NLB (L4), GLB (L3 gateway for appliances) and CLB (legacy). Azure has Application Gateway, Load Balancer and Front Door. The differences that matter are source IP preservation, idle timeouts, supported protocols such as gRPC, WebSockets and HTTP/2 end to end, connection draining, health check semantics, quotas, cross-zone behaviour and cost per GB. Idle timeouts are often 60 s for HTTP LBs, while some L4 services use 350 s. Chapter 2.32 covers the GCP specifics.
+
+In Kubernetes, the details sit in Part 5. A Service (ClusterIP, NodePort, LoadBalancer or Headless) gives a stable virtual IP. kube-proxy implements it with iptables rules (a random probability chain), with IPVS (a real L4 scheduler), or with an eBPF replacement such as Cilium. EndpointSlices list the ready pods, and readiness probes control membership. Ingress and Gateway API provide L7 HTTP routing and TLS through controllers. Those controllers include nginx, HAProxy, Envoy-based Contour, Emissary and Envoy Gateway, Traefik and cloud controllers. Service meshes add per-pod proxies for mTLS, retries and L7 balancing between services. MetalLB, kube-vip and Cilium provide LoadBalancer VIPs on bare metal, using ARP or BGP (ECMP).
+
+One warning applies to the Kubernetes side. kube-proxy's iptables mode balances connections randomly and is not load-aware. Long-lived gRPC connections therefore need L7 or client-side balancing to spread load evenly.
 
 ## 9. Load balancing for AI inference
 
-LLM serving breaks several assumptions of web load balancing:
+Picture an LLM endpoint that looks healthy on a dashboard while one replica is overloaded. The usual web assumptions break for LLM serving, and the balancer has to account for that. Five differences matter most.
 
-1. **Requests are long, variable and stateful-ish.** A request may stream tokens for minutes; cost varies with prompt and output length by orders of magnitude; a backend's real load is its **queue depth, number of running sequences, and KV-cache occupancy**, not its connection count.
-2. **Connections are long-lived.** HTTP/2/gRPC streams and SSE hold resources; reloads, scale-in and deploys must drain gracefully; idle timeouts at any hop can cut a slow generation.
-3. **Cache locality matters.** Prefix caching (system prompts, RAG context, multi-turn chat) makes a request cheaper on the replica that already holds the prefix KV blocks; routing the same session/prefix to the same replica raises hit rates, but pure affinity can create hot spots.
-4. **Backends are expensive and heterogeneous.** GPU types, tensor-parallel group sizes, disaggregated prefill/decode pools, LoRA adapters loaded per replica, and quantised variants.
-5. **Autoscaling is slow.** GPU nodes and model loads take minutes, so the router must absorb bursts (queueing/shedding) rather than rely on instant scale-out.
+First, requests are long, variable and somewhat stateful. A request may stream tokens for minutes. Its cost varies with prompt and output length by orders of magnitude. A backend's real load is its queue depth, its number of running sequences and its KV-cache occupancy, not its connection count.
 
-Practices:
+Second, connections are long-lived. HTTP/2 and gRPC streams and SSE hold resources, so reloads, scale-in and deploys must drain gracefully. An idle timeout at any hop can cut a slow generation.
 
-- **Balance per request, not per connection**: use L7 (Envoy, HAProxy, nginx `grpc_pass`, Gateway API inference extensions) or client-side balancing; avoid pure L4 for multiplexed gRPC (symptom: servers 1 and 2 overloaded while 3 to 10 idle; mitigations: periodic reconnect via max connection age, then true L7 balancing).
-- **Choose a load signal**: least-outstanding-requests as a baseline; better, backend-reported metrics (running + waiting requests, KV-cache usage, estimated tokens) exposed via Prometheus or response headers/ORCA-style load reports; use **P2C over load** to avoid herding; consider token-count-aware estimates (prompt length known at admission, output length predicted).
-- **Cache- and session-aware routing**: consistent hashing on a session ID or prompt-prefix hash with **bounded loads** (spill to the next replica when one exceeds its share), or a router that tracks which replica holds which prefix blocks (the approach of LLM-specific routers and "gateway API inference extension" endpoint pickers).
-- **Disaggregated serving**: route prefill and decode to separate pools, handle KV transfer between them, and keep the two pools' autoscaling and admission coupled (Part on inference).
-- **Health and readiness**: health checks hit the serving framework's readiness endpoint (e.g. Triton `/v2/health/ready`, vLLM `/health`), and optionally integrate GPU health (DCGM Xid/ECC); mark not-ready during model load; use `slowstart` for cold replicas.
-- **Streaming hygiene**: disable proxy buffering for SSE; set read/stream-idle timeouts above the maximum generation time; send heartbeats; avoid `Connection: close`; use HTTP/2 end to end where possible; measure time-to-first-token (TTFT) and inter-token latency at the proxy (access logs with `$upstream_response_time`, Envoy stats).
-- **Drain on deploy/scale-in**: readiness false → stop new → wait for in-flight streams up to the grace period → terminate; align `terminationGracePeriodSeconds`, `preStop`, LB deregistration delay, and proxy shutdown timeouts; reloads should be hot (xDS/runtime API) so old workers don't linger for hours.
-- **Overload control and fairness**: per-tenant concurrency and token-rate limits; priority queues (interactive vs batch); return 429/503 early rather than building unbounded queues; admission control that considers KV-cache headroom.
-- **Observability**: per-backend request counts, in-flight, queue time, error and retry rates, TTFT/ITL percentiles, ejection events, hot-backend alerts; trace requests across gateway → router → engine.
+Third, cache locality matters. Prefix caching, for system prompts, RAG context and multi-turn chat, makes a request cheaper on the replica that already holds its prefix KV blocks. Routing the same session or prefix to the same replica raises hit rates, but pure affinity can create hot spots.
 
-Whiteboard framing for interviews: client → anycast/ECMP to a fleet of L4/L7 gateways (BGP VIP, BFD) → TLS termination and L7 routing (per-request, per-tenant policy) → load/cache-aware endpoint picker → inference pods (readiness, drain) with GPU health integration; show where pinning happens at L4 and how L7/client-side fixes it. In enterprise environments you may meet appliance or software ADCs (for example VMware Avi, F5, Citrix) that scale out service engines behind BGP/ECMP VIPs, understand HTTP/2 and gRPC at L7, and support custom health monitors; the architectural ideas are the same, and any specific product capability claim must be validated against current vendor documentation and a load test.
+Fourth, backends are expensive and heterogeneous. GPU types differ, tensor-parallel group sizes differ, disaggregated prefill and decode pools exist, LoRA adapters load per replica, and quantised variants come in many forms.
+
+Fifth, autoscaling is slow. GPU nodes and model loads take minutes, so the router must absorb bursts by queueing or shedding, rather than rely on instant scale-out.
+
+These differences shape the practices below, which work through the same concerns.
+
+Balance per request, not per connection. Use L7 proxies such as Envoy, HAProxy or nginx `grpc_pass`, or the Gateway API inference extensions, or use client-side balancing. Avoid pure L4 for multiplexed gRPC. The symptom is servers 1 and 2 overloaded while 3 to 10 sit idle. The mitigations are periodic reconnects through max connection age, and then true L7 balancing.
+
+Choose a load signal with care. Least-outstanding-requests is a sound baseline. Better still are backend-reported metrics, such as running and waiting requests, KV-cache usage and estimated tokens, exposed through Prometheus, response headers or ORCA-style load reports. Use P2C over load to avoid herding. Token-count-aware estimates also help, since the prompt length is known at admission and the output length can be predicted.
+
+For cache- and session-aware routing, use consistent hashing on a session ID or prompt-prefix hash, with bounded loads that spill to the next replica when one exceeds its share. Another option is a router that tracks which replica holds which prefix blocks. This is the approach of LLM-specific routers and of the Gateway API inference extension's endpoint pickers.
+
+Disaggregated serving routes prefill and decode to separate pools. You must handle the KV transfer between them, and keep the two pools' autoscaling and admission coupled (see the part on inference).
+
+Health checks should hit the serving framework's readiness endpoint, such as Triton `/v2/health/ready` or vLLM `/health`. You can also integrate GPU health through DCGM Xid or ECC data. Mark a replica not-ready during model load, and use `slowstart` for cold replicas.
+
+Streaming needs its own hygiene. Disable proxy buffering for SSE. Set read and stream-idle timeouts above the maximum generation time, and send heartbeats. Avoid `Connection: close`, and use HTTP/2 end to end where possible. Measure time-to-first-token (TTFT) and inter-token latency at the proxy, using access logs with `$upstream_response_time` or Envoy stats.
+
+Draining on deploy or scale-in follows a fixed order. Set readiness to false, stop new requests, wait for in-flight streams up to the grace period, and then terminate. Align `terminationGracePeriodSeconds`, `preStop`, the load balancer's deregistration delay and the proxy's shutdown timeouts. Reloads should be hot, through xDS or the runtime API, so old workers do not linger for hours.
+
+For overload and fairness, set per-tenant concurrency and token-rate limits, and use priority queues that separate interactive traffic from batch. Return 429 or 503 early rather than building unbounded queues. Admission control should also consider KV-cache headroom.
+
+Watch the per-backend request counts, in-flight requests, queue time, error and retry rates, TTFT and ITL percentiles, ejection events and hot-backend alerts. Trace each request across the gateway, the router and the engine.
+
+For an interview, a whiteboard answer can run in this order: client, then anycast or ECMP to a fleet of L4 and L7 gateways (BGP VIP, BFD), then TLS termination and L7 routing with per-request, per-tenant policy, then a load- and cache-aware endpoint picker, then inference pods with readiness, drain and GPU health integration. Show where pinning happens at L4, and how L7 or client-side balancing fixes it. Enterprise environments may use appliance or software ADCs, such as VMware Avi, F5 or Citrix. They scale out service engines behind BGP or ECMP VIPs, understand HTTP/2 and gRPC at L7, and support custom health monitors. The architecture is the same, but validate any product-specific capability claim against current vendor documentation and a load test.
+
+Measure first, and choose the load signal before you choose the algorithm.
 
 ## 10. Troubleshooting
+
+When a balancer misbehaves, the symptom usually points to a short list of causes. Find the row that matches what you see, then run the check in the third column.
 
 | Symptom | Likely cause | Check/fix |
 |---|---|---|
@@ -296,41 +381,49 @@ Whiteboard framing for interviews: client → anycast/ECMP to a fleet of L4/L7 g
 | High p99 only on some requests | Head-of-line blocking at HTTP/1.1 backend; slow backend not ejected; retry storms | Outlier detection; per-try timeouts; least-request |
 | Health flapping | Aggressive interval; overloaded backend failing probes | Tune rise/fall; separate health endpoint; lighter check |
 
-Tools: `ss -s`, `ss -tni`, `conntrack -L`, `ipvsadm -Ln --stats`, HAProxy `show stat`/`show servers state`, Envoy `/clusters` and `/stats`, nginx `stub_status`/`$upstream_*` log variables, `curl -w` timing, `tcpdump` on LB and backend, `wrk`/`hey`/`ghz` (gRPC load generator)/`vegeta` for load tests, and application metrics.
+When you need evidence, reach for these tools. Use `ss -s`, `ss -tni`, `conntrack -L` and `ipvsadm -Ln --stats` to read the kernel's view. Use HAProxy `show stat` or `show servers state`, Envoy `/clusters` and `/stats`, and nginx `stub_status` with its `$upstream_*` log variables for the proxies. Use `curl -w` for timing and `tcpdump` on the LB and the backend to see the packets. For load tests, `wrk`, `hey`, `ghz` (a gRPC load generator) and `vegeta` all work. Application metrics complete the picture.
+
+Start with the row that matches your symptom, and only then change the configuration.
 
 ## 11. Hands-on lab: build and break load balancers
 
-First, run the self-checking Python lab (`code/part02/load_balancing_l4_l7_lab.py`) locally. It verifies Power-of-Two-Choices (`P2C`) backend selection, Rendezvous (`HRW`) consistent hashing (`~1/N` key movement) with bounded-load spillover for LLM prefix-cache affinity, L4 vs L7 gRPC HTTP/2 connection pinning (`[100, 0, 0, 0]` vs `[25, 25, 25, 25]`), and active health-check detection times (`inter 2s fall 3 = 6.0 s`).
+Start on your own machine, because the first part needs only Python. Run the self-checking script at `code/part02/load_balancing_l4_l7_lab.py`. It verifies Power-of-Two-Choices (`P2C`) backend selection, and Rendezvous (`HRW`) consistent hashing, which moves about `~1/N` of keys. It also checks bounded-load spillover for LLM prefix-cache affinity. The script compares L4 and L7 gRPC HTTP/2 connection pinning, where the counts are `[100, 0, 0, 0]` against `[25, 25, 25, 25]`. Finally, it checks active health-check detection, which takes `inter 2s fall 3 = 6.0 s`.
 
 ```bash
 python3 code/part02/load_balancing_l4_l7_lab.py
 ```
 
-Next, on a disposable Linux VM with `ipvsadm`, `haproxy`, `nginx`, `envoy`, and `frr` (all interactive VM commands below are `untested here`), work through these steps:
+The rest of the lab needs a disposable Linux VM with `ipvsadm`, `haproxy`, `nginx`, `envoy` and `frr`. Every interactive VM command below is `untested here`, so treat each step as a first attempt. Work through these steps in order.
 
-1. **L4 IPVS DR**: three namespaces (lb, rs1, rs2) on a bridge; configure the VIP on `lo` of the real servers with `arp_ignore/arp_announce`; IPVS in DR mode; verify distribution with `ipvsadm -Lcn`; capture to show replies bypass the LB; switch to NAT mode and observe conntrack and the return path.
-2. **Algorithms**: run `hey`/`wrk` against RR, least-connection, source-hash, Maglev (`mh`); add a slow backend (`tc netem delay`) and compare distributions and tail latency; change a weight.
-3. **HAProxy L7**: two HTTP backends; configure active health checks (`check inter 1s fall 2 rise 2`); stop one backend and measure detection time; add `slowstart`; use the runtime API to drain.
-4. **gRPC pinning**: a simple gRPC server that returns its hostname (or Triton/`grpcbin`); front with (a) nginx `stream` (L4) and (b) nginx `grpc_pass`/Envoy; one client with one channel sending many calls via `ghz`; show all go to one backend in L4 and spread in L7; apply `MAX_CONNECTION_AGE` and observe periodic rebalancing.
-5. **Reload vs streams**: start a long SSE/gRPC stream through nginx; `nginx -s reload`; see old worker lingering (`ps`), set `worker_shutdown_timeout` and watch the stream get cut; compare Envoy dynamic update (file-based xDS) with no cut.
-6. **Consistent hashing**: Envoy `RING_HASH`/`MAGLEV` or HAProxy `balance hdr()`+`hash-type consistent`; map session IDs; remove a backend and count how many sessions remapped versus plain modulo hash.
-7. **ECMP VIP**: two LB namespaces announcing the same VIP to a router namespace via FRR/BGP; verify ECMP; fail one LB; measure convergence with and without BFD; observe which flows break (consistent hashing vs not); test resilient hashing if supported.
-8. **Inference-aware routing (simulation)**: write a tiny Python backend with variable service time and an exposed `queue_depth` metric; implement round-robin vs least-outstanding vs P2C-on-queue-depth in a minimal proxy (`asyncio`) and compare p99 latency under a heavy-tailed job-size distribution; add prefix-hash affinity with bounded load and measure cache-hit proxy metric.
-9. **Overload and retries**: add a retry policy without budget and trigger a retry storm by killing a backend; add circuit breaking and a retry budget and compare.
-10. **Clean up.**
+1. L4 IPVS DR: build three namespaces (lb, rs1, rs2) on a bridge. Configure the VIP on `lo` of the real servers with `arp_ignore/arp_announce`, and run IPVS in DR mode. Verify the distribution with `ipvsadm -Lcn`. Capture traffic to show that replies bypass the LB. Then switch to NAT mode and observe conntrack and the return path.
+2. Algorithms: run `hey` or `wrk` against round robin, least-connection, source-hash and Maglev (`mh`). Add a slow backend with `tc netem delay`, then compare the distributions and tail latency. Finally, change a weight.
+3. HAProxy L7: start with two HTTP backends and configure active health checks with `check inter 1s fall 2 rise 2`. Stop one backend and measure how long detection takes. Add `slowstart`, and use the runtime API to drain.
+4. gRPC pinning: run a simple gRPC server that returns its hostname, or use Triton or `grpcbin`. Front it with (a) nginx `stream` for L4, and with (b) nginx `grpc_pass` or Envoy. Send many calls from one client on one channel, using `ghz`. Show that all calls go to one backend in L4 and spread out in L7. Then apply `MAX_CONNECTION_AGE` and observe the periodic rebalancing.
+5. Reload versus streams: start a long SSE or gRPC stream through nginx, then run `nginx -s reload`. Use `ps` to see the old worker lingering. Set `worker_shutdown_timeout` and watch the stream get cut. Then you can compare that with an Envoy dynamic update, using file-based xDS, which cuts nothing.
+6. Consistent hashing: configure Envoy `RING_HASH` or `MAGLEV`, or HAProxy `balance hdr()` with `hash-type consistent`. Map session IDs to backends. Remove a backend, and count how many sessions remap, compared with a plain modulo hash.
+7. ECMP VIP: set up two LB namespaces that announce the same VIP to a router namespace through FRR and BGP. Verify ECMP, then fail one LB. Measure convergence with and without BFD, and observe which flows break with and without consistent hashing. Test resilient hashing if your platform supports it.
+8. Inference-aware routing (simulation): write a tiny Python backend with variable service time and an exposed `queue_depth` metric. In a minimal `asyncio` proxy, implement round robin, least-outstanding and P2C on queue depth, then compare p99 latency under a heavy-tailed job-size distribution. Add prefix-hash affinity with bounded load, and measure the cache-hit proxy metric.
+9. Overload and retries: add a retry policy with no budget, then trigger a retry storm by killing a backend. Add circuit breaking and a retry budget, and compare the two runs.
+10. Clean up.
+
+Run step 9 last, since it deliberately kills a backend and you want the other steps finished first.
 
 ## 12. Common mistakes
 
-- L4 balancing multiplexed HTTP/2 or gRPC and expecting even load.
-- Using connection count as the load signal for long, heterogeneous requests; synchronised least-connection herding across many LB instances.
-- Health checks that test only TCP, or that are too aggressive; no slow start; no outlier detection.
-- Retries without budgets; non-idempotent retries; timeouts shorter than the longest legitimate generation.
-- Reloading proxies to update endpoints in long-stream workloads; no drain in deploys.
-- Trusting `X-Forwarded-For` from the Internet; losing client IP behind SNAT.
-- Plain modulo hashing behind ECMP/anycast (mass remapping); VIP announced while the node cannot serve.
-- Treating the LB as infinitely scalable: no capacity limits, no overload shedding.
+Most of these mistakes come from treating connections as if they were requests. Watch for them when you review a design.
+
+- Running L4 balancing over multiplexed HTTP/2 or gRPC traffic, then expecting even load.
+- Using connection count as the load signal for long, heterogeneous requests, and letting many LB instances herd with synchronised least-connection choices.
+- Writing health checks that test only TCP or that are too aggressive, and skipping slow start and outlier detection.
+- Retrying without budgets, retrying non-idempotent requests, and setting timeouts shorter than the longest legitimate generation.
+- Reloading proxies to update endpoints in long-stream workloads, and skipping drain during deploys.
+- Trusting `X-Forwarded-For` from the Internet, and losing the client IP behind SNAT.
+- Using plain modulo hashing behind ECMP or anycast, which remaps keys en masse, and announcing a VIP while the node cannot serve.
+- Treating the LB as infinitely scalable, with no capacity limits and no overload shedding.
 
 ## 13. Interview angles
+
+Be ready to answer these questions out loud.
 
 - "L4 versus L7 load balancing: when and why? What's DSR?"
 - "Walk me through scaling a load balancer horizontally behind ECMP/anycast. What breaks on a change?"
@@ -344,133 +437,173 @@ Next, on a disposable Linux VM with `ipvsadm`, `haproxy`, `nginx`, `envoy`, and 
 
 ## Exercises
 
-1. **Load Balancer Families, Proxy/NAT vs. Direct Server Return (`DSR`), and Preserving Client Identity:** (a) State the five design questions every load balancer answers, and compare DNS/GSLB, L3 ECMP/Anycast, L4 transport (`IPVS`, `Maglev`, `Katran`), and L7 application proxies (`Envoy`, `HAProxy`, `nginx`); (b) explain how **Direct Server Return (`DSR` / IPVS `-g`)** works, why the backend must configure the VIP on `lo` with `arp_ignore=1` and `arp_announce=2`, and how client IPs are preserved across L4 (`PROXY protocol`) and L7 (`X-Forwarded-For`) proxies.
-2. **Load-Balancing Algorithms: `Round Robin`, `Least Connections`, `P2C`, and Consistent Hashing / `Maglev`:** (a) Why does naive Least Connections herd requests onto a single server when multiple independent load-balancer instances make decisions, and how does **Power of Two Choices (`P2C`, `select_backend_p2c()`)** solve it? (b) Using `select_backend_rendezvous_bounded()` in `code/part02/load_balancing_l4_l7.py`, explain why **Consistent Hashing** (`Ring Hash`, `Rendezvous HRW`, `Maglev`) moves only `~1 / N` of keys when a backend leaves the pool versus `(N - 1) / N` under `hash(key) mod N`.
-3. **Scaling the L4 Tier Horizontally Behind `ECMP` Anycast VIPs:** Walk through the 4-layer architecture of a cloud-scale L4 load balancer (`Router ECMP + BFD -> Stateless L4 Maglev/Katran tier -> DSR/IPIP tunnel -> L7 Envoy/HAProxy tier`), and explain what two hashing mechanisms prevent existing TCP connections from resetting when one L4 load-balancer node is drained.
-4. **The `gRPC` / `HTTP/2` L4 Connection-Pinning Trap and Fixes:** Using `simulate_grpc_l4_vs_l7_distribution(4, 1, 100)`, explain why placing an L4 load balancer (`kube-proxy` `iptables`/`IPVS`, `nginx stream`, AWS NLB) in front of 4 Triton/vLLM gRPC pods causes 1 pod to run at 100% GPU utilization while 3 sit at 0% when a client opens a single HTTP/2 channel. State three ways to fix it.
-5. **Health Checks, Outlier Detection, Circuit Breaking, and Zero-Downtime Streaming Drains:** (a) Distinguish **active readiness checks** (`compute_health_check_detection_sec(2.0, 3) = 6.0 s` on `/v2/health/ready`) from **passive outlier detection** (`consecutive_5xx: 5`), **slow start** (`30 s`), and **circuit breakers** (`max_pending_requests`); (b) why does `nginx -s reload` cause worker accumulation or severed streams on long SSE/gRPC generations, and how does Envoy's **`xDS`** API avoid it?
-6. **Designing an LLM Inference Router (`KV-Cache` Prefix Affinity, Queue Signals, and Disaggregated Prefill/Decode):** Design an L7 inference routing tier that balances variable-length streaming requests across GPU replicas using (a) backend-reported **running/waiting queue depth and KV-cache occupancy**, (b) **bounded-load consistent hashing** on prompt prefixes (`select_backend_rendezvous_bounded()`) to maximize prefix-cache hits without overloading a single GPU, and (c) separated **prefill** and **decode** pools.
+1. Compare the load balancer families. State the five design questions every load balancer answers, and compare DNS/GSLB, L3 ECMP/Anycast, L4 transport (`IPVS`, `Maglev`, `Katran`) and L7 application proxies (`Envoy`, `HAProxy`, `nginx`). Then (a) explain how Direct Server Return (`DSR` / IPVS `-g`) works, and why the backend must configure the VIP on `lo` with `arp_ignore=1` and `arp_announce=2`. (b) Explain how client IPs are preserved across L4 (`PROXY protocol`) and L7 (`X-Forwarded-For`) proxies.
+2. Work through the algorithms: `Round Robin`, `Least Connections`, `P2C`, and consistent hashing with `Maglev`. (a) Why does naive Least Connections herd requests onto a single server when multiple independent load-balancer instances make decisions, and how does Power of Two Choices (`P2C`, `select_backend_p2c()`) solve it? (b) Using `select_backend_rendezvous_bounded()` in `code/part02/load_balancing_l4_l7.py`, explain why Consistent Hashing (`Ring Hash`, `Rendezvous HRW`, `Maglev`) moves only `~1 / N` of keys when a backend leaves the pool. Compare that with `(N - 1) / N` under `hash(key) mod N`.
+3. Scale the L4 tier horizontally behind `ECMP` anycast VIPs. Walk through the four-layer architecture of a cloud-scale L4 load balancer: `Router ECMP + BFD -> Stateless L4 Maglev/Katran tier -> DSR/IPIP tunnel -> L7 Envoy/HAProxy tier`. Then explain which two hashing mechanisms keep existing TCP connections from resetting when one L4 load-balancer node is drained.
+4. Study the `gRPC` / `HTTP/2` L4 connection-pinning trap and its fixes. Using `simulate_grpc_l4_vs_l7_distribution(4, 1, 100)`, explain why placing an L4 load balancer (`kube-proxy` `iptables`/`IPVS`, `nginx stream`, AWS NLB) in front of 4 Triton/vLLM gRPC pods causes 1 pod to run at 100% GPU utilization while 3 sit at 0%. This happens when a client opens a single HTTP/2 channel. State three ways to fix it.
+5. Work through health checks, outlier detection, circuit breaking and zero-downtime streaming drains. (a) Distinguish active readiness checks (`compute_health_check_detection_sec(2.0, 3) = 6.0 s` on `/v2/health/ready`) from passive outlier detection (`consecutive_5xx: 5`), slow start (`30 s`) and circuit breakers (`max_pending_requests`). (b) Explain why `nginx -s reload` causes worker accumulation or severed streams on long SSE or gRPC generations, and how Envoy's `xDS` API avoids it.
+6. Design an LLM inference router. Build an L7 inference routing tier that balances variable-length streaming requests across GPU replicas. Use (a) backend-reported running and waiting queue depth and KV-cache occupancy, (b) bounded-load consistent hashing on prompt prefixes (`select_backend_rendezvous_bounded()`) to maximize prefix-cache hits without overloading a single GPU, and (c) separated prefill and decode pools.
 
 ## Checkpoint questions (20)
 
 <details>
 <summary>1. What five questions must every load-balancer architecture answer, and what is the core difference between an L4 and an L7 load balancer?</summary>
 
-The five questions are: (1) **Where** is the routing decision made? (2) **What** is the unit of work? (3) **How** is the backend chosen (algorithm/state)? (4) **How** does the return traffic flow (via LB vs DSR)? and (5) **How** are backend failures detected and drained?\nAn **L4 load balancer** (`IPVS`, `Maglev`, `Katran`, AWS `NLB`) operates on **TCP/UDP connections (5-tuples)**—forwarding packets at very high speed without inspecting application payloads. An **L7 load balancer** (`Envoy`, `HAProxy mode http`, `nginx`, AWS `ALB`) terminates the client TCP/TLS connection and parses **individual HTTP/1.1, HTTP/2, or gRPC requests**, enabling per-request balancing, header/path routing, and retries.
+The five questions are these. (1) **Where** is the routing decision made? (2) **What** is the unit of work? (3) **How** is the backend chosen, by algorithm and state? (4) **How** does the return traffic flow, via the LB or via DSR? (5) **How** are backend failures detected and drained?
+
+An **L4 load balancer** (`IPVS`, `Maglev`, `Katran`, AWS `NLB`) works on **TCP/UDP connections**, identified by 5-tuples. It forwards packets at very high speed without inspecting application payloads. An **L7 load balancer** (`Envoy`, `HAProxy mode http`, `nginx`, AWS `ALB`) terminates the client's TCP and TLS connection. It parses **individual HTTP/1.1, HTTP/2 or gRPC requests**, which enables per-request balancing, header and path routing, and retries.
 </details>
 
 <details>
 <summary>2. How does Direct Server Return (`DSR` / IPVS `-g`) work, why must backends set `arp_ignore=1` and `arp_announce=2`, and what is DSR's main advantage?</summary>
 
-In **DSR**, the L4 load balancer receives the client packet addressed to the `VIP` and forwards it to the chosen backend **without changing the destination IP (`VIP`)**—either by rewriting only the outer **Destination MAC** (on the same L2 VLAN) or by encapsulating it in an **IPIP/GRE/GUE tunnel**. Each backend configures the `VIP/32` on its own **`lo` (loopback)** interface (with `arp_ignore=1` and `arp_announce=2` so backends never answer ARP for the `VIP` on the LAN), accepts the packet locally, and sends the response **directly back to the client (`src = VIP`)**, bypassing the load balancer on the return path. Because responses (model weights, video, token streams) are much larger than requests, DSR multiplies outbound throughput and preserves the true client IP.
+In **DSR**, the L4 load balancer receives the client packet addressed to the `VIP`. It forwards that packet to the chosen backend **without changing the destination IP**, which stays `VIP`. It does this either by rewriting only the outer **destination MAC** on the same L2 VLAN, or by wrapping the packet in an **IPIP, GRE or GUE tunnel**.
+
+Each backend puts `VIP/32` on its own **`lo` (loopback)** interface. It sets `arp_ignore=1` and `arp_announce=2`, so it never answers ARP for the `VIP` on the LAN. The backend then accepts the packet locally and sends the reply straight to the client, with `src = VIP`. That bypasses the load balancer on the return path. Responses such as model weights, video and token streams are much larger than requests. So if you run DSR, it multiplies outbound throughput, and it preserves the true client IP.
 </details>
 
 <details>
 <summary>3. How do you preserve the original client IP address when using an L4 Proxy/SNAT load balancer versus an L7 HTTP reverse proxy?</summary>
 
-- **At Layer 7 (HTTP/HTTPS)**: the proxy inserts the **`X-Forwarded-For`** (or RFC 7239 **`Forwarded`**) HTTP header; backends must be configured to trust `X-Forwarded-For` **only** when the TCP connection arrives from known proxy IPs.\n- **At Layer 4 (TCP proxy/SNAT)**: prepend HAProxy's **`PROXY protocol` (v1 text or v2 binary)** header at the start of the backend TCP connection (or use `DSR` / Kubernetes `externalTrafficPolicy: Local` to avoid SNAT altogether).
+- **At Layer 7 (HTTP/HTTPS)**: the proxy inserts the **`X-Forwarded-For`** header, or the RFC 7239 **`Forwarded`** header. Backends should trust `X-Forwarded-For` **only** when the TCP connection comes from known proxy IPs.
+- **At Layer 4 (TCP proxy/SNAT)**: prepend HAProxy's **`PROXY protocol`** header, in v1 text or v2 binary form, at the start of the backend TCP connection. Alternatively, use `DSR`, or Kubernetes `externalTrafficPolicy: Local`, to avoid SNAT altogether.
 </details>
 
 <details>
-<summary>4. Why does Round-Robin fail for heterogeneous AI requests, why can Least-Connections \"herd\" across multiple LBs, and how does Power of Two Choices (`P2C`) fix it?</summary>
+<summary>4. Why does Round-Robin fail for heterogeneous AI requests, why can Least-Connections "herd" across multiple LBs, and how does Power of Two Choices (`P2C`) fix it?</summary>
 
-**Round-Robin** assumes every request costs the same time, which fails when one prompt generates 20 tokens (`200 ms`) and the next generates 4,000 tokens (`60 s`). **Least-Connections** (or Least-Requests) works well on a single LB, but when dozens of independent LB instances observe that Backend 5 just became idle (`0` active requests), all of them simultaneously dump their next burst of requests onto Backend 5 (**herding**). **Power of Two Choices (`P2C`, used by Envoy `LEAST_REQUEST`)** picks **two backends at random** and sends the request to the less loaded of the two—exponentially suppressing max-load tail spikes while avoiding synchronized herding.
+**Round-Robin** assumes every request costs the same time. You see that break when one prompt generates 20 tokens (`200 ms`) and the next generates 4,000 tokens (`60 s`). **Least-Connections** (or Least-Requests) works well on a single LB. But when dozens of independent LB instances see that Backend 5 just became idle, with `0` active requests, all of them send their next burst to Backend 5 at once. That is **herding**.
+
+**Power of Two Choices (`P2C`, used by Envoy `LEAST_REQUEST`)** picks **two backends at random**, then sends the request to the less loaded of the two. This exponentially suppresses max-load tail spikes, and it avoids synchronised herding.
 </details>
 
 <details>
 <summary>5. How do Ring Consistent Hashing, Rendezvous (`HRW`) Hashing, and `Maglev` Hashing work, and why do they move only `~1 / N` of keys when a backend changes?</summary>
 
-With naive `hash(key) % N`, changing `N` from `10` to `9` remaps **`90%` of all keys**, invalidating caches and breaking stateful sessions. **Ring Consistent Hashing** places backends (with virtual nodes) and keys on a `2^32` ring; **Rendezvous (*Highest Random Weight*, `HRW`) Hashing** computes `score = hash(key, backend)` for each backend and picks the highest score; and **Google's `Maglev` Hashing** generates a permutation preference list per backend to fill a fixed-size lookup table (`M = 65537` prime slots) with near-perfect uniformity. In all three, adding or removing 1 of `N` backends disturbs only **`~1 / N`** of keys.
+With naive `hash(key) % N`, changing `N` from `10` to `9` remaps **`90%` of all keys**. That invalidates caches and breaks stateful sessions. **Ring Consistent Hashing** places backends, with virtual nodes, and keys on a `2^32` ring. **Rendezvous (*Highest Random Weight*, `HRW`) Hashing** computes `score = hash(key, backend)` for each backend and picks the highest score. **Google's `Maglev` Hashing** generates a permutation preference list per backend, then fills a fixed-size lookup table of `M = 65537` prime slots with near-perfect uniformity.
+
+In all three, adding or removing one of `N` backends disturbs only **`~1 / N`** of keys.
 </details>
 
 <details>
 <summary>6. How do you scale out an L4 load-balancer tier horizontally using `eBGP`, `ECMP`, and `Maglev` consistent hashing?</summary>
 
-Deploy `K` stateless L4 load-balancer nodes (`IPVS` / `Katran` / `Maglev`), each advertising the **exact same `/32` VIP** to the leaf/border routers over **eBGP + BFD**. The routers spread incoming client TCP flows across the `K` L4 nodes via **resilient 5-tuple ECMP**. Because every L4 node runs **Maglev consistent hashing** on the packet's 5-tuple over the same backend list, even if a router ECMP-rehashes an established TCP flow from L4 Node 1 to L4 Node 2, L4 Node 2 deterministically maps the packet to the **exact same backend server** without needing a shared cross-node connection table.
+Deploy `K` stateless L4 load-balancer nodes (`IPVS` / `Katran` / `Maglev`). Each one advertises the **exact same `/32` VIP** to the leaf or border routers over **eBGP + BFD**. The routers spread incoming client TCP flows across the `K` nodes using **resilient 5-tuple ECMP**.
+
+Every L4 node runs **Maglev consistent hashing** on the packet's 5-tuple, over the same backend list. So if a router ECMP-rehashes an established TCP flow from L4 Node 1 to L4 Node 2, Node 2 still maps the packet to the **exact same backend server**. It needs no shared cross-node connection table to do that.
 </details>
 
 <details>
 <summary>7. Explain the `gRPC` / `HTTP/2` L4 Connection-Pinning problem and state three ways to solve it (`PK` Chapter 6 / `NK` Chapter 2).</summary>
 
-`gRPC` runs over **`HTTP/2`**, which multiplexes hundreds of concurrent RPC calls as streams inside a **single long-lived TCP connection**. If a client (or microservice pod) opens one gRPC channel through an **L4 load balancer** (`kube-proxy` default `iptables` or `IPVS` mode, `nginx stream`, or AWS NLB), the L4 balancer makes a single decision at `SYN` time and pins **100% of all future RPCs on that channel to a single backend pod** while sibling pods sit idle. Fix it by:\n(1) Placing an **L7 HTTP/2-aware proxy** (`Envoy`, `HAProxy proto h2`, `nginx grpc_pass`, or a service mesh) in the path to balance per RPC request;\n(2) Using **client-side gRPC load balancing** (`round_robin` policy resolving a **Headless Service** `clusterIP: None` or via **`xDS`**); or\n(3) Configuring **`MAX_CONNECTION_AGE`** on the server so clients periodically reconnect and rebalance.
+`gRPC` runs over **`HTTP/2`**, which multiplexes hundreds of concurrent RPC calls as streams inside a **single long-lived TCP connection**. Suppose a client opens one gRPC channel through an **L4 load balancer**, such as `kube-proxy` in its default `iptables` or `IPVS` mode, `nginx stream`, or AWS NLB. The L4 balancer makes one decision at `SYN` time. From then on, **100% of the RPCs on that channel go to a single backend pod**, while sibling pods sit idle.
+
+You can fix it in three ways. (1) Place an **L7 HTTP/2-aware proxy** in the path, such as `Envoy`, `HAProxy proto h2`, `nginx grpc_pass` or a service mesh, to balance each RPC. (2) Use **client-side gRPC load balancing**, with a `round_robin` policy that resolves a **Headless Service** (`clusterIP: None`) or uses **`xDS`**. (3) Configure **`MAX_CONNECTION_AGE`** on the server, so clients reconnect and rebalance periodically.
 </details>
 
 <details>
 <summary>8. Compare Active Health Checks (`liveness` vs. `readiness`), Passive Outlier Detection, and Slow Start.</summary>
 
-- **Active Health Checks**: periodic synthetic probes (`GET /v2/health/ready`, `grpc.health.v1`, or TCP connect) controlled by `interval`, `timeout`, `fall` (consecutive failures to mark down), and `rise` (successes to mark up). **Liveness** checks if the process is stuck and needs a restart; **Readiness** checks if the replica has finished loading model weights into VRAM and has healthy GPUs to accept traffic.\n- **Passive Outlier Detection**: monitors **real client traffic** (`consecutive_5xx: 5` in Envoy) and temporarily ejects a backend that returns fast 500s or timeouts even if its `/healthz` endpoint still returns 200.\n- **Slow Start (`slowstart 30s`)**: linearly ramps traffic weight from 0% to 100% when a new or recovered backend joins the pool so cold caches/JIT/CUDA contexts are not overwhelmed.
+- **Active Health Checks** are periodic synthetic probes, such as `GET /v2/health/ready`, `grpc.health.v1` or a TCP connect. They are controlled by `interval`, `timeout`, `fall` (the consecutive failures that mark a backend down) and `rise` (the successes that mark it up). **Liveness** asks whether the process is stuck and needs a restart. **Readiness** asks whether the replica has finished loading model weights into VRAM and has healthy GPUs to take traffic.
+- **Passive Outlier Detection** watches real client traffic, for example `consecutive_5xx: 5` in Envoy. It temporarily ejects a backend that returns fast 500s or timeouts, even if its `/healthz` endpoint still returns 200.
+- **Slow Start (`slowstart 30s`)** ramps traffic weight linearly from 0% to 100% when a new or recovered backend joins the pool. That keeps cold caches, JIT and CUDA contexts from being overwhelmed.
 </details>
 
 <details>
 <summary>9. Why are unbudgeted retries dangerous during a partial outage, and how do Retry Budgets and Circuit Breakers prevent cascading failure?</summary>
 
-If 50% of requests time out when a backend pool is overloaded and every client retries `3` times immediately, applied load **quadruples (`4x`)** (**retry storm / traffic amplification**), knocking over the remaining healthy replicas. Prevent this by: (1) retrying **only idempotent requests or connection failures before bytes are sent**, (2) enforcing a cluster-wide **Retry Budget** (e.g., at most `10%–20%` of active requests may be retries), and (3) configuring **Circuit Breakers** (`max_connections`, `max_pending_requests`, `max_requests`) that fail fast (`503 Service Unavailable`) instead of queueing forever.
+If 50% of requests time out when a backend pool is overloaded, and every client retries `3` times immediately, the applied load quadruples (`4x`). That is a **retry storm**, or **traffic amplification**, and it can knock over the remaining healthy replicas. Three measures help you prevent it. (1) Retry only **idempotent requests** or connection failures that happen before any bytes are sent. (2) Enforce a cluster-wide **Retry Budget**, for example at most `10%–20%` of active requests as retries. (3) Configure **Circuit Breakers** (`max_connections`, `max_pending_requests`, `max_requests`) that fail fast with `503 Service Unavailable` instead of queueing forever.
 </details>
 
 <details>
 <summary>10. Why does `nginx -s reload` cause problems for long-lived LLM token streams (`SSE` / `gRPC`), and how do Envoy (`xDS`) and HAProxy solve it?</summary>
 
-When open-source `nginx` reloads its configuration (`nginx -s reload`) to pick up new backend pod IPs, the master process spawns a brand-new set of worker processes and tells the old workers to shut down once their active connections close. With long-lived HTTP/2, gRPC, or WebSocket/SSE streams, old workers linger in memory for hours (exhausting RAM) or abruptly sever active token streams when `worker_shutdown_timeout` expires. **Envoy** updates endpoints dynamically in memory via its **`xDS` (`EDS`) API** (and **HAProxy** via its runtime Unix socket / DNS SRV) without spawning new processes or dropping connections.
+When open-source `nginx` reloads (`nginx -s reload`) to pick up new backend pod IPs, the master process starts a fresh set of workers. It tells the old workers to shut down once their active connections close. With long-lived HTTP/2, gRPC or WebSocket/SSE streams, the old workers can linger in memory for hours and exhaust RAM. Or, when `worker_shutdown_timeout` expires, they abruptly cut active token streams.
+
+If you run **Envoy**, it updates endpoints in memory through its **`xDS` (`EDS`) API**. **HAProxy** does so through its runtime Unix socket or DNS SRV. Neither spawns new processes or drops connections to make the change.
 </details>
 
 <details>
 <summary>11. Compare the three `kube-proxy` modes in Kubernetes (`iptables`, `IPVS`, and Cilium `eBPF`, `PK` Chapter 6).</summary>
 
-- **`iptables` mode (legacy default)**: programs sequential chain rules (`KUBE-SERVICES` -> `KUBE-SVC-*` -> `KUBE-SEP-*`) using `--mode random --probability` to pick a pod on `SYN`. Rule evaluation scales as **`O(N)`** with the number of Services (slowing packet processing above a few thousand Services) and supports only random L4 connection selection.\n- **`IPVS` mode**: uses in-kernel Linux Virtual Server hash tables (**`O(1)`** lookup at 10,000+ Services) and supports real L4 schedulers (`rr`, `lc`, `wlc`, `sh`, `mh` Maglev).\n- **Cilium `eBPF` kube-proxy replacement**: intercepts `connect()` / `sendmsg()` directly at the **socket layer** (`sockmap`/cgroup eBPF), rewriting the destination `ClusterIP` to the pod IP once at connection setup with zero per-packet `iptables`/DNAT traversal.
+- **`iptables` mode (legacy default)** programs sequential chain rules: `KUBE-SERVICES`, then `KUBE-SVC-*`, then `KUBE-SEP-*`. It uses `--mode random --probability` to pick a pod on `SYN`. Rule evaluation scales as **`O(N)`** with the number of Services, which slows packet processing above a few thousand Services. It supports only random L4 connection selection.
+- **`IPVS` mode** uses in-kernel Linux Virtual Server hash tables, which give **`O(1)`** lookup at 10,000+ Services. It supports real L4 schedulers: `rr`, `lc`, `wlc`, `sh`, and `mh` (Maglev).
+- **Cilium `eBPF` kube-proxy replacement** intercepts `connect()` and `sendmsg()` directly at the **socket layer** (`sockmap` / cgroup eBPF). It rewrites the destination `ClusterIP` to the pod IP once, at connection setup. Packets then skip per-packet `iptables` and DNAT traversal entirely.
 </details>
 
 <details>
 <summary>12. What does `externalTrafficPolicy: Local` vs. `Cluster` do on a Kubernetes `NodePort` or `LoadBalancer` Service (`PK` Chapter 6)?</summary>
 
-- **`Cluster` (default)**: any node receiving external traffic `DNAT`s it across all ready pods cluster-wide (potentially adding an extra node-to-node network hop) and **`SNAT`s the source IP to the node's own IP** so return traffic comes back to that node (**losing the original client IP**).\n- **`Local`**: each node routes traffic **only to pods running locally on that same node** (eliminating the extra hop and **preserving the original client source IP** without SNAT), and fails the cloud load balancer's health-check probe on nodes that have zero local ready pods.
+- **`Cluster` (default)**: a node that receives external traffic DNATs it to any ready pod in the cluster. That can add an extra node-to-node hop. It also SNATs the source IP to the node's own IP, so return traffic comes back to that node. The original client IP is lost.
+- **`Local`**: each node sends traffic only to pods running on that same node. That removes the extra hop and preserves the original client source IP without SNAT. A node with zero local ready pods fails the cloud load balancer's health-check probe.
 </details>
 
 <details>
 <summary>13. Why is active TCP connection count (`leastconn`) a poor load metric for LLM inference backends, and what metrics should an inference router use instead?</summary>
 
-In LLM serving, one request with a `32,000`-token prompt or `4,000`-token reasoning chain consumes **`100x` more GPU compute and HBM KV-cache memory** than a short `50`-token prompt, yet both count as "`1` active connection/request". An LLM-aware router (`Gateway API Inference Extension`, `vLLM`/`SGLang`/`Triton` router) routes based on real-time engine telemetry: **(1) number of running + waiting sequences in the batch scheduler queue**, **(2) GPU KV-cache block occupancy percentage**, and **(3) estimated prompt/decode token load**.
+A request with a `32,000`-token prompt, or a `4,000`-token reasoning chain, consumes **`100x` more GPU compute and HBM KV-cache memory** than a short `50`-token prompt. Yet both count as "`1` active connection/request". If you run an LLM-aware router, such as the `Gateway API Inference Extension` or a `vLLM`, `SGLang` or `Triton` router, it makes its decisions from real-time engine telemetry.
+
+The signals are **(1) the number of running and waiting sequences in the batch scheduler queue**, **(2) the GPU KV-cache block occupancy percentage**, and **(3) the estimated prompt and decode token load**.
 </details>
 
 <details>
 <summary>14. What is Prefix-Cache-Aware Routing in LLM serving, and why must it be paired with Bounded Load?</summary>
 
-Modern inference engines (`vLLM` Automatic Prefix Caching, `SGLang` RadixAttention, `TensorRT-LLM`) cache the **KV-cache blocks** of shared prompt prefixes (system prompts, few-shot examples, long RAG documents, multi-turn chat history) in GPU HBM or host DRAM. Routing requests that share a conversation or system-prompt prefix to the **same replica** avoids recomputing the expensive prefill phase (cutting `TTFT` dramatically). However, if a popular prefix hashes to one replica, pure affinity overloads that single GPU; **Bounded-Load Consistent Hashing** routes to the affinity replica only while its queue/KV load is below a threshold (`<= 1.25x` average load), spilling excess requests to the next candidate.
+Modern engines, such as `vLLM` with Automatic Prefix Caching, `SGLang` with RadixAttention and `TensorRT-LLM`, cache the **KV-cache blocks** of shared prompt prefixes. Those prefixes include system prompts, few-shot examples, long RAG documents and multi-turn chat history. The cache lives in GPU HBM or host DRAM.
+
+If you route requests that share a prefix to the **same replica**, you avoid recomputing the expensive prefill phase, which cuts `TTFT` dramatically. But pure affinity has a catch. If a popular prefix hashes to one replica, that single GPU overloads. **Bounded-Load Consistent Hashing** fixes this. It routes to the affinity replica only while its queue and KV load stay below a threshold, `<= 1.25x` the average load. Excess requests spill to the next candidate.
 </details>
 
 <details>
 <summary>15. How does Disaggregated Prefill/Decode Serving change the inference load-balancing architecture?</summary>
 
-Because **Prefill** is compute-bound (high parallel FLOPs, determines `TTFT`) and **Decode** is memory-bandwidth-bound (low batch FLOPs, determines inter-token latency `TPOT`), mixing long prefills and decodes on the same GPU stalls ongoing decode token streams. A **disaggregated router** sends incoming prompts first to a **Prefill pool** (optimized for compute throughput), coordinates transferring the resulting KV-cache blocks over **RDMA (`NVLink` / `RoCEv2` / `InfiniBand` via `Mooncake` / `NIXL`)** to a selected **Decode pool** replica (chosen by available KV-cache memory), and streams the decoded tokens from the Decode replica.
+Prefill is compute-bound, with high parallel FLOPs, and it determines `TTFT`. Decode is memory-bandwidth-bound, with low batch FLOPs, and it determines the inter-token latency, `TPOT`. Mixing long prefills and decodes on the same GPU stalls the decode token streams that are already running.
+
+A **disaggregated router** therefore sends incoming prompts first to a **Prefill pool**, which is optimized for compute throughput. It then coordinates moving the resulting KV-cache blocks over **RDMA (`NVLink` / `RoCEv2` / `InfiniBand` via `Mooncake` / `NIXL`)** to a selected **Decode pool** replica, chosen by available KV-cache memory. The decoded tokens stream out from that Decode replica.
 </details>
 
 <details>
 <summary>16. What specific proxy configuration settings are required in `nginx`, `HAProxy`, and `Envoy` for Server-Sent Events (`SSE`) token streaming?</summary>
 
-(1) **Disable response buffering** (`proxy_buffering off; proxy_cache off;` in nginx, small `grpc_buffer_size 4k`) so each generated token is flushed to the client the millisecond it leaves the model;\n(2) **Raise read/stream-idle timeouts** (`proxy_read_timeout 600s;`, HAProxy `timeout server 300s` / `timeout tunnel 1h`, Envoy `stream_idle_timeout: 600s`) above the longest reasoning/thinking pause;\n(3) **Keep upstream connections alive** (`proxy_http_version 1.1; proxy_set_header Connection "";` or `HTTP/2`).
+(1) **Disable response buffering** with `proxy_buffering off; proxy_cache off;` in nginx, plus a small `grpc_buffer_size 4k`. Each generated token then flushes to the client as soon as it leaves the model.
+
+(2) **Raise read and stream-idle timeouts** above the longest reasoning or thinking pause. Use `proxy_read_timeout 600s;` in nginx, `timeout server 300s` and `timeout tunnel 1h` in HAProxy, and `stream_idle_timeout: 600s` in Envoy.
+
+(3) **Keep upstream connections alive** with `proxy_http_version 1.1; proxy_set_header Connection "";`, or use `HTTP/2`.
 </details>
 
 <details>
 <summary>17. Walk through the exact sequence of a zero-downtime rolling deployment for an LLM inference pod with 5-minute streaming responses.</summary>
 
-(1) Kubernetes sends `SIGTERM` to the terminating pod and removes it from `EndpointSlices` (or a `preStop` hook flips `/health/ready` to `503` and sleeps `5–10 s` so the L7 Ingress/Envoy finishes propagating the endpoint removal before the app stops accepting connections);\n(2) The L7 proxy stops sending **new** requests to the pod while keeping existing **in-flight streaming connections** open;\n(3) `terminationGracePeriodSeconds` on the Pod spec (and the LB's deregistration/drain timeout) is set to **`>= 360` seconds** (longer than the 5-minute max generation time);\n(4) Once in-flight streams reach `[DONE]`, the server exits cleanly before `SIGKILL`.
+(1) When you roll a pod out, Kubernetes sends `SIGTERM` to the terminating pod and removes it from `EndpointSlices`. A `preStop` hook can also flip `/health/ready` to `503` and sleep for `5–10 s`. That gives the L7 Ingress or Envoy time to propagate the endpoint removal before the app stops accepting connections.
+
+(2) The L7 proxy stops sending **new** requests to the pod, but it keeps existing **in-flight streaming connections** open.
+
+(3) Set `terminationGracePeriodSeconds` on the Pod spec, and the LB's deregistration or drain timeout, to **`>= 360` seconds**. That is longer than the 5-minute maximum generation time.
+
+(4) Once the in-flight streams reach `[DONE]`, the server exits cleanly before `SIGKILL`.
 </details>
 
 <details>
-<summary>18. What is Envoy's \"Panic Threshold\" (default `50%`), and why does it exist?</summary>
+<summary>18. What is Envoy's "Panic Threshold" (default `50%`), and why does it exist?</summary>
 
-Normally, Envoy routes traffic only to endpoints marked **healthy** by active health checks. However, if a network blip, bad health-check dependency, or partial overload causes the percentage of healthy endpoints in a cluster to drop **below the Panic Threshold (default `50%`)**, routing 100% of cluster traffic onto the remaining `< 50%` of backends would instantly crush them in a cascading failure. Below the panic threshold, Envoy enters **panic mode** and distributes traffic across **all** endpoints (healthy and unhealthy alike) to survive the brownout.
+Normally, if you run Envoy with active health checks, it routes traffic only to endpoints those checks mark **healthy**. But suppose a network blip, a bad health-check dependency or a partial overload pushes the share of healthy endpoints in a cluster **below the Panic Threshold (default `50%`)**. Sending 100% of the traffic to the remaining `< 50%` of backends would crush them at once, in a cascading failure.
+
+Below that threshold, Envoy enters **panic mode**. It spreads traffic across **all** endpoints, healthy and unhealthy alike, so the cluster can survive the brownout.
 </details>
 
 <details>
 <summary>19. Why does `HTTP/3` (`QUIC` over UDP) require special support at the L4 load-balancer tier?</summary>
 
-A core feature of `QUIC` (`RFC 9000`) is **connection migration**: when a mobile or roaming client switches from Wi-Fi to 5G or rebinds its NAT port, its **source IP and UDP source port change** while its **QUIC Connection ID (`CID`)** in the packet header stays the same. A naive L4 load balancer hashing only on the UDP 5-tuple will route the migrated packet to a **different** backend server, breaking the connection; QUIC-aware L4 load balancers (`Envoy`, `Cloudflare`, `Katran` CID routing) coordinate and route using the server-generated **Connection ID**.
+A core feature of `QUIC` (`RFC 9000`) is **connection migration**. When a mobile or roaming client switches from Wi-Fi to 5G, or rebinds its NAT port, its **source IP and UDP source port change**. Its **QUIC Connection ID (`CID`)** in the packet header stays the same.
+
+If you use a naive L4 load balancer that hashes only on the UDP 5-tuple, it sends the migrated packet to a **different** backend, which breaks the connection. QUIC-aware L4 load balancers, such as `Envoy`, `Cloudflare` or `Katran` with CID routing, coordinate and route by the server-generated **Connection ID**.
 </details>
 
 <details>
 <summary>20. Give the end-to-end reference architecture for a production multi-tenant LLM inference ingress and load-balancing stack.</summary>
 
-`Client` -> **Anycast / DNS GSLB** -> **L3 ECMP (`eBGP + BFD`, resilient hashing)** -> **Stateless L4 tier (`Maglev` / `Katran` / Cloud NLB)** -> **L7 Gateway tier (`Envoy` / `Gateway API` terminating TLS 1.3, authenticating JWT/API keys, enforcing per-tenant token-bucket rate limits, and disabling SSE buffering)** -> **LLM-Aware Endpoint Picker (`P2C` over queue depth + KV-cache occupancy + bounded-load prefix-hash affinity)** -> **Inference Pods (`vLLM` / `SGLang` / `Triton` / `NIM` with `/v2/health/ready`, DCGM GPU health gate, and 600s graceful drain)**.
+You can read the chain from the client to the pods, one tier at a time. `Client` -> **Anycast / DNS GSLB** -> **L3 ECMP (`eBGP + BFD`, resilient hashing)** -> **Stateless L4 tier (`Maglev` / `Katran` / Cloud NLB)** -> **L7 Gateway tier (`Envoy` / `Gateway API` terminating TLS 1.3, authenticating JWT/API keys, enforcing per-tenant token-bucket rate limits, and disabling SSE buffering)** -> **LLM-Aware Endpoint Picker (`P2C` over queue depth + KV-cache occupancy + bounded-load prefix-hash affinity)** -> **Inference Pods (`vLLM` / `SGLang` / `Triton` / `NIM` with `/v2/health/ready`, DCGM GPU health gate, and 600s graceful drain)**.
 </details>
 
 ## Sources and review notes

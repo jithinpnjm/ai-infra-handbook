@@ -1,0 +1,11 @@
+#!/usr/bin/env python3
+"""Prepare restoration units (backup current target files + prompt). Usage: prep_restore.py U022 U028 ..."""
+import json, os, shutil, sys
+S='/private/tmp/claude-501/-Users-jithinpjoseph-Documents-GitHub-ai-infra-handbook/4207da9b-4841-4181-b14d-4ebf9acb1a7e/scratchpad'
+U={u['id']:u for u in json.load(open('planning/restore/QUEUE.json'))}
+tpl=open('planning/restore/WORKER_PROMPT.md').read()
+for i in sys.argv[1:]:
+    u=U[i]; d=f'planning/restore/backup/{i}'; shutil.rmtree(d,ignore_errors=True); os.makedirs(d)
+    for f in u['files']: shutil.copy(f,d)
+    v=dict(u); v['files']=', '.join(u['files']); v['labels']=' '.join(u['labels'])
+    open(f'planning/restore/{i}_prompt.md','w').write(tpl.format(scratch=S,**v)); print(i,u['prefix'],u['pct'],u['files'][0].split('/')[-1][:30])
