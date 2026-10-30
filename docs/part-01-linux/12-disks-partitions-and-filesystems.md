@@ -22,7 +22,7 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-In AI infrastructure, storage is not only about keeping data safe. It is about **feeding GPUs at their maximum ingestion rate** and **checkpointing very large model states without stalling training**. When a cluster of thousands of GPUs stalls, the root cause is frequently a storage bottleneck disguised as a compute failure. The daily questions are all storage questions:
+Picture a cluster of thousands of GPUs that suddenly stalls. The dashboards point at compute, but the real cause is often storage. Storage in AI infrastructure has two jobs. It must feed GPUs at their maximum ingestion rate. It must also checkpoint very large model states without stalling training. The questions you will ask every day are all storage questions:
 
 - "Which disk is this, what type is it, how is it partitioned, and how will I mount it so it survives a reboot?"
 - "The job says 'No space left on device' but `df` shows free space." (inodes, quotas, reserved blocks, a read-only remount, a deleted-but-open file)
@@ -31,19 +31,23 @@ In AI infrastructure, storage is not only about keeping data safe. It is about *
 - "Why did `fsck` run for an hour at boot, or why did the node come up with `/data` missing?" (fstab, `nofail`, journals)
 - "Should this NVMe scratch be ext4 or XFS, and what mount options?"
 
-This chapter builds the stack from the bottom: what disks are and how they behave, how a disk is divided (partitions, MBR and GPT), what a filesystem is and how it works inside (inodes, directories, journals, extents), how to create, mount, tune, check and repair one, the special filesystems the kernel provides, the **performance concepts** that explain why identical code can be fast or slow (caching, write-back, synchronous and direct I/O, read-ahead, logical versus physical I/O), the methodology and tools to measure it, and the AI-specific patterns (local NVMe scratch, inode exhaustion, `O_DIRECT`, GPUDirect Storage, checkpoint storms). Logical volumes, RAID and NVMe operations continue in chapter 1.13; boot and the initramfs in 1.14; shared and parallel filesystems (NFS, Lustre, GPFS, WekaFS) in Part 6 and the storage part; the performance method in 1.23 to 1.25.
+This chapter builds the stack from the bottom. You will start with what disks are and how they behave. Then you will see how a disk is divided into partitions, using MBR and GPT. Next comes the filesystem, which you will look at from the inside: inodes, directories, journals and extents. After that you will create, mount, tune, check and repair one. The chapter also covers the special filesystems the kernel provides.
+
+The later sections cover the performance concepts that explain why identical code can be fast or slow. These include caching, write-back, synchronous and direct I/O, read-ahead, and logical versus physical I/O. Then come the methods and tools for measuring all of this. The chapter ends with AI-specific patterns: local NVMe scratch, inode exhaustion, `O_DIRECT`, GPUDirect Storage, and checkpoint storms.
+
+Logical volumes, RAID and NVMe operations continue in chapter 1.13. Boot and the initramfs come in 1.14. Shared and parallel filesystems (NFS, Lustre, GPFS, WekaFS) are in Part 6 and the storage part. The performance method is in 1.23 to 1.25.
 
 ## Prerequisites and outcomes
 
-You should know the directory hierarchy, links and inodes at an introductory level (1.3), users and permissions (1.6), device files and `/sys` (1.10), and processes and `/proc` (1.8).
+You should know the directory hierarchy, links and inodes at an introductory level (1.3). You also need users and permissions (1.6), device files and `/sys` (1.10), and processes and `/proc` (1.8). If any of those feel shaky, revisit them before you start.
 
 After this chapter you can:
 
-- Describe the Linux storage stack from application to device and say where each cache and queue sits.
+- Describe the Linux storage stack from application to device, and say where each cache and queue sits.
 - Compare rotational disks, SSDs, NVMe and persistent memory, and the SCSI, SATA, SAS, FC and NVMe interfaces, with their latency scales.
-- Read and create partition tables (MBR and GPT) with `parted`, `fdisk` and `sgdisk`; check alignment; make the kernel re-read tables.
-- Create, label and mount filesystems; write correct `/etc/fstab` entries (UUID, options, `nofail`, `_netdev`); test them safely; use `findmnt`, `lsblk`, `blkid`.
-- Explain inodes, directory entries, link counts, block allocation, journaling, extents, copy-on-write and why each matters.
+- Read and create partition tables (MBR and GPT) with `parted`, `fdisk` and `sgdisk`, check alignment, and make the kernel re-read tables.
+- Create, label and mount filesystems, write correct `/etc/fstab` entries (UUID, options, `nofail`, `_netdev`), test them safely, and use `findmnt`, `lsblk`, `blkid`.
+- Explain inodes, directory entries, link counts, block allocation, journaling, extents, copy-on-write, and why each matters.
 - Choose between ext4, XFS, btrfs and ZFS for a purpose, and know the mkfs and mount options that matter.
 - Check and repair filesystems safely (`fsck`, `e2fsck`, `xfs_repair`), recover with a backup superblock, and know the worst-case options.
 - Diagnose "disk full" in its five different forms (blocks, inodes, read-only, quota, wrong mount) and the deleted-but-open file.
@@ -53,7 +57,7 @@ After this chapter you can:
 
 ## 1. The storage stack in one picture
 
-An application's `read()` or `write()` passes through many layers. Each layer can cache, reorder, merge, delay or fail the request, which is why "the disk is fine" and "the application is slow" can both be true.
+An application's `read()` or `write()` call passes through many layers. Each layer can cache, reorder, merge, delay or fail the request. That is why "the disk is fine" and "the application is slow" can both be true.
 
 ```mermaid
 flowchart TB
@@ -74,13 +78,15 @@ flowchart TB
   APP -.->|"raw block device I/O (rare)"| BIO
 ```
 
-Three principles to carry through the chapter:
+Three principles carry through the rest of the chapter.
 
-1. **Filesystem latency is what applications feel.** The application waits for the filesystem, which uses caching and buffering to hide the disk. Statistics collected at the disk device alone can be misleading: background flushing looks like bursts of slow disk I/O although no application is waiting, and a cache hit never reaches the disk at all.
-2. **Every layer changes the I/O.** The disk sees *physical* I/O; the application issued *logical* I/O. They differ in size, count and timing (section 9).
-3. **The bottleneck is rarely visible from the system call.** `read()` taking 400 ms tells you nothing about whether the cause is an overloaded NVMe drive, a hung NFS server or a cold cache. You must look underneath the VFS.
+1. **Filesystem latency is what applications feel.** The application waits for the filesystem, which uses caching and buffering to hide the disk. Statistics collected at the disk alone can mislead you. Background flushing looks like bursts of slow disk I/O, even though no application is waiting. A cache hit never reaches the disk at all.
+2. **Every layer changes the I/O.** The disk sees *physical* I/O, while the application issued *logical* I/O. The two differ in size, count and timing (section 9).
+3. **The bottleneck is rarely visible from the system call.** A `read()` that takes 400 ms tells you nothing about the cause. It could be an overloaded NVMe drive, a hung NFS server or a cold cache. You must look underneath the VFS.
 
 ## 2. Disks and their behaviour
+
+The type of disk decides how your data behaves under load. Each type has its own strengths and weaknesses, so read both columns of the table below.
 
 ### Disk types
 
@@ -92,17 +98,25 @@ Three principles to carry through the chapter:
 | **Persistent memory / battery-backed DRAM** | Byte-addressable non-volatile memory (3D XPoint, battery or supercapacitor-backed DRAM) | Close to memory speed | Expensive; niche (controller write caches, specialised stores) |
 | **Virtual / network block devices** | Cloud persistent disks (GCP PD, EBS), SAN LUNs, iSCSI, NVMe-over-Fabrics | Elastic, survives host loss | Latency and throughput depend on provisioned size, type and network; per-VM caps |
 
-**Latency scale** (orders of magnitude; consult vendor documentation and measure): on-disk cache hit below 100 µs; NVMe flash 10 to 100 µs; SATA flash 100 µs to 1 ms; rotational sequential about 1 ms per request; rotational random read about 8 ms (7,200 rpm), more with a queue; worst-case virtual disk under RAID-5 and random I/O can exceed one second. Because a disk returns a mixture of cache hits (microseconds) and misses (milliseconds), an **average latency can be misleading**, since the real distribution has two modes; histograms show the truth.
+You will rarely pick a disk for speed alone, so notice that each faster medium comes with its own catch. Flash must hide erase cycles from you, and NVMe needs parallel I/O before it shows its speed.
+
+**Latency** is the time one request takes to finish. The figures below are orders of magnitude only, so consult vendor documentation and measure. An on-disk cache hit takes below 100 µs. NVMe flash takes 10 to 100 µs, and SATA flash takes 100 µs to 1 ms. A rotational sequential request takes about 1 ms. A rotational random read takes about 8 ms on a 7,200 rpm disk, and more when a queue builds. A worst-case virtual disk under RAID-5 with random I/O can exceed one second.
+
+Watch out for the average. A disk returns a mix of cache hits in microseconds and misses in milliseconds, so an **average latency can be misleading**. The real distribution has two modes. Histograms show the truth.
 
 ### Sectors and block sizes
 
-Disks present **logical blocks (sectors)**: traditionally 512 bytes, today often 4 KiB physical sectors ("Advanced Format"). Many drives emulate 512-byte logical sectors on 4 KiB physical sectors (**512e**), which causes a **read-modify-write** if a write is smaller than or not aligned to 4 KiB. Hence the importance of **alignment** (section 3). Check what a drive reports: `lsblk -t` (columns `LOG-SEC`, `PHY-SEC`, `MIN-IO`, `OPT-IO`, `ROTA`), `cat /sys/block/sda/queue/{logical_block_size,physical_block_size,rotational}`, `fdisk -l`, `smartctl -a`, `nvme id-ns`.
+Disks present **logical blocks**, also called sectors. Traditionally a sector is 512 bytes. Today it is often 4 KiB, the "Advanced Format" size. Many drives emulate 512-byte logical sectors on top of 4 KiB physical sectors (**512e**). That emulation causes a **read-modify-write** whenever a write is smaller than, or not aligned to, 4 KiB. This is why alignment matters (section 3). To see what a drive reports, run `lsblk -t` (columns `LOG-SEC`, `PHY-SEC`, `MIN-IO`, `OPT-IO`, `ROTA`), `cat /sys/block/sda/queue/{logical_block_size,physical_block_size,rotational}`, `fdisk -l`, `smartctl -a`, or `nvme id-ns`.
 
 ### Rotational disk mechanics (why old advice exists)
 
-A head reads a **track**; the same track on every platter is a **cylinder**; a track is divided into **sectors**. Older tools addressed locations by cylinder-head-sector (**CHS**). On modern disks the reported CHS values are fiction: disks use **logical block addressing (LBA)**, a simple block number, and the firmware maps it onto the physical layout (**sector zoning**: outer tracks hold more sectors and so deliver higher throughput; **short-stroking** uses only outer tracks to cut seek times). Therefore, the old rule that partitions must start on cylinder boundaries is obsolete. Mechanical disks reorder queued requests to reduce head travel (**elevator seeking**, via Tagged Command Queueing on SCSI and Native Command Queueing on SATA), which can starve a distant request unless the scheduler enforces deadlines. Disks store an error-correcting code per sector and retry reads that fail; repeated retries are a common cause of mysteriously slow I/O, and rising soft-error rates (visible in SMART data) warn of failure.
+A head reads a **track**. The same track on every platter forms a **cylinder**, and a track is divided into **sectors**. Older tools addressed locations by cylinder-head-sector (**CHS**). On modern disks the reported CHS values are fiction. Disks use **logical block addressing (LBA)**, a simple block number, and the firmware maps it onto the physical layout. Sector zoning is part of that mapping: outer tracks hold more sectors and deliver higher throughput. **Short-stroking** uses only the outer tracks to cut seek times. So the old rule that partitions must start on cylinder boundaries is obsolete.
+
+Mechanical disks reorder queued requests to reduce head travel. This is **elevator seeking**, done through Tagged Command Queueing on SCSI and Native Command Queueing on SATA. That reordering can starve a distant request unless the scheduler enforces deadlines. Disks also store an error-correcting code per sector and retry reads that fail. Repeated retries are a common cause of mysteriously slow I/O. Rising soft-error rates, visible in SMART data, warn of failure.
 
 ### Interfaces
+
+As you read this table, keep the interface in mind. It is the first clue when a disk behaves oddly. The interface sets how the disk talks to the host, and so how fast it can go. Notice that the SCSI command set is still used on many of these interfaces, including USB storage, SATA via libata, SAS, iSCSI and FC.
 
 | Interface | Notes |
 |---|---|
@@ -114,17 +128,25 @@ A head reads a **track**; the same track on every platter is a **cylinder**; a t
 
 ### How storage is attached
 
-- **Disk devices (JBOD)**: the operating system sees each disk; easiest to observe.
-- **RAID**: a controller or software groups disks into one larger or more reliable virtual disk (details and levels in chapter 1.13). A hardware RAID volume appears as one disk and hides the physical disks from the OS, which makes monitoring harder. Hardware RAID's write-back cache is protected by a battery or capacitor; if it fails, controllers fall back to write-through mode and write performance suddenly drops.
-- **Storage arrays and SANs**: many disks behind controllers with large caches, attached by FC, SAS or iSCSI and often through two paths (multipath).
-- **NAS** (network-attached storage): NFS, SMB/CIFS, or iSCSI from an appliance; the network becomes part of the I/O path; analysed as a separate system.
-- **Local NVMe in GPU servers**: the usual place for scratch data, caches and fast checkpoints, but it belongs to that one machine (an instance restart can lose it on the cloud). **Shared/parallel filesystems** (Lustre, GPFS/Storage Scale, Weka, BeeGFS, CephFS) provide the same data to all nodes; their trade-off is network dependency and metadata scaling (Part 6 and the storage chapters).
+How a disk is attached decides what you can see and what you can control. Each option has its own failure modes.
+
+- **Disk devices (JBOD)**: the operating system sees each disk, which makes them the easiest to observe.
+- **RAID**: a controller or software groups disks into one larger or more reliable virtual disk (details and levels in chapter 1.13). A hardware RAID volume appears as one disk and hides the physical disks from the OS, which makes monitoring harder. Its write-back cache is protected by a battery or capacitor. If that protection fails, controllers fall back to write-through mode, and write performance drops suddenly.
+- **Storage arrays and SANs**: many disks sit behind controllers with large caches. They attach by FC, SAS or iSCSI, and often use two paths (multipath).
+- **NAS** (network-attached storage): NFS, SMB/CIFS, or iSCSI from an appliance. The network becomes part of the I/O path, so analyse it as a separate system.
+- **Local NVMe in GPU servers**: the usual place for scratch data, caches and fast checkpoints. It belongs to that one machine, and on the cloud an instance restart can lose it. **Shared or parallel filesystems** (Lustre, GPFS/Storage Scale, Weka, BeeGFS, CephFS) give the same data to all nodes. Their trade-off is network dependency and metadata scaling (Part 6 and the storage chapters).
+
+Decide early whether a dataset should stay local or be shared, because the answer changes how you monitor it.
 
 ## 3. Partitioning
 
-A **partition** is a contiguous range of blocks on a disk, recorded in a **partition table** (also called a *disk label*) at a known place on the disk. The kernel presents each partition as its own block device (`/dev/sda1`, `/dev/nvme0n1p2`). Partitions came from old PC boot restrictions and from the wish to reserve space for separate purposes (operating system, swap, data, so a full data area cannot stop the system). Today you often use **one partition per disk** or none at all (a whole-disk filesystem, or the whole disk as an LVM physical volume or RAID member). What you must have is a clear picture of what holds what.
+A **partition** is a contiguous range of blocks on a disk. Its location is recorded in a **partition table**, also called a *disk label*, at a known place on the disk. The kernel shows each partition as its own block device, such as `/dev/sda1` or `/dev/nvme0n1p2`. Partitions began with old PC boot restrictions. People also use them to reserve space for separate purposes. The operating system, swap and data can each have a partition, so a full data area cannot stop the system.
+
+Today you often use one partition per disk, or none at all. You can put a whole-disk filesystem on a disk, or use the whole disk as an LVM physical volume or a RAID member. What you must have is a clear picture of what holds what.
 
 ### MBR and GPT
+
+The two partition table formats differ in size limits, resilience and boot method, so compare them before you choose.
 
 | | **MBR** ("msdos" label) | **GPT** (GUID Partition Table) |
 |---|---|---|
@@ -139,6 +161,8 @@ For anything new, use **GPT**. Keep MBR knowledge for old systems, USB sticks an
 
 ### Tools
 
+Several tools read and change the table. Some only look, and others change the disk, so check which kind you are running.
+
 | Tool | Notes |
 |---|---|
 | `lsblk`, `lsblk -f`, `blkid`, `parted -l`, `fdisk -l`, `sfdisk -d` | Look (read-only) |
@@ -148,9 +172,11 @@ For anything new, use **GPT**. Keep MBR knowledge for old systems, USB sticks an
 | `partprobe`, `blockdev --rereadpt`, `partx` | Make the kernel re-read a changed table |
 | `wipefs`, `sgdisk --zap-all`, `dd` | Erase signatures and tables (careful) |
 
-Partitioning happens entirely in user space: the tools rewrite the table on the block device, then the kernel is asked to re-read it. `fdisk` makes one system call (an `ioctl`, `BLKRRPART`) that re-reads the whole table and prints `sdd: sdd1 sdd2` in the kernel log; `parted` informs the kernel partition by partition. If the disk is in use the re-read can fail ("device or resource busy"); use `partprobe` or reboot, and see what changed with `udevadm monitor --kernel`, `cat /proc/partitions`, and `ls /sys/block/sdd`.
+Partitioning happens entirely in user space. The tools rewrite the table on the block device, then ask the kernel to re-read it. `fdisk` makes one system call (an `ioctl`, `BLKRRPART`) that re-reads the whole table, and it prints `sdd: sdd1 sdd2` in the kernel log. `parted` informs the kernel partition by partition. If the disk is in use, the re-read can fail with "device or resource busy". In that case use `partprobe` or reboot. To see what changed, use `udevadm monitor --kernel`, `cat /proc/partitions`, and `ls /sys/block/sdd`.
 
 ### A worked example (a spare disk, GPT)
+
+The commands below create one GPT partition on a spare disk. The first command finds the disk and confirms it is unused. The `parted` line creates the table and one partition from 1 MiB to the end of the disk. The `fdisk` steps do the same job interactively, and `p` lets you check before `w` writes anything.
 
 ```bash
 lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT,MODEL         # find the right disk; ensure it is unused
@@ -167,21 +193,31 @@ sudo fdisk /dev/sdb
 sudo partprobe /dev/sdb && lsblk /dev/sdb
 ```
 
-Always: **verify the device name twice** (`lsblk -o NAME,SIZE,MODEL,SERIAL`), unmount anything on it, make a backup of the old table (`sfdisk -d /dev/sdb > sdb.table`, `sgdisk --backup=sdb.gpt /dev/sdb`), and remember that deleting a partition makes the data on it very hard to recover.
+Always verify the device name twice (`lsblk -o NAME,SIZE,MODEL,SERIAL`), and unmount anything on it. Back up the old table first (`sfdisk -d /dev/sdb > sdb.table`, `sgdisk --backup=sdb.gpt /dev/sdb`). Deleting a partition makes its data very hard to recover, so treat that step with care.
 
 ### Alignment (`HLW` Section 4.1.6)
 
-Flash drives (SSDs and NVMe) read and write data in **pages** (commonly 4 KiB = 4,096 bytes, or 8 KiB) and erase in much larger blocks. If a partition does not begin on a multiple of the flash page size, a single 4 KiB read or write can straddle two physical pages on the drive and cut throughput. Reasonably new versions of partitioning utilities automatically place newly created partitions at proper offsets (`1 MiB` = sector `2048` for 512-byte sectors), which is a multiple of every common flash page size, though partitioning tools do not automatically inspect or realign *existing* partitions. If you want to verify that an existing partition begins on a page boundary, check its `start` file in `/sys/block` (which reports the starting offset in 512-byte units). For example, in `HLW` Section 4.1.6, `cat /sys/block/sdf/sdf2/start` prints `1953126`: dividing `1953126` by `8` (since eight 512-byte sectors equal one 4,096-byte page) gives `244140.75` (not an integer, remainder `6`), proving that `/dev/sdf2` is **not** properly aligned on a 4,096-byte boundary. You can also run `parted /dev/sdb align-check optimal 1`, which prints `1 aligned`. For RAID, LVM and XFS also check the stripe unit and width (chapter 1.13).
+Flash drives, meaning SSDs and NVMe, read and write data in **pages**. A page is commonly 4 KiB (4,096 bytes) or 8 KiB. Flash erases in much larger blocks. If a partition does not begin on a multiple of the flash page size, a single 4 KiB read or write can straddle two physical pages on the drive. That cuts throughput.
+
+Newer partitioning tools place new partitions at proper offsets. `1 MiB` is sector `2048` for 512-byte sectors, which is a multiple of every common flash page size. The tools do not inspect or realign *existing* partitions, though. To check an existing partition, read its `start` file in `/sys/block`. That file reports the starting offset in 512-byte units.
+
+Here is a worked example from `HLW` Section 4.1.6. `cat /sys/block/sdf/sdf2/start` prints `1953126`. Divide that by `8`, because eight 512-byte sectors make one 4,096-byte page. The result is `244140.75`, which is not a whole number, with a remainder of `6`. That proves `/dev/sdf2` is **not** aligned on a 4,096-byte boundary.
+
+To check with a tool instead, run `parted /dev/sdb align-check optimal 1`. A good result prints `1 aligned`. For RAID, LVM and XFS, also check the stripe unit and width (chapter 1.13).
 
 ### Partition types you will meet
 
-On a typical GPU server: an **EFI System Partition** (about 512 MiB, FAT32, mounted at `/boot/efi`), a `/boot` partition (ext4, optional), the **root** filesystem (or an LVM physical volume), perhaps **swap** (often none or small on GPU nodes), and data devices as whole disks. Cloud images use a tiny BIOS-boot or EFI partition plus one root partition, and **grow the root partition and filesystem at first boot** (`cloud-init growpart`), which is why the same image fits any disk size.
+A typical GPU server has several partitions, and each has a job. An **EFI System Partition** (about 512 MiB, FAT32, mounted at `/boot/efi`) comes first. An optional `/boot` partition (ext4) follows. Then comes the **root** filesystem, or an LVM physical volume. Some servers also have **swap**, which is often none or small on GPU nodes. Data devices are usually whole disks.
+
+Cloud images differ. They use a tiny BIOS-boot or EFI partition plus one root partition. They also **grow the root partition and filesystem at first boot** (`cloud-init growpart`). That is why the same image fits any disk size.
 
 ## 4. Creating filesystems
 
-A **filesystem** turns a block device into named files and directories. Where a partition table only draws boundaries, a filesystem is a **database**: it tracks which blocks belong to which file, who owns it, permissions and times, and keeps this map consistent through crashes. Therefore partitioning and filesystem creation are separate tools and steps.
+A **filesystem** turns a block device into named files and directories. A partition table only draws boundaries. A filesystem is a **database**. It tracks which blocks belong to which file, who owns the file, its permissions and times. It also keeps this map consistent through crashes. That is why partitioning and filesystem creation are separate tools and separate steps.
 
 ### Filesystem types
+
+Pick the filesystem for the job. The table lists the common types and what each means for AI work.
 
 | Type | Origin and character | Notes for AI infrastructure |
 |---|---|---|
@@ -197,9 +233,11 @@ A **filesystem** turns a block device into named files and directories. Where a 
 | **NFS, CIFS/SMB, Lustre, GPFS, BeeGFS, CephFS, WekaFS** | Network and parallel filesystems | Shared datasets and checkpoints (Part 6) |
 | **FUSE filesystems** | User-space filesystems via `/dev/fuse` | SSHFS, s3fs/goofys/mountpoint-s3, rclone mount, gcsfuse (convenient, slower, metadata-bound) |
 
-The kernel's **VFS** layer lets all of these coexist under one directory tree and one set of system calls, regardless of the implementation; it is also the common point for measuring any filesystem.
+The kernel's **VFS** layer is what lets all of these coexist. It places them under one directory tree and one set of system calls, whatever the implementation. It is also the common point for measuring any filesystem.
 
 ### Making one
+
+Creating a filesystem is a one-time step on a new device. You will see it on every new disk you bring into service. The commands below show the usual choices, and you can start from the defaults and change only what you can justify.
 
 ```bash
 sudo mkfs.ext4 -L scratch /dev/nvme1n1p1           # or:  mkfs -t ext4 ...
@@ -209,19 +247,23 @@ sudo mkfs.ext4 -m 0 -i 65536 /dev/nvme1n1p1        # no root-reserved blocks; on
 sudo mkfs.ext4 -T small /dev/sdc1                  # many small files: more inodes (see mke2fs.conf types)
 ```
 
-**`mkfs` is a front end (`HLW` Section 4.2.2)**: `mkfs` is only a wrapper for a family of filesystem creation programs named `mkfs.fs`, so when you run `mkfs -t ext4`, `mkfs` in turn executes `mkfs.ext4`—and if you inspect `/sbin/mkfs.ext4` with `ls -l /sbin/mkfs*`, you will see it is a symbolic link (or hard link) to `mke2fs`. Each filesystem has its own tools and manual page (`mke2fs(8)`, `mkfs.xfs(8)`). Defaults are sensible; change them only with a reason. **Creating a filesystem destroys the previous contents** (the old data's map is gone): do it once per new device. Record the **superblock backup locations** printed at creation (ext4), or find them later with `mkfs.ext4 -n /dev/...` (the `-n` option only simulates; never omit `-n`).
+**`mkfs` is a front end (`HLW` Section 4.2.2).** `mkfs` is only a wrapper for a family of filesystem creation programs named `mkfs.fs`. So when you run `mkfs -t ext4`, `mkfs` runs `mkfs.ext4`. If you inspect `/sbin/mkfs.ext4` with `ls -l /sbin/mkfs*`, you will see it is a symbolic link (or hard link) to `mke2fs`. Each filesystem has its own tools and manual page (`mke2fs(8)`, `mkfs.xfs(8)`). Defaults are sensible, so change them only with a reason.
 
-Parameters that matter:
+**Creating a filesystem destroys the previous contents.** The old data's map is gone, so do it once per new device. Record the **superblock backup locations** printed at creation (ext4), or find them later with `mkfs.ext4 -n /dev/...`. The `-n` option only simulates, so never omit `-n`.
 
-- **ext4 inode count** is fixed at creation (`-i bytes-per-inode`, `-N count`); a dataset of hundreds of millions of tiny files can exhaust inodes while bytes remain free (`df -i`). Lower `-i` for small-file workloads; XFS does not have this problem.
-- **Reserved blocks**: ext4 reserves 5% for root by default so a runaway user process cannot fill the disk completely and starve system daemons. On a large data disk, set 0 or 1% (`mkfs.ext4 -m 0`, or `tune2fs -m 1`).
-- **XFS geometry** (`su`/`sw`, log size, `-i maxpct`): align with RAID stripe settings; the defaults are usually right for NVMe.
-- **Labels and UUIDs**: set a `-L` label for human reference; the UUID is generated automatically.
-- Lazy initialisation (`lazy_itable_init`, `lazy_journal_init`) makes `mkfs` on huge ext4 volumes return quickly and finish background work after the first mount; for benchmarking disable it (`-E lazy_itable_init=0`) so the initial background write does not disturb results.
+These parameters matter:
+
+- **ext4 inode count** is fixed at creation (`-i bytes-per-inode`, `-N count`). A dataset of hundreds of millions of tiny files can exhaust inodes while bytes remain free (`df -i`). Lower `-i` for small-file workloads. XFS does not have this problem.
+- **Reserved blocks**: ext4 reserves 5% for root by default. That stops a runaway user process from filling the disk completely and starving system daemons. On a large data disk, set 0 or 1% (`mkfs.ext4 -m 0`, or `tune2fs -m 1`).
+- **XFS geometry** (`su`/`sw`, log size, `-i maxpct`): align these with RAID stripe settings. The defaults are usually right for NVMe.
+- **Labels and UUIDs**: set a `-L` label for human reference. The UUID is generated automatically.
+- **Lazy initialisation** (`lazy_itable_init`, `lazy_journal_init`) makes `mkfs` on huge ext4 volumes return quickly. The background work finishes after the first mount. For benchmarking, disable it (`-E lazy_itable_init=0`), so the initial background write does not disturb your results.
 
 ## 5. Mounting
 
-**Mounting** attaches a filesystem to a directory (the **mount point**) in the global tree; walking into the directory then reaches that filesystem. To mount you need: the **source** (device, UUID, label, remote path, or a pseudo name for special filesystems), the **type**, and the **mount point** (an existing directory, any location). `/mnt` is a conventional temporary mount point; permanent filesystems get their own directories (`/data`, `/scratch`).
+Picture a node that comes back from a reboot with `/data` missing. The boot log points at a mount, and you need to know how mounts work before you can fix it. **Mounting** attaches a filesystem to a directory, called the **mount point**, in the global tree. Walk into that directory and you reach the filesystem. To mount, you need three things: the **source** (a device, UUID, label, remote path, or a pseudo name for special filesystems), the **type**, and the **mount point**, which must be an existing directory. `/mnt` is a conventional place for temporary mounts. Permanent filesystems get their own directories, such as `/data` or `/scratch`.
+
+Start with `findmnt`. It shows the mount tree and answers the question you will ask most often: which filesystem holds this path?
 
 ```bash
 mount                                  # everything mounted, with options (long; special filesystems included)
@@ -236,13 +278,13 @@ sudo umount /data                      # by mount point (or device)
 sudo umount -l /data                   # lazy: detach now, clean up when no longer busy (last resort)
 ```
 
-`umount` fails with "target is busy" while any process has a file open or a current directory inside. Find who: `lsof +f -- /data` or `fuser -vm /data`; end or move them; do not reach for `umount -f` or `-l` as a habit (a lazy unmount leaves processes using a detached filesystem). On a **stuck network filesystem** a forced or lazy unmount may be the only practical way out (chapter 1.8 on `D` state).
+`umount` fails with "target is busy" while any process has a file open, or has a current directory inside the mount. To find out who, run `lsof +f -- /data` or `fuser -vm /data`. Then end those processes or move them. Do not reach for `umount -f` or `-l` as a habit, because a lazy unmount leaves processes using a detached filesystem. A **stuck network filesystem** is the exception. There, a forced or lazy unmount may be the only practical way out (chapter 1.8 covers `D` state).
 
-Because the kernel **buffers writes**, a filesystem can have unwritten changes in memory. `umount` flushes them. `sync` forces a flush of all filesystems; use it before cutting power to a machine that cannot be shut down cleanly (but properly shutting down is better).
+The kernel buffers writes, so a filesystem can have unwritten changes in memory. `umount` flushes them. `sync` forces a flush of all filesystems. Use it before cutting power to a machine that cannot be shut down cleanly, although a proper shutdown is better.
 
 ### Identifying filesystems: UUID and labels
 
-Device names depend on probe order (chapter 1.10), so identify filesystems by **UUID** (assigned by `mkfs`) or **label**:
+Device names depend on probe order (chapter 1.10), so identify filesystems by **UUID** or **label**.
 
 ```bash
 lsblk -f                                  # NAME FSTYPE LABEL UUID MOUNTPOINT
@@ -252,11 +294,11 @@ sudo tune2fs -U random /dev/sdb1          # change an ext filesystem's UUID (e.g
 sudo xfs_admin -U generate /dev/sdb1      # XFS equivalent (unmounted)
 ```
 
-UUIDs are the preferred key in `/etc/fstab` for plain partitions. FAT filesystems have a short volume serial instead (`4859-EFEA`). Removable media is mounted by desktop services at `/media/<user>/<uuid or label>`. Cloned disks have **identical UUIDs**: mounting both causes confusion, and XFS refuses to mount a second filesystem with the same UUID unless you pass `-o nouuid`.
+UUIDs are the preferred key in `/etc/fstab` for plain partitions. FAT filesystems have a short volume serial instead (`4859-EFEA`). Desktop services mount removable media at `/media/<user>/<uuid or label>`. Cloned disks have **identical UUIDs**, and mounting both causes confusion. XFS refuses to mount a second filesystem with the same UUID unless you pass `-o nouuid`.
 
 ### Mount options
 
-Options are comma-separated after `-o` (and in `/etc/fstab`). The ones that matter in practice:
+Options follow `-o`, separated by commas, and they also go in `/etc/fstab`. These are the ones you will use most. Some trade safety for speed, and others change how the boot behaves.
 
 | Option | Meaning |
 |---|---|
@@ -277,7 +319,7 @@ Options are comma-separated after `-o` (and in `/etc/fstab`). The ones that matt
 | `uid=`, `gid=`, `umask=` | Ownership for filesystems without Unix permissions (FAT, NTFS, exFAT) |
 | `usrquota,grpquota,prjquota` | Enable quotas (section 6) |
 
-The filesystem-specific options are documented in `mount(8)` and per-filesystem pages (`ext4(5)`, `xfs(5)`, `nfs(5)`, `tmpfs` in `mount(8)`). **Remount** to change options on a mounted filesystem without unmounting:
+The filesystem-specific options are documented in `mount(8)` and in per-filesystem pages (`ext4(5)`, `xfs(5)`, `nfs(5)`, `tmpfs` in `mount(8)`). **Remount** changes options on a mounted filesystem without unmounting it:
 
 ```bash
 sudo mount -o remount,rw /           # make the root filesystem writable again after a rescue boot
@@ -287,7 +329,7 @@ sudo mount -n -o remount,rw /        # -n: do not write /etc/mtab (needed when /
 
 ### `/etc/fstab`: mounts at boot
 
-`/etc/fstab` lists filesystems to mount at boot (and the shortcuts for `mount /data`). One line per filesystem, **six fields**:
+`/etc/fstab` lists the filesystems to mount at boot. It also holds the shortcuts for commands such as `mount /data`. Each line describes one filesystem and has **six fields**.
 
 ```text
 # <source>                                   <mount point>  <type>  <options>              <dump> <fsck>
@@ -305,7 +347,7 @@ UUID=3f2a...                                 /scratch       xfs     defaults,noa
 5. **dump** flag: for the long-obsolete `dump` backup tool; always `0`.
 6. **fsck pass**: `1` for the root filesystem, `2` for other local filesystems on disks (checked after root), `0` to skip (network filesystems, swap, `/proc`, XFS, and anything you do not want checked at boot). Modern systemd checks `ext4` filesystems with `systemd-fsck` according to this field; XFS and btrfs do their own recovery.
 
-Safe-editing routine (a bad `fstab` can stop a machine from booting):
+A bad `fstab` can stop a machine from booting, so edit it with a safety net. Back it up, edit it, then verify before you reboot:
 
 ```bash
 sudo cp /etc/fstab /etc/fstab.bak
@@ -315,9 +357,11 @@ sudo mount -a                            # mounts everything not noauto: errors 
 sudo systemctl daemon-reload             # systemd regenerates mount units from fstab
 ```
 
-Alternatives: files in `/etc/fstab.d` on some systems, and **systemd mount units** (`data.mount`, `data.automount` with `Where=/data`, `What=UUID=...`); systemd generates units from `fstab` automatically at boot (`systemd-fstab-generator`). Mount-ordering and "device not found" boot hangs are chapter 1.14 and 1.15 topics.
+Alternatives exist. Some systems keep files in `/etc/fstab.d`. You can also write **systemd mount units** (`data.mount`, `data.automount` with `Where=/data`, `What=UUID=...`). systemd generates units from `fstab` automatically at boot (`systemd-fstab-generator`). Mount ordering and "device not found" boot hangs are chapter 1.14 and 1.15 topics.
 
 ### Capacity: `df`, `du`, inodes, reserved blocks
+
+Capacity has more than one dimension. Bytes and inodes are separate resources, and each can run out. Check both, along with the directory totals.
 
 ```bash
 df -hT                                   # size/used/avail/use%, type, per mounted filesystem
@@ -329,9 +373,11 @@ ncdu -x /data                            # interactive disk-usage browser (insta
 sudo lsof +L1                            # deleted files still held open (they still use space)
 ```
 
-The numbers in `df` (`Filesystem`, `1024-blocks`, `Used`, `Available`, `Capacity`, `Mounted on`, `HLW` Section 4.2.10) surprise people: `Used + Available` is always less than `1024-blocks` (`Size`) because **5 percent of the total capacity is hidden in reserved blocks** on ext4 by default. Only the superuser (`root`) can allocate those reserved blocks when the filesystem starts to fill up; this keeps system daemons (`syslogd`, `sshd`, `journald`) running and able to write logs in `/var` and `/tmp` even when an ordinary user fills the disk to 100%. `df` reports 1 KiB (`1024-byte`) blocks by default (`df -k`, POSIX layout with `-P`) unless you ask for `-h`/`-H` (powers of 1024 or 1000). Meanwhile, `du` (`du -s`, `du -k`) walks the directory tree and sums the blocks of files it can see, so it **cannot see** files already deleted but still held open, mount points hidden underneath other mounts, or space used by filesystem metadata and journals. A filesystem near 100% also gets slower, since finding free space takes more CPU and I/O and free extents become small and scattered (fragmentation, worse with copy-on-write filesystems).
+The numbers in `df` surprise people. The columns are `Filesystem`, `1024-blocks`, `Used`, `Available`, `Capacity` and `Mounted on` (`HLW` Section 4.2.10). `Used + Available` is always less than `1024-blocks` (`Size`). That is because **5 percent of the total capacity is hidden in reserved blocks** on ext4 by default. Only root can allocate those blocks when the filesystem starts to fill up. This keeps system daemons such as `syslogd`, `sshd` and `journald` running. They can still write logs in `/var` and `/tmp` even when an ordinary user fills the disk to 100%.
 
-**"The disk is full" has at least five meanings**, each needing a separate check. A single `ENOSPC` ("No space left on device") proves only that a write failed.
+`df` reports 1 KiB (`1024-byte`) blocks by default. Use `df -k`, or the POSIX layout with `-P`, or ask for `-h` or `-H` (powers of 1024 or 1000). `du` works differently. It walks the directory tree and sums the blocks of files it can see. So it **cannot see** files that were deleted but are still held open. It also misses mount points hidden under other mounts, and the space used by filesystem metadata and journals. A filesystem near 100% also gets slower. Finding free space takes more CPU and I/O, and free extents become small and scattered. That fragmentation is worse on copy-on-write filesystems.
+
+**"The disk is full" can mean at least five things.** Each needs its own check. A single `ENOSPC` ("No space left on device") only proves that one write failed.
 
 | Cause | Check | Typical fix |
 |---|---|---|
@@ -343,17 +389,19 @@ The numbers in `df` (`Filesystem`, `1024-blocks`, `Used`, `Available`, `Capacity
 | Deleted files still open | `lsof +L1` | Restart the holder, or truncate through `/proc/PID/fd/N` |
 | Reserved blocks for root (user sees full, root can still write) | `tune2fs -l \| grep Reserved` | Lower the reservation on data disks |
 
-(The classic production instance: a log rotation deleted a huge file while a process still held it open, so `df` shows 100% while `du` finds nothing; `lsof +L1` finds it, and `ls -l /proc/PID/fd` shows the `(deleted)` marker.)
+The classic production case goes like this. A log rotation deleted a huge file while a process still held it open. So `df` showed 100% while `du` found nothing. `lsof +L1` finds the file, and `ls -l /proc/PID/fd` shows the `(deleted)` marker.
 
 ### Swap, in brief
 
-Swap is disk (or file) space the kernel uses to hold less-used memory pages; the chapter on memory (1.17) covers when and how. To add some: `mkswap /dev/sdb2 && swapon /dev/sdb2`, or a file (`fallocate -l 8G /swapfile; chmod 600 /swapfile; mkswap /swapfile; swapon /swapfile`; avoid sparse files and note that some filesystems (btrfs, some XFS cases) need special handling), plus an `fstab` line with type `swap`. Remove with `swapoff`. `swapon --show`, `free -h`, `cat /proc/swaps` show state. Never size swap by an outdated "twice the RAM" rule: on GPU nodes keep swap small or absent and set `vm.swappiness` low (chapters 1.17, 1.22, 1.28), but remember that with **no** swap, memory exhaustion goes straight to the OOM killer.
+Swap is disk or file space that the kernel uses to hold less-used memory pages. The chapter on memory (1.17) covers when and how the kernel uses it. To add swap, run `mkswap /dev/sdb2 && swapon /dev/sdb2`. A swap file also works. Create it with `fallocate -l 8G /swapfile; chmod 600 /swapfile; mkswap /swapfile; swapon /swapfile`. Avoid sparse files, and note that some filesystems (btrfs, and some XFS cases) need special handling. Then add an `fstab` line with type `swap`. Use `swapoff` to remove swap. Check the state with `swapon --show`, `free -h`, or `cat /proc/swaps`.
+
+Never size swap by the outdated "twice the RAM" rule. On GPU nodes, keep swap small or absent and set `vm.swappiness` low (chapters 1.17, 1.22, 1.28). Remember that with **no** swap, memory exhaustion goes straight to the OOM killer.
 
 ## 6. Inside a traditional filesystem
 
-Understanding the structure explains `df -i`, hard links, `fsck`, and many failure modes.
+Knowing how the structure works explains `df -i`, hard links, `fsck`, and many failure modes. A Unix-style filesystem has two parts. The first is a **pool of data blocks**. The second is a **database** that manages those blocks, and it centres on the **inode**.
 
-A Unix-style filesystem has two parts: a **pool of data blocks** and a **database** that manages them, centred on the **inode**. An **inode** is a record (identified by a number in an inode table) describing one filesystem object: its **type** (regular file, directory, symlink, device, socket, FIFO), **permissions and owner**, **size**, **timestamps** (modify, change, access; ext4 adds creation), **link count**, and **where its data blocks are**. It does *not* contain the file's name. Names live in **directories**, which are themselves files whose data is a list of `(name, inode number)` entries, including `.` (itself) and `..` (its parent).
+An **inode** is a record, found by a number in an inode table, that describes one filesystem object. It stores the object's **type** (regular file, directory, symlink, device, socket, FIFO), its **permissions and owner**, its **size**, and its **timestamps** (modify, change, access; ext4 adds creation). It also stores its **link count** and **where its data blocks are**. An inode does *not* contain the file's name. Names live in **directories**. A directory is itself a file, and its data is a list of `(name, inode number)` entries, including `.` (itself) and `..` (its parent).
 
 ```mermaid
 flowchart LR
@@ -378,21 +426,23 @@ flowchart LR
   I15 --> F15
 ```
 
-To open `dir_1/file_2` the kernel starts at the **root inode** (inode 2 on ext filesystems; the superblock says where it is), reads its directory data to find `dir_1` → inode 12, confirms 12 is a directory, reads its data to find `file_2` → inode 14, reads inode 14 (a file) and now knows where its data blocks are. The dentry and inode caches (section 9) make this nearly free for hot paths.
+Here is how the kernel opens `dir_1/file_2`. As you follow the steps, notice that the name never sits in the inode itself. You will need that fact when you read `ls -i`. It starts at the **root inode** (inode 2 on ext filesystems; the superblock says where it is). It reads that directory's data to find `dir_1`, which is inode 12. It confirms that inode 12 is a directory. Then it reads that directory's data to find `file_2`, which is inode 14. Finally it reads inode 14, a file, and learns where the data blocks are. The dentry and inode caches (section 9) make this nearly free for hot paths.
 
-**Link counts.** The inode's link count is the number of directory entries (across the filesystem) that point at it. A **hard link** (`ln file newname`) is simply a second name for the same inode; both names are equal and the data exists once. `rm` is "unlink": it removes one directory entry and decrements the count; **when the count reaches zero and no process still has the file open, the inode and its blocks are freed**. This is why an open-but-deleted file still uses space. A directory's count is 2 plus the number of subdirectories (its entry in the parent, its own `.`, and each child's `..`). Hard links cannot cross filesystems (inode numbers are per filesystem) and cannot point to directories; **symbolic links** are small files containing a path, and may cross filesystems and dangle. (`ls -i` shows inode numbers, `stat file` the whole inode, `find / -xdev -samefile f` all names for a file.)
+**Link counts.** You will meet this when you run `ls -i`. The link count is the number of directory entries that point at an inode, across the whole filesystem. A **hard link** (`ln file newname`) is a second name for the same inode. Both names are equal, and the data exists once. `rm` is really "unlink". It removes one directory entry and decrements the count. **When the count reaches zero and no process still has the file open, the inode and its blocks are freed.** That is why an open-but-deleted file still uses space. A directory's count is 2 plus the number of its subdirectories. That covers its entry in the parent, its own `.`, and each child's `..`. Hard links cannot cross filesystems, because inode numbers are per filesystem. They also cannot point to directories. **Symbolic links** are small files that contain a path. They may cross filesystems, and they may dangle. Use `ls -i` to see inode numbers, `stat file` for the whole inode, and `find / -xdev -samefile f` to list all names for a file.
 
-**Block allocation.** The filesystem must know which blocks are free. A simple scheme is a **bitmap** (one bit per block); modern designs use **extents** (a start block and a length, so a large contiguous file needs a few pointers instead of millions), allocated by **delayed allocation** (choose blocks at flush time so writes can be grouped into contiguous runs). The filesystem is divided into **block groups** (ext4) or **allocation groups** (XFS), each with its own bitmaps and inode area, so related data stays close and, for XFS, allocation happens in parallel.
+**Block allocation.** The filesystem must know which blocks are free. A simple scheme is a **bitmap**, with one bit per block. Modern designs use **extents**. An extent is a start block and a length, so a large contiguous file needs a few pointers instead of millions. Extents are chosen by **delayed allocation**, which picks blocks at flush time so writes can be grouped into contiguous runs. The filesystem is divided into **block groups** (ext4) or **allocation groups** (XFS). Each has its own bitmaps and inode area. That keeps related data close together, and on XFS it lets allocation happen in parallel.
 
-**The superblock** is the top-level record: filesystem type and geometry (block size, counts of blocks and inodes, where the inode tables are, feature flags, state). It is so important that ext filesystems keep **backup copies** in other block groups. `dumpe2fs -h /dev/sdb1` and `tune2fs -l` (ext), `xfs_info /data` (XFS) display it.
+**The superblock** is the top-level record. It holds the filesystem type and geometry: block size, counts of blocks and inodes, where the inode tables are, feature flags and state. It matters so much that ext filesystems keep **backup copies** in other block groups. `dumpe2fs -h /dev/sdb1` and `tune2fs -l` show it on ext filesystems, and `xfs_info /data` shows it on XFS.
 
-**Journaling.** A **journal** (log) records intended changes before they are applied, so after a crash the filesystem can **replay or discard** the incomplete transaction in seconds instead of scanning everything (which took hours on terabyte-scale filesystems). ext3/ext4 journal metadata by default (`data=ordered` also forces data blocks out before the metadata that references them); `data=journal` logs data too (slower, writes twice). XFS journals metadata. The journal may live on a separate device to avoid contention. Journaling protects **consistency**, not necessarily **your last few seconds of data**: data in the page cache that was never `fsync`ed can still be lost. **Copy-on-write** filesystems (btrfs, ZFS) never overwrite live blocks: they write new blocks, then update references atomically, which gives consistency, cheap snapshots and sequential writes (at the cost of fragmentation as they fill).
+**Journaling.** A **journal** (a log) records intended changes before they are applied. After a crash, the filesystem can replay or discard the incomplete transaction in seconds. Without a journal it had to scan everything, which took hours on terabyte-scale filesystems. ext3 and ext4 journal metadata by default. `data=ordered` also forces data blocks out before the metadata that references them. `data=journal` logs data too, which is slower because it writes twice. XFS journals metadata. The journal may live on a separate device to avoid contention. A journal protects **consistency**, not your last few seconds of data. Data in the page cache that was never `fsync`ed can still be lost.
 
-**Scrubbing and checksums**: btrfs and ZFS checksum data and can **scrub** (read everything and verify), finding silent corruption early while redundancy can still repair it. ext4 and XFS checksum metadata (and ext4 the journal) but not file data; end-to-end data integrity on those needs application checksums or a device layer such as `dm-integrity`.
+**Copy-on-write** filesystems (btrfs, ZFS) never overwrite live blocks. They write new blocks, then update the references atomically. That gives consistency, cheap snapshots and sequential writes, at the cost of fragmentation as they fill.
+
+**Scrubbing and checksums**: btrfs and ZFS checksum data and can **scrub** it, which means reading everything and verifying it. That finds silent corruption early, while redundancy can still repair it. ext4 and XFS checksum metadata (and ext4 the journal), but not file data. For end-to-end integrity on those, you need application checksums or a device layer such as `dm-integrity`.
 
 ### Special-purpose filesystems
 
-Not every filesystem represents storage. The file interface is used to expose kernel objects:
+Not every filesystem stores data. Some expose kernel objects through the file interface.
 
 | Type | Mounted at | Purpose |
 |---|---|---|
@@ -409,13 +459,13 @@ Not every filesystem represents storage. The file interface is used to expose ke
 
 ## 7. Checking and repairing filesystems
 
-The kernel trusts a mounted filesystem to be consistent and trusts the hardware to store data reliably. Errors come from hardware faults and from **unclean shutdowns** (power loss, crashes) where the in-memory cache did not match the disk. Journaling makes corruption rare; checks are still needed occasionally.
+The kernel trusts a mounted filesystem to be consistent, and it trusts the hardware to store data reliably. Errors come from hardware faults and from **unclean shutdowns**, such as power loss or crashes. A crash can leave the in-memory cache out of step with the disk. Journaling makes corruption rare, but you still need checks now and then.
 
-The checker is **`fsck`**, a front end that runs the right tool per type (`e2fsck` for ext2/3/4, `xfs_repair` for XFS, `btrfs check`, `fsck.vfat`). The rules:
+The checker is **`fsck`**. It is a front end that runs the right tool for each type: `e2fsck` for ext2, ext3 and ext4, `xfs_repair` for XFS, `btrfs check`, and `fsck.vfat`. Follow three rules.
 
-- **Never run a repairing `fsck` on a mounted filesystem.** The kernel is changing the same structures; the result is corruption. (Exception: the root filesystem mounted read-only in rescue mode.)
-- **Backup first** if the data matters and the device may be failing; consider imaging it (`ddrescue`) and repairing the copy.
-- Start with a **read-only check**: `fsck -n /dev/sdb1`, `e2fsck -fn`, `xfs_repair -n`.
+- Never run a repairing `fsck` on a mounted filesystem. The kernel is changing the same structures, and the result is corruption. The exception is the root filesystem mounted read-only in rescue mode.
+- Back up first if the data matters and the device may be failing. Consider imaging it with `ddrescue` and repairing the copy.
+- Start with a **read-only check**: `fsck -n /dev/sdb1`, `e2fsck -fn`, or `xfs_repair -n`.
 
 ```bash
 sudo umount /data
@@ -429,30 +479,32 @@ sudo xfs_metadump / xfs_db           # XFS inspection tools
 sudo debugfs /dev/sdb1               # ext inspector (read-only by default); can copy files out: dump, rdump
 ```
 
-`e2fsck` makes five passes: (1) inodes, blocks and sizes; (2) directory structure; (3) directory connectivity; (4) reference (link) counts; (5) group summary information. Questions it asks concern inodes with no name: it **reconnects them in `lost+found`** under numeric names (the original names are usually gone; you recover content by inspection). Many questions in manual mode suggest serious trouble; stop and consider a read-only mount, a dry run, or imaging.
+`e2fsck` makes five passes. Pass 1 checks inodes, blocks and sizes. Pass 2 checks directory structure, and pass 3 checks directory connectivity. Pass 4 checks reference (link) counts, and pass 5 checks the group summary information. Its questions often concern inodes with no name. It **reconnects them in `lost+found`** under numeric names. The original names are usually gone, so you recover content by inspection. If manual mode asks many questions, take that as a sign of serious trouble. Stop, and consider a read-only mount, a dry run, or imaging.
 
-**Journals and unclean shutdowns**: after a crash on ext4/XFS the kernel replays the journal at mount; a full `fsck` is rarely required. If the journal cannot be replayed the mount fails ("structure needs cleaning" on XFS, "recovery required" on ext4) and you run the repair tool. XFS: mount once to replay the log; only if that fails use `xfs_repair` (and `-L` as the last resort).
+**Journals and unclean shutdowns**: after a crash on ext4 or XFS, the kernel replays the journal at mount, so a full `fsck` is rarely needed. If the journal cannot be replayed, the mount fails. XFS reports "structure needs cleaning" and ext4 reports "recovery required". Then you run the repair tool. On XFS, mount once to replay the log. Only if that fails should you use `xfs_repair`, and use `-L` as the last resort.
 
-**Worst cases**, in order: (1) `ddrescue` the failing device to a same-size disk and repair the copy; (2) patch the filesystem as far as possible, mount **read-only**, and salvage what you can; (3) use `debugfs` (ext) or `xfs_db` to copy out files; (4) professional recovery. Because of this, **backups and replication are the real protection**, and monitoring (SMART, kernel I/O errors, filesystem error counters) is the early warning.
+**Worst cases**, in order: (1) `ddrescue` the failing device to a same-size disk and repair the copy; (2) patch the filesystem as far as possible, mount it **read-only**, and salvage what you can; (3) use `debugfs` (ext) or `xfs_db` to copy files out; (4) call professional recovery. Because of this, **backups and replication are the real protection**. Monitoring is the early warning. SMART data, kernel I/O errors and filesystem error counters all help.
 
-**Periodic health**: `smartctl -H -A /dev/sda` and `nvme smart-log /dev/nvme0` for drive health (media errors, wear percentage, temperature); `dmesg | grep -iE 'i/o error|ext4-fs error|xfs|nvme'`; `cat /sys/fs/ext4/*/errors_count`; `systemctl status fstrim.timer`; scheduled scrubs for btrfs/ZFS.
+**Periodic health**: check drive health with `smartctl -H -A /dev/sda` and `nvme smart-log /dev/nvme0`. These show media errors, wear percentage and temperature. Search the kernel log with `dmesg | grep -iE 'i/o error|ext4-fs error|xfs|nvme'`. Read `cat /sys/fs/ext4/*/errors_count`, check `systemctl status fstrim.timer`, and schedule scrubs for btrfs or ZFS.
 
 ### Quotas
 
-Quotas limit space (blocks) and file count (inodes) per user, group or **project** (directory tree). **ext4**: mount with `usrquota,grpquota` and manage with `quota`, `edquota`, `repquota`, `quotacheck`, `quotaon` (or the journaled quota feature). **XFS**: mount with `uquota,gquota,pquota`; manage with `xfs_quota -x -c 'limit bsoft=100g bhard=120g user' /data`; **project quotas** (`pquota`) cap a directory tree and are the right tool to limit a team's dataset directory. Quotas have a **soft limit** (exceedable for a grace period, with warnings) and a **hard limit** (blocked). Cluster filesystems have their own quota systems (Lustre, GPFS, BeeGFS). Per-process limits (`ulimit -f`) and cgroup I/O limits are different mechanisms (chapter 1.8).
+Quotas limit space (blocks) and file count (inodes) per user, group or **project**, which is a directory tree. For ext4, mount with `usrquota,grpquota` and manage with `quota`, `edquota`, `repquota`, `quotacheck`, `quotaon` (or the journaled quota feature). For XFS, mount with `uquota,gquota,pquota` and manage with `xfs_quota -x -c 'limit bsoft=100g bhard=120g user' /data`. **Project quotas** (`pquota`) cap a directory tree, and they are the right tool to limit a team's dataset directory.
+
+You will meet quotas on most shared systems, and they fail in confusing ways. Quotas have a **soft limit** and a **hard limit**. A soft limit can be exceeded for a grace period, with warnings. A hard limit blocks the write. Cluster filesystems have their own quota systems (Lustre, GPFS, BeeGFS). Per-process limits (`ulimit -f`) and cgroup I/O limits are different mechanisms (chapter 1.8).
 
 #### Step-by-step Linux filesystem quota commands (from *Supercomputers for Linux SysAdmins*, Ch 12)
 
-To enable and manage standard Linux disk quotas (requires installing the `quota` package), follow the book's six-step workflow (`(untested here)`):
+To enable and manage standard Linux disk quotas, install the `quota` package and follow this six-step workflow (`(untested here)`). The steps come from the book's Chapter 12.
 
-1. **Edit `/etc/fstab` to add `usrquota` and/or `grpquota`** (or `quota`) to the filesystem mount options (in the book's example, `/dev/sda6` mounted on `/export`):
+1. **Edit `/etc/fstab` to add `usrquota` and/or `grpquota`** (or `quota`) to the filesystem mount options. In the book's example, `/dev/sda6` is mounted on `/export`:
 
    ```text
    # (untested here) — /etc/fstab example
    /dev/sda6 /export ext3 acl,user_xattr,usrquota 1 2
    ```
 
-2. **Set the filesystem to read-only or unmount it** so active user writes do not corrupt the initial usage scan (you can also use `quotacheck -M` to remount read-only during the check, or isolate to single-user rescue mode with `systemctl isolate rescue`):
+2. **Set the filesystem to read-only or unmount it.** Otherwise active user writes can corrupt the initial usage scan. You can also use `quotacheck -M` to remount read-only during the check, or isolate to single-user rescue mode with `systemctl isolate rescue`:
 
    ```bash
    # (untested here)
@@ -503,17 +555,19 @@ To enable and manage standard Linux disk quotas (requires installing the `quota`
    repquota -m /
    ```
 
-   **Quotas over NFS**: when exporting a quota-enabled partition over NFS, install the `quota` package on the NFS server, enable quotas on the exported partition, and restart the NFS service; if `repquota` on the network client still does not work, ensure the **`rpc.rquotad`** service is running on the NFS server.
+   **Quotas over NFS**: when you export a quota-enabled partition over NFS, install the `quota` package on the NFS server, enable quotas on the exported partition, and restart the NFS service. If `repquota` on the network client still fails, make sure the **`rpc.rquotad`** service is running on the NFS server.
 
 ## 8. Files, file descriptors and the read path
 
-A process reaches files, sockets, pipes and many kernel objects through integer **file descriptors**. The VFS offers one interface; each filesystem implements the semantics underneath. "Too many open files" is therefore a **resource-limit or descriptor-leak** problem (chapter 1.8), not a disk-capacity problem. Inspect it with:
+When you see "Too many open files", do not reach for `df` first. A process reaches files, sockets, pipes and many kernel objects through integer **file descriptors**. The VFS offers one interface, and each filesystem implements the semantics underneath. So "Too many open files" is a **resource-limit or descriptor-leak** problem (chapter 1.8), not a disk-capacity problem. Inspect it with these commands:
 
 ```bash
 ls -l /proc/PID/fd | head            # each descriptor and what it points to; "(deleted)" marks the classic leak
 lsof -p PID | head
 grep -i 'open files' /proc/PID/limits   # soft limit (enforced now) and hard limit (the ceiling it may raise to)
 ```
+
+The diagram below shows what happens when an application calls `read()`. The path differs for a local filesystem and a network one.
 
 ```mermaid
 sequenceDiagram
@@ -547,15 +601,15 @@ sequenceDiagram
   end
 ```
 
-Because `read()` hides everything below the VFS, a profiler that traces the application shows only "this call took 400 ms". Whether the cause is an overloaded NVMe drive, an overloaded NFS server or a cold cache cannot be told from the call itself; you must look at the block layer or the network RPC layer.
+`read()` hides everything below the VFS. A profiler that traces only the application shows "this call took 400 ms", and nothing more. The call alone cannot tell you whether the cause is an overloaded NVMe drive, an overloaded NFS server or a cold cache. To find out, look at the block layer or the network RPC layer.
 
 ## 9. Filesystem performance: the concepts
 
 ### Latency, caching and the page cache
 
-**Filesystem latency**, the time from a logical request to its completion, is the primary performance metric, because application threads usually block on it. Cases where applications do not wait (non-blocking I/O, prefetch, background flush threads) can hide it. Operating systems historically exposed **disk** statistics rather than filesystem latency, so tools such as `iostat` can mislead (background write-back shows as bursts of disk I/O that no application is waiting for).
+Your application usually waits on **filesystem latency**, the time from a logical request to its completion. That is the main metric, because application threads block on it. Some work does not wait, though. Non-blocking I/O, prefetch and background flush threads can hide latency. Older operating systems exposed **disk** statistics rather than filesystem latency, so tools such as `iostat` can mislead you. Background write-back looks like bursts of disk I/O that no application is waiting for.
 
-Linux caches aggressively: **free memory is wasted memory**. The **page cache** holds file data (and, since Linux 2.4, the block-device buffer cache lives inside it); the **dentry cache** remembers name-to-inode lookups (and remembers failed lookups, which speeds up library searches); the **inode cache** holds file metadata. The cache grows until memory is needed, then shrinks (`free -h`: `available` includes reclaimable cache). On the cloud and for GPU hosts this alarming-looking behaviour is normal; trouble starts only when the cache is evicted while still needed or when dirty pages pile up.
+You will see this on every busy host, so do not panic when it happens. Linux caches aggressively, because **free memory is wasted memory**. The **page cache** holds file data. Since Linux 2.4, the block-device buffer cache lives inside it. The **dentry cache** remembers name-to-inode lookups, including failed ones, which speeds up library searches. The **inode cache** holds file metadata. The cache grows until memory is needed, then it shrinks. In `free -h`, `available` includes reclaimable cache. On cloud and GPU hosts this can look alarming, but it is normal. Trouble starts only when the cache is evicted while still needed, or when dirty pages pile up.
 
 ```bash
 free -h; grep -E 'Cached|Buffers|Dirty|Writeback' /proc/meminfo
@@ -565,15 +619,19 @@ fincore /data/dataset.bin                  # same idea, util-linux
 sync; echo 3 | sudo tee /proc/sys/vm/drop_caches   # drop clean caches (TESTING ONLY, to get a cold cache; hurts production)
 ```
 
-A **second-level cache** extends the in-memory cache with a faster-than-disk medium, typically flash: ZFS's L2ARC caches clean, randomly read data on SSD; Linux has `bcache`, `dm-cache` and `dm-writecache` (device-mapper and block-layer caches that put an SSD or NVMe in front of slower disks). They help random-read workloads whose working set exceeds RAM, and they need warm-up time and monitoring of hit ratios.
+A **second-level cache** extends the in-memory cache with a faster-than-disk medium, usually flash. ZFS's L2ARC caches clean, randomly read data on SSD. Linux offers `bcache`, `dm-cache` and `dm-writecache`. These are device-mapper and block-layer caches that put an SSD or NVMe in front of slower disks. They help random-read workloads whose working set is larger than RAM. They need warm-up time, and you should monitor their hit ratios.
 
 ### Access patterns and read-ahead
 
-An I/O series is **sequential** if each starts where the previous ended, otherwise **random**. Filesystems try to place data contiguously so sequential logical I/O stays sequential physically; **fragmentation** is what happens when it does not. On rotational disks random I/O is catastrophically slower; on flash it matters much less (but small random writes still suffer read-modify-write). **Prefetch / read-ahead** detects sequential reads and fetches ahead of the application so reads hit the cache; when detection works, sequential reads stream; when it fails it wastes bandwidth and pollutes the cache. Per-device read-ahead is `blockdev --getra /dev/nvme0n1` / `--setra 4096` (in 512-byte sectors) or `/sys/block/DEV/queue/read_ahead_kb`; applications can hint with `posix_fadvise(POSIX_FADV_SEQUENTIAL|RANDOM|WILLNEED|DONTNEED)` and `madvise` for mappings; `readahead(2)` warms the cache explicitly.
+An I/O series is **sequential** if each request starts where the previous one ended. Otherwise it is **random**. Filesystems try to place data contiguously, so sequential logical I/O stays sequential on disk. **Fragmentation** is what happens when it does not. On rotational disks, random I/O is far slower. On flash it matters much less, though small random writes still suffer read-modify-write.
+
+**Prefetch**, or **read-ahead**, detects sequential reads and fetches data before the application asks for it, so reads hit the cache. When detection works, sequential reads stream. When it fails, it wastes bandwidth and pollutes the cache. The per-device read-ahead is counted in 512-byte sectors. Read it with `blockdev --getra /dev/nvme0n1`, and set it with `--setra 4096`. The sysfs file `/sys/block/DEV/queue/read_ahead_kb` is the other place to look. Applications can give hints with `posix_fadvise(POSIX_FADV_SEQUENTIAL|RANDOM|WILLNEED|DONTNEED)`, and with `madvise` for mappings. `readahead(2)` warms the cache explicitly.
 
 ### Write-back caching and durability
 
-A normal `write()` copies data into the page cache and returns: it is **not durable yet**. Kernel **flusher threads** write dirty pages later when: dirty data is older than about 30 seconds (`vm.dirty_expire_centisecs`), the dirty amount exceeds a threshold (`vm.dirty_background_ratio` starts background flushing; `vm.dirty_ratio` makes the **writer itself** block until it drops), memory is short, or the application calls `sync`, `fsync`, `fdatasync` or `msync`. The trade-off is reliability: power loss loses the unflushed data, and a partial write can corrupt the on-disk state of anything without a journal or copy-on-write.
+A normal `write()` copies data into the page cache and returns. That data is **not durable yet**. Kernel **flusher threads** write dirty pages later. They do so when dirty data is older than about 30 seconds (`vm.dirty_expire_centisecs`). They also do so when the dirty amount passes a threshold. `vm.dirty_background_ratio` starts background flushing, and `vm.dirty_ratio` makes the **writer itself** block until the amount drops. Flushing also happens when memory is short, or when the application calls `sync`, `fsync`, `fdatasync` or `msync`.
+
+The trade-off is reliability. Power loss loses unflushed data. A partial write can corrupt anything that has no journal or copy-on-write behind it.
 
 ```mermaid
 flowchart TD
@@ -589,22 +647,26 @@ flowchart TD
   D --> M["Persistent media (durable only after the device flushes its own cache)"]
 ```
 
-**Synchronous writes** complete only when the data (and the metadata needed to find it) is on persistent storage: individually (`O_SYNC`/`O_DSYNC` flags, or mounting with `sync`) or by **committing a group of earlier writes** with `fsync(fd)`, which is the efficient way (databases and checkpointers batch, then `fsync` once). Closing a file does *not* guarantee durability; a long pause when unpacking an archive of many files over NFS is the cost of those implicit commits. The standard careful pattern for replacing a file atomically: write a temporary file in the same directory, `fsync` it, `rename()` it over the target, then `fsync` the directory. Even then, a **device write cache** without power-loss protection can lie; enterprise drives with capacitors honour flush commands safely.
+**Synchronous writes** complete only when the data, and the metadata needed to find it, is on persistent storage. You can request this for each write with the `O_SYNC` or `O_DSYNC` flags, or by mounting with `sync`. The efficient way is to **commit a group of earlier writes** with `fsync(fd)`. Databases and checkpointers batch their writes, then call `fsync` once. Closing a file does *not* guarantee durability. A long pause when unpacking an archive of many files over NFS is the cost of those implicit commits.
 
-Tuning knobs (set with `sysctl`, chapter 1.10; values illustrative): `vm.dirty_background_ratio=5`, `vm.dirty_ratio=10` (or the `_bytes` forms on large-RAM machines, where a percentage of terabytes is far too much dirty data and produces long stalls at flush time), `vm.dirty_expire_centisecs`, `vm.dirty_writeback_centisecs`. Large dirty-cache limits make checkpoint writes look instantaneous and then stall the next operation when the kernel finally has to flush.
+The standard careful pattern for replacing a file atomically has four steps. Write a temporary file in the same directory, `fsync` it, `rename()` it over the target, then `fsync` the directory. Even then, a **device write cache** without power-loss protection can lie. Enterprise drives with capacitors honour flush commands safely.
+
+Tuning knobs live in `sysctl` (chapter 1.10). The values below are illustrative: `vm.dirty_background_ratio=5` and `vm.dirty_ratio=10`. On machines with large RAM, use the `_bytes` forms instead. A percentage of terabytes is far too much dirty data, and it produces long stalls at flush time. Also see `vm.dirty_expire_centisecs` and `vm.dirty_writeback_centisecs`. Large dirty-cache limits make checkpoint writes look instant, and then they stall the next operation when the kernel finally has to flush.
 
 ### Direct, raw, non-blocking and memory-mapped I/O
 
-- **Raw I/O** reads and writes block device offsets, bypassing the filesystem (databases once used it). Hard to administer.
-- **Direct I/O** (`O_DIRECT`): uses the filesystem but **bypasses the page cache**; the device transfers data straight to or from the application's buffer. It avoids a double copy and cache pollution for data read or written exactly once, such as streaming dataset shards or flushing a checkpoint. It has strict rules: the **buffer address, file offset and length must be aligned** to the device's logical block size (usually 512 B, often 4096 B). Misalignment returns `EINVAL`, the commonest `O_DIRECT` bug. In C, allocate with `posix_memalign(&p, 4096, size)`; in Python use `mmap` or an aligned buffer. Direct I/O disables caching and sometimes read-ahead, so it is not a free speed-up. (`dd iflag=direct oflag=direct` and `fio --direct=1` use it to measure the device rather than the cache.)
-- **Non-blocking and asynchronous I/O**: `O_NONBLOCK` returns `EAGAIN` instead of waiting; POSIX AIO and Linux `libaio`; **`io_uring`** (Linux 5.1+) submits and completes I/O through shared ring buffers with low overhead. Needed to build high queue depth from a single thread.
-- **Memory-mapped files** (`mmap`): map a file into the address space; access is by load/store, page faults read the data (**implicit I/O** that never shows as `read()` calls). Avoids system-call and copy overhead, but if the problem is device latency it changes little, and many CPUs updating mappings incur TLB-shootdown costs. Mapped files still go through the page cache.
+Some applications skip the cache, or skip waiting. The list below shows the main choices.
+
+- **Raw I/O** reads and writes block device offsets, bypassing the filesystem. Databases once used it. It is hard to administer.
+- **Direct I/O** (`O_DIRECT`) uses the filesystem but **bypasses the page cache**. The device transfers data straight to or from the application's buffer. That avoids a double copy and cache pollution, for data read or written exactly once. Streaming dataset shards or flushing a checkpoint are examples. Direct I/O has strict rules. The **buffer address, file offset and length must be aligned** to the device's logical block size, usually 512 B and often 4096 B. Misalignment returns `EINVAL`, the most common `O_DIRECT` bug. In C, allocate with `posix_memalign(&p, 4096, size)`. In Python, use `mmap` or an aligned buffer. Direct I/O also disables caching and sometimes read-ahead, so it is not a free speed-up. `dd iflag=direct oflag=direct` and `fio --direct=1` use it to measure the device rather than the cache.
+- **Non-blocking and asynchronous I/O**: `O_NONBLOCK` returns `EAGAIN` instead of waiting. POSIX AIO and Linux `libaio` also exist. **`io_uring`** (Linux 5.1+) submits and completes I/O through shared ring buffers with low overhead. It is what you need to build a high queue depth from a single thread.
+- **Memory-mapped files** (`mmap`) map a file into the address space. Access is by load and store. Page faults read the data, which is **implicit I/O** that never shows as `read()` calls. Mapping avoids system-call and copy overhead. But if the problem is device latency, it changes little. Many CPUs updating mappings also pay TLB-shootdown costs. Mapped files still go through the page cache.
 
 ### Metadata, and logical versus physical I/O
 
-**Logical metadata** is what applications read and write: `stat`, `create`, `unlink`, `mkdir`, `chmod`, timestamp updates. A **metadata-heavy** workload (millions of tiny files, `open`/`stat`/`close` storms, `ls` on huge directories) can saturate a filesystem or a parallel filesystem's metadata servers while data bandwidth is idle. **Physical metadata** (superblocks, inode tables, bitmaps, indirect blocks, journal) is the bookkeeping the filesystem must write.
+**Logical metadata** is what applications read and write, such as `stat`, `create`, `unlink`, `mkdir`, `chmod` and timestamp updates. A **metadata-heavy** workload can saturate a filesystem, or the metadata servers of a parallel filesystem, while data bandwidth sits idle. Examples are millions of tiny files, storms of `open`, `stat` and `close` calls, and `ls` on huge directories. **Physical metadata** is the bookkeeping the filesystem must write itself: superblocks, inode tables, bitmaps, indirect blocks and the journal.
 
-**Logical I/O** (what the application asked) rarely equals **physical I/O** (what reached the disk):
+**Logical I/O**, what the application asked for, rarely equals **physical I/O**, what reaches the disk. The table shows why.
 
 | Effect | Cause |
 |---|---|
@@ -614,13 +676,15 @@ Tuning knobs (set with `sysctl`, chapter 1.10; values illustrative): `vm.dirty_b
 | **Deflated** (less than requested) | Cache hits, write cancellation (same bytes rewritten before flush), compression, coalescing neighbours, in-memory filesystems |
 | **Inflated** (more than requested) | Metadata updates, **record/block size rounding** (a 1-byte write may read and rewrite a whole 128 KiB record on large-record filesystems), **journaling** (data or metadata written twice), RAID parity read-modify-write, mirroring |
 
-**Operations are not equal**: "500 operations per second" says nothing without the type (cached read, cold read, async write, sync write, `stat`), size, randomness and CPU cost. Always characterise a workload by operation mix, I/O sizes, read/write ratio, synchronous-write fraction, random versus sequential share, and working-set size.
+**Operations are not equal.** "500 operations per second" says nothing without the type of operation. A cached read, a cold read, an async write, a sync write and a `stat` each cost something different. Size, randomness and CPU cost matter too. So always describe a workload by its operation mix, I/O sizes, read/write ratio, synchronous-write fraction, random versus sequential share, and working-set size.
 
 ### Capacity and timestamps
 
-When a filesystem fills, performance degrades (free blocks are scarce and scattered, allocation costs more; copy-on-write filesystems fragment badly near full). Keep headroom (many sites alert at 80 to 85% and plan growth). **Access timestamps** turn every read into a metadata write; **`relatime`** (default) and **`noatime`** reduce that.
+When a filesystem fills, it slows down. Free blocks become scarce and scattered, so allocation costs more. Copy-on-write filesystems fragment badly near full. Keep headroom. Many sites alert at 80 to 85% and plan growth before then. **Access timestamps** turn every read into a metadata write. **`relatime`** (the default) and **`noatime`** reduce that cost.
 
 ## 10. Choosing and tuning filesystems
+
+Filesystems differ in their features, and each feature has a cost. The table lists the main ones and which filesystems offer them.
 
 | Feature | Meaning | Where |
 |---|---|---|
@@ -634,26 +698,28 @@ When a filesystem fills, performance degrades (free blocks are scarce and scatte
 | **Online grow / shrink** | ext4: grow online, shrink offline; XFS: grow only | |
 | **Quota** | User, group, project limits | ext4, XFS, others |
 
-History in a sentence: the original Unix filesystem had one inode table and 512-byte blocks and fragmented its free list, falling to a few percent of disk bandwidth; BSD's **Fast File System** added **cylinder groups** (inodes and data placed together), larger blocks and fragments, which most later designs inherit; ext2, ext3 (journal), ext4 (extents, delayed allocation, large files and volumes, journal checksums, faster fsck), XFS (SGI: allocation groups, extents, scalability), ZFS and btrfs (pooled storage, copy-on-write, checksums, snapshots).
+A short history explains many of these choices. The original Unix filesystem had one inode table and 512-byte blocks, and it fragmented its free list. It fell to a few percent of disk bandwidth. BSD's **Fast File System** added **cylinder groups**, which place inodes and data together. It also added larger blocks and fragments, and most later designs inherit them. ext2 came next, then ext3 with its journal. ext4 added extents, delayed allocation, large files and volumes, journal checksums and a faster fsck. XFS, from SGI, brought allocation groups, extents and scalability. ZFS and btrfs added pooled storage, copy-on-write, checksums and snapshots.
 
 **Practical guidance for GPU and HPC hosts**:
 
 - **Root and system**: ext4 or XFS, as the distribution defaults.
-- **Local NVMe scratch** (datasets, caches, container image storage, fast checkpoints): XFS (or ext4) on a single NVMe or on an `md` RAID 0 of several; mount `noatime,nodiratime`; do not use `discard` continuously, run `fstrim.timer`; consider `nofail` for optional devices.
-- **Container image and layer storage** (`/var/lib/containerd`, `/var/lib/docker`): XFS with `ftype=1` is required for overlayfs on XFS (default in current `mkfs.xfs`); give it its own filesystem so a full image store does not take down the root; watch **inodes** there.
-- **Many tiny files**: avoid on any filesystem. Bundle into shards (tar, WebDataset, TFRecord, Parquet, LMDB) at preparation time; a million-file dataset on a shared filesystem makes metadata the bottleneck.
-- **Databases** (Postgres, etc.): ext4 or XFS with the application vendor's mount-option advice; avoid copy-on-write filesystems for write-heavy loads unless tuned.
-- **Shared datasets and checkpoints**: parallel or network filesystem, with node-local NVMe as the first hop for checkpoints.
+- **Local NVMe scratch** (datasets, caches, container image storage, fast checkpoints): XFS (or ext4) on a single NVMe, or on an `md` RAID 0 of several. Mount with `noatime,nodiratime`. Do not use `discard` continuously. Run `fstrim.timer` instead. Consider `nofail` for optional devices.
+- **Container image and layer storage** (`/var/lib/containerd`, `/var/lib/docker`): XFS with `ftype=1` is required for overlayfs on XFS (the default in current `mkfs.xfs`). Give it its own filesystem, so a full image store cannot take down the root. Watch **inodes** there.
+- **Many tiny files**: avoid them on any filesystem. Bundle them into shards (tar, WebDataset, TFRecord, Parquet, LMDB) at preparation time. A million-file dataset on a shared filesystem makes metadata the bottleneck.
+- **Databases** (Postgres, etc.): ext4 or XFS, following the application vendor's mount-option advice. Avoid copy-on-write filesystems for write-heavy loads unless they are tuned.
+- **Shared datasets and checkpoints**: a parallel or network filesystem, with node-local NVMe as the first hop for checkpoints.
 
-**Tuning knobs** (apply only to measured problems): ext4 `tune2fs -l`, `-m` reserved percentage, `-O` features, `-E` stride/stripe-width; sysfs `/sys/fs/ext4/<dev>/` tunables (for example `inode_readahead_blks`); `e2fsck -D` re-indexes directories; XFS `xfs_info`, `xfs_growfs`, `xfs_fsr` (defragment), mount options `logbsize`, `allocsize` for streaming writes (`allocsize=1g` can help large sequential writers); ZFS dataset properties (`recordsize` matched to I/O size, `compression=lz4`, `atime=off`, `primarycache`, `logbias`, `sync`). Application-level: `posix_fadvise`, `madvise`, larger I/O sizes, `fsync` grouping, `O_DIRECT` with aligned buffers, `fallocate`.
+Choose the filesystem by its workload, and keep the distribution default unless you have a measured reason to change it. If you are setting up a new node, check this list against your own workload before you format anything.
+
+**Tuning knobs** apply only to measured problems. For ext4, you can read and change `tune2fs -l`, `-m` (reserved percentage), `-O` (features), and `-E` (stride and stripe-width). Sysfs tunables live under `/sys/fs/ext4/<dev>/`, such as `inode_readahead_blks`. `e2fsck -D` re-indexes directories. For XFS, use `xfs_info`, `xfs_growfs`, and `xfs_fsr` (defragment). The mount options `logbsize` and `allocsize` help streaming writes, and `allocsize=1g` can help large sequential writers. ZFS dataset properties include `recordsize` (match it to the I/O size), `compression=lz4`, `atime=off`, `primarycache`, `logbias` and `sync`. At the application level, use `posix_fadvise`, `madvise`, larger I/O sizes, `fsync` grouping, `O_DIRECT` with aligned buffers, and `fallocate`.
 
 ## 11. Methodology and tools
 
-**Start with latency analysis.** Measure the time of file operations at the layer you can: the application's own metrics, system calls (`strace -T`, `perf trace`), VFS or filesystem-level tracing. Prefer **distributions** (histograms) over averages, since cache hits dominate averages and hide outliers. **Transaction cost** quantifies the benefit: if an operation takes 200 ms and 180 ms of it is blocked in file I/O, the filesystem is 90% of the time and removing the latency could give up to 10x; if only 2 ms is spent there, the filesystem is irrelevant and you should look elsewhere.
+If you can measure only one thing, measure how long your application spends in file operations. **Start with latency analysis.** Measure the time of file operations at the layer you can reach. That can be the application's own metrics, system calls (`strace -T`, `perf trace`), or VFS and filesystem-level tracing. Prefer **distributions** (histograms) to averages, since cache hits dominate averages and hide outliers. **Transaction cost** shows the benefit. Suppose an operation takes 200 ms, and 180 ms of that is blocked in file I/O. Then the filesystem is 90% of the time, and removing its latency could give up to a 10x speedup. If only 2 ms is spent there, the filesystem is irrelevant, and you should look elsewhere.
 
-Then: **performance monitoring** (operation rate and latency over time), **workload characterisation** (operation mix, sizes, read/write ratio, sync ratio, random/sequential, files involved, cache hit ratio, who and why), **static performance tuning** (how many filesystems, record size, atime, options, caches, devices, RAID, versions, resource controls), **cache tuning**, **workload separation** (separate filesystems or devices for logs and data, "separate spindles"), and **micro-benchmarking** with the cache state under control.
+Then work through the rest of the method. Use **performance monitoring** to watch operation rate and latency over time. Use **workload characterisation** to record the operation mix, sizes, read/write ratio, sync ratio, random versus sequential share, files involved, cache hit ratio, and who is doing the I/O and why. **Static performance tuning** covers how many filesystems you have, record size, atime, options, caches, devices, RAID, versions and resource controls. Next, tune the caches. Separate workloads onto their own filesystems or devices, the "separate spindles" idea for logs and data. Finally, run **micro-benchmarking** with the cache state under control.
 
-**Benchmarking pitfall: working-set size.** With 128 GB of RAM, a "random read" test on a 10 GB file is 100% cache hits and measures memory; the same test with `O_DIRECT` measures the device; on 1 TB it mostly measures the device. A benchmark that does not state its working set and cache state is meaningless. Run twice (cold, then warm), flush caches between runs (`echo 3 > /proc/sys/vm/drop_caches` after `sync`), use direct I/O when you want the device, and see chapter 1.25.
+**Benchmarking pitfall: working-set size.** Suppose you have 128 GB of RAM. A "random read" test on a 10 GB file is 100% cache hits, so it measures memory. The same test with `O_DIRECT` measures the device. On a 1 TB file, it mostly measures the device. A benchmark that does not state its working set and cache state is meaningless. Run it twice, cold and then warm. Flush caches between runs (`echo 3 > /proc/sys/vm/drop_caches` after `sync`). Use direct I/O when you want the device. Chapter 1.25 covers the details.
 
 | Tool | Use |
 |---|---|
@@ -668,16 +734,16 @@ Then: **performance monitoring** (operation rate and latency over time), **workl
 | `fio`, `ioping`, `dd oflag=direct`, `bonnie++`, `iozone`, `mdtest`/`IOR` (parallel filesystems) | Benchmarks |
 | `smartctl -a`, `nvme smart-log`, `dmesg`, `/sys/fs/*/errors_count` | Health |
 
-**Reading `iostat -xz 1`**:
+Read `iostat -xz 1` as a set of columns.
 
 ```text
 Device   r/s   w/s   rkB/s   wkB/s  await  aqu-sz  %util
 nvme0n1  42.0  980.0 5376.0  62720   8.20    4.10   97.5
 ```
 
-`%util` is the fraction of time the device had at least one request outstanding. On a single rotational disk 100% means saturated. **On NVMe and arrays that execute many requests in parallel it is misleading:** one synchronous thread can show 100% while using a few percent of the drive's real capacity. Pair it with `aqu-sz`, bandwidth and IOPS. A device at 100% util with `aqu-sz` below about 4 and bandwidth far below the specification means **the application's I/O pattern is the limit** (synchronous, single-threaded), not the drive: build queue depth with more threads or `io_uring`. High `await` with moderate util points to queueing or backend latency (noisy neighbour on a shared disk, a congested network storage path). `await` is wait time plus service time, the latency you care about.
+`%util` is the fraction of time the device had at least one request outstanding. On a single rotational disk, 100% means saturated. **On NVMe and arrays that run many requests in parallel, it is misleading.** One synchronous thread can show 100% while using a few percent of the drive's real capacity. So pair `%util` with `aqu-sz`, bandwidth and IOPS. A device at 100% util, with `aqu-sz` below about 4 and bandwidth far below the specification, means **the application's I/O pattern is the limit**. The cause is synchronous, single-threaded I/O, not the drive. Build queue depth with more threads or with `io_uring`. High `await` with moderate util points to queueing or backend latency, such as a noisy neighbour on a shared disk or a congested network storage path. `await` is wait time plus service time, which is the latency you care about.
 
-Three symptoms, three different problems:
+Three symptoms point to three different problems.
 
 | Symptom | Likely pattern | Direction |
 |---|---|---|
@@ -685,7 +751,7 @@ Three symptoms, three different problems:
 | High MB/s, unremarkable IOPS | large sequential | Usually fine; check the NIC or bus instead of the disk |
 | Latency spikes with normal averages | queueing and tail latency | Noisy neighbour, shared filesystem or backend queueing, write-back flush stalls |
 
-**`fio` quick checks** (always point at a safe test file, never a device holding data):
+Run `fio` for a quick check. Always point it at a safe test file, never at a device that holds data.
 
 ```bash
 fio --name=randread --filename=/data/fio.test --size=4G --rw=randread --bs=4k --iodepth=32 --numjobs=4 \
@@ -694,13 +760,15 @@ fio --name=seqwrite --filename=/data/fio.test --size=10G --rw=write --bs=1M --io
     --runtime=30 --time_based --end_fsync=1
 ```
 
-Read IOPS, bandwidth and the **latency percentiles** (p99, p99.9), not just the average.
+Read IOPS, bandwidth and the **latency percentiles** (p99, p99.9), not just the average. If you read only the average, you will miss the slow requests your users feel.
 
 ## 12. AI-infrastructure patterns
 
-**Where data lives.** *Local* storage is fast to reach but belongs to one machine (lost when an instance is reassigned); *shared/network* storage survives any single machine and gives every node the same dataset at the cost of a network and server dependency. Reaching a path successfully proves nothing about which it is, so check: `findmnt -T /data`, `lsblk -o NAME,ROTA,FSTYPE,MOUNTPOINTS` (`ROTA=0` flash), `df -hT`. A training job usually wants the dataset from shared storage and the **checkpoints written to node-local NVMe first**, then uploaded asynchronously to shared or object storage.
+**Where data lives.** *Local* storage is fast to reach, but it belongs to one machine. If an instance is reassigned, its data is lost. *Shared or network* storage survives any single machine and gives every node the same dataset. The cost is a network and server dependency. Reaching a path successfully proves nothing about which kind it is, so check it. Run `findmnt -T /data`, `lsblk -o NAME,ROTA,FSTYPE,MOUNTPOINTS` (`ROTA=0` means flash), and `df -hT`. A training job usually reads its dataset from shared storage. It writes **checkpoints to node-local NVMe first**, then uploads them asynchronously to shared or object storage.
 
-**Checkpoint storms.** 64 nodes writing checkpoints to one shared parallel filesystem every 30 minutes see write time rise from 45 seconds to 8 minutes while each node's local `iostat` looks idle. This is **shared-resource contention**, not a per-node storage problem: simultaneous `open`/`write`/`fsync`/`close` from many nodes multiplies **metadata** operations on the metadata servers, which saturate first and scale with node count, not data volume. Fixes, each with a trade-off: stagger writes across nodes; write to local NVMe then copy asynchronously (risk: lose the last checkpoint if the node dies before upload); shard checkpoints to fewer, larger files or use the framework's distributed checkpoint format; tune stripe count and size on the parallel filesystem; keep checkpoint frequency proportional to failure rate and cost of lost work.
+**Checkpoint storms.** Picture 64 nodes writing checkpoints to one shared parallel filesystem every 30 minutes. Write time rises from 45 seconds to 8 minutes, while each node's local `iostat` looks idle. This is **shared-resource contention**, not a per-node storage problem. Simultaneous `open`, `write`, `fsync` and `close` calls from many nodes multiply **metadata** operations on the metadata servers. Those servers saturate first, and their load scales with node count, not data volume.
+
+Each fix has a trade-off. You can stagger writes across nodes. You can write to local NVMe and copy asynchronously, but then you risk losing the last checkpoint if the node dies before the upload. You can shard checkpoints into fewer, larger files, or use the framework's distributed checkpoint format. You can tune stripe count and size on the parallel filesystem. Finally, keep checkpoint frequency in proportion to the failure rate and the cost of lost work.
 
 ```mermaid
 flowchart TD
@@ -712,9 +780,9 @@ flowchart TD
   MDS --> OSS["Data servers (many, striped)\nmostly idle while MDS is the bottleneck"]
 ```
 
-**Data-loader storms.** The same fan-in occurs at start-up when thousands of processes open the same files: a **metadata storm**. Symptoms: high `await` on compute nodes although raw storage bandwidth is idle; remedies: shard the dataset, cache it on local NVMe (copy once per node), stage with a parallel copy (`mpifileutils dcp`), use client-side caches, and stagger start-up. `iostat` covers only local block devices; for NFS use `nfsiostat` or `mountstats`.
+**Data-loader storms.** You may see this on your first large run. The same fan-in happens at start-up, when thousands of processes open the same files. That is a **metadata storm**. You will see high `await` on compute nodes, even though raw storage bandwidth is idle. The remedies are to shard the dataset, cache it on local NVMe (copy once per node), stage it with a parallel copy (`mpifileutils dcp`), use client-side caches, and stagger start-up. `iostat` covers only local block devices. For NFS, use `nfsiostat` or `mountstats`.
 
-**Page cache versus GPU data path.** Buffered I/O copies storage → page cache → application buffer → (via `cudaMemcpy`) GPU memory, with the page cache growing with data that is read once. Streaming loaders use `O_DIRECT` (aligned buffers; often with `io_uring` or a thread pool) to skip the cache; **GPUDirect Storage (GDS)** extends the bypass to a direct DMA path from NVMe (or NIC for network storage) into GPU memory over PCIe, skipping the CPU bounce buffer. GDS needs a supported filesystem and driver stack; when the direct path is unavailable the cuFile library falls back to a **compatibility mode** that uses ordinary POSIX I/O through host memory and loses the benefit, so confirm which path is active (`gdscheck`, cuFile logs). Memory-mapped loading still uses the page cache.
+**Page cache versus GPU data path.** Buffered I/O copies data from storage into the page cache, then into the application buffer, and then into GPU memory with `cudaMemcpy`. The page cache keeps growing with data that is read only once. Streaming loaders use `O_DIRECT`, with aligned buffers, often through `io_uring` or a thread pool, to skip the cache. **GPUDirect Storage (GDS)** goes further. It uses a direct DMA path from NVMe, or from the NIC for network storage, into GPU memory over PCIe. That skips the CPU bounce buffer. GDS needs a supported filesystem and driver stack. When the direct path is unavailable, the cuFile library falls back to a **compatibility mode**. That mode uses ordinary POSIX I/O through host memory and loses the benefit. So confirm which path is active with `gdscheck` or the cuFile logs. Memory-mapped loading still uses the page cache.
 
 ```mermaid
 flowchart LR
@@ -723,43 +791,49 @@ flowchart LR
   ST ==>|"GPUDirect Storage: direct DMA"| GM
 ```
 
-**Inode exhaustion.** An ext4 volume at 40% bytes but 100% inodes returns `ENOSPC` on the next `open()` or `create`. `df -h` and `df -i` on the same filesystem tell different stories; prevent it by creating the filesystem with enough inodes (or using XFS) and by avoiding million-file datasets on one volume. The container image store and package caches are the other usual victims.
+**Inode exhaustion.** An ext4 volume at 40% bytes but 100% inodes returns `ENOSPC` on the next `open()` or `create`. `df -h` and `df -i` on the same filesystem tell different stories. Prevent this by creating the filesystem with enough inodes, or by using XFS. Avoid million-file datasets on one volume. The container image store and package caches are the other usual victims.
 
-**Local NVMe on GPU servers.** Typical build: one NVMe per use, or several NVMe in `md` RAID 0 for a fast scratch (chapter 1.13); format with XFS; mount `/scratch` with `noatime,nofail`; create at first boot by cloud-init or provisioning (not by hand); label and use UUIDs; set the I/O scheduler to `none` for NVMe (most current kernels default to it; persist through a udev rule, chapter 1.10; benefit is usually small and workload-dependent); trim weekly. On clouds, local SSD is **ephemeral**: it disappears on stop/terminate or maintenance events, so it holds only re-creatable data.
+**Local NVMe on GPU servers.** A typical build uses one NVMe per use, or several NVMe drives in `md` RAID 0 for fast scratch (chapter 1.13). Format it with XFS, and mount `/scratch` with `noatime,nofail`. Create it at first boot, through cloud-init or provisioning, not by hand. Label it and use UUIDs. Set the I/O scheduler to `none` for NVMe. Most current kernels already default to it. Persist the setting through a udev rule (chapter 1.10). The benefit is usually small and depends on the workload. Trim weekly. On clouds, local SSD is **ephemeral**. It disappears on stop, terminate or maintenance events, so keep only re-creatable data there.
 
-**Container and Kubernetes angles.** Container root filesystems are **overlayfs** on top of image layers; heavy writes inside a container land on the overlay upper layer (slower, filling the node disk, with the "ephemeral storage" eviction behaviour in Kubernetes); put datasets and checkpoints on **volumes** (hostPath/local PV, CSI-backed network PVs, `emptyDir` on a fast disk, or `emptyDir.medium: Memory` which is tmpfs and counts against memory limits). A node whose `/var/lib/containerd` fills up fails pods with `DiskPressure`. Image garbage collection thresholds and a separate image filesystem are standard mitigations.
+**Container and Kubernetes angles.** Container root filesystems are **overlayfs** on top of image layers. Heavy writes inside a container land on the overlay upper layer. That is slower, it fills the node disk, and it triggers Kubernetes' "ephemeral storage" eviction behaviour. Put datasets and checkpoints on **volumes** instead. The options are hostPath or local PVs, CSI-backed network PVs, `emptyDir` on a fast disk, or `emptyDir.medium: Memory`. That last one is tmpfs, and it counts against memory limits. A node whose `/var/lib/containerd` fills up fails pods with `DiskPressure`. Image garbage collection thresholds and a separate image filesystem are the standard mitigations.
 
-**Hung storage and `D` state.** A dead NFS or Lustre server leaves processes in uninterruptible sleep (chapter 1.8); mount options such as `hard`/`soft`, `timeo`, `retrans`, `nconnect`, `vers=` and `_netdev` (chapter 1.30, storage chapters) decide whether clients wait forever or return errors. Monitor mount health separately from device health.
+**Hung storage and `D` state.** A dead NFS or Lustre server leaves processes in uninterruptible sleep (chapter 1.8). Mount options decide whether clients wait forever or receive errors. Those options are `hard` and `soft`, `timeo`, `retrans`, `nconnect`, `vers=` and `_netdev`. Chapter 1.30 and the storage chapters cover them. Monitor mount health separately from device health.
+
+Before you start a training job, decide which data is local, which is shared, and where the checkpoints land first.
 
 ## How it fails
 
-1. **Device names changed after reboot, wrong disk mounted.** `sdX` names are enumeration order. Use UUID/label/`by-id`.
-2. **Boot drops to emergency mode after editing `fstab`** (typo, missing device, wrong UUID). Test with `mount -a` and `findmnt --verify` before rebooting; add `nofail` for optional devices.
-3. **"No space left on device" with free bytes.** Inodes (`df -i`), read-only remount, quota, wrong/absent mount, reserved blocks, deleted-but-open files.
-4. **Filesystem went read-only.** I/O error or journal abort (`errors=remount-ro`). `dmesg`, SMART; unmount, `fsck`, replace the disk; do not simply `mount -o remount,rw` and carry on.
-5. **`fsck` on a mounted filesystem** corrupts it. Only on unmounted (or read-only root in rescue).
-6. **Data lost on power cut despite journal.** Buffered data never `fsync`ed, a device cache without power-loss protection, or `nobarrier`.
-7. **`dd`/`mkfs` on the wrong device.** Verify with `lsblk -o NAME,SIZE,MODEL,SERIAL,MOUNTPOINT`; prefer `/dev/disk/by-id` paths in scripts.
-8. **Misaligned partitions or wrong stripe geometry.** Use 1 MiB alignment; set `su`/`sw` and stride/stripe-width to match RAID.
-9. **Cloned disks with the same UUID.** Duplicate UUIDs confuse `fstab` and XFS refuses the second mount; change the UUID.
-10. **Performance collapses near 100% full.** Free space fragmentation and allocation cost; keep headroom, `fstrim`, defragment (XFS `xfs_fsr`), or add capacity.
-11. **`O_DIRECT` fails with `EINVAL`.** Unaligned buffer, offset or length.
-12. **Large dirty cache causes periodic multi-second stalls.** Percentage-based `dirty_ratio` on a huge-RAM host; use `vm.dirty_bytes`/`vm.dirty_background_bytes`.
-13. **Checkpoint time grows with cluster size.** Metadata or stripe contention on the shared filesystem; stagger, shard, node-local first.
-14. **Benchmark numbers are fantasy.** Working set fits in cache, wrong block size, direct I/O off, single job; state and control cache, size, queue depth, `fsync`.
-15. **Continuous `discard` causes latency spikes**; use `fstrim.timer`.
-16. **tmpfs fills RAM.** `/dev/shm` or `/tmp` as tmpfs without a size limit, or Kubernetes memory `emptyDir`; set `size=` and monitor.
-17. **A full `/var/lib/containerd` or `/var/log`** takes down a node: separate filesystems and quotas, log rotation, image GC.
+Storage failures repeat. If you see one of these symptoms on your node, start at the matching item. The list names the ones you will meet most, with the cause and the first fix for each.
+
+1. **Device names changed after reboot, so the wrong disk was mounted.** `sdX` names come from enumeration order. Use UUID, label or `by-id` instead.
+2. **Boot drops to emergency mode after an `fstab` edit.** The cause is usually a typo, a missing device or a wrong UUID. Test with `mount -a` and `findmnt --verify` before you reboot, and add `nofail` for optional devices.
+3. **"No space left on device" with free bytes.** Check inodes (`df -i`), a read-only remount, a quota, a wrong or absent mount, reserved blocks and deleted-but-open files.
+4. **Filesystem went read-only.** The cause is an I/O error or a journal abort (`errors=remount-ro`). Check `dmesg` and SMART, unmount, run `fsck`, and replace the disk. Do not simply run `mount -o remount,rw` and carry on.
+5. **`fsck` on a mounted filesystem** corrupts it. Run it only on an unmounted filesystem, or on a read-only root in rescue mode.
+6. **Data lost on power cut despite the journal.** The likely causes are buffered data that was never `fsync`ed, a device cache without power-loss protection, or `nobarrier`.
+7. **`dd` or `mkfs` on the wrong device.** Verify with `lsblk -o NAME,SIZE,MODEL,SERIAL,MOUNTPOINT`, and prefer `/dev/disk/by-id` paths in scripts.
+8. **Misaligned partitions or wrong stripe geometry.** Use 1 MiB alignment, and set `su`/`sw` and stride/stripe-width to match RAID.
+9. **Cloned disks with the same UUID.** Duplicate UUIDs confuse `fstab`, and XFS refuses the second mount. Change the UUID.
+10. **Performance collapses near 100% full.** Free space fragments and allocation gets costly. Keep headroom, run `fstrim`, defragment (XFS `xfs_fsr`), or add capacity.
+11. **`O_DIRECT` fails with `EINVAL`.** The buffer, offset or length is unaligned.
+12. **A large dirty cache causes periodic multi-second stalls.** A percentage-based `dirty_ratio` on a huge-RAM host is the usual cause. Use `vm.dirty_bytes` and `vm.dirty_background_bytes` instead.
+13. **Checkpoint time grows with cluster size.** Metadata or stripe contention on the shared filesystem is the cause. Stagger the writes, shard them, and write node-local first.
+14. **Benchmark numbers are fantasy.** The working set fits in cache, the block size is wrong, direct I/O is off, or there is only a single job. State and control the cache, size, queue depth and `fsync`.
+15. **Continuous `discard` causes latency spikes.** Use `fstrim.timer`.
+16. **tmpfs fills RAM.** `/dev/shm` or `/tmp` runs as tmpfs with no size limit, or Kubernetes uses a memory `emptyDir`. Set `size=` and monitor it.
+17. **A full `/var/lib/containerd` or `/var/log`** takes down a node. Use separate filesystems and quotas, log rotation, and image garbage collection.
+
+When a storage symptom appears, match it to one of these causes before you change anything.
 
 ## Hands-on lab: disks, partitions, filesystems, and VM drills
 
-First, run the self-checking Python lab (`code/part01/disks_filesystems_lab.py`) locally. It verifies 4 KiB flash partition alignment (`2048` aligned vs `1953126` misaligned), `ext4` 5% reserved blocks (`Used + Available < Size`), `O_DIRECT` alignment (`EINVAL`), `iostat -xz` NVMe `%util` vs `aqu-sz` diagnosis, and filesystem transaction cost Amdahl speedups.
+Start with the self-checking Python lab (`code/part01/disks_filesystems_lab.py`), and run it on your own machine first. You will see it check four things you have just read about. It verifies 4 KiB flash partition alignment (`2048` aligned vs `1953126` misaligned). It confirms that `ext4` keeps 5% in reserved blocks, so `Used + Available < Size`. It checks `O_DIRECT` alignment (`EINVAL`), and it diagnoses NVMe `%util` against `aqu-sz` with `iostat -xz`. It also works out the filesystem transaction cost as Amdahl speedups.
 
 ```bash
 python3 code/part01/disks_filesystems_lab.py
 ```
 
-Next, on a disposable GCP Ubuntu VM using loop devices (all interactive VM commands below are `untested here`; never run these against a disk with data), work through these steps:
+Next, move to a disposable GCP Ubuntu VM and use loop devices. Every interactive VM command below is `untested here`. Never run these against a disk that holds data. Work through the steps in order, because later steps rely on the devices that earlier steps create:
 
 **A. A loop-device "disk".**
 
@@ -777,7 +851,7 @@ sudo partprobe $LOOP; lsblk $LOOP; sudo parted $LOOP print; sudo parted $LOOP al
 sudo sgdisk -p $LOOP                    # (untested here)
 ```
 
-(If the partition devices do not appear for a loop device, re-attach it with `sudo losetup -d $LOOP; LOOP=$(sudo losetup --find --show -P /tmp/disk1.img)`.)
+If the partition devices do not appear, the loop device needs attaching again with partition scanning. Detach it and run `sudo losetup -d $LOOP; LOOP=$(sudo losetup --find --show -P /tmp/disk1.img)`.
 
 **C. Filesystems, mounting, UUIDs.**
 
@@ -872,133 +946,135 @@ cd /; sudo umount /mnt/e /mnt/x 2>/dev/null; sudo losetup -d $LOOP; rm -f /tmp/d
 
 ## Exercises
 
-1. **Flash Partition Alignment (`2048` vs `1953126`):** On an SSD with `4,096`-byte physical pages and `512`-byte logical sectors (`8` sectors per page), evaluate whether partitions starting at sector `2048` (`1 MiB`) and sector `1953126` (`/sys/block/sdf/sdf2/start` in `HLW` Section 4.1.6) are aligned. What happens to a single 4 KiB read when a partition is misaligned? Verify with `check_partition_page_alignment()` in `code/part01/disks_filesystems.py`.
-2. **`ext4` Reserved Blocks and the Five Meanings of `ENOSPC`:** (a) On a `100,000`-block `ext4` filesystem with `40,000` used blocks and the default `5%` root reservation, how many blocks are reported as `Available` to non-root users, and how do you lower the reservation to `0%` on a dedicated data drive? (b) List five distinct causes of `No space left on device` (`ENOSPC`) and the exact command that diagnoses each.
-3. **`O_DIRECT` Alignment (`EINVAL`) and GPUDirect Storage (`GDS`) vs Page Cache:** (a) State the three alignment conditions required for `open(..., O_DIRECT)` on a 4 KiB logical-block NVMe drive, and what `errno` is returned when `buf_addr = 0x7fff0010` or `file_offset = 512`; (b) trace the DMA and CPU copy hops for buffered I/O, `O_DIRECT`, and GPUDirect Storage (`cuFile`), and explain the GDS compatibility-mode trap.
-4. **Interpreting `iostat -xz` on NVMe SSDs (`%util` vs `aqu-sz`):** An NVMe SSD rated at `7,000 MB/s` shows `%util = 99.0%`, `aqu-sz = 1.0`, `await = 0.2 ms`, and throughput `250 MB/s`. Explain why the drive is *not* saturated despite `%util = 99.0%`, and contrast it with a reading of `aqu-sz = 64.0`, `await = 8.2 ms`, and `6,500 MB/s`.
-5. **Filesystem Transaction Cost and 64-Node Checkpoint Storms:** (a) If a request takes `200 ms` total and spends `180 ms` blocked in filesystem I/O (`90%`), what is the maximum speedup achievable by eliminating filesystem latency, versus when only `2 ms` (`1%`) is spent in filesystem I/O? (b) Why does checkpoint time grow from `45 s` to `8 min` as a training job scales from 16 to 64 nodes while per-node `iostat` stays nearly idle, and what are three mitigations?
-6. **6-Step Linux Quota Setup (`SCL` Chapter 12) and `e2fsck` Backup Superblocks:** (a) Write the 6-step sequence (`fstab` `usrquota`, remount `ro`, `quotacheck -vugc`, remount `rw`, `quotaon -va`, `setquota` / `repquota -a`) to enable quotas on `/dev/sda6`, and name the daemon required on an NFS server for remote quota queries; (b) how do you locate backup superblocks on an `ext4` volume without destroying data (`mke2fs -n`), and how do you pass one to `e2fsck`?
+Work these after the lab. Each one asks you to apply a single idea from the chapter.
+
+1. **Flash partition alignment (`2048` vs `1953126`):** Take an SSD with `4,096`-byte physical pages and `512`-byte logical sectors, so each page spans `8` sectors. Decide whether a partition starting at sector `2048` (`1 MiB`) is aligned. Decide the same for a partition starting at sector `1953126` (`/sys/block/sdf/sdf2/start` in `HLW` Section 4.1.6). What happens to a single 4 KiB read when a partition is misaligned? Verify your answer with `check_partition_page_alignment()` in `code/part01/disks_filesystems.py`.
+2. **`ext4` reserved blocks and the five meanings of `ENOSPC`:** (a) On a `100,000`-block `ext4` filesystem with `40,000` blocks used and the default `5%` root reservation, how many blocks are reported as `Available` to non-root users? How do you lower the reservation to `0%` on a dedicated data drive? (b) List five distinct causes of `No space left on device` (`ENOSPC`), with the exact command that diagnoses each.
+3. **`O_DIRECT` alignment (`EINVAL`) and GPUDirect Storage (`GDS`) versus the page cache:** (a) State the three alignment conditions for `open(..., O_DIRECT)` on a 4 KiB logical-block NVMe drive. What `errno` comes back when `buf_addr = 0x7fff0010` or `file_offset = 512`? (b) Trace the DMA and CPU copy hops for buffered I/O, `O_DIRECT`, and GPUDirect Storage (`cuFile`). Then explain the GDS compatibility-mode trap.
+4. **Reading `iostat -xz` on NVMe SSDs (`%util` vs `aqu-sz`):** An NVMe SSD rated at `7,000 MB/s` shows `%util = 99.0%`, `aqu-sz = 1.0`, `await = 0.2 ms` and `250 MB/s` throughput. Explain why the drive is *not* saturated despite `%util = 99.0%`. Then contrast that with a reading of `aqu-sz = 64.0`, `await = 8.2 ms` and `6,500 MB/s`.
+5. **Filesystem transaction cost and 64-node checkpoint storms:** (a) A request takes `200 ms` in total and spends `180 ms` blocked in filesystem I/O (`90%`). What is the maximum speedup from eliminating filesystem latency? Compare that with a case where only `2 ms` (`1%`) is spent in filesystem I/O. (b) Checkpoint time grows from `45 s` to `8 min` as a training job scales from 16 to 64 nodes, while per-node `iostat` stays nearly idle. Why does that happen, and what are three mitigations?
+6. **6-step Linux quota setup (`SCL` Chapter 12) and `e2fsck` backup superblocks:** (a) Write the 6-step sequence that enables quotas on `/dev/sda6`: `fstab` `usrquota`, remount `ro`, `quotacheck -vugc`, remount `rw`, `quotaon -va`, and `setquota` / `repquota -a`. Then name the daemon an NFS server needs for remote quota queries. (b) How do you locate backup superblocks on an `ext4` volume without destroying data (`mke2fs -n`), and how do you pass one to `e2fsck`?
 
 ## Checkpoint questions (20)
 
 <details>
 <summary>1. Trace a `read()` call from an application to the storage device and back, naming every cache along the path.</summary>
 
-Application / C library (`stdio` buffer) -> syscall (`read`) -> VFS (dentry cache and inode cache) -> filesystem driver (`ext4`, `XFS`, or NFS/Lustre client) -> **page cache** (plus optional second-level SSD cache like `bcache`/L2ARC) -> block layer (request merging and I/O scheduler) -> device mapper (`LVM`/`md`/`dm-crypt`) -> host adapter driver (`nvme`, `sd`) -> physical device (on-drive DRAM/SLC cache and media).
+The request passes through these layers, in order. The C library's `stdio` buffer comes first, then the `read` system call. Next is the VFS, with its dentry cache and inode cache, then the filesystem driver (`ext4`, `XFS`, or the NFS or Lustre client). The **page cache** comes after that, and an optional second-level SSD cache such as `bcache` or L2ARC can sit beside it. The block layer merges requests and runs the I/O scheduler. Device mapper (`LVM`, `md`, `dm-crypt`) comes next, then the host adapter driver (`nvme`, `sd`). At the bottom is the physical device, with its own on-drive DRAM or SLC cache and its media.
 </details>
 
 <details>
 <summary>2. What is the difference between logical I/O and physical I/O? Give two reasons physical I/O is smaller (deflated) and two reasons it is larger (inflated).</summary>
 
-Logical I/O is what the application requests via system calls; physical I/O is what actually reaches the block device. Physical I/O is **deflated** by page-cache hits, write cancellation/coalescing, and compression; it is **inflated** by filesystem metadata and journaling writes, record/block-size rounding (read-modify-write), and RAID parity/mirroring.
+Logical I/O is what the application requests through system calls. Physical I/O is what actually reaches the block device. Page-cache hits make physical I/O smaller, or **deflated**. So do write cancellation and coalescing, and compression. Filesystem metadata and journaling writes make it larger, or **inflated**. Record and block-size rounding, which forces read-modify-write, does too. RAID parity and mirroring add to it as well.
 </details>
 
 <details>
 <summary>3. Why do rotational HDDs perform poorly on random I/O while SSDs and NVMe drives excel, and what are write amplification and TRIM?</summary>
 
-Rotational HDDs require mechanical head seeks and platter rotation (`~8 ms` per random read, `100`–`200` IOPS), whereas NAND flash has no moving parts (`10`–`100 µs` on NVMe). Because flash can only overwrite pages after erasing a much larger erase block, the SSD's Flash Translation Layer (FTL) must copy valid pages during garbage collection (**write amplification**); `TRIM` / `fstrim` informs the FTL which blocks are unmapped so it can skip copying dead data.
+A rotational HDD must move a head and wait for the platter to turn. A random read takes about 8 ms, which gives 100 to 200 IOPS. NAND flash has no moving parts, and NVMe answers in 10 to 100 µs. Flash can only overwrite a page after erasing a much larger erase block. So the Flash Translation Layer (FTL) copies valid pages during garbage collection. That copying is **write amplification**. `TRIM`, issued through `fstrim`, tells the FTL which blocks are unmapped, so it can skip copying dead data.
 </details>
 
 <details>
 <summary>4. Compare MBR (`msdos`) and GPT partition tables across disk size limit, partition count, resilience, and boot support.</summary>
 
-MBR lives in the first 512-byte sector, is limited to `2 TiB` disks (`32`-bit sector numbers) and `4` primary partitions (or `3` primary + `1` extended), has no checksums or backup table, and boots via legacy BIOS. GPT supports multi-zettabyte disks and `128` partitions by default, assigns unique `PARTUUID`s and names, stores a CRC-protected primary header at the start and a backup table at the end of the disk, and boots via UEFI (or BIOS with a `BIOS boot` partition).
+MBR lives in the first 512-byte sector. It handles disks up to `2 TiB`, because it uses 32-bit sector numbers. It allows `4` primary partitions, or `3` primary plus `1` extended. It has no checksums and no backup table, and it boots through legacy BIOS. GPT supports disks in the multi-zettabyte range, with `128` partitions by default. It gives every partition a unique `PARTUUID` and a name. It keeps a CRC-protected header at the start of the disk and a backup table at the end. It boots through UEFI, or through BIOS with a `BIOS boot` partition.
 </details>
 
 <details>
 <summary>5. How do `fdisk` and `parted` differ in when they write changes to disk, and how do you force the kernel to re-read a modified partition table?</summary>
 
-`fdisk` edits an in-memory copy of the partition table and writes nothing to disk until you explicitly enter `w` (`q` aborts safely); `parted` applies every command to disk immediately. Force the kernel to re-read the table with `sudo partprobe /dev/sdX`, `sudo blockdev --rereadpt /dev/sdX`, or `partx`.
+`fdisk` edits an in-memory copy of the table and writes nothing until you enter `w`. Entering `q` aborts safely. `parted` applies every command to disk immediately. To make the kernel re-read the table, run `sudo partprobe /dev/sdX`, `sudo blockdev --rereadpt /dev/sdX`, or `partx`.
 </details>
 
 <details>
 <summary>6. Why must partitions be aligned on `1 MiB` boundaries (`sector 2048`) on SSDs and `512e` disks, and how do you check `/sys/block/sdf/sdf2/start`?</summary>
 
-Modern SSDs and `512e` drives use `4 KiB` (`4,096`-byte = `8` x `512`-byte sector) or `8 KiB` physical pages; if a partition starts at a sector not divisible by `8` (such as `1953126` in `HLW` Ch. 4, where `1953126 / 8 = 244140.75`), single 4 KiB reads and writes span two physical pages. Aligning at `1 MiB` (`sector 2048`) divides evenly into all power-of-two page and stripe sizes; verify with `parted /dev/sdX align-check optimal 1`.
+Modern SSDs and `512e` drives use `4 KiB` physical pages, which is `8` times `512` bytes. Some use `8 KiB` pages instead. If a partition starts at a sector not divisible by `8`, a single 4 KiB read or write spans two physical pages. `1953126` in `HLW` Ch. 4 is one example, since `1953126 / 8 = 244140.75`. Aligning at `1 MiB` (`sector 2048`) divides evenly into all power-of-two page and stripe sizes. To verify, read the `start` file in `/sys/block`, which reports the offset in 512-byte units. You can also run `parted /dev/sdX align-check optimal 1`.
 </details>
 
 <details>
 <summary>7. Compare `ext4` and `XFS` on inode allocation, online/offline resizing, and large-file parallel I/O.</summary>
 
-`ext4` allocates a fixed number of inodes at `mkfs` time (`-i` / `-N`), supports online growing and offline shrinking, and is a strong general-purpose filesystem. `XFS` allocates inodes dynamically on demand, uses multiple **allocation groups** for high-concurrency parallel I/O and huge files/directories, and supports online growing (`xfs_growfs`) but **cannot** be shrunk.
+`ext4` allocates a fixed number of inodes at `mkfs` time, set with `-i` or `-N`. It can grow online and shrink offline, and it is a strong general-purpose filesystem. `XFS` allocates inodes on demand. It uses several **allocation groups** for highly parallel I/O on huge files and directories. It can grow online with `xfs_growfs`, but it **cannot** be shrunk.
 </details>
 
 <details>
 <summary>8. What does `mkfs -t ext4` actually execute, and why does `Used + Available` in `df` not equal `Size`?</summary>
 
-`mkfs -t ext4` is a front end that invokes `mkfs.ext4`, which is a link to `mke2fs`. By default, `ext4` reserves `5%` of all blocks for `root` (`-m 5`, adjustable with `tune2fs -m 1` or `-m 0` on data disks) so system daemons can still log when a user fills the disk; `df` hides those reserved blocks from non-root `Available`.
+`mkfs -t ext4` is a front end that calls `mkfs.ext4`, which is a link to `mke2fs`. By default, `ext4` reserves `5%` of blocks for `root`, so system daemons can still log when a user fills the disk. You can change that with `tune2fs -m 1`, or with `-m 0` on data disks. `df` hides those reserved blocks from non-root `Available`. That is why `Used + Available` is smaller than `Size`.
 </details>
 
 <details>
 <summary>9. Explain the six fields of `/etc/fstab`, the options `noatime`, `nofail`, and `_netdev`, and the safe validation routine before rebooting.</summary>
 
-The six fields are: (1) source (`UUID=...`, `LABEL=...`, or `server:/path`), (2) mount point, (3) filesystem type, (4) mount options, (5) `dump` flag (`0`), and (6) `fsck` pass order (`1` root, `2` other local ext4 disks, `0` skip). `noatime` disables access-time metadata writes on reads; `nofail` prevents systemd from dropping into emergency mode at boot if an optional disk is missing; and `_netdev` waits for networking before mounting. Always test edits with `sudo findmnt --verify --verbose`, `sudo mount -a`, and `sudo systemctl daemon-reload`.
+The six fields are: (1) source, such as `UUID=...`, `LABEL=...`, or `server:/path`; (2) mount point; (3) filesystem type; (4) mount options; (5) the `dump` flag, which is `0`; and (6) the `fsck` pass order, where `1` is root, `2` is other local ext4 disks, and `0` skips the check. `noatime` stops reads from writing access times. `nofail` stops systemd from dropping into emergency mode if an optional disk is missing. `_netdev` makes the mount wait for networking. Test your edits with `sudo findmnt --verify --verbose`, `sudo mount -a`, and `sudo systemctl daemon-reload`.
 </details>
 
 <details>
 <summary>10. List the five distinct causes of `No space left on device` (`ENOSPC`) and the command that proves each.</summary>
 
-(1) Data blocks full (`df -h`); (2) inodes 100% exhausted (`df -i`); (3) filesystem remounted read-only after an I/O error (`mount | grep ' ro,'` and `dmesg`); (4) user, group, or project quota exceeded (`repquota -a`, `xfs_quota`); and (5) deleted files still held open by a process (`sudo lsof +L1`), or writing into an unmounted directory on the small root filesystem (`findmnt -T /path`).
+Five causes produce `No space left on device` (`ENOSPC`), and each has a command that proves it. (1) Data blocks are full: run `df -h`. (2) Inodes are 100% used: run `df -i`. (3) The filesystem was remounted read-only after an I/O error: run `mount | grep ' ro,'` and `dmesg`. (4) A user, group or project quota is exceeded: run `repquota -a` or `xfs_quota`. (5) Deleted files are still held open: run `sudo lsof +L1`. The fifth cause can also mean you wrote into an unmounted directory on the small root filesystem. Check that with `findmnt -T /path`.
 </details>
 
 <details>
 <summary>11. How do inodes, directories, and link counts work inside a traditional Unix filesystem (`HLW` Section 4.5)?</summary>
 
-An inode stores file metadata (type, permissions, UID/GID, size, timestamps, link count, and block/extent pointers) but **not** the filename. A directory is a file mapping `(filename -> inode_number)` (starting from root `inode 2` on `ext4`). The link count tracks how many directory entries reference the inode; data blocks and the inode are freed only when `link_count == 0` **and** `open_fd_count == 0`.
+An inode stores the file's metadata: type, permissions, UID and GID, size, timestamps, link count, and block or extent pointers. It does **not** store the filename. A directory is a file that maps `(filename -> inode_number)` pairs, and the walk starts from the root, `inode 2` on `ext4`. The link count tracks how many directory entries point at the inode. The data blocks and the inode are freed only when the link count is zero **and** no process holds the file open.
 </details>
 
 <details>
 <summary>12. What does filesystem journaling (`data=ordered`) protect, what does it NOT protect, and how does Copy-on-Write (`btrfs`, `ZFS`) differ?</summary>
 
-Journaling logs metadata transactions to a circular journal before updating in-place structures, guaranteeing fast metadata consistency recovery (`seconds` instead of hours of `fsck`) after a crash; it does **not** protect dirty application data sitting in the page cache that was never `fsync()`ed. Copy-on-Write filesystems never overwrite live blocks in place—they write new blocks and atomically swing parent pointers, providing cheap snapshots and data checksums at the cost of fragmentation when nearly full.
+Journaling writes metadata transactions to a circular journal before it changes the in-place structures. After a crash, recovery takes seconds instead of hours of `fsck`. It does **not** protect dirty application data sitting in the page cache that was never `fsync()`ed. Copy-on-Write filesystems, such as `btrfs` and `ZFS`, never overwrite live blocks. They write new blocks and then swing the parent pointers atomically. That gives cheap snapshots and data checksums. The cost is fragmentation when the filesystem is nearly full.
 </details>
 
 <details>
 <summary>13. What are the rules for running `fsck` (`e2fsck` / `xfs_repair`), what do the five `e2fsck` passes check, and why is the `-n` flag in `mke2fs -n` critical?</summary>
 
-Never run a repairing `fsck` on a mounted read-write filesystem. `e2fsck`'s five passes check: (1) inodes/blocks/sizes, (2) directory structure, (3) directory connectivity, (4) link reference counts (placing orphaned inodes in `lost+found`), and (5) block/inode summary bitmaps. `sudo mke2fs -n /dev/sdb1` simulates filesystem creation to print backup superblock numbers (`-b 32768`); omitting `-n` overwrites the filesystem and destroys your data.
+Never run a repairing `fsck` on a read-write mounted filesystem. The five `e2fsck` passes check, in order: (1) inodes, blocks and sizes; (2) directory structure; (3) directory connectivity; (4) link reference counts, putting orphaned inodes in `lost+found`; and (5) block and inode summary bitmaps. `sudo mke2fs -n /dev/sdb1` simulates the creation and prints the backup superblock numbers, such as `-b 32768`. Without `-n`, `mke2fs` overwrites the filesystem and destroys your data.
 </details>
 
 <details>
 <summary>14. Summarize the 6-step workflow for enabling Linux disk quotas (`SCL` Chapter 12) and how NFS quotas work.</summary>
 
-(1) Add `usrquota`/`grpquota` to `/etc/fstab`; (2) remount the filesystem read-only (`mount -o remount,ro /dev/sda6`); (3) build the accounting database with `quotacheck -vugc /dev/sda6`; (4) `umount` and `mount` with the new options; (5) enable enforcement with `quotaon -va`; and (6) set soft/hard block and inode limits and grace periods with `edquota` or `setquota` (`-u`, `-t`, `-T`, `-p`) and inspect with `repquota -a`. On an NFS server, run `rpc.rquotad` so clients can query quotas.
+Follow six steps. (1) Add `usrquota` or `grpquota` to `/etc/fstab`. (2) Remount read-only with `mount -o remount,ro /dev/sda6`. (3) Build the accounting database with `quotacheck -vugc /dev/sda6`. (4) Unmount and mount again with the new options. (5) Enable enforcement with `quotaon -va`. (6) Set soft and hard block and inode limits, plus grace periods, with `edquota` or `setquota` (`-u`, `-t`, `-T`, `-p`). Inspect the result with `repquota -a`. On an NFS server, run `rpc.rquotad` so clients can query quotas.
 </details>
 
 <details>
 <summary>15. How does write-back caching work in the Linux page cache, and why should large-RAM GPU servers use `vm.dirty_bytes` instead of `vm.dirty_ratio`?</summary>
 
-Normal `write()` calls copy bytes into dirty pages in the page cache and return immediately; kernel flusher threads write them out when they age past `vm.dirty_expire_centisecs` (~`30 s`), when background threshold `vm.dirty_background_ratio` is crossed, or when `fsync()` is called (and writers block once `vm.dirty_ratio` is reached). On a `1`–`2 TB` RAM GPU server, `10%` of RAM is `100`–`200 GB` of dirty data, causing multi-second I/O freeze stalls when flushed; setting `vm.dirty_background_bytes` and `vm.dirty_bytes` (e.g., a few hundred MiB to a few GiB) bounds flush stalls.
+A normal `write()` copies bytes into dirty pages in the page cache and returns at once. Flusher threads write those pages out later. That happens when the data is older than `vm.dirty_expire_centisecs` (about `30 s`), when `vm.dirty_background_ratio` is crossed, or when `fsync()` is called. Writers block once `vm.dirty_ratio` is reached. On a `1`–`2 TB` RAM GPU server, `10%` of RAM is `100`–`200 GB` of dirty data. Flushing that much causes multi-second I/O stalls. Setting `vm.dirty_background_bytes` and `vm.dirty_bytes` to a few hundred MiB or a few GiB keeps those stalls short.
 </details>
 
 <details>
 <summary>16. What is the safe 4-step pattern for atomically replacing a critical configuration or checkpoint metadata file on disk?</summary>
 
-(1) Write the new contents to a temporary file in the **same directory** (same filesystem/inode table), (2) call `fsync()` on the temporary file descriptor so its data blocks are on stable media, (3) call `rename()` (`mv`) to atomically swap the directory entry over the target filename, and (4) call `fsync()` on the parent directory descriptor.
+Write the new contents to a temporary file in the **same directory**, which means the same filesystem and inode table. Call `fsync()` on that file so its data reaches stable media. Call `rename()` (or `mv`) to swap the directory entry over the target name atomically. Finally, call `fsync()` on the parent directory.
 </details>
 
 <details>
 <summary>17. What does `O_DIRECT` do, what three alignment rules does it enforce, and how does GPUDirect Storage (`GDS`) go one step further?</summary>
 
-`O_DIRECT` bypasses the kernel page cache, transferring data directly between the storage device and the application's user-space buffer; it requires the **buffer memory address**, **file offset**, and **transfer length** to be multiples of the device's logical block size (`512` or `4,096` bytes), returning `EINVAL` otherwise. GPUDirect Storage (`GDS` / `cuFile`) eliminates the host-memory bounce buffer too, DMAing directly between NVMe (or RDMA NIC) and GPU `HBM` over PCIe.
+`O_DIRECT` bypasses the kernel page cache. Data moves directly between the storage device and the application's user-space buffer. The buffer address, the file offset and the transfer length must each be multiples of the device's logical block size, which is `512` or `4,096` bytes. Otherwise the call returns `EINVAL`. GPUDirect Storage (`GDS`, through `cuFile`) also removes the host-memory bounce buffer. It moves data by DMA directly between NVMe, or an RDMA NIC, and GPU `HBM` over PCIe.
 </details>
 
 <details>
 <summary>18. Why is `iostat` `%util = 100%` misleading on NVMe SSDs and RAID arrays, and which columns reveal the truth?</summary>
 
-`%util` only measures the percentage of time at least *one* I/O request was in flight. Because an NVMe SSD can process dozens of requests in parallel across hardware queues, a single thread issuing synchronous `4 KiB` reads one at a time drives `%util` to `100%` while `aqu-sz` is `1.0` and the drive sits at `< 5%` of its rated IOPS/bandwidth. Always read `%util` alongside `aqu-sz` (queue depth), `await` (total latency), `r/s`/`w/s`, and `rkB/s`/`wkB/s`.
+`%util` shows only the share of time that at least *one* request was in flight. An NVMe SSD handles dozens of requests in parallel across its hardware queues. So a single thread that issues one synchronous `4 KiB` read at a time can drive `%util` to `100%`. In that case `aqu-sz` is `1.0`, and the drive sits below `5%` of its rated IOPS and bandwidth. Read `%util` together with `aqu-sz` (queue depth), `await` (total latency), `r/s` and `w/s`, and `rkB/s` and `wkB/s`.
 </details>
 
 <details>
 <summary>19. Why is a random-read benchmark on a `10 GB` file meaningless on a server with `128 GB` of RAM, and how do you run an honest `fio` test?</summary>
 
-A `10 GB` file fits entirely inside the `128 GB` RAM page cache, so after warm-up the benchmark measures DRAM copy speed rather than storage. To measure the storage device honestly, either pass `--direct=1` (`O_DIRECT`), size the working set much larger than RAM, or explicitly drop caches (`sync; echo 3 > /proc/sys/vm/drop_caches`) before a cold-cache test.
+A `10 GB` file fits entirely inside `128 GB` of RAM. After warm-up, the benchmark measures DRAM copy speed, not storage. To measure the device honestly, do one of three things. Pass `--direct=1` to use `O_DIRECT`. Make the working set much larger than RAM. Or drop caches before a cold-cache test with `sync; echo 3 > /proc/sys/vm/drop_caches`.
 </details>
 
 <details>
 <summary>20. Why does a 64-node training job's checkpoint time jump from `45 seconds` to `8 minutes` on a shared parallel filesystem while local `iostat` is idle, and how do you fix it?</summary>
 
-All 64 nodes simultaneously issue `open`/`create`/`write`/`fsync`/`close` calls against the shared filesystem, creating a **metadata storm** that saturates the shared Metadata Server (`MDS`) (which scales with node/file count rather than byte bandwidth). Fix it by writing checkpoints to fast node-local NVMe scratch (`/scratch`) first and staging them asynchronously to shared/object storage, using sharded/distributed checkpoint formats with fewer files, or staggering checkpoint intervals.
+All 64 nodes issue `open`, `create`, `write`, `fsync` and `close` calls at the same time against the shared filesystem. That creates a **metadata storm**, which saturates the shared Metadata Server (`MDS`). The MDS load scales with node and file count, not with byte bandwidth. Fix it in one of three ways. Write checkpoints to fast node-local NVMe scratch (`/scratch`) first, then stage them asynchronously to shared or object storage. Use sharded or distributed checkpoint formats with fewer files. Or stagger the checkpoint intervals.
 </details>
 
 ## Sources and review notes

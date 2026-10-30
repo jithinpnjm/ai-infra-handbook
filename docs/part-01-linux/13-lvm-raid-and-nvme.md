@@ -22,36 +22,38 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-A GPU server is full of fast, local flash: M.2 drives for the operating system, a bank of U.2 or E1.S NVMe drives for datasets, caches and checkpoints. Cloud GPU instances add local SSD and network-attached volumes that you resize while the machine runs. How you present those drives to the operating system decides whether a node is fast, resilient and easy to operate:
+Suppose a GPU node runs fine for a week, then slows down in the middle of a training run. Storage is one of the first places to look. A GPU server is full of fast local flash. M.2 drives hold the operating system, and a bank of U.2 or E1.S NVMe drives holds datasets, caches and checkpoints. Cloud GPU instances add local SSDs and network-attached volumes that you can resize while the machine runs. How you present those drives to the operating system decides whether the node is fast, resilient and easy to operate.
 
-- A single NVMe is fast but a single point of failure; **several NVMe in a RAID 0 array** make one very fast scratch volume (and lose everything if one drive dies), while a **RAID 1 pair** protects the operating system.
-- **LVM** lets you grow a volume while it is mounted, move data off a failing disk, take a snapshot before a risky change, and carve one large disk into several volumes without repartitioning. Cloud disks are routinely resized, and LVM turns "the disk got bigger" into "the filesystem got bigger" with a few commands.
-- **Multipath** and **NVMe-over-Fabrics** present the same remote storage over several paths; getting them wrong yields duplicate devices, stalled I/O or silent corruption.
-- **NVMe health** (wear, media errors, temperature, PCIe link state) is an early warning that a drive will fail or throttle in the middle of a training run.
-- Disk performance has its own method: the wrong reading of `iostat` is the most common storage misdiagnosis.
+- A single NVMe drive is fast, but it is a single point of failure. Put several in a **RAID 0** array and you get one very fast scratch volume. The cost is that losing one drive loses everything in the array. A **RAID 1** pair protects the operating system.
+- **LVM** lets you grow a volume while it is mounted, move data off a failing disk, and take a snapshot before a risky change. It can also split one large disk into several volumes without repartitioning. Cloud disks get resized all the time. LVM turns "the disk got bigger" into "the filesystem got bigger" with a few commands.
+- **Multipath** and **NVMe-over-Fabrics** present the same remote storage over several paths. If you get them wrong, you see duplicate devices, stalled I/O or silent corruption.
+- **NVMe health** covers wear, media errors, temperature and PCIe link state. It is an early warning. It tells you when a drive is about to fail or throttle in the middle of a training run.
+- Disk performance has its own method. Misreading `iostat` is the most common storage misdiagnosis.
 
-This chapter covers logical volumes and the device mapper, software RAID with `md`, the other device-mapper layers (encryption, multipath, caching), NVMe in depth (architecture, `nvme-cli`, SMART, namespaces, NVMe-oF), the disk-performance method and tools (the USE method for disks, latency analysis, `iostat`, BPF tools, `blktrace`, controller and SMART tools, micro-benchmarks, scaling and tuning), and the AI-specific storage patterns (local NVMe staging and the data path from storage to GPU). It builds on chapter 1.12 (partitions, filesystems, caches); shared and parallel filesystems are Part 6.
+This chapter covers four areas. It starts with logical volumes and the device mapper. Then it moves to software RAID with `md`, and to the other device-mapper layers: encryption, multipath and caching. Next it goes deep on NVMe, including architecture, `nvme-cli`, SMART and NVMe-oF. The last areas are disk performance and the AI-specific storage patterns, such as local NVMe staging and the data path from storage to GPU. The chapter builds on chapter 1.12, which covers partitions, filesystems and caches. Shared and parallel filesystems come later, in Part 6.
 
 ## Prerequisites and outcomes
 
-You should know block devices, partitions and filesystems (1.12), device files and sysfs (1.10), and processes and monitoring basics (1.8).
+Before you start, you should know how block devices, partitions and filesystems work (chapter 1.12). You also need device files and sysfs (chapter 1.10), and the basics of processes and monitoring (chapter 1.8).
 
-After this chapter you can:
+When you finish this chapter, you should be able to do the following:
 
-- Explain physical volumes, volume groups, logical volumes and extents; create, extend, shrink (carefully), move, snapshot and remove them; grow a cloud disk online.
-- Describe how LVM works internally (user-space metadata and the kernel device mapper) and read `dmsetup table`.
-- Build, monitor, repair and rebuild `md` RAID arrays; choose RAID levels for a purpose and explain the performance cost of parity (read-modify-write) and rebuilds.
-- Describe dm-crypt/LUKS, device-mapper multipath and caching layers, and when each is used.
-- Explain NVMe architecture (controllers, namespaces, queues), use `nvme-cli`, interpret SMART data, check PCIe link state and thermal state, and describe NVMe-oF.
+- Explain physical volumes, volume groups, logical volumes and extents. Create, extend, shrink (carefully), move, snapshot and remove them. Grow a cloud disk online.
+- Describe how LVM works inside, with user-space metadata on top of the kernel device mapper. Read the output of `dmsetup table`.
+- Build, monitor, repair and rebuild `md` RAID arrays. Choose a RAID level for a purpose, and explain the cost of parity (read-modify-write) and of rebuilds.
+- Describe the dm-crypt/LUKS, multipath and caching layers, and say when each one is used.
+- Explain NVMe architecture, including controllers, namespaces and queues. Use `nvme-cli`, read SMART data, check PCIe link and thermal state, and describe NVMe-oF.
 - Apply the disk-performance method: USE for devices and controllers, workload characterisation, latency analysis, micro-benchmarking, and scaling to a target utilisation.
-- Use `iostat`, `sar`, PSI, `pidstat`, `biolatency`, `biosnoop`, `blktrace`, `smartctl` and controller tools, and `fio`/`ioping` correctly.
-- Design local NVMe staging for datasets and checkpoints and trace the full storage-to-GPU path layer by layer.
+- Use `iostat`, `sar`, PSI, `pidstat`, `biolatency`, `biosnoop`, `blktrace`, `smartctl` and the controller tools. Use `fio` and `ioping` correctly.
+- Design local NVMe staging for datasets and checkpoints, and trace the full storage-to-GPU path one layer at a time.
 
 ## 1. Logical Volume Manager (LVM)
 
 ### The problem LVM solves
 
-Direct partitioning ties a filesystem to a fixed place on one disk. Upgrading a disk means installing the new disk, partitioning it, creating filesystems, copying data, editing configuration and rebooting; adding capacity means choosing a new mount point and splitting data by hand. LVM inserts a **layer between physical block devices and filesystems**. You pool physical storage into a **volume group** and carve **logical volumes** out of the pool. The logical volumes are ordinary block devices that hold filesystems or swap, and you can grow, shrink (carefully), move, snapshot and remove them while the system runs, usually without unmounting.
+Picture a disk that is nearly full, with a filesystem tied to one fixed place on it. With direct partitioning, every change is expensive. To upgrade a disk, you install it, partition it, create filesystems, copy the data, edit the configuration and reboot. To add capacity, you pick a new mount point and split the data by hand.
+
+LVM adds a layer between the physical block devices and the filesystems. You pool physical storage into a **volume group**, then carve **logical volumes** out of that pool. A logical volume is an ordinary block device that holds a filesystem or swap. You can grow, shrink (carefully), move, snapshot and remove logical volumes while the system runs. Usually you do not need to unmount anything.
 
 ```mermaid
 flowchart TB
@@ -76,7 +78,7 @@ flowchart TB
   L2 --> FS2["xfs, mounted /scratch"]
 ```
 
-Vocabulary:
+The terms below appear in almost every LVM command, so learn them first.
 
 | Term | Meaning |
 |---|---|
@@ -87,9 +89,11 @@ Vocabulary:
 | **LE** (logical extent) | The LV's corresponding unit mapping onto PEs |
 | **Segments / types** | How an LV's extents map to PEs: **linear** (the default), **striped** (RAID-0-like across PVs), **mirror/raid1/raid5/raid6/raid10** (LVM RAID), **thin** (thin-provisioned from a pool), **snapshot**, **cache** |
 
-LVM2 (the current implementation) is a suite of **user-space tools**; PVs are just block devices that user space can read at random, so the work of discovering structure needs no kernel support. The kernel part is the **device mapper**, a generic layer that maps ranges of a virtual block device onto other devices (section 2).
+LVM2, the current implementation, is a set of **user-space tools**. PVs are plain block devices that user space can read at random. So the work of discovering the structure needs no kernel support. The kernel's part is the **device mapper**, a generic layer that maps ranges of a virtual block device onto other devices (section 2).
 
 ### Looking at an LVM system
+
+These commands show the layout of a running system. Start with the concise listings, and drill down when something looks wrong.
 
 ```bash
 sudo pvs; sudo vgs; sudo lvs            # concise listings
@@ -99,11 +103,17 @@ sudo lsblk -f                           # tree: disk > partition > LVM > filesys
 sudo vgs -o +pv_count,lv_count,vg_free_count
 ```
 
-Column meaning in `vgs`: `#PV`, `#LV`, `#SN` (snapshots), `Attr` (for example `wz--n-`: writable, resizable, normal allocation), `VSize`, `VFree`. In `lvs`: `LV`, `VG`, `Attr` (`-wi-ao----`: writable, inherited allocation, active, open; the first character is the type, `V` thin volume, `t` thin pool, `s` snapshot, `r` RAID; the last characters show health and state), `LSize`, `Pool`, `Origin`, `Data%` (thin pool or snapshot fill), `Meta%`. Once LVM has done its setup work on your system (`HLW` Section 4.4.1), logical volume block devices are created at `/dev/dm-0`, `/dev/dm-1`, and so on, which may be assigned in any order across boots. Because those `/dev/dm-N` names are unpredictable, `udev` and LVM create two sets of symbolic links that combine the volume group and logical volume names: `/dev/VG/LV` (`/dev/myvg/mylv1`) and `/dev/mapper/VG-LV` (`/dev/mapper/myvg-mylv1`, with any hyphen inside a VG or LV name **doubled** so `ubuntu-vg` and `root` become `/dev/mapper/ubuntu--vg-root`). Always use the stable `/dev/VG/LV` or `/dev/mapper/VG-LV` names in `/etc/fstab`, systemd units, and bootloader configurations.
+In `vgs`, the `#PV`, `#LV` and `#SN` columns count physical volumes, logical volumes and snapshots. `VSize` and `VFree` give the size and the free space. The `Attr` column is a short code. For example, `wz--n-` means writable, resizable, with normal allocation.
 
-While LVM2's volume discovery and administration tools run in user space, the kernel handles the work of routing each read or write request for a location on a logical volume's block device (`/dev/dm-0`) to the true sector location on an actual physical disk (`/dev/sdb1`). The kernel driver for this is the **device mapper** (sometimes shortened to `devmapper`), a generic block-translation layer sandwiched between the filesystem/block layer and the underlying disk drivers.
+In `lvs`, the `Attr` column packs several facts into a string such as `-wi-ao----`. That means writable, inherited allocation, active and open. The first character gives the type: `V` is a thin volume, `t` a thin pool, `s` a snapshot and `r` a RAID volume. The last characters show health and state. The other columns are `LV`, `VG`, `LSize`, `Pool`, `Origin`, `Data%` (how full a thin pool or snapshot is) and `Meta%`.
+
+Once LVM finishes its setup on your system (`HLW` Section 4.4.1), logical volumes appear as block devices named `/dev/dm-0`, `/dev/dm-1`, and so on. The kernel can assign these `/dev/dm-N` numbers in any order from one boot to the next. For that reason, `udev` and LVM create two sets of symbolic links that use the volume group and logical volume names. The first set is `/dev/VG/LV`, for example `/dev/myvg/mylv1`. The second is `/dev/mapper/VG-LV`, for example `/dev/mapper/myvg-mylv1`. Any hyphen inside a VG or LV name is **doubled** in the second form. So `ubuntu-vg` and `root` become `/dev/mapper/ubuntu--vg-root`. Always use the stable `/dev/VG/LV` or `/dev/mapper/VG-LV` names in `/etc/fstab`, systemd units and bootloader configurations.
+
+The LVM tools run in user space, but the kernel does the routing. Each read or write aimed at a logical volume, such as `/dev/dm-0`, must reach the matching sector on a real disk, such as `/dev/sdb1`. The kernel driver for this job is the **device mapper**, sometimes shortened to `devmapper`. It is a generic block-translation layer. It sits between the filesystem layer and the disk drivers.
 
 ### Building: the standard sequence
+
+Building a volume takes five steps: prepare the partition, create the group, add the logical volumes, make a filesystem and mount it. The commands follow the order you would use on a new disk.
 
 ```bash
 # 1. Prepare partitions (optional; a whole disk can be a PV). Use type "Linux LVM" (8e on MBR, 31 on fdisk's GPT list) so tools recognise it.
@@ -121,11 +131,11 @@ sudo mkdir -p /data && sudo mount /dev/myvg/mylv1 /data
 echo '/dev/mapper/myvg-mylv1 /data xfs defaults,nofail 0 2' | sudo tee -a /etc/fstab
 ```
 
-`pvcreate` is optional because `vgcreate` initialises a PV if there is none; if a new VG is not visible, `pvscan`/`vgscan` re-reads the devices.
+You do not need `pvcreate`, because `vgcreate` initialises a PV when none exists. If a new VG does not appear, run `pvscan` or `vgscan` to read the devices again.
 
 ### Resizing: the two-step operation and its order
 
-An LV and the filesystem inside it have **separate sizes**; to use more space you grow the LV **and** the filesystem. `lvresize`/`lvextend` with **`-r`** (`--resizefs`) does both in one command, calling `fsadm`, which calls `resize2fs` (ext) or `xfs_growfs` (XFS):
+Growing a volume takes two steps, and the order matters. The logical volume and the filesystem inside it have separate sizes. If you grow only the LV, the filesystem still reports its old size. Add `-r` (`--resizefs`) to do both in one command. That calls `fsadm`, which in turn calls `resize2fs` for ext filesystems or `xfs_growfs` for XFS.
 
 ```bash
 sudo lvextend -r -L +20G /dev/myvg/mylv1      # grow by 20 GiB, online, filesystem included
@@ -133,9 +143,11 @@ sudo lvextend -r -l +100%FREE /dev/myvg/mylv1 # use all remaining space
 sudo lvresize -r -L 50G /dev/myvg/mylv1       # set an absolute size
 ```
 
-Manual equivalent: `lvextend -L +20G ...` then `xfs_growfs /data` or `resize2fs /dev/myvg/mylv1`. **Growing is safe online for ext4 and XFS. Shrinking is not**: ext4 must be unmounted, checked and shrunk *before* the LV is reduced (`umount; e2fsck -f; resize2fs fs 40G; lvreduce -L 40G`, or `lvreduce -r` which does it in the right order), and **XFS cannot be shrunk at all** (back up, recreate, restore). Reducing the LV first destroys the filesystem's tail. Always back up before shrinking.
+If you prefer two separate commands, run `lvextend -L +20G ...` and then `xfs_growfs /data` or `resize2fs /dev/myvg/mylv1`. Growing is safe online for ext4 and XFS. Shrinking is a different story. ext4 must be unmounted, checked and shrunk *before* the LV is reduced. You can run `umount; e2fsck -f; resize2fs fs 40G; lvreduce -L 40G` by hand, or use `lvreduce -r`, which does the steps in the right order. XFS cannot be shrunk at all, so you must back up, recreate and restore. If you reduce the LV first, you destroy the tail of the filesystem. Always back up before you shrink.
 
 ### Moving, removing and renaming
+
+Moving data off a disk, removing a volume and renaming are all short operations. One of them can destroy more than you meant, so read the warning before you type it.
 
 ```bash
 sudo pvmove /dev/sdb1                         # migrate all extents off this PV onto other PVs in the VG (online)
@@ -145,11 +157,13 @@ sudo lvremove myvg/mylv2          # NOTE the slash: VG/LV
 sudo lvrename myvg mylv1 data; sudo vgrename myvg datavg
 ```
 
-**Careful with `lvremove`**: its argument is `VG/LV`. If you type a space instead of the slash (`lvremove myvg mylv2`), LVM treats `myvg` as a volume group (remove **all** its LVs) and `mylv2` as another. It does prompt for each volume, but do not answer `y` automatically.
+Be careful with `lvremove`. Its argument is `VG/LV`, with a slash. If you type a space instead, as in `lvremove myvg mylv2`, LVM reads `myvg` as a volume group and removes **all** of its logical volumes. It treats `mylv2` as one more volume to remove. LVM prompts you for each volume, but do not answer `y` on autopilot.
 
-`pvmove` makes disk replacement an online operation: add the new disk to the VG, `pvmove` the old one, `vgreduce` it out. It is the reason many fleets use LVM even on a single disk.
+`pvmove` makes disk replacement an online operation. You add the new disk to the VG, `pvmove` the data off the old one, and then `vgreduce` the old disk out. This is why many fleets use LVM even on a single disk.
 
 ### Cloud pattern: the disk grew, grow everything above it
+
+A cloud disk can be resized in the console, but the machine does not notice until you tell it. Work up the stack one layer at a time: the disk, then the partition, then the PV, then the LV and the filesystem.
 
 ```bash
 # 1. The cloud disk (GCP PD, EBS) was resized in the console/API. Make the kernel see the new size:
@@ -164,9 +178,9 @@ sudo lvextend -r -l +100%FREE /dev/myvg/mylv1
 
 ### Snapshots and thin provisioning
 
-A **snapshot** is a point-in-time view of an LV. A classic LVM snapshot uses **copy-on-write**: when the origin changes, the old blocks are copied to the snapshot area first. It needs a size estimate (`lvcreate -s -L 5G -n snap /dev/vg/lv`), and **if the snapshot area fills up, the snapshot becomes invalid**. Snapshots slow writes to the origin while they exist, so keep them short-lived: backups (mount the snapshot read-only, copy, remove) and "undo points" before upgrades (`lvconvert --merge` rolls the origin back to the snapshot).
+A **snapshot** is a point-in-time view of a logical volume. A classic LVM snapshot uses **copy-on-write**. When the origin changes, LVM copies the old blocks into the snapshot area first. You estimate the snapshot's size up front, with `lvcreate -s -L 5G -n snap /dev/vg/lv`. If the snapshot area fills up, the snapshot becomes invalid. Snapshots also slow down writes to the origin while they exist, so keep them short-lived. Two common uses are backups and undo points before an upgrade. For a backup, mount the snapshot read-only, copy from it, and remove it. For an undo point, `lvconvert --merge` rolls the origin back to the snapshot.
 
-**Thin provisioning** allocates from a **thin pool** and lets you create many virtual volumes whose total size exceeds the pool (over-provisioning), using space only as data is written:
+**Thin provisioning** works differently. It allocates from a **thin pool**, so you can create many virtual volumes whose total size is larger than the pool. This is over-provisioning. Space is used only as data is written:
 
 ```bash
 sudo lvcreate -L 500G --thinpool tp myvg
@@ -175,19 +189,25 @@ sudo lvcreate -s --name vol1snap myvg/vol1          # thin snapshots are cheap a
 sudo lvs -a -o +data_percent,metadata_percent       # WATCH Data% and Meta%
 ```
 
-Danger: **a thin pool that reaches 100% data or metadata corrupts or blocks the volumes in it.** Monitor, alert early (and configure `thin_pool_autoextend_threshold` in `lvm.conf` with monitoring on), and do not over-provision beyond what you can add. (Container runtimes once used LVM thin pools via devicemapper; overlayfs on XFS has replaced that.)
+Be warned: **a thin pool that reaches 100% data or metadata corrupts or blocks the volumes in it.** Monitor the pool and alert early. Set `thin_pool_autoextend_threshold` in `lvm.conf`, and keep monitoring turned on. Do not over-provision beyond what you can add. Container runtimes once used LVM thin pools through devicemapper. Overlayfs on XFS has replaced that.
 
-Other LV types: **striped** (`lvcreate -i 4 -I 256k -L 1T -n scratch vg` stripes across 4 PVs for throughput, like RAID 0), **raid1/raid5/raid6/raid10** (`lvcreate --type raid1 -m1 ...`, LVM's wrapper over the `md` RAID code), **cache** (put a fast NVMe in front of a slow volume: `lvconvert --type cache ...`, using `dm-cache`).
+Other LV types are worth knowing. **Striped** volumes spread data across several PVs for throughput, like RAID 0. For example, `lvcreate -i 4 -I 256k -L 1T -n scratch vg` stripes across 4 PVs. **RAID** types (raid1, raid5, raid6 and raid10) use LVM's wrapper over the `md` RAID code, as in `lvcreate --type raid1 -m1 ...`. A **cache** type puts a fast NVMe in front of a slow volume, using `dm-cache`, with `lvconvert --type cache ...`.
 
 ### Implementation: how it fits together
 
-When LVM tools run they must (1) find all PVs by scanning block devices (guided by `devices/filter` or the devices file in `lvm.conf`), (2) read each PV's header (a label plus a text **metadata area**), (3) group PVs into VGs by UUID and verify that all required PVs are present, (4) find the LVs and (5) compute the **mapping scheme**. Metadata is also saved under `/etc/lvm/backup` and `/etc/lvm/archive` (`vgcfgrestore` can restore a VG's layout if metadata is damaged). `dd if=/dev/sdb1 count=1000 | strings | less` shows the header text. Then LVM tells the kernel's **device mapper** (through `ioctl` on `/dev/mapper/control`) to create the virtual block devices with their mapping tables; udev notices the new `dm-N` devices and creates the symlinks (chapter 1.10). At boot the initramfs must activate the VG that holds the root filesystem (`rd.lvm.vg=`, `lvm2-activation` units; chapter 1.14).
+When the LVM tools run, they work through five steps in order. First, they find all PVs by scanning block devices. The scan is guided by `devices/filter` or by the devices file in `lvm.conf`. Second, they read each PV's header, which holds a label and a text **metadata area**. Third, they group PVs into VGs by UUID and check that every required PV is present. Fourth, they find the LVs. Fifth, they compute the **mapping scheme**.
 
-`lvm.conf` settings worth knowing: `filter`/`global_filter` (which devices to scan; exclude multipath component paths and GPU/NVMe devices you do not want scanned, avoid scanning inside VM images), `use_devicesfile` (newer LVM restricts scanning to a list of known devices in `/etc/lvm/devices/system.devices`), `issue_discards`, `thin_pool_autoextend_*`, `activation { monitoring }`.
+LVM saves its metadata under `/etc/lvm/backup` and `/etc/lvm/archive`. If the metadata is damaged, `vgcfgrestore` can restore a VG's layout. To see the header text yourself, run `dd if=/dev/sdb1 count=1000 | strings | less`.
+
+Next, LVM asks the kernel's **device mapper** to create the virtual block devices, with their mapping tables. It makes that request through `ioctl` calls on `/dev/mapper/control`. udev notices the new `dm-N` devices and creates the symlinks (chapter 1.10). At boot, the initramfs must activate the VG that holds the root filesystem. The settings are `rd.lvm.vg=` and the `lvm2-activation` units (chapter 1.14).
+
+Several `lvm.conf` settings are worth knowing. `filter` and `global_filter` decide which devices get scanned. Exclude multipath component paths and any GPU or NVMe devices you do not want scanned, and avoid scanning inside VM images. Newer LVM uses `use_devicesfile` to restrict scanning to a list of known devices in `/etc/lvm/devices/system.devices`. Other settings include `issue_discards`, `thin_pool_autoextend_*` and `activation { monitoring }`.
+
+Before you put a system disk under LVM, confirm that the initramfs activates the root VG and that `lvm.conf` filters out the devices you do not want.
 
 ## 2. The device mapper
 
-The **device mapper** (`dm`) is a kernel framework that builds virtual block devices out of **tables of targets**. Each table line maps a range of sectors of the virtual device onto a range of some underlying device with a **target type**. LVM, encryption, multipath, thin provisioning, snapshots, caching, integrity checking and many container-storage drivers are all built on it. It is, in effect, a form of virtualisation for storage, similar in spirit to virtual memory's translation.
+Suppose you want one logical volume to span two disks, and you want the kernel to route each request to the right disk. That job belongs to the **device mapper** (`dm`). It is a kernel framework that builds virtual block devices out of **tables of targets**. Each line of a table maps a range of sectors on the virtual device onto a range of an underlying device. The line also names a **target type** that says how to do the mapping. LVM, encryption, multipath, thin provisioning, snapshots, caching, integrity checking and many container storage drivers are all built on it. You can think of it as virtual memory's translation, applied to storage.
 
 ```bash
 sudo dmsetup ls --tree             # tree of mapped devices and what they sit on
@@ -196,7 +216,7 @@ sudo dmsetup table                 # mapping tables: START LENGTH TARGET args
 sudo dmsetup status                # runtime status (thin pools, multipath, cache stats)
 ```
 
-A linear LV spread over two disks has a table like this (sector numbers in 512-byte units, `8:17` and `8:33` are the major:minor of the underlying devices):
+Here is the mapping table for a linear LV spread over two disks. Sector numbers are in 512-byte units. The values `8:17` and `8:33` are the major:minor numbers of the underlying devices.
 
 ```text
 myvg-mylv2: 0 10960896 linear 8:17 2048
@@ -204,13 +224,13 @@ myvg-mylv2: 10960896 10010624 linear 8:33 20973568
 myvg-mylv1: 0 20971520 linear 8:33 2048
 ```
 
-Fields: start offset in the mapped device, length of the segment, target type (`linear` here), source device (major:minor), offset on that device. LVM places the first LV contiguously where it can; the second needs two segments across both PVs; after removing `mylv2` and extending `mylv1`, the table gains the second segment. The kernel only follows the map; deciding the layout is LVM's (user space) job.
+Each field has a job. The first is the start offset in the mapped device. Then comes the length of the segment, the target type (`linear` here), the source device as major:minor, and the offset on that device. LVM places the first LV in one contiguous run where it can. The second LV needs two segments, one on each PV. When `mylv2` is removed and `mylv1` is extended, the table gains the second segment. The kernel only follows the map. Deciding the layout is the job of LVM in user space.
 
-Common targets: `linear`, `striped`, `mirror`/`raid`, `snapshot`/`snapshot-origin`, `thin`/`thin-pool`, `crypt` (dm-crypt/LUKS), `multipath`, `cache`/`writecache`, `integrity`, `verity` (read-only integrity for images), `zero`, `error` (inject failures for testing).
+The table can use these target types: `linear`, `striped`, `mirror`/`raid`, `snapshot`/`snapshot-origin`, `thin`/`thin-pool`, `crypt` (dm-crypt/LUKS), `multipath`, `cache`/`writecache`, `integrity`, `verity` (read-only integrity for images), `zero`, and `error` (to inject failures for testing).
 
 ### Encryption: dm-crypt and LUKS
 
-**LUKS** (Linux Unified Key Setup) is the on-disk format used with dm-crypt:
+**LUKS** (Linux Unified Key Setup) is the on-disk format that goes with dm-crypt. The commands below set it up. The first one destroys the data on the device, so run it only on a device you can afford to wipe.
 
 ```bash
 sudo cryptsetup luksFormat /dev/nvme1n1p1           # DESTROYS data; sets a passphrase / key slot
@@ -220,11 +240,11 @@ sudo cryptsetup luksDump /dev/nvme1n1p1; sudo cryptsetup luksAddKey ...
 # persistent: /etc/crypttab  (name  device  keyfile-or-none  options),  then /etc/fstab refers to /dev/mapper/name
 ```
 
-Cost: CPU for AES (hardware AES-NI makes it small), but on very fast NVMe the dm-crypt work queues can become the bottleneck (check `perf top` for `aes`, and kernel options such as `no_read_workqueue,no_write_workqueue`). Data-centre drives often use self-encrypting (SED) hardware or encrypt at the application/object-store layer instead. GPU clusters handling regulated data may require encryption at rest; plan the key management (TPM, network-bound unlock with Clevis/Tang) before you need it.
+Encryption costs CPU time for AES. Hardware AES-NI keeps that cost small. On very fast NVMe, though, the dm-crypt work queues can become the bottleneck. You can check with `perf top` and look for `aes`. Kernel options such as `no_read_workqueue,no_write_workqueue` are one way to change that. Data-centre drives often use self-encrypting (SED) hardware instead, or they encrypt at the application or object-store layer. GPU clusters that handle regulated data may need encryption at rest. Plan your key management early, using a TPM or network-bound unlock with Clevis/Tang, before you need it.
 
 ### Multipath
 
-A SAN or NVMe/SCSI target reachable over several physical paths (two HBAs, two switches, two controllers) appears to the operating system as **several block devices** (`sdb`, `sdc`, `sdd`, `sde`) for the *same* LUN. **`multipathd`** with `dm-multipath` recognises that they share a WWID and creates **one** device `/dev/mapper/mpathX` (or an alias), distributing I/O (round-robin or queue-length) across active paths and failing over when one dies:
+A SAN, or an NVMe/SCSI target, can be reachable over several physical paths: two HBAs, two switches or two controllers. The operating system then sees one LUN as several block devices, such as `sdb`, `sdc`, `sdd` and `sde`. **`multipathd`** with `dm-multipath` recognises that they share a WWID. It creates **one** device, `/dev/mapper/mpathX` or an alias. It spreads I/O across the active paths, using round-robin or queue length, and fails over when a path dies.
 
 ```bash
 sudo multipath -ll                  # topology: each mpath device, its paths and states (active/ready, failed/faulty)
@@ -233,15 +253,17 @@ sudo multipath -v2                  # (re)build maps
 sudo systemctl status multipathd
 ```
 
-Rules: always build filesystems and LVM on the multipath device, **never on a component path** (exclude paths in the LVM filter); blacklist local disks and virtio disks; set `no_path_retry` deliberately (queue forever versus fail fast). For NVMe-oF, the kernel has **native NVMe multipath** (`/sys/module/nvme_core/parameters/multipath`), which makes `nvme list-subsys` the tool, not `multipath -ll`.
+Follow three rules. Always build filesystems and LVM on the multipath device, never on a component path, and exclude the paths in the LVM filter. Blacklist local disks and virtio disks. Set `no_path_retry` on purpose, choosing between queueing forever and failing fast. NVMe-oF is different. The kernel has **native NVMe multipath**, visible at `/sys/module/nvme_core/parameters/multipath`, so the tool to use there is `nvme list-subsys`, not `multipath -ll`.
 
 ### Caching layers
 
-`dm-cache` and LVM cache, `dm-writecache`, and `bcache` use a fast SSD/NVMe as a cache in front of a slower device (in the block layer). They are useful for a large HDD or network volume with a hot subset; they add complexity and failure modes (if the write cache dies, data may be lost: use mirrored cache devices for write caching). For AI workloads the simpler pattern is usually to **stage the working set explicitly onto local NVMe** (section 8).
+`dm-cache` with LVM cache, `dm-writecache` and `bcache` all put a fast SSD or NVMe in front of a slower device, inside the block layer. They suit a large HDD or network volume with a hot subset of data. They also add complexity and new failure modes. If the write cache dies, data can be lost, so use mirrored cache devices for write caching. For AI workloads, the simpler pattern is usually to **stage the working set explicitly onto local NVMe** (section 8).
+
+Before you add a caching layer, check whether a hot subset really exists. If there is none, the extra layer buys you nothing.
 
 ## 3. Software RAID with `md`
 
-**RAID** (redundant array of independent disks) combines drives into one virtual device for capacity, speed or fault tolerance. **Hardware RAID** is done by a controller card (with its own cache, often battery- or capacitor-backed); **software RAID** by the operating system (Linux `md`, LVM RAID, ZFS, btrfs). Modern CPUs make parity calculation cheap, and software RAID gives the operating system full visibility of each drive and survives a dead controller. Most GPU servers use **software RAID (`md`)**; some storage servers still use hardware RAID, which hides the physical disks (so you query the controller tools, section 6).
+**RAID** (redundant array of independent disks) combines drives into one virtual device. The goal is capacity, speed or fault tolerance. **Hardware RAID** runs on a controller card, which often has its own cache backed by a battery or capacitor. **Software RAID** runs in the operating system, through Linux `md`, LVM RAID or ZFS and btrfs. Modern CPUs make the parity calculation cheap. Software RAID also gives the operating system full sight of each drive, and it survives a dead controller. Most GPU servers use **software RAID (`md`)**. Some storage servers still use hardware RAID, which hides the physical disks, so you need the controller tools to see them (section 6).
 
 ### RAID levels
 
@@ -254,9 +276,13 @@ Rules: always build filesystems and LVM on the multipath device, **never on a co
 | **RAID 5** | Stripe with **one** parity block rotating across drives | N-1 | One drive | Good reads; **small writes are expensive** (read-modify-write) |
 | **RAID 6** | Stripe with **two** parity blocks | N-2 | Two drives | Like RAID 5 but slower writes; preferred for large HDD arrays because rebuilds are long |
 
-Terms: a **stripe** is data written across drives in **chunks** (the chunk or stripe unit, often 64 to 512 KiB; with `md` the `--chunk` size); a **full-stripe write** writes all chunks plus parity at once and is efficient, while a **partial write** to a parity RAID requires **read-modify-write** (read the old data and parity, compute the new parity by XOR, write both), turning one small write into several I/Os. Performance depends on matching the array's stripe size to the I/O size of the workload and aligning the filesystem to it (`mkfs.xfs -d su=...,sw=...`, which the tools usually detect from `md`). A write-back cache with battery or capacitor backup (hardware RAID) hides the read-modify-write cost; if its battery fails, controllers fall back to write-through and write performance drops suddenly. The **write hole** (a crash between data and parity writes leaves a stripe inconsistent) is mitigated with a write-intent bitmap, a journal device (`--write-journal`), or a copy-on-write RAID (ZFS, btrfs).
+The table gives the trade-offs at a glance. Read it as a choice between capacity, safety and speed.
 
-**Rebuilds.** When a drive is replaced, the array **rebuilds** (resyncs, "resilvers"): it reads all surviving drives and writes the new one. This consumes I/O for hours or days, hurts foreground performance, and as drives get larger faster than they get quicker, the chance of a second failure or an unrecoverable read error during rebuild rises. That is why RAID 6 or RAID 10 is chosen over RAID 5 for big spinning-disk arrays, why rebuild speed limits exist (`dev.raid.speed_limit_min/max`), and why **RAID is not a backup** (it does not protect against deletion, corruption, ransomware, fire, or an application writing garbage).
+A few terms need explaining first. A **stripe** is data written across drives in **chunks**, also called the stripe unit. Chunks are often 64 to 512 KiB, and with `md` you set the size with `--chunk`. A **full-stripe write** writes every chunk plus parity at once, which is efficient. A **partial write** to a parity RAID is expensive. It needs **read-modify-write**: read the old data and parity, compute the new parity by XOR, then write both. That turns one small write into several I/Os. To get good performance, match the array's stripe size to the I/O size of your workload, and align the filesystem to the stripe. The command `mkfs.xfs -d su=...,sw=...` does this, and the tools usually detect the geometry from `md`.
+
+A write-back cache with battery or capacitor backup hides the read-modify-write cost on hardware RAID. The catch is that if the battery fails, the controller falls back to write-through, and write performance drops suddenly. The **write hole** is a crash between the data write and the parity write, which leaves the stripe inconsistent. You can mitigate it with a write-intent bitmap, a journal device (`--write-journal`), or a copy-on-write RAID such as ZFS or btrfs.
+
+**Rebuilds.** When you replace a drive, the array **rebuilds**, which means it resyncs or "resilvers". It reads all the surviving drives and writes the new one. A rebuild can take hours or days. It uses I/O that your workload also needs, so foreground performance suffers. Drives are growing larger faster than they are getting quicker. So the chance of a second failure, or an unrecoverable read error, during a rebuild keeps rising. That is why big spinning-disk arrays use RAID 6 or RAID 10 instead of RAID 5. It is also why rebuild speed limits exist (`dev.raid.speed_limit_min/max`). If you start a rebuild on a busy node, you will feel it as slow I/O for your jobs. Last, **RAID is not a backup**. It does not protect you from deletion, corruption, ransomware, fire or an application that writes garbage.
 
 ### `mdadm`
 
@@ -286,7 +312,7 @@ cat /sys/block/md1/md/mismatch_cnt
 sudo sysctl dev.raid.speed_limit_min dev.raid.speed_limit_max
 ```
 
-Habits: use **UUIDs** (the array's `--detail` UUID, not member names, which change); set up **email or metrics alerts** for degraded arrays (a degraded RAID 1 runs perfectly and loses its last copy silently); scrub periodically; **test the rebuild procedure** before you need it; store `/etc/mdadm/mdadm.conf` and rebuild the initramfs after changes so the array assembles at boot (otherwise arrays appear as `md127`). Metadata versions: `1.2` (default, at 4 KiB from the start), `1.0` (at the end, so a mirror member still looks like a plain filesystem to a bootloader: used for `/boot/efi` mirrors), `0.90` legacy.
+Some habits make an `md` array much easier to live with. Refer to the array by its UUID, shown by `--detail`, and not by member names, because member names change. Set up email or metrics alerts for degraded arrays. A degraded RAID 1 keeps running perfectly, and then it can lose its last copy without anyone noticing. Scrub the array periodically. Test the rebuild procedure before you need it. Store `/etc/mdadm/mdadm.conf` and rebuild the initramfs after every change, so the array assembles at boot. Otherwise it may appear as `md127`. Metadata versions matter too. Version `1.2` is the default, with its superblock at 4 KiB from the start. Version `1.0` sits at the end, so a mirror member still looks like a plain filesystem to a bootloader, which is why it is used for `/boot/efi` mirrors. Version `0.90` is legacy.
 
 ### Which RAID for what (GPU nodes)
 
@@ -297,18 +323,25 @@ Habits: use **UUIDs** (the array's `--detail` UUID, not member names, which chan
 | Valuable local data on a storage server | RAID 6 / 10, or distributed erasure coding (Lustre/Ceph/GPFS) | Fault tolerance without a single controller as a point of failure |
 | Cloud | None (the provider replicates the disk); RAID 0 of several local SSDs for speed | Local SSD is ephemeral; persistent disks are already redundant |
 
+Use the table to match a RAID level to the job the volume does. For scratch space, RAID 0 is fine when the data can be rebuilt. For anything you cannot lose, choose a redundant level and keep a separate backup.
+
 ## 4. NVMe in depth
 
-**NVMe** (Non-Volatile Memory Express) is a host-controller interface designed for flash. A drive connects directly to **PCIe** (U.2, M.2, E1.S/E3.S, add-in card) and speaks the NVMe command set rather than being translated through SCSI/SATA layers.
+**NVMe** (Non-Volatile Memory Express) is a host-controller interface built for flash. A drive connects straight to **PCIe**. It can come as a U.2 drive, an M.2 stick, an E1.S or E3.S module, or an add-in card. It speaks the NVMe command set directly, instead of going through the SCSI and SATA layers that older drives needed.
 
 ### Architecture
 
-- A **controller** (`/dev/nvme0`, a character device; one per drive or fabric connection) manages one or more **namespaces** (`/dev/nvme0n1`, `nvme0n2`: block devices; partitions `nvme0n1p1`). A namespace is a slice of storage with its own LBA format (block size 512 B or 4 KiB). Most drives expose one namespace; **namespace management** can create several.
-- Communication is through **queues in host memory**: one **admin** queue pair and many **I/O submission/completion queue pairs**, up to 64 thousand queues each up to 64 thousand entries deep. Linux creates **one queue pair per CPU** (blk-mq), so the CPU that issues an I/O also gets its completion interrupt (MSI-X), with no shared lock, which is why NVMe scales to millions of IOPS and low latency (tens of microseconds). The older SATA queue is 32 deep; SAS 256.
-- **Completion** is by interrupt, or **polling** for the lowest latency (`io_poll`, `io_uring` with `IORING_SETUP_IOPOLL`).
-- Bandwidth is bounded by the **PCIe link**: Gen3 x4 about 3.5 GB/s, Gen4 x4 about 7 GB/s, Gen5 x4 about 14 GB/s per direction. A drive running at x2 or at a lower generation is slow; check the link state (`lspci -vv`, `/sys/class/nvme/nvme0/device/current_link_speed`, `max_link_width`).
-- **I/O scheduler**: `none` is the right choice for fast NVMe (the drive and the multiqueue block layer do the work); `mq-deadline`/`kyber`/`bfq` can add latency without benefit.
-- **Features** you will meet: **TRIM/deallocate** (Dataset Management), **namespaces**, **power states** and **APST** (autonomous power-state transitions; aggressive low-power states can add latency, and some drives misbehave: the kernel parameter `nvme_core.default_ps_max_latency_us=0` disables deep states), **end-to-end protection**, **Zoned Namespaces** (ZNS), **Key Per I/O**, **SR-IOV** virtual functions (cloud and virtualisation), **namespace sharing** across hosts in fabrics.
+Here is how an NVMe drive is organised. Each controller shows up as `/dev/nvme0`, a character device, with one controller per drive or per fabric connection. The controller manages one or more **namespaces**, such as `/dev/nvme0n1` and `nvme0n2`. These are block devices, and their partitions are named like `nvme0n1p1`. A namespace is a slice of storage with its own LBA format, either 512 B or 4 KiB blocks. Most drives expose one namespace, but **namespace management** can create several.
+
+The data moves through **queues in host memory**. There is one **admin** queue pair, plus many **I/O submission and completion queue pairs**. The limits are up to 64 thousand queues, each up to 64 thousand entries deep. Linux creates **one queue pair per CPU** through blk-mq. So the CPU that issues an I/O also receives its completion interrupt (MSI-X). Nothing is shared, so there is no lock to wait on. This design is why NVMe scales to millions of IOPS with latency in the tens of microseconds. For comparison, the older SATA queue is 32 deep, and SAS is 256.
+
+Completion usually comes by interrupt. For the lowest latency, you can poll instead, using `io_poll` or `io_uring` with `IORING_SETUP_IOPOLL`.
+
+Bandwidth is limited by the **PCIe link**. A Gen3 x4 link gives about 3.5 GB/s. Gen4 x4 gives about 7 GB/s, and Gen5 x4 gives about 14 GB/s, each per direction. A drive running at x2, or at a lower generation, will be slow. Check the link state with `lspci -vv`, or read `/sys/class/nvme/nvme0/device/current_link_speed` and `max_link_width`.
+
+For the I/O scheduler, `none` is the right choice for fast NVMe, because the drive and the multiqueue block layer do the work. `mq-deadline`, `kyber` and `bfq` can add latency without any gain.
+
+NVMe has several features you will run into. **TRIM** (also called deallocate, through Dataset Management) tells the drive which blocks are free. **Namespaces** and **power states** come next. **APST** (autonomous power-state transitions) moves the drive into low-power states on its own. Aggressive low-power states can add latency, and some drives behave badly with them. The kernel parameter `nvme_core.default_ps_max_latency_us=0` disables the deep states. Other features are **end-to-end protection**, **Zoned Namespaces** (ZNS), **Key Per I/O**, **SR-IOV** virtual functions for cloud and virtualisation, and **namespace sharing** across hosts in fabrics.
 
 ### `nvme-cli`
 
@@ -328,15 +361,17 @@ sudo nvme get-feature /dev/nvme0 -f 0x0c    # e.g. autonomous power state transi
 sudo nvme telemetry-log ...
 ```
 
-**Reading `smart-log`** (field names vary slightly by version): `critical_warning` (non-zero: spare below threshold, over temperature, reliability degraded, read-only mode, volatile memory backup failed; **any value other than 0 needs action**); `temperature` and `warning/critical composite temperature time` (time spent hot); `available_spare` versus `available_spare_threshold`; **`percentage_used`** (an estimate of the life consumed against the endurance rating; plan replacement before 100); `data_units_read/written` (units of 512,000 bytes: multiply for totals, and compare writes with the drive's endurance, **TBW/DWPD**); `media_errors` and `num_err_log_entries` (non-zero and rising = failing media); `unsafe_shutdowns` (power loss without a clean shutdown); `power_on_hours`. Fleet monitoring should collect these from every node (via `nvme-cli`, `smartctl -a /dev/nvme0`, Prometheus `node_exporter`'s textfile collector, or DCGM-adjacent tooling) and alert on `critical_warning`, `media_errors`, `percentage_used`, rising temperature and unsafe shutdowns.
+Read the commands above as two groups. The first group only reads information, such as `list`, `id-ctrl` and `smart-log`, so it is safe on a live node. The second group changes the drive. `format`, `sanitize` and the namespace commands destroy data or alter the drive, so keep them away from a production node.
 
-**Thermal throttling.** NVMe drives slow themselves down when hot; a node whose NVMe is 30% slower than its identical neighbours often has a heat or airflow problem, or different firmware. Compare `smart-log` temperatures and "time above warning" across nodes.
+**Reading `smart-log`.** Field names vary a little between versions. The most important field is `critical_warning`. Any value other than 0 needs action, since it can mean the spare capacity is low, the drive is too hot, reliability is reduced, the drive has gone read-only, or the volatile memory backup has failed. The `temperature` field, along with the warning and critical temperature time, tells you how long the drive spent hot. Compare `available_spare` with `available_spare_threshold`. Then watch **`percentage_used`**. It estimates how much of the drive's life you have used, against its endurance rating, so plan the replacement before it reaches 100. The `data_units_read/written` fields count units of 512,000 bytes. Multiply them to get totals, and compare the writes with the drive's endurance, given as **TBW/DWPD**. If you see a `media_errors` count that keeps rising, or a non-zero `num_err_log_entries`, the media is failing. `unsafe_shutdowns` counts power losses without a clean shutdown, and `power_on_hours` counts the hours the drive has run. You should collect these values from every node you run. Fleet monitoring does the collecting for you. You can use `nvme-cli`, `smartctl -a /dev/nvme0`, Prometheus `node_exporter`'s textfile collector, or DCGM-adjacent tooling. Alert on `critical_warning`, `media_errors`, `percentage_used`, rising temperature and unsafe shutdowns.
 
-**Firmware.** Different firmware versions on "identical" drives cause unexplained differences; inventory with `nvme list`/`id-ctrl` and update through the vendor tooling in maintenance windows (`nvme fw-download`/`fw-commit`, or distribution `fwupd`).
+**Thermal throttling.** NVMe drives slow themselves down when they get hot. If one drive is 30% slower than identical neighbours, the cause is often heat or airflow, or different firmware. Compare the `smart-log` temperatures and the "time above warning" across nodes.
+
+**Firmware.** Two drives of the same model can run different firmware, and then they behave differently with no clear reason. Inventory the firmware with `nvme list` and `id-ctrl`. Update it through the vendor tools during a maintenance window, using `nvme fw-download` and `fw-commit`, or the distribution's `fwupd`.
 
 ### NVMe over Fabrics (NVMe-oF)
 
-NVMe-oF carries the NVMe protocol across a network so a remote drive looks like a local `/dev/nvmeXnY` with low added latency. Transports: **RDMA** (InfiniBand, RoCE, iWARP; lowest latency), **TCP** (works on any Ethernet; higher CPU), **Fibre Channel**. Concepts: a **target** exports **subsystems** identified by an **NQN** (NVMe qualified name); a **host** identifies itself with a host NQN (`/etc/nvme/hostnqn`) and **discovers** then **connects**:
+NVMe-oF carries the NVMe protocol across a network. A remote drive then looks like a local `/dev/nvmeXnY`, with little added latency. There are three transports. **RDMA** (InfiniBand, RoCE or iWARP) gives the lowest latency. **TCP** works on any Ethernet network, but it uses more CPU. **Fibre Channel** is the third option. A **target** exports **subsystems**, and each subsystem has an **NQN** (NVMe qualified name). A **host** identifies itself with its own host NQN, stored in `/etc/nvme/hostnqn`. Then the host **discovers** the subsystems and **connects** to one:
 
 ```bash
 sudo modprobe nvme-rdma    # or nvme-tcp
@@ -346,39 +381,46 @@ sudo nvme list-subsys; sudo nvme disconnect -n nqn.2024-01.com.example:subsys1
 # target side (Linux): nvmet configuration via configfs (/sys/kernel/config/nvmet), or nvmetcli
 ```
 
-Use NVMe-oF to disaggregate storage (shared flash pools), as the backend of parallel filesystems, and for GPUDirect Storage over RDMA. Multiple paths use native NVMe multipath with ANA (asymmetric namespace access) states. Tune with `ctrl_loss_tmo`, `reconnect_delay`; a lost fabric leaves processes in `D` state (chapter 1.8).
+If you check the link state early, you can catch a slow drive before it reaches a training job. Use NVMe-oF to split storage away from compute, for example in shared flash pools. It also serves as the backend of parallel filesystems, and it supports GPUDirect Storage over RDMA. When several paths exist, native NVMe multipath uses ANA (asymmetric namespace access) states to choose among them. Two settings tune the behaviour under failure: `ctrl_loss_tmo` and `reconnect_delay`. If the fabric is lost, processes can get stuck in `D` state (chapter 1.8).
 
 ### NVMe naming and containers
 
-`nvme0n1` names depend on probe order; with native multipath `nvme0c0n1` are hidden path devices and `nvme0n1` the aggregated one. Use `/dev/disk/by-id/nvme-<model>_<serial>` or `by-path` or filesystem UUIDs in configuration (chapter 1.10). In Kubernetes, local NVMe is exposed through the **local static provisioner** (a PV per mount) or **LVM-based CSI drivers** (TopoLVM, OpenEBS LVM-LocalPV, which carve LVs from a VG per node and support capacity-aware scheduling and resizing).
+The `nvme0n1` names depend on the order in which the kernel probes the devices. With native multipath, the `nvme0c0n1` devices are hidden path devices, and `nvme0n1` is the aggregated one. Use `/dev/disk/by-id/nvme-<model>_<serial>`, `by-path`, or filesystem UUIDs in your configuration, instead of the probe-order names (chapter 1.10). In Kubernetes, local NVMe reaches the pods in one of two ways. The first is the **local static provisioner**, which creates one PV per mount. The second is an **LVM-based CSI driver** such as TopoLVM or OpenEBS LVM-LocalPV. These carve logical volumes from a VG on each node, and they support capacity-aware scheduling and resizing.
 
 ## 5. Disk performance: the method
 
-(Chapter 1.12 section 9 covers the filesystem layer; this section is about the block device and below. Time scales and concepts are in 1.12 section 2.)
+(Chapter 1.12 section 9 covers the filesystem layer. This section covers the block device and everything below it. The time scales and concepts are in 1.12 section 2.)
 
 ### Concepts you need
 
-- **I/O time** has parts: *wait time* (queued in the OS or on the device) plus *service time* (the device working) equals *request time* (what you feel and `iostat` reports as `await`). Modern devices queue internally and process many requests at once, so "service time" derived from utilisation (`util / IOPS`) is only a rough single-queue approximation.
-- **IOPS are not equal.** 5,000 sequential IOPS on a rotational disk may be far faster than 1,000 random ones; flash IOPS depend on size and direction. Never compare IOPS without the I/O size, random/sequential mix, read/write ratio, queue depth and whether the test was buffered.
-- **Non-data commands** (cache flush, TRIM/UNMAP) occupy a device and affect latency.
-- **Utilisation** is the fraction of an interval the device was busy; **saturation** is work queued beyond what it can service (average wait-queue length). 100% busy with no queue is not saturated; a device can have saturation at utilisation below 100% when averaged over an interval that hides bursts. For virtual disks (RAID controller, SAN, cloud volume) the OS sees only the virtual device's utilisation, not what the physical disks are doing (a "100% busy" volume built from many disks may still accept more work; a write-back cache hides busyness; a hardware RAID rebuild is invisible to the OS).
-- **I/O wait** (`wa` in `top`/`vmstat`) is idle CPU time while threads are blocked on disk I/O. It is confusing: add a CPU-hungry process and `wa` falls although the disk problem persists. A more reliable metric is the **time application threads spend blocked on disk I/O**. Use `wa` as a hint ("disks busy, CPUs idle") not as a measurement.
-- **Synchronous versus asynchronous.** Disk latency does not hurt the application if the I/O is asynchronous (write-back, read-ahead, a background thread).
+When a disk looks slow, you need to know where the time goes. Start with the parts of I/O time. A request has *wait time*, the time it spends queued in the OS or on the device. It also has *service time*, the time the device spends working. Together they make *request time*, which is what you feel, and what `iostat` reports as `await`. Modern devices queue work internally and handle many requests at once. So a "service time" derived from utilisation (`util / IOPS`) is only a rough single-queue estimate.
+
+IOPS are not all equal. 5,000 sequential IOPS on a rotational disk can be far faster than 1,000 random ones. Flash IOPS depend on the I/O size and the direction. You should never compare IOPS numbers without knowing the I/O size, the mix of random and sequential, the read/write ratio, the queue depth and whether the test was buffered.
+
+Non-data commands, such as a cache flush or a TRIM/UNMAP, occupy the device and affect latency. Keep them in mind when a device looks slow for no clear reason.
+
+Two words get mixed up here. **Utilisation** is the fraction of an interval the device was busy. **Saturation** is the work queued beyond what the device can service, measured as the average wait-queue length. A device can sit at 100% busy with no queue, and then it is busy but not saturated. A device can also saturate while its utilisation is below 100%, when the average over an interval hides bursts. Virtual disks make this harder. A RAID controller, a SAN or a cloud volume shows the OS only the virtual device's utilisation, not what the physical disks are doing. A "100% busy" volume built from many disks may still accept more work. A write-back cache hides how busy the device is. A hardware RAID rebuild is invisible to the OS.
+
+**I/O wait** (`wa` in `top` or `vmstat`) is the idle CPU time spent while threads wait on disk I/O. It is easy to misread. Add a CPU-hungry process and `wa` falls, even though the disk problem is still there. A more reliable metric is the time that application threads spend blocked on disk I/O. Use `wa` as a hint, meaning "the disks are busy and the CPUs are idle". Do not treat it as a measurement.
+
+Disk latency does not hurt an application when the I/O is **asynchronous**, such as write-back, read-ahead, or a background thread. It hurts when the application waits for each I/O before it continues.
 
 ### Methods, in a sensible order
 
-1. **USE method** (utilisation, saturation, errors) for **each device** and each **controller/transport**. Check **errors first** (SMART, kernel logs, controller logs): redundant arrays keep working while degraded and errors go unnoticed. Controller and bus limits (throughput in MB/s and operations per second, PCIe link width/speed, SAS/NVMe lane counts) are often overlooked; if total throughput or IOPS always levels off at the same value under different workloads, suspect a controller or transport limit.
-2. **Performance monitoring** over time: per-disk utilisation and response time (and IOPS/throughput for capacity planning), looking for imbalance across disks. Utilisation above about 60% may already cause queueing delays; sustained 100% is very likely a problem (but remember the NVMe caveat in 1.12).
-3. **Workload characterisation**: I/O rate, throughput, size, read/write ratio, random versus sequential, which applications and files, balance across disks, arrival-time distribution, how synchronous the application is, errors, non-data commands. Record maxima and distributions, not only averages; e.g. "a light random-read workload averaging 350 IOPS (8 KiB reads) with short sequential write bursts of 2 to 5 seconds reaching 4,800 IOPS and 560 MB/s."
-4. **Latency analysis**: measure at several layers (application, filesystem, block layer, driver, device). If the latency of an outlier is the same at every layer, the device (or driver) is the cause; if latency is large at the filesystem but small below, the cause is filesystem locking/queueing, or related metadata I/O. Use histograms, not only averages, and per-I/O traces for outliers.
-5. **Static performance tuning**: how many disks, types (SMR? TLC?), firmware versions, controllers and their slots (is the HBA in a x8 slot?), RAID layout and stripe width, multipath, driver and firmware bugs, cache sizes, battery status, I/O resource controls. (A common real-world cause of poor array performance is a configuration choice, such as a very wide parity stripe, not a fault.)
-6. **Cache tuning**, **resource controls**, **micro-benchmarking** (to find the device's limits), **scaling** (below), and **event tracing** as a last resort (it has overhead, and writing the trace to the traced disk creates a feedback loop).
+Work through these methods in order. Each one builds on the last.
 
-**Scaling.** To size a system: determine the target throughput and IOPS; compute the number of devices **at a target utilisation of about 50%**, not at their maximum (driving disks to 100% queues requests and wrecks latency); factor in RAID write penalties; then check controllers, transports and CPU cycles per I/O. "Add more spindles" has become "add more flash."
+1. **USE method** (utilisation, saturation, errors) for **each device** and each **controller or transport**. Check **errors first**, in SMART data, the kernel logs and the controller logs. A redundant array keeps working while it is degraded, so errors can go unnoticed for a long time. Controller and bus limits are often overlooked. These include throughput in MB/s, operations per second, PCIe link width and speed, and SAS or NVMe lane counts. If total throughput or IOPS always levels off at the same value under different workloads, suspect a controller or transport limit.
+2. **Performance monitoring** over time. Track per-disk utilisation and response time, and IOPS and throughput for capacity planning. Look for imbalance across the disks. Utilisation above about 60% may already cause queueing delays. Sustained 100% is very likely a problem, but remember the NVMe caveat from 1.12.
+3. **Workload characterisation**. Record the I/O rate, throughput, I/O size, read/write ratio, random versus sequential pattern, which applications and files are involved, how the load balances across disks, the arrival-time distribution, how synchronous the application is, the errors, and the non-data commands. Record maxima and distributions, not only averages. For example, a light random-read workload might average 350 IOPS with 8 KiB reads. It might also show short sequential write bursts of 2 to 5 seconds, reaching 4,800 IOPS and 560 MB/s. The average hides the bursts, and the bursts are what cause trouble.
+4. **Latency analysis**. Measure at several layers: the application, the filesystem, the block layer, the driver and the device. If an outlier has the same latency at every layer, the device or the driver is the cause. If the latency is large at the filesystem but small below it, look at filesystem locking, queueing or related metadata I/O. Use histograms rather than averages, and trace individual I/Os when you need to explain an outlier. If you only read averages, you will miss the outlier that hurts your job.
+5. **Static performance tuning**. Check how many disks there are, what types they are (SMR or TLC?), their firmware versions, the controllers and the slots they sit in (is the HBA in an x8 slot?), the RAID layout and stripe width, multipath, driver and firmware bugs, cache sizes, battery status and I/O resource controls. A common real-world cause of poor array performance is a configuration choice, such as a very wide parity stripe. It is not a fault.
+6. **Cache tuning**, **resource controls**, **micro-benchmarking** (to find the device's limits), **scaling** (below), and **event tracing**. Use event tracing as a last resort. It has overhead, and writing the trace to the disk you are tracing creates a feedback loop.
+
+**Scaling.** To size a system, start from the target throughput and IOPS. Then compute the number of devices at a target utilisation of about 50%, not at their maximum. Driving disks to 100% queues requests and wrecks latency. Factor in the RAID write penalties. Then check the controllers, the transports and the CPU cycles per I/O. The old advice was "add more spindles". The new advice is "add more flash".
 
 ### Micro-benchmarking the device
 
-To test the **disk** rather than the filesystem, use the device path (or direct I/O to a file on a fresh filesystem), control: direction, random/sequential, offset range, I/O size, concurrency (queue depth/threads), number of devices. Standard probes: maximum throughput (1 MiB sequential reads), maximum IOPS (small reads), random-read latency profile at different sizes. **Only use destructive write tests on devices that hold nothing you need.** Keep `iostat -xz 1` running in another terminal to confirm what the benchmark actually did.
+To test the **disk** itself, rather than the filesystem, use the device path, or direct I/O to a file on a fresh filesystem. Control these settings: the direction, random or sequential, the offset range, the I/O size, the concurrency (queue depth or threads), and the number of devices. Three standard probes cover most needs. The first measures maximum throughput with 1 MiB sequential reads. The second measures maximum IOPS with small reads. The third profiles random-read latency at different sizes. Only run destructive write tests on devices that hold nothing you need. Keep `iostat -xz 1` running in another terminal, so you can confirm what the benchmark actually did.
 
 ```bash
 # Raw-device read tests (non-destructive): bypass the cache with direct I/O
@@ -390,9 +432,11 @@ sudo hdparm -Tt /dev/nvme1n1            # crude: -T cached reads, -t device read
 sudo fio --name=lat --filename=/dev/nvme1n1 --rw=randread --bs=4k --iodepth=1 --direct=1 --runtime=20 --time_based --readonly --lat_percentiles=1
 ```
 
-Read **latency percentiles** (p50, p99, p99.9) and IOPS **at stated queue depth**. An NVMe may do 1 million IOPS at queue depth 128 across 8 jobs and 80,000 at queue depth 1; the second number is the one a single synchronous reader gets. `ioping` is notable because it barely loads the device (about 0.4% utilisation), so it can probe latency on a busy production disk. A replayed I/O trace (`blktrace` + `blkreplay`) can reproduce hard-to-recreate issues, but is misleading if the target system differs.
+Read the results as **latency percentiles** (p50, p99 and p99.9) and as IOPS **at a stated queue depth**. An NVMe drive may deliver 1 million IOPS at queue depth 128 across 8 jobs. At queue depth 1 it may deliver only 80,000. The second number is the one that a single synchronous reader gets. `ioping` is useful because it barely loads the device, at about 0.4% utilisation. That lets you probe latency on a busy production disk. A replayed I/O trace, made with `blktrace` and `blkreplay`, can reproduce problems that are hard to recreate. But the replay misleads you if the target system differs from the original.
 
 ## 6. Tools for the block layer
+
+When a disk misbehaves, you need the right tool for the question. The table below lists the main tools, with what each one shows. Start with the cheap ones, and move to the heavier tracers only when they are needed.
 
 | Tool | Shows | Notes |
 |---|---|---|
@@ -414,21 +458,24 @@ Read **latency percentiles** (p50, p99, p99.9) and IOPS **at stated queue depth*
 | **`/sys/block/DEV/queue/*`**, **`lsblk -t`** | Queue depth, scheduler, rotational, sizes, read-ahead | |
 | **Visualisations** | Latency heat maps, offset heat maps, line graphs | A latency heat map (time on x, latency on y, colour = count) reveals bimodality and drifting outliers that a line graph averages away |
 
-**Reading `iostat -x`** fields: `rrqm/s`, `wrqm/s` merged requests per second (adjacent I/Os coalesced by the block layer, reducing per-I/O cost); `r/s`, `w/s` completed requests; `rkB/s`, `wkB/s` throughput; `areq-sz` average request size (small values with high IOPS indicate small random I/O); `aqu-sz` average queue length (saturation indicator); `r_await`, `w_await` (milliseconds in queue plus service); `%util`. Newer versions drop the old `svctm` because it is unreliable. Rules of thumb: for a single HDD, `%util` near 100% with a growing `aqu-sz` and `await` of tens of milliseconds means saturated; for flash, watch `await` and the percentiles from `biolatency`; for arrays, look at the individual members too.
+**Reading `iostat -x`.** The `rrqm/s` and `wrqm/s` fields count merged requests per second. Those are adjacent I/Os that the block layer combined, which cuts the cost per I/O. The `r/s` and `w/s` fields count completed requests, and `rkB/s` and `wkB/s` give throughput. The `areq-sz` field is the average request size. Small values with high IOPS point to small random I/O. `aqu-sz` is the average queue length, which is your saturation signal. `r_await` and `w_await` give the milliseconds spent in the queue plus service time. Finally, `%util` gives the busy fraction. Newer versions have dropped the old `svctm` field, because it was unreliable.
+
+If you are unsure where to begin, look at `r_await` and `w_await` first, and compare them with what you expect. Use a few rules of thumb, and apply them to your own numbers. For a single HDD, `%util` near 100%, a growing `aqu-sz` and an `await` of tens of milliseconds mean the disk is saturated. For flash, watch `await` and the percentiles from `biolatency`. For arrays, look at the individual members too, since the virtual device can hide a single bad drive.
 
 ### Tuning knobs
 
-- **I/O priority**: `ionice -c 3 -p PID` (idle class) for backups so they don't disturb production; `-c 2 -n 0..7` best-effort; `-c 1` real-time (can starve others). Works with schedulers that implement priorities.
-- **cgroup I/O control** (cgroup v2 `io.max` and `io.weight`; systemd `IOWeight=`, `IOReadBandwidthMax=`, `IOWriteIOPSMax=`): limits per group of processes: fixed IOPS/bandwidth caps per device or proportional weights. This is how multi-tenant nodes keep one job from monopolising local disk (`echo "259:0 rbps=200M wbps=100M" > io.max`). A "disk bottleneck" can be an imposed limit rather than the device.
-- **Queue parameters** in `/sys/block/DEV/queue/`: `scheduler` (`none`, `mq-deadline`, `kyber`, `bfq`), `nr_requests`, `read_ahead_kb`, `max_sectors_kb`, `rq_affinity`, `nomerges`, `add_random`. Defaults are generally right for NVMe; test before and after with the same benchmark.
-- **Device settings**: `hdparm` (write cache `-W`, power management `-B`/`-S`; several options are marked DANGEROUS in its manual; do not experiment on data disks); controller settings (rebuild rate, patrol-read rate, cache flush interval, write-back versus write-through policy).
-- Persist what you choose with udev rules or `tuned` profiles, not with `echo` in a shell (chapter 1.10).
+- **I/O priority.** `ionice -c 3 -p PID` puts a process in the idle class, which suits backups that must not disturb production. `-c 2 -n 0..7` is best-effort. `-c 1` is real-time, and it can starve other processes. These settings work only with schedulers that implement priorities.
+- **cgroup I/O control.** cgroup v2 offers `io.max` and `io.weight`. systemd exposes them as `IOWeight=`, `IOReadBandwidthMax=` and `IOWriteIOPSMax=`. They limit a group of processes with fixed IOPS or bandwidth caps per device, or with proportional weights. This is how multi-tenant nodes stop one job from taking all of the local disk, for example with `echo "259:0 rbps=200M wbps=100M" > io.max`. A disk bottleneck can turn out to be a limit that someone imposed, not the device itself.
+- **Queue parameters** in `/sys/block/DEV/queue/`. These include `scheduler` (`none`, `mq-deadline`, `kyber`, `bfq`), `nr_requests`, `read_ahead_kb`, `max_sectors_kb`, `rq_affinity`, `nomerges` and `add_random`. The defaults are generally right for NVMe. Test before and after with the same benchmark.
+- **Device settings.** `hdparm` controls the write cache (`-W`) and power management (`-B` and `-S`). Several of its options are marked DANGEROUS in its manual, so do not experiment on data disks. Controllers have their own settings, such as rebuild rate, patrol-read rate, cache flush interval, and write-back versus write-through policy.
+
+Save whatever you choose with udev rules or `tuned` profiles, not with `echo` typed into a shell. Chapter 1.10 covers udev.
 
 ## 7. AI-infrastructure patterns
 
 ### The full data path, layer by layer
 
-Training data crosses storage media, storage servers, the network, the client filesystem, the page cache, CPU memory, PCIe and finally GPU memory. **A slow GPU is not necessarily a slow disk**: the worker at any hand-off can be the limit (like a bucket brigade, the slowest person sets the pace), so measure every hand-off.
+Training data travels a long way. It crosses storage media, storage servers, the network and the client filesystem. Then it passes through the page cache, CPU memory and PCIe, before it reaches GPU memory. A slow GPU is not always caused by a slow disk. Like a bucket brigade, the slowest hand-off sets the pace, and any hand-off can be the limit. So measure every hand-off.
 
 ```mermaid
 flowchart TD
@@ -441,16 +488,18 @@ flowchart TD
   E --> G["8 GPU memory\nnvidia-smi, torch.cuda.memory_summary"]
 ```
 
-Procedure: (1) establish the demand: samples per second times bytes per sample per GPU; (2) measure supply at each layer with a tool that bypasses the layers above (raw device read with `fio --direct=1`, then filesystem, then the network path with the storage client, then the application loader); (3) the first layer whose measured capacity is below the demand is the bottleneck; (4) check the *hidden copies* (an extra CPU-side decode or format conversion can cost more than the disk). Typical findings: a data loader with too few workers or running on the wrong NUMA node; a PCIe x8 link where x16 was expected; page cache thrashing because the dataset is slightly larger than RAM; a shared filesystem whose metadata server saturates on small files; JPEG decoding on the CPU being the real limit.
+The procedure has three steps. First, establish the demand: samples per second, multiplied by the bytes per sample, for each GPU. Second, measure the supply at each layer. Use a tool that bypasses the layers above it. Start with a raw device read using `fio --direct=1`, then test the filesystem, then the network path with the storage client, then the application loader. Third, the first layer whose measured capacity falls below the demand is the bottleneck. Also check for hidden copies. An extra decode or format conversion on the CPU can cost more than the disk does.
+
+Some findings come up again and again. A data loader with too few workers, or running on the wrong NUMA node, is one. A PCIe x8 link where x16 was expected is another. Page cache thrashing happens when the dataset is slightly larger than RAM. A shared filesystem can have its metadata server saturate on small files. And JPEG decoding on the CPU can be the real limit.
 
 ### Local NVMe as cache and staging area
 
-Enterprise advice says local disk is bad because it is stateless and unprotected. In AI the logic flips because **training reads the same data hundreds of times** (epochs). If a thousand GPUs fetch the same ten thousand images from the shared array on every epoch, the network melts. Instead:
+Enterprise advice says local disks are a bad idea, because they are stateless and unprotected. AI workloads reverse that logic. Training reads the same data hundreds of times, once per epoch. Picture a thousand GPUs fetching the same ten thousand images from the shared array on every epoch. The network would melt. A better design uses the local disk as a cache:
 
-- **Epoch 1**: read from shared storage and keep a copy on node-local NVMe. Slow, once.
-- **Epochs 2 to N**: read from local NVMe. Network traffic drops to nearly zero and the GPUs are fed at local speed.
+- **Epoch 1**: read from shared storage and keep a copy on node-local NVMe. This is slow, but it happens only once.
+- **Epochs 2 to N**: read from local NVMe. Network traffic drops to nearly zero, and the GPUs are fed at local speed.
 
-Use local NVMe staging when: the shared link or filesystem is the measured bottleneck; the dataset fits in local capacity and is read repeatedly (many epochs or fine-tuning iterations); checkpoint writes block training and can be staged asynchronously; preprocessing is expensive and its output is reused. **Do not** bother when: the shared storage has headroom (link utilisation well below saturation, metadata healthy); the dataset is too big to fit and must stream anyway (you add complexity for no benefit); the GPUs are already near full utilisation; the run is only one or two epochs (the cold first epoch dominates); or nodes fail often enough that the cost of re-staging offsets the gain.
+Use local NVMe staging when the shared link or filesystem is the measured bottleneck. It also makes sense when the dataset fits in local capacity and is read repeatedly, through many epochs or fine-tuning iterations. If your run stalls at every checkpoint, you have a good case for staging. Checkpoint writes that block training can be staged asynchronously. And if preprocessing is expensive, staging its output for reuse pays off. Skip it in the opposite cases. Skip it when the shared storage has headroom, meaning the link is well below saturation and the metadata is healthy. Skip it when the dataset is too big to fit and must stream anyway, because you add complexity for no benefit. Skip it when the GPUs already run near full utilisation. And skip it when the run covers only one or two epochs, since the cold first epoch dominates. Skip it too when nodes fail often enough that re-staging eats up the gain.
 
 ```mermaid
 flowchart TD
@@ -465,56 +514,62 @@ flowchart TD
   D2 -- no --> BN["Bottleneck is elsewhere:\nCPU decode/transform, NUMA, affinity"]
 ```
 
-**Cache design points.** Verify cached files (a checksum or version key per item) so a run never trains on stale data when the source changes; log the hit rate by epoch (about 0% in epoch 1, above 95% from epoch 2 if the dataset fits; a drop in later epochs shows eviction pressure as the NVMe fills, often above about 85% full); choose an eviction policy; pre-stage in parallel before the job starts instead of lazily on first read; keep staging deterministic and idempotent; treat the volume as disposable. Wrong file-naming (different names for the same data) defeats hit-rate.
+**Cache design points.** Verify every cached file with a checksum or a version key, so a run never trains on stale data after the source changes. Log the hit rate for each epoch. In a healthy setup it is about 0% in epoch 1 and above 95% from epoch 2, if the dataset fits. A drop in later epochs shows eviction pressure, which tends to appear once the NVMe is above about 85% full. Choose an eviction policy. Pre-stage the data in parallel before the job starts, instead of fetching lazily on first read. Keep the staging deterministic and idempotent, and treat the volume as disposable. Watch out for file naming. Two different names for the same data defeat the hit rate.
 
-**Checkpoint staging.** Writing a very large checkpoint synchronously to shared storage stalls the whole job for the duration (for example a 500 GB checkpoint at about 1 GB/s is minutes). Write it to local NVMe at several GB/s (a short stall), then let a background task copy it to durable shared or object storage while training continues, and delete the local copy after the copy is verified. Trade-offs: the checkpoint is not durable until the copy finishes (a node failure in between loses it, so keep at least one older durable checkpoint and verify copies); background copies compete for NIC and filesystem bandwidth; local capacity must hold at least one full checkpoint plus the dataset cache. Frameworks that support asynchronous distributed checkpointing implement this pattern for you; check what yours does before building your own.
+**Checkpoint staging.** Writing a very large checkpoint synchronously to shared storage stalls the whole job until the write finishes. For example, a 500 GB checkpoint at about 1 GB/s takes minutes. A better pattern writes the checkpoint to local NVMe at several GB/s, which keeps the stall short. Then a background task copies it to durable shared or object storage while training continues. Once the copy is verified, the local copy can be deleted. The trade-offs are real, though. The checkpoint is not durable until the copy finishes, so a node failure in between loses it. Keep at least one older durable checkpoint, and verify every copy. Background copies also compete with training for NIC and filesystem bandwidth. Local capacity must hold at least one full checkpoint plus the dataset cache. If you build your own, you carry the durability gap yourself. Some frameworks support asynchronous distributed checkpointing and build this pattern in for you. Check what yours does before you build your own.
 
-**What to expect from NVMe benchmarks.** A drive that shows several GB/s in `fio` may deliver far less to a training job: the application sees a fraction because of filesystem overhead, small reads, Python decoding, NUMA placement and the data-loader's threading. If `fio` is fast and the job is slow, the problem is above the device: profile the CPU (`perf`, flame graphs), pin loader processes to the NVMe's NUMA node, move decoding to a preprocessing step or to the GPU (DALI/nvJPEG), and increase loader workers and prefetch depth. The *same model of drive* in two nodes can differ by tens of percent because of firmware, thermal throttling or background garbage collection: compare `nvme smart-log` and `id-ctrl` across nodes.
+**What to expect from NVMe benchmarks.** A drive that shows several GB/s in `fio` may deliver far less to a training job. The application sees only a fraction, because of filesystem overhead, small reads, Python decoding, NUMA placement and the threading of the data loader. If `fio` is fast and the job is slow, the problem sits above the device. Profile the CPU with `perf` or flame graphs. Pin the loader processes to the NVMe's NUMA node. Move decoding into a preprocessing step, or onto the GPU with DALI or nvJPEG. And increase the loader workers and the prefetch depth. The same model of drive can differ by tens of percent between two nodes, because of firmware, thermal throttling or background garbage collection. Compare `nvme smart-log` and `id-ctrl` across nodes to find the difference.
 
 ### DGX-style layout and build
 
-Reference GPU servers typically provide a small **mirrored pair** for the OS (RAID 1 on M.2 or similar) and a bank of large NVMe drives presented as a **RAID 0 data volume** for scratch and cache *(confirm against your model's documentation; the exact count, size and mount point differ between generations)*. For your own builds: create the RAID 0 with `mdadm` (chunk 256 KiB or 512 KiB), format XFS (stripe geometry is detected), mount with `noatime`, label for identification, put it in `fstab` with `nofail`, provision it from the image or cloud-init, **monitor each member's SMART data**, and automate the replace-and-resync-the-cache procedure: when one drive in a RAID 0 fails, the whole volume is lost, which is acceptable only because the contents are a cache.
+Reference GPU servers usually have a small **mirrored pair** for the operating system, built with RAID 1 on M.2 or similar. They also have a bank of large NVMe drives, presented as a **RAID 0 data volume** for scratch and cache. The exact count, size and mount point differ between generations, so confirm them against your model's documentation. For your own builds, create the RAID 0 with `mdadm`, using a 256 KiB or 512 KiB chunk. Format it as XFS, which detects the stripe geometry. Mount it with `noatime`, give it a label, and add it to `fstab` with `nofail`. Provision it from the image or from cloud-init. Monitor each member's SMART data. Automate the replace-and-resync-the-cache procedure too. When one drive in a RAID 0 fails, the whole volume is lost. That is acceptable only because the contents are a cache.
 
 ### Kubernetes and local volumes
 
-Local NVMe reaches pods through local PersistentVolumes (static provisioner discovers mounts), `emptyDir` on the node's disk, or LVM-backed CSI drivers (TopoLVM, OpenEBS LVM-LocalPV) which give capacity-aware scheduling, thin provisioning, snapshots and online resize. Mind node loss (the PV is stuck to a node), ephemeral-storage eviction thresholds, and noisy neighbours (use `io.max`/cgroup limits where the runtime supports them).
+Local NVMe reaches pods in three ways. Local PersistentVolumes can be discovered by the static provisioner from mounts. `emptyDir` lives on the node's disk. LVM-backed CSI drivers, such as TopoLVM or OpenEBS LVM-LocalPV, provide capacity-aware scheduling, thin provisioning, snapshots and online resize. Watch out for three things. A node loss leaves its PV stuck to that node. Ephemeral-storage eviction thresholds can evict pods unexpectedly. And noisy neighbours can slow each other down, so use `io.max` or cgroup limits where the runtime supports them.
 
 ### Hardware RAID versus software
 
-GPU/AI platform teams generally avoid hardware RAID on compute nodes: the controller hides drives (SMART access needs `-d megaraid,N`), has its own failure modes and firmware, caps NVMe performance, and complicates GPUDirect Storage. For storage servers, vendors may still ship RAID controllers or move to NVMe with software erasure coding in the filesystem (Lustre OSS with ZFS or ldiskfs on md RAID, Ceph, Weka, GPFS). Chapters in Part 6 cover those designs.
+GPU and AI platform teams generally avoid hardware RAID on compute nodes. The controller hides the drives, so SMART access needs `-d megaraid,N`. It has its own failure modes and firmware, it caps NVMe performance, and it complicates GPUDirect Storage. Storage servers are a different case. Vendors may still ship RAID controllers there, or they may move to NVMe with software erasure coding in the filesystem. Examples include Lustre OSS with ZFS or ldiskfs on md RAID, Ceph, Weka and GPFS. Part 6 covers those designs.
+
+If you run a compute node, you can follow one rule:  use software RAID, keep the drives visible, and treat scratch volumes as caches.
 
 ## How it fails
 
-1. **LV extended but the filesystem not grown** ("I extended it but `df` is the same"). Use `lvextend -r`, or `xfs_growfs`/`resize2fs`.
-2. **Shrinking in the wrong order** corrupts the filesystem. Filesystem first, then LV; XFS cannot shrink at all.
-3. **`lvremove vg lv` with a space** removes more than intended. Use `VG/LV`, read each prompt.
-4. **Thin pool filled to 100%** (data or metadata). Volumes go read-only or corrupt. Monitor `Data%`/`Meta%`, autoextend, do not over-provision beyond reach.
-5. **Snapshot filled and became invalid.** Size snapshots, monitor, remove promptly.
-6. **Cloned VM or disk copy has duplicate PV/VG UUIDs and names.** LVM refuses or activates the wrong one; `vgimportclone`, rename the VG, filter devices.
-7. **Boot fails: root VG not activated.** Missing LVM modules or `rd.lvm.vg` in the initramfs, a filter excluding the PV, a missing disk; `lvm vgchange -ay` from the emergency shell, rebuild the initramfs.
-8. **`md` array assembles as `/dev/md127` or not at all after reboot.** No `mdadm.conf` entry or stale initramfs: `mdadm --detail --scan`, update the initramfs.
-9. **Silent degraded RAID.** No monitoring; a second failure then loses data. Alert on `[U_]`, `mdadm --monitor`, scrubs.
-10. **RAID 0 volume lost when one NVMe fails.** By design; keep the source data elsewhere and automate rebuild.
-11. **RAID 5/6 rebuild takes days and fails on a second error.** Prefer RAID 6/10 for big spinning disks; replace disks proactively on SMART warnings; test restores.
-12. **NVMe at reduced PCIe width or speed.** Reseat, check BIOS lanes and cabling, compare `LnkSta` to `LnkCap`.
-13. **NVMe throttles or errors silently.** Check `nvme smart-log` (`critical_warning`, temperature, `media_errors`), airflow, firmware.
-14. **Multipath shows duplicate devices; LVM or filesystem built on a single path.** Blacklist and filter correctly, build on `/dev/mapper/mpathX`.
-15. **dm-crypt limits NVMe throughput.** CPU-bound crypto work queue; use hardware features, adjust queue flags, or encrypt in the application/hardware.
-16. **NVMe-oF connection loss leaves hung processes.** Tune `ctrl_loss_tmo`, monitor paths, expect `D` state.
-17. **`%util` 100% and a conclusion that the disk is saturated** on NVMe. Check queue depth and bandwidth (chapter 1.12).
-18. **Benchmark destroys data.** A write test pointed at a raw device with data. Use files on a fresh filesystem or `--readonly`.
-19. **Cache hit rate 0% in all epochs.** File-naming mismatch, cache directory not persistent across restarts, or evictions exceeding insertion rate.
-20. **Checkpoint copy failed silently after the local copy was deleted.** Verify checksums before deleting; keep an older durable checkpoint.
+Most storage incidents follow a pattern you can learn. Each item below names the symptom, the cause and the fix.
+
+1. **The LV was extended, but the filesystem was not grown.** You run `df` and the size has not changed. Use `lvextend -r`, or run `xfs_growfs` or `resize2fs` yourself.
+2. **Shrinking in the wrong order corrupts the filesystem.** Shrink the filesystem first, then the LV. XFS cannot shrink at all.
+3. **`lvremove vg lv` with a space removes more than you intended.** Type `VG/LV` with a slash, and read each prompt.
+4. **A thin pool filled to 100%, in data or metadata.** The volumes go read-only or become corrupt. Monitor `Data%` and `Meta%`, enable autoextend, and do not over-provision beyond what you can add.
+5. **A snapshot filled up and became invalid.** Size snapshots carefully, monitor them, and remove them promptly.
+6. **A cloned VM or disk copy has duplicate PV and VG UUIDs and names.** LVM refuses to activate it, or activates the wrong one. Fix it with `vgimportclone`, rename the VG, or filter the devices.
+7. **The boot fails because the root VG was not activated.** The initramfs may lack the LVM modules or the `rd.lvm.vg` setting, a filter may exclude the PV, or a disk may be missing. From the emergency shell, run `lvm vgchange -ay`, then rebuild the initramfs.
+8. **An `md` array assembles as `/dev/md127`, or not at all, after a reboot.** The `mdadm.conf` entry is missing, or the initramfs is stale. Run `mdadm --detail --scan` and update the initramfs.
+9. **A RAID array stays degraded without anyone noticing.** No monitoring is in place, so a second failure then loses the data. Alert on `[U_]`, set up `mdadm --monitor`, and run scrubs.
+10. **A RAID 0 volume is lost when one NVMe fails.** This is by design. Keep the source data elsewhere, and automate the rebuild.
+11. **A RAID 5 or RAID 6 rebuild takes days and fails on a second error.** Prefer RAID 6 or RAID 10 for large spinning disks. Replace disks early when SMART warns, and test your restores.
+12. **An NVMe drive runs at reduced PCIe width or speed.** Reseat the drive, check the BIOS lanes and the cabling, and compare `LnkSta` to `LnkCap`.
+13. **An NVMe drive throttles or errors silently.** Check `nvme smart-log` for `critical_warning`, temperature and `media_errors`. Then check the airflow and the firmware.
+14. **Multipath shows duplicate devices, or LVM or the filesystem sits on a single path.** Fix the blacklist and the filter, and build on `/dev/mapper/mpathX`.
+15. **dm-crypt limits NVMe throughput.** The crypto work queue is CPU-bound. Use the hardware features, adjust the queue flags, or encrypt in the application or the hardware.
+16. **An NVMe-oF connection loss leaves hung processes behind.** Tune `ctrl_loss_tmo`, monitor the paths, and expect processes in `D` state.
+17. **`%util` reads 100% on NVMe, so you conclude the disk is saturated.** Check the queue depth and the bandwidth before you decide (chapter 1.12).
+18. **A benchmark destroys data.** A write test points at a raw device that holds data. Use files on a fresh filesystem, or the `--readonly` option.
+19. **The cache hit rate is 0% in every epoch.** The file names do not match, the cache directory does not persist across restarts, or evictions outpace insertions.
+20. **A checkpoint copy failed silently after the local copy was deleted.** Verify checksums before you delete anything, and keep an older durable checkpoint.
+
+Pick the item that matches your symptom, and check its first step before you change anything else.
 
 ## Hands-on lab: LVM, RAID, NVMe, and VM drills
 
-First, run the self-checking Python lab (`code/part01/lvm_raid_nvme_lab.py`) locally. It verifies `dmsetup table` linear sector translation, `/dev/mapper/VG-LV` hyphen doubling, RAID 0/1/5/6/10 usable capacity and small-write parity I/O penalties, `nvme smart-log` health alerts, and 50%-target-utilization disk sizing.
+Reading about LVM and RAID only goes so far. You learn them when you run the commands and check each result against what you expect. Run these drills on a disposable VM or on loop devices, so that a mistake costs you nothing. Start with the self-checking Python lab, which runs locally. It verifies `dmsetup table` linear sector translation, `/dev/mapper/VG-LV` hyphen doubling, RAID 0/1/5/6/10 usable capacity and small-write parity I/O penalties, `nvme smart-log` health alerts, and 50%-target-utilization disk sizing.
 
 ```bash
 python3 code/part01/lvm_raid_nvme_lab.py
 ```
 
-Next, on a disposable GCP Ubuntu VM using loop devices (all interactive VM commands below are `untested here`), work through these steps:
+Next, on a disposable GCP Ubuntu VM that uses loop devices, work through these steps. Every interactive VM command below is `untested here`.
 
 **A. Create four loop "disks".**
 
@@ -564,7 +619,7 @@ echo check | sudo tee /sys/block/md0/md/sync_action; cat /sys/block/md0/md/misma
 sudo umount /mnt/lv1; sudo mdadm --stop /dev/md0 # (untested here)
 ```
 
-(L3 was used above by the VG; free it first with `vgreduce`/`pvremove`, or use fresh loop devices for this step.)
+L3 was used by the VG above. Free it first with `vgreduce` and `pvremove`, or use fresh loop devices for this step.
 
 **E. RAID 0 and a stripe-aware XFS.**
 
@@ -604,7 +659,7 @@ cat /proc/pressure/io                   # (untested here)
 sudo biolatency 10 1 2>/dev/null || echo "install bpfcc-tools / bcc" # (untested here)
 ```
 
-Compare the IOPS and latency percentiles at queue depth 1 and at depth 64 x 4 jobs. Which would a single synchronous reader experience? What does `%util` show in each case?
+Compare the IOPS and the latency percentiles at queue depth 1 with those at depth 64 across 4 jobs. Which of the two would a single synchronous reader experience? What does `%util` show in each case?
 
 **I. cgroup I/O limit (cgroup v2).**
 
@@ -617,6 +672,8 @@ sudo systemd-run --scope -p IOReadBandwidthMax="/tmp 10M" dd if=/tmp/fio.dat of=
 ```bash
 sudo vgremove -f labvg 2>/dev/null; for d in /dev/loop*; do sudo losetup -d $d 2>/dev/null; done; sudo rm -f /tmp/d?.img /tmp/fio.dat # (untested here)
 ```
+
+Finish by removing the test devices, as in step J, so that nothing is left behind.
 
 ## Exercises
 
@@ -632,121 +689,121 @@ sudo vgremove -f labvg 2>/dev/null; for d in /dev/loop*; do sudo losetup -d $d 2
 <details>
 <summary>1. Define PV, VG, PE, and LV, and explain how LVM's user-space tools and the kernel's device mapper (`devmapper`) divide the work.</summary>
 
-A Physical Volume (`PV`) is a disk or partition initialized with an LVM metadata header; a Volume Group (`VG`) pools one or more PVs and slices them into Physical Extents (`PE`s, default `4 MiB`); and a Logical Volume (`LV`) is a virtual block device carved from the VG's extents. LVM's user-space tools scan PVs, read metadata, and compute extent mappings, then program the kernel's **device mapper** (`/dev/mapper/control`) to route sector requests from `/dev/dm-N` to the physical disks.
+A Physical Volume (`PV`) is a disk or partition with an LVM metadata header. A Volume Group (`VG`) pools one or more PVs and cuts them into Physical Extents (`PE`s, default `4 MiB`). A Logical Volume (`LV`) is a virtual block device carved out of the VG's extents. LVM's user-space tools scan the PVs, read the metadata and work out the extent mappings. Then they program the kernel's **device mapper** (`/dev/mapper/control`) to route sector requests from `/dev/dm-N` to the physical disks.
 </details>
 
 <details>
 <summary>2. Why does LVM create `/dev/VG/LV` and `/dev/mapper/VG-LV` symlinks instead of having you mount `/dev/dm-0`, and why are internal dashes doubled?</summary>
 
-Kernel `/dev/dm-0`, `/dev/dm-1` numbers are assigned in activation order and can change across reboots. `udev` creates persistent symlinks using the VG and LV names; in `/dev/mapper/VG-LV`, any hyphen inside the VG or LV name is doubled (`ubuntu--vg-root`) so the single hyphen unambiguously separates the VG from the LV.
+The kernel numbers `/dev/dm-0`, `/dev/dm-1` and so on in activation order, so the numbers can change across reboots. `udev` creates stable symlinks from the VG and LV names. In `/dev/mapper/VG-LV`, any hyphen inside the VG or LV name is doubled, as in `ubuntu--vg-root`. That way, the single hyphen can only mean the boundary between the VG and the LV.
 </details>
 
 <details>
 <summary>3. What is the difference between `lvextend -L +20G` and `lvextend -r -L +20G`, and why is shrinking an LV dangerous?</summary>
 
-`lvextend -L +20G` grows only the block device (LV) while leaving the filesystem at its old size (`df` unchanged); adding `-r` (`--resizefs`) also invokes `fsadm` (`resize2fs` or `xfs_growfs`) to grow the filesystem online. Shrinking is dangerous because reducing the LV before shrinking the filesystem slices off live filesystem blocks (and `XFS` cannot be shrunk at all).
+`lvextend -L +20G` grows only the block device, so the filesystem keeps its old size and `df` does not change. Adding `-r` (`--resizefs`) also calls `fsadm`, which runs `resize2fs` or `xfs_growfs` to grow the filesystem online. Shrinking is dangerous because if you reduce the LV before the filesystem, you slice off live filesystem blocks. XFS cannot be shrunk at all.
 </details>
 
 <details>
 <summary>4. How do you replace a failing disk in a Volume Group online without downtime, and why must `lvremove` use `VG/LV` with a slash?</summary>
 
-Add the replacement disk to the VG (`sudo vgextend myvg /dev/sdc1`), migrate all allocated extents off the old disk online (`sudo pvmove /dev/sdb1`), remove the old PV from the VG (`sudo vgreduce myvg /dev/sdb1`), and wipe its PV label (`sudo pvremove /dev/sdb1`). In `lvremove myvg/mylv2`, typing a space (`lvremove myvg mylv2`) tells LVM to delete *every* LV in `myvg`.
+Add the new disk to the VG with `sudo vgextend myvg /dev/sdc1`. Move every allocated extent off the old disk, online, with `sudo pvmove /dev/sdb1`. Take the old PV out of the VG with `sudo vgreduce myvg /dev/sdb1`, then wipe its PV label with `sudo pvremove /dev/sdb1`. In `lvremove myvg/mylv2`, the slash marks the LV. If you type a space, as in `lvremove myvg mylv2`, LVM deletes *every* LV in `myvg`.
 </details>
 
 <details>
 <summary>5. How do classic copy-on-write LVM snapshots and LVM thin pools (`--thinpool`) work, and what happens if either reaches 100% full?</summary>
 
-A classic CoW snapshot copies original blocks into a fixed-size snapshot area whenever the origin LV is written; if the snapshot area hits 100%, the snapshot is permanently invalidated and dropped. A thin pool allocates blocks on demand across over-provisioned thin volumes and cheap snapshots; if the pool's `Data%` or `Meta%` reaches 100% without auto-extension, writes hang or corrupt the volumes.
+A classic copy-on-write snapshot copies the original blocks into a fixed-size snapshot area each time the origin LV is written. If that area reaches 100%, the snapshot is permanently invalidated and dropped. A thin pool hands out blocks on demand to over-provisioned thin volumes, and its snapshots are cheap. If the pool's `Data%` or `Meta%` reaches 100% without auto-extension, writes hang or the volumes become corrupt.
 </details>
 
 <details>
 <summary>6. Read the `dmsetup table` line `myvg-mylv1: 0 20971520 linear 8:33 2048` and name five other device-mapper target types.</summary>
 
-It maps logical sectors `0` through `20,971,519` (`10 GiB` in 512-byte sectors) of `/dev/mapper/myvg-mylv1` linearly onto underlying block device `8:33` starting at sector `2048`. Other `dm` targets include `striped`, `raid`, `thin`/`thin-pool`, `crypt` (`dm-crypt`/LUKS), `multipath`, `cache`/`writecache`, `verity`, and `error`.
+The line maps logical sectors `0` through `20,971,519` of `/dev/mapper/myvg-mylv1` in a straight line onto the block device `8:33`, starting at sector `2048`. Those sectors add up to `10 GiB` in 512-byte units. Other device-mapper targets include `striped`, `raid`, `thin`/`thin-pool`, `crypt` (`dm-crypt`/LUKS), `multipath`, `cache`/`writecache`, `verity` and `error`.
 </details>
 
 <details>
 <summary>7. How do `dm-crypt` / LUKS and `dm-multipath` (`multipathd`) fit into the storage stack, and what is the golden rule for multipath + LVM?</summary>
 
-`cryptsetup open` creates an encrypted `/dev/mapper/<name>` block device via `dm-crypt`. `multipathd` groups multiple physical HBA/switch paths (`sdb`, `sdc`) sharing the same storage `WWID` into a single `/dev/mapper/mpathX` device. Always create filesystems and LVM PVs on `/dev/mapper/mpathX` (never on component paths `sdb`/`sdc`), and filter component paths out in `lvm.conf`.
+`cryptsetup open` creates an encrypted `/dev/mapper/<name>` device through `dm-crypt`. `multipathd` takes several physical paths, such as `sdb` and `sdc`, that share one storage `WWID`, and combines them into a single `/dev/mapper/mpathX` device. The golden rule is to create filesystems and LVM PVs on `/dev/mapper/mpathX`, and never on the component paths `sdb` or `sdc`. Filter the component paths out in `lvm.conf`.
 </details>
 
 <details>
 <summary>8. Compare RAID 0, RAID 1, RAID 5, RAID 6, and RAID 10 across capacity, fault tolerance, and small-write I/O penalty.</summary>
 
-`RAID 0`: `N` drives capacity, `0` fault tolerance, `1` I/O per write. `RAID 1`: `1` drive capacity, `N-1` fault tolerance, `2` I/Os per write (for a 2-way mirror). `RAID 5`: `N-1` capacity, `1` drive tolerance, `4` I/Os per small write (read old data + read old parity + write new data + write new parity). `RAID 6`: `N-2` capacity, `2` drive tolerance, `6` I/Os per small write. `RAID 10`: `N/2` capacity, `1` drive per mirror pair, `2` I/Os per write.
+RAID 0 gives you `N` drives of capacity, `0` drives of fault tolerance, and `1` I/O per write. RAID 1 gives one drive of capacity, `N-1` drives of tolerance, and `2` I/Os per write for a two-way mirror. RAID 5 gives `N-1` capacity, tolerates `1` drive, and needs `4` I/Os per small write: read the old data, read the old parity, write the new data, write the new parity. RAID 6 gives `N-2` capacity, tolerates `2` drives, and needs `6` I/Os per small write. RAID 10 gives `N/2` capacity, tolerates one drive per mirror pair, and needs `2` I/Os per write.
 </details>
 
 <details>
 <summary>9. What is the RAID "write hole", why are RAID 5 rebuilds risky on large disks, and why is RAID not a backup?</summary>
 
-The write hole is a power loss between updating a data block and updating its parity block, leaving the stripe inconsistent (mitigated by `--bitmap=internal`, a journal device, or CoW RAID). On multi-terabyte drives, rebuilding a degraded RAID 5 array reads every sector of all surviving drives for hours or days, risking a second drive failure or unrecoverable read error (`URE`). RAID only tolerates drive hardware failure; it replicates `rm -rf`, filesystem corruption, and ransomware instantly.
+The write hole happens when power is lost between the data write and the parity write, which leaves the stripe inconsistent. You can mitigate it with `--bitmap=internal`, a journal device, or a copy-on-write RAID. On multi-terabyte drives, a degraded RAID 5 rebuild reads every sector of every surviving drive. That can take hours or days, and it risks a second drive failure or an unrecoverable read error (`URE`). RAID only protects you from drive hardware failure. It copies `rm -rf`, filesystem corruption and ransomware to every disk at once.
 </details>
 
 <details>
 <summary>10. Write the `mdadm` commands to create a 4-NVMe RAID 0 scratch array, persist it across reboots, and trigger a monthly parity/mirror scrub.</summary>
 
-Create: `sudo mdadm --create /dev/md0 --level=0 --raid-devices=4 --chunk=256K /dev/nvme[1-4]n1`. Persist: `sudo mdadm --detail --scan | sudo tee -a /etc/mdadm/mdadm.conf` followed by `sudo update-initramfs -u` (or `sudo dracut -f`) so it does not reassemble as `/dev/md127`. Scrub a redundant array (`md1`) with `echo check | sudo tee /sys/block/md1/md/sync_action` and check `/sys/block/md1/md/mismatch_cnt`.
+To create the array, run `sudo mdadm --create /dev/md0 --level=0 --raid-devices=4 --chunk=256K /dev/nvme[1-4]n1`. To persist it, append the output of `sudo mdadm --detail --scan` to `/etc/mdadm/mdadm.conf` with `tee -a`, then run `sudo update-initramfs -u` (or `sudo dracut -f`). That stops the array from coming back as `/dev/md127`. To scrub a redundant array, such as `md1`, run `echo check | sudo tee /sys/block/md1/md/sync_action`, then read `/sys/block/md1/md/mismatch_cnt` to see the result.
 </details>
 
 <details>
 <summary>11. How do NVMe controllers, namespaces, and per-CPU queues work, and why is the `none` I/O scheduler used for NVMe?</summary>
 
-An NVMe controller (`/dev/nvme0`) manages one or more storage namespaces (`/dev/nvme0n1`) over PCIe using up to `64,000` queue pairs (`64,000` commands deep). Linux's `blk-mq` layer binds one submission/completion queue pair per CPU core with dedicated MSI-X interrupts and no shared lock. Because the drive hardware arbitrates deep parallel queues directly, the `none` scheduler avoids software reordering overhead.
+An NVMe controller, such as `/dev/nvme0`, manages one or more namespaces, such as `/dev/nvme0n1`. It talks over PCIe through up to `64,000` queue pairs, each `64,000` commands deep. Linux's `blk-mq` layer gives each CPU core its own submission and completion queue pair, with dedicated MSI-X interrupts and no shared lock. The drive hardware already arbitrates those deep parallel queues, so the `none` scheduler skips the software reordering and its overhead.
 </details>
 
 <details>
 <summary>12. Which fields in `sudo nvme smart-log /dev/nvme0` must be monitored across a GPU fleet?</summary>
 
-Monitor `critical_warning` (must be `0`), `media_errors` and `num_err_log_entries` (must be `0` or non-rising), `percentage_used` (endurance wear against rated TBW/DWPD), `available_spare` vs `available_spare_threshold`, `temperature` and warning/critical temperature time (thermal throttling), and `unsafe_shutdowns`.
+Watch `critical_warning`, which must stay at `0`. `media_errors` and `num_err_log_entries` must stay at `0`, or at least must not keep rising. `percentage_used` shows the wear against the rated TBW or DWPD. Compare `available_spare` with `available_spare_threshold`. Track `temperature` and the time spent at warning and critical temperatures, since that reveals thermal throttling. Finally, watch `unsafe_shutdowns`.
 </details>
 
 <details>
 <summary>13. How does NVMe over Fabrics (`NVMe-oF`) work over RDMA or TCP?</summary>
 
-An NVMe-oF target exports storage subsystems identified by an `NQN` (*NVMe Qualified Name*). A Linux host loads `nvme-rdma` (or `nvme-tcp`), discovers subsystems via `sudo nvme discover -t rdma -a 10.0.0.5 -s 4420`, and attaches remote namespaces as local `/dev/nvmeXnY` block devices via `sudo nvme connect -t rdma -n <NQN> -a 10.0.0.5 -s 4420`, using native NVMe multipath (`nvme list-subsys`) across redundant fabric paths.
+An NVMe-oF target exports storage subsystems, each identified by an `NQN` (*NVMe Qualified Name*). The Linux host loads `nvme-rdma` or `nvme-tcp`, then discovers the subsystems with `sudo nvme discover -t rdma -a 10.0.0.5 -s 4420`. It attaches the remote namespaces as local `/dev/nvmeXnY` block devices with `sudo nvme connect -t rdma -n <NQN> -a 10.0.0.5 -s 4420`. Redundant fabric paths are handled by native NVMe multipath. If you want to see the paths, run `nvme list-subsys`, which shows you what the host is connected to.
 </details>
 
 <details>
 <summary>14. In Gregg's disk performance methodology (`SP` Chapter 9), what is the difference between utilization and saturation, and why is `wa` (I/O wait) misleading?</summary>
 
-**Utilization** (`%util`) is the fraction of time at least one request was on the device; **saturation** (`aqu-sz`) is work queued beyond what the device can service immediately. `wa` (CPU I/O wait) measures idle CPU time while at least one thread is blocked on disk I/O—starting an unrelated CPU-bound process makes `wa` drop even though the disk bottleneck has not changed.
+Utilization (`%util`) is the fraction of time that at least one request was on the device. Saturation (`aqu-sz`) is the work queued beyond what the device can service right away. `wa` (CPU I/O wait) measures idle CPU time while at least one thread is blocked on disk I/O. It is misleading because starting an unrelated CPU-bound process makes `wa` drop, even though the disk bottleneck has not changed.
 </details>
 
 <details>
 <summary>15. Why should disk capacity be scaled to a target utilization of `~50%` rather than `100%`, and why check controller/bus limits in the USE method?</summary>
 
-Above `~60%` average disk utilization, bursty arrivals create queueing delays (`await` spikes nonlinearly as utilization approaches `100%`). In the USE method, checking controller IOPS/throughput ceilings and PCIe lane widths (`x4` Gen4 `~7 GB/s`, Gen5 `~14 GB/s`) catches cases where individual drives are fine but the HBA or PCIe switch is saturated.
+Above about `60%` average disk utilization, bursty arrivals create queueing delays. The `await` figure spikes non-linearly as utilization approaches `100%`. In the USE method, checking the controller's IOPS and throughput ceilings, and the PCIe lane widths, catches a case where each drive is fine but the HBA or PCIe switch is saturated. For reference, an x4 Gen4 link gives about `7 GB/s`, and an x4 Gen5 link about `14 GB/s`.
 </details>
 
 <details>
 <summary>16. Contrast `fio` at `--iodepth=1` versus `--iodepth=64 --numjobs=4`, and explain why `ioping` is safe on live production disks.</summary>
 
-`fio --iodepth=1` measures unloaded single-request latency and the IOPS a single synchronous reader achieves (`~80,000` IOPS), whereas `--iodepth=64 --numjobs=4` drives parallel hardware queues to measure peak device throughput (`~1,000,000` IOPS). `ioping -c 10` issues only one `4 KiB` probe per second (`~0.4%` utilization), measuring live device latency without disturbing production jobs.
+`fio --iodepth=1` measures the latency of one unloaded request, and the IOPS a single synchronous reader gets, about `~80,000`. `--iodepth=64 --numjobs=4` fills the parallel hardware queues, so it measures peak throughput, about `~1,000,000` IOPS. `ioping -c 10` sends just one `4 KiB` probe per second, which costs about `~0.4%` utilization. That measures live latency without disturbing production jobs.
 </details>
 
 <details>
 <summary>17. How do `biolatency`, `biosnoop`, `biostacks`, and `blktrace` complement `iostat -xz`?</summary>
 
-`iostat -xz` gives per-second averages (`r_await`, `w_await`, `aqu-sz`), which hide bimodal cache-hit vs miss distributions. `biolatency` plots a block-I/O latency histogram per device; `biosnoop` logs every individual block I/O with process PID, sector, and latency; `biostacks` records the kernel/user call stack that issued slow I/Os; and `blktrace` traces queueing, merging, and completion inside the block layer.
+`iostat -xz` gives per-second averages, such as `r_await`, `w_await` and `aqu-sz`. Averages hide bimodal distributions, where cache hits and misses look very different. `biolatency` draws a histogram of block I/O latency for each device. `biosnoop` logs every block I/O with its process PID, sector and latency. `biostacks` records the kernel and user call stack that issued the slow I/Os. `blktrace` traces queueing, merging and completion inside the block layer.
 </details>
 
 <details>
 <summary>18. How do you throttle a noisy container's or cgroup's disk bandwidth and IOPS under `cgroup v2`?</summary>
 
-Write device major:minor limits to `io.max` (for example `echo "259:0 rbps=200M wbps=100M riops=10000 wiops=5000" > /sys/fs/cgroup/job/io.max`), or set `IOReadBandwidthMax=`, `IOWriteBandwidthMax=`, and `IOWeight=` on the `systemd` unit/scope.
+Write per-device major:minor limits to `io.max`. For example, `echo "259:0 rbps=200M wbps=100M riops=10000 wiops=5000" > /sys/fs/cgroup/job/io.max` sets read and write bandwidth and IOPS caps. Alternatively, set `IOReadBandwidthMax=`, `IOWriteBandwidthMax=` and `IOWeight=` on the systemd unit or scope.
 </details>
 
 <details>
 <summary>19. Trace the 8 layers of the AI storage-to-GPU data path and explain how to find why a training job gets `150 MB/s` on a `3.5 GB/s` NVMe.</summary>
 
-The 8 layers are: (1) storage media, (2) controller queue, (3) network fabric, (4) client filesystem, (5) page cache, (6) CPU memory/NUMA, (7) PCIe bus, and (8) GPU `HBM`. Test from the bottom up (`fio --direct=1` on the raw NVMe, then on a file, then through the data loader): if `fio` gets `3.5 GB/s` and the job gets `150 MB/s`, the bottleneck is above the disk—typically small random file reads, too few `DataLoader` workers, wrong NUMA node binding, or CPU-bound JPEG/tokenization decoding.
+The eight layers are: (1) storage media, (2) controller queue, (3) network fabric, (4) client filesystem, (5) page cache, (6) CPU memory and NUMA, (7) PCIe bus, and (8) GPU `HBM`. Test from the bottom up. Run `fio --direct=1` on the raw NVMe, then on a file, then through the data loader. If `fio` reaches `3.5 GB/s` but the job gets `150 MB/s`, the bottleneck is above the disk. The usual suspects are small random file reads, too few `DataLoader` workers, a wrong NUMA node binding, or CPU-bound JPEG or tokenization decoding.
 </details>
 
 <details>
 <summary>20. When should you stage datasets and checkpoints onto node-local NVMe RAID 0, and what are the cache-correctness and durability rules?</summary>
 
-Stage datasets on local NVMe when shared storage bandwidth or metadata is the bottleneck and the dataset fits on local flash across multiple epochs (`~0%` hit rate in Epoch 1, `> 95%` in Epochs `2..N`). Stage checkpoints locally to shrink synchronous training stalls from minutes to seconds, then copy asynchronously to shared/object storage—always verifying checksums before deleting the local copy and keeping at least one older durable checkpoint in case the node dies before upload finishes.
+Stage datasets on local NVMe when shared storage bandwidth or metadata is the bottleneck, and the dataset fits on local flash across several epochs. You should see about `~0%` hit rate in Epoch 1, and above `> 95%` in Epochs `2..N`. Stage checkpoints locally to cut the synchronous stall from minutes to seconds, then copy them asynchronously to shared or object storage. Always verify checksums before you delete the local copy, because you cannot get it back afterwards. Keep at least one older durable checkpoint, in case the node dies before the upload finishes.
 </details>
 
 ## Sources and review notes

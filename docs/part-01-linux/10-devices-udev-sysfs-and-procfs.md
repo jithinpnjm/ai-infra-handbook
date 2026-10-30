@@ -22,47 +22,51 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-An AI node is a pile of devices: eight GPUs, several InfiniBand or RoCE NICs, NVMe drives, NVSwitch chips, a BMC, a PCIe switch tree, sensors, and the CPUs and memory banks they hang off. Almost every operational question about such a node is a device question:
+Picture a node that will not show all of its GPUs, or a job that suddenly runs slowly. Both are device problems, and you can only fix them if you know how Linux presents hardware. An AI node is a pile of devices. It has eight GPUs, several InfiniBand or RoCE NICs, NVMe drives, NVSwitch chips, a BMC, a PCIe switch tree, sensors, and the CPUs and memory banks they hang off. Almost every operational question about such a node is a device question:
 
 - "Which `/dev/nvidia*` files should this container get, and why did it not see them?"
-- "Which GPU is next to which NIC, and which NUMA node are they on?" (the topology that decides NCCL performance)
-- "Why did the GPU disappear after reboot, or fall off the PCIe bus?" (driver binding, kernel messages, link state)
-- "Why is `/dev/sdb` now `/dev/sdc`?" (naming order, and why you never put those names in `fstab`)
-- "How do I give a service access to a device without making it world-writable?" (udev rules, groups)
-- "Where do I read a temperature, a PCIe link width, an InfiniBand port state or a VF count?" (sysfs)
-- "How do I change a kernel parameter and make it survive reboot?" (procfs, sysctl)
+- "Which GPU is next to which NIC, and which NUMA node are they on? That topology decides NCCL performance."
+- "Why did the GPU disappear after reboot, or fall off the PCIe bus? Driver binding, kernel messages and link state hold the answer."
+- "Why is `/dev/sdb` now `/dev/sdc`? Naming order is the cause, and it is why you never put those names in `fstab`."
+- "How do I give a service access to a device without making it world-writable? Use udev rules and groups."
+- "Where do I read a temperature, a PCIe link width, an InfiniBand port state or a VF count? Look in sysfs."
+- "How do I change a kernel parameter and make it survive reboot? Use procfs and sysctl."
 
-Linux answers all of these through a handful of consistent interfaces: **device files** in `/dev`, **sysfs** in `/sys`, **procfs** in `/proc`, and **udev** (the user-space daemon that turns kernel hardware events into device files, permissions, names and actions). This chapter explains each, shows the tools that read them (`lsblk`, `lspci`, `lsusb`, `lscpu`, `lsscsi`, `udevadm`, `dmesg`, `dmidecode`, `sysctl`), and applies them to GPU nodes and containers. The device-driver side (loading modules, DKMS) is chapter 1.22; filesystems on block devices are chapter 1.12; SR-IOV/VFIO builds on the PCI material here in the virtualisation chapters.
+Linux answers all of these with a few consistent interfaces. The first is the device files in `/dev`. The second is sysfs in `/sys`, and the third is procfs in `/proc`. The fourth is udev, the user-space daemon that turns kernel hardware events into device files, permissions, names and actions.
+
+This chapter explains each one. It shows the tools that read them, including `lsblk`, `lspci`, `lsusb`, `lscpu`, `lsscsi`, `udevadm`, `dmesg`, `dmidecode` and `sysctl`. Then it applies them to GPU nodes and containers. The device-driver side, which covers loading modules and DKMS, is chapter 1.22. Filesystems on block devices are chapter 1.12. SR-IOV and VFIO build on the PCI material here, and you will meet them in the virtualisation chapters.
 
 ## Prerequisites and outcomes
 
-You should know the shell (1.2), file types and permissions (1.3, 1.6), processes and `/proc` basics (1.8) and have the kernel/user-space picture from 1.1.
+Before you start, you should be comfortable at the shell (1.2) and with file types and permissions (1.3, 1.6). You should also know processes and the `/proc` basics (1.8), and have the kernel and user-space picture from 1.1.
 
-After this chapter you can:
+When you finish this chapter, you will be able to do the following:
 
-- Explain what a device file is (type, major and minor numbers), read `ls -l /dev` output, and create a node with `mknod` (and say why you rarely should).
-- Distinguish block, character, pipe and socket files and name common device families (`sd*`, `nvme*`, `dm-*`, `tty*`, `pts/*`, `nvidia*`, `infiniband/*`).
-- Navigate `/sys` to find a device's real hardware path, attributes, driver, NUMA node and links, and read or set tunables there.
-- Use `/proc` for system and per-process information and `sysctl` (with persistent configuration) for kernel parameters.
-- Explain the udev event flow, read and write a rule, and debug it with `udevadm` (`info`, `monitor`, `test`, `trigger`, `control --reload`).
-- Use stable device names (`by-id`, `by-path`, `by-uuid`, `by-label`) instead of enumeration-order names.
-- Inventory hardware with `lspci`, `lsusb`, `lsblk`, `lscpu`, `lsscsi`, `dmidecode`, `lshw`, `ethtool`, `nvidia-smi`.
+- Explain what a device file is, including its type and its major and minor numbers. You should be able to read `ls -l /dev` output and create a node with `mknod`, and you should know why you rarely should.
+- Tell block, character, pipe and socket files apart, and name the common device families: `sd*`, `nvme*`, `dm-*`, `tty*`, `pts/*`, `nvidia*` and `infiniband/*`.
+- Navigate `/sys` to find a device's real hardware path, its attributes, its driver, its NUMA node and its links. You should be able to read or set tunables there.
+- Use `/proc` for system and per-process information, and use `sysctl`, with persistent configuration, for kernel parameters.
+- Explain the udev event flow and read and write a rule. You can debug it with `udevadm` subcommands: `info`, `monitor`, `test`, `trigger` and `control --reload`.
+- Use stable device names, such as `by-id`, `by-path`, `by-uuid` and `by-label`, instead of names that depend on enumeration order.
+- Inventory hardware with `lspci`, `lsusb`, `lsblk`, `lscpu`, `lsscsi`, `dmidecode`, `lshw`, `ethtool` and `nvidia-smi`.
 - Describe how the SCSI, ATA, USB and NVMe stacks fit together in the kernel.
-- Apply all this to GPU, InfiniBand and container device passthrough, and read GPU/NIC topology.
+- Apply all of this to GPU, InfiniBand and container device passthrough, and read GPU and NIC topology.
 
 ## 1. Device files: hardware as files
 
-Unix exposes most hardware through the same file interface used for ordinary files. A **device file** (also called a **device node**) lives in `/dev` and looks like a file, but opening it makes the kernel hand your reads and writes to a **device driver** instead of a disk filesystem. You can see this with the simplest example:
+Unix exposes most hardware through the same file interface you use for ordinary files. A device file lives in `/dev` and looks like any other file. When you open it, though, the kernel hands your reads and writes to a device driver instead of a disk filesystem. The simplest way to see this is with the null device:
 
 ```bash
 echo blah > /dev/null      # the kernel's null driver accepts and discards the data
 ```
 
-The kernel presents the device files as a convenience: any program that can read and write files can talk to many devices, and some devices can be used with ordinary tools (`cat`, `dd`, `less`). But a plain read/write interface cannot express everything a device can do; the rest goes through the `ioctl` system call (as the NVIDIA driver does) or through `sysfs` attributes.
+The data vanishes, and no error comes back. The null driver accepts everything and keeps nothing.
+
+Device files are a convenience. Any program that can read and write files can talk to many devices, and some devices work with ordinary tools such as `cat`, `dd` and `less`. A plain read and write interface cannot express everything a device can do, though. The rest goes through the `ioctl` system call, as the NVIDIA driver does, or through `sysfs` attributes.
 
 ### Types and numbers
 
-`ls -l` shows the file type as the first character of the mode:
+Start with `ls -l`. The first character of the mode tells you the file type:
 
 ```text
 brw-rw---- 1 root disk 8, 1 Sep  6 08:37 /dev/sda1
@@ -72,6 +76,8 @@ prw-r--r-- 1 root root    0 Mar  3 19:17 /run/fifo
 srw-rw-rw- 1 root root    0 Dec 18 07:43 /dev/log
 ```
 
+Four types appear in that output, and each one behaves differently. Disks use the block type. The GPU node `/dev/nvidia0` in the listing is a character device.
+
 | First char | Type | Meaning |
 |---|---|---|
 | `b` | **Block device** | Data is accessed in fixed-size blocks, with random access by block number; the kernel can cache and reorder it. Disks, partitions, loop devices, device-mapper volumes. |
@@ -79,17 +85,21 @@ srw-rw-rw- 1 root root    0 Dec 18 07:43 /dev/log
 | `p` | Named pipe (FIFO) | Like a pipe, but with a name: another process is at the other end, not a driver. |
 | `s` | Unix domain socket | An inter-process communication endpoint (`/dev/log`, `/run/docker.sock`). Usually found outside `/dev`. |
 
-For block and character devices, the two numbers where a file size would be are the **major** and **minor** device numbers (`8, 1` for `/dev/sda1`). The kernel identifies the device by these numbers, **not by the file name**: the major number selects the driver (class) and the minor number selects the instance within it (for a disk, 0 is the whole disk and 1, 2, ... partitions; a second disk has a different major or a different block of minors). The file in `/dev` is just a labelled pointer, with ordinary owner, group and permission bits that control who may use the device. The drivers currently loaded and their major numbers are listed in `/proc/devices`.
+For block and character devices, the two numbers where a file size would normally be are the **major** and **minor** device numbers. For example, `8, 1` identifies `/dev/sda1`. The kernel identifies a device by these numbers, not by its file name. The major number selects the driver, which is the device class. The minor number selects the instance within that driver. For a disk, minor 0 is the whole disk, and minors 1, 2 and so on are its partitions. A second disk gets a different major number or a different block of minors. The file in `/dev` is only a labelled pointer. Its owner, group and permission bits decide who may use the device. You can see the loaded drivers and their major numbers in `/proc/devices`.
 
-Network interfaces are the notable exception: they have **no device file** (`eth0`, `ens3`, `ib0` are not in `/dev`); the kernel offers them through the socket API and netlink instead.
+Network interfaces are the notable exception. `eth0`, `ens3` and `ib0` have no device file, so they are not in `/dev`. The kernel offers them through the socket API and netlink instead.
 
 ### Naming: why enumeration order is a trap
 
-Traditional names such as `/dev/sda`, `/dev/sdb` are assigned in the order the kernel's drivers find devices, which can differ between boots or after a disk is added or fails. If three disks are `sda`, `sdb`, `sdc` and `sdb` fails, the old `sdc` becomes `sdb`; an `fstab` entry that said `/dev/sdb1` now mounts the wrong disk (or none). So **never write `sdX` names in persistent configuration**. Use stable identifiers: the filesystem **UUID** or **label** (`UUID=...`, covered in chapter 1.12), a **LVM or device-mapper** name (`/dev/mapper/vg-lv`), or the persistent symbolic links that udev creates under `/dev/disk/` (section 6). The same applies to network interface names (modern systems use predictable names like `enp3s0`) and, for GPUs, `nvidia0`/`nvidia1` indices, which can be reordered: refer to GPUs by **UUID** (`nvidia-smi -L` prints it) or **PCI bus ID** when it matters.
+Traditional names such as `/dev/sda` and `/dev/sdb` are assigned in the order the kernel's drivers find devices. That order can change between boots, or after a disk is added or fails. Suppose three disks are `sda`, `sdb` and `sdc`, and `sdb` fails. The old `sdc` becomes `sdb`. An `fstab` entry that said `/dev/sdb1` now mounts the wrong disk, or none at all.
+
+So never write `sdX` names in persistent configuration. Use stable identifiers instead. The filesystem UUID or label works well, as in `UUID=...`, which chapter 1.12 covers. An LVM or device-mapper name such as `/dev/mapper/vg-lv` also works. You can also use the persistent symbolic links that udev creates under `/dev/disk/` (section 6).
+
+The same idea applies to network interfaces. Modern systems use predictable names such as `enp3s0`. GPUs need care too. The `nvidia0` and `nvidia1` indices can be reordered, so refer to a GPU by its UUID, which `nvidia-smi -L` prints, or by its PCI bus ID when it matters.
 
 ### Creating device files
 
-On a modern system you do not create device nodes by hand: the kernel (through **devtmpfs**) and udev do it. For understanding, and for rare cases (a minimal container, a rescue environment), `mknod` creates one:
+On a modern system you do not create device nodes by hand. The kernel does it through devtmpfs, and udev does the rest. For understanding, and for rare cases such as a minimal container or a rescue environment, `mknod` creates one:
 
 ```bash
 sudo mknod /tmp/mynull c 1 3        # character device, major 1, minor 3 (same as /dev/null)
@@ -97,11 +107,11 @@ sudo mknod /tmp/myfifo p            # a named pipe needs no numbers (mkfifo does
 sudo chmod 666 /tmp/mynull && echo test > /tmp/mynull
 ```
 
-Historically `/dev` was populated by a `MAKEDEV` script and then by a kernel-space `devfs`; both were replaced by the current design because device management does not belong in the kernel: a user-space daemon can apply policy (names, permissions, actions) with far less risk. Mounting a filesystem with the **`nodev`** option makes device files on it inert, a standard security hardening for `/home`, `/tmp` and removable media (otherwise a user could create a node for the raw disk).
+Older systems filled `/dev` with a `MAKEDEV` script and later with a kernel-space `devfs`. The current design replaced both, because device management does not belong in the kernel. A user-space daemon can apply policy, such as names, permissions and actions, with far less risk. Mounting a filesystem with the **`nodev`** option makes device files on it inert. That is a standard hardening step for `/home`, `/tmp` and removable media. Without it, a user could create a node for the raw disk.
 
 ## 2. The common device files
 
-You will meet these constantly; know the naming convention and what each is.
+You will meet these names constantly, so learn the naming convention, and you will read the table faster. The table is a lookup, so come back to it whenever you meet an unfamiliar name in a log or a script.
 
 | Device file(s) | Meaning |
 |---|---|
@@ -130,13 +140,17 @@ You will meet these constantly; know the naming convention and what each is.
 
 ### Consoles, parallel ports and audio (legacy devices you will still meet)
 
-- **Virtual consoles and display modes (`HLW` Section 3.4.7).** Linux has two primary display modes: text mode and graphical mode (with kernel mode setting, KMS, allowing smooth switching between them), and multiplexes the physical display into virtual consoles `/dev/tty1`, `/dev/tty2`, ... Each virtual console can run in text or graphics mode. In text mode you switch between consoles with **Alt-F1**, **Alt-F2** and so on; leaving a console in graphical mode requires **Ctrl-Alt-F1**, **Ctrl-Alt-F2**, etc. A text login prompt on a console is run by a `getty` process; an Xorg or Wayland graphical session takes over a console (if `getty` runs on `tty1` and `tty2`, graphics takes `tty3`, though many modern distributions place the graphical display manager on `tty1`). If keyboard switching fails, root can force a switch with `chvt 1`. On servers the same idea appears as the **serial console** (`console=ttyS0,115200` on the kernel command line) and the BMC's serial-over-LAN, which is how you reach a node whose network or display is broken (chapter 1.14 and the BMC chapters).
-- **Parallel ports**: `/dev/lp0`, `/dev/lp1` (unidirectional printer ports, LPT1 and LPT2 in Windows) and `/dev/parport0` (bidirectional). Replaced by USB and the network; printing is done through a print server such as CUPS, not by writing to `lp0`.
-- **Audio (`HLW` Section 3.4.9)**: Linux has two sets of audio device nodes: `/dev/snd/*` for the modern **ALSA** (*Advanced Linux Sound Architecture*) subsystem, and the older **OSS** (*Open Sound System*) compatibility devices (`/dev/dsp`, `/dev/audio`). While you can theoretically play a WAV file by redirecting it to `/dev/dsp`, frequency mismatches and direct device contention make raw access impractical; user-space sound servers (`PulseAudio`, `PipeWire`) sit on top of ALSA. Irrelevant on compute nodes, but you will see the names in container images and desktop VMs.
+Some older devices still appear on real systems, and you will see their names in logs, so it helps to recognise them.
+
+**Virtual consoles and display modes (`HLW` Section 3.4.7).** Linux has two primary display modes, text and graphical. Kernel mode setting, or KMS, lets the system switch smoothly between them. The kernel multiplexes the physical display into virtual consoles, such as `/dev/tty1` and `/dev/tty2`, and each console can run in either mode. In text mode, you switch consoles with **Alt-F1**, **Alt-F2** and so on. A console in graphical mode is reached with **Ctrl-Alt-F1**, **Ctrl-Alt-F2** and so on. Each text login prompt is run by a `getty` process. A graphical session, from Xorg or Wayland, takes over a console. For example, if `getty` runs on `tty1` and `tty2`, graphics takes `tty3`. Many modern distributions, however, place the graphical display manager on `tty1`. If keyboard switching fails, root can force a switch with `chvt 1`. Servers use the same idea as a **serial console**, set with `console=ttyS0,115200` on the kernel command line, and as the BMC's serial-over-LAN. That is how you reach a node whose network or display is broken. Chapter 1.14 and the BMC chapters cover the details.
+
+**Parallel ports** are older still. `/dev/lp0` and `/dev/lp1` are unidirectional printer ports, which Windows calls LPT1 and LPT2. `/dev/parport0` is bidirectional. USB and the network replaced these ports. Printing now goes through a print server such as CUPS, not through a direct write to `lp0`.
+
+**Audio (`HLW` Section 3.4.9)** has two sets of device nodes. `/dev/snd/*` belongs to the modern **ALSA** subsystem, which stands for *Advanced Linux Sound Architecture*. The older **OSS** compatibility devices, which stand for *Open Sound System*, are `/dev/dsp` and `/dev/audio`. In theory you could play a WAV file by redirecting it to `/dev/dsp`. In practice, frequency mismatches and contention for the device make raw access impractical. User-space sound servers such as `PulseAudio` and `PipeWire` sit on top of ALSA instead. Compute nodes do not need any of this, but you will see these names in container images and desktop VMs.
 
 ## 3. `dd` and devices
 
-`dd` copies bytes from an input to an output in fixed-size blocks and, unlike most tools, can start and stop at arbitrary points. Its syntax is unusual (an old IBM job-control style): `option=value` instead of `-option`.
+`dd` copies bytes from an input to an output in fixed-size blocks. Unlike most tools, it can start and stop at arbitrary points. Its syntax is unusual, because it follows an old IBM job-control style. You write `option=value` where other tools use `-option`. The table lists the options you will use most. Each one controls where data comes from, how large each block is, or how the copy behaves.
 
 | Option | Meaning |
 |---|---|
@@ -149,6 +163,8 @@ You will meet these constantly; know the naming convention and what each is.
 | `status=progress` | show progress |
 | `iflag=direct`, `oflag=direct` | use direct I/O, bypassing the page cache (needed for honest benchmarks of storage) |
 
+The `bs` option matters most for speed. The `direct` flags matter most for benchmarks, because they bypass the page cache. The examples below show the common uses. The first creates a one-block file. The second runs a crude write-throughput test. The third reads the first sector of a disk, and the last writes an image to a device, which is dangerous.
+
 ```bash
 dd if=/dev/zero of=/tmp/new bs=1k count=1                      # one 1024-byte block of zeros
 dd if=/dev/zero of=/tmp/test bs=1M count=1024 oflag=direct status=progress   # crude write throughput test
@@ -156,11 +172,13 @@ sudo dd if=/dev/sda bs=512 count=1 | xxd | tail -3              # read the first
 sudo dd if=disk.img of=/dev/sdX bs=4M status=progress conv=fsync   # write an image to a device (DANGER)
 ```
 
-**`dd` writes without asking.** A swapped `if=` and `of=`, or the wrong `/dev/sdX`, destroys data instantly; many a boot disk has been overwritten by a typo. Always check the target with `lsblk -o NAME,SIZE,MODEL,MOUNTPOINT`, never run `dd` against a mounted device, and when in doubt write to a file first. For serious benchmarking use `fio` (chapter 1.25); `dd` is only a rough indicator.
+**`dd` writes without asking.** A swapped `if=` and `of=`, or the wrong `/dev/sdX`, destroys data instantly. Many a boot disk has been overwritten by a typo. Always check the target with `lsblk -o NAME,SIZE,MODEL,MOUNTPOINT`. Never run `dd` against a mounted device. When in doubt, write to a file first. For serious benchmarking, use `fio` (chapter 1.25). `dd` gives only a rough indicator.
+
+Check the target every time you run `dd`, and write to a file first whenever you are unsure.
 
 ## 4. sysfs: the kernel's device model as a tree
 
-`/dev` lets programs *use* a device but says little about it. **sysfs**, mounted at `/sys`, is a virtual filesystem (it exists only in memory) in which the kernel exposes its **device model**: every device, bus, driver and class as directories, with **attributes** as small files (typically one value per file). It is meant to be read mostly by programs, but you will read it by hand constantly.
+`/dev` lets programs use a device, but it says little about the device itself. **sysfs**, mounted at `/sys`, works differently. It is a virtual filesystem that exists only in memory, and the kernel uses it to expose its device model. Every device, bus, driver and class appears as a directory. Each **attribute** appears as a small file, usually holding one value. Programs are the main readers of sysfs, but you will read it by hand all the time.
 
 ```mermaid
 flowchart TB
@@ -178,13 +196,15 @@ flowchart TB
   sysclass --> netdev["/sys/class/net/eth0 -> ../../devices/.../net/eth0"]
 ```
 
-Key ideas:
+Start reading at the top of the tree. Most of what you need lives under `/sys/devices`.
 
-- **`/sys/devices`** is the true tree, following how hardware is attached. The SATA disk `/dev/sda` might live at `/sys/devices/pci0000:00/0000:00:17.0/ata3/host0/target0:0:0/0:0:0:0/block/sda` (or `.../0000:00:1f.2/host0/target0:0:0/0:0:0:0/block/sda`). That path is long on purpose: it tells you which PCI controller and ATA/SCSI port the device is on. Listing that directory (`ls`) shows files and subdirectories such as `alignment_offset`, `bdi`, `capability`, `dev`, `device`, `discard_alignment`, `events`, `events_async`, `events_poll_msecs`, `ext_range`, `holders`, `inflight`, `power`, `queue`, `range`, `removable`, `ro`, `sda1`, `sda2`, `sda5`, `size`, `slaves`, `stat`, `subsystem`, `trace`, and `uevent`. These files and subdirectories are meant primarily to be read by user-space programs rather than humans (for example, `cat dev` prints `8:0` and `cat size` prints the disk's total 512-byte sector count), while each partition (`sda1`, `sda2`) has its own subdirectory containing its own `dev`, `partition`, `size`, `start`, `stat`, and `uevent` files. The `/dev` file *uses* the device; the sysfs path *describes and manages* it.
-- **`/sys/bus`, `/sys/class` and `/sys/block`** are convenient views (symbolic links into `/sys/devices`) organised by bus, by function and by block-ness. `ls -l /sys/block` reveals the real paths.
-- A device directory contains attributes such as `dev` (the `MAJOR:MINOR`), `uevent` (the event properties), `subsystem` (link to its bus or class), `driver` (link to the bound driver), `power/`, `size`, `queue/` for block devices, and bus-specific files.
+**`/sys/devices`** is the true tree, and it follows how hardware is attached. The SATA disk `/dev/sda` might live at `/sys/devices/pci0000:00/0000:00:17.0/ata3/host0/target0:0:0/0:0:0:0/block/sda`, or at `.../0000:00:1f.2/host0/target0:0:0/0:0:0:0/block/sda`. That path is long on purpose. It tells you which PCI controller and which ATA or SCSI port the device sits on. Listing that directory with `ls` shows files and subdirectories such as `alignment_offset`, `bdi`, `capability`, `dev`, `device`, `discard_alignment`, `events`, `events_async`, `events_poll_msecs`, `ext_range`, `holders`, `inflight`, `power`, `queue`, `range`, `removable`, `ro`, `sda1`, `sda2`, `sda5`, `size`, `slaves`, `stat`, `subsystem`, `trace`, and `uevent`. Most of these files are meant for programs rather than people. For example, `cat dev` prints `8:0`, and `cat size` prints the disk's total 512-byte sector count. Each partition, such as `sda1` or `sda2`, has its own subdirectory. That subdirectory holds its own `dev`, `partition`, `size`, `start`, `stat` and `uevent` files. The `/dev` file *uses* the device. The sysfs path *describes and manages* it.
 
-Useful attributes by area (all under `/sys`):
+**`/sys/bus`, `/sys/class` and `/sys/block`** are convenient views. They are symbolic links into `/sys/devices`, organised by bus, by function and by block-ness. Run `ls -l /sys/block` to reveal the real paths.
+
+A device directory holds attributes. The `dev` file gives the `MAJOR:MINOR` pair. `uevent` lists the event properties. `subsystem` links to the bus or class, and `driver` links to the bound driver. You will also find `power/`, `size`, and `queue/` for block devices, plus bus-specific files.
+
+The table lists useful attributes by area. Everything is under `/sys`.
 
 | Path | What it tells you or lets you set |
 |---|---|
@@ -203,6 +223,8 @@ Useful attributes by area (all under `/sys`):
 | `fs/cgroup/*` | cgroup v2 tree (chapter 1.18) |
 | `firmware/dmi/*`, `class/dmi/id/{product_name,sys_vendor,bios_version,board_serial}` | Hardware identity (what `dmidecode` prints) |
 
+The commands below read and write a few of these values. Each comment says what the value means.
+
 ```bash
 cat /sys/block/sda/dev                                  # 8:0, the major:minor of /dev/sda
 readlink -f /sys/block/sda                              # the real hardware path
@@ -212,11 +234,13 @@ cat /sys/bus/pci/devices/0000:3b:00.0/current_link_speed /sys/bus/pci/devices/00
 echo none | sudo tee /sys/block/nvme0n1/queue/scheduler  # change I/O scheduler (not persistent)
 ```
 
-**Changes made by writing to sysfs are not persistent.** They last until reboot (or until the device is reset). To persist them use udev rules (`ATTR{...}=...`), `systemd-tmpfiles` (`w /sys/...`), kernel command-line options, or module parameters in `/etc/modprobe.d/`.
+**Changes made by writing to sysfs are not persistent.** They last until reboot, or until the device is reset. To make them persist, use udev rules (`ATTR{...}=...`), `systemd-tmpfiles` (`w /sys/...`), kernel command-line options, or module parameters in `/etc/modprobe.d/`.
+
+Decide how each sysfs change will persist before you make it, because a plain write is lost at the next reboot.
 
 ## 5. procfs and `sysctl`
 
-`/proc` is the older virtual filesystem, originally for processes and later for everything: the numeric directories are per-process information (chapter 1.8); the rest is system-wide state:
+`/proc` is the older virtual filesystem. It began with process information and later grew to hold everything else. The numeric directories hold per-process information, which chapter 1.8 covers. The rest of `/proc` holds system-wide state, as the table shows.
 
 | Path | Contents |
 |---|---|
@@ -233,14 +257,14 @@ echo none | sudo tee /sys/block/nvme0n1/queue/scheduler  # change I/O scheduler 
 
 ### `/proc/sys` and `sysctl`
 
-Everything under `/proc/sys` is a live kernel setting. Reading is `cat`; changing is writing:
+Everything under `/proc/sys` is a live kernel setting. You read it with `cat`, and you change it by writing to it:
 
 ```bash
 cat /proc/sys/net/ipv4/ip_forward
 echo 1 | sudo tee /proc/sys/net/ipv4/ip_forward      # immediate, lost at reboot
 ```
 
-The **`sysctl`** command presents the same tree with dots instead of slashes (path relative to `/proc/sys`):
+The **`sysctl`** command shows the same tree with dots in place of slashes. The path is relative to `/proc/sys`:
 
 ```bash
 sysctl net.ipv4.ip_forward                  # read
@@ -250,7 +274,7 @@ sysctl vm.swappiness vm.dirty_ratio kernel.pid_max fs.file-max net.core.rmem_max
 sudo sysctl --system                        # apply all configuration files now
 ```
 
-**Persistence**: put settings in `/etc/sysctl.conf` or, preferably, files in `/etc/sysctl.d/NN-name.conf` (applied at boot by `systemd-sysctl`; later files override earlier ones; vendor defaults live in `/usr/lib/sysctl.d/`):
+**Persistence.** Put settings in `/etc/sysctl.conf`, or preferably in files named `/etc/sysctl.d/NN-name.conf`. The `systemd-sysctl` service applies them at boot. Later files override earlier ones. Vendor defaults live in `/usr/lib/sysctl.d/`:
 
 ```text
 # /etc/sysctl.d/90-gpu-node.conf
@@ -261,15 +285,19 @@ net.core.rmem_max = 268435456
 net.core.wmem_max = 268435456
 ```
 
-Parameters are grouped by area: `kernel.*` (pid_max, panic behaviour, `kernel.yama.ptrace_scope`, `kernel.core_pattern`), `vm.*` (swappiness, dirty ratios, overcommit, `nr_hugepages`, `max_map_count`), `net.*` (buffers, congestion control, forwarding, conntrack), `fs.*` (`file-max`, `inotify.max_user_watches`), `dev.*`. Guidance: change **one thing at a time** with a measurable reason; document it; remember some values only take effect on new connections or processes; and note that a few settings depend on a module being loaded (`net.bridge.*` needs `br_netfilter`), so a boot-time sysctl can fail silently. Tuned values for GPU/HPC nodes appear in chapters 1.22 and 1.28.
+Parameters fall into groups. `kernel.*` covers pid_max, panic behaviour, `kernel.yama.ptrace_scope` and `kernel.core_pattern`. `vm.*` covers swappiness, dirty ratios, overcommit, `nr_hugepages` and `max_map_count`. `net.*` covers buffers, congestion control, forwarding and conntrack. `fs.*` covers `file-max` and `inotify.max_user_watches`. `dev.*` is the last group.
+
+Change **one thing at a time**, and have a measurable reason for each change. Remember that some values only take effect on new connections or processes. A few settings depend on a module being loaded. For example, `net.bridge.*` needs `br_netfilter`. Without that module, a boot-time sysctl can fail silently. Tuned values for GPU and HPC nodes appear in chapters 1.22 and 1.28.
+
+Before you change a parameter, write down why you are changing it and what the value was before.
 
 ## 6. udev: from hardware events to device files
 
 ### The problem and the design
 
-When hardware appears (a USB drive, a hot-plugged NVMe drive, a GPU that finishes initialising, a VF created by SR-IOV), the system should create a device file, set its owner and permissions, create friendly names, and maybe run a program. This is *policy*, and policy does not belong in the kernel. So the kernel emits an event and a user-space daemon, **`systemd-udevd`** (historically `udevd`), applies rules.
+For example, plug in a USB drive, and the system has work to do. It must create a device file, set its owner and permissions, create friendly names, and perhaps run a program. This is policy, and policy does not belong in the kernel. So the kernel emits an event, and a user-space daemon called `systemd-udevd` (historically `udevd`) applies the rules.
 
-There is a bootstrap problem: device files are needed very early in boot, but udev itself needs some to start. The answer is **devtmpfs**, an in-memory filesystem mounted on `/dev` early: the kernel creates a node there for every device it discovers (with default ownership `root:root` and mode 0600 or 0660) and *also* notifies udev. udev does not create the nodes; it **adjusts** them (owner, group, mode), **creates additional symbolic links**, imports properties, and runs actions.
+There is a bootstrap problem. Device files are needed very early in boot, but udev itself needs some device files to start. The answer is devtmpfs, an in-memory filesystem mounted on `/dev` early in boot. The kernel creates a node there for every device it discovers. Those nodes default to `root:root` ownership and mode 0600 or 0660. The kernel also notifies udev. udev does not create the nodes. It adjusts them by setting owner, group and mode. It also creates extra symbolic links, imports properties and runs actions.
 
 ```mermaid
 sequenceDiagram
@@ -289,7 +317,9 @@ sequenceDiagram
   Note over S: systemd starts .device units, udisks mounts, apps react
 ```
 
-The kernel event is a **uevent**: a set of `KEY=value` properties, for example:
+When you read the diagram, start at the top and work down. The hardware and the kernel act first. udev and its rules then decide the final state of the node. Subscribers react last.
+
+The kernel event is a **uevent**. It is a set of `KEY=value` properties, for example:
 
 ```text
 ACTION=add
@@ -301,13 +331,15 @@ SEQNUM=2752
 SUBSYSTEM=block
 ```
 
-(`ACTION` is `add`, `remove`, `change`, `bind`, `unbind`, `move`, `online`, `offline`. A `change` event is how media change, resize and many driver state changes are announced.)
+`ACTION` is `add`, `remove`, `change`, `bind`, `unbind`, `move`, `online` or `offline`. A `change` event is how media changes, resizes and many driver state changes are announced.
 
 ### Rules
 
-Rules files end in `.rules` and are read from `/usr/lib/udev/rules.d/` (older systems: `/lib/udev/rules.d/`; vendor defaults), `/etc/udev/rules.d/` (administrator rules and overrides; a file with the same name masks the vendor file) and `/run/udev/rules.d/`. All files are merged and processed **in lexical order of file name**, hence the numeric prefixes (`60-persistent-storage.rules`, `70-uaccess.rules`, `99-local.rules`). Within the order, **each event is matched against every rule from start to finish** (unlike a firewall, it does not stop at the first match, except where a rule uses `GOTO` or `:=` locks); every matching rule can add to the state of the event.
+Rules files end in `.rules`. udev reads them from three places. The first is `/usr/lib/udev/rules.d/` (older systems use `/lib/udev/rules.d/`), which holds the vendor defaults. The second is `/etc/udev/rules.d/`, which holds administrator rules and overrides. A file there with the same name as a vendor file masks that vendor file. The third is `/run/udev/rules.d/`. udev merges all the files and processes them in lexical order of file name. That is why the files carry numeric prefixes, such as `60-persistent-storage.rules`, `70-uaccess.rules` and `99-local.rules`.
 
-A rule is one line of comma-separated **matches** and **assignments**. Matches use `==` (equal) or `!=`; assignments use `=` (set, replacing earlier values), `+=` (add) or `:=` (set and forbid later changes). The right-hand side may use shell-style patterns `*`, `?`, `[ ]` and `|` for alternatives.
+Within that order, udev matches each event against every rule from start to finish. Unlike a firewall, it does not stop at the first match, except where a rule uses `GOTO` or the `:=` operator. Every matching rule can add to the state of the event.
+
+A rule is one line of comma-separated **matches** and **assignments**. Matches use `==` for equal and `!=` for not equal. Assignments use `=` to set a value, which replaces earlier values. They use `+=` to add a value, and `:=` to set a value and forbid later changes. The right-hand side may use shell-style patterns: `*`, `?`, `[ ]` and `|` for alternatives.
 
 Common **match keys**:
 
@@ -322,9 +354,13 @@ Common **match keys**:
 | `TAG`, `TEST{...}` | A tag; whether a file exists |
 | `PROGRAM`, `RESULT` | Run a program and match its output |
 
-Common **assignments**: `NAME` (network devices only; device nodes are named by the kernel), `SYMLINK+=` (extra names), `OWNER`, `GROUP`, `MODE`, `TAG+=`, `ENV{key}=`, `ATTR{name}=` (write a sysfs attribute), `RUN+=` (run a program after processing; keep it short and non-blocking), `IMPORT{program}=` (run a program and import its `KEY=value` output as properties), `GOTO`/`LABEL`, and `OPTIONS+=`. In the right-hand strings you can substitute `%k` (kernel name), `%n` (device number), `%p` (device path), `%M`/`%m` (major/minor), `$attr{file}` or `%s{file}`, `$env{key}` or `%E{key}`, `$major`, `$minor`, `$result`, `$parent`, `$devnode`, `$name`, and `%%`/`$$` for literal `%`/`$`.
+Each key tests one property of the event or the device. `ATTR` reads a sysfs value on the device itself. `ATTRS` also checks the parent devices, which is why it is the key you usually want when you match on hardware.
 
-**Reading a vendor rule.** The default persistent-name rules identify a disk and create `by-id` links. Simplified:
+Assignments do the work. `NAME` applies only to network devices, because the kernel names device nodes itself. `SYMLINK+=` adds extra names. `OWNER`, `GROUP` and `MODE` set permissions. `TAG+=` adds a tag. `ENV{key}=` sets a property. `ATTR{name}=` writes a sysfs attribute. `RUN+=` runs a program after processing. `IMPORT{program}=` runs a program and imports its `KEY=value` output as properties. `GOTO` and `LABEL` jump within the file, and `OPTIONS+=` sets options.
+
+Right-hand strings can use substitutions. `%k` gives the kernel name, `%n` the device number, `%p` the device path, and `%M` and `%m` the major and minor numbers. `$attr{file}` or `%s{file}` reads a sysfs attribute. `$env{key}` or `%E{key}` reads a property. `$major`, `$minor`, `$result`, `$parent`, `$devnode` and `$name` are also available. Write `%%` or `$$` for a literal `%` or `$`.
+
+**Reading a vendor rule.** The default persistent-name rules identify a disk and create `by-id` links. Here is a simplified version:
 
 ```text
 # 60-persistent-storage.rules (simplified)
@@ -334,11 +370,15 @@ KERNEL=="sd*[!0-9]|sr*", ENV{ID_SERIAL}!="?*", SUBSYSTEMS=="scsi", ATTRS{vendor}
 KERNEL=="sd*|sr*", ENV{DEVTYPE}=="disk", ENV{ID_SERIAL}=="?*", SYMLINK+="disk/by-id/$env{ID_BUS}-$env{ID_SERIAL}"
 ```
 
-Rule 1 matches a whole-disk device (name `sd` plus letters, no digit) that does not yet have `ID_SERIAL` (`!="?*"` means "not set"), on an ATA device behind the SCSI layer, and runs the directive `IMPORT{program}="ata_id --export $devnode"` (or `$tempnode`). Running `/lib/udev/ata_id --export /dev/sda` on the command line prints `ID_TYPE=disk`, `ID_MODEL=WDC_WD3200AAJS-...`, `ID_SERIAL=WDC_WD3200AAJS-_WD-WMAV2FU80671`, `ID_REVISION=01.03A01`, and `ID_BUS=ata`. Rule 2 matches any disk with `ID_SERIAL` set and **adds a symlink** (`SYMLINK+="disk/by-id/$env{ID_BUS}-$env{ID_SERIAL}"`), producing `/dev/disk/by-id/scsi-SATA_WDC_WD3200AAJS-_WD-WMAV2FU80671 -> ../../sda` (and `-part1 -> ../../sda1`). That "match, import, then act" pattern recurs throughout the udev rule set. You may be wondering how to tell a conditional expression from a directive: conditionals are denoted by two equal signs (`==`) or a bang equal (`!=`), and directives by a single equal sign (`=`), a plus equal (`+=`), or a colon equal (`:=`).
+Rule 1 matches a whole-disk device. Its name starts with `sd` and has letters but no digit. It has no `ID_SERIAL` yet, because `!="?*"` means not set. It must be an ATA device behind the SCSI layer. The rule then runs `IMPORT{program}="ata_id --export $devnode"`, or `$tempnode`. Running `/lib/udev/ata_id --export /dev/sda` on the command line prints `ID_TYPE=disk`, `ID_MODEL=WDC_WD3200AAJS-...`, `ID_SERIAL=WDC_WD3200AAJS-_WD-WMAV2FU80671`, `ID_REVISION=01.03A01`, and `ID_BUS=ata`.
+
+Rule 2 matches any disk that has `ID_SERIAL` set. It then adds a symlink, `SYMLINK+="disk/by-id/$env{ID_BUS}-$env{ID_SERIAL}"`. The result is `/dev/disk/by-id/scsi-SATA_WDC_WD3200AAJS-_WD-WMAV2FU80671 -> ../../sda`. The partition gets a link too, ending in `-part1 -> ../../sda1`. This match, import, then act pattern repeats throughout the udev rule set.
+
+You may wonder how to tell a conditional from a directive. Conditionals use two equal signs (`==`) or a bang followed by an equal sign (`!=`). Directives use a single equal sign (`=`), a plus and an equal sign (`+=`), or a colon and an equal sign (`:=`).
 
 ### Writing your own rule
 
-Never edit vendor files; add your own in `/etc/udev/rules.d/`, with a prefix that sorts after the vendor rule you need to override. A few useful examples:
+Never edit vendor files. Add your own rules to `/etc/udev/rules.d/`, with a prefix that sorts after the vendor rule you need to override. Here are a few useful examples:
 
 ```text
 # /etc/udev/rules.d/90-local.rules
@@ -358,9 +398,13 @@ KERNEL=="nvidia*", GROUP="gpuusers", MODE="0660"
 SUBSYSTEM=="net", ACTION=="add", ATTR{address}=="aa:bb:cc:dd:ee:ff", NAME="mgmt0"
 ```
 
-After editing: `sudo udevadm control --reload` (re-read rules), then `sudo udevadm trigger --subsystem-match=block --action=change` (replay events so existing devices get the rule), and verify with `udevadm test`. **Rule syntax errors are logged but do not stop other rules**, so always test. Do not make `RUN+=` programs long-running (udev kills them after a timeout); start a systemd service from the rule instead (`TAG+="systemd", ENV{SYSTEMD_WANTS}="myservice.service"`).
+After you edit a rule, run `sudo udevadm control --reload` to re-read the rules. Then run `sudo udevadm trigger --subsystem-match=block --action=change` to replay events, so existing devices pick up the rule. Verify the result with `udevadm test`.
+
+Rule syntax errors are logged, but they do not stop other rules. So always test. Do not make `RUN+=` programs long-running, because udev kills them after a timeout. Start a systemd service from the rule instead, using `TAG+="systemd", ENV{SYSTEMD_WANTS}="myservice.service"`.
 
 ### `udevadm` and device monitoring (`HLW` Sections 3.5.3–3.5.4)
+
+`udevadm` is the tool for inspecting and debugging udev. Each row of the table answers a different question.
 
 | Command | Use |
 |---|---|
@@ -371,6 +415,8 @@ After editing: `sudo udevadm control --reload` (re-read rules), then `sudo udeva
 | `udevadm control --reload` / `--log-level=debug` | Reload rules; raise logging. |
 | `udevadm settle` | Wait until all queued events have been processed (use in scripts after triggering). |
 
+The commands below run on a disposable VM. Each line marked `(untested here)` has not been run on hardware yet.
+
 ```bash
 udevadm info --query=property --name=/dev/nvme0n1 | grep -E 'ID_MODEL|ID_SERIAL|ID_PATH' # (untested here)
 udevadm info -a -n /dev/ttyUSB0 | grep -E 'ATTRS\{(idVendor|idProduct|serial)\}' # (untested here)
@@ -378,11 +424,11 @@ sudo udevadm monitor --udev --subsystem-match=block     # (untested here) then p
 udevadm monitor --kernel --subsystem-match=scsi         # (untested here) filter for kernel SCSI uevents only
 ```
 
-When you run `udevadm monitor` and insert a USB flash drive (`HLW` Section 3.5.3), you see two waves of lines: first `KERNEL[658299.569485] add /devices/pci0000:00/... (usb)` / `(scsi)` / `(block)` as the kernel's drivers discover the device, and then `UDEV  [658300.625456] add /devices/pci0000:00/... (block)` after `systemd-udevd` finishes running all matching rules and creating the `/dev/disk/by-*` symlinks. You can filter events with `--kernel`, `--udev`, `--property`, or `--subsystem-match=scsi`.
+When you run `udevadm monitor` and insert a USB flash drive (`HLW` Section 3.5.3), you see two waves of lines. The first wave is `KERNEL[658299.569485] add /devices/pci0000:00/... (usb)`, then `(scsi)` and `(block)`. These appear as the kernel's drivers discover the device. The second wave is `UDEV  [658300.625456] add /devices/pci0000:00/... (block)`. It appears after `systemd-udevd` finishes the matching rules and creates the `/dev/disk/by-*` symlinks. You can filter the events with `--kernel`, `--udev`, `--property`, or `--subsystem-match=scsi`.
 
 ### Persistent device names under `/dev/disk`
 
-udev creates these links for block devices; use them in scripts and in `fstab` when you must refer to a device (though a filesystem UUID is usually best):
+udev creates these links for block devices. Use them in scripts and in `fstab` when you must refer to a device, though a filesystem UUID is usually the best choice.
 
 | Directory | Names by | Use |
 |---|---|---|
@@ -391,17 +437,21 @@ udev creates these links for block devices; use them in scripts and in `fstab` w
 | `/dev/disk/by-uuid/` | Filesystem UUID | The recommended `fstab` key |
 | `/dev/disk/by-label/`, `by-partuuid/`, `by-partlabel/` | Filesystem label; GPT partition UUID or name | Friendly alternatives |
 
-(`lsblk -o NAME,SIZE,TYPE,FSTYPE,UUID,MOUNTPOINT` shows several at once; `blkid` prints UUIDs and types.)
+`lsblk -o NAME,SIZE,TYPE,FSTYPE,UUID,MOUNTPOINT` shows several of these at once, and `blkid` prints UUIDs and types.
 
 ### udev versus systemd `.link` files and `systemd-hwdb`
 
-Network interface names are decided by `systemd-udevd` using `.link` files in `/usr/lib/systemd/network/` and `/etc/systemd/network/` (for example, `99-default.link`, naming `enp3s0` from the PCI slot, `eno1` from firmware). Persistent rename by MAC is a `.link` file with `[Match] MACAddress=` and `[Link] Name=`. Hardware identification databases (vendor names for `lspci`, `lsusb`, USB device classes) come from `systemd-hwdb` (`/usr/lib/udev/hwdb.d`), rebuilt with `systemd-hwdb update`. Mentioned here so you recognise them; networking details are in Part 2.
+`systemd-udevd` decides network interface names. It uses `.link` files in `/usr/lib/systemd/network/` and `/etc/systemd/network/`. For example, `99-default.link` names `enp3s0` from the PCI slot and `eno1` from firmware. A persistent rename by MAC address is a `.link` file with `[Match] MACAddress=` and `[Link] Name=`.
+
+Hardware identification databases come from `systemd-hwdb`. They supply the vendor names that `lspci` and `lsusb` show, along with the USB device classes. The database lives in `/usr/lib/udev/hwdb.d` and is rebuilt with `systemd-hwdb update`. Mentioned here so you recognise them. Networking details are in Part 2.
+
+When a device name matters, choose a udev rule or a stable identifier before you rely on a kernel name.
 
 ## 7. How storage devices fit together in the kernel (`HLW` Section 3.6)
 
-The Linux **SCSI subsystem** is the common stack beneath most storage, and it explains why `sd*` appears for USB sticks, SATA disks and SAS drives alike.
+Most storage sits on the Linux **SCSI subsystem**. That is why `sd*` appears for USB sticks, SATA disks and SAS drives alike. Plug in a USB stick and a SATA disk, and both show up as `sd` devices. The stack beneath them explains why, and it helps you read any `sd` name you meet.
 
-- **SCSI addressing.** To list the SCSI devices on your system, run `lsscsi`, which walks the device paths provided by `sysfs`:
+**SCSI addressing.** Run `lsscsi` to list the SCSI devices. It walks the device paths that `sysfs` provides:
 
 ```text
 $ lsscsi
@@ -413,18 +463,27 @@ $ lsscsi
 [2:0:0:3]  disk    USB2.0   CardReader SD    0100  /dev/sde
 ```
 
-Each line starts with `[host:channel:target:lun]`, followed by the device type (`disk` -> `sd`, `cd/dvd` -> `sr`), vendor/model/revision, and `/dev` node. The four numbers are the host adapter (`0`, `1`, `2`), the bus channel (`0`), the target's SCSI ID (`0`), and the **LUN** (*logical unit number*): notice how one USB card reader on host `2`, target `0` exposes four slots as LUNs `0` through `3` (`[2:0:0:0]` to `[2:0:0:3]`), each given its own `/dev/sd*` block device (`/dev/sdb` through `/dev/sde`).
-- **Three layers.** The **top (class) layer** has a driver per device class (`sd` for disks, `sr` for optical, `st` for tape, `sg` generic) that translates the kernel's block requests into SCSI protocol commands. The **middle layer** (the SCSI core) moderates between top and bottom, tracks hosts and devices, and handles errors and timeouts. The **bottom (host-adapter) layer** has hardware-specific drivers for host adapters (`mpt3sas`, `megaraid_sas`, `ahci`, `virtio_scsi`, USB's `usb-storage` bridge).
-- **Everything is made to look like SCSI (`USB` storage and `libata`).** When you plug in a USB disk or flash reader, the USB storage driver acts as a translator: on its upper side it speaks SCSI to the SCSI lower layer, and on its lower side it speaks USB to the USB subsystem (wrapping SCSI commands inside USB messages). Similarly, SATA disks connect through **libata** inside the kernel, which performs a full command-by-command translation between SCSI commands and native ATA commands (whereas ATAPI optical drives already speak a repackaged SCSI command set). Hardware RAID controllers present virtual disks as SCSI directly.
-- **NVMe is separate.** NVMe devices use their own stack (`nvme` driver, `/dev/nvme*`), not SCSI, with per-CPU submission and completion queues for very high IOPS. They sometimes show in `lsscsi` for convenience. NVMe-over-Fabrics (RDMA/TCP) carries the same protocol across the network (storage chapters).
-- **Generic SCSI nodes (`/dev/sg*`, `lsscsi -g`) and multiple access methods.** User processes can bypass the top-level device class drivers (`sd`, `sr`) and send SCSI protocol commands directly to devices through their generic character devices (`/dev/sg*`, inspected with tools from `sg3_utils` such as `sg_inq` and `sg_map`). Running `lsscsi -g` appends each device's generic node on the right (`/dev/sda /dev/sg0`, `/dev/sr0 /dev/sg1`, ..., `/dev/sde /dev/sg5`, major number `21`). Why have two device files for one piece of hardware? Standard block reads and writes go through the fast in-kernel block driver (`/dev/sr0` or `/dev/sda`), while complex or specialized operations—such as burning an optical disc (`wodim`), querying SMART drive health (`smartctl`), or controlling tape changers (`sg3_utils`)—run in user space via `/dev/sg1` so bugs in complex protocol code cannot crash the kernel.
-- **Multipath.** A SAN LUN reachable over several paths appears once per path (`sdb`, `sdc`, `sdd`) and `multipathd` combines them into one `/dev/mapper/mpathX` device (chapter 1.13).
+Each line starts with `[host:channel:target:lun]`. The device type comes next, where `disk` maps to `sd` and `cd/dvd` maps to `sr`. Then come the vendor, model and revision, and the `/dev` node. The four numbers are the host adapter (`0`, `1`, `2`), the bus channel (`0`), the target's SCSI ID (`0`), and the **LUN**, or logical unit number. Notice how one USB card reader on host `2` exposes four slots as LUNs `0` through `3`, from `[2:0:0:0]` to `[2:0:0:3]`. Each slot gets its own block device, from `/dev/sdb` to `/dev/sde`. When you read this output, remember that one physical reader can show up as several LUNs.
 
-Tools: `lsblk` (tree of block devices), `lsscsi`, `nvme list`, `smartctl -a /dev/sdX` (drive health), `hdparm -I`, `blkid`, `udevadm info`. The same tree seen from the hardware side is `lspci`.
+**Three layers.** The top, or class, layer has a driver for each device class. `sd` handles disks, `sr` handles optical drives, `st` handles tape, and `sg` provides generic access. These drivers translate kernel block requests into SCSI protocol commands. The middle layer, the SCSI core, mediates between the top and the bottom. It tracks hosts and devices, and it handles errors and timeouts. The bottom, or host-adapter, layer holds hardware-specific drivers, such as `mpt3sas`, `megaraid_sas`, `ahci`, `virtio_scsi`, and the `usb-storage` bridge for USB.
+
+**Everything is made to look like SCSI.** USB storage and libata act as translators. When you plug in a USB disk or flash reader, the USB storage driver speaks SCSI on its upper side and USB on its lower side. It wraps SCSI commands inside USB messages. SATA disks connect through **libata**, which runs inside the kernel. libata translates SCSI commands into native ATA commands, one command at a time. Optical drives on ATAPI are different, because they already speak a repackaged SCSI command set. Hardware RAID controllers present their virtual disks as SCSI directly.
+
+**NVMe is separate.** NVMe devices use their own stack, the `nvme` driver and the `/dev/nvme*` nodes, not SCSI. The stack uses per-CPU submission and completion queues for very high IOPS. Some NVMe devices show up in `lsscsi` for convenience. NVMe-over-Fabrics carries the same protocol across the network, over RDMA or TCP. The storage chapters cover that.
+
+**Generic SCSI nodes and multiple access methods.** User processes can bypass the top-level class drivers, `sd` and `sr`. They send SCSI protocol commands straight to the device through its generic character device, `/dev/sg*`. Tools from `sg3_utils`, such as `sg_inq` and `sg_map`, do this for you. Run `lsscsi -g` to see the generic node beside each device. It appends the node on the right, as in `/dev/sda /dev/sg0`, `/dev/sr0 /dev/sg1`, and so on up to `/dev/sde /dev/sg5`. The generic nodes use major number `21`.
+
+Why have two device files for one piece of hardware? Standard block reads and writes go through the fast in-kernel block driver, using `/dev/sr0` or `/dev/sda`. Complex or specialized operations run through `/dev/sg1` instead. Examples include burning an optical disc with `wodim`, querying drive health with `smartctl`, or controlling tape changers with `sg3_utils`. Because this code runs in user space, a bug in complex protocol code cannot crash the kernel.
+
+**Multipath.** A SAN LUN that is reachable over several paths appears once per path, as `sdb`, `sdc` and `sdd`. `multipathd` combines them into one `/dev/mapper/mpathX` device. Chapter 1.13 covers this.
+
+The tools for this layer are `lsblk`, `lsscsi`, `nvme list`, `smartctl -a /dev/sdX`, `hdparm -I`, `blkid` and `udevadm info`. `lsblk` shows the tree of block devices. The same tree seen from the hardware side is `lspci`.
+
+When a storage device misbehaves, start with `lsscsi` and `lsblk`, so you know which device you are dealing with.
 
 ## 8. Hardware inventory: PCI, USB, CPU, memory, firmware
 
-You need to answer "what is in this machine?" quickly, and in a way that is comparable across hundreds of nodes.
+You often need to answer one question quickly: what is in this machine? The answer also has to be comparable across hundreds of nodes. The table lists the tools that answer it, and each row answers a different question. Start from the question you have.
 
 | Tool | Shows |
 |---|---|
@@ -440,6 +499,8 @@ You need to answer "what is in this machine?" quickly, and in a way that is comp
 | `nvidia-smi`, `nvidia-smi -L`, `nvidia-smi topo -m`, `nvidia-smi -q` | GPUs, UUIDs, driver and CUDA versions, **topology matrix**, ECC, clocks, power, throttle reasons |
 | `dmesg`, `journalctl -k`, `journalctl -k -b -1` | The **kernel ring buffer**: driver messages from boot and from hot events (the first place to look when hardware misbehaves); `-b -1` is the previous boot |
 
+The commands below pull the most common facts from a node. Each one is a quick check you can run on its own.
+
 ```bash
 lspci -nn | grep -iE 'nvidia|mellanox|infiniband|ethernet|non-volatile'
 lspci -tv | head -60                                     # the PCIe tree
@@ -450,11 +511,13 @@ sudo dmesg --level=err,warn | tail -40
 nvidia-smi topo -m
 ```
 
-**Reading `nvidia-smi topo -m`.** The matrix shows how each pair of GPUs (and NICs) is connected: `NV#` (that many NVLink lanes; the fastest), `PIX` (at most one PCIe bridge), `PXB` (several PCIe bridges, no host bridge), `PHB` (through a PCIe host bridge, i.e. via the CPU), `NODE` (across the interconnect within a NUMA node), `SYS` (across the inter-socket link, the slowest), and `X` (self). It also lists each device's **CPU affinity** and **NUMA affinity**. Communication libraries use this to choose paths, and you use it to place processes (chapters 1.17 and 1.28; NCCL chapters).
+**Reading `nvidia-smi topo -m`.** The matrix shows how each pair of GPUs and NICs is connected. `NV#` means that many NVLink lanes, and it is the fastest path. `PIX` means at most one PCIe bridge. `PXB` means several PCIe bridges with no host bridge. `PHB` means a path through a PCIe host bridge, which is a route via the CPU. `NODE` means across the interconnect within a NUMA node. `SYS` means across the inter-socket link, the slowest path. `X` marks the device itself. The matrix also lists each device's **CPU affinity** and **NUMA affinity**. Communication libraries use this information to choose paths, and you use it to place processes. Chapters 1.17 and 1.28, along with the NCCL chapters, cover this in depth.
+
+Before you place a process, check the matrix, so the job uses the fastest path between its GPUs and NICs.
 
 ## 9. Drivers, binding and rescans
 
-A **driver** claims a device by matching its ID tables (PCI vendor:device, USB class, device-tree compatible string). The kernel's **modalias** mechanism lets udev load the right module automatically: when a device appears, the uevent carries a `MODALIAS` value, and udev runs `modprobe` for it. Look at the pieces:
+A **driver** claims a device by matching the device's ID tables. Those tables might hold a PCI vendor and device pair, a USB class, or a device-tree compatible string. The kernel's **modalias** mechanism lets udev load the right module automatically. When a device appears, its uevent carries a `MODALIAS` value, and udev runs `modprobe` for it. Look at each piece on a real system:
 
 ```bash
 cat /sys/bus/pci/devices/0000:3b:00.0/modalias           # pci:v000010DEd00002330sv...
@@ -464,7 +527,7 @@ modinfo mlx5_core | head                                 # what a module is, its
 ls /sys/bus/pci/drivers/nvidia                           # devices bound to that driver
 ```
 
-You can bind and unbind through sysfs, which is how **VFIO passthrough** and driver swaps work (virtualisation chapters; the exact values must be checked for your kernel, and you must not do this to a device your system is using):
+You can bind and unbind drivers through sysfs. This is how **VFIO passthrough** and driver swaps work, and the virtualisation chapters cover them. The exact values must be checked for your kernel. Never do this to a device your system is using. The sequence below is illustrative only:
 
 ```bash
 # detach a PCI device from its driver and hand it to vfio-pci (illustrative; run only on a device you can spare)
@@ -473,54 +536,66 @@ echo vfio-pci     | sudo tee /sys/bus/pci/devices/0000:3b:00.0/driver_override
 echo 0000:3b:00.0 | sudo tee /sys/bus/pci/drivers_probe
 ```
 
-Other operations in the same family: `echo 1 > .../remove` then `echo 1 > /sys/bus/pci/rescan` (re-enumerate after a surprise removal), `echo 1 > .../reset` (a function-level reset), and `echo N > .../sriov_numvfs` (create N virtual functions, chapters on SR-IOV). **Hot-removing or resetting a device with processes using it hangs or crashes those processes**, so drain the node first.
+Other operations belong to the same family. `echo 1 > .../remove` followed by `echo 1 > /sys/bus/pci/rescan` re-enumerates the bus after a surprise removal. `echo 1 > .../reset` performs a function-level reset. `echo N > .../sriov_numvfs` creates N virtual functions, as the SR-IOV chapters describe. **Hot-removing or resetting a device with processes using it hangs or crashes those processes.**
+
+Drain the node before you run any of these operations.
 
 ## 10. AI-infrastructure patterns
 
-**What a GPU node looks like to Linux.** After the NVIDIA kernel module loads, `/dev` contains `nvidia0..N-1` (one character device per GPU), `nvidiactl` (control), `nvidia-uvm` and `nvidia-uvm-tools` (unified virtual memory), `nvidia-modeset`, and with MIG or the fabric manager, `/dev/nvidia-caps/*`. Programs open these and talk to the driver with `ioctl`; the user-space CUDA libraries (`libcuda.so`) are the layer above. Check with `ls -l /dev/nvidia*`, `lsmod | grep nvidia`, `cat /proc/driver/nvidia/version`, `nvidia-smi`. If `nvidia-smi` fails with "couldn't communicate with the NVIDIA driver", check in order: module loaded (`lsmod`), device nodes present (`/dev/nvidia*`; `nvidia-modprobe -u -c=0` can create them), `dmesg` for Xid/NVRM errors, secure boot and module signing, kernel/driver version match (chapters 1.7 and 1.22).
+**What a GPU node looks like to Linux.** After the NVIDIA kernel module loads, `/dev` contains `nvidia0..N-1`, one character device per GPU. It also contains `nvidiactl` for control, `nvidia-uvm` and `nvidia-uvm-tools` for unified virtual memory, and `nvidia-modeset`. With MIG or the fabric manager, you also get `/dev/nvidia-caps/*`. Programs open these files and talk to the driver with `ioctl`. The user-space CUDA libraries, such as `libcuda.so`, sit above that layer. Check the state with `ls -l /dev/nvidia*`, `lsmod | grep nvidia`, `cat /proc/driver/nvidia/version` and `nvidia-smi`.
 
-**Persistence and device-node creation.** Device nodes appear only when something opens or initialises the GPU; on headless servers the **persistence daemon** (`nvidia-persistenced`) keeps the driver state loaded so the first job does not pay initialisation cost and so nodes exist (chapter 1.22, 1.28).
+If `nvidia-smi` fails with "couldn't communicate with the NVIDIA driver", work through the checks in order. First, confirm the module is loaded with `lsmod`. Next, confirm the device nodes exist under `/dev/nvidia*`. `nvidia-modprobe -u -c=0` can create them. Then check `dmesg` for Xid or NVRM errors. After that, check secure boot and module signing. Last, confirm that the kernel and driver versions match. Chapters 1.7 and 1.22 cover the version side.
 
-**Giving containers GPUs.** A container is just a process in new namespaces (chapter 1.19), so it cannot see the host's `/dev/nvidia*` unless the runtime **bind-mounts or creates those device nodes inside the container's `/dev`** and **allows them in the device cgroup**. The **NVIDIA Container Toolkit** (`nvidia-container-runtime`/CDI) does this and also injects the matching `libcuda`, `nvidia-smi` and other user-space driver files from the host. That is why a container sees GPUs without bundling a driver and why the driver version on the host must be compatible with the CUDA version inside the image. Plain Docker needs `--gpus` or `--device /dev/nvidia0 --device /dev/nvidiactl --device /dev/nvidia-uvm`, plus the libraries; Kubernetes uses the device plugin (Kubernetes chapters). A device-cgroup denial shows up as "Operation not permitted" when opening `/dev/nvidiaX` even though the file is visible; with cgroup v2 the device controller is implemented with BPF programs.
+**Persistence and device-node creation.** If you run a headless server, this section matters to you. Device nodes appear only when something opens or initialises the GPU. On a headless server, the **persistence daemon**, `nvidia-persistenced`, keeps the driver state loaded. The first job then avoids the initialisation cost, and the device nodes stay in place. Chapters 1.22 and 1.28 cover it.
 
-**Permissions.** GPU nodes are usually mode `0666` for `/dev/nvidia*` (anyone can open them), relying on the scheduler (Slurm cgroups, Kubernetes device plugin) to decide who may use which GPU. On shared login or multi-tenant nodes, restrict by group and rely on cgroup device control. Prefer udev rules (`GROUP=`, `MODE=`) to `chmod` (which is lost on reboot or driver reload), and avoid putting users in a group that grants raw access to disks (`disk`) or all devices.
+**Giving containers GPUs.** A container is a process in new namespaces, which chapter 1.19 covers. It cannot see the host's `/dev/nvidia*` unless the runtime bind-mounts or creates those device nodes inside the container's `/dev`, and also allows them in the device cgroup. The NVIDIA Container Toolkit does both, through `nvidia-container-runtime` or CDI. It also injects the matching user-space driver files from the host, such as `libcuda` and `nvidia-smi`. That is why a container sees GPUs without bundling a driver. The driver version on the host must be compatible with the CUDA version inside the image.
 
-**InfiniBand and RDMA.** The RDMA stack exposes `/sys/class/infiniband/<hca>/ports/<n>/` (state, rate, LID, counters) and `/dev/infiniband/uverbs*`. Quick checks: `ibstat` (State: Active, Physical state: LinkUp, Rate: 200/400), `ibv_devinfo`, `rdma link show`, `cat /sys/class/infiniband/mlx5_0/ports/1/state`. The hardware counters in `/sys/class/infiniband/*/ports/*/counters/` (symbol errors, link downed, port rcv errors) find flaky cables. The IB devices a container needs are `/dev/infiniband/*` plus a high `memlock` limit (chapter 1.8).
+Plain Docker needs `--gpus`, or `--device /dev/nvidia0 --device /dev/nvidiactl --device /dev/nvidia-uvm`, plus the libraries. Kubernetes uses the device plugin, which the Kubernetes chapters cover. A device-cgroup denial shows up as "Operation not permitted" when you open `/dev/nvidiaX`, even though the file is visible. With cgroup v2, the device controller is implemented with BPF programs.
 
-**PCIe link health.** A GPU or NIC running at x8 instead of x16, or Gen3 instead of Gen5, still "works" and halves your bandwidth. Compare `current_link_speed`/`current_link_width` with `max_link_speed`/`max_link_width` in sysfs (or `lspci -vvv` `LnkSta` against `LnkCap`) across the fleet; a mismatch means a bad slot, riser, cable or BIOS setting. PCIe **AER** and GPU **Xid** errors appear in `dmesg` (`NVRM: Xid ...`; the numbers map to causes in NVIDIA's documentation); a GPU "falling off the bus" shows as `GPU has fallen off the bus` and needs a reset or reboot.
+**Permissions.** GPU nodes are usually mode `0666` for `/dev/nvidia*`, so anyone can open them. The scheduler decides who may use which GPU. Slurm cgroups and the Kubernetes device plugin do that work. On shared login or multi-tenant nodes, restrict access by group and rely on cgroup device control. Prefer udev rules, using `GROUP=` and `MODE=`, to `chmod`, because a `chmod` is lost on reboot or driver reload. Avoid putting users in a group that grants raw access to disks, such as `disk`, or to all devices.
 
-**NUMA locality and IRQ placement.** `numa_node` and `local_cpulist` for each GPU and NIC give the cores that should feed it. `/proc/interrupts` shows which CPUs service a NIC's interrupts; `/proc/irq/N/smp_affinity_list` sets them; the `irqbalance` daemon may fight your settings (chapter 1.28). The vendor script `mlnx_affinity` and `set_irq_affinity.sh` automate NIC IRQ pinning.
+**InfiniBand and RDMA.** The RDMA stack exposes `/sys/class/infiniband/<hca>/ports/<n>/`, with state, rate, LID and counters. It also exposes `/dev/infiniband/uverbs*`. Run these quick checks: `ibstat`, which should show State: Active, Physical state: LinkUp and Rate: 200/400; `ibv_devinfo`; `rdma link show`; and `cat /sys/class/infiniband/mlx5_0/ports/1/state`. The hardware counters under `/sys/class/infiniband/*/ports/*/counters/` help you find flaky cables. They include symbol errors, link downed events and port receive errors. A container that uses InfiniBand needs `/dev/infiniband/*` and a high `memlock` limit (chapter 1.8).
 
-**Fleet inventory and drift detection.** Collect a small standard set from every node and diff it: `lspci -nn | sort`, `nvidia-smi -L`, `lscpu`, `ethtool -i`, firmware versions from `dmidecode`/BMC, and key sysfs values (link speed/width, NUMA node, MTU). This catches the node with a missing GPU, the DIMM that fell out of the map, the NIC at 100 Gb instead of 200 Gb. Wrap it in a health script (chapter 1.9) and run it as a prolog or periodically.
+**PCIe link health.** A GPU or NIC running at x8 instead of x16, or at Gen3 instead of Gen5, still works. It just halves your bandwidth. Compare `current_link_speed` and `current_link_width` with `max_link_speed` and `max_link_width` in sysfs. You can also compare `LnkSta` against `LnkCap` in `lspci -vvv`. Do this across the fleet. A mismatch points to a bad slot, riser, cable or BIOS setting. PCIe **AER** and GPU **Xid** errors appear in `dmesg`, as `NVRM: Xid ...` lines. The numbers map to causes in NVIDIA's documentation. A GPU that falls off the bus shows `GPU has fallen off the bus`, and it then needs a reset or a reboot.
 
-**Kubernetes and sysfs/procfs.** The kubelet and cAdvisor read `/proc` and `/sys/fs/cgroup`; `node_exporter` reads `/proc`, `/sys/class/*` (thermal, hwmon, network, infiniband) and is a good template for what to monitor. NVIDIA DCGM reads the driver directly; its exporter turns GPU health into metrics.
+**NUMA locality and IRQ placement.** `numa_node` and `local_cpulist` for each GPU and NIC name the cores that should feed it. `/proc/interrupts` shows which CPUs service a NIC's interrupts. Write to `/proc/irq/N/smp_affinity_list` to set them. The `irqbalance` daemon may fight your settings, as chapter 1.28 explains. The vendor scripts `mlnx_affinity` and `set_irq_affinity.sh` automate NIC IRQ pinning.
+
+**Fleet inventory and drift detection.** Collect a small standard set from every node, then diff it. The set includes `lspci -nn | sort`, `nvidia-smi -L`, `lscpu`, `ethtool -i`, firmware versions from `dmidecode` or the BMC, and key sysfs values such as link speed and width, NUMA node and MTU. The diff catches a node with a missing GPU, a DIMM that fell out of the memory map, or a NIC running at 100 Gb instead of 200 Gb. Wrap the collection in a health script, which chapter 1.9 covers, and run it as a prolog or on a schedule.
+
+**Kubernetes and sysfs/procfs.** The kubelet and cAdvisor read `/proc` and `/sys/fs/cgroup`. `node_exporter` reads `/proc` and `/sys/class/*`, including thermal, hwmon, network and InfiniBand data, so it is a good template for what to monitor. NVIDIA DCGM reads the driver directly, and its exporter turns GPU health into metrics.
+
+Before you trust a node, compare its link speed, NUMA node and driver version against the rest of the fleet.
 
 ## How it fails
 
-1. **A disk name changed after reboot and `fstab` mounted the wrong disk.** `sdX` names are order-dependent. Use UUIDs, labels, `by-id` links, or LVM names.
-2. **`/dev/nvidia*` missing, or exists but `nvidia-smi` fails.** Module not loaded or failed (secure boot, kernel/driver mismatch, missing DKMS build), nodes not created, or driver and library versions disagree. Check `lsmod`, `dmesg`, `ls -l /dev/nvidia*`, `journalctl -k`.
-3. **GPU visible on the host, invisible in the container.** Runtime not configured (toolkit missing), device nodes not injected, device cgroup denies them, or user lacks permission on the node.
-4. **udev rule does nothing.** Rule file not matching (check with `udevadm info -a` and `udevadm test`), wrong prefix order so a later vendor rule overrides it, syntax error, rules not reloaded or events not retriggered, or the device was created before the rule existed (`udevadm trigger`).
-5. **Permissions reset to 0660 after a driver reload or reboot.** You used `chmod` instead of a udev rule.
-6. **`dd` overwrote the wrong device.** No confirmation exists; check `lsblk`, use `by-id` paths, and write to files first.
-7. **NIC names change after adding a card or a firmware update.** Predictable naming depends on slot or firmware index; pin by MAC with a `.link` file for critical interfaces.
-8. **PCIe device at reduced width or speed.** Reseat the card or riser, check BIOS lane configuration, update firmware; compare against `max_link_*`.
-9. **GPU fell off the bus / Xid 79, or Xid 48/63/64 ECC events.** Hardware, power or thermal issue; check `dmesg`, cooling and power, run diagnostics, reset or RMA (chapters on GPU health).
-10. **Sysctl or sysfs tuning disappears after reboot.** Writes to `/proc/sys` and `/sys` are runtime only. Add `/etc/sysctl.d/*.conf`, udev rules, tmpfiles, kernel command line or module options.
-11. **A boot-time sysctl is not applied.** The parameter belongs to a module not loaded yet when `systemd-sysctl` runs; load the module early (`/etc/modules-load.d/`) or apply from a unit after it.
-12. **A script hangs reading a device or `/sys` file.** Some attributes block on a broken device; wrap probes with `timeout`.
-13. **Device nodes appear but the right driver does not bind.** Module absent from the initramfs, blacklist entry, missing firmware (`dmesg | grep -i firmware`); chapters 1.14 and 1.22.
-14. **`udevadm settle` times out in boot or scripts.** Rule runs a slow program, or a device keeps generating events; check `udevadm monitor` and the udev journal (`journalctl -u systemd-udevd`).
+Use this list when something breaks. Match the symptom you see to an entry, then check the cause it names before you change anything.
+
+1. **A disk name changed after reboot, and `fstab` mounted the wrong disk.** The `sdX` names depend on order. Use UUIDs, labels, `by-id` links or LVM names instead.
+2. **`/dev/nvidia*` is missing, or it exists but `nvidia-smi` fails.** The module may not be loaded, or it may have failed. Secure boot, a kernel and driver mismatch, or a missing DKMS build can cause that. The nodes may not have been created, or the driver and library versions may disagree. Check `lsmod`, `dmesg`, `ls -l /dev/nvidia*` and `journalctl -k`.
+3. **The GPU is visible on the host but invisible in the container.** The runtime may not be configured, because the toolkit is missing. The device nodes may not have been injected, or the device cgroup may deny them. The user may also lack permission on the node.
+4. **A udev rule does nothing.** The rule may not match, so check it with `udevadm info -a` and `udevadm test`. The prefix order may be wrong, which lets a later vendor rule override yours. There may be a syntax error. The rules may not have been reloaded, or the events may not have been retriggered. The device may also have been created before the rule existed, in which case run `udevadm trigger`.
+5. **Permissions reset to 0660 after a driver reload or reboot.** The cause is a `chmod` where a udev rule belongs.
+6. **`dd` overwrote the wrong device.** `dd` asks for no confirmation, so you must check the target first. Check `lsblk`, use `by-id` paths, and write to files first.
+7. **NIC names change after you add a card or update firmware.** Predictable naming depends on the slot or the firmware index. For critical interfaces, pin the name by MAC address with a `.link` file.
+8. **A PCIe device runs at reduced width or speed.** Reseat the card or riser, check the BIOS lane configuration, and update the firmware. Compare the result against `max_link_*`.
+9. **The GPU fell off the bus, or it reports Xid 79 or Xid 48/63/64 ECC events.** The cause is a hardware, power or thermal issue. Check `dmesg`, cooling and power, run diagnostics, then reset or RMA the card. The GPU health chapters cover this.
+10. **Sysctl or sysfs tuning disappears after reboot.** Writes to `/proc/sys` and `/sys` last only until reboot. To keep them, add a file under `/etc/sysctl.d/*.conf`, a udev rule, a tmpfiles entry, a kernel command-line option or a module option.
+11. **A boot-time sysctl is not applied.** The parameter belongs to a module that is not loaded yet when `systemd-sysctl` runs. Load the module early through `/etc/modules-load.d/`, or apply the setting from a unit that runs after the module loads.
+12. **A script hangs while reading a device or `/sys` file.** Some attributes block on a broken device. Wrap such probes with `timeout`, so you do not wait on them forever.
+13. **Device nodes appear, but the right driver does not bind.** The module may be missing from the initramfs, or a blacklist entry may block it. Firmware may be missing too, so check `dmesg | grep -i firmware`. Chapters 1.14 and 1.22 cover this.
+14. **`udevadm settle` times out during boot or in scripts.** A rule may run a slow program, or a device may keep generating events. When you see it, check `udevadm monitor` and the udev journal, `journalctl -u systemd-udevd`.
+
+When a symptom matches one of these, check the cause it names before you change anything.
 
 ## Hands-on lab: devices, sysfs, udev, and VM drills
 
-First, run the self-checking Python lab (`code/part01/devices_udev_sysfs_lab.py`) locally. It verifies SCSI `[host:channel:target:lun]` parsing, `udev` assignment operators (`=`, `+=`, `:=`), PCIe link speed/width degradation detection, `nvidia-smi topo -m` path ranking (`NV#` > `PIX` > `PXB` > `PHB` > `NODE` > `SYS`), and `sysctl` to `/proc/sys` path mapping.
+Start with the self-checking Python lab. Run it on your own machine first. It checks the parsing of SCSI `[host:channel:target:lun]` addresses. It checks the udev assignment operators (`=`, `+=`, `:=`), detects PCIe link speed and width degradation, ranks `nvidia-smi topo -m` paths (`NV#` > `PIX` > `PXB` > `PHB` > `NODE` > `SYS`), and maps `sysctl` keys to `/proc/sys` paths.
 
 ```bash
 python3 code/part01/devices_udev_sysfs_lab.py
 ```
 
-Next, on a disposable GCP Ubuntu VM (all interactive VM commands below are `untested here`), work through these steps:
+Next, work through these drills on a disposable GCP Ubuntu VM. All the interactive VM commands below are `untested here`, so treat each one as a step to check rather than a known result.
 
 **A. Device files.**
 
@@ -592,6 +667,8 @@ sudo dmesg --level=err,warn | tail -20  # (untested here)
 ip -br link; ethtool -i $(ls /sys/class/net | grep -v lo | head -1) # (untested here)
 ```
 
+You can skip section G if you do not have a GPU VM.
+
 **G. (GPU VM, optional.)**
 
 ```bash
@@ -604,140 +681,148 @@ sudo fuser -v /dev/nvidia* 2>&1 | head  # (untested here)
 
 ## Exercises
 
-1. **Device Nodes, Major/Minor Numbers, and `mknod` vs `nodev`:** (a) In `brw-rw---- 1 root disk 8, 1 /dev/sda1` and `crw-rw-rw- 1 root root 195, 0 /dev/nvidia0`, what do `b` vs `c` and the numbers `8, 1` and `195, 0` mean to the kernel? (b) What does `sudo mknod /tmp/mynull c 1 3` create, and how does mounting `/tmp` with `nodev` protect the system?
-2. **`udev` Event Flow and Operators (`==`, `!=`, `=`, `+=`, `:=`):** (a) State the difference between `==`/`!=` and `=`/`+=`/`:=` in `/etc/udev/rules.d/*.rules`, and predict the resulting list of symlinks when matching rules apply `=("=", "disk/by-id/ata-1")` followed by `=("+=", "disk/by-uuid/u-1")`, or when a rule sets `MODE:="0660"` followed by a later rule setting `MODE="0666"`. (b) Which two `udevadm` commands reload and apply a newly edited rule to an already-attached device? Verify with `evaluate_udev_assignments()` in `code/part01/devices_udev_sysfs.py`.
-3. **SCSI 3-Layer Stack, `[host:channel:target:lun]`, and Generic `/dev/sg*` Nodes:** (a) Parse `[2:0:0:3] disk USB2.0 CardReader SD 0100 /dev/sde` from `lsscsi`, and explain how a USB flash reader and a SATA disk (`libata`) both appear as `/dev/sd*` block devices. (b) Why does `lsscsi -g` show both `/dev/sr0` (or `/dev/sda`) and `/dev/sg1` (or `/dev/sg0`) for the same physical drive?
-4. **PCIe Link Health in `sysfs` and `lspci -vvv`:** A GPU at `0000:3b:00.0` reports `current_link_speed = 32.0 GT/s` and `current_link_width = 8`, while `max_link_speed = 32.0 GT/s` and `max_link_width = 16`. Calculate the `bandwidth_ratio` (`check_pcie_link_health()`) and state three physical or firmware causes of width degradation.
-5. **`nvidia-smi topo -m` Interconnect Hierarchy and NUMA Affinity:** Rank the six `nvidia-smi topo -m` connection labels (`NV8`, `PIX`, `PXB`, `PHB`, `NODE`, `SYS`) from fastest to slowest, and state which two files under `/sys/bus/pci/devices/0000:3b:00.0/` tell you which NUMA node and CPU cores are local to that GPU or NIC.
-6. **`procfs` vs `sysfs` and Persistent `sysctl` Tuning:** Convert the `sysctl` keys `net.ipv4.ip_forward`, `vm.swappiness`, and `kernel.yama.ptrace_scope` to their exact `/proc/sys/` file paths, and explain why a boot-time setting in `/etc/sysctl.d/90-gpu-node.conf` can fail silently if the kernel module that owns the parameter is not yet loaded.
+Work through these exercises after you finish the drills. Each one asks you to explain or calculate something.
+
+1. **Device Nodes, Major/Minor Numbers, and `mknod` vs `nodev`:** First, in `brw-rw---- 1 root disk 8, 1 /dev/sda1` and `crw-rw-rw- 1 root root 195, 0 /dev/nvidia0`, what do b versus c, and the numbers `8, 1` and `195, 0`, mean to the kernel? Second, what does `sudo mknod /tmp/mynull c 1 3` create, and how does mounting `/tmp` with `nodev` protect the system?
+2. **udev Event Flow and Operators (`==`, `!=`, `=`, `+=`, `:=`):** First, state the difference between `==` and `!=` on one side, and `=`, `+=` and `:=` on the other, in `/etc/udev/rules.d/*.rules`. Predict the resulting list of symlinks when matching rules apply `=("=", "disk/by-id/ata-1")` and then `=("+=", "disk/by-uuid/u-1")`. Also predict the result when one rule sets `MODE:="0660"` and a later rule sets `MODE="0666"`. Second, which two `udevadm` commands reload and apply a newly edited rule to a device that is already attached? Verify your answer with `evaluate_udev_assignments()` in `code/part01/devices_udev_sysfs.py`.
+3. **SCSI 3-Layer Stack, `[host:channel:target:lun]`, and Generic `/dev/sg*` Nodes:** First, parse `[2:0:0:3] disk USB2.0 CardReader SD 0100 /dev/sde` from `lsscsi`, and explain how a USB flash reader and a SATA disk (libata) both appear as `/dev/sd*` block devices. Second, why does `lsscsi -g` show both `/dev/sr0` (or `/dev/sda`) and `/dev/sg1` (or `/dev/sg0`) for the same physical drive?
+4. **PCIe Link Health in sysfs and `lspci -vvv`:** A GPU at `0000:3b:00.0` reports `current_link_speed = 32.0 GT/s` and `current_link_width = 8`. Its `max_link_speed = 32.0 GT/s` and `max_link_width = 16`. Calculate the `bandwidth_ratio` from `check_pcie_link_health()`, and name three physical or firmware causes of width degradation.
+5. **`nvidia-smi topo -m` Interconnect Hierarchy and NUMA Affinity:** Rank the six `nvidia-smi topo -m` connection labels, `NV8`, `PIX`, `PXB`, `PHB`, `NODE` and `SYS`, from fastest to slowest. Then state which two files under `/sys/bus/pci/devices/0000:3b:00.0/` tell you which NUMA node and which CPU cores are local to that GPU or NIC.
+6. **procfs vs sysfs and Persistent `sysctl` Tuning:** Convert the `sysctl` keys `net.ipv4.ip_forward`, `vm.swappiness` and `kernel.yama.ptrace_scope` to their exact `/proc/sys/` file paths. Then explain why a boot-time setting in `/etc/sysctl.d/90-gpu-node.conf` can fail silently if the kernel module that owns the parameter is not yet loaded.
 
 ## Checkpoint questions (20)
+
+Imagine you are on call, and someone asks you each of these questions in turn. For example, you might be asked why `fstab` mounted the wrong disk. Answer in your own words, using the facts you have learned.
 
 <details>
 <summary>1. What is a device file in `/dev`, what do `b`, `c`, `p`, and `s` mean, and how does the kernel use major and minor numbers?</summary>
 
-A device file is an inode in `/dev` that routes file operations (`open`, `read`, `write`, `ioctl`) to a kernel device driver instead of a disk file. `b` is a block device (fixed-size addressable blocks, cached), `c` is a character device (unbuffered byte stream / `ioctl`), `p` is a named pipe (FIFO), and `s` is a Unix domain socket. The kernel identifies block and character devices solely by their **major** number (the driver class, listed in `/proc/devices`) and **minor** number (the specific drive/partition or GPU instance).
+A device file is an inode in `/dev` that sends file operations (`open`, `read`, `write`, `ioctl`) to a kernel device driver instead of to a disk file. `b` is a block device, which has fixed-size addressable blocks and is cached. `c` is a character device, which is an unbuffered byte stream or an `ioctl` interface. `p` is a named pipe (FIFO), and `s` is a Unix domain socket. The kernel identifies block and character devices by two numbers. The **major** number names the driver class, which is listed in `/proc/devices`. The **minor** number names the specific drive, partition or GPU instance.
 </details>
 
 <details>
 <summary>2. Why do network interfaces (`eth0`, `enp3s0`, `ib0`) have no device nodes in `/dev`?</summary>
 
-Packet-switched network interfaces are multiplexed across many simultaneous connections and protocol stacks, which does not fit a sequential single-file `read`/`write` stream; the kernel exposes them through the socket API (`socket`, `bind`, `sendto`) and `netlink` instead.
+Network interfaces carry many connections and protocol stacks at the same time. That does not fit a sequential single-file `read` and `write` stream. So the kernel exposes them through the socket API (`socket`, `bind`, `sendto`) and through `netlink` instead.
 </details>
 
 <details>
 <summary>3. Why must you never put `/dev/sda1` or `/dev/sdb1` directly into `/etc/fstab`, and what four stable alternatives exist?</summary>
 
-Kernel enumeration order (`sda`, `sdb`, `sdc`) can change across reboots or when a drive fails or is hot-plugged, causing `/dev/sdb1` to point to a different disk. Use stable identifiers instead: (1) `UUID=...` (`/dev/disk/by-uuid/`), (2) `LABEL=...` (`/dev/disk/by-label/`), (3) `/dev/disk/by-id/...` (bus/model/serial/WWN), or (4) LVM/device-mapper paths (`/dev/mapper/vg-lv`).
+Consider a server where one drive fails and the others are renumbered. The kernel assigns `sda`, `sdb` and `sdc` in enumeration order. That order can change across reboots, or when a drive fails or is hot-plugged. Then `/dev/sdb1` points at a different disk. Use one of four stable identifiers instead. You can use `UUID=...` from `/dev/disk/by-uuid/`, `LABEL=...` from `/dev/disk/by-label/`, a `/dev/disk/by-id/...` path built from bus, model, serial or WWN, or an LVM or device-mapper path such as `/dev/mapper/vg-lv`.
 </details>
 
 <details>
 <summary>4. How does `mknod` work, why should `/home` and `/tmp` be mounted with `nodev`, and why did `devtmpfs` + `udev` replace static `/dev` trees?</summary>
 
-`sudo mknod /tmp/mynull c 1 3` creates a character device node with major `1`, minor `3`. Mounting user-writable filesystems with `nodev` prevents the kernel from honouring any device nodes created there (stopping a user from making a node for `/dev/sda` if permissions were misconfigured). Modern kernels mount `devtmpfs` on `/dev` at boot to create default nodes dynamically as hardware is discovered, and `systemd-udevd` applies user-space naming and permission rules.
+`sudo mknod /tmp/mynull c 1 3` creates a character device node with major `1` and minor `3`. Mounting user-writable filesystems with `nodev` stops the kernel from honouring device nodes created there. Without it, a user could make a node for `/dev/sda` if permissions were misconfigured. Modern kernels mount `devtmpfs` on `/dev` at boot, and it creates default nodes as hardware is discovered. `systemd-udevd` then applies the naming and permission rules in user space.
 </details>
 
 <details>
 <summary>5. What is the difference between `/dev/sda` and `/sys/devices/.../block/sda`?</summary>
 
-`/dev/sda` is the block device node that programs open to read and write disk sectors. `/sys/devices/.../block/sda` (linked from `/sys/block/sda`) is the `sysfs` directory exposing the kernel's device model and management attributes (`dev`, `size`, `ro`, `queue/scheduler`, `queue/rotational`, `uevent`, and partition subdirectories `sda1`, `sda2`).
+`/dev/sda` is the block device node that programs open to read and write disk sectors. The `/sys/devices/.../block/sda` directory, which `/sys/block/sda` links to, is different. It is the `sysfs` directory that exposes the kernel's device model and management attributes. Those attributes include `dev`, `size`, `ro`, `queue/scheduler`, `queue/rotational` and `uevent`, plus the partition subdirectories `sda1` and `sda2`.
 </details>
 
 <details>
 <summary>6. How do `/sys/devices`, `/sys/bus`, `/sys/class`, and `/sys/block` relate to each other?</summary>
 
-`/sys/devices` is the true physical hardware hierarchy following how buses, bridges, and ports are wired together. `/sys/bus` (grouped by bus type: `pci`, `scsi`, `usb`, `nvme`), `/sys/class` (grouped by function: `net`, `block`, `infiniband`, `hwmon`), and `/sys/block` are symbolic-link views pointing into `/sys/devices`.
+`/sys/devices` is the true physical hierarchy. It follows how buses, bridges and ports are wired together. `/sys/bus` groups devices by bus type, such as `pci`, `scsi`, `usb` and `nvme`. `/sys/class` groups them by function, such as `net`, `block`, `infiniband` and `hwmon`. `/sys/block` lists block devices. The last three are symbolic-link views that point back into `/sys/devices`.
 </details>
 
 <details>
 <summary>7. Which `sysfs` files tell you a PCI device's NUMA node, local CPU cores, and PCIe link training speed and width?</summary>
 
-Under `/sys/bus/pci/devices/<BDF>/`: `numa_node` gives the NUMA node index, `local_cpulist` lists the local CPU cores, and `current_link_speed` / `current_link_width` versus `max_link_speed` / `max_link_width` show negotiated versus rated PCIe speed and lane width.
+Under `/sys/bus/pci/devices/<BDF>/`, the file `numa_node` gives the NUMA node index. The file `local_cpulist` lists the local CPU cores. The files `current_link_speed` and `current_link_width` show the negotiated speed and lane width. Compare them with `max_link_speed` and `max_link_width` to see the rated values.
 </details>
 
 <details>
 <summary>8. How does `sysctl` map to `/proc/sys/`, and how do you make a kernel parameter change survive a reboot?</summary>
 
-`sysctl` translates dots to slashes under `/proc/sys/` (so `net.ipv4.ip_forward` is `/proc/sys/net/ipv4/ip_forward`). `sudo sysctl -w key=val` changes only the live in-RAM value; to persist it across reboots, write `key = val` into `/etc/sysctl.d/90-custom.conf` and apply with `sudo sysctl --system`.
+`sysctl` turns dots into slashes under `/proc/sys/`. So `net.ipv4.ip_forward` is `/proc/sys/net/ipv4/ip_forward`. Running `sudo sysctl -w key=val` changes only the live value in memory. To survive a reboot, write `key = val` into a file such as `/etc/sysctl.d/90-custom.conf`, and apply it with `sudo sysctl --system`.
 </details>
 
 <details>
 <summary>9. Trace the full event path from plugging in a USB disk to `/dev/disk/by-id/...` appearing.</summary>
 
-The USB and SCSI drivers enumerate the device; the kernel creates the `/dev/sdX` node in `devtmpfs` (with default `root` ownership) and emits a `uevent` (`ACTION=add`, `DEVPATH`, `SUBSYSTEM=block`, `MAJOR`, `MINOR`); `systemd-udevd` evaluates all `.rules` files in lexical order, runs helpers like `ata_id`/`scsi_id` via `IMPORT{program}`, sets `OWNER`/`GROUP`/`MODE`, creates `/dev/disk/by-id/` and `by-uuid/` symlinks, and broadcasts the processed `UDEV` event to subscribers.
+The USB and SCSI drivers enumerate the device first. The kernel then creates the `/dev/sdX` node in `devtmpfs`, with default `root` ownership, and emits a `uevent` with `ACTION=add`, `DEVPATH`, `SUBSYSTEM=block`, `MAJOR` and `MINOR`. `systemd-udevd` evaluates all the `.rules` files in lexical order. It runs helpers such as `ata_id` or `scsi_id` through `IMPORT{program}`, and sets `OWNER`, `GROUP` and `MODE`. It creates the `/dev/disk/by-id/` and `by-uuid/` symlinks, then broadcasts the processed `UDEV` event to subscribers.
 </details>
 
 <details>
 <summary>10. How does `udev` order rule files across `/usr/lib/udev/rules.d/` and `/etc/udev/rules.d/`, and does it stop at the first matching rule?</summary>
 
-`udev` merges rule files from `/usr/lib/udev/rules.d/`, `/run/udev/rules.d/`, and `/etc/udev/rules.d/` and sorts them lexically by filename (`60-...` before `90-...`); a file in `/etc/udev/rules.d/` with the exact same name masks the vendor file in `/usr/lib/udev/rules.d/`. Unlike a firewall, `udev` evaluates **every** matching rule from start to finish (unless `GOTO` or `:=` is used).
+`udev` merges rule files from `/usr/lib/udev/rules.d/`, `/run/udev/rules.d/` and `/etc/udev/rules.d/`. It sorts them lexically by file name, so `60-...` runs before `90-...`. A file in `/etc/udev/rules.d/` with the same name masks the vendor file in `/usr/lib/udev/rules.d/`. Unlike a firewall, `udev` evaluates **every** matching rule from start to finish, unless `GOTO` or `:=` is used.
 </details>
 
 <details>
 <summary>11. In a `udev` rule, distinguish `==` and `!=` from `=`, `+=`, and `:=`.</summary>
 
-Two-character operators (`==`, `!=`) are conditional tests that must all match for the rule to apply. Single/compound assignment operators perform actions: `=` sets a value (overwriting previous values), `+=` appends to a multi-value list (such as `SYMLINK+=`), and `:=` sets a value and locks it so no later rule can modify it.
+The operators `==` and `!=` are conditional tests. All of them must match for the rule to apply. The operators `=`, `+=` and `:=` are assignments that perform actions. `=` sets a value and overwrites previous values. `+=` appends to a multi-value list, such as `SYMLINK+=`. `:=` sets a value and locks it, so no later rule can change it.
 </details>
 
 <details>
 <summary>12. How do you inspect a device's matchable attributes, test a new `udev` rule, and apply it without rebooting?</summary>
 
-Run `udevadm info -a -n /dev/sdX` to walk the device's and parent devices' `ATTRS{...}`, simulate rule execution with `sudo udevadm test /sys/block/sdX`, and apply changes live with `sudo udevadm control --reload` followed by `sudo udevadm trigger --subsystem-match=block --action=change`.
+Run `udevadm info -a -n /dev/sdX` to walk the device's `ATTRS{...}` and those of its parent devices. Simulate the rules with `sudo udevadm test /sys/block/sdX`. To apply changes live, run `sudo udevadm control --reload`, then `sudo udevadm trigger --subsystem-match=block --action=change`.
 </details>
 
 <details>
 <summary>13. When should you use `/dev/disk/by-id/`, `/dev/disk/by-path/`, and `/dev/disk/by-uuid/`?</summary>
 
-Use `by-id` (model + serial / WWN) to identify a specific physical drive regardless of which bay it sits in; use `by-path` (PCI slot + port) to identify a specific physical drive bay/slot across drive swaps; and use `by-uuid` (filesystem UUID) in `/etc/fstab` so the right filesystem mounts regardless of controller or slot changes.
+Use `by-id`, which is built from the model and serial or WWN, to identify one physical drive wherever it sits. Use `by-path`, which is built from the PCI slot and port, to identify a drive bay or slot across drive swaps. Use `by-uuid`, the filesystem UUID, in `/etc/fstab`. The right filesystem then mounts regardless of controller or slot changes.
 </details>
 
 <details>
 <summary>14. What are the three layers of the Linux SCSI subsystem, and how do USB drives and SATA drives end up as `/dev/sd*`?</summary>
 
-The top layer contains class drivers (`sd` disk, `sr` optical, `st` tape, `sg` generic); the middle layer is the SCSI core; and the bottom layer contains host-adapter drivers. USB mass storage uses a translator driver (`usb-storage`) that wraps SCSI commands inside USB packets, while SATA uses `libata` to translate between SCSI commands and native ATA commands—presenting both to the top-level `sd` driver as `/dev/sd*`.
+The top layer holds the class drivers: `sd` for disks, `sr` for optical drives, `st` for tape and `sg` for generic access. The middle layer is the SCSI core. The bottom layer holds the host-adapter drivers. USB mass storage uses a translator driver, `usb-storage`, which wraps SCSI commands inside USB packets. SATA uses `libata` to translate between SCSI commands and native ATA commands. Both reach the top-level `sd` driver, which presents them as `/dev/sd*`.
 </details>
 
 <details>
 <summary>15. What does `[2:0:0:3]` mean in `lsscsi`, and why does `lsscsi -g` show `/dev/sg*` alongside `/dev/sd*` and `/dev/sr*`?</summary>
 
-`[2:0:0:3]` is host adapter `2`, bus channel `0`, target ID `0`, and logical unit number (`LUN`) `3` (for example, the fourth slot of a multi-card USB reader). `/dev/sg*` is the SCSI generic character device that lets user-space programs (`smartctl`, `wodim`, `sg3_utils`) send raw SCSI commands directly to hardware without going through the block driver.
+`[2:0:0:3]` means host adapter `2`, bus channel `0`, target ID `0`, and logical unit number (`LUN`) `3`. The LUN could be the fourth slot of a multi-card USB reader. `/dev/sg*` is the SCSI generic character device. It lets user-space programs, such as `smartctl`, `wodim` and the `sg3_utils` tools, send raw SCSI commands straight to the hardware, without going through the block driver.
 </details>
 
 <details>
 <summary>16. Why are `iflag=direct` and `oflag=direct` important when using `dd` to test storage, and what precautions prevent `dd` disasters?</summary>
 
-`direct` bypasses the kernel page cache so `dd` measures actual device I/O rather than RAM copy speed. Because `dd` overwrites raw block devices without confirmation, always verify target names with `lsblk`, never write to a mounted filesystem, and double-check `if=` versus `of=`.
+The `direct` flags bypass the kernel page cache. That way `dd` measures real device I/O rather than RAM copy speed. `dd` overwrites raw block devices without asking, so always verify the target name with `lsblk`. Make sure you never write to a mounted filesystem, and double-check whether `if=` or `of=` is the input.
 </details>
 
 <details>
 <summary>17. Explain the `nvidia-smi topo -m` labels `NV#`, `PIX`, `PXB`, `PHB`, `NODE`, and `SYS`.</summary>
 
-`NV#` means connected via `#` NVLink lanes (highest bandwidth); `PIX` traverses at most one PCIe switch; `PXB` traverses multiple PCIe switches without crossing a host bridge; `PHB` traverses a PCIe Host Bridge within one NUMA node; `NODE` crosses NUMA nodes within a socket; and `SYS` crosses the inter-socket SMP link (slowest).
+`NV#` means the devices connect through `#` NVLink lanes, which is the highest bandwidth. `PIX` crosses at most one PCIe switch. `PXB` crosses several PCIe switches without crossing a host bridge. `PHB` crosses a PCIe host bridge within one NUMA node. `NODE` crosses NUMA nodes within a socket. `SYS` crosses the inter-socket SMP link, which is the slowest.
 </details>
 
 <details>
 <summary>18. What `/dev` nodes does the NVIDIA GPU driver use, and why is `nvidia-persistenced` needed on headless servers?</summary>
 
-The driver exposes `/dev/nvidia0`..`/dev/nvidiaN-1` (per-GPU nodes), `/dev/nvidiactl`, `/dev/nvidia-uvm`, `/dev/nvidia-uvm-tools`, `/dev/nvidia-modeset`, and `/dev/nvidia-caps/*` (for MIG/NVSwitch). On headless servers, `nvidia-persistenced` keeps the GPU driver state initialized when no process has `/dev/nvidia*` open, avoiding multi-second initialization delays and ensuring device nodes remain present.
+The driver uses `/dev/nvidia0` through `/dev/nvidiaN-1`, one node per GPU. It also uses `/dev/nvidiactl`, `/dev/nvidia-uvm`, `/dev/nvidia-uvm-tools`, `/dev/nvidia-modeset`, and `/dev/nvidia-caps/*` for MIG and NVSwitch. On a headless server, `nvidia-persistenced` keeps the GPU driver initialized when no process has `/dev/nvidia*` open. That avoids multi-second initialization delays and keeps the device nodes present.
 </details>
 
 <details>
 <summary>19. How does a container get access to GPUs and InfiniBand RDMA devices on a Linux host?</summary>
 
-The container runtime (`nvidia-container-toolkit` / CDI or Kubernetes device plugin) bind-mounts the required `/dev/nvidia*` and `/dev/infiniband/*` (`uverbs*`, `rdma_cm`) character nodes into the container's `/dev`, grants major/minor access in the container's device cgroup (eBPF program in cgroup v2), and mounts the matching host `libcuda.so` user-space libraries.
+The container runtime does this, through `nvidia-container-toolkit` with CDI, or through the Kubernetes device plugin. It bind-mounts the required `/dev/nvidia*` and `/dev/infiniband/*` character nodes into the container's `/dev`, such as `uverbs*` and `rdma_cm`. It grants major and minor access in the container's device cgroup, which uses an eBPF program under cgroup v2. It also mounts the matching host `libcuda.so` user-space libraries.
 </details>
 
 <details>
 <summary>20. How do you unbind a PCI device from its host driver and bind it to `vfio-pci` via `sysfs`?</summary>
 
-After ensuring no process is using the device, write its PCI BDF (`0000:3b:00.0`) to `/sys/bus/pci/devices/0000:3b:00.0/driver/unbind`, write `vfio-pci` to `/sys/bus/pci/devices/0000:3b:00.0/driver_override`, and write `0000:3b:00.0` to `/sys/bus/pci/drivers_probe`.
+First make sure you have stopped every process that uses the device. Then write its PCI BDF, `0000:3b:00.0`, to `/sys/bus/pci/devices/0000:3b:00.0/driver/unbind`. Write `vfio-pci` to `/sys/bus/pci/devices/0000:3b:00.0/driver_override`. Last, write `0000:3b:00.0` to `/sys/bus/pci/drivers_probe`.
 </details>
 
 ## Sources and review notes
 
+These notes list the sources behind this chapter and how they were checked. Read the originals if you want the full detail, and check any claim you rely on against its source. You can also rerun the lab yourself.
+
+If you want to trace a claim, start with the source list below.
+
 - **Sources read in full:**
-  - `how-linux-works-3rd-edition` — Brian Ward, *How Linux Works*, 3rd ed., **Chapter 3: Devices** (sections 3.1–3.6: device files, block `b` / character `c` / pipe `p` / socket `s` types and major/minor numbers, the `sysfs` `/sys/devices` path and `/sys/block/sda` directory contents, `dd` block copying, device name summary `/dev/sd*`, `/dev/sr*` and `wodim`, `/dev/hd*` PATA master/slave, `/dev/tty*` and `/dev/pts/*` virtual consoles and KMS display modes, `/dev/ttyS*` `COM1`/`COM2` and `/dev/ttyUSB*`/`/dev/ttyACM*`, `/dev/lp0`, `/dev/snd/*` ALSA vs `/dev/dsp` OSS audio, `mknod`, `devtmpfs` and `systemd-udevd` operation, `60-persistent-storage.rules` `ata_id --export` and `/dev/disk/by-id/`, `==`/`!=` conditionals vs `=`/`+=`/`:=` directives, `udevadm info`/`monitor`/`trigger`, and the 3-layer SCSI subsystem with `lsscsi`, USB storage translator, `libata`, and `lsscsi -g` `/dev/sg*` generic devices; cross-referenced with Chapters 14, 21, 22, 23, 24, 26, 27, 28, 29, and 30).
-  - `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to` — Sergey Zhumatiy, *Supercomputers for Linux SysAdmins*, **Chapter 7: UNIX and Linux – the Basics** (devices and special files) and **Chapter 8: UNIX and Linux – Working Techniques** (`/proc` and `sysctl`, the `udev` subsystem with match and assignment tables and `%k`/`%n`/`%p`/`%M`/`%m` substitution variables, and `udevadm info -a`; cross-referenced with Chapters 15, 16, 17, 18, and 20).
-- **Run here:** `python3 code/part01/devices_udev_sysfs_lab.py` (23 passed, 0 failed).
-- **Explicitly labelled inferences:** The `/dev/nvidia*` and `/dev/infiniband/*` node tables, `nvidia-smi topo -m` legend (`NV#`, `PIX`, `PXB`, `PHB`, `NODE`, `SYS`), `current_link_speed/width` vs `max_link_speed/width`, `DEVNAME` uevent properties, `/proc/PID` vs `/proc/sys/...` (`Documentation/ABI/` and `Documentation/admin-guide/sysctl/`), and `vfio-pci` `driver_override` sequence connect the Linux device model to Chapters 1.11, 1.15, 1.21, 1.25 and Parts 5, 6, and 10 (`SCL` Chapter 25) GPU cluster operations.
-- **Not verified on live hardware:** All interactive VM and GPU hardware commands (`mknod`, `sysctl`, `udevadm`, `losetup`, `lspci`, `dmidecode`, `nvidia-smi`) are marked (untested here) and should be executed on a disposable Linux VM.
+  - `how-linux-works-3rd-edition`, by Brian Ward, *How Linux Works*, 3rd ed. The relevant part is Chapter 3, Devices, sections 3.1 to 3.6. It covers device files and their block (`b`), character (`c`), pipe (`p`) and socket (`s`) types. It also covers major and minor numbers, the `sysfs` `/sys/devices` path, and the `/sys/block/sda` directory contents. Other topics include `dd` block copying, the `/dev/sd*`, `/dev/sr*` and `wodim` device names, and `/dev/hd*` PATA master and slave devices. The source describes `/dev/tty*` and `/dev/pts/*` virtual consoles and KMS display modes. It covers `/dev/ttyS*` `COM1` and `COM2`, `/dev/ttyUSB*` and `/dev/ttyACM*`, and `/dev/lp0`. It explains `/dev/snd/*` ALSA against `/dev/dsp` OSS audio. It also covers `mknod`, `devtmpfs` and `systemd-udevd` operation. The `60-persistent-storage.rules` file uses `ata_id --export` to build `/dev/disk/by-id/`. The source also explains `==` and `!=` conditionals against `=`, `+=` and `:=` directives, and the `udevadm info`, `monitor` and `trigger` commands. Last, it covers the three-layer SCSI subsystem with `lsscsi`, the USB storage translator, `libata`, and the `lsscsi -g` `/dev/sg*` generic devices. The source was cross-referenced with Chapters 14, 21, 22, 23, 24, 26, 27, 28, 29 and 30.
+  - `supercomputers-for-linux-sysadmins-managing-modern-hpc-clusters-and-supercomputers-from-software-to`, by Sergey Zhumatiy, *Supercomputers for Linux SysAdmins*. The relevant parts are Chapter 7, UNIX and Linux, the basics, which covers devices and special files, and Chapter 8, UNIX and Linux, working techniques. Chapter 8 covers `/proc` and `sysctl`, the `udev` subsystem with its match and assignment tables, the `%k`, `%n`, `%p`, `%M` and `%m` substitution variables, and `udevadm info -a`. The source was cross-referenced with Chapters 15, 16, 17, 18 and 20.
+- **Run here:** `python3 code/part01/devices_udev_sysfs_lab.py`, which passed 23 checks and failed none.
+- **Explicitly labelled inferences:** The `/dev/nvidia*` and `/dev/infiniband/*` node tables are inferences. So are the `nvidia-smi topo -m` legend (`NV#`, `PIX`, `PXB`, `PHB`, `NODE`, `SYS`), the link speed and width comparison (`current_link_speed/width` against `max_link_speed/width`), and the `DEVNAME` uevent properties. The `/proc/PID` against `/proc/sys/...` distinction, the `Documentation/ABI/` and `Documentation/admin-guide/sysctl/` references, and the `vfio-pci` `driver_override` sequence are inferences too. These connect the Linux device model to Chapters 1.11, 1.15, 1.21 and 1.25, and to Parts 5, 6 and 10 (`SCL` Chapter 25), which cover GPU cluster operations.
+- **Not verified on live hardware:** All the interactive VM and GPU hardware commands, including `mknod`, `sysctl`, `udevadm`, `losetup`, `lspci`, `dmidecode` and `nvidia-smi`, are marked `(untested here)`. Run them on a disposable Linux VM before you rely on them.
