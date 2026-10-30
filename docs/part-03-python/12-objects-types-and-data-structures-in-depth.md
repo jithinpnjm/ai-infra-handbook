@@ -3015,6 +3015,741 @@ Python compares two strings from left to right, one character at a time. It comp
 
 Here `t` has a higher code point than `k`, so `hact` sorts after `hack`. The word `hacker` also sorts after `hack`, because it is longer and starts with the same letters. Byte strings compare byte by byte in the same way, and lists compare their items.
 
+## String methods in depth
+
+### Calling methods
+
+A method is a function attached to an object. You call it with the object, a dot, the method name and parentheses:
+
+```
+object.method(arguments)
+```
+
+Python first fetches the method from the object, then calls it with the object and the arguments. If the method returns a result, that result is the value of the whole expression. The same call pattern works for methods on lists, dictionaries and the objects you build with classes.
+
+Strings have many methods. Some of the most common calls are `S.capitalize()`, `S.casefold()`, `S.lower()`, `S.upper()`, `S.title()`, `S.swapcase()`, `S.isalnum()`, `S.isalpha()`, `S.isascii()`, `S.isdecimal()`, `S.isdigit()`, `S.isidentifier()`, `S.islower()`, `S.isnumeric()`, `S.isprintable()`, `S.isspace()`, `S.istitle()` and `S.isupper()`. The list changes over time, so check Python's standard library manual for the current version. Running `dir` or `help` on a string also shows what is available.
+
+### Finding and replacing text
+
+The `find` method returns the offset of a substring, or `-1` if the substring is missing. It searches from the front by default. The `rfind` method searches from the back.
+
+```
+>>> S = 'Code'
+>>> S.find('od') # Find the offset of a substring in S
+1
+>>> S
+'Code'
+>>> S.replace('od', 'abl') # Replace all substrings 'od' in S with 'abl'
+'Cable'
+>>> S
+'Code'
+```
+
+The `replace` method swaps every match for new text. It takes an optional third argument that limits how many replacements happen. Use it for simple template jobs, such as filling in a form letter:
+
+```
+>>> '--@--@--@--'.replace('@', 'PY', 2)
+'--PY--PY--@--'
+```
+
+When you need to replace text at one exact spot, you can search with `find` and then slice. Here the `replace` method does the same job with less code:
+
+```
+>>> S = 'xxxxPYxxxxPYxxxx'
+>>> where = S.find('PY') # Search for position
+>>> where # Occurs at offset 4
+4
+>>> S = S[:where] + 'CODE' + S[(where+2):]
+>>> S
+'xxxxCODExxxxPYxxxx'
+```
+
+```
+>>> S = 'xxxxPYxxxxPYxxxx'
+>>> S.replace('PY', 'CODE', 1) # Replace one
+'xxxxCODExxxxPYxxxx'
+>>> S.replace('PY', 'CODE') # Replace all
+'xxxxCODExxxxCODExxxx'
+>>> 'xxxxWHATxxxxHOWxxxx'.replace('WHAT', 'CODE').replace('HOW', 'PYTHON')
+'xxxxCODExxxxPYTHONxxxx'
+```
+
+Every string method returns a new string, and the original stays the same. That is true even for a method named `replace`. Because each call returns a string, you can chain calls, as the last example does. To keep the result, assign it to a name:
+
+```
+>>> S = S.replace('PY', 'CODE')
+>>> S
+'xxxxCODExxxxCODExxxx'
+```
+
+Each change makes a new string with its own copy of the text. For a very large string with many edits, that can slow a script down. You can convert the string to a list, change the list, and join it back together:
+
+```
+>>> S = 'text'
+>>> L = list(S) # Explode string into a list
+>>> L
+['t', 'e', 'x', 't']
+>>> L[0] = 'h' # Works for lists, not strings
+>>> L[3] = '!'
+>>> L
+['h', 'e', 'x', '!']
+>>> S = ''.join(L) # Implode back to a string
+>>> S
+'hex!'
+```
+
+Python also has a mutable `bytearray` type, which can change in place. It holds small 8-bit values, so it suits simple byte-sized text such as ASCII. Richer Unicode text still needs the techniques shown here.
+
+### Splitting and joining text
+
+The `join` method looks backward at first. It is a method of the delimiter string, not of the list. It places the strings from a list or other iterable together, with the delimiter between each pair. An empty string as the delimiter glues the pieces with nothing between them:
+
+```
+>>> 'PY'.join(['which', 'language', 'is', 'best', '?'])
+'whichPYlanguagePYisPYbestPY?'
+```
+
+The `split` method does the opposite. It breaks a string into a list of substrings around a delimiter. With no delimiter, it splits on whitespace, which covers spaces, tabs and newlines:
+
+```
+>>> line = 'aaa bbb ccc'
+>>> cols = line.split()
+>>> cols
+['aaa', 'bbb', 'ccc']
+>>> line = 'Python,3.12,scripting,33'
+>>> line.split(',')
+['Python', '3.12', 'scripting', '33']
+```
+
+Delimiters can be longer than one character:
+
+```
+>>> line = 'youPYarePYaPYstringPYcoder'
+>>> line.split('PY')
+['you', 'are', 'a', 'string', 'coder']
+```
+
+### Parsing text with slices and splits
+
+Slicing works for parsing when each piece of data sits at a known offset. The next example pulls three columns from a line:
+
+```
+>>> line = 'aaa bbb ccc'
+>>> col1 = line[:3]
+>>> col2 = line[4:8]
+>>> col3 = line[-3:]
+>>> col1, col2, col3
+('aaa', 'bbb ', 'ccc')
+```
+
+When a delimiter separates the data, splitting is easier. It works even when the data moves around in the string. Slicing and splitting are fast and handle basic extraction well. For comma-separated data with more rules, the `csv` module in the standard library is the better tool.
+
+### Other common methods
+
+Some methods strip whitespace, change case, test content, or check the start and end of a string:
+
+```
+>>> line = "Python's strings are awesome!\n"
+>>> line.rstrip() # Drop whitespace (or other)
+"Python's strings are awesome!"
+>>> line.upper() # Case conversions
+"PYTHON'S STRINGS ARE AWESOME!\n"
+>>> line.isalpha() # Content tests
+False
+>>> line.endswith('awesome!\n') # Suffix and prefix tests
+True
+>>> line.startswith('Python')
+True
+```
+
+Python runs chained calls from left to right. In `line.rstrip().split(',')`, the strip happens first, and each call must return an object that has the next method.
+
+You can get some of these results without a method. The `in` operator tests for a substring, and slicing can mimic `endswith`:
+
+```
+>>> line.find('awesome') != -1 # Search via method call or expression
+True
+>>> 'awesome' in line
+True
+>>> sub = 'awesome!\n'
+>>> line.endswith(sub) # End test via method call or slice
+True
+>>> line[-len(sub):] == sub
+True
+```
+
+None of the string methods accepts patterns. For pattern-based text processing, use the `re` module from the standard library. String methods can run faster than `re`, because they do less work. Use `help(S.replace)` for details on one method, or `help(str)` for the type as a whole.
+
+## String formatting in depth
+
+Formatting fills placeholders in a string with values in one step. It is handy for reports and for messages that users read. Python has three main tools for this job, and a fourth in the standard library. New tools arrive with promises to improve on the old ones, yet the older tools keep running for decades. You will see all of them in existing code, so this section covers each one.
+
+For new code, the f-string is a good default. It is the newest tool, and it is the least likely to be dropped in a future version. The expression and the method still appear in many programs, so learn to read them too.
+
+### The formatting expression
+
+The `%` operator works on strings as well as numbers. Put a format string on the left with conversion targets that start with `%`. Put the values on the right. Use a tuple when you have more than one value:
+
+```
+>>> 'There are %d ways to %s!' % (3, 'format') # Formatting expression
+'There are 3 ways to format!'
+```
+
+A single value does not need a tuple. Every type fits a `%s` target, because every object has a printed form:
+
+```
+>>> option = 'expression'
+>>> 'Meet the formatting %s!' % option # String substitution
+'Meet the formatting expression!'
+>>> '%d %s %g you' % (1, 'formatter', 4.0) # Type-specific substitutions
+'1 formatter 4 you'
+>>> '%s -- %s -- %s' % (42, 3.14159, [1, 2, 3]) # All types match a %s target
+'42 -- 3.14159 -- [1, 2, 3]'
+```
+
+Formatting always returns a new string, because strings cannot change in place. Assign the result to a name if you need to keep it.
+
+### Formatting expression type codes
+
+Each conversion target can carry a type code after the `%`. The codes follow the C `printf` style. The difference is that Python returns the result instead of printing it. The table lists the codes.
+
+| Code | Meaning |
+| --- | --- |
+| `s` | String (or any object's `str(X)` string) |
+| `r` | Same as `s`, but uses `repr`, not `str` |
+| `a` | Same as `s`, but uses `ascii`, not `str` |
+| `c` | Character (integer code or string) |
+| `d` | Decimal (signed base-10 integer) |
+| `i` | Integer (see `d`) |
+| `u` | Same as `d` (obsolete: no longer unsigned) |
+| `o` | Octal integer (base 8) |
+| `x` | Hex integer (base 16) |
+| `X` | Same as `x`, but with uppercase letters |
+| `e` | Floating point with exponent, lowercase |
+| `E` | Same as `e`, but uses uppercase letters |
+| `f` | Floating-point decimal |
+| `F` | Same as `f`, but uses uppercase letters |
+| `g` | Floating-point `e` or `f` |
+| `G` | Floating-point `E` or `F` |
+| `%` | Literal `%` (coded as `%%`) |
+
+A conversion target has a general structure. Each part in square brackets is optional, and the brackets are not typed:
+
+```
+%[(keyname)][flags][width][.precision]typecode
+```
+
+Between the `%` and the type code, you can add any of these parts:
+
+- A key name, in parentheses, to look up a value in a dictionary.
+- Flags. `0` pads with zeros, `-` left-justifies, `+` shows a sign, and a space shows a blank before positive numbers. A `-` overrides `0`, and a `+` overrides a space.
+- A minimum field width for the substituted text.
+- A precision, which sets the digits after the decimal point for floating-point numbers.
+
+The width and precision can also be a `*`. The `*` takes the value from the next item in the input. That helps when the size is not known until the program runs. A plain `%s` replaces the target with the value's default printed text, whatever its type.
+
+### Formatting expression examples
+
+The first example formats an integer three ways: plain, left-justified in a six-character field, and zero-padded to six characters:
+
+```
+>>> x = 1234
+>>> res = 'integers: ...%d...%-6d...%06d' % (x, x, x)
+>>> res
+'integers: ...1234...1234 ...001234'
+```
+
+The `%e`, `%f` and `%g` codes show a floating-point number in different ways. The `%E` code matches `%e`, but it uses an uppercase exponent. The `%g` code picks a format from the number's size, so it can look surprising at first:
+
+```
+>>> x = 1.23456789
+>>> x # Default REPL display
+1.23456789
+>>> '%e | %f | %g' % (x, x, x)
+'1.234568e+00 | 1.234568 | 1.23457'
+>>> '%E' % x
+'1.234568E+00'
+```
+
+Flags and widths add more control for floating-point numbers. For simple jobs, `%s` or `str` gives the full text:
+
+```
+>>> '%-6.2f | %05.2f | %+06.1f' % (x, x, x)
+'1.23 | 01.23 | +001.2'
+>>> '%s' % x, str(x)
+('1.23456789', '1.23456789')
+```
+
+When the width or precision is not known until runtime, use `*`. The 4 in this tuple supplies the precision:
+
+```
+>>> '%f, %.2f, %.*f' % (1/3.0, 1/3.0, 4, 1/3.0)
+'0.333333, 0.33, 0.3333'
+```
+
+### Dictionary-based formatting expressions
+
+The `%` operator can also take a dictionary on the right. Put key names in parentheses on the left, and each target fetches its value from the dictionary. This makes the expression work as a template:
+
+```
+>>> '%(qty)s more %(tool)s' % {'qty': 1, 'tool': 'formatter'}
+'1 more formatter'
+```
+
+Programs that generate HTML or XML often work this way. They build a dictionary of values and fill a template in one step. A template can be a string in the script or text loaded from a file:
+
+```
+>>> # Template with substitution targets
+>>> reply = """
+... Hello %(name)s!
+... Welcome to %(year)s
+... """
+>>> values = {'name': 'Pat', 'year': 2024} # Build up values to substitute
+>>> print(reply % values) # Perform substitutions
+Hello Pat!
+Welcome to 2024
+```
+
+The `vars` built-in returns a dictionary of the variables that exist where it is called. Passing it to a formatting expression lets the template use variable names as keys:
+
+```
+>>> name = 'Pat'
+>>> year = 2024
+>>> '%(name)s from %(year)s' % vars() # Variables are keys in vars()
+'Pat from 2024'
+```
+
+Dictionaries also let one value appear more than once in a template:
+
+```
+>>> '%(value)f, %(value).2f, %(value).f' % ({'value': 1 / 3.0})
+'0.333333, 0.33, 0'
+```
+
+### The formatting method
+
+Python 3.0 added the formatting method, `str.format`. It uses function-call syntax instead of an operator. The string is a template, and the arguments you pass are the values to insert. Each substitution target sits in curly braces. Arguments can be matched by position, by absolute position or by keyword:
+
+```
+>>> template = '{}, {}, and {}' # Relative position
+>>> template.format('expr', 'method', 'fstring')
+'expr, method, and fstring'
+>>> template = '{0}, {1}, and {2}' # Absolute position
+>>> template.format('expr', 'method', 'fstring')
+'expr, method, and fstring'
+>>> template = '{first}, {second}, and {third}' # Keyword name
+>>> template.format(first='expr', second='method', third='fstring')
+'expr, method, and fstring'
+>>> template = '{first}, {0}, and {third}' # Combos ({0} or {})
+>>> template.format('method', first='expr', third='fstring')
+'expr, method, and fstring'
+```
+
+The method avoids the single-value-or-tuple quirk of `%`, because values are simply arguments. It still uses the same type codes, and the two tools overlap a lot. The `%` form uses dictionaries where the method uses keyword arguments:
+
+```
+>>> template = '%s, %s, and %s' # Equivalent %s
+>>> template % ('expr', 'method', 'fstring')
+'expr, method, and fstring'
+>>> template = '%(first)s, %(second)s, and %(third)s'
+>>> template % dict(first='expr', second='method', third='fstring')
+'expr, method, and fstring'
+```
+
+The `dict()` call builds a dictionary from keyword arguments. It is often less cluttered than a `{...}` literal.
+
+The subject of a `format` call can be a literal, and it can insert objects of any type:
+
+```
+>>> '{pi}, {} and {years}'.format(62, pi=3.14, years=[1995, 2024])
+'3.14, 62 and [1995, 2024]'
+```
+
+As with other string operations, `format` returns a new string. You can print it, save it or split it:
+
+```
+>>> X = '{pi}, {} and {years}'.format(62, pi=3.14, years=[1995, 2024])
+>>> X
+'3.14, 62 and [1995, 2024]'
+>>> X.split(' and ')
+['3.14, 62', '[1995, 2024]']
+>>> Y = X.replace('and', 'but under no circumstances')
+>>> Y
+'3.14, 62 but under no circumstances [1995, 2024]'
+```
+
+### Formatting method keys, attributes and offsets
+
+Format strings can reach into object attributes and dictionary keys. Square brackets name a dictionary key. A dot names an attribute. The first example below indexes a dictionary with `kind`, then reads the `platform` attribute from the `sys` module. The second example passes the same objects by keyword:
+
+```
+>>> import sys # Standard-library module
+>>> 'This {1[kind]} runs {0.platform}'.format(sys, {'kind': 'laptop'})
+'This laptop runs darwin'
+>>> 'This {map[kind]} runs {sys.platform}'.format(sys=sys, map={'kind': 'phone'})
+'This phone runs linux'
+```
+
+Square brackets can also name a list offset, but only one positive offset works inside them. For negative offsets or slices, compute the value outside the format string, as you would with `%`. The `*` in a call unpacks a tuple into separate arguments:
+
+```
+>>> somelist = list('HACK')
+>>> somelist
+['H', 'A', 'C', 'K']
+>>> 'zero={0[0]}, two={0[2]}'.format(somelist)
+'zero=H, two=C'
+>>> 'first={}, last={}'.format(somelist[0], somelist[-1]) # [-1] fails in fmt
+'first=H, last=K'
+>>> parts = (somelist[0], somelist[-1], somelist[1:3]) # [1:3] fails in fmt
+>>> 'first={}, last={}, middle={}'.format(*parts) # Or {0}, {1}, {2}
+"first=H, last=K, middle=['A', 'C']"
+```
+
+### Custom formats with the formatting method
+
+The method also takes extra syntax for layout. After a colon, a format specifier sets the field size, the alignment and the type code. A substitution target has four optional parts, and none of them may have spaces between them:
+
+```
+{[fieldname][component][!conversionflag][:formatspec]}
+```
+
+Within a target, each part does one job:
+
+- `fieldname` is an optional number or keyword that names an argument. Leave it out to use the arguments in order.
+- `component` is zero or more `.name` or `[index]` references. They fetch an attribute or an indexed value. Leave it out to use the whole argument.
+- `conversionflag` is `!` followed by `s`, `r` or `a`. These call `str`, `repr` or `ascii` on the value.
+- `formatspec` starts with `:` and describes how the value looks.
+
+Doubled braces, `{{` and `}}`, print a single literal brace. The `formatspec` part has its own structure:
+
+```
+[[fill]align][sign][z][#][0][width][grouping][.precision][typecode]
+```
+
+These are the parts that matter most:
+
+- `fill` is any character except `{` or `}`, used to pad the field.
+- `align` is `<` for left, `>` for right, `=` for padding after a sign, or `^` for centered.
+- `sign` is `+` to sign all numbers, `-` to sign only negatives, or a space to leave a space for positives.
+- `grouping` is `,` or `_`. It adds a separator every three digits in decimal numbers, and every four digits in hex, octal and binary numbers, where only `_` works.
+- `width` and `precision` work as they do in the `%` expression.
+- `typecode` is similar to the `%` codes, with a few differences.
+
+For numbers, a `0` before the width enables sign-aware zero padding. A `#` adds a prefix, such as `0b` or `0X`, for binary and hex codes. The method's type codes overlap with the `%` codes. The method adds `b` for binary, and `%` for percentages. It uses only `d` for base-10 integers, so `i` and `u` are not used. It uses `!` conversion flags in some cases, and it needs a string object for `s`.
+
+Nested `{}` targets can fill any part of a `formatspec` from the arguments at runtime. Nesting goes only one level deep. This works much like the `*` in a `%` expression.
+
+### Formatting method examples
+
+Here `{0:10}` means the first argument in a field 10 characters wide. The `{1:<10}` target left-justifies the second argument. The `^10` centers in ten characters, and `{0.platform:>10}` right-justifies an attribute:
+
+```
+>>> '{0:10} = {1:10}'.format('text', 123.4567)
+'text = 123.4567'
+>>> '{0:>10} = {1:<10}'.format('text', 123.4567)
+' text = 123.4567 '
+>>> '{1[kind]:^10} = {0.platform:^10}'.format(sys, dict(kind='laptop'))
+' laptop = darwin '
+```
+
+You can leave out argument numbers when you select arguments from left to right. This is shorter, but readers must count the braces to match each argument:
+
+```
+>>> '{:10} = {:10}'.format('text', 123.4567)
+'text = 123.4567'
+```
+
+Floating-point numbers use the same type codes as `%` expressions:
+
+```
+>>> '{0:e}, {1:.3e}, {2:g}'.format(3.14159, 3.14159, 3.14159)
+'3.141590e+00, 3.142e+00, 3.14159'
+>>> '{:f}, {:.2f}, {:06.2f}'.format(3.14159, 3.14159, 3.14159)
+'3.141590, 3.14, 003.14'
+```
+
+The method formats integers in hex, octal and binary, which `%` does not do for binary. Compare these with the built-in conversion functions:
+
+```
+>>> '{:X}, {:o}, {:b}'.format(255, 255, 255) # Hex, octal, binary
+'FF, 377, 11111111'
+>>> hex(255), int('FF', 16), 0xFF # Other to/from hex
+('0xff', 255, 255)
+>>> oct(255), int('377', 8), 0o377 # Other to/from octal
+('0o377', 255, 255)
+>>> bin(255), int('11111111', 2), 0b11111111 # Other to/from binary
+('0b11111111', 255, 255)
+```
+
+The method can insert commas or underscores between groups of digits, and it can reuse an argument by number:
+
+```
+>>> '{:,.2f}'.format(12345.678)
+'12,345.68'
+>>> '{0:,} {0:_} {1:_x} {1:_b}'.format(2 ** 32, 0x1FFFF)
+'4,294,967,296 4_294_967_296 1_ffff 1_1111_1111_1111_1111'
+```
+
+Parameters can be fixed in the format string, or taken from the arguments with nested braces:
+
+```
+>>> '{:.4f}'.format(1 / 3.0) # Parameters hardcoded
+'0.3333'
+>>> '%.4f' % (1 / 3.0) # Ditto for expression
+'0.3333'
+>>> '{0:.{1}f}'.format(1 / 3.0, 4) # Take value from arguments
+'0.3333'
+>>> '%.*f' % (4, 1 / 3.0) # Ditto for expression
+'0.3333'
+```
+
+Any part of a `formatspec` can come from the arguments, which is more general than `%`. This example sets fill, alignment, sign, width, comma grouping and precision in several ways:
+
+```
+>>> '{0:0<+12,.2f}!'.format(1234.564)
+'+1,234.56000!'
+>>> '{0:{1}{2}{3}{4}{5}.{6}{7}}!'.format(1234.564, 0, '<', '+', 12, ',', 2, 'f')
+'+1,234.56000!'
+>>> '{:{}{}{}{}{}{}{}{}}!'.format(1234.564, 0, '<', '+', 12, ',', '.', 2, 'f')
+'+1,234.56000!'
+```
+
+The built-in `format` function formats one value. It is often simpler than the method for a single item:
+
+```
+>>> '{:.2f}'.format(1.2345) # String method
+'1.23'
+>>> format(1.2345, '.2f') # Built-in function
+'1.23'
+>>> '%.2f' % 1.2345 # Expression
+'1.23'
+>>> f'{1.2345:.2f}' # Preview: f-string
+'1.23'
+```
+
+### The f-string
+
+Python 3.6 added f-strings. They perform string interpolation, which means an expression inside the string runs when the string is built, and its result replaces the expression. You put the letter `f` before the opening quote. The braces hold any Python expression, not only a name:
+
+```
+>>> what = 'coding'
+>>> tool = 'Python'
+>>> f'Learning {what} in {tool}'
+'Learning coding in Python'
+```
+
+The same result takes more keystrokes with the other two tools:
+
+```
+>>> 'Learning %s in %s' % (what, tool) # Expression equivalent
+'Learning coding in Python'
+>>> 'Learning {} in {}'.format(what, tool) # Method equivalent
+'Learning coding in Python'
+```
+
+Any expression works inside the braces:
+
+```
+>>> task = f'Learning {what.upper() + '!'} in {tool + str(3.12)}'
+>>> task
+'Learning CODING! in Python3.12'
+```
+
+An f-string runs when your code reaches it, not when Python reads the file. That is why it cannot serve as a docstring, which must be a fixed string. In a function, an f-string runs only when the function is called. It uses the current values of the names it refers to:
+
+```
+>>> what = 'f-strings'
+>>> task = f'Learning {what.upper() + '!'} in {tool + str(3.12)}'
+>>> task
+'Learning F-STRINGS! in Python3.12'
+```
+
+The `f` prefix can combine with `r` in either order, to make a formatted raw string. An f-string cannot combine with `b`, so it works only for text, not for bytes.
+
+An f-string uses the same custom-format syntax as the method. A colon introduces the format specifier, and the `!s`, `!r` and `!a` flags work the same way:
+
+```
+>>> a = 3.14156
+>>> b = 1_234_567
+>>> f'{a} and {b}' # Defaults
+'3.14156 and 1234567'
+>>> f'{a:.2f} and {b:09}' # Decimals, padding
+'3.14 and 001234567'
+>>> f'{a * 1000:,.2f} and {b:,} and {b:_}' # Comma and underscore separators
+'3,141.56 and 1,234,567 and 1_234_567'
+>>> f'{a * 1000:e} and {b:+012,}' # Exponents, signs, and padding
+'3.141560e+03 and +001,234,567'
+>>> f'{b:_X} and {b:_o} and {b // 64:_b}' # Hex, octal, binary, underscores
+'12_D687 and 455_3207 and 100_1011_0101_1010'
+```
+
+An `=` after the expression labels the output. It helps when you debug, because it shows the expression text:
+
+```
+>>> f'{a=:e} and {b=:+012,}' # Labeled
+'a=3.141560e+00 and b=+001,234,567'
+>>> f'{a + 1=:e} and {b * 2=:+012,}'
+'a + 1=4.141560e+00 and b * 2=+002,469,134'
+```
+
+The `s`, `r` and `a` flags change how a text value looks. Here `c` contains a non-ASCII character, an A with a diaeresis:
+
+```
+>>> c = 'h\xc4ck' # \xc4 (a.k.a Ä) is non-ASCII Ä
+>>> f'{c} and {c} and {c}' # Defaults
+'hÄck and hÄck and hÄck'
+>>> f'{c!s} and {c!r} and {c!a}' # Display mode, two ways
+"hÄck and 'hÄck' and 'h\\xc4ck'"
+>>> f'{str(c)} and {repr(c)} and {ascii(c)}'
+"hÄck and 'hÄck' and 'h\\xc4ck'"
+>>> f'{c=!s} and {c=!r} and {c=!a}' # Labeled
+"c=hÄck and c='hÄck' and c='h\\xc4ck'"
+>>> f'{c=!s:8} and {repr(c)} and {c:0>8}' # Width, fill, alignment
+"c=hÄck and 'hÄck' and 0000hÄck"
+```
+
+Parts of a format specifier can also come from runtime values. A nested `{}` holds an expression, and its result is used in place of the nested braces:
+
+```
+>>> width = 8
+>>> f'{a:.8f} and {c:0>8}' # Hardcoded parameters
+'3.14156000 and 0000hÄck'
+>>> f'{a:.{width}f} and {c:0>{width}}' # Dynamic parameters
+'3.14156000 and 0000hÄck'
+>>> f'{a=:.{width}f} and {c * 2:0>{width * 3}}'
+'a=3.14156000 and 0000000000000000hÄckhÄck'
+```
+
+Unlike the method, a nested `{}` in an f-string holds an expression, not an argument name. That is why the f-string format is only nearly identical to the method's. The next example assigns several names at once, then uses them in one specifier:
+
+```
+>>> what = 1_234.564
+>>> a, b, c, d, e, f, g, h = 0, '<', '+', 12, ',', '.', 2, 'f'
+>>> f'{what:0<+12,.2f}!'
+'+1,234.56000!'
+>>> f'{what:{a}{b}{c}{d}{e}{f}{g}{h}}!'
+'+1,234.56000!'
+```
+
+### Nested quotes, backslashes and comments in f-strings
+
+Python 3.12 relaxed the rules for quotes inside an f-string. Before 3.12, the quotes inside the braces had to differ from the outer quotes. Some forms of the examples below now work, and others still fail:
+
+```
+f'Learning {what + '!'}' # OK as of Python 3.12
+f'Learning {what + '!'}' # An error before Python 3.12
+f'Learning {what + \'!\'}' # And this doesn't make it work
+f"Learning {what + '!'}" # OK before (and after) Python 3.12
+f'''Learning {what + '!'}''' # Ditto
+f'Learning '{what + '!'}'' # An error in 3.12+
+f'Learning \'{what + '!'}\'' # OK if escape quotes outside {}
+```
+
+Also in Python 3.12, a backslash can appear inside an f-string's braces. Comments and line breaks work there too:
+
+```
+>>> f'{'\n'.join([what] * 3) + '\x21'}'
+'f-strings\nf-strings\nf-strings!'
+>>> f'Learning { # Your comment here
+... what.upper() + '!'
+... } in {tool + str(3.12)}'
+'Learning F-STRINGS! in Python3.12'
+```
+
+If you use f-strings, you will like them best on Python 3.12 or later. This section follows the 3.12 rules. For older versions, change the quotes as shown above.
+
+### F-strings with data and templates
+
+Substitution values collected in a container at runtime are harder to use with f-strings. The expression and the method can read keys from a dictionary. An f-string reads names only. The `**` syntax turns dictionary keys into keyword arguments:
+
+```
+>>> values = dict(tool='Python', role='scripting') # Collected values
+>>> 'Use %(tool)s for %(role)s.' % values # Expression: keys
+'Use Python for scripting.'
+>>> 'Use {tool} for {role}.'.format(**values) # Method: keywords
+'Use Python for scripting.'
+>>> 'Use {0[tool]} for {0[role]}.'.format(values) # Method: reused-arg keys
+'Use Python for scripting.'
+>>> f'Use {values['tool']} for {values['role']}.' # F-string: expressions
+'Use Python for scripting.'
+```
+
+For the most readable f-strings, assign the values to variables in the same scope first:
+
+```
+>>> tool = 'Python'
+>>> role = 'scripting'
+>>> f'Use {tool} for {role}.'
+'Use Python for scripting.'
+```
+
+Templates loaded from a file at runtime are a poor fit for f-strings. The `%` expression and the method treat such a template as plain text. An f-string is program code, so you must run it with `eval`. Only do that with code you trust, because a Python expression can do real damage:
+
+```
+>>> fs = """f'Use {tool} for {role}.'""" # As if loaded from a file
+>>> eval(fs) # Run as code - and trust!
+'Use Python for scripting.'
+```
+
+F-strings are powerful, but their nested expressions suit formatting inside a program better than formatting data. The language reference describes f-strings in full.
+
+### string.Template
+
+The standard library's `string` module has a fourth tool, `Template`. It is rarely used, so this section gives it a short look. The expression, the method and the f-string can all act as templates. They refer to values by key, keyword or variable name:
+
+```
+>>> 'The %(num)s %(tool)ss' % dict(num=4, tool='formatter')
+'The 4 formatters'
+>>> 'The {num} {tool}s'.format(num=4, tool='formatter')
+'The 4 formatters'
+>>> num=4; tool='formatter'; f'The {num} {tool}s'
+'The 4 formatters'
+```
+
+`Template` uses a `$` prefix for names. It supports fewer features than the other tools, and that simplicity is its main appeal:
+
+```
+>>> import string
+>>> t = string.Template('The $num ${tool}s')
+>>> t.substitute(num=4, tool='formatter')
+'The 4 formatters'
+>>> t.substitute(dict(num=4, tool='formatter'))
+'The 4 formatters'
+```
+
+You may see `Template` in other people's code, along with third-party tools. Python 3.14 added yet another option, template strings written as `t'...'`. That feature is outside the scope of this section.
+
+### Choosing a formatting tool
+
+Python does not force one formatting tool on you. There is no strong argument for throwing out any of them in every case. In new code, the f-string is usually the best choice. Newer tools are less likely to be removed later, and f-strings read cleanly.
+
+The expression and the method still have jobs to do. Text loaded from a file is one example, since it needs a template you can fill in later. Knowing all three helps you read the code that already exists, and the choice in your own code is yours to make.
+
+## Type categories and mutability
+
+Strings are the first sequence type you studied in depth. Strings, lists and tuples share one set of sequence operations, and the same ideas cover other types too. This section sums up those shared ideas.
+
+### Operations by category
+
+Python sorts its generic operations into three categories:
+
+- Numbers, such as integers, floats, decimals and fractions. They support addition, multiplication and similar operations.
+- Sequences, such as strings, lists and tuples. They support indexing, slicing and concatenation.
+- Mappings, such as dictionaries. They support indexing by key.
+
+Sets do not fit neatly into any of these groups, because they neither map keys to values nor keep items in position. For any two sequence objects `X` and `Y`, `X + Y` makes a new sequence with both contents joined. The expression `X * N` makes a new sequence with `N` copies of `X`.
+
+These operations work the same way on any sequence. The result has the same type as the operands. Concatenating two lists gives you a new list, not a string. The type of the object tells Python which version of the operation to run.
+
+### Mutable and immutable types
+
+If a type is immutable, you cannot change its value in place. Python raises an error when you try. Instead, you build a new object and assign it to a name. The core types split like this:
+
+- Immutables: numbers, strings, tuples and frozensets. None of these change in place.
+- Mutables: lists, dictionaries, sets and `bytearray`. You can change these in place, without creating a new object.
+
+Immutable types give you some integrity. Nothing else in the program can change their values behind your back. A mutable value can change at any time, and that is useful only when you expect it.
+
 ## Checkpoint questions
 
 1. Name four of Python's core object types.
@@ -3137,9 +3872,58 @@ No. The slice makes a copy of the list before it is assigned to `B`. Changing `B
 
 </details>
 
+16. Can the `find` method search a list?
+
+<details><summary>Answer</summary>
+
+No. Methods are specific to one type, so `find` works only on strings. The `in` expression searches both strings and lists.
+
+</details>
+
+17. Can a slice expression work on a list?
+
+<details><summary>Answer</summary>
+
+Yes. Slicing is a sequence operation, so it works on strings, lists and tuples. Slicing a list gives you a new list.
+
+</details>
+
+18. How do you convert a character to its integer code, and back again?
+
+<details><summary>Answer</summary>
+
+Use `ord` to get the integer code of a character. Use `chr` to turn an integer code back into a character.
+
+</details>
+
+19. Given `S = 'c,od,e'`, name two ways to extract the two middle characters.
+
+<details><summary>Answer</summary>
+
+`S[2:4]` returns `'od'`. Splitting on the comma and indexing also works, as in `S.split(',')[1]`.
+
+</details>
+
+20. How many characters are in `"a\nb\x1f\000d"`?
+
+<details><summary>Answer</summary>
+
+Six. They are `a`, a newline, `b`, the `\x1f` control character, the `\000` null character and `d`.
+
+</details>
+
+21. Write a formatting expression, a method call and an f-string that each combine `'Python'` and `3.12` into a sentence.
+
+<details><summary>Answer</summary>
+
+`'%s is %s' % ('Python', 3.12)` works for the expression, and `'{} is {}'.format('Python', 3.12)` works for the method. An f-string works best when the values sit in variables first, as in `x = 'Python'`, `y = 3.12` and `f'{x} is {y}'`.
+
+</details>
+
 ## Sources and review notes
 
 - Source: *Learning Python*, 6th edition (`learning-python-6th-edition`). Chapters used are listed in each section.
 - Source: `learning-python-6th-edition`, chapter 4, "Introducing Python Objects."
 - Source: `learning-python-6th-edition`, chapter 5, "Numbers and Expressions."
 - Source: `learning-python-6th-edition`, chapter 6, "The Dynamic Typing Interlude."
+- Source: `learning-python-6th-edition`, chapter 7, "String Fundamentals."

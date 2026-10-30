@@ -3460,10 +3460,10 @@ These two methods belong to a larger set. Python also has `__setattr__` for ever
 If a class defines or inherits one of these four methods, Python runs it when an instance takes part in the matching operation:
 
 ```python
-def __getattr__(self, name): # On undefined attribute fetch [obj.name]
-def __getattribute__(self, name): # On all attribute fetch [obj.name]
-def __setattr__(self, name, value): # On all attribute assignment [obj.name=value]
-def __delattr__(self, name): # On all attribute deletion [del obj.name]
+def __getattr__(self, name): ... # On undefined attribute fetch [obj.name]
+def __getattribute__(self, name): ... # On all attribute fetch [obj.name]
+def __setattr__(self, name, value): ... # On all attribute assignment [obj.name=value]
+def __delattr__(self, name): ... # On all attribute deletion [del obj.name]
 ```
 
 Here `self` is the instance, `name` is the attribute name as a string, and `value` is the object being assigned. The two fetch methods return a value. The other two return nothing. Each one can raise an exception to block an access.
