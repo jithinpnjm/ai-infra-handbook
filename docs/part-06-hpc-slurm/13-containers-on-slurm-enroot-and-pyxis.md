@@ -22,20 +22,26 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
-Almost every serious GPU cluster runs AI jobs from container images (NGC PyTorch/NeMo, vendor stacks, team images), because the framework, CUDA libraries, NCCL and Python packages must match each other and cannot be installed on every node by hand. On Slurm clusters NVIDIA's pair **enroot** (an unprivileged container runtime) and **pyxis** (a Slurm plugin exposing it through `srun`) is the reference solution on DGX SuperPOD-style systems and many neoclouds. Docker daemons and root-owned containers are poor fits for shared HPC nodes; enroot and pyxis give containerised steps with the same Slurm semantics (cgroups, accounting, signals, binding) as bare-metal ones. Understanding them is expected for an AI-infrastructure role.
+Almost every serious GPU cluster runs its AI jobs from container images, such as NGC PyTorch or NeMo images, vendor stacks and team images. The framework, the CUDA libraries, NCCL and the Python packages must match each other. You cannot install all of them by hand on every node.
+
+On Slurm clusters, the reference solution is a pair from NVIDIA. enroot is an unprivileged container runtime. pyxis is a Slurm plugin that exposes enroot through `srun`. You will find this pair on DGX SuperPOD-style systems and on many neoclouds.
+
+Docker daemons and root-owned containers are poor fits for shared HPC nodes. enroot and pyxis run containerised steps with the same Slurm behaviour as bare-metal steps. cgroups, accounting, signals and binding all still apply. Understanding them is expected for an AI-infrastructure role.
 
 ## Prerequisites and outcomes
 
-Needs 6.6 (software strategy), 6.10 to 6.12, and container basics (Part 5.1 to 5.4). After this chapter you can:
+This chapter builds on 6.6, which covers software strategy, on 6.10 to 6.12, and on the container basics in Part 5.1 to 5.4. When you finish it, you should be able to:
 
 - Explain why Docker is not used on shared compute nodes and what enroot does instead.
 - Use `srun`/`sbatch` with `--container-image`, `--container-mounts`, `--container-workdir`, `--container-name`, `--container-save`, and other pyxis options.
 - Describe the image flow: registry, import, squashfs, container root, caching, and where each lives.
 - Explain the hooks that give containers GPUs, InfiniBand and Slurm/PMIx/PyTorch variables, and the standard security posture.
-- Authenticate to registries and use mirrors/caches; plan image distribution for thousands of nodes.
-- Install and configure enroot and pyxis at a high level and troubleshoot common failures.
+- Authenticate to registries and use mirrors/caches, and plan image distribution for thousands of nodes.
+- Install and configure enroot and pyxis at a high level, and troubleshoot common failures.
 
 ## 1. Why not Docker on compute nodes
+
+Suppose a user asks you to run Docker on the compute nodes of a shared GPU cluster. Before you agree, you should know why most HPC sites say no. The diagram below shows the path a container image takes with enroot and pyxis instead.
 
 ```mermaid
 flowchart LR
@@ -45,12 +51,15 @@ flowchart LR
   Unpack --> Hooks["Hooks: 98-nvidia.sh, 99-mellanox.sh<br/>50-slurm-pmi.sh, 50-slurm-pytorch.sh"]
 ```
 
-As explained in *Supercomputers for Linux SysAdmins* (`SCL` Chapter 16, *Containers*), a Linux container is not a virtual machine with hardware emulation; it is a real set of host processes isolated by three Linux kernel primitives:
-1. **`cgroups` (Control Groups):** Limit a set of processes in their consumption of memory (for example capping a container at `20%` of node RAM), CPU cores (for example `1` CPU core), network, and `/dev` device nodes.
-2. **Kernel `namespaces`:** Isolate process IDs (`PID`s), user IDs (`UID`s), mounts, and optionally network interfaces so processes inside one namespace cannot see external processes and can hold virtual UID/PID numbers.
-3. **`chroot` (and `pivot_root`):** Changes the root directory (`/`) of the process tree to a mounted container filesystem containing its own binaries, shared libraries, and `libc`, while `--bind` mounts expose host data directories inside the container.
+Chapter 16 of *Supercomputers for Linux SysAdmins* explains what a container really is. A Linux container is not a virtual machine with hardware emulation. It is a set of real host processes, and three Linux kernel features isolate them.
 
-Docker adds a layered `squashfs`/overlay filesystem on top of these primitives—where almost every line in a `Dockerfile` creates a cached read-only layer on local storage so rebuilding after an edit only rebuilds from the changed line onward (`SCL` Chapter 16). However, directly running Docker on shared HPC compute nodes in 2025–2026 fails for five architectural reasons:
+1. cgroups, or control groups, limit what a set of processes can consume. They can cap a container at `20%` of node RAM, or at `1` CPU core. They also control network use and access to `/dev` device nodes.
+2. Kernel namespaces isolate process IDs (PIDs), user IDs (UIDs), mounts and, optionally, network interfaces. A process inside one namespace cannot see processes outside it. It can also hold virtual UID and PID numbers.
+3. `chroot`, along with `pivot_root`, changes the root directory (`/`) of the process tree. That root becomes a mounted container filesystem with its own binaries, shared libraries and `libc`. `--bind` mounts then expose host data directories inside the container.
+
+Docker adds a layered filesystem on top of these features. It stores almost every line of a `Dockerfile` as a cached, read-only layer on local storage. A rebuild after an edit therefore starts from the changed line, not from the top. The same chapter describes this layering.
+
+Even so, running Docker directly on shared HPC compute nodes in 2025–2026 fails for five architectural reasons.
 
 | Concern | Docker daemon model | enroot/pyxis |
 |---|---|---|
@@ -60,13 +69,19 @@ Docker adds a layered `squashfs`/overlay filesystem on top of these primitives�
 | Image storage | Layered storage per node, daemon-managed | Converted to a squashfs/rootfs; can live on shared storage; cache per user |
 | Multi-node MPI/NCCL | Needs network plumbing | Works with the host network and IB devices directly |
 
-The enroot README describes itself as a "simple, yet powerful tool to turn traditional container/OS images into unprivileged sandboxes", close to a fancy `chroot`. Its design drops features HPC does not need (daemons, network isolation, image layering at runtime) and keeps what it does: importing Docker/OCI images, running them unprivileged with host GPU and IB integration. Other HPC options (Apptainer/Singularity) are in 6.29.
+Each row is one of the five reasons. The right-hand column shows what enroot and pyxis do instead.
+
+The enroot README calls enroot a "simple, yet powerful tool to turn traditional container/OS images into unprivileged sandboxes". That is close to a fancy `chroot`. enroot drops the features HPC does not need, such as daemons, network isolation and image layering at runtime. It keeps what matters: importing Docker and OCI images, and running them unprivileged with host GPU and InfiniBand integration. Apptainer and Singularity are the other HPC options, covered in 6.29.
 
 ### Where Docker runs into trouble in HPC
 
-Docker is the most popular container technology, but it has many limitations on a cluster. By default it needs a special service that runs with root privileges. It does not let jobs use InfiniBand and GPUs directly, and it integrates badly with job managers. The book's view is that in 2025 you almost cannot use Docker directly in HPC. Unfortunately, there are ways to overcome some of these issues. Other technologies already run containers, and even prebuilt Docker images, on clusters.
+Docker is the most popular container technology, but it has many limits on a cluster. By default, it needs a special service that runs with root privileges. It does not let jobs use InfiniBand and GPUs directly, and it integrates badly with job managers. The book's view is that in 2025 you almost cannot use Docker directly in HPC. Some of these issues can be worked around. Other technologies already run containers, and even prebuilt Docker images, on clusters.
+
+Docker daemons are poor fits for shared nodes, so enroot and pyxis are the reference pair here.
 
 ## 2. enroot
+
+Your first job on a new cluster usually starts with one question: how does the PyTorch image get from the registry onto the node? The workflow below answers that question one command at a time.
 
 ### Workflow
 
@@ -79,13 +94,13 @@ enroot export --output pt-modified.sqsh pt                   # save changes back
 enroot remove pt
 ```
 
-(Commands as listed in the enroot usage documentation: `batch`, `bundle`, `create`, `exec`, `export`, `import`, `list`, `remove`, `start`, `version`.) Note the URI form `docker://REGISTRY#IMAGE:TAG`: **`#` separates registry from image** because `/` and `:` are ambiguous; for NGC it is `nvcr.io#nvidia/pytorch:TAG`. `enroot start --root --rw` gives a writable container where the user appears as root (a user-namespace mapping, no real privilege), used to install packages and then `export`.
+The enroot usage documentation lists these commands: `batch`, `bundle`, `create`, `exec`, `export`, `import`, `list`, `remove`, `start` and `version`. Notice the URI form `docker://REGISTRY#IMAGE:TAG`. The `#` separates the registry from the image, because `/` and `:` are ambiguous on their own. For NGC, the URI is `nvcr.io#nvidia/pytorch:TAG`. `enroot start --root --rw` gives you a writable container in which you appear as root. That is a user-namespace mapping, not real privilege. You use it to install packages and then run `export`.
 
-The result of `import` is a **squashfs** image (compressed read-only filesystem; default options `-comp lzo -noD -exit-on-error` in the sample config, with `ENROOT_MAX_PROCESSORS` controlling compression threads). `create` unpacks it to a directory tree (the container root) in per-user storage. Squashfs images are single files, so they distribute well (one large file instead of thousands) and can be placed on shared or node-local storage.
+The output of `import` is a squashfs image, which is a compressed, read-only filesystem. The sample config sets the default options to `-comp lzo -noD -exit-on-error`, and `ENROOT_MAX_PROCESSORS` controls how many compression threads run. `create` then unpacks the image into a directory tree, called the container root, in per-user storage. A squashfs image is a single file, so it is easy to distribute: one large file instead of thousands of small ones. You can place it on shared or node-local storage.
 
 ### Paths and configuration
 
-From `configuration.md`: configuration comes from `enroot.conf` (default `/etc/enroot`) or environment variables, with environment taking precedence, plus `enroot.conf.d/*.conf`. Standard paths (defaults):
+The `configuration.md` file in the enroot documentation describes how the settings work. Configuration comes from `enroot.conf`, which lives in `/etc/enroot` by default, or from environment variables. The environment takes precedence. enroot also reads `enroot.conf.d/*.conf`. The table lists the standard paths and their defaults.
 
 | Setting | Default | Meaning |
 |---|---|---|
@@ -96,11 +111,11 @@ From `configuration.md`: configuration comes from `enroot.conf` (default `/etc/e
 | `ENROOT_TEMP_PATH` | `${TMPDIR}` | Temporary files (large during import) |
 | `ENROOT_SQUASH_OPTIONS`, `ENROOT_MAX_PROCESSORS`, `ENROOT_ROOTFS_WRITABLE`, `ENROOT_REMAP_ROOT`, `ENROOT_TRANSFER_RETRIES` | see sample config | Compression, threads, default writability, root remapping, retries |
 
-On clusters set these to **node-local fast storage** (NVMe, `/raid` or `/tmp`) for runtime and data paths, and to an appropriate shared location for caches only if you accept the metadata load; home directories on NFS are a poor default (unpacking and running from them is slow and hammers the server).
+The last row lists five settings, and you find all of them in the sample config. On a cluster, point the runtime and data paths at node-local fast storage, such as NVMe, `/raid` or `/tmp`. The cache can sit on a shared location, but only if you accept the metadata load that brings. Home directories on NFS are a poor default. Unpacking and running containers from them is slow, and it hammers the server. This is why the install step sets `enroot.conf` with paths on local NVMe, as section 6 explains.
 
 ### Hooks, mounts, environment
 
-Containers are customised by directories under `ENROOT_SYSCONF_PATH` (system) and `ENROOT_CONFIG_PATH` (user): `environ.d/*.env` (environment variables exported in the container), `mounts.d/*.fstab` (mounts), `hooks.d/*.sh` (pre-start bash scripts run with full capabilities before the container switches to its final root). Hooks see `ENROOT_PID`, `ENROOT_ROOTFS`, `ENROOT_MOUNTS`, `ENROOT_ENVIRON`. The standard hooks (`standard-hooks.md`, `conf/hooks`):
+Containers are customised through directories. `ENROOT_SYSCONF_PATH` is the system directory, and `ENROOT_CONFIG_PATH` is the user directory. `environ.d/*.env` sets environment variables inside the container. `mounts.d/*.fstab` adds mounts. `hooks.d/*.sh` holds pre-start bash scripts. A hook is a script that runs at container start, and these run with full capabilities before the container switches to its final root. A hook can read `ENROOT_PID`, `ENROOT_ROOTFS`, `ENROOT_MOUNTS` and `ENROOT_ENVIRON`. The standard hooks are described in `standard-hooks.md` and live in `conf/hooks`.
 
 | Hook | Role |
 |---|---|
@@ -115,19 +130,23 @@ Containers are customised by directories under `ENROOT_SYSCONF_PATH` (system) an
 | `extra/50-slurm-pytorch.sh` | Sets PyTorch distributed variables from Slurm |
 | `extra/50-sharp.sh`, `50-mig-config.sh` | SHARP and MIG support |
 
-(The `extra` hooks are provided but not enabled by default; they are copied into `hooks.d` by the site, usually by the DGX/cluster software image.) The hooks explain two key behaviours: **GPU libraries inside the container come from the host driver**, not the image (the image supplies CUDA user-space libraries, the hook supplies `libcuda`, so the image's CUDA version must be compatible with the host driver, Part 10); and **IB/RDMA works because the hook injects host MOFED** into the container. If `nvidia-smi` works in the container but NCCL runs on sockets, check the Mellanox hook and device visibility.
+The `extra` hooks are provided but not enabled by default. The site copies them into `hooks.d`, usually through the DGX or cluster software image. The hooks explain two key behaviours. First, GPU libraries inside the container come from the host driver, not from the image. The image supplies the CUDA user-space libraries, and the hook supplies `libcuda`, so the image's CUDA version must be compatible with the host driver (see Part 10). Second, InfiniBand and RDMA work because the hook injects the host MOFED into the container. If `nvidia-smi` works inside the container but NCCL runs on sockets, check the Mellanox hook and device visibility.
+
+So the image's CUDA version and the host driver must agree.
 
 ## 3. pyxis
 
-Pyxis is a **SPANK plugin** (a Slurm extension point for adding command-line options and running code at task launch): it adds options to `srun` and `sbatch`, imports/creates the container using enroot on the compute node, and runs each task inside it, so the container *is* the Slurm task. Requirements per the README: enroot 3.1.0 or later, and pyxis must be built against the Slurm version in use (since Slurm 21.08); it is installed on compute nodes (and where `srun` is used) and enabled with a `plugstack.conf` entry, e.g. symlinking `pyxis.conf` into `/etc/slurm/plugstack.conf.d/` and restarting slurmd.
+Suppose you run `srun` with a container image option. pyxis is the piece that makes this work, and it takes over the container work for you.
+
+pyxis is a SPANK plugin. SPANK is Slurm's extension point for adding command-line options and running code when a task launches. pyxis adds options to `srun` and `sbatch`. It imports or creates the container with enroot on the compute node, and then it runs each task inside that container. The container therefore *is* the Slurm task. The README sets two requirements. enroot must be version 3.1.0 or later. pyxis must be built against the Slurm version in use, which has been required since Slurm 21.08. It is installed on the compute nodes, and on any node where `srun` is used. You enable it with a `plugstack.conf` entry, for example by symlinking `pyxis.conf` into `/etc/slurm/plugstack.conf.d/` and restarting slurmd.
 
 ### Why enroot and pyxis come as a pair
 
-Enroot is a lightweight container implementation. It does not need Docker or another container engine installed. When you run a container with enroot, it extracts the squashfs image into the local file system. Then it runs the application with cgroups, namespaces and `chroot` set up around it.
+enroot is a lightweight container implementation. It does not need Docker or another container engine installed. When you run a container with enroot, it extracts the squashfs image into the local filesystem. Then it runs the application with cgroups, namespaces and `chroot` set up around it.
 
-Pyxis is a complementary Slurm plugin. It adds useful flags to `srun` and runs the container through enroot for you, so you do not call enroot yourself. Both projects come from NVIDIA, so only NVIDIA GPUs are well managed when you use them. The book calls this technology really easy to use. It requires minimum overhead compared with the other options.
+pyxis is the complementary Slurm plugin. It adds useful flags to `srun`, and it runs the container through enroot for you, so you never call enroot yourself. Both projects come from NVIDIA, so only NVIDIA GPUs are well managed when you use them. The book calls this technology really easy to use. It adds minimum overhead compared with the other options.
 
-Options (from the pyxis README text):
+The table lists the pyxis options, as the README text describes them. The `--container-name` row matters most, because it decides whether a container survives the task.
 
 | Option | Meaning |
 |---|---|
@@ -143,7 +162,7 @@ Options (from the pyxis README text):
 | `--container-env=NAME[,...]` | Variables whose host values override the image's (set before the entrypoint). By default host variables are set after the entrypoint but **do not override values in the image** |
 | `--container-unshare=NS[,...]` | Create new namespaces: `net`, `ipc`, `uts` |
 
-Examples from the README:
+The README shows two examples. The first command imports the image on demand, because `srun` starts the import when it sees the image option. The second mounts the host's `/etc/os-release` at `/host/os-release` and reads it from there.
 
 ```console
 $ srun --container-image=almalinux:9 grep PRETTY /etc/os-release
@@ -154,9 +173,11 @@ PRETTY_NAME="AlmaLinux 9.7 (Moss Jungle Cat)"
 $ srun --container-image=almalinux:9 --container-mounts=/etc/os-release:/host/os-release grep PRETTY /host/os-release
 ```
 
-In `sbatch` the option can be a directive, with the `#` escaped because `#` starts a comment: `#SBATCH --container-image nvcr.io\#nvidia/pytorch:21.12-py3`.
+In `sbatch`, the option can be a directive. The `#` in the image URI must be escaped, because a bare `#` starts a comment: `#SBATCH --container-image nvcr.io\#nvidia/pytorch:21.12-py3`.
 
 ### A training job
+
+Here is a training job that uses everything above. It requests four nodes, with eight tasks and eight GPUs on each node. It starts PyTorch inside the container.
 
 ```bash
 #!/bin/bash
@@ -171,46 +192,64 @@ srun --kill-on-bad-exit=1 --cpu-bind=cores --gpu-bind=closest \
      python train.py
 ```
 
-Key points: the container starts for every task on every node, so startup cost multiplies; use a **squashfs path** (no registry pull at job time); mount datasets and output directories explicitly; keep `/dev/shm` large enough for data-loader workers (container shm is the host's); Slurm binding and GPU isolation apply because enroot runs inside the step; environment and the `SLURM_*` and `PMIX_*` variables enter the container through the Slurm hooks (check `env | grep -E "SLURM|PMIX"` inside).
+Read the script with a few points in mind. The container starts for every task on every node, so startup cost multiplies across the job. That is why the script uses a squashfs path. The image is read from shared storage, and nothing is pulled from a registry at job time. Mount datasets and output directories explicitly. Keep `/dev/shm` large enough for data-loader workers, because the container's shm is the host's. Slurm binding and GPU isolation still apply, since enroot runs inside the step. The `SLURM_*` and `PMIX_*` variables reach the container through the Slurm hooks. To check, run `env | grep -E "SLURM|PMIX"` inside the container.
+
+Point `IMG` at a squashfs file that is already imported, not at a registry URI.
 
 ### Multi-node MPI/NCCL in containers
 
-Use `srun --mpi=pmix` with a container whose MPI is PMIx-aware and compatible with the host's PMIx/Slurm (the pyxis README notes support for PMI2 and PMIx "requires Slurm support"; the `50-slurm-pmi.sh` hook forwards the PMIx variables and socket). NGC images ship HPC-X with PMIx support. A mismatch between the container's PMIx and the host's causes launch failures at `MPI_Init` (6.4 section 11). NCCL inside the container uses the injected host IB libraries and devices.
+Use `srun --mpi=pmix` with a container whose MPI is PMIx-aware and compatible with the host's PMIx and Slurm. The pyxis README notes that support for PMI2 and PMIx "requires Slurm support". The `50-slurm-pmi.sh` hook forwards the PMIx variables and socket into the container. NGC images ship HPC-X with PMIx support. A mismatch between the container's PMIx and the host's causes launch failures at `MPI_Init`. Section 11 of chapter 6.4 covers that failure. NCCL inside the container uses the injected host IB libraries and devices.
+
+The PMIx version in the container and on the host therefore have to match.
 
 ## 4. Images: sources, caching, distribution
 
 ### Why caching matters at job start
 
-Each process downloads its container before it starts, then prepares it by unpacking or converting it. That takes time. It also downloads the same image many times, often at the same moment, which the book calls inefficient. Its advice has three parts. First, stimulate your users to load containers onto the shared file system and reuse them. Second, use the caching options that Charliecloud and enroot give you. Third, run a caching proxy, such as the docker-registry-proxy project.
+Each process downloads its container before it starts, then prepares it by unpacking or converting it. That takes time. Many processes also download the same image, often at the same moment. The book calls this inefficient, and its advice has three parts. First, encourage your users to load containers onto the shared file system and reuse them. Second, use the caching options that Charliecloud and enroot give you. Third, run a caching proxy, such as the docker-registry-proxy project.
 
-A regular proxy may not be a good choice for this. Image registries frequently require authorization, and you do not want to cache image manifests for a long time.
+A regular proxy may not be a good fit. Registries often require authorization, and you should not cache image manifests for long periods.
 
-- **Sources**: NGC (`nvcr.io#nvidia/...`, requires an API key for some images), Docker Hub, GitHub Container Registry, private registries. Build images from NGC bases with a normal Docker/Podman/Buildah build **outside** the cluster, push to a registry, then import into squashfs.
-- **Credentials**: enroot reads registry credentials from `$ENROOT_CONFIG_PATH/.credentials` in **netrc format**, e.g. `machine nvcr.io login $oauthtoken password <NGC API key>` (the user name `$oauthtoken` is the NGC convention). Protect the file (mode 600). Do not put keys in job scripts.
-- **Cache**: layer cache in `ENROOT_CACHE_PATH` makes repeat imports fast and layer sharing efficient. On thousands of nodes a registry pull at job start is a thundering herd: you will saturate the registry or the uplink and get rate limits.
-- **Preferred pattern at scale**: import once, centrally, to a squashfs on shared parallel storage or an image distribution service; jobs use `--container-image=/path/to/image.sqsh`. Squashfs is one big read-mostly file: good for Lustre/GPFS/VAST/WEKA caching, and for node-local copies (pre-stage with `sbcast`/`pdcp`/a prolog to NVMe before large jobs). Version images by digest or dated tag; never use `:latest` for production runs.
-- **Local registry mirror/pull-through cache** (Harbor, Artifactory, a registry:2 mirror, or the **`docker-registry-proxy`** project recommended in `SCL` Chapter 16, *Caching*): when processes start a container directly from a registry, every node downloads, unpacks, and converts the layers simultaneously (`64` nodes pulling a `15 GB` image over a `10 GB/s` uplink takes `96.0 s` versus `1.5 s` for a single central import). A generic HTTP proxy is a poor fit because Docker registries require token authorization and you must **not** cache mutable image manifests for long periods; `docker-registry-proxy` handles registry authentication and caches immutable layer blobs while keeping manifest checks fresh (`SCL` Chapter 16).Combine this with stimulating users to pre-import `.sqsh` images onto the shared filesystem and enabling Enroot/Charliecloud layer caches.
-- **Storage budget**: PyTorch NGC images are many gigabytes; unpacked roots also consume `ENROOT_DATA_PATH`; unnamed pyxis containers are cleaned up after tasks, named ones need housekeeping.
-- **Reproducibility**: record the image digest in the job's accounting comment or log.
+Images come from several sources: NGC (`nvcr.io#nvidia/...`, which needs an API key for some images), Docker Hub, GitHub Container Registry and private registries. You build images from NGC bases with a normal Docker, Podman or Buildah build, outside the cluster. Then you push the image to a registry and import it into squashfs.
+
+enroot reads registry credentials from `$ENROOT_CONFIG_PATH/.credentials`, which uses netrc format. A line looks like `machine nvcr.io login $oauthtoken password <NGC API key>`. The user name `$oauthtoken` is the NGC convention. Protect the file with mode 600, and never put keys in job scripts.
+
+The layer cache in `ENROOT_CACHE_PATH` makes repeat imports fast and lets layers be shared efficiently. Consider a registry pull at job start on thousands of nodes. Every node pulls at once, which is a thundering herd. You will saturate the registry or the uplink, and you will hit rate limits.
+
+The preferred pattern at scale is to import once, centrally, into a squashfs file on shared parallel storage or an image distribution service. Jobs then use `--container-image=/path/to/image.sqsh`. A squashfs file is one big, mostly read-only file. That makes it a good fit for caching on Lustre/GPFS/VAST/WEKA, and for node-local copies. You can pre-stage a copy to NVMe with `sbcast`/`pdcp`, or with a prolog, before large jobs. Version images by digest or dated tag, and never use `:latest` for production runs.
+
+A local registry mirror or pull-through cache is the next option. Harbor, Artifactory, a registry:2 mirror, or the docker-registry-proxy project can fill this role. The docker-registry-proxy project is the one recommended in chapter 16 of *Supercomputers for Linux SysAdmins*, under Caching. Here is why a mirror matters. When processes start a container directly from a registry, every node downloads, unpacks and converts the layers at the same time. Take 64 nodes pulling a 15 GB image. Over a 10 GB/s uplink, that takes 96.0 s. A single central import takes 1.5 s. A generic HTTP proxy is a poor fit, because Docker registries require token authorization, and you must not cache mutable image manifests for long periods. The docker-registry-proxy project handles registry authentication. It caches immutable layer blobs and keeps manifest checks fresh. Pair this with encouraging users to pre-import `.sqsh` images onto the shared filesystem, and turn on the Enroot/Charliecloud layer caches.
+
+PyTorch NGC images are many gigabytes. Unpacked roots also use `ENROOT_DATA_PATH`. Unnamed pyxis containers are cleaned up after tasks, but named ones need housekeeping. Record the image digest in the job's accounting comment or log, so you can reproduce the run later.
+
+For a large job, import once and point every node at the squashfs file.
 
 ## 5. Security and policy
 
-- Enroot runs as the invoking user in user namespaces; the container "root" is the user (remapping only). It does not grant privilege escalation by itself, but the hooks run with capabilities during setup, so hook scripts and enroot configuration are privileged, security-sensitive files (root-owned).
-- Namespace choices favour HPC: by default no network namespace, so the container shares the host network. `--container-unshare=net` is available but breaks RDMA unless you set it up.
-- Kernel prerequisites (from `requirements.md`): Linux >= 3.10 with `CONFIG_NAMESPACES`, `CONFIG_USER_NS`, `CONFIG_SECCOMP_FILTER`, and `CONFIG_OVERLAY_FS` to import Docker images; `enroot-check` verifies. Some distributions restrict unprivileged user namespaces (AppArmor profile in recent Ubuntu releases): the repository ships an `apparmor.profile`; you may need to allow enroot.
-- Image trust: users can run arbitrary images, including ones that exfiltrate data from mounted paths. Mount only what is needed (`:ro` for datasets), restrict registries via mirror, scan images, and treat user-supplied images as untrusted code with the user's file permissions (which is what they are anyway).
-- Writable containers (`--container-writable`, `enroot start --rw`) change only the user's own copy; they are not shared unless exported.
+Containers on a shared cluster raise two questions: what privilege they carry, and which images users may run.
+
+- enroot runs as the invoking user, inside user namespaces. The container "root" is that same user, with remapping only. enroot does not grant privilege escalation by itself. The hooks, however, run with capabilities during setup. Hook scripts and enroot configuration are therefore privileged, security-sensitive files, and they must stay root-owned.
+- The namespace choices favour HPC. By default there is no network namespace, so the container shares the host network. `--container-unshare=net` is available, but it breaks RDMA unless you set it up.
+- The kernel prerequisites come from `requirements.md`. You need Linux 3.10 or later, with `CONFIG_NAMESPACES`, `CONFIG_USER_NS`, `CONFIG_SECCOMP_FILTER` and `CONFIG_OVERLAY_FS` to import Docker images. Run `enroot-check` to verify them. Some distributions restrict unprivileged user namespaces. Recent Ubuntu releases use an AppArmor profile for this, and the repository ships an `apparmor.profile` that you may need to allow enroot to use.
+- Image trust is a real risk. Users can run arbitrary images, including ones that exfiltrate data from mounted paths. Mount only what is needed, and use `:ro` for datasets. Restrict registries by using a mirror, scan images, and treat user-supplied images as untrusted code. Such code runs with the user's own file permissions, which is what they have anyway.
+- Writable containers change only the user's own copy. Created with `--container-writable` or `enroot start --rw`, they are not shared unless you export them.
+
+Treat user-supplied images as untrusted code, and mount only the data they need.
 
 ## 6a. Other HPC container runtimes: Singularity, Apptainer, and Charliecloud
 
-`SCL` Chapter 16 (*Containers*) covers three additional HPC container runtimes that you will encounter on academic, national-lab, and mixed CPU/GPU systems (Chapter 6.29 compares them in depth):
+You will meet other HPC container runtimes on academic, national-lab and mixed CPU/GPU systems. Chapter 16 of *Supercomputers for Linux SysAdmins* covers three of them, and chapter 6.29 compares them in depth.
 
-- **Singularity (Sylabs Inc.) and Apptainer (Linux Foundation):** Singularity packages an image into a single `.sif` (Singularity Image Format, squashfs-backed) file built from a definition file or converted from a Docker image (`SCL` Chapter 16). **Important operational rule (`SCL` Chapter 16):** while Singularity allows passing a `docker://` URI directly at run time, doing so causes every task to download the Docker layers, convert them into a temporary `.sif` image, run, and **delete the converted image upon exit**—wasting massive network and CPU time. Always convert once to `.sif` on shared storage first. With `nvidia-container-toolkit` installed on the host, `--nv` exposes NVIDIA GPUs and InfiniBand transparently. To launch an MPI application inside a Singularity container (`SCL` Chapter 16), run `mpirun -n $NP singularity run app.sif /opt/my-mpi-app` (or under Slurm, prefer `srun singularity run app.sif /opt/my-mpi-app`). **Apptainer** (`https://apptainer.org/news/community-announcement-20211130/`) is the Linux Foundation's open-source continuation of the original Singularity project, so virtually all Singularity commands and `.sif` workflows apply directly to Apptainer.
-- **Charliecloud (`SCL` Chapter 16):** A lightweight, uncomplicated, fully unprivileged user-namespace container runtime designed for auditability. It provides four core CLI utilities—**`ch-image`**, **`ch-build`**, **`ch-convert`**, and **`ch-run`**—to pull/build Docker images, extract or convert `squashfs` archives, and execute containers integrated with batch schedulers via **PMIx**.
+- Singularity, from Sylabs Inc., and Apptainer, from the Linux Foundation, package an image into a single `.sif` file. SIF stands for Singularity Image Format, and the file is backed by squashfs. You can build it from a definition file or convert a Docker image into it. Singularity also accepts a `docker://` URI at run time. Doing so makes every task download the Docker layers, convert them into a temporary `.sif` image, run, and then delete the converted image on exit. That wastes massive network and CPU time. Always convert once to `.sif` on shared storage first. With `nvidia-container-toolkit` installed on the host, `--nv` exposes NVIDIA GPUs and InfiniBand transparently. To launch an MPI application inside a Singularity container, run `mpirun -n $NP singularity run app.sif /opt/my-mpi-app`. Under Slurm, prefer `srun singularity run app.sif /opt/my-mpi-app`. Apptainer is the open-source continuation of the original Singularity project, announced at https://apptainer.org/news/community-announcement-20211130/. Nearly all Singularity commands and `.sif` workflows apply to Apptainer directly.
+- Charliecloud is a lightweight, uncomplicated, fully unprivileged user-namespace container runtime, designed for auditability. It has four core CLI utilities: `ch-image`, `ch-build`, `ch-convert` and `ch-run`. Together they pull or build Docker images, extract or convert squashfs archives, and execute containers that integrate with batch schedulers through PMIx.
 
-On NVIDIA-centric AI clusters enroot+pyxis is the default because of NGC image handling, hooks for GPU/IB/PMIx and the `--container-*` UX; Apptainer is the common choice where the same cluster serves classic HPC users.
+On NVIDIA-centric AI clusters, enroot and pyxis are the default. The reasons are NGC image handling, the hooks for GPUs, InfiniBand and PMIx, and the `--container-*` interface. Apptainer is the common choice where the same cluster serves classic HPC users.
+
+Apptainer therefore fits clusters that serve classic HPC users as well as AI jobs.
 
 ## 6. Operating it
+
+Once enroot and pyxis are installed, someone has to keep them running. The table lists the routine tasks.
 
 | Task | Practice |
 |---|---|
@@ -221,7 +260,13 @@ On NVIDIA-centric AI clusters enroot+pyxis is the default because of NGC image h
 | Housekeeping | Prune named containers and cache older than N days (epilog or cron), clean orphaned runtime dirs after node crashes |
 | Support | A short doc: how to get images in, naming, mounts, shm, known gotchas, example scripts |
 
+The upgrade row ties pyxis to Slurm. Every Slurm upgrade means you rebuild pyxis, because the plugin links against Slurm.
+
+As you monitor the cluster, watch import failure rates, time-to-first-output, registry bandwidth, and disk use of the data path and cache.
+
 ## 7. Troubleshooting
+
+A job fails inside the container, and the error alone does not tell you why. The table maps common symptoms to likely causes and to the first thing to check.
 
 | Symptom | Likely cause | Check |
 |---|---|---|
@@ -236,179 +281,185 @@ On NVIDIA-centric AI clusters enroot+pyxis is the default because of NGC image h
 | Job's environment variables missing in container | Pyxis defaults: host variables do not override image values | `--container-env=NAME` |
 | Slow startup of 512 ranks | Each task creates the container; shared FS metadata storm | Squashfs on fast storage, local copy, `--container-name` reuse within a node |
 
+Several rows point to the image import path, so that is the place to look first when you see slow startup.
+
 ## 8. Lab (self-checking URI/mount lab tested; live Linux cluster parts untested)
 
-First, run the self-checking Python lab (`code/part06/enroot_pyxis_lab.py`) locally. It verifies Enroot `docker://REGISTRY#REPO:TAG` URI formatting, `#SBATCH --container-image` `#`-escaping (`nvcr.io\#nvidia/pytorch:24.07-py3`), and `.sqsh` naming (`nvidia+pytorch+24.07-py3.sqsh`), tests the Pyxis `--container-mounts=SRC:DST[:FLAGS]` parser (`ro+rprivate` vs default `rw`), and calculates the registry thundering-herd pull penalty (`96.0 s` for 64 nodes pulling 15 GB over 10 GB/s vs `1.5 s` for a single central squashfs import):
+The lab has two halves. The first half runs on your own machine, and it has been tested. The second half needs a live Linux GPU cluster, and it has not been run yet.
+
+Start with the self-checking Python lab, `code/part06/enroot_pyxis_lab.py`. It covers these checks. It verifies the enroot `docker://REGISTRY#REPO:TAG` URI format. It checks the `#` escaping in `#SBATCH --container-image`, written as `nvcr.io\#nvidia/pytorch:24.07-py3`, and the `.sqsh` naming, which gives `nvidia+pytorch+24.07-py3.sqsh`. It also tests the pyxis `--container-mounts=SRC:DST[:FLAGS]` parser, comparing `ro+rprivate` with the default `rw`. Last, it calculates the registry thundering-herd pull penalty: `96.0 s` for 64 nodes pulling 15 GB over 10 GB/s, against `1.5 s` for a single central squashfs import.
 
 ```bash
 python3 code/part06/enroot_pyxis_lab.py
 ```
 
-Next, on a Linux GPU cluster with Slurm, Enroot, and Pyxis installed, work through these steps:
+The second half runs on a Linux GPU cluster with Slurm, enroot and pyxis installed. Work through these steps in order.
 
-1. Install enroot on a Linux VM; run `enroot-check`; `enroot import docker://ubuntu:24.04`, create and start it; inspect hooks directory.
-2. Configure NGC credentials; import `nvcr.io#nvidia/pytorch:<tag>`; record time and size of the squashfs and the unpacked container.
-3. Install pyxis on a test Slurm; run the README examples; test `--container-mounts`, `--container-name` reuse, `--container-save`.
-4. GPU node: run `nvidia-smi` and a CUDA sample in a container; break `98-nvidia.sh` (rename) and observe.
-5. Two nodes: run the 6.12 DDP or an `nccl-tests` container with `srun --mpi=pmix`; compare NCCL transport with and without the Mellanox hook.
-6. Scale test: launch the same job from the registry URI vs a squashfs path on shared storage on N nodes; plot start latency.
-7. Write the site doc for image workflow and a housekeeping script.
+1. Install enroot on a Linux VM. Run `enroot-check`, then `enroot import docker://ubuntu:24.04`, and create and start the container. Inspect the hooks directory.
+2. Configure NGC credentials, then import `nvcr.io#nvidia/pytorch:<tag>`. Record the time and size of the squashfs file, and the size of the unpacked container.
+3. Install pyxis on a test Slurm cluster. Run the README examples, then test `--container-mounts`, `--container-name` reuse and `--container-save`.
+4. On a GPU node, run `nvidia-smi` and a CUDA sample inside a container. Then rename `98-nvidia.sh` and observe what changes.
+5. On two nodes, run the DDP job from 6.12, or an `nccl-tests` container, with `srun --mpi=pmix`. Compare the NCCL transport with and without the Mellanox hook.
+6. Run a scale test. Launch the same job from the registry URI, then from a squashfs path on shared storage, on N nodes. Plot the start latency for each.
+7. Write the site doc for the image workflow, and a housekeeping script.
+
+Run the local lab first, since it needs no cluster and checks your URI and mount syntax.
 
 ## 9. Interview angles
 
-- Why enroot and pyxis rather than Docker on a Slurm cluster?
+- Why would you choose enroot and pyxis rather than Docker on a Slurm cluster?
 - How does a container get GPUs and InfiniBand without privilege?
-- What does pyxis add to `srun`? Why is it a SPANK plugin?
+- What does pyxis add to `srun`, and why is it a SPANK plugin?
 - How would you distribute a 20 GB image to 1,000 nodes for a job launch?
-- A container job runs but NCCL uses TCP. What do you check?
-- `--container-name` versus unnamed containers: when each?
+- A container job runs, but NCCL uses TCP. What do you check?
+- When would you use `--container-name` rather than unnamed containers?
 - What are the security implications of letting users run arbitrary images?
 - Why must pyxis be rebuilt after a Slurm upgrade?
-- Compare enroot/pyxis with Apptainer and with Kubernetes pods for training.
+- How would you compare enroot and pyxis with Apptainer, and with Kubernetes pods for training?
 
 ## Exercises
 
-1. **Enroot & Pyxis Image URI, `#SBATCH` Escaping, and `.sqsh` Naming (`code/part06/enroot_pyxis_lab.py`):** Run `python3 code/part06/enroot_pyxis_lab.py`. Using `format_enroot_pyxis_uris("nvcr.io", "nvidia/pytorch", "24.07-py3")`, explain why Enroot uses `#` (`docker://nvcr.io#nvidia/pytorch:24.07-py3`) to separate the registry from the image path, why `#SBATCH --container-image nvcr.io\#nvidia/pytorch:24.07-py3` requires a backslash before `#`, and how `enroot import` names the resulting `.sqsh` archive (`nvidia+pytorch+24.07-py3.sqsh`).
-2. **Configuring `enroot.conf` Paths for NVMe Compute Nodes:** Given a compute node with a local NVMe scratch array mounted at `/raid/local` and an NFS home directory at `/home`, write the `ENROOT_RUNTIME_PATH`, `ENROOT_DATA_PATH`, `ENROOT_TEMP_PATH`, and `ENROOT_CACHE_PATH` settings so container roots unpack at NVMe speeds instead of hammering the NFS metadata server.
-3. **Writing a Multi-Node Pyxis Training Script with Mounts (`parse_pyxis_mounts`):** Write an `#SBATCH` script for a 4-node, 32-GPU PyTorch training run using a pre-imported `/shared/images/nvidia+pytorch+24.07-py3.sqsh` file, mounting `/data:/data:ro+rprivate,/scratch/$USER:/scratch,$PWD:/workspace` with `--container-workdir=/workspace`. Explain how `--container-env` differs from default host-to-container environment propagation.
-4. **Tracing Enroot Hooks for GPUs, InfiniBand, and PMIx:** Explain the exact role of `98-nvidia.sh`, `99-mellanox.sh`, `50-slurm-pmi.sh`, and `50-slurm-pytorch.sh` when launching a multi-node job inside an Enroot container. If `nvidia-smi` sees all 8 GPUs inside the container but `NCCL_DEBUG=INFO` logs `NET/Socket` instead of `NET/IB`, which hook and device path (`/dev/infiniband`) do you inspect?
-5. **Quantifying the Registry Thundering-Herd Penalty and Caching Architecture (`SCL` Chapter 16 & `enroot_pyxis_lab.py`):** Using `estimate_pull_time_sec(64, 15.0, 10.0)` in `code/part06/enroot_pyxis_lab.py`, compare the network transfer time when 64 nodes pull a `15 GB` image simultaneously from a registry over a `10 GB/s` uplink (`96.0 s` plus decompression and rate limits) versus importing once (`1.5 s`) into a shared `.sqsh` file, and explain why `docker-registry-proxy` is preferred over a standard HTTP proxy (`SCL` Chapter 16).
-6. **Comparing Enroot + Pyxis, Singularity / Apptainer, and Charliecloud (`SCL` Chapter 16):** Compare how a multi-node MPI/PyTorch job is launched under Pyxis (`srun --container-image=app.sqsh ...`), Singularity/Apptainer (`srun singularity run --nv app.sif ...`), and Charliecloud (`ch-image`, `ch-convert`, `ch-run`), and explain why running `singularity run docker://...` directly without pre-converting to `.sif` is an operational anti-pattern.
+1. Run `python3 code/part06/enroot_pyxis_lab.py`, then call `format_enroot_pyxis_uris("nvcr.io", "nvidia/pytorch", "24.07-py3")`. Explain why enroot uses `#` in `docker://nvcr.io#nvidia/pytorch:24.07-py3` to separate the registry from the image path. Explain why `#SBATCH --container-image nvcr.io\#nvidia/pytorch:24.07-py3` needs a backslash before `#`, and how `enroot import` names the resulting `.sqsh` archive, `nvidia+pytorch+24.07-py3.sqsh`.
+2. Set up `enroot.conf` paths for a node with fast local storage. The compute node has a local NVMe scratch array mounted at `/raid/local`, and an NFS home directory at `/home`. Write the `ENROOT_RUNTIME_PATH`, `ENROOT_DATA_PATH`, `ENROOT_TEMP_PATH` and `ENROOT_CACHE_PATH` settings, so that container roots unpack at NVMe speeds instead of hammering the NFS metadata server.
+3. Write an `#SBATCH` script for a 4-node, 32-GPU PyTorch training run. Use the pre-imported `/shared/images/nvidia+pytorch+24.07-py3.sqsh` file, mount `/data:/data:ro+rprivate,/scratch/$USER:/scratch,$PWD:/workspace`, and set `--container-workdir=/workspace`. Then explain how `--container-env` differs from the default host-to-container environment propagation. Use `parse_pyxis_mounts` to check the mount string.
+4. Trace the roles of the Enroot hooks. Explain the exact role of `98-nvidia.sh`, `99-mellanox.sh`, `50-slurm-pmi.sh` and `50-slurm-pytorch.sh` when a multi-node job launches inside an Enroot container. Suppose `nvidia-smi` sees all 8 GPUs inside the container, but `NCCL_DEBUG=INFO` logs `NET/Socket` instead of `NET/IB`. Which hook and which device path (`/dev/infiniband`) do you inspect?
+5. Work out the registry thundering-herd penalty. Use `estimate_pull_time_sec(64, 15.0, 10.0)` in `code/part06/enroot_pyxis_lab.py`. Compare the time when 64 nodes pull a `15 GB` image at once from a registry over a `10 GB/s` uplink, which is `96.0 s` plus decompression and rate limits, with the time to import once into a shared `.sqsh` file, which is `1.5 s`. Then explain why `docker-registry-proxy` is preferred over a standard HTTP proxy, using chapter 16 of *Supercomputers for Linux SysAdmins*.
+6. Compare three ways to launch a job. Compare how a multi-node MPI or PyTorch job is launched under pyxis (`srun --container-image=app.sqsh ...`), under Singularity or Apptainer (`srun singularity run --nv app.sif ...`), and under Charliecloud (`ch-image`, `ch-convert`, `ch-run`). Then explain why running `singularity run docker://...` directly, without pre-converting to `.sif`, is an operational anti-pattern.
 
 ## Checkpoint
 
 <details>
-<summary>1. Which three Linux kernel technologies combine to form a container (`SCL` Chapter 16), and why are Docker daemons unsuitable for shared Slurm compute nodes?</summary>
+<summary>1. Which three Linux kernel technologies combine to form a container, as chapter 16 of *Supercomputers for Linux SysAdmins* describes, and why are Docker daemons unsuitable for shared Slurm compute nodes?</summary>
 
-A Linux container combines **`cgroups`** (resource limits on CPU, RAM, and devices), **`namespaces`** (isolating PIDs, UIDs, and mounts), and **`chroot`** / `pivot_root` (changing `/` to the container's root filesystem, with `--bind` mounts for host data). Docker daemons are unsuitable on shared HPC nodes because the daemon runs as **`root`** (`docker` group membership is root-equivalent), spawns container processes outside Slurm's `slurmstepd` cgroup hierarchy and accounting tree, and isolates network namespaces in ways that obstruct direct GPUDirect RDMA / InfiniBand access.
+A Linux container combines three things. `cgroups` set resource limits on CPU, RAM and devices. `namespaces` isolate PIDs, UIDs and mounts. `chroot`, with `pivot_root`, changes `/` to the container's root filesystem, and `--bind` mounts bring in host data. Docker daemons do not suit shared HPC nodes for three reasons. The daemon runs as `root`, and `docker` group membership is root-equivalent. Its container processes sit outside Slurm's `slurmstepd` cgroup hierarchy and accounting tree. And its handling of network namespaces gets in the way of direct GPUDirect RDMA and InfiniBand access.
 </details>
 
 <details>
 <summary>2. What is NVIDIA `enroot`, and what file format does `enroot import` produce?</summary>
 
-`enroot` is an unprivileged container sandbox runtime that runs inside user namespaces without a background daemon. `enroot import` pulls OCI/Docker image layers and packs them into a single flattened, compressed read-only **`squashfs` (`.sqsh`)** archive file (default compression `-comp lzo -noD -exit-on-error`).
+enroot is an unprivileged container sandbox runtime. It runs inside user namespaces and needs no background daemon. `enroot import` pulls OCI or Docker image layers and packs them into one flattened, compressed, read-only `squashfs` archive, with the `.sqsh` extension. The default compression is `-comp lzo -noD -exit-on-error`.
 </details>
 
 <details>
 <summary>3. Why does `enroot import docker://nvcr.io#nvidia/pytorch:24.07-py3` use `#`, and how must you write that URI inside an `#SBATCH` directive?</summary>
 
-Enroot uses **`#`** to unambiguously separate the registry hostname (`nvcr.io`) from the image repository (`nvidia/pytorch:24.07-py3`). Inside a batch script `#SBATCH` directive, `#` begins an inline comment, so it must be backslash-escaped: **`#SBATCH --container-image nvcr.io\#nvidia/pytorch:24.07-py3`**.
+enroot uses `#` to separate the registry hostname, `nvcr.io`, from the image repository, `nvidia/pytorch:24.07-py3`, without any ambiguity. Inside a batch script, `#` starts a comment. So you must escape it with a backslash: `#SBATCH --container-image nvcr.io\#nvidia/pytorch:24.07-py3`.
 </details>
 
 <details>
 <summary>4. What do `ENROOT_RUNTIME_PATH`, `ENROOT_CACHE_PATH`, `ENROOT_DATA_PATH`, and `ENROOT_TEMP_PATH` store, and where should they point on compute nodes?</summary>
 
-- **`ENROOT_RUNTIME_PATH`:** Active runtime state (must be a local writable filesystem).
-- **`ENROOT_CACHE_PATH`:** Downloaded OCI layer blob cache and `.credentials`.
-- **`ENROOT_DATA_PATH`:** Unpacked writable container root trees (`enroot create`).
-- **`ENROOT_TEMP_PATH`:** Temporary workspace used while building `.sqsh` images during `enroot import`.
-On compute nodes, `ENROOT_DATA_PATH`, `ENROOT_TEMP_PATH`, and `ENROOT_RUNTIME_PATH` must point to **fast node-local NVMe or tmpfs**—never an NFS `$HOME` directory.
+- `ENROOT_RUNTIME_PATH` holds active runtime state. It must be a local, writable filesystem.
+- `ENROOT_CACHE_PATH` holds the downloaded OCI layer blob cache and the `.credentials` file.
+- `ENROOT_DATA_PATH` holds the unpacked, writable container root trees that `enroot create` produces.
+- `ENROOT_TEMP_PATH` is the temporary workspace used while `.sqsh` images are built during `enroot import`.
+
+On compute nodes, `ENROOT_DATA_PATH`, `ENROOT_TEMP_PATH` and `ENROOT_RUNTIME_PATH` should point to fast node-local NVMe or tmpfs. You should never point them at an NFS `$HOME` directory.
 </details>
 
 <details>
 <summary>5. How does an unprivileged Enroot container gain access to host NVIDIA GPUs (`98-nvidia.sh`) and InfiniBand RDMA adapters (`99-mellanox.sh`)?</summary>
 
-- **`98-nvidia.sh`:** Invokes `libnvidia-container` (controlled by `NVIDIA_VISIBLE_DEVICES` and `NVIDIA_DRIVER_CAPABILITIES`) to bind-mount the allocated `/dev/nvidia*` device nodes and inject the **host's kernel-matched driver libraries (`libcuda.so`, `nvidia-smi`)** into the container while using the image's user-space CUDA Toolkit libraries.
-- **`99-mellanox.sh`:** Injects the host's Mellanox OFED (`MOFED`) user-space InfiniBand verbs libraries and `/dev/infiniband/*` devices (`MELLANOX_VISIBLE_DEVICES`).
+- `98-nvidia.sh` calls `libnvidia-container`, which follows `NVIDIA_VISIBLE_DEVICES` and `NVIDIA_DRIVER_CAPABILITIES`. It bind-mounts the allocated `/dev/nvidia*` device nodes. It also injects the host's kernel-matched driver libraries, `libcuda.so` and `nvidia-smi`, while the container keeps using the image's user-space CUDA Toolkit libraries.
+- `99-mellanox.sh` injects the host's Mellanox OFED (`MOFED`) user-space InfiniBand verbs libraries and the `/dev/infiniband/*` devices. It is controlled by `MELLANOX_VISIBLE_DEVICES`.
 </details>
 
 <details>
 <summary>6. What do the `50-slurm-pmi.sh` and `50-slurm-pytorch.sh` extra hooks do?</summary>
 
-- **`50-slurm-pmi.sh`:** Passes `SLURM_*` and `PMIX_*` environment variables and bind-mounts the host PMIx UNIX domain sockets into the container so `srun --mpi=pmix` works seamlessly inside the container.
-- **`50-slurm-pytorch.sh`:** Automatically translates Slurm task variables (`SLURM_PROCID`, `SLURM_LOCALID`, `SLURM_NTASKS`, `SLURM_JOB_NODELIST`) into PyTorch's `RANK`, `LOCAL_RANK`, `WORLD_SIZE`, and `MASTER_ADDR`.
+- `50-slurm-pmi.sh` passes `SLURM_*` and `PMIX_*` environment variables into the container. It also bind-mounts the host PMIx UNIX domain sockets, so `srun --mpi=pmix` works inside the container.
+- `50-slurm-pytorch.sh` automatically turns Slurm task variables, `SLURM_PROCID`, `SLURM_LOCALID`, `SLURM_NTASKS` and `SLURM_JOB_NODELIST`, into PyTorch's `RANK`, `LOCAL_RANK`, `WORLD_SIZE` and `MASTER_ADDR`.
 </details>
 
 <details>
 <summary>7. What is NVIDIA `pyxis`, how is it loaded into Slurm, and why must it be recompiled when Slurm is upgraded?</summary>
 
-`pyxis` is a Slurm **SPANK plugin** registered in `/etc/slurm/plugstack.conf` (or `plugstack.conf.d/pyxis.conf`) that adds `--container-*` flags directly to `srun` and `sbatch` and launches each Slurm task inside an Enroot container. Because SPANK plugins dynamically link against Slurm's internal ABI headers, `pyxis` must be rebuilt whenever Slurm undergoes a major/minor version upgrade.
+pyxis is a Slurm SPANK plugin. It is registered in `/etc/slurm/plugstack.conf` or in `plugstack.conf.d/pyxis.conf`. It adds `--container-*` flags to `srun` and `sbatch`, and it launches each Slurm task inside an Enroot container. SPANK plugins link dynamically against Slurm's internal ABI headers. So pyxis must be rebuilt after any major or minor Slurm version upgrade.
 </details>
 
 <details>
 <summary>8. Compare an unnamed Pyxis container (`--container-image=...`) with a named container (`--container-name=NAME`), and what does `--container-save=PATH` do?</summary>
 
-- **Unnamed container:** Created before the step starts and **automatically deleted from `ENROOT_DATA_PATH` as soon as the step completes**.
-- **Named container (`--container-name=NAME`):** Persists on the node after the step ends; subsequent steps specifying `--container-name=NAME` reuse the already-unpacked rootfs and skip importing/unpacking (requiring periodic housekeeping cleanup).
-- **`--container-save=PATH`:** Exports the container's final root filesystem state back into a `.sqsh` file at `PATH` when the step finishes.
+- An unnamed container is created before the step starts. It is deleted from `ENROOT_DATA_PATH` as soon as the step completes.
+- A named container, set with `--container-name=NAME`, stays on the node after the step ends. Later steps that use the same name reuse the unpacked root filesystem and skip the import and unpacking. Those containers need periodic cleanup.
+- `--container-save=PATH` exports the container's final root filesystem into a `.sqsh` file at `PATH` when the step finishes.
 </details>
 
 <details>
 <summary>9. By default, what happens when an environment variable is defined both on the host and inside the container image, and what does `--container-env=NAME` change?</summary>
 
-By default, Pyxis exports host environment variables *after* the entrypoint without overriding variables already defined inside the container image's `ENV`. Passing **`--container-env=NAME[,...]`** forces the host's value of `NAME` to override the image's built-in value before the entrypoint runs.
+By default, pyxis exports host environment variables after the entrypoint. It does not override variables that the container image already defines in its `ENV`. Passing `--container-env=NAME[,...]` makes the host value of `NAME` override the image's value before the entrypoint runs.
 </details>
 
 <details>
 <summary>10. How do you configure NGC (`nvcr.io`) registry authentication for Enroot?</summary>
 
-Create `$ENROOT_CONFIG_PATH/.credentials` (with permissions `0600`) in **`netrc` format**:
-`machine nvcr.io login $oauthtoken password <NGC_API_KEY>`
-Never hardcode API keys inside batch scripts.
+Create `$ENROOT_CONFIG_PATH/.credentials` in **netrc format**, with permissions `0600`. The line reads `machine nvcr.io login $oauthtoken password <NGC_API_KEY>`. Never hardcode API keys inside batch scripts.
 </details>
 
 <details>
-<summary>11. Why is passing a remote registry URI (`--container-image=nvcr.io#...`) directly to a 64-node job an anti-pattern, and what are the three caching practices from `SCL` Chapter 16?</summary>
+<summary>11. Why is passing a remote registry URI (`--container-image=nvcr.io#...`) directly to a 64-node job an anti-pattern, and what are the three caching practices from *Supercomputers for Linux SysAdmins*, chapter 16?</summary>
 
-When 64 nodes start tasks from a registry URI simultaneously, all 64 nodes pull and decompress the multi-gigabyte layers at once (`64 * 15 GB / 10 GB/s = 96.0 s`), saturating the cluster uplink and hitting registry rate limits. `SCL` Chapter 16 recommends:
-1. Pre-importing images once into a **`.sqsh` file on shared parallel storage** (`--container-image=/shared/images/app.sqsh`) or staging to local NVMe with `sbcast`.
-2. Enabling `ENROOT_CACHE_PATH` layer caching.
-3. Deploying **`docker-registry-proxy`** (rather than a generic HTTP proxy) to handle registry authentication and cache immutable layer blobs without caching mutable image manifests long-term.
+When 64 nodes start tasks from a registry URI at the same time, every node pulls and decompresses the multi-gigabyte layers together. The pull takes `64 * 15 GB / 10 GB/s = 96.0 s` on a 10 GB/s uplink. It saturates the uplink and can hit registry rate limits. Chapter 16 recommends three practices:
+
+1. Import the image once into a `.sqsh` file on shared parallel storage, such as `--container-image=/shared/images/app.sqsh`, or stage it to local NVMe with `sbcast`.
+2. Turn on `ENROOT_CACHE_PATH` layer caching.
+3. Deploy `docker-registry-proxy`, rather than a generic HTTP proxy. It handles registry authentication and caches immutable layer blobs, without caching mutable image manifests for long periods.
 </details>
 
 <details>
 <summary>12. Why does Enroot share the host network namespace by default instead of creating an isolated virtual network (`--container-unshare=net`)?</summary>
 
-Sharing the host network namespace gives containerized processes direct, zero-overhead access to host InfiniBand/RoCE RDMA verbs devices (`/dev/infiniband/*`), high-speed Ethernet interfaces, and node-local IPC sockets without NAT or bridge translation penalties.
+Sharing the host network namespace gives containerised processes direct, zero-overhead access to host InfiniBand and RoCE RDMA verbs devices, to high-speed Ethernet interfaces, and to node-local IPC sockets. Nothing sits in between, so there is no NAT or bridge translation penalty.
 </details>
 
 <details>
 <summary>13. What Linux kernel features are required by Enroot (`enroot-check`), and what Ubuntu security setting can block unprivileged user namespaces?</summary>
 
-Linux kernel $\ge 3.10$ with **`CONFIG_NAMESPACES`**, **`CONFIG_USER_NS`** (unprivileged user namespaces), **`CONFIG_SECCOMP_FILTER`**, and **`CONFIG_OVERLAY_FS`**. On recent Ubuntu releases, `kernel.apparmor_restrict_unprivileged_userns=1` blocks unprivileged user namespaces unless Enroot's AppArmor profile is loaded.
+enroot needs Linux kernel 3.10 or later, with `CONFIG_NAMESPACES`, `CONFIG_USER_NS` (for unprivileged user namespaces), `CONFIG_SECCOMP_FILTER` and `CONFIG_OVERLAY_FS`. On recent Ubuntu releases, `kernel.apparmor_restrict_unprivileged_userns=1` blocks unprivileged user namespaces, unless Enroot's AppArmor profile is loaded.
 </details>
 
 <details>
 <summary>14. What does `CUDA error: driver version is insufficient for CUDA runtime version` mean inside a container, and how is it fixed?</summary>
 
-The container image was built with a newer CUDA Toolkit version (e.g., CUDA 12.6) than the host kernel's NVIDIA driver (`libcuda.so` injected by `98-nvidia.sh`) supports (and CUDA minor-version compatibility could not bridge it). Either upgrade the host NVIDIA driver or use a container image built against an older CUDA version compatible with the host driver.
+The image was built with a newer CUDA Toolkit, such as CUDA 12.6, than the host driver supports. The host's `libcuda.so`, injected by `98-nvidia.sh`, is older than the image needs, and CUDA minor-version compatibility cannot bridge the gap. You can either upgrade the host NVIDIA driver, or use an image built against an older CUDA version that the host driver supports.
 </details>
 
 <details>
 <summary>15. A containerized PyTorch job runs, `nvidia-smi` works inside the container, but `NCCL_DEBUG=INFO` shows `NET/Socket` instead of `NET/IB`. What should you check?</summary>
 
-Check that **`99-mellanox.sh`** is installed in `ENROOT_SYSCONF_PATH/hooks.d`, that `/dev/infiniband/uverbs*` devices are visible inside the container (`MELLANOX_VISIBLE_DEVICES`), and that user-space MOFED libraries inside the container match the host kernel RDMA driver.
+You should check three things. First, `99-mellanox.sh` must be installed in `ENROOT_SYSCONF_PATH/hooks.d`. Second, the `/dev/infiniband/uverbs*` devices must be visible inside the container, which `MELLANOX_VISIBLE_DEVICES` controls. Third, the user-space MOFED libraries in the container must match the host kernel RDMA driver.
 </details>
 
 <details>
 <summary>16. Why can `srun --mpi=pmix --container-image=...` fail inside `MPI_Init`, and how do NGC PyTorch images avoid this?</summary>
 
-`srun --mpi=pmix` requires both the `50-slurm-pmi.sh` hook (to mount the host PMIx socket into the container) and a container MPI build (such as Open MPI / HPC-X in NGC images) compiled with a PMIx version protocol-compatible with the host Slurm's PMIx plugin.
+A working launch needs two things, and you should check both. The `50-slurm-pmi.sh` hook must mount the host PMIx socket into the container. The container's MPI, such as Open MPI or HPC-X in NGC images, must be built with a PMIx version that is protocol-compatible with the host Slurm PMIx plugin. NGC images ship HPC-X with PMIx support, which covers the container side.
 </details>
 
 <details>
-<summary>17. Compare **Singularity / Apptainer** with **Enroot + Pyxis** on Slurm (`SCL` Chapter 16).</summary>
+<summary>17. Compare Singularity / Apptainer with Enroot + Pyxis on Slurm, using chapter 16 of *Supercomputers for Linux SysAdmins*.</summary>
 
-- **Singularity / Apptainer:** Packages images into a single `.sif` file (supports cryptographic signing); runs via `srun apptainer exec --nv app.sif ...` without needing a Slurm SPANK plugin, and bind-mounts `$HOME` and `/tmp` by default.
-- **Enroot + Pyxis:** Uses `.sqsh` images unpacked to node-local `ENROOT_DATA_PATH`; integrates natively into `srun`/`sbatch` via `--container-image` and `--container-mounts` SPANK options with dedicated hooks for NVIDIA GPUs, Mellanox IB, Slurm PMIx, and PyTorch.
+- Singularity and Apptainer package images into a single `.sif` file, which supports cryptographic signing. They run through `srun apptainer exec --nv app.sif ...`, need no Slurm SPANK plugin, and bind-mount `$HOME` and `/tmp` by default.
+- enroot and pyxis use `.sqsh` images, unpacked into node-local `ENROOT_DATA_PATH`. They integrate into `srun` and `sbatch` through the `--container-image` and `--container-mounts` SPANK options. They also come with dedicated hooks for NVIDIA GPUs, Mellanox InfiniBand, Slurm PMIx and PyTorch.
 </details>
 
 <details>
-<summary>18. Why does `SCL` Chapter 16 warn against running a Docker container "directly" (`singularity run docker://...`) in Singularity/Apptainer batch jobs?</summary>
+<summary>18. Why does chapter 16 of *Supercomputers for Linux SysAdmins* warn against running a Docker container "directly" (`singularity run docker://...`) in Singularity or Apptainer batch jobs?</summary>
 
-When given a `docker://` URI directly, Singularity downloads all layers, converts them into a temporary `.sif` image, runs the command, and **deletes the converted image when the command finishes**—repeating the full download and squashfs build on every single job run.
+With a `docker://` URI, for example, Singularity downloads every layer, converts them into a temporary `.sif` image, runs the command, and deletes the converted image when the command finishes. The full download and squashfs build repeat on every job run.
 </details>
 
 <details>
-<summary>19. What is **Charliecloud**, and what are its four primary CLI utilities (`SCL` Chapter 16)?</summary>
+<summary>19. What is Charliecloud, and what are its four primary CLI utilities, according to chapter 16 of *Supercomputers for Linux SysAdmins*?</summary>
 
-Charliecloud is a lightweight, minimal, unprivileged user-namespace container runtime for HPC that integrates with Slurm via PMIx. Its four primary utilities are **`ch-image`** (pull/inspect images), **`ch-build`** (build images), **`ch-convert`** (convert between Docker/tar/squashfs/directory formats), and **`ch-run`** (execute a command inside the container).
+Charliecloud is a lightweight, minimal, unprivileged user-namespace container runtime for HPC. It integrates with Slurm through PMIx. Its four main utilities are `ch-image`, which pulls and inspects images, `ch-build`, which builds images, `ch-convert`, which converts between Docker, tar, squashfs and directory formats, and `ch-run`, which runs a command inside the container.
 </details>
 
 <details>
 <summary>20. Why does launching `--ntasks-per-node=8 --container-image=/shared/app.sqsh` without `--container-name` multiply container startup overhead on each node?</summary>
 
-Because Pyxis runs per Slurm task, launching 8 tasks per node causes all 8 local tasks to independently unpack `/shared/app.sqsh` into 8 separate root directories under `ENROOT_DATA_PATH`. Pre-creating a named container once per node in a prolog/step (`--container-name=job_${SLURM_JOB_ID}`) or staging `.sqsh` to fast local NVMe eliminates redundant unpacking.
+When you launch 8 tasks per node, pyxis runs once per Slurm task. So 8 tasks per node mean 8 local tasks each unpack `/shared/app.sqsh` into a separate root directory under `ENROOT_DATA_PATH`. Creating a named container once per node, for example in a prolog or step with `--container-name=job_${SLURM_JOB_ID}`, avoids that. Staging the `.sqsh` file to fast local NVMe also removes the repeated unpacking.
 </details>
 
 ## Sources and review notes

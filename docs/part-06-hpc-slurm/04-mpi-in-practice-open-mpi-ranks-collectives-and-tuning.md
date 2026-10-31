@@ -22,11 +22,15 @@ lab_venue: "GCP / GKE."
 
 ## Why this matters for AI infrastructure
 
-Picture a 64-node training job submitted on Friday afternoon. Slurm allocates the 512 GPUs immediately, the job status flips to running, and then nothing happens. For two hours every GPU sits at zero percent utilization while the job hangs silently inside initialization, burning thousands of dollars of compute quota. MPI is the foundational launch, bootstrap, and message-passing substrate of high-performance computing, and it remains the process-management and benchmarking backbone of distributed AI clusters. Even when PyTorch uses NCCL for high-bandwidth GPU collectives, jobs are regularly launched via Slurm with PMIx or `mpirun`. They exchange rank and endpoint identity through MPI-style rendezvous and validate fabric health with MPI-linked benchmarks such as the OSU Micro-Benchmarks and `nccl-tests`. When you understand communicators, eager versus rendezvous deadlocks, Open MPI's Modular Component Architecture, HCOLL and UCX transports, NUMA binding, and NCCL interface selection, you can turn a mysterious multi-node hang into a five-minute fix.
+Picture a 64-node training job submitted on Friday afternoon. Slurm allocates the 512 GPUs right away, and the job status flips to running. Then nothing happens. For two hours every GPU sits at zero percent utilization while the job hangs silently inside initialization, and it burns thousands of dollars of compute quota.
+
+MPI is the foundational launch, bootstrap, and message-passing substrate of high-performance computing. It is also still the process-management and benchmarking backbone of distributed AI clusters. Even when PyTorch uses NCCL for high-bandwidth GPU collectives, jobs are regularly launched via Slurm with PMIx or `mpirun`. The jobs exchange rank and endpoint identity through MPI-style rendezvous. They validate fabric health with MPI-linked benchmarks such as the OSU Micro-Benchmarks and `nccl-tests`.
+
+When you understand communicators, eager versus rendezvous deadlocks, Open MPI's Modular Component Architecture, HCOLL and UCX transports, NUMA binding, and NCCL interface selection, you can turn a mysterious multi-node hang into a five-minute fix. Keep that list in mind as you read the rest of this chapter.
 
 ## Prerequisites and outcomes
 
-You need Chapter 6.3 for parallel scaling models and Part 2 for networking fundamentals. After finishing this chapter, you will be able to accomplish the following goals.
+This chapter builds on earlier material. You need Chapter 6.3 for parallel scaling models and Part 2 for networking fundamentals. After you finish, you will be able to do the following.
 
 - Write and read small MPI programs in C or Python (`mpi4py`) that initialize the runtime, query rank and size, send and receive point-to-point messages, and execute collective reductions.
 - Explain eager versus rendezvous point-to-point protocols, blocking versus non-blocking progress, and how to prevent send-send deadlocks.
@@ -37,18 +41,21 @@ You need Chapter 6.3 for parallel scaling models and Part 2 for networking funda
 
 ## 1. The MPI execution model: communicators, ranks, and ABI boundaries
 
-An MPI program follows the **SPMD** (Single Program, Multiple Data) execution model. The launcher starts N independent operating-system processes—called **ranks**—running the exact same executable, each with its own private virtual address space.
+When you launch an MPI program, you do not get one process. You get N copies of the same program, each running as its own process. This style is called **SPMD**, which stands for Single Program, Multiple Data. The launcher starts N independent operating-system processes, called **ranks**. Every rank runs the exact same executable, and each one has its own private virtual address space.
 
-- **Communicator:** an isolated communication universe binding a group of processes together. When `MPI_Init` completes, every process belongs to the default global communicator **`MPI_COMM_WORLD`**. Programs can split a communicator via `MPI_Comm_split` or `MPI_Comm_split_type` to create sub-communicators, such as one communicator per physical node or per Tensor Parallel group.
-- **Rank and size:** inside any communicator, **size** is the total number of processes N, and **rank** is each process's unique integer ID from 0 to N - 1.
-- **Local rank:** the process's rank within its physical host, such as 0 through 7 on an 8-GPU node. It is used to select the local GPU via `cudaSetDevice(local_rank)` or `torch.cuda.set_device(local_rank)`. An application derives its local rank either by splitting `MPI_COMM_WORLD` into node-local shared-memory communicators or by reading environment variables injected by the launcher, such as `SLURM_LOCALID` or `LOCAL_RANK`.
-- **Tags and datatypes:** point-to-point messages carry an integer **tag** so the receiver can distinguish different message streams from the same sender. They also carry an explicit **datatype**, such as `MPI_DOUBLE` or custom derived types, so MPI can marshal contiguous or strided memory regions cleanly.
+Ranks talk inside a **communicator**. A communicator is an isolated communication universe that binds a group of processes together. When `MPI_Init` completes, every process belongs to the default global communicator, **`MPI_COMM_WORLD`**. You can split a communicator with `MPI_Comm_split` or `MPI_Comm_split_type` to make sub-communicators, such as one per physical node or one per Tensor Parallel group.
 
-While the **MPI Forum** standardizes source-level API syntax across C, C++, and Fortran, **binary ABI compatibility is not universal across different MPI families**. A binary compiled against Open MPI headers cannot simply be launched under an MPICH runtime because shared library symbols and internal data structures differ. Always build and run each application stack against a single, consistent MPI module.
+Inside any communicator, **size** is the total number of processes, N. **Rank** is each process's unique integer ID, from 0 to N - 1. Think of size as the headcount and rank as each process's seat number.
+
+**Local rank** is a process's position within its physical host, such as 0 through 7 on an 8-GPU node. You use it to pick the GPU for that process, through `cudaSetDevice(local_rank)` or `torch.cuda.set_device(local_rank)`. An application can derive its local rank in one of two ways. It can split `MPI_COMM_WORLD` into node-local shared-memory communicators, or it can read a variable the launcher injects, such as `SLURM_LOCALID` or `LOCAL_RANK`.
+
+Messages carry two more labels. A **tag** is an integer that lets the receiver tell apart different message streams from the same sender. A **datatype**, such as `MPI_DOUBLE` or a custom derived type, tells MPI how the memory is laid out. With that information MPI can marshal contiguous or strided memory regions cleanly.
+
+The MPI Forum standardizes the source-level API across C, C++, and Fortran. Binary compatibility is a different matter, and it is not universal across MPI families. A binary built against Open MPI headers cannot simply run under an MPICH runtime, because the shared library symbols and internal data structures differ. Always build and run each application stack against a single, consistent MPI module.
 
 ### A minimal Python MPI program
 
-In Python with `mpi4py` (`code/part06/mpi_hello.py`), initializing MPI and printing each rank's identity takes three lines.
+In Python with `mpi4py` (`code/part06/mpi_hello.py`), you can initialize MPI and print each rank's identity in three lines.
 
 ```python
 from mpi4py import MPI
@@ -56,29 +63,34 @@ comm = MPI.COMM_WORLD
 print(f"rank {comm.Get_rank()} of {comm.Get_size()} on {MPI.Get_processor_name()}")
 ```
 
-When launched across four processes with `mpirun -np 4 python3 code/part06/mpi_hello.py` (**untested** multi-rank here; tested with 1 rank locally), `mpi4py` calls `MPI_Init` automatically on import. It prints one line per rank and calls `MPI_Finalize` at interpreter exit.
+Launch it on four processes with `mpirun -np 4 python3 code/part06/mpi_hello.py`. Multi-rank runs are **untested** here, and the script was tested locally with 1 rank. When it starts, `mpi4py` calls `MPI_Init` automatically on import. Each rank prints one line, and the interpreter calls `MPI_Finalize` at exit.
 
-**Keep the control-plane identity model clear in every job: global rank coordinates across the cluster, while local rank binds each process to its dedicated GPU and local NUMA node**.
+**In every job, keep the identity model clear. Global rank coordinates processes across the whole cluster, while local rank binds each process to its own GPU and local NUMA node.**
 
 > **In one minute:**
-> - MPI runs N separate OS processes inside a communicator (`MPI_COMM_WORLD`), while local rank (`SLURM_LOCALID`) selects the local GPU on each node.
-> - Source code is portable across MPI standards, but compiled binaries are tied to their specific MPI library family (Open MPI vs MPICH).
+> - MPI runs N separate OS processes inside a communicator (`MPI_COMM_WORLD`). Local rank (`SLURM_LOCALID`) selects the local GPU on each node.
+> - Source code is portable across MPI standards. Compiled binaries, however, are tied to a specific MPI library family, such as Open MPI or MPICH.
+
+Pin each application to one MPI module before you build it.
 
 ## 2. Point-to-point communication: eager vs. rendezvous and deadlocks
 
-When Rank 0 sends a tensor or halo buffer to Rank 1 using blocking `MPI_Send` and `MPI_Recv`, what happens under the hood depends on the message size.
+Suppose Rank 0 sends a tensor or halo buffer to Rank 1 with blocking `MPI_Send` and `MPI_Recv`. What happens inside MPI depends on the message size. That size dependence is the source of one of the most common bugs in parallel programming.
 
-- **Eager protocol:** For small messages below the eager limit, typically 8 KB to 64 KB, the sender immediately pushes the message into a pre-allocated internal bounce buffer on the receiver without waiting for the receiver to call `MPI_Recv`. Because the copy into system buffer memory completes right away, `MPI_Send` returns almost immediately.
-- **Rendezvous protocol:** For large messages above the eager limit, copying a 100 MB array into a hidden bounce buffer would waste memory and bandwidth. Instead, the sender sends a tiny envelope header first and **blocks inside `MPI_Send` until the receiver posts a matching `MPI_Recv`** and returns a clear-to-send handshake. That handshake allows the NIC to transfer the payload directly from the sender's user buffer into the receiver's user buffer via RDMA with zero intermediate copies.
+For small messages, MPI uses the eager protocol. A message below the eager limit, which is typically 8 KB to 64 KB, is pushed straight into a pre-allocated bounce buffer on the receiver. The sender does not wait for the receiver to call `MPI_Recv`, so you may never notice the limit at all. The copy into that system buffer finishes right away, so `MPI_Send` returns almost immediately.
 
-This protocol switch causes the most famous bug in parallel programming, the **eager-to-rendezvous deadlock**.
+Large messages, above the eager limit, take the rendezvous protocol instead. Copying a 100 MB array into a hidden bounce buffer would waste memory and bandwidth. So the sender first sends a tiny envelope header, and it **blocks inside `MPI_Send` until the receiver posts a matching `MPI_Recv`**. After the receiver returns a clear-to-send handshake, the NIC moves the payload from the sender's user buffer straight into the receiver's user buffer by RDMA, with zero intermediate copies.
+
+The protocol switch causes the most famous bug in parallel programming, the **eager-to-rendezvous deadlock**.
 
 ```text
 Rank 0: MPI_Send(to Rank 1)  ---> (blocks waiting for Rank 1 to call MPI_Recv)
 Rank 1: MPI_Send(to Rank 0)  ---> (blocks waiting for Rank 0 to call MPI_Recv)
 ```
 
-When tested on a developer's laptop with a tiny 1 KB array, both `MPI_Send` calls use the **eager protocol**, copy into internal buffers, return immediately, and the program appears to work. Six months later in production, a researcher increases the grid resolution so the message exceeds the **eager limit**, switching to the **rendezvous protocol**. The job then deadlocks forever because both ranks wait for each other to post a receive. Eliminate send-send deadlocks in three ways:
+On a developer's laptop with a tiny 1 KB array, both `MPI_Send` calls use the **eager protocol**. They copy into internal buffers, return at once, and the program appears to work. Six months later, a researcher increases the grid resolution in production. The message now exceeds the **eager limit**, which switches the job to the **rendezvous protocol**. Both ranks then wait for each other to post a receive, and the job deadlocks forever.
+
+Eliminate send-send deadlocks in one of three ways:
 
 1. **Pairwise ordering:** Rank 0 calls Send then Recv, while Rank 1 calls Recv then Send.
 2. **Combined exchange:** Call **`MPI_Sendrecv`**, which posts the send and receive together safely inside the MPI library.
@@ -86,7 +98,7 @@ When tested on a developer's laptop with a tiny 1 KB array, both `MPI_Send` call
 
 ### Measuring point-to-point latency and bandwidth (`mpi_pingpong.py`)
 
-The repository script `code/part06/mpi_pingpong.py` measures one-way latency and asymptotic bandwidth between Rank 0 and Rank 1. It bounces messages of size $m = 2^0 \dots 2^{24}$ bytes back and forth 200 times and divides the round-trip elapsed time by 2.
+The repository script `code/part06/mpi_pingpong.py` measures one-way latency and asymptotic bandwidth between Rank 0 and Rank 1. It bounces messages of size $m = 2^0 \dots 2^{24}$ bytes back and forth 200 times. Then it divides the round-trip elapsed time by 2.
 
 ```python
 if rank == 0:
@@ -95,17 +107,19 @@ elif rank == 1:
     comm.Recv(buf, source=0, tag=1); comm.Send(buf, dest=0, tag=2)
 ```
 
-For 1-byte messages, one-way time measures wire latency—under 1 us on shared memory, 1 to 3 us on InfiniBand, and 25 to 50 us on TCP Ethernet. For 16 MB messages, size divided by one-way time measures sustained link bandwidth.
+A 1-byte message shows the wire latency of a link. On shared memory the one-way time is under 1 us. On InfiniBand it is 1 to 3 us, and on TCP Ethernet it is 25 to 50 us. Next, take a 16 MB message. Dividing its size by the one-way time gives the sustained link bandwidth.
 
-**Never write symmetric blocking `MPI_Send` pairs that rely on eager buffering; use `MPI_Sendrecv` or non-blocking `MPI_Isend` and `MPI_Irecv` so large payloads never deadlock under the rendezvous protocol**.
+**Never write symmetric blocking `MPI_Send` pairs that rely on eager buffering.** Use `MPI_Sendrecv` or non-blocking `MPI_Isend` and `MPI_Irecv`, so large payloads never deadlock under the rendezvous protocol.
 
 > **In one minute:**
-> - Small messages use the **eager protocol** with buffered copies and immediate return, while messages above the eager limit use the **rendezvous protocol** and block until a matching receive enables zero-copy RDMA.
-> - Symmetric `MPI_Send` calls that work for small eager messages deadlock on large rendezvous messages; fix them with `MPI_Sendrecv` or `MPI_Isend` and `MPI_Irecv`.
+> - Small messages use the **eager protocol**, with buffered copies and an immediate return. Messages above the eager limit use the **rendezvous protocol**, and they block until a matching receive enables zero-copy RDMA.
+> - Symmetric `MPI_Send` calls that work for small eager messages deadlock on large rendezvous messages. Fix them with `MPI_Sendrecv` or with `MPI_Isend` and `MPI_Irecv`.
+
+Replace symmetric blocking `MPI_Send` pairs with `MPI_Sendrecv` or the non-blocking calls.
 
 ## 3. Collective communication and reproducibility
 
-Collective operations involve **every rank in a communicator**. All ranks must call the collective in the same order with compatible counts and datatypes.
+A collective operation involves every rank in a communicator. Each rank must call it in the same order, with compatible counts and datatypes. The table below maps each MPI collective to the distributed AI operation that plays the same role.
 
 | MPI collective | Data movement pattern | Distributed AI / NCCL equivalent |
 |---|---|---|
@@ -118,20 +132,22 @@ Collective operations involve **every rank in a communicator**. All ranks must c
 | `MPI_Reduce_scatter` | Reduces values across ranks and scatters 1/N of the result to each rank | FSDP and ZeRO-2/3 gradient reduction and sharding |
 | `MPI_Alltoall` / `MPI_Alltoallv` | Every rank sends a distinct slice to every other rank | Mixture-of-Experts token dispatch and 3D FFTW transposes |
 
-Keep two operational facts in mind when supporting collective-heavy jobs:
+Read the table as a lookup. `MPI_Allreduce` corresponds to DDP gradient averaging, and `MPI_Reduce_scatter` corresponds to FSDP and ZeRO-2/3 gradient reduction. Two operational facts matter when you support a job that depends heavily on collectives.
 
-1. **Floating-point reductions are not bit-for-bit associative:** In IEEE 754 floating-point arithmetic, $(a + b) + c$ does not always equal $a + (b + c)$. Changing the number of ranks or switching collective algorithms changes the summation order and produces tiny last-bit differences. When debugging numerical convergence, fix the rank count and force a deterministic collective algorithm.
-2. **Validating collective arithmetic (`mpi_allreduce.py`):** The script `code/part06/mpi_allreduce.py` verifies Allreduce correctness by having each rank contribute `rank + 1` and asserting that the global sum equals `size * (size + 1) / 2`. It then times Allreduce across 1, 1,000, 1,000,000, and 8,000,000 float32 elements. Tested locally with 1 rank, it printed `sum check ok: 1`, taking 0.001 ms for 1 and 1,000 floats, 0.228 ms for 1,000,000 floats, and 1.363 ms for 8,000,000 floats.
+1. **Floating-point reductions are not bit-for-bit associative.** In IEEE 754 floating-point arithmetic, $(a + b) + c$ does not always equal $a + (b + c)$. Changing the number of ranks or switching collective algorithms changes the summation order, and that produces tiny last-bit differences. When you debug numerical convergence, fix the rank count and force a deterministic collective algorithm.
+2. **Validating collective arithmetic (`mpi_allreduce.py`).** The script `code/part06/mpi_allreduce.py` checks Allreduce correctness. Each rank contributes `rank + 1`, and the script asserts that the global sum equals `size * (size + 1) / 2`. It then times Allreduce on 1, 1,000, 1,000,000, and 8,000,000 float32 elements. Run locally with 1 rank, it printed `sum check ok: 1`. The timings were 0.001 ms for 1 and 1,000 floats, 0.228 ms for 1,000,000 floats, and 1.363 ms for 8,000,000 floats.
 
-**Ensure every rank in a communicator invokes collectives in identical order, and remember that floating-point AllReduce results vary slightly if the reduction tree topology changes**.
+Make sure every rank calls the collectives in the same order. Floating-point AllReduce results also vary slightly when the reduction tree topology changes.
 
 > **In one minute:**
-> - AllReduce equals ReduceScatter followed by AllGather—the exact trio powering DDP, FSDP, and ZeRO training.
+> - AllReduce equals ReduceScatter followed by AllGather. That pair is the pattern behind DDP, FSDP, and ZeRO training.
 > - Because floating-point addition is not associative, bit-wise reproducibility requires a fixed rank count and a deterministic reduction tree.
+
+Fix the rank count and the reduction algorithm before you compare two runs.
 
 ## 4. Threads, hybrid programs, and MPI implementations compared (`SCL` Chapter 21)
 
-When a program combines MPI with node-level threads such as OpenMP or Python dataloader threads, it initializes MPI with `MPI_Init_thread`. That call selects one of four thread-safety levels described in *Parallel and High Performance Computing* Chapter 8.
+A program that combines MPI with node-level threads, such as OpenMP or Python dataloader threads, initializes MPI with `MPI_Init_thread`. That call picks one of four thread-safety levels. *Parallel and High Performance Computing* describes these levels in Chapter 8.
 
 | Thread level | Meaning | Overhead & typical use case |
 |---|---|---|
@@ -140,24 +156,26 @@ When a program combines MPI with node-level threads such as OpenMP or Python dat
 | `MPI_THREAD_SERIALIZED` | Multiple threads may call MPI, but **only one at a time** | Low overhead; useful when helper threads make occasional guarded MPI calls |
 | `MPI_THREAD_MULTIPLE` | Any thread may call MPI concurrently at any time | Highest internal mutex contention inside the MPI library; use only when concurrent multi-threaded communication is required |
 
-Always request the lowest thread level your algorithm needs—typically `MPI_THREAD_FUNNELED`—and check the `provided` value returned by the library, because an MPI build may grant a lower level than requested.
+Ask for the lowest level your algorithm needs, which is usually `MPI_THREAD_FUNNELED`. Then check the `provided` value the library returns. An MPI build may grant a lower level than the one you requested.
 
 ### Comparing MPI implementations (`SCL` Chapter 21)
 
-Chapter 21 of *Supercomputers for Linux SysAdmins* traces the lineage and operational trade-offs of the major MPI implementations you will manage on a cluster.
+Chapter 21 of *Supercomputers for Linux SysAdmins* traces the lineage and the operational trade-offs of the major MPI implementations you will manage on a cluster.
 
-- **MPICH (`http://mpich.org/`):** One of the earliest MPI implementations, created at Argonne National Laboratory in 1992 on top of the **Chameleon** portability system; the name originally stood for "MPI over Chameleon." It supports diverse transports, including Blue Gene and Cray networks, through modular drivers, making it easy to port to new systems at the cost of some optimization flexibility. At the end of 2025, the stable branch is **MPICH-4**, while branches 1 and 2 are frozen. MPICH-1 was famous for simple launching where `mpirun` generated keys and spawned processes directly via `ssh` or `rsh`. Build from source with `CC=my-compiler` and `--prefix=/opt/mpich`. Many commercial implementations, including Intel MPI and HP-MPI, were originally created on the basis of MPICH.
-- **Open MPI (`http://www.open-mpi.org/`):** Created independently of MPICH and first released on November 17, 2005, developing ideas from four earlier projects: **LAM/MPI**, **FT-MPI**, **LA-MPI**, and **PACX-MPI**. Unlike MPICH, Open MPI has no driver concept and requires launching special daemon programs on compute nodes beforehand (`prterun` in Open MPI 5). Open MPI delivers strong performance and often outperforms commercial stacks, though its documentation is scattered across forums and project FAQs. Always build Open MPI from source in separate variants for each compiler family, because linking a program compiled with one compiler against Open MPI libraries built with another causes linker failures.
-- **MVAPICH / MVAPICH2 (`http://mvapich.cse.ohio-state.edu/`):** Developed at Ohio State University based on MPICH-2 to optimize MPICH for **InfiniBand**, and shipped in standard OFED packages alongside Open MPI. **Crucial operational distinction:** instead of `mpirun` (which is still left in the distribution), you must launch MVAPICH2 jobs using **`mpirun_rsh`**, whose flags differ from MPICH `mpirun`.
-- **IBM Spectrum MPI and Intel MPI:** **Spectrum MPI** is IBM's proprietary Open MPI derivative tuned for IBM hardware with InfiniBand and GPUDirect RDMA support. **Intel MPI** is developed almost from scratch with strong InfiniBand optimization and documentation; in 2025 it is **free to use** with an optional paid support contract.
-- **NVIDIA HPC-X:** NVIDIA's production software bundle combining Open MPI, UCX, HCOLL, and SHARP pre-tuned for NVIDIA InfiniBand and RoCEv2 GPU clusters.
+- **MPICH (`http://mpich.org/`):** MPICH is one of the earliest MPI implementations. Argonne National Laboratory created it in 1992 on top of the **Chameleon** portability system, and the name originally stood for "MPI over Chameleon." Through modular drivers it supports diverse transports, including Blue Gene and Cray networks. That makes it easy to port to new systems, at the cost of some optimization flexibility. At the end of 2025 the stable branch is **MPICH-4**, while branches 1 and 2 are frozen. MPICH-1 was famous for simple launching. `mpirun` generated keys and spawned processes directly through `ssh` or `rsh`. To build from source, use `CC=my-compiler` and `--prefix=/opt/mpich`. Many commercial implementations, including Intel MPI and HP-MPI, were originally created on the basis of MPICH.
+- **Open MPI (`http://www.open-mpi.org/`):** Open MPI was created independently of MPICH. It was first released on November 17, 2005, and it developed ideas from four earlier projects: **LAM/MPI**, **FT-MPI**, **LA-MPI**, and **PACX-MPI**. Open MPI has no driver concept. Instead, it needs special daemon programs running on compute nodes beforehand, which is `prterun` in Open MPI 5. Open MPI delivers strong performance and often outperforms commercial stacks, though its documentation is scattered across forums and project FAQs. Always build Open MPI from source in separate variants for each compiler family. Linking a program compiled with one compiler against Open MPI libraries built with another causes linker failures.
+- **MVAPICH / MVAPICH2 (`http://mvapich.cse.ohio-state.edu/`):** Ohio State University developed MVAPICH on the basis of MPICH-2, to optimize MPICH for **InfiniBand**. It ships in standard OFED packages alongside Open MPI. The operational difference that matters most is the launcher. `mpirun` is still left in the distribution, but you must launch MVAPICH2 jobs with **`mpirun_rsh`**, and its flags differ from MPICH `mpirun`.
+- **IBM Spectrum MPI and Intel MPI:** **Spectrum MPI** is IBM's proprietary Open MPI derivative, tuned for IBM hardware with InfiniBand and GPUDirect RDMA support. **Intel MPI** was developed almost from scratch, with strong InfiniBand optimization and documentation. In 2025 it is **free to use**, with an optional paid support contract.
+- **NVIDIA HPC-X:** NVIDIA's production software bundle combines Open MPI, UCX, HCOLL, and SHARP. It is pre-tuned for NVIDIA InfiniBand and RoCEv2 GPU clusters.
 
-**Build separate Open MPI modules for each compiler family on your cluster, use `mpirun_rsh` when running MVAPICH2, and request `MPI_THREAD_FUNNELED` rather than `MPI_THREAD_MULTIPLE` unless threads communicate concurrently**.
+**Build a separate Open MPI module for each compiler family on your cluster.** Use `mpirun_rsh` for MVAPICH2. Request `MPI_THREAD_FUNNELED` instead of `MPI_THREAD_MULTIPLE`, unless your threads communicate concurrently.
 
 > **In one minute:**
 > - Request `MPI_THREAD_FUNNELED` for standard MPI+OpenMP programs to avoid the internal locking overhead of `MPI_THREAD_MULTIPLE`.
-> - MPICH (1992 Argonne, "MPI over Chameleon", MPICH-4 current in 2025) is the parent of MVAPICH2 (launched via `mpirun_rsh`), Intel MPI (free in 2025 with paid support), and Cray MPICH.
-> - Open MPI (released Nov 17, 2005 from LAM/MPI, FT-MPI, LA-MPI, and PACX-MPI) powers NVIDIA HPC-X and IBM Spectrum MPI and should be built per compiler suite.
+> - MPICH, created at Argonne in 1992 as "MPI over Chameleon," is the parent of MVAPICH2, Intel MPI, and Cray MPICH. MPICH-4 is the current branch in 2025.
+> - Open MPI was released on November 17, 2005, and grew out of LAM/MPI, FT-MPI, LA-MPI, and PACX-MPI. It powers NVIDIA HPC-X and IBM Spectrum MPI, and you should build it per compiler suite.
+
+For a standard MPI+OpenMP program, start with the `MPI_THREAD_FUNNELED` level.
 
 ## 5. Open MPI architecture (MCA), 5-level priority, HCOLL, and UCX
 
@@ -183,7 +201,7 @@ flowchart TB
   COLL --> SHARP
 ```
 
-Open MPI is organized around its **Modular Component Architecture (MCA)**. This plugin system loads transport and algorithm modules at runtime, as covered in *Supercomputers for Linux SysAdmins* Chapter 21 and `volume-10` Appendix B.
+Open MPI's internals are built from plugins. Its **Modular Component Architecture (MCA)** loads transport and algorithm modules at runtime. *Supercomputers for Linux SysAdmins* Chapter 21 and `volume-10` Appendix B cover the design in more detail.
 
 | MCA framework | Responsibility | Key components in production |
 |---|---|---|
@@ -194,21 +212,23 @@ Open MPI is organized around its **Modular Component Architecture (MCA)**. This 
 | `io` | Parallel file I/O (`MPI-IO`) | `ompio`, `romio` |
 | `plm` / PRRTE / PMIx | Process lifecycle and daemon launch | `slurm`, `rsh`; in Open MPI 5, `mpirun` is backed by `prterun` |
 
+Each row is a layer you may need to tune. For example, `pml` picks the point-to-point engine, while `coll` picks the collective algorithms.
+
 ### The 5-level MCA parameter priority hierarchy (`SCL` Chapter 21)
 
-You can inspect every available MCA parameter and its current value with `ompi_info -a` or `ompi_info --param pml ucx --level 9`. When the same MCA parameter is set in multiple places, Open MPI resolves it in **five levels of increasing priority**, modeled in `resolve_openmpi_mca_param()` in `code/part06/mpi_tuning.py`:
+You can inspect every MCA parameter and its current value with `ompi_info -a` or `ompi_info --param pml ucx --level 9`. When the same parameter is set in several places, Open MPI resolves it in **five levels of increasing priority**. The resolver is modeled in `resolve_openmpi_mca_param()` in `code/part06/mpi_tuning.py`.
 
-1. **Global configuration file (lowest priority):** `/etc/openmpi-mca-params.conf` (and `openpmix-mca-params.conf` or `prte-mca-params.conf` for PMIx and PRRTE), formatted as `key=value`.
+1. **Global configuration file (lowest priority):** `/etc/openmpi-mca-params.conf`, along with `openpmix-mca-params.conf` or `prte-mca-params.conf` for PMIx and PRRTE. Each line uses the form `key=value`.
 2. **User local configuration file:** `$HOME/.openmpi/mca-params.conf`.
-3. **Tuned option files:** passed via `mpiexec --tune file1,file2...`, whose contents are interpreted as regular `mpiexec` options.
-4. **Environment variables:** `export OMPI_MCA_xxx=value` (or `PMIX_MCA_xxx` and `PRRTE_MCA_xxx`).
+3. **Tuned option files:** passed with `mpiexec --tune file1,file2...`. Their contents are read as regular `mpiexec` options.
+4. **Environment variables:** set with `export OMPI_MCA_xxx=value`, or with `PMIX_MCA_xxx` and `PRRTE_MCA_xxx`.
 5. **Command-line options (highest priority):** `mpiexec -mca xxx value` or `--mca xxx value`.
 
-Prefixing a component list with **`^`** excludes those components. For example, `export OMPI_MCA_btl=^tcp,self,openib` in Open MPI 4 or `--mca btl_tcp_if_exclude lo,docker0` prevents Open MPI from routing over unwanted interfaces.
+A `^` in front of a component list means exclude these. For example, in Open MPI 4 you can export `OMPI_MCA_btl=^tcp,self,openib`. Or you can pass `--mca btl_tcp_if_exclude lo,docker0` to stop Open MPI from routing over unwanted interfaces.
 
 ### Tuning HCOLL and UCX in Open MPI (`SCL` Chapter 21)
 
-By default on NVIDIA InfiniBand clusters, Open MPI uses **HCOLL** (Host Collectives) to accelerate MPI collective operations via hardware multicast and in-network **SHARP** switch reductions. Occasionally an HCOLL collective hits a bug or conflicts with an application. You can disable HCOLL or steer it to a specific HCA (**untested** here).
+By default on NVIDIA InfiniBand clusters, Open MPI uses **HCOLL** (Host Collectives) to accelerate MPI collective operations. It does this with hardware multicast and in-network **SHARP** switch reductions. Sometimes an HCOLL collective hits a bug or conflicts with your application. In that case you can disable HCOLL, or steer it to a specific HCA. These commands are **untested** here.
 
 ```bash
 # Disable HCOLL via CLI flag or environment variable (under srun --mpi=pmix) (untested here)
@@ -225,28 +245,28 @@ mpirun -np 2 -mca pml ucx -x UCX_NET_DEVICES=mlx5_0:1 \
   ./myapp
 ```
 
-Here `-mca pml ucx` selects the **Unified Communication X (UCX)** point-to-point engine. Passing `-x UCX_NET_DEVICES=mlx5_0:1` and `-x HCOLL_MAIN_IB=mlx5_0:1` pins traffic to port 1 of InfiniBand adapter `mlx5_0`. Meanwhile, `HCOLL_ENABLE_MCAST_ALL=1` enables hardware multicast, `HCOLL_ENABLE_NBC=1` enables non-blocking collectives, and `HCOLL_ENABLE_SHARP=1` enables in-network switch reductions. If you are troubleshooting a suspected UCX bug, `-x OMPI_MCA_pml=^ucx` disables UCX. Run `ucx_info -d` to inspect detected RDMA devices and **`ucx_info -c -f`** to print documented descriptions of every UCX variable (`UCX_TLS=rc,sm,cuda_copy,cuda_ipc,gdr_copy`, `UCX_IB_SL=1`, `UCX_LOG_LEVEL=info`).
+Here, `-mca pml ucx` selects the **Unified Communication X (UCX)** point-to-point engine. Passing `-x UCX_NET_DEVICES=mlx5_0:1` and `-x HCOLL_MAIN_IB=mlx5_0:1` pins traffic to port 1 of InfiniBand adapter `mlx5_0`. The other three variables switch on hardware features. `HCOLL_ENABLE_MCAST_ALL=1` enables hardware multicast, `HCOLL_ENABLE_NBC=1` enables non-blocking collectives, and `HCOLL_ENABLE_SHARP=1` enables in-network switch reductions. If you suspect a UCX bug, use `-x OMPI_MCA_pml=^ucx` to disable UCX. Run `ucx_info -d` to inspect the RDMA devices UCX detects. Run **`ucx_info -c -f`** to print documented descriptions of every UCX variable, such as `UCX_TLS=rc,sm,cuda_copy,cuda_ipc,gdr_copy`, `UCX_IB_SL=1`, and `UCX_LOG_LEVEL=info`.
 
-**Verify that `ompi_info | grep pml` lists `ucx`, understand the 5-level MCA override order, and remember that `coll_hcoll_enable` controls MPI collectives rather than NCCL GPU collectives**.
+Check that `ompi_info | grep pml` lists `ucx`, and keep the 5-level MCA override order in mind. Remember that `coll_hcoll_enable` controls MPI collectives, not NCCL GPU collectives.
 
 > **In one minute:**
 > - Open MPI's MCA selects runtime plugins across `pml` (`ucx` vs `ob1`), `btl` (`self`, `sm`, `tcp`), and `coll` (`hcoll`, `tuned`, `han`).
-> - MCA priority increases from `/etc/openmpi-mca-params.conf` (1) to `$HOME/.openmpi/mca-params.conf` (2) to `--tune` files (3) to `OMPI_MCA_` env vars (4) to `-mca` CLI flags (5).
+> - MCA priority increases from `/etc/openmpi-mca-params.conf` (1) to `$HOME/.openmpi/mca-params.conf` (2), to `--tune` files (3), to `OMPI_MCA_` env vars (4), and finally to `-mca` CLI flags (5).
 > - Use `ucx_info -c -f` and `UCX_NET_DEVICES=mlx5_0:1` or `HCOLL_MAIN_IB=mlx5_0:1` to steer InfiniBand transports.
 
 ## 6. Launching at scale: `srun --mpi=pmix` vs. `mpirun` vs. `torchrun`
 
-On a modern GPU cluster (`volume-10/07-mpi-fundamentals-for-hpc-ai-workloads.md`), distributed jobs are launched in one of three ways:
+On a modern GPU cluster (`volume-10/07-mpi-fundamentals-for-hpc-ai-workloads.md`), distributed jobs are launched in one of three ways.
 
-1. **The native Slurm HPC standard (`srun --mpi=pmix`):** Having a head node open thousands of sequential SSH connections does not scale. With `srun --mpi=pmix`, `slurmd` on each allocated node spawns `slurmstepd`, which starts the local tasks and hosts a local **PMIx server** over a Unix domain socket. Ranks publish and exchange endpoint addresses through the Slurm PMIx tree in milliseconds without SSH. Always pass **`--kill-on-bad-exit=1`**. If one rank crashes with an OOM (exit 137) or segfault (exit 139), Slurm immediately terminates all other ranks instead of leaving 500 GPUs hanging at the next AllReduce barrier (**untested** here).
+1. **The native Slurm HPC standard (`srun --mpi=pmix`):** A head node cannot open thousands of sequential SSH connections and still scale. With `srun --mpi=pmix`, `slurmd` on each allocated node spawns `slurmstepd`. That process starts the local tasks and hosts a local **PMIx server** over a Unix domain socket. The ranks publish and exchange endpoint addresses through the Slurm PMIx tree in milliseconds, without SSH. Always pass **`--kill-on-bad-exit=1`**. If one rank crashes with an OOM (exit 137) or a segfault (exit 139), Slurm immediately terminates all the other ranks. Without that flag, 500 GPUs would hang at the next AllReduce barrier (**untested** here).
    ```bash
    # (untested here)
    srun --mpi=pmix --kill-on-bad-exit=1 \
      --ntasks-per-node=8 --gpus-per-node=8 --cpus-per-task=14 \
      python3 /workspace/train.py
    ```
-   Check supported Slurm PMI plugins with `srun --mpi=list`, and after package upgrades verify that `slurm-libpmi` and `pmix-libpmi` RPMs have not conflicted.
-2. **The standalone Open MPI / HPC-X launcher (`mpirun`):** Used on bare-metal SSH clusters or inside multi-node Kubernetes MPIJob pods (**untested** here):
+   Check which Slurm PMI plugins are supported with `srun --mpi=list`. After package upgrades, verify that the `slurm-libpmi` and `pmix-libpmi` RPMs have not conflicted.
+2. **The standalone Open MPI / HPC-X launcher (`mpirun`):** Use this on bare-metal SSH clusters or inside multi-node Kubernetes MPIJob pods (**untested** here).
    ```bash
    # (untested here)
    mpirun -np 256 --hostfile /etc/opt/cluster/hosts.txt \
@@ -258,83 +278,93 @@ On a modern GPU cluster (`volume-10/07-mpi-fundamentals-for-hpc-ai-workloads.md`
      -mca plm_rsh_no_tree_spawn 1 \
      python3 megatron_pretrain.py
    ```
-   Remember three critical `mpirun` flags. First, **`-x VAR`** explicitly forwards environment variables to remote nodes; without `-x`, remote ranks never see your `NCCL_DEBUG=INFO` export. Second, **`--bind-to none`** stops Open MPI from pinning a rank and all of its PyTorch DataLoader worker threads onto a single CPU core. Third, **`-mca plm_rsh_no_tree_spawn 1`** (along with `routed_radix`) can resolve intermittent SSH tree-spawn timeouts on slow management networks.
-3. **The PyTorch elastic launcher (`torchrun`):** Uses PyTorch's built-in `c10d` TCP store (`--rdzv_backend=c10d --rdzv_endpoint=10.100.1.10:29500`) without MPI. While convenient for elastic cloud jobs, funneling thousands of ranks through a single TCP rendezvous endpoint host can create a startup bottleneck at very large scale compared to Slurm's hierarchical tree.
+   Three `mpirun` flags are critical. First, **`-x VAR`** forwards environment variables to remote nodes. Without `-x`, remote ranks never see your `NCCL_DEBUG=INFO` export. Second, **`--bind-to none`** stops Open MPI from pinning a rank, and all of its PyTorch DataLoader worker threads, onto a single CPU core. Third, **`-mca plm_rsh_no_tree_spawn 1`** can resolve intermittent SSH tree-spawn timeouts on slow management networks. Tuning `routed_radix` goes along with it.
+3. **The PyTorch elastic launcher (`torchrun`):** It uses PyTorch's built-in `c10d` TCP store, set with `--rdzv_backend=c10d --rdzv_endpoint=10.100.1.10:29500`, and it does not use MPI. The launcher is convenient for elastic cloud jobs. At very large scale, though, funneling thousands of ranks through that single TCP rendezvous endpoint can become a startup bottleneck, compared with Slurm's hierarchical tree.
 
-**Prefer `srun --mpi=pmix --kill-on-bad-exit=1` on Slurm clusters, and never forget `-x` environment forwarding and `--bind-to none` (or socket/NUMA binding) when launching multi-threaded PyTorch jobs with `mpirun`**.
+**Prefer `srun --mpi=pmix --kill-on-bad-exit=1` on Slurm clusters.** When you launch multi-threaded PyTorch jobs with `mpirun`, never forget `-x` environment forwarding, and use `--bind-to none` or socket or NUMA binding.
 
 > **In one minute:**
-> - `srun --mpi=pmix --kill-on-bad-exit=1` uses Slurm's `slurmstepd` PMIx server for fast, SSH-free rank wire-up and tears down the whole job immediately if one rank crashes.
-> - With `mpirun`, use `-x` to export environment variables to remote nodes and avoid confining multi-threaded PyTorch dataloaders to 1 CPU core.
+> - `srun --mpi=pmix --kill-on-bad-exit=1` uses Slurm's `slurmstepd` PMIx server for fast, SSH-free rank wire-up. It tears down the whole job immediately if one rank crashes.
+> - With `mpirun`, use `-x` to export environment variables to remote nodes. Also avoid confining multi-threaded PyTorch dataloaders to 1 CPU core.
+
+Use `srun` with `--kill-on-bad-exit=1` for Slurm jobs, and check the `mpirun` flags before you launch a PyTorch job with it.
 
 ## 7. Mapping, ranking, CPU/GPU NUMA binding, and `taskset` verification
 
-Placing parallel processes onto dual-socket GPU servers involves three distinct steps (*Parallel and High Performance Computing* Chapter 14 and `volume-10` Section 5):
+Placing parallel processes on a dual-socket GPU server takes three steps. *Parallel and High Performance Computing* covers them in Chapter 14, and `volume-10` covers them in Section 5.
 
 - **Mapping (`--map-by slot|node|socket|numa|ppr:8:node`):** decides which hardware resource each process lands on.
-- **Ranking (`--rank-by slot|node|socket`):** assigns integer rank IDs 0 through N-1 to those mapped slots, such as packing ranks 0 through 7 on Node 0 so intra-node collectives stay on NVLink.
-- **Binding (`--bind-to core|socket|numa|none` or Slurm `--cpu-bind=cores --gpu-bind=closest`):** restricts the OS scheduler via cgroups and affinity masks so the process cannot migrate across sockets.
+- **Ranking (`--rank-by slot|node|socket`):** assigns integer rank IDs 0 through N-1 to those mapped slots. For example, you can pack ranks 0 through 7 on Node 0, so intra-node collectives stay on NVLink.
+- **Binding (`--bind-to core|socket|numa|none` or Slurm `--cpu-bind=cores --gpu-bind=closest`):** restricts the OS scheduler through cgroups and affinity masks, so the process cannot migrate across sockets.
 
-Consider a dual-socket server such as a DGX H100 where Socket 0 (NUMA 0) hosts GPUs 0–3 and HCAs 0–3, and Socket 1 (NUMA 1) hosts GPUs 4–7 and HCAs 4–7. Suppose a rank assigned to GPU 0 runs its CPU threads on Socket 1. Every host-to-device copy and control call must then cross the slow inter-socket UPI or Infinity Fabric link instead of local PCIe and NVLink (900 GB/s). Always verify bindings in production (**untested** here):
+Consider a dual-socket server such as a DGX H100. Socket 0, which is NUMA 0, hosts GPUs 0–3 and HCAs 0–3. Socket 1, which is NUMA 1, hosts GPUs 4–7 and HCAs 4–7. Suppose the rank assigned to GPU 0 runs its CPU threads on Socket 1. Every host-to-device copy and control call then has to cross the slow inter-socket UPI or Infinity Fabric link. It cannot use the local PCIe and NVLink path, where NVLink runs at 900 GB/s.
 
-- With Open MPI: pass **`mpirun --report-bindings ...`** to print the exact core mask of every rank at startup.
-- With Slurm and `numactl` or `taskset`: run `numactl --show | grep physcpubind` in a launch wrapper or inspect a running worker PID on the node with **`taskset -cp <PID>`**, confirming Rank 0 is bound to cores `0-15` rather than `0-127`.
+Always verify bindings in production. The commands below are **untested** here.
 
-**Bind every GPU rank to the CPU cores of its local NUMA socket (`--cpu-bind=cores --gpu-bind=closest`) and verify with `--report-bindings` or `taskset -cp <PID>`**.
+- With Open MPI, pass **`mpirun --report-bindings ...`** to print the exact core mask of every rank at startup.
+- With Slurm and `numactl` or `taskset`, run `numactl --show | grep physcpubind` in a launch wrapper. You can also inspect a running worker PID on the node with **`taskset -cp <PID>`**. Confirm that Rank 0 is bound to cores `0-15`, not `0-127`.
+
+**Bind every GPU rank to the CPU cores of its local NUMA socket.** Use `--cpu-bind=cores --gpu-bind=closest`, and verify with `--report-bindings` or `taskset -cp <PID>`.
 
 > **In one minute:**
 > - Mapping chooses the hardware location, ranking numbers the processes, and binding pins each process to its CPU cores and NUMA domain.
-> - Misaligned CPU-to-GPU NUMA placement forces traffic across the inter-socket UPI or Infinity Fabric bus; verify live affinity with `mpirun --report-bindings`, `numactl --show`, or `taskset -cp <PID>`.
+> - Misaligned CPU-to-GPU NUMA placement forces traffic across the inter-socket UPI or Infinity Fabric bus. Verify live affinity with `mpirun --report-bindings`, `numactl --show`, or `taskset -cp <PID>`.
+
+Check the binding of every rank on a new node before you trust its throughput numbers.
 
 ## 8. CUDA-aware MPI, GPUDirect RDMA, PCIe ACS, and `memlock`
 
-A **CUDA-aware MPI** library—verified via `ompi_info --parsable --all | grep mpi_built_with_cuda_support`—allows applications to pass GPU device pointers directly into `MPI_Send`, `MPI_Recv`, and `MPI_Allreduce` without manually copying tensors to host RAM first. When paired with **GPUDirect RDMA**, the ConnectX HCA reads and writes GPU HBM directly across the local PCIe switch (`PIX`), bypassing host CPU RAM completely.
+A **CUDA-aware MPI** library lets an application pass GPU device pointers directly into `MPI_Send`, `MPI_Recv`, and `MPI_Allreduce`. You do not have to copy tensors to host RAM first. You can verify the build with `ompi_info --parsable --all | grep mpi_built_with_cuda_support`. When it is paired with **GPUDirect RDMA**, the ConnectX HCA reads and writes GPU HBM directly across the local PCIe switch (`PIX`). That path bypasses host CPU RAM completely.
 
-Three host-level configurations are required for full GPUDirect RDMA speed (`volume-10` Section 9 and Appendices C, L, O):
+Full GPUDirect RDMA speed needs three host-level settings. `volume-10` covers them in Section 9 and Appendices C, L, O.
 
-1. **Peer-memory kernel driver (`nvidia_peermem` or `dma-buf`):** Verify with `lsmod | grep nvidia_peermem`. If this module is missing after a kernel update, GPUDirect RDMA silently falls back to staging through host CPU RAM and multi-node bandwidth collapses.
-2. **PCIe Access Control Services (ACS) and PCIe Gen 5 link width:** In virtualized environments, hypervisors enable PCIe **ACS** on PCIe switches to force all peer-to-peer transactions up to the CPU root complex IOMMU (`SYS` instead of `PIX` in `nvidia-smi topo -m`). That redirection throttles GPUDirect RDMA. Similarly, a PCIe Gen 5 x16 slot (32 GT/s, ~63 GB/s unidirectional) matches a 400 Gbps (50 GB/s) ConnectX-7 HCA. If a bad riser downgrades that slot to PCIe Gen 4 (~31.5 GB/s), the 400G NIC is hardware-bottlenecked at ~250 Gbps. Always check `lspci -vv | grep LnkSta:` and `dmesg -w | grep -i AER` on slow nodes.
-3. **Unlimited locked memory (`ulimit -l` / `memlock`):** RDMA requires pinning physical pages so the kernel cannot swap them. If `ulimit -l` is too small, jobs fail with `ibv_reg_mr() failed` or `NCCL WARN Call to ibv_create_qp failed`. Set `* soft memlock unlimited` and `* hard memlock unlimited` in `/etc/security/limits.conf` and Slurm daemon unit files, and verify inside the job with `ulimit -l`.
+1. **Peer-memory kernel driver (`nvidia_peermem` or `dma-buf`):** Verify it with `lsmod | grep nvidia_peermem`. If that module goes missing after a kernel update, GPUDirect RDMA quietly falls back to staging through host CPU RAM. Multi-node bandwidth then collapses.
+2. **PCIe Access Control Services (ACS) and PCIe Gen 5 link width:** In virtualized environments, hypervisors enable PCIe **ACS** on PCIe switches. ACS forces all peer-to-peer transactions up to the CPU root complex IOMMU. That shows as `SYS` instead of `PIX` in `nvidia-smi topo -m`, and the redirection throttles GPUDirect RDMA. Link width matters too. A PCIe Gen 5 x16 slot runs at 32 GT/s, which gives about 63 GB/s in one direction. That matches a 400 Gbps ConnectX-7 HCA, which moves 50 GB/s. If a bad riser downgrades that slot to PCIe Gen 4, which gives about 31.5 GB/s, the 400G NIC is hardware-bottlenecked at about 250 Gbps. Always check `lspci -vv | grep LnkSta:` and `dmesg -w | grep -i AER` on slow nodes.
+3. **Unlimited locked memory (`ulimit -l` / `memlock`):** RDMA requires pinning physical pages, so the kernel cannot swap them out. If `ulimit -l` is too small, jobs fail with `ibv_reg_mr() failed` or `NCCL WARN Call to ibv_create_qp failed`. Set `* soft memlock unlimited` and `* hard memlock unlimited` in `/etc/security/limits.conf` and in Slurm daemon unit files. Then verify inside the job with `ulimit -l`.
 
-**When multi-node GPU bandwidth drops suddenly, check `lsmod | grep nvidia_peermem`, `nvidia-smi topo -m`, `lspci -vv | grep LnkSta:`, and `ulimit -l` first**.
+**When multi-node GPU bandwidth drops suddenly, check four things first.** Run `lsmod | grep nvidia_peermem`, `nvidia-smi topo -m`, `lspci -vv | grep LnkSta:`, and `ulimit -l`.
 
 > **In one minute:**
 > - CUDA-aware MPI and NCCL rely on GPUDirect RDMA (`nvidia_peermem` or `dma-buf`) to move tensors directly between GPU HBM and the NIC across the local PCIe switch (`PIX`).
-> - Enabled PCIe ACS, a downtrained PCIe Gen 4 link (~31.5 GB/s vs Gen 5 ~63 GB/s for a 50 GB/s 400G NIC), or low `memlock` (`ibv_reg_mr failed`) will cripple or crash RDMA jobs.
+> - Enabled PCIe ACS can cripple RDMA jobs. So can a downtrained PCIe Gen 4 link, which gives about 31.5 GB/s where Gen 5 gives about 63 GB/s for a 50 GB/s 400G NIC. Low `memlock` can crash them, with an `ibv_reg_mr failed` error.
+
+Check these four items on any node whose bandwidth has dropped before you touch the switches.
 
 ## 9. Benchmarking: OSU Micro-Benchmarks and Algorithmic vs. Bus Bandwidth
 
-To validate MPI and NCCL performance across nodes, operators run two standard suites:
+Two standard suites let operators check MPI and NCCL performance across nodes.
 
-- **OSU Micro-Benchmarks (`osu_latency`, `osu_bw`, `osu_bibw`, `osu_allreduce`, `osu_alltoall`):** tests both host-to-host and GPU-to-GPU MPI paths. Pairwise fabric health can also be tested directly at the verbs layer with `ib_write_bw -d mlx5_0 --use_cuda=0 <server> -a` and `ib_write_lat`.
-- **`nccl-tests` (`all_reduce_perf`, `all_gather_perf`, `alltoall_perf`):** reports two bandwidth columns that you must never confuse, modeled in `compute_allreduce_algbw_and_busbw()` in `code/part06/mpi_tuning.py`:
-  - **Algorithmic Bandwidth:** tensor bytes divided by elapsed time. For a 1 GB (1,000,000,000 B) AllReduce finishing in 0.005 s (5 ms), algorithmic bandwidth is **200.0 GB/s**.
-  - **Bus Bandwidth:** multiplies algorithmic bandwidth by the ring collective traffic factor $2(n - 1)/n$. That normalization lets you compare the result directly against hardware NIC or NVLink line rate regardless of the number of GPUs. On 8 GPUs, the factor is $2 \times 7 / 8 = 1.75$, giving a bus bandwidth of $200.0 \times 1.75 = \mathbf{350.0\text{ GB/s}}$.
+- **OSU Micro-Benchmarks (`osu_latency`, `osu_bw`, `osu_bibw`, `osu_allreduce`, `osu_alltoall`):** These test both host-to-host and GPU-to-GPU MPI paths. You can also test pairwise fabric health directly at the verbs layer, with `ib_write_bw -d mlx5_0 --use_cuda=0 <server> -a` and `ib_write_lat`.
+- **`nccl-tests` (`all_reduce_perf`, `all_gather_perf`, `alltoall_perf`):** This suite reports two bandwidth columns, and you must never confuse them. The `compute_allreduce_algbw_and_busbw()` function in `code/part06/mpi_tuning.py` models both.
+  - **Algorithmic Bandwidth:** tensor bytes divided by elapsed time. Take a 1 GB (1,000,000,000 B) AllReduce that finishes in 0.005 s, which is 5 ms. Its algorithmic bandwidth is **200.0 GB/s**.
+  - **Bus Bandwidth:** algorithmic bandwidth multiplied by the ring collective traffic factor, $2(n - 1)/n$. That normalization lets you compare the result directly against NIC or NVLink line rate, whatever the GPU count. On 8 GPUs the factor is $2 \times 7 / 8 = 1.75$. The bus bandwidth is therefore $200.0 \times 1.75 = \mathbf{350.0\text{ GB/s}}$.
 
-**Always quote Bus Bandwidth (`algbw * 2(n-1)/n`) when comparing AllReduce results against NIC or NVLink hardware specs, because bus bandwidth normalizes out the rank count**.
+**Always quote Bus Bandwidth when you compare AllReduce results with NIC or NVLink hardware specs.** It is `algbw * 2(n-1)/n`, and that normalization removes the rank count from the comparison.
 
 > **In one minute:**
-> - Algorithmic bandwidth is `S / t`, whereas Bus Bandwidth is `algbw * 2(n-1)/n` for AllReduce and reflects actual physical link saturation.
+> - Algorithmic bandwidth is `S / t`. Bus Bandwidth is `algbw * 2(n-1)/n` for AllReduce, and it reflects actual physical link saturation.
+
+Quote bus bandwidth, not algorithmic bandwidth, whenever you compare against hardware specs.
 
 ## 10. Troubleshooting guide: the 4-layer ladder and real init hangs
 
-During the testing of this chapter on an Apple Silicon Mac in a sandboxed shell, installing Open MPI 5.0.11 and MPICH via `conda-forge` produced a textbook diagnostic case. Running `mpirun -np 2 hostname` worked (`prterun` spawned both processes cleanly) and a 1-rank singleton `mpi4py` script succeeded, **but every 2-rank `MPI_Init` hung indefinitely**. That hang persisted even after setting `TMPDIR=/tmp`, forcing `btl=self,sm`, trying `pmix_gds=hash`, and testing MPICH TCP libfabric. Because the sandbox blocked local inter-process wire-up sockets, isolating which step hung required walking a strict diagnostic ladder.
+While testing this chapter on an Apple Silicon Mac in a sandboxed shell, installing Open MPI 5.0.11 and MPICH with `conda-forge` produced a textbook diagnostic case. Running `mpirun -np 2 hostname` worked, because `prterun` spawned both processes cleanly. A 1-rank singleton `mpi4py` script also succeeded. But every 2-rank `MPI_Init` hung indefinitely. The hang persisted after setting `TMPDIR=/tmp`, forcing `btl=self,sm`, trying `pmix_gds=hash`, and testing MPICH TCP libfabric. The sandbox blocked local inter-process wire-up sockets, so isolating the hang meant walking a strict diagnostic ladder.
 
-On a production GPU cluster (`volume-10` Senior Deep Dive 3), whenever a multi-node job hangs or crawls, walk these **four layers in order**.
+The source for this ladder is `volume-10`, Senior Deep Dive 3. When a multi-node job hangs or crawls on a production GPU cluster, you should walk the **four layers in order**. Start at the top, because a lower layer rarely matters until the upper ones pass.
 
 ### Layer 1: Process launch, exit codes, and OS limits
 
-- Did every node spawn the expected number of processes (`pgrep -fc python3`) and does every node have `ulimit -l` set to `unlimited`?
-- If the job died with a non-zero exit code, decode the signal (`volume-10` Appendix G).
-  - **Exit code 139 (128 + 11 SIGSEGV):** Segmentation fault, often caused by mismatched CUDA or MPI libraries or dereferencing a host pointer on the GPU.
-  - **Exit code 137 (128 + 9 SIGKILL):** Host Linux OOM killer or cgroup memory limit, usually caused by too many PyTorch DataLoader workers exhausting host RAM rather than GPU VRAM.
-  - **Exit code 143 (128 + 15 SIGTERM):** Terminated by Slurm walltime expiration, `scancel`, or preemption.
+- Did every node spawn the expected number of processes? Count them with `pgrep -fc python3`. Also check that every node has `ulimit -l` set to `unlimited`.
+- If the job died with a non-zero exit code, decode the signal. `volume-10` Appendix G explains the codes.
+  - **Exit code 139 (128 + 11 SIGSEGV):** A segmentation fault. It often comes from mismatched CUDA or MPI libraries, or from dereferencing a host pointer on the GPU.
+  - **Exit code 137 (128 + 9 SIGKILL):** The Linux OOM killer or a cgroup memory limit stopped the process. This is usually caused by too many PyTorch DataLoader workers exhausting host RAM, rather than GPU VRAM.
+  - **Exit code 143 (128 + 15 SIGTERM):** Slurm terminated the process at walltime expiration, through `scancel`, or during preemption.
 
 ### Layer 2: Rendezvous (PMIx plugin and `NCCL_SOCKET_IFNAME` prefix rules)
 
-If all processes are alive at 0% GPU utilization, check whether they found each other's IP addresses. By default, NCCL and Open MPI scan active network interfaces for TCP bootstrap rendezvous. If Node A picks a non-routable virtual bridge like `docker0` (172.17.0.1) while Node B picks `bond0` (10.100.1.10), the TCP handshake hangs forever.
+Suppose every process is alive but sits at 0% GPU utilization. Check whether the processes found each other's IP addresses. By default, NCCL and Open MPI scan the active network interfaces for TCP bootstrap rendezvous. Suppose Node A picks a non-routable virtual bridge such as `docker0`, at 172.17.0.1, while Node B picks `bond0`, at 10.100.1.10. The TCP handshake between them then hangs forever.
 
-Fix this with **`NCCL_SOCKET_IFNAME`** for NCCL bootstrap and **`NCCL_IB_HCA`** for RDMA HCAs. As detailed in `SCL` Chapter 21 and implemented in `match_nccl_ifname()` in `code/part06/mpi_tuning.py`, NCCL uses **four prefix-matching operators**:
+Fix this with **`NCCL_SOCKET_IFNAME`** for NCCL bootstrap, and with **`NCCL_IB_HCA`** for RDMA HCAs. *Supercomputers for Linux SysAdmins*, Chapter 21, describes the matching rules, and `match_nccl_ifname()` in `code/part06/mpi_tuning.py` implements them. NCCL uses **four prefix-matching operators**, shown in the table below.
 
 | Syntax in `NCCL_SOCKET_IFNAME` / `NCCL_IB_HCA` | Matching rule (`SCL` Chapter 21) | Example on `["lo", "docker0", "eth0", "eth1", "eth11", "bond0"]` |
 |---|---|---|
@@ -343,47 +373,54 @@ Fix this with **`NCCL_SOCKET_IFNAME`** for NCCL bootstrap and **`NCCL_IB_HCA`** 
 | **`^`** prefix (`^docker`) | **Exclude prefix:** matches all interfaces except those starting with `docker` | Excludes `docker0` |
 | **`^=`** prefix (`^=eth0`) | **Exclude exact:** matches all interfaces except `eth0` specifically | Excludes `eth0` while keeping `eth1` and `eth11` |
 
-Also ensure host firewalls allow the ephemeral TCP port range used during rendezvous, such as `echo 50000 51000 > /proc/sys/net/ipv4/ip_local_port_range`.
+Also make sure host firewalls allow the ephemeral TCP port range that rendezvous uses. For example, `echo 50000 51000 > /proc/sys/net/ipv4/ip_local_port_range` sets that range.
 
 ### Layer 3: NCCL initialization, `NCCL_RUN_DIAGNOSTICS`, `ncclras`, and GPU Xids
 
-1. **Inspect transport and graph logs:** Set `export NCCL_DEBUG=INFO` and `export NCCL_DEBUG_SUBSYS=INIT,GRAPH,ENV,NET`, optionally redirecting per-rank logs via `NCCL_DEBUG_FILE=nccl_%h_%p.log`. Confirm the log prints `Using network IB` rather than falling back to Socket.
-2. **Run built-in init diagnostics (NCCL 2.31+):** Launch with **`NCCL_RUN_DIAGNOSTICS=1`** to print `NCCL DIAG` peer-to-peer and fabric checks before application traffic starts.
-3. **Query the live RAS daemon on a hung job (NCCL 2.24+):** Run **`ncclras -v`** or `echo verbose status | nc localhost 28028` (default port 28028 via `NCCL_RAS_ADDR`) on any node in the job. Look for a **`MISMATCH`** row—*"Communicator ranks have different collective operation counts"*, which names the exact lagging rank, PID, GPU, and hostname—or an **`INCOMPLETE`** row naming a dead or unresponsive rank.
-4. **Remember the watchdog is PyTorch's (`TORCH_NCCL_*`), not NCCL's:** When a job aborts with a `ProcessGroupNCCL` watchdog timeout, that timeout comes from PyTorch (`TORCH_NCCL_TRACE_BUFFER_SIZE` and `TORCH_FR_BUFFER_SIZE`), telling you some rank stalled. Use `ncclras` and `journalctl -k | grep "NVRM: Xid"` (checking for Xid 79 GPU fallen off the bus or Xid 119 GSP timeout) or `strace -e trace=ioctl -p <PID>` to find the broken GPU.
-5. **Slow `/sys` topology discovery in containers:** If initialization takes 15 minutes, run `strace -f -tt -e trace=open,openat,read` to verify `/sys/class/pci_bus` is properly mounted in the container.
+1. **Inspect transport and graph logs:** Set `export NCCL_DEBUG=INFO` and `export NCCL_DEBUG_SUBSYS=INIT,GRAPH,ENV,NET`. You can optionally redirect per-rank logs with `NCCL_DEBUG_FILE=nccl_%h_%p.log`. Confirm that the log prints `Using network IB` and not a fallback to Socket.
+2. **Run built-in init diagnostics (NCCL 2.31+):** Launch with **`NCCL_RUN_DIAGNOSTICS=1`**. It prints `NCCL DIAG` peer-to-peer and fabric checks before application traffic starts.
+3. **Query the live RAS daemon on a hung job (NCCL 2.24+):** Run **`ncclras -v`** on any node in the job. You can also run `echo verbose status | nc localhost 28028`. The default port is 28028, set through `NCCL_RAS_ADDR`. Look for a **`MISMATCH`** row. It says *"Communicator ranks have different collective operation counts"* and names the exact lagging rank, PID, GPU, and hostname. An **`INCOMPLETE`** row names a dead or unresponsive rank.
+4. **Remember that the watchdog is PyTorch's, not NCCL's:** When a job aborts with a `ProcessGroupNCCL` watchdog timeout, the timeout comes from PyTorch. The related settings are `TORCH_NCCL_TRACE_BUFFER_SIZE` and `TORCH_FR_BUFFER_SIZE`. It means some rank stalled. Use `ncclras` and `journalctl -k | grep "NVRM: Xid"` to look for Xid 79, a GPU that fell off the bus, or Xid 119, a GSP timeout. Or run `strace -e trace=ioctl -p <PID>` to find the broken GPU.
+5. **Slow `/sys` topology discovery in containers:** If initialization takes 15 minutes, run `strace -f -tt -e trace=open,openat,read` to verify that `/sys/class/pci_bus` is properly mounted in the container.
 
 ### Layer 4: Physical fabric health (InfiniBand and RoCEv2)
 
-- **InfiniBand:** Check `ibstat` (State Active, Physical state LinkUp, expected Rate), `sudo sminfo` (Subnet Manager alive), and `sudo perfquery -x <lid>`, watching for **increasing** `SymbolErrorCounter`, `LinkErrorRecoveryCounter`, or `LinkDownedCounter` across two reads. Also check `mlxlink`, `rdma statistic` (`rnr_nak_retry_err`, `packet_seq_err`, `local_ack_timeout_err`), and `sudo ibdiagnet`. Note that `NCCL_IB_TIMEOUT` (default 20, where timeout is $\approx 4.096\ \mu\text{s} \times 2^{\text{timeout}}$) and `NCCL_IB_RETRY_CNT` (default 7) give roughly a 30-second retry window to absorb a brief 3-second link flap (`ibportstate 1 1 disable`). For SHARP, `NCCL_COLLNET_ENABLE=1` (with `CollnetChain` and `CollnetDirect` in NCCL 2.14+, and strict `NCCL_ALGO` parsing in 2.24+) controls inter-node InfiniBand SHARP, managed by UFM's `/etc/init.d/ufmd sharp_start`. By contrast, `NCCL_NVLS_ENABLE` (`NVLS` and `NVLSTree`, default 2 since 2.17) controls intra-domain NVLink SHARP on Hopper and Blackwell NVSwitch systems.
-- **RoCEv2:** Check `ethtool -S <nic> | grep -i pause` and `mlnx_qos -i <nic>` for Priority Flow Control (**PFC**) pause storms, which are mitigated by the switch and NIC **PFC watchdog**. Verify `show_gids`, and do **not** hardcode `NCCL_IB_GID_INDEX=3` on modern NCCL 2.21+ or 2.32u1+, which defaults to `AUTO`. On the switch (`nv set qos roce` and `nv show qos roce` on Cumulus Linux 5.12), verify the lossless RoCE defaults. Those defaults are **PFC on priority 3**, **RoCE data on DSCP 26 -> priority 3**, and **CNP congestion notifications on DSCP 48 -> strict priority 6** with UDP port 4791 LLDP TLV.
+- **InfiniBand:** Check `ibstat` for State Active, Physical state LinkUp, and the expected Rate. Run `sudo sminfo` to confirm the Subnet Manager is alive. Run `sudo perfquery -x <lid>` and watch for **increasing** `SymbolErrorCounter`, `LinkErrorRecoveryCounter`, or `LinkDownedCounter` across two reads. Also check `mlxlink`, run `rdma statistic` and look at `rnr_nak_retry_err`, `packet_seq_err`, and `local_ack_timeout_err`, and run `sudo ibdiagnet`. `NCCL_IB_TIMEOUT` defaults to 20, and the timeout works out to about $4.096\ \mu\text{s} \times 2^{\text{timeout}}$. `NCCL_IB_RETRY_CNT` defaults to 7. Together they give roughly a 30-second retry window. That window can absorb a brief 3-second link flap, such as one you create with `ibportstate 1 1 disable`. For SHARP, `NCCL_COLLNET_ENABLE=1` controls inter-node InfiniBand SHARP. NCCL 2.14+ supports `CollnetChain` and `CollnetDirect`, and NCCL 2.24+ parses `NCCL_ALGO` strictly. UFM manages SHARP with `/etc/init.d/ufmd sharp_start`. By contrast, `NCCL_NVLS_ENABLE` controls intra-domain NVLink SHARP on Hopper and Blackwell NVSwitch systems. Its algorithms are `NVLS` and `NVLSTree`, and its default is 2 since 2.17.
+- **RoCEv2:** Check `ethtool -S <nic> | grep -i pause` and `mlnx_qos -i <nic>` for Priority Flow Control (**PFC**) pause storms. The switch and NIC **PFC watchdog** mitigate them. Verify `show_gids`. Do **not** hardcode `NCCL_IB_GID_INDEX=3` on modern NCCL 2.21+ or 2.32u1+, which defaults to `AUTO`. On the switch, use `nv set qos roce` and `nv show qos roce` on Cumulus Linux 5.12 to verify the lossless RoCE defaults. Those defaults are **PFC on priority 3**, **RoCE data on DSCP 26 -> priority 3**, and **CNP congestion notifications on DSCP 48 -> strict priority 6** with UDP port 4791 LLDP TLV.
 
-**Walk the 4-layer debugging ladder in strict order—Launch/Limits, Rendezvous, NCCL (`ncclras` on port 28028 and Xid logs), and Fabric—so you never waste hours debugging switches for a missing `memlock` limit**.
+**Walk the 4-layer debugging ladder in strict order.** Start with launch and limits, then rendezvous, then NCCL, then fabric. That order keeps you from spending hours on switches when the real problem is a missing `memlock` limit.
 
 > **In one minute:**
-> - Walk the 4-layer ladder: (1) Launch and `memlock` (`ulimit -l`, exit codes 139 SIGSEGV, 137 OOM SIGKILL, 143 SIGTERM), (2) Rendezvous (`srun --mpi=list`, `NCCL_SOCKET_IFNAME` prefixes `eth`, `=eth1`, `^docker`, `^=eth0`), (3) NCCL (`NCCL_DEBUG=INFO`, `NCCL_RUN_DIAGNOSTICS=1`, `ncclras` on `localhost:28028`, `NVRM: Xid`), and (4) Fabric (`ibstat`, `perfquery -x`, `ib_write_bw`, or Cumulus RoCE DSCP 26 data, DSCP 48 CNP, and priority 3 PFC).
+> - Walk the 4-layer ladder in order. Layer 1 covers launch and `memlock`, using `ulimit -l` and the exit codes 139 for SIGSEGV, 137 for an OOM SIGKILL, and 143 for SIGTERM.
+> - Layer 2 covers rendezvous. Check `srun --mpi=list`, and watch the `NCCL_SOCKET_IFNAME` prefixes `eth`, `=eth1`, `^docker`, and `^=eth0`.
+> - Layer 3 covers NCCL. Set `NCCL_DEBUG=INFO` and `NCCL_RUN_DIAGNOSTICS=1`, query `ncclras` on `localhost:28028`, and search the logs for `NVRM: Xid`.
+> - Layer 4 covers the fabric. Use `ibstat`, `perfquery -x`, and `ib_write_bw`, or check the Cumulus RoCE settings: DSCP 26 for data, DSCP 48 for CNP, and priority 3 for PFC.
 
 ## 11. Lab: test MCA precedence, `NCCL_SOCKET_IFNAME` matching, and single-rank MPI
 
-First, run the self-checking Python lab (`code/part06/mpi_tuning_lab.py`) locally. It verifies the 5-level Open MPI MCA parameter precedence resolver and the four `NCCL_SOCKET_IFNAME` prefix and exact matching operators. It also checks the AllReduce algorithmic versus bus bandwidth calculator:
+Start with the self-checking Python lab, `code/part06/mpi_tuning_lab.py`, and run it locally. It checks the 5-level Open MPI MCA parameter precedence resolver. It also checks the four `NCCL_SOCKET_IFNAME` prefix and exact matching operators, and the AllReduce algorithmic versus bus bandwidth calculator.
 
 ```bash
 python3 code/part06/mpi_tuning_lab.py
 ```
 
-Next, run the standalone calculator and the single-rank MPI scripts:
+Next, run the standalone calculator and the single-rank MPI scripts.
 
 ```bash
 python3 code/part06/mpi_tuning.py
 ```
 
-Work through these hands-on steps:
+Then work through these hands-on steps.
 
 1. Test `match_nccl_ifname(["lo", "docker0", "eth0", "eth1", "eth11", "bond0"], spec)` with `"eth"`, `"=eth1"`, and `"^docker,^=lo,^=eth0"`.
-2. Test `resolve_openmpi_mca_param()` when `/etc/openmpi-mca-params.conf` sets `pml=ob1`, `$HOME/.openmpi/mca-params.conf` sets `pml=cm`, and `OMPI_MCA_pml=ucx` is exported in the environment. Verify that the environment variable wins unless overridden by `-mca pml ^ucx` on the command line.
-3. On a machine or cluster with MPI installed, run `python3 code/part06/mpi_hello.py` and `python3 code/part06/mpi_allreduce.py` (tested locally with 1 rank; multi-rank `mpirun -np 4` and `code/part06/mpi_pingpong.py` require an unsandboxed multi-rank environment and are **untested** here).
+2. Test `resolve_openmpi_mca_param()` when `/etc/openmpi-mca-params.conf` sets `pml=ob1`, `$HOME/.openmpi/mca-params.conf` sets `pml=cm`, and `OMPI_MCA_pml=ucx` is exported in the environment. Verify that the environment variable wins, unless `-mca pml ^ucx` on the command line overrides it.
+3. On a machine or cluster with MPI installed, run `python3 code/part06/mpi_hello.py` and `python3 code/part06/mpi_allreduce.py`. The AllReduce script was tested locally with 1 rank. Multi-rank `mpirun -np 4` and `code/part06/mpi_pingpong.py` need an unsandboxed multi-rank environment, and they are **untested** here.
+
+Work through steps 1 and 2 first, since they need no MPI at all. You can then finish step 3 on a machine that has MPI installed.
 
 ## 12. Interview angles
+
+Use these questions to check your understanding. Each one ties a mechanism from this chapter to a symptom you may meet on a cluster.
 
 - Why does a point-to-point MPI program that works with 4 KB messages suddenly deadlock when the buffer size increases to 4 MB? How do you fix it?
 - List the five levels of Open MPI MCA parameter precedence from lowest to highest, and explain how to disable HCOLL or pin UCX to `mlx5_0:1`.
@@ -391,174 +428,181 @@ Work through these hands-on steps:
 - A 128-node training job hangs or crashes with a PyTorch watchdog error after 8 hours. Walk through the 4-layer diagnostic ladder, including `ncclras` (port 28028), `NVRM: Xid`, `lsmod | grep nvidia_peermem`, and Cumulus RoCE DSCP 26 vs DSCP 48.
 - What is the difference between Algorithmic Bandwidth and Bus Bandwidth in `nccl-tests`, and what do exit codes 137, 139, and 143 mean?
 
+Answer these from memory before you move on to the exercises.
+
 ## Exercises
 
-1. **Open MPI 5-Level MCA Precedence and HCOLL/UCX Controls:** Using `resolve_openmpi_mca_param()` in `code/part06/mpi_tuning.py`, list the five levels of Open MPI MCA parameter priority from lowest to highest. Write the commands to disable HCOLL under `srun --mpi=pmix`, force UCX and HCOLL to use `mlx5_0:1` with hardware multicast and SHARP enabled, and list all documented UCX parameters via `ucx_info`.
-2. **`NCCL_SOCKET_IFNAME` and `NCCL_IB_HCA` Prefix Operators:** Using `match_nccl_ifname()` in `code/part06/mpi_tuning.py` against `["lo", "docker0", "eth0", "eth1", "eth11", "bond0"]`, evaluate the exact interface list returned by `"eth"`, `"=eth1"`, `"^docker"`, and `"^docker,^=lo,^=eth0"`. Explain why hardcoding `NCCL_IB_GID_INDEX=3` is discouraged on modern NCCL.
-3. **Eager vs. Rendezvous Deadlocks and MPI Thread Levels:** Trace why two ranks calling blocking `MPI_Send` to each other succeed for 1 KB messages (eager protocol) but deadlock for 10 MB messages (rendezvous protocol). Give three code fixes (`MPI_Sendrecv`, ordered send/recv, `MPI_Isend`/`MPI_Irecv`), and compare the four `MPI_Init_thread` levels.
-4. **Algorithmic Bandwidth vs. Bus Bandwidth and GPUDirect RDMA:** Using `compute_allreduce_algbw_and_busbw(1_000_000_000, 0.005, 8)`, compute the algorithmic bandwidth (200.0 GB/s) and ring bus bandwidth (350.0 GB/s) for a 1 GB AllReduce completing in 5 ms across 8 GPUs. Explain how `nvidia_peermem`, PCIe ACS (`PIX` vs `SYS`), and PCIe Gen 5 (~63 GB/s) vs Gen 4 (~31.5 GB/s on a 50 GB/s 400G NIC) affect that number.
-5. **Launching at Scale and NUMA Binding:** Compare `srun --mpi=pmix --kill-on-bad-exit=1`, `mpirun` (`-x`, `--bind-to none`, `-mca plm_rsh_no_tree_spawn 1`), and `torchrun` (`c10d`). Show how to verify CPU and GPU NUMA affinity on a dual-socket server using `mpirun --report-bindings`, `numactl --show`, and `taskset -cp <PID>`.
-6. **The 4-Layer Hang & Fabric Debugging Playbook:** Walk through the 4-layer troubleshooting ladder for a hung multi-node job. Cover Layer 1 (`pgrep`, `ulimit -l` `memlock`, exit codes 137, 139, and 143), Layer 2 (`srun --mpi=list`, `NCCL_SOCKET_IFNAME`), Layer 3 (`NCCL_DEBUG_SUBSYS`, `NCCL_RUN_DIAGNOSTICS=1`, `ncclras` on port 28028, PyTorch `TORCH_NCCL_*` watchdog vs `NVRM: Xid`), and Layer 4 (`ibstat`, `perfquery -x`, `ibdiagnet`, and Cumulus RoCE DSCP 26, DSCP 48, and PFC priority 3).
+Each exercise uses the functions and commands from the sections above, so you can check your work against them.
+
+1. Using `resolve_openmpi_mca_param()` in `code/part06/mpi_tuning.py`, list the five levels of Open MPI MCA parameter priority from lowest to highest. Then write the commands that disable HCOLL under `srun --mpi=pmix`, and that force UCX and HCOLL onto `mlx5_0:1` with hardware multicast and SHARP enabled. Finally, list every documented UCX parameter with `ucx_info`.
+2. Work through the `NCCL_SOCKET_IFNAME` and `NCCL_IB_HCA` prefix operators. Run `match_nccl_ifname()` in `code/part06/mpi_tuning.py` against `["lo", "docker0", "eth0", "eth1", "eth11", "bond0"]`. Work out the exact interface list that each of `"eth"`, `"=eth1"`, `"^docker"`, and `"^docker,^=lo,^=eth0"` returns. Then explain why hardcoding `NCCL_IB_GID_INDEX=3` is discouraged on modern NCCL.
+3. Trace why two ranks that call blocking `MPI_Send` to each other succeed with 1 KB messages, through the eager protocol, but deadlock with 10 MB messages, through the rendezvous protocol. Then give three code fixes: `MPI_Sendrecv`, ordered send and receive, and `MPI_Isend` with `MPI_Irecv`. Last, compare the four `MPI_Init_thread` levels.
+4. Use `compute_allreduce_algbw_and_busbw(1_000_000_000, 0.005, 8)` to compute the algorithmic bandwidth (200.0 GB/s) and the ring bus bandwidth (350.0 GB/s) for a 1 GB AllReduce that finishes in 5 ms across 8 GPUs. Then explain how `nvidia_peermem`, PCIe ACS (`PIX` vs `SYS`), and PCIe Gen 5 (~63 GB/s) vs Gen 4 (~31.5 GB/s on a 50 GB/s 400G NIC) affect that number.
+5. Compare `srun --mpi=pmix --kill-on-bad-exit=1`, `mpirun` (with `-x`, `--bind-to none`, and `-mca plm_rsh_no_tree_spawn 1`), and `torchrun` with `c10d`. Then show how to check CPU and GPU NUMA affinity on a dual-socket server, using `mpirun --report-bindings`, `numactl --show`, and `taskset -cp <PID>`.
+6. Walk through the 4-layer troubleshooting ladder for a hung multi-node job. Cover Layer 1 with `pgrep`, `ulimit -l` and `memlock`, and exit codes 137, 139, and 143. Cover Layer 2 with `srun --mpi=list` and `NCCL_SOCKET_IFNAME`. Cover Layer 3 with `NCCL_DEBUG_SUBSYS`, `NCCL_RUN_DIAGNOSTICS=1`, `ncclras` on port 28028, and PyTorch's `TORCH_NCCL_*` watchdog compared with `NVRM: Xid`. Cover Layer 4 with `ibstat`, `perfquery -x`, `ibdiagnet`, and the Cumulus RoCE DSCP 26, DSCP 48, and PFC priority 3 settings.
 
 ## Checkpoint questions (20)
 
 <details>
 <summary>1. What are a communicator, global rank, size, and local rank in MPI, and how does a GPU process select its local device?</summary>
 
-- **Communicator:** A group of processes plus an isolated communication context (`MPI_COMM_WORLD` contains all processes at startup).
-- **Size and global rank:** `size` is the total process count $N$, and `rank` is each process's unique ID $0 \dots N-1$ across the job.
-- **Local rank:** The process's rank within its physical node ($0 \dots G-1$, derived via `MPI_Comm_split_type` or launcher variables like `SLURM_LOCALID` and `LOCAL_RANK`), passed to `cudaSetDevice(local_rank)` so each rank claims a distinct GPU.
+- **Communicator:** A group of processes plus an isolated communication context. `MPI_COMM_WORLD` holds every process at startup.
+- **Size and global rank:** `size` is the total process count $N$. `rank` is each process's unique ID, from $0 \dots N-1$, across the whole job.
+- **Local rank:** The process's rank within its physical node, from $0 \dots G-1$. You derive it with `MPI_Comm_split_type` or a launcher variable such as `SLURM_LOCALID` or `LOCAL_RANK`. Then you pass it to `cudaSetDevice(local_rank)`, so each rank claims a distinct GPU.
 </details>
 
 <details>
 <summary>2. Explain the difference between the **eager** and **rendezvous** point-to-point protocols, and why a program that works on small messages can deadlock on large messages.</summary>
 
-- **Eager protocol (below the eager limit):** `MPI_Send` copies the small payload into an internal buffer and returns immediately without waiting for `MPI_Recv`.
-- **Rendezvous protocol (above the eager limit):** `MPI_Send` sends a header and **blocks until the receiver posts a matching `MPI_Recv`** so the payload can be transferred directly via zero-copy RDMA.
-If Rank 0 and Rank 1 both call blocking `MPI_Send` to each other before calling `MPI_Recv`, small messages succeed via eager buffering, but large messages deadlock forever under rendezvous. Fix with `MPI_Sendrecv`, ordered send/recv, or non-blocking `MPI_Isend` and `MPI_Irecv`.
+- **Eager protocol, below the eager limit:** `MPI_Send` copies the small payload into an internal buffer and returns at once, without waiting for `MPI_Recv`.
+- **Rendezvous protocol, above the eager limit:** `MPI_Send` sends a header and **blocks until the receiver posts a matching `MPI_Recv`**. Then the payload moves directly by zero-copy RDMA.
+
+If Rank 0 and Rank 1 both call blocking `MPI_Send` to each other before calling `MPI_Recv`, small messages succeed through eager buffering. Large messages deadlock forever under rendezvous. The fixes are `MPI_Sendrecv`, an ordered send and receive, or non-blocking `MPI_Isend` and `MPI_Irecv`.
 </details>
 
 <details>
 <summary>3. Why are floating-point `MPI_Allreduce` or NCCL reductions not bit-for-bit identical when you change the rank count or collective algorithm?</summary>
 
-IEEE 754 floating-point addition is **not associative**: $(a + b) + c \ne a + (b + c)$ due to rounding after each operation. Changing the number of ranks or switching between ring, tree, and SHARP in-network reductions changes the order in which partial sums are accumulated. Bit-wise reproducibility requires a fixed rank count and a deterministic reduction algorithm.
+IEEE 754 floating-point addition is **not associative**. $(a + b) + c \ne a + (b + c)$, because each operation rounds its result. Changing the rank count, or switching between ring, tree, and SHARP in-network reductions, changes the order in which partial sums are added. Bit-for-bit reproducibility therefore needs a fixed rank count and a deterministic reduction algorithm.
 </details>
 
 <details>
 <summary>4. List the four `MPI_Init_thread` levels from lowest to highest, and state which level suits a standard MPI + OpenMP program where only the main loop calls MPI.</summary>
 
-1. `MPI_THREAD_SINGLE`: single-threaded process.
-2. `MPI_THREAD_FUNNELED`: multithreaded process, but **only the main thread makes MPI calls**.
-3. `MPI_THREAD_SERIALIZED`: multiple threads make MPI calls, but only one at a time.
-4. `MPI_THREAD_MULTIPLE`: any thread may call MPI concurrently (highest internal lock overhead).
-A standard MPI+OpenMP program where MPI is called outside parallel regions needs only **`MPI_THREAD_FUNNELED`**.
+1. `MPI_THREAD_SINGLE`: a single-threaded process.
+2. `MPI_THREAD_FUNNELED`: a multithreaded process, but **only the main thread makes MPI calls**.
+3. `MPI_THREAD_SERIALIZED`: several threads make MPI calls, but only one at a time.
+4. `MPI_THREAD_MULTIPLE`: any thread may call MPI concurrently, with the highest internal lock overhead.
+
+A standard MPI+OpenMP program, where MPI is called outside parallel regions, needs only **`MPI_THREAD_FUNNELED`**.
 </details>
 
 <details>
-<summary>5. Compare the history and launch specifics of MPICH, Open MPI, MVAPICH2, Intel MPI, and NVIDIA HPC-X (`SCL` Chapter 21).</summary>
+<summary>5. Compare the history and launch specifics of MPICH, Open MPI, MVAPICH2, Intel MPI, and NVIDIA HPC-X, as covered in Supercomputers for Linux SysAdmins Chapter 21.</summary>
 
-- **MPICH:** Created at Argonne in 1992 ("MPI over Chameleon"); MPICH-4 is the current stable branch in 2025, while MPICH-1 and 2 are frozen. It is the ancestor of Intel MPI (free in 2025 with paid support) and Cray MPICH.
-- **Open MPI:** Released November 17, 2005 (combining LAM/MPI, FT-MPI, LA-MPI, and PACX-MPI); uses MCA plugins and node daemons (`prterun` in v5) and should be built per compiler suite.
-- **MVAPICH2:** Ohio State University's InfiniBand-tuned MPICH-2 derivative; **must be launched with `mpirun_rsh`** rather than `mpirun`.
+- **MPICH:** Argonne created it in 1992 ("MPI over Chameleon"). MPICH-4 is the current stable branch in 2025, while MPICH-1 and 2 are frozen. It is the ancestor of Intel MPI, which is free in 2025 with paid support, and of Cray MPICH.
+- **Open MPI:** It was released on November 17, 2005, and combined LAM/MPI, FT-MPI, LA-MPI, and PACX-MPI. It uses MCA plugins and node daemons, which are `prterun` in v5. Build it per compiler suite.
+- **MVAPICH2:** Ohio State University's InfiniBand-tuned MPICH-2 derivative. You **must launch it with `mpirun_rsh`**, not `mpirun`.
 - **NVIDIA HPC-X:** NVIDIA's pre-tuned bundle of Open MPI, UCX, HCOLL, and SHARP/UCC.
 </details>
 
 <details>
 <summary>6. What are the roles of the `pml`, `btl`, `mtl`, `coll`, and `plm` frameworks in Open MPI's Modular Component Architecture?</summary>
 
-- **`pml` (Point-to-Point Messaging Layer):** high-level message scheduling (`ucx` for modern RDMA and GPU, `ob1` for BTLs, `cm` for MTLs).
-- **`btl` (Byte Transfer Layer):** low-level byte movement under `ob1` (`self`, `sm`/`vader`, `tcp`; legacy `openib` was removed in Open MPI 5).
-- **`mtl` (Matching Transport Layer):** used under `cm` (`ofi` and `psm2`).
-- **`coll` (Collective):** collective algorithms (`hcoll`, `tuned`, `han`, `libnbc`).
-- **`plm` (Process Lifecycle Management):** daemon launch (`slurm`, `rsh`).
+- **`pml`, the Point-to-Point Messaging Layer:** high-level message scheduling. It uses `ucx` for modern RDMA and GPU paths, `ob1` for BTLs, and `cm` for MTLs.
+- **`btl`, the Byte Transfer Layer:** low-level byte movement under `ob1`, with `self`, `sm` or `vader`, and `tcp`. Legacy `openib` was removed in Open MPI 5.
+- **`mtl`, the Matching Transport Layer:** used under `cm`, with `ofi` and `psm2`.
+- **`coll`, the Collective layer:** collective algorithms, including `hcoll`, `tuned`, `han`, and `libnbc`.
+- **`plm`, the Process Lifecycle Management layer:** daemon launch, through `slurm` or `rsh`.
 </details>
 
 <details>
-<summary>7. List the five levels of Open MPI MCA parameter priority in order of increasing precedence (`SCL` Chapter 21).</summary>
+<summary>7. List the five levels of Open MPI MCA parameter priority in order of increasing precedence (Supercomputers for Linux SysAdmins Chapter 21).</summary>
 
-From lowest (1) to highest (5) priority:
-1. **Global config file:** `/etc/openmpi-mca-params.conf` (and `openpmix-mca-params.conf` or `prte-mca-params.conf`).
+From lowest to highest priority:
+1. **Global config file:** `/etc/openmpi-mca-params.conf`, along with `openpmix-mca-params.conf` or `prte-mca-params.conf`.
 2. **User local config file:** `$HOME/.openmpi/mca-params.conf`.
 3. **Tuned option files:** `mpiexec --tune file1,file2...`.
-4. **Environment variables:** `export OMPI_MCA_xxx=value` (or `PMIX_MCA_` and `PRRTE_MCA_`).
+4. **Environment variables:** `export OMPI_MCA_xxx=value`, or `PMIX_MCA_` and `PRRTE_MCA_`.
 5. **Command-line options:** `mpiexec -mca xxx value`.
 </details>
 
 <details>
-<summary>8. How do you disable HCOLL or steer HCOLL and UCX to a specific InfiniBand port (`mlx5_0:1`) in Open MPI (`SCL` Chapter 21)?</summary>
+<summary>8. How do you disable HCOLL or steer HCOLL and UCX to a specific InfiniBand port (`mlx5_0:1`) in Open MPI (Supercomputers for Linux SysAdmins Chapter 21)?</summary>
 
-- **Disable HCOLL:** Pass `-mca coll_hcoll_enable 0` to `mpiexec` or `export OMPI_MCA_coll_hcoll_enable=0` under `srun --mpi=pmix`.
-- **Steer UCX and HCOLL:** Pass `-mca pml ucx -x UCX_NET_DEVICES=mlx5_0:1 -x HCOLL_MAIN_IB=mlx5_0:1` (plus `-x HCOLL_ENABLE_MCAST_ALL=1`, `-x HCOLL_ENABLE_NBC=1`, `-x HCOLL_ENABLE_SHARP=1`), and inspect all UCX variables with **`ucx_info -c -f`**.
+- **Disable HCOLL:** Pass `-mca coll_hcoll_enable 0` to `mpiexec`. Under `srun --mpi=pmix`, export `OMPI_MCA_coll_hcoll_enable=0` instead.
+- **Steer UCX and HCOLL:** Pass `-mca pml ucx -x UCX_NET_DEVICES=mlx5_0:1 -x HCOLL_MAIN_IB=mlx5_0:1`. Also add `-x HCOLL_ENABLE_MCAST_ALL=1`, `-x HCOLL_ENABLE_NBC=1`, and `-x HCOLL_ENABLE_SHARP=1`. To inspect every UCX variable, run **`ucx_info -c -f`**.
 </details>
 
 <details>
 <summary>9. Why is `srun --mpi=pmix --kill-on-bad-exit=1` preferred over SSH-based `mpirun` on large Slurm clusters (`volume-10` Section 4)?</summary>
 
-`srun --mpi=pmix` uses Slurm's local `slurmstepd` daemons and built-in PMIx servers to wire up thousands of ranks in milliseconds without SSH connection storms. Adding **`--kill-on-bad-exit=1`** ensures that if any single rank crashes, Slurm immediately terminates the entire job step instead of leaving hundreds of healthy GPUs hanging forever at the next collective barrier.
+`srun --mpi=pmix` uses Slurm's local `slurmstepd` daemons and built-in PMIx servers to wire up thousands of ranks in milliseconds, without SSH connection storms. **`--kill-on-bad-exit=1`** makes Slurm end the entire job step as soon as one rank crashes. Without it, hundreds of healthy GPUs would hang forever at the next collective barrier.
 </details>
 
 <details>
 <summary>10. When launching a PyTorch job with `mpirun`, what do `-x`, `--bind-to none`, and `-mca plm_rsh_no_tree_spawn 1` do (`volume-10` Sections 4 & 7)?</summary>
 
-- **`-x <VAR>`:** Explicitly exports local environment variables (such as `NCCL_DEBUG=INFO` and `LD_LIBRARY_PATH`) to remote worker processes.
-- **`--bind-to none`:** Prevents Open MPI from pinning a rank to a single CPU core, allowing PyTorch's multi-threaded DataLoader workers to use multiple cores on the socket.
-- **`-mca plm_rsh_no_tree_spawn 1`:** Forces a direct flat SSH launch instead of a hierarchical tree spawn to avoid intermittent daemon timeouts on slow management networks.
+- **`-x <VAR>`:** Exports local environment variables, such as `NCCL_DEBUG=INFO` and `LD_LIBRARY_PATH`, to remote worker processes.
+- **`--bind-to none`:** Stops Open MPI from pinning a rank to one CPU core. PyTorch's multi-threaded DataLoader workers can then use several cores on the socket.
+- **`-mca plm_rsh_no_tree_spawn 1`:** Forces a direct, flat SSH launch rather than a hierarchical tree spawn. That avoids intermittent daemon timeouts on slow management networks.
 </details>
 
 <details>
 <summary>11. How do you enforce and verify CPU and GPU NUMA affinity on a dual-socket server under Slurm and Open MPI (`volume-10` Section 5 & Appendix P)?</summary>
 
-- **Enforce:** Under Slurm, pass `srun --mpi=pmix --cpu-bind=cores --gpu-bind=closest` (or `--accel-bind=g`); under Open MPI, use `--map-by numa` and `--bind-to numa`.
-- **Verify:** Pass `mpirun --report-bindings`, run `numactl --show | grep physcpubind` in a launch wrapper, or inspect a live worker PID with **`taskset -cp <PID>`**, verifying it is pinned to its local socket cores `0-15` rather than all cores `0-127`.
+- **Enforce:** Under Slurm, pass `srun --mpi=pmix --cpu-bind=cores --gpu-bind=closest`, or `--accel-bind=g`. Under Open MPI, use `--map-by numa` and `--bind-to numa`.
+- **Verify:** Pass `mpirun --report-bindings`, or run `numactl --show | grep physcpubind` in a launch wrapper. You can also inspect a live worker PID with **`taskset -cp <PID>`**. The process should be pinned to its local socket cores `0-15`, not to all cores `0-127`.
 </details>
 
 <details>
 <summary>12. What causes the `ibv_reg_mr() failed` / `ibv_create_qp failed` RDMA error at job startup, and how do you fix and verify it (`volume-10` Layer 1 & Appendix L)?</summary>
 
-RDMA must pin (lock) physical memory pages so the OS cannot swap them out. If the user's locked-memory limit (`ulimit -l`) is too low, registering GPU or host memory regions with the InfiniBand HCA fails with `ibv_reg_mr() failed` or `ibv_create_qp failed`.
-**Fix:** Configure `* soft memlock unlimited` and `* hard memlock unlimited` in `/etc/security/limits.conf` and Slurm daemon configs, and verify inside a job step with `ulimit -l`.
+RDMA must pin the physical memory pages so the OS cannot swap them out. If the locked-memory limit (`ulimit -l`) is too low, registering GPU or host memory regions with the InfiniBand HCA fails. You see `ibv_reg_mr() failed` or `ibv_create_qp failed`.
+
+**Fix:** Set `* soft memlock unlimited` and `* hard memlock unlimited` in `/etc/security/limits.conf` and in the Slurm daemon configs. Then verify with `ulimit -l` inside a job step.
 </details>
 
 <details>
 <summary>13. How do `nvidia_peermem`, PCIe ACS, and PCIe Gen 5 vs. Gen 4 link speeds affect GPUDirect RDMA bandwidth (`volume-10` Section 9 & Appendices C, O)?</summary>
 
-- **`nvidia_peermem` (`lsmod | grep nvidia_peermem`):** Required kernel module (alongside `dma-buf`) allowing the NIC to read and write GPU HBM directly; if unloaded, traffic bounces through CPU RAM.
-- **PCIe ACS (Access Control Services):** When enabled in BIOS, forces GPU-to-NIC peer-to-peer traffic up through the CPU root complex IOMMU (`SYS` instead of `PIX` in `nvidia-smi topo -m`), throttling GPUDirect RDMA.
-- **PCIe Gen 5 vs. Gen 4:** A PCIe Gen 5 x16 slot (32 GT/s, ~63 GB/s) matches a 400 Gbps (50 GB/s) ConnectX-7 NIC. If a riser or slot downgrades to PCIe Gen 4 (~31.5 GB/s), the 400G NIC is capped at ~250 Gbps (`lspci -vv | grep LnkSta:`).
+- **`nvidia_peermem` (`lsmod | grep nvidia_peermem`):** A required kernel module, alongside `dma-buf`, that lets the NIC read and write GPU HBM directly. If it is unloaded, traffic bounces through CPU RAM.
+- **PCIe ACS (Access Control Services):** When enabled in the BIOS, it forces GPU-to-NIC peer-to-peer traffic up through the CPU root complex IOMMU. That shows as `SYS` instead of `PIX` in `nvidia-smi topo -m`, and it throttles GPUDirect RDMA.
+- **PCIe Gen 5 vs. Gen 4:** A PCIe Gen 5 x16 slot runs at 32 GT/s, about 63 GB/s, and it matches a 400 Gbps ConnectX-7 NIC, which moves 50 GB/s. If a riser or slot drops to PCIe Gen 4, about 31.5 GB/s, the 400G NIC is capped at about 250 Gbps. Check `lspci -vv | grep LnkSta:` to see the link.
 </details>
 
 <details>
 <summary>14. Define Algorithmic Bandwidth and Bus Bandwidth for a ring AllReduce, and compute both for a 1 GB tensor reduced in 5 ms across 8 GPUs.</summary>
 
 - **Algorithmic Bandwidth:** $\text{algbw} = S / t = 1\text{ GB} / 0.005\text{ s} = \mathbf{200.0\text{ GB/s}}$.
-- **Bus Bandwidth:** $\text{busbw} = \text{algbw} \times \frac{2(n - 1)}{n}$. For $n = 8$ GPUs, the ring factor is $2 \times 7 / 8 = 1.75$, giving $\text{busbw} = 200.0 \times 1.75 = \mathbf{350.0\text{ GB/s}}$ (the true per-GPU hardware link rate).
+- **Bus Bandwidth:** $\text{busbw} = \text{algbw} \times \frac{2(n - 1)}{n}$. For $n = 8$ GPUs, the ring factor is $2 \times 7 / 8 = 1.75$. So $\text{busbw} = 200.0 \times 1.75 = \mathbf{350.0\text{ GB/s}}$, which is the true per-GPU hardware link rate.
 </details>
 
 <details>
-<summary>15. What do the four prefix operators in `NCCL_SOCKET_IFNAME` and `NCCL_IB_HCA` (`eth`, `=eth1`, `^docker`, `^=eth0`) match (`SCL` Chapter 21)?</summary>
+<summary>15. What do the four prefix operators in `NCCL_SOCKET_IFNAME` and `NCCL_IB_HCA` (`eth`, `=eth1`, `^docker`, `^=eth0`) match (Supercomputers for Linux SysAdmins Chapter 21)?</summary>
 
-1. **Plain string (`eth`):** Prefix match—matches every interface starting with `eth` (`eth0`, `eth1`, `eth11`).
-2. **`=` prefix (`=eth1`):** Exact match—matches only `eth1`, not `eth11`.
-3. **`^` prefix (`^docker`):** Negative prefix—matches all interfaces except those starting with `docker`.
-4. **`^=` prefix (`^=eth0`):** Negative exact—matches all interfaces except `eth0` specifically.
+1. **Plain string (`eth`):** Prefix match. It matches every interface that starts with `eth`, such as `eth0`, `eth1`, and `eth11`.
+2. **`=` prefix (`=eth1`):** Exact match. It matches only `eth1`, not `eth11`.
+3. **`^` prefix (`^docker`):** Negative prefix. It matches every interface except those that start with `docker`.
+4. **`^=` prefix (`^=eth0`):** Negative exact. It matches every interface except `eth0`.
 </details>
 
 <details>
 <summary>16. What do MPI/Slurm job exit codes 139, 137, and 143 mean (`volume-10` Appendix G)?</summary>
 
-- **Exit code 139 (128 + 11 SIGSEGV):** Segmentation fault, often caused by mismatched CUDA, NCCL, or MPI library binaries or invalid memory access.
-- **Exit code 137 (128 + 9 SIGKILL):** Process killed by the Linux kernel **OOM killer** or cgroup memory limit, usually host RAM exhaustion from DataLoader workers.
-- **Exit code 143 (128 + 15 SIGTERM):** Clean termination signal from Slurm walltime limit, `scancel`, or node preemption.
+- **Exit code 139 (128 + 11 SIGSEGV):** A segmentation fault. The usual cause is mismatched CUDA, NCCL, or MPI library binaries, or an invalid memory access.
+- **Exit code 137 (128 + 9 SIGKILL):** The Linux OOM killer or a cgroup memory limit killed the process. This is usually host RAM running out, often because of DataLoader workers.
+- **Exit code 143 (128 + 15 SIGTERM):** A clean termination signal, sent when a Slurm walltime limit runs out, when `scancel` runs, or when a node is preempted.
 </details>
 
 <details>
 <summary>17. How do `NCCL_RUN_DIAGNOSTICS=1` (NCCL 2.31+) and `ncclras` (NCCL 2.24+) help isolate a hung multi-node job (`volume-10` Layer 3)?</summary>
 
-- **`NCCL_RUN_DIAGNOSTICS=1`:** Runs active hardware, peer-to-peer, and fabric checks during communicator initialization before workload traffic and prints `NCCL DIAG` lines from rank 0.
-- **`ncclras` (`ncclras -v` or `echo verbose status | nc localhost 28028`):** Queries NCCL's built-in RAS keep-alive network on a hung job. A **`MISMATCH`** row identifies the exact lagging ranks, GPUs, and nodes with lower collective operation counts, while an **`INCOMPLETE`** row names an unresponsive or crashed rank.
+- **`NCCL_RUN_DIAGNOSTICS=1`:** Runs active hardware, peer-to-peer, and fabric checks during communicator initialization, before workload traffic starts. It prints `NCCL DIAG` lines from rank 0.
+- **`ncclras` (`ncclras -v` or `echo verbose status | nc localhost 28028`):** This queries NCCL's built-in RAS keep-alive network on a hung job. A **`MISMATCH`** row points to the exact lagging ranks, GPUs, and nodes, which are the ones with lower collective operation counts. An **`INCOMPLETE`** row names an unresponsive or crashed rank.
 </details>
 
 <details>
 <summary>18. When a job aborts with a `ProcessGroupNCCL` watchdog timeout, where does the watchdog live, and what should you check before blaming the network (`volume-10` Layer 3)?</summary>
 
-The watchdog belongs to **PyTorch's `ProcessGroupNCCL`** (`TORCH_NCCL_*` and `TORCH_FR_BUFFER_SIZE`), not NCCL itself. A watchdog timeout simply reports that a collective failed to finish on some rank. Before touching network settings, query `ncclras` and sweep every node's kernel log for GPU faults (`journalctl -k | grep "NVRM: Xid"`, such as Xid 79 GPU fallen off the bus or Xid 119 GSP timeout).
+The watchdog belongs to **PyTorch's `ProcessGroupNCCL`**, not to NCCL itself. Its settings are `TORCH_NCCL_*` and `TORCH_FR_BUFFER_SIZE`. A watchdog timeout only tells you that a collective failed to finish on some rank. Before you touch network settings, query `ncclras`. Then sweep every node's kernel log for GPU faults, such as Xid 79 for a GPU that fell off the bus or Xid 119 for a GSP timeout, with `journalctl -k | grep "NVRM: Xid"`.
 </details>
 
 <details>
 <summary>19. On a RoCEv2 fabric running Cumulus Linux 5.12, what are the documented default QoS mappings for PFC, RoCE data traffic, and CNP packets, and how should `NCCL_IB_GID_INDEX` be handled (`volume-10` Layer 4)?</summary>
 
 - **Cumulus RoCE defaults (`nv set qos roce` and `nv show qos roce`):**
-  - **PFC (Priority Flow Control):** Enabled on switch priority **3** (with UDP port 4791 LLDP TLV).
+  - **PFC (Priority Flow Control):** Enabled on switch priority **3**, with UDP port 4791 LLDP TLV.
   - **RoCEv2 data traffic:** **DSCP 26** $\rightarrow$ switch priority **3** $\rightarrow$ traffic class **3** (ECN enabled).
   - **CNP (Congestion Notification Packets):** **DSCP 48** $\rightarrow$ switch priority **6** $\rightarrow$ traffic class **6** (strict priority).
-- **`NCCL_IB_GID_INDEX`:** Leave it unset (`AUTO` in NCCL 2.21+ and 2.32u1+); hardcoding 3 breaks nodes whose GID tables differ.
+- **`NCCL_IB_GID_INDEX`:** Leave it unset. It defaults to `AUTO` in NCCL 2.21+ and 2.32u1+. Hardcoding 3 breaks nodes whose GID tables differ.
 </details>
 
 <details>
 <summary>20. What is the difference between `NCCL_COLLNET_ENABLE` and `NCCL_NVLS_ENABLE`, and how is the InfiniBand SHARP Aggregation Manager controlled under UFM (`volume-10` Section 7)?</summary>
 
-- **`NCCL_COLLNET_ENABLE=1`:** Enables inter-node InfiniBand SHARP switch reductions via the CollNet plugin (using algorithm names `CollnetChain` and `CollnetDirect` in NCCL 2.14+). It requires the fabric-wide **SHARP Aggregation Manager**, which under UFM Enterprise is controlled via `/etc/init.d/ufmd sharp_start` and `sharp_stop`.
-- **`NCCL_NVLS_ENABLE` (default 2 since NCCL 2.17):** Enables intra-domain **NVLink SHARP (`NVLS` and `NVLSTree`)** hardware reductions across third-generation+ NVSwitches on Hopper and Blackwell systems without needing the InfiniBand Aggregation Manager.
+- **`NCCL_COLLNET_ENABLE=1`:** Enables inter-node InfiniBand SHARP switch reductions through the CollNet plugin. NCCL 2.14+ uses the algorithm names `CollnetChain` and `CollnetDirect`. It needs the fabric-wide **SHARP Aggregation Manager**, which under UFM Enterprise you control with `/etc/init.d/ufmd sharp_start` and `sharp_stop`.
+- **`NCCL_NVLS_ENABLE` (default 2 since NCCL 2.17):** Enables intra-domain **NVLink SHARP (`NVLS` and `NVLSTree`)** reductions across third-generation+ NVSwitches on Hopper and Blackwell systems. It does not need the InfiniBand Aggregation Manager.
 </details>
 
 ## Sources and review notes

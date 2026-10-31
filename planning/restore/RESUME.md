@@ -52,3 +52,4 @@ The session hit the token limit during the autonomous run. Resume with these ste
 - All 114 queued units done or waived (WAIVERS.md). Re-audit (GEM_BOOKS_MASTER.md): non-Python books 108 of 113 chapters <= 40% missing; the 5 above 40% are book intro/copyright text or waived AI Factory topics. Learning Python rows in the master are stale (they still map to 3.1); the per-unit gates measured the real coverage in 3.12-3.17.
 - NEXT: resume the VOICE pass. Pending voice chapters: Part 5: 5.21 5.22 5.24 5.26 5.27 5.30 5.31 5.32 5.34 5.35; Part 6: all 31 (6.1-6.6 were started and stopped); Parts 7-15 all (prep with tools/restore/prep_voice.py). Also run a readability/voice pass over the new Python chapters 3.12-3.17 and 3.1.
 - Always re-run prep_voice.py right before launching a chapter so chapter_old.md is re-snapshotted from the restored text.
+Update: Part 5 voice pass complete (5.21-5.35 committed). Part 6.1-6.10 prepped earlier; 6.11-6.20 prepped.

@@ -6,3 +6,6 @@
 4. Exercises/Lab/Sources sections copied unchanged by early waves (1.2-1.15): rewrite exercise prompts and lab leads in voice.
 5. Closing sentences in 1.21 sections 3, 6, 12 removed by hand; check other security chapters for advice beyond the source.
 6. Headings that still contain source abbreviations (FP, LP, HLW, SCL, ASP...) in Parts 1-4: grep '^#.*\(FP\|LP\|HLW\|SCL\|ASP\)' docs and spell them out.
+
+- 6.10: source says "four" triage commands but lists three (agent avoided the count).
+- 6.15 Exercise 1: "three intermediate hops" conflicts with its arrow path (source issue).

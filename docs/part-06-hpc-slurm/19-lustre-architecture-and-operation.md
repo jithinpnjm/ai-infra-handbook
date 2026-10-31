@@ -18,24 +18,30 @@ lab_venue: "GCP / GKE"
 | Priority tier | 2 |
 | Lab venue | Lustre test cluster (VMs); the striping model runs anywhere |
 | Part | Part 6: HPC and Slurm |
-| Status | Drafted. Command syntax and defaults were read from the Lustre manual pages in a sparse checkout of lustre/lustre-release (commit `6325870`, 2026-10-21, development tree) for `lfs setstripe`, `getstripe`, `migrate`, `setquota`, `mkfs.lustre`, and `lctl`. Architecture follows the SCL book and the NVIDIA-DevOps volume-15 chapter (with corrections noted). `code/part06/lustre_stripe.py` was run (output shown). No Lustre file system was built; labs **untested** |
+| Status | Drafted. Command syntax and defaults were read from the Lustre manual pages in a sparse checkout of lustre/lustre-release (commit `6325870`, 2026-10-21, development tree) for `lfs setstripe`, `getstripe`, `migrate`, `setquota`, `mkfs.lustre`, and `lctl`. Architecture follows the Supercomputers for Linux SysAdmins book and the NVIDIA-DevOps volume-15 chapter (with corrections noted). `code/part06/lustre_stripe.py` was run (output shown). No Lustre file system was built; labs **untested** |
 
 ## Why this matters for AI infrastructure
 
-Lustre is the most widely deployed parallel file system in HPC and in many large AI training sites (it underlies several vendor and cloud services). Its strengths, enormous aggregate bandwidth and a POSIX interface, come with sharp edges: striping defaults that cap the bandwidth of a big checkpoint at one disk, a metadata service that a data loader can overwhelm, and failure modes that look like hung nodes. Operators who understand striping, metadata and the management tools can both prevent and diagnose most "storage is slow" tickets.
+Picture a "storage is slow" ticket landing on your desk in the middle of a training run. Lustre is the most widely deployed parallel file system in HPC, and many large AI training sites use it too. It underlies several vendor and cloud services. Its strengths are enormous aggregate bandwidth and a POSIX interface.
+
+Those strengths come with sharp edges. Striping defaults can cap the bandwidth of a big checkpoint at one disk. A metadata service can be overwhelmed by a data loader. Failures can look like hung nodes. Operators who understand striping, metadata and the management tools can prevent and diagnose most "storage is slow" tickets.
 
 ## Prerequisites and outcomes
 
-Needs 6.18 (parallel storage concepts), Part 2 (LNet runs over IB and Ethernet), Part 1 (block devices, ldiskfs/ZFS). After this chapter you can:
+This chapter builds on earlier material, so check these first. Chapter 6.18 covers parallel storage concepts. Part 2 covers LNet, which runs over IB and Ethernet. Part 1 covers block devices and the ldiskfs and ZFS back ends. When you finish, you should be able to do the following:
 
 - Draw the Lustre architecture and explain each role (MGS, MDS/MDT, OSS/OST, clients, LNet) and the data and metadata paths.
-- Create a file system with `mkfs.lustre` (single node and with failover), mount servers and clients.
-- Choose and set striping: stripe count and size, composite (PFL) layouts, Data-on-MDT, pools, directory striping across MDTs.
+- Create a file system with `mkfs.lustre`, with a single node or with failover, and mount servers and clients.
+- Choose and set striping: stripe count and size, composite (PFL) layouts, Data-on-MDT, pools, and directory striping across MDTs.
 - Manage quotas (user, group, project), balance OSTs, migrate data, and evacuate hardware.
-- Describe the failure and recovery model; know which components need HA.
-- Monitor and troubleshoot with `lfs`, `lctl`, client stats and server logs; apply AI-specific advice (shards, checkpoint layouts).
+- Describe the failure and recovery model, and know which components need HA.
+- Monitor and troubleshoot with `lfs`, `lctl`, client stats and server logs, and apply AI-specific advice, such as sharding datasets and choosing checkpoint layouts.
+
+If any of these outcomes feels unfamiliar, start with the architecture in the next section.
 
 ## 1. Architecture
+
+Lustre splits each file operation into two conversations. One goes to a metadata server, which knows the names, permissions and layout of the file. The other goes to storage servers, which hold the bytes. The diagram shows that split, and the table names each role.
 
 ```mermaid
 flowchart TB
@@ -59,7 +65,9 @@ flowchart TB
   Clients -. mount: find config .-> MGS
 ```
 
-Components (names as in the SCL book and `mkfs.lustre(8)`):
+Read the diagram from top to bottom, as you would follow a request through a system. A client first asks a metadata server for the open, the lookup or the layout. It then reads and writes stripes in parallel with several object storage servers. Clients contact the MGS when they mount.
+
+The names below follow the Supercomputers for Linux SysAdmins book and the `mkfs.lustre(8)` man page.
 
 | Role | What it does |
 |---|---|
@@ -69,11 +77,19 @@ Components (names as in the SCL book and `mkfs.lustre(8)`):
 | **Clients** | Compute and login nodes with the Lustre client module; present a POSIX mount; talk to MDS for metadata and directly to OSSs for data |
 | **LNet** | Lustre's network layer: addresses by NID (`10.0.0.5@tcp`, `10.1.0.5@o2ib`), supports TCP, InfiniBand (o2ib), and routers between networks. Over RDMA it provides the high throughput |
 
-Backing file systems: **ldiskfs** (a modified ext4, the traditional choice) or **ZFS** (software RAID-Z, checksums, snapshots; `--backfstype=zfs`). The book notes the central property: easy scalability, "at any time a new server can be added to a running file system, increasing both speed and storage capacity", and that only Linux clients/servers are supported natively (others need an NFS/SMB re-export that gives up the benefits). Failure tolerance: targets are on shared storage reachable from two servers (active/passive or active/active pairs) with failover managed by Pacemaker/Corosync or similar; Lustre itself provides **recovery** (clients replay requests after a server restart or failover within a recovery window), not the cluster resource manager.
+The table shows that you should not confuse the server with the target. The MDS is the server process, and the MDT is the storage device behind it. The same pattern holds for the OSS and the OST.
+
+Each target stores its data on a backing file system. You can choose ldiskfs, which is a modified ext4 and the traditional choice. You can also choose ZFS, which adds software RAID-Z, checksums and snapshots. Select ZFS with `--backfstype=zfs`.
+
+The book makes a central point about scaling: "at any time a new server can be added to a running file system, increasing both speed and storage capacity." It also notes that only Linux clients and servers are supported natively. Other systems need an NFS or SMB re-export, which gives up the benefits.
+
+Failure tolerance works through shared storage. Each target sits on storage that two servers can reach, in active/passive or active/active pairs. Pacemaker and Corosync, or a similar cluster manager, handle the failover. Lustre itself provides recovery: clients replay requests after a server restart or failover, within a recovery window. The cluster resource manager does not do that part.
+
+Decide early whether each target will use ldiskfs or ZFS, because the choice is made when the target is formatted.
 
 ## 2. Creating a file system
 
-From the `mkfs.lustre(8)` examples (shortened):
+Suppose you need to create a new file system called `testfs`. Each target gets formatted once with `mkfs.lustre` and then mounted. The shortened examples below cover a combined MGS and MDT, an OST that uses that MGS, a failover pair, and a ZFS back end.
 
 ```bash
 # combined MGS + MDT0 for file system "testfs"
@@ -86,13 +102,19 @@ mkfs.lustre --fsname=testfs --index=0 --mdt --mgs --servicenode=cfs21@tcp0,cfs21
 mkfs.lustre --fsname=testfs --index=0 --mdt --mgs --backfstype=zfs zfspool/mdt1 mirror /dev/sdb /dev/sdc mirror /dev/sdd /dev/sde
 ```
 
-Then mount each target on its server (`mount -t lustre /dev/sda1 /mnt/mdt`, order: MGS/MDT, then OSTs) and mount clients: `mount -t lustre mgsnode@tcp:/testfs /mnt/testfs` (a list of MGS NIDs separated by `:` or `,` for failover). Key options: `--ost|--mdt|--mgs`, `--fsname`, `--index` (unique per target type), `--mgsnode`, `--servicenode`/`--failnode` (failover partners; do not mix), `--backfstype`, `--mkfsoptions`, `--reformat`. `tunefs.lustre` changes parameters later (e.g. changing NIDs) and must only be run on an OSS or MDS while the server is stopped.
+Formatting is only half the job. Next, mount each target on its server, starting with the MGS and MDT and then the OSTs. Mount `/dev/sda1` as `/mnt/mdt` with `mount -t lustre /dev/sda1 /mnt/mdt`. Clients mount last, using `mount -t lustre mgsnode@tcp:/testfs /mnt/testfs`. For failover, the list of MGS NIDs can be separated by `:` or `,`.
+
+The options you will use most are `--ost`, `--mdt` and `--mgs`, which pick the target type. `--fsname` names the file system, and `--index` must be unique among targets of the same type. `--mgsnode` points to the MGS. `--servicenode` and `--failnode` name failover partners, and you should not mix them. The remaining options are `--backfstype`, `--mkfsoptions` and `--reformat`.
+
+Use `tunefs.lustre` to change parameters after formatting, such as NIDs. Run it only on an OSS or MDS while that server is stopped.
 
 ### Step-by-step Lustre creation (Installing Lustre (No HA) and HA), LNET port `988`, and OSS RAM sizing
 
-In the book's Chapter 9 and Chapter 28 walkthroughs, Lustre runs entirely as kernel modules on both servers and clients, communicating over **LNET** (Lustre Networking) via Lustre Network Drivers (LNDs). On the client side, the software comprises the Metadata Client (MDC), Object Storage Client (OSC, where the group of OSCs forms one Logical Object Volume, or LOV), and Management Client (MGC). Each LNET interface has a unique NID (`<address>@<LND protocol><lnd#>`, such as `10.20.30.40@o2ib1` or `192.168.2.3@tcp2`). Each `<protocol><index>` forms an isolated LNET network (so `1.2.3.4@tcp0` cannot talk directly to `2.3.4.5@tcp1`). **On IP networks, the LNET kernel module uses TCP port `988`—ensure port `988` is not blocked by any firewall.**
+In the walkthroughs of Chapter 9 and Chapter 28 of the Supercomputers for Linux SysAdmins book, Lustre runs entirely as kernel modules on both servers and clients. The nodes talk over LNET, which is Lustre Networking, through Lustre Network Drivers (LNDs). The client side has three parts: the Metadata Client (MDC), the Object Storage Client (OSC), where a group of OSCs forms one Logical Object Volume (LOV), and the Management Client (MGC).
 
-1. **Configure LNET (`/etc/modprobe.d/lustre.conf`)**: define networks using `<lnd><#>(<dev>)[,…]`, for example `options lnet networks="tcp0(eth0)"` or `options lnet networks="o2ib0(ib0),tcp0(eth2)"`. Load the module and verify the NIDs (`(untested here)`):
+Each LNET interface has a unique NID, written as `<address>@<LND protocol><lnd#>`. Examples include `10.20.30.40@o2ib1` and `192.168.2.3@tcp2`. Each `<protocol><index>` pair forms an isolated LNET network. That means `1.2.3.4@tcp0` cannot talk directly to `2.3.4.5@tcp1`. On IP networks, the LNET kernel module uses TCP port `988`, so make sure no firewall blocks port `988`.
+
+1. Configure LNET in `/etc/modprobe.d/lustre.conf`. Define networks with `<lnd><#>(<dev>)[,…]`, for example `options lnet networks="tcp0(eth0)"` or `options lnet networks="o2ib0(ib0),tcp0(eth2)"`. Then load the module and check the NIDs (`(untested here)`):
 
    ```bash
    # (untested here) — Chapter 9 LNET verification example (using networks="tcp0(eth1)")
@@ -101,7 +123,7 @@ In the book's Chapter 9 and Chapter 28 walkthroughs, Lustre runs entirely as ker
    lctl list_nids
    ```
 
-2. **Format and mount the combined MGS + MDT volume on the MDS** (the file system name `--fsname` is limited to 8 characters; mount MGS and MDTs first before OSTs; the book recommend RAID-10 for MDTs due to small I/O size and RAID-6 for OSTs due to 1 MB+ I/O size):
+2. Format and mount the combined MGS and MDT volume on the MDS. The `--fsname` value is limited to 8 characters. Mount the MGS and MDTs before any OSTs. The book recommends RAID-10 for MDTs, because metadata I/O is small, and RAID-6 for OSTs, because their I/O is 1 MB or larger.
 
    ```bash
    # (untested here) — Chapter 9 HA-capable example with two --servicenode NIDs
@@ -116,7 +138,7 @@ In the book's Chapter 9 and Chapter 28 walkthroughs, Lustre runs entirely as ker
    mount -t lustre /dev/sdX /mnt/mdt
    ```
 
-3. **Format and mount each OST volume on the OSS nodes**:
+3. Format and mount each OST volume on the OSS nodes.
 
    ```bash
    # (untested here) — Chapter 9 OSS initialization
@@ -131,21 +153,23 @@ In the book's Chapter 9 and Chapter 28 walkthroughs, Lustre runs entirely as ker
    mount -t lustre /dev/sdZ /mnt/ost0
    ```
 
-4. **Mount the Lustre file system on the clients**:
+4. Mount the Lustre file system on the clients.
 
    ```bash
    # (untested here) — Chapter 9 client mount with comma-separated MGS NIDs
    mount -t lustre 192.168.2.3@tcp0,192.168.2.4@tcp0:/large-fs /mnt/lustre
    ```
 
-**OSS RAM sizing formulas from the book**: Lustre OSS nodes require substantial memory. By default, each OST uses `400 MB` of RAM for logging and about `600 MB` for metadata caching, plus `1.5 MB` for each service thread (where the number of threads `N_threads` can be roughly estimated as the number of clients divided by the number of connected OSTs):
+OSS nodes need a lot of memory, and the book gives two sizing formulas. By default, each OST uses 400 MB for logging and about 600 MB for metadata caching. Each service thread adds 1.5 MB. The number of threads, `N_threads`, can be roughly estimated as the number of clients divided by the number of connected OSTs.
 
 ```text
 Per-OST baseline RAM = 400 MB + 600 MB + 1.5 MB * N_threads
 Recommended OSS total RAM = 2 GB + 1 GB per OST (plus extra RAM for OS/network buffers and caching)
 ```
 
-Sizing rules of thumb (common practice, verify with vendor guides): MDT on fast flash (NVMe, mirrored) because metadata is small random I/O; inode count chosen at format time (ldiskfs `bytes-per-inode`) for the expected file count; OSTs sized for rebuild time (RAID/ZFS groups of 8+2 on 8-12 TB disks are typical for HDD; for NVMe systems erasure-coded or ZFS vdevs); several OSTs per OSS to use all CPUs and NICs; OSS network bandwidth at least the sum of its OST bandwidth; client network matched to OSS network (400 Gb/s IB on GPU nodes is common).
+These are common rules of thumb, so verify them against vendor guides. Put the MDT on fast, mirrored NVMe flash, because metadata is small random I/O. Choose the inode count at format time with ldiskfs `bytes-per-inode`, based on the number of files you expect.
+
+Size OSTs for rebuild time. For HDD, RAID or ZFS groups of 8+2 on 8-12 TB disks are typical. For NVMe systems, use erasure-coded layouts or ZFS vdevs. Run several OSTs per OSS so the server uses all its CPUs and NICs. Give each OSS network at least the sum of its OST bandwidth, and match the client network to the OSS network. 400 Gb/s IB on GPU nodes is common.
 
 ### Non-HA install order from the book
 
@@ -154,14 +178,14 @@ The book's simpler path, without failover, follows a fixed order. Each step depe
 1. Install the `lustre` package, or a similar one, on all servers and clients.
 2. On every server and client, write the LNET setup in a `lustre.conf` file under `/etc/modprobe.d`, for example `options lnet networks="o2ib0(ib0),tcp0(eth2)"`.
 3. Load the Lustre module on all servers and clients.
-4. On the MDS, create the combined MGS and MDT volume and mount it:
+4. On the MDS, create the combined MGS and MDT volume and mount it.
 
    ```bash
    mkfs.lustre --mdt --mgs --fsname=large-fs /dev/sdX
    mount -t lustre /dev/sdX /mnt/mdt
    ```
 
-5. On every OSS, create as many OSTs as you need, then mount each one. The book's example uses `--index=0` and `mds.your.org@tcp0` as the MGS address:
+5. On every OSS, create as many OSTs as you need, then mount each one. The book's example uses `--index=0` and `mds.your.org@tcp0` as the MGS address.
 
    ```bash
    mkfs.lustre --ost --fsname=large-fs --index=0 \
@@ -169,19 +193,21 @@ The book's simpler path, without failover, follows a fixed order. Each step depe
    mount -t lustre /dev/sdZ /mnt/ost0
    ```
 
-6. After the OSS nodes are ready, mount the file system on each client, using your MGS address:
+6. After the OSS nodes are ready, mount the file system on each client, using your MGS address.
 
    ```bash
    mount -t lustre mgsnode:/large-fs /mnt/lustre/
    ```
 
-The `--index` value must be unique for each target of the same type, so use a new number for each extra OST.
+Give each extra OST a new `--index` number, because that value must be unique for each target of the same type.
 
 ## 3. Striping
 
+Striping decides which OSTs hold a file's bytes, and that decides how much bandwidth the file can use. The layout is the part you should understand first.
+
 ### The raid0 layout
 
-Every file has a **layout**: a list of OST objects and the stripe size. With the default `raid0` pattern the file is cut into `stripe_size` chunks assigned **round-robin** to `stripe_count` OST objects. It is **not** "split into N contiguous parts": consecutive chunks alternate between OSTs. `code/part06/lustre_stripe.py` models this:
+Every file carries a layout. The layout lists the OST objects that hold the file, and it records the stripe size. With the default `raid0` pattern, the file is cut into `stripe_size` chunks. Those chunks go round-robin to `stripe_count` OST objects. The file is not split into N contiguous parts. Consecutive chunks alternate between OSTs. The `code/part06/lustre_stripe.py` model shows this:
 
 ```text
 1 GiB file, stripe_size 1 MiB, stripe_count 4: bytes per OST object (MiB)
@@ -191,11 +217,27 @@ A 3 MiB read at offset 2.5 MiB touches slots: [0, 1, 2, 3]
 A 512 KiB read at offset 0 touches slots: [0] (one OST: small I/O does not parallelise)
 ```
 
-Consequences: a large sequential read or write is spread over all `stripe_count` OSTs and gets their aggregate bandwidth; a small I/O touches one OST, so striping does not speed it up; a file with stripe_count 1 is limited to a single OST regardless of the size of the file system. (The NVIDIA-DevOps volume-15 chapter describes a 2-stripe 1 GB file as "two chunks of 500 MB each", which is a common simplification but wrong for how Lustre places data: chunks alternate in `stripe_size` units.)
+Read the output as a worked example. Take a 1 GiB file. The stripe size is 1 MiB, and the stripe count is 4. Each OST object therefore holds 256 MiB. The first eight chunks visit the four slots in turn: 0, 1, 2, 3, 0, 1, 2, 3.
+
+A large sequential read or write spreads over all `stripe_count` OSTs, so it gets their combined bandwidth. A small I/O touches one OST, so striping does not speed it up. A file with stripe_count 1 is limited to a single OST, no matter how large the file system is.
+
+The NVIDIA-DevOps volume-15 chapter describes a 2-stripe 1 GB file as "two chunks of 500 MB each." That is a common simplification, but it is wrong for how Lustre places data. The chunks alternate in `stripe_size` units.
 
 ### Defaults and setting
 
-From `lfs-setstripe(1)` in the development tree: `-c/--stripe-count` (0 = file-system default, **default 1**, -1 = all OSTs), `-C/--overstripe-count` (more than one stripe per OST), `-S/--stripe-size` (**default 4 MiB** in this tree; must be a multiple of 64 KiB; older releases defaulted to 1 MiB, so check yours), `-i/--stripe-index` (starting OST; -1 lets the MDS balance, "strongly recommended"), `-o/--ost` (explicit OST list), `-p/--pool` (OST pool), `-L/--layout` (`raid0` or `mdt`). On a directory the settings become the default for files created within; `lfs setstripe -d dir` removes the directory default. `lfs getstripe [-d] path` shows the layout.
+The options below come from `lfs-setstripe(1)` in the development tree. Most of the time you set only two of them: how many OSTs to use, and how big each chunk is.
+
+| Option | What it does |
+|---|---|
+| `-c/--stripe-count` | `0` means the file-system default, and that default is **1**. `-1` means all OSTs |
+| `-C/--overstripe-count` | More than one stripe on each OST |
+| `-S/--stripe-size` | The default is **4 MiB** in this tree. The value must be a multiple of 64 KiB. Older releases defaulted to 1 MiB, so check your version |
+| `-i/--stripe-index` | The starting OST. `-1` lets the MDS balance the choice, which the manual calls "strongly recommended" |
+| `-o/--ost` | An explicit list of OSTs |
+| `-p/--pool` | An OST pool to allocate from |
+| `-L/--layout` | `raid0` or `mdt` |
+
+Settings on a directory become the defaults for files created inside it. `lfs setstripe -d dir` removes that directory default. Use `lfs getstripe [-d] path` to see a layout.
 
 ```bash
 lfs setstripe -c 1  -S 1M  /lustre/small-files        # tiny files: one stripe
@@ -204,7 +246,9 @@ lfs setstripe -c -1 -S 4M  /lustre/checkpoints        # stripe over all OSTs (us
 lfs getstripe -d /lustre/checkpoints
 ```
 
-In `SCL` Chapter 9 (*Striping and PFL*), setting `lfs setstripe -S 4M -c 8 /lustre/testdir` and inspecting a file created inside that directory with `-y` (YAML format) outputs (`(untested here)`):
+Each line matches one kind of data. Small files get one stripe, big shared files get 16, and checkpoints spread over all OSTs. The comment on the checkpoint line pairs that setting with N-1 checkpoint files.
+
+In Chapter 9 (Striping and PFL) of the Supercomputers for Linux SysAdmins book, the setting `lfs setstripe -S 4M -c 8 /lustre/testdir` is applied to a directory. A file created inside it is then inspected with `-y`, which prints YAML. The output looks like this (`(untested here)`):
 
 ```yaml
 # (untested here) — lfs getstripe -y /lustre/testdir/testfile (SCL Chapter 9)
@@ -220,13 +264,13 @@ lmm_objects:
   l_fid:     0x100030000:0x2:0x0
 ```
 
-Note that you cannot alter `lmm_stripe_count` or `lmm_stripe_size` in place on an already-written file without migrating/copying its data into a newly striped file (`lfs migrate` or `cp`).
+You cannot change `lmm_stripe_count` or `lmm_stripe_size` in place on a file that is already written. Migrate or copy its data into a newly striped file instead, with `lfs migrate` or `cp`.
 
-Guidance: default stripe count 1 is right for the file-per-process pattern with many files (each file lands on its own OST, load balanced by the MDS); use larger stripe counts for big files shared by many clients or written by one fast client; match `stripe_size` to application I/O size (1 to 4 MiB typical; multiples of the I/O request size to avoid lock contention at boundaries). Too many stripes on small files wastes metadata and RPCs; too few on large files caps bandwidth.
+Choose the stripe count from the access pattern. The default of 1 suits the file-per-process pattern with many files. Each file lands on its own OST, and the MDS balances the load. Larger stripe counts suit big files shared by many clients, or files written by one fast client. Match `stripe_size` to your application's I/O size, which is typically 1 to 4 MiB. Use multiples of the I/O request size, so that boundaries do not cause lock contention. Too many stripes on small files waste metadata and RPCs. Too few stripes on large files cap the bandwidth.
 
 ### Progressive File Layouts (PFL) and other layouts
 
-A **composite layout** (introduced in Lustre `2.10+`) divides a file into components by offset, each with its own stripe parameters, so a file can start narrow and become wider as it grows (`-E`/`--component-end`):
+A composite layout, added in Lustre `2.10+`, splits a file into components by offset. Each component has its own stripe settings. A file can start narrow and widen as it grows. The `-E` option, also written `--component-end`, sets where each component ends.
 
 ```bash
 lfs setstripe -E 4M -c 1 -E 64M -c 4 -E -1 -c -1 /lustre/dir    # from the man page examples
@@ -234,7 +278,11 @@ lfs setstripe -E 4M -c 1 -E 64M -c 4 -E -1 -c -1 /lustre/dir    # from the man p
 lfs setstripe -E 1M -S 512K -c 1 -E 256M -c 4 -E -1 -S 1M -c 8 /lustre/testdir
 ```
 
-This gives small files one stripe (cheap) and large files all OSTs (fast) without the user choosing: set it as the **directory default** for general-purpose areas. Related features in the man page: **Data-on-MDT** (`-L mdt` for a first component placed on the MDT for fast small-file access, limited by `lod.*.dom_stripesize`), **self-extending layouts** (`-z/--extension-size` grows the first component in steps and avoids full OSTs), **mirrored layouts** (`-N/--mirror-count`, with components in different pools such as `flash` and `disk` and the `prefer` flag so clients favour the flash replica), and newer **erasure-coded** layouts (`--ec`). The tool model prints a PFL example: for a 1 GiB file with components `4 MiB x1`, `to 64 MiB x4`, and `rest x16 (4 MiB stripes)`:
+The first command gives small files one stripe, which is cheap. It gives large files all OSTs, which is fast. Neither needs a per-file choice from the user. Set it as the directory default for general-purpose areas, and you get the benefit without choosing per file.
+
+The man page lists several related features. Data-on-MDT, set with `-L mdt`, places a file's first component on the MDT, which suits fast small-file access. Its size is limited by `lod.*.dom_stripesize`. Self-extending layouts, set with `-z/--extension-size`, grow the first component in steps, which helps avoid full OSTs. Mirrored layouts, set with `-N/--mirror-count`, can place components in different pools such as `flash` and `disk`. The `prefer` flag makes clients favor the flash replica. Newer erasure-coded layouts use `--ec`.
+
+The tool model prints a PFL example. Take a 1 GiB file with three components: the first 4 MiB at stripe count 1, the next part up to 64 MiB at stripe count 4, and the rest at stripe count 16 with 4 MiB stripes.
 
 ```text
   [    0 MiB,     4 MiB)  stripe_count=1   stripe_size=1 MiB
@@ -242,17 +290,25 @@ This gives small files one stripe (cheap) and large files all OSTs (fast) withou
   [   64 MiB,  1024 MiB)  stripe_count=16  stripe_size=4 MiB
 ```
 
+Notice that the stripe size changes only in the last component, where it becomes 4 MiB.
+
 ### Pools
 
-An **OST pool** names a subset of OSTs (e.g. `flash`, `disk`); `lfs setstripe -p flash ...` allocates from it; combine with directory defaults and mirrors for tiering. Pools are defined with `lctl pool_new` / `pool_add` on the MGS (general knowledge; see `lfs pool_list`).
+An OST pool is a named subset of OSTs, such as `flash` or `disk`. `lfs setstripe -p flash` allocates from that pool. Combine pools with directory defaults and mirrors to build tiers. Pools are defined on the MGS with `lctl pool_new` and `pool_add`. That detail comes from general Lustre knowledge rather than the sources here, so confirm it with `lfs pool_list`.
 
 ### Directory striping and DNE
 
-With multiple MDTs, `lfs mkdir -i N dir` creates a directory on MDT N and `lfs setdirstripe -c K dir` stripes a directory over K MDTs (large directories); `lfs mkdir -c -1 -D` style default directory layouts spread subdirectories across MDTs. `lfs migrate -m START_MDT dir` moves a directory tree to other MDTs (recursively by default). Use DNE to spread per-user or per-project trees across metadata servers. Hash-striped single huge directories help create-heavy workloads but make `ls` slower.
+With several MDTs, you can spread the namespace across metadata servers. `lfs mkdir -i N dir` puts a directory on MDT N. `lfs setdirstripe -c K dir` stripes a directory over K MDTs, which helps large directories. Default directory layouts, written as `lfs mkdir -c -1 -D`, spread subdirectories across MDTs. `lfs migrate -m START_MDT dir` moves a directory tree to other MDTs, recursively by default.
+
+Use DNE to spread per-user or per-project trees across metadata servers. A hash-striped single huge directory helps create-heavy workloads, but `ls` on it becomes slower. For a workload that creates many files in one directory, hash striping is the option to weigh against the slower `ls`.
 
 ## 4. Quotas and capacity
 
-Enabled at format/`tunefs` time (`--quota` / `lctl conf_param ... quota.ost=ugp` depending on version) and managed with `lfs`: `lfs quota -u alice /lustre`, `lfs setquota -u alice -b 9T -B 10T -i 1M -I 1100K /lustre` (soft/hard block and inode limits; `-g` groups, `-p` projects; default quotas `-U/-G/-P`; `--pool` quotas; grace time `-t`; `--delete`, `--reset`). In `SCL` Chapter 9 (*Quotas*), setting a soft limit of `200G` / `2M` inodes and hard limit of `300G` / `3M` inodes for user `foo`, group `bar`, and project `1` (`lfs project -r /lustre/testdir`), adjusting grace times (`1d8h` for inodes, `2d` for blocks; default is 1 week), and resetting to default quota (`--default`, or `0` to remove limits) uses (`(untested here)`):
+A team that fills a shared dataset directory can squeeze out every other team on the file system. Quotas stop that. They are enabled at format time, or later with `tunefs`, using `--quota` or `lctl conf_param ... quota.ost=ugp`, depending on your version. You manage them with `lfs`.
+
+For example, `lfs quota -u alice /lustre` shows one user's usage. `lfs setquota -u alice -b 9T -B 10T -i 1M -I 1100K /lustre` sets soft and hard limits for blocks and inodes. The `-g` option covers groups and `-p` covers projects. Default quotas use `-U`, `-G` and `-P`. Pool-specific quotas use `--pool`, grace time uses `-t`, and `--delete` and `--reset` remove or clear limits.
+
+In Chapter 9 (Quotas) of the Supercomputers for Linux SysAdmins book, the soft limit is `200G` and `2M` inodes, and the hard limit is `300G` and `3M` inodes. Those limits apply to user `foo`, group `bar` and project `1`, where `lfs project -r /lustre/testdir` sets up the project. The book also adjusts the grace times to `1d8h` for inodes and `2d` for blocks. The default grace time is one week. Resetting to the default uses `--default`, and `0` removes limits. The book's commands are (`(untested here)`):
 
 ```bash
 # (untested here) — SCL Chapter 9 quota management examples
@@ -264,27 +320,38 @@ lfs setquota -t -u -i 1d8h -b 2d /lustre
 lfs setquota -u foo --default /lustre
 ```
 
-**Project quotas** (`lfs project -p ID -s dir`, then `lfs setquota -p ID ...`) enforce limits per directory tree irrespective of file owner, the natural unit for AI teams and datasets. Capacity: `lfs df -h` (per-MDT/OST usage; look for imbalance), `lfs df -i` (inodes).
+Project quotas, set with `lfs project -p ID -s dir` and then `lfs setquota -p ID`, enforce limits on a directory tree. They apply no matter who owns each file. That makes them the natural unit for AI teams and datasets. Check capacity with `lfs df -h`, which shows usage per MDT and OST, and look for imbalance. Use `lfs df -i` to check inodes.
 
-**Balancing, OST retirement/deactivation, and evacuation**: `lfs migrate` moves OST objects between OSTs to rebalance, change stripe count (`lfs migrate -c 16 file`), move between pools, or evacuate an OST for maintenance; it takes the same `setstripe`-style options and can run with `lfs find ... --print0 | lfs migrate -0 ...`; the layout swap is performed so that, per the man page, files are migrated while preserving data (verify behaviour for open/active files on your version; plan migrations during low load). The NVIDIA-DevOps chapter calls migration "offline"; in practice it is an online but I/O-heavy operation.
+Balancing and evacuation both rely on migration. `lfs migrate` moves OST objects between OSTs. You can rebalance with it, change the stripe count with `lfs migrate -c 16 file`, move data between pools, or empty an OST before maintenance. It accepts the same options as `setstripe`, and it can run from a list: `lfs find ... --print0 | lfs migrate -0 ...`.
 
-When an OST shows hardware trouble and needs to be retired, the book gives a four-step deactivation and evacuation sequence (`(untested here)`):
+According to the man page, the migration preserves file data. Verify how it handles open or active files on your version, and plan migrations for low-load periods. The NVIDIA-DevOps chapter calls migration "offline." In practice it is an online operation that adds a lot of I/O.
 
-1. Run `lctl dl` to list all Lustre devices visible on the client and find the numeric device index `N` of the target OST.
-2. Disable new object allocations on that OST by running `lctl --device N deactivate` (where `N` is the device number from `lctl dl`).
-3. Locate files residing on the retiring OST (for example with `lfs find --ost ...`) and migrate their data onto healthy OSTs using `lfs_migrate` (or `lfs migrate`).
-4. If an OST fails after the file system already holds data and must be repaired offline, unmount all clients first, then unmount all OSTs, then unmount the MDTs and MGS, mount the affected OST locally as `ldiskfs` (if ext4-based), and run the Lustre-patched `e2fsck` per your exact Lustre version documentation.
+When an OST shows hardware trouble and must be retired, the book gives a four-step sequence. It is written for a failing OST (`(untested here)`):
+
+1. Run `lctl dl` to list all Lustre devices visible on the client, and note the numeric device index `N` of the target OST.
+2. Disable new object allocations on that OST with `lctl --device N deactivate`, where `N` is the device number from `lctl dl`.
+3. Find the files that sit on the retiring OST, for example with `lfs find --ost ...`, and migrate their data to healthy OSTs with `lfs_migrate` or `lfs migrate`.
+4. If an OST fails after the file system holds data and must be repaired offline, unmount all clients first. Then unmount all OSTs, then the MDTs and the MGS. Mount the affected OST locally as ldiskfs if it is ext4-based, and run the Lustre-patched `e2fsck` according to the documentation for your exact Lustre version.
+
+Before you retire an OST, plan the migration window, because moving its data adds heavy I/O.
 
 ## 5. Failure and recovery model
 
-- **Failover pairs**: each MDT/OST device is reachable from two servers via shared storage (dual-ported disks/NVMe-oF/JBOD); if one server fails the partner mounts the target and recovery begins.
-- **Recovery**: after a restart clients reconnect and replay uncommitted requests during a **recovery window** (default several minutes; configurable). Applications see a pause rather than errors if recovery succeeds; clients that miss the window are evicted (stale file handles, I/O errors).
-- **Client eviction**: unresponsive clients (network flap, hang) are evicted by servers after timeouts, freeing locks; the node must remount. Time synchronisation matters (6.18).
-- **LFSCK**: online consistency checker (`lctl lfsck_start`), used after crashes or suspected inconsistency.
-- **HSM and changelogs**: hierarchical storage management and change logs support tiering to object stores and external tools.
-- **Hardware**: RAID/ZFS redundancy per target; dual power and network paths; spare OSS capacity; monitoring of disk and SSD health.
+When an OSS fails in the middle of a checkpoint, you need to know what your jobs will see.
+
+Each MDT and OST device is reachable from two servers through shared storage, such as dual-ported disks, NVMe-oF or a JBOD. If one server fails, its partner mounts the target, and recovery begins.
+
+After a restart, clients reconnect and replay uncommitted requests during a recovery window. The default is several minutes, and you can configure it. If recovery succeeds, applications see a pause rather than errors. A client that misses the window is evicted, which shows up as stale file handles or I/O errors. Servers also evict clients that stop responding, for example during a network flap or a hang, after timeouts. The eviction frees the client's locks, and the node must remount. Time synchronisation matters here, as covered in 6.18.
+
+Use LFSCK, the online consistency checker that runs with `lctl lfsck_start`, after crashes or when you suspect an inconsistency. Hierarchical storage management, or HSM, and change logs support tiering to object stores and external tools.
+
+Hardware redundancy is the last layer. Use RAID or ZFS redundancy for each target, and give each server dual power and network paths. Keep spare OSS capacity, and monitor the health of disks and SSDs.
+
+Before you size an HA design, confirm that every MDT and OST can be reached from two servers.
 
 ## 6. Monitoring and tuning
+
+When a ticket says a job is slow, you need to know where to look first. The table lists the tools, and each one answers a different question about space, layout, counters or logs.
 
 | Tool | Use |
 |---|---|
@@ -298,19 +365,25 @@ When an OST shows hardware trouble and needs to be retired, the book gives a fou
 | Server logs (`dmesg`, `/var/log/messages`) | Evictions, recovery, ldiskfs/ZFS errors, LNet errors |
 | Monitoring stacks | Lustre exporters for Prometheus, Grafana dashboards, vendor tools (e.g. IML, LTOP-like tools) |
 
-Common tunables (names illustrative, validate against your version): client `osc.*.max_rpcs_in_flight`, `osc.*.max_dirty_mb`, `llite.*.max_read_ahead_mb`, `llite.*.statahead_max` (speeds `ls -l`); server `ost.OSS.ost_io.threads_max`; LNet `peer_credits`/`credits`. Defaults are tuned for typical HPC; change one parameter at a time against a benchmark (IOR, mdtest, `fio`; 6.28).
+Two tools cover most first questions. `lfs df` answers questions about space, and `lctl get_param llite.*.stats` shows client operation counts and latencies.
+
+The tunables below are common, but their names are illustrative, so validate them against your version. On the client, `osc.*.max_rpcs_in_flight`, `osc.*.max_dirty_mb`, `llite.*.max_read_ahead_mb` and `llite.*.statahead_max` matter, and statahead speeds up `ls -l`. On the server, the tunable is `ost.OSS.ost_io.threads_max`. For LNet, the knobs are `peer_credits` and `credits`. Defaults are tuned for typical HPC, so change one parameter at a time and test each change with a benchmark such as IOR, mdtest or `fio` (covered in 6.28).
 
 ### Diagnosing bottlenecks
 
-1. **Is it metadata or data?** Compare `lctl get_param llite.*.stats` (open/getattr rates and latencies) with bandwidth per OST (server `obdfilter` stats, `lfs df`). Slow `ls -l`, slow Python imports, slow epoch starts, and thousands of `open` calls per second point to metadata. Low MB/s on a few large files points to striping or OST/network limits.
-2. **Metadata-bound** remedies: reduce file counts (shard datasets into large files; WebDataset/TFRecord/Parquet shards, 6.18 section 5), avoid giant directories, spread trees across MDTs (DNE), add client caching (statahead), move metadata-heavy trees (Python environments, build trees) to containers or local disks, use Data-on-MDT for small files, increase MDS threads and use faster MDT media.
-3. **Data-bound** remedies: raise stripe count for large files, align I/O size with stripe size, check client network (MTU, RDMA), OSS CPU/network, OST imbalance (`lfs df`), failing disks, rebuilds in progress, competing jobs.
-4. **One slow client**: network (NIC link speed, errors, MTU), CPU/NUMA, client eviction history, `lctl ping`, `lnetctl stats`.
-5. **Stalls and hangs**: check server logs for recovery/eviction, LNet errors, and OSS/MDS load; test from another client.
+When you see a slow job, work through these five checks in order.
 
-The NVIDIA-DevOps chapter's per-MDS and per-OST throughput figures ("about 50K to 100K metadata ops/s per MDS", "100 to 800 MB/s per OST") are illustrative orders of magnitude, not guarantees; real figures depend on hardware (flash MDTs achieve far more than spinning disks, NVMe OSTs far more than 800 MB/s). Measure your system.
+1. Start by asking whether the problem is metadata or data. Compare `lctl get_param llite.*.stats`, which shows open and getattr rates and latencies, with bandwidth per OST. Server `obdfilter` stats and `lfs df` give the OST side. Slow `ls -l`, slow Python imports, slow epoch starts and thousands of `open` calls per second all point to metadata. Low MB/s on a few large files points to striping, or to OST and network limits.
+2. If metadata is the bottleneck, reduce the file count. Shard datasets into large files, such as WebDataset, TFRecord or Parquet shards, which chapter 6.18 covers in section 5. Avoid giant directories, and spread trees across MDTs with DNE. Add client caching with statahead. Move metadata-heavy trees, such as Python environments and build trees, into containers or onto local disks. For small files, use Data-on-MDT. You can also increase MDS threads and use faster MDT media.
+3. If data is the bottleneck, raise the stripe count for large files, and align the I/O size with the stripe size. Then check the client network for MTU and RDMA problems. Check OSS CPU and network load, and check OST imbalance, which `lfs df` reveals. Failing disks, rebuilds in progress and competing jobs can also slow the data path.
+4. When one client is slow, look at its network first. Check the NIC link speed, its errors and its MTU. Then check CPU and NUMA placement, and review its eviction history. Run `lctl ping`, and read `lnetctl stats`.
+5. For stalls and hangs, check the server logs for recovery and eviction events, LNet errors, and OSS or MDS load. Testing from another client helps separate a client fault from a server fault.
+
+The NVIDIA-DevOps chapter gives per-MDS and per-OST figures of "about 50K to 100K metadata ops/s per MDS" and "100 to 800 MB/s per OST." Treat them as illustrative orders of magnitude, not guarantees. Flash MDTs achieve far more than spinning disks, and NVMe OSTs go well beyond 800 MB/s. Measure your own system.
 
 ## 7. AI-specific guidance
+
+Each AI workload you run stresses a different part of Lustre. The table pairs each common concern with the practice that handles it.
 
 | Concern | Practice |
 |---|---|
@@ -324,19 +397,46 @@ The NVIDIA-DevOps chapter's per-MDS and per-OST throughput figures ("about 50K t
 | Multi-tenant fairness | Network request scheduler (NRS) policies and QoS (TBF) exist in Lustre; use with care |
 | Cloud | Managed Lustre services (e.g. on major clouds) expose the same client semantics; capacity and throughput are provisioned per TiB |
 
+Start with the row that matches your slowest workload. Then check that row against the metadata and data diagnosis from the previous section.
+
 ## 8. Lab
 
-First, run the self-checking Python lab (`code/part06/lustre_stripe_lab.py`) locally. It verifies `slot()`, `per_ost_bytes()`, `request_osts()`, and `pfl_layout()` in `code/part06/lustre_stripe.py` (`1 GiB` file striped across 4 OSTs in `1 MiB` chunks $\to$ `[256, 256, 256, 256]` MiB per OST, `3 MiB` read at `2.5 MiB` touching `[0, 1, 2, 3]`, `512 KiB` read touching `[0]`, and PFL component ranges), and checks the `SCL` Chapter 9 OSS RAM sizing equations (`1030.0 MB` per OST at 20 service threads and `10 GB` baseline for an 8-OST OSS), LNET TCP port `988`, and `4194304` (`4 MiB`) stripe size:
+Run the self-checking Python lab locally before you touch a cluster. It needs no Lustre file system, so you can check the math first. The lab, `code/part06/lustre_stripe_lab.py`, verifies `slot()`, `per_ost_bytes()`, `request_osts()` and `pfl_layout()` in `code/part06/lustre_stripe.py`. It also checks the Supercomputers for Linux SysAdmins Chapter 9 OSS RAM sizing equations, the LNET port, and the stripe size. The expected results are:
+
+| Check | Expected result |
+|---|---|
+| 1 GiB file across 4 OSTs in 1 MiB chunks | `[256, 256, 256, 256]` MiB per OST |
+| 3 MiB read at offset 2.5 MiB | Touches `[0, 1, 2, 3]` |
+| 512 KiB read at offset 0 | Touches `[0]` |
+| PFL component ranges | Match the component boundaries in the script |
+| OSS RAM per OST at 20 service threads | `1030.0 MB` |
+| OSS baseline for an 8-OST OSS | `10 GB` |
+| LNET TCP port | `988` |
+| Stripe size | `4194304` (`4 MiB`) |
 
 ```bash
 python3 code/part06/lustre_stripe_lab.py
 ```
 
-Tested: run `lustre_stripe.py`; change the stripe parameters and predict per-OST bytes; model a 4 GiB file with PFL `-E 1M -c 1 -E 1G -c 4 -E -1 -c 8`.
+On the tested side, run `lustre_stripe.py`, change the stripe parameters, and predict the per-OST bytes before you run it. Then model a 4 GiB file with the PFL layout `-E 1M -c 1 -E 1G -c 4 -E -1 -c 8`.
 
-Untested (needs Lustre VMs): 1) Build a single-node Lustre (MGS+MDT, 2 OSTs on loop devices or small disks) following the `mkfs.lustre` examples; mount a client. 2) `lfs setstripe -c 2 -S 1M f`, write 1 GiB, `lfs getstripe f`, `lfs df`; compare with `-c 1`. 3) Set a directory PFL default; create small and large files; inspect layouts. 4) Create 100,000 files with `iomix.py` or `mdtest`; compare to NFS. 5) Add a second MDT and use `lfs mkdir -i 1`; observe `lfs getdirstripe`. 6) Set a project quota, exceed it, observe the error. 7) Run `lfs migrate -c 2 bigfile` while reading it. 8) Stop the OSS holding an OST and watch client behaviour and recovery; restart. 9) Write a runbook for evicted clients.
+The rest of the lab is untested, because it needs Lustre VMs. Work through these tasks on a test cluster:
+
+1. Build a single-node Lustre with an MGS and MDT, and 2 OSTs on loop devices or small disks, following the `mkfs.lustre` examples. Mount a client.
+2. Run `lfs setstripe -c 2 -S 1M f`, write 1 GiB, then run `lfs getstripe f` and `lfs df`. Compare the result with `-c 1`.
+3. Set a directory PFL default. Create small and large files, and inspect their layouts.
+4. Create 100,000 files with `iomix.py` or `mdtest`, and compare the result with NFS.
+5. Add a second MDT, use `lfs mkdir -i 1`, and observe the result with `lfs getdirstripe`.
+6. Set a project quota, exceed it, and observe the error.
+7. Run `lfs migrate -c 2 bigfile` while reading the file.
+8. Stop the OSS that holds an OST, and watch client behaviour and recovery. Then restart it.
+9. Write a runbook for evicted clients.
+
+Start with the Python lab, and build the VM setup only once its predictions match what you expect.
 
 ## 9. Interview angles
+
+These questions test whether you can reason through a Lustre incident, not just recite commands. Try to answer each one out loud before you move on.
 
 - Walk through what happens when a client opens and reads a striped file.
 - Why is default stripe count 1 and when do you change it?
@@ -348,163 +448,151 @@ Untested (needs Lustre VMs): 1) Build a single-node Lustre (MGS+MDT, 2 OSTs on l
 - How would you rebalance OSTs or evacuate one?
 - Lustre versus GPFS versus WEKA/VAST: strengths and weaknesses?
 
+For each question, name the layer you would check first, then the command you would run.
+
 ## Exercises
 
-1. **Modeling `raid0` Round-Robin Striping and Request Parallelism (`code/part06/lustre_stripe.py` & `lustre_stripe_lab.py`):** Run `python3 code/part06/lustre_stripe_lab.py`. Explain why a `1 GiB` file with `stripe_size=1 MiB` and `stripe_count=4` alternates `1 MiB` chunks across OST slots `[0, 1, 2, 3, 0, 1, 2, 3]` (yielding `256 MiB` per OST), why a `3 MiB` read starting at byte offset `2.5 MiB` touches all 4 OSTs `[0, 1, 2, 3]`, and why a `512 KiB` read at offset `0` touches only OST `[0]`.
-2. **Designing Progressive File Layouts (PFL) and Data-on-MDT (`DoM`):** Write the `lfs setstripe` PFL command for a shared AI directory where files $\le 4\text{ MiB}$ use `stripe_count=1, stripe_size=1M`, files from $4\text{ MiB}$ to $64\text{ MiB}$ use `stripe_count=4, stripe_size=1M`, and files $> 64\text{ MiB}$ use `stripe_count=16, stripe_size=4M` (and compare with `SCL` Chapter 9's `-E 1M -S 512K -c 1 -E 256M -c 4 -E -1 -S 1M -c 8`). Verify the component boundaries on a `1 GiB` file using `pfl_layout()`.
-3. **Formatting a Lustre Filesystem and Sizing OSS RAM (`SCL` Chapters 9 & 28):** Write the `/etc/modprobe.d/lustre.conf` (`options lnet networks="o2ib0(ib0),tcp0(eth2)"`), `mkfs.lustre` commands for an HA MGS+MDT pair (`--servicenode`) and OSTs (`--mgsnode`), and client `mount -t lustre` command. Using `oss_ram_sizing_mb(8, 640, 32)` in `code/part06/lustre_stripe_lab.py`, calculate the per-OST RAM (`1030.0 MB` for `N_threads = 640 / 32 = 20`) and baseline OSS RAM (`2 GB + 1 GB * 8 = 10 GB`).
-4. **Configuring User, Group, and Project Quotas (`SCL` Chapter 9):** Write the `lfs setquota` and `lfs project` commands to enforce a `200G` soft / `300G` hard block quota and `2M` soft / `3M` hard inode quota on `/lustre/testdir` under project ID `1`, set user grace periods to `1d8h` (inodes) and `2d` (blocks), and explain why directory-tree project quotas are preferred over user quotas for shared AI datasets.
-5. **Retiring and Evacuating a Failing OST (`SCL` Chapter 9):** Write the exact 4-step operational procedure to safely retire an OST experiencing disk errors—finding its device number with `lctl dl`, disabling new object allocations with `lctl --device N deactivate`, migrating existing stripes off the OST with `lfs find` + `lfs_migrate` / `lfs migrate`, and performing an offline `ldiskfs` `e2fsck` if required.
-6. **Diagnosing Metadata vs Data Bottlenecks on Lustre for AI Workloads:** Given two tickets—Ticket A ("512-GPU PyTorch job takes 8 minutes inside `import torch` at startup") and Ticket B ("Writing a single 500 GB checkpoint file from rank 0 runs at 600 MB/s on a 200 GB/s Lustre cluster")—state which `lctl get_param` / `lfs getstripe` / `lfs df` commands confirm the root cause and give the concrete fix for each.
+Each exercise works through one piece of the chapter with real numbers. You will need the Python lab for the first two, and then you write the commands yourself.
+
+1. Model `raid0` round-robin striping and request parallelism with `code/part06/lustre_stripe.py` and `code/part06/lustre_stripe_lab.py`. Run `python3 code/part06/lustre_stripe_lab.py`. Then explain why a 1 GiB file with `stripe_size=1 MiB` and `stripe_count=4` alternates 1 MiB chunks across OST slots `[0, 1, 2, 3, 0, 1, 2, 3]`, which gives 256 MiB per OST. Explain also why a 3 MiB read starting at byte offset 2.5 MiB touches all four OSTs `[0, 1, 2, 3]`, and why a 512 KiB read at offset 0 touches only OST `[0]`.
+2. Design a PFL layout for a shared AI directory, and keep Data-on-MDT (`DoM`) in mind. Files $\le 4\text{ MiB}$ use `stripe_count=1` and `stripe_size=1M`. Files from $4\text{ MiB}$ to $64\text{ MiB}$ use `stripe_count=4` and `stripe_size=1M`. Files $> 64\text{ MiB}$ use `stripe_count=16` and `stripe_size=4M`. Write the `lfs setstripe` command, then compare it with the command from Chapter 9 of *Supercomputers for Linux SysAdmins*, `-E 1M -S 512K -c 1 -E 256M -c 4 -E -1 -S 1M -c 8`. Verify the component boundaries on a 1 GiB file using `pfl_layout()`.
+3. Work through the Lustre file system setup from Chapters 9 and 28 of *Supercomputers for Linux SysAdmins*, and size the OSS RAM. Write `/etc/modprobe.d/lustre.conf` with `options lnet networks="o2ib0(ib0),tcp0(eth2)"`. Write the `mkfs.lustre` commands for an HA MGS and MDT pair, using `--servicenode`, and for the OSTs, using `--mgsnode`. Then write the client `mount -t lustre` command. Next, use `oss_ram_sizing_mb(8, 640, 32)` in `code/part06/lustre_stripe_lab.py` to calculate the per-OST RAM and the baseline OSS RAM. Your per-OST RAM should be `1030.0 MB` for `N_threads = 640 / 32 = 20`. The baseline OSS RAM should be `2 GB + 1 GB * 8 = 10 GB`.
+4. Write the `lfs setquota` and `lfs project` commands that enforce a `200G` soft and `300G` hard block quota, and a `2M` soft and `3M` hard inode quota, on `/lustre/testdir` under project ID `1`. Set the user grace periods to `1d8h` for inodes and `2d` for blocks. Then explain why directory-tree project quotas are preferred over user quotas for shared AI datasets.
+5. Write the exact four-step procedure to retire an OST that is showing disk errors. Find its device number with `lctl dl`, and disable new object allocations with `lctl --device N deactivate`. Migrate the existing stripes off the OST with `lfs find` and then `lfs_migrate` or `lfs migrate`. If the OST needs repair, run an offline ldiskfs `e2fsck`.
+6. Two tickets arrive. Ticket A says a 512-GPU PyTorch job takes 8 minutes inside `import torch` at startup. Ticket B says that writing a single 500 GB checkpoint file from rank 0 runs at 600 MB/s on a 200 GB/s Lustre cluster. For each ticket, state which `lctl get_param`, `lfs getstripe` or `lfs df` commands confirm the root cause, and give the concrete fix.
 
 ## Checkpoint
+
+Use these questions to test your understanding. Try each one yourself before you open its answer.
 
 <details>
 <summary>1. Define the five core Lustre architectural components (**MGS**, **MDS/MDT**, **OSS/OST**, **Clients**, and **LNet**) and state how metadata and data paths separate.</summary>
 
-- **MGS (Management Server):** Stores cluster-wide configuration and target registries; contacted at mount time.
-- **MDS / MDT (Metadata Server / Target):** Stores filenames, directories, permissions, and file stripe layouts (`LOV` maps).
-- **OSS / OST (Object Storage Server / Target):** Stores the actual striped file data objects.
-- **Clients (`MDC`, `OSC`/`LOV`, `MGC`):** Kernel-module mounts on compute nodes that query the MDS once on `open()`/`stat()` for the file's layout and then perform parallel RDMA reads/writes directly against the OSSs.
-- **LNet (Lustre Networking):** Kernel networking layer addressing nodes by **NID** (`<ip>@tcp0`, `<ip>@o2ib0`).
+The MGS (Management Server) stores the cluster-wide configuration and the registry of targets. Clients and servers contact it at mount time. The MDS and MDT (Metadata Server and Target) hold filenames, directories, permissions and file stripe layouts, which the `LOV` maps describe. The OSS and OST (Object Storage Server and Target) store the striped file data objects. Clients are kernel-module mounts on compute nodes, made of the `MDC`, `OSC`/`LOV` and `MGC` parts. A client asks the MDS once for a file's layout on `open()` or `stat()`. After that it reads and writes the OSSs directly over RDMA. Metadata therefore goes to the MDS, and data goes straight to the OSSs. LNet, the Lustre networking layer, addresses each node by its NID, such as `<ip>@tcp0` or `<ip>@o2ib0`.
 </details>
 
 <details>
-<summary>2. What is an LNet **NID**, what TCP port does LNet use over IP networks, and why can't `1.2.3.4@tcp0` talk directly to `2.3.4.5@tcp1` (`SCL` Chapter 9)?</summary>
+<summary>2. What is an LNet **NID**, what TCP port does LNet use over IP networks, and why can't `1.2.3.4@tcp0` talk directly to `2.3.4.5@tcp1` (*Supercomputers for Linux SysAdmins*, Chapter 9)?</summary>
 
-An **NID (Network Identifier)** has the format `<address>@<LND_protocol><index>` (for example `10.20.30.40@o2ib1` or `192.168.2.3@tcp0`). Over IP networks, the LNet kernel module communicates on **TCP port `988`**. Each `<protocol><index>` pair (`tcp0` vs `tcp1`) defines an isolated LNet network segment; nodes on different LNet networks cannot communicate without an explicit LNet router.
+A NID, or network identifier, has the form `<address>@<LND_protocol><index>`, such as `10.20.30.40@o2ib1` or `192.168.2.3@tcp0`. Over IP networks, LNet uses TCP port `988`. Each protocol and index pair, such as `tcp0` or `tcp1`, defines a separate LNet network segment. Nodes on different LNet networks cannot communicate without an explicit LNet router.
 </details>
 
 <details>
-<summary>3. Which two backing filesystems (`--backfstype`) can underlie Lustre MDTs and OSTs, and why does `SCL` Chapter 9 recommend RAID-10 for MDTs and RAID-6 for OSTs?</summary>
+<summary>3. Which two backing filesystems (`--backfstype`) can underlie Lustre MDTs and OSTs, and why does *Supercomputers for Linux SysAdmins*, Chapter 9, recommend RAID-10 for MDTs and RAID-6 for OSTs?</summary>
 
-Lustre targets use either **`ldiskfs`** (a Lustre-patched `ext4`) or **`ZFS`** (`--backfstype=zfs`). `SCL` Chapter 9 recommends **RAID-10 for MDTs** because metadata operations are small, latency-critical random I/Os where losing the MDT destroys the entire filesystem namespace, and **RAID-6 (or RAID-Z2) for OSTs** because data stripes are large ($\ge 1\text{ MB}$) sequential I/Os suited to dual-parity capacity efficiency.
+Lustre targets use either ldiskfs, which is a Lustre-patched ext4, or ZFS, selected with `--backfstype=zfs`. The book recommends RAID-10 for MDTs. Metadata operations are small, latency-critical random I/O, and losing an MDT destroys the entire file system namespace. It recommends RAID-6, or RAID-Z2 on ZFS, for OSTs. Data stripes are large sequential I/Os of 1 MB or more, and dual parity uses that capacity efficiently.
 </details>
 
 <details>
-<summary>4. What is the maximum length of `--fsname` in `mkfs.lustre`, and in what order must Lustre targets be mounted on startup and unmounted on shutdown (`SCL` Chapter 9)?</summary>
+<summary>4. What is the maximum length of `--fsname` in `mkfs.lustre`, and in what order must Lustre targets be mounted on startup and unmounted on shutdown (*Supercomputers for Linux SysAdmins*, Chapter 9)?</summary>
 
-`--fsname` is limited to **8 characters** (e.g., `large-fs`).
-- **Startup mount order:** Mount **MGS and MDTs first**, then mount **OSTs**, and finally mount **clients**.
-- **Shutdown unmount order:** Unmount **all clients first**, then unmount **all OSTs**, and finally unmount **MDTs and MGS**.
+The `--fsname` value is limited to 8 characters, for example `large-fs`.
+
+- On startup, mount the MGS and MDTs first, then the OSTs, and finally the clients.
+- On shutdown, unmount the clients first, then the OSTs, and finally the MDTs and the MGS.
 </details>
 
 <details>
-<summary>5. State the two OSS RAM sizing formulas from `SCL` Chapter 9.</summary>
+<summary>5. State the two OSS RAM sizing formulas from *Supercomputers for Linux SysAdmins*, Chapter 9.</summary>
 
-1. **Per-OST RAM usage:** $\mathbf{400\text{ MB}}$ (logging) $+ \mathbf{600\text{ MB}}$ (metadata cache) $+ \mathbf{1.5\text{ MB} \times N_{\text{threads}}}$ (where $N_{\text{threads}} \approx \text{clients} / \text{connected OSTs}$).
-2. **Recommended total OSS RAM:** $\mathbf{2\text{ GB} + 1\text{ GB per OST}}$ (plus extra memory for OS/network buffers and read caching).
+The first formula gives the per-OST RAM. Each OST needs $\mathbf{400\text{ MB}}$ for logging, $\mathbf{600\text{ MB}}$ for metadata cache, and $\mathbf{1.5\text{ MB} \times N_{\text{threads}}}$ for its service threads. The number of threads is roughly clients divided by connected OSTs: $N_{\text{threads}} \approx \text{clients} / \text{connected OSTs}$.
+
+The second formula gives the total OSS RAM the book recommends: $\mathbf{2\text{ GB} + 1\text{ GB per OST}}$. Add extra memory for the OS, network buffers and read caching.
 </details>
 
 <details>
 <summary>6. How does Lustre's `raid0` striping place data across OSTs (`code/part06/lustre_stripe.py`), and why is saying "a 2-stripe 1 GiB file is split into two 512 MiB halves" wrong?</summary>
 
-Lustre's `raid0` layout cuts a file into fixed **`stripe_size`** chunks (e.g., `1 MiB` or `4 MiB`) and assigns consecutive chunks **round-robin** across `stripe_count` OST objects (`chunk_index = offset // stripe_size`, `ost_slot = chunk_index % stripe_count`). A 2-stripe `1 GiB` file with `1 MiB` stripes alternates every `1 MiB` between OST 0 and OST 1 (`512` chunks on each), **not** two contiguous `512 MiB` halves.
+The `raid0` layout cuts a file into `stripe_size` chunks, such as 1 MiB or 4 MiB. It assigns consecutive chunks round-robin across `stripe_count` OST objects, using `chunk_index = offset // stripe_size` and `ost_slot = chunk_index % stripe_count`. A 2-stripe 1 GiB file with 1 MiB stripes alternates every 1 MiB between OST 0 and OST 1, with 512 chunks on each. If you picture two halves, you have it wrong. It is not two contiguous 512 MiB halves.
 </details>
 
 <details>
 <summary>7. Why does a `512 KiB` read touch only 1 OST even when a file has `stripe_count=16` and `stripe_size=4 MiB`?</summary>
 
-Because the entire byte range `[0, 512 KiB)` falls inside the first `4 MiB` chunk (`chunk 0`), which resides on a single OST (`slot 0`). Striping only parallelizes single-file reads or writes that span multiple `stripe_size` chunks (or concurrent multi-rank accesses to different chunks).
+The whole range from 0 to 512 KiB falls inside the first 4 MiB chunk. That chunk sits on one OST, slot 0. Striping speeds up a read or write only when it spans several chunks, or when several ranks access different chunks at the same time.
 </details>
 
 <details>
 <summary>8. What are the default values of `stripe_count` (`-c`) and `stripe_size` (`-S`) in `lfs setstripe`, and what do `-c -1` and `-i -1` mean?</summary>
 
-- **Defaults:** `stripe_count = 1` and `stripe_size = 4 MiB` (`4194304` bytes in current Lustre; `1 MiB` in older releases; must be a multiple of `64 KiB`).
-- **`-c -1`:** Stripe across **all available OSTs** in the filesystem (or pool).
-- **`-i -1`:** Let the MDS automatically select the starting OST index to balance capacity and load across OSTs.
+The defaults you will meet are a stripe count of 1 and a stripe size of 4 MiB, which is `4194304` bytes in current Lustre. Older releases default to 1 MiB. The size must be a multiple of 64 KiB. `-c -1` stripes across all available OSTs in the file system or pool. `-i -1` lets the MDS choose the starting OST index, to balance capacity and load.
 </details>
 
 <details>
-<summary>9. Decode the fields of `lfs getstripe -y /lustre/testdir/testfile` (`SCL` Chapter 9).</summary>
+<summary>9. Decode the fields of `lfs getstripe -y /lustre/testdir/testfile` (*Supercomputers for Linux SysAdmins*, Chapter 9).</summary>
 
-- **`lmm_stripe_count: 8`:** Number of OSTs the file is striped across.
-- **`lmm_stripe_size: 4194304`:** Stripe chunk size in bytes (`4 MiB`).
-- **`lmm_pattern: raid0`:** Round-robin striping pattern.
-- **`lmm_stripe_offset: 2`:** Index of the starting OST (`OST0002`).
-- **`lmm_objects`:** List of per-OST object allocations (`l_ost_idx` and unique File Identifier `l_fid`).
+`lmm_stripe_count` is the number of OSTs the file is striped across, here 8. `lmm_stripe_size` is the chunk size in bytes, here 4194304, which is 4 MiB. `lmm_pattern` shows the round-robin `raid0` pattern. `lmm_stripe_offset` is the index of the starting OST, here 2, which is `OST0002`. `lmm_objects` lists each OST object, with its `l_ost_idx` and its unique `l_fid`.
 </details>
 
 <details>
 <summary>10. What is a **Progressive File Layout (PFL)**, and how does `lfs setstripe -E 4M -c 1 -E 64M -c 4 -E -1 -c -1 /lustre/dir` work?</summary>
 
-A **PFL** composite layout defines multiple offset-bounded stripe components so files automatically widen as they grow:
-- Bytes **`[0, 4 MiB)`:** `stripe_count = 1` (small files stay on a single OST with minimal RPC overhead).
-- Bytes **`[4 MiB, 64 MiB)`:** `stripe_count = 4`.
-- Bytes **`[64 MiB, EOF)` (`-E -1`):** `stripe_count = -1` (all OSTs, giving multi-gigabyte checkpoints and dataset shards maximum aggregate bandwidth).
+A PFL is a composite layout with several components, each bounded by file offset, so a file widens automatically as it grows. Bytes from 0 up to 4 MiB use stripe count 1, which keeps small files on one OST with little RPC overhead. Bytes from 4 MiB up to 64 MiB use stripe count 4. Bytes from 64 MiB to the end of the file use all OSTs, because `-E -1` with `-c -1` gives multi-gigabyte checkpoints and dataset shards the most aggregate bandwidth.
 </details>
 
 <details>
 <summary>11. What is **Data-on-MDT (`DoM`)** (`lfs setstripe -E 1M -L mdt ...`), and what workload does it accelerate?</summary>
 
-**Data-on-MDT (`-L mdt`)** stores the first component of a file (up to `dom_stripesize`, typically $\le 1\text{ MiB}$) directly on the NVMe-backed **MDT** alongside its inode metadata, eliminating the extra client-to-OSS network round trip when reading or writing small configuration, log, or source files.
+Data-on-MDT, set with `-L mdt`, stores a file's first component on the NVMe-backed MDT. The component can be up to `dom_stripesize`, which is typically 1 MiB or less. The data sits next to the inode metadata. That removes the extra network round trip to an OSS, which speeds up small configuration, log and source files.
 </details>
 
 <details>
-<summary>12. What is **DNE (Distributed Namespace)**, and whatis the difference between `lfs mkdir -i N` and `lfs setdirstripe -c K`?</summary>
+<summary>12. What is **DNE (Distributed Namespace)**, and what is the difference between `lfs mkdir -i N` and `lfs setdirstripe -c K`?</summary>
 
-**DNE** scales metadata capacity and IOPS across multiple MDTs (`MDT0`, `MDT1`, ...):
-- **`lfs mkdir -i N dir`:** Places a specific directory (and its subtree) on a single target `MDT N` (DNE Phase 1).
-- **`lfs setdirstripe -c K dir` (or `lfs mkdir -c K`):** Hash-stripes the entries of a single large directory across $K$ MDTs (DNE Phase 2, accelerating massive multi-rank file creation in one directory).
+If you use DNE, it spreads metadata capacity and IOPS across several MDTs, MDT0, MDT1 and so on. `lfs mkdir -i N dir` puts a directory and its subtree on one MDT, MDT N. That is DNE phase 1. `lfs setdirstripe -c K dir`, or `lfs mkdir -c K`, hashes the entries of one large directory across K MDTs. That is DNE phase 2, and it speeds up massive multi-rank file creation in a single directory.
 </details>
 
 <details>
-<summary>13. How do you configure user, group, and directory **project quotas** in Lustre, and how do you change quota grace times (`SCL` Chapter 9)?</summary>
+<summary>13. How do you configure user, group, and directory **project quotas** in Lustre, and how do you change quota grace times (*Supercomputers for Linux SysAdmins*, Chapter 9)?</summary>
 
-- **User / group quota:** `lfs setquota -u foo -b 200G -B 300G -i 2M -I 3M /lustre` (`-b`/`-i` soft limits, `-B`/`-I` hard limits).
-- **Project quota on a directory tree:** `lfs project -p 1 -r -s /lustre/testdir` followed by `lfs setquota -p 1 -b 200G -B 300G -i 2M -I 3M /lustre`.
-- **Grace time:** `lfs setquota -t -u -i 1d8h -b 2d /lustre` (default is 1 week). Reset to default with `--default` or clear with `0`.
+For a user or group quota, set the limits with `lfs setquota`, as in `lfs setquota -u foo -b 200G -B 300G -i 2M -I 3M /lustre`. Here `-b` and `-i` set the soft limits, and `-B` and `-I` set the hard limits. For a project on a directory tree, run `lfs project -p 1 -r -s /lustre/testdir`, then `lfs setquota -p 1 -b 200G -B 300G -i 2M -I 3M /lustre`. Change the grace times with `lfs setquota -t -u -i 1d8h -b 2d /lustre`. The default grace time is one week. Reset to the default with `--default`, or clear the limits with `0`.
 </details>
 
 <details>
-<summary>14. What is the 4-step procedure to deactivate and evacuate a failing OST before removing or repairing it (`SCL` Chapter 9)?</summary>
+<summary>14. What is the 4-step procedure to deactivate and evacuate a failing OST before removing or repairing it (*Supercomputers for Linux SysAdmins*, Chapter 9)?</summary>
 
-1. Run **`lctl dl`** on the client/MGS to identify the numeric device index `N` of the failing OST.
-2. Run **`lctl --device N deactivate`** so the MDS stops allocating new file objects on that OST.
-3. Find all files with stripes on that OST (`lfs find --ost <OST_name> /lustre`) and migrate them to healthy OSTs with **`lfs_migrate`** / **`lfs migrate`**.
-4. If offline repair is needed, unmount clients $\to$ OSTs $\to$ MDT/MGS, mount the OST locally as `ldiskfs`, and run Lustre's patched `e2fsck`.
+1. Run `lctl dl` on the client or MGS to find the numeric device index `N` of the failing OST.
+2. Run `lctl --device N deactivate`, so the MDS stops allocating new file objects on that OST.
+3. Find all files with stripes on that OST, using `lfs find --ost <OST_name> /lustre`, and migrate them to healthy OSTs with `lfs_migrate` or `lfs migrate`.
+4. If offline repair is needed, you unmount the clients, then the OSTs, then the MDT and MGS. Mount the OST locally as ldiskfs, and run Lustre's patched `e2fsck`.
 </details>
 
 <details>
-<summary>15. Does Lustre itself replicate data across OSTs by default, and how is server/target high availability implemented (`SCL` Chapter 9)?</summary>
+<summary>15. Does Lustre itself replicate data across OSTs by default, and how is server/target high availability implemented (*Supercomputers for Linux SysAdmins*, Chapter 9)?</summary>
 
-By default, Lustre does **not** duplicate data across OSTs (unless explicit file-level mirroring `lfs mirror create -N` is used)—an unrecovered OST/MDT disk loss loses data. High availability relies on:
-1. **RAID-10 (MDT) / RAID-6 or ZFS RAID-Z2 (OST)** beneath each target.
-2. **Multi-homed shared storage (`--servicenode`)** where two OSS/MDS hosts share access to the disk shelves and **Pacemaker + Corosync** mounts the target on the standby server if the primary fails.
+No. By default, Lustre does not duplicate data across OSTs. Only explicit file-level mirroring, created with `lfs mirror create -N`, does that. An OST or MDT disk loss that is not recovered loses data. High availability relies on two things. First, RAID-10 for MDTs and RAID-6 or ZFS RAID-Z2 for OSTs sit beneath each target. Second, the servers use multi-homed shared storage, set with `--servicenode`, so two hosts can reach the disk shelves. Pacemaker and Corosync then mount the target on the standby server if the primary fails.
 </details>
 
 <details>
 <summary>16. What happens during **Lustre recovery** and **client eviction** when an OSS or MDS fails over?</summary>
 
-When a failed-over MDT or OST mounts on its partner server, it enters a **recovery window** (several minutes) during which clients reconnect and **replay** their uncommitted in-flight RPCs from client memory. If all clients reconnect in time, applications only experience an I/O pause; any client that fails to reconnect before the recovery timer expires is **evicted** (losing its cached locks/state and receiving `EIO` / stale handle errors until remounted).
+For example, if an OSS fails during your checkpoint, its target mounts on the partner server. That mount starts a recovery window of several minutes. During that window, clients reconnect and replay their uncommitted in-flight RPCs from client memory. If every client reconnects in time, applications see only an I/O pause. A client that misses the timer is evicted. It loses its cached locks and state, and it receives `EIO` or stale handle errors until it remounts.
 </details>
 
 <details>
 <summary>17. How do you distinguish a **metadata bottleneck** from a **data/OST bottleneck** using `lctl` and `lfs`?</summary>
 
-Compare client metadata operation counters (`lctl get_param llite.*.stats`—looking at `open`, `close`, `getattr`, `readdir` rates and latencies) and MDS CPU load against per-OST bandwidth and space balance (`lfs df -h`, `lfs df -i`, and OSS `obdfilter.*.stats`). Slow `ls -l`, slow Python imports, and high `open`/`getattr` counts indicate a metadata bottleneck; low throughput on large reads/writes or a 99%-full single OST indicates a data/striping bottleneck.
+If you compare the client metadata counters from `lctl get_param llite.*.stats`, looking at open, close, getattr and readdir rates and latencies, along with MDS CPU load. Then compare them with per-OST bandwidth and space balance, using `lfs df -h`, `lfs df -i`, and `obdfilter.*.stats` on the OSS. Slow `ls -l`, slow Python imports, and high open or getattr counts point to a metadata bottleneck. Low throughput on large reads and writes, or one OST that is 99% full, points to a data or striping bottleneck.
 </details>
 
 <details>
-<summary>18. What is the difference between `lctl set_param`, `lctl set_param -P` (`lctl conf_param`), and `tunefs.lustre` (`SCL` Chapter 9)?</summary>
+<summary>18. What is the difference between `lctl set_param`, `lctl set_param -P` (`lctl conf_param`), and `tunefs.lustre` (*Supercomputers for Linux SysAdmins*, Chapter 9)?</summary>
 
-- **`lctl set_param ...`:** Changes a Lustre kernel parameter **temporarily** on the local node until reboot/remount.
-- **`lctl set_param -P ...`:** Saves the parameter **permanently** in the MGS configuration log so it persists across reboots.
-- **`tunefs.lustre`:** Modifies on-disk target header parameters (such as MGS/failover NIDs) and **must only be run while the OSS/MDS target is unmounted/stopped**.
+- `lctl set_param ...` changes a Lustre kernel parameter on the local node only, until reboot or remount.
+- `lctl set_param -P ...` saves the parameter permanently in the MGS configuration log, so it persists across reboots.
+- `tunefs.lustre` changes on-disk target header parameters, such as MGS and failover NIDs. Run it only while the OSS or MDS target is stopped.
 </details>
 
 <details>
 <summary>19. How should striping be configured for **N-to-N** sharded checkpoints (`__0_0.distcp`) versus **N-to-1** single-file checkpoints on Lustre?</summary>
 
-- **N-to-N (one shard file per rank/node):** Set `stripe_count = 1` to `4` (`lfs setstripe -c 1 -S 4M`). Because hundreds of ranks write separate files concurrently, the MDS distributes the files across all OSTs automatically without multi-OST lock overhead per file.
-- **N-to-1 (all ranks writing to one giant shared file):** Set `stripe_count = -1` (`lfs setstripe -c -1 -S 4M`, striping across all OSTs) and align rank write offsets to `4 MiB` stripe boundaries so all OSTs work in parallel without extent-lock contention.
+For N-to-N, where each rank or node writes its own shard file, you should use a stripe count of 1 to 4, with `lfs setstripe -c 1 -S 4M`. Hundreds of ranks write separate files at once, and the MDS spreads those files across all OSTs without per-file multi-OST lock overhead. For N-to-1, where every rank writes one large shared file, use `lfs setstripe -c -1 -S 4M` to stripe across all OSTs. Align the rank write offsets to 4 MiB stripe boundaries, so that all OSTs work in parallel without extent-lock contention.
 </details>
 
 <details>
 <summary>20. Why should Python virtual environments and Conda trees never be imported directly from Lustre by 1,000+ GPU ranks at job start?</summary>
 
-When 1,000 ranks run `import torch, transformers`, each rank issues thousands of `stat()`, `open()`, and `read()` RPCs against the same directory on `MDT0`, creating a multi-million-RPC metadata storm that stalls job startup for minutes. Package environments into a single **Enroot `.sqsh` / Apptainer `.sif` image** (or stage to local `/tmp` NVMe via `sbcast`).
+When 1,000 ranks run `import torch, transformers` together, each rank issues thousands of `stat()`, `open()` and `read()` RPCs against the same directory on `MDT0`. Together those requests form a metadata storm of millions of RPCs, which can stall job startup for minutes. Package the environment into a single Enroot `.sqsh` or Apptainer `.sif` image instead, or stage it to local `/tmp` NVMe with `sbcast`.
 </details>
 
 ## Sources and review notes
